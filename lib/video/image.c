@@ -741,12 +741,13 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
 #ifdef SIMD_SUPPORT
     START_TIMER("print_color_simd_truecolor");
     result = image_print_color_simd((image_t *)image, use_background_mode, false, palette);
-    STOP_TIMER_AND_LOG_EVERY(dev, 0, 3 * NS_PER_SEC_INT, "print_color_simd_truecolor",
+    STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "print_color_simd_truecolor",
                              "PRINT_SIMD_TRUECOLOR: Complete (%.2f ms)");
 #else
     START_TIMER("print_color");
     result = image_print_color(image, palette);
-    STOP_TIMER_AND_LOG_EVERY(dev, 0, 3 * NS_PER_SEC_INT, "print_color", "PRINT_COLOR: Complete (%.2f ms)");
+    STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "print_color",
+                             "PRINT_COLOR: Complete (%.2f ms)");
 #endif
     break;
 
@@ -754,12 +755,14 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
 #ifdef SIMD_SUPPORT
     START_TIMER("print_color_simd_256");
     result = image_print_color_simd((image_t *)image, use_background_mode, true, palette);
-    STOP_TIMER_AND_LOG_EVERY(dev, 0, 3 * NS_PER_SEC_INT, "print_color_simd_256", "PRINT_SIMD_256: Complete (%.2f ms)");
+    STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "print_color_simd_256",
+                             "PRINT_SIMD_256: Complete (%.2f ms)");
 #else
     // Use 256-color conversion
     START_TIMER("print_256color");
     result = image_print_256color(image, palette);
-    STOP_TIMER_AND_LOG_EVERY(dev, 0, 3 * NS_PER_SEC_INT, "print_256color", "PRINT_256COLOR: Complete (%.2f ms)");
+    STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "print_256color",
+                             "PRINT_256COLOR: Complete (%.2f ms)");
 #endif
     break;
 
@@ -767,7 +770,7 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
     // Use 16-color conversion with Floyd-Steinberg dithering for better quality
     START_TIMER("print_16color_dithered");
     result = image_print_16color_dithered_with_background(image, use_background_mode, palette);
-    STOP_TIMER_AND_LOG_EVERY(dev, 0, 3 * NS_PER_SEC_INT, "print_16color_dithered",
+    STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "print_16color_dithered",
                              "PRINT_16COLOR_DITHERED: Complete (%.2f ms)");
     break;
 
@@ -777,11 +780,12 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
 #ifdef SIMD_SUPPORT
     START_TIMER("print_simd");
     result = image_print_simd((image_t *)image, palette);
-    STOP_TIMER_AND_LOG_EVERY(dev, 0, 3 * NS_PER_SEC_INT, "print_simd", "PRINT_SIMD: Complete (%.2f ms)");
+    STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "print_simd",
+                             "PRINT_SIMD: Complete (%.2f ms)");
 #else
     START_TIMER("print");
     result = image_print(image, palette);
-    STOP_TIMER_AND_LOG_EVERY(dev, 0, 3 * NS_PER_SEC_INT, "print", "PRINT: Complete (%.2f ms)");
+    STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "print", "PRINT: Complete (%.2f ms)");
 #endif
     break;
   }

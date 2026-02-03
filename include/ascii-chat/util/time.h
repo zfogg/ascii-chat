@@ -470,21 +470,21 @@ int format_duration_s(double seconds, char *buffer, size_t buffer_size);
  * This prevents log spam from frequent operations while also filtering out fast operations.
  *
  * Usage:
- *   STOP_TIMER_AND_LOG_EVERY(dev, 0, 1000000000, "opus_encode", "Opus encode completed");
- *   STOP_TIMER_AND_LOG_EVERY(info, NS_PER_MS_INT, 5000000000, "process_frame_%d", "Frame %d processed", frame_id);
+ *   STOP_TIMER_AND_LOG_EVERY(dev, 1000000000, 0, "opus_encode", "Opus encode completed");
+ *   STOP_TIMER_AND_LOG_EVERY(info, 5000000000, NS_PER_MS_INT, "process_frame_%d", "Frame %d processed", frame_id);
  *
  * The macro will append " in X.XXms" (or appropriate unit) to your message automatically.
  * Supported log levels: dev, debug, info, warn, error, fatal
  *
  * @param log_level Log level name (dev, debug, info, warn, error, fatal - without log_ prefix)
- * @param threshold_ns Minimum elapsed time in nanoseconds to trigger log (0 = no threshold)
  * @param interval_ns Time interval in nanoseconds between log emissions (rate limiting)
+ * @param threshold_ns Minimum elapsed time in nanoseconds to trigger log (0 = no threshold)
  * @param timer_name Timer name (must match START_TIMER call)
  * @param msg_fmt Printf-style format string for the message
  * @param ... Format arguments for both timer name and message
  * @ingroup module_utilities
  */
-#define STOP_TIMER_AND_LOG_EVERY(log_level, threshold_ns, interval_ns, timer_name, msg_fmt, ...)                       \
+#define STOP_TIMER_AND_LOG_EVERY(log_level, interval_ns, threshold_ns, timer_name, msg_fmt, ...)                       \
   do {                                                                                                                 \
     double _elapsed_ns = STOP_TIMER(timer_name, ##__VA_ARGS__);                                                        \
     if (_elapsed_ns >= 0.0 && (threshold_ns == 0 || _elapsed_ns >= (double)(threshold_ns))) {                          \

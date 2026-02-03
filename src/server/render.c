@@ -808,7 +808,7 @@ void *client_audio_render_thread(void *arg) {
       samples_mixed = mixer_process_excluding_source(g_audio_mixer, mix_buffer, samples_to_read, client_id_snapshot);
     }
 
-    STOP_TIMER_AND_LOG_EVERY(dev, 0, NS_PER_SEC_INT, "mix_%u", "Mixer for client %u: took", client_id_snapshot);
+    STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 0, "mix_%u", "Mixer for client %u: took", client_id_snapshot);
 
     // Debug logging every 100 iterations (disabled - can slow down audio rendering)
     // log_debug_every(LOG_RATE_SLOW, "Audio render for client %u: samples_mixed=%d", client_id_snapshot,
@@ -837,7 +837,7 @@ void *client_audio_render_thread(void *arg) {
       opus_frame_accumulated += samples_to_copy;
     }
 
-    STOP_TIMER_AND_LOG_EVERY(dev, 0, NS_PER_SEC_INT, "accum_%u", "Accumulate for client %u: took", client_id_snapshot);
+    STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 0, "accum_%u", "Accumulate for client %u: took", client_id_snapshot);
 
     // Only encode and send when we have accumulated a full Opus frame
     if (opus_frame_accumulated >= OPUS_FRAME_SAMPLES) {
@@ -876,7 +876,7 @@ void *client_audio_render_thread(void *arg) {
       int opus_size =
           opus_codec_encode(opus_encoder, opus_frame_buffer, OPUS_FRAME_SAMPLES, opus_buffer, sizeof(opus_buffer));
 
-      STOP_TIMER_AND_LOG_EVERY(dev, 0, NS_PER_SEC_INT, "opus_encode_%u", "Opus encode for client %u: took",
+      STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 0, "opus_encode_%u", "Opus encode for client %u: took",
                                client_id_snapshot);
 
       // DEBUG: Log mix buffer and encoding results to see audio levels being sent
@@ -913,7 +913,7 @@ void *client_audio_render_thread(void *arg) {
         int result = packet_queue_enqueue(audio_queue_snapshot, PACKET_TYPE_AUDIO_OPUS_BATCH, opus_buffer,
                                           (size_t)opus_size, 0, true);
 
-        STOP_TIMER_AND_LOG_EVERY(dev, 0, NS_PER_SEC_INT, "audio_queue_%u", "Audio queue for client %u: took",
+        STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 0, "audio_queue_%u", "Audio queue for client %u: took",
                                  client_id_snapshot);
 
         if (result < 0) {

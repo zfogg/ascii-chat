@@ -251,7 +251,8 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   image_clear(resized);
 
   uint64_t prof_alloc_end_ns = time_get_ns();
-  STOP_TIMER_AND_LOG_EVERY(dev, 0, 3 * NS_PER_SEC_INT, "image_alloc", "IMAGE_ALLOC: Alloc+clear complete (%.2f ms)");
+  STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "image_alloc",
+                           "IMAGE_ALLOC: Alloc+clear complete (%.2f ms)");
 
   START_TIMER("image_resize");
   uint64_t prof_resize_start_ns = prof_alloc_end_ns;
@@ -259,7 +260,8 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   image_resize(original, resized);
 
   uint64_t prof_resize_end_ns = time_get_ns();
-  STOP_TIMER_AND_LOG_EVERY(dev, 0, 3 * NS_PER_SEC_INT, "image_resize", "IMAGE_RESIZE: Resize complete (%.2f ms)");
+  STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "image_resize",
+                           "IMAGE_RESIZE: Resize complete (%.2f ms)");
 
   // PROFILING: Time ASCII print
   uint64_t prof_print_start_ns = prof_resize_end_ns;
@@ -274,7 +276,7 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   char *ascii = image_print_with_capabilities(resized, caps, palette_chars);
 
   uint64_t prof_print_end_ns = time_get_ns();
-  STOP_TIMER_AND_LOG_EVERY(dev, 0, 3 * NS_PER_SEC_INT, "image_print_with_capabilities",
+  STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "image_print_with_capabilities",
                            "IMAGE_PRINT: Print complete (%.2f ms)");
 
   uint64_t alloc_time_us = time_ns_to_us(time_elapsed_ns(prof_alloc_start_ns, prof_alloc_end_ns));
@@ -307,7 +309,8 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   SAFE_FREE(ascii_width_padded);
 
   uint64_t prof_pad_end_ns = time_get_ns();
-  STOP_TIMER_AND_LOG_EVERY(dev, 0, 3 * NS_PER_SEC_INT, "ascii_padding", "ASCII_PADDING: Padding complete (%.2f ms)");
+  STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 2 * NS_PER_MS_INT, "ascii_padding",
+                           "ASCII_PADDING: Padding complete (%.2f ms)");
 
   uint64_t pad_time_us = time_ns_to_us(time_elapsed_ns(prof_pad_start_ns, prof_pad_end_ns));
   log_dev("ASCII_BREAKDOWN: alloc=%.2f ms, resize=%.2f ms, print=%.2f ms, pad=%.2f ms (total=%.2f ms)",
