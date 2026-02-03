@@ -423,7 +423,9 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
 
   START_TIMER("frame_write");
   if (use_tty_control) {
-    // TTY mode: send clear codes then frame data
+    // TTY mode: reset cursor position and clear before each frame
+    (void)terminal_cursor_home(STDOUT_FILENO);
+    // Send frame data
     // Ensure clear codes write completely before frame data to avoid cursor misalignment
     (void)platform_write_all(STDOUT_FILENO, frame_data, frame_len);
     (void)terminal_flush(STDOUT_FILENO);
