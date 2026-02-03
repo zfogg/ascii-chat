@@ -801,12 +801,7 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
   rwlock_rdunlock(&mixer->source_lock);
 
 #ifndef NDEBUG
-  double total_ns = STOP_TIMER("mixer_total");
-  if (total_ns > 2000000) { // > 2ms
-    char duration_str[32];
-    format_duration_ns(total_ns, duration_str, sizeof(duration_str));
-    log_warn("Slow mixer: total=%s, num_samples=%d", duration_str, num_samples);
-  }
+  STOP_TIMER_AND_LOG_EVERY(warn, 0, NS_PER_SEC_INT, "mixer_total", "Mixer took");
 #endif
 
   return num_samples;

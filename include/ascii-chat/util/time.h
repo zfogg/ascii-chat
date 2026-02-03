@@ -36,6 +36,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <time.h>
+#include <stdatomic.h>
+
+// Forward declarations for rate-limited logging
+#include "../log/logging.h" // For log_* functions
 
 // ============================================================================
 // sokol_time.h Integration
@@ -428,28 +432,73 @@ int format_duration_s(double seconds, char *buffer, size_t buffer_size);
  *
  * Combines STOP_TIMER() with logging. The timer is stopped, elapsed time is retrieved,
  * and a log message is generated with the elapsed time appended in human-readable format.
+ * Optionally filters based on a minimum elapsed time threshold.
  *
  * Usage:
- *   STOP_TIMER_AND_LOG(info, "client_handshake", "Crypto handshake completed successfully");
- *   STOP_TIMER_AND_LOG(debug, "process_frame_%d", "Frame %d processed", frame_id, frame_id);
- *   STOP_TIMER_AND_LOG(dev, "render", "Rendering complete");
+ *   STOP_TIMER_AND_LOG(info, 0, "client_handshake", "Crypto handshake completed successfully");
+ *   STOP_TIMER_AND_LOG(debug, 5000000, "process_frame_%d", "Frame %d processed", frame_id, frame_id);
+ *   STOP_TIMER_AND_LOG(dev, NS_PER_MS_INT, "render", "Rendering complete");
  *
  * The macro will append " in X.XXms" (or appropriate unit) to your message automatically.
  * Supported log levels: dev, debug, info, warn, error, fatal
  *
  * @param log_level Log level name (dev, debug, info, warn, error, fatal - without log_ prefix)
+ * @param threshold_ns Minimum elapsed time in nanoseconds to trigger log (0 = always log)
  * @param timer_name Timer name (must match START_TIMER call)
  * @param msg_fmt Printf-style format string for the message
  * @param ... Format arguments for both timer name and message
  * @ingroup module_utilities
  */
-#define STOP_TIMER_AND_LOG(log_level, timer_name, msg_fmt, ...)                                                        \
+#define STOP_TIMER_AND_LOG(log_level, threshold_ns, timer_name, msg_fmt, ...)                                          \
   do {                                                                                                                 \
     double _elapsed_ns = STOP_TIMER(timer_name, ##__VA_ARGS__);                                                        \
-    if (_elapsed_ns >= 0.0) {                                                                                          \
+    if (_elapsed_ns >= 0.0 && (threshold_ns == 0 || _elapsed_ns >= (double)(threshold_ns))) {                          \
       char _duration_str[32];                                                                                          \
       format_duration_ns(_elapsed_ns, _duration_str, sizeof(_duration_str));                                           \
       log_##log_level(msg_fmt " in %s", ##__VA_ARGS__, _duration_str);                                                 \
+    }                                                                                                                  \
+  } while (0)
+
+/**
+ * @brief Stop a timer and log the result with rate limiting
+ *
+ * Combines STOP_TIMER() with rate-limited logging. The timer is stopped, elapsed time
+ * is retrieved, and a log message is generated only if:
+ * 1. The elapsed time exceeds the threshold (if non-zero), AND
+ * 2. The specified time interval has passed since the last logged occurrence
+ *
+ * This prevents log spam from frequent operations while also filtering out fast operations.
+ *
+ * Usage:
+ *   STOP_TIMER_AND_LOG_EVERY(dev, 0, 1000000000, "opus_encode", "Opus encode completed");
+ *   STOP_TIMER_AND_LOG_EVERY(info, NS_PER_MS_INT, 5000000000, "process_frame_%d", "Frame %d processed", frame_id);
+ *
+ * The macro will append " in X.XXms" (or appropriate unit) to your message automatically.
+ * Supported log levels: dev, debug, info, warn, error, fatal
+ *
+ * @param log_level Log level name (dev, debug, info, warn, error, fatal - without log_ prefix)
+ * @param threshold_ns Minimum elapsed time in nanoseconds to trigger log (0 = no threshold)
+ * @param interval_ns Time interval in nanoseconds between log emissions (rate limiting)
+ * @param timer_name Timer name (must match START_TIMER call)
+ * @param msg_fmt Printf-style format string for the message
+ * @param ... Format arguments for both timer name and message
+ * @ingroup module_utilities
+ */
+#define STOP_TIMER_AND_LOG_EVERY(log_level, threshold_ns, interval_ns, timer_name, msg_fmt, ...)                       \
+  do {                                                                                                                 \
+    double _elapsed_ns = STOP_TIMER(timer_name, ##__VA_ARGS__);                                                        \
+    if (_elapsed_ns >= 0.0 && (threshold_ns == 0 || _elapsed_ns >= (double)(threshold_ns))) {                          \
+      static _Atomic(uint64_t) _log_every_last_time = 0;                                                               \
+      uint64_t _log_every_now = time_get_ns();                                                                         \
+      uint64_t _log_every_last = atomic_load_explicit(&_log_every_last_time, memory_order_relaxed);                    \
+      if (_log_every_now - _log_every_last >= (uint64_t)(interval_ns)) {                                               \
+        if (atomic_compare_exchange_weak_explicit(&_log_every_last_time, &_log_every_last, _log_every_now,             \
+                                                  memory_order_relaxed, memory_order_relaxed)) {                       \
+          char _duration_str[32];                                                                                      \
+          format_duration_ns(_elapsed_ns, _duration_str, sizeof(_duration_str));                                       \
+          log_##log_level(msg_fmt " in %s", ##__VA_ARGS__, _duration_str);                                             \
+        }                                                                                                              \
+      }                                                                                                                \
     }                                                                                                                  \
   } while (0)
 

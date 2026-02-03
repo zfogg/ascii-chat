@@ -317,7 +317,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       if (keyboard_enabled && keyboard_handler) {
         START_TIMER("keyboard_read_%lu", (unsigned long)frame_count);
         keyboard_key_t key = keyboard_read_nonblocking();
-        STOP_TIMER_AND_LOG(dev, "keyboard_read_%lu", "RENDER[%lu] Keyboard read complete (key=%d)",
+        STOP_TIMER_AND_LOG(dev, 0, "keyboard_read_%lu", "RENDER[%lu] Keyboard read complete (key=%d)",
                            (unsigned long)frame_count, key);
         if (key != KEY_NONE) {
           keyboard_handler(capture, key, user_data);

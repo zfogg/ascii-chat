@@ -700,7 +700,8 @@ int client_crypto_handshake(socket_t socket) {
 
   // Check if handshake completed during auth response (no authentication needed)
   if (g_crypto_ctx.state == CRYPTO_HANDSHAKE_READY) {
-    STOP_TIMER_AND_LOG(debug, "client_crypto_handshake", "Crypto handshake completed successfully (no authentication)");
+    STOP_TIMER_AND_LOG(debug, 0, "client_crypto_handshake",
+                       "Crypto handshake completed successfully (no authentication)");
     return 0;
   }
 
@@ -711,7 +712,7 @@ int client_crypto_handshake(socket_t socket) {
     FATAL(result, "Crypto handshake completion failed");
   }
 
-  STOP_TIMER_AND_LOG(debug, "client_crypto_handshake", "Crypto handshake completed successfully");
+  STOP_TIMER_AND_LOG(debug, 0, "client_crypto_handshake", "Crypto handshake completed successfully");
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Handshake completed successfully, state=%d", g_crypto_ctx.state);
   return 0;
 }

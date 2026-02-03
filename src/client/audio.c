@@ -706,21 +706,23 @@ static void *audio_capture_thread_func(void *arg) {
           START_TIMER("opus_encode");
           int opus_len = client_audio_pipeline_capture(g_audio_pipeline, opus_frame_buffer, OPUS_FRAME_SAMPLES,
                                                        opus_packet, OPUS_MAX_PACKET_SIZE);
-          double encode_time_ns = STOP_TIMER("opus_encode");
+
+          static int encode_count = 0;
+          encode_count++;
+          if (encode_count % 50 == 0) {
+            STOP_TIMER_AND_LOG(dev, 0, "opus_encode", "Opus encode #%d: %d samples -> %d bytes", encode_count,
+                               OPUS_FRAME_SAMPLES, opus_len);
+          } else {
+            STOP_TIMER("opus_encode");
+          }
+
+          double encode_time_ns = 0; // Timing already logged
 
           total_encode_ns += encode_time_ns;
           if (encode_time_ns > max_encode_ns)
             max_encode_ns = encode_time_ns;
 
           if (opus_len > 0) {
-            static int encode_count = 0;
-            encode_count++;
-            if (encode_count % 50 == 0) {
-              char duration_str[32];
-              format_duration_ns(encode_time_ns, duration_str, sizeof(duration_str));
-              log_debug("Opus encode #%d: %d samples -> %d bytes in %s", encode_count, OPUS_FRAME_SAMPLES, opus_len,
-                        duration_str);
-            }
 
             log_debug_every(LOG_RATE_VERY_FAST, "Pipeline encoded: %d samples -> %d bytes (compression: %.1fx)",
                             OPUS_FRAME_SAMPLES, opus_len,
