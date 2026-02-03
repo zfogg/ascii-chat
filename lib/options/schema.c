@@ -281,6 +281,8 @@ asciichat_error_t config_schema_build_from_configs(const options_config_t **conf
     }
 
     config_option_metadata_t *meta = &g_dynamic_schema[g_dynamic_schema_count++];
+    // Zero-initialize the metadata struct to ensure all fields are initialized
+    memset(meta, 0, sizeof(*meta));
 
     // Use builder's type directly
     meta->type = desc->type;
@@ -322,6 +324,8 @@ asciichat_error_t config_schema_build_from_configs(const options_config_t **conf
     meta->field_size = get_field_size(meta->type, desc->offset);
     // Use builder's validate function directly - it receives the full options struct
     meta->validate_fn = desc->validate;
+    // Use builder's parse function for CALLBACK types
+    meta->parse_fn = desc->parse_fn;
     meta->description = desc->help_text;
 
     // Set mode_bitmask from option descriptor

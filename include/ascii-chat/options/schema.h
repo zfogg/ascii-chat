@@ -58,6 +58,9 @@ typedef struct {
   // Validation - uses builder's validate function directly
   builder_validate_fn_t validate_fn; ///< Builder's validation function (can be NULL for simple types)
 
+  // Custom parsing for OPTION_TYPE_CALLBACK
+  bool (*parse_fn)(const char *arg, void *dest, char **error_msg); ///< Custom parser for callbacks (or NULL)
+
   // Mode applicability bitmask
   option_mode_bitmask_t mode_bitmask; ///< Which modes this option applies to
 

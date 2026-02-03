@@ -648,7 +648,20 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
     double double_val = 0.0;
 
     // Use type handler for extraction (consolidated from 5 switch cases)
-    if (g_type_handlers[meta->type].extract) {
+    // For CALLBACK types, extract manually since they don't have extract handlers
+    if (meta->type == OPTION_TYPE_CALLBACK) {
+      if (datum.type == TOML_STRING) {
+        const char *str = get_toml_string_validated(datum);
+        if (str && strlen(str) > 0) {
+          SAFE_STRNCPY(value_str, str, BUFFER_SIZE_MEDIUM);
+          has_value = true;
+        }
+      } else if (datum.type == TOML_INT64) {
+        // Convert integer to string (e.g., port = 8080)
+        SAFE_SNPRINTF(value_str, BUFFER_SIZE_MEDIUM, "%lld", (long long)datum.u.int64);
+        has_value = true;
+      }
+    } else if (g_type_handlers[meta->type].extract) {
       g_type_handlers[meta->type].extract(datum, value_str, &int_val, &bool_val, &double_val, &has_value);
     }
 
@@ -682,43 +695,77 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
     option_parsed_value_t parsed = {0};
     asciichat_error_t parse_result = ASCIICHAT_OK;
 
-    // Use type handler for parsing/validation (consolidated from 5 switch cases)
-    if (g_type_handlers[meta->type].parse_validate) {
-      parse_result = g_type_handlers[meta->type].parse_validate(value_str, meta, &parsed, error_msg, sizeof(error_msg));
-    } else if (meta->type != OPTION_TYPE_CALLBACK && meta->type != OPTION_TYPE_ACTION) {
-      // Handler exists for all types except CALLBACK and ACTION
-      parse_result = ERROR_CONFIG;
-    } else {
-      // Skip callback and action types (not loaded from config)
-      continue;
-    }
-
-    if (parse_result != ASCIICHAT_OK) {
-      CONFIG_WARN("Invalid %s value '%s': %s (skipping)", meta->toml_key, value_str, error_msg);
-      if (strict) {
-        if (first_error == ASCIICHAT_OK) {
-          first_error = SET_ERRNO(ERROR_CONFIG, "Invalid %s: %s", meta->toml_key, error_msg);
-        }
-        continue;
-      }
-      continue;
-    }
-
-    // Write value to options_t using handler
-    if (g_type_handlers[meta->type].write_to_struct) {
-      char error_msg_write[BUFFER_SIZE_SMALL] = {0};
-      asciichat_error_t write_result =
-          g_type_handlers[meta->type].write_to_struct(&parsed, meta, opts, error_msg_write, sizeof(error_msg_write));
-      if (write_result != ASCIICHAT_OK) {
-        CONFIG_WARN("Failed to write %s: %s (skipping)", meta->toml_key, error_msg_write);
-        if (strict) {
-          if (first_error == ASCIICHAT_OK) {
-            first_error = write_result;
+    // Handle CALLBACK types using their custom parse function
+    if (meta->type == OPTION_TYPE_CALLBACK) {
+      if (meta->parse_fn) {
+        // Use custom parse function for callbacks (e.g., port parsing)
+        void *field_ptr = (char *)opts + meta->field_offset;
+        char *callback_error = NULL;
+        if (meta->parse_fn(value_str, field_ptr, &callback_error)) {
+          // Successfully parsed - callback has written to opts directly
+          if (callback_error) {
+            SAFE_FREE(callback_error);
+          }
+          // Mark as set to continue to validation
+          option_set_flags[i] = true;
+          // Don't continue - fall through to validation check below
+        } else {
+          // Parsing failed
+          CONFIG_WARN("Invalid %s value '%s': %s (skipping)", meta->toml_key, value_str,
+                      callback_error ? callback_error : "parsing failed");
+          if (callback_error) {
+            SAFE_FREE(callback_error);
+          }
+          if (strict) {
+            if (first_error == ASCIICHAT_OK) {
+              first_error = SET_ERRNO(ERROR_CONFIG, "Invalid %s value", meta->toml_key);
+            }
           }
           continue;
         }
+      } else {
+        // No parse function for callback type
+        CONFIG_WARN("No parser for callback %s (parse_fn is NULL) (skipping)", meta->toml_key);
         continue;
       }
+    } else if (meta->type == OPTION_TYPE_ACTION) {
+      // Skip action types (not loaded from config)
+      continue;
+    } else if (g_type_handlers[meta->type].parse_validate) {
+      // Use standard type handler for parsing/validation
+      parse_result = g_type_handlers[meta->type].parse_validate(value_str, meta, &parsed, error_msg, sizeof(error_msg));
+      if (parse_result != ASCIICHAT_OK) {
+        CONFIG_WARN("Invalid %s value '%s': %s (skipping)", meta->toml_key, value_str, error_msg);
+        if (strict) {
+          if (first_error == ASCIICHAT_OK) {
+            first_error = SET_ERRNO(ERROR_CONFIG, "Invalid %s: %s", meta->toml_key, error_msg);
+          }
+        }
+        continue;
+      }
+
+      // Write value to options_t using handler
+      if (g_type_handlers[meta->type].write_to_struct) {
+        char error_msg_write[BUFFER_SIZE_SMALL] = {0};
+        asciichat_error_t write_result =
+            g_type_handlers[meta->type].write_to_struct(&parsed, meta, opts, error_msg_write, sizeof(error_msg_write));
+        if (write_result != ASCIICHAT_OK) {
+          CONFIG_WARN("Failed to write %s: %s (skipping)", meta->toml_key, error_msg_write);
+          if (strict) {
+            if (first_error == ASCIICHAT_OK) {
+              first_error = write_result;
+            }
+          }
+          continue;
+        }
+      }
+
+      // Mark option as set
+      option_set_flags[i] = true;
+    } else {
+      // No handler for this type
+      CONFIG_WARN("No handler for %s (skipping)", meta->toml_key);
+      continue;
     }
 
     // Call builder's validate function if it exists (for cross-field validation)
