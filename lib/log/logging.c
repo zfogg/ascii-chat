@@ -73,8 +73,8 @@ static struct log_context_t {
 };
 #pragma GCC diagnostic pop
 
-/* Level strings for log output */
-static const char *level_strings[] = {"DEV", "DEBUG", "WARN", "INFO", "ERROR", "FATAL"};
+/* Level strings for log output - must match log_level_t enum order */
+static const char *level_strings[] = {"DEV", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
 
 #define LOG_COLOR_COUNT 8 /* DEV, DEBUG, WARN, INFO, ERROR, FATAL, GREY, RESET */
 
@@ -678,8 +678,8 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
   uint64_t tid = asciichat_thread_current_id();
   if (use_colors) {
     // Use specific colors for file/function info: file=yellow, line=magenta, function=blue, tid=grey
-    // Array indices: 0=DEV(Blue), 1=DEBUG(Cyan), 2=WARN(Yellow), 3=INFO(Green), 4=ERROR(Red), 5=FATAL(Magenta), 6=GREY
-    const char *file_color = colors[2]; // WARN: Yellow for file paths
+    // Array indices: 0=DEV(Orange), 1=DEBUG(Cyan), 2=INFO(Green), 3=WARN(Yellow), 4=ERROR(Red), 5=FATAL(Magenta), 6=GREY
+    const char *file_color = colors[3]; // WARN: Yellow for file paths
     const char *line_color = colors[5]; // FATAL: Magenta for line numbers
     const char *func_color = colors[0]; // DEV: Blue for function names
     const char *tid_color = colors[6];  // GREY: Grey for thread ID

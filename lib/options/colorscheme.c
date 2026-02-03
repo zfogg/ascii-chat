@@ -47,8 +47,8 @@ static const color_scheme_t PASTEL_SCHEME = {.name = "pastel",
                                                  {
                                                      {240, 150, 100}, /* DEV: Orange */
                                                      {101, 172, 225}, /* DEBUG: Cyan */
-                                                     {240, 204, 145}, /* WARN: Yellow */
                                                      {144, 224, 112}, /* INFO: Green */
+                                                     {240, 204, 145}, /* WARN: Yellow */
                                                      {232, 93, 111},  /* ERROR: Red */
                                                      {200, 160, 216}, /* FATAL: Magenta */
                                                      {128, 128, 128}, /* GREY */
@@ -59,8 +59,8 @@ static const color_scheme_t PASTEL_SCHEME = {.name = "pastel",
                                                  {
                                                      {75, 95, 223},  /* DEV: Darker blue */
                                                      {50, 130, 180}, /* DEBUG: Darker cyan */
-                                                     {180, 140, 0},  /* WARN: Darker yellow */
                                                      {34, 139, 34},  /* INFO: Darker green */
+                                                     {180, 140, 0},  /* WARN: Darker yellow */
                                                      {178, 34, 34},  /* ERROR: Darker red */
                                                      {128, 0, 128},  /* FATAL: Darker magenta */
                                                      {64, 64, 64},   /* GREY: Darker gray */
@@ -78,8 +78,8 @@ static const color_scheme_t NORD_SCHEME = {.name = "nord",
                                                {
                                                    {191, 144, 97},  /* DEV: Nord orange */
                                                    {143, 188, 187}, /* DEBUG: Nord frost */
-                                                   {235, 203, 139}, /* WARN: Nord sun */
                                                    {163, 190, 140}, /* INFO: Nord green */
+                                                   {235, 203, 139}, /* WARN: Nord sun */
                                                    {191, 97, 106},  /* ERROR: Nord red */
                                                    {180, 142, 173}, /* FATAL: Nord purple */
                                                    {216, 222, 233}, /* GREY: Nord snow */
@@ -90,8 +90,8 @@ static const color_scheme_t NORD_SCHEME = {.name = "nord",
                                                {
                                                    {76, 86, 106},  /* DEV: Nord bg dark */
                                                    {67, 76, 94},   /* DEBUG: Nord bg darker */
-                                                   {191, 144, 0},  /* WARN: Darker yellow */
                                                    {89, 131, 52},  /* INFO: Darker green */
+                                                   {191, 144, 0},  /* WARN: Darker yellow */
                                                    {129, 30, 44},  /* ERROR: Darker red */
                                                    {110, 76, 101}, /* FATAL: Darker purple */
                                                    {76, 86, 106},  /* GREY */
@@ -109,8 +109,8 @@ static const color_scheme_t SOLARIZED_DARK_SCHEME = {.name = "solarized-dark",
                                                          {
                                                              {203, 75, 22},   /* DEV: Orange */
                                                              {42, 161, 152},  /* DEBUG: Cyan */
-                                                             {181, 137, 0},   /* WARN: Yellow */
                                                              {133, 153, 0},   /* INFO: Green */
+                                                             {181, 137, 0},   /* WARN: Yellow */
                                                              {220, 50, 47},   /* ERROR: Red */
                                                              {108, 113, 196}, /* FATAL: Violet */
                                                              {101, 123, 142}, /* GREY: Base0 */
@@ -121,8 +121,8 @@ static const color_scheme_t SOLARIZED_DARK_SCHEME = {.name = "solarized-dark",
                                                          {
                                                              {161, 105, 70}, /* DEV: Brown/Orange */
                                                              {20, 110, 101}, /* DEBUG: Darker cyan */
-                                                             {101, 76, 0},   /* WARN: Darker yellow */
                                                              {89, 100, 0},   /* INFO: Darker green */
+                                                             {101, 76, 0},   /* WARN: Darker yellow */
                                                              {153, 0, 0},    /* ERROR: Darker red */
                                                              {68, 68, 153},  /* FATAL: Darker violet */
                                                              {42, 61, 76},   /* GREY */
@@ -140,8 +140,8 @@ static const color_scheme_t SOLARIZED_LIGHT_SCHEME = {.name = "solarized-light",
                                                           {
                                                               {161, 105, 70}, /* DEV: Brown/Orange */
                                                               {20, 110, 101}, /* DEBUG: Darker cyan */
-                                                              {101, 76, 0},   /* WARN: Darker yellow */
                                                               {89, 100, 0},   /* INFO: Darker green */
+                                                              {101, 76, 0},   /* WARN: Darker yellow */
                                                               {153, 0, 0},    /* ERROR: Darker red */
                                                               {68, 68, 153},  /* FATAL: Darker violet */
                                                               {42, 61, 76},   /* GREY */
@@ -160,8 +160,8 @@ static const color_scheme_t DRACULA_SCHEME = {.name = "dracula",
                                                   {
                                                       {255, 121, 84},  /* DEV: Orange */
                                                       {139, 233, 253}, /* DEBUG: Cyan */
-                                                      {241, 250, 140}, /* WARN: Yellow */
                                                       {80, 250, 123},  /* INFO: Green */
+                                                      {241, 250, 140}, /* WARN: Yellow */
                                                       {255, 121, 198}, /* ERROR: Pink */
                                                       {189, 147, 249}, /* FATAL: Purple */
                                                       {98, 114, 164},  /* GREY: Comment */
@@ -180,8 +180,8 @@ static const color_scheme_t GRUVBOX_DARK_SCHEME = {.name = "gruvbox-dark",
                                                        {
                                                            {254, 128, 25},  /* DEV: bright_orange */
                                                            {142, 192, 124}, /* DEBUG: bright_green */
-                                                           {250, 189, 47},  /* WARN: bright_yellow */
                                                            {142, 192, 124}, /* INFO: bright_green */
+                                                           {250, 189, 47},  /* WARN: bright_yellow */
                                                            {251, 73, 52},   /* ERROR: bright_red */
                                                            {211, 134, 155}, /* FATAL: bright_purple */
                                                            {168, 153, 132}, /* GREY: gray */
@@ -192,8 +192,8 @@ static const color_scheme_t GRUVBOX_DARK_SCHEME = {.name = "gruvbox-dark",
                                                        {
                                                            {175, 58, 3},   /* DEV: faded_orange */
                                                            {121, 116, 14}, /* DEBUG: faded_green */
-                                                           {181, 118, 20}, /* WARN: faded_yellow */
                                                            {121, 116, 14}, /* INFO: faded_green */
+                                                           {181, 118, 20}, /* WARN: faded_yellow */
                                                            {157, 0, 6},    /* ERROR: faded_red */
                                                            {108, 52, 107}, /* FATAL: faded_purple */
                                                            {105, 104, 98}, /* GREY */
@@ -211,8 +211,8 @@ static const color_scheme_t GRUVBOX_LIGHT_SCHEME = {.name = "gruvbox-light",
                                                         {
                                                             {175, 58, 3},   /* DEV: faded_orange */
                                                             {121, 116, 14}, /* DEBUG: faded_green */
-                                                            {181, 118, 20}, /* WARN: faded_yellow */
                                                             {121, 116, 14}, /* INFO: faded_green */
+                                                            {181, 118, 20}, /* WARN: faded_yellow */
                                                             {157, 0, 6},    /* ERROR: faded_red */
                                                             {108, 52, 107}, /* FATAL: faded_purple */
                                                             {105, 104, 98}, /* GREY */
@@ -231,8 +231,8 @@ static const color_scheme_t MONOKAI_SCHEME = {.name = "monokai",
                                                   {
                                                       {253, 151, 31},  /* DEV: Orange */
                                                       {166, 226, 46},  /* DEBUG: Green */
-                                                      {241, 250, 140}, /* WARN: Yellow */
                                                       {174, 213, 129}, /* INFO: Light green */
+                                                      {241, 250, 140}, /* WARN: Yellow */
                                                       {249, 38, 114},  /* ERROR: Magenta */
                                                       {174, 129, 255}, /* FATAL: Purple */
                                                       {117, 113, 94},  /* GREY: Comment */
@@ -251,8 +251,8 @@ static const color_scheme_t BASE16_DEFAULT_DARK_SCHEME = {.name = "base16-defaul
                                                               {
                                                                   {220, 150, 86},  /* DEV: orange (0x09) */
                                                                   {134, 193, 185}, /* DEBUG: cyan (0x0C) */
-                                                                  {247, 202, 136}, /* WARN: yellow (0x0A) */
                                                                   {161, 181, 108}, /* INFO: green (0x0B) */
+                                                                  {247, 202, 136}, /* WARN: yellow (0x0A) */
                                                                   {171, 70, 66},   /* ERROR: red (0x08) */
                                                                   {186, 139, 175}, /* FATAL: magenta (0x0E) */
                                                                   {88, 88, 88},    /* GREY: base03 */
@@ -263,8 +263,8 @@ static const color_scheme_t BASE16_DEFAULT_DARK_SCHEME = {.name = "base16-defaul
                                                               {
                                                                   {161, 105, 70},  /* DEV: brown (0x0F) */
                                                                   {88, 88, 88},    /* DEBUG: darker gray */
-                                                                  {161, 105, 70},  /* WARN: brown (0x0F) */
                                                                   {88, 88, 88},    /* INFO: darker gray */
+                                                                  {161, 105, 70},  /* WARN: brown (0x0F) */
                                                                   {171, 70, 66},   /* ERROR: red (0x08) */
                                                                   {88, 88, 88},    /* FATAL: darker gray */
                                                                   {184, 184, 184}, /* GREY: lighter gray */
@@ -282,8 +282,8 @@ static const color_scheme_t BASE16_DEFAULT_LIGHT_SCHEME = {.name = "base16-defau
                                                                {
                                                                    {161, 105, 70},  /* DEV: brown (0x0F) */
                                                                    {88, 88, 88},    /* DEBUG: darker gray */
-                                                                   {161, 105, 70},  /* WARN: brown (0x0F) */
                                                                    {88, 88, 88},    /* INFO: darker gray */
+                                                                   {161, 105, 70},  /* WARN: brown (0x0F) */
                                                                    {171, 70, 66},   /* ERROR: red (0x08) */
                                                                    {88, 88, 88},    /* FATAL: darker gray */
                                                                    {184, 184, 184}, /* GREY: lighter gray */
