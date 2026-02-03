@@ -60,7 +60,7 @@ echo ""
 
 # Start server with verbose logging
 echo "[5/5] Starting server with VERBOSE logging..."
-ssh -n $REMOTE_HOST bash -c "cd $REMOTE_REPO && timeout $((TEST_TIMEOUT + 10)) ./build/bin/ascii-chat --log-level debug --log-file /tmp/server_detailed.log server 0.0.0.0 --port $SERVER_PORT --password '$TEST_PASSWORD' --webrtc --discovery > /tmp/server_stdout.log 2>&1 &" &
+ssh -n $REMOTE_HOST bash -c "cd $REMOTE_REPO && timeout $((TEST_TIMEOUT + 10)) $REMOTE_REPO/build/bin/ascii-chat --log-level debug --log-file /tmp/server_detailed.log server 0.0.0.0 --port $SERVER_PORT --password '$TEST_PASSWORD' --webrtc --discovery > /tmp/server_stdout.log 2>&1 &" &
 SERVER_PID=$!
 sleep 0.1
 echo "✓ Server started"
@@ -97,7 +97,6 @@ echo ""
 
 WEBCAM_DISABLED=1 timeout $TEST_TIMEOUT ./build/bin/ascii-chat --log-level debug --log-file /tmp/client_webrtc_detailed.log client "$SESSION_STRING" \
   --password "$TEST_PASSWORD" \
-  --no-encrypt \
   --discovery-insecure --discovery-server "$REMOTE_HOST_IP" --discovery-port "$ACDS_PORT" \
   --snapshot --snapshot-delay 0 2>&1 | tee /tmp/client_ascii_output.txt
 
