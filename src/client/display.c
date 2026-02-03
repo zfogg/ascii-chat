@@ -298,6 +298,10 @@ void display_render_frame(const char *frame_data) {
     return;
   }
 
+  // Stop splash screen animation on first frame
+  // This must be called BEFORE any frame rendering to prevent splash/frame flickering
+  display_disable_logging_for_first_frame();
+
   // Render help screen if active (suppresses frame rendering)
   if (session_display_is_help_active(g_display_ctx)) {
     session_display_render_help(g_display_ctx);
