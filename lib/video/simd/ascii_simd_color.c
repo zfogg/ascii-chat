@@ -18,6 +18,8 @@
 #include <ascii-chat/video/image.h>
 #include <ascii-chat/video/palette.h>
 #include <ascii-chat/util/number.h> // For write_u8
+#include <ascii-chat/util/time.h>
+#include <ascii-chat/log/logging.h>
 
 /* ============================================================================
  * SIMD-Optimized Colored ASCII Generation
@@ -37,15 +39,45 @@
 #endif
 
 /* ============================================================================
- * 256-Color ANSI Escape Sequence Generation (inline, no cache)
+ * 256-Color ANSI Escape Sequence Generation (cached)
  * ============================================================================
- * Generates ANSI sequences on-demand. Modern CPUs execute this in ~10-20ns,
- * which is negligible compared to terminal I/O (microseconds).
+ * Pre-generates all 256 color sequences at startup and caches them.
+ * This avoids repeated generation during per-pixel rendering.
  */
 
 /* write_u8() is now in util/number.h */
 
-// Generate "\e[38;5;NNNm" (foreground only)
+// Pre-computed 256-color ANSI sequences
+typedef struct {
+  char seq[12]; // Max 11 bytes for "\e[38;5;NNNm"
+  uint8_t len;
+} sgr256_seq_t;
+
+static sgr256_seq_t sgr256_fg_cache[256];
+static bool sgr256_cache_initialized = false;
+
+// Build and cache all 256 foreground color sequences
+static void init_sgr256_cache(void) {
+  if (sgr256_cache_initialized)
+    return;
+
+  for (int i = 0; i < 256; i++) {
+    char *p = sgr256_fg_cache[i].seq;
+    *p++ = '\033';
+    *p++ = '[';
+    *p++ = '3';
+    *p++ = '8';
+    *p++ = ';';
+    *p++ = '5';
+    *p++ = ';';
+    p = write_u8(p, (uint8_t)i);
+    *p++ = 'm';
+    sgr256_fg_cache[i].len = (uint8_t)(p - sgr256_fg_cache[i].seq);
+  }
+  sgr256_cache_initialized = true;
+}
+
+// Generate "\e[38;5;NNNm" (foreground only) - used for building on-demand
 static inline char *build_sgr256_fg(char *buf, uint8_t fg, uint8_t *len_out) {
   char *p = buf;
   *p++ = '\033';
@@ -86,21 +118,25 @@ static inline char *build_sgr256_fgbg(char *buf, uint8_t fg, uint8_t bg, uint8_t
 
 // Public API wrappers
 void prewarm_sgr256_fg_cache(void) {
-  // No-op: cache removed
+  init_sgr256_cache();
 }
 
 void prewarm_sgr256_cache(void) {
-  // No-op: cache removed
+  init_sgr256_cache();
 }
 
-// Fast SGR generation for SIMD implementations
+// Fast SGR generation for SIMD implementations - uses cached sequences
 char *get_sgr256_fg_string(uint8_t fg, uint8_t *len_out) {
-  static __thread char buf[16]; // Thread-local buffer
-  return build_sgr256_fg(buf, fg, len_out);
+  if (!sgr256_cache_initialized) {
+    init_sgr256_cache();
+  }
+  *len_out = sgr256_fg_cache[fg].len;
+  return sgr256_fg_cache[fg].seq;
 }
 
 char *get_sgr256_fg_bg_string(uint8_t fg, uint8_t bg, uint8_t *len_out) {
-  static __thread char buf[32]; // Thread-local buffer
+  // For FG+BG, still build on-demand since we'd need 256*256 cache
+  static __thread char buf[32];
   return build_sgr256_fgbg(buf, fg, bg, len_out);
 }
 
@@ -367,18 +403,33 @@ char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_
 #if SIMD_SUPPORT_AVX2
   (void)use_background_mode; // Suppress unused parameter warning when SIMD not available
   // FIXME: my AVX2 implementation is dim and has vertical stripe artifacts. Use scalar until we fix it.
-  return image_print_color(image, ascii_chars);
+  START_TIMER("render_color_avx2_fallback");
+  char *result = image_print_color(image, ascii_chars);
+  STOP_TIMER_AND_LOG("render_color_avx2_fallback", log_info, "RENDER_COLOR_AVX2_FALLBACK: Complete (%.2f ms)");
+  return result;
   // return render_ascii_avx2_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
 #elif SIMD_SUPPORT_SSSE3
-  return render_ascii_ssse3_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
+  START_TIMER("render_ssse3");
+  char *result = render_ascii_ssse3_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
+  STOP_TIMER_AND_LOG("render_ssse3", log_info, "RENDER_SSSE3: Complete (%.2f ms)");
+  return result;
 #elif SIMD_SUPPORT_SSE2
-  return render_ascii_sse2_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
+  START_TIMER("render_sse2");
+  char *result = render_ascii_sse2_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
+  STOP_TIMER_AND_LOG("render_sse2", log_info, "RENDER_SSE2: Complete (%.2f ms)");
+  return result;
 #elif SIMD_SUPPORT_NEON
-  return render_ascii_neon_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
+  START_TIMER("render_neon");
+  char *result = render_ascii_neon_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
+  STOP_TIMER_AND_LOG("render_neon", log_info, "RENDER_NEON: Complete (%.2f ms)");
+  return result;
 #else
   // Fallback implementation for non-NEON platforms
   // Use scalar image function for fallback path - no SIMD allocation needed
   (void)use_background_mode; // Suppress unused parameter warning
-  return image_print_color(image, ascii_chars);
+  START_TIMER("render_color_fallback");
+  char *result = image_print_color(image, ascii_chars);
+  STOP_TIMER_AND_LOG("render_color_fallback", log_info, "RENDER_COLOR_FALLBACK: Complete (%.2f ms)");
+  return result;
 #endif
 }
