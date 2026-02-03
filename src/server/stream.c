@@ -471,49 +471,10 @@ static image_t *create_single_source_composite(image_source_t *sources, int sour
   image_t *composite = image_new_from_pool(composite_width_px, composite_height_px);
   image_clear(composite);
 
-  if (use_half_block) {
-    // Half-block mode: manual aspect ratio and centering to preserve 2x resolution
-    float src_aspect = (float)single_source->w / (float)single_source->h;
-    float target_aspect = (float)composite_width_px / (float)composite_height_px;
-
-    int fitted_width, fitted_height;
-    if (src_aspect > target_aspect) {
-      // Source is wider - fit to width
-      fitted_width = composite_width_px;
-      fitted_height = (int)(composite_width_px / src_aspect);
-    } else {
-      // Source is taller - fit to height
-      fitted_height = composite_height_px;
-      fitted_width = (int)(composite_height_px * src_aspect);
-    }
-
-    // Calculate centering offsets
-    int x_offset = (composite_width_px - fitted_width) / 2;
-    int y_offset = (composite_height_px - fitted_height) / 2;
-
-    // Create fitted image from buffer pool
-    image_t *fitted = image_new_from_pool(fitted_width, fitted_height);
-    image_resize(single_source, fitted);
-
-    // Copy fitted image to center of composite
-    for (int y = 0; y < fitted_height; y++) {
-      for (int x = 0; x < fitted_width; x++) {
-        int src_idx = (y * fitted_width) + x;
-        int dst_x = x_offset + x;
-        int dst_y = y_offset + y;
-        int dst_idx = (dst_y * composite->w) + dst_x;
-
-        if (dst_x >= 0 && dst_x < composite->w && dst_y >= 0 && dst_y < composite->h) {
-          composite->pixels[dst_idx] = fitted->pixels[src_idx];
-        }
-      }
-    }
-
-    image_destroy_to_pool(fitted);
-  } else {
-    // Normal modes: Simple resize to fitted dimensions
-    image_resize(single_source, composite);
-  }
+  // NOTE: Resize source to fill composite exactly. Don't pad at image level.
+  // The ASCII conversion (with preserve_aspect_ratio=true) will handle aspect
+  // ratio correction by adjusting output dimensions, avoiding double-padding.
+  image_resize(single_source, composite);
 
   return composite;
 }
@@ -1036,8 +997,36 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
   }
 
   if (sources_with_video == 1) {
-    // Single source handling
-    composite = create_single_source_composite(sources, source_count, target_client_id, width, height);
+    // Single source handling: Convert video directly like mirror mode does
+    // This avoids double-padding (composite + ASCII padding)
+    // Find the single source with video
+    for (int i = 0; i < source_count; i++) {
+      if (sources[i].has_video && sources[i].image) {
+        // Get client capabilities
+        client_info_t *render_client = find_client_by_id(target_client_id);
+        if (!render_client) {
+          SET_ERRNO(ERROR_INVALID_STATE, "Client %u not found for ASCII frame generation", target_client_id);
+          *out_size = 0;
+          return NULL;
+        }
+
+        // Convert directly with preserve_aspect_ratio=true (like mirror mode)
+        // This uses client-reported dimensions and lets ASCII conversion handle aspect ratio
+        terminal_capabilities_t caps_snapshot = render_client->terminal_caps;
+        char *ascii_frame = ascii_convert_with_capabilities(sources[i].image, width, height, &caps_snapshot, true,
+                                                            false, render_client->client_palette_chars);
+
+        if (ascii_frame) {
+          *out_size = strlen(ascii_frame);
+        } else {
+          *out_size = 0;
+        }
+        return ascii_frame;
+      }
+    }
+    // Should not reach here if sources_with_video == 1
+    SET_ERRNO(ERROR_INVALID_STATE, "Logic error: sources_with_video=1 but no source found");
+    return NULL;
   } else {
     // Multiple sources - create grid layout
     composite =
