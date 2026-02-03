@@ -631,6 +631,7 @@ static const bool default_enable_keepawake_value = false;
 static const bool default_disable_keepawake_value = false;
 static const int default_width_value = OPT_WIDTH_DEFAULT;
 static const int default_height_value = OPT_HEIGHT_DEFAULT;
+static const int default_port_value = OPT_PORT_INT_DEFAULT;
 static const int default_webcam_index_value = OPT_WEBCAM_INDEX_DEFAULT;
 static const bool default_webcam_flip_value = OPT_WEBCAM_FLIP_DEFAULT;
 static const bool default_test_pattern_value = OPT_TEST_PATTERN_DEFAULT;
@@ -791,7 +792,7 @@ typedef struct options_state {
   // ============================================================================
   char address[OPTIONS_BUFF_SIZE];                 ///< Server address (client) or bind address (server)
   char address6[OPTIONS_BUFF_SIZE];                ///< IPv6 bind address (server only)
-  char port[OPTIONS_BUFF_SIZE];                    ///< Server port number
+  int port;                                        ///< Server port number
   int max_clients;                                 ///< Maximum concurrent clients (server only)
   char session_string[SESSION_STRING_BUFFER_SIZE]; ///< Session string for ACDS discovery (calculated max size: 38 chars
                                                    ///< + null)
@@ -1024,8 +1025,8 @@ const options_t *options_get(void);
  * **Example:**
  * ```c
  * options_set_int("width", 120);
+ * options_set_int("port", 8080);
  * options_set_bool("audio_enabled", true);
- * options_set_string("port", "8080");
  * ```
  *
  * **Thread Safety**: Multiple writers are serialized with a mutex.

@@ -20,7 +20,7 @@
  * - Key changes: requires user verification (prevents MITM attacks)
  *
  * **Third-Party ACDS Servers**:
- * - Requires explicit --discovery-server-key configuration
+ * - Requires explicit --discovery-service-key configuration
  * - Can be HTTPS URL, local file path, or github:user/gitlab:user specification
  * - Keys are cached after first successful download/verification
  * - Key changes require user verification

@@ -233,7 +233,7 @@ Test(config_sections, network_port_as_integer) {
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid port as integer should succeed");
   const options_t *opts = options_get();
-  cr_assert_str_eq(opts->port, "8080", "Port should be set to 8080");
+  cr_assert_eq(opts->port, 8080, "Port should be set to 8080");
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -253,7 +253,7 @@ Test(config_sections, network_port_as_string) {
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid port as string should succeed");
   const options_t *opts = options_get();
-  cr_assert_str_eq(opts->port, "9090", "Port should be set to 9090");
+  cr_assert_eq(opts->port, 9090, "Port should be set to 9090");
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -265,9 +265,9 @@ Test(config_sections, network_port_invalid_too_high) {
   save_config_options(&backup);
 
   // Save original port
-  char original_port[OPTIONS_BUFF_SIZE];
+  int original_port;
   const options_t *opts = options_get();
-  SAFE_STRNCPY(original_port, opts->port, OPTIONS_BUFF_SIZE);
+  original_port = opts->port;
 
   const char *content = "[network]\n"
                         "port = 70000\n"; // Too high
@@ -277,7 +277,7 @@ Test(config_sections, network_port_invalid_too_high) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Invalid port should be skipped but return OK");
-  cr_assert_str_eq(opts->port, original_port, "Port should remain unchanged for invalid value");
+  cr_assert_eq(opts->port, original_port, "Port should remain unchanged for invalid value");
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -288,9 +288,9 @@ Test(config_sections, network_port_invalid_zero) {
   config_options_backup_t backup;
   save_config_options(&backup);
 
-  char original_port[OPTIONS_BUFF_SIZE];
+  int original_port;
   const options_t *opts = options_get();
-  SAFE_STRNCPY(original_port, opts->port, OPTIONS_BUFF_SIZE);
+  original_port = opts->port;
 
   const char *content = "[network]\n"
                         "port = 0\n"; // Zero is invalid
@@ -300,7 +300,7 @@ Test(config_sections, network_port_invalid_zero) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Invalid port 0 should be skipped");
-  cr_assert_str_eq(opts->port, original_port, "Port should remain unchanged for port 0");
+  cr_assert_eq(opts->port, original_port, "Port should remain unchanged for port 0");
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -1095,7 +1095,7 @@ Test(config_sections, full_client_config) {
 
   // Verify all values
   const options_t *opts = options_get();
-  cr_assert_str_eq(opts->port, "9000", "Port should be 9000");
+  cr_assert_eq(opts->port, 9000, "Port should be 9000");
   cr_assert_str_eq(opts->address, "192.168.1.50", "Address should be set");
   cr_assert_eq(opts->width, 160, "Width should be 160");
   cr_assert_eq(opts->height, 48, "Height should be 48");
@@ -1154,7 +1154,7 @@ Test(config_sections, full_server_config) {
 
   // Verify server values
   const options_t *opts = options_get();
-  cr_assert_str_eq(opts->port, "27224", "Port should be 27224");
+  cr_assert_eq(opts->port, 27224, "Port should be 27224");
   cr_assert_str_eq(opts->address, "0.0.0.0", "IPv4 bind address should be 0.0.0.0");
   cr_assert_str_eq(opts->address6, "::", "IPv6 bind address should be ::");
   cr_assert_eq(opts->palette_type, PALETTE_BLOCKS, "Palette should be blocks");
@@ -1293,7 +1293,7 @@ Test(config, unknown_sections_are_ignored) {
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Unknown sections should be ignored");
   const options_t *opts = options_get();
-  cr_assert_str_eq(opts->port, "5555", "Known values should still be applied");
+  cr_assert_eq(opts->port, 5555, "Known values should still be applied");
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -1315,7 +1315,7 @@ Test(config, unknown_keys_are_ignored) {
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Unknown keys should be ignored");
   const options_t *opts = options_get();
-  cr_assert_str_eq(opts->port, "6666", "Known values should still be applied");
+  cr_assert_eq(opts->port, 6666, "Known values should still be applied");
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -1336,7 +1336,7 @@ Test(config, multiple_loads_accumulate_correctly) {
   asciichat_error_t result1 = config_load_and_apply(true, config_path1, false, &backup);
   cr_assert_eq(result1, ASCIICHAT_OK, "First config load should succeed");
   const options_t *opts = options_get();
-  cr_assert_str_eq(opts->port, "7777", "Port should be 7777 after first load");
+  cr_assert_eq(opts->port, 7777, "Port should be 7777 after first load");
 
   // Second config sets different values
   // Note: port won't be overwritten because config_port_set flag is set
@@ -1375,7 +1375,7 @@ Test(config, whitespace_handling) {
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Config with extra whitespace should succeed");
   const options_t *opts = options_get();
-  cr_assert_str_eq(opts->port, "8888", "Port should be parsed correctly despite whitespace");
+  cr_assert_eq(opts->port, 8888, "Port should be parsed correctly despite whitespace");
   cr_assert_str_eq(opts->address, "10.0.0.1", "Address should be parsed correctly despite whitespace");
 
   unlink(config_path);
@@ -1404,7 +1404,7 @@ Test(config, inline_comments) {
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Config with inline comments should succeed");
   const options_t *opts = options_get();
-  cr_assert_str_eq(opts->port, "9999", "Port should be parsed correctly with inline comment");
+  cr_assert_eq(opts->port, 9999, "Port should be parsed correctly with inline comment");
   cr_assert_eq(opts->width, 100, "Width should be parsed correctly with inline comment");
 
   unlink(config_path);
@@ -1428,7 +1428,7 @@ Test(config, integer_vs_string_port) {
   asciichat_error_t result1 = config_load_and_apply(true, config_path1, false, &backup);
   cr_assert_eq(result1, ASCIICHAT_OK, "Integer port should succeed");
   const options_t *opts = options_get();
-  cr_assert_str_eq(opts->port, "1234", "Integer port should be converted to string");
+  cr_assert_eq(opts->port, 1234, "Integer port should be applied");
 
   unlink(config_path1);
   SAFE_FREE(config_path1);
@@ -1444,7 +1444,7 @@ Test(config, integer_vs_string_port) {
 
   asciichat_error_t result2 = config_load_and_apply(true, config_path2, false, &backup);
   cr_assert_eq(result2, ASCIICHAT_OK, "String port should succeed");
-  cr_assert_str_eq(opts->port, "5678", "String port should be used as-is");
+  cr_assert_eq(opts->port, 5678, "String port should be parsed and applied");
 
   unlink(config_path2);
   SAFE_FREE(config_path2);

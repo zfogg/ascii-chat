@@ -98,7 +98,7 @@ static const options_t g_default_options = (options_t){
     // Network
     .max_clients = OPT_MAX_CLIENTS_DEFAULT,
     .discovery_port = OPT_ACDS_PORT_INT_DEFAULT,
-    .port = OPT_PORT_DEFAULT,
+    .port = OPT_PORT_INT_DEFAULT,
 
     // Audio
     .audio_enabled = OPT_AUDIO_ENABLED_DEFAULT,
@@ -425,6 +425,8 @@ static void int_field_updater(options_t *opts, void *context) {
     opts->speakers_index = ctx->value;
   else if (strcmp(ctx->field_name, "discovery_port") == 0)
     opts->discovery_port = ctx->value;
+  else if (strcmp(ctx->field_name, "port") == 0)
+    opts->port = ctx->value;
   else if (strcmp(ctx->field_name, "fps") == 0)
     opts->fps = ctx->value;
   else if (strcmp(ctx->field_name, "color_mode") == 0)
@@ -444,7 +446,7 @@ asciichat_error_t options_set_int(const char *field_name, int value) {
   if (strcmp(field_name, "width") != 0 && strcmp(field_name, "height") != 0 && strcmp(field_name, "max_clients") != 0 &&
       strcmp(field_name, "compression_level") != 0 && strcmp(field_name, "reconnect_attempts") != 0 &&
       strcmp(field_name, "microphone_index") != 0 && strcmp(field_name, "speakers_index") != 0 &&
-      strcmp(field_name, "discovery_port") != 0 && strcmp(field_name, "fps") != 0 &&
+      strcmp(field_name, "discovery_port") != 0 && strcmp(field_name, "port") != 0 && strcmp(field_name, "fps") != 0 &&
       strcmp(field_name, "color_mode") != 0 && strcmp(field_name, "render_mode") != 0 &&
       strcmp(field_name, "log_level") != 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Unknown integer field: %s", field_name);
@@ -585,8 +587,6 @@ static void string_field_updater(options_t *opts, void *context) {
     SAFE_STRNCPY(opts->address, ctx->value, sizeof(opts->address));
   else if (strcmp(ctx->field_name, "address6") == 0)
     SAFE_STRNCPY(opts->address6, ctx->value, sizeof(opts->address6));
-  else if (strcmp(ctx->field_name, "port") == 0)
-    SAFE_STRNCPY(opts->port, ctx->value, sizeof(opts->port));
   else if (strcmp(ctx->field_name, "encrypt_key") == 0)
     SAFE_STRNCPY(opts->encrypt_key, ctx->value, sizeof(opts->encrypt_key));
   else if (strcmp(ctx->field_name, "password") == 0)
@@ -635,7 +635,7 @@ asciichat_error_t options_set_string(const char *field_name, const char *value) 
   }
 
   // Validate field exists
-  if (strcmp(field_name, "address") != 0 && strcmp(field_name, "address6") != 0 && strcmp(field_name, "port") != 0 &&
+  if (strcmp(field_name, "address") != 0 && strcmp(field_name, "address6") != 0 &&
       strcmp(field_name, "encrypt_key") != 0 && strcmp(field_name, "password") != 0 &&
       strcmp(field_name, "encrypt_keyfile") != 0 && strcmp(field_name, "server_key") != 0 &&
       strcmp(field_name, "client_keys") != 0 && strcmp(field_name, "discovery_server") != 0 &&

@@ -155,7 +155,7 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   char example_buf7[SESSION_STRING_BUFFER_SIZE + BUFFER_SIZE_MEDIUM];
 
   safe_snprintf(example_buf2, sizeof(example_buf2), "%s", example_session_string2);
-  safe_snprintf(example_buf3, sizeof(example_buf3), "%s --discovery-server discovery.example.com",
+  safe_snprintf(example_buf3, sizeof(example_buf3), "%s --discovery-service discovery.example.com",
                 example_session_string3);
   safe_snprintf(example_buf4, sizeof(example_buf4), "%s -f video.mp4", example_session_string4);
   safe_snprintf(example_buf5, sizeof(example_buf5), "%s --url 'https://youtu.be/7ynHVGCehoM'", example_session_string5);

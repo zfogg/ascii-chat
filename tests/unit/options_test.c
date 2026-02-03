@@ -141,7 +141,7 @@ Test(options, default_values) {
   cr_assert_eq(opts->auto_width, 1);
   cr_assert_eq(opts->auto_height, 1);
   cr_assert_str_eq(opts->address, "localhost");
-  cr_assert_str_eq(opts->port, "27224");
+  cr_assert_eq(opts->port, 27224);
   cr_assert_eq(opts->webcam_index, 0);
   cr_assert_eq(opts->webcam_flip, true);
   cr_assert_eq(opts->color_mode, COLOR_MODE_AUTO);
@@ -163,7 +163,7 @@ GENERATE_OPTIONS_TEST_IN_SUITE(
     options, basic_client_options, ARGV_LIST("client", "192.168.1.1:8080", "-x", "100", "-y", "50"), true,
     {
       cr_assert_str_eq(opts->address, "192.168.1.1");
-      cr_assert_str_eq(opts->port, "8080");
+      cr_assert_eq(opts->port, 8080);
       cr_assert_eq(opts->width, 100);
       cr_assert_eq(opts->height, 50);
       cr_assert_eq(opts->auto_width, 0);
@@ -175,7 +175,7 @@ GENERATE_OPTIONS_TEST(
     basic_server_options, ARGV_LIST("server", "127.0.0.1", "-p", "3000"), false,
     {
       cr_assert_str_eq(opts->address, "127.0.0.1");
-      cr_assert_str_eq(opts->port, "3000");
+      cr_assert_eq(opts->port, 3000);
       // Server should use default or terminal-detected values for dimensions
       // Since opts->auto_width/opts->auto_height are true by default, the code calls
       // update_dimensions_to_terminal_size() which uses get_terminal_size()
@@ -286,11 +286,11 @@ ParameterizedTest(ip_validation_test_case_t *tc, options, ip_address_validation)
 // =============================================================================
 
 GENERATE_OPTIONS_TEST(
-    valid_port_80, ARGV_LIST("client", "-p", "80"), true, { cr_assert_str_eq(opts->port, "80"); },
+    valid_port_80, ARGV_LIST("client", "-p", "80"), true, { cr_assert_eq(opts->port, 80); },
     { cr_assert_eq(exit_code, 0, "Valid port 80 should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    valid_port_65535, ARGV_LIST("client", "-p", "65535"), true, { cr_assert_str_eq(opts->port, "65535"); },
+    valid_port_65535, ARGV_LIST("client", "-p", "65535"), true, { cr_assert_eq(opts->port, 65535); },
     { cr_assert_eq(exit_code, 0, "Valid port 65535 should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
@@ -360,7 +360,7 @@ ParameterizedTest(port_validation_test_case_t *tc, options, port_validation) {
     options_init(argc, argv);
     // Get options from RCU for assertions
     const options_t *opts = options_get();
-    cr_assert_str_eq(opts->port, tc->port, "%s should set port correctly", tc->description);
+    cr_assert_eq(opts->port, strtoint_safe(tc->port), "%s should set port correctly", tc->description);
   } else {
     cr_assert_eq(exit_code, tc->expected_exit_code, "%s should cause exit with code %d", tc->description,
                  tc->expected_exit_code);
@@ -918,7 +918,7 @@ GENERATE_OPTIONS_TEST(
     {
       // Test actual values were set
       cr_assert_str_eq(opts->address, "192.168.1.1");
-      cr_assert_str_eq(opts->port, "8080");
+      cr_assert_eq(opts->port, 8080);
       cr_assert_eq(opts->width, 100);
       cr_assert_eq(opts->height, 50);
       cr_assert_eq(opts->auto_width, 0);
@@ -1026,7 +1026,7 @@ GENERATE_OPTIONS_TEST(
     {
       // Verify ALL values
       cr_assert_str_eq(opts->address, "10.0.0.1");
-      cr_assert_str_eq(opts->port, "9999");
+      cr_assert_eq(opts->port, 9999);
       cr_assert_eq(opts->width, 200);
       cr_assert_eq(opts->height, 100);
       cr_assert_eq(opts->webcam_index, 2);
@@ -1056,7 +1056,7 @@ GENERATE_OPTIONS_TEST(
     {
       // Verify server values
       cr_assert_str_eq(opts->address, "0.0.0.0");
-      cr_assert_str_eq(opts->port, "12345");
+      cr_assert_eq(opts->port, 12345);
       // Note: --audio is not supported for server mode
       // opts->log_file removed - now a global option
       // opts->palette_type removed - palette is client-only
@@ -1072,7 +1072,7 @@ GENERATE_OPTIONS_TEST(
     test_equals_sign_syntax, ARGV_LIST("client", "192.168.1.100:8080", "--width=150", "--height=75"), true,
     {
       cr_assert_str_eq(opts->address, "192.168.1.100");
-      cr_assert_str_eq(opts->port, "8080");
+      cr_assert_eq(opts->port, 8080);
       cr_assert_eq(opts->width, 150);
       cr_assert_eq(opts->height, 75);
       cr_assert_eq(opts->auto_width, 0);  // Should be disabled when width is set
@@ -1084,7 +1084,7 @@ GENERATE_OPTIONS_TEST(
     test_mixed_syntax, ARGV_LIST("client", "10.0.0.1:3000", "-x", "80", "--height=60"), true,
     {
       cr_assert_str_eq(opts->address, "10.0.0.1");
-      cr_assert_str_eq(opts->port, "3000");
+      cr_assert_eq(opts->port, 3000);
       cr_assert_eq(opts->width, 80);
       cr_assert_eq(opts->height, 60);
       cr_assert_eq(opts->auto_width, 0);
@@ -1177,7 +1177,7 @@ GENERATE_OPTIONS_TEST(
     test_server_basic_options, ARGV_LIST("client", "127.0.0.1:8080", "--width=110", "--height=70"), true,
     {
       cr_assert_str_eq(opts->address, "127.0.0.1");
-      cr_assert_str_eq(opts->port, "8080");
+      cr_assert_eq(opts->port, 8080);
       // Server should use default values for client-only options
       cr_assert_eq(opts->width, 110);        // Should use default width
       cr_assert_eq(opts->height, 70);        // Should use default height

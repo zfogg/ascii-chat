@@ -1014,8 +1014,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int ti
     // Start hosting
     if (!session->host_ctx) {
       // Create host context with configured port
-      const char *port_str = GET_OPTION(port);
-      int host_port = (port_str && port_str[0] != '\0') ? atoi(port_str) : OPT_PORT_INT_DEFAULT;
+      int host_port = GET_OPTION(port);
 
       session_host_config_t hconfig = {
           .port = host_port,
@@ -1539,8 +1538,7 @@ asciichat_error_t discovery_session_become_host(discovery_session_t *session) {
            session->participant_id[1]);
 
   // Get configured port (or use default)
-  const char *port_str = GET_OPTION(port);
-  int host_port = (port_str && port_str[0] != '\0') ? atoi(port_str) : OPT_PORT_INT_DEFAULT;
+  int host_port = GET_OPTION(port);
 
   // Mark ourselves as host
   session->is_host = true;

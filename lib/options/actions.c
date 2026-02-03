@@ -398,10 +398,10 @@ void action_create_config(const char *output_path) {
       // Schema build failed, but continue anyway
       (void)schema_build_result;
     }
-    options_config_destroy(unified_config);
+    // options_config_destroy(unified_config);
   }
 
-  options_t opts = {0};
+  options_t opts = options_t_new();
   const char *config_path = NULL;
 
   // Determine output path: use provided path, or NULL for stdout

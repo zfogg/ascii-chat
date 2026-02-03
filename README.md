@@ -260,7 +260,7 @@ The protocol is efficient (20-byte headers, binary), reliable (TCP handles packe
 
 > 🔍 **ACDS Documentation: [Discovery Service Reference](https://zfogg.github.io/ascii-chat/group__module__acds.html#topic_acds)**
 >
-> 🔑 **Official ACDS Server: discovery-server.ascii-chat.com:27225** (trusted by default)
+> 🔑 **Official ACDS Server: discovery-service.ascii-chat.com:27225** (trusted by default)
 >
 > 📄 **Public Keys: [discovery.ascii-chat.com](https://discovery.ascii-chat.com)** — Server authentication keys
 
@@ -322,7 +322,7 @@ Future enhancement: ACIP will adopt this error framework for comprehensive error
 
 **Official server (trusted by default):**
 
-- The official ACDS server runs at **discovery-server.ascii-chat.com:27225**
+- The official ACDS server runs at **discovery-service.ascii-chat.com:27225**
 - Its Ed25519 public keys available at **[discovery.ascii-chat.com](https://discovery.ascii-chat.com)**
 - Manual verification via SSH and GPG fingerprints on the website
 

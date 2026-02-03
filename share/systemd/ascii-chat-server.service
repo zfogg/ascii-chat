@@ -1,6 +1,7 @@
 [Unit]
-Description=ascii chat Video Server
+Description=ascii chat Server
 Documentation=man:ascii-chat(1)
+Documentation=https://ascii-chat.com
 Documentation=https://github.com/zfogg/ascii-chat
 Documentation=https://zfogg.github.io/ascii-chat
 After=network-online.target
@@ -8,7 +9,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/ascii-chat server
+ExecStart=/usr/bin/ascii-chat server 0.0.0.0 ::
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=on-failure
 RestartSec=5

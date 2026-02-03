@@ -52,7 +52,7 @@ Runs an ACDS (ascii-chat Discovery Service) server for session management.
 Allows clients and servers to discover each other using memorable session strings
 instead of IP addresses. Handles NAT traversal via WebRTC when direct TCP connections
 aren't possible. The ascii-chat developers host the primary ACDS server
-(discovery-server.ascii-chat.com) whose keys are trusted automatically by
+(discovery-service.ascii-chat.com) whose keys are trusted automatically by
 ascii-chat.
 .\" MANUAL-END: DESCRIPTION
 

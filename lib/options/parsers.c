@@ -376,7 +376,7 @@ bool parse_port_option(const char *arg, void *dest, char **error_msg) {
     return false;
   }
 
-  char *port_str = (char *)dest;
+  int *port_value = (int *)dest;
   uint16_t port_num;
 
   // Use the existing parse_port function for validation
@@ -390,7 +390,7 @@ bool parse_port_option(const char *arg, void *dest, char **error_msg) {
     return false;
   }
 
-  SAFE_STRNCPY(port_str, arg, OPTIONS_BUFF_SIZE);
+  *port_value = (int)port_num;
   return true;
 }
 
@@ -559,7 +559,7 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
   // Not a session string, parse as server address
   // Access address and port fields from options_state struct
   char *address = (char *)config + offsetof(struct options_state, address);
-  char *port = (char *)config + offsetof(struct options_state, port);
+  int *port = (int *)((char *)config + offsetof(struct options_state, port));
   log_debug("parse_client_address: Parsing as server address (not a session string)");
 
   // Check for port in address (format: address:port or [ipv6]:port)
@@ -593,7 +593,7 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
           }
           return -1;
         }
-        SAFE_SNPRINTF(port, OPTIONS_BUFF_SIZE, "%s", port_str);
+        *port = (int)port_num;
       }
     } else {
       // Check if it's IPv6 without brackets (no port allowed)
@@ -627,7 +627,7 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
           }
           return -1;
         }
-        SAFE_SNPRINTF(port, OPTIONS_BUFF_SIZE, "%s", port_str);
+        *port = (int)port_num;
       } else {
         // Multiple colons - likely bare IPv6 address
         SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, "%s", arg);
@@ -664,8 +664,7 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
   // (checking if --port flag was used). For now, this is a simplified version.
   // Full implementation would need to track whether port was set via flag.
 
-  log_debug("parse_client_address: Set address='%s', port='%s'", address[0] ? address : "(empty)",
-            port[0] ? port : "(empty)");
+  log_debug("parse_client_address: Set address='%s', port=%d", address[0] ? address : "(empty)", *port);
 
   return 1; // Consumed 1 arg
 }

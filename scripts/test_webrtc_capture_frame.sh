@@ -43,7 +43,7 @@ timeout 25 $BIN/ascii-chat \
   --port $SERVER_PORT \
   --discovery \
   --discovery-expose-ip \
-  --discovery-server "$DISCOVERY_CONNECT" \
+  --discovery-service "$DISCOVERY_CONNECT" \
   --discovery-port $DISCOVERY_PORT \
   2>&1 | tee /tmp/server_startup.txt &
 SERVER_PID=$!
@@ -94,7 +94,7 @@ echo ""
 echo "Capturing frame via WebRTC snapshot..."
 echo "DEBUG: SESSION='$SESSION' DISCOVERY_CONNECT='$DISCOVERY_CONNECT' DISCOVERY_PORT='$DISCOVERY_PORT'"
 echo "DEBUG: Client command:"
-echo "  timeout 6 $BIN/ascii-chat '$SESSION' --snapshot --snapshot-delay 0 --discovery-server '$DISCOVERY_CONNECT' --discovery-port $DISCOVERY_PORT --prefer-webrtc"
+echo "  timeout 6 $BIN/ascii-chat '$SESSION' --snapshot --snapshot-delay 0 --discovery-service '$DISCOVERY_CONNECT' --discovery-port $DISCOVERY_PORT --prefer-webrtc"
 echo ""
 
 # Run client and capture frame output
@@ -108,7 +108,7 @@ timeout 6 $BIN/ascii-chat \
   "$SESSION" \
   --snapshot \
   --snapshot-delay 0 \
-  --discovery-server "$DISCOVERY_CONNECT" \
+  --discovery-service "$DISCOVERY_CONNECT" \
   --discovery-port $DISCOVERY_PORT \
   --prefer-webrtc \
   2>/tmp/client_stderr.log | tee "$FRAME_FILE"

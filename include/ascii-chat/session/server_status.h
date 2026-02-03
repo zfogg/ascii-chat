@@ -28,15 +28,16 @@
  * Contains all data needed to display the server status screen.
  */
 typedef struct {
-  char session_string[64]; ///< Memorable session string (e.g., "happy-sunset-ocean")
-  char ipv4_address[256];  ///< Formatted IPv4 bind address with port
-  char ipv6_address[256];  ///< Formatted IPv6 bind address with port
-  uint16_t port;           ///< TCP listen port
-  size_t connected_count;  ///< Number of connected clients/servers
-  bool ipv4_bound;         ///< Whether IPv4 socket is bound
-  bool ipv6_bound;         ///< Whether IPv6 socket is bound
-  time_t start_time;       ///< Server start time (for uptime calculation)
-  const char *mode_name;   ///< Mode name (e.g., "Server", "Discovery Service")
+  char session_string[64];   ///< Memorable session string (e.g., "happy-sunset-ocean")
+  char ipv4_address[256];    ///< Formatted IPv4 bind address with port
+  char ipv6_address[256];    ///< Formatted IPv6 bind address with port
+  uint16_t port;             ///< TCP listen port
+  size_t connected_count;    ///< Number of connected clients/servers
+  bool ipv4_bound;           ///< Whether IPv4 socket is bound
+  bool ipv6_bound;           ///< Whether IPv6 socket is bound
+  bool session_is_mdns_only; ///< Whether session is mDNS-only or ACDS
+  time_t start_time;         ///< Server start time (for uptime calculation)
+  const char *mode_name;     ///< Mode name (e.g., "Server", "Discovery Service")
 } server_status_t;
 
 /**
@@ -52,12 +53,13 @@ typedef struct {
  * @param port TCP listen port
  * @param start_time Server start time
  * @param mode_name Mode name for display (e.g., "Server")
+ * @param session_is_mdns_only Whether session is mDNS-only or ACDS
  * @param[out] out_status Output status structure
  * @return ASCIICHAT_OK on success
  */
 asciichat_error_t server_status_gather(tcp_server_t *server, const char *session_string, const char *ipv4_address,
                                        const char *ipv6_address, uint16_t port, time_t start_time,
-                                       const char *mode_name, server_status_t *out_status);
+                                       const char *mode_name, bool session_is_mdns_only, server_status_t *out_status);
 
 /**
  * @brief Display server status screen
@@ -83,8 +85,9 @@ void server_status_display(const server_status_t *status);
  * @param port TCP listen port
  * @param start_time Server start time
  * @param mode_name Mode name for display (e.g., "Server")
+ * @param session_is_mdns_only Whether session is mDNS-only or ACDS
  * @param[in,out] last_update Time of last update (updated if display occurs)
  */
 void server_status_update(tcp_server_t *server, const char *session_string, const char *ipv4_address,
                           const char *ipv6_address, uint16_t port, time_t start_time, const char *mode_name,
-                          time_t *last_update);
+                          bool session_is_mdns_only, time_t *last_update);

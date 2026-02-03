@@ -18,6 +18,11 @@
 #include "discovery-service/main.h"
 #include "../network/acip/acds.h"
 
+/**
+ * @brief Discovery database handle (sqlite3 wrapper)
+ */
+typedef sqlite3 discovery_database_t;
+
 // ============================================================================
 // Database Lifecycle
 // ============================================================================

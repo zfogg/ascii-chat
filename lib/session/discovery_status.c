@@ -3,8 +3,10 @@
  * @brief Discovery service status screen display implementation
  */
 
-#include "../../include/ascii-chat/session/discovery_status.h"
-#include "../../include/ascii-chat/common.h"
+#include <ascii-chat/session/discovery_status.h>
+#include <ascii-chat/util/display.h>
+#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/common.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -47,6 +49,18 @@ void discovery_status_display(const discovery_status_t *status) {
     return;
   }
 
+  // Get actual terminal dimensions
+  terminal_size_t term_size;
+  if (terminal_get_size(&term_size) != ASCIICHAT_OK) {
+    // Fallback to standard dimensions
+    term_size.cols = 80;
+    term_size.rows = 24;
+  }
+
+  // Content is max 80 chars wide, centered in terminal
+  const int CONTENT_WIDTH = 80;
+  int box_padding = (term_size.cols > CONTENT_WIDTH) ? (term_size.cols - CONTENT_WIDTH) / 2 : 0;
+
   // Calculate uptime
   time_t now = time(NULL);
   time_t uptime_secs = now - status->start_time;
@@ -57,29 +71,74 @@ void discovery_status_display(const discovery_status_t *status) {
   // Clear screen and move to home position
   printf("\033[H\033[2J");
 
-  // Header
-  printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
-  printf("\033[1;36mDiscovery Service Status\033[0m\n");
-  printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+  // Add vertical centering
+  int vertical_padding = display_center_vertical(10, term_size.rows);
+  for (int i = 0; i < vertical_padding; i++)
+    printf("\n");
+
+  // Print top border (80 chars wide, centered)
+  for (int i = 0; i < box_padding; i++)
+    printf(" ");
+  for (int i = 0; i < CONTENT_WIDTH; i++)
+    printf("━");
+  printf("\n");
+
+  // Build and center the title
+  char title[] = "ascii-chat discovery-service Status";
+
+  char colored_title[256];
+  snprintf(colored_title, sizeof(colored_title), "\033[1;36m%s\033[0m", title);
+
+  // Calculate horizontal padding to center within the 80-char box
+  int horizontal_padding = display_center_horizontal(title, CONTENT_WIDTH);
+
+  // Print centered title (80 chars wide, centered)
+  for (int i = 0; i < box_padding; i++)
+    printf(" ");
+  for (int i = 0; i < horizontal_padding; i++)
+    printf(" ");
+  printf("%s\n", colored_title);
+
+  // Print bottom border (80 chars wide, centered)
+  for (int i = 0; i < box_padding; i++)
+    printf(" ");
+  for (int i = 0; i < CONTENT_WIDTH; i++)
+    printf("━");
+  printf("\n");
 
   // Bind addresses
   if (status->ipv4_bound) {
+    for (int i = 0; i < box_padding; i++)
+      printf(" ");
     printf("📍 IPv4: %s\n", status->ipv4_address);
   }
   if (status->ipv6_bound) {
+    for (int i = 0; i < box_padding; i++)
+      printf(" ");
     printf("📍 IPv6: %s\n", status->ipv6_address);
   }
 
   // Connected servers
+  for (int i = 0; i < box_padding; i++)
+    printf(" ");
   printf("🖥️  Connected Servers: \033[1;33m%zu\033[0m\n", status->connected_servers);
 
   // Active sessions
+  for (int i = 0; i < box_padding; i++)
+    printf(" ");
   printf("🔗 Active Sessions: \033[1;33m%zu\033[0m\n", status->active_sessions);
 
   // Uptime
-  printf("⏱️  Uptime: %dh %dm %ds\n", uptime_hours, uptime_mins, uptime_secs_rem);
+  for (int i = 0; i < box_padding; i++)
+    printf(" ");
+  printf("⏱️ Uptime: %dh %dm %ds\n", uptime_hours, uptime_mins, uptime_secs_rem);
 
-  printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+  // Print bottom border (80 chars wide, centered)
+  for (int i = 0; i < box_padding; i++)
+    printf(" ");
+  for (int i = 0; i < CONTENT_WIDTH; i++)
+    printf("━");
+  printf("\n");
   fflush(stdout);
 }
 

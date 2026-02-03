@@ -145,7 +145,7 @@ bool parse_log_level(const char *arg, void *dest, char **error_msg);
 /**
  * @brief Parse and validate port option for CLI
  * @param arg Port string to parse
- * @param dest Destination pointer (char* for port string storage)
+ * @param dest Destination pointer (int* for port storage)
  * @param error_msg Error message output (set on failure, caller must free)
  * @return true on success, false on error
  *

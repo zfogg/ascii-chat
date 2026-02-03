@@ -496,7 +496,7 @@ options_t options_t_new(void) {
   // ============================================================================
   // LOGGING
   // ============================================================================
-  // log_file is already zeroed by memset
+  // log_file is mode-dependent at startup and intentionally left empty here
   opts.log_level = OPT_LOG_LEVEL_DEFAULT;
   opts.verbose_level = OPT_VERBOSE_LEVEL_DEFAULT;
   opts.quiet = OPT_QUIET_DEFAULT;
@@ -508,6 +508,8 @@ options_t options_t_new(void) {
   opts.height = OPT_HEIGHT_DEFAULT;
   opts.auto_width = OPT_AUTO_WIDTH_DEFAULT;
   opts.auto_height = OPT_AUTO_HEIGHT_DEFAULT;
+  opts.color = OPT_COLOR_DEFAULT;
+  SAFE_STRNCPY(opts.color_scheme_name, OPT_COLOR_SCHEME_NAME_DEFAULT, sizeof(opts.color_scheme_name));
 
   // ============================================================================
   // WEBCAM
@@ -521,6 +523,7 @@ options_t options_t_new(void) {
   // DISPLAY
   // ============================================================================
   opts.color_mode = OPT_COLOR_MODE_DEFAULT;
+  opts.color_filter = OPT_COLOR_FILTER_DEFAULT;
   opts.render_mode = OPT_RENDER_MODE_DEFAULT;
   opts.palette_type = OPT_PALETTE_TYPE_DEFAULT;
   // palette_custom is already zeroed by memset
@@ -568,7 +571,7 @@ options_t options_t_new(void) {
   // ============================================================================
   // NETWORK
   // ============================================================================
-  SAFE_SNPRINTF(opts.port, OPTIONS_BUFF_SIZE, "%s", OPT_PORT_DEFAULT);
+  opts.port = OPT_PORT_INT_DEFAULT;
   opts.max_clients = OPT_MAX_CLIENTS_DEFAULT;
   opts.reconnect_attempts = OPT_RECONNECT_ATTEMPTS_DEFAULT;
   opts.lan_discovery = OPT_LAN_DISCOVERY_DEFAULT;
@@ -583,7 +586,7 @@ options_t options_t_new(void) {
   SAFE_STRNCPY(opts.turn_username, OPT_TURN_USERNAME_DEFAULT, sizeof(opts.turn_username));
   SAFE_STRNCPY(opts.turn_credential, OPT_TURN_CREDENTIAL_DEFAULT, sizeof(opts.turn_credential));
   // turn_secret is already zeroed by memset
-  // discovery_server is already zeroed by memset
+  SAFE_STRNCPY(opts.discovery_server, OPT_ENDPOINT_DISCOVERY_SERVICE, sizeof(opts.discovery_server));
   opts.discovery_port = OPT_ACDS_PORT_INT_DEFAULT;
   opts.discovery_expose_ip = OPT_ACDS_EXPOSE_IP_DEFAULT;
   opts.enable_upnp = OPT_ENABLE_UPNP_DEFAULT;
@@ -595,6 +598,7 @@ options_t options_t_new(void) {
   // media_file is already zeroed by memset
   // media_url is already zeroed by memset
   opts.media_loop = OPT_MEDIA_LOOP_DEFAULT;
+  opts.pause = OPT_PAUSE_DEFAULT;
   opts.media_from_stdin = OPT_MEDIA_FROM_STDIN_DEFAULT;
   opts.media_seek_timestamp = OPT_MEDIA_SEEK_TIMESTAMP_DEFAULT;
   // cookies_from_browser is already zeroed by memset
@@ -604,6 +608,7 @@ options_t options_t_new(void) {
   // AUDIO
   // ============================================================================
   opts.audio_enabled = OPT_AUDIO_ENABLED_DEFAULT;
+  opts.audio_source = OPT_AUDIO_SOURCE_DEFAULT;
   opts.microphone_index = OPT_MICROPHONE_INDEX_DEFAULT;
   opts.speakers_index = OPT_SPEAKERS_INDEX_DEFAULT;
   opts.microphone_sensitivity = OPT_MICROPHONE_SENSITIVITY_DEFAULT;

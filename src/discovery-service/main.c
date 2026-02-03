@@ -31,6 +31,7 @@
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/network/nat/upnp.h>
 #include <ascii-chat/network/mdns/mdns.h>
+#include <ascii-chat/session/discovery_status.h>
 
 // Global server instance for signal handler
 static acds_server_t *g_server = NULL;
@@ -41,6 +42,10 @@ static nat_upnp_context_t *g_upnp_ctx = NULL;
 // Global mDNS context for LAN service discovery
 // Allows clients on local network to discover the ACDS server without knowing its IP
 static asciichat_mdns_t *g_mdns_ctx = NULL;
+
+// Status screen tracking
+static time_t g_discovery_start_time = 0;
+static time_t g_last_status_update = 0;
 
 /**
  * @brief Atomic flag for shutdown request
@@ -71,6 +76,19 @@ static void signal_handler(int sig) {
   }
   acds_signal_exit();
   // UPnP context will be cleaned up after server shutdown
+}
+
+/**
+ * @brief Callback for periodic status screen updates
+ */
+static void discovery_status_update_callback(void *user_data) {
+  acds_server_t *server = (acds_server_t *)user_data;
+  if (!server) {
+    return;
+  }
+
+  discovery_status_update(&server->tcp_server, (discovery_database_t *)server->db, server->config.address,
+                          server->config.address6, server->config.port, g_discovery_start_time, &g_last_status_update);
 }
 
 int acds_main(void) {
@@ -153,15 +171,13 @@ int acds_main(void) {
 
   // Create config from options for server initialization
   acds_config_t config;
-  // Parse port from string option (discovery-service listens on 'port', not 'acds_port')
-  const char *port_str = GET_OPTION(port);
-  char *endptr;
-  long port_num = strtol(port_str, &endptr, 10);
-  if (*endptr != '\0' || port_num < 1 || port_num > 65535) {
-    log_error("Invalid port: %s (must be 1-65535)", port_str);
+  // Read validated port option (discovery-service listens on 'port', not 'acds_port')
+  int port_num = GET_OPTION(port);
+  if (port_num < 1 || port_num > 65535) {
+    log_error("Invalid port: %d (must be 1-65535)", port_num);
     return ERROR_INVALID_PARAM;
   }
-  config.port = (int)port_num;
+  config.port = port_num;
 
   const char *address = opts && opts->address[0] != '\0' ? opts->address : "127.0.0.1";
   const char *address6 = opts && opts->address6[0] != '\0' ? opts->address6 : "::1";
@@ -295,6 +311,14 @@ int acds_main(void) {
     return result;
   }
 
+  // Set up status screen callback if enabled
+  g_discovery_start_time = time(NULL);
+  g_last_status_update = g_discovery_start_time;
+  if (GET_OPTION(status_screen)) {
+    server.tcp_server.config.status_update_fn = discovery_status_update_callback;
+    server.tcp_server.config.status_update_data = &server;
+  }
+
   // Check if shutdown was requested during initialization
   if (acds_should_exit()) {
     log_info("Shutdown signal received during initialization, skipping server startup");
@@ -382,12 +406,17 @@ int acds_main(void) {
   signal(SIGINT, signal_handler);
   signal(SIGTERM, signal_handler);
 
-  // Run server
-  log_info("Discovery server listening on port %d", config.port);
-  printf("🌐 Listening on port %d\n", config.port);
-  printf("📊 Database: %s\n", config.database_path);
-  printf("Press Ctrl+C to stop\n\n");
+  // Display initial status if enabled
+  if (GET_OPTION(status_screen)) {
+    discovery_status_t status;
+    if (discovery_status_gather(&server.tcp_server, (discovery_database_t *)server.db, config.address, config.address6,
+                                config.port, g_discovery_start_time, &status) == ASCIICHAT_OK) {
+      discovery_status_display(&status);
+      g_last_status_update = g_discovery_start_time;
+    }
+  }
 
+  // Run server
   result = acds_server_run(&server);
   if (result != ASCIICHAT_OK) {
     log_error("Server run failed");

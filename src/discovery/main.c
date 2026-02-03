@@ -285,8 +285,7 @@ int discovery_main(void) {
   const char *session_string = GET_OPTION(session_string);
   bool is_initiator = (session_string == NULL || session_string[0] == '\0');
 
-  // Parse port from options (stored as string)
-  int port_int = strtoint_safe(GET_OPTION(port));
+  int port_int = GET_OPTION(port);
 
   // Create discovery session configuration with exit callback for graceful shutdown
   discovery_config_t discovery_config = {

@@ -649,12 +649,9 @@ int client_main(void) {
       memcpy(opts_new, opts, sizeof(options_t));
       SAFE_STRNCPY(opts_new->address, selected_address, sizeof(opts_new->address));
 
-      // Format port as string for compatibility
-      char port_str[16];
-      safe_snprintf(port_str, sizeof(port_str), "%u", selected->port);
-      SAFE_STRNCPY(opts_new->port, port_str, sizeof(opts_new->port));
+      opts_new->port = (int)selected->port;
 
-      log_debug("LAN discovery: Selected server '%s' at %s:%s", selected->name, opts_new->address, opts_new->port);
+      log_debug("LAN discovery: Selected server '%s' at %s:%d", selected->name, opts_new->address, opts_new->port);
 
       // Note: In a real scenario, we'd update the global options via RCU
       // For now, we'll use the updated values directly for connection
@@ -706,7 +703,7 @@ int client_main(void) {
   // - `ascii-chat --acds-insecure swift-river-mountain` → parallel without verification
   //
   const char *discovered_address = NULL;
-  const char *discovered_port = NULL;
+  int discovered_port = 0;
 
   const options_t *opts_discovery = options_get();
   const char *session_string =
@@ -775,11 +772,9 @@ int client_main(void) {
     // Set discovered address/port for connection
     // Copy to static buffers since discovery_result goes out of scope after this block
     static char address_buffer[BUFFER_SIZE_SMALL];
-    static char port_buffer[8];
     SAFE_STRNCPY(address_buffer, discovery_result.server_address, sizeof(address_buffer));
-    safe_snprintf(port_buffer, sizeof(port_buffer), "%d", discovery_result.server_port);
     discovered_address = address_buffer;
-    discovered_port = port_buffer;
+    discovered_port = discovery_result.server_port;
 
     // Populate session context for WebRTC fallback (if discovery came from ACDS)
     if (discovery_result.source == DISCOVERY_SOURCE_ACDS) {
@@ -802,10 +797,7 @@ int client_main(void) {
     const char *address = discovered_address
                               ? discovered_address
                               : (opts_conn && opts_conn->address[0] != '\0' ? opts_conn->address : "localhost");
-    const char *port_str = discovered_port
-                               ? discovered_port
-                               : (opts_conn && opts_conn->port[0] != '\0' ? opts_conn->port : OPT_PORT_DEFAULT);
-    int port = atoi(port_str);
+    int port = discovered_port > 0 ? discovered_port : (opts_conn ? opts_conn->port : OPT_PORT_INT_DEFAULT);
 
     // Update connection context with current attempt number
     connection_ctx.reconnect_attempt = reconnect_attempt;

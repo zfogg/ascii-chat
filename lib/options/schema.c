@@ -164,6 +164,22 @@ static size_t get_field_size(option_type_t type, size_t offset) {
   case OPTION_TYPE_STRING:
     // String fields are typically OPTIONS_BUFF_SIZE
     return OPTIONS_BUFF_SIZE;
+  case OPTION_TYPE_CALLBACK:
+    // CALLBACK options store into regular options_t fields; infer by offset.
+    if (offset == offsetof(options_t, log_file) || offset == offsetof(options_t, port) ||
+        offset == offsetof(options_t, palette_custom) || offset == offsetof(options_t, cookies_from_browser)) {
+      return OPTIONS_BUFF_SIZE;
+    }
+    if (offset == offsetof(options_t, media_seek_timestamp)) {
+      return sizeof(double);
+    }
+    if (offset == offsetof(options_t, microphone_sensitivity) || offset == offsetof(options_t, speakers_volume)) {
+      return sizeof(float);
+    }
+    if (offset == offsetof(options_t, verbose_level)) {
+      return sizeof(unsigned short int);
+    }
+    return sizeof(int);
   default:
     return sizeof(int); // Safe default
   }
@@ -179,8 +195,8 @@ static size_t get_field_size(option_type_t type, size_t offset) {
  * @brief Helper function to check if descriptor should be added to schema
  */
 static bool should_add_descriptor(const option_descriptor_t *desc, const option_descriptor_t **existing, size_t count) {
-  if (!desc || desc->type == OPTION_TYPE_ACTION || desc->type == OPTION_TYPE_CALLBACK) {
-    return false; // Skip actions and callbacks (not an error, just filtering)
+  if (!desc || desc->type == OPTION_TYPE_ACTION) {
+    return false; // Skip actions (not an error, just filtering)
   }
 
   // Check if we already have this exact offset

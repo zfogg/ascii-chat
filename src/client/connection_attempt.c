@@ -479,7 +479,7 @@ static asciichat_error_t attempt_webrtc_stun(connection_attempt_context_t *ctx, 
   }
 #ifndef NDEBUG
   else {
-    log_debug("Skipping ACDS key verification (debug build, no --discovery-server-key provided)");
+    log_debug("Skipping ACDS key verification (debug build, no --discovery-service-key provided)");
   }
 #endif
 
@@ -744,7 +744,7 @@ static asciichat_error_t attempt_webrtc_turn(connection_attempt_context_t *ctx, 
   }
 #ifndef NDEBUG
   else {
-    log_debug("Skipping ACDS key verification (debug build, no --discovery-server-key provided)");
+    log_debug("Skipping ACDS key verification (debug build, no --discovery-service-key provided)");
   }
 #endif
 

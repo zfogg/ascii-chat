@@ -97,7 +97,7 @@ echo ""
 
 WEBCAM_DISABLED=1 timeout $TEST_TIMEOUT ./build/bin/ascii-chat --log-level debug --log-file /tmp/client_webrtc_detailed.log client "$SESSION_STRING" \
   --password "$TEST_PASSWORD" \
-  --discovery-insecure --discovery-server "$REMOTE_HOST_IP" --discovery-port "$ACDS_PORT" \
+  --discovery-insecure --discovery-service "$REMOTE_HOST_IP" --discovery-port "$ACDS_PORT" \
   --snapshot --snapshot-delay 0 2>&1 | tee /tmp/client_ascii_output.txt
 
 echo ""

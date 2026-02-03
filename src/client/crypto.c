@@ -371,7 +371,7 @@ int client_crypto_init(void) {
     }
 #ifndef NDEBUG
     else {
-      log_debug("Skipping ACDS key verification (debug build, no --discovery-server-key provided)");
+      log_debug("Skipping ACDS key verification (debug build, no --discovery-service-key provided)");
     }
 #endif
 

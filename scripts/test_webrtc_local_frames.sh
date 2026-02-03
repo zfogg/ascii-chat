@@ -68,7 +68,7 @@ WEBCAM_DISABLED=1 timeout $TEST_TIMEOUT $BIN/ascii-chat \
   --color-mode mono \
   --prefer-webrtc \
   --acds-insecure \
-  --acds-server discovery-server.ascii-chat.com \
+  --acds-server discovery-service.ascii-chat.com \
   --acds-port $ACDS_PORT \
   --snapshot \
   --snapshot-delay 5 \

@@ -84,6 +84,7 @@
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/network/tcp/server.h>
 #include <ascii-chat/network/acip/acds_client.h>
+#include <ascii-chat/discovery/strings.h>
 #include <ascii-chat/network/webrtc/stun.h>
 #include <ascii-chat/thread_pool.h>
 #include <ascii-chat/options/options.h>
@@ -223,6 +224,11 @@ static time_t g_last_status_update = 0;
  * in the status screen. Set when ACDS session is created, cleared on shutdown.
  */
 static char g_session_string[64] = {0};
+
+/**
+ * @brief Whether the current session is mDNS-only (not registered with ACDS)
+ */
+static bool g_session_is_mdns_only = false;
 
 /**
  * @brief Global UPnP context for port mapping on home routers
@@ -1050,13 +1056,13 @@ static void status_update_callback(void *user_data) {
     return;
   }
 
-  // Get the IPv4 and IPv6 addresses from options
-  const char *ipv4_address = GET_OPTION(address);
-  const char *ipv6_address = GET_OPTION(address6);
+  // Get the IPv4 and IPv6 addresses from TCP server config (the actual bound addresses)
+  const char *ipv4_address = g_tcp_server.config.ipv4_address;
+  const char *ipv6_address = g_tcp_server.config.ipv6_address;
 
   // Update status display (rate-limited to 1-2 second intervals)
   server_status_update(&g_tcp_server, g_session_string, ipv4_address, ipv6_address, GET_OPTION(port),
-                       g_server_start_time, "Server", &g_last_status_update);
+                       g_server_start_time, "Server", g_session_is_mdns_only, &g_last_status_update);
 }
 
 /* ============================================================================
@@ -1819,6 +1825,7 @@ int server_main(void) {
       if (create_err == ASCIICHAT_OK) {
         SAFE_STRNCPY(session_string, create_result.session_string, sizeof(session_string));
         SAFE_STRNCPY(g_session_string, create_result.session_string, sizeof(g_session_string));
+        session_is_mdns_only = false; // Session is now registered with ACDS (globally discoverable)
         log_info("Session created: %s", session_string);
 
         // Server must join its own session so ACDS can route signaling messages
@@ -1971,28 +1978,12 @@ skip_acds_session:
   if (session_string[0] == '\0' && g_mdns_ctx) {
     log_debug("No ACDS session string available, generating random session for mDNS");
 
-    // Generate a proper word-word-word session string for mDNS discovery
-    // Format: adjective-noun-noun (matching ACDS session string format)
-    // This uses simple word lists to create memorable session strings
-    static const char *adjectives[] = {
-        "swift", "bright", "gentle", "calm", "bold", "quiet", "happy", "fast",
-        "quick", "warm",   "wise",   "true", "safe", "keen",  "just",  "fair",
-    };
-    static const char *nouns[] = {
-        "river",  "mountain", "forest", "ocean", "valley", "peak",  "lake", "hill",
-        "meadow", "canyon",   "stream", "sky",   "stone",  "eagle", "wolf", "bear",
-    };
-    static const size_t adj_count = sizeof(adjectives) / sizeof(adjectives[0]);
-    static const size_t noun_count = sizeof(nouns) / sizeof(nouns[0]);
-
-    // Generate random indices for session string (deterministic per server start for testing)
-    uint32_t seed = (uint32_t)time(NULL) ^ (uint32_t)getpid();
-    uint32_t adj1_idx = (seed / 1) % adj_count;
-    uint32_t noun1_idx = (seed / 13) % noun_count;
-    uint32_t noun2_idx = (seed / 31) % noun_count; // Second noun (not adjective!)
-
-    safe_snprintf(session_string, sizeof(session_string), "%s-%s-%s", adjectives[adj1_idx], nouns[noun1_idx],
-                  nouns[noun2_idx]);
+    // Use the proper session string generation from discovery module
+    // This generates adjective-noun-noun format using the full wordlists
+    if (acds_string_generate(session_string, sizeof(session_string)) != ASCIICHAT_OK) {
+      log_error("Failed to generate session string for mDNS");
+      return 1;
+    }
 
     log_debug("Generated random session string for mDNS: '%s'", session_string);
 
@@ -2023,6 +2014,10 @@ skip_acds_session:
     log_plain("");
   }
 
+  // Copy session info to globals for status screen display
+  SAFE_STRNCPY(g_session_string, session_string, sizeof(g_session_string));
+  g_session_is_mdns_only = session_is_mdns_only;
+
   log_debug("Server entering accept loop (port %d)...", port);
 
   // Initialize status screen
@@ -2033,7 +2028,7 @@ skip_acds_session:
   if (GET_OPTION(status_screen)) {
     server_status_t status;
     if (server_status_gather(&g_tcp_server, session_string, ipv4_address, ipv6_address, (uint16_t)port,
-                             g_server_start_time, "Server", &status) == ASCIICHAT_OK) {
+                             g_server_start_time, "Server", session_is_mdns_only, &status) == ASCIICHAT_OK) {
       server_status_display(&status);
       g_last_status_update = g_server_start_time;
     }

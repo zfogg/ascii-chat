@@ -344,7 +344,7 @@ asciichat_error_t discovery_keys_verify(const char *acds_server, const char *key
   } else if (!key_spec) {
     // No key_spec and not official server = error
     return SET_ERRNO(ERROR_INVALID_PARAM,
-                     "Third-party ACDS servers require explicit --discovery-server-key configuration."
+                     "Third-party ACDS servers require explicit --discovery-service-key configuration."
                      "Only %s has automatic trust.",
                      ACDS_OFFICIAL_SERVER);
 
