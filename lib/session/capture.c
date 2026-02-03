@@ -258,6 +258,19 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
       // (frame_count and elapsed_time must match the new playback position)
       ctx->frame_count = 0;
       ctx->start_time_ns = time_get_ns();
+
+      // For snapshot mode with immediate snapshot (delay=0), we need to wait for prefetch thread to
+      // decode the seeked frame. This is a workaround for a timing issue where the prefetch thread
+      // needs time to decode the frame at the new position after seeking.
+      // The sleep duration must be long enough for the prefetch thread to decode one frame.
+      float snapshot_delay = GET_OPTION(snapshot_delay);
+      if (GET_OPTION(snapshot_mode) && snapshot_delay == 0.0f) {
+        // HTTP streams are slow - need 1+ second for first frame decode after seek
+        // Local files are faster - 100-200ms is usually sufficient
+        // Use 1 second as a safe default to handle both cases
+        log_debug("Waiting for prefetch thread after seek (snapshot_delay=0, HTTP streams need ~1 second)");
+        platform_sleep_usec(1000000); // 1 second - ensures prefetch thread has delivered seeked frame
+      }
     }
   }
 
