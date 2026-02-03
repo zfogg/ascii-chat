@@ -169,7 +169,8 @@ $RequiredPackages = @(
     "openssl",         # SSL/TLS library (required by libdatachannel for TURN credentials)
     "libdatachannel",  # WebRTC DataChannels for P2P connections
     "miniupnpc",       # UPnP client library for automatic router port forwarding
-    "abseil"           # C++ utility library (used by WebRTC AEC3)
+    "abseil",          # C++ utility library (used by WebRTC AEC3)
+    "libomp"           # OpenMP library for SIMD parallelization
 )
 
 Write-Host "`nInstalling required packages..." -ForegroundColor Cyan
