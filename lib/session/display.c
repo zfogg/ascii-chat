@@ -14,6 +14,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/options/options.h>
+#include <ascii-chat/util/time.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/video/ansi_fast.h>
@@ -307,27 +308,47 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
   // Make a mutable copy of terminal capabilities for ascii_convert_with_capabilities
   terminal_capabilities_t caps_copy = ctx->caps;
 
+  // MEASURE EVERY OPERATION - Debug systematic timing
+  uint64_t t_flip_start = time_get_ns();
+
   // Apply horizontal flip if requested
   image_t *flipped_image = NULL;
   const image_t *display_image = image;
 
   if (flip && image->w > 1 && image->pixels) {
     START_TIMER("image_flip");
+    uint64_t t_flip_alloc_start = time_get_ns();
     flipped_image = image_new((size_t)image->w, (size_t)image->h);
+    uint64_t t_flip_alloc_end = time_get_ns();
+
     if (flipped_image) {
-      // Flip image horizontally (mirror left-right)
+      uint64_t t_flip_memcpy_start = time_get_ns();
+      // OPTIMIZATION: Copy entire image first (sequential memory access - cache-friendly)
+      memcpy(flipped_image->pixels, image->pixels, (size_t)image->w * (size_t)image->h * sizeof(rgb_pixel_t));
+      uint64_t t_flip_memcpy_end = time_get_ns();
+
+      uint64_t t_flip_reverse_start = time_get_ns();
+      // Then flip each row in-place (maintains cache locality)
       for (int y = 0; y < image->h; y++) {
-        for (int x = 0; x < image->w; x++) {
-          int src_idx = y * image->w + (image->w - 1 - x);
-          int dst_idx = y * image->w + x;
-          flipped_image->pixels[dst_idx] = image->pixels[src_idx];
+        rgb_pixel_t *row = &flipped_image->pixels[y * image->w];
+        for (int x = 0; x < image->w / 2; x++) {
+          rgb_pixel_t temp = row[x];
+          row[x] = row[image->w - 1 - x];
+          row[image->w - 1 - x] = temp;
         }
       }
+      uint64_t t_flip_reverse_end = time_get_ns();
       display_image = flipped_image;
+
+      log_warn("TIMING_FLIP: alloc=%llu us, memcpy=%llu us, reverse=%llu us",
+               (t_flip_alloc_end - t_flip_alloc_start) / 1000, (t_flip_memcpy_end - t_flip_memcpy_start) / 1000,
+               (t_flip_reverse_end - t_flip_reverse_start) / 1000);
     }
     STOP_TIMER_AND_LOG("image_flip", log_info, "IMAGE_FLIP: Horizontal flip complete (%.2f ms)");
   }
+  uint64_t t_flip_end = time_get_ns();
 
+  uint64_t t_filter_start = time_get_ns();
   // Apply color filter if specified
   if (color_filter != COLOR_FILTER_NONE && display_image->pixels) {
     START_TIMER("color_filter");
@@ -338,28 +359,45 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
       filter_image = flipped_image;
     } else {
       // Create a copy for filtering since the original is const
+      uint64_t t_filter_alloc_start = time_get_ns();
       filter_image = image_new((size_t)display_image->w, (size_t)display_image->h);
+      uint64_t t_filter_alloc_end = time_get_ns();
+
       if (filter_image && display_image->pixels) {
+        uint64_t t_filter_memcpy_start = time_get_ns();
         memcpy(filter_image->pixels, display_image->pixels,
                (size_t)display_image->w * (size_t)display_image->h * sizeof(rgb_pixel_t));
+        uint64_t t_filter_memcpy_end = time_get_ns();
         display_image = filter_image;
+
+        log_warn("TIMING_FILTER_COPY: alloc=%llu us, memcpy=%llu us",
+                 (t_filter_alloc_end - t_filter_alloc_start) / 1000,
+                 (t_filter_memcpy_end - t_filter_memcpy_start) / 1000);
       }
     }
 
     // Apply the color filter in-place
     if (filter_image && filter_image->pixels) {
+      uint64_t t_filter_apply_start = time_get_ns();
       apply_color_filter((uint8_t *)filter_image->pixels, filter_image->w, filter_image->h, filter_image->w * 3,
                          color_filter);
+      uint64_t t_filter_apply_end = time_get_ns();
+
+      log_warn("TIMING_FILTER_APPLY: %llu us", (t_filter_apply_end - t_filter_apply_start) / 1000);
     }
     STOP_TIMER_AND_LOG("color_filter", log_info, "COLOR_FILTER: Filter complete (%.2f ms)");
   }
+  uint64_t t_filter_end = time_get_ns();
 
+  uint64_t t_convert_start = time_get_ns();
   // Call the standard ASCII conversion using context's palette and capabilities
   START_TIMER("ascii_convert_with_capabilities");
   char *result = ascii_convert_with_capabilities(display_image, width, height, &caps_copy, preserve_aspect_ratio,
                                                  stretch, ctx->palette_chars);
   STOP_TIMER_AND_LOG("ascii_convert_with_capabilities", log_info, "ASCII_CONVERT: Conversion complete (%.2f ms)");
+  uint64_t t_convert_end = time_get_ns();
 
+  uint64_t t_cleanup_start = time_get_ns();
   // Clean up flipped/filtered image if created
   START_TIMER("ascii_convert_cleanup");
   if (flipped_image) {
@@ -370,6 +408,13 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
     image_destroy((image_t *)display_image);
   }
   STOP_TIMER_AND_LOG("ascii_convert_cleanup", log_info, "ASCII_CONVERT_CLEANUP: Cleanup complete (%.2f ms)");
+  uint64_t t_cleanup_end = time_get_ns();
+
+  // Log total breakdown with actual measured times
+  log_warn("CONVERT_TIMING: flip=%llu us, filter=%llu us, convert=%llu us, cleanup=%llu us, TOTAL=%llu us",
+           (t_flip_end - t_flip_start) / 1000, (t_filter_end - t_filter_start) / 1000,
+           (t_convert_end - t_convert_start) / 1000, (t_cleanup_end - t_cleanup_start) / 1000,
+           (t_cleanup_end - t_flip_start) / 1000);
 
   return result;
 }
