@@ -605,7 +605,7 @@ int server_crypto_handshake(client_info_t *client) {
   // Check if handshake completed during auth challenge (no authentication needed)
   if (client->crypto_handshake_ctx.state == CRYPTO_HANDSHAKE_READY) {
     uint32_t cid = atomic_load(&client->client_id);
-    STOP_TIMER_AND_LOG(debug, 0, "server_crypto_handshake_client_%u",
+    STOP_TIMER_AND_LOG(debug, 100 * NS_PER_MS_INT, "server_crypto_handshake_client_%u",
                        "Crypto handshake completed successfully for client %u (no authentication)", cid);
     return 0;
   }
@@ -633,7 +633,7 @@ int server_crypto_handshake(client_info_t *client) {
   }
 
   uint32_t cid = atomic_load(&client->client_id);
-  STOP_TIMER_AND_LOG(debug, 0, "server_crypto_handshake_client_%u",
+  STOP_TIMER_AND_LOG(debug, 100 * NS_PER_MS_INT, "server_crypto_handshake_client_%u",
                      "Crypto handshake completed successfully for client %u", cid);
 
   // Send success notification to client (encrypted channel now established)
