@@ -1,0 +1,51 @@
+[Unit]
+Description=ascii-chat Discovery Service
+Documentation=man:ascii-chat(1)
+Documentation=https://ascii-chat.com
+Documentation=https://github.com/zfogg/ascii-chat
+Documentation=https://zfogg.github.io/ascii-chat
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/ascii-chat acds 0.0.0.0 :: \
+  --port 27225 \
+  --database /var/lib/ascii-chat/acds.db \
+  --key /etc/ascii-chat/acds_identity.key
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=3
+
+# Create runtime directory for database
+RuntimeDirectory=ascii-chat
+StateDirectory=ascii-chat
+StateDirectoryMode=0700
+
+# User/Group (run as dedicated user if available, otherwise as nobody)
+User=_ascii-chat
+Group=_ascii-chat
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectHome=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/ascii-chat /etc/ascii-chat
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+MemoryDenyWriteExecute=yes
+LockPersonality=yes
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ascii-chat-discovery
+
+# Resource limits
+LimitNOFILE=4096
+LimitNPROC=64
+
+[Install]
+WantedBy=multi-user.target
