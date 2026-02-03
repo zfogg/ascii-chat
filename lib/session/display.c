@@ -312,6 +312,7 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
   const image_t *display_image = image;
 
   if (flip && image->w > 1 && image->pixels) {
+    START_TIMER("image_flip");
     flipped_image = image_new((size_t)image->w, (size_t)image->h);
     if (flipped_image) {
       // Flip image horizontally (mirror left-right)
@@ -324,10 +325,12 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
       }
       display_image = flipped_image;
     }
+    STOP_TIMER_AND_LOG("image_flip", log_info, "IMAGE_FLIP: Horizontal flip complete (%.2f ms)");
   }
 
   // Apply color filter if specified
   if (color_filter != COLOR_FILTER_NONE && display_image->pixels) {
+    START_TIMER("color_filter");
     // If we have a flipped_image, we can modify it in-place since it's our copy
     // If not, we need to create a copy for filtering
     image_t *filter_image = NULL;
@@ -348,13 +351,17 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
       apply_color_filter((uint8_t *)filter_image->pixels, filter_image->w, filter_image->h, filter_image->w * 3,
                          color_filter);
     }
+    STOP_TIMER_AND_LOG("color_filter", log_info, "COLOR_FILTER: Filter complete (%.2f ms)");
   }
 
   // Call the standard ASCII conversion using context's palette and capabilities
+  START_TIMER("ascii_convert_with_capabilities");
   char *result = ascii_convert_with_capabilities(display_image, width, height, &caps_copy, preserve_aspect_ratio,
                                                  stretch, ctx->palette_chars);
+  STOP_TIMER_AND_LOG("ascii_convert_with_capabilities", log_info, "ASCII_CONVERT: Conversion complete (%.2f ms)");
 
   // Clean up flipped/filtered image if created
+  START_TIMER("ascii_convert_cleanup");
   if (flipped_image) {
     image_destroy(flipped_image);
   }
@@ -362,6 +369,7 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
   if (color_filter != COLOR_FILTER_NONE && !flipped_image && display_image != image) {
     image_destroy((image_t *)display_image);
   }
+  STOP_TIMER_AND_LOG("ascii_convert_cleanup", log_info, "ASCII_CONVERT_CLEANUP: Cleanup complete (%.2f ms)");
 
   return result;
 }
@@ -413,27 +421,39 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
   // - Piped mode: render every frame WITHOUT cursor control (allows continuous output to files)
   bool use_tty_control = ctx->has_tty;
 
+  START_TIMER("frame_write");
   if (use_tty_control) {
     // TTY mode: send clear codes then frame data
     // Ensure clear codes write completely before frame data to avoid cursor misalignment
-    const char *clear = "\033[2J\033[H";
-    (void)platform_write_all(STDOUT_FILENO, clear, 7);
     (void)platform_write_all(STDOUT_FILENO, frame_data, frame_len);
     (void)terminal_flush(STDOUT_FILENO);
   } else {
-    // Piped mode: render every frame WITHOUT cursor control
-    // Use direct fd writes only - no stdio buffering to avoid out-of-order writes
-    (void)platform_write_all(STDOUT_FILENO, frame_data, frame_len);
+    // Piped mode: combine frame and newline into single write call
+    // Allocate temporary buffer for frame + newline to minimize syscalls
+    char *write_buf = SAFE_MALLOC(frame_len + 1, char *);
+    if (write_buf) {
+      memcpy(write_buf, frame_data, frame_len);
+      write_buf[frame_len] = '\n';
 
-    // Add newline using thread-safe console lock for proper synchronization
-    bool prev_lock_state = log_lock_terminal();
-    const char newline = '\n';
-    (void)platform_write_all(STDOUT_FILENO, &newline, 1);
-    log_unlock_terminal(prev_lock_state);
+      // Use thread-safe console lock for proper synchronization
+      bool prev_lock_state = log_lock_terminal();
+      (void)platform_write_all(STDOUT_FILENO, write_buf, frame_len + 1);
+      log_unlock_terminal(prev_lock_state);
+
+      SAFE_FREE(write_buf);
+    } else {
+      // Fallback: two writes if allocation fails
+      (void)platform_write_all(STDOUT_FILENO, frame_data, frame_len);
+      bool prev_lock_state = log_lock_terminal();
+      const char newline = '\n';
+      (void)platform_write_all(STDOUT_FILENO, &newline, 1);
+      log_unlock_terminal(prev_lock_state);
+    }
 
     // Flush kernel write buffer so piped data appears immediately to readers
     (void)terminal_flush(STDOUT_FILENO);
   }
+  STOP_TIMER_AND_LOG("frame_write", log_info, "FRAME_WRITE: Write and flush complete (%.2f ms)");
 }
 
 void session_display_write_raw(session_display_ctx_t *ctx, const char *data, size_t len) {
