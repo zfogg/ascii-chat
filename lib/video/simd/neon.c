@@ -768,36 +768,37 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
     return NULL;
   }
 
+  // Pre-allocate all thread buffers BEFORE parallel loop to avoid malloc contention
+  size_t buffer_size = (size_t)height * (size_t)width * 8u + (size_t)height * 16u + 64u;
+  for (int t = 0; t < max_threads; t++) {
+    thread_buffers[t].buf = SAFE_MALLOC(buffer_size, char *);
+    if (!thread_buffers[t].buf) {
+      log_error("Failed to allocate thread buffer %d", t);
+      for (int i = 0; i < t; i++) {
+        SAFE_FREE(thread_buffers[i].buf);
+      }
+      SAFE_FREE(thread_buffers);
+      SAFE_FREE(ob.buf);
+      return NULL;
+    }
+    thread_buffers[t].cap = buffer_size;
+    thread_buffers[t].len = 0;
+  }
+
+  // Phase 1: NEON vectorized loop
   START_TIMER("neon_main_loop");
   uint64_t loop_start_ns = time_get_ns();
 
-  // Check if OpenMP is available and enabled
-  int omp_available = omp_get_max_threads() > 1;
-  if (omp_available) {
-    log_debug("OpenMP: num_threads=%d, in_parallel=%d", omp_get_max_threads(), omp_in_parallel());
-  }
-
+  // TEMPORARILY DISABLE PARALLELIZATION to find bottleneck
   // Parallelize row processing across available cores
   // Each row is independent (color state resets at row end), so safe to parallelize
   // Use static scheduling with chunk size to reduce overhead compared to dynamic scheduling
-#pragma omp parallel for collapse(1) schedule(static, 4) default(none)                                                 \
-    shared(height, width, image, ascii_chars, use_background, use_256color, utf8_cache, tbl, thread_buffers)           \
-    private(ob)
+  // #pragma omp parallel for collapse(1) schedule(dynamic, 8) default(none) \
+  //     shared(height, width, image, ascii_chars, use_background, use_256color, utf8_cache, tbl, thread_buffers) \
+  //     private(ob)
   for (int y = 0; y < height; y++) {
-    int thread_id = omp_get_thread_num();
-    outbuf_t *thread_ob = thread_buffers + thread_id;
-
-    // Initialize thread buffer on first row this thread processes
-    if (thread_ob->buf == NULL) {
-      size_t buffer_size = (size_t)height * (size_t)width * 8u + (size_t)height * 16u + 64u;
-      thread_ob->buf = SAFE_MALLOC(buffer_size, char *);
-      thread_ob->cap = buffer_size;
-      thread_ob->len = 0;
-      if (!thread_ob->buf) {
-        log_error("Failed to allocate thread buffer");
-        continue;
-      }
-    }
+    // Use main output buffer since we're not parallelizing
+    outbuf_t *thread_ob = &ob;
 
     // Track current color state (thread-local)
     int curR = -1, curG = -1, curB = -1;
