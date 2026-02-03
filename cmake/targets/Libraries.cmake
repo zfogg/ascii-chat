@@ -257,7 +257,7 @@ target_compile_options(ascii-chat-simd PRIVATE -fopenmp)
 target_link_libraries(ascii-chat-simd PRIVATE OpenMP::OpenMP_C)
 
 if(NOT BUILDING_OBJECT_LIBS)
-    target_link_libraries(ascii-chat-simd
+    target_link_libraries(ascii-chat-simd PRIVATE
         ascii-chat-util
         ascii-chat-core
         ascii-chat-video
