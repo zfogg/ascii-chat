@@ -454,26 +454,42 @@ static image_t *create_single_source_composite(image_source_t *sources, int sour
   bool use_half_block = target_client && target_client->has_terminal_caps &&
                         target_client->terminal_caps.render_mode == RENDER_MODE_HALF_BLOCK;
 
-  int composite_width_px, composite_height_px;
+  // Calculate terminal dimensions for fitting
+  int max_width_px = width;
+  int max_height_px = use_half_block ? height * 2 : height;
 
-  // Always create composite at full terminal dimensions
-  // Aspect ratio correction is handled later in ascii_convert_with_capabilities
-  composite_width_px = width;
-  if (use_half_block) {
-    // Half-block mode: 2 vertical pixels per character
-    composite_height_px = height * 2;
+  // Calculate video aspect ratio and fit it within terminal dimensions (CONTAIN strategy)
+  float src_aspect = (float)single_source->w / (float)single_source->h;
+  float terminal_aspect = (float)max_width_px / (float)max_height_px;
+
+  int target_width_px, target_height_px;
+
+  if (src_aspect > terminal_aspect) {
+    // Video is wider than terminal → fill WIDTH (height will be smaller)
+    target_width_px = max_width_px;
+    target_height_px = (int)((max_width_px / src_aspect) + 0.5f);
   } else {
-    // Normal modes: 1 pixel per character
-    composite_height_px = height;
+    // Video is taller than terminal → fill HEIGHT (width will be smaller)
+    target_height_px = max_height_px;
+    target_width_px = (int)((max_height_px * src_aspect) + 0.5f);
   }
 
-  // Create composite from buffer pool for consistent memory management
-  image_t *composite = image_new_from_pool(composite_width_px, composite_height_px);
+  // Clamp to terminal boundaries
+  if (target_width_px > max_width_px)
+    target_width_px = max_width_px;
+  if (target_height_px > max_height_px)
+    target_height_px = max_height_px;
+  if (target_width_px < 1)
+    target_width_px = 1;
+  if (target_height_px < 1)
+    target_height_px = 1;
+
+  // Create composite at fitted dimensions (not full terminal dimensions)
+  // This allows ascii_convert_with_capabilities to calculate and add padding
+  image_t *composite = image_new_from_pool(target_width_px, target_height_px);
   image_clear(composite);
 
-  // NOTE: Resize source to fill composite exactly. Don't pad at image level.
-  // The ASCII conversion (with preserve_aspect_ratio=true) will handle aspect
-  // ratio correction by adjusting output dimensions, avoiding double-padding.
+  // Resize source to fitted dimensions and place in composite
   image_resize(single_source, composite);
 
   return composite;
