@@ -99,7 +99,21 @@ WEBCAM_DISABLED=1 timeout $TEST_TIMEOUT ./build/bin/ascii-chat --log-level debug
   --password "$TEST_PASSWORD" \
   --no-encrypt \
   --discovery-insecure --discovery-server "$REMOTE_HOST_IP" --discovery-port "$ACDS_PORT" \
-  --snapshot --snapshot-delay 10 > /dev/null 2>&1 || true
+  --snapshot --snapshot-delay 0 2>&1 | tee /tmp/client_ascii_output.txt
+
+echo ""
+echo "═══════════════════════════════════════════════════════════════════════"
+echo "CAPTURED ASCII ART OUTPUT"
+echo "═══════════════════════════════════════════════════════════════════════"
+echo ""
+if [ -f /tmp/client_ascii_output.txt ]; then
+  echo "Client ASCII output (first 50 lines):"
+  head -50 /tmp/client_ascii_output.txt
+  echo ""
+  echo "(Full output saved to /tmp/client_ascii_output.txt)"
+else
+  echo "No ASCII output captured"
+fi
 
 echo ""
 echo "═══════════════════════════════════════════════════════════════════════"
@@ -158,9 +172,10 @@ echo "════════════════════════�
 echo "TEST COMPLETE"
 echo "═══════════════════════════════════════════════════════════════════════"
 echo ""
-echo "Full logs available at:"
-echo "  Local client:  /tmp/client_webrtc_detailed.log ($([ -f /tmp/client_webrtc_detailed.log ] && wc -l < /tmp/client_webrtc_detailed.log || echo "not found") lines)"
-echo "  Remote server: /tmp/server_detailed.log (use: ssh sidechain tail -100 /tmp/server_detailed.log)"
+echo "Output files:"
+echo "  ASCII art:       /tmp/client_ascii_output.txt"
+echo "  Client logs:     /tmp/client_webrtc_detailed.log ($([ -f /tmp/client_webrtc_detailed.log ] && wc -l < /tmp/client_webrtc_detailed.log || echo "not found") lines)"
+echo "  Remote server:   /tmp/server_detailed.log (use: ssh sidechain tail -100 /tmp/server_detailed.log)"
 echo ""
 
 cleanup 0
