@@ -419,6 +419,9 @@ ascii-chat is built on operating system code and several libraries.
 - [**libdatachannel**](https://github.com/paullouisageneau/libdatachannel) - WebRTC DataChannels for P2P NAT traversal
 - [**miniupnpc**](https://miniupnp.tuxfamily.org/) - Automatic UPnP port forwarding (optional, fallback to WebRTC)
 - [**FFmpeg**](https://ffmpeg.org/) - Media file streaming support
+- [**yt-dlp**](https://github.com/yt-dlp/yt-dlp) - YouTube and other video platform support for `--url` (optional; enables streaming from YouTube and similar services)
+- [**ssh-agent**](https://linux.die.net/man/1/ssh-agent) - SSH key agent for password-free SSH Ed25519 authentication (optional; enables seamless key authentication without passphrases)
+- [**gpg-agent**](https://linux.die.net/man/1/gpg-agent) - GPG key agent for GPG Ed25519 key support (optional; enables GPG key-based authentication)
 
 #### Operating System APIs
 
