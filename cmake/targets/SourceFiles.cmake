@@ -435,6 +435,7 @@ set(SESSION_SRCS
     lib/session/host.c
     lib/session/keyboard_handler.c
     lib/session/server_status.c
+    lib/session/discovery_status.c
 )
 
 # =============================================================================
