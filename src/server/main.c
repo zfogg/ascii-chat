@@ -111,6 +111,7 @@
 #include <ascii-chat/network/acip/handlers.h>
 #include <ascii-chat/network/acip/server.h>
 #include <ascii-chat/network/acip/client.h>
+#include <ascii-chat/session/server_status.h>
 
 /* ============================================================================
  * Global State
@@ -198,6 +199,30 @@ rate_limiter_t *g_rate_limiter = NULL;
  * @ingroup server_main
  */
 static tcp_server_t g_tcp_server;
+
+/**
+ * @brief Server start time for uptime calculation and status display
+ *
+ * Captured at server startup and used by status screen to calculate uptime.
+ * Shared with status update callback.
+ */
+static time_t g_server_start_time = 0;
+
+/**
+ * @brief Last status screen update time
+ *
+ * Tracks when status was last displayed to avoid excessive updates.
+ * Used by status update callback to rate-limit display updates.
+ */
+static time_t g_last_status_update = 0;
+
+/**
+ * @brief Current session string for status display
+ *
+ * Holds the memorable session string (e.g., "happy-sunset-ocean") for display
+ * in the status screen. Set when ACDS session is created, cleared on shutdown.
+ */
+static char g_session_string[64] = {0};
 
 /**
  * @brief Global UPnP context for port mapping on home routers
@@ -1005,6 +1030,36 @@ static void sigusr1_handler(int sigusr1) {
 }
 
 /* ============================================================================
+ * Status Screen Update Callback (for tcp_server integration)
+ * ============================================================================
+ */
+
+/**
+ * @brief Periodic status screen update callback
+ *
+ * Called by tcp_server_run() on select() timeout to update the status display.
+ * Updates server status including session string, bind addresses, connected clients, and uptime.
+ * Rate-limited to update every 1-2 seconds.
+ *
+ * @param user_data Pointer to server context (server_context_t*)
+ */
+static void status_update_callback(void *user_data) {
+  (void)user_data; // Unused parameter
+
+  if (!GET_OPTION(status_screen)) {
+    return;
+  }
+
+  // Get the IPv4 and IPv6 addresses from options
+  const char *ipv4_address = GET_OPTION(address);
+  const char *ipv6_address = GET_OPTION(address6);
+
+  // Update status display (rate-limited to 1-2 second intervals)
+  server_status_update(&g_tcp_server, g_session_string, ipv4_address, ipv6_address, GET_OPTION(port),
+                       g_server_start_time, "Server", &g_last_status_update);
+}
+
+/* ============================================================================
  * Client Handler Thread (for tcp_server integration)
  * ============================================================================
  */
@@ -1315,10 +1370,10 @@ int server_main(void) {
   log_info("ascii-chat server starting...");
 
   // log_info("SERVER: Options initialized, using log file: %s", log_filename);
-  int port = strtoint_safe(GET_OPTION(port));
-  if (port == INT_MIN) {
-    log_error("Invalid port configuration: %s", GET_OPTION(port));
-    FATAL(ERROR_CONFIG, "Invalid port configuration: %s", GET_OPTION(port));
+  int port = GET_OPTION(port);
+  if (port < 1 || port > 65535) {
+    log_error("Invalid port configuration: %d", port);
+    FATAL(ERROR_CONFIG, "Invalid port configuration: %d", port);
   }
 
   ascii_simd_init();
@@ -1441,6 +1496,8 @@ int server_main(void) {
       .accept_timeout_sec = ACCEPT_TIMEOUT,
       .client_handler = ascii_chat_client_handler,
       .user_data = &server_ctx, // Pass server context to client handlers
+      .status_update_fn = status_update_callback,
+      .status_update_data = &server_ctx, // Pass server context to status callback
   };
 
   // Initialize TCP server (creates and binds sockets)
@@ -1761,6 +1818,7 @@ int server_main(void) {
 
       if (create_err == ASCIICHAT_OK) {
         SAFE_STRNCPY(session_string, create_result.session_string, sizeof(session_string));
+        SAFE_STRNCPY(g_session_string, create_result.session_string, sizeof(g_session_string));
         log_info("Session created: %s", session_string);
 
         // Server must join its own session so ACDS can route signaling messages
@@ -1967,6 +2025,20 @@ skip_acds_session:
 
   log_debug("Server entering accept loop (port %d)...", port);
 
+  // Initialize status screen
+  g_server_start_time = time(NULL);
+  g_last_status_update = 0;
+
+  // Display initial status screen if enabled
+  if (GET_OPTION(status_screen)) {
+    server_status_t status;
+    if (server_status_gather(&g_tcp_server, session_string, ipv4_address, ipv6_address, (uint16_t)port,
+                             g_server_start_time, "Server", &status) == ASCIICHAT_OK) {
+      server_status_display(&status);
+      g_last_status_update = g_server_start_time;
+    }
+  }
+
   // Run TCP server (blocks until shutdown signal received)
   // tcp_server_run() handles:
   // - select() on IPv4/IPv6 sockets with timeout
@@ -1983,6 +2055,7 @@ skip_acds_session:
 cleanup:
   // Cleanup
   log_debug("Server shutting down...");
+  memset(g_session_string, 0, sizeof(g_session_string)); // Clear session string for status screen
   atomic_store(&g_server_should_exit, true);
 
   // Wake up any threads that might be blocked on condition variables
