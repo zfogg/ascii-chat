@@ -233,11 +233,12 @@ void terminal_enable_ansi(void) {
  */
 asciichat_error_t terminal_flush(int fd) {
   if (isatty(fd)) {
-    // For TTY output in real-time rendering, skip flushing
-    // The kernel buffer is small and will drain quickly without explicit flush
-    // Flushing on every frame (tcdrain) causes significant latency in real-time rendering
-    // POSIX write() to TTY is already line-buffered, so frames appear immediately
-    return ASCIICHAT_OK;
+    // For TTYs, use tcdrain() which waits for output to be transmitted
+    if (tcdrain(fd) < 0) {
+      // tcdrain can fail with EBADF if fd is closed, or ENOTTY if not a TTY
+      // (the latter shouldn't happen since we checked isatty)
+      return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to flush terminal output");
+    }
   } else {
     // For regular files (e.g., when redirecting output), use fsync()
     // For pipes, fsync() fails with ENOTSUP which is expected and not an error
