@@ -769,10 +769,20 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
   }
 
   START_TIMER("neon_main_loop");
+  uint64_t loop_start_ns = time_get_ns();
+
+  // Check if OpenMP is available and enabled
+  int omp_available = omp_get_max_threads() > 1;
+  if (omp_available) {
+    log_debug("OpenMP: num_threads=%d, in_parallel=%d", omp_get_max_threads(), omp_in_parallel());
+  }
+
   // Parallelize row processing across available cores
   // Each row is independent (color state resets at row end), so safe to parallelize
-#pragma omp parallel for collapse(1) schedule(dynamic) default(none)                                                   \
-    shared(height, width, image, ascii_chars, use_background, use_256color, utf8_cache, tbl, thread_buffers, ob)
+  // Use static scheduling with chunk size to reduce overhead compared to dynamic scheduling
+#pragma omp parallel for collapse(1) schedule(static, 4) default(none)                                                 \
+    shared(height, width, image, ascii_chars, use_background, use_256color, utf8_cache, tbl, thread_buffers)           \
+    private(ob)
   for (int y = 0; y < height; y++) {
     int thread_id = omp_get_thread_num();
     outbuf_t *thread_ob = thread_buffers + thread_id;
@@ -964,6 +974,10 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
     }
   }
   // End of parallel region
+
+  uint64_t loop_end_ns = time_get_ns();
+  uint64_t loop_time_ms = (loop_end_ns - loop_start_ns) / 1000000;
+  log_info("NEON_MAIN_LOOP_ACTUAL: %llu ms for %d rows, %d width", loop_time_ms, height, width);
   STOP_TIMER_AND_LOG("neon_main_loop", log_info, "NEON_MAIN_LOOP: Complete (%.2f ms)");
 
   // Merge all thread buffers into final output

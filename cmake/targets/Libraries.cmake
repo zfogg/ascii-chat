@@ -253,13 +253,8 @@ create_ascii_chat_module(ascii-chat-simd "${SIMD_SRCS}")
 
 # Enable OpenMP for SIMD rendering
 target_compile_options(ascii-chat-simd PRIVATE -fopenmp)
-# Link OpenMP library - on macOS, this is explicitly needed
-if(APPLE AND OpenMP_C_LIBRARIES)
-    target_link_libraries(ascii-chat-simd PRIVATE ${OpenMP_C_LIBRARIES})
-    target_include_directories(ascii-chat-simd PRIVATE ${OpenMP_C_INCLUDE_DIRS})
-else()
-    target_link_libraries(ascii-chat-simd PRIVATE OpenMP::OpenMP_C)
-endif()
+# Link OpenMP library using the CMake target (works across all platforms)
+target_link_libraries(ascii-chat-simd PRIVATE OpenMP::OpenMP_C)
 
 if(NOT BUILDING_OBJECT_LIBS)
     target_link_libraries(ascii-chat-simd
@@ -589,7 +584,7 @@ if(BUILDING_OBJECT_LIBS)
         ${ZSTD_LIBRARIES}
         ${OPUS_LIBRARIES}
         ${SQLITE3_LIBRARIES}
-        ${OpenMP_C_LIBRARIES}
+        OpenMP::OpenMP_C
     )
 
     # Link PortAudio with platform-specific dependencies

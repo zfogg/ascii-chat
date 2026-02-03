@@ -402,6 +402,45 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     return;
   }
 
+  // Debug: check for lines that might shoot off to the right
+  // Find longest line in frame data (visible characters between newlines, excluding ANSI codes)
+  size_t max_line_chars = 0;
+  size_t current_line_chars = 0;
+  bool in_ansi_code = false;
+
+  for (size_t i = 0; i < frame_len; i++) {
+    char c = frame_data[i];
+
+    if (c == '\033') {
+      // Start of ANSI escape sequence
+      in_ansi_code = true;
+    } else if (in_ansi_code && c == 'm') {
+      // End of ANSI escape sequence
+      in_ansi_code = false;
+    } else if (!in_ansi_code && c == '\n') {
+      // End of line
+      if (current_line_chars > max_line_chars) {
+        max_line_chars = current_line_chars;
+      }
+      current_line_chars = 0;
+    } else if (!in_ansi_code) {
+      // Regular character (not ANSI code)
+      current_line_chars++;
+    }
+  }
+
+  if (current_line_chars > 0) {
+    if (current_line_chars > max_line_chars) {
+      max_line_chars = current_line_chars;
+    }
+  }
+
+  unsigned short int term_width = GET_OPTION(width);
+  if (max_line_chars > term_width) {
+    log_warn("FRAME_ANALYSIS: Line %zu chars exceeds terminal width %u - this may cause wrapping!", max_line_chars,
+             term_width);
+  }
+
   // Handle first frame - perform initial terminal reset only
   if (atomic_load(&ctx->first_frame)) {
     atomic_store(&ctx->first_frame, false);
@@ -423,7 +462,8 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
 
   START_TIMER("frame_write");
   if (use_tty_control) {
-    // TTY mode: reset cursor position and clear before each frame
+    // TTY mode: clear screen and reset cursor before each frame to prevent old content from bleeding through
+    (void)terminal_clear_screen();
     (void)terminal_cursor_home(STDOUT_FILENO);
     // Send frame data
     // Ensure clear codes write completely before frame data to avoid cursor misalignment
