@@ -255,9 +255,6 @@ static log_level_t parse_log_level_from_env(void) {
   if (platform_strcasecmp(env_level, "DEV") == 0 || strcmp(env_level, "0") == 0) {
     return LOG_DEV;
   }
-  if (platform_strcasecmp(env_level, "DEV") == 0 || strcmp(env_level, "0") == 0) {
-    return LOG_DEV;
-  }
   if (platform_strcasecmp(env_level, "DEBUG") == 0 || strcmp(env_level, "1") == 0) {
     return LOG_DEBUG;
   }

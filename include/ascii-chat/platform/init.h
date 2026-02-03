@@ -130,6 +130,15 @@ static inline void static_mutex_lock(static_mutex_t *m) {
     }
   }
   // prev == 2 means already initialized, proceed directly
+#else
+  // POSIX: Handle fork() by checking initialized flag atomically
+  // After fork(), child process must reinitialize the mutex
+  // Use atomic operations for thread-safe detection
+  if (__atomic_load_n(&m->initialized, __ATOMIC_ACQUIRE) == 0) {
+    // Mutex needs initialization (either never initialized or reset after fork)
+    mutex_init(&m->mutex);
+    __atomic_store_n(&m->initialized, 1, __ATOMIC_RELEASE);
+  }
 #endif
   mutex_lock(&m->mutex);
 }
@@ -150,6 +159,11 @@ static inline void static_rwlock_rdlock(static_rwlock_t *l) {
       YieldProcessor();
     }
   }
+#else
+  if (__atomic_load_n(&l->initialized, __ATOMIC_ACQUIRE) == 0) {
+    rwlock_init(&l->lock);
+    __atomic_store_n(&l->initialized, 1, __ATOMIC_RELEASE);
+  }
 #endif
   rwlock_rdlock(&l->lock);
 }
@@ -165,6 +179,11 @@ static inline void static_rwlock_wrlock(static_rwlock_t *l) {
     while (InterlockedCompareExchange(&l->initialized, 2, 2) != 2) {
       YieldProcessor();
     }
+  }
+#else
+  if (__atomic_load_n(&l->initialized, __ATOMIC_ACQUIRE) == 0) {
+    rwlock_init(&l->lock);
+    __atomic_store_n(&l->initialized, 1, __ATOMIC_RELEASE);
   }
 #endif
   rwlock_wrlock(&l->lock);
@@ -185,6 +204,15 @@ static inline void static_cond_wait(static_cond_t *c, static_mutex_t *m) {
   if (InterlockedCompareExchange(&m->initialized, 1, 0) == 0) {
     mutex_init(&m->mutex);
   }
+#else
+  if (__atomic_load_n(&c->initialized, __ATOMIC_ACQUIRE) == 0) {
+    cond_init(&c->cond);
+    __atomic_store_n(&c->initialized, 1, __ATOMIC_RELEASE);
+  }
+  if (__atomic_load_n(&m->initialized, __ATOMIC_ACQUIRE) == 0) {
+    mutex_init(&m->mutex);
+    __atomic_store_n(&m->initialized, 1, __ATOMIC_RELEASE);
+  }
 #endif
   cond_wait(&c->cond, &m->mutex);
 }
@@ -204,6 +232,15 @@ static inline void static_cond_timedwait(static_cond_t *c, static_mutex_t *m, in
   if (InterlockedCompareExchange(&m->initialized, 1, 0) == 0) {
     mutex_init(&m->mutex);
   }
+#else
+  if (__atomic_load_n(&c->initialized, __ATOMIC_ACQUIRE) == 0) {
+    cond_init(&c->cond);
+    __atomic_store_n(&c->initialized, 1, __ATOMIC_RELEASE);
+  }
+  if (__atomic_load_n(&m->initialized, __ATOMIC_ACQUIRE) == 0) {
+    mutex_init(&m->mutex);
+    __atomic_store_n(&m->initialized, 1, __ATOMIC_RELEASE);
+  }
 #endif
   cond_timedwait(&c->cond, &m->mutex, timeout_ms);
 }
@@ -220,6 +257,11 @@ static inline void static_cond_signal(static_cond_t *c) {
       YieldProcessor();
     }
   }
+#else
+  if (__atomic_load_n(&c->initialized, __ATOMIC_ACQUIRE) == 0) {
+    cond_init(&c->cond);
+    __atomic_store_n(&c->initialized, 1, __ATOMIC_RELEASE);
+  }
 #endif
   cond_signal(&c->cond);
 }
@@ -235,6 +277,11 @@ static inline void static_cond_broadcast(static_cond_t *c) {
     while (InterlockedCompareExchange(&c->initialized, 2, 2) != 2) {
       YieldProcessor();
     }
+  }
+#else
+  if (__atomic_load_n(&c->initialized, __ATOMIC_ACQUIRE) == 0) {
+    cond_init(&c->cond);
+    __atomic_store_n(&c->initialized, 1, __ATOMIC_RELEASE);
   }
 #endif
   cond_broadcast(&c->cond);

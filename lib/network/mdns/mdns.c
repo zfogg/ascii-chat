@@ -247,7 +247,7 @@ asciichat_error_t asciichat_mdns_query(asciichat_mdns_t *mdns, const char *servi
   int query_id = mdns_query_send(mdns->socket_fd, MDNS_RECORDTYPE_PTR, service_type, service_type_len, mdns->buffer,
                                  mdns->buffer_capacity, 0);
 
-  if (query_id <= 0) {
+  if (query_id < 0) {
     return SET_ERRNO(ERROR_NETWORK, "mDNS query send failed for %s (query_id=%d)", service_type, query_id);
   }
 

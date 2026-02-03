@@ -64,8 +64,8 @@ typedef struct color_scheme_t color_scheme_t;
 typedef enum {
   LOG_DEV = 0, /**< Development messages (most verbose) */
   LOG_DEBUG,   /**< Debug messages */
-  LOG_WARN,    /**< Warning messages */
   LOG_INFO,    /**< Informational messages */
+  LOG_WARN,    /**< Warning messages */
   LOG_ERROR,   /**< Error messages */
   LOG_FATAL    /**< Fatal error messages (most severe) */
 } log_level_t;
@@ -142,8 +142,8 @@ typedef struct {
 typedef enum {
   LOG_COLOR_DEV = 0,   /**< Blue - DEV messages */
   LOG_COLOR_DEBUG = 1, /**< Cyan - DEBUG messages */
-  LOG_COLOR_WARN = 2,  /**< Yellow - WARN messages */
-  LOG_COLOR_INFO = 3,  /**< Green - INFO messages */
+  LOG_COLOR_INFO = 2,  /**< Green - INFO messages */
+  LOG_COLOR_WARN = 3,  /**< Yellow - WARN messages */
   LOG_COLOR_ERROR = 4, /**< Red - ERROR messages */
   LOG_COLOR_FATAL = 5, /**< Magenta - FATAL messages */
   LOG_COLOR_GREY = 6,  /**< Grey - for neutral messages or labels */
