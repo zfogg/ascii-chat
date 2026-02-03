@@ -14,7 +14,6 @@
 // NOTE: Use explicit path to avoid Windows include resolution picking up options/common.h
 #include "../common.h"
 #include "../network/acip/acds.h"
-#include "discovery-service/main.h"
 #include "../discovery/strings.h"
 
 /**
