@@ -52,9 +52,15 @@ size_t platform_write_all(int fd, const void *buf, size_t count) {
       written_total += (size_t)result;
       attempts = 0; // Reset attempt counter on successful write
     } else if (result < 0) {
-      // Write error - log it but keep retrying
-      log_warn("platform_write_all: write() error on fd=%d (wrote %zu/%zu so far, errno=%d)", fd, written_total, count,
-               errno);
+      // Handle EAGAIN (non-blocking would-block) with sleep instead of tight loop
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        // Sleep 100us before retrying to avoid busy-waiting and spinning CPU
+        platform_sleep_usec(100);
+      } else {
+        // Other write errors - log and retry
+        log_warn("platform_write_all: write() error on fd=%d (wrote %zu/%zu so far, errno=%d)", fd, written_total,
+                 count, errno);
+      }
       attempts++;
     } else {
       // result == 0: no bytes written, retry
