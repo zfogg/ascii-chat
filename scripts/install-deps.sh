@@ -34,8 +34,7 @@ echo "=== ascii-chat Dependency Installer ==="
 echo ""
 
 echo "Getting submodules"
-git submodule init
-git submodule update --recursive
+git submodule update --recursive --init --depth 1
 
 # Detect platform
 if [[ "$OSTYPE" == "darwin"* ]]; then

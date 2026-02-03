@@ -50,16 +50,16 @@
  * @ingroup platform
  */
 typedef enum {
-  KEY_NONE = 0,    ///< No key pressed or no input available
-  KEY_ESCAPE = 27, ///< Escape key (ESC)
-  KEY_SPACE = 32,  ///< Space bar
-  KEY_UP = 256,    ///< Up arrow key
-  KEY_DOWN = 257,  ///< Down arrow key
-  KEY_LEFT = 258,  ///< Left arrow key
-  KEY_RIGHT = 259, ///< Right arrow key
-  KEY_C = 'c',     ///< 'c' key - cycle color modes
-  KEY_M = 'm',     ///< 'm' key - toggle mute
-  KEY_F = 'f',     ///< 'f' key - flip webcam
+  KEY_NONE = 0,       ///< No key pressed or no input available
+  KEY_ESCAPE = 27,    ///< Escape key (ESC)
+  KEY_SPACE = 32,     ///< Space bar
+  KEY_UP = 256,       ///< Up arrow key
+  KEY_DOWN = 257,     ///< Down arrow key
+  KEY_LEFT = 258,     ///< Left arrow key
+  KEY_RIGHT = 259,    ///< Right arrow key
+  KEY_C = 'c',        ///< 'c' key - cycle color modes
+  KEY_M = 'm',        ///< 'm' key - toggle mute
+  KEY_F = 'f',        ///< 'f' key - flip webcam
   KEY_QUESTION = '?', ///< '?' key - show help screen
 } keyboard_key_t;
 
