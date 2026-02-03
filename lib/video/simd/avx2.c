@@ -11,7 +11,7 @@
 #include <stdbool.h>
 #include <ascii-chat/video/simd/avx2.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/output_buffer.h>
+#include <ascii-chat/video/output_buffer.h>
 #include <ascii-chat/ansi_fast.h>
 #include <ascii-chat/util/overflow.h>
 
