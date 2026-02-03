@@ -501,11 +501,7 @@ Specify GPG key with format: gpg:<key-id> or gpg:<fingerprint>
 .fi
 .
 .SH BUGS
-Report bugs to https://github.com/zfogg/ascii-chat/issues
-.PP
-GitHub repository: https://github.com/zfogg/ascii-chat
-.PP
-Releases: https://github.com/zfogg/ascii-chat/releases
+Report bugs at: https://github.com/zfogg/ascii-chat/issues
 .
 .SH AUTHOR
 Zachary Fogg <me@zfo.gg>
@@ -513,11 +509,30 @@ Zachary Fogg <me@zfo.gg>
 .SH SEE ALSO
 .BR ascii-chat (1),
 .BR ssh-keygen (1),
-.BR ssh-keyscan (1),
 .BR ssh-agent (1),
+.BR ssh-keyscan (1),
 .BR gpg (1),
-.BR gpgconf (1),
 .BR gpg-agent (1),
-.BR yt-dlp (1),
-.BR ffmpeg-formats (1),
-.BR ffmpeg-codecs (1)
+.BR gpgconf (1)
+.PP
+Project homepage: https://ascii-chat.com
+.PP
+Discovery service: https://discover.ascii-chat.com
+.PP
+GitHub repository: https://github.com/zfogg/ascii-chat
+.PP
+Releases: https://github.com/zfogg/ascii-chat/releases
+.PP
+API documentation: https://zfogg.github.io/ascii-chat/
+.
+.SH LICENSE
+.B ascii-chat
+is licensed under the MIT License.
+.PP
+Copyright (c) 2013-2026 Zachary Fogg
+.PP
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+.PP
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+.PP
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
