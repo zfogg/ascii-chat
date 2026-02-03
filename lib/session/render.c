@@ -317,8 +317,12 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       if (keyboard_enabled && keyboard_handler) {
         START_TIMER("keyboard_read_%lu", (unsigned long)frame_count);
         keyboard_key_t key = keyboard_read_nonblocking();
-        STOP_TIMER_AND_LOG(dev, 0, "keyboard_read_%lu", "RENDER[%lu] Keyboard read complete (key=%d)",
-                           (unsigned long)frame_count, key);
+        double keyboard_elapsed_ns = STOP_TIMER("keyboard_read_%lu", (unsigned long)frame_count);
+        if (keyboard_elapsed_ns >= 0.0) {
+          char _duration_str[32];
+          format_duration_ns(keyboard_elapsed_ns, _duration_str, sizeof(_duration_str));
+          log_dev("RENDER[%lu] Keyboard read complete (key=%d) in %s", (unsigned long)frame_count, key, _duration_str);
+        }
         if (key != KEY_NONE) {
           keyboard_handler(capture, key, user_data);
         }

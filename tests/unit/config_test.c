@@ -1183,8 +1183,7 @@ Test(config_create, creates_file_with_content) {
   char config_path[512];
   safe_snprintf(config_path, sizeof(config_path), "%s/config.toml", temp_dir);
 
-  const options_t *opts = options_get();
-  asciichat_error_t result = config_create_default(config_path, opts);
+  asciichat_error_t result = config_create_default(config_path);
   cr_assert_eq(result, ASCIICHAT_OK, "Creating default config should succeed");
 
   // Verify file exists
@@ -1231,8 +1230,7 @@ Test(config_create, fails_if_file_exists) {
   setenv("ASCII_CHAT_TESTING_QUESTION_PROMPT_RESPONSE", "no", 1);
 
   // Try to create default config at same path
-  const options_t *opts = options_get();
-  asciichat_error_t result = config_create_default(existing_file, opts);
+  asciichat_error_t result = config_create_default(existing_file);
   cr_assert_neq(result, ASCIICHAT_OK, "Creating config over existing file should fail");
 
   // Restore old environment variable
@@ -1256,8 +1254,7 @@ Test(config_create, creates_directory_if_needed) {
   safe_snprintf(config_path, sizeof(config_path), "/tmp/ascii_chat_test_%d/subdir/config.toml", getpid());
 
   // The parent directory doesn't exist yet
-  const options_t *opts = options_get();
-  asciichat_error_t result = config_create_default(config_path, opts);
+  asciichat_error_t result = config_create_default(config_path);
   // This may fail if we can't create nested directories (config_create_default only creates one level)
   // Just verify it handles the case gracefully
   (void)result;

@@ -709,11 +709,14 @@ static void *audio_capture_thread_func(void *arg) {
 
           static int encode_count = 0;
           encode_count++;
+          double opus_elapsed_ns = STOP_TIMER("opus_encode");
           if (encode_count % 50 == 0) {
-            STOP_TIMER_AND_LOG(dev, 0, "opus_encode", "Opus encode #%d: %d samples -> %d bytes", encode_count,
-                               OPUS_FRAME_SAMPLES, opus_len);
-          } else {
-            STOP_TIMER("opus_encode");
+            if (opus_elapsed_ns >= 0.0) {
+              char _duration_str[32];
+              format_duration_ns(opus_elapsed_ns, _duration_str, sizeof(_duration_str));
+              log_dev("Opus encode #%d: %d samples -> %d bytes in %s", encode_count, OPUS_FRAME_SAMPLES, opus_len,
+                      _duration_str);
+            }
           }
 
           double encode_time_ns = 0; // Timing already logged

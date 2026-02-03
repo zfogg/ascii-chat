@@ -139,7 +139,7 @@ asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, bo
  *
  * The created file includes:
  * - Version comment at the top (current ascii-chat version)
- * - All supported configuration sections with values from opts
+ * - All supported configuration sections with default values
  * - Comments explaining each option
  *
  * @note The function will create the directory structure if needed.
@@ -147,6 +147,6 @@ asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, bo
  *
  * @ingroup config
  */
-asciichat_error_t config_create_default(const char *config_path, const options_t *opts);
+asciichat_error_t config_create_default(const char *config_path);
 
 /** @} */

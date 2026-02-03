@@ -34,13 +34,6 @@
 // ASCII Art and Constants
 // ============================================================================
 
-/**
- * @brief ASCII art for "ascii-chat" logo (7 lines)
- */
-static const char *g_ascii_logo[] = {"  ▄▄▄  ███████  ██████    ██  ██", " ▐███▌ ██       ██   ██   ██  ██",
-                                     "  ██   █████    ██████    ██  ██", "  ██   ██       ██  ██    ██  ██",
-                                     "  ██   ███████  ██   ██    ████ ", "",
-                                     "   Video chat in your terminal"};
 #define ASCII_LOGO_LINES 7
 #define ASCII_LOGO_WIDTH 36
 
@@ -176,7 +169,7 @@ static size_t build_splash_buffer(char *buffer, size_t buf_size, int width, int 
   for (int i = 0; i < 4; i++) {
     int logo_width = 52;
     int horiz_pad = (width - logo_width) / 2;
-    if (horiz_pad > 0 && remaining > horiz_pad + logo_width + 1) {
+    if (horiz_pad > 0 && remaining > (size_t)horiz_pad + (size_t)logo_width + 1) {
       for (int j = 0; j < horiz_pad; j++) {
         *p++ = ' ';
       }
@@ -198,7 +191,7 @@ static size_t build_splash_buffer(char *buffer, size_t buf_size, int width, int 
   const char *tagline = "Video chat in your terminal";
   int tagline_width = (int)strlen(tagline);
   int tagline_pad = (width - tagline_width) / 2;
-  if (tagline_pad > 0 && remaining > tagline_pad + tagline_width + 1) {
+  if (tagline_pad > 0 && remaining > (size_t)tagline_pad + (size_t)tagline_width + 1) {
     for (int j = 0; j < tagline_pad; j++) {
       *p++ = ' ';
     }

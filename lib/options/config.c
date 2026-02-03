@@ -1168,7 +1168,7 @@ static bool config_key_should_be_commented(const char *toml_key) {
          strcmp(toml_key, "network.turn_secret") == 0;
 }
 
-asciichat_error_t config_create_default(const char *config_path, const options_t *opts) {
+asciichat_error_t config_create_default(const char *config_path) {
   char *config_path_expanded = NULL;
 
   defer(SAFE_FREE(config_path_expanded));

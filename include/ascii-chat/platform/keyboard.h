@@ -60,6 +60,7 @@ typedef enum {
   KEY_C = 'c',     ///< 'c' key - cycle color modes
   KEY_M = 'm',     ///< 'm' key - toggle mute
   KEY_F = 'f',     ///< 'f' key - flip webcam
+  KEY_QUESTION = '?', ///< '?' key - show help screen
 } keyboard_key_t;
 
 /* ============================================================================

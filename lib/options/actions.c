@@ -401,7 +401,6 @@ void action_create_config(const char *output_path) {
     // options_config_destroy(unified_config);
   }
 
-  options_t opts = options_t_new();
   const char *config_path = NULL;
 
   // Determine output path: use provided path, or NULL for stdout
@@ -414,7 +413,7 @@ void action_create_config(const char *output_path) {
   }
 
   // Create config with default options
-  asciichat_error_t result = config_create_default(config_path, &opts);
+  asciichat_error_t result = config_create_default(config_path);
   if (result != ASCIICHAT_OK) {
     asciichat_error_context_t err_ctx;
     if (HAS_ERRNO(&err_ctx)) {

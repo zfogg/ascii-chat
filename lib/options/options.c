@@ -1106,7 +1106,7 @@ asciichat_error_t options_init(int argc, char **argv) {
     }
 
     // Create config with default options
-    asciichat_error_t result = config_create_default(config_path, &opts);
+    asciichat_error_t result = config_create_default(config_path);
     if (result != ASCIICHAT_OK) {
       asciichat_error_context_t err_ctx;
       if (HAS_ERRNO(&err_ctx)) {
