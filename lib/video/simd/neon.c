@@ -771,6 +771,9 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
   START_TIMER("neon_main_loop");
   uint64_t loop_start_ns = time_get_ns();
 
+  // Track which code path is taken
+  int chunks_256color = 0, chunks_truecolor = 0;
+
   // Check if OpenMP is available and enabled
   int omp_available = omp_get_max_threads() > 1;
   if (omp_available) {
@@ -780,9 +783,10 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
   // Parallelize row processing across available cores
   // Each row is independent (color state resets at row end), so safe to parallelize
   // Use static scheduling with chunk size to reduce overhead compared to dynamic scheduling
-#pragma omp parallel for collapse(1) schedule(static, 4) default(none)                                                 \
-    shared(height, width, image, ascii_chars, use_background, use_256color, utf8_cache, tbl, thread_buffers)           \
-    private(ob)
+  // DISABLED: OpenMP parallelization was making performance slower
+  // #pragma omp parallel for collapse(1) schedule(static, 4) default(none) \
+  //     shared(height, width, image, ascii_chars, use_background, use_256color, utf8_cache, tbl, thread_buffers) \
+  //     private(ob)
   for (int y = 0; y < height; y++) {
     int thread_id = omp_get_thread_num();
     outbuf_t *thread_ob = thread_buffers + thread_id;
@@ -835,6 +839,7 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
       uint8x16_t char_indices = vqtbl4q_u8(tbl, idx);
 
       if (use_256color) {
+        chunks_256color++;
         // 256-color mode: VECTORIZED color quantization
         uint8_t char_idx_buf[16], color_indices[16];
         vst1q_u8(char_idx_buf, char_indices); // Character indices from SIMD lookup
@@ -873,6 +878,7 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
           i += run;
         }
       } else {
+        chunks_truecolor++;
         // VECTORIZED: Truecolor mode with full SIMD pipeline (no scalar spillover)
         char temp_buffer[16 * 50]; // Temporary buffer for 16 ANSI sequences (up to 50 bytes each)
         size_t vectorized_length =
@@ -978,6 +984,12 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
   uint64_t loop_end_ns = time_get_ns();
   uint64_t loop_time_ms = (loop_end_ns - loop_start_ns) / 1000000;
   log_info("NEON_MAIN_LOOP_ACTUAL: %llu ms for %d rows, %d width", loop_time_ms, height, width);
+
+  // Log chunks per mode
+  log_info(
+      "NEON_MAIN_LOOP processed %d rows x %d width = %d pixels in %llu ms (256color: %d chunks, truecolor: %d chunks)",
+      height, width, height * width, loop_time_ms, chunks_256color, chunks_truecolor);
+
   STOP_TIMER_AND_LOG("neon_main_loop", log_info, "NEON_MAIN_LOOP: Complete (%.2f ms)");
 
   // Merge all thread buffers into final output
