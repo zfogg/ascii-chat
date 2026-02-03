@@ -1949,8 +1949,8 @@ skip_acds_session:
   if (session_string[0] != '\0') {
     log_plain("");
     log_plain("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    log_plain("📋 Session String: %s", session_string);
-    log_plain("🔗 Share this with others to join:");
+    log_plain("📋 Session String: %s (LAN only via mDNS)", session_string);
+    log_plain("🔗 Share with others on your LAN to join:");
     log_plain("   ascii-chat %s", session_string);
     log_plain("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     log_plain("");
