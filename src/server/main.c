@@ -1144,15 +1144,29 @@ static void *ascii_chat_client_handler(void *arg) {
 
   // Block until client disconnects (active flag is set by receive thread)
   client_info_t *client = find_client_by_id((uint32_t)client_id);
-  if (client) {
+  if (!client) {
+    log_error("CRITICAL: Client %d not found after successful add! (not in hash table?)", client_id);
+  } else {
+    log_debug("HANDLER: Client %d found, waiting for disconnect (active=%d)", client_id, atomic_load(&client->active));
+    int wait_count = 0;
     while (atomic_load(&client->active) && !atomic_load(server_ctx->server_should_exit)) {
+      wait_count++;
+      if (wait_count % 10 == 0) {
+        // Log every 1 second (10 * 100ms)
+        log_debug("HANDLER: Client %d still active (waited %d seconds), active=%d", client_id, wait_count / 10,
+                  atomic_load(&client->active));
+      }
       platform_sleep_ms(100); // Check every 100ms
     }
-    log_info("Client %d disconnected from %s:%d", client_id, client_ip, client_port);
+    log_info("Client %d disconnected from %s:%d (waited %d seconds, active=%d, server_should_exit=%d)", client_id,
+             client_ip, client_port, wait_count / 10, atomic_load(&client->active),
+             atomic_load(server_ctx->server_should_exit));
   }
 
   // Cleanup (this will call tcp_server_stop_client_threads internally)
-  remove_client(server_ctx, (uint32_t)client_id);
+  if (remove_client(server_ctx, (uint32_t)client_id) != 0) {
+    log_error("CRITICAL BUG: Failed to remove client %d from server (potential zombie client leak!)", client_id);
+  }
 
   // Close socket and free context
   socket_close(client_socket);
