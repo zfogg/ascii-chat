@@ -83,6 +83,17 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
 char *rgb_to_truecolor_halfblocks_neon(const uint8_t *rgb, int width, int height, int stride_bytes);
 
 /**
+ * @brief Flip image horizontally in-place using NEON acceleration
+ * @param image Image to flip (modified in-place)
+ *
+ * Flips the image horizontally by reversing pixel order in each row.
+ * Uses NEON for fast bulk byte swaps.
+ *
+ * @ingroup video
+ */
+void image_flip_horizontal_neon(image_t *image);
+
+/**
  * @brief Destroy NEON caches
  *
  * @ingroup video

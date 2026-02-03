@@ -24,6 +24,7 @@
 #include <ascii-chat/video/image.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/video/simd/neon.h>
 
 #include <string.h>
 #include <stdio.h>
@@ -329,6 +330,11 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
 
       uint64_t t_flip_reverse_start = time_get_ns();
       // Then flip each row in-place (maintains cache locality)
+#if SIMD_SUPPORT_NEON
+      // Use NEON-accelerated flip on ARM processors
+      image_flip_horizontal_neon(flipped_image);
+#else
+      // Scalar fallback for non-NEON systems
       for (int y = 0; y < image->h; y++) {
         rgb_pixel_t *row = &flipped_image->pixels[y * image->w];
         for (int x = 0; x < image->w / 2; x++) {
@@ -337,6 +343,7 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
           row[image->w - 1 - x] = temp;
         }
       }
+#endif
       uint64_t t_flip_reverse_end = time_get_ns();
       display_image = flipped_image;
 
