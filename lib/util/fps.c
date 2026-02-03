@@ -29,8 +29,8 @@ static void log_lag_event(const char *tracker_name, const char *context, double 
 }
 
 void fps_init(fps_t *tracker, int expected_fps, const char *name) {
-  // Default report interval: 10 seconds
-  fps_init_with_interval(tracker, expected_fps, name, 10 * NS_PER_SEC_INT);
+  // Default report interval: 1 second
+  fps_init_with_interval(tracker, expected_fps, name, 1 * NS_PER_SEC_INT);
 }
 
 void fps_init_with_interval(fps_t *tracker, int expected_fps, const char *name, uint64_t report_interval_ns) {

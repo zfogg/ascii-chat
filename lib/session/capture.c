@@ -266,10 +266,10 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
   uint64_t baseline_sleep_ns = NS_PER_SEC_INT / ctx->target_fps;
   adaptive_sleep_config_t sleep_config = {
       .baseline_sleep_ns = baseline_sleep_ns,
-      .min_speed_multiplier = 1.0, // Constant rate (no slowdown)
-      .max_speed_multiplier = 1.0, // Constant rate (no speedup)
-      .speedup_rate = 0.0,         // No adaptive behavior (constant FPS)
-      .slowdown_rate = 0.0         // No adaptive behavior (constant FPS)
+      .min_speed_multiplier = 0.5, // Allow slowing down to 50% of baseline
+      .max_speed_multiplier = 2.0, // Allow speeding up to 200% of baseline
+      .speedup_rate = 0.1,         // Adapt by 10% per frame if possible
+      .slowdown_rate = 0.1         // Adapt by 10% per frame if possible
   };
   adaptive_sleep_init(&ctx->sleep_state, &sleep_config);
 
