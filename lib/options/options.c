@@ -1471,10 +1471,11 @@ asciichat_error_t options_init(int argc, char **argv) {
   // Clear auto flags if dimensions were explicitly parsed from options
   // This must happen before update_dimensions_to_terminal_size to prevent auto-detected
   // values from overwriting user-specified dimensions
-  if (opts.width != OPT_WIDTH_DEFAULT) {
+  // Note: width=0 and height=0 are special values meaning "auto-detect", so don't clear auto flags for those
+  if (opts.width != OPT_WIDTH_DEFAULT && opts.width != 0) {
     opts.auto_width = false;
   }
-  if (opts.height != OPT_HEIGHT_DEFAULT) {
+  if (opts.height != OPT_HEIGHT_DEFAULT && opts.height != 0) {
     opts.auto_height = false;
   }
 
