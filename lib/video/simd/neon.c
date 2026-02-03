@@ -884,24 +884,16 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
       const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx];
 
       if (use_256color) {
-        // 256-color scalar tail - inline quantization to avoid function call overhead
-        // Grayscale check: avg diff < threshold -> grayscale ramp, else 6x6x6 cube
-        uint8_t avg = (R + G + B) / 3;
-        int gray_diff = abs((int)R - avg) + abs((int)G - avg) + abs((int)B - avg);
-        uint8_t color_idx = (gray_diff < 30) ? (uint8_t)(232 + ((avg * 23) / 255))
-                                             : (uint8_t)(16 + ((R / 51) * 36) + ((G / 51) * 6) + (B / 51));
+        // 256-color scalar tail
+        uint8_t color_idx = rgb_to_256color((uint8_t)R, (uint8_t)G, (uint8_t)B);
 
         int j = x + 1;
-        while (j < width && j - x < 16) { // Limit tail to prevent excessive looping
+        while (j < width) {
           const rgb_pixel_t *q = &row[j];
           uint32_t R2 = q->r, G2 = q->g, B2 = q->b;
           uint8_t Y2 = (uint8_t)((LUMA_RED * R2 + LUMA_GREEN * G2 + LUMA_BLUE * B2 + LUMA_THRESHOLD) >> 8);
           uint8_t luma_idx2 = Y2 >> 2;
-          // Inline color quantization for RLE comparison
-          uint8_t avg2 = (R2 + G2 + B2) / 3;
-          int gray_diff2 = abs((int)R2 - avg2) + abs((int)G2 - avg2) + abs((int)B2 - avg2);
-          uint8_t color_idx2 = (gray_diff2 < 30) ? (uint8_t)(232 + ((avg2 * 23) / 255))
-                                                 : (uint8_t)(16 + ((R2 / 51) * 36) + ((G2 / 51) * 6) + (B2 / 51));
+          uint8_t color_idx2 = rgb_to_256color((uint8_t)R2, (uint8_t)G2, (uint8_t)B2);
           if (luma_idx2 != luma_idx || color_idx2 != color_idx)
             break;
           j++;
