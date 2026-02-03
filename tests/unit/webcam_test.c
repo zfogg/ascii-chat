@@ -39,8 +39,8 @@ Test(webcam, init_success) {
   // Verify we can read a frame with correct dimensions
   image_t *frame = webcam_read();
   cr_assert_not_null(frame, "Should read a frame");
-  cr_assert_eq(frame->w, 1280, "Test pattern should have width 1280");
-  cr_assert_eq(frame->h, 720, "Test pattern should have height 720");
+  cr_assert_eq(frame->w, 320, "Test pattern should have width 320");
+  cr_assert_eq(frame->h, 240, "Test pattern should have height 240");
 
   // Clean up (don't destroy frame - it's owned by webcam module)
   webcam_cleanup();
@@ -55,9 +55,9 @@ typedef struct {
 } webcam_index_test_case_t;
 
 static webcam_index_test_case_t webcam_index_cases[] = {
-    {0, 1280, 720, "Webcam index 0 (test pattern)"},
-    {1, 1280, 720, "Webcam index 1 (test pattern)"},
-    {2, 1280, 720, "Webcam index 2 (test pattern)"},
+    {0, 320, 240, "Webcam index 0 (test pattern)"},
+    {1, 320, 240, "Webcam index 1 (test pattern)"},
+    {2, 320, 240, "Webcam index 2 (test pattern)"},
 };
 
 ParameterizedTestParameters(webcam, init_different_indices) {
@@ -93,8 +93,8 @@ Test(webcam, read_success) {
   image_t *result = webcam_read();
 
   cr_assert_not_null(result, "webcam_read should return test pattern frame");
-  cr_assert_eq(result->w, 1280, "Test pattern width should be 1280");
-  cr_assert_eq(result->h, 720, "Test pattern height should be 720");
+  cr_assert_eq(result->w, 320, "Test pattern width should be 320");
+  cr_assert_eq(result->h, 240, "Test pattern height should be 240");
   cr_assert_not_null(result->pixels, "Frame should have pixel data");
 
   // Verify test pattern has non-zero pixels (check further in, test pattern has grid lines at 0)
@@ -107,8 +107,7 @@ Test(webcam, read_success) {
   }
   cr_assert(has_color, "Test pattern should contain colored pixels");
 
-  // Clean up
-  image_destroy(result);
+  // Clean up (don't destroy result - it's owned by webcam module)
   webcam_cleanup();
 }
 
@@ -118,8 +117,8 @@ Test(webcam, read_not_initialized) {
   image_t *result = webcam_read();
 
   cr_assert_not_null(result, "Test pattern should work without init");
-  cr_assert_eq(result->w, 1280, "Test pattern width should be 1280");
-  cr_assert_eq(result->h, 720, "Test pattern height should be 720");
+  cr_assert_eq(result->w, 320, "Test pattern width should be 320");
+  cr_assert_eq(result->h, 240, "Test pattern height should be 240");
 
   // Don't destroy result - it's owned by webcam module
 }
@@ -162,14 +161,13 @@ Test(webcam, read_without_horizontal_flip) {
   image_t *result = webcam_read();
 
   cr_assert_not_null(result, "Should read frame without flip");
-  cr_assert_eq(result->w, 1280, "Width should be 1280");
-  cr_assert_eq(result->h, 720, "Height should be 720");
+  cr_assert_eq(result->w, 320, "Width should be 320");
+  cr_assert_eq(result->h, 240, "Height should be 240");
 
   // Verify we got a frame with data
   cr_assert_not_null(result->pixels, "Should have pixel data");
 
-  // Clean up
-  image_destroy(result);
+  // Clean up (don't destroy result - it's owned by webcam module)
   webcam_cleanup();
 }
 
@@ -184,8 +182,8 @@ Test(webcam, read_multiple_calls) {
     image_t *result = webcam_read();
 
     cr_assert_not_null(result, "Frame %d should be read successfully", i);
-    cr_assert_eq(result->w, 1280, "Frame %d width should be 1280", i);
-    cr_assert_eq(result->h, 720, "Frame %d height should be 720", i);
+    cr_assert_eq(result->w, 320, "Frame %d width should be 320", i);
+    cr_assert_eq(result->h, 240, "Frame %d height should be 240", i);
 
     // Don't destroy result - it's owned by webcam module
   }
@@ -286,7 +284,7 @@ Test(webcam, read_with_odd_width_flip) {
 }
 
 Test(webcam, read_with_single_pixel_width) {
-  // Test pattern always uses 1280x720, so this test doesn't apply to single pixel width
+  // Test pattern always uses 320x240, so this test doesn't apply to single pixel width
   // But we can test that flip doesn't crash with test pattern
   webcam_init(0);
 
