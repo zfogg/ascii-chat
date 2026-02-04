@@ -879,7 +879,7 @@ static const registry_entry_t g_display_entries[] = {
      NULL,
      false,
      true, // invert: default is true (splash shown), --no-splash makes it false
-     OPTION_MODE_BINARY | OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
      {0}},
     {"no-status-screen",
      '\0',
@@ -896,7 +896,7 @@ static const registry_entry_t g_display_entries[] = {
      NULL,
      false,
      true, // invert: default is true (status screen shown), --no-status-screen makes it false
-     OPTION_MODE_BINARY | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC,
+     OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC,
      {0}},
 
     REGISTRY_TERMINATOR()};
