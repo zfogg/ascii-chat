@@ -124,16 +124,15 @@ This will allow users to customize keyboard shortcuts without rebuilding the app
 .RE
 .PP
 .B Keyboard Layout Support
-.RS
 .PP
 The keyboard input system supports all standard POSIX keyboards and terminal emulators.
 Currently, default keybindings use ASCII characters only for maximum compatibility.
 .PP
 The underlying input system fully supports Unicode, including:
+.RS
 .TP
 .B UTF-8 Support
 Any character in the UTF-8 character set can be used for keyboard shortcuts.
-.PP
 .RE
 
 .SH PALETTES
