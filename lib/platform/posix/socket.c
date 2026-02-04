@@ -18,10 +18,6 @@
 #include <string.h>
 #include <stdbool.h>
 
-#ifdef __linux__
-#include <sys/epoll.h>
-#endif
-
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/util/time.h>
@@ -146,101 +142,17 @@ bool socket_is_valid(socket_t sock) {
   return sock >= 0;
 }
 
-// Poll implementation with platform-specific precision
+// Poll implementation - convert nanoseconds to milliseconds
 int socket_poll(struct pollfd *fds, nfds_t nfds, int64_t timeout_ns) {
-#ifdef __linux__
-  // Try epoll_pwait2() for nanosecond precision (Linux 5.11+)
-  if (nfds > 0) {
-    static int has_epoll_pwait2 = -1; // -1: untested, 0: not available, 1: available
-
-    // Lazy-detect epoll_pwait2 support
-    if (has_epoll_pwait2 == -1) {
-      int epfd = epoll_create1(EPOLL_CLOEXEC);
-      if (epfd >= 0) {
-        struct epoll_event ev;
-        struct timespec ts = {0, 1};
-        int result = epoll_pwait2(epfd, &ev, 1, &ts, NULL);
-        has_epoll_pwait2 = (result >= 0 || errno != EINVAL) ? 1 : 0;
-        close(epfd);
-      } else {
-        has_epoll_pwait2 = 0;
-      }
-    }
-
-    // Use epoll_pwait2 if available
-    if (has_epoll_pwait2 == 1) {
-      int epfd = epoll_create1(EPOLL_CLOEXEC);
-      if (epfd >= 0) {
-        struct epoll_event events[nfds];
-
-        for (nfds_t i = 0; i < nfds; i++) {
-          struct epoll_event ev;
-          ev.events = fds[i].events;
-          ev.data.u64 = i;
-          if (epoll_ctl(epfd, EPOLL_CTL_ADD, fds[i].fd, &ev) < 0) {
-            close(epfd);
-            goto fallback_poll_linux;
-          }
-        }
-
-        struct timespec ts;
-        if (timeout_ns < 0) {
-          ts.tv_sec = -1;
-          ts.tv_nsec = 0;
-        } else {
-          ts.tv_sec = timeout_ns / NS_PER_SEC_INT;
-          ts.tv_nsec = timeout_ns % NS_PER_SEC_INT;
-        }
-
-        int result = epoll_pwait2(epfd, events, (int)nfds, timeout_ns < 0 ? NULL : &ts, NULL);
-
-        if (result > 0) {
-          for (nfds_t i = 0; i < nfds; i++) {
-            fds[i].revents = 0;
-          }
-          for (int i = 0; i < result; i++) {
-            nfds_t idx = (nfds_t)events[i].data.u64;
-            fds[idx].revents = events[i].events;
-          }
-        }
-
-        close(epfd);
-        return result;
-      }
-    }
-  }
-
-fallback_poll_linux:
   // Convert nanoseconds to milliseconds for poll()
+  // poll() operates at millisecond granularity across all POSIX systems
   int timeout_ms;
   if (timeout_ns < 0) {
-    timeout_ms = -1;
+    timeout_ms = -1; // Infinite timeout
   } else {
     timeout_ms = (int)time_ns_to_ms((uint64_t)timeout_ns);
   }
   return poll(fds, nfds, timeout_ms);
-
-#elif defined(__APPLE__)
-  // macOS/BSD: Convert nanoseconds to milliseconds for poll
-  // (kqueue with kevent could provide nanosecond precision but poll is simpler)
-  int timeout_ms;
-  if (timeout_ns < 0) {
-    timeout_ms = -1;
-  } else {
-    timeout_ms = (int)time_ns_to_ms((uint64_t)timeout_ns);
-  }
-  return poll(fds, nfds, timeout_ms);
-
-#else
-  // Other POSIX systems: Convert nanoseconds to milliseconds for poll
-  int timeout_ms;
-  if (timeout_ns < 0) {
-    timeout_ms = -1;
-  } else {
-    timeout_ms = (int)time_ns_to_ms((uint64_t)timeout_ns);
-  }
-  return poll(fds, nfds, timeout_ms);
-#endif
 }
 
 // Get socket fd for use with native APIs
