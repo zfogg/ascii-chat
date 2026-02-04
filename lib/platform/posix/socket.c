@@ -20,6 +20,7 @@
 
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/util/time.h>
 
 // Socket implementation (mostly pass-through for POSIX)
 asciichat_error_t socket_init(void) {
@@ -142,8 +143,16 @@ bool socket_is_valid(socket_t sock) {
 }
 
 // Poll implementation
-int socket_poll(struct pollfd *fds, nfds_t nfds, int timeout) {
-  return poll(fds, nfds, timeout);
+int socket_poll(struct pollfd *fds, nfds_t nfds, int64_t timeout_ns) {
+  // Convert nanoseconds to milliseconds for poll()
+  // poll() timeout is in milliseconds, or -1 for infinite
+  int timeout_ms;
+  if (timeout_ns < 0) {
+    timeout_ms = -1; // Infinite timeout
+  } else {
+    timeout_ms = (int)time_ns_to_ms((uint64_t)timeout_ns);
+  }
+  return poll(fds, nfds, timeout_ms);
 }
 
 // Get socket fd for use with native APIs

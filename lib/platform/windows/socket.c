@@ -14,6 +14,7 @@
 
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/socket.h>
+#include <ascii-chat/util/time.h>
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -184,13 +185,22 @@ bool socket_is_valid(socket_t sock) {
 }
 
 // Poll implementation using WSAPoll (available on Windows Vista+)
-int socket_poll(struct pollfd *fds, nfds_t nfds, int timeout) {
+int socket_poll(struct pollfd *fds, nfds_t nfds, int64_t timeout_ns) {
   // WSAPoll is the Windows equivalent of poll()
   // It's available on Windows Vista and later
   // The pollfd structure is compatible between poll() and WSAPoll()
 
+  // Convert nanoseconds to milliseconds for WSAPoll
+  // WSAPoll timeout is in milliseconds, or -1 for infinite
+  int timeout_ms;
+  if (timeout_ns < 0) {
+    timeout_ms = -1; // Infinite timeout
+  } else {
+    timeout_ms = (int)time_ns_to_ms((uint64_t)timeout_ns);
+  }
+
   // WSAPoll takes ULONG for nfds parameter, cast our nfds_t
-  int result = WSAPoll((LPWSAPOLLFD)fds, (ULONG)nfds, timeout);
+  int result = WSAPoll((LPWSAPOLLFD)fds, (ULONG)nfds, timeout_ms);
 
   if (result == SOCKET_ERROR) {
     // WSAPoll returns SOCKET_ERROR (-1) on error, same as poll()
