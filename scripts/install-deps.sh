@@ -130,9 +130,10 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       libprotobuf-c-dev \
       libavformat-dev libavcodec-dev libavutil-dev libswscale-dev libswresample-dev \
       libabsl-dev \
-      libomp-dev libomp-20-dev \
+      libomp-20-dev \
       doxygen \
-      dpkg-dev rpm
+      dpkg-dev rpm \
+      yt-dlp
 
     # Try LLVM versions in order from newest to oldest
     LLVM_VERSIONS="21 20 19 18"
@@ -268,18 +269,6 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     which cmake
     cmake --version | head -1
 
-    # Install yt-dlp for YouTube support
-    echo ""
-    echo "Installing yt-dlp for YouTube URL support..."
-    if command -v pip3 &>/dev/null; then
-      pip3 install --user --quiet --upgrade yt-dlp 2>/dev/null || true
-    elif command -v pip &>/dev/null; then
-      pip install --user --quiet --upgrade yt-dlp 2>/dev/null || true
-    else
-      echo "WARNING: pip not found, skipping yt-dlp installation"
-      echo "Install it manually with: pip3 install yt-dlp"
-    fi
-
   elif command -v yum &>/dev/null; then
     echo "Detected yum package manager"
     echo "Installing dependencies..."
@@ -300,17 +289,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       doxygen \
       rpm-build
 
-    # Install yt-dlp for YouTube support
-    echo ""
-    echo "Installing yt-dlp for YouTube URL support..."
-    if command -v pip3 &>/dev/null; then
-      pip3 install --user --quiet --upgrade yt-dlp 2>/dev/null || true
-    elif command -v pip &>/dev/null; then
-      pip install --user --quiet --upgrade yt-dlp 2>/dev/null || true
-    else
-      echo "WARNING: pip not found, skipping yt-dlp installation"
-      echo "Install it manually with: pip3 install yt-dlp"
-    fi
+    sudo python3 -m pip install -U "yt-dlp[default]"
 
   elif command -v pacman &>/dev/null; then
     echo "Detected pacman package manager"
