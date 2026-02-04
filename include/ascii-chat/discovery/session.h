@@ -42,7 +42,7 @@ typedef struct {
   uint8_t participant_id[16]; ///< Participant proposing new host
   uint8_t nat_quality_tier;   ///< NAT tier for this participant
   uint16_t upload_kbps;       ///< Upload bandwidth
-  uint16_t rtt_to_acds_ms;    ///< Latency to ACDS
+  uint32_t rtt_to_acds_ns;    ///< Latency to ACDS in nanoseconds
   uint8_t connection_type;    ///< How they can be reached
 } host_lost_candidate_t;
 

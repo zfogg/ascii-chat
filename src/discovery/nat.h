@@ -31,15 +31,15 @@ typedef struct {
   uint16_t upnp_mapped_port; ///< Mapped external port (if upnp_available)
   acip_nat_type_t nat_type;  ///< NAT classification
   bool lan_reachable;        ///< Same subnet as peer
-  uint32_t stun_latency_ms;  ///< RTT to STUN server
+  uint64_t stun_latency_ns;  ///< RTT to STUN server in nanoseconds
   char public_address[64];   ///< Public IP address
   uint16_t public_port;      ///< Public port
 
   // Bandwidth measurements
   uint32_t upload_kbps;    ///< Upload bandwidth in Kbps
   uint32_t download_kbps;  ///< Download bandwidth in Kbps
-  uint16_t rtt_to_acds_ms; ///< Latency to ACDS
-  uint8_t jitter_ms;       ///< Packet timing variance
+  uint64_t rtt_to_acds_ns; ///< Latency to ACDS in nanoseconds
+  uint64_t jitter_ns;      ///< Packet timing variance in nanoseconds
   uint8_t packet_loss_pct; ///< Packet loss percentage
 
   // ICE candidate summary

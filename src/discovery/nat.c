@@ -87,12 +87,12 @@ int nat_compare_quality(const nat_quality_t *ours, const nat_quality_t *theirs, 
   }
 
   // Same bandwidth - latency is tiebreaker
-  if (ours->rtt_to_acds_ms < theirs->rtt_to_acds_ms) {
-    log_debug("NAT compare: we win by latency (%u vs %u ms)", ours->rtt_to_acds_ms, theirs->rtt_to_acds_ms);
+  if (ours->rtt_to_acds_ns < theirs->rtt_to_acds_ns) {
+    log_debug("NAT compare: we win by latency (%lu ns vs %lu ns)", ours->rtt_to_acds_ns, theirs->rtt_to_acds_ns);
     return -1;
   }
-  if (ours->rtt_to_acds_ms > theirs->rtt_to_acds_ms) {
-    log_debug("NAT compare: they win by latency (%u vs %u ms)", theirs->rtt_to_acds_ms, ours->rtt_to_acds_ms);
+  if (ours->rtt_to_acds_ns > theirs->rtt_to_acds_ns) {
+    log_debug("NAT compare: they win by latency (%lu ns vs %lu ns)", theirs->rtt_to_acds_ns, ours->rtt_to_acds_ns);
     return 1;
   }
 
@@ -267,7 +267,7 @@ static asciichat_error_t nat_stun_probe(nat_quality_t *quality, const char *stun
 
   SAFE_STRNCPY(quality->public_address, reflexive_addr, sizeof(quality->public_address));
   quality->public_port = reflexive_port;
-  quality->stun_latency_ms = rtt_ms;
+  quality->stun_latency_ns = (uint64_t)rtt_ms * NS_PER_MS_INT;
 
   log_info("STUN probe successful: reflexive_address=%s:%u, rtt=%u ms", reflexive_addr, reflexive_port, rtt_ms);
 
@@ -363,14 +363,14 @@ asciichat_error_t nat_measure_bandwidth(nat_quality_t *quality, socket_t acds_so
   // 3. ACDS responds with measured bandwidth
   // For now, use reasonable defaults
 
-  quality->upload_kbps = 10000;   // Assume 10 Mbps upload
-  quality->download_kbps = 50000; // Assume 50 Mbps download
-  quality->rtt_to_acds_ms = 50;   // Assume 50ms RTT
-  quality->jitter_ms = 5;
+  quality->upload_kbps = 10000;                 // Assume 10 Mbps upload
+  quality->download_kbps = 50000;               // Assume 50 Mbps download
+  quality->rtt_to_acds_ns = 50 * NS_PER_MS_INT; // Assume 50ms RTT
+  quality->jitter_ns = 5 * NS_PER_MS_INT;
   quality->packet_loss_pct = 0;
 
-  log_debug("Bandwidth measurement: upload=%u kbps, download=%u kbps, rtt=%u ms", quality->upload_kbps,
-            quality->download_kbps, quality->rtt_to_acds_ms);
+  log_debug("Bandwidth measurement: upload=%u kbps, download=%u kbps, rtt=%lu ns", quality->upload_kbps,
+            quality->download_kbps, quality->rtt_to_acds_ns);
 
   return ASCIICHAT_OK;
 }
@@ -393,12 +393,12 @@ void nat_quality_to_acip(const nat_quality_t *quality, const uint8_t session_id[
   out->upnp_mapped_port[1] = (uint8_t)(quality->upnp_mapped_port & 0xFF);
   out->stun_nat_type = (uint8_t)quality->nat_type;
   out->lan_reachable = quality->lan_reachable ? 1 : 0;
-  out->stun_latency_ms = quality->stun_latency_ms;
+  out->stun_latency_ns = quality->stun_latency_ns;
 
   out->upload_kbps = quality->upload_kbps;
   out->download_kbps = quality->download_kbps;
-  out->rtt_to_acds_ms = quality->rtt_to_acds_ms;
-  out->jitter_ms = quality->jitter_ms;
+  out->rtt_to_acds_ns = quality->rtt_to_acds_ns;
+  out->jitter_ns = quality->jitter_ns;
   out->packet_loss_pct = quality->packet_loss_pct;
 
   SAFE_STRNCPY(out->public_address, quality->public_address, sizeof(out->public_address));
@@ -424,12 +424,12 @@ void nat_quality_from_acip(const acip_nat_quality_t *acip, nat_quality_t *out) {
   out->upnp_mapped_port = ((uint16_t)acip->upnp_mapped_port[0] << 8) | acip->upnp_mapped_port[1];
   out->nat_type = (acip_nat_type_t)acip->stun_nat_type;
   out->lan_reachable = acip->lan_reachable != 0;
-  out->stun_latency_ms = acip->stun_latency_ms;
+  out->stun_latency_ns = acip->stun_latency_ns;
 
   out->upload_kbps = acip->upload_kbps;
   out->download_kbps = acip->download_kbps;
-  out->rtt_to_acds_ms = acip->rtt_to_acds_ms;
-  out->jitter_ms = acip->jitter_ms;
+  out->rtt_to_acds_ns = acip->rtt_to_acds_ns;
+  out->jitter_ns = acip->jitter_ns;
   out->packet_loss_pct = acip->packet_loss_pct;
 
   SAFE_STRNCPY(out->public_address, acip->public_address, sizeof(out->public_address));

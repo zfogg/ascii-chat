@@ -623,13 +623,13 @@ typedef struct __attribute__((packed)) {
   uint8_t upnp_mapped_port[2]; ///< Port we mapped (network byte order)
   uint8_t stun_nat_type;       ///< acip_nat_type_t classification
   uint8_t lan_reachable;       ///< Same subnet as peer (mDNS/ARP)
-  uint32_t stun_latency_ms;    ///< RTT to STUN server
+  uint32_t stun_latency_ns;    ///< RTT to STUN server in nanoseconds
 
   // Bandwidth measurements (critical for host selection)
   uint32_t upload_kbps;    ///< Upload bandwidth in Kbps (from ACDS test)
   uint32_t download_kbps;  ///< Download bandwidth in Kbps (informational)
-  uint16_t rtt_to_acds_ms; ///< Latency to ACDS server
-  uint8_t jitter_ms;       ///< Packet timing variance (0-255ms)
+  uint32_t rtt_to_acds_ns; ///< Latency to ACDS server in nanoseconds
+  uint32_t jitter_ns;      ///< Packet timing variance in nanoseconds
   uint8_t packet_loss_pct; ///< Packet loss percentage (0-100)
 
   // Connection info
