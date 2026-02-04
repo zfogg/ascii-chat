@@ -7,6 +7,7 @@
 #ifndef _WIN32
 
 #include <ascii-chat/platform/api.h>
+#include <ascii-chat/platform/rwlock.h>
 #include <pthread.h>
 
 /**
