@@ -25,9 +25,9 @@ static asciichat_error_t sqlite_check(void *backend_data, const char *ip_address
   // Use provided config or default
   const rate_limit_config_t *limit = config ? config : &DEFAULT_RATE_LIMITS[event_type];
 
-  // Get current time
-  uint64_t now_ms = rate_limiter_get_time_ms();
-  uint64_t window_start_ms = now_ms - ((uint64_t)limit->window_secs * NS_PER_US_INT);
+  // Get current time in nanoseconds
+  uint64_t now_ns = time_get_realtime_ns();
+  uint64_t window_start_ns = now_ns - ((uint64_t)limit->window_secs * NS_PER_SEC_INT);
 
   // Count events in the time window
   const char *sql = "SELECT COUNT(*) FROM rate_events "
@@ -41,7 +41,7 @@ static asciichat_error_t sqlite_check(void *backend_data, const char *ip_address
 
   sqlite3_bind_text(stmt, 1, ip_address, -1, SQLITE_STATIC);
   sqlite3_bind_text(stmt, 2, rate_limiter_event_type_string(event_type), -1, SQLITE_STATIC);
-  sqlite3_bind_int64(stmt, 3, (sqlite3_int64)window_start_ms);
+  sqlite3_bind_int64(stmt, 3, (sqlite3_int64)window_start_ns);
 
   rc = sqlite3_step(stmt);
   if (rc != SQLITE_ROW) {
@@ -66,8 +66,8 @@ static asciichat_error_t sqlite_check(void *backend_data, const char *ip_address
 static asciichat_error_t sqlite_record(void *backend_data, const char *ip_address, rate_event_type_t event_type) {
   sqlite_backend_t *backend = (sqlite_backend_t *)backend_data;
 
-  // Get current time
-  uint64_t now_ms = rate_limiter_get_time_ms();
+  // Get current time in nanoseconds
+  uint64_t now_ns = time_get_realtime_ns();
 
   // Insert event
   const char *sql = "INSERT INTO rate_events (ip_address, event_type, timestamp) VALUES (?, ?, ?)";
@@ -80,7 +80,7 @@ static asciichat_error_t sqlite_record(void *backend_data, const char *ip_addres
 
   sqlite3_bind_text(stmt, 1, ip_address, -1, SQLITE_STATIC);
   sqlite3_bind_text(stmt, 2, rate_limiter_event_type_string(event_type), -1, SQLITE_STATIC);
-  sqlite3_bind_int64(stmt, 3, (sqlite3_int64)now_ms);
+  sqlite3_bind_int64(stmt, 3, (sqlite3_int64)now_ns);
 
   rc = sqlite3_step(stmt);
   sqlite3_finalize(stmt);
@@ -101,9 +101,9 @@ static asciichat_error_t sqlite_cleanup(void *backend_data, uint32_t max_age_sec
     max_age_secs = 3600;
   }
 
-  // Calculate cutoff time
-  uint64_t now_ms = rate_limiter_get_time_ms();
-  uint64_t cutoff_ms = now_ms - ((uint64_t)max_age_secs * NS_PER_US_INT);
+  // Calculate cutoff time in nanoseconds
+  uint64_t now_ns = time_get_realtime_ns();
+  uint64_t cutoff_ns = now_ns - ((uint64_t)max_age_secs * NS_PER_SEC_INT);
 
   // Delete old events
   const char *sql = "DELETE FROM rate_events WHERE timestamp < ?";
@@ -114,7 +114,7 @@ static asciichat_error_t sqlite_cleanup(void *backend_data, uint32_t max_age_sec
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare rate limit cleanup: %s", sqlite3_errmsg(backend->db));
   }
 
-  sqlite3_bind_int64(stmt, 1, (sqlite3_int64)cutoff_ms);
+  sqlite3_bind_int64(stmt, 1, (sqlite3_int64)cutoff_ns);
 
   rc = sqlite3_step(stmt);
   int changes = sqlite3_changes(backend->db);

@@ -73,12 +73,12 @@ static uint32_t count_events_in_window(rate_event_t *event, uint64_t window_star
 /**
  * @brief Remove events older than cutoff time
  */
-static void cleanup_old_events(rate_event_t *event, uint64_t cutoff_ms) {
+static void cleanup_old_events(rate_event_t *event, uint64_t cutoff_ns) {
   // Compact array by removing old timestamps
   size_t write_idx = 0;
 
   for (size_t read_idx = 0; read_idx < event->count; read_idx++) {
-    if (event->timestamps[read_idx] >= cutoff_ms) {
+    if (event->timestamps[read_idx] >= cutoff_ns) {
       event->timestamps[write_idx++] = event->timestamps[read_idx];
     }
   }
@@ -94,9 +94,9 @@ static asciichat_error_t memory_check(void *backend_data, const char *ip_address
   // Use provided config or default
   const rate_limit_config_t *limit = config ? config : &DEFAULT_RATE_LIMITS[event_type];
 
-  // Get current time
-  uint64_t now_ms = rate_limiter_get_time_ms();
-  uint64_t window_start_ms = now_ms - ((uint64_t)limit->window_secs * NS_PER_US_INT);
+  // Get current time in nanoseconds
+  uint64_t now_ns = time_get_realtime_ns();
+  uint64_t window_start_ns = now_ns - ((uint64_t)limit->window_secs * NS_PER_SEC_INT);
 
   // Create hash key
   char key[256];
@@ -112,7 +112,7 @@ static asciichat_error_t memory_check(void *backend_data, const char *ip_address
 
   if (event) {
     // Count events in window
-    event_count = count_events_in_window(event, window_start_ms);
+    event_count = count_events_in_window(event, window_start_ns);
   }
 
   mutex_unlock(&backend->lock);
@@ -131,8 +131,8 @@ static asciichat_error_t memory_check(void *backend_data, const char *ip_address
 static asciichat_error_t memory_record(void *backend_data, const char *ip_address, rate_event_type_t event_type) {
   memory_backend_t *backend = (memory_backend_t *)backend_data;
 
-  // Get current time
-  uint64_t now_ms = rate_limiter_get_time_ms();
+  // Get current time in nanoseconds
+  uint64_t now_ns = time_get_realtime_ns();
 
   // Create hash key
   char key[256];
@@ -167,8 +167,8 @@ static asciichat_error_t memory_record(void *backend_data, const char *ip_addres
     HASH_ADD_STR(backend->events, key, event);
   }
 
-  // Add timestamp
-  add_timestamp(event, now_ms);
+  // Add timestamp (in nanoseconds)
+  add_timestamp(event, now_ns);
 
   mutex_unlock(&backend->lock);
 
@@ -184,9 +184,9 @@ static asciichat_error_t memory_cleanup(void *backend_data, uint32_t max_age_sec
     max_age_secs = 3600;
   }
 
-  // Calculate cutoff time
-  uint64_t now_ms = rate_limiter_get_time_ms();
-  uint64_t cutoff_ms = now_ms - ((uint64_t)max_age_secs * NS_PER_US_INT);
+  // Calculate cutoff time in nanoseconds
+  uint64_t now_ns = time_get_realtime_ns();
+  uint64_t cutoff_ns = now_ns - ((uint64_t)max_age_secs * NS_PER_SEC_INT);
 
   mutex_lock(&backend->lock);
 
@@ -197,7 +197,7 @@ static asciichat_error_t memory_cleanup(void *backend_data, uint32_t max_age_sec
     size_t before_count = event->count;
 
     // Remove old timestamps
-    cleanup_old_events(event, cutoff_ms);
+    cleanup_old_events(event, cutoff_ns);
 
     total_removed += (before_count - event->count);
 

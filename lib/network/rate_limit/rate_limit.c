@@ -171,14 +171,6 @@ asciichat_error_t rate_limiter_cleanup(rate_limiter_t *limiter, uint32_t max_age
 // ============================================================================
 
 /**
- * @brief Get current time in milliseconds
- */
-uint64_t rate_limiter_get_time_ms(void) {
-  uint64_t current_time_ns = time_get_realtime_ns();
-  return time_ns_to_ms(current_time_ns);
-}
-
-/**
  * @brief Get event type string for logging
  */
 const char *rate_limiter_event_type_string(rate_event_type_t event_type) {
