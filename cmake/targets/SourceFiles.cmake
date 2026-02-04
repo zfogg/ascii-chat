@@ -330,7 +330,6 @@ set(NETWORK_SRCS
     lib/network/mdns/mdns.c
     lib/network/mdns/discovery_tui.c
     lib/network/mdns/discovery.c
-    deps/ascii-chat-deps/mdns/mdns.c
 )
 
 # ice_selected_pair.cpp: Uses standard C++26 like the rest of the project
