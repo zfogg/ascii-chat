@@ -237,20 +237,36 @@ include(${CMAKE_SOURCE_DIR}/cmake/targets/SourceFiles.cmake)
 # Create output directory for embedded resources
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/generated/embedded")
 
-# Use absolute paths to ensure they're found regardless of working directory
+# Process template to substitute version variables (consistent for debug and release)
+string(SUBSTRING "${PROJECT_VERSION_DATE}" 0 4 COPYRIGHT_YEAR_END)
 set(MANPAGE_TEMPLATE_SOURCE "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in")
+set(MANPAGE_TEMPLATE_CONFIGURED "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1.in")
 set(MANPAGE_TEMPLATE_EMBEDDED "${CMAKE_BINARY_DIR}/generated/embedded/manpage_template.c")
 
-# Embed man page template
+# Step 1: Configure template at build time (before embedding)
+add_custom_command(
+    OUTPUT "${MANPAGE_TEMPLATE_CONFIGURED}"
+    COMMAND ${CMAKE_COMMAND}
+        -D "PROJECT_VERSION=${PROJECT_VERSION}"
+        -D "PROJECT_VERSION_DATE=${PROJECT_VERSION_DATE}"
+        -D "CMAKE_SOURCE_DIR=${CMAKE_SOURCE_DIR}"
+        -D "CMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}"
+        -P "${CMAKE_SOURCE_DIR}/cmake/utils/ConfigureTemplate.cmake"
+    DEPENDS "${MANPAGE_TEMPLATE_SOURCE}"
+    COMMENT "Configuring man page template"
+    VERBATIM
+)
+
+# Step 2: Embed configured template using existing EmbedTextFile.cmake
 add_custom_command(
     OUTPUT "${MANPAGE_TEMPLATE_EMBEDDED}"
     COMMAND ${CMAKE_COMMAND}
-        -D "INPUT_FILE=${MANPAGE_TEMPLATE_SOURCE}"
+        -D "INPUT_FILE=${MANPAGE_TEMPLATE_CONFIGURED}"
         -D "OUTPUT_FILE=${MANPAGE_TEMPLATE_EMBEDDED}"
         -D "VARIABLE_NAME=embedded_manpage_template"
         -P "${CMAKE_SOURCE_DIR}/cmake/utils/EmbedTextFile.cmake"
-    DEPENDS "${MANPAGE_TEMPLATE_SOURCE}"
-    COMMENT "Embedding man page template"
+    DEPENDS "${MANPAGE_TEMPLATE_CONFIGURED}"
+    COMMENT "Embedding configured man page template"
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
     VERBATIM
 )
@@ -267,9 +283,10 @@ set_source_files_properties(
 )
 
 # Define resource paths for development builds
+# Point to BINARY_DIR where configured templates are located (not SOURCE_DIR raw templates)
 # These are used by embedded_resources.c to locate resources when running from the build directory
 add_compile_definitions(
-    ASCIICHAT_RESOURCE_DIR="${CMAKE_SOURCE_DIR}"
+    ASCIICHAT_RESOURCE_DIR="${CMAKE_BINARY_DIR}"
 )
 
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Defer.cmake)
