@@ -467,8 +467,28 @@ typedef enum {
   /** @brief Participant left notification (ACDS -> Remaining Participants) */
   PACKET_TYPE_ACIP_PARTICIPANT_LEFT = 6068,
 
+  // ============================================================================
+  // Ring Consensus Protocol (6100-6104)
+  // ============================================================================
+  // Used for collecting statistics and coordinating ring-based consensus
+
+  /** @brief Ring member list announcement (ACDS -> All Participants) */
+  PACKET_TYPE_RING_MEMBERS = 6100,
+  /** @brief Start statistics collection phase (Coordinator -> All Participants) */
+  PACKET_TYPE_STATS_COLLECTION_START = 6101,
+  /** @brief Statistics update during collection phase (Participant -> Next Participant) */
+  PACKET_TYPE_STATS_UPDATE = 6102,
+  /** @brief Final election result (Quorum Leader -> All Participants) */
+  PACKET_TYPE_RING_ELECTION_RESULT = 6103,
+  /** @brief Acknowledgment of statistics update (Participant -> Sender) */
+  PACKET_TYPE_STATS_ACK = 6104,
+
+  // ============================================================================
+  // Discovery Service Keepalive (6190-6199)
+  // ============================================================================
+
   /** @brief Discovery server ping (keepalive) */
-  PACKET_TYPE_ACIP_DISCOVERY_PING = 6100,
+  PACKET_TYPE_ACIP_DISCOVERY_PING = 6190,
   /** @brief Generic error response (Discovery Server -> Client) */
   PACKET_TYPE_ACIP_ERROR = 6199
 } packet_type_t;
