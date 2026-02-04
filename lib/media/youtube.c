@@ -315,13 +315,9 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
   // Debug: log the command being executed
   log_debug("Executing: %s", command);
 
-  // Suppress yt-dlp subprocess stderr output
-  platform_stderr_redirect_handle_t stderr_handle = platform_stderr_redirect_to_null();
-
-  // Execute yt-dlp and capture URL output
+  // Execute yt-dlp and capture URL output (stderr is shown in debug builds for troubleshooting)
   FILE *pipe = NULL;
   if (platform_popen(command, "r", &pipe) != ASCIICHAT_OK || !pipe) {
-    platform_stderr_restore(stderr_handle);
     SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "Failed to execute yt-dlp subprocess");
     return ERROR_YOUTUBE_EXTRACT_FAILED;
   }
@@ -336,7 +332,6 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
   url_buffer[url_size] = '\0';
 
   int pclose_ret = (platform_pclose(&pipe) == ASCIICHAT_OK) ? 0 : -1;
-  platform_stderr_restore(stderr_handle);
   if (pclose_ret != 0) {
     // Cache the failure so we don't retry this URL
     youtube_cache_set(youtube_url, NULL);
