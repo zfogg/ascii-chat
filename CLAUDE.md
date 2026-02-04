@@ -673,6 +673,46 @@ The ACDS (ascii-chat Discovery Service) is a separate binary for running the dis
 ./build/bin/ascii-chat --log-file /tmp/client-test.log client --address example.com
 ```
 
+### URLs
+
+ascii-chat accepts URLs in several contexts (mirror mode `--url`, client options, etc.). URLs can be specified in two formats:
+
+**With explicit scheme (recommended):**
+```bash
+./build/bin/ascii-chat mirror --url https://example.com/video.mp4
+./build/bin/ascii-chat mirror --url http://192.168.1.100:8080/stream.m3u8
+```
+
+**Without scheme (bare IP or hostname):**
+```bash
+./build/bin/ascii-chat mirror --url example.com/video.mp4
+./build/bin/ascii-chat mirror --url 192.168.1.100:8080/stream.m3u8
+./build/bin/ascii-chat mirror --url localhost:8888/file.mp4
+```
+
+When a bare IP address or hostname is provided **without a scheme**, ascii-chat automatically defaults to **HTTP on port 80**. If you need:
+- **HTTPS**: Explicitly prefix with `https://`
+- **Custom port**: Include the port (e.g., `example.com:3000` uses HTTP on port 3000)
+- **Specific scheme**: Always use the explicit scheme to ensure proper protocol selection
+
+**Examples:**
+```bash
+# HTTP on port 80 (implicit)
+./build/bin/ascii-chat mirror --url example.com/video.mp4
+
+# HTTPS on port 443 (explicit)
+./build/bin/ascii-chat mirror --url https://example.com/video.mp4
+
+# HTTP on custom port (implicit)
+./build/bin/ascii-chat mirror --url example.com:8080/video.mp4
+
+# HTTPS on custom port (explicit)
+./build/bin/ascii-chat mirror --url https://example.com:8443/video.mp4
+
+# Bare IP defaults to HTTP
+./build/bin/ascii-chat mirror --url 192.168.1.100:3000/stream.m3u8  # HTTP on port 3000
+```
+
 ## Testing Framework
 
 **IMPORTANT**: Use ctest for running tests!
