@@ -11,6 +11,7 @@
  */
 
 #include <ascii-chat/tooling/query/query.h>
+#include <ascii-chat/common.h>
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -34,10 +35,10 @@
 #include <unistd.h>
 #endif
 
-// Timeouts for HTTP health check
-#define HEALTH_CHECK_TIMEOUT_MS 10000
-#define HEALTH_CHECK_INTERVAL_MS 100
-#define HEALTH_CHECK_CONNECT_TIMEOUT_MS 500
+// Timeouts for HTTP health check (in nanoseconds)
+#define HEALTH_CHECK_TIMEOUT_NS (10000LL * NS_PER_MS_INT)
+#define HEALTH_CHECK_INTERVAL_NS (100LL * NS_PER_MS_INT)
+#define HEALTH_CHECK_CONNECT_TIMEOUT_NS (500LL * NS_PER_MS_INT)
 
 // Global state for the query tool runtime
 static bool g_query_active = false;
@@ -117,14 +118,14 @@ static bool try_http_connect(int port, int timeout_ms) {
 /**
  * @brief Wait for the HTTP server to become ready
  * @param port Port number to check
- * @param timeout_ms Total timeout in milliseconds
+ * @param timeout_ns Total timeout in nanoseconds
  * @return true if server became ready, false on timeout
  */
-static bool wait_for_http_ready(int port, int timeout_ms) {
-  int elapsed = 0;
+static bool wait_for_http_ready(int port, uint64_t timeout_ns) {
+  uint64_t elapsed_ns = 0;
 
-  while (elapsed < timeout_ms) {
-    if (try_http_connect(port, HEALTH_CHECK_CONNECT_TIMEOUT_MS)) {
+  while (elapsed_ns < timeout_ns) {
+    if (try_http_connect(port, (int)(HEALTH_CHECK_CONNECT_TIMEOUT_NS / NS_PER_MS_INT))) {
       return true;
     }
 
@@ -151,13 +152,9 @@ static bool wait_for_http_ready(int port, int timeout_ms) {
     }
 #endif
 
-// Sleep between checks
-#ifdef _WIN32
-    Sleep(HEALTH_CHECK_INTERVAL_MS);
-#else
-    usleep(HEALTH_CHECK_INTERVAL_MS * 1000);
-#endif
-    elapsed += HEALTH_CHECK_INTERVAL_MS;
+    // Sleep between checks
+    platform_sleep_ns(HEALTH_CHECK_INTERVAL_NS);
+    elapsed_ns += HEALTH_CHECK_INTERVAL_NS;
   }
 
   return false;
@@ -301,7 +298,7 @@ int query_init(int preferred_port) {
 
   // Wait for the HTTP server to become ready
   fprintf(stderr, "[query] Waiting for HTTP server to be ready...\n");
-  if (!wait_for_http_ready(preferred_port, HEALTH_CHECK_TIMEOUT_MS)) {
+  if (!wait_for_http_ready(preferred_port, HEALTH_CHECK_TIMEOUT_NS)) {
     fprintf(stderr, "[query] Timeout waiting for query server to start\n");
     query_shutdown();
     return -1;

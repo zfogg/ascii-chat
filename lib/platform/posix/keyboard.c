@@ -16,6 +16,13 @@
 #include <string.h>
 
 /* ============================================================================
+ * Constants
+ * ============================================================================ */
+
+// Timeout for escape sequence detection (in nanoseconds)
+#define KEYBOARD_ESCAPE_TIMEOUT_NS (50LL * NS_PER_MS_INT)
+
+/* ============================================================================
  * Static State
  * ============================================================================ */
 
@@ -150,7 +157,8 @@ keyboard_key_t keyboard_read_nonblocking(void) {
     FD_ZERO(&readfds);
     FD_SET(STDIN_FILENO, &readfds);
     timeout.tv_sec = 0;
-    timeout.tv_usec = 50000; // 50ms timeout for escape sequence
+    timeout.tv_usec =
+        (suseconds_t)((KEYBOARD_ESCAPE_TIMEOUT_NS % NS_PER_SEC_INT) / 1000); // 50ms escape sequence timeout
 
     if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
       unsigned char ch2;

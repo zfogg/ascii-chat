@@ -23,6 +23,15 @@
 #endif
 
 /**
+ * @name Real-time Thread Timing Constants
+ * @brief macOS thread scheduling timing (in mach time units, approximately nanoseconds)
+ * @{
+ */
+#define THREAD_COMPUTATION_TIME 5000 // ~5ms computation time
+#define THREAD_CONSTRAINT_TIME 10000 // ~10ms constraint time
+/** @} */
+
+/**
  * @brief Create a new thread
  * @param thread Pointer to thread structure to initialize
  * @param func Thread function to execute
@@ -212,9 +221,9 @@ asciichat_error_t asciichat_thread_set_realtime_priority(void) {
   // macOS: Use thread_policy_set for real-time scheduling
   thread_time_constraint_policy_data_t policy;
   policy.period = 0;
-  policy.computation = 5000; // 5ms computation time
-  policy.constraint = 10000; // 10ms constraint
-  policy.preemptible = 0;    // Not preemptible
+  policy.computation = THREAD_COMPUTATION_TIME; // ~5ms computation time
+  policy.constraint = THREAD_CONSTRAINT_TIME;   // ~10ms constraint time
+  policy.preemptible = 0;                       // Not preemptible
 
   kern_return_t result = thread_policy_set(mach_thread_self(), THREAD_TIME_CONSTRAINT_POLICY, (thread_policy_t)&policy,
                                            THREAD_TIME_CONSTRAINT_POLICY_COUNT);

@@ -399,7 +399,7 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
       return NULL;
     }
 
-    usleep(1000); // 1ms
+    platform_sleep_ns(1000 * 1000); // 1ms
   }
 
   // Validate buffer index to prevent crashes
