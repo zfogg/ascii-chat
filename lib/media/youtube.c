@@ -292,7 +292,7 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
                         "--user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, "
                         "like Gecko) Chrome/120.0.0.0 Safari/537.36' "
                         "--cookies-from-browser '%s' "
-                        "-f 'b' -O '%%(url)s' '%s' 2>&1",
+                        "-f 'b' -O '%%(url)s' '%s'",
                         cookies_value, youtube_url);
     } else {
       // No browser specified - use without cookies for better compatibility
@@ -305,7 +305,7 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
                         "--user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, "
                         "like Gecko) Chrome/120.0.0.0 Safari/537.36' "
                         "--no-cookies-from-browser "
-                        "-f 'b' -O '%%(url)s' '%s' 2>&1",
+                        "-f 'b' -O '%%(url)s' '%s'",
                         youtube_url);
     }
   }
@@ -337,11 +337,16 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
   while ((c = fgetc(pipe)) != EOF && ytdlp_output_len < sizeof(full_output) - 1) {
     full_output[ytdlp_output_len++] = (char)c;
 
-    // Track the last line (potential URL)
-    if (c == '\n') {
-      url_size = 0; // Reset for next line
-    } else if (url_size < sizeof(url_buffer) - 1) {
+    // Track current line - if it starts with http, it's the URL
+    if ((url_size == 0 && c == 'h') || (url_size > 0 && c != '\n' && url_size < sizeof(url_buffer) - 1)) {
+      // Start of potential URL or continue building it
       url_buffer[url_size++] = (char)c;
+    } else if (c == '\n' && url_size > 0 && url_buffer[0] == 'h') {
+      // Found complete line starting with 'h' (likely the URL), stop here
+      break;
+    } else if (c == '\n') {
+      // Newline and we weren't tracking URL yet, reset
+      url_size = 0;
     }
   }
   full_output[ytdlp_output_len] = '\0';
