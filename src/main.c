@@ -261,6 +261,11 @@ int main(int argc, char *argv[]) {
   if (init_result != ASCIICHAT_OK) {
     return init_result;
   }
+
+  // Register cleanup of shared subsystems to run on normal exit
+  // Library code doesn't call atexit() - the application is responsible
+  (void)atexit(asciichat_shared_shutdown);
+
   const char *final_log_file = (opts->log_file[0] != '\0') ? opts->log_file : "ascii-chat.log";
   log_warn("Logging initialized to %s", final_log_file);
 

@@ -111,6 +111,9 @@ void platform_cleanup(void) {
   // Clean up symbol cache
   symbol_cache_cleanup();
 
+  // Clean up Windows DbgHelp symbol resolution
+  cleanup_windows_symbols();
+
   socket_cleanup();
 
   // Restore original Windows timer resolution
@@ -456,8 +459,8 @@ int platform_backtrace(void **buffer, int size) {
 static atomic_bool g_symbols_initialized = false;
 static HANDLE g_process_handle = NULL;
 
-// Forward declaration
-static void cleanup_windows_symbols(void);
+// Forward declaration (made non-static so platform_cleanup can call it)
+void cleanup_windows_symbols(void);
 
 // Function to initialize Windows symbol resolution once
 static void init_windows_symbols(void) {
@@ -568,12 +571,16 @@ static void init_windows_symbols(void) {
   }
 
   atomic_store(&g_symbols_initialized, true);
-  // Register cleanup function to be called on exit
-  (void)atexit(cleanup_windows_symbols);
+  // NOTE: Cleanup is now handled by platform_cleanup() called from asciichat_shared_shutdown().
+  // Library code does not call atexit() - that's the application's responsibility.
 }
 
-// Function to cleanup Windows symbol resolution
-static void cleanup_windows_symbols(void) {
+/**
+ * @brief Cleanup Windows DbgHelp symbol resolution
+ * Called by platform_cleanup() during library shutdown.
+ * Safe to call multiple times (idempotent).
+ */
+void cleanup_windows_symbols(void) {
   if (atomic_load(&g_symbols_initialized) && g_process_handle) {
     SymCleanup(g_process_handle);
     atomic_store(&g_symbols_initialized, false);

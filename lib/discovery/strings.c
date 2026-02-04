@@ -45,9 +45,11 @@ static bool g_cache_initialized = false;
 static static_mutex_t g_cache_init_mutex = STATIC_MUTEX_INIT;
 
 /**
- * @brief Cleanup function called on program exit
+ * @brief Cleanup function for session string cache
+ * Called by asciichat_shared_shutdown() during library cleanup.
+ * Safe to call multiple times (idempotent).
  */
-static void acds_strings_cleanup(void) {
+void acds_strings_cleanup(void) {
   if (!g_cache_initialized) {
     return;
   }
@@ -136,10 +138,8 @@ static asciichat_error_t build_validation_caches(void) {
 
   g_cache_initialized = true;
 
-  // Register cleanup function to run on program exit
-  if (atexit(acds_strings_cleanup) != 0) {
-    log_warn("Failed to register atexit handler for session string cache cleanup");
-  }
+  // NOTE: Cleanup is now handled by asciichat_shared_shutdown() called from application code.
+  // Library code does not call atexit() - that's the application's responsibility.
 
   static_mutex_unlock(&g_cache_init_mutex);
   log_debug("Session string word cache initialized (%zu adjectives, %zu nouns)", adjectives_count, nouns_count);

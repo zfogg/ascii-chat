@@ -78,21 +78,21 @@ bool shutdown_is_requested(void) {
 static void print_mimalloc_stats(void);
 #endif
 
-// Guard to prevent multiple atexit handler registration
-// (can happen if options_init() is called multiple times during startup)
+// Guard to prevent multiple initialization of shared subsystems
+// (can happen if asciichat_shared_init() is called multiple times during startup)
 // But allow subsystem reinitialization for tests and other use cases
-static bool g_atexit_handlers_registered = false;
+static bool g_shared_initialized = false;
 
 #ifndef _WIN32
 /**
  * @brief Fork handler for child process
  *
- * Reset the atexit handlers flag so the child process will reinitialize
+ * Reset the initialization flag so the child process will reinitialize
  * all subsystems that were already initialized in the parent.
  */
 static void asciichat_common_atfork_child(void) {
-  // Reset the atexit handlers flag so asciichat_shared_init() will reinitialize subsystems
-  g_atexit_handlers_registered = false;
+  // Reset the shared initialization flag so asciichat_shared_init() will reinitialize subsystems
+  g_shared_initialized = false;
 }
 
 /**
@@ -120,60 +120,23 @@ asciichat_error_t asciichat_shared_init(bool is_client) {
   bool force_stderr = is_client && !platform_isatty(STDOUT_FILENO);
   log_init(log_file, GET_OPTION(log_level), force_stderr, false /* don't use_mmap */);
 
-  // Register memory debugging stats FIRST so it runs LAST at exit
-  // (atexit callbacks run in LIFO order - last registered runs first)
-  // This ensures all cleanup handlers run before the memory report is printed
-  // Only register atexit handlers once
-  if (!g_atexit_handlers_registered) {
-    // Register errno cleanup FIRST so it runs LAST (after memory report checks the error)
-    (void)atexit(asciichat_errno_cleanup);
-
-#if defined(DEBUG_MEMORY) && !defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
-    (void)atexit(debug_memory_report);
-#elif defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
-    (void)atexit(print_mimalloc_stats);
-    UNUSED(print_mimalloc_stats);
-#endif
-
-    // Register colors shutdown to free all ANSI code strings (before memory report)
-    (void)atexit(colorscheme_shutdown);
-
-    // Register keyboard cleanup to restore terminal settings on exit
-    extern void keyboard_cleanup(void);
-    (void)atexit(keyboard_cleanup);
-
+  // NOTE: This library function does NOT register atexit() handlers.
+  // Library code should not own the process lifecycle. The application
+  // is responsible for calling atexit(asciichat_shared_shutdown) if it
+  // wants automatic cleanup on normal exit.
+  //
+  // Only register initialization tracking once
+  if (!g_shared_initialized) {
     // Initialize platform-specific functionality (Winsock, etc)
     if (platform_init() != ASCIICHAT_OK) {
       FATAL(ERROR_PLATFORM_INIT, "Failed to initialize platform");
     }
-    (void)atexit(platform_cleanup);
 
     // Initialize global shared buffer pool
     buffer_pool_init_global();
-    (void)atexit(buffer_pool_cleanup_global);
 
-    // Register options state cleanup
-    (void)atexit(options_state_shutdown);
-
-    // Register known_hosts cleanup
-    (void)atexit(known_hosts_cleanup);
-
-    // Register logging shutdown (frees compiled color scheme strings)
-    // Register begin first (LIFO order means end will be called after begin)
-    (void)atexit(log_shutdown_end);
-    (void)atexit(log_shutdown_begin);
-
-    // Register SIMD caches cleanup (for all modes: server, client, mirror)
-    (void)atexit(simd_caches_destroy_all);
-
-    // Register webcam cleanup (frees cached test pattern and webcam resources)
-    (void)atexit(webcam_cleanup);
-
-    // Register timer system cleanup AFTER memory report registration
-    // This ensures timers are freed BEFORE memory_report runs (due to atexit LIFO order)
-    (void)atexit(timer_system_cleanup);
-
-    g_atexit_handlers_registered = true;
+    // Mark that we've initialized (prevents re-registration of subsystems)
+    g_shared_initialized = true;
   }
 
   // Apply quiet mode setting BEFORE log_init so initialization messages are suppressed
@@ -196,6 +159,74 @@ asciichat_error_t asciichat_shared_init(bool is_client) {
 #endif
 
   return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Clean up all shared library subsystems
+ *
+ * Performs comprehensive cleanup of all subsystems initialized by
+ * asciichat_shared_init(). All cleanup functions are idempotent
+ * (safe to call multiple times), so this can be called explicitly
+ * and also via atexit() without issues.
+ *
+ * Cleanup order is carefully chosen to be the reverse of initialization,
+ * ensuring dependencies are respected (e.g., timer cleanup before
+ * memory reporting, memory reporting before errno cleanup).
+ *
+ * @note This function is safe to call even if init failed or wasn't called.
+ * @note All subsystem cleanup functions must remain idempotent.
+ */
+void asciichat_shared_shutdown(void) {
+  // Cleanup in reverse order of initialization (LIFO)
+  // This ensures dependencies are properly handled
+
+  // 1. Webcam - cleanup resources
+  webcam_cleanup();
+
+  // 2. SIMD caches - cleanup CPU-specific caches
+  simd_caches_destroy_all();
+
+  // 3. Discovery service strings cache - cleanup session string cache
+  extern void acds_strings_cleanup(void);
+  acds_strings_cleanup();
+
+  // 4. Logging - in correct order (end first, then begin)
+  // Note: This must happen BEFORE log_destroy() but AFTER most cleanup
+  log_shutdown_end();
+  log_shutdown_begin();
+
+  // 5. Known hosts - cleanup authentication state
+  known_hosts_cleanup();
+
+  // 6. Options state - cleanup RCU-based options
+  options_state_shutdown();
+
+  // 7. Buffer pool - cleanup global buffer pool
+  buffer_pool_cleanup_global();
+
+  // 8. Platform cleanup - restores terminal, cleans up platform resources
+  // (includes symbol cache cleanup on Windows)
+  platform_cleanup();
+
+  // 9. Keyboard - restore terminal settings (redundant with platform_cleanup but safe)
+  extern void keyboard_cleanup(void);
+  keyboard_cleanup();
+
+  // 10. Memory stats (debug builds only)
+#if defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
+  print_mimalloc_stats();
+#elif defined(DEBUG_MEMORY) && !defined(NDEBUG)
+  debug_memory_report();
+#endif
+
+  // 11. Color scheme - free ANSI code strings (must be after logging, before timer cleanup)
+  colorscheme_shutdown();
+
+  // 12. Timer system - cleanup timers last
+  timer_system_cleanup();
+
+  // 13. Error context cleanup - must be last so other cleanup can use it
+  asciichat_errno_cleanup();
 }
 
 #if defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)

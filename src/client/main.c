@@ -373,7 +373,8 @@ static int initialize_client_systems(bool shared_init_completed) {
       (void)fprintf(stderr, "FATAL: Failed to initialize platform\n");
       return 1;
     }
-    (void)atexit(platform_cleanup);
+    // NOTE: Platform cleanup is now registered by asciichat_shared_shutdown() in src/main.c
+    // which is called via atexit() after asciichat_shared_init()
 
     // Initialize palette based on command line options
     const options_t *opts = options_get();
@@ -410,14 +411,14 @@ static int initialize_client_systems(bool shared_init_completed) {
 #ifdef DEBUG_MEMORY
     bool quiet_mode = (GET_OPTION(quiet)) || (GET_OPTION(snapshot_mode));
     debug_memory_set_quiet_mode(quiet_mode);
-    if (!(GET_OPTION(snapshot_mode))) {
-      (void)atexit(debug_memory_report);
-    }
+    // NOTE: Memory report is now registered by asciichat_shared_shutdown() in src/main.c
+    // which is called via atexit() after asciichat_shared_init()
 #endif
 
     // Initialize global shared buffer pool
     buffer_pool_init_global();
-    (void)atexit(buffer_pool_cleanup_global);
+    // NOTE: Buffer pool cleanup is now registered by asciichat_shared_shutdown() in src/main.c
+    // which is called via atexit() after asciichat_shared_init()
   }
 
   // Initialize WebRTC library (required for P2P DataChannel connections)
@@ -564,7 +565,7 @@ int client_main(void) {
   platform_signal_handler_t signal_handlers[] = {
       {SIGWINCH, client_handle_sigwinch}, // Terminal resize (Unix only)
       {SIGTERM, client_handle_sigterm},   // SIGTERM for timeout(1) support
-      {SIGPIPE, SIG_IGN},           // Ignore broken pipe (we handle write errors ourselves)
+      {SIGPIPE, SIG_IGN},                 // Ignore broken pipe (we handle write errors ourselves)
   };
   platform_register_signal_handlers(signal_handlers, 3);
 

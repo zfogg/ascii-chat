@@ -550,6 +550,22 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
  */
 asciichat_error_t asciichat_shared_init(bool is_client);
 
+/**
+ * @brief Clean up shared library subsystems
+ *
+ * Performs cleanup of all subsystems initialized by asciichat_shared_init().
+ * All cleanup functions are idempotent and safe to call multiple times.
+ *
+ * Applications should typically register this with atexit():
+ *   asciichat_shared_init(is_client);
+ *   atexit(asciichat_shared_shutdown);
+ *
+ * @note This function is safe to call even if init failed or wasn't called.
+ * @note Cleanup order is the reverse of initialization order.
+ * @note Library code never calls atexit() - only application code should.
+ */
+void asciichat_shared_shutdown(void);
+
 /* ============================================================================
  * Error Handling Macros
  * ============================================================================
