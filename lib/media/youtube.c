@@ -295,13 +295,13 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
                         "-f 'b' -O '%%(url)s' '%s' 2>&1",
                         cookies_value, youtube_url);
     } else {
-      // No browser specified - try common browsers in order
+      // No browser specified - use without cookies (cookies-from-browser can fail if browser not available)
       cmd_ret =
           safe_snprintf(command, sizeof(command),
                         "yt-dlp --quiet --no-warnings "
                         "--user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, "
                         "like Gecko) Chrome/120.0.0.0 Safari/537.36' "
-                        "--cookies-from-browser chrome "
+                        "--no-cookies-from-browser "
                         "-f 'b' -O '%%(url)s' '%s' 2>&1",
                         youtube_url);
     }
