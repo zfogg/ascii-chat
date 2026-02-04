@@ -46,8 +46,8 @@ using std::atomic_size_t;
 /** @brief Maximum total bytes the pool can hold (337 MB) */
 #define BUFFER_POOL_MAX_BYTES (337 * 1024 * 1024)
 
-/** @brief Time in milliseconds before unused buffers are freed (5 seconds) */
-#define BUFFER_POOL_SHRINK_DELAY_MS 5000
+/** @brief Time before unused buffers are freed (5 seconds in nanoseconds) */
+#define BUFFER_POOL_SHRINK_DELAY_NS 5000000000ULL
 
 /** @brief Minimum buffer size to pool (smaller allocations use malloc directly) */
 #define BUFFER_POOL_MIN_SIZE 64
@@ -79,7 +79,7 @@ typedef struct buffer_node {
   uint32_t _pad;                      ///< Padding for alignment
   size_t size;                        ///< Size of user data portion
   _Atomic(struct buffer_node *) next; ///< Next in free list (atomic for lock-free)
-  _Atomic(uint64_t) returned_at_ms;   ///< Timestamp when returned to free list
+  _Atomic(uint64_t) returned_at_ns;   ///< Timestamp when returned to free list (nanoseconds)
   struct buffer_pool *pool;           ///< Owning pool (for free)
 } buffer_node_t;
 
@@ -93,7 +93,7 @@ typedef struct buffer_pool {
   mutex_t shrink_mutex;               ///< Only used for shrinking
 
   size_t max_bytes;         ///< Maximum total bytes allowed
-  uint64_t shrink_delay_ms; ///< Time before unused buffers freed
+  uint64_t shrink_delay_ns; ///< Time before unused buffers freed (nanoseconds)
 
   /** @name Atomic counters @{ */
   _Atomic(size_t) current_bytes;   ///< Total bytes in pool
@@ -117,10 +117,10 @@ typedef struct buffer_pool {
 /**
  * @brief Create a new buffer pool
  * @param max_bytes Maximum bytes the pool can hold (0 = use default)
- * @param shrink_delay_ms Time before unused buffers freed (0 = use default)
+ * @param shrink_delay_ns Time before unused buffers freed in nanoseconds (0 = use default)
  * @return New buffer pool, or NULL on failure
  */
-buffer_pool_t *buffer_pool_create(size_t max_bytes, uint64_t shrink_delay_ms);
+buffer_pool_t *buffer_pool_create(size_t max_bytes, uint64_t shrink_delay_ns);
 
 /**
  * @brief Destroy a buffer pool and free all memory

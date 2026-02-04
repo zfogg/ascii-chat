@@ -11,7 +11,7 @@ TEST_SUITE_WITH_QUIET_LOGGING(buffer_pool);
 // =============================================================================
 
 Test(buffer_pool, creation_and_destruction) {
-  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_MS);
+  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_NS);
   cr_assert_not_null(pool, "Buffer pool creation should succeed");
 
   // New unified pool design - no separate pools
@@ -26,7 +26,7 @@ Test(buffer_pool, creation_and_destruction) {
 Test(buffer_pool, multiple_creation_destruction) {
   // Test multiple create/destroy cycles
   for (int i = 0; i < 5; i++) {
-    buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_MS);
+    buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_NS);
     cr_assert_not_null(pool, "Pool creation %d should succeed", i);
     buffer_pool_destroy(pool);
   }
@@ -88,7 +88,7 @@ TheoryDataPoints(buffer_pool, allocation_roundtrip_property) = {
 Theory((size_t size), buffer_pool, allocation_roundtrip_property) {
   cr_assume(size > 0 && size <= 1048576);
 
-  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_MS);
+  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_NS);
   cr_assume(pool != NULL);
 
   void *buf = buffer_pool_alloc(pool, size);
@@ -109,7 +109,7 @@ Theory((size_t size), buffer_pool, allocation_roundtrip_property) {
 }
 
 Test(buffer_pool, zero_size_allocation) {
-  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_MS);
+  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_NS);
   cr_assert_not_null(pool, "Pool creation should succeed");
 
   void *buf = buffer_pool_alloc(pool, 0);
@@ -145,7 +145,7 @@ TheoryDataPoints(buffer_pool, pool_reuse_property) = {
 Theory((size_t size), buffer_pool, pool_reuse_property) {
   cr_assume(size > 0 && size <= 8192);
 
-  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_MS);
+  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_NS);
   cr_assume(pool != NULL);
 
   void *buffers[5];
@@ -165,7 +165,7 @@ Theory((size_t size), buffer_pool, pool_reuse_property) {
 }
 
 Test(buffer_pool, mixed_size_allocation) {
-  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_MS);
+  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_NS);
   cr_assert_not_null(pool, "Pool creation should succeed");
 
   void *small = buffer_pool_alloc(pool, 512);
@@ -203,7 +203,7 @@ Test(buffer_pool, mixed_size_allocation) {
 // =============================================================================
 
 Test(buffer_pool, statistics_tracking) {
-  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_MS);
+  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_NS);
   cr_assert_not_null(pool, "Pool creation should succeed");
 
   size_t current_bytes = 0, used_bytes = 0, free_bytes = 0;
@@ -225,7 +225,7 @@ Test(buffer_pool, statistics_tracking) {
 }
 
 Test(buffer_pool, log_statistics) {
-  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_MS);
+  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_NS);
   cr_assert_not_null(pool, "Pool creation should succeed");
 
   // Allocate some buffers to generate stats
@@ -294,7 +294,7 @@ Test(buffer_pool, global_multiple_allocations) {
 // =============================================================================
 
 Test(buffer_pool, many_allocations) {
-  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_MS);
+  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_NS);
   cr_assert_not_null(pool, "Pool creation should succeed");
 
   // Allocate many buffers
@@ -324,7 +324,7 @@ Test(buffer_pool, many_allocations) {
 }
 
 Test(buffer_pool, very_large_allocation) {
-  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_MS);
+  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_NS);
   cr_assert_not_null(pool, "Pool creation should succeed");
 
   // Allocate buffer larger than pool max single size (should use malloc fallback)
@@ -356,7 +356,7 @@ TheoryDataPoints(buffer_pool, stress_allocation_property) = {
 Theory((size_t size), buffer_pool, stress_allocation_property) {
   cr_assume(size > 0 && size <= 16384);
 
-  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_MS);
+  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_NS);
   cr_assume(pool != NULL);
 
   void *buffers[10];
@@ -385,7 +385,7 @@ Theory((size_t size), buffer_pool, stress_allocation_property) {
 // =============================================================================
 
 Test(buffer_pool, free_null_buffer) {
-  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_MS);
+  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_NS);
   cr_assert_not_null(pool, "Pool creation should succeed");
 
   // Freeing NULL should be safe
@@ -395,7 +395,7 @@ Test(buffer_pool, free_null_buffer) {
 }
 
 Test(buffer_pool, shrink_pool) {
-  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_MS);
+  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_NS);
   cr_assert_not_null(pool, "Pool creation should succeed");
 
   // Allocate and free some buffers

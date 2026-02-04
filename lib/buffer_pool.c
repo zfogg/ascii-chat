@@ -45,7 +45,7 @@ static inline void update_peak(atomic_size_t *peak, size_t value) {
  * ============================================================================
  */
 
-buffer_pool_t *buffer_pool_create(size_t max_bytes, uint64_t shrink_delay_ms) {
+buffer_pool_t *buffer_pool_create(size_t max_bytes, uint64_t shrink_delay_ns) {
   buffer_pool_t *pool = SAFE_MALLOC(sizeof(buffer_pool_t), buffer_pool_t *);
   if (!pool) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer pool");
@@ -60,7 +60,7 @@ buffer_pool_t *buffer_pool_create(size_t max_bytes, uint64_t shrink_delay_ms) {
 
   atomic_init(&pool->free_list, NULL);
   pool->max_bytes = max_bytes > 0 ? max_bytes : BUFFER_POOL_MAX_BYTES;
-  pool->shrink_delay_ms = shrink_delay_ms > 0 ? shrink_delay_ms : BUFFER_POOL_SHRINK_DELAY_MS;
+  pool->shrink_delay_ns = shrink_delay_ns > 0 ? shrink_delay_ns : BUFFER_POOL_SHRINK_DELAY_NS;
 
   atomic_init(&pool->current_bytes, 0);
   atomic_init(&pool->used_bytes, 0);
@@ -74,8 +74,8 @@ buffer_pool_t *buffer_pool_create(size_t max_bytes, uint64_t shrink_delay_ms) {
 
   char pretty_max[64];
   format_bytes_pretty(pool->max_bytes, pretty_max, sizeof(pretty_max));
-  log_debug("Created buffer pool (max: %s, shrink: %llu ms, lock-free)", pretty_max,
-            (unsigned long long)pool->shrink_delay_ms);
+  log_debug("Created buffer pool (max: %s, shrink: %llu ns, lock-free)", pretty_max,
+            (unsigned long long)pool->shrink_delay_ns);
 
   return pool;
 }
@@ -110,7 +110,7 @@ void *buffer_pool_alloc(buffer_pool_t *pool, size_t size) {
     node->_pad = 0;
     node->size = size;
     atomic_init(&node->next, NULL);
-    atomic_init(&node->returned_at_ms, 0);
+    atomic_init(&node->returned_at_ns, 0);
     node->pool = NULL; // No pool for fallbacks
 
     if (pool) {
@@ -171,7 +171,7 @@ void *buffer_pool_alloc(buffer_pool_t *pool, size_t size) {
       node->_pad = 0;
       node->size = size;
       atomic_init(&node->next, NULL);
-      atomic_init(&node->returned_at_ms, 0);
+      atomic_init(&node->returned_at_ns, 0);
       node->pool = pool;
 
       atomic_fetch_add_explicit(&pool->used_bytes, size, memory_order_relaxed);
@@ -227,7 +227,7 @@ void buffer_pool_free(buffer_pool_t *pool, void *data, size_t size) {
   atomic_fetch_add_explicit(&pool->returns, 1, memory_order_relaxed);
 
   // Set return timestamp
-  atomic_store_explicit(&node->returned_at_ms, time_ns_to_ms(time_get_ns()), memory_order_relaxed);
+  atomic_store_explicit(&node->returned_at_ns, time_get_ns(), memory_order_relaxed);
 
   // Push to lock-free stack
   buffer_node_t *head = atomic_load_explicit(&pool->free_list, memory_order_relaxed);
@@ -244,7 +244,7 @@ void buffer_pool_free(buffer_pool_t *pool, void *data, size_t size) {
 }
 
 void buffer_pool_shrink(buffer_pool_t *pool) {
-  if (!pool || pool->shrink_delay_ms == 0)
+  if (!pool || pool->shrink_delay_ns == 0)
     return;
 
   // Only one thread can shrink at a time
@@ -252,8 +252,8 @@ void buffer_pool_shrink(buffer_pool_t *pool) {
     return; // Another thread is shrinking
   }
 
-  uint64_t now = time_ns_to_ms(time_get_ns());
-  uint64_t cutoff = (now > pool->shrink_delay_ms) ? (now - pool->shrink_delay_ms) : 0;
+  uint64_t now = time_get_ns();
+  uint64_t cutoff = (now > pool->shrink_delay_ns) ? (now - pool->shrink_delay_ns) : 0;
 
   // Atomically swap out the entire free list
   buffer_node_t *list = atomic_exchange_explicit(&pool->free_list, NULL, memory_order_acquire);
@@ -264,7 +264,7 @@ void buffer_pool_shrink(buffer_pool_t *pool) {
 
   while (list) {
     buffer_node_t *next = atomic_load_explicit(&list->next, memory_order_relaxed);
-    uint64_t returned_at = atomic_load_explicit(&list->returned_at_ms, memory_order_relaxed);
+    uint64_t returned_at = atomic_load_explicit(&list->returned_at_ns, memory_order_relaxed);
 
     if (returned_at < cutoff) {
       // Old buffer - add to free list
