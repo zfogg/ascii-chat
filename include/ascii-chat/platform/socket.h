@@ -337,12 +337,12 @@ int socket_set_linger(socket_t sock, bool enable, int timeout);
  * to prevent indefinite blocking on socket operations.
  *
  * Platform-specific implementations:
- * - Windows: Uses DWORD timeout in milliseconds
- * - POSIX: Uses struct timeval with seconds and microseconds
+ * - Windows: Converts nanoseconds to milliseconds for DWORD timeout
+ * - POSIX: Converts nanoseconds to struct timeval (seconds + microseconds)
  *
  * @ingroup platform
  */
-int socket_set_timeout(socket_t sock, uint32_t timeout_ms);
+int socket_set_timeout(socket_t sock, uint64_t timeout_ns);
 
 /**
  * @brief Set socket buffer sizes
@@ -420,12 +420,12 @@ const char *socket_get_error_string(void);
  * @brief Poll sockets for events
  * @param fds Array of pollfd structures
  * @param nfds Number of file descriptors to poll
- * @param timeout Timeout in milliseconds (-1 for infinite)
+ * @param timeout_ns Timeout in nanoseconds (-1 for infinite)
  * @return Number of sockets with events, -1 on error
  *
  * @ingroup platform
  */
-int socket_poll(struct pollfd *fds, nfds_t nfds, int timeout);
+int socket_poll(struct pollfd *fds, nfds_t nfds, int64_t timeout_ns);
 
 /**
  * @brief Select sockets for I/O readiness
@@ -610,7 +610,7 @@ typedef unsigned long nfds_t;
  *
  * @ingroup platform
  */
-int platform_socket_set_timeout(socket_t sock, int timeout_ms);
+int platform_socket_set_timeout(socket_t sock, uint64_t timeout_ns);
 
 /**
  * @brief Connect to remote address with timeout
@@ -632,4 +632,5 @@ int platform_socket_set_timeout(socket_t sock, int timeout_ms);
  *
  * @ingroup platform
  */
-int platform_socket_connect_timeout(socket_t sock, const struct sockaddr *addr, socklen_t addr_len, int timeout_ms);
+int platform_socket_connect_timeout(socket_t sock, const struct sockaddr *addr, socklen_t addr_len,
+                                    uint64_t timeout_ns);

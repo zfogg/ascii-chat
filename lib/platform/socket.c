@@ -7,6 +7,7 @@
 
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/util/time.h>
 
 // Platform-specific TCP header (included by socket.h above)
 // Windows: ws2tcpip.h (included by winsock2.h)
@@ -78,10 +79,10 @@ void socket_optimize_for_streaming(socket_t sock) {
  * Platform-specific socket_setsockopt() handles the differences between
  * Windows (DWORD milliseconds) and POSIX (struct timeval).
  */
-int socket_set_timeout(socket_t sock, uint32_t timeout_ms) {
+int socket_set_timeout(socket_t sock, uint64_t timeout_ns) {
 #ifdef _WIN32
   // Windows: SO_RCVTIMEO and SO_SNDTIMEO use DWORD (milliseconds)
-  DWORD timeout_val = (DWORD)timeout_ms;
+  DWORD timeout_val = (DWORD)time_ns_to_ms(timeout_ns);
   if (socket_setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout_val, sizeof(timeout_val)) != 0) {
     return -1;
   }
@@ -91,8 +92,9 @@ int socket_set_timeout(socket_t sock, uint32_t timeout_ms) {
 #else
   // POSIX: SO_RCVTIMEO and SO_SNDTIMEO use struct timeval (seconds + microseconds)
   struct timeval tv;
-  tv.tv_sec = timeout_ms / 1000;
-  tv.tv_usec = (timeout_ms % 1000) * 1000;
+  uint64_t us = time_ns_to_us(timeout_ns);
+  tv.tv_sec = (time_t)(us / US_PER_SEC_INT);
+  tv.tv_usec = (suseconds_t)(us % US_PER_SEC_INT);
   if (socket_setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) != 0) {
     return -1;
   }

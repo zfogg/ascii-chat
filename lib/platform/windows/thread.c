@@ -11,6 +11,7 @@
 #include <ascii-chat/asciichat_errno.h> // For asciichat_errno system
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/util/path.h>
+#include <ascii-chat/util/time.h>
 #include <process.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -672,14 +673,15 @@ int asciichat_thread_join(asciichat_thread_t *thread, void **retval) {
  * @brief Join a thread with timeout
  * @param thread Thread handle to join
  * @param retval Optional return value from thread
- * @param timeout_ms Timeout in milliseconds
- * @return 0 on success, -1 on timeout/error
+ * @param timeout_ns Timeout in nanoseconds
+ * @return 0 on success, -2 on timeout, -1 on error
  */
-int asciichat_thread_join_timeout(asciichat_thread_t *thread, void **retval, uint32_t timeout_ms) {
+int asciichat_thread_join_timeout(asciichat_thread_t *thread, void **retval, uint64_t timeout_ns) {
   if (!thread || (*thread) == NULL || (*thread) == INVALID_HANDLE_VALUE) {
     return -1;
   }
 
+  DWORD timeout_ms = (DWORD)time_ns_to_ms(timeout_ns);
   DWORD result = WaitForSingleObject((*thread), timeout_ms);
 
   if (result == WAIT_OBJECT_0) {

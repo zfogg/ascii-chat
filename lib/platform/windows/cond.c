@@ -8,6 +8,7 @@
 
 #include <ascii-chat/platform/api.h>
 #include <ascii-chat/windows_compat.h>
+#include <ascii-chat/util/time.h>
 #include <errno.h> // For ETIMEDOUT
 
 /**
@@ -47,13 +48,14 @@ int cond_wait(cond_t *cond, mutex_t *mutex) {
  * @brief Wait on a condition variable with timeout
  * @param cond Pointer to condition variable to wait on
  * @param mutex Pointer to associated mutex (must be locked by caller)
- * @param timeout_ms Timeout in milliseconds
+ * @param timeout_ns Timeout in nanoseconds
  * @return 0 on success, ETIMEDOUT on timeout, -1 on other failure
  * @note The mutex is automatically released while waiting and reacquired before returning
  * @note Returns ETIMEDOUT on timeout for POSIX compatibility
  */
-int cond_timedwait(cond_t *cond, mutex_t *mutex, int timeout_ms) {
-  if (!SleepConditionVariableCS(cond, mutex, (DWORD)timeout_ms)) {
+int cond_timedwait(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns) {
+  DWORD timeout_ms = (DWORD)time_ns_to_ms(timeout_ns);
+  if (!SleepConditionVariableCS(cond, mutex, timeout_ms)) {
     DWORD err = GetLastError();
     if (err == ERROR_TIMEOUT) {
       return ETIMEDOUT; // Match POSIX pthread_cond_timedwait behavior

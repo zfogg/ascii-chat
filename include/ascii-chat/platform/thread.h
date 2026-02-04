@@ -113,7 +113,7 @@ int asciichat_thread_join(asciichat_thread_t *thread, void **retval);
  * @brief Wait for a thread to complete with timeout
  * @param thread Thread handle to wait for
  * @param retval Pointer to store thread return value (or NULL to ignore)
- * @param timeout_ms Timeout in milliseconds
+ * @param timeout_ns Timeout in nanoseconds
  * @return 0 on success, non-zero on timeout or error
  *
  * Waits for the specified thread to terminate, with a maximum wait time.
@@ -121,7 +121,7 @@ int asciichat_thread_join(asciichat_thread_t *thread, void **retval);
  *
  * @ingroup platform
  */
-int asciichat_thread_join_timeout(asciichat_thread_t *thread, void **retval, uint32_t timeout_ms);
+int asciichat_thread_join_timeout(asciichat_thread_t *thread, void **retval, uint64_t timeout_ns);
 
 /**
  * @brief Exit the current thread

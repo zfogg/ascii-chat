@@ -44,14 +44,13 @@ int cond_wait(cond_t *cond, mutex_t *mutex) {
  * @brief Wait on a condition variable with timeout
  * @param cond Pointer to condition variable to wait on
  * @param mutex Pointer to associated mutex (must be locked by caller)
- * @param timeout_ms Timeout in milliseconds
+ * @param timeout_ns Timeout in nanoseconds
  * @return 0 on success, ETIMEDOUT on timeout, other error code on failure
  * @note The mutex is automatically released while waiting and reacquired before returning
  */
-int cond_timedwait(cond_t *cond, mutex_t *mutex, int timeout_ms) {
+int cond_timedwait(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns) {
   struct timespec ts;
   uint64_t now_ns = time_get_realtime_ns();
-  uint64_t timeout_ns = time_ms_to_ns((uint64_t)timeout_ms);
   uint64_t deadline_ns = now_ns + timeout_ns;
   time_ns_to_timespec(deadline_ns, &ts);
   return pthread_cond_timedwait(cond, mutex, &ts);

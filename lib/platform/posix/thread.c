@@ -56,17 +56,16 @@ int asciichat_thread_join(asciichat_thread_t *thread, void **retval) {
  * @param timeout_ms Timeout in milliseconds
  * @return 0 on success, -2 on timeout, -1 on error
  */
-int asciichat_thread_join_timeout(asciichat_thread_t *thread, void **retval, uint32_t timeout_ms) {
-  (void)timeout_ms; // Unused on macOS - suppress warning
+int asciichat_thread_join_timeout(asciichat_thread_t *thread, void **retval, uint64_t timeout_ns) {
+  (void)timeout_ns; // Unused on macOS - suppress warning
 // POSIX doesn't have pthread_timedjoin_np on all systems
 // Use pthread_tryjoin_np with polling as fallback
 #ifdef __linux__
   struct timespec timeout;
   uint64_t now_ns = time_get_realtime_ns();
-  uint64_t timeout_ns = time_ms_to_ns((uint64_t)timeout_ms);
   uint64_t deadline_ns = now_ns + timeout_ns;
 
-  // Convert back to timespec for pthread_timedjoin_np
+  // Convert nanoseconds to timespec for pthread_timedjoin_np
   time_ns_to_timespec(deadline_ns, &timeout);
 
   int result = pthread_timedjoin_np(*thread, retval, &timeout);

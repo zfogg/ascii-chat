@@ -100,7 +100,7 @@ int cond_wait(cond_t *cond, mutex_t *mutex);
  *
  * @ingroup platform
  */
-int cond_timedwait(cond_t *cond, mutex_t *mutex, int timeout_ms);
+int cond_timedwait(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns);
 
 /**
  * @brief Signal a condition variable (wake one waiting thread)
