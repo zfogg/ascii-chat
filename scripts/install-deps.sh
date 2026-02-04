@@ -75,6 +75,8 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     echo "Detected apt-get package manager"
     echo "Installing dependencies..."
 
+    sudo add-apt-repository ppa:tomtomtom/yt-dlp
+
     # INFO: see https://apt.kitware.com/
     set +e
     sudo /bin/bash -c "$(curl -fsSL https://apt.kitware.com/kitware-archive.sh)" 2>/dev/null
