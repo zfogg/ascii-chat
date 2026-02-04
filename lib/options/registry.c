@@ -392,23 +392,6 @@ static const registry_entry_t g_configuration_entries[] = {
      false,
      OPTION_MODE_BINARY,
      {0}},
-    {"color-scheme-create",
-     '\0',
-     OPTION_TYPE_BOOL,
-     0,
-     NULL,
-     0,
-     "Export color scheme to TOML format (optionally specify scheme name and output file).",
-     "CONFIGURATION",
-     "[SCHEME] [FILE]",
-     false,
-     NULL,
-     NULL,
-     NULL,
-     false, /* no optional arg - handled specially before options_init */
-     false,
-     OPTION_MODE_BINARY,
-     {0}},
     REGISTRY_TERMINATOR()};
 
 // ============================================================================
@@ -501,7 +484,7 @@ static const registry_entry_t g_terminal_entries[] = {
      OPT_COLOR_SCHEME_NAME_DEFAULT,
      sizeof(((options_t *)0)->color_scheme_name),
      "Color scheme for logging output (pastel, nord, solarized-dark, dracula, gruvbox-dark, monokai, etc.).",
-     "TERMINAL",
+     "LOGGING",
      "NAME",
      false,
      "ASCII_CHAT_COLOR_SCHEME",

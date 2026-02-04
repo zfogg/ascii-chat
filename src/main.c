@@ -202,43 +202,6 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "    For reproducible builds, commit or stash changes before building.\n\n");
   }
 #endif
-
-  // Handle --color-scheme-create early (before options_init) to avoid options parsing issues
-  for (int i = 1; i < argc; i++) {
-    if (strcmp(argv[i], "--color-scheme-create") == 0) {
-      // Initialize colors system
-      if (colorscheme_init() != ASCIICHAT_OK) {
-        fprintf(stderr, "Error: Failed to initialize color system\n");
-        return ERROR_INIT;
-      }
-
-      // Parse scheme name and output file (both optional)
-      const char *scheme_name = "pastel"; // default
-      const char *output_file = NULL;
-
-      // Check if next argument is a scheme name (no '-' prefix)
-      if (i + 1 < argc && argv[i + 1][0] != '-') {
-        scheme_name = argv[i + 1];
-        i++;
-
-        // Check if argument after that is an output file
-        if (i + 1 < argc && argv[i + 1][0] != '-') {
-          output_file = argv[i + 1];
-          i++;
-        }
-      }
-
-      // Export the scheme
-      asciichat_error_t export_result = colorscheme_export_scheme(scheme_name, output_file);
-      colorscheme_shutdown();
-
-      if (export_result != ASCIICHAT_OK) {
-        return export_result;
-      }
-      return ASCIICHAT_OK;
-    }
-  }
-
   // Load color scheme early (from config files and CLI) before logging initialization
   // This allows logging to use the correct colors from the start
   options_colorscheme_init_early(argc, argv);
