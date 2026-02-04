@@ -333,19 +333,29 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
   size_t url_size = 0;
   int c;
 
-  // Read all output character by character
+  // Read all output character by character, looking for http:// or https:// URL
   while ((c = fgetc(pipe)) != EOF && ytdlp_output_len < sizeof(full_output) - 1) {
     full_output[ytdlp_output_len++] = (char)c;
 
-    // Track current line - if it starts with http, it's the URL
-    if ((url_size == 0 && c == 'h') || (url_size > 0 && c != '\n' && url_size < sizeof(url_buffer) - 1)) {
-      // Start of potential URL or continue building it
+    // Track current line - looking for http:// or https:// stream URL
+    if (url_size == 0 && c == 'h') {
+      // Potential start of URL
       url_buffer[url_size++] = (char)c;
-    } else if (c == '\n' && url_size > 0 && url_buffer[0] == 'h') {
-      // Found complete line starting with 'h' (likely the URL), stop here
-      break;
+    } else if (url_size > 0 && c != '\n' && url_size < sizeof(url_buffer) - 1) {
+      // Continue building potential URL
+      url_buffer[url_size++] = (char)c;
     } else if (c == '\n') {
-      // Newline and we weren't tracking URL yet, reset
+      // End of line - check if what we collected is a valid URL
+      if (url_size > 0) {
+        // Verify it starts with http:// or https://
+        bool is_valid_url = (url_size >= 7 && strncmp(url_buffer, "http://", 7) == 0) ||
+                            (url_size >= 8 && strncmp(url_buffer, "https://", 8) == 0);
+        if (is_valid_url) {
+          // Found valid HTTP(S) URL, break out of read loop
+          break;
+        }
+      }
+      // Not a valid URL or empty line, reset for next line
       url_size = 0;
     }
   }
