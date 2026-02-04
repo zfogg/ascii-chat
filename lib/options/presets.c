@@ -78,6 +78,9 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   static char session_buf5[SESSION_STRING_BUFFER_SIZE];
   static char session_buf6[SESSION_STRING_BUFFER_SIZE];
   static char session_buf7[SESSION_STRING_BUFFER_SIZE];
+  static char session_buf8[SESSION_STRING_BUFFER_SIZE];
+  static char session_buf9[SESSION_STRING_BUFFER_SIZE];
+  static char session_buf10[SESSION_STRING_BUFFER_SIZE];
 
   // Fallback strings if generation fails
   char *example_session_string2 = "adjective-noun-noun";
@@ -86,6 +89,9 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   char *example_session_string5 = "adjective-noun-noun";
   char *example_session_string6 = "adjective-noun-noun";
   char *example_session_string7 = "adjective-noun-noun";
+  char *example_session_string8 = "adjective-noun-noun";
+  char *example_session_string9 = "adjective-noun-noun";
+  char *example_session_string10 = "adjective-noun-noun";
 
   // Generate session strings for examples (sodium_init called as needed by acds_string_generate)
   acds_string_generate(session_buf2, sizeof(session_buf2));
@@ -112,26 +118,76 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   if (session_buf7[0] != '\0') {
     example_session_string7 = session_buf7;
   }
+  acds_string_generate(session_buf8, sizeof(session_buf8));
+  if (session_buf8[0] != '\0') {
+    example_session_string8 = session_buf8;
+  }
+  acds_string_generate(session_buf9, sizeof(session_buf9));
+  if (session_buf9[0] != '\0') {
+    example_session_string9 = session_buf9;
+  }
+  acds_string_generate(session_buf10, sizeof(session_buf10));
+  if (session_buf10[0] != '\0') {
+    example_session_string10 = session_buf10;
+  }
+
+  // Build session string examples dynamically for discovery mode
+  // These appear at the beginning of the examples section, right after "start new session"
+  static char example_buf2[SESSION_STRING_BUFFER_SIZE + BUFFER_SIZE_MEDIUM];
+  static char example_buf3[SESSION_STRING_BUFFER_SIZE + BUFFER_SIZE_MEDIUM];
+  static char example_buf4[SESSION_STRING_BUFFER_SIZE + BUFFER_SIZE_MEDIUM];
+  static char example_buf5[SESSION_STRING_BUFFER_SIZE + BUFFER_SIZE_MEDIUM];
+  static char example_buf6[SESSION_STRING_BUFFER_SIZE + BUFFER_SIZE_MEDIUM];
+  static char example_buf7[SESSION_STRING_BUFFER_SIZE + BUFFER_SIZE_MEDIUM];
+  static char example_buf8[SESSION_STRING_BUFFER_SIZE + BUFFER_SIZE_MEDIUM];
+  static char example_buf9[SESSION_STRING_BUFFER_SIZE + BUFFER_SIZE_MEDIUM];
+  static char example_buf10[SESSION_STRING_BUFFER_SIZE + BUFFER_SIZE_MEDIUM];
+
+  safe_snprintf(example_buf2, sizeof(example_buf2), "%s", example_session_string2);
+  safe_snprintf(example_buf3, sizeof(example_buf3), "%s --discovery-service discovery.example.com",
+                example_session_string3);
+  safe_snprintf(example_buf4, sizeof(example_buf4), "%s -f video.mp4", example_session_string4);
+  safe_snprintf(example_buf5, sizeof(example_buf5), "%s --url 'https://youtu.be/7ynHVGCehoM'", example_session_string5);
+  safe_snprintf(example_buf6, sizeof(example_buf6), "%s -f '-'", example_session_string6);
+  safe_snprintf(example_buf7, sizeof(example_buf7), "%s --palette-chars '@%%#*+=-:. '", example_session_string7);
+  safe_snprintf(example_buf8, sizeof(example_buf8), "%s", example_session_string8);
+  safe_snprintf(example_buf9, sizeof(example_buf9), "%s", example_session_string9);
+  safe_snprintf(example_buf10, sizeof(example_buf10), "%s", example_session_string10);
 
   // Client mode: [address] - can be IP, hostname, or hostname:port
-  static const char *client_examples[] = {"localhost", "ascii-chat.com", "192.168.1.1:8080", "[2001:db8::42]:27224"};
+  static const char *client_examples[] = {"localhost",
+                                          "ascii-chat.com",
+                                          "0.0.0.0",
+                                          "::",
+                                          "192.168.1.1:8080",
+                                          "[2001:db8::42]:27224",
+                                          "233.27.48.203:27224",
+                                          "62fb:759e:2bce:21d7:9e5d:13f8:3c11:5084:27224"};
   options_builder_add_positional(b, "address", "Server address (optional)", false,
-                                 "POSITIONAL ARGUMENTS:", client_examples, 4, OPTION_MODE_CLIENT, parse_client_address);
+                                 "POSITIONAL ARGUMENTS:", client_examples, ARRAY_SIZE(client_examples),
+                                 OPTION_MODE_CLIENT, parse_client_address);
 
   // Discovery mode: [session-string] - session string or empty to start new session
   // Use simple static examples for positional arguments section (dynamic strings shown in examples section)
-  static const char *discovery_examples[] = {"(empty)  start new session", "joyful-panda-lion  join existing session"};
-  options_builder_add_positional(b, "session-string", "Session string (optional, or empty to start new session)", false,
-                                 "POSITIONAL ARGUMENTS:", discovery_examples, 2, OPTION_MODE_DISCOVERY,
-                                 parse_client_address);
+  static const char *discovery_examples[] = {"(empty)  start new session", (const char *)example_buf8,
+                                             (const char *)example_buf9, (const char *)example_buf10};
+  options_builder_add_positional(
+      b, "session-string", "Session string (optional, or empty to start new session). Format: adjective-noun-noun.",
+      false, "POSITIONAL ARGUMENTS:", discovery_examples, ARRAY_SIZE(discovery_examples), OPTION_MODE_DISCOVERY,
+      parse_client_address);
 
   // Server and Discovery Service modes: [bind-address] [bind-address] - can be IP or hostname, up to 2 for IPv4/IPv6
-  static const char *server_examples[] = {
-      "localhost",       "ascii-chat.com", "0.0.0.0", "::", "0.0.0.0 3a08:7276:ccb4:7b31:e934:5330:9b3a:9598",
-      ":: 192.168.1.100"};
+  static const char *server_examples[] = {"localhost",
+                                          "ascii-chat.com",
+                                          "0.0.0.0",
+                                          "::",
+                                          "234.50.188.236",
+                                          "9631:54e7:5b5c:80dc:0f62:1f01:7ccf:5512",
+                                          "105.137.19.11 3a08:7276:ccb4:7b31:e934:5330:9b3a:9598",
+                                          "::1 192.168.1.100"};
   options_builder_add_positional(b, "bind-address",
                                  "Bind address (optional, can specify 0-2 addresses, one IPv4 and the other IPv6)",
-                                 false, "POSITIONAL ARGUMENTS:", server_examples, 6,
+                                 false, "POSITIONAL ARGUMENTS:", server_examples, ARRAY_SIZE(server_examples),
                                  OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC, parse_server_bind_address);
 
   // Add usage lines for all modes
@@ -144,23 +200,6 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   options_builder_add_usage(b, "mirror", NULL, true, "View local webcam or media file as ASCII art");
   options_builder_add_usage(b, "discovery-service", "[bind-address] [bind-address]", true,
                             "Start discovery service (can specify 0-2 bind addresses, one IPv4 and the other IPv6)");
-
-  // Build session string examples dynamically for discovery mode
-  // These appear at the beginning of the examples section, right after "start new session"
-  char example_buf2[SESSION_STRING_BUFFER_SIZE + BUFFER_SIZE_MEDIUM];
-  char example_buf3[SESSION_STRING_BUFFER_SIZE + BUFFER_SIZE_MEDIUM];
-  char example_buf4[SESSION_STRING_BUFFER_SIZE + BUFFER_SIZE_MEDIUM];
-  char example_buf5[SESSION_STRING_BUFFER_SIZE + BUFFER_SIZE_MEDIUM];
-  char example_buf6[SESSION_STRING_BUFFER_SIZE + BUFFER_SIZE_MEDIUM];
-  char example_buf7[SESSION_STRING_BUFFER_SIZE + BUFFER_SIZE_MEDIUM];
-
-  safe_snprintf(example_buf2, sizeof(example_buf2), "%s", example_session_string2);
-  safe_snprintf(example_buf3, sizeof(example_buf3), "%s --discovery-service discovery.example.com",
-                example_session_string3);
-  safe_snprintf(example_buf4, sizeof(example_buf4), "%s -f video.mp4", example_session_string4);
-  safe_snprintf(example_buf5, sizeof(example_buf5), "%s --url 'https://youtu.be/7ynHVGCehoM'", example_session_string5);
-  safe_snprintf(example_buf6, sizeof(example_buf6), "%s -f '-'", example_session_string6);
-  safe_snprintf(example_buf7, sizeof(example_buf7), "%s --palette-chars '@%%#*+=-:. '", example_session_string7);
 
   // Add examples for binary-level help and discovery mode
   options_builder_add_example(b, OPTION_MODE_BINARY, NULL, "Start new session (share the session string)", false);
