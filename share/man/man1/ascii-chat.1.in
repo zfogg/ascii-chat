@@ -74,10 +74,10 @@ ascii-chat.
 .\" AUTO-END: OPTIONS
 
 .SH KEYBOARD CONTROLS
-Interactive keyboard controls are available when running with local media sources
-(\fB--file\fR or \fB--url\fR).
-Keyboard controls work in \fBmirror\fR, \fBclient\fR, and \fB"ascii-chat"\fR modes.
-They are \fInot\fR available when a webcam is used as the media source.
+Keyboard controls are available when running with local media sources
+(\fB--file\fR or \fB--url\fR).  Keyboard controls work in \fBmirror\fR,
+\fBclient\fR, and \fB"ascii-chat"\fR modes.  They are \fInot\fR available when a
+webcam is used as the media source.
 .PP
 .B Media Playback Controls
 .TP
@@ -104,10 +104,10 @@ Toggle audio mute/unmute.
 .B Display Controls
 .TP
 .B C
-Cycle through color modes: Mono → 16-color → 256-color → Truecolor → Mono.
+Cycle through color modes: Mono → 16-color → 256-color → truecolor → mono.
 .TP
 .B R
-Cycle through render modes: Foreground → Background → Half-block → Foreground.
+Cycle through render modes: Foreground → background → half-Block → foreground.
 .TP
 .B F
 Toggle webcam flip (horizontal mirror). Only works when using a webcam source.
@@ -126,12 +126,12 @@ This will allow users to customize keyboard shortcuts without rebuilding the app
 .B Keyboard Layout Support
 .PP
 The keyboard input system supports all standard POSIX keyboards and terminal emulators.
-Currently, default keybindings use ASCII characters only for maximum compatibility.
+The default keybindings use ASCII characters only.
 .PP
 The underlying input system fully supports Unicode, including:
 .RS
 .TP
-.B UTF-8 Support
+.B UTF-8
 Any character in the UTF-8 character set can be used for keyboard shortcuts.
 .RE
 
@@ -186,17 +186,17 @@ terminal support is not automatically detected. Check with
 Three rendering modes control how colors are applied:
 .TP
 .B foreground
-Default mode. ASCII characters are colored but displayed on the terminal's
-default background. Best compatibility across terminals.
+The default render mode. ASCII characters are colored and displayed on the terminal's
+default background.
 .TP
 .B background
-Terminal background cells are colored. Characters appear in the default
-foreground color. Creates a blocky, pixel-art appearance.
+Terminal background cells are colored and characters are not. Characters
+appear in the default foreground color. The inverse of the foreground mode.
 .TP
 .B half\-block
-Uses Unicode half-block characters (\[u2580], \[u2584]) to achieve 2x vertical
+Uses Unicode half-block characters (\[u2580], \[u2584]) to render at 2x vertical
 resolution. Each character cell displays two pixels (top and bottom halves).
-Requires UTF-8 support (\fB\-\-utf8\fR).
+Requires UTF-8 support (\fB\-\-show\-capabilities\fR and \fB\-\-utf8\fR).
 .\" MANUAL-END: RENDER MODES
 
 .\" MANUAL-START: CONFIGURATION
@@ -211,6 +211,7 @@ option mappings, see the
 section in
 .BR ascii-chat (5).
 .\" MANUAL-END: CONFIGURATION
+
 .\" MANUAL-START: LIMITS
 .SH LIMITS
 .TP
@@ -225,11 +226,7 @@ The grid size adjusts based on the number of connected clients.
 .B Frame Rate
 Default 60 FPS. Configurable from 1-144 FPS.
 .\" MANUAL-END: LIMITS
-.SH FILES
-For details on configuration files, authentication files, and file format
-specifications, see
-.BR ascii-chat (5).
-.\" MANUAL-END: FILES
+
 .\" MANUAL-START: EXIT STATUS
 .SH EXIT STATUS
 Exit codes correspond to the \fBasciichat_error_t\fR enum values:
@@ -288,7 +285,9 @@ threat level, from quick private sessions (ephemeral DH) to paranoid mode
 .br
 \fBPassword Authentication:\fR Both sides prove password knowledge (8-256 characters), bound cryptographically to the DH shared secret. Prevents MITM attacks even without pre-arranged keys. Enable with \fB\-\-password SECRET\fR on both server and client.
 .br
-\fBKey-Based Authentication:\fR Server and client can authenticate using Ed25519 SSH keys or GPG keys. Keys can be specified as:
+\fBKey-Based Authentication:\fR Server and client can authenticate using Ed25519 SSH keys or GPG keys (see
+.BR ascii-chat (5)
+for file format details). Keys can be specified as:
 .RS
 .TP
 .B Local file paths:
@@ -307,12 +306,16 @@ threat level, from quick private sessions (ephemeral DH) to paranoid mode
 \fB\-\-server\-key gpg:897607FA43DC66F6\fR or \fB\-\-key gpg:MYKEYID\fR (uses system GPG keyring via gpg-agent)
 .RE
 .PP
-\fBClient Whitelisting:\fR Server restricts connections to pre-approved client keys via \fB\-\-client\-keys\fR (accepts local file, HTTPS URL, or GitHub/GitLab shorthand). Prevents unauthorized client connections.
+\fBClient Whitelisting:\fR Server restricts connections to pre-approved client keys via \fB\-\-client\-keys\fR (accepts local file, HTTPS URL, or GitHub/GitLab shorthand). Prevents unauthorized client connections. See
+.BR ascii-chat (5)
+for authorized_keys file format.
 .br
 \fBDefense in Depth:\fR Combine multiple methods (password + SSH key + whitelist) for maximum security.
 .PP
 .SS "Known Hosts and Trust-On-First-Use (TOFU)"
-When first connecting to a server without \fB\-\-server\-key\fR, ascii-chat stores the server's public key fingerprint in \fIknown_hosts\fR using SSH-style TOFU verification. Subsequent connections verify the server's key matches the stored fingerprint. This protects against MITM attacks on later connections, similar to SSH. If a server's key changes, the connection is rejected with a MITM warning showing both old and new fingerprints for comparison. Verify the change is legitimate (server reinstalled, key rotated) through a separate channel before removing the old entry from \fIknown_hosts\fR.
+When first connecting to a server without \fB\-\-server\-key\fR, ascii-chat stores the server's public key fingerprint in \fIknown_hosts\fR using SSH-style TOFU verification. Subsequent connections verify the server's key matches the stored fingerprint. This protects against MITM attacks on later connections, similar to SSH. If a server's key changes, the connection is rejected with a MITM warning showing both old and new fingerprints for comparison. Verify the change is legitimate (server reinstalled, key rotated) through a separate channel before removing the old entry from \fIknown_hosts\fR. See
+.BR ascii-chat (5)
+for known_hosts file format.
 .PP
 .SS "ascii-chat Discovery Service (ACDS)"
 The ascii-chat Discovery Service bootstraps trust using the existing HTTPS PKI. By default, the public discovery service runs at \fBdiscover-server.ascii-chat.com:27225\fR. ascii-chat automatically downloads and verifies the discovery server's public keys over HTTPS from \fIdiscovery.ascii-chat.com/key.pub\fR (SSH Ed25519) and \fIdiscovery.ascii-chat.com/key.gpg\fR (GPG), verified by system CA certificates. Servers register with ACDS using a discoverable session string (e.g., "purple-mountain-lake"). Clients connect to the discovery service to look up the server's public key by session string, then pin that key for the subsequent TCP connection to the server. This avoids the chicken-and-egg problem of distributing server keys before the connection exists. The discovery service only stores connection metadata (session strings, public keys, NAT traversal ICE candidates); your video and audio flow peer-to-peer with end-to-end encryption. ACDS never sees your media.
