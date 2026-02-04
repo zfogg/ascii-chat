@@ -693,8 +693,8 @@ int add_client(server_context_t *server_ctx, socket_t socket, const char *client
   if (server_crypto_init() == 0) {
     // Set timeout for crypto handshake to prevent indefinite blocking
     // This prevents clients from connecting but never completing the handshake
-    const int HANDSHAKE_TIMEOUT_SECONDS = 30;
-    asciichat_error_t timeout_result = set_socket_timeout(socket, HANDSHAKE_TIMEOUT_SECONDS);
+    const uint64_t HANDSHAKE_TIMEOUT_NS = 30ULL * NS_PER_SEC_INT;
+    asciichat_error_t timeout_result = set_socket_timeout(socket, HANDSHAKE_TIMEOUT_NS);
     if (timeout_result != ASCIICHAT_OK) {
       log_warn("Failed to set handshake timeout for client %u: %s", atomic_load(&client->client_id),
                asciichat_error_string(timeout_result));

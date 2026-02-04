@@ -385,8 +385,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         if (frame_elapsed_ns < frame_target_ns) {
           uint64_t sleep_ns = frame_target_ns - frame_elapsed_ns;
           // Sleep with 500us overhead reserved for recovery
-          if (sleep_ns > 500 * NS_PER_US_INT) {
-            platform_sleep_ns(sleep_ns - 500 * NS_PER_US_INT);
+          if (sleep_ns > 500000) {
+            platform_sleep_ns(sleep_ns - 500000);
           }
         }
       }

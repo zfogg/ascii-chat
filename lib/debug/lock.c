@@ -274,19 +274,19 @@ static void print_usage_stats_callback(lock_usage_stats_t *stats, void *user_dat
   offset += safe_snprintf(log_message + offset, SAFE_BUFFER_SIZE(sizeof(log_message), offset),
                           "  Total hold time: %llu.%03llu ms\n",
                           (unsigned long long)(stats->total_hold_time_ns / NS_PER_MS_INT),
-                          (unsigned long long)((stats->total_hold_time_ns % NS_PER_MS_INT) / NS_PER_US_INT));
+                          (unsigned long long)((stats->total_hold_time_ns % NS_PER_MS_INT) / 1000));
   offset +=
       safe_snprintf(log_message + offset, SAFE_BUFFER_SIZE(sizeof(log_message), offset),
                     "  Average hold time: %llu.%03llu ms\n", (unsigned long long)(avg_hold_time_ns / NS_PER_MS_INT),
-                    (unsigned long long)((avg_hold_time_ns % NS_PER_MS_INT) / NS_PER_US_INT));
+                    (unsigned long long)((avg_hold_time_ns % NS_PER_MS_INT) / 1000));
   offset +=
       safe_snprintf(log_message + offset, SAFE_BUFFER_SIZE(sizeof(log_message), offset),
                     "  Max hold time: %llu.%03llu ms\n", (unsigned long long)(stats->max_hold_time_ns / NS_PER_MS_INT),
-                    (unsigned long long)((stats->max_hold_time_ns % NS_PER_MS_INT) / NS_PER_US_INT));
+                    (unsigned long long)((stats->max_hold_time_ns % NS_PER_MS_INT) / 1000));
   offset +=
       safe_snprintf(log_message + offset, SAFE_BUFFER_SIZE(sizeof(log_message), offset),
                     "  Min hold time: %llu.%03llu ms\n", (unsigned long long)(stats->min_hold_time_ns / NS_PER_MS_INT),
-                    (unsigned long long)((stats->min_hold_time_ns % NS_PER_MS_INT) / NS_PER_US_INT));
+                    (unsigned long long)((stats->min_hold_time_ns % NS_PER_MS_INT) / 1000));
   char first_acq_str[32];
   format_duration_ns((double)stats->first_acquisition_ns, first_acq_str, sizeof(first_acq_str));
   offset += safe_snprintf(log_message + offset, SAFE_BUFFER_SIZE(sizeof(log_message), offset),

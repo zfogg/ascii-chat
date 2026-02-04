@@ -252,7 +252,7 @@ void audio_analysis_track_sent_packet(size_t size) {
   // Detect gaps between consecutive packets (discontinuity)
   if (g_sent_stats.packets_count > 0) {
     int64_t gap_us = now_us - g_sent_last_packet_time_us;
-    int32_t gap_ms = (int32_t)(gap_us / NS_PER_US_INT);
+    int32_t gap_ms = (int32_t)(gap_us / 1000);
 
     // Expected: ~20ms per Opus frame, flag if gap > 100ms
     if (gap_ms > 100) {
@@ -476,7 +476,7 @@ void audio_analysis_track_received_packet(size_t size) {
   // Detect gaps between consecutive packets (discontinuity)
   if (g_received_stats.packets_count > 0) {
     int64_t gap_us = now_us - g_received_last_packet_time_us;
-    int32_t gap_ms = (int32_t)(gap_us / NS_PER_US_INT);
+    int32_t gap_ms = (int32_t)(gap_us / 1000);
 
     // Expected: ~20ms per Opus frame, flag if gap > 100ms
     if (gap_ms > 100) {
@@ -520,8 +520,8 @@ void audio_analysis_print_report(void) {
   g_sent_stats.timestamp_end_ns = now_us;
   g_received_stats.timestamp_end_ns = now_us;
 
-  int64_t sent_duration_ms = (g_sent_stats.timestamp_end_ns - g_sent_stats.timestamp_start_ns) / NS_PER_US_INT;
-  int64_t recv_duration_ms = (g_received_stats.timestamp_end_ns - g_received_stats.timestamp_start_ns) / NS_PER_US_INT;
+  int64_t sent_duration_ms = (g_sent_stats.timestamp_end_ns - g_sent_stats.timestamp_start_ns) / 1000000;
+  int64_t recv_duration_ms = (g_received_stats.timestamp_end_ns - g_received_stats.timestamp_start_ns) / 1000000;
 
   // Calculate RMS levels
   float sent_rms = 0.0f;

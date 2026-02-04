@@ -468,7 +468,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     // Get the client's desired FPS (what we told the server we can display)
     int fps = GET_OPTION(fps);
     int client_display_fps = fps > 0 ? fps : DEFAULT_MAX_FPS;
-    uint64_t render_interval_us = (NS_PER_SEC_INT / NS_PER_US_INT) / (uint64_t)client_display_fps;
+    uint64_t render_interval_us = (1000000) / (uint64_t)client_display_fps;
 
     uint64_t render_time_ns = time_get_ns();
     uint64_t render_elapsed_us = 0;

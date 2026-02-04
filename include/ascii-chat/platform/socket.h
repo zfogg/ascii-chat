@@ -223,6 +223,19 @@ int socket_setsockopt(socket_t sock, int level, int optname, const void *optval,
 int socket_getsockopt(socket_t sock, int level, int optname, void *optval, socklen_t *optlen);
 
 /**
+ * @brief Set socket send/receive timeout in nanoseconds
+ * @param sock Socket to configure
+ * @param timeout_ns Timeout in nanoseconds (0 to disable timeout)
+ * @return 0 on success, non-zero on error
+ *
+ * Sets both SO_SNDTIMEO and SO_RCVTIMEO socket options.
+ * Nanosecond values are converted to platform-specific time units internally.
+ *
+ * @ingroup platform
+ */
+int socket_set_timeout_ns(socket_t sock, uint64_t timeout_ns);
+
+/**
  * @brief Shutdown socket I/O
  * @param sock Socket to shutdown
  * @param how Shutdown mode (SHUT_RD, SHUT_WR, SHUT_RDWR)

@@ -110,7 +110,7 @@ ParameterizedTest(invalid_socket_test_case_t *tc, network, invalid_socket_operat
 
   switch (tc->operation) {
   case OP_SET_TIMEOUT:
-    result = set_socket_timeout(-1, 1);
+    result = set_socket_timeout(-1, 1ULL * NS_PER_SEC_INT);
     cr_assert_eq(result, -1, "%s should fail", tc->description);
     break;
   case OP_SET_KEEPALIVE:
@@ -193,7 +193,7 @@ Test(network, set_socket_timeout_valid) {
   int sockfd = create_test_socket();
   cr_assert_geq(sockfd, 0);
 
-  int result = set_socket_timeout(sockfd, 1);
+  int result = set_socket_timeout(sockfd, 1ULL * NS_PER_SEC_INT);
   cr_assert_eq(result, 0);
 
   close(sockfd);
