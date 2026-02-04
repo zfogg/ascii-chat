@@ -200,13 +200,13 @@ static const client_dispatch_entry_t g_client_dispatch_hash[CLIENT_DISPATCH_HASH
     [0]  = {PACKET_TYPE_AUDIO_BATCH,           2},   // hash(4000)=0
     [1]  = {PACKET_TYPE_PROTOCOL_VERSION,      0},   // hash(1)=1
     [2]  = {PACKET_TYPE_AUDIO_OPUS_BATCH,      3},   // hash(4001)=1, probed->2
-    [8]  = {PACKET_TYPE_CLIENT_CAPABILITIES,   8},   // hash(5000)=8
-    [9]  = {PACKET_TYPE_PING,                  9},   // hash(5001)=9
-    [10] = {PACKET_TYPE_PONG,                  10},  // hash(5002)=10
-    [11] = {PACKET_TYPE_CLIENT_JOIN,           4},   // hash(5003)=11
-    [12] = {PACKET_TYPE_CLIENT_LEAVE,          5},   // hash(5004)=12
-    [13] = {PACKET_TYPE_STREAM_START,          6},   // hash(5005)=13
-    [14] = {PACKET_TYPE_STREAM_STOP,           7},   // hash(5006)=14
+    [8]  = {PACKET_TYPE_CLIENT_CAPABILITIES,   4},   // hash(5000)=8
+    [9]  = {PACKET_TYPE_PING,                  5},   // hash(5001)=9
+    [10] = {PACKET_TYPE_PONG,                  6},   // hash(5002)=10
+    [11] = {PACKET_TYPE_CLIENT_JOIN,           7},   // hash(5003)=11
+    [12] = {PACKET_TYPE_CLIENT_LEAVE,          8},   // hash(5004)=12
+    [13] = {PACKET_TYPE_STREAM_START,          9},   // hash(5005)=13
+    [14] = {PACKET_TYPE_STREAM_STOP,           10},  // hash(5006)=14
     [20] = {PACKET_TYPE_REMOTE_LOG,            11},  // hash(2004)=20
     [25] = {PACKET_TYPE_IMAGE_FRAME,           1},   // hash(3001)=25
 };
