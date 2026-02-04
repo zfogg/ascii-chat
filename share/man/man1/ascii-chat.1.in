@@ -156,6 +156,48 @@ resolution. Each character cell displays two pixels (top and bottom halves).
 Requires UTF-8 support (\fB\-\-show\-capabilities\fR and \fB\-\-utf8\fR).
 .\" MANUAL-END: RENDER MODES
 
+.\" MANUAL-START: URLS
+.SH URLS
+The "ascii-chat", \fBclient\fR, and \fBmirror\fR modes accept URLs via the \fB\-\-url\fR option to stream media from the network.
+URLs can be specified with or without an explicit scheme.
+.PP
+.B Explicit Scheme (Recommended)
+.RS
+.TP
+.B https://example.com/video.mp4
+Use HTTPS on port 443.
+.TP
+.B http://192.168.1.100:8080/stream.m3u8
+Use HTTP on custom port 8080.
+.RE
+.PP
+.B Bare IP Address or Hostname
+.RS
+When no scheme is provided, ascii-chat automatically defaults to \fBHTTP on port 80\fR:
+.TP
+.B example.com/video.mp4
+Resolves to \fBhttp://example.com:80/video.mp4\fR
+.TP
+.B 192.168.1.100:8080/stream.m3u8
+Resolves to \fBhttp://192.168.1.100:8080/stream.m3u8\fR
+.TP
+.B localhost:3000/file.mp4
+Resolves to \fBhttp://localhost:3000/file.mp4\fR
+.RE
+.PP
+.B Port Specification
+.RS
+Port numbers can be included with bare URLs but are treated as HTTP ports.
+To use HTTPS on a non-standard port, explicitly specify the scheme:
+.TP
+.B example.com:8443/video.mp4
+Uses HTTP on port 8443 (not HTTPS).
+.TP
+.B https://example.com:8443/video.mp4
+Uses HTTPS on port 8443 (explicit scheme required).
+.RE
+.\" MANUAL-END: URLS
+
 .\" MANUAL-START: KEYBOARD CONTROLS
 .SH KEYBOARD CONTROLS
 Keyboard controls are available when running with local media sources
