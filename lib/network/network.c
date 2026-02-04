@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdatomic.h>
+#include <sys/time.h>
 
 /* ============================================================================
  * Core Network I/O Operations
@@ -307,15 +308,40 @@ int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *add
 /**
  * @brief Set socket timeout
  * @param sockfd Socket file descriptor
- * @param timeout_seconds Timeout in seconds
+ * @param timeout_ns Timeout in nanoseconds (converted to milliseconds for socket level)
  * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Sets socket-level timeouts (SO_RCVTIMEO/SO_SNDTIMEO) as a safety net fallback.
+ * Actual precision depends on platform: milliseconds on most systems, microseconds
+ * on some. Works in conjunction with application-level timeouts via socket_poll.
  */
 asciichat_error_t set_socket_timeout(socket_t sockfd, uint64_t timeout_ns) {
-  // Socket-level timeouts (SO_RCVTIMEO/SO_SNDTIMEO) are not needed since
-  // we use application-level timeouts via send_with_timeout/recv_with_timeout
-  // which use socket_poll with nanosecond precision.
-  (void)sockfd;
-  (void)timeout_ns;
+  if (sockfd == INVALID_SOCKET_VALUE) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid socket file descriptor");
+  }
+
+  // Convert nanoseconds to milliseconds for socket-level timeout
+  // Note: socket-level timeouts have ~millisecond granularity on most platforms
+  uint64_t timeout_ms = timeout_ns / (1000 * 1000);
+  if (timeout_ms == 0 && timeout_ns > 0) {
+    timeout_ms = 1; // Ensure at least 1ms for non-zero timeouts
+  }
+
+  // Set both receive and send timeouts using struct timeval
+  struct timeval tv;
+  tv.tv_sec = (time_t)(timeout_ms / 1000);
+  tv.tv_usec = (suseconds_t)((timeout_ms % 1000) * 1000);
+
+  // Set receive timeout
+  if (socket_setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) != 0) {
+    return SET_ERRNO_SYS(ERROR_NETWORK, "Failed to set socket receive timeout");
+  }
+
+  // Set send timeout
+  if (socket_setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) != 0) {
+    return SET_ERRNO_SYS(ERROR_NETWORK, "Failed to set socket send timeout");
+  }
+
   return ASCIICHAT_OK;
 }
 

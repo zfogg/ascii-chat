@@ -255,7 +255,7 @@ ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, uint64_t timeo
  *
  * @ingroup network
  */
-int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *addrlen, int timeout_seconds);
+int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *addrlen, uint64_t timeout_ns);
 
 /**
  * @brief Connect to server with timeout

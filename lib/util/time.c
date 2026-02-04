@@ -4,9 +4,12 @@
  * @brief ⏱️ High-precision timing utilities implementation
  */
 
-#define SOKOL_IMPL
-#define SOKOL_TIME_IMPL
 #include <ascii-chat/util/time.h>
+
+// Force re-inclusion of sokol_time with implementation
+#undef SOKOL_TIME_INCLUDED
+#define SOKOL_TIME_IMPL
+#include <ascii-chat-deps/sokol/sokol_time.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/platform/rwlock.h>

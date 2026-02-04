@@ -46,7 +46,7 @@
 // ============================================================================
 
 // Include sokol_time.h declarations (WITHOUT implementation)
-// SOKOL_IMPL is defined only in time.c to avoid duplicate symbols
+// SOKOL_TIME_IMPL is defined only in time.c to avoid duplicate symbols
 #include <ascii-chat-deps/sokol/sokol_time.h>
 
 // Include uthash wrapper for UBSan-safe hash functions
