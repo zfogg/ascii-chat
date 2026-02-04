@@ -295,7 +295,10 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
                         "-f 'b' -O '%%(url)s' '%s' 2>&1",
                         cookies_value, youtube_url);
     } else {
-      // No browser specified - use without cookies (cookies-from-browser can fail if browser not available)
+      // No browser specified - use without cookies for better compatibility
+      // Note: Using --cookies-from-browser can trigger YouTube's stricter n-challenge
+      // signature solving which frequently breaks when YouTube updates their player code.
+      // Using --no-cookies-from-browser works around this by using alternative extraction.
       cmd_ret =
           safe_snprintf(command, sizeof(command),
                         "yt-dlp --quiet --no-warnings "
