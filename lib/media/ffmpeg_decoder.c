@@ -11,6 +11,7 @@
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/util/url.h>
 #include <ascii-chat/options/options.h>
 
 #include <libavformat/avformat.h>
@@ -433,8 +434,8 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
   // Configure FFmpeg options for HTTP streaming performance
   AVDictionary *options = NULL;
 
-  // For HTTP/HTTPS streams: enable fast probing and reconnection
-  if (path && (strstr(path, "http://") == path || strstr(path, "https://") == path)) {
+  // For HTTP/HTTPS streams: enable fast probing and reconnection (validated via production-grade URL regex)
+  if (path && url_is_valid(path)) {
     // Limit probing to 32KB for faster format detection
     av_dict_set(&options, "probesize", "32768", 0);
     // Analyze for 100ms max to determine streams quickly

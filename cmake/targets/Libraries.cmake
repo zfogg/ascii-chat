@@ -119,6 +119,29 @@ create_ascii_chat_module(ascii-chat-util "${UTIL_SRCS}")
 # We build utf8proc as part of our library, not as a separate DLL
 target_compile_definitions(ascii-chat-util PRIVATE UTF8PROC_STATIC)
 
+# PCRE2: Define PCRE2_CODE_UNIT_WIDTH=8 for 8-bit API (UTF-8 support)
+# CRITICAL: Must be defined before including pcre2.h in any source file
+target_compile_definitions(ascii-chat-util PRIVATE PCRE2_CODE_UNIT_WIDTH=8)
+
+# Add PCRE2 include directory (must be before linking)
+if(PCRE2_INCLUDE_DIRS)
+    target_include_directories(ascii-chat-util PRIVATE ${PCRE2_INCLUDE_DIRS})
+endif()
+
+# Link PCRE2 library with explicit library directories
+# PCRE2 needs both library directory (-L) and library name (-l)
+if(PCRE2_LIBRARY_DIRS AND PCRE2_LIBRARIES)
+    target_link_directories(ascii-chat-util PRIVATE ${PCRE2_LIBRARY_DIRS})
+    target_link_libraries(ascii-chat-util ${PCRE2_LIBRARIES} pthread)
+else()
+    message(FATAL_ERROR "PCRE2 library path not found. PCRE2_LIBRARY_DIRS=${PCRE2_LIBRARY_DIRS}, PCRE2_LIBRARIES=${PCRE2_LIBRARIES}")
+endif()
+
+# Add dependency on PCRE2 build target if building from source (musl)
+if(DEFINED PCRE2_BUILD_TARGET)
+    add_dependencies(ascii-chat-util ${PCRE2_BUILD_TARGET})
+endif()
+
 # -----------------------------------------------------------------------------
 # Module 2: Data Structures (depends on: util)
 # -----------------------------------------------------------------------------
@@ -561,6 +584,14 @@ if(BUILDING_OBJECT_LIBS)
         target_include_directories(ascii-chat-shared PRIVATE $<BUILD_INTERFACE:${MIMALLOC_INCLUDE_DIRS}>)
     endif()
 
+    # Add PCRE2 include directory and library directory for the shared library
+    if(PCRE2_INCLUDE_DIRS)
+        target_include_directories(ascii-chat-shared PRIVATE ${PCRE2_INCLUDE_DIRS})
+    endif()
+    if(PCRE2_LIBRARY_DIRS)
+        target_link_directories(ascii-chat-shared PRIVATE ${PCRE2_LIBRARY_DIRS})
+    endif()
+
     # Unix: Set proper visibility and TLS model for shared library
     if(NOT WIN32)
         target_compile_options(ascii-chat-shared PRIVATE
@@ -584,6 +615,7 @@ if(BUILDING_OBJECT_LIBS)
         ${ZSTD_LIBRARIES}
         ${OPUS_LIBRARIES}
         ${SQLITE3_LIBRARIES}
+        ${PCRE2_LIBRARIES}
         OpenMP::OpenMP_C
     )
 

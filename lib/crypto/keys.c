@@ -49,8 +49,8 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
     return parse_gpg_key(input + 4, key_out);
   }
 
-  // Try HTTPS URLs (https://...)
-  if (strncmp(input, "https://", 8) == 0) {
+  // Try HTTPS URLs (validated via production-grade URL regex)
+  if (url_is_valid(input)) {
     // Parse HTTPS URL to extract hostname and path
     https_url_parts_t url_parts;
     asciichat_error_t parse_result = parse_https_url(input, &url_parts);

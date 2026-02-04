@@ -16,6 +16,7 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/process.h>
 #include <ascii-chat/platform/system.h>
+#include <ascii-chat/util/url.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -338,19 +339,16 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
     full_output[ytdlp_output_len++] = (char)c;
 
     // Track current line - looking for http:// or https:// stream URL
-    if (url_size == 0 && c == 'h') {
-      // Potential start of URL
-      url_buffer[url_size++] = (char)c;
-    } else if (url_size > 0 && c != '\n' && url_size < sizeof(url_buffer) - 1) {
-      // Continue building potential URL
+    if ((url_size == 0 && c == 'h') || (url_size > 0 && c != '\n' && url_size < sizeof(url_buffer) - 1)) {
+      // Start of URL or continue building potential URL
       url_buffer[url_size++] = (char)c;
     } else if (c == '\n') {
-      // End of line - check if what we collected is a valid URL
+      // End of line - check if what we collected is a valid URL using production-grade PCRE2 validator
       if (url_size > 0) {
-        // Verify it starts with http:// or https://
-        bool is_valid_url = (url_size >= 7 && strncmp(url_buffer, "http://", 7) == 0) ||
-                            (url_size >= 8 && strncmp(url_buffer, "https://", 8) == 0);
-        if (is_valid_url) {
+        // Null-terminate the buffer for validation
+        url_buffer[url_size] = '\0';
+        // Validate using PCRE2-based production-grade URL regex
+        if (url_is_valid(url_buffer)) {
           // Found valid HTTP(S) URL, break out of read loop
           break;
         }

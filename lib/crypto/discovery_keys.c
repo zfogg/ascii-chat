@@ -17,6 +17,7 @@
 #include <ascii-chat/platform/question.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/util/path.h>
+#include <ascii-chat/util/url.h>
 
 #include <ctype.h>
 #include <errno.h>

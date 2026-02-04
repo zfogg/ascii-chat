@@ -75,6 +75,9 @@ include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Miniupnpc.cmake)
 # SQLite3 - Database for ACDS sessions and rate limiting
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/SQLite3.cmake)
 
+# PCRE2 - Regular expression library for URL validation
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/PCRE2.cmake)
+
 # BearSSL - SSL/TLS library for HTTPS key fetching
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/BearSSL.cmake)
 

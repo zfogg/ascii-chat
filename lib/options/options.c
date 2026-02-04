@@ -93,6 +93,7 @@
 #include <ascii-chat/platform/util.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/util/url.h>
 
 #ifdef _WIN32
 #include <io.h>
@@ -1530,6 +1531,16 @@ asciichat_error_t options_init(int argc, char **argv) {
     // Require --file or --url (not webcam, not test pattern)
     if (opts.media_file[0] == '\0' && opts.media_url[0] == '\0') {
       log_error("--pause requires --file or --url");
+      SAFE_FREE(allocated_mode_argv);
+      return ERROR_INVALID_PARAM;
+    }
+  }
+
+  // Validate --url option
+  if (opts.media_url[0] != '\0') {
+    // URL must be a valid HTTP(S) URL (YouTube URLs are HTTPS URLs)
+    if (!url_is_valid(opts.media_url)) {
+      log_error("--url must be a valid HTTP(S) URL: %s", opts.media_url);
       SAFE_FREE(allocated_mode_argv);
       return ERROR_INVALID_PARAM;
     }
