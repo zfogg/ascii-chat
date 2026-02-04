@@ -42,27 +42,25 @@
  *
  * @note Returns timeout in seconds for use with send/recv APIs
  */
-static int calculate_packet_timeout(size_t packet_size) {
-  int base_timeout = network_is_test_environment() ? 1 : SEND_TIMEOUT;
+static uint64_t calculate_packet_timeout(size_t packet_size) {
+  uint64_t base_timeout = network_is_test_environment() ? (1ULL * NS_PER_SEC_INT) : (SEND_TIMEOUT * NS_PER_SEC_INT);
 
   // For large packets, increase timeout proportionally
   if (packet_size > LARGE_PACKET_THRESHOLD) {
-    // Add extra timeout per MB above the threshold (convert LARGE_PACKET_EXTRA_TIMEOUT_PER_MB from ns to seconds)
-    double extra_timeout_per_mb_seconds = (double)LARGE_PACKET_EXTRA_TIMEOUT_PER_MB / NS_PER_SEC_INT;
-    int extra_timeout =
-        (int)(((double)packet_size - LARGE_PACKET_THRESHOLD) / 1000000.0 * extra_timeout_per_mb_seconds) + 1;
-    int total_timeout = base_timeout + extra_timeout;
+    // Add extra timeout per MB above the threshold
+    uint64_t extra_timeout =
+        (uint64_t)(((double)packet_size - LARGE_PACKET_THRESHOLD) / 1000000.0 * LARGE_PACKET_EXTRA_TIMEOUT_PER_MB) +
+        NS_PER_MS_INT;
+    uint64_t total_timeout = base_timeout + extra_timeout;
 
     // Ensure client timeout is longer than server's RECV_TIMEOUT (30s) to prevent deadlock
     // Add 10 seconds buffer to account for server processing delays
-    int min_timeout = (int)(MIN_CLIENT_TIMEOUT / NS_PER_SEC_INT);
-    if (total_timeout < min_timeout) {
-      total_timeout = min_timeout;
+    if (total_timeout < MIN_CLIENT_TIMEOUT) {
+      total_timeout = MIN_CLIENT_TIMEOUT;
     }
 
     // Cap at maximum timeout
-    int max_timeout = (int)(MAX_CLIENT_TIMEOUT / NS_PER_SEC_INT);
-    return (total_timeout > max_timeout) ? max_timeout : total_timeout;
+    return (total_timeout > MAX_CLIENT_TIMEOUT) ? MAX_CLIENT_TIMEOUT : total_timeout;
   }
 
   return base_timeout;
@@ -302,8 +300,8 @@ asciichat_error_t packet_send(socket_t sockfd, packet_type_t type, const void *d
                             .crc32 = HOST_TO_NET_U32(len > 0 ? asciichat_crc32(data, len) : 0),
                             .client_id = HOST_TO_NET_U32(0)}; // Always initialize client_id to 0 in network byte order
 
-  // Calculate timeout based on packet size
-  int timeout = calculate_packet_timeout(len);
+  // Calculate timeout based on packet size (in nanoseconds)
+  uint64_t timeout = calculate_packet_timeout(len);
 
   // Send header first
   ssize_t sent = send_with_timeout(sockfd, &header, sizeof(header), timeout);
@@ -357,8 +355,9 @@ asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **da
 
   // Read packet header into memory from network socket
   packet_header_t header;
-  ssize_t received =
-      recv_with_timeout(sockfd, &header, sizeof(header), network_is_test_environment() ? 1 : RECV_TIMEOUT);
+  uint64_t header_timeout_ns =
+      network_is_test_environment() ? (1ULL * NS_PER_SEC_INT) : (RECV_TIMEOUT * NS_PER_SEC_INT);
+  ssize_t received = recv_with_timeout(sockfd, &header, sizeof(header), header_timeout_ns);
   if (received < 0) {
     // Error context is already set by recv_with_timeout
     return ERROR_NETWORK;
@@ -387,7 +386,7 @@ asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **da
     payload = buffer_pool_alloc(NULL, pkt_len);
 
     // Use adaptive timeout for large packets
-    int recv_timeout = network_is_test_environment() ? 1 : calculate_packet_timeout(pkt_len);
+    uint64_t recv_timeout = network_is_test_environment() ? (1ULL * NS_PER_SEC_INT) : calculate_packet_timeout(pkt_len);
     received = recv_with_timeout(sockfd, payload, pkt_len, recv_timeout);
     if (received < 0) {
       buffer_pool_free(NULL, payload, pkt_len);
@@ -577,8 +576,9 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
 
   // Receive packet header
   packet_header_t header;
-  ssize_t received =
-      recv_with_timeout(sockfd, &header, sizeof(header), network_is_test_environment() ? 1 : RECV_TIMEOUT);
+  uint64_t header_timeout_ns =
+      network_is_test_environment() ? (1ULL * NS_PER_SEC_INT) : (RECV_TIMEOUT * NS_PER_SEC_INT);
+  ssize_t received = recv_with_timeout(sockfd, &header, sizeof(header), header_timeout_ns);
 
   // Check for errors first (before comparing signed with unsigned)
   if (received < 0) {

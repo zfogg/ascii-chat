@@ -5,6 +5,7 @@
  */
 
 #define SOKOL_IMPL
+#define SOKOL_TIME_IMPL
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>

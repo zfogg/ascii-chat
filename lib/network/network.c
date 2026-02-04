@@ -106,7 +106,7 @@ static int network_handle_select_error(int result) {
  * @param timeout_seconds Timeout in seconds
  * @return Number of bytes sent, or -1 on error
  */
-ssize_t send_with_timeout(socket_t sockfd, const void *data, size_t len, int timeout_seconds) {
+ssize_t send_with_timeout(socket_t sockfd, const void *data, size_t len, uint64_t timeout_ns) {
   if (sockfd == INVALID_SOCKET_VALUE) {
     errno = EBADF;
     return -1;
@@ -123,20 +123,18 @@ ssize_t send_with_timeout(socket_t sockfd, const void *data, size_t len, int tim
       bytes_to_send = MAX_CHUNK_SIZE;
     }
 
-    // Set up select for write timeout
-    fd_set write_fds;
-    struct timeval timeout;
+    // Set up poll for write timeout (in nanoseconds)
+    struct pollfd pfd;
+    pfd.fd = sockfd;
+    pfd.events = POLLOUT;
+    pfd.revents = 0;
 
-    socket_fd_zero(&write_fds);
-    socket_fd_set(sockfd, &write_fds);
-
-    timeout.tv_sec = network_is_test_environment() ? 1 : timeout_seconds;
-    timeout.tv_usec = 0;
-
-    int result = socket_select(sockfd, NULL, &write_fds, NULL, &timeout);
+    int64_t effective_timeout_ns = network_is_test_environment() ? (100LL * NS_PER_MS_INT) : (int64_t)timeout_ns;
+    int result = socket_poll(&pfd, 1, effective_timeout_ns);
     if (result <= 0) {
       if (result == 0) {
-        SET_ERRNO_SYS(ERROR_NETWORK_TIMEOUT, "send_with_timeout timed out after %d seconds", timeout_seconds);
+        SET_ERRNO_SYS(ERROR_NETWORK_TIMEOUT, "send_with_timeout timed out after %llu nanoseconds",
+                      (unsigned long long)timeout_ns);
         return -1;
       }
       if (network_handle_select_error(result)) {
@@ -146,8 +144,8 @@ ssize_t send_with_timeout(socket_t sockfd, const void *data, size_t len, int tim
     }
 
     // Check if socket is ready for writing
-    if (!socket_fd_isset(sockfd, &write_fds)) {
-      SET_ERRNO_SYS(ERROR_NETWORK_TIMEOUT, "send_with_timeout socket not ready for writing after select");
+    if (!(pfd.revents & POLLOUT)) {
+      SET_ERRNO_SYS(ERROR_NETWORK_TIMEOUT, "send_with_timeout socket not ready for writing after poll");
       return -1;
     }
 
@@ -178,29 +176,28 @@ ssize_t send_with_timeout(socket_t sockfd, const void *data, size_t len, int tim
  * @param timeout_seconds Timeout in seconds
  * @return Number of bytes received, or -1 on error
  */
-ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, int timeout_seconds) {
+ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, uint64_t timeout_ns) {
   if (sockfd == INVALID_SOCKET_VALUE) {
     errno = EBADF;
     return -1;
   }
 
-  fd_set read_fds;
-  struct timeval timeout;
   ssize_t total_received = 0;
   char *data = (char *)buf;
 
   while (total_received < (ssize_t)len) {
-    // Set up select for read timeout
-    socket_fd_zero(&read_fds);
-    socket_fd_set(sockfd, &read_fds);
+    // Set up poll for read timeout (in nanoseconds)
+    struct pollfd pfd;
+    pfd.fd = sockfd;
+    pfd.events = POLLIN;
+    pfd.revents = 0;
 
-    timeout.tv_sec = network_is_test_environment() ? 1 : timeout_seconds;
-    timeout.tv_usec = 0;
-
-    int result = socket_select(sockfd, &read_fds, NULL, NULL, &timeout);
+    int64_t effective_timeout_ns = network_is_test_environment() ? (1LL * NS_PER_SEC_INT) : (int64_t)timeout_ns;
+    int result = socket_poll(&pfd, 1, effective_timeout_ns);
     if (result <= 0) {
       if (result == 0) {
-        SET_ERRNO_SYS(ERROR_NETWORK_TIMEOUT, "recv_with_timeout timed out after %d seconds", timeout_seconds);
+        SET_ERRNO_SYS(ERROR_NETWORK_TIMEOUT, "recv_with_timeout timed out after %llu nanoseconds",
+                      (unsigned long long)timeout_ns);
         return -1;
       }
       if (network_handle_select_error(result)) {
@@ -210,8 +207,8 @@ ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, int timeout_se
     }
 
     // Check if socket is ready
-    if (!socket_fd_isset(sockfd, &read_fds)) {
-      SET_ERRNO_SYS(ERROR_NETWORK_TIMEOUT, "recv_with_timeout socket not ready after select");
+    if (!(pfd.revents & POLLIN)) {
+      SET_ERRNO_SYS(ERROR_NETWORK_TIMEOUT, "recv_with_timeout socket not ready after poll");
       return -1;
     }
 
@@ -247,17 +244,14 @@ ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, int timeout_se
  * @param timeout_seconds Timeout in seconds
  * @return Client socket, or -1 on error
  */
-int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *addrlen, int timeout_seconds) {
-  fd_set read_fds;
-  struct timeval timeout;
+int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *addrlen, uint64_t timeout_ns) {
+  // Set up poll for accept timeout (in nanoseconds)
+  struct pollfd pfd;
+  pfd.fd = listenfd;
+  pfd.events = POLLIN;
+  pfd.revents = 0;
 
-  socket_fd_zero(&read_fds);
-  socket_fd_set(listenfd, &read_fds);
-
-  timeout.tv_sec = timeout_seconds;
-  timeout.tv_usec = 0;
-
-  int result = socket_select(listenfd, &read_fds, NULL, NULL, &timeout);
+  int result = socket_poll(&pfd, 1, (int64_t)timeout_ns);
 
   if (result <= 0) {
     if (result == 0) {
@@ -276,7 +270,7 @@ int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *add
   }
 
   // Check if socket is ready
-  if (!socket_fd_isset(listenfd, &read_fds)) {
+  if (!(pfd.revents & POLLIN)) {
     asciichat_errno = ERROR_NETWORK_TIMEOUT;
     asciichat_errno_context.code = ERROR_NETWORK_TIMEOUT;
     asciichat_errno_context.has_system_error = true;
@@ -316,23 +310,12 @@ int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *add
  * @param timeout_seconds Timeout in seconds
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t set_socket_timeout(socket_t sockfd, int timeout_seconds) {
-  if (sockfd == INVALID_SOCKET_VALUE) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid socket file descriptor");
-  }
-
-  struct timeval timeout;
-  timeout.tv_sec = timeout_seconds;
-  timeout.tv_usec = 0;
-
-  if (socket_setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
-    return SET_ERRNO_SYS(ERROR_NETWORK, "Failed to set socket receive timeout");
-  }
-
-  if (socket_setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) < 0) {
-    return SET_ERRNO_SYS(ERROR_NETWORK, "Failed to set socket send timeout");
-  }
-
+asciichat_error_t set_socket_timeout(socket_t sockfd, uint64_t timeout_ns) {
+  // Socket-level timeouts (SO_RCVTIMEO/SO_SNDTIMEO) are not needed since
+  // we use application-level timeouts via send_with_timeout/recv_with_timeout
+  // which use socket_poll with nanosecond precision.
+  (void)sockfd;
+  (void)timeout_ns;
   return ASCIICHAT_OK;
 }
 

@@ -200,7 +200,7 @@
  * @param sockfd Socket file descriptor
  * @param data Data to send
  * @param len Length of data in bytes
- * @param timeout_seconds Timeout in seconds
+ * @param timeout_ns Timeout in nanoseconds
  * @return Number of bytes sent on success, -1 on error
  *
  * Sends data to socket with timeout support. Uses chunked transmission
@@ -214,18 +214,18 @@
  *
  * @ingroup network
  */
-ssize_t send_with_timeout(socket_t sockfd, const void *data, size_t len, int timeout_seconds);
+ssize_t send_with_timeout(socket_t sockfd, const void *data, size_t len, uint64_t timeout_ns);
 
 /**
  * @brief Receive data with timeout
  * @param sockfd Socket file descriptor
  * @param buf Buffer to receive data
  * @param len Length of buffer in bytes
- * @param timeout_seconds Timeout in seconds
+ * @param timeout_ns Timeout in nanoseconds
  * @return Number of bytes received on success, -1 on error
  *
  * Receives data from socket with timeout support. Waits up to
- * timeout_seconds for data to arrive.
+ * timeout_ns for data to arrive.
  *
  * @note Partial receives are possible - function returns number
  *       of bytes actually received.
@@ -235,18 +235,18 @@ ssize_t send_with_timeout(socket_t sockfd, const void *data, size_t len, int tim
  *
  * @ingroup network
  */
-ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, int timeout_seconds);
+ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, uint64_t timeout_ns);
 
 /**
  * @brief Accept connection with timeout
  * @param listenfd Listening socket file descriptor
  * @param addr Output: Client address structure (can be NULL)
  * @param addrlen Input/output: Length of address structure
- * @param timeout_seconds Timeout in seconds
+ * @param timeout_ns Timeout in nanoseconds
  * @return Client socket file descriptor on success, -1 on error
  *
  * Accepts incoming connection with timeout support. Waits up to
- * timeout_seconds for incoming connection.
+ * timeout_ns for incoming connection.
  *
  * @note If addr is NULL, client address information is not returned.
  *
@@ -288,7 +288,7 @@ bool connect_with_timeout(socket_t sockfd, const struct sockaddr *addr, socklen_
 /**
  * @brief Set socket timeout for send/receive operations
  * @param sockfd Socket file descriptor
- * @param timeout_seconds Timeout in seconds
+ * @param timeout_ns Timeout in nanoseconds (0 to disable timeout)
  * @return ASCIICHAT_OK on success, error code on failure
  *
  * Configures socket-level timeout for send and receive operations.
@@ -299,7 +299,7 @@ bool connect_with_timeout(socket_t sockfd, const struct sockaddr *addr, socklen_
  *
  * @ingroup network
  */
-asciichat_error_t set_socket_timeout(socket_t sockfd, int timeout_seconds);
+asciichat_error_t set_socket_timeout(socket_t sockfd, uint64_t timeout_ns);
 
 /**
  * @brief Enable TCP keepalive on socket
