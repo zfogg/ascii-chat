@@ -274,7 +274,7 @@ asciichat_error_t options_state_init(void) {
   g_options_initialized = true;
   g_init_pid = current_pid; // Record PID to detect fork later
   static_mutex_unlock(&g_options_init_mutex);
-  log_debug("Options state initialized with RCU pattern (PID %d)", current_pid);
+  log_dev("Options state initialized with RCU pattern (PID %d)", current_pid);
 
   return ASCIICHAT_OK;
 }

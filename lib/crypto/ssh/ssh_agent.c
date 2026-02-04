@@ -40,10 +40,10 @@ bool ssh_agent_is_available(void) {
   pipe_t pipe = ssh_agent_open_pipe();
   if (pipe != INVALID_PIPE_VALUE) {
     platform_pipe_close(pipe);
-    log_debug("ssh-agent is available");
+    log_dev("ssh-agent is available");
     return true;
   }
-  log_debug("ssh-agent not available");
+  log_dev("ssh-agent not available");
   return false;
 }
 

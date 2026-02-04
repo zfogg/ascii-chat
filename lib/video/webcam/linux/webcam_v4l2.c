@@ -229,7 +229,7 @@ static int webcam_v4l2_start_streaming(webcam_context_t *ctx) {
     return -1;
   }
 
-  log_debug("V4L2 streaming started");
+  log_dev("V4L2 streaming started");
   return 0;
 }
 
@@ -328,7 +328,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   }
 
   *ctx = context;
-  log_debug("V4L2 webcam initialized successfully on %s", device_path);
+  log_dev("V4L2 webcam initialized successfully on %s", device_path);
   return 0;
 }
 

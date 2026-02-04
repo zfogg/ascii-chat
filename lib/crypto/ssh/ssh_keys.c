@@ -232,7 +232,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
         // Check if this key is in ssh-agent
         if (ssh_agent_has_key(&pub_key)) {
           fclose(pub_f);
-          log_debug("Key found in ssh-agent - using cached key (no password required)");
+          log_dev("Key found in ssh-agent - using cached key (no password required)");
           // Key is in agent, we can use it
           key_out->type = KEY_TYPE_ED25519;
           key_out->use_ssh_agent = true;

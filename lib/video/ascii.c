@@ -62,7 +62,7 @@ asciichat_error_t ascii_write_init(int fd, bool reset_terminal) {
       log_warn("Failed to hide cursor");
     }
   }
-  log_debug("ASCII writer initialized");
+  log_dev("ASCII writer initialized");
   return ASCIICHAT_OK;
 }
 

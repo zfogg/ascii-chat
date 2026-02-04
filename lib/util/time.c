@@ -120,7 +120,7 @@ bool timer_system_init(void) {
   g_timer_manager.timers = NULL;
   g_timer_manager.initialized = true;
 
-  log_debug("Timer system initialized");
+  log_dev("Timer system initialized");
   return true;
 }
 

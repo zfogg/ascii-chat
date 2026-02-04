@@ -291,7 +291,7 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
   const asciichat_mode_t mode_values_check[] = {MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVICE};
   for (int i = 0; mode_names_check[i] != NULL; i++) {
     if (strcmp(argv[0], mode_names_check[i]) == 0) {
-      log_debug("Mode detected from argv[0]: %s", argv[0]);
+      log_dev("Mode detected from argv[0]: %s", argv[0]);
       *out_mode = mode_values_check[i];
       *out_mode_index = 0;
       return ASCIICHAT_OK;
@@ -999,7 +999,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   // Force stderr when stdout is not a TTY (piping or redirecting output)
   bool is_tty = platform_isatty(STDOUT_FILENO);
   log_init(opts.log_file, GET_OPTION(log_level), !is_tty, false);
-  log_debug("Initialized mode-specific logging for mode %d: %s", detected_mode, opts.log_file);
+  log_dev("Initialized mode-specific logging for mode %d: %s", detected_mode, opts.log_file);
   SAFE_FREE(log_filename);
 
   // If --help was found in STAGE 1A, handle it with the detected mode

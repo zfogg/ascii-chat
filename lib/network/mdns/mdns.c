@@ -59,7 +59,7 @@ asciichat_mdns_t *asciichat_mdns_init(void) {
     return NULL;
   }
 
-  log_debug("mDNS context initialized (socket: %d, buffer: %zu bytes)", mdns->socket_fd, mdns->buffer_capacity);
+  log_dev("mDNS context initialized (socket: %d, buffer: %zu bytes)", mdns->socket_fd, mdns->buffer_capacity);
   return mdns;
 }
 

@@ -150,15 +150,15 @@ crypto_result_t crypto_init(crypto_context_t *ctx) {
     ctx->rekey_time_threshold = REKEY_TEST_TIME_THRESHOLD;     // 30 seconds
     char duration_str[32];
     format_duration_s((double)ctx->rekey_time_threshold, duration_str, sizeof(duration_str));
-    log_debug("Crypto context initialized with X25519 key exchange (TEST MODE rekey thresholds: %llu packets, %s)",
-              (unsigned long long)ctx->rekey_packet_threshold, duration_str);
+    log_dev("Crypto context initialized with X25519 key exchange (TEST MODE rekey thresholds: %llu packets, %s)",
+            (unsigned long long)ctx->rekey_packet_threshold, duration_str);
   } else {
     ctx->rekey_packet_threshold = REKEY_DEFAULT_PACKET_THRESHOLD; // 1 million packets
     ctx->rekey_time_threshold = REKEY_DEFAULT_TIME_THRESHOLD;     // 3600 seconds (1 hour)
     char duration_str[32];
     format_duration_s((double)ctx->rekey_time_threshold, duration_str, sizeof(duration_str));
-    log_debug("Crypto context initialized with X25519 key exchange (rekey thresholds: %llu packets, %s)",
-              (unsigned long long)ctx->rekey_packet_threshold, duration_str);
+    log_dev("Crypto context initialized with X25519 key exchange (rekey thresholds: %llu packets, %s)",
+            (unsigned long long)ctx->rekey_packet_threshold, duration_str);
   }
   return CRYPTO_OK;
 }
@@ -189,7 +189,7 @@ crypto_result_t crypto_init_with_password(crypto_context_t *ctx, const char *pas
 
   ctx->has_password = true;
 
-  log_debug("Crypto context initialized with password-based encryption");
+  log_dev("Crypto context initialized with password-based encryption");
   return CRYPTO_OK;
 }
 
@@ -342,7 +342,7 @@ crypto_result_t crypto_derive_password_key(crypto_context_t *ctx, const char *pa
     return CRYPTO_ERROR_PASSWORD_DERIVATION;
   }
 
-  log_debug("Password key derived successfully using Argon2id with deterministic salt");
+  log_dev("Password key derived successfully using Argon2id with deterministic salt");
   return CRYPTO_OK;
 }
 
@@ -417,7 +417,7 @@ crypto_result_t crypto_derive_password_encryption_key(const char *password,
     return CRYPTO_ERROR_PASSWORD_DERIVATION;
   }
 
-  log_debug("Password encryption key derived successfully using Argon2id");
+  log_dev("Password encryption key derived successfully using Argon2id");
   return CRYPTO_OK;
 }
 

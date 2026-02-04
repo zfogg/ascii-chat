@@ -58,7 +58,7 @@ asciichat_error_t platform_mmap_open(const char *path, size_t size, platform_mma
   } else if ((size_t)file_size.QuadPart > size) {
     // File is larger than requested - use existing size
     size = (size_t)file_size.QuadPart;
-    log_debug("mmap: using existing file size %zu bytes for %s", size, path);
+    log_dev("mmap: using existing file size %zu bytes for %s", size, path);
   }
 
   // Create file mapping

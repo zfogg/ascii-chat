@@ -27,7 +27,7 @@ asciichat_error_t platform_enable_keepawake(void) {
 
   // Check if systemd is available at runtime (weak symbol)
   if (sd_bus_default_system == NULL) {
-    log_debug("systemd not available, keepawake not supported");
+    log_dev("systemd not available, keepawake not supported");
     return ASCIICHAT_OK; // Not an error, just unsupported
   }
 

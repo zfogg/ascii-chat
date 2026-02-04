@@ -302,8 +302,8 @@ asciichat_error_t consensus_coordinator_on_collection_start(consensus_coordinato
     log_warn("Failed to measure metrics: %d", err);
   }
 
-  log_debug("Collection started: round_id=%u, deadline in %u seconds", round_id,
-            (unsigned int)((deadline_ns - time_get_ns()) / NS_PER_SEC_INT));
+  log_dev("Collection started: round_id=%u, deadline in %u seconds", round_id,
+          (unsigned int)((deadline_ns - time_get_ns()) / NS_PER_SEC_INT));
 
   return ASCIICHAT_OK;
 }

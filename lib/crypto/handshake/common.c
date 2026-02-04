@@ -36,9 +36,9 @@ asciichat_error_t crypto_handshake_init(crypto_handshake_context_t *ctx, bool is
 
   // Load server keys if this is a server
   if (is_server) {
-    log_debug("Server crypto handshake initialized (ephemeral keys)");
+    log_dev("Server crypto handshake initialized (ephemeral keys)");
   } else {
-    log_debug("Client crypto handshake initialized");
+    log_dev("Client crypto handshake initialized");
   }
 
   return ASCIICHAT_OK;

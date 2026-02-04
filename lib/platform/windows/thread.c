@@ -46,7 +46,7 @@ static void initialize_symbol_handler(void) {
         }
       }
       g_thread_symbols_initialized = TRUE;
-      log_debug("Symbol handler initialized at startup");
+      log_dev("Symbol handler initialized at startup");
     }
   }
 }
