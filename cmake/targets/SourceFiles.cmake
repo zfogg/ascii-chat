@@ -323,6 +323,7 @@ set(NETWORK_SRCS
     lib/network/consensus/state.c
     lib/network/consensus/election.c
     lib/network/consensus/metrics.c
+    lib/network/consensus/coordinator.c
     # NAT traversal (UPnP/NAT-PMP for direct TCP without WebRTC)
     lib/network/nat/upnp.c
     # mDNS service discovery for LAN
