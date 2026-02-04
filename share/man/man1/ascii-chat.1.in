@@ -8,13 +8,15 @@
 .SH SYNOPSIS
 .B ascii-chat
 [\fIoptions\fR]
-
 .\" AUTO-END: SYNOPSIS
+
 .\" AUTO-START: POSITIONAL ARGUMENTS
 .\" This section is auto-generated. Manual edits will be lost.
 .SH POSITIONAL ARGUMENTS
 .\" placeholder
 .\" AUTO-END: POSITIONAL ARGUMENTS
+
+.\" MANUAL-START: DESCRIPTION
 .SH DESCRIPTION
 .B ascii-chat
 is a terminal-based video chat application that converts webcam video to ASCII
@@ -73,68 +75,23 @@ ascii-chat.
 .\" placeholder
 .\" AUTO-END: OPTIONS
 
-.SH KEYBOARD CONTROLS
-Keyboard controls are available when running with local media sources
-(\fB--file\fR or \fB--url\fR).  Keyboard controls work in \fBmirror\fR,
-\fBclient\fR, and \fB"ascii-chat"\fR modes.  They are \fInot\fR available when a
-webcam is used as the media source.
+.\" MANUAL-START: CONFIGURATION
+.SH CONFIGURATION
+Configuration is stored in TOML format and can be specified via \fB\-\-config\fR
+or placed in the default configuration directory. Use \fB\-\-config\-create\fR
+to generate a default configuration file.
+Values are applied in order of precedence: command-line arguments override
+environment variables (ASCII_CHAT_*), which override config file values, which
+override defaults.
 .PP
-.B Media Playback Controls
-.TP
-.B LEFT ARROW
-Seek backward 30 seconds in the media file.
-.TP
-.B RIGHT ARROW
-Seek forward 30 seconds in the media file.
-.TP
-.B SPACE
-Toggle play/pause.
-.PP
-.B Audio Controls
-.TP
-.B UP ARROW
-Increase volume by 10%.
-.TP
-.B DOWN ARROW
-Decrease volume by 10%.
-.TP
-.B M
-Toggle audio mute/unmute.
-.PP
-.B Display Controls
-.TP
-.B C
-Cycle through color modes: Mono → 16-color → 256-color → truecolor → mono.
-.TP
-.B R
-Cycle through render modes: Foreground → background → half-Block → foreground.
-.TP
-.B F
-Toggle webcam flip (horizontal mirror). Only works when using a webcam source.
-.PP
-.B Keyboard Configuration
-.RS
-.PP
-These keyboard mappings are currently hardcoded in the application.
-Future versions will support custom keyboard bindings via a configuration file.
-.PP
-.B Developer TODO:
-Implement remappable keyboard controls via a configuration file (e.g., \fI~/.config/ascii-chat/keybindings.toml\fR).
-This will allow users to customize keyboard shortcuts without rebuilding the application.
-.RE
-.PP
-.B Keyboard Layout Support
-.PP
-The keyboard input system supports all standard POSIX keyboards and terminal emulators.
-The default keybindings use ASCII characters only.
-.PP
-The underlying input system fully supports Unicode, including:
-.RS
-.TP
-.B UTF-8
-Any character in the UTF-8 character set can be used for keyboard shortcuts.
-.RE
+For complete configuration documentation including file format, locations, and
+option mappings, see the
+.B config.toml
+section in
+.BR ascii-chat (5).
+.\" MANUAL-END: CONFIGURATION
 
+.\" MANUAL-START: PALETTES
 .SH PALETTES
 ascii-chat uses character palettes to render ASCII from images and chooses a
 character from it based on luminance. We actually support UTF-8 character
@@ -199,21 +156,69 @@ resolution. Each character cell displays two pixels (top and bottom halves).
 Requires UTF-8 support (\fB\-\-show\-capabilities\fR and \fB\-\-utf8\fR).
 .\" MANUAL-END: RENDER MODES
 
-.\" MANUAL-START: CONFIGURATION
-.SH CONFIGURATION
-Configuration is stored in TOML format and can be specified via \fB\-\-config\fR
-or placed in the default configuration directory. Use \fB\-\-config\-create\fR
-to generate a default configuration file.
-Values are applied in order of precedence: command-line arguments override
-environment variables (ASCII_CHAT_*), which override config file values, which
-override defaults.
+.\" MANUAL-START: KEYBOARD CONTROLS
+.SH KEYBOARD CONTROLS
+Keyboard controls are available when running with local media sources
+(\fB--file\fR or \fB--url\fR).  Keyboard controls work in \fBmirror\fR,
+\fBclient\fR, and \fB"ascii-chat"\fR modes.  They are \fInot\fR available when a
+webcam is used as the media source.
 .PP
-For complete configuration documentation including file format, locations, and
-option mappings, see the
-.B config.toml
-section in
-.BR ascii-chat (5).
-.\" MANUAL-END: CONFIGURATION
+.B Media Playback Controls
+.TP
+.B LEFT ARROW
+Seek backward 30 seconds in the media file.
+.TP
+.B RIGHT ARROW
+Seek forward 30 seconds in the media file.
+.TP
+.B SPACE
+Toggle play/pause.
+.PP
+.B Audio Controls
+.TP
+.B UP ARROW
+Increase volume by 10%.
+.TP
+.B DOWN ARROW
+Decrease volume by 10%.
+.TP
+.B M
+Toggle audio mute/unmute.
+.PP
+.B Display Controls
+.TP
+.B C
+Cycle through color modes: Mono → 16-color → 256-color → truecolor → mono.
+.TP
+.B R
+Cycle through render modes: Foreground → background → half-Block → foreground.
+.TP
+.B F
+Toggle webcam flip (horizontal mirror). Only works when using a webcam source.
+.PP
+.B Keyboard Configuration
+.RS
+.PP
+These keyboard mappings are currently hardcoded in the application.
+Future versions will support custom keyboard bindings via a configuration file.
+.PP
+.B Developer TODO:
+Implement remappable keyboard controls via a configuration file (e.g., \fI~/.config/ascii-chat/keybindings.toml\fR).
+This will allow users to customize keyboard shortcuts without rebuilding the application.
+.RE
+.PP
+.B Keyboard Layout Support
+.PP
+The keyboard input system supports all standard POSIX keyboards and terminal emulators.
+The default keybindings use ASCII characters only.
+.PP
+The underlying input system fully supports Unicode, including:
+.RS
+.TP
+.B UTF-8
+Any character in the UTF-8 character set can be used for keyboard shortcuts.
+.RE
+.\" MANUAL-END: KEYBOARD CONTROLS
 
 .\" MANUAL-START: LIMITS
 .SH LIMITS
@@ -267,6 +272,7 @@ Runtime errors (thread, buffer, display, invalid state/param).
 .B 100\-104
 Signal and compression errors.
 .\" MANUAL-END: EXIT STATUS
+
 .\" MANUAL-START: SECURITY
 .SH SECURITY
 .B ascii-chat
@@ -339,8 +345,9 @@ for passphrase management. Both agents must be running and properly configured f
 and
 .BR gpg-agent (1)
 for configuration details.
-.\" MANUAL-END: SECURITY
 .PP
+.\" MANUAL-END: SECURITY
+
 .\" MERGE-START: ENVIRONMENT
 .\" MANUAL-START: ENVIRONMENT
 .SH ENVIRONMENT
@@ -408,6 +415,7 @@ error, fatal. Use the \fB\-\-log\-level\fR flag to override.
 .\" MANUAL-END: ENVIRONMENT
 .\" MERGE-END: ENVIRONMENT
 .PP
+
 .\" MANUAL-START: NOTES
 .SH NOTES
 .IP \(bu 2
@@ -459,8 +467,9 @@ that stdout is not a terminal and outputs the ASCII art to stdout and all logs t
 \fBEncrypted Keys\fR: Encrypted private keys (SSH/GPG) work well with either ssh-agent/gpg-agent or
 the $ASCII_CHAT_KEY_PASSWORD environment variable. The passphrase prompt
 only works in interactive terminals.
-.\" MANUAL-END: NOTES
 .PP
+.\" MANUAL-END: NOTES
+
 .\" MANUAL-START: BUGS
 .SH BUGS
 Report bugs at: https://github.com/zfogg/ascii-chat/issues
@@ -470,7 +479,7 @@ Report bugs at: https://github.com/zfogg/ascii-chat/issues
 .SH AUTHOR
 Zachary Fogg <me@zfo.gg>
 .\" MANUAL-END: AUTHOR
-.
+
 .\" MANUAL-START: SEE ALSO
 .SH SEE ALSO
 .BR ascii-chat (5),
@@ -509,6 +518,7 @@ Releases: https://github.com/zfogg/ascii-chat/releases
 .PP
 API documentation: https://zfogg.github.io/ascii-chat/
 .\" MANUAL-END: SEE ALSO
+
 .\" MANUAL-START: LICENSE
 .SH LICENSE
 .B ascii-chat
