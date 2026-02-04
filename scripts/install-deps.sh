@@ -145,7 +145,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       # libclang1-$ver provides the libclang runtime library
       # libclang-rt-$ver-dev provides compiler runtime (sanitizers, builtins)
       # libc++-$ver-dev and libc++abi-$ver-dev provide LLVM C++ standard library (required for musl builds)
-      if sudo apt-get install -y clang-$ver clang-tools-$ver clang-tidy-$ver libclang-$ver-dev libclang-cpp$ver-dev libclang-common-$ver-dev libclang1-$ver libclang-rt-$ver-dev llvm-$ver llvm-$ver-dev lld-$ver libc++-$ver-dev libc++abi-$ver-dev 2>/dev/null; then
+      if sudo apt-get install -y clang-$ver clang-format-$ver clang-tools-$ver clang-tidy-$ver libclang-$ver-dev libclang-cpp$ver-dev libclang-common-$ver-dev libclang1-$ver libclang-rt-$ver-dev llvm-$ver llvm-$ver-dev lld-$ver libc++-$ver-dev libc++abi-$ver-dev 2>/dev/null; then
         LLVM_VERSION=$ver
         echo "Successfully installed LLVM $ver"
         break
