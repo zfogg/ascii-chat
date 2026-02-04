@@ -432,6 +432,8 @@ set(DATA_STRUCTURES_SRCS
 # Session Library (reusable session components for discovery mode)
 # =============================================================================
 set(SESSION_SRCS
+    lib/session/consensus.c
+    lib/session/consensus_integration.c
     lib/session/capture.c
     lib/session/display.c
     lib/session/help_screen.c
