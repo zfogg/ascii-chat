@@ -319,6 +319,7 @@ set(NETWORK_SRCS
     lib/network/acip/acds_handlers.c
     # Ring consensus protocol for distributed host election
     lib/network/consensus/packets.c
+    lib/network/consensus/topology.c
     # NAT traversal (UPnP/NAT-PMP for direct TCP without WebRTC)
     lib/network/nat/upnp.c
     # mDNS service discovery for LAN
