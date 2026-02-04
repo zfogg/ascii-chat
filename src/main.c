@@ -189,9 +189,33 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "    For reproducible builds, commit or stash changes before building.\n\n");
   }
 #endif
+
   // Load color scheme early (from config files and CLI) before logging initialization
   // This allows logging to use the correct colors from the start
   options_colorscheme_init_early(argc, argv);
+
+  // Parse --color-scheme from argv early to set logging colors for help output
+  const char *colorscheme_name = "pastel"; // default
+  for (int i = 1; i < argc - 1; i++) {
+    if (strcmp(argv[i], "--color-scheme") == 0) {
+      colorscheme_name = argv[i + 1];
+      break;
+    }
+  }
+
+  // Load and apply colorscheme to logging BEFORE options_init() so help gets colors
+  color_scheme_t scheme;
+  if (colorscheme_load_builtin(colorscheme_name, &scheme) == ASCIICHAT_OK) {
+    log_set_color_scheme(&scheme);
+  } else {
+    // Fall back to default pastel if scheme not found
+    if (colorscheme_load_builtin("pastel", &scheme) == ASCIICHAT_OK) {
+      log_set_color_scheme(&scheme);
+    }
+  }
+
+  // Initialize logging colors so they're ready for help output
+  log_init_colors();
 
   // EARLY PARSE: Determine mode from argv to know if this is client-like mode
   // The first positional argument (after options) is the mode: client, server, mirror, discovery, acds

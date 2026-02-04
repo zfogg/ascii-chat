@@ -48,7 +48,32 @@ bool terminal_should_color_output(int fd) {
   }
 
   // Priority 3: --color=auto (default) - Smart detection
-  // Check environment variable overrides first
+  // Special case: Show colors for --help and --version even if not a TTY
+  // Check for help/version in global argv (set by main.c early)
+  extern int g_argc;
+  extern char **g_argv;
+  if (g_argc > 1 && g_argv) {
+    for (int i = 1; i < g_argc; i++) {
+      if (strcmp(g_argv[i], "--help") == 0 || strcmp(g_argv[i], "-h") == 0 || strcmp(g_argv[i], "--version") == 0 ||
+          strcmp(g_argv[i], "-v") == 0 || strcmp(g_argv[i], "--show-capabilities") == 0) {
+        // For help/version/show-capabilities, use colors if environment allows
+        // Check environment variable overrides first
+        if (SAFE_GETENV("ASCII_CHAT_COLOR")) {
+          return true; // ASCII_CHAT_COLOR env var forces colors
+        }
+
+        // CLAUDECODE environment variable (LLM automation) - disable colors
+        if (SAFE_GETENV("CLAUDECODE")) {
+          return false; // NO colors in Claude Code environment
+        }
+
+        // For help output, show colors by default (user can override with --color=false)
+        return true;
+      }
+    }
+  }
+
+  // Check environment variable overrides
   if (SAFE_GETENV("ASCII_CHAT_COLOR")) {
     return true; // ASCII_CHAT_COLOR env var forces colors
   }
