@@ -56,8 +56,15 @@ bool terminal_should_color_output(int fd) {
     for (int i = 1; i < g_argc; i++) {
       if (strcmp(g_argv[i], "--help") == 0 || strcmp(g_argv[i], "-h") == 0 || strcmp(g_argv[i], "--version") == 0 ||
           strcmp(g_argv[i], "-v") == 0 || strcmp(g_argv[i], "--show-capabilities") == 0) {
-        // For help/version/show-capabilities, use colors if environment allows
-        // Check environment variable overrides first
+        // For help/version/show-capabilities, use colors only if output is a TTY
+        // (respect piping convention: no colors unless --color=true)
+        int is_tty = platform_isatty(fd);
+        if (!is_tty) {
+          // Piping detected - fall through to check environment overrides
+          break;
+        }
+
+        // It's a TTY - show colors for help. Check environment overrides.
         if (SAFE_GETENV("ASCII_CHAT_COLOR")) {
           return true; // ASCII_CHAT_COLOR env var forces colors
         }
@@ -67,7 +74,7 @@ bool terminal_should_color_output(int fd) {
           return false; // NO colors in Claude Code environment
         }
 
-        // For help output, show colors by default (user can override with --color=false)
+        // For help output to TTY, show colors by default
         return true;
       }
     }
