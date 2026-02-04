@@ -5,6 +5,7 @@
 
 #include <ascii-chat/network/consensus/election.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/util/time.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <string.h>
 #include <stdint.h>
@@ -22,9 +23,9 @@ uint32_t consensus_election_compute_score(const participant_metrics_t *metrics) 
   uint32_t bw_score = metrics->upload_kbps / 10;
 
   // Latency: lower is better
-  // (500ms - rtt_ns/1ms) means 0ms RTT = +500, 500ms = 0, high latency = negative (but capped at 0)
-  uint32_t rtt_ms = metrics->rtt_ns / 1000000; // Convert ns to ms
-  uint32_t rtt_score = (rtt_ms < 500) ? (500 - rtt_ms) : 0;
+  // (500ms - rtt_ns) means 0ns RTT = +500, 500ms = 0, high latency = negative (but capped at 0)
+  // 500ms = 500,000,000ns
+  uint32_t rtt_score = (metrics->rtt_ns < 500 * NS_PER_MS) ? (500 - (metrics->rtt_ns / NS_PER_MS)) : 0;
 
   // STUN probe success: 0-100%
   uint32_t probe_score = metrics->stun_probe_success_pct;
