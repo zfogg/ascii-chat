@@ -22,8 +22,9 @@ uint32_t consensus_election_compute_score(const participant_metrics_t *metrics) 
   uint32_t bw_score = metrics->upload_kbps / 10;
 
   // Latency: lower is better
-  // (500 - rtt) means 0ms RTT = +500, 500ms = 0, high latency = negative (but capped at 0)
-  uint32_t rtt_score = (metrics->rtt_ms < 500) ? (500 - metrics->rtt_ms) : 0;
+  // (500ms - rtt_ns/1ms) means 0ms RTT = +500, 500ms = 0, high latency = negative (but capped at 0)
+  uint32_t rtt_ms = metrics->rtt_ns / 1000000; // Convert ns to ms
+  uint32_t rtt_score = (rtt_ms < 500) ? (500 - rtt_ms) : 0;
 
   // STUN probe success: 0-100%
   uint32_t probe_score = metrics->stun_probe_success_pct;

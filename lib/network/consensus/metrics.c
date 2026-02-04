@@ -6,9 +6,9 @@
 #include <ascii-chat/network/consensus/metrics.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/endian.h>
+#include <ascii-chat/util/time.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <string.h>
-#include <time.h>
 #include <stdio.h>
 
 /**
@@ -34,17 +34,6 @@ typedef struct consensus_metrics_collection {
  * Number of STUN probes to send for success rate measurement
  */
 #define NUM_STUN_PROBES 10
-
-/**
- * Get current time in milliseconds since epoch
- */
-static uint64_t get_time_ms(void) {
-  struct timespec ts;
-  if (clock_gettime(CLOCK_REALTIME, &ts) != 0) {
-    return 0;
-  }
-  return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
-}
 
 /**
  * Measure STUN probe success rate
@@ -109,8 +98,8 @@ asciichat_error_t consensus_metrics_measure(const uint8_t my_id[16], participant
   // Upload bandwidth: Default 50 Mbps
   out_metrics->upload_kbps = DEFAULT_BANDWIDTH_KBPS;
 
-  // RTT: Default 25ms
-  out_metrics->rtt_ms = DEFAULT_RTT_MS;
+  // RTT: Default 25ms (25,000,000 nanoseconds)
+  out_metrics->rtt_ns = DEFAULT_RTT_MS * NS_PER_MS;
 
   // STUN probe success rate: Measure by sending probes
   out_metrics->stun_probe_success_pct = measure_stun_probe_success();
@@ -122,11 +111,11 @@ asciichat_error_t consensus_metrics_measure(const uint8_t my_id[16], participant
   // Connection type: Default to direct
   out_metrics->connection_type = 0; // Direct connection
 
-  // Measurement time: Current time in milliseconds
-  out_metrics->measurement_time_ms = get_time_ms();
+  // Measurement time: Current time in nanoseconds
+  out_metrics->measurement_time_ns = time_get_realtime_ns();
 
-  // Measurement window: 1 second (1000ms)
-  out_metrics->measurement_window_ms = 1000;
+  // Measurement window: 1 second in nanoseconds
+  out_metrics->measurement_window_ns = 1 * NS_PER_SEC;
 
   return ASCIICHAT_OK;
 }
@@ -141,10 +130,10 @@ asciichat_error_t consensus_metrics_to_wire(const participant_metrics_t *metrics
 
   // Convert multi-byte fields to network byte order
   out_wire->upload_kbps = endian_pack_u32(metrics->upload_kbps);
-  out_wire->rtt_ms = endian_pack_u16(metrics->rtt_ms);
+  out_wire->rtt_ns = endian_pack_u32(metrics->rtt_ns);
   out_wire->public_port = endian_pack_u16(metrics->public_port);
-  out_wire->measurement_time_ms = endian_pack_u64(metrics->measurement_time_ms);
-  out_wire->measurement_window_ms = endian_pack_u32(metrics->measurement_window_ms);
+  out_wire->measurement_time_ns = endian_pack_u64(metrics->measurement_time_ns);
+  out_wire->measurement_window_ns = endian_pack_u64(metrics->measurement_window_ns);
 
   return ASCIICHAT_OK;
 }
@@ -160,10 +149,10 @@ asciichat_error_t consensus_metrics_from_wire(const participant_metrics_t *wire_
 
   // Convert multi-byte fields from network byte order
   out_metrics->upload_kbps = endian_unpack_u32(wire_metrics->upload_kbps);
-  out_metrics->rtt_ms = endian_unpack_u16(wire_metrics->rtt_ms);
+  out_metrics->rtt_ns = endian_unpack_u32(wire_metrics->rtt_ns);
   out_metrics->public_port = endian_unpack_u16(wire_metrics->public_port);
-  out_metrics->measurement_time_ms = endian_unpack_u64(wire_metrics->measurement_time_ms);
-  out_metrics->measurement_window_ms = endian_unpack_u32(wire_metrics->measurement_window_ms);
+  out_metrics->measurement_time_ns = endian_unpack_u64(wire_metrics->measurement_time_ns);
+  out_metrics->measurement_window_ns = endian_unpack_u64(wire_metrics->measurement_window_ns);
 
   return ASCIICHAT_OK;
 }

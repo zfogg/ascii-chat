@@ -25,13 +25,13 @@ typedef struct {
   uint8_t participant_id[16];     // UUID of participant
   uint8_t nat_tier;               // 0=LAN, 1=Public, 2=UPnP, 3=STUN, 4=TURN
   uint32_t upload_kbps;           // Upload bandwidth in Kbps (network byte order)
-  uint16_t rtt_ms;                // RTT to current host in milliseconds (network byte order)
+  uint32_t rtt_ns;                // RTT to current host in nanoseconds (network byte order)
   uint8_t stun_probe_success_pct; // 0-100: percentage of successful STUN probes
   char public_address[64];        // Detected public IP address
   uint16_t public_port;           // Detected public port (network byte order)
   uint8_t connection_type;        // Direct=0, UPnP=1, STUN=2, TURN=3
-  uint64_t measurement_time_ms;   // Unix ms when measured (network byte order)
-  uint32_t measurement_window_ms; // Duration of measurement in ms (network byte order)
+  uint64_t measurement_time_ns;   // Unix ns when measured (network byte order)
+  uint64_t measurement_window_ns; // Duration of measurement in ns (network byte order)
 } __attribute__((packed)) participant_metrics_t;
 
 // ============================================================================
@@ -61,7 +61,7 @@ typedef struct {
   uint8_t session_id[16];          // Session identifier
   uint8_t initiator_id[16];        // Ring leader participant ID
   uint32_t round_id;               // Collection round counter (network byte order)
-  uint64_t collection_deadline_ms; // Unix ms deadline for collection (network byte order)
+  uint64_t collection_deadline_ns; // Unix ns deadline for collection (network byte order)
 } __attribute__((packed)) acip_stats_collection_start_t;
 
 /**
@@ -99,7 +99,7 @@ typedef struct {
   char backup_address[64]; // Backup address
   uint16_t backup_port;    // Backup port (network byte order)
 
-  uint64_t elected_at_ms;   // Unix ms when elected (network byte order)
+  uint64_t elected_at_ns;   // Unix ns when elected (network byte order)
   uint8_t num_participants; // Count of metrics following
   // Followed by: participant_metrics_t metrics[num_participants]
 } __attribute__((packed)) acip_ring_election_result_t;
