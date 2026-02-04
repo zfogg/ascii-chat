@@ -76,11 +76,10 @@ ascii-chat.
 .SH KEYBOARD CONTROLS
 Interactive keyboard controls are available when running with local media sources
 (\fB--file\fR or \fB--url\fR).
-Keyboard controls work in \fBmirror\fR, \fBclient\fR, and \fBdiscovery\fR modes.
-They are \fInot\fR available when receiving video from a remote server or webcam
-in network-only mode.
+Keyboard controls work in \fBmirror\fR, \fBclient\fR, and \fB"ascii-chat"\fR modes.
+They are \fInot\fR available when a webcam is used as the media source.
 .PP
-.B Media Playback Controls (--file and --url only)
+.B Media Playback Controls
 .TP
 .B LEFT ARROW
 Seek backward 30 seconds in the media file.
@@ -89,9 +88,9 @@ Seek backward 30 seconds in the media file.
 Seek forward 30 seconds in the media file.
 .TP
 .B SPACE
-Toggle play/pause. Pauses playback at the current position; press again to resume.
+Toggle play/pause.
 .PP
-.B Audio Controls (all modes)
+.B Audio Controls
 .TP
 .B UP ARROW
 Increase volume by 10%.
@@ -100,13 +99,15 @@ Increase volume by 10%.
 Decrease volume by 10%.
 .TP
 .B M
-Mute/unmute audio. Muting saves the current volume level and restores it when unmuted.
+Toggle audio mute/unmute.
 .PP
-.B Display Controls (all modes)
+.B Display Controls
 .TP
 .B C
 Cycle through color modes: Mono → 16-color → 256-color → Truecolor → Mono.
-Useful for adapting to different terminal capabilities.
+.TP
+.B R
+Cycle through render modes: Foreground → Background → Half-block → Foreground.
 .TP
 .B F
 Toggle webcam flip (horizontal mirror). Only works when using a webcam source.
@@ -130,24 +131,23 @@ Currently, default keybindings use ASCII characters only for maximum compatibili
 .PP
 The underlying input system fully supports Unicode, including:
 .TP
-.B UTF-8 characters
+.B UTF-8 Support
 Any character in the UTF-8 character set can be used for keyboard shortcuts.
-.TP
-.B Non-ASCII languages
-Keyboard layouts from any language (e.g., Cyrillic, Arabic, CJK, etc.) are supported
-for future custom bindings.
-.TP
-.B Emoji and symbols
-Emoji and other Unicode symbols can be used as keyboard shortcuts in future
-custom binding configurations.
 .PP
-When custom keybindings are implemented, you will be able to map shortcuts to
-any Unicode character your keyboard or input method can produce.
 .RE
 
 .SH PALETTES
-Built-in ASCII character palettes for different visual styles.
-Characters are ordered from darkest (leftmost) to brightest (rightmost).
+ascii-chat uses character palettes to render ASCII from images and chooses a
+character from it based on luminance. We actually support UTF-8 character
+palettes despite the name of the program. The palette characters are ordered
+from darkest to brightest, and ascii-chat uses this when making luminance-based
+decisions. With that in mind, when making custom palettes you might want to
+place the character made of the fewest pixels first, and the character that
+fills the most pixels when rendered last. Or the inverse, for fun. All of the
+built-in palettes follow this except for "digital".
+.PP
+Here are the built-in palettes:
+.RS
 .TP
 .B standard
 Default palette using ASCII characters only (no UTF-8 required).
@@ -177,7 +177,9 @@ Characters: \fC   \[u2581]\[u2582]\[u2583]\[u2584]\[u2585]\[u2586]\[u2587]\[u258
 .B custom
 User-defined palette via \fB\-\-palette\-chars\fR option.
 .PP
-Use \fB\-\-utf8\fR to force UTF-8 support when using Unicode palettes.
+Use \fB\-\-utf8\fR to force UTF-8 support when using Unicode palettes if
+terminal support is not automatically detected. Check with
+\fB\-\-show\-capabilities\fR to see what was detected.
 .\" MANUAL-END: PALETTES
 
 .\" MANUAL-START: RENDER MODES
@@ -204,8 +206,8 @@ Configuration is stored in TOML format and can be specified via \fB\-\-config\fR
 or placed in the default configuration directory.
 Command-line arguments override config file values, which override default values.
 .PP
-For complete configuration documentation including file format, locations, and option mappings,
-see the
+For complete configuration documentation including file format, locations, and
+option mappings, see the
 .B config.toml
 section in
 .BR ascii-chat (5).
@@ -225,8 +227,8 @@ The grid size adjusts based on the number of connected clients.
 Default 60 FPS. Configurable from 1-144 FPS.
 .\" MANUAL-END: LIMITS
 .SH FILES
-For details on configuration files, authentication files, and file format specifications,
-see
+For details on configuration files, authentication files, and file format
+specifications, see
 .BR ascii-chat (5).
 .\" MANUAL-END: FILES
 .\" MANUAL-START: EXIT STATUS
@@ -271,7 +273,16 @@ Signal and compression errors.
 .B ascii-chat
 implements end-to-end encryption by default using libsodium (the same cryptographic library used by Signal, WireGuard, and Zcash). All video and audio data is encrypted after the handshake using \fBXSalsa20-Poly1305\fR AEAD encryption. Session establishment uses \fBX25519\fR elliptic curve Diffie-Hellman for key exchange and \fBEd25519\fR for optional identity verification. Encryption cannot be disabled in production builds (use \fB\-\-no\-encrypt\fR only for trusted local testing).
 .PP
-Unlike HTTPS, ascii-chat has no global certificate authority to bootstrap trust. This creates a fundamental design choice: you get \fIprivacy\fR (encryption against passive eavesdropping) by default, but identity verification is optional and progressive. By default, each connection uses ephemeral keys (generated fresh, never reused) providing perfect forward secrecy but offering no MITM protection. For stronger security, use password authentication, SSH key verification, or the ACDS discovery service to bind identity to sessions. This "progressive security ladder" lets users choose their trust model based on threat level, from quick private sessions (ephemeral DH) to paranoid mode (password + SSH key + whitelist).
+Unlike HTTPS, ascii-chat has no global certificate authority to bootstrap trust.
+This creates a fundamental design choice: you get \fIprivacy\fR (encryption
+against passive eavesdropping) by default, but identity verification is optional
+and progressive. By default, each connection uses ephemeral keys (generated
+fresh, never reused) providing perfect forward secrecy but offering no MITM
+protection. For stronger security, use password authentication, SSH key
+verification, or the ACDS discovery service to bind identity to sessions. This
+"progressive security ladder" lets users choose their trust model based on
+threat level, from quick private sessions (ephemeral DH) to paranoid mode
+(password + SSH key + whitelist).
 .PP
 .SS "Authentication Methods"
 \fBDefault (Ephemeral DH):\fR Protects against passive eavesdropping but not MITM attacks. Works with zero configuration. Good for low-threat environments or quick sessions.
@@ -490,9 +501,20 @@ is licensed under the MIT License.
 .PP
 Copyright (c) 2013-@COPYRIGHT_YEAR_END@ Zachary Fogg
 .PP
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
 .PP
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 .PP
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 .\" MANUAL-END: LICENSE
