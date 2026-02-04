@@ -50,24 +50,3 @@ configure_file(
 )
 
 message(STATUS "Generated man5 page: ${OUTPUT_FILE}")
-
-# Configure man1 template (same date variables)
-set(INPUT_FILE "${SOURCE_DIR}/share/man/man1/ascii-chat.1.in")
-set(OUTPUT_FILE "${BINARY_DIR}/share/man/man1/ascii-chat.1")
-
-# Validate input file exists
-if(NOT EXISTS "${INPUT_FILE}")
-    message(FATAL_ERROR "Template file not found: ${INPUT_FILE}")
-endif()
-
-# Ensure output directory exists
-file(MAKE_DIRECTORY "${BINARY_DIR}/share/man/man1")
-
-# Configure the template
-configure_file(
-    "${INPUT_FILE}"
-    "${OUTPUT_FILE}"
-    @ONLY
-)
-
-message(STATUS "Generated man5 page: ${OUTPUT_FILE}")

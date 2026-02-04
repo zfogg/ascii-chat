@@ -30,18 +30,27 @@ endif()
 # This merges the template (.1.in) with manual content (.1.content) and auto-generates
 # option documentation from the options builder
 # Note: --man-page-create writes to stdout, so we redirect output to the target file
-# Development builds generate uncompressed .1 only; packaging compresses at install time
+# Uncompressed .1 generated; packaging compresses at install time
 #
-# NOTE: Release builds skip man page generation due to a parsing issue with Release optimizations.
-# Debug/Dev builds work fine. For Release, manually run: ./build/bin/ascii-chat --man-page-create > share/man/man1/ascii-chat.1
-# Create output directory for man pages
+# First, process the template to substitute version variables
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/share/man/man1")
 
+# Extract year from PROJECT_VERSION_DATE (format: YYYY-MM-DD)
+string(SUBSTRING "${PROJECT_VERSION_DATE}" 0 4 COPYRIGHT_YEAR_END)
+
+# Configure man1 template first
+configure_file(
+    "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in"
+    "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1.in"
+    @ONLY
+)
+
 # Generate man page using platform-appropriate shell redirection
+# Point binary to configured template in BINARY_DIR via ASCIICHAT_RESOURCE_DIR
 if(UNIX)
-    set(_MAN_PAGE_COMMAND sh -c "timeout 3 ${ASCII_CHAT_EXECUTABLE} --man-page-create > \"${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1\"")
+    set(_MAN_PAGE_COMMAND sh -c "timeout 3 env ASCIICHAT_RESOURCE_DIR=\"${CMAKE_BINARY_DIR}\" ${ASCII_CHAT_EXECUTABLE} --man-page-create > \"${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1\"")
 else()
-    set(_MAN_PAGE_COMMAND cmd /c "\"${ASCII_CHAT_EXECUTABLE}\" --man-page-create > \"${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1\"")
+    set(_MAN_PAGE_COMMAND cmd /c "set ASCIICHAT_RESOURCE_DIR=${CMAKE_BINARY_DIR} && \"${ASCII_CHAT_EXECUTABLE}\" --man-page-create > \"${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1\"")
 endif()
 
 add_custom_command(
@@ -49,7 +58,7 @@ add_custom_command(
     COMMAND ${_MAN_PAGE_COMMAND}
     DEPENDS
         ascii-chat
-        "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in"
+        "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1.in"
     COMMENT "Building man page"
     VERBATIM
 )

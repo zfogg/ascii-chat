@@ -68,7 +68,7 @@ const char *format_mode_names(option_mode_bitmask_t mode_bitmask) {
   }
 
   if (mode_bitmask & (1 << MODE_DISCOVERY)) {
-    pos += safe_snprintf(mode_str + pos, sizeof(mode_str) - pos, "%sdiscovery", pos > 0 ? ", " : "");
+    pos += safe_snprintf(mode_str + pos, sizeof(mode_str) - pos, "%sascii-chat", pos > 0 ? ", " : "");
   }
   if (mode_bitmask & (1 << MODE_CLIENT)) {
     pos += safe_snprintf(mode_str + pos, sizeof(mode_str) - pos, "%sclient", pos > 0 ? ", " : "");
