@@ -713,7 +713,7 @@ void *client_audio_render_thread(void *arg) {
       // Check shutdown flag while waiting
       if (atomic_load(&g_server_should_exit))
         break;
-      platform_sleep_usec(10000);
+      platform_sleep_ns(10 * NS_PER_MS_INT);
       continue;
     }
 
@@ -866,7 +866,7 @@ void *client_audio_render_thread(void *arg) {
         // CRITICAL: Reset accumulation buffer so fresh samples can be captured on next iteration
         // Without this reset, we'd loop forever with stale audio and no space for new samples
         opus_frame_accumulated = 0;
-        platform_sleep_usec(5800);
+        platform_sleep_ns(5800 * NS_PER_US_INT);
         continue;
       }
 

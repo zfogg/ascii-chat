@@ -134,6 +134,17 @@ void platform_sleep_usec(unsigned int usec) {
 }
 
 /**
+ * @brief Platform-safe sleep function with nanosecond precision (POSIX)
+ * @param ns Sleep duration in nanoseconds
+ */
+void platform_sleep_ns(uint64_t ns) {
+  struct timespec ts;
+  ts.tv_sec = (time_t)(ns / NS_PER_SEC_INT);
+  ts.tv_nsec = (long)(ns % NS_PER_SEC_INT);
+  nanosleep(&ts, NULL);
+}
+
+/**
  * @brief Convert time_t to local time
  * @param timer Pointer to time_t value
  * @param result Pointer to struct tm to receive result

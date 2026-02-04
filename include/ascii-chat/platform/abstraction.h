@@ -685,6 +685,25 @@ typedef unsigned int useconds_t;
 void platform_sleep_usec(unsigned int usec);
 
 /**
+ * @brief Platform-safe sleep function with nanosecond precision
+ * @param ns Sleep duration in nanoseconds
+ *
+ * High-precision sleep for timing-critical operations like frame rate limiting
+ * and adaptive sleeps. Achieves nanosecond-level accuracy on supported platforms.
+ *
+ * @note On Windows, uses Sleep() with millisecond granularity, converting nanoseconds.
+ * @note On POSIX, uses nanosleep() for nanosecond precision.
+ *
+ * @par Example:
+ * @code{.c}
+ * platform_sleep_ns(16666667);  // Sleep for 16.67ms (60 FPS)
+ * @endcode
+ *
+ * @ingroup platform
+ */
+void platform_sleep_ns(uint64_t ns);
+
+/**
  * @brief Platform-safe write function
  * @param fd File descriptor to write to
  * @param buf Buffer containing data to write

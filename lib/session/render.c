@@ -148,7 +148,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       // If paused and already rendered initial frame, skip frame capture and poll for resume
       if (is_paused && initial_paused_frame_rendered) {
         // Sleep briefly to avoid busy-waiting while paused
-        platform_sleep_usec(1 / GET_OPTION(fps) * 100 * 1000); // ~60 FPS idle rate
+        uint64_t idle_sleep_ns = (uint64_t)(1000000000 / GET_OPTION(fps)); // Frame period in nanoseconds
+        platform_sleep_ns(idle_sleep_ns);
 
         // Keep polling keyboard to allow unpausing (even if keyboard wasn't formally initialized)
         // keyboard_read_nonblocking() is safe to call even if keyboard_init() wasn't called - it just returns KEY_NONE
@@ -383,10 +384,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         // If already behind, skip sleep to catch up
         if (frame_elapsed_ns < frame_target_ns) {
           uint64_t sleep_ns = frame_target_ns - frame_elapsed_ns;
-          uint64_t sleep_us = sleep_ns / 1000;
-          // Sleep in 1ms chunks to respond to interrupts faster
-          if (sleep_us > 1000) {
-            platform_sleep_usec(sleep_us - 500); // Reserve 500us for overhead
+          // Sleep with 500us overhead reserved for recovery
+          if (sleep_ns > 500 * NS_PER_US_INT) {
+            platform_sleep_ns(sleep_ns - 500 * NS_PER_US_INT);
           }
         }
       }

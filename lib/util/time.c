@@ -423,10 +423,6 @@ void adaptive_sleep_do(adaptive_sleep_state_t *state, size_t queue_depth, size_t
   uint64_t sleep_ns = adaptive_sleep_calculate(state, queue_depth, target_depth);
 
   if (sleep_ns > 0) {
-    // Convert nanoseconds to microseconds for platform_sleep_usec
-    uint64_t sleep_us = sleep_ns / 1000;
-    if (sleep_us > 0) {
-      platform_sleep_usec(sleep_us);
-    }
+    platform_sleep_ns(sleep_ns);
   }
 }

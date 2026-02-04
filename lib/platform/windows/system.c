@@ -170,6 +170,22 @@ void platform_sleep_usec(unsigned int usec) {
 }
 
 /**
+ * @brief Platform-safe sleep function with nanosecond precision (Windows)
+ * @param ns Sleep duration in nanoseconds
+ *
+ * Note: Windows Sleep() has millisecond granularity, so nanoseconds are rounded
+ * up to the nearest millisecond, minimum 1ms.
+ */
+void platform_sleep_ns(uint64_t ns) {
+  // Convert nanoseconds to milliseconds
+  DWORD timeout_ms = (DWORD)((ns + NS_PER_MS_INT - 1) / NS_PER_MS_INT); // Round up
+  if (timeout_ms < 1)
+    timeout_ms = 1;
+
+  Sleep(timeout_ms);
+}
+
+/**
  * @brief Convert time_t to local time
  * @param timer Pointer to time_t value
  * @param result Pointer to struct tm to receive result
