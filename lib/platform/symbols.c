@@ -167,7 +167,7 @@ static const char *get_llvm_symbolizer_command(void) {
         if (symbolizer_path_is_executable(env_path)) {
           SAFE_STRNCPY(g_llvm_symbolizer_cmd, env_path, sizeof(g_llvm_symbolizer_cmd));
           available = true;
-          log_debug("Using llvm-symbolizer from LLVM_SYMBOLIZER_PATH: %s", env_path);
+          log_dev("Using llvm-symbolizer from LLVM_SYMBOLIZER_PATH: %s", env_path);
         } else {
           log_warn("LLVM_SYMBOLIZER_PATH is set but not executable: %s", env_path);
         }
@@ -176,7 +176,7 @@ static const char *get_llvm_symbolizer_command(void) {
       if (!available && platform_is_binary_in_path(LLVM_SYMBOLIZER_BIN)) {
         available = true;
         g_llvm_symbolizer_cmd[0] = '\0'; // Use binary name from PATH
-        log_debug("Found %s in PATH", LLVM_SYMBOLIZER_BIN);
+        log_dev("Found %s in PATH", LLVM_SYMBOLIZER_BIN);
       }
 
       atomic_store(&g_llvm_symbolizer_available, available);
@@ -209,7 +209,7 @@ static const char *get_addr2line_command(void) {
         if (symbolizer_path_is_executable(env_path)) {
           SAFE_STRNCPY(g_addr2line_cmd, env_path, sizeof(g_addr2line_cmd));
           available = true;
-          log_debug("Using addr2line from ADDR2LINE_PATH: %s", env_path);
+          log_dev("Using addr2line from ADDR2LINE_PATH: %s", env_path);
         } else {
           log_warn("ADDR2LINE_PATH is set but not executable: %s", env_path);
         }
@@ -218,7 +218,7 @@ static const char *get_addr2line_command(void) {
       if (!available && platform_is_binary_in_path(ADDR2LINE_BIN)) {
         available = true;
         g_addr2line_cmd[0] = '\0'; // Use binary name from PATH
-        log_debug("Found %s in PATH", ADDR2LINE_BIN);
+        log_dev("Found %s in PATH", ADDR2LINE_BIN);
       }
 
       atomic_store(&g_addr2line_available, available);
@@ -412,7 +412,7 @@ asciichat_error_t symbol_cache_init(void) {
   atomic_store(&g_cache_hits, 0);
   atomic_store(&g_cache_misses, 0);
 
-  log_debug("Symbol cache initialized");
+  log_dev("Symbol cache initialized");
   return 0;
 }
 
@@ -452,9 +452,9 @@ void symbol_cache_cleanup(void) {
 
   g_symbol_cache = NULL;
 
-  log_debug("Symbol cache cleaned up: %zu entries counted, %zu entries freed (hits=%llu, misses=%llu)", entry_count,
-            freed_count, (unsigned long long)atomic_load(&g_cache_hits),
-            (unsigned long long)atomic_load(&g_cache_misses));
+  log_dev("Symbol cache cleaned up: %zu entries counted, %zu entries freed (hits=%llu, misses=%llu)", entry_count,
+          freed_count, (unsigned long long)atomic_load(&g_cache_hits),
+          (unsigned long long)atomic_load(&g_cache_misses));
 }
 
 const char *symbol_cache_lookup(void *addr) {
