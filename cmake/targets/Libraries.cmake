@@ -961,6 +961,11 @@ if(TARGET libdatachannel)
     target_link_libraries(ascii-chat-shared PRIVATE libdatachannel)
 endif()
 
+# Link OpenMP for SIMD rendering
+if(OpenMP_FOUND)
+    target_link_libraries(ascii-chat-shared PRIVATE OpenMP::OpenMP_C)
+endif()
+
 # Link FFmpeg for media file streaming
 if(FFMPEG_FOUND)
     target_link_libraries(ascii-chat-shared PRIVATE ${FFMPEG_LINK_LIBRARIES})
@@ -1300,6 +1305,12 @@ if(MINIUPNPC_FOUND)
     if(NATPMP_LIBRARY)
         target_link_libraries(ascii-chat-static-lib INTERFACE ${NATPMP_LIBRARY})
     endif()
+endif()
+
+# Link OpenMP for SIMD rendering in ascii-chat-simd module
+# Must be exposed via INTERFACE library for final executables
+if(OpenMP_FOUND)
+    target_link_libraries(ascii-chat-static-lib INTERFACE OpenMP::OpenMP_C)
 endif()
 
 # =============================================================================
