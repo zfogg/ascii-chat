@@ -13,7 +13,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/util/path.h>
-#include <ascii-chat/util/url.h>            // For parse_https_url()
+#include <ascii-chat/util/url.h>            // For url_is_valid(), url_parse()
 #include <ascii-chat/platform/util.h>       // For platform_strtok_r
 #include <ascii-chat/crypto/gpg/export.h>   // For gpg_get_public_key()
 #include <ascii-chat/network/http_client.h> // For https_get()
@@ -52,16 +52,15 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
   // Try HTTPS URLs (validated via production-grade URL regex)
   if (url_is_valid(input)) {
     // Parse HTTPS URL to extract hostname and path
-    https_url_parts_t url_parts;
-    asciichat_error_t parse_result = parse_https_url(input, &url_parts);
+    url_parts_t url_parts = {0};
+    asciichat_error_t parse_result = url_parse(input, &url_parts);
     if (parse_result != ASCIICHAT_OK) {
       return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to parse HTTPS URL: %s", input);
     }
 
     // Fetch the key via HTTPS
-    char *response = https_get(url_parts.hostname, url_parts.path);
-    SAFE_FREE(url_parts.hostname);
-    SAFE_FREE(url_parts.path);
+    char *response = https_get(url_parts.host, url_parts.path);
+    url_parts_free(&url_parts);
 
     if (!response) {
       return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to fetch key from HTTPS URL: %s", input);

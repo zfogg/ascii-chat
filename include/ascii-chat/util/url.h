@@ -17,7 +17,6 @@
  * - IPv4, IPv6, and hostname support (localhost, bare hosts, FQDNs)
  * - Private IP filtering (10.x, 172.16-31.x, 192.168.x, 127.x, 169.254.x)
  * - JIT-compiled regex for 10-100x performance boost
- * - HTTPS URL parsing (legacy compatibility)
  * - Input validation and error reporting
  * - Consistent error codes (asciichat_error_t)
  * - Memory-safe operations
@@ -41,15 +40,6 @@
  * }
  * @endcode
  *
- * Legacy HTTPS-only parsing (backward compatible):
- * @code
- * https_url_parts_t parts;
- * if (parse_https_url("https://github.com/user.keys", &parts) == ASCIICHAT_OK) {
- *     // Use parts.hostname and parts.path
- *     SAFE_FREE(parts.hostname);
- *     SAFE_FREE(parts.path);
- * }
- * @endcode
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date February 2026
@@ -71,16 +61,6 @@ typedef struct {
   int port;       ///< Extracted port number (0 if not specified)
   char *path;     ///< Extracted path, query, and fragment (allocated if present, may be NULL)
 } url_parts_t;
-
-/**
- * @brief Structure containing parsed HTTPS URL components (legacy)
- * @deprecated Use url_parts_t with url_parse() for new code
- * @note Both hostname and path are allocated with SAFE_MALLOC() and must be freed by caller
- */
-typedef struct {
-  char *hostname; ///< Extracted hostname (allocated, caller must free)
-  char *path;     ///< Extracted path including leading '/' (allocated, caller must free)
-} https_url_parts_t;
 
 /**
  * @brief Fast URL validation using production-grade HTTP(S) regex
@@ -171,51 +151,5 @@ asciichat_error_t url_parse(const char *url, url_parts_t *parts_out);
  * @ingroup util
  */
 void url_parts_free(url_parts_t *parts);
-
-/**
- * @brief Parse HTTPS URL into hostname and path components (legacy)
- * @deprecated Use url_parse() for new code
- * @param url Input URL string (must start with "https://")
- * @param parts_out Output structure for parsed components (must not be NULL)
- * @return ASCIICHAT_OK on success, error code on failure
- *
- * Parses a full HTTPS URL and extracts the hostname and path components.
- * The resulting hostname and path are allocated with SAFE_MALLOC() and must
- * be freed by the caller.
- *
- * This function is maintained for backward compatibility. New code should
- * use url_parse() which provides more complete URL parsing.
- *
- * URL FORMAT:
- * - Must start with "https://"
- * - Must include a path component (at least one '/')
- * - Hostname cannot be empty
- *
- * VALIDATION:
- * - Checks for "https://" prefix
- * - Validates hostname is not empty
- * - Validates hostname length (max 255 chars)
- * - Ensures path component exists
- *
- * @note Both parts_out->hostname and parts_out->path must be freed by caller
- *       using SAFE_FREE()
- * @note Returns ERROR_INVALID_PARAM if URL format is invalid
- * @note Returns ERROR_INVALID_PARAM if hostname length exceeds 255 chars
- * @note Returns ERROR_MEMORY if allocation fails
- *
- * @par Example
- * @code
- * https_url_parts_t parts;
- * if (parse_https_url("https://api.github.com/users/octocat.keys", &parts) == ASCIICHAT_OK) {
- *     // parts.hostname = "api.github.com"
- *     // parts.path = "/users/octocat.keys"
- *     SAFE_FREE(parts.hostname);
- *     SAFE_FREE(parts.path);
- * }
- * @endcode
- *
- * @ingroup util
- */
-asciichat_error_t parse_https_url(const char *url, https_url_parts_t *parts_out);
 
 /** @} */

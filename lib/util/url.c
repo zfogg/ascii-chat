@@ -25,20 +25,35 @@
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 static const char *URL_REGEX_PATTERN =
-    "^(?<scheme>https?)://(?:(?<userinfo>\\S+(?::\\S*)?)@)?"
+    // SCHEME: http or https (case-insensitive)
+    "^(?<scheme>https?)://"
+    // OPTIONAL USERINFO: username[:password]@ (user:pass@host format)
+    "(?:(?<userinfo>\\S+(?::\\S*)?)@)?"
+    // HOST: one of three alternatives below
     "(?<host>"
     "(?:"
+    // IPv4 ADDRESS: e.g. 192.168.1.1
+    // Negative lookaheads reject multicast (224-239) and broadcast (255.255.255.255)
     "(?!(?:22[4-9]|23\\d)(?:\\.\\d{1,3}){3})(?!255\\.255\\.255\\.255)"
+    // First octet: 0-255
     "(?:[0-9]\\d?|1\\d\\d|2[01]\\d|22[0-3]|24\\d|25[0-5])"
+    // Second and third octets: 0-255 (repeated twice)
     "(?:\\.(?:1?\\d{1,2}|2[0-4]\\d|25[0-5])){2}"
+    // Fourth octet: 0-255
     "(?:\\.(?:[0-9]\\d?|1\\d\\d|2[0-4]\\d|25[0-5]))"
     ")"
+    // IPv6 ADDRESS: e.g. [::1] or [fe80::1%eth0]
+    // Supports zone IDs (e.g. %25eth0 for link-local addresses)
     "|(?:\\[(?<ipv6>[a-fA-F0-9:.]+(?:%25[a-zA-Z0-9._~!$&'()*+,;=-]+)?)\\])"
+    // HOSTNAME: e.g. example.com, localhost, or international domain names
+    // Negative lookahead rejects bare IP notation (digits.digits.digits format)
     "|(?!\\d+(?:\\.\\d+)*(?:[:/"
     "?#]|$))(?:[a-z0-9_\\x{00a1}-\\x{ffff}][a-z0-9\\x{00a1}-\\x{ffff}_-]{0,62})?[a-z0-9_\\x{00a1}-\\x{ffff}](?:\\.(?:["
     "a-z0-9_\\x{00a1}-\\x{ffff}][a-z0-9\\x{00a1}-\\x{ffff}_-]{0,62})?[a-z0-9_\\x{00a1}-\\x{ffff}])*\\.?"
     ")"
+    // PORT: optional :port (1-5 digits, e.g. :8080, :443)
     "(?::(?<port>\\d{1,5}))?"
+    // PATH/QUERY/FRAGMENT: optional /path, ?query, or #fragment
     "(?<path_query_fragment>[/?#]\\S*)?$";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -103,6 +118,7 @@ static url_validator_t *url_validator_get(void) {
  */
 static char *url_extract_named_group(pcre2_code *regex, pcre2_match_data *match_data, const char *group_name) {
   if (!regex || !match_data || !group_name) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments");
     return NULL;
   }
 
@@ -138,6 +154,7 @@ static char *url_extract_named_group(pcre2_code *regex, pcre2_match_data *match_
 
 bool url_is_valid(const char *url) {
   if (!url || !*url) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "URL is NULL or empty");
     return false;
   }
 
@@ -234,6 +251,7 @@ asciichat_error_t url_parse(const char *url, url_parts_t *parts_out) {
 
 void url_parts_free(url_parts_t *parts) {
   if (!parts) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "parts is NULL");
     return;
   }
 
@@ -245,58 +263,4 @@ void url_parts_free(url_parts_t *parts) {
   parts->port = 0;
 
   memset(parts, 0, sizeof(*parts));
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
- * LEGACY BACKWARD COMPATIBILITY FUNCTIONS
- * ═══════════════════════════════════════════════════════════════════════════ */
-
-asciichat_error_t parse_https_url(const char *url, https_url_parts_t *parts_out) {
-  if (!url || !parts_out) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: url=%p, parts_out=%p", url, parts_out);
-  }
-
-  /* Clear output structure */
-  parts_out->hostname = NULL;
-  parts_out->path = NULL;
-
-  /* Validate HTTPS prefix */
-  if (strncmp(url, "https://", 8) != 0) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "URL must start with https://: %s", url);
-  }
-
-  /* Skip "https://" prefix to get to hostname */
-  const char *hostname_start = url + 8;
-
-  /* Find the first '/' to separate hostname from path */
-  const char *path_start = strchr(hostname_start, '/');
-  if (!path_start) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "HTTPS URL must include a path: %s", url);
-  }
-
-  /* Calculate hostname length */
-  size_t hostname_len = (size_t)(path_start - hostname_start);
-  if (hostname_len == 0 || hostname_len > 255) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid hostname length: %zu (expected 1-255)", hostname_len);
-  }
-
-  /* Allocate and copy hostname */
-  parts_out->hostname = SAFE_MALLOC(hostname_len + 1, char *);
-  if (!parts_out->hostname) {
-    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate hostname buffer");
-  }
-  memcpy(parts_out->hostname, hostname_start, hostname_len);
-  parts_out->hostname[hostname_len] = '\0';
-
-  /* Allocate and copy path (includes leading '/') */
-  size_t path_len = strlen(path_start);
-  parts_out->path = SAFE_MALLOC(path_len + 1, char *);
-  if (!parts_out->path) {
-    SAFE_FREE(parts_out->hostname);
-    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate path buffer");
-  }
-  memcpy(parts_out->path, path_start, path_len);
-  parts_out->path[path_len] = '\0';
-
-  return ASCIICHAT_OK;
 }

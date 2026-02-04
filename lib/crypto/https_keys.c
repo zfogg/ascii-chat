@@ -11,7 +11,7 @@
 #include <ascii-chat/platform/util.h>
 #include <ascii-chat/platform/process.h>
 #include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/util/url.h> // For parse_https_url()
+#include <ascii-chat/util/url.h> // For url_parse()
 #include <ascii-chat/network/http_client.h>
 #include <string.h>
 #include <stdlib.h>
@@ -36,16 +36,15 @@ static asciichat_error_t https_fetch_keys(const char *url, char **response_text,
   }
 
   // Parse URL to extract hostname and path
-  https_url_parts_t url_parts;
-  asciichat_error_t parse_result = parse_https_url(url, &url_parts);
+  url_parts_t url_parts = {0};
+  asciichat_error_t parse_result = url_parse(url, &url_parts);
   if (parse_result != ASCIICHAT_OK) {
     return parse_result;
   }
 
   // Use https_get from http_client
-  char *response = https_get(url_parts.hostname, url_parts.path);
-  SAFE_FREE(url_parts.hostname);
-  SAFE_FREE(url_parts.path);
+  char *response = https_get(url_parts.host, url_parts.path);
+  url_parts_free(&url_parts);
 
   if (!response) {
     SET_ERRNO(ERROR_NETWORK, "Failed to fetch from %s", url);
