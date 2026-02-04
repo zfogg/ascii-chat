@@ -73,13 +73,13 @@ static void *resize_detection_thread(void *arg) {
     return NULL;
   }
 
-  log_debug("Windows console resize detection thread started");
+  log_dev("Windows console resize detection thread started");
 
   // Store last known size to detect actual changes
   CONSOLE_SCREEN_BUFFER_INFO last_csbi = {0};
   if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &last_csbi)) {
-    log_debug("Initial console size: %dx%d", last_csbi.srWindow.Right - last_csbi.srWindow.Left + 1,
-              last_csbi.srWindow.Bottom - last_csbi.srWindow.Top + 1);
+    log_dev("Initial console size: %dx%d", last_csbi.srWindow.Right - last_csbi.srWindow.Left + 1,
+            last_csbi.srWindow.Bottom - last_csbi.srWindow.Top + 1);
   }
 
   while (!atomic_load(&g_resize_thread_should_exit)) {
@@ -118,7 +118,7 @@ static void *resize_detection_thread(void *arg) {
         int old_rows = last_csbi.srWindow.Bottom - last_csbi.srWindow.Top + 1;
 
         if (new_cols != old_cols || new_rows != old_rows) {
-          log_debug("Console resized: %dx%d -> %dx%d", old_cols, old_rows, new_cols, new_rows);
+          log_dev("Console resized: %dx%d -> %dx%d", old_cols, old_rows, new_cols, new_rows);
 
           // Update last known size
           last_csbi = csbi;
@@ -132,7 +132,7 @@ static void *resize_detection_thread(void *arg) {
     }
   }
 
-  log_debug("Windows console resize detection thread exiting");
+  log_dev("Windows console resize detection thread exiting");
   return NULL;
 }
 
@@ -641,7 +641,7 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
       // Use window size, not buffer size
       *width = (unsigned short int)(csbi.srWindow.Right - csbi.srWindow.Left + 1);
       *height = (unsigned short int)(csbi.srWindow.Bottom - csbi.srWindow.Top + 1);
-      log_debug("Windows terminal size from console: %ux%u", *width, *height);
+      log_dev("Windows terminal size from console: %ux%u", *width, *height);
       return ASCIICHAT_OK;
     }
   }
@@ -664,12 +664,12 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
         parse_uint32(lines_env, &env_height, 1, (uint32_t)USHRT_MAX) == ASCIICHAT_OK) {
       *width = (unsigned short int)env_width;
       *height = (unsigned short int)env_height;
-      log_debug("Windows terminal size from env: %ux%u", *width, *height);
+      log_dev("Windows terminal size from env: %ux%u", *width, *height);
       return ASCIICHAT_OK;
     }
   }
 
-  log_debug("Windows terminal size fallback: %ux%u (defaults)", *width, *height);
+  log_dev("Windows terminal size fallback: %ux%u (defaults)", *width, *height);
   // Don't return error - just use default size
   return ASCIICHAT_OK;
 }
@@ -919,7 +919,7 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
   // However, respect --color=true which explicitly forces colors ON
   if (GET_OPTION(color_mode) == COLOR_MODE_AUTO && platform_getenv("CLAUDECODE") &&
       GET_OPTION(color) != COLOR_SETTING_TRUE) {
-    log_debug("CLAUDECODE detected: forcing no color mode");
+    log_dev("CLAUDECODE detected: forcing no color mode");
     caps.color_level = TERM_COLOR_NONE;
     caps.capabilities &= ~((uint32_t)TERM_CAP_COLOR_16 | (uint32_t)TERM_CAP_COLOR_256 | (uint32_t)TERM_CAP_COLOR_TRUE);
     caps.color_count = 0;

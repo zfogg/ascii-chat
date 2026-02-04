@@ -313,7 +313,7 @@ tty_info_t get_current_tty(void) {
       if (result.fd >= 0) {
         result.path = tty_env;
         result.owns_fd = true;
-        log_debug("POSIX TTY from $TTY: %s (fd=%d)", tty_env, result.fd);
+        log_dev("POSIX TTY from $TTY: %s (fd=%d)", tty_env, result.fd);
         return result;
       }
     }
@@ -344,7 +344,7 @@ tty_info_t get_current_tty(void) {
   // Method 3: Try controlling terminal device (but only if stdout is not piped)
   // If stdout is piped/redirected, don't try /dev/tty - respect the user's intent to pipe output
   // Instead of opening /dev/tty when stdout is piped, just fail gracefully
-  log_debug("POSIX TTY: No TTY available");
+  log_dev("POSIX TTY: No TTY available");
   return result; // No TTY available
 }
 
@@ -399,7 +399,7 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
   if (stdout_is_tty && ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0 && ws.ws_row > 0) {
     *width = ws.ws_col;
     *height = ws.ws_row;
-    log_debug("POSIX terminal size from stdout ioctl: %dx%d", *width, *height);
+    log_dev("POSIX terminal size from stdout ioctl: %dx%d", *width, *height);
     return ASCIICHAT_OK;
   }
 
@@ -411,7 +411,7 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
     if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0 && ws.ws_row > 0) {
       *width = ws.ws_col;
       *height = ws.ws_row;
-      log_debug("POSIX terminal size from stdin ioctl: %dx%d", *width, *height);
+      log_dev("POSIX terminal size from stdin ioctl: %dx%d", *width, *height);
       return ASCIICHAT_OK;
     }
 
@@ -419,7 +419,7 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
     if (ioctl(STDERR_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0 && ws.ws_row > 0) {
       *width = ws.ws_col;
       *height = ws.ws_row;
-      log_debug("POSIX terminal size from stderr ioctl: %dx%d", *width, *height);
+      log_dev("POSIX terminal size from stderr ioctl: %dx%d", *width, *height);
       return ASCIICHAT_OK;
     }
 
@@ -433,14 +433,14 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
           parse_uint32(cols_env, &env_width, 1, (uint32_t)USHRT_MAX) == ASCIICHAT_OK) {
         *width = (unsigned short int)env_width;
         *height = (unsigned short int)env_height;
-        log_debug("POSIX terminal size from env: %dx%d", *width, *height);
+        log_dev("POSIX terminal size from env: %dx%d", *width, *height);
         return ASCIICHAT_OK;
       }
-      log_debug("Invalid environment terminal dimensions: %s x %s", lines_env, cols_env);
+      log_dev("Invalid environment terminal dimensions: %s x %s", lines_env, cols_env);
     }
   } else {
     // stdout is piped/redirected - skip /dev/tty detection and use defaults
-    log_debug("POSIX: stdout is redirected (not a TTY), skipping terminal detection and using defaults");
+    log_dev("POSIX: stdout is redirected (not a TTY), skipping terminal detection and using defaults");
   }
 
   // Method 2d: Try opening /dev/tty directly (only if stdout IS a TTY - skip for piped output)
@@ -451,7 +451,7 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
         *width = ws.ws_col;
         *height = ws.ws_row;
         close(tty_fd);
-        log_debug("POSIX terminal size from /dev/tty ioctl: %dx%d", *width, *height);
+        log_dev("POSIX terminal size from /dev/tty ioctl: %dx%d", *width, *height);
         return ASCIICHAT_OK;
       }
       close(tty_fd);
@@ -461,7 +461,7 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
   // Method 4: Default fallback (match OPT_WIDTH_DEFAULT and OPT_HEIGHT_DEFAULT)
   *width = OPT_WIDTH_DEFAULT;
   *height = OPT_HEIGHT_DEFAULT;
-  log_debug("POSIX terminal size fallback: %dx%d (defaults)", *width, *height);
+  log_dev("POSIX terminal size fallback: %dx%d (defaults)", *width, *height);
   return ASCIICHAT_OK; // Fallback succeeded with defaults
 }
 
@@ -495,7 +495,7 @@ terminal_capabilities_t detect_terminal_capabilities(void) {
       caps.color_level = TERM_COLOR_TRUECOLOR;
       caps.color_count = 16777216; // 2^24
       caps.capabilities |= TERM_CAP_COLOR_TRUE | TERM_CAP_COLOR_256 | TERM_CAP_COLOR_16;
-      log_debug("POSIX color detection: truecolor from $COLORTERM");
+      log_dev("POSIX color detection: truecolor from $COLORTERM");
     }
   }
 
@@ -504,13 +504,13 @@ terminal_capabilities_t detect_terminal_capabilities(void) {
       caps.color_level = TERM_COLOR_256;
       caps.color_count = 256;
       caps.capabilities |= TERM_CAP_COLOR_256 | TERM_CAP_COLOR_16;
-      log_debug("POSIX color detection: 256-color from $TERM");
+      log_dev("POSIX color detection: 256-color from $TERM");
     } else if (strstr(term, "color") || strstr(term, "xterm") || strstr(term, "screen") || strstr(term, "vt100") ||
                strstr(term, "linux")) {
       caps.color_level = TERM_COLOR_16;
       caps.color_count = 16;
       caps.capabilities |= TERM_CAP_COLOR_16;
-      log_debug("POSIX color detection: 16-color from $TERM");
+      log_dev("POSIX color detection: 16-color from $TERM");
     }
   }
 
@@ -531,7 +531,7 @@ terminal_capabilities_t detect_terminal_capabilities(void) {
   if (check && (strstr(check, "UTF-8") || strstr(check, "utf8"))) {
     caps.utf8_support = true;
     caps.capabilities |= TERM_CAP_UTF8;
-    log_debug("POSIX UTF-8 detection: enabled from locale");
+    log_dev("POSIX UTF-8 detection: enabled from locale");
   }
 
 #ifndef __APPLE__
@@ -541,7 +541,7 @@ terminal_capabilities_t detect_terminal_capabilities(void) {
     if (codeset && (strstr(codeset, "UTF-8") || strstr(codeset, "utf8"))) {
       caps.utf8_support = true;
       caps.capabilities |= TERM_CAP_UTF8;
-      log_debug("POSIX UTF-8 detection: enabled from langinfo");
+      log_dev("POSIX UTF-8 detection: enabled from langinfo");
     }
   }
 #endif
