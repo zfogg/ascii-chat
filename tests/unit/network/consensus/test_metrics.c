@@ -66,10 +66,10 @@ Test(consensus_metrics, wire_format_roundtrip) {
 
   // Verify wire format has network byte order
   cr_assert_eq(wire.upload_kbps, endian_pack_u32(50000), "Upload should be in network order");
-  cr_assert_eq(wire.rtt_ns, endian_pack_u16(25), "RTT should be in network order");
+  cr_assert_eq(wire.rtt_ns, endian_pack_u32(25), "RTT should be in network order");
   cr_assert_eq(wire.public_port, endian_pack_u16(8080), "Port should be in network order");
   cr_assert_eq(wire.measurement_time_ns, endian_pack_u64(1704067200000ULL), "Time should be in network order");
-  cr_assert_eq(wire.measurement_window_ns, endian_pack_u32(1000), "Window should be in network order");
+  cr_assert_eq(wire.measurement_window_ns, endian_pack_u64(1000), "Window should be in network order");
 
   // Deserialize back
   participant_metrics_t deserialized;

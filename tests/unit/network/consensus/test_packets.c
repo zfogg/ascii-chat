@@ -18,15 +18,15 @@ Test(consensus_packets, metrics_size) {
   // participant_id: 16 bytes
   // nat_tier: 1 byte
   // upload_kbps: 4 bytes
-  // rtt_ns: 2 bytes
+  // rtt_ns: 4 bytes (uint32_t for nanosecond precision)
   // stun_probe_success_pct: 1 byte
   // public_address: 64 bytes
   // public_port: 2 bytes
   // connection_type: 1 byte
   // measurement_time_ns: 8 bytes
-  // measurement_window_ns: 4 bytes
-  // Total: 16 + 1 + 4 + 2 + 1 + 64 + 2 + 1 + 8 + 4 = 103 bytes
-  size_t expected = 16 + 1 + 4 + 2 + 1 + 64 + 2 + 1 + 8 + 4;
+  // measurement_window_ns: 8 bytes (uint64_t for nanosecond duration)
+  // Total: 16 + 1 + 4 + 4 + 1 + 64 + 2 + 1 + 8 + 8 = 109 bytes
+  size_t expected = 16 + 1 + 4 + 4 + 1 + 64 + 2 + 1 + 8 + 8;
   cr_assert_eq(sizeof(participant_metrics_t), expected);
 }
 
