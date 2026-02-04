@@ -149,6 +149,7 @@
 #include <ascii-chat/video/color_filter.h>
 #include <ascii-chat/util/aspect_ratio.h>
 #include <ascii-chat/util/endian.h>
+#include <ascii-chat/util/time.h>
 #include <ascii-chat/util/image.h>
 
 /**
@@ -325,7 +326,7 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
           memcpy(current_frame.data, frame->data, frame->size);
           current_frame.size = frame->size;
           current_frame.source_client_id = snap->client_id;
-          current_frame.timestamp = (uint32_t)(frame->capture_timestamp_us / 1000000);
+          current_frame.timestamp = (uint32_t)(frame->capture_timestamp_ns / NS_PER_SEC_INT);
           got_new_frame = true;
         }
       } else {

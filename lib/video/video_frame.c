@@ -9,6 +9,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h> // For asciichat_errno system
 #include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/util/time.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -195,8 +196,8 @@ void video_frame_get_stats(video_frame_buffer_t *vfb, video_frame_stats_t *stats
   stats->total_frames = atomic_load(&vfb->total_frames_received);
   stats->dropped_frames = atomic_load(&vfb->total_frames_dropped);
   stats->drop_rate = (stats->total_frames > 0) ? (float)stats->dropped_frames / (float)stats->total_frames : 0.0f;
-  stats->avg_decode_time_us = atomic_load(&vfb->avg_decode_time_us);
-  stats->avg_render_time_us = atomic_load(&vfb->avg_render_time_us);
+  stats->avg_decode_time_ns = atomic_load(&vfb->avg_decode_time_ns);
+  stats->avg_render_time_ns = atomic_load(&vfb->avg_render_time_ns);
 }
 
 // Simple frame swap implementation for basic cases
@@ -238,7 +239,7 @@ void simple_frame_swap_update(simple_frame_swap_t *sfs, const void *data, size_t
   if (size <= (size_t)MAX_FRAME_BUFFER_SIZE) {
     SAFE_MEMCPY(write_frame->data, size, data, size);
     write_frame->size = size;
-    write_frame->capture_timestamp_us = (uint64_t)time(NULL) * 1000000;
+    write_frame->capture_timestamp_ns = time_get_ns();
 
     // Atomically update current frame pointer
     atomic_store(&sfs->current_frame, (uintptr_t)write_frame);

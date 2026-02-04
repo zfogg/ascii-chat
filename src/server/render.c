@@ -472,7 +472,7 @@ void *client_video_render_thread(void *arg) {
             if (write_frame->data && frame_size <= vfb_snapshot->allocated_buffer_size) {
               memcpy(write_frame->data, ascii_frame, frame_size);
               write_frame->size = frame_size;
-              write_frame->capture_timestamp_us = time_ns_to_us(current_time_ns);
+              write_frame->capture_timestamp_ns = current_time_ns;
 
               // Commit the frame (swaps buffers atomically using vfb->swap_mutex, NOT rwlock)
               video_frame_commit(vfb_snapshot);

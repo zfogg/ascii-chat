@@ -142,7 +142,11 @@ uint64_t time_elapsed_ns(uint64_t start_ns, uint64_t end_ns);
 #define NS_PER_SEC_INT 1000000000ULL
 
 // Microsecond versions (for API compatibility)
+#define US_PER_MS_INT 1000ULL
 #define US_PER_SEC_INT 1000000ULL
+
+// Millisecond versions (for API compatibility)
+#define MS_PER_SEC_INT 1000ULL
 
 // ============================================================================
 // Inline Time Conversion Helpers

@@ -131,15 +131,15 @@ typedef struct {
   /** @name Timing Information
    * @{
    */
-  uint64_t capture_timestamp_us; ///< Timestamp when frame was captured (microseconds)
-  uint64_t receive_timestamp_us; ///< Timestamp when frame was received (microseconds)
+  uint64_t capture_timestamp_ns; ///< Timestamp when frame was captured (nanoseconds)
+  uint64_t receive_timestamp_ns; ///< Timestamp when frame was received (nanoseconds)
   uint64_t sequence_number;      ///< Frame sequence number (for drop detection)
   /** @} */
 
   /** @name Quality Metrics
    * @{
    */
-  uint32_t encoding_time_us; ///< Time taken to encode/decode frame (microseconds)
+  uint64_t encoding_time_ns; ///< Time taken to encode/decode frame (nanoseconds)
   bool is_keyframe;          ///< True if this is a keyframe (important frame)
   /** @} */
 } video_frame_t;
@@ -206,8 +206,8 @@ typedef struct {
   /** @name Quality Metrics
    * @{
    */
-  atomic_uint avg_decode_time_us; ///< Average decode time in microseconds (atomic)
-  atomic_uint avg_render_time_us; ///< Average render time in microseconds (atomic)
+  atomic_ulong avg_decode_time_ns; ///< Average decode time in nanoseconds (atomic)
+  atomic_ulong avg_render_time_ns; ///< Average render time in nanoseconds (atomic)
   /** @} */
 
   /** @name Client Info
@@ -239,10 +239,10 @@ typedef struct {
   uint64_t dropped_frames;
   /** @brief Frame drop rate (dropped_frames / total_frames, 0.0-1.0) */
   float drop_rate;
-  /** @brief Average frame decode time in microseconds */
-  uint32_t avg_decode_time_us;
-  /** @brief Average frame render time in microseconds */
-  uint32_t avg_render_time_us;
+  /** @brief Average frame decode time in nanoseconds */
+  uint64_t avg_decode_time_ns;
+  /** @brief Average frame render time in nanoseconds */
+  uint64_t avg_render_time_ns;
 } video_frame_stats_t;
 
 /**

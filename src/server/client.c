@@ -2342,7 +2342,7 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
         frame->size = total_size;
         frame->width = header->width;
         frame->height = header->height;
-        frame->capture_timestamp_us = (uint64_t)time(NULL) * 1000000;
+        frame->capture_timestamp_ns = (uint64_t)time(NULL) * NS_PER_SEC_INT;
         frame->sequence_number = ++client->frames_received;
         video_frame_commit(client->incoming_video_buffer);
       }

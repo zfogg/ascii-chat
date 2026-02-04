@@ -126,6 +126,7 @@
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/bytes.h>
 #include <ascii-chat/util/image.h>
+#include <ascii-chat/util/time.h>
 #include <ascii-chat/video/video_frame.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/video/palette.h>
@@ -867,7 +868,7 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
         frame->size = old_packet_size;
         frame->width = img_width;
         frame->height = img_height;
-        frame->capture_timestamp_us = (uint64_t)time(NULL) * 1000000;
+        frame->capture_timestamp_ns = (uint64_t)time(NULL) * NS_PER_SEC_INT;
         frame->sequence_number = ++client->frames_received;
         video_frame_commit(client->incoming_video_buffer);
       } else {
