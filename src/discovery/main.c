@@ -45,6 +45,7 @@
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/common.h>
+#include <ascii-chat/util/time.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/keyboard.h>
 
@@ -192,7 +193,7 @@ static bool discovery_participant_render_should_exit(void *user_data) {
 
   // Process discovery session events (keep NAT negotiation responsive)
   // 50ms timeout for responsiveness
-  asciichat_error_t result = discovery_session_process(discovery, 50);
+  asciichat_error_t result = discovery_session_process(discovery, 50 * NS_PER_MS_INT);
   if (result != ASCIICHAT_OK && result != ERROR_NETWORK_TIMEOUT) {
     log_error("Discovery session process failed: %d", result);
     discovery_signal_exit();
@@ -387,7 +388,7 @@ int discovery_main(void) {
   // Main loop: wait for session to become active, then handle media based on role
   while (!discovery_should_exit()) {
     // Process discovery session events (state transitions, negotiations, etc)
-    result = discovery_session_process(discovery, 50); // 50ms timeout for responsiveness
+    result = discovery_session_process(discovery, 50 * NS_PER_MS_INT); // 50ms timeout for responsiveness
     if (result != ASCIICHAT_OK && result != ERROR_NETWORK_TIMEOUT) {
       log_error("Discovery session process failed: %d", result);
       break;
@@ -418,7 +419,7 @@ int discovery_main(void) {
       // Placeholder: In future, use session_host_render_loop() or similar
       // For now, continue processing events until shutdown
       while (!discovery_should_exit() && discovery_session_is_active(discovery)) {
-        discovery_session_process(discovery, 50);
+        discovery_session_process(discovery, 50 * NS_PER_MS_INT);
         platform_sleep_ms(10);
       }
     } else {

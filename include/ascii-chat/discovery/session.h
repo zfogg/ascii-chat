@@ -82,7 +82,7 @@ typedef struct session_entry {
 
   // Host migration state (when host disconnects)
   bool in_migration;           ///< Currently collecting HOST_LOST packets
-  uint64_t migration_start_ms; ///< When migration started (for collection window timeout)
+  uint64_t migration_start_ns; ///< When migration started in nanoseconds (for collection window timeout)
   host_lost_candidate_t *migration_candidates[MAX_PARTICIPANTS]; ///< Candidates received during migration
 
   participant_t *participants[MAX_PARTICIPANTS]; ///< Participant array (in-memory only)

@@ -230,10 +230,10 @@ asciichat_error_t discovery_session_start(discovery_session_t *session);
  * Handles incoming ACDS messages, negotiation, and state transitions.
  *
  * @param session Session context
- * @param timeout_ms Max time to wait for events (0 = non-blocking)
+ * @param timeout_ns Max time to wait for events in nanoseconds (0 = non-blocking)
  * @return ASCIICHAT_OK on success, error on failure
  */
-asciichat_error_t discovery_session_process(discovery_session_t *session, int timeout_ms);
+asciichat_error_t discovery_session_process(discovery_session_t *session, int64_t timeout_ns);
 
 /**
  * @brief Stop the discovery session

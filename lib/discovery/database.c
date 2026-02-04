@@ -28,7 +28,7 @@
   "expose_ip_publicly, session_type, server_address, server_port, "                                                    \
   "created_at, expires_at, initiator_id, host_established, "                                                           \
   "host_participant_id, host_address, host_port, host_connection_type, "                                               \
-  "in_migration, migration_start_ms FROM sessions"
+  "in_migration, migration_start_ns FROM sessions"
 
 // ============================================================================
 // SQL schema for creating tables
@@ -60,7 +60,7 @@ static const char *schema_sql =
     "  host_connection_type INTEGER DEFAULT 0," // How to reach host
     // Host migration state
     "  in_migration INTEGER DEFAULT 0,"      // 0=not migrating, 1=collecting HOST_LOST packets
-    "  migration_start_ms INTEGER DEFAULT 0" // When migration started (ms since epoch)
+    "  migration_start_ns INTEGER DEFAULT 0" // When migration started in nanoseconds
     ");"
 
     // Participants table
@@ -195,7 +195,7 @@ static session_entry_t *load_session_from_row(sqlite3_stmt *stmt) {
 
   // Host migration state
   session->in_migration = sqlite3_column_int(stmt, 20) != 0;
-  session->migration_start_ms = (uint64_t)sqlite3_column_int64(stmt, 21);
+  session->migration_start_ns = (uint64_t)sqlite3_column_int64(stmt, 21);
 
   return session;
 }
@@ -918,11 +918,11 @@ asciichat_error_t database_session_start_migration(sqlite3 *db, const uint8_t se
     return SET_ERRNO(ERROR_INVALID_PARAM, "db or session_id is NULL");
   }
 
-  uint64_t now = database_get_current_time_ms();
+  uint64_t now_ns = time_get_realtime_ns();
 
   const char *sql = "UPDATE sessions SET "
                     "in_migration = 1, "
-                    "migration_start_ms = ? "
+                    "migration_start_ns = ? "
                     "WHERE session_id = ?";
 
   sqlite3_stmt *stmt = NULL;
@@ -931,7 +931,7 @@ asciichat_error_t database_session_start_migration(sqlite3 *db, const uint8_t se
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare migration start: %s", sqlite3_errmsg(db));
   }
 
-  sqlite3_bind_int64(stmt, 1, (sqlite3_int64)now);
+  sqlite3_bind_int64(stmt, 1, (sqlite3_int64)now_ns);
   sqlite3_bind_blob(stmt, 2, session_id, 16, SQLITE_STATIC);
 
   rc = sqlite3_step(stmt);
@@ -946,7 +946,8 @@ asciichat_error_t database_session_start_migration(sqlite3 *db, const uint8_t se
     return SET_ERRNO(ERROR_INVALID_STATE, "Session not found for migration start");
   }
 
-  log_info("Session migration started (session=%02x%02x..., start_ms=%" PRIu64 ")", session_id[0], session_id[1], now);
+  log_info("Session migration started (session=%02x%02x..., start_ns=%" PRIu64 ")", session_id[0], session_id[1],
+           now_ns);
 
   return ASCIICHAT_OK;
 }
@@ -956,8 +957,8 @@ bool database_session_is_migration_ready(sqlite3 *db, const uint8_t session_id[1
     return false;
   }
 
-  uint64_t now = database_get_current_time_ms();
-  const char *sql = "SELECT in_migration, migration_start_ms FROM sessions WHERE session_id = ?";
+  uint64_t now_ns = time_get_realtime_ns();
+  const char *sql = "SELECT in_migration, migration_start_ns FROM sessions WHERE session_id = ?";
 
   sqlite3_stmt *stmt = NULL;
   if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
@@ -969,14 +970,15 @@ bool database_session_is_migration_ready(sqlite3 *db, const uint8_t session_id[1
   bool ready = false;
   if (sqlite3_step(stmt) == SQLITE_ROW) {
     int in_migration = sqlite3_column_int(stmt, 0);
-    uint64_t migration_start_ms = (uint64_t)sqlite3_column_int64(stmt, 1);
+    uint64_t migration_start_ns = (uint64_t)sqlite3_column_int64(stmt, 1);
 
     if (in_migration) {
-      uint64_t elapsed = now - migration_start_ms;
-      if (elapsed >= migration_window_ms) {
+      uint64_t elapsed_ns = now_ns - migration_start_ns;
+      uint64_t migration_window_ns = migration_window_ms * NS_PER_MS_INT;
+      if (elapsed_ns >= migration_window_ns) {
         ready = true;
-        log_debug("Migration window complete (session=%02x%02x..., elapsed=%" PRIu64 "ms, window=%" PRIu64 "ms)",
-                  session_id[0], session_id[1], elapsed, migration_window_ms);
+        log_debug("Migration window complete (session=%02x%02x..., elapsed=%lu ns, window=%lu ns)", session_id[0],
+                  session_id[1], elapsed_ns, migration_window_ns);
       }
     }
   }
