@@ -1544,6 +1544,19 @@ asciichat_error_t options_init(int argc, char **argv) {
       SAFE_FREE(allocated_mode_argv);
       return ERROR_INVALID_PARAM;
     }
+
+    // Normalize bare URLs by prepending http:// if not present
+    if (!strstr(opts.media_url, "://")) {
+      char normalized_url[2048];
+      int result = snprintf(normalized_url, sizeof(normalized_url), "http://%s", opts.media_url);
+      if (result > 0 && result < (int)sizeof(normalized_url)) {
+        SAFE_STRNCPY(opts.media_url, normalized_url, sizeof(opts.media_url));
+      } else {
+        log_error("Failed to normalize URL (too long): %s", opts.media_url);
+        SAFE_FREE(allocated_mode_argv);
+        return ERROR_INVALID_PARAM;
+      }
+    }
   }
 
   // ========================================================================
