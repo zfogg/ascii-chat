@@ -82,7 +82,7 @@ void time_sleep_ns(uint64_t ns) {
   if (usec == 0 && ns > 0) {
     usec = 1; // Minimum 1 microsecond
   }
-  platform_sleep_usec(usec);
+  platform_sleep_us(usec);
 }
 
 uint64_t time_elapsed_ns(uint64_t start_ns, uint64_t end_ns) {

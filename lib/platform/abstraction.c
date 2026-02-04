@@ -55,7 +55,7 @@ size_t platform_write_all(int fd, const void *buf, size_t count) {
       // Handle EAGAIN (non-blocking would-block) with sleep instead of tight loop
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         // Sleep 100us before retrying to avoid busy-waiting and spinning CPU
-        platform_sleep_usec(100);
+        platform_sleep_us(100);
       } else {
         // Other write errors - log and retry
         log_warn("platform_write_all: write() error on fd=%d (wrote %zu/%zu so far, errno=%d)", fd, written_total,

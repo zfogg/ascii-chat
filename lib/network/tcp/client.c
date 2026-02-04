@@ -82,7 +82,7 @@ static int close_socket_safe(socket_t sockfd) {
 
   // Small delay to ensure socket resources are released
   // Prevents WSA error 10038 on Windows
-  platform_sleep_usec(50000); // 50ms
+  platform_sleep_us(50000); // 50ms
 
   return 0;
 }
@@ -426,7 +426,7 @@ int tcp_client_connect(tcp_client_t *client, const char *address, int port, int 
   // Apply reconnection delay if this is a retry
   if (reconnect_attempt > 0) {
     unsigned int delay_us = get_reconnect_delay(reconnect_attempt);
-    platform_sleep_usec(delay_us);
+    platform_sleep_us(delay_us);
   }
 
   // Resolve server address using getaddrinfo() for IPv4/IPv6 support

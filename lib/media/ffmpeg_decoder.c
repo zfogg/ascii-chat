@@ -216,7 +216,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
     if (buffer_in_use) {
       // Can't use this buffer yet - main thread is still rendering it
       mutex_unlock(&decoder->prefetch_mutex);
-      platform_sleep_usec(1000); // 1ms - brief sleep before retry
+      platform_sleep_us(1000); // 1ms - brief sleep before retry
       continue;
     }
 

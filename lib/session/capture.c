@@ -269,7 +269,7 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
         // Local files are faster - 100-200ms is usually sufficient
         // Use 1 second as a safe default to handle both cases
         log_debug("Waiting for prefetch thread after seek (snapshot_delay=0, HTTP streams need ~1 second)");
-        platform_sleep_usec(1000000); // 1 second - ensures prefetch thread has delivered seeked frame
+        platform_sleep_us(1000000); // 1 second - ensures prefetch thread has delivered seeked frame
       }
     }
   }

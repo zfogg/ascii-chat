@@ -586,7 +586,7 @@ void adaptive_sleep_init(adaptive_sleep_state_t *state, const adaptive_sleep_con
  *   // Sleep adaptively based on queue depth
  *   size_t queue_depth = get_queue_size();
  *   uint64_t sleep_ns = adaptive_sleep_calculate(&sleep_state, queue_depth, 10);
- *   platform_sleep_usec(sleep_ns / 1000);
+ *   platform_sleep_us(sleep_ns / 1000);
  * }
  * ```
  *
@@ -601,7 +601,7 @@ uint64_t adaptive_sleep_calculate(adaptive_sleep_state_t *state, size_t queue_de
 /**
  * @brief Calculate sleep time and immediately sleep for that duration
  *
- * Convenience wrapper that combines adaptive_sleep_calculate() with platform_sleep_usec().
+ * Convenience wrapper that combines adaptive_sleep_calculate() with platform_sleep_us().
  * Useful for simple loops that don't need to inspect the calculated sleep time.
  *
  * @param state Pointer to adaptive sleep state (will be updated)

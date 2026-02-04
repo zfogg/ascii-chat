@@ -15,7 +15,7 @@
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/init.h>        // For static_mutex_t
-#include <ascii-chat/platform/abstraction.h> // For platform_sleep_usec
+#include <ascii-chat/platform/abstraction.h> // For platform_sleep_us
 #include <ascii-chat/network/packet.h>       // For audio_batch_packet_t
 #include <ascii-chat/log/logging.h>          // For log_* macros
 #include <ascii-chat/media/source.h>         // For media_source_read_audio()

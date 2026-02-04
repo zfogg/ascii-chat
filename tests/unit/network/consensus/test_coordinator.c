@@ -312,8 +312,9 @@ Test(coordinator, collection_completion_on_timeout) {
   consensus_coordinator_t *coordinator = NULL;
   cr_assert_eq(consensus_coordinator_create(my_id, topo, mock_election_func, NULL, &coordinator), ASCIICHAT_OK);
 
-  /* Start collection with deadline already passed */
-  uint64_t past_deadline = time_get_realtime_ns() - 1000000000ULL;
+  /* Start collection with deadline already passed (use time_get_ns, not realtime)
+     Set deadline to 0 (epoch) so it's definitely in the past compared to any call to time_get_ns() */
+  uint64_t past_deadline = 0;
   asciichat_error_t err = consensus_coordinator_on_collection_start(coordinator, 1, past_deadline);
   cr_assert_eq(err, ASCIICHAT_OK);
 

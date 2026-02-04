@@ -160,7 +160,7 @@ uint64_t platform_get_monotonic_time_us(void) {
  * With 1ms timer resolution enabled in platform_init(), Sleep(1) sleeps 1-2ms
  * instead of the default 15.6ms, enabling proper frame rate limiting for 144 FPS capture.
  */
-void platform_sleep_usec(unsigned int usec) {
+void platform_sleep_us(unsigned int usec) {
   // Convert microseconds to milliseconds, minimum 1ms
   int timeout_ms = (int)(usec / 1000);
   if (timeout_ms < 1)

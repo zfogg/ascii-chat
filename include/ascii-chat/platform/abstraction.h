@@ -677,12 +677,12 @@ typedef unsigned int useconds_t;
  *
  * @par Example:
  * @code{.c}
- * platform_sleep_usec(1000);  // Sleep for 1000 microseconds (1 millisecond)
+ * platform_sleep_us(1000);  // Sleep for 1000 microseconds (1 millisecond)
  * @endcode
  *
  * @ingroup platform
  */
-void platform_sleep_usec(unsigned int usec);
+void platform_sleep_us(unsigned int usec);
 
 /**
  * @brief Platform-safe sleep function with nanosecond precision

@@ -564,14 +564,14 @@ static void *audio_capture_thread_func(void *arg) {
 
     if (!server_connection_is_active()) {
       STOP_TIMER("audio_capture_loop_iteration"); // Don't count sleep time
-      platform_sleep_usec(100 * 1000);            // Wait for connection
+      platform_sleep_us(100 * 1000);              // Wait for connection
       continue;
     }
 
     // Check if pipeline is ready
     if (!g_audio_pipeline) {
       STOP_TIMER("audio_capture_loop_iteration"); // Don't count sleep time
-      platform_sleep_usec(100 * 1000);
+      platform_sleep_us(100 * 1000);
       continue;
     }
 
@@ -598,7 +598,7 @@ static void *audio_capture_thread_func(void *arg) {
       // 5ms polling = 200 times/sec, fast enough to catch audio promptly
       // CRITICAL: 50ms was causing 872ms gaps in audio transmission!
       STOP_TIMER("audio_capture_loop_iteration"); // Must stop before loop repeats
-      platform_sleep_usec(5 * 1000);              // 5ms (was 50ms - caused huge gaps!)
+      platform_sleep_us(5 * 1000);                // 5ms (was 50ms - caused huge gaps!)
       continue;
     }
 
@@ -617,7 +617,7 @@ static void *audio_capture_thread_func(void *arg) {
     if (read_result != ASCIICHAT_OK) {
       log_error("Failed to read audio samples from ring buffer");
       STOP_TIMER("audio_capture_loop_iteration"); // Don't count sleep time
-      platform_sleep_usec(5 * 1000);              // 5ms (error path - was 50ms, caused gaps!)
+      platform_sleep_us(5 * 1000);                // 5ms (error path - was 50ms, caused gaps!)
       continue;
     }
 
@@ -849,7 +849,7 @@ static void *audio_capture_thread_func(void *arg) {
       // Yield to reduce CPU usage - audio arrives at ~20ms per Opus frame (960 samples @ 48kHz)
       // Without sleep, thread spins at 90-100% CPU constantly checking for new samples
       // Even 1ms sleep reduces CPU usage from 90% to <10% with minimal latency impact
-      platform_sleep_usec(1000); // 1ms
+      platform_sleep_us(1000); // 1ms
     } else {
       // Track loop time even when no samples processed
       double loop_time_ns = STOP_TIMER("audio_capture_loop_iteration");
@@ -873,7 +873,7 @@ static void *audio_capture_thread_func(void *arg) {
         }
       }
 
-      platform_sleep_usec(5 * 1000); // 5ms (error path - was 50ms, caused gaps!)
+      platform_sleep_us(5 * 1000); // 5ms (error path - was 50ms, caused gaps!)
     }
   }
 
@@ -1078,7 +1078,7 @@ void audio_stop_thread() {
   // Wait for thread to exit gracefully
   int wait_count = 0;
   while (wait_count < 20 && !atomic_load(&g_audio_capture_thread_exited)) {
-    platform_sleep_usec(100000); // 100ms
+    platform_sleep_us(100000); // 100ms
     wait_count++;
   }
 
@@ -1143,7 +1143,7 @@ void audio_cleanup() {
   // pointer to NULL, a CoreAudio thread may have already cached the pointer before the assignment.
   // This sleep ensures all in-flight callbacks have fully completed before we destroy the pipeline.
   // 500ms is sufficient on macOS for CoreAudio's internal thread pool to completely wind down.
-  platform_sleep_usec(500000); // 500ms - macOS CoreAudio needs time to shut down all threads
+  platform_sleep_us(500000); // 500ms - macOS CoreAudio needs time to shut down all threads
 
   // Destroy audio pipeline (handles Opus, AEC, etc.)
   if (g_audio_pipeline) {

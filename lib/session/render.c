@@ -194,7 +194,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
             max_retries = loop_retry_count;
           }
 
-          platform_sleep_usec(10000); // 10ms
+          platform_sleep_us(10000); // 10ms
           continue;
         }
 

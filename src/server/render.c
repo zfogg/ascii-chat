@@ -227,7 +227,7 @@
  * @see VIDEO_RENDER_FPS For video thread timing requirements
  */
 
-// Removed interruptible_usleep - using regular platform_sleep_usec instead
+// Removed interruptible_usleep - using regular platform_sleep_us instead
 // Sleep interruption isn't needed for small delays and isn't truly possible anyway
 
 /* ============================================================================

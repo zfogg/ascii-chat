@@ -1348,7 +1348,7 @@ int remove_client(server_context_t *server_ctx, uint32_t client_id) {
     uint32_t delay_ms = 10 * (1 << retry_count);
     log_warn("Client %u: Some threads still appear initialized (attempt %d/%d), waiting %ums", client_id,
              retry_count + 1, max_retries, delay_ms);
-    platform_sleep_usec(delay_ms * 1000);
+    platform_sleep_us(delay_ms * 1000);
     retry_count++;
   }
 
@@ -1366,7 +1366,7 @@ int remove_client(server_context_t *server_ctx, uint32_t client_id) {
 
   // Wait for threads to observe the client_id reset
   // Use sufficient delay for memory visibility across all CPU cores
-  platform_sleep_usec(5000); // 5ms delay for memory barrier propagation
+  platform_sleep_us(5000); // 5ms delay for memory barrier propagation
 
   // Destroy mutexes
   // IMPORTANT: Always destroy these even if threads didn't join properly
@@ -1759,11 +1759,11 @@ void *client_send_thread_func(void *arg) {
 
       // Small sleep to let more audio packets queue (helps batching efficiency)
       if (audio_packet_count > 0) {
-        platform_sleep_usec(100); // 0.1ms - minimal delay
+        platform_sleep_us(100); // 0.1ms - minimal delay
       }
     } else {
       // No audio packets - brief sleep to avoid busy-looping, then check for other tasks
-      platform_sleep_usec(1000); // 1ms - enough for audio render thread to queue more packets
+      platform_sleep_us(1000); // 1ms - enough for audio render thread to queue more packets
 
       // Check if session rekeying should be triggered
       mutex_lock(&client->client_state_mutex);
@@ -1871,7 +1871,7 @@ void *client_send_thread_func(void *arg) {
         // should wait a little bit.
         log_debug("Send thread: Skipping frame send due to frame->size == 0");
         log_warn_every(LOG_RATE_FAST, "Client %u has no valid frame size: size=%zu", client->client_id, frame->size);
-        platform_sleep_usec(1000); // 1ms sleep
+        platform_sleep_us(1000); // 1ms sleep
         continue;
       }
 
@@ -1932,7 +1932,7 @@ void *client_send_thread_func(void *arg) {
 
     // If we didn't send anything, sleep briefly to prevent busy waiting
     if (!sent_something) {
-      platform_sleep_usec(1000); // 1ms sleep
+      platform_sleep_us(1000); // 1ms sleep
     }
   }
 

@@ -205,10 +205,10 @@ void platform_disable_keepawake(void);
 // Check if usleep is declared (GCC's unistd.h provides it)
 #if defined(__GNUC__) && !defined(__clang__)
 // INFO: GCC on Windows: unistd.h declares usleep, so don't redefine it
-// Code should use usleep() directly or platform_sleep_usec() directly
+// Code should use usleep() directly or platform_sleep_us() directly
 #else
-// MSVC/Clang on Windows: Define usleep macro to use platform_sleep_usec
-#define usleep(usec) platform_sleep_usec(usec)
+// MSVC/Clang on Windows: Define usleep macro to use platform_sleep_us
+#define usleep(usec) platform_sleep_us(usec)
 #endif
 #endif
 #endif

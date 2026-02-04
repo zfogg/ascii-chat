@@ -941,7 +941,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
   case DISCOVERY_STATE_WAITING_PEER:
     // TODO: Wait for PARTICIPANT_JOINED notification from ACDS
     // For now, just sleep briefly
-    platform_sleep_usec(timeout_ns / NS_PER_US_INT);
+    platform_sleep_us(timeout_ns / NS_PER_US_INT);
     break;
 
   case DISCOVERY_STATE_NEGOTIATING: {
@@ -1005,7 +1005,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
       }
     } else {
       // Still waiting for peer quality - sleep briefly to avoid busy loop
-      platform_sleep_usec(timeout_ns / NS_PER_US_INT);
+      platform_sleep_us(timeout_ns / NS_PER_US_INT);
     }
     break;
   }
@@ -1248,7 +1248,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
         discovery_session_handle_host_disconnect(session, 1);
       }
     }
-    platform_sleep_usec(timeout_ns / NS_PER_US_INT);
+    platform_sleep_us(timeout_ns / NS_PER_US_INT);
     break;
 
   case DISCOVERY_STATE_MIGRATING:
@@ -1264,7 +1264,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
       set_state(session, DISCOVERY_STATE_FAILED);
       session->error = ERROR_NETWORK;
     }
-    platform_sleep_usec(timeout_ns / NS_PER_US_INT);
+    platform_sleep_us(timeout_ns / NS_PER_US_INT);
     break;
 
   default:

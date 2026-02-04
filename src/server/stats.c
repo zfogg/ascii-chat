@@ -339,7 +339,7 @@ void *stats_logger_thread(void *arg) {
   while (!atomic_load(&g_server_should_exit)) {
     // Log buffer pool statistics every 10 seconds with fast exit checking (10ms intervals)
     for (int i = 0; i < 1000 && !atomic_load(&g_server_should_exit); i++) {
-      platform_sleep_usec(10000); // 10ms sleep
+      platform_sleep_us(10000); // 10ms sleep
     }
 
     // Check exit condition before proceeding with statistics logging

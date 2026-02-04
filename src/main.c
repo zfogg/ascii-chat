@@ -174,21 +174,8 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  // Detect early if stdout is piped so we can route logs to stderr from the start
-  // This must be done BEFORE any logging, including terminal detection
-  // This prevents log output from corrupting piped frame data during initialization
-  bool stdout_is_piped = !platform_isatty(STDOUT_FILENO);
-
-  // Initialize logging early so options parsing and terminal detection can log errors to stderr
-  // Use generic filename for now; will be replaced with mode-specific filename once mode is detected
-  // This will be reconfigured first in options_init() with mode-specific name,
-  // then again in asciichat_shared_init() with final settings from parsed options
-  // When piped, suppress DEBUG logs entirely to avoid corrupting frame data with debug output
-  log_level_t init_log_level = stdout_is_piped ? LOG_INFO : LOG_DEBUG;
-  log_init("ascii-chat.log", init_log_level, stdout_is_piped, false);
-
   // Detect terminal capabilities early so colored help output works
-  // With force_stderr already set, these logs go to stderr, not stdout
+  // Logging will be initialized by asciichat_shared_init() before options_init()
   log_redetect_terminal_capabilities();
   terminal_capabilities_t caps = detect_terminal_capabilities();
   caps = apply_color_mode_override(caps);
@@ -206,6 +193,37 @@ int main(int argc, char *argv[]) {
   // This allows logging to use the correct colors from the start
   options_colorscheme_init_early(argc, argv);
 
+  // EARLY PARSE: Determine mode from argv to know if this is client-like mode
+  // The first positional argument (after options) is the mode: client, server, mirror, discovery, acds
+  bool is_client_like_mode = false;
+  if (argc > 1) {
+    const char *first_arg = argv[1];
+    if (strcmp(first_arg, "client") == 0 || strcmp(first_arg, "mirror") == 0 || strcmp(first_arg, "discovery") == 0) {
+      is_client_like_mode = true;
+    }
+  }
+
+  // EARLY PARSE: Extract log file from argv (--log-file or -L)
+  const char *log_file = "ascii-chat.log"; // default
+  for (int i = 1; i < argc - 1; i++) {
+    if ((strcmp(argv[i], "--log-file") == 0 || strcmp(argv[i], "-L") == 0)) {
+      log_file = argv[i + 1];
+      break;
+    }
+  }
+
+  // Initialize shared subsystems BEFORE options_init()
+  // This ensures options parsing can use properly configured logging with colors
+  asciichat_error_t init_result = asciichat_shared_init(log_file, is_client_like_mode);
+  if (init_result != ASCIICHAT_OK) {
+    return init_result;
+  }
+
+  // Register cleanup of shared subsystems to run on normal exit
+  // Library code doesn't call atexit() - the application is responsible
+  (void)atexit(asciichat_shared_shutdown);
+
+  // NOW parse all options - can use logging with colors!
   asciichat_error_t options_result = options_init(argc, argv);
   if (options_result != ASCIICHAT_OK) {
     asciichat_error_context_t error_ctx;
@@ -223,17 +241,34 @@ int main(int argc, char *argv[]) {
     exit(options_result);
   }
 
-  // Get parsed options including detected mode
+  // Get parsed options
   const options_t *opts = options_get();
   if (!opts) {
     fprintf(stderr, "Error: Options not initialized\n");
     return 1;
   }
 
-  // Determine if this mode uses client-like initialization (client and mirror modes)
-  // Discovery mode is client-like (uses terminal display, webcam, etc.)
-  bool is_client_like_mode = (opts->detected_mode == MODE_CLIENT || opts->detected_mode == MODE_MIRROR ||
-                              opts->detected_mode == MODE_DISCOVERY);
+  // Reconfigure logging with parsed log level
+  log_init(log_file, GET_OPTION(log_level), false, false);
+
+  // Apply quiet mode setting
+  if (GET_OPTION(quiet)) {
+    log_set_terminal_output(false);
+  }
+
+  // Initialize palette based on command line options
+  const char *custom_chars = opts && opts->palette_custom_set ? opts->palette_custom : NULL;
+  if (apply_palette_config(GET_OPTION(palette_type), custom_chars) != 0) {
+    FATAL(ERROR_CONFIG, "Failed to apply palette configuration");
+  }
+
+  // Set quiet mode for memory debugging
+#if defined(DEBUG_MEMORY) && !defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
+  debug_memory_set_quiet_mode(GET_OPTION(quiet));
+#endif
+
+  // Truncate log if it's already too large
+  log_truncate_if_large();
 
   // Handle --help and --version (these are detected and flagged by options_init)
   // Terminal capabilities already initialized before options_init() at startup
@@ -246,25 +281,6 @@ int main(int argc, char *argv[]) {
     print_version();
     exit(0);
   }
-
-  // Initialize timer system BEFORE any subsystem that might use timing functions
-  // This must be done before asciichat_shared_init which initializes palette, buffer pool, etc.
-  if (!timer_system_init()) {
-    fprintf(stderr, "FATAL: Failed to initialize timer system\n");
-    return ERROR_PLATFORM_INIT;
-  }
-  // Note: timer_system_cleanup will be registered by asciichat_shared_init
-
-  // Initialize shared subsystems (platform, logging, palette, buffer pool, cleanup)
-  // For client/mirror modes, this also sets log_force_stderr(true) to route all logs to stderr
-  asciichat_error_t init_result = asciichat_shared_init(is_client_like_mode);
-  if (init_result != ASCIICHAT_OK) {
-    return init_result;
-  }
-
-  // Register cleanup of shared subsystems to run on normal exit
-  // Library code doesn't call atexit() - the application is responsible
-  (void)atexit(asciichat_shared_shutdown);
 
   const char *final_log_file = (opts->log_file[0] != '\0') ? opts->log_file : "ascii-chat.log";
   log_warn("Logging initialized to %s", final_log_file);

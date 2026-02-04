@@ -103,60 +103,42 @@ __attribute__((constructor)) static void register_common_fork_handlers(void) {
 }
 #endif
 
-asciichat_error_t asciichat_shared_init(bool is_client) {
-  // Reconfigure logging with final settings (log level and is_client routing)
-  // Log file was already set in options_init after mode detection
-  // Client mode: route ALL logs to stderr to keep stdout clean for ASCII art output
-  const options_t *opts = options_get();
-  const char *log_file = opts && opts->log_file[0] != '\0' ? opts->log_file : "ascii-chat.log";
-  // Use log_level from parsed options (set by options_init)
-  // Default levels (when no --log-level arg or LOG_LEVEL env var):
-  //   Debug/Dev builds: LOG_DEBUG
-  //   Release/RelWithDebInfo builds: LOG_INFO
-  // Precedence: LOG_LEVEL env var > --log-level CLI arg > build type default
-  // use_mmap=false: Regular file logging (default for developers, allows tail -f for log monitoring)
-  // Note: log_init is safe to call multiple times; it will update routing (is_client) if needed
-  // Force stderr when: client-like mode AND stdout is piped (to keep stdout clean for frames/data)
-  bool force_stderr = is_client && !platform_isatty(STDOUT_FILENO);
-  log_init(log_file, GET_OPTION(log_level), force_stderr, false /* don't use_mmap */);
-
-  // NOTE: This library function does NOT register atexit() handlers.
-  // Library code should not own the process lifecycle. The application
-  // is responsible for calling atexit(asciichat_shared_shutdown) if it
-  // wants automatic cleanup on normal exit.
+asciichat_error_t asciichat_shared_init(const char *log_file, bool is_client) {
+  // Initialize shared subsystems BEFORE options_init()
+  // This allows options_init() to use properly configured logging with colors
   //
+  // NOTE: This function is called BEFORE options_init(), so we can't use GET_OPTION()
+  // Palette config and quiet mode will be applied after options_init() is called
+
   // Only register initialization tracking once
   if (!g_shared_initialized) {
-    // Initialize platform-specific functionality (Winsock, etc)
+    // 1. TIMER SYSTEM - Initialize first so timing is available for everything else
+    if (!timer_system_init()) {
+      FATAL(ERROR_PLATFORM_INIT, "Failed to initialize timer system");
+    }
+
+    // 2. LOGGING - Initialize with provided log file
+    // Force stderr for client-like modes when stdout is piped to keep stdout clean
+    bool force_stderr = is_client && !platform_isatty(STDOUT_FILENO);
+    // Use LOG_DEBUG by default; will be reconfigured after options_init()
+    log_init(log_file, LOG_DEBUG, force_stderr, false /* don't use_mmap */);
+
+    // 3. PLATFORM - Initialize platform-specific functionality (Winsock, etc)
     if (platform_init() != ASCIICHAT_OK) {
       FATAL(ERROR_PLATFORM_INIT, "Failed to initialize platform");
     }
 
-    // Initialize global shared buffer pool
+    // 4. BUFFER POOL - Initialize global shared buffer pool
     buffer_pool_init_global();
 
     // Mark that we've initialized (prevents re-registration of subsystems)
     g_shared_initialized = true;
   }
 
-  // Apply quiet mode setting BEFORE log_init so initialization messages are suppressed
-  if (GET_OPTION(quiet)) {
-    log_set_terminal_output(false);
-  }
-
-  // Initialize palette based on command line options
-  const char *custom_chars = opts && opts->palette_custom_set ? opts->palette_custom : NULL;
-  if (apply_palette_config(GET_OPTION(palette_type), custom_chars) != 0) {
-    FATAL(ERROR_CONFIG, "Failed to apply palette configuration");
-  }
-
-  // Truncate log if it's already too large
-  log_truncate_if_large();
-
-  // Set quiet mode for memory debugging (registration done at function start)
-#if defined(DEBUG_MEMORY) && !defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
-  debug_memory_set_quiet_mode(GET_OPTION(quiet));
-#endif
+  // NOTE: This library function does NOT register atexit() handlers.
+  // Library code should not own the process lifecycle. The application
+  // is responsible for calling atexit(asciichat_shared_shutdown) if it
+  // wants automatic cleanup on normal exit.
 
   return ASCIICHAT_OK;
 }

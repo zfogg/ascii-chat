@@ -544,11 +544,15 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
  * Note: Memory debugging setup is handled separately by each mode due to
  * different requirements (client has snapshot mode, server doesn't).
  *
- * @param default_log_filename Default log filename (e.g., "client.log" or "server.log")
+ * Call this BEFORE options_init() so that options parsing can use properly
+ * configured logging with colors. This initializes timer system, logging,
+ * and platform subsystems.
+ *
+ * @param log_file Log filename to use (e.g., "client.log" or "ascii-chat.log")
  * @param is_client true for client mode (routes all logs to stderr), false for server mode
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t asciichat_shared_init(bool is_client);
+asciichat_error_t asciichat_shared_init(const char *log_file, bool is_client);
 
 /**
  * @brief Clean up shared library subsystems
@@ -557,7 +561,7 @@ asciichat_error_t asciichat_shared_init(bool is_client);
  * All cleanup functions are idempotent and safe to call multiple times.
  *
  * Applications should typically register this with atexit():
- *   asciichat_shared_init(is_client);
+ *   asciichat_shared_init(log_file, is_client);
  *   atexit(asciichat_shared_shutdown);
  *
  * @note This function is safe to call even if init failed or wasn't called.

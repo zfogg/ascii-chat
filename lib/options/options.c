@@ -931,7 +931,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (user_quiet || has_action) {
     log_set_terminal_output(false); // Suppress console logging BEFORE shared_init for clean action output
   }
-  asciichat_error_t logging_init_result = asciichat_shared_init(false);
+  asciichat_error_t logging_init_result = asciichat_shared_init("ascii-chat.log", false);
   if (logging_init_result != ASCIICHAT_OK) {
     return logging_init_result;
   }

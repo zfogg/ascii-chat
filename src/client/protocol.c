@@ -911,7 +911,7 @@ static void *data_reception_thread_func(void *arg) {
     if (!server_connection_is_active()) {
       // Use rate-limited logging instead of logging every 10ms
       log_debug_every(1000000, "Waiting for connection"); // Max once per second
-      platform_sleep_usec(10 * 1000);
+      platform_sleep_us(10 * 1000);
       continue;
     }
 
@@ -1079,7 +1079,7 @@ void protocol_stop_connection() {
   // Wait for data reception thread to exit gracefully
   int wait_count = 0;
   while (wait_count < 20 && !atomic_load(&g_data_thread_exited)) {
-    platform_sleep_usec(100000); // 100ms
+    platform_sleep_us(100000); // 100ms
     wait_count++;
   }
 

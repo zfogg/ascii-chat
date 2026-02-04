@@ -129,7 +129,7 @@ uint64_t platform_get_monotonic_time_us(void) {
  * POSIX implementation uses standard usleep() function.
  * Provides microsecond precision sleep capability.
  */
-void platform_sleep_usec(unsigned int usec) {
+void platform_sleep_us(unsigned int usec) {
   usleep(usec);
 }
 

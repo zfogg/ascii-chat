@@ -44,7 +44,7 @@ static void check_crc32_hw_support(void) {
       spin_count++;
       if (spin_count > 100) {
         // After 100 spins, sleep briefly to avoid CPU waste
-        platform_sleep_usec(1); // Sleep 1 microsecond (Windows rounds up to 1ms)
+        platform_sleep_us(1); // Sleep 1 microsecond (Windows rounds up to 1ms)
         spin_count = 0;
       }
     }

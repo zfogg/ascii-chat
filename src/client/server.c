@@ -257,7 +257,7 @@ static int close_socket(socket_t socketfd) {
 
     // Small delay to ensure socket resources are fully released
     // This prevents WSA error 10038 on subsequent connections
-    platform_sleep_usec(50000); // 50ms delay
+    platform_sleep_us(50000); // 50ms delay
 
     return 0;
   }
@@ -332,7 +332,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
   if (reconnect_attempt > 0) {
     unsigned int delay_us = get_reconnect_delay(reconnect_attempt);
     // Reconnection attempt logged only to file
-    platform_sleep_usec(delay_us);
+    platform_sleep_us(delay_us);
 
     // Check if user requested exit during reconnection delay
     if (should_exit()) {

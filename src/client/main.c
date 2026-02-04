@@ -366,60 +366,9 @@ static void shutdown_client() {
  *
  * @return 0 on success, non-zero error code on failure
  */
-static int initialize_client_systems(bool shared_init_completed) {
-  if (!shared_init_completed) {
-    // Initialize platform-specific functionality (Winsock, etc)
-    if (platform_init() != 0) {
-      (void)fprintf(stderr, "FATAL: Failed to initialize platform\n");
-      return 1;
-    }
-    // NOTE: Platform cleanup is now registered by asciichat_shared_shutdown() in src/main.c
-    // which is called via atexit() after asciichat_shared_init()
-
-    // Initialize palette based on command line options
-    const options_t *opts = options_get();
-    const char *custom_chars = opts && opts->palette_custom_set ? opts->palette_custom : NULL;
-    palette_type_t palette_type = GET_OPTION(palette_type);
-    if (apply_palette_config(palette_type, custom_chars) != 0) {
-      log_error("Failed to apply palette configuration");
-      return 1;
-    }
-
-    // Initialize logging with appropriate settings
-    char *validated_log_file = NULL;
-    log_level_t log_level = GET_OPTION(log_level);
-    const char *log_file = opts && opts->log_file[0] != '\0' ? opts->log_file : "client.log";
-
-    if (strlen(log_file) > 0) {
-      asciichat_error_t log_path_result = path_validate_user_path(log_file, PATH_ROLE_LOG_FILE, &validated_log_file);
-      if (log_path_result != ASCIICHAT_OK || !validated_log_file || strlen(validated_log_file) == 0) {
-        // Invalid log file path, fall back to default and warn
-        (void)fprintf(stderr, "WARNING: Invalid log file path specified, using default 'client.log'\n");
-        // Use regular file logging (not mmap) by default so developers can tail -f the log file
-        log_init("client.log", log_level, true, false /* use_mmap */);
-      } else {
-        // Use regular file logging (not mmap) by default so developers can tail -f the log file
-        log_init(validated_log_file, log_level, true, false /* use_mmap */);
-      }
-      SAFE_FREE(validated_log_file);
-    } else {
-      // Use regular file logging (not mmap) by default so developers can tail -f the log file
-      log_init("client.log", log_level, true, false /* use_mmap */);
-    }
-
-    // Initialize memory debugging if enabled
-#ifdef DEBUG_MEMORY
-    bool quiet_mode = (GET_OPTION(quiet)) || (GET_OPTION(snapshot_mode));
-    debug_memory_set_quiet_mode(quiet_mode);
-    // NOTE: Memory report is now registered by asciichat_shared_shutdown() in src/main.c
-    // which is called via atexit() after asciichat_shared_init()
-#endif
-
-    // Initialize global shared buffer pool
-    buffer_pool_init_global();
-    // NOTE: Buffer pool cleanup is now registered by asciichat_shared_shutdown() in src/main.c
-    // which is called via atexit() after asciichat_shared_init()
-  }
+static int initialize_client_systems(void) {
+  // All shared subsystem initialization (timer, logging, platform, buffer pool)
+  // is now done by asciichat_shared_init() in src/main.c BEFORE options_init()
 
   // Initialize WebRTC library (required for P2P DataChannel connections)
   // Must be called regardless of shared_init_completed status
@@ -506,8 +455,8 @@ static int initialize_client_systems(bool shared_init_completed) {
  */
 int client_main(void) {
 
-  // Initialize all client subsystems (shared init already completed)
-  int init_result = initialize_client_systems(true);
+  // Initialize all client subsystems (shared init already completed in src/main.c)
+  int init_result = initialize_client_systems();
   if (init_result != 0) {
 #ifndef NDEBUG
     // Debug builds: automatically fall back to test pattern if webcam is in use
@@ -522,7 +471,7 @@ int client_main(void) {
       }
 
       // Retry initialization with test pattern enabled
-      init_result = initialize_client_systems(true);
+      init_result = initialize_client_systems();
       if (init_result != 0) {
         log_error("Failed to initialize even with test pattern fallback");
         webcam_print_init_error_help(init_result);
@@ -945,7 +894,7 @@ int client_main(void) {
         break;
       }
 
-      platform_sleep_usec(100 * 1000); // 0.1 second monitoring interval
+      platform_sleep_us(100 * 1000); // 0.1 second monitoring interval
     }
 
     if (should_exit()) {
@@ -976,7 +925,7 @@ int client_main(void) {
     // Add a brief delay before attempting reconnection to prevent excessive reconnection loops
     if (has_ever_connected) {
       log_debug("Waiting 1 second before attempting reconnection...");
-      platform_sleep_usec(1000000); // 1 second delay
+      platform_sleep_us(1000000); // 1 second delay
     }
 
     log_debug("Cleanup complete, will attempt reconnection");
