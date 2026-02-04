@@ -7,7 +7,7 @@ static participant_metrics_t make_metrics(int nat_tier, uint32_t upload_kbps, ui
   participant_metrics_t m = {0};
   m.nat_tier = nat_tier;
   m.upload_kbps = upload_kbps;
-  m.rtt_ms = rtt_ms;
+  m.rtt_ns = (uint16_t)rtt_ms * 1000000;
   m.stun_probe_success_pct = probe_pct;
   return m;
 }

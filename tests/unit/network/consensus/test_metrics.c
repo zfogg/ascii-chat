@@ -33,7 +33,7 @@ Test(consensus_metrics, measure_basic) {
   cr_assert_eq(memcmp(metrics.participant_id, my_id, 16), 0, "ID should match");
   cr_assert(metrics.nat_tier >= 0 && metrics.nat_tier <= 4, "NAT tier should be 0-4 range");
   cr_assert_gt(metrics.upload_kbps, 0, "Upload bandwidth should be positive");
-  cr_assert_gt(metrics.rtt_ms, 0, "RTT should be positive");
+  cr_assert_gt(metrics.rtt_ns, 0, "RTT should be positive");
   cr_assert(metrics.stun_probe_success_pct >= 0 && metrics.stun_probe_success_pct <= 100,
             "Success rate should be 0-100 range");
 }
@@ -51,13 +51,13 @@ Test(consensus_metrics, wire_format_roundtrip) {
   memcpy(original.participant_id, my_id, 16);
   original.nat_tier = 2;
   original.upload_kbps = 50000;
-  original.rtt_ms = 25;
+  original.rtt_ns = 25000000;
   original.stun_probe_success_pct = 95;
   snprintf(original.public_address, sizeof(original.public_address), "192.168.1.1");
   original.public_port = 8080;
   original.connection_type = 1;
-  original.measurement_time_ms = 1704067200000ULL;
-  original.measurement_window_ms = 1000;
+  original.measurement_time_ns = 1704067200000000000ULL;
+  original.measurement_window_ns = 1000000000;
 
   // Serialize to wire format
   participant_metrics_t wire;
@@ -66,10 +66,10 @@ Test(consensus_metrics, wire_format_roundtrip) {
 
   // Verify wire format has network byte order
   cr_assert_eq(wire.upload_kbps, endian_pack_u32(50000), "Upload should be in network order");
-  cr_assert_eq(wire.rtt_ms, endian_pack_u16(25), "RTT should be in network order");
+  cr_assert_eq(wire.rtt_ns, endian_pack_u16(25), "RTT should be in network order");
   cr_assert_eq(wire.public_port, endian_pack_u16(8080), "Port should be in network order");
-  cr_assert_eq(wire.measurement_time_ms, endian_pack_u64(1704067200000ULL), "Time should be in network order");
-  cr_assert_eq(wire.measurement_window_ms, endian_pack_u32(1000), "Window should be in network order");
+  cr_assert_eq(wire.measurement_time_ns, endian_pack_u64(1704067200000ULL), "Time should be in network order");
+  cr_assert_eq(wire.measurement_window_ns, endian_pack_u32(1000), "Window should be in network order");
 
   // Deserialize back
   participant_metrics_t deserialized;
@@ -80,12 +80,12 @@ Test(consensus_metrics, wire_format_roundtrip) {
   cr_assert_eq(memcmp(deserialized.participant_id, original.participant_id, 16), 0, "ID should match after roundtrip");
   cr_assert_eq(deserialized.nat_tier, original.nat_tier, "NAT tier should match");
   cr_assert_eq(deserialized.upload_kbps, original.upload_kbps, "Upload should match");
-  cr_assert_eq(deserialized.rtt_ms, original.rtt_ms, "RTT should match");
+  cr_assert_eq(deserialized.rtt_ns, original.rtt_ns, "RTT should match");
   cr_assert_eq(deserialized.stun_probe_success_pct, original.stun_probe_success_pct, "Success rate should match");
   cr_assert_eq(strcmp(deserialized.public_address, original.public_address), 0, "Address should match");
   cr_assert_eq(deserialized.public_port, original.public_port, "Port should match");
-  cr_assert_eq(deserialized.measurement_time_ms, original.measurement_time_ms, "Time should match");
-  cr_assert_eq(deserialized.measurement_window_ms, original.measurement_window_ms, "Window should match");
+  cr_assert_eq(deserialized.measurement_time_ns, original.measurement_time_ns, "Time should match");
+  cr_assert_eq(deserialized.measurement_window_ns, original.measurement_window_ns, "Window should match");
 }
 
 /**
@@ -95,20 +95,20 @@ Test(consensus_metrics, wire_format_byte_order) {
   participant_metrics_t original = {0};
   original.nat_tier = 3;
   original.upload_kbps = 0x12345678;
-  original.rtt_ms = 0xABCD;
+  original.rtt_ns = 0xABCD;
   original.public_port = 0x6789;
-  original.measurement_time_ms = 0x0123456789ABCDEFULL;
-  original.measurement_window_ms = 0xDEADBEEF;
+  original.measurement_time_ns = 0x0123456789ABCDEFULL;
+  original.measurement_window_ns = 0xDEADBEEF;
 
   participant_metrics_t wire;
   consensus_metrics_to_wire(&original, &wire);
 
   // Verify byte swaps occurred
   cr_assert_neq(wire.upload_kbps, original.upload_kbps, "Upload should be byte-swapped");
-  cr_assert_neq(wire.rtt_ms, original.rtt_ms, "RTT should be byte-swapped");
+  cr_assert_neq(wire.rtt_ns, original.rtt_ns, "RTT should be byte-swapped");
   cr_assert_neq(wire.public_port, original.public_port, "Port should be byte-swapped");
-  cr_assert_neq(wire.measurement_time_ms, original.measurement_time_ms, "Time should be byte-swapped");
-  cr_assert_neq(wire.measurement_window_ms, original.measurement_window_ms, "Window should be byte-swapped");
+  cr_assert_neq(wire.measurement_time_ns, original.measurement_time_ns, "Time should be byte-swapped");
+  cr_assert_neq(wire.measurement_window_ns, original.measurement_window_ns, "Window should be byte-swapped");
 
   // Verify single-byte fields are NOT modified
   cr_assert_eq(wire.nat_tier, original.nat_tier, "Single-byte field should not change");
@@ -143,7 +143,7 @@ Test(consensus_metrics, accumulate_metrics) {
     make_uuid(metrics[i].participant_id, i + 1);
     metrics[i].nat_tier = i;
     metrics[i].upload_kbps = 50000 + i * 1000;
-    metrics[i].rtt_ms = 20 + i * 5;
+    metrics[i].rtt_ns = 20000000 + i * 5;
     metrics[i].stun_probe_success_pct = 90 + i;
 
     asciichat_error_t err = consensus_metrics_collection_add(collection, &metrics[i]);
@@ -163,7 +163,7 @@ Test(consensus_metrics, accumulate_metrics) {
   for (int i = 0; i < 3; i++) {
     cr_assert_eq(stored_metrics[i].nat_tier, metrics[i].nat_tier, "NAT tier should match for participant %d", i);
     cr_assert_eq(stored_metrics[i].upload_kbps, metrics[i].upload_kbps, "Upload should match for participant %d", i);
-    cr_assert_eq(stored_metrics[i].rtt_ms, metrics[i].rtt_ms, "RTT should match for participant %d", i);
+    cr_assert_eq(stored_metrics[i].rtt_ns, metrics[i].rtt_ns, "RTT should match for participant %d", i);
   }
 
   consensus_metrics_collection_destroy(collection);
