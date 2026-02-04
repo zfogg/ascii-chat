@@ -196,6 +196,8 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   options_builder_add_example(b, OPTION_MODE_CLIENT, "--palette-chars '@%#*+=-:. '",
                               "Use custom ASCII palette characters", false);
   options_builder_add_example(b, OPTION_MODE_CLIENT, "--snapshot", "Capture single frame and exit", false);
+  options_builder_add_example(b, OPTION_MODE_CLIENT, "--color-filter cyan --palette cool",
+                              "Connect with cyan color filter and cool palette", false);
 
   // Add examples for mirror mode
   options_builder_add_example(
@@ -203,6 +205,8 @@ const options_config_t *options_preset_unified(const char *program_name, const c
       "View the webcam or files or URLs as ASCII art. Like client mode but without network connectivity or a server.",
       false);
   options_builder_add_example(b, OPTION_MODE_MIRROR, "--color-mode mono", "View webcam in black and white", false);
+  options_builder_add_example(b, OPTION_MODE_MIRROR, "--color-filter green",
+                              "View webcam with green monochromatic color filter", false);
   options_builder_add_example(b, OPTION_MODE_MIRROR, "--url 'https://youtu.be/7ynHVGCehoM'",
                               "Stream from YouTube URL (also supports RTSP, HTTP, and HTTPS URLs)", false);
   options_builder_add_example(b, OPTION_MODE_MIRROR, "-f video.mp4",
