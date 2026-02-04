@@ -189,7 +189,7 @@ static asciichat_error_t nat_stun_probe(nat_quality_t *quality, const char *stun
   }
 
   // Set timeout on socket
-  socket_set_timeout(sock, 5000); // 5 second timeout
+  socket_set_timeout(sock, 5000 * NS_PER_MS_INT); // 5 second timeout
 
   // Resolve STUN server hostname
   struct addrinfo hints = {0};

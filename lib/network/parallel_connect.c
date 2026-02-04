@@ -6,6 +6,7 @@
 #include <ascii-chat/network/parallel_connect.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/util/time.h>
 #include <string.h>
 #include <errno.h>
 
@@ -272,7 +273,7 @@ asciichat_error_t parallel_connect(const parallel_connect_config_t *config, sock
 
   mutex_lock(&lock);
   while (!winner_found && elapsed_ms < max_wait_ms) {
-    cond_timedwait(&signal, &lock, 100);
+    cond_timedwait(&signal, &lock, 100 * NS_PER_MS_INT);
     elapsed_ms += 100;
 
     // Check if both are done

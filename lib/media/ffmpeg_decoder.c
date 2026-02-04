@@ -959,7 +959,7 @@ void ffmpeg_decoder_stop_prefetch(ffmpeg_decoder_t *decoder) {
   decoder->prefetch_should_stop = true;
   // Wait up to 2 seconds for thread to stop
   // The interrupt callback should cause av_read_frame to abort quickly
-  int join_result = asciichat_thread_join_timeout(&decoder->prefetch_thread, NULL, 2000);
+  int join_result = asciichat_thread_join_timeout(&decoder->prefetch_thread, NULL, 2000 * NS_PER_MS_INT);
 
   if (join_result == 0) {
     // Thread exited successfully

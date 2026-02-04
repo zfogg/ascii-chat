@@ -1017,7 +1017,7 @@ int audio_start_thread() {
   if (g_audio_capture_thread_created && atomic_load(&g_audio_capture_thread_exited)) {
     log_debug("Previous audio capture thread exited, recreating");
     // Use timeout to prevent indefinite blocking
-    int join_result = asciichat_thread_join_timeout(&g_audio_capture_thread, NULL, 5000);
+    int join_result = asciichat_thread_join_timeout(&g_audio_capture_thread, NULL, 5000 * NS_PER_MS_INT);
     if (join_result != 0) {
       log_warn("Audio capture thread join timed out after 5s - thread may be deadlocked, "
                "forcing thread handle reset (stuck thread resources will not be cleaned up)");

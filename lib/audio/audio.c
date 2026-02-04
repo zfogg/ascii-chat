@@ -208,7 +208,7 @@ static void *audio_worker_thread(void *arg) {
       // Wait for signal from callback or timeout
       mutex_lock(&ctx->worker_mutex);
       START_TIMER("worker_cond_wait");
-      wait_result = cond_timedwait(&ctx->worker_cond, &ctx->worker_mutex, WORKER_TIMEOUT_MS);
+      wait_result = cond_timedwait(&ctx->worker_cond, &ctx->worker_mutex, WORKER_TIMEOUT_MS * NS_PER_MS_INT);
       double wait_time_ns = STOP_TIMER("worker_cond_wait");
       mutex_unlock(&ctx->worker_mutex);
 

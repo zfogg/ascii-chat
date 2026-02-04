@@ -605,7 +605,7 @@ asciichat_error_t discover_session_parallel(const char *session_string, const di
       }
 
       // Wait with timeout
-      cond_timedwait(&state.signal, &state.lock, 500);
+      cond_timedwait(&state.signal, &state.lock, 500 * NS_PER_MS_INT);
       elapsed_ms += 500;
     }
   }
