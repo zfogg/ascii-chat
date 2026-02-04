@@ -202,8 +202,11 @@ Requires UTF-8 support (\fB\-\-show\-capabilities\fR and \fB\-\-utf8\fR).
 .\" MANUAL-START: CONFIGURATION
 .SH CONFIGURATION
 Configuration is stored in TOML format and can be specified via \fB\-\-config\fR
-or placed in the default configuration directory.
-Command-line arguments override config file values, which override default values.
+or placed in the default configuration directory. Use \fB\-\-config\-create\fR
+to generate a default configuration file.
+Values are applied in order of precedence: command-line arguments override
+environment variables (ASCII_CHAT_*), which override config file values, which
+override defaults.
 .PP
 For complete configuration documentation including file format, locations, and
 option mappings, see the
