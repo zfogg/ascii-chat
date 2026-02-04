@@ -325,13 +325,26 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
     return ERROR_YOUTUBE_EXTRACT_FAILED;
   }
 
-  // Read URL output from yt-dlp (should be a single line)
-  char url_buffer[8192];
+  // Read all output from yt-dlp (may contain warnings, errors, and the URL)
+  // The URL should be on the last line starting with "http"
+  char url_buffer[8192] = {0};
+  char full_output[16384] = {0}; // Capture all output for error reporting
+  size_t ytdlp_output_len = 0;
   size_t url_size = 0;
   int c;
-  while ((c = fgetc(pipe)) != EOF && c != '\n' && url_size < sizeof(url_buffer) - 1) {
-    url_buffer[url_size++] = (char)c;
+
+  // Read all output character by character
+  while ((c = fgetc(pipe)) != EOF && ytdlp_output_len < sizeof(full_output) - 1) {
+    full_output[ytdlp_output_len++] = (char)c;
+
+    // Track the last line (potential URL)
+    if (c == '\n') {
+      url_size = 0; // Reset for next line
+    } else if (url_size < sizeof(url_buffer) - 1) {
+      url_buffer[url_size++] = (char)c;
+    }
   }
+  full_output[ytdlp_output_len] = '\0';
   url_buffer[url_size] = '\0';
 
   int pclose_ret = (platform_pclose(&pipe) == ASCIICHAT_OK) ? 0 : -1;
@@ -341,21 +354,13 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
 
     log_debug("yt-dlp exited with code %d", pclose_ret);
 
-    // Build error message with yt-dlp output if available
-    char error_detail[1024];
-    if (url_size > 0) {
-      log_debug("yt-dlp output: %s", url_buffer);
-      // Include yt-dlp output in error message to show to user
-      safe_snprintf(error_detail, sizeof(error_detail),
-                    "yt-dlp failed to extract video information. "
-                    "yt-dlp said: %s",
-                    url_buffer);
+    // Log yt-dlp stderr output if available
+    if (ytdlp_output_len > 0) {
+      log_error("yt-dlp stderr:\n%s", full_output);
+      SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "yt-dlp failed to extract video. See logs for details:\n%s", full_output);
     } else {
-      safe_snprintf(error_detail, sizeof(error_detail),
-                    "yt-dlp failed to extract video information. "
-                    "Video may be age-restricted, geo-blocked, or private.");
+      SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "yt-dlp failed to extract video information");
     }
-    SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "%s", error_detail);
     return ERROR_YOUTUBE_EXTRACT_FAILED;
   }
 
@@ -363,6 +368,7 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
     // Cache the failure
     youtube_cache_set(youtube_url, NULL);
 
+    log_error("yt-dlp returned empty output - no playable formats found for URL: %s", youtube_url);
     SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "yt-dlp returned empty output - no playable formats");
     return ERROR_YOUTUBE_EXTRACT_FAILED;
   }
@@ -372,7 +378,7 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
     // Cache the failure
     youtube_cache_set(youtube_url, NULL);
 
-    log_debug("Invalid URL from yt-dlp: %s", url_buffer);
+    log_error("Invalid URL from yt-dlp: %s (full output: %s)", url_buffer, full_output);
     SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "yt-dlp returned invalid URL. Video may not be playable.");
     return ERROR_YOUTUBE_EXTRACT_FAILED;
   }
