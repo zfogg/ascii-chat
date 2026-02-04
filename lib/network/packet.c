@@ -39,26 +39,30 @@
 /**
  * Calculate timeout based on packet size
  * Large packets need more time to transmit reliably
+ *
+ * @note Returns timeout in seconds for use with send/recv APIs
  */
 static int calculate_packet_timeout(size_t packet_size) {
   int base_timeout = network_is_test_environment() ? 1 : SEND_TIMEOUT;
 
   // For large packets, increase timeout proportionally
   if (packet_size > LARGE_PACKET_THRESHOLD) {
-    // Add extra timeout per MB above the threshold
+    // Add extra timeout per MB above the threshold (convert LARGE_PACKET_EXTRA_TIMEOUT_PER_MB from ns to seconds)
+    double extra_timeout_per_mb_seconds = (double)LARGE_PACKET_EXTRA_TIMEOUT_PER_MB / NS_PER_SEC_INT;
     int extra_timeout =
-        (int)(((double)packet_size - LARGE_PACKET_THRESHOLD) / 1000000.0 * LARGE_PACKET_EXTRA_TIMEOUT_PER_MB) + 1;
+        (int)(((double)packet_size - LARGE_PACKET_THRESHOLD) / 1000000.0 * extra_timeout_per_mb_seconds) + 1;
     int total_timeout = base_timeout + extra_timeout;
 
     // Ensure client timeout is longer than server's RECV_TIMEOUT (30s) to prevent deadlock
     // Add 10 seconds buffer to account for server processing delays
-    int min_timeout = MIN_CLIENT_TIMEOUT;
+    int min_timeout = (int)(MIN_CLIENT_TIMEOUT / NS_PER_SEC_INT);
     if (total_timeout < min_timeout) {
       total_timeout = min_timeout;
     }
 
     // Cap at maximum timeout
-    return (total_timeout > MAX_CLIENT_TIMEOUT) ? MAX_CLIENT_TIMEOUT : total_timeout;
+    int max_timeout = (int)(MAX_CLIENT_TIMEOUT / NS_PER_SEC_INT);
+    return (total_timeout > max_timeout) ? max_timeout : total_timeout;
   }
 
   return base_timeout;

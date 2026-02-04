@@ -52,17 +52,17 @@
  * Connection Lifecycle Management
  * ============================================================================ */
 
-/** Maximum delay between reconnection attempts (microseconds) */
-#define MAX_RECONNECT_DELAY (5 * 1000 * 1000)
+/** Maximum delay between reconnection attempts (nanoseconds) */
+#define MAX_RECONNECT_DELAY (5LL * NS_PER_SEC_INT)
 
 /**
  * @brief Calculate reconnection delay with exponential backoff
  *
- * Initial delay: 100ms, increases by 200ms per attempt, max 5 seconds
+ * Initial delay: 100ms, increases by 200ms per attempt, max 5 seconds (in nanoseconds)
  */
-static unsigned int get_reconnect_delay(unsigned int attempt) {
-  unsigned int delay_us = 100000 + (attempt - 1) * 200000;
-  return (delay_us > MAX_RECONNECT_DELAY) ? MAX_RECONNECT_DELAY : delay_us;
+static uint64_t get_reconnect_delay(unsigned int attempt) {
+  uint64_t delay_ns = (100LL * NS_PER_MS_INT) + ((uint64_t)(attempt - 1) * 200LL * NS_PER_MS_INT);
+  return (delay_ns > MAX_RECONNECT_DELAY) ? MAX_RECONNECT_DELAY : delay_ns;
 }
 
 /**
@@ -82,7 +82,7 @@ static int close_socket_safe(socket_t sockfd) {
 
   // Small delay to ensure socket resources are released
   // Prevents WSA error 10038 on Windows
-  platform_sleep_us(50000); // 50ms
+  platform_sleep_ns(50 * NS_PER_MS_INT); // 50ms
 
   return 0;
 }
@@ -425,8 +425,8 @@ int tcp_client_connect(tcp_client_t *client, const char *address, int port, int 
 
   // Apply reconnection delay if this is a retry
   if (reconnect_attempt > 0) {
-    unsigned int delay_us = get_reconnect_delay(reconnect_attempt);
-    platform_sleep_us(delay_us);
+    uint64_t delay_ns = get_reconnect_delay(reconnect_attempt);
+    platform_sleep_ns(delay_ns);
   }
 
   // Resolve server address using getaddrinfo() for IPv4/IPv6 support

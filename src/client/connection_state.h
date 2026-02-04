@@ -77,12 +77,12 @@ typedef enum {
 } connection_state_t;
 
 /* ============================================================================
- * Timeout Constants (in seconds)
+ * Timeout Constants (in nanoseconds)
  * ============================================================================ */
 
-#define CONN_TIMEOUT_DIRECT_TCP 3   ///< Stage 1: Direct TCP timeout
-#define CONN_TIMEOUT_WEBRTC_STUN 8  ///< Stage 2: WebRTC+STUN timeout
-#define CONN_TIMEOUT_WEBRTC_TURN 15 ///< Stage 3: WebRTC+TURN timeout
+#define CONN_TIMEOUT_DIRECT_TCP (3LL * NS_PER_SEC_INT)   ///< Stage 1: Direct TCP timeout (3s)
+#define CONN_TIMEOUT_WEBRTC_STUN (8LL * NS_PER_SEC_INT)  ///< Stage 2: WebRTC+STUN timeout (8s)
+#define CONN_TIMEOUT_WEBRTC_TURN (15LL * NS_PER_SEC_INT) ///< Stage 3: WebRTC+TURN timeout (15s)
 
 /* ============================================================================
  * Session Context (for WebRTC connections)

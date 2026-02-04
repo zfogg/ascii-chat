@@ -231,13 +231,13 @@ asciichat_error_t connection_state_transition(connection_attempt_context_t *ctx,
     ctx->stage_start_time = time(NULL);
     switch (new_stage) {
     case 1:
-      ctx->current_stage_timeout_seconds = CONN_TIMEOUT_DIRECT_TCP;
+      ctx->current_stage_timeout_seconds = (uint32_t)(CONN_TIMEOUT_DIRECT_TCP / NS_PER_SEC_INT);
       break;
     case 2:
-      ctx->current_stage_timeout_seconds = CONN_TIMEOUT_WEBRTC_STUN;
+      ctx->current_stage_timeout_seconds = (uint32_t)(CONN_TIMEOUT_WEBRTC_STUN / NS_PER_SEC_INT);
       break;
     case 3:
-      ctx->current_stage_timeout_seconds = CONN_TIMEOUT_WEBRTC_TURN;
+      ctx->current_stage_timeout_seconds = (uint32_t)(CONN_TIMEOUT_WEBRTC_TURN / NS_PER_SEC_INT);
       break;
     default:
       break;

@@ -1191,10 +1191,11 @@ crypto_result_t crypto_rekey_init(crypto_context_t *ctx) {
   // Rate limiting: check minimum interval since last rekey
   time_t now = time(NULL);
   time_t since_last_rekey = now - ctx->rekey_last_time;
-  if (since_last_rekey < REKEY_MIN_INTERVAL) {
+  time_t min_interval_seconds = (time_t)(REKEY_MIN_INTERVAL / NS_PER_SEC_INT);
+  if (since_last_rekey < min_interval_seconds) {
     char elapsed_str[32], min_str[32];
     format_duration_s((double)since_last_rekey, elapsed_str, sizeof(elapsed_str));
-    format_duration_s((double)REKEY_MIN_INTERVAL, min_str, sizeof(min_str));
+    format_duration_s((double)min_interval_seconds, min_str, sizeof(min_str));
     log_warn("Rekey rate limited: %s since last rekey (minimum: %s)", elapsed_str, min_str);
     return CRYPTO_ERROR_REKEY_RATE_LIMITED;
   }

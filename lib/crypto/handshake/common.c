@@ -486,10 +486,11 @@ asciichat_error_t crypto_handshake_process_rekey_request(crypto_handshake_contex
   time_t now = time(NULL);
   if (ctx->crypto_ctx.rekey_last_request_time > 0) {
     time_t elapsed = now - ctx->crypto_ctx.rekey_last_request_time;
-    if (elapsed < REKEY_MIN_REQUEST_INTERVAL) {
+    time_t min_request_interval_seconds = (time_t)(REKEY_MIN_REQUEST_INTERVAL / NS_PER_SEC_INT);
+    if (elapsed < min_request_interval_seconds) {
       return SET_ERRNO(ERROR_CRYPTO,
-                       "SECURITY: Rekey request rejected - too frequent (%ld sec since last, minimum %d sec required)",
-                       (long)elapsed, REKEY_MIN_REQUEST_INTERVAL);
+                       "SECURITY: Rekey request rejected - too frequent (%ld sec since last, minimum %ld sec required)",
+                       (long)elapsed, (long)min_request_interval_seconds);
     }
   }
 

@@ -550,7 +550,7 @@ static void *audio_capture_thread_func(void *arg) {
 
   // Batch buffer for multiple Opus frames - send all at once to reduce blocking
 #define MAX_BATCH_FRAMES 8
-#define BATCH_TIMEOUT_MS 40 // Flush batch after 40ms even if not full (2 Opus frames @ 20ms each)
+#define BATCH_TIMEOUT_NS (40LL * NS_PER_MS_INT) // Flush batch after 40ms even if not full (2 Opus frames @ 20ms each)
   static uint8_t batch_buffer[MAX_BATCH_FRAMES * OPUS_MAX_PACKET_SIZE];
   static uint16_t batch_frame_sizes[MAX_BATCH_FRAMES];
   static int batch_frame_count = 0;
@@ -582,9 +582,9 @@ static void *audio_capture_thread_func(void *arg) {
       if (batch_has_data && batch_frame_count > 0) {
         uint64_t now_ns = time_get_ns();
         uint64_t elapsed_ns = time_elapsed_ns(batch_start_time_ns, now_ns);
-        long elapsed_ms = (long)time_ns_to_ms(elapsed_ns);
 
-        if (elapsed_ms >= BATCH_TIMEOUT_MS) {
+        if (elapsed_ns >= BATCH_TIMEOUT_NS) {
+          long elapsed_ms = (long)time_ns_to_ms(elapsed_ns);
           log_debug_every(LOG_RATE_FAST, "Idle timeout flush: %d frames (%zu bytes) after %ld ms", batch_frame_count,
                           batch_total_size, elapsed_ms);
           (void)audio_queue_packet(batch_buffer, batch_total_size, batch_frame_sizes, batch_frame_count);
@@ -823,12 +823,12 @@ static void *audio_capture_thread_func(void *arg) {
       if (batch_has_data && batch_frame_count > 0) {
         uint64_t now_ns = time_get_ns();
         uint64_t elapsed_ns = time_elapsed_ns(batch_start_time_ns, now_ns);
-        long elapsed_ms = (long)time_ns_to_ms(elapsed_ns);
 
-        if (elapsed_ms >= BATCH_TIMEOUT_MS) {
+        if (elapsed_ns >= BATCH_TIMEOUT_NS) {
           static int timeout_flush_count = 0;
           timeout_flush_count++;
 
+          long elapsed_ms = (long)time_ns_to_ms(elapsed_ns);
           log_debug_every(LOG_RATE_FAST, "Timeout flush #%d: %d frames (%zu bytes) after %ld ms", timeout_flush_count,
                           batch_frame_count, batch_total_size, elapsed_ms);
 
@@ -861,9 +861,9 @@ static void *audio_capture_thread_func(void *arg) {
       if (batch_has_data && batch_frame_count > 0) {
         uint64_t now_ns = time_get_ns();
         uint64_t elapsed_ns = time_elapsed_ns(batch_start_time_ns, now_ns);
-        long elapsed_ms = (long)time_ns_to_ms(elapsed_ns);
 
-        if (elapsed_ms >= BATCH_TIMEOUT_MS) {
+        if (elapsed_ns >= BATCH_TIMEOUT_NS) {
+          long elapsed_ms = (long)time_ns_to_ms(elapsed_ns);
           log_debug_every(LOG_RATE_FAST, "Error path timeout flush: %d frames (%zu bytes) after %ld ms",
                           batch_frame_count, batch_total_size, elapsed_ms);
           (void)audio_queue_packet(batch_buffer, batch_total_size, batch_frame_sizes, batch_frame_count);

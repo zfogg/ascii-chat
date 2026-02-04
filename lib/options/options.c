@@ -921,19 +921,13 @@ asciichat_error_t options_init(int argc, char **argv) {
     }
   }
 
-  // Initialize logging system early so prompts display properly (e.g., for --config-create)
-  // This must happen before config_create_default is called
-  // If an action flag is detected OR user passed --quiet, silence logs BEFORE logging init so shared_init() output is
-  // suppressed
-  if (!timer_system_init()) {
-    return SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to initialize timer system");
-  }
+  // NOTE: Timer system and shared subsystems are initialized by src/main.c
+  // via asciichat_shared_init() BEFORE options_init() is called.
+  // This allows options_init() to use properly configured logging.
+
+  // If an action flag is detected OR user passed --quiet, silence logs for clean output
   if (user_quiet || has_action) {
-    log_set_terminal_output(false); // Suppress console logging BEFORE shared_init for clean action output
-  }
-  asciichat_error_t logging_init_result = asciichat_shared_init("ascii-chat.log", false);
-  if (logging_init_result != ASCIICHAT_OK) {
-    return logging_init_result;
+    log_set_terminal_output(false); // Suppress console logging for clean action output
   }
 
   // Create local options struct and initialize with defaults

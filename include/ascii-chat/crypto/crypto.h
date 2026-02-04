@@ -66,8 +66,9 @@
 #include <sodium.h>
 
 // Include required types
-#include "key_types.h" // For private_key_t
-#include "../common.h" // For asciichat_error_t
+#include "key_types.h"    // For private_key_t
+#include "../common.h"    // For asciichat_error_t
+#include "../util/time.h" // For NS_PER_SEC_INT
 
 /**
  * @name Password Requirements
@@ -1234,20 +1235,20 @@ void crypto_extract_auth_data(const uint8_t *combined_data, uint8_t *hmac_out, u
  * @note Old keys remain active until REKEY_COMPLETE is verified, ensuring no service interruption.
  */
 
-/** @brief Minimum time interval between rekey requests (3 seconds for testing, 60 for production) */
-#define REKEY_MIN_INTERVAL 3
-/** @brief Default rekey time threshold (1 hour in seconds) */
-#define REKEY_DEFAULT_TIME_THRESHOLD 3600
+/** @brief Minimum time interval between rekey requests (3 seconds in nanoseconds for testing, 60 for production) */
+#define REKEY_MIN_INTERVAL (3LL * NS_PER_SEC_INT)
+/** @brief Default rekey time threshold (1 hour in nanoseconds) */
+#define REKEY_DEFAULT_TIME_THRESHOLD (3600LL * NS_PER_SEC_INT)
 /** @brief Default rekey packet threshold (1 million packets) */
 #define REKEY_DEFAULT_PACKET_THRESHOLD 1000000
-/** @brief Test mode rekey time threshold (30 seconds) */
-#define REKEY_TEST_TIME_THRESHOLD 30
+/** @brief Test mode rekey time threshold (30 seconds in nanoseconds) */
+#define REKEY_TEST_TIME_THRESHOLD (30LL * NS_PER_SEC_INT)
 /** @brief Test mode rekey packet threshold (1000 packets) */
 #define REKEY_TEST_PACKET_THRESHOLD 1000
 /** @brief Maximum consecutive rekey failures before giving up */
 #define REKEY_MAX_FAILURE_COUNT 10
-/** @brief Minimum interval between rekey requests (60 seconds, DDoS protection) */
-#define REKEY_MIN_REQUEST_INTERVAL 60
+/** @brief Minimum interval between rekey requests (60 seconds in nanoseconds, DDoS protection) */
+#define REKEY_MIN_REQUEST_INTERVAL (60LL * NS_PER_SEC_INT)
 
 /**
  * @brief Check if rekeying should be triggered based on time or packet count thresholds

@@ -102,11 +102,11 @@ static atomic_bool g_ping_thread_exited = false;
  * Keepalive Configuration
  * ============================================================================ */
 
-/** Ping interval in seconds (must be less than server timeout) */
-#define PING_INTERVAL_SECONDS 3
+/** Ping interval in nanoseconds (must be less than server timeout) */
+#define PING_INTERVAL_NS (3LL * NS_PER_SEC_INT)
 
-/** Sleep interval for ping timing loop (1 second) */
-#define PING_SLEEP_INTERVAL_SECONDS 1
+/** Sleep interval for ping timing loop (1 second in nanoseconds) */
+#define PING_SLEEP_INTERVAL_NS (1LL * NS_PER_SEC_INT)
 
 /* ============================================================================
  * Ping Thread Implementation
@@ -183,14 +183,23 @@ static void *ping_thread_func(void *arg) {
     }
 
     // Track ping for FPS reporting
-    fps_frame_ns(&fps_tracker, time_get_ns(), "ping sent");
+    uint64_t ping_start_ns = time_get_ns();
+    fps_frame_ns(&fps_tracker, ping_start_ns, "ping sent");
 
     // Sleep with early wake capability for responsive shutdown
-    // Break sleep into 1-second intervals to check shutdown flags
-    for (int i = 0;
-         i < PING_INTERVAL_SECONDS && !should_exit() && !server_connection_is_lost() && server_connection_is_active();
-         i++) {
-      platform_sleep_us(PING_SLEEP_INTERVAL_SECONDS * 1000 * 1000); // 1 second
+    // Break sleep into intervals to check shutdown flags and rekey triggers
+    while (!should_exit() && !server_connection_is_lost() && server_connection_is_active()) {
+      uint64_t now_ns = time_get_ns();
+      uint64_t elapsed_ns = time_elapsed_ns(ping_start_ns, now_ns);
+
+      if (elapsed_ns >= PING_INTERVAL_NS) {
+        break; // Time for next ping
+      }
+
+      // Sleep for one interval or until next ping, whichever is sooner
+      uint64_t remaining_ns = PING_INTERVAL_NS - elapsed_ns;
+      uint64_t sleep_ns = (remaining_ns > PING_SLEEP_INTERVAL_NS) ? PING_SLEEP_INTERVAL_NS : remaining_ns;
+      platform_sleep_ns(sleep_ns);
     }
   }
 
@@ -257,7 +266,7 @@ void keepalive_stop_thread() {
   // Wait for thread to exit gracefully
   int wait_count = 0;
   while (wait_count < 20 && !atomic_load(&g_ping_thread_exited)) {
-    platform_sleep_us(100000); // 100ms
+    platform_sleep_ns(100 * NS_PER_MS_INT); // 100ms
     wait_count++;
   }
 

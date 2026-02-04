@@ -144,14 +144,14 @@
  */
 
 /**
- * @brief Base send timeout in seconds (5 seconds)
+ * @brief Base send timeout in nanoseconds (5 seconds)
  *
  * Default timeout for sending packets. Used as base value for
  * calculating timeouts for large packets.
  *
  * @ingroup packet
  */
-#define BASE_SEND_TIMEOUT 5
+#define BASE_SEND_TIMEOUT (5LL * NS_PER_SEC_INT)
 
 /**
  * @brief Extra timeout per MB for large packets (0.8 seconds per MB)
@@ -161,27 +161,27 @@
  *
  * @ingroup packet
  */
-#define LARGE_PACKET_EXTRA_TIMEOUT_PER_MB 0.8
+#define LARGE_PACKET_EXTRA_TIMEOUT_PER_MB (800LL * NS_PER_MS_INT)
 
 /**
- * @brief Minimum client timeout in seconds (10 seconds)
+ * @brief Minimum client timeout in nanoseconds (10 seconds)
  *
  * Minimum timeout value for client operations. Set to server timeout
  * plus buffer for reliable operation.
  *
  * @ingroup packet
  */
-#define MIN_CLIENT_TIMEOUT 10
+#define MIN_CLIENT_TIMEOUT (10LL * NS_PER_SEC_INT)
 
 /**
- * @brief Maximum client timeout in seconds (60 seconds)
+ * @brief Maximum client timeout in nanoseconds (60 seconds)
  *
  * Maximum timeout value for client operations. Prevents excessively
  * long waits for dead connections.
  *
  * @ingroup packet
  */
-#define MAX_CLIENT_TIMEOUT 60
+#define MAX_CLIENT_TIMEOUT (60LL * NS_PER_SEC_INT)
 
 /** @} */
 
