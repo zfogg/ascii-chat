@@ -325,6 +325,20 @@ The ascii-chat Discovery Service bootstraps trust using the existing HTTPS PKI. 
 .PP
 .SS "Session Rekeying and Forward Secrecy"
 All session keys are rotated automatically after 1 hour or 1 million packets (whichever comes first) to limit exposure from key compromise. The rekey protocol is transparent: both sides generate new ephemeral keys, perform a new DH exchange, and atomically switch to new session keys without interruption. Old keys are securely wiped using \fCsodium_memzero()\fR. Nonces are constructed as \fCsession_id || counter\fR (16-byte random session ID + 8-byte monotonic packet counter), preventing both within-session and cross-session replay attacks. Nonce counter exhaustion (astronomically unlikely at 60 FPS for 9+ years) triggers automatic rekeying.
+.PP
+.SS "SSH Agent and GPG Agent Integration"
+For Ed25519 SSH keys with passphrases, ascii-chat uses
+.BR ssh-agent (1)
+to avoid repeated passphrase prompts. Ensure your key is added with
+.BR ssh-add (1)
+before connecting. For GPG keys, ascii-chat uses
+.BR gpg-agent (1)
+for passphrase management. Both agents must be running and properly configured for seamless authentication. If not running, ascii-chat will prompt for passphrases interactively. See
+.BR ssh-agent (1),
+.BR ssh-add (1),
+and
+.BR gpg-agent (1)
+for configuration details.
 .\" MANUAL-END: SECURITY
 .PP
 .\" MERGE-START: ENVIRONMENT
@@ -356,7 +370,7 @@ Current user identifier on Unix/macOS. Used for TOFU host verification to associ
 Current user identifier on Windows. Used for TOFU host verification and user identification.
 .TP
 .B _NT_SYMBOL_PATH
-Windows NT symbol path for debugging symbols (debug builds only). Helps locate PDB files for better crash reports. Format: srv*C:\\\\symbols*https://msdl.microsoft.com/download/symbols
+Windows NT symbol path for debugging symbols (debug builds only). Helps locate PDB files for better crash reports. Example: \fCsrv*C:\\\\symbols*https://msdl.microsoft.com/download/symbols\fR
 .TP
 .B XDG_CONFIG_HOME
 XDG Base Directory specification config directory on Linux (default: ~/.config). When set, ascii-chat searches for config files in $XDG_CONFIG_HOME/ascii-chat/ instead of ~/.config/ascii-chat/. Follows the freedesktop.org XDG specification for application configuration.
@@ -370,7 +384,7 @@ XDG Base Directory specification data directory on Linux (default: ~/.local/shar
 .B SSH_AUTH_SOCK
 Path to the SSH agent socket. Set automatically by ssh-agent. Use this for
 password-free authentication with encrypted SSH keys. Tip: add
-.B eval $(ssh-agent) > /dev/null
+\fBeval $(ssh-agent) > /dev/null\fR
 to your shell profile.
 .TP
 .B ASCII_CHAT_KEY_PASSWORD
@@ -381,8 +395,7 @@ plaintext).
 .B COLORTERM
 Terminal color capability indicator. Set by your terminal emulator to indicate
 truecolor support (e.g., "truecolor" or "24bit"). Automatically detected but can
-be overridden with
-.B \-\-color\-mode.
+be overridden with the \fB\-\-color\-mode\fR option.
 .TP
 .B TERM
 Terminal type identifier. Used for terminal capability detection and color mode
@@ -391,9 +404,7 @@ sessions if colors don't work.
 .TP
 .B LOG_LEVEL
 Override log level via environment variable. Values: dev, debug, info, warn,
-error, fatal. Use
-.B \-\-log\-level
-flag to override.
+error, fatal. Use the \fB\-\-log\-level\fR flag to override.
 .\" MANUAL-END: ENVIRONMENT
 .\" MERGE-END: ENVIRONMENT
 .PP
