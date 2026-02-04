@@ -320,6 +320,7 @@ set(NETWORK_SRCS
     # Ring consensus protocol for distributed host election
     lib/network/consensus/packets.c
     lib/network/consensus/topology.c
+    lib/network/consensus/state.c
     lib/network/consensus/election.c
     lib/network/consensus/metrics.c
     # NAT traversal (UPnP/NAT-PMP for direct TCP without WebRTC)
