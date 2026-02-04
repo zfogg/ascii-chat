@@ -52,6 +52,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/util/time.h>
 
 // Include mixer.h for compressor, noise gate, and filter functions
 #include <ascii-chat/audio/mixer.h>
@@ -100,10 +101,10 @@ extern "C" {
 client_audio_pipeline_config_t client_audio_pipeline_default_config(void) {
   return (client_audio_pipeline_config_t){
       .sample_rate = CLIENT_AUDIO_PIPELINE_SAMPLE_RATE,
-      .frame_size_ms = CLIENT_AUDIO_PIPELINE_FRAME_MS,
+      .frame_size_ns = CLIENT_AUDIO_PIPELINE_FRAME_MS,
       .opus_bitrate = 24000,
 
-      .echo_filter_ms = 250,
+      .echo_filter_ns = 250,
 
       .noise_suppress_db = -25,
       .agc_level = 16000, // Increased from 8000 for louder output
@@ -112,7 +113,7 @@ client_audio_pipeline_config_t client_audio_pipeline_default_config(void) {
       // Jitter margin: wait this long before starting playback
       // Lower = less latency but more risk of underruns
       // CRITICAL: Must match AUDIO_JITTER_BUFFER_THRESHOLD in ringbuffer.h!
-      .jitter_margin_ms = 20, // 20ms = 1 Opus packet (optimized for LAN)
+      .jitter_margin_ns = 20, // 20ms = 1 Opus packet (optimized for LAN)
 
       // Higher cutoff to cut low-frequency rumble and feedback
       .highpass_hz = 150.0f, // Was 80Hz, increased to break rumble feedback loop
@@ -120,18 +121,18 @@ client_audio_pipeline_config_t client_audio_pipeline_default_config(void) {
 
       // Compressor: only compress loud peaks, moderate makeup for volume
       // User reported clipping with +6dB makeup gain
-      .comp_threshold_db = -12.0f, // Compress above -12dB (was -6dB)
-      .comp_ratio = 3.0f,          // Gentler 3:1 ratio
-      .comp_attack_ms = 5.0f,      // Fast attack for peaks
-      .comp_release_ms = 150.0f,   // Slower release
-      .comp_makeup_db = 6.0f,      // Increased from 2dB for more output volume
+      .comp_threshold_db = -12.0f,            // Compress above -12dB (was -6dB)
+      .comp_ratio = 3.0f,                     // Gentler 3:1 ratio
+      .comp_attack_ns = 5 * NS_PER_MS_INT,    // Fast attack for peaks
+      .comp_release_ns = 150 * NS_PER_MS_INT, // Slower release
+      .comp_makeup_db = 6.0f,                 // Increased from 2dB for more output volume
 
       // Noise gate: VERY aggressive to cut quiet background audio completely
       // User feedback: "don't amplify or play quiet background audio at all"
-      .gate_threshold = 0.08f,  // -22dB threshold (was 0.02/-34dB) - cuts quiet audio hard
-      .gate_attack_ms = 0.5f,   // Very fast attack
-      .gate_release_ms = 30.0f, // Fast release (was 50ms)
-      .gate_hysteresis = 0.3f,  // Tighter hysteresis = stays closed longer
+      .gate_threshold = 0.08f,               // -22dB threshold (was 0.02/-34dB) - cuts quiet audio hard
+      .gate_attack_ns = 500 * NS_PER_US_INT, // Very fast attack
+      .gate_release_ns = 30 * NS_PER_MS_INT, // Fast release (was 50ms)
+      .gate_hysteresis = 0.3f,               // Tighter hysteresis = stays closed longer
 
       .flags = CLIENT_AUDIO_PIPELINE_FLAGS_ALL,
   };
@@ -165,7 +166,7 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   }
 
   p->flags = p->config.flags;
-  p->frame_size = p->config.sample_rate * p->config.frame_size_ms / 1000;
+  p->frame_size = p->config.sample_rate * p->config.frame_size_ns / 1000;
 
   // No mutex needed - full-duplex means single callback thread handles all AEC3
 
@@ -300,14 +301,14 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
 
     // Initialize compressor with config values
     compressor_init(&p->compressor, sample_rate);
-    compressor_set_params(&p->compressor, p->config.comp_threshold_db, p->config.comp_ratio, p->config.comp_attack_ms,
-                          p->config.comp_release_ms, p->config.comp_makeup_db);
+    compressor_set_params(&p->compressor, p->config.comp_threshold_db, p->config.comp_ratio, p->config.comp_attack_ns,
+                          p->config.comp_release_ns, p->config.comp_makeup_db);
     log_info("✓ Capture compressor: threshold=%.1fdB, ratio=%.1f:1, makeup=+%.1fdB", p->config.comp_threshold_db,
              p->config.comp_ratio, p->config.comp_makeup_db);
 
     // Initialize noise gate with config values
     noise_gate_init(&p->noise_gate, sample_rate);
-    noise_gate_set_params(&p->noise_gate, p->config.gate_threshold, p->config.gate_attack_ms, p->config.gate_release_ms,
+    noise_gate_set_params(&p->noise_gate, p->config.gate_threshold, p->config.gate_attack_ns, p->config.gate_release_ns,
                           p->config.gate_hysteresis);
     log_info("✓ Capture noise gate: threshold=%.4f (%.1fdB)", p->config.gate_threshold,
              20.0f * log10f(p->config.gate_threshold + 1e-10f));
@@ -340,7 +341,7 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   p->capture_fadein_remaining = (p->config.sample_rate * 200) / 1000; // 200ms worth of samples
   log_info("✓ Capture fade-in: %d samples (200ms)", p->capture_fadein_remaining);
 
-  log_info("Audio pipeline created: %dHz, %dms frames, %dkbps Opus", p->config.sample_rate, p->config.frame_size_ms,
+  log_info("Audio pipeline created: %dHz, %dms frames, %dkbps Opus", p->config.sample_rate, p->config.frame_size_ns,
            p->config.opus_bitrate / 1000);
 
   return p;
@@ -684,7 +685,7 @@ void client_audio_pipeline_process_duplex(client_audio_pipeline_t *pipeline, con
 int client_audio_pipeline_jitter_margin(client_audio_pipeline_t *pipeline) {
   if (!pipeline)
     return 0;
-  return pipeline->config.jitter_margin_ms;
+  return pipeline->config.jitter_margin_ns;
 }
 
 /**

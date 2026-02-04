@@ -167,13 +167,13 @@ typedef struct {
 typedef struct {
   /** Sample rate in Hz (default: 48000) */
   int sample_rate;
-  /** Frame size in milliseconds (default: 20) */
-  int frame_size_ms;
+  /** Frame size in nanoseconds (default: 20ms) */
+  uint64_t frame_size_ns;
   /** Opus bitrate in bps (default: 24000) */
   int opus_bitrate;
 
-  /** Echo cancellation filter length in milliseconds (default: 250) */
-  int echo_filter_ms;
+  /** Echo cancellation filter length in nanoseconds (default: 250ms) */
+  uint64_t echo_filter_ns;
 
   /** Noise suppression level in dB (default: -25, negative = more suppression) */
   int noise_suppress_db;
@@ -182,8 +182,8 @@ typedef struct {
   /** AGC maximum gain in dB (default: 30) */
   int agc_max_gain;
 
-  /** Jitter buffer margin in milliseconds (default: 60) */
-  int jitter_margin_ms;
+  /** Jitter buffer margin in nanoseconds (default: 60ms) */
+  uint64_t jitter_margin_ns;
 
   /** High-pass filter cutoff frequency in Hz (default: 80) */
   float highpass_hz;
@@ -194,19 +194,19 @@ typedef struct {
   float comp_threshold_db;
   /** Compressor ratio (default: 4.0 for 4:1) */
   float comp_ratio;
-  /** Compressor attack time in ms (default: 10) */
-  float comp_attack_ms;
-  /** Compressor release time in ms (default: 100) */
-  float comp_release_ms;
+  /** Compressor attack time in nanoseconds (default: 10ms) */
+  uint64_t comp_attack_ns;
+  /** Compressor release time in nanoseconds (default: 100ms) */
+  uint64_t comp_release_ns;
   /** Compressor makeup gain in dB (default: 3) */
   float comp_makeup_db;
 
   /** Noise gate threshold (linear, default: 0.01 = -40dB) */
   float gate_threshold;
-  /** Noise gate attack time in ms (default: 2) */
-  float gate_attack_ms;
-  /** Noise gate release time in ms (default: 50) */
-  float gate_release_ms;
+  /** Noise gate attack time in nanoseconds (default: 2ms) */
+  uint64_t gate_attack_ns;
+  /** Noise gate release time in nanoseconds (default: 50ms) */
+  uint64_t gate_release_ns;
   /** Noise gate hysteresis (default: 0.9) */
   float gate_hysteresis;
 

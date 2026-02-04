@@ -95,7 +95,7 @@ static uint32_t g_detected_echo_delay_ms = 0; // If echo detected, at what delay
 // AEC3 metrics from WebRTC GetMetrics()
 static double g_aec3_echo_return_loss = 0.0;             // dB - how much echo is attenuated
 static double g_aec3_echo_return_loss_enhancement = 0.0; // dB - additional echo suppression
-static int g_aec3_delay_ms = 0;                          // Estimated echo delay in ms
+static int g_aec3_delay_ns = 0;                          // Estimated echo delay in ms
 static bool g_aec3_metrics_available = false;            // Whether we have AEC3 metrics
 
 // Beep/tone artifact detection
@@ -145,8 +145,8 @@ int audio_analysis_init(void) {
 
   int64_t now_us = (int64_t)time_ns_to_us(time_get_ns());
 
-  g_sent_stats.timestamp_start_us = now_us;
-  g_received_stats.timestamp_start_us = now_us;
+  g_sent_stats.timestamp_start_ns = now_us;
+  g_received_stats.timestamp_start_ns = now_us;
 
   g_sent_last_sample = 0.0f;
   g_received_last_sample = 0.0f;
@@ -260,8 +260,8 @@ void audio_analysis_track_sent_packet(size_t size) {
     }
 
     // Track max gap
-    if (gap_ms > (int32_t)g_sent_stats.max_gap_ms) {
-      g_sent_stats.max_gap_ms = (uint32_t)gap_ms;
+    if (gap_ms > (int32_t)g_sent_stats.max_gap_ns) {
+      g_sent_stats.max_gap_ns = (uint32_t)gap_ms;
     }
   }
 
@@ -484,8 +484,8 @@ void audio_analysis_track_received_packet(size_t size) {
     }
 
     // Track max gap
-    if (gap_ms > (int32_t)g_received_stats.max_gap_ms) {
-      g_received_stats.max_gap_ms = (uint32_t)gap_ms;
+    if (gap_ms > (int32_t)g_received_stats.max_gap_ns) {
+      g_received_stats.max_gap_ns = (uint32_t)gap_ms;
     }
   }
 
@@ -501,12 +501,12 @@ const audio_analysis_stats_t *audio_analysis_get_received_stats(void) {
   return &g_received_stats;
 }
 
-void audio_analysis_set_aec3_metrics(double echo_return_loss, double echo_return_loss_enhancement, int delay_ms) {
+void audio_analysis_set_aec3_metrics(double echo_return_loss, double echo_return_loss_enhancement, uint64_t delay_ns) {
   // Store AEC3 metrics for reporting
   // These come from WebRTC EchoControl::GetMetrics() call
   g_aec3_echo_return_loss = echo_return_loss;
   g_aec3_echo_return_loss_enhancement = echo_return_loss_enhancement;
-  g_aec3_delay_ms = delay_ms;
+  g_aec3_delay_ns = delay_ns;
   g_aec3_metrics_available = true;
 }
 
@@ -517,11 +517,11 @@ void audio_analysis_print_report(void) {
 
   int64_t now_us = (int64_t)time_ns_to_us(time_get_ns());
 
-  g_sent_stats.timestamp_end_us = now_us;
-  g_received_stats.timestamp_end_us = now_us;
+  g_sent_stats.timestamp_end_ns = now_us;
+  g_received_stats.timestamp_end_ns = now_us;
 
-  int64_t sent_duration_ms = (g_sent_stats.timestamp_end_us - g_sent_stats.timestamp_start_us) / NS_PER_US_INT;
-  int64_t recv_duration_ms = (g_received_stats.timestamp_end_us - g_received_stats.timestamp_start_us) / NS_PER_US_INT;
+  int64_t sent_duration_ms = (g_sent_stats.timestamp_end_ns - g_sent_stats.timestamp_start_ns) / NS_PER_US_INT;
+  int64_t recv_duration_ms = (g_received_stats.timestamp_end_ns - g_received_stats.timestamp_start_ns) / NS_PER_US_INT;
 
   // Calculate RMS levels
   float sent_rms = 0.0f;
@@ -579,14 +579,14 @@ void audio_analysis_print_report(void) {
   log_plain("  Jitter Events:           %llu (rapid amplitude changes)", (unsigned long long)g_sent_stats.jitter_count);
   log_plain("  Discontinuities:         %llu (packet arrival gaps > 100ms)",
             (unsigned long long)g_sent_stats.discontinuity_count);
-  log_plain("  Max Gap Between Packets: %u ms (expected ~20ms per frame)", g_sent_stats.max_gap_ms);
+  log_plain("  Max Gap Between Packets: %u ms (expected ~20ms per frame)", g_sent_stats.max_gap_ns);
 
   log_plain("RECEIVED:");
   log_plain("  Jitter Events:           %llu (rapid amplitude changes)",
             (unsigned long long)g_received_stats.jitter_count);
   log_plain("  Discontinuities:         %llu (packet arrival gaps > 100ms)",
             (unsigned long long)g_received_stats.discontinuity_count);
-  log_plain("  Max Gap Between Packets: %u ms (expected ~20ms per frame)", g_received_stats.max_gap_ms);
+  log_plain("  Max Gap Between Packets: %u ms (expected ~20ms per frame)", g_received_stats.max_gap_ns);
 
   // Beep/tone artifact detection
   if (g_received_beep_events > 0 || g_received_tonal_samples > 0) {
@@ -669,7 +669,7 @@ void audio_analysis_print_report(void) {
               g_aec3_echo_return_loss);
     log_plain("  Echo Return Loss Enhancement (ERLE): %.2f dB (residual echo suppression)",
               g_aec3_echo_return_loss_enhancement);
-    log_plain("  Estimated Echo Delay: %d ms", g_aec3_delay_ms);
+    log_plain("  Estimated Echo Delay: %d ms", g_aec3_delay_ns);
 
     if (g_aec3_echo_return_loss > 10.0) {
       log_plain("  ✓ Good echo attenuation (ERL > 10 dB)");
@@ -851,12 +851,12 @@ void audio_analysis_print_report(void) {
   }
 
   // Packet delivery gaps
-  if (g_received_stats.max_gap_ms > 40) {
+  if (g_received_stats.max_gap_ns > 40) {
     log_plain("  ⚠️  DISTORTION DETECTED: Packet delivery gaps too large!");
-    log_plain("    - Max gap: %u ms (should be ~20ms for smooth audio)", g_received_stats.max_gap_ms);
-    if (g_received_stats.max_gap_ms > 80) {
+    log_plain("    - Max gap: %u ms (should be ~20ms for smooth audio)", g_received_stats.max_gap_ns);
+    if (g_received_stats.max_gap_ns > 80) {
       log_plain("    - SEVERE: Gaps > 80ms cause severe distortion and dropouts");
-    } else if (g_received_stats.max_gap_ms > 50) {
+    } else if (g_received_stats.max_gap_ns > 50) {
       log_plain("    - Gaps > 50ms cause noticeable distortion");
     }
   }

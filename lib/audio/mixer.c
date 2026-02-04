@@ -47,21 +47,21 @@ void compressor_init(compressor_t *comp, float sample_rate) {
   // Set default parameters with 0dB makeup gain (unity)
   // Soft clip at 0.7 provides 3dB headroom to prevent hard clipping
   // Ducking and crowd scaling naturally reduce volume, no compensation needed
-  compressor_set_params(comp, -10.0f, 4.0f, 10.0f, 100.0f, 0.0f);
+  compressor_set_params(comp, -10.0f, 4.0f, 10 * NS_PER_MS_INT, 100 * NS_PER_MS_INT, 0.0f);
 }
 
-void compressor_set_params(compressor_t *comp, float threshold_dB, float ratio, float attack_ms, float release_ms,
+void compressor_set_params(compressor_t *comp, float threshold_dB, float ratio, uint64_t attack_ns, uint64_t release_ns,
                            float makeup_dB) {
   comp->threshold_dB = threshold_dB;
   comp->ratio = ratio;
-  comp->attack_ms = attack_ms;
-  comp->release_ms = release_ms;
+  comp->attack_ns = attack_ns;
+  comp->release_ns = release_ns;
   comp->makeup_dB = makeup_dB;
   comp->knee_dB = 2.0f; // Fixed soft knee
 
   // Calculate time constants
-  float attack_tau = attack_ms / 1000.0f;
-  float release_tau = release_ms / 1000.0f;
+  float attack_tau = (float)attack_ns / NS_PER_SEC;
+  float release_tau = (float)release_ns / NS_PER_SEC;
   comp->attack_coeff = expf(-1.0f / (attack_tau * comp->sample_rate + 1e-12f));
   comp->release_coeff = expf(-1.0f / (release_tau * comp->sample_rate + 1e-12f));
 }
@@ -117,17 +117,17 @@ int ducking_init(ducking_t *duck, int num_sources, float sample_rate) {
   // threshold_dB: sources below this aren't considered "speaking"
   // leader_margin_dB: sources within this margin of loudest are all "leaders"
   // atten_dB: how much to attenuate non-leaders (was -12dB, too aggressive)
-  duck->threshold_dB = -45.0f;   // More lenient threshold
-  duck->leader_margin_dB = 6.0f; // Wider margin = more sources treated as leaders
-  duck->atten_dB = -6.0f;        // Only -6dB attenuation (was -12dB)
-  duck->attack_ms = 10.0f;       // Slower attack (was 5ms)
-  duck->release_ms = 200.0f;     // Slower release (was 100ms)
+  duck->threshold_dB = -45.0f;            // More lenient threshold
+  duck->leader_margin_dB = 6.0f;          // Wider margin = more sources treated as leaders
+  duck->atten_dB = -6.0f;                 // Only -6dB attenuation (was -12dB)
+  duck->attack_ns = 10 * NS_PER_MS_INT;   // Slower attack (10ms)
+  duck->release_ns = 200 * NS_PER_MS_INT; // Slower release (200ms)
   duck->envelope = NULL;
   duck->gain = NULL;
 
   // Calculate time constants
-  float attack_tau = duck->attack_ms / 1000.0f;
-  float release_tau = duck->release_ms / 1000.0f;
+  float attack_tau = (float)duck->attack_ns / NS_PER_SEC;
+  float release_tau = (float)duck->release_ns / NS_PER_SEC;
   duck->attack_coeff = expf(-1.0f / (attack_tau * sample_rate + 1e-12f));
   duck->release_coeff = expf(-1.0f / (release_tau * sample_rate + 1e-12f));
 
@@ -172,13 +172,13 @@ void ducking_free(ducking_t *duck) {
   }
 }
 
-void ducking_set_params(ducking_t *duck, float threshold_dB, float leader_margin_dB, float atten_dB, float attack_ms,
-                        float release_ms) {
+void ducking_set_params(ducking_t *duck, float threshold_dB, float leader_margin_dB, float atten_dB, uint64_t attack_ns,
+                        uint64_t release_ns) {
   duck->threshold_dB = threshold_dB;
   duck->leader_margin_dB = leader_margin_dB;
   duck->atten_dB = atten_dB;
-  duck->attack_ms = attack_ms;
-  duck->release_ms = release_ms;
+  duck->attack_ns = attack_ns;
+  duck->release_ns = release_ns;
 }
 
 void ducking_process_frame(ducking_t *duck, float *envelopes, float *gains, int num_sources) {
@@ -823,22 +823,25 @@ void noise_gate_init(noise_gate_t *gate, float sample_rate) {
   // Default parameters
   // Slower attack (10ms) prevents clicking artifacts during gate transitions
   // threshold=0.01, attack=10ms, release=50ms, hysteresis=0.9
-  noise_gate_set_params(gate, 0.01f, 10.0f, 50.0f, 0.9f);
+  noise_gate_set_params(gate, 0.01f, 10 * NS_PER_MS_INT, 50 * NS_PER_MS_INT, 0.9f);
 }
 
-void noise_gate_set_params(noise_gate_t *gate, float threshold, float attack_ms, float release_ms, float hysteresis) {
+void noise_gate_set_params(noise_gate_t *gate, float threshold, uint64_t attack_ns, uint64_t release_ns,
+                           float hysteresis) {
   if (!gate)
     return;
 
   gate->threshold = threshold;
-  gate->attack_ms = attack_ms;
-  gate->release_ms = release_ms;
+  gate->attack_ns = attack_ns;
+  gate->release_ns = release_ns;
   gate->hysteresis = hysteresis;
 
   // Calculate coefficients for envelope follower
-  // Using exponential moving average: coeff = 1 - exp(-1 / (time_ms * sample_rate / 1000))
-  gate->attack_coeff = 1.0f - expf(-1.0f / (attack_ms * gate->sample_rate / 1000.0f));
-  gate->release_coeff = 1.0f - expf(-1.0f / (release_ms * gate->sample_rate / 1000.0f));
+  // Using exponential moving average: coeff = 1 - exp(-1 / (time_s * sample_rate))
+  float attack_s = (float)attack_ns / NS_PER_SEC;
+  float release_s = (float)release_ns / NS_PER_SEC;
+  gate->attack_coeff = 1.0f - expf(-1.0f / (attack_s * gate->sample_rate + 1e-12f));
+  gate->release_coeff = 1.0f - expf(-1.0f / (release_s * gate->sample_rate + 1e-12f));
 }
 
 float noise_gate_process_sample(noise_gate_t *gate, float input, float peak_amplitude) {

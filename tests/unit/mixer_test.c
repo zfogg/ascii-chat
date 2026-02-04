@@ -10,6 +10,7 @@
 #include <ascii-chat/audio/mixer.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/util/time.h>
 
 // Custom init function
 void mixer_test_init(void) {
@@ -381,8 +382,8 @@ Test(compressor, init_and_params) {
   cr_assert_float_eq(comp.sample_rate, 44100.0f, 1e-6f);
   cr_assert_float_eq(comp.threshold_dB, -10.0f, 1e-6f);
   cr_assert_float_eq(comp.ratio, 4.0f, 1e-6f);
-  cr_assert_float_eq(comp.attack_ms, 10.0f, 1e-6f);
-  cr_assert_float_eq(comp.release_ms, 100.0f, 1e-6f);
+  cr_assert_eq(comp.attack_ns, 10 * NS_PER_MS_INT);
+  cr_assert_eq(comp.release_ns, 100 * NS_PER_MS_INT);
   cr_assert_float_eq(comp.makeup_dB, 0.0f, 1e-6f);
   cr_assert_float_eq(comp.envelope, 0.0f, 1e-6f);
   cr_assert_float_eq(comp.gain_lin, 1.0f, 1e-6f);
@@ -392,19 +393,19 @@ Test(compressor, set_params) {
   compressor_t comp;
   compressor_init(&comp, 44100.0f);
 
-  compressor_set_params(&comp, -20.0f, 2.0f, 5.0f, 50.0f, 6.0f);
+  compressor_set_params(&comp, -20.0f, 2.0f, 5 * NS_PER_MS_INT, 50 * NS_PER_MS_INT, 6.0f);
 
   cr_assert_float_eq(comp.threshold_dB, -20.0f, 1e-6f);
   cr_assert_float_eq(comp.ratio, 2.0f, 1e-6f);
-  cr_assert_float_eq(comp.attack_ms, 5.0f, 1e-6f);
-  cr_assert_float_eq(comp.release_ms, 50.0f, 1e-6f);
+  cr_assert_eq(comp.attack_ns, 5 * NS_PER_MS_INT);
+  cr_assert_eq(comp.release_ns, 50 * NS_PER_MS_INT);
   cr_assert_float_eq(comp.makeup_dB, 6.0f, 1e-6f);
 }
 
 Test(compressor, process_below_threshold) {
   compressor_t comp;
   compressor_init(&comp, 44100.0f);
-  compressor_set_params(&comp, -10.0f, 4.0f, 10.0f, 100.0f, 0.0f);
+  compressor_set_params(&comp, -10.0f, 4.0f, 10 * NS_PER_MS_INT, 100 * NS_PER_MS_INT, 0.0f);
 
   // Process signal below threshold
   float gain = compressor_process_sample(&comp, 0.1f); // -20dB
@@ -414,7 +415,7 @@ Test(compressor, process_below_threshold) {
 Test(compressor, process_above_threshold) {
   compressor_t comp;
   compressor_init(&comp, 44100.0f);
-  compressor_set_params(&comp, -10.0f, 4.0f, 10.0f, 100.0f, 0.0f);
+  compressor_set_params(&comp, -10.0f, 4.0f, 10 * NS_PER_MS_INT, 100 * NS_PER_MS_INT, 0.0f);
 
   // Process signal above threshold
   float gain = compressor_process_sample(&comp, 0.5f); // -6dB
@@ -432,8 +433,8 @@ Test(ducking, init_and_params) {
   cr_assert_float_eq(duck.threshold_dB, -45.0f, 1e-6f);
   cr_assert_float_eq(duck.leader_margin_dB, 6.0f, 1e-6f);
   cr_assert_float_eq(duck.atten_dB, -6.0f, 1e-6f);
-  cr_assert_float_eq(duck.attack_ms, 10.0f, 1e-6f);
-  cr_assert_float_eq(duck.release_ms, 200.0f, 1e-6f);
+  cr_assert_eq(duck.attack_ns, 10 * NS_PER_MS_INT);
+  cr_assert_eq(duck.release_ns, 200 * NS_PER_MS_INT);
   cr_assert_not_null(duck.envelope);
   cr_assert_not_null(duck.gain);
 
@@ -449,13 +450,13 @@ Test(ducking, set_params) {
   ducking_t duck;
   ducking_init(&duck, 4, 44100.0f);
 
-  ducking_set_params(&duck, -30.0f, 5.0f, -15.0f, 10.0f, 200.0f);
+  ducking_set_params(&duck, -30.0f, 5.0f, -15.0f, 10 * NS_PER_MS_INT, 200 * NS_PER_MS_INT);
 
   cr_assert_float_eq(duck.threshold_dB, -30.0f, 1e-6f);
   cr_assert_float_eq(duck.leader_margin_dB, 5.0f, 1e-6f);
   cr_assert_float_eq(duck.atten_dB, -15.0f, 1e-6f);
-  cr_assert_float_eq(duck.attack_ms, 10.0f, 1e-6f);
-  cr_assert_float_eq(duck.release_ms, 200.0f, 1e-6f);
+  cr_assert_eq(duck.attack_ns, 10 * NS_PER_MS_INT);
+  cr_assert_eq(duck.release_ns, 200 * NS_PER_MS_INT);
 
   ducking_free(&duck);
 }
@@ -463,7 +464,7 @@ Test(ducking, set_params) {
 Test(ducking, process_frame_leader_detection) {
   ducking_t duck;
   ducking_init(&duck, 3, 44100.0f);
-  ducking_set_params(&duck, -40.0f, 3.0f, -12.0f, 5.0f, 100.0f);
+  ducking_set_params(&duck, -40.0f, 3.0f, -12.0f, 5 * NS_PER_MS_INT, 100 * NS_PER_MS_INT);
 
   float envelopes[3] = {0.1f, 0.5f, 0.2f}; // Source 1 is loudest
   float gains[3] = {1.0f, 1.0f, 1.0f};
@@ -490,8 +491,8 @@ Test(noise_gate, init_and_params) {
 
   cr_assert_float_eq(gate.sample_rate, 44100.0f, 1e-6f);
   cr_assert_float_eq(gate.threshold, 0.01f, 1e-6f);
-  cr_assert_float_eq(gate.attack_ms, 10.0f, 1e-6f);
-  cr_assert_float_eq(gate.release_ms, 50.0f, 1e-6f);
+  cr_assert_eq(gate.attack_ns, 10 * NS_PER_MS_INT);
+  cr_assert_eq(gate.release_ns, 50 * NS_PER_MS_INT);
   cr_assert_float_eq(gate.hysteresis, 0.9f, 1e-6f);
   cr_assert_float_eq(gate.envelope, 0.0f, 1e-6f);
   cr_assert_not(gate.gate_open);
@@ -501,18 +502,18 @@ Test(noise_gate, set_params) {
   noise_gate_t gate;
   noise_gate_init(&gate, 44100.0f);
 
-  noise_gate_set_params(&gate, 0.05f, 5.0f, 100.0f, 0.8f);
+  noise_gate_set_params(&gate, 0.05f, 5 * NS_PER_MS_INT, 100 * NS_PER_MS_INT, 0.8f);
 
   cr_assert_float_eq(gate.threshold, 0.05f, 1e-6f);
-  cr_assert_float_eq(gate.attack_ms, 5.0f, 1e-6f);
-  cr_assert_float_eq(gate.release_ms, 100.0f, 1e-6f);
+  cr_assert_eq(gate.attack_ns, 5 * NS_PER_MS_INT);
+  cr_assert_eq(gate.release_ns, 100 * NS_PER_MS_INT);
   cr_assert_float_eq(gate.hysteresis, 0.8f, 1e-6f);
 }
 
 Test(noise_gate, process_below_threshold) {
   noise_gate_t gate;
   noise_gate_init(&gate, 44100.0f);
-  noise_gate_set_params(&gate, 0.1f, 2.0f, 50.0f, 0.9f);
+  noise_gate_set_params(&gate, 0.1f, 2 * NS_PER_MS_INT, 50 * NS_PER_MS_INT, 0.9f);
 
   // Process signal below threshold
   float output = noise_gate_process_sample(&gate, 0.5f, 0.05f);
@@ -523,7 +524,7 @@ Test(noise_gate, process_below_threshold) {
 Test(noise_gate, process_above_threshold) {
   noise_gate_t gate;
   noise_gate_init(&gate, 44100.0f);
-  noise_gate_set_params(&gate, 0.1f, 2.0f, 50.0f, 0.9f);
+  noise_gate_set_params(&gate, 0.1f, 2 * NS_PER_MS_INT, 50 * NS_PER_MS_INT, 0.9f);
 
   // Process signal above threshold (envelope starts at 0, so first sample will be low)
   float output = noise_gate_process_sample(&gate, 0.5f, 0.2f);
@@ -534,7 +535,7 @@ Test(noise_gate, process_above_threshold) {
 Test(noise_gate, process_buffer) {
   noise_gate_t gate;
   noise_gate_init(&gate, 44100.0f);
-  noise_gate_set_params(&gate, 0.1f, 2.0f, 50.0f, 0.9f);
+  noise_gate_set_params(&gate, 0.1f, 2 * NS_PER_MS_INT, 50 * NS_PER_MS_INT, 0.9f);
 
   float buffer[10] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
   noise_gate_process_buffer(&gate, buffer, 10);

@@ -141,10 +141,10 @@ typedef struct {
   float knee_dB;
   /** @brief Compression ratio (e.g., 4.0 for 4:1 compression) */
   float ratio;
-  /** @brief Attack time in milliseconds (how fast compression kicks in) */
-  float attack_ms;
-  /** @brief Release time in milliseconds (how fast compression releases) */
-  float release_ms;
+  /** @brief Attack time in nanoseconds (how fast compression kicks in) */
+  uint64_t attack_ns;
+  /** @brief Release time in nanoseconds (how fast compression releases) */
+  uint64_t release_ns;
   /** @brief Makeup gain in dB (compensates for gain reduction) */
   float makeup_dB;
 
@@ -180,10 +180,10 @@ typedef struct {
 typedef struct {
   /** @brief Gate threshold in linear units (e.g., 0.01f for -40dB) */
   float threshold;
-  /** @brief Attack time in milliseconds (how fast gate opens) */
-  float attack_ms;
-  /** @brief Release time in milliseconds (how fast gate closes) */
-  float release_ms;
+  /** @brief Attack time in nanoseconds (how fast gate opens) */
+  uint64_t attack_ns;
+  /** @brief Release time in nanoseconds (how fast gate closes) */
+  uint64_t release_ns;
   /** @brief Hysteresis factor (0-1, prevents gate chatter) */
   float hysteresis;
 
@@ -275,10 +275,10 @@ typedef struct {
   float leader_margin_dB;
   /** @brief Attenuation in dB for non-leader sources */
   float atten_dB;
-  /** @brief Ducking attack time in milliseconds */
-  float attack_ms;
-  /** @brief Ducking release time in milliseconds */
-  float release_ms;
+  /** @brief Ducking attack time in nanoseconds */
+  uint64_t attack_ns;
+  /** @brief Ducking release time in nanoseconds */
+  uint64_t release_ns;
 
   /** @brief Attack coefficient (converted from attack_ms) */
   float attack_coeff;
@@ -650,7 +650,7 @@ void compressor_init(compressor_t *comp, float sample_rate);
  *
  * @ingroup audio
  */
-void compressor_set_params(compressor_t *comp, float threshold_dB, float ratio, float attack_ms, float release_ms,
+void compressor_set_params(compressor_t *comp, float threshold_dB, float ratio, uint64_t attack_ns, uint64_t release_ns,
                            float makeup_dB);
 
 /**
@@ -717,8 +717,8 @@ void ducking_free(ducking_t *duck);
  *
  * @ingroup audio
  */
-void ducking_set_params(ducking_t *duck, float threshold_dB, float leader_margin_dB, float atten_dB, float attack_ms,
-                        float release_ms);
+void ducking_set_params(ducking_t *duck, float threshold_dB, float leader_margin_dB, float atten_dB, uint64_t attack_ns,
+                        uint64_t release_ns);
 
 /**
  * @brief Process a frame of audio through ducking system
@@ -770,7 +770,8 @@ void noise_gate_init(noise_gate_t *gate, float sample_rate);
  *
  * @ingroup audio
  */
-void noise_gate_set_params(noise_gate_t *gate, float threshold, float attack_ms, float release_ms, float hysteresis);
+void noise_gate_set_params(noise_gate_t *gate, float threshold, uint64_t attack_ns, uint64_t release_ns,
+                           float hysteresis);
 
 /**
  * @brief Process a single sample through noise gate

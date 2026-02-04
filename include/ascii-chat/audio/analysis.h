@@ -32,13 +32,13 @@ typedef struct {
   float dc_offset;            // DC bias in signal
   uint32_t packets_count;     // Number of packets
   uint32_t packets_dropped;   // Dropped packets
-  int64_t timestamp_start_us; // Start timestamp (microseconds)
-  int64_t timestamp_end_us;   // End timestamp (microseconds)
+  int64_t timestamp_start_ns; // Start timestamp (nanoseconds)
+  int64_t timestamp_end_ns;   // End timestamp (nanoseconds)
   // Quality indicators for "scratchy/distorted" detection
-  uint64_t jitter_count;        // Rapid amplitude changes (jitter events)
-  uint64_t discontinuity_count; // Packet arrival gaps (sparse delivery)
-  float avg_packet_spacing_ms;  // Average time between packets (ms)
-  uint32_t max_gap_ms;          // Largest gap between consecutive packets (ms)
+  uint64_t jitter_count;          // Rapid amplitude changes (jitter events)
+  uint64_t discontinuity_count;   // Packet arrival gaps (sparse delivery)
+  uint64_t avg_packet_spacing_ns; // Average time between packets (nanoseconds)
+  uint64_t max_gap_ns;            // Largest gap between consecutive packets (nanoseconds)
   // Beep/tone artifact detection
   uint64_t beep_events;   // Short tonal bursts (codec artifacts, system beeps)
   uint64_t tonal_samples; // Samples in tonal/beep-like patterns
@@ -95,9 +95,9 @@ void audio_analysis_print_report(void);
  * @brief Set AEC3 echo cancellation metrics
  * @param echo_return_loss Echo return loss (dB) - how much echo is attenuated
  * @param echo_return_loss_enhancement Additional echo suppression (dB)
- * @param delay_ms Estimated echo delay in milliseconds
+ * @param delay_ns Estimated echo delay in nanoseconds
  */
-void audio_analysis_set_aec3_metrics(double echo_return_loss, double echo_return_loss_enhancement, int delay_ms);
+void audio_analysis_set_aec3_metrics(double echo_return_loss, double echo_return_loss_enhancement, uint64_t delay_ns);
 
 /**
  * @brief Cleanup audio analysis

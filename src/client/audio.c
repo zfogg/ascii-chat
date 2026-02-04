@@ -945,7 +945,7 @@ int audio_client_init() {
   // Set jitter buffer margin for smooth playback without excessive delay
   // 100ms is conservative - AEC3 will adapt to actual network delay automatically
   // We don't tune this; let the system adapt to its actual conditions
-  pipeline_config.jitter_margin_ms = 100;
+  pipeline_config.jitter_margin_ns = 100;
 
   log_debug("DEBUG: About to create audio pipeline...");
   g_audio_pipeline = client_audio_pipeline_create(&pipeline_config);
