@@ -242,7 +242,7 @@ asciichat_error_t check_gpg_key_expiry(const char *gpg_key_text, bool *is_expire
       // Field 6 is expiry date (index 6)
       if (field_count >= 7 && strlen(fields[6]) > 0) {
         // Parse expiry timestamp
-        long expiry_timestamp = atol(fields[6]);
+        long expiry_timestamp = strtol(fields[6], NULL, 10);
         time_t now = time(NULL);
 
         if (expiry_timestamp > 0 && expiry_timestamp < now) {
