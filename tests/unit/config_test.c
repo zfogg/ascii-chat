@@ -1686,11 +1686,15 @@ Test(config, negative_width_skipped) {
 Test(config, negative_snapshot_delay_skipped) {
   config_options_backup_t backup;
   save_config_options(&backup);
-  // Set initial snapshot delay
+  // Set initial snapshot delay to 1.0
   const options_t *current_opts = options_get();
   options_t writable_opts;
   memcpy(&writable_opts, current_opts, sizeof(options_t));
+  writable_opts.snapshot_delay = 1.0;
   options_state_set(&writable_opts);
+
+  // Copy writable_opts to backup
+  memcpy(&backup, &writable_opts, sizeof(options_t));
 
   const char *content = "[display]\n"
                         "snapshot_delay = -5.0\n";
@@ -1698,8 +1702,10 @@ Test(config, negative_snapshot_delay_skipped) {
   char *config_path = create_temp_config(content);
   cr_assert_not_null(config_path, "Failed to create temp config file");
 
-  asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
+  asciichat_error_t result = config_load_and_apply(MODE_CLIENT, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Negative snapshot delay should be skipped");
+  cr_assert_float_eq(backup.snapshot_delay, 1.0f, 0.01f,
+                     "After config_load: backup.snapshot_delay should remain 1.0 (got %.2f)", backup.snapshot_delay);
   options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_float_eq(opts->snapshot_delay, 1.0f, 0.01f, "Snapshot delay should remain unchanged");
@@ -1719,13 +1725,16 @@ Test(config, invalid_port_skipped) {
   writable_opts.port = 8080;
   options_state_set(&writable_opts);
 
+  // Copy writable_opts to backup
+  memcpy(&backup, &writable_opts, sizeof(options_t));
+
   const char *content = "[network]\n"
                         "port = 99999\n"; // Invalid port (too high)
 
   char *config_path = create_temp_config(content);
   cr_assert_not_null(config_path, "Failed to create temp config file");
 
-  asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
+  asciichat_error_t result = config_load_and_apply(MODE_CLIENT, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Invalid port should be skipped");
   options_state_set(&backup);
   const options_t *opts = options_get();

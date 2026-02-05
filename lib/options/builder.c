@@ -1138,6 +1138,41 @@ void options_builder_add_double(options_builder_t *builder, const char *long_nam
   builder->descriptors[builder->num_descriptors++] = desc;
 }
 
+void options_builder_add_double_with_metadata(options_builder_t *builder, const char *long_name, char short_name,
+                                              size_t offset, double default_value, const char *help_text,
+                                              const char *group, bool required, const char *env_var_name,
+                                              bool (*validate)(const void *, char **),
+                                              const option_metadata_t *metadata) {
+  ensure_descriptor_capacity(builder);
+
+  static double defaults[1024];
+  static size_t num_defaults = 0;
+
+  if (num_defaults >= 1024) {
+    log_error("Too many double options (max 1024)");
+    return;
+  }
+
+  defaults[num_defaults] = default_value;
+
+  option_descriptor_t desc = {.long_name = long_name,
+                              .short_name = short_name,
+                              .type = OPTION_TYPE_DOUBLE,
+                              .offset = offset,
+                              .help_text = help_text,
+                              .group = group,
+                              .default_value = &defaults[num_defaults++],
+                              .required = required,
+                              .env_var_name = env_var_name,
+                              .validate = validate,
+                              .parse_fn = NULL,
+                              .owns_memory = false,
+                              .mode_bitmask = OPTION_MODE_NONE,
+                              .metadata = metadata ? *metadata : (option_metadata_t){0}};
+
+  builder->descriptors[builder->num_descriptors++] = desc;
+}
+
 void options_builder_add_callback(options_builder_t *builder, const char *long_name, char short_name, size_t offset,
                                   const void *default_value, size_t value_size,
                                   bool (*parse_fn)(const char *, void *, char **), const char *help_text,

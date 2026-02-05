@@ -862,7 +862,7 @@ static const registry_entry_t g_display_entries[] = {
      false,
      false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
-     {0}},
+     {.numeric_range = {0, 3600, 0}, .input_type = OPTION_INPUT_NUMERIC}},
     {"no-splash",
      '\0',
      OPTION_TYPE_BOOL,
@@ -2016,9 +2016,17 @@ asciichat_error_t options_registry_add_all_to_builder(options_builder_t *builder
                                entry->group, entry->required, entry->env_var_name);
       break;
     case OPTION_TYPE_DOUBLE:
-      options_builder_add_double(builder, entry->long_name, entry->short_name, entry->offset,
-                                 entry->default_value ? *(const double *)entry->default_value : 0.0, entry->help_text,
-                                 entry->group, entry->required, entry->env_var_name, entry->validate_fn);
+      // Use metadata-aware function if metadata is present (has numeric range)
+      if (entry->metadata.numeric_range.max != 0) {
+        options_builder_add_double_with_metadata(builder, entry->long_name, entry->short_name, entry->offset,
+                                                 entry->default_value ? *(const double *)entry->default_value : 0.0,
+                                                 entry->help_text, entry->group, entry->required, entry->env_var_name,
+                                                 entry->validate_fn, &entry->metadata);
+      } else {
+        options_builder_add_double(builder, entry->long_name, entry->short_name, entry->offset,
+                                   entry->default_value ? *(const double *)entry->default_value : 0.0, entry->help_text,
+                                   entry->group, entry->required, entry->env_var_name, entry->validate_fn);
+      }
       break;
     case OPTION_TYPE_CALLBACK:
       // Always use metadata-aware function to preserve enum/metadata information

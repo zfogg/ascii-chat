@@ -499,6 +499,12 @@ void options_builder_add_double(options_builder_t *builder, const char *long_nam
                                 const char *env_var_name,
                                 bool (*validate)(const void *options_struct, char **error_msg));
 
+void options_builder_add_double_with_metadata(options_builder_t *builder, const char *long_name, char short_name,
+                                              size_t offset, double default_value, const char *help_text,
+                                              const char *group, bool required, const char *env_var_name,
+                                              bool (*validate)(const void *options_struct, char **error_msg),
+                                              const option_metadata_t *metadata);
+
 /**
  * @brief Add option with custom callback parser
  *

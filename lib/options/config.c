@@ -415,14 +415,24 @@ static asciichat_error_t parse_validate_bool(const char *value_str, const config
  */
 static asciichat_error_t parse_validate_double(const char *value_str, const config_option_metadata_t *meta,
                                                option_parsed_value_t *parsed, char *error_msg, size_t error_size) {
-  (void)meta;
-
   char *endptr = NULL;
   double parsed_val = strtod(value_str, &endptr);
   if (*endptr != '\0') {
     SAFE_SNPRINTF(error_msg, error_size, "Invalid float: %s", value_str);
     return ERROR_CONFIG;
   }
+
+  // Check numeric range constraints if defined (for double types)
+  if (meta && meta->constraints.int_range.max != 0) {
+    // Use int_range for doubles too (the values are stored as doubles in the constraint)
+    double min = (double)meta->constraints.int_range.min;
+    double max = (double)meta->constraints.int_range.max;
+    if (parsed_val < min || parsed_val > max) {
+      SAFE_SNPRINTF(error_msg, error_size, "Float %.2f out of range [%.2f-%.2f]: %s", parsed_val, min, max, value_str);
+      return ERROR_CONFIG;
+    }
+  }
+
   parsed->float_value = (float)parsed_val;
   return ASCIICHAT_OK;
 }
