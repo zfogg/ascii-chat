@@ -199,6 +199,7 @@ int main(int argc, char *argv[]) {
 
   // SECOND: Scan for --grep BEFORE ANY logging initialization
   // This ensures ALL logs (including from shared_init) can be filtered
+  // Supports multiple --grep patterns (ORed together)
   for (int i = 1; i < argc - 1; i++) {
     if (strcmp(argv[i], "--grep") == 0) {
       const char *pattern = argv[i + 1];
@@ -210,7 +211,7 @@ int main(int argc, char *argv[]) {
                 pattern);
         return 1;
       }
-      break; // Filter initialized early, stop searching
+      i++; // Skip the pattern argument
     }
   }
 

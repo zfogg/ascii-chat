@@ -82,21 +82,47 @@ static void get_highlight_color(uint8_t *r, uint8_t *g, uint8_t *b) {
 }
 
 /**
- * @brief Global filter state (initialized once at startup)
+ * @brief Single filter pattern with all its settings
+ */
+typedef struct {
+  const char *original;         ///< Original pattern string (for display)
+  char *parsed_pattern;         ///< Parsed pattern (without delimiters/flags)
+  pcre2_singleton_t *singleton; ///< PCRE2 singleton (NULL if fixed string)
+  bool is_fixed_string;         ///< True for fixed string matching (no regex)
+  bool invert;                  ///< Invert match (I flag)
+  bool global_flag;             ///< Highlight all matches (g flag)
+  int context_before;           ///< Lines before match (B flag)
+  int context_after;            ///< Lines after match (A flag)
+} log_filter_pattern_t;
+
+/**
+ * @brief Global filter state (supports multiple patterns ORed together)
  */
 static struct {
-  pcre2_singleton_t *singleton;   ///< PCRE2 singleton (auto-registered for cleanup)
-  const char *pattern;            ///< Original pattern string
+  log_filter_pattern_t *patterns; ///< Array of patterns
+  int pattern_count;              ///< Number of active patterns
+  int pattern_capacity;           ///< Allocated capacity
   bool enabled;                   ///< Is filtering active?
-  bool global_flag;               ///< Global flag (/g) - highlight all matches per line
   pthread_key_t match_data_key;   ///< Thread-local match_data key
   pthread_once_t match_data_once; ///< Initialize key once
+
+  // Context line buffering
+  char **line_buffer;    ///< Circular buffer for context_before
+  int buffer_size;       ///< Size of circular buffer
+  int buffer_pos;        ///< Current position in buffer
+  int lines_after_match; ///< Counter for context_after lines
+  int max_context_after; ///< Maximum context_after across all patterns
 } g_filter_state = {
-    .singleton = NULL,
-    .pattern = NULL,
+    .patterns = NULL,
+    .pattern_count = 0,
+    .pattern_capacity = 0,
     .enabled = false,
-    .global_flag = false,
     .match_data_once = PTHREAD_ONCE_INIT,
+    .line_buffer = NULL,
+    .buffer_size = 0,
+    .buffer_pos = 0,
+    .lines_after_match = 0,
+    .max_context_after = 0,
 };
 
 /**
@@ -170,12 +196,18 @@ static pcre2_match_data *get_thread_match_data(void) {
   pthread_once(&g_filter_state.match_data_once, create_match_data_key);
 
   pcre2_match_data *data = pthread_getspecific(g_filter_state.match_data_key);
-  if (!data && g_filter_state.singleton) {
-    pcre2_code *code = asciichat_pcre2_singleton_get_code(g_filter_state.singleton);
-    if (code) {
-      data = pcre2_match_data_create_from_pattern(code, NULL);
-      if (data) {
-        pthread_setspecific(g_filter_state.match_data_key, data);
+  if (!data) {
+    // Find any regex pattern to create match data from
+    for (int i = 0; i < g_filter_state.pattern_count; i++) {
+      if (g_filter_state.patterns[i].singleton) {
+        pcre2_code *code = asciichat_pcre2_singleton_get_code(g_filter_state.patterns[i].singleton);
+        if (code) {
+          data = pcre2_match_data_create_from_pattern(code, NULL);
+          if (data) {
+            pthread_setspecific(g_filter_state.match_data_key, data);
+            break;
+          }
+        }
       }
     }
   }
@@ -184,138 +216,230 @@ static pcre2_match_data *get_thread_match_data(void) {
 }
 
 /**
- * @brief Parse regex pattern in /pattern/flags format (e.g., "/my_query/i" or "/test/igm")
- * @param input Input pattern string (must be in /pattern/flags format)
- * @param pattern_out Output buffer for pattern without delimiters and flags
- * @param pattern_size Size of pattern_out buffer
- * @return PCRE2 compile options based on flags, or 0 on format error
- *
- * Format: /pattern/flags where:
- * - Pattern is enclosed in forward slashes
- * - Flags are optional: i (case-insensitive), m (multiline), s (dotall), x (extended), g (global)
- * - Examples: "/test/", "/query/i", "/foo.*bar/igm"
+ * @brief Parsed pattern result
  */
-static uint32_t parse_pattern_with_flags(const char *input, char *pattern_out, size_t pattern_size) {
-  // Default flags: UTF-8 mode and Unicode character properties (always enabled)
-  uint32_t options = PCRE2_UTF | PCRE2_UCP;
+typedef struct {
+  char pattern[4096];     ///< Parsed pattern string
+  uint32_t pcre2_options; ///< PCRE2 compile options
+  bool is_fixed_string;   ///< True if fixed string (not regex)
+  bool invert;            ///< Invert match (I flag)
+  bool global_flag;       ///< Highlight all matches (g flag)
+  int context_before;     ///< Lines before match (B<n> flag)
+  int context_after;      ///< Lines after match (A<n> flag)
+  bool valid;             ///< True if parsing succeeded
+} parse_result_t;
+
+/**
+ * @brief Parse pattern in /pattern/flags format or fixed string
+ * @param input Input pattern string
+ * @return Parse result with all extracted settings
+ *
+ * Formats:
+ * 1. /pattern/flags - Regex with flags
+ * 2. literal string - Fixed string match (no regex)
+ *
+ * Regex flags:
+ * - i: case-insensitive
+ * - m: multiline mode
+ * - s: dotall mode
+ * - x: extended mode
+ * - g: global (highlight all matches)
+ * - I: invert match (show non-matching lines)
+ * - A<n>: show n lines after match (e.g., A3)
+ * - B<n>: show n lines before match (e.g., B2)
+ * - C<n>: show n lines before and after match (e.g., C5)
+ *
+ * Examples:
+ * - "/test/" - Simple regex
+ * - "/query/i" - Case-insensitive regex
+ * - "/ERROR/IA3" - Invert match + 3 lines after
+ * - "/FATAL/B2A5" - 2 before, 5 after
+ * - "/panic/C3" - 3 lines before and after
+ * - "literal string" - Fixed string match
+ */
+static parse_result_t parse_pattern_with_flags(const char *input) {
+  parse_result_t result = {0};
+  result.pcre2_options = PCRE2_UTF | PCRE2_UCP; // Default: UTF-8 mode
 
   if (!input || strlen(input) == 0) {
-    pattern_out[0] = '\0';
-    return 0; // Error: empty pattern
+    return result; // Invalid: empty pattern
   }
 
   size_t len = strlen(input);
 
-  // Require leading slash
+  // Check if it's a regex (/pattern/flags) or fixed string
   if (input[0] != '/') {
-    return 0; // Error: must start with /
+    // Fixed string match (no regex)
+    SAFE_STRNCPY(result.pattern, input, sizeof(result.pattern));
+    result.is_fixed_string = true;
+    result.valid = true;
+    return result;
   }
 
-  // Require at least "/x/" (minimum 3 chars)
+  // Regex format: /pattern/flags
   if (len < 3) {
-    return 0; // Error: pattern too short
+    return result; // Invalid: too short
   }
 
-  // Find closing slash (search from position 1 onwards)
+  // Find closing slash
   const char *closing_slash = strchr(input + 1, '/');
   if (!closing_slash) {
-    return 0; // Error: missing closing /
+    return result; // Invalid: missing closing /
   }
 
-  // Extract pattern between the two slashes
+  // Extract pattern between slashes
   size_t pattern_len = (size_t)(closing_slash - (input + 1));
   if (pattern_len == 0) {
-    return 0; // Error: empty pattern between slashes
+    return result; // Invalid: empty pattern
   }
-  if (pattern_len >= pattern_size) {
-    pattern_len = pattern_size - 1;
+  if (pattern_len >= sizeof(result.pattern)) {
+    pattern_len = sizeof(result.pattern) - 1;
   }
-  memcpy(pattern_out, input + 1, pattern_len);
-  pattern_out[pattern_len] = '\0';
+  memcpy(result.pattern, input + 1, pattern_len);
+  result.pattern[pattern_len] = '\0';
 
-  // Parse optional flags after closing slash
+  // Parse flags after closing slash
   const char *flags = closing_slash + 1;
-  size_t flags_len = strlen(flags);
+  for (const char *p = flags; *p; p++) {
+    char c = *p;
 
-  // Validate that all characters after closing slash are valid flags
-  for (size_t i = 0; i < flags_len; i++) {
-    char c = flags[i];
-    if (c != 'i' && c != 'm' && c != 's' && c != 'x' && c != 'g') {
-      return 0; // Error: invalid flag character
+    // Single-character flags
+    if (c == 'i') {
+      result.pcre2_options |= PCRE2_CASELESS;
+    } else if (c == 'm') {
+      result.pcre2_options |= PCRE2_MULTILINE;
+    } else if (c == 's') {
+      result.pcre2_options |= PCRE2_DOTALL;
+    } else if (c == 'x') {
+      result.pcre2_options |= PCRE2_EXTENDED;
+    } else if (c == 'g') {
+      result.global_flag = true;
+    } else if (c == 'I') {
+      result.invert = true;
+    }
+    // Multi-character flags with integers
+    else if (c == 'A') {
+      p++; // Move to digits
+      int num = 0;
+      while (*p >= '0' && *p <= '9') {
+        num = num * 10 + (*p - '0');
+        p++;
+      }
+      p--;                                        // Back up one (for loop will increment)
+      result.context_after = (num > 0) ? num : 1; // Default to 1 if no number
+    } else if (c == 'B') {
+      p++;
+      int num = 0;
+      while (*p >= '0' && *p <= '9') {
+        num = num * 10 + (*p - '0');
+        p++;
+      }
+      p--;
+      result.context_before = (num > 0) ? num : 1;
+    } else if (c == 'C') {
+      p++;
+      int num = 0;
+      while (*p >= '0' && *p <= '9') {
+        num = num * 10 + (*p - '0');
+        p++;
+      }
+      p--;
+      int ctx = (num > 0) ? num : 1;
+      result.context_before = ctx;
+      result.context_after = ctx;
+    } else {
+      // Invalid flag character
+      return result;
     }
   }
 
-  // Apply flags
-  for (size_t i = 0; i < flags_len; i++) {
-    switch (flags[i]) {
-    case 'i': // case-insensitive
-      options |= PCRE2_CASELESS;
-      break;
-    case 'm': // multiline mode (^ and $ match line boundaries)
-      options |= PCRE2_MULTILINE;
-      break;
-    case 's': // dotall mode (. matches newlines)
-      options |= PCRE2_DOTALL;
-      break;
-    case 'x': // extended mode (ignore whitespace and comments)
-      options |= PCRE2_EXTENDED;
-      break;
-    case 'g': // global flag - highlight all matches per line
-      // Handled separately in log_filter_init()
-      break;
-    default:
-      // Already validated above, this shouldn't be reached
-      log_error("BUG: Invalid flag character '%c' passed validation", flags[i]);
-      break;
-    }
-  }
-
-  return options;
+  result.valid = true;
+  return result;
 }
 
 asciichat_error_t log_filter_init(const char *pattern) {
   if (!pattern || strlen(pattern) == 0) {
-    g_filter_state.enabled = false;
     return ASCIICHAT_OK;
   }
 
-  // Parse pattern and extract flags
-  char parsed_pattern[4096];
-  uint32_t pcre2_options = parse_pattern_with_flags(pattern, parsed_pattern, sizeof(parsed_pattern));
-
-  // Check for format error (parse function returns 0 on invalid format)
-  if (pcre2_options == 0) {
+  // Parse pattern
+  parse_result_t parsed = parse_pattern_with_flags(pattern);
+  if (!parsed.valid) {
     log_error("Invalid --grep pattern format: \"%s\"", pattern);
-    log_error("Use /pattern/flags format, e.g., \"/my_query/ig\" or \"/test/\"");
-    g_filter_state.enabled = false;
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid --grep pattern format, use \"/my_query/ig\" format");
+    log_error("Use /pattern/flags format (e.g., \"/query/ig\") or literal string (e.g., \"my literal string\")");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid --grep pattern format");
   }
 
-  // Check for /g flag to enable global matching (highlight all matches per line)
-  const char *last_slash = strrchr(pattern, '/');
-  g_filter_state.global_flag = (last_slash && strchr(last_slash + 1, 'g') != NULL);
-
-  // Use singleton pattern (auto-registered for cleanup, includes JIT)
-  g_filter_state.singleton = asciichat_pcre2_singleton_compile(parsed_pattern, pcre2_options);
-
-  if (!g_filter_state.singleton) {
-    log_warn("Invalid --grep pattern: failed to allocate singleton");
-    g_filter_state.enabled = false;
-    return ERROR_INVALID_PARAM;
+  // Allocate or expand pattern array
+  if (g_filter_state.pattern_count >= g_filter_state.pattern_capacity) {
+    int new_capacity = (g_filter_state.pattern_capacity == 0) ? 4 : g_filter_state.pattern_capacity * 2;
+    log_filter_pattern_t *new_patterns =
+        SAFE_REALLOC(g_filter_state.patterns, new_capacity * sizeof(log_filter_pattern_t), log_filter_pattern_t *);
+    if (!new_patterns) {
+      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate pattern array");
+    }
+    g_filter_state.patterns = new_patterns;
+    g_filter_state.pattern_capacity = new_capacity;
   }
 
-  // Force compilation to validate pattern early
-  pcre2_code *code = asciichat_pcre2_singleton_get_code(g_filter_state.singleton);
-  if (!code) {
-    log_warn("Invalid --grep pattern: compilation failed");
-    g_filter_state.enabled = false;
-    return ERROR_INVALID_PARAM;
+  // Add new pattern
+  log_filter_pattern_t *new_pat = &g_filter_state.patterns[g_filter_state.pattern_count];
+  memset(new_pat, 0, sizeof(*new_pat));
+
+  new_pat->original = pattern;
+  new_pat->parsed_pattern = SAFE_MALLOC(strlen(parsed.pattern) + 1, char *);
+  if (!new_pat->parsed_pattern) {
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate pattern string");
+  }
+  strcpy(new_pat->parsed_pattern, parsed.pattern);
+
+  new_pat->is_fixed_string = parsed.is_fixed_string;
+  new_pat->invert = parsed.invert;
+  new_pat->global_flag = parsed.global_flag;
+  new_pat->context_before = parsed.context_before;
+  new_pat->context_after = parsed.context_after;
+
+  // Compile regex (skip for fixed strings)
+  if (!parsed.is_fixed_string) {
+    new_pat->singleton = asciichat_pcre2_singleton_compile(parsed.pattern, parsed.pcre2_options);
+    if (!new_pat->singleton) {
+      SAFE_FREE(new_pat->parsed_pattern);
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Failed to compile regex pattern");
+    }
+
+    // Validate compilation
+    pcre2_code *code = asciichat_pcre2_singleton_get_code(new_pat->singleton);
+    if (!code) {
+      SAFE_FREE(new_pat->parsed_pattern);
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Regex compilation failed");
+    }
   }
 
-  g_filter_state.pattern = pattern;
+  g_filter_state.pattern_count++;
+
+  // Update context buffer size if needed
+  if (parsed.context_before > g_filter_state.buffer_size) {
+    // Reallocate line buffer
+    char **new_buffer = SAFE_REALLOC(g_filter_state.line_buffer, parsed.context_before * sizeof(char *), char **);
+    if (!new_buffer) {
+      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate context line buffer");
+    }
+    // Initialize new slots
+    for (int i = g_filter_state.buffer_size; i < parsed.context_before; i++) {
+      new_buffer[i] = NULL;
+    }
+    g_filter_state.line_buffer = new_buffer;
+    g_filter_state.buffer_size = parsed.context_before;
+  }
+
+  // Update max context_after
+  if (parsed.context_after > g_filter_state.max_context_after) {
+    g_filter_state.max_context_after = parsed.context_after;
+  }
+
   g_filter_state.enabled = true;
+  log_info("Added --grep pattern #%d: %s", g_filter_state.pattern_count, pattern);
 
-  log_info("Log filtering enabled with pattern: %s", pattern);
   return ASCIICHAT_OK;
 }
 
@@ -324,35 +448,91 @@ bool log_filter_should_output(const char *log_line, size_t *match_start, size_t 
     return true; // No filtering, output everything
   }
 
+  // Check if we're in "context after" mode (outputting lines after a match)
+  if (g_filter_state.lines_after_match > 0) {
+    g_filter_state.lines_after_match--;
+    *match_start = 0;
+    *match_len = 0;
+    return true; // Output context line
+  }
+
   pcre2_match_data *match_data = get_thread_match_data();
-  if (!match_data) {
-    // Allocation failed, pass through (log warning once per thread)
-    static __thread bool warned = false;
-    if (!warned) {
-      log_warn("Failed to create thread-local match data for grep filtering");
-      warned = true;
-    }
-    return true;
-  }
-
-  pcre2_code *code = asciichat_pcre2_singleton_get_code(g_filter_state.singleton);
-  if (!code) {
-    return true; // Compilation failed, pass through
-  }
-
   size_t line_len = strlen(log_line);
-  int rc = pcre2_jit_match(code, (PCRE2_SPTR)log_line, line_len, 0, 0, match_data, NULL);
 
-  if (rc < 0) {
-    return false; // No match, suppress line
+  // Try each pattern (OR logic)
+  bool any_match = false;
+  log_filter_pattern_t *matched_pattern = NULL;
+
+  for (int i = 0; i < g_filter_state.pattern_count; i++) {
+    log_filter_pattern_t *pat = &g_filter_state.patterns[i];
+    bool this_match = false;
+
+    if (pat->is_fixed_string) {
+      // Fixed string matching
+      const char *found = strstr(log_line, pat->parsed_pattern);
+      if (found) {
+        this_match = true;
+        if (!matched_pattern) {
+          *match_start = (size_t)(found - log_line);
+          *match_len = strlen(pat->parsed_pattern);
+          matched_pattern = pat;
+        }
+      }
+    } else {
+      // Regex matching
+      if (!match_data || !pat->singleton) {
+        continue;
+      }
+
+      pcre2_code *code = asciichat_pcre2_singleton_get_code(pat->singleton);
+      if (!code) {
+        continue;
+      }
+
+      int rc = pcre2_jit_match(code, (PCRE2_SPTR)log_line, line_len, 0, 0, match_data, NULL);
+      if (rc >= 0) {
+        this_match = true;
+        if (!matched_pattern) {
+          PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
+          *match_start = (size_t)ovector[0];
+          *match_len = (size_t)(ovector[1] - ovector[0]);
+          matched_pattern = pat;
+        }
+      }
+    }
+
+    // Apply invert flag
+    if (pat->invert) {
+      this_match = !this_match;
+    }
+
+    if (this_match) {
+      any_match = true;
+      // Update matched_pattern if this one has more context
+      if (!matched_pattern || (pat->context_before + pat->context_after) >
+                                  (matched_pattern->context_before + matched_pattern->context_after)) {
+        matched_pattern = pat;
+      }
+    }
   }
 
-  // Extract match position (group 0 = entire match)
-  PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
-  *match_start = (size_t)ovector[0];
-  *match_len = (size_t)(ovector[1] - ovector[0]);
+  // If any pattern matched
+  if (any_match && matched_pattern) {
+    // Set up context_after counter
+    if (matched_pattern->context_after > 0) {
+      g_filter_state.lines_after_match = matched_pattern->context_after;
+    }
 
-  return true; // Match found, output with highlighting
+    // TODO: Output context_before lines from buffer here
+    // (would need to integrate with logging.c to output buffered lines)
+
+    return true; // Match found, output line
+  }
+
+  // No match - store in context buffer for potential future use
+  // TODO: Implement circular buffer storage for context_before
+
+  return false; // No match, suppress line
 }
 
 const char *log_filter_highlight_colored(const char *colored_text, const char *plain_text, size_t match_start,
@@ -363,9 +543,18 @@ const char *log_filter_highlight_colored(const char *colored_text, const char *p
     return colored_text;
   }
 
-  // If global flag is set, find and highlight ALL matches
-  if (g_filter_state.global_flag && g_filter_state.singleton) {
-    pcre2_code *code = asciichat_pcre2_singleton_get_code(g_filter_state.singleton);
+  // If any pattern has global flag, highlight ALL matches for that pattern
+  // Find first pattern with global flag
+  log_filter_pattern_t *global_pat = NULL;
+  for (int i = 0; i < g_filter_state.pattern_count; i++) {
+    if (g_filter_state.patterns[i].global_flag && !g_filter_state.patterns[i].is_fixed_string) {
+      global_pat = &g_filter_state.patterns[i];
+      break;
+    }
+  }
+
+  if (global_pat && global_pat->singleton) {
+    pcre2_code *code = asciichat_pcre2_singleton_get_code(global_pat->singleton);
     pcre2_match_data *match_data = get_thread_match_data();
 
     if (!code || !match_data) {
@@ -560,9 +749,17 @@ const char *log_filter_highlight(const char *log_line, size_t match_start, size_
   const char *src = log_line;
   size_t pos = 0;
 
-  // If global flag is set, find and highlight ALL matches
-  if (g_filter_state.global_flag) {
-    pcre2_code *code = asciichat_pcre2_singleton_get_code(g_filter_state.singleton);
+  // If any pattern has global flag, highlight ALL matches
+  log_filter_pattern_t *global_pat = NULL;
+  for (int i = 0; i < g_filter_state.pattern_count; i++) {
+    if (g_filter_state.patterns[i].global_flag && !g_filter_state.patterns[i].is_fixed_string) {
+      global_pat = &g_filter_state.patterns[i];
+      break;
+    }
+  }
+
+  if (global_pat && global_pat->singleton) {
+    pcre2_code *code = asciichat_pcre2_singleton_get_code(global_pat->singleton);
     pcre2_match_data *match_data = get_thread_match_data();
 
     if (!code || !match_data) {
@@ -646,11 +843,26 @@ const char *log_filter_highlight(const char *log_line, size_t match_start, size_
 }
 
 void log_filter_destroy(void) {
-  // Singleton is auto-cleaned by asciichat_pcre2_cleanup_all() in common.c
-  g_filter_state.singleton = NULL;
-  g_filter_state.pattern = NULL;
+  // Free all patterns
+  for (int i = 0; i < g_filter_state.pattern_count; i++) {
+    log_filter_pattern_t *pat = &g_filter_state.patterns[i];
+    SAFE_FREE(pat->parsed_pattern);
+    // Singletons are auto-cleaned by asciichat_pcre2_cleanup_all()
+    pat->singleton = NULL;
+  }
+  SAFE_FREE(g_filter_state.patterns);
+
+  // Free context buffer
+  if (g_filter_state.line_buffer) {
+    for (int i = 0; i < g_filter_state.buffer_size; i++) {
+      SAFE_FREE(g_filter_state.line_buffer[i]);
+    }
+    SAFE_FREE(g_filter_state.line_buffer);
+  }
+
+  g_filter_state.pattern_count = 0;
+  g_filter_state.pattern_capacity = 0;
   g_filter_state.enabled = false;
-  g_filter_state.global_flag = false;
 
   // Note: Thread-local match_data is cleaned up via pthread_key destructor
 }
