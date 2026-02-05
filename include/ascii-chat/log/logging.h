@@ -938,6 +938,15 @@ void log_shutdown_begin(void);
  */
 void log_shutdown_end(void);
 
+/**
+ * @brief Clean up compiled color scheme
+ *
+ * Should be called AFTER memory reporting to ensure colored output.
+ * Safe to call multiple times (idempotent).
+ * @ingroup logging
+ */
+void log_cleanup_colors(void);
+
 #ifdef __cplusplus
 }
 #endif

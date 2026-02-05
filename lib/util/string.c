@@ -274,12 +274,27 @@ const char *colored_string(log_color_t color, const char *text) {
   static char buffers[COLORED_BUFFERS][COLORED_BUFFER_SIZE];
   static int buffer_idx = 0;
 
-  // Check if we should use colors
-  bool use_colors = terminal_should_color_output(STDOUT_FILENO);
-
   if (!text) {
     return "";
   }
+
+  // Check if we should use colors
+  // Use global flag that persists even after options cleanup
+  extern bool g_color_flag_passed;
+  extern bool g_color_flag_value;
+
+  bool use_colors = false;
+
+  // Priority 1: If --color was explicitly passed, force colors
+  if (g_color_flag_passed && g_color_flag_value) {
+    use_colors = true;
+  }
+  // Priority 2: If --color NOT explicitly passed, use terminal detection
+  else if (!g_color_flag_passed) {
+    use_colors = terminal_should_color_output(STDOUT_FILENO);
+  }
+  // Priority 3: If --color=false was explicitly passed, disable colors
+  // (use_colors stays false)
 
   if (!use_colors) {
     // No colors, just return the text directly

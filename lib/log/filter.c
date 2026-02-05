@@ -27,13 +27,13 @@
  * @brief Global filter state (initialized once at startup)
  */
 static struct {
-  pcre2_code *compiled_regex;     ///< Compiled PCRE2 pattern
+  pcre2_singleton_t *singleton;   ///< PCRE2 singleton (auto-registered for cleanup)
   const char *pattern;            ///< Original pattern string
   bool enabled;                   ///< Is filtering active?
   pthread_key_t match_data_key;   ///< Thread-local match_data key
   pthread_once_t match_data_once; ///< Initialize key once
 } g_filter_state = {
-    .compiled_regex = NULL,
+    .singleton = NULL,
     .pattern = NULL,
     .enabled = false,
     .match_data_once = PTHREAD_ONCE_INIT,
@@ -62,10 +62,13 @@ static pcre2_match_data *get_thread_match_data(void) {
   pthread_once(&g_filter_state.match_data_once, create_match_data_key);
 
   pcre2_match_data *data = pthread_getspecific(g_filter_state.match_data_key);
-  if (!data && g_filter_state.compiled_regex) {
-    data = pcre2_match_data_create_from_pattern(g_filter_state.compiled_regex, NULL);
-    if (data) {
-      pthread_setspecific(g_filter_state.match_data_key, data);
+  if (!data && g_filter_state.singleton) {
+    pcre2_code *code = asciichat_pcre2_singleton_get_code(g_filter_state.singleton);
+    if (code) {
+      data = pcre2_match_data_create_from_pattern(code, NULL);
+      if (data) {
+        pthread_setspecific(g_filter_state.match_data_key, data);
+      }
     }
   }
 
@@ -78,24 +81,23 @@ asciichat_error_t log_filter_init(const char *pattern) {
     return ASCIICHAT_OK;
   }
 
-  int error_number;
-  PCRE2_SIZE error_offset;
+  // Use singleton pattern (auto-registered for cleanup, includes JIT)
+  g_filter_state.singleton =
+      asciichat_pcre2_singleton_compile(pattern, PCRE2_CASELESS | PCRE2_UTF | PCRE2_MULTILINE | PCRE2_UCP);
 
-  // Compile pattern with case-insensitive, UTF-8, multiline, Unicode properties
-  g_filter_state.compiled_regex =
-      pcre2_compile((PCRE2_SPTR)pattern, PCRE2_ZERO_TERMINATED,
-                    PCRE2_CASELESS | PCRE2_UTF | PCRE2_MULTILINE | PCRE2_UCP, &error_number, &error_offset, NULL);
-
-  if (!g_filter_state.compiled_regex) {
-    PCRE2_UCHAR error_buffer[256];
-    pcre2_get_error_message(error_number, error_buffer, sizeof(error_buffer));
-    log_warn("Invalid --grep pattern at offset %zu: %s", (size_t)error_offset, error_buffer);
+  if (!g_filter_state.singleton) {
+    log_warn("Invalid --grep pattern: failed to allocate singleton");
     g_filter_state.enabled = false;
     return ERROR_INVALID_PARAM;
   }
 
-  // Try JIT compilation (optional, silently ignore failure)
-  pcre2_jit_compile(g_filter_state.compiled_regex, PCRE2_JIT_COMPLETE);
+  // Force compilation to validate pattern early
+  pcre2_code *code = asciichat_pcre2_singleton_get_code(g_filter_state.singleton);
+  if (!code) {
+    log_warn("Invalid --grep pattern: compilation failed");
+    g_filter_state.enabled = false;
+    return ERROR_INVALID_PARAM;
+  }
 
   g_filter_state.pattern = pattern;
   g_filter_state.enabled = true;
@@ -120,8 +122,13 @@ bool log_filter_should_output(const char *log_line, size_t *match_start, size_t 
     return true;
   }
 
+  pcre2_code *code = asciichat_pcre2_singleton_get_code(g_filter_state.singleton);
+  if (!code) {
+    return true; // Compilation failed, pass through
+  }
+
   size_t line_len = strlen(log_line);
-  int rc = pcre2_jit_match(g_filter_state.compiled_regex, (PCRE2_SPTR)log_line, line_len, 0, 0, match_data, NULL);
+  int rc = pcre2_jit_match(code, (PCRE2_SPTR)log_line, line_len, 0, 0, match_data, NULL);
 
   if (rc < 0) {
     return false; // No match, suppress line
@@ -179,11 +186,8 @@ const char *log_filter_highlight(const char *log_line, size_t match_start, size_
 }
 
 void log_filter_destroy(void) {
-  if (g_filter_state.compiled_regex) {
-    pcre2_code_free(g_filter_state.compiled_regex);
-    g_filter_state.compiled_regex = NULL;
-  }
-
+  // Singleton is auto-cleaned by asciichat_pcre2_cleanup_all() in common.c
+  g_filter_state.singleton = NULL;
   g_filter_state.pattern = NULL;
   g_filter_state.enabled = false;
 

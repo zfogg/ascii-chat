@@ -728,7 +728,21 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
 
   // Format the header using centralized formatting
   char header_buffer[512];
-  bool use_colors = terminal_should_color_output(fd);
+
+  // Check if colors should be used
+  // Priority 1: If --color was explicitly passed, force colors
+  extern bool g_color_flag_passed;
+  extern bool g_color_flag_value;
+  bool use_colors = false;
+  if (g_color_flag_passed && g_color_flag_value) {
+    use_colors = true;
+  }
+  // Priority 2: If --color NOT explicitly passed, use terminal detection
+  else if (!g_color_flag_passed) {
+    use_colors = terminal_should_color_output(fd);
+  }
+  // Priority 3: If --color=false was explicitly passed, disable colors
+  // (use_colors stays false)
 
   int header_len =
       format_log_header(header_buffer, sizeof(header_buffer), level, timestamp, file, line, func, use_colors, false);
@@ -865,7 +879,21 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
         output_stream = (level == LOG_ERROR || level == LOG_WARN || level == LOG_FATAL) ? stderr : stdout;
       }
       int fd = output_stream == stderr ? STDERR_FILENO : STDOUT_FILENO;
-      bool use_colors = terminal_should_color_output(fd);
+
+      // Check if colors should be used
+      // Priority 1: If --color was explicitly passed, force colors
+      extern bool g_color_flag_passed;
+      extern bool g_color_flag_value;
+      bool use_colors = false;
+      if (g_color_flag_passed && g_color_flag_value) {
+        use_colors = true;
+      }
+      // Priority 2: If --color NOT explicitly passed, use terminal detection
+      else if (!g_color_flag_passed) {
+        use_colors = terminal_should_color_output(fd);
+      }
+      // Priority 3: If --color=false was explicitly passed, disable colors
+      // (use_colors stays false)
 
       char header_buffer[512];
       int header_len =
@@ -1473,9 +1501,6 @@ void log_shutdown_begin(void) {
 }
 
 void log_shutdown_end(void) {
-  /* Clean up compiled color scheme (called as atexit handler even if shutdown wasn't started) */
-  colorscheme_cleanup_compiled(&g_compiled_colors);
-
   if (!g_shutdown_in_progress) {
     return; /* Not in shutdown phase, skip terminal state restoration */
   }
@@ -1483,4 +1508,14 @@ void log_shutdown_end(void) {
   /* Restore previous terminal output state */
   atomic_store(&g_log.terminal_output_enabled, g_shutdown_saved_terminal_output);
   g_shutdown_in_progress = false;
+}
+
+/**
+ * @brief Clean up compiled color scheme
+ *
+ * Should be called AFTER memory reporting to ensure colored output.
+ * Safe to call multiple times (idempotent).
+ */
+void log_cleanup_colors(void) {
+  colorscheme_cleanup_compiled(&g_compiled_colors);
 }

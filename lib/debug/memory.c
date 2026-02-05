@@ -39,6 +39,61 @@ typedef struct mem_block {
 
 static __thread bool g_in_debug_memory = false;
 
+/**
+ * @brief Allocation ignore list for memory report
+ *
+ * These file:line:count entries represent expected system allocations that should
+ * not be reported as leaks. The count field specifies EXACTLY how many allocations
+ * from that location are expected. If more allocations exist, they WILL be reported
+ * as leaks, allowing us to detect actual memory leaks even in ignored locations.
+ *
+ * Example: {"lib/util/pcre2.c", 52, 2} means exactly 2 PCRE2 singleton allocations
+ * are expected. If 3 exist, the 3rd one will be reported as a leak.
+ */
+typedef struct {
+  const char *file;
+  int line;
+  int expected_count; // Exact number of allocations expected from this location
+} ignore_entry_t;
+
+static const ignore_entry_t g_ignore_list[] = {
+    {"lib/util/pcre2.c", 52, 2}, // Exactly 2 PCRE2 singleton allocations (cleaned after report)
+    {NULL, 0, 0}                 // Sentinel
+};
+
+// Track seen count for each ignore entry (reset at start of memory report)
+static int g_ignore_counts[32] = {0};
+
+/**
+ * @brief Reset ignore counters at start of memory report
+ */
+static void reset_ignore_counters(void) {
+  memset(g_ignore_counts, 0, sizeof(g_ignore_counts));
+}
+
+/**
+ * @brief Check if an allocation should be ignored in the memory report
+ *
+ * Tracks how many allocations from each ignore location have been seen.
+ * Only ignores up to the expected_count for each location.
+ */
+static bool should_ignore_allocation(const char *file, int line) {
+  const char *relative_path = extract_project_relative_path(file);
+
+  for (size_t i = 0; g_ignore_list[i].file != NULL; i++) {
+    if (line == g_ignore_list[i].line && strcmp(relative_path, g_ignore_list[i].file) == 0) {
+      // Found matching ignore entry - check if we've exceeded expected count
+      if (g_ignore_counts[i] < g_ignore_list[i].expected_count) {
+        g_ignore_counts[i]++;
+        return true; // Ignore this allocation
+      }
+      // Exceeded expected count - report as leak!
+      return false;
+    }
+  }
+  return false;
+}
+
 static struct {
   mem_block_t *head;
   atomic_size_t total_allocated;
@@ -513,6 +568,10 @@ void debug_memory_report(void) {
   }
 
   bool quiet = g_mem.quiet_mode;
+
+  // Reset ignore counters at start of report
+  reset_ignore_counters();
+
   if (!quiet) {
     SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "\n%s\n", colored_string(LOG_COLOR_DEV, "=== Memory Report ===")));
 
@@ -582,14 +641,16 @@ void debug_memory_report(void) {
     safe_snprintf(free_str, sizeof(free_str), "%zu", free_calls);
     PRINT_MEM_LINE(label_free, free_str);
 
-    // diff - count actual unfreed allocations in the linked list
+    // diff - count actual unfreed allocations in the linked list (excluding ignored)
     size_t unfreed_count = 0;
     if (g_mem.head) {
       if (ensure_mutex_initialized()) {
         mutex_lock(&g_mem.mutex);
         mem_block_t *curr = g_mem.head;
         while (curr) {
-          unfreed_count++;
+          if (!should_ignore_allocation(curr->file, curr->line)) {
+            unfreed_count++;
+          }
           curr = curr->next;
         }
         mutex_unlock(&g_mem.mutex);
@@ -610,6 +671,9 @@ void debug_memory_report(void) {
       if (ensure_mutex_initialized()) {
         mutex_lock(&g_mem.mutex);
 
+        // Reset counters before printing pass (after counting pass used them)
+        reset_ignore_counters();
+
         SAFE_IGNORE_PRINTF_RESULT(
             safe_fprintf(stderr, "\n%s\n", colored_string(LOG_COLOR_DEV, "Current allocations:")));
 
@@ -620,6 +684,12 @@ void debug_memory_report(void) {
 
         mem_block_t *curr = g_mem.head;
         while (curr) {
+          // Skip ignored allocations (e.g., PCRE2 singletons)
+          if (should_ignore_allocation(curr->file, curr->line)) {
+            curr = curr->next;
+            continue;
+          }
+
           char pretty_size[64];
           format_bytes_pretty(curr->size, pretty_size, sizeof(pretty_size));
           const char *file_location = strip_project_path(curr->file);

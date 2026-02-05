@@ -176,7 +176,28 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  // VERY FIRST: Scan for --grep BEFORE ANY logging initialization
+  // VERY FIRST: Scan for --color BEFORE ANY logging initialization
+  // This sets global flags that persist through cleanup, enabling --color to force colors
+  extern bool g_color_flag_passed;
+  extern bool g_color_flag_value;
+  for (int i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "--color") == 0 || strcmp(argv[i], "--color=true") == 0) {
+      g_color_flag_passed = true;
+      g_color_flag_value = true;
+      break;
+    } else if (strcmp(argv[i], "--color=false") == 0) {
+      g_color_flag_passed = true;
+      g_color_flag_value = false;
+      break;
+    } else if (strncmp(argv[i], "--color=", 8) == 0) {
+      g_color_flag_passed = true;
+      // Default to true for any other --color=X value
+      g_color_flag_value = true;
+      break;
+    }
+  }
+
+  // SECOND: Scan for --grep BEFORE ANY logging initialization
   // This ensures ALL logs (including from shared_init) can be filtered
   for (int i = 1; i < argc - 1; i++) {
     if (strcmp(argv[i], "--grep") == 0) {

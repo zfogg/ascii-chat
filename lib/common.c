@@ -18,10 +18,12 @@
 #include <ascii-chat/video/webcam/webcam.h> // For webcam_cleanup()
 #include <ascii-chat/options/colorscheme.h> // For colorscheme_shutdown()
 #include <ascii-chat/util/time.h>           // For timer_system_cleanup()
+#include <ascii-chat/util/pcre2.h>          // For asciichat_pcre2_cleanup_all()
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/crypto/known_hosts.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/options/rcu.h> // For RCU-based options access
+#include <ascii-chat/options/rcu.h>       // For RCU-based options access
+#include <ascii-chat/discovery/strings.h> // For RCU-based options access
 #include <string.h>
 #include <stdatomic.h>
 #include <limits.h>
@@ -169,11 +171,9 @@ void asciichat_shared_shutdown(void) {
   simd_caches_destroy_all();
 
   // 3. Discovery service strings cache - cleanup session string cache
-  extern void acds_strings_cleanup(void);
   acds_strings_cleanup();
 
   // 4. Logging - in correct order (end first, then begin)
-  // Note: This must happen BEFORE log_destroy() but AFTER most cleanup
   log_shutdown_end();
   log_shutdown_begin();
 
@@ -183,32 +183,37 @@ void asciichat_shared_shutdown(void) {
   // 6. Options state - cleanup RCU-based options
   options_state_shutdown();
 
-  // 7. Buffer pool - cleanup global buffer pool
+  // 7. Color cleanup - free compiled ANSI strings
+  log_cleanup_colors();
+  colorscheme_shutdown();
+
+  // 8. Buffer pool - cleanup global buffer pool
   buffer_pool_cleanup_global();
 
-  // 8. Platform cleanup - restores terminal, cleans up platform resources
+  // 9. Platform cleanup - restores terminal, cleans up platform resources
   // (includes symbol cache cleanup on Windows)
   platform_cleanup();
 
-  // 9. Keyboard - restore terminal settings (redundant with platform_cleanup but safe)
+  // 10. Keyboard - restore terminal settings (redundant with platform_cleanup but safe)
   extern void keyboard_cleanup(void);
   keyboard_cleanup();
 
-  // 10. Memory stats (debug builds only)
+  // 11. Timer system - cleanup timers (may still log!)
+  timer_system_cleanup();
+
+  // 12. Error context cleanup
+  asciichat_errno_cleanup();
+
+  // 13. Memory stats (debug builds only) - runs BEFORE PCRE2 cleanup
+  //     Note: PCRE2 singletons are ignored in the report (expected system allocations)
 #if defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
   print_mimalloc_stats();
 #elif defined(DEBUG_MEMORY) && !defined(NDEBUG)
   debug_memory_report();
 #endif
 
-  // 11. Color scheme - free ANSI code strings (must be after logging, before timer cleanup)
-  colorscheme_shutdown();
-
-  // 12. Timer system - cleanup timers last
-  timer_system_cleanup();
-
-  // 13. Error context cleanup - must be last so other cleanup can use it
-  asciichat_errno_cleanup();
+  // 14. PCRE2 - cleanup all regex singletons together
+  asciichat_pcre2_cleanup_all();
 }
 
 #if defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)

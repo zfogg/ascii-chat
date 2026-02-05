@@ -18,12 +18,17 @@
  * after that, enabling concurrent access from multiple threads.
  */
 typedef struct pcre2_singleton {
-  _Atomic(pcre2_code *) code; ///< Compiled regex (lazy init, atomic)
-  pcre2_jit_stack *jit_stack; ///< JIT stack for performance
-  _Atomic(bool) compiled;     ///< Whether compilation was attempted
-  const char *pattern;        ///< Pattern string (for error messages)
-  uint32_t flags;             ///< PCRE2 compile flags
+  _Atomic(pcre2_code *) code;   ///< Compiled regex (lazy init, atomic)
+  pcre2_jit_stack *jit_stack;   ///< JIT stack for performance
+  _Atomic(bool) compiled;       ///< Whether compilation was attempted
+  const char *pattern;          ///< Pattern string (for error messages)
+  uint32_t flags;               ///< PCRE2 compile flags
+  struct pcre2_singleton *next; ///< Next singleton in global registry
 } pcre2_singleton_t;
+
+/* Global registry of all PCRE2 singletons for automatic cleanup */
+static pcre2_singleton_t *g_singleton_registry = NULL;
+static _Atomic(bool) g_registry_initialized = false;
 
 /**
  * @brief Compile and cache a PCRE2 regex pattern with thread-safe singleton semantics
@@ -56,6 +61,11 @@ pcre2_singleton_t *asciichat_pcre2_singleton_compile(const char *pattern, uint32
   atomic_store(&singleton->compiled, false);
   singleton->pattern = pattern;
   singleton->flags = flags;
+
+  /* Register singleton in global list for automatic cleanup */
+  singleton->next = g_singleton_registry;
+  g_singleton_registry = singleton;
+  atomic_store(&g_registry_initialized, true);
 
   return singleton;
 }
@@ -132,6 +142,71 @@ bool asciichat_pcre2_singleton_is_initialized(pcre2_singleton_t *singleton) {
   }
   return atomic_load(&singleton->code) != NULL;
 }
+
+/**
+ * @brief Free a PCRE2 singleton and its resources
+ *
+ * Frees the compiled regex code, JIT stack, and singleton structure.
+ * After calling this, the singleton pointer is invalid and should not be used.
+ *
+ * @param singleton Handle returned by asciichat_pcre2_singleton_compile()
+ */
+void asciichat_pcre2_singleton_free(pcre2_singleton_t *singleton) {
+  if (!singleton) {
+    return;
+  }
+
+  /* Free compiled code if it exists */
+  pcre2_code *code = atomic_load(&singleton->code);
+  if (code) {
+    pcre2_code_free(code);
+  }
+
+  /* Free JIT stack if it exists */
+  if (singleton->jit_stack) {
+    pcre2_jit_stack_free(singleton->jit_stack);
+  }
+
+  /* Free the singleton structure itself */
+  free(singleton);
+}
+
+/**
+ * @brief Free all PCRE2 singletons in the global registry
+ *
+ * Walks the global registry and frees all singletons. Safe to call
+ * multiple times (idempotent). Should be called once during shutdown.
+ */
+void asciichat_pcre2_cleanup_all(void) {
+  if (!atomic_load(&g_registry_initialized)) {
+    return; /* No singletons were ever created */
+  }
+
+  pcre2_singleton_t *current = g_singleton_registry;
+  while (current) {
+    pcre2_singleton_t *next = current->next;
+
+    /* Free compiled code */
+    pcre2_code *code = atomic_load(&current->code);
+    if (code) {
+      pcre2_code_free(code);
+    }
+
+    /* Free JIT stack */
+    if (current->jit_stack) {
+      pcre2_jit_stack_free(current->jit_stack);
+    }
+
+    /* Free singleton structure */
+    free(current);
+
+    current = next;
+  }
+
+  g_singleton_registry = NULL;
+  atomic_store(&g_registry_initialized, false);
+}
+
 /**
  * @brief Extract named substring from PCRE2 match data
  *

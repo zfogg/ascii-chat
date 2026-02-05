@@ -71,6 +71,24 @@ pcre2_code *asciichat_pcre2_singleton_get_code(pcre2_singleton_t *singleton);
 bool asciichat_pcre2_singleton_is_initialized(pcre2_singleton_t *singleton);
 
 /**
+ * @brief Free a PCRE2 singleton and its resources
+ *
+ * Frees the compiled regex code, JIT stack, and singleton structure.
+ * After calling this, the singleton pointer is invalid and should not be used.
+ *
+ * @param singleton Handle returned by asciichat_pcre2_singleton_compile()
+ */
+void asciichat_pcre2_singleton_free(pcre2_singleton_t *singleton);
+
+/**
+ * @brief Free all PCRE2 singletons
+ *
+ * Automatically frees all singletons created with asciichat_pcre2_singleton_compile().
+ * Safe to call multiple times (idempotent). Should be called once during shutdown.
+ */
+void asciichat_pcre2_cleanup_all(void);
+
+/**
  * @brief Extract named substring from PCRE2 match data
  *
  * Extracts a named capture group from match data and returns an allocated string.
