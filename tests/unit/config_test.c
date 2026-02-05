@@ -243,6 +243,7 @@ Test(config_sections, network_port_as_integer) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid port as integer should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->port, 8080, "Port should be set to 8080");
 
@@ -263,6 +264,7 @@ Test(config_sections, network_port_as_string) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid port as string should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->port, 9090, "Port should be set to 9090");
 
@@ -330,6 +332,7 @@ Test(config_sections, client_port) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid port should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->port, 8080, "Port should be set");
 
@@ -350,6 +353,7 @@ Test(config_sections, server_max_clients) {
 
   asciichat_error_t result = config_load_and_apply(false, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid max_clients should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->max_clients, 16, "Max clients should be set");
 
@@ -370,6 +374,7 @@ Test(config_sections, network_compression_level) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid compression_level should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->compression_level, 5, "Compression level should be set");
 
@@ -403,6 +408,7 @@ Test(config_sections, client_width_height_as_integers) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid width/height should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->width, 120, "Width should be set to 120");
   cr_assert_eq(opts->height, 40, "Height should be set to 40");
@@ -425,6 +431,7 @@ Test(config_sections, client_width_height_as_strings) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid width/height as strings should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->width, 80, "Width should be set to 80");
   cr_assert_eq(opts->height, 24, "Height should be set to 24");
@@ -447,6 +454,7 @@ Test(config_sections, client_webcam_settings) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid webcam settings should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->webcam_index, 2, "Webcam index should be set to 2");
   cr_assert_eq(opts->webcam_flip, false, "Webcam flip should be false");
@@ -460,15 +468,21 @@ Test(config_sections, client_color_mode_none) {
   config_options_backup_t backup;
   save_config_options(&backup);
 
-  const char *content = "[display]\ncolor_mode = \"none\"\n";
+  const char *content = "[terminal]\ncolor_mode = \"none\"\n";
 
   char *config_path = create_temp_config(content);
   cr_assert_not_null(config_path, "Failed to create temp config file");
 
-  asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
+  asciichat_error_t result = config_load_and_apply(MODE_CLIENT, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid color mode none should succeed");
+  cr_assert_eq(backup.color_mode, TERM_COLOR_NONE,
+               "After config_load_and_apply: backup.color_mode should be TERM_COLOR_NONE (got %d, expected %d)",
+               backup.color_mode, TERM_COLOR_NONE);
+  options_state_set(&backup);
   const options_t *opts = options_get();
-  cr_assert_eq(opts->color_mode, COLOR_MODE_NONE, "Color mode should be none");
+  cr_assert_eq(opts->color_mode, TERM_COLOR_NONE,
+               "After options_state_set: color_mode should be none (got %d, expected %d)", opts->color_mode,
+               TERM_COLOR_NONE);
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -479,15 +493,20 @@ Test(config_sections, client_color_mode_256) {
   config_options_backup_t backup;
   save_config_options(&backup);
 
-  const char *content = "[display]\ncolor_mode = \"256\"\n";
+  const char *content = "[terminal]\ncolor_mode = \"256\"\n";
 
   char *config_path = create_temp_config(content);
   cr_assert_not_null(config_path, "Failed to create temp config file");
 
-  asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
+  asciichat_error_t result = config_load_and_apply(MODE_CLIENT, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid color mode 256 should succeed");
+  cr_assert_eq(backup.color_mode, TERM_COLOR_256,
+               "After config_load_and_apply: backup.color_mode should be TERM_COLOR_256 (got %d, expected %d)",
+               backup.color_mode, TERM_COLOR_256);
+  options_state_set(&backup);
   const options_t *opts = options_get();
-  cr_assert_eq(opts->color_mode, COLOR_MODE_256_COLOR, "Color mode should be 256");
+  cr_assert_eq(opts->color_mode, TERM_COLOR_256, "Color mode should be 256 (got %d, expected %d)", opts->color_mode,
+               TERM_COLOR_256);
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -498,15 +517,20 @@ Test(config_sections, client_color_mode_truecolor) {
   config_options_backup_t backup;
   save_config_options(&backup);
 
-  const char *content = "[display]\ncolor_mode = \"truecolor\"\n";
+  const char *content = "[terminal]\ncolor_mode = \"truecolor\"\n";
 
   char *config_path = create_temp_config(content);
   cr_assert_not_null(config_path, "Failed to create temp config file");
 
-  asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
+  asciichat_error_t result = config_load_and_apply(MODE_CLIENT, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid color mode truecolor should succeed");
+  cr_assert_eq(backup.color_mode, TERM_COLOR_TRUECOLOR,
+               "After config_load_and_apply: backup.color_mode should be TERM_COLOR_TRUECOLOR (got %d, expected %d)",
+               backup.color_mode, TERM_COLOR_TRUECOLOR);
+  options_state_set(&backup);
   const options_t *opts = options_get();
-  cr_assert_eq(opts->color_mode, COLOR_MODE_TRUECOLOR, "Color mode should be truecolor");
+  cr_assert_eq(opts->color_mode, TERM_COLOR_TRUECOLOR, "Color mode should be truecolor (got %d, expected %d)",
+               opts->color_mode, TERM_COLOR_TRUECOLOR);
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -524,6 +548,7 @@ Test(config_sections, client_render_mode_foreground) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid render mode foreground should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->render_mode, RENDER_MODE_FOREGROUND, "Render mode should be foreground");
 
@@ -543,6 +568,7 @@ Test(config_sections, client_render_mode_background) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid render mode background should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->render_mode, RENDER_MODE_BACKGROUND, "Render mode should be background");
 
@@ -562,6 +588,7 @@ Test(config_sections, client_render_mode_half_block) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid render mode half-block should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->render_mode, RENDER_MODE_HALF_BLOCK, "Render mode should be half-block");
 
@@ -585,6 +612,7 @@ Test(config_sections, client_boolean_options) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid boolean options should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->stretch, 1, "Stretch should be enabled");
   cr_assert_eq(opts->quiet, 1, "Quiet should be enabled");
@@ -607,6 +635,7 @@ Test(config_sections, client_snapshot_delay) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid snapshot delay should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_float_eq(opts->snapshot_delay, 2.5f, 0.01f, "Snapshot delay should be 2.5");
 
@@ -678,6 +707,7 @@ Test(config_sections, client_config_ignored_for_server) {
   // Terminal settings apply to all modes
   asciichat_error_t result = config_load_and_apply(false, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Loading terminal config should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->width, 200, "Width should be set from terminal config");
   cr_assert_eq(opts->height, 100, "Height should be set from terminal config");
@@ -705,6 +735,7 @@ Test(config_sections, audio_settings) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid audio settings should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->audio_enabled, 1, "Audio should be enabled");
   cr_assert_eq(opts->microphone_index, 1, "Microphone index should be 1");
@@ -728,6 +759,7 @@ Test(config_sections, audio_device_default) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Microphone index -1 should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->microphone_index, -1, "Microphone index should be -1 (default)");
 
@@ -757,6 +789,7 @@ Test(config_sections, audio_config_ignored_for_server) {
   // Load as server - audio config should be ignored
   asciichat_error_t result = config_load_and_apply(false, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Loading audio config as server should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->audio_enabled, 0, "Audio enabled should remain unchanged for server");
   cr_assert_eq(opts->microphone_index, 0, "Microphone index should remain unchanged for server");
@@ -781,6 +814,7 @@ Test(config_sections, palette_type_standard) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid palette type standard should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->palette_type, PALETTE_STANDARD, "Palette type should be standard");
 
@@ -800,6 +834,7 @@ Test(config_sections, palette_type_blocks) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid palette type blocks should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->palette_type, PALETTE_BLOCKS, "Palette type should be blocks");
 
@@ -819,6 +854,7 @@ Test(config_sections, palette_type_digital) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid palette type digital should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->palette_type, PALETTE_DIGITAL, "Palette type should be digital");
 
@@ -839,6 +875,7 @@ Test(config_sections, palette_custom_chars) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid palette chars should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_str_eq(opts->palette_custom, "@#$%^&*", "Palette chars should be set");
   cr_assert_eq(opts->palette_type, PALETTE_CUSTOM, "Palette type should be set to custom");
@@ -874,6 +911,7 @@ Test(config_sections, palette_chars_too_long) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Too long palette chars should be skipped");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->palette_custom_set, false, "Palette custom set should remain false");
 
@@ -898,6 +936,7 @@ Test(config_sections, crypto_encrypt_enabled) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid encrypt enabled should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->encrypt_enabled, 1, "Encryption should be enabled");
 
@@ -925,6 +964,7 @@ Test(config_sections, crypto_no_encrypt) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid no_encrypt should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->no_encrypt, 1, "No encrypt should be set");
   cr_assert_eq(opts->encrypt_enabled, 0, "Encryption should be disabled by no_encrypt");
@@ -952,6 +992,7 @@ Test(config_sections, crypto_key_auto_enables_encryption) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid crypto key should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_str_eq(opts->encrypt_key, "gpg:ABCD1234", "Crypto key should be set");
   cr_assert_eq(opts->encrypt_enabled, 1, "Encryption should be auto-enabled when key provided");
@@ -974,6 +1015,7 @@ Test(config_sections, crypto_server_key_client_only) {
   // Load as client
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Server key for client should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_str_eq(opts->server_key, "github:testuser", "Server key should be set for client");
 
@@ -999,6 +1041,7 @@ Test(config_sections, crypto_client_keys_server_only) {
   // Load as server
   asciichat_error_t result = config_load_and_apply(false, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Client keys for server should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_str_eq(opts->client_keys, temp_dir, "Client keys should be set for server");
 
@@ -1025,6 +1068,7 @@ Test(config_sections, log_file_in_logging_section) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid log file should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_str_eq(opts->log_file, "/tmp/test.log", "Log file should be set");
 
@@ -1044,6 +1088,7 @@ Test(config_sections, log_file_at_root) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid root log file should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_str_eq(opts->log_file, "/var/log/ascii-chat.log", "Log file should be set from root");
 
@@ -1112,7 +1157,7 @@ Test(config_sections, full_client_config) {
   cr_assert_eq(opts->height, 48, "Height should be 48");
   cr_assert_eq(opts->webcam_index, 1, "Webcam index should be 1");
   cr_assert_eq(opts->webcam_flip, false, "Webcam flip should be false");
-  cr_assert_eq(opts->color_mode, COLOR_MODE_256_COLOR, "Color mode should be 256");
+  cr_assert_eq(opts->color_mode, TERM_COLOR_256, "Color mode should be 256");
   cr_assert_eq(opts->render_mode, RENDER_MODE_HALF_BLOCK, "Render mode should be half-block");
   cr_assert_eq(opts->stretch, 1, "Stretch should be enabled");
   cr_assert_eq(opts->quiet, 0, "Quiet should be disabled");
@@ -1293,6 +1338,7 @@ Test(config, unknown_sections_are_ignored) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Unknown sections should be ignored");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->port, 5555, "Known values should still be applied");
 
@@ -1315,6 +1361,7 @@ Test(config, unknown_keys_are_ignored) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Unknown keys should be ignored");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->port, 6666, "Known values should still be applied");
 
@@ -1382,6 +1429,7 @@ Test(config, whitespace_handling) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Config with extra whitespace should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->port, 8888, "Port should be parsed correctly despite whitespace");
   cr_assert_eq(opts->width, 120, "Width should be parsed correctly despite whitespace");
@@ -1411,6 +1459,7 @@ Test(config, inline_comments) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Config with inline comments should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->port, 9999, "Port should be parsed correctly with inline comment");
   cr_assert_eq(opts->width, 100, "Width should be parsed correctly with inline comment");
@@ -1474,6 +1523,7 @@ Test(config, boolean_values) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Boolean values should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->stretch, 1, "true should be 1");
   cr_assert_eq(opts->quiet, 0, "false should be 0");
@@ -1495,6 +1545,7 @@ Test(config, float_snapshot_delay) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Float snapshot delay should succeed");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_float_eq(opts->snapshot_delay, 3.14159f, 0.0001f, "Float should be parsed correctly");
 
@@ -1514,7 +1565,7 @@ Test(config, invalid_color_mode_skipped) {
   const options_t *current_opts = options_get();
   options_t writable_opts;
   memcpy(&writable_opts, current_opts, sizeof(options_t));
-  writable_opts.color_mode = COLOR_MODE_AUTO;
+  writable_opts.color_mode = TERM_COLOR_AUTO;
   options_state_set(&writable_opts);
 
   const char *content = "[display]\n"
@@ -1525,8 +1576,9 @@ Test(config, invalid_color_mode_skipped) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Invalid color mode should be skipped");
+  options_state_set(&backup);
   const options_t *opts = options_get();
-  cr_assert_eq(opts->color_mode, COLOR_MODE_AUTO, "Color mode should remain unchanged");
+  cr_assert_eq(opts->color_mode, TERM_COLOR_AUTO, "Color mode should remain unchanged");
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -1552,6 +1604,7 @@ Test(config, invalid_render_mode_skipped) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Invalid render mode should be skipped");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->render_mode, RENDER_MODE_FOREGROUND, "Render mode should remain unchanged");
 
@@ -1579,6 +1632,7 @@ Test(config, invalid_palette_type_skipped) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Invalid palette type should be skipped");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->palette_type, PALETTE_STANDARD, "Palette type should remain unchanged");
 
@@ -1607,6 +1661,7 @@ Test(config, negative_width_skipped) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Negative width should be skipped");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   (void)opts; // Reserved for future validation
 
@@ -1632,6 +1687,7 @@ Test(config, negative_snapshot_delay_skipped) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Negative snapshot delay should be skipped");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_float_eq(opts->snapshot_delay, 1.0f, 0.01f, "Snapshot delay should remain unchanged");
 
@@ -1658,6 +1714,7 @@ Test(config, invalid_port_skipped) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Invalid port should be skipped");
+  options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->port, 8080, "Port should remain unchanged");
 
