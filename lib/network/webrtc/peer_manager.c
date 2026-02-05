@@ -177,6 +177,8 @@ static void on_local_candidate(webrtc_peer_connection_t *pc, const char *candida
   }
 
   log_debug("Sending ICE candidate to remote peer via ACDS");
+  log_debug("  [1] libdatachannel gave us candidate: '%s' (len=%zu)", candidate, strlen(candidate));
+  log_debug("  [1] libdatachannel gave us mid: '%s' (len=%zu)", mid, strlen(mid));
 
   asciichat_error_t result =
       manager->signaling.send_ice(peer->session_id, peer->participant_id, candidate, mid, manager->signaling.user_data);
@@ -440,6 +442,22 @@ asciichat_error_t webrtc_peer_manager_handle_ice(webrtc_peer_manager_t *manager,
   const char *mid = candidate + candidate_str_len + 1; // After candidate + null terminator
 
   log_debug("Handling incoming ICE candidate from remote peer (mid=%s)", mid);
+  log_debug("  [3] After ACDS recv - candidate: '%s' (len=%zu)", candidate, strlen(candidate));
+  log_debug("  [3] After ACDS recv - mid: '%s' (len=%zu)", mid, strlen(mid));
+  log_debug("  [3] After ACDS recv - header.candidate_len=%u", NET_TO_HOST_U16(ice->candidate_len));
+
+  // Hex dump first 100 bytes of payload for debugging
+  const uint8_t *payload = (const uint8_t *)(ice + 1);
+  log_debug("  [3] Hex dump of payload (first 100 bytes):");
+  for (int i = 0; i < 100 && i < (int)candidate_str_len + 20; i += 16) {
+    char hex[64] = {0};
+    char ascii[20] = {0};
+    for (int j = 0; j < 16 && (i + j) < 100; j++) {
+      sprintf(hex + j * 3, "%02x ", payload[i + j]);
+      ascii[j] = (payload[i + j] >= 32 && payload[i + j] < 127) ? payload[i + j] : '.';
+    }
+    log_debug("    [%04x] %-48s %s", i, hex, ascii);
+  }
 
   mutex_lock(&manager->peers_mutex);
 

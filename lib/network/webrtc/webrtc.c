@@ -494,6 +494,9 @@ asciichat_error_t webrtc_add_remote_candidate(webrtc_peer_connection_t *pc, cons
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
+  log_debug("  [4] Before libdatachannel - candidate: '%s' (len=%zu)", candidate, strlen(candidate));
+  log_debug("  [4] Before libdatachannel - mid: '%s' (len=%zu)", mid ? mid : "(null)", mid ? strlen(mid) : 0);
+
   int result = rtcAddRemoteCandidate(pc->rtc_id, candidate, mid);
   if (result != RTC_ERR_SUCCESS) {
     return SET_ERRNO(ERROR_NETWORK, "Failed to add remote ICE candidate (rtc error %d)", result);

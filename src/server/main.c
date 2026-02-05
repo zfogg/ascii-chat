@@ -612,7 +612,7 @@ static asciichat_error_t server_send_ice(const uint8_t session_id[16], const uin
   // Use server's participant_id from SESSION_JOIN as sender
   memcpy(header->sender_id, g_server_participant_id, 16);
   memcpy(header->recipient_id, recipient_id, 16);
-  header->candidate_len = HOST_TO_NET_U16((uint16_t)payload_len);
+  header->candidate_len = HOST_TO_NET_U16((uint16_t)candidate_len); // FIXED: Use candidate length, not total payload
 
   // Copy candidate and mid after header
   uint8_t *payload = packet + sizeof(acip_webrtc_ice_t);
@@ -623,6 +623,22 @@ static asciichat_error_t server_send_ice(const uint8_t session_id[16], const uin
 
   log_debug("Server sending WebRTC ICE candidate to participant (%.8s..., mid=%s) via ACDS", (const char *)recipient_id,
             mid);
+  log_debug("  [2] Before ACDS send - candidate: '%s' (len=%zu)", candidate, strlen(candidate));
+  log_debug("  [2] Before ACDS send - mid: '%s' (len=%zu)", mid, strlen(mid));
+  log_debug("  [2] Before ACDS send - payload_len=%zu, header.candidate_len=%u", payload_len,
+            NET_TO_HOST_U16(header->candidate_len));
+
+  // Hex dump payload for debugging
+  log_debug("  [2] Hex dump of payload being sent (first 100 bytes):");
+  for (size_t i = 0; i < 100 && i < payload_len; i += 16) {
+    char hex[64] = {0};
+    char ascii[20] = {0};
+    for (size_t j = 0; j < 16 && (i + j) < 100 && (i + j) < payload_len; j++) {
+      sprintf(hex + j * 3, "%02x ", payload[i + j]);
+      ascii[j] = (payload[i + j] >= 32 && payload[i + j] < 127) ? payload[i + j] : '.';
+    }
+    log_debug("    [%04zx] %-48s %s", i, hex, ascii);
+  }
 
   // Send via ACDS transport using generic packet sender
   asciichat_error_t result =

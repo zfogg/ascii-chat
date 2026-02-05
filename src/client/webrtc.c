@@ -232,7 +232,7 @@ static asciichat_error_t client_send_ice(const uint8_t session_id[16], const uin
   memcpy(header->session_id, session_id, 16);
   memcpy(header->sender_id, g_session_context.participant_id, 16);
   memcpy(header->recipient_id, recipient_id, 16);
-  header->candidate_len = HOST_TO_NET_U16((uint16_t)payload_len);
+  header->candidate_len = HOST_TO_NET_U16((uint16_t)candidate_len); // FIXED: Use candidate length, not total payload
 
   // Copy candidate and mid after header
   uint8_t *payload = packet + sizeof(acip_webrtc_ice_t);

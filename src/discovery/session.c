@@ -748,8 +748,13 @@ static void handle_discovery_webrtc_ice(discovery_session_t *session, void *data
   const acip_webrtc_ice_t *ice_msg = (const acip_webrtc_ice_t *)data;
   uint16_t candidate_len = NET_TO_HOST_U16(ice_msg->candidate_len);
 
-  if (len != sizeof(acip_webrtc_ice_t) + candidate_len) {
-    log_error("ICE packet size mismatch: expected %zu, got %zu", sizeof(acip_webrtc_ice_t) + candidate_len, len);
+  log_debug("★ ICE VALIDATION: len=%zu, sizeof(header)=%zu, candidate_len=%u, expected=%zu", len,
+            sizeof(acip_webrtc_ice_t), candidate_len, sizeof(acip_webrtc_ice_t) + candidate_len);
+
+  // FIXED: The payload contains candidate + null + mid + null, not just candidate
+  // So we can't validate the exact size without parsing the strings first
+  if (len < sizeof(acip_webrtc_ice_t) + candidate_len) {
+    log_error("ICE packet too small: expected at least %zu, got %zu", sizeof(acip_webrtc_ice_t) + candidate_len, len);
     return;
   }
 
