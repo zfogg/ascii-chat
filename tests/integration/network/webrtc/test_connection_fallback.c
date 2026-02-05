@@ -78,9 +78,9 @@ Test(connection_fallback, state_enum_definitions, .init = setup_fallback_test, .
  * - Stage 3 (TURN): 15 seconds
  */
 Test(connection_fallback, timeout_constants, .init = setup_fallback_test, .fini = teardown_fallback_test) {
-  cr_assert_eq(CONN_TIMEOUT_DIRECT_TCP, 3, "TCP timeout should be 3 seconds");
-  cr_assert_eq(CONN_TIMEOUT_WEBRTC_STUN, 8, "STUN timeout should be 8 seconds");
-  cr_assert_eq(CONN_TIMEOUT_WEBRTC_TURN, 15, "TURN timeout should be 15 seconds");
+  cr_assert_eq(CONN_TIMEOUT_DIRECT_TCP, 3LL * NS_PER_SEC_INT, "TCP timeout should be 3 seconds");
+  cr_assert_eq(CONN_TIMEOUT_WEBRTC_STUN, 8LL * NS_PER_SEC_INT, "STUN timeout should be 8 seconds");
+  cr_assert_eq(CONN_TIMEOUT_WEBRTC_TURN, 15LL * NS_PER_SEC_INT, "TURN timeout should be 15 seconds");
 }
 
 /**
