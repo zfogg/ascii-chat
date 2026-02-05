@@ -504,6 +504,7 @@ if(NOT BUILDING_OBJECT_LIBS)
         ascii-chat-platform
         ascii-chat-crypto
         ascii-chat-core
+        ${PCRE2_LIBRARIES}
         ${ZSTD_LIBRARIES}
         ${SQLITE3_LIBRARIES}  # Rate limiting SQLite backend
         libdatachannel  # WebRTC DataChannels for P2P transport
@@ -520,7 +521,7 @@ if(NOT BUILDING_OBJECT_LIBS)
     endif()
 else()
     # For OBJECT libs, link external deps only (OpenSSL needed by libdatachannel for TLS/DTLS)
-    target_link_libraries(ascii-chat-network ${ZSTD_LIBRARIES} ${SQLITE3_LIBRARIES} libdatachannel OpenSSL::Crypto)
+    target_link_libraries(ascii-chat-network ${PCRE2_LIBRARIES} ${ZSTD_LIBRARIES} ${SQLITE3_LIBRARIES} libdatachannel OpenSSL::Crypto)
     if(MINIUPNPC_FOUND)
         target_include_directories(ascii-chat-network PRIVATE ${MINIUPNPC_INCLUDE_DIRS})
         target_link_libraries(ascii-chat-network ${MINIUPNPC_LIBRARIES})

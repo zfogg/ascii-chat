@@ -638,13 +638,28 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
     SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, "%s", arg);
   }
 
-  // Validate addresses that contain dots as potential IPv4 addresses
-  // If it has a dot, it's either a valid IPv4 or a hostname with domain
+  // Validate addresses using comprehensive IPv4/IPv6 detection
   bool has_dot = strchr(address, '.') != NULL;
+  bool has_colon = strchr(address, ':') != NULL;
   bool starts_with_digit = address[0] >= '0' && address[0] <= '9';
 
-  if (has_dot && starts_with_digit) {
-    // Looks like an IPv4 attempt - validate strictly
+  // Potential IPv6 address (has colons) - validate as IPv6
+  if (has_colon) {
+    if (!is_valid_ipv6(address)) {
+      if (error_msg) {
+        char msg[512];
+        safe_snprintf(msg, sizeof(msg),
+                      "Invalid IPv6 address '%s'.\n"
+                      "IPv6 addresses must be valid hex notation with colons.\n"
+                      "Examples: ::1, 2001:db8::1, fe80::1\n"
+                      "Or use hostnames like example.com",
+                      address);
+        *error_msg = strdup(msg);
+      }
+      return -1;
+    }
+  } else if (has_dot && starts_with_digit) {
+    // Potential IPv4 address (has dots and starts with digit) - validate strictly
     if (!is_valid_ipv4(address)) {
       if (error_msg) {
         char msg[512];
@@ -659,6 +674,7 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
       return -1;
     }
   }
+  // Otherwise treat as valid hostname (no validation needed)
 
   // Note: Port conflict checking would require additional state
   // (checking if --port flag was used). For now, this is a simplified version.
