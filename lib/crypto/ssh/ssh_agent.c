@@ -263,6 +263,12 @@ asciichat_error_t ssh_agent_sign(const public_key_t *public_key, const uint8_t *
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Only Ed25519 keys are supported for SSH agent signing");
   }
 
+  // SSH agent protocol limits message size (typical OpenSSH agent limit is around 1MB)
+  // Large messages can cause agent memory exhaustion or timeout
+  if (message_len > 1024 * 1024) {
+    return SET_ERRNO(ERROR_CRYPTO, "Message too large for SSH agent (max 1MB)");
+  }
+
   // Connect to SSH agent
   pipe_t pipe = ssh_agent_open_pipe();
   if (pipe == INVALID_PIPE_VALUE) {

@@ -79,7 +79,7 @@ Test(crypto_ssh_agent_sign, very_large_message) {
   memset(&pub_key, 0, sizeof(pub_key));
   pub_key.type = KEY_TYPE_ED25519;
 
-  // Test with a very large message (10MB)
+  // Test with a very large message (10MB - exceeds 1MB agent limit)
   size_t large_size = 10 * 1024 * 1024;
   uint8_t *large_message = SAFE_MALLOC(large_size, uint8_t *);
   cr_assert_not_null(large_message, "Failed to allocate large message");
@@ -89,8 +89,9 @@ Test(crypto_ssh_agent_sign, very_large_message) {
 
   asciichat_error_t result = ssh_agent_sign(&pub_key, large_message, large_size, signature);
 
-  // Should fail gracefully (message too large for agent protocol)
-  cr_assert(result != ASCIICHAT_OK || result == ASCIICHAT_OK, "Should handle large messages without crashing");
+  // Should fail gracefully (message too large for agent protocol - max 1MB)
+  cr_assert(result != ASCIICHAT_OK, "Should reject messages larger than 1MB");
+  cr_assert(result == ERROR_CRYPTO, "Should return ERROR_CRYPTO for oversized messages");
 
   SAFE_FREE(large_message);
 }
