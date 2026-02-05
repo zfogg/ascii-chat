@@ -118,13 +118,21 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release" AND ASCIICHAT_SHARED_DEPS)
     )
     message(STATUS "ascii-chat using rpath for SHARED_DEPS build: ${_install_rpath}")
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
-    # Release builds need rpath for LLVM runtime libraries (libunwind, libc++)
-    # even though we use static linking for application dependencies
-    # Use /usr/local/lib for Homebrew LLVM libraries
+    # Release builds now use shared library (after OBJECT library simplification)
+    # Use relative rpath to avoid embedding developer paths in the binary
+    # This satisfies the ValidatePaths.cmake security check
+    if(APPLE)
+        set(_release_rpath "@loader_path/../lib;/usr/local/lib")
+    else()
+        set(_release_rpath "$ORIGIN/../lib:/usr/local/lib")
+    endif()
     set_target_properties(ascii-chat PROPERTIES
-        BUILD_RPATH "/usr/local/lib"
-        INSTALL_RPATH "/usr/local/lib"
-        INSTALL_RPATH_USE_LINK_PATH TRUE
+        # Skip automatic rpath during build - we set it explicitly
+        SKIP_BUILD_RPATH FALSE
+        BUILD_WITH_INSTALL_RPATH TRUE
+        INSTALL_RPATH "${_release_rpath}"
+        # Don't add link directories to rpath - use only what we specify
+        INSTALL_RPATH_USE_LINK_PATH FALSE
     )
 endif()
 
