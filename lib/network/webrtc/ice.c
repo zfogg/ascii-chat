@@ -161,71 +161,57 @@ static asciichat_error_t ice_parse_candidate_pcre2(const char *line, ice_candida
   }
 
   memset(candidate, 0, sizeof(ice_candidate_t));
-  PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
 
   // Extract foundation (group 1)
-  size_t start = ovector[2], end = ovector[3];
-  if (start < end && end - start < sizeof(candidate->foundation)) {
-    memcpy(candidate->foundation, line + start, end - start);
-    candidate->foundation[end - start] = '\0';
+  char *foundation = asciichat_pcre2_extract_group(match_data, 1, line);
+  if (foundation && strlen(foundation) < sizeof(candidate->foundation)) {
+    SAFE_STRNCPY(candidate->foundation, foundation, sizeof(candidate->foundation));
   }
+  SAFE_FREE(foundation);
 
   // Extract component_id (group 2)
-  start = ovector[4], end = ovector[5];
-  if (start < end) {
-    char component_str[16];
-    memcpy(component_str, line + start, end - start);
-    component_str[end - start] = '\0';
-    candidate->component_id = (uint32_t)strtoul(component_str, NULL, 10);
+  unsigned long component_id;
+  if (asciichat_pcre2_extract_group_ulong(match_data, 2, line, &component_id)) {
+    candidate->component_id = (uint32_t)component_id;
   }
 
   // Extract protocol (group 3)
-  start = ovector[6], end = ovector[7];
-  if (start < end) {
-    char protocol_str[8];
-    memcpy(protocol_str, line + start, end - start);
-    protocol_str[end - start] = '\0';
+  char *protocol_str = asciichat_pcre2_extract_group(match_data, 3, line);
+  if (protocol_str) {
     if (strcmp(protocol_str, "udp") == 0) {
       candidate->protocol = ICE_PROTOCOL_UDP;
     } else if (strcmp(protocol_str, "tcp") == 0) {
       candidate->protocol = ICE_PROTOCOL_TCP;
     } else {
+      SAFE_FREE(protocol_str);
       pcre2_match_data_free(match_data);
       return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid protocol");
     }
+    SAFE_FREE(protocol_str);
   }
 
   // Extract priority (group 4)
-  start = ovector[8], end = ovector[9];
-  if (start < end) {
-    char priority_str[16];
-    memcpy(priority_str, line + start, end - start);
-    priority_str[end - start] = '\0';
-    candidate->priority = (uint32_t)strtoul(priority_str, NULL, 10);
+  unsigned long priority;
+  if (asciichat_pcre2_extract_group_ulong(match_data, 4, line, &priority)) {
+    candidate->priority = (uint32_t)priority;
   }
 
   // Extract IP address (group 5)
-  start = ovector[10], end = ovector[11];
-  if (start < end && end - start < sizeof(candidate->ip_address)) {
-    memcpy(candidate->ip_address, line + start, end - start);
-    candidate->ip_address[end - start] = '\0';
+  char *ip_address = asciichat_pcre2_extract_group(match_data, 5, line);
+  if (ip_address && strlen(ip_address) < sizeof(candidate->ip_address)) {
+    SAFE_STRNCPY(candidate->ip_address, ip_address, sizeof(candidate->ip_address));
   }
+  SAFE_FREE(ip_address);
 
   // Extract port (group 6)
-  start = ovector[12], end = ovector[13];
-  if (start < end) {
-    char port_str[8];
-    memcpy(port_str, line + start, end - start);
-    port_str[end - start] = '\0';
-    candidate->port = (uint16_t)strtoul(port_str, NULL, 10);
+  unsigned long port;
+  if (asciichat_pcre2_extract_group_ulong(match_data, 6, line, &port)) {
+    candidate->port = (uint16_t)port;
   }
 
   // Extract candidate type (group 7)
-  start = ovector[14], end = ovector[15];
-  if (start < end) {
-    char type_str[16];
-    memcpy(type_str, line + start, end - start);
-    type_str[end - start] = '\0';
+  char *type_str = asciichat_pcre2_extract_group(match_data, 7, line);
+  if (type_str) {
     if (strcmp(type_str, "host") == 0) {
       candidate->type = ICE_CANDIDATE_HOST;
     } else if (strcmp(type_str, "srflx") == 0) {
@@ -235,33 +221,29 @@ static asciichat_error_t ice_parse_candidate_pcre2(const char *line, ice_candida
     } else if (strcmp(type_str, "relay") == 0) {
       candidate->type = ICE_CANDIDATE_RELAY;
     } else {
+      SAFE_FREE(type_str);
       pcre2_match_data_free(match_data);
       return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid candidate type");
     }
+    SAFE_FREE(type_str);
   }
 
   // Extract optional raddr (group 8)
-  start = ovector[16], end = ovector[17];
-  if (start < end && start != (size_t)-1 && end - start < sizeof(candidate->raddr)) {
-    memcpy(candidate->raddr, line + start, end - start);
-    candidate->raddr[end - start] = '\0';
+  char *raddr = asciichat_pcre2_extract_group(match_data, 8, line);
+  if (raddr && strlen(raddr) < sizeof(candidate->raddr)) {
+    SAFE_STRNCPY(candidate->raddr, raddr, sizeof(candidate->raddr));
   }
+  SAFE_FREE(raddr);
 
   // Extract optional rport (group 9)
-  start = ovector[18], end = ovector[19];
-  if (start < end && start != (size_t)-1) {
-    char rport_str[8];
-    memcpy(rport_str, line + start, end - start);
-    rport_str[end - start] = '\0';
-    candidate->rport = (uint16_t)strtoul(rport_str, NULL, 10);
+  unsigned long rport;
+  if (asciichat_pcre2_extract_group_ulong(match_data, 9, line, &rport)) {
+    candidate->rport = (uint16_t)rport;
   }
 
   // Extract optional tcptype (group 10)
-  start = ovector[20], end = ovector[21];
-  if (start < end && start != (size_t)-1) {
-    char tcptype_str[16];
-    memcpy(tcptype_str, line + start, end - start);
-    tcptype_str[end - start] = '\0';
+  char *tcptype_str = asciichat_pcre2_extract_group(match_data, 10, line);
+  if (tcptype_str) {
     if (strcmp(tcptype_str, "active") == 0) {
       candidate->tcp_type = ICE_TCP_TYPE_ACTIVE;
     } else if (strcmp(tcptype_str, "passive") == 0) {
@@ -269,6 +251,7 @@ static asciichat_error_t ice_parse_candidate_pcre2(const char *line, ice_candida
     } else if (strcmp(tcptype_str, "so") == 0) {
       candidate->tcp_type = ICE_TCP_TYPE_SO;
     }
+    SAFE_FREE(tcptype_str);
   }
 
   pcre2_match_data_free(match_data);

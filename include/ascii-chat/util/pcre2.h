@@ -98,3 +98,73 @@ bool asciichat_pcre2_singleton_is_initialized(pcre2_singleton_t *singleton);
  */
 char *asciichat_pcre2_extract_named_group(pcre2_code *regex, pcre2_match_data *match_data, const char *group_name,
                                           const char *subject);
+
+/**
+ * @brief Extract numbered capture group as allocated string
+ *
+ * Extracts a numbered capture group from match data and returns an allocated string.
+ * The caller is responsible for freeing the returned string with SAFE_FREE().
+ *
+ * @param match_data Match data from pcre2_match() or pcre2_jit_match()
+ * @param group_num Capture group number (1-based, 0 = entire match)
+ * @param subject Original subject string that was matched
+ * @return Allocated string containing the matched substring, or NULL if group not matched
+ *
+ * Example:
+ * @code
+ * char *foundation = asciichat_pcre2_extract_group(match_data, 1, line);
+ * if (foundation) {
+ *   // Use foundation...
+ *   SAFE_FREE(foundation);
+ * }
+ * @endcode
+ */
+char *asciichat_pcre2_extract_group(pcre2_match_data *match_data, int group_num, const char *subject);
+
+/**
+ * @brief Extract numbered capture group as pointer into subject (non-allocating)
+ *
+ * Returns a pointer to the matched substring within the original subject string.
+ * No memory allocation occurs - the returned pointer is only valid as long as
+ * the subject string remains valid.
+ *
+ * @param match_data Match data from pcre2_match() or pcre2_jit_match()
+ * @param group_num Capture group number (1-based, 0 = entire match)
+ * @param subject Original subject string that was matched
+ * @param out_len Output parameter for substring length
+ * @return Pointer to matched substring within subject, or NULL if group not matched
+ *
+ * Example:
+ * @code
+ * size_t len;
+ * const char *video_id = asciichat_pcre2_extract_group_ptr(match_data, 1, url, &len);
+ * if (video_id) {
+ *   printf("Video ID: %.*s\n", (int)len, video_id);
+ * }
+ * @endcode
+ */
+const char *asciichat_pcre2_extract_group_ptr(pcre2_match_data *match_data, int group_num, const char *subject,
+                                              size_t *out_len);
+
+/**
+ * @brief Extract numbered capture group and convert to unsigned long
+ *
+ * Extracts a numbered capture group and converts it to an unsigned long integer.
+ * Handles extraction and parsing in one step.
+ *
+ * @param match_data Match data from pcre2_match() or pcre2_jit_match()
+ * @param group_num Capture group number (1-based, 0 = entire match)
+ * @param subject Original subject string that was matched
+ * @param out_value Output parameter for parsed integer value
+ * @return true if extraction and parsing succeeded, false otherwise
+ *
+ * Example:
+ * @code
+ * unsigned long component_id;
+ * if (asciichat_pcre2_extract_group_ulong(match_data, 2, line, &component_id)) {
+ *   candidate->component_id = (uint32_t)component_id;
+ * }
+ * @endcode
+ */
+bool asciichat_pcre2_extract_group_ulong(pcre2_match_data *match_data, int group_num, const char *subject,
+                                         unsigned long *out_value);

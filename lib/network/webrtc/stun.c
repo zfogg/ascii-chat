@@ -131,25 +131,29 @@ int stun_servers_parse(const char *csv_servers, const char *default_csv, stun_se
     }
 
     // Extract the captured group (group 1)
-    PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
-    size_t start = ovector[2]; // Start of group 1
-    size_t end = ovector[3];   // End of group 1
-    size_t len = end - start;
+    size_t len;
+    const char *server_url = asciichat_pcre2_extract_group_ptr(match_data, 1, servers_to_parse, &len);
+
+    if (!server_url) {
+      break; // Group not matched
+    }
 
     if (len >= STUN_MAX_URL_LEN) {
-      log_warn("stun_servers_parse: STUN server URL too long (max %d): %.*s", STUN_MAX_URL_LEN, (int)len,
-               servers_to_parse + start);
+      log_warn("stun_servers_parse: STUN server URL too long (max %d): %.*s", STUN_MAX_URL_LEN, (int)len, server_url);
       pcre2_match_data_free(match_data);
       return -1;
     }
 
     // Copy trimmed entry to output
     out_servers[count].host_len = (uint8_t)len;
-    memcpy(out_servers[count].host, servers_to_parse + start, len);
+    memcpy(out_servers[count].host, server_url, len);
     out_servers[count].host[len] = '\0';
 
     count++;
-    offset = ovector[1]; // Move offset to end of this match
+
+    // Move offset to end of this match (need ovector for overall match end)
+    PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
+    offset = ovector[1];
   }
 
   pcre2_match_data_free(match_data);

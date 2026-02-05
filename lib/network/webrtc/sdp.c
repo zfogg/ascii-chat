@@ -376,33 +376,22 @@ static bool sdp_parse_fmtp_video_pcre2(const char *fmtp_params, terminal_capabil
   int rc = pcre2_jit_match(regex, (PCRE2_SPTR8)fmtp_params, strlen(fmtp_params), 0, 0, match_data, NULL);
 
   bool success = false;
-  if (rc >= 4) { // At least 4 groups (width, height, renderer, and must be present)
-    PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
-
+  if (rc >= 4) { // At least 4 groups (width, height, renderer must be present)
     // Extract width (group 1)
-    size_t start = ovector[2], end = ovector[3];
-    if (start < end) {
-      char width_str[16];
-      memcpy(width_str, fmtp_params + start, end - start);
-      width_str[end - start] = '\0';
-      cap->format.width = (uint16_t)strtoul(width_str, NULL, 10);
+    unsigned long width;
+    if (asciichat_pcre2_extract_group_ulong(match_data, 1, fmtp_params, &width)) {
+      cap->format.width = (uint16_t)width;
     }
 
     // Extract height (group 2)
-    start = ovector[4], end = ovector[5];
-    if (start < end) {
-      char height_str[16];
-      memcpy(height_str, fmtp_params + start, end - start);
-      height_str[end - start] = '\0';
-      cap->format.height = (uint16_t)strtoul(height_str, NULL, 10);
+    unsigned long height;
+    if (asciichat_pcre2_extract_group_ulong(match_data, 2, fmtp_params, &height)) {
+      cap->format.height = (uint16_t)height;
     }
 
     // Extract renderer (group 3)
-    start = ovector[6], end = ovector[7];
-    if (start < end) {
-      char renderer_str[16];
-      memcpy(renderer_str, fmtp_params + start, end - start);
-      renderer_str[end - start] = '\0';
+    char *renderer_str = asciichat_pcre2_extract_group(match_data, 3, fmtp_params);
+    if (renderer_str) {
       if (strcmp(renderer_str, "block") == 0) {
         cap->format.renderer = RENDERER_BLOCK;
       } else if (strcmp(renderer_str, "halfblock") == 0) {
@@ -410,14 +399,12 @@ static bool sdp_parse_fmtp_video_pcre2(const char *fmtp_params, terminal_capabil
       } else if (strcmp(renderer_str, "braille") == 0) {
         cap->format.renderer = RENDERER_BRAILLE;
       }
+      SAFE_FREE(renderer_str);
     }
 
     // Extract charset (group 4, optional)
-    start = ovector[8], end = ovector[9];
-    if (start < end && start != (size_t)-1) {
-      char charset_str[16];
-      memcpy(charset_str, fmtp_params + start, end - start);
-      charset_str[end - start] = '\0';
+    char *charset_str = asciichat_pcre2_extract_group(match_data, 4, fmtp_params);
+    if (charset_str) {
       if (strcmp(charset_str, "utf8_wide") == 0) {
         cap->format.charset = CHARSET_UTF8_WIDE;
       } else if (strcmp(charset_str, "utf8") == 0) {
@@ -425,14 +412,12 @@ static bool sdp_parse_fmtp_video_pcre2(const char *fmtp_params, terminal_capabil
       } else {
         cap->format.charset = CHARSET_ASCII;
       }
+      SAFE_FREE(charset_str);
     }
 
     // Extract compression (group 5, optional)
-    start = ovector[10], end = ovector[11];
-    if (start < end && start != (size_t)-1) {
-      char compression_str[16];
-      memcpy(compression_str, fmtp_params + start, end - start);
-      compression_str[end - start] = '\0';
+    char *compression_str = asciichat_pcre2_extract_group(match_data, 5, fmtp_params);
+    if (compression_str) {
       if (strcmp(compression_str, "zstd") == 0) {
         cap->format.compression = COMPRESSION_ZSTD;
       } else if (strcmp(compression_str, "rle") == 0) {
@@ -440,12 +425,14 @@ static bool sdp_parse_fmtp_video_pcre2(const char *fmtp_params, terminal_capabil
       } else {
         cap->format.compression = COMPRESSION_NONE;
       }
+      SAFE_FREE(compression_str);
     }
 
     // Extract csi_rep (group 6, optional)
-    start = ovector[12], end = ovector[13];
-    if (start < end && start != (size_t)-1) {
-      cap->format.csi_rep_support = (fmtp_params[start] == '1');
+    char *csi_rep_str = asciichat_pcre2_extract_group(match_data, 6, fmtp_params);
+    if (csi_rep_str) {
+      cap->format.csi_rep_support = (csi_rep_str[0] == '1');
+      SAFE_FREE(csi_rep_str);
     }
 
     success = true;

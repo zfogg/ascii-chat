@@ -179,3 +179,97 @@ char *asciichat_pcre2_extract_named_group(pcre2_code *regex, pcre2_match_data *m
 
   return result;
 }
+
+/**
+ * @brief Extract numbered capture group as allocated string
+ */
+char *asciichat_pcre2_extract_group(pcre2_match_data *match_data, int group_num, const char *subject) {
+  if (!match_data || !subject || group_num < 0) {
+    return NULL;
+  }
+
+  /* Get ovector (output vector with match offsets) */
+  PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
+  PCRE2_SIZE start = ovector[2 * group_num];
+  PCRE2_SIZE end = ovector[2 * group_num + 1];
+
+  if (start == PCRE2_UNSET || end == PCRE2_UNSET) {
+    return NULL; /* Group not matched */
+  }
+
+  /* Allocate and copy substring */
+  size_t len = end - start;
+  char *result = SAFE_MALLOC(len + 1, char *);
+  if (!result) {
+    log_error("asciichat_pcre2_extract_group: failed to allocate %zu bytes", len + 1);
+    return NULL;
+  }
+
+  memcpy(result, subject + start, len);
+  result[len] = '\0';
+
+  return result;
+}
+
+/**
+ * @brief Extract numbered capture group as pointer into subject (non-allocating)
+ */
+const char *asciichat_pcre2_extract_group_ptr(pcre2_match_data *match_data, int group_num, const char *subject,
+                                              size_t *out_len) {
+  if (!match_data || !subject || !out_len || group_num < 0) {
+    return NULL;
+  }
+
+  /* Get ovector (output vector with match offsets) */
+  PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
+  PCRE2_SIZE start = ovector[2 * group_num];
+  PCRE2_SIZE end = ovector[2 * group_num + 1];
+
+  if (start == PCRE2_UNSET || end == PCRE2_UNSET) {
+    return NULL; /* Group not matched */
+  }
+
+  *out_len = end - start;
+  return subject + start;
+}
+
+/**
+ * @brief Extract numbered capture group and convert to unsigned long
+ */
+bool asciichat_pcre2_extract_group_ulong(pcre2_match_data *match_data, int group_num, const char *subject,
+                                         unsigned long *out_value) {
+  if (!match_data || !subject || !out_value || group_num < 0) {
+    return false;
+  }
+
+  /* Get ovector (output vector with match offsets) */
+  PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
+  PCRE2_SIZE start = ovector[2 * group_num];
+  PCRE2_SIZE end = ovector[2 * group_num + 1];
+
+  if (start == PCRE2_UNSET || end == PCRE2_UNSET) {
+    return false; /* Group not matched */
+  }
+
+  /* Extract substring into temporary buffer */
+  size_t len = end - start;
+  if (len == 0 || len > 63) { /* Sanity check for reasonable number length */
+    return false;
+  }
+
+  char temp[64];
+  memcpy(temp, subject + start, len);
+  temp[len] = '\0';
+
+  /* Parse as unsigned long */
+  char *endptr;
+  errno = 0;
+  unsigned long value = strtoul(temp, &endptr, 10);
+
+  if (errno != 0 || endptr == temp || *endptr != '\0') {
+    return false; /* Parse failed */
+  }
+
+  *out_value = value;
+  return true;
+}

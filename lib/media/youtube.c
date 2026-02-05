@@ -61,29 +61,6 @@ static pcre2_code *youtube_regex_get(void) {
   return asciichat_pcre2_singleton_get_code(g_youtube_regex);
 }
 
-/**
- * Extract named substring from regex match data
- * Returns pointer to matched substring within the subject string
- */
-static const char *youtube_extract_video_id_from_match(pcre2_match_data *match_data, const char *subject,
-                                                       size_t *out_len) {
-  if (!match_data || !subject || !out_len) {
-    return NULL;
-  }
-
-  /* Get capture group 1 (the video ID) */
-  PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
-  PCRE2_SIZE start = ovector[2 * 1];   /* Group 1 start */
-  PCRE2_SIZE end = ovector[2 * 1 + 1]; /* Group 1 end */
-
-  if (start == PCRE2_UNSET || end == PCRE2_UNSET) {
-    return NULL; /* Group not matched */
-  }
-
-  *out_len = end - start;
-  return subject + start;
-}
-
 /* ============================================================================
  * URL Extraction Cache
  * ============================================================================ */
@@ -255,9 +232,9 @@ asciichat_error_t youtube_extract_video_id(const char *url, char *output_id, siz
     return ERROR_YOUTUBE_INVALID_URL;
   }
 
-  /* Extract video_id named group */
+  /* Extract video_id from capture group 1 */
   size_t video_id_len = 0;
-  const char *video_id_ptr = youtube_extract_video_id_from_match(match_data, url, &video_id_len);
+  const char *video_id_ptr = asciichat_pcre2_extract_group_ptr(match_data, 1, url, &video_id_len);
 
   if (!video_id_ptr || video_id_len == 0) {
     pcre2_match_data_free(match_data);
