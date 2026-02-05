@@ -292,10 +292,10 @@ void server_status_display(const server_status_t *status) {
   }
 
   // Display logs that fit (starting from start_idx)
+  // Logs are already formatted with colors from logging.c
   for (size_t i = start_idx; i < log_count; i++) {
-    const char *colorized = colorize_log_message(logs[i].message);
-    printf("%s", colorized);
-    if (colorized[strlen(colorized) - 1] != '\n') {
+    printf("%s", logs[i].message);
+    if (logs[i].message[0] != '\0' && logs[i].message[strlen(logs[i].message) - 1] != '\n') {
       printf("\n");
     }
   }

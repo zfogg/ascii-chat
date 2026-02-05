@@ -776,18 +776,31 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
     clean_msg = stripped_msg ? stripped_msg : msg_buffer;
   }
 
-  // Construct PLAIN log line (without ANSI codes) for status screen and grep matching
+  // Construct PLAIN log line (without ANSI codes) for grep matching
   char plain_log_line[LOG_MSG_BUFFER_SIZE + 512];
   int plain_len = snprintf(plain_log_line, sizeof(plain_log_line), "%s%s", plain_header_buffer, clean_msg);
 
-  // Feed log to status screen buffer ALWAYS (even if terminal output disabled)
-  if (plain_len > 0 && plain_len < (int)sizeof(plain_log_line)) {
-    extern void server_status_log_append(const char *message);
-    server_status_log_append(plain_log_line);
+  // Feed COLORED log to status screen buffer (uses same formatting as terminal output)
+  // This ensures status screen displays match normal terminal output
+  if (use_colors) {
+    const char *colorized_msg = colorize_log_message(msg_buffer);
+    char colored_log_line[LOG_MSG_BUFFER_SIZE + 1024];
+    int colored_len = snprintf(colored_log_line, sizeof(colored_log_line), "%s%s", header_buffer, colorized_msg);
+    if (colored_len > 0 && colored_len < (int)sizeof(colored_log_line)) {
+      extern void server_status_log_append(const char *message);
+      server_status_log_append(colored_log_line);
+    }
+  } else {
+    // No colors - use plain version
+    if (plain_len > 0 && plain_len < (int)sizeof(plain_log_line)) {
+      extern void server_status_log_append(const char *message);
+      server_status_log_append(plain_log_line);
+    }
   }
 
   // Check if terminal output is enabled (atomic load)
-  if (!atomic_load(&g_log.terminal_output_enabled)) {
+  bool is_enabled = atomic_load(&g_log.terminal_output_enabled);
+  if (!is_enabled) {
     // Terminal output disabled - cleanup and return (status screen already captured)
     if (stripped_msg) {
       SAFE_FREE(stripped_msg);
