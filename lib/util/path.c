@@ -87,55 +87,173 @@ static const char *normalize_path(const char *path) {
 #endif
   }
 
-  /* Parse path into components - using manual parsing (PCRE2 available for future optimization) */
-  const char *parse_pos = pos;
-  while (*parse_pos) {
-    /* Skip leading separators (handle both / and \ on all platforms) */
-    while (*parse_pos == '/' || *parse_pos == '\\') {
-      parse_pos++;
-    }
+  /* Parse path into components using PCRE2 regex for separator/dot detection */
+  pcre2_code *separator_regex = path_separator_regex_get();
+  pcre2_code *dot_regex = path_dot_component_regex_get();
 
-    if (!*parse_pos)
-      break;
-
-    const char *component_start = parse_pos;
-    while (*parse_pos && *parse_pos != '/' && *parse_pos != '\\') {
-      parse_pos++;
-    }
-
-    size_t component_len = (size_t)(parse_pos - component_start);
-    if (component_len == 0)
-      continue;
-
-    if (component_len >= sizeof(components[0])) {
-      component_len = sizeof(components[0]) - 1;
-    }
-
-    /* Check for . and .. components */
-    if (component_len == 1 && component_start[0] == PATH_COMPONENT_DOT) {
-      /* Skip . component */
-      continue;
-    }
-    if (component_len == 2 && component_start[0] == PATH_COMPONENT_DOT && component_start[1] == PATH_COMPONENT_DOT) {
-      /* Handle .. component - go up one level */
-      if (component_count > 0) {
-        component_count--;
+  /* If regex not available, fall back to manual parsing */
+  if (!separator_regex || !dot_regex) {
+    const char *parse_pos = pos;
+    while (*parse_pos) {
+      while (*parse_pos == '/' || *parse_pos == '\\') {
+        parse_pos++;
+      }
+      if (!*parse_pos)
+        break;
+      const char *component_start = parse_pos;
+      while (*parse_pos && *parse_pos != '/' && *parse_pos != '\\') {
+        parse_pos++;
+      }
+      size_t component_len = (size_t)(parse_pos - component_start);
+      if (component_len == 0)
+        continue;
+      if (component_len >= sizeof(components[0])) {
+        component_len = sizeof(components[0]) - 1;
+      }
+      if (component_len == 1 && component_start[0] == PATH_COMPONENT_DOT) {
         continue;
       }
-      if (!absolute) {
-        /* For relative paths, keep .. at the start */
+      if (component_len == 2 && component_start[0] == PATH_COMPONENT_DOT && component_start[1] == PATH_COMPONENT_DOT) {
+        if (component_count > 0) {
+          component_count--;
+          continue;
+        }
+        if (!absolute) {
+          memcpy(components[component_count], component_start, component_len);
+          components[component_count][component_len] = '\0';
+          component_count++;
+        }
+        continue;
+      }
+      memcpy(components[component_count], component_start, component_len);
+      components[component_count][component_len] = '\0';
+      component_count++;
+    }
+  } else {
+    /* Use PCRE2 to split by separators and detect dot components */
+    pcre2_match_data *sep_match = pcre2_match_data_create_from_pattern(separator_regex, NULL);
+    pcre2_match_data *dot_match = pcre2_match_data_create_from_pattern(dot_regex, NULL);
+
+    if (!sep_match || !dot_match) {
+      if (sep_match)
+        pcre2_match_data_free(sep_match);
+      if (dot_match)
+        pcre2_match_data_free(dot_match);
+
+      /* Fall back to manual parsing */
+      const char *parse_pos = pos;
+      while (*parse_pos) {
+        while (*parse_pos == '/' || *parse_pos == '\\') {
+          parse_pos++;
+        }
+        if (!*parse_pos)
+          break;
+        const char *component_start = parse_pos;
+        while (*parse_pos && *parse_pos != '/' && *parse_pos != '\\') {
+          parse_pos++;
+        }
+        size_t component_len = (size_t)(parse_pos - component_start);
+        if (component_len == 0)
+          continue;
+        if (component_len >= sizeof(components[0])) {
+          component_len = sizeof(components[0]) - 1;
+        }
+        if (component_len == 1 && component_start[0] == PATH_COMPONENT_DOT) {
+          continue;
+        }
+        if (component_len == 2 && component_start[0] == PATH_COMPONENT_DOT &&
+            component_start[1] == PATH_COMPONENT_DOT) {
+          if (component_count > 0) {
+            component_count--;
+            continue;
+          }
+          if (!absolute) {
+            memcpy(components[component_count], component_start, component_len);
+            components[component_count][component_len] = '\0';
+            component_count++;
+          }
+          continue;
+        }
         memcpy(components[component_count], component_start, component_len);
         components[component_count][component_len] = '\0';
         component_count++;
       }
-      continue;
+      goto build_normalized; /* Skip to path building */
     }
-    /* Normal component */
-    memcpy(components[component_count], component_start, component_len);
-    components[component_count][component_len] = '\0';
-    component_count++;
+
+    size_t offset = 0;
+    size_t remaining_len = strlen(pos);
+    size_t last_component_end = 0;
+
+    while (offset <= remaining_len) {
+      /* Find next separator */
+      int rc = pcre2_jit_match(separator_regex, (PCRE2_SPTR8)pos, remaining_len, offset, 0, sep_match, NULL);
+      PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(sep_match);
+      PCRE2_SIZE sep_start, sep_end;
+
+      if (rc >= 0) {
+        sep_start = ovector[0];
+        sep_end = ovector[1];
+      } else {
+        /* No more separators - handle last component if any */
+        sep_start = remaining_len;
+        sep_end = remaining_len;
+      }
+
+      /* Extract component between last_component_end and sep_start */
+      size_t component_len = sep_start - last_component_end;
+      if (component_len > 0) {
+        if (component_len >= sizeof(components[0])) {
+          component_len = sizeof(components[0]) - 1;
+        }
+
+        char temp_component[256];
+        memcpy(temp_component, pos + last_component_end, component_len);
+        temp_component[component_len] = '\0';
+
+        /* Check if component matches dot pattern (^\.\.*$) */
+        int is_dot = pcre2_jit_match(dot_regex, (PCRE2_SPTR8)temp_component, component_len, 0, 0, dot_match, NULL);
+
+        if (is_dot >= 0) {
+          /* It's ".", "..", or "..." */
+          if (component_len == 1) {
+            /* Skip "." */
+          } else if (component_len == 2) {
+            /* Handle ".." */
+            if (component_count > 0) {
+              component_count--;
+            } else if (!absolute) {
+              memcpy(components[component_count], temp_component, component_len);
+              components[component_count][component_len] = '\0';
+              component_count++;
+            }
+          } else {
+            /* "..." or more - treat as normal component */
+            memcpy(components[component_count], temp_component, component_len);
+            components[component_count][component_len] = '\0';
+            component_count++;
+          }
+        } else {
+          /* Normal component */
+          memcpy(components[component_count], temp_component, component_len);
+          components[component_count][component_len] = '\0';
+          component_count++;
+        }
+      }
+
+      if (rc < 0) {
+        break; /* No more separators */
+      }
+
+      offset = sep_end;
+      last_component_end = sep_end;
+    }
+
+    pcre2_match_data_free(sep_match);
+    pcre2_match_data_free(dot_match);
   }
 
+build_normalized:;
   /* Build normalized path */
   size_t out_pos = 0;
 #ifdef _WIN32

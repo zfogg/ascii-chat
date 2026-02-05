@@ -435,14 +435,23 @@ static int format_option_default_value_str(const option_descriptor_t *desc, char
     }
   }
 
-  // For callback options storing numeric types (double/float), format them as numbers
+  // For callback options storing numeric types (int/double/float), format them as numbers
   if (desc->type == OPTION_TYPE_CALLBACK && desc->default_value && desc->metadata.enum_values == NULL) {
     // Check if this is a numeric callback by looking for numeric_range metadata
     // Numeric callbacks have min/max range constraints set (max != 0 indicates a range was set)
     if (desc->metadata.numeric_range.max != 0 || desc->metadata.numeric_range.min != 0) {
-      // This is a numeric callback option - extract and format the double value
+      // This is a numeric callback option - extract and format the value
+      // Determine if it's int or double based on range (int max is 2147483647)
       double default_double = 0.0;
-      memcpy(&default_double, desc->default_value, sizeof(double));
+      if (desc->metadata.numeric_range.max <= 2147483647.0 && desc->metadata.numeric_range.min >= -2147483648.0) {
+        // Integer-ranged value (like port 1-65535) - stored as int
+        int default_int = 0;
+        memcpy(&default_int, desc->default_value, sizeof(int));
+        default_double = (double)default_int;
+      } else {
+        // Double-ranged value - stored as double
+        memcpy(&default_double, desc->default_value, sizeof(double));
+      }
 
       // Format with appropriate precision (remove trailing zeros for integers)
       char formatted[32];

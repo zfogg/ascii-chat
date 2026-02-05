@@ -1428,6 +1428,13 @@ asciichat_error_t options_init(int argc, char **argv) {
 
   // Mode-specific post-processing
   if (detected_mode == MODE_DISCOVERY_SERVICE) {
+    // Set default port for discovery service (27225 instead of 27224)
+    // Only override if port is still the server default
+    if (opts.port == OPT_PORT_INT_DEFAULT) {
+      opts.port = OPT_ACDS_PORT_INT_DEFAULT;
+      log_dev("Using discovery service default port: %d", opts.port);
+    }
+
     // Set default paths if not specified
     if (opts.discovery_database_path[0] == '\0') {
       char *config_dir = get_config_dir();
