@@ -991,7 +991,7 @@ Test(config_sections, crypto_client_keys_server_only) {
   cr_assert_not_null(temp_dir, "Failed to create temp directory");
 
   char content[512];
-  safe_snprintf(content, sizeof(content), "[crypto]\nclient_keys = \"%s\"\n", temp_dir);
+  safe_snprintf(content, sizeof(content), "[security]\nclient_keys = \"%s\"\n", temp_dir);
 
   char *config_path = create_temp_config(content);
   cr_assert_not_null(config_path, "Failed to create temp config file");
