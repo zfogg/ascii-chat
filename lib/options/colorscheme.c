@@ -58,14 +58,14 @@ static const color_scheme_t PASTEL_SCHEME = {.name = "pastel",
                                              .has_light_variant = true,
                                              .log_colors_light =
                                                  {
-                                                     {75, 95, 223},  /* DEV: Darker blue */
-                                                     {50, 130, 180}, /* DEBUG: Darker cyan */
-                                                     {34, 139, 34},  /* INFO: Darker green */
-                                                     {180, 140, 0},  /* WARN: Darker yellow */
-                                                     {178, 34, 34},  /* ERROR: Darker red */
-                                                     {128, 0, 128},  /* FATAL: Darker magenta */
-                                                     {64, 64, 64},   /* GREY: Darker gray */
-                                                     {0, 0, 0}       /* RESET */
+                                                     {156, 97, 65},   /* DEV: Darker orange (matches dark) */
+                                                     {65, 111, 146},  /* DEBUG: Darker cyan (matches dark) */
+                                                     {93, 145, 72},   /* INFO: Darker green (matches dark) */
+                                                     {156, 132, 94},  /* WARN: Darker yellow (matches dark) */
+                                                     {150, 60, 72},   /* ERROR: Darker red (matches dark) */
+                                                     {130, 104, 140}, /* FATAL: Darker magenta (matches dark) */
+                                                     {80, 80, 80},    /* GREY: Darker gray */
+                                                     {0, 0, 0}        /* RESET */
                                                  },
                                              .is_builtin = true};
 
