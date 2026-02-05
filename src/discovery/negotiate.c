@@ -12,8 +12,7 @@
 
 #include <string.h>
 
-// Maximum participants in a session (must match session.h definition)
-#define MAX_PARTICIPANTS 16
+// MAX_PARTICIPANTS is defined in session.h (included via negotiate.h)
 
 void negotiate_init(negotiate_ctx_t *ctx, const uint8_t session_id[16], const uint8_t participant_id[16],
                     bool is_initiator) {

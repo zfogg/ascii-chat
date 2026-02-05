@@ -94,8 +94,11 @@ asciichat_error_t thread_pool_spawn(thread_pool_t *pool, void *(*thread_func)(vo
 
   // Create thread
   if (asciichat_thread_create(&entry->thread, thread_func, thread_arg) != 0) {
+    // Save name before freeing entry
+    char thread_name_copy[64];
+    SAFE_STRNCPY(thread_name_copy, entry->name, sizeof(thread_name_copy));
     SAFE_FREE(entry);
-    return SET_ERRNO(ERROR_THREAD, "Failed to create thread '%s' in pool '%s'", entry->name, pool->name);
+    return SET_ERRNO(ERROR_THREAD, "Failed to create thread '%s' in pool '%s'", thread_name_copy, pool->name);
   }
 
   // Add to thread list (sorted by stop_id)
