@@ -789,11 +789,18 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
     return;
   }
 
+  // Strip ANSI codes from message for accurate grep matching
+  char *stripped_msg = ansi_strip_escapes(msg_buffer, (size_t)msg_len);
+  const char *clean_msg = stripped_msg ? stripped_msg : msg_buffer;
+
   // Construct PLAIN log line (without ANSI codes) for grep matching
   char plain_log_line[LOG_MSG_BUFFER_SIZE + 512];
-  int plain_len = snprintf(plain_log_line, sizeof(plain_log_line), "%s%s", plain_header_buffer, msg_buffer);
+  int plain_len = snprintf(plain_log_line, sizeof(plain_log_line), "%s%s", plain_header_buffer, clean_msg);
   if (plain_len <= 0 || plain_len >= (int)sizeof(plain_log_line)) {
     // Line too long - skip filtering
+    if (stripped_msg) {
+      free(stripped_msg);
+    }
     safe_fprintf(output_stream, "%s%s\n", header_buffer, msg_buffer);
     (void)fflush(output_stream);
     return;
@@ -803,35 +810,63 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   // Match against PLAIN text (no ANSI codes) so offsets are correct
   size_t match_start = 0, match_len = 0;
   if (!log_filter_should_output(plain_log_line, &match_start, &match_len)) {
+    if (stripped_msg) {
+      free(stripped_msg);
+    }
     return; // No match - suppress terminal output
   }
 
-  // If match found and highlighting enabled, highlight the match in plain text
-  // then output it (don't apply additional colorization)
-  const char *output_line = plain_log_line;
-  if (match_len > 0 && use_colors) {
-    output_line = log_filter_highlight(plain_log_line, match_start, match_len);
-  }
-
-  // If grep highlighted the line, output it directly (highlighting already applied)
-  if (match_len > 0 && use_colors && output_line != plain_log_line) {
-    safe_fprintf(output_stream, "%s\n", output_line);
-  } else if (use_colors) {
-    // No grep match or colors disabled - use normal colored output
-    // Apply color coding to message
+  // Output with colors
+  if (use_colors) {
+    // Apply normal colorization to message
     const char *colorized_msg = colorize_log_message(msg_buffer);
     const char **colors = log_get_color_array();
 
-    if (colors == NULL) {
-      safe_fprintf(output_stream, "%s%s\n", header_buffer, colorized_msg);
+    // If grep matched, apply highlighting to the colorized message
+    if (match_len > 0) {
+      // Check if match is in header or message
+      size_t plain_header_len = strlen(plain_header_buffer);
+
+      if (match_start >= plain_header_len) {
+        // Match is in message only - highlight the message
+        size_t msg_match_start = match_start - plain_header_len;
+        const char *highlighted_msg =
+            log_filter_highlight_colored(colorized_msg, clean_msg, msg_match_start, match_len);
+        safe_fprintf(output_stream, "%s%s\n", header_buffer, highlighted_msg);
+      } else if (match_start + match_len <= plain_header_len) {
+        // Match is entirely in header - highlight the header
+        const char *highlighted_header =
+            log_filter_highlight_colored(header_buffer, plain_header_buffer, match_start, match_len);
+        safe_fprintf(output_stream, "%s%s\n", highlighted_header, colorized_msg);
+      } else {
+        // Match spans both header and message - highlight full line
+        char full_colored_line[LOG_MSG_BUFFER_SIZE + 1024];
+        char full_plain_line[LOG_MSG_BUFFER_SIZE + 1024];
+        snprintf(full_colored_line, sizeof(full_colored_line), "%s%s", header_buffer, colorized_msg);
+        snprintf(full_plain_line, sizeof(full_plain_line), "%s%s", plain_header_buffer, clean_msg);
+        const char *highlighted_line =
+            log_filter_highlight_colored(full_colored_line, full_plain_line, match_start, match_len);
+        safe_fprintf(output_stream, "%s\n", highlighted_line);
+      }
     } else {
-      safe_fprintf(output_stream, "%s%s%s%s\n", header_buffer, colors[LOG_COLOR_RESET], colorized_msg,
-                   colors[LOG_COLOR_RESET]);
+      // No grep match - output normally
+      if (colors == NULL) {
+        safe_fprintf(output_stream, "%s%s\n", header_buffer, colorized_msg);
+      } else {
+        safe_fprintf(output_stream, "%s%s%s%s\n", header_buffer, colors[LOG_COLOR_RESET], colorized_msg,
+                     colors[LOG_COLOR_RESET]);
+      }
     }
   } else {
     // No colors - output plain
     safe_fprintf(output_stream, "%s%s\n", header_buffer, msg_buffer);
   }
+
+  // Clean up stripped message
+  if (stripped_msg) {
+    free(stripped_msg);
+  }
+
   (void)fflush(output_stream);
 }
 

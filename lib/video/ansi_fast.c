@@ -49,6 +49,11 @@ char *append_truecolor_fg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
 // Fast background color: \033[48;2;R;G;Bm
 // Maximum output: 19 bytes (\033[48;2;255;255;255m)
 char *append_truecolor_bg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
+  // Ensure dec3 cache is initialized
+  if (!g_dec3_cache.dec3_initialized) {
+    init_dec3();
+  }
+
   SAFE_MEMCPY(dst, 19, "\033[48;2;", 7);
   dst += 7;
 
@@ -71,6 +76,11 @@ char *append_truecolor_bg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
 // Maximum output: 38 bytes (\033[38;2;255;255;255;48;2;255;255;255m)
 char *append_truecolor_fg_bg(char *dst, uint8_t fg_r, uint8_t fg_g, uint8_t fg_b, uint8_t bg_r, uint8_t bg_g,
                              uint8_t bg_b) {
+  // Ensure dec3 cache is initialized
+  if (!g_dec3_cache.dec3_initialized) {
+    init_dec3();
+  }
+
   SAFE_MEMCPY(dst, 38, "\033[38;2;", 7);
   dst += 7;
 

@@ -30,12 +30,14 @@ static struct {
   pcre2_singleton_t *singleton;   ///< PCRE2 singleton (auto-registered for cleanup)
   const char *pattern;            ///< Original pattern string
   bool enabled;                   ///< Is filtering active?
+  bool global_flag;               ///< Global flag (/g) - highlight all matches per line
   pthread_key_t match_data_key;   ///< Thread-local match_data key
   pthread_once_t match_data_once; ///< Initialize key once
 } g_filter_state = {
     .singleton = NULL,
     .pattern = NULL,
     .enabled = false,
+    .global_flag = false,
     .match_data_once = PTHREAD_ONCE_INIT,
 };
 
@@ -53,6 +55,54 @@ static void destroy_match_data(void *data) {
  */
 static void create_match_data_key(void) {
   pthread_key_create(&g_filter_state.match_data_key, destroy_match_data);
+}
+
+/**
+ * @brief Map character position in plain text to byte position in colored text
+ *
+ * @param colored_text Original text with ANSI escape codes
+ * @param char_pos Character position (ignoring ANSI codes)
+ * @return Byte position in colored_text
+ */
+static size_t map_plain_to_colored_pos(const char *colored_text, size_t char_pos) {
+  size_t byte_pos = 0;
+  size_t chars_seen = 0;
+
+  while (colored_text[byte_pos] != '\0' && chars_seen < char_pos) {
+    // Check for ANSI escape sequence
+    if (colored_text[byte_pos] == '\x1b' && colored_text[byte_pos + 1] == '[') {
+      // Skip entire ANSI sequence
+      byte_pos += 2;
+      while (colored_text[byte_pos] != '\0') {
+        char c = colored_text[byte_pos];
+        byte_pos++;
+        // Final byte ends the sequence (0x40-0x7E)
+        if (c >= 0x40 && c <= 0x7E) {
+          break;
+        }
+      }
+    } else {
+      // Regular character
+      byte_pos++;
+      chars_seen++;
+    }
+  }
+
+  // Skip past any ANSI sequences at the insertion point
+  // This prevents inserting highlight codes right before reset codes like [0m
+  while (colored_text[byte_pos] == '\x1b' && colored_text[byte_pos + 1] == '[') {
+    byte_pos += 2;
+    while (colored_text[byte_pos] != '\0') {
+      char c = colored_text[byte_pos];
+      byte_pos++;
+      // Final byte ends the sequence (0x40-0x7E)
+      if (c >= 0x40 && c <= 0x7E) {
+        break;
+      }
+    }
+  }
+
+  return byte_pos;
 }
 
 /**
@@ -136,8 +186,8 @@ static uint32_t parse_pattern_with_flags(const char *input, char *pattern_out, s
         case 'x': // extended mode (ignore whitespace and comments)
           options |= PCRE2_EXTENDED;
           break;
-        case 'g': // global flag (noted but doesn't apply to line-by-line matching)
-          // Silently ignore - we match line by line anyway
+        case 'g': // global flag - highlight all matches per line
+          // Handled separately in log_filter_init()
           break;
         default:
           // Already validated above, this shouldn't be reached
@@ -165,6 +215,10 @@ asciichat_error_t log_filter_init(const char *pattern) {
   // Parse pattern and extract flags
   char parsed_pattern[4096];
   uint32_t pcre2_options = parse_pattern_with_flags(pattern, parsed_pattern, sizeof(parsed_pattern));
+
+  // Check for /g flag to enable global matching (highlight all matches per line)
+  const char *last_slash = strrchr(pattern, '/');
+  g_filter_state.global_flag = (last_slash && strchr(last_slash + 1, 'g') != NULL);
 
   // Use singleton pattern (auto-registered for cleanup, includes JIT)
   g_filter_state.singleton = asciichat_pcre2_singleton_compile(parsed_pattern, pcre2_options);
@@ -226,6 +280,183 @@ bool log_filter_should_output(const char *log_line, size_t *match_start, size_t 
   return true; // Match found, output with highlighting
 }
 
+const char *log_filter_highlight_colored(const char *colored_text, const char *plain_text, size_t match_start,
+                                         size_t match_len) {
+  static __thread char highlight_buffer[16384];
+
+  if (!colored_text || !plain_text || match_len == 0) {
+    return colored_text;
+  }
+
+  // If global flag is set, find and highlight ALL matches
+  if (g_filter_state.global_flag && g_filter_state.singleton) {
+    pcre2_code *code = asciichat_pcre2_singleton_get_code(g_filter_state.singleton);
+    pcre2_match_data *match_data = get_thread_match_data();
+
+    if (!code || !match_data) {
+      return colored_text; // Fall back to no highlighting
+    }
+
+    size_t plain_len = strlen(plain_text);
+    size_t colored_len = strlen(colored_text);
+    char *dst = highlight_buffer;
+    size_t plain_offset = 0;
+    size_t colored_pos = 0;
+
+    // Find all matches in plain text and highlight in colored text
+    while (plain_offset < plain_len) {
+      int rc = pcre2_jit_match(code, (PCRE2_SPTR)plain_text, plain_len, plain_offset, 0, match_data, NULL);
+      if (rc < 0) {
+        break; // No more matches
+      }
+
+      PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
+      size_t plain_match_start = (size_t)ovector[0];
+      size_t plain_match_end = (size_t)ovector[1];
+
+      // Map to colored text positions
+      size_t colored_match_start = map_plain_to_colored_pos(colored_text, plain_match_start);
+      size_t colored_match_end = map_plain_to_colored_pos(colored_text, plain_match_end);
+
+      // Copy text before match
+      if (colored_match_start > colored_pos) {
+        memcpy(dst, colored_text + colored_pos, colored_match_start - colored_pos);
+        dst += (colored_match_start - colored_pos);
+      }
+
+      // Add yellow background
+      dst = append_truecolor_bg(dst, 255, 200, 0);
+
+      // Copy matched text, re-applying background after any [0m or [00m reset codes
+      size_t match_byte_len = colored_match_end - colored_match_start;
+      const char *match_src = colored_text + colored_match_start;
+      char *dst_end = highlight_buffer + sizeof(highlight_buffer) - 50; // Leave room for final codes
+      size_t i = 0;
+      while (i < match_byte_len && dst < dst_end) {
+        // Check for [0m or [00m reset codes
+        if (i + 4 <= match_byte_len && match_src[i] == '\x1b' && match_src[i + 1] == '[' && match_src[i + 2] == '0' &&
+            match_src[i + 3] == 'm') {
+          // Found [0m - copy it and re-apply background
+          if (dst + 23 >= dst_end)
+            break;                 // Need room for [0m + background code
+          *dst++ = match_src[i++]; // ESC
+          *dst++ = match_src[i++]; // '['
+          *dst++ = match_src[i++]; // '0'
+          *dst++ = match_src[i++]; // 'm'
+          // Re-apply yellow background after reset
+          dst = append_truecolor_bg(dst, 255, 200, 0);
+        } else if (i + 5 <= match_byte_len && match_src[i] == '\x1b' && match_src[i + 1] == '[' &&
+                   match_src[i + 2] == '0' && match_src[i + 3] == '0' && match_src[i + 4] == 'm') {
+          // Found [00m - copy it and re-apply background
+          if (dst + 24 >= dst_end)
+            break;                 // Need room for [00m + background code
+          *dst++ = match_src[i++]; // ESC
+          *dst++ = match_src[i++]; // '['
+          *dst++ = match_src[i++]; // '0'
+          *dst++ = match_src[i++]; // '0'
+          *dst++ = match_src[i++]; // 'm'
+          // Re-apply yellow background after reset
+          dst = append_truecolor_bg(dst, 255, 200, 0);
+        } else {
+          // Regular character - just copy
+          if (dst + 1 >= dst_end)
+            break;
+          *dst++ = match_src[i++];
+        }
+      }
+
+      // Reset background only
+      memcpy(dst, "\x1b[49m", 5);
+      dst += 5;
+
+      colored_pos = colored_match_end;
+      plain_offset = plain_match_end;
+
+      // Prevent infinite loop on zero-length matches
+      if (plain_match_end == plain_match_start) {
+        plain_offset++;
+      }
+    }
+
+    // Copy remaining text
+    if (colored_pos < colored_len) {
+      memcpy(dst, colored_text + colored_pos, colored_len - colored_pos);
+      dst += (colored_len - colored_pos);
+    }
+
+    *dst = '\0';
+    return highlight_buffer;
+  }
+
+  // Single match highlighting (original behavior without /g)
+  size_t colored_start = map_plain_to_colored_pos(colored_text, match_start);
+  size_t colored_end = map_plain_to_colored_pos(colored_text, match_start + match_len);
+
+  size_t colored_len = strlen(colored_text);
+  char *dst = highlight_buffer;
+
+  // Copy text before match
+  if (colored_start > 0) {
+    memcpy(dst, colored_text, colored_start);
+    dst += colored_start;
+  }
+
+  // Add yellow background
+  dst = append_truecolor_bg(dst, 255, 200, 0);
+
+  // Copy matched text, re-applying background after any [0m or [00m reset codes
+  size_t match_byte_len = colored_end - colored_start;
+  const char *match_src = colored_text + colored_start;
+  char *dst_end = highlight_buffer + sizeof(highlight_buffer) - 50; // Leave room for final codes
+  size_t i = 0;
+  while (i < match_byte_len && dst < dst_end) {
+    // Check for [0m or [00m reset codes
+    if (i + 4 <= match_byte_len && match_src[i] == '\x1b' && match_src[i + 1] == '[' && match_src[i + 2] == '0' &&
+        match_src[i + 3] == 'm') {
+      // Found [0m - copy it and re-apply background
+      if (dst + 23 >= dst_end)
+        break;                 // Need room for [0m + background code
+      *dst++ = match_src[i++]; // ESC
+      *dst++ = match_src[i++]; // '['
+      *dst++ = match_src[i++]; // '0'
+      *dst++ = match_src[i++]; // 'm'
+      // Re-apply yellow background after reset
+      dst = append_truecolor_bg(dst, 255, 200, 0);
+    } else if (i + 5 <= match_byte_len && match_src[i] == '\x1b' && match_src[i + 1] == '[' &&
+               match_src[i + 2] == '0' && match_src[i + 3] == '0' && match_src[i + 4] == 'm') {
+      // Found [00m - copy it and re-apply background
+      if (dst + 24 >= dst_end)
+        break;                 // Need room for [00m + background code
+      *dst++ = match_src[i++]; // ESC
+      *dst++ = match_src[i++]; // '['
+      *dst++ = match_src[i++]; // '0'
+      *dst++ = match_src[i++]; // '0'
+      *dst++ = match_src[i++]; // 'm'
+      // Re-apply yellow background after reset
+      dst = append_truecolor_bg(dst, 255, 200, 0);
+    } else {
+      // Regular character - just copy
+      if (dst + 1 >= dst_end)
+        break;
+      *dst++ = match_src[i++];
+    }
+  }
+
+  // Reset background only
+  memcpy(dst, "\x1b[49m", 5);
+  dst += 5;
+
+  // Copy remaining text
+  size_t remaining = colored_len - colored_end;
+  if (remaining > 0) {
+    memcpy(dst, colored_text + colored_end, remaining);
+    dst += remaining;
+  }
+
+  *dst = '\0';
+  return highlight_buffer;
+}
+
 const char *log_filter_highlight(const char *log_line, size_t match_start, size_t match_len) {
   static __thread char highlight_buffer[16384];
 
@@ -239,30 +470,84 @@ const char *log_filter_highlight(const char *log_line, size_t match_start, size_
   }
 
   char *dst = highlight_buffer;
+  const char *src = log_line;
+  size_t pos = 0;
 
-  // Copy text before match
-  if (match_start > 0) {
-    memcpy(dst, log_line, match_start);
-    dst += match_start;
-  }
+  // If global flag is set, find and highlight ALL matches
+  if (g_filter_state.global_flag) {
+    pcre2_code *code = asciichat_pcre2_singleton_get_code(g_filter_state.singleton);
+    pcre2_match_data *match_data = get_thread_match_data();
 
-  // Add background color for match
-  // Yellow background (255, 200, 0) + black foreground (0, 0, 0)
-  dst = append_truecolor_fg_bg(dst, 0, 0, 0, 255, 200, 0);
+    if (!code || !match_data) {
+      return log_line; // Fall back to no highlighting
+    }
 
-  // Copy matched text
-  memcpy(dst, log_line + match_start, match_len);
-  dst += match_len;
+    // Find all matches in the line
+    size_t offset = 0;
+    while (offset < line_len) {
+      int rc = pcre2_jit_match(code, (PCRE2_SPTR)log_line, line_len, offset, 0, match_data, NULL);
+      if (rc < 0) {
+        break; // No more matches
+      }
 
-  // Reset color
-  memcpy(dst, "\x1b[0m", 4);
-  dst += 4;
+      PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
+      size_t match_pos = (size_t)ovector[0];
+      size_t match_end = (size_t)ovector[1];
+      size_t len = match_end - match_pos;
 
-  // Copy text after match
-  size_t remaining = line_len - (match_start + match_len);
-  if (remaining > 0) {
-    memcpy(dst, log_line + match_start + match_len, remaining);
-    dst += remaining;
+      // Copy text before match
+      if (match_pos > pos) {
+        memcpy(dst, src + pos, match_pos - pos);
+        dst += (match_pos - pos);
+      }
+
+      // Highlight the match (background only, preserve foreground color)
+      dst = append_truecolor_bg(dst, 255, 200, 0);
+      memcpy(dst, src + match_pos, len);
+      dst += len;
+      memcpy(dst, "\x1b[0m", 4);
+      dst += 4;
+
+      pos = match_end;
+      offset = match_end;
+
+      // Prevent infinite loop on zero-length matches
+      if (len == 0) {
+        offset++;
+      }
+    }
+
+    // Copy remaining text after last match
+    if (pos < line_len) {
+      memcpy(dst, src + pos, line_len - pos);
+      dst += (line_len - pos);
+    }
+
+  } else {
+    // Single match highlighting (original behavior)
+    // Copy text before match
+    if (match_start > 0) {
+      memcpy(dst, log_line, match_start);
+      dst += match_start;
+    }
+
+    // Add background color for match (preserve foreground color)
+    dst = append_truecolor_bg(dst, 255, 200, 0);
+
+    // Copy matched text
+    memcpy(dst, log_line + match_start, match_len);
+    dst += match_len;
+
+    // Reset color
+    memcpy(dst, "\x1b[0m", 4);
+    dst += 4;
+
+    // Copy text after match
+    size_t remaining = line_len - (match_start + match_len);
+    if (remaining > 0) {
+      memcpy(dst, log_line + match_start + match_len, remaining);
+      dst += remaining;
+    }
   }
 
   *dst = '\0';
@@ -274,6 +559,7 @@ void log_filter_destroy(void) {
   g_filter_state.singleton = NULL;
   g_filter_state.pattern = NULL;
   g_filter_state.enabled = false;
+  g_filter_state.global_flag = false;
 
   // Note: Thread-local match_data is cleaned up via pthread_key destructor
 }
