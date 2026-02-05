@@ -780,8 +780,7 @@ int receive_packet(socket_t sockfd, packet_type_t *type, void **data, size_t *le
  * @return 0 on success, -1 on error
  */
 int send_ping_packet(socket_t sockfd) {
-  asciichat_error_t result = send_packet(sockfd, PACKET_TYPE_PING, NULL, 0);
-  return result == ASCIICHAT_OK ? 0 : -1;
+  return send_packet(sockfd, PACKET_TYPE_PING, NULL, 0);
 }
 
 /**
@@ -790,8 +789,7 @@ int send_ping_packet(socket_t sockfd) {
  * @return 0 on success, -1 on error
  */
 int send_pong_packet(socket_t sockfd) {
-  asciichat_error_t result = send_packet(sockfd, PACKET_TYPE_PONG, NULL, 0);
-  return result == ASCIICHAT_OK ? 0 : -1;
+  return send_packet(sockfd, PACKET_TYPE_PONG, NULL, 0);
 }
 
 /**

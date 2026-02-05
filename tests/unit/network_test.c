@@ -41,16 +41,18 @@ int send_client_join_packet(int sockfd, const char *username, uint32_t capabilit
   return -1; // Stub - client-specific function
 }
 
-asciichat_error_t parse_size_message(const char *message, unsigned short *width, unsigned short *height) {
+int parse_size_message(const char *message, unsigned short *width, unsigned short *height) {
+  if (!width || !height) {
+    return -1; // Invalid parameters
+  }
   unsigned int w, h;
   asciichat_error_t result = safe_parse_size_message(message, &w, &h);
   if (result == ASCIICHAT_OK) {
-    if (width)
-      *width = (unsigned short)w;
-    if (height)
-      *height = (unsigned short)h;
+    *width = (unsigned short)w;
+    *height = (unsigned short)h;
+    return 0;
   }
-  return result;
+  return -1;
 }
 
 static int create_test_socket(void) {
@@ -107,19 +109,20 @@ ParameterizedTest(invalid_socket_test_case_t *tc, network, invalid_socket_operat
   int result;
   ssize_t sresult;
   bool bresult;
+  asciichat_error_t error_result;
 
   switch (tc->operation) {
   case OP_SET_TIMEOUT:
-    result = set_socket_timeout(-1, 1ULL * NS_PER_SEC_INT);
-    cr_assert_eq(result, -1, "%s should fail", tc->description);
+    error_result = set_socket_timeout(-1, 1ULL * NS_PER_SEC_INT);
+    cr_assert_neq(error_result, ASCIICHAT_OK, "%s should fail", tc->description);
     break;
   case OP_SET_KEEPALIVE:
-    result = set_socket_keepalive(-1);
-    cr_assert_eq(result, -1, "%s should fail", tc->description);
+    error_result = set_socket_keepalive(-1);
+    cr_assert_neq(error_result, ASCIICHAT_OK, "%s should fail", tc->description);
     break;
   case OP_SET_NONBLOCKING:
-    result = set_socket_nonblocking(-1);
-    cr_assert_eq(result, -1, "%s should fail", tc->description);
+    error_result = set_socket_nonblocking(-1);
+    cr_assert_neq(error_result, ASCIICHAT_OK, "%s should fail", tc->description);
     break;
   case OP_CONNECT_TIMEOUT: {
     struct sockaddr_in addr;
