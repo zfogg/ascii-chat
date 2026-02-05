@@ -1,15 +1,115 @@
 /**
  * @file lib/session/server_status.c
- * @brief Server status screen display implementation
+ * @brief Server status screen display with live log feed at FPS rate
  */
 
 #include <ascii-chat/session/server_status.h>
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/system.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/log/colorize.h>
 #include <ascii-chat/common.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <stdatomic.h>
+
+// ============================================================================
+// Log Buffer for Status Screen
+// ============================================================================
+
+#define STATUS_LOG_BUFFER_SIZE 100
+#define STATUS_LOG_LINE_MAX 512
+
+typedef struct {
+  char message[STATUS_LOG_LINE_MAX];
+  uint64_t sequence;
+} status_log_entry_t;
+
+typedef struct {
+  status_log_entry_t entries[STATUS_LOG_BUFFER_SIZE];
+  _Atomic size_t write_pos;
+  _Atomic uint64_t sequence;
+  mutex_t mutex;
+} status_log_buffer_t;
+
+static status_log_buffer_t *g_status_log_buffer = NULL;
+
+void server_status_log_init(void) {
+  if (g_status_log_buffer) {
+    return;
+  }
+  g_status_log_buffer = SAFE_CALLOC(1, sizeof(status_log_buffer_t), status_log_buffer_t *);
+  if (!g_status_log_buffer) {
+    return;
+  }
+  atomic_init(&g_status_log_buffer->write_pos, 0);
+  atomic_init(&g_status_log_buffer->sequence, 0);
+  mutex_init(&g_status_log_buffer->mutex);
+}
+
+void server_status_log_cleanup(void) {
+  if (!g_status_log_buffer) {
+    return;
+  }
+  mutex_destroy(&g_status_log_buffer->mutex);
+  SAFE_FREE(g_status_log_buffer);
+}
+
+void server_status_log_append(const char *message) {
+  if (!g_status_log_buffer || !message) {
+    return;
+  }
+
+  mutex_lock(&g_status_log_buffer->mutex);
+
+  size_t pos = atomic_load(&g_status_log_buffer->write_pos);
+  uint64_t seq = atomic_fetch_add(&g_status_log_buffer->sequence, 1);
+
+  SAFE_STRNCPY(g_status_log_buffer->entries[pos].message, message, STATUS_LOG_LINE_MAX);
+  g_status_log_buffer->entries[pos].sequence = seq;
+
+  atomic_store(&g_status_log_buffer->write_pos, (pos + 1) % STATUS_LOG_BUFFER_SIZE);
+
+  mutex_unlock(&g_status_log_buffer->mutex);
+}
+
+static size_t server_status_log_get_recent(status_log_entry_t *out_entries, size_t max_count) {
+  if (!g_status_log_buffer || !out_entries || max_count == 0) {
+    return 0;
+  }
+
+  mutex_lock(&g_status_log_buffer->mutex);
+
+  size_t write_pos = atomic_load(&g_status_log_buffer->write_pos);
+  uint64_t total_entries = atomic_load(&g_status_log_buffer->sequence);
+
+  size_t start_pos = write_pos;
+  size_t entries_to_check = STATUS_LOG_BUFFER_SIZE;
+
+  if (total_entries < STATUS_LOG_BUFFER_SIZE) {
+    start_pos = 0;
+    entries_to_check = write_pos;
+  }
+
+  size_t count = 0;
+  for (size_t i = 0; i < entries_to_check && count < max_count; i++) {
+    size_t idx = (start_pos + i) % STATUS_LOG_BUFFER_SIZE;
+    if (g_status_log_buffer->entries[idx].sequence > 0) {
+      memcpy(&out_entries[count], &g_status_log_buffer->entries[idx], sizeof(status_log_entry_t));
+      count++;
+    }
+  }
+
+  mutex_unlock(&g_status_log_buffer->mutex);
+  return count;
+}
+
+// ============================================================================
+// Status Display
+// ============================================================================
 
 asciichat_error_t server_status_gather(tcp_server_t *server, const char *session_string, const char *ipv4_address,
                                        const char *ipv6_address, uint16_t port, time_t start_time,
@@ -51,17 +151,12 @@ void server_status_display(const server_status_t *status) {
     return;
   }
 
-  // Get actual terminal dimensions
+  // Get terminal dimensions
   terminal_size_t term_size;
   if (terminal_get_size(&term_size) != ASCIICHAT_OK) {
-    // Fallback to standard dimensions
     term_size.cols = 80;
     term_size.rows = 24;
   }
-
-  // Content is max 80 chars wide, centered in terminal
-  const int CONTENT_WIDTH = 80;
-  int box_padding = (term_size.cols > CONTENT_WIDTH) ? (term_size.cols - CONTENT_WIDTH) / 2 : 0;
 
   // Calculate uptime
   time_t now = time(NULL);
@@ -73,107 +168,89 @@ void server_status_display(const server_status_t *status) {
   // Clear screen and move to home position
   printf("\033[H\033[2J");
 
-  // Add vertical centering
-  int vertical_padding = display_center_vertical(10, term_size.rows);
-  for (int i = 0; i < vertical_padding; i++)
-    printf("\n");
+  // ========================================================================
+  // STATUS BOX (compact, top of screen)
+  // ========================================================================
+  printf("\033[1;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m\n");
+  printf("\033[1;36m  ascii-chat %s Status\033[0m", status->mode_name);
+  printf("  👥 \033[1;33m%zu\033[0m", status->connected_count);
+  printf("  ⏱️ %dh %dm %ds\n", uptime_hours, uptime_mins, uptime_secs_rem);
 
-  // Print top border (80 chars wide, centered)
-  for (int i = 0; i < box_padding; i++)
-    printf(" ");
-  for (int i = 0; i < CONTENT_WIDTH; i++)
-    printf("━");
-  printf("\n");
-
-  // Build and center the title: "ascii-chat {mode_name} Status"
-  char title[128];
-  snprintf(title, sizeof(title), "ascii-chat %s Status", status->mode_name);
-
-  char colored_title[256];
-  snprintf(colored_title, sizeof(colored_title), "\033[1;36m%s\033[0m", title);
-
-  // Calculate horizontal padding to center within the 80-char box
-  int horizontal_padding = display_center_horizontal(title, CONTENT_WIDTH);
-
-  // Print centered title (80 chars wide, centered)
-  for (int i = 0; i < box_padding; i++)
-    printf(" ");
-  for (int i = 0; i < horizontal_padding; i++)
-    printf(" ");
-  printf("%s\n", colored_title);
-
-  // Print bottom border (80 chars wide, centered)
-  for (int i = 0; i < box_padding; i++)
-    printf(" ");
-  for (int i = 0; i < CONTENT_WIDTH; i++)
-    printf("━");
-  printf("\n");
-
-  // Session information
   if (status->session_string[0] != '\0') {
-    for (int i = 0; i < box_padding; i++)
-      printf(" ");
+    printf("🔗 %s", status->session_string);
     if (status->session_is_mdns_only) {
-      printf("🔗 \033[1;32mSession:\033[0m %s \033[2m(LAN)\033[0m\n", status->session_string);
+      printf(" \033[2m(LAN)\033[0m");
     } else {
-      printf("🔗 \033[1;32mSession:\033[0m %s \033[2m(Internet)\033[0m\n", status->session_string);
+      printf(" \033[2m(Internet)\033[0m");
+    }
+  }
+  if (status->ipv4_bound) {
+    printf("  📍 %s", status->ipv4_address);
+  }
+  if (status->ipv6_bound) {
+    printf("  📍 [%s]:%u", status->ipv6_address, status->port);
+  }
+  printf("\n");
+
+  printf("\033[1;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m\n");
+
+  // ========================================================================
+  // LIVE LOG FEED (scrolling, fills rest of screen)
+  // ========================================================================
+  printf("\033[1;37mLive Logs:\033[0m\n");
+
+  // Get recent log entries
+  status_log_entry_t logs[STATUS_LOG_BUFFER_SIZE];
+  size_t log_count = server_status_log_get_recent(logs, STATUS_LOG_BUFFER_SIZE);
+
+  // Calculate available lines for logs (leave room for status + borders)
+  int logs_available_lines = term_size.rows - 6; // Status takes ~4 lines + margins
+  if (logs_available_lines < 10) {
+    logs_available_lines = 10; // Minimum
+  }
+
+  // Display most recent logs (tail behavior)
+  size_t start_idx = (log_count > (size_t)logs_available_lines) ? log_count - logs_available_lines : 0;
+  for (size_t i = start_idx; i < log_count; i++) {
+    // Use existing logging colorization system
+    const char *colorized = colorize_log_message(logs[i].message);
+    printf("%s", colorized);
+    if (colorized[strlen(colorized) - 1] != '\n') {
+      printf("\n");
     }
   }
 
-  // Bind addresses
-  if (status->ipv4_bound) {
-    for (int i = 0; i < box_padding; i++)
-      printf(" ");
-    printf("📍 IPv4: %s\n", status->ipv4_address);
-  }
-  if (status->ipv6_bound) {
-    for (int i = 0; i < box_padding; i++)
-      printf(" ");
-    printf("📍 IPv6: %s\n", status->ipv6_address);
-  }
-  // If no addresses bound, show separator
-  if (!status->ipv4_bound && !status->ipv6_bound && status->session_string[0] != '\0') {
-    for (int i = 0; i < box_padding; i++)
-      printf(" ");
-    printf("\n");
-  }
-
-  // Connected count
-  for (int i = 0; i < box_padding; i++)
-    printf(" ");
-  printf("👥 Connected: \033[1;33m%zu\033[0m\n", status->connected_count);
-
-  // Uptime
-  for (int i = 0; i < box_padding; i++)
-    printf(" ");
-  printf("⏱️ Uptime: %dh %dm %ds\n", uptime_hours, uptime_mins, uptime_secs_rem);
-
-  // Print bottom border (80 chars wide, centered)
-  for (int i = 0; i < box_padding; i++)
-    printf(" ");
-  for (int i = 0; i < CONTENT_WIDTH; i++)
-    printf("━");
-  printf("\n");
   fflush(stdout);
 }
 
 void server_status_update(tcp_server_t *server, const char *session_string, const char *ipv4_address,
                           const char *ipv6_address, uint16_t port, time_t start_time, const char *mode_name,
-                          bool session_is_mdns_only, time_t *last_update) {
-  if (!server || !last_update) {
+                          bool session_is_mdns_only, uint64_t *last_update_ns) {
+  if (!server || !last_update_ns) {
     return;
   }
 
-  // Only update every 1-2 seconds
-  time_t now = time(NULL);
-  if (now - *last_update < 1) {
-    return;
+  // Update at FPS rate (60 Hz = 16.67ms by default)
+  uint32_t fps = GET_OPTION(fps);
+  if (fps == 0) {
+    fps = 60; // Default
+  }
+
+  // Calculate frame interval in microseconds
+  uint64_t frame_interval_us = 1000000ULL / fps;
+
+  // Get current time in microseconds using platform abstraction
+  uint64_t now_us = platform_get_monotonic_time_us();
+
+  // Check if enough time has passed
+  if ((now_us - *last_update_ns) < frame_interval_us) {
+    return; // Too soon, skip frame
   }
 
   server_status_t status;
   if (server_status_gather(server, session_string, ipv4_address, ipv6_address, port, start_time, mode_name,
                            session_is_mdns_only, &status) == ASCIICHAT_OK) {
     server_status_display(&status);
-    *last_update = now;
+    *last_update_ns = now_us;
   }
 }

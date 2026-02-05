@@ -215,7 +215,7 @@ static time_t g_server_start_time = 0;
  * Tracks when status was last displayed to avoid excessive updates.
  * Used by status update callback to rate-limit display updates.
  */
-static time_t g_last_status_update = 0;
+static uint64_t g_last_status_update = 0; // Microseconds from platform_get_monotonic_time_us()
 
 /**
  * @brief Current session string for status display
@@ -1398,6 +1398,12 @@ int server_main(void) {
 
   log_info("ascii-chat server starting...");
 
+  // Initialize status screen log capture if status screen is enabled
+  if (GET_OPTION(status_screen)) {
+    server_status_log_init();
+    log_debug("Status screen log capture initialized");
+  }
+
   // log_info("SERVER: Options initialized, using log file: %s", log_filename);
   int port = GET_OPTION(port);
   if (port < 1 || port > 65535) {
@@ -2054,7 +2060,7 @@ skip_acds_session:
 
   // Initialize status screen
   g_server_start_time = time(NULL);
-  g_last_status_update = 0;
+  g_last_status_update = platform_get_monotonic_time_us();
 
   // Display initial status screen if enabled
   if (GET_OPTION(status_screen)) {
@@ -2062,7 +2068,7 @@ skip_acds_session:
     if (server_status_gather(&g_tcp_server, session_string, ipv4_address, ipv6_address, (uint16_t)port,
                              g_server_start_time, "Server", session_is_mdns_only, &status) == ASCIICHAT_OK) {
       server_status_display(&status);
-      g_last_status_update = g_server_start_time;
+      g_last_status_update = platform_get_monotonic_time_us();
     }
   }
 
@@ -2080,6 +2086,9 @@ skip_acds_session:
   log_debug("Server accept loop exited");
 
 cleanup:
+  // Cleanup status screen log capture
+  server_status_log_cleanup();
+
   // Cleanup
   log_debug("Server shutting down...");
   memset(g_session_string, 0, sizeof(g_session_string)); // Clear session string for status screen

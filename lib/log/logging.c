@@ -806,6 +806,10 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
     return;
   }
 
+  // Feed log to status screen buffer if status screen is active (external linkage)
+  extern void server_status_log_append(const char *message);
+  server_status_log_append(plain_log_line);
+
   // Apply grep filter (terminal output only - file logs are unfiltered)
   // Match against PLAIN text (no ANSI codes) so offsets are correct
   size_t match_start = 0, match_len = 0;

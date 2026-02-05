@@ -72,11 +72,10 @@ asciichat_error_t server_status_gather(tcp_server_t *server, const char *session
 void server_status_display(const server_status_t *status);
 
 /**
- * @brief Periodically update server status display
+ * @brief Periodically update server status display with live logs at FPS rate
  *
- * Gathers and displays server status if enough time has passed since
- * the last update (1-2 second intervals). Designed to be called from
- * the TCP server status update callback.
+ * Gathers and displays server status with live log feed if enough time has
+ * passed since last update (based on GET_OPTION(fps)). Updates at 60 Hz by default.
  *
  * @param server Initialized TCP server structure
  * @param session_string Memorable session string
@@ -86,8 +85,31 @@ void server_status_display(const server_status_t *status);
  * @param start_time Server start time
  * @param mode_name Mode name for display (e.g., "Server")
  * @param session_is_mdns_only Whether session is mDNS-only or ACDS
- * @param[in,out] last_update Time of last update (updated if display occurs)
+ * @param[in,out] last_update_ns Last update time in microseconds (from platform_get_monotonic_time_us)
  */
 void server_status_update(tcp_server_t *server, const char *session_string, const char *ipv4_address,
                           const char *ipv6_address, uint16_t port, time_t start_time, const char *mode_name,
-                          bool session_is_mdns_only, time_t *last_update);
+                          bool session_is_mdns_only, uint64_t *last_update_ns);
+
+/**
+ * @brief Initialize status screen log capture system
+ *
+ * Must be called before using status screen. Creates internal log buffer.
+ */
+void server_status_log_init(void);
+
+/**
+ * @brief Cleanup status screen log capture system
+ *
+ * Call when shutting down. Frees internal log buffer.
+ */
+void server_status_log_cleanup(void);
+
+/**
+ * @brief Append a log message to status screen buffer
+ *
+ * Thread-safe. Called from logging system to capture messages.
+ *
+ * @param message Log message text (already formatted with colors)
+ */
+void server_status_log_append(const char *message);

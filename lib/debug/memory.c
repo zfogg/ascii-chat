@@ -58,9 +58,10 @@ typedef struct {
 
 static const ignore_entry_t g_ignore_list[] = {
     {"lib/util/pcre2.c", 52, 2},           // Exactly 2 PCRE2 singleton allocations (cleaned after report)
-    {"lib/options/colorscheme.c", 623, 8}, // 8 truecolor ANSI strings (cleaned after report)
-    {"lib/options/colorscheme.c", 641, 8}, // 8 256-color ANSI strings (cleaned after report)
-    {"lib/options/colorscheme.c", 658, 8}, // 8 16-color ANSI strings (cleaned after report)
+    {"lib/options/colorscheme.c", 557, 8}, // 8 16-color ANSI strings (cleaned after report)
+    {"lib/options/colorscheme.c", 575, 8}, // 8 256-color ANSI strings (cleaned after report)
+    {"lib/options/colorscheme.c", 592, 8}, // 8 truecolor ANSI strings (cleaned after report)
+    {"lib/session/display.c", 131, 1},     // Session display context (cleaned after report)
     {NULL, 0, 0}                           // Sentinel
 };
 
@@ -586,13 +587,37 @@ void debug_memory_report(void) {
     size_t calloc_calls = atomic_load(&g_mem.calloc_calls);
     size_t free_calls = atomic_load(&g_mem.free_calls);
 
+    // Calculate total size and count of suppressed allocations
+    size_t suppressed_bytes = 0;
+    size_t suppressed_count = 0;
+    if (g_mem.head) {
+      if (ensure_mutex_initialized()) {
+        mutex_lock(&g_mem.mutex);
+        mem_block_t *curr = g_mem.head;
+        while (curr) {
+          if (should_ignore_allocation(curr->file, curr->line)) {
+            suppressed_bytes += curr->size;
+            suppressed_count++;
+          }
+          curr = curr->next;
+        }
+        mutex_unlock(&g_mem.mutex);
+      }
+    }
+
+    // Adjust current usage to exclude suppressed allocations
+    size_t adjusted_current_usage = (current_usage >= suppressed_bytes) ? (current_usage - suppressed_bytes) : 0;
+
+    // Reset ignore counters after counting suppressed bytes
+    reset_ignore_counters();
+
     char pretty_total[64];
     char pretty_freed[64];
     char pretty_current[64];
     char pretty_peak[64];
     format_bytes_pretty(total_allocated, pretty_total, sizeof(pretty_total));
     format_bytes_pretty(total_freed, pretty_freed, sizeof(pretty_freed));
-    format_bytes_pretty(current_usage, pretty_current, sizeof(pretty_current));
+    format_bytes_pretty(adjusted_current_usage, pretty_current, sizeof(pretty_current));
     format_bytes_pretty(peak_usage, pretty_peak, sizeof(pretty_peak));
 
     // Calculate max label width for column alignment
@@ -603,6 +628,7 @@ void debug_memory_report(void) {
     const char *label_malloc = "malloc calls:";
     const char *label_calloc = "calloc calls:";
     const char *label_free = "free calls:";
+    const char *label_suppressions = "suppressions:";
     const char *label_diff = "unfreed allocations:";
 
     size_t max_label_width = 0;
@@ -613,6 +639,7 @@ void debug_memory_report(void) {
     max_label_width = MAX(max_label_width, strlen(label_malloc));
     max_label_width = MAX(max_label_width, strlen(label_calloc));
     max_label_width = MAX(max_label_width, strlen(label_free));
+    max_label_width = MAX(max_label_width, strlen(label_suppressions));
     max_label_width = MAX(max_label_width, strlen(label_diff));
 
 #define PRINT_MEM_LINE(label, value_str)                                                                               \
@@ -643,6 +670,15 @@ void debug_memory_report(void) {
     char free_str[32];
     safe_snprintf(free_str, sizeof(free_str), "%zu", free_calls);
     PRINT_MEM_LINE(label_free, free_str);
+
+    // suppressions - show count and pretty bytes
+    if (suppressed_count > 0) {
+      char pretty_suppressed[64];
+      format_bytes_pretty(suppressed_bytes, pretty_suppressed, sizeof(pretty_suppressed));
+      char suppressions_str[128];
+      safe_snprintf(suppressions_str, sizeof(suppressions_str), "%zu (%s)", suppressed_count, pretty_suppressed);
+      PRINT_MEM_LINE(label_suppressions, suppressions_str);
+    }
 
     // diff - count actual unfreed allocations in the linked list (excluding ignored)
     size_t unfreed_count = 0;
