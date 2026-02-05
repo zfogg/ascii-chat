@@ -204,7 +204,10 @@ int main(int argc, char *argv[]) {
       const char *pattern = argv[i + 1];
       asciichat_error_t filter_result = log_filter_init(pattern);
       if (filter_result != ASCIICHAT_OK) {
-        fprintf(stderr, "ERROR: Invalid --grep pattern, exiting\n");
+        fprintf(stderr,
+                "ERROR: Invalid --grep pattern format: \"%s\" - use /pattern/flags format, e.g., \"/query/ig\" or "
+                "\"/test/\"\n",
+                pattern);
         return 1;
       }
       break; // Filter initialized early, stop searching

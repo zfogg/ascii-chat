@@ -184,11 +184,16 @@ static pcre2_match_data *get_thread_match_data(void) {
 }
 
 /**
- * @brief Parse regex pattern with optional trailing flags (e.g., "pattern/i" or "pattern/im")
- * @param input Input pattern string (may contain trailing /flags)
- * @param pattern_out Output buffer for pattern without flags
+ * @brief Parse regex pattern in /pattern/flags format (e.g., "/my_query/i" or "/test/igm")
+ * @param input Input pattern string (must be in /pattern/flags format)
+ * @param pattern_out Output buffer for pattern without delimiters and flags
  * @param pattern_size Size of pattern_out buffer
- * @return PCRE2 compile options based on flags
+ * @return PCRE2 compile options based on flags, or 0 on format error
+ *
+ * Format: /pattern/flags where:
+ * - Pattern is enclosed in forward slashes
+ * - Flags are optional: i (case-insensitive), m (multiline), s (dotall), x (extended), g (global)
+ * - Examples: "/test/", "/query/i", "/foo.*bar/igm"
  */
 static uint32_t parse_pattern_with_flags(const char *input, char *pattern_out, size_t pattern_size) {
   // Default flags: UTF-8 mode and Unicode character properties (always enabled)
@@ -196,70 +201,74 @@ static uint32_t parse_pattern_with_flags(const char *input, char *pattern_out, s
 
   if (!input || strlen(input) == 0) {
     pattern_out[0] = '\0';
-    return options;
+    return 0; // Error: empty pattern
   }
 
   size_t len = strlen(input);
 
-  // Look for trailing /flags pattern
-  // Find the last '/' in the string
-  const char *last_slash = strrchr(input, '/');
+  // Require leading slash
+  if (input[0] != '/') {
+    return 0; // Error: must start with /
+  }
 
-  // Check if there's a trailing slash followed by flag characters
-  if (last_slash && last_slash < (input + len - 1)) {
-    const char *flags = last_slash + 1;
-    size_t flags_len = strlen(flags);
+  // Require at least "/x/" (minimum 3 chars)
+  if (len < 3) {
+    return 0; // Error: pattern too short
+  }
 
-    // Validate that all characters after the slash are valid flag characters
-    bool all_valid_flags = true;
-    for (size_t i = 0; i < flags_len; i++) {
-      char c = flags[i];
-      if (c != 'i' && c != 'm' && c != 's' && c != 'x' && c != 'g') {
-        all_valid_flags = false;
-        break;
-      }
-    }
+  // Find closing slash (search from position 1 onwards)
+  const char *closing_slash = strchr(input + 1, '/');
+  if (!closing_slash) {
+    return 0; // Error: missing closing /
+  }
 
-    if (all_valid_flags && flags_len > 0) {
-      // Extract pattern without the trailing /flags
-      size_t pattern_len = (size_t)(last_slash - input);
-      if (pattern_len >= pattern_size) {
-        pattern_len = pattern_size - 1;
-      }
-      memcpy(pattern_out, input, pattern_len);
-      pattern_out[pattern_len] = '\0';
+  // Extract pattern between the two slashes
+  size_t pattern_len = (size_t)(closing_slash - (input + 1));
+  if (pattern_len == 0) {
+    return 0; // Error: empty pattern between slashes
+  }
+  if (pattern_len >= pattern_size) {
+    pattern_len = pattern_size - 1;
+  }
+  memcpy(pattern_out, input + 1, pattern_len);
+  pattern_out[pattern_len] = '\0';
 
-      // Parse flags
-      for (size_t i = 0; i < flags_len; i++) {
-        switch (flags[i]) {
-        case 'i': // case-insensitive
-          options |= PCRE2_CASELESS;
-          break;
-        case 'm': // multiline mode (^ and $ match line boundaries)
-          options |= PCRE2_MULTILINE;
-          break;
-        case 's': // dotall mode (. matches newlines)
-          options |= PCRE2_DOTALL;
-          break;
-        case 'x': // extended mode (ignore whitespace and comments)
-          options |= PCRE2_EXTENDED;
-          break;
-        case 'g': // global flag - highlight all matches per line
-          // Handled separately in log_filter_init()
-          break;
-        default:
-          // Already validated above, this shouldn't be reached
-          break;
-        }
-      }
+  // Parse optional flags after closing slash
+  const char *flags = closing_slash + 1;
+  size_t flags_len = strlen(flags);
 
-      return options;
+  // Validate that all characters after closing slash are valid flags
+  for (size_t i = 0; i < flags_len; i++) {
+    char c = flags[i];
+    if (c != 'i' && c != 'm' && c != 's' && c != 'x' && c != 'g') {
+      return 0; // Error: invalid flag character
     }
   }
 
-  // No flags found - use pattern as-is (case-sensitive by default)
-  strncpy(pattern_out, input, pattern_size - 1);
-  pattern_out[pattern_size - 1] = '\0';
+  // Apply flags
+  for (size_t i = 0; i < flags_len; i++) {
+    switch (flags[i]) {
+    case 'i': // case-insensitive
+      options |= PCRE2_CASELESS;
+      break;
+    case 'm': // multiline mode (^ and $ match line boundaries)
+      options |= PCRE2_MULTILINE;
+      break;
+    case 's': // dotall mode (. matches newlines)
+      options |= PCRE2_DOTALL;
+      break;
+    case 'x': // extended mode (ignore whitespace and comments)
+      options |= PCRE2_EXTENDED;
+      break;
+    case 'g': // global flag - highlight all matches per line
+      // Handled separately in log_filter_init()
+      break;
+    default:
+      // Already validated above, this shouldn't be reached
+      log_error("BUG: Invalid flag character '%c' passed validation", flags[i]);
+      break;
+    }
+  }
 
   return options;
 }
@@ -273,6 +282,14 @@ asciichat_error_t log_filter_init(const char *pattern) {
   // Parse pattern and extract flags
   char parsed_pattern[4096];
   uint32_t pcre2_options = parse_pattern_with_flags(pattern, parsed_pattern, sizeof(parsed_pattern));
+
+  // Check for format error (parse function returns 0 on invalid format)
+  if (pcre2_options == 0) {
+    log_error("Invalid --grep pattern format: \"%s\"", pattern);
+    log_error("Use /pattern/flags format, e.g., \"/my_query/ig\" or \"/test/\"");
+    g_filter_state.enabled = false;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid --grep pattern format, use \"/my_query/ig\" format");
+  }
 
   // Check for /g flag to enable global matching (highlight all matches per line)
   const char *last_slash = strrchr(pattern, '/');
