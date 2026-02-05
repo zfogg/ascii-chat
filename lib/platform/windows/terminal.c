@@ -988,10 +988,28 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
 }
 
 /**
+ * Calculate luminance from RGB (0-255 scale)
+ * Uses ITU-R BT.709 formula for relative luminance
+ */
+static inline float _calculate_luminance(uint8_t r, uint8_t g, uint8_t b) {
+  return (0.2126f * r + 0.7152f * g + 0.0722f * b) / 255.0f;
+}
+
+/**
  * Detect if terminal has a dark background (Windows implementation)
- * Uses environment variables and terminal hints to make a best guess
+ * Tries to query actual background color first, then falls back to heuristics
  */
 bool terminal_has_dark_background(void) {
+  // Try to query actual terminal background color via OSC 11
+  uint8_t bg_r, bg_g, bg_b;
+  if (terminal_query_background_color(&bg_r, &bg_g, &bg_b)) {
+    // Calculate luminance from actual background color
+    float luminance = _calculate_luminance(bg_r, bg_g, bg_b);
+    return (luminance < 0.5f); // Dark if luminance < 50%
+  }
+
+  // Fall back to heuristic detection using environment variables
+
   // Check COLORFGBG environment variable (some Windows terminals set this)
   const char *colorfgbg = platform_getenv("COLORFGBG");
   if (colorfgbg) {

@@ -750,10 +750,28 @@ asciichat_error_t terminal_reset(int fd) {
 }
 
 /**
+ * Calculate luminance from RGB (0-255 scale)
+ * Uses ITU-R BT.709 formula for relative luminance
+ */
+static inline float _calculate_luminance(uint8_t r, uint8_t g, uint8_t b) {
+  return (0.2126f * r + 0.7152f * g + 0.0722f * b) / 255.0f;
+}
+
+/**
  * Detect if terminal has a dark background
- * Uses environment variables and terminal hints to make a best guess
+ * Tries to query actual background color first, then falls back to heuristics
  */
 bool terminal_has_dark_background(void) {
+  // Try to query actual terminal background color via OSC 11
+  uint8_t bg_r, bg_g, bg_b;
+  if (terminal_query_background_color(&bg_r, &bg_g, &bg_b)) {
+    // Calculate luminance from actual background color
+    float luminance = _calculate_luminance(bg_r, bg_g, bg_b);
+    return (luminance < 0.5f); // Dark if luminance < 50%
+  }
+
+  // Fall back to heuristic detection using environment variables
+
   // Check COLORFGBG environment variable (common in terminal emulators)
   // Format is "foreground;background" where values are color indices
   // Background >= 8 typically indicates a light background (bright colors)
@@ -801,15 +819,16 @@ bool terminal_has_dark_background(void) {
  * Query terminal background color using OSC 11
  */
 bool terminal_query_background_color(uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b) {
-  // Only query if stdout is a TTY
-  if (!isatty(STDOUT_FILENO)) {
-    log_debug("terminal_query_background_color: stdout is not a TTY");
+  // Try to open /dev/tty directly (works even when stdin/stdout are redirected)
+  int tty_fd = open("/dev/tty", O_RDWR);
+  if (tty_fd < 0) {
     return false;
   }
 
   // Save terminal state
   struct termios old_tio, new_tio;
-  if (tcgetattr(STDIN_FILENO, &old_tio) != 0) {
+  if (tcgetattr(tty_fd, &old_tio) != 0) {
+    close(tty_fd);
     return false;
   }
 
@@ -818,14 +837,13 @@ bool terminal_query_background_color(uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b
   new_tio.c_lflag &= ~(ICANON | ECHO);
   new_tio.c_cc[VMIN] = 0;
   new_tio.c_cc[VTIME] = 1; // 0.1 second timeout
-  tcsetattr(STDIN_FILENO, TCSANOW, &new_tio);
+  tcsetattr(tty_fd, TCSANOW, &new_tio);
 
   // Send OSC 11 query (query background color)
   const char *query = "\033]11;?\033\\";
-  log_debug("terminal_query_background_color: sending OSC 11 query");
-  if (write(STDOUT_FILENO, query, strlen(query)) < 0) {
-    log_debug("terminal_query_background_color: failed to write query");
-    tcsetattr(STDIN_FILENO, TCSANOW, &old_tio);
+  if (write(tty_fd, query, strlen(query)) < 0) {
+    tcsetattr(tty_fd, TCSANOW, &old_tio);
+    close(tty_fd);
     return false;
   }
 
@@ -836,7 +854,7 @@ bool terminal_query_background_color(uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b
 
   // Read with timeout (up to 100ms)
   for (int i = 0; i < 10 && total < (ssize_t)sizeof(response) - 1; i++) {
-    n = read(STDIN_FILENO, response + total, sizeof(response) - total - 1);
+    n = read(tty_fd, response + total, sizeof(response) - total - 1);
     if (n > 0) {
       total += n;
       // Check if we have a complete response
@@ -847,20 +865,18 @@ bool terminal_query_background_color(uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b
   }
 
   // Restore terminal state
-  tcsetattr(STDIN_FILENO, TCSANOW, &old_tio);
+  tcsetattr(tty_fd, TCSANOW, &old_tio);
+  close(tty_fd);
 
   if (total < 10) {
-    log_debug("terminal_query_background_color: no response or too short (got %zd bytes)", total);
     return false; // No response or too short
   }
 
   response[total] = '\0';
-  log_debug("terminal_query_background_color: received response (%zd bytes): %s", total, response);
 
   // Parse response: ESC]11;rgb:RRRR/GGGG/BBBB...
   const char *rgb_start = strstr(response, "rgb:");
   if (!rgb_start) {
-    log_debug("terminal_query_background_color: no 'rgb:' found in response");
     return false;
   }
   rgb_start += 4; // Skip "rgb:"
@@ -872,11 +888,9 @@ bool terminal_query_background_color(uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b
     *bg_r = (uint8_t)(r16 >> 8);
     *bg_g = (uint8_t)(g16 >> 8);
     *bg_b = (uint8_t)(b16 >> 8);
-    log_debug("terminal_query_background_color: SUCCESS - detected RGB(%d, %d, %d)", *bg_r, *bg_g, *bg_b);
     return true;
   }
 
-  log_debug("terminal_query_background_color: failed to parse RGB values");
   return false;
 }
 
