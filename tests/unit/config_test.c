@@ -704,13 +704,18 @@ Test(config_sections, client_config_ignored_for_server) {
   char *config_path = create_temp_config(content);
   cr_assert_not_null(config_path, "Failed to create temp config file");
 
-  // Terminal settings apply to all modes
-  asciichat_error_t result = config_load_and_apply(false, config_path, false, &backup);
+  // Copy writable_opts to backup so config_load_and_apply modifies the right values
+  memcpy(&backup, &writable_opts, sizeof(options_t));
+
+  // Load as server - client terminal config (width/height) should be ignored
+  asciichat_error_t result = config_load_and_apply(MODE_SERVER, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Loading terminal config should succeed");
+  cr_assert_eq(backup.width, 100, "Width should remain unchanged for server (got %d)", backup.width);
+  cr_assert_eq(backup.height, 50, "Height should remain unchanged for server (got %d)", backup.height);
   options_state_set(&backup);
   const options_t *opts = options_get();
-  cr_assert_eq(opts->width, 200, "Width should be set from terminal config");
-  cr_assert_eq(opts->height, 100, "Height should be set from terminal config");
+  cr_assert_eq(opts->width, 100, "Width should remain unchanged for server");
+  cr_assert_eq(opts->height, 50, "Height should remain unchanged for server");
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -779,6 +784,9 @@ Test(config_sections, audio_config_ignored_for_server) {
   writable_opts.microphone_index = 0;
   options_state_set(&writable_opts);
 
+  // Copy writable_opts to backup so config_load_and_apply modifies the right values
+  memcpy(&backup, &writable_opts, sizeof(options_t));
+
   const char *content = "[audio]\n"
                         "audio = true\n"
                         "microphone_index = 5\n";
@@ -787,8 +795,13 @@ Test(config_sections, audio_config_ignored_for_server) {
   cr_assert_not_null(config_path, "Failed to create temp config file");
 
   // Load as server - audio config should be ignored
-  asciichat_error_t result = config_load_and_apply(false, config_path, false, &backup);
+  asciichat_error_t result = config_load_and_apply(MODE_SERVER, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Loading audio config as server should succeed");
+  cr_assert_eq(backup.audio_enabled, 0, "After config_load: backup.audio_enabled should remain 0 for server (got %d)",
+               backup.audio_enabled);
+  cr_assert_eq(backup.microphone_index, 0,
+               "After config_load: backup.microphone_index should remain 0 for server (got %d)",
+               backup.microphone_index);
   options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->audio_enabled, 0, "Audio enabled should remain unchanged for server");
