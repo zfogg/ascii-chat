@@ -67,13 +67,15 @@ static void cleanup_processes(void) {
   g_acds_pid = -1;
   g_server_pid = -1;
 
-  // Clean up log files, database, and SQLite WAL files
-  unlink(ACDS_LOG_PATH);
+  // Clean up database and SQLite WAL files only
   unlink(ACDS_DB_PATH);
   unlink(ACDS_DB_PATH "-shm"); // SQLite shared memory file
   unlink(ACDS_DB_PATH "-wal"); // SQLite write-ahead log
-  unlink(SERVER_LOG_PATH);
-  // Preserve CLIENT_OUTPUT_PATH for inspection
+  // Preserve all log files and client output for inspection:
+  // - ACDS_LOG_PATH (/tmp/acds_test.log)
+  // - SERVER_LOG_PATH (/tmp/server_test.log)
+  // - CLIENT_OUTPUT_PATH (/tmp/client_snapshot.txt)
+  // - /tmp/client_test.log (stderr)
 }
 
 /**
@@ -327,11 +329,11 @@ Test(webrtc_discovery, frame_capture_via_webrtc, .init = setup_test, .fini = cle
   // ========================================================================
   log_info("Connecting client via WebRTC with snapshot...");
 
-  // Run client and capture output to file (stdout only - stderr to /dev/null) with 10 second timeout
+  // Run client and capture output to file (stdout to snapshot, stderr to log) with 10 second timeout
   char client_cmd[512];
   snprintf(client_cmd, sizeof(client_cmd),
-           "/opt/homebrew/bin/timeout 10 %s \"%s\" --snapshot --snapshot-delay 0 --test-pattern "
-           "--discovery-service 127.0.0.1 --discovery-port 27225 --prefer-webrtc > %s 2>/dev/null",
+           "/opt/homebrew/bin/timeout 10 %s --log-level dev \"%s\" --snapshot --snapshot-delay 0 --test-pattern "
+           "--discovery-service 127.0.0.1 --discovery-port 27225 --prefer-webrtc > %s 2>/tmp/client_test.log",
            binary_path, session_string, CLIENT_OUTPUT_PATH);
 
   int client_result = system(client_cmd);
