@@ -39,10 +39,8 @@
  *
  * Validates 11-character video IDs (alphanumeric, -, _)
  */
-static const char *YOUTUBE_VIDEO_ID_PATTERN = "^https?://(?:www\\.|m\\.)?(?:"
-                                              "youtube\\.com/watch\\?(?:[^&]*&)*v=(?<video_id>[A-Za-z0-9_-]{11})"
-                                              "|youtu\\.be/(?<video_id>[A-Za-z0-9_-]{11})"
-                                              ")(?:[&?].*)?$";
+static const char *YOUTUBE_VIDEO_ID_PATTERN =
+    "^https?://.*?(?:youtube|youtu)\\.?.*?(?:watch\\?v=|be/)([A-Za-z0-9_-]{11})";
 
 /**
  * @brief PCRE2 regex validator state for YouTube video ID extraction
@@ -109,20 +107,10 @@ static const char *youtube_extract_video_id_from_match(pcre2_match_data *match_d
     return NULL;
   }
 
-  /* Get the video_id capture group number */
-  youtube_validator_t *validator = youtube_validator_get();
-  if (!validator || !validator->regex) {
-    return NULL;
-  }
-
-  int group_number = pcre2_substring_number_from_name(validator->regex, (PCRE2_SPTR) "video_id");
-  if (group_number < 0) {
-    return NULL; /* Group doesn't exist */
-  }
-
+  /* Get capture group 1 (the video ID) */
   PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
-  PCRE2_SIZE start = ovector[2 * group_number];
-  PCRE2_SIZE end = ovector[2 * group_number + 1];
+  PCRE2_SIZE start = ovector[2 * 1];   /* Group 1 start */
+  PCRE2_SIZE end = ovector[2 * 1 + 1]; /* Group 1 end */
 
   if (start == PCRE2_UNSET || end == PCRE2_UNSET) {
     return NULL; /* Group not matched */
@@ -294,8 +282,7 @@ asciichat_error_t youtube_extract_video_id(const char *url, char *output_id, siz
     return ERROR_YOUTUBE_INVALID_URL;
   }
 
-  int match_result =
-      pcre2_match(validator->regex, (PCRE2_SPTR)url, strlen(url), 0, PCRE2_NO_UTF_CHECK, match_data, NULL);
+  int match_result = pcre2_match(validator->regex, (PCRE2_SPTR)url, strlen(url), 0, 0, match_data, NULL);
 
   if (match_result < 1) {
     /* No match or error */
