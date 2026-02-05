@@ -168,61 +168,51 @@ extern __thread asciichat_error_t asciichat_errno;
  */
 
 /**
- * @brief Set error code with custom context message and log it
+ * @brief Set error code with custom context message and log it, returning the error code
  * @param code Error code to set
  * @param context_msg Custom message explaining the error
  *
  * Usage in lib/ code:
  *   if (bind(sockfd, ...) < 0) {
- *       SET_ERRNO(ERROR_NETWORK_BIND, "Cannot bind to port %d", port);
- *       return ERROR_NETWORK_BIND;
+ *       return SET_ERRNO(ERROR_NETWORK_BIND, "Cannot bind to port %d", port);
  *   }
  */
 #ifdef NDEBUG
 #define SET_ERRNO(code, context_msg, ...)                                                                              \
-  do {                                                                                                                 \
-    asciichat_set_errno_with_message(code, NULL, 0, NULL, context_msg, ##__VA_ARGS__);                                 \
-    log_error("SET_ERRNO: " context_msg " (code: %d, meaning: %s)", ##__VA_ARGS__, code,                               \
-              asciichat_error_string(code));                                                                           \
-  } while (0)
+  (asciichat_set_errno_with_message(code, NULL, 0, NULL, context_msg, ##__VA_ARGS__),                                  \
+   log_error("SET_ERRNO: " context_msg " (code: %d, meaning: %s)", ##__VA_ARGS__, code, asciichat_error_string(code)), \
+   (code))
 #else
 #define SET_ERRNO(code, context_msg, ...)                                                                              \
-  do {                                                                                                                 \
-    asciichat_set_errno_with_message(code, __FILE__, __LINE__, __func__, context_msg, ##__VA_ARGS__);                  \
-    log_error("SET_ERRNO: " context_msg " (code: %d, meaning: %s)", ##__VA_ARGS__, code,                               \
-              asciichat_error_string(code));                                                                           \
-  } while (0)
+  (asciichat_set_errno_with_message(code, __FILE__, __LINE__, __func__, context_msg, ##__VA_ARGS__),                   \
+   log_error("SET_ERRNO: " context_msg " (code: %d, meaning: %s)", ##__VA_ARGS__, code, asciichat_error_string(code)), \
+   (code))
 #endif
 
 /**
- * @brief Set error code with custom message and system error context
+ * @brief Set error code with custom message and system error context, returning the error code
  * @param code Error code to set
  * @param context_msg Custom message explaining the error
  *
  * Usage in lib/ code:
  *   if (open(file, O_RDONLY) < 0) {
- *       SET_ERRNO_SYS(ERROR_CONFIG, "Failed to open config file: %s", path);
- *       return ERROR_CONFIG;
+ *       return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to open config file: %s", path);
  *   }
  */
 #ifdef NDEBUG
 #define SET_ERRNO_SYS(code, context_msg, ...)                                                                          \
-  do {                                                                                                                 \
-    int captured_errno = platform_get_last_error();                                                                    \
-    asciichat_set_errno_with_system_error_and_message(code, NULL, 0, NULL, captured_errno, context_msg,                \
-                                                      ##__VA_ARGS__);                                                  \
-    log_error("SETERRNO_SYS: " context_msg " (code: %d - %s, system error: %d - %s)", ##__VA_ARGS__, code,             \
-              asciichat_error_string(code), captured_errno, platform_strerror(captured_errno));                        \
-  } while (0)
+  (asciichat_set_errno_with_system_error_and_message(code, NULL, 0, NULL, platform_get_last_error(), context_msg,      \
+                                                     ##__VA_ARGS__),                                                   \
+   log_error("SETERRNO_SYS: " context_msg " (code: %d - %s, system error: %d - %s)", ##__VA_ARGS__, code,              \
+             asciichat_error_string(code), platform_get_last_error(), platform_strerror(platform_get_last_error())),   \
+   (code))
 #else
 #define SET_ERRNO_SYS(code, context_msg, ...)                                                                          \
-  do {                                                                                                                 \
-    int captured_errno = platform_get_last_error();                                                                    \
-    asciichat_set_errno_with_system_error_and_message(code, __FILE__, __LINE__, __func__, captured_errno, context_msg, \
-                                                      ##__VA_ARGS__);                                                  \
-    log_error("SETERRNO_SYS: " context_msg " (code: %d - %s, system error: %d - %s)", ##__VA_ARGS__, code,             \
-              asciichat_error_string(code), captured_errno, platform_strerror(captured_errno));                        \
-  } while (0)
+  (asciichat_set_errno_with_system_error_and_message(code, __FILE__, __LINE__, __func__, platform_get_last_error(),    \
+                                                     context_msg, ##__VA_ARGS__),                                      \
+   log_error("SETERRNO_SYS: " context_msg " (code: %d - %s, system error: %d - %s)", ##__VA_ARGS__, code,              \
+             asciichat_error_string(code), platform_get_last_error(), platform_strerror(platform_get_last_error())),   \
+   (code))
 #endif
 
 /* ============================================================================
