@@ -121,11 +121,13 @@ target_compile_definitions(ascii-chat-util PRIVATE UTF8PROC_STATIC)
 
 # PCRE2: Define PCRE2_CODE_UNIT_WIDTH=8 for 8-bit API (UTF-8 support)
 # CRITICAL: Must be defined before including pcre2.h in any source file
-target_compile_definitions(ascii-chat-util PRIVATE PCRE2_CODE_UNIT_WIDTH=8)
+# PUBLIC because include/ascii-chat/util/pcre2.h includes pcre2.h
+target_compile_definitions(ascii-chat-util PUBLIC PCRE2_CODE_UNIT_WIDTH=8)
 
 # Add PCRE2 include directory (must be before linking)
+# PUBLIC because pcre2.h is included from public header include/ascii-chat/util/pcre2.h
 if(PCRE2_INCLUDE_DIRS)
-    target_include_directories(ascii-chat-util PRIVATE ${PCRE2_INCLUDE_DIRS})
+    target_include_directories(ascii-chat-util PUBLIC ${PCRE2_INCLUDE_DIRS})
 endif()
 
 # Link PCRE2 library with explicit library directories
@@ -660,9 +662,12 @@ if(BUILDING_OBJECT_LIBS)
     endif()
 
     # Add PCRE2 include directory and library directory for the shared library
+    # PUBLIC because public header include/ascii-chat/util/pcre2.h includes pcre2.h
     if(PCRE2_INCLUDE_DIRS)
-        target_include_directories(ascii-chat-shared PRIVATE ${PCRE2_INCLUDE_DIRS})
+        target_include_directories(ascii-chat-shared PUBLIC ${PCRE2_INCLUDE_DIRS})
     endif()
+    # PCRE2_CODE_UNIT_WIDTH=8 must be defined before including pcre2.h
+    target_compile_definitions(ascii-chat-shared PUBLIC PCRE2_CODE_UNIT_WIDTH=8)
     if(PCRE2_LIBRARY_DIRS)
         target_link_directories(ascii-chat-shared PRIVATE ${PCRE2_LIBRARY_DIRS})
     endif()
