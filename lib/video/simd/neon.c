@@ -1025,9 +1025,13 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
   // Merge thread buffers in order
   size_t write_pos = 0;
   for (int t = 0; t < max_threads; t++) {
-    if (thread_buffers[t].buf && thread_buffers[t].len > 0) {
-      SAFE_MEMCPY(final_buf + write_pos, total_size + 1 - write_pos, thread_buffers[t].buf, thread_buffers[t].len);
-      write_pos += thread_buffers[t].len;
+    if (thread_buffers[t].buf) {
+      // Copy data if this thread wrote anything
+      if (thread_buffers[t].len > 0) {
+        SAFE_MEMCPY(final_buf + write_pos, total_size + 1 - write_pos, thread_buffers[t].buf, thread_buffers[t].len);
+        write_pos += thread_buffers[t].len;
+      }
+      // Always free buffer if it was allocated (even if len == 0)
       SAFE_FREE(thread_buffers[t].buf);
     }
   }
