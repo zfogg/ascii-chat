@@ -230,21 +230,22 @@ typedef struct {
 } parse_result_t;
 
 /**
- * @brief Parse pattern in /pattern/flags format or fixed string
- * @param input Input pattern string
+ * @brief Parse pattern in /pattern/flags format
+ * @param input Input pattern string (must use /pattern/flags format)
  * @return Parse result with all extracted settings
  *
- * Formats:
- * 1. /pattern/flags - Regex with flags
- * 2. literal string - Fixed string match (no regex)
+ * Format: /pattern/flags
+ * - All patterns must be enclosed in forward slashes
+ * - Use F flag for fixed string (literal) matching
  *
- * Regex flags:
+ * Flags:
  * - i: case-insensitive
- * - m: multiline mode
- * - s: dotall mode
- * - x: extended mode
+ * - m: multiline mode (regex only)
+ * - s: dotall mode (regex only)
+ * - x: extended mode (regex only)
  * - g: global (highlight all matches)
  * - I: invert match (show non-matching lines)
+ * - F: fixed string (literal match, no regex)
  * - A<n>: show n lines after match (e.g., A3)
  * - B<n>: show n lines before match (e.g., B2)
  * - C<n>: show n lines before and after match (e.g., C5)
@@ -252,10 +253,10 @@ typedef struct {
  * Examples:
  * - "/test/" - Simple regex
  * - "/query/i" - Case-insensitive regex
+ * - "/test/F" - Fixed string match for "test"
+ * - "/api/v1/users/F" - Fixed string match for "api/v1/users"
  * - "/ERROR/IA3" - Invert match + 3 lines after
- * - "/FATAL/B2A5" - 2 before, 5 after
- * - "/panic/C3" - 3 lines before and after
- * - "literal string" - Fixed string match
+ * - "/FATAL/B2A5F" - Fixed string, 2 before, 5 after
  */
 static parse_result_t parse_pattern_with_flags(const char *input) {
   parse_result_t result = {0};
@@ -267,16 +268,12 @@ static parse_result_t parse_pattern_with_flags(const char *input) {
 
   size_t len = strlen(input);
 
-  // Check if it's a regex (/pattern/flags) or fixed string
+  // Require /pattern/flags format
   if (input[0] != '/') {
-    // Fixed string match (no regex)
-    SAFE_STRNCPY(result.pattern, input, sizeof(result.pattern));
-    result.is_fixed_string = true;
-    result.valid = true;
-    return result;
+    return result; // Invalid: must start with /
   }
 
-  // Regex format: /pattern/flags
+  // Regex or fixed string format: /pattern/flags
   if (len < 3) {
     return result; // Invalid: too short
   }
@@ -299,7 +296,11 @@ static parse_result_t parse_pattern_with_flags(const char *input) {
   result.pattern[pattern_len] = '\0';
 
   // Parse flags after closing slash
+  // First pass: check for F flag
   const char *flags = closing_slash + 1;
+  bool has_F_flag = (strchr(flags, 'F') != NULL);
+
+  // Parse all flags
   for (const char *p = flags; *p; p++) {
     char c = *p;
 
@@ -316,6 +317,8 @@ static parse_result_t parse_pattern_with_flags(const char *input) {
       result.global_flag = true;
     } else if (c == 'I') {
       result.invert = true;
+    } else if (c == 'F') {
+      result.is_fixed_string = true;
     }
     // Multi-character flags with integers
     else if (c == 'A') {
@@ -348,8 +351,11 @@ static parse_result_t parse_pattern_with_flags(const char *input) {
       result.context_before = ctx;
       result.context_after = ctx;
     } else {
-      // Invalid flag character
-      return result;
+      // Invalid flag character - only error if not using F flag
+      if (!has_F_flag) {
+        return result; // Invalid
+      }
+      // Otherwise ignore invalid flags (they're part of the fixed string context)
     }
   }
 

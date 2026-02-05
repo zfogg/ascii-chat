@@ -301,8 +301,10 @@ static const registry_entry_t g_logging_entries[] = {
      offsetof(options_t, grep_pattern),
      &(const char *){OPT_GREP_PATTERN_DEFAULT},
      sizeof(char *),
-     "Filter logs printed to the console with PCRE2 regex. Case-sensitive by default. "
-     "Optional flags: /i, /m, /s, /x, /g. Example: 'error/ig'.",
+     "Filter console logs with perl compatible regular expressions or fixed strings. Format: /pattern/flags. "
+     "Flags: i(case-insensitive), m(multiline), s(dotall), x(extended), g(global highlight), "
+     "I(invert match), F(fixed string), A<n>(n lines after), B<n>(n before), C<n>(n both). "
+     "Examples: '/error/i', '/panic/C5', '/buffer pool/F'. Multiple --grep allowed (OR).",
      "LOGGING",
      "PATTERN",
      false,
@@ -1025,8 +1027,9 @@ static const registry_entry_t g_security_entries[] = {
      offsetof(options_t, server_key),
      "",
      0,
-     "Expected server public key for verification (SSH Ed25519 or GPG key file, gpg:FINGERPRINT, github:USER[.gpg], "
-     "gitlab:USER[.gpg], or HTTP(S) URLs like https://github.com/zfogg.[keys|gpg]).",
+     "Expected server public key for verification. Supports: raw base64 public key (AAAAC3Nz...), "
+     "SSH/GPG key files, gpg:FINGERPRINT, github:USER[.gpg], gitlab:USER[.gpg], "
+     "or HTTP(S) URLs like https://github.com/zfogg.[keys|gpg].",
      "SECURITY",
      NULL,
      false,
@@ -1043,8 +1046,9 @@ static const registry_entry_t g_security_entries[] = {
      offsetof(options_t, client_keys),
      "",
      0,
-     "Allowed client keys (comma-separated: file paths with one key per line, github:USER[.gpg], gitlab:USER[.gpg], "
-     "gpg:KEYID, or HTTP(S) URLs like https://github.com/zfogg.[keys|gpg]).",
+     "Allowed client keys (comma-separated). Supports: raw base64 public keys (AAAAC3Nz...), "
+     "file paths with one key per line, github:USER[.gpg], gitlab:USER[.gpg], gpg:KEYID, "
+     "or HTTP(S) URLs like https://github.com/zfogg.[keys|gpg].",
      "SECURITY",
      NULL,
      false,
@@ -1078,8 +1082,9 @@ static const registry_entry_t g_security_entries[] = {
      offsetof(options_t, discovery_service_key),
      "",
      0,
-     "Discovery server public key for verification (SSH Ed25519 or GPG key file, gpg:FINGERPRINT, github:USER, "
-     "gitlab:USER, or HTTP(S) URLs like https://github.com/zfogg.[keys|gpg]).",
+     "Discovery server public key for verification. Supports: raw base64 public key (AAAAC3Nz...), "
+     "SSH/GPG key files, gpg:FINGERPRINT, github:USER[.gpg], gitlab:USER[.gpg], "
+     "or HTTP(S) URLs like https://github.com/zfogg.[keys|gpg].",
      "SECURITY",
      NULL,
      false,

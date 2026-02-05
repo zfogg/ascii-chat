@@ -207,7 +207,7 @@ int main(int argc, char *argv[]) {
       if (filter_result != ASCIICHAT_OK) {
         fprintf(stderr,
                 "ERROR: Invalid --grep pattern or invalid flags: \"%s\" - use /pattern/flags format (e.g., "
-                "\"/query/ig\") or literal string\n",
+                "\"/query/ig\" or \"/literal/F\")\n",
                 pattern);
         return 1;
       }
