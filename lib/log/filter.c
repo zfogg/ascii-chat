@@ -22,121 +22,44 @@
 
 #include <pthread.h>
 #include <string.h>
-#include <math.h>
 
 /**
  * @brief Default highlight colors (grey)
- * Dark grey (80) for light terminals, darker grey (70) for dark terminals
- * Adjusted based on actual terminal background color if detectable
+ * Dark grey (70) for dark backgrounds, light grey (200) for light backgrounds
  */
-#define HIGHLIGHT_DARK_TERM_R 80 // Dark grey for light backgrounds
-#define HIGHLIGHT_DARK_TERM_G 80
-#define HIGHLIGHT_DARK_TERM_B 80
-
-#define HIGHLIGHT_LIGHT_TERM_R 70 // Darker grey for dark backgrounds
-#define HIGHLIGHT_LIGHT_TERM_G 70
-#define HIGHLIGHT_LIGHT_TERM_B 70
+#define HIGHLIGHT_DARK_BG 70   // Dark grey for dark backgrounds
+#define HIGHLIGHT_LIGHT_BG 200 // Light grey for light backgrounds
 
 /**
  * @brief Calculate luminance from RGB (0-255 scale)
+ * Uses ITU-R BT.709 formula for relative luminance
  */
 static inline float calculate_luminance(uint8_t r, uint8_t g, uint8_t b) {
-  // Using relative luminance formula (ITU-R BT.709)
   return (0.2126f * r + 0.7152f * g + 0.0722f * b) / 255.0f;
 }
 
 /**
- * @brief Calculate color difference percentage
- */
-static inline float color_difference(uint8_t r1, uint8_t g1, uint8_t b1, uint8_t r2, uint8_t g2, uint8_t b2) {
-  // Simple RGB distance metric normalized to 0-1
-  int dr = (int)r1 - (int)r2;
-  int dg = (int)g1 - (int)g2;
-  int db = (int)b1 - (int)b2;
-  float distance = sqrtf((float)(dr * dr + dg * dg + db * db));
-  float max_distance = sqrtf(255.0f * 255.0f * 3.0f); // Maximum possible distance
-  return distance / max_distance;
-}
-
-/**
- * @brief Adjust grey value to be at least 30% different from background
- */
-static uint8_t adjust_grey_value(uint8_t bg_grey, bool is_dark_terminal) {
-  // Calculate how far we need to shift to achieve 30% difference
-  // For grey, difference is just |value1 - value2| / 255
-  const float min_diff = 0.30f;
-  int needed_shift = (int)(min_diff * 255.0f);
-
-  int target_grey;
-  if (is_dark_terminal) {
-    // Start with dark grey (80)
-    target_grey = HIGHLIGHT_DARK_TERM_R;
-    // If too close to background, shift away
-    if (abs(target_grey - bg_grey) < needed_shift) {
-      // Try darker first
-      target_grey = bg_grey - needed_shift;
-      if (target_grey < 30) {
-        // Too dark, go brighter instead
-        target_grey = bg_grey + needed_shift;
-      }
-    }
-  } else {
-    // Start with light grey (180)
-    target_grey = HIGHLIGHT_LIGHT_TERM_R;
-    // If too close to background, shift away
-    if (abs(target_grey - bg_grey) < needed_shift) {
-      // Try brighter first
-      target_grey = bg_grey + needed_shift;
-      if (target_grey > 225) {
-        // Too bright, go darker instead
-        target_grey = bg_grey - needed_shift;
-      }
-    }
-  }
-
-  // Clamp to valid range
-  if (target_grey < 0)
-    target_grey = 0;
-  if (target_grey > 255)
-    target_grey = 255;
-
-  return (uint8_t)target_grey;
-}
-
-/**
  * @brief Get highlight color based on terminal background
- * Detects terminal background and ensures at least 30% color difference
+ * Simple logic: dark background = dark highlight, light background = light highlight
  */
 static void get_highlight_color(uint8_t *r, uint8_t *g, uint8_t *b) {
-  // Try to query actual terminal background color
+  // Try to query actual terminal background color via OSC 11
   uint8_t bg_r, bg_g, bg_b;
   bool has_bg_color = terminal_query_background_color(&bg_r, &bg_g, &bg_b);
 
-  bool is_dark = terminal_has_dark_background();
-
+  bool is_dark;
   if (has_bg_color) {
-    // We have the actual background color
-    // Calculate average grey value of background
-    uint8_t bg_grey = (uint8_t)((bg_r + bg_g + bg_b) / 3);
-
-    // Adjust our grey to be at least 30% different
-    uint8_t adjusted_grey = adjust_grey_value(bg_grey, is_dark);
-
-    *r = adjusted_grey;
-    *g = adjusted_grey;
-    *b = adjusted_grey;
+    // Calculate luminance from actual background color
+    float luminance = calculate_luminance(bg_r, bg_g, bg_b);
+    is_dark = (luminance < 0.5f); // Dark if luminance < 50%
   } else {
-    // Fall back to default colors (swapped: dark terminals get light grey, light terminals get dark grey)
-    if (is_dark) {
-      *r = HIGHLIGHT_LIGHT_TERM_R; // Light grey for dark backgrounds
-      *g = HIGHLIGHT_LIGHT_TERM_G;
-      *b = HIGHLIGHT_LIGHT_TERM_B;
-    } else {
-      *r = HIGHLIGHT_DARK_TERM_R; // Dark grey for light backgrounds
-      *g = HIGHLIGHT_DARK_TERM_G;
-      *b = HIGHLIGHT_DARK_TERM_B;
-    }
+    // Fall back to heuristic detection
+    is_dark = terminal_has_dark_background();
   }
+
+  // Choose highlight: dark bg = dark highlight, light bg = light highlight
+  uint8_t grey = is_dark ? HIGHLIGHT_DARK_BG : HIGHLIGHT_LIGHT_BG;
+  *r = *g = *b = grey;
 }
 
 /**
