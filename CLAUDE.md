@@ -675,7 +675,17 @@ The ACDS (ascii-chat Discovery Service) is a separate binary for running the dis
 
 ### URLs
 
-ascii-chat accepts URLs in several contexts (mirror mode `--url`, client options, etc.). URLs can be specified in two formats:
+ascii-chat accepts URLs in multiple contexts:
+
+**Media Streaming:**
+- `--url` in "ascii-chat" (discovery), client, and mirror modes
+
+**Key Fetching:**
+- `--server-key` - Fetch server public key for verification
+- `--client-keys` - Fetch allowed client keys
+- `--discovery-server-key` - Fetch discovery server public key
+
+URLs can be specified in two formats:
 
 **With explicit scheme (recommended):**
 ```bash

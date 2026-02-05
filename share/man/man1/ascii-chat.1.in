@@ -158,7 +158,16 @@ Requires UTF-8 support (\fB\-\-show\-capabilities\fR and \fB\-\-utf8\fR).
 
 .\" MANUAL-START: URLS
 .SH URLS
+URLs are used in several contexts throughout ascii-chat:
+.RS
+.TP
+.B Media Streaming
 The "ascii-chat", \fBclient\fR, and \fBmirror\fR modes accept URLs via the \fB\-\-url\fR option to stream media from the network.
+.TP
+.B Key Fetching
+The \fB\-\-server-key\fR, \fB\-\-client-keys\fR, and \fB\-\-discovery-server-key\fR options accept URLs to fetch public keys from remote servers.
+.RE
+.PP
 URLs can be specified with or without an explicit scheme.
 .PP
 .B Explicit Scheme (Recommended)
