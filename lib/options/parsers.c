@@ -16,6 +16,9 @@
 #include <ascii-chat/util/parsing.h>       // For parse_port() validation
 #include <ascii-chat/util/path.h>          // For path_validate_user_path()
 #include <ascii-chat/video/color_filter.h> // For color_filter_from_cli_name()
+#include <pthread.h>
+#define PCRE2_CODE_UNIT_WIDTH 8
+#include <pcre2.h>
 
 // Helper function to convert string to lowercase in-place (non-destructive)
 static void to_lower(const char *src, char *dst, size_t max_len) {
@@ -27,9 +30,151 @@ static void to_lower(const char *src, char *dst, size_t max_len) {
   dst[i] = '\0';
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// PCRE2 REGEX-BASED SETTING PARSER
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * @brief PCRE2 regex validator for enum setting parsing
+ *
+ * Validates setting strings like "auto", "true", "false" with case-insensitive
+ * matching. Uses PCRE2 for atomicity and compiled once via pthread_once.
+ */
+typedef struct {
+  pcre2_code *setting_regex;  ///< Compiled regex pattern for valid settings
+  pcre2_jit_stack *jit_stack; ///< JIT compilation stack
+  bool initialized;           ///< Initialization flag
+} setting_validator_t;
+
+static setting_validator_t g_setting_validator = {0};
+static pthread_once_t g_setting_once = PTHREAD_ONCE_INIT;
+
+/**
+ * @brief Lookup table for setting string-to-enum mapping
+ */
+typedef struct {
+  const char *match; ///< Setting string (lowercased)
+  int enum_value;    ///< Corresponding enum value
+} setting_map_entry_t;
+
+/**
+ * @brief Initialize PCRE2 regex for setting validation
+ *
+ * Pattern matches any valid setting string (case-insensitive already handled by caller).
+ * This ensures atomicity: match succeeds iff string is a known setting.
+ */
+static void setting_regex_init(void) {
+  int errornumber;
+  PCRE2_SIZE erroroffset;
+
+  // Pattern: Match lowercase setting strings
+  // auto|a|0 (auto), true|yes|1|on|enabled|enable (true), false|no|-1|off|disabled|disable (false)
+  const char *pattern = "^(auto|a|0|true|yes|1|on|enabled|enable|false|no|-1|off|disabled|disable)$";
+
+  g_setting_validator.setting_regex =
+      pcre2_compile((PCRE2_SPTR8)pattern, PCRE2_ZERO_TERMINATED, 0, &errornumber, &erroroffset, NULL);
+
+  if (!g_setting_validator.setting_regex) {
+    PCRE2_UCHAR8 error_msg[120];
+    pcre2_get_error_message(errornumber, error_msg, sizeof(error_msg));
+    log_warn("setting_regex_init: Failed to compile setting pattern: %s at offset %zu", error_msg, erroroffset);
+    return;
+  }
+
+  // Attempt JIT compilation (non-fatal if fails)
+  if (pcre2_jit_compile(g_setting_validator.setting_regex, PCRE2_JIT_COMPLETE) > 0) {
+    g_setting_validator.jit_stack = pcre2_jit_stack_create(32 * 1024, 512 * 1024, NULL);
+  }
+
+  g_setting_validator.initialized = true;
+}
+
+/**
+ * @brief Generic setting parser using PCRE2 and lookup table
+ *
+ * Validates string against regex and maps to enum value via lookup table.
+ * Fallback to linear search if PCRE2 unavailable.
+ *
+ * @param arg Input setting string (e.g., "auto", "TRUE", "1")
+ * @param dest Pointer to int destination for enum value
+ * @param lookup_table Lookup table mapping strings to enum values
+ * @param error_msg Error message destination (can be NULL)
+ * @return true if valid setting, false otherwise
+ */
+static bool parse_setting_generic(const char *arg, void *dest, const setting_map_entry_t *lookup_table,
+                                  char **error_msg) {
+  if (!dest || !lookup_table) {
+    if (error_msg) {
+      *error_msg = strdup("Internal error: NULL destination or lookup table");
+    }
+    return false;
+  }
+
+  int *result = (int *)dest;
+
+  // Handle optional argument - default to first entry in table (usually "auto")
+  if (!arg || arg[0] == '\0') {
+    *result = lookup_table[0].enum_value;
+    return true;
+  }
+
+  // Convert to lowercase
+  char lower[32];
+  to_lower(arg, lower, sizeof(lower));
+
+  // Initialize regex singleton
+  pthread_once(&g_setting_once, setting_regex_init);
+
+  // Validate with PCRE2 if available
+  if (g_setting_validator.initialized && g_setting_validator.setting_regex) {
+    pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(g_setting_validator.setting_regex, NULL);
+    if (!match_data) {
+      goto fallback_search;
+    }
+
+    int rc = pcre2_match(g_setting_validator.setting_regex, (PCRE2_SPTR8)lower, strlen(lower), 0, 0, match_data, NULL);
+    pcre2_match_data_free(match_data);
+
+    if (rc < 0) {
+      // No match - invalid setting
+      if (error_msg) {
+        *error_msg = strdup("Invalid setting value");
+      }
+      return false;
+    }
+  }
+
+fallback_search:
+  // Linear search through lookup table
+  for (int i = 0; lookup_table[i].match != NULL; i++) {
+    if (strcmp(lower, lookup_table[i].match) == 0) {
+      *result = lookup_table[i].enum_value;
+      return true;
+    }
+  }
+
+  // Not found - error
+  if (error_msg) {
+    *error_msg = strdup("Invalid setting value");
+  }
+  return false;
+}
+
 // NOTE: is_session_string() is now imported from lib/discovery/strings.h
 // and provides enhanced validation against actual wordlists via hashtable lookup.
 // See that module for the full implementation.
+
+// Lookup table for color setting strings
+static const setting_map_entry_t g_color_setting_map[] = {
+    {"auto", COLOR_SETTING_AUTO},     {"a", COLOR_SETTING_AUTO},
+    {"0", COLOR_SETTING_AUTO},        {"true", COLOR_SETTING_TRUE},
+    {"yes", COLOR_SETTING_TRUE},      {"1", COLOR_SETTING_TRUE},
+    {"on", COLOR_SETTING_TRUE},       {"enabled", COLOR_SETTING_TRUE},
+    {"enable", COLOR_SETTING_TRUE},   {"false", COLOR_SETTING_FALSE},
+    {"no", COLOR_SETTING_FALSE},      {"-1", COLOR_SETTING_FALSE},
+    {"off", COLOR_SETTING_FALSE},     {"disabled", COLOR_SETTING_FALSE},
+    {"disable", COLOR_SETTING_FALSE}, {NULL, 0} // Sentinel
+};
 
 bool parse_color_setting(const char *arg, void *dest, char **error_msg) {
   if (!dest) {
@@ -39,43 +184,28 @@ bool parse_color_setting(const char *arg, void *dest, char **error_msg) {
     return false;
   }
 
-  int *color_setting = (int *)dest;
-
-  // Handle optional argument - default to 'true' (force colors ON) if not provided
+  // Use generic parser with color setting lookup table
+  // Default to TRUE if no arg provided
   if (!arg || arg[0] == '\0') {
+    int *color_setting = (int *)dest;
     *color_setting = COLOR_SETTING_TRUE;
     return true;
   }
 
-  char lower[32];
-  to_lower(arg, lower, sizeof(lower));
-
-  // Auto-detect (default)
-  if (strcmp(lower, "auto") == 0 || strcmp(lower, "a") == 0 || strcmp(lower, "0") == 0) {
-    *color_setting = COLOR_SETTING_AUTO;
-    return true;
-  }
-
-  // Force ON
-  if (strcmp(lower, "true") == 0 || strcmp(lower, "yes") == 0 || strcmp(lower, "1") == 0 || strcmp(lower, "on") == 0 ||
-      strcmp(lower, "enabled") == 0 || strcmp(lower, "enable") == 0) {
-    *color_setting = COLOR_SETTING_TRUE;
-    return true;
-  }
-
-  // Force OFF
-  if (strcmp(lower, "false") == 0 || strcmp(lower, "no") == 0 || strcmp(lower, "-1") == 0 ||
-      strcmp(lower, "off") == 0 || strcmp(lower, "disabled") == 0 || strcmp(lower, "disable") == 0) {
-    *color_setting = COLOR_SETTING_FALSE;
-    return true;
-  }
-
-  if (error_msg) {
-    *error_msg = strdup("Color setting must be 'auto' (or 'a', '0'), 'true' (or 'yes', '1', 'on'), "
-                        "or 'false' (or 'no', '-1', 'off')");
-  }
-  return false;
+  return parse_setting_generic(arg, dest, g_color_setting_map, error_msg);
 }
+
+// Lookup table for UTF-8 setting strings (identical to color setting for boolean patterns)
+static const setting_map_entry_t g_utf8_setting_map[] = {
+    {"auto", UTF8_SETTING_AUTO},     {"a", UTF8_SETTING_AUTO},
+    {"0", UTF8_SETTING_AUTO},        {"true", UTF8_SETTING_TRUE},
+    {"yes", UTF8_SETTING_TRUE},      {"1", UTF8_SETTING_TRUE},
+    {"on", UTF8_SETTING_TRUE},       {"enabled", UTF8_SETTING_TRUE},
+    {"enable", UTF8_SETTING_TRUE},   {"false", UTF8_SETTING_FALSE},
+    {"no", UTF8_SETTING_FALSE},      {"-1", UTF8_SETTING_FALSE},
+    {"off", UTF8_SETTING_FALSE},     {"disabled", UTF8_SETTING_FALSE},
+    {"disable", UTF8_SETTING_FALSE}, {NULL, 0} // Sentinel
+};
 
 bool parse_utf8_setting(const char *arg, void *dest, char **error_msg) {
   if (!dest) {
@@ -85,42 +215,15 @@ bool parse_utf8_setting(const char *arg, void *dest, char **error_msg) {
     return false;
   }
 
-  int *utf8_setting = (int *)dest;
-
-  // Handle optional argument - default to 'true' (force UTF-8 ON) if not provided
+  // Use generic parser with UTF-8 setting lookup table
+  // Default to TRUE if no arg provided
   if (!arg || arg[0] == '\0') {
+    int *utf8_setting = (int *)dest;
     *utf8_setting = UTF8_SETTING_TRUE;
     return true;
   }
 
-  char lower[32];
-  to_lower(arg, lower, sizeof(lower));
-
-  // Auto-detect (default)
-  if (strcmp(lower, "auto") == 0 || strcmp(lower, "a") == 0 || strcmp(lower, "0") == 0) {
-    *utf8_setting = UTF8_SETTING_AUTO;
-    return true;
-  }
-
-  // Force ON
-  if (strcmp(lower, "true") == 0 || strcmp(lower, "yes") == 0 || strcmp(lower, "1") == 0 || strcmp(lower, "on") == 0 ||
-      strcmp(lower, "enabled") == 0 || strcmp(lower, "enable") == 0) {
-    *utf8_setting = UTF8_SETTING_TRUE;
-    return true;
-  }
-
-  // Force OFF
-  if (strcmp(lower, "false") == 0 || strcmp(lower, "no") == 0 || strcmp(lower, "-1") == 0 ||
-      strcmp(lower, "off") == 0 || strcmp(lower, "disabled") == 0 || strcmp(lower, "disable") == 0) {
-    *utf8_setting = UTF8_SETTING_FALSE;
-    return true;
-  }
-
-  if (error_msg) {
-    *error_msg = strdup("UTF-8 setting must be 'auto' (or 'a', '0'), 'true' (or 'yes', '1', 'on'), "
-                        "or 'false' (or 'no', '-1', 'off')");
-  }
-  return false;
+  return parse_setting_generic(arg, dest, g_utf8_setting_map, error_msg);
 }
 
 bool parse_color_mode(const char *arg, void *dest, char **error_msg) {
