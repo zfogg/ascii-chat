@@ -10,6 +10,7 @@
 
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/video/ansi_fast.h>
 #include <ascii-chat-deps/tomlc17/src/tomlc17.h>
 #include <string.h>
@@ -740,7 +741,7 @@ asciichat_error_t colorscheme_export_scheme(const char *scheme_name, const char 
  * ============================================================================ */
 
 terminal_background_t detect_terminal_background(void) {
-  /* Method 1: Check environment variable override */
+  /* Method 1: Check environment variable override (highest priority) */
   const char *term_bg = SAFE_GETENV("TERM_BACKGROUND");
   if (term_bg) {
     if (strcasecmp(term_bg, "light") == 0) {
@@ -751,23 +752,11 @@ terminal_background_t detect_terminal_background(void) {
     }
   }
 
-  /* Method 2: Parse COLORFGBG (format: "15;0" = light fg, dark bg) */
-  const char *colorfgbg = SAFE_GETENV("COLORFGBG");
-  if (colorfgbg) {
-    int fg = -1, bg = -1;
-    if (SAFE_SSCANF(colorfgbg, "%d;%d", &fg, &bg) == 2) {
-      /* bg < 8 = dark colors, bg >= 8 = light colors */
-      if (bg >= 0 && bg < 8) {
-        return TERM_BACKGROUND_DARK;
-      }
-      if (bg >= 8 && bg < 16) {
-        return TERM_BACKGROUND_LIGHT;
-      }
-    }
-  }
-
-  /* Default: Dark (most terminals use dark backgrounds) */
-  return TERM_BACKGROUND_DARK;
+  /* Method 2: Use OSC 11 query with luminance calculation + environment fallbacks
+   * This automatically queries the terminal via OSC 11, calculates luminance,
+   * and falls back to $COLORFGBG, $TERM_PROGRAM, etc. if query fails */
+  bool is_dark = terminal_has_dark_background();
+  return is_dark ? TERM_BACKGROUND_DARK : TERM_BACKGROUND_LIGHT;
 }
 
 /* ============================================================================
