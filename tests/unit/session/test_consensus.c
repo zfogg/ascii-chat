@@ -9,6 +9,12 @@
 #include <ascii-chat/common.h>
 #include <string.h>
 #include <time.h>
+#include <netinet/in.h>
+
+// Define htonll if not available (GNU extension)
+#ifndef htonll
+#define htonll(x) ((uint64_t)(((uint64_t)htonl((uint32_t)(x))) << 32) | (uint64_t)htonl((uint32_t)((x) >> 32)))
+#endif
 
 // Mock context for testing
 typedef struct {
