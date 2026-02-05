@@ -15,9 +15,8 @@
 #include <ascii-chat/discovery/strings.h>  // For is_session_string() validation
 #include <ascii-chat/util/parsing.h>       // For parse_port() validation
 #include <ascii-chat/util/path.h>          // For path_validate_user_path()
+#include <ascii-chat/util/pcre2.h>         // For centralized PCRE2 singleton
 #include <ascii-chat/video/color_filter.h> // For color_filter_from_cli_name()
-#include <pthread.h>
-#define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
 
 // Helper function to convert string to lowercase in-place (non-destructive)
@@ -38,16 +37,23 @@ static void to_lower(const char *src, char *dst, size_t max_len) {
  * @brief PCRE2 regex validator for enum setting parsing
  *
  * Validates setting strings like "auto", "true", "false" with case-insensitive
- * matching. Uses PCRE2 for atomicity and compiled once via pthread_once.
+ * matching. Uses centralized PCRE2 singleton for thread-safe compilation.
  */
-typedef struct {
-  pcre2_code *setting_regex;  ///< Compiled regex pattern for valid settings
-  pcre2_jit_stack *jit_stack; ///< JIT compilation stack
-  bool initialized;           ///< Initialization flag
-} setting_validator_t;
 
-static setting_validator_t g_setting_validator = {0};
-static pthread_once_t g_setting_once = PTHREAD_ONCE_INIT;
+static const char *SETTING_PATTERN = "^(auto|a|0|true|yes|1|on|enabled|enable|false|no|-1|off|disabled|disable)$";
+
+static pcre2_singleton_t *g_setting_regex = NULL;
+
+/**
+ * Get compiled setting regex (lazy initialization)
+ * Returns NULL if compilation failed
+ */
+static pcre2_code *setting_regex_get(void) {
+  if (g_setting_regex == NULL) {
+    g_setting_regex = asciichat_pcre2_singleton_compile(SETTING_PATTERN, 0);
+  }
+  return asciichat_pcre2_singleton_get_code(g_setting_regex);
+}
 
 /**
  * @brief Lookup table for setting string-to-enum mapping
@@ -58,42 +64,10 @@ typedef struct {
 } setting_map_entry_t;
 
 /**
- * @brief Initialize PCRE2 regex for setting validation
- *
- * Pattern matches any valid setting string (case-insensitive already handled by caller).
- * This ensures atomicity: match succeeds iff string is a known setting.
- */
-static void setting_regex_init(void) {
-  int errornumber;
-  PCRE2_SIZE erroroffset;
-
-  // Pattern: Match lowercase setting strings
-  // auto|a|0 (auto), true|yes|1|on|enabled|enable (true), false|no|-1|off|disabled|disable (false)
-  const char *pattern = "^(auto|a|0|true|yes|1|on|enabled|enable|false|no|-1|off|disabled|disable)$";
-
-  g_setting_validator.setting_regex =
-      pcre2_compile((PCRE2_SPTR8)pattern, PCRE2_ZERO_TERMINATED, 0, &errornumber, &erroroffset, NULL);
-
-  if (!g_setting_validator.setting_regex) {
-    PCRE2_UCHAR8 error_msg[120];
-    pcre2_get_error_message(errornumber, error_msg, sizeof(error_msg));
-    log_warn("setting_regex_init: Failed to compile setting pattern: %s at offset %zu", error_msg, erroroffset);
-    return;
-  }
-
-  // Attempt JIT compilation (non-fatal if fails)
-  if (pcre2_jit_compile(g_setting_validator.setting_regex, PCRE2_JIT_COMPLETE) > 0) {
-    g_setting_validator.jit_stack = pcre2_jit_stack_create(32 * 1024, 512 * 1024, NULL);
-  }
-
-  g_setting_validator.initialized = true;
-}
-
-/**
- * @brief Generic setting parser using PCRE2 and lookup table
+ * @brief Generic setting parser using PCRE2 singleton and lookup table
  *
  * Validates string against regex and maps to enum value via lookup table.
- * Fallback to linear search if PCRE2 unavailable.
+ * Falls back to linear search if PCRE2 unavailable.
  *
  * @param arg Input setting string (e.g., "auto", "TRUE", "1")
  * @param dest Pointer to int destination for enum value
@@ -122,20 +96,16 @@ static bool parse_setting_generic(const char *arg, void *dest, const setting_map
   char lower[32];
   to_lower(arg, lower, sizeof(lower));
 
-  // Initialize regex singleton
-  pthread_once(&g_setting_once, setting_regex_init);
-
-  // Validate with PCRE2
-  pthread_once(&g_setting_once, setting_regex_init);
-
-  if (!g_setting_validator.initialized || !g_setting_validator.setting_regex) {
+  // Get compiled regex (lazy initialization)
+  pcre2_code *regex = setting_regex_get();
+  if (!regex) {
     if (error_msg) {
       *error_msg = strdup("Internal error: PCRE2 regex not available");
     }
     return false;
   }
 
-  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(g_setting_validator.setting_regex, NULL);
+  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
   if (!match_data) {
     if (error_msg) {
       *error_msg = strdup("Internal error: Failed to allocate match data");
@@ -143,7 +113,7 @@ static bool parse_setting_generic(const char *arg, void *dest, const setting_map
     return false;
   }
 
-  int rc = pcre2_match(g_setting_validator.setting_regex, (PCRE2_SPTR8)lower, strlen(lower), 0, 0, match_data, NULL);
+  int rc = pcre2_jit_match(regex, (PCRE2_SPTR8)lower, strlen(lower), 0, 0, match_data, NULL);
   pcre2_match_data_free(match_data);
 
   if (rc < 0) {

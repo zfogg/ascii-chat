@@ -29,7 +29,7 @@ typedef struct pcre2_singleton {
  * @brief Compile and cache a PCRE2 regex pattern with thread-safe singleton semantics
  *
  * Allocates a singleton structure and stores the pattern/flags. The actual
- * compilation happens lazily on first call to pcre2_singleton_get_code().
+ * compilation happens lazily on first call to asciichat_pcre2_singleton_get_code().
  *
  * This function returns immediately without doing expensive regex compilation.
  *
@@ -37,7 +37,7 @@ typedef struct pcre2_singleton {
  * @param flags PCRE2 compile flags
  * @return Opaque singleton handle, or NULL on allocation failure
  */
-pcre2_singleton_t *pcre2_singleton_compile(const char *pattern, uint32_t flags) {
+pcre2_singleton_t *asciichat_pcre2_singleton_compile(const char *pattern, uint32_t flags) {
   if (!pattern) {
     log_error("PCRE2 singleton: pattern is NULL");
     return NULL;
@@ -69,10 +69,10 @@ pcre2_singleton_t *pcre2_singleton_compile(const char *pattern, uint32_t flags) 
  * Thread-safe: If multiple threads call this concurrently on first use,
  * only one will compile; others will wait for the code to become non-NULL.
  *
- * @param singleton Handle returned by pcre2_singleton_compile()
+ * @param singleton Handle returned by asciichat_pcre2_singleton_compile()
  * @return Compiled regex code (read-only), or NULL if compilation failed
  */
-pcre2_code *pcre2_singleton_get_code(pcre2_singleton_t *singleton) {
+pcre2_code *asciichat_pcre2_singleton_get_code(pcre2_singleton_t *singleton) {
   if (!singleton) {
     return NULL;
   }
@@ -123,12 +123,59 @@ pcre2_code *pcre2_singleton_get_code(pcre2_singleton_t *singleton) {
 /**
  * @brief Check if a singleton was successfully initialized
  *
- * @param singleton Handle returned by pcre2_singleton_compile()
+ * @param singleton Handle returned by asciichat_pcre2_singleton_compile()
  * @return true if regex compiled successfully, false otherwise
  */
-bool pcre2_singleton_is_initialized(pcre2_singleton_t *singleton) {
+bool asciichat_pcre2_singleton_is_initialized(pcre2_singleton_t *singleton) {
   if (!singleton) {
     return false;
   }
   return atomic_load(&singleton->code) != NULL;
+}
+/**
+ * @brief Extract named substring from PCRE2 match data
+ *
+ * Extracts a named capture group from match data and returns an allocated string.
+ * The caller is responsible for freeing the returned string with SAFE_FREE().
+ *
+ * @param regex Compiled PCRE2 regex with named groups
+ * @param match_data Match data from pcre2_match() or pcre2_jit_match()
+ * @param group_name Name of the capture group to extract
+ * @param subject Original subject string that was matched
+ * @return Allocated string containing the matched substring, or NULL if group not matched
+ */
+char *asciichat_pcre2_extract_named_group(pcre2_code *regex, pcre2_match_data *match_data, const char *group_name,
+                                          const char *subject) {
+  if (!regex || !match_data || !group_name || !subject) {
+    log_error("pcre2_extract_named_group: invalid parameters");
+    return NULL;
+  }
+
+  /* Get group number from name */
+  int group_number = pcre2_substring_number_from_name(regex, (PCRE2_SPTR)group_name);
+  if (group_number < 0) {
+    return NULL; /* Group doesn't exist */
+  }
+
+  /* Get ovector (output vector with match offsets) */
+  PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
+  PCRE2_SIZE start = ovector[2 * group_number];
+  PCRE2_SIZE end = ovector[2 * group_number + 1];
+
+  if (start == PCRE2_UNSET || end == PCRE2_UNSET) {
+    return NULL; /* Group not matched */
+  }
+
+  /* Allocate and copy substring */
+  size_t len = end - start;
+  char *result = SAFE_MALLOC(len + 1, char *);
+  if (!result) {
+    log_error("pcre2_extract_named_group: failed to allocate %zu bytes", len + 1);
+    return NULL;
+  }
+
+  memcpy(result, subject + start, len);
+  result[len] = '\0';
+
+  return result;
 }

@@ -329,11 +329,29 @@ typedef struct {
 } port_validation_test_case_t;
 
 static port_validation_test_case_t port_validation_cases[] = {
-    {"80", true, 0, "Valid port 80"},
-    {"65535", true, 0, "Valid port 65535"},
-    {"0", false, 1, "Invalid port - too low (0)"},
-    {"65536", false, 1, "Invalid port - too high (65536)"},
+    // Valid ports - ALLOWED
+    {"1", true, 0, "Valid port 1 (minimum)"},
+    {"80", true, 0, "Valid port 80 (HTTP)"},
+    {"443", true, 0, "Valid port 443 (HTTPS)"},
+    {"8080", true, 0, "Valid port 8080"},
+    {"65535", true, 0, "Valid port 65535 (maximum)"},
+
+    // Invalid ports - DISALLOWED (out of range)
+    {"0", false, 1, "Invalid port 0 (too low)"},
+    {"65536", false, 1, "Invalid port 65536 (too high)"},
+    {"99999", false, 1, "Invalid port 99999 (way too high)"},
+
+    // Invalid ports - DISALLOWED (format/security)
     {"abc", false, 1, "Invalid port - non-numeric"},
+    {"0123", false, 1, "Invalid port - leading zero (octal confusion)"},
+    {"00080", false, 1, "Invalid port - multiple leading zeros"},
+    {" 80", false, 1, "Invalid port - leading whitespace"},
+    {"80 ", false, 1, "Invalid port - trailing whitespace"},
+    {" 80 ", false, 1, "Invalid port - both leading and trailing whitespace"},
+    {"-1", false, 1, "Invalid port - negative number"},
+    {"+80", false, 1, "Invalid port - explicit plus sign"},
+    {"0x50", false, 1, "Invalid port - hexadecimal notation"},
+    {"", false, 1, "Invalid port - empty string"},
 };
 
 ParameterizedTestParameters(options, port_validation) {

@@ -11,7 +11,6 @@
 #include <ascii-chat/crypto/regex.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/pcre2.h>
-#define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
 #include <string.h>
 #include <stdlib.h>
@@ -92,9 +91,10 @@ static pcre2_singleton_t *g_gpg_keygrip_regex = NULL;
  */
 static pcre2_code *crypto_regex_get_known_hosts(void) {
   if (g_known_hosts_regex == NULL) {
-    g_known_hosts_regex = pcre2_singleton_compile(KNOWN_HOSTS_REGEX_PATTERN, PCRE2_MULTILINE | PCRE2_UCP | PCRE2_UTF);
+    g_known_hosts_regex =
+        asciichat_pcre2_singleton_compile(KNOWN_HOSTS_REGEX_PATTERN, PCRE2_MULTILINE | PCRE2_UCP | PCRE2_UTF);
   }
-  return pcre2_singleton_get_code(g_known_hosts_regex);
+  return asciichat_pcre2_singleton_get_code(g_known_hosts_regex);
 }
 
 /**
@@ -103,9 +103,9 @@ static pcre2_code *crypto_regex_get_known_hosts(void) {
 static pcre2_code *crypto_regex_get_ssh_public_key(void) {
   if (g_ssh_public_key_regex == NULL) {
     g_ssh_public_key_regex =
-        pcre2_singleton_compile(SSH_PUBLIC_KEY_REGEX_PATTERN, PCRE2_CASELESS | PCRE2_UCP | PCRE2_UTF);
+        asciichat_pcre2_singleton_compile(SSH_PUBLIC_KEY_REGEX_PATTERN, PCRE2_CASELESS | PCRE2_UCP | PCRE2_UTF);
   }
-  return pcre2_singleton_get_code(g_ssh_public_key_regex);
+  return asciichat_pcre2_singleton_get_code(g_ssh_public_key_regex);
 }
 
 /**
@@ -113,10 +113,10 @@ static pcre2_code *crypto_regex_get_ssh_public_key(void) {
  */
 static pcre2_code *crypto_regex_get_openssh_pem(void) {
   if (g_openssh_pem_regex == NULL) {
-    g_openssh_pem_regex =
-        pcre2_singleton_compile(OPENSSH_PEM_REGEX_PATTERN, PCRE2_MULTILINE | PCRE2_DOTALL | PCRE2_UCP | PCRE2_UTF);
+    g_openssh_pem_regex = asciichat_pcre2_singleton_compile(OPENSSH_PEM_REGEX_PATTERN,
+                                                            PCRE2_MULTILINE | PCRE2_DOTALL | PCRE2_UCP | PCRE2_UTF);
   }
-  return pcre2_singleton_get_code(g_openssh_pem_regex);
+  return asciichat_pcre2_singleton_get_code(g_openssh_pem_regex);
 }
 
 /**
@@ -124,47 +124,9 @@ static pcre2_code *crypto_regex_get_openssh_pem(void) {
  */
 static pcre2_code *crypto_regex_get_gpg_keygrip(void) {
   if (g_gpg_keygrip_regex == NULL) {
-    g_gpg_keygrip_regex = pcre2_singleton_compile(GPG_KEYGRIP_REGEX_PATTERN, PCRE2_UCP | PCRE2_UTF);
+    g_gpg_keygrip_regex = asciichat_pcre2_singleton_compile(GPG_KEYGRIP_REGEX_PATTERN, PCRE2_UCP | PCRE2_UTF);
   }
-  return pcre2_singleton_get_code(g_gpg_keygrip_regex);
-}
-
-/**
- * Extract named substring from match data
- * Returns allocated string or NULL if group not matched
- * Note: This version requires the original subject string to be passed in
- */
-static char *crypto_regex_extract_named_group_with_subject(pcre2_code *regex, pcre2_match_data *match_data,
-                                                           const char *group_name, const char *subject) {
-  if (!regex || !match_data || !group_name || !subject) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
-    return NULL;
-  }
-
-  int group_number = pcre2_substring_number_from_name(regex, (PCRE2_SPTR)group_name);
-  if (group_number < 0) {
-    return NULL; /* Group doesn't exist */
-  }
-
-  PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
-  PCRE2_SIZE start = ovector[2 * group_number];
-  PCRE2_SIZE end = ovector[2 * group_number + 1];
-
-  if (start == PCRE2_UNSET || end == PCRE2_UNSET) {
-    return NULL; /* Group not matched */
-  }
-
-  /* Allocate and copy substring */
-  size_t len = end - start;
-  char *result = SAFE_MALLOC(len + 1, char *);
-  if (!result) {
-    return NULL;
-  }
-
-  memcpy(result, subject + start, len);
-  result[len] = '\0';
-
-  return result;
+  return asciichat_pcre2_singleton_get_code(g_gpg_keygrip_regex);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -200,10 +162,10 @@ bool crypto_regex_match_known_hosts(const char *line, char **ip_port_out, char *
   }
 
   /* Extract named groups */
-  *ip_port_out = crypto_regex_extract_named_group_with_subject(regex, match_data, "ip_port", line);
-  *key_type_out = crypto_regex_extract_named_group_with_subject(regex, match_data, "key_type", line);
-  *hex_key_out = crypto_regex_extract_named_group_with_subject(regex, match_data, "hex_key", line);
-  *comment_out = crypto_regex_extract_named_group_with_subject(regex, match_data, "comment", line);
+  *ip_port_out = asciichat_pcre2_extract_named_group(regex, match_data, "ip_port", line);
+  *key_type_out = asciichat_pcre2_extract_named_group(regex, match_data, "key_type", line);
+  *hex_key_out = asciichat_pcre2_extract_named_group(regex, match_data, "hex_key", line);
+  *comment_out = asciichat_pcre2_extract_named_group(regex, match_data, "comment", line);
 
   pcre2_match_data_free(match_data);
 
@@ -247,8 +209,8 @@ bool crypto_regex_match_public_key(const char *line, char **base64_key_out, char
   }
 
   /* Extract named groups */
-  *base64_key_out = crypto_regex_extract_named_group_with_subject(regex, match_data, "base64_key", line);
-  *comment_out = crypto_regex_extract_named_group_with_subject(regex, match_data, "comment", line);
+  *base64_key_out = asciichat_pcre2_extract_named_group(regex, match_data, "base64_key", line);
+  *comment_out = asciichat_pcre2_extract_named_group(regex, match_data, "comment", line);
 
   pcre2_match_data_free(match_data);
 
@@ -290,7 +252,7 @@ bool crypto_regex_extract_pem_base64(const char *file_content, char **base64_dat
   }
 
   /* Extract base64 data */
-  *base64_data_out = crypto_regex_extract_named_group_with_subject(regex, match_data, "base64_data", file_content);
+  *base64_data_out = asciichat_pcre2_extract_named_group(regex, match_data, "base64_data", file_content);
 
   pcre2_match_data_free(match_data);
 
@@ -330,7 +292,7 @@ bool crypto_regex_extract_gpg_keygrip(const char *line, char **keygrip_out) {
   }
 
   /* Extract keygrip from named group */
-  *keygrip_out = crypto_regex_extract_named_group_with_subject(regex, match_data, "keygrip", line);
+  *keygrip_out = asciichat_pcre2_extract_named_group(regex, match_data, "keygrip", line);
 
   pcre2_match_data_free(match_data);
 

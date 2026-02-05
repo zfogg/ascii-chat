@@ -22,8 +22,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
-#include <pthread.h>
-#define PCRE2_CODE_UNIT_WIDTH 8
+#include <ascii-chat/util/pcre2.h>
 #include <pcre2.h>
 
 // ============================================================================
@@ -154,7 +153,7 @@ static asciichat_error_t build_validation_caches(void) {
 // ============================================================================
 
 /**
- * @brief Session string format validator using PCRE2
+ * @brief Session string format validator using PCRE2 singleton
  *
  * Validates the format adjective-noun-noun with regex:
  * - Each word is 2-12 lowercase letters
@@ -165,53 +164,20 @@ static asciichat_error_t build_validation_caches(void) {
  * This regex validator handles FORMAT validation only.
  * Dictionary validation (adjective/noun caches) is handled separately.
  */
-typedef struct {
-  pcre2_code *session_regex;
-  pcre2_jit_stack *jit_stack;
-  bool initialized;
-} session_validator_t;
 
-static session_validator_t g_session_validator = {0};
-static pthread_once_t g_session_once = PTHREAD_ONCE_INIT;
+static const char *SESSION_STRING_FORMAT_PATTERN = "^(?<adj>[a-z]{2,12})-(?<noun1>[a-z]{2,12})-(?<noun2>[a-z]{2,12})$";
+
+static pcre2_singleton_t *g_session_format_regex = NULL;
 
 /**
- * Initialize session string regex (called once via pthread_once)
+ * Get compiled session string format regex (lazy initialization)
+ * Returns NULL if compilation failed
  */
-static void session_validator_init_once(void) {
-  // Regex pattern validates format: adjective-noun-noun
-  // Each word is 2-12 lowercase letters
-  const char *pattern = "^(?<adj>[a-z]{2,12})-(?<noun1>[a-z]{2,12})-(?<noun2>[a-z]{2,12})$";
-
-  int error_code;
-  PCRE2_SIZE error_offset;
-  g_session_validator.session_regex =
-      pcre2_compile((PCRE2_SPTR8)pattern, PCRE2_ZERO_TERMINATED, PCRE2_CASELESS, &error_code, &error_offset, NULL);
-
-  if (!g_session_validator.session_regex) {
-    PCRE2_UCHAR error_buf[256];
-    pcre2_get_error_message(error_code, error_buf, sizeof(error_buf));
-    log_fatal("Failed to compile session string regex at offset %zu: %s", error_offset, (const char *)error_buf);
-    return;
+static pcre2_code *session_format_regex_get(void) {
+  if (g_session_format_regex == NULL) {
+    g_session_format_regex = asciichat_pcre2_singleton_compile(SESSION_STRING_FORMAT_PATTERN, PCRE2_CASELESS);
   }
-
-  // Allocate JIT stack for pattern execution
-  g_session_validator.jit_stack = pcre2_jit_stack_create(32 * 1024, 512 * 1024, NULL);
-  if (!g_session_validator.jit_stack) {
-    pcre2_code_free(g_session_validator.session_regex);
-    g_session_validator.session_regex = NULL;
-    log_fatal("Failed to allocate JIT stack for session string regex");
-    return;
-  }
-
-  // Compile to JIT for 5-10x performance boost
-  int jit_ret = pcre2_jit_compile(g_session_validator.session_regex, PCRE2_JIT_COMPLETE);
-  if (jit_ret < 0) {
-    log_warn("Session string regex JIT compilation failed (code %d), falling back to interpreter", jit_ret);
-    // Non-fatal: will use interpreter instead of JIT
-  }
-
-  g_session_validator.initialized = true;
-  log_debug("Session string format validator initialized");
+  return asciichat_pcre2_singleton_get_code(g_session_format_regex);
 }
 
 asciichat_error_t acds_string_init(void) {
@@ -314,9 +280,9 @@ bool is_session_string(const char *str) {
     return false;
   }
 
-  // Initialize session validator (once per process)
-  pthread_once(&g_session_once, session_validator_init_once);
-  if (!g_session_validator.initialized || !g_session_validator.session_regex) {
+  // Get compiled regex (lazy initialization)
+  pcre2_code *regex = session_format_regex_get();
+  if (!regex) {
     log_warn("Session string validator not initialized; falling back to format validation");
     bool valid = acds_string_validate(str);
     if (!valid) {
@@ -326,14 +292,14 @@ bool is_session_string(const char *str) {
   }
 
   // Validate format using PCRE2 regex
-  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(g_session_validator.session_regex, NULL);
+  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
   if (!match_data) {
     log_error("Failed to allocate match data for session string regex");
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate match data");
     return false;
   }
 
-  int match_result = pcre2_match(g_session_validator.session_regex, (PCRE2_SPTR8)str, len, 0, 0, match_data, NULL);
+  int match_result = pcre2_jit_match(regex, (PCRE2_SPTR8)str, len, 0, 0, match_data, NULL);
 
   pcre2_match_data_free(match_data);
 

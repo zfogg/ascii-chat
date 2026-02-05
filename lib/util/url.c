@@ -69,45 +69,9 @@ static pcre2_singleton_t *g_url_regex = NULL;
  */
 static pcre2_code *url_regex_get(void) {
   if (g_url_regex == NULL) {
-    g_url_regex = pcre2_singleton_compile(URL_REGEX_PATTERN, PCRE2_CASELESS | PCRE2_UCP | PCRE2_UTF);
+    g_url_regex = asciichat_pcre2_singleton_compile(URL_REGEX_PATTERN, PCRE2_CASELESS | PCRE2_UCP | PCRE2_UTF);
   }
-  return pcre2_singleton_get_code(g_url_regex);
-}
-
-/**
- * Extract named substring from match data
- * Returns allocated string or NULL if group not matched
- */
-static char *url_extract_named_group(pcre2_code *regex, pcre2_match_data *match_data, const char *group_name) {
-  if (!regex || !match_data || !group_name) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments");
-    return NULL;
-  }
-
-  int group_number = pcre2_substring_number_from_name(regex, (PCRE2_SPTR)group_name);
-  if (group_number < 0) {
-    return NULL; /* Group doesn't exist */
-  }
-
-  PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
-  PCRE2_SIZE start = ovector[2 * group_number];
-  PCRE2_SIZE end = ovector[2 * group_number + 1];
-
-  if (start == PCRE2_UNSET || end == PCRE2_UNSET) {
-    return NULL; /* Group not matched */
-  }
-
-  /* Allocate and copy substring */
-  size_t len = end - start;
-  char *result = SAFE_MALLOC(len + 1, char *);
-  if (!result) {
-    return NULL;
-  }
-
-  memcpy(result, (const char *)ovector + start, len);
-  result[len] = '\0';
-
-  return result;
+  return asciichat_pcre2_singleton_get_code(g_url_regex);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -292,15 +256,15 @@ asciichat_error_t url_parse(const char *url, url_parts_t *parts_out) {
   }
 
   /* Extract named groups */
-  parts_out->scheme = url_extract_named_group(regex, match_data, "scheme");
-  parts_out->userinfo = url_extract_named_group(regex, match_data, "userinfo");
-  parts_out->host = url_extract_named_group(regex, match_data, "host");
-  parts_out->ipv6 = url_extract_named_group(regex, match_data, "ipv6");
-  parts_out->path = url_extract_named_group(regex, match_data, "path_query_fragment");
+  parts_out->scheme = asciichat_pcre2_extract_named_group(regex, match_data, "scheme", url_to_match);
+  parts_out->userinfo = asciichat_pcre2_extract_named_group(regex, match_data, "userinfo", url_to_match);
+  parts_out->host = asciichat_pcre2_extract_named_group(regex, match_data, "host", url_to_match);
+  parts_out->ipv6 = asciichat_pcre2_extract_named_group(regex, match_data, "ipv6", url_to_match);
+  parts_out->path = asciichat_pcre2_extract_named_group(regex, match_data, "path_query_fragment", url_to_match);
 
   /* Extract port number */
   parts_out->port = 0;
-  char *port_str = url_extract_named_group(regex, match_data, "port");
+  char *port_str = asciichat_pcre2_extract_named_group(regex, match_data, "port", url_to_match);
   if (port_str) {
     parts_out->port = (int)strtol(port_str, NULL, 10);
     SAFE_FREE(port_str);

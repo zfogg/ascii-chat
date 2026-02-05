@@ -8,12 +8,10 @@
  * - SSH Ed25519 public key lines
  * - OpenSSH private key PEM format
  *
- * Uses PCRE2 with JIT compilation for 5-10x performance boost.
- * Thread-safe singleton pattern via pthread_once.
+ * Uses PCRE2
  */
 
-#ifndef ASCII_CHAT_CRYPTO_REGEX_H
-#define ASCII_CHAT_CRYPTO_REGEX_H
+#pragma once
 
 #include <stdbool.h>
 
@@ -87,5 +85,3 @@ bool crypto_regex_extract_pem_base64(const char *file_content, char **base64_dat
  * @note Returns false if regex is not available (caller should use fallback manual parsing)
  */
 bool crypto_regex_extract_gpg_keygrip(const char *line, char **keygrip_out);
-
-#endif /* ASCII_CHAT_CRYPTO_REGEX_H */

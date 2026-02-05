@@ -23,7 +23,6 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <time.h>
-#define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
 
 /* ============================================================================
@@ -56,9 +55,10 @@ static pcre2_singleton_t *g_youtube_regex = NULL;
  */
 static pcre2_code *youtube_regex_get(void) {
   if (g_youtube_regex == NULL) {
-    g_youtube_regex = pcre2_singleton_compile(YOUTUBE_VIDEO_ID_PATTERN, PCRE2_CASELESS | PCRE2_UCP | PCRE2_UTF);
+    g_youtube_regex =
+        asciichat_pcre2_singleton_compile(YOUTUBE_VIDEO_ID_PATTERN, PCRE2_CASELESS | PCRE2_UCP | PCRE2_UTF);
   }
-  return pcre2_singleton_get_code(g_youtube_regex);
+  return asciichat_pcre2_singleton_get_code(g_youtube_regex);
 }
 
 /**

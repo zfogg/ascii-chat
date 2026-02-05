@@ -5,11 +5,13 @@
  */
 
 #include <ascii-chat/util/parsing.h>
+#include <ascii-chat/util/pcre2.h>
 #include <string.h>
 #include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/log/logging.h>
 
 asciichat_error_t safe_parse_size_message(const char *message, unsigned int *width, unsigned int *height) {
   if (!message || !width || !height) {
@@ -218,6 +220,34 @@ asciichat_error_t parse_ulonglong(const char *str, unsigned long long *out_value
   return ASCIICHAT_OK;
 }
 
+/**
+ * @brief PCRE2 regex validator for port number parsing
+ *
+ * Validates port range 1-65535 atomically, rejecting leading zeros.
+ * Thread-safe singleton with lazy initialization via atomic operations.
+ */
+static pcre2_singleton_t *g_port_regex = NULL;
+
+/**
+ * @brief Get compiled port regex (lazy initialization)
+ * Returns NULL if compilation failed
+ *
+ * Pattern: Match port numbers 1-65535 (rejects leading zeros)
+ * [1-9]\d{0,3}          = 1-9999
+ * [1-5]\d{4}            = 10000-59999
+ * 6[0-4]\d{3}           = 60000-64999
+ * 65[0-4]\d{2}          = 65000-65499
+ * 655[0-2]\d            = 65500-65529
+ * 6553[0-5]             = 65530-65535
+ */
+static pcre2_code *port_regex_get(void) {
+  if (g_port_regex == NULL) {
+    const char *port_pattern = "^([1-9]\\d{0,3}|[1-5]\\d{4}|6[0-4]\\d{3}|65[0-4]\\d{2}|655[0-2]\\d|6553[0-5])$";
+    g_port_regex = asciichat_pcre2_singleton_compile(port_pattern, 0);
+  }
+  return asciichat_pcre2_singleton_get_code(g_port_regex);
+}
+
 asciichat_error_t parse_port(const char *str, uint16_t *out_port) {
   if (!str) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "String pointer is NULL");
@@ -227,13 +257,46 @@ asciichat_error_t parse_port(const char *str, uint16_t *out_port) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Output pointer is NULL");
   }
 
-  unsigned long port_ulong;
-  asciichat_error_t err = parse_ulong(str, &port_ulong, 1, 65535);
-  if (err != ASCIICHAT_OK) {
+  if (*str == '\0') {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Empty string cannot be parsed as port");
+  }
+
+  pcre2_code *regex = port_regex_get();
+  if (!regex) {
+    /* Fallback: use original parse_ulong method if PCRE2 not available */
+    unsigned long port_ulong;
+    asciichat_error_t err = parse_ulong(str, &port_ulong, 1, 65535);
+    if (err != ASCIICHAT_OK) {
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid port number: %s (must be 1-65535)", str);
+    }
+    *out_port = (uint16_t)port_ulong;
+    return ASCIICHAT_OK;
+  }
+
+  /* Validate port using PCRE2 regex */
+  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
+  if (!match_data) {
+    log_error("Failed to allocate match data for port validation");
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid port number: %s (must be 1-65535)", str);
   }
 
-  *out_port = (uint16_t)port_ulong;
+  int match_result = pcre2_jit_match(regex, (PCRE2_SPTR8)str, strlen(str), 0, 0, match_data, NULL);
+  pcre2_match_data_free(match_data);
+
+  if (match_result < 0) {
+    /* Format validation failed */
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid port number: %s (must be 1-65535)", str);
+  }
+
+  /* Extract matched port string and convert to uint16_t */
+  char *endptr = NULL;
+  unsigned long port_value = strtoul(str, &endptr, 10);
+
+  if (port_value < 1 || port_value > 65535) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Port out of range: %lu", port_value);
+  }
+
+  *out_port = (uint16_t)port_value;
   return ASCIICHAT_OK;
 }
 

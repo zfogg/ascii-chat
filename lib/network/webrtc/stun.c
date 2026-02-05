@@ -4,7 +4,6 @@
  * @ingroup webrtc
  */
 
-#define PCRE2_CODE_UNIT_WIDTH 8
 #include <ascii-chat/network/webrtc/stun.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
@@ -30,9 +29,9 @@ static pcre2_singleton_t *g_stun_entry_regex = NULL;
  */
 static pcre2_code *stun_entry_regex_get(void) {
   if (g_stun_entry_regex == NULL) {
-    g_stun_entry_regex = pcre2_singleton_compile(STUN_ENTRY_PATTERN, PCRE2_MULTILINE);
+    g_stun_entry_regex = asciichat_pcre2_singleton_compile(STUN_ENTRY_PATTERN, PCRE2_MULTILINE);
   }
-  return pcre2_singleton_get_code(g_stun_entry_regex);
+  return asciichat_pcre2_singleton_get_code(g_stun_entry_regex);
 }
 
 /**
