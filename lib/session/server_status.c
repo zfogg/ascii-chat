@@ -4,6 +4,7 @@
  */
 
 #include <ascii-chat/session/server_status.h>
+#include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/platform/abstraction.h>
@@ -16,116 +17,34 @@
 #include <time.h>
 #include <stdatomic.h>
 
-// ============================================================================
-// Log Buffer for Status Screen
-// ============================================================================
-
-#define STATUS_LOG_BUFFER_SIZE 100
-#define STATUS_LOG_LINE_MAX 512
-
-typedef struct {
-  char message[STATUS_LOG_LINE_MAX];
-  uint64_t sequence;
-} status_log_entry_t;
-
-typedef struct {
-  status_log_entry_t entries[STATUS_LOG_BUFFER_SIZE];
-  _Atomic size_t write_pos;
-  _Atomic uint64_t sequence;
-  mutex_t mutex;
-} status_log_buffer_t;
-
-static status_log_buffer_t *g_status_log_buffer = NULL;
-
 // Cached terminal size (to avoid flooding logs with terminal_get_size errors)
 static terminal_size_t g_cached_term_size = {.rows = 24, .cols = 80};
 static uint64_t g_last_term_size_check_us = 0;
 #define TERM_SIZE_CHECK_INTERVAL_US 1000000ULL // Check terminal size max once per second
 
 void server_status_log_init(void) {
-  if (g_status_log_buffer) {
-    return;
-  }
-  g_status_log_buffer = SAFE_CALLOC(1, sizeof(status_log_buffer_t), status_log_buffer_t *);
-  if (!g_status_log_buffer) {
-    return;
-  }
-  atomic_init(&g_status_log_buffer->write_pos, 0);
-  atomic_init(&g_status_log_buffer->sequence, 0);
-  mutex_init(&g_status_log_buffer->mutex);
+  // Delegate to shared session log buffer
+  (void)session_log_buffer_init();
 }
 
 void server_status_log_cleanup(void) {
-  if (!g_status_log_buffer) {
-    return;
-  }
-  mutex_destroy(&g_status_log_buffer->mutex);
-  SAFE_FREE(g_status_log_buffer);
+  // Delegate to shared session log buffer
+  session_log_buffer_cleanup();
 }
 
 void server_status_log_clear(void) {
-  if (!g_status_log_buffer) {
-    return;
-  }
-  mutex_lock(&g_status_log_buffer->mutex);
-  // Clear all log entries by resetting write position and sequence
-  atomic_store(&g_status_log_buffer->write_pos, 0);
-  atomic_store(&g_status_log_buffer->sequence, 0);
-  // Clear all entries
-  for (size_t i = 0; i < STATUS_LOG_BUFFER_SIZE; i++) {
-    g_status_log_buffer->entries[i].message[0] = '\0';
-    g_status_log_buffer->entries[i].sequence = 0;
-  }
-  mutex_unlock(&g_status_log_buffer->mutex);
+  // Delegate to shared session log buffer
+  session_log_buffer_clear();
 }
 
 void server_status_log_append(const char *message) {
-  if (!g_status_log_buffer || !message) {
-    return;
-  }
-
-  mutex_lock(&g_status_log_buffer->mutex);
-
-  size_t pos = atomic_load(&g_status_log_buffer->write_pos);
-  uint64_t seq = atomic_fetch_add(&g_status_log_buffer->sequence, 1);
-
-  SAFE_STRNCPY(g_status_log_buffer->entries[pos].message, message, STATUS_LOG_LINE_MAX);
-  g_status_log_buffer->entries[pos].sequence = seq;
-
-  atomic_store(&g_status_log_buffer->write_pos, (pos + 1) % STATUS_LOG_BUFFER_SIZE);
-
-  mutex_unlock(&g_status_log_buffer->mutex);
+  // Delegate to shared session log buffer
+  session_log_buffer_append(message);
 }
 
-static size_t server_status_log_get_recent(status_log_entry_t *out_entries, size_t max_count) {
-  if (!g_status_log_buffer || !out_entries || max_count == 0) {
-    return 0;
-  }
-
-  mutex_lock(&g_status_log_buffer->mutex);
-
-  size_t write_pos = atomic_load(&g_status_log_buffer->write_pos);
-  uint64_t total_entries = atomic_load(&g_status_log_buffer->sequence);
-
-  size_t start_pos = write_pos;
-  size_t entries_to_check = STATUS_LOG_BUFFER_SIZE;
-
-  if (total_entries < STATUS_LOG_BUFFER_SIZE) {
-    start_pos = 0;
-    entries_to_check = write_pos;
-  }
-
-  size_t count = 0;
-  for (size_t i = 0; i < entries_to_check && count < max_count; i++) {
-    size_t idx = (start_pos + i) % STATUS_LOG_BUFFER_SIZE;
-    if (g_status_log_buffer->entries[idx].sequence > 0) {
-      memcpy(&out_entries[count], &g_status_log_buffer->entries[idx], sizeof(status_log_entry_t));
-      count++;
-    }
-  }
-
-  mutex_unlock(&g_status_log_buffer->mutex);
-  return count;
+static size_t server_status_log_get_recent(session_log_entry_t *out_entries, size_t max_count) {
+  // Delegate to shared session log buffer
+  return session_log_buffer_get_recent(out_entries, max_count);
 }
 
 // ============================================================================
@@ -250,8 +169,8 @@ void server_status_display(const server_status_t *status) {
   }
 
   // Get recent log entries
-  status_log_entry_t logs[STATUS_LOG_BUFFER_SIZE];
-  size_t log_count = server_status_log_get_recent(logs, STATUS_LOG_BUFFER_SIZE);
+  session_log_entry_t logs[SESSION_LOG_BUFFER_SIZE];
+  size_t log_count = server_status_log_get_recent(logs, SESSION_LOG_BUFFER_SIZE);
 
   // Calculate actual display lines needed for each log (accounting for wrapping and newlines)
   // Work backwards from most recent logs until we fill available lines
