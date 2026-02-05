@@ -334,6 +334,31 @@ if(NOT BUILDING_OBJECT_LIBS)
     endif()
 endif()
 
+# PCRE2: Configure for media module (for YouTube video ID extraction)
+# Define PCRE2_CODE_UNIT_WIDTH=8 for 8-bit API (UTF-8 support)
+target_compile_definitions(ascii-chat-video PRIVATE PCRE2_CODE_UNIT_WIDTH=8)
+
+# Add PCRE2 include directory
+if(PCRE2_INCLUDE_DIRS)
+    target_include_directories(ascii-chat-video PRIVATE ${PCRE2_INCLUDE_DIRS})
+endif()
+
+# Link PCRE2 library
+if(PCRE2_LIBRARY_DIRS AND PCRE2_LIBRARIES)
+    if(BUILDING_OBJECT_LIBS)
+        # For OBJECT libs, add PCRE2 to link libraries
+        target_link_libraries(ascii-chat-video ${PCRE2_LIBRARIES})
+    endif()
+    target_link_directories(ascii-chat-video PRIVATE ${PCRE2_LIBRARY_DIRS})
+else()
+    message(WARNING "PCRE2 not found for media module (YouTube video ID extraction will not work)")
+endif()
+
+# Add dependency on PCRE2 build target if building from source
+if(DEFINED PCRE2_BUILD_TARGET)
+    add_dependencies(ascii-chat-video ${PCRE2_BUILD_TARGET})
+endif()
+
 # -----------------------------------------------------------------------------
 # Module 6: Audio Processing (depends on: util, platform, data-structures)
 # Add WebRTC AEC3 include directories BEFORE creating the module

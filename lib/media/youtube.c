@@ -22,6 +22,115 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <time.h>
+#include <pthread.h>
+#define PCRE2_CODE_UNIT_WIDTH 8
+#include <pcre2.h>
+
+/* ============================================================================
+ * YouTube Video ID Extraction with PCRE2
+ * ============================================================================ */
+
+/**
+ * @brief PCRE2 regex pattern for YouTube video ID extraction
+ *
+ * Matches both formats:
+ * - youtube.com/watch?v=VIDEOID (with optional query params)
+ * - youtu.be/VIDEOID (short URL)
+ *
+ * Validates 11-character video IDs (alphanumeric, -, _)
+ */
+static const char *YOUTUBE_VIDEO_ID_PATTERN = "^https?://(?:www\\.|m\\.)?(?:"
+                                              "youtube\\.com/watch\\?(?:[^&]*&)*v=(?<video_id>[A-Za-z0-9_-]{11})"
+                                              "|youtu\\.be/(?<video_id>[A-Za-z0-9_-]{11})"
+                                              ")";
+
+/**
+ * @brief PCRE2 regex validator state for YouTube video ID extraction
+ *
+ * Global singleton with lazy initialization via pthread_once.
+ * Compiled regex is read-only after initialization, safe for concurrent reads.
+ */
+typedef struct {
+  pcre2_code *regex;          /* Compiled regex (read-only after init) */
+  pcre2_jit_stack *jit_stack; /* JIT stack for performance */
+  bool initialized;           /* Whether validator is initialized */
+} youtube_validator_t;
+
+static youtube_validator_t g_youtube_validator = {0};
+static pthread_once_t g_youtube_once = PTHREAD_ONCE_INIT;
+
+/**
+ * Initialize global YouTube validator with PCRE2 compiled regex
+ * Called once per process via pthread_once
+ */
+static void youtube_validator_init(void) {
+  int errornumber;
+  PCRE2_SIZE erroroffset;
+
+  /* Compile regex */
+  g_youtube_validator.regex = pcre2_compile((PCRE2_SPTR)YOUTUBE_VIDEO_ID_PATTERN, PCRE2_ZERO_TERMINATED,
+                                            PCRE2_CASELESS | PCRE2_UCP | PCRE2_UTF, &errornumber, &erroroffset, NULL);
+
+  if (!g_youtube_validator.regex) {
+    PCRE2_UCHAR error_buffer[256];
+    pcre2_get_error_message(errornumber, error_buffer, sizeof(error_buffer));
+    log_fatal("Failed to compile YouTube video ID regex at offset %zu: %s", erroroffset, (const char *)error_buffer);
+    return;
+  }
+
+  /* Compile JIT for 10-100x performance boost */
+  int jit_rc = pcre2_jit_compile(g_youtube_validator.regex, PCRE2_JIT_COMPLETE);
+  if (jit_rc < 0) {
+    log_warn("PCRE2 JIT compilation failed for YouTube regex (code %d), using interpreted mode", jit_rc);
+    /* Fall through - interpreted mode still works, just slower */
+  }
+
+  /* Allocate JIT stack (32KB sufficient for video ID regex) */
+  g_youtube_validator.jit_stack = pcre2_jit_stack_create(32 * 1024, 512 * 1024, NULL);
+
+  g_youtube_validator.initialized = true;
+}
+
+/**
+ * Get initialized YouTube validator (lazy initialization via pthread_once)
+ */
+static youtube_validator_t *youtube_validator_get(void) {
+  pthread_once(&g_youtube_once, youtube_validator_init);
+  return g_youtube_validator.initialized ? &g_youtube_validator : NULL;
+}
+
+/**
+ * Extract named substring from regex match data
+ * Returns pointer to matched substring within the subject string
+ */
+static const char *youtube_extract_video_id_from_match(pcre2_match_data *match_data, const char *subject,
+                                                       size_t *out_len) {
+  if (!match_data || !subject || !out_len) {
+    return NULL;
+  }
+
+  /* Get the video_id capture group number */
+  youtube_validator_t *validator = youtube_validator_get();
+  if (!validator || !validator->regex) {
+    return NULL;
+  }
+
+  int group_number = pcre2_substring_number_from_name(validator->regex, (PCRE2_SPTR) "video_id");
+  if (group_number < 0) {
+    return NULL; /* Group doesn't exist */
+  }
+
+  PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
+  PCRE2_SIZE start = ovector[2 * group_number];
+  PCRE2_SIZE end = ovector[2 * group_number + 1];
+
+  if (start == PCRE2_UNSET || end == PCRE2_UNSET) {
+    return NULL; /* Group not matched */
+  }
+
+  *out_len = end - start;
+  return subject + start;
+}
 
 /* ============================================================================
  * URL Extraction Cache
@@ -151,11 +260,13 @@ bool youtube_is_youtube_url(const char *url) {
 }
 
 /**
- * @brief Extract YouTube video ID from a URL
+ * @brief Extract YouTube video ID from a URL using PCRE2 regex
  *
  * Handles formats:
- * - youtube.com/watch?v=VIDEOID
- * - youtu.be/VIDEOID
+ * - youtube.com/watch?v=VIDEOID (with optional query params)
+ * - youtu.be/VIDEOID (short URL)
+ *
+ * Uses production-grade PCRE2 regex with JIT compilation for performance.
  */
 asciichat_error_t youtube_extract_video_id(const char *url, char *output_id, size_t id_size) {
   if (!url || !output_id || id_size < 12) {
@@ -163,54 +274,57 @@ asciichat_error_t youtube_extract_video_id(const char *url, char *output_id, siz
     return ERROR_INVALID_PARAM;
   }
 
-  // Verify it's a YouTube URL
+  /* Verify it's a YouTube URL */
   if (!youtube_is_youtube_url(url)) {
     SET_ERRNO(ERROR_YOUTUBE_INVALID_URL, "URL is not a YouTube URL: %s", url);
     return ERROR_YOUTUBE_INVALID_URL;
   }
 
-  const char *video_id_ptr = NULL;
-
-  // Try watch?v= pattern
-  video_id_ptr = strstr(url, "watch?v=");
-  if (video_id_ptr) {
-    video_id_ptr += strlen("watch?v=");
-  } else {
-    // Try youtu.be/ pattern
-    video_id_ptr = strstr(url, "youtu.be/");
-    if (video_id_ptr) {
-      video_id_ptr += strlen("youtu.be/");
-    }
+  /* Get initialized validator */
+  youtube_validator_t *validator = youtube_validator_get();
+  if (!validator || !validator->regex) {
+    SET_ERRNO(ERROR_YOUTUBE_INVALID_URL, "Failed to initialize YouTube video ID regex validator");
+    return ERROR_YOUTUBE_INVALID_URL;
   }
 
-  if (!video_id_ptr) {
+  /* Attempt regex match */
+  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(validator->regex, NULL);
+  if (!match_data) {
+    SET_ERRNO(ERROR_YOUTUBE_INVALID_URL, "Failed to allocate match data for regex");
+    return ERROR_YOUTUBE_INVALID_URL;
+  }
+
+  int match_result =
+      pcre2_match(validator->regex, (PCRE2_SPTR)url, strlen(url), 0, PCRE2_NO_UTF_CHECK, match_data, NULL);
+
+  if (match_result < 1) {
+    /* No match or error */
+    pcre2_match_data_free(match_data);
+    SET_ERRNO(ERROR_YOUTUBE_INVALID_URL, "URL does not match YouTube video ID pattern: %s", url);
+    return ERROR_YOUTUBE_INVALID_URL;
+  }
+
+  /* Extract video_id named group */
+  size_t video_id_len = 0;
+  const char *video_id_ptr = youtube_extract_video_id_from_match(match_data, url, &video_id_len);
+
+  if (!video_id_ptr || video_id_len == 0) {
+    pcre2_match_data_free(match_data);
     SET_ERRNO(ERROR_YOUTUBE_INVALID_URL, "Could not extract video ID from URL: %s", url);
     return ERROR_YOUTUBE_INVALID_URL;
   }
 
-  // Extract the video ID (11 characters, alphanumeric, -, _)
-  size_t id_len = 0;
-  for (size_t i = 0; i < 16 && video_id_ptr[i] != '\0' && video_id_ptr[i] != '&'; i++) {
-    if (isalnum(video_id_ptr[i]) || video_id_ptr[i] == '-' || video_id_ptr[i] == '_') {
-      id_len++;
-    } else {
-      break;
-    }
-  }
-
-  if (id_len < 10 || id_len > 12) {
-    SET_ERRNO(ERROR_YOUTUBE_INVALID_URL, "Invalid video ID length (%zu) in URL: %s", id_len, url);
-    return ERROR_YOUTUBE_INVALID_URL;
-  }
-
-  if (id_len >= id_size) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Video ID buffer too small (need %zu bytes)", id_len + 1);
+  if (video_id_len >= id_size) {
+    pcre2_match_data_free(match_data);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Video ID buffer too small (need %zu bytes)", video_id_len + 1);
     return ERROR_INVALID_PARAM;
   }
 
-  strncpy(output_id, video_id_ptr, id_len);
-  output_id[id_len] = '\0';
+  /* Copy video ID to output buffer */
+  memcpy(output_id, video_id_ptr, video_id_len);
+  output_id[video_id_len] = '\0';
 
+  pcre2_match_data_free(match_data);
   return ASCIICHAT_OK;
 }
 
