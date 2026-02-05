@@ -213,9 +213,17 @@ static time_t g_server_start_time = 0;
  * @brief Last status screen update time
  *
  * Tracks when status was last displayed to avoid excessive updates.
- * Used by status update callback to rate-limit display updates.
+ * Used by status screen thread to track frame timing.
  */
 static uint64_t g_last_status_update = 0; // Microseconds from platform_get_monotonic_time_us()
+
+/**
+ * @brief Status screen thread handle
+ *
+ * Dedicated thread for rendering status screen at target FPS, independent
+ * of network accept loop timing.
+ */
+static asciichat_thread_t g_status_screen_thread;
 
 /**
  * @brief Current session string for status display
@@ -1058,20 +1066,44 @@ static void server_handle_sigusr1(int sigusr1) {
  *
  * @param user_data Pointer to server context (server_context_t*)
  */
-static void status_update_callback(void *user_data) {
-  (void)user_data; // Unused parameter
+/**
+ * @brief Status screen thread function
+ *
+ * Runs independently at target FPS (default 60 Hz), rendering the status
+ * screen with server stats and recent logs. Decoupled from network accept loop.
+ */
+static void *status_screen_thread(void *arg) {
+  (void)arg; // Unused
 
-  if (!GET_OPTION(status_screen)) {
-    return;
+  uint32_t fps = GET_OPTION(fps);
+  if (fps == 0) {
+    fps = 60; // Default
+  }
+  uint64_t frame_interval_us = 1000000ULL / fps;
+
+  log_debug("Status screen thread started (target %u FPS)", fps);
+
+  while (!atomic_load(&g_server_should_exit)) {
+    uint64_t frame_start = platform_get_monotonic_time_us();
+
+    // Get the IPv4 and IPv6 addresses from TCP server config
+    const char *ipv4_address = g_tcp_server.config.ipv4_address;
+    const char *ipv6_address = g_tcp_server.config.ipv6_address;
+
+    // Render status screen (server_status_update handles rate limiting internally)
+    server_status_update(&g_tcp_server, g_session_string, ipv4_address, ipv6_address, GET_OPTION(port),
+                         g_server_start_time, "Server", g_session_is_mdns_only, &g_last_status_update);
+
+    // Sleep until next frame
+    uint64_t frame_end = platform_get_monotonic_time_us();
+    uint64_t frame_time = frame_end - frame_start;
+    if (frame_time < frame_interval_us) {
+      platform_sleep_us(frame_interval_us - frame_time);
+    }
   }
 
-  // Get the IPv4 and IPv6 addresses from TCP server config (the actual bound addresses)
-  const char *ipv4_address = g_tcp_server.config.ipv4_address;
-  const char *ipv6_address = g_tcp_server.config.ipv6_address;
-
-  // Update status display (rate-limited to 1-2 second intervals)
-  server_status_update(&g_tcp_server, g_session_string, ipv4_address, ipv6_address, GET_OPTION(port),
-                       g_server_start_time, "Server", g_session_is_mdns_only, &g_last_status_update);
+  log_debug("Status screen thread exiting");
+  return NULL;
 }
 
 /* ============================================================================
@@ -1527,8 +1559,8 @@ int server_main(void) {
       .accept_timeout_sec = ACCEPT_TIMEOUT,
       .client_handler = ascii_chat_client_handler,
       .user_data = &server_ctx, // Pass server context to client handlers
-      .status_update_fn = status_update_callback,
-      .status_update_data = &server_ctx, // Pass server context to status callback
+      .status_update_fn = NULL, // Status screen runs in its own thread
+      .status_update_data = NULL,
   };
 
   // Initialize TCP server (creates and binds sockets)
@@ -2065,14 +2097,14 @@ skip_acds_session:
     server_status_log_clear();
   }
 
-  // Display initial status screen if enabled
+  // Start status screen thread if enabled
+  // Runs independently at target FPS (default 60 Hz), decoupled from network accept loop
   if (GET_OPTION(status_screen)) {
-    server_status_t status;
-    if (server_status_gather(&g_tcp_server, session_string, ipv4_address, ipv6_address, (uint16_t)port,
-                             g_server_start_time, "Server", session_is_mdns_only, &status) == ASCIICHAT_OK) {
-      server_status_display(&status);
-      g_last_status_update = platform_get_monotonic_time_us();
+    if (asciichat_thread_create(&g_status_screen_thread, status_screen_thread, NULL) != 0) {
+      log_error("Failed to create status screen thread");
+      goto cleanup;
     }
+    log_debug("Status screen thread started");
   }
 
   // Run TCP server (blocks until shutdown signal received)
@@ -2089,13 +2121,22 @@ skip_acds_session:
   log_debug("Server accept loop exited");
 
 cleanup:
+  // Signal status screen thread to exit
+  atomic_store(&g_server_should_exit, true);
+
+  // Wait for status screen thread to finish if it was started
+  if (GET_OPTION(status_screen)) {
+    log_debug("Waiting for status screen thread to exit...");
+    asciichat_thread_join(&g_status_screen_thread, NULL);
+    log_debug("Status screen thread exited");
+  }
+
   // Cleanup status screen log capture
   server_status_log_cleanup();
 
   // Cleanup
   log_debug("Server shutting down...");
   memset(g_session_string, 0, sizeof(g_session_string)); // Clear session string for status screen
-  atomic_store(&g_server_should_exit, true);
 
   // Wake up any threads that might be blocked on condition variables
   // (like packet queues) to ensure responsive shutdown
