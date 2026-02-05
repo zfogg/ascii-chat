@@ -22,15 +22,11 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/CoreDependencies.cmake)
 # -Wno-unterminated-string-initialization was added in Clang 20
 check_c_compiler_flag("-Wno-unterminated-string-initialization" HAVE_WNO_UNTERMINATED_STRING_INIT)
 
-# Check if we're building OBJECT libraries (debug builds)
+# Always use OBJECT libraries (all build types)
 # OBJECT libraries eliminate duplicate compilation: modules compile once,
 # shared library and tests both link to the same object files
-if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-    set(BUILDING_OBJECT_LIBS FALSE)
-else()
-    # Debug/Dev builds use OBJECT libraries to avoid duplication
-    set(BUILDING_OBJECT_LIBS TRUE)
-endif()
+# This simplifies the build configuration and ensures consistent behavior
+set(BUILDING_OBJECT_LIBS TRUE)
 
 # In CMakeLists.txt - for macOS
 if(APPLE)
@@ -40,34 +36,16 @@ endif()
 
 # Helper macro to create a module with common settings
 macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
-    # Use OBJECT libraries in debug builds to eliminate duplication
+    # Always use OBJECT libraries to eliminate duplication
     # (shared library and tests both link to the same object files, compiled once)
-    # Use STATIC libraries in release builds
-    if(BUILDING_OBJECT_LIBS)
-        add_library(${MODULE_NAME} OBJECT ${MODULE_SRCS})
-        # OBJECT libraries need PIC for linking into shared libraries
-        set_target_properties(${MODULE_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
-        # Mark all symbols for export when building DLL from OBJECT libraries
-        target_compile_definitions(${MODULE_NAME} PRIVATE
-            _WIN32_WINNT=0x0A00  # Windows 10
-            BUILDING_ASCIICHAT_DLL=1
-        )
-    else()
-        # Release builds: use STATIC libraries (intermediate build artifacts)
-        # They should not be in the 'all' target by default
-        add_library(${MODULE_NAME} STATIC EXCLUDE_FROM_ALL ${MODULE_SRCS})
-        # For static library builds on Windows, define BUILDING_STATIC_LIB
-        # so that ASCIICHAT_API expands to nothing (not dllimport)
-        if(WIN32)
-            target_compile_definitions(${MODULE_NAME} PRIVATE
-                _WIN32_WINNT=0x0A00  # Windows 10
-                BUILDING_STATIC_LIB=1
-            )
-        endif()
-        # Enable Position Independent Code for shared library builds
-        # Required for thread-local storage (TLS) relocations in shared objects
-        set_target_properties(${MODULE_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
-    endif()
+    add_library(${MODULE_NAME} OBJECT ${MODULE_SRCS})
+    # OBJECT libraries need PIC for linking into shared libraries
+    set_target_properties(${MODULE_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    # Mark all symbols for export when building DLL from OBJECT libraries
+    target_compile_definitions(${MODULE_NAME} PRIVATE
+        _WIN32_WINNT=0x0A00  # Windows 10
+        BUILDING_ASCIICHAT_DLL=1
+    )
 
     if(ASCIICHAT_ENABLE_UNITY_BUILDS)
         set_target_properties(${MODULE_NAME} PROPERTIES UNITY_BUILD ON)
@@ -504,6 +482,13 @@ endif()
 create_ascii_chat_module(ascii-chat-network "${NETWORK_SRCS}")
 # Exclude main() function from mdns library
 target_compile_definitions(ascii-chat-network PRIVATE MDNS_NO_MAIN)
+
+# PCRE2: Add include directory and define PCRE2_CODE_UNIT_WIDTH=8
+# Network module uses PCRE2 in sdp.c and ice.c
+if(PCRE2_INCLUDE_DIRS)
+    target_include_directories(ascii-chat-network PRIVATE ${PCRE2_INCLUDE_DIRS})
+endif()
+target_compile_definitions(ascii-chat-network PRIVATE PCRE2_CODE_UNIT_WIDTH=8)
 if(NOT BUILDING_OBJECT_LIBS)
     target_link_libraries(ascii-chat-network
         ascii-chat-util
@@ -565,13 +550,12 @@ endif()
 # Shared unified library (libasciichat.so / libasciichat.dylib / asciichat.dll)
 # Debug builds: Create from OBJECT libraries (eliminates duplication, tests link to same objects)
 # Release builds: Create from sources (no duplication risk)
-if(BUILDING_OBJECT_LIBS)
-    # Debug builds: Create shared library from OBJECT libraries (modules compiled as OBJECT)
-    # This eliminates duplication: both the shared library and test executables
-    # link to the same compiled object files.
-    # Note: ascii-chat-panic is always included as it provides runtime logging functions
-    # that may be called by panic-instrumented code
-    add_library(ascii-chat-shared SHARED EXCLUDE_FROM_ALL
+# Always use OBJECT libraries: Create shared library from OBJECT libraries
+# This eliminates duplication: both the shared library and test executables
+# link to the same compiled object files.
+# Note: ascii-chat-panic is always included as it provides runtime logging functions
+# that may be called by panic-instrumented code
+add_library(ascii-chat-shared SHARED EXCLUDE_FROM_ALL
         $<TARGET_OBJECTS:ascii-chat-util>
         $<TARGET_OBJECTS:ascii-chat-data-structures>
         $<TARGET_OBJECTS:ascii-chat-platform>
@@ -745,161 +729,6 @@ if(BUILDING_OBJECT_LIBS)
     endif()
 
     # Note: System library dependencies will be added below
-else()
-    # Unix or Windows Release: Compile shared library from all sources with default visibility
-    # This allows the shared library to export symbols even though the project uses -fvisibility=hidden
-
-    # Collect all source files from all modules
-    # Note: TOOLING_PANIC_SRCS provides runtime logging functions for panic-instrumented code
-    set(ALL_LIBRARY_SRCS
-        ${UTIL_SRCS}
-        ${DATA_STRUCTURES_SRCS}
-        ${PLATFORM_SRCS}
-        ${CRYPTO_SRCS}
-        ${SIMD_SRCS}
-        ${VIDEO_SRCS}
-        ${AUDIO_SRCS}
-        ${NETWORK_SRCS}
-        ${CORE_SRCS}
-        ${SESSION_SRCS}
-        ${TOOLING_PANIC_SRCS}
-    )
-
-    # Create shared library directly from sources (not from static libraries)
-    add_library(ascii-chat-shared SHARED EXCLUDE_FROM_ALL ${ALL_LIBRARY_SRCS})
-    set_target_properties(ascii-chat-shared PROPERTIES
-        OUTPUT_NAME "asciichat"
-        POSITION_INDEPENDENT_CODE ON
-        # Unix shared library versioning: creates symlink chain
-        # libasciichat.so → libasciichat.so.X → libasciichat.so.X.Y.Z
-        # The SOVERSION is embedded as the SONAME in the ELF header
-        # At runtime, ld.so looks for the SONAME (libasciichat.so.X), not the linker name
-        # Library version is from lib/v* tags, separate from app version
-        VERSION ${ASCIICHAT_LIB_VERSION}
-        SOVERSION ${ASCIICHAT_LIB_VERSION_MAJOR}
-    )
-
-    if(ASCIICHAT_ENABLE_UNITY_BUILDS)
-        set_target_properties(ascii-chat-shared PROPERTIES UNITY_BUILD ON)
-    endif()
-
-    if(ASCIICHAT_ENABLE_IPO)
-        set_property(TARGET ascii-chat-shared PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-    endif()
-
-    # Import library location for Windows Release builds
-    # Release: .lib goes in lib/ (standard convention)
-    # This applies to the else block which handles Release/non-Debug builds
-    if(CMAKE_BUILD_TYPE STREQUAL "Release" AND WIN32)
-        set_target_properties(ascii-chat-shared PROPERTIES
-            ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}  # .lib → lib/
-        )
-        target_link_options(ascii-chat-shared PRIVATE "LINKER:/implib:${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/asciichat.lib")
-        message(STATUS "Release build: Import library will go to lib/")
-    endif()
-
-    # CRITICAL: Override flags for shared library compatibility (Unix only)
-    # 1. -fvisibility=default: Export symbols for external use
-    # 2. -ftls-model=global-dynamic: Correct TLS model for shared libraries
-    # 3. -fPIC: Position-independent code required for shared libraries
-    # 4. -fno-pie: Disable PIE mode (conflicts with -shared)
-    # Note: Windows doesn't support these flags and uses different DLL export mechanisms
-    # Note: No need to add -no_pie linker flag since -pie is only added to executables
-    if(NOT WIN32)
-        target_compile_options(ascii-chat-shared PRIVATE
-            -fvisibility=default
-            -ftls-model=global-dynamic
-            -fno-pie
-            -fPIC
-        )
-    endif()
-
-    # Set rpath for shared library (needed for ASCIICHAT_SHARED_DEPS builds)
-    # The library links against @rpath/libunwind.1.dylib so needs LLVM paths
-    if(ASCIICHAT_SHARED_DEPS AND (APPLE OR UNIX))
-        set_target_properties(ascii-chat-shared PROPERTIES
-            BUILD_RPATH "${CMAKE_BUILD_RPATH}"
-            INSTALL_RPATH "${CMAKE_BUILD_RPATH}"
-            INSTALL_RPATH_USE_LINK_PATH TRUE
-        )
-        message(STATUS "libasciichat using rpath for SHARED_DEPS build: ${CMAKE_BUILD_RPATH}")
-    endif()
-
-    # Add version dependency
-    add_dependencies(ascii-chat-shared generate_version)
-
-    # Include paths (same as modules) - PRIVATE because these are build-time only
-    target_include_directories(ascii-chat-shared PRIVATE ${CMAKE_BINARY_DIR}/generated)
-
-    # Windows DLL export flag (must be set when building the DLL)
-    if(WIN32)
-        target_compile_definitions(ascii-chat-shared PRIVATE
-            _WIN32_WINNT=0x0A00  # Windows 10
-            BUILDING_ASCIICHAT_DLL=1
-        )
-    endif()
-
-    # Build directory for llvm-symbolizer --debug-file-directory (debug builds only)
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
-        target_compile_definitions(ascii-chat-shared PRIVATE BUILD_DIR="${CMAKE_BINARY_DIR}")
-    endif()
-
-    # MI_DEBUG for mimalloc
-    if(DEFINED MIMALLOC_DEBUG_LEVEL)
-        target_compile_definitions(ascii-chat-shared PRIVATE MI_DEBUG=${MIMALLOC_DEBUG_LEVEL})
-    endif()
-
-    # Mimalloc include directory (use MIMALLOC_INCLUDE_DIRS for system vs FetchContent)
-    if(USE_MIMALLOC AND MIMALLOC_INCLUDE_DIRS)
-        target_include_directories(ascii-chat-shared PRIVATE $<BUILD_INTERFACE:${MIMALLOC_INCLUDE_DIRS}>)
-    endif()
-
-    # Musl flag
-    if(USE_MUSL)
-        target_compile_definitions(ascii-chat-shared PRIVATE USE_MUSL=1)
-    endif()
-
-    # Add dependency on libsodium build target if building from source
-    if(DEFINED LIBSODIUM_BUILD_TARGET)
-        add_dependencies(ascii-chat-shared ${LIBSODIUM_BUILD_TARGET})
-    endif()
-
-    # Add dependency on PortAudio build target if building from source
-    if(DEFINED PORTAUDIO_BUILD_TARGET AND TARGET ${PORTAUDIO_BUILD_TARGET})
-        add_dependencies(ascii-chat-shared ${PORTAUDIO_BUILD_TARGET})
-    endif()
-
-    # Platform-specific linker flags
-    if(APPLE)
-        # macOS: Symbols are exported by default when using -fvisibility=default
-        # Note: -export_dynamic is a GNU ld flag, NOT valid for Apple ld64
-        # Apple ld uses -exported_symbols_list for explicit control, but we don't need it
-        # since we're using default visibility for the shared library
-    elseif(WIN32)
-        # Windows Release: DLL export configuration
-        # Use WINDOWS_EXPORT_ALL_SYMBOLS to automatically export all symbols
-        set_target_properties(ascii-chat-shared PROPERTIES
-            ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
-            WINDOWS_EXPORT_ALL_SYMBOLS TRUE
-        )
-    else()
-        # Linux: Export all symbols using version script
-        # Remove executable-specific optimizations that break shared library symbol export:
-        # - No --gc-sections (removes "unused" symbols meant for external users)
-        # - No -pie (for executables, not shared libraries)
-        # - No hardening flags (breaks dynamic symbol export)
-        target_link_options(ascii-chat-shared PRIVATE
-            -Wl,--version-script=${CMAKE_SOURCE_DIR}/cmake/install/export_all.lds
-        )
-        # Clear LINK_OPTIONS property to remove global flags (pie, gc-sections, hardening)
-        # then add only what we need
-        set_target_properties(ascii-chat-shared PROPERTIES
-            LINK_OPTIONS "-Wl,--version-script=${CMAKE_SOURCE_DIR}/cmake/install/export_all.lds"
-        )
-        # Note: The "_start not found" linker warning is harmless for shared libraries
-        # (they don't need an entry point like executables do)
-    endif()
-endif()
 
 # Add system library dependencies
 if(WIN32)

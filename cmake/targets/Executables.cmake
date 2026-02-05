@@ -32,13 +32,8 @@ endif()
 # Determine if we should use shared library linking
 set(_use_shared_lib FALSE)
 if(NOT USE_MUSL)
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
-        set(_use_shared_lib TRUE)
-    elseif(ASCIICHAT_SHARED_DEPS)
-        # Homebrew builds: link against shared library for smaller binary
-        set(_use_shared_lib TRUE)
-        message(STATUS "ascii-chat will link against libasciichat.dylib (ASCIICHAT_SHARED_DEPS=ON)")
-    endif()
+    # Always use shared library (built from OBJECT libraries for all build types)
+    set(_use_shared_lib TRUE)
 endif()
 
 if(_use_shared_lib)
@@ -94,43 +89,7 @@ if(_use_shared_lib)
         # Use CXX language for linking to automatically link C++ runtime
         set_property(TARGET ascii-chat PROPERTY LINKER_LANGUAGE CXX)
     endif()
-else()
-    # Release builds OR USE_MUSL builds: use static library
-    # USE_MUSL needs static library because musl requires static linking
-    add_dependencies(ascii-chat ascii-chat-static-build generate_version)
-    target_link_libraries(ascii-chat PRIVATE ascii-chat-static)
-    # FFmpeg is already provided via ascii-chat-static-lib INTERFACE library, no need to add again
-    # Define BUILDING_STATIC_LIB for executable when using static library (Windows)
-    # This prevents LNK4217 warnings about dllimport on locally defined symbols
-    if(WIN32)
-        target_compile_definitions(ascii-chat PRIVATE
-            BUILDING_STATIC_LIB=1
-            _WIN32_WINNT=0x0A00  # Windows 10
-        )
-    endif()
-
-    # Suppress linker warnings about duplicate debug symbols in libdatachannel
-    # (libdatachannel embeds debug symbols with invalid timestamps - linker warning only, not an error)
-    if(APPLE)
-        target_link_options(ascii-chat PRIVATE "LINKER:-w")
-        # Link IOKit framework for keepawake functionality (static library deps don't propagate)
-        target_link_libraries(ascii-chat PRIVATE ${IOKIT_FRAMEWORK})
-    endif()
-
-    # Linux: Link libsystemd for keepawake functionality (static library deps don't propagate)
-    if(PLATFORM_LINUX AND NOT USE_MUSL)
-        find_package(PkgConfig QUIET)
-        if(PkgConfig_FOUND)
-            pkg_check_modules(LIBSYSTEMD QUIET libsystemd)
-            if(LIBSYSTEMD_FOUND)
-                target_link_libraries(ascii-chat PRIVATE ${LIBSYSTEMD_LIBRARIES})
-            endif()
-        endif()
-    endif()
-
-    set_property(TARGET ascii-chat PROPERTY LINKER_LANGUAGE CXX)
 endif()
-
 # Ensure build directory takes precedence in rpath for Debug/Dev builds
 # This prevents conflicts with installed libraries in system directories
 # Skip for Release builds - they use static linking and shouldn't embed developer paths

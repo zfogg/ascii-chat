@@ -3393,7 +3393,7 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
       if (!for_binary_help) {
         // For mode-specific help, show ONLY the current mode's usage line
         // Don't show generic binary-level or placeholder lines
-        if (!usage->mode || strcmp(usage->mode, mode_name) != 0) {
+        if (!usage->mode || !mode_name || strcmp(usage->mode, mode_name) != 0) {
           continue;
         }
       }
