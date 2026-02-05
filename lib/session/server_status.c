@@ -263,23 +263,60 @@ void server_status_display(const server_status_t *status) {
     const char *msg = logs[idx].message;
 
     // Count display lines for this message (newlines + wrapping)
+    // Split message by newlines and calculate visible width of each line
     int msg_lines = 0;
-    int current_line_len = 0;
-    for (const char *p = msg; *p; p++) {
+    const char *line_start = msg;
+    const char *p = msg;
+
+    while (*p) {
       if (*p == '\n') {
-        msg_lines++;
-        current_line_len = 0;
-      } else {
-        current_line_len++;
-        if (term_size.cols > 0 && current_line_len >= term_size.cols) {
-          msg_lines++;
-          current_line_len = 0;
+        // Calculate visible width of this line (excluding ANSI codes)
+        size_t line_len = p - line_start;
+        char line_buf[2048];
+        if (line_len < sizeof(line_buf)) {
+          memcpy(line_buf, line_start, line_len);
+          line_buf[line_len] = '\0';
+
+          int visible_width = display_width(line_buf);
+          if (visible_width < 0)
+            visible_width = (int)line_len; // Fallback
+
+          // Calculate how many terminal lines this takes (with wrapping)
+          if (term_size.cols > 0 && visible_width > 0) {
+            msg_lines += (visible_width + term_size.cols - 1) / term_size.cols;
+          } else {
+            msg_lines += 1;
+          }
+        } else {
+          msg_lines += 1; // Line too long, just count as 1
         }
+
+        line_start = p + 1;
       }
+      p++;
     }
-    // Count final line if message doesn't end with newline
-    if (current_line_len > 0 || (msg[0] != '\0' && msg[strlen(msg) - 1] == '\n')) {
-      msg_lines++;
+
+    // Handle final line if message doesn't end with newline
+    if (line_start < p) {
+      size_t line_len = p - line_start;
+      char line_buf[2048];
+      if (line_len < sizeof(line_buf)) {
+        memcpy(line_buf, line_start, line_len);
+        line_buf[line_len] = '\0';
+
+        int visible_width = display_width(line_buf);
+        if (visible_width < 0)
+          visible_width = (int)line_len; // Fallback
+
+        // Calculate how many terminal lines this takes (with wrapping)
+        if (term_size.cols > 0 && visible_width > 0) {
+          msg_lines += (visible_width + term_size.cols - 1) / term_size.cols;
+        } else {
+          msg_lines += 1;
+        }
+      } else {
+        msg_lines += 1;
+      }
     }
 
     // Check if this log fits in remaining space
