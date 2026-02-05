@@ -749,4 +749,135 @@ asciichat_error_t terminal_reset(int fd) {
   return 0;
 }
 
+/**
+ * Detect if terminal has a dark background
+ * Uses environment variables and terminal hints to make a best guess
+ */
+bool terminal_has_dark_background(void) {
+  // Check COLORFGBG environment variable (common in terminal emulators)
+  // Format is "foreground;background" where values are color indices
+  // Background >= 8 typically indicates a light background (bright colors)
+  const char *colorfgbg = SAFE_GETENV("COLORFGBG");
+  if (colorfgbg) {
+    // Parse background color (after semicolon)
+    const char *semicolon = strchr(colorfgbg, ';');
+    if (semicolon && *(semicolon + 1)) {
+      int bg = atoi(semicolon + 1);
+      // Colors 0-7 are dark, 8-15 are light/bright
+      // If background is a light color (>= 8), we have a light terminal
+      if (bg >= 8) {
+        return false; // Light background
+      } else if (bg >= 0 && bg < 8) {
+        return true; // Dark background
+      }
+    }
+  }
+
+  // Check for VS Code terminal (usually has dark background by default)
+  const char *term_program = SAFE_GETENV("TERM_PROGRAM");
+  if (term_program && strcmp(term_program, "vscode") == 0) {
+    return true; // VS Code terminals are typically dark
+  }
+
+  // Check for iTerm2 (can query actual background color, but complicated)
+  if (term_program && strcmp(term_program, "iTerm.app") == 0) {
+    return true; // iTerm2 defaults to dark
+  }
+
+  // Check TERM variable for hints
+  const char *term = SAFE_GETENV("TERM");
+  if (term) {
+    // Some terminal types that typically indicate dark backgrounds
+    if (strstr(term, "256color") || strstr(term, "truecolor")) {
+      return true; // Modern terminals typically use dark backgrounds
+    }
+  }
+
+  // Default to dark background (most common for developer terminals)
+  return true;
+}
+
+/**
+ * Query terminal background color using OSC 11
+ */
+bool terminal_query_background_color(uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b) {
+  // Only query if stdout is a TTY
+  if (!isatty(STDOUT_FILENO)) {
+    log_debug("terminal_query_background_color: stdout is not a TTY");
+    return false;
+  }
+
+  // Save terminal state
+  struct termios old_tio, new_tio;
+  if (tcgetattr(STDIN_FILENO, &old_tio) != 0) {
+    return false;
+  }
+
+  // Set raw mode for reading response
+  new_tio = old_tio;
+  new_tio.c_lflag &= ~(ICANON | ECHO);
+  new_tio.c_cc[VMIN] = 0;
+  new_tio.c_cc[VTIME] = 1; // 0.1 second timeout
+  tcsetattr(STDIN_FILENO, TCSANOW, &new_tio);
+
+  // Send OSC 11 query (query background color)
+  const char *query = "\033]11;?\033\\";
+  log_debug("terminal_query_background_color: sending OSC 11 query");
+  if (write(STDOUT_FILENO, query, strlen(query)) < 0) {
+    log_debug("terminal_query_background_color: failed to write query");
+    tcsetattr(STDIN_FILENO, TCSANOW, &old_tio);
+    return false;
+  }
+
+  // Read response (format: ESC]11;rgb:RRRR/GGGG/BBBBESC\ or ESC]11;rgb:RRRR/GGGG/BBBBBEL)
+  char response[256];
+  ssize_t total = 0;
+  ssize_t n;
+
+  // Read with timeout (up to 100ms)
+  for (int i = 0; i < 10 && total < (ssize_t)sizeof(response) - 1; i++) {
+    n = read(STDIN_FILENO, response + total, sizeof(response) - total - 1);
+    if (n > 0) {
+      total += n;
+      // Check if we have a complete response
+      if (total >= 2 && (response[total - 1] == '\\' || response[total - 1] == '\007')) {
+        break;
+      }
+    }
+  }
+
+  // Restore terminal state
+  tcsetattr(STDIN_FILENO, TCSANOW, &old_tio);
+
+  if (total < 10) {
+    log_debug("terminal_query_background_color: no response or too short (got %zd bytes)", total);
+    return false; // No response or too short
+  }
+
+  response[total] = '\0';
+  log_debug("terminal_query_background_color: received response (%zd bytes): %s", total, response);
+
+  // Parse response: ESC]11;rgb:RRRR/GGGG/BBBB...
+  const char *rgb_start = strstr(response, "rgb:");
+  if (!rgb_start) {
+    log_debug("terminal_query_background_color: no 'rgb:' found in response");
+    return false;
+  }
+  rgb_start += 4; // Skip "rgb:"
+
+  // Parse hex values (format is either RRRR/GGGG/BBBB or RR/GG/BB)
+  unsigned int r16, g16, b16;
+  if (sscanf(rgb_start, "%x/%x/%x", &r16, &g16, &b16) == 3) {
+    // Convert from 16-bit to 8-bit
+    *bg_r = (uint8_t)(r16 >> 8);
+    *bg_g = (uint8_t)(g16 >> 8);
+    *bg_b = (uint8_t)(b16 >> 8);
+    log_debug("terminal_query_background_color: SUCCESS - detected RGB(%d, %d, %d)", *bg_r, *bg_g, *bg_b);
+    return true;
+  }
+
+  log_debug("terminal_query_background_color: failed to parse RGB values");
+  return false;
+}
+
 #endif // !_WIN32

@@ -760,6 +760,41 @@ bool terminal_should_color_output(int fd);
  */
 terminal_color_mode_t terminal_get_effective_color_mode(void);
 
+/**
+ * @brief Detect if terminal has a dark background
+ * @return true if terminal has dark background, false if light or unknown
+ *
+ * Attempts to detect terminal background color using:
+ * 1. Common environment variables (COLORFGBG, TERM_PROGRAM)
+ * 2. Terminal-specific hints (iTerm2, VS Code, etc.)
+ * 3. Defaults to assuming dark background (most common for dev terminals)
+ *
+ * @note This is a best-effort heuristic and may not be 100% accurate
+ * @note Used for choosing appropriate highlight colors
+ *
+ * @ingroup platform
+ */
+bool terminal_has_dark_background(void);
+
+/**
+ * @brief Query terminal background color using OSC 11 escape sequence
+ * @param bg_r Pointer to store red component (0-255)
+ * @param bg_g Pointer to store green component (0-255)
+ * @param bg_b Pointer to store blue component (0-255)
+ * @return true if successful, false if query failed or timed out
+ *
+ * Sends OSC 11 query to terminal and parses RGB response.
+ * Works with modern terminals (iTerm2, kitty, Konsole, etc.)
+ * Returns false if terminal doesn't support OSC 11 or times out.
+ *
+ * @note Requires raw terminal mode to read response
+ * @note Has 100ms timeout to prevent hanging
+ * @note Only works if stdout is a TTY
+ *
+ * @ingroup platform
+ */
+bool terminal_query_background_color(uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b);
+
 /** @} */
 
 /* ============================================================================

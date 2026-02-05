@@ -22,6 +22,122 @@
 
 #include <pthread.h>
 #include <string.h>
+#include <math.h>
+
+/**
+ * @brief Default highlight colors (grey)
+ * Dark grey (80) for light terminals, darker grey (70) for dark terminals
+ * Adjusted based on actual terminal background color if detectable
+ */
+#define HIGHLIGHT_DARK_TERM_R 80 // Dark grey for light backgrounds
+#define HIGHLIGHT_DARK_TERM_G 80
+#define HIGHLIGHT_DARK_TERM_B 80
+
+#define HIGHLIGHT_LIGHT_TERM_R 70 // Darker grey for dark backgrounds
+#define HIGHLIGHT_LIGHT_TERM_G 70
+#define HIGHLIGHT_LIGHT_TERM_B 70
+
+/**
+ * @brief Calculate luminance from RGB (0-255 scale)
+ */
+static inline float calculate_luminance(uint8_t r, uint8_t g, uint8_t b) {
+  // Using relative luminance formula (ITU-R BT.709)
+  return (0.2126f * r + 0.7152f * g + 0.0722f * b) / 255.0f;
+}
+
+/**
+ * @brief Calculate color difference percentage
+ */
+static inline float color_difference(uint8_t r1, uint8_t g1, uint8_t b1, uint8_t r2, uint8_t g2, uint8_t b2) {
+  // Simple RGB distance metric normalized to 0-1
+  int dr = (int)r1 - (int)r2;
+  int dg = (int)g1 - (int)g2;
+  int db = (int)b1 - (int)b2;
+  float distance = sqrtf((float)(dr * dr + dg * dg + db * db));
+  float max_distance = sqrtf(255.0f * 255.0f * 3.0f); // Maximum possible distance
+  return distance / max_distance;
+}
+
+/**
+ * @brief Adjust grey value to be at least 30% different from background
+ */
+static uint8_t adjust_grey_value(uint8_t bg_grey, bool is_dark_terminal) {
+  // Calculate how far we need to shift to achieve 30% difference
+  // For grey, difference is just |value1 - value2| / 255
+  const float min_diff = 0.30f;
+  int needed_shift = (int)(min_diff * 255.0f);
+
+  int target_grey;
+  if (is_dark_terminal) {
+    // Start with dark grey (80)
+    target_grey = HIGHLIGHT_DARK_TERM_R;
+    // If too close to background, shift away
+    if (abs(target_grey - bg_grey) < needed_shift) {
+      // Try darker first
+      target_grey = bg_grey - needed_shift;
+      if (target_grey < 30) {
+        // Too dark, go brighter instead
+        target_grey = bg_grey + needed_shift;
+      }
+    }
+  } else {
+    // Start with light grey (180)
+    target_grey = HIGHLIGHT_LIGHT_TERM_R;
+    // If too close to background, shift away
+    if (abs(target_grey - bg_grey) < needed_shift) {
+      // Try brighter first
+      target_grey = bg_grey + needed_shift;
+      if (target_grey > 225) {
+        // Too bright, go darker instead
+        target_grey = bg_grey - needed_shift;
+      }
+    }
+  }
+
+  // Clamp to valid range
+  if (target_grey < 0)
+    target_grey = 0;
+  if (target_grey > 255)
+    target_grey = 255;
+
+  return (uint8_t)target_grey;
+}
+
+/**
+ * @brief Get highlight color based on terminal background
+ * Detects terminal background and ensures at least 30% color difference
+ */
+static void get_highlight_color(uint8_t *r, uint8_t *g, uint8_t *b) {
+  // Try to query actual terminal background color
+  uint8_t bg_r, bg_g, bg_b;
+  bool has_bg_color = terminal_query_background_color(&bg_r, &bg_g, &bg_b);
+
+  bool is_dark = terminal_has_dark_background();
+
+  if (has_bg_color) {
+    // We have the actual background color
+    // Calculate average grey value of background
+    uint8_t bg_grey = (uint8_t)((bg_r + bg_g + bg_b) / 3);
+
+    // Adjust our grey to be at least 30% different
+    uint8_t adjusted_grey = adjust_grey_value(bg_grey, is_dark);
+
+    *r = adjusted_grey;
+    *g = adjusted_grey;
+    *b = adjusted_grey;
+  } else {
+    // Fall back to default colors (swapped: dark terminals get light grey, light terminals get dark grey)
+    if (is_dark) {
+      *r = HIGHLIGHT_LIGHT_TERM_R; // Light grey for dark backgrounds
+      *g = HIGHLIGHT_LIGHT_TERM_G;
+      *b = HIGHLIGHT_LIGHT_TERM_B;
+    } else {
+      *r = HIGHLIGHT_DARK_TERM_R; // Dark grey for light backgrounds
+      *g = HIGHLIGHT_DARK_TERM_G;
+      *b = HIGHLIGHT_DARK_TERM_B;
+    }
+  }
+}
 
 /**
  * @brief Global filter state (initialized once at startup)
@@ -324,8 +440,10 @@ const char *log_filter_highlight_colored(const char *colored_text, const char *p
         dst += (colored_match_start - colored_pos);
       }
 
-      // Add yellow background
-      dst = append_truecolor_bg(dst, 255, 200, 0);
+      // Add highlight background
+      uint8_t r, g, b;
+      get_highlight_color(&r, &g, &b);
+      dst = append_truecolor_bg(dst, r, g, b);
 
       // Copy matched text, re-applying background after any [0m or [00m reset codes
       size_t match_byte_len = colored_match_end - colored_match_start;
@@ -343,8 +461,10 @@ const char *log_filter_highlight_colored(const char *colored_text, const char *p
           *dst++ = match_src[i++]; // '['
           *dst++ = match_src[i++]; // '0'
           *dst++ = match_src[i++]; // 'm'
-          // Re-apply yellow background after reset
-          dst = append_truecolor_bg(dst, 255, 200, 0);
+          // Re-apply highlight background after reset
+          uint8_t r, g, b;
+          get_highlight_color(&r, &g, &b);
+          dst = append_truecolor_bg(dst, r, g, b);
         } else if (i + 5 <= match_byte_len && match_src[i] == '\x1b' && match_src[i + 1] == '[' &&
                    match_src[i + 2] == '0' && match_src[i + 3] == '0' && match_src[i + 4] == 'm') {
           // Found [00m - copy it and re-apply background
@@ -355,8 +475,10 @@ const char *log_filter_highlight_colored(const char *colored_text, const char *p
           *dst++ = match_src[i++]; // '0'
           *dst++ = match_src[i++]; // '0'
           *dst++ = match_src[i++]; // 'm'
-          // Re-apply yellow background after reset
-          dst = append_truecolor_bg(dst, 255, 200, 0);
+          // Re-apply highlight background after reset
+          uint8_t r, g, b;
+          get_highlight_color(&r, &g, &b);
+          dst = append_truecolor_bg(dst, r, g, b);
         } else {
           // Regular character - just copy
           if (dst + 1 >= dst_end)
@@ -401,8 +523,10 @@ const char *log_filter_highlight_colored(const char *colored_text, const char *p
     dst += colored_start;
   }
 
-  // Add yellow background
-  dst = append_truecolor_bg(dst, 255, 200, 0);
+  // Add highlight background
+  uint8_t r, g, b;
+  get_highlight_color(&r, &g, &b);
+  dst = append_truecolor_bg(dst, r, g, b);
 
   // Copy matched text, re-applying background after any [0m or [00m reset codes
   size_t match_byte_len = colored_end - colored_start;
@@ -420,8 +544,10 @@ const char *log_filter_highlight_colored(const char *colored_text, const char *p
       *dst++ = match_src[i++]; // '['
       *dst++ = match_src[i++]; // '0'
       *dst++ = match_src[i++]; // 'm'
-      // Re-apply yellow background after reset
-      dst = append_truecolor_bg(dst, 255, 200, 0);
+      // Re-apply highlight background after reset
+      uint8_t r2, g2, b2;
+      get_highlight_color(&r2, &g2, &b2);
+      dst = append_truecolor_bg(dst, r2, g2, b2);
     } else if (i + 5 <= match_byte_len && match_src[i] == '\x1b' && match_src[i + 1] == '[' &&
                match_src[i + 2] == '0' && match_src[i + 3] == '0' && match_src[i + 4] == 'm') {
       // Found [00m - copy it and re-apply background
@@ -432,8 +558,10 @@ const char *log_filter_highlight_colored(const char *colored_text, const char *p
       *dst++ = match_src[i++]; // '0'
       *dst++ = match_src[i++]; // '0'
       *dst++ = match_src[i++]; // 'm'
-      // Re-apply yellow background after reset
-      dst = append_truecolor_bg(dst, 255, 200, 0);
+      // Re-apply highlight background after reset
+      uint8_t r3, g3, b3;
+      get_highlight_color(&r3, &g3, &b3);
+      dst = append_truecolor_bg(dst, r3, g3, b3);
     } else {
       // Regular character - just copy
       if (dst + 1 >= dst_end)
@@ -502,7 +630,9 @@ const char *log_filter_highlight(const char *log_line, size_t match_start, size_
       }
 
       // Highlight the match (background only, preserve foreground color)
-      dst = append_truecolor_bg(dst, 255, 200, 0);
+      uint8_t r, g, b;
+      get_highlight_color(&r, &g, &b);
+      dst = append_truecolor_bg(dst, r, g, b);
       memcpy(dst, src + match_pos, len);
       dst += len;
       memcpy(dst, "\x1b[0m", 4);
@@ -532,7 +662,9 @@ const char *log_filter_highlight(const char *log_line, size_t match_start, size_
     }
 
     // Add background color for match (preserve foreground color)
-    dst = append_truecolor_bg(dst, 255, 200, 0);
+    uint8_t r, g, b;
+    get_highlight_color(&r, &g, &b);
+    dst = append_truecolor_bg(dst, r, g, b);
 
     // Copy matched text
     memcpy(dst, log_line + match_start, match_len);

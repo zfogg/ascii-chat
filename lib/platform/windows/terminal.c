@@ -987,4 +987,52 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
   return caps;
 }
 
+/**
+ * Detect if terminal has a dark background (Windows implementation)
+ * Uses environment variables and terminal hints to make a best guess
+ */
+bool terminal_has_dark_background(void) {
+  // Check COLORFGBG environment variable (some Windows terminals set this)
+  const char *colorfgbg = platform_getenv("COLORFGBG");
+  if (colorfgbg) {
+    const char *semicolon = strchr(colorfgbg, ';');
+    if (semicolon && *(semicolon + 1)) {
+      int bg = atoi(semicolon + 1);
+      if (bg >= 8) {
+        return false; // Light background
+      } else if (bg >= 0 && bg < 8) {
+        return true; // Dark background
+      }
+    }
+  }
+
+  // Check for VS Code terminal
+  const char *term_program = platform_getenv("TERM_PROGRAM");
+  if (term_program && strcmp(term_program, "vscode") == 0) {
+    return true; // VS Code terminals are typically dark
+  }
+
+  // Check for Windows Terminal (modern terminals are typically dark)
+  const char *wt_session = platform_getenv("WT_SESSION");
+  if (wt_session) {
+    return true; // Windows Terminal defaults to dark
+  }
+
+  // Default to dark background for Windows (most modern terminals)
+  return true;
+}
+
+/**
+ * Query terminal background color (Windows stub)
+ * OSC 11 queries are less reliable on Windows, so we return false
+ */
+bool terminal_query_background_color(uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b) {
+  // Windows terminals have limited OSC support
+  // Return false to fall back to heuristic detection
+  (void)bg_r;
+  (void)bg_g;
+  (void)bg_b;
+  return false;
+}
+
 #endif // _WIN32
