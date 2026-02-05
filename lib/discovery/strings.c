@@ -22,6 +22,9 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include <pthread.h>
+#define PCRE2_CODE_UNIT_WIDTH 8
+#include <pcre2.h>
 
 // ============================================================================
 // Word Cache Implementation (Hashtable for O(1) validation)
@@ -146,6 +149,71 @@ static asciichat_error_t build_validation_caches(void) {
   return ASCIICHAT_OK;
 }
 
+// ============================================================================
+// PCRE2 Session String Format Validator
+// ============================================================================
+
+/**
+ * @brief Session string format validator using PCRE2
+ *
+ * Validates the format adjective-noun-noun with regex:
+ * - Each word is 2-12 lowercase letters
+ * - Exactly 2 hyphens separating 3 words
+ * - No leading/trailing hyphens
+ * - No consecutive hyphens
+ *
+ * This regex validator handles FORMAT validation only.
+ * Dictionary validation (adjective/noun caches) is handled separately.
+ */
+typedef struct {
+  pcre2_code *session_regex;
+  pcre2_jit_stack *jit_stack;
+  bool initialized;
+} session_validator_t;
+
+static session_validator_t g_session_validator = {0};
+static pthread_once_t g_session_once = PTHREAD_ONCE_INIT;
+
+/**
+ * Initialize session string regex (called once via pthread_once)
+ */
+static void session_validator_init_once(void) {
+  // Regex pattern validates format: adjective-noun-noun
+  // Each word is 2-12 lowercase letters
+  const char *pattern = "^(?<adj>[a-z]{2,12})-(?<noun1>[a-z]{2,12})-(?<noun2>[a-z]{2,12})$";
+
+  int error_code;
+  PCRE2_SIZE error_offset;
+  g_session_validator.session_regex =
+      pcre2_compile((PCRE2_SPTR8)pattern, PCRE2_ZERO_TERMINATED, PCRE2_CASELESS, &error_code, &error_offset, NULL);
+
+  if (!g_session_validator.session_regex) {
+    PCRE2_UCHAR error_buf[256];
+    pcre2_get_error_message(error_code, error_buf, sizeof(error_buf));
+    log_fatal("Failed to compile session string regex at offset %zu: %s", error_offset, (const char *)error_buf);
+    return;
+  }
+
+  // Allocate JIT stack for pattern execution
+  g_session_validator.jit_stack = pcre2_jit_stack_create(32 * 1024, 512 * 1024, NULL);
+  if (!g_session_validator.jit_stack) {
+    pcre2_code_free(g_session_validator.session_regex);
+    g_session_validator.session_regex = NULL;
+    log_fatal("Failed to allocate JIT stack for session string regex");
+    return;
+  }
+
+  // Compile to JIT for 5-10x performance boost
+  int jit_ret = pcre2_jit_compile(g_session_validator.session_regex, PCRE2_JIT_COMPLETE);
+  if (jit_ret < 0) {
+    log_warn("Session string regex JIT compilation failed (code %d), falling back to interpreter", jit_ret);
+    // Non-fatal: will use interpreter instead of JIT
+  }
+
+  g_session_validator.initialized = true;
+  log_debug("Session string format validator initialized");
+}
+
 asciichat_error_t acds_string_init(void) {
   // Fast initialization - only init libsodium
   // Hashtable building is deferred until actually needed for validation
@@ -232,32 +300,11 @@ bool is_session_string(const char *str) {
     return false;
   }
 
-  // Lazy initialization: build validation caches on first use
-  // Note: build_validation_caches() handles synchronization internally
-  if (!g_cache_initialized) {
-    asciichat_error_t cache_err = build_validation_caches();
-    if (cache_err != ASCIICHAT_OK) {
-      log_warn("Failed to initialize session string cache; using format-only validation");
-      // Fall back to format validation
-      bool valid = acds_string_validate(str);
-      if (!valid) {
-        SET_ERRNO(ERROR_INVALID_PARAM, "Session string has invalid format");
-      }
-      return valid;
-    }
-  }
-
   size_t len = strlen(str);
 
   // Check length bounds
   if (len < 5 || len > 47) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Session string length %zu outside valid range 5-47", len);
-    return false;
-  }
-
-  // Must not start or end with hyphen
-  if (str[0] == '-' || str[len - 1] == '-') {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Session string must not start or end with hyphen");
     return false;
   }
 
@@ -267,60 +314,98 @@ bool is_session_string(const char *str) {
     return false;
   }
 
-  // Parse the string into words
-  char buffer[48];
-  SAFE_STRNCPY(buffer, str, sizeof(buffer));
-
-  // Split by hyphens
-  char *words[3] = {NULL, NULL, NULL};
-  int word_count = 0;
-  char *word = strtok(buffer, "-");
-
-  while (word != NULL && word_count < 3) {
-    if (strlen(word) == 0) {
-      // Empty word (consecutive hyphens)
-      SET_ERRNO(ERROR_INVALID_PARAM, "Session string contains consecutive hyphens");
-      return false;
+  // Initialize session validator (once per process)
+  pthread_once(&g_session_once, session_validator_init_once);
+  if (!g_session_validator.initialized || !g_session_validator.session_regex) {
+    log_warn("Session string validator not initialized; falling back to format validation");
+    bool valid = acds_string_validate(str);
+    if (!valid) {
+      SET_ERRNO(ERROR_INVALID_PARAM, "Session string has invalid format");
     }
-
-    // Validate each character is lowercase letter
-    for (const char *p = word; *p != '\0'; p++) {
-      if (!islower((unsigned char)*p)) {
-        SET_ERRNO(ERROR_INVALID_PARAM, "Session string contains non-lowercase characters");
-        return false;
-      }
-    }
-
-    words[word_count++] = word;
-    word = strtok(NULL, "-");
+    return valid;
   }
 
-  // Must have exactly 3 words
-  if (word_count != 3) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Session string must contain exactly 3 words, found %d", word_count);
+  // Validate format using PCRE2 regex
+  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(g_session_validator.session_regex, NULL);
+  if (!match_data) {
+    log_error("Failed to allocate match data for session string regex");
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate match data");
     return false;
+  }
+
+  int match_result = pcre2_match(g_session_validator.session_regex, (PCRE2_SPTR8)str, len, 0, 0, match_data, NULL);
+
+  pcre2_match_data_free(match_data);
+
+  if (match_result < 0) {
+    // Format validation failed
+    SET_ERRNO(ERROR_INVALID_PARAM, "Session string format does not match pattern");
+    return false;
+  }
+
+  // Extract the three words by finding hyphens
+  // Format is guaranteed to be: word-word-word where each word is 2-12 lowercase letters
+  const char *hyphen1 = strchr(str, '-');
+  if (!hyphen1) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Session string missing first hyphen");
+    return false;
+  }
+
+  const char *hyphen2 = strchr(hyphen1 + 1, '-');
+  if (!hyphen2) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Session string missing second hyphen");
+    return false;
+  }
+
+  // Extract three words
+  size_t adj_len = hyphen1 - str;
+  size_t noun1_len = hyphen2 - hyphen1 - 1;
+  size_t noun2_len = len - (hyphen2 - str) - 1;
+
+  if (adj_len >= 32 || noun1_len >= 32 || noun2_len >= 32) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Session string word length out of bounds");
+    return false;
+  }
+
+  char adj[32], noun1[32], noun2[32];
+  memcpy(adj, str, adj_len);
+  adj[adj_len] = '\0';
+  memcpy(noun1, hyphen1 + 1, noun1_len);
+  noun1[noun1_len] = '\0';
+  memcpy(noun2, hyphen2 + 1, noun2_len);
+  noun2[noun2_len] = '\0';
+
+  // Lazy initialization: build validation caches on first use
+  // Note: build_validation_caches() handles synchronization internally
+  if (!g_cache_initialized) {
+    asciichat_error_t cache_err = build_validation_caches();
+    if (cache_err != ASCIICHAT_OK) {
+      log_warn("Failed to initialize session string cache; accepting format-valid string");
+      log_debug("Valid session string format (cache unavailable): %s", str);
+      return true; // Format is valid, cache is unavailable, accept anyway
+    }
   }
 
   // Validate first word is an adjective
   word_cache_entry_t *adj_entry = NULL;
-  HASH_FIND_STR(g_adjectives_cache, words[0], adj_entry);
+  HASH_FIND_STR(g_adjectives_cache, adj, adj_entry);
   if (!adj_entry) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Session string first word '%s' is not a valid adjective", words[0]);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Session string first word '%s' is not a valid adjective", adj);
     return false;
   }
 
   // Validate second and third words are nouns
   word_cache_entry_t *noun_entry1 = NULL;
-  HASH_FIND_STR(g_nouns_cache, words[1], noun_entry1);
+  HASH_FIND_STR(g_nouns_cache, noun1, noun_entry1);
   if (!noun_entry1) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Session string second word '%s' is not a valid noun", words[1]);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Session string second word '%s' is not a valid noun", noun1);
     return false;
   }
 
   word_cache_entry_t *noun_entry2 = NULL;
-  HASH_FIND_STR(g_nouns_cache, words[2], noun_entry2);
+  HASH_FIND_STR(g_nouns_cache, noun2, noun_entry2);
   if (!noun_entry2) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Session string third word '%s' is not a valid noun", words[2]);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Session string third word '%s' is not a valid noun", noun2);
     return false;
   }
 
