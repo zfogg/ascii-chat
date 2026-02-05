@@ -318,63 +318,60 @@ Test(config_sections, network_port_invalid_zero) {
   restore_config_options(&backup);
 }
 
-Test(config_sections, client_address) {
-  config_options_backup_t backup;
-  save_config_options(&backup);
-
-  const char *content = "[client]\n"
-                        "address = \"192.168.1.100\"\n";
-
-  char *config_path = create_temp_config(content);
-  cr_assert_not_null(config_path, "Failed to create temp config file");
-
-  asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  cr_assert_eq(result, ASCIICHAT_OK, "Valid client address should succeed");
-  const options_t *opts = options_get();
-  cr_assert_str_eq(opts->address, "192.168.1.100", "Address should be set");
-
-  unlink(config_path);
-  SAFE_FREE(config_path);
-  restore_config_options(&backup);
-}
-
-Test(config_sections, server_bind_addresses) {
-  config_options_backup_t backup;
-  save_config_options(&backup);
-
-  const char *content = "[server]\n"
-                        "bind_ipv4 = \"0.0.0.0\"\n"
-                        "bind_ipv6 = \"::\"\n";
-
-  char *config_path = create_temp_config(content);
-  cr_assert_not_null(config_path, "Failed to create temp config file");
-
-  // Load as server (is_client = false)
-  asciichat_error_t result = config_load_and_apply(false, config_path, false, &backup);
-  cr_assert_eq(result, ASCIICHAT_OK, "Valid server bind addresses should succeed");
-  const options_t *opts = options_get();
-  cr_assert_str_eq(opts->address, "0.0.0.0", "IPv4 bind address should be set");
-  cr_assert_str_eq(opts->address6, "::", "IPv6 bind address should be set");
-
-  unlink(config_path);
-  SAFE_FREE(config_path);
-  restore_config_options(&backup);
-}
-
-Test(config_sections, legacy_network_address_for_client) {
+Test(config_sections, client_port) {
   config_options_backup_t backup;
   save_config_options(&backup);
 
   const char *content = "[network]\n"
-                        "address = \"10.0.0.1\"\n";
+                        "port = 8080\n";
 
   char *config_path = create_temp_config(content);
   cr_assert_not_null(config_path, "Failed to create temp config file");
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  cr_assert_eq(result, ASCIICHAT_OK, "Legacy network.address should work for client");
+  cr_assert_eq(result, ASCIICHAT_OK, "Valid port should succeed");
   const options_t *opts = options_get();
-  cr_assert_str_eq(opts->address, "10.0.0.1", "Address should be set from network.address");
+  cr_assert_eq(opts->port, 8080, "Port should be set");
+
+  unlink(config_path);
+  SAFE_FREE(config_path);
+  restore_config_options(&backup);
+}
+
+Test(config_sections, server_max_clients) {
+  config_options_backup_t backup;
+  save_config_options(&backup);
+
+  const char *content = "[network]\n"
+                        "max_clients = 16\n";
+
+  char *config_path = create_temp_config(content);
+  cr_assert_not_null(config_path, "Failed to create temp config file");
+
+  asciichat_error_t result = config_load_and_apply(false, config_path, false, &backup);
+  cr_assert_eq(result, ASCIICHAT_OK, "Valid max_clients should succeed");
+  const options_t *opts = options_get();
+  cr_assert_eq(opts->max_clients, 16, "Max clients should be set");
+
+  unlink(config_path);
+  SAFE_FREE(config_path);
+  restore_config_options(&backup);
+}
+
+Test(config_sections, network_compression_level) {
+  config_options_backup_t backup;
+  save_config_options(&backup);
+
+  const char *content = "[network]\n"
+                        "compression_level = 5\n";
+
+  char *config_path = create_temp_config(content);
+  cr_assert_not_null(config_path, "Failed to create temp config file");
+
+  asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
+  cr_assert_eq(result, ASCIICHAT_OK, "Valid compression_level should succeed");
+  const options_t *opts = options_get();
+  cr_assert_eq(opts->compression_level, 5, "Compression level should be set");
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -389,7 +386,7 @@ Test(config_sections, client_width_height_as_integers) {
   config_options_backup_t backup;
   save_config_options(&backup);
 
-  const char *content = "[client]\n"
+  const char *content = "[terminal]\n"
                         "width = 120\n"
                         "height = 40\n";
 
@@ -419,7 +416,7 @@ Test(config_sections, client_width_height_as_strings) {
   config_options_backup_t backup;
   save_config_options(&backup);
 
-  const char *content = "[client]\n"
+  const char *content = "[terminal]\n"
                         "width = \"80\"\n"
                         "height = \"24\"\n";
 
@@ -441,7 +438,7 @@ Test(config_sections, client_webcam_settings) {
   config_options_backup_t backup;
   save_config_options(&backup);
 
-  const char *content = "[client]\n"
+  const char *content = "[webcam]\n"
                         "webcam_index = 2\n"
                         "webcam_flip = false\n";
 
@@ -463,7 +460,7 @@ Test(config_sections, client_color_mode_none) {
   config_options_backup_t backup;
   save_config_options(&backup);
 
-  const char *content = "[client]\ncolor_mode = \"none\"\n";
+  const char *content = "[display]\ncolor_mode = \"none\"\n";
 
   char *config_path = create_temp_config(content);
   cr_assert_not_null(config_path, "Failed to create temp config file");
@@ -482,7 +479,7 @@ Test(config_sections, client_color_mode_256) {
   config_options_backup_t backup;
   save_config_options(&backup);
 
-  const char *content = "[client]\ncolor_mode = \"256\"\n";
+  const char *content = "[display]\ncolor_mode = \"256\"\n";
 
   char *config_path = create_temp_config(content);
   cr_assert_not_null(config_path, "Failed to create temp config file");
@@ -501,7 +498,7 @@ Test(config_sections, client_color_mode_truecolor) {
   config_options_backup_t backup;
   save_config_options(&backup);
 
-  const char *content = "[client]\ncolor_mode = \"truecolor\"\n";
+  const char *content = "[display]\ncolor_mode = \"truecolor\"\n";
 
   char *config_path = create_temp_config(content);
   cr_assert_not_null(config_path, "Failed to create temp config file");
@@ -520,7 +517,7 @@ Test(config_sections, client_render_mode_foreground) {
   config_options_backup_t backup;
   save_config_options(&backup);
 
-  const char *content = "[client]\nrender_mode = \"foreground\"\n";
+  const char *content = "[display]\nrender_mode = \"foreground\"\n";
 
   char *config_path = create_temp_config(content);
   cr_assert_not_null(config_path, "Failed to create temp config file");
@@ -539,7 +536,7 @@ Test(config_sections, client_render_mode_background) {
   config_options_backup_t backup;
   save_config_options(&backup);
 
-  const char *content = "[client]\nrender_mode = \"background\"\n";
+  const char *content = "[display]\nrender_mode = \"background\"\n";
 
   char *config_path = create_temp_config(content);
   cr_assert_not_null(config_path, "Failed to create temp config file");
@@ -558,7 +555,7 @@ Test(config_sections, client_render_mode_half_block) {
   config_options_backup_t backup;
   save_config_options(&backup);
 
-  const char *content = "[client]\nrender_mode = \"half-block\"\n";
+  const char *content = "[display]\nrender_mode = \"half-block\"\n";
 
   char *config_path = create_temp_config(content);
   cr_assert_not_null(config_path, "Failed to create temp config file");
@@ -577,10 +574,11 @@ Test(config_sections, client_boolean_options) {
   config_options_backup_t backup;
   save_config_options(&backup);
 
-  const char *content = "[client]\n"
+  const char *content = "[display]\n"
                         "stretch = true\n"
-                        "quiet = true\n"
-                        "snapshot_mode = true\n";
+                        "snapshot_mode = true\n"
+                        "[logging]\n"
+                        "quiet = true\n";
 
   char *config_path = create_temp_config(content);
   cr_assert_not_null(config_path, "Failed to create temp config file");
@@ -601,7 +599,7 @@ Test(config_sections, client_snapshot_delay) {
   config_options_backup_t backup;
   save_config_options(&backup);
 
-  const char *content = "[client]\n"
+  const char *content = "[display]\n"
                         "snapshot_delay = 2.5\n";
 
   char *config_path = create_temp_config(content);
@@ -621,7 +619,7 @@ Test(config_sections, client_fps_as_integer) {
   config_options_backup_t backup;
   save_config_options(&backup);
 
-  const char *content = "[client]\n"
+  const char *content = "[display]\n"
                         "fps = 30\n";
 
   char *config_path = create_temp_config(content);
@@ -639,7 +637,7 @@ Test(config_sections, client_fps_invalid_too_high) {
   config_options_backup_t backup;
   save_config_options(&backup);
 
-  const char *content = "[client]\n"
+  const char *content = "[display]\n"
                         "fps = 200\n"; // Too high (max 144)
 
   char *config_path = create_temp_config(content);
@@ -668,19 +666,19 @@ Test(config_sections, client_config_ignored_for_server) {
   writable_opts.height = 50;
   options_state_set(&writable_opts);
 
-  const char *content = "[client]\n"
+  const char *content = "[terminal]\n"
                         "width = 200\n"
                         "height = 100\n";
 
   char *config_path = create_temp_config(content);
   cr_assert_not_null(config_path, "Failed to create temp config file");
 
-  // Load as server - client config should be ignored
+  // Terminal settings apply to all modes
   asciichat_error_t result = config_load_and_apply(false, config_path, false, &backup);
-  cr_assert_eq(result, ASCIICHAT_OK, "Loading as server should succeed");
+  cr_assert_eq(result, ASCIICHAT_OK, "Loading terminal config should succeed");
   const options_t *opts = options_get();
-  cr_assert_eq(opts->width, 100, "Width should remain unchanged when loading as server");
-  cr_assert_eq(opts->height, 50, "Height should remain unchanged when loading as server");
+  cr_assert_eq(opts->width, 200, "Width should be set from terminal config");
+  cr_assert_eq(opts->height, 100, "Height should be set from terminal config");
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -1063,19 +1061,24 @@ Test(config_sections, full_client_config) {
   const char *content = "[network]\n"
                         "port = 9000\n"
                         "\n"
-                        "[client]\n"
-                        "address = \"192.168.1.50\"\n"
+                        "[terminal]\n"
                         "width = 160\n"
                         "height = 48\n"
+                        "\n"
+                        "[webcam]\n"
                         "webcam_index = 1\n"
                         "webcam_flip = false\n"
+                        "\n"
+                        "[display]\n"
                         "color_mode = \"256\"\n"
                         "render_mode = \"half-block\"\n"
                         "fps = 60\n"
                         "stretch = true\n"
-                        "quiet = false\n"
                         "snapshot_mode = false\n"
                         "snapshot_delay = 1.0\n"
+                        "\n"
+                        "[logging]\n"
+                        "quiet = false\n"
                         "\n"
                         "[audio]\n"
                         "enabled = true\n"
@@ -1107,7 +1110,6 @@ Test(config_sections, full_client_config) {
   // Verify all values
   const options_t *opts = options_get();
   cr_assert_eq(opts->port, 9000, "Port should be 9000");
-  cr_assert_str_eq(opts->address, "192.168.1.50", "Address should be set");
   cr_assert_eq(opts->width, 160, "Width should be 160");
   cr_assert_eq(opts->height, 48, "Height should be 48");
   cr_assert_eq(opts->webcam_index, 1, "Webcam index should be 1");
@@ -1142,15 +1144,11 @@ Test(config_sections, full_server_config) {
                 "[network]\n"
                 "port = 27224\n"
                 "\n"
-                "[server]\n"
-                "bind_ipv4 = \"0.0.0.0\"\n"
-                "bind_ipv6 = \"::\"\n"
+                "[display]\n"
+                "palette = \"blocks\"\n"
                 "\n"
-                "[palette]\n"
-                "type = \"blocks\"\n"
-                "\n"
-                "[crypto]\n"
-                "encrypt_enabled = true\n"
+                "[security]\n"
+                "encrypt = true\n"
                 "client_keys = \"%s\"\n"
                 "\n"
                 "[logging]\n"
@@ -1166,8 +1164,6 @@ Test(config_sections, full_server_config) {
   // Verify server values
   const options_t *opts = options_get();
   cr_assert_eq(opts->port, 27224, "Port should be 27224");
-  cr_assert_str_eq(opts->address, "0.0.0.0", "IPv4 bind address should be 0.0.0.0");
-  cr_assert_str_eq(opts->address6, "::", "IPv6 bind address should be ::");
   cr_assert_eq(opts->palette_type, PALETTE_BLOCKS, "Palette should be blocks");
   cr_assert_eq(opts->encrypt_enabled, 1, "Encryption should be enabled");
   cr_assert_str_eq(opts->client_keys, temp_keys_dir, "Client keys should be set");
@@ -1213,11 +1209,10 @@ Test(config_create, creates_file_with_content) {
 
   // Verify key sections exist
   cr_assert(strstr(buffer, "[network]") != NULL, "Config should have [network] section");
-  cr_assert(strstr(buffer, "[server]") != NULL, "Config should have [server] section");
-  cr_assert(strstr(buffer, "[client]") != NULL, "Config should have [client] section");
+  cr_assert(strstr(buffer, "[terminal]") != NULL, "Config should have [terminal] section");
+  cr_assert(strstr(buffer, "[display]") != NULL, "Config should have [display] section");
   cr_assert(strstr(buffer, "[audio]") != NULL, "Config should have [audio] section");
-  cr_assert(strstr(buffer, "[palette]") != NULL, "Config should have [palette] section");
-  cr_assert(strstr(buffer, "[crypto]") != NULL, "Config should have [crypto] section");
+  cr_assert(strstr(buffer, "[security]") != NULL, "Config should have [security] section");
   cr_assert(strstr(buffer, "[logging]") != NULL, "Config should have [logging] section");
   cr_assert(strstr(buffer, "ascii-chat") != NULL, "Config should mention ascii-chat");
 
@@ -1348,7 +1343,7 @@ Test(config, multiple_loads_accumulate_correctly) {
 
   // Second config sets different values
   // Note: port won't be overwritten because config_port_set flag is set
-  const char *content2 = "[client]\n"
+  const char *content2 = "[webcam]\n"
                          "webcam_index = 3\n";
 
   char *config_path2 = create_temp_config(content2);
@@ -1398,7 +1393,7 @@ Test(config, inline_comments) {
   const char *content = "[network]\n"
                         "port = 9999 # This is a port comment\n"
                         "\n"
-                        "[client]\n"
+                        "[terminal]\n"
                         "width = 100 # Width in characters\n";
 
   char *config_path = create_temp_config(content);
@@ -1464,8 +1459,9 @@ Test(config, boolean_values) {
   save_config_options(&backup);
 
   // Test true/false (TOML boolean literals)
-  const char *content = "[client]\n"
+  const char *content = "[display]\n"
                         "stretch = true\n"
+                        "[logging]\n"
                         "quiet = false\n";
 
   char *config_path = create_temp_config(content);
@@ -1486,7 +1482,7 @@ Test(config, float_snapshot_delay) {
   config_options_backup_t backup;
   save_config_options(&backup);
 
-  const char *content = "[client]\n"
+  const char *content = "[display]\n"
                         "snapshot_delay = 3.14159\n";
 
   char *config_path = create_temp_config(content);
@@ -1516,7 +1512,7 @@ Test(config, invalid_color_mode_skipped) {
   writable_opts.color_mode = COLOR_MODE_AUTO;
   options_state_set(&writable_opts);
 
-  const char *content = "[client]\n"
+  const char *content = "[display]\n"
                         "color_mode = \"invalid_mode\"\n";
 
   char *config_path = create_temp_config(content);
@@ -1543,7 +1539,7 @@ Test(config, invalid_render_mode_skipped) {
   writable_opts.render_mode = RENDER_MODE_FOREGROUND;
   options_state_set(&writable_opts);
 
-  const char *content = "[client]\n"
+  const char *content = "[display]\n"
                         "render_mode = \"invalid_mode\"\n";
 
   char *config_path = create_temp_config(content);
@@ -1598,7 +1594,7 @@ Test(config, negative_width_skipped) {
   writable_opts.auto_width = 0;
   options_state_set(&writable_opts);
 
-  const char *content = "[client]\n"
+  const char *content = "[terminal]\n"
                         "width = \"-10\"\n"; // Negative as string
 
   char *config_path = create_temp_config(content);
@@ -1623,7 +1619,7 @@ Test(config, negative_snapshot_delay_skipped) {
   memcpy(&writable_opts, current_opts, sizeof(options_t));
   options_state_set(&writable_opts);
 
-  const char *content = "[client]\n"
+  const char *content = "[display]\n"
                         "snapshot_delay = -5.0\n";
 
   char *config_path = create_temp_config(content);
@@ -1639,22 +1635,26 @@ Test(config, negative_snapshot_delay_skipped) {
   restore_config_options(&backup);
 }
 
-Test(config, invalid_address_skipped) {
+Test(config, invalid_port_skipped) {
   config_options_backup_t backup;
   save_config_options(&backup);
 
-  const options_t *opts = options_get();
-  SAFE_STRNCPY(opts->address, "localhost", OPTIONS_BUFF_SIZE);
+  const options_t *current_opts = options_get();
+  options_t writable_opts;
+  memcpy(&writable_opts, current_opts, sizeof(options_t));
+  writable_opts.port = 8080;
+  options_state_set(&writable_opts);
 
-  const char *content = "[client]\n"
-                        "address = \"999.999.999.999\"\n"; // Invalid IP
+  const char *content = "[network]\n"
+                        "port = 99999\n"; // Invalid port (too high)
 
   char *config_path = create_temp_config(content);
   cr_assert_not_null(config_path, "Failed to create temp config file");
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  cr_assert_eq(result, ASCIICHAT_OK, "Invalid address should be skipped");
-  cr_assert_str_eq(opts->address, "localhost", "Address should remain unchanged");
+  cr_assert_eq(result, ASCIICHAT_OK, "Invalid port should be skipped");
+  const options_t *opts = options_get();
+  cr_assert_eq(opts->port, 8080, "Port should remain unchanged");
 
   unlink(config_path);
   SAFE_FREE(config_path);
