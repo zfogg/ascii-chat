@@ -760,55 +760,76 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
     return;
   }
 
-  // Check if terminal output is enabled (atomic load)
-  if (!atomic_load(&g_log.terminal_output_enabled)) {
-    return; // Terminal output disabled - skip (no buffering in lock-free mode)
-  }
-
-  // Check if terminal is locked by another thread
-  if (atomic_load(&g_log.terminal_locked)) {
-    uint64_t owner = atomic_load(&g_log.terminal_owner_thread);
-    if (owner != (uint64_t)asciichat_thread_self()) {
-      return; // Terminal locked by another thread - skip
-    }
-  }
-
-  // Format message first to check grep filter (need full log line)
+  // Format message first (needed for status screen capture even if terminal output disabled)
   char msg_buffer[LOG_MSG_BUFFER_SIZE];
   va_list args_copy;
   va_copy(args_copy, args);
   int msg_len = safe_vsnprintf(msg_buffer, sizeof(msg_buffer), fmt, args_copy);
   va_end(args_copy);
 
+  // Strip ANSI codes from message for accurate grep matching and status screen capture
+  char *stripped_msg = NULL;
+  const char *clean_msg = msg_buffer;
+
+  if (msg_len > 0 && msg_len < (int)sizeof(msg_buffer)) {
+    stripped_msg = ansi_strip_escapes(msg_buffer, (size_t)msg_len);
+    clean_msg = stripped_msg ? stripped_msg : msg_buffer;
+  }
+
+  // Construct PLAIN log line (without ANSI codes) for status screen and grep matching
+  char plain_log_line[LOG_MSG_BUFFER_SIZE + 512];
+  int plain_len = snprintf(plain_log_line, sizeof(plain_log_line), "%s%s", plain_header_buffer, clean_msg);
+
+  // Feed log to status screen buffer ALWAYS (even if terminal output disabled)
+  if (plain_len > 0 && plain_len < (int)sizeof(plain_log_line)) {
+    extern void server_status_log_append(const char *message);
+    server_status_log_append(plain_log_line);
+  }
+
+  // Check if terminal output is enabled (atomic load)
+  if (!atomic_load(&g_log.terminal_output_enabled)) {
+    // Terminal output disabled - cleanup and return (status screen already captured)
+    if (stripped_msg) {
+      SAFE_FREE(stripped_msg);
+    }
+    return;
+  }
+
+  // Check if terminal is locked by another thread
+  if (atomic_load(&g_log.terminal_locked)) {
+    uint64_t owner = atomic_load(&g_log.terminal_owner_thread);
+    if (owner != (uint64_t)asciichat_thread_self()) {
+      // Terminal locked by another thread - cleanup and return
+      if (stripped_msg) {
+        SAFE_FREE(stripped_msg);
+      }
+      return;
+    }
+  }
+
+  // Handle message formatting errors for terminal output
   if (msg_len <= 0 || msg_len >= (int)sizeof(msg_buffer)) {
     // Message formatting failed - skip filtering and try direct output
     safe_fprintf(output_stream, "%s", header_buffer);
     (void)vfprintf(output_stream, fmt, args);
     safe_fprintf(output_stream, "\n");
     (void)fflush(output_stream);
-    return;
-  }
-
-  // Strip ANSI codes from message for accurate grep matching
-  char *stripped_msg = ansi_strip_escapes(msg_buffer, (size_t)msg_len);
-  const char *clean_msg = stripped_msg ? stripped_msg : msg_buffer;
-
-  // Construct PLAIN log line (without ANSI codes) for grep matching
-  char plain_log_line[LOG_MSG_BUFFER_SIZE + 512];
-  int plain_len = snprintf(plain_log_line, sizeof(plain_log_line), "%s%s", plain_header_buffer, clean_msg);
-  if (plain_len <= 0 || plain_len >= (int)sizeof(plain_log_line)) {
-    // Line too long - skip filtering
     if (stripped_msg) {
       SAFE_FREE(stripped_msg);
     }
-    safe_fprintf(output_stream, "%s%s\n", header_buffer, msg_buffer);
-    (void)fflush(output_stream);
     return;
   }
 
-  // Feed log to status screen buffer if status screen is active (external linkage)
-  extern void server_status_log_append(const char *message);
-  server_status_log_append(plain_log_line);
+  // Handle plain log line formatting errors for terminal output
+  if (plain_len <= 0 || plain_len >= (int)sizeof(plain_log_line)) {
+    // Line too long - skip filtering
+    safe_fprintf(output_stream, "%s%s\n", header_buffer, msg_buffer);
+    (void)fflush(output_stream);
+    if (stripped_msg) {
+      SAFE_FREE(stripped_msg);
+    }
+    return;
+  }
 
   // Apply grep filter (terminal output only - file logs are unfiltered)
   // Match against PLAIN text (no ANSI codes) so offsets are correct

@@ -1385,7 +1385,8 @@ int server_main(void) {
   log_debug("Crypto initialized successfully");
 
   // Handle quiet mode - disable terminal output when GET_OPTION(quiet) is enabled
-  log_set_terminal_output(!GET_OPTION(quiet));
+  // Also disable terminal output when status screen is active (logs shown in status screen instead)
+  log_set_terminal_output(!GET_OPTION(quiet) && !GET_OPTION(status_screen));
 
   // Handle keepawake: check for mutual exclusivity and apply mode default
   // Server default: keepawake DISABLED (use --keepawake to enable)
