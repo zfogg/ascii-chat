@@ -449,6 +449,7 @@ set(SESSION_SRCS
     lib/session/keyboard_handler.c
     lib/session/server_status.c
     lib/session/discovery_status.c
+    lib/session/session_log_buffer.c  # NEW: Shared log buffer for session screens
 )
 
 # =============================================================================
