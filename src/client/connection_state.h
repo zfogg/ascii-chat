@@ -146,11 +146,11 @@ typedef struct {
   connection_state_t previous_state; ///< Previous state (for debugging)
 
   // ─────────────────────────────────────────────────────────────
-  // Timeout Tracking
+  // Timeout Tracking (all in nanoseconds)
   // ─────────────────────────────────────────────────────────────
 
-  time_t stage_start_time;                ///< When current stage began
-  uint32_t current_stage_timeout_seconds; ///< Timeout for current stage (3/8/15)
+  uint64_t stage_start_time_ns;      ///< When current stage began (nanoseconds)
+  uint64_t current_stage_timeout_ns; ///< Timeout for current stage in nanoseconds (3/8/15 seconds)
 
   // ─────────────────────────────────────────────────────────────
   // Active Transports

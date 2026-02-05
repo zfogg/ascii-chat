@@ -156,8 +156,8 @@ asciichat_error_t connection_context_init(connection_attempt_context_t *ctx, boo
   ctx->webrtc_disable_turn = webrtc_disable_turn;
 
   // Initialize timeout
-  ctx->stage_start_time = time(NULL);
-  ctx->current_stage_timeout_seconds = CONN_TIMEOUT_DIRECT_TCP;
+  ctx->stage_start_time_ns = time_get_realtime_ns();
+  ctx->current_stage_timeout_ns = CONN_TIMEOUT_DIRECT_TCP;
 
   // Initialize counters
   ctx->reconnect_attempt = 1;
@@ -228,16 +228,16 @@ asciichat_error_t connection_state_transition(connection_attempt_context_t *ctx,
   uint32_t old_stage = connection_get_stage(ctx->previous_state);
 
   if (new_stage != old_stage && new_stage > 0) {
-    ctx->stage_start_time = time(NULL);
+    ctx->stage_start_time_ns = time_get_realtime_ns();
     switch (new_stage) {
     case 1:
-      ctx->current_stage_timeout_seconds = (uint32_t)(CONN_TIMEOUT_DIRECT_TCP / NS_PER_SEC_INT);
+      ctx->current_stage_timeout_ns = CONN_TIMEOUT_DIRECT_TCP;
       break;
     case 2:
-      ctx->current_stage_timeout_seconds = (uint32_t)(CONN_TIMEOUT_WEBRTC_STUN / NS_PER_SEC_INT);
+      ctx->current_stage_timeout_ns = CONN_TIMEOUT_WEBRTC_STUN;
       break;
     case 3:
-      ctx->current_stage_timeout_seconds = (uint32_t)(CONN_TIMEOUT_WEBRTC_TURN / NS_PER_SEC_INT);
+      ctx->current_stage_timeout_ns = CONN_TIMEOUT_WEBRTC_TURN;
       break;
     default:
       break;
@@ -257,12 +257,13 @@ bool connection_check_timeout(const connection_attempt_context_t *ctx) {
   if (!ctx)
     return false;
 
-  time_t elapsed = time(NULL) - ctx->stage_start_time;
-  bool timeout_exceeded = elapsed > (time_t)ctx->current_stage_timeout_seconds;
+  uint64_t elapsed_ns = time_get_realtime_ns() - ctx->stage_start_time_ns;
+  bool timeout_exceeded = elapsed_ns > ctx->current_stage_timeout_ns;
 
   if (timeout_exceeded) {
-    log_warn("Stage timeout exceeded: stage %u, elapsed %ld seconds > %u seconds limit",
-             connection_get_stage(ctx->current_state), elapsed, ctx->current_stage_timeout_seconds);
+    log_warn("Stage timeout exceeded: stage %u, elapsed %.3f seconds > %.3f seconds limit",
+             connection_get_stage(ctx->current_state), time_ns_to_s(elapsed_ns),
+             time_ns_to_s(ctx->current_stage_timeout_ns));
   }
 
   return timeout_exceeded;
@@ -307,8 +308,8 @@ static asciichat_error_t attempt_direct_tcp(connection_attempt_context_t *ctx, c
   }
 
   // Set stage timeout for this attempt
-  ctx->stage_start_time = time(NULL);
-  ctx->current_stage_timeout_seconds = CONN_TIMEOUT_DIRECT_TCP;
+  ctx->stage_start_time_ns = time_get_realtime_ns();
+  ctx->current_stage_timeout_ns = CONN_TIMEOUT_DIRECT_TCP;
 
   // Attempt TCP connection (reconnect_attempt is 0-based, convert for tcp_client_connect)
   int tcp_result = tcp_client_connect(tcp_client, server_address, server_port, (int)ctx->reconnect_attempt,
@@ -450,8 +451,8 @@ static asciichat_error_t attempt_webrtc_stun(connection_attempt_context_t *ctx, 
   }
 
   // Set stage timeout
-  ctx->stage_start_time = time(NULL);
-  ctx->current_stage_timeout_seconds = CONN_TIMEOUT_WEBRTC_STUN;
+  ctx->stage_start_time_ns = time_get_realtime_ns();
+  ctx->current_stage_timeout_ns = CONN_TIMEOUT_WEBRTC_STUN;
 
   // ─────────────────────────────────────────────────────────────
   // Step 1: Connect to ACDS server
@@ -715,8 +716,8 @@ static asciichat_error_t attempt_webrtc_turn(connection_attempt_context_t *ctx, 
   }
 
   // Set stage timeout
-  ctx->stage_start_time = time(NULL);
-  ctx->current_stage_timeout_seconds = CONN_TIMEOUT_WEBRTC_TURN;
+  ctx->stage_start_time_ns = time_get_realtime_ns();
+  ctx->current_stage_timeout_ns = CONN_TIMEOUT_WEBRTC_TURN;
 
   // ─────────────────────────────────────────────────────────────
   // Step 1: Connect to ACDS server
