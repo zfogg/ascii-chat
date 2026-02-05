@@ -6,6 +6,7 @@
 
 #include <ascii-chat/platform/question.h>
 #include <ascii-chat/util/utf8.h>
+#include <ascii-chat/util/env.h>
 #include <ascii-chat/log/logging.h>
 
 #include <stdio.h>
@@ -25,8 +26,8 @@ int platform_prompt_question(const char *prompt, char *buffer, size_t max_len, p
 
   // Check for testing environment variable override for password prompts
   if (opts.mask_char != 0) {
-    const char *test_password = SAFE_GETENV("ASCII_CHAT_QUESTION_PROMPT_RESPONSE");
-    if (test_password != NULL) {
+    char test_password[256];
+    if (env_pop_prompt_response(test_password, sizeof(test_password))) {
       size_t len = strlen(test_password);
       if (len >= max_len) {
         return -1; // Password too long
@@ -263,13 +264,14 @@ bool platform_prompt_yes_no(const char *prompt, bool default_yes) {
   }
 
   // Check for testing environment variable override FIRST (before any TTY checks)
-  const char *test_response = SAFE_GETENV("ASCII_CHAT_QUESTION_PROMPT_RESPONSE");
-  if (test_response != NULL) {
+  char test_response[256];
+  if (env_pop_prompt_response(test_response, sizeof(test_response))) {
     if (strcasecmp(test_response, "yes") == 0 || strcasecmp(test_response, "y") == 0) {
       return true;
     } else if (strcasecmp(test_response, "no") == 0 || strcasecmp(test_response, "n") == 0) {
       return false;
     }
+    // Invalid response - fall through to interactive prompt
   }
 
   bool is_interactive = platform_is_interactive();
