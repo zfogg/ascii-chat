@@ -31,6 +31,12 @@
 #define HIGHLIGHT_LIGHT_BG 200 // Light grey for light backgrounds
 
 /**
+ * @brief Minimum color difference threshold (0-255 scale)
+ * If background is within this distance of the highlight, use black instead
+ */
+#define MIN_HIGHLIGHT_DISTANCE 40
+
+/**
  * @brief Calculate luminance from RGB (0-255 scale)
  * Uses ITU-R BT.709 formula for relative luminance
  */
@@ -41,6 +47,7 @@ static inline float calculate_luminance(uint8_t r, uint8_t g, uint8_t b) {
 /**
  * @brief Get highlight color based on terminal background
  * Simple logic: dark background = dark highlight, light background = light highlight
+ * Falls back to black (dark) or white (light) if background is too close to the grey
  */
 static void get_highlight_color(uint8_t *r, uint8_t *g, uint8_t *b) {
   // Try to query actual terminal background color via OSC 11
@@ -59,6 +66,18 @@ static void get_highlight_color(uint8_t *r, uint8_t *g, uint8_t *b) {
 
   // Choose highlight: dark bg = dark highlight, light bg = light highlight
   uint8_t grey = is_dark ? HIGHLIGHT_DARK_BG : HIGHLIGHT_LIGHT_BG;
+
+  // If we have the actual background color, check if it's too close to our grey
+  if (has_bg_color) {
+    uint8_t bg_grey = (uint8_t)((bg_r + bg_g + bg_b) / 3);
+    int distance = abs((int)bg_grey - (int)grey);
+
+    // If background is too close to our grey, use black/white for maximum contrast
+    if (distance < MIN_HIGHLIGHT_DISTANCE) {
+      grey = is_dark ? 0 : 255; // Black for dark terminals, white for light
+    }
+  }
+
   *r = *g = *b = grey;
 }
 
