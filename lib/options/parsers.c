@@ -125,27 +125,36 @@ static bool parse_setting_generic(const char *arg, void *dest, const setting_map
   // Initialize regex singleton
   pthread_once(&g_setting_once, setting_regex_init);
 
-  // Validate with PCRE2 if available
-  if (g_setting_validator.initialized && g_setting_validator.setting_regex) {
-    pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(g_setting_validator.setting_regex, NULL);
-    if (!match_data) {
-      goto fallback_search;
-    }
+  // Validate with PCRE2
+  pthread_once(&g_setting_once, setting_regex_init);
 
-    int rc = pcre2_match(g_setting_validator.setting_regex, (PCRE2_SPTR8)lower, strlen(lower), 0, 0, match_data, NULL);
-    pcre2_match_data_free(match_data);
-
-    if (rc < 0) {
-      // No match - invalid setting
-      if (error_msg) {
-        *error_msg = strdup("Invalid setting value");
-      }
-      return false;
+  if (!g_setting_validator.initialized || !g_setting_validator.setting_regex) {
+    if (error_msg) {
+      *error_msg = strdup("Internal error: PCRE2 regex not available");
     }
+    return false;
   }
 
-fallback_search:
-  // Linear search through lookup table
+  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(g_setting_validator.setting_regex, NULL);
+  if (!match_data) {
+    if (error_msg) {
+      *error_msg = strdup("Internal error: Failed to allocate match data");
+    }
+    return false;
+  }
+
+  int rc = pcre2_match(g_setting_validator.setting_regex, (PCRE2_SPTR8)lower, strlen(lower), 0, 0, match_data, NULL);
+  pcre2_match_data_free(match_data);
+
+  if (rc < 0) {
+    // No match - invalid setting
+    if (error_msg) {
+      *error_msg = strdup("Invalid setting value");
+    }
+    return false;
+  }
+
+  // Linear search through lookup table to get enum value
   for (int i = 0; lookup_table[i].match != NULL; i++) {
     if (strcmp(lower, lookup_table[i].match) == 0) {
       *result = lookup_table[i].enum_value;
@@ -153,9 +162,9 @@ fallback_search:
     }
   }
 
-  // Not found - error
+  // Should not reach here if regex validated correctly
   if (error_msg) {
-    *error_msg = strdup("Invalid setting value");
+    *error_msg = strdup("Internal error: Regex matched but lookup failed");
   }
   return false;
 }

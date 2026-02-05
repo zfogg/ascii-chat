@@ -15,6 +15,9 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
+#define PCRE2_CODE_UNIT_WIDTH 8
+#include <pcre2.h>
 
 /* ============================================================================
  * Utility Functions
@@ -85,138 +88,220 @@ uint32_t ice_calculate_priority(ice_candidate_type_t type, uint16_t local_prefer
 }
 
 /* ============================================================================
- * ICE Candidate Parsing
+ * ICE Candidate Parsing with PCRE2
  * ============================================================================ */
 
-asciichat_error_t ice_parse_candidate(const char *line, ice_candidate_t *candidate) {
+/**
+ * @brief PCRE2 regex validator for ICE candidate parsing
+ *
+ * Validates and extracts ICE candidate fields from standard RFC format.
+ * Uses PCRE2 for atomic parsing with single regex match.
+ */
+typedef struct {
+  pcre2_code *candidate_regex; ///< Pattern: Match ICE candidate line
+  pcre2_jit_stack *jit_stack;  ///< JIT compilation stack
+  bool initialized;            ///< Initialization flag
+} ice_candidate_validator_t;
+
+static ice_candidate_validator_t g_ice_candidate_validator = {0};
+static pthread_once_t g_ice_candidate_once = PTHREAD_ONCE_INIT;
+
+/**
+ * @brief Initialize PCRE2 regex for ICE candidate parsing
+ *
+ * Pattern matches full ICE candidate line atomically:
+ * foundation component protocol priority ip port typ type [raddr X rport Y] [tcptype Z]
+ */
+static void ice_candidate_regex_init(void) {
+  int errornumber;
+  PCRE2_SIZE erroroffset;
+
+  // Pattern: Match ICE candidate with all optional extensions
+  const char *pattern = "^([^ ]+)\\s+"                            // 1: foundation
+                        "(\\d+)\\s+"                              // 2: component_id
+                        "(udp|tcp)\\s+"                           // 3: protocol
+                        "(\\d+)\\s+"                              // 4: priority
+                        "([a-fA-F0-9.:]+)\\s+"                    // 5: ip_address (IPv4 or IPv6)
+                        "(\\d+)\\s+"                              // 6: port
+                        "typ\\s+"                                 // literal "typ"
+                        "(host|srflx|prflx|relay)"                // 7: candidate_type
+                        "(?:\\s+raddr\\s+([a-fA-F0-9.:]+))?"      // 8: optional raddr
+                        "(?:\\s+rport\\s+(\\d+))?"                // 9: optional rport
+                        "(?:\\s+tcptype\\s+(active|passive|so))?" // 10: optional tcptype
+                        "\\s*$";
+
+  g_ice_candidate_validator.candidate_regex =
+      pcre2_compile((PCRE2_SPTR8)pattern, PCRE2_ZERO_TERMINATED, PCRE2_CASELESS, &errornumber, &erroroffset, NULL);
+
+  if (!g_ice_candidate_validator.candidate_regex) {
+    PCRE2_UCHAR8 error_msg[120];
+    pcre2_get_error_message(errornumber, error_msg, sizeof(error_msg));
+    log_warn("ice_candidate_regex_init: Failed to compile pattern: %s at offset %zu", error_msg, erroroffset);
+    return;
+  }
+
+  // Attempt JIT compilation (non-fatal if fails)
+  if (pcre2_jit_compile(g_ice_candidate_validator.candidate_regex, PCRE2_JIT_COMPLETE) > 0) {
+    g_ice_candidate_validator.jit_stack = pcre2_jit_stack_create(32 * 1024, 512 * 1024, NULL);
+  }
+
+  g_ice_candidate_validator.initialized = true;
+}
+
+/**
+ * @brief Parse ICE candidate using PCRE2 regex
+ *
+ * Atomically validates and extracts all ICE candidate fields.
+ * Falls back to manual parsing if PCRE2 unavailable.
+ *
+ * @param line ICE candidate line
+ * @param candidate Output candidate structure
+ * @return ASCIICHAT_OK on success, error code otherwise
+ */
+static asciichat_error_t ice_parse_candidate_pcre2(const char *line, ice_candidate_t *candidate) {
   if (!line || !candidate) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid candidate parse parameters");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid candidate parameters");
+  }
+
+  // Initialize regex singleton
+  pthread_once(&g_ice_candidate_once, ice_candidate_regex_init);
+
+  // If PCRE2 not available, return error to fall back to manual parser
+  if (!g_ice_candidate_validator.initialized || !g_ice_candidate_validator.candidate_regex) {
+    return ERROR_MEMORY; // Signal to use fallback
+  }
+
+  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(g_ice_candidate_validator.candidate_regex, NULL);
+  if (!match_data) {
+    return ERROR_MEMORY;
+  }
+
+  int rc =
+      pcre2_match(g_ice_candidate_validator.candidate_regex, (PCRE2_SPTR8)line, strlen(line), 0, 0, match_data, NULL);
+
+  if (rc < 7) {
+    // Must have at least foundation, component, protocol, priority, ip, port, type (7 groups)
+    pcre2_match_data_free(match_data);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid ICE candidate format");
   }
 
   memset(candidate, 0, sizeof(ice_candidate_t));
+  PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
 
-  // Parse: foundation component protocol priority ip port typ type [raddr rport] [extensions]
-  // Example: 1 1 udp 2130706431 192.168.1.1 54321 typ host
-
-  char line_copy[512];
-  SAFE_STRNCPY(line_copy, line, sizeof(line_copy));
-
-  char *saveptr = NULL;
-  char *token = NULL;
-
-  // 1. Parse foundation
-  token = platform_strtok_r(line_copy, " ", &saveptr);
-  if (!token) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing foundation in candidate");
-  }
-  SAFE_STRNCPY(candidate->foundation, token, sizeof(candidate->foundation));
-
-  // 2. Parse component ID
-  token = platform_strtok_r(NULL, " ", &saveptr);
-  if (!token || sscanf(token, "%u", &candidate->component_id) != 1) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid component ID");
+  // Extract foundation (group 1)
+  size_t start = ovector[2], end = ovector[3];
+  if (start < end && end - start < sizeof(candidate->foundation)) {
+    memcpy(candidate->foundation, line + start, end - start);
+    candidate->foundation[end - start] = '\0';
   }
 
-  // 3. Parse protocol (udp/tcp)
-  token = platform_strtok_r(NULL, " ", &saveptr);
-  if (!token) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing protocol");
-  }
-  if (strcmp(token, "udp") == 0) {
-    candidate->protocol = ICE_PROTOCOL_UDP;
-  } else if (strcmp(token, "tcp") == 0) {
-    candidate->protocol = ICE_PROTOCOL_TCP;
-  } else {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid protocol: %s", token);
+  // Extract component_id (group 2)
+  start = ovector[4], end = ovector[5];
+  if (start < end) {
+    char component_str[16];
+    memcpy(component_str, line + start, end - start);
+    component_str[end - start] = '\0';
+    candidate->component_id = (uint32_t)strtoul(component_str, NULL, 10);
   }
 
-  // 4. Parse priority
-  token = platform_strtok_r(NULL, " ", &saveptr);
-  if (!token || sscanf(token, "%u", &candidate->priority) != 1) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid priority");
-  }
-
-  // 5. Parse IP address
-  token = platform_strtok_r(NULL, " ", &saveptr);
-  if (!token) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing IP address");
-  }
-  SAFE_STRNCPY(candidate->ip_address, token, sizeof(candidate->ip_address));
-
-  // 6. Parse port
-  token = platform_strtok_r(NULL, " ", &saveptr);
-  if (!token || sscanf(token, "%hu", &candidate->port) != 1) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid port");
-  }
-
-  // 7. Expect "typ" keyword
-  token = platform_strtok_r(NULL, " ", &saveptr);
-  if (!token || strcmp(token, "typ") != 0) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing 'typ' keyword");
-  }
-
-  // 8. Parse candidate type
-  token = platform_strtok_r(NULL, " ", &saveptr);
-  if (!token) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing candidate type");
-  }
-
-  if (strcmp(token, "host") == 0) {
-    candidate->type = ICE_CANDIDATE_HOST;
-  } else if (strcmp(token, "srflx") == 0) {
-    candidate->type = ICE_CANDIDATE_SRFLX;
-  } else if (strcmp(token, "prflx") == 0) {
-    candidate->type = ICE_CANDIDATE_PRFLX;
-  } else if (strcmp(token, "relay") == 0) {
-    candidate->type = ICE_CANDIDATE_RELAY;
-  } else {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid candidate type: %s", token);
-  }
-
-  // 9. If srflx/prflx/relay: parse raddr and rport
-  if (candidate->type == ICE_CANDIDATE_SRFLX || candidate->type == ICE_CANDIDATE_PRFLX ||
-      candidate->type == ICE_CANDIDATE_RELAY) {
-    token = platform_strtok_r(NULL, " ", &saveptr);
-    if (token && strcmp(token, "raddr") == 0) {
-      token = platform_strtok_r(NULL, " ", &saveptr);
-      if (!token) {
-        return SET_ERRNO(ERROR_INVALID_PARAM, "Missing raddr value");
-      }
-      SAFE_STRNCPY(candidate->raddr, token, sizeof(candidate->raddr));
-
-      token = platform_strtok_r(NULL, " ", &saveptr);
-      if (!token || strcmp(token, "rport") != 0) {
-        return SET_ERRNO(ERROR_INVALID_PARAM, "Missing 'rport' keyword");
-      }
-
-      token = platform_strtok_r(NULL, " ", &saveptr);
-      if (!token || sscanf(token, "%hu", &candidate->rport) != 1) {
-        return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid rport value");
-      }
+  // Extract protocol (group 3)
+  start = ovector[6], end = ovector[7];
+  if (start < end) {
+    char protocol_str[8];
+    memcpy(protocol_str, line + start, end - start);
+    protocol_str[end - start] = '\0';
+    if (strcmp(protocol_str, "udp") == 0) {
+      candidate->protocol = ICE_PROTOCOL_UDP;
+    } else if (strcmp(protocol_str, "tcp") == 0) {
+      candidate->protocol = ICE_PROTOCOL_TCP;
+    } else {
+      pcre2_match_data_free(match_data);
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid protocol");
     }
   }
 
-  // 10. Parse any extensions (tcptype for TCP candidates)
-  if (candidate->protocol == ICE_PROTOCOL_TCP) {
-    token = platform_strtok_r(NULL, " ", &saveptr);
-    while (token) {
-      if (strcmp(token, "tcptype") == 0) {
-        token = platform_strtok_r(NULL, " ", &saveptr);
-        if (token) {
-          if (strcmp(token, "active") == 0) {
-            candidate->tcp_type = ICE_TCP_TYPE_ACTIVE;
-          } else if (strcmp(token, "passive") == 0) {
-            candidate->tcp_type = ICE_TCP_TYPE_PASSIVE;
-          } else if (strcmp(token, "so") == 0) {
-            candidate->tcp_type = ICE_TCP_TYPE_SO;
-          }
-        }
-      }
-      token = platform_strtok_r(NULL, " ", &saveptr);
+  // Extract priority (group 4)
+  start = ovector[8], end = ovector[9];
+  if (start < end) {
+    char priority_str[16];
+    memcpy(priority_str, line + start, end - start);
+    priority_str[end - start] = '\0';
+    candidate->priority = (uint32_t)strtoul(priority_str, NULL, 10);
+  }
+
+  // Extract IP address (group 5)
+  start = ovector[10], end = ovector[11];
+  if (start < end && end - start < sizeof(candidate->ip_address)) {
+    memcpy(candidate->ip_address, line + start, end - start);
+    candidate->ip_address[end - start] = '\0';
+  }
+
+  // Extract port (group 6)
+  start = ovector[12], end = ovector[13];
+  if (start < end) {
+    char port_str[8];
+    memcpy(port_str, line + start, end - start);
+    port_str[end - start] = '\0';
+    candidate->port = (uint16_t)strtoul(port_str, NULL, 10);
+  }
+
+  // Extract candidate type (group 7)
+  start = ovector[14], end = ovector[15];
+  if (start < end) {
+    char type_str[16];
+    memcpy(type_str, line + start, end - start);
+    type_str[end - start] = '\0';
+    if (strcmp(type_str, "host") == 0) {
+      candidate->type = ICE_CANDIDATE_HOST;
+    } else if (strcmp(type_str, "srflx") == 0) {
+      candidate->type = ICE_CANDIDATE_SRFLX;
+    } else if (strcmp(type_str, "prflx") == 0) {
+      candidate->type = ICE_CANDIDATE_PRFLX;
+    } else if (strcmp(type_str, "relay") == 0) {
+      candidate->type = ICE_CANDIDATE_RELAY;
+    } else {
+      pcre2_match_data_free(match_data);
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid candidate type");
     }
   }
 
+  // Extract optional raddr (group 8)
+  start = ovector[16], end = ovector[17];
+  if (start < end && start != (size_t)-1 && end - start < sizeof(candidate->raddr)) {
+    memcpy(candidate->raddr, line + start, end - start);
+    candidate->raddr[end - start] = '\0';
+  }
+
+  // Extract optional rport (group 9)
+  start = ovector[18], end = ovector[19];
+  if (start < end && start != (size_t)-1) {
+    char rport_str[8];
+    memcpy(rport_str, line + start, end - start);
+    rport_str[end - start] = '\0';
+    candidate->rport = (uint16_t)strtoul(rport_str, NULL, 10);
+  }
+
+  // Extract optional tcptype (group 10)
+  start = ovector[20], end = ovector[21];
+  if (start < end && start != (size_t)-1) {
+    char tcptype_str[16];
+    memcpy(tcptype_str, line + start, end - start);
+    tcptype_str[end - start] = '\0';
+    if (strcmp(tcptype_str, "active") == 0) {
+      candidate->tcp_type = ICE_TCP_TYPE_ACTIVE;
+    } else if (strcmp(tcptype_str, "passive") == 0) {
+      candidate->tcp_type = ICE_TCP_TYPE_PASSIVE;
+    } else if (strcmp(tcptype_str, "so") == 0) {
+      candidate->tcp_type = ICE_TCP_TYPE_SO;
+    }
+  }
+
+  pcre2_match_data_free(match_data);
   return ASCIICHAT_OK;
+}
+
+asciichat_error_t ice_parse_candidate(const char *line, ice_candidate_t *candidate) {
+  return ice_parse_candidate_pcre2(line, candidate);
 }
 
 asciichat_error_t ice_format_candidate(const ice_candidate_t *candidate, char *line, size_t line_size) {

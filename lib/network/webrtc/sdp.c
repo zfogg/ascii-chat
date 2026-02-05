@@ -631,63 +631,8 @@ asciichat_error_t sdp_parse(const char *sdp_string, sdp_session_t *session) {
             params++; // Skip space after PT
           }
 
-          // Try PCRE2 parser first, fall back to manual if unavailable
-          if (!sdp_parse_fmtp_video_pcre2(params, cap)) {
-            // Manual fallback parser (original implementation)
-            // Parse width=N
-            const char *width_str = strstr(params, "width=");
-            if (width_str) {
-              sscanf(width_str + 6, "%hu", &cap->format.width);
-            }
-
-            // Parse height=N
-            const char *height_str = strstr(params, "height=");
-            if (height_str) {
-              sscanf(height_str + 7, "%hu", &cap->format.height);
-            }
-
-            // Parse renderer type
-            const char *renderer_str = strstr(params, "renderer=");
-            if (renderer_str) {
-              if (strstr(renderer_str, "block")) {
-                cap->format.renderer = RENDERER_BLOCK;
-              } else if (strstr(renderer_str, "halfblock")) {
-                cap->format.renderer = RENDERER_HALFBLOCK;
-              } else if (strstr(renderer_str, "braille")) {
-                cap->format.renderer = RENDERER_BRAILLE;
-              }
-            }
-
-            // Parse charset
-            const char *charset_str = strstr(params, "charset=");
-            if (charset_str) {
-              if (strstr(charset_str, "utf8_wide")) {
-                cap->format.charset = CHARSET_UTF8_WIDE;
-              } else if (strstr(charset_str, "utf8")) {
-                cap->format.charset = CHARSET_UTF8;
-              } else {
-                cap->format.charset = CHARSET_ASCII;
-              }
-            }
-
-            // Parse compression
-            const char *compression_str = strstr(params, "compression=");
-            if (compression_str) {
-              if (strstr(compression_str, "zstd")) {
-                cap->format.compression = COMPRESSION_ZSTD;
-              } else if (strstr(compression_str, "rle")) {
-                cap->format.compression = COMPRESSION_RLE;
-              } else {
-                cap->format.compression = COMPRESSION_NONE;
-              }
-            }
-
-            // Parse CSI REP support
-            const char *csi_rep_str = strstr(params, "csi_rep=");
-            if (csi_rep_str) {
-              cap->format.csi_rep_support = (csi_rep_str[8] == '1');
-            }
-          }
+          // Parse with PCRE2 regex (atomic extraction)
+          sdp_parse_fmtp_video_pcre2(params, cap);
         }
       }
       break;
