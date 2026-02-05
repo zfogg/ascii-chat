@@ -54,7 +54,7 @@
  *
  * # Core dependencies
  * sudo apt-get install libzstd-dev portaudio19-dev libsodium-dev libopus-dev \
- *   libsqlite3-dev libssl-dev libminiupnpc-dev libabsl-dev \
+ *   libsqlite3-dev libminiupnpc-dev libabsl-dev libutf8proc-dev libpcre2-dev \
  *   libavformat-dev libavcodec-dev libavutil-dev libswscale-dev libswresample-dev
  *
  * # Testing (optional)
@@ -67,13 +67,13 @@
  * **Arch Linux**:
  * @code{.bash}
  * sudo pacman -S pkg-config clang llvm cmake ninja make zstd portaudio libsodium \
- *   opus sqlite openssl miniupnpc abseil-cpp ffmpeg criterion musl mimalloc
+ *   opus sqlite miniupnpc abseil-cpp utf8proc pcre2 ffmpeg criterion musl mimalloc
  * @endcode
  *
  * **macOS (Homebrew)**:
  * @code{.bash}
  * brew install cmake ninja make llvm zstd portaudio libsodium opus sqlite3 \
- *   openssl miniupnpc abseil ffmpeg criterion mimalloc
+ *   miniupnpc abseil utf8proc pcre2 ffmpeg criterion mimalloc
  * @endcode
  *
  * **Windows (Scoop + vcpkg)**:
@@ -87,8 +87,8 @@
  *
  * # Dependencies via vcpkg
  * vcpkg install zstd:x64-windows portaudio:x64-windows libsodium:x64-windows \
- *   opus:x64-windows sqlite3:x64-windows openssl:x64-windows \
- *   miniupnpc:x64-windows abseil:x64-windows mimalloc:x64-windows
+ *   opus:x64-windows sqlite3:x64-windows miniupnpc:x64-windows \
+ *   abseil:x64-windows utf8proc:x64-windows pcre2:x64-windows mimalloc:x64-windows
  * @endcode
  *
  * @subsection dependencies_ready Ready to Build
@@ -185,6 +185,33 @@
  * Used in `lib/compression.c` to compress ASCII frames before transmission.
  * Level 1 compression gives ~50% size reduction at 400+ MB/s.
  *
+ * @subsection dependencies_utf8proc utf8proc - UTF-8 String Processing
+ *
+ * **Purpose**: UTF-8 string processing and character width calculations
+ *
+ * **Website**: https://github.com/JuliaStrings/utf8proc
+ *
+ * **License**: MIT License
+ *
+ * **Version**: 2.0 or later
+ *
+ * Provides Unicode character width calculations for proper terminal display,
+ * normalization, and UTF-8 string manipulation.
+ *
+ * @subsection dependencies_pcre2 PCRE2 - Regular Expressions
+ *
+ * **Purpose**: Regular expressions for string validation and parsing
+ *
+ * **Website**: https://www.pcre.org/
+ *
+ * **License**: BSD License
+ *
+ * **Version**: 10.0 or later
+ *
+ * Used throughout the codebase for URL validation, session string parsing,
+ * SSH crypto format parsing, and protocol validation. Provides performance
+ * benefits via JIT compilation.
+ *
  * @subsection dependencies_miniupnpc miniupnpc - UPnP IGD Client
  *
  * **Purpose**: Automatic router port forwarding via UPnP
@@ -252,20 +279,6 @@
  *
  * Used in the ACDS (ascii-chat Discovery Service) to store active sessions,
  * user identities, and connection metadata. Zero-configuration embedded database.
- *
- * @subsection dependencies_openssl OpenSSL - Cryptography Toolkit
- *
- * **Purpose**: TLS for WebRTC and musl static builds
- *
- * **Website**: https://www.openssl.org/
- *
- * **License**: Apache 2.0
- *
- * **Version**: 3.0.0 or later
- *
- * Used by libdatachannel for TURN server credential generation and secure
- * WebRTC connections. Also provides complete TLS implementation for musl
- * static builds where system OpenSSL isn't available.
  *
  * @subsection dependencies_libdatachannel libdatachannel - WebRTC Library
  *
@@ -406,11 +419,11 @@
  *
  * | License | Dependencies |
  * |---------|--------------|
- * | MIT | BearSSL, PortAudio, Criterion, mimalloc, musl, tomlc17 |
+ * | MIT | BearSSL, PortAudio, Criterion, mimalloc, musl, tomlc17, utf8proc |
  * | ISC | libsodium |
- * | BSD | zstd, uthash, libsodium-bcrypt-pbkdf, miniupnpc, Opus, WebRTC AEC3 |
+ * | BSD | zstd, uthash, libsodium-bcrypt-pbkdf, miniupnpc, Opus, WebRTC AEC3, PCRE2 |
  * | zlib | sokol |
- * | Apache 2.0 | OpenSSL, Abseil |
+ * | Apache 2.0 | Abseil |
  * | MPL 2.0 | libdatachannel |
  * | LGPL/GPL | FFmpeg |
  * | Public Domain | SQLite3 |
@@ -426,10 +439,11 @@
  * | PortAudio | 19.7.0 | Stable callback API |
  * | libsodium | 1.0.18 | Ed25519 support |
  * | zstd | 1.4.0 | Streaming API |
+ * | utf8proc | 2.0 | UTF-8 string processing |
+ * | PCRE2 | 10.0 | Regular expression support |
  * | Opus | 1.3.0 | Stable audio codec API |
  * | FFmpeg | 4.0 | Stable libav API |
  * | SQLite3 | 3.35.0 | Returning clause support |
- * | OpenSSL | 3.0.0 | Modern TLS/crypto API |
  * | libdatachannel | 0.20.0 | WebRTC DataChannels |
  * | miniupnpc | 2.3.x | UPnP IGD client (API changes in 2.3) |
  * | Criterion | 2.4.0 | Theories and fixtures |

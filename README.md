@@ -401,37 +401,27 @@ ascii-chat is built on operating system code and several libraries.
 
 #### List of Dependencies and What We Use Them For
 
-- [**musl libc**](https://musl.libc.org/) - Static builds for Linux releases (optional for development)
-- [**mimalloc**](https://github.com/microsoft/mimalloc) - High-performance memory allocator (optional for development)
-- [**PortAudio**](http://www.portaudio.com/) - Cross-platform audio I/O for bidirectional voice communication
-- [**tomlc17**](https://github.com/cktan/tomlc17) - TOML config file parsing (`~/.config/ascii-chat/config.toml`)
-- [**uthash**](https://troydhanson.github.io/uthash/) - Hash tables for fast O(1) client lookups
-- [**utf8proc**](https://github.com/JuliaStrings/utf8proc) - UTF-8 string processing and character width calculations for proper terminal display of Unicode
-- [**libsodium**](https://libsodium.org/) - End-to-end encryption (X25519, XSalsa20-Poly1305, Ed25519)
+- [**musl libc**](https://musl.libc.org/) - Static builds (Linux releases)
+- [**mimalloc**](https://github.com/microsoft/mimalloc) - High-performance memory allocator (release builds)
+- [**PortAudio**](http://www.portaudio.com/) - Cross-platform audio I/O
+- [**tomlc17**](https://github.com/cktan/tomlc17) - ascii-chat has TOML config files
+- [**uthash**](https://troydhanson.github.io/uthash/) - ascii-chat uses hash tables normally for a few different things
+- [**utf8proc**](https://github.com/JuliaStrings/utf8proc) - UTF-8 support even though it's named ascii-chat
+- [**PCRE2**](https://www.pcre.org/) - Regular expressions for strings; validation and parsing and search
+- [**libsodium**](https://libsodium.org/) - End-to-end encryption and authentication
 - [**libsodium-bcrypt-pbkdf**](https://github.com/imaami/libsodium-bcrypt-pbkdf) - Decrypt password-protected SSH Ed25519 keys
 - [**BearSSL**](https://bearssl.org/) - HTTPS client for GitHub/GitLab key fetching; AES for SSH key decryption
-- [**zstd**](https://facebook.github.io/zstd/) - Frame compression for bandwidth efficiency
-- [**Opus**](https://opus-codec.org/) - Real-time audio codec for low-latency voice transmission
-- [**WebRTC AEC3**](https://github.com/nicnacnic/webrtc_AEC3) - Extracted WebRTC audio processing for acoustic echo cancellation
+- [**zstd**](https://facebook.github.io/zstd/) - Network data compression
+- [**Opus**](https://opus-codec.org/) - Audio codec for low-latency voice transmission
+- [**WebRTC AEC3**](https://github.com/nicnacnic/webrtc_AEC3) - WebRTC acoustic echo cancellation so you can talk to each other without hearing yourself
 - [**Sokol**](https://github.com/floooh/sokol) - Header-only cross-platform utilities (timing, audio)
-- [**SQLite3**](https://www.sqlite.org/) - Database for ACDS discovery service
-- [**OpenSSL**](https://www.openssl.org/) - TLS for WebRTC TURN servers and musl static builds
-- [**libdatachannel**](https://github.com/paullouisageneau/libdatachannel) - WebRTC DataChannels for P2P NAT traversal
-- [**miniupnpc**](https://miniupnp.tuxfamily.org/) - Automatic UPnP port forwarding (optional, fallback to WebRTC)
-- [**FFmpeg**](https://ffmpeg.org/) - Media file streaming support
-- [**yt-dlp**](https://github.com/yt-dlp/yt-dlp) - YouTube and other video platform support for `--url` (optional; enables streaming from YouTube and similar services)
-- [**ssh-agent**](https://linux.die.net/man/1/ssh-agent) - SSH key agent for password-free SSH Ed25519 authentication (optional; enables seamless key authentication without passphrases)
-- [**gpg-agent**](https://linux.die.net/man/1/gpg-agent) - GPG key agent for GPG Ed25519 key support (optional; enables GPG key-based authentication)
-
-#### Operating System APIs
-
-> 🔌 **Cross-platform details: [Platform Abstraction Layer](https://zfogg.github.io/ascii-chat/group__platform.html#topic_platform)**
-
-ascii-chat uses native platform APIs for each platform for webcam access:
-
-- **Linux**: V4L2 Linux kernel module
-- **macOS**: AVFoundation native macOS API
-- **Windows**: Media Foundation native Windows API
+- [**SQLite3**](https://www.sqlite.org/) - Database for discovery service session storage
+- [**libdatachannel**](https://github.com/paullouisageneau/libdatachannel) - WebRTC DataChannels
+- [**miniupnpc**](https://miniupnp.tuxfamily.org/) - Opens ports in your router to ascii-chat so clients can connect
+- [**FFmpeg**](https://ffmpeg.org/) - Media support for `--file` and `--url`. `cat` images or videos into ascii-chat
+- [**yt-dlp**](https://github.com/yt-dlp/yt-dlp) - YouTube.com support for `--url` (optional)
+- [**ssh-agent**](https://linux.die.net/man/1/ssh-agent) - SSH key agent authentication (optional)
+- [**gpg-agent**](https://linux.die.net/man/1/gpg-agent) - GPG key agent authentication (optional)
 
 #### Install Dependencies
 
