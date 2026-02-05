@@ -14,6 +14,9 @@
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
+#include <pthread.h>
+#define PCRE2_CODE_UNIT_WIDTH 8
+#include <pcre2.h>
 
 /* ============================================================================
  * Utility Functions
@@ -313,8 +316,171 @@ asciichat_error_t sdp_generate_answer(const sdp_session_t *offer, const terminal
 }
 
 /* ============================================================================
- * SDP Parsing
+ * SDP Parsing with PCRE2
  * ============================================================================ */
+
+/**
+ * @brief PCRE2 regex validator for SDP fmtp parameter parsing
+ *
+ * Extracts video terminal capability parameters from SDP fmtp attributes.
+ * Uses PCRE2 for atomic extraction with single regex match.
+ */
+typedef struct {
+  pcre2_code *fmtp_video_regex; ///< Pattern: Match video fmtp parameters
+  pcre2_jit_stack *jit_stack;   ///< JIT compilation stack
+  bool initialized;             ///< Initialization flag
+} sdp_fmtp_validator_t;
+
+static sdp_fmtp_validator_t g_sdp_fmtp_validator = {0};
+static pthread_once_t g_sdp_fmtp_once = PTHREAD_ONCE_INIT;
+
+/**
+ * @brief Initialize PCRE2 regex for SDP fmtp parameter extraction
+ *
+ * Pattern matches video fmtp parameters:
+ * width=N;height=M;renderer=TYPE;charset=CHARSET;compression=COMP;csi_rep=0|1
+ */
+static void sdp_fmtp_regex_init(void) {
+  int errornumber;
+  PCRE2_SIZE erroroffset;
+
+  // Pattern: Match fmtp video parameters with flexible ordering
+  // Requires at minimum: width, height, renderer
+  const char *pattern = "width=([0-9]+)"                  // 1: width
+                        ".*?height=([0-9]+)"              // 2: height
+                        ".*?renderer=([a-z]+)"            // 3: renderer (block/halfblock/braille)
+                        "(?:.*?charset=([a-z0-9_]+))?"    // 4: charset (optional)
+                        "(?:.*?compression=([a-z0-9]+))?" // 5: compression (optional)
+                        "(?:.*?csi_rep=([01]))?";         // 6: csi_rep (optional)
+
+  g_sdp_fmtp_validator.fmtp_video_regex =
+      pcre2_compile((PCRE2_SPTR8)pattern, PCRE2_ZERO_TERMINATED, PCRE2_DOTALL, &errornumber, &erroroffset, NULL);
+
+  if (!g_sdp_fmtp_validator.fmtp_video_regex) {
+    PCRE2_UCHAR8 error_msg[120];
+    pcre2_get_error_message(errornumber, error_msg, sizeof(error_msg));
+    log_warn("sdp_fmtp_regex_init: Failed to compile fmtp pattern: %s at offset %zu", error_msg, erroroffset);
+    return;
+  }
+
+  // Attempt JIT compilation (non-fatal if fails)
+  if (pcre2_jit_compile(g_sdp_fmtp_validator.fmtp_video_regex, PCRE2_JIT_COMPLETE) > 0) {
+    g_sdp_fmtp_validator.jit_stack = pcre2_jit_stack_create(32 * 1024, 512 * 1024, NULL);
+  }
+
+  g_sdp_fmtp_validator.initialized = true;
+}
+
+/**
+ * @brief Parse video fmtp parameters using PCRE2 regex
+ *
+ * Extracts width, height, renderer, charset, compression, and csi_rep from fmtp string.
+ * Falls back to manual parsing if PCRE2 unavailable.
+ *
+ * @param fmtp_params SDP fmtp parameter string
+ * @param cap Output terminal capability structure
+ * @return true if successfully parsed, false otherwise
+ */
+static bool sdp_parse_fmtp_video_pcre2(const char *fmtp_params, terminal_capability_t *cap) {
+  if (!fmtp_params || !cap) {
+    return false;
+  }
+
+  // Initialize regex singleton
+  pthread_once(&g_sdp_fmtp_once, sdp_fmtp_regex_init);
+
+  // If PCRE2 not available, fall through to manual parsing
+  if (!g_sdp_fmtp_validator.initialized || !g_sdp_fmtp_validator.fmtp_video_regex) {
+    return false; // Fall back to manual parser in caller
+  }
+
+  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(g_sdp_fmtp_validator.fmtp_video_regex, NULL);
+  if (!match_data) {
+    return false;
+  }
+
+  int rc = pcre2_match(g_sdp_fmtp_validator.fmtp_video_regex, (PCRE2_SPTR8)fmtp_params, strlen(fmtp_params), 0, 0,
+                       match_data, NULL);
+
+  bool success = false;
+  if (rc >= 4) { // At least 4 groups (width, height, renderer, and must be present)
+    PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
+
+    // Extract width (group 1)
+    size_t start = ovector[2], end = ovector[3];
+    if (start < end) {
+      char width_str[16];
+      memcpy(width_str, fmtp_params + start, end - start);
+      width_str[end - start] = '\0';
+      cap->format.width = (uint16_t)strtoul(width_str, NULL, 10);
+    }
+
+    // Extract height (group 2)
+    start = ovector[4], end = ovector[5];
+    if (start < end) {
+      char height_str[16];
+      memcpy(height_str, fmtp_params + start, end - start);
+      height_str[end - start] = '\0';
+      cap->format.height = (uint16_t)strtoul(height_str, NULL, 10);
+    }
+
+    // Extract renderer (group 3)
+    start = ovector[6], end = ovector[7];
+    if (start < end) {
+      char renderer_str[16];
+      memcpy(renderer_str, fmtp_params + start, end - start);
+      renderer_str[end - start] = '\0';
+      if (strcmp(renderer_str, "block") == 0) {
+        cap->format.renderer = RENDERER_BLOCK;
+      } else if (strcmp(renderer_str, "halfblock") == 0) {
+        cap->format.renderer = RENDERER_HALFBLOCK;
+      } else if (strcmp(renderer_str, "braille") == 0) {
+        cap->format.renderer = RENDERER_BRAILLE;
+      }
+    }
+
+    // Extract charset (group 4, optional)
+    start = ovector[8], end = ovector[9];
+    if (start < end && start != (size_t)-1) {
+      char charset_str[16];
+      memcpy(charset_str, fmtp_params + start, end - start);
+      charset_str[end - start] = '\0';
+      if (strcmp(charset_str, "utf8_wide") == 0) {
+        cap->format.charset = CHARSET_UTF8_WIDE;
+      } else if (strcmp(charset_str, "utf8") == 0) {
+        cap->format.charset = CHARSET_UTF8;
+      } else {
+        cap->format.charset = CHARSET_ASCII;
+      }
+    }
+
+    // Extract compression (group 5, optional)
+    start = ovector[10], end = ovector[11];
+    if (start < end && start != (size_t)-1) {
+      char compression_str[16];
+      memcpy(compression_str, fmtp_params + start, end - start);
+      compression_str[end - start] = '\0';
+      if (strcmp(compression_str, "zstd") == 0) {
+        cap->format.compression = COMPRESSION_ZSTD;
+      } else if (strcmp(compression_str, "rle") == 0) {
+        cap->format.compression = COMPRESSION_RLE;
+      } else {
+        cap->format.compression = COMPRESSION_NONE;
+      }
+    }
+
+    // Extract csi_rep (group 6, optional)
+    start = ovector[12], end = ovector[13];
+    if (start < end && start != (size_t)-1) {
+      cap->format.csi_rep_support = (fmtp_params[start] == '1');
+    }
+
+    success = true;
+  }
+
+  pcre2_match_data_free(match_data);
+  return success;
+}
 
 asciichat_error_t sdp_parse(const char *sdp_string, sdp_session_t *session) {
   if (!sdp_string || !session) {
@@ -456,66 +622,71 @@ asciichat_error_t sdp_parse(const char *sdp_string, sdp_session_t *session) {
           // Parse terminal format parameters
           terminal_capability_t *cap = &session->video_codecs[video_codec_index - 1];
 
-          char fmtp_copy[256];
-          SAFE_STRNCPY(fmtp_copy, fmtp, sizeof(fmtp_copy));
-
-          // Skip PT number
-          char *saveptr = NULL;
-          platform_strtok_r(fmtp_copy, " ", &saveptr);
-          const char *params = fmtp_copy + strcspn(fmtp_copy, " ") + 1;
-
-          // Parse width=N
-          const char *width_str = strstr(params, "width=");
-          if (width_str) {
-            sscanf(width_str + 6, "%hu", &cap->format.width);
+          // Skip PT number in fmtp string (format: "96 width=...")
+          const char *params = fmtp;
+          while (*params && *params != ' ') {
+            params++;
+          }
+          if (*params == ' ') {
+            params++; // Skip space after PT
           }
 
-          // Parse height=N
-          const char *height_str = strstr(params, "height=");
-          if (height_str) {
-            sscanf(height_str + 7, "%hu", &cap->format.height);
-          }
-
-          // Parse renderer type
-          const char *renderer_str = strstr(params, "renderer=");
-          if (renderer_str) {
-            if (strstr(renderer_str, "block")) {
-              cap->format.renderer = RENDERER_BLOCK;
-            } else if (strstr(renderer_str, "halfblock")) {
-              cap->format.renderer = RENDERER_HALFBLOCK;
-            } else if (strstr(renderer_str, "braille")) {
-              cap->format.renderer = RENDERER_BRAILLE;
+          // Try PCRE2 parser first, fall back to manual if unavailable
+          if (!sdp_parse_fmtp_video_pcre2(params, cap)) {
+            // Manual fallback parser (original implementation)
+            // Parse width=N
+            const char *width_str = strstr(params, "width=");
+            if (width_str) {
+              sscanf(width_str + 6, "%hu", &cap->format.width);
             }
-          }
 
-          // Parse charset
-          const char *charset_str = strstr(params, "charset=");
-          if (charset_str) {
-            if (strstr(charset_str, "utf8")) {
-              cap->format.charset = CHARSET_UTF8;
-            } else if (strstr(charset_str, "utf8_wide")) {
-              cap->format.charset = CHARSET_UTF8_WIDE;
-            } else {
-              cap->format.charset = CHARSET_ASCII;
+            // Parse height=N
+            const char *height_str = strstr(params, "height=");
+            if (height_str) {
+              sscanf(height_str + 7, "%hu", &cap->format.height);
             }
-          }
 
-          // Parse compression
-          const char *compression_str = strstr(params, "compression=");
-          if (compression_str) {
-            if (strstr(compression_str, "rle")) {
-              cap->format.compression = COMPRESSION_RLE;
-            } else if (strstr(compression_str, "zstd")) {
-              cap->format.compression = COMPRESSION_ZSTD;
-            } else {
-              cap->format.compression = COMPRESSION_NONE;
+            // Parse renderer type
+            const char *renderer_str = strstr(params, "renderer=");
+            if (renderer_str) {
+              if (strstr(renderer_str, "block")) {
+                cap->format.renderer = RENDERER_BLOCK;
+              } else if (strstr(renderer_str, "halfblock")) {
+                cap->format.renderer = RENDERER_HALFBLOCK;
+              } else if (strstr(renderer_str, "braille")) {
+                cap->format.renderer = RENDERER_BRAILLE;
+              }
             }
-          }
 
-          // Parse CSI REP support
-          const char *csi_rep_str = strstr(params, "csi_rep=");
-          if (csi_rep_str) {
-            cap->format.csi_rep_support = (csi_rep_str[8] == '1');
+            // Parse charset
+            const char *charset_str = strstr(params, "charset=");
+            if (charset_str) {
+              if (strstr(charset_str, "utf8_wide")) {
+                cap->format.charset = CHARSET_UTF8_WIDE;
+              } else if (strstr(charset_str, "utf8")) {
+                cap->format.charset = CHARSET_UTF8;
+              } else {
+                cap->format.charset = CHARSET_ASCII;
+              }
+            }
+
+            // Parse compression
+            const char *compression_str = strstr(params, "compression=");
+            if (compression_str) {
+              if (strstr(compression_str, "zstd")) {
+                cap->format.compression = COMPRESSION_ZSTD;
+              } else if (strstr(compression_str, "rle")) {
+                cap->format.compression = COMPRESSION_RLE;
+              } else {
+                cap->format.compression = COMPRESSION_NONE;
+              }
+            }
+
+            // Parse CSI REP support
+            const char *csi_rep_str = strstr(params, "csi_rep=");
+            if (csi_rep_str) {
+              cap->format.csi_rep_support = (csi_rep_str[8] == '1');
+            }
           }
         }
       }
