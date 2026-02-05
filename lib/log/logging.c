@@ -799,7 +799,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   if (plain_len <= 0 || plain_len >= (int)sizeof(plain_log_line)) {
     // Line too long - skip filtering
     if (stripped_msg) {
-      free(stripped_msg);
+      SAFE_FREE(stripped_msg);
     }
     safe_fprintf(output_stream, "%s%s\n", header_buffer, msg_buffer);
     (void)fflush(output_stream);
@@ -811,7 +811,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   size_t match_start = 0, match_len = 0;
   if (!log_filter_should_output(plain_log_line, &match_start, &match_len)) {
     if (stripped_msg) {
-      free(stripped_msg);
+      SAFE_FREE(stripped_msg);
     }
     return; // No match - suppress terminal output
   }
@@ -864,7 +864,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
 
   // Clean up stripped message
   if (stripped_msg) {
-    free(stripped_msg);
+    SAFE_FREE(stripped_msg);
   }
 
   (void)fflush(output_stream);

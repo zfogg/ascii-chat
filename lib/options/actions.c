@@ -486,7 +486,9 @@ void action_create_config(const char *output_path) {
 
 void action_completions(const char *shell_name, const char *output_path) {
   // Suppress memory report for clean output
+#if defined(DEBUG_MEMORY) && !defined(NDEBUG)
   debug_memory_set_quiet_mode(true);
+#endif
 
   if (!shell_name || strlen(shell_name) == 0) {
     log_plain_stderr("Error: --completions requires shell name (bash, fish, zsh, powershell)");
