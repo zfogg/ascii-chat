@@ -793,7 +793,7 @@ Test(config_sections, palette_type_blocks) {
   config_options_backup_t backup;
   save_config_options(&backup);
 
-  const char *content = "[palette]\ntype = \"blocks\"\n";
+  const char *content = "[display]\npalette = \"blocks\"\n";
 
   char *config_path = create_temp_config(content);
   cr_assert_not_null(config_path, "Failed to create temp config file");
@@ -812,7 +812,7 @@ Test(config_sections, palette_type_digital) {
   config_options_backup_t backup;
   save_config_options(&backup);
 
-  const char *content = "[palette]\ntype = \"digital\"\n";
+  const char *content = "[display]\npalette = \"digital\"\n";
 
   char *config_path = create_temp_config(content);
   cr_assert_not_null(config_path, "Failed to create temp config file");
@@ -831,8 +831,8 @@ Test(config_sections, palette_custom_chars) {
   config_options_backup_t backup;
   save_config_options(&backup);
 
-  const char *content = "[palette]\n"
-                        "chars = \"@#$%^&*\"\n";
+  const char *content = "[display]\n"
+                        "palette_chars = \"@#$%^&*\"\n";
 
   char *config_path = create_temp_config(content);
   cr_assert_not_null(config_path, "Failed to create temp config file");
@@ -859,7 +859,7 @@ Test(config_sections, palette_chars_too_long) {
   long_chars[299] = '\0';
 
   char content[512];
-  safe_snprintf(content, sizeof(content), "[palette]\nchars = \"%s\"\n", long_chars);
+  safe_snprintf(content, sizeof(content), "[display]\npalette_chars = \"%s\"\n", long_chars);
 
   char *config_path = create_temp_config(content);
   cr_assert_not_null(config_path, "Failed to create temp config file");
