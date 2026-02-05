@@ -192,6 +192,11 @@ bool terminal_supports_utf8(void) {
  * @return 0 on success, non-zero on failure
  */
 asciichat_error_t terminal_clear_screen(void) {
+  // Skip ANSI codes when not writing to a TTY (e.g., piping to file)
+  if (!platform_isatty(STDOUT_FILENO)) {
+    return ASCIICHAT_OK;
+  }
+
   // Use ANSI escape codes instead of system("clear") to avoid command processor
   // \033[2J clears entire screen, \033[H moves cursor to home position
   int fd = STDOUT_FILENO;
@@ -208,6 +213,11 @@ asciichat_error_t terminal_clear_screen(void) {
  * @return 0 on success, -1 on failure
  */
 asciichat_error_t terminal_move_cursor(int row, int col) {
+  // Skip ANSI codes when not writing to a TTY (e.g., piping to file)
+  if (!platform_isatty(STDOUT_FILENO)) {
+    return 0;
+  }
+
   printf("\033[%d;%dH", row + 1, col + 1);
   (void)fflush(stdout);
   return 0;
@@ -255,6 +265,11 @@ asciichat_error_t terminal_flush(int fd) {
  * @return 0 on success, -1 on failure
  */
 asciichat_error_t terminal_hide_cursor(int fd, bool hide) {
+  // Skip ANSI codes when not writing to a TTY (e.g., piping to file)
+  if (!platform_isatty(fd)) {
+    return ASCIICHAT_OK;
+  }
+
   if (hide) {
     if (dprintf(fd, "\033[?25l") < 0) {
       return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to hide cursor");
@@ -273,6 +288,11 @@ asciichat_error_t terminal_hide_cursor(int fd, bool hide) {
  * @return 0 on success, -1 on failure
  */
 asciichat_error_t terminal_cursor_home(int fd) {
+  // Skip ANSI codes when not writing to a TTY (e.g., piping to file)
+  if (!platform_isatty(fd)) {
+    return ASCIICHAT_OK;
+  }
+
   if (dprintf(fd, "\033[H") < 0) {
     return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to move cursor to home");
   }
@@ -285,6 +305,11 @@ asciichat_error_t terminal_cursor_home(int fd) {
  * @return 0 on success, -1 on failure
  */
 asciichat_error_t terminal_clear_scrollback(int fd) {
+  // Skip ANSI codes when not writing to a TTY (e.g., piping to file)
+  if (!platform_isatty(fd)) {
+    return ASCIICHAT_OK;
+  }
+
   if (dprintf(fd, "\033[3J") < 0) {
     return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to clear scrollback buffer");
   }
@@ -653,6 +678,14 @@ void test_terminal_output_modes(void) {
  * @return Modified capabilities with overrides applied
  */
 terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) {
+  // CRITICAL: Check if stdout is a TTY - disable colors when piping unless --color=true
+  if (!platform_isatty(STDOUT_FILENO) && GET_OPTION(color) != COLOR_SETTING_TRUE) {
+    caps.color_level = TERM_COLOR_NONE;
+    caps.capabilities &= ~(uint32_t)(TERM_CAP_COLOR_16 | TERM_CAP_COLOR_256 | TERM_CAP_COLOR_TRUE);
+    caps.color_count = 0;
+    return caps;
+  }
+
 #ifndef NDEBUG
   // In debug builds, force no-color mode for Claude Code (LLM doesn't need colors, saves tokens)
   // However, respect --color=true which explicitly forces colors ON
@@ -762,6 +795,12 @@ static inline float _calculate_luminance(uint8_t r, uint8_t g, uint8_t b) {
  * Tries to query actual background color first, then falls back to heuristics
  */
 bool terminal_has_dark_background(void) {
+  // Don't query terminal when output is piped/redirected (causes SIGTTOU)
+  if (!platform_isatty(STDOUT_FILENO)) {
+    // When piping, skip color detection and default to dark (most common)
+    return true;
+  }
+
   // Try to query actual terminal background color via OSC 11
   uint8_t bg_r, bg_g, bg_b;
   if (terminal_query_background_color(&bg_r, &bg_g, &bg_b)) {
@@ -822,6 +861,16 @@ bool terminal_query_background_color(uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b
   // Try to open /dev/tty directly (works even when stdin/stdout are redirected)
   int tty_fd = open("/dev/tty", O_RDWR);
   if (tty_fd < 0) {
+    return false;
+  }
+
+  // Check if we're the foreground process group
+  // If not, tcsetattr() will send us SIGTTOU and stop the process
+  pid_t fg_pgrp = tcgetpgrp(tty_fd);
+  pid_t our_pgrp = getpgrp();
+  if (fg_pgrp != our_pgrp) {
+    // We're not in the foreground, don't try to modify terminal
+    close(tty_fd);
     return false;
   }
 

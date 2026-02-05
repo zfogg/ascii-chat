@@ -262,9 +262,7 @@ bool platform_prompt_yes_no(const char *prompt, bool default_yes) {
     return false;
   }
 
-  bool is_interactive = platform_is_interactive();
-
-  // Check for testing environment variable override
+  // Check for testing environment variable override FIRST (before any TTY checks)
   const char *test_response = SAFE_GETENV("ASCII_CHAT_QUESTION_PROMPT_RESPONSE");
   if (test_response != NULL) {
     if (strcasecmp(test_response, "yes") == 0 || strcasecmp(test_response, "y") == 0) {
@@ -273,6 +271,8 @@ bool platform_prompt_yes_no(const char *prompt, bool default_yes) {
       return false;
     }
   }
+
+  bool is_interactive = platform_is_interactive();
 
   // Display prompt with default indicator (only if interactive TTY)
   // Allow piped input to work by showing prompt only in interactive mode
