@@ -37,6 +37,7 @@ set(UTIL_SRCS
     lib/util/fps.c
     lib/util/utf8.c
     lib/util/display.c
+    lib/util/pcre2.c
     # utf8proc Unicode library (includes utf8proc_data.c internally)
     deps/ascii-chat-deps/utf8proc/utf8proc.c
 )
