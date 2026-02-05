@@ -948,8 +948,10 @@ typedef struct options_state {
   // ============================================================================
   // Splash Screen Options
   // ============================================================================
-  bool splash;        ///< Show splash screen (default: true = show, use --no-splash to hide)
-  bool status_screen; ///< Show status screen (default: true = show, use --no-status-screen to hide)
+  bool splash;                       ///< Show splash screen (default: true = show, use --no-splash to hide)
+  bool splash_explicitly_set;        ///< True if splash was explicitly set by user
+  bool status_screen;                ///< Show status screen (default: true = show, use --no-status-screen to hide)
+  bool status_screen_explicitly_set; ///< True if status_screen was explicitly set by user
 
   // Note: Luminance weights (weight_red, weight_green, weight_blue) and
   // lookup tables (RED[], GREEN[], BLUE[], GRAY[]) are kept as globals

@@ -502,6 +502,7 @@ options_t options_t_new(void) {
   opts.log_level = OPT_LOG_LEVEL_DEFAULT;
   opts.verbose_level = OPT_VERBOSE_LEVEL_DEFAULT;
   opts.quiet = OPT_QUIET_DEFAULT;
+  opts.grep_pattern[0] = '\0'; // Explicitly ensure grep_pattern is empty
 
   // ============================================================================
   // TERMINAL
@@ -536,7 +537,9 @@ options_t options_t_new(void) {
   opts.strip_ansi = OPT_STRIP_ANSI_DEFAULT;
   opts.fps = OPT_FPS_DEFAULT;
   opts.splash = OPT_SPLASH_DEFAULT;
+  opts.splash_explicitly_set = false;
   opts.status_screen = OPT_STATUS_SCREEN_DEFAULT;
+  opts.status_screen_explicitly_set = false;
 
   // ============================================================================
   // SNAPSHOT
@@ -912,20 +915,9 @@ asciichat_error_t options_init(int argc, char **argv) {
   // Store action flag globally for use during cleanup
   set_action_flag(has_action);
 
-  // ========================================================================
-  // EARLY: Check if --color was in argv and set global flags for color detection
-  // ========================================================================
-  // This must happen VERY EARLY, even before logging init, because the builder
-  // will execute help actions which call colored_string(), and those need to know
-  // whether --color was passed. We can't wait until after builder parsing.
-  for (int i = 1; i < argc; i++) {
-    if (strcmp(argv[i], "--color") == 0) {
-      g_color_flag_passed = true;
-      g_color_flag_value = true;
-      break;
-    }
-  }
-
+  // NOTE: --color detection now happens in src/main.c BEFORE asciichat_shared_init()
+  // This ensures g_color_flag_passed and g_color_flag_value are set before any logging.
+  //
   // NOTE: Timer system and shared subsystems are initialized by src/main.c
   // via asciichat_shared_init() BEFORE options_init() is called.
   // This allows options_init() to use properly configured logging.
@@ -1409,6 +1401,39 @@ asciichat_error_t options_init(int argc, char **argv) {
     // Auto-enable color when color filter is specified
     opts.color = COLOR_SETTING_TRUE;
     log_debug("Auto-enabled color because --color-filter was provided");
+  }
+
+  // Detect if splash or status_screen were explicitly set on command line
+  for (int i = 0; i < mode_argc; i++) {
+    if (mode_argv[i] && (strcmp(mode_argv[i], "--no-splash") == 0 || strncmp(mode_argv[i], "--no-splash=", 12) == 0)) {
+      opts.splash_explicitly_set = true;
+    }
+    if (mode_argv[i] &&
+        (strcmp(mode_argv[i], "--no-status-screen") == 0 || strncmp(mode_argv[i], "--no-status-screen=", 19) == 0)) {
+      opts.status_screen_explicitly_set = true;
+    }
+  }
+
+  // Auto-disable splash and status screen when grep is used
+  // UNLESS they were explicitly set by the user
+  // Check if grep pattern was explicitly provided by checking mode_argv
+  bool grep_was_provided = false;
+  for (int i = 0; i < mode_argc; i++) {
+    if (mode_argv[i] && (strcmp(mode_argv[i], "--grep") == 0 || strncmp(mode_argv[i], "--grep=", 7) == 0)) {
+      grep_was_provided = true;
+      break;
+    }
+  }
+
+  if (grep_was_provided) {
+    if (!opts.splash_explicitly_set) {
+      opts.splash = false;
+      log_debug("Auto-disabled splash because --grep was provided");
+    }
+    if (!opts.status_screen_explicitly_set) {
+      opts.status_screen = false;
+      log_debug("Auto-disabled status screen because --grep was provided");
+    }
   }
 
   // Validate options
