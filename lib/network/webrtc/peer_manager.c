@@ -453,7 +453,7 @@ asciichat_error_t webrtc_peer_manager_handle_ice(webrtc_peer_manager_t *manager,
     char hex[64] = {0};
     char ascii[20] = {0};
     for (int j = 0; j < 16 && (i + j) < 100; j++) {
-      sprintf(hex + j * 3, "%02x ", payload[i + j]);
+      snprintf(hex + j * 3, sizeof(hex) - j * 3, "%02x ", payload[i + j]);
       ascii[j] = (payload[i + j] >= 32 && payload[i + j] < 127) ? payload[i + j] : '.';
     }
     log_debug("    [%04x] %-48s %s", i, hex, ascii);

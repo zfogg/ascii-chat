@@ -634,7 +634,7 @@ static asciichat_error_t server_send_ice(const uint8_t session_id[16], const uin
     char hex[64] = {0};
     char ascii[20] = {0};
     for (size_t j = 0; j < 16 && (i + j) < 100 && (i + j) < payload_len; j++) {
-      sprintf(hex + j * 3, "%02x ", payload[i + j]);
+      snprintf(hex + j * 3, sizeof(hex) - j * 3, "%02x ", payload[i + j]);
       ascii[j] = (payload[i + j] >= 32 && payload[i + j] < 127) ? payload[i + j] : '.';
     }
     log_debug("    [%04zx] %-48s %s", i, hex, ascii);
