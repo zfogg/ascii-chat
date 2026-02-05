@@ -101,55 +101,35 @@ static const color_scheme_t NORD_SCHEME = {.name = "nord",
                                            .is_builtin = true};
 
 /**
- * @brief Solarized dark color scheme
- * Precision colors for machines and people (dark background)
+ * @brief Solarized color scheme
+ * Precision colors for machines and people (auto-adapts to terminal background)
  */
-static const color_scheme_t SOLARIZED_DARK_SCHEME = {.name = "solarized-dark",
-                                                     .description = "Solarized dark theme - precision colors",
-                                                     .log_colors_dark =
-                                                         {
-                                                             {203, 75, 22},   /* DEV: Orange */
-                                                             {42, 161, 152},  /* DEBUG: Cyan */
-                                                             {133, 153, 0},   /* INFO: Green */
-                                                             {181, 137, 0},   /* WARN: Yellow */
-                                                             {220, 50, 47},   /* ERROR: Red */
-                                                             {108, 113, 196}, /* FATAL: Violet */
-                                                             {101, 123, 142}, /* GREY: Base0 */
-                                                             {255, 255, 255}  /* RESET */
-                                                         },
-                                                     .has_light_variant = true,
-                                                     .log_colors_light =
-                                                         {
-                                                             {161, 105, 70}, /* DEV: Brown/Orange */
-                                                             {20, 110, 101}, /* DEBUG: Darker cyan */
-                                                             {89, 100, 0},   /* INFO: Darker green */
-                                                             {101, 76, 0},   /* WARN: Darker yellow */
-                                                             {153, 0, 0},    /* ERROR: Darker red */
-                                                             {68, 68, 153},  /* FATAL: Darker violet */
-                                                             {42, 61, 76},   /* GREY */
-                                                             {0, 0, 0}       /* RESET */
-                                                         },
-                                                     .is_builtin = true};
-
-/**
- * @brief Solarized light color scheme
- * Precision colors for machines and people (light background)
- */
-static const color_scheme_t SOLARIZED_LIGHT_SCHEME = {.name = "solarized-light",
-                                                      .description = "Solarized light theme - precision colors",
-                                                      .log_colors_dark =
-                                                          {
-                                                              {161, 105, 70}, /* DEV: Brown/Orange */
-                                                              {20, 110, 101}, /* DEBUG: Darker cyan */
-                                                              {89, 100, 0},   /* INFO: Darker green */
-                                                              {101, 76, 0},   /* WARN: Darker yellow */
-                                                              {153, 0, 0},    /* ERROR: Darker red */
-                                                              {68, 68, 153},  /* FATAL: Darker violet */
-                                                              {42, 61, 76},   /* GREY */
-                                                              {0, 0, 0}       /* RESET */
-                                                          },
-                                                      .has_light_variant = false,
-                                                      .is_builtin = true};
+static const color_scheme_t SOLARIZED_SCHEME = {.name = "solarized",
+                                                .description = "Solarized theme - precision colors",
+                                                .log_colors_dark =
+                                                    {
+                                                        {203, 75, 22},   /* DEV: Orange */
+                                                        {42, 161, 152},  /* DEBUG: Cyan */
+                                                        {133, 153, 0},   /* INFO: Green */
+                                                        {181, 137, 0},   /* WARN: Yellow */
+                                                        {220, 50, 47},   /* ERROR: Red */
+                                                        {108, 113, 196}, /* FATAL: Violet */
+                                                        {101, 123, 142}, /* GREY: Base0 */
+                                                        {255, 255, 255}  /* RESET */
+                                                    },
+                                                .has_light_variant = true,
+                                                .log_colors_light =
+                                                    {
+                                                        {161, 105, 70}, /* DEV: Brown/Orange */
+                                                        {20, 110, 101}, /* DEBUG: Darker cyan */
+                                                        {89, 100, 0},   /* INFO: Darker green */
+                                                        {101, 76, 0},   /* WARN: Darker yellow */
+                                                        {153, 0, 0},    /* ERROR: Darker red */
+                                                        {68, 68, 153},  /* FATAL: Darker violet */
+                                                        {42, 61, 76},   /* GREY */
+                                                        {0, 0, 0}       /* RESET */
+                                                    },
+                                                .is_builtin = true};
 
 /**
  * @brief Dracula color scheme
@@ -172,55 +152,35 @@ static const color_scheme_t DRACULA_SCHEME = {.name = "dracula",
                                               .is_builtin = true};
 
 /**
- * @brief Gruvbox dark color scheme
- * Retro warm colors with high contrast (dark background)
+ * @brief Gruvbox color scheme
+ * Retro warm colors with high contrast (auto-adapts to terminal background)
  */
-static const color_scheme_t GRUVBOX_DARK_SCHEME = {.name = "gruvbox-dark",
-                                                   .description = "Gruvbox dark theme - retro warm colors",
-                                                   .log_colors_dark =
-                                                       {
-                                                           {254, 128, 25},  /* DEV: bright_orange */
-                                                           {142, 192, 124}, /* DEBUG: bright_green */
-                                                           {142, 192, 124}, /* INFO: bright_green */
-                                                           {250, 189, 47},  /* WARN: bright_yellow */
-                                                           {251, 73, 52},   /* ERROR: bright_red */
-                                                           {211, 134, 155}, /* FATAL: bright_purple */
-                                                           {168, 153, 132}, /* GREY: gray */
-                                                           {255, 255, 255}  /* RESET */
-                                                       },
-                                                   .has_light_variant = true,
-                                                   .log_colors_light =
-                                                       {
-                                                           {175, 58, 3},   /* DEV: faded_orange */
-                                                           {121, 116, 14}, /* DEBUG: faded_green */
-                                                           {121, 116, 14}, /* INFO: faded_green */
-                                                           {181, 118, 20}, /* WARN: faded_yellow */
-                                                           {157, 0, 6},    /* ERROR: faded_red */
-                                                           {108, 52, 107}, /* FATAL: faded_purple */
-                                                           {105, 104, 98}, /* GREY */
-                                                           {0, 0, 0}       /* RESET */
-                                                       },
-                                                   .is_builtin = true};
-
-/**
- * @brief Gruvbox light color scheme
- * Retro warm colors with high contrast (light background)
- */
-static const color_scheme_t GRUVBOX_LIGHT_SCHEME = {.name = "gruvbox-light",
-                                                    .description = "Gruvbox light theme - retro warm colors",
-                                                    .log_colors_dark =
-                                                        {
-                                                            {175, 58, 3},   /* DEV: faded_orange */
-                                                            {121, 116, 14}, /* DEBUG: faded_green */
-                                                            {121, 116, 14}, /* INFO: faded_green */
-                                                            {181, 118, 20}, /* WARN: faded_yellow */
-                                                            {157, 0, 6},    /* ERROR: faded_red */
-                                                            {108, 52, 107}, /* FATAL: faded_purple */
-                                                            {105, 104, 98}, /* GREY */
-                                                            {0, 0, 0}       /* RESET */
-                                                        },
-                                                    .has_light_variant = false,
-                                                    .is_builtin = true};
+static const color_scheme_t GRUVBOX_SCHEME = {.name = "gruvbox",
+                                              .description = "Gruvbox theme - retro warm colors",
+                                              .log_colors_dark =
+                                                  {
+                                                      {254, 128, 25},  /* DEV: bright_orange */
+                                                      {142, 192, 124}, /* DEBUG: bright_green */
+                                                      {142, 192, 124}, /* INFO: bright_green */
+                                                      {250, 189, 47},  /* WARN: bright_yellow */
+                                                      {251, 73, 52},   /* ERROR: bright_red */
+                                                      {211, 134, 155}, /* FATAL: bright_purple */
+                                                      {168, 153, 132}, /* GREY: gray */
+                                                      {255, 255, 255}  /* RESET */
+                                                  },
+                                              .has_light_variant = true,
+                                              .log_colors_light =
+                                                  {
+                                                      {175, 58, 3},   /* DEV: faded_orange */
+                                                      {121, 116, 14}, /* DEBUG: faded_green */
+                                                      {121, 116, 14}, /* INFO: faded_green */
+                                                      {181, 118, 20}, /* WARN: faded_yellow */
+                                                      {157, 0, 6},    /* ERROR: faded_red */
+                                                      {108, 52, 107}, /* FATAL: faded_purple */
+                                                      {105, 104, 98}, /* GREY */
+                                                      {0, 0, 0}       /* RESET */
+                                                  },
+                                              .is_builtin = true};
 
 /**
  * @brief Monokai color scheme
@@ -243,69 +203,42 @@ static const color_scheme_t MONOKAI_SCHEME = {.name = "monokai",
                                               .is_builtin = true};
 
 /**
- * @brief Base16 Default dark color scheme
- * Precision colors for machines and people (dark background)
+ * @brief Base16 Default color scheme
+ * Precision colors for machines and people (auto-adapts to terminal background)
  */
-static const color_scheme_t BASE16_DEFAULT_DARK_SCHEME = {.name = "base16-default-dark",
-                                                          .description = "Base16 Default dark theme - machine colors",
-                                                          .log_colors_dark =
-                                                              {
-                                                                  {220, 150, 86},  /* DEV: orange (0x09) */
-                                                                  {134, 193, 185}, /* DEBUG: cyan (0x0C) */
-                                                                  {161, 181, 108}, /* INFO: green (0x0B) */
-                                                                  {247, 202, 136}, /* WARN: yellow (0x0A) */
-                                                                  {171, 70, 66},   /* ERROR: red (0x08) */
-                                                                  {186, 139, 175}, /* FATAL: magenta (0x0E) */
-                                                                  {88, 88, 88},    /* GREY: base03 */
-                                                                  {255, 255, 255}  /* RESET */
-                                                              },
-                                                          .has_light_variant = true,
-                                                          .log_colors_light =
-                                                              {
-                                                                  {161, 105, 70},  /* DEV: brown (0x0F) */
-                                                                  {88, 88, 88},    /* DEBUG: darker gray */
-                                                                  {88, 88, 88},    /* INFO: darker gray */
-                                                                  {161, 105, 70},  /* WARN: brown (0x0F) */
-                                                                  {171, 70, 66},   /* ERROR: red (0x08) */
-                                                                  {88, 88, 88},    /* FATAL: darker gray */
-                                                                  {184, 184, 184}, /* GREY: lighter gray */
-                                                                  {0, 0, 0}        /* RESET */
-                                                              },
-                                                          .is_builtin = true};
-
-/**
- * @brief Base16 Default light color scheme
- * Precision colors for machines and people (light background)
- */
-static const color_scheme_t BASE16_DEFAULT_LIGHT_SCHEME = {.name = "base16-default-light",
-                                                           .description = "Base16 Default light theme - machine colors",
-                                                           .log_colors_dark =
-                                                               {
-                                                                   {161, 105, 70},  /* DEV: brown (0x0F) */
-                                                                   {88, 88, 88},    /* DEBUG: darker gray */
-                                                                   {88, 88, 88},    /* INFO: darker gray */
-                                                                   {161, 105, 70},  /* WARN: brown (0x0F) */
-                                                                   {171, 70, 66},   /* ERROR: red (0x08) */
-                                                                   {88, 88, 88},    /* FATAL: darker gray */
-                                                                   {184, 184, 184}, /* GREY: lighter gray */
-                                                                   {0, 0, 0}        /* RESET */
-                                                               },
-                                                           .has_light_variant = false,
-                                                           .is_builtin = true};
+static const color_scheme_t BASE16_DEFAULT_SCHEME = {.name = "base16-default",
+                                                     .description = "Base16 Default theme - machine colors",
+                                                     .log_colors_dark =
+                                                         {
+                                                             {220, 150, 86},  /* DEV: orange (0x09) */
+                                                             {134, 193, 185}, /* DEBUG: cyan (0x0C) */
+                                                             {161, 181, 108}, /* INFO: green (0x0B) */
+                                                             {247, 202, 136}, /* WARN: yellow (0x0A) */
+                                                             {171, 70, 66},   /* ERROR: red (0x08) */
+                                                             {186, 139, 175}, /* FATAL: magenta (0x0E) */
+                                                             {88, 88, 88},    /* GREY: base03 */
+                                                             {255, 255, 255}  /* RESET */
+                                                         },
+                                                     .has_light_variant = true,
+                                                     .log_colors_light =
+                                                         {
+                                                             {161, 105, 70},  /* DEV: brown (0x0F) */
+                                                             {88, 88, 88},    /* DEBUG: darker gray */
+                                                             {88, 88, 88},    /* INFO: darker gray */
+                                                             {161, 105, 70},  /* WARN: brown (0x0F) */
+                                                             {171, 70, 66},   /* ERROR: red (0x08) */
+                                                             {88, 88, 88},    /* FATAL: darker gray */
+                                                             {184, 184, 184}, /* GREY: lighter gray */
+                                                             {0, 0, 0}        /* RESET */
+                                                         },
+                                                     .is_builtin = true};
 
 /**
  * @brief Array of all built-in color schemes
  */
-static const color_scheme_t *BUILTIN_SCHEMES[] = {&PASTEL_SCHEME,
-                                                  &NORD_SCHEME,
-                                                  &SOLARIZED_DARK_SCHEME,
-                                                  &SOLARIZED_LIGHT_SCHEME,
-                                                  &DRACULA_SCHEME,
-                                                  &GRUVBOX_DARK_SCHEME,
-                                                  &GRUVBOX_LIGHT_SCHEME,
-                                                  &MONOKAI_SCHEME,
-                                                  &BASE16_DEFAULT_DARK_SCHEME,
-                                                  &BASE16_DEFAULT_LIGHT_SCHEME};
+static const color_scheme_t *BUILTIN_SCHEMES[] = {&PASTEL_SCHEME,        &NORD_SCHEME,    &SOLARIZED_SCHEME,
+                                                  &DRACULA_SCHEME,       &GRUVBOX_SCHEME, &MONOKAI_SCHEME,
+                                                  &BASE16_DEFAULT_SCHEME};
 
 #define NUM_BUILTIN_SCHEMES (sizeof(BUILTIN_SCHEMES) / sizeof(BUILTIN_SCHEMES[0]))
 

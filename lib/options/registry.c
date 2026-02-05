@@ -501,9 +501,8 @@ static const registry_entry_t g_terminal_entries[] = {
      offsetof(options_t, color_scheme_name),
      OPT_COLOR_SCHEME_NAME_DEFAULT,
      sizeof(((options_t *)0)->color_scheme_name),
-     "Color scheme for logging output. Built-in schemes: pastel (default), nord, solarized-dark, solarized-light, "
-     "dracula, gruvbox-dark, gruvbox-light, monokai, base16-default-dark, base16-default-light. "
-     "Schemes with light variants auto-adapt to terminal background.",
+     "Color scheme for logging output. Built-in schemes: pastel (default), nord, solarized, dracula, gruvbox, "
+     "monokai, base16-default. All schemes with light variants auto-adapt to terminal background.",
      "LOGGING",
      "NAME",
      false,
@@ -1027,7 +1026,7 @@ static const registry_entry_t g_security_entries[] = {
      "",
      0,
      "Expected server public key for verification (SSH Ed25519 or GPG key file, gpg:FINGERPRINT, github:USER[.gpg], "
-     "gitlab:USER[.gpg], or HTTPS URL like https://example.com/key.pub or .gpg).",
+     "gitlab:USER[.gpg], or HTTP(S) URLs like https://github.com/zfogg.[keys|gpg]).",
      "SECURITY",
      NULL,
      false,
@@ -1045,7 +1044,7 @@ static const registry_entry_t g_security_entries[] = {
      "",
      0,
      "Allowed client keys (comma-separated: file paths with one key per line, github:USER[.gpg], gitlab:USER[.gpg], "
-     "gpg:KEYID, or HTTPS URLs).",
+     "gpg:KEYID, or HTTP(S) URLs like https://github.com/zfogg.[keys|gpg]).",
      "SECURITY",
      NULL,
      false,
@@ -1080,7 +1079,7 @@ static const registry_entry_t g_security_entries[] = {
      "",
      0,
      "Discovery server public key for verification (SSH Ed25519 or GPG key file, gpg:FINGERPRINT, github:USER, "
-     "gitlab:USER, or HTTPS URL like https://discovery.ascii-chat.com/key.pub).",
+     "gitlab:USER, or HTTP(S) URLs like https://github.com/zfogg.[keys|gpg]).",
      "SECURITY",
      NULL,
      false,
