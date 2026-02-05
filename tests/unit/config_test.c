@@ -888,7 +888,7 @@ Test(config_sections, crypto_encrypt_enabled) {
   config_options_backup_t backup;
   save_config_options(&backup);
 
-  const char *content = "[crypto]\n"
+  const char *content = "[security]\n"
                         "encrypt_enabled = true\n";
 
   char *config_path = create_temp_config(content);
@@ -915,7 +915,7 @@ Test(config_sections, crypto_no_encrypt) {
   writable_opts.encrypt_enabled = 1;
   options_state_set(&writable_opts);
 
-  const char *content = "[crypto]\n"
+  const char *content = "[security]\n"
                         "no_encrypt = true\n";
 
   char *config_path = create_temp_config(content);
@@ -942,7 +942,7 @@ Test(config_sections, crypto_key_auto_enables_encryption) {
   writable_opts.encrypt_enabled = 0;
   options_state_set(&writable_opts);
 
-  const char *content = "[crypto]\n"
+  const char *content = "[security]\n"
                         "key = \"gpg:ABCD1234\"\n";
 
   char *config_path = create_temp_config(content);
@@ -963,7 +963,7 @@ Test(config_sections, crypto_server_key_client_only) {
   config_options_backup_t backup;
   save_config_options(&backup);
 
-  const char *content = "[crypto]\n"
+  const char *content = "[security]\n"
                         "server_key = \"github:testuser\"\n";
 
   char *config_path = create_temp_config(content);
@@ -1076,22 +1076,18 @@ Test(config_sections, full_client_config) {
                         "stretch = true\n"
                         "snapshot_mode = false\n"
                         "snapshot_delay = 1.0\n"
+                        "palette = \"digital\"\n"
                         "\n"
                         "[logging]\n"
                         "quiet = false\n"
+                        "log_file = \"/tmp/ascii-chat-test.log\"\n"
                         "\n"
                         "[audio]\n"
-                        "enabled = true\n"
+                        "audio = true\n"
                         "microphone_index = 0\n"
                         "\n"
-                        "[palette]\n"
-                        "type = \"digital\"\n"
-                        "\n"
-                        "[crypto]\n"
-                        "encrypt_enabled = true\n"
-                        "\n"
-                        "[logging]\n"
-                        "log_file = \"/tmp/ascii-chat-test.log\"\n";
+                        "[security]\n"
+                        "encrypt = true\n";
 
   char *config_path = create_temp_config(content);
   cr_assert_not_null(config_path, "Failed to create temp config file");
