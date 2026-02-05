@@ -1075,7 +1075,7 @@ static const registry_entry_t g_security_entries[] = {
     // NETWORK GROUP (general network options, various modes)
     {"port",
      'p',
-     OPTION_TYPE_INT,
+     OPTION_TYPE_CALLBACK,
      offsetof(options_t, port),
      &default_port_value,
      sizeof(int),
@@ -1085,7 +1085,7 @@ static const registry_entry_t g_security_entries[] = {
      false,
      "ASCII_CHAT_PORT",
      NULL,
-     NULL,
+     parse_port_option,
      false,
      false,
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY,
