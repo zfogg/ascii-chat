@@ -23,6 +23,7 @@
 #include <criterion/criterion.h>
 #include <criterion/parameterized.h>
 #include <ascii-chat/util/url.h>
+#include <ascii-chat/util/pcre2.h>
 #include <string.h>
 
 /* ============================================================================
@@ -37,6 +38,10 @@ typedef struct {
 /* ============================================================================
  * Test Helpers
  * ============================================================================ */
+
+void cleanup() {
+  asciichat_pcre2_cleanup_all();
+}
 
 /**
  * Verify that a URL is validated correctly
@@ -89,7 +94,7 @@ ParameterizedTestParameters(url_validator, bynens_valid) {
   return cr_make_param_array(url_test_case_t, bynens_valid_urls, sizeof(bynens_valid_urls) / sizeof(url_test_case_t));
 }
 
-ParameterizedTest(url_test_case_t *test, url_validator, bynens_valid) {
+ParameterizedTest(url_test_case_t *test, url_validator, bynens_valid, .fini = cleanup) {
   assert_url_valid(test->url, test->note);
 }
 
@@ -130,7 +135,7 @@ ParameterizedTestParameters(url_validator, bynens_invalid) {
                              sizeof(bynens_invalid_urls) / sizeof(url_test_case_t));
 }
 
-ParameterizedTest(url_test_case_t *test, url_validator, bynens_invalid) {
+ParameterizedTest(url_test_case_t *test, url_validator, bynens_invalid, .fini = cleanup) {
   assert_url_invalid(test->url, test->note);
 }
 
@@ -208,7 +213,7 @@ ParameterizedTestParameters(url_validator, domains) {
   return cr_make_param_array(url_test_case_t, domain_urls, sizeof(domain_urls) / sizeof(url_test_case_t));
 }
 
-ParameterizedTest(url_test_case_t *test, url_validator, domains) {
+ParameterizedTest(url_test_case_t *test, url_validator, domains, .fini = cleanup) {
   assert_url_valid(test->url, test->note);
 }
 
@@ -281,7 +286,7 @@ ParameterizedTestParameters(url_validator, fragments) {
   return cr_make_param_array(url_test_case_t, fragment_urls, sizeof(fragment_urls) / sizeof(url_test_case_t));
 }
 
-ParameterizedTest(url_test_case_t *test, url_validator, fragments) {
+ParameterizedTest(url_test_case_t *test, url_validator, fragments, .fini = cleanup) {
   assert_url_valid(test->url, test->note);
 }
 
@@ -327,7 +332,7 @@ ParameterizedTestParameters(url_validator, paths) {
   return cr_make_param_array(url_test_case_t, path_urls, sizeof(path_urls) / sizeof(url_test_case_t));
 }
 
-ParameterizedTest(url_test_case_t *test, url_validator, paths) {
+ParameterizedTest(url_test_case_t *test, url_validator, paths, .fini = cleanup) {
   assert_url_valid(test->url, test->note);
 }
 
@@ -429,7 +434,7 @@ ParameterizedTestParameters(url_validator, ipv6) {
   return cr_make_param_array(url_test_case_t, ipv6_urls, sizeof(ipv6_urls) / sizeof(url_test_case_t));
 }
 
-ParameterizedTest(url_test_case_t *test, url_validator, ipv6) {
+ParameterizedTest(url_test_case_t *test, url_validator, ipv6, .fini = cleanup) {
   assert_url_valid(test->url, test->note);
 }
 
@@ -452,7 +457,7 @@ ParameterizedTestParameters(url_validator, ipv6_invalid) {
   return cr_make_param_array(url_test_case_t, ipv6_invalid_urls, sizeof(ipv6_invalid_urls) / sizeof(url_test_case_t));
 }
 
-ParameterizedTest(url_test_case_t *test, url_validator, ipv6_invalid) {
+ParameterizedTest(url_test_case_t *test, url_validator, ipv6_invalid, .fini = cleanup) {
   assert_url_invalid(test->url, test->note);
 }
 
@@ -477,7 +482,7 @@ ParameterizedTestParameters(url_validator, ports_valid) {
   return cr_make_param_array(url_test_case_t, port_urls, sizeof(port_urls) / sizeof(url_test_case_t));
 }
 
-ParameterizedTest(url_test_case_t *test, url_validator, ports_valid) {
+ParameterizedTest(url_test_case_t *test, url_validator, ports_valid, .fini = cleanup) {
   assert_url_valid(test->url, test->note);
 }
 
@@ -538,7 +543,7 @@ ParameterizedTestParameters(url_validator, schemes_valid) {
   return cr_make_param_array(url_test_case_t, scheme_valid_urls, sizeof(scheme_valid_urls) / sizeof(url_test_case_t));
 }
 
-ParameterizedTest(url_test_case_t *test, url_validator, schemes_valid) {
+ParameterizedTest(url_test_case_t *test, url_validator, schemes_valid, .fini = cleanup) {
   assert_url_valid(test->url, test->note);
 }
 
@@ -575,7 +580,7 @@ ParameterizedTestParameters(url_validator, schemes_invalid) {
                              sizeof(scheme_invalid_urls) / sizeof(url_test_case_t));
 }
 
-ParameterizedTest(url_test_case_t *test, url_validator, schemes_invalid) {
+ParameterizedTest(url_test_case_t *test, url_validator, schemes_invalid, .fini = cleanup) {
   assert_url_invalid(test->url, test->note);
 }
 
@@ -623,7 +628,7 @@ ParameterizedTestParameters(url_validator, malformed) {
   return cr_make_param_array(url_test_case_t, malformed_urls, sizeof(malformed_urls) / sizeof(url_test_case_t));
 }
 
-ParameterizedTest(url_test_case_t *test, url_validator, malformed) {
+ParameterizedTest(url_test_case_t *test, url_validator, malformed, .fini = cleanup) {
   assert_url_invalid(test->url, test->note);
 }
 
@@ -652,7 +657,7 @@ ParameterizedTestParameters(url_validator, schemeless_valid) {
                              sizeof(schemeless_valid_urls) / sizeof(url_test_case_t));
 }
 
-ParameterizedTest(url_test_case_t *test, url_validator, schemeless_valid) {
+ParameterizedTest(url_test_case_t *test, url_validator, schemeless_valid, .fini = cleanup) {
   assert_url_valid(test->url, test->note);
 }
 
@@ -670,7 +675,7 @@ ParameterizedTestParameters(url_validator, schemeless_invalid) {
                              sizeof(schemeless_invalid_urls) / sizeof(url_test_case_t));
 }
 
-ParameterizedTest(url_test_case_t *test, url_validator, schemeless_invalid) {
+ParameterizedTest(url_test_case_t *test, url_validator, schemeless_invalid, .fini = cleanup) {
   assert_url_invalid(test->url, test->note);
 }
 
@@ -700,7 +705,7 @@ ParameterizedTestParameters(url_validator, ipv4_invalid) {
   return cr_make_param_array(url_test_case_t, ipv4_invalid_urls, sizeof(ipv4_invalid_urls) / sizeof(url_test_case_t));
 }
 
-ParameterizedTest(url_test_case_t *test, url_validator, ipv4_invalid) {
+ParameterizedTest(url_test_case_t *test, url_validator, ipv4_invalid, .fini = cleanup) {
   assert_url_invalid(test->url, test->note);
 }
 
@@ -731,7 +736,7 @@ ParameterizedTestParameters(url_validator, whitespace) {
   return cr_make_param_array(url_test_case_t, whitespace_urls, sizeof(whitespace_urls) / sizeof(url_test_case_t));
 }
 
-ParameterizedTest(url_test_case_t *test, url_validator, whitespace) {
+ParameterizedTest(url_test_case_t *test, url_validator, whitespace, .fini = cleanup) {
   assert_url_invalid(test->url, test->note);
 }
 
@@ -758,7 +763,7 @@ ParameterizedTestParameters(url_validator, invalid_characters) {
   return cr_make_param_array(url_test_case_t, invalid_char_urls, sizeof(invalid_char_urls) / sizeof(url_test_case_t));
 }
 
-ParameterizedTest(url_test_case_t *test, url_validator, invalid_characters) {
+ParameterizedTest(url_test_case_t *test, url_validator, invalid_characters, .fini = cleanup) {
   assert_url_invalid(test->url, test->note);
 }
 
@@ -800,7 +805,7 @@ ParameterizedTestParameters(url_validator, integration) {
   return cr_make_param_array(url_test_case_t, integration_urls, sizeof(integration_urls) / sizeof(url_test_case_t));
 }
 
-ParameterizedTest(url_test_case_t *test, url_validator, integration) {
+ParameterizedTest(url_test_case_t *test, url_validator, integration, .fini = cleanup) {
   assert_url_valid(test->url, test->note);
 }
 
@@ -833,6 +838,6 @@ ParameterizedTestParameters(url_validator, edge_cases) {
   return cr_make_param_array(url_test_case_t, edge_case_urls, sizeof(edge_case_urls) / sizeof(url_test_case_t));
 }
 
-ParameterizedTest(url_test_case_t *test, url_validator, edge_cases) {
+ParameterizedTest(url_test_case_t *test, url_validator, edge_cases, .fini = cleanup) {
   assert_url_valid(test->url, test->note);
 }

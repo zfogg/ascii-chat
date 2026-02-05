@@ -179,10 +179,21 @@ void asciichat_pcre2_singleton_free(pcre2_singleton_t *singleton) {
  */
 void asciichat_pcre2_cleanup_all(void) {
   if (!atomic_load(&g_registry_initialized)) {
-    return; /* No singletons were ever created */
+    return; /* No singletons were ever created or already cleaned up */
+  }
+
+  /* Check if already cleaned up */
+  if (g_singleton_registry == NULL) {
+    return;
   }
 
   pcre2_singleton_t *current = g_singleton_registry;
+
+  /* Clear registry first to prevent re-entry */
+  g_singleton_registry = NULL;
+  atomic_store(&g_registry_initialized, false);
+
+  /* Now free all singletons */
   while (current) {
     pcre2_singleton_t *next = current->next;
 
@@ -190,11 +201,13 @@ void asciichat_pcre2_cleanup_all(void) {
     pcre2_code *code = atomic_load(&current->code);
     if (code) {
       pcre2_code_free(code);
+      atomic_store(&current->code, NULL);
     }
 
     /* Free JIT stack */
     if (current->jit_stack) {
       pcre2_jit_stack_free(current->jit_stack);
+      current->jit_stack = NULL;
     }
 
     /* Free singleton structure */
@@ -202,9 +215,6 @@ void asciichat_pcre2_cleanup_all(void) {
 
     current = next;
   }
-
-  g_singleton_registry = NULL;
-  atomic_store(&g_registry_initialized, false);
 }
 
 /**
