@@ -4,61 +4,35 @@
  * @ingroup webrtc
  */
 
+#define PCRE2_CODE_UNIT_WIDTH 8
 #include <ascii-chat/network/webrtc/stun.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
+#include <ascii-chat/util/pcre2.h>
 #include <string.h>
 #include <ctype.h>
-#define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
-#include <pthread.h>
 
 /**
  * @brief PCRE2 regex validator for STUN server list parsing
  *
- * Patterns compiled once and reused with JIT compilation for 5-10x performance.
- * Thread-safe singleton initialized via pthread_once.
+ * Uses centralized PCRE2 singleton for thread-safe compilation
+ * with JIT compilation for 5-10x performance improvement.
  */
-typedef struct {
-  pcre2_code *stun_entry_regex; ///< Pattern: match individual STUN server entries
-  pcre2_jit_stack *jit_stack;   ///< JIT compilation stack
-  bool initialized;             ///< Initialization flag
-} stun_validator_t;
 
-static stun_validator_t g_stun_validator = {0};
-static pthread_once_t g_stun_once = PTHREAD_ONCE_INIT;
+static const char *STUN_ENTRY_PATTERN = "\\s*([^\\s,][^,]*?[^\\s,]|[^\\s,])\\s*";
+
+static pcre2_singleton_t *g_stun_entry_regex = NULL;
 
 /**
- * @brief Initialize STUN PCRE2 regex patterns (pthread_once callback)
+ * Get compiled STUN entry regex (lazy initialization)
+ * Returns NULL if compilation failed
  */
-static void stun_regex_init(void) {
-  int errornumber;
-  PCRE2_SIZE erroroffset;
-
-  // Pattern: Match individual STUN server entries with whitespace trimming
-  // \s*([^\s,][^,]*?[^\s,]|[^\s,])\s*
-  // Matches: optional leading whitespace, then:
-  //  - Either: non-ws/non-comma + anything except comma + non-ws/non-comma (entries with spaces)
-  //  - Or: single non-ws/non-comma char (short entries)
-  // Then: optional trailing whitespace
-  const char *stun_pattern = "\\s*([^\\s,][^,]*?[^\\s,]|[^\\s,])\\s*";
-
-  g_stun_validator.stun_entry_regex = pcre2_compile((PCRE2_SPTR8)stun_pattern, PCRE2_ZERO_TERMINATED, PCRE2_MULTILINE,
-                                                    &errornumber, &erroroffset, NULL);
-
-  if (!g_stun_validator.stun_entry_regex) {
-    PCRE2_UCHAR8 error_msg[120];
-    pcre2_get_error_message(errornumber, error_msg, sizeof(error_msg));
-    log_warn("stun_servers_parse: Failed to compile STUN pattern: %s at offset %zu", error_msg, erroroffset);
-    return;
+static pcre2_code *stun_entry_regex_get(void) {
+  if (g_stun_entry_regex == NULL) {
+    g_stun_entry_regex = pcre2_singleton_compile(STUN_ENTRY_PATTERN, PCRE2_MULTILINE);
   }
-
-  // Attempt JIT compilation (non-fatal if fails)
-  if (pcre2_jit_compile(g_stun_validator.stun_entry_regex, PCRE2_JIT_COMPLETE) > 0) {
-    g_stun_validator.jit_stack = pcre2_jit_stack_create(32 * 1024, 512 * 1024, NULL);
-  }
-
-  g_stun_validator.initialized = true;
+  return pcre2_singleton_get_code(g_stun_entry_regex);
 }
 
 /**
@@ -90,11 +64,11 @@ int stun_servers_parse(const char *csv_servers, const char *default_csv, stun_se
     return 0;
   }
 
-  // Initialize regex singleton (thread-safe)
-  pthread_once(&g_stun_once, stun_regex_init);
+  // Get compiled regex (lazy initialization)
+  pcre2_code *regex = stun_entry_regex_get();
 
   // If regex not available, fall back to manual parsing
-  if (!g_stun_validator.initialized || !g_stun_validator.stun_entry_regex) {
+  if (!regex) {
     log_warn("stun_servers_parse: PCRE2 regex not available, falling back to manual parsing");
     // Fallback: manual character-by-character parsing (original implementation)
     int count = 0;
@@ -140,7 +114,7 @@ int stun_servers_parse(const char *csv_servers, const char *default_csv, stun_se
 
   // Parse using PCRE2 regex: match each trimmed entry
   int count = 0;
-  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(g_stun_validator.stun_entry_regex, NULL);
+  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
   if (!match_data) {
     log_warn("stun_servers_parse: Failed to allocate PCRE2 match data");
     return -1;
@@ -150,8 +124,7 @@ int stun_servers_parse(const char *csv_servers, const char *default_csv, stun_se
   int rc;
 
   while (count < max_count) {
-    rc = pcre2_match(g_stun_validator.stun_entry_regex, (PCRE2_SPTR8)servers_to_parse, strlen(servers_to_parse), offset,
-                     0, match_data, NULL);
+    rc = pcre2_jit_match(regex, (PCRE2_SPTR8)servers_to_parse, strlen(servers_to_parse), offset, 0, match_data, NULL);
 
     if (rc < 0) {
       // No more matches (PCRE2_ERROR_NOMATCH or other error)

@@ -4,17 +4,17 @@
  * @ingroup crypto
  *
  * Implements regex-based parsing for SSH formats using PCRE2 with JIT compilation.
- * Global singleton with thread-safe pthread_once initialization.
+ * Uses centralized PCRE2 singleton module for thread-safe lazy initialization.
  */
 
 #include "ascii-chat/asciichat_errno.h"
 #include <ascii-chat/crypto/regex.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/util/pcre2.h>
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
 #include <string.h>
 #include <stdlib.h>
-#include <pthread.h>
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * PCRE2 REGEX PATTERNS
@@ -76,109 +76,57 @@ static const char *OPENSSH_PEM_REGEX_PATTERN =
 static const char *GPG_KEYGRIP_REGEX_PATTERN = "^grp:(?:[^:]*:){8}(?<keygrip>[A-Fa-f0-9]{40}):"; // GPG keygrip format
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * PCRE2 REGEX VALIDATOR STATE
+ * PCRE2 REGEX SINGLETONS
  *
- * Global singleton with lazy initialization to avoid thread safety issues.
+ * Individual lazy-initialized singletons for each regex pattern.
  * Compiled regex is read-only after initialization, safe for concurrent reads.
  * ═══════════════════════════════════════════════════════════════════════════ */
 
-typedef struct {
-  pcre2_code *known_hosts_regex;    /* Compiled regex for known_hosts format */
-  pcre2_code *ssh_public_key_regex; /* Compiled regex for SSH public key format */
-  pcre2_code *openssh_pem_regex;    /* Compiled regex for OpenSSH PEM format */
-  pcre2_code *gpg_keygrip_regex;    /* Compiled regex for GPG keygrip extraction */
-  pcre2_jit_stack *jit_stack;       /* JIT stack for performance */
-  bool initialized;                 /* Whether validator is initialized */
-} crypto_regex_validator_t;
-
-static crypto_regex_validator_t g_validator = {0};
-static pthread_once_t g_validator_once = PTHREAD_ONCE_INIT;
+static pcre2_singleton_t *g_known_hosts_regex = NULL;
+static pcre2_singleton_t *g_ssh_public_key_regex = NULL;
+static pcre2_singleton_t *g_openssh_pem_regex = NULL;
+static pcre2_singleton_t *g_gpg_keygrip_regex = NULL;
 
 /**
- * Initialize global crypto regex validator with PCRE2 compiled patterns
- * Called once per process via pthread_once
+ * Get compiled known_hosts regex (lazy initialization)
  */
-static void crypto_regex_init(void) {
-  int errornumber;
-  PCRE2_SIZE erroroffset;
-
-  /* ─── Compile known_hosts regex ─── */
-  g_validator.known_hosts_regex =
-      pcre2_compile((PCRE2_SPTR)KNOWN_HOSTS_REGEX_PATTERN, PCRE2_ZERO_TERMINATED,
-                    PCRE2_MULTILINE | PCRE2_UCP | PCRE2_UTF, &errornumber, &erroroffset, NULL);
-
-  if (!g_validator.known_hosts_regex) {
-    PCRE2_UCHAR error_buffer[256];
-    pcre2_get_error_message(errornumber, error_buffer, sizeof(error_buffer));
-    log_fatal("Failed to compile known_hosts regex at offset %zu: %s", erroroffset, (const char *)error_buffer);
-    return;
+static pcre2_code *crypto_regex_get_known_hosts(void) {
+  if (g_known_hosts_regex == NULL) {
+    g_known_hosts_regex = pcre2_singleton_compile(KNOWN_HOSTS_REGEX_PATTERN, PCRE2_MULTILINE | PCRE2_UCP | PCRE2_UTF);
   }
-
-  /* ─── Compile SSH public key regex ─── */
-  g_validator.ssh_public_key_regex =
-      pcre2_compile((PCRE2_SPTR)SSH_PUBLIC_KEY_REGEX_PATTERN, PCRE2_ZERO_TERMINATED,
-                    PCRE2_CASELESS | PCRE2_UCP | PCRE2_UTF, &errornumber, &erroroffset, NULL);
-
-  if (!g_validator.ssh_public_key_regex) {
-    PCRE2_UCHAR error_buffer[256];
-    pcre2_get_error_message(errornumber, error_buffer, sizeof(error_buffer));
-    log_fatal("Failed to compile SSH public key regex at offset %zu: %s", erroroffset, (const char *)error_buffer);
-    pcre2_code_free(g_validator.known_hosts_regex);
-    return;
-  }
-
-  /* ─── Compile OpenSSH PEM regex ─── */
-  g_validator.openssh_pem_regex =
-      pcre2_compile((PCRE2_SPTR)OPENSSH_PEM_REGEX_PATTERN, PCRE2_ZERO_TERMINATED,
-                    PCRE2_MULTILINE | PCRE2_DOTALL | PCRE2_UCP | PCRE2_UTF, &errornumber, &erroroffset, NULL);
-
-  if (!g_validator.openssh_pem_regex) {
-    PCRE2_UCHAR error_buffer[256];
-    pcre2_get_error_message(errornumber, error_buffer, sizeof(error_buffer));
-    log_fatal("Failed to compile OpenSSH PEM regex at offset %zu: %s", erroroffset, (const char *)error_buffer);
-    pcre2_code_free(g_validator.known_hosts_regex);
-    pcre2_code_free(g_validator.ssh_public_key_regex);
-    return;
-  }
-
-  /* ─── Compile GPG keygrip regex ─── */
-  g_validator.gpg_keygrip_regex = pcre2_compile((PCRE2_SPTR)GPG_KEYGRIP_REGEX_PATTERN, PCRE2_ZERO_TERMINATED,
-                                                PCRE2_UCP | PCRE2_UTF, &errornumber, &erroroffset, NULL);
-
-  if (!g_validator.gpg_keygrip_regex) {
-    PCRE2_UCHAR error_buffer[256];
-    pcre2_get_error_message(errornumber, error_buffer, sizeof(error_buffer));
-    log_warn("Failed to compile GPG keygrip regex at offset %zu: %s", erroroffset, (const char *)error_buffer);
-    /* Non-fatal: GPG keygrip extraction can fall back to manual parsing */
-  }
-
-  /* ─── Compile JIT for all patterns ─── */
-  for (int i = 0; i < 4; i++) {
-    pcre2_code *regex = (i == 0)   ? g_validator.known_hosts_regex
-                        : (i == 1) ? g_validator.ssh_public_key_regex
-                        : (i == 2) ? g_validator.openssh_pem_regex
-                                   : g_validator.gpg_keygrip_regex;
-    if (!regex)
-      continue; /* Skip if compilation failed */
-    int jit_rc = pcre2_jit_compile(regex, PCRE2_JIT_COMPLETE);
-    if (jit_rc < 0) {
-      log_warn("PCRE2 JIT compilation failed for pattern %d (code %d), using interpreted mode", i, jit_rc);
-      /* Fall through - interpreted mode still works, just slower */
-    }
-  }
-
-  /* ─── Allocate JIT stack ─── */
-  g_validator.jit_stack = pcre2_jit_stack_create(32 * 1024, 512 * 1024, NULL);
-
-  g_validator.initialized = true;
+  return pcre2_singleton_get_code(g_known_hosts_regex);
 }
 
 /**
- * Get initialized validator (lazy initialization via pthread_once)
+ * Get compiled SSH public key regex (lazy initialization)
  */
-static crypto_regex_validator_t *crypto_regex_get(void) {
-  pthread_once(&g_validator_once, crypto_regex_init);
-  return g_validator.initialized ? &g_validator : NULL;
+static pcre2_code *crypto_regex_get_ssh_public_key(void) {
+  if (g_ssh_public_key_regex == NULL) {
+    g_ssh_public_key_regex =
+        pcre2_singleton_compile(SSH_PUBLIC_KEY_REGEX_PATTERN, PCRE2_CASELESS | PCRE2_UCP | PCRE2_UTF);
+  }
+  return pcre2_singleton_get_code(g_ssh_public_key_regex);
+}
+
+/**
+ * Get compiled OpenSSH PEM regex (lazy initialization)
+ */
+static pcre2_code *crypto_regex_get_openssh_pem(void) {
+  if (g_openssh_pem_regex == NULL) {
+    g_openssh_pem_regex =
+        pcre2_singleton_compile(OPENSSH_PEM_REGEX_PATTERN, PCRE2_MULTILINE | PCRE2_DOTALL | PCRE2_UCP | PCRE2_UTF);
+  }
+  return pcre2_singleton_get_code(g_openssh_pem_regex);
+}
+
+/**
+ * Get compiled GPG keygrip regex (lazy initialization)
+ */
+static pcre2_code *crypto_regex_get_gpg_keygrip(void) {
+  if (g_gpg_keygrip_regex == NULL) {
+    g_gpg_keygrip_regex = pcre2_singleton_compile(GPG_KEYGRIP_REGEX_PATTERN, PCRE2_UCP | PCRE2_UTF);
+  }
+  return pcre2_singleton_get_code(g_gpg_keygrip_regex);
 }
 
 /**
@@ -230,28 +178,21 @@ bool crypto_regex_match_known_hosts(const char *line, char **ip_port_out, char *
     return false;
   }
 
-  crypto_regex_validator_t *validator = crypto_regex_get();
-  if (!validator || !validator->known_hosts_regex) {
+  pcre2_code *regex = crypto_regex_get_known_hosts();
+  if (!regex) {
     SET_ERRNO(ERROR_INVALID_STATE, "Invalid validator state");
     return false;
   }
 
-  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(validator->known_hosts_regex, NULL);
+  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
   if (!match_data) {
     return false;
   }
 
-  /* Perform JIT match if JIT compiled, otherwise interpreted match */
-  int rc;
-  if (validator->jit_stack) {
-    rc = pcre2_jit_match(validator->known_hosts_regex, (PCRE2_SPTR)line, strlen(line), 0, /* startoffset */
-                         0,                                                               /* options */
-                         match_data, NULL);                                               /* mcontext */
-  } else {
-    rc = pcre2_match(validator->known_hosts_regex, (PCRE2_SPTR)line, strlen(line), 0, /* startoffset */
-                     0,                                                               /* options */
-                     match_data, NULL);                                               /* mcontext */
-  }
+  /* Perform JIT match (falls back to interpreted if JIT unavailable) */
+  int rc = pcre2_jit_match(regex, (PCRE2_SPTR)line, strlen(line), 0, /* startoffset */
+                           0,                                        /* options */
+                           match_data, NULL);                        /* mcontext */
 
   if (rc < 0) {
     pcre2_match_data_free(match_data);
@@ -259,14 +200,10 @@ bool crypto_regex_match_known_hosts(const char *line, char **ip_port_out, char *
   }
 
   /* Extract named groups */
-  *ip_port_out =
-      crypto_regex_extract_named_group_with_subject(validator->known_hosts_regex, match_data, "ip_port", line);
-  *key_type_out =
-      crypto_regex_extract_named_group_with_subject(validator->known_hosts_regex, match_data, "key_type", line);
-  *hex_key_out =
-      crypto_regex_extract_named_group_with_subject(validator->known_hosts_regex, match_data, "hex_key", line);
-  *comment_out =
-      crypto_regex_extract_named_group_with_subject(validator->known_hosts_regex, match_data, "comment", line);
+  *ip_port_out = crypto_regex_extract_named_group_with_subject(regex, match_data, "ip_port", line);
+  *key_type_out = crypto_regex_extract_named_group_with_subject(regex, match_data, "key_type", line);
+  *hex_key_out = crypto_regex_extract_named_group_with_subject(regex, match_data, "hex_key", line);
+  *comment_out = crypto_regex_extract_named_group_with_subject(regex, match_data, "comment", line);
 
   pcre2_match_data_free(match_data);
 
@@ -288,28 +225,21 @@ bool crypto_regex_match_public_key(const char *line, char **base64_key_out, char
     return false;
   }
 
-  crypto_regex_validator_t *validator = crypto_regex_get();
-  if (!validator || !validator->ssh_public_key_regex) {
+  pcre2_code *regex = crypto_regex_get_ssh_public_key();
+  if (!regex) {
     SET_ERRNO(ERROR_INVALID_STATE, "Invalid validator state");
     return false;
   }
 
-  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(validator->ssh_public_key_regex, NULL);
+  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
   if (!match_data) {
     return false;
   }
 
-  /* Perform JIT match if JIT compiled, otherwise interpreted match */
-  int rc;
-  if (validator->jit_stack) {
-    rc = pcre2_jit_match(validator->ssh_public_key_regex, (PCRE2_SPTR)line, strlen(line), 0, /* startoffset */
-                         0,                                                                  /* options */
-                         match_data, NULL);                                                  /* mcontext */
-  } else {
-    rc = pcre2_match(validator->ssh_public_key_regex, (PCRE2_SPTR)line, strlen(line), 0, /* startoffset */
-                     0,                                                                  /* options */
-                     match_data, NULL);                                                  /* mcontext */
-  }
+  /* Perform JIT match (falls back to interpreted if JIT unavailable) */
+  int rc = pcre2_jit_match(regex, (PCRE2_SPTR)line, strlen(line), 0, /* startoffset */
+                           0,                                        /* options */
+                           match_data, NULL);                        /* mcontext */
 
   if (rc < 0) {
     pcre2_match_data_free(match_data);
@@ -317,10 +247,8 @@ bool crypto_regex_match_public_key(const char *line, char **base64_key_out, char
   }
 
   /* Extract named groups */
-  *base64_key_out =
-      crypto_regex_extract_named_group_with_subject(validator->ssh_public_key_regex, match_data, "base64_key", line);
-  *comment_out =
-      crypto_regex_extract_named_group_with_subject(validator->ssh_public_key_regex, match_data, "comment", line);
+  *base64_key_out = crypto_regex_extract_named_group_with_subject(regex, match_data, "base64_key", line);
+  *comment_out = crypto_regex_extract_named_group_with_subject(regex, match_data, "comment", line);
 
   pcre2_match_data_free(match_data);
 
@@ -340,29 +268,21 @@ bool crypto_regex_extract_pem_base64(const char *file_content, char **base64_dat
     return false;
   }
 
-  crypto_regex_validator_t *validator = crypto_regex_get();
-  if (!validator || !validator->openssh_pem_regex) {
+  pcre2_code *regex = crypto_regex_get_openssh_pem();
+  if (!regex) {
     SET_ERRNO(ERROR_INVALID_STATE, "Invalid validator state");
     return false;
   }
 
-  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(validator->openssh_pem_regex, NULL);
+  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
   if (!match_data) {
     return false;
   }
 
-  /* Perform match */
-  int rc;
-  if (validator->jit_stack) {
-    rc = pcre2_jit_match(validator->openssh_pem_regex, (PCRE2_SPTR)file_content, strlen(file_content),
-                         0,                 /* startoffset */
-                         0,                 /* options */
-                         match_data, NULL); /* mcontext */
-  } else {
-    rc = pcre2_match(validator->openssh_pem_regex, (PCRE2_SPTR)file_content, strlen(file_content), 0, /* startoffset */
-                     0,                                                                               /* options */
-                     match_data, NULL);                                                               /* mcontext */
-  }
+  /* Perform JIT match (falls back to interpreted if JIT unavailable) */
+  int rc = pcre2_jit_match(regex, (PCRE2_SPTR)file_content, strlen(file_content), 0, /* startoffset */
+                           0,                                                        /* options */
+                           match_data, NULL);                                        /* mcontext */
 
   if (rc < 0) {
     pcre2_match_data_free(match_data);
@@ -370,8 +290,7 @@ bool crypto_regex_extract_pem_base64(const char *file_content, char **base64_dat
   }
 
   /* Extract base64 data */
-  *base64_data_out = crypto_regex_extract_named_group_with_subject(validator->openssh_pem_regex, match_data,
-                                                                   "base64_data", file_content);
+  *base64_data_out = crypto_regex_extract_named_group_with_subject(regex, match_data, "base64_data", file_content);
 
   pcre2_match_data_free(match_data);
 
@@ -389,28 +308,21 @@ bool crypto_regex_extract_gpg_keygrip(const char *line, char **keygrip_out) {
     return false;
   }
 
-  crypto_regex_validator_t *validator = crypto_regex_get();
-  if (!validator || !validator->gpg_keygrip_regex) {
+  pcre2_code *regex = crypto_regex_get_gpg_keygrip();
+  if (!regex) {
     /* Regex not available - caller should use fallback manual parsing */
     return false;
   }
 
-  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(validator->gpg_keygrip_regex, NULL);
+  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
   if (!match_data) {
     return false;
   }
 
-  /* Perform JIT match if JIT compiled, otherwise interpreted match */
-  int rc;
-  if (validator->jit_stack) {
-    rc = pcre2_jit_match(validator->gpg_keygrip_regex, (PCRE2_SPTR)line, strlen(line), 0, /* startoffset */
-                         0,                                                               /* options */
-                         match_data, NULL);                                               /* mcontext */
-  } else {
-    rc = pcre2_match(validator->gpg_keygrip_regex, (PCRE2_SPTR)line, strlen(line), 0, /* startoffset */
-                     0,                                                               /* options */
-                     match_data, NULL);                                               /* mcontext */
-  }
+  /* Perform JIT match (falls back to interpreted if JIT unavailable) */
+  int rc = pcre2_jit_match(regex, (PCRE2_SPTR)line, strlen(line), 0, /* startoffset */
+                           0,                                        /* options */
+                           match_data, NULL);                        /* mcontext */
 
   if (rc < 0) {
     pcre2_match_data_free(match_data);
@@ -418,8 +330,7 @@ bool crypto_regex_extract_gpg_keygrip(const char *line, char **keygrip_out) {
   }
 
   /* Extract keygrip from named group */
-  *keygrip_out =
-      crypto_regex_extract_named_group_with_subject(validator->gpg_keygrip_regex, match_data, "keygrip", line);
+  *keygrip_out = crypto_regex_extract_named_group_with_subject(regex, match_data, "keygrip", line);
 
   pcre2_match_data_free(match_data);
 

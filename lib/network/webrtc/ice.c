@@ -12,10 +12,10 @@
 #include <ascii-chat/network/webrtc/webrtc.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/platform/util.h>
+#include <ascii-chat/util/pcre2.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <pthread.h>
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
 
@@ -95,61 +95,37 @@ uint32_t ice_calculate_priority(ice_candidate_type_t type, uint16_t local_prefer
  * @brief PCRE2 regex validator for ICE candidate parsing
  *
  * Validates and extracts ICE candidate fields from standard RFC format.
- * Uses PCRE2 for atomic parsing with single regex match.
+ * Uses centralized PCRE2 singleton for atomic parsing with single regex match.
  */
-typedef struct {
-  pcre2_code *candidate_regex; ///< Pattern: Match ICE candidate line
-  pcre2_jit_stack *jit_stack;  ///< JIT compilation stack
-  bool initialized;            ///< Initialization flag
-} ice_candidate_validator_t;
 
-static ice_candidate_validator_t g_ice_candidate_validator = {0};
-static pthread_once_t g_ice_candidate_once = PTHREAD_ONCE_INIT;
+static const char *ICE_CANDIDATE_PATTERN = "^([^ ]+)\\s+"                            // 1: foundation
+                                           "(\\d+)\\s+"                              // 2: component_id
+                                           "(udp|tcp)\\s+"                           // 3: protocol
+                                           "(\\d+)\\s+"                              // 4: priority
+                                           "([a-fA-F0-9.:]+)\\s+"                    // 5: ip_address (IPv4 or IPv6)
+                                           "(\\d+)\\s+"                              // 6: port
+                                           "typ\\s+"                                 // literal "typ"
+                                           "(host|srflx|prflx|relay)"                // 7: candidate_type
+                                           "(?:\\s+raddr\\s+([a-fA-F0-9.:]+))?"      // 8: optional raddr
+                                           "(?:\\s+rport\\s+(\\d+))?"                // 9: optional rport
+                                           "(?:\\s+tcptype\\s+(active|passive|so))?" // 10: optional tcptype
+                                           "\\s*$";
+
+static pcre2_singleton_t *g_ice_candidate_regex = NULL;
 
 /**
- * @brief Initialize PCRE2 regex for ICE candidate parsing
- *
- * Pattern matches full ICE candidate line atomically:
- * foundation component protocol priority ip port typ type [raddr X rport Y] [tcptype Z]
+ * Get compiled ICE candidate regex (lazy initialization)
+ * Returns NULL if compilation failed
  */
-static void ice_candidate_regex_init(void) {
-  int errornumber;
-  PCRE2_SIZE erroroffset;
-
-  // Pattern: Match ICE candidate with all optional extensions
-  const char *pattern = "^([^ ]+)\\s+"                            // 1: foundation
-                        "(\\d+)\\s+"                              // 2: component_id
-                        "(udp|tcp)\\s+"                           // 3: protocol
-                        "(\\d+)\\s+"                              // 4: priority
-                        "([a-fA-F0-9.:]+)\\s+"                    // 5: ip_address (IPv4 or IPv6)
-                        "(\\d+)\\s+"                              // 6: port
-                        "typ\\s+"                                 // literal "typ"
-                        "(host|srflx|prflx|relay)"                // 7: candidate_type
-                        "(?:\\s+raddr\\s+([a-fA-F0-9.:]+))?"      // 8: optional raddr
-                        "(?:\\s+rport\\s+(\\d+))?"                // 9: optional rport
-                        "(?:\\s+tcptype\\s+(active|passive|so))?" // 10: optional tcptype
-                        "\\s*$";
-
-  g_ice_candidate_validator.candidate_regex =
-      pcre2_compile((PCRE2_SPTR8)pattern, PCRE2_ZERO_TERMINATED, PCRE2_CASELESS, &errornumber, &erroroffset, NULL);
-
-  if (!g_ice_candidate_validator.candidate_regex) {
-    PCRE2_UCHAR8 error_msg[120];
-    pcre2_get_error_message(errornumber, error_msg, sizeof(error_msg));
-    log_warn("ice_candidate_regex_init: Failed to compile pattern: %s at offset %zu", error_msg, erroroffset);
-    return;
+static pcre2_code *ice_candidate_regex_get(void) {
+  if (g_ice_candidate_regex == NULL) {
+    g_ice_candidate_regex = pcre2_singleton_compile(ICE_CANDIDATE_PATTERN, PCRE2_CASELESS);
   }
-
-  // Attempt JIT compilation (non-fatal if fails)
-  if (pcre2_jit_compile(g_ice_candidate_validator.candidate_regex, PCRE2_JIT_COMPLETE) > 0) {
-    g_ice_candidate_validator.jit_stack = pcre2_jit_stack_create(32 * 1024, 512 * 1024, NULL);
-  }
-
-  g_ice_candidate_validator.initialized = true;
+  return pcre2_singleton_get_code(g_ice_candidate_regex);
 }
 
 /**
- * @brief Parse ICE candidate using PCRE2 regex
+ * @brief Parse ICE candidate using PCRE2 regex singleton
  *
  * Atomically validates and extracts all ICE candidate fields.
  * Falls back to manual parsing if PCRE2 unavailable.
@@ -163,21 +139,20 @@ static asciichat_error_t ice_parse_candidate_pcre2(const char *line, ice_candida
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid candidate parameters");
   }
 
-  // Initialize regex singleton
-  pthread_once(&g_ice_candidate_once, ice_candidate_regex_init);
+  // Get compiled regex (lazy initialization)
+  pcre2_code *regex = ice_candidate_regex_get();
 
   // If PCRE2 not available, return error to fall back to manual parser
-  if (!g_ice_candidate_validator.initialized || !g_ice_candidate_validator.candidate_regex) {
+  if (!regex) {
     return ERROR_MEMORY; // Signal to use fallback
   }
 
-  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(g_ice_candidate_validator.candidate_regex, NULL);
+  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
   if (!match_data) {
     return ERROR_MEMORY;
   }
 
-  int rc =
-      pcre2_match(g_ice_candidate_validator.candidate_regex, (PCRE2_SPTR8)line, strlen(line), 0, 0, match_data, NULL);
+  int rc = pcre2_jit_match(regex, (PCRE2_SPTR8)line, strlen(line), 0, 0, match_data, NULL);
 
   if (rc < 7) {
     // Must have at least foundation, component, protocol, priority, ip, port, type (7 groups)

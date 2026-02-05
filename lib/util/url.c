@@ -10,12 +10,12 @@
 
 #include <ascii-chat/util/url.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/util/pcre2.h>
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <pthread.h>
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * PRODUCTION-GRADE URL REGEX (Diego Perini, MIT License)
@@ -57,57 +57,21 @@ static const char *URL_REGEX_PATTERN =
 /* ═══════════════════════════════════════════════════════════════════════════
  * PCRE2 REGEX VALIDATOR STATE
  *
- * Global singleton with lazy initialization to avoid thread safety issues.
+ * Global singleton with lazy initialization via centralized PCRE2 module.
  * Compiled regex is read-only after initialization, safe for concurrent reads.
  * ═══════════════════════════════════════════════════════════════════════════ */
 
-typedef struct {
-  pcre2_code *regex;          /* Compiled regex (read-only after init) */
-  pcre2_jit_stack *jit_stack; /* JIT stack for performance */
-  bool initialized;           /* Whether validator is initialized */
-} url_validator_t;
-
-static url_validator_t g_validator = {0};
-static pthread_once_t g_validator_once = PTHREAD_ONCE_INIT;
+static pcre2_singleton_t *g_url_regex = NULL;
 
 /**
- * Initialize global URL validator with PCRE2 compiled regex
- * Called once per process via pthread_once
+ * Get compiled URL regex (lazy initialization)
+ * Returns NULL if compilation failed
  */
-static void url_validator_init(void) {
-  int errornumber;
-  PCRE2_SIZE erroroffset;
-
-  /* Compile regex with UTF-8 support and case-insensitive matching */
-  g_validator.regex = pcre2_compile((PCRE2_SPTR)URL_REGEX_PATTERN, PCRE2_ZERO_TERMINATED,
-                                    PCRE2_CASELESS | PCRE2_UCP | PCRE2_UTF, &errornumber, &erroroffset, NULL);
-
-  if (!g_validator.regex) {
-    PCRE2_UCHAR error_buffer[256];
-    pcre2_get_error_message(errornumber, error_buffer, sizeof(error_buffer));
-    log_fatal("Failed to compile URL regex at offset %zu: %s", erroroffset, (const char *)error_buffer);
-    return;
+static pcre2_code *url_regex_get(void) {
+  if (g_url_regex == NULL) {
+    g_url_regex = pcre2_singleton_compile(URL_REGEX_PATTERN, PCRE2_CASELESS | PCRE2_UCP | PCRE2_UTF);
   }
-
-  /* Compile JIT for 10-100x performance boost */
-  int jit_rc = pcre2_jit_compile(g_validator.regex, PCRE2_JIT_COMPLETE);
-  if (jit_rc < 0) {
-    log_warn("PCRE2 JIT compilation failed (code %d), using interpreted mode", jit_rc);
-    /* Fall through - interpreted mode still works, just slower */
-  }
-
-  /* Allocate JIT stack (32KB should be sufficient for URL regex) */
-  g_validator.jit_stack = pcre2_jit_stack_create(32 * 1024, 512 * 1024, NULL);
-
-  g_validator.initialized = true;
-}
-
-/**
- * Get initialized validator (lazy initialization via pthread_once)
- */
-static url_validator_t *url_validator_get(void) {
-  pthread_once(&g_validator_once, url_validator_init);
-  return g_validator.initialized ? &g_validator : NULL;
+  return pcre2_singleton_get_code(g_url_regex);
 }
 
 /**
@@ -156,8 +120,8 @@ bool url_is_valid(const char *url) {
     return false;
   }
 
-  url_validator_t *validator = url_validator_get();
-  if (!validator || !validator->regex) {
+  pcre2_code *regex = url_regex_get();
+  if (!regex) {
     return false;
   }
 
@@ -221,22 +185,15 @@ bool url_is_valid(const char *url) {
     url_to_match = url_with_scheme;
   }
 
-  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(validator->regex, NULL);
+  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
   if (!match_data) {
     return false;
   }
 
-  /* Perform JIT match if JIT compiled, otherwise interpreted match */
-  int rc;
-  if (validator->jit_stack) {
-    rc = pcre2_jit_match(validator->regex, (PCRE2_SPTR)url_to_match, strlen(url_to_match), 0, /* startoffset */
-                         0,                                                                   /* options */
-                         match_data, NULL);                                                   /* mcontext */
-  } else {
-    rc = pcre2_match(validator->regex, (PCRE2_SPTR)url_to_match, strlen(url_to_match), 0, /* startoffset */
-                     0,                                                                   /* options */
-                     match_data, NULL);                                                   /* mcontext */
-  }
+  /* Perform JIT match (falls back to interpreted if JIT unavailable) */
+  int rc = pcre2_jit_match(regex, (PCRE2_SPTR)url_to_match, strlen(url_to_match), 0, /* startoffset */
+                           0,                                                        /* options */
+                           match_data, NULL);                                        /* mcontext */
 
   pcre2_match_data_free(match_data);
   return rc >= 0; /* rc >= 0 means successful match */
@@ -254,8 +211,8 @@ asciichat_error_t url_parse(const char *url, url_parts_t *parts_out) {
   /* Clear output structure */
   memset(parts_out, 0, sizeof(*parts_out));
 
-  url_validator_t *validator = url_validator_get();
-  if (!validator || !validator->regex) {
+  pcre2_code *regex = url_regex_get();
+  if (!regex) {
     return SET_ERRNO(ERROR_CONFIG, "URL validator not initialized");
   }
 
@@ -319,22 +276,15 @@ asciichat_error_t url_parse(const char *url, url_parts_t *parts_out) {
     url_to_match = url_with_scheme;
   }
 
-  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(validator->regex, NULL);
+  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
   if (!match_data) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to create match data");
   }
 
-  /* Perform match */
-  int rc;
-  if (validator->jit_stack) {
-    rc = pcre2_jit_match(validator->regex, (PCRE2_SPTR)url_to_match, strlen(url_to_match), 0, /* startoffset */
-                         0,                                                                   /* options */
-                         match_data, NULL);                                                   /* mcontext */
-  } else {
-    rc = pcre2_match(validator->regex, (PCRE2_SPTR)url_to_match, strlen(url_to_match), 0, /* startoffset */
-                     0,                                                                   /* options */
-                     match_data, NULL);                                                   /* mcontext */
-  }
+  /* Perform JIT match (falls back to interpreted if JIT unavailable) */
+  int rc = pcre2_jit_match(regex, (PCRE2_SPTR)url_to_match, strlen(url_to_match), 0, /* startoffset */
+                           0,                                                        /* options */
+                           match_data, NULL);                                        /* mcontext */
 
   if (rc < 0) {
     pcre2_match_data_free(match_data);
@@ -342,15 +292,15 @@ asciichat_error_t url_parse(const char *url, url_parts_t *parts_out) {
   }
 
   /* Extract named groups */
-  parts_out->scheme = url_extract_named_group(validator->regex, match_data, "scheme");
-  parts_out->userinfo = url_extract_named_group(validator->regex, match_data, "userinfo");
-  parts_out->host = url_extract_named_group(validator->regex, match_data, "host");
-  parts_out->ipv6 = url_extract_named_group(validator->regex, match_data, "ipv6");
-  parts_out->path = url_extract_named_group(validator->regex, match_data, "path_query_fragment");
+  parts_out->scheme = url_extract_named_group(regex, match_data, "scheme");
+  parts_out->userinfo = url_extract_named_group(regex, match_data, "userinfo");
+  parts_out->host = url_extract_named_group(regex, match_data, "host");
+  parts_out->ipv6 = url_extract_named_group(regex, match_data, "ipv6");
+  parts_out->path = url_extract_named_group(regex, match_data, "path_query_fragment");
 
   /* Extract port number */
   parts_out->port = 0;
-  char *port_str = url_extract_named_group(validator->regex, match_data, "port");
+  char *port_str = url_extract_named_group(regex, match_data, "port");
   if (port_str) {
     parts_out->port = (int)strtol(port_str, NULL, 10);
     SAFE_FREE(port_str);

@@ -10,10 +10,10 @@
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/platform/network.h>
 #include <ascii-chat/log/logging.h>
+#include <ascii-chat/util/pcre2.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <pthread.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #define PCRE2_CODE_UNIT_WIDTH 8
@@ -31,55 +31,23 @@
  * - Rejects leading zeros (e.g., "192.168.001.1" is invalid)
  * - No other characters allowed
  */
-typedef struct {
-  pcre2_code *ipv4_regex;
-  pcre2_jit_stack *jit_stack;
-  bool initialized;
-} ipv4_validator_t;
 
-static ipv4_validator_t g_ipv4_validator = {0};
-static pthread_once_t g_ipv4_once = PTHREAD_ONCE_INIT;
+// Regex pattern validates IPv4 format:
+// - Each octet: 0-255 without leading zeros
+// - Exactly 4 octets separated by dots
+static const char *IPV4_PATTERN = "^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.){3}"
+                                  "(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])$";
+
+static pcre2_singleton_t *g_ipv4_regex = NULL;
 
 /**
- * Initialize IPv4 regex (called once via pthread_once)
+ * Get compiled IPv4 regex (lazy initialization)
  */
-static void ipv4_validator_init_once(void) {
-  // Regex pattern validates IPv4 format:
-  // - Each octet: 0-255 without leading zeros
-  // - Exactly 4 octets separated by dots
-  const char *pattern = "^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.){3}"
-                        "(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])$";
-
-  int error_code;
-  PCRE2_SIZE error_offset;
-  g_ipv4_validator.ipv4_regex =
-      pcre2_compile((PCRE2_SPTR8)pattern, PCRE2_ZERO_TERMINATED, 0, &error_code, &error_offset, NULL);
-
-  if (!g_ipv4_validator.ipv4_regex) {
-    PCRE2_UCHAR error_buf[256];
-    pcre2_get_error_message(error_code, error_buf, sizeof(error_buf));
-    log_fatal("Failed to compile IPv4 regex at offset %zu: %s", error_offset, (const char *)error_buf);
-    return;
+static pcre2_code *ipv4_regex_get(void) {
+  if (g_ipv4_regex == NULL) {
+    g_ipv4_regex = pcre2_singleton_compile(IPV4_PATTERN, 0);
   }
-
-  // Allocate JIT stack for pattern execution
-  g_ipv4_validator.jit_stack = pcre2_jit_stack_create(32 * 1024, 512 * 1024, NULL);
-  if (!g_ipv4_validator.jit_stack) {
-    pcre2_code_free(g_ipv4_validator.ipv4_regex);
-    g_ipv4_validator.ipv4_regex = NULL;
-    log_fatal("Failed to allocate JIT stack for IPv4 regex");
-    return;
-  }
-
-  // Compile to JIT for 5-10x performance boost
-  int jit_ret = pcre2_jit_compile(g_ipv4_validator.ipv4_regex, PCRE2_JIT_COMPLETE);
-  if (jit_ret < 0) {
-    log_warn("IPv4 regex JIT compilation failed (code %d), falling back to interpreter", jit_ret);
-    // Non-fatal: will use interpreter instead of JIT
-  }
-
-  g_ipv4_validator.initialized = true;
-  log_debug("IPv4 address validator initialized");
+  return pcre2_singleton_get_code(g_ipv4_regex);
 }
 
 // Helper function to validate IPv4 address format
@@ -102,22 +70,22 @@ int is_valid_ipv4(const char *ip) {
     return 0; // Invalid
   }
 
-  // Initialize IPv4 validator (once per process)
-  pthread_once(&g_ipv4_once, ipv4_validator_init_once);
-  if (!g_ipv4_validator.initialized || !g_ipv4_validator.ipv4_regex) {
+  // Get compiled IPv4 regex
+  pcre2_code *regex = ipv4_regex_get();
+  if (!regex) {
     log_error("IPv4 validator not initialized");
     return 0;
   }
 
   // Create match data for regex matching
-  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(g_ipv4_validator.ipv4_regex, NULL);
+  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
   if (!match_data) {
     log_error("Failed to allocate match data for IPv4 regex");
     return 0;
   }
 
   // Validate format using PCRE2 regex
-  int match_result = pcre2_match(g_ipv4_validator.ipv4_regex, (PCRE2_SPTR8)ip, ip_len, 0, 0, match_data, NULL);
+  int match_result = pcre2_match(regex, (PCRE2_SPTR8)ip, ip_len, 0, 0, match_data, NULL);
 
   pcre2_match_data_free(match_data);
 

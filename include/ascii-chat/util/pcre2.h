@@ -9,9 +9,9 @@
  * overhead for unused patterns.
  */
 
-#ifndef ASCII_CHAT_UTIL_PCRE2_H
-#define ASCII_CHAT_UTIL_PCRE2_H
+#pragma once
 
+#define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
 #include <stdbool.h>
 
@@ -69,5 +69,3 @@ pcre2_code *pcre2_singleton_get_code(pcre2_singleton_t *singleton);
  * @return true if regex compiled successfully, false otherwise
  */
 bool pcre2_singleton_is_initialized(pcre2_singleton_t *singleton);
-
-#endif // ASCII_CHAT_UTIL_PCRE2_H

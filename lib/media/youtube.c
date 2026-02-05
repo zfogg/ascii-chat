@@ -17,12 +17,12 @@
 #include <ascii-chat/platform/process.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/util/url.h>
+#include <ascii-chat/util/pcre2.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <time.h>
-#include <pthread.h>
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
 
@@ -43,58 +43,22 @@ static const char *YOUTUBE_VIDEO_ID_PATTERN =
     "^https?://.*?(?:youtube|youtu)\\.?.*?(?:watch\\?v=|be/)([A-Za-z0-9_-]{11})";
 
 /**
- * @brief PCRE2 regex validator state for YouTube video ID extraction
+ * @brief PCRE2 regex singleton for YouTube video ID extraction
  *
- * Global singleton with lazy initialization via pthread_once.
+ * Lazily initialized on first use via centralized PCRE2 singleton module.
  * Compiled regex is read-only after initialization, safe for concurrent reads.
  */
-typedef struct {
-  pcre2_code *regex;          /* Compiled regex (read-only after init) */
-  pcre2_jit_stack *jit_stack; /* JIT stack for performance */
-  bool initialized;           /* Whether validator is initialized */
-} youtube_validator_t;
-
-static youtube_validator_t g_youtube_validator = {0};
-static pthread_once_t g_youtube_once = PTHREAD_ONCE_INIT;
+static pcre2_singleton_t *g_youtube_regex = NULL;
 
 /**
- * Initialize global YouTube validator with PCRE2 compiled regex
- * Called once per process via pthread_once
+ * Get compiled YouTube video ID regex (lazy initialization)
+ * Returns NULL if compilation failed
  */
-static void youtube_validator_init(void) {
-  int errornumber;
-  PCRE2_SIZE erroroffset;
-
-  /* Compile regex */
-  g_youtube_validator.regex = pcre2_compile((PCRE2_SPTR)YOUTUBE_VIDEO_ID_PATTERN, PCRE2_ZERO_TERMINATED,
-                                            PCRE2_CASELESS | PCRE2_UCP | PCRE2_UTF, &errornumber, &erroroffset, NULL);
-
-  if (!g_youtube_validator.regex) {
-    PCRE2_UCHAR error_buffer[256];
-    pcre2_get_error_message(errornumber, error_buffer, sizeof(error_buffer));
-    log_fatal("Failed to compile YouTube video ID regex at offset %zu: %s", erroroffset, (const char *)error_buffer);
-    return;
+static pcre2_code *youtube_regex_get(void) {
+  if (g_youtube_regex == NULL) {
+    g_youtube_regex = pcre2_singleton_compile(YOUTUBE_VIDEO_ID_PATTERN, PCRE2_CASELESS | PCRE2_UCP | PCRE2_UTF);
   }
-
-  /* Compile JIT for 10-100x performance boost */
-  int jit_rc = pcre2_jit_compile(g_youtube_validator.regex, PCRE2_JIT_COMPLETE);
-  if (jit_rc < 0) {
-    log_warn("PCRE2 JIT compilation failed for YouTube regex (code %d), using interpreted mode", jit_rc);
-    /* Fall through - interpreted mode still works, just slower */
-  }
-
-  /* Allocate JIT stack (32KB sufficient for video ID regex) */
-  g_youtube_validator.jit_stack = pcre2_jit_stack_create(32 * 1024, 512 * 1024, NULL);
-
-  g_youtube_validator.initialized = true;
-}
-
-/**
- * Get initialized YouTube validator (lazy initialization via pthread_once)
- */
-static youtube_validator_t *youtube_validator_get(void) {
-  pthread_once(&g_youtube_once, youtube_validator_init);
-  return g_youtube_validator.initialized ? &g_youtube_validator : NULL;
+  return pcre2_singleton_get_code(g_youtube_regex);
 }
 
 /**
@@ -268,21 +232,21 @@ asciichat_error_t youtube_extract_video_id(const char *url, char *output_id, siz
     return ERROR_YOUTUBE_INVALID_URL;
   }
 
-  /* Get initialized validator */
-  youtube_validator_t *validator = youtube_validator_get();
-  if (!validator || !validator->regex) {
+  /* Get compiled regex */
+  pcre2_code *regex = youtube_regex_get();
+  if (!regex) {
     SET_ERRNO(ERROR_YOUTUBE_INVALID_URL, "Failed to initialize YouTube video ID regex validator");
     return ERROR_YOUTUBE_INVALID_URL;
   }
 
   /* Attempt regex match */
-  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(validator->regex, NULL);
+  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
   if (!match_data) {
     SET_ERRNO(ERROR_YOUTUBE_INVALID_URL, "Failed to allocate match data for regex");
     return ERROR_YOUTUBE_INVALID_URL;
   }
 
-  int match_result = pcre2_match(validator->regex, (PCRE2_SPTR)url, strlen(url), 0, 0, match_data, NULL);
+  int match_result = pcre2_match(regex, (PCRE2_SPTR)url, strlen(url), 0, 0, match_data, NULL);
 
   if (match_result < 1) {
     /* No match or error */
