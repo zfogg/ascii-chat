@@ -26,9 +26,7 @@
 
 static const char *URL_REGEX_PATTERN =
     // SCHEME: http or https (case-insensitive)
-    "^(?<scheme>https?)://"
-    // OPTIONAL USERINFO: username[:password]@ (user:pass@host format)
-    "(?:(?<userinfo>\\S+(?::\\S*)?)@)?"
+    "^(?<scheme>https?)://(?:(?<userinfo>\\S+(?::\\S*)?)@)?"
     // HOST: one of three alternatives below
     "(?<host>"
     "(?:"
@@ -163,6 +161,66 @@ bool url_is_valid(const char *url) {
     return false;
   }
 
+  /* Check if URL needs http:// prefix (bare hostname or IP) */
+  char url_with_scheme[2048];
+  const char *url_to_match = url;
+
+  if (!strstr(url, "://")) {
+    /* No scheme - check if it looks like a bare hostname/IP */
+
+    /* Reject bare scheme words like "http", "https", "ftp" */
+    if (strcmp(url, "http") == 0 || strcmp(url, "https") == 0 || strcmp(url, "ftp") == 0 || strcmp(url, "ftps") == 0) {
+      return false;
+    }
+
+    /* Reject URLs that look like malformed schemes (http/ instead of http://) */
+    if (strncmp(url, "http/", 5) == 0 || strncmp(url, "https/", 6) == 0) {
+      return false;
+    }
+
+    /* Reject if it contains @ (email-like) */
+    if (strchr(url, '@')) {
+      return false;
+    }
+
+    /* Reject pure hex strings (raw keys, not hostnames) */
+    if (strlen(url) == 64) {
+      bool all_hex = true;
+      for (const char *p = url; *p && all_hex; p++) {
+        if (!((*p >= '0' && *p <= '9') || (*p >= 'a' && *p <= 'f') || (*p >= 'A' && *p <= 'F'))) {
+          all_hex = false;
+        }
+      }
+      if (all_hex) {
+        return false; /* Looks like raw hex key, not hostname */
+      }
+    }
+
+    /* Check colon handling */
+    const char *colon_pos = strchr(url, ':');
+    if (colon_pos) {
+      /* Has colon - reject unless colon is followed by port number */
+      const char *after_colon = colon_pos + 1;
+      bool looks_like_port = true;
+      for (const char *p = after_colon; *p && *p != '/'; p++) {
+        if (!(*p >= '0' && *p <= '9')) {
+          looks_like_port = false;
+          break;
+        }
+      }
+      if (!looks_like_port) {
+        return false; /* Colon but not a port number */
+      }
+    }
+
+    /* Looks like a bare hostname/IP - prepend http:// */
+    int result = snprintf(url_with_scheme, sizeof(url_with_scheme), "http://%s", url);
+    if (result < 0 || result >= (int)sizeof(url_with_scheme)) {
+      return false; /* URL too long */
+    }
+    url_to_match = url_with_scheme;
+  }
+
   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(validator->regex, NULL);
   if (!match_data) {
     return false;
@@ -171,13 +229,13 @@ bool url_is_valid(const char *url) {
   /* Perform JIT match if JIT compiled, otherwise interpreted match */
   int rc;
   if (validator->jit_stack) {
-    rc = pcre2_jit_match(validator->regex, (PCRE2_SPTR)url, strlen(url), 0, /* startoffset */
-                         0,                                                 /* options */
-                         match_data, NULL);                                 /* mcontext */
+    rc = pcre2_jit_match(validator->regex, (PCRE2_SPTR)url_to_match, strlen(url_to_match), 0, /* startoffset */
+                         0,                                                                   /* options */
+                         match_data, NULL);                                                   /* mcontext */
   } else {
-    rc = pcre2_match(validator->regex, (PCRE2_SPTR)url, strlen(url), 0, /* startoffset */
-                     0,                                                 /* options */
-                     match_data, NULL);                                 /* mcontext */
+    rc = pcre2_match(validator->regex, (PCRE2_SPTR)url_to_match, strlen(url_to_match), 0, /* startoffset */
+                     0,                                                                   /* options */
+                     match_data, NULL);                                                   /* mcontext */
   }
 
   pcre2_match_data_free(match_data);
@@ -201,6 +259,66 @@ asciichat_error_t url_parse(const char *url, url_parts_t *parts_out) {
     return SET_ERRNO(ERROR_CONFIG, "URL validator not initialized");
   }
 
+  /* Check if URL needs http:// prefix (bare hostname or IP) */
+  char url_with_scheme[2048];
+  const char *url_to_match = url;
+  const char *original_url = url;
+
+  if (!strstr(url, "://")) {
+    /* No scheme - check if it looks like a bare hostname/IP */
+
+    /* Reject bare scheme words like "http", "https", "ftp" */
+    if (strcmp(url, "http") == 0 || strcmp(url, "https") == 0 || strcmp(url, "ftp") == 0 || strcmp(url, "ftps") == 0) {
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid URL format: %s", url);
+    }
+
+    /* Reject URLs that look like malformed schemes (http/ instead of http://) */
+    if (strncmp(url, "http/", 5) == 0 || strncmp(url, "https/", 6) == 0) {
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid URL format (looks like malformed scheme): %s", url);
+    }
+
+    /* Reject if it contains @ (email-like) */
+    if (strchr(url, '@')) {
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Ambiguous format looks like email address, not URL: %s", url);
+    }
+
+    /* Reject pure hex strings (raw keys, not hostnames) */
+    if (strlen(url) == 64) {
+      bool all_hex = true;
+      for (const char *p = url; *p && all_hex; p++) {
+        if (!((*p >= '0' && *p <= '9') || (*p >= 'a' && *p <= 'f') || (*p >= 'A' && *p <= 'F'))) {
+          all_hex = false;
+        }
+      }
+      if (all_hex) {
+        return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid URL: appears to be raw hex data, not a URL");
+      }
+    }
+
+    const char *colon_pos = strchr(url, ':');
+    if (colon_pos) {
+      /* Has colon - check if what follows is numeric (port) */
+      const char *after_colon = colon_pos + 1;
+      bool looks_like_port = true;
+      for (const char *p = after_colon; *p && *p != '/'; p++) {
+        if (!(*p >= '0' && *p <= '9')) {
+          looks_like_port = false;
+          break;
+        }
+      }
+      if (!looks_like_port) {
+        return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid URL format (invalid scheme): %s", url);
+      }
+    }
+
+    /* Looks like a bare hostname/IP - prepend http:// */
+    int result = snprintf(url_with_scheme, sizeof(url_with_scheme), "http://%s", url);
+    if (result < 0 || result >= (int)sizeof(url_with_scheme)) {
+      return SET_ERRNO(ERROR_INVALID_PARAM, "URL too long");
+    }
+    url_to_match = url_with_scheme;
+  }
+
   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(validator->regex, NULL);
   if (!match_data) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to create match data");
@@ -209,18 +327,18 @@ asciichat_error_t url_parse(const char *url, url_parts_t *parts_out) {
   /* Perform match */
   int rc;
   if (validator->jit_stack) {
-    rc = pcre2_jit_match(validator->regex, (PCRE2_SPTR)url, strlen(url), 0, /* startoffset */
-                         0,                                                 /* options */
-                         match_data, NULL);                                 /* mcontext */
+    rc = pcre2_jit_match(validator->regex, (PCRE2_SPTR)url_to_match, strlen(url_to_match), 0, /* startoffset */
+                         0,                                                                   /* options */
+                         match_data, NULL);                                                   /* mcontext */
   } else {
-    rc = pcre2_match(validator->regex, (PCRE2_SPTR)url, strlen(url), 0, /* startoffset */
-                     0,                                                 /* options */
-                     match_data, NULL);                                 /* mcontext */
+    rc = pcre2_match(validator->regex, (PCRE2_SPTR)url_to_match, strlen(url_to_match), 0, /* startoffset */
+                     0,                                                                   /* options */
+                     match_data, NULL);                                                   /* mcontext */
   }
 
   if (rc < 0) {
     pcre2_match_data_free(match_data);
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid URL format: %s", url);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid URL format: %s", original_url);
   }
 
   /* Extract named groups */

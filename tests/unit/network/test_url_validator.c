@@ -91,7 +91,7 @@ Test(url_validator, bynens_should_not_match_malformed) {
 
 Test(url_validator, bynens_should_not_match_invalid_schemes) {
   assert_url_invalid("//", "no scheme");
-  assert_url_invalid("foo.com", "no scheme");
+  assert_url_valid("foo.com", "bare hostname (defaults to http)");
   assert_url_invalid("rdar://1234", "wrong scheme");
   assert_url_invalid("ftps://foo.bar/", "ftps not allowed");
 }
@@ -417,9 +417,9 @@ Test(url_validator, reject_malformed) {
 }
 
 Test(url_validator, reject_schemeless) {
-  assert_url_invalid("example.com", "schemeless domain");
-  assert_url_invalid("www.example.com", "schemeless www");
-  assert_url_invalid("foo.com/path", "schemeless+path");
+  assert_url_valid("example.com", "bare domain (defaults to http)");
+  assert_url_valid("www.example.com", "bare www (defaults to http)");
+  assert_url_valid("foo.com/path", "bare+path (defaults to http)");
   assert_url_invalid("//example.com", "protocol-relative");
 }
 
@@ -577,17 +577,17 @@ Test(url_validator, reject_empty_components) {
  * ============================================================================ */
 
 Test(url_validator, reject_schemeless_1) {
-  assert_url_invalid("example.com", "bare domain");
-  assert_url_invalid("www.example.com", "www prefix");
-  assert_url_invalid("sub.example.com", "subdomain");
-  assert_url_invalid("a.b.c.example.com", "deep subdomain");
+  assert_url_valid("example.com", "bare domain (defaults to http)");
+  assert_url_valid("www.example.com", "www prefix (defaults to http)");
+  assert_url_valid("sub.example.com", "subdomain (defaults to http)");
+  assert_url_valid("a.b.c.example.com", "deep subdomain (defaults to http)");
 }
 
 Test(url_validator, reject_schemeless_2) {
-  assert_url_invalid("example.com/path", "domain+path");
-  assert_url_invalid("example.com:8080", "domain+port");
-  assert_url_invalid("example.com?query=1", "domain+query");
-  assert_url_invalid("example.com#fragment", "domain+fragment");
+  assert_url_valid("example.com/path", "bare domain+path (defaults to http)");
+  assert_url_valid("example.com:8080", "bare domain+port (defaults to http)");
+  assert_url_valid("example.com?query=1", "bare domain+query (defaults to http)");
+  assert_url_valid("example.com#fragment", "bare domain+fragment (defaults to http)");
 }
 
 Test(url_validator, reject_schemeless_3) {
@@ -598,10 +598,10 @@ Test(url_validator, reject_schemeless_3) {
 }
 
 Test(url_validator, reject_schemeless_4) {
-  assert_url_invalid("user@example.com", "user only");
-  assert_url_invalid("user:pass@example.com", "userinfo only");
-  assert_url_invalid("localhost", "localhost schemeless");
-  assert_url_invalid("localhost:8080", "localhost+port");
+  assert_url_invalid("user@example.com", "ambiguous email address");
+  assert_url_invalid("user:pass@example.com", "userinfo requires scheme");
+  assert_url_valid("localhost", "bare localhost (defaults to http)");
+  assert_url_valid("localhost:8080", "bare localhost+port (defaults to http)");
 }
 
 /* ============================================================================
@@ -805,7 +805,7 @@ Test(url_validator, reject_protocol_issues) {
 Test(url_validator, reject_miscellaneous) {
   assert_url_invalid("not a url", "plain text");
   assert_url_invalid("just some words here", "sentence");
-  assert_url_invalid("localhost", "no scheme");
-  assert_url_invalid("example.com", "no scheme domain");
-  assert_url_invalid("192.168.1.1", "IP without scheme");
+  assert_url_valid("localhost", "bare hostname (defaults to http)");
+  assert_url_valid("example.com", "bare domain (defaults to http)");
+  assert_url_valid("192.168.1.1", "bare IP (defaults to http)");
 }

@@ -647,7 +647,7 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
   }
 
   // Output is redirected (not a console) or failed to get console info
-  log_debug("Windows: output is redirected (not a console), using env or defaults");
+  log_dev("Windows: output is redirected (not a console), using env or defaults");
 
   // Environment variable fallback
   cols_env = SAFE_GETENV("COLUMNS");
