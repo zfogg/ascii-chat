@@ -1023,15 +1023,116 @@ bool terminal_has_dark_background(void) {
 }
 
 /**
- * Query terminal background color (Windows stub)
- * OSC 11 queries are less reliable on Windows, so we return false
+ * Query terminal background color using OSC 11
+ * Modern Windows terminals (Windows Terminal, ConEmu) support this
  */
 bool terminal_query_background_color(uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b) {
-  // Windows terminals have limited OSC support
-  // Return false to fall back to heuristic detection
-  (void)bg_r;
-  (void)bg_g;
-  (void)bg_b;
+  // Try to open CON device for direct terminal access
+  HANDLE hConsole = CreateFileA("CONIN$", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+                                OPEN_EXISTING, 0, NULL);
+
+  if (hConsole == INVALID_HANDLE_VALUE) {
+    return false;
+  }
+
+  // Save original console mode
+  DWORD old_mode;
+  if (!GetConsoleMode(hConsole, &old_mode)) {
+    CloseHandle(hConsole);
+    return false;
+  }
+
+  // Set raw mode for reading response
+  DWORD new_mode = old_mode & ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
+  new_mode |= ENABLE_VIRTUAL_TERMINAL_INPUT;
+  if (!SetConsoleMode(hConsole, new_mode)) {
+    CloseHandle(hConsole);
+    return false;
+  }
+
+  // Get output handle for writing query
+  HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+  if (hOut == INVALID_HANDLE_VALUE) {
+    SetConsoleMode(hConsole, old_mode);
+    CloseHandle(hConsole);
+    return false;
+  }
+
+  // Send OSC 11 query (query background color)
+  const char *query = "\x1b]11;?\x1b\\";
+  DWORD written;
+  if (!WriteConsoleA(hOut, query, (DWORD)strlen(query), &written, NULL)) {
+    SetConsoleMode(hConsole, old_mode);
+    CloseHandle(hConsole);
+    return false;
+  }
+
+  // Read response with timeout (format: ESC]11;rgb:RRRR/GGGG/BBBBESC\ or BEL)
+  char response[256];
+  DWORD total_read = 0;
+  DWORD start_time = GetTickCount();
+  DWORD timeout_ms = 100;
+
+  while (total_read < sizeof(response) - 1 && (GetTickCount() - start_time) < timeout_ms) {
+    DWORD available = 0;
+    INPUT_RECORD records[32];
+    DWORD num_read = 0;
+
+    // Check if input is available (non-blocking)
+    if (!GetNumberOfConsoleInputEvents(hConsole, &available) || available == 0) {
+      Sleep(10);
+      continue;
+    }
+
+    // Read input events
+    if (!ReadConsoleInput(hConsole, records, 32, &num_read)) {
+      break;
+    }
+
+    // Process keyboard events
+    for (DWORD i = 0; i < num_read && total_read < sizeof(response) - 1; i++) {
+      if (records[i].EventType == KEY_EVENT && records[i].Event.KeyEvent.bKeyDown) {
+        char c = records[i].Event.KeyEvent.uChar.AsciiChar;
+        if (c != 0) {
+          response[total_read++] = c;
+
+          // Check for end of response (backslash or BEL)
+          if (c == '\\' || c == '\x07') {
+            goto parse_response;
+          }
+        }
+      }
+    }
+  }
+
+parse_response:
+  // Restore console mode
+  SetConsoleMode(hConsole, old_mode);
+  CloseHandle(hConsole);
+
+  if (total_read < 10) {
+    return false; // Response too short
+  }
+
+  response[total_read] = '\0';
+
+  // Parse response: ESC]11;rgb:RRRR/GGGG/BBBB...
+  const char *rgb_start = strstr(response, "rgb:");
+  if (!rgb_start) {
+    return false;
+  }
+  rgb_start += 4; // Skip "rgb:"
+
+  // Parse hex values
+  unsigned int r16, g16, b16;
+  if (sscanf(rgb_start, "%x/%x/%x", &r16, &g16, &b16) == 3) {
+    // Convert from 16-bit to 8-bit
+    *bg_r = (uint8_t)(r16 >> 8);
+    *bg_g = (uint8_t)(g16 >> 8);
+    *bg_b = (uint8_t)(b16 >> 8);
+    return true;
+  }
+
   return false;
 }
 
