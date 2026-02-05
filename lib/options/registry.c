@@ -301,7 +301,9 @@ static const registry_entry_t g_logging_entries[] = {
      offsetof(options_t, grep_pattern),
      &(const char *){OPT_GREP_PATTERN_DEFAULT},
      sizeof(char *),
-     "Filter logs matching PCRE2 regex (highlights matches). Only affects terminal output; file logs remain complete.",
+     "Filter logs matching PCRE2 regex (highlights matches). Supports optional flags after pattern "
+     "(e.g., 'pattern/i' or 'ERROR/im'). Flags: i=case-insensitive, m=multiline, s=dotall, x=extended. "
+     "Case-sensitive by default. Only affects terminal output; file logs remain complete.",
      "LOGGING",
      "PATTERN",
      false,
