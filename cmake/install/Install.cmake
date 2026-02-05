@@ -521,14 +521,10 @@ add_custom_command(
         "${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish"
         "${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii-chat"
         "${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1"
-    COMMAND timeout 3 "$<TARGET_FILE:ascii-chat>" --completions bash
-            > "${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat"
-    COMMAND timeout 3 "$<TARGET_FILE:ascii-chat>" --completions fish
-            > "${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish"
-    COMMAND timeout 3 "$<TARGET_FILE:ascii-chat>" --completions zsh
-            > "${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii-chat"
-    COMMAND timeout 3 "$<TARGET_FILE:ascii-chat>" --completions powershell
-            > "${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1"
+    COMMAND bash -c "ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' timeout -k 1 0.65 '$<TARGET_FILE:ascii-chat>' --completions bash '${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat'"
+    COMMAND bash -c "ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' timeout -k 1 0.65 '$<TARGET_FILE:ascii-chat>' --completions fish '${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish'"
+    COMMAND bash -c "ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' timeout -k 1 0.65 '$<TARGET_FILE:ascii-chat>' --completions zsh '${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii-chat'"
+    COMMAND bash -c "ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' timeout -k 1 0.65 '$<TARGET_FILE:ascii-chat>' --completions powershell '${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1'"
     DEPENDS $<TARGET_FILE:ascii-chat>
     COMMENT "Building shell completions"
     VERBATIM
