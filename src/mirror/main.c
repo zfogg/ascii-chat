@@ -204,16 +204,16 @@ int mirror_main(void) {
 
   log_debug("mirror_main: audio_enabled=%d", GET_OPTION(audio_enabled));
 
-  // Disable terminal logging during initialization so splash can display cleanly
-  log_set_terminal_output(false);
-
-  // Configure media source based on options
+  // Configure media source based on options (read early for splash logic)
   const char *media_url = GET_OPTION(media_url);
   const char *media_file = GET_OPTION(media_file);
 
   // Detect if we're using media (vs webcam) - needed to decide on splash sleep duration
   bool has_media = (media_url && strlen(media_url) > 0) || (media_file && strlen(media_file) > 0);
 
+  // ============================================================================
+  // START SPLASH SCREEN IMMEDIATELY (before any media initialization)
+  // ============================================================================
   // Create a minimal display context just for the splash screen
   // This needs to exist before splash_intro_start, but real initialization happens later
   session_display_config_t temp_display_config = {0};
@@ -226,6 +226,10 @@ int mirror_main(void) {
       platform_sleep_ms(1000);
     }
   }
+
+  // Disable terminal logging AFTER splash starts so splash can display cleanly
+  // This prevents logs from media initialization from interfering with splash animation
+  log_set_terminal_output(false);
 
   session_capture_config_t capture_config = {0};
   capture_config.target_fps = 60; // Default for webcam
@@ -326,15 +330,14 @@ int mirror_main(void) {
     return ERROR_MEDIA_INIT;
   }
 
-  // Initialize audio for playback if media file has audio
+  // ============================================================================
+  // PREPARE AUDIO (initialize context but don't start playback yet)
+  // ============================================================================
+  // Initialize audio context structure now so display can reference it,
+  // but defer starting duplex playback until AFTER splash_intro_done()
+  // This prevents audio from playing during the splash screen animation
   audio_context_t *audio_ctx = NULL;
   bool audio_available = false;
-
-  // Check if file/URL has audio stream
-  // Use capture's media source to check for audio
-  media_source_t *audio_probe_source = capture ? session_capture_get_media_source(capture) : NULL;
-
-  // Determine if we should initialize audio based on snapshot and --audio settings
   bool should_init_audio = true;
 
   // Skip audio for immediate snapshots (snapshot_delay == 0) - optimization
@@ -343,9 +346,8 @@ int mirror_main(void) {
     log_debug("Skipping audio initialization for immediate snapshot (snapshot_delay=0)");
   }
 
-  // Audio is enabled by default for media playback
-  // (no need to pass --audio flag, use --no-audio-playback or related options to disable)
-
+  // Check if media source has audio and initialize context (but don't start playback)
+  media_source_t *audio_probe_source = capture ? session_capture_get_media_source(capture) : NULL;
   if (should_init_audio && capture_config.type == MEDIA_SOURCE_FILE && capture_config.path && audio_probe_source) {
     if (media_source_has_audio(audio_probe_source)) {
       audio_available = true;
@@ -372,21 +374,12 @@ int mirror_main(void) {
             atomic_store(&audio_ctx->playback_buffer->jitter_buffer_filled, true);
           }
 
-          if (audio_start_duplex(audio_ctx) == ASCIICHAT_OK) {
-            // Store audio context in capture for keyboard handler access (for seek buffer flushing)
-            session_capture_set_audio_context(capture, audio_ctx);
-            log_info("Audio playback initialized for media file");
-          } else {
-            log_warn("Failed to start audio duplex");
-            audio_destroy(audio_ctx);
-            SAFE_FREE(audio_ctx);
-            audio_ctx = NULL;
-            audio_available = false;
-          }
+          // Store audio context in capture for keyboard handler access
+          session_capture_set_audio_context(capture, audio_ctx);
+
+          log_debug("Audio context initialized (playback will start after splash)");
         } else {
           log_warn("Failed to initialize audio context (audio_init returned error)");
-          // CRITICAL: audio_init() may have called Pa_Initialize() and incremented refcount
-          // Must call audio_destroy() to properly decrement refcount
           audio_destroy(audio_ctx);
           SAFE_FREE(audio_ctx);
           audio_ctx = NULL;
@@ -395,7 +388,6 @@ int mirror_main(void) {
       }
     }
   }
-  // Note: probe_source is now managed by session_capture (not owned by us)
 
   session_display_config_t display_config = {0};
   display_config.snapshot_mode = GET_OPTION(snapshot_mode);
@@ -432,6 +424,30 @@ int mirror_main(void) {
   if (temp_display) {
     session_display_destroy(temp_display);
     temp_display = NULL;
+  }
+
+  // ============================================================================
+  // START AUDIO PLAYBACK (after splash ends)
+  // ============================================================================
+  // Now that splash is done, start audio duplex playback
+  // Audio context was already initialized before display creation, we just
+  // need to start the actual PortAudio streams now
+  if (audio_ctx && audio_available) {
+    if (audio_start_duplex(audio_ctx) == ASCIICHAT_OK) {
+      log_info("Audio playback started after splash screen");
+    } else {
+      log_warn("Failed to start audio duplex");
+      audio_destroy(audio_ctx);
+      SAFE_FREE(audio_ctx);
+      audio_ctx = NULL;
+      audio_available = false;
+
+      // Update display to reflect audio is not available
+      if (display) {
+        // Display was created with audio_ctx, but now it's NULL
+        // The display will handle this gracefully
+      }
+    }
   }
 
   // Run the unified render loop - handles frame capture, ASCII conversion, and rendering

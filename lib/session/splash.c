@@ -123,7 +123,16 @@ static rgb_color_t get_rainbow_color_rgb(double position) {
 bool splash_should_display(bool is_intro) {
   // Check option flags (display splash if enabled, regardless of TTY for testing)
   if (is_intro) {
-    return GET_OPTION(splash) && !GET_OPTION(snapshot_mode);
+    // Allow splash in snapshot mode if loading from URL/file (has loading time)
+    // Skip splash only for quick webcam snapshots
+    bool is_snapshot = GET_OPTION(snapshot_mode);
+    bool has_media = (GET_OPTION(media_url) && strlen(GET_OPTION(media_url)) > 0) ||
+                     (GET_OPTION(media_file) && strlen(GET_OPTION(media_file)) > 0);
+
+    // Show splash if:
+    // 1. Not in snapshot mode, OR
+    // 2. In snapshot mode but loading from URL/file (needs splash during load)
+    return GET_OPTION(splash) && (!is_snapshot || has_media);
   } else {
     return GET_OPTION(status_screen);
   }
