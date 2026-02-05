@@ -453,6 +453,17 @@ bool log_filter_should_output(const char *log_line, size_t *match_start, size_t 
     g_filter_state.lines_after_match--;
     *match_start = 0;
     *match_len = 0;
+
+    // Store in buffer even during context-after mode
+    if (g_filter_state.buffer_size > 0) {
+      SAFE_FREE(g_filter_state.line_buffer[g_filter_state.buffer_pos]);
+      g_filter_state.line_buffer[g_filter_state.buffer_pos] = SAFE_MALLOC(strlen(log_line) + 1, char *);
+      if (g_filter_state.line_buffer[g_filter_state.buffer_pos]) {
+        strcpy(g_filter_state.line_buffer[g_filter_state.buffer_pos], log_line);
+      }
+      g_filter_state.buffer_pos = (g_filter_state.buffer_pos + 1) % g_filter_state.buffer_size;
+    }
+
     return true; // Output context line
   }
 
@@ -518,19 +529,40 @@ bool log_filter_should_output(const char *log_line, size_t *match_start, size_t 
 
   // If any pattern matched
   if (any_match && matched_pattern) {
+    // Output context_before lines from circular buffer
+    if (matched_pattern->context_before > 0 && g_filter_state.buffer_size > 0) {
+      int num_lines = (matched_pattern->context_before < g_filter_state.buffer_size) ? matched_pattern->context_before
+                                                                                     : g_filter_state.buffer_size;
+
+      // Calculate starting position in circular buffer
+      int start_pos = (g_filter_state.buffer_pos - num_lines + g_filter_state.buffer_size) % g_filter_state.buffer_size;
+
+      // Output buffered lines
+      for (int i = 0; i < num_lines; i++) {
+        int pos = (start_pos + i) % g_filter_state.buffer_size;
+        if (g_filter_state.line_buffer[pos]) {
+          fprintf(stderr, "%s\n", g_filter_state.line_buffer[pos]);
+        }
+      }
+    }
+
     // Set up context_after counter
     if (matched_pattern->context_after > 0) {
       g_filter_state.lines_after_match = matched_pattern->context_after;
     }
 
-    // TODO: Output context_before lines from buffer here
-    // (would need to integrate with logging.c to output buffered lines)
-
     return true; // Match found, output line
   }
 
   // No match - store in context buffer for potential future use
-  // TODO: Implement circular buffer storage for context_before
+  if (g_filter_state.buffer_size > 0) {
+    SAFE_FREE(g_filter_state.line_buffer[g_filter_state.buffer_pos]);
+    g_filter_state.line_buffer[g_filter_state.buffer_pos] = SAFE_MALLOC(strlen(log_line) + 1, char *);
+    if (g_filter_state.line_buffer[g_filter_state.buffer_pos]) {
+      strcpy(g_filter_state.line_buffer[g_filter_state.buffer_pos], log_line);
+    }
+    g_filter_state.buffer_pos = (g_filter_state.buffer_pos + 1) % g_filter_state.buffer_size;
+  }
 
   return false; // No match, suppress line
 }

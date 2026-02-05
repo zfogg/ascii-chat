@@ -206,8 +206,8 @@ int main(int argc, char *argv[]) {
       asciichat_error_t filter_result = log_filter_init(pattern);
       if (filter_result != ASCIICHAT_OK) {
         fprintf(stderr,
-                "ERROR: Invalid --grep pattern format: \"%s\" - use /pattern/flags format, e.g., \"/query/ig\" or "
-                "\"/test/\"\n",
+                "ERROR: Invalid --grep pattern or invalid flags: \"%s\" - use /pattern/flags format (e.g., "
+                "\"/query/ig\") or literal string\n",
                 pattern);
         return 1;
       }
