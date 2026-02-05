@@ -889,6 +889,7 @@ void log_filter_destroy(void) {
     pat->singleton = NULL;
   }
   SAFE_FREE(g_filter_state.patterns);
+  g_filter_state.patterns = NULL; // Make idempotent
 
   // Free context buffer
   if (g_filter_state.line_buffer) {
@@ -896,10 +897,15 @@ void log_filter_destroy(void) {
       SAFE_FREE(g_filter_state.line_buffer[i]);
     }
     SAFE_FREE(g_filter_state.line_buffer);
+    g_filter_state.line_buffer = NULL; // Make idempotent
   }
 
   g_filter_state.pattern_count = 0;
   g_filter_state.pattern_capacity = 0;
+  g_filter_state.buffer_size = 0;
+  g_filter_state.buffer_pos = 0;
+  g_filter_state.lines_after_match = 0;
+  g_filter_state.max_context_after = 0;
   g_filter_state.enabled = false;
 
   // Note: Thread-local match_data is cleaned up via pthread_key destructor
