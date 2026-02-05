@@ -1502,9 +1502,8 @@ void *client_receive_thread(void *arg) {
       log_warn("ACIP receive/dispatch failed for client %u: %s (disconnecting client to prevent infinite loop)",
                client->client_id, asciichat_error_string(acip_result));
       break;
-    } else {
-      log_error("RECV_SUCCESS: Client %u dispatch succeeded, looping back", atomic_load(&client->client_id));
     }
+    // Success - continue receiving next packet
   }
 
   // Mark client as inactive and stop all threads

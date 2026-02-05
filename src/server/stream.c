@@ -831,7 +831,7 @@ static char *convert_composite_to_ascii(image_t *composite, uint32_t target_clie
 
   // CRITICAL CHECK: Verify composite width matches terminal width
   if (composite->w != width) {
-    log_warn("DIMENSION MISMATCH: composite->w=%d != terminal_width=%d", composite->w, width);
+    log_warn_every(1000000, "DIMENSION MISMATCH: composite->w=%d != terminal_width=%d", composite->w, width);
   }
 
   // Apply color filter if specified
@@ -1034,8 +1034,8 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
 
   // CRITICAL: Verify composite width matches expected terminal width
   if (composite && composite->w != width) {
-    log_error("FRAME_WIDTH_BUG: composite->w=%d != terminal_width=%d for client %u", composite->w, width,
-              target_client_id);
+    log_error_every(1000000, "FRAME_WIDTH_BUG: composite->w=%d != terminal_width=%d for client %u", composite->w, width,
+                    target_client_id);
   }
 
   char *ascii_frame = convert_composite_to_ascii(composite, target_client_id, width, height);
