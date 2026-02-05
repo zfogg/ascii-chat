@@ -371,3 +371,42 @@ int utf8_continuation_bytes_needed(unsigned char first_byte);
  */
 int utf8_read_and_insert_continuation_bytes(char *buffer, size_t *cursor, size_t *len, size_t max_len,
                                             int continuation_bytes, int (*read_byte_fn)(void));
+
+/* ============================================================================
+ * UTF-8 String Search Functions
+ * ========================================================================== */
+
+/**
+ * @brief Case-insensitive substring search with full Unicode support
+ * @param haystack String to search in (must not be NULL)
+ * @param needle Substring to search for (must not be NULL)
+ * @return Pointer to first occurrence of needle in haystack, or NULL if not found
+ *
+ * Performs case-insensitive substring search using Unicode case folding.
+ * Properly handles all Unicode characters including accented letters, Greek,
+ * Cyrillic, CJK, emoji, and other scripts.
+ *
+ * Uses utf8proc library for accurate Unicode case folding according to Unicode
+ * standard. This ensures correct matching for:
+ * - ASCII: "TEST" matches "test"
+ * - Accented: "CAFÉ" matches "café"
+ * - Greek: "ΕΛΛΗΝΙΚΆ" matches "ελληνικά"
+ * - Cyrillic: "РУССКИЙ" matches "русский"
+ *
+ * @note Returns NULL if needle is empty string
+ * @note Returns haystack if needle is empty
+ * @note Case folding follows Unicode standard (more complex than simple toupper/tolower)
+ * @note Uses utf8proc for accurate Unicode handling
+ *
+ * @par Example
+ * @code
+ * const char *found = utf8_strcasestr("Hello WORLD", "world");
+ * // Returns pointer to "WORLD" in the haystack
+ *
+ * const char *found2 = utf8_strcasestr("Café français", "FRANÇAIS");
+ * // Returns pointer to "français" (case-insensitive + accents)
+ * @endcode
+ *
+ * @ingroup util
+ */
+const char *utf8_strcasestr(const char *haystack, const char *needle);

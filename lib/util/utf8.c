@@ -7,6 +7,8 @@
  * and UTF-8 handling.
  */
 
+#include "ascii-chat/asciichat_errno.h"
+#include "ascii-chat/common/error_codes.h"
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat-deps/utf8proc/utf8proc.h>
 #include <stdbool.h>
@@ -42,8 +44,10 @@ int utf8_decode(const uint8_t *s, uint32_t *codepoint) {
 }
 
 int utf8_display_width(const char *str) {
-  if (!str)
+  if (!str) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "str is NULL");
     return 0;
+  }
 
   int width = 0;
   const utf8proc_uint8_t *p = (const utf8proc_uint8_t *)str;
@@ -86,8 +90,10 @@ int utf8_display_width(const char *str) {
 }
 
 int utf8_display_width_n(const char *str, size_t max_bytes) {
-  if (!str || max_bytes == 0)
+  if (!str || max_bytes == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "str is NULL or max_bytes is 0");
     return 0;
+  }
 
   int width = 0;
   const utf8proc_uint8_t *p = (const utf8proc_uint8_t *)str;
@@ -131,6 +137,7 @@ int utf8_display_width_n(const char *str, size_t max_bytes) {
 
 size_t utf8_char_count(const char *str) {
   if (!str) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "str is NULL");
     return -1; // SIZE_MAX
   }
 
@@ -150,6 +157,7 @@ size_t utf8_char_count(const char *str) {
 
 bool utf8_is_valid(const char *str) {
   if (!str) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "str is NULL");
     return false;
   }
   // Reuse utf8_char_count to validate without duplicating loop
@@ -158,6 +166,7 @@ bool utf8_is_valid(const char *str) {
 
 bool utf8_is_ascii_only(const char *str) {
   if (!str) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "str is NULL");
     return false;
   }
 
@@ -177,6 +186,7 @@ bool utf8_is_ascii_only(const char *str) {
 
 size_t utf8_to_codepoints(const char *str, uint32_t *out_codepoints, size_t max_codepoints) {
   if (!str || !out_codepoints || max_codepoints == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "str is NULL or out_codepoints is NULL or max_codepoints is 0");
     return 0;
   }
 
@@ -196,6 +206,7 @@ size_t utf8_to_codepoints(const char *str, uint32_t *out_codepoints, size_t max_
 
 int utf8_next_char_bytes(const char *str, size_t max_bytes) {
   if (!str || max_bytes == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "str is NULL or max_bytes is 0");
     return -1;
   }
 
@@ -229,6 +240,7 @@ int utf8_continuation_bytes_needed(unsigned char first_byte) {
 int utf8_read_and_insert_continuation_bytes(char *buffer, size_t *cursor, size_t *len, size_t max_len,
                                             int continuation_bytes, int (*read_byte_fn)(void)) {
   if (!buffer || !cursor || !len || continuation_bytes <= 0 || !read_byte_fn) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "invalid params");
     return -1;
   }
 
@@ -246,4 +258,96 @@ int utf8_read_and_insert_continuation_bytes(char *buffer, size_t *cursor, size_t
   }
 
   return 0;
+}
+
+/* ============================================================================
+ * UTF-8 String Search Functions
+ * ========================================================================== */
+
+/**
+ * @brief Case-insensitive substring search with full Unicode support
+ *
+ * Uses utf8proc for Unicode case folding according to Unicode standard.
+ * This properly handles all Unicode scripts including Greek, Cyrillic,
+ * accented characters, and more.
+ */
+const char *utf8_strcasestr(const char *haystack, const char *needle) {
+  if (!haystack || !needle) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "invalid params");
+    return NULL;
+  }
+
+  // Empty needle matches at start of haystack
+  if (needle[0] == '\0') {
+    return haystack;
+  }
+
+  // Get lengths
+  size_t haystack_len = strlen(haystack);
+  size_t needle_len = strlen(needle);
+
+  if (needle_len > haystack_len) {
+    return NULL;
+  }
+
+  // Case-fold both strings using utf8proc
+  // UTF8PROC_CASEFOLD performs Unicode case folding
+  // UTF8PROC_STABLE ensures stable output
+  // UTF8PROC_COMPOSE normalizes composed characters
+  utf8proc_option_t options = UTF8PROC_CASEFOLD | UTF8PROC_STABLE | UTF8PROC_COMPOSE;
+
+  // Case-fold the needle (pattern to search for)
+  utf8proc_uint8_t *needle_folded = NULL;
+  utf8proc_ssize_t needle_folded_len =
+      utf8proc_map((const utf8proc_uint8_t *)needle, (utf8proc_ssize_t)needle_len, &needle_folded, options);
+
+  if (needle_folded_len < 0 || !needle_folded) {
+    // Invalid UTF-8 in needle
+    if (needle_folded) {
+      free(needle_folded);
+    }
+    return NULL;
+  }
+
+  // Try each position in haystack
+  const char *haystack_pos = haystack;
+  while (*haystack_pos != '\0') {
+    // Calculate remaining haystack length
+    size_t remaining = haystack_len - (size_t)(haystack_pos - haystack);
+
+    if (remaining < needle_len) {
+      // Not enough characters left to match
+      break;
+    }
+
+    // Case-fold the current haystack window
+    utf8proc_uint8_t *haystack_folded = NULL;
+    utf8proc_ssize_t haystack_folded_len =
+        utf8proc_map((const utf8proc_uint8_t *)haystack_pos, (utf8proc_ssize_t)needle_len, &haystack_folded, options);
+
+    if (haystack_folded_len >= 0 && haystack_folded) {
+      // Compare case-folded strings
+      if ((size_t)haystack_folded_len == (size_t)needle_folded_len &&
+          memcmp(haystack_folded, needle_folded, (size_t)needle_folded_len) == 0) {
+        // Match found!
+        free(haystack_folded);
+        free(needle_folded);
+        return haystack_pos;
+      }
+      free(haystack_folded);
+    }
+
+    // Move to next UTF-8 character in haystack
+    utf8proc_int32_t codepoint;
+    utf8proc_ssize_t bytes = utf8proc_iterate((const utf8proc_uint8_t *)haystack_pos, -1, &codepoint);
+    if (bytes <= 0) {
+      // Invalid UTF-8, move by one byte
+      haystack_pos++;
+    } else {
+      haystack_pos += bytes;
+    }
+  }
+
+  free(needle_folded);
+  return NULL;
 }

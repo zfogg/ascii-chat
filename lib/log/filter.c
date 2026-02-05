@@ -17,6 +17,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/util/pcre2.h>
+#include <ascii-chat/util/utf8.h>
 #include <ascii-chat/video/ansi_fast.h>
 #include <ascii-chat/platform/terminal.h>
 
@@ -89,6 +90,7 @@ typedef struct {
   char *parsed_pattern;         ///< Parsed pattern (without delimiters/flags)
   pcre2_singleton_t *singleton; ///< PCRE2 singleton (NULL if fixed string)
   bool is_fixed_string;         ///< True for fixed string matching (no regex)
+  bool case_insensitive;        ///< Case-insensitive matching (i flag)
   bool invert;                  ///< Invert match (I flag)
   bool global_flag;             ///< Highlight all matches (g flag)
   int context_before;           ///< Lines before match (B flag)
@@ -222,6 +224,7 @@ typedef struct {
   char pattern[4096];     ///< Parsed pattern string
   uint32_t pcre2_options; ///< PCRE2 compile options
   bool is_fixed_string;   ///< True if fixed string (not regex)
+  bool case_insensitive;  ///< Case-insensitive (i flag)
   bool invert;            ///< Invert match (I flag)
   bool global_flag;       ///< Highlight all matches (g flag)
   int context_before;     ///< Lines before match (B<n> flag)
@@ -307,6 +310,7 @@ static parse_result_t parse_pattern_with_flags(const char *input) {
     // Single-character flags
     if (c == 'i') {
       result.pcre2_options |= PCRE2_CASELESS;
+      result.case_insensitive = true;
     } else if (c == 'm') {
       result.pcre2_options |= PCRE2_MULTILINE;
     } else if (c == 's') {
@@ -364,8 +368,12 @@ static parse_result_t parse_pattern_with_flags(const char *input) {
 }
 
 asciichat_error_t log_filter_init(const char *pattern) {
-  if (!pattern || strlen(pattern) == 0) {
-    return ASCIICHAT_OK;
+  // Reject NULL or empty patterns
+  if (!pattern) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Pattern cannot be NULL");
+  }
+  if (strlen(pattern) == 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Pattern cannot be empty");
   }
 
   // Parse pattern
@@ -400,6 +408,7 @@ asciichat_error_t log_filter_init(const char *pattern) {
   strcpy(new_pat->parsed_pattern, parsed.pattern);
 
   new_pat->is_fixed_string = parsed.is_fixed_string;
+  new_pat->case_insensitive = parsed.case_insensitive;
   new_pat->invert = parsed.invert;
   new_pat->global_flag = parsed.global_flag;
   new_pat->context_before = parsed.context_before;
@@ -450,8 +459,18 @@ asciichat_error_t log_filter_init(const char *pattern) {
 }
 
 bool log_filter_should_output(const char *log_line, size_t *match_start, size_t *match_len) {
-  if (!g_filter_state.enabled || !log_line) {
-    return true; // No filtering, output everything
+  // Reject NULL lines
+  if (!log_line) {
+    if (match_start)
+      *match_start = 0;
+    if (match_len)
+      *match_len = 0;
+    return false;
+  }
+
+  // If filtering disabled, output everything
+  if (!g_filter_state.enabled) {
+    return true;
   }
 
   // Check if we're in "context after" mode (outputting lines after a match)
@@ -485,8 +504,16 @@ bool log_filter_should_output(const char *log_line, size_t *match_start, size_t 
     bool this_match = false;
 
     if (pat->is_fixed_string) {
-      // Fixed string matching
-      const char *found = strstr(log_line, pat->parsed_pattern);
+      // Fixed string matching (with optional case-insensitive support)
+      const char *found;
+      if (pat->case_insensitive) {
+        // Unicode-aware case-insensitive search
+        found = utf8_strcasestr(log_line, pat->parsed_pattern);
+      } else {
+        // Case-sensitive search
+        found = strstr(log_line, pat->parsed_pattern);
+      }
+
       if (found) {
         this_match = true;
         if (!matched_pattern) {
