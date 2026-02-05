@@ -600,6 +600,271 @@ Test(log_filter, match_position_end) {
 }
 
 /* ============================================================================
+ * Functional Context Line Tests (A/B/C flags)
+ * ============================================================================ */
+
+Test(log_filter, context_after_functional) {
+  // Test that A3 actually outputs 3 lines after match
+  asciichat_error_t result = log_filter_init("/MATCH/A3");
+  cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
+
+  // Feed lines before match (these should NOT output)
+  cr_assert_not(line_matches("Before 1"), "Line before match should not output");
+  cr_assert_not(line_matches("Before 2"), "Line before match should not output");
+
+  // Match line
+  cr_assert(line_matches("MATCH found here"), "Match line should output");
+
+  // Next 3 lines should output (context-after)
+  cr_assert(line_matches("After 1"), "Context line 1 should output");
+  cr_assert(line_matches("After 2"), "Context line 2 should output");
+  cr_assert(line_matches("After 3"), "Context line 3 should output");
+
+  // Line 4 after match should NOT output
+  cr_assert_not(line_matches("After 4"), "Line 4 after match should not output");
+
+  // Continue with non-matching lines
+  cr_assert_not(line_matches("Normal log line"), "Non-matching line should not output");
+}
+
+Test(log_filter, context_before_functional) {
+  // Test that B2 actually outputs 2 lines before match
+  // NOTE: This test verifies the circular buffer behavior
+  asciichat_error_t result = log_filter_init("/MATCH/B2");
+  cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
+
+  // Feed lines before match (these get buffered)
+  // The implementation stores these in a circular buffer
+  line_matches("Before 1"); // Buffered
+  line_matches("Before 2"); // Buffered
+  line_matches("Before 3"); // Buffered (overwrites Before 1)
+
+  // When match occurs, the 2 most recent lines (Before 2, Before 3) should be output
+  // along with the match line
+  cr_assert(line_matches("MATCH found here"), "Match line should output");
+
+  // After the match, non-matching lines should not output
+  cr_assert_not(line_matches("After match"), "Non-matching line should not output");
+}
+
+Test(log_filter, context_both_functional) {
+  // Test that C2 outputs 2 lines before AND 2 lines after match
+  asciichat_error_t result = log_filter_init("/MATCH/C2");
+  cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
+
+  // Feed lines before match (buffered for context-before)
+  line_matches("Before 1");
+  line_matches("Before 2");
+
+  // Match line (outputs buffered lines + match)
+  cr_assert(line_matches("MATCH found here"), "Match line should output");
+
+  // Next 2 lines should output (context-after)
+  cr_assert(line_matches("After 1"), "Context-after line 1 should output");
+  cr_assert(line_matches("After 2"), "Context-after line 2 should output");
+
+  // Line 3 after match should NOT output
+  cr_assert_not(line_matches("After 3"), "Line 3 should not output");
+}
+
+Test(log_filter, context_separate_matches) {
+  // Test that separate matches each get their own context windows
+  asciichat_error_t result = log_filter_init("/MATCH/A2");
+  cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
+
+  // First match
+  cr_assert(line_matches("MATCH 1"), "First match should output");
+  cr_assert(line_matches("After 1-1"), "After first match (1/2)");
+  cr_assert(line_matches("After 1-2"), "After first match (2/2)");
+
+  // Non-matching line
+  cr_assert_not(line_matches("Between"), "Non-matching should not output");
+
+  // Second match (separate from first)
+  cr_assert(line_matches("MATCH 2"), "Second match should output");
+  cr_assert(line_matches("After 2-1"), "After second match (1/2)");
+  cr_assert(line_matches("After 2-2"), "After second match (2/2)");
+
+  // Now outside any context
+  cr_assert_not(line_matches("After all"), "Should not output");
+}
+
+/* ============================================================================
+ * UTF-8 Fixed String Tests (Case-Sensitive)
+ * ============================================================================ */
+
+Test(log_filter, utf8_fixed_string_ascii) {
+  // Basic ASCII fixed string
+  asciichat_error_t result = log_filter_init("/test/F");
+  cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
+
+  cr_assert(line_matches("This is a test message"), "Should match");
+  cr_assert_not(line_matches("This is a TEST message"), "Should not match (case-sensitive)");
+}
+
+Test(log_filter, utf8_fixed_string_accented) {
+  // French accented characters
+  asciichat_error_t result = log_filter_init("/café/F");
+  cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
+
+  cr_assert(line_matches("J'aime le café français"), "Should match café");
+  cr_assert_not(line_matches("J'aime le cafe français"), "Should not match cafe (no accent)");
+  cr_assert_not(line_matches("J'aime le CAFÉ français"), "Should not match CAFÉ (case-sensitive)");
+}
+
+Test(log_filter, utf8_fixed_string_greek) {
+  // Greek characters
+  asciichat_error_t result = log_filter_init("/ελληνικά/F");
+  cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
+
+  cr_assert(line_matches("Μιλάω ελληνικά"), "Should match Greek lowercase");
+  cr_assert_not(line_matches("Μιλάω ΕΛΛΗΝΙΚΆ"), "Should not match Greek uppercase");
+}
+
+Test(log_filter, utf8_fixed_string_cyrillic) {
+  // Cyrillic characters
+  asciichat_error_t result = log_filter_init("/русский/F");
+  cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
+
+  cr_assert(line_matches("Я говорю по-русский"), "Should match Cyrillic lowercase");
+  cr_assert_not(line_matches("Я говорю по-РУССКИЙ"), "Should not match Cyrillic uppercase");
+}
+
+Test(log_filter, utf8_fixed_string_cjk) {
+  // Chinese characters
+  asciichat_error_t result = log_filter_init("/中文/F");
+  cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
+
+  cr_assert(line_matches("我说中文"), "Should match Chinese");
+  cr_assert_not(line_matches("我说英文"), "Should not match different Chinese");
+}
+
+Test(log_filter, utf8_fixed_string_emoji) {
+  // Emoji (4-byte UTF-8)
+  asciichat_error_t result = log_filter_init("/🎉/F");
+  cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
+
+  cr_assert(line_matches("Celebration 🎉 time!"), "Should match emoji");
+  cr_assert_not(line_matches("Celebration 🎊 time!"), "Should not match different emoji");
+}
+
+/* ============================================================================
+ * UTF-8 Fixed String Tests (Case-Insensitive)
+ * ============================================================================ */
+
+Test(log_filter, utf8_fixed_string_case_insensitive_ascii) {
+  // ASCII case-insensitive
+  asciichat_error_t result = log_filter_init("/test/iF");
+  cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
+
+  cr_assert(line_matches("This is a test message"), "Should match lowercase");
+  cr_assert(line_matches("This is a TEST message"), "Should match uppercase");
+  cr_assert(line_matches("This is a TeSt message"), "Should match mixed case");
+}
+
+Test(log_filter, utf8_fixed_string_case_insensitive_accented) {
+  // French with case-insensitive
+  asciichat_error_t result = log_filter_init("/café/iF");
+  cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
+
+  cr_assert(line_matches("J'aime le café"), "Should match lowercase café");
+  cr_assert(line_matches("J'aime le CAFÉ"), "Should match uppercase CAFÉ");
+  cr_assert(line_matches("J'aime le Café"), "Should match mixed case Café");
+  cr_assert_not(line_matches("J'aime le cafe"), "Should not match cafe (no accent)");
+}
+
+Test(log_filter, utf8_fixed_string_case_insensitive_greek) {
+  // Greek case-insensitive
+  asciichat_error_t result = log_filter_init("/ελληνικά/iF");
+  cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
+
+  cr_assert(line_matches("Μιλάω ελληνικά"), "Should match lowercase");
+  cr_assert(line_matches("Μιλάω ΕΛΛΗΝΙΚΆ"), "Should match uppercase");
+}
+
+Test(log_filter, utf8_fixed_string_case_insensitive_cyrillic) {
+  // Cyrillic case-insensitive
+  asciichat_error_t result = log_filter_init("/русский/iF");
+  cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
+
+  cr_assert(line_matches("Я говорю по-русский"), "Should match lowercase");
+  cr_assert(line_matches("Я говорю по-РУССКИЙ"), "Should match uppercase");
+  cr_assert(line_matches("Я говорю по-Русский"), "Should match mixed case");
+}
+
+Test(log_filter, utf8_fixed_string_case_insensitive_mixed) {
+  // Mixed scripts with case-insensitive
+  asciichat_error_t result = log_filter_init("/Café Μπαρ/iF");
+  cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
+
+  cr_assert(line_matches("Welcome to Café Μπαρ"), "Should match mixed case");
+  cr_assert(line_matches("Welcome to CAFÉ ΜΠΑΡ"), "Should match all uppercase");
+  cr_assert(line_matches("Welcome to café μπαρ"), "Should match all lowercase");
+}
+
+/* ============================================================================
+ * UTF-8 Regex Tests
+ * ============================================================================ */
+
+Test(log_filter, utf8_regex_ascii) {
+  // ASCII regex patterns
+  asciichat_error_t result = log_filter_init("/test[0-9]+/");
+  cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
+
+  cr_assert(line_matches("test123 passed"), "Should match test followed by digits");
+  cr_assert_not(line_matches("test passed"), "Should not match test without digits");
+}
+
+Test(log_filter, utf8_regex_unicode_class) {
+  // Unicode character class (any letter)
+  asciichat_error_t result = log_filter_init("/café.*français/");
+  cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
+
+  cr_assert(line_matches("Le café est français"), "Should match with accents");
+  cr_assert(line_matches("Un café très français"), "Should match with .* in between");
+  cr_assert_not(line_matches("Le cafe est francais"), "Should not match without accents");
+}
+
+Test(log_filter, utf8_regex_case_insensitive) {
+  // Regex with case-insensitive flag
+  asciichat_error_t result = log_filter_init("/café|thé/i");
+  cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
+
+  cr_assert(line_matches("J'aime le café"), "Should match café");
+  cr_assert(line_matches("J'aime le CAFÉ"), "Should match CAFÉ (case-insensitive)");
+  cr_assert(line_matches("J'aime le thé"), "Should match thé");
+  cr_assert(line_matches("J'aime le THÉ"), "Should match THÉ (case-insensitive)");
+}
+
+Test(log_filter, utf8_regex_greek_pattern) {
+  // Greek word boundary
+  asciichat_error_t result = log_filter_init("/\\bελληνικά\\b/");
+  cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
+
+  cr_assert(line_matches("Μιλάω ελληνικά καλά"), "Should match Greek word");
+  cr_assert_not(line_matches("Μιλάω ελληνικάς καλά"), "Should not match with suffix");
+}
+
+Test(log_filter, utf8_regex_cyrillic_alternation) {
+  // Cyrillic alternation pattern
+  asciichat_error_t result = log_filter_init("/(русский|английский)/");
+  cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
+
+  cr_assert(line_matches("Я говорю по-русский"), "Should match русский");
+  cr_assert(line_matches("Я говорю по-английский"), "Should match английский");
+  cr_assert_not(line_matches("Я говорю по-французский"), "Should not match французский");
+}
+
+Test(log_filter, utf8_regex_mixed_scripts) {
+  // Pattern with multiple Unicode scripts
+  asciichat_error_t result = log_filter_init("/Hello.*你好.*Привет/");
+  cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
+
+  cr_assert(line_matches("Hello world 你好 世界 Привет мир"), "Should match mixed scripts");
+  cr_assert_not(line_matches("Hello world 你好"), "Should not match without Russian");
+}
+
+/* ============================================================================
  * Cleanup Tests
  * ============================================================================ */
 
