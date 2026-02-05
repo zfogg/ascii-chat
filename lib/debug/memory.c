@@ -57,8 +57,11 @@ typedef struct {
 } ignore_entry_t;
 
 static const ignore_entry_t g_ignore_list[] = {
-    {"lib/util/pcre2.c", 52, 2}, // Exactly 2 PCRE2 singleton allocations (cleaned after report)
-    {NULL, 0, 0}                 // Sentinel
+    {"lib/util/pcre2.c", 52, 2},           // Exactly 2 PCRE2 singleton allocations (cleaned after report)
+    {"lib/options/colorscheme.c", 623, 8}, // 8 truecolor ANSI strings (cleaned after report)
+    {"lib/options/colorscheme.c", 641, 8}, // 8 256-color ANSI strings (cleaned after report)
+    {"lib/options/colorscheme.c", 658, 8}, // 8 16-color ANSI strings (cleaned after report)
+    {NULL, 0, 0}                           // Sentinel
 };
 
 // Track seen count for each ignore entry (reset at start of memory report)

@@ -183,34 +183,34 @@ void asciichat_shared_shutdown(void) {
   // 6. Options state - cleanup RCU-based options
   options_state_shutdown();
 
-  // 7. Color cleanup - free compiled ANSI strings
-  log_cleanup_colors();
-  colorscheme_shutdown();
-
-  // 8. Buffer pool - cleanup global buffer pool
+  // 7. Buffer pool - cleanup global buffer pool
   buffer_pool_cleanup_global();
 
-  // 9. Platform cleanup - restores terminal, cleans up platform resources
+  // 8. Platform cleanup - restores terminal, cleans up platform resources
   // (includes symbol cache cleanup on Windows)
   platform_cleanup();
 
-  // 10. Keyboard - restore terminal settings (redundant with platform_cleanup but safe)
+  // 9. Keyboard - restore terminal settings (redundant with platform_cleanup but safe)
   extern void keyboard_cleanup(void);
   keyboard_cleanup();
 
-  // 11. Timer system - cleanup timers (may still log!)
+  // 10. Timer system - cleanup timers (may still log!)
   timer_system_cleanup();
 
-  // 12. Error context cleanup
+  // 11. Error context cleanup
   asciichat_errno_cleanup();
 
-  // 13. Memory stats (debug builds only) - runs BEFORE PCRE2 cleanup
+  // 12. Memory stats (debug builds only) - runs with colors still available
   //     Note: PCRE2 singletons are ignored in the report (expected system allocations)
 #if defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
   print_mimalloc_stats();
 #elif defined(DEBUG_MEMORY) && !defined(NDEBUG)
   debug_memory_report();
 #endif
+
+  // 13. Color cleanup - free compiled ANSI strings (AFTER memory report)
+  log_cleanup_colors();
+  colorscheme_shutdown();
 
   // 14. PCRE2 - cleanup all regex singletons together
   asciichat_pcre2_cleanup_all();
