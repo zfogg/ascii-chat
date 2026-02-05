@@ -68,10 +68,10 @@ asciichat_error_t terminal_set_raw_mode(bool enable) {
       saved = true;
     }
     struct termios raw = orig_termios;
-    raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
-    raw.c_oflag &= ~(OPOST);
+    raw.c_iflag &= ~(tcflag_t)(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
+    raw.c_oflag &= ~(tcflag_t)(OPOST);
     raw.c_cflag |= (CS8);
-    raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
+    raw.c_lflag &= ~(tcflag_t)(ECHO | ICANON | IEXTEN | ISIG);
     if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) != 0) {
       return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to set raw mode");
     }
@@ -834,7 +834,7 @@ bool terminal_query_background_color(uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b
 
   // Set raw mode for reading response
   new_tio = old_tio;
-  new_tio.c_lflag &= ~(ICANON | ECHO);
+  new_tio.c_lflag &= ~(tcflag_t)(ICANON | ECHO);
   new_tio.c_cc[VMIN] = 0;
   new_tio.c_cc[VTIME] = 1; // 0.1 second timeout
   tcsetattr(tty_fd, TCSANOW, &new_tio);

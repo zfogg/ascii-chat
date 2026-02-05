@@ -169,53 +169,68 @@ void server_status_display(const server_status_t *status) {
   printf("\033[H\033[2J");
 
   // ========================================================================
-  // STATUS BOX (compact, top of screen)
+  // STATUS BOX - EXACTLY 4 LINES (fixed height, never scrolls terminal)
   // ========================================================================
-  printf("\033[1;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m\n");
-  printf("\033[1;36m  ascii-chat %s Status\033[0m", status->mode_name);
-  printf("  👥 \033[1;33m%zu\033[0m", status->connected_count);
-  printf("  ⏱️ %dh %dm %ds\n", uptime_hours, uptime_mins, uptime_secs_rem);
+  // Line 1: Top border
+  printf("\033[1;36m━");
+  for (int i = 1; i < term_size.cols - 1; i++) {
+    printf("━");
+  }
+  printf("\033[0m\n");
 
+  // Line 2: Title + Stats (truncate if too long to fit on one line)
+  char status_line[512];
+  snprintf(status_line, sizeof(status_line), "  ascii-chat %s | 👥 %zu | ⏱️ %dh %dm %ds", status->mode_name,
+           status->connected_count, uptime_hours, uptime_mins, uptime_secs_rem);
+  if ((int)strlen(status_line) >= term_size.cols) {
+    status_line[term_size.cols - 1] = '\0'; // Truncate
+  }
+  printf("\033[1;36m%s\033[0m\n", status_line);
+
+  // Line 3: Session + Addresses (truncate if too long)
+  char addr_line[512];
+  int pos = 0;
   if (status->session_string[0] != '\0') {
-    printf("🔗 %s", status->session_string);
-    if (status->session_is_mdns_only) {
-      printf(" \033[2m(LAN)\033[0m");
-    } else {
-      printf(" \033[2m(Internet)\033[0m");
-    }
+    pos += snprintf(addr_line + pos, sizeof(addr_line) - pos, "  🔗 %s", status->session_string);
   }
-  if (status->ipv4_bound) {
-    printf("  📍 %s", status->ipv4_address);
+  if (status->ipv4_bound && pos < (int)sizeof(addr_line) - 30) {
+    pos += snprintf(addr_line + pos, sizeof(addr_line) - pos, " | %s", status->ipv4_address);
   }
-  if (status->ipv6_bound) {
-    printf("  📍 [%s]:%u", status->ipv6_address, status->port);
+  if (status->ipv6_bound && pos < (int)sizeof(addr_line) - 30) {
+    snprintf(addr_line + pos, sizeof(addr_line) - pos, " | %s", status->ipv6_address);
   }
-  printf("\n");
+  if ((int)strlen(addr_line) >= term_size.cols) {
+    addr_line[term_size.cols - 1] = '\0'; // Truncate
+  }
+  printf("%s\n", addr_line);
 
-  printf("\033[1;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m\n");
+  // Line 4: Bottom border
+  printf("\033[1;36m━");
+  for (int i = 1; i < term_size.cols - 1; i++) {
+    printf("━");
+  }
+  printf("\033[0m\n");
 
   // ========================================================================
-  // LIVE LOG FEED (bottom-anchored, no scrolling)
+  // LIVE LOG FEED - Fills remaining screen (never causes scroll)
   // ========================================================================
-  printf("\033[1;37mLive Logs:\033[0m\n");
+  // Calculate EXACTLY how many lines we have for logs
+  // Status took exactly 4 lines above
+  int logs_available_lines = term_size.rows - 4;
+  if (logs_available_lines < 1) {
+    logs_available_lines = 1; // At least show something
+  }
 
   // Get recent log entries
   status_log_entry_t logs[STATUS_LOG_BUFFER_SIZE];
   size_t log_count = server_status_log_get_recent(logs, STATUS_LOG_BUFFER_SIZE);
 
-  // Calculate available lines for logs (leave room for status + borders + "Live Logs:" header)
-  // Status: 3 lines (borders + info), "Live Logs:" header: 1 line, bottom margin: 1 line
-  int logs_available_lines = term_size.rows - 5;
-  if (logs_available_lines < 5) {
-    logs_available_lines = 5; // Minimum
-  }
-
-  // Display ONLY the most recent N logs that fit on screen (tail behavior)
-  // This prevents scrolling - new logs push old ones off the top
+  // Show most recent N logs that fit (sliding window - creates scrolling effect)
   size_t start_idx = (log_count > (size_t)logs_available_lines) ? log_count - logs_available_lines : 0;
+  size_t logs_to_show = log_count - start_idx;
 
+  // Display logs (each log already has newline)
   for (size_t i = start_idx; i < log_count; i++) {
-    // Use existing logging colorization system
     const char *colorized = colorize_log_message(logs[i].message);
     printf("%s", colorized);
     if (colorized[strlen(colorized) - 1] != '\n') {
@@ -223,9 +238,9 @@ void server_status_display(const server_status_t *status) {
     }
   }
 
-  // Fill remaining lines with blank space to prevent scrolling
-  size_t logs_displayed = log_count - start_idx;
-  for (int i = logs_displayed; i < logs_available_lines; i++) {
+  // Fill remaining lines to reach bottom of screen without scrolling
+  // This keeps cursor at bottom and prevents terminal scroll
+  for (size_t i = logs_to_show; i < (size_t)logs_available_lines - 1; i++) {
     printf("\n");
   }
 
