@@ -195,7 +195,7 @@ void server_status_display(const server_status_t *status) {
   printf("\033[1;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m\n");
 
   // ========================================================================
-  // LIVE LOG FEED (scrolling, fills rest of screen)
+  // LIVE LOG FEED (bottom-anchored, no scrolling)
   // ========================================================================
   printf("\033[1;37mLive Logs:\033[0m\n");
 
@@ -203,14 +203,17 @@ void server_status_display(const server_status_t *status) {
   status_log_entry_t logs[STATUS_LOG_BUFFER_SIZE];
   size_t log_count = server_status_log_get_recent(logs, STATUS_LOG_BUFFER_SIZE);
 
-  // Calculate available lines for logs (leave room for status + borders)
-  int logs_available_lines = term_size.rows - 6; // Status takes ~4 lines + margins
-  if (logs_available_lines < 10) {
-    logs_available_lines = 10; // Minimum
+  // Calculate available lines for logs (leave room for status + borders + "Live Logs:" header)
+  // Status: 3 lines (borders + info), "Live Logs:" header: 1 line, bottom margin: 1 line
+  int logs_available_lines = term_size.rows - 5;
+  if (logs_available_lines < 5) {
+    logs_available_lines = 5; // Minimum
   }
 
-  // Display most recent logs (tail behavior)
+  // Display ONLY the most recent N logs that fit on screen (tail behavior)
+  // This prevents scrolling - new logs push old ones off the top
   size_t start_idx = (log_count > (size_t)logs_available_lines) ? log_count - logs_available_lines : 0;
+
   for (size_t i = start_idx; i < log_count; i++) {
     // Use existing logging colorization system
     const char *colorized = colorize_log_message(logs[i].message);
@@ -218,6 +221,12 @@ void server_status_display(const server_status_t *status) {
     if (colorized[strlen(colorized) - 1] != '\n') {
       printf("\n");
     }
+  }
+
+  // Fill remaining lines with blank space to prevent scrolling
+  size_t logs_displayed = log_count - start_idx;
+  for (int i = logs_displayed; i < logs_available_lines; i++) {
+    printf("\n");
   }
 
   fflush(stdout);
