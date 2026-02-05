@@ -72,4 +72,20 @@ bool crypto_regex_match_public_key(const char *line, char **base64_key_out, char
  */
 bool crypto_regex_extract_pem_base64(const char *file_content, char **base64_data_out);
 
+/**
+ * Extract GPG keygrip from colon-delimited GPG output
+ *
+ * Format: grp:::::::::D52FF935FBA59609EE65E1685287828242A1EA1A:
+ * Where the keygrip is a 40-character hexadecimal string after 8 colon-delimited empty fields
+ *
+ * @param line Input line from GPG output (must start with "grp:")
+ * @param keygrip_out Output: allocated string with 40-char hex keygrip
+ *
+ * @return true if line matches GPG keygrip format, false otherwise
+ *
+ * @note Caller must free output string with SAFE_FREE()
+ * @note Returns false if regex is not available (caller should use fallback manual parsing)
+ */
+bool crypto_regex_extract_gpg_keygrip(const char *line, char **keygrip_out);
+
 #endif /* ASCII_CHAT_CRYPTO_REGEX_H */

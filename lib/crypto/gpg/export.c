@@ -7,6 +7,7 @@
 #include <ascii-chat/crypto/gpg/export.h>
 #include <ascii-chat/crypto/gpg/agent.h>
 #include <ascii-chat/crypto/keys.h>
+#include <ascii-chat/crypto/regex.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/validation.h>
@@ -309,28 +310,39 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
       // Found the public key line
       found_key = true;
     } else if (found_key && strncmp(line, "grp:", 4) == 0) {
-      // Extract keygrip
+      // Extract keygrip using PCRE2 regex
       // Format: grp:::::::::D52FF935FBA59609EE65E1685287828242A1EA1A:
-      // (8 empty fields, then keygrip, then final colon)
-      const char *grp_start = line + 4;
-      int colon_count = 0;
-      while (*grp_start && colon_count < 8) {
-        if (*grp_start == ':') {
-          colon_count++;
+      char *keygrip_extracted = NULL;
+
+      if (crypto_regex_extract_gpg_keygrip(line, &keygrip_extracted)) {
+        // Successfully extracted keygrip
+        SAFE_STRNCPY(found_keygrip, keygrip_extracted, sizeof(found_keygrip));
+        if (keygrip_out) {
+          SAFE_STRNCPY(keygrip_out, found_keygrip, 41);
         }
-        grp_start++;
-      }
+        SAFE_FREE(keygrip_extracted);
+      } else {
+        // Fallback to manual parsing if regex fails
+        const char *grp_start = line + 4;
+        int colon_count = 0;
+        while (*grp_start && colon_count < 8) {
+          if (*grp_start == ':') {
+            colon_count++;
+          }
+          grp_start++;
+        }
 
-      if (colon_count == 8) {
-        const char *grp_end = strchr(grp_start, ':');
-        if (grp_end) {
-          size_t grp_len = grp_end - grp_start;
-          if (grp_len < sizeof(found_keygrip)) {
-            memcpy(found_keygrip, grp_start, grp_len);
-            found_keygrip[grp_len] = '\0';
+        if (colon_count == 8) {
+          const char *grp_end = strchr(grp_start, ':');
+          if (grp_end) {
+            size_t grp_len = grp_end - grp_start;
+            if (grp_len < sizeof(found_keygrip)) {
+              memcpy(found_keygrip, grp_start, grp_len);
+              found_keygrip[grp_len] = '\0';
 
-            if (keygrip_out) {
-              SAFE_STRNCPY(keygrip_out, found_keygrip, 41);
+              if (keygrip_out) {
+                SAFE_STRNCPY(keygrip_out, found_keygrip, 41);
+              }
             }
           }
         }

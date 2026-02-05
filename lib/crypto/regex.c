@@ -66,6 +66,15 @@ static const char *OPENSSH_PEM_REGEX_PATTERN =
     "(?<base64_data>[A-Za-z0-9+/=\\s]+?)"     // Multiline base64 (lazy match)
     "\\s*-----END OPENSSH PRIVATE KEY-----";  // Footer with optional whitespace
 
+/**
+ * GPG keygrip extraction format:
+ *   grp:::::::::D52FF935FBA59609EE65E1685287828242A1EA1A:
+ *
+ * Captures:
+ *   - keygrip: 40-character hexadecimal keygrip (skips 8 colon-delimited empty fields)
+ */
+static const char *GPG_KEYGRIP_REGEX_PATTERN = "^grp:(?:[^:]*:){8}(?<keygrip>[A-Fa-f0-9]{40}):"; // GPG keygrip format
+
 /* ═══════════════════════════════════════════════════════════════════════════
  * PCRE2 REGEX VALIDATOR STATE
  *
@@ -77,6 +86,7 @@ typedef struct {
   pcre2_code *known_hosts_regex;    /* Compiled regex for known_hosts format */
   pcre2_code *ssh_public_key_regex; /* Compiled regex for SSH public key format */
   pcre2_code *openssh_pem_regex;    /* Compiled regex for OpenSSH PEM format */
+  pcre2_code *gpg_keygrip_regex;    /* Compiled regex for GPG keygrip extraction */
   pcre2_jit_stack *jit_stack;       /* JIT stack for performance */
   bool initialized;                 /* Whether validator is initialized */
 } crypto_regex_validator_t;
@@ -131,11 +141,25 @@ static void crypto_regex_init(void) {
     return;
   }
 
+  /* ─── Compile GPG keygrip regex ─── */
+  g_validator.gpg_keygrip_regex = pcre2_compile((PCRE2_SPTR)GPG_KEYGRIP_REGEX_PATTERN, PCRE2_ZERO_TERMINATED,
+                                                PCRE2_UCP | PCRE2_UTF, &errornumber, &erroroffset, NULL);
+
+  if (!g_validator.gpg_keygrip_regex) {
+    PCRE2_UCHAR error_buffer[256];
+    pcre2_get_error_message(errornumber, error_buffer, sizeof(error_buffer));
+    log_warn("Failed to compile GPG keygrip regex at offset %zu: %s", erroroffset, (const char *)error_buffer);
+    /* Non-fatal: GPG keygrip extraction can fall back to manual parsing */
+  }
+
   /* ─── Compile JIT for all patterns ─── */
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 4; i++) {
     pcre2_code *regex = (i == 0)   ? g_validator.known_hosts_regex
                         : (i == 1) ? g_validator.ssh_public_key_regex
-                                   : g_validator.openssh_pem_regex;
+                        : (i == 2) ? g_validator.openssh_pem_regex
+                                   : g_validator.gpg_keygrip_regex;
+    if (!regex)
+      continue; /* Skip if compilation failed */
     int jit_rc = pcre2_jit_compile(regex, PCRE2_JIT_COMPLETE);
     if (jit_rc < 0) {
       log_warn("PCRE2 JIT compilation failed for pattern %d (code %d), using interpreted mode", i, jit_rc);
@@ -353,6 +377,54 @@ bool crypto_regex_extract_pem_base64(const char *file_content, char **base64_dat
 
   /* Verify we got the base64 data */
   if (!*base64_data_out) {
+    return false;
+  }
+
+  return true;
+}
+
+bool crypto_regex_extract_gpg_keygrip(const char *line, char **keygrip_out) {
+  if (!line || !keygrip_out) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
+    return false;
+  }
+
+  crypto_regex_validator_t *validator = crypto_regex_get();
+  if (!validator || !validator->gpg_keygrip_regex) {
+    /* Regex not available - caller should use fallback manual parsing */
+    return false;
+  }
+
+  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(validator->gpg_keygrip_regex, NULL);
+  if (!match_data) {
+    return false;
+  }
+
+  /* Perform JIT match if JIT compiled, otherwise interpreted match */
+  int rc;
+  if (validator->jit_stack) {
+    rc = pcre2_jit_match(validator->gpg_keygrip_regex, (PCRE2_SPTR)line, strlen(line), 0, /* startoffset */
+                         0,                                                               /* options */
+                         match_data, NULL);                                               /* mcontext */
+  } else {
+    rc = pcre2_match(validator->gpg_keygrip_regex, (PCRE2_SPTR)line, strlen(line), 0, /* startoffset */
+                     0,                                                               /* options */
+                     match_data, NULL);                                               /* mcontext */
+  }
+
+  if (rc < 0) {
+    pcre2_match_data_free(match_data);
+    return false;
+  }
+
+  /* Extract keygrip from named group */
+  *keygrip_out =
+      crypto_regex_extract_named_group_with_subject(validator->gpg_keygrip_regex, match_data, "keygrip", line);
+
+  pcre2_match_data_free(match_data);
+
+  /* Verify we got the keygrip */
+  if (!*keygrip_out) {
     return false;
   }
 
