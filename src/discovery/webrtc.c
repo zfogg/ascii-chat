@@ -17,8 +17,10 @@
 #include <ascii-chat/network/acip/acds.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/network.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/init.h>
+#include <ascii-chat/util/endian.h>
 
 #include <string.h>
 
@@ -181,42 +183,50 @@ static asciichat_error_t discovery_send_ice(const uint8_t session_id[16], const 
   }
 
   // Verify inputs
-  if (!candidate) {
+  if (!candidate || !mid) {
     mutex_unlock(&g_webrtc_mutex);
-    SET_ERRNO(ERROR_INVALID_PARAM, "Candidate is NULL");
+    SET_ERRNO(ERROR_INVALID_PARAM, "Candidate or mid is NULL");
     return ERROR_INVALID_PARAM;
   }
 
+  // Calculate payload length (candidate + null + mid + null)
   size_t candidate_len = strlen(candidate);
+  size_t mid_len = strlen(mid);
+  size_t payload_len = candidate_len + 1 + mid_len + 1;
 
-  if (candidate_len > 4096) {
+  if (payload_len > 4096) {
     mutex_unlock(&g_webrtc_mutex);
-    SET_ERRNO(ERROR_INVALID_PARAM, "ICE candidate too large (>4096 bytes)");
+    SET_ERRNO(ERROR_INVALID_PARAM, "ICE candidate + mid too large (>4096 bytes)");
     return ERROR_INVALID_PARAM;
   }
 
   // Construct packet
   // Header: acip_webrtc_ice_t (defined in network/acip/acds.h)
-  // Followed by: candidate string (mid is already included in candidate string)
-  // Note: ICE candidate string format is: "candidate:..." (mid is separate in WebRTC but here we just send the
-  // candidate)
+  // Followed by: candidate string + null + mid string + null
   uint8_t ice_msg_buf[sizeof(acip_webrtc_ice_t) + 4096];
   acip_webrtc_ice_t *ice_msg = (acip_webrtc_ice_t *)ice_msg_buf;
 
+  // Fill header
   memcpy(ice_msg->session_id, session_id, 16);
   memcpy(ice_msg->sender_id, g_session_context.participant_id, 16);
   memset(ice_msg->recipient_id, 0, 16); // Broadcast to all
-  ice_msg->candidate_len = (uint16_t)candidate_len;
-  memcpy(ice_msg_buf + sizeof(acip_webrtc_ice_t), candidate, candidate_len);
+  ice_msg->candidate_len = HOST_TO_NET_U16((uint16_t)candidate_len);
+
+  // Copy candidate and mid after header
+  uint8_t *payload = ice_msg_buf + sizeof(acip_webrtc_ice_t);
+  memcpy(payload, candidate, candidate_len);
+  payload[candidate_len] = '\0';
+  memcpy(payload + candidate_len + 1, mid, mid_len);
+  payload[candidate_len + 1 + mid_len] = '\0';
+
+  log_debug("Sending ICE candidate directly to peer (candidate_len=%zu, mid=%s)", candidate_len, mid);
 
   // Send via direct TCP transport (not ACDS)
-  size_t msg_size = sizeof(acip_webrtc_ice_t) + candidate_len;
+  size_t msg_size = sizeof(acip_webrtc_ice_t) + payload_len;
   asciichat_error_t result =
       packet_send_via_transport(g_tcp_transport, PACKET_TYPE_ACIP_WEBRTC_ICE, ice_msg_buf, msg_size);
 
   mutex_unlock(&g_webrtc_mutex);
-
-  (void)mid; // Unused - mid is part of the candidate string in libdatachannel
 
   if (result != ASCIICHAT_OK) {
     log_error("Failed to send ICE candidate via direct TCP: %d", result);

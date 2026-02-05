@@ -491,26 +491,40 @@ static asciichat_error_t discovery_send_sdp_via_acds(const uint8_t session_id[16
  * @brief Send ICE candidate via ACDS signaling
  */
 static asciichat_error_t discovery_send_ice_via_acds(const uint8_t session_id[16], const uint8_t recipient_id[16],
-                                                     const char *candidate, const char *mid __attribute__((unused)),
-                                                     void *user_data) {
+                                                     const char *candidate, const char *mid, void *user_data) {
   discovery_session_t *session = (discovery_session_t *)user_data;
 
   if (!session || session->acds_socket == INVALID_SOCKET_VALUE) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session or ACDS socket");
   }
 
-  // Build ACIP ICE packet
+  // Calculate payload length (candidate + null + mid + null)
   size_t candidate_len = strlen(candidate);
-  size_t total_len = sizeof(acip_webrtc_ice_t) + candidate_len;
+  size_t mid_len = strlen(mid);
+  size_t payload_len = candidate_len + 1 + mid_len + 1;
 
+  // Allocate packet buffer (header + payload)
+  size_t total_len = sizeof(acip_webrtc_ice_t) + payload_len;
   uint8_t *packet_data = SAFE_MALLOC(total_len, uint8_t *);
-  acip_webrtc_ice_t *ice_msg = (acip_webrtc_ice_t *)packet_data;
+  if (!packet_data) {
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate ICE packet");
+  }
 
+  // Fill header
+  acip_webrtc_ice_t *ice_msg = (acip_webrtc_ice_t *)packet_data;
   memcpy(ice_msg->session_id, session_id, 16);
   memcpy(ice_msg->sender_id, session->participant_id, 16);
   memcpy(ice_msg->recipient_id, recipient_id, 16);
-  ice_msg->candidate_len = HOST_TO_NET_U16(candidate_len);
-  memcpy(packet_data + sizeof(acip_webrtc_ice_t), candidate, candidate_len);
+  ice_msg->candidate_len = HOST_TO_NET_U16((uint16_t)candidate_len);
+
+  // Copy candidate and mid after header
+  uint8_t *payload = packet_data + sizeof(acip_webrtc_ice_t);
+  memcpy(payload, candidate, candidate_len);
+  payload[candidate_len] = '\0';
+  memcpy(payload + candidate_len + 1, mid, mid_len);
+  payload[candidate_len + 1 + mid_len] = '\0';
+
+  log_debug("Sending ICE candidate to ACDS (candidate_len=%zu, mid=%s)", candidate_len, mid);
 
   // Send to ACDS
   asciichat_error_t result = packet_send(session->acds_socket, PACKET_TYPE_ACIP_WEBRTC_ICE, packet_data, total_len);
@@ -521,7 +535,7 @@ static asciichat_error_t discovery_send_ice_via_acds(const uint8_t session_id[16
     return SET_ERRNO(ERROR_NETWORK, "Failed to send ICE to ACDS");
   }
 
-  log_debug("Sent ICE candidate to ACDS (len=%zu)", candidate_len);
+  log_debug("Sent ICE candidate to ACDS (candidate_len=%zu, mid=%s)", candidate_len, mid);
   return ASCIICHAT_OK;
 }
 
