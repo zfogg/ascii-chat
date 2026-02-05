@@ -88,6 +88,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/filter.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/util.h>
@@ -728,6 +729,9 @@ static char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t 
 // ============================================================================
 
 asciichat_error_t options_init(int argc, char **argv) {
+  // NOTE: --grep filter is initialized in main.c BEFORE any logging starts
+  // This allows ALL logs (including from shared_init) to be filtered
+
   log_debug("options_init called with argc=%d, argv[0]=%s, argv[1]=%s", argc, argc > 0 ? argv[0] : "NULL",
             argc > 1 ? argv[1] : "NULL");
 

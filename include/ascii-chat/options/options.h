@@ -598,6 +598,9 @@ typedef enum {
 /** @brief Default verbose level (0 = not verbose) */
 #define OPT_VERBOSE_LEVEL_DEFAULT 0
 
+/** @brief Default grep pattern (empty = no filtering) */
+#define OPT_GREP_PATTERN_DEFAULT ""
+
 /** @brief Default log level (LOG_INFO) */
 #define OPT_LOG_LEVEL_DEFAULT LOG_INFO
 
@@ -886,6 +889,7 @@ typedef struct options_state {
   unsigned short int strip_ansi;        ///< Strip ANSI escape sequences
   char log_file[OPTIONS_BUFF_SIZE];     ///< Log file path
   log_level_t log_level;                ///< Log level threshold
+  char grep_pattern[OPTIONS_BUFF_SIZE]; ///< PCRE2 regex for log filtering
   unsigned short int enable_keepawake;  ///< Explicitly enable system sleep prevention
   unsigned short int disable_keepawake; ///< Explicitly disable system sleep prevention (allow OS to sleep)
 

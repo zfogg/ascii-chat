@@ -1,0 +1,191 @@
+/**
+ * @file filter.c
+ * @brief Log filtering with PCRE2 regex matching and highlighting
+ *
+ * Implements terminal-only log filtering:
+ * - File logs remain complete (unfiltered)
+ * - Terminal shows only matching lines
+ * - Matches highlighted with yellow background
+ *
+ * Thread Safety:
+ * - Thread-local match_data via pthread_key_create()
+ * - No mutex contention in hot path
+ * - Compiled regex is immutable after init
+ */
+
+#include <ascii-chat/log/filter.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/util/pcre2.h>
+#include <ascii-chat/video/ansi_fast.h>
+#include <ascii-chat/platform/terminal.h>
+
+#include <pthread.h>
+#include <string.h>
+
+/**
+ * @brief Global filter state (initialized once at startup)
+ */
+static struct {
+  pcre2_code *compiled_regex;     ///< Compiled PCRE2 pattern
+  const char *pattern;            ///< Original pattern string
+  bool enabled;                   ///< Is filtering active?
+  pthread_key_t match_data_key;   ///< Thread-local match_data key
+  pthread_once_t match_data_once; ///< Initialize key once
+} g_filter_state = {
+    .compiled_regex = NULL,
+    .pattern = NULL,
+    .enabled = false,
+    .match_data_once = PTHREAD_ONCE_INIT,
+};
+
+/**
+ * @brief Destructor for thread-local match_data
+ */
+static void destroy_match_data(void *data) {
+  if (data) {
+    pcre2_match_data_free((pcre2_match_data *)data);
+  }
+}
+
+/**
+ * @brief Initialize thread-local storage key (called once)
+ */
+static void create_match_data_key(void) {
+  pthread_key_create(&g_filter_state.match_data_key, destroy_match_data);
+}
+
+/**
+ * @brief Get thread-local match_data (lazy allocation)
+ */
+static pcre2_match_data *get_thread_match_data(void) {
+  pthread_once(&g_filter_state.match_data_once, create_match_data_key);
+
+  pcre2_match_data *data = pthread_getspecific(g_filter_state.match_data_key);
+  if (!data && g_filter_state.compiled_regex) {
+    data = pcre2_match_data_create_from_pattern(g_filter_state.compiled_regex, NULL);
+    if (data) {
+      pthread_setspecific(g_filter_state.match_data_key, data);
+    }
+  }
+
+  return data;
+}
+
+asciichat_error_t log_filter_init(const char *pattern) {
+  if (!pattern || strlen(pattern) == 0) {
+    g_filter_state.enabled = false;
+    return ASCIICHAT_OK;
+  }
+
+  int error_number;
+  PCRE2_SIZE error_offset;
+
+  // Compile pattern with case-insensitive, UTF-8, multiline, Unicode properties
+  g_filter_state.compiled_regex =
+      pcre2_compile((PCRE2_SPTR)pattern, PCRE2_ZERO_TERMINATED,
+                    PCRE2_CASELESS | PCRE2_UTF | PCRE2_MULTILINE | PCRE2_UCP, &error_number, &error_offset, NULL);
+
+  if (!g_filter_state.compiled_regex) {
+    PCRE2_UCHAR error_buffer[256];
+    pcre2_get_error_message(error_number, error_buffer, sizeof(error_buffer));
+    log_warn("Invalid --grep pattern at offset %zu: %s", (size_t)error_offset, error_buffer);
+    g_filter_state.enabled = false;
+    return ERROR_INVALID_PARAM;
+  }
+
+  // Try JIT compilation (optional, silently ignore failure)
+  pcre2_jit_compile(g_filter_state.compiled_regex, PCRE2_JIT_COMPLETE);
+
+  g_filter_state.pattern = pattern;
+  g_filter_state.enabled = true;
+
+  log_info("Log filtering enabled with pattern: %s", pattern);
+  return ASCIICHAT_OK;
+}
+
+bool log_filter_should_output(const char *log_line, size_t *match_start, size_t *match_len) {
+  if (!g_filter_state.enabled || !log_line) {
+    return true; // No filtering, output everything
+  }
+
+  pcre2_match_data *match_data = get_thread_match_data();
+  if (!match_data) {
+    // Allocation failed, pass through (log warning once per thread)
+    static __thread bool warned = false;
+    if (!warned) {
+      log_warn("Failed to create thread-local match data for grep filtering");
+      warned = true;
+    }
+    return true;
+  }
+
+  size_t line_len = strlen(log_line);
+  int rc = pcre2_jit_match(g_filter_state.compiled_regex, (PCRE2_SPTR)log_line, line_len, 0, 0, match_data, NULL);
+
+  if (rc < 0) {
+    return false; // No match, suppress line
+  }
+
+  // Extract match position (group 0 = entire match)
+  PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
+  *match_start = (size_t)ovector[0];
+  *match_len = (size_t)(ovector[1] - ovector[0]);
+
+  return true; // Match found, output with highlighting
+}
+
+const char *log_filter_highlight(const char *log_line, size_t match_start, size_t match_len) {
+  static __thread char highlight_buffer[16384];
+
+  if (!log_line || match_len == 0) {
+    return log_line; // No highlighting needed
+  }
+
+  size_t line_len = strlen(log_line);
+  if (match_start + match_len > line_len) {
+    return log_line; // Invalid range
+  }
+
+  char *dst = highlight_buffer;
+
+  // Copy text before match
+  if (match_start > 0) {
+    memcpy(dst, log_line, match_start);
+    dst += match_start;
+  }
+
+  // Add background color for match
+  // Yellow background (255, 200, 0) + black foreground (0, 0, 0)
+  dst = append_truecolor_fg_bg(dst, 0, 0, 0, 255, 200, 0);
+
+  // Copy matched text
+  memcpy(dst, log_line + match_start, match_len);
+  dst += match_len;
+
+  // Reset color
+  memcpy(dst, "\x1b[0m", 4);
+  dst += 4;
+
+  // Copy text after match
+  size_t remaining = line_len - (match_start + match_len);
+  if (remaining > 0) {
+    memcpy(dst, log_line + match_start + match_len, remaining);
+    dst += remaining;
+  }
+
+  *dst = '\0';
+  return highlight_buffer;
+}
+
+void log_filter_destroy(void) {
+  if (g_filter_state.compiled_regex) {
+    pcre2_code_free(g_filter_state.compiled_regex);
+    g_filter_state.compiled_regex = NULL;
+  }
+
+  g_filter_state.pattern = NULL;
+  g_filter_state.enabled = false;
+
+  // Note: Thread-local match_data is cleaned up via pthread_key destructor
+}

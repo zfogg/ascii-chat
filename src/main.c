@@ -43,6 +43,7 @@
 #include <ascii-chat/options/builder.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/filter.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/options/colorscheme.h>
@@ -173,6 +174,20 @@ int main(int argc, char *argv[]) {
   if (argc < 1 || argv == NULL || argv[0] == NULL) {
     fprintf(stderr, "Error: Invalid argument vector\n");
     return 1;
+  }
+
+  // VERY FIRST: Scan for --grep BEFORE ANY logging initialization
+  // This ensures ALL logs (including from shared_init) can be filtered
+  for (int i = 1; i < argc - 1; i++) {
+    if (strcmp(argv[i], "--grep") == 0) {
+      const char *pattern = argv[i + 1];
+      asciichat_error_t filter_result = log_filter_init(pattern);
+      if (filter_result != ASCIICHAT_OK) {
+        fprintf(stderr, "ERROR: Invalid --grep pattern, exiting\n");
+        return 1;
+      }
+      break; // Filter initialized early, stop searching
+    }
   }
 
   // Detect terminal capabilities early so colored help output works

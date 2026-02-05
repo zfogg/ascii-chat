@@ -24,6 +24,7 @@
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/log/colorize.h>
 #include <ascii-chat/log/mmap.h>
+#include <ascii-chat/log/filter.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/platform/thread.h>
@@ -514,6 +515,7 @@ void log_init(const char *filename, log_level_t level, bool force_stderr, bool u
 
   // NOTE: Color initialization happens separately via log_set_color_scheme()
   // after options are parsed. Logging works without colors until then.
+  // NOTE: Grep filter initialization happens in main.c after options_init() completes.
 }
 
 void log_destroy(void) {
@@ -521,6 +523,9 @@ void log_destroy(void) {
   if (log_mmap_is_active()) {
     log_mmap_destroy();
   }
+
+  // Cleanup grep filter
+  log_filter_destroy();
 
   // Lock-free cleanup using atomic operations
   int old_file = atomic_load(&g_log.file);
@@ -732,6 +737,15 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
     return;
   }
 
+  // Format plain header for grep matching (without ANSI codes)
+  char plain_header_buffer[512];
+  int plain_header_len = format_log_header(plain_header_buffer, sizeof(plain_header_buffer), level, timestamp, file,
+                                           line, func, false, false);
+  if (plain_header_len <= 0 || plain_header_len >= (int)sizeof(plain_header_buffer)) {
+    LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format plain log header");
+    return;
+  }
+
   // Check if terminal output is enabled (atomic load)
   if (!atomic_load(&g_log.terminal_output_enabled)) {
     return; // Terminal output disabled - skip (no buffering in lock-free mode)
@@ -745,33 +759,64 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
     }
   }
 
-  if (use_colors) {
-    // Format the message first so we can colorize it
-    char msg_buffer[LOG_MSG_BUFFER_SIZE];
-    va_list args_copy;
-    va_copy(args_copy, args);
-    int msg_len = safe_vsnprintf(msg_buffer, sizeof(msg_buffer), fmt, args_copy);
-    va_end(args_copy);
+  // Format message first to check grep filter (need full log line)
+  char msg_buffer[LOG_MSG_BUFFER_SIZE];
+  va_list args_copy;
+  va_copy(args_copy, args);
+  int msg_len = safe_vsnprintf(msg_buffer, sizeof(msg_buffer), fmt, args_copy);
+  va_end(args_copy);
 
-    if (msg_len > 0 && msg_len < (int)sizeof(msg_buffer)) {
-      const char *colorized_msg = colorize_log_message(msg_buffer);
-      const char **colors = log_get_color_array();
-
-      if (colors == NULL) {
-        safe_fprintf(output_stream, "%s%s\n", header_buffer, colorized_msg);
-      } else {
-        safe_fprintf(output_stream, "%s%s%s%s\n", header_buffer, colors[LOG_COLOR_RESET], colorized_msg,
-                     colors[LOG_COLOR_RESET]);
-      }
-    } else {
-      safe_fprintf(output_stream, "%s", header_buffer);
-      (void)vfprintf(output_stream, fmt, args);
-      safe_fprintf(output_stream, "\n");
-    }
-  } else {
+  if (msg_len <= 0 || msg_len >= (int)sizeof(msg_buffer)) {
+    // Message formatting failed - skip filtering and try direct output
     safe_fprintf(output_stream, "%s", header_buffer);
     (void)vfprintf(output_stream, fmt, args);
     safe_fprintf(output_stream, "\n");
+    (void)fflush(output_stream);
+    return;
+  }
+
+  // Construct PLAIN log line (without ANSI codes) for grep matching
+  char plain_log_line[LOG_MSG_BUFFER_SIZE + 512];
+  int plain_len = snprintf(plain_log_line, sizeof(plain_log_line), "%s%s", plain_header_buffer, msg_buffer);
+  if (plain_len <= 0 || plain_len >= (int)sizeof(plain_log_line)) {
+    // Line too long - skip filtering
+    safe_fprintf(output_stream, "%s%s\n", header_buffer, msg_buffer);
+    (void)fflush(output_stream);
+    return;
+  }
+
+  // Apply grep filter (terminal output only - file logs are unfiltered)
+  // Match against PLAIN text (no ANSI codes) so offsets are correct
+  size_t match_start = 0, match_len = 0;
+  if (!log_filter_should_output(plain_log_line, &match_start, &match_len)) {
+    return; // No match - suppress terminal output
+  }
+
+  // If match found and highlighting enabled, highlight the match in plain text
+  // then output it (don't apply additional colorization)
+  const char *output_line = plain_log_line;
+  if (match_len > 0 && use_colors) {
+    output_line = log_filter_highlight(plain_log_line, match_start, match_len);
+  }
+
+  // If grep highlighted the line, output it directly (highlighting already applied)
+  if (match_len > 0 && use_colors && output_line != plain_log_line) {
+    safe_fprintf(output_stream, "%s\n", output_line);
+  } else if (use_colors) {
+    // No grep match or colors disabled - use normal colored output
+    // Apply color coding to message
+    const char *colorized_msg = colorize_log_message(msg_buffer);
+    const char **colors = log_get_color_array();
+
+    if (colors == NULL) {
+      safe_fprintf(output_stream, "%s%s\n", header_buffer, colorized_msg);
+    } else {
+      safe_fprintf(output_stream, "%s%s%s%s\n", header_buffer, colors[LOG_COLOR_RESET], colorized_msg,
+                   colors[LOG_COLOR_RESET]);
+    }
+  } else {
+    // No colors - output plain
+    safe_fprintf(output_stream, "%s%s\n", header_buffer, msg_buffer);
   }
   (void)fflush(output_stream);
 }

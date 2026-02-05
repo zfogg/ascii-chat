@@ -354,6 +354,7 @@ set(CORE_SRCS
     lib/log/logging.c
     lib/log/colorize.c
     lib/log/mmap.c
+    lib/log/filter.c
     lib/platform/terminal.c     # Unified color detection system
     lib/options/colorscheme.c   # Color scheme management and early initialization
     lib/options/options.c
