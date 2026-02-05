@@ -1243,6 +1243,16 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
       if (host_check != ASCIICHAT_OK) {
         // Host is down! Trigger automatic failover to pre-elected future host
         log_warn("Host disconnect detected during ACTIVE state");
+
+        // If --prefer-webrtc is set, WebRTC failure is fatal (no TCP fallback)
+        const options_t *opts = options_get();
+        if (opts && opts->prefer_webrtc) {
+          log_fatal("WebRTC connection failed and --prefer-webrtc is set - exiting");
+          set_state(session, DISCOVERY_STATE_FAILED);
+          session->error = ERROR_NETWORK;
+          return ERROR_NETWORK;
+        }
+
         set_state(session, DISCOVERY_STATE_MIGRATING);
         // Reason code: 1 = timeout/disconnect detected during ACTIVE session
         discovery_session_handle_host_disconnect(session, 1);
