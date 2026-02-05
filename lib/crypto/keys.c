@@ -34,7 +34,7 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
   // Clear output structure
   memset(key_out, 0, sizeof(public_key_t));
 
-  // Try SSH key parsing first
+  // Try SSH key parsing first (full format with prefix)
   if (strncmp(input, "ssh-ed25519", 11) == 0) {
     key_out->type = KEY_TYPE_ED25519;
     asciichat_error_t result = parse_ssh_ed25519_line(input, key_out->key);
@@ -42,6 +42,59 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
       platform_strncpy(key_out->comment, sizeof(key_out->comment), "ssh-ed25519", sizeof(key_out->comment) - 1);
     }
     return result;
+  }
+
+  // Try raw base64 SSH public key (without "ssh-ed25519" prefix)
+  // SSH Ed25519 public keys in base64 are typically ~68 characters
+  size_t input_len = strlen(input);
+  if (input_len >= 50 && input_len <= 80) {
+    // Check if it looks like base64 (only contains valid base64 chars)
+    bool looks_like_base64 = true;
+    for (size_t i = 0; i < input_len; i++) {
+      char c = input[i];
+      if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '+' || c == '/' ||
+            c == '=')) {
+        looks_like_base64 = false;
+        break;
+      }
+    }
+
+    if (looks_like_base64) {
+      // Try to decode as SSH public key blob
+      uint8_t *blob = SAFE_MALLOC(input_len, uint8_t *);
+      size_t blob_len = 0;
+
+      const char *end = NULL;
+      int decode_result = sodium_base642bin(blob, input_len, input, input_len,
+                                            NULL, // ignore chars
+                                            &blob_len, &end, sodium_base64_VARIANT_ORIGINAL);
+
+      if (decode_result == 0 && blob_len >= 47) { // Minimum size: 4+11+4+32 = 51 bytes
+        // Validate SSH key blob structure
+        // Format: [4 bytes: length][11 bytes: "ssh-ed25519"][4 bytes: length][32 bytes: key]
+        if (blob_len >= 4) {
+          uint32_t key_type_len =
+              ((uint32_t)blob[0] << 24) | ((uint32_t)blob[1] << 16) | ((uint32_t)blob[2] << 8) | blob[3];
+          if (key_type_len == 11 && blob_len >= 15 && memcmp(blob + 4, "ssh-ed25519", 11) == 0) {
+            // Valid ssh-ed25519 blob, extract the 32-byte public key
+            if (blob_len >= 19) {
+              uint32_t pubkey_len =
+                  ((uint32_t)blob[15] << 24) | ((uint32_t)blob[16] << 16) | ((uint32_t)blob[17] << 8) | blob[18];
+              if (pubkey_len == 32 && blob_len >= 51) {
+                // Extract Ed25519 public key
+                key_out->type = KEY_TYPE_ED25519;
+                memcpy(key_out->key, blob + 19, 32);
+                platform_strncpy(key_out->comment, sizeof(key_out->comment), "raw-base64",
+                                 sizeof(key_out->comment) - 1);
+                SAFE_FREE(blob);
+                return ASCIICHAT_OK;
+              }
+            }
+          }
+        }
+      }
+      SAFE_FREE(blob);
+    }
   }
 
   // Try GPG key parsing

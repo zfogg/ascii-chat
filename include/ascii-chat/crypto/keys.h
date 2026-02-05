@@ -52,7 +52,8 @@
  * Parses public key from various input formats:
  *
  * Supported formats:
- * - SSH Ed25519: "ssh-ed25519 AAAAC3... comment" (direct key string)
+ * - Raw base64 SSH key: "AAAAC3NzaC1lZDI1NTE5AAAAI..." (just the base64 part from .pub files, no prefix)
+ * - SSH Ed25519: "ssh-ed25519 AAAAC3... comment" (full SSH public key format)
  * - HTTPS URL: "https://example.com/key.pub" or "https://example.com/key.gpg" (fetches from URL, parses response)
  * - GitHub SSH: "github:username" (fetches from https://github.com/username.keys, returns first Ed25519 key)
  * - GitLab SSH: "gitlab:username" (fetches from https://gitlab.com/username.keys, returns first Ed25519 key)

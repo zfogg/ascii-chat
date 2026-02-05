@@ -303,8 +303,8 @@ static const registry_entry_t g_logging_entries[] = {
      sizeof(char *),
      "Filter console logs with perl compatible regular expressions or fixed strings. Format: /pattern/flags. "
      "Flags: i(case-insensitive), m(multiline), s(dotall), x(extended), g(global highlight), "
-     "I(invert match), F(fixed string), A<n>(n lines after), B<n>(n before), C<n>(n both). "
-     "Examples: '/error/i', '/panic/C5', '/buffer pool/F'. Multiple --grep allowed (OR).",
+     "I(invert match), F(fixed string), A<n>(n lines after), B<n>(n lines before), C<n>(n lines of context). "
+     "Examples: '/error/i', '/panic/C5', '/buffer pool/Fg', '/server/giB2A5'. Multiple --grep allowed (OR).",
      "LOGGING",
      "PATTERN",
      false,
