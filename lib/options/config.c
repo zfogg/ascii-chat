@@ -824,8 +824,9 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
       continue;
     }
 
-    // Special handling for palette.chars (auto-sets palette_type to CUSTOM)
-    if (strcmp(meta->toml_key, "palette.chars") == 0) {
+    // Special handling for palette-chars (auto-sets palette_type to CUSTOM)
+    // The TOML key is "display.palette_chars" (from DISPLAY group, palette-chars option)
+    if (strcmp(meta->toml_key, "display.palette_chars") == 0) {
       const char *chars_str = get_toml_string_validated(datum);
       if (chars_str && strlen(chars_str) > 0) {
         if (strlen(chars_str) < sizeof(opts->palette_custom)) {
@@ -842,6 +843,31 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
           }
         }
       }
+      continue;
+    }
+
+    // Special handling for no-encrypt (auto-disables encrypt_enabled)
+    // The TOML key is "security.no_encrypt" (from SECURITY group, no-encrypt option)
+    if (strcmp(meta->toml_key, "security.no_encrypt") == 0) {
+      bool no_encrypt_val = false;
+      if (strcmp(value_str, "true") == 0 || strcmp(value_str, "1") == 0) {
+        no_encrypt_val = true;
+      } else if (strcmp(value_str, "false") == 0 || strcmp(value_str, "0") == 0) {
+        no_encrypt_val = false;
+      } else {
+        CONFIG_WARN("Invalid no_encrypt value '%s' (expected true/false), skipping", value_str);
+        if (strict) {
+          return SET_ERRNO(ERROR_CONFIG, "Invalid no_encrypt value");
+        }
+        continue;
+      }
+
+      opts->no_encrypt = no_encrypt_val;
+      if (no_encrypt_val) {
+        // When no_encrypt is enabled, automatically disable encrypt_enabled
+        opts->encrypt_enabled = false;
+      }
+      option_set_flags[i] = true;
       continue;
     }
 
