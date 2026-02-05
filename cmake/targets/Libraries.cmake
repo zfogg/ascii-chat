@@ -130,13 +130,17 @@ if(PCRE2_INCLUDE_DIRS)
     target_include_directories(ascii-chat-util PUBLIC ${PCRE2_INCLUDE_DIRS})
 endif()
 
-# Link PCRE2 library with explicit library directories
-# PCRE2 needs both library directory (-L) and library name (-l)
-if(PCRE2_LIBRARY_DIRS AND PCRE2_LIBRARIES)
-    target_link_directories(ascii-chat-util PRIVATE ${PCRE2_LIBRARY_DIRS})
+# Link PCRE2 library
+# Two modes: (1) pkg-config sets LIBRARY_DIRS + LIBRARIES, (2) static lib sets full path in LIBRARIES
+if(PCRE2_LIBRARIES)
+    # If LIBRARY_DIRS is set (pkg-config mode), add link directory first
+    if(PCRE2_LIBRARY_DIRS)
+        target_link_directories(ascii-chat-util PRIVATE ${PCRE2_LIBRARY_DIRS})
+    endif()
+    # Link the library (either library name or full path)
     target_link_libraries(ascii-chat-util ${PCRE2_LIBRARIES} pthread)
 else()
-    message(FATAL_ERROR "PCRE2 library path not found. PCRE2_LIBRARY_DIRS=${PCRE2_LIBRARY_DIRS}, PCRE2_LIBRARIES=${PCRE2_LIBRARIES}")
+    message(FATAL_ERROR "PCRE2 library not found. PCRE2_LIBRARIES=${PCRE2_LIBRARIES}")
 endif()
 
 # Add dependency on PCRE2 build target if building from source (musl)

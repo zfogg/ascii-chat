@@ -9,6 +9,7 @@
 #include <ascii-chat/log/logging.h>
 #include <string.h>
 #include <stdatomic.h>
+#include <errno.h>
 
 /**
  * @brief Represents a thread-safe compiled PCRE2 regex singleton
