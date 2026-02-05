@@ -427,7 +427,13 @@ cmake --build build
 
 ## Environment Variables
 
-- `ASCII_CHAT_QUESTION_PROMPT_RESPONSE=y` - Auto-answer prompts (for automation)
+- `ASCII_CHAT_QUESTION_PROMPT_RESPONSE` - **Stack-based auto-answer for prompts** (for automation/testing)
+  - Single response: `ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y'`
+  - Multiple responses: `ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y;n;password123'`
+  - Optional trailing semicolon: `ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y;n;'`
+  - Responses are popped from the stack as prompts are encountered
+  - After stack is exhausted, program waits for manual input
+  - Invalid formats (`;`, `;;`, `;y`) are rejected
 - `CLAUDECODE=1` - Optimize output for LLM (set automatically by Claude Code)
 - `SSH_AUTH_SOCK` - SSH agent socket for key authentication
 - `LOG_LEVEL` - Override log level (DEBUG/INFO/WARN/ERROR/FATAL)
