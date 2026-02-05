@@ -501,7 +501,9 @@ static const registry_entry_t g_terminal_entries[] = {
      offsetof(options_t, color_scheme_name),
      OPT_COLOR_SCHEME_NAME_DEFAULT,
      sizeof(((options_t *)0)->color_scheme_name),
-     "Color scheme for logging output (pastel, nord, solarized-dark, dracula, gruvbox-dark, monokai, etc.).",
+     "Color scheme for logging output. Built-in schemes: pastel (default), nord, solarized-dark, solarized-light, "
+     "dracula, gruvbox-dark, gruvbox-light, monokai, base16-default-dark, base16-default-light. "
+     "Schemes with light variants auto-adapt to terminal background.",
      "LOGGING",
      "NAME",
      false,
