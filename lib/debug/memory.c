@@ -670,15 +670,21 @@ void debug_memory_report(void) {
 
 #undef PRINT_MEM_LINE
 
-    if (g_mem.head) {
+    // Only show "Current allocations:" section if there are actual leaks
+    if (unfreed_count > 0) {
+      // Reset counters before printing pass (after counting pass used them)
+      reset_ignore_counters();
+
+      // Print "Current allocations:" header with red count
+      char count_str[32];
+      safe_snprintf(count_str, sizeof(count_str), "%zu", unfreed_count);
+      SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "\n%s %s\n", colored_string(LOG_COLOR_DEV, "Current allocations:"),
+                                             colored_string(LOG_COLOR_ERROR, count_str)));
+    }
+
+    if (g_mem.head && unfreed_count > 0) {
       if (ensure_mutex_initialized()) {
         mutex_lock(&g_mem.mutex);
-
-        // Reset counters before printing pass (after counting pass used them)
-        reset_ignore_counters();
-
-        SAFE_IGNORE_PRINTF_RESULT(
-            safe_fprintf(stderr, "\n%s\n", colored_string(LOG_COLOR_DEV, "Current allocations:")));
 
         // Check if we should print backtraces
         const char *print_backtrace = SAFE_GETENV("ASCII_CHAT_MEMORY_REPORT_BACKTRACE");
