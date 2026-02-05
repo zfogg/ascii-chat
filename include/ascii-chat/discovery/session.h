@@ -11,16 +11,13 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-// NOTE: Use explicit path to avoid Windows include resolution picking up options/common.h
-#include "../common.h"
-#include "../network/acip/acds.h"
 #include "../discovery/strings.h"
 
 /**
  * @brief Maximum participants per session
  */
 #if !defined(MAX_PARTICIPANTS)
-#define MAX_PARTICIPANTS 8
+#define MAX_PARTICIPANTS 16
 #endif
 
 /**
