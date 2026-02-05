@@ -275,10 +275,13 @@ void layout_print_two_column_row(FILE *stream, const char *first_column, const c
     // Print first column as-is (it will overflow)
     fprintf(stream, "  %s\n", first_column);
 
-    // Print description on next line at second column position, with wide wrapping
-    for (int i = 0; i < second_col_start; i++)
-      fprintf(stream, " ");
-    layout_print_wrapped_description(stream, second_column, second_col_start, term_width);
-    fprintf(stream, "\n");
+    // Only print description if it exists
+    if (second_column && second_column[0] != '\0') {
+      // Print description on next line at second column position, with wide wrapping
+      for (int i = 0; i < second_col_start; i++)
+        fprintf(stream, " ");
+      layout_print_wrapped_description(stream, second_column, second_col_start, term_width);
+      fprintf(stream, "\n");
+    }
   }
 }
