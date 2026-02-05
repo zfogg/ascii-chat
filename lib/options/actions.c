@@ -16,6 +16,7 @@
 
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/debug/memory.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/options/manpage.h>
 #include <ascii-chat/options/presets.h>
@@ -242,17 +243,54 @@ void action_show_capabilities(void) {
 static void execute_show_capabilities(void) {
   terminal_capabilities_t caps = detect_terminal_capabilities();
 
+  // Determine if we should use colored output
+  bool use_colors = terminal_should_color_output(STDOUT_FILENO);
+
+  // Override color level if colors should not be shown
+  if (!use_colors) {
+    // User requested no colors or output is piped or CLAUDECODE is set
+    caps.color_level = TERM_COLOR_NONE;
+    caps.color_count = 0;
+    caps.capabilities &= ~((uint32_t)(TERM_CAP_COLOR_TRUE | TERM_CAP_COLOR_256 | TERM_CAP_COLOR_16));
+  }
+
   // Get width and height from parsed options (respects --width and --height flags)
   const options_t *opts = options_get();
   unsigned short width = opts ? opts->width : 110;
   unsigned short height = opts ? opts->height : 70;
 
-  // Use fprintf directly to ensure output appears
-  printf("Terminal Capabilities:\n");
-  printf("  Terminal Size: %ux%u\n", width, height);
-  printf("  Color Level: %s\n", terminal_color_level_name(caps.color_level));
-  printf("  Max Colors: %u\n", caps.color_count);
-  printf("  UTF-8 Support: %s\n", caps.utf8_support ? "Yes" : "No");
+  // Color scheme:
+  // - Labels: grey
+  // - Regular string values: blue (DEBUG - cyan/blue)
+  // - Affirmative values (Yes, true): green (INFO)
+  // - Bad/negative values (No, false, error): red (ERROR)
+  // - Numbers and hex: magenta (FATAL)
+  log_color_t label_color = use_colors ? LOG_COLOR_GREY : LOG_COLOR_GREY;
+  log_color_t string_color = use_colors ? LOG_COLOR_DEBUG : LOG_COLOR_GREY;
+  log_color_t good_color = use_colors ? LOG_COLOR_INFO : LOG_COLOR_GREY;
+  log_color_t bad_color = use_colors ? LOG_COLOR_ERROR : LOG_COLOR_GREY;
+  log_color_t number_color = use_colors ? LOG_COLOR_FATAL : LOG_COLOR_GREY;
+
+  printf("%s\n", colored_string(LOG_COLOR_WARN, "Terminal Capabilities:"));
+
+  char size_buf[64];
+  snprintf(size_buf, sizeof(size_buf), "%ux%u", width, height);
+  printf("  %s: %s\n", colored_string(label_color, "Terminal Size"), colored_string(number_color, size_buf));
+
+  // Color Level: green if good, red if none/bad
+  const char *color_level_name = terminal_color_level_name(caps.color_level);
+  log_color_t color_level_color = (caps.color_level == TERM_COLOR_NONE) ? bad_color : string_color;
+  printf("  %s: %s\n", colored_string(label_color, "Color Level"),
+         colored_string(color_level_color, (char *)color_level_name));
+
+  char colors_buf[64];
+  snprintf(colors_buf, sizeof(colors_buf), "%u", caps.color_count);
+  printf("  %s: %s\n", colored_string(label_color, "Max Colors"), colored_string(number_color, colors_buf));
+
+  // UTF-8: green if Yes, red if No
+  log_color_t utf8_color = caps.utf8_support ? good_color : bad_color;
+  printf("  %s: %s\n", colored_string(label_color, "UTF-8 Support"),
+         colored_string(utf8_color, (char *)(caps.utf8_support ? "Yes" : "No")));
 
   const char *render_mode_str = "unknown";
   if (caps.render_mode == RENDER_MODE_FOREGROUND) {
@@ -262,11 +300,21 @@ static void execute_show_capabilities(void) {
   } else if (caps.render_mode == RENDER_MODE_HALF_BLOCK) {
     render_mode_str = "half-block";
   }
-  printf("  Render Mode: %s\n", render_mode_str);
-  printf("  TERM: %s\n", caps.term_type);
-  printf("  COLORTERM: %s\n", strlen(caps.colorterm) ? caps.colorterm : "(not set)");
-  printf("  Detection Reliable: %s\n", caps.detection_reliable ? "Yes" : "No");
-  printf("  Capabilities Bitmask: 0x%08x\n", caps.capabilities);
+  printf("  %s: %s\n", colored_string(label_color, "Render Mode"),
+         colored_string(string_color, (char *)render_mode_str));
+  printf("  %s: %s\n", colored_string(label_color, "TERM"), colored_string(string_color, (char *)caps.term_type));
+  printf("  %s: %s\n", colored_string(label_color, "COLORTERM"),
+         colored_string(string_color, (char *)(strlen(caps.colorterm) ? caps.colorterm : "(not set)")));
+
+  // Detection Reliable: green if Yes, red if No
+  log_color_t reliable_color = caps.detection_reliable ? good_color : bad_color;
+  printf("  %s: %s\n", colored_string(label_color, "Detection Reliable"),
+         colored_string(reliable_color, (char *)(caps.detection_reliable ? "Yes" : "No")));
+
+  char bitmask_buf[64];
+  snprintf(bitmask_buf, sizeof(bitmask_buf), "0x%08x", caps.capabilities);
+  printf("  %s: %s\n", colored_string(label_color, "Capabilities Bitmask"), colored_string(number_color, bitmask_buf));
+
   fflush(stdout);
 
   exit(0);
@@ -437,6 +485,9 @@ void action_create_config(const char *output_path) {
 // ============================================================================
 
 void action_completions(const char *shell_name, const char *output_path) {
+  // Suppress memory report for clean output
+  debug_memory_set_quiet_mode(true);
+
   if (!shell_name || strlen(shell_name) == 0) {
     log_plain_stderr("Error: --completions requires shell name (bash, fish, zsh, powershell)");
     exit(ERROR_USAGE);
