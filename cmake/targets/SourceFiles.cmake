@@ -53,6 +53,7 @@ set(CRYPTO_SRCS
     lib/crypto/crypto.c
     lib/crypto/keys.c
     lib/crypto/known_hosts.c
+    lib/crypto/regex.c              # PCRE2-based regex for crypto formats
     lib/crypto/handshake/common.c
     lib/crypto/handshake/server.c
     lib/crypto/handshake/client.c

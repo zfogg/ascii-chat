@@ -238,6 +238,30 @@ if(DEFINED LIBSODIUM_BUILD_TARGET)
     add_dependencies(ascii-chat-crypto ${LIBSODIUM_BUILD_TARGET})
 endif()
 
+# PCRE2: Configure for crypto module (for SSH parser regex)
+# Define PCRE2_CODE_UNIT_WIDTH=8 for 8-bit API (UTF-8 support)
+target_compile_definitions(ascii-chat-crypto PRIVATE PCRE2_CODE_UNIT_WIDTH=8)
+
+# Add PCRE2 include directory
+if(PCRE2_INCLUDE_DIRS)
+    target_include_directories(ascii-chat-crypto PRIVATE ${PCRE2_INCLUDE_DIRS})
+endif()
+
+# Link PCRE2 library
+if(PCRE2_LIBRARY_DIRS AND PCRE2_LIBRARIES)
+    if(BUILDING_OBJECT_LIBS)
+        # For OBJECT libs, add PCRE2 to link libraries
+        target_link_libraries(ascii-chat-crypto ${PCRE2_LIBRARIES})
+    endif()
+    target_link_directories(ascii-chat-crypto PRIVATE ${PCRE2_LIBRARY_DIRS})
+else()
+    message(WARNING "PCRE2 not found for crypto module (SSH parser regex will not work)")
+endif()
+
+# Add dependency on PCRE2 build target if building from source
+if(DEFINED PCRE2_BUILD_TARGET)
+    add_dependencies(ascii-chat-crypto ${PCRE2_BUILD_TARGET})
+endif()
 
 # Add BearSSL if available
 if(BEARSSL_FOUND)

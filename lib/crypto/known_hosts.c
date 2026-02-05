@@ -15,6 +15,7 @@
 #include <ascii-chat/common.h>          // For BUFFER_SIZE_* constants
 #include <ascii-chat/asciichat_errno.h> // For asciichat_errno system
 #include <ascii-chat/crypto/keys.h>
+#include <ascii-chat/crypto/regex.h> // For crypto_regex_match_known_hosts()
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/platform/util.h>
 #include <ascii-chat/platform/system.h>     // For platform_isatty() and FILE_PERM_* constants
@@ -131,73 +132,98 @@ asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const u
       if (line[0] == '#')
         continue; // Comment
 
-      if (strncmp(line, expected_prefix, strlen(expected_prefix)) == 0) {
-        // Found matching IP:port - check if this entry matches the server key
-        found_entries = true;
-        size_t prefix_len = strlen(expected_prefix);
-        size_t line_len = strlen(line);
-        if (line_len < prefix_len) {
-          continue; // Line too short
-        }
-        char *key_type = line + prefix_len;
+      // Use regex to parse and extract known_hosts line components
+      char *parsed_ip_port = NULL, *parsed_key_type = NULL, *parsed_hex_key = NULL, *parsed_comment = NULL;
+      if (!crypto_regex_match_known_hosts(line, &parsed_ip_port, &parsed_key_type, &parsed_hex_key, &parsed_comment)) {
+        continue; // Line doesn't match known_hosts format
+      }
 
-        if (strncmp(key_type, NO_IDENTITY_MARKER, strlen(NO_IDENTITY_MARKER)) == 0) {
-          // No-identity entry but server has identity - continue searching
-          log_debug("SECURITY_DEBUG: Found no-identity entry, but server has identity key");
-          continue;
-        }
+      // Check if IP:port matches what we're looking for
+      if (strcmp(parsed_ip_port, ip_with_port) != 0) {
+        SAFE_FREE(parsed_ip_port);
+        SAFE_FREE(parsed_key_type);
+        SAFE_FREE(parsed_hex_key);
+        SAFE_FREE(parsed_comment);
+        continue; // Different IP:port
+      }
 
-        // Parse identity key from line
-        char *hex_key_start = strchr(key_type, ' ');
-        if (!hex_key_start) {
-          continue; // Invalid format
-        }
-        hex_key_start++; // Skip the space
+      found_entries = true;
 
-        char *hex_key_end = strchr(hex_key_start, ' ');
-        if (hex_key_end) {
-          *hex_key_end = '\0'; // Null-terminate the hex key
-        }
+      if (strcmp(parsed_key_type, NO_IDENTITY_MARKER) == 0) {
+        // No-identity entry but server has identity - continue searching
+        log_debug("SECURITY_DEBUG: Found no-identity entry, but server has identity key");
+        SAFE_FREE(parsed_ip_port);
+        SAFE_FREE(parsed_key_type);
+        SAFE_FREE(parsed_hex_key);
+        SAFE_FREE(parsed_comment);
+        continue;
+      }
 
-        public_key_t stored_key;
-        if (parse_public_key(hex_key_start, &stored_key) != 0) {
-          continue; // Invalid key format
-        }
+      // Parse identity key from hex string
+      if (!parsed_hex_key) {
+        // No hex key found - invalid entry
+        SAFE_FREE(parsed_ip_port);
+        SAFE_FREE(parsed_key_type);
+        SAFE_FREE(parsed_comment);
+        continue;
+      }
 
-        // Check if server key is all zeros (no-identity server)
-        bool server_key_is_zero = true;
-        for (int i = 0; i < ED25519_PUBLIC_KEY_SIZE; i++) {
-          if (server_key[i] != 0) {
-            server_key_is_zero = false;
-            break;
-          }
-        }
+      public_key_t stored_key;
+      if (parse_public_key(parsed_hex_key, &stored_key) != 0) {
+        SAFE_FREE(parsed_ip_port);
+        SAFE_FREE(parsed_key_type);
+        SAFE_FREE(parsed_hex_key);
+        SAFE_FREE(parsed_comment);
+        continue; // Invalid key format
+      }
 
-        // Check if stored key is all zeros
-        bool stored_key_is_zero = true;
-        for (int i = 0; i < ED25519_PUBLIC_KEY_SIZE; i++) {
-          if (stored_key.key[i] != 0) {
-            stored_key_is_zero = false;
-            break;
-          }
-        }
-
-        // Both zero = no-identity connection (weaker security)
-        if (server_key_is_zero && stored_key_is_zero) {
-          log_warn("SECURITY: Connecting to no-identity server at known IP:port");
-          fclose(f);
-          config_file_list_free(&known_hosts_files);
-          return 1; // Match found
-        }
-
-        // Compare keys (constant-time)
-        if (sodium_memcmp(server_key, stored_key.key, ED25519_PUBLIC_KEY_SIZE) == 0) {
-          log_info("SECURITY: Server key matches known_hosts - connection verified");
-          fclose(f);
-          config_file_list_free(&known_hosts_files);
-          return 1; // Match found!
+      // Check if server key is all zeros (no-identity server)
+      bool server_key_is_zero = true;
+      for (int i = 0; i < ED25519_PUBLIC_KEY_SIZE; i++) {
+        if (server_key[i] != 0) {
+          server_key_is_zero = false;
+          break;
         }
       }
+
+      // Check if stored key is all zeros
+      bool stored_key_is_zero = true;
+      for (int i = 0; i < ED25519_PUBLIC_KEY_SIZE; i++) {
+        if (stored_key.key[i] != 0) {
+          stored_key_is_zero = false;
+          break;
+        }
+      }
+
+      // Both zero = no-identity connection (weaker security)
+      if (server_key_is_zero && stored_key_is_zero) {
+        log_warn("SECURITY: Connecting to no-identity server at known IP:port");
+        SAFE_FREE(parsed_ip_port);
+        SAFE_FREE(parsed_key_type);
+        SAFE_FREE(parsed_hex_key);
+        SAFE_FREE(parsed_comment);
+        fclose(f);
+        config_file_list_free(&known_hosts_files);
+        return 1; // Match found
+      }
+
+      // Compare keys (constant-time)
+      if (sodium_memcmp(server_key, stored_key.key, ED25519_PUBLIC_KEY_SIZE) == 0) {
+        log_info("SECURITY: Server key matches known_hosts - connection verified");
+        SAFE_FREE(parsed_ip_port);
+        SAFE_FREE(parsed_key_type);
+        SAFE_FREE(parsed_hex_key);
+        SAFE_FREE(parsed_comment);
+        fclose(f);
+        config_file_list_free(&known_hosts_files);
+        return 1; // Match found!
+      }
+
+      // Key mismatch - free and continue searching
+      SAFE_FREE(parsed_ip_port);
+      SAFE_FREE(parsed_key_type);
+      SAFE_FREE(parsed_hex_key);
+      SAFE_FREE(parsed_comment);
     }
 
     fclose(f);
@@ -257,34 +283,40 @@ asciichat_error_t check_known_host_no_identity(const char *server_ip, uint16_t p
     if (line[0] == '#')
       continue; // Comment
 
-    if (strncmp(line, expected_prefix, strlen(expected_prefix)) == 0) {
-      // Found matching IP:port
-
-      // Check if this is a "no-identity" entry
-      // Bounds check: ensure line is long enough to contain the prefix
-      size_t prefix_len = strlen(expected_prefix);
-      size_t line_len = strlen(line);
-      if (line_len < prefix_len) {
-        // Line is too short to contain the prefix - this shouldn't happen
-        // but let's be safe and treat as unknown host
-        return ASCIICHAT_OK;
-      }
-      char *key_type = line + prefix_len;
-      // Skip leading whitespace
-      while (*key_type == ' ' || *key_type == '\t') {
-        key_type++;
-      }
-      if (strncmp(key_type, "no-identity", 11) == 0) {
-        // This is a server without identity key that was previously accepted by the user
-        // No warnings or user confirmation needed - user already accepted this server
-        return 1; // Known host (no-identity entry) - secure connection
-      }
-
-      // If we found a normal identity key entry, this is a mismatch
-      // Server previously had identity key but now has none
-      log_warn("Server previously had identity key but now has none - potential security issue");
-      return ERROR_CRYPTO_VERIFICATION; // Mismatch - server changed from identity to no-identity
+    // Use regex to parse and extract known_hosts line components
+    char *parsed_ip_port = NULL, *parsed_key_type = NULL, *parsed_hex_key = NULL, *parsed_comment = NULL;
+    if (!crypto_regex_match_known_hosts(line, &parsed_ip_port, &parsed_key_type, &parsed_hex_key, &parsed_comment)) {
+      continue; // Line doesn't match known_hosts format
     }
+
+    // Check if IP:port matches what we're looking for
+    if (strcmp(parsed_ip_port, ip_with_port) != 0) {
+      SAFE_FREE(parsed_ip_port);
+      SAFE_FREE(parsed_key_type);
+      SAFE_FREE(parsed_hex_key);
+      SAFE_FREE(parsed_comment);
+      continue; // Different IP:port
+    }
+
+    // Found matching IP:port - check key type
+    if (strcmp(parsed_key_type, "no-identity") == 0) {
+      // This is a server without identity key that was previously accepted by the user
+      // No warnings or user confirmation needed - user already accepted this server
+      SAFE_FREE(parsed_ip_port);
+      SAFE_FREE(parsed_key_type);
+      SAFE_FREE(parsed_hex_key);
+      SAFE_FREE(parsed_comment);
+      return 1; // Known host (no-identity entry) - secure connection
+    }
+
+    // If we found a normal identity key entry, this is a mismatch
+    // Server previously had identity key but now has none
+    log_warn("Server previously had identity key but now has none - potential security issue");
+    SAFE_FREE(parsed_ip_port);
+    SAFE_FREE(parsed_key_type);
+    SAFE_FREE(parsed_hex_key);
+    SAFE_FREE(parsed_comment);
+    return ERROR_CRYPTO_VERIFICATION; // Mismatch - server changed from identity to no-identity
   }
 
   return ASCIICHAT_OK; // Not found = first connection

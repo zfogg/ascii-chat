@@ -6,6 +6,7 @@
 
 #include <ascii-chat/crypto/crypto.h> // Includes <sodium.h>
 #include <ascii-chat/crypto/ssh/ssh_keys.h>
+#include <ascii-chat/crypto/regex.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/util/password.h>
@@ -165,32 +166,24 @@ asciichat_error_t parse_ssh_ed25519_line(const char *line, uint8_t ed25519_pk[32
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: line=%p, ed25519_pk=%p", line, ed25519_pk);
   }
 
-  // Find "ssh-ed25519 "
-  const char *type_start = strstr(line, "ssh-ed25519");
-  if (!type_start) {
-    return SET_ERRNO(ERROR_CRYPTO_KEY, "SSH key line does not contain 'ssh-ed25519'");
+  // Use regex to parse and extract SSH public key components
+  char *base64_key = NULL, *comment = NULL;
+  if (!crypto_regex_match_public_key(line, &base64_key, &comment)) {
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "SSH key line does not match expected format");
   }
-
-  // Skip to base64 part
-  const char *base64_start = type_start + 11; // strlen("ssh-ed25519")
-  while (*base64_start == ' ' || *base64_start == '\t') {
-    base64_start++;
-  }
-
-  // Find end of base64 (space, newline, or end of string)
-  const char *base64_end = base64_start;
-  while (*base64_end && *base64_end != ' ' && *base64_end != '\t' && *base64_end != '\n' && *base64_end != '\r') {
-    base64_end++;
-  }
-
-  size_t base64_len = base64_end - base64_start;
 
   // Base64 decode
   uint8_t *blob;
   size_t blob_len;
-  if (base64_decode_ssh_key(base64_start, base64_len, &blob, &blob_len) != 0) {
+  if (base64_decode_ssh_key(base64_key, strlen(base64_key), &blob, &blob_len) != 0) {
+    SAFE_FREE(base64_key);
+    SAFE_FREE(comment);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to decode SSH key base64 data");
   }
+
+  // Clean up regex-extracted strings
+  SAFE_FREE(base64_key);
+  SAFE_FREE(comment);
 
   // Parse SSH key blob structure:
   // [4 bytes: length of "ssh-ed25519"]
@@ -284,49 +277,23 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
 
   file_content[file_size] = '\0';
 
-  // Check if this is an OpenSSH private key
-  if (strstr(file_content, "BEGIN OPENSSH PRIVATE KEY") == NULL) {
-    SAFE_FREE(file_content);
-    return SET_ERRNO(ERROR_CRYPTO_KEY, "Unsupported private key format (only OpenSSH format supported): %s", key_path);
-  }
-
-  // Parse the OpenSSH private key format
-  // The format is:
-  // -----BEGIN OPENSSH PRIVATE KEY-----
-  // [base64 encoded data]
-  // -----END OPENSSH PRIVATE KEY-----
-
-  // Find the base64 data between the headers
-  const char *base64_start = strstr(file_content, "-----BEGIN OPENSSH PRIVATE KEY-----");
-  if (!base64_start) {
-    SAFE_FREE(file_content);
-    return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid OpenSSH private key format: %s", key_path);
-  }
-
-  // Skip to the end of the header line
-  base64_start = strchr(base64_start, '\n');
-  if (!base64_start) {
-    SAFE_FREE(file_content);
-    return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid OpenSSH private key format: %s", key_path);
-  }
-  base64_start++; // Skip the newline
-
-  // Find the end of the base64 data
-  const char *base64_end = strstr(base64_start, "-----END OPENSSH PRIVATE KEY-----");
-  if (!base64_end) {
+  // Use regex to extract base64 data from OpenSSH PEM format
+  char *pem_base64_data = NULL;
+  if (!crypto_regex_extract_pem_base64(file_content, &pem_base64_data)) {
     SAFE_FREE(file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid OpenSSH private key format: %s", key_path);
   }
 
   // Remove any whitespace/newlines from the base64 data
-  char *clean_base64 = SAFE_MALLOC(base64_end - base64_start + 1, char *);
+  char *clean_base64 = SAFE_MALLOC(strlen(pem_base64_data) + 1, char *);
   char *clean_ptr = clean_base64;
-  for (const char *p = base64_start; p < base64_end; p++) {
+  for (const char *p = pem_base64_data; *p; p++) {
     if (*p != '\n' && *p != '\r' && *p != ' ' && *p != '\t') {
       *clean_ptr++ = *p;
     }
   }
   *clean_ptr = '\0';
+  SAFE_FREE(pem_base64_data);
 
   // Decode the base64 data
   uint8_t *key_blob;
