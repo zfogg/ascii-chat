@@ -576,7 +576,7 @@ Test(config_sections, client_boolean_options) {
 
   const char *content = "[display]\n"
                         "stretch = true\n"
-                        "snapshot_mode = true\n"
+                        "snapshot = true\n"
                         "[logging]\n"
                         "quiet = true\n";
 
@@ -664,6 +664,8 @@ Test(config_sections, client_config_ignored_for_server) {
   memcpy(&writable_opts, current_opts, sizeof(options_t));
   writable_opts.width = 100;
   writable_opts.height = 50;
+  writable_opts.auto_width = 0;
+  writable_opts.auto_height = 0;
   options_state_set(&writable_opts);
 
   const char *content = "[terminal]\n"
@@ -746,7 +748,7 @@ Test(config_sections, audio_config_ignored_for_server) {
   options_state_set(&writable_opts);
 
   const char *content = "[audio]\n"
-                        "enabled = true\n"
+                        "audio = true\n"
                         "microphone_index = 5\n";
 
   char *config_path = create_temp_config(content);
@@ -1074,7 +1076,7 @@ Test(config_sections, full_client_config) {
                         "render_mode = \"half-block\"\n"
                         "fps = 60\n"
                         "stretch = true\n"
-                        "snapshot_mode = false\n"
+                        "snapshot = false\n"
                         "snapshot_delay = 1.0\n"
                         "palette = \"digital\"\n"
                         "\n"
@@ -1365,17 +1367,24 @@ Test(config, whitespace_handling) {
   const char *content = "  [network]  \n"
                         "  port   =   8888   \n"
                         "\n"
-                        "  [client]  \n"
-                        "  address   =   \"10.0.0.1\"  \n";
+                        "  [terminal]  \n"
+                        "  width   =   120  \n";
 
   char *config_path = create_temp_config(content);
   cr_assert_not_null(config_path, "Failed to create temp config file");
+
+  // Disable auto_width so config value applies
+  const options_t *current_opts = options_get();
+  options_t writable_opts;
+  memcpy(&writable_opts, current_opts, sizeof(options_t));
+  writable_opts.auto_width = 0;
+  options_state_set(&writable_opts);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Config with extra whitespace should succeed");
   const options_t *opts = options_get();
   cr_assert_eq(opts->port, 8888, "Port should be parsed correctly despite whitespace");
-  cr_assert_str_eq(opts->address, "10.0.0.1", "Address should be parsed correctly despite whitespace");
+  cr_assert_eq(opts->width, 120, "Width should be parsed correctly despite whitespace");
 
   unlink(config_path);
   SAFE_FREE(config_path);
