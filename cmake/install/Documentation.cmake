@@ -29,7 +29,7 @@ endif()
 # Generate ascii-chat man page at build time using --man-page-create option
 # This merges the template (.1.in) with manual content (.1.content) and auto-generates
 # option documentation from the options builder
-# Note: --man-page-create writes to stdout, so we redirect output to the target file
+# Note: --man-page-create writes to stdout with no argument or file with argument.
 # Uncompressed .1 generated; packaging compresses at install time
 #
 # First, process the template to substitute version variables
@@ -45,17 +45,9 @@ configure_file(
     @ONLY
 )
 
-# Generate man page using platform-appropriate shell redirection
-# Point binary to configured template in BINARY_DIR via ASCIICHAT_RESOURCE_DIR
-if(UNIX)
-    set(_MAN_PAGE_COMMAND sh -c "timeout 3 env ASCIICHAT_RESOURCE_DIR=\"${CMAKE_BINARY_DIR}\" ${ASCII_CHAT_EXECUTABLE} --man-page-create > \"${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1\"")
-else()
-    set(_MAN_PAGE_COMMAND cmd /c "set ASCIICHAT_RESOURCE_DIR=${CMAKE_BINARY_DIR} && \"${ASCII_CHAT_EXECUTABLE}\" --man-page-create > \"${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1\"")
-endif()
-
 add_custom_command(
     OUTPUT "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
-    COMMAND ${_MAN_PAGE_COMMAND}
+    COMMAND bash -c "ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' timeout 3 env ASCIICHAT_RESOURCE_DIR=\"${CMAKE_BINARY_DIR}\" ${ASCII_CHAT_EXECUTABLE} --man-page-create \"${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1\""
     DEPENDS
         ascii-chat
         "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1.in"

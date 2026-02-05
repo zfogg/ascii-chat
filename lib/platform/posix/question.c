@@ -25,7 +25,7 @@ int platform_prompt_question(const char *prompt, char *buffer, size_t max_len, p
 
   // Check for testing environment variable override for password prompts
   if (opts.mask_char != 0) {
-    const char *test_password = SAFE_GETENV("ASCII_CHAT_TESTING_QUESTION_PROMPT_RESPONSE");
+    const char *test_password = SAFE_GETENV("ASCII_CHAT_QUESTION_PROMPT_RESPONSE");
     if (test_password != NULL) {
       size_t len = strlen(test_password);
       if (len >= max_len) {
@@ -265,7 +265,7 @@ bool platform_prompt_yes_no(const char *prompt, bool default_yes) {
   bool is_interactive = platform_is_interactive();
 
   // Check for testing environment variable override
-  const char *test_response = SAFE_GETENV("ASCII_CHAT_TESTING_QUESTION_PROMPT_RESPONSE");
+  const char *test_response = SAFE_GETENV("ASCII_CHAT_QUESTION_PROMPT_RESPONSE");
   if (test_response != NULL) {
     if (strcasecmp(test_response, "yes") == 0 || strcasecmp(test_response, "y") == 0) {
       return true;

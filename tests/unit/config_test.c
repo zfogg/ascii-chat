@@ -1290,8 +1290,8 @@ Test(config_create, fails_if_file_exists) {
   cr_assert_not_null(existing_file, "Failed to create temp file");
 
   // Set environment variable to answer "no" to overwrite prompt
-  const char *old_response = getenv("ASCII_CHAT_TESTING_QUESTION_PROMPT_RESPONSE");
-  setenv("ASCII_CHAT_TESTING_QUESTION_PROMPT_RESPONSE", "no", 1);
+  const char *old_response = getenv("ASCII_CHAT_QUESTION_PROMPT_RESPONSE");
+  setenv("ASCII_CHAT_QUESTION_PROMPT_RESPONSE", "no", 1);
 
   // Try to create default config at same path
   asciichat_error_t result = config_create_default(existing_file);
@@ -1299,9 +1299,9 @@ Test(config_create, fails_if_file_exists) {
 
   // Restore old environment variable
   if (old_response) {
-    setenv("ASCII_CHAT_TESTING_QUESTION_PROMPT_RESPONSE", old_response, 1);
+    setenv("ASCII_CHAT_QUESTION_PROMPT_RESPONSE", old_response, 1);
   } else {
-    unsetenv("ASCII_CHAT_TESTING_QUESTION_PROMPT_RESPONSE");
+    unsetenv("ASCII_CHAT_QUESTION_PROMPT_RESPONSE");
   }
 
   unlink(existing_file);
