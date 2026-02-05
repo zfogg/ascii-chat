@@ -32,7 +32,7 @@
 
 /**
  * @brief Minimum color difference threshold (0-255 scale)
- * If background is within this distance of the highlight, use black instead
+ * If background is within this distance of the highlight, use black/white instead
  */
 #define MIN_HIGHLIGHT_DISTANCE 40
 
