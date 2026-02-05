@@ -605,50 +605,6 @@ if(WIN32)
     message(STATUS "${BoldGreen}Configured${ColorReset} powershell completion: ${BoldBlue}ascii-chat.ps1${ColorReset} (generated) → ${BoldYellow}doc/completions/ascii-chat.ps1${ColorReset}")
 endif()
 
-# Clean up old static completion files (they're now auto-generated)
-install(CODE "
-    message(STATUS \"Removing old static completion files...\")
-
-    # Check and remove bash completion
-    if(DEFINED ENV{DESTDIR})
-        set(_install_root \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}\")
-    else()
-        set(_install_root \"\${CMAKE_INSTALL_PREFIX}\")
-    endif()
-
-    set(_bash_completion \"\${_install_root}/share/bash-completion/completions/ascii-chat\")
-    if(EXISTS \"\${_bash_completion}\")
-        message(STATUS \"  Removing old bash completion: \${_bash_completion}\")
-        file(REMOVE \"\${_bash_completion}\")
-        if(EXISTS \"\${_install_root}/share/bash-completion/completions\" AND NOT EXISTS \"\${_install_root}/share/bash-completion/completions/ascii-chat\")
-            # Directory is empty, try to remove it
-            file(REMOVE_RECURSE \"\${_install_root}/share/bash-completion\")
-        endif()
-    endif()
-
-    set(_zsh_completion \"\${_install_root}/share/zsh/site-functions/_ascii-chat\")
-    if(EXISTS \"\${_zsh_completion}\")
-        message(STATUS \"  Removing old zsh completion: \${_zsh_completion}\")
-        file(REMOVE \"\${_zsh_completion}\")
-        if(EXISTS \"\${_install_root}/share/zsh/site-functions\" AND NOT EXISTS \"\${_install_root}/share/zsh/site-functions/_ascii-chat\")
-            # Directory is empty, try to remove it
-            file(REMOVE_RECURSE \"\${_install_root}/share/zsh\")
-        endif()
-    endif()
-
-    set(_fish_completion \"\${_install_root}/share/fish/vendor_completions.d/ascii-chat.fish\")
-    if(EXISTS \"\${_fish_completion}\")
-        message(STATUS \"  Removing old fish completion: \${_fish_completion}\")
-        file(REMOVE \"\${_fish_completion}\")
-        if(EXISTS \"\${_install_root}/share/fish/vendor_completions.d\" AND NOT EXISTS \"\${_install_root}/share/fish/vendor_completions.d/ascii-chat.fish\")
-            # Directory is empty, try to remove it
-            file(REMOVE_RECURSE \"\${_install_root}/share/fish\")
-        endif()
-    endif()
-
-    message(STATUS \"Finished removing old static completion files\")
-" COMPONENT Runtime)
-
 # =============================================================================
 # Desktop Entry Installation (Linux only)
 # =============================================================================
