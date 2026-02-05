@@ -1375,6 +1375,11 @@ int server_main(void) {
   // Register shutdown check callback for library code
   shutdown_register_callback(check_shutdown);
 
+  // Initialize status screen log buffer if enabled (terminal output already disabled in main.c)
+  if (GET_OPTION(status_screen)) {
+    server_status_log_init();
+  }
+
   // Initialize crypto after logging is ready
   log_debug("Initializing crypto...");
   if (init_server_crypto() != 0) {
@@ -1383,10 +1388,6 @@ int server_main(void) {
     FATAL(ERROR_CRYPTO, "Crypto initialization failed");
   }
   log_debug("Crypto initialized successfully");
-
-  // Handle quiet mode - disable terminal output when GET_OPTION(quiet) is enabled
-  // Also disable terminal output when status screen is active (logs shown in status screen instead)
-  log_set_terminal_output(!GET_OPTION(quiet) && !GET_OPTION(status_screen));
 
   // Handle keepawake: check for mutual exclusivity and apply mode default
   // Server default: keepawake DISABLED (use --keepawake to enable)
@@ -1398,12 +1399,6 @@ int server_main(void) {
   }
 
   log_info("ascii-chat server starting...");
-
-  // Initialize status screen log capture if status screen is enabled
-  if (GET_OPTION(status_screen)) {
-    server_status_log_init();
-    log_debug("Status screen log capture initialized");
-  }
 
   // log_info("SERVER: Options initialized, using log file: %s", log_filename);
   int port = GET_OPTION(port);
@@ -2062,6 +2057,13 @@ skip_acds_session:
   // Initialize status screen
   g_server_start_time = time(NULL);
   g_last_status_update = platform_get_monotonic_time_us();
+
+  // Clear status screen log buffer to discard initialization logs
+  // This ensures only NEW logs (generated after status screen starts) are displayed
+  if (GET_OPTION(status_screen)) {
+    extern void server_status_log_clear(void);
+    server_status_log_clear();
+  }
 
   // Display initial status screen if enabled
   if (GET_OPTION(status_screen)) {

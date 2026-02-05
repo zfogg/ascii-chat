@@ -120,14 +120,15 @@
 #define RECV_TIMEOUT 2
 
 /**
- * @brief Accept timeout in seconds (3 seconds)
+ * @brief Accept timeout in seconds (0.05 seconds = 50ms)
  *
- * Maximum time to wait for incoming connections. Balanced between
- * responsiveness and CPU usage.
+ * Maximum time to wait for incoming connections. Set to 50ms to allow
+ * status screen updates at ~20 FPS minimum. Status screen has internal
+ * rate limiting to hit target FPS (default 60).
  *
  * @ingroup network
  */
-#define ACCEPT_TIMEOUT 3
+#define ACCEPT_TIMEOUT 0.05
 
 /** @} */
 

@@ -37,6 +37,11 @@ typedef struct {
 
 static status_log_buffer_t *g_status_log_buffer = NULL;
 
+// Cached terminal size (to avoid flooding logs with terminal_get_size errors)
+static terminal_size_t g_cached_term_size = {.rows = 24, .cols = 80};
+static uint64_t g_last_term_size_check_us = 0;
+#define TERM_SIZE_CHECK_INTERVAL_US 1000000ULL // Check terminal size max once per second
+
 void server_status_log_init(void) {
   if (g_status_log_buffer) {
     return;
@@ -56,6 +61,22 @@ void server_status_log_cleanup(void) {
   }
   mutex_destroy(&g_status_log_buffer->mutex);
   SAFE_FREE(g_status_log_buffer);
+}
+
+void server_status_log_clear(void) {
+  if (!g_status_log_buffer) {
+    return;
+  }
+  mutex_lock(&g_status_log_buffer->mutex);
+  // Clear all log entries by resetting write position and sequence
+  atomic_store(&g_status_log_buffer->write_pos, 0);
+  atomic_store(&g_status_log_buffer->sequence, 0);
+  // Clear all entries
+  for (size_t i = 0; i < STATUS_LOG_BUFFER_SIZE; i++) {
+    g_status_log_buffer->entries[i].message[0] = '\0';
+    g_status_log_buffer->entries[i].sequence = 0;
+  }
+  mutex_unlock(&g_status_log_buffer->mutex);
 }
 
 void server_status_log_append(const char *message) {
@@ -151,12 +172,16 @@ void server_status_display(const server_status_t *status) {
     return;
   }
 
-  // Get terminal dimensions
-  terminal_size_t term_size;
-  if (terminal_get_size(&term_size) != ASCIICHAT_OK) {
-    term_size.cols = 80;
-    term_size.rows = 24;
+  // Get terminal dimensions (cached to avoid flooding logs with errors)
+  uint64_t now_us = platform_get_monotonic_time_us();
+  if (now_us - g_last_term_size_check_us > TERM_SIZE_CHECK_INTERVAL_US) {
+    terminal_size_t temp_size;
+    if (terminal_get_size(&temp_size) == ASCIICHAT_OK) {
+      g_cached_term_size = temp_size;
+    }
+    g_last_term_size_check_us = now_us;
   }
+  terminal_size_t term_size = g_cached_term_size;
 
   // Calculate uptime
   time_t now = time(NULL);
@@ -165,7 +190,10 @@ void server_status_display(const server_status_t *status) {
   int uptime_mins = (uptime_secs % 3600) / 60;
   int uptime_secs_rem = uptime_secs % 60;
 
-  // Clear screen and move to home position
+  // Clear screen and move to home position on BOTH stdout and stderr
+  // (logs may have been written to either stream before status screen started)
+  fprintf(stderr, "\033[H\033[2J");
+  fflush(stderr);
   printf("\033[H\033[2J");
 
   // ========================================================================
@@ -182,7 +210,7 @@ void server_status_display(const server_status_t *status) {
   char status_line[512];
   snprintf(status_line, sizeof(status_line), "  ascii-chat %s | 👥 %zu | ⏱️ %dh %dm %ds", status->mode_name,
            status->connected_count, uptime_hours, uptime_mins, uptime_secs_rem);
-  if ((int)strlen(status_line) >= term_size.cols) {
+  if (term_size.cols > 0 && (int)strlen(status_line) >= term_size.cols) {
     status_line[term_size.cols - 1] = '\0'; // Truncate
   }
   printf("\033[1;36m%s\033[0m\n", status_line);
@@ -199,7 +227,7 @@ void server_status_display(const server_status_t *status) {
   if (status->ipv6_bound && pos < (int)sizeof(addr_line) - 30) {
     snprintf(addr_line + pos, sizeof(addr_line) - pos, " | %s", status->ipv6_address);
   }
-  if ((int)strlen(addr_line) >= term_size.cols) {
+  if (term_size.cols > 0 && (int)strlen(addr_line) >= term_size.cols) {
     addr_line[term_size.cols - 1] = '\0'; // Truncate
   }
   printf("%s\n", addr_line);
@@ -225,11 +253,45 @@ void server_status_display(const server_status_t *status) {
   status_log_entry_t logs[STATUS_LOG_BUFFER_SIZE];
   size_t log_count = server_status_log_get_recent(logs, STATUS_LOG_BUFFER_SIZE);
 
-  // Show most recent N logs that fit (sliding window - creates scrolling effect)
-  size_t start_idx = (log_count > (size_t)logs_available_lines) ? log_count - logs_available_lines : 0;
-  size_t logs_to_show = log_count - start_idx;
+  // Calculate actual display lines needed for each log (accounting for wrapping and newlines)
+  // Work backwards from most recent logs until we fill available lines
+  int lines_used = 0;
+  size_t start_idx = log_count; // Start past the end, will work backwards
 
-  // Display logs (each log already has newline)
+  for (size_t i = log_count; i > 0; i--) {
+    size_t idx = i - 1;
+    const char *msg = logs[idx].message;
+
+    // Count display lines for this message (newlines + wrapping)
+    int msg_lines = 0;
+    int current_line_len = 0;
+    for (const char *p = msg; *p; p++) {
+      if (*p == '\n') {
+        msg_lines++;
+        current_line_len = 0;
+      } else {
+        current_line_len++;
+        if (term_size.cols > 0 && current_line_len >= term_size.cols) {
+          msg_lines++;
+          current_line_len = 0;
+        }
+      }
+    }
+    // Count final line if message doesn't end with newline
+    if (current_line_len > 0 || (msg[0] != '\0' && msg[strlen(msg) - 1] == '\n')) {
+      msg_lines++;
+    }
+
+    // Check if this log fits in remaining space
+    if (lines_used + msg_lines <= logs_available_lines) {
+      lines_used += msg_lines;
+      start_idx = idx;
+    } else {
+      break; // No more room
+    }
+  }
+
+  // Display logs that fit (starting from start_idx)
   for (size_t i = start_idx; i < log_count; i++) {
     const char *colorized = colorize_log_message(logs[i].message);
     printf("%s", colorized);
@@ -238,9 +300,8 @@ void server_status_display(const server_status_t *status) {
     }
   }
 
-  // Fill remaining lines to reach bottom of screen without scrolling
-  // This keeps cursor at bottom and prevents terminal scroll
-  for (size_t i = logs_to_show; i < (size_t)logs_available_lines - 1; i++) {
+  // Fill remaining lines to reach EXACTLY the bottom of screen without scrolling
+  for (int i = lines_used; i < logs_available_lines; i++) {
     printf("\n");
   }
 

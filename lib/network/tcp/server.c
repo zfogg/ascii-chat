@@ -184,8 +184,11 @@ asciichat_error_t tcp_server_run(tcp_server_t *server) {
     }
 
     // Use timeout from config (defaults to 1 second if not set)
-    int timeout_sec = server->config.accept_timeout_sec > 0 ? server->config.accept_timeout_sec : 1;
-    struct timeval timeout = {.tv_sec = timeout_sec, .tv_usec = 0};
+    // Convert double seconds to tv_sec and tv_usec
+    double timeout_sec_double = server->config.accept_timeout_sec > 0 ? server->config.accept_timeout_sec : 1.0;
+    time_t timeout_sec = (time_t)timeout_sec_double;
+    suseconds_t timeout_usec = (suseconds_t)((timeout_sec_double - timeout_sec) * 1000000);
+    struct timeval timeout = {.tv_sec = timeout_sec, .tv_usec = timeout_usec};
 
     int select_result = socket_select((int)(max_fd + 1), &read_fds, NULL, NULL, &timeout);
 

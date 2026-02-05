@@ -113,3 +113,11 @@ void server_status_log_cleanup(void);
  * @param message Log message text (already formatted with colors)
  */
 void server_status_log_append(const char *message);
+
+/**
+ * @brief Clear all log messages from status screen buffer
+ *
+ * Thread-safe. Resets buffer to empty state, discarding all captured logs.
+ * Used to clear initialization logs before status screen starts rendering.
+ */
+void server_status_log_clear(void);

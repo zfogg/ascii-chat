@@ -141,7 +141,7 @@ typedef struct {
   const char *ipv6_address;              ///< IPv6 bind address (NULL or empty = don't bind)
   bool bind_ipv4;                        ///< Whether to bind IPv4 socket
   bool bind_ipv6;                        ///< Whether to bind IPv6 socket
-  int accept_timeout_sec;                ///< select() timeout in seconds (for responsive shutdown)
+  double accept_timeout_sec;             ///< select() timeout in seconds (supports decimals, e.g. 0.05 for 50ms)
   tcp_client_handler_fn client_handler;  ///< Client handler callback
   void *user_data;                       ///< User data passed to each client handler
   tcp_status_update_fn status_update_fn; ///< Optional status update callback (called on timeout, NULL to disable)
