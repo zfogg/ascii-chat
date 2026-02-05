@@ -42,7 +42,7 @@
 static const char *YOUTUBE_VIDEO_ID_PATTERN = "^https?://(?:www\\.|m\\.)?(?:"
                                               "youtube\\.com/watch\\?(?:[^&]*&)*v=(?<video_id>[A-Za-z0-9_-]{11})"
                                               "|youtu\\.be/(?<video_id>[A-Za-z0-9_-]{11})"
-                                              ")";
+                                              ")(?:[&?].*)?$";
 
 /**
  * @brief PCRE2 regex validator state for YouTube video ID extraction
