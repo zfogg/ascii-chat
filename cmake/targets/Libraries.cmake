@@ -1022,163 +1022,72 @@ if(ASCIICHAT_LLVM_NM_EXECUTABLE)
 endif()
 
 # =============================================================================
-# Combined Static Library (only when building STATIC libs, not OBJECT libs)
+# Combined Static Library (built from OBJECT libraries)
 # =============================================================================
-# Create libasciichat.a by combining all module static libraries plus
-# bundled dependencies that aren't available via package managers (BearSSL, WebRTC AEC3).
-# Users must install: libsodium, zstd, portaudio, opus, mimalloc
-# Only available when modules are STATIC libraries (not OBJECT libraries)
-# On Windows Debug/Dev/Coverage, modules are OBJECT libraries for DLL building
-if(NOT BUILDING_OBJECT_LIBS)
-    # Build list of MRI commands for external dependencies
-    # These need to be resolved at configure time for path-based deps
-    set(_STATIC_LIB_MRI_COMMANDS "")
-    set(_STATIC_LIB_DEPS "")
-
-    # Internal module libraries (always present)
-    list(APPEND _STATIC_LIB_MRI_COMMANDS
-        "ADDLIB $<TARGET_FILE:ascii-chat-util>"
-        "ADDLIB $<TARGET_FILE:ascii-chat-data-structures>"
-        "ADDLIB $<TARGET_FILE:ascii-chat-platform>"
-        "ADDLIB $<TARGET_FILE:ascii-chat-crypto>"
-        "ADDLIB $<TARGET_FILE:ascii-chat-simd>"
-        "ADDLIB $<TARGET_FILE:ascii-chat-video>"
-        "ADDLIB $<TARGET_FILE:ascii-chat-audio>"
-        "ADDLIB $<TARGET_FILE:ascii-chat-network>"
-        "ADDLIB $<TARGET_FILE:ascii-chat-core>"
-        "ADDLIB $<TARGET_FILE:ascii-chat-session>"
-    )
-    list(APPEND _STATIC_LIB_DEPS
-        ascii-chat-util ascii-chat-data-structures ascii-chat-platform
-        ascii-chat-crypto ascii-chat-simd ascii-chat-video
-        ascii-chat-audio ascii-chat-network ascii-chat-core ascii-chat-session
-    )
-
-    # =============================================================================
-    # Bundled dependencies (not available via package managers)
-    # =============================================================================
-    # Only include libraries that users cannot install themselves.
-    # Standard deps (libsodium, zstd, portaudio, opus, mimalloc) are NOT included -
-    # users must install those via their package manager.
-
-    # BearSSL - not available in brew/apt, we build from source
-    if(BEARSSL_FOUND)
-        if(TARGET bearssl_static)
-            list(APPEND _STATIC_LIB_MRI_COMMANDS "ADDLIB $<TARGET_FILE:bearssl_static>")
-            list(APPEND _STATIC_LIB_DEPS bearssl_static)
-            message(STATUS "Static lib will include: BearSSL (target: bearssl_static)")
-        elseif(BEARSSL_LIBRARIES AND EXISTS "${BEARSSL_LIBRARIES}")
-            list(APPEND _STATIC_LIB_MRI_COMMANDS "ADDLIB ${BEARSSL_LIBRARIES}")
-            message(STATUS "Static lib will include: BearSSL (${BEARSSL_LIBRARIES})")
-        endif()
-    endif()
-
-    # WebRTC AEC3 libraries - not available in brew/apt, we build from source
-    if(DEFINED WEBRTC_AUDIO_PROCESS_LIB AND EXISTS "${WEBRTC_AUDIO_PROCESS_LIB}")
-        list(APPEND _STATIC_LIB_MRI_COMMANDS "ADDLIB ${WEBRTC_AUDIO_PROCESS_LIB}")
-        message(STATUS "Static lib will include: WebRTC AudioProcess")
-    endif()
-    if(DEFINED WEBRTC_AEC3_LIB AND EXISTS "${WEBRTC_AEC3_LIB}")
-        list(APPEND _STATIC_LIB_MRI_COMMANDS "ADDLIB ${WEBRTC_AEC3_LIB}")
-        message(STATUS "Static lib will include: WebRTC AEC3")
-    endif()
-    if(DEFINED WEBRTC_API_LIB AND EXISTS "${WEBRTC_API_LIB}")
-        list(APPEND _STATIC_LIB_MRI_COMMANDS "ADDLIB ${WEBRTC_API_LIB}")
-        message(STATUS "Static lib will include: WebRTC API")
-    endif()
-    if(DEFINED WEBRTC_BASE_LIB AND EXISTS "${WEBRTC_BASE_LIB}")
-        list(APPEND _STATIC_LIB_MRI_COMMANDS "ADDLIB ${WEBRTC_BASE_LIB}")
-        message(STATUS "Static lib will include: WebRTC Base")
-    endif()
-
-    # Generate the MRI script content with generator expressions
-    # file(GENERATE) evaluates generator expressions at generate time
-    # For multi-config generators (Xcode, Visual Studio), use $<CONFIG> for unique paths
-    get_property(_is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
-    if(_is_multi_config)
-        set(_config_subdir "$<CONFIG>/")
-    else()
-        set(_config_subdir "")
-    endif()
-
-    set(_MRI_CONTENT "CREATE ${CMAKE_CURRENT_BINARY_DIR}/${_config_subdir}lib/libasciichat.a\n")
-    foreach(_cmd IN LISTS _STATIC_LIB_MRI_COMMANDS)
-        string(APPEND _MRI_CONTENT "${_cmd}\n")
-    endforeach()
-    string(APPEND _MRI_CONTENT "SAVE\nEND\n")
-
-    # file(GENERATE) evaluates generator expressions like $<TARGET_FILE:...>
-    # Using $<CONFIG> in OUTPUT path makes each config write to a unique file
-    file(GENERATE
-        OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${_config_subdir}combine.mri"
-        CONTENT "${_MRI_CONTENT}"
-    )
-
-    if(_is_multi_config)
-        # For multi-config generators, use a single target with generator expressions
-        # The $<CONFIG> genex resolves at build time to the active configuration
-        add_custom_target(ascii-chat-static-lib-combined
-            COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-            COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/lib"
-            COMMAND ${CMAKE_AR} -M < "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/combine.mri"
-            COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-            DEPENDS ${_STATIC_LIB_DEPS}
-            COMMENT "Combining static libraries into libasciichat.a"
-        )
-    else()
-        # Use ar MRI script to combine archives across platforms
-        add_custom_command(
-            OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a
-            COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-            COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/lib
-            COMMAND ${CMAKE_AR} -M < ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-            COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-            DEPENDS ${_STATIC_LIB_DEPS} ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-            COMMENT "Combining static libraries into libasciichat.a"
-            COMMAND_EXPAND_LISTS
-        )
-        # Create a custom target that depends on the static library file
-        add_custom_target(ascii-chat-static-lib-combined DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a)
-    endif()
-
-# Create interface library target that wraps the combined static library
+# Create libasciichat.a from same OBJECT files used for shared library
+# No duplicate compilation - compile once, output both shared and static
 # Includes: our code + BearSSL + WebRTC AEC3 (not available via package managers)
-# Requires: libsodium, zstd, portaudio, opus, mimalloc (user must install)
-add_library(ascii-chat-static-lib INTERFACE)
-add_dependencies(ascii-chat-static-lib ascii-chat-static-lib-combined)
-target_link_libraries(ascii-chat-static-lib INTERFACE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/${_config_subdir}lib/libasciichat.a>
-    $<INSTALL_INTERFACE:lib/libasciichat.a>
+# Users must install: libsodium, zstd, portaudio, opus, mimalloc
+# Build static library from same OBJECT files as shared library
+add_library(ascii-chat-static-lib STATIC
+    $<TARGET_OBJECTS:ascii-chat-util>
+    $<TARGET_OBJECTS:ascii-chat-data-structures>
+    $<TARGET_OBJECTS:ascii-chat-platform>
+    $<TARGET_OBJECTS:ascii-chat-crypto>
+    $<TARGET_OBJECTS:ascii-chat-simd>
+    $<TARGET_OBJECTS:ascii-chat-video>
+    $<TARGET_OBJECTS:ascii-chat-audio>
+    $<TARGET_OBJECTS:ascii-chat-network>
+    $<TARGET_OBJECTS:ascii-chat-core>
+    $<TARGET_OBJECTS:ascii-chat-session>
+    $<TARGET_OBJECTS:ascii-chat-panic>
 )
 
+set_target_properties(ascii-chat-static-lib PROPERTIES
+    OUTPUT_NAME "asciichat"
+    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
+    VERSION ${ASCIICHAT_LIB_VERSION}
+)
+
+# Link bundled dependencies (not available via package managers)
+# BearSSL and WebRTC AEC3 are embedded in the static library
+if(BEARSSL_LIBRARIES)
+    target_link_libraries(ascii-chat-static-lib PUBLIC ${BEARSSL_LIBRARIES})
+endif()
+if(WEBRTC_AEC3_LIBRARIES)
+    target_link_libraries(ascii-chat-static-lib PUBLIC ${WEBRTC_AEC3_LIBRARIES})
+endif()
+
 # External dependencies - users must install these via package manager
-# These are NOT bundled in the static library
-target_link_libraries(ascii-chat-static-lib INTERFACE
+# These are linked but NOT embedded in the static library
+target_link_libraries(ascii-chat-static-lib PUBLIC
+    ${PCRE2_LIBRARIES}
     ${LIBSODIUM_LIBRARIES}
     ${ZSTD_LIBRARIES}
     ${PORTAUDIO_LIBRARIES}
     ${OPUS_LIBRARIES}
     ${SQLITE3_LIBRARIES}
+    libdatachannel
+    OpenSSL::Crypto
 )
-# Link mimalloc - use shared library when MIMALLOC_IS_SHARED_LIB is TRUE
-# (this happens when ASCIICHAT_SHARED_DEPS=ON for Homebrew builds)
-if(MIMALLOC_IS_SHARED_LIB AND MIMALLOC_LIBRARIES)
-    # Use the shared library path directly (not the target, which may point to static)
-    target_link_libraries(ascii-chat-static-lib INTERFACE ${MIMALLOC_LIBRARIES})
-elseif(TARGET mimalloc-static)
-    target_link_libraries(ascii-chat-static-lib INTERFACE mimalloc-static)
-elseif(MIMALLOC_LIBRARIES)
-    target_link_libraries(ascii-chat-static-lib INTERFACE ${MIMALLOC_LIBRARIES})
+
+# Link mimalloc
+if(USE_MIMALLOC)
+    if(TARGET mimalloc-static)
+        target_link_libraries(ascii-chat-static-lib PUBLIC mimalloc-static)
+    elseif(MIMALLOC_LIBRARIES)
+        target_link_libraries(ascii-chat-static-lib PUBLIC ${MIMALLOC_LIBRARIES})
+    endif()
 endif()
 
 # Link FFmpeg for media file streaming
 if(FFMPEG_FOUND)
-    target_link_libraries(ascii-chat-static-lib INTERFACE ${FFMPEG_LINK_LIBRARIES})
+    target_link_libraries(ascii-chat-static-lib PUBLIC ${FFMPEG_LINK_LIBRARIES})
 endif()
 
 # Platform-specific system libraries
 if(WIN32)
-    target_link_libraries(ascii-chat-static-lib INTERFACE
+    target_link_libraries(ascii-chat-static-lib PUBLIC
         ${WS2_32_LIB}
         ${USER32_LIB}
         ${ADVAPI32_LIB}
@@ -1191,7 +1100,7 @@ if(WIN32)
         crypt32
     )
 elseif(APPLE)
-    target_link_libraries(ascii-chat-static-lib INTERFACE
+    target_link_libraries(ascii-chat-static-lib PUBLIC
         ${FOUNDATION_FRAMEWORK}
         ${AVFOUNDATION_FRAMEWORK}
         ${COREMEDIA_FRAMEWORK}
@@ -1204,7 +1113,7 @@ elseif(APPLE)
     )
 else()
     # Linux
-    target_link_libraries(ascii-chat-static-lib INTERFACE
+    target_link_libraries(ascii-chat-static-lib PUBLIC
         ${CMAKE_THREAD_LIBS_INIT}
         m
         dl
@@ -1214,48 +1123,48 @@ else()
     if(USE_MUSL)
         # Musl builds use Alpine's musl-compatible libc++
         if(ALPINE_LIBCXX_STATIC AND ALPINE_LIBCXXABI_STATIC)
-            target_link_libraries(ascii-chat-static-lib INTERFACE
+            target_link_libraries(ascii-chat-static-lib PUBLIC
                 ${ALPINE_LIBCXX_STATIC}
                 ${ALPINE_LIBCXXABI_STATIC}
             )
             if(ALPINE_LIBUNWIND_STATIC)
-                target_link_libraries(ascii-chat-static-lib INTERFACE ${ALPINE_LIBUNWIND_STATIC})
+                target_link_libraries(ascii-chat-static-lib PUBLIC ${ALPINE_LIBUNWIND_STATIC})
             endif()
         endif()
     else()
         # Non-musl builds: link the C++ standard library
-        target_link_libraries(ascii-chat-static-lib INTERFACE c++)
+        target_link_libraries(ascii-chat-static-lib PUBLIC c++)
     endif()
 endif()
 
 # Link libdatachannel for WebRTC P2P connections (static library)
 # The libdatachannel INTERFACE target's dependencies propagate to ascii-chat-static-lib
 if(TARGET libdatachannel)
-    target_link_libraries(ascii-chat-static-lib INTERFACE libdatachannel)
+    target_link_libraries(ascii-chat-static-lib PUBLIC libdatachannel)
 endif()
 
 # Link OpenSSL for TURN credentials (required by network module)
 # This is linked to ascii-chat-network module, but must also be exposed via the
 # INTERFACE library for final executables since libasciichat.a includes turn_credentials.c
 if(TARGET OpenSSL::Crypto)
-    target_link_libraries(ascii-chat-static-lib INTERFACE OpenSSL::Crypto)
+    target_link_libraries(ascii-chat-static-lib PUBLIC OpenSSL::Crypto)
 endif()
 
 # Link miniupnpc for UPnP/NAT-PMP port mapping (optional)
 # This is linked to ascii-chat-network module, but must also be exposed via the
 # INTERFACE library for final executables since libasciichat.a includes upnp.c
 if(MINIUPNPC_FOUND)
-    target_link_libraries(ascii-chat-static-lib INTERFACE ${MINIUPNPC_LIBRARIES})
+    target_link_libraries(ascii-chat-static-lib PUBLIC ${MINIUPNPC_LIBRARIES})
     # Also link libnatpmp on macOS (separate library for NAT-PMP protocol)
     if(NATPMP_LIBRARY)
-        target_link_libraries(ascii-chat-static-lib INTERFACE ${NATPMP_LIBRARY})
+        target_link_libraries(ascii-chat-static-lib PUBLIC ${NATPMP_LIBRARY})
     endif()
 endif()
 
 # Link OpenMP for SIMD rendering in ascii-chat-simd module
 # Must be exposed via INTERFACE library for final executables
 if(OpenMP_FOUND)
-    target_link_libraries(ascii-chat-static-lib INTERFACE OpenMP::OpenMP_C)
+    target_link_libraries(ascii-chat-static-lib PUBLIC OpenMP::OpenMP_C)
 endif()
 
 # =============================================================================
@@ -1301,7 +1210,6 @@ add_custom_target(ascii-chat-static-build
     DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a
     VERBATIM
 )
-endif() # NOT BUILDING_OBJECT_LIBS
 
 # =============================================================================
 # Unified Library (ascii-chat-static for backward compatibility)
