@@ -422,6 +422,31 @@ if(NOT BUILDING_OBJECT_LIBS)
     )
 endif()
 
+# PCRE2: Configure for core module (for session string format validation)
+# Define PCRE2_CODE_UNIT_WIDTH=8 for 8-bit API (UTF-8 support)
+target_compile_definitions(ascii-chat-core PRIVATE PCRE2_CODE_UNIT_WIDTH=8)
+
+# Add PCRE2 include directory
+if(PCRE2_INCLUDE_DIRS)
+    target_include_directories(ascii-chat-core PRIVATE ${PCRE2_INCLUDE_DIRS})
+endif()
+
+# Link PCRE2 library
+if(PCRE2_LIBRARY_DIRS AND PCRE2_LIBRARIES)
+    if(BUILDING_OBJECT_LIBS)
+        # For OBJECT libs, add PCRE2 to link libraries
+        target_link_libraries(ascii-chat-core ${PCRE2_LIBRARIES})
+    endif()
+    target_link_directories(ascii-chat-core PRIVATE ${PCRE2_LIBRARY_DIRS})
+else()
+    message(WARNING "PCRE2 not found for core module (session string validation will not work)")
+endif()
+
+# Add dependency on PCRE2 build target if building from source
+if(DEFINED PCRE2_BUILD_TARGET)
+    add_dependencies(ascii-chat-core ${PCRE2_BUILD_TARGET})
+endif()
+
 # Math library (Unix only - Windows has math functions in C runtime)
 if(NOT WIN32)
     target_link_libraries(ascii-chat-core m)

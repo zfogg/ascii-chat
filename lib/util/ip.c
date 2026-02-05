@@ -9,153 +9,165 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/platform/network.h>
+#include <ascii-chat/log/logging.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#define PCRE2_CODE_UNIT_WIDTH 8
+#include <pcre2.h>
+
+// ============================================================================
+// PCRE2 IPv4 Address Validator
+// ============================================================================
+
+/**
+ * @brief IPv4 address validator using PCRE2
+ *
+ * Validates the format of IPv4 addresses:
+ * - Each octet is 0-255
+ * - Rejects leading zeros (e.g., "192.168.001.1" is invalid)
+ * - No other characters allowed
+ */
+typedef struct {
+  pcre2_code *ipv4_regex;
+  pcre2_jit_stack *jit_stack;
+  bool initialized;
+} ipv4_validator_t;
+
+static ipv4_validator_t g_ipv4_validator = {0};
+static pthread_once_t g_ipv4_once = PTHREAD_ONCE_INIT;
+
+/**
+ * Initialize IPv4 regex (called once via pthread_once)
+ */
+static void ipv4_validator_init_once(void) {
+  // Regex pattern validates IPv4 format:
+  // - Each octet: 0-255 without leading zeros
+  // - Exactly 4 octets separated by dots
+  const char *pattern = "^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.){3}"
+                        "(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])$";
+
+  int error_code;
+  PCRE2_SIZE error_offset;
+  g_ipv4_validator.ipv4_regex =
+      pcre2_compile((PCRE2_SPTR8)pattern, PCRE2_ZERO_TERMINATED, 0, &error_code, &error_offset, NULL);
+
+  if (!g_ipv4_validator.ipv4_regex) {
+    PCRE2_UCHAR error_buf[256];
+    pcre2_get_error_message(error_code, error_buf, sizeof(error_buf));
+    log_fatal("Failed to compile IPv4 regex at offset %zu: %s", error_offset, (const char *)error_buf);
+    return;
+  }
+
+  // Allocate JIT stack for pattern execution
+  g_ipv4_validator.jit_stack = pcre2_jit_stack_create(32 * 1024, 512 * 1024, NULL);
+  if (!g_ipv4_validator.jit_stack) {
+    pcre2_code_free(g_ipv4_validator.ipv4_regex);
+    g_ipv4_validator.ipv4_regex = NULL;
+    log_fatal("Failed to allocate JIT stack for IPv4 regex");
+    return;
+  }
+
+  // Compile to JIT for 5-10x performance boost
+  int jit_ret = pcre2_jit_compile(g_ipv4_validator.ipv4_regex, PCRE2_JIT_COMPLETE);
+  if (jit_ret < 0) {
+    log_warn("IPv4 regex JIT compilation failed (code %d), falling back to interpreter", jit_ret);
+    // Non-fatal: will use interpreter instead of JIT
+  }
+
+  g_ipv4_validator.initialized = true;
+  log_debug("IPv4 address validator initialized");
+}
 
 // Helper function to validate IPv4 address format
 int is_valid_ipv4(const char *ip) {
   if (!ip) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", ip);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: NULL");
     return 0; // Invalid
   }
 
-  if (strlen(ip) == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", ip);
+  size_t ip_len = strlen(ip);
+  if (ip_len == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: empty string");
     return 0; // Invalid
   }
 
-  if (strlen(ip) > 256) {
+  if (ip_len > 256) {
     char ip_buffer[BUFFER_SIZE_SMALL];
     SAFE_STRNCPY(ip_buffer, ip, sizeof(ip_buffer));
     SET_ERRNO(ERROR_INVALID_PARAM, "Suspiciously long ip: %s", ip_buffer);
     return 0; // Invalid
   }
 
-  int segments = 0;
-  int value = 0;
-  int digits = 0;
-  int has_leading_zero = 0;
-
-  for (const char *p = ip; *p != '\0'; p++) {
-    if (*p == '.') {
-      // Single '0' is valid, but '01', '001', etc. are not
-      if (digits == 0 || value > 255 || (has_leading_zero && digits > 1))
-        return 0;
-      segments++;
-      value = 0;
-      digits = 0;
-      has_leading_zero = 0;
-    } else if (*p >= '0' && *p <= '9') {
-      // Check for leading zero
-      if (digits == 0 && *p == '0') {
-        has_leading_zero = 1;
-      }
-
-      value = value * 10 + (*p - '0');
-      digits++;
-      if (digits > 3 || value > 255)
-        return 0;
-    } else {
-      return 0; // Invalid character
-    }
+  // Initialize IPv4 validator (once per process)
+  pthread_once(&g_ipv4_once, ipv4_validator_init_once);
+  if (!g_ipv4_validator.initialized || !g_ipv4_validator.ipv4_regex) {
+    log_error("IPv4 validator not initialized");
+    return 0;
   }
 
-  // Check last segment - single '0' is valid
-  if (digits == 0 || value > 255 || (has_leading_zero && digits > 1))
+  // Create match data for regex matching
+  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(g_ipv4_validator.ipv4_regex, NULL);
+  if (!match_data) {
+    log_error("Failed to allocate match data for IPv4 regex");
     return 0;
+  }
 
-  return segments == 3; // Should have exactly 3 dots (4 segments)
+  // Validate format using PCRE2 regex
+  int match_result = pcre2_match(g_ipv4_validator.ipv4_regex, (PCRE2_SPTR8)ip, ip_len, 0, 0, match_data, NULL);
+
+  pcre2_match_data_free(match_data);
+
+  if (match_result < 0) {
+    return 0; // Format validation failed
+  }
+
+  return 1; // Valid IPv4 format
 }
 
 // Helper function to validate IPv6 address format
+// Uses POSIX inet_pton() instead of manual parsing - more robust and battle-tested
 int is_valid_ipv6(const char *ip) {
   if (!ip) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", ip);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: NULL");
     return 0; // Invalid
   }
 
-  if (strlen(ip) == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", ip);
+  size_t ip_len = strlen(ip);
+  if (ip_len == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: empty string");
     return 0; // Invalid
   }
 
-  if (strlen(ip) > 256) {
+  if (ip_len > 256) {
     char ip_buffer[BUFFER_SIZE_SMALL];
     SAFE_STRNCPY(ip_buffer, ip, sizeof(ip_buffer));
     SET_ERRNO(ERROR_INVALID_PARAM, "Suspiciously long ip: %s", ip_buffer);
     return 0; // Invalid
   }
 
-  // Special case: "::" is valid (all zeros)
-  if (strcmp(ip, "::") == 0)
-    return 1;
+  // Use POSIX inet_pton() for robust IPv6 validation
+  // It handles all RFC 5952 compliant formats:
+  // - Full format: 2001:0db8:85a3:0000:0000:8a2e:0370:7334
+  // - Compressed: 2001:db8:85a3::8a2e:370:7334
+  // - Loopback: ::1
+  // - All zeros: ::
+  // - IPv4-mapped: ::ffff:192.0.2.1
+  struct in6_addr addr;
+  int result = inet_pton(AF_INET6, ip, &addr);
 
-  // Check if it contains at least one colon (basic IPv6 requirement)
-  if (strchr(ip, ':') == NULL)
+  if (result == 1) {
+    return 1; // Valid IPv6
+  } else if (result == 0) {
+    return 0; // Not a valid IPv6 address
+  } else {
+    // result < 0 means system error (e.g., unsupported address family)
+    SET_ERRNO(ERROR_INVALID_PARAM, "Failed to validate IPv6 address");
     return 0;
-
-  // Reject leading or trailing single colons
-  size_t len = strlen(ip);
-  if (len > 0 && ip[0] == ':' && (len < 2 || ip[1] != ':'))
-    return 0; // Leading single colon (not :: which is handled above)
-  if (len > 0 && ip[len - 1] == ':' && (len < 2 || ip[len - 2] != ':'))
-    return 0; // Trailing single colon
-
-  // Check for IPv4-mapped address (contains dots)
-  int has_ipv4_mapped = (strchr(ip, '.') != NULL);
-
-  // Check for valid characters and count double colons
-  const char *p = ip;
-  int double_colon_count = 0;
-  int segment_len = 0;
-  int segment_count = 0;
-  int last_was_colon = 0;
-
-  while (*p) {
-    if (*p == ':') {
-      if (last_was_colon) {
-        double_colon_count++;
-        if (double_colon_count > 1)
-          return 0; // Multiple :: not allowed
-      }
-      if (segment_len > 0) {
-        segment_count++;
-        if (segment_len > 4)
-          return 0; // Hex segment too long
-      }
-      segment_len = 0;
-      last_was_colon = 1;
-    } else if (*p == '.') {
-      // Dots are allowed for IPv4-mapped addresses
-      // Don't count this as part of hex segment
-      last_was_colon = 0;
-    } else if ((*p >= '0' && *p <= '9') || (*p >= 'a' && *p <= 'f') || (*p >= 'A' && *p <= 'F')) {
-      segment_len++;
-      last_was_colon = 0;
-    } else {
-      return 0; // Invalid character for IPv6
-    }
-    p++;
   }
-
-  // Count last segment if exists and not ending with colon
-  if (segment_len > 0) {
-    if (!has_ipv4_mapped && segment_len > 4)
-      return 0; // Last hex segment too long
-    segment_count++;
-  }
-
-  // For IPv4-mapped addresses, we have fewer hex segments (typically 6 or 7)
-  // For regular IPv6, we need exactly 8 segments (if no ::) or fewer (if :: present)
-  if (!has_ipv4_mapped) {
-    if (double_colon_count == 0 && segment_count != 8)
-      return 0; // Need exactly 8 segments without ::
-    if (segment_count > 8)
-      return 0; // Too many segments
-  }
-
-  return 1;
 }
 
 // Parse IPv6 address, removing brackets if present
