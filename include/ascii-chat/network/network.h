@@ -95,7 +95,11 @@
  *
  * @ingroup network
  */
+#ifdef NDEBUG
 #define CONNECT_TIMEOUT 3
+#else
+#define CONNECT_TIMEOUT 1
+#endif
 
 /**
  * @brief Send timeout in seconds (5 seconds)
@@ -105,7 +109,11 @@
  *
  * @ingroup network
  */
+#ifdef NDEBUG
 #define SEND_TIMEOUT 5
+#else
+#define SEND_TIMEOUT 1
+#endif
 
 /**
  * @brief Receive timeout in seconds (2 seconds)
@@ -117,18 +125,26 @@
  *
  * @ingroup network
  */
+#ifdef NDEBUG
 #define RECV_TIMEOUT 2
+#else
+#define RECV_TIMEOUT 1
+#endif
 
 /**
- * @brief Accept timeout in seconds (0.05 seconds = 50ms)
+ * @brief Accept timeout in seconds (1 second)
  *
- * Maximum time to wait for incoming connections. Set to 50ms to allow
- * status screen updates at ~20 FPS minimum. Status screen has internal
- * rate limiting to hit target FPS (default 60).
+ * Maximum time to wait for incoming connections. Balanced between
+ * responsiveness and CPU usage. Status screen updates independently
+ * in its own thread at target FPS.
  *
  * @ingroup network
  */
-#define ACCEPT_TIMEOUT 0.05
+#ifdef NDEBUG
+#define ACCEPT_TIMEOUT 3
+#else
+#define ACCEPT_TIMEOUT 1
+#endif
 
 /** @} */
 
