@@ -805,8 +805,9 @@ crypto_result_t crypto_generate_nonce(uint8_t nonce[32]) {
 crypto_result_t crypto_compute_hmac(crypto_context_t *ctx, const uint8_t key[32], const uint8_t data[32],
                                     uint8_t hmac[32]) {
   if (!ctx || !key || !data || !hmac) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "crypto_compute_hmac: Invalid parameters (ctx=%p, key=%p, data=%p, hmac=%p)",
-                     ctx, key, data, hmac);
+    return (crypto_result_t)SET_ERRNO(ERROR_INVALID_PARAM,
+                                      "crypto_compute_hmac: Invalid parameters (ctx=%p, key=%p, data=%p, hmac=%p)", ctx,
+                                      key, data, hmac);
   }
 
   crypto_result_t result = init_libsodium();
@@ -821,9 +822,10 @@ crypto_result_t crypto_compute_hmac(crypto_context_t *ctx, const uint8_t key[32]
 crypto_result_t crypto_compute_hmac_ex(const crypto_context_t *ctx, const uint8_t key[32], const uint8_t *data,
                                        size_t data_len, uint8_t hmac[32]) {
   if (!ctx || !key || !data || !hmac || data_len == 0) {
-    return SET_ERRNO(ERROR_INVALID_PARAM,
-                     "crypto_compute_hmac_ex: Invalid parameters (ctx=%p, key=%p, data=%p, data_len=%zu, hmac=%p)", ctx,
-                     key, data, data_len, hmac);
+    return (crypto_result_t)SET_ERRNO(
+        ERROR_INVALID_PARAM,
+        "crypto_compute_hmac_ex: Invalid parameters (ctx=%p, key=%p, data=%p, data_len=%zu, hmac=%p)", ctx, key, data,
+        data_len, hmac);
   }
 
   crypto_result_t result = init_libsodium();
