@@ -19,7 +19,9 @@
  * with JIT compilation for 5-10x performance improvement.
  */
 
-static const char *STUN_ENTRY_PATTERN = "\\s*([^\\s,][^,]*?[^\\s,]|[^\\s,])\\s*";
+// Pattern: Match comma-separated entries (trimmed)
+// Matches: optional whitespace, capture non-comma chars (trimmed), optional whitespace, then comma or end
+static const char *STUN_ENTRY_PATTERN = "\\s*([^,]+?)\\s*(?=,|$)";
 
 static pcre2_singleton_t *g_stun_entry_regex = NULL;
 
@@ -154,6 +156,11 @@ int stun_servers_parse(const char *csv_servers, const char *default_csv, stun_se
     // Move offset to end of this match (need ovector for overall match end)
     PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
     offset = ovector[1];
+
+    // Skip comma if present
+    if (offset < strlen(servers_to_parse) && servers_to_parse[offset] == ',') {
+      offset++;
+    }
   }
 
   pcre2_match_data_free(match_data);

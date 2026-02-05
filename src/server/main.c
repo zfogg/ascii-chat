@@ -1905,14 +1905,23 @@ int server_main(void) {
 
             static_mutex_lock(&g_stun_init_mutex);
             if (g_stun_init_refcount == 0) {
+              log_debug("Parsing STUN servers from options: '%s'", GET_OPTION(stun_servers));
               int count =
                   stun_servers_parse(GET_OPTION(stun_servers), OPT_ENDPOINT_STUN_SERVERS_DEFAULT, stun_servers, 4);
               if (count > 0) {
                 stun_count = count;
+                log_debug("Parsed %d STUN servers", count);
+                for (int i = 0; i < count; i++) {
+                  log_debug("  STUN[%d]: '%s' (len=%d)", i, stun_servers[i].host, stun_servers[i].host_len);
+                }
               } else {
                 log_warn("Failed to parse STUN servers, using defaults");
                 stun_count = stun_servers_parse(OPT_ENDPOINT_STUN_SERVERS_DEFAULT, OPT_ENDPOINT_STUN_SERVERS_DEFAULT,
                                                 stun_servers, 4);
+                log_debug("Using default STUN servers, count=%d", stun_count);
+                for (int i = 0; i < stun_count; i++) {
+                  log_debug("  STUN[%d]: '%s' (len=%d)", i, stun_servers[i].host, stun_servers[i].host_len);
+                }
               }
               g_stun_init_refcount = 1;
             }

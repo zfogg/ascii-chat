@@ -1052,24 +1052,40 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
 
   case DISCOVERY_STATE_CONNECTING_HOST: {
     // Connect to host as participant
-    // For WebRTC sessions, initiate WebRTC connection (NEW)
-    if (session->session_type == SESSION_TYPE_WEBRTC && session->peer_manager && !session->participant_ctx) {
-      log_info("Initiating WebRTC connection to host...");
 
-      // Initiate connection (generates offer, triggers SDP exchange)
-      asciichat_error_t conn_result =
-          webrtc_peer_manager_connect(session->peer_manager, session->session_id, session->host_id);
-
-      if (conn_result != ASCIICHAT_OK) {
-        log_error("Failed to initiate WebRTC connection: %d", conn_result);
-        set_error(session, conn_result, "Failed to initiate WebRTC connection");
+    // For WebRTC sessions, wait for DataChannel to open
+    if (session->session_type == SESSION_TYPE_WEBRTC) {
+      // Check if transport is ready (DataChannel opened)
+      if (session->webrtc_transport_ready) {
+        log_info("WebRTC DataChannel established, transitioning to ACTIVE state");
+        set_state(session, DISCOVERY_STATE_ACTIVE);
         break;
       }
 
-      log_info("WebRTC connection initiated, waiting for DataChannel...");
+      // Use a per-session flag to track if we've initiated WebRTC connection
+      // (We can't use participant_ctx because that's only for TCP connections)
+      static bool webrtc_initiated = false;
 
-      // Transition to ACTIVE state - will receive SDP/ICE via ACDS packet loop
-      set_state(session, DISCOVERY_STATE_ACTIVE);
+      // If not ready and we haven't initiated connection yet, initiate it once
+      if (session->peer_manager && !webrtc_initiated) {
+        log_info("Initiating WebRTC connection to host...");
+
+        // Initiate connection (generates offer, triggers SDP exchange)
+        asciichat_error_t conn_result =
+            webrtc_peer_manager_connect(session->peer_manager, session->session_id, session->host_id);
+
+        if (conn_result != ASCIICHAT_OK) {
+          log_error("Failed to initiate WebRTC connection: %d", conn_result);
+          set_error(session, conn_result, "Failed to initiate WebRTC connection");
+          break;
+        }
+
+        log_info("WebRTC connection initiated, waiting for DataChannel...");
+        webrtc_initiated = true; // Mark as initiated
+      }
+
+      // Stay in CONNECTING_HOST until DataChannel opens (webrtc_transport_ready becomes true)
+      // The discovery_on_transport_ready callback will set webrtc_transport_ready=true
       break;
     }
 
