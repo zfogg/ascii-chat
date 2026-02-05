@@ -735,8 +735,8 @@ asciichat_error_t options_init(int argc, char **argv) {
   // NOTE: --grep filter is initialized in main.c BEFORE any logging starts
   // This allows ALL logs (including from shared_init) to be filtered
 
-  log_debug("options_init called with argc=%d, argv[0]=%s, argv[1]=%s", argc, argc > 0 ? argv[0] : "NULL",
-            argc > 1 ? argv[1] : "NULL");
+  log_dev("options_init called with argc=%d, argv[0]=%s, argv[1]=%s", argc, argc > 0 ? argv[0] : "NULL",
+          argc > 1 ? argv[1] : "NULL");
 
   // Validate arguments (safety check for tests)
   if (argc < 0 || argc > 128) {

@@ -243,8 +243,8 @@ void server_status_display(const server_status_t *status) {
   // LIVE LOG FEED - Fills remaining screen (never causes scroll)
   // ========================================================================
   // Calculate EXACTLY how many lines we have for logs
-  // Status took exactly 4 lines above
-  int logs_available_lines = term_size.rows - 4;
+  // Status took exactly 4 lines above, reserve 1 line to prevent cursor scroll
+  int logs_available_lines = term_size.rows - 5;
   if (logs_available_lines < 1) {
     logs_available_lines = 1; // At least show something
   }

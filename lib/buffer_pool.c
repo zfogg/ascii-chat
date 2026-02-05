@@ -74,8 +74,8 @@ buffer_pool_t *buffer_pool_create(size_t max_bytes, uint64_t shrink_delay_ns) {
 
   char pretty_max[64];
   format_bytes_pretty(pool->max_bytes, pretty_max, sizeof(pretty_max));
-  log_debug("Created buffer pool (max: %s, shrink: %llu ns, lock-free)", pretty_max,
-            (unsigned long long)pool->shrink_delay_ns);
+  log_dev("Created buffer pool (max: %s, shrink: %llu ns, lock-free)", pretty_max,
+          (unsigned long long)pool->shrink_delay_ns);
 
   return pool;
 }
@@ -377,7 +377,7 @@ void buffer_pool_init_global(void) {
   if (!g_global_pool) {
     g_global_pool = buffer_pool_create(0, 0);
     if (g_global_pool) {
-      log_debug("Initialized global buffer pool");
+      log_dev("Initialized global buffer pool");
     }
   }
   static_mutex_unlock(&g_global_pool_mutex);

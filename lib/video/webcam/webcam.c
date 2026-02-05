@@ -181,7 +181,7 @@ void webcam_cleanup(void) {
     global_webcam_ctx = NULL;
     // log_info("Webcam resources released");
   } else {
-    log_debug("Webcam was not opened, nothing to release");
+    log_dev("Webcam was not opened, nothing to release");
   }
 }
 

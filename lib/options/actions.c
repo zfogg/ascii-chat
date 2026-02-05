@@ -393,6 +393,7 @@ void action_help_discovery(void) {
 void action_create_manpage(const char *output_path) {
   // Get binary-level config
   const options_config_t *config = options_preset_unified(NULL, NULL);
+
   if (!config) {
     log_plain_stderr("Error: Failed to get binary options config");
     exit(ERROR_FILE_OPERATION);
@@ -430,6 +431,10 @@ void action_create_manpage(const char *output_path) {
   } else {
     log_plain_stderr("Man page written to stdout");
   }
+
+  // Clean up logging system before exit to prevent cleanup loops
+  log_destroy();
+
   exit(0);
 }
 

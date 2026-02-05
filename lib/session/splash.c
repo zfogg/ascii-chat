@@ -234,6 +234,9 @@ static void *splash_animation_thread(void *arg) {
   // Build splash buffer once
   build_splash_buffer(base_buffer, sizeof(base_buffer), width, height);
 
+  // Check if colors should be used (TTY check)
+  bool use_colors = terminal_should_color_output(STDOUT_FILENO);
+
   // Animate with rainbow wave effect
   int frame = 0;
   const int anim_speed = 100;        // milliseconds per frame
@@ -257,7 +260,7 @@ static void *splash_animation_thread(void *arg) {
       } else if (ch == ' ') {
         // Spaces don't need color, just print
         printf("%c", ch);
-      } else {
+      } else if (use_colors) {
         // Calculate smooth rainbow color for this character
         // Position is normalized by spreading over many characters for smooth fade
         double char_pos = (i + offset) / 30.0; // Spread over 30 chars for smooth transition
@@ -265,6 +268,9 @@ static void *splash_animation_thread(void *arg) {
 
         // Print character with truecolor ANSI escape: \x1b[38;2;R;G;Bm
         printf("\x1b[38;2;%u;%u;%um%c\x1b[0m", color.r, color.g, color.b, ch);
+      } else {
+        // No colors when piping - just print the character
+        printf("%c", ch);
       }
     }
 

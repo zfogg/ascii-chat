@@ -509,7 +509,7 @@ void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64], u
 
 // Central cleanup function for all SIMD caches
 void simd_caches_destroy_all(void) {
-  log_debug("SIMD_CACHE: Starting cleanup of all SIMD caches");
+  log_dev("SIMD_CACHE: Starting cleanup of all SIMD caches");
 
   // Only destroy caches if they were ever initialized
   if (atomic_load(&g_utf8_cache_initialized)) {
@@ -551,7 +551,7 @@ void simd_caches_destroy_all(void) {
   sve_caches_destroy();
 #endif
 
-  log_debug("SIMD_CACHE: All SIMD caches destroyed");
+  log_dev("SIMD_CACHE: All SIMD caches destroyed");
 }
 
 // Output buffer functions moved to lib/video/output_buffer.c

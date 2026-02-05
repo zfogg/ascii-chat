@@ -608,6 +608,10 @@ void debug_memory_report(void) {
     // Adjust current usage to exclude suppressed allocations
     size_t adjusted_current_usage = (current_usage >= suppressed_bytes) ? (current_usage - suppressed_bytes) : 0;
 
+    // Adjust total allocated for display to exclude suppressions (so it matches total freed)
+    size_t adjusted_total_allocated =
+        (total_allocated >= suppressed_bytes) ? (total_allocated - suppressed_bytes) : total_allocated;
+
     // Reset ignore counters after counting suppressed bytes
     reset_ignore_counters();
 
@@ -615,7 +619,7 @@ void debug_memory_report(void) {
     char pretty_freed[64];
     char pretty_current[64];
     char pretty_peak[64];
-    format_bytes_pretty(total_allocated, pretty_total, sizeof(pretty_total));
+    format_bytes_pretty(adjusted_total_allocated, pretty_total, sizeof(pretty_total));
     format_bytes_pretty(total_freed, pretty_freed, sizeof(pretty_freed));
     format_bytes_pretty(adjusted_current_usage, pretty_current, sizeof(pretty_current));
     format_bytes_pretty(peak_usage, pretty_peak, sizeof(pretty_peak));
@@ -651,36 +655,43 @@ void debug_memory_report(void) {
     SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, " %s\n", value_str));                                               \
   } while (0)
 
-    PRINT_MEM_LINE(label_total, pretty_total);
-    PRINT_MEM_LINE(label_freed, pretty_freed);
-    PRINT_MEM_LINE(label_current, pretty_current);
-    PRINT_MEM_LINE(label_peak, pretty_peak);
+#define PRINT_MEM_LINE_COLORED(label, value_str, color)                                                                \
+  do {                                                                                                                 \
+    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "%s", colored_string(LOG_COLOR_GREY, label)));                      \
+    for (size_t i = strlen(label); i < max_label_width; i++) {                                                         \
+      SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, " "));                                                            \
+    }                                                                                                                  \
+    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, " %s\n", colored_string(color, value_str)));                        \
+  } while (0)
 
-    // malloc calls
-    char malloc_str[32];
-    safe_snprintf(malloc_str, sizeof(malloc_str), "%zu", malloc_calls);
-    PRINT_MEM_LINE(label_malloc, malloc_str);
+    // Colorize total allocated/freed: green if they match, yellow if they don't
+    // We've already adjusted allocated to exclude suppressions, so now compare directly
+    log_color_t alloc_freed_color = (adjusted_total_allocated == total_freed) ? LOG_COLOR_INFO : LOG_COLOR_WARN;
+    PRINT_MEM_LINE_COLORED(label_total, pretty_total, alloc_freed_color);
+    PRINT_MEM_LINE_COLORED(label_freed, pretty_freed, alloc_freed_color);
 
-    // calloc calls
-    char calloc_str[32];
-    safe_snprintf(calloc_str, sizeof(calloc_str), "%zu", calloc_calls);
-    PRINT_MEM_LINE(label_calloc, calloc_str);
-
-    // free calls
-    char free_str[32];
-    safe_snprintf(free_str, sizeof(free_str), "%zu", free_calls);
-    PRINT_MEM_LINE(label_free, free_str);
-
-    // suppressions - show count and pretty bytes
-    if (suppressed_count > 0) {
-      char pretty_suppressed[64];
-      format_bytes_pretty(suppressed_bytes, pretty_suppressed, sizeof(pretty_suppressed));
-      char suppressions_str[128];
-      safe_snprintf(suppressions_str, sizeof(suppressions_str), "%zu (%s)", suppressed_count, pretty_suppressed);
-      PRINT_MEM_LINE(label_suppressions, suppressions_str);
+    // Colorize current usage: 0=green, B/KB=yellow, MB+=red
+    log_color_t current_color = LOG_COLOR_INFO; // Default green for 0
+    if (adjusted_current_usage == 0) {
+      current_color = LOG_COLOR_INFO; // Green
+    } else if (strstr(pretty_current, "MB") || strstr(pretty_current, "GB") || strstr(pretty_current, "TB")) {
+      current_color = LOG_COLOR_ERROR; // Red for MB+
+    } else {
+      current_color = LOG_COLOR_WARN; // Yellow for bytes/KB
     }
+    PRINT_MEM_LINE_COLORED(label_current, pretty_current, current_color);
+
+    // Colorize peak usage: green if 0-50 MB, yellow if 50-80 MB, red if above 80 MB
+    log_color_t peak_color = LOG_COLOR_INFO; // Default green
+    if (peak_usage >= (80 * 1024 * 1024)) {
+      peak_color = LOG_COLOR_ERROR; // Red if >= 80 MB
+    } else if (peak_usage >= (50 * 1024 * 1024)) {
+      peak_color = LOG_COLOR_WARN; // Yellow if >= 50 MB
+    }
+    PRINT_MEM_LINE_COLORED(label_peak, pretty_peak, peak_color);
 
     // diff - count actual unfreed allocations in the linked list (excluding ignored)
+    // (Calculate early so we can use it for colorization)
     size_t unfreed_count = 0;
     if (g_mem.head) {
       if (ensure_mutex_initialized()) {
@@ -695,6 +706,35 @@ void debug_memory_report(void) {
         mutex_unlock(&g_mem.mutex);
       }
     }
+
+    // Colorize malloc/calloc/free calls: green if unfreed == 0, red if unfreed != 0
+    log_color_t calls_color = (unfreed_count == 0) ? LOG_COLOR_INFO : LOG_COLOR_ERROR;
+    char malloc_str[32];
+    safe_snprintf(malloc_str, sizeof(malloc_str), "%zu", malloc_calls);
+    PRINT_MEM_LINE_COLORED(label_malloc, malloc_str, calls_color);
+
+    char calloc_str[32];
+    safe_snprintf(calloc_str, sizeof(calloc_str), "%zu", calloc_calls);
+    PRINT_MEM_LINE_COLORED(label_calloc, calloc_str, calls_color);
+
+    char free_str[32];
+    safe_snprintf(free_str, sizeof(free_str), "%zu", free_calls);
+    PRINT_MEM_LINE_COLORED(label_free, free_str, calls_color);
+
+    // Colorize suppressions: green if working properly, red if >= 1MB or >= 100 allocations
+    if (suppressed_count > 0) {
+      char pretty_suppressed[64];
+      format_bytes_pretty(suppressed_bytes, pretty_suppressed, sizeof(pretty_suppressed));
+      char suppressions_str[128];
+      safe_snprintf(suppressions_str, sizeof(suppressions_str), "%zu (%s)", suppressed_count, pretty_suppressed);
+
+      log_color_t suppressions_color = LOG_COLOR_INFO; // Green by default (working properly)
+      if (suppressed_bytes >= (1024 * 1024) || suppressed_count >= 100) {
+        suppressions_color = LOG_COLOR_ERROR; // Red if >= 1MB or >= 100 allocations
+      }
+      PRINT_MEM_LINE_COLORED(label_suppressions, suppressions_str, suppressions_color);
+    }
+
     char diff_str[32];
     safe_snprintf(diff_str, sizeof(diff_str), "%zu", unfreed_count);
     SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "%s", colored_string(LOG_COLOR_GREY, label_diff)));
@@ -702,20 +742,18 @@ void debug_memory_report(void) {
       SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, " "));
     }
     SAFE_IGNORE_PRINTF_RESULT(
-        safe_fprintf(stderr, " %s\n", colored_string(unfreed_count == 0 ? LOG_COLOR_INFO : LOG_COLOR_WARN, diff_str)));
+        safe_fprintf(stderr, " %s\n", colored_string(unfreed_count == 0 ? LOG_COLOR_INFO : LOG_COLOR_ERROR, diff_str)));
 
 #undef PRINT_MEM_LINE
+#undef PRINT_MEM_LINE_COLORED
 
     // Only show "Current allocations:" section if there are actual leaks
     if (unfreed_count > 0) {
       // Reset counters before printing pass (after counting pass used them)
       reset_ignore_counters();
 
-      // Print "Current allocations:" header with red count
-      char count_str[32];
-      safe_snprintf(count_str, sizeof(count_str), "%zu", unfreed_count);
-      SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "\n%s %s\n", colored_string(LOG_COLOR_DEV, "Current allocations:"),
-                                             colored_string(LOG_COLOR_ERROR, count_str)));
+      // Print "Current allocations:" header (count already shown in "unfreed allocations" above)
+      SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "\n%s\n", colored_string(LOG_COLOR_DEV, "Current allocations:")));
     }
 
     if (g_mem.head && unfreed_count > 0) {

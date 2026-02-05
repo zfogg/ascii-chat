@@ -370,7 +370,7 @@ static symbolizer_type_t detect_symbolizer(void) {
   // We handle ASLR ourselves using dyld APIs on macOS
   const char *llvm_symbolizer = get_llvm_symbolizer_command();
   if (llvm_symbolizer) {
-    log_debug("Using llvm-symbolizer for symbol resolution");
+    log_dev("Using llvm-symbolizer for symbol resolution");
     return SYMBOLIZER_LLVM;
   }
 

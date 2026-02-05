@@ -316,8 +316,9 @@ int main(int argc, char *argv[]) {
   // Reconfigure logging with parsed log level
   log_init(log_file, GET_OPTION(log_level), false, false);
 
-  // Apply quiet mode setting
-  if (GET_OPTION(quiet)) {
+  // Apply quiet mode OR status screen mode - both disable terminal output
+  // Status screen captures logs in its buffer and displays them in the UI
+  if (GET_OPTION(quiet) || (opts->detected_mode == MODE_SERVER && GET_OPTION(status_screen))) {
     log_set_terminal_output(false);
   }
 
@@ -345,6 +346,13 @@ int main(int argc, char *argv[]) {
   if (opts->version) {
     print_version();
     exit(0);
+  }
+
+  // For server mode with status screen: disable terminal output IMMEDIATELY
+  // This must happen BEFORE any log_*() calls to prevent logs from appearing on terminal
+  // The status screen will capture and display logs in its buffer instead
+  if (opts->detected_mode == MODE_SERVER && opts->status_screen) {
+    log_set_terminal_output(false);
   }
 
   const char *final_log_file = (opts->log_file[0] != '\0') ? opts->log_file : "ascii-chat.log";
