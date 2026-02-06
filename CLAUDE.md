@@ -181,10 +181,37 @@ Always use abstraction layer functions, never direct POSIX/Windows APIs.
 
 The session layer handles:
 - **display.c** - Terminal capability detection, ASCII rendering setup
-- **splash.c** - Intro splash screen with rainbow animation
+- **splash.c** - Intro splash screen with rainbow animation and log capture
 - **help_screen.c** - Interactive help UI
-- **server_status.c** - Server status screen
+- **server_status.c** - Server status screen with live log feed
 - **discovery_status.c** - Discovery UI
+- **session_log_buffer.c** - Shared log buffer for session screens
+
+### Session Screens (Status + Splash)
+
+Both status screen and splash screen use the same "fixed header + scrolling logs" pattern:
+- Fixed header at top (status info or animated ASCII art)
+- Logs captured in `session_log_buffer` (100-entry circular buffer)
+- Logs displayed below header, calculated to fill exactly `term_rows - header_lines - 1`
+- Screen never scrolls past bottom (prevents terminal flashing)
+
+**Implementation:**
+- `session_log_buffer_init()` - Initialize log capture (called by splash/status init)
+- `session_log_buffer_append()` - Called from `lib/log/logging.c` to capture messages
+- `session_log_buffer_get_recent()` - Retrieve N most recent entries for display
+- `session_log_buffer_clear()` - Clear initialization logs before screen starts
+
+**Testing:**
+```bash
+# Manual test script
+./tests/manual/test_session_screens.sh
+
+# Server status screen
+./build/bin/ascii-chat server --status-screen
+
+# Client splash screen (shows during connection)
+./build/bin/ascii-chat client
+```
 
 ## Cryptographic Protocol
 
