@@ -20,7 +20,6 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'wasm-loader': ['./src/wasm/loader.ts'],
           'xterm': ['xterm', '@xterm/addon-fit'],
         },
       },
