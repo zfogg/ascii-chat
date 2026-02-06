@@ -174,20 +174,9 @@ static size_t map_plain_to_colored_pos(const char *colored_text, size_t char_pos
     }
   }
 
-  // Skip past any ANSI sequences at the insertion point
-  // This prevents inserting highlight codes right before reset codes like [0m
-  while (colored_text[byte_pos] == '\x1b' && colored_text[byte_pos + 1] == '[') {
-    byte_pos += 2;
-    while (colored_text[byte_pos] != '\0') {
-      char c = colored_text[byte_pos];
-      byte_pos++;
-      // Final byte ends the sequence (0x40-0x7E)
-      if (c >= 0x40 && c <= 0x7E) {
-        break;
-      }
-    }
-  }
-
+  // Note: We used to skip past ANSI sequences at the insertion point here,
+  // but this caused highlighting bugs when ANSI reset codes appeared before  // the last character of a match. The
+  // current implementation correctly handles ANSI codes within the match by re-applying background after resets.
   return byte_pos;
 }
 

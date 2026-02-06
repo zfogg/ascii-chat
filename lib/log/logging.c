@@ -675,7 +675,8 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
     result =
         safe_snprintf(buffer, buffer_size, "[%s%s%s] [%s%s%s] ", color, timestamp, reset, color, level_string, reset);
   } else {
-    result = safe_snprintf(buffer, buffer_size, "[%s] [%s] ", timestamp, level_strings[level]);
+    // Use padded level_string (not level_strings[level]) to match colored format for grep matching
+    result = safe_snprintf(buffer, buffer_size, "[%s] [%s] ", timestamp, level_string);
   }
 #else
   // Debug mode: full format with file location, function, and thread ID
@@ -694,8 +695,9 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
                            reset, file_color, rel_file, reset, line_color, line, reset, func_color, func, reset, reset,
                            newline_or_not);
   } else {
-    result = safe_snprintf(buffer, buffer_size, "[%s] [%s] [tid:%llu] %s:%d in %s(): %s", timestamp,
-                           level_strings[level], (unsigned long long)tid, rel_file, line, func, newline_or_not);
+    // Use padded level_string (not level_strings[level]) to match colored format for grep matching
+    result = safe_snprintf(buffer, buffer_size, "[%s] [%s] [tid:%llu] %s:%d in %s(): %s", timestamp, level_string,
+                           (unsigned long long)tid, rel_file, line, func, newline_or_not);
   }
 #endif
 
