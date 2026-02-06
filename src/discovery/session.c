@@ -59,6 +59,9 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
   session->acds_socket = INVALID_SOCKET_VALUE;
   session->peer_manager = NULL;
   session->webrtc_transport_ready = false;
+  session->webrtc_connection_initiated = false;
+  session->webrtc_retry_attempt = 0;
+  session->webrtc_last_attempt_time_ms = 0;
   session->stun_servers = NULL;
   session->stun_count = 0;
   session->turn_servers = NULL;
@@ -550,6 +553,30 @@ static asciichat_error_t discovery_send_ice_via_acds(const uint8_t session_id[16
 
   log_debug("Sent ICE candidate to ACDS (candidate_len=%zu, mid=%s)", candidate_len, mid);
   return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Calculate exponential backoff delay with jitter
+ * @param attempt Attempt number (0 = first retry)
+ * @return Delay in milliseconds
+ *
+ * Formula: min(1000 * (2^attempt), 30000) + random(0-1000)
+ * Examples: 0→1s, 1→2s, 2→4s, 3→8s, 4→16s, 5→30s (capped)
+ */
+static uint32_t calculate_backoff_delay_ms(int attempt) {
+  // Base delay: 2^attempt seconds
+  uint32_t base_delay_ms = 1000U << attempt; // 1s, 2s, 4s, 8s, 16s...
+
+  // Cap at 30 seconds
+  if (base_delay_ms > 30000) {
+    base_delay_ms = 30000;
+  }
+
+  // Add jitter (0-1000ms) to prevent thundering herd
+  // Use monotonic time as pseudo-random seed
+  uint32_t jitter_ms = (uint32_t)(platform_get_monotonic_time_us() % 1000);
+
+  return base_delay_ms + jitter_ms;
 }
 
 /**
@@ -1186,13 +1213,10 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
         break;
       }
 
-      // Use a per-session flag to track if we've initiated WebRTC connection
-      // (We can't use participant_ctx because that's only for TCP connections)
-      static bool webrtc_initiated = false;
-
-      // If not ready and we haven't initiated connection yet, initiate it once
-      if (session->peer_manager && !webrtc_initiated) {
-        log_info("Initiating WebRTC connection to host...");
+      // If not ready and we haven't initiated connection yet, initiate it
+      if (session->peer_manager && !session->webrtc_connection_initiated) {
+        log_info("Initiating WebRTC connection to host (attempt %d/%d)...", session->webrtc_retry_attempt + 1,
+                 GET_OPTION(webrtc_reconnect_attempts) + 1);
 
         // Initiate connection (generates offer, triggers SDP exchange)
         asciichat_error_t conn_result =
@@ -1205,11 +1229,12 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
         }
 
         log_info("WebRTC connection initiated, waiting for DataChannel...");
-        webrtc_initiated = true; // Mark as initiated
+        session->webrtc_connection_initiated = true;
+        session->webrtc_last_attempt_time_ms = platform_get_monotonic_time_us() / 1000;
       }
 
       // Check for ICE gathering timeout on all peers
-      if (webrtc_initiated && session->peer_manager) {
+      if (session->webrtc_connection_initiated && session->peer_manager) {
         int timeout_ms = GET_OPTION(webrtc_ice_timeout_ms);
         int timed_out_count = webrtc_peer_manager_check_gathering_timeouts(session->peer_manager, timeout_ms);
 
@@ -1217,20 +1242,63 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
           log_error("ICE gathering timeout: %d peer(s) failed to gather candidates within %dms", timed_out_count,
                     timeout_ms);
 
-          // Set error state - WebRTC connection failed
-          char error_msg[256];
-          snprintf(error_msg, sizeof(error_msg), "WebRTC ICE gathering timeout (%d peers, %dms)", timed_out_count,
-                   timeout_ms);
-          set_error(session, ERROR_NETWORK_TIMEOUT, error_msg);
+          // Check if we have retries remaining
+          int max_attempts = GET_OPTION(webrtc_reconnect_attempts);
+          if (session->webrtc_retry_attempt < max_attempts) {
+            // Calculate exponential backoff delay
+            uint32_t backoff_ms = calculate_backoff_delay_ms(session->webrtc_retry_attempt);
 
-          // If --prefer-webrtc is set, this is a fatal error (no TCP fallback)
-          if (GET_OPTION(prefer_webrtc)) {
-            log_fatal("WebRTC connection failed and --prefer-webrtc is set - exiting");
-            set_state(session, DISCOVERY_STATE_FAILED);
-            return ERROR_NETWORK_TIMEOUT;
+            log_warn("WebRTC connection attempt %d/%d failed, retrying in %ums...", session->webrtc_retry_attempt + 1,
+                     max_attempts + 1, backoff_ms);
+
+            // Wait for backoff period
+            platform_sleep_ms(backoff_ms);
+
+            // Destroy old peer manager
+            webrtc_peer_manager_destroy(session->peer_manager);
+            session->peer_manager = NULL;
+
+            // Re-initialize peer manager for retry
+            asciichat_error_t reinit_result = initialize_webrtc_peer_manager(session);
+            if (reinit_result != ASCIICHAT_OK) {
+              log_error("Failed to re-initialize WebRTC for retry: %d", reinit_result);
+              set_error(session, reinit_result, "Failed to re-initialize WebRTC for retry");
+
+              // If --prefer-webrtc is set, this is a fatal error
+              if (GET_OPTION(prefer_webrtc)) {
+                log_fatal("WebRTC connection failed and --prefer-webrtc is set - exiting");
+                set_state(session, DISCOVERY_STATE_FAILED);
+                return ERROR_NETWORK_TIMEOUT;
+              }
+
+              break; // Exit this case to allow fallback to TCP
+            }
+
+            // Reset connection state for retry
+            session->webrtc_connection_initiated = false;
+            session->webrtc_retry_attempt++;
+
+            log_info("WebRTC peer manager re-initialized for attempt %d/%d", session->webrtc_retry_attempt + 1,
+                     max_attempts + 1);
+          } else {
+            // No more retries - connection failed
+            log_error("WebRTC connection failed after %d attempts (timeout: %dms)", max_attempts + 1, timeout_ms);
+
+            // Set error state - WebRTC connection failed
+            char error_msg[256];
+            snprintf(error_msg, sizeof(error_msg), "WebRTC connection failed after %d attempts (%dms timeout)",
+                     max_attempts + 1, timeout_ms);
+            set_error(session, ERROR_NETWORK_TIMEOUT, error_msg);
+
+            // If --prefer-webrtc is set, this is a fatal error (no TCP fallback)
+            if (GET_OPTION(prefer_webrtc)) {
+              log_fatal("WebRTC connection failed and --prefer-webrtc is set - exiting");
+              set_state(session, DISCOVERY_STATE_FAILED);
+              return ERROR_NETWORK_TIMEOUT;
+            }
+
+            break; // Exit this case to allow fallback to TCP
           }
-
-          break; // Exit this case to allow fallback to TCP
         }
       }
 
