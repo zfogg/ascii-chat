@@ -911,15 +911,15 @@ int client_main(void) {
     // Connection broken - clean up this connection and prepare for reconnect
     log_debug("Connection lost, cleaning up for reconnection");
 
-    // Re-enable terminal logging when connection is lost for debugging reconnection
-    // (but only if we've ever successfully connected before and --quiet wasn't set)
-    if (has_ever_connected && !GET_OPTION(quiet)) {
-      printf("\n");
-      log_set_terminal_output(true);
-    }
-
     protocol_stop_connection();
     server_connection_close();
+
+    // Restart splash screen to show reconnection status
+    // Logs (reconnection attempts) will display below splash
+    // Keep terminal logging disabled - splash will display the logs
+    if (has_ever_connected && !GET_OPTION(quiet)) {
+      splash_intro_start(NULL);
+    }
 
     // In snapshot mode, exit immediately on connection loss - no reconnection
     // Snapshot mode is for quick single-frame captures, not persistent connections
@@ -944,5 +944,11 @@ int client_main(void) {
   session_log_buffer_cleanup();
 
   log_debug("ascii-chat client shutting down");
+
+  // Cleanup remaining shared subsystems (buffer pool, platform, etc.)
+  // Note: atexit(asciichat_shared_shutdown) is registered in main.c,
+  // but won't run if interrupted by signals (SIGTERM from timeout/killall)
+  asciichat_shared_shutdown();
+
   return 0;
 }
