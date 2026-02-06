@@ -54,3 +54,5 @@ coverage_html/
 /branches/
 scripts/.venv
 scripts/__pycache__
+.vercel
+.env*.local

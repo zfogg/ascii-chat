@@ -14,6 +14,8 @@ const ASCII_WIDTH = 150
 const ASCII_HEIGHT = 60
 
 export function MirrorPage() {
+  console.log('[MirrorPage] Component rendering')
+
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const terminalRef = useRef<HTMLDivElement>(null)
@@ -41,19 +43,24 @@ export function MirrorPage() {
 
   // Initialize xterm.js
   useEffect(() => {
+    console.log('[Terminal Init] useEffect fired')
+    console.log('[Terminal Init] terminalRef.current:', terminalRef.current)
+
     if (!terminalRef.current) {
-      console.error('Terminal ref not available')
+      console.error('[Terminal Init] Terminal ref not available')
       return
     }
 
-    console.log('Initializing xterm.js terminal...')
+    console.log('[Terminal Init] Starting initialization...')
 
     // Wait for next frame to ensure DOM is ready
     const timeoutId = setTimeout(() => {
+      console.log('[Terminal Init] setTimeout callback fired')
       try {
         const terminal = new Terminal({
           cols: ASCII_WIDTH,
           rows: ASCII_HEIGHT,
+          rendererType: 'dom', // Use DOM renderer instead of canvas - fixes React re-render issues
           theme: {
             background: '#0c0c0c',
             foreground: '#cccccc',
@@ -72,17 +79,11 @@ export function MirrorPage() {
         if (terminalRef.current) {
           terminal.open(terminalRef.current)
 
-          // Wait a tick before fitting
-          requestAnimationFrame(() => {
-            try {
-              fitAddon.fit()
-              console.log('[Terminal] Fitted to container')
-            } catch (e) {
-              console.warn('FitAddon fit failed, continuing anyway:', e)
-            }
-          })
+          // Skip initial fit - it causes rendering issues when scrolling
+          // The terminal will use the cols/rows we specified
+          console.log('[Terminal] Skipping initial fit to avoid viewport issues')
 
-          // Re-fit on window resize
+          // Re-fit on window resize only
           const handleResize = () => {
             try {
               fitAddon.fit()
@@ -94,7 +95,9 @@ export function MirrorPage() {
 
           xtermRef.current = terminal
           fitAddonRef.current = fitAddon
-          console.log('xterm.js terminal initialized successfully')
+          console.log('[Terminal Init] xterm.js terminal initialized successfully')
+          console.log('[Terminal Init] Terminal element:', terminalRef.current)
+          console.log('[Terminal Init] Terminal dimensions:', terminalRef.current?.offsetWidth, 'x', terminalRef.current?.offsetHeight)
         }
       } catch (err) {
         console.error('Failed to initialize terminal:', err)
@@ -217,10 +220,20 @@ export function MirrorPage() {
     const video = videoRef.current
     const canvas = canvasRef.current
     const terminal = xtermRef.current
+
+    if (frameCountRef.current % 60 === 0) {
+      console.log('[renderFrame] Called, frame:', frameCountRef.current, 'terminal:', !!terminal, 'wasm:', isWasmReady())
+    }
+
     if (!video || !canvas || !terminal || !isWasmReady()) return
 
     const ctx = canvas.getContext('2d', { willReadFrequently: true })
-    if (!ctx) return
+    if (!ctx) {
+      if (frameCountRef.current % 60 === 0) {
+        console.log('[renderFrame] No context!')
+      }
+      return
+    }
 
     // Draw video frame to canvas
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
@@ -229,7 +242,15 @@ export function MirrorPage() {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
     const rgbaData = new Uint8Array(imageData.data)
 
+    if (frameCountRef.current % 60 === 0) {
+      console.log('[renderFrame] Got imageData, size:', rgbaData.length)
+    }
+
     // Convert to ASCII using WASM
+    if (frameCountRef.current % 60 === 0) {
+      console.log('[renderFrame] Calling convertFrameToAscii...')
+    }
+
     const asciiArt = convertFrameToAscii(
       rgbaData,
       canvas.width,
@@ -237,6 +258,10 @@ export function MirrorPage() {
       ASCII_WIDTH,
       ASCII_HEIGHT
     )
+
+    if (frameCountRef.current % 60 === 0) {
+      console.log('[renderFrame] Got asciiArt, length:', asciiArt?.length)
+    }
 
     // Efficient rendering: move cursor to home and overwrite in one operation
     // \x1b[H moves cursor to home (top-left)
@@ -246,7 +271,13 @@ export function MirrorPage() {
       lines.push(asciiArt.substring(i * ASCII_WIDTH, (i + 1) * ASCII_WIDTH))
     }
 
-    terminal.write('\x1b[H' + lines.join('\r\n'))
+    const output = '\x1b[H' + lines.join('\r\n')
+    if (frameCountRef.current % 60 === 0) {
+      console.log('[terminal.write] Writing frame:', frameCountRef.current, 'output length:', output.length)
+      console.log('[terminal.write] Terminal element in DOM:', document.contains(terminalRef.current))
+      console.log('[terminal.write] Terminal visible:', terminalRef.current?.offsetHeight, 'x', terminalRef.current?.offsetWidth)
+    }
+    terminal.write(output)
   }
 
   // Cleanup on unmount
@@ -258,32 +289,21 @@ export function MirrorPage() {
 
   return (
     <div className="flex-1 bg-terminal-bg text-terminal-fg flex flex-col">
-      <header className="px-4 py-2 flex-shrink-0">
-        <h1 className="text-xl font-bold">ascii-chat Mirror Mode</h1>
-      </header>
+      {/* Hidden video and canvas for capture - invisible but rendered */}
+      <div style={{ opacity: 0, position: 'absolute', pointerEvents: 'none', width: 0, height: 0, overflow: 'hidden' }}>
+        <video ref={videoRef} autoPlay muted playsInline style={{ width: '640px', height: '480px' }} />
+        <canvas ref={canvasRef} />
+      </div>
 
-        {/* Hidden video and canvas for capture - invisible but rendered */}
-        <div style={{ opacity: 0, position: 'absolute', pointerEvents: 'none', width: 0, height: 0, overflow: 'hidden' }}>
-          <video ref={videoRef} autoPlay muted playsInline style={{ width: '640px', height: '480px' }} />
-          <canvas ref={canvasRef} />
-        </div>
-
-        {/* ASCII output */}
-        <div className="flex-1 flex flex-col px-4 pb-2">
-          <div className="flex justify-between items-center mb-1">
-            <h2 className="text-sm font-semibold">ASCII Mirror ({ASCII_WIDTH}x{ASCII_HEIGHT})</h2>
-            <div className="text-xs text-terminal-8">
-              FPS: <span className="text-terminal-2">{fps}</span>
-            </div>
+      {/* Controls and info */}
+      <div className="px-4 py-3 flex-shrink-0 border-b border-terminal-8">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-sm font-semibold">ASCII Mirror ({ASCII_WIDTH}x{ASCII_HEIGHT})</h2>
+          <div className="text-xs text-terminal-8">
+            FPS: <span className="text-terminal-2">{fps}</span>
           </div>
-          <div
-            ref={terminalRef}
-            className="flex-1 rounded bg-terminal-bg"
-            style={{ overflow: 'hidden', pointerEvents: 'none' }}
-          />
         </div>
-
-        <div className="px-4 pb-2 flex gap-2 flex-shrink-0">
+        <div className="flex gap-2">
           {!isRunning ? (
             <button
               onClick={() => {
@@ -302,13 +322,17 @@ export function MirrorPage() {
               Stop
             </button>
           )}
-          <a
-            href="/"
-            className="px-4 py-2 bg-terminal-8 text-terminal-bg rounded hover:bg-terminal-7 inline-block"
-          >
-            Back to Home
-          </a>
         </div>
+      </div>
+
+      {/* ASCII output */}
+      <div className="flex-1 px-4 py-2 flex flex-col">
+        <div
+          ref={terminalRef}
+          className="flex-1 rounded bg-terminal-bg"
+          style={{ overflow: 'hidden', pointerEvents: 'none', minHeight: '400px' }}
+        />
+      </div>
 
       {error && (
         <div className="px-4 pb-2">
