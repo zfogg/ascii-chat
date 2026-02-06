@@ -6,6 +6,7 @@
 #include <ascii-chat/ui/discovery_status.h>
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/util/ip.h>
+#include <ascii-chat/util/time.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/common.h>
 #include <stdio.h>
@@ -148,9 +149,11 @@ void discovery_status_display(const discovery_status_t *status) {
   printf("🔗 Active Sessions: \033[1;33m%zu\033[0m\n", status->active_sessions);
 
   // Uptime
+  char uptime_str[12];
+  format_uptime_hms(uptime_hours, uptime_mins, uptime_secs_rem, uptime_str, sizeof(uptime_str));
   for (int i = 0; i < box_padding; i++)
     printf(" ");
-  printf("⏱️ Uptime: %dh %dm %ds\n", uptime_hours, uptime_mins, uptime_secs_rem);
+  printf("⏱️ %s\n", uptime_str);
 
   // Print bottom border (80 chars wide, centered)
   for (int i = 0; i < box_padding; i++)

@@ -435,6 +435,32 @@ int format_duration_ns(double nanoseconds, char *buffer, size_t buffer_size);
 int format_duration_s(double seconds, char *buffer, size_t buffer_size);
 
 /**
+ * @brief Format uptime as HH:MM:SS string
+ * @param hours Hours component (0-999)
+ * @param minutes Minutes component (0-59)
+ * @param seconds Seconds component (0-59)
+ * @param buffer Output buffer for formatted string
+ * @param buffer_size Size of output buffer
+ * @return Number of characters written (excluding null terminator), or -1 on error
+ *
+ * Formats an uptime duration as a fixed "HH:MM:SS" string with zero-padding.
+ * Useful for status displays where consistent formatting is preferred over
+ * adaptive human-readable formats.
+ *
+ * Examples:
+ * - format_uptime_hms(0, 0, 5, buf, size) -> "00:00:05"
+ * - format_uptime_hms(1, 30, 45, buf, size) -> "01:30:45"
+ * - format_uptime_hms(123, 45, 6, buf, size) -> "123:45:06"
+ *
+ * @note Buffer should be at least 12 bytes (HH:MM:SS + null terminator)
+ * @note Thread-safe (no global state)
+ * @note Hours component can exceed 99 (e.g., "123:45:06" for 123 hours)
+ *
+ * @ingroup module_utilities
+ */
+int format_uptime_hms(int hours, int minutes, int seconds, char *buffer, size_t buffer_size);
+
+/**
  * @brief Stop a timer and log the result with a custom message
  *
  * Combines STOP_TIMER() with logging. The timer is stopped, elapsed time is retrieved,

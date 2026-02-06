@@ -347,6 +347,26 @@ int format_duration_s(double seconds, char *buffer, size_t buffer_size) {
   return format_duration_ns(nanoseconds, buffer, buffer_size);
 }
 
+int format_uptime_hms(int hours, int minutes, int seconds, char *buffer, size_t buffer_size) {
+  if (!buffer || buffer_size == 0) {
+    return -1;
+  }
+
+  // Validate components
+  if (hours < 0 || minutes < 0 || minutes >= 60 || seconds < 0 || seconds >= 60) {
+    return -1;
+  }
+
+  // Format as HH:MM:SS with zero-padding
+  int written = safe_snprintf(buffer, buffer_size, "%02d:%02d:%02d", hours, minutes, seconds);
+
+  if (written < 0 || (size_t)written >= buffer_size) {
+    return -1;
+  }
+
+  return written;
+}
+
 // ============================================================================
 // Adaptive Sleep Implementation
 // ============================================================================

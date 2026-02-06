@@ -11,6 +11,7 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/util/ip.h>
+#include <ascii-chat/util/time.h>
 #include <ascii-chat/common.h>
 #include <stdio.h>
 #include <string.h>
@@ -108,8 +109,10 @@ static void render_server_status_header(terminal_size_t term_size, void *user_da
   // Line 2: Title + Stats (centered)
   char status_line[512];
   char status_line_colored[600];
-  snprintf(status_line, sizeof(status_line), "ascii-chat %s | 👥 %zu | ⏱️ %dh %dm %ds", status->mode_name,
-           status->connected_count, uptime_hours, uptime_mins, uptime_secs_rem);
+  char uptime_str[12];
+  format_uptime_hms(uptime_hours, uptime_mins, uptime_secs_rem, uptime_str, sizeof(uptime_str));
+  snprintf(status_line, sizeof(status_line), "ascii-chat %s | 👥 %zu | ⏱️ %s", status->mode_name,
+           status->connected_count, uptime_str);
   snprintf(status_line_colored, sizeof(status_line_colored), "\033[1;36m%s\033[0m", status_line);
 
   int padding = display_center_horizontal(status_line, term_size.cols);
