@@ -301,8 +301,6 @@ ascii_panic_prepare()
 ascii_query_prepare()
 
 include(${CMAKE_SOURCE_DIR}/cmake/utils/TimerTargets.cmake)
-# Configure archiver wrapper BEFORE creating any static libraries
-include(${CMAKE_SOURCE_DIR}/cmake/init/ArchiverWrapper.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/targets/Libraries.cmake)
 
 # Build panic runtime after Libraries.cmake creates ascii-chat-panic target
