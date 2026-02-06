@@ -55,7 +55,7 @@ static void unescape_response(char *str) {
 
   while (*read) {
     if (*read == '\\' && *(read + 1)) {
-      // Escaped character: \; → ; or \\ → \
+      // Escaped character: \; → ; or \\ → \.
       read++; // Skip backslash
       *write++ = *read++;
     } else {
@@ -135,7 +135,7 @@ bool env_pop_prompt_response(char *response_out, size_t response_size) {
     unsetenv("ASCII_CHAT_QUESTION_PROMPT_RESPONSE");
 #endif
 
-    log_debug("Popped last response from stack: '%s' (cleared env)", response_out);
+    log_dev("Popped last response from stack: '%s' (cleared env)", response_out);
     return true;
   }
 
