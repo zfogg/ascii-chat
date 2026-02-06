@@ -9,6 +9,7 @@ lerna-debug.log*
 
 node_modules
 dist
+!src/wasm/dist
 dist-ssr
 *.local
 
@@ -29,4 +30,5 @@ bun.lockb
 
 # WASM build artifacts (keep generated files for Vercel deployment)
 wasm/build/
+# Note: src/wasm/dist/ is committed for Vercel deployment
 .vercel

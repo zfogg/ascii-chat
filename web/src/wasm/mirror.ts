@@ -24,9 +24,9 @@ interface MirrorModule {
   _free: MirrorModuleExports['_free'];
 }
 
-// Import the Emscripten-generated module factory (copied by CMake to src/wasm/)
+// Import the Emscripten-generated module factory (copied by CMake to src/wasm/dist/)
 // @ts-expect-error - Generated file without types
-import MirrorModuleFactory from './mirror.js';
+import MirrorModuleFactory from './dist/mirror.js';
 
 let wasmModule: MirrorModule | null = null;
 
