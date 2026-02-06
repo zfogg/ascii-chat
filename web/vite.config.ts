@@ -18,6 +18,10 @@ export default defineConfig({
     target: 'es2020',
     minify: 'terser',
     rollupOptions: {
+      input: {
+        main: './index.html',
+        404: './404.html',
+      },
       output: {
         manualChunks: {
           'xterm': ['xterm', '@xterm/addon-fit'],

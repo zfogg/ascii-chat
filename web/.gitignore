@@ -32,3 +32,4 @@ bun.lockb
 wasm/build/
 # Note: src/wasm/dist/ is committed for Vercel deployment
 .vercel
+.env*.local
