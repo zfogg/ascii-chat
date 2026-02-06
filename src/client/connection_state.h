@@ -201,6 +201,13 @@ typedef struct {
   uint32_t stage_failures;    ///< How many stages have failed
   uint32_t total_transitions; ///< Total state transitions (for metrics)
 
+  // ─────────────────────────────────────────────────────────────
+  // Reconnection Strategy
+  // ─────────────────────────────────────────────────────────────
+
+  bool is_reconnection;                     ///< True if reconnecting after successful connection (not first connect)
+  connection_state_t last_successful_state; ///< Which connection method succeeded initially (for reconnections)
+
 } connection_attempt_context_t;
 
 /* ============================================================================

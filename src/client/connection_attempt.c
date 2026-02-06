@@ -148,6 +148,7 @@ asciichat_error_t connection_context_init(connection_attempt_context_t *ctx, boo
   // Initialize state
   ctx->current_state = CONN_STATE_IDLE;
   ctx->previous_state = CONN_STATE_IDLE;
+  ctx->last_successful_state = CONN_STATE_IDLE; // No successful connection yet
 
   // Set CLI preferences
   ctx->prefer_webrtc = prefer_webrtc;
@@ -988,10 +989,63 @@ asciichat_error_t connection_attempt_with_fallback(connection_attempt_context_t 
     return SET_ERRNO(ERROR_NETWORK, "Connection attempt aborted due to shutdown request");
   }
 
+  asciichat_error_t result = ASCIICHAT_OK;
+
+  // ─────────────────────────────────────────────────────────────
+  // Reconnection Strategy: Use same method that succeeded before
+  // ─────────────────────────────────────────────────────────────
+
+  bool is_reconnection = (ctx->is_reconnection && ctx->last_successful_state != CONN_STATE_IDLE);
+
+  if (is_reconnection) {
+    // Reconnection: only try the method that worked last time
+    uint32_t last_stage = connection_get_stage(ctx->last_successful_state);
+
+    if (last_stage == 1) {
+      log_info("=== Reconnection attempt %u: %s:%u (using TCP - previously successful) ===", ctx->reconnect_attempt,
+               server_address, server_port);
+      result = attempt_direct_tcp(ctx, server_address, server_port);
+      if (result == ASCIICHAT_OK) {
+        log_info("Reconnection succeeded via Direct TCP");
+        connection_state_transition(ctx, CONN_STATE_CONNECTED);
+        return ASCIICHAT_OK;
+      }
+      log_error("Reconnection via TCP failed (was successful before)");
+      connection_state_transition(ctx, CONN_STATE_FAILED);
+      return result;
+    } else if (last_stage == 2) {
+      log_info("=== Reconnection attempt %u: %s:%u (using WebRTC+STUN - previously successful) ===",
+               ctx->reconnect_attempt, server_address, server_port);
+      result = attempt_webrtc_stun(ctx, server_address, acds_server, acds_port);
+      if (result == ASCIICHAT_OK) {
+        log_info("Reconnection succeeded via WebRTC+STUN");
+        connection_state_transition(ctx, CONN_STATE_CONNECTED);
+        return ASCIICHAT_OK;
+      }
+      log_error("Reconnection via WebRTC+STUN failed (was successful before)");
+      connection_state_transition(ctx, CONN_STATE_FAILED);
+      return result;
+    } else if (last_stage == 3) {
+      log_info("=== Reconnection attempt %u: %s:%u (using WebRTC+TURN - previously successful) ===",
+               ctx->reconnect_attempt, server_address, server_port);
+      result = attempt_webrtc_turn(ctx, server_address, acds_server, acds_port);
+      if (result == ASCIICHAT_OK) {
+        log_info("Reconnection succeeded via WebRTC+TURN");
+        connection_state_transition(ctx, CONN_STATE_CONNECTED);
+        return ASCIICHAT_OK;
+      }
+      log_error("Reconnection via WebRTC+TURN failed (was successful before)");
+      connection_state_transition(ctx, CONN_STATE_FAILED);
+      return result;
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Initial Connection: Try all fallback stages
+  // ─────────────────────────────────────────────────────────────
+
   log_info("=== Connection attempt %u: %s:%u (fallback strategy: TCP → STUN → TURN) ===", ctx->reconnect_attempt,
            server_address, server_port);
-
-  asciichat_error_t result = ASCIICHAT_OK;
 
   // ─────────────────────────────────────────────────────────────
   // Stage 1: Direct TCP (3s timeout)
@@ -1003,6 +1057,7 @@ asciichat_error_t connection_attempt_with_fallback(connection_attempt_context_t 
     if (result == ASCIICHAT_OK) {
       log_info("Connection succeeded via Direct TCP");
       connection_state_transition(ctx, CONN_STATE_CONNECTED);
+      ctx->last_successful_state = CONN_STATE_DIRECT_TCP_CONNECTED; // Remember for reconnections
       return ASCIICHAT_OK;
     }
 
@@ -1019,6 +1074,7 @@ asciichat_error_t connection_attempt_with_fallback(connection_attempt_context_t 
     if (result == ASCIICHAT_OK) {
       log_info("Connection succeeded via Direct TCP (--no-webrtc)");
       connection_state_transition(ctx, CONN_STATE_CONNECTED);
+      ctx->last_successful_state = CONN_STATE_DIRECT_TCP_CONNECTED; // Remember for reconnections
       return ASCIICHAT_OK;
     }
     log_error("Direct TCP failed with --no-webrtc flag");
@@ -1040,6 +1096,7 @@ asciichat_error_t connection_attempt_with_fallback(connection_attempt_context_t 
   if (result == ASCIICHAT_OK) {
     log_info("Connection succeeded via WebRTC+STUN");
     connection_state_transition(ctx, CONN_STATE_CONNECTED);
+    ctx->last_successful_state = CONN_STATE_WEBRTC_STUN_CONNECTED; // Remember for reconnections
     return ASCIICHAT_OK;
   }
 
@@ -1065,6 +1122,7 @@ asciichat_error_t connection_attempt_with_fallback(connection_attempt_context_t 
   if (result == ASCIICHAT_OK) {
     log_info("Connection succeeded via WebRTC+TURN");
     connection_state_transition(ctx, CONN_STATE_CONNECTED);
+    ctx->last_successful_state = CONN_STATE_WEBRTC_TURN_CONNECTED; // Remember for reconnections
     return ASCIICHAT_OK;
   }
 

@@ -765,8 +765,9 @@ int client_main(void) {
                               : (opts_conn && opts_conn->address[0] != '\0' ? opts_conn->address : "localhost");
     int port = discovered_port > 0 ? discovered_port : (opts_conn ? opts_conn->port : OPT_PORT_INT_DEFAULT);
 
-    // Update connection context with current attempt number
+    // Update connection context with current attempt number and reconnection status
     connection_ctx.reconnect_attempt = reconnect_attempt;
+    connection_ctx.is_reconnection = has_ever_connected; // Track if this is a reconnection (not first connect)
 
     // Get ACDS server configuration from CLI options (defaults: 127.0.0.1:27225)
     const char *acds_server = GET_OPTION(discovery_server);
