@@ -69,6 +69,8 @@ void session_log_buffer_clear(void) {
 
 void session_log_buffer_append(const char *message) {
   if (!g_log_buffer || !message) {
+    // Fail silently - this is called FROM the logging system
+    // Using SET_ERRNO here would cause infinite recursion
     return;
   }
 
@@ -87,6 +89,8 @@ void session_log_buffer_append(const char *message) {
 
 size_t session_log_buffer_get_recent(session_log_entry_t *out_entries, size_t max_count) {
   if (!g_log_buffer || !out_entries || max_count == 0) {
+    // Fail silently - called from display code that handles 0 gracefully
+    // Using SET_ERRNO here could cause recursion if error logging is enabled
     return 0;
   }
 
