@@ -1,0 +1,25 @@
+# Build artifacts
+build/
+build_*/
+*.o
+*.a
+
+# Tests
+tests/
+
+# Documentation
+docs/
+
+# Development files
+.git/
+.github/
+*.md
+!web/*.md
+
+# CMake
+CMakeFiles/
+cmake-build-*/
+
+# IDE
+.vscode/
+.idea/
