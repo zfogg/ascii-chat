@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import { Terminal } from 'xterm'
+import { FitAddon } from '@xterm/addon-fit'
+import 'xterm/css/xterm.css'
 import { initMirrorWasm, convertFrameToAscii, isWasmReady } from '../wasm/mirror'
 
 // Configuration
@@ -10,7 +13,9 @@ const FRAME_INTERVAL = 1000 / TARGET_FPS
 export function MirrorPage() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [asciiOutput, setAsciiOutput] = useState<string>('')
+  const terminalRef = useRef<HTMLDivElement>(null)
+  const xtermRef = useRef<Terminal | null>(null)
+  const fitAddonRef = useRef<FitAddon | null>(null)
   const [fps, setFps] = useState<string>('--')
   const [isRunning, setIsRunning] = useState(false)
   const [error, setError] = useState<string>('')
@@ -25,6 +30,35 @@ export function MirrorPage() {
     initMirrorWasm().catch((err) => {
       setError(`Failed to load WASM module: ${err}`)
     })
+  }, [])
+
+  // Initialize xterm.js
+  useEffect(() => {
+    if (!terminalRef.current) return
+
+    const terminal = new Terminal({
+      cols: ASCII_WIDTH,
+      rows: ASCII_HEIGHT,
+      theme: {
+        background: '#0c0c0c',
+        foreground: '#cccccc',
+      },
+      cursorStyle: 'bar',
+      cursorBlink: false,
+      fontFamily: 'monospace',
+      fontSize: 12,
+    })
+
+    const fitAddon = new FitAddon()
+    terminal.loadAddon(fitAddon)
+    terminal.open(terminalRef.current)
+
+    xtermRef.current = terminal
+    fitAddonRef.current = fitAddon
+
+    return () => {
+      terminal.dispose()
+    }
   }, [])
 
   const startWebcam = async () => {
@@ -78,7 +112,10 @@ export function MirrorPage() {
       videoRef.current.srcObject = null
     }
 
-    setAsciiOutput('')
+    if (xtermRef.current) {
+      xtermRef.current.clear()
+    }
+
     setFps('--')
     setIsRunning(false)
   }
@@ -107,7 +144,8 @@ export function MirrorPage() {
   const renderFrame = () => {
     const video = videoRef.current
     const canvas = canvasRef.current
-    if (!video || !canvas || !isWasmReady()) return
+    const terminal = xtermRef.current
+    if (!video || !canvas || !terminal || !isWasmReady()) return
 
     const ctx = canvas.getContext('2d', { willReadFrequently: true })
     if (!ctx) return
@@ -128,12 +166,12 @@ export function MirrorPage() {
       ASCII_HEIGHT
     )
 
-    // Format ASCII output with newlines
-    const lines: string[] = []
+    // Clear terminal and write ASCII art
+    terminal.clear()
     for (let i = 0; i < ASCII_HEIGHT; i++) {
-      lines.push(asciiArt.substring(i * ASCII_WIDTH, (i + 1) * ASCII_WIDTH))
+      const line = asciiArt.substring(i * ASCII_WIDTH, (i + 1) * ASCII_WIDTH)
+      terminal.writeln(line)
     }
-    setAsciiOutput(lines.join('\n'))
   }
 
   // Cleanup on unmount
@@ -171,9 +209,7 @@ export function MirrorPage() {
             <div className="mb-2 text-sm text-terminal-8">
               FPS: <span className="text-terminal-2">{fps}</span>
             </div>
-            <pre className="font-mono text-xs leading-none overflow-hidden whitespace-pre">
-              {asciiOutput}
-            </pre>
+            <div ref={terminalRef} className="rounded overflow-hidden" />
           </div>
         </div>
 
