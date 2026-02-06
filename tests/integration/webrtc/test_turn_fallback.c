@@ -13,7 +13,7 @@
  * @date February 2026
  */
 
-#include <ascii-chat/tests/integration.h>
+#include <ascii-chat/tests/common.h>
 #include <criterion/criterion.h>
 #include <criterion/logging.h>
 
