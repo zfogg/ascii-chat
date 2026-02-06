@@ -31,9 +31,18 @@ char *manpage_content_generate_options(const options_config_t *config) {
       safe_snprintf(buffer + offset, buffer_capacity - offset, "Each option shows which modes it applies to with\n");
   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B (modes: ...)\n");
   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "notation. Default values are shown with\n");
-  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B (default: ...)\n");
-  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "and environment variables with\n");
-  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B (env: ...).\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B (default: ...).\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "See the\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B ENVIRONMENT\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "section for environment variable equivalents.\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".PP\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "Configuration precedence (lowest to highest):\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B config.toml\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "(see\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".BR ascii-chat (5))\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "< environment variables <\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B command-line flags.\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "Later values override earlier ones.\n");
   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".PP\n");
   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "Options marked\n");
   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B global\n");
@@ -116,7 +125,7 @@ char *manpage_content_generate_options(const options_config_t *config) {
       }
 
       // Add argument placeholder for value-taking options
-      if (desc->type != OPTION_TYPE_BOOL && desc->type != OPTION_TYPE_ACTION) {
+      if (desc->type != OPTION_TYPE_ACTION) {
         // Check for custom placeholder first, fall back to type-based placeholder
         const char *placeholder =
             desc->arg_placeholder ? desc->arg_placeholder : options_get_type_placeholder(desc->type);
@@ -164,11 +173,6 @@ char *manpage_content_generate_options(const options_config_t *config) {
         } else {
           offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "(modes: %s)\n", mode_str);
         }
-      }
-
-      // Add environment variable note if present
-      if (desc->env_var_name) {
-        offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "(env: \\fB%s\\fR)\n", desc->env_var_name);
       }
 
       // Add REQUIRED note if applicable

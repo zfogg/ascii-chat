@@ -28,7 +28,7 @@ const registry_entry_t g_logging_entries[] = {
      0,
      "Set FILE as path for log file.",
      "LOGGING",
-     NULL,
+     "FILE",
      false,
      "ASCII_CHAT_LOG_FILE",
      NULL,

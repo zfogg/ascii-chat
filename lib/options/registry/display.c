@@ -97,7 +97,7 @@ const registry_entry_t g_display_entries[] = {
      "rendering images to text art for your client. These characters only will be used to create the rendered output. "
      "Can be UTF-8 content (see --utf8).",
      "DISPLAY",
-     NULL,
+     "STRING",
      false,
      "ASCII_CHAT_PALETTE_CHARS",
      NULL,

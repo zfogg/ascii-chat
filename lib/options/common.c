@@ -558,13 +558,15 @@ asciichat_error_t parse_log_level_option(const char *value_str, options_t *opts)
 const char *options_get_type_placeholder(option_type_t type) {
   switch (type) {
   case OPTION_TYPE_INT:
+    return "INTEGER";
   case OPTION_TYPE_DOUBLE:
-    return "NUM";
+    return "DOUBLE";
   case OPTION_TYPE_STRING:
-    return "STR";
+    return "STRING";
   case OPTION_TYPE_CALLBACK:
-    return "VAL";
+    return "VALUE";
   case OPTION_TYPE_BOOL:
+    return "[BOOLEAN]";
   case OPTION_TYPE_ACTION:
   default:
     return "";

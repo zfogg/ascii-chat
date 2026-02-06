@@ -870,18 +870,20 @@ asciichat_error_t options_init(int argc, char **argv) {
       if (strcmp(argv[i], "--config-create") == 0) {
         create_config = true;
         has_action = true;
+        // Check for optional [FILE] argument
         if (i + 1 < argc && argv[i + 1][0] != '-') {
           config_create_path = argv[i + 1];
+          i++; // Consume the file path argument
         }
         break;
       }
       if (strcmp(argv[i], "--man-page-create") == 0) {
         create_manpage = true;
         has_action = true;
+        // Check for optional [FILE] argument
         if (i + 1 < argc && argv[i + 1][0] != '-') {
           manpage_create_path = argv[i + 1];
-          // Consume the argument
-          i++;
+          i++; // Consume the file path argument
         }
         break;
       }

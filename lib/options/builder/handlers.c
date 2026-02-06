@@ -319,21 +319,19 @@ static asciichat_error_t apply_cli_action(void *field, const char *opt_value, co
 
 // --- format_help_placeholder handlers ---
 static void format_help_placeholder_bool(char *buf, size_t bufsize) {
-  (void)buf;
-  (void)bufsize;
-  // Bools don't have placeholders
+  safe_snprintf(buf, bufsize, "[BOOLEAN]");
 }
 
 static void format_help_placeholder_int(char *buf, size_t bufsize) {
-  safe_snprintf(buf, bufsize, "NUM");
+  safe_snprintf(buf, bufsize, "INTEGER");
 }
 
 static void format_help_placeholder_string(char *buf, size_t bufsize) {
-  safe_snprintf(buf, bufsize, "STR");
+  safe_snprintf(buf, bufsize, "STRING");
 }
 
 static void format_help_placeholder_double(char *buf, size_t bufsize) {
-  safe_snprintf(buf, bufsize, "NUM");
+  safe_snprintf(buf, bufsize, "DOUBLE");
 }
 
 static void format_help_placeholder_callback(char *buf, size_t bufsize) {
