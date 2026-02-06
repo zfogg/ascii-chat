@@ -18,8 +18,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
-#include <errno.h>
-#include <ctype.h>
 
 // Use platform utilities
 #include <ascii-chat/platform/util.h>
@@ -1478,24 +1476,6 @@ const option_descriptor_t *find_option_descriptor(const options_config_t *config
   // Not a recognized option format
   return NULL;
 }
-
-/**
- * @brief Parse a single flag option with its argument
- *
- * Handles both long options (--name, --name=value) and short options (-n value)
- * Uses mode_bitmask from options_struct for mode filtering.
- *
- * @param config Options configuration
- * @param argv Current argv array
- * @param argv_index Current index in argv
- * @param argc Total number of arguments
- * @param options_struct Destination struct for parsed values
- * @param consumed_count Output: number of argv elements consumed (1 or 2)
- * @return Error code
- */
-static asciichat_error_t parse_single_flag_with_mode(const options_config_t *config, char **argv, int argv_index,
-                                                     int argc, void *options_struct, option_mode_bitmask_t mode_bitmask,
-                                                     int *consumed_count);
 
 /**
  * @brief Parse a single flag with explicit mode_bitmask for validation

@@ -367,7 +367,7 @@ set(CORE_SRCS
     lib/options/schema.c          # Config schema metadata (NEW)
     lib/options/rcu.c
     # Options builder API (refactored into builder/ subdirectory)
-    lib/options/builder.c              # Core builder functionality
+    lib/options/builder/builder.c     # Core builder functionality
     lib/options/builder/handlers.c    # Type handler implementations
     lib/options/builder/help.c         # Help text generation
     lib/options/presets.c          # Preset option configs (NEW)
