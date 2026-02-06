@@ -92,10 +92,9 @@
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/network/tcp/client.h>
 #include <ascii-chat/network/acip/acds_client.h>
+#include <ascii-chat/util/ip.h>
 #include <ascii-chat/network/acip/acds.h>
 #include <ascii-chat/network/acip/client.h>
-#include <ascii-chat/network/webrtc/peer_manager.h>
-#include "webrtc.h"
 #include "connection_state.h"
 #include <ascii-chat/util/path.h>
 
@@ -147,9 +146,10 @@ thread_pool_t *g_client_worker_pool = NULL;
 tcp_client_t *g_client = NULL;
 
 /**
- * @brief Global WebRTC peer manager for P2P connections
+ * @brief Global WebRTC peer manager (legacy compatibility)
  *
- * NULL if WebRTC not initialized. Initialized when joining/creating ACDS sessions.
+ * Client mode no longer uses WebRTC, but protocol.c still references this.
+ * Always NULL in client mode.
  */
 struct webrtc_peer_manager *g_peer_manager = NULL;
 
@@ -380,16 +380,6 @@ static int initialize_client_systems(void) {
   // All shared subsystem initialization (timer, logging, platform, buffer pool)
   // is now done by asciichat_shared_init() in src/main.c BEFORE options_init()
 
-  // Initialize WebRTC library (required for P2P DataChannel connections)
-  // Must be called regardless of shared_init_completed status
-  asciichat_error_t webrtc_result = webrtc_init();
-  if (webrtc_result != ASCIICHAT_OK) {
-    log_fatal("Failed to initialize WebRTC library: %s", asciichat_error_string(webrtc_result));
-    return ERROR_NETWORK;
-  }
-  (void)atexit(webrtc_destroy);
-  log_debug("WebRTC library initialized successfully");
-
   // Initialize client worker thread pool (always needed, even if shared init done)
   if (!g_client_worker_pool) {
     g_client_worker_pool = thread_pool_create("client_workers");
@@ -556,8 +546,7 @@ int client_main(void) {
   // LAN Discovery: If --scan flag is set, discover servers on local network
   const options_t *opts = options_get();
   if (opts && opts->lan_discovery &&
-      (opts->address[0] == '\0' || strcmp(opts->address, "127.0.0.1") == 0 ||
-       strcmp(opts->address, "localhost") == 0)) {
+      (opts->address[0] == '\0' || is_localhost_ipv4(opts->address) || strcmp(opts->address, "localhost") == 0)) {
     log_debug("LAN discovery: --scan flag set, querying for available servers");
 
     discovery_tui_config_t lan_config;
@@ -637,22 +626,12 @@ int client_main(void) {
   // 3. WebRTC + TURN (15s timeout)
   //
   connection_attempt_context_t connection_ctx = {0};
-  asciichat_error_t ctx_init_result =
-      connection_context_init(&connection_ctx,
-                              GET_OPTION(prefer_webrtc),      // --prefer-webrtc flag
-                              GET_OPTION(no_webrtc),          // --no-webrtc flag
-                              GET_OPTION(webrtc_skip_stun),   // --webrtc-skip-stun flag
-                              GET_OPTION(webrtc_disable_turn) // --webrtc-disable-turn flag
-      );
+  asciichat_error_t ctx_init_result = connection_context_init(&connection_ctx);
 
   if (ctx_init_result != ASCIICHAT_OK) {
     log_error("Failed to initialize connection context");
     return 1;
   }
-
-  // By default, disable WebRTC fallback (regular client mode connects to localhost/LAN)
-  // This will be enabled below only if ACDS discovery succeeds
-  connection_ctx.enable_webrtc_fallback = false;
 
   // =========================================================================
   // PHASE 1: Parallel mDNS + ACDS Session Discovery
@@ -746,21 +725,6 @@ int client_main(void) {
     discovered_address = address_buffer;
     discovered_port = discovery_result.server_port;
 
-    // Populate session context for WebRTC fallback (if discovery came from ACDS)
-    if (discovery_result.source == DISCOVERY_SOURCE_ACDS) {
-      SAFE_STRNCPY(connection_ctx.session_ctx.session_string, session_string,
-                   sizeof(connection_ctx.session_ctx.session_string));
-      memcpy(connection_ctx.session_ctx.session_id, discovery_result.session_id, 16);
-      memcpy(connection_ctx.session_ctx.participant_id, discovery_result.participant_id, 16);
-      SAFE_STRNCPY(connection_ctx.session_ctx.server_address, discovery_result.server_address,
-                   sizeof(connection_ctx.session_ctx.server_address));
-      connection_ctx.session_ctx.server_port = discovery_result.server_port;
-
-      // Enable WebRTC fallback for ACDS-discovered sessions (not for mDNS or direct connections)
-      connection_ctx.enable_webrtc_fallback = true;
-      log_debug("Populated session context for WebRTC fallback (session='%s')", session_string);
-    }
-
     log_info("Connecting to %s:%d", discovered_address, discovery_result.server_port);
   }
 
@@ -776,19 +740,8 @@ int client_main(void) {
     connection_ctx.reconnect_attempt = reconnect_attempt;
     connection_ctx.is_reconnection = has_ever_connected; // Track if this is a reconnection (not first connect)
 
-    // Get ACDS server configuration from CLI options (defaults: 127.0.0.1:27225)
-    const char *acds_server = GET_OPTION(discovery_server);
-    if (!acds_server || acds_server[0] == '\0') {
-      acds_server = "127.0.0.1"; // Fallback if option not set
-    }
-    int acds_port = GET_OPTION(discovery_port);
-    if (acds_port <= 0 || acds_port > 65535) {
-      acds_port = OPT_ACDS_PORT_INT_DEFAULT;
-    }
-
-    // Attempt connection with 3-stage fallback (TCP → STUN → TURN)
-    asciichat_error_t connection_result =
-        connection_attempt_with_fallback(&connection_ctx, address, (uint16_t)port, acds_server, (uint16_t)acds_port);
+    // Attempt TCP connection
+    asciichat_error_t connection_result = connection_attempt_tcp(&connection_ctx, address, (uint16_t)port);
 
     // Check if shutdown was requested during connection attempt
     if (should_exit()) {
@@ -871,7 +824,6 @@ int client_main(void) {
       // CRITICAL: Transfer ownership - NULL out context's pointers to prevent double-free
       // server_connection_set_transport() now owns the transport, so context must not destroy it
       connection_ctx.tcp_transport = NULL;
-      connection_ctx.webrtc_transport = NULL;
       connection_ctx.active_transport = NULL;
     } else {
       log_error("Connection succeeded but no active transport - this should never happen");
@@ -889,6 +841,13 @@ int client_main(void) {
     // Start all worker threads for this connection
     if (protocol_start_connection() != 0) {
       log_error("Failed to start connection protocols");
+
+      // CRITICAL: Stop any threads that were started before the failure
+      // protocol_start_connection() may fail partway through after spawning some threads
+      // (e.g., data reception thread spawned, but webcam capture failed)
+      // We MUST stop these threads before closing the connection to prevent them from
+      // interfering with the next connection attempt
+      protocol_stop_connection();
       server_connection_close();
 
       // In snapshot mode, exit immediately on protocol failure - no retries
@@ -931,24 +890,33 @@ int client_main(void) {
     protocol_stop_connection();
     server_connection_close();
 
+    // Destroy and recreate thread pool to ensure clean thread state for reconnection
+    // The old thread pool may have stale thread references that interfere with new connections
+    if (g_client_worker_pool) {
+      thread_pool_destroy(g_client_worker_pool);
+      g_client_worker_pool = NULL;
+      log_debug("Destroyed client worker thread pool for reconnection");
+    }
+
+    // Recreate thread pool for next connection
+    g_client_worker_pool = thread_pool_create("client_reconnect");
+    if (!g_client_worker_pool) {
+      log_error("Failed to recreate client worker thread pool for reconnection");
+      return 1;
+    }
+    log_debug("Recreated client worker thread pool for reconnection");
+
     // Cleanup connection context to release old transports/sockets before reconnecting
     // This prevents socket conflicts and "Bad file descriptor" errors on reconnection
     connection_context_cleanup(&connection_ctx);
 
     // Re-initialize connection context for next reconnection attempt
-    // Preserve reconnection state (enable_webrtc_fallback, last_successful_state)
-    bool saved_enable_webrtc = connection_ctx.enable_webrtc_fallback;
-    connection_state_t saved_last_successful = connection_ctx.last_successful_state;
     memset(&connection_ctx, 0, sizeof(connection_ctx));
-    asciichat_error_t reinit_result =
-        connection_context_init(&connection_ctx, GET_OPTION(prefer_webrtc), GET_OPTION(no_webrtc),
-                                GET_OPTION(webrtc_skip_stun), GET_OPTION(webrtc_disable_turn));
+    asciichat_error_t reinit_result = connection_context_init(&connection_ctx);
     if (reinit_result != ASCIICHAT_OK) {
       log_error("Failed to re-initialize connection context for reconnection");
       return 1;
     }
-    connection_ctx.enable_webrtc_fallback = saved_enable_webrtc;
-    connection_ctx.last_successful_state = saved_last_successful;
 
     // Restart splash screen to show reconnection status
     // Logs (reconnection attempts) will display below splash
