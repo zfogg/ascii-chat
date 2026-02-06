@@ -27,43 +27,69 @@ export function MirrorPage() {
 
   // Initialize WASM on mount
   useEffect(() => {
-    initMirrorWasm().catch((err) => {
-      setError(`Failed to load WASM module: ${err}`)
-    })
+    console.log('Initializing WASM module...')
+    initMirrorWasm()
+      .then(() => console.log('WASM module loaded successfully'))
+      .catch((err) => {
+        console.error('WASM init error:', err)
+        setError(`Failed to load WASM module: ${err}`)
+      })
   }, [])
 
   // Initialize xterm.js
   useEffect(() => {
-    if (!terminalRef.current) return
+    if (!terminalRef.current) {
+      console.error('Terminal ref not available')
+      return
+    }
 
-    const terminal = new Terminal({
-      cols: ASCII_WIDTH,
-      rows: ASCII_HEIGHT,
-      theme: {
-        background: '#0c0c0c',
-        foreground: '#cccccc',
-      },
-      cursorStyle: 'bar',
-      cursorBlink: false,
-      fontFamily: 'monospace',
-      fontSize: 12,
-    })
+    console.log('Initializing xterm.js terminal...')
+    try {
+      const terminal = new Terminal({
+        cols: ASCII_WIDTH,
+        rows: ASCII_HEIGHT,
+        theme: {
+          background: '#0c0c0c',
+          foreground: '#cccccc',
+        },
+        cursorStyle: 'bar',
+        cursorBlink: false,
+        fontFamily: 'monospace',
+        fontSize: 12,
+      })
 
-    const fitAddon = new FitAddon()
-    terminal.loadAddon(fitAddon)
-    terminal.open(terminalRef.current)
+      const fitAddon = new FitAddon()
+      terminal.loadAddon(fitAddon)
+      terminal.open(terminalRef.current)
 
-    xtermRef.current = terminal
-    fitAddonRef.current = fitAddon
+      xtermRef.current = terminal
+      fitAddonRef.current = fitAddon
 
-    return () => {
-      terminal.dispose()
+      console.log('xterm.js terminal initialized successfully')
+
+      return () => {
+        terminal.dispose()
+      }
+    } catch (err) {
+      console.error('Failed to initialize terminal:', err)
+      setError(`Failed to initialize terminal: ${err}`)
     }
   }, [])
 
   const startWebcam = async () => {
-    if (!videoRef.current || !canvasRef.current) return
+    if (!videoRef.current || !canvasRef.current) {
+      console.error('Video or canvas ref not available')
+      setError('Video or canvas element not ready')
+      return
+    }
 
+    if (!xtermRef.current) {
+      console.error('Terminal not initialized')
+      setError('Terminal not initialized. Please refresh the page.')
+      return
+    }
+
+    console.log('Requesting webcam access...')
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -73,6 +99,7 @@ export function MirrorPage() {
         },
         audio: false,
       })
+      console.log('Webcam access granted')
 
       streamRef.current = stream
       videoRef.current.srcObject = stream
@@ -216,7 +243,10 @@ export function MirrorPage() {
         <div className="mt-4 flex gap-2">
           {!isRunning ? (
             <button
-              onClick={startWebcam}
+              onClick={() => {
+                console.log('Start Webcam button clicked')
+                startWebcam()
+              }}
               className="px-4 py-2 bg-terminal-2 text-terminal-bg rounded hover:bg-terminal-10"
             >
               Start Webcam
