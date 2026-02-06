@@ -29,5 +29,5 @@ bun.lockb
 
 # WASM build artifacts
 wasm/build/
-public/wasm/*.js
-public/wasm/*.wasm
+src/wasm/mirror.js
+src/wasm/mirror.wasm

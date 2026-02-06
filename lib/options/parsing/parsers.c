@@ -12,6 +12,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/builder.h>
 #include <ascii-chat/options/options.h>
+#include <ascii-chat/options/strings.h>    // For fuzzy matching suggestions
 #include <ascii-chat/discovery/strings.h>  // For is_session_string() validation
 #include <ascii-chat/util/parsing.h>       // For parse_port() validation
 #include <ascii-chat/util/path.h>          // For path_validate_user_path()
@@ -250,10 +251,15 @@ bool parse_color_mode(const char *arg, void *dest, char **error_msg) {
     return true;
   }
 
-  // Invalid value
+  // Invalid value - suggest closest match
   if (error_msg) {
     char msg[256];
-    safe_snprintf(msg, sizeof(msg), "Invalid color mode '%s'. Valid values: auto, none, 16, 256, truecolor", arg);
+    const char *suggestion = asciichat_suggest_enum_value("color-mode", arg);
+    if (suggestion) {
+      safe_snprintf(msg, sizeof(msg), "Invalid color mode '%s'. Did you mean '%s'?", arg, suggestion);
+    } else {
+      safe_snprintf(msg, sizeof(msg), "Invalid color mode '%s'. Valid values: auto, none, 16, 256, truecolor", arg);
+    }
     *error_msg = strdup(msg);
   }
   return false;
@@ -319,10 +325,16 @@ bool parse_render_mode(const char *arg, void *dest, char **error_msg) {
     return true;
   }
 
-  // Invalid value
+  // Invalid value - suggest closest match
   if (error_msg) {
     char msg[256];
-    safe_snprintf(msg, sizeof(msg), "Invalid render mode '%s'. Valid values: foreground, background, half-block", arg);
+    const char *suggestion = asciichat_suggest_enum_value("render-mode", arg);
+    if (suggestion) {
+      safe_snprintf(msg, sizeof(msg), "Invalid render mode '%s'. Did you mean '%s'?", arg, suggestion);
+    } else {
+      safe_snprintf(msg, sizeof(msg), "Invalid render mode '%s'. Valid values: foreground, background, half-block",
+                    arg);
+    }
     *error_msg = strdup(msg);
   }
   return false;
@@ -376,11 +388,16 @@ bool parse_palette_type(const char *arg, void *dest, char **error_msg) {
     return true;
   }
 
-  // Invalid value
+  // Invalid value - suggest closest match
   if (error_msg) {
     char msg[256];
-    safe_snprintf(msg, sizeof(msg),
-                  "Invalid palette type '%s'. Valid values: standard, blocks, digital, minimal, cool, custom", arg);
+    const char *suggestion = asciichat_suggest_enum_value("palette", arg);
+    if (suggestion) {
+      safe_snprintf(msg, sizeof(msg), "Invalid palette type '%s'. Did you mean '%s'?", arg, suggestion);
+    } else {
+      safe_snprintf(msg, sizeof(msg),
+                    "Invalid palette type '%s'. Valid values: standard, blocks, digital, minimal, cool, custom", arg);
+    }
     *error_msg = strdup(msg);
   }
   return false;

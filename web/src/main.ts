@@ -49,14 +49,8 @@ if (route === '/mirror' || route === '/mirror/') {
   app.innerHTML = `
     <div class="h-screen flex items-center justify-center">
       <div class="text-center max-w-2xl px-8">
-        <pre class="text-terminal-cyan text-xl mb-8 font-mono">
-  __ _ ___  ___ _ _ ___      ___ _  _  _ _____
- / _\` / __|/ __| |_| (_)___ / __| || |/ _|_   _|
-| (_| \\__ \\ (__| /_| | |___| (__| __ | |_  | |
- \\__,_|___/\\___|_(_|_|_|    \\___|_||_|\\__| |_|
-        </pre>
-        <h1 class="text-3xl font-bold text-terminal-fg mb-4">Terminal Video Chat in Your Browser</h1>
-        <p class="text-terminal-fg mb-8 text-lg">Real-time video chat with ASCII art rendering, end-to-end encryption, and WebRTC support</p>
+        <h1 class="text-6xl font-bold text-terminal-cyan mb-4">ascii-chat</h1>
+        <p class="text-xl text-terminal-fg mb-8">Video chat in your <del class="opacity-60">terminal</del> browser</p>
         <div class="space-y-4 flex flex-col items-center">
           <a href="/mirror" class="px-6 py-3 bg-terminal-cyan text-terminal-bg rounded hover:opacity-80 transition-opacity inline-block w-64">
             Mirror Mode

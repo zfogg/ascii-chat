@@ -38,12 +38,11 @@ set_target_properties(mirror PROPERTIES
         --no-entry"
 )
 
-# Copy outputs to web/public/wasm/
+# Copy outputs to web/src/wasm/ (so Vite can import them)
 add_custom_command(TARGET mirror POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/../public/wasm
     COMMAND ${CMAKE_COMMAND} -E copy
         ${CMAKE_BINARY_DIR}/mirror.js
         ${CMAKE_BINARY_DIR}/mirror.wasm
-        ${CMAKE_SOURCE_DIR}/../public/wasm/
-    COMMENT "Copying WASM files to web/public/wasm/"
+        ${CMAKE_SOURCE_DIR}/../src/wasm/
+    COMMENT "Copying WASM files to web/src/wasm/"
 )

@@ -84,6 +84,7 @@
 #include <ascii-chat/options/actions.h>
 
 #include <ascii-chat/options/config.h>
+#include <ascii-chat/options/strings.h> // Enum/mode string conversions
 #include <ascii-chat/options/schema.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
@@ -426,7 +427,11 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
     return ASCIICHAT_OK;
   }
 
-  // Unknown positional argument
+  // Unknown positional argument - suggest closest match
+  const char *suggestion = asciichat_suggest_mode(positional);
+  if (suggestion) {
+    return SET_ERRNO(ERROR_USAGE, "Unknown mode '%s'. Did you mean '%s'?", positional, suggestion);
+  }
   return SET_ERRNO(ERROR_USAGE, "Unknown mode or invalid argument: %s", positional);
 }
 

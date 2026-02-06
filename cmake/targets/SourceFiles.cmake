@@ -361,7 +361,9 @@ set(CORE_SRCS
     lib/ui/terminal_screen.c  # NEW: Terminal screen rendering abstraction
     lib/options/options.c
     lib/options/common.c
-    lib/options/levenshtein.c
+    lib/options/enums.c         # Enum value registry
+    lib/options/strings.c       # Centralized enum/mode string conversion
+    lib/options/levenshtein.c   # Fuzzy string matching
     lib/options/rcu.c
     # Options builder API (refactored into builder/ subdirectory)
     lib/options/builder/builder.c     # Core builder functionality
@@ -402,7 +404,6 @@ set(CORE_SRCS
     lib/options/manpage/content/usage.c       # USAGE section generator (NEW)
     lib/options/manpage/content/examples.c    # EXAMPLES section generator (NEW)
     lib/options/manpage/content/positional.c  # POSITIONAL ARGUMENTS section generator (NEW)
-    lib/options/enums.c            # Enum value registry (NEW)
     lib/options/completions/completions.c  # Shell completion dispatcher (NEW)
     lib/options/completions/bash.c         # Bash completion generator (NEW)
     lib/options/completions/fish.c         # Fish completion generator (NEW)
