@@ -639,22 +639,32 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
     return SET_ERRNO(ERROR_NETWORK, "Failed to initialize WebRTC library");
   }
 
-  // Set up STUN servers
-  // Allocate array for 1 STUN server (can be expanded for redundancy)
-  session->stun_servers = SAFE_MALLOC(sizeof(stun_server_t), stun_server_t *);
-  if (!session->stun_servers) {
-    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate STUN server array");
+  // Set up STUN servers (unless --webrtc-skip-stun is set)
+  if (GET_OPTION(webrtc_skip_stun)) {
+    log_info("Skipping STUN (--webrtc-skip-stun) - will use TURN relay only");
+    session->stun_servers = NULL;
+    session->stun_count = 0;
+  } else {
+    // Allocate array for 1 STUN server (can be expanded for redundancy)
+    session->stun_servers = SAFE_MALLOC(sizeof(stun_server_t), stun_server_t *);
+    if (!session->stun_servers) {
+      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate STUN server array");
+    }
+    session->stun_count = 1;
+
+    // Configure primary STUN server
+    // STUN URL format: "stun:hostname:port"
+    const char *stun_url = "stun:stun.l.google.com:19302";
+    session->stun_servers[0].host_len = strlen(stun_url);
+    SAFE_STRNCPY(session->stun_servers[0].host, stun_url, sizeof(session->stun_servers[0].host));
   }
-  session->stun_count = 1;
 
-  // Configure primary STUN server
-  // STUN URL format: "stun:hostname:port"
-  const char *stun_url = "stun:stun.l.google.com:19302";
-  session->stun_servers[0].host_len = strlen(stun_url);
-  SAFE_STRNCPY(session->stun_servers[0].host, stun_url, sizeof(session->stun_servers[0].host));
-
-  // Set up TURN servers (if credentials available from ACDS)
-  if (session->turn_username[0] != '\0' && session->turn_password[0] != '\0') {
+  // Set up TURN servers (if credentials available from ACDS and not disabled)
+  if (GET_OPTION(webrtc_disable_turn)) {
+    log_info("TURN disabled (--webrtc-disable-turn) - will use direct P2P + STUN only");
+    session->turn_servers = NULL;
+    session->turn_count = 0;
+  } else if (session->turn_username[0] != '\0' && session->turn_password[0] != '\0') {
     // Allocate array for 1 TURN server
     session->turn_servers = SAFE_MALLOC(sizeof(turn_server_t), turn_server_t *);
     if (!session->turn_servers) {
@@ -1130,6 +1140,37 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
         webrtc_initiated = true; // Mark as initiated
       }
 
+      // Poll ACDS for WebRTC signaling messages (SDP answer, ICE candidates)
+      // while waiting for DataChannel to open
+      if (session->acds_socket != INVALID_SOCKET_VALUE) {
+        // Check if data available (non-blocking with timeout_ns)
+        struct timeval tv_timeout;
+        tv_timeout.tv_sec = timeout_ns / NS_PER_SEC_INT;
+        tv_timeout.tv_usec = (timeout_ns % NS_PER_SEC_INT) / 1000;
+
+        fd_set readfds;
+        FD_ZERO(&readfds);
+        FD_SET(session->acds_socket, &readfds);
+
+        int select_result = select(session->acds_socket + 1, &readfds, NULL, NULL, &tv_timeout);
+        if (select_result > 0 && FD_ISSET(session->acds_socket, &readfds)) {
+          // Data available to read
+          packet_type_t type;
+          void *data = NULL;
+          size_t len = 0;
+
+          asciichat_error_t recv_result = packet_receive(session->acds_socket, &type, &data, &len);
+
+          if (recv_result == ASCIICHAT_OK) {
+            // Dispatch to appropriate handler
+            handle_acds_webrtc_packet(session, type, data, len);
+            POOL_FREE(data, len);
+          } else {
+            log_debug("Failed to receive ACDS packet: %d", recv_result);
+          }
+        }
+      }
+
       // Stay in CONNECTING_HOST until DataChannel opens (webrtc_transport_ready becomes true)
       // The discovery_on_transport_ready callback will set webrtc_transport_ready=true
       break;
@@ -1543,6 +1584,17 @@ asciichat_error_t discovery_session_check_host_alive(discovery_session_t *sessio
     return ASCIICHAT_OK;
   }
 
+  // For WebRTC sessions, check the WebRTC transport instead of participant_ctx
+  if (session->session_type == SESSION_TYPE_WEBRTC) {
+    // If we have a WebRTC transport and it's marked as ready, host is alive
+    if (session->webrtc_transport_ready) {
+      return ASCIICHAT_OK;
+    }
+    // WebRTC transport not ready yet - might still be connecting
+    return ERROR_NETWORK;
+  }
+
+  // For TCP sessions, check participant context
   // If we don't have a participant context yet, we're not connected
   if (!session->participant_ctx) {
     return ERROR_NETWORK;
