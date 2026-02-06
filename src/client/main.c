@@ -71,6 +71,7 @@
 #include "capture.h"
 #include "audio.h"
 #include <ascii-chat/session/splash.h>
+#include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/audio/analysis.h>
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/network/mdns/discovery_tui.h>
@@ -526,6 +527,11 @@ int client_main(void) {
   // The splash will continue until splash_intro_done() is called when first frame is ready
   splash_intro_start(NULL);
 
+  // Disable terminal logging AFTER splash starts so splash can display cleanly
+  // This prevents logs from connection attempts from interfering with splash animation
+  // Logs are still written to file and captured by splash screen's log buffer
+  log_set_terminal_output(false);
+
   // Track if we've ever successfully connected during this session
   static bool has_ever_connected = false;
 
@@ -933,6 +939,9 @@ int client_main(void) {
 
   // Cleanup connection context (closes any active transports)
   connection_context_cleanup(&connection_ctx);
+
+  // Cleanup session log buffer (used by splash screen)
+  session_log_buffer_cleanup();
 
   log_debug("ascii-chat client shutting down");
   return 0;

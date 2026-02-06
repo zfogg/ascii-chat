@@ -212,26 +212,24 @@ static size_t build_splash_buffer(char *buffer, size_t buf_size, int width, int 
   return p - buffer;
 }
 
+// Cached terminal size (to avoid flooding logs with terminal_get_size errors)
+static terminal_size_t g_splash_cached_term_size = {.rows = 24, .cols = 80};
+static uint64_t g_splash_last_term_size_check_us = 0;
+#define SPLASH_TERM_SIZE_CHECK_INTERVAL_US 1000000ULL // Check terminal size max once per second
+
 /**
  * @brief Animation thread that displays splash with rainbow wave effect and logs
+ * Follows the same pattern as server_status_display() for consistent behavior
  */
 static void *splash_animation_thread(void *arg) {
   (void)arg;
 
-  int width = GET_OPTION(width);
-  int height = GET_OPTION(height);
-  char base_buffer[2048];
-
-  // Build splash buffer once
-  build_splash_buffer(base_buffer, sizeof(base_buffer), width, height);
-
-  // Count lines in splash content for log space calculation
-  int splash_lines = 0;
-  for (int i = 0; base_buffer[i] != '\0'; i++) {
-    if (base_buffer[i] == '\n') {
-      splash_lines++;
-    }
-  }
+  // ASCII logo lines (same as help output)
+  const char *ascii_logo[4] = {
+      "  __ _ ___  ___(_|_)       ___| |__   __ _| |_ ", " / _` / __|/ __| | |_____ / __| '_ \\ / _` | __| ",
+      "| (_| \\__ \\ (__| | |_____| (__| | | | (_| | |_ ", " \\__,_|___/\\___|_|_|      \\___|_| |_|\\__,_|\\__| "};
+  const char *tagline = "Video chat in your terminal";
+  const int logo_width = 52;
 
   // Check if colors should be used (TTY check)
   bool use_colors = terminal_should_color_output(STDOUT_FILENO);
@@ -242,63 +240,149 @@ static void *splash_animation_thread(void *arg) {
   const double rainbow_speed = 0.01; // Characters per frame of wave speed
 
   while (!atomic_load(&g_splash_state.should_stop)) {
-    // Clear screen
+    // Get terminal dimensions (cached to avoid flooding logs with errors)
+    // This matches server_status.c lines 94-103
+    uint64_t now_us = platform_get_monotonic_time_us();
+    if (now_us - g_splash_last_term_size_check_us > SPLASH_TERM_SIZE_CHECK_INTERVAL_US) {
+      terminal_size_t temp_size;
+      if (terminal_get_size(&temp_size) == ASCIICHAT_OK) {
+        g_splash_cached_term_size = temp_size;
+      }
+      g_splash_last_term_size_check_us = now_us;
+    }
+    terminal_size_t term_size = g_splash_cached_term_size;
+    // Clear screen and move to home position on BOTH stdout and stderr
+    // (logs may have been written to either stream before splash started)
+    // This matches server_status.c lines 114-116
+    fprintf(stderr, "\033[H\033[2J");
+    fflush(stderr);
     printf("\033[H\033[2J");
 
+    // ========================================================================
+    // SPLASH SCREEN - EXACTLY 8 LINES (fixed height, never scrolls terminal)
+    // ========================================================================
     // Calculate rainbow offset for this frame (smooth continuous wave)
     double offset = frame * rainbow_speed;
 
-    // Print splash with rainbow wave effect
-    // Color each character based on its position + offset
-    for (int i = 0; base_buffer[i] != '\0'; i++) {
-      char ch = base_buffer[i];
+    // Line 1: Top border
+    printf("\033[1;36m━");
+    for (int i = 1; i < term_size.cols - 1; i++) {
+      printf("━");
+    }
+    printf("\033[0m\n");
 
-      if (ch == '\n') {
-        // Print newlines as-is
-        printf("%c", ch);
-      } else if (ch == ' ') {
-        // Spaces don't need color, just print
-        printf("%c", ch);
-      } else if (use_colors) {
-        // Calculate smooth rainbow color for this character
-        // Position is normalized by spreading over many characters for smooth fade
-        double char_pos = (i + offset) / 30.0; // Spread over 30 chars for smooth transition
-        rgb_color_t color = get_rainbow_color_rgb(char_pos);
-
-        // Print character with truecolor ANSI escape: \x1b[38;2;R;G;Bm
-        printf("\x1b[38;2;%u;%u;%um%c\x1b[0m", color.r, color.g, color.b, ch);
-      } else {
-        // No colors when piping - just print the character
-        printf("%c", ch);
+    // Lines 2-5: ASCII logo (centered, truncated if too long)
+    for (int logo_line = 0; logo_line < 4; logo_line++) {
+      // Build plain text line first (for width calculation)
+      char plain_line[512];
+      int horiz_pad = (term_size.cols - logo_width) / 2;
+      if (horiz_pad < 0) {
+        horiz_pad = 0;
       }
+
+      int pos = 0;
+      for (int j = 0; j < horiz_pad && pos < (int)sizeof(plain_line) - 1; j++) {
+        plain_line[pos++] = ' ';
+      }
+      snprintf(plain_line + pos, sizeof(plain_line) - pos, "%s", ascii_logo[logo_line]);
+
+      // Check visible width and truncate if needed
+      int visible_width = display_width(plain_line);
+      if (visible_width < 0) {
+        visible_width = (int)strlen(plain_line);
+      }
+      if (term_size.cols > 0 && visible_width >= term_size.cols) {
+        plain_line[term_size.cols - 1] = '\0';
+      }
+
+      // Print with rainbow colors
+      int char_idx = 0;
+      for (int i = 0; plain_line[i] != '\0'; i++) {
+        char ch = plain_line[i];
+        if (ch == ' ') {
+          printf(" ");
+        } else if (use_colors) {
+          double char_pos = (frame * 52 + char_idx + offset) / 30.0;
+          rgb_color_t color = get_rainbow_color_rgb(char_pos);
+          printf("\x1b[38;2;%u;%u;%um%c\x1b[0m", color.r, color.g, color.b, ch);
+          char_idx++;
+        } else {
+          printf("%c", ch);
+          char_idx++;
+        }
+      }
+      printf("\n");
     }
 
-    // Calculate remaining space for logs
-    int logs_available_lines = height - splash_lines - 1; // -1 to prevent cursor scroll
-    if (logs_available_lines < 0) {
-      logs_available_lines = 0;
+    // Line 6: Blank line
+    printf("\n");
+
+    // Line 7: Tagline (centered, truncated if too long)
+    char plain_tagline[512];
+    int tagline_len = (int)strlen(tagline);
+    int tagline_pad = (term_size.cols - tagline_len) / 2;
+    if (tagline_pad < 0) {
+      tagline_pad = 0;
     }
 
-    // Get logs from session_log_buffer
+    int tpos = 0;
+    for (int j = 0; j < tagline_pad && tpos < (int)sizeof(plain_tagline) - 1; j++) {
+      plain_tagline[tpos++] = ' ';
+    }
+    snprintf(plain_tagline + tpos, sizeof(plain_tagline) - tpos, "%s", tagline);
+
+    // Check visible width and truncate if needed
+    int tagline_visible_width = display_width(plain_tagline);
+    if (tagline_visible_width < 0) {
+      tagline_visible_width = (int)strlen(plain_tagline);
+    }
+    if (term_size.cols > 0 && tagline_visible_width >= term_size.cols) {
+      plain_tagline[term_size.cols - 1] = '\0';
+    }
+
+    printf("%s\n", plain_tagline);
+
+    // Line 8: Bottom border
+    printf("\033[1;36m━");
+    for (int i = 1; i < term_size.cols - 1; i++) {
+      printf("━");
+    }
+    printf("\033[0m\n");
+
+    // ========================================================================
+    // LIVE LOG FEED - Fills remaining screen (never causes scroll)
+    // ========================================================================
+    // Calculate EXACTLY how many lines we have for logs
+    // Splash took exactly 8 lines above, reserve 1 line to prevent cursor scroll
+    // This matches server_status.c line 166
+    int logs_available_lines = term_size.rows - 9;
+    if (logs_available_lines < 1) {
+      logs_available_lines = 1; // At least show something
+    }
+
+    // Get recent log entries
     session_log_entry_t logs[SESSION_LOG_BUFFER_SIZE];
     size_t log_count = session_log_buffer_get_recent(logs, SESSION_LOG_BUFFER_SIZE);
 
-    // Calculate which logs fit in remaining space (same logic as server_status.c)
+    // Calculate actual display lines needed for each log (accounting for wrapping and newlines)
+    // Work backwards from most recent logs until we fill available lines
+    // This matches server_status.c lines 175-248
     int lines_used = 0;
-    size_t start_idx = log_count; // Start from end (no logs fit yet)
+    size_t start_idx = log_count; // Start past the end, will work backwards
 
     for (size_t i = log_count; i > 0; i--) {
       size_t idx = i - 1;
       const char *msg = logs[idx].message;
 
-      // Count how many terminal lines this log takes (accounting for wrapping)
+      // Count display lines for this message (newlines + wrapping)
+      // Split message by newlines and calculate visible width of each line
       int msg_lines = 0;
       const char *line_start = msg;
       const char *p = msg;
 
-      while (*p != '\0') {
+      while (*p) {
         if (*p == '\n') {
-          // Calculate visible width for this line
+          // Calculate visible width of this line (excluding ANSI codes)
           size_t line_len = p - line_start;
           char line_buf[2048];
           if (line_len < sizeof(line_buf)) {
@@ -310,8 +394,8 @@ static void *splash_animation_thread(void *arg) {
               visible_width = (int)line_len; // Fallback
 
             // Calculate how many terminal lines this takes (with wrapping)
-            if (width > 0 && visible_width > 0) {
-              msg_lines += (visible_width + width - 1) / width;
+            if (term_size.cols > 0 && visible_width > 0) {
+              msg_lines += (visible_width + term_size.cols - 1) / term_size.cols;
             } else {
               msg_lines += 1;
             }
@@ -337,8 +421,8 @@ static void *splash_animation_thread(void *arg) {
             visible_width = (int)line_len; // Fallback
 
           // Calculate how many terminal lines this takes (with wrapping)
-          if (width > 0 && visible_width > 0) {
-            msg_lines += (visible_width + width - 1) / width;
+          if (term_size.cols > 0 && visible_width > 0) {
+            msg_lines += (visible_width + term_size.cols - 1) / term_size.cols;
           } else {
             msg_lines += 1;
           }
@@ -433,8 +517,8 @@ int splash_intro_done(void) {
 
   atomic_store(&g_splash_state.is_running, false);
 
-  // Clear screen for next render
-  terminal_clear_screen();
+  // Don't clear screen here - first frame will do it
+  // Clearing here can cause a brief scroll artifact during transition
 
   // NOTE: Do NOT cleanup session_log_buffer here - it may be used by status screen
   // Status screen will call session_log_buffer_cleanup() when appropriate

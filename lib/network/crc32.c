@@ -136,7 +136,7 @@ uint32_t asciichat_crc32_hw(const void *data, size_t len) {
     // DEBUG: Log fallback to software
     static bool logged_fallback = false;
     if (!logged_fallback) {
-      fprintf(stderr, "[CRC32 DEBUG] Using software CRC32 (no hardware acceleration)\n");
+      log_debug("Using software CRC32 (no hardware acceleration)");
       logged_fallback = true;
     }
     return asciichat_crc32_sw(data, len);
@@ -145,14 +145,14 @@ uint32_t asciichat_crc32_hw(const void *data, size_t len) {
 #ifdef ARCH_ARM64
   static bool logged_arm = false;
   if (!logged_arm) {
-    fprintf(stderr, "[CRC32 DEBUG] Using ARM64 hardware CRC32\n");
+    log_debug("Using ARM64 hardware CRC32");
     logged_arm = true;
   }
   return crc32_arm_hw(data, len);
 #elif defined(ARCH_X86_64)
   static bool logged_intel = false;
   if (!logged_intel) {
-    fprintf(stderr, "[CRC32 DEBUG] Using Intel x86_64 hardware CRC32 (SSE4.2)\n");
+    log_debug("Using Intel x86_64 hardware CRC32 (SSE4.2)");
     logged_intel = true;
   }
   return crc32_intel_hw(data, len);
