@@ -677,13 +677,17 @@ int add_client(server_context_t *server_ctx, socket_t socket, const char *client
   // These mutexes might be accessed by receive thread which starts before render threads
   if (mutex_init(&client->client_state_mutex) != 0) {
     log_error("Failed to initialize client state mutex for client %u", atomic_load(&client->client_id));
-    goto error_cleanup;
+    // Client is already in hash table - use remove_client for proper cleanup
+    remove_client(server_ctx, atomic_load(&client->client_id));
+    return -1;
   }
 
   // Initialize send mutex to protect concurrent socket writes
   if (mutex_init(&client->send_mutex) != 0) {
     log_error("Failed to initialize send mutex for client %u", atomic_load(&client->client_id));
-    goto error_cleanup;
+    // Client is already in hash table - use remove_client for proper cleanup
+    remove_client(server_ctx, atomic_load(&client->client_id));
+    return -1;
   }
 
   rwlock_wrunlock(&g_client_manager_rwlock);
@@ -819,6 +823,8 @@ int add_client(server_context_t *server_ctx, socket_t socket, const char *client
   uint32_t client_id_snapshot = atomic_load(&client->client_id);
   if (start_client_threads(server_ctx, client, true) != 0) {
     log_error("Failed to start threads for TCP client %u", client_id_snapshot);
+    // Client is already in hash table - use remove_client for proper cleanup
+    remove_client(server_ctx, client_id_snapshot);
     return -1;
   }
   log_debug("Successfully created render threads for client %u", client_id_snapshot);
@@ -841,8 +847,10 @@ int add_client(server_context_t *server_ctx, socket_t socket, const char *client
 
 error_cleanup:
   // Clean up all partially allocated resources
-  // NOTE: This label is reached when allocation or initialization fails
-  // Resources are cleaned up in reverse order of allocation
+  // NOTE: This label is reached when allocation or initialization fails BEFORE
+  // the client is added to the hash table. Don't call remove_client() here.
+  cleanup_client_all_buffers(client);
+  rwlock_wrunlock(&g_client_manager_rwlock);
   return -1;
 }
 
@@ -1001,13 +1009,19 @@ int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
   // Initialize mutexes BEFORE creating any threads to prevent race conditions
   if (mutex_init(&client->client_state_mutex) != 0) {
     log_error("Failed to initialize client state mutex for WebRTC client %u", atomic_load(&client->client_id));
-    goto error_cleanup_webrtc;
+    // Client is already in hash table - use remove_client for proper cleanup
+    rwlock_wrunlock(&g_client_manager_rwlock);
+    remove_client(server_ctx, atomic_load(&client->client_id));
+    return -1;
   }
 
   // Initialize send mutex to protect concurrent socket writes
   if (mutex_init(&client->send_mutex) != 0) {
     log_error("Failed to initialize send mutex for WebRTC client %u", atomic_load(&client->client_id));
-    goto error_cleanup_webrtc;
+    // Client is already in hash table - use remove_client for proper cleanup
+    rwlock_wrunlock(&g_client_manager_rwlock);
+    remove_client(server_ctx, atomic_load(&client->client_id));
+    return -1;
   }
 
   rwlock_wrunlock(&g_client_manager_rwlock);
@@ -1106,28 +1120,9 @@ int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
 
 error_cleanup_webrtc:
   // Clean up all partially allocated resources for WebRTC client
-  if (client->send_buffer) {
-    SAFE_FREE(client->send_buffer);
-    client->send_buffer = NULL;
-  }
-  if (client->outgoing_video_buffer) {
-    video_frame_buffer_destroy(client->outgoing_video_buffer);
-    client->outgoing_video_buffer = NULL;
-  }
-  if (client->audio_queue) {
-    packet_queue_destroy(client->audio_queue);
-    client->audio_queue = NULL;
-  }
-  if (client->incoming_audio_buffer) {
-    audio_ring_buffer_destroy(client->incoming_audio_buffer);
-    client->incoming_audio_buffer = NULL;
-  }
-  if (client->incoming_video_buffer) {
-    video_frame_buffer_destroy(client->incoming_video_buffer);
-    client->incoming_video_buffer = NULL;
-  }
-  mutex_destroy(&client->client_state_mutex);
-  mutex_destroy(&client->send_mutex);
+  // NOTE: This label is reached when allocation or initialization fails BEFORE
+  // the client is added to the hash table. Don't call remove_client() here.
+  cleanup_client_all_buffers(client);
   rwlock_wrunlock(&g_client_manager_rwlock);
   return -1;
 }
