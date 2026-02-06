@@ -189,13 +189,22 @@ export function MirrorPage() {
 
     if (elapsed >= FRAME_INTERVAL) {
       lastFrameTimeRef.current = now
-      renderFrame()
+
+      try {
+        renderFrame()
+      } catch (err) {
+        console.error('[renderLoop] Frame render error:', err)
+        setError(`Render error: ${err}`)
+        stopWebcam()
+        return
+      }
 
       // Update FPS counter every second
       frameCountRef.current++
       if (now - fpsUpdateTimeRef.current >= 1000) {
         const currentFps = Math.round(frameCountRef.current / ((now - fpsUpdateTimeRef.current) / 1000))
         setFps(currentFps.toString())
+        console.log('[FPS]', currentFps, 'frames in last second')
         frameCountRef.current = 0
         fpsUpdateTimeRef.current = now
       }
@@ -229,12 +238,15 @@ export function MirrorPage() {
       ASCII_HEIGHT
     )
 
-    // Clear terminal and write ASCII art
-    terminal.clear()
+    // Efficient rendering: move cursor to home and overwrite in one operation
+    // \x1b[H moves cursor to home (top-left)
+    // Format as lines with \r\n line endings
+    const lines: string[] = []
     for (let i = 0; i < ASCII_HEIGHT; i++) {
-      const line = asciiArt.substring(i * ASCII_WIDTH, (i + 1) * ASCII_WIDTH)
-      terminal.writeln(line)
+      lines.push(asciiArt.substring(i * ASCII_WIDTH, (i + 1) * ASCII_WIDTH))
     }
+
+    terminal.write('\x1b[H' + lines.join('\r\n'))
   }
 
   // Cleanup on unmount

@@ -63,6 +63,8 @@ export async function initMirrorWasm(): Promise<void> {
  * @param dstHeight - Target ASCII height (lines)
  * @returns ASCII art string
  */
+let frameCallCount = 0;
+
 export function convertFrameToAscii(
   rgbaData: Uint8Array,
   srcWidth: number,
@@ -78,10 +80,15 @@ export function convertFrameToAscii(
     throw new Error('WASM module not fully initialized. HEAPU8 is undefined.');
   }
 
+  frameCallCount++;
+  if (frameCallCount % 300 === 0) {
+    console.log(`[WASM] Processed ${frameCallCount} frames`);
+  }
+
   // Allocate WASM memory for input RGBA data
   const dataPtr = wasmModule._malloc(rgbaData.length);
   if (!dataPtr) {
-    throw new Error('Failed to allocate WASM memory for RGBA data');
+    throw new Error(`Failed to allocate WASM memory for RGBA data (${rgbaData.length} bytes)`);
   }
 
   try {
@@ -108,6 +115,9 @@ export function convertFrameToAscii(
     wasmModule._free_ascii_buffer(resultPtr);
 
     return asciiString;
+  } catch (err) {
+    console.error('[WASM] convertFrameToAscii error:', err);
+    throw err;
   } finally {
     // Always free the input buffer
     wasmModule._free(dataPtr);
