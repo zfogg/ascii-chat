@@ -14,7 +14,6 @@
 #include <assert.h>
 #include <stdatomic.h>
 #include <math.h>
-#include <omp.h>
 
 #include <arm_neon.h>
 
@@ -760,60 +759,20 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
   (void)char_byte2_lut;
   (void)char_byte3_lut;
 
-  // Allocate thread-local buffers for parallel processing
-  // Each thread will have its own output buffer, then we'll merge them
-  int max_threads = omp_get_max_threads();
-  outbuf_t *thread_buffers = SAFE_CALLOC((size_t)max_threads, sizeof(outbuf_t), outbuf_t *);
-  if (!thread_buffers) {
-    log_error("Failed to allocate thread buffers");
-    SAFE_FREE(ob.buf);
-    return NULL;
-  }
-
   START_TIMER("neon_main_loop");
   uint64_t loop_start_ns = time_get_ns();
 
   // Track which code path is taken
   int chunks_256color = 0, chunks_truecolor = 0;
 
-  // PRE-INITIALIZE: Call init once before loop instead of 1152 times per chunk!
+  // PRE-INITIALIZE: Call init once before loop
   init_neon_decimal_table();
 
-  // Check if OpenMP is available and enabled
-  int omp_available = omp_get_max_threads() > 1;
-  if (omp_available) {
-    log_debug("OpenMP: num_threads=%d, in_parallel=%d", omp_get_max_threads(), omp_in_parallel());
-  }
-
-  // Parallelize row processing across available cores
-  // Each row is independent (color state resets at row end), so safe to parallelize
-  // Use static scheduling with chunk size to reduce overhead compared to dynamic scheduling
-  // DISABLED: OpenMP parallelization was making performance slower
-  // #pragma omp parallel for collapse(1) schedule(static, 4) default(none) \
-  //     shared(height, width, image, ascii_chars, use_background, use_256color, utf8_cache, tbl, thread_buffers) \
-  //     private(ob)
+  // Process rows
   for (int y = 0; y < height; y++) {
-    int thread_id = omp_get_thread_num();
-    outbuf_t *thread_ob = thread_buffers + thread_id;
-
-    // Initialize thread buffer on first row this thread processes
-    if (thread_ob->buf == NULL) {
-      size_t buffer_size = (size_t)height * (size_t)width * 8u + (size_t)height * 16u + 64u;
-      thread_ob->buf = SAFE_MALLOC(buffer_size, char *);
-      thread_ob->cap = buffer_size;
-      thread_ob->len = 0;
-      if (!thread_ob->buf) {
-        log_error("Failed to allocate thread buffer");
-        continue;
-      }
-    }
-
-    // Track current color state (thread-local)
+    // Track current color state
     int curR = -1, curG = -1, curB = -1;
     int cur_color_idx = -1;
-
-    // Use thread-local output buffer instead of global ob
-    outbuf_t *ob = thread_ob;
 
     const rgb_pixel_t *row = &((const rgb_pixel_t *)image->pixels)[y * width];
     int x = 0;
@@ -865,19 +824,19 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
 
           if (color_idx != cur_color_idx) {
             if (use_background) {
-              emit_set_256_color_bg(ob, color_idx);
+              emit_set_256_color_bg(&ob, color_idx);
             } else {
-              emit_set_256_color_fg(ob, color_idx);
+              emit_set_256_color_fg(&ob, color_idx);
             }
             cur_color_idx = color_idx;
           }
 
-          ob_write(ob, char_info->utf8_bytes, char_info->byte_len);
+          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           if (rep_is_profitable(run)) {
-            emit_rep(ob, run - 1);
+            emit_rep(&ob, run - 1);
           } else {
             for (uint32_t k = 1; k < run; k++) {
-              ob_write(ob, char_info->utf8_bytes, char_info->byte_len);
+              ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
             }
           }
           i += run;
@@ -891,7 +850,7 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
                                                         temp_buffer, sizeof(temp_buffer), use_background);
 
         // Write vectorized output to main buffer
-        ob_write(ob, temp_buffer, vectorized_length);
+        ob_write(&ob, temp_buffer, vectorized_length);
       }
       x += 16;
     }
@@ -923,20 +882,20 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
 
         if (color_idx != cur_color_idx) {
           if (use_background) {
-            emit_set_256_color_bg(ob, color_idx);
+            emit_set_256_color_bg(&ob, color_idx);
           } else {
-            emit_set_256_color_fg(ob, color_idx);
+            emit_set_256_color_fg(&ob, color_idx);
           }
           cur_color_idx = color_idx;
         }
 
         // Emit UTF-8 character from cache
-        ob_write(ob, char_info->utf8_bytes, char_info->byte_len);
+        ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
         if (rep_is_profitable(run)) {
-          emit_rep(ob, run - 1);
+          emit_rep(&ob, run - 1);
         } else {
           for (uint32_t k = 1; k < run; k++) {
-            ob_write(ob, char_info->utf8_bytes, char_info->byte_len);
+            ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           }
         }
         x = j;
@@ -956,9 +915,9 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
 
         if ((int)R != curR || (int)G != curG || (int)B != curB) {
           if (use_background) {
-            emit_set_truecolor_bg(ob, (uint8_t)R, (uint8_t)G, (uint8_t)B);
+            emit_set_truecolor_bg(&ob, (uint8_t)R, (uint8_t)G, (uint8_t)B);
           } else {
-            emit_set_truecolor_fg(ob, (uint8_t)R, (uint8_t)G, (uint8_t)B);
+            emit_set_truecolor_fg(&ob, (uint8_t)R, (uint8_t)G, (uint8_t)B);
           }
           curR = (int)R;
           curG = (int)G;
@@ -966,12 +925,12 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
         }
 
         // Emit UTF-8 character from cache
-        ob_write(ob, char_info->utf8_bytes, char_info->byte_len);
+        ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
         if (rep_is_profitable(run)) {
-          emit_rep(ob, run - 1);
+          emit_rep(&ob, run - 1);
         } else {
           for (uint32_t k = 1; k < run; k++) {
-            ob_write(ob, char_info->utf8_bytes, char_info->byte_len);
+            ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           }
         }
         x = j;
@@ -979,12 +938,11 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
     }
 
     // End row: reset SGR, add newline (except for last row)
-    emit_reset(ob);
-    if (y < height - 1) { // Only add newline if not the last row
-      ob_putc(ob, '\n');
+    emit_reset(&ob);
+    if (y < height - 1) {
+      ob_putc(&ob, '\n');
     }
   }
-  // End of parallel region
 
   uint64_t loop_end_ns = time_get_ns();
   uint64_t loop_time_ms = (loop_end_ns - loop_start_ns) / 1000000;
@@ -998,51 +956,8 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "neon_main_loop",
                            "NEON_MAIN_LOOP: Complete (%.2f ms)");
 
-  // Merge all thread buffers into final output
-  START_TIMER("neon_buffer_merge");
-  size_t total_size = 0;
-  for (int t = 0; t < max_threads; t++) {
-    if (thread_buffers[t].buf) {
-      total_size += thread_buffers[t].len;
-    }
-  }
-
-  // Allocate final buffer with space for null terminator
-  char *final_buf = SAFE_MALLOC(total_size + 1, char *);
-  if (!final_buf) {
-    log_error("Failed to allocate final merged buffer");
-    // Cleanup thread buffers
-    for (int t = 0; t < max_threads; t++) {
-      if (thread_buffers[t].buf) {
-        SAFE_FREE(thread_buffers[t].buf);
-      }
-    }
-    SAFE_FREE(thread_buffers);
-    SAFE_FREE(ob.buf);
-    return NULL;
-  }
-
-  // Merge thread buffers in order
-  size_t write_pos = 0;
-  for (int t = 0; t < max_threads; t++) {
-    if (thread_buffers[t].buf) {
-      // Copy data if this thread wrote anything
-      if (thread_buffers[t].len > 0) {
-        SAFE_MEMCPY(final_buf + write_pos, total_size + 1 - write_pos, thread_buffers[t].buf, thread_buffers[t].len);
-        write_pos += thread_buffers[t].len;
-      }
-      // Always free buffer if it was allocated (even if len == 0)
-      SAFE_FREE(thread_buffers[t].buf);
-    }
-  }
-  SAFE_FREE(thread_buffers);
-  SAFE_FREE(ob.buf); // Free the main buffer that was allocated but not used
-
-  final_buf[write_pos] = '\0';
-  STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 2 * NS_PER_MS_INT, "neon_buffer_merge",
-                           "NEON_BUFFER_MERGE: Complete (%.2f ms)");
-
-  return final_buf;
+  ob_term(&ob);
+  return ob.buf;
 }
 
 //=============================================================================

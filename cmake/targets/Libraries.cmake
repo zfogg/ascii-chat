@@ -282,11 +282,6 @@ set_source_files_properties(
 # -----------------------------------------------------------------------------
 create_ascii_chat_module(ascii-chat-simd "${SIMD_SRCS}")
 
-# Enable OpenMP for SIMD rendering
-target_compile_options(ascii-chat-simd PRIVATE -fopenmp)
-# Link OpenMP library using the CMake target (works across all platforms)
-target_link_libraries(ascii-chat-simd PRIVATE OpenMP::OpenMP_C)
-
 if(NOT BUILDING_OBJECT_LIBS)
     target_link_libraries(ascii-chat-simd PRIVATE
         ascii-chat-util
@@ -684,7 +679,6 @@ add_library(ascii-chat-shared SHARED EXCLUDE_FROM_ALL
         ${OPUS_LIBRARIES}
         ${SQLITE3_LIBRARIES}
         ${PCRE2_LIBRARIES}
-        OpenMP::OpenMP_C
     )
 
     # Link PortAudio with platform-specific dependencies
@@ -904,11 +898,6 @@ endif()
 # Link libdatachannel for WebRTC P2P connections
 if(TARGET libdatachannel)
     target_link_libraries(ascii-chat-shared PRIVATE libdatachannel)
-endif()
-
-# Link OpenMP for SIMD rendering
-if(OpenMP_FOUND)
-    target_link_libraries(ascii-chat-shared PRIVATE OpenMP::OpenMP_C)
 endif()
 
 # Link FFmpeg for media file streaming
@@ -1214,12 +1203,6 @@ if(MINIUPNPC_FOUND)
     if(NATPMP_LIBRARY)
         target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${NATPMP_LIBRARY})
     endif()
-endif()
-
-# Link OpenMP for SIMD rendering in ascii-chat-simd module
-# Must be exposed via INTERFACE library for final executables
-if(OpenMP_FOUND)
-    target_link_libraries(ascii-chat-static-lib-deps INTERFACE OpenMP::OpenMP_C)
 endif()
 
 # Wrapper: links both the archive and its dependencies

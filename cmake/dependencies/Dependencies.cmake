@@ -81,14 +81,6 @@ include(${CMAKE_SOURCE_DIR}/cmake/dependencies/PCRE2.cmake)
 # BearSSL - SSL/TLS library for HTTPS key fetching
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/BearSSL.cmake)
 
-# OpenMP - Parallelization support for SIMD rendering
-find_package(OpenMP REQUIRED)
-if(OpenMP_FOUND)
-    message(STATUS "✓ OpenMP found: ${OpenMP_C_LIBRARIES}")
-else()
-    message(FATAL_ERROR "OpenMP not found - required for SIMD rendering")
-endif()
-
 # mdns - mDNS service discovery library (requires patching to exclude main())
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Mdns.cmake)
 configure_mdns()
