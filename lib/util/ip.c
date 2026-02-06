@@ -116,6 +116,18 @@ int is_valid_ipv6(const char *ip) {
     return 0; // Invalid
   }
 
+  // Remove brackets if present (IPv6 addresses can be bracketed)
+  char normalized[INET6_ADDRSTRLEN];
+  const char *ip_to_validate = ip;
+
+  if (ip[0] == '[') {
+    // Has brackets, need to remove them
+    if (parse_ipv6_address(ip, normalized, sizeof(normalized)) != 0) {
+      return 0; // Failed to parse (malformed brackets)
+    }
+    ip_to_validate = normalized;
+  }
+
   // Use POSIX inet_pton() for robust IPv6 validation
   // It handles all RFC 5952 compliant formats:
   // - Full format: 2001:0db8:85a3:0000:0000:8a2e:0370:7334
@@ -124,7 +136,7 @@ int is_valid_ipv6(const char *ip) {
   // - All zeros: ::
   // - IPv4-mapped: ::ffff:192.0.2.1
   struct in6_addr addr;
-  int result = inet_pton(AF_INET6, ip, &addr);
+  int result = inet_pton(AF_INET6, ip_to_validate, &addr);
 
   if (result == 1) {
     return 1; // Valid IPv6
@@ -481,6 +493,549 @@ int parse_address_with_optional_port(const char *input, char *address_output, si
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid port in: %s", input);
     return -1;
   }
+
+  return 0;
+}
+
+// ============================================================================
+// IP Version Detection & Unified Validation
+// ============================================================================
+
+// Get IP address version
+int get_ip_version(const char *ip) {
+  if (!ip || strlen(ip) == 0) {
+    return 0;
+  }
+
+  // Quick heuristic: if it contains a colon, it's likely IPv6
+  // (unless it's a port separator, but we're just checking the IP part)
+  if (strchr(ip, ':') != NULL) {
+    // Could be IPv6 or bracketed IPv6
+    if (is_valid_ipv6(ip)) {
+      return 6;
+    }
+    return 0; // Has colon but not valid IPv6
+  }
+
+  // No colon, check if it's IPv4
+  if (is_valid_ipv4(ip)) {
+    return 4;
+  }
+
+  return 0; // Not valid IPv4 or IPv6
+}
+
+// Check if string is a valid IP address (IPv4 or IPv6)
+int is_valid_ip(const char *ip) {
+  if (!ip) {
+    return 0;
+  }
+
+  // Try IPv4 first (faster check)
+  if (is_valid_ipv4(ip)) {
+    return 1;
+  }
+
+  // Try IPv6
+  if (is_valid_ipv6(ip)) {
+    return 1;
+  }
+
+  return 0;
+}
+
+// ============================================================================
+// IP Address Comparison & Equality
+// ============================================================================
+
+// Compare two IP addresses for equality
+int ip_equals(const char *ip1, const char *ip2) {
+  if (!ip1 || !ip2) {
+    return 0;
+  }
+
+  // Get versions
+  int v1 = get_ip_version(ip1);
+  int v2 = get_ip_version(ip2);
+
+  // If different versions or either invalid, not equal
+  if (v1 != v2 || v1 == 0) {
+    return 0;
+  }
+
+  if (v1 == 4) {
+    // IPv4: direct string comparison after validation
+    struct in_addr addr1, addr2;
+    if (inet_pton(AF_INET, ip1, &addr1) != 1 || inet_pton(AF_INET, ip2, &addr2) != 1) {
+      return 0;
+    }
+    return addr1.s_addr == addr2.s_addr;
+  } else {
+    // IPv6: normalize then compare
+    char norm1[INET6_ADDRSTRLEN], norm2[INET6_ADDRSTRLEN];
+
+    // Remove brackets if present
+    if (parse_ipv6_address(ip1, norm1, sizeof(norm1)) != 0) {
+      return 0;
+    }
+    if (parse_ipv6_address(ip2, norm2, sizeof(norm2)) != 0) {
+      return 0;
+    }
+
+    // Parse to binary and compare
+    struct in6_addr addr1, addr2;
+    if (inet_pton(AF_INET6, norm1, &addr1) != 1 || inet_pton(AF_INET6, norm2, &addr2) != 1) {
+      return 0;
+    }
+
+    return memcmp(&addr1, &addr2, sizeof(addr1)) == 0;
+  }
+}
+
+// Compare two IP addresses for sorting
+int ip_compare(const char *ip1, const char *ip2) {
+  if (!ip1 || !ip2) {
+    return -2; // Error
+  }
+
+  int v1 = get_ip_version(ip1);
+  int v2 = get_ip_version(ip2);
+
+  // Invalid addresses sort last
+  if (v1 == 0 && v2 == 0) {
+    return 0; // Both invalid, consider equal
+  }
+  if (v1 == 0) {
+    return 1; // ip1 invalid, sorts after ip2
+  }
+  if (v2 == 0) {
+    return -1; // ip2 invalid, sorts after ip1
+  }
+
+  // IPv4 sorts before IPv6
+  if (v1 != v2) {
+    return (v1 < v2) ? -1 : 1;
+  }
+
+  if (v1 == 4) {
+    // IPv4: compare numerically
+    struct in_addr addr1, addr2;
+    if (inet_pton(AF_INET, ip1, &addr1) != 1 || inet_pton(AF_INET, ip2, &addr2) != 1) {
+      return -2; // Error
+    }
+
+    uint32_t val1 = ntohl(addr1.s_addr);
+    uint32_t val2 = ntohl(addr2.s_addr);
+
+    if (val1 < val2)
+      return -1;
+    if (val1 > val2)
+      return 1;
+    return 0;
+  } else {
+    // IPv6: compare byte by byte
+    char norm1[INET6_ADDRSTRLEN], norm2[INET6_ADDRSTRLEN];
+
+    if (parse_ipv6_address(ip1, norm1, sizeof(norm1)) != 0) {
+      return -2;
+    }
+    if (parse_ipv6_address(ip2, norm2, sizeof(norm2)) != 0) {
+      return -2;
+    }
+
+    struct in6_addr addr1, addr2;
+    if (inet_pton(AF_INET6, norm1, &addr1) != 1 || inet_pton(AF_INET6, norm2, &addr2) != 1) {
+      return -2;
+    }
+
+    return memcmp(&addr1, &addr2, sizeof(addr1));
+  }
+}
+
+// ============================================================================
+// CIDR/Subnet Utilities
+// ============================================================================
+
+// Parse CIDR notation into IP and prefix length
+int parse_cidr(const char *cidr, char *ip_out, size_t ip_out_size, int *prefix_out) {
+  if (!cidr || !ip_out || !prefix_out || ip_out_size == 0) {
+    return -1;
+  }
+
+  // Find the '/' separator
+  const char *slash = strchr(cidr, '/');
+  if (!slash) {
+    return -1; // No slash found
+  }
+
+  // Extract IP part
+  size_t ip_len = (size_t)(slash - cidr);
+  if (ip_len == 0 || ip_len >= ip_out_size) {
+    return -1;
+  }
+
+  char ip_temp[256];
+  if (ip_len >= sizeof(ip_temp)) {
+    return -1;
+  }
+
+  memcpy(ip_temp, cidr, ip_len);
+  ip_temp[ip_len] = '\0';
+
+  // Remove brackets if IPv6
+  if (ip_temp[0] == '[') {
+    if (parse_ipv6_address(ip_temp, ip_out, ip_out_size) != 0) {
+      return -1;
+    }
+  } else {
+    if (ip_len >= ip_out_size) {
+      return -1;
+    }
+    memcpy(ip_out, ip_temp, ip_len + 1);
+  }
+
+  // Validate IP
+  int version = get_ip_version(ip_out);
+  if (version == 0) {
+    return -1; // Invalid IP
+  }
+
+  // Parse prefix length
+  const char *prefix_str = slash + 1;
+  if (strlen(prefix_str) == 0) {
+    return -1;
+  }
+
+  char *endptr;
+  long prefix = strtol(prefix_str, &endptr, 10);
+  if (*endptr != '\0' || prefix < 0) {
+    return -1; // Invalid prefix
+  }
+
+  // Validate prefix range based on IP version
+  if (version == 4 && (prefix > 32)) {
+    return -1;
+  }
+  if (version == 6 && (prefix > 128)) {
+    return -1;
+  }
+
+  *prefix_out = (int)prefix;
+  return 0;
+}
+
+// Helper: Apply netmask to IPv4 address
+static uint32_t apply_ipv4_mask(uint32_t ip, int prefix_len) {
+  if (prefix_len == 0) {
+    return 0;
+  }
+  if (prefix_len >= 32) {
+    return ip;
+  }
+  uint32_t mask = ~((1U << (32 - prefix_len)) - 1);
+  return ip & mask;
+}
+
+// Helper: Apply netmask to IPv6 address
+static void apply_ipv6_mask(struct in6_addr *addr, int prefix_len) {
+  if (prefix_len < 0 || prefix_len > 128) {
+    return;
+  }
+
+  int bytes = prefix_len / 8;
+  int bits = prefix_len % 8;
+
+  // Zero out bytes after the prefix
+  for (int i = bytes + (bits > 0 ? 1 : 0); i < 16; i++) {
+    addr->s6_addr[i] = 0;
+  }
+
+  // Mask the partial byte
+  if (bits > 0 && bytes < 16) {
+    uint8_t mask = (uint8_t)(0xFF << (8 - bits));
+    addr->s6_addr[bytes] &= mask;
+  }
+}
+
+// Check if IP is within CIDR range (parsed form)
+int ip_in_cidr_parsed(const char *ip, const char *network, int prefix_len) {
+  if (!ip || !network) {
+    return 0;
+  }
+
+  int ip_version = get_ip_version(ip);
+  int net_version = get_ip_version(network);
+
+  // Must be same version
+  if (ip_version != net_version || ip_version == 0) {
+    return 0;
+  }
+
+  if (ip_version == 4) {
+    // IPv4 comparison
+    struct in_addr ip_addr, net_addr;
+    if (inet_pton(AF_INET, ip, &ip_addr) != 1 || inet_pton(AF_INET, network, &net_addr) != 1) {
+      return 0;
+    }
+
+    uint32_t ip_val = ntohl(ip_addr.s_addr);
+    uint32_t net_val = ntohl(net_addr.s_addr);
+
+    uint32_t ip_masked = apply_ipv4_mask(ip_val, prefix_len);
+    uint32_t net_masked = apply_ipv4_mask(net_val, prefix_len);
+
+    return ip_masked == net_masked;
+  } else {
+    // IPv6 comparison
+    char ip_norm[INET6_ADDRSTRLEN], net_norm[INET6_ADDRSTRLEN];
+
+    if (parse_ipv6_address(ip, ip_norm, sizeof(ip_norm)) != 0) {
+      return 0;
+    }
+    if (parse_ipv6_address(network, net_norm, sizeof(net_norm)) != 0) {
+      return 0;
+    }
+
+    struct in6_addr ip_addr, net_addr;
+    if (inet_pton(AF_INET6, ip_norm, &ip_addr) != 1 || inet_pton(AF_INET6, net_norm, &net_addr) != 1) {
+      return 0;
+    }
+
+    // Apply mask to both addresses
+    struct in6_addr ip_masked = ip_addr;
+    struct in6_addr net_masked = net_addr;
+    apply_ipv6_mask(&ip_masked, prefix_len);
+    apply_ipv6_mask(&net_masked, prefix_len);
+
+    return memcmp(&ip_masked, &net_masked, sizeof(ip_masked)) == 0;
+  }
+}
+
+// Check if IP address is within CIDR range
+int ip_in_cidr(const char *ip, const char *cidr) {
+  if (!ip || !cidr) {
+    return 0;
+  }
+
+  char network[64];
+  int prefix;
+
+  if (parse_cidr(cidr, network, sizeof(network), &prefix) != 0) {
+    return 0; // Invalid CIDR
+  }
+
+  return ip_in_cidr_parsed(ip, network, prefix);
+}
+
+// ============================================================================
+// IPv4-Mapped IPv6 Utilities
+// ============================================================================
+
+// Convert IPv4 address to IPv6-mapped format
+asciichat_error_t ipv4_to_ipv6_mapped(const char *ipv4, char *ipv6_out, size_t out_size) {
+  if (!ipv4 || !ipv6_out || out_size == 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments to ipv4_to_ipv6_mapped");
+  }
+
+  // Validate IPv4
+  if (!is_valid_ipv4(ipv4)) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IPv4 address: %s", ipv4);
+  }
+
+  // Format as ::ffff:x.x.x.x
+  size_t written = SAFE_SNPRINTF(ipv6_out, out_size, "::ffff:%s", ipv4);
+  if (written >= out_size) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Output buffer too small");
+  }
+
+  return ASCIICHAT_OK;
+}
+
+// Check if IPv6 address is IPv4-mapped
+int is_ipv4_mapped_ipv6(const char *ipv6) {
+  if (!ipv6) {
+    return 0;
+  }
+
+  // Normalize (remove brackets)
+  char normalized[INET6_ADDRSTRLEN];
+  if (parse_ipv6_address(ipv6, normalized, sizeof(normalized)) != 0) {
+    return 0;
+  }
+
+  // Validate IPv6
+  if (!is_valid_ipv6(normalized)) {
+    return 0;
+  }
+
+  struct in6_addr addr;
+  if (inet_pton(AF_INET6, normalized, &addr) != 1) {
+    return 0;
+  }
+
+  // Check for ::ffff:0:0/96 prefix
+  // First 10 bytes should be 0, next 2 should be 0xff
+  for (int i = 0; i < 10; i++) {
+    if (addr.s6_addr[i] != 0) {
+      return 0;
+    }
+  }
+  if (addr.s6_addr[10] != 0xFF || addr.s6_addr[11] != 0xFF) {
+    return 0;
+  }
+
+  return 1;
+}
+
+// Extract IPv4 address from IPv6-mapped format
+asciichat_error_t extract_ipv4_from_mapped_ipv6(const char *ipv6, char *ipv4_out, size_t out_size) {
+  if (!ipv6 || !ipv4_out || out_size == 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments to extract_ipv4_from_mapped_ipv6");
+  }
+
+  if (!is_ipv4_mapped_ipv6(ipv6)) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Not an IPv4-mapped IPv6 address: %s", ipv6);
+  }
+
+  // Normalize
+  char normalized[INET6_ADDRSTRLEN];
+  if (parse_ipv6_address(ipv6, normalized, sizeof(normalized)) != 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Failed to parse IPv6 address");
+  }
+
+  struct in6_addr addr;
+  if (inet_pton(AF_INET6, normalized, &addr) != 1) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Failed to convert IPv6 address");
+  }
+
+  // Extract last 4 bytes and format as IPv4
+  struct in_addr ipv4_addr;
+  memcpy(&ipv4_addr.s_addr, &addr.s6_addr[12], 4);
+
+  if (inet_ntop(AF_INET, &ipv4_addr, ipv4_out, (socklen_t)out_size) == NULL) {
+    return SET_ERRNO(ERROR_NETWORK, "Failed to format IPv4 address");
+  }
+
+  return ASCIICHAT_OK;
+}
+
+// ============================================================================
+// IPv6 Canonicalization & Formatting
+// ============================================================================
+
+// Expand IPv6 address to full form
+asciichat_error_t expand_ipv6(const char *ipv6, char *expanded_out, size_t out_size) {
+  if (!ipv6 || !expanded_out || out_size == 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments to expand_ipv6");
+  }
+
+  // Normalize (remove brackets)
+  char normalized[INET6_ADDRSTRLEN];
+  if (parse_ipv6_address(ipv6, normalized, sizeof(normalized)) != 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Failed to parse IPv6 address");
+  }
+
+  // Validate
+  if (!is_valid_ipv6(normalized)) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IPv6 address: %s", ipv6);
+  }
+
+  struct in6_addr addr;
+  if (inet_pton(AF_INET6, normalized, &addr) != 1) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Failed to convert IPv6 address");
+  }
+
+  // Format as full expanded form: xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx
+  size_t written =
+      SAFE_SNPRINTF(expanded_out, out_size, "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x",
+                    (addr.s6_addr[0] << 8) | addr.s6_addr[1], (addr.s6_addr[2] << 8) | addr.s6_addr[3],
+                    (addr.s6_addr[4] << 8) | addr.s6_addr[5], (addr.s6_addr[6] << 8) | addr.s6_addr[7],
+                    (addr.s6_addr[8] << 8) | addr.s6_addr[9], (addr.s6_addr[10] << 8) | addr.s6_addr[11],
+                    (addr.s6_addr[12] << 8) | addr.s6_addr[13], (addr.s6_addr[14] << 8) | addr.s6_addr[15]);
+
+  if (written >= out_size) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Output buffer too small");
+  }
+
+  return ASCIICHAT_OK;
+}
+
+// Canonicalize IPv6 address to standard form
+asciichat_error_t canonicalize_ipv6(const char *ipv6, char *canonical_out, size_t out_size) {
+  if (!ipv6 || !canonical_out || out_size == 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments to canonicalize_ipv6");
+  }
+
+  // Normalize (remove brackets)
+  char normalized[INET6_ADDRSTRLEN];
+  if (parse_ipv6_address(ipv6, normalized, sizeof(normalized)) != 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Failed to parse IPv6 address");
+  }
+
+  // Validate
+  if (!is_valid_ipv6(normalized)) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IPv6 address: %s", ipv6);
+  }
+
+  struct in6_addr addr;
+  if (inet_pton(AF_INET6, normalized, &addr) != 1) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Failed to convert IPv6 address");
+  }
+
+  // Use inet_ntop which produces canonical form
+  if (inet_ntop(AF_INET6, &addr, canonical_out, (socklen_t)out_size) == NULL) {
+    return SET_ERRNO(ERROR_NETWORK, "Failed to format IPv6 address");
+  }
+
+  return ASCIICHAT_OK;
+}
+
+// Compress IPv6 address using :: notation (alias for canonicalize)
+asciichat_error_t compact_ipv6(const char *ipv6, char *compact_out, size_t out_size) {
+  return canonicalize_ipv6(ipv6, compact_out, out_size);
+}
+
+// Check if IPv6 address is anycast
+int is_anycast_ipv6(const char *ipv6) {
+  if (!ipv6) {
+    return 0;
+  }
+
+  // Normalize
+  char normalized[INET6_ADDRSTRLEN];
+  if (parse_ipv6_address(ipv6, normalized, sizeof(normalized)) != 0) {
+    return 0;
+  }
+
+  // Validate
+  if (!is_valid_ipv6(normalized)) {
+    return 0;
+  }
+
+  struct in6_addr addr;
+  if (inet_pton(AF_INET6, normalized, &addr) != 1) {
+    return 0;
+  }
+
+  // 6to4 relay anycast: 192.88.99.0/24 (mapped to 2002:c058:6301::)
+  // Check if it matches 2002:c058:6301::
+  if (addr.s6_addr[0] == 0x20 && addr.s6_addr[1] == 0x02 && addr.s6_addr[2] == 0xc0 && addr.s6_addr[3] == 0x58 &&
+      addr.s6_addr[4] == 0x63 && addr.s6_addr[5] == 0x01) {
+    // Check if remaining bytes are zero (anycast)
+    int is_zero = 1;
+    for (int i = 6; i < 16; i++) {
+      if (addr.s6_addr[i] != 0) {
+        is_zero = 0;
+        break;
+      }
+    }
+    if (is_zero) {
+      return 1;
+    }
+  }
+
+  // Subnet-router anycast: would need subnet context to determine
+  // We can't detect this without knowing the subnet
 
   return 0;
 }

@@ -1491,8 +1491,9 @@ int server_main(void) {
 
   bool ipv4_has_value = (strlen(GET_OPTION(address)) > 0);
   bool ipv6_has_value = (strlen(GET_OPTION(address6)) > 0);
-  bool ipv4_is_default = (strcmp(GET_OPTION(address), "127.0.0.1") == 0);
-  bool ipv6_is_default = (strcmp(GET_OPTION(address6), "::1") == 0);
+  // Check if address is localhost (any loopback address, not just exact default)
+  bool ipv4_is_default = is_localhost_ipv4(GET_OPTION(address));
+  bool ipv6_is_default = is_localhost_ipv6(GET_OPTION(address6));
 
   log_debug("Binding decision: ipv4_has_value=%d, ipv6_has_value=%d, ipv4_is_default=%d, ipv6_is_default=%d",
             ipv4_has_value, ipv6_has_value, ipv4_is_default, ipv6_is_default);

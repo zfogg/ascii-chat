@@ -299,6 +299,433 @@ asciichat_error_t format_ip_with_port(const char *ip, uint16_t port, char *outpu
 /** @} */
 
 /* ============================================================================
+ * IP Version Detection & Unified Validation
+ * @{
+ */
+
+/**
+ * @brief Get IP address version
+ * @param ip IP address string (must not be NULL)
+ * @return 4 for IPv4, 6 for IPv6, 0 for invalid
+ *
+ * Detects the version of an IP address without validating its full correctness.
+ * Useful for protocol selection and dual-stack handling.
+ *
+ * @note Returns 0 for NULL, empty strings, or invalid addresses.
+ * @note Does not validate address correctness beyond basic format.
+ *
+ * @par Example
+ * @code
+ * int version = get_ip_version("192.168.1.1");  // Returns 4
+ * int version = get_ip_version("::1");           // Returns 6
+ * int version = get_ip_version("invalid");       // Returns 0
+ * @endcode
+ *
+ * @ingroup util
+ */
+int get_ip_version(const char *ip);
+
+/**
+ * @brief Check if string is a valid IP address (IPv4 or IPv6)
+ * @param ip String to validate (must not be NULL)
+ * @return 1 if valid IPv4 or IPv6, 0 otherwise
+ *
+ * Unified validation function that accepts either IPv4 or IPv6 addresses.
+ * Use this when you don't care about the IP version, just validity.
+ *
+ * @note IPv6 addresses can be with or without brackets.
+ * @note Returns 0 for NULL, empty strings, or invalid addresses.
+ *
+ * @par Example
+ * @code
+ * if (is_valid_ip("192.168.1.1")) {
+ *     // Valid IPv4
+ * }
+ * if (is_valid_ip("::1")) {
+ *     // Valid IPv6
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+int is_valid_ip(const char *ip);
+
+/** @} */
+
+/* ============================================================================
+ * IP Address Comparison & Equality
+ * @{
+ */
+
+/**
+ * @brief Compare two IP addresses for equality
+ * @param ip1 First IP address (must not be NULL)
+ * @param ip2 Second IP address (must not be NULL)
+ * @return 1 if equal, 0 if not equal or invalid
+ *
+ * Compares two IP addresses for equality, handling normalization automatically.
+ * Works with IPv4 and IPv6, including bracketed IPv6 notation.
+ *
+ * NORMALIZATION RULES:
+ * - IPv6 addresses are normalized before comparison
+ * - Brackets are ignored: "[::1]" equals "::1"
+ * - IPv6 zero compression is normalized: "::1" equals "0:0:0:0:0:0:0:1"
+ * - IPv4 and IPv6 are never equal
+ *
+ * @note Returns 0 if either address is invalid.
+ * @note Case-insensitive for IPv6 (A-F vs a-f).
+ *
+ * @par Example
+ * @code
+ * if (ip_equals("::1", "[::1]")) {
+ *     // True - brackets ignored
+ * }
+ * if (ip_equals("192.168.1.1", "192.168.1.2")) {
+ *     // False - different addresses
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+int ip_equals(const char *ip1, const char *ip2);
+
+/**
+ * @brief Compare two IP addresses for sorting
+ * @param ip1 First IP address (must not be NULL)
+ * @param ip2 Second IP address (must not be NULL)
+ * @return -1 if ip1 < ip2, 0 if equal, 1 if ip1 > ip2, -2 on error
+ *
+ * Compares two IP addresses for sorting. IPv4 addresses sort before IPv6.
+ * Within the same version, compares numerically (not lexicographically).
+ *
+ * SORT ORDER:
+ * - Invalid addresses sort last
+ * - IPv4 addresses sort before IPv6
+ * - Within IPv4: numeric comparison (10.0.0.1 < 192.168.1.1)
+ * - Within IPv6: numeric comparison (::1 < 2001::1)
+ *
+ * @note Returns -2 if either address is invalid.
+ * @note Useful for qsort() callbacks.
+ *
+ * @par Example
+ * @code
+ * int result = ip_compare("10.0.0.1", "192.168.1.1");  // Returns -1
+ * int result = ip_compare("::1", "192.168.1.1");       // Returns 1 (IPv6 > IPv4)
+ * @endcode
+ *
+ * @ingroup util
+ */
+int ip_compare(const char *ip1, const char *ip2);
+
+/** @} */
+
+/* ============================================================================
+ * CIDR/Subnet Utilities
+ * @{
+ */
+
+/**
+ * @brief Parse CIDR notation into IP and prefix length
+ * @param cidr CIDR string (e.g., "192.168.1.0/24", must not be NULL)
+ * @param ip_out Output buffer for IP address (without prefix, must not be NULL)
+ * @param ip_out_size Size of IP output buffer
+ * @param prefix_out Pointer to store prefix length (must not be NULL)
+ * @return 0 on success, -1 on error
+ *
+ * Parses CIDR notation into separate IP address and prefix length components.
+ * Supports both IPv4 and IPv6 CIDR notation.
+ *
+ * SUPPORTED FORMATS:
+ * - IPv4: "192.168.1.0/24" -> ip="192.168.1.0", prefix=24
+ * - IPv6: "2001:db8::/32" -> ip="2001:db8::", prefix=32
+ * - IPv6 with brackets: "[::1]/128" -> ip="::1", prefix=128
+ *
+ * @note Validates that prefix length is in valid range (0-32 for IPv4, 0-128 for IPv6).
+ * @note Output IP has brackets removed for IPv6.
+ * @note Returns -1 on error (invalid format, out of range prefix, buffer too small).
+ *
+ * @par Example
+ * @code
+ * char ip[64];
+ * int prefix;
+ * if (parse_cidr("192.168.1.0/24", ip, sizeof(ip), &prefix) == 0) {
+ *     // ip = "192.168.1.0", prefix = 24
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+int parse_cidr(const char *cidr, char *ip_out, size_t ip_out_size, int *prefix_out);
+
+/**
+ * @brief Check if IP address is within CIDR range
+ * @param ip IP address to check (must not be NULL)
+ * @param cidr CIDR range (e.g., "192.168.1.0/24", must not be NULL)
+ * @return 1 if IP is in range, 0 if not or on error
+ *
+ * Checks if an IP address falls within a CIDR range. Automatically handles
+ * both IPv4 and IPv6. IP and CIDR must be the same version.
+ *
+ * EXAMPLES:
+ * - "192.168.1.10" in "192.168.1.0/24" -> true
+ * - "192.168.2.10" in "192.168.1.0/24" -> false
+ * - "2001:db8::1" in "2001:db8::/32" -> true
+ *
+ * @note Returns 0 if IP and CIDR are different versions (IPv4 vs IPv6).
+ * @note Returns 0 on error (invalid IP, invalid CIDR).
+ *
+ * @par Example
+ * @code
+ * if (ip_in_cidr("192.168.1.10", "192.168.1.0/24")) {
+ *     // IP is in the 192.168.1.0/24 subnet
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+int ip_in_cidr(const char *ip, const char *cidr);
+
+/**
+ * @brief Check if IP is within CIDR range (parsed form)
+ * @param ip IP address to check (must not be NULL)
+ * @param network Network address (must not be NULL)
+ * @param prefix_len Prefix length (0-32 for IPv4, 0-128 for IPv6)
+ * @return 1 if IP is in range, 0 if not or on error
+ *
+ * Checks if an IP address falls within a CIDR range using pre-parsed
+ * network address and prefix length. More efficient than ip_in_cidr()
+ * when checking multiple IPs against the same range.
+ *
+ * @note IP and network must be the same version.
+ * @note Returns 0 on error (invalid IP, invalid network, out of range prefix).
+ *
+ * @par Example
+ * @code
+ * if (ip_in_cidr_parsed("192.168.1.10", "192.168.1.0", 24)) {
+ *     // IP is in the 192.168.1.0/24 subnet
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+int ip_in_cidr_parsed(const char *ip, const char *network, int prefix_len);
+
+/** @} */
+
+/* ============================================================================
+ * IPv4-Mapped IPv6 Utilities
+ * @{
+ */
+
+/**
+ * @brief Convert IPv4 address to IPv6-mapped format
+ * @param ipv4 IPv4 address (must not be NULL)
+ * @param ipv6_out Output buffer for IPv6-mapped address (must not be NULL)
+ * @param out_size Size of output buffer
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Converts an IPv4 address to IPv6-mapped format (::ffff:x.x.x.x).
+ * This format allows IPv4 addresses to be represented in IPv6.
+ *
+ * OUTPUT FORMAT: "::ffff:192.168.1.1"
+ *
+ * @note Output buffer should be at least 64 bytes.
+ * @note Returns error if input is not a valid IPv4 address.
+ *
+ * @par Example
+ * @code
+ * char ipv6[64];
+ * if (ipv4_to_ipv6_mapped("192.168.1.1", ipv6, sizeof(ipv6)) == ASCIICHAT_OK) {
+ *     // ipv6 = "::ffff:192.168.1.1"
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+asciichat_error_t ipv4_to_ipv6_mapped(const char *ipv4, char *ipv6_out, size_t out_size);
+
+/**
+ * @brief Extract IPv4 address from IPv6-mapped format
+ * @param ipv6 IPv6-mapped address (must not be NULL)
+ * @param ipv4_out Output buffer for IPv4 address (must not be NULL)
+ * @param out_size Size of output buffer
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Extracts the IPv4 address from an IPv6-mapped address (::ffff:x.x.x.x).
+ *
+ * INPUT FORMATS:
+ * - "::ffff:192.168.1.1" -> "192.168.1.1"
+ * - "::ffff:c0a8:0101" (hex notation) -> "192.168.1.1"
+ *
+ * @note Returns error if input is not a valid IPv6-mapped IPv4 address.
+ * @note Output buffer should be at least 16 bytes.
+ *
+ * @par Example
+ * @code
+ * char ipv4[16];
+ * if (extract_ipv4_from_mapped_ipv6("::ffff:192.168.1.1", ipv4, sizeof(ipv4)) == ASCIICHAT_OK) {
+ *     // ipv4 = "192.168.1.1"
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+asciichat_error_t extract_ipv4_from_mapped_ipv6(const char *ipv6, char *ipv4_out, size_t out_size);
+
+/**
+ * @brief Check if IPv6 address is IPv4-mapped
+ * @param ipv6 IPv6 address (must not be NULL)
+ * @return 1 if IPv4-mapped, 0 otherwise
+ *
+ * Checks if an IPv6 address is in IPv4-mapped format (::ffff:x.x.x.x/96).
+ *
+ * @note Returns 0 for invalid IPv6 addresses.
+ *
+ * @par Example
+ * @code
+ * if (is_ipv4_mapped_ipv6("::ffff:192.168.1.1")) {
+ *     // This is an IPv4-mapped IPv6 address
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+int is_ipv4_mapped_ipv6(const char *ipv6);
+
+/** @} */
+
+/* ============================================================================
+ * IPv6 Canonicalization & Formatting
+ * @{
+ */
+
+/**
+ * @brief Canonicalize IPv6 address to standard form
+ * @param ipv6 IPv6 address (must not be NULL)
+ * @param canonical_out Output buffer for canonical form (must not be NULL)
+ * @param out_size Size of output buffer
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Converts an IPv6 address to canonical form following RFC 5952:
+ * - Lowercase hexadecimal digits
+ * - Leading zeros removed from each group
+ * - Longest run of consecutive zero groups compressed to ::
+ * - Brackets removed
+ *
+ * EXAMPLES:
+ * - "2001:0DB8:0000:0000:0000:0000:0000:0001" -> "2001:db8::1"
+ * - "[::1]" -> "::1"
+ * - "2001:DB8::1" -> "2001:db8::1"
+ *
+ * @note Output buffer should be at least 64 bytes.
+ * @note Returns error if input is not a valid IPv6 address.
+ *
+ * @par Example
+ * @code
+ * char canonical[64];
+ * if (canonicalize_ipv6("[2001:0DB8::1]", canonical, sizeof(canonical)) == ASCIICHAT_OK) {
+ *     // canonical = "2001:db8::1"
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+asciichat_error_t canonicalize_ipv6(const char *ipv6, char *canonical_out, size_t out_size);
+
+/**
+ * @brief Expand IPv6 address to full form
+ * @param ipv6 IPv6 address (must not be NULL)
+ * @param expanded_out Output buffer for expanded form (must not be NULL)
+ * @param out_size Size of output buffer
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Expands an IPv6 address to its full uncompressed form with all 8 groups
+ * of 4 hexadecimal digits each, separated by colons.
+ *
+ * EXAMPLES:
+ * - "::1" -> "0000:0000:0000:0000:0000:0000:0000:0001"
+ * - "2001:db8::1" -> "2001:0db8:0000:0000:0000:0000:0000:0001"
+ * - "fe80::1" -> "fe80:0000:0000:0000:0000:0000:0000:0001"
+ *
+ * @note Output buffer should be at least 64 bytes.
+ * @note Returns error if input is not a valid IPv6 address.
+ *
+ * @par Example
+ * @code
+ * char expanded[64];
+ * if (expand_ipv6("::1", expanded, sizeof(expanded)) == ASCIICHAT_OK) {
+ *     // expanded = "0000:0000:0000:0000:0000:0000:0000:0001"
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+asciichat_error_t expand_ipv6(const char *ipv6, char *expanded_out, size_t out_size);
+
+/**
+ * @brief Compress IPv6 address using :: notation
+ * @param ipv6 IPv6 address (must not be NULL)
+ * @param compact_out Output buffer for compressed form (must not be NULL)
+ * @param out_size Size of output buffer
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Compresses an IPv6 address by replacing the longest run of consecutive
+ * zero groups with ::. Follows RFC 5952 compression rules.
+ *
+ * EXAMPLES:
+ * - "2001:0db8:0000:0000:0000:0000:0000:0001" -> "2001:db8::1"
+ * - "fe80:0000:0000:0000:0000:0000:0000:0001" -> "fe80::1"
+ * - "2001:db8:0:0:1:0:0:1" -> "2001:db8::1:0:0:1"
+ *
+ * @note Output buffer should be at least 64 bytes.
+ * @note Returns error if input is not a valid IPv6 address.
+ * @note Alias for canonicalize_ipv6() - both produce the same output.
+ *
+ * @par Example
+ * @code
+ * char compact[64];
+ * if (compact_ipv6("2001:0db8:0000:0000:0000:0000:0000:0001", compact, sizeof(compact)) == ASCIICHAT_OK) {
+ *     // compact = "2001:db8::1"
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+asciichat_error_t compact_ipv6(const char *ipv6, char *compact_out, size_t out_size);
+
+/** @} */
+
+/* ============================================================================
+ * IP Address Classification Functions
+ * @{
+ */
+
+/**
+ * @brief Check if IPv6 address is anycast
+ * @param ipv6 IPv6 address (must not be NULL)
+ * @return 1 if anycast, 0 otherwise
+ *
+ * Checks if an IPv6 address is a known anycast address. Anycast addresses
+ * are typically indistinguishable from unicast, but some well-known ranges exist:
+ * - Subnet-router anycast: last address in each subnet with all host bits zero
+ * - 6to4 relay anycast: 192.88.99.0/24 (mapped to 2002:c058:6301::)
+ *
+ * @note This function only detects known anycast ranges.
+ * @note Most anycast addresses cannot be detected without network context.
+ * @note Returns 0 for invalid IPv6 addresses.
+ *
+ * @par Example
+ * @code
+ * if (is_anycast_ipv6("2002:c058:6301::")) {
+ *     // This is a 6to4 relay anycast address
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+int is_anycast_ipv6(const char *ipv6);
+
+/* ============================================================================
  * IP Address Classification Functions
  * @{
  */

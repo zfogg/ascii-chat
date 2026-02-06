@@ -723,18 +723,10 @@ static bool is_localhost_address(const char *ip_string) {
     return false;
   }
 
-  // IPv6 loopback
-  if (strcmp(ip_string, "::1") == 0) {
-    return true;
-  }
-
-  // IPv4 loopback range (127.0.0.0/8)
-  // Check if it starts with "127." to catch 127.0.0.1, 127.0.0.2, etc.
-  if (strncmp(ip_string, "127.", 4) == 0) {
-    return true;
-  }
-
-  return false;
+  // Use robust IP utility functions that properly validate
+  // IPv4: Checks entire 127.0.0.0/8 range with proper validation
+  // IPv6: Handles ::1, [::1], and expanded forms like 0:0:0:0:0:0:0:1
+  return is_localhost_ipv4(ip_string) || is_localhost_ipv6(ip_string);
 }
 
 /**

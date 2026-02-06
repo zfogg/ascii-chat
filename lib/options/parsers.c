@@ -515,8 +515,8 @@ int parse_server_bind_address(const char *arg, void *config, char **remaining, i
   // Check if it's IPv4 or IPv6
   if (is_valid_ipv4(addr_to_check)) {
     // Check if we already have a non-default IPv4 address
-    // Allow overwriting defaults (127.0.0.1, localhost, 0.0.0.0)
-    if (address[0] != '\0' && strcmp(address, "127.0.0.1") != 0 && strcmp(address, "localhost") != 0 &&
+    // Allow overwriting defaults (localhost, 0.0.0.0)
+    if (address[0] != '\0' && !is_localhost_ipv4(address) && strcmp(address, "localhost") != 0 &&
         strcmp(address, "0.0.0.0") != 0) {
       if (error_msg) {
         char msg[256];
@@ -534,7 +534,7 @@ int parse_server_bind_address(const char *arg, void *config, char **remaining, i
   } else if (is_valid_ipv6(addr_to_check)) {
     // Check if we already have a non-default IPv6 address
     // Allow overwriting default (::1)
-    if (address6[0] != '\0' && strcmp(address6, "::1") != 0) {
+    if (address6[0] != '\0' && !is_localhost_ipv6(address6)) {
       if (error_msg) {
         char msg[256];
         safe_snprintf(msg, sizeof(msg),
@@ -575,7 +575,7 @@ int parse_server_bind_address(const char *arg, void *config, char **remaining, i
 
     if (is_valid_ipv4(addr_to_check)) {
       // Second is IPv4
-      if (address[0] != '\0' && strcmp(address, "127.0.0.1") != 0 && strcmp(address, "localhost") != 0 &&
+      if (address[0] != '\0' && !is_localhost_ipv4(address) && strcmp(address, "localhost") != 0 &&
           strcmp(address, "0.0.0.0") != 0) {
         // Already have an IPv4, can't add another
         return consumed;
@@ -589,7 +589,7 @@ int parse_server_bind_address(const char *arg, void *config, char **remaining, i
       consumed = 2;
     } else if (is_valid_ipv6(addr_to_check)) {
       // Second is IPv6
-      if (address6[0] != '\0' && strcmp(address6, "::1") != 0) {
+      if (address6[0] != '\0' && !is_localhost_ipv6(address6)) {
         // Already have an IPv6, can't add another
         return consumed;
       }
