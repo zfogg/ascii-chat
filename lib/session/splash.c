@@ -254,7 +254,7 @@ static void *splash_animation_thread(void *arg) {
 
   while (!atomic_load(&g_splash_state.should_stop)) {
     // Clear screen
-    terminal_clear_screen();
+    printf("\033[H\033[2J");
 
     // Calculate rainbow offset for this frame (smooth continuous wave)
     double offset = frame * rainbow_speed;
@@ -284,21 +284,22 @@ static void *splash_animation_thread(void *arg) {
       }
     }
 
-    // Get logs from session_log_buffer
-    session_log_entry_t logs[SESSION_LOG_BUFFER_SIZE];
-    size_t log_count = session_log_buffer_get_recent(logs, SESSION_LOG_BUFFER_SIZE);
-
     // Calculate remaining space for logs
-    int logs_available_lines = height - splash_lines;
+    int logs_available_lines = height - splash_lines - 1; // -1 to prevent cursor scroll
     if (logs_available_lines < 0) {
       logs_available_lines = 0;
     }
+
+    // Get logs from session_log_buffer
+    session_log_entry_t logs[SESSION_LOG_BUFFER_SIZE];
+    size_t log_count = session_log_buffer_get_recent(logs, SESSION_LOG_BUFFER_SIZE);
 
     // Calculate which logs fit in remaining space (same logic as server_status.c)
     int lines_used = 0;
     size_t start_idx = log_count; // Start from end (no logs fit yet)
 
-    for (size_t idx = 0; idx < log_count; idx++) {
+    for (size_t i = log_count; i > 0; i--) {
+      size_t idx = i - 1;
       const char *msg = logs[idx].message;
 
       // Count how many terminal lines this log takes (accounting for wrapping)
