@@ -138,8 +138,8 @@ asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const u
         continue; // Line doesn't match known_hosts format
       }
 
-      // Check if IP:port matches what we're looking for
-      if (strcmp(parsed_ip_port, ip_with_port) != 0) {
+      // Check if IP:port matches what we're looking for (with IPv6 normalization)
+      if (!compare_ip_port_strings(parsed_ip_port, ip_with_port)) {
         SAFE_FREE(parsed_ip_port);
         SAFE_FREE(parsed_key_type);
         SAFE_FREE(parsed_hex_key);
@@ -289,8 +289,8 @@ asciichat_error_t check_known_host_no_identity(const char *server_ip, uint16_t p
       continue; // Line doesn't match known_hosts format
     }
 
-    // Check if IP:port matches what we're looking for
-    if (strcmp(parsed_ip_port, ip_with_port) != 0) {
+    // Check if IP:port matches what we're looking for (with IPv6 normalization)
+    if (!compare_ip_port_strings(parsed_ip_port, ip_with_port)) {
       SAFE_FREE(parsed_ip_port);
       SAFE_FREE(parsed_key_type);
       SAFE_FREE(parsed_hex_key);

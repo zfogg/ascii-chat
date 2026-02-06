@@ -10,6 +10,8 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
+#include <errno.h>
 
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/network/packet.h>
@@ -108,8 +110,7 @@ static pid_t start_test_server(int port) {
           NULL);
 
     // If execl fails, print error
-    fprintf(stderr, "Failed to execute server at: %s\n", server_path);
-    perror("execl");
+    fprintf(stderr, "execl(%s) failed: %s\n", server_path, strerror(errno));
     exit(1); // If exec fails
   }
 

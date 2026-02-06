@@ -417,6 +417,42 @@ int ip_equals(const char *ip1, const char *ip2);
  */
 int ip_compare(const char *ip1, const char *ip2);
 
+/**
+ * @brief Compare two "IP:port" strings with IPv6 normalization
+ *
+ * Compares two formatted address strings (e.g., "192.168.1.1:8080" or "[::1]:8080")
+ * with proper handling of different IPv6 representations.
+ *
+ * Handles IPv6 normalization so different representations are treated as equal:
+ * - "[::1]:8080" equals "[0:0:0:0:0:0:0:1]:8080"
+ * - "[2001:db8::1]:80" equals "[2001:0db8:0000:0000:0000:0000:0000:0001]:80"
+ *
+ * For IPv4 addresses, uses robust comparison via `ip_equals()` that handles
+ * different binary representations correctly.
+ *
+ * @param ip_port1 First "IP:port" string (IPv4: "192.168.1.1:8080", IPv6: "[::1]:8080")
+ * @param ip_port2 Second "IP:port" string to compare
+ * @return 1 if addresses match (after normalization), 0 otherwise
+ *
+ * @par Example
+ * @code
+ * // IPv6 normalization
+ * int match1 = compare_ip_port_strings("[::1]:8080", "[0:0:0:0:0:0:0:1]:8080");
+ * // Returns 1 (equal after normalization)
+ *
+ * // IPv4 comparison
+ * int match2 = compare_ip_port_strings("192.168.1.1:80", "192.168.1.1:80");
+ * // Returns 1 (equal)
+ *
+ * // Different ports
+ * int match3 = compare_ip_port_strings("192.168.1.1:80", "192.168.1.1:8080");
+ * // Returns 0 (different ports)
+ * @endcode
+ *
+ * @ingroup util
+ */
+int compare_ip_port_strings(const char *ip_port1, const char *ip_port2);
+
 /** @} */
 
 /* ============================================================================
@@ -961,5 +997,59 @@ int is_internet_ipv4(const char *ip);
  * @ingroup util
  */
 int is_internet_ipv6(const char *ip);
+
+/**
+ * @brief Extract IP address (without port) from formatted address string
+ *
+ * Extracts the IP address portion from a formatted address that includes a port.
+ * Handles both IPv4 (e.g., "192.168.1.1:27224") and IPv6 with brackets
+ * (e.g., "[2001:db8::1]:27224").
+ *
+ * @param addr_with_port Formatted address string with port
+ * @param ip_out Output buffer for IP address (without port)
+ * @param ip_out_size Size of output buffer
+ * @return 0 on success, -1 on error
+ *
+ * @par Example
+ * @code
+ * char ip[64];
+ * extract_ip_from_address("192.168.1.1:27224", ip, sizeof(ip));
+ * // ip now contains "192.168.1.1"
+ *
+ * extract_ip_from_address("[::1]:27224", ip, sizeof(ip));
+ * // ip now contains "::1"
+ * @endcode
+ *
+ * @ingroup util
+ */
+int extract_ip_from_address(const char *addr_with_port, char *ip_out, size_t ip_out_size);
+
+/**
+ * @brief Get human-readable string describing IP address type
+ *
+ * Classifies an IP address and returns a descriptive string.
+ * Possible return values:
+ * - "All Interfaces" - Wildcard bind address (0.0.0.0 or ::)
+ * - "Localhost" - Loopback address (127.0.0.0/8 or ::1)
+ * - "LAN" - Private network address (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, or fc00::/7)
+ * - "Internet" - Public internet address
+ * - "Unknown" - Invalid or unrecognized address
+ * - "" - Empty/null input
+ *
+ * @param ip IP address to classify (without port)
+ * @return Constant string describing the IP type
+ *
+ * @par Example
+ * @code
+ * const char *type1 = get_ip_type_string("0.0.0.0");       // Returns "All Interfaces"
+ * const char *type2 = get_ip_type_string("127.0.0.1");     // Returns "Localhost"
+ * const char *type3 = get_ip_type_string("192.168.1.1");   // Returns "LAN"
+ * const char *type4 = get_ip_type_string("8.8.8.8");       // Returns "Internet"
+ * const char *type5 = get_ip_type_string("::1");           // Returns "Localhost"
+ * @endcode
+ *
+ * @ingroup util
+ */
+const char *get_ip_type_string(const char *ip);
 
 /** @} */

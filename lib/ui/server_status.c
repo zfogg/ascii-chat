@@ -9,6 +9,8 @@
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/options/options.h>
+#include <ascii-chat/util/display.h>
+#include <ascii-chat/util/ip.h>
 #include <ascii-chat/common.h>
 #include <stdio.h>
 #include <string.h>
@@ -103,29 +105,55 @@ static void render_server_status_header(terminal_size_t term_size, void *user_da
   }
   printf("\033[0m\n");
 
-  // Line 2: Title + Stats (truncate if too long to fit on one line)
+  // Line 2: Title + Stats (centered)
   char status_line[512];
-  snprintf(status_line, sizeof(status_line), "  ascii-chat %s | 👥 %zu | ⏱️ %dh %dm %ds", status->mode_name,
+  char status_line_colored[600];
+  snprintf(status_line, sizeof(status_line), "ascii-chat %s | 👥 %zu | ⏱️ %dh %dm %ds", status->mode_name,
            status->connected_count, uptime_hours, uptime_mins, uptime_secs_rem);
-  if (term_size.cols > 0 && (int)strlen(status_line) >= term_size.cols) {
-    status_line[term_size.cols - 1] = '\0'; // Truncate
-  }
-  printf("\033[1;36m%s\033[0m\n", status_line);
+  snprintf(status_line_colored, sizeof(status_line_colored), "\033[1;36m%s\033[0m", status_line);
 
-  // Line 3: Session + Addresses (truncate if too long)
+  int padding = display_center_horizontal(status_line, term_size.cols);
+  for (int i = 0; i < padding; i++) {
+    printf(" ");
+  }
+  printf("%s\n", status_line_colored);
+
+  // Line 3: Session + Addresses (centered)
   char addr_line[512];
   int pos = 0;
   if (status->session_string[0] != '\0') {
-    pos += snprintf(addr_line + pos, sizeof(addr_line) - pos, "  🔗 %s", status->session_string);
+    pos += snprintf(addr_line + pos, sizeof(addr_line) - pos, "🔗 %s", status->session_string);
   }
   if (status->ipv4_bound && pos < (int)sizeof(addr_line) - 30) {
-    pos += snprintf(addr_line + pos, sizeof(addr_line) - pos, " | %s", status->ipv4_address);
+    if (pos > 0) {
+      pos += snprintf(addr_line + pos, sizeof(addr_line) - pos, " | ");
+    }
+    // Extract IP and get type
+    char ipv4_only[64];
+    if (extract_ip_from_address(status->ipv4_address, ipv4_only, sizeof(ipv4_only)) == 0) {
+      const char *type = get_ip_type_string(ipv4_only);
+      pos += snprintf(addr_line + pos, sizeof(addr_line) - pos, "%s (%s)", status->ipv4_address, type);
+    } else {
+      pos += snprintf(addr_line + pos, sizeof(addr_line) - pos, "%s", status->ipv4_address);
+    }
   }
   if (status->ipv6_bound && pos < (int)sizeof(addr_line) - 30) {
-    snprintf(addr_line + pos, sizeof(addr_line) - pos, " | %s", status->ipv6_address);
+    if (pos > 0) {
+      pos += snprintf(addr_line + pos, sizeof(addr_line) - pos, " | ");
+    }
+    // Extract IP and get type
+    char ipv6_only[64];
+    if (extract_ip_from_address(status->ipv6_address, ipv6_only, sizeof(ipv6_only)) == 0) {
+      const char *type = get_ip_type_string(ipv6_only);
+      snprintf(addr_line + pos, sizeof(addr_line) - pos, "%s (%s)", status->ipv6_address, type);
+    } else {
+      snprintf(addr_line + pos, sizeof(addr_line) - pos, "%s", status->ipv6_address);
+    }
   }
-  if (term_size.cols > 0 && (int)strlen(addr_line) >= term_size.cols) {
-    addr_line[term_size.cols - 1] = '\0'; // Truncate
+
+  int addr_padding = display_center_horizontal(addr_line, term_size.cols);
+  for (int i = 0; i < addr_padding; i++) {
+    printf(" ");
   }
   printf("%s\n", addr_line);
 

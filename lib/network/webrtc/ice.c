@@ -13,6 +13,7 @@
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/platform/util.h>
 #include <ascii-chat/util/pcre2.h>
+#include <ascii-chat/util/ip.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -53,6 +54,51 @@ const char *ice_protocol_name(ice_protocol_t protocol) {
  * ICE Candidate Priority
  * ============================================================================ */
 
+/**
+ * @brief Calculate local preference based on IP address classification
+ *
+ * Uses IP classification utilities to prioritize candidates:
+ * - LAN addresses (private networks): Highest priority (65535)
+ *   Local peers on same network = lowest latency, no NAT traversal
+ * - Localhost (loopback): High priority (65000)
+ *   Same machine = zero latency but limited use case
+ * - Internet (public IPs): Medium priority (32768)
+ *   Direct public connectivity but may have higher latency
+ * - Unknown/Invalid: Lowest priority (0)
+ *   Malformed or unrecognized addresses
+ *
+ * @param ip_address IP address to classify (IPv4 or IPv6)
+ * @return Local preference value (0-65535, higher = more preferred)
+ */
+static uint16_t ice_calculate_local_preference_by_ip(const char *ip_address) {
+  if (!ip_address || ip_address[0] == '\0') {
+    return 0; // Invalid/empty
+  }
+
+  // Check for wildcard addresses (should not appear in candidates, but handle gracefully)
+  if (strcmp(ip_address, "0.0.0.0") == 0 || strcmp(ip_address, "::") == 0) {
+    return 0; // Invalid candidate
+  }
+
+  // LAN addresses: Highest priority (same network = lowest latency)
+  if (is_lan_ipv4(ip_address) || is_lan_ipv6(ip_address)) {
+    return 65535;
+  }
+
+  // Localhost: High priority but less useful than LAN for peer-to-peer
+  if (is_localhost_ipv4(ip_address) || is_localhost_ipv6(ip_address)) {
+    return 65000;
+  }
+
+  // Internet (public): Medium priority
+  if (is_internet_ipv4(ip_address) || is_internet_ipv6(ip_address)) {
+    return 32768;
+  }
+
+  // Unknown/unclassified: Lowest priority
+  return 0;
+}
+
 uint32_t ice_calculate_priority(ice_candidate_type_t type, uint16_t local_preference, uint8_t component_id) {
   // RFC 5245: priority = (2^24 * typePreference) + (2^8 * localPreference) + (256 - componentID)
 
@@ -85,6 +131,18 @@ uint32_t ice_calculate_priority(ice_candidate_type_t type, uint16_t local_prefer
       (((uint32_t)type_preference) << 24) | (((uint32_t)local_preference) << 8) | (256 - (uint32_t)component_id);
 
   return priority;
+}
+
+uint32_t ice_calculate_priority_for_candidate(const ice_candidate_t *candidate) {
+  if (!candidate) {
+    return 0;
+  }
+
+  // Calculate local preference based on IP classification
+  uint16_t local_pref = ice_calculate_local_preference_by_ip(candidate->ip_address);
+
+  // Use standard RFC 5245 priority formula with IP-aware local preference
+  return ice_calculate_priority(candidate->type, local_pref, (uint8_t)candidate->component_id);
 }
 
 /* ============================================================================

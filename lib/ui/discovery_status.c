@@ -5,6 +5,7 @@
 
 #include <ascii-chat/ui/discovery_status.h>
 #include <ascii-chat/util/display.h>
+#include <ascii-chat/util/ip.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/common.h>
 #include <stdio.h>
@@ -106,16 +107,34 @@ void discovery_status_display(const discovery_status_t *status) {
     printf("━");
   printf("\n");
 
-  // Bind addresses
+  // Bind addresses with IP type
   if (status->ipv4_bound) {
+    char ipv4_only[64];
+    const char *type = "";
+    if (extract_ip_from_address(status->ipv4_address, ipv4_only, sizeof(ipv4_only)) == 0) {
+      type = get_ip_type_string(ipv4_only);
+    }
     for (int i = 0; i < box_padding; i++)
       printf(" ");
-    printf("📍 IPv4: %s\n", status->ipv4_address);
+    if (type[0] != '\0') {
+      printf("📍 IPv4: %s (%s)\n", status->ipv4_address, type);
+    } else {
+      printf("📍 IPv4: %s\n", status->ipv4_address);
+    }
   }
   if (status->ipv6_bound) {
+    char ipv6_only[64];
+    const char *type = "";
+    if (extract_ip_from_address(status->ipv6_address, ipv6_only, sizeof(ipv6_only)) == 0) {
+      type = get_ip_type_string(ipv6_only);
+    }
     for (int i = 0; i < box_padding; i++)
       printf(" ");
-    printf("📍 IPv6: %s\n", status->ipv6_address);
+    if (type[0] != '\0') {
+      printf("📍 IPv6: %s (%s)\n", status->ipv6_address, type);
+    } else {
+      printf("📍 IPv6: %s\n", status->ipv6_address);
+    }
   }
 
   // Connected servers

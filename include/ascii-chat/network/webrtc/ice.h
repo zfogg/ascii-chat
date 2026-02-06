@@ -218,6 +218,36 @@ asciichat_error_t ice_format_candidate(const ice_candidate_t *candidate, char *l
  */
 uint32_t ice_calculate_priority(ice_candidate_type_t type, uint16_t local_preference, uint8_t component_id);
 
+/**
+ * @brief Calculate candidate priority with IP-aware local preference
+ *
+ * Automatically determines local_preference based on IP address classification:
+ * - LAN addresses (192.168.x.x, 10.x.x.x, etc.): Highest priority (65535)
+ * - Localhost (127.x.x.x, ::1): High priority (65000)
+ * - Internet (public IPs): Medium priority (32768)
+ * - Unknown/invalid: Lowest priority (0)
+ *
+ * This prioritization improves connection establishment by preferring:
+ * 1. Local network peers (lowest latency, no NAT)
+ * 2. Public IPs (direct connectivity)
+ * 3. Unknown addresses (fallback)
+ *
+ * @param candidate ICE candidate with IP address to classify
+ * @return Calculated priority using RFC 5245 formula with IP-based local preference
+ *
+ * @par Example
+ * @code
+ * ice_candidate_t candidate = {
+ *   .type = ICE_CANDIDATE_HOST,
+ *   .ip_address = "192.168.1.100",
+ *   .component_id = 1
+ * };
+ * uint32_t priority = ice_calculate_priority_for_candidate(&candidate);
+ * // Returns high priority due to LAN address
+ * @endcode
+ */
+uint32_t ice_calculate_priority_for_candidate(const ice_candidate_t *candidate);
+
 /* ============================================================================
  * ICE Connectivity
  * ============================================================================ */

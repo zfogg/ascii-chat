@@ -1044,6 +1044,138 @@ int is_anycast_ipv6(const char *ipv6) {
 // IP Address Classification Functions
 // ============================================================================
 
+// Extract IP address (without port) from formatted address string
+int extract_ip_from_address(const char *addr_with_port, char *ip_out, size_t ip_out_size) {
+  if (!addr_with_port || !ip_out || ip_out_size == 0) {
+    return -1;
+  }
+
+  // Check for IPv6 bracket notation: [2001:db8::1]:27224
+  if (addr_with_port[0] == '[') {
+    const char *bracket_end = strchr(addr_with_port, ']');
+    if (!bracket_end) {
+      return -1;
+    }
+    size_t ip_len = (size_t)(bracket_end - addr_with_port - 1);
+    if (ip_len >= ip_out_size) {
+      return -1;
+    }
+    memcpy(ip_out, addr_with_port + 1, ip_len);
+    ip_out[ip_len] = '\0';
+    return 0;
+  }
+
+  // IPv4: Find last colon and extract IP part
+  const char *colon = strrchr(addr_with_port, ':');
+  if (!colon) {
+    // No port, just copy the whole thing
+    SAFE_STRNCPY(ip_out, addr_with_port, ip_out_size);
+    return 0;
+  }
+
+  size_t ip_len = (size_t)(colon - addr_with_port);
+  if (ip_len >= ip_out_size) {
+    return -1;
+  }
+  memcpy(ip_out, addr_with_port, ip_len);
+  ip_out[ip_len] = '\0';
+  return 0;
+}
+
+// Get human-readable IP type string (Localhost/LAN/Internet)
+const char *get_ip_type_string(const char *ip) {
+  if (!ip || ip[0] == '\0') {
+    return "";
+  }
+
+  // Check for wildcard "bind to all interfaces" addresses
+  // IPv4: 0.0.0.0
+  if (strcmp(ip, "0.0.0.0") == 0) {
+    return "All Interfaces";
+  }
+
+  // IPv6: :: (unspecified address)
+  if (strcmp(ip, "::") == 0) {
+    return "All Interfaces";
+  }
+
+  // Check IPv4
+  if (is_localhost_ipv4(ip)) {
+    return "Localhost";
+  }
+  if (is_lan_ipv4(ip)) {
+    return "LAN";
+  }
+  if (is_internet_ipv4(ip)) {
+    return "Internet";
+  }
+
+  // Check IPv6
+  if (is_localhost_ipv6(ip)) {
+    return "Localhost";
+  }
+  if (is_lan_ipv6(ip)) {
+    return "LAN";
+  }
+  if (is_internet_ipv6(ip)) {
+    return "Internet";
+  }
+
+  return "Unknown";
+}
+
+// Compare two "IP:port" strings with IPv6 normalization
+int compare_ip_port_strings(const char *ip_port1, const char *ip_port2) {
+  if (!ip_port1 || !ip_port2) {
+    return 0; // Not equal
+  }
+
+  // Fast path: if strings are identical, no parsing needed
+  if (strcmp(ip_port1, ip_port2) == 0) {
+    return 1; // Equal
+  }
+
+  // Parse both IP:port strings
+  char ip1[64], ip2[64];
+  uint16_t port1 = 0, port2 = 0;
+
+  if (parse_ip_with_port(ip_port1, ip1, sizeof(ip1), &port1) != 0) {
+    return 0; // Invalid format - not equal
+  }
+  if (parse_ip_with_port(ip_port2, ip2, sizeof(ip2), &port2) != 0) {
+    return 0; // Invalid format - not equal
+  }
+
+  // Ports must match exactly
+  if (port1 != port2) {
+    return 0; // Not equal
+  }
+
+  // For IPv6, normalize both addresses before comparison
+  int version1 = get_ip_version(ip1);
+  int version2 = get_ip_version(ip2);
+
+  // IP versions must match
+  if (version1 != version2 || version1 == 0) {
+    return 0; // Not equal
+  }
+
+  if (version1 == 6) {
+    // Normalize both IPv6 addresses
+    char canonical1[INET6_ADDRSTRLEN], canonical2[INET6_ADDRSTRLEN];
+    if (canonicalize_ipv6(ip1, canonical1, sizeof(canonical1)) != ASCIICHAT_OK) {
+      return 0; // Failed to normalize - not equal
+    }
+    if (canonicalize_ipv6(ip2, canonical2, sizeof(canonical2)) != ASCIICHAT_OK) {
+      return 0; // Failed to normalize - not equal
+    }
+    return (strcmp(canonical1, canonical2) == 0) ? 1 : 0;
+  } else {
+    // IPv4: use ip_equals for robust comparison
+    return ip_equals(ip1, ip2) ? 1 : 0;
+  }
+}
+
 // Check if IPv4 address is a private/LAN address
 int is_lan_ipv4(const char *ip) {
   if (!is_valid_ipv4(ip)) {
