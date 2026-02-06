@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Primary Meta Tags -->
+  <title>ascii-chat | Terminal Video Chat in Your Browser</title>
+  <meta name="title" content="ascii-chat | Terminal Video Chat in Your Browser" />
+  <meta name="description" content="Real-time video chat with ASCII art rendering, end-to-end encryption, and WebRTC support. Experience the terminal aesthetic in your browser." />
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://web.ascii-chat.com/" />
+  <meta property="og:title" content="ascii-chat | Terminal Video Chat in Your Browser" />
+  <meta property="og:description" content="Real-time video chat with ASCII art rendering, end-to-end encryption, and WebRTC support." />
+  <meta property="og:image" content="https://web.ascii-chat.com/og-image.png" />
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content="https://web.ascii-chat.com/" />
+  <meta property="twitter:title" content="ascii-chat | Terminal Video Chat in Your Browser" />
+  <meta property="twitter:description" content="Real-time video chat with ASCII art rendering, end-to-end encryption, and WebRTC support." />
+  <meta property="twitter:image" content="https://web.ascii-chat.com/og-image.png" />
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+  <!-- Preload critical WASM -->
+  <link rel="modulepreload" href="/wasm/mirror.js" />
+  <link rel="preload" href="/wasm/mirror.wasm" as="fetch" type="application/wasm" crossorigin />
+
+  <!-- Google Analytics (GA4) - Replace G-XXXXXXXXXX with actual ID -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-XXXXXXXXXX');
+  </script>
+</head>
+<body class="bg-terminal-bg text-terminal-fg font-mono">
+  <div id="app"></div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
