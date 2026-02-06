@@ -89,6 +89,15 @@ typedef void (*webrtc_local_candidate_callback_t)(webrtc_peer_connection_t *pc, 
                                                   void *user_data);
 
 /**
+ * @brief Callback for ICE gathering state changes
+ * @param pc Peer connection
+ * @param state New gathering state
+ * @param user_data User-provided context pointer
+ */
+typedef void (*webrtc_gathering_state_callback_t)(webrtc_peer_connection_t *pc, webrtc_gathering_state_t state,
+                                                  void *user_data);
+
+/**
  * @brief Callback for DataChannel open event
  * @param dc Data channel that opened
  * @param user_data User-provided context pointer
@@ -124,6 +133,7 @@ typedef struct {
 
   // Callbacks
   webrtc_state_callback_t on_state_change;
+  webrtc_gathering_state_callback_t on_gathering_state_change;
   webrtc_local_description_callback_t on_local_description;
   webrtc_local_candidate_callback_t on_local_candidate;
   webrtc_datachannel_open_callback_t on_datachannel_open;
@@ -184,6 +194,21 @@ void webrtc_close_peer_connection(webrtc_peer_connection_t *pc);
  * @return Current state
  */
 webrtc_state_t webrtc_get_state(webrtc_peer_connection_t *pc);
+
+/**
+ * @brief Get current ICE gathering state
+ * @param pc Peer connection
+ * @return Current gathering state
+ */
+webrtc_gathering_state_t webrtc_get_gathering_state(webrtc_peer_connection_t *pc);
+
+/**
+ * @brief Check if ICE gathering has timed out
+ * @param pc Peer connection
+ * @param timeout_ms Timeout in milliseconds
+ * @return true if gathering is in progress and has exceeded timeout, false otherwise
+ */
+bool webrtc_is_gathering_timed_out(webrtc_peer_connection_t *pc, uint32_t timeout_ms);
 
 /**
  * @brief Get user data pointer from connection

@@ -16,6 +16,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/platform/init.h>
+#include <ascii-chat/platform/system.h>
 
 #include <string.h>
 #include <rtc/rtc.h>
@@ -25,10 +26,12 @@
 // ============================================================================
 
 struct webrtc_peer_connection {
-  int rtc_id;                ///< libdatachannel peer connection ID
-  webrtc_config_t config;    ///< Configuration with callbacks
-  webrtc_state_t state;      ///< Current connection state
-  webrtc_data_channel_t *dc; ///< Primary data channel (if created/received)
+  int rtc_id;                               ///< libdatachannel peer connection ID
+  webrtc_config_t config;                   ///< Configuration with callbacks
+  webrtc_state_t state;                     ///< Current connection state
+  webrtc_gathering_state_t gathering_state; ///< Current ICE gathering state
+  uint64_t gathering_start_time_ms;         ///< When gathering started (platform_get_time_ms)
+  webrtc_data_channel_t *dc;                ///< Primary data channel (if created/received)
 };
 
 struct webrtc_data_channel {
@@ -120,6 +123,45 @@ static void on_state_change_adapter(int pc_id, rtcState state, void *user_data) 
 
   if (pc->config.on_state_change) {
     pc->config.on_state_change(pc, new_state, pc->config.user_data);
+  }
+}
+
+static void on_gathering_state_change_adapter(int pc_id, rtcGatheringState state, void *user_data) {
+  (void)pc_id; // Unused - we get peer connection from user_data
+  webrtc_peer_connection_t *pc = (webrtc_peer_connection_t *)user_data;
+  if (!pc)
+    return;
+
+  // Map libdatachannel gathering state to our enum
+  webrtc_gathering_state_t new_state;
+  switch (state) {
+  case RTC_GATHERING_NEW:
+    new_state = WEBRTC_GATHERING_NEW;
+    break;
+  case RTC_GATHERING_INPROGRESS:
+    new_state = WEBRTC_GATHERING_GATHERING;
+    // Record start time when gathering begins
+    if (pc->gathering_state != WEBRTC_GATHERING_GATHERING) {
+      pc->gathering_start_time_ms = platform_get_monotonic_time_us() / 1000;
+      log_debug("ICE gathering started at %llu ms", (unsigned long long)pc->gathering_start_time_ms);
+    }
+    break;
+  case RTC_GATHERING_COMPLETE:
+    new_state = WEBRTC_GATHERING_COMPLETE;
+    if (pc->gathering_start_time_ms > 0) {
+      uint64_t duration = (platform_get_monotonic_time_us() / 1000) - pc->gathering_start_time_ms;
+      log_info("ICE gathering completed in %llu ms", (unsigned long long)duration);
+    }
+    break;
+  default:
+    new_state = WEBRTC_GATHERING_NEW;
+    break;
+  }
+
+  pc->gathering_state = new_state;
+
+  if (pc->config.on_gathering_state_change) {
+    pc->config.on_gathering_state_change(pc, new_state, pc->config.user_data);
   }
 }
 
@@ -405,9 +447,14 @@ asciichat_error_t webrtc_create_peer_connection(const webrtc_config_t *config, w
 
   pc->rtc_id = pc_id;
 
+  // Initialize gathering state
+  pc->gathering_state = WEBRTC_GATHERING_NEW;
+  pc->gathering_start_time_ms = 0;
+
   // Set up callbacks
   rtcSetUserPointer(pc_id, pc);
   rtcSetStateChangeCallback(pc_id, on_state_change_adapter);
+  rtcSetGatheringStateChangeCallback(pc_id, on_gathering_state_change_adapter);
   rtcSetLocalDescriptionCallback(pc_id, on_local_description_adapter);
   rtcSetLocalCandidateCallback(pc_id, on_local_candidate_adapter);
   rtcSetDataChannelCallback(pc_id, on_datachannel_adapter);
@@ -442,6 +489,41 @@ webrtc_state_t webrtc_get_state(webrtc_peer_connection_t *pc) {
     return WEBRTC_STATE_CLOSED;
   }
   return pc->state;
+}
+
+webrtc_gathering_state_t webrtc_get_gathering_state(webrtc_peer_connection_t *pc) {
+  if (!pc) {
+    log_warn("Peer connection is NULL");
+    return WEBRTC_GATHERING_NEW;
+  }
+  return pc->gathering_state;
+}
+
+bool webrtc_is_gathering_timed_out(webrtc_peer_connection_t *pc, uint32_t timeout_ms) {
+  if (!pc) {
+    return false;
+  }
+
+  // Only check timeout if we're actively gathering
+  if (pc->gathering_state != WEBRTC_GATHERING_GATHERING) {
+    return false;
+  }
+
+  // If gathering hasn't started yet (start_time == 0), no timeout
+  if (pc->gathering_start_time_ms == 0) {
+    return false;
+  }
+
+  // Check if elapsed time exceeds timeout
+  uint64_t current_time_ms = platform_get_monotonic_time_us() / 1000;
+  uint64_t elapsed_ms = current_time_ms - pc->gathering_start_time_ms;
+
+  if (elapsed_ms > timeout_ms) {
+    log_warn("ICE gathering timeout: %llu ms elapsed (timeout: %u ms)", (unsigned long long)elapsed_ms, timeout_ms);
+    return true;
+  }
+
+  return false;
 }
 
 void *webrtc_get_user_data(webrtc_peer_connection_t *pc) {

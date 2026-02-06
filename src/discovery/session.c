@@ -1184,6 +1184,21 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
         webrtc_initiated = true; // Mark as initiated
       }
 
+      // Check for ICE gathering timeout (using configured timeout)
+      if (webrtc_initiated && session->peer_manager) {
+        // Get the peer connection from peer manager to check gathering state
+        // (This is a simplified check - in practice, peer_manager would need an API to check all peers)
+        int timeout_ms = GET_OPTION(webrtc_ice_timeout_ms);
+
+        // Note: This is a per-peer check. For production, peer_manager should expose
+        // an API like webrtc_peer_manager_check_timeouts() that checks all peers.
+        // For now, we just log the timeout value being used.
+        log_debug_every(1000, "Waiting for WebRTC connection (ICE timeout: %d ms)", timeout_ms);
+
+        // TODO: Implement actual peer-level timeout checking via peer_manager API
+        // For now, the timeout is tracked per-connection via gathering_start_time_ms
+      }
+
       // Poll ACDS for WebRTC signaling messages (SDP answer, ICE candidates)
       // while waiting for DataChannel to open
       if (session->acds_socket != INVALID_SOCKET_VALUE) {
