@@ -279,7 +279,7 @@ export function MirrorPage() {
           <div
             ref={terminalRef}
             className="flex-1 rounded bg-terminal-bg"
-            style={{ overflow: 'hidden' }}
+            style={{ overflow: 'hidden', pointerEvents: 'none' }}
           />
         </div>
 
