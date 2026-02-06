@@ -361,16 +361,16 @@ set(CORE_SRCS
     lib/ui/terminal_screen.c  # NEW: Terminal screen rendering abstraction
     lib/options/options.c
     lib/options/common.c
-    lib/options/validation.c
     lib/options/levenshtein.c
-    lib/options/config.c
-    lib/options/schema.c          # Config schema metadata (NEW)
     lib/options/rcu.c
     # Options builder API (refactored into builder/ subdirectory)
     lib/options/builder/builder.c     # Core builder functionality
     lib/options/builder/handlers.c    # Type handler implementations
     lib/options/builder/help.c         # Help text generation
-    lib/options/presets.c          # Preset option configs (NEW)
+    # Configuration file handling (config/ subdirectory)
+    lib/options/config/config.c        # TOML config parser
+    lib/options/config/schema.c        # Config schema validation
+    lib/options/config/presets.c       # Preset option configs
     # Central options registry (refactored into registry/ subdirectory - organized by help group)
     lib/options/registry/metadata.c       # Metadata arrays for completions
     lib/options/registry/general.c        # General options
@@ -387,8 +387,10 @@ set(CORE_SRCS
     lib/options/registry/registry.c       # Master registry composition
     lib/options/registry/core.c           # Internal helper functions
     lib/options/registry/public_api.c     # Public API implementation
-    lib/options/parsers.c          # Custom enum parsers (NEW)
-    lib/options/actions.c          # Action option callbacks (NEW)
+    # Option parsing and validation (parsing/ subdirectory)
+    lib/options/parsing/parsers.c         # Custom enum parsers
+    lib/options/parsing/validation.c      # Option validation
+    lib/options/parsing/actions.c         # Action option callbacks
     lib/options/layout.c           # Two-column layout helpers (NEW)
     lib/options/manpage.c          # Man page template generation (NEW)
     lib/options/manpage/resources.c # Man page resource abstraction layer (NEW)
