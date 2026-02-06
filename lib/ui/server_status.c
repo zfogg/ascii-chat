@@ -4,23 +4,16 @@
  */
 
 #include <ascii-chat/ui/server_status.h>
+#include <ascii-chat/ui/terminal_screen.h>
 #include <ascii-chat/session/session_log_buffer.h>
-#include <ascii-chat/util/display.h>
-#include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/log/colorize.h>
 #include <ascii-chat/common.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include <stdatomic.h>
-
-// Cached terminal size (to avoid flooding logs with terminal_get_size errors)
-static terminal_size_t g_cached_term_size = {.rows = 24, .cols = 80};
-static uint64_t g_last_term_size_check_us = 0;
-#define TERM_SIZE_CHECK_INTERVAL_US 1000000ULL // Check terminal size max once per second
 
 void server_status_log_init(void) {
   // Delegate to shared session log buffer
@@ -40,11 +33,6 @@ void server_status_log_clear(void) {
 void server_status_log_append(const char *message) {
   // Delegate to shared session log buffer
   session_log_buffer_append(message);
-}
-
-static size_t server_status_log_get_recent(session_log_entry_t *out_entries, size_t max_count) {
-  // Delegate to shared session log buffer
-  return session_log_buffer_get_recent(out_entries, max_count);
 }
 
 // ============================================================================
@@ -86,21 +74,20 @@ asciichat_error_t server_status_gather(tcp_server_t *server, const char *session
   return ASCIICHAT_OK;
 }
 
-void server_status_display(const server_status_t *status) {
+/**
+ * @brief Render server status header (callback for terminal_screen)
+ *
+ * Renders exactly 4 lines:
+ * - Line 1: Top border
+ * - Line 2: Title + client count + uptime
+ * - Line 3: Session string + addresses
+ * - Line 4: Bottom border
+ */
+static void render_server_status_header(terminal_size_t term_size, void *user_data) {
+  const server_status_t *status = (const server_status_t *)user_data;
   if (!status) {
     return;
   }
-
-  // Get terminal dimensions (cached to avoid flooding logs with errors)
-  uint64_t now_us = platform_get_monotonic_time_us();
-  if (now_us - g_last_term_size_check_us > TERM_SIZE_CHECK_INTERVAL_US) {
-    terminal_size_t temp_size;
-    if (terminal_get_size(&temp_size) == ASCIICHAT_OK) {
-      g_cached_term_size = temp_size;
-    }
-    g_last_term_size_check_us = now_us;
-  }
-  terminal_size_t term_size = g_cached_term_size;
 
   // Calculate uptime
   time_t now = time(NULL);
@@ -109,15 +96,6 @@ void server_status_display(const server_status_t *status) {
   int uptime_mins = (uptime_secs % 3600) / 60;
   int uptime_secs_rem = uptime_secs % 60;
 
-  // Clear screen and move to home position on BOTH stdout and stderr
-  // (logs may have been written to either stream before status screen started)
-  fprintf(stderr, "\033[H\033[2J");
-  fflush(stderr);
-  printf("\033[H\033[2J");
-
-  // ========================================================================
-  // STATUS BOX - EXACTLY 4 LINES (fixed height, never scrolls terminal)
-  // ========================================================================
   // Line 1: Top border
   printf("\033[1;36m━");
   for (int i = 1; i < term_size.cols - 1; i++) {
@@ -157,111 +135,22 @@ void server_status_display(const server_status_t *status) {
     printf("━");
   }
   printf("\033[0m\n");
+}
 
-  // ========================================================================
-  // LIVE LOG FEED - Fills remaining screen (never causes scroll)
-  // ========================================================================
-  // Calculate EXACTLY how many lines we have for logs
-  // Status took exactly 4 lines above, reserve 1 line to prevent cursor scroll
-  int logs_available_lines = term_size.rows - 5;
-  if (logs_available_lines < 1) {
-    logs_available_lines = 1; // At least show something
+void server_status_display(const server_status_t *status) {
+  if (!status) {
+    return;
   }
 
-  // Get recent log entries
-  session_log_entry_t logs[SESSION_LOG_BUFFER_SIZE];
-  size_t log_count = server_status_log_get_recent(logs, SESSION_LOG_BUFFER_SIZE);
+  // Use terminal_screen abstraction for rendering
+  terminal_screen_config_t config = {
+      .fixed_header_lines = 4,
+      .render_header = render_server_status_header,
+      .user_data = (void *)status,
+      .show_logs = true,
+  };
 
-  // Calculate actual display lines needed for each log (accounting for wrapping and newlines)
-  // Work backwards from most recent logs until we fill available lines
-  int lines_used = 0;
-  size_t start_idx = log_count; // Start past the end, will work backwards
-
-  for (size_t i = log_count; i > 0; i--) {
-    size_t idx = i - 1;
-    const char *msg = logs[idx].message;
-
-    // Count display lines for this message (newlines + wrapping)
-    // Split message by newlines and calculate visible width of each line
-    int msg_lines = 0;
-    const char *line_start = msg;
-    const char *p = msg;
-
-    while (*p) {
-      if (*p == '\n') {
-        // Calculate visible width of this line (excluding ANSI codes)
-        size_t line_len = p - line_start;
-        char line_buf[2048];
-        if (line_len < sizeof(line_buf)) {
-          memcpy(line_buf, line_start, line_len);
-          line_buf[line_len] = '\0';
-
-          int visible_width = display_width(line_buf);
-          if (visible_width < 0)
-            visible_width = (int)line_len; // Fallback
-
-          // Calculate how many terminal lines this takes (with wrapping)
-          if (term_size.cols > 0 && visible_width > 0) {
-            msg_lines += (visible_width + term_size.cols - 1) / term_size.cols;
-          } else {
-            msg_lines += 1;
-          }
-        } else {
-          msg_lines += 1; // Line too long, just count as 1
-        }
-
-        line_start = p + 1;
-      }
-      p++;
-    }
-
-    // Handle final line if message doesn't end with newline
-    if (line_start < p) {
-      size_t line_len = p - line_start;
-      char line_buf[2048];
-      if (line_len < sizeof(line_buf)) {
-        memcpy(line_buf, line_start, line_len);
-        line_buf[line_len] = '\0';
-
-        int visible_width = display_width(line_buf);
-        if (visible_width < 0)
-          visible_width = (int)line_len; // Fallback
-
-        // Calculate how many terminal lines this takes (with wrapping)
-        if (term_size.cols > 0 && visible_width > 0) {
-          msg_lines += (visible_width + term_size.cols - 1) / term_size.cols;
-        } else {
-          msg_lines += 1;
-        }
-      } else {
-        msg_lines += 1;
-      }
-    }
-
-    // Check if this log fits in remaining space
-    if (lines_used + msg_lines <= logs_available_lines) {
-      lines_used += msg_lines;
-      start_idx = idx;
-    } else {
-      break; // No more room
-    }
-  }
-
-  // Display logs that fit (starting from start_idx)
-  // Logs are already formatted with colors from logging.c
-  for (size_t i = start_idx; i < log_count; i++) {
-    printf("%s", logs[i].message);
-    if (logs[i].message[0] != '\0' && logs[i].message[strlen(logs[i].message) - 1] != '\n') {
-      printf("\n");
-    }
-  }
-
-  // Fill remaining lines to reach EXACTLY the bottom of screen without scrolling
-  for (int i = lines_used; i < logs_available_lines; i++) {
-    printf("\n");
-  }
-
-  fflush(stdout);
+  terminal_screen_render(&config);
 }
 
 void server_status_update(tcp_server_t *server, const char *session_string, const char *ipv4_address,

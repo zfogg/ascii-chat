@@ -15,6 +15,7 @@
  */
 
 #include <ascii-chat/ui/splash.h>
+#include <ascii-chat/ui/terminal_screen.h>
 #include <ascii-chat/session/display.h>
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/util/display.h>
@@ -119,6 +120,134 @@ static rgb_color_t get_rainbow_color_rgb(double position) {
 }
 
 // ============================================================================
+// Header Rendering (callback for terminal_screen)
+// ============================================================================
+
+/**
+ * @brief Context data for splash header rendering
+ */
+typedef struct {
+  int frame;       // Current animation frame number
+  bool use_colors; // Whether to use rainbow colors
+} splash_header_ctx_t;
+
+/**
+ * @brief Render splash header with rainbow animation (callback for terminal_screen)
+ *
+ * Renders exactly 8 lines:
+ * - Line 1: Top border
+ * - Lines 2-5: ASCII logo (4 lines, centered, rainbow animated)
+ * - Line 6: Blank line
+ * - Line 7: Tagline (centered)
+ * - Line 8: Bottom border
+ *
+ * @param term_size Current terminal dimensions
+ * @param user_data Pointer to splash_header_ctx_t
+ */
+static void render_splash_header(terminal_size_t term_size, void *user_data) {
+  const splash_header_ctx_t *ctx = (const splash_header_ctx_t *)user_data;
+  if (!ctx) {
+    return;
+  }
+
+  // ASCII logo lines (same as help output)
+  const char *ascii_logo[4] = {
+      "  __ _ ___  ___(_|_)       ___| |__   __ _| |_ ", " / _` / __|/ __| | |_____ / __| '_ \\ / _` | __| ",
+      "| (_| \\__ \\ (__| | |_____| (__| | | | (_| | |_ ", " \\__,_|___/\\___|_|_|      \\___|_| |_|\\__,_|\\__| "};
+  const char *tagline = "Video chat in your terminal";
+  const int logo_width = 52;
+  const double rainbow_speed = 0.01; // Characters per frame of wave speed
+
+  // Calculate rainbow offset for this frame (smooth continuous wave)
+  double offset = ctx->frame * rainbow_speed;
+
+  // Line 1: Top border
+  printf("\033[1;36m━");
+  for (int i = 1; i < term_size.cols - 1; i++) {
+    printf("━");
+  }
+  printf("\033[0m\n");
+
+  // Lines 2-5: ASCII logo (centered, truncated if too long)
+  for (int logo_line = 0; logo_line < 4; logo_line++) {
+    // Build plain text line first (for width calculation)
+    char plain_line[512];
+    int horiz_pad = (term_size.cols - logo_width) / 2;
+    if (horiz_pad < 0) {
+      horiz_pad = 0;
+    }
+
+    int pos = 0;
+    for (int j = 0; j < horiz_pad && pos < (int)sizeof(plain_line) - 1; j++) {
+      plain_line[pos++] = ' ';
+    }
+    snprintf(plain_line + pos, sizeof(plain_line) - pos, "%s", ascii_logo[logo_line]);
+
+    // Check visible width and truncate if needed
+    int visible_width = display_width(plain_line);
+    if (visible_width < 0) {
+      visible_width = (int)strlen(plain_line);
+    }
+    if (term_size.cols > 0 && visible_width >= term_size.cols) {
+      plain_line[term_size.cols - 1] = '\0';
+    }
+
+    // Print with rainbow colors
+    int char_idx = 0;
+    for (int i = 0; plain_line[i] != '\0'; i++) {
+      char ch = plain_line[i];
+      if (ch == ' ') {
+        printf(" ");
+      } else if (ctx->use_colors) {
+        double char_pos = (ctx->frame * 52 + char_idx + offset) / 30.0;
+        rgb_color_t color = get_rainbow_color_rgb(char_pos);
+        printf("\x1b[38;2;%u;%u;%um%c\x1b[0m", color.r, color.g, color.b, ch);
+        char_idx++;
+      } else {
+        printf("%c", ch);
+        char_idx++;
+      }
+    }
+    printf("\n");
+  }
+
+  // Line 6: Blank line
+  printf("\n");
+
+  // Line 7: Tagline (centered, truncated if too long)
+  char plain_tagline[512];
+  int tagline_len = (int)strlen(tagline);
+  int tagline_pad = (term_size.cols - tagline_len) / 2;
+  if (tagline_pad < 0) {
+    tagline_pad = 0;
+  }
+
+  int tpos = 0;
+  for (int j = 0; j < tagline_pad && tpos < (int)sizeof(plain_tagline) - 1; j++) {
+    plain_tagline[tpos++] = ' ';
+  }
+  snprintf(plain_tagline + tpos, sizeof(plain_tagline) - tpos, "%s", tagline);
+
+  // Check visible width and truncate if needed
+  int tagline_visible_width = display_width(plain_tagline);
+  if (tagline_visible_width < 0) {
+    tagline_visible_width = (int)strlen(plain_tagline);
+  }
+  if (term_size.cols > 0 && tagline_visible_width >= term_size.cols) {
+    plain_tagline[term_size.cols - 1] = '\0';
+  }
+
+  printf("%s\n", plain_tagline);
+
+  // Line 8: Bottom border
+  printf("\033[1;36m━");
+  for (int i = 1; i < term_size.cols - 1; i++) {
+    printf("━");
+  }
+  printf("\033[0m\n");
+}
+
+// ============================================================================
 // Public API
 // ============================================================================
 
@@ -141,320 +270,36 @@ bool splash_should_display(bool is_intro) {
 }
 
 /**
- * @brief Build splash screen buffer with centered content
- * @param buffer Output buffer
- * @param buf_size Buffer size
- * @param width Terminal width
- * @param height Terminal height
- * @return Number of bytes written
- */
-static size_t build_splash_buffer(char *buffer, size_t buf_size, int width, int height) {
-  if (!buffer || buf_size < 100) {
-    return 0;
-  }
-
-  // Build the splash at TOP of screen (no vertical centering)
-  // This keeps the ASCII art fixed like the status screen header
-  (void)height; // Not used - splash is fixed at top, not centered
-
-  char *p = buffer;
-  size_t remaining = buf_size;
-
-  // ASCII logo from help (same as --help output)
-  const char *ascii_logo[4] = {
-      "  __ _ ___  ___(_|_)       ___| |__   __ _| |_ ", " / _` / __|/ __| | |_____ / __| '_ \\ / _` | __| ",
-      "| (_| \\__ \\ (__| | |_____| (__| | | | (_| | |_ ", " \\__,_|___/\\___|_|_|      \\___|_| |_|\\__,_|\\__| "};
-
-  // Center each logo line
-  for (int i = 0; i < 4; i++) {
-    int logo_width = 52;
-    int horiz_pad = (width - logo_width) / 2;
-    if (horiz_pad > 0 && remaining > (size_t)horiz_pad + (size_t)logo_width + 1) {
-      for (int j = 0; j < horiz_pad; j++) {
-        *p++ = ' ';
-      }
-      int n = snprintf(p, remaining, "%s\n", ascii_logo[i]);
-      if (n > 0) {
-        p += n;
-        remaining -= n;
-      }
-    }
-  }
-
-  // Blank line
-  if (remaining > 1) {
-    *p++ = '\n';
-    remaining--;
-  }
-
-  // Tagline centered
-  const char *tagline = "Video chat in your terminal";
-  int tagline_width = (int)strlen(tagline);
-  int tagline_pad = (width - tagline_width) / 2;
-  if (tagline_pad > 0 && remaining > (size_t)tagline_pad + (size_t)tagline_width + 1) {
-    for (int j = 0; j < tagline_pad; j++) {
-      *p++ = ' ';
-    }
-    int n = snprintf(p, remaining, "%s\n", tagline);
-    if (n > 0) {
-      p += n;
-      remaining -= n;
-    }
-  }
-
-  // Ensure null termination
-  if (remaining > 0) {
-    *p = '\0';
-  } else {
-    buffer[buf_size - 1] = '\0';
-  }
-
-  return p - buffer;
-}
-
-// Cached terminal size (to avoid flooding logs with terminal_get_size errors)
-static terminal_size_t g_splash_cached_term_size = {.rows = 24, .cols = 80};
-static uint64_t g_splash_last_term_size_check_us = 0;
-#define SPLASH_TERM_SIZE_CHECK_INTERVAL_US 1000000ULL // Check terminal size max once per second
-
-/**
  * @brief Animation thread that displays splash with rainbow wave effect and logs
- * Follows the same pattern as server_status_display() for consistent behavior
+ * Uses terminal_screen abstraction for consistent rendering
  */
 static void *splash_animation_thread(void *arg) {
   (void)arg;
-
-  // ASCII logo lines (same as help output)
-  const char *ascii_logo[4] = {
-      "  __ _ ___  ___(_|_)       ___| |__   __ _| |_ ", " / _` / __|/ __| | |_____ / __| '_ \\ / _` | __| ",
-      "| (_| \\__ \\ (__| | |_____| (__| | | | (_| | |_ ", " \\__,_|___/\\___|_|_|      \\___|_| |_|\\__,_|\\__| "};
-  const char *tagline = "Video chat in your terminal";
-  const int logo_width = 52;
 
   // Check if colors should be used (TTY check)
   bool use_colors = terminal_should_color_output(STDOUT_FILENO);
 
   // Animate with rainbow wave effect
   int frame = 0;
-  const int anim_speed = 100;        // milliseconds per frame
-  const double rainbow_speed = 0.01; // Characters per frame of wave speed
+  const int anim_speed = 100; // milliseconds per frame
 
   while (!atomic_load(&g_splash_state.should_stop)) {
-    // Get terminal dimensions (cached to avoid flooding logs with errors)
-    // This matches server_status.c lines 94-103
-    uint64_t now_us = platform_get_monotonic_time_us();
-    if (now_us - g_splash_last_term_size_check_us > SPLASH_TERM_SIZE_CHECK_INTERVAL_US) {
-      terminal_size_t temp_size;
-      if (terminal_get_size(&temp_size) == ASCIICHAT_OK) {
-        g_splash_cached_term_size = temp_size;
-      }
-      g_splash_last_term_size_check_us = now_us;
-    }
-    terminal_size_t term_size = g_splash_cached_term_size;
-    // Clear screen and move to home position on BOTH stdout and stderr
-    // (logs may have been written to either stream before splash started)
-    // This matches server_status.c lines 114-116
-    fprintf(stderr, "\033[H\033[2J");
-    fflush(stderr);
-    printf("\033[H\033[2J");
+    // Set up splash header context for this frame
+    splash_header_ctx_t header_ctx = {
+        .frame = frame,
+        .use_colors = use_colors,
+    };
 
-    // ========================================================================
-    // SPLASH SCREEN - EXACTLY 8 LINES (fixed height, never scrolls terminal)
-    // ========================================================================
-    // Calculate rainbow offset for this frame (smooth continuous wave)
-    double offset = frame * rainbow_speed;
+    // Configure terminal screen with splash header callback
+    terminal_screen_config_t screen_config = {
+        .fixed_header_lines = 8, // Splash header is exactly 8 lines
+        .render_header = render_splash_header,
+        .user_data = &header_ctx,
+        .show_logs = true, // Show live log feed below splash
+    };
 
-    // Line 1: Top border
-    printf("\033[1;36m━");
-    for (int i = 1; i < term_size.cols - 1; i++) {
-      printf("━");
-    }
-    printf("\033[0m\n");
-
-    // Lines 2-5: ASCII logo (centered, truncated if too long)
-    for (int logo_line = 0; logo_line < 4; logo_line++) {
-      // Build plain text line first (for width calculation)
-      char plain_line[512];
-      int horiz_pad = (term_size.cols - logo_width) / 2;
-      if (horiz_pad < 0) {
-        horiz_pad = 0;
-      }
-
-      int pos = 0;
-      for (int j = 0; j < horiz_pad && pos < (int)sizeof(plain_line) - 1; j++) {
-        plain_line[pos++] = ' ';
-      }
-      snprintf(plain_line + pos, sizeof(plain_line) - pos, "%s", ascii_logo[logo_line]);
-
-      // Check visible width and truncate if needed
-      int visible_width = display_width(plain_line);
-      if (visible_width < 0) {
-        visible_width = (int)strlen(plain_line);
-      }
-      if (term_size.cols > 0 && visible_width >= term_size.cols) {
-        plain_line[term_size.cols - 1] = '\0';
-      }
-
-      // Print with rainbow colors
-      int char_idx = 0;
-      for (int i = 0; plain_line[i] != '\0'; i++) {
-        char ch = plain_line[i];
-        if (ch == ' ') {
-          printf(" ");
-        } else if (use_colors) {
-          double char_pos = (frame * 52 + char_idx + offset) / 30.0;
-          rgb_color_t color = get_rainbow_color_rgb(char_pos);
-          printf("\x1b[38;2;%u;%u;%um%c\x1b[0m", color.r, color.g, color.b, ch);
-          char_idx++;
-        } else {
-          printf("%c", ch);
-          char_idx++;
-        }
-      }
-      printf("\n");
-    }
-
-    // Line 6: Blank line
-    printf("\n");
-
-    // Line 7: Tagline (centered, truncated if too long)
-    char plain_tagline[512];
-    int tagline_len = (int)strlen(tagline);
-    int tagline_pad = (term_size.cols - tagline_len) / 2;
-    if (tagline_pad < 0) {
-      tagline_pad = 0;
-    }
-
-    int tpos = 0;
-    for (int j = 0; j < tagline_pad && tpos < (int)sizeof(plain_tagline) - 1; j++) {
-      plain_tagline[tpos++] = ' ';
-    }
-    snprintf(plain_tagline + tpos, sizeof(plain_tagline) - tpos, "%s", tagline);
-
-    // Check visible width and truncate if needed
-    int tagline_visible_width = display_width(plain_tagline);
-    if (tagline_visible_width < 0) {
-      tagline_visible_width = (int)strlen(plain_tagline);
-    }
-    if (term_size.cols > 0 && tagline_visible_width >= term_size.cols) {
-      plain_tagline[term_size.cols - 1] = '\0';
-    }
-
-    printf("%s\n", plain_tagline);
-
-    // Line 8: Bottom border
-    printf("\033[1;36m━");
-    for (int i = 1; i < term_size.cols - 1; i++) {
-      printf("━");
-    }
-    printf("\033[0m\n");
-
-    // ========================================================================
-    // LIVE LOG FEED - Fills remaining screen (never causes scroll)
-    // ========================================================================
-    // Calculate EXACTLY how many lines we have for logs
-    // Splash took exactly 8 lines above, reserve 1 line to prevent cursor scroll
-    // This matches server_status.c line 166
-    int logs_available_lines = term_size.rows - 9;
-    if (logs_available_lines < 1) {
-      logs_available_lines = 1; // At least show something
-    }
-
-    // Get recent log entries
-    session_log_entry_t logs[SESSION_LOG_BUFFER_SIZE];
-    size_t log_count = session_log_buffer_get_recent(logs, SESSION_LOG_BUFFER_SIZE);
-
-    // Calculate actual display lines needed for each log (accounting for wrapping and newlines)
-    // Work backwards from most recent logs until we fill available lines
-    // This matches server_status.c lines 175-248
-    int lines_used = 0;
-    size_t start_idx = log_count; // Start past the end, will work backwards
-
-    for (size_t i = log_count; i > 0; i--) {
-      size_t idx = i - 1;
-      const char *msg = logs[idx].message;
-
-      // Count display lines for this message (newlines + wrapping)
-      // Split message by newlines and calculate visible width of each line
-      int msg_lines = 0;
-      const char *line_start = msg;
-      const char *p = msg;
-
-      while (*p) {
-        if (*p == '\n') {
-          // Calculate visible width of this line (excluding ANSI codes)
-          size_t line_len = p - line_start;
-          char line_buf[2048];
-          if (line_len < sizeof(line_buf)) {
-            memcpy(line_buf, line_start, line_len);
-            line_buf[line_len] = '\0';
-
-            int visible_width = display_width(line_buf);
-            if (visible_width < 0)
-              visible_width = (int)line_len; // Fallback
-
-            // Calculate how many terminal lines this takes (with wrapping)
-            if (term_size.cols > 0 && visible_width > 0) {
-              msg_lines += (visible_width + term_size.cols - 1) / term_size.cols;
-            } else {
-              msg_lines += 1;
-            }
-          } else {
-            msg_lines += 1; // Line too long, just count as 1
-          }
-
-          line_start = p + 1;
-        }
-        p++;
-      }
-
-      // Handle final line if message doesn't end with newline
-      if (line_start < p) {
-        size_t line_len = p - line_start;
-        char line_buf[2048];
-        if (line_len < sizeof(line_buf)) {
-          memcpy(line_buf, line_start, line_len);
-          line_buf[line_len] = '\0';
-
-          int visible_width = display_width(line_buf);
-          if (visible_width < 0)
-            visible_width = (int)line_len; // Fallback
-
-          // Calculate how many terminal lines this takes (with wrapping)
-          if (term_size.cols > 0 && visible_width > 0) {
-            msg_lines += (visible_width + term_size.cols - 1) / term_size.cols;
-          } else {
-            msg_lines += 1;
-          }
-        } else {
-          msg_lines += 1;
-        }
-      }
-
-      // Check if this log fits in remaining space
-      if (lines_used + msg_lines <= logs_available_lines) {
-        lines_used += msg_lines;
-        start_idx = idx;
-      } else {
-        break; // No more room
-      }
-    }
-
-    // Display logs that fit (starting from start_idx)
-    // Logs are already formatted with colors from logging.c
-    for (size_t i = start_idx; i < log_count; i++) {
-      printf("%s", logs[i].message);
-      if (logs[i].message[0] != '\0' && logs[i].message[strlen(logs[i].message) - 1] != '\n') {
-        printf("\n");
-      }
-    }
-
-    // Fill remaining lines to reach EXACTLY the bottom of screen without scrolling
-    for (int i = lines_used; i < logs_available_lines; i++) {
-      printf("\n");
-    }
-
-    fflush(stdout);
+    // Render the screen (header + logs)
+    terminal_screen_render(&screen_config);
 
     // Move to next frame
     frame++;
