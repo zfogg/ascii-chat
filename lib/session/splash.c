@@ -16,6 +16,8 @@
 
 #include <ascii-chat/session/splash.h>
 #include <ascii-chat/session/display.h>
+#include <ascii-chat/session/session_log_buffer.h>
+#include <ascii-chat/util/display.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/video/ansi_fast.h>
@@ -222,7 +224,7 @@ static size_t build_splash_buffer(char *buffer, size_t buf_size, int width, int 
 }
 
 /**
- * @brief Animation thread that displays splash with rainbow wave effect
+ * @brief Animation thread that displays splash with rainbow wave effect and logs
  */
 static void *splash_animation_thread(void *arg) {
   (void)arg;
@@ -233,6 +235,14 @@ static void *splash_animation_thread(void *arg) {
 
   // Build splash buffer once
   build_splash_buffer(base_buffer, sizeof(base_buffer), width, height);
+
+  // Count lines in splash content for log space calculation
+  int splash_lines = 0;
+  for (int i = 0; base_buffer[i] != '\0'; i++) {
+    if (base_buffer[i] == '\n') {
+      splash_lines++;
+    }
+  }
 
   // Check if colors should be used (TTY check)
   bool use_colors = terminal_should_color_output(STDOUT_FILENO);
@@ -274,6 +284,102 @@ static void *splash_animation_thread(void *arg) {
       }
     }
 
+    // Get logs from session_log_buffer
+    session_log_entry_t logs[SESSION_LOG_BUFFER_SIZE];
+    size_t log_count = session_log_buffer_get_recent(logs, SESSION_LOG_BUFFER_SIZE);
+
+    // Calculate remaining space for logs
+    int logs_available_lines = height - splash_lines;
+    if (logs_available_lines < 0) {
+      logs_available_lines = 0;
+    }
+
+    // Calculate which logs fit in remaining space (same logic as server_status.c)
+    int lines_used = 0;
+    size_t start_idx = log_count; // Start from end (no logs fit yet)
+
+    for (size_t idx = 0; idx < log_count; idx++) {
+      const char *msg = logs[idx].message;
+
+      // Count how many terminal lines this log takes (accounting for wrapping)
+      int msg_lines = 0;
+      const char *line_start = msg;
+      const char *p = msg;
+
+      while (*p != '\0') {
+        if (*p == '\n') {
+          // Calculate visible width for this line
+          size_t line_len = p - line_start;
+          char line_buf[2048];
+          if (line_len < sizeof(line_buf)) {
+            memcpy(line_buf, line_start, line_len);
+            line_buf[line_len] = '\0';
+
+            int visible_width = display_width(line_buf);
+            if (visible_width < 0)
+              visible_width = (int)line_len; // Fallback
+
+            // Calculate how many terminal lines this takes (with wrapping)
+            if (width > 0 && visible_width > 0) {
+              msg_lines += (visible_width + width - 1) / width;
+            } else {
+              msg_lines += 1;
+            }
+          } else {
+            msg_lines += 1; // Line too long, just count as 1
+          }
+
+          line_start = p + 1;
+        }
+        p++;
+      }
+
+      // Handle final line if message doesn't end with newline
+      if (line_start < p) {
+        size_t line_len = p - line_start;
+        char line_buf[2048];
+        if (line_len < sizeof(line_buf)) {
+          memcpy(line_buf, line_start, line_len);
+          line_buf[line_len] = '\0';
+
+          int visible_width = display_width(line_buf);
+          if (visible_width < 0)
+            visible_width = (int)line_len; // Fallback
+
+          // Calculate how many terminal lines this takes (with wrapping)
+          if (width > 0 && visible_width > 0) {
+            msg_lines += (visible_width + width - 1) / width;
+          } else {
+            msg_lines += 1;
+          }
+        } else {
+          msg_lines += 1;
+        }
+      }
+
+      // Check if this log fits in remaining space
+      if (lines_used + msg_lines <= logs_available_lines) {
+        lines_used += msg_lines;
+        start_idx = idx;
+      } else {
+        break; // No more room
+      }
+    }
+
+    // Display logs that fit (starting from start_idx)
+    // Logs are already formatted with colors from logging.c
+    for (size_t i = start_idx; i < log_count; i++) {
+      printf("%s", logs[i].message);
+      if (logs[i].message[0] != '\0' && logs[i].message[strlen(logs[i].message) - 1] != '\n') {
+        printf("\n");
+      }
+    }
+
+    // Fill remaining lines to reach EXACTLY the bottom of screen without scrolling
+    for (int i = lines_used; i < logs_available_lines; i++) {
+      printf("\n");
+    }
+
     fflush(stdout);
 
     // Move to next frame
@@ -299,6 +405,12 @@ int splash_intro_start(session_display_ctx_t *ctx) {
   int width = GET_OPTION(width);
   int height = GET_OPTION(height);
   if (width < 50 || height < 20) {
+    return 0;
+  }
+
+  // Initialize log buffer for capturing logs during animation
+  if (!session_log_buffer_init()) {
+    log_warn("Failed to initialize splash log buffer");
     return 0;
   }
 
@@ -333,6 +445,9 @@ int splash_intro_done(void) {
 
   // Clear screen for next render
   terminal_clear_screen();
+
+  // NOTE: Do NOT cleanup session_log_buffer here - it may be used by status screen
+  // Status screen will call session_log_buffer_cleanup() when appropriate
 
   return 0; // ASCIICHAT_OK
 }
