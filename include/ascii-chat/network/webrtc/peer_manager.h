@@ -71,17 +71,31 @@ typedef void (*webrtc_transport_ready_callback_t)(acip_transport_t *transport, c
                                                   void *user_data);
 
 /**
+ * @brief Callback when ICE gathering times out for a peer
+ * @param participant_id Remote participant UUID (16 bytes)
+ * @param timeout_ms Configured timeout in milliseconds
+ * @param elapsed_ms Actual elapsed time in milliseconds
+ * @param user_data User context pointer
+ *
+ * Called when a peer connection's ICE gathering exceeds the configured timeout.
+ * The peer connection will be closed after this callback returns.
+ */
+typedef void (*webrtc_gathering_timeout_callback_t)(const uint8_t participant_id[16], uint32_t timeout_ms,
+                                                    uint64_t elapsed_ms, void *user_data);
+
+/**
  * @brief Peer manager configuration
  */
 typedef struct {
-  webrtc_peer_role_t role;                              ///< Session role (creator or joiner)
-  stun_server_t *stun_servers;                          ///< STUN servers for ICE
-  size_t stun_count;                                    ///< Number of STUN servers
-  turn_server_t *turn_servers;                          ///< TURN servers for relay
-  size_t turn_count;                                    ///< Number of TURN servers
-  webrtc_transport_ready_callback_t on_transport_ready; ///< Called when DataChannel ready
-  void *user_data;                                      ///< Passed to callbacks
-  crypto_context_t *crypto_ctx;                         ///< Crypto context for transports
+  webrtc_peer_role_t role;                                  ///< Session role (creator or joiner)
+  stun_server_t *stun_servers;                              ///< STUN servers for ICE
+  size_t stun_count;                                        ///< Number of STUN servers
+  turn_server_t *turn_servers;                              ///< TURN servers for relay
+  size_t turn_count;                                        ///< Number of TURN servers
+  webrtc_transport_ready_callback_t on_transport_ready;     ///< Called when DataChannel ready
+  webrtc_gathering_timeout_callback_t on_gathering_timeout; ///< Called when ICE gathering times out
+  void *user_data;                                          ///< Passed to callbacks
+  crypto_context_t *crypto_ctx;                             ///< Crypto context for transports
 } webrtc_peer_manager_config_t;
 
 /**
@@ -198,6 +212,29 @@ asciichat_error_t webrtc_peer_manager_handle_ice(webrtc_peer_manager_t *manager,
  */
 asciichat_error_t webrtc_peer_manager_connect(webrtc_peer_manager_t *manager, const uint8_t session_id[16],
                                               const uint8_t participant_id[16]);
+
+// ============================================================================
+// Connection Health Monitoring
+// ============================================================================
+
+/**
+ * @brief Check all peer connections for ICE gathering timeouts
+ * @param manager Peer manager
+ * @param timeout_ms Timeout threshold in milliseconds
+ * @return Number of peer connections that timed out and were closed
+ *
+ * Iterates through all active peer connections and checks if ICE gathering
+ * has exceeded the specified timeout. For each timed-out connection:
+ * - Calls on_gathering_timeout callback (if configured)
+ * - Closes the peer connection
+ * - Removes it from the manager
+ *
+ * This should be called periodically (e.g., every 100ms) during connection
+ * establishment to detect and handle gathering failures.
+ *
+ * @note Thread-safe - uses internal locking
+ */
+int webrtc_peer_manager_check_gathering_timeouts(webrtc_peer_manager_t *manager, uint32_t timeout_ms);
 
 /** @} */ // end of webrtc_peer_manager group
 

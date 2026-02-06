@@ -553,6 +553,29 @@ static asciichat_error_t discovery_send_ice_via_acds(const uint8_t session_id[16
 }
 
 /**
+ * @brief Callback when ICE gathering times out for a peer
+ *
+ * This callback is invoked when a peer connection's ICE gathering exceeds
+ * the configured timeout. This typically indicates that STUN/TURN servers
+ * are unreachable or the network configuration prevents ICE candidate gathering.
+ */
+static void discovery_on_gathering_timeout(const uint8_t participant_id[16], uint32_t timeout_ms, uint64_t elapsed_ms,
+                                           void *user_data) {
+  (void)user_data; // Session context not needed for logging
+
+  log_error("========== ICE GATHERING TIMEOUT ==========");
+  log_error("Peer connection failed to gather ICE candidates");
+  log_error("  Participant: %02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x", participant_id[0],
+            participant_id[1], participant_id[2], participant_id[3], participant_id[4], participant_id[5],
+            participant_id[6], participant_id[7], participant_id[8], participant_id[9], participant_id[10],
+            participant_id[11], participant_id[12], participant_id[13], participant_id[14], participant_id[15]);
+  log_error("  Timeout: %u ms", timeout_ms);
+  log_error("  Elapsed: %llu ms", (unsigned long long)elapsed_ms);
+  log_error("===========================================");
+  log_warn("Possible causes: STUN/TURN servers unreachable, firewall blocking UDP, network issues");
+}
+
+/**
  * @brief Callback when WebRTC DataChannel is ready
  *
  * This callback is invoked by the WebRTC peer manager when a DataChannel
@@ -754,6 +777,7 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
       .turn_servers = session->turn_servers,
       .turn_count = session->turn_count,
       .on_transport_ready = discovery_on_transport_ready,
+      .on_gathering_timeout = discovery_on_gathering_timeout,
       .user_data = session,
       .crypto_ctx = NULL // Crypto happens at ACIP layer
   };
@@ -1184,19 +1208,30 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
         webrtc_initiated = true; // Mark as initiated
       }
 
-      // Check for ICE gathering timeout (using configured timeout)
+      // Check for ICE gathering timeout on all peers
       if (webrtc_initiated && session->peer_manager) {
-        // Get the peer connection from peer manager to check gathering state
-        // (This is a simplified check - in practice, peer_manager would need an API to check all peers)
         int timeout_ms = GET_OPTION(webrtc_ice_timeout_ms);
+        int timed_out_count = webrtc_peer_manager_check_gathering_timeouts(session->peer_manager, timeout_ms);
 
-        // Note: This is a per-peer check. For production, peer_manager should expose
-        // an API like webrtc_peer_manager_check_timeouts() that checks all peers.
-        // For now, we just log the timeout value being used.
-        log_debug_every(1000, "Waiting for WebRTC connection (ICE timeout: %d ms)", timeout_ms);
+        if (timed_out_count > 0) {
+          log_error("ICE gathering timeout: %d peer(s) failed to gather candidates within %dms", timed_out_count,
+                    timeout_ms);
 
-        // TODO: Implement actual peer-level timeout checking via peer_manager API
-        // For now, the timeout is tracked per-connection via gathering_start_time_ms
+          // Set error state - WebRTC connection failed
+          char error_msg[256];
+          snprintf(error_msg, sizeof(error_msg), "WebRTC ICE gathering timeout (%d peers, %dms)", timed_out_count,
+                   timeout_ms);
+          set_error(session, ERROR_NETWORK_TIMEOUT, error_msg);
+
+          // If --prefer-webrtc is set, this is a fatal error (no TCP fallback)
+          if (GET_OPTION(prefer_webrtc)) {
+            log_fatal("WebRTC connection failed and --prefer-webrtc is set - exiting");
+            set_state(session, DISCOVERY_STATE_FAILED);
+            return ERROR_NETWORK_TIMEOUT;
+          }
+
+          break; // Exit this case to allow fallback to TCP
+        }
       }
 
       // Poll ACDS for WebRTC signaling messages (SDP answer, ICE candidates)

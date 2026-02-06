@@ -15,6 +15,7 @@
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/platform/mutex.h>
+#include <ascii-chat/platform/system.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/uthash/uthash.h>
 #include <string.h>
@@ -519,4 +520,46 @@ asciichat_error_t webrtc_peer_manager_connect(webrtc_peer_manager_t *manager, co
   log_info("Initiated WebRTC connection to participant (offer auto-created by DataChannel)");
 
   return ASCIICHAT_OK;
+}
+
+int webrtc_peer_manager_check_gathering_timeouts(webrtc_peer_manager_t *manager, uint32_t timeout_ms) {
+  if (!manager) {
+    return 0;
+  }
+
+  int timeout_count = 0;
+  peer_entry_t *peer = NULL, *tmp = NULL;
+
+  mutex_lock(&manager->peers_mutex);
+
+  // Iterate through all peers and check for gathering timeout
+  HASH_ITER(hh, manager->peers, peer, tmp) {
+    if (!peer || !peer->pc) {
+      continue;
+    }
+
+    // Check if this peer's ICE gathering has timed out
+    if (webrtc_is_gathering_timed_out(peer->pc, timeout_ms)) {
+      webrtc_gathering_state_t state = webrtc_get_gathering_state(peer->pc);
+
+      log_error("ICE gathering timeout for peer (participant_id=%02x%02x%02x%02x..., timeout=%ums, state=%d)",
+                peer->participant_id[0], peer->participant_id[1], peer->participant_id[2], peer->participant_id[3],
+                timeout_ms, state);
+
+      // Call timeout callback if configured
+      if (manager->config.on_gathering_timeout) {
+        manager->config.on_gathering_timeout(peer->participant_id, timeout_ms, timeout_ms, manager->config.user_data);
+      }
+
+      // Remove and close the timed-out peer connection
+      remove_peer_locked(manager, peer);
+      timeout_count++;
+
+      log_info("Closed and removed timed-out peer connection (count: %d)", timeout_count);
+    }
+  }
+
+  mutex_unlock(&manager->peers_mutex);
+
+  return timeout_count;
 }
