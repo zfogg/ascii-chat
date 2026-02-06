@@ -358,6 +358,7 @@ set(CORE_SRCS
     lib/log/filter.c
     lib/platform/terminal.c     # Unified color detection system
     lib/options/colorscheme.c   # Color scheme management and early initialization
+    lib/core/terminal_screen.c  # NEW: Terminal screen rendering abstraction
     lib/options/options.c
     lib/options/common.c
     lib/options/validation.c
