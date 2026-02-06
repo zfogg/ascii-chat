@@ -1,5 +1,6 @@
 import './style.css';
 import { inject } from '@vercel/analytics';
+import { initMirror } from './pages/mirror';
 
 // Initialize Vercel Analytics
 inject();
@@ -9,16 +10,22 @@ const app = document.querySelector<HTMLDivElement>('#app')!;
 
 const route = window.location.pathname;
 
-// Placeholder for modes - will be implemented in Phase 1
+// Mirror Mode - Webcam ASCII rendering
 if (route === '/mirror' || route === '/mirror/') {
-  app.innerHTML = `
-    <div class="h-screen flex items-center justify-center">
-      <div class="text-center">
-        <h1 class="text-4xl font-bold text-terminal-cyan mb-4">ascii-chat | Mirror Mode</h1>
-        <p class="text-terminal-fg mb-8">Coming soon: Webcam → ASCII rendering</p>
+  initMirror().catch(error => {
+    console.error('[Router] Failed to initialize Mirror Mode:', error);
+    app.innerHTML = `
+      <div class="h-screen flex items-center justify-center">
+        <div class="text-center p-8 bg-terminal-1 rounded max-w-lg">
+          <h1 class="text-2xl font-bold text-terminal-fg mb-4">Error Loading Mirror Mode</h1>
+          <p class="text-terminal-fg mb-4">${error.message}</p>
+          <a href="/" class="px-4 py-2 bg-terminal-8 text-terminal-bg rounded hover:bg-terminal-7 inline-block">
+            Back to Home
+          </a>
+        </div>
       </div>
-    </div>
-  `;
+    `;
+  });
 } else if (route === '/client' || route === '/client/') {
   app.innerHTML = `
     <div class="h-screen flex items-center justify-center">

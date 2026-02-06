@@ -26,3 +26,8 @@ dist-ssr
 # Bun
 .bun
 bun.lockb
+
+# WASM build artifacts
+wasm/build/
+public/wasm/*.js
+public/wasm/*.wasm
