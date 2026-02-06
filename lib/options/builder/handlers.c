@@ -331,7 +331,7 @@ static void format_help_placeholder_string(char *buf, size_t bufsize) {
 }
 
 static void format_help_placeholder_double(char *buf, size_t bufsize) {
-  safe_snprintf(buf, bufsize, "DOUBLE");
+  safe_snprintf(buf, bufsize, "NUMBER");
 }
 
 static void format_help_placeholder_callback(char *buf, size_t bufsize) {

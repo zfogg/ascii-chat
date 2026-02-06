@@ -560,7 +560,7 @@ const char *options_get_type_placeholder(option_type_t type) {
   case OPTION_TYPE_INT:
     return "INTEGER";
   case OPTION_TYPE_DOUBLE:
-    return "DOUBLE";
+    return "NUMBER";
   case OPTION_TYPE_STRING:
     return "STRING";
   case OPTION_TYPE_CALLBACK:

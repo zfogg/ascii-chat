@@ -167,7 +167,7 @@ const registry_entry_t g_display_entries[] = {
      "Snapshot delay in seconds. The timer starts right before the client-side program prints the first frame. "
      "--snapshot --snapshot-delay=0 will print the first frame and exit.",
      "DISPLAY",
-     NULL,
+     "SECONDS",
      false,
      "ASCII_CHAT_SNAPSHOT_DELAY",
      NULL,

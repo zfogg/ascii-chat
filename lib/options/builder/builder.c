@@ -32,7 +32,7 @@
 /**
  * @brief Get help placeholder string for an option type
  * @param desc Option descriptor
- * @return Pointer to string literal ("INTEGER", "DOUBLE", "STRING", "VALUE", "[BOOLEAN]"), custom placeholder, or empty
+ * @return Pointer to string literal ("INTEGER", "NUMBER", "STRING", "VALUE", "[BOOLEAN]"), custom placeholder, or empty
  * string
  */
 const char *get_option_help_placeholder_str(const option_descriptor_t *desc) {
