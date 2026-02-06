@@ -276,8 +276,17 @@ static void client_handle_sigwinch(int sigwinch) {
  * This function is registered with atexit() to ensure proper cleanup
  * regardless of how the program terminates. Order of cleanup is important
  * to prevent race conditions and resource leaks.
+ *
+ * Safe to call multiple times (idempotent).
  */
 static void shutdown_client() {
+  // Guard against double cleanup (can be called explicitly + via atexit)
+  static bool shutdown_done = false;
+  if (shutdown_done) {
+    return;
+  }
+  shutdown_done = true;
+
   // Set global shutdown flag to stop all threads
   atomic_store(&g_should_exit, true);
 
@@ -944,6 +953,10 @@ int client_main(void) {
   session_log_buffer_cleanup();
 
   log_debug("ascii-chat client shutting down");
+
+  // IMPORTANT: Stop worker threads and join them BEFORE memory report
+  // atexit(shutdown_client) won't run if interrupted by SIGTERM, so call explicitly
+  shutdown_client();
 
   // Cleanup remaining shared subsystems (buffer pool, platform, etc.)
   // Note: atexit(asciichat_shared_shutdown) is registered in main.c,

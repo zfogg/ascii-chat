@@ -62,6 +62,9 @@ static const ignore_entry_t g_ignore_list[] = {
     {"lib/options/colorscheme.c", 575, 8}, // 8 256-color ANSI strings (cleaned after report)
     {"lib/options/colorscheme.c", 592, 8}, // 8 truecolor ANSI strings (cleaned after report)
     {"lib/session/display.c", 131, 1},     // Session display context (cleaned after report)
+    {"lib/platform/posix/util.c", 35, 15}, // Symbol cache strings (backtrace during memory report)
+    {"lib/platform/symbols.c", 1074, 2},   // Symbol array allocations (backtrace during memory report)
+    {"lib/asciichat_errno.c", 149, 2},     // Error context message (backtrace during memory report)
     {NULL, 0, 0}                           // Sentinel
 };
 

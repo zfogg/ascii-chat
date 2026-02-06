@@ -316,6 +316,12 @@ static void *webcam_capture_thread_func(void *arg) {
   log_debug("Webcam capture thread stopped");
 #endif
 
+  // Clean up cached frame before thread exit
+  if (last_frame) {
+    image_destroy(last_frame);
+    last_frame = NULL;
+  }
+
   atomic_store(&g_capture_thread_exited, true);
 
   // Clean up thread-local error context before exit
