@@ -645,18 +645,24 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
     session->stun_servers = NULL;
     session->stun_count = 0;
   } else {
-    // Allocate array for 1 STUN server (can be expanded for redundancy)
-    session->stun_servers = SAFE_MALLOC(sizeof(stun_server_t), stun_server_t *);
+    // Parse STUN servers from options (supports up to 4 servers for redundancy)
+    const int max_stun_servers = 4;
+    session->stun_servers = SAFE_MALLOC(max_stun_servers * sizeof(stun_server_t), stun_server_t *);
     if (!session->stun_servers) {
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate STUN server array");
     }
-    session->stun_count = 1;
 
-    // Configure primary STUN server
-    // STUN URL format: "stun:hostname:port"
-    const char *stun_url = "stun:stun.l.google.com:19302";
-    session->stun_servers[0].host_len = strlen(stun_url);
-    SAFE_STRNCPY(session->stun_servers[0].host, stun_url, sizeof(session->stun_servers[0].host));
+    // Parse comma-separated STUN server list from options
+    session->stun_count = stun_servers_parse(GET_OPTION(stun_servers), OPT_ENDPOINT_STUN_SERVERS_DEFAULT,
+                                             session->stun_servers, max_stun_servers);
+
+    if (session->stun_count == 0) {
+      log_warn("No STUN servers configured, WebRTC may fail with symmetric NAT");
+      SAFE_FREE(session->stun_servers);
+      session->stun_servers = NULL;
+    } else {
+      log_info("Configured %d STUN server(s) for WebRTC", session->stun_count);
+    }
   }
 
   // Set up TURN servers (if credentials available from ACDS and not disabled)
