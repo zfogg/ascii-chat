@@ -28,7 +28,7 @@ set_target_properties(mirror PROPERTIES
         -s EXPORT_ES6=1 \
         -s EXPORT_NAME='MirrorModule' \
         -s EXPORTED_FUNCTIONS='[\"_convert_frame_to_ascii\",\"_free_ascii_buffer\",\"_malloc\",\"_free\"]' \
-        -s EXPORTED_RUNTIME_METHODS='[\"ccall\",\"cwrap\",\"UTF8ToString\",\"getValue\",\"setValue\"]' \
+        -s EXPORTED_RUNTIME_METHODS='[\"ccall\",\"cwrap\",\"UTF8ToString\",\"getValue\",\"setValue\",\"HEAPU8\"]' \
         -s ALLOW_MEMORY_GROWTH=1 \
         -s INITIAL_MEMORY=32MB \
         -s MAXIMUM_MEMORY=256MB \

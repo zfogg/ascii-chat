@@ -37,8 +37,20 @@ export async function initMirrorWasm(): Promise<void> {
   if (wasmModule) return;
 
   console.log('[WASM] Loading Mirror module...');
-  wasmModule = await MirrorModuleFactory();
-  console.log('[WASM] Mirror module loaded successfully');
+  const module = await MirrorModuleFactory();
+
+  // Wait for runtime initialization if needed
+  if (module.onRuntimeInitialized) {
+    await new Promise<void>((resolve) => {
+      module.onRuntimeInitialized = () => {
+        console.log('[WASM] Runtime initialized');
+        resolve();
+      };
+    });
+  }
+
+  wasmModule = module;
+  console.log('[WASM] Mirror module loaded, HEAPU8 exists:', !!module.HEAPU8);
 }
 
 /**
@@ -60,6 +72,10 @@ export function convertFrameToAscii(
 ): string {
   if (!wasmModule) {
     throw new Error('WASM module not initialized. Call initMirrorWasm() first.');
+  }
+
+  if (!wasmModule.HEAPU8) {
+    throw new Error('WASM module not fully initialized. HEAPU8 is undefined.');
   }
 
   // Allocate WASM memory for input RGBA data
@@ -102,5 +118,5 @@ export function convertFrameToAscii(
  * Check if WASM module is ready
  */
 export function isWasmReady(): boolean {
-  return wasmModule !== null;
+  return wasmModule !== null && wasmModule.HEAPU8 !== undefined;
 }

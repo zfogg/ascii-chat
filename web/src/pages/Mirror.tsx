@@ -1,19 +1,24 @@
 import { useEffect, useRef, useState } from 'react'
 import { Terminal } from 'xterm'
+import { FitAddon } from '@xterm/addon-fit'
 import 'xterm/css/xterm.css'
 import { initMirrorWasm, convertFrameToAscii, isWasmReady } from '../wasm/mirror'
 
 // Configuration
-const ASCII_WIDTH = 80
-const ASCII_HEIGHT = 24
-const TARGET_FPS = 30
+const TARGET_FPS = 60
 const FRAME_INTERVAL = 1000 / TARGET_FPS
+
+// Large ASCII resolution - FitAddon will scale font to fill container
+// Slightly reduced width to account for container constraints
+const ASCII_WIDTH = 150
+const ASCII_HEIGHT = 60
 
 export function MirrorPage() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const terminalRef = useRef<HTMLDivElement>(null)
   const xtermRef = useRef<Terminal | null>(null)
+  const fitAddonRef = useRef<FitAddon | null>(null)
   const [fps, setFps] = useState<string>('--')
   const [isRunning, setIsRunning] = useState(false)
   const [error, setError] = useState<string>('')
@@ -42,33 +47,68 @@ export function MirrorPage() {
     }
 
     console.log('Initializing xterm.js terminal...')
-    try {
-      const terminal = new Terminal({
-        cols: ASCII_WIDTH,
-        rows: ASCII_HEIGHT,
-        theme: {
-          background: '#0c0c0c',
-          foreground: '#cccccc',
-        },
-        cursorStyle: 'bar',
-        cursorBlink: false,
-        fontFamily: 'monospace',
-        fontSize: 14,
-        scrollback: 0,
-        disableStdin: true,
-      })
 
-      terminal.open(terminalRef.current)
-      xtermRef.current = terminal
+    // Wait for next frame to ensure DOM is ready
+    const timeoutId = setTimeout(() => {
+      try {
+        const terminal = new Terminal({
+          cols: ASCII_WIDTH,
+          rows: ASCII_HEIGHT,
+          theme: {
+            background: '#0c0c0c',
+            foreground: '#cccccc',
+          },
+          cursorStyle: 'block',
+          cursorBlink: false,
+          fontFamily: '"Courier New", Courier, monospace',
+          fontSize: 12,
+          scrollback: 0,
+          disableStdin: true,
+        })
 
-      console.log('xterm.js terminal initialized successfully')
+        const fitAddon = new FitAddon()
+        terminal.loadAddon(fitAddon)
 
-      return () => {
-        terminal.dispose()
+        if (terminalRef.current) {
+          terminal.open(terminalRef.current)
+
+          // Wait a tick before fitting
+          requestAnimationFrame(() => {
+            try {
+              fitAddon.fit()
+              console.log('[Terminal] Fitted to container')
+            } catch (e) {
+              console.warn('FitAddon fit failed, continuing anyway:', e)
+            }
+          })
+
+          // Re-fit on window resize
+          const handleResize = () => {
+            try {
+              fitAddon.fit()
+            } catch (e) {
+              // Ignore
+            }
+          }
+          window.addEventListener('resize', handleResize)
+
+          xtermRef.current = terminal
+          fitAddonRef.current = fitAddon
+          console.log('xterm.js terminal initialized successfully')
+        }
+      } catch (err) {
+        console.error('Failed to initialize terminal:', err)
+        setError(`Failed to initialize terminal: ${err}`)
       }
-    } catch (err) {
-      console.error('Failed to initialize terminal:', err)
-      setError(`Failed to initialize terminal: ${err}`)
+    }, 100)
+
+    return () => {
+      clearTimeout(timeoutId)
+      window.removeEventListener('resize', () => {})
+      if (xtermRef.current) {
+        xtermRef.current.dispose()
+        xtermRef.current = null
+      }
     }
   }, [])
 
@@ -205,38 +245,34 @@ export function MirrorPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-terminal-bg text-terminal-fg p-4">
-      <div className="max-w-6xl mx-auto">
-        <header className="mb-4">
-          <h1 className="text-2xl font-bold mb-2">ascii-chat Mirror Mode</h1>
-          <p className="text-terminal-8">Local webcam ASCII preview (no networking)</p>
+    <div className="min-h-screen bg-terminal-bg text-terminal-fg">
+      <div className="h-screen flex flex-col">
+        <header className="px-4 py-2 flex-shrink-0">
+          <h1 className="text-xl font-bold">ascii-chat Mirror Mode</h1>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Video preview */}
-          <div className="bg-terminal-0 p-4 rounded">
-            <h2 className="text-lg font-semibold mb-2">Video Input</h2>
-            <video
-              ref={videoRef}
-              className="w-full rounded"
-              autoPlay
-              muted
-              playsInline
-            />
-            <canvas ref={canvasRef} className="hidden" />
-          </div>
-
-          {/* ASCII output */}
-          <div className="bg-terminal-0 p-4 rounded">
-            <h2 className="text-lg font-semibold mb-2">ASCII Output</h2>
-            <div className="mb-2 text-sm text-terminal-8">
-              FPS: <span className="text-terminal-2">{fps}</span>
-            </div>
-            <div ref={terminalRef} className="rounded overflow-hidden" />
-          </div>
+        {/* Hidden video and canvas for capture - invisible but rendered */}
+        <div style={{ opacity: 0, position: 'absolute', pointerEvents: 'none', width: 0, height: 0, overflow: 'hidden' }}>
+          <video ref={videoRef} autoPlay muted playsInline style={{ width: '640px', height: '480px' }} />
+          <canvas ref={canvasRef} />
         </div>
 
-        <div className="mt-4 flex gap-2">
+        {/* ASCII output */}
+        <div className="flex-1 flex flex-col px-4 pb-2">
+          <div className="flex justify-between items-center mb-1">
+            <h2 className="text-sm font-semibold">ASCII Mirror ({ASCII_WIDTH}x{ASCII_HEIGHT})</h2>
+            <div className="text-xs text-terminal-8">
+              FPS: <span className="text-terminal-2">{fps}</span>
+            </div>
+          </div>
+          <div
+            ref={terminalRef}
+            className="flex-1 rounded bg-terminal-bg"
+            style={{ overflow: 'hidden' }}
+          />
+        </div>
+
+        <div className="px-4 pb-2 flex gap-2 flex-shrink-0">
           {!isRunning ? (
             <button
               onClick={() => {
