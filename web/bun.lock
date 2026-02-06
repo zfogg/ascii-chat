@@ -25,6 +25,7 @@
         "terser": "^5.26.0",
         "typescript": "^5.3.3",
         "vite": "^5.0.10",
+        "vite-plugin-sitemap": "^0.8.2",
       },
       "optionalDependencies": {
         "@ffmpeg/ffmpeg": "^0.12.10",
@@ -600,6 +601,8 @@
     "util-deprecate": ["util-deprecate@1.0.2", "", {}, "sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw=="],
 
     "vite": ["vite@5.4.21", "", { "dependencies": { "esbuild": "^0.21.3", "postcss": "^8.4.43", "rollup": "^4.20.0" }, "optionalDependencies": { "fsevents": "~2.3.3" }, "peerDependencies": { "@types/node": "^18.0.0 || >=20.0.0", "less": "*", "lightningcss": "^1.21.0", "sass": "*", "sass-embedded": "*", "stylus": "*", "sugarss": "*", "terser": "^5.4.0" }, "optionalPeers": ["@types/node", "less", "lightningcss", "sass", "sass-embedded", "stylus", "sugarss", "terser"], "bin": { "vite": "bin/vite.js" } }, "sha512-o5a9xKjbtuhY6Bi5S3+HvbRERmouabWbyUcpXXUA1u+GNUKoROi9byOJ8M0nHbHYHkYICiMlqxkg1KkYmm25Sw=="],
+
+    "vite-plugin-sitemap": ["vite-plugin-sitemap@0.8.2", "", {}, "sha512-bqIw6NVOXg6je81lzX8Lm0vjf8/QSAp8di8fYQzZ3ZdVicOm8+6idBGALJiy1R1FiXNIK8rgORO6HBqXyHW+iQ=="],
 
     "xterm": ["xterm@5.3.0", "", {}, "sha512-8QqjlekLUFTrU6x7xck1MsPzPA571K5zNqWm0M0oroYEWVOptZ0+ubQSkQ3uxIEhcIHRujJy6emDWX4A7qyFzg=="],
 
