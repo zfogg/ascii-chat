@@ -1,0 +1,6 @@
+#!/bin/bash
+
+if ! bun run build; then
+  echo "❌ Build failed - commit aborted" >&2
+  exit 1
+fi

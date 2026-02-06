@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>ascii-chat(5)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ascii-chat(5)</td>
+    <td class="head-vol">File Formats</td>
+    <td class="head-rtitle">ascii-chat(5)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">ascii-chat - file format specifications for ascii-chat
+    configuration and authentication</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp"><b>ascii-chat</b> uses several configuration and data files. This
+    manual describes the format and location of each file type.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="FILES"><a class="permalink" href="#FILES">FILES</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Configuration_Files"><a class="permalink" href="#Configuration_Files">Configuration
+  Files</a></h2>
+<dl class="Bl-tag">
+  <dt><b>~/.config/ascii-chat/config.toml</b></dt>
+  <dd>Main configuration file in TOML format. See <b>CONFIG.TOML FORMAT</b>
+      below for details. Default location on Linux/macOS is
+      <b>$XDG_CONFIG_HOME/ascii-chat/config.toml</b> (usually
+      ~/.config/ascii-chat/config.toml). On Windows:
+      %APPDATA%\ascii-chat\config.toml</dd>
+  <dt><b>~/.config/ascii-chat/colors.toml</b></dt>
+  <dd>Color scheme configuration in TOML format. See <b>COLORS.TOML FORMAT</b>
+      below for details. Built-in color schemes are available and can be
+      selected with the <b>--color-scheme</b> option.</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Authentication_Files"><a class="permalink" href="#Authentication_Files">Authentication
+  Files</a></h2>
+<dl class="Bl-tag">
+  <dt><b>~/.ascii-chat/known_hosts</b></dt>
+  <dd>SSH-style host verification file. See <b>KNOWN_HOSTS FORMAT</b> below for
+      details. Stores server public keys for TOFU (Trust On First Use)
+      verification.</dd>
+  <dt><b>/path/to/authorized_keys</b></dt>
+  <dd>Client public key whitelist for server-side authentication. See
+      <b>AUTHORIZED_KEYS FORMAT</b> below for details. Can be specified with the
+      <b>--client-keys</b> option on the server.</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="SSH_Key_Files"><a class="permalink" href="#SSH_Key_Files">SSH
+  Key Files</a></h2>
+<dl class="Bl-tag">
+  <dt><b>~/.ssh/id_ed25519</b></dt>
+  <dd>SSH Ed25519 private key. See <b>SSH ED25519 PRIVATE KEY FORMAT</b> below
+      for details. Used with <b>--key</b> option for server identity.</dd>
+  <dt><b>~/.ssh/id_ed25519.pub</b></dt>
+  <dd>SSH Ed25519 public key. See <b>SSH ED25519 PUBLIC KEY FORMAT</b> below for
+      details. Used with <b>--server-key</b> option for client-side server
+      verification.</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="GPG_Key_Files"><a class="permalink" href="#GPG_Key_Files">GPG
+  Key Files</a></h2>
+<dl class="Bl-tag">
+  <dt><b>~/.gnupg/pubring.gpg</b></dt>
+  <dd>GPG public keyring. See <b>GPG KEY FORMAT</b> below for details. Used for
+      GPG-based key authentication.</dd>
+</dl>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="CONFIG.TOML_FORMAT"><a class="permalink" href="#CONFIG.TOML_FORMAT">CONFIG.TOML
+  FORMAT</a></h1>
+<p class="Pp">The main configuration file uses TOML (Tom's Obvious, Minimal
+    Language) syntax. Configuration files are searched in order and merged
+    together (cascade semantics). This means multiple config files can be used,
+    with user config taking precedence over system defaults.</p>
+<section class="Ss">
+<h2 class="Ss" id="Search_Order"><a class="permalink" href="#Search_Order">Search
+  Order</a></h2>
+<p class="Pp">On Unix/Linux and macOS, the following locations are searched in
+    order:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>$XDG_CONFIG_HOME/ascii-chat/config.toml</b> (usually
+      ~/.config/ascii-chat/config.toml) - user config directory</dd>
+  <dt>2.</dt>
+  <dd><b>/opt/homebrew/etc/ascii-chat/config.toml</b> macOS Homebrew
+      installation directory</dd>
+  <dt>3.</dt>
+  <dd><b>/usr/local/etc/ascii-chat/config.toml</b> Unix local installation
+      directory</dd>
+  <dt>4.</dt>
+  <dd><b>/etc/ascii-chat/config.toml</b> system-wide defaults On Windows, the
+      following locations are searched in order:</dd>
+  <dt>1.</dt>
+  <dd><b>%APPDATA%\ascii-chat\config.toml</b> user configuration directory</dd>
+  <dt>2.</dt>
+  <dd><b>%PROGRAMDATA%\ascii-chat\config.toml</b> system-wide defaults</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Structure"><a class="permalink" href="#Structure">Structure</a></h2>
+<p class="Pp">The file is organized into sections:</p>
+<dl class="Bl-tag">
+  <dt><b>[logging]</b></dt>
+  <dd>Log level and output settings</dd>
+  <dt><b>[general]</b></dt>
+  <dd>General application settings (sleep prevention, etc.)</dd>
+  <dt><b>[configuration]</b></dt>
+  <dd>Configuration file paths and creation settings</dd>
+  <dt><b>[terminal]</b></dt>
+  <dd>Terminal display settings (width, height, color scheme)</dd>
+  <dt><b>[webcam]</b></dt>
+  <dd>Webcam input settings (device index, flip, test pattern)</dd>
+  <dt><b>[audio]</b></dt>
+  <dd>Audio capture and playback settings (device indices, codecs)</dd>
+  <dt><b>[display]</b></dt>
+  <dd>Display rendering settings (aspect ratio, framerate, snapshots)</dd>
+  <dt><b>[network]</b></dt>
+  <dd>Network configuration (port, compression, WebRTC, discovery)</dd>
+  <dt><b>[security]</b></dt>
+  <dd>Encryption and authentication settings (keys, passwords, identity
+      verification)</dd>
+  <dt><b>[media]</b></dt>
+  <dd>Media streaming settings (file/URL input, looping, cookies)</dd>
+  <dt><b>[database]</b></dt>
+  <dd>Discovery service database and persistence settings</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Common_Options"><a class="permalink" href="#Common_Options">Common
+  Options</a></h2>
+<p class="Pp">Options in config.toml are case-sensitive and use underscores for
+    word separation (e.g., <b>compression_level</b> not <b>compressionLevel</b>
+    ). Boolean values are <b>true</b> or <b>false</b> (lowercase). Lists are
+    TOML arrays: <b>[item1, item2, item3]</b></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Example_Section"><a class="permalink" href="#Example_Section">Example
+  Section</a></h2>
+<pre>[network]
+compression_level = 3                 # zstd level (1-9)
+discovery = false                     # Enable discovery session registration
+[terminal]
+color_scheme = &quot;pastel&quot;               # Color scheme (pastel, nord, dracula, etc.)
+[display]
+fps = 60                              # Target framerate (1-144)
+[security]
+encrypt = true                        # Enable end-to-end encryption</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="COLORS.TOML_FORMAT"><a class="permalink" href="#COLORS.TOML_FORMAT">COLORS.TOML
+  FORMAT</a></h1>
+<p class="Pp">Custom color scheme configuration file using TOML syntax.
+    Specifies RGB colors for different message log levels in both dark and light
+    mode variants. The colors.toml file uses override semantics, meaning only
+    the first matching color scheme file in the search path is loaded (user
+    schemes take precedence over system-wide defaults). This file is optional;
+    ascii-chat includes several built-in color schemes that can be selected with
+    the <b>--color-scheme</b> command-line option. Custom color schemes are
+    stored alongside config.toml using the same search path.</p>
+<section class="Ss">
+<h2 class="Ss" id="Structure~2"><a class="permalink" href="#Structure~2">Structure</a></h2>
+<dl class="Bl-tag">
+  <dt><b>[scheme]</b></dt>
+  <dd>Metadata about the color scheme</dd>
+  <dt><b>[colors.dark]</b></dt>
+  <dd>Colors for dark background terminals</dd>
+  <dt><b>[colors.light]</b></dt>
+  <dd>Colors for light background terminals (optional)</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Color_Levels"><a class="permalink" href="#Color_Levels">Color
+  Levels</a></h2>
+<p class="Pp">Eight color slots are supported:</p>
+<dl class="Bl-tag">
+  <dt id="dev"><a class="permalink" href="#dev"><b>dev</b></a></dt>
+  <dd>Development/trace level messages (lowest severity)</dd>
+  <dt id="debug"><a class="permalink" href="#debug"><b>debug</b></a></dt>
+  <dd>Debug level messages</dd>
+  <dt id="warn"><a class="permalink" href="#warn"><b>warn</b></a></dt>
+  <dd>Warning level messages</dd>
+  <dt id="info"><a class="permalink" href="#info"><b>info</b></a></dt>
+  <dd>Information level messages</dd>
+  <dt id="error"><a class="permalink" href="#error"><b>error</b></a></dt>
+  <dd>Error level messages</dd>
+  <dt id="fatal"><a class="permalink" href="#fatal"><b>fatal</b></a></dt>
+  <dd>Fatal error messages (highest severity)</dd>
+  <dt id="grey"><a class="permalink" href="#grey"><b>grey</b></a></dt>
+  <dd>Auxiliary and metadata text</dd>
+  <dt id="reset"><a class="permalink" href="#reset"><b>reset</b></a></dt>
+  <dd>Color reset/default (used between messages)</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Color_Format"><a class="permalink" href="#Color_Format">Color
+  Format</a></h2>
+<p class="Pp">Colors are specified as hexadecimal RGB values in format
+    <b>#RRGGBB</b> where RR, GG, BB are two-digit hexadecimal values (00-FF) for
+    red, green, and blue respectively.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Example_Structure"><a class="permalink" href="#Example_Structure">Example
+  Structure</a></h2>
+<pre>[scheme]
+name = &quot;custom&quot;
+description = &quot;My custom color scheme&quot;
+[colors.dark]
+dev    = &quot;#6b7fff&quot;
+debug  = &quot;#65ace1&quot;
+warn   = &quot;#f0cc91&quot;
+info   = &quot;#90e070&quot;
+error  = &quot;#e85d6f&quot;
+fatal  = &quot;#c8a0d8&quot;
+grey   = &quot;#808080&quot;
+reset  = &quot;#ffffff&quot;
+[colors.light]
+dev    = &quot;#4b5fdf&quot;
+debug  = &quot;#3284b4&quot;
+warn   = &quot;#b48c00&quot;
+info   = &quot;#238322&quot;
+error  = &quot;#b21e2c&quot;
+fatal  = &quot;#6e4c65&quot;
+grey   = &quot;#4c4c4c&quot;
+reset  = &quot;#000000&quot;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Built-in_Schemes"><a class="permalink" href="#Built-in_Schemes">Built-in
+  Schemes</a></h2>
+<p class="Pp">The following color schemes are built-in and available via the
+    <b>--color-scheme</b> option without needing a colors.toml file:</p>
+<dl class="Bl-tag">
+  <dt id="pastel"><a class="permalink" href="#pastel"><b>pastel</b></a></dt>
+  <dd>Soft, pleasant pastel colors (default)</dd>
+  <dt id="nord"><a class="permalink" href="#nord"><b>nord</b></a></dt>
+  <dd>Arctic, muted Nordic theme</dd>
+  <dt id="solarized-dark"><a class="permalink" href="#solarized-dark"><b>solarized-dark</b></a></dt>
+  <dd>Solarized dark theme - precision colors for dark backgrounds</dd>
+  <dt id="solarized-light"><a class="permalink" href="#solarized-light"><b>solarized-light</b></a></dt>
+  <dd>Solarized light theme - precision colors for light backgrounds</dd>
+  <dt id="dracula"><a class="permalink" href="#dracula"><b>dracula</b></a></dt>
+  <dd>Dark Dracula project theme</dd>
+  <dt id="gruvbox-dark"><a class="permalink" href="#gruvbox-dark"><b>gruvbox-dark</b></a></dt>
+  <dd>Gruvbox dark theme - retro groove colors for dark backgrounds</dd>
+  <dt id="gruvbox-light"><a class="permalink" href="#gruvbox-light"><b>gruvbox-light</b></a></dt>
+  <dd>Gruvbox light theme - retro groove colors for light backgrounds</dd>
+  <dt id="monokai"><a class="permalink" href="#monokai"><b>monokai</b></a></dt>
+  <dd>Popular Monokai dark theme</dd>
+  <dt id="base16-default-dark"><a class="permalink" href="#base16-default-dark"><b>base16-default-dark</b></a></dt>
+  <dd>Base16 Default dark theme - machine colors for dark backgrounds</dd>
+  <dt id="base16-default-light"><a class="permalink" href="#base16-default-light"><b>base16-default-light</b></a></dt>
+  <dd>Base16 Default light theme - machine colors for light backgrounds</dd>
+</dl>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="KNOWN_HOSTS_FORMAT"><a class="permalink" href="#KNOWN_HOSTS_FORMAT">KNOWN_HOSTS
+  FORMAT</a></h1>
+<p class="Pp">SSH-style host verification file for storing server public keys
+    used in TOFU (Trust On First Use) identity verification. The known_hosts
+    file is searched across multiple standard locations using append semantics,
+    meaning entries from all matching files are combined together. The file uses
+    the same search paths as config.toml (see <b>CONFIG.TOML FORMAT</b> above
+    for details). On Unix/macOS, this includes ~/.config/ascii-chat/known_hosts,
+    /opt/homebrew/etc/ascii-chat/known_hosts,
+    /usr/local/etc/ascii-chat/known_hosts, and /etc/ascii-chat/known_hosts. On
+    Windows, %APPDATA%\ascii-chat\known_hosts and
+    %PROGRAMDATA%\ascii-chat\known_hosts are searched. The first file (user
+    config directory) is created by ascii-chat automatically when servers are
+    visited.</p>
+<section class="Ss">
+<h2 class="Ss">Line Format</h2>
+<p class="Pp">Each line represents a single identity entry with the format:</p>
+<pre>&lt;address&gt; &lt;key-type&gt; &lt;public-key&gt; [comment]</pre>
+<p class="Pp">Where:</p>
+<dl class="Bl-tag">
+  <dt><b>&lt;address&gt;</b></dt>
+  <dd>Server address with port in format <b>host:port</b> For IPv6 addresses,
+      use bracket notation: <b>[2001:db8::1]:8080</b></dd>
+  <dt><b>&lt;key-type&gt;</b></dt>
+  <dd>Always <b>x25519</b> for elliptic curve Diffie-Hellman keys</dd>
+  <dt><b>&lt;public-key&gt;</b></dt>
+  <dd>64-character hexadecimal representation of the 32-byte public key</dd>
+  <dt><b>[comment]</b></dt>
+  <dd>Optional comment (space-separated from key). Typically contains the server
+      name or connection context.</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Special_Entry"><a class="permalink" href="#Special_Entry">Special
+  Entry</a></h2>
+<p class="Pp">A special entry indicates no identity was obtained:</p>
+<pre>&lt;address&gt; no-identity [comment]</pre>
+<p class="Pp">This records that a connection was attempted but no server
+    identity could be obtained (e.g., ephemeral DH without key
+  authentication).</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">Example File</h2>
+<pre>192.0.2.1:27224 x25519 a1b2c3d4e5f6g7h8 ascii-chat-server
+example.com:27224 x25519 f8e7d6c5b4a39291 example-prod-server
+[2001:db8::1]:27224 x25519 1a2b3c4d5e6f7g8h ipv6-server
+10.0.0.5:8080 no-identity temp-test-server</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHORIZED_KEYS_FORMAT"><a class="permalink" href="#AUTHORIZED_KEYS_FORMAT">AUTHORIZED_KEYS
+  FORMAT</a></h1>
+<p class="Pp">Server-side client public key whitelist, one SSH Ed25519 public
+    key per line. Can be specified with <b>--client-keys /path/to/file</b> on
+    the server.</p>
+<section class="Ss">
+<h2 class="Ss">Line Format</h2>
+<p class="Pp">Standard OpenSSH public key format, one key per line:</p>
+<pre>ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIxxx... [comment]</pre>
+<p class="Pp">Where:</p>
+<dl class="Bl-tag">
+  <dt id="ssh-ed25519"><a class="permalink" href="#ssh-ed25519"><b>ssh-ed25519</b></a></dt>
+  <dd>Key type identifier (always ssh-ed25519 for Ed25519 keys)</dd>
+  <dt id="AAAAC3Nz..."><a class="permalink" href="#AAAAC3Nz..."><b>AAAAC3Nz...</b></a></dt>
+  <dd>Base64-encoded public key data</dd>
+  <dt><b>[comment]</b></dt>
+  <dd>Optional comment (e.g., user@hostname or description)</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Usage"><a class="permalink" href="#Usage">Usage</a></h2>
+<p class="Pp">When a server is started with <b>--client-keys /path/to/file</b> ,
+    only clients whose public keys appear in the file are allowed to
+  connect.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">Example File</h2>
+<pre>ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIzTVYwABZIE2mOEZzzV3 alice@workstation
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIa0HxPmBfLjp3WkNXx bob@laptop
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIsK4L9NjTqZWF2bxVp charlie@device</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SSH_ED25519_PUBLIC_KEY_FORMAT"><a class="permalink" href="#SSH_ED25519_PUBLIC_KEY_FORMAT">SSH
+  ED25519 PUBLIC KEY FORMAT</a></h1>
+<p class="Pp">Standard OpenSSH public key format, typically stored in
+    <b>~/.ssh/id_ed25519.pub</b></p>
+<section class="Ss">
+<h2 class="Ss" id="Format"><a class="permalink" href="#Format">Format</a></h2>
+<pre>ssh-ed25519 &lt;base64-encoded-key&gt; [&lt;comment&gt;]</pre>
+<p class="Pp">Where:</p>
+<dl class="Bl-tag">
+  <dt id="ssh-ed25519~2"><a class="permalink" href="#ssh-ed25519~2"><b>ssh-ed25519</b></a></dt>
+  <dd>Key type identifier for Ed25519 elliptic curve</dd>
+  <dt><b>&lt;base64-encoded-key&gt;</b></dt>
+  <dd>Base64 encoding of the 32-byte public key</dd>
+  <dt><b>[&lt;comment&gt;]</b></dt>
+  <dd>Optional comment, typically user@hostname</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Usage~2"><a class="permalink" href="#Usage~2">Usage</a></h2>
+<dl class="Bl-tag">
+  <dt id="server-key"><a class="permalink" href="#server-key"><b>--server-key</b></a></dt>
+  <dd>Verify server identity by providing the server's public key</dd>
+  <dt id="client-keys"><a class="permalink" href="#client-keys"><b>--client-keys</b></a></dt>
+  <dd>Whitelist of allowed client public keys for server-side
+    authentication</dd>
+  <dt id="github:_username_"><a class="permalink" href="#github:_username_"><b>github:&lt;username&gt;</b></a></dt>
+  <dd>Fetch user's public keys directly from GitHub (keys are public)</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Example"><a class="permalink" href="#Example">Example</a></h2>
+<pre>ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIzTVYwABZIE2mOEZzzV3 user@example.com</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SSH_ED25519_PRIVATE_KEY_FORMAT"><a class="permalink" href="#SSH_ED25519_PRIVATE_KEY_FORMAT">SSH
+  ED25519 PRIVATE KEY FORMAT</a></h1>
+<p class="Pp">OpenSSH private key format with Ed25519 algorithm, typically
+    stored in <b>~/.ssh/id_ed25519</b></p>
+<section class="Ss">
+<h2 class="Ss" id="File_Structure"><a class="permalink" href="#File_Structure">File
+  Structure</a></h2>
+<pre>-----BEGIN OPENSSH PRIVATE KEY-----
+&lt;base64-encoded-data&gt;
+-----END OPENSSH PRIVATE KEY-----</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Encryption"><a class="permalink" href="#Encryption">Encryption</a></h2>
+<p class="Pp">Private keys can be optionally encrypted with a passphrase.
+    ascii-chat will prompt for the passphrase if the key is encrypted. Use the
+    passphrase parameter or environment variable <b>ASCII_CHAT_KEY_PASSWORD</b>
+    (not recommended - use <b>ssh-agent</b> instead).</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="File_Permissions"><a class="permalink" href="#File_Permissions">File
+  Permissions</a></h2>
+<p class="Pp">Private keys should have restrictive permissions (0600):</p>
+<pre>chmod 600 ~/.ssh/id_ed25519</pre>
+<p class="Pp">ascii-chat requires SSH key files to have restrictive permissions
+    (0600 or 0400). If permissions are more permissive, ascii-chat will refuse
+    to use the key and return an error. Run <b>chmod 600 ~/.ssh/id_ed25519</b>
+    to fix the permissions.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Usage~3"><a class="permalink" href="#Usage~3">Usage</a></h2>
+<dl class="Bl-tag">
+  <dt id="key"><a class="permalink" href="#key"><b>--key</b></a></dt>
+  <dd>Server identity key (specifies private key path)</dd>
+</dl>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="GPG_KEY_FORMAT"><a class="permalink" href="#GPG_KEY_FORMAT">GPG
+  KEY FORMAT</a></h1>
+<p class="Pp">OpenPGP armored public key format, typically from the GPG public
+    keyring.</p>
+<section class="Ss">
+<h2 class="Ss" id="Format~2"><a class="permalink" href="#Format~2">Format</a></h2>
+<pre>-----BEGIN PGP PUBLIC KEY BLOCK-----
+Version: GnuPG v2.X
+&lt;base64-encoded-key-data&gt;
+-----END PGP PUBLIC KEY BLOCK-----</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Supported_Keys"><a class="permalink" href="#Supported_Keys">Supported
+  Keys</a></h2>
+<p class="Pp">Only Ed25519 keys are supported. Legacy RSA and DSA keys will be
+    rejected. Key IDs can be:</p>
+<dl class="Bl-tag">
+  <dt><b>8 characters</b></dt>
+  <dd>Short key fingerprint</dd>
+  <dt><b>16 characters</b></dt>
+  <dd>Long key fingerprint</dd>
+  <dt><b>40 characters</b></dt>
+  <dd>Full key fingerprint</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Requirements"><a class="permalink" href="#Requirements">Requirements</a></h2>
+<dl class="Bl-tag">
+  <dt id="gpg"><a class="permalink" href="#gpg"><b>gpg</b></a></dt>
+  <dd>Requires the <b>gpg</b> command-line tool to be installed and available in
+      PATH</dd>
+  <dt id="gpg-agent"><a class="permalink" href="#gpg-agent"><b>gpg-agent</b></a></dt>
+  <dd>For encrypted keys, requires GPG Agent for passphrase management
+      (recommended over prompting)</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Usage~4"><a class="permalink" href="#Usage~4">Usage</a></h2>
+<dl class="Bl-tag">
+  <dt id="server-key~2"><a class="permalink" href="#server-key~2"><b>--server-key</b></a></dt>
+  <dd>Specify GPG key with format: gpg:&lt;key-id&gt; or
+    gpg:&lt;fingerprint&gt;</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Example~2"><a class="permalink" href="#Example~2">Example</a></h2>
+<pre>--server-key gpg:ABCD1234
+--server-key gpg:ABCD1234567890EF</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="BUGS"><a class="permalink" href="#BUGS">BUGS</a></h1>
+<p class="Pp">Report bugs at: https://github.com/zfogg/ascii-chat/issues</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHOR"><a class="permalink" href="#AUTHOR">AUTHOR</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<p class="Pp"><b>ascii-chat</b>(1), <b>ssh-keygen</b>(1), <b>ssh-agent</b>(1),
+    <b>ssh-keyscan</b>(1), <b>gpg</b>(1), <b>gpg-agent</b>(1),
+  <b>gpgconf</b>(1)</p>
+<p class="Pp">Project homepage: https://ascii-chat.com</p>
+<p class="Pp">Discovery service: https://discover.ascii-chat.com</p>
+<p class="Pp">GitHub repository: https://github.com/zfogg/ascii-chat</p>
+<p class="Pp">Releases: https://github.com/zfogg/ascii-chat/releases</p>
+<p class="Pp">API documentation: https://zfogg.github.io/ascii-chat/</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="LICENSE"><a class="permalink" href="#LICENSE">LICENSE</a></h1>
+<p class="Pp"><b>ascii-chat</b> is licensed under the MIT License.</p>
+<p class="Pp">Copyright (c) 2013-2026 Zachary Fogg</p>
+<p class="Pp">Permission is hereby granted, free of charge, to any person
+    obtaining a copy of this software and associated documentation files (the
+    &quot;Software&quot;), to deal in the Software without restriction,
+    including without limitation the rights to use, copy, modify, merge,
+    publish, distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so, subject to the
+    following conditions:</p>
+<p class="Pp">The above copyright notice and this permission notice shall be
+    included in all copies or substantial portions of the Software.</p>
+<p class="Pp">THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF
+    ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO
+    EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+    DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+    OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+    USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">2026-02-04</td>
+    <td class="foot-os">ascii-chat 0.8.0</td>
+  </tr>
+</table>
+</body>
+</html>

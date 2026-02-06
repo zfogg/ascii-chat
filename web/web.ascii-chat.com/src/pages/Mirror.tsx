@@ -60,7 +60,6 @@ export function MirrorPage() {
         const terminal = new Terminal({
           cols: ASCII_WIDTH,
           rows: ASCII_HEIGHT,
-          rendererType: 'dom', // Use DOM renderer instead of canvas - fixes React re-render issues
           theme: {
             background: '#0c0c0c',
             foreground: '#cccccc',

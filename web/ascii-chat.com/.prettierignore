@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+.bun/
+
+# Build outputs
+dist/
+build/
+
+# Binary files
+*.png
+*.ico
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.svg
+*.woff
+*.woff2
+*.ttf
+*.eot
+
+# Lock files
+bun.lock
+package-lock.json
+yarn.lock
+
+# Generated files
+public/
+.git/
+
+# Config files that shouldn't be formatted
+.env
+.env.local
+.env.*.local

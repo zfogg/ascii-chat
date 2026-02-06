@@ -1,0 +1,1407 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>ascii-chat(1)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ascii-chat(1)</td>
+    <td class="head-vol">User Commands</td>
+    <td class="head-rtitle">ascii-chat(1)</td>
+  </tr>
+</table>
+<div class="manual-text">[13:18:18.871428] [DEBUG] Using llvm-symbolizer for
+  symbol resolution [13:18:18.872120] [DEBUG] Created buffer pool (max: 337.00
+  MB, shrink: 5000000000 ns, lock-free) [13:18:18.872135] [DEBUG] Initialized
+  global buffer pool [13:18:18.872190] [DEBUG] options_init called with argc=2,
+  argv[0]=/Users/zfogg/src/github.com/zfogg/ascii-chat/build_release/bin/ascii-chat,
+  argv[1]=--man-page-create
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp"><b>ascii-chat</b> - Video chat in your terminal</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp"><b>ascii-chat</b> [<i>options</i>]</p>
+<p class="Pp"><b>ascii-chat</b> [<i>options</i>]
+  <i>&lt;session-string&gt;</i></p>
+<p class="Pp"><b>ascii-chat</b> [<i>options</i>] [<b>server</b> | <b>client</b>
+    | <b>mirror</b> | <b>discovery-service</b>] [<i>mode-options</i>]</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="POSITIONAL_ARGUMENTS"><a class="permalink" href="#POSITIONAL_ARGUMENTS">POSITIONAL
+  ARGUMENTS</a></h1>
+<dl class="Bl-tag">
+  <dt id="address"><a class="permalink" href="#address"><b>address
+    (optional)</b></a></dt>
+  <dd>Server address (optional).</dd>
+</dl>
+<div class="Bd-indent"><b>Examples:</b>
+<div class="Bd-indent">
+<pre>localhost
+ascii-chat.com
+0.0.0.0
+::
+192.168.1.1:8080
+[2001:db8::42]:27224
+233.27.48.203:27224
+62fb:759e:2bce:21d7:9e5d:13f8:3c11:5084:27224</pre>
+</div>
+</div>
+<dl class="Bl-tag">
+  <dt id="session-string"><a class="permalink" href="#session-string"><b>session-string
+    (optional)</b></a></dt>
+  <dd>Session string (optional, or empty to start new session). Format:
+      adjective-noun-noun.</dd>
+</dl>
+<div class="Bd-indent"><b>Examples:</b>
+<div class="Bd-indent">
+<pre>(empty) start new session
+mutual-aid-enthusiasm
+pubic-dream-slack
+sovereign-supply-much</pre>
+</div>
+</div>
+<dl class="Bl-tag">
+  <dt id="bind-address"><a class="permalink" href="#bind-address"><b>bind-address
+    (optional)</b></a></dt>
+  <dd>Bind address (optional, can specify 0-2 addresses, one IPv4 and the other
+      IPv6).</dd>
+</dl>
+<div class="Bd-indent"><b>Examples:</b>
+<div class="Bd-indent">
+<pre>localhost
+ascii-chat.com
+0.0.0.0
+::
+234.50.188.236
+9631:54e7:5b5c:80dc:0f62:1f01:7ccf:5512
+105.137.19.11 3a08:7276:ccb4:7b31:e934:5330:9b3a:9598
+::1 192.168.1.100</pre>
+</div>
+</div>
+<p class="Pp"></p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp"><b>ascii-chat</b> is a terminal-based video chat application that
+    converts webcam video to ASCII art in real-time. It enables video chat
+    directly in your terminal, whether you're using a local console, a remote
+    SSH session, or any terminal emulator.</p>
+<p class="Pp">The program operates in five modes:</p>
+<dl class="Bl-tag">
+  <dt id="ascii-chat"><a class="permalink" href="#ascii-chat"><b>ascii-chat</b></a></dt>
+  <dd>The binary's default operating mode without additional commands. Starts or
+      joins an ascii-chat Discovery Service session with a session string. This
+      mode makes secure internet connections and attempts direct tcp and webrtc
+      connections.</dd>
+  <dt id="server"><a class="permalink" href="#server"><b>server</b></a></dt>
+  <dd>Runs a video chat server that accepts connections from multiple clients,
+      mixes their audio and video streams together, and broadcasts the mixed
+      streams out to all connected clients. Clients see a grid of ascii video
+      cells displaying the users of the call.</dd>
+  <dt id="client"><a class="permalink" href="#client"><b>client</b></a></dt>
+  <dd>Connects to an ascii-chat server, captures video from the local webcam,
+      sends it to the server, and displays the combined video feed grid from all
+      participants that the server sends back.</dd>
+  <dt id="mirror"><a class="permalink" href="#mirror"><b>mirror</b></a></dt>
+  <dd>Displays local webcam or file or URL media as text art without any network
+      connection or ascii-chat server. Perfect for testing webcam, palette
+      settings, and terminal rendering. Useful for debugging and scripting.
+      Ideal for playing around with the webcam. Use mirror mode if you just want
+      to watch a YouTube video or other URL or file as text art, with full audio
+      support.</dd>
+  <dt id="discovery-service"><a class="permalink" href="#discovery-service"><b>discovery-service</b></a></dt>
+  <dd>Runs an ACDS (ascii-chat Discovery Service) server for session management.
+      Allows clients and servers to discover each other using memorable session
+      strings instead of IP addresses. Handles NAT traversal via WebRTC when
+      direct TCP connections aren't possible. The ascii-chat developers host the
+      primary ACDS server (discovery-service.ascii-chat.com) whose keys are
+      trusted automatically by ascii-chat.
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="USAGE"><a class="permalink" href="#USAGE">USAGE</a></h1>
+<dl class="Bl-tag">
+  <dt><b>ascii-chat [options...]</b></dt>
+  <dd>Start a new session (share the session string)</dd>
+  <dt><b>ascii-chat &lt;session-string&gt; [options...]</b></dt>
+  <dd>Join an existing session</dd>
+  <dt><b>ascii-chat &lt;mode&gt; [options...]</b></dt>
+  <dd>Run in a specific mode</dd>
+  <dt><b>ascii-chat server [bind-address] [bind-address]
+    [mode-options...]</b></dt>
+  <dd>Start server (can specify 0-2 bind addresses, one IPv4 and the other
+    IPv6)</dd>
+  <dt><b>ascii-chat client [address] [mode-options...]</b></dt>
+  <dd>Connect to server (defaults to localhost:27224)</dd>
+  <dt><b>ascii-chat mirror [mode-options...]</b></dt>
+  <dd>View local webcam or media file as ASCII art</dd>
+  <dt><b>ascii-chat discovery-service [bind-address] [bind-address]
+    [mode-options...]</b></dt>
+  <dd>Start discovery service (can specify 0-2 bind addresses, one IPv4 and the
+      other IPv6)
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="EXAMPLES"><a class="permalink" href="#EXAMPLES">EXAMPLES</a></h1>
+<dl class="Bl-tag">
+  <dt id="ascii-chat~2"><a class="permalink" href="#ascii-chat~2"><b>ascii-chat</b></a></dt>
+  <dd>Start new session (share the session string)</dd>
+  <dt><b>ascii-chat wealthy-cove-reserve</b></dt>
+  <dd>Join a session using the session string</dd>
+  <dt><b>ascii-chat corky-camel-while --discovery-service</b></dt>
+  <dd>Join session via custom discovery server</dd>
+  <dt><b>ascii-chat master-american-ruin -f video.mp4</b></dt>
+  <dd>Join session and stream from local video file</dd>
+  <dt><b>ascii-chat imperfect-october-book --url 'https://</b></dt>
+  <dd>Join session and stream from YouTube video</dd>
+  <dt><b>ascii-chat imperative-timeline-honk -f '-'</b></dt>
+  <dd>Join session and stream media from stdin (cat file.mov | ascii-chat ... -f
+      '-')</dd>
+  <dt><b>ascii-chat compact-center-block --palette-chars '</b></dt>
+  <dd>Join session with custom ASCII palette characters</dd>
+  <dt><b>ascii-chat server</b></dt>
+  <dd>Start on localhost (127.0.0.1 and ::1)</dd>
+  <dt><b>ascii-chat server 0.0.0.0</b></dt>
+  <dd>Start on all IPv4 interfaces</dd>
+  <dt><b>ascii-chat server 0.0.0.0 ::</b></dt>
+  <dd>Start on all IPv4 and IPv6 interfaces (dual-stack)</dd>
+  <dt><b>ascii-chat server --port 8080</b></dt>
+  <dd>Start on custom port</dd>
+  <dt><b>ascii-chat server --key ~/.ssh/id_ed25519 --discovery</b></dt>
+  <dd>Start with identity key and discovery registration</dd>
+  <dt><b>ascii-chat client example.com</b></dt>
+  <dd>Connect to specific server</dd>
+  <dt><b>ascii-chat client example.com</b></dt>
+  <dd>Connect to remote server</dd>
+  <dt><b>ascii-chat client example.com:8080</b></dt>
+  <dd>Connect to remote server on custom port</dd>
+  <dt><b>ascii-chat client --url 'https://youtu.be/7ynHVGCehoM'</b></dt>
+  <dd>Stream from YouTube URL (also supports RTSP, HTTP, and HTTPS URLs)</dd>
+  <dt><b>ascii-chat client -f video.mp4</b></dt>
+  <dd>Stream from local video file</dd>
+  <dt><b>ascii-chat client --color-mode mono --render-mode half-block --width
+    120</b></dt>
+  <dd>Connect with custom display options</dd>
+  <dt><b>ascii-chat client --palette-chars '@%#*+=-:. '</b></dt>
+  <dd>Use custom ASCII palette characters</dd>
+  <dt><b>ascii-chat client --snapshot</b></dt>
+  <dd>Capture single frame and exit</dd>
+  <dt><b>ascii-chat client --color-filter cyan --palette cool</b></dt>
+  <dd>Connect with cyan color filter and cool palette</dd>
+  <dt><b>ascii-chat mirror</b></dt>
+  <dd>View the webcam or files or URLs as ASCII art. Like client mode but
+      without network connectivity or a server.</dd>
+  <dt><b>ascii-chat mirror --color-mode mono</b></dt>
+  <dd>View webcam in black and white</dd>
+  <dt><b>ascii-chat mirror --color-filter green</b></dt>
+  <dd>View webcam with green monochromatic color filter</dd>
+  <dt><b>ascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM'</b></dt>
+  <dd>Stream from YouTube URL (also supports RTSP, HTTP, and HTTPS URLs)</dd>
+  <dt><b>ascii-chat mirror -f video.mp4</b></dt>
+  <dd>Stream from local video file (supports mp4, mkv, webm, mov, etc)</dd>
+  <dt><b>ascii-chat mirror --file '-'</b></dt>
+  <dd>Stream media from stdin (cat file.gif | ascii-chat mirror -f '-')</dd>
+  <dt><b>ascii-chat mirror cat video.avi | ascii-chat mirror -f '-' -l -s
+    00:30</b></dt>
+  <dd>Stream .avi from stdin, looped, seeking to 00:30</dd>
+  <dt><b>ascii-chat mirror --palette-chars '@%#*+=-:. '</b></dt>
+  <dd>View with custom ASCII palette characters</dd>
+  <dt><b>ascii-chat mirror --file video.mov --seek 22:10</b></dt>
+  <dd>Start playback at exactly 22:10 (also works with --url)</dd>
+  <dt><b>ascii-chat mirror -f 'https://youtu.be/LS9W8SO-Two' -S -D 0 -s
+    5:12</b></dt>
+  <dd>Print a single frame from a YouTube video at exactly 5:12 and exit</dd>
+  <dt><b>ascii-chat mirror -S -D 0 | tee frame.txt | pbcopy</b></dt>
+  <dd>Capture single ASCII frame to clipboard (macOS) and file</dd>
+  <dt><b>ascii-chat mirror pbpaste | cat -</b></dt>
+  <dd>View ASCII frame from clipboard (macOS)</dd>
+  <dt><b>ascii-chat discovery-service</b></dt>
+  <dd>Start on localhost</dd>
+  <dt><b>ascii-chat discovery-service 0.0.0.0</b></dt>
+  <dd>Start on all IPv4 interfaces</dd>
+  <dt><b>ascii-chat discovery-service --port 5000</b></dt>
+  <dd>Start on custom port</dd>
+  <dt><b>ascii-chat discovery-service --require-server-identity
+    --require-client-identity</b></dt>
+  <dd>Enforce identity verification for all parties
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OPTIONS"><a class="permalink" href="#OPTIONS">OPTIONS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="GENERAL"><a class="permalink" href="#GENERAL">GENERAL</a></h2>
+<dl class="Bl-tag">
+  <dt id="h,"><a class="permalink" href="#h,"><b>-h, --help</b></a></dt>
+  <dd>Show this help message and exit. (modes: global, client, server, mirror,
+      discovery-service)</dd>
+  <dt id="v,"><a class="permalink" href="#v,"><b>-v, --version</b></a></dt>
+  <dd>Show version information and exit. (mode: global)</dd>
+  <dt id="keepawake"><a class="permalink" href="#keepawake"><b>--keepawake</b></a></dt>
+  <dd>Explicitly enable system sleep prevention (keepawake mode). (default:
+      false) (mode: global) (env: <b>ASCII_CHAT_KEEPAWAKE</b>)</dd>
+  <dt id="no-keepawake"><a class="permalink" href="#no-keepawake"><b>--no-keepawake</b></a></dt>
+  <dd>Disable system sleep prevention (allow OS to sleep). (default: false)
+      (mode: global) (env: <b>ASCII_CHAT_NO_KEEPAWAKE</b>)</dd>
+  <dt id="no-splash"><a class="permalink" href="#no-splash"><b>--no-splash</b></a></dt>
+  <dd>Disable splash screen with ASCII art. Use --no-splash to skip the splash
+      screen on client, mirror, and discovery modes. (default: true) (modes:
+      ascii-chat, client, mirror) (env: <b>ASCII_CHAT_NO_SPLASH</b>)</dd>
+  <dt id="no-status-screen"><a class="permalink" href="#no-status-screen"><b>--no-status-screen</b></a></dt>
+  <dd>Disable status screen display on server and discovery-service modes.
+      (default: true) (modes: server, discovery-service) (env:
+      <b>ASCII_CHAT_NO_STATUS_SCREEN</b>)</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="LOGGING"><a class="permalink" href="#LOGGING">LOGGING</a></h2>
+<dl class="Bl-tag">
+  <dt id="L,"><a class="permalink" href="#L,"><b>-L, --log-file
+    <i>VAL</i></b></a></dt>
+  <dd>Set FILE as path for log file. (mode: global) (env:
+      <b>ASCII_CHAT_LOG_FILE</b>)</dd>
+  <dt id="log-level"><a class="permalink" href="#log-level"><b>--log-level
+    <i>VAL</i></b></a></dt>
+  <dd>Set log level: dev, debug, info, warn, error, fatal. Logs at or above this
+      level are written. (mode: global) (env: <b>ASCII_CHAT_LOG_LEVEL</b>)</dd>
+  <dt id="V,"><a class="permalink" href="#V,"><b>-V, --verbose
+    <i>VAL</i></b></a></dt>
+  <dd>Increase log verbosity (stackable: -VV, -VVV). (mode: global) (env:
+      <b>ASCII_CHAT_VERBOSE</b>)</dd>
+  <dt id="q,"><a class="permalink" href="#q,"><b>-q, --quiet</b></a></dt>
+  <dd>Disable console logging (log to file only). (default: false) (mode:
+      global) (env: <b>ASCII_CHAT_QUIET</b>)</dd>
+  <dt id="color-scheme"><a class="permalink" href="#color-scheme"><b>--color-scheme
+    <i>NAME</i></b></a></dt>
+  <dd>Color scheme for logging output (pastel, nord, solarized-dark, dracula,
+      gruvbox-dark, monokai, etc.). (default: pastel) (modes: ascii-chat,
+      client, server, mirror) (env: <b>ASCII_CHAT_COLOR_SCHEME</b>)</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="TERMINAL"><a class="permalink" href="#TERMINAL">TERMINAL</a></h2>
+<dl class="Bl-tag">
+  <dt id="color"><a class="permalink" href="#color"><b>--color
+    <i>VAL</i></b></a></dt>
+  <dd>Color output setting: 'auto' (default, smart detection), 'true' (force
+      colors on), or 'false' (force colors off). (mode: global) (env:
+      <b>ASCII_CHAT_COLOR</b>)</dd>
+  <dt id="x,"><a class="permalink" href="#x,"><b>-x, --width
+    <i>NUM</i></b></a></dt>
+  <dd>Terminal width in characters. Can be controlled using $COLUMNS. By default
+      your terminal width is detected at runtime and this value is updated
+      automatically. (default: 110) (modes: ascii-chat, client, mirror) (env:
+      <b>ASCII_CHAT_WIDTH</b>)</dd>
+  <dt id="y,"><a class="permalink" href="#y,"><b>-y, --height
+    <i>NUM</i></b></a></dt>
+  <dd>Terminal height in characters. Can be controlled using $ROWS. By default
+      your terminal height is detected at runtime and this value is updated
+      automatically. (default: 70) (modes: ascii-chat, client, mirror) (env:
+      <b>ASCII_CHAT_HEIGHT</b>)</dd>
+  <dt id="color-mode"><a class="permalink" href="#color-mode"><b>--color-mode
+    <i>VAL</i></b></a></dt>
+  <dd>Terminal color level (auto, none, 16, 256, truecolor). This controls what
+      ANSI escape codes ascii-chat will use for console logging and display
+      output if color is enabled. Press 'c' during rendering to cycle. See also
+      --color. (modes: ascii-chat, client, mirror) (env:
+      <b>ASCII_CHAT_COLOR_MODE</b>)</dd>
+  <dt id="show-capabilities"><a class="permalink" href="#show-capabilities"><b>--show-capabilities</b></a></dt>
+  <dd>Show detected terminal capabilities and exit (useful for debugging and
+      scripting). (mode: global)</dd>
+  <dt id="utf8"><a class="permalink" href="#utf8"><b>--utf8
+    <i>VAL</i></b></a></dt>
+  <dd>UTF-8 support setting: 'auto' (default, auto-detect), 'true' (force UTF-8
+      on), or 'false' (force UTF-8 off). (modes: ascii-chat, client, mirror)
+      (env: <b>ASCII_CHAT_UTF8</b>)</dd>
+  <dt id="strip-ansi"><a class="permalink" href="#strip-ansi"><b>--strip-ansi</b></a></dt>
+  <dd>Strip ANSI escape sequences from output before printing. Useful for
+      scripting and debugging. (default: false) (modes: ascii-chat, client,
+      mirror) (env: <b>ASCII_CHAT_STRIP_ANSI</b>)</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="CONFIGURATION"><a class="permalink" href="#CONFIGURATION">CONFIGURATION</a></h2>
+<dl class="Bl-tag">
+  <dt id="config"><a class="permalink" href="#config"><b>--config
+    <i>STR</i></b></a></dt>
+  <dd>Load configuration from toml FILE. (mode: global)</dd>
+  <dt id="config-create"><a class="permalink" href="#config-create"><b>--config-create</b></a></dt>
+  <dd>Create default config file and exit (optionally specify output path).
+      (default: false) (mode: global)</dd>
+  <dt id="completions"><a class="permalink" href="#completions"><b>--completions
+    <i>SHELL [FILE]</i></b></a></dt>
+  <dd>Generate shell completions (bash, fish, zsh, powershell) and output to
+      stdout (or optional file path). (mode: global)</dd>
+  <dt id="man-page-create"><a class="permalink" href="#man-page-create"><b>--man-page-create</b></a></dt>
+  <dd>Generate man page and exit (optionally specify output file). (default:
+      false) (mode: global)</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="WEBCAM"><a class="permalink" href="#WEBCAM">WEBCAM</a></h2>
+<dl class="Bl-tag">
+  <dt id="c,"><a class="permalink" href="#c,"><b>-c, --webcam-index
+    <i>NUM</i></b></a></dt>
+  <dd>Webcam device index to use for video input. (default: 0) (modes:
+      ascii-chat, client, mirror) (env: <b>ASCII_CHAT_WEBCAM_INDEX</b>)</dd>
+  <dt id="g,"><a class="permalink" href="#g,"><b>-g, --webcam-flip</b></a></dt>
+  <dd>Flip webcam output horizontally before using it (press 'f' during
+      rendering to toggle). (default: true) (modes: ascii-chat, client, mirror)
+      (env: <b>ASCII_CHAT_WEBCAM_FLIP</b>)</dd>
+  <dt id="test-pattern"><a class="permalink" href="#test-pattern"><b>--test-pattern</b></a></dt>
+  <dd>Use test pattern instead of webcam. (default: false) (modes: ascii-chat,
+      client, mirror) (env: <b>WEBCAM_DISABLED</b>)</dd>
+  <dt id="list-webcams"><a class="permalink" href="#list-webcams"><b>--list-webcams</b></a></dt>
+  <dd>List available webcam devices by index and exit. (mode: global)</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="AUDIO"><a class="permalink" href="#AUDIO">AUDIO</a></h2>
+<dl class="Bl-tag">
+  <dt id="list-microphones"><a class="permalink" href="#list-microphones"><b>--list-microphones</b></a></dt>
+  <dd>List available audio input devices by index and exit. (mode: global)</dd>
+  <dt id="list-speakers"><a class="permalink" href="#list-speakers"><b>--list-speakers</b></a></dt>
+  <dd>List available audio output devices by index and exit. (mode: global)</dd>
+  <dt id="A,"><a class="permalink" href="#A,"><b>-A, --audio</b></a></dt>
+  <dd>Enable audio streaming (press 'm' during rendering to toggle). (default:
+      true) (modes: ascii-chat, client, mirror) (env:
+    <b>ASCII_CHAT_AUDIO</b>)</dd>
+  <dt id="microphone-index"><a class="permalink" href="#microphone-index"><b>--microphone-index
+    <i>NUM</i></b></a></dt>
+  <dd>Microphone device index for audio input. (default: -1) (modes: ascii-chat,
+      client) (env: <b>ASCII_CHAT_MICROPHONE_INDEX</b>)</dd>
+  <dt id="speakers-index"><a class="permalink" href="#speakers-index"><b>--speakers-index
+    <i>NUM</i></b></a></dt>
+  <dd>Speakers device index to use for audio output. (default: -1) (modes:
+      ascii-chat, client) (env: <b>ASCII_CHAT_SPEAKERS_INDEX</b>)</dd>
+  <dt id="microphone-volume"><a class="permalink" href="#microphone-volume"><b>--microphone-volume
+    <i>VAL</i></b></a></dt>
+  <dd>Microphone volume multiplier (0.0-1.0). (modes: ascii-chat, client,
+      mirror) (env: <b>ASCII_CHAT_MICROPHONE_VOLUME</b>)</dd>
+  <dt id="ivolume"><a class="permalink" href="#ivolume"><b>--ivolume
+    <i>VAL</i></b></a></dt>
+  <dd>Alias for --microphone-volume. (modes: ascii-chat, client, mirror) (env:
+      <b>ASCII_CHAT_IVOLUME</b>)</dd>
+  <dt id="speakers-volume"><a class="permalink" href="#speakers-volume"><b>--speakers-volume
+    <i>VAL</i></b></a></dt>
+  <dd>Speakers volume multiplier (0.0-1.0; press &#x2191;/&#x2193; during
+      rendering to adjust). (modes: ascii-chat, client, mirror) (env:
+      <b>ASCII_CHAT_SPEAKERS_VOLUME</b>)</dd>
+  <dt id="volume"><a class="permalink" href="#volume"><b>--volume
+    <i>VAL</i></b></a></dt>
+  <dd>Alias for --speakers-volume. (modes: ascii-chat, client, mirror) (env:
+      <b>ASCII_CHAT_VOLUME</b>)</dd>
+  <dt id="audio-source"><a class="permalink" href="#audio-source"><b>--audio-source
+    <i>VAL</i></b></a></dt>
+  <dd>Select which audio sources to use: auto (smart), mic, media, or both.
+      (modes: ascii-chat, client, mirror) (env:
+    <b>ASCII_CHAT_AUDIO_SOURCE</b>)</dd>
+  <dt id="no-audio-playback"><a class="permalink" href="#no-audio-playback"><b>--no-audio-playback</b></a></dt>
+  <dd>Disable speakers output. (default: false) (modes: ascii-chat, client)
+      (env: <b>ASCII_CHAT_NO_AUDIO_PLAYBACK</b>)</dd>
+  <dt id="encode-audio"><a class="permalink" href="#encode-audio"><b>--encode-audio</b></a></dt>
+  <dd>Enable Opus audio encoding. (default: true) (modes: ascii-chat, client)
+      (env: <b>ASCII_CHAT_ENCODE_AUDIO</b>)</dd>
+  <dt id="no-encode-audio"><a class="permalink" href="#no-encode-audio"><b>--no-encode-audio</b></a></dt>
+  <dd>Disable Opus audio encoding. (default: false) (modes: ascii-chat, client)
+      (env: <b>ASCII_CHAT_NO_ENCODE_AUDIO</b>)</dd>
+  <dt id="no-audio-mixer"><a class="permalink" href="#no-audio-mixer"><b>--no-audio-mixer</b></a></dt>
+  <dd>Use simple audio mixing without ducking or compression (debug mode only).
+      (default: false) (modes: server) (env:
+    <b>ASCII_CHAT_NO_AUDIO_MIXER</b>)</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="DISPLAY"><a class="permalink" href="#DISPLAY">DISPLAY</a></h2>
+<dl class="Bl-tag">
+  <dt id="color-filter"><a class="permalink" href="#color-filter"><b>--color-filter
+    <i>VAL</i></b></a></dt>
+  <dd>Apply a monochromatic color tint to grayscale video. Values: none, black,
+      white, green, magenta, fuchsia, orange, teal, cyan, pink, red, yellow.
+      Using --color-filter automatically sets --color-mode to mono. (modes:
+      ascii-chat, client, mirror) (env: <b>ASCII_CHAT_COLOR_FILTER</b>)</dd>
+  <dt id="M,"><a class="permalink" href="#M,"><b>-M, --render-mode
+    <i>VAL</i></b></a></dt>
+  <dd>Render mode of text for your client to display. Values: foreground,
+      background, half-block. Press 'r' during rendering to cycle. (modes:
+      ascii-chat, client, mirror) (env: <b>ASCII_CHAT_RENDER_MODE</b>)</dd>
+  <dt id="P,"><a class="permalink" href="#P,"><b>-P, --palette
+    <i>VAL</i></b></a></dt>
+  <dd>Palette type with which to render images to text art. Values: standard,
+      blocks, digital, minimal, cool, custom. All but &quot;custom&quot; are
+      built-in presets that all look different and nice. Try them out! (modes:
+      ascii-chat, client, mirror) (env: <b>ASCII_CHAT_PALETTE</b>)</dd>
+  <dt id="C,"><a class="permalink" href="#C,"><b>-C, --palette-chars
+    <i>VAL</i></b></a></dt>
+  <dd>Ordered sequence of characters from darkest to brightest to use with
+      custom palette (--palette=custom) for rendering images to text art for
+      your client. These characters only will be used to create the rendered
+      output. Can be UTF-8 content (see --utf8). (modes: ascii-chat, client,
+      mirror) (env: <b>ASCII_CHAT_PALETTE_CHARS</b>)</dd>
+  <dt id="stretch"><a class="permalink" href="#stretch"><b>--stretch</b></a></dt>
+  <dd>Allow aspect ratio distortion of image for rendering ascii output. This
+      can allow the rendered ascii to fill your terminal. (default: false)
+      (modes: ascii-chat, client, mirror) (env: <b>ASCII_CHAT_STRETCH</b>)</dd>
+  <dt id="fps"><a class="permalink" href="#fps"><b>--fps <i>NUM</i></b></a></dt>
+  <dd>Target framerate for rendering (1-144). (default: 60) (modes: ascii-chat,
+      client, mirror) (env: <b>ASCII_CHAT_FPS</b>)</dd>
+  <dt id="S,"><a class="permalink" href="#S,"><b>-S, --snapshot</b></a></dt>
+  <dd>Snapshot mode (one frame and exit). (default: false) (modes: ascii-chat,
+      client, mirror) (env: <b>ASCII_CHAT_SNAPSHOT</b>)</dd>
+  <dt id="D,"><a class="permalink" href="#D,"><b>-D, --snapshot-delay
+    <i>NUM</i></b></a></dt>
+  <dd>Snapshot delay in seconds. The timer starts right before the client-side
+      program prints the first frame. --snapshot --snapshot-delay=0 will print
+      the first frame and exit. (default: 4.00) (modes: ascii-chat, client,
+      mirror) (env: <b>ASCII_CHAT_SNAPSHOT_DELAY</b>)</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="NETWORK"><a class="permalink" href="#NETWORK">NETWORK</a></h2>
+<dl class="Bl-tag">
+  <dt id="compression-level"><a class="permalink" href="#compression-level"><b>--compression-level
+    <i>NUM</i></b></a></dt>
+  <dd>zstd compression level (1-9). (default: 3) (modes: ascii-chat, client,
+      server) (env: <b>ASCII_CHAT_COMPRESSION_LEVEL</b>)</dd>
+  <dt id="no-compress"><a class="permalink" href="#no-compress"><b>--no-compress</b></a></dt>
+  <dd>Disable compression. (default: false) (modes: ascii-chat, client, server)
+      (env: <b>ASCII_CHAT_NO_COMPRESS</b>)</dd>
+  <dt id="p,"><a class="permalink" href="#p,"><b>-p, --port
+    <i>NUM</i></b></a></dt>
+  <dd>Port to host a server or discovery-service on, or port to connect to a
+      server as a client. (default: 27224) (modes: ascii-chat, client, server,
+      discovery-service) (env: <b>ASCII_CHAT_PORT</b>)</dd>
+  <dt id="max-clients"><a class="permalink" href="#max-clients"><b>--max-clients
+    <i>NUM</i></b></a></dt>
+  <dd>Maximum concurrent clients. (default: 9) (modes: server,
+      discovery-service) (env: <b>ASCII_CHAT_MAX_CLIENTS</b>)</dd>
+  <dt id="reconnect-attempts"><a class="permalink" href="#reconnect-attempts"><b>--reconnect-attempts
+    <i>NUM</i></b></a></dt>
+  <dd>Number of reconnection attempts before giving up (-1=infinite, 0=none).
+      (default: -1) (modes: ascii-chat, client) (env:
+      <b>ASCII_CHAT_RECONNECT_ATTEMPTS</b>)</dd>
+  <dt id="port-forwarding"><a class="permalink" href="#port-forwarding"><b>--port-forwarding</b></a></dt>
+  <dd>Use UPnP/NAT-PMP port mapping to open a port in your router to ascii-chat
+      (might fail with some routers). (default: false) (modes: server,
+      discovery-service) (env: <b>ASCII_CHAT_PORT_FORWARDING</b>)</dd>
+  <dt id="scan"><a class="permalink" href="#scan"><b>--scan</b></a></dt>
+  <dd>Scan for servers on local network via mDNS. (default: false) (modes:
+      ascii-chat, client) (env: <b>ASCII_CHAT_SCAN</b>)</dd>
+  <dt id="discovery"><a class="permalink" href="#discovery"><b>--discovery</b></a></dt>
+  <dd>Enable discovery session registration. (default: false) (modes: server)
+      (env: <b>ASCII_CHAT_DISCOVERY</b>)</dd>
+  <dt id="webrtc"><a class="permalink" href="#webrtc"><b>--webrtc</b></a></dt>
+  <dd>Make calls using WebRTC p2p connections. (default: true) (modes:
+      ascii-chat, client, server) (env: <b>ASCII_CHAT_WEBRTC</b>)</dd>
+  <dt id="no-webrtc"><a class="permalink" href="#no-webrtc"><b>--no-webrtc</b></a></dt>
+  <dd>Disable WebRTC, use direct TCP only. (default: false) (modes: ascii-chat,
+      client) (env: <b>ASCII_CHAT_NO_WEBRTC</b>)</dd>
+  <dt id="prefer-webrtc"><a class="permalink" href="#prefer-webrtc"><b>--prefer-webrtc</b></a></dt>
+  <dd>Try WebRTC before direct TCP. (default: false) (modes: ascii-chat, client)
+      (env: <b>ASCII_CHAT_PREFER_WEBRTC</b>)</dd>
+  <dt id="webrtc-skip-stun"><a class="permalink" href="#webrtc-skip-stun"><b>--webrtc-skip-stun</b></a></dt>
+  <dd>Skip WebRTC+STUN stage, go straight to TURN relay. (default: false)
+      (modes: ascii-chat, client) (env: <b>ASCII_CHAT_WEBRTC_SKIP_STUN</b>)</dd>
+  <dt id="webrtc-disable-turn"><a class="permalink" href="#webrtc-disable-turn"><b>--webrtc-disable-turn</b></a></dt>
+  <dd>Disable WebRTC+TURN relay, use STUN only. (default: false) (modes:
+      ascii-chat, client) (env: <b>ASCII_CHAT_WEBRTC_DISABLE_TURN</b>)</dd>
+  <dt id="stun-servers"><a class="permalink" href="#stun-servers"><b>--stun-servers
+    <i>STR</i></b></a></dt>
+  <dd>Comma-separated list of WebRTC+STUN server URLs. (default:
+      stun:stun.ascii-chat.com:3478,stun:stun.l.google.com:19302) (modes:
+      ascii-chat, client, server, discovery-service) (env:
+      <b>ASCII_CHAT_STUN_SERVERS</b>)</dd>
+  <dt id="turn-servers"><a class="permalink" href="#turn-servers"><b>--turn-servers
+    <i>STR</i></b></a></dt>
+  <dd>Comma-separated list of WebRTC+TURN server URLs. (default:
+      turn:turn.ascii-chat.com:3478) (modes: ascii-chat, client, server,
+      discovery-service) (env: <b>ASCII_CHAT_TURN_SERVERS</b>)</dd>
+  <dt id="turn-username"><a class="permalink" href="#turn-username"><b>--turn-username
+    <i>STR</i></b></a></dt>
+  <dd>Username for WebRTC+TURN authentication. (modes: ascii-chat, client,
+      server, discovery-service) (env: <b>ASCII_CHAT_TURN_USERNAME</b>)</dd>
+  <dt id="turn-credential"><a class="permalink" href="#turn-credential"><b>--turn-credential
+    <i>STR</i></b></a></dt>
+  <dd>Credential/password for WebRTC+TURN authentication. (modes: ascii-chat,
+      client, server, discovery-service) (env:
+      <b>ASCII_CHAT_TURN_CREDENTIAL</b>)</dd>
+  <dt id="turn-secret"><a class="permalink" href="#turn-secret"><b>--turn-secret
+    <i>STR</i></b></a></dt>
+  <dd>Shared secret for dynamic WebRTC+TURN credential generation (HMAC-SHA1).
+      (modes: ascii-chat, client, server, discovery-service) (env:
+      <b>ASCII_CHAT_TURN_SECRET</b>)</dd>
+  <dt id="discovery-server"><a class="permalink" href="#discovery-server"><b>--discovery-server
+    <i>STR</i></b></a></dt>
+  <dd>Discovery service endpoint (IP address or hostname). (default:
+      discovery-service.ascii-chat.com) (modes: ascii-chat, client, server)
+      (env: <b>ASCII_CHAT_DISCOVERY_SERVER</b>)</dd>
+  <dt id="discovery-port"><a class="permalink" href="#discovery-port"><b>--discovery-port
+    <i>NUM</i></b></a></dt>
+  <dd>Discovery service port (1-65535). (default: 27225) (modes: ascii-chat,
+      client, server) (env: <b>ASCII_CHAT_DISCOVERY_PORT</b>)</dd>
+  <dt id="discovery-expose-ip"><a class="permalink" href="#discovery-expose-ip"><b>--discovery-expose-ip</b></a></dt>
+  <dd>Allow public IP disclosure in discovery sessions (requires confirmation).
+      (default: false) (modes: ascii-chat, client, server) (env:
+      <b>ASCII_CHAT_DISCOVERY_EXPOSE_IP</b>)</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="SECURITY"><a class="permalink" href="#SECURITY">SECURITY</a></h2>
+<dl class="Bl-tag">
+  <dt id="E,"><a class="permalink" href="#E,"><b>-E, --encrypt</b></a></dt>
+  <dd>Enable end-to-end encryption (requires the other party to be encrypted as
+      well). (default: true) (modes: ascii-chat, client, server,
+      discovery-service) (env: <b>ASCII_CHAT_ENCRYPT</b>)</dd>
+  <dt id="K,"><a class="permalink" href="#K,"><b>-K, --key
+    <i>STR</i></b></a></dt>
+  <dd>Server identity key (SSH Ed25519 or GPG key file, gpg:FINGERPRINT,
+      github:USER[.gpg], gitlab:USER[.gpg], or HTTPS URL like
+      https://example.com/key.pub or .gpg). (modes: ascii-chat, client, server,
+      discovery-service) (env: <b>ASCII_CHAT_KEY</b>)</dd>
+  <dt id="password"><a class="permalink" href="#password"><b>--password
+    <i>STR</i></b></a></dt>
+  <dd>Shared password for authentication (8-256 characters). (modes: ascii-chat,
+      client, server, discovery-service) (env: <b>ASCII_CHAT_PASSWORD</b>)</dd>
+  <dt id="no-encrypt"><a class="permalink" href="#no-encrypt"><b>--no-encrypt</b></a></dt>
+  <dd>Disable encryption (requires the other party to be unencrypted as well).
+      (default: false) (modes: ascii-chat, client, server, discovery-service)
+      (env: <b>ASCII_CHAT_NO_ENCRYPT</b>)</dd>
+  <dt id="server-key"><a class="permalink" href="#server-key"><b>--server-key
+    <i>STR</i></b></a></dt>
+  <dd>Expected server public key for verification (SSH Ed25519 or GPG key file,
+      gpg:FINGERPRINT, github:USER[.gpg], gitlab:USER[.gpg], or HTTPS URL like
+      https://example.com/key.pub or .gpg). (modes: ascii-chat, client) (env:
+      <b>ASCII_CHAT_SERVER_KEY</b>)</dd>
+  <dt id="client-keys"><a class="permalink" href="#client-keys"><b>--client-keys
+    <i>STR</i></b></a></dt>
+  <dd>Allowed client keys (comma-separated: file paths with one key per line,
+      github:USER[.gpg], gitlab:USER[.gpg], gpg:KEYID, or HTTPS URLs). (modes:
+      ascii-chat, server, discovery-service) (env:
+      <b>ASCII_CHAT_CLIENT_KEYS</b>)</dd>
+  <dt id="discovery-insecure"><a class="permalink" href="#discovery-insecure"><b>--discovery-insecure</b></a></dt>
+  <dd>Skip server key verification (MITM-vulnerable, requires explicit opt-in).
+      (default: false) (modes: ascii-chat, client) (env:
+      <b>ASCII_CHAT_DISCOVERY_INSECURE</b>)</dd>
+  <dt id="discovery-server-key"><a class="permalink" href="#discovery-server-key"><b>--discovery-server-key
+    <i>STR</i></b></a></dt>
+  <dd>Discovery server public key for verification (SSH Ed25519 or GPG key file,
+      gpg:FINGERPRINT, github:USER, gitlab:USER, or HTTPS URL like
+      https://discovery.ascii-chat.com/key.pub). (modes: ascii-chat, client,
+      server) (env: <b>ASCII_CHAT_DISCOVERY_SERVER_KEY</b>)</dd>
+  <dt id="require-server-identity"><a class="permalink" href="#require-server-identity"><b>--require-server-identity</b></a></dt>
+  <dd>Require servers to provide signed Ed25519 identity. (default: false)
+      (modes: discovery-service) (env:
+      <b>ASCII_CHAT_REQUIRE_SERVER_IDENTITY</b>)</dd>
+  <dt id="require-client-identity"><a class="permalink" href="#require-client-identity"><b>--require-client-identity</b></a></dt>
+  <dd>Require clients to provide signed Ed25519 identity. (default: false)
+      (modes: discovery-service) (env:
+      <b>ASCII_CHAT_REQUIRE_CLIENT_IDENTITY</b>)</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="MEDIA"><a class="permalink" href="#MEDIA">MEDIA</a></h2>
+<dl class="Bl-tag">
+  <dt id="f,"><a class="permalink" href="#f,"><b>-f, --file
+    <i>STR</i></b></a></dt>
+  <dd>Stream from media file or stdin (use '-' for stdin). Supported formats:
+      see man ffmpeg-formats; codecs: see man ffmpeg-codecs (modes: ascii-chat,
+      client, mirror) (env: <b>ASCII_CHAT_FILE</b>)</dd>
+  <dt id="u,"><a class="permalink" href="#u,"><b>-u, --url
+    <i>STR</i></b></a></dt>
+  <dd>Stream from network URL (HTTP/HTTPS/YouTube/RTSP). URL handler: see man
+      yt-dlp; supported formats: see man ffmpeg-formats; codecs: see man
+      ffmpeg-codecs. (modes: ascii-chat, client, mirror) (env:
+      <b>ASCII_CHAT_URL</b>)</dd>
+  <dt id="l,"><a class="permalink" href="#l,"><b>-l, --loop</b></a></dt>
+  <dd>Loop media file playback (not supported for --url). (default: false)
+      (modes: ascii-chat, client, mirror) (env: <b>ASCII_CHAT_LOOP</b>)</dd>
+  <dt id="pause"><a class="permalink" href="#pause"><b>--pause</b></a></dt>
+  <dd>Start playback paused (toggle with spacebar, requires --file or --url).
+      (default: false) (modes: ascii-chat, client, mirror) (env:
+      <b>ASCII_CHAT_PAUSE</b>)</dd>
+  <dt id="s,"><a class="permalink" href="#s,"><b>-s, --seek
+    <i>VAL</i></b></a></dt>
+  <dd>Seek to timestamp before playback (format: seconds, MM:SS, or
+      HH:MM:SS.ms). (modes: ascii-chat, client, mirror) (env:
+      <b>ASCII_CHAT_SEEK</b>)</dd>
+  <dt id="cookies-from-browser"><a class="permalink" href="#cookies-from-browser"><b>--cookies-from-browser
+    <i>VAL</i></b></a></dt>
+  <dd>yt-dlp option (man yt-dlp). Browser/keyring for reading cookies from.
+      Defaults to 'chrome' if no argument provided. Any value is accepted and
+      passed to yt-dlp; invalid values will produce an error from yt-dlp.
+      (modes: ascii-chat, client, mirror) (env:
+      <b>ASCII_CHAT_COOKIES_FROM_BROWSER</b>)</dd>
+  <dt id="no-cookies-from-browser"><a class="permalink" href="#no-cookies-from-browser"><b>--no-cookies-from-browser</b></a></dt>
+  <dd>yt-dlp option (man yt-dlp). Explicitly disable reading cookies from
+      browser. (default: false) (modes: ascii-chat, client, mirror) (env:
+      <b>ASCII_CHAT_NO_COOKIES_FROM_BROWSER</b>)</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="DATABASE"><a class="permalink" href="#DATABASE">DATABASE</a></h2>
+<dl class="Bl-tag">
+  <dt id="database"><a class="permalink" href="#database"><b>--database
+    <i>STR</i></b></a></dt>
+  <dd>Path to SQLite database for discovery session storage. (modes:
+      discovery-service) (env: <b>ASCII_CHAT_DATABASE</b>)
+    <p class="Pp"></p>
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="CONFIGURATION~2"><a class="permalink" href="#CONFIGURATION~2">CONFIGURATION</a></h1>
+<p class="Pp">Configuration is stored in TOML format and can be specified via
+    <b>--config</b> or placed in the default configuration directory. Use
+    <b>--config-create</b> to generate a default configuration file. Values are
+    applied in order of precedence: command-line arguments override environment
+    variables (ASCII_CHAT_*), which override config file values, which override
+    defaults.</p>
+<p class="Pp">For complete configuration documentation including file format,
+    locations, and option mappings, see the <b>config.toml</b> section in
+    <b>ascii-chat</b>(5).</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="PALETTES"><a class="permalink" href="#PALETTES">PALETTES</a></h1>
+<p class="Pp">ascii-chat uses character palettes to render ASCII from images and
+    chooses a character from it based on luminance. We actually support UTF-8
+    character palettes despite the name of the program. The palette characters
+    are ordered from darkest to brightest, and ascii-chat uses this when making
+    luminance-based decisions. With that in mind, when making custom palettes
+    you might want to place the character made of the fewest pixels first, and
+    the character that fills the most pixels when rendered last. Or the inverse,
+    for fun. All of the built-in palettes follow this except for
+    &quot;digital&quot;.</p>
+<p class="Pp">Here are the built-in palettes:</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="standard"><a class="permalink" href="#standard"><b>standard</b></a></dt>
+  <dd>Default palette using ASCII characters only (no UTF-8 required).
+    <br/>
+    Characters: ...',;:clodxkO0KXNWM</dd>
+  <dt id="blocks"><a class="permalink" href="#blocks"><b>blocks</b></a></dt>
+  <dd>Unicode block shading characters for smooth gradients (requires UTF-8).
+    <br/>
+    Characters:
+    &#x2591;&#x2591;&#x2592;&#x2592;&#x2593;&#x2593;&#x2588;&#x2588;</dd>
+  <dt id="digital"><a class="permalink" href="#digital"><b>digital</b></a></dt>
+  <dd>Digital/tech aesthetic with Unicode characters (requires UTF-8).
+    <br/>
+    Characters: -=&#x2261;&#x2263;&#x25B0;&#x25B1;&#x25FC;</dd>
+  <dt id="minimal"><a class="permalink" href="#minimal"><b>minimal</b></a></dt>
+  <dd>Minimal palette with basic ASCII characters only.
+    <br/>
+    Characters: .-+*#</dd>
+  <dt id="cool"><a class="permalink" href="#cool"><b>cool</b></a></dt>
+  <dd>Vertical bar progression for unique visual effect (requires UTF-8).
+    <br/>
+    Characters:
+    &#x2581;&#x2582;&#x2583;&#x2584;&#x2585;&#x2586;&#x2587;&#x2588;</dd>
+  <dt id="custom"><a class="permalink" href="#custom"><b>custom</b></a></dt>
+  <dd>User-defined palette via <b>--palette-chars</b> option.</dd>
+</dl>
+<p class="Pp">Use <b>--utf8</b> to force UTF-8 support when using Unicode
+    palettes if terminal support is not automatically detected. Check with
+    <b>--show-capabilities</b> to see what was detected.</p>
+<p class="Pp"></p>
+</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="RENDER_MODES"><a class="permalink" href="#RENDER_MODES">RENDER
+  MODES</a></h1>
+<p class="Pp">Three rendering modes control how colors are applied:</p>
+<dl class="Bl-tag">
+  <dt id="foreground"><a class="permalink" href="#foreground"><b>foreground</b></a></dt>
+  <dd>The default render mode. ASCII characters are colored and displayed on the
+      terminal's default background.</dd>
+  <dt id="background"><a class="permalink" href="#background"><b>background</b></a></dt>
+  <dd>Terminal background cells are colored and characters are not. Characters
+      appear in the default foreground color. The inverse of the foreground
+      mode.</dd>
+  <dt id="half"><a class="permalink" href="#half"><b>half-block</b></a></dt>
+  <dd>Uses Unicode half-block characters (&#x2580;, &#x2584;) to render at 2x
+      vertical resolution. Each character cell displays two pixels (top and
+      bottom halves). Requires UTF-8 support (<b>--show-capabilities</b> and
+      <b>--utf8</b>).
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="KEYBOARD_CONTROLS"><a class="permalink" href="#KEYBOARD_CONTROLS">KEYBOARD
+  CONTROLS</a></h1>
+<p class="Pp">Keyboard controls are available when running with local media
+    sources (<b>--file</b> or <b>--url</b>). Keyboard controls work in
+    <b>mirror</b>, <b>client</b>, and <b>&quot;ascii-chat&quot;</b> modes. They
+    are <i>not</i> available when a webcam is used as the media source.</p>
+<p class="Pp"><b>Media Playback Controls</b></p>
+<dl class="Bl-tag">
+  <dt id="LEFT"><a class="permalink" href="#LEFT"><b>LEFT ARROW</b></a></dt>
+  <dd>Seek backward 30 seconds in the media file.</dd>
+  <dt id="RIGHT"><a class="permalink" href="#RIGHT"><b>RIGHT ARROW</b></a></dt>
+  <dd>Seek forward 30 seconds in the media file.</dd>
+  <dt id="SPACE"><a class="permalink" href="#SPACE"><b>SPACE</b></a></dt>
+  <dd>Toggle play/pause.</dd>
+</dl>
+<p class="Pp"><b>Audio Controls</b></p>
+<dl class="Bl-tag">
+  <dt id="UP"><a class="permalink" href="#UP"><b>UP ARROW</b></a></dt>
+  <dd>Increase volume by 10%.</dd>
+  <dt id="DOWN"><a class="permalink" href="#DOWN"><b>DOWN ARROW</b></a></dt>
+  <dd>Decrease volume by 10%.</dd>
+  <dt id="M"><a class="permalink" href="#M"><b>M</b></a></dt>
+  <dd>Toggle audio mute/unmute.</dd>
+</dl>
+<p class="Pp"><b>Display Controls</b></p>
+<dl class="Bl-tag">
+  <dt id="C"><a class="permalink" href="#C"><b>C</b></a></dt>
+  <dd>Cycle through color modes: Mono &#x2192; 16-color &#x2192; 256-color
+      &#x2192; truecolor &#x2192; mono.</dd>
+  <dt id="R"><a class="permalink" href="#R"><b>R</b></a></dt>
+  <dd>Cycle through render modes: Foreground &#x2192; background &#x2192;
+      half-Block &#x2192; foreground.</dd>
+  <dt id="F"><a class="permalink" href="#F"><b>F</b></a></dt>
+  <dd>Toggle webcam flip (horizontal mirror). Only works when using a webcam
+      source.</dd>
+</dl>
+<p class="Pp"><b>Keyboard Configuration</b></p>
+<div class="Bd-indent">
+<p class="Pp">These keyboard mappings are currently hardcoded in the
+    application. Future versions will support custom keyboard bindings via a
+    configuration file.</p>
+<p class="Pp"><b>Developer TODO:</b> Implement remappable keyboard controls via
+    a configuration file (e.g., <i>~/.config/ascii-chat/keybindings.toml</i>).
+    This will allow users to customize keyboard shortcuts without rebuilding the
+    application.</p>
+</div>
+<p class="Pp"><b>Keyboard Layout Support</b></p>
+<p class="Pp">The keyboard input system supports all standard POSIX keyboards
+    and terminal emulators. The default keybindings use ASCII characters
+  only.</p>
+<p class="Pp">The underlying input system fully supports Unicode, including:</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="UTF-8"><a class="permalink" href="#UTF-8"><b>UTF-8</b></a></dt>
+  <dd>Any character in the UTF-8 character set can be used for keyboard
+      shortcuts.</dd>
+</dl>
+</div>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="LIMITS"><a class="permalink" href="#LIMITS">LIMITS</a></h1>
+<dl class="Bl-tag">
+  <dt id="Maximum"><a class="permalink" href="#Maximum"><b>Maximum
+    Clients</b></a></dt>
+  <dd>Default 10 clients per server (configurable 1-32 via
+      <b>--max-clients</b>). Higher values increase server resource
+      requirements.</dd>
+  <dt id="Video"><a class="permalink" href="#Video"><b>Video Grid
+    Layout</b></a></dt>
+  <dd>Clients are arranged in an automatically-sized grid (e.g., 2x2, 3x3). The
+      grid size adjusts based on the number of connected clients.</dd>
+  <dt id="Frame"><a class="permalink" href="#Frame"><b>Frame Rate</b></a></dt>
+  <dd>Default 60 FPS. Configurable from 1-144 FPS.
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="EXIT_STATUS"><a class="permalink" href="#EXIT_STATUS">EXIT
+  STATUS</a></h1>
+<p class="Pp">Exit codes correspond to the <b>asciichat_error_t</b> enum
+  values:</p>
+<dl class="Bl-tag">
+  <dt><b>0</b></dt>
+  <dd>Success (ASCIICHAT_OK).</dd>
+  <dt><b>1</b></dt>
+  <dd>General unspecified error (ERROR_GENERAL).</dd>
+  <dt><b>2</b></dt>
+  <dd>Invalid command-line arguments or options (ERROR_USAGE).</dd>
+  <dt><b>3</b></dt>
+  <dd>Memory allocation failed (ERROR_MEMORY).</dd>
+  <dt><b>4</b></dt>
+  <dd>Configuration file or settings error (ERROR_CONFIG).</dd>
+  <dt><b>5-7</b></dt>
+  <dd>Initialization errors (crypto, logging, platform).</dd>
+  <dt><b>20-25</b></dt>
+  <dd>Device errors (webcam, audio, terminal).</dd>
+  <dt><b>40-45</b></dt>
+  <dd>Network errors (bind, connect, timeout, protocol).</dd>
+  <dt><b>60-64</b></dt>
+  <dd>Cryptographic errors (key, auth, handshake, verification).</dd>
+  <dt><b>80-90</b></dt>
+  <dd>Runtime errors (thread, buffer, display, invalid state/param).</dd>
+  <dt><b>100-104</b></dt>
+  <dd>Signal and compression errors.
+    <p class="Pp"></p>
+  </dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SECURITY~2"><a class="permalink" href="#SECURITY~2">SECURITY</a></h1>
+<p class="Pp"><b>ascii-chat</b> implements end-to-end encryption by default
+    using libsodium (the same cryptographic library used by Signal, WireGuard,
+    and Zcash). All video and audio data is encrypted after the handshake using
+    <b>XSalsa20-Poly1305</b> AEAD encryption. Session establishment uses
+    <b>X25519</b> elliptic curve Diffie-Hellman for key exchange and
+    <b>Ed25519</b> for optional identity verification. Encryption cannot be
+    disabled in production builds (use <b>--no-encrypt</b> only for trusted
+    local testing).</p>
+<p class="Pp">Unlike HTTPS, ascii-chat has no global certificate authority to
+    bootstrap trust. This creates a fundamental design choice: you get
+    <i>privacy</i> (encryption against passive eavesdropping) by default, but
+    identity verification is optional and progressive. By default, each
+    connection uses ephemeral keys (generated fresh, never reused) providing
+    perfect forward secrecy but offering no MITM protection. For stronger
+    security, use password authentication, SSH key verification, or the ACDS
+    discovery service to bind identity to sessions. This &quot;progressive
+    security ladder&quot; lets users choose their trust model based on threat
+    level, from quick private sessions (ephemeral DH) to paranoid mode (password
+    + SSH key + whitelist).</p>
+<section class="Ss">
+<h2 class="Ss" id="Authentication_Methods"><a class="permalink" href="#Authentication_Methods">Authentication
+  Methods</a></h2>
+<p class="Pp"><b>Default (Ephemeral DH):</b> Protects against passive
+    eavesdropping but not MITM attacks. Works with zero configuration. Good for
+    low-threat environments or quick sessions.
+  <br/>
+  <b>Password Authentication:</b> Both sides prove password knowledge (8-256
+    characters), bound cryptographically to the DH shared secret. Prevents MITM
+    attacks even without pre-arranged keys. Enable with <b>--password SECRET</b>
+    on both server and client.
+  <br/>
+  <b>Key-Based Authentication:</b> Server and client can authenticate using
+    Ed25519 SSH keys or GPG keys (see <b>ascii-chat</b>(5) for file format
+    details). Keys can be specified as:</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt id="Local"><a class="permalink" href="#Local"><b>Local file
+    paths:</b></a></dt>
+  <dd><b>--key ~/.ssh/id_ed25519</b> or <b>--server-key
+    ~/.ssh/server.pub</b></dd>
+  <dt id="HTTPS"><a class="permalink" href="#HTTPS"><b>HTTPS URLs:</b></a></dt>
+  <dd><b>--server-key https://example.com/key.pub</b> or <b>--client-keys
+      https://example.com/keys.gpg</b> (verified by system CA certificates)</dd>
+  <dt id="GitHub/GitLab"><a class="permalink" href="#GitHub/GitLab"><b>GitHub/GitLab
+    SSH keys:</b></a></dt>
+  <dd><b>--server-key github:zfogg</b> or <b>--server-key gitlab:zfogg</b>
+      (fetches all Ed25519 SSH keys from the user's public profile)</dd>
+  <dt id="GitHub/GitLab~2"><a class="permalink" href="#GitHub/GitLab~2"><b>GitHub/GitLab
+    GPG keys:</b></a></dt>
+  <dd><b>--server-key github:zfogg.gpg</b> or <b>--client-keys
+      gitlab:zfogg.gpg</b></dd>
+  <dt id="GPG"><a class="permalink" href="#GPG"><b>GPG key
+    fingerprints:</b></a></dt>
+  <dd><b>--server-key gpg:897607FA43DC66F6</b> or <b>--key gpg:MYKEYID</b> (uses
+      system GPG keyring via gpg-agent)</dd>
+</dl>
+</div>
+<p class="Pp"><b>Client Whitelisting:</b> Server restricts connections to
+    pre-approved client keys via <b>--client-keys</b> (accepts local file, HTTPS
+    URL, or GitHub/GitLab shorthand). Prevents unauthorized client connections.
+    See <b>ascii-chat</b>(5) for authorized_keys file format.
+  <br/>
+  <b>Defense in Depth:</b> Combine multiple methods (password + SSH key +
+    whitelist) for maximum security.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Known_Hosts_and_Trust-On-First-Use_(TOFU)"><a class="permalink" href="#Known_Hosts_and_Trust-On-First-Use_(TOFU)">Known
+  Hosts and Trust-On-First-Use (TOFU)</a></h2>
+<p class="Pp">When first connecting to a server without <b>--server-key</b>,
+    ascii-chat stores the server's public key fingerprint in <i>known_hosts</i>
+    using SSH-style TOFU verification. Subsequent connections verify the
+    server's key matches the stored fingerprint. This protects against MITM
+    attacks on later connections, similar to SSH. If a server's key changes, the
+    connection is rejected with a MITM warning showing both old and new
+    fingerprints for comparison. Verify the change is legitimate (server
+    reinstalled, key rotated) through a separate channel before removing the old
+    entry from <i>known_hosts</i>. See <b>ascii-chat</b>(5) for known_hosts file
+    format.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ascii-chat_Discovery_Service_(ACDS)"><a class="permalink" href="#ascii-chat_Discovery_Service_(ACDS)">ascii-chat
+  Discovery Service (ACDS)</a></h2>
+<p class="Pp">The ascii-chat Discovery Service bootstraps trust using the
+    existing HTTPS PKI. By default, the public discovery service runs at
+    <b>discover-server.ascii-chat.com:27225</b>. ascii-chat automatically
+    downloads and verifies the discovery server's public keys over HTTPS from
+    <i>discovery.ascii-chat.com/key.pub</i> (SSH Ed25519) and
+    <i>discovery.ascii-chat.com/key.gpg</i> (GPG), verified by system CA
+    certificates. Servers register with ACDS using a discoverable session string
+    (e.g., &quot;purple-mountain-lake&quot;). Clients connect to the discovery
+    service to look up the server's public key by session string, then pin that
+    key for the subsequent TCP connection to the server. This avoids the
+    chicken-and-egg problem of distributing server keys before the connection
+    exists. The discovery service only stores connection metadata (session
+    strings, public keys, NAT traversal ICE candidates); your video and audio
+    flow peer-to-peer with end-to-end encryption. ACDS never sees your
+  media.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Session_Rekeying_and_Forward_Secrecy"><a class="permalink" href="#Session_Rekeying_and_Forward_Secrecy">Session
+  Rekeying and Forward Secrecy</a></h2>
+<p class="Pp">All session keys are rotated automatically after 1 hour or 1
+    million packets (whichever comes first) to limit exposure from key
+    compromise. The rekey protocol is transparent: both sides generate new
+    ephemeral keys, perform a new DH exchange, and atomically switch to new
+    session keys without interruption. Old keys are securely wiped using
+    sodium_memzero(). Nonces are constructed as session_id || counter (16-byte
+    random session ID + 8-byte monotonic packet counter), preventing both
+    within-session and cross-session replay attacks. Nonce counter exhaustion
+    (astronomically unlikely at 60 FPS for 9+ years) triggers automatic
+    rekeying.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="SSH_Agent_and_GPG_Agent_Integration"><a class="permalink" href="#SSH_Agent_and_GPG_Agent_Integration">SSH
+  Agent and GPG Agent Integration</a></h2>
+<p class="Pp">For Ed25519 SSH keys with passphrases, ascii-chat uses
+    <b>ssh-agent</b>(1) to avoid repeated passphrase prompts. Ensure your key is
+    added with <b>ssh-add</b>(1) before connecting. For GPG keys, ascii-chat
+    uses <b>gpg-agent</b>(1) for passphrase management. Both agents must be
+    running and properly configured for seamless authentication. If not running,
+    ascii-chat will prompt for passphrases interactively. See
+    <b>ssh-agent</b>(1), <b>ssh-add</b>(1), and <b>gpg-agent</b>(1) for
+    configuration details.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ENVIRONMENT"><a class="permalink" href="#ENVIRONMENT">ENVIRONMENT</a></h1>
+<dl class="Bl-tag">
+  <dt id="APPDATA"><a class="permalink" href="#APPDATA"><b>APPDATA</b></a></dt>
+  <dd>Windows configuration directory for user-specific application data
+      (%APPDATA%\ascii-chat). Primary location for config files on Windows.</dd>
+  <dt id="ASCII_CHAT_AUDIO"><a class="permalink" href="#ASCII_CHAT_AUDIO"><b>ASCII_CHAT_AUDIO</b></a></dt>
+  <dd>Enable audio streaming (press 'm' during rendering to toggle). (see
+      <b>--audio</b>)</dd>
+  <dt id="ASCII_CHAT_AUDIO_SOURCE"><a class="permalink" href="#ASCII_CHAT_AUDIO_SOURCE"><b>ASCII_CHAT_AUDIO_SOURCE</b></a></dt>
+  <dd>Select which audio sources to use: auto (smart), mic, media, or both. (see
+      <b>--audio-source</b>)</dd>
+  <dt id="ASCII_CHAT_CLIENT_KEYS"><a class="permalink" href="#ASCII_CHAT_CLIENT_KEYS"><b>ASCII_CHAT_CLIENT_KEYS</b></a></dt>
+  <dd>Allowed client keys (comma-separated: file paths with one key per line,
+      github:USER[.gpg], gitlab:USER[.gpg], gpg:KEYID, or HTTPS URLs). (see
+      <b>--client-keys</b>)</dd>
+  <dt id="ASCII_CHAT_COLOR"><a class="permalink" href="#ASCII_CHAT_COLOR"><b>ASCII_CHAT_COLOR</b></a></dt>
+  <dd>Color output setting: 'auto' (default, smart detection), 'true' (force
+      colors on), or 'false' (force colors off). (see <b>--color</b>)</dd>
+  <dt id="ASCII_CHAT_COLOR_FILTER"><a class="permalink" href="#ASCII_CHAT_COLOR_FILTER"><b>ASCII_CHAT_COLOR_FILTER</b></a></dt>
+  <dd>Apply a monochromatic color tint to grayscale video. Values: none, black,
+      white, green, magenta, fuchsia, orange, teal, cyan, pink, red, yellow.
+      Using --color-filter automatically sets --color-mode to mono. (see
+      <b>--color-filter</b>)</dd>
+  <dt id="ASCII_CHAT_COLOR_MODE"><a class="permalink" href="#ASCII_CHAT_COLOR_MODE"><b>ASCII_CHAT_COLOR_MODE</b></a></dt>
+  <dd>Terminal color level (auto, none, 16, 256, truecolor). This controls what
+      ANSI escape codes ascii-chat will use for console logging and display
+      output if color is enabled. Press 'c' during rendering to cycle. See also
+      --color. (see <b>--color-mode</b>)</dd>
+  <dt id="ASCII_CHAT_COLOR_SCHEME"><a class="permalink" href="#ASCII_CHAT_COLOR_SCHEME"><b>ASCII_CHAT_COLOR_SCHEME</b></a></dt>
+  <dd>Color scheme for logging output (pastel, nord, solarized-dark, dracula,
+      gruvbox-dark, monokai, etc.). (see <b>--color-scheme</b>)</dd>
+  <dt id="ASCII_CHAT_COMPRESSION_LEVEL"><a class="permalink" href="#ASCII_CHAT_COMPRESSION_LEVEL"><b>ASCII_CHAT_COMPRESSION_LEVEL</b></a></dt>
+  <dd>zstd compression level (1-9). (see <b>--compression-level</b>)</dd>
+  <dt id="ASCII_CHAT_COOKIES_FROM_BROWSER"><a class="permalink" href="#ASCII_CHAT_COOKIES_FROM_BROWSER"><b>ASCII_CHAT_COOKIES_FROM_BROWSER</b></a></dt>
+  <dd>yt-dlp option (man yt-dlp). Browser/keyring for reading cookies from.
+      Defaults to 'chrome' if no argument provided. Any value is accepted and
+      passed to yt-dlp; invalid values will produce an error from yt-dlp. (see
+      <b>--cookies-from-browser</b>)</dd>
+  <dt id="ASCII_CHAT_DATABASE"><a class="permalink" href="#ASCII_CHAT_DATABASE"><b>ASCII_CHAT_DATABASE</b></a></dt>
+  <dd>Path to SQLite database for discovery session storage. (see
+      <b>--database</b>)</dd>
+  <dt id="ASCII_CHAT_DISCOVERY"><a class="permalink" href="#ASCII_CHAT_DISCOVERY"><b>ASCII_CHAT_DISCOVERY</b></a></dt>
+  <dd>Enable discovery session registration. (see <b>--discovery</b>)</dd>
+  <dt id="ASCII_CHAT_DISCOVERY_EXPOSE_IP"><a class="permalink" href="#ASCII_CHAT_DISCOVERY_EXPOSE_IP"><b>ASCII_CHAT_DISCOVERY_EXPOSE_IP</b></a></dt>
+  <dd>Allow public IP disclosure in discovery sessions (requires confirmation).
+      (see <b>--discovery-expose-ip</b>)</dd>
+  <dt id="ASCII_CHAT_DISCOVERY_INSECURE"><a class="permalink" href="#ASCII_CHAT_DISCOVERY_INSECURE"><b>ASCII_CHAT_DISCOVERY_INSECURE</b></a></dt>
+  <dd>Skip server key verification (MITM-vulnerable, requires explicit opt-in).
+      (see <b>--discovery-insecure</b>)</dd>
+  <dt id="ASCII_CHAT_DISCOVERY_PORT"><a class="permalink" href="#ASCII_CHAT_DISCOVERY_PORT"><b>ASCII_CHAT_DISCOVERY_PORT</b></a></dt>
+  <dd>Discovery service port (1-65535). (see <b>--discovery-port</b>)</dd>
+  <dt id="ASCII_CHAT_DISCOVERY_SERVER"><a class="permalink" href="#ASCII_CHAT_DISCOVERY_SERVER"><b>ASCII_CHAT_DISCOVERY_SERVER</b></a></dt>
+  <dd>Discovery service endpoint (IP address or hostname). (see
+      <b>--discovery-server</b>)</dd>
+  <dt id="ASCII_CHAT_DISCOVERY_SERVER_KEY"><a class="permalink" href="#ASCII_CHAT_DISCOVERY_SERVER_KEY"><b>ASCII_CHAT_DISCOVERY_SERVER_KEY</b></a></dt>
+  <dd>Discovery server public key for verification (SSH Ed25519 or GPG key file,
+      gpg:FINGERPRINT, github:USER, gitlab:USER, or HTTPS URL like
+      https://discovery.ascii-chat.com/key.pub). (see
+      <b>--discovery-server-key</b>)</dd>
+  <dt id="ASCII_CHAT_ENCODE_AUDIO"><a class="permalink" href="#ASCII_CHAT_ENCODE_AUDIO"><b>ASCII_CHAT_ENCODE_AUDIO</b></a></dt>
+  <dd>Enable Opus audio encoding. (see <b>--encode-audio</b>)</dd>
+  <dt id="ASCII_CHAT_ENCRYPT"><a class="permalink" href="#ASCII_CHAT_ENCRYPT"><b>ASCII_CHAT_ENCRYPT</b></a></dt>
+  <dd>Enable end-to-end encryption (requires the other party to be encrypted as
+      well). (see <b>--encrypt</b>)</dd>
+  <dt id="ASCII_CHAT_FILE"><a class="permalink" href="#ASCII_CHAT_FILE"><b>ASCII_CHAT_FILE</b></a></dt>
+  <dd>Stream from media file or stdin (use '-' for stdin). Supported formats:
+      see man ffmpeg-formats; codecs: see man ffmpeg-codecs (see
+    <b>--file</b>)</dd>
+  <dt id="ASCII_CHAT_FPS"><a class="permalink" href="#ASCII_CHAT_FPS"><b>ASCII_CHAT_FPS</b></a></dt>
+  <dd>Target framerate for rendering (1-144). (see <b>--fps</b>)</dd>
+  <dt id="ASCII_CHAT_HEIGHT"><a class="permalink" href="#ASCII_CHAT_HEIGHT"><b>ASCII_CHAT_HEIGHT</b></a></dt>
+  <dd>Terminal height in characters. Can be controlled using $ROWS. By default
+      your terminal height is detected at runtime and this value is updated
+      automatically. (see <b>--height</b>)</dd>
+  <dt id="ASCII_CHAT_IVOLUME"><a class="permalink" href="#ASCII_CHAT_IVOLUME"><b>ASCII_CHAT_IVOLUME</b></a></dt>
+  <dd>Alias for --microphone-volume. (see <b>--ivolume</b>)</dd>
+  <dt id="ASCII_CHAT_KEEPAWAKE"><a class="permalink" href="#ASCII_CHAT_KEEPAWAKE"><b>ASCII_CHAT_KEEPAWAKE</b></a></dt>
+  <dd>Explicitly enable system sleep prevention (keepawake mode). (see
+      <b>--keepawake</b>)</dd>
+  <dt id="ASCII_CHAT_KEY"><a class="permalink" href="#ASCII_CHAT_KEY"><b>ASCII_CHAT_KEY</b></a></dt>
+  <dd>Server identity key (SSH Ed25519 or GPG key file, gpg:FINGERPRINT,
+      github:USER[.gpg], gitlab:USER[.gpg], or HTTPS URL like
+      https://example.com/key.pub or .gpg). (see <b>--key</b>)</dd>
+  <dt id="ASCII_CHAT_KEY_PASSWORD"><a class="permalink" href="#ASCII_CHAT_KEY_PASSWORD"><b>ASCII_CHAT_KEY_PASSWORD</b></a></dt>
+  <dd>Passphrase for encrypted SSH or GPG private keys. Only use this as a
+      fallback;</dd>
+  <dt id="ASCII_CHAT_LOG_FILE"><a class="permalink" href="#ASCII_CHAT_LOG_FILE"><b>ASCII_CHAT_LOG_FILE</b></a></dt>
+  <dd>Set FILE as path for log file. (see <b>--log-file</b>)</dd>
+  <dt id="ASCII_CHAT_LOG_LEVEL"><a class="permalink" href="#ASCII_CHAT_LOG_LEVEL"><b>ASCII_CHAT_LOG_LEVEL</b></a></dt>
+  <dd>Set log level: dev, debug, info, warn, error, fatal. Logs at or above this
+      level are written. (see <b>--log-level</b>)</dd>
+  <dt id="ASCII_CHAT_LOOP"><a class="permalink" href="#ASCII_CHAT_LOOP"><b>ASCII_CHAT_LOOP</b></a></dt>
+  <dd>Loop media file playback (not supported for --url). (see
+    <b>--loop</b>)</dd>
+  <dt id="ASCII_CHAT_MAX_CLIENTS"><a class="permalink" href="#ASCII_CHAT_MAX_CLIENTS"><b>ASCII_CHAT_MAX_CLIENTS</b></a></dt>
+  <dd>Maximum concurrent clients. (see <b>--max-clients</b>)</dd>
+  <dt id="ASCII_CHAT_MICROPHONE_INDEX"><a class="permalink" href="#ASCII_CHAT_MICROPHONE_INDEX"><b>ASCII_CHAT_MICROPHONE_INDEX</b></a></dt>
+  <dd>Microphone device index for audio input. (see
+    <b>--microphone-index</b>)</dd>
+  <dt id="ASCII_CHAT_MICROPHONE_VOLUME"><a class="permalink" href="#ASCII_CHAT_MICROPHONE_VOLUME"><b>ASCII_CHAT_MICROPHONE_VOLUME</b></a></dt>
+  <dd>Microphone volume multiplier (0.0-1.0). (see
+    <b>--microphone-volume</b>)</dd>
+  <dt id="ASCII_CHAT_NO_AUDIO_MIXER"><a class="permalink" href="#ASCII_CHAT_NO_AUDIO_MIXER"><b>ASCII_CHAT_NO_AUDIO_MIXER</b></a></dt>
+  <dd>Use simple audio mixing without ducking or compression (debug mode only).
+      (see <b>--no-audio-mixer</b>)</dd>
+  <dt id="ASCII_CHAT_NO_AUDIO_PLAYBACK"><a class="permalink" href="#ASCII_CHAT_NO_AUDIO_PLAYBACK"><b>ASCII_CHAT_NO_AUDIO_PLAYBACK</b></a></dt>
+  <dd>Disable speakers output. (see <b>--no-audio-playback</b>)</dd>
+  <dt id="ASCII_CHAT_NO_COMPRESS"><a class="permalink" href="#ASCII_CHAT_NO_COMPRESS"><b>ASCII_CHAT_NO_COMPRESS</b></a></dt>
+  <dd>Disable compression. (see <b>--no-compress</b>)</dd>
+  <dt id="ASCII_CHAT_NO_COOKIES_FROM_BROWSER"><a class="permalink" href="#ASCII_CHAT_NO_COOKIES_FROM_BROWSER"><b>ASCII_CHAT_NO_COOKIES_FROM_BROWSER</b></a></dt>
+  <dd>yt-dlp option (man yt-dlp). Explicitly disable reading cookies from
+      browser. (see <b>--no-cookies-from-browser</b>)</dd>
+  <dt id="ASCII_CHAT_NO_ENCODE_AUDIO"><a class="permalink" href="#ASCII_CHAT_NO_ENCODE_AUDIO"><b>ASCII_CHAT_NO_ENCODE_AUDIO</b></a></dt>
+  <dd>Disable Opus audio encoding. (see <b>--no-encode-audio</b>)</dd>
+  <dt id="ASCII_CHAT_NO_ENCRYPT"><a class="permalink" href="#ASCII_CHAT_NO_ENCRYPT"><b>ASCII_CHAT_NO_ENCRYPT</b></a></dt>
+  <dd>Disable encryption (requires the other party to be unencrypted as well).
+      (see <b>--no-encrypt</b>)</dd>
+  <dt id="ASCII_CHAT_NO_KEEPAWAKE"><a class="permalink" href="#ASCII_CHAT_NO_KEEPAWAKE"><b>ASCII_CHAT_NO_KEEPAWAKE</b></a></dt>
+  <dd>Disable system sleep prevention (allow OS to sleep). (see
+      <b>--no-keepawake</b>)</dd>
+  <dt id="ASCII_CHAT_NO_SPLASH"><a class="permalink" href="#ASCII_CHAT_NO_SPLASH"><b>ASCII_CHAT_NO_SPLASH</b></a></dt>
+  <dd>Disable splash screen with ASCII art. Use --no-splash to skip the splash
+      screen on client, mirror, and discovery modes. (see
+    <b>--no-splash</b>)</dd>
+  <dt id="ASCII_CHAT_NO_STATUS_SCREEN"><a class="permalink" href="#ASCII_CHAT_NO_STATUS_SCREEN"><b>ASCII_CHAT_NO_STATUS_SCREEN</b></a></dt>
+  <dd>Disable status screen display on server and discovery-service modes. (see
+      <b>--no-status-screen</b>)</dd>
+  <dt id="ASCII_CHAT_NO_WEBRTC"><a class="permalink" href="#ASCII_CHAT_NO_WEBRTC"><b>ASCII_CHAT_NO_WEBRTC</b></a></dt>
+  <dd>Disable WebRTC, use direct TCP only. (see <b>--no-webrtc</b>)</dd>
+  <dt id="ASCII_CHAT_PALETTE"><a class="permalink" href="#ASCII_CHAT_PALETTE"><b>ASCII_CHAT_PALETTE</b></a></dt>
+  <dd>Palette type with which to render images to text art. Values: standard,
+      blocks, digital, minimal, cool, custom. All but &quot;custom&quot; are
+      built-in presets that all look different and nice. Try them out! (see
+      <b>--palette</b>)</dd>
+  <dt id="ASCII_CHAT_PALETTE_CHARS"><a class="permalink" href="#ASCII_CHAT_PALETTE_CHARS"><b>ASCII_CHAT_PALETTE_CHARS</b></a></dt>
+  <dd>Ordered sequence of characters from darkest to brightest to use with
+      custom palette (--palette=custom) for rendering images to text art for
+      your client. These characters only will be used to create the rendered
+      output. Can be UTF-8 content (see --utf8). (see
+    <b>--palette-chars</b>)</dd>
+  <dt id="ASCII_CHAT_PASSWORD"><a class="permalink" href="#ASCII_CHAT_PASSWORD"><b>ASCII_CHAT_PASSWORD</b></a></dt>
+  <dd>Shared password for authentication (8-256 characters). (see
+      <b>--password</b>)</dd>
+  <dt id="ASCII_CHAT_PAUSE"><a class="permalink" href="#ASCII_CHAT_PAUSE"><b>ASCII_CHAT_PAUSE</b></a></dt>
+  <dd>Start playback paused (toggle with spacebar, requires --file or --url).
+      (see <b>--pause</b>)</dd>
+  <dt id="ASCII_CHAT_PORT"><a class="permalink" href="#ASCII_CHAT_PORT"><b>ASCII_CHAT_PORT</b></a></dt>
+  <dd>Port to host a server or discovery-service on, or port to connect to a
+      server as a client. (see <b>--port</b>)</dd>
+  <dt id="ASCII_CHAT_PORT_FORWARDING"><a class="permalink" href="#ASCII_CHAT_PORT_FORWARDING"><b>ASCII_CHAT_PORT_FORWARDING</b></a></dt>
+  <dd>Use UPnP/NAT-PMP port mapping to open a port in your router to ascii-chat
+      (might fail with some routers). (see <b>--port-forwarding</b>)</dd>
+  <dt id="ASCII_CHAT_PREFER_WEBRTC"><a class="permalink" href="#ASCII_CHAT_PREFER_WEBRTC"><b>ASCII_CHAT_PREFER_WEBRTC</b></a></dt>
+  <dd>Try WebRTC before direct TCP. (see <b>--prefer-webrtc</b>)</dd>
+  <dt id="ASCII_CHAT_QUIET"><a class="permalink" href="#ASCII_CHAT_QUIET"><b>ASCII_CHAT_QUIET</b></a></dt>
+  <dd>Disable console logging (log to file only). (see <b>--quiet</b>)</dd>
+  <dt id="ASCII_CHAT_RECONNECT_ATTEMPTS"><a class="permalink" href="#ASCII_CHAT_RECONNECT_ATTEMPTS"><b>ASCII_CHAT_RECONNECT_ATTEMPTS</b></a></dt>
+  <dd>Number of reconnection attempts before giving up (-1=infinite, 0=none).
+      (see <b>--reconnect-attempts</b>)</dd>
+  <dt id="ASCII_CHAT_RENDER_MODE"><a class="permalink" href="#ASCII_CHAT_RENDER_MODE"><b>ASCII_CHAT_RENDER_MODE</b></a></dt>
+  <dd>Render mode of text for your client to display. Values: foreground,
+      background, half-block. Press 'r' during rendering to cycle. (see
+      <b>--render-mode</b>)</dd>
+  <dt id="ASCII_CHAT_REQUIRE_CLIENT_IDENTITY"><a class="permalink" href="#ASCII_CHAT_REQUIRE_CLIENT_IDENTITY"><b>ASCII_CHAT_REQUIRE_CLIENT_IDENTITY</b></a></dt>
+  <dd>Require clients to provide signed Ed25519 identity. (see
+      <b>--require-client-identity</b>)</dd>
+  <dt id="ASCII_CHAT_REQUIRE_SERVER_IDENTITY"><a class="permalink" href="#ASCII_CHAT_REQUIRE_SERVER_IDENTITY"><b>ASCII_CHAT_REQUIRE_SERVER_IDENTITY</b></a></dt>
+  <dd>Require servers to provide signed Ed25519 identity. (see
+      <b>--require-server-identity</b>)</dd>
+  <dt id="ASCII_CHAT_SCAN"><a class="permalink" href="#ASCII_CHAT_SCAN"><b>ASCII_CHAT_SCAN</b></a></dt>
+  <dd>Scan for servers on local network via mDNS. (see <b>--scan</b>)</dd>
+  <dt id="ASCII_CHAT_SEEK"><a class="permalink" href="#ASCII_CHAT_SEEK"><b>ASCII_CHAT_SEEK</b></a></dt>
+  <dd>Seek to timestamp before playback (format: seconds, MM:SS, or
+      HH:MM:SS.ms). (see <b>--seek</b>)</dd>
+  <dt id="ASCII_CHAT_SERVER_KEY"><a class="permalink" href="#ASCII_CHAT_SERVER_KEY"><b>ASCII_CHAT_SERVER_KEY</b></a></dt>
+  <dd>Expected server public key for verification (SSH Ed25519 or GPG key file,
+      gpg:FINGERPRINT, github:USER[.gpg], gitlab:USER[.gpg], or HTTPS URL like
+      https://example.com/key.pub or .gpg). (see <b>--server-key</b>)</dd>
+  <dt id="ASCII_CHAT_SNAPSHOT"><a class="permalink" href="#ASCII_CHAT_SNAPSHOT"><b>ASCII_CHAT_SNAPSHOT</b></a></dt>
+  <dd>Snapshot mode (one frame and exit). (see <b>--snapshot</b>)</dd>
+  <dt id="ASCII_CHAT_SNAPSHOT_DELAY"><a class="permalink" href="#ASCII_CHAT_SNAPSHOT_DELAY"><b>ASCII_CHAT_SNAPSHOT_DELAY</b></a></dt>
+  <dd>Snapshot delay in seconds. The timer starts right before the client-side
+      program prints the first frame. --snapshot --snapshot-delay=0 will print
+      the first frame and exit. (see <b>--snapshot-delay</b>)</dd>
+  <dt id="ASCII_CHAT_SPEAKERS_INDEX"><a class="permalink" href="#ASCII_CHAT_SPEAKERS_INDEX"><b>ASCII_CHAT_SPEAKERS_INDEX</b></a></dt>
+  <dd>Speakers device index to use for audio output. (see
+      <b>--speakers-index</b>)</dd>
+  <dt id="ASCII_CHAT_SPEAKERS_VOLUME"><a class="permalink" href="#ASCII_CHAT_SPEAKERS_VOLUME"><b>ASCII_CHAT_SPEAKERS_VOLUME</b></a></dt>
+  <dd>Speakers volume multiplier (0.0-1.0; press &#x2191;/&#x2193; during
+      rendering to adjust). (see <b>--speakers-volume</b>)</dd>
+  <dt id="ASCII_CHAT_STRETCH"><a class="permalink" href="#ASCII_CHAT_STRETCH"><b>ASCII_CHAT_STRETCH</b></a></dt>
+  <dd>Allow aspect ratio distortion of image for rendering ascii output. This
+      can allow the rendered ascii to fill your terminal. (see
+    <b>--stretch</b>)</dd>
+  <dt id="ASCII_CHAT_STRIP_ANSI"><a class="permalink" href="#ASCII_CHAT_STRIP_ANSI"><b>ASCII_CHAT_STRIP_ANSI</b></a></dt>
+  <dd>Strip ANSI escape sequences from output before printing. Useful for
+      scripting and debugging. (see <b>--strip-ansi</b>)</dd>
+  <dt id="ASCII_CHAT_STUN_SERVERS"><a class="permalink" href="#ASCII_CHAT_STUN_SERVERS"><b>ASCII_CHAT_STUN_SERVERS</b></a></dt>
+  <dd>Comma-separated list of WebRTC+STUN server URLs. (see
+      <b>--stun-servers</b>)</dd>
+  <dt id="ASCII_CHAT_TURN_CREDENTIAL"><a class="permalink" href="#ASCII_CHAT_TURN_CREDENTIAL"><b>ASCII_CHAT_TURN_CREDENTIAL</b></a></dt>
+  <dd>Credential/password for WebRTC+TURN authentication. (see
+      <b>--turn-credential</b>)</dd>
+  <dt id="ASCII_CHAT_TURN_SECRET"><a class="permalink" href="#ASCII_CHAT_TURN_SECRET"><b>ASCII_CHAT_TURN_SECRET</b></a></dt>
+  <dd>Shared secret for dynamic WebRTC+TURN credential generation (HMAC-SHA1).
+      (see <b>--turn-secret</b>)</dd>
+  <dt id="ASCII_CHAT_TURN_SERVERS"><a class="permalink" href="#ASCII_CHAT_TURN_SERVERS"><b>ASCII_CHAT_TURN_SERVERS</b></a></dt>
+  <dd>Comma-separated list of WebRTC+TURN server URLs. (see
+      <b>--turn-servers</b>)</dd>
+  <dt id="ASCII_CHAT_TURN_USERNAME"><a class="permalink" href="#ASCII_CHAT_TURN_USERNAME"><b>ASCII_CHAT_TURN_USERNAME</b></a></dt>
+  <dd>Username for WebRTC+TURN authentication. (see <b>--turn-username</b>)</dd>
+  <dt id="ASCII_CHAT_URL"><a class="permalink" href="#ASCII_CHAT_URL"><b>ASCII_CHAT_URL</b></a></dt>
+  <dd>Stream from network URL (HTTP/HTTPS/YouTube/RTSP). URL handler: see man
+      yt-dlp; supported formats: see man ffmpeg-formats; codecs: see man
+      ffmpeg-codecs. (see <b>--url</b>)</dd>
+  <dt id="ASCII_CHAT_UTF8"><a class="permalink" href="#ASCII_CHAT_UTF8"><b>ASCII_CHAT_UTF8</b></a></dt>
+  <dd>UTF-8 support setting: 'auto' (default, auto-detect), 'true' (force UTF-8
+      on), or 'false' (force UTF-8 off). (see <b>--utf8</b>)</dd>
+  <dt id="ASCII_CHAT_VERBOSE"><a class="permalink" href="#ASCII_CHAT_VERBOSE"><b>ASCII_CHAT_VERBOSE</b></a></dt>
+  <dd>Increase log verbosity (stackable: -VV, -VVV). (see <b>--verbose</b>)</dd>
+  <dt id="ASCII_CHAT_VOLUME"><a class="permalink" href="#ASCII_CHAT_VOLUME"><b>ASCII_CHAT_VOLUME</b></a></dt>
+  <dd>Alias for --speakers-volume. (see <b>--volume</b>)</dd>
+  <dt id="ASCII_CHAT_WEBCAM_FLIP"><a class="permalink" href="#ASCII_CHAT_WEBCAM_FLIP"><b>ASCII_CHAT_WEBCAM_FLIP</b></a></dt>
+  <dd>Flip webcam output horizontally before using it (press 'f' during
+      rendering to toggle). (see <b>--webcam-flip</b>)</dd>
+  <dt id="ASCII_CHAT_WEBCAM_INDEX"><a class="permalink" href="#ASCII_CHAT_WEBCAM_INDEX"><b>ASCII_CHAT_WEBCAM_INDEX</b></a></dt>
+  <dd>Webcam device index to use for video input. (see
+    <b>--webcam-index</b>)</dd>
+  <dt id="ASCII_CHAT_WEBRTC"><a class="permalink" href="#ASCII_CHAT_WEBRTC"><b>ASCII_CHAT_WEBRTC</b></a></dt>
+  <dd>Make calls using WebRTC p2p connections. (see <b>--webrtc</b>)</dd>
+  <dt id="ASCII_CHAT_WEBRTC_DISABLE_TURN"><a class="permalink" href="#ASCII_CHAT_WEBRTC_DISABLE_TURN"><b>ASCII_CHAT_WEBRTC_DISABLE_TURN</b></a></dt>
+  <dd>Disable WebRTC+TURN relay, use STUN only. (see
+      <b>--webrtc-disable-turn</b>)</dd>
+  <dt id="ASCII_CHAT_WEBRTC_SKIP_STUN"><a class="permalink" href="#ASCII_CHAT_WEBRTC_SKIP_STUN"><b>ASCII_CHAT_WEBRTC_SKIP_STUN</b></a></dt>
+  <dd>Skip WebRTC+STUN stage, go straight to TURN relay. (see
+      <b>--webrtc-skip-stun</b>)</dd>
+  <dt id="ASCII_CHAT_WIDTH"><a class="permalink" href="#ASCII_CHAT_WIDTH"><b>ASCII_CHAT_WIDTH</b></a></dt>
+  <dd>Terminal width in characters. Can be controlled using $COLUMNS. By default
+      your terminal width is detected at runtime and this value is updated
+      automatically. (see <b>--width</b>)</dd>
+  <dt id="COLORTERM"><a class="permalink" href="#COLORTERM"><b>COLORTERM</b></a></dt>
+  <dd>Terminal color capability indicator. Set by your terminal emulator to
+      indicate</dd>
+  <dt id="GNUPGHOME"><a class="permalink" href="#GNUPGHOME"><b>GNUPGHOME</b></a></dt>
+  <dd>GPG home directory for gpg-agent and key management. Defaults to ~/.gnupg
+      if not set. Used when authenticating with GPG keys.</dd>
+  <dt id="HOME"><a class="permalink" href="#HOME"><b>HOME</b></a></dt>
+  <dd>User home directory on Unix/macOS and Windows. Used to locate config files
+      (.ascii-chat/ on Unix, third fallback on Windows), SSH keys (.ssh/), and
+      GPG keys. Required for path expansion.</dd>
+  <dt id="LLVM_SYMBOLIZER_PATH"><a class="permalink" href="#LLVM_SYMBOLIZER_PATH"><b>LLVM_SYMBOLIZER_PATH</b></a></dt>
+  <dd>Path to llvm-symbolizer executable (debug builds only). When set, enables
+      line-by-line stack traces in crash reports and panic messages. Improves
+      debugging information quality.</dd>
+  <dt id="LOG_LEVEL"><a class="permalink" href="#LOG_LEVEL"><b>LOG_LEVEL</b></a></dt>
+  <dd>Override log level via environment variable. Values: dev, debug, info,
+      warn,</dd>
+  <dt id="PROGRAMDATA"><a class="permalink" href="#PROGRAMDATA"><b>PROGRAMDATA</b></a></dt>
+  <dd>Windows program data directory for shared application data. Used as
+      fallback directory for global configuration on Windows.</dd>
+  <dt id="SSH_AUTH_SOCK"><a class="permalink" href="#SSH_AUTH_SOCK"><b>SSH_AUTH_SOCK</b></a></dt>
+  <dd>Path to the SSH agent socket. Set automatically by ssh-agent. Use this
+    for</dd>
+  <dt id="TERM"><a class="permalink" href="#TERM"><b>TERM</b></a></dt>
+  <dd>Terminal type identifier. Used for terminal capability detection and color
+      mode</dd>
+  <dt id="USER"><a class="permalink" href="#USER"><b>USER</b></a></dt>
+  <dd>Current user identifier on Unix/macOS. Used for TOFU host verification to
+      associate server keys with specific users.</dd>
+  <dt id="USERNAME"><a class="permalink" href="#USERNAME"><b>USERNAME</b></a></dt>
+  <dd>Current user identifier on Windows. Used for TOFU host verification and
+      user identification.</dd>
+  <dt id="USERPROFILE"><a class="permalink" href="#USERPROFILE"><b>USERPROFILE</b></a></dt>
+  <dd>Windows user home directory (%USERPROFILE% or %HOMEDRIVE%%HOMEPATH%). Used
+      for expanding ~ in paths. When APPDATA is not set,
+      %USERPROFILE%\AppData\Roaming\ascii-chat\ is used for config files (first
+      fallback in the chain).</dd>
+  <dt id="WEBCAM_DISABLED"><a class="permalink" href="#WEBCAM_DISABLED"><b>WEBCAM_DISABLED</b></a></dt>
+  <dd>Use test pattern instead of webcam. (see <b>--test-pattern</b>)</dd>
+  <dt id="XDG_CONFIG_DIRS"><a class="permalink" href="#XDG_CONFIG_DIRS"><b>XDG_CONFIG_DIRS</b></a></dt>
+  <dd>Colon-separated list of additional system configuration directories
+      (default: /etc/xdg). ascii-chat searches these directories (in order) for
+      config files at $XDG_CONFIG_DIRS/ascii-chat/ after checking
+      XDG_CONFIG_HOME. Multiple directories are searched in priority order:
+      first match wins for override semantics, all matched files are cascaded
+      for config.toml, or all matched files are searched for known_hosts.
+      Example: /etc/xdg:/opt/xdg</dd>
+  <dt id="XDG_CONFIG_HOME"><a class="permalink" href="#XDG_CONFIG_HOME"><b>XDG_CONFIG_HOME</b></a></dt>
+  <dd>XDG Base Directory specification config directory on Linux (default:
+      ~/.config). When set, ascii-chat searches for config files in
+      $XDG_CONFIG_HOME/ascii-chat/ instead of ~/.config/ascii-chat/. Follows the
+      freedesktop.org XDG specification for application configuration.</dd>
+  <dt id="XDG_DATA_HOME"><a class="permalink" href="#XDG_DATA_HOME"><b>XDG_DATA_HOME</b></a></dt>
+  <dd>XDG Base Directory specification data directory on Linux (default:
+      ~/.local/share). Can be used for application data storage following XDG
+      conventions.</dd>
+  <dt><b>_NT_SYMBOL_PATH</b></dt>
+  <dd>Windows NT symbol path for debugging symbols (debug builds only). Helps
+      locate PDB files for better crash reports. Example:
+      srv*C:\\symbols*https://msdl.microsoft.com/download/symbols</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="NOTES"><a class="permalink" href="#NOTES">NOTES</a></h1>
+<ul class="Bl-bullet">
+  <li><b>Ed25519 Keys Only</b>: Only Ed25519 SSH keys are supported. RSA and
+      ECDSA keys are NOT supported due to libsodium limitations. Generate
+      Ed25519 keys with: ssh-keygen -t ed25519</li>
+  <li><b>Terminal Detection</b>: Color capabilities are auto-detected from
+      $COLORTERM, $TERM, and terminal queries. Use <b>--show-capabilities</b> to
+      see what was detected. If detection fails, terminal size falls back to
+      110x70 characters.</li>
+  <li><b>Webcam Warmup</b>: Many webcams need 1-3 seconds to adjust exposure and
+      focus. The <b>--snapshot-delay</b> option allows time for this.</li>
+  <li><b>SSH/GPG Agent</b>: For password-free authentication with encrypted SSH
+      or GPG keys, use ssh-agent or gpg-agent. Make sure $SSH_AUTH_SOCK is set
+      to the agent socket path. Keys stay in the agent and never touch disk in
+      plaintext. Tip: put <b>eval $(ssh-agent) &gt; /dev/null</b> in your shell
+      profile and use ssh-add -s to add keys to the agent. Check <b>gpg-agent
+      --help</b> for help.</li>
+  <li><b>GitHub/GitLab Keys</b>: Use <b>github:username</b> or
+      <b>gitlab:username</b> to fetch public keys directly. All Ed25519 keys
+      from the user's profile are used, so users with multiple SSH keys (e.g.,
+      for different machines) can authenticate with any of them. RSA and ECDSA
+      keys are ignored.</li>
+  <li><b>Remote Sessions</b>: When using ascii-chat over SSH or in tmux/screen,
+      truecolor may not work if $COLORTERM isn't forwarded. Try <b>--color-mode
+      truecolor</b> to force it, or add set -g default-terminal
+      &quot;xterm-256color&quot; to your tmux.conf.</li>
+  <li><b>UTF-8 Palettes</b>: The &quot;blocks&quot;, &quot;digital&quot;, and
+      &quot;cool&quot; palettes require UTF-8 terminal support. Use
+      <b>--utf8</b> to force UTF-8 mode if auto-detection fails.</li>
+  <li><b>Half-Block Mode</b>: The <b>--render-mode half-block</b> option doubles
+      vertical resolution but requires UTF-8 support. Always use <b>--utf8</b>
+      with half-block mode.</li>
+  <li><b>Performance</b>: For best performance, use truecolor mode with a modern
+      terminal emulator (kitty, alacritty, iTerm2, Windows Terminal). 256-color
+      mode requires color distance calculations which are slower.</li>
+  <li><b>Aspect Ratio</b>: By default, the video preserves aspect ratio with
+      letterboxing. Use <b>--stretch</b> to fill the entire terminal (may
+      distort the image).</li>
+  <li><b>Piping Output</b>: When piping or redirecting stdout in snapshot mode
+      (<b>mirror --snapshot &gt; file</b>), ascii-chat automatically detects
+      that stdout is not a terminal and outputs the ASCII art to stdout and all
+      logs to stderr, even INFO. If you want only a single frame use
+      <b>--snapshot-delay 0</b>. Use <b>--color-mode mono</b> for completely
+      plain ASCII with no escape codes at all.</li>
+  <li><b>Encrypted Keys</b>: Encrypted private keys (SSH/GPG) work well with
+      either ssh-agent/gpg-agent or the $ASCII_CHAT_KEY_PASSWORD environment
+      variable. The passphrase prompt only works in interactive terminals.</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="BUGS"><a class="permalink" href="#BUGS">BUGS</a></h1>
+<p class="Pp">Report bugs at: https://github.com/zfogg/ascii-chat/issues</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="AUTHOR"><a class="permalink" href="#AUTHOR">AUTHOR</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<p class="Pp"><b>ascii-chat</b>(5), <b>ssh</b>(1), <b>ssh-keygen</b>(1),
+    <b>ssh-agent</b>(1), <b>ssh-keyscan</b>(1), <b>gpg</b>(1),
+    <b>gpg-agent</b>(1), <b>gpgconf</b>(1), <b>stty</b>(1),
+    <b>ffmpeg-formats</b>(1), <b>ffmpeg-codecs</b>(1), <b>yt-dlp</b>(1),
+    <b>v4l2-ctl</b>(1)</p>
+<p class="Pp"><b>ascii-chat</b> API documentation (section 3):
+    <b>ascii-chat-build</b>(3), <b>ascii-chat-config</b>(3),
+    <b>ascii-chat-crypto</b>(3), <b>ascii-chat-client</b>(3),
+    <b>ascii-chat-server</b>(3), <b>ascii-chat-errno</b>(3),
+    <b>ascii-chat-options</b>(3), <b>ascii-chat-network</b>(3),
+    <b>ascii-chat-platform</b>(3)</p>
+<p class="Pp">Project homepage: https://ascii-chat.com</p>
+<p class="Pp">Discovery service: https://discover.ascii-chat.com</p>
+<p class="Pp">GitHub repository: https://github.com/zfogg/ascii-chat</p>
+<p class="Pp">Releases: https://github.com/zfogg/ascii-chat/releases</p>
+<p class="Pp">API documentation: https://zfogg.github.io/ascii-chat/</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="LICENSE"><a class="permalink" href="#LICENSE">LICENSE</a></h1>
+<p class="Pp"><b>ascii-chat</b> is licensed under the MIT License.</p>
+<p class="Pp">Copyright (c) 2013-2026 Zachary Fogg</p>
+<p class="Pp">Permission is hereby granted, free of charge, to any person
+    obtaining a copy of this software and associated documentation files (the
+    &quot;Software&quot;), to deal in the Software without restriction,
+    including without limitation the rights to use, copy, modify, merge,
+    publish, distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so, subject to the
+    following conditions:</p>
+<p class="Pp">The above copyright notice and this permission notice shall be
+    included in all copies or substantial portions of the Software.</p>
+<p class="Pp">THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF
+    ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO
+    EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+    DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+    OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+    USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">2026-02-04</td>
+    <td class="foot-os">ascii-chat 0.8.0</td>
+  </tr>
+</table>
+</body>
+</html>

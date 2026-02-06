@@ -1,0 +1,328 @@
+@layer components {
+  /* ========== HEADINGS ========== */
+  .heading-1 {
+    @apply text-4xl sm:text-5xl md:text-6xl font-bold;
+  }
+
+  .heading-2 {
+    @apply text-2xl sm:text-3xl font-bold border-b border-gray-700 pb-2;
+  }
+
+  .heading-3 {
+    @apply text-lg sm:text-xl font-semibold;
+  }
+
+  .heading-4 {
+    @apply text-lg font-semibold;
+  }
+
+  /* ========== CARDS ========== */
+  .card {
+    @apply bg-gray-900/50 border border-gray-800 rounded-lg p-4 sm:p-6;
+  }
+
+  .card-subtle {
+    @apply bg-gray-950/50 border border-gray-900 rounded-lg p-4;
+  }
+
+  .card-interactive {
+    @apply bg-gray-900/50 border border-gray-800 rounded-lg p-4 hover:border-gray-700/50 transition-colors cursor-pointer;
+  }
+
+  .card-standard {
+    @apply bg-gray-900/50 border border-gray-800 rounded-lg p-4 sm:p-6;
+  }
+
+  /* ========== ACCENT BORDERS ========== */
+  .accent-cyan {
+    @apply border-cyan-900/30;
+  }
+
+  .accent-purple {
+    @apply border-purple-900/30;
+  }
+
+  .accent-teal {
+    @apply border-teal-900/30;
+  }
+
+  .accent-pink {
+    @apply border-pink-900/30;
+  }
+
+  .accent-green {
+    @apply border-green-900/30;
+  }
+
+  .accent-yellow {
+    @apply border-yellow-900/30;
+  }
+
+  .accent-red {
+    @apply border-red-900/30;
+  }
+
+  /* ========== ACCENT TEXT ========== */
+  .text-accent-cyan {
+    @apply text-cyan-300;
+  }
+
+  .text-accent-purple {
+    @apply text-purple-300;
+  }
+
+  .text-accent-teal {
+    @apply text-teal-300;
+  }
+
+  .text-accent-pink {
+    @apply text-pink-300;
+  }
+
+  .text-accent-green {
+    @apply text-green-300;
+  }
+
+  .text-accent-yellow {
+    @apply text-yellow-300;
+  }
+
+  .text-accent-red {
+    @apply text-red-300;
+  }
+
+  /* ========== CODE ========== */
+  .code-inline {
+    @apply bg-gray-950 px-2 py-1 rounded font-mono text-sm text-teal-300;
+  }
+
+  .code-block {
+    @apply bg-gray-900 border border-gray-800 rounded-lg p-4 overflow-x-auto font-mono text-sm;
+  }
+
+  .code-content {
+    @apply text-teal-300;
+  }
+
+  /* ========== LISTS ========== */
+  .list-disc {
+    @apply list-disc list-inside space-y-2 text-gray-300;
+  }
+
+  .list-decimal {
+    @apply list-decimal list-inside space-y-2 text-gray-300;
+  }
+
+  .list-nested {
+    @apply ml-4;
+  }
+
+  /* ========== BADGES ========== */
+  .badge-primary {
+    @apply inline-block bg-cyan-600/20 border border-cyan-600/50 text-cyan-300 px-3 py-1 rounded-full text-xs font-semibold;
+  }
+
+  .badge-secondary {
+    @apply inline-block bg-gray-800 border border-gray-700 text-gray-300 px-3 py-1 rounded-full text-xs font-semibold;
+  }
+
+  .badge-warning {
+    @apply inline-block bg-yellow-900/20 border border-yellow-600/50 text-yellow-300 px-3 py-1 rounded-full text-xs font-semibold;
+  }
+
+  .badge-error {
+    @apply inline-block bg-red-900/20 border border-red-600/50 text-red-300 px-3 py-1 rounded-full text-xs font-semibold;
+  }
+
+  /* ========== INFO BOXES ========== */
+  .info-box-note {
+    @apply bg-cyan-900/20 border border-cyan-700/50 rounded-lg p-4;
+  }
+
+  .info-box-warning {
+    @apply bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-4;
+  }
+
+  .info-box-error {
+    @apply bg-red-900/20 border border-red-700/50 rounded-lg p-4;
+  }
+
+  .info-box-success {
+    @apply bg-green-900/20 border border-green-700/50 rounded-lg p-4;
+  }
+
+  .info-box-info {
+    @apply bg-purple-900/20 border border-purple-700/50 rounded-lg p-4;
+  }
+
+  /* ========== INFO BOX TEXT ========== */
+  .info-text-note {
+    @apply text-cyan-300;
+  }
+
+  .info-text-warning {
+    @apply text-yellow-300;
+  }
+
+  .info-text-error {
+    @apply text-red-300;
+  }
+
+  .info-text-success {
+    @apply text-green-300;
+  }
+
+  .info-text-info {
+    @apply text-purple-300;
+  }
+
+  /* ========== BUTTONS ========== */
+  .btn-primary {
+    @apply inline-block bg-cyan-600 hover:bg-cyan-500 text-white font-semibold px-6 py-3 rounded-lg transition-colors;
+  }
+
+  .btn-secondary {
+    @apply inline-block bg-gray-800 hover:bg-gray-700 text-gray-100 font-semibold px-6 py-3 rounded-lg transition-colors border border-gray-700;
+  }
+
+  /* ========== LINKS ========== */
+  .link-standard {
+    @apply text-cyan-400 hover:text-cyan-300 transition-colors;
+  }
+
+  .link-underline {
+    @apply text-cyan-400 hover:text-cyan-300 transition-colors underline;
+  }
+
+  /* ========== GRIDS ========== */
+  .grid-cols-2-sm {
+    @apply grid sm:grid-cols-2 gap-4 sm:gap-6;
+  }
+
+  .grid-cols-3-sm {
+    @apply grid sm:grid-cols-3 gap-4 sm:gap-6;
+  }
+
+  .grid-responsive {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6;
+  }
+
+  /* ========== DOCS SECTIONS ========== */
+  .docs-container {
+    @apply max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12;
+  }
+
+  .docs-section-spacing {
+    @apply mb-12 sm:mb-16;
+  }
+
+  .docs-subsection-spacing {
+    @apply mb-6 sm:mb-8;
+  }
+
+  .docs-paragraph {
+    @apply text-gray-300 mb-4;
+  }
+
+  .docs-space {
+    @apply space-y-6 sm:space-y-8;
+  }
+
+  /* ========== TABLES ========== */
+  .table-wrapper {
+    @apply overflow-x-auto mb-6;
+  }
+
+  .table-base {
+    @apply w-full border-collapse;
+  }
+
+  .table-header {
+    @apply bg-gray-800 text-gray-100 font-semibold;
+  }
+
+  .table-header-cell {
+    @apply border border-gray-700 px-4 py-2 text-left;
+  }
+
+  .table-body-cell {
+    @apply border border-gray-800 px-4 py-2 text-gray-300;
+  }
+
+  .table-row-alt {
+    @apply bg-gray-900/30;
+  }
+
+  /* ========== UTILITIES ========== */
+  .transition-colors-fast {
+    @apply transition-colors duration-150;
+  }
+
+  .transition-colors-normal {
+    @apply transition-colors duration-200;
+  }
+
+  .transition-colors-slow {
+    @apply transition-colors duration-300;
+  }
+
+  /* ========== DOCUMENTATION-SPECIFIC ========== */
+  .doc-section {
+    @apply mb-12 sm:mb-16;
+  }
+
+  .doc-subsection {
+    @apply mb-8 sm:mb-10;
+  }
+
+  .doc-heading-section {
+    @apply heading-2 text-cyan-400;
+  }
+
+  .doc-code-example {
+    @apply code-block my-4;
+  }
+
+  .doc-note {
+    @apply info-box-note my-4;
+  }
+
+  .doc-warning {
+    @apply info-box-warning my-4;
+  }
+
+  .doc-success {
+    @apply info-box-success my-4;
+  }
+
+  .doc-error {
+    @apply info-box-error my-4;
+  }
+
+  /* ========== FEATURED BOXES ========== */
+  .featured-box {
+    @apply bg-gradient-to-br from-gray-900/50 to-gray-950/50 border border-gray-700/50 rounded-lg p-6 hover:border-gray-600/50 transition-colors;
+  }
+
+  .featured-box-highlight {
+    @apply bg-cyan-900/20 border-cyan-700/50;
+  }
+
+  /* ========== SPACING HELPERS ========== */
+  .space-section {
+    @apply my-12 sm:my-16;
+  }
+
+  .space-subsection {
+    @apply my-8 sm:my-10;
+  }
+
+  /* ========== RESPONSIVE TEXT ========== */
+  .text-responsive {
+    @apply text-sm sm:text-base md:text-lg;
+  }
+
+  .text-responsive-lg {
+    @apply text-base sm:text-lg md:text-xl;
+  }
+}
