@@ -153,23 +153,12 @@ static size_t build_splash_buffer(char *buffer, size_t buf_size, int width, int 
     return 0;
   }
 
-  // Calculate vertical padding for center
-  int logo_height = 4;
-  int tagline_height = 1;
-  int content_height = logo_height + tagline_height + 1; // +1 for blank line
-  int vert_pad = (height - content_height) / 2;
-  if (vert_pad < 0)
-    vert_pad = 0;
+  // Build the splash at TOP of screen (no vertical centering)
+  // This keeps the ASCII art fixed like the status screen header
+  (void)height; // Not used - splash is fixed at top, not centered
 
-  // Build the splash with centered content
   char *p = buffer;
   size_t remaining = buf_size;
-
-  // Add vertical padding
-  for (int i = 0; i < vert_pad && remaining > 1; i++) {
-    *p++ = '\n';
-    remaining--;
-  }
 
   // ASCII logo from help (same as --help output)
   const char *ascii_logo[4] = {
