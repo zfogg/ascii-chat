@@ -43,6 +43,15 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport");
   }
 
+// Sanity check: catch suspiciously large packets (likely a bug)
+#define MAX_REASONABLE_PACKET_SIZE (25 * 1024 * 1024) // 25 MB
+  if (payload_len > MAX_REASONABLE_PACKET_SIZE) {
+    log_error("PACKET SIZE VALIDATION FAILURE: Attempting to send %zu bytes (%zu MB) with type=%d (0x%04x), exceeds "
+              "max %d bytes (25 MB) - likely a bug in caller's length calculation",
+              payload_len, payload_len / (1024 * 1024), type, type, MAX_REASONABLE_PACKET_SIZE);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Packet payload too large: %zu bytes (max 25MB)", payload_len);
+  }
+
   log_debug("★ PACKET_SEND_VIA_TRANSPORT: type=%d, payload_len=%zu, transport=%p", type, payload_len,
             (void *)transport);
 

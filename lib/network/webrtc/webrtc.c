@@ -297,7 +297,7 @@ static asciichat_error_t webrtc_ensure_initialized(void) {
   }
 
   // First initialization - call library initialization exactly once
-  rtcInitLogger(RTC_LOG_INFO, rtc_log_callback);
+  rtcInitLogger(RTC_LOG_VERBOSE, rtc_log_callback);
   rtcPreload();
 
   g_webrtc_init_refcount = 1;

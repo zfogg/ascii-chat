@@ -284,6 +284,12 @@ int main(int argc, char *argv[]) {
     return init_result;
   }
 
+  // Route logs to stderr if stdout is piped (MUST happen early, before options_init logs)
+  // This keeps stdout clean for data output (e.g., --snapshot mode piped to file)
+  if (!platform_isatty(STDOUT_FILENO)) {
+    log_set_force_stderr(true);
+  }
+
   // Register cleanup of shared subsystems to run on normal exit
   // Library code doesn't call atexit() - the application is responsible
   (void)atexit(asciichat_shared_destroy);
@@ -358,19 +364,10 @@ int main(int argc, char *argv[]) {
   const char *final_log_file = (opts->log_file[0] != '\0') ? opts->log_file : "ascii-chat.log";
   log_dev("Logging initialized to %s", final_log_file);
 
-  // Client-specific: auto-detect piping and route logs to stderr
-  // This keeps stdout clean for piping: `ascii-chat client --snapshot | tee file.ascii_art`
-  // Logs go to stderr when piped, regardless of color settings
-  // Color settings are decided separately below
-  terminal_color_mode_t color_mode = opts->color_mode;
-  if (is_client_like_mode && !platform_isatty(STDOUT_FILENO)) {
-    log_set_force_stderr(true); // Always route logs to stderr when stdout is piped
-  }
-
-  // Separately: auto-disable colors when piped (unless explicitly enabled with --color=true)
+  // Auto-disable colors when piped (unless explicitly enabled with --color=true)
   // This respects user's explicit --color=true request while auto-disabling in other cases
-  if (is_client_like_mode && !platform_isatty(STDOUT_FILENO) && color_mode == COLOR_MODE_AUTO &&
-      opts->color != COLOR_SETTING_TRUE) {
+  terminal_color_mode_t color_mode = opts->color_mode;
+  if (!platform_isatty(STDOUT_FILENO) && color_mode == COLOR_MODE_AUTO && opts->color != COLOR_SETTING_TRUE) {
     options_set_int("color_mode", COLOR_MODE_NONE);
     opts = options_get(); // Refresh pointer after update
     // Log to file only, not terminal - avoid polluting piped stdout when stderr is redirected to stdout (2>&1)
