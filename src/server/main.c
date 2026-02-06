@@ -475,7 +475,7 @@ static void server_handle_sigint(int sigint) {
   static _Atomic int sigint_count = 0;
   int count = atomic_fetch_add(&sigint_count, 1) + 1;
   if (count > 1) {
-    _exit(1);
+    platform_force_exit(1);
   }
 
   // STEP 1: Set atomic shutdown flag (checked by all worker threads)
