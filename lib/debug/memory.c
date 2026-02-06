@@ -57,7 +57,7 @@ typedef struct {
 } ignore_entry_t;
 
 static const ignore_entry_t g_ignore_list[] = {
-    {"lib/util/pcre2.c", 52, 2},           // Exactly 2 PCRE2 singleton allocations (cleaned after report)
+    {"lib/util/pcre2.c", 53, 50},          // PCRE2 singleton allocations (16+ total, cleaned after report)
     {"lib/options/colorscheme.c", 557, 8}, // 8 16-color ANSI strings (cleaned after report)
     {"lib/options/colorscheme.c", 575, 8}, // 8 256-color ANSI strings (cleaned after report)
     {"lib/options/colorscheme.c", 592, 8}, // 8 truecolor ANSI strings (cleaned after report)

@@ -161,6 +161,13 @@ asciichat_error_t asciichat_shared_init(const char *log_file, bool is_client) {
  * @note All subsystem cleanup functions must remain idempotent.
  */
 void asciichat_shared_shutdown(void) {
+  // Guard against double cleanup (can be called explicitly + via atexit)
+  static bool shutdown_done = false;
+  if (shutdown_done) {
+    return;
+  }
+  shutdown_done = true;
+
   // Cleanup in reverse order of initialization (LIFO)
   // This ensures dependencies are properly handled
 
