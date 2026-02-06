@@ -27,7 +27,5 @@ dist-ssr
 .bun
 bun.lockb
 
-# WASM build artifacts
+# WASM build artifacts (keep generated files for Vercel deployment)
 wasm/build/
-src/wasm/mirror.js
-src/wasm/mirror.wasm

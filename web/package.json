@@ -9,8 +9,7 @@
     "type-check": "tsc --noEmit",
     "lint": "eslint src --ext .ts,.tsx",
     "wasm:build": "cd .. && cmake -B build-wasm -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/Emscripten.cmake && cmake --build build-wasm",
-    "wasm:copy": "cp ../build-wasm/*.{js,wasm} public/wasm/ 2>/dev/null || true",
-    "prebuild": "bun run wasm:build && bun run wasm:copy"
+    "prebuild": "bun run wasm:build || echo 'WASM build skipped (emscripten not available)'"
   },
   "dependencies": {
     "xterm": "^5.3.0",
