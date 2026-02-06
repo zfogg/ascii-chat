@@ -830,10 +830,8 @@ void server_connection_lost() {
   atomic_store(&g_connection_lost, true);
   atomic_store(&g_connection_active, false);
 
-  // Turn ON terminal logging when connection is lost (unless it was disabled with --quiet)
-  if (!GET_OPTION(quiet)) {
-    log_set_terminal_output(true);
-  }
+  // Don't re-enable terminal logging here - let the splash screen handle it
+  // The reconnection splash will capture and display logs properly
   display_full_reset();
 }
 
