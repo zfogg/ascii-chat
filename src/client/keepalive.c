@@ -103,7 +103,7 @@ static atomic_bool g_ping_thread_exited = false;
  * ============================================================================ */
 
 /** Ping interval in nanoseconds (must be less than server timeout) */
-#define PING_INTERVAL_NS (3LL * NS_PER_SEC_INT)
+#define PING_INTERVAL_NS (1LL * NS_PER_SEC_INT)
 
 /** Sleep interval for ping timing loop (1 second in nanoseconds) */
 #define PING_SLEEP_INTERVAL_NS (1LL * NS_PER_SEC_INT)
