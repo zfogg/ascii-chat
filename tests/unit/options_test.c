@@ -148,7 +148,7 @@ Test(options, default_values) {
   cr_assert_eq(opts->render_mode, RENDER_MODE_FOREGROUND);
   cr_assert_eq(opts->show_capabilities, 0);
   cr_assert_eq(opts->force_utf8, 0);
-  cr_assert_eq(opts->audio_enabled, 0);
+  cr_assert_eq(opts->audio_enabled, 1); // Default changed to true in 8ec7a9f3
   cr_assert_eq(opts->stretch, 0);
   cr_assert_eq(opts->quiet, 0);
   cr_assert_eq(opts->snapshot_mode, 0);

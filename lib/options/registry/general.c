@@ -1,0 +1,125 @@
+/**
+ * @file general.c
+ * @brief General options
+ * @ingroup options
+ *
+ * General-purpose options including help, version, splash screen controls,
+ * status screen controls, and keepawake settings.
+ *
+ * @author Zachary Fogg <me@zfo.gg>
+ * @date January 2026
+ */
+
+#include "common.h"
+
+// ============================================================================
+// GENERAL CATEGORY - General-purpose options
+// ============================================================================
+const registry_entry_t g_general_entries[] = {
+    // GENERAL GROUP (binary-level + all modes)
+    {"help",
+     'h',
+     OPTION_TYPE_ACTION,
+     0,
+     NULL,
+     0,
+     "Show this help message and exit.",
+     "GENERAL",
+     NULL,
+     false,
+     NULL,
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_BINARY | OPTION_MODE_SERVER | OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY_SVC |
+         OPTION_MODE_DISCOVERY,
+     {0}},
+    {"version",
+     'v',
+     OPTION_TYPE_ACTION,
+     0,
+     NULL,
+     0,
+     "Show version information and exit.",
+     "GENERAL",
+     NULL,
+     false,
+     NULL,
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_BINARY,
+     {0}},
+    {"no-splash",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, splash),
+     &default_splash_value,
+     sizeof(bool),
+     "Disable splash screen with ASCII art. Use --no-splash to skip the splash screen on client, "
+     "mirror, and discovery modes.",
+     "GENERAL",
+     NULL,
+     false,
+     "ASCII_CHAT_NO_SPLASH",
+     NULL,
+     NULL,
+     false,
+     true, // invert: default is true (splash shown), --no-splash makes it false
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"no-status-screen",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, status_screen),
+     &default_status_screen_value,
+     sizeof(bool),
+     "Disable status screen display on server and discovery-service modes.",
+     "GENERAL",
+     NULL,
+     false,
+     "ASCII_CHAT_NO_STATUS_SCREEN",
+     NULL,
+     NULL,
+     false,
+     true, // invert: default is true (status screen shown), --no-status-screen makes it false
+     OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC,
+     {0}},
+    {"keepawake",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, enable_keepawake),
+     &default_enable_keepawake_value,
+     sizeof(bool),
+     "Explicitly enable system sleep prevention (keepawake mode).",
+     "GENERAL",
+     NULL,
+     false,
+     "ASCII_CHAT_KEEPAWAKE",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_BINARY,
+     {0}},
+    {"no-keepawake",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, disable_keepawake),
+     &default_disable_keepawake_value,
+     sizeof(bool),
+     "Disable system sleep prevention (allow OS to sleep).",
+     "GENERAL",
+     NULL,
+     false,
+     "ASCII_CHAT_NO_KEEPAWAKE",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_BINARY,
+     {0}},
+
+    REGISTRY_TERMINATOR()};

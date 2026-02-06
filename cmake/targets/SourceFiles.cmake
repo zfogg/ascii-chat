@@ -366,9 +366,27 @@ set(CORE_SRCS
     lib/options/config.c
     lib/options/schema.c          # Config schema metadata (NEW)
     lib/options/rcu.c
-    lib/options/builder.c         # Options builder API (NEW)
+    # Options builder API (refactored into builder/ subdirectory)
+    lib/options/builder.c              # Core builder functionality
+    lib/options/builder/handlers.c    # Type handler implementations
+    lib/options/builder/help.c         # Help text generation
     lib/options/presets.c          # Preset option configs (NEW)
-    lib/options/registry.c         # Central options registry (NEW)
+    # Central options registry (refactored into registry/ subdirectory - organized by help group)
+    lib/options/registry/metadata.c       # Metadata arrays for completions
+    lib/options/registry/general.c        # General options
+    lib/options/registry/logging.c        # Logging options
+    lib/options/registry/configuration.c  # Configuration file options
+    lib/options/registry/terminal.c       # Terminal display options
+    lib/options/registry/webcam.c         # Webcam capture options
+    lib/options/registry/display.c        # Display layout options
+    lib/options/registry/network.c        # Network protocol options
+    lib/options/registry/security.c       # Security and authentication options
+    lib/options/registry/media.c          # Media file and stream options
+    lib/options/registry/audio.c          # Audio processing options
+    lib/options/registry/database.c       # Discovery service database options
+    lib/options/registry/registry.c       # Master registry composition
+    lib/options/registry/core.c           # Internal helper functions
+    lib/options/registry/public_api.c     # Public API implementation
     lib/options/parsers.c          # Custom enum parsers (NEW)
     lib/options/actions.c          # Action option callbacks (NEW)
     lib/options/layout.c           # Two-column layout helpers (NEW)
