@@ -127,6 +127,26 @@ extern "C" {
 const char *find_similar_option(const char *unknown_opt, const struct option *options);
 
 /**
+ * @brief Format all available modes for an option as comma-separated list
+ *
+ * Converts a mode bitmask to a human-readable comma-separated list of mode names.
+ * Used in error messages to show which modes support a given option.
+ *
+ * @param mode_bitmask Bitmask of modes (OPTION_MODE_SERVER | OPTION_MODE_CLIENT, etc.)
+ * @return Formatted string like "server, client, mirror" or "global options"
+ *
+ * @note Returns pointer to static buffer - not thread-safe
+ *
+ * Example:
+ * @code
+ * option_mode_bitmask_t bitmask = OPTION_MODE_SERVER | OPTION_MODE_CLIENT;
+ * const char *modes = format_available_modes(bitmask);
+ * // modes == "server, client"
+ * @endcode
+ */
+const char *format_available_modes(option_mode_bitmask_t mode_bitmask);
+
+/**
  * @brief Safely parse string to integer with validation
  *
  * Parses a string to integer using parse_int32() with full range checking.

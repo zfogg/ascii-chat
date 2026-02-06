@@ -128,11 +128,12 @@ char *manpage_content_generate_environment_with_manual(const options_config_t *c
     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".TP\n");
     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B %s\n", all_vars[i].name);
     if (*all_vars[i].description) {
-      // For auto-generated variables, add "(see --option-name)" reference
       if (all_vars[i].option_long_name) {
-        offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "%s (see \\fB\\-\\-%s\\fR)\n",
-                                all_vars[i].description, all_vars[i].option_long_name);
+        // For auto-generated variables, just reference the flag
+        offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "See: \\fB\\-\\-%s\\fR\n",
+                                all_vars[i].option_long_name);
       } else {
+        // For manual variables, show full description
         offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "%s\n", all_vars[i].description);
       }
     }

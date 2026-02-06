@@ -96,7 +96,7 @@ const registry_entry_t g_logging_entries[] = {
      '\0',
      OPTION_TYPE_STRING,
      offsetof(options_t, grep_pattern),
-     &(const char *){OPT_GREP_PATTERN_DEFAULT},
+     NULL, // Default is empty string - not meaningful to display in help
      sizeof(char *),
      "Filter console logs with perl compatible regular expressions or fixed strings. Format: /pattern/flags. "
      "Flags: i(case-insensitive), m(multiline), s(dotall), x(extended), g(global highlight), "
@@ -118,7 +118,7 @@ const registry_entry_t g_logging_entries[] = {
      offsetof(options_t, color_scheme_name),
      OPT_COLOR_SCHEME_NAME_DEFAULT,
      sizeof(((options_t *)0)->color_scheme_name),
-     "Color scheme for logging output. Built-in schemes: pastel (default), nord, solarized, dracula, gruvbox, "
+     "Color scheme for logging output. Built-in schemes: pastel, nord, solarized, dracula, gruvbox, "
      "monokai, base16-default. All schemes with light variants auto-adapt to terminal background.",
      "LOGGING",
      "NAME",
@@ -128,7 +128,7 @@ const registry_entry_t g_logging_entries[] = {
      NULL,
      false,
      false,
-     OPTION_MODE_SERVER | OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     OPTION_MODE_BINARY,
      {.input_type = OPTION_INPUT_STRING}},
 
     REGISTRY_TERMINATOR()};

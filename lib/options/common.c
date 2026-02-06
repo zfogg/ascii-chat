@@ -59,27 +59,48 @@ const char *find_similar_option(const char *unknown_opt, const struct option *op
   return NULL;
 }
 
-// Helper to format mode name for error messages
-static const char *format_mode_for_suggestion(option_mode_bitmask_t mode_bitmask) {
+// Helper to format all available modes for an option (used in error messages)
+// Returns comma-separated list like "server, client, mirror" or "global options"
+const char *format_available_modes(option_mode_bitmask_t mode_bitmask) {
+  static char buffer[256];
+  buffer[0] = '\0';
+
+  bool first = true;
+
+  // Check if it's a global/binary option
   if (mode_bitmask & OPTION_MODE_BINARY) {
-    return "global";
+    SAFE_SNPRINTF(buffer, sizeof(buffer), "global options");
+    return buffer;
   }
-  if (mode_bitmask & (1 << MODE_DISCOVERY)) {
-    return "the default mode (ascii-chat)";
+
+  // Build comma-separated list of modes (ordered: default, client, server, mirror, discovery-service)
+  if (mode_bitmask & OPTION_MODE_DISCOVERY) {
+    safe_snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), "%sdefault", first ? "" : ", ");
+    first = false;
   }
-  if (mode_bitmask & (1 << MODE_CLIENT)) {
-    return "client mode";
+  if (mode_bitmask & OPTION_MODE_CLIENT) {
+    safe_snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), "%sclient", first ? "" : ", ");
+    first = false;
   }
-  if (mode_bitmask & (1 << MODE_SERVER)) {
-    return "server mode";
+  if (mode_bitmask & OPTION_MODE_SERVER) {
+    safe_snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), "%sserver", first ? "" : ", ");
+    first = false;
   }
-  if (mode_bitmask & (1 << MODE_MIRROR)) {
-    return "mirror mode";
+  if (mode_bitmask & OPTION_MODE_MIRROR) {
+    safe_snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), "%smirror", first ? "" : ", ");
+    first = false;
   }
-  if (mode_bitmask & (1 << MODE_DISCOVERY_SERVICE)) {
-    return "discovery-service mode";
+  if (mode_bitmask & OPTION_MODE_DISCOVERY_SVC) {
+    safe_snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), "%sdiscovery-service", first ? "" : ", ");
+    first = false;
   }
-  return "another mode";
+
+  // Fallback if no modes matched
+  if (buffer[0] == '\0') {
+    SAFE_SNPRINTF(buffer, sizeof(buffer), "unknown mode");
+  }
+
+  return buffer;
 }
 
 // Find similar option across all modes and suggest it with mode information
@@ -130,10 +151,10 @@ const char *find_similar_option_with_mode(const char *unknown_opt, const options
     // Option exists but user typed it wrong - just suggest the correct spelling
     safe_snprintf(suggestion, sizeof(suggestion), "Did you mean '--%s'?", best_match->long_name);
   } else {
-    // Option exists but in a different mode - suggest with mode info
-    const char *mode_str = format_mode_for_suggestion(best_match->mode_bitmask);
-    safe_snprintf(suggestion, sizeof(suggestion), "Did you mean '--%s' (available in %s)?", best_match->long_name,
-                  mode_str);
+    // Option exists but in a different mode - show all available modes
+    const char *modes_str = format_available_modes(best_match->mode_bitmask);
+    safe_snprintf(suggestion, sizeof(suggestion), "Did you mean '--%s' (available in modes: %s)?",
+                  best_match->long_name, modes_str);
   }
 
   return suggestion;

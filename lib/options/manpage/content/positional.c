@@ -34,11 +34,7 @@ char *manpage_content_generate_positional(const options_config_t *config) {
     }
 
     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".TP\n");
-    offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B %s", pos_arg->name);
-    if (!pos_arg->required) {
-      offset += safe_snprintf(buffer + offset, buffer_capacity - offset, " (optional)");
-    }
-    offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "\n");
+    offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B %s\n", pos_arg->name);
 
     if (pos_arg->help_text) {
       offset +=

@@ -3,60 +3,76 @@
 .B ascii-chat
 \- Video chat in your terminal
 
-.\" AUTO-START: SYNOPSIS
-.\" This section is auto-generated. Manual edits will be lost.
-.SH SYNOPSIS
-.B ascii-chat
-[\fIoptions\fR]
-.\" AUTO-END: SYNOPSIS
-
-.\" AUTO-START: POSITIONAL ARGUMENTS
-.\" This section is auto-generated. Manual edits will be lost.
-.SH POSITIONAL ARGUMENTS
-.\" placeholder
-.\" AUTO-END: POSITIONAL ARGUMENTS
-
 .\" MANUAL-START: DESCRIPTION
 .SH DESCRIPTION
 .B ascii-chat
 is a terminal-based video chat application that converts webcam video to ASCII
 art in real-time. It enables video chat directly in your terminal, whether you're
 using a local console, a remote SSH session, or any terminal emulator.
+.\" MANUAL-END: DESCRIPTION
+
+.\" MANUAL-START: SYNOPSIS
+.SH SYNOPSIS
+.B ascii-chat
+[\fIoptions\fR]
+[\fIsession-string\fR]
 .PP
+.B ascii-chat server
+[\fIbind-address\fR]
+[\fIbind-address\fR]
+[\fImode-options\fR]
+.PP
+.B ascii-chat client
+[\fIaddress\fR]
+[\fImode-options\fR]
+.PP
+.B ascii-chat mirror
+[\fImode-options\fR]
+.PP
+.B ascii-chat discovery-service
+[\fIbind-address\fR]
+[\fIbind-address\fR]
+[\fImode-options\fR]
+.\" MANUAL-END: SYNOPSIS
+
+.\" MANUAL-START: MODES
+.SH MODES
 The program operates in five modes:
 .TP
+.B default
+The default operating mode when running
 .B ascii-chat
-The binary's default operating mode without additional commands. Starts or joins an
-ascii-chat Discovery Service session with a session string. This mode makes secure
-internet connections and attempts direct tcp and webrtc connections.
+without specifying a mode.
+Starts or joins an ascii-chat Discovery Service session with a session string.
+Attempts direct TCP and WebRTC connections.
 .TP
 .B server
 Runs a video chat server that accepts connections from multiple clients,
 mixes their audio and video streams together, and broadcasts the mixed streams
-out to all connected clients. Clients see a grid of ascii video cells displaying
-the users of the call.
+out to all connected clients.
 .TP
 .B client
-Connects to an ascii-chat server, captures video from the local webcam, sends it
-to the server, and displays the combined video feed grid from all participants that
-the server sends back.
+Connects to an ascii-chat server via TCP or Websocket, captures
+video from the local webcam, sends it to the server, and displays
+the video feed from all participants that the server sends.
 .TP
 .B mirror
 Displays local webcam or file or URL media as text art without any network
-connection or ascii-chat server. Perfect for testing webcam, palette settings,
-and terminal rendering. Useful for debugging and scripting. Ideal
-for playing around with the webcam. Use mirror mode if you just want to watch
-a YouTube video or other URL or file as text art, with full audio
-support.
+connection or ascii-chat server.  Use mirror mode if you just want to watch
+a YouTube video or other URL or file as ASCII art, with full audio support.
 .TP
 .B discovery-service
-Runs an ACDS (ascii-chat Discovery Service) server for session management.
-Allows clients and servers to discover each other using memorable session strings
-instead of IP addresses. Handles NAT traversal via WebRTC when direct TCP connections
-aren't possible. The ascii-chat developers host the primary ACDS server
-(discovery-service.ascii-chat.com) whose keys are trusted automatically by
-ascii-chat.
-.\" MANUAL-END: DESCRIPTION
+Runs an ACDS (ascii-chat Discovery Service) server for session discovery.
+Allows clients and servers to discover each other using memorable session
+strings instead of IP addresses. See the SECURITY section for
+notes on the official instance and its keys.
+.\" MANUAL-END: MODES
+
+.\" AUTO-START: POSITIONAL ARGUMENTS
+.\" This section is auto-generated. Manual edits will be lost.
+.SH POSITIONAL ARGUMENTS
+.\" placeholder
+.\" AUTO-END: POSITIONAL ARGUMENTS
 
 .\" MANUAL-START: PALETTES
 .\" AUTO-START: USAGE
@@ -338,7 +354,9 @@ protection. For stronger security, use password authentication, SSH key
 verification, or the ACDS discovery service to bind identity to sessions. This
 "progressive security ladder" lets users choose their trust model based on
 threat level, from quick private sessions (ephemeral DH) to paranoid mode
-(password + SSH key + whitelist).
+(password + SSH key + whitelist). The ascii-chat developer hosts the primary
+ACDS server at discovery-service.ascii-chat.com whose keys are hosted at
+discovery.ascii-chat.com and trusted automatically by ascii-chat.
 .PP
 .SS "Authentication Methods"
 \fBDefault (Ephemeral DH):\fR Protects against passive eavesdropping but not MITM attacks. Works with zero configuration. Good for low-threat environments or quick sessions.
@@ -446,9 +464,7 @@ password-free authentication with encrypted SSH keys. Tip: add
 to your shell profile.
 .TP
 .B ASCII_CHAT_KEY_PASSWORD
-Passphrase for encrypted SSH or GPG private keys. Only use this as a fallback;
-prefer ssh-agent or gpg-agent for better security (keys never touch disk in
-plaintext).
+Passphrase for encrypted SSH or GPG private keys. Prefer to use ssh-agent or gpg-agent.
 .TP
 .B ASCII_CHAT_QUESTION_PROMPT_RESPONSE
 Stack-based automated responses for interactive prompts. Format: semicolon-separated values like 'y;n;password'. Supports escaping: \\; for literal semicolon, \\\\ for backslash. Useful for CI/CD pipelines, testing, and crypto workflows. Examples: 'pass\\;word;y' sends "pass;word" then "y". Invalid formats (';', ';;', ';y') are rejected and fall back to interactive prompting with warning logs.

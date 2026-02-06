@@ -1545,8 +1545,11 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
   if (desc->mode_bitmask != 0 && !(desc->mode_bitmask & OPTION_MODE_BINARY)) {
     // Option has specific mode restrictions - use the passed mode_bitmask directly
     if (!(desc->mode_bitmask & mode_bitmask)) {
+      // Option not available in current mode - show where it IS available
+      const char *available_modes = format_available_modes(desc->mode_bitmask);
       SAFE_FREE(arg_copy);
-      return SET_ERRNO(ERROR_USAGE, "Option %s is not supported for this mode", arg);
+      return SET_ERRNO(ERROR_USAGE, "Option %s is not available in this mode. Available in modes: %s", arg,
+                       available_modes);
     }
   }
 

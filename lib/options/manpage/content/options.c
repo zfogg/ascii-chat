@@ -26,6 +26,28 @@ char *manpage_content_generate_options(const options_config_t *config) {
   char *buffer = SAFE_MALLOC(buffer_capacity, char *);
   size_t offset = 0;
 
+  // Add introductory paragraph explaining mode flags, defaults, and env vars
+  offset +=
+      safe_snprintf(buffer + offset, buffer_capacity - offset, "Each option shows which modes it applies to with\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B (modes: ...)\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "notation. Default values are shown with\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B (default: ...)\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "and environment variables with\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B (env: ...).\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".PP\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "Options marked\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B global\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset,
+                          "must be passed before any mode and apply to all modes.\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset,
+                          "Mode-specific options are passed after the mode name.\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".PP\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "The default mode (running\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B ascii-chat\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset,
+                          "with no mode) accepts both global and default mode options with no mode specified.\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".PP\n");
+
   // Build list of unique groups in order of first appearance
   const char **unique_groups = SAFE_MALLOC(config->num_descriptors * sizeof(const char *), const char **);
   size_t num_unique_groups = 0;
@@ -120,8 +142,10 @@ char *manpage_content_generate_options(const options_config_t *config) {
       // Add default value if present
       if (desc->default_value) {
         char default_buf[256];
+        memset(default_buf, 0, sizeof(default_buf)); // Initialize buffer to prevent garbage
         int n = options_format_default_value(desc->type, desc->default_value, default_buf, sizeof(default_buf));
-        if (n > 0) {
+        // Skip empty strings (like --grep's default of "")
+        if (n > 0 && default_buf[0] != '\0') {
           offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "(default: ");
           if (desc->type == OPTION_TYPE_STRING) {
             offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "%s", escape_groff_special(default_buf));

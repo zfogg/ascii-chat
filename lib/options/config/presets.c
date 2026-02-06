@@ -163,16 +163,12 @@ const options_config_t *options_preset_unified(const char *program_name, const c
                                           "[2001:db8::42]:27224",
                                           "233.27.48.203:27224",
                                           "62fb:759e:2bce:21d7:9e5d:13f8:3c11:5084:27224"};
-  options_builder_add_positional(b, "address", "Server address (optional).", false,
-                                 "POSITIONAL ARGUMENTS:", client_examples, ARRAY_SIZE(client_examples),
-                                 OPTION_MODE_CLIENT, parse_client_address);
-
   // Discovery mode: [session-string] - session string or empty to start new session
   // Use simple static examples for positional arguments section (dynamic strings shown in examples section)
   static const char *discovery_examples[] = {"(empty) start new session", (const char *)example_buf7,
                                              (const char *)example_buf8, (const char *)example_buf9};
   options_builder_add_positional(
-      b, "session-string", "Session string (optional, or empty to start new session). Format: adjective-noun-noun.",
+      b, "session-string", "(optional) Random three words in format adjective-noun-noun that connect you to a call.",
       false, "POSITIONAL ARGUMENTS:", discovery_examples, ARRAY_SIZE(discovery_examples), OPTION_MODE_DISCOVERY,
       parse_client_address);
 
@@ -186,9 +182,13 @@ const options_config_t *options_preset_unified(const char *program_name, const c
                                           "105.137.19.11 3a08:7276:ccb4:7b31:e934:5330:9b3a:9598",
                                           "::1 192.168.1.100"};
   options_builder_add_positional(b, "bind-address",
-                                 "Bind address (optional, can specify 0-2 addresses, one IPv4 and the other IPv6).",
+                                 "(optional) 0-2 addresses for a server to bind to, one IPv4 and the other IPv6.",
                                  false, "POSITIONAL ARGUMENTS:", server_examples, ARRAY_SIZE(server_examples),
                                  OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC, parse_server_bind_address);
+
+  options_builder_add_positional(b, "address", "(optional) Server address for client to connect to.", false,
+                                 "POSITIONAL ARGUMENTS:", client_examples, ARRAY_SIZE(client_examples),
+                                 OPTION_MODE_CLIENT, parse_client_address);
 
   // Add usage lines for all modes
   options_builder_add_usage(b, NULL, NULL, true, "Start a new session (share the session string)");

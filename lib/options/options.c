@@ -403,13 +403,15 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
   const char *positional = argv[first_positional_idx];
 
   // Try to match against known modes
-  const char *const mode_names[] = {"server", "client", "mirror", "discovery-service", "discovery", NULL};
-  const asciichat_mode_t mode_values[] = {MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVICE, MODE_INVALID};
+  const char *const mode_names[] = {"server", "client", "mirror", "discovery-service", "discovery", "default", NULL};
+  const asciichat_mode_t mode_values[] = {MODE_SERVER,  MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVICE,
+                                          MODE_INVALID, MODE_INVALID};
 
   for (int i = 0; mode_names[i] != NULL; i++) {
     if (strcmp(positional, mode_names[i]) == 0) {
       if (mode_values[i] == MODE_INVALID) {
-        return SET_ERRNO(ERROR_USAGE, "'discovery' is the default mode and cannot be specified explicitly.");
+        return SET_ERRNO(ERROR_USAGE,
+                         "The default mode cannot be specified explicitly. Just run 'ascii-chat' without a mode.");
       }
       *out_mode = mode_values[i];
       *out_mode_index = first_positional_idx;

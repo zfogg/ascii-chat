@@ -36,6 +36,10 @@ typedef struct {
 
 /**
  * @brief Mode registry - single source of truth for mode names
+ *
+ * Note: MODE_DISCOVERY is intentionally omitted from this registry.
+ * It's the default mode when no mode is specified, and users cannot
+ * explicitly invoke it with "ascii-chat default" or "ascii-chat discovery".
  */
 static const mode_descriptor_t mode_registry[] = {
     {MODE_SERVER, "server", "Multi-client video chat server"},
@@ -43,11 +47,15 @@ static const mode_descriptor_t mode_registry[] = {
     {MODE_MIRROR, "mirror", "Local webcam preview (no networking)"},
     {MODE_DISCOVERY_SERVICE, "discovery-service", "Session discovery server (ACDS)"},
     {MODE_DISCOVERY_SERVICE, "acds", "Alias for discovery-service"},
-    {MODE_DISCOVERY, "discovery", "Connect via discovery service"},
     {MODE_INVALID, NULL, NULL} // Terminator
 };
 
 const char *asciichat_mode_to_string(asciichat_mode_t mode) {
+  // Special case: MODE_DISCOVERY is the default mode, show as "default" to users
+  if (mode == MODE_DISCOVERY) {
+    return "default";
+  }
+
   for (size_t i = 0; mode_registry[i].name != NULL; i++) {
     if (mode_registry[i].mode == mode) {
       return mode_registry[i].name;
