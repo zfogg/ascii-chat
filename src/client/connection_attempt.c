@@ -992,10 +992,14 @@ asciichat_error_t connection_attempt_with_fallback(connection_attempt_context_t 
   asciichat_error_t result = ASCIICHAT_OK;
 
   // ─────────────────────────────────────────────────────────────
-  // Reconnection Strategy: Use same method that succeeded before
+  // Reconnection Strategy
+  // ─────────────────────────────────────────────────────────────
+  // 1. If reconnecting after successful connection: use same method that worked
+  // 2. If retrying after initial failure: skip WebRTC, only try TCP (WebRTC already failed)
   // ─────────────────────────────────────────────────────────────
 
   bool is_reconnection = (ctx->is_reconnection && ctx->last_successful_state != CONN_STATE_IDLE);
+  bool is_retry_after_failure = (ctx->reconnect_attempt > 0 && ctx->last_successful_state == CONN_STATE_IDLE);
 
   if (is_reconnection) {
     // Reconnection: only try the method that worked last time
@@ -1038,6 +1042,22 @@ asciichat_error_t connection_attempt_with_fallback(connection_attempt_context_t 
       connection_state_transition(ctx, CONN_STATE_FAILED);
       return result;
     }
+  }
+
+  if (is_retry_after_failure) {
+    // Retry after initial connection failure: Only try TCP (WebRTC already failed on attempt 0)
+    log_info("=== Connection retry %u: %s:%u (using TCP only - WebRTC failed on initial attempt) ===",
+             ctx->reconnect_attempt, server_address, server_port);
+    result = attempt_direct_tcp(ctx, server_address, server_port);
+    if (result == ASCIICHAT_OK) {
+      log_info("Retry succeeded via Direct TCP");
+      connection_state_transition(ctx, CONN_STATE_CONNECTED);
+      ctx->last_successful_state = CONN_STATE_DIRECT_TCP_CONNECTED;
+      return ASCIICHAT_OK;
+    }
+    log_error("TCP retry failed (attempt %u)", ctx->reconnect_attempt);
+    connection_state_transition(ctx, CONN_STATE_FAILED);
+    return result;
   }
 
   // ─────────────────────────────────────────────────────────────
