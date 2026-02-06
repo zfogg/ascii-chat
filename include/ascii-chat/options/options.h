@@ -549,6 +549,9 @@ typedef enum {
 /** @brief Default WebRTC disable TURN flag (false = use TURN) */
 #define OPT_WEBRTC_DISABLE_TURN_DEFAULT false
 
+/** @brief Default WebRTC skip host candidates flag (false = use host candidates) */
+#define OPT_WEBRTC_SKIP_HOST_DEFAULT false
+
 /** @brief Default ACDS insecure mode flag (false = verify server) */
 #define OPT_ACDS_INSECURE_DEFAULT false
 
@@ -665,6 +668,7 @@ static const bool default_prefer_webrtc_value = OPT_PREFER_WEBRTC_DEFAULT;
 static const bool default_no_webrtc_value = OPT_NO_WEBRTC_DEFAULT;
 static const bool default_webrtc_skip_stun_value = OPT_WEBRTC_SKIP_STUN_DEFAULT;
 static const bool default_webrtc_disable_turn_value = OPT_WEBRTC_DISABLE_TURN_DEFAULT;
+static const bool default_webrtc_skip_host_value = OPT_WEBRTC_SKIP_HOST_DEFAULT;
 static const bool default_media_loop_value = OPT_MEDIA_LOOP_DEFAULT;
 static const bool default_pause_value = OPT_PAUSE_DEFAULT;
 static const double default_media_seek_value = OPT_MEDIA_SEEK_TIMESTAMP_DEFAULT;
@@ -927,6 +931,7 @@ typedef struct options_state {
   bool no_webrtc;           ///< --no-webrtc: Disable WebRTC, use Direct TCP only
   bool webrtc_skip_stun;    ///< --webrtc-skip-stun: Skip Stage 2 (STUN), go to TURN
   bool webrtc_disable_turn; ///< --webrtc-disable-turn: Disable Stage 3 (TURN), use STUN only
+  bool webrtc_skip_host;    ///< --webrtc-skip-host: Skip host candidates, force STUN/TURN only
 
   // ============================================================================
   // WebRTC Connectivity Options (ACDS mode only)

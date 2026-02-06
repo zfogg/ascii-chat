@@ -164,14 +164,15 @@ fi
 # Step 4: Connect client and capture frame
 echo -e "${YELLOW}[4/4] Connecting client via WebRTC...${NC}"
 
-# Run client with snapshot mode to capture a single frame (force TURN relay)
+# Run client with snapshot mode to capture a single frame
+# Use --webrtc-skip-host to force STUN reflexive candidates (testing STUN without needing symmetric NAT)
 timeout 15 "$LOCAL_BINARY" --quiet "$SESSION_STRING" \
     --snapshot --snapshot-delay 0 \
     --test-pattern \
     --discovery-service "$DISCOVERY_SERVICE" \
     --discovery-port "$DISCOVERY_PORT" \
     --prefer-webrtc \
-    --webrtc-skip-stun \
+    --webrtc-skip-host \
     > "$LOCAL_CLIENT_OUTPUT" 2>"$LOCAL_CLIENT_LOG" || {
     EXIT_CODE=$?
     if [[ $EXIT_CODE -eq 124 ]]; then
@@ -233,6 +234,13 @@ if ssh "$REMOTE_HOST" "grep -q 'STUN' $REMOTE_LOG"; then
     echo -e "${GREEN}✓ STUN usage confirmed${NC}"
 else
     echo -e "${YELLOW}⚠ No STUN evidence in server log${NC}"
+fi
+
+# Check for STUN reflexive candidates (typ srflx)
+if ssh "$REMOTE_HOST" "grep -q 'typ srflx' $REMOTE_LOG"; then
+    echo -e "${GREEN}✓ STUN reflexive candidates found${NC}"
+else
+    echo -e "${YELLOW}⚠ No srflx candidates (STUN might not be working)${NC}"
 fi
 
 # Show discovered candidates

@@ -176,6 +176,12 @@ static void on_local_candidate(webrtc_peer_connection_t *pc, const char *candida
     return;
   }
 
+  // Filter out host candidates if --webrtc-skip-host is enabled (for testing STUN/TURN)
+  if (GET_OPTION(webrtc_skip_host) && strstr(candidate, "typ host") != NULL) {
+    log_debug("Skipping host candidate (--webrtc-skip-host enabled): '%s'", candidate);
+    return;
+  }
+
   log_debug("Sending ICE candidate to remote peer via ACDS");
   log_debug("  [1] libdatachannel gave us candidate: '%s' (len=%zu)", candidate, strlen(candidate));
   log_debug("  [1] libdatachannel gave us mid: '%s' (len=%zu)", mid, strlen(mid));
