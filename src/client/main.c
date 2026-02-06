@@ -70,7 +70,7 @@
 #include "display.h"
 #include "capture.h"
 #include "audio.h"
-#include <ascii-chat/session/splash.h>
+#include <ascii-chat/ui/splash.h>
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/audio/analysis.h>
 #include <ascii-chat/video/webcam/webcam.h>

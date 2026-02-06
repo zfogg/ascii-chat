@@ -1,9 +1,9 @@
 /**
- * @file lib/session/discovery_status.c
+ * @file lib/ui/discovery_status.c
  * @brief Discovery service status screen display implementation
  */
 
-#include <ascii-chat/session/discovery_status.h>
+#include <ascii-chat/ui/discovery_status.h>
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/common.h>

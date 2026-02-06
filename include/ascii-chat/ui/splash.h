@@ -1,5 +1,5 @@
 /**
- * @file session/splash.h
+ * @file ui/splash.h
  * @brief Intro and status screen display for ascii-chat with animated rainbow effects
  * @ingroup session
  *

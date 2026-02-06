@@ -1,9 +1,9 @@
 /**
- * @file lib/session/server_status.c
+ * @file lib/ui/server_status.c
  * @brief Server status screen display with live log feed at FPS rate
  */
 
-#include <ascii-chat/session/server_status.h>
+#include <ascii-chat/ui/server_status.h>
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/platform/terminal.h>

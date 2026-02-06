@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file session/server_status.h
+ * @file ui/server_status.h
  * @brief 📊 Server status screen display and management
  * @ingroup session
  *

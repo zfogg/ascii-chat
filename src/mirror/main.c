@@ -33,7 +33,7 @@
 #include <ascii-chat/session/display.h>
 #include <ascii-chat/session/render.h>
 #include <ascii-chat/session/keyboard_handler.h>
-#include <ascii-chat/session/splash.h>
+#include <ascii-chat/ui/splash.h>
 
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/media/youtube.h>

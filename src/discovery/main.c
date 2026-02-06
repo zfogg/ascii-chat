@@ -262,7 +262,11 @@ static void discovery_keyboard_handler(session_capture_ctx_t *capture, int key, 
  * @return 0 on success, non-zero error code on failure
  */
 int discovery_main(void) {
+  fprintf(stderr, "DEBUG: discovery_main() ENTRY\n");
+  fflush(stderr);
   log_info("Starting discovery mode");
+  fprintf(stderr, "DEBUG: After 'Starting discovery mode' log\n");
+  fflush(stderr);
 
   // Handle keepawake: check for mutual exclusivity and apply mode default
   // Discovery default: keepawake ENABLED (use --no-keepawake to disable)
@@ -311,7 +315,10 @@ int discovery_main(void) {
   }
 
   // Start discovery session (connects to ACDS, creates/joins, negotiates)
+  log_info("discovery_main: BEFORE discovery_session_start() - discovery=%p, is_initiator=%d", discovery,
+           !is_initiator);
   asciichat_error_t result = discovery_session_start(discovery);
+  log_info("discovery_main: AFTER discovery_session_start() - result=%d", result);
   if (result != ASCIICHAT_OK) {
     log_fatal("Failed to start discovery session: %d", result);
     discovery_session_destroy(discovery);

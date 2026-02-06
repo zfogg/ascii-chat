@@ -75,8 +75,8 @@
 #include <ascii-chat/session/display.h>
 #include <ascii-chat/session/capture.h>
 #include <ascii-chat/session/keyboard_handler.h>
-#include <ascii-chat/session/help_screen.h>
-#include <ascii-chat/session/splash.h>
+#include <ascii-chat/ui/help_screen.h>
+#include <ascii-chat/ui/splash.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/platform/util.h>

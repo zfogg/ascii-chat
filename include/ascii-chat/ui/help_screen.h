@@ -1,5 +1,5 @@
 /**
- * @file session/help_screen.h
+ * @file ui/help_screen.h
  * @brief 🆘 Interactive help screen for session keyboard shortcuts
  * @ingroup session
  * @addtogroup session
@@ -28,7 +28,7 @@
 
 #pragma once
 
-#include "display.h"
+#include <ascii-chat/session/display.h>
 #include <stdbool.h>
 
 /* ============================================================================

@@ -1,5 +1,5 @@
 /**
- * @file core/terminal_screen.h
+ * @file ui/terminal_screen.h
  * @brief Reusable "fixed header + scrolling logs" terminal screen abstraction
  *
  * Provides a common pattern for rendering terminal screens with:

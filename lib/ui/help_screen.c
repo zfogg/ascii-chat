@@ -1,10 +1,10 @@
 /**
- * @file session/help_screen.c
+ * @file ui/help_screen.c
  * @brief Help screen TUI rendering implementation
  * @ingroup session
  */
 
-#include <ascii-chat/session/help_screen.h>
+#include <ascii-chat/ui/help_screen.h>
 #include <ascii-chat/session/display.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>

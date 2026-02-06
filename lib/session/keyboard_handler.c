@@ -7,7 +7,7 @@
 #include <ascii-chat/session/keyboard_handler.h>
 #include <ascii-chat/session/capture.h>
 #include <ascii-chat/session/display.h>
-#include <ascii-chat/session/help_screen.h>
+#include <ascii-chat/ui/help_screen.h>
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/log/logging.h>

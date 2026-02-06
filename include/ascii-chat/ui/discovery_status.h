@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file session/discovery_status.h
+ * @file ui/discovery_status.h
  * @brief 📊 Discovery service status screen display and management
  * @ingroup session
  *

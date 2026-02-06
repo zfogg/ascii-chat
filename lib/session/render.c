@@ -13,7 +13,7 @@
 #include <ascii-chat/session/render.h>
 #include <ascii-chat/session/capture.h>
 #include <ascii-chat/session/display.h>
-#include <ascii-chat/session/help_screen.h>
+#include <ascii-chat/ui/help_screen.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/options/options.h>

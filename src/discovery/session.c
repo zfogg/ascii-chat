@@ -15,6 +15,7 @@
 #include <ascii-chat/network/packet.h>
 #include <ascii-chat/network/webrtc/stun.h>
 #include <ascii-chat/network/webrtc/peer_manager.h>
+#include "ascii-chat/common/error_codes.h"
 #include "negotiate.h"
 #include "nat.h"
 #include <ascii-chat/platform/abstraction.h>
@@ -97,8 +98,10 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
 }
 
 void discovery_session_destroy(discovery_session_t *session) {
-  if (!session)
+  if (!session) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL");
     return;
+  }
 
   // Close ACDS connection
   if (session->acds_socket != INVALID_SOCKET_VALUE) {
@@ -141,8 +144,10 @@ void discovery_session_destroy(discovery_session_t *session) {
 }
 
 static void set_state(discovery_session_t *session, discovery_state_t new_state) {
-  if (!session)
+  if (!session) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL");
     return;
+  }
 
   discovery_state_t old_state = session->state;
   session->state = new_state;
@@ -155,8 +160,10 @@ static void set_state(discovery_session_t *session, discovery_state_t new_state)
 }
 
 static void set_error(discovery_session_t *session, asciichat_error_t error, const char *message) {
-  if (!session)
+  if (!session) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL");
     return;
+  }
 
   session->error = error;
   set_state(session, DISCOVERY_STATE_FAILED);
@@ -177,8 +184,9 @@ static void set_error(discovery_session_t *session, asciichat_error_t error, con
  * This is non-blocking and may not have all data immediately.
  */
 static asciichat_error_t gather_nat_quality(nat_quality_t *quality) {
-  if (!quality)
-    return ERROR_INVALID_PARAM;
+  if (!quality) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "quality is NULL");
+  }
 
   // Initialize with defaults
   nat_quality_init(quality);
@@ -222,7 +230,7 @@ static asciichat_error_t gather_nat_quality(nat_quality_t *quality) {
  */
 static asciichat_error_t send_network_quality_to_acds(discovery_session_t *session) {
   if (!session || session->acds_socket == INVALID_SOCKET_VALUE) {
-    return ERROR_INVALID_PARAM;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session or ACDS socket");
   }
 
   // Gather our NAT quality
@@ -262,7 +270,7 @@ static asciichat_error_t send_network_quality_to_acds(discovery_session_t *sessi
  */
 static asciichat_error_t receive_network_quality_from_acds(discovery_session_t *session) {
   if (!session || session->acds_socket == INVALID_SOCKET_VALUE) {
-    return ERROR_INVALID_PARAM;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "invalid session or ACDS socket");
   }
 
   // Receive packet
@@ -308,8 +316,9 @@ static asciichat_error_t receive_network_quality_from_acds(discovery_session_t *
 }
 
 static asciichat_error_t connect_to_acds(discovery_session_t *session) {
-  if (!session)
-    return ERROR_INVALID_PARAM;
+  if (!session) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "null session");
+  }
 
   set_state(session, DISCOVERY_STATE_CONNECTING_ACDS);
   log_info("Connecting to ACDS at %s:%u...", session->acds_address, session->acds_port);
@@ -354,8 +363,9 @@ static asciichat_error_t connect_to_acds(discovery_session_t *session) {
 }
 
 static asciichat_error_t create_session(discovery_session_t *session) {
-  if (!session)
-    return ERROR_INVALID_PARAM;
+  if (!session) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "null session");
+  }
 
   set_state(session, DISCOVERY_STATE_CREATING_SESSION);
   log_info("Creating new discovery session...");
@@ -465,6 +475,9 @@ static asciichat_error_t discovery_send_sdp_via_acds(const uint8_t session_id[16
   size_t total_len = sizeof(acip_webrtc_sdp_t) + sdp_len;
 
   uint8_t *packet_data = SAFE_MALLOC(total_len, uint8_t *);
+  if (!packet_data) {
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate SDP packet");
+  }
   acip_webrtc_sdp_t *sdp_msg = (acip_webrtc_sdp_t *)packet_data;
 
   memcpy(sdp_msg->session_id, session_id, 16);
@@ -558,7 +571,7 @@ static void discovery_on_transport_ready(acip_transport_t *transport, const uint
   discovery_session_t *session = (discovery_session_t *)user_data;
 
   if (!session) {
-    log_error("discovery_on_transport_ready: session is NULL");
+    SET_ERRNO(ERROR_INVALID_STATE, "discovery_on_transport_ready: session is NULL");
     return;
   }
 
@@ -717,7 +730,7 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
  */
 static void handle_discovery_webrtc_sdp(discovery_session_t *session, void *data, size_t len) {
   if (len < sizeof(acip_webrtc_sdp_t)) {
-    log_error("Invalid SDP packet size: %zu", len);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid SDP packet size: %zu", len);
     return;
   }
 
@@ -731,6 +744,10 @@ static void handle_discovery_webrtc_sdp(discovery_session_t *session, void *data
 
   // Extract SDP string
   char *sdp_str = SAFE_MALLOC(sdp_len + 1, char *);
+  if (!sdp_str) {
+    log_error("Failed to allocate SDP string");
+    return;
+  }
   memcpy(sdp_str, (const uint8_t *)data + sizeof(acip_webrtc_sdp_t), sdp_len);
   sdp_str[sdp_len] = '\0';
 
@@ -914,23 +931,33 @@ static asciichat_error_t join_session(discovery_session_t *session) {
 }
 
 asciichat_error_t discovery_session_start(discovery_session_t *session) {
+  log_info("discovery_session_start: ENTRY - session=%p", session);
+
   if (!session) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL");
   }
 
+  log_info("discovery_session_start: is_initiator=%d, session_string='%s'", session->is_initiator,
+           session->session_string);
+
   // Check if we should exit before starting blocking operations
   if (session->should_exit_callback && session->should_exit_callback(session->exit_callback_data)) {
+    log_info("discovery_session_start: Exiting early due to should_exit_callback (before ACDS connect)");
     return ASCIICHAT_OK; // Return success to allow clean shutdown
   }
 
+  log_info("discovery_session_start: Calling connect_to_acds...");
   // Connect to ACDS
   asciichat_error_t result = connect_to_acds(session);
   if (result != ASCIICHAT_OK) {
+    log_error("discovery_session_start: connect_to_acds FAILED - result=%d", result);
     return result;
   }
+  log_info("discovery_session_start: connect_to_acds succeeded");
 
   // Check again after connection
   if (session->should_exit_callback && session->should_exit_callback(session->exit_callback_data)) {
+    log_info("discovery_session_start: Exiting early due to should_exit_callback (after ACDS connect)");
     return ASCIICHAT_OK; // Return success to allow clean shutdown
   }
 
@@ -1313,6 +1340,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
     break;
 
   default:
+    SET_ERRNO(ERROR_INVALID_STATE, "Invalid session state");
     break;
   }
 
@@ -1320,8 +1348,10 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
 }
 
 void discovery_session_stop(discovery_session_t *session) {
-  if (!session)
+  if (!session) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL");
     return;
+  }
 
   log_info("Stopping discovery session...");
 
@@ -1339,38 +1369,50 @@ void discovery_session_stop(discovery_session_t *session) {
 }
 
 discovery_state_t discovery_session_get_state(const discovery_session_t *session) {
-  if (!session)
+  if (!session) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "null session");
     return DISCOVERY_STATE_FAILED;
+  }
   return session->state;
 }
 
 bool discovery_session_is_active(const discovery_session_t *session) {
-  if (!session)
+  if (!session) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "null session");
     return false;
+  }
   return session->state == DISCOVERY_STATE_ACTIVE;
 }
 
 const char *discovery_session_get_string(const discovery_session_t *session) {
-  if (!session || session->session_string[0] == '\0')
+  if (!session || session->session_string[0] == '\0') {
+    SET_ERRNO(ERROR_INVALID_PARAM, "null session or session string is empty");
     return NULL;
+  }
   return session->session_string;
 }
 
 bool discovery_session_is_host(const discovery_session_t *session) {
-  if (!session)
+  if (!session) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "null session");
     return false;
+  }
   return session->is_host;
 }
 
 session_host_t *discovery_session_get_host(discovery_session_t *session) {
-  if (!session)
+  if (!session) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "null session");
     return NULL;
+  }
   return session->host_ctx;
 }
 
 session_participant_t *discovery_session_get_participant(discovery_session_t *session) {
-  if (!session)
+  if (!session) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "null session");
     return NULL;
+  }
   return session->participant_ctx;
 }
 
@@ -1395,7 +1437,7 @@ session_participant_t *discovery_session_get_participant(discovery_session_t *se
  */
 static asciichat_error_t discovery_session_run_election(discovery_session_t *session) {
   if (!session || !session->is_host) {
-    return ERROR_INVALID_STATE;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session or not a host");
   }
 
   log_debug("Running host election with collected NETWORK_QUALITY");
@@ -1496,6 +1538,7 @@ asciichat_error_t discovery_session_start_ring_round(discovery_session_t *sessio
 
 asciichat_error_t discovery_session_check_host_alive(discovery_session_t *session) {
   if (!session || session->is_host) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL or not is_host");
     // We are the host, so "host" is always alive
     return ASCIICHAT_OK;
   }
@@ -1716,7 +1759,9 @@ asciichat_error_t discovery_session_get_future_host(const discovery_session_t *s
 }
 
 bool discovery_session_is_future_host(const discovery_session_t *session) {
-  if (!session)
+  if (!session) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "null session");
     return false;
+  }
   return session->ring.am_future_host;
 }

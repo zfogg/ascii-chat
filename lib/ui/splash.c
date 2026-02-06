@@ -1,5 +1,5 @@
 /**
- * @file session/splash.c
+ * @file ui/splash.c
  * @brief Intro and status screen display implementation with animated rainbow effects
  * @ingroup session
  *
@@ -14,7 +14,7 @@
  * @date February 2026
  */
 
-#include <ascii-chat/session/splash.h>
+#include <ascii-chat/ui/splash.h>
 #include <ascii-chat/session/display.h>
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/util/display.h>

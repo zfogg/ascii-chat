@@ -112,7 +112,7 @@
 #include <ascii-chat/network/acip/handlers.h>
 #include <ascii-chat/network/acip/server.h>
 #include <ascii-chat/network/acip/client.h>
-#include <ascii-chat/session/server_status.h>
+#include <ascii-chat/ui/server_status.h>
 
 /* ============================================================================
  * Global State

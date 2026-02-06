@@ -358,7 +358,7 @@ set(CORE_SRCS
     lib/log/filter.c
     lib/platform/terminal.c     # Unified color detection system
     lib/options/colorscheme.c   # Color scheme management and early initialization
-    lib/core/terminal_screen.c  # NEW: Terminal screen rendering abstraction
+    lib/ui/terminal_screen.c  # NEW: Terminal screen rendering abstraction
     lib/options/options.c
     lib/options/common.c
     lib/options/validation.c
@@ -440,16 +440,16 @@ set(SESSION_SRCS
     lib/session/consensus_integration.c
     lib/session/capture.c
     lib/session/display.c
-    lib/session/help_screen.c
-    lib/session/splash.c
+    lib/ui/help_screen.c
+    lib/ui/splash.c
     lib/session/render.c
     lib/session/settings.c
     lib/session/audio.c
     lib/session/participant.c
     lib/session/host.c
     lib/session/keyboard_handler.c
-    lib/session/server_status.c
-    lib/session/discovery_status.c
+    lib/ui/server_status.c
+    lib/ui/discovery_status.c
     lib/session/session_log_buffer.c  # NEW: Shared log buffer for session screens
 )
 

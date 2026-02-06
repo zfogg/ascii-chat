@@ -31,7 +31,7 @@
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/network/nat/upnp.h>
 #include <ascii-chat/network/mdns/mdns.h>
-#include <ascii-chat/session/discovery_status.h>
+#include <ascii-chat/ui/discovery_status.h>
 
 // Global server instance for signal handler
 static acds_server_t *g_server = NULL;
