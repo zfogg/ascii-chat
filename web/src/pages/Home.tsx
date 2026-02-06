@@ -1,6 +1,6 @@
 export function HomePage() {
   return (
-    <div className="h-screen flex items-center justify-center">
+    <div className="flex-1 flex items-center justify-center">
       <div className="text-center max-w-2xl px-8">
         <h1 className="text-6xl font-bold text-terminal-cyan mb-4">ascii-chat</h1>
         <p className="text-xl text-terminal-fg mb-8">

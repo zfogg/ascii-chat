@@ -257,11 +257,10 @@ export function MirrorPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-terminal-bg text-terminal-fg">
-      <div className="h-screen flex flex-col">
-        <header className="px-4 py-2 flex-shrink-0">
-          <h1 className="text-xl font-bold">ascii-chat Mirror Mode</h1>
-        </header>
+    <div className="flex-1 bg-terminal-bg text-terminal-fg flex flex-col">
+      <header className="px-4 py-2 flex-shrink-0">
+        <h1 className="text-xl font-bold">ascii-chat Mirror Mode</h1>
+      </header>
 
         {/* Hidden video and canvas for capture - invisible but rendered */}
         <div style={{ opacity: 0, position: 'absolute', pointerEvents: 'none', width: 0, height: 0, overflow: 'hidden' }}>
@@ -311,12 +310,13 @@ export function MirrorPage() {
           </a>
         </div>
 
-        {error && (
-          <div className="mt-4 p-4 bg-terminal-1 text-terminal-fg rounded">
+      {error && (
+        <div className="px-4 pb-2">
+          <div className="p-4 bg-terminal-1 text-terminal-fg rounded">
             {error}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }

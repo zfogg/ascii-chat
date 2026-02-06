@@ -1,6 +1,6 @@
 export function NotFoundPage() {
   return (
-    <div className="min-h-screen bg-terminal-bg flex items-center justify-center p-4">
+    <div className="flex-1 bg-terminal-bg flex items-center justify-center p-4">
       <div className="text-center max-w-md">
         <pre className="text-terminal-1 text-6xl font-mono mb-4">404</pre>
         <h1 className="text-2xl font-bold text-terminal-fg mb-2">Page not found</h1>
