@@ -300,7 +300,7 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
     }
   }
 
-  log_debug("argv[0] '%s' is not a mode name, looking for first non-option argument", argv[0]);
+  log_dev("argv[0] '%s' is not a mode name, looking for first non-option argument", argv[0]);
 
   // Find the first non-option argument (potential mode or session string)
   // Also detect mirror-specific options to infer mode if no positional arg found

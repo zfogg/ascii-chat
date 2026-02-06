@@ -664,21 +664,14 @@ void debug_memory_report(void) {
     SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, " %s\n", colored_string(color, value_str)));                        \
   } while (0)
 
-    // Colorize total allocated/freed: green if they match, yellow if they don't
+    // Colorize total allocated/freed: green if they match, red if they don't (memory leak)
     // We've already adjusted allocated to exclude suppressions, so now compare directly
-    log_color_t alloc_freed_color = (adjusted_total_allocated == total_freed) ? LOG_COLOR_INFO : LOG_COLOR_WARN;
+    log_color_t alloc_freed_color = (adjusted_total_allocated == total_freed) ? LOG_COLOR_INFO : LOG_COLOR_ERROR;
     PRINT_MEM_LINE_COLORED(label_total, pretty_total, alloc_freed_color);
     PRINT_MEM_LINE_COLORED(label_freed, pretty_freed, alloc_freed_color);
 
-    // Colorize current usage: 0=green, B/KB=yellow, MB+=red
-    log_color_t current_color = LOG_COLOR_INFO; // Default green for 0
-    if (adjusted_current_usage == 0) {
-      current_color = LOG_COLOR_INFO; // Green
-    } else if (strstr(pretty_current, "MB") || strstr(pretty_current, "GB") || strstr(pretty_current, "TB")) {
-      current_color = LOG_COLOR_ERROR; // Red for MB+
-    } else {
-      current_color = LOG_COLOR_WARN; // Yellow for bytes/KB
-    }
+    // Colorize current usage: green if 0 (no leaks), red if any unfreed memory (leak detected)
+    log_color_t current_color = (adjusted_current_usage == 0) ? LOG_COLOR_INFO : LOG_COLOR_ERROR;
     PRINT_MEM_LINE_COLORED(label_current, pretty_current, current_color);
 
     // Colorize peak usage: green if 0-50 MB, yellow if 50-80 MB, red if above 80 MB

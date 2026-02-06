@@ -356,7 +356,7 @@ int main(int argc, char *argv[]) {
   }
 
   const char *final_log_file = (opts->log_file[0] != '\0') ? opts->log_file : "ascii-chat.log";
-  log_warn("Logging initialized to %s", final_log_file);
+  log_dev("Logging initialized to %s", final_log_file);
 
   // Client-specific: auto-detect piping and route logs to stderr
   // This keeps stdout clean for piping: `ascii-chat client --snapshot | tee file.ascii_art`
