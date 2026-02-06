@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { Terminal } from 'xterm'
-import { FitAddon } from '@xterm/addon-fit'
 import 'xterm/css/xterm.css'
 import { initMirrorWasm, convertFrameToAscii, isWasmReady } from '../wasm/mirror'
 
@@ -15,7 +14,6 @@ export function MirrorPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const terminalRef = useRef<HTMLDivElement>(null)
   const xtermRef = useRef<Terminal | null>(null)
-  const fitAddonRef = useRef<FitAddon | null>(null)
   const [fps, setFps] = useState<string>('--')
   const [isRunning, setIsRunning] = useState(false)
   const [error, setError] = useState<string>('')
@@ -55,15 +53,13 @@ export function MirrorPage() {
         cursorStyle: 'bar',
         cursorBlink: false,
         fontFamily: 'monospace',
-        fontSize: 12,
+        fontSize: 14,
+        scrollback: 0,
+        disableStdin: true,
       })
 
-      const fitAddon = new FitAddon()
-      terminal.loadAddon(fitAddon)
       terminal.open(terminalRef.current)
-
       xtermRef.current = terminal
-      fitAddonRef.current = fitAddon
 
       console.log('xterm.js terminal initialized successfully')
 
