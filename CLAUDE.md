@@ -382,6 +382,26 @@ docker-compose -f ./tests/docker-compose.yml run --rm ascii-chat-tests bash -c '
 
 ### Logging Best Practices
 
+**CRITICAL: Never use fprintf() or printf() for debug output**
+
+Always use the logging system (`log_debug()`, `log_info()`, etc.) instead of raw `fprintf()` or `printf()` calls:
+
+```c
+// ❌ WRONG - bypasses logging system, causes UI artifacts
+fprintf(stderr, "[DEBUG] Processing packet\n");
+
+// ✅ CORRECT - goes through logging system
+log_debug("Processing packet");
+```
+
+**Why:** Raw fprintf/printf calls:
+- Bypass `--grep` filtering (can't isolate specific logs)
+- Don't write to log file (can't debug post-mortem)
+- Interrupt UI rendering (splash screen flashing, scrolling artifacts)
+- Ignore `--quiet` and log level settings
+
+**Additional best practices:**
+
 1. Use `log_*_every()` in high-frequency code (video/audio loops)
 2. Use `--grep` to filter noise during debugging
 3. Set appropriate log levels: dev < debug < info < warn < error < fatal
