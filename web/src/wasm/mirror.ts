@@ -26,7 +26,7 @@ interface MirrorModule {
 
 // Import the Emscripten-generated module factory
 // @ts-expect-error - Generated file without types
-import MirrorModuleFactory from '@wasm/mirror.js';
+import MirrorModuleFactory from '/wasm/mirror.js';
 
 let wasmModule: MirrorModule | null = null;
 

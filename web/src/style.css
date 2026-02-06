@@ -1,9 +1,9 @@
+/* Import xterm.js CSS */
+@import 'xterm/css/xterm.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Import xterm.js CSS */
-@import 'xterm/css/xterm.css';
 
 /* Custom styles for terminal aesthetic */
 body {

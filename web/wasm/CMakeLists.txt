@@ -25,6 +25,7 @@ set_target_properties(mirror PROPERTIES
     LINK_FLAGS "\
         -s WASM=1 \
         -s MODULARIZE=1 \
+        -s EXPORT_ES6=1 \
         -s EXPORT_NAME='MirrorModule' \
         -s EXPORTED_FUNCTIONS='[\"_convert_frame_to_ascii\",\"_free_ascii_buffer\",\"_malloc\",\"_free\"]' \
         -s EXPORTED_RUNTIME_METHODS='[\"ccall\",\"cwrap\",\"UTF8ToString\",\"getValue\",\"setValue\"]' \
