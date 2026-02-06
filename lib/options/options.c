@@ -220,9 +220,10 @@ static bool is_binary_level_option_with_args(const char *arg, bool *out_takes_ar
     return true;
   }
   if (strcmp(opt_name, "color") == 0) {
-    // --color takes a required argument (auto/true/false)
-    if (out_takes_arg)
-      *out_takes_arg = true;
+    // --color takes an optional argument (auto/true/false)
+    // Can be used as --color (defaults to true) or --color=auto or --color auto
+    if (out_takes_optional_arg)
+      *out_takes_optional_arg = true;
     return true;
   }
 
@@ -1222,6 +1223,12 @@ asciichat_error_t options_init(int argc, char **argv) {
     new_mode_argv[mode_argc] = NULL;
 
     mode_argv = new_mode_argv;
+
+    // Debug: log mode_argv
+    log_dev("Mode argv (argc=%d):", mode_argc);
+    for (int i = 0; i < mode_argc; i++) {
+      log_dev("  mode_argv[%d] = '%s'", i, mode_argv[i]);
+    }
   }
 
   // ========================================================================
