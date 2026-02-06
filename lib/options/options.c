@@ -1223,12 +1223,6 @@ asciichat_error_t options_init(int argc, char **argv) {
     new_mode_argv[mode_argc] = NULL;
 
     mode_argv = new_mode_argv;
-
-    // Debug: log mode_argv
-    log_dev("Mode argv (argc=%d):", mode_argc);
-    for (int i = 0; i < mode_argc; i++) {
-      log_dev("  mode_argv[%d] = '%s'", i, mode_argv[i]);
-    }
   }
 
   // ========================================================================
