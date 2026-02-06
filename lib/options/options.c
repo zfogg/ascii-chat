@@ -812,14 +812,27 @@ asciichat_error_t options_init(int argc, char **argv) {
       // Parse --color early so it affects help output colors
       if (strcmp(argv[i], "--color") == 0) {
         if (i + 1 < argc && argv[i + 1][0] != '-') {
-          char *error_msg = NULL;
-          if (parse_color_setting(argv[i + 1], &parsed_color_setting, &error_msg)) {
+          // Check if next arg is a mode name (not a color value)
+          const char *next_arg = argv[i + 1];
+          bool is_mode =
+              (strcmp(next_arg, "server") == 0 || strcmp(next_arg, "client") == 0 || strcmp(next_arg, "mirror") == 0 ||
+               strcmp(next_arg, "discovery") == 0 || strcmp(next_arg, "discovery-service") == 0);
+
+          if (is_mode) {
+            // Next arg is a mode, not a color value - default to true
+            parsed_color_setting = COLOR_SETTING_TRUE;
             color_setting_found = true;
-            i++; // Skip the setting argument
           } else {
-            if (error_msg) {
-              log_error("Error parsing --color: %s", error_msg);
-              free(error_msg);
+            // Try to parse as color value
+            char *error_msg = NULL;
+            if (parse_color_setting(next_arg, &parsed_color_setting, &error_msg)) {
+              color_setting_found = true;
+              i++; // Skip the setting argument
+            } else {
+              if (error_msg) {
+                log_error("Error parsing --color: %s", error_msg);
+                free(error_msg);
+              }
             }
           }
         } else {
