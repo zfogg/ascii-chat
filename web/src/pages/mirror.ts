@@ -210,7 +210,7 @@ function renderFrame(): void {
 
   // Get RGBA pixel data
   const imageData = ctx.getImageData(0, 0, canvasElement.width, canvasElement.height);
-  const rgbaData = imageData.data;
+  const rgbaData = new Uint8Array(imageData.data);
 
   // Convert to ASCII using WASM
   const asciiArt = convertFrameToAscii(
