@@ -52,7 +52,7 @@ bool session_log_buffer_init(void);
  *
  * Frees internal buffer. Safe to call even if not initialized.
  */
-void session_log_buffer_cleanup(void);
+void session_log_buffer_destroy(void);
 
 /**
  * @brief Clear all log entries from buffer

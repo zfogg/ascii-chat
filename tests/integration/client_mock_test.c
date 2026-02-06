@@ -45,7 +45,7 @@ Test(client_test_pattern, test_video_capture_with_test_pattern) {
 
   // Cleanup
   image_destroy(frame);
-  webcam_cleanup();
+  webcam_destroy();
 }
 
 Test(client_test_pattern, test_client_with_test_pattern_video) {
@@ -74,7 +74,7 @@ Test(client_test_pattern, test_client_with_test_pattern_video) {
     image_destroy(frame);
   }
 
-  webcam_cleanup();
+  webcam_destroy();
 }
 
 Test(client_test_pattern, test_multiple_init_cleanup_cycles) {
@@ -87,6 +87,6 @@ Test(client_test_pattern, test_multiple_init_cleanup_cycles) {
     cr_assert_not_null(frame, "Should get frame in cycle %d", cycle);
 
     image_destroy(frame);
-    webcam_cleanup();
+    webcam_destroy();
   }
 }

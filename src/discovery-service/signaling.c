@@ -140,7 +140,7 @@ asciichat_error_t signaling_relay_sdp(sqlite3 *db, tcp_server_t *tcp_server, con
   if (!session) {
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Session not found for SDP relay");
   }
-  session_entry_free(session); // We only need to validate existence
+  session_entry_destroy(session); // We only need to validate existence
 
   // Check if broadcast (recipient_id all zeros) or unicast
   if (is_broadcast_uuid(sdp->recipient_id)) {
@@ -182,7 +182,7 @@ asciichat_error_t signaling_relay_ice(sqlite3 *db, tcp_server_t *tcp_server, con
   if (!session) {
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Session not found for ICE relay");
   }
-  session_entry_free(session); // We only need to validate existence
+  session_entry_destroy(session); // We only need to validate existence
 
   // Check if broadcast (recipient_id all zeros) or unicast
   if (is_broadcast_uuid(ice->recipient_id)) {
@@ -225,7 +225,7 @@ asciichat_error_t signaling_broadcast(sqlite3 *db, tcp_server_t *tcp_server, con
   if (!session) {
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Session not found for broadcast");
   }
-  session_entry_free(session); // We only need to validate existence
+  session_entry_destroy(session); // We only need to validate existence
 
   // Broadcast to all participants in session (excluding sender if specified)
   broadcast_context_t ctx = {.target_session_id = session_id,

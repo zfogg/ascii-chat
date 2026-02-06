@@ -110,7 +110,7 @@ typedef struct platform_process platform_process_t;
  *   - Windows: Uses CreateProcessA with PROCESS_INFORMATION
  *   - POSIX: Uses fork() and exec()
  *
- * @param process_out Output parameter: process handle (caller must free with platform_process_free)
+ * @param process_out Output parameter: process handle (caller must free with platform_process_destroy)
  * @param path Path to executable (can be relative or absolute)
  * @param argv Argument array, NULL-terminated (argv[0] should be program name)
  * @param stdin_fd File descriptor for stdin, or -1 to use parent's stdin
@@ -181,7 +181,7 @@ asciichat_error_t platform_process_kill(platform_process_t *process);
  *
  * @ingroup platform
  */
-void platform_process_free(platform_process_t *process);
+void platform_process_destroy(platform_process_t *process);
 
 #ifdef __cplusplus
 }

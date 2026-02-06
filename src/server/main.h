@@ -156,7 +156,7 @@ extern size_t g_num_whitelisted_clients;
  * - Created in server_main() before tcp_server_init()
  * - Passed to tcp_server via config.user_data
  * - Available to client handlers via tcp_client_context_t.user_data
- * - Destroyed in server_main() after tcp_server_shutdown()
+ * - Destroyed in server_main() after tcp_server_destroy()
  *
  * @ingroup server_main
  */

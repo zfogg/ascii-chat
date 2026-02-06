@@ -124,7 +124,7 @@ bool timer_system_init(void) {
   return true;
 }
 
-void timer_system_cleanup(void) {
+void timer_system_destroy(void) {
   if (!g_timer_manager.initialized) {
     return;
   }

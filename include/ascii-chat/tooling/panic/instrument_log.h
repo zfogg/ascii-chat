@@ -120,7 +120,7 @@ void asciichat_instr_runtime_destroy(asciichat_instr_runtime_t *runtime);
  * @note After calling this, logging can be re-enabled by resetting env vars
  * @note Thread-safe: acquires global mutex during shutdown
  */
-void asciichat_instr_runtime_global_shutdown(void);
+void asciichat_instr_runtime_global_destroy(void);
 
 /**
  * @brief Log a source line execution event

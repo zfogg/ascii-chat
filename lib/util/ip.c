@@ -484,3 +484,398 @@ int parse_address_with_optional_port(const char *input, char *address_output, si
 
   return 0;
 }
+
+// ============================================================================
+// IP Address Classification Functions
+// ============================================================================
+
+// Check if IPv4 address is a private/LAN address
+int is_lan_ipv4(const char *ip) {
+  if (!is_valid_ipv4(ip)) {
+    return 0;
+  }
+
+  struct in_addr addr;
+  if (inet_pton(AF_INET, ip, &addr) != 1) {
+    return 0;
+  }
+
+  uint32_t ip_val = ntohl(addr.s_addr);
+
+  // 10.0.0.0/8: 10.0.0.0 - 10.255.255.255
+  if ((ip_val & 0xFF000000) == 0x0A000000) {
+    return 1;
+  }
+
+  // 172.16.0.0/12: 172.16.0.0 - 172.31.255.255
+  if ((ip_val & 0xFFF00000) == 0xAC100000) {
+    return 1;
+  }
+
+  // 192.168.0.0/16: 192.168.0.0 - 192.168.255.255
+  if ((ip_val & 0xFFFF0000) == 0xC0A80000) {
+    return 1;
+  }
+
+  return 0;
+}
+
+// Check if IPv6 address is a private/LAN address (ULA)
+int is_lan_ipv6(const char *ip) {
+  if (!ip) {
+    return 0;
+  }
+
+  // Remove brackets if present
+  char normalized[INET6_ADDRSTRLEN];
+  if (parse_ipv6_address(ip, normalized, sizeof(normalized)) != 0) {
+    return 0;
+  }
+
+  // Validate the normalized address
+  if (!is_valid_ipv6(normalized)) {
+    return 0;
+  }
+
+  struct in6_addr addr;
+  if (inet_pton(AF_INET6, normalized, &addr) != 1) {
+    return 0;
+  }
+
+  // fc00::/7: Unique Local Addresses (ULA)
+  // First byte should be 0xfc or 0xfd
+  if ((addr.s6_addr[0] & 0xFE) == 0xFC) {
+    return 1;
+  }
+
+  return 0;
+}
+
+// Check if IPv4 address is a broadcast address
+int is_broadcast_ipv4(const char *ip) {
+  if (!is_valid_ipv4(ip)) {
+    return 0;
+  }
+
+  struct in_addr addr;
+  if (inet_pton(AF_INET, ip, &addr) != 1) {
+    return 0;
+  }
+
+  uint32_t ip_val = ntohl(addr.s_addr);
+
+  // Limited broadcast: 255.255.255.255
+  if (ip_val == 0xFFFFFFFF) {
+    return 1;
+  }
+
+  return 0;
+}
+
+// Check if IPv6 address is a multicast address
+int is_broadcast_ipv6(const char *ip) {
+  if (!ip) {
+    return 0;
+  }
+
+  // Remove brackets if present
+  char normalized[INET6_ADDRSTRLEN];
+  if (parse_ipv6_address(ip, normalized, sizeof(normalized)) != 0) {
+    return 0;
+  }
+
+  // Validate the normalized address
+  if (!is_valid_ipv6(normalized)) {
+    return 0;
+  }
+
+  struct in6_addr addr;
+  if (inet_pton(AF_INET6, normalized, &addr) != 1) {
+    return 0;
+  }
+
+  // ff00::/8: Multicast addresses
+  // First byte should be 0xff
+  if (addr.s6_addr[0] == 0xFF) {
+    return 1;
+  }
+
+  return 0;
+}
+
+// Check if IPv4 address is localhost
+int is_localhost_ipv4(const char *ip) {
+  if (!is_valid_ipv4(ip)) {
+    return 0;
+  }
+
+  struct in_addr addr;
+  if (inet_pton(AF_INET, ip, &addr) != 1) {
+    return 0;
+  }
+
+  uint32_t ip_val = ntohl(addr.s_addr);
+
+  // 127.0.0.0/8: Loopback addresses
+  if ((ip_val & 0xFF000000) == 0x7F000000) {
+    return 1;
+  }
+
+  return 0;
+}
+
+// Check if IPv6 address is localhost
+int is_localhost_ipv6(const char *ip) {
+  if (!ip) {
+    return 0;
+  }
+
+  // Remove brackets if present
+  char normalized[INET6_ADDRSTRLEN];
+  if (parse_ipv6_address(ip, normalized, sizeof(normalized)) != 0) {
+    return 0;
+  }
+
+  // Validate the normalized address
+  if (!is_valid_ipv6(normalized)) {
+    return 0;
+  }
+
+  struct in6_addr addr;
+  if (inet_pton(AF_INET6, normalized, &addr) != 1) {
+    return 0;
+  }
+
+  // ::1: Loopback address
+  // All bytes should be 0 except the last byte which should be 1
+  for (int i = 0; i < 15; i++) {
+    if (addr.s6_addr[i] != 0) {
+      return 0;
+    }
+  }
+  if (addr.s6_addr[15] != 1) {
+    return 0;
+  }
+
+  return 1;
+}
+
+// Check if IPv4 address is a link-local address
+int is_link_local_ipv4(const char *ip) {
+  if (!is_valid_ipv4(ip)) {
+    return 0;
+  }
+
+  struct in_addr addr;
+  if (inet_pton(AF_INET, ip, &addr) != 1) {
+    return 0;
+  }
+
+  uint32_t ip_val = ntohl(addr.s_addr);
+
+  // 169.254.0.0/16: Link-local addresses (APIPA)
+  if ((ip_val & 0xFFFF0000) == 0xA9FE0000) {
+    return 1;
+  }
+
+  return 0;
+}
+
+// Check if IPv6 address is a link-local address
+int is_link_local_ipv6(const char *ip) {
+  if (!ip) {
+    return 0;
+  }
+
+  // Remove brackets if present
+  char normalized[INET6_ADDRSTRLEN];
+  if (parse_ipv6_address(ip, normalized, sizeof(normalized)) != 0) {
+    return 0;
+  }
+
+  // Validate the normalized address
+  if (!is_valid_ipv6(normalized)) {
+    return 0;
+  }
+
+  struct in6_addr addr;
+  if (inet_pton(AF_INET6, normalized, &addr) != 1) {
+    return 0;
+  }
+
+  // fe80::/10: Link-local addresses
+  // First byte should be 0xfe, second byte & 0xc0 should be 0x80
+  if (addr.s6_addr[0] == 0xFE && (addr.s6_addr[1] & 0xC0) == 0x80) {
+    return 1;
+  }
+
+  return 0;
+}
+
+// Check if IPv4 address is a public internet address
+int is_internet_ipv4(const char *ip) {
+  if (!is_valid_ipv4(ip)) {
+    return 0;
+  }
+
+  struct in_addr addr;
+  if (inet_pton(AF_INET, ip, &addr) != 1) {
+    return 0;
+  }
+
+  uint32_t ip_val = ntohl(addr.s_addr);
+
+  // Exclude private/LAN addresses
+  if (is_lan_ipv4(ip)) {
+    return 0;
+  }
+
+  // Exclude loopback
+  if (is_localhost_ipv4(ip)) {
+    return 0;
+  }
+
+  // Exclude link-local
+  if (is_link_local_ipv4(ip)) {
+    return 0;
+  }
+
+  // Exclude broadcast
+  if (is_broadcast_ipv4(ip)) {
+    return 0;
+  }
+
+  // Exclude multicast: 224.0.0.0/4
+  if ((ip_val & 0xF0000000) == 0xE0000000) {
+    return 0;
+  }
+
+  // Exclude 0.0.0.0/8: "This network"
+  if ((ip_val & 0xFF000000) == 0x00000000) {
+    return 0;
+  }
+
+  // Exclude 100.64.0.0/10: Shared Address Space (RFC 6598)
+  if ((ip_val & 0xFFC00000) == 0x64400000) {
+    return 0;
+  }
+
+  // Exclude 192.0.0.0/24: IETF Protocol Assignments
+  if ((ip_val & 0xFFFFFF00) == 0xC0000000) {
+    return 0;
+  }
+
+  // Exclude 192.0.2.0/24: TEST-NET-1
+  if ((ip_val & 0xFFFFFF00) == 0xC0000200) {
+    return 0;
+  }
+
+  // Exclude 198.18.0.0/15: Benchmarking
+  if ((ip_val & 0xFFFE0000) == 0xC6120000) {
+    return 0;
+  }
+
+  // Exclude 198.51.100.0/24: TEST-NET-2
+  if ((ip_val & 0xFFFFFF00) == 0xC6336400) {
+    return 0;
+  }
+
+  // Exclude 203.0.113.0/24: TEST-NET-3
+  if ((ip_val & 0xFFFFFF00) == 0xCB007100) {
+    return 0;
+  }
+
+  // Exclude 240.0.0.0/4: Reserved for future use
+  if ((ip_val & 0xF0000000) == 0xF0000000) {
+    return 0;
+  }
+
+  // If none of the exclusions matched, it's a public internet address
+  return 1;
+}
+
+// Check if IPv6 address is a public internet address
+int is_internet_ipv6(const char *ip) {
+  if (!ip) {
+    return 0;
+  }
+
+  // Remove brackets if present
+  char normalized[INET6_ADDRSTRLEN];
+  if (parse_ipv6_address(ip, normalized, sizeof(normalized)) != 0) {
+    return 0;
+  }
+
+  // Validate the normalized address
+  if (!is_valid_ipv6(normalized)) {
+    return 0;
+  }
+
+  struct in6_addr addr;
+  if (inet_pton(AF_INET6, normalized, &addr) != 1) {
+    return 0;
+  }
+
+  // Exclude loopback
+  if (is_localhost_ipv6(ip)) {
+    return 0;
+  }
+
+  // Exclude link-local
+  if (is_link_local_ipv6(ip)) {
+    return 0;
+  }
+
+  // Exclude ULA
+  if (is_lan_ipv6(ip)) {
+    return 0;
+  }
+
+  // Exclude multicast
+  if (is_broadcast_ipv6(ip)) {
+    return 0;
+  }
+
+  // Exclude unspecified address: ::
+  int is_unspecified = 1;
+  for (int i = 0; i < 16; i++) {
+    if (addr.s6_addr[i] != 0) {
+      is_unspecified = 0;
+      break;
+    }
+  }
+  if (is_unspecified) {
+    return 0;
+  }
+
+  // Exclude IPv4-mapped IPv6: ::ffff:0:0/96
+  if (addr.s6_addr[0] == 0 && addr.s6_addr[1] == 0 && addr.s6_addr[2] == 0 && addr.s6_addr[3] == 0 &&
+      addr.s6_addr[4] == 0 && addr.s6_addr[5] == 0 && addr.s6_addr[6] == 0 && addr.s6_addr[7] == 0 &&
+      addr.s6_addr[8] == 0 && addr.s6_addr[9] == 0 && addr.s6_addr[10] == 0xFF && addr.s6_addr[11] == 0xFF) {
+    return 0;
+  }
+
+  // Exclude IPv4-compatible IPv6: ::/96 (deprecated)
+  if (addr.s6_addr[0] == 0 && addr.s6_addr[1] == 0 && addr.s6_addr[2] == 0 && addr.s6_addr[3] == 0 &&
+      addr.s6_addr[4] == 0 && addr.s6_addr[5] == 0 && addr.s6_addr[6] == 0 && addr.s6_addr[7] == 0 &&
+      addr.s6_addr[8] == 0 && addr.s6_addr[9] == 0 && addr.s6_addr[10] == 0 && addr.s6_addr[11] == 0) {
+    // But not ::, which we already excluded above
+    if (addr.s6_addr[12] != 0 || addr.s6_addr[13] != 0 || addr.s6_addr[14] != 0 || addr.s6_addr[15] != 0) {
+      return 0;
+    }
+  }
+
+  // Exclude documentation prefix: 2001:db8::/32
+  if (addr.s6_addr[0] == 0x20 && addr.s6_addr[1] == 0x01 && addr.s6_addr[2] == 0x0D && addr.s6_addr[3] == 0xB8) {
+    return 0;
+  }
+
+  // Exclude 6to4: 2002::/16
+  if (addr.s6_addr[0] == 0x20 && addr.s6_addr[1] == 0x02) {
+    return 0;
+  }
+
+  // If none of the exclusions matched, it's likely a global unicast address
+  // Global unicast is typically 2000::/3, but let's accept anything that's not excluded
+  return 1;
+}

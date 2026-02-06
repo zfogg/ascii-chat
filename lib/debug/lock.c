@@ -111,7 +111,7 @@ static lock_record_t *create_lock_record(void *lock_address, lock_type_t lock_ty
   record->acquisition_time_ns = time_get_ns();
 
   // Capture backtrace
-  // NOTE: platform_backtrace_symbols_free() safely handles the case where
+  // NOTE: platform_backtrace_symbols_destroy() safely handles the case where
   // backtrace_symbols() uses system malloc() but mimalloc overrides free()
   // by detecting our enhanced format and not freeing system-allocated memory
   record->backtrace_size = platform_backtrace(record->backtrace_buffer, MAX_BACKTRACE_FRAMES);
@@ -149,7 +149,7 @@ static void free_lock_record(lock_record_t *record) {
 
   // Free symbolized backtrace
   if (record->backtrace_symbols) {
-    platform_backtrace_symbols_free(record->backtrace_symbols);
+    platform_backtrace_symbols_destroy(record->backtrace_symbols);
   }
 
   SAFE_FREE(record);
@@ -213,7 +213,7 @@ static void collect_lock_record_callback(lock_record_t *record, void *user_data)
     *offset += platform_format_backtrace_symbols(buffer + *offset, SAFE_BUFFER_SIZE(buffer_size, *offset), "Call stack",
                                                  symbols, record->backtrace_size, 0, 0, NULL);
     if (symbols) {
-      platform_backtrace_symbols_free(symbols);
+      platform_backtrace_symbols_destroy(symbols);
     }
   } else {
     *offset +=
@@ -348,7 +348,7 @@ void print_orphaned_release_callback(lock_record_t *record, void *user_data) {
     char **symbols = platform_backtrace_symbols(record->backtrace_buffer, record->backtrace_size);
     platform_print_backtrace_symbols("  Release call stack", symbols, record->backtrace_size, 0, 0, NULL);
     if (symbols) {
-      platform_backtrace_symbols_free(symbols);
+      platform_backtrace_symbols_destroy(symbols);
     }
   } else {
     log_info("  Release call stack: <capture failed>");
@@ -639,7 +639,7 @@ int lock_debug_init(void) {
   atomic_store(&g_initializing, false);
   atomic_store(&g_lock_debug_manager.initialized, true);
 
-  // Note: lock_debug_cleanup() will be called during normal shutdown sequence
+  // Note: lock_debug_destroy() will be called during normal shutdown sequence
   // and lock_debug_cleanup_thread() will be called as one of the last things before exit
 
   // log_info("Lock debug system initialized with uthash");
@@ -677,7 +677,7 @@ void lock_debug_trigger_print(void) {
   }
 }
 
-void lock_debug_cleanup(void) {
+void lock_debug_destroy(void) {
   // Use atomic exchange to ensure cleanup only runs once
   // This prevents double-cleanup from both atexit() and manual calls
   bool was_initialized = atomic_exchange(&g_lock_debug_manager.initialized, false);
@@ -1408,7 +1408,7 @@ void lock_debug_print_state(void) {
           platform_format_backtrace_symbols(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
                                             "Release call stack", symbols, orphan_entry->backtrace_size, 0, 0, NULL);
       if (symbols) {
-        platform_backtrace_symbols_free(symbols);
+        platform_backtrace_symbols_destroy(symbols);
       }
     } else {
       offset += safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
@@ -1452,7 +1452,7 @@ int lock_debug_init(void) {
 int lock_debug_start_thread(void) {
   return 0;
 }
-void lock_debug_cleanup(void) {}
+void lock_debug_destroy(void) {}
 void lock_debug_cleanup_thread(void) {}
 void lock_debug_get_stats(uint64_t *total_acquired, uint64_t *total_released, uint32_t *currently_held) {
   if (total_acquired)

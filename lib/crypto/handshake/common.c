@@ -256,12 +256,12 @@ asciichat_error_t crypto_handshake_init_with_password(crypto_handshake_context_t
 }
 
 // Cleanup crypto handshake context
-void crypto_handshake_cleanup(crypto_handshake_context_t *ctx) {
+void crypto_handshake_destroy(crypto_handshake_context_t *ctx) {
   if (!ctx)
     return;
 
   // Cleanup core crypto context
-  crypto_cleanup(&ctx->crypto_ctx);
+  crypto_destroy(&ctx->crypto_ctx);
 
   // Zero out sensitive data
   sodium_memzero(ctx, sizeof(crypto_handshake_context_t));

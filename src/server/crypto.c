@@ -740,7 +740,7 @@ void crypto_server_cleanup_client(uint32_t client_id) {
   }
 
   if (client->crypto_initialized) {
-    crypto_handshake_cleanup(&client->crypto_handshake_ctx);
+    crypto_handshake_destroy(&client->crypto_handshake_ctx);
     client->crypto_initialized = false;
     log_debug("Crypto handshake cleaned up for client %u", client_id);
   }

@@ -305,7 +305,7 @@ static void *audio_sender_thread_func(void *arg) {
   log_debug("Audio sender thread exiting");
 
   // Clean up thread-local error context before exit
-  asciichat_errno_cleanup();
+  asciichat_errno_destroy();
 
   return NULL;
 }
@@ -881,7 +881,7 @@ static void *audio_capture_thread_func(void *arg) {
   atomic_store(&g_audio_capture_thread_exited, true);
 
   // Clean up thread-local error context before exit
-  asciichat_errno_cleanup();
+  asciichat_errno_destroy();
 
   return NULL;
 }

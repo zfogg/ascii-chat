@@ -96,7 +96,7 @@ asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[1
 /**
  * @brief Find session by session_id
  *
- * Allocates and returns a session_entry_t. Caller must free with session_entry_free().
+ * Allocates and returns a session_entry_t. Caller must free with session_entry_destroy().
  *
  * @param db Database handle
  * @param session_id Session UUID to find
@@ -107,7 +107,7 @@ session_entry_t *database_session_find_by_id(sqlite3 *db, const uint8_t session_
 /**
  * @brief Find session by session_string
  *
- * Allocates and returns a session_entry_t. Caller must free with session_entry_free().
+ * Allocates and returns a session_entry_t. Caller must free with session_entry_destroy().
  *
  * @param db Database handle
  * @param session_string Session string to find

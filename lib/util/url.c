@@ -274,14 +274,14 @@ asciichat_error_t url_parse(const char *url, url_parts_t *parts_out) {
 
   /* Verify we got required fields */
   if (!parts_out->scheme || !parts_out->host) {
-    url_parts_free(parts_out);
+    url_parts_destroy(parts_out);
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing required URL components");
   }
 
   return ASCIICHAT_OK;
 }
 
-void url_parts_free(url_parts_t *parts) {
+void url_parts_destroy(url_parts_t *parts) {
   if (!parts) {
     SET_ERRNO(ERROR_INVALID_PARAM, "parts is NULL");
     return;

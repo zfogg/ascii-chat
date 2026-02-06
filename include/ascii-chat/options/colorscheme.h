@@ -99,7 +99,7 @@ asciichat_error_t colorscheme_init(void);
  *
  * Frees all allocated resources. Call at program shutdown.
  */
-void colorscheme_shutdown(void);
+void colorscheme_destroy(void);
 
 /**
  * @brief Get currently active color scheme

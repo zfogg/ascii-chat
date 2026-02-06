@@ -63,7 +63,7 @@ asciichat_mdns_t *asciichat_mdns_init(void) {
   return mdns;
 }
 
-void asciichat_mdns_shutdown(asciichat_mdns_t *mdns) {
+void asciichat_mdns_destroy(asciichat_mdns_t *mdns) {
   if (!mdns) {
     return;
   }

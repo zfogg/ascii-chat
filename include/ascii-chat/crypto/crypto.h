@@ -483,7 +483,7 @@ crypto_result_t crypto_init_with_password(crypto_context_t *ctx, const char *pas
  *
  * @ingroup crypto
  */
-void crypto_cleanup(crypto_context_t *ctx);
+void crypto_destroy(crypto_context_t *ctx);
 
 /**
  * @brief Generate new X25519 key pair for key exchange

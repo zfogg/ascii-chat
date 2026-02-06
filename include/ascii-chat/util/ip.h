@@ -297,3 +297,242 @@ asciichat_error_t format_ip_address(int family, const struct sockaddr *addr, cha
 asciichat_error_t format_ip_with_port(const char *ip, uint16_t port, char *output, size_t output_size);
 
 /** @} */
+
+/* ============================================================================
+ * IP Address Classification Functions
+ * @{
+ */
+
+/**
+ * @brief Check if IPv4 address is a private/LAN address
+ * @param ip IPv4 address string (must not be NULL)
+ * @return 1 if LAN address, 0 otherwise
+ *
+ * Checks if an IPv4 address is in private address ranges:
+ * - 10.0.0.0/8 (10.0.0.0 - 10.255.255.255)
+ * - 172.16.0.0/12 (172.16.0.0 - 172.31.255.255)
+ * - 192.168.0.0/16 (192.168.0.0 - 192.168.255.255)
+ *
+ * @note Returns 0 for invalid IPv4 addresses.
+ *
+ * @par Example
+ * @code
+ * if (is_lan_ipv4("192.168.1.1")) {
+ *     // This is a private LAN address
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+int is_lan_ipv4(const char *ip);
+
+/**
+ * @brief Check if IPv6 address is a private/LAN address
+ * @param ip IPv6 address string (must not be NULL)
+ * @return 1 if LAN address, 0 otherwise
+ *
+ * Checks if an IPv6 address is a Unique Local Address (ULA):
+ * - fc00::/7 (fc00:: - fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff)
+ *
+ * @note Returns 0 for invalid IPv6 addresses.
+ *
+ * @par Example
+ * @code
+ * if (is_lan_ipv6("fc00::1")) {
+ *     // This is a private ULA address
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+int is_lan_ipv6(const char *ip);
+
+/**
+ * @brief Check if IPv4 address is a broadcast address
+ * @param ip IPv4 address string (must not be NULL)
+ * @return 1 if broadcast address, 0 otherwise
+ *
+ * Checks if an IPv4 address is the limited broadcast address:
+ * - 255.255.255.255
+ *
+ * @note Subnet-specific broadcast addresses (e.g., 192.168.1.255 for 192.168.1.0/24)
+ *       cannot be determined without network mask information.
+ * @note Returns 0 for invalid IPv4 addresses.
+ *
+ * @par Example
+ * @code
+ * if (is_broadcast_ipv4("255.255.255.255")) {
+ *     // This is the limited broadcast address
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+int is_broadcast_ipv4(const char *ip);
+
+/**
+ * @brief Check if IPv6 address is a multicast address
+ * @param ip IPv6 address string (must not be NULL)
+ * @return 1 if multicast address, 0 otherwise
+ *
+ * Checks if an IPv6 address is in the multicast range:
+ * - ff00::/8 (ff00:: - ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff)
+ *
+ * @note IPv6 doesn't have broadcast; multicast is used instead.
+ * @note Returns 0 for invalid IPv6 addresses.
+ *
+ * @par Example
+ * @code
+ * if (is_broadcast_ipv6("ff02::1")) {
+ *     // This is a multicast address (all-nodes link-local)
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+int is_broadcast_ipv6(const char *ip);
+
+/**
+ * @brief Check if IPv4 address is localhost
+ * @param ip IPv4 address string (must not be NULL)
+ * @return 1 if localhost, 0 otherwise
+ *
+ * Checks if an IPv4 address is in the loopback range:
+ * - 127.0.0.0/8 (127.0.0.0 - 127.255.255.255)
+ *
+ * @note Returns 0 for invalid IPv4 addresses.
+ *
+ * @par Example
+ * @code
+ * if (is_localhost_ipv4("127.0.0.1")) {
+ *     // This is a loopback address
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+int is_localhost_ipv4(const char *ip);
+
+/**
+ * @brief Check if IPv6 address is localhost
+ * @param ip IPv6 address string (must not be NULL)
+ * @return 1 if localhost, 0 otherwise
+ *
+ * Checks if an IPv6 address is the loopback address:
+ * - ::1
+ *
+ * @note Returns 0 for invalid IPv6 addresses.
+ *
+ * @par Example
+ * @code
+ * if (is_localhost_ipv6("::1")) {
+ *     // This is the IPv6 loopback address
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+int is_localhost_ipv6(const char *ip);
+
+/**
+ * @brief Check if IPv4 address is a link-local address
+ * @param ip IPv4 address string (must not be NULL)
+ * @return 1 if link-local, 0 otherwise
+ *
+ * Checks if an IPv4 address is in the link-local range:
+ * - 169.254.0.0/16 (169.254.0.0 - 169.254.255.255)
+ *
+ * Link-local addresses are auto-configured when DHCP is unavailable (APIPA).
+ *
+ * @note Returns 0 for invalid IPv4 addresses.
+ *
+ * @par Example
+ * @code
+ * if (is_link_local_ipv4("169.254.1.1")) {
+ *     // This is an auto-configured link-local address
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+int is_link_local_ipv4(const char *ip);
+
+/**
+ * @brief Check if IPv6 address is a link-local address
+ * @param ip IPv6 address string (must not be NULL)
+ * @return 1 if link-local, 0 otherwise
+ *
+ * Checks if an IPv6 address is in the link-local range:
+ * - fe80::/10 (fe80:: - febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff)
+ *
+ * Link-local addresses are auto-configured and only valid on a single link.
+ *
+ * @note Returns 0 for invalid IPv6 addresses.
+ *
+ * @par Example
+ * @code
+ * if (is_link_local_ipv6("fe80::1")) {
+ *     // This is a link-local address
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+int is_link_local_ipv6(const char *ip);
+
+/**
+ * @brief Check if IPv4 address is a public internet address
+ * @param ip IPv4 address string (must not be NULL)
+ * @return 1 if public internet address, 0 otherwise
+ *
+ * Checks if an IPv4 address is a globally routable public address.
+ * Returns 0 for:
+ * - Private/LAN addresses (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16)
+ * - Loopback addresses (127.0.0.0/8)
+ * - Link-local addresses (169.254.0.0/16)
+ * - Broadcast addresses (255.255.255.255)
+ * - Multicast addresses (224.0.0.0/4)
+ * - Reserved/special use addresses
+ * - Invalid addresses
+ *
+ * @note Returns 0 for invalid IPv4 addresses.
+ *
+ * @par Example
+ * @code
+ * if (is_internet_ipv4("8.8.8.8")) {
+ *     // This is a public internet address
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+int is_internet_ipv4(const char *ip);
+
+/**
+ * @brief Check if IPv6 address is a public internet address
+ * @param ip IPv6 address string (must not be NULL)
+ * @return 1 if public internet address, 0 otherwise
+ *
+ * Checks if an IPv6 address is a globally routable public address.
+ * Returns 0 for:
+ * - Loopback address (::1)
+ * - Link-local addresses (fe80::/10)
+ * - Unique local addresses (fc00::/7)
+ * - Multicast addresses (ff00::/8)
+ * - Special use/reserved addresses
+ * - Invalid addresses
+ *
+ * @note Returns 0 for invalid IPv6 addresses.
+ *
+ * @par Example
+ * @code
+ * if (is_internet_ipv6("2001:4860:4860::8888")) {
+ *     // This is a public internet address
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+int is_internet_ipv6(const char *ip);
+
+/** @} */

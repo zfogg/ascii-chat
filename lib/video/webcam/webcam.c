@@ -164,7 +164,7 @@ image_t *webcam_read(void) {
   return frame;
 }
 
-void webcam_cleanup(void) {
+void webcam_destroy(void) {
   // Free cached webcam frame if it was allocated (from test pattern or real webcam)
   if (cached_webcam_frame) {
     image_destroy(cached_webcam_frame);

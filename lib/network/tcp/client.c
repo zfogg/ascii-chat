@@ -311,22 +311,6 @@ void tcp_client_shutdown(tcp_client_t *client) {
   }
 }
 
-/**
- * @brief Cleanup connection resources
- */
-void tcp_client_cleanup(tcp_client_t *client) {
-  if (!client)
-    return;
-
-  // Close connection
-  tcp_client_close(client);
-
-  // Reset state flags
-  atomic_store(&client->connection_lost, false);
-  atomic_store(&client->should_reconnect, false);
-  memset(client->server_ip, 0, sizeof(client->server_ip));
-}
-
 /* ============================================================================
  * Thread-Safe Packet Transmission
  * ============================================================================ */

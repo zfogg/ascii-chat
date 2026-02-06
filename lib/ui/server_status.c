@@ -20,9 +20,9 @@ void server_status_log_init(void) {
   (void)session_log_buffer_init();
 }
 
-void server_status_log_cleanup(void) {
+void server_status_log_destroy(void) {
   // Delegate to shared session log buffer
-  session_log_buffer_cleanup();
+  session_log_buffer_destroy();
 }
 
 void server_status_log_clear(void) {

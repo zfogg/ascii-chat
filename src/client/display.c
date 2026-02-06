@@ -342,7 +342,7 @@ void display_render_frame(const char *frame_data) {
 void display_cleanup() {
   // Cleanup keyboard input if it was initialized
   if (g_keyboard_enabled) {
-    keyboard_cleanup();
+    keyboard_destroy();
     g_keyboard_enabled = false;
   }
 

@@ -163,7 +163,7 @@ void packet_queue_destroy(packet_queue_t *queue) {
     return;
 
   // Signal shutdown first
-  packet_queue_shutdown(queue);
+  packet_queue_destroy(queue);
 
   // Clear any remaining packets
   packet_queue_clear(queue);
@@ -593,7 +593,7 @@ bool packet_queue_is_full(packet_queue_t *queue) {
   return (count >= queue->max_size);
 }
 
-void packet_queue_shutdown(packet_queue_t *queue) {
+void packet_queue_stop(packet_queue_t *queue) {
   if (!queue) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: queue=%p", queue);
     return;

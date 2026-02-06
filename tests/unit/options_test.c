@@ -74,7 +74,7 @@ static void save_options(options_backup_t *backup) {
 
 static void restore_options(const options_backup_t *backup) {
   (void)backup; // Unused parameter
-  // Note: We don't call options_state_shutdown() here because it can interfere
+  // Note: We don't call options_state_destroy() here because it can interfere
   // with the RCU state if multiple tests run sequentially. The atexit handlers
   // will properly clean up when the program exits.
 }

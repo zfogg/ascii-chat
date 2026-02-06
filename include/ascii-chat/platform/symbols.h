@@ -115,7 +115,7 @@ asciichat_error_t symbol_cache_init(void);
  *
  * @ingroup platform
  */
-void symbol_cache_cleanup(void);
+void symbol_cache_destroy(void);
 
 /** @} */
 

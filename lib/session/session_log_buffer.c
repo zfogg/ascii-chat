@@ -39,7 +39,7 @@ bool session_log_buffer_init(void) {
   return true;
 }
 
-void session_log_buffer_cleanup(void) {
+void session_log_buffer_destroy(void) {
   if (!g_log_buffer) {
     return;
   }

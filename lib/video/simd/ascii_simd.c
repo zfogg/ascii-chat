@@ -119,7 +119,7 @@ void str_init(Str *s) {
   s->cap = 0;
 }
 
-void str_free(Str *s) {
+void str_destroy(Str *s) {
   SAFE_FREE(s->data);
   s->data = NULL;
   s->len = s->cap = 0;

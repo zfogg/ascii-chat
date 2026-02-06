@@ -26,7 +26,7 @@
  * }
  *
  * // Cleanup (call periodically)
- * rate_limiter_cleanup(limiter, 3600);
+ * rate_limiter_prune(limiter, 3600);
  *
  * // Destroy
  * rate_limiter_destroy(limiter);
@@ -181,7 +181,7 @@ asciichat_error_t rate_limiter_record(rate_limiter_t *limiter, const char *ip_ad
  * @param max_age_secs Delete events older than this (0 = use default 1 hour)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t rate_limiter_cleanup(rate_limiter_t *limiter, uint32_t max_age_secs);
+asciichat_error_t rate_limiter_prune(rate_limiter_t *limiter, uint32_t max_age_secs);
 
 // ============================================================================
 // Utility Functions

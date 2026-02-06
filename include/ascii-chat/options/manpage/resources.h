@@ -35,14 +35,14 @@ typedef struct {
  * - Debug builds: Load from filesystem (share/man/man1/)
  * - Release builds: Load from embedded resources in binary
  *
- * The caller should call manpage_resources_cleanup() when done.
+ * The caller should call manpage_resources_destroy() when done.
  *
  * @param[out] resources Populated with loaded resource pointers
  * @return ASCIICHAT_OK on success
  * @return ERROR_CONFIG if resources cannot be loaded
  * @return ERROR_INVALID_PARAM if resources is NULL
  *
- * @note On success, caller must call manpage_resources_cleanup()
+ * @note On success, caller must call manpage_resources_destroy()
  * @note For embedded resources, no cleanup needed (pointers to static data)
  * @note For filesystem resources, content is allocated and must be freed
  *
@@ -60,7 +60,7 @@ asciichat_error_t manpage_resources_load(manpage_resources_t *resources);
  *
  * @ingroup options_manpage
  */
-void manpage_resources_cleanup(manpage_resources_t *resources);
+void manpage_resources_destroy(manpage_resources_t *resources);
 
 /**
  * @brief Check if resources are available

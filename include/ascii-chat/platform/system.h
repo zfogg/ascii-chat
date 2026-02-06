@@ -67,7 +67,7 @@ asciichat_error_t platform_init(void);
  *
  * @ingroup platform
  */
-void platform_cleanup(void);
+void platform_destroy(void);
 
 /**
  * @brief Forcefully terminate the process immediately without cleanup
@@ -523,7 +523,7 @@ int platform_backtrace(void **buffer, int size);
  * Converts the return addresses from platform_backtrace() into
  * human-readable symbol names (function names, file names, line numbers).
  *
- * @note The returned array must be freed with platform_backtrace_symbols_free().
+ * @note The returned array must be freed with platform_backtrace_symbols_destroy().
  *
  * @ingroup platform
  */
@@ -537,7 +537,7 @@ char **platform_backtrace_symbols(void *const *buffer, int size);
  *
  * @ingroup platform
  */
-void platform_backtrace_symbols_free(char **strings);
+void platform_backtrace_symbols_destroy(char **strings);
 
 /**
  * @brief Install crash handlers for the application
@@ -815,7 +815,7 @@ bool platform_is_binary_in_path(const char *bin_name);
  * @brief Cleanup the binary PATH cache
  *
  * Frees all cached binary PATH lookup results and destroys the cache.
- * Should be called during program cleanup (e.g., in platform_cleanup()).
+ * Should be called during program cleanup (e.g., in platform_destroy()).
  *
  * @note Thread-safe: Uses internal locking
  * @note Safe to call even if cache was never initialized

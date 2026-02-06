@@ -318,7 +318,7 @@ static void shutdown_client() {
   // Print audio analysis report if enabled
   if (GET_OPTION(audio_analysis_enabled)) {
     audio_analysis_print_report();
-    audio_analysis_cleanup();
+    audio_analysis_destroy();
   }
 
   audio_cleanup();
@@ -327,7 +327,7 @@ static void shutdown_client() {
   // Stop lock debug thread BEFORE display_cleanup() because the debug thread uses
   // _kbhit()/_getch() on Windows which interact with the console. If we close the
   // CON handle first, the debug thread can hang on console I/O, blocking process exit.
-  lock_debug_cleanup();
+  lock_debug_destroy();
 #endif
 
   // Cleanup display and terminal state
@@ -340,20 +340,20 @@ static void shutdown_client() {
   platform_disable_keepawake();
 
   // Clean up symbol cache (before log_destroy)
-  // This must be called BEFORE log_destroy() as symbol_cache_cleanup() uses log_debug()
+  // This must be called BEFORE log_destroy() as symbol_cache_destroy() uses log_debug()
   // Safe to call even if atexit() runs - it's idempotent (checks g_symbol_cache_initialized)
-  // Also called via platform_cleanup() atexit handler, but explicit call ensures proper ordering
-  symbol_cache_cleanup();
+  // Also called via platform_destroy() atexit handler, but explicit call ensures proper ordering
+  symbol_cache_destroy();
 
   // Clean up binary path cache explicitly
-  // Note: This is also called by platform_cleanup() via atexit(), but it's idempotent
+  // Note: This is also called by platform_destroy() via atexit(), but it's idempotent
   platform_cleanup_binary_path_cache();
 
   // Clean up errno context (allocated strings, backtrace symbols)
-  asciichat_errno_cleanup();
+  asciichat_errno_destroy();
 
   // Clean up RCU-based options state
-  options_state_shutdown();
+  options_state_destroy();
 
   log_debug("Client shutdown complete");
   log_destroy();
@@ -387,7 +387,7 @@ static int initialize_client_systems(void) {
     log_fatal("Failed to initialize WebRTC library: %s", asciichat_error_string(webrtc_result));
     return ERROR_NETWORK;
   }
-  (void)atexit(webrtc_cleanup);
+  (void)atexit(webrtc_destroy);
   log_debug("WebRTC library initialized successfully");
 
   // Initialize client worker thread pool (always needed, even if shared init done)
@@ -650,6 +650,10 @@ int client_main(void) {
     return 1;
   }
 
+  // By default, disable WebRTC fallback (regular client mode connects to localhost/LAN)
+  // This will be enabled below only if ACDS discovery succeeds
+  connection_ctx.enable_webrtc_fallback = false;
+
   // =========================================================================
   // PHASE 1: Parallel mDNS + ACDS Session Discovery
   // =========================================================================
@@ -751,6 +755,9 @@ int client_main(void) {
       SAFE_STRNCPY(connection_ctx.session_ctx.server_address, discovery_result.server_address,
                    sizeof(connection_ctx.session_ctx.server_address));
       connection_ctx.session_ctx.server_port = discovery_result.server_port;
+
+      // Enable WebRTC fallback for ACDS-discovered sessions (not for mDNS or direct connections)
+      connection_ctx.enable_webrtc_fallback = true;
       log_debug("Populated session context for WebRTC fallback (session='%s')", session_string);
     }
 
@@ -924,6 +931,25 @@ int client_main(void) {
     protocol_stop_connection();
     server_connection_close();
 
+    // Cleanup connection context to release old transports/sockets before reconnecting
+    // This prevents socket conflicts and "Bad file descriptor" errors on reconnection
+    connection_context_cleanup(&connection_ctx);
+
+    // Re-initialize connection context for next reconnection attempt
+    // Preserve reconnection state (enable_webrtc_fallback, last_successful_state)
+    bool saved_enable_webrtc = connection_ctx.enable_webrtc_fallback;
+    connection_state_t saved_last_successful = connection_ctx.last_successful_state;
+    memset(&connection_ctx, 0, sizeof(connection_ctx));
+    asciichat_error_t reinit_result =
+        connection_context_init(&connection_ctx, GET_OPTION(prefer_webrtc), GET_OPTION(no_webrtc),
+                                GET_OPTION(webrtc_skip_stun), GET_OPTION(webrtc_disable_turn));
+    if (reinit_result != ASCIICHAT_OK) {
+      log_error("Failed to re-initialize connection context for reconnection");
+      return 1;
+    }
+    connection_ctx.enable_webrtc_fallback = saved_enable_webrtc;
+    connection_ctx.last_successful_state = saved_last_successful;
+
     // Restart splash screen to show reconnection status
     // Logs (reconnection attempts) will display below splash
     // Keep terminal logging disabled - splash will display the logs
@@ -951,7 +977,7 @@ int client_main(void) {
   connection_context_cleanup(&connection_ctx);
 
   // Cleanup session log buffer (used by splash screen)
-  session_log_buffer_cleanup();
+  session_log_buffer_destroy();
 
   log_debug("ascii-chat client shutting down");
 
@@ -960,9 +986,9 @@ int client_main(void) {
   shutdown_client();
 
   // Cleanup remaining shared subsystems (buffer pool, platform, etc.)
-  // Note: atexit(asciichat_shared_shutdown) is registered in main.c,
+  // Note: atexit(asciichat_shared_destroy) is registered in main.c,
   // but won't run if interrupted by signals (SIGTERM from timeout/killall)
-  asciichat_shared_shutdown();
+  asciichat_shared_destroy();
 
   return 0;
 }

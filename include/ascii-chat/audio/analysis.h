@@ -102,7 +102,7 @@ void audio_analysis_set_aec3_metrics(double echo_return_loss, double echo_return
 /**
  * @brief Cleanup audio analysis
  */
-void audio_analysis_cleanup(void);
+void audio_analysis_destroy(void);
 
 #ifdef __cplusplus
 } /* extern "C" */

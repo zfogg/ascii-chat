@@ -23,7 +23,7 @@ extern int optind;
 // Reset global options between tests to prevent pollution
 static void reset_crypto_options(void) {
   // Shutdown and reinitialize RCU state to clear all previous state
-  options_state_shutdown();
+  options_state_destroy();
   options_state_init();
 
   // Reset optind for getopt_long (critical for multiple test runs)

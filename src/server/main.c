@@ -842,7 +842,7 @@ static void advertise_mdns_with_session(const char *session_string, uint16_t por
   if (mdns_advertise_result != ASCIICHAT_OK) {
     LOG_ERRNO_IF_SET("Failed to advertise mDNS service");
     log_warn("mDNS advertising failed - LAN discovery disabled");
-    asciichat_mdns_shutdown(g_mdns_ctx);
+    asciichat_mdns_destroy(g_mdns_ctx);
     g_mdns_ctx = NULL;
   } else {
     log_info("🌐 mDNS: Server advertised as '%s.local' on LAN", session_name);
@@ -2132,7 +2132,7 @@ cleanup:
   }
 
   // Cleanup status screen log capture
-  server_status_log_cleanup();
+  server_status_log_destroy();
 
   // Cleanup
   log_debug("Server shutting down...");
@@ -2236,7 +2236,7 @@ cleanup:
 
   // Clean up mDNS context
   if (g_mdns_ctx) {
-    asciichat_mdns_shutdown(g_mdns_ctx);
+    asciichat_mdns_destroy(g_mdns_ctx);
     g_mdns_ctx = NULL;
     log_debug("mDNS context shut down");
   }
@@ -2253,7 +2253,7 @@ cleanup:
 #ifndef NDEBUG
   // Clean up lock debugging system (always, regardless of build type)
   // Lock debug records are allocated in debug builds too, so they must be cleaned up
-  lock_debug_cleanup();
+  lock_debug_destroy();
 #endif
 
   // Destroy session host (before TCP server shutdown)
@@ -2264,7 +2264,7 @@ cleanup:
   }
 
   // Shutdown TCP server (closes listen sockets and cleans up)
-  tcp_server_shutdown(&g_tcp_server);
+  tcp_server_destroy(&g_tcp_server);
 
   // Join ACDS threads (if started)
   // NOTE: Must be done BEFORE destroying transport to ensure clean shutdown
@@ -2308,10 +2308,10 @@ cleanup:
   simd_caches_destroy_all();
 
   // Clean up symbol cache
-  // This must be called BEFORE log_destroy() as symbol_cache_cleanup() uses log_debug()
+  // This must be called BEFORE log_destroy() as symbol_cache_destroy() uses log_debug()
   // Safe to call even if atexit() runs - it's idempotent (checks g_symbol_cache_initialized)
-  // Also called via platform_cleanup() atexit handler, but explicit call ensures proper ordering
-  symbol_cache_cleanup();
+  // Also called via platform_destroy() atexit handler, but explicit call ensures proper ordering
+  symbol_cache_destroy();
 
   // Clean up global buffer pool (explicitly, as atexit may not run on Ctrl-C)
   // Note: This is also registered with atexit(), but calling it explicitly is safe (idempotent)
@@ -2322,16 +2322,16 @@ cleanup:
   platform_disable_keepawake();
 
   // Clean up binary path cache explicitly
-  // Note: This is also called by platform_cleanup() via atexit(), but it's idempotent
+  // Note: This is also called by platform_destroy() via atexit(), but it's idempotent
   // (checks g_cache_initialized and sets it to false, sets g_bin_path_cache to NULL)
   // Safe to call even if atexit() runs later
   platform_cleanup_binary_path_cache();
 
   // Clean up errno context (allocated strings, backtrace symbols)
-  asciichat_errno_cleanup();
+  asciichat_errno_destroy();
 
   // Clean up RCU-based options state
-  options_state_shutdown();
+  options_state_destroy();
 
   // Clean up platform-specific resources (Windows: Winsock cleanup, timer restoration)
   // POSIX: minimal cleanup (symbol cache already handled above on Windows)

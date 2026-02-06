@@ -485,7 +485,7 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
 
   // Check if session is full
   if (session->current_participants >= session->max_participants) {
-    session_entry_free(session);
+    session_entry_destroy(session);
     resp->error_code = ACIP_ERROR_SESSION_FULL;
     SAFE_STRNCPY(resp->error_message, "Session is full", sizeof(resp->error_message));
     log_warn("Session join failed: %s (full)", session_string);
@@ -495,14 +495,14 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
   // Verify password if required
   if (session->has_password && req->has_password) {
     if (!verify_password(req->password, session->password_hash)) {
-      session_entry_free(session);
+      session_entry_destroy(session);
       resp->error_code = ACIP_ERROR_INVALID_PASSWORD;
       SAFE_STRNCPY(resp->error_message, "Invalid password", sizeof(resp->error_message));
       log_warn("Session join failed: %s (invalid password)", session_string);
       return ASCIICHAT_OK;
     }
   } else if (session->has_password && !req->has_password) {
-    session_entry_free(session);
+    session_entry_destroy(session);
     resp->error_code = ACIP_ERROR_INVALID_PASSWORD;
     SAFE_STRNCPY(resp->error_message, "Password required", sizeof(resp->error_message));
     log_warn("Session join failed: %s (password required)", session_string);
@@ -518,7 +518,7 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
   char *err_msg = NULL;
   int rc = sqlite3_exec(db, "BEGIN IMMEDIATE;", NULL, NULL, &err_msg);
   if (rc != SQLITE_OK) {
-    session_entry_free(session);
+    session_entry_destroy(session);
     log_error("Failed to begin transaction: %s", err_msg ? err_msg : "unknown");
     sqlite3_free(err_msg);
     return SET_ERRNO(ERROR_CONFIG, "Failed to begin transaction");
@@ -531,7 +531,7 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
   rc = sqlite3_prepare_v2(db, insert_sql, -1, &stmt, NULL);
   if (rc != SQLITE_OK) {
     sqlite3_exec(db, "ROLLBACK;", NULL, NULL, NULL);
-    session_entry_free(session);
+    session_entry_destroy(session);
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare participant insert: %s", sqlite3_errmsg(db));
   }
 
@@ -545,7 +545,7 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
 
   if (rc != SQLITE_DONE) {
     sqlite3_exec(db, "ROLLBACK;", NULL, NULL, NULL);
-    session_entry_free(session);
+    session_entry_destroy(session);
     return SET_ERRNO(ERROR_CONFIG, "Failed to insert participant: %s", sqlite3_errmsg(db));
   }
 
@@ -588,7 +588,7 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
     log_error("Failed to commit transaction: %s", err_msg ? err_msg : "unknown");
     sqlite3_free(err_msg);
     sqlite3_exec(db, "ROLLBACK;", NULL, NULL, NULL);
-    session_entry_free(session);
+    session_entry_destroy(session);
     return SET_ERRNO(ERROR_CONFIG, "Failed to commit transaction");
   }
 
@@ -649,7 +649,7 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
              session->current_participants + 1, session->max_participants);
   }
 
-  session_entry_free(session);
+  session_entry_destroy(session);
   return ASCIICHAT_OK;
 }
 

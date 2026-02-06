@@ -3633,7 +3633,7 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
   options_config_print_options_sections_with_width(config, desc, options_max_col_width, mode);
 }
 
-void options_config_cleanup(const options_config_t *config, void *options_struct) {
+void options_struct_destroy(const options_config_t *config, void *options_struct) {
   if (!config || !options_struct)
     return;
 

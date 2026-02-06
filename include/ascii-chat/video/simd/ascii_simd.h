@@ -161,7 +161,7 @@ void str_init(Str *s);
  *
  * @ingroup video
  */
-void str_free(Str *s);
+void str_destroy(Str *s);
 
 /**
  * @brief Reserve space in string buffer

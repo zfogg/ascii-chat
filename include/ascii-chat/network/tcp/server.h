@@ -23,7 +23,7 @@
  * 2. Call tcp_server_init() to bind sockets
  * 3. Call tcp_server_run() to start accept loop (blocks)
  * 4. Signal shutdown by setting running flag to false
- * 5. Call tcp_server_shutdown() to clean up
+ * 5. Call tcp_server_destroy() to clean up
  *
  * ## Example
  *
@@ -54,7 +54,7 @@
  * tcp_server_t server;
  * if (tcp_server_init(&server, &config) == ASCIICHAT_OK) {
  *     tcp_server_run(&server);
- *     tcp_server_shutdown(&server);
+ *     tcp_server_destroy(&server);
  * }
  * ```
  *
@@ -214,7 +214,7 @@ asciichat_error_t tcp_server_run(tcp_server_t *server);
  *
  * @param server Server structure to clean up
  */
-void tcp_server_shutdown(tcp_server_t *server);
+void tcp_server_destroy(tcp_server_t *server);
 
 /**
  * @brief Set client cleanup callback

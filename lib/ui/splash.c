@@ -366,7 +366,7 @@ int splash_intro_done(void) {
   // Clearing here can cause a brief scroll artifact during transition
 
   // NOTE: Do NOT cleanup session_log_buffer here - it may be used by status screen
-  // Status screen will call session_log_buffer_cleanup() when appropriate
+  // Status screen will call session_log_buffer_destroy() when appropriate
 
   return 0; // ASCIICHAT_OK
 }

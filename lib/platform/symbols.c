@@ -416,7 +416,7 @@ asciichat_error_t symbol_cache_init(void) {
   return 0;
 }
 
-void symbol_cache_cleanup(void) {
+void symbol_cache_destroy(void) {
   if (!atomic_load(&g_symbol_cache_initialized)) {
     return;
   }

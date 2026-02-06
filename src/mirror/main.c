@@ -326,7 +326,7 @@ int mirror_main(void) {
       probe_source = NULL;
     }
     // Clean up webcam resources and cached images on failure
-    webcam_cleanup();
+    webcam_destroy();
     return ERROR_MEDIA_INIT;
   }
 
@@ -413,7 +413,7 @@ int mirror_main(void) {
       probe_source = NULL;
     }
     // Clean up webcam resources and cached images on failure
-    webcam_cleanup();
+    webcam_destroy();
     return ERROR_DISPLAY;
   }
 
@@ -500,7 +500,7 @@ int mirror_main(void) {
   }
 
   // Clean up webcam resources and cached images (test pattern, etc.)
-  webcam_cleanup();
+  webcam_destroy();
 
   // Re-enable terminal output for shutdown logging
   log_set_terminal_output(true);

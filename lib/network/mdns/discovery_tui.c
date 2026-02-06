@@ -45,7 +45,7 @@ discovery_tui_server_t *discovery_tui_query(const discovery_tui_config_t *config
  * @brief Free results from mDNS discovery
  */
 void discovery_tui_free_results(discovery_tui_server_t *servers) {
-  discovery_mdns_free(servers);
+  discovery_mdns_destroy(servers);
 }
 
 /**

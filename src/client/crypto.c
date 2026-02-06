@@ -203,7 +203,7 @@ int client_crypto_init(void) {
 
   if (was_initialized) {
     log_debug("CLIENT_CRYPTO_INIT: Already initialized, cleaning up and reinitializing");
-    crypto_handshake_cleanup(&g_crypto_ctx);
+    crypto_handshake_destroy(&g_crypto_ctx);
   }
 
   // Check if encryption is disabled
@@ -796,7 +796,7 @@ void crypto_client_cleanup(void) {
   static_mutex_unlock(&g_crypto_init_mutex);
 
   if (was_initialized) {
-    crypto_handshake_cleanup(&g_crypto_ctx);
+    crypto_handshake_destroy(&g_crypto_ctx);
     log_debug("Client crypto handshake cleaned up");
   }
 }

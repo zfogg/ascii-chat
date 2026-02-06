@@ -149,7 +149,7 @@ typedef struct {
  * @param offer_out Generated SDP offer (output)
  * @return ASCIICHAT_OK on success, error code on failure
  *
- * @note Caller must free offer_out using sdp_session_free()
+ * @note Caller must free offer_out using sdp_session_destroy()
  */
 asciichat_error_t sdp_generate_offer(const terminal_capability_t *capabilities, size_t capability_count,
                                      const opus_config_t *audio_config, const terminal_format_params_t *format,
@@ -169,7 +169,7 @@ asciichat_error_t sdp_generate_offer(const terminal_capability_t *capabilities, 
  * @param answer_out Generated SDP answer (output)
  * @return ASCIICHAT_OK on success, error code on failure
  *
- * @note Caller must free answer_out using sdp_session_free()
+ * @note Caller must free answer_out using sdp_session_destroy()
  */
 asciichat_error_t sdp_generate_answer(const sdp_session_t *offer, const terminal_capability_t *server_capabilities,
                                       size_t server_capability_count, const opus_config_t *audio_config,
@@ -233,7 +233,7 @@ asciichat_error_t sdp_detect_terminal_capabilities(terminal_capability_t *capabi
  * @brief Free SDP session resources
  * @param session Session to free
  */
-void sdp_session_free(sdp_session_t *session);
+void sdp_session_destroy(sdp_session_t *session);
 
 /**
  * @brief Get human-readable codec name

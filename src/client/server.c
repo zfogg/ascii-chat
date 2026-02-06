@@ -777,7 +777,7 @@ void server_connection_close() {
 
   // Cleanup crypto context if encryption was enabled
   if (g_encryption_enabled) {
-    crypto_handshake_cleanup(&g_crypto_ctx);
+    crypto_handshake_destroy(&g_crypto_ctx);
     g_encryption_enabled = false;
   }
 

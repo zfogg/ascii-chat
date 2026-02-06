@@ -99,4 +99,4 @@ bool is_session_string(const char *str);
 /*
  * @brief Cleanup function for session string cache
  */
-void acds_strings_cleanup(void);
+void acds_strings_destroy(void);

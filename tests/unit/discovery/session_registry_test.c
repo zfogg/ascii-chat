@@ -88,14 +88,14 @@ Test(session_database, create_session_basic, .timeout = 5) {
   session_entry_t *found = database_session_find_by_string(db, response.session_string);
   cr_expect_not_null(found, "Created session should be findable by string");
   if (found) {
-    session_entry_free(found);
+    session_entry_destroy(found);
   }
 
   // Session should be findable by ID
   found = database_session_find_by_id(db, response.session_id);
   cr_expect_not_null(found, "Created session should be findable by ID");
   if (found) {
-    session_entry_free(found);
+    session_entry_destroy(found);
   }
 
   database_close(db);
@@ -308,7 +308,7 @@ Test(session_database, multiple_sessions, .timeout = 5) {
     session_entry_t *found = database_session_find_by_string(db, session_strings[i]);
     cr_expect_not_null(found, "Session %d should be findable", i);
     if (found) {
-      session_entry_free(found);
+      session_entry_destroy(found);
     }
   }
 
@@ -340,7 +340,7 @@ Test(session_database, cleanup_expired_sessions, .timeout = 5) {
   session_entry_t *found = database_session_find_by_string(db, response.session_string);
   cr_expect_not_null(found, "Non-expired session should still exist after cleanup");
   if (found) {
-    session_entry_free(found);
+    session_entry_destroy(found);
   }
 
   database_close(db);
@@ -374,7 +374,7 @@ Test(session_database, cleanup_expired_sessions, .timeout = 5) {
  *    - Foreign key constraints for participant cleanup
  *
  * 4. **Memory Safety**
- *    - session_entry_free() properly frees allocated sessions
+ *    - session_entry_destroy() properly frees allocated sessions
  *    - Uses SAFE_MALLOC/SAFE_FREE macros for leak tracking
  *
  * Performance Notes:

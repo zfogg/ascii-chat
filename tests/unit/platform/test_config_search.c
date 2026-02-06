@@ -20,12 +20,12 @@
 // ============================================================================
 
 Test(platform_config_search, list_cleanup_null_safe) {
-  // Test that config_file_list_free is safe with NULL
-  config_file_list_free(NULL);
+  // Test that config_file_list_destroy is safe with NULL
+  config_file_list_destroy(NULL);
 
   // Test with empty list
   config_file_list_t list = {0};
-  config_file_list_free(&list);
+  config_file_list_destroy(&list);
 }
 
 Test(platform_config_search, list_cleanup_with_entries) {
@@ -46,7 +46,7 @@ Test(platform_config_search, list_cleanup_with_entries) {
   list.files[1].is_system_config = true;
 
   // This should free all allocated memory
-  config_file_list_free(&list);
+  config_file_list_destroy(&list);
 
   // Verify cleanup
   cr_assert_eq(list.count, 0, "Count should be reset");
@@ -65,7 +65,7 @@ Test(platform_config_search, basic_allocation) {
   cr_assert_eq(list.capacity, 1, "Capacity should be set");
   cr_assert_eq(list.count, 0, "Count should be 0");
 
-  config_file_list_free(&list);
+  config_file_list_destroy(&list);
 }
 
 // ============================================================================

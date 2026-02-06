@@ -62,8 +62,8 @@ Test(crypto_network_integration, full_handshake_simulation) {
   cr_assert(crypto_is_ready(&server_ctx), "Server should be ready for encrypted communication");
 
   // Cleanup
-  crypto_cleanup(&client_ctx);
-  crypto_cleanup(&server_ctx);
+  crypto_destroy(&client_ctx);
+  crypto_destroy(&server_ctx);
 }
 
 Test(crypto_network_integration, bidirectional_encrypted_communication) {
@@ -123,8 +123,8 @@ Test(crypto_network_integration, bidirectional_encrypted_communication) {
   cr_assert_eq(memcmp(alice_decrypted, bob_message, alice_decrypted_len), 0,
                "Alice should receive Bob's reply correctly");
 
-  crypto_cleanup(&alice_ctx);
-  crypto_cleanup(&bob_ctx);
+  crypto_destroy(&alice_ctx);
+  crypto_destroy(&bob_ctx);
 }
 
 Test(crypto_network_integration, password_vs_key_exchange_priority) {
@@ -172,8 +172,8 @@ Test(crypto_network_integration, password_vs_key_exchange_priority) {
   cr_assert_eq(memcmp(decrypted, test_message, strlen(test_message)), 0,
                "Message should decrypt correctly with shared key");
 
-  crypto_cleanup(&ctx);
-  crypto_cleanup(&peer_ctx);
+  crypto_destroy(&ctx);
+  crypto_destroy(&peer_ctx);
 }
 
 Test(crypto_network_integration, multiple_messages_same_session) {
@@ -226,8 +226,8 @@ Test(crypto_network_integration, multiple_messages_same_session) {
     cr_assert_eq(memcmp(decrypted, ack_message, strlen(ack_message)), 0, "ACK %d content should match", i + 1);
   }
 
-  crypto_cleanup(&client_ctx);
-  crypto_cleanup(&server_ctx);
+  crypto_destroy(&client_ctx);
+  crypto_destroy(&server_ctx);
 }
 
 Test(crypto_network_integration, large_message_handling) {
@@ -280,8 +280,8 @@ Test(crypto_network_integration, large_message_handling) {
   SAFE_FREE(large_message);
   SAFE_FREE(encrypted_packet);
   SAFE_FREE(decrypted_message);
-  crypto_cleanup(&ctx1);
-  crypto_cleanup(&ctx2);
+  crypto_destroy(&ctx1);
+  crypto_destroy(&ctx2);
 }
 
 Test(crypto_network_integration, error_handling_integration) {
@@ -324,8 +324,8 @@ Test(crypto_network_integration, error_handling_integration) {
                                            sizeof(decrypted), &decrypted_len);
   cr_assert_neq(result, CRYPTO_OK, "Malformed packet should fail to decrypt");
 
-  crypto_cleanup(&ctx1);
-  crypto_cleanup(&ctx2);
+  crypto_destroy(&ctx1);
+  crypto_destroy(&ctx2);
 }
 
 Test(crypto_network_integration, session_cleanup_and_restart) {
@@ -353,8 +353,8 @@ Test(crypto_network_integration, session_cleanup_and_restart) {
   cr_assert_eq(result, CRYPTO_OK, "First session encryption should work");
 
   // Clean up first session
-  crypto_cleanup(&ctx1);
-  crypto_cleanup(&ctx2);
+  crypto_destroy(&ctx1);
+  crypto_destroy(&ctx2);
 
   // Start new session (simulating reconnection)
   crypto_init(&ctx1);
@@ -378,6 +378,6 @@ Test(crypto_network_integration, session_cleanup_and_restart) {
   cr_assert_eq(result, CRYPTO_OK, "Second session decryption should work");
   cr_assert_eq(memcmp(decrypted, msg2, strlen(msg2)), 0, "Second session message should match");
 
-  crypto_cleanup(&ctx1);
-  crypto_cleanup(&ctx2);
+  crypto_destroy(&ctx1);
+  crypto_destroy(&ctx2);
 }

@@ -33,7 +33,7 @@ void setup_crypto_known_hosts_tests(void) {
   setenv("XDG_CONFIG_HOME", config_dir, 1);
 
   // Clean up any existing cache from previous tests to prevent parallel test conflicts
-  known_hosts_cleanup();
+  known_hosts_destroy();
 
   // Delete the known_hosts file to ensure clean state for each test
   const char *path = get_known_hosts_path();
@@ -51,7 +51,7 @@ void teardown_crypto_known_hosts_tests(void) {
   }
 
   // Clean up cache after test completes
-  known_hosts_cleanup();
+  known_hosts_destroy();
 
   // Clean up the test directory (ignore errors if already cleaned)
   char test_dir[512];

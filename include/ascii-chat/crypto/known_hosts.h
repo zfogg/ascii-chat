@@ -200,7 +200,7 @@ asciichat_error_t remove_known_host(const char *server_ip, uint16_t port);
  *       Uses expand_path() to resolve user directory.
  *
  * @note Path caching: Path is cached after first call to avoid repeated expansion.
- *       Cache is freed by known_hosts_cleanup().
+ *       Cache is freed by known_hosts_destroy().
  *
  * @note Platform-specific paths (same directory as config.toml):
  *       - Unix: `$XDG_CONFIG_HOME/ascii-chat/known_hosts` if set, otherwise `~/.ascii-chat/known_hosts`
@@ -373,6 +373,6 @@ void compute_key_fingerprint(const uint8_t key[32], char fingerprint[65]);
  *
  * @ingroup crypto
  */
-void known_hosts_cleanup(void);
+void known_hosts_destroy(void);
 
 /** @} */

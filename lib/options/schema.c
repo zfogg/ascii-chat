@@ -440,7 +440,7 @@ const config_option_metadata_t *config_schema_get_all(size_t *count) {
 // Schema Cleanup
 // ============================================================================
 
-void config_schema_cleanup(void) {
+void config_schema_destroy(void) {
   if (!g_schema_built) {
     return; // Nothing to clean up
   }

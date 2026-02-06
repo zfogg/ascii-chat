@@ -508,7 +508,7 @@ void *client_video_render_thread(void *arg) {
 #endif
 
   // Clean up thread-local error context before exit
-  asciichat_errno_cleanup();
+  asciichat_errno_destroy();
 
   return NULL;
 }
@@ -944,7 +944,7 @@ void *client_audio_render_thread(void *arg) {
   }
 
   // Clean up thread-local error context before exit
-  asciichat_errno_cleanup();
+  asciichat_errno_destroy();
 
   return NULL;
 }

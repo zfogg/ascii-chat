@@ -48,10 +48,10 @@ static static_mutex_t g_cache_init_mutex = STATIC_MUTEX_INIT;
 
 /**
  * @brief Cleanup function for session string cache
- * Called by asciichat_shared_shutdown() during library cleanup.
+ * Called by asciichat_shared_destroy() during library cleanup.
  * Safe to call multiple times (idempotent).
  */
-void acds_strings_cleanup(void) {
+void acds_strings_destroy(void) {
   if (!g_cache_initialized) {
     return;
   }
@@ -99,7 +99,7 @@ static asciichat_error_t build_validation_caches(void) {
     word_cache_entry_t *entry = SAFE_MALLOC(sizeof(word_cache_entry_t), word_cache_entry_t *);
     if (!entry) {
       static_mutex_unlock(&g_cache_init_mutex);
-      acds_strings_cleanup();
+      acds_strings_destroy();
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate adjectives cache entry");
     }
 
@@ -108,7 +108,7 @@ static asciichat_error_t build_validation_caches(void) {
     if (!entry->word) {
       SAFE_FREE(entry);
       static_mutex_unlock(&g_cache_init_mutex);
-      acds_strings_cleanup();
+      acds_strings_destroy();
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for adjective word");
     }
     strcpy(entry->word, adjectives[i]);
@@ -121,7 +121,7 @@ static asciichat_error_t build_validation_caches(void) {
     word_cache_entry_t *entry = SAFE_MALLOC(sizeof(word_cache_entry_t), word_cache_entry_t *);
     if (!entry) {
       static_mutex_unlock(&g_cache_init_mutex);
-      acds_strings_cleanup();
+      acds_strings_destroy();
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate nouns cache entry");
     }
 
@@ -130,7 +130,7 @@ static asciichat_error_t build_validation_caches(void) {
     if (!entry->word) {
       SAFE_FREE(entry);
       static_mutex_unlock(&g_cache_init_mutex);
-      acds_strings_cleanup();
+      acds_strings_destroy();
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for noun word");
     }
     strcpy(entry->word, nouns[i]);
@@ -140,7 +140,7 @@ static asciichat_error_t build_validation_caches(void) {
 
   g_cache_initialized = true;
 
-  // NOTE: Cleanup is now handled by asciichat_shared_shutdown() called from application code.
+  // NOTE: Cleanup is now handled by asciichat_shared_destroy() called from application code.
   // Library code does not call atexit() - that's the application's responsibility.
 
   static_mutex_unlock(&g_cache_init_mutex);

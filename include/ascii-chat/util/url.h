@@ -36,7 +36,7 @@
  * if (url_parse("https://api.github.com:443/users", &parts) == ASCIICHAT_OK) {
  *     printf("scheme: %s, host: %s, port: %d, path: %s\\n",
  *            parts.scheme, parts.host, parts.port, parts.path);
- *     url_parts_free(&parts);
+ *     url_parts_destroy(&parts);
  * }
  * @endcode
  *
@@ -113,8 +113,8 @@ bool url_is_valid(const char *url);
  * - path: Path, query, and fragment (NULL if not present)
  *
  * MEMORY MANAGEMENT:
- * - All allocated strings must be freed using url_parts_free(parts_out)
- * - Do NOT use SAFE_FREE() on individual fields - use url_parts_free()
+ * - All allocated strings must be freed using url_parts_destroy(parts_out)
+ * - Do NOT use SAFE_FREE() on individual fields - use url_parts_destroy()
  *
  * @note Returns ERROR_INVALID_PARAM if URL format is invalid
  * @note Returns ERROR_MEMORY if allocation fails
@@ -124,7 +124,7 @@ bool url_is_valid(const char *url);
  * url_parts_t parts = {0};
  * if (url_parse("https://user:pass@example.com:8443/api/v1?key=val#section", &parts) == ASCIICHAT_OK) {
  *     printf("Host: %s, Port: %d, Path: %s\\n", parts.host, parts.port, parts.path);
- *     url_parts_free(&parts);
+ *     url_parts_destroy(&parts);
  * }
  * @endcode
  *
@@ -144,12 +144,12 @@ asciichat_error_t url_parse(const char *url, url_parts_t *parts_out);
  * url_parts_t parts = {0};
  * url_parse("https://example.com", &parts);
  * // Use parts...
- * url_parts_free(&parts);
+ * url_parts_destroy(&parts);
  * // All internal strings are freed, parts is zeroed
  * @endcode
  *
  * @ingroup util
  */
-void url_parts_free(url_parts_t *parts);
+void url_parts_destroy(url_parts_t *parts);
 
 /** @} */

@@ -440,7 +440,7 @@ Test(packet_queue, shutdown_behavior) {
   cr_assert_eq(packet_queue_size(queue), 1, "Queue should have 1 packet");
 
   // Shutdown the queue
-  packet_queue_shutdown(queue);
+  packet_queue_destroy(queue);
   cr_assert(queue->shutdown, "Queue should be marked as shutdown");
 
   // Try to dequeue (should return NULL due to shutdown)

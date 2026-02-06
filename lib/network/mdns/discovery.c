@@ -172,7 +172,7 @@ static void discovery_mdns_callback(const asciichat_mdns_discovery_t *discovery,
  * @param max_servers Maximum servers to discover
  * @param quiet If true, suppresses progress messages
  * @param out_count Output: number of servers discovered
- * @return Array of discovered servers, or NULL on error. Use discovery_mdns_free() to free.
+ * @return Array of discovered servers, or NULL on error. Use discovery_mdns_destroy() to free.
  */
 discovery_tui_server_t *discovery_mdns_query(int timeout_ms, int max_servers, bool quiet, int *out_count) {
   if (!out_count) {
@@ -224,7 +224,7 @@ discovery_tui_server_t *discovery_mdns_query(int timeout_ms, int max_servers, bo
 
   if (query_result != ASCIICHAT_OK) {
     log_info("mDNS: Query failed - no servers found via service discovery");
-    asciichat_mdns_shutdown(mdns);
+    asciichat_mdns_destroy(mdns);
     SAFE_FREE(state.servers);
     return NULL;
   }
@@ -243,7 +243,7 @@ discovery_tui_server_t *discovery_mdns_query(int timeout_ms, int max_servers, bo
   }
 
   // Cleanup mDNS
-  asciichat_mdns_shutdown(mdns);
+  asciichat_mdns_destroy(mdns);
 
   if (!quiet) {
     if (state.count > 0) {
@@ -262,7 +262,7 @@ discovery_tui_server_t *discovery_mdns_query(int timeout_ms, int max_servers, bo
 /**
  * @brief Free memory from mDNS discovery results
  */
-void discovery_mdns_free(discovery_tui_server_t *servers) {
+void discovery_mdns_destroy(discovery_tui_server_t *servers) {
   SAFE_FREE(servers);
 }
 
@@ -292,7 +292,7 @@ static void *mdns_thread_fn(void *arg) {
   if (!discovered_servers || discovered_count == 0) {
     log_debug("mDNS: No servers found (this is normal if no servers are on LAN)");
     if (discovered_servers) {
-      discovery_mdns_free(discovered_servers);
+      discovery_mdns_destroy(discovered_servers);
     }
     mutex_lock(&ctx->state->lock);
     ctx->state->mdns_done = true;
@@ -334,7 +334,7 @@ static void *mdns_thread_fn(void *arg) {
     }
   }
 
-  discovery_mdns_free(discovered_servers);
+  discovery_mdns_destroy(discovered_servers);
 
   mutex_lock(&ctx->state->lock);
   ctx->state->mdns_done = true;

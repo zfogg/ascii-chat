@@ -87,7 +87,7 @@ asciichat_error_t platform_init(void) {
  * @brief Clean up platform-specific functionality
  * @note POSIX platforms don't need special cleanup
  */
-void platform_cleanup(void) {
+void platform_destroy(void) {
   // Cleanup binary PATH cache
   platform_cleanup_binary_path_cache();
 
@@ -95,8 +95,8 @@ void platform_cleanup(void) {
   symbol_cache_print_stats();
 
   // Clean up symbol cache
-  log_debug("Platform cleanup: calling symbol_cache_cleanup()");
-  symbol_cache_cleanup();
+  log_debug("Platform cleanup: calling symbol_cache_destroy()");
+  symbol_cache_destroy();
 }
 
 /**
@@ -619,7 +619,7 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
  * @brief Free memory from platform_backtrace_symbols
  * @param strings Array returned by platform_backtrace_symbols
  */
-void platform_backtrace_symbols_free(char **strings) {
+void platform_backtrace_symbols_destroy(char **strings) {
   if (!strings) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: strings=%p", strings);
     return;
@@ -771,7 +771,7 @@ void platform_print_backtrace(int skip_frames) {
     // Skip platform_print_backtrace itself (1 frame) + any additional frames requested
     platform_print_backtrace_symbols("\nBacktrace", symbols, size, 1 + skip_frames, 0, NULL);
 
-    platform_backtrace_symbols_free(symbols);
+    platform_backtrace_symbols_destroy(symbols);
   }
 }
 

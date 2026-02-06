@@ -401,7 +401,7 @@ options_config_t *options_builder_build(options_builder_t *builder);
  * @brief Free options config
  *
  * Frees the config structure. Does NOT free strings in the options struct -
- * use options_config_cleanup() for that.
+ * use options_config_destroy() for that.
  *
  * @param config Config to free (can be NULL)
  */
@@ -1138,7 +1138,7 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
  * @param config Options configuration
  * @param options_struct Options struct to clean up
  */
-void options_config_cleanup(const options_config_t *config, void *options_struct);
+void options_struct_destroy(const options_config_t *config, void *options_struct);
 
 // ============================================================================
 // Option Formatting Utilities

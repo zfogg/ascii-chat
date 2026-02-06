@@ -372,7 +372,7 @@ void ascii_write_destroy(int fd, bool reset_terminal) {
 }
 
 void ascii_read_destroy(void) {
-  webcam_cleanup();
+  webcam_destroy();
   log_debug("ASCII reader destroyed");
 }
 

@@ -152,7 +152,7 @@ asciichat_error_t webrtc_init(void);
  * Should be called at program exit after all connections are closed.
  * Thread-safe and idempotent.
  */
-void webrtc_cleanup(void);
+void webrtc_destroy(void);
 
 // ============================================================================
 // Peer Connection Management

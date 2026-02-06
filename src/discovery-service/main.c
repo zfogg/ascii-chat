@@ -395,7 +395,7 @@ int acds_main(void) {
     if (mdns_advertise_result != ASCIICHAT_OK) {
       LOG_ERRNO_IF_SET("Failed to advertise ACDS mDNS service");
       log_warn("mDNS advertising failed for ACDS - LAN discovery disabled");
-      asciichat_mdns_shutdown(g_mdns_ctx);
+      asciichat_mdns_destroy(g_mdns_ctx);
       g_mdns_ctx = NULL;
     } else {
       printf("🌐 mDNS: ACDS advertised as '_ascii-chat-discovery-service._tcp.local' on LAN\n");
@@ -440,7 +440,7 @@ cleanup_resources:
 
   // Clean up mDNS context
   if (g_mdns_ctx) {
-    asciichat_mdns_shutdown(g_mdns_ctx);
+    asciichat_mdns_destroy(g_mdns_ctx);
     g_mdns_ctx = NULL;
     log_debug("mDNS context shut down");
   }

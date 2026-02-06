@@ -906,14 +906,9 @@ static void *data_reception_thread_func(void *arg) {
   log_debug("Data reception thread started");
 #endif
 
-  while (!should_exit()) {
-    // Check if connection is active (works for both TCP and WebRTC)
-    if (!server_connection_is_active()) {
-      // Use rate-limited logging instead of logging every 10ms
-      log_debug_every(1000000, "Waiting for connection"); // Max once per second
-      platform_sleep_us(10 * 1000);
-      continue;
-    }
+  while (!should_exit() && server_connection_is_active()) {
+    // Main loop: receive and process packets while connection is active
+    // When connection becomes inactive or shutdown is requested, thread exits cleanly
 
     // Receive and dispatch packet using ACIP transport API
     // This combines packet reception, decryption, parsing, handler dispatch, and cleanup
@@ -956,7 +951,7 @@ static void *data_reception_thread_func(void *arg) {
   atomic_store(&g_data_thread_exited, true);
 
   // Clean up thread-local error context before exit
-  asciichat_errno_cleanup();
+  asciichat_errno_destroy();
 
   return NULL;
 }

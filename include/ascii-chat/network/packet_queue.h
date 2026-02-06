@@ -368,7 +368,7 @@ packet_queue_t *packet_queue_create_with_pools(size_t max_size, size_t node_pool
  *
  * @ingroup packet_queue
  */
-void packet_queue_destroy(packet_queue_t *queue);
+void packet_queue_stop(packet_queue_t *queue);
 
 /** @} */
 
@@ -549,7 +549,7 @@ bool packet_queue_is_full(packet_queue_t *queue);
  *
  * @ingroup packet_queue
  */
-void packet_queue_shutdown(packet_queue_t *queue);
+void packet_queue_destroy(packet_queue_t *queue);
 
 /**
  * @brief Clear all packets from queue

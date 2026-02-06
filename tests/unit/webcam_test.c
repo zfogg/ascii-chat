@@ -43,7 +43,7 @@ Test(webcam, init_success) {
   cr_assert_eq(frame->h, 240, "Test pattern should have height 240");
 
   // Clean up (don't destroy frame - it's owned by webcam module)
-  webcam_cleanup();
+  webcam_destroy();
 }
 
 // Parameterized test for different webcam indices
@@ -75,7 +75,7 @@ ParameterizedTest(webcam_index_test_case_t *tc, webcam, init_different_indices) 
   cr_assert_eq(frame->h, tc->expected_height, "%s: Height should be %d", tc->description, tc->expected_height);
 
   // Don't destroy frame - it's owned by webcam module
-  webcam_cleanup();
+  webcam_destroy();
 }
 
 /* ============================================================================
@@ -108,7 +108,7 @@ Test(webcam, read_success) {
   cr_assert(has_color, "Test pattern should contain colored pixels");
 
   // Clean up (don't destroy result - it's owned by webcam module)
-  webcam_cleanup();
+  webcam_destroy();
 }
 
 Test(webcam, read_not_initialized) {
@@ -148,7 +148,7 @@ Test(webcam, read_with_horizontal_flip) {
                "First pixel of flipped should match last of non-flipped (B)");
 
   // Clean up (don't destroy frames - they're owned by webcam module)
-  webcam_cleanup();
+  webcam_destroy();
 }
 
 Test(webcam, read_without_horizontal_flip) {
@@ -168,7 +168,7 @@ Test(webcam, read_without_horizontal_flip) {
   cr_assert_not_null(result->pixels, "Should have pixel data");
 
   // Clean up (don't destroy result - it's owned by webcam module)
-  webcam_cleanup();
+  webcam_destroy();
 }
 
 Test(webcam, read_multiple_calls) {
@@ -188,7 +188,7 @@ Test(webcam, read_multiple_calls) {
     // Don't destroy result - it's owned by webcam module
   }
 
-  webcam_cleanup();
+  webcam_destroy();
 }
 
 /* ============================================================================
@@ -200,7 +200,7 @@ Test(webcam, cleanup_success) {
   webcam_init(0);
 
   // Cleanup should succeed
-  webcam_cleanup();
+  webcam_destroy();
 
   // With test pattern, reading still works after cleanup (test pattern doesn't use context)
   image_t *result = webcam_read();
@@ -211,7 +211,7 @@ Test(webcam, cleanup_success) {
 
 Test(webcam, cleanup_not_initialized) {
   // Cleanup without initialization should not crash
-  webcam_cleanup();
+  webcam_destroy();
 
   // Should be safe to call
   cr_assert(true, "Cleanup without init should be safe");
@@ -222,9 +222,9 @@ Test(webcam, cleanup_multiple_calls) {
   webcam_init(0);
 
   // Call cleanup multiple times - should be safe
-  webcam_cleanup();
-  webcam_cleanup();
-  webcam_cleanup();
+  webcam_destroy();
+  webcam_destroy();
+  webcam_destroy();
 
   cr_assert(true, "Multiple cleanup calls should be safe");
 }
@@ -246,7 +246,7 @@ Test(webcam, init_read_cleanup_cycle) {
     cr_assert_not_null(read_result, "Read should succeed for cycle %d", cycle);
 
     // Cleanup (don't destroy read_result - it's owned by webcam module)
-    webcam_cleanup();
+    webcam_destroy();
   }
 
   cr_assert(true, "Init/read/cleanup cycle should work multiple times");
@@ -280,7 +280,7 @@ Test(webcam, read_with_odd_width_flip) {
                "First B pixel of flipped should match last B pixel of normal");
 
   // Clean up (don't destroy frames - they're owned by webcam module)
-  webcam_cleanup();
+  webcam_destroy();
 }
 
 Test(webcam, read_with_single_pixel_width) {
@@ -301,5 +301,5 @@ Test(webcam, read_with_single_pixel_width) {
   cr_assert_eq(result1->h, result2->h, "Height should be same");
 
   // Clean up (don't destroy results - they're owned by webcam module)
-  webcam_cleanup();
+  webcam_destroy();
 }

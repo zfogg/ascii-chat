@@ -201,14 +201,14 @@ asciichat_error_t discover_session_parallel(const char *session_string, const di
  * @param max_servers Maximum servers to discover (default: 20)
  * @param quiet If true, suppresses progress messages
  * @param out_count Output: number of servers discovered
- * @return Array of discovered servers, or NULL on error. Use discovery_mdns_free() to free.
+ * @return Array of discovered servers, or NULL on error. Use discovery_mdns_destroy() to free.
  */
 discovery_tui_server_t *discovery_mdns_query(int timeout_ms, int max_servers, bool quiet, int *out_count);
 
 /**
  * @brief Free memory from mDNS discovery results
  */
-void discovery_mdns_free(discovery_tui_server_t *servers);
+void discovery_mdns_destroy(discovery_tui_server_t *servers);
 
 // ============================================================================
 // Utility Functions

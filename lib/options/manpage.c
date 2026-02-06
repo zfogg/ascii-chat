@@ -280,7 +280,7 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
   if (!manpage_resources_is_valid(&resources)) {
     if (should_close)
       fclose(f);
-    manpage_resources_cleanup(&resources);
+    manpage_resources_destroy(&resources);
     return SET_ERRNO(ERROR_CONFIG, "Man page resources are not valid");
   }
 
@@ -660,7 +660,7 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
     p = line_end + 1;
   }
 
-  manpage_resources_cleanup(&resources);
+  manpage_resources_destroy(&resources);
 
   if (should_close) {
     fclose(f);

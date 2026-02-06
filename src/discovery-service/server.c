@@ -167,7 +167,7 @@ static void *cleanup_thread_func(void *arg) {
 
     // Run rate limit cleanup (delete events older than 1 hour)
     log_debug("Running rate limit cleanup...");
-    asciichat_error_t result = rate_limiter_cleanup(server->rate_limiter, 3600);
+    asciichat_error_t result = rate_limiter_prune(server->rate_limiter, 3600);
     if (result != ASCIICHAT_OK) {
       log_warn("Rate limit cleanup failed");
     }
@@ -234,7 +234,7 @@ asciichat_error_t acds_server_init(acds_server_t *server, const acds_config_t *c
   server->worker_pool = thread_pool_create("acds_workers");
   if (!server->worker_pool) {
     log_warn("Failed to create worker thread pool");
-    tcp_server_shutdown(&server->tcp_server);
+    tcp_server_destroy(&server->tcp_server);
     rate_limiter_destroy(server->rate_limiter);
     database_close(server->db);
     return SET_ERRNO(ERROR_MEMORY, "Failed to create worker thread pool");
@@ -269,7 +269,7 @@ void acds_server_shutdown(acds_server_t *server) {
   atomic_store(&server->shutdown, true);
 
   // Shutdown TCP server (closes listen sockets, stops accept loop)
-  tcp_server_shutdown(&server->tcp_server);
+  tcp_server_destroy(&server->tcp_server);
 
   // Wait for all client handler threads to exit
   size_t remaining_clients;

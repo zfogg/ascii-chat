@@ -686,7 +686,7 @@ float compressor_process_sample(compressor_t *comp, float sidechain);
  * Allocates per-source arrays (envelope, gain) for ducking system.
  * Time-based parameters are converted to coefficients.
  *
- * @warning Must be paired with ducking_free() to prevent memory leaks.
+ * @warning Must be paired with ducking_destroy() to prevent memory leaks.
  *
  * @return ASCIICHAT_OK on success, error code on failure
  * @ingroup audio
@@ -701,7 +701,7 @@ int ducking_init(ducking_t *duck, int num_sources, float sample_rate);
  *
  * @ingroup audio
  */
-void ducking_free(ducking_t *duck);
+void ducking_destroy(ducking_t *duck);
 
 /**
  * @brief Set ducking parameters

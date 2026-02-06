@@ -273,8 +273,8 @@ Test(crypto_handshake_integration, complete_handshake_flow) {
   cr_assert_eq(server_ctx.state, CRYPTO_HANDSHAKE_READY, "Server should be complete");
   cr_assert_eq(client_ctx.state, CRYPTO_HANDSHAKE_READY, "Client should be ready");
 
-  crypto_handshake_cleanup(&server_ctx);
-  crypto_handshake_cleanup(&client_ctx);
+  crypto_handshake_destroy(&server_ctx);
+  crypto_handshake_destroy(&client_ctx);
   teardown_test_network();
 }
 
@@ -368,8 +368,8 @@ Test(crypto_handshake_integration, encryption_after_handshake) {
   cr_assert_eq(decrypted_len, strlen(plaintext), "Decrypted length should match plaintext");
   cr_assert_eq(memcmp(decrypted, plaintext, strlen(plaintext)), 0, "Decrypted text should match plaintext");
 
-  crypto_handshake_cleanup(&server_ctx);
-  crypto_handshake_cleanup(&client_ctx);
+  crypto_handshake_destroy(&server_ctx);
+  crypto_handshake_destroy(&client_ctx);
   teardown_test_network();
 }
 
@@ -438,8 +438,8 @@ Test(crypto_handshake_integration, bidirectional_encryption) {
   cr_assert_eq(memcmp(server_decrypted, client_message, strlen(client_message)), 0,
                "Server should decrypt client message correctly");
 
-  crypto_handshake_cleanup(&server_ctx);
-  crypto_handshake_cleanup(&client_ctx);
+  crypto_handshake_destroy(&server_ctx);
+  crypto_handshake_destroy(&client_ctx);
   teardown_test_network();
 }
 
@@ -494,8 +494,8 @@ Theory((const char *auth_method, bool known_hosts_verification, bool client_whit
   int server_complete = crypto_handshake_server_complete(&server_ctx, g_network.server_fd);
 
   // Cleanup - do before assertions so it always runs even if assertions fail
-  crypto_handshake_cleanup(&server_ctx);
-  crypto_handshake_cleanup(&client_ctx);
+  crypto_handshake_destroy(&server_ctx);
+  crypto_handshake_destroy(&client_ctx);
   teardown_test_network();
 
   // All steps should succeed (assertions after cleanup to ensure cleanup always runs)
@@ -529,32 +529,32 @@ static void *client_handshake_thread(void *arg) {
 
   // Protocol negotiation
   if (client_protocol_negotiation(args->client_fd, &client_ctx) != ASCIICHAT_OK) {
-    crypto_handshake_cleanup(&client_ctx);
+    crypto_handshake_destroy(&client_ctx);
     return NULL;
   }
 
   // Key exchange
   if (crypto_handshake_client_key_exchange(&client_ctx, args->client_fd) != ASCIICHAT_OK) {
-    crypto_handshake_cleanup(&client_ctx);
+    crypto_handshake_destroy(&client_ctx);
     return NULL;
   }
 
   // Auth response
   if (crypto_handshake_client_auth_response(&client_ctx, args->client_fd) != ASCIICHAT_OK) {
-    crypto_handshake_cleanup(&client_ctx);
+    crypto_handshake_destroy(&client_ctx);
     return NULL;
   }
 
   // If we're in AUTHENTICATING state, complete the handshake
   if (client_ctx.state == CRYPTO_HANDSHAKE_AUTHENTICATING) {
     if (crypto_handshake_client_complete(&client_ctx, args->client_fd) != ASCIICHAT_OK) {
-      crypto_handshake_cleanup(&client_ctx);
+      crypto_handshake_destroy(&client_ctx);
       return NULL;
     }
   }
 
   args->result = (client_ctx.state == CRYPTO_HANDSHAKE_READY) ? 0 : -1;
-  crypto_handshake_cleanup(&client_ctx);
+  crypto_handshake_destroy(&client_ctx);
   return NULL;
 }
 
@@ -602,21 +602,21 @@ Test(crypto_handshake_integration, concurrent_handshakes) {
     // Protocol negotiation
     int nego_result = server_protocol_negotiation(server_fds[i], &server_ctx);
     if (nego_result != ASCIICHAT_OK) {
-      crypto_handshake_cleanup(&server_ctx);
+      crypto_handshake_destroy(&server_ctx);
       continue;
     }
 
     // Key exchange
     int server_start = crypto_handshake_server_start(&server_ctx, server_fds[i]);
     if (server_start != ASCIICHAT_OK) {
-      crypto_handshake_cleanup(&server_ctx);
+      crypto_handshake_destroy(&server_ctx);
       continue;
     }
 
     // Auth challenge
     int auth_result = crypto_handshake_server_auth_challenge(&server_ctx, server_fds[i]);
     if (auth_result != ASCIICHAT_OK) {
-      crypto_handshake_cleanup(&server_ctx);
+      crypto_handshake_destroy(&server_ctx);
       continue;
     }
 
@@ -625,7 +625,7 @@ Test(crypto_handshake_integration, concurrent_handshakes) {
       crypto_handshake_server_complete(&server_ctx, server_fds[i]);
     }
 
-    crypto_handshake_cleanup(&server_ctx);
+    crypto_handshake_destroy(&server_ctx);
   }
 
   // Wait for all client threads to complete
@@ -713,8 +713,8 @@ Test(crypto_handshake_integration, large_data_encryption) {
   SAFE_FREE(large_data);
   SAFE_FREE(ciphertext);
   SAFE_FREE(decrypted);
-  crypto_handshake_cleanup(&server_ctx);
-  crypto_handshake_cleanup(&client_ctx);
+  crypto_handshake_destroy(&server_ctx);
+  crypto_handshake_destroy(&client_ctx);
   teardown_test_network();
 
   // Assertions after cleanup to ensure cleanup always runs
@@ -753,8 +753,8 @@ Test(crypto_handshake_integration, handshake_interruption_recovery) {
   (void)server_auth; // Result depends on implementation - we just care it doesn't crash
 
   // Clean up old handshake state
-  crypto_handshake_cleanup(&server_ctx);
-  crypto_handshake_cleanup(&client_ctx);
+  crypto_handshake_destroy(&server_ctx);
+  crypto_handshake_destroy(&client_ctx);
   teardown_test_network();
 
   // Create new socket pair to simulate network recovery
@@ -768,8 +768,8 @@ Test(crypto_handshake_integration, handshake_interruption_recovery) {
   int new_server_start = crypto_handshake_server_start(&server_ctx, g_network.server_fd);
   cr_assert_eq(new_server_start, 0, "New handshake should succeed after recovery");
 
-  crypto_handshake_cleanup(&server_ctx);
-  crypto_handshake_cleanup(&client_ctx);
+  crypto_handshake_destroy(&server_ctx);
+  crypto_handshake_destroy(&client_ctx);
   teardown_test_network();
 }
 
@@ -802,8 +802,8 @@ Test(crypto_handshake_integration, handshake_performance) {
     double handshake_time = ((double)(end - start)) / CLOCKS_PER_SEC;
     total_time += handshake_time;
 
-    crypto_handshake_cleanup(&server_ctx);
-    crypto_handshake_cleanup(&client_ctx);
+    crypto_handshake_destroy(&server_ctx);
+    crypto_handshake_destroy(&client_ctx);
   }
 
   double average_time = total_time / num_handshakes;

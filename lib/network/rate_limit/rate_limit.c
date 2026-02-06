@@ -158,7 +158,7 @@ asciichat_error_t rate_limiter_record(rate_limiter_t *limiter, const char *ip_ad
   return limiter->ops->record(limiter->backend_data, ip_address, event_type);
 }
 
-asciichat_error_t rate_limiter_cleanup(rate_limiter_t *limiter, uint32_t max_age_secs) {
+asciichat_error_t rate_limiter_prune(rate_limiter_t *limiter, uint32_t max_age_secs) {
   if (!limiter || !limiter->ops || !limiter->ops->cleanup) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid rate limiter");
   }

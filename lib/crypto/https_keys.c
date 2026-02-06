@@ -44,7 +44,7 @@ static asciichat_error_t https_fetch_keys(const char *url, char **response_text,
 
   // Use https_get from http_client
   char *response = https_get(url_parts.host, url_parts.path);
-  url_parts_free(&url_parts);
+  url_parts_destroy(&url_parts);
 
   if (!response) {
     SET_ERRNO(ERROR_NETWORK, "Failed to fetch from %s", url);

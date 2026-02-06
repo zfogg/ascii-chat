@@ -156,7 +156,7 @@ void asciichat_set_errno(asciichat_error_t code, const char *file, int line, con
 
   // Capture stack trace in debug builds
   if (asciichat_errno_context.backtrace_symbols != NULL) {
-    platform_backtrace_symbols_free(asciichat_errno_context.backtrace_symbols);
+    platform_backtrace_symbols_destroy(asciichat_errno_context.backtrace_symbols);
     asciichat_errno_context.backtrace_symbols = NULL;
   }
   capture_backtrace(asciichat_errno_context.backtrace, &asciichat_errno_context.backtrace_symbols,
@@ -240,7 +240,7 @@ void asciichat_clear_errno(void) {
   }
 
   if (asciichat_errno_context.backtrace_symbols != NULL) {
-    platform_backtrace_symbols_free(asciichat_errno_context.backtrace_symbols);
+    platform_backtrace_symbols_destroy(asciichat_errno_context.backtrace_symbols);
     asciichat_errno_context.backtrace_symbols = NULL;
   }
 
@@ -303,7 +303,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
     char **symbols = platform_backtrace_symbols(buffer, size);
     if (symbols) {
       platform_print_backtrace_symbols("\nFATAL BACKTRACE", symbols, size, 0, 0, skip_backtrace_frame);
-      platform_backtrace_symbols_free(symbols);
+      platform_backtrace_symbols_destroy(symbols);
     }
   }
 #endif
@@ -499,9 +499,9 @@ void asciichat_errno_suppress(bool suppress) {
   g_suppress_error_context = suppress;
 }
 
-void asciichat_errno_cleanup(void) {
+void asciichat_errno_destroy(void) {
   if (asciichat_errno_context.backtrace_symbols != NULL) {
-    platform_backtrace_symbols_free(asciichat_errno_context.backtrace_symbols);
+    platform_backtrace_symbols_destroy(asciichat_errno_context.backtrace_symbols);
     asciichat_errno_context.backtrace_symbols = NULL;
   }
 

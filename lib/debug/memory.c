@@ -561,7 +561,7 @@ void debug_memory_report(void) {
   // Check for usage error BEFORE cleanup clears it
   asciichat_error_t error = GET_ERRNO();
 
-  asciichat_errno_cleanup();
+  asciichat_errno_destroy();
 
   // Skip memory report if an action flag was passed (for clean action output)
   // unless explicitly forced via ASCII_CHAT_MEMORY_DEBUG environment variable
@@ -804,7 +804,7 @@ void debug_memory_report(void) {
               for (int i = 0; i < curr->backtrace_count; i++) {
                 SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "      [%d] %s\n", i, symbols[i]));
               }
-              platform_backtrace_symbols_free(symbols);
+              platform_backtrace_symbols_destroy(symbols);
             }
 
             // Re-acquire mutex for next iteration

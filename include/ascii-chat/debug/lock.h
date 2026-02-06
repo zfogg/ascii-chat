@@ -31,7 +31,7 @@
  *    - rwlock_wrlock() → debug_rwlock_wrlock()
  * 3. Start debug thread: lock_debug_start_thread()
  * 4. Press '?' key to print all held locks and their backtraces
- * 5. Cleanup: lock_debug_cleanup()
+ * 5. Cleanup: lock_debug_destroy()
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date September 2025
@@ -270,7 +270,7 @@ int lock_debug_start_thread(void);
  * @brief Stop the debug thread and cleanup resources
  * @ingroup lock_debug
  */
-void lock_debug_cleanup(void);
+void lock_debug_destroy(void);
 
 /**
  * @brief Join the debug thread (should be called as one of the last things before exit)
@@ -443,7 +443,7 @@ extern "C" {
 
 int lock_debug_init(void);
 int lock_debug_start_thread(void);
-void lock_debug_cleanup(void);
+void lock_debug_destroy(void);
 void lock_debug_cleanup_thread(void);
 void lock_debug_trigger_print(void);
 void lock_debug_get_stats(uint64_t *total_acquired, uint64_t *total_released, uint32_t *currently_held);

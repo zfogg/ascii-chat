@@ -702,7 +702,7 @@ void asciichat_errno_suppress(bool suppress);
  *
  * @ingroup errno
  */
-void asciichat_errno_cleanup(void);
+void asciichat_errno_destroy(void);
 
 /** @} */
 

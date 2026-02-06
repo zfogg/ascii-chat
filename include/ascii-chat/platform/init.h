@@ -295,6 +295,6 @@ static inline void static_cond_broadcast(static_cond_t *c) {
 asciichat_error_t platform_init(void);
 
 // Call this at program exit
-void platform_cleanup(void);
+void platform_destroy(void);
 
 /** @} */

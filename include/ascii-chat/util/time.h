@@ -278,7 +278,7 @@ bool timer_system_init(void);
  *
  * @ingroup module_utilities
  */
-void timer_system_cleanup(void);
+void timer_system_destroy(void);
 
 /**
  * @brief Start a named timer

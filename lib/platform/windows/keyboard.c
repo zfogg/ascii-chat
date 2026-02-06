@@ -69,7 +69,7 @@ asciichat_error_t keyboard_init(void) {
   return ASCIICHAT_OK;
 }
 
-void keyboard_cleanup(void) {
+void keyboard_destroy(void) {
   static_mutex_lock(&g_keyboard_init_mutex);
   if (g_keyboard_init_refcount == 0) {
     static_mutex_unlock(&g_keyboard_init_mutex);

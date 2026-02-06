@@ -103,7 +103,7 @@ void server_status_log_init(void);
  *
  * Call when shutting down. Frees internal log buffer.
  */
-void server_status_log_cleanup(void);
+void server_status_log_destroy(void);
 
 /**
  * @brief Append a log message to status screen buffer

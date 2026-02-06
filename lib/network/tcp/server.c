@@ -282,7 +282,7 @@ asciichat_error_t tcp_server_run(tcp_server_t *server) {
   return ASCIICHAT_OK;
 }
 
-void tcp_server_shutdown(tcp_server_t *server) {
+void tcp_server_destroy(tcp_server_t *server) {
   if (!server) {
     return;
   }

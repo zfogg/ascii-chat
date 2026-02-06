@@ -739,7 +739,7 @@ asciichat_error_t sdp_detect_terminal_capabilities(terminal_capability_t *capabi
  * Resource Cleanup
  * ============================================================================ */
 
-void sdp_session_free(sdp_session_t *session) {
+void sdp_session_destroy(sdp_session_t *session) {
   if (!session) {
     return;
   }

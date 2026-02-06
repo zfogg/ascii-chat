@@ -113,7 +113,7 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
 
     // Fetch the key via HTTPS
     char *response = https_get(url_parts.host, url_parts.path);
-    url_parts_free(&url_parts);
+    url_parts_destroy(&url_parts);
 
     if (!response) {
       return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to fetch key from HTTPS URL: %s", input);

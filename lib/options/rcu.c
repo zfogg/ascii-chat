@@ -304,7 +304,7 @@ asciichat_error_t options_state_set(const options_t *opts) {
   return ASCIICHAT_OK;
 }
 
-void options_state_shutdown(void) {
+void options_state_destroy(void) {
   // Check and clear initialization flag under lock
   static_mutex_lock(&g_options_init_mutex);
   if (!g_options_initialized) {
@@ -327,7 +327,7 @@ void options_state_shutdown(void) {
   deferred_free_all();
 
   // Cleanup schema (frees all dynamically allocated config strings)
-  config_schema_cleanup();
+  config_schema_destroy();
 
   // Destroy dynamically created mutexes
   // NOTE: Do NOT destroy g_options_init_mutex - it's statically initialized
@@ -339,7 +339,7 @@ void options_state_shutdown(void) {
 }
 
 void options_cleanup_schema(void) {
-  config_schema_cleanup();
+  config_schema_destroy();
 }
 
 const options_t *options_get(void) {

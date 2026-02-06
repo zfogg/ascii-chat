@@ -443,7 +443,7 @@ Test(ducking, init_and_params) {
     cr_assert_float_eq(duck.gain[i], 1.0f, 1e-6f);
   }
 
-  ducking_free(&duck);
+  ducking_destroy(&duck);
 }
 
 Test(ducking, set_params) {
@@ -458,7 +458,7 @@ Test(ducking, set_params) {
   cr_assert_eq(duck.attack_ns, 10 * NS_PER_MS_INT);
   cr_assert_eq(duck.release_ns, 200 * NS_PER_MS_INT);
 
-  ducking_free(&duck);
+  ducking_destroy(&duck);
 }
 
 Test(ducking, process_frame_leader_detection) {
@@ -478,7 +478,7 @@ Test(ducking, process_frame_leader_detection) {
   cr_assert_lt(gains[0], 1.0f);
   cr_assert_lt(gains[2], 1.0f);
 
-  ducking_free(&duck);
+  ducking_destroy(&duck);
 }
 
 /* ============================================================================

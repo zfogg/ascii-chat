@@ -286,7 +286,7 @@ int main(int argc, char *argv[]) {
 
   // Register cleanup of shared subsystems to run on normal exit
   // Library code doesn't call atexit() - the application is responsible
-  (void)atexit(asciichat_shared_shutdown);
+  (void)atexit(asciichat_shared_destroy);
 
   // NOW parse all options - can use logging with colors!
   asciichat_error_t options_result = options_init(argc, argv);
@@ -300,7 +300,7 @@ int main(int argc, char *argv[]) {
     (void)fflush(stderr);
 
     // Clean up options state before exiting
-    options_state_shutdown();
+    options_state_destroy();
     options_cleanup_schema();
 
     exit(options_result);

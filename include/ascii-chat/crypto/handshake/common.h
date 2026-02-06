@@ -156,7 +156,7 @@ asciichat_error_t crypto_handshake_init_with_password(crypto_handshake_context_t
  * @brief Cleanup crypto handshake context with secure memory wiping
  * @param ctx Handshake context to cleanup
  */
-void crypto_handshake_cleanup(crypto_handshake_context_t *ctx);
+void crypto_handshake_destroy(crypto_handshake_context_t *ctx);
 
 /**
  * @brief Check if handshake is complete and encryption is ready

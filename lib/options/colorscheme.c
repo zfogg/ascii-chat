@@ -316,7 +316,7 @@ void colorscheme_cleanup_compiled(compiled_color_scheme_t *compiled) {
   memset(compiled, 0, sizeof(compiled_color_scheme_t));
 }
 
-void colorscheme_shutdown(void) {
+void colorscheme_destroy(void) {
   if (!g_colorscheme_initialized) {
     return;
   }
@@ -750,7 +750,7 @@ static asciichat_error_t load_config_color_scheme(color_scheme_t *scheme) {
   }
 
   /* Clean up search results */
-  config_file_list_free(&config_files);
+  config_file_list_destroy(&config_files);
 
   return load_result;
 }

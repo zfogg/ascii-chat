@@ -562,13 +562,13 @@ asciichat_error_t asciichat_shared_init(const char *log_file, bool is_client);
  *
  * Applications should typically register this with atexit():
  *   asciichat_shared_init(log_file, is_client);
- *   atexit(asciichat_shared_shutdown);
+ *   atexit(asciichat_shared_destroy);
  *
  * @note This function is safe to call even if init failed or wasn't called.
  * @note Cleanup order is the reverse of initialization order.
  * @note Library code never calls atexit() - only application code should.
  */
-void asciichat_shared_shutdown(void);
+void asciichat_shared_destroy(void);
 
 /* ============================================================================
  * Error Handling Macros

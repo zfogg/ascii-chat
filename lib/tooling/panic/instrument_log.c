@@ -239,7 +239,7 @@ void asciichat_instr_runtime_destroy(asciichat_instr_runtime_t *runtime) {
   SAFE_FREE(runtime);
 }
 
-void asciichat_instr_runtime_global_shutdown(void) {
+void asciichat_instr_runtime_global_destroy(void) {
   if (g_runtime_mutex_initialized) {
     mutex_lock(&g_runtime_mutex);
   }

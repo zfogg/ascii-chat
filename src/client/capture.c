@@ -325,7 +325,7 @@ static void *webcam_capture_thread_func(void *arg) {
   atomic_store(&g_capture_thread_exited, true);
 
   // Clean up thread-local error context before exit
-  asciichat_errno_cleanup();
+  asciichat_errno_destroy();
 
   return NULL;
 }

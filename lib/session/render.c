@@ -398,7 +398,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
   // Keyboard input cleanup (if it was initialized)
   if (keyboard_enabled) {
-    keyboard_cleanup();
+    keyboard_destroy();
     log_debug("Keyboard input disabled");
   }
 

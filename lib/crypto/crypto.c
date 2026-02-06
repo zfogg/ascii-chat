@@ -183,7 +183,7 @@ crypto_result_t crypto_init_with_password(crypto_context_t *ctx, const char *pas
   // Derive password key
   result = crypto_derive_password_key(ctx, password);
   if (result != CRYPTO_OK) {
-    crypto_cleanup(ctx);
+    crypto_destroy(ctx);
     return result;
   }
 
@@ -193,7 +193,7 @@ crypto_result_t crypto_init_with_password(crypto_context_t *ctx, const char *pas
   return CRYPTO_OK;
 }
 
-void crypto_cleanup(crypto_context_t *ctx) {
+void crypto_destroy(crypto_context_t *ctx) {
   if (!ctx || !ctx->initialized) {
     return;
   }

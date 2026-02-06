@@ -89,4 +89,4 @@ typedef struct session_entry {
  * @brief Free a session entry and all its resources
  * @param entry Session entry to free
  */
-void session_entry_free(session_entry_t *entry);
+void session_entry_destroy(session_entry_t *entry);

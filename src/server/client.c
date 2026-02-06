@@ -1176,7 +1176,7 @@ int remove_client(server_context_t *server_ctx, uint32_t client_id) {
 
       // Shutdown packet queues to unblock send thread
       if (client->audio_queue) {
-        packet_queue_shutdown(client->audio_queue);
+        packet_queue_destroy(client->audio_queue);
       }
       // Video now uses double buffer, no queue to shutdown
 
@@ -1324,7 +1324,7 @@ int remove_client(server_context_t *server_ctx, uint32_t client_id) {
 
   // Cleanup crypto context for this client
   if (target_client->crypto_initialized) {
-    crypto_handshake_cleanup(&target_client->crypto_handshake_ctx);
+    crypto_handshake_destroy(&target_client->crypto_handshake_ctx);
     target_client->crypto_initialized = false;
     log_debug("Crypto context cleaned up for client %u", client_id);
   }
@@ -1516,7 +1516,7 @@ void *client_receive_thread(void *arg) {
   log_debug("Receive thread for client %u terminated, signaled all threads to stop", client->client_id);
 
   // Clean up thread-local error context before exit
-  asciichat_errno_cleanup();
+  asciichat_errno_destroy();
 
   return NULL;
 }
@@ -1935,7 +1935,7 @@ void *client_send_thread_func(void *arg) {
   log_debug("Send thread for client %u terminated", client->client_id);
 
   // Clean up thread-local error context before exit
-  asciichat_errno_cleanup();
+  asciichat_errno_destroy();
 
   return NULL;
 }

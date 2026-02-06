@@ -164,7 +164,7 @@ typedef struct webcam_context_t webcam_context_t;
  *
  * @note This function initializes global webcam state.
  * @note Use webcam_read() to capture frames after initialization.
- * @note Must call webcam_cleanup() when done.
+ * @note Must call webcam_destroy() when done.
  * @note Use webcam_init_context() for advanced multi-webcam scenarios.
  *
  * @warning On failure, use webcam_print_init_error_help() for diagnostics.
@@ -203,7 +203,7 @@ image_t *webcam_read(void);
  *
  * @ingroup webcam
  */
-void webcam_cleanup(void);
+void webcam_destroy(void);
 
 /**
  * @brief Flush/interrupt any pending webcam read operations

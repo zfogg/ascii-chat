@@ -210,7 +210,7 @@ static void *ping_thread_func(void *arg) {
   atomic_store(&g_ping_thread_exited, true);
 
   // Clean up thread-local error context before exit
-  asciichat_errno_cleanup();
+  asciichat_errno_destroy();
 
   return NULL;
 }

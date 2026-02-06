@@ -99,7 +99,7 @@
  *     asciichat_thread_create(&thread, worker, NULL);
  *
  *     // Cleanup
- *     platform_cleanup();
+ *     platform_destroy();
  *     return 0;
  * }
  * @endcode

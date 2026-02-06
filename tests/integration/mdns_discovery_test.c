@@ -50,7 +50,7 @@ Test(mdns_integration, initialization_cleanup_cycle) {
     int socket = asciichat_mdns_get_socket(mdns);
     cr_assert_gt(socket, -1, "Socket should be valid on attempt %d", i + 1);
 
-    asciichat_mdns_shutdown(mdns);
+    asciichat_mdns_destroy(mdns);
   }
 }
 
@@ -75,7 +75,7 @@ Test(mdns_integration, service_advertisement_registration) {
   cr_assert_eq(result, ASCIICHAT_OK, "Service advertisement should succeed");
 
   // Service should remain advertised until shutdown
-  asciichat_mdns_shutdown(mdns);
+  asciichat_mdns_destroy(mdns);
 }
 
 /**
@@ -118,7 +118,7 @@ Test(mdns_integration, multiple_services_advertisement) {
     cr_assert_eq(result, ASCIICHAT_OK, "Service %d advertisement should succeed", i + 1);
   }
 
-  asciichat_mdns_shutdown(mdns);
+  asciichat_mdns_destroy(mdns);
 }
 
 /**
@@ -145,7 +145,7 @@ Test(mdns_integration, service_unadvertisement) {
   asciichat_error_t unadvertise_result = asciichat_mdns_unadvertise(mdns, service.name);
   cr_assert_eq(unadvertise_result, ASCIICHAT_OK, "Service unadvertisement should succeed");
 
-  asciichat_mdns_shutdown(mdns);
+  asciichat_mdns_destroy(mdns);
 }
 
 /**
@@ -166,7 +166,7 @@ Test(mdns_integration, query_initialization) {
   cr_assert(result == ASCIICHAT_OK || result == ERROR_NETWORK,
             "Query should either succeed or fail gracefully (got error %d)", result);
 
-  asciichat_mdns_shutdown(mdns);
+  asciichat_mdns_destroy(mdns);
 }
 
 /**
@@ -188,7 +188,7 @@ Test(mdns_integration, update_processing_loop) {
     }
   }
 
-  asciichat_mdns_shutdown(mdns);
+  asciichat_mdns_destroy(mdns);
 }
 
 /**
@@ -215,7 +215,7 @@ Test(mdns_integration, service_with_various_ports) {
     cr_assert_eq(result, ASCIICHAT_OK, "Should advertise service with port %u", ports[i]);
   }
 
-  asciichat_mdns_shutdown(mdns);
+  asciichat_mdns_destroy(mdns);
 }
 
 /**
@@ -237,7 +237,7 @@ Test(mdns_integration, service_with_ipv6_hostname) {
   asciichat_error_t result = asciichat_mdns_advertise(mdns, &service);
   cr_assert_eq(result, ASCIICHAT_OK, "Should advertise service with IPv6-capable hostname");
 
-  asciichat_mdns_shutdown(mdns);
+  asciichat_mdns_destroy(mdns);
 }
 
 /**
@@ -265,7 +265,7 @@ Test(mdns_integration, rapid_advertise_unadvertise_cycles) {
     cr_assert_eq(unadvertise, ASCIICHAT_OK, "Unadvertise %d should succeed", i);
   }
 
-  asciichat_mdns_shutdown(mdns);
+  asciichat_mdns_destroy(mdns);
 }
 
 /**
@@ -295,6 +295,6 @@ Test(mdns_integration, invalid_service_types) {
     (void)result;
   }
 
-  asciichat_mdns_shutdown(mdns);
+  asciichat_mdns_destroy(mdns);
   cr_assert_eq(attempt_count, 5, "All invalid type attempts should complete");
 }

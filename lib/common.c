@@ -15,9 +15,9 @@
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/video/palette.h>
 #include <ascii-chat/video/simd/common.h>   // For simd_caches_destroy_all()
-#include <ascii-chat/video/webcam/webcam.h> // For webcam_cleanup()
-#include <ascii-chat/options/colorscheme.h> // For colorscheme_shutdown()
-#include <ascii-chat/util/time.h>           // For timer_system_cleanup()
+#include <ascii-chat/video/webcam/webcam.h> // For webcam_destroy()
+#include <ascii-chat/options/colorscheme.h> // For colorscheme_destroy()
+#include <ascii-chat/util/time.h>           // For timer_system_destroy()
 #include <ascii-chat/util/pcre2.h>          // For asciichat_pcre2_cleanup_all()
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/crypto/known_hosts.h>
@@ -139,7 +139,7 @@ asciichat_error_t asciichat_shared_init(const char *log_file, bool is_client) {
 
   // NOTE: This library function does NOT register atexit() handlers.
   // Library code should not own the process lifecycle. The application
-  // is responsible for calling atexit(asciichat_shared_shutdown) if it
+  // is responsible for calling atexit(asciichat_shared_destroy) if it
   // wants automatic cleanup on normal exit.
 
   return ASCIICHAT_OK;
@@ -160,7 +160,7 @@ asciichat_error_t asciichat_shared_init(const char *log_file, bool is_client) {
  * @note This function is safe to call even if init failed or wasn't called.
  * @note All subsystem cleanup functions must remain idempotent.
  */
-void asciichat_shared_shutdown(void) {
+void asciichat_shared_destroy(void) {
   // Guard against double cleanup (can be called explicitly + via atexit)
   static bool shutdown_done = false;
   if (shutdown_done) {
@@ -172,40 +172,40 @@ void asciichat_shared_shutdown(void) {
   // This ensures dependencies are properly handled
 
   // 1. Webcam - cleanup resources
-  webcam_cleanup();
+  webcam_destroy();
 
   // 2. SIMD caches - cleanup CPU-specific caches
   simd_caches_destroy_all();
 
   // 3. Discovery service strings cache - cleanup session string cache
-  acds_strings_cleanup();
+  acds_strings_destroy();
 
   // 4. Logging - in correct order (end first, then begin)
   log_shutdown_end();
   log_shutdown_begin();
 
   // 5. Known hosts - cleanup authentication state
-  known_hosts_cleanup();
+  known_hosts_destroy();
 
   // 6. Options state - cleanup RCU-based options
-  options_state_shutdown();
+  options_state_destroy();
 
   // 7. Buffer pool - cleanup global buffer pool
   buffer_pool_cleanup_global();
 
   // 8. Platform cleanup - restores terminal, cleans up platform resources
   // (includes symbol cache cleanup on Windows)
-  platform_cleanup();
+  platform_destroy();
 
-  // 9. Keyboard - restore terminal settings (redundant with platform_cleanup but safe)
-  extern void keyboard_cleanup(void);
-  keyboard_cleanup();
+  // 9. Keyboard - restore terminal settings (redundant with platform_destroy but safe)
+  extern void keyboard_destroy(void);
+  keyboard_destroy();
 
   // 10. Timer system - cleanup timers (may still log!)
-  timer_system_cleanup();
+  timer_system_destroy();
 
   // 11. Error context cleanup
-  asciichat_errno_cleanup();
+  asciichat_errno_destroy();
 
   // 12. Memory stats (debug builds only) - runs with colors still available
   //     Note: PCRE2 singletons are ignored in the report (expected system allocations)
@@ -217,7 +217,7 @@ void asciichat_shared_shutdown(void) {
 
   // 13. Color cleanup - free compiled ANSI strings (AFTER memory report)
   log_cleanup_colors();
-  colorscheme_shutdown();
+  colorscheme_destroy();
 
   // 14. PCRE2 - cleanup all regex singletons together
   asciichat_pcre2_cleanup_all();

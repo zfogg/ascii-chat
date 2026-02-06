@@ -445,7 +445,7 @@ typedef struct {
  * @param list_out Pointer to config_file_list_t to populate
  * @return ASCIICHAT_OK on success (even if no files found), error code on failure
  *
- * @note Caller must free list_out with config_file_list_free()
+ * @note Caller must free list_out with config_file_list_destroy()
  * @note Returns ASCIICHAT_OK even if no files are found (list_out->count == 0)
  * @note Files are checked for existence and regular file type
  *
@@ -457,7 +457,7 @@ typedef struct {
  *     // Use first match (highest priority)
  *     colors_load_from_file(list.files[0].path, scheme);
  *   }
- *   config_file_list_free(&list);
+ *   config_file_list_destroy(&list);
  * }
  * @endcode
  *
@@ -470,7 +470,7 @@ typedef struct {
  *   for (size_t i = list.count; i > 0; i--) {
  *     config_load_and_apply(list.files[i - 1].path, opts);
  *   }
- *   config_file_list_free(&list);
+ *   config_file_list_destroy(&list);
  * }
  * @endcode
  *
@@ -492,7 +492,7 @@ asciichat_error_t platform_find_config_file(const char *filename, config_file_li
  *
  * @ingroup platform
  */
-void config_file_list_free(config_file_list_t *list);
+void config_file_list_destroy(config_file_list_t *list);
 
 // ============================================================================
 // Home and Config Directory Discovery

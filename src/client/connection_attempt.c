@@ -1045,9 +1045,11 @@ asciichat_error_t connection_attempt_with_fallback(connection_attempt_context_t 
   }
 
   if (is_retry_after_failure) {
-    // Retry after initial connection failure: Only try TCP (WebRTC already failed on attempt 0)
-    log_info("=== Connection retry %u: %s:%u (using TCP only - WebRTC failed on initial attempt) ===",
-             ctx->reconnect_attempt, server_address, server_port);
+    // Retry after initial connection failure: Only try TCP
+    const char *reason = ctx->enable_webrtc_fallback ? "all stages failed on initial attempt"
+                                                     : "WebRTC disabled for regular client connections";
+    log_info("=== Connection retry %u: %s:%u (using TCP only - %s) ===", ctx->reconnect_attempt, server_address,
+             server_port, reason);
     result = attempt_direct_tcp(ctx, server_address, server_port);
     if (result == ASCIICHAT_OK) {
       log_info("Retry succeeded via Direct TCP");
@@ -1064,8 +1066,13 @@ asciichat_error_t connection_attempt_with_fallback(connection_attempt_context_t 
   // Initial Connection: Try all fallback stages
   // ─────────────────────────────────────────────────────────────
 
-  log_info("=== Connection attempt %u: %s:%u (fallback strategy: TCP → STUN → TURN) ===", ctx->reconnect_attempt,
-           server_address, server_port);
+  if (ctx->enable_webrtc_fallback) {
+    log_info("=== Connection attempt %u: %s:%u (fallback strategy: TCP → STUN → TURN) ===", ctx->reconnect_attempt,
+             server_address, server_port);
+  } else {
+    log_info("=== Connection attempt %u: %s:%u (TCP only - regular client mode) ===", ctx->reconnect_attempt,
+             server_address, server_port);
+  }
 
   // ─────────────────────────────────────────────────────────────
   // Stage 1: Direct TCP (3s timeout)
@@ -1079,6 +1086,13 @@ asciichat_error_t connection_attempt_with_fallback(connection_attempt_context_t 
       connection_state_transition(ctx, CONN_STATE_CONNECTED);
       ctx->last_successful_state = CONN_STATE_DIRECT_TCP_CONNECTED; // Remember for reconnections
       return ASCIICHAT_OK;
+    }
+
+    // Check if WebRTC fallback is enabled (only for ACDS-discovered sessions)
+    if (!ctx->enable_webrtc_fallback) {
+      log_error("Direct TCP failed (WebRTC fallback disabled for regular client connections)");
+      connection_state_transition(ctx, CONN_STATE_FAILED);
+      return result;
     }
 
     // Check if timeout (fall back to next stage)

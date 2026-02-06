@@ -203,7 +203,7 @@ asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const u
         SAFE_FREE(parsed_hex_key);
         SAFE_FREE(parsed_comment);
         fclose(f);
-        config_file_list_free(&known_hosts_files);
+        config_file_list_destroy(&known_hosts_files);
         return 1; // Match found
       }
 
@@ -215,7 +215,7 @@ asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const u
         SAFE_FREE(parsed_hex_key);
         SAFE_FREE(parsed_comment);
         fclose(f);
-        config_file_list_free(&known_hosts_files);
+        config_file_list_destroy(&known_hosts_files);
         return 1; // Match found!
       }
 
@@ -229,7 +229,7 @@ asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const u
     fclose(f);
   }
 
-  config_file_list_free(&known_hosts_files);
+  config_file_list_destroy(&known_hosts_files);
 
   // Check if we found any entries at all
   if (found_entries) {
@@ -838,7 +838,7 @@ bool prompt_unknown_host_no_identity(const char *server_ip, uint16_t port) {
 }
 
 // Cleanup function to free the cached known_hosts path
-void known_hosts_cleanup(void) {
+void known_hosts_destroy(void) {
   if (g_known_hosts_path_cache) {
     SAFE_FREE(g_known_hosts_path_cache);
     g_known_hosts_path_cache = NULL;

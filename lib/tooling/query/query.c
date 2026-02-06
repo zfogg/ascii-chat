@@ -300,7 +300,7 @@ int query_init(int preferred_port) {
   fprintf(stderr, "[query] Waiting for HTTP server to be ready...\n");
   if (!wait_for_http_ready(preferred_port, HEALTH_CHECK_TIMEOUT_NS)) {
     fprintf(stderr, "[query] Timeout waiting for query server to start\n");
-    query_shutdown();
+    query_destroy();
     return -1;
   }
 
@@ -311,7 +311,7 @@ int query_init(int preferred_port) {
   return preferred_port;
 }
 
-void query_shutdown(void) {
+void query_destroy(void) {
   if (!g_query_active && g_controller_pid <= 0) {
     return;
   }

@@ -28,7 +28,7 @@
  *     // ... handle other events ...
  * }
  *
- * asciichat_mdns_shutdown(mdns);
+ * asciichat_mdns_destroy(mdns);
  * ```
  *
  * ### Client-side (discover services)
@@ -39,7 +39,7 @@
  * // Results arrive via callback
  * asciichat_mdns_update(mdns);
  *
- * asciichat_mdns_shutdown(mdns);
+ * asciichat_mdns_destroy(mdns);
  * ```
  *
  * @author Claude <claude@anthropic.com>
@@ -118,7 +118,7 @@ asciichat_mdns_t *asciichat_mdns_init(void);
  *
  * @param mdns Context to cleanup
  */
-void asciichat_mdns_shutdown(asciichat_mdns_t *mdns);
+void asciichat_mdns_destroy(asciichat_mdns_t *mdns);
 
 /**
  * @brief Advertise a service on the local network

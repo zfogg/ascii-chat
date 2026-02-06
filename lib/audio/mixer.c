@@ -163,7 +163,7 @@ int ducking_init(ducking_t *duck, int num_sources, float sample_rate) {
   return ASCIICHAT_OK;
 }
 
-void ducking_free(ducking_t *duck) {
+void ducking_destroy(ducking_t *duck) {
   if (duck->envelope) {
     SAFE_FREE(duck->envelope);
   }
@@ -351,7 +351,7 @@ void mixer_destroy(mixer_t *mixer) {
   // OPTIMIZATION 2: Destroy reader-writer lock
   rwlock_destroy(&mixer->source_lock);
 
-  ducking_free(&mixer->ducking);
+  ducking_destroy(&mixer->ducking);
 
   SAFE_FREE(mixer->source_buffers);
   SAFE_FREE(mixer->source_ids);

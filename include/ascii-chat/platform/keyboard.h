@@ -74,7 +74,7 @@ typedef enum {
  *
  * Sets up terminal for keyboard input by enabling raw mode (character-by-character
  * input without line buffering or echo). Must be called before keyboard_read_nonblocking()
- * and paired with keyboard_cleanup() for proper terminal restoration.
+ * and paired with keyboard_destroy() for proper terminal restoration.
  *
  * **Errors:**
  * - `ERROR_PLATFORM_INIT`: Terminal attribute query or configuration failed
@@ -90,9 +90,9 @@ typedef enum {
  * - Automatically sets asciichat_errno on failure with context
  * - Call HAS_ERRNO() to check for error details after failure
  *
- * @note Must be paired with keyboard_cleanup() before program exit
+ * @note Must be paired with keyboard_destroy() before program exit
  * @note Calling multiple times is safe (reference-counted, idempotent)
- * @note Terminal state is restored by keyboard_cleanup()
+ * @note Terminal state is restored by keyboard_destroy()
  * @note Safe to call before or after calling keyboard_read_nonblocking()
  *
  * @ingroup platform
@@ -115,7 +115,7 @@ asciichat_error_t keyboard_init(void);
  *
  * @ingroup platform
  */
-void keyboard_cleanup(void);
+void keyboard_destroy(void);
 
 /**
  * @brief Read next keyboard input without blocking

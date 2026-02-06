@@ -136,7 +136,7 @@ media_source_t *media_source_create(media_source_type_t type, const char *path);
  *
  * Cleans up media source and releases all resources. Safe to call with NULL.
  *
- * @note For WEBCAM type, calls webcam_cleanup()
+ * @note For WEBCAM type, calls webcam_destroy()
  * @note For FILE/STDIN types, closes FFmpeg decoder
  *
  * @ingroup media

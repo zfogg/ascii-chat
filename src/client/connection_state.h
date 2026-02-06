@@ -188,10 +188,12 @@ typedef struct {
   // Connection Preferences (from CLI flags)
   // ─────────────────────────────────────────────────────────────
 
-  bool prefer_webrtc;       ///< --prefer-webrtc flag
-  bool no_webrtc;           ///< --no-webrtc flag (disable WebRTC, TCP only)
-  bool webrtc_skip_stun;    ///< --webrtc-skip-stun flag (skip Stage 2 STUN)
-  bool webrtc_disable_turn; ///< --webrtc-disable-turn flag (skip Stage 3 TURN)
+  bool prefer_webrtc;          ///< --prefer-webrtc flag
+  bool no_webrtc;              ///< --no-webrtc flag (disable WebRTC, TCP only)
+  bool webrtc_skip_stun;       ///< --webrtc-skip-stun flag (skip Stage 2 STUN)
+  bool webrtc_disable_turn;    ///< --webrtc-disable-turn flag (skip Stage 3 TURN)
+  bool enable_webrtc_fallback; ///< Enable WebRTC fallback (only for ACDS-discovered sessions, not direct client
+                               ///< connections)
 
   // ─────────────────────────────────────────────────────────────
   // Statistics

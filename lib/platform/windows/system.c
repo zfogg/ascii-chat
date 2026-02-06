@@ -101,7 +101,7 @@ asciichat_error_t platform_init(void) {
 /**
  * @brief Clean up platform-specific functionality
  */
-void platform_cleanup(void) {
+void platform_destroy(void) {
   // Cleanup binary PATH cache
   platform_cleanup_binary_path_cache();
 
@@ -109,7 +109,7 @@ void platform_cleanup(void) {
   symbol_cache_print_stats();
 
   // Clean up symbol cache
-  symbol_cache_cleanup();
+  symbol_cache_destroy();
 
   // Clean up Windows DbgHelp symbol resolution
   cleanup_windows_symbols();
@@ -475,7 +475,7 @@ int platform_backtrace(void **buffer, int size) {
 static atomic_bool g_symbols_initialized = false;
 static HANDLE g_process_handle = NULL;
 
-// Forward declaration (made non-static so platform_cleanup can call it)
+// Forward declaration (made non-static so platform_destroy can call it)
 void cleanup_windows_symbols(void);
 
 // Function to initialize Windows symbol resolution once
@@ -587,13 +587,13 @@ static void init_windows_symbols(void) {
   }
 
   atomic_store(&g_symbols_initialized, true);
-  // NOTE: Cleanup is now handled by platform_cleanup() called from asciichat_shared_shutdown().
+  // NOTE: Cleanup is now handled by platform_destroy() called from asciichat_shared_destroy().
   // Library code does not call atexit() - that's the application's responsibility.
 }
 
 /**
  * @brief Cleanup Windows DbgHelp symbol resolution
- * Called by platform_cleanup() during library shutdown.
+ * Called by platform_destroy() during library shutdown.
  * Safe to call multiple times (idempotent).
  */
 void cleanup_windows_symbols(void) {
@@ -750,7 +750,7 @@ static void resolve_windows_symbol(void *addr, char *buffer, size_t buffer_size)
  * @brief Convert stack trace addresses to symbols using llvm-symbolizer/addr2line + Windows SymFromAddr
  * @param buffer Array of addresses from platform_backtrace
  * @param size Number of addresses in buffer
- * @return Array of strings with symbol names (must be freed with platform_backtrace_symbols_free)
+ * @return Array of strings with symbol names (must be freed with platform_backtrace_symbols_destroy)
  *
  * Uses multi-layered symbol resolution strategy:
  * 1. Try llvm-symbolizer/addr2line cache first (works in all build modes)
@@ -881,7 +881,7 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
  * @brief Free memory from platform_backtrace_symbols
  * @param strings Array returned by platform_backtrace_symbols
  */
-void platform_backtrace_symbols_free(char **strings) {
+void platform_backtrace_symbols_destroy(char **strings) {
   if (!strings) {
     return;
   }
@@ -1048,7 +1048,7 @@ void platform_print_backtrace(int skip_frames) {
     // Skip platform_print_backtrace itself (1 frame) + any additional frames requested
     platform_print_backtrace_symbols("\nBacktrace", symbols, size, 1 + skip_frames, 0, NULL);
 
-    platform_backtrace_symbols_free(symbols);
+    platform_backtrace_symbols_destroy(symbols);
   }
 }
 

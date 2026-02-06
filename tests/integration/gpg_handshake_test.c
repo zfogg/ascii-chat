@@ -332,8 +332,8 @@ Test(gpg_handshake, complete_gpg_handshake_with_authentication) {
   cr_assert_eq(client_ctx.state, CRYPTO_HANDSHAKE_READY, "Client should be READY, got state %d", client_ctx.state);
 
   // Cleanup
-  crypto_handshake_cleanup(&server_ctx);
-  crypto_handshake_cleanup(&client_ctx);
+  crypto_handshake_destroy(&server_ctx);
+  crypto_handshake_destroy(&client_ctx);
   teardown_gpg_test_network();
 }
 

@@ -18,8 +18,8 @@ void setup_crypto_context(void) {
 }
 
 void teardown_crypto_context(void) {
-  crypto_cleanup(&ctx1);
-  crypto_cleanup(&ctx2);
+  crypto_destroy(&ctx1);
+  crypto_destroy(&ctx2);
   // Restore normal log level
   log_set_level(LOG_DEBUG);
 }
@@ -179,7 +179,7 @@ Theory((size_t data_size), crypto, encryption_roundtrip_property) {
                "Decrypted data must match plaintext for size %zu (roundtrip property)", data_size);
 
   SAFE_FREE(plaintext);
-  crypto_cleanup(&ctx);
+  crypto_destroy(&ctx);
 }
 
 // Theory: Key exchange encryption roundtrip
@@ -225,8 +225,8 @@ Theory((size_t data_size), crypto, key_exchange_roundtrip_property) {
                data_size);
 
   SAFE_FREE(plaintext);
-  crypto_cleanup(&ctx1);
-  crypto_cleanup(&ctx2);
+  crypto_destroy(&ctx1);
+  crypto_destroy(&ctx2);
 }
 
 Test(crypto, encrypt_not_ready) {
@@ -425,7 +425,7 @@ Theory((size_t data_size), crypto, nonce_uniqueness_property) {
                 "Nonce uniqueness property: same plaintext size %zu must produce different ciphertext", data_size);
 
   SAFE_FREE(plaintext);
-  crypto_cleanup(&ctx);
+  crypto_destroy(&ctx);
 }
 
 Test(crypto, buffer_size_checks) {
@@ -452,7 +452,7 @@ Test(crypto, cleanup_security) {
   cr_assert(ctx1.has_password, "Context should have password");
 
   // Cleanup
-  crypto_cleanup(&ctx1);
+  crypto_destroy(&ctx1);
 
   // Verify context is cleared (basic check - real implementation uses sodium_memzero)
   cr_assert(ctx1.initialized == false, "Context should not be initialized after cleanup");
@@ -555,7 +555,7 @@ ParameterizedTest(crypto_error_test_case_t *tc, crypto, error_conditions) {
 
   cr_assert_eq(result, tc->expected_result, "Test case: %s", tc->description);
 
-  crypto_cleanup(&ctx);
+  crypto_destroy(&ctx);
 }
 
 // Test case structure for crypto initialization tests
@@ -591,7 +591,7 @@ ParameterizedTest(crypto_init_test_case_t *tc, crypto, init_conditions) {
     cr_assert(crypto_is_ready(&ctx), "Context should be ready for %s", tc->description);
   }
 
-  crypto_cleanup(&ctx);
+  crypto_destroy(&ctx);
 }
 
 // Test case structure for crypto password verification tests
@@ -625,7 +625,7 @@ ParameterizedTest(crypto_verify_test_case_t *tc, crypto, password_verification_c
   bool verified = crypto_verify_password(&ctx, tc->test_password);
   cr_assert_eq(verified, tc->should_verify, "Password verification should match for %s", tc->description);
 
-  crypto_cleanup(&ctx);
+  crypto_destroy(&ctx);
 }
 
 // Test case structure for crypto result string tests

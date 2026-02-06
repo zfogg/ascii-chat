@@ -529,7 +529,7 @@ asciichat_error_t platform_find_config_file(const char *filename, config_file_li
 /**
  * @brief Free config file list resources (POSIX implementation)
  */
-void config_file_list_free(config_file_list_t *list) {
+void config_file_list_destroy(config_file_list_t *list) {
   if (!list) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: list=%p", list);
     return;

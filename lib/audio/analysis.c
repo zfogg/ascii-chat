@@ -872,7 +872,7 @@ void audio_analysis_print_report(void) {
   log_plain("================================================================================");
 }
 
-void audio_analysis_cleanup(void) {
+void audio_analysis_destroy(void) {
   g_analysis_enabled = false;
 
   // Close WAV files if they were open

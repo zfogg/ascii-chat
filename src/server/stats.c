@@ -446,7 +446,7 @@ void *stats_logger_thread(void *arg) {
   asciichat_error_stats_print();
 
   // Clean up thread-local error context before exit
-  asciichat_errno_cleanup();
+  asciichat_errno_destroy();
 
   return NULL;
 }

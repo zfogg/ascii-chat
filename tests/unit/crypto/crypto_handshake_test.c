@@ -89,7 +89,7 @@ Test(crypto_handshake, init_server) {
   cr_assert(ctx.is_server, "Context should be marked as server");
   cr_assert_eq(ctx.state, CRYPTO_HANDSHAKE_INIT, "Initial state should be INIT");
 
-  crypto_handshake_cleanup(&ctx);
+  crypto_handshake_destroy(&ctx);
 }
 
 Test(crypto_handshake, init_client) {
@@ -101,7 +101,7 @@ Test(crypto_handshake, init_client) {
   cr_assert_not(ctx.is_server, "Context should be marked as client");
   cr_assert_eq(ctx.state, CRYPTO_HANDSHAKE_INIT, "Initial state should be INIT");
 
-  crypto_handshake_cleanup(&ctx);
+  crypto_handshake_destroy(&ctx);
 }
 
 Test(crypto_handshake, init_null_context) {
@@ -112,7 +112,7 @@ Test(crypto_handshake, init_null_context) {
 
 Test(crypto_handshake, cleanup_null_context) {
   // Should not crash
-  crypto_handshake_cleanup(NULL);
+  crypto_handshake_destroy(NULL);
 }
 
 // =============================================================================
@@ -128,7 +128,7 @@ Test(crypto_handshake, server_start_success, .init = setup_real_sockets, .fini =
   cr_assert_eq(result, ASCIICHAT_OK, "Server start should succeed");
   cr_assert_eq(ctx.state, CRYPTO_HANDSHAKE_KEY_EXCHANGE, "State should be KEY_EXCHANGE");
 
-  crypto_handshake_cleanup(&ctx);
+  crypto_handshake_destroy(&ctx);
 }
 
 Test(crypto_handshake, server_start_null_context) {
@@ -150,7 +150,7 @@ Test(crypto_handshake, server_auth_challenge, .init = setup_real_sockets, .fini 
   cr_assert_eq(result, ASCIICHAT_OK, "Server auth challenge should succeed");
   cr_assert_eq(ctx.state, CRYPTO_HANDSHAKE_AUTHENTICATING, "State should be AUTHENTICATING");
 
-  crypto_handshake_cleanup(&ctx);
+  crypto_handshake_destroy(&ctx);
 }
 
 Test(crypto_handshake, server_complete, .init = setup_real_sockets, .fini = teardown_real_sockets, .disabled = true) {
@@ -165,7 +165,7 @@ Test(crypto_handshake, server_complete, .init = setup_real_sockets, .fini = tear
   cr_assert_eq(result, ASCIICHAT_OK, "Server complete should succeed");
   cr_assert_eq(ctx.state, CRYPTO_HANDSHAKE_READY, "State should be COMPLETE");
 
-  crypto_handshake_cleanup(&ctx);
+  crypto_handshake_destroy(&ctx);
 }
 
 // =============================================================================
@@ -201,8 +201,8 @@ Test(crypto_handshake, client_key_exchange, .init = setup_real_sockets, .fini = 
   cr_assert_eq(client_data.result, ASCIICHAT_OK, "Client key exchange should succeed");
   cr_assert_eq(client_ctx.state, CRYPTO_HANDSHAKE_KEY_EXCHANGE, "State should be KEY_EXCHANGE");
 
-  crypto_handshake_cleanup(&server_ctx);
-  crypto_handshake_cleanup(&client_ctx);
+  crypto_handshake_destroy(&server_ctx);
+  crypto_handshake_destroy(&client_ctx);
 }
 
 Test(crypto_handshake, client_auth_response, .init = setup_real_sockets, .fini = teardown_real_sockets,
@@ -217,7 +217,7 @@ Test(crypto_handshake, client_auth_response, .init = setup_real_sockets, .fini =
   cr_assert_eq(result, ASCIICHAT_OK, "Client auth response should succeed");
   cr_assert_eq(ctx.state, CRYPTO_HANDSHAKE_AUTHENTICATING, "State should be AUTHENTICATING");
 
-  crypto_handshake_cleanup(&ctx);
+  crypto_handshake_destroy(&ctx);
 }
 
 Test(crypto_handshake, client_key_exchange_null_context) {
@@ -271,8 +271,8 @@ Test(crypto_handshake, complete_handshake_flow, .init = setup_real_sockets, .fin
   cr_assert_eq(server_ctx.state, CRYPTO_HANDSHAKE_KEY_EXCHANGE, "Server should be in KEY_EXCHANGE state");
   cr_assert_eq(client_ctx.state, CRYPTO_HANDSHAKE_KEY_EXCHANGE, "Client should be in KEY_EXCHANGE state");
 
-  crypto_handshake_cleanup(&server_ctx);
-  crypto_handshake_cleanup(&client_ctx);
+  crypto_handshake_destroy(&server_ctx);
+  crypto_handshake_destroy(&client_ctx);
 }
 
 // =============================================================================
@@ -300,7 +300,7 @@ Test(crypto_handshake, state_machine_progression, .init = setup_real_sockets, .f
   crypto_handshake_server_complete(&ctx, g_server_socket);
   cr_assert_eq(ctx.state, CRYPTO_HANDSHAKE_READY, "Should be in COMPLETE state");
 
-  crypto_handshake_cleanup(&ctx);
+  crypto_handshake_destroy(&ctx);
 }
 
 Test(crypto_handshake, invalid_state_transitions, .init = setup_real_sockets, .fini = teardown_real_sockets) {
@@ -315,7 +315,7 @@ Test(crypto_handshake, invalid_state_transitions, .init = setup_real_sockets, .f
   (void)result; // Result may be OK or error, both are acceptable
   cr_assert(true, "Should complete without crash");
 
-  crypto_handshake_cleanup(&ctx);
+  crypto_handshake_destroy(&ctx);
 }
 
 // =============================================================================
@@ -331,7 +331,7 @@ Test(crypto_handshake, socket_errors) {
   cr_assert_neq(result, ASCIICHAT_OK, "Invalid socket should fail");
   // Should fail with ERROR_NETWORK when send_packet fails, or ERROR_INVALID_STATE if state check fails first
 
-  crypto_handshake_cleanup(&ctx);
+  crypto_handshake_destroy(&ctx);
 }
 
 Test(crypto_handshake, handshake_timeout, .init = setup_real_sockets, .fini = teardown_real_sockets) {
@@ -344,7 +344,7 @@ Test(crypto_handshake, handshake_timeout, .init = setup_real_sockets, .fini = te
   // State should remain in KEY_EXCHANGE
   cr_assert_eq(ctx.state, CRYPTO_HANDSHAKE_KEY_EXCHANGE, "Should remain in KEY_EXCHANGE without completion");
 
-  crypto_handshake_cleanup(&ctx);
+  crypto_handshake_destroy(&ctx);
 }
 
 // =============================================================================
@@ -366,7 +366,7 @@ Theory((crypto_handshake_state_t state), crypto_handshake, handshake_states) {
   // Test that the state is preserved
   cr_assert_eq(ctx.state, state, "Handshake state should be preserved");
 
-  crypto_handshake_cleanup(&ctx);
+  crypto_handshake_destroy(&ctx);
 }
 
 // =============================================================================
@@ -386,9 +386,9 @@ Test(crypto_handshake, multiple_handshakes) {
   cr_assert_eq(ctx2.state, CRYPTO_HANDSHAKE_INIT, "Context 2 should be in INIT");
   cr_assert_eq(ctx3.state, CRYPTO_HANDSHAKE_INIT, "Context 3 should be in INIT");
 
-  crypto_handshake_cleanup(&ctx1);
-  crypto_handshake_cleanup(&ctx2);
-  crypto_handshake_cleanup(&ctx3);
+  crypto_handshake_destroy(&ctx1);
+  crypto_handshake_destroy(&ctx2);
+  crypto_handshake_destroy(&ctx3);
 }
 
 Test(crypto_handshake, handshake_cleanup_multiple_times) {
@@ -396,9 +396,9 @@ Test(crypto_handshake, handshake_cleanup_multiple_times) {
   crypto_handshake_init(&ctx, true);
 
   // Cleanup multiple times should not crash
-  crypto_handshake_cleanup(&ctx);
-  crypto_handshake_cleanup(&ctx);
-  crypto_handshake_cleanup(&ctx);
+  crypto_handshake_destroy(&ctx);
+  crypto_handshake_destroy(&ctx);
+  crypto_handshake_destroy(&ctx);
 }
 
 Test(crypto_handshake, handshake_with_large_data, .init = setup_real_sockets, .fini = teardown_real_sockets) {
@@ -410,5 +410,5 @@ Test(crypto_handshake, handshake_with_large_data, .init = setup_real_sockets, .f
   asciichat_error_t result = crypto_handshake_server_start(&ctx, g_server_socket);
   cr_assert_eq(result, ASCIICHAT_OK, "Should handle large buffers");
 
-  crypto_handshake_cleanup(&ctx);
+  crypto_handshake_destroy(&ctx);
 }

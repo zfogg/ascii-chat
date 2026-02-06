@@ -329,7 +329,7 @@ asciichat_error_t webrtc_init(void) {
   return webrtc_ensure_initialized();
 }
 
-void webrtc_cleanup(void) {
+void webrtc_destroy(void) {
   webrtc_release();
 }
 

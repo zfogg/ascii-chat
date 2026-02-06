@@ -148,7 +148,7 @@ asciichat_error_t manpage_resources_load(manpage_resources_t *resources) {
   return ASCIICHAT_OK;
 }
 
-void manpage_resources_cleanup(manpage_resources_t *resources) {
+void manpage_resources_destroy(manpage_resources_t *resources) {
   if (!resources) {
     return;
   }

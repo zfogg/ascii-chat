@@ -86,7 +86,7 @@ int query_init(int preferred_port);
  * @note Safe to call even if query_init() was not called or failed
  * @note Only available in debug builds (NDEBUG not defined)
  */
-void query_shutdown(void);
+void query_destroy(void);
 
 /**
  * @brief Check if the query tool controller is currently active
@@ -125,7 +125,7 @@ int query_get_port(void);
 /**
  * @brief Shutdown query tool (debug builds only)
  */
-#define QUERY_SHUTDOWN() query_shutdown()
+#define QUERY_SHUTDOWN() query_destroy()
 
 /**
  * @brief Check if query tool is active (debug builds only)

@@ -1505,7 +1505,7 @@ asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, bo
   }
 
   // Clean up search results
-  config_file_list_free(&config_files);
+  config_file_list_destroy(&config_files);
 
   return result;
 }

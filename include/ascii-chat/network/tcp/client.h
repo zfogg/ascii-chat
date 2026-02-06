@@ -351,12 +351,6 @@ void tcp_client_close(tcp_client_t *client);
  */
 void tcp_client_shutdown(tcp_client_t *client);
 
-/**
- * @brief Cleanup connection resources
- * @param client TCP client instance
- */
-void tcp_client_cleanup(tcp_client_t *client);
-
 /* ============================================================================
  * Connection Establishment
  * ============================================================================ */
