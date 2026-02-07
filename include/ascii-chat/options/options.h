@@ -489,6 +489,9 @@ typedef enum {
 /** @brief Default snapshot mode flag (false = continuous) */
 #define OPT_SNAPSHOT_MODE_DEFAULT false
 
+/** @brief Default Matrix rain effect flag (false = disabled) */
+#define OPT_MATRIX_RAIN_DEFAULT false
+
 /** @brief Default no compression flag (false = enable compression) */
 #define OPT_NO_COMPRESS_DEFAULT false
 
@@ -658,6 +661,7 @@ static const bool default_stretch_value = OPT_STRETCH_DEFAULT;
 static const bool default_strip_ansi_value = OPT_STRIP_ANSI_DEFAULT;
 static const bool default_snapshot_mode_value = OPT_SNAPSHOT_MODE_DEFAULT;
 static const double default_snapshot_delay_value = SNAPSHOT_DELAY_DEFAULT;
+static const bool default_matrix_rain_value = OPT_MATRIX_RAIN_DEFAULT;
 static const int default_fps_value = OPT_FPS_DEFAULT;
 static const int default_compression_level_value = OPT_COMPRESSION_LEVEL_DEFAULT;
 static const bool default_no_compress_value = OPT_NO_COMPRESS_DEFAULT;
@@ -900,6 +904,7 @@ typedef struct options_state {
   unsigned short int verbose_level;     ///< Verbosity level (stackable -V)
   unsigned short int snapshot_mode;     ///< Snapshot mode (one frame and exit)
   double snapshot_delay;                ///< Snapshot delay in seconds
+  unsigned short int matrix_rain;       ///< Matrix digital rain effect (false = disabled)
   unsigned short int strip_ansi;        ///< Strip ANSI escape sequences
   char log_file[OPTIONS_BUFF_SIZE];     ///< Log file path
   log_level_t log_level;                ///< Log level threshold

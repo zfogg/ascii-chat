@@ -452,8 +452,28 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
       avx2_load_rgb32_optimized(&row_pixels[x], avx2_r_buffer, avx2_g_buffer, avx2_b_buffer);
       avx2_compute_luminance_32(avx2_r_buffer, avx2_g_buffer, avx2_b_buffer, avx2_luminance_buffer);
 
+      // Debug: log first row's pixel data
+      if (y == 0 && x == 0) {
+        log_info(
+            "AVX2 row 0: reading pixels 0-31, RGB of pixel[0]=(%d,%d,%d), pixel[16]=(%d,%d,%d), pixel[31]=(%d,%d,%d)",
+            avx2_r_buffer[0], avx2_g_buffer[0], avx2_b_buffer[0], avx2_r_buffer[16], avx2_g_buffer[16],
+            avx2_b_buffer[16], avx2_r_buffer[31], avx2_g_buffer[31], avx2_b_buffer[31]);
+        log_info(
+            "AVX2 row 0: luminance FULL order "
+            "[0-31]=%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
+            avx2_luminance_buffer[0], avx2_luminance_buffer[1], avx2_luminance_buffer[2], avx2_luminance_buffer[3],
+            avx2_luminance_buffer[4], avx2_luminance_buffer[5], avx2_luminance_buffer[6], avx2_luminance_buffer[7],
+            avx2_luminance_buffer[8], avx2_luminance_buffer[9], avx2_luminance_buffer[10], avx2_luminance_buffer[11],
+            avx2_luminance_buffer[12], avx2_luminance_buffer[13], avx2_luminance_buffer[14], avx2_luminance_buffer[15],
+            avx2_luminance_buffer[16], avx2_luminance_buffer[17], avx2_luminance_buffer[18], avx2_luminance_buffer[19],
+            avx2_luminance_buffer[20], avx2_luminance_buffer[21], avx2_luminance_buffer[22], avx2_luminance_buffer[23],
+            avx2_luminance_buffer[24], avx2_luminance_buffer[25], avx2_luminance_buffer[26], avx2_luminance_buffer[27],
+            avx2_luminance_buffer[28], avx2_luminance_buffer[29], avx2_luminance_buffer[30], avx2_luminance_buffer[31]);
+      }
+
       // Process each pixel in the chunk
       int i = 0;
+      int output_col = x; // Track output column position
       while (i < 32) {
         const uint8_t R = avx2_r_buffer[i];
         const uint8_t G = avx2_g_buffer[i];
@@ -461,6 +481,12 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
         const uint8_t luma_idx = avx2_luminance_buffer[i] >> 2;
         const uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx];
         const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
+
+        // Debug: log output positions for first few pixels
+        if (y == 0 && x + i < 32) {
+          log_info("AVX2 pixel[%d]: input_x=%d, luma=%d, char_idx=%d, output_col=%d", i, x + i,
+                   avx2_luminance_buffer[i], char_idx, output_col);
+        }
 
         if (use_256color) {
           uint8_t color_idx = rgb_to_256color(R, G, B);
@@ -502,6 +528,7 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
               pos += char_info->byte_len;
             }
           }
+          output_col += run;
           i += run;
         } else {
           // Truecolor mode
@@ -544,6 +571,7 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
               pos += char_info->byte_len;
             }
           }
+          output_col += run;
           i += run;
         }
       }

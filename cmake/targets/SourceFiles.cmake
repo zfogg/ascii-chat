@@ -242,6 +242,7 @@ set(VIDEO_SRCS
     lib/video/ansi.c
     lib/video/palette.c
     lib/video/color_filter.c
+    lib/video/digital_rain.c
     lib/video/webcam/webcam.c
 )
 

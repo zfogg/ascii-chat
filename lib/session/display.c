@@ -21,6 +21,7 @@
 #include <ascii-chat/video/palette.h>
 #include <ascii-chat/video/ascii.h>
 #include <ascii-chat/video/color_filter.h>
+#include <ascii-chat/video/digital_rain.h>
 #include <ascii-chat/video/image.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/asciichat_errno.h>
@@ -80,6 +81,12 @@ typedef struct session_display_ctx {
 
   /** @brief Help screen active flag (toggled with '?') - atomic for thread-safe access */
   atomic_bool help_screen_active;
+
+  /** @brief Digital rain effect context (NULL if disabled) */
+  digital_rain_t *digital_rain;
+
+  /** @brief Last frame timestamp for digital rain delta time calculation */
+  uint64_t last_frame_time_ns;
 } session_display_ctx_t;
 
 /* ============================================================================
@@ -199,6 +206,32 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
     ascii_write_init(ctx->tty_info.fd, false);
   }
 
+  // Initialize digital rain effect if enabled
+  if (GET_OPTION(matrix_rain)) {
+    // Get terminal dimensions for grid size
+    unsigned short int width_us = (unsigned short int)GET_OPTION(width);
+    unsigned short int height_us = (unsigned short int)GET_OPTION(height);
+
+    // If dimensions are not set, detect from terminal
+    if (width_us == 0 || height_us == 0) {
+      (void)get_terminal_size(&width_us, &height_us);
+    }
+
+    int width = (int)width_us;
+    int height = (int)height_us;
+
+    ctx->digital_rain = digital_rain_init(width, height);
+    if (ctx->digital_rain) {
+      // Set color from color filter if active
+      color_filter_t filter = GET_OPTION(color_filter);
+      digital_rain_set_color_from_filter(ctx->digital_rain, filter);
+      log_info("Digital rain effect enabled: %dx%d grid", width, height);
+    } else {
+      log_warn("Failed to initialize digital rain effect");
+    }
+    ctx->last_frame_time_ns = time_get_ns();
+  }
+
   ctx->initialized = true;
   return ctx;
 }
@@ -220,6 +253,12 @@ void session_display_destroy(session_display_ctx_t *ctx) {
     (void)platform_close(ctx->tty_info.fd);
     ctx->tty_info.fd = -1;
     ctx->tty_info.owns_fd = false;
+  }
+
+  // Cleanup digital rain effect
+  if (ctx->digital_rain) {
+    digital_rain_destroy(ctx->digital_rain);
+    ctx->digital_rain = NULL;
   }
 
   ctx->initialized = false;
@@ -405,6 +444,23 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "ascii_convert_with_capabilities",
                            "ASCII_CONVERT: Conversion complete (%.2f ms)");
   uint64_t t_convert_end = time_get_ns();
+
+  // Apply digital rain effect if enabled
+  if (result && ctx->digital_rain) {
+    uint64_t t_rain_start = time_get_ns();
+    uint64_t current_time_ns = t_rain_start;
+    float delta_time = (float)(current_time_ns - ctx->last_frame_time_ns) / (float)NS_PER_SEC_INT;
+    ctx->last_frame_time_ns = current_time_ns;
+
+    char *rain_result = digital_rain_apply(ctx->digital_rain, result, delta_time);
+    if (rain_result) {
+      SAFE_FREE(result);
+      result = rain_result;
+    }
+
+    uint64_t t_rain_end = time_get_ns();
+    log_dev("DIGITAL_RAIN: Effect applied (%.2f ms)", (double)(t_rain_end - t_rain_start) / (double)NS_PER_MS_INT);
+  }
 
   uint64_t t_cleanup_start = time_get_ns();
   // Clean up flipped/filtered image if created

@@ -183,7 +183,8 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
   caps.color_filter = filter;
 
   // Debug: log what we're actually using
-  log_info("WASM: color_mode=%d, filter=%d, color_count=%d", color_mode, filter, caps.color_count);
+  log_info("WASM: src=%dx%d, dst=%dx%d, color_mode=%d, filter=%d", src_width, src_height, dst_width, dst_height,
+           color_mode, filter);
 
   // Convert RGBA to RGB (strip alpha channel)
   rgb_pixel_t *rgb_pixels = SAFE_MALLOC(src_width * src_height * sizeof(rgb_pixel_t), rgb_pixel_t *);
