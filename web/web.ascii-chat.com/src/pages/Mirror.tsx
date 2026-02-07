@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { XTerm } from '@pablo-lion/xterm-react'
 import { FitAddon } from '@xterm/addon-fit'
 import 'xterm/css/xterm.css'
-import { initMirrorWasm, convertFrameToAscii, isWasmReady, setDimensions, setColorMode, setColorFilter, setPalette, ColorMode as WasmColorMode, ColorFilter as WasmColorFilter } from '../wasm/mirror'
+import { initMirrorWasm, convertFrameToAscii, isWasmReady, setDimensions, setColorMode, setColorFilter, setPalette, setPaletteChars, setMatrixRain, ColorMode as WasmColorMode, ColorFilter as WasmColorFilter } from '../wasm/mirror'
 import { Settings, SettingsConfig, ColorMode, ColorFilter } from '../components/Settings'
 
 // Helper functions to map Settings types to WASM enums
@@ -64,7 +64,9 @@ export function MirrorPage() {
     targetFps: 60,
     colorMode: 'truecolor',
     colorFilter: 'none',
-    palette: 'standard'
+    palette: 'standard',
+    paletteChars: ' =#░░▒▒▓▓██',
+    matrixRain: false
   })
   const [showSettings, setShowSettings] = useState(false)
 
@@ -81,6 +83,14 @@ export function MirrorPage() {
         setColorMode(mapColorMode(newSettings.colorMode))
         setColorFilter(mapColorFilter(newSettings.colorFilter))
         setPalette(newSettings.palette)
+
+        // Apply custom palette characters if palette is custom
+        if (newSettings.palette === 'custom' && newSettings.paletteChars) {
+          setPaletteChars(newSettings.paletteChars)
+        }
+
+        // Apply matrix rain effect
+        setMatrixRain(newSettings.matrixRain ?? false)
       } catch (err) {
         console.error('Failed to apply WASM settings:', err)
       }
@@ -205,6 +215,14 @@ export function MirrorPage() {
         setColorMode(mapColorMode(settings.colorMode))
         setColorFilter(mapColorFilter(settings.colorFilter))
         setPalette(settings.palette)
+
+        // Apply custom palette characters if palette is custom
+        if (settings.palette === 'custom' && settings.paletteChars) {
+          setPaletteChars(settings.paletteChars)
+        }
+
+        // Apply matrix rain effect
+        setMatrixRain(settings.matrixRain ?? false)
       }
 
       const { width, height } = parseResolution(settings.resolution)
@@ -338,14 +356,6 @@ export function MirrorPage() {
     // WASM output already includes ANSI color codes
     // Use cursor home + clear screen to prevent artifacts
     const output = '\x1b[H\x1b[J' + formattedLines.join('')
-
-    // Debug: log every 30 frames
-    if (frameCountRef.current % 30 === 0) {
-      const core = (terminal as any)._core
-      const renderService = core?._renderService
-      const isPaused = renderService?._isPaused
-      console.log('[renderFrame] Writing to terminal, output length:', output.length, 'lines:', lines.length, 'renderService._isPaused:', isPaused)
-    }
 
     // Force clear and write
     terminal.clear()

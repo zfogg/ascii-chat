@@ -19,7 +19,14 @@ bool parse_palette_type(const char *arg, void *dest, char **error_msg);
 #include <ascii-chat/video/image.h>
 #include <ascii-chat/video/palette.h>
 #include <ascii-chat/video/ansi_fast.h>
+#include <ascii-chat/video/digital_rain.h>
 #include <ascii-chat/common.h>
+
+// Global digital rain effect context
+static digital_rain_t *g_digital_rain = NULL;
+static char *g_last_rain_output = NULL;
+static double g_last_rain_update_time = 0.0;
+#define RAIN_UPDATE_INTERVAL_MS 100.0 // Update every 100ms for smooth animation
 
 // ============================================================================
 // Initialization
@@ -72,6 +79,14 @@ int mirror_init_with_args(const char *args_json) {
 
 EMSCRIPTEN_KEEPALIVE
 void mirror_cleanup(void) {
+  if (g_digital_rain) {
+    digital_rain_destroy(g_digital_rain);
+    g_digital_rain = NULL;
+  }
+  if (g_last_rain_output) {
+    SAFE_FREE(g_last_rain_output);
+    g_last_rain_output = NULL;
+  }
   options_state_destroy();
   platform_destroy();
 }
@@ -176,6 +191,22 @@ int mirror_get_palette(void) {
   return GET_OPTION(palette_type);
 }
 
+EMSCRIPTEN_KEEPALIVE
+int mirror_set_palette_chars(const char *chars) {
+  if (!chars) {
+    return -1;
+  }
+
+  // Set custom palette characters - this will automatically set palette_type to PALETTE_CUSTOM
+  asciichat_error_t err = options_set_string("palette_custom", chars);
+  return (err == ASCIICHAT_OK) ? 0 : -1;
+}
+
+EMSCRIPTEN_KEEPALIVE
+const char *mirror_get_palette_chars(void) {
+  return GET_OPTION(palette_custom);
+}
+
 // ============================================================================
 // Settings API - Color Filter
 // ============================================================================
@@ -192,6 +223,21 @@ int mirror_set_color_filter(int filter) {
 EMSCRIPTEN_KEEPALIVE
 int mirror_get_color_filter(void) {
   return GET_OPTION(color_filter);
+}
+
+// ============================================================================
+// Settings API - Matrix Rain Effect
+// ============================================================================
+
+EMSCRIPTEN_KEEPALIVE
+int mirror_set_matrix_rain(int enabled) {
+  asciichat_error_t err = options_set_bool("matrix_rain", enabled != 0);
+  return (err == ASCIICHAT_OK) ? 0 : -1;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int mirror_get_matrix_rain(void) {
+  return GET_OPTION(matrix_rain) ? 1 : 0;
 }
 
 // ============================================================================
@@ -228,10 +274,6 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
   caps.palette_type = palette_type;
   caps.desired_fps = 60;
   caps.color_filter = filter;
-
-  // Debug: log what we're actually using
-  log_info("WASM: src=%dx%d, dst=%dx%d, color_mode=%d, filter=%d", src_width, src_height, dst_width, dst_height,
-           color_mode, filter);
 
   // Convert RGBA to RGB (strip alpha channel)
   rgb_pixel_t *rgb_pixels = SAFE_MALLOC(src_width * src_height * sizeof(rgb_pixel_t), rgb_pixel_t *);
@@ -295,6 +337,65 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
   if (!ascii_output) {
     log_error("ascii_convert_with_capabilities returned NULL");
     return NULL;
+  }
+
+  // Apply digital rain effect if enabled
+  bool matrix_rain = GET_OPTION(matrix_rain);
+  if (matrix_rain) {
+    // Initialize digital rain context if needed or dimensions changed
+    if (!g_digital_rain || g_digital_rain->num_columns != dst_width || g_digital_rain->num_rows != dst_height) {
+      if (g_digital_rain) {
+        digital_rain_destroy(g_digital_rain);
+      }
+      if (g_last_rain_output) {
+        SAFE_FREE(g_last_rain_output);
+        g_last_rain_output = NULL;
+      }
+      g_digital_rain = digital_rain_init(dst_width, dst_height);
+      if (!g_digital_rain) {
+        log_error("Failed to initialize digital rain effect");
+        return ascii_output; // Return without effect on error
+      }
+      // Set color from active color filter
+      digital_rain_set_color_from_filter(g_digital_rain, filter);
+      g_last_rain_update_time = emscripten_get_now();
+    }
+
+    // Time-based updates: only update effect every RAIN_UPDATE_INTERVAL_MS
+    double current_time = emscripten_get_now();
+    double elapsed_ms = current_time - g_last_rain_update_time;
+
+    if (elapsed_ms >= RAIN_UPDATE_INTERVAL_MS) {
+      // Calculate actual delta time in seconds
+      float delta_time = (float)(elapsed_ms / 1000.0);
+      g_last_rain_update_time = current_time;
+
+      // Apply effect and cache result
+      char *rain_output = digital_rain_apply(g_digital_rain, ascii_output, delta_time);
+      if (rain_output) {
+        if (g_last_rain_output) {
+          SAFE_FREE(g_last_rain_output);
+        }
+        g_last_rain_output = rain_output;
+        SAFE_FREE(ascii_output);
+        ascii_output = rain_output;
+      }
+    } else if (g_last_rain_output) {
+      // Use cached output (no copy - reuse the same string)
+      SAFE_FREE(ascii_output);
+      ascii_output = strdup(g_last_rain_output);
+    }
+  } else {
+    // Clean up digital rain context if it exists but effect is disabled
+    if (g_digital_rain) {
+      digital_rain_destroy(g_digital_rain);
+      g_digital_rain = NULL;
+    }
+    if (g_last_rain_output) {
+      SAFE_FREE(g_last_rain_output);
+      g_last_rain_output = NULL;
+    }
+    g_last_rain_update_time = 0.0;
   }
 
   return ascii_output;

@@ -17,6 +17,10 @@ interface MirrorModuleExports {
   _mirror_get_color_filter(): number;
   _mirror_set_palette(palette_string_ptr: number): number;
   _mirror_get_palette(): number;
+  _mirror_set_palette_chars(chars_ptr: number): number;
+  _mirror_get_palette_chars(): number;
+  _mirror_set_matrix_rain(enabled: number): number;
+  _mirror_get_matrix_rain(): number;
   _mirror_convert_frame(rgba_data_ptr: number, src_width: number, src_height: number): number;
   _mirror_free_string(ptr: number): void;
   _malloc(size: number): number;
@@ -42,6 +46,10 @@ interface MirrorModule {
   _mirror_get_color_filter: MirrorModuleExports['_mirror_get_color_filter'];
   _mirror_set_palette: MirrorModuleExports['_mirror_set_palette'];
   _mirror_get_palette: MirrorModuleExports['_mirror_get_palette'];
+  _mirror_set_palette_chars: MirrorModuleExports['_mirror_set_palette_chars'];
+  _mirror_get_palette_chars: MirrorModuleExports['_mirror_get_palette_chars'];
+  _mirror_set_matrix_rain: MirrorModuleExports['_mirror_set_matrix_rain'];
+  _mirror_get_matrix_rain: MirrorModuleExports['_mirror_get_matrix_rain'];
   _mirror_convert_frame: MirrorModuleExports['_mirror_convert_frame'];
   _mirror_free_string: MirrorModuleExports['_mirror_free_string'];
   _malloc: MirrorModuleExports['_malloc'];
@@ -383,6 +391,59 @@ export function setPalette(palette: Palette): void {
 export function getPalette(): number {
   if (!wasmModule) throw new Error('WASM module not initialized');
   return wasmModule._mirror_get_palette();
+}
+
+/**
+ * Set custom palette characters
+ */
+export function setPaletteChars(chars: string): void {
+  if (!wasmModule) throw new Error('WASM module not initialized');
+
+  // Allocate string in WASM memory
+  const strLen = wasmModule.lengthBytesUTF8(chars) + 1;
+  const strPtr = wasmModule._malloc(strLen);
+  if (!strPtr) {
+    throw new Error('Failed to allocate memory for palette chars');
+  }
+
+  try {
+    wasmModule.stringToUTF8(chars, strPtr, strLen);
+    const result = wasmModule._mirror_set_palette_chars(strPtr);
+    if (result !== 0) {
+      throw new Error(`Failed to set palette chars: ${chars}`);
+    }
+  } finally {
+    wasmModule._free(strPtr);
+  }
+}
+
+/**
+ * Get current custom palette characters
+ */
+export function getPaletteChars(): string {
+  if (!wasmModule) throw new Error('WASM module not initialized');
+  const ptr = wasmModule._mirror_get_palette_chars();
+  if (!ptr) return '';
+  return wasmModule.UTF8ToString(ptr);
+}
+
+/**
+ * Set Matrix rain effect
+ */
+export function setMatrixRain(enabled: boolean): void {
+  if (!wasmModule) throw new Error('WASM module not initialized');
+
+  if (wasmModule._mirror_set_matrix_rain(enabled ? 1 : 0) !== 0) {
+    throw new Error(`Failed to set matrix rain: ${enabled}`);
+  }
+}
+
+/**
+ * Get current matrix rain state
+ */
+export function getMatrixRain(): boolean {
+  if (!wasmModule) throw new Error('WASM module not initialized');
+  return wasmModule._mirror_get_matrix_rain() !== 0;
 }
 
 /**

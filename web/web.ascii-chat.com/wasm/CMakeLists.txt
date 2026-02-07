@@ -154,6 +154,7 @@ set(LIB_SOURCES
     ${LIB_ROOT}/video/image.c
     ${LIB_ROOT}/video/output_buffer.c
     ${LIB_ROOT}/video/rle.c
+    ${LIB_ROOT}/video/digital_rain.c
     ${LIB_ROOT}/video/simd/common.c
     ${LIB_ROOT}/video/simd/ascii_simd.c
     ${LIB_ROOT}/video/simd/ascii_simd_color.c
@@ -225,6 +226,10 @@ set(EXPORTED_FUNCTIONS
     _mirror_get_color_filter
     _mirror_set_palette
     _mirror_get_palette
+    _mirror_set_palette_chars
+    _mirror_get_palette_chars
+    _mirror_set_matrix_rain
+    _mirror_get_matrix_rain
     _mirror_convert_frame
     _mirror_free_string
     _malloc

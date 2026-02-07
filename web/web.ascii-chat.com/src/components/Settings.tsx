@@ -9,6 +9,8 @@ export interface SettingsConfig {
   colorMode: ColorMode
   colorFilter: ColorFilter
   palette: Palette
+  paletteChars?: string
+  matrixRain?: boolean
 }
 
 interface SettingsProps {
@@ -132,6 +134,44 @@ export function Settings({ config, onChange, disabled = false }: SettingsProps) 
               <option value="custom">Custom</option>
             </select>
           </div>
+
+          {/* Matrix Rain Effect */}
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-xs font-medium text-terminal-8 mb-1">
+              Effects
+            </label>
+            <button
+              onClick={() => updateConfig({ matrixRain: !config.matrixRain })}
+              disabled={disabled}
+              className={`w-full px-4 py-2 rounded text-sm font-medium transition-colors ${
+                config.matrixRain
+                  ? 'bg-terminal-2 text-terminal-bg hover:bg-terminal-10'
+                  : 'bg-terminal-8 text-terminal-fg hover:bg-terminal-7'
+              }`}
+            >
+              {config.matrixRain ? '🟢 Matrix Rain' : 'Matrix Rain'}
+            </button>
+          </div>
+
+          {/* Custom Palette Characters (shown when palette is custom) */}
+          {config.palette === 'custom' && (
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-xs font-medium text-terminal-8 mb-1">
+                Custom Characters (dark → bright)
+              </label>
+              <input
+                type="text"
+                value={config.paletteChars || ' =#░░▒▒▓▓██'}
+                onChange={(e) => updateConfig({ paletteChars: e.target.value })}
+                disabled={disabled}
+                placeholder=" =#░░▒▒▓▓██"
+                className="w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-sm text-terminal-fg focus:outline-none focus:border-terminal-4 font-mono"
+              />
+              <div className="text-xs text-terminal-8 mt-1">
+                Enter characters from darkest to brightest
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
