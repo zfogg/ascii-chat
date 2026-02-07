@@ -75,7 +75,7 @@ void acds_strings_destroy(void) {
   g_nouns_cache = NULL;
 
   g_cache_initialized = false;
-  log_debug("Session string word cache cleaned up");
+  log_dev("Session string word cache cleaned up");
 }
 
 /**
@@ -144,7 +144,7 @@ static asciichat_error_t build_validation_caches(void) {
   // Library code does not call atexit() - that's the application's responsibility.
 
   static_mutex_unlock(&g_cache_init_mutex);
-  log_debug("Session string word cache initialized (%zu adjectives, %zu nouns)", adjectives_count, nouns_count);
+  log_dev("Session string word cache initialized (%zu adjectives, %zu nouns)", adjectives_count, nouns_count);
   return ASCIICHAT_OK;
 }
 
@@ -214,7 +214,7 @@ asciichat_error_t acds_string_generate(char *output, size_t output_size) {
     return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Session string too long for buffer");
   }
 
-  log_debug("Generated session string: %s", output);
+  log_dev("Generated session string: %s", output);
   return ASCIICHAT_OK;
 }
 
@@ -301,7 +301,7 @@ bool is_session_string(const char *str) {
     asciichat_error_t cache_err = build_validation_caches();
     if (cache_err != ASCIICHAT_OK) {
       log_warn("Failed to initialize session string cache; accepting format-valid string");
-      log_debug("Valid session string format (cache unavailable): %s", str);
+      log_dev("Valid session string format (cache unavailable): %s", str);
       return true; // Format is valid, cache is unavailable, accept anyway
     }
   }
@@ -329,6 +329,6 @@ bool is_session_string(const char *str) {
     return false;
   }
 
-  log_debug("Valid session string: %s", str);
+  log_dev("Valid session string: %s", str);
   return true;
 }
