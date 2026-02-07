@@ -1524,6 +1524,9 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
 
   client->terminal_caps.desired_fps = caps->desired_fps;
 
+  // Extract wants_padding flag (1=padding enabled, 0=no padding for snapshot/piped modes)
+  client->terminal_caps.wants_padding = (caps->wants_padding != 0);
+
   const char *custom_chars =
       (client->terminal_caps.palette_type == PALETTE_CUSTOM && client->terminal_caps.palette_custom[0])
           ? client->terminal_caps.palette_custom
@@ -1544,14 +1547,15 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
   client->has_terminal_caps = true;
 
   log_info("Client %u capabilities: %ux%u, color_level=%s (%u colors), caps=0x%x, term=%s, colorterm=%s, "
-           "render_mode=%s, reliable=%s, fps=%u",
+           "render_mode=%s, reliable=%s, fps=%u, wants_padding=%d",
            atomic_load(&client->client_id), client->width, client->height,
            terminal_color_level_name(client->terminal_caps.color_level), client->terminal_caps.color_count,
            client->terminal_caps.capabilities, client->terminal_caps.term_type, client->terminal_caps.colorterm,
            (client->terminal_caps.render_mode == RENDER_MODE_HALF_BLOCK
                 ? "half-block"
                 : (client->terminal_caps.render_mode == RENDER_MODE_BACKGROUND ? "background" : "foreground")),
-           client->terminal_caps.detection_reliable ? "yes" : "no", client->terminal_caps.desired_fps);
+           client->terminal_caps.detection_reliable ? "yes" : "no", client->terminal_caps.desired_fps,
+           client->terminal_caps.wants_padding);
 
   // Send capabilities acknowledgment to client
   log_info_client(client, "Terminal configured: %ux%u, %s, %s mode, %u fps", client->width, client->height,

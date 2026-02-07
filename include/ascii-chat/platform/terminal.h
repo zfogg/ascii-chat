@@ -565,6 +565,8 @@ typedef struct {
   uint8_t desired_fps;
   /** @brief Monochromatic color filter enum value (color_filter_t) */
   color_filter_t color_filter;
+  /** @brief Whether client wants frame padding (centering) - false for snapshot/piped modes */
+  bool wants_padding;
 } terminal_capabilities_t;
 
 /**

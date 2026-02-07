@@ -343,6 +343,81 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     // Initial connection logged only to file
   }
 
+  // Check for WebSocket URL - handle separately from TCP
+  bool is_websocket = (strncmp(address, "ws://", 5) == 0 || strncmp(address, "wss://", 6) == 0);
+  if (is_websocket) {
+    // WebSocket connection - bypass TCP socket creation
+    char ws_url[512];
+    snprintf(ws_url, sizeof(ws_url), "%s:%d", address, port);
+    log_info("Connecting via WebSocket: %s", ws_url);
+
+    // Initialize crypto if encryption is enabled
+    log_debug("CLIENT_CONNECT: Calling client_crypto_init()");
+    if (client_crypto_init() != 0) {
+      log_error("Failed to initialize crypto (password required or incorrect)");
+      log_debug("CLIENT_CONNECT: client_crypto_init() failed");
+      return CONNECTION_ERROR_AUTH_FAILED;
+    }
+
+    // Get crypto context for transport
+    const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
+
+    // Create WebSocket transport (handles connection internally)
+    g_client_transport = acip_websocket_client_transport_create(ws_url, (crypto_context_t *)crypto_ctx);
+    if (!g_client_transport) {
+      log_error("Failed to create WebSocket ACIP transport");
+      return -1;
+    }
+    log_debug("CLIENT_CONNECT: Created WebSocket ACIP transport with crypto context");
+
+    // Set connection as active
+    atomic_store(&g_connection_active, true);
+    atomic_store(&g_connection_lost, false);
+
+    // Send initial terminal capabilities to server
+    int result = threaded_send_terminal_size_with_auto_detect(GET_OPTION(width), GET_OPTION(height));
+    if (result < 0) {
+      log_error("Failed to send initial capabilities to server: %s", network_error_string());
+      acip_transport_destroy(g_client_transport);
+      g_client_transport = NULL;
+      return -1;
+    }
+
+    // Disable terminal logging after initial setup (for non-snapshot mode)
+    if (!GET_OPTION(snapshot_mode) && has_ever_connected) {
+      log_set_terminal_output(false);
+    }
+
+    // Build capabilities flags
+    uint32_t my_capabilities = CLIENT_CAP_VIDEO;
+    log_debug("GET_OPTION(audio_enabled) = %d (sending CLIENT_JOIN)", GET_OPTION(audio_enabled));
+    if (GET_OPTION(audio_enabled)) {
+      log_debug("Adding CLIENT_CAP_AUDIO to capabilities");
+      my_capabilities |= CLIENT_CAP_AUDIO;
+    }
+    if (GET_OPTION(color_mode) != COLOR_MODE_NONE) {
+      my_capabilities |= CLIENT_CAP_COLOR;
+    }
+    if (GET_OPTION(stretch)) {
+      my_capabilities |= CLIENT_CAP_STRETCH;
+    }
+
+    // Generate display name from username + PID
+    const char *display_name = platform_get_username();
+    char my_display_name[MAX_DISPLAY_NAME_LEN];
+    int pid = getpid();
+    SAFE_SNPRINTF(my_display_name, sizeof(my_display_name), "%s-%d", display_name, pid);
+    if (threaded_send_client_join_packet(my_display_name, my_capabilities) < 0) {
+      log_error("Failed to send client join packet: %s", network_error_string());
+      acip_transport_destroy(g_client_transport);
+      g_client_transport = NULL;
+      return -1;
+    }
+
+    log_info("WebSocket connection established successfully");
+    return 0;
+  }
+
   // Resolve server address using getaddrinfo() for IPv4/IPv6 support
   // Special handling for localhost: ensure we try both IPv6 (::1) and IPv4 (127.0.0.1)
   // Many systems only map "localhost" to 127.0.0.1 in /etc/hosts
@@ -554,14 +629,16 @@ connection_success:
   // Create ACIP transport for protocol-agnostic packet sending
   // The transport wraps the socket with encryption context from the handshake
   const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
+
+  // Create TCP transport (WebSocket is handled earlier in the function)
   g_client_transport = acip_tcp_transport_create(g_sockfd, (crypto_context_t *)crypto_ctx);
   if (!g_client_transport) {
-    log_error("Failed to create ACIP transport");
+    log_error("Failed to create TCP ACIP transport");
     close_socket(g_sockfd);
     g_sockfd = INVALID_SOCKET_VALUE;
     return -1;
   }
-  log_debug("CLIENT_CONNECT: Created ACIP transport with crypto context");
+  log_debug("CLIENT_CONNECT: Created TCP ACIP transport with crypto context");
 
   // Turn OFF terminal logging when successfully connected to server
   // First connection - we'll disable logging after main.c shows the "Connected successfully" message
@@ -1122,6 +1199,18 @@ asciichat_error_t threaded_send_terminal_size_with_auto_detect(unsigned short wi
   // Detect terminal capabilities automatically
   terminal_capabilities_t caps = detect_terminal_capabilities();
 
+  // Set wants_padding based on snapshot mode and TTY status
+  // Disable padding when:
+  // - In snapshot mode (one frame and exit)
+  // - When stdout is not a TTY (piped/redirected output)
+  // Enable padding for interactive terminal sessions
+  bool is_snapshot_mode = GET_OPTION(snapshot_mode);
+  bool is_interactive_tty = platform_isatty(STDIN_FILENO) && platform_isatty(STDOUT_FILENO);
+  caps.wants_padding = is_interactive_tty && !is_snapshot_mode;
+
+  log_debug("Client capabilities: wants_padding=%d (snapshot=%d, stdin_tty=%d, stdout_tty=%d)", caps.wants_padding,
+            is_snapshot_mode, platform_isatty(STDIN_FILENO), platform_isatty(STDOUT_FILENO));
+
   // Apply user's color mode override
   caps = apply_color_mode_override(caps);
 
@@ -1135,6 +1224,8 @@ asciichat_error_t threaded_send_terminal_size_with_auto_detect(unsigned short wi
     SAFE_STRNCPY(caps.term_type, "unknown", sizeof(caps.term_type));
     SAFE_STRNCPY(caps.colorterm, "", sizeof(caps.colorterm));
     caps.detection_reliable = 0;
+    // Preserve wants_padding even in fallback mode
+    caps.wants_padding = is_interactive_tty && !is_snapshot_mode;
   }
 
   // Convert to network packet format with proper byte order
@@ -1179,7 +1270,8 @@ asciichat_error_t threaded_send_terminal_size_with_auto_detect(unsigned short wi
   // Send UTF-8 support flag: true for AUTO (default) and TRUE settings, false for FALSE setting
   net_packet.utf8_support = (GET_OPTION(force_utf8) != UTF8_SETTING_FALSE) ? 1 : 0;
 
-  SAFE_MEMSET(net_packet.reserved, sizeof(net_packet.reserved), 0, sizeof(net_packet.reserved));
+  // Set wants_padding flag (1=padding enabled, 0=no padding for snapshot/piped modes)
+  net_packet.wants_padding = caps.wants_padding ? 1 : 0;
 
   // Use threaded_send_packet() which handles encryption
   return threaded_send_packet(PACKET_TYPE_CLIENT_CAPABILITIES, &net_packet, sizeof(net_packet));

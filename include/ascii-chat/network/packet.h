@@ -1040,8 +1040,8 @@ typedef struct {
   uint8_t desired_fps;
   /** @brief Monochromatic color filter enum value (color_filter_t) */
   uint8_t color_filter;
-  /** @brief Reserved bytes for alignment (must be zero) */
-  uint8_t reserved[1];
+  /** @brief Whether client wants frame padding (1=padding enabled, 0=no padding for snapshot/piped modes) */
+  uint8_t wants_padding;
 } /** @cond */
 PACKED_ATTR /** @endcond */ terminal_capabilities_packet_t;
 

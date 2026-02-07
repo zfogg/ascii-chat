@@ -782,7 +782,8 @@ int tcp_client_send_terminal_capabilities(tcp_client_t *client, unsigned short w
   // Send UTF-8 support flag: true for AUTO (default) and TRUE settings, false for FALSE setting
   net_packet.utf8_support = (GET_OPTION(force_utf8) != UTF8_SETTING_FALSE) ? 1 : 0;
 
-  SAFE_MEMSET(net_packet.reserved, sizeof(net_packet.reserved), 0, sizeof(net_packet.reserved));
+  // Set wants_padding flag (1=padding enabled, 0=no padding for snapshot/piped modes)
+  net_packet.wants_padding = caps.wants_padding ? 1 : 0;
 
   return tcp_client_send_packet(client, PACKET_TYPE_CLIENT_CAPABILITIES, &net_packet, sizeof(net_packet));
 }

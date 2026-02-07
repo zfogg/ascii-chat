@@ -209,11 +209,11 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   }
   // Half-block mode: skip aspect ratio to preserve full doubled dimensions for 2x resolution
 
-  // Calculate padding for centering
+  // Calculate padding for centering (only if client wants padding)
   size_t pad_width = 0;
   size_t pad_height = 0;
 
-  if (use_aspect_ratio) {
+  if (use_aspect_ratio && caps->wants_padding) {
     ssize_t pad_width_ss = width > resized_width ? (width - resized_width) / 2 : 0;
     pad_width = (size_t)pad_width_ss;
 
@@ -222,8 +222,12 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
 
     log_debug_every(LOG_RATE_SLOW,
                     "ascii_convert_with_capabilities: width=%zd, height=%zd, resized_width=%zd, resized_height=%zd, "
-                    "pad_width=%zu, pad_height=%zu, stretch=%d",
-                    width, height, resized_width, resized_height, pad_width, pad_height, stretch);
+                    "pad_width=%zu, pad_height=%zu, stretch=%d, wants_padding=%d",
+                    width, height, resized_width, resized_height, pad_width, pad_height, stretch, caps->wants_padding);
+  } else if (!caps->wants_padding) {
+    log_debug_every(LOG_RATE_SLOW,
+                    "ascii_convert_with_capabilities: padding disabled (wants_padding=false), width=%zd, height=%zd",
+                    width, height);
   }
 
   // Resize the captured frame to the aspect-correct dimensions

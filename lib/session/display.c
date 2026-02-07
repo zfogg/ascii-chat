@@ -166,6 +166,19 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   // Detect terminal capabilities
   ctx->caps = detect_terminal_capabilities();
 
+  // Set wants_padding based on snapshot mode and TTY status
+  // Disable padding when:
+  // - In snapshot mode (one frame and exit)
+  // - When stdout is not a TTY (piped/redirected output)
+  // Enable padding for interactive terminal sessions
+  bool is_snapshot_mode = config->snapshot_mode;
+  bool is_interactive_tty = ctx->has_tty && platform_isatty(STDIN_FILENO) && platform_isatty(STDOUT_FILENO);
+  ctx->caps.wants_padding = is_interactive_tty && !is_snapshot_mode;
+
+  log_debug("Padding mode: wants_padding=%d (snapshot=%d, tty=%d, stdin_tty=%d, stdout_tty=%d)",
+            ctx->caps.wants_padding, is_snapshot_mode, ctx->has_tty, platform_isatty(STDIN_FILENO),
+            platform_isatty(STDOUT_FILENO));
+
   // Apply color mode override if specified
   if (config->color_mode != TERM_COLOR_AUTO) {
     ctx->caps.color_level = config->color_mode;
