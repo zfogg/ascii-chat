@@ -1,6 +1,7 @@
 /**
  * @file platform/wasm/string.c
  * @brief String utility functions for WASM/Emscripten
+ * @ingroup platform
  */
 
 #include <ascii-chat/platform/abstraction.h>

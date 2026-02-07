@@ -1,6 +1,7 @@
 /**
- * @file platform/wasm/util.c
+ * @file platform/wasm/stubs/util.c
  * @brief Utility stubs for WASM/Emscripten (backtrace, localtime)
+ * @ingroup platform
  */
 
 #include <ascii-chat/platform/abstraction.h>

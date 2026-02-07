@@ -1,6 +1,7 @@
 /**
- * @file platform/wasm/log_stubs.c
+ * @file platform/wasm/stubs/log.c
  * @brief Logging utility stubs for WASM
+ * @ingroup platform
  */
 
 #include <ascii-chat/asciichat_errno.h>

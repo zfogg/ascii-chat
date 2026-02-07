@@ -1,6 +1,7 @@
 /**
  * @file platform/wasm/time.c
  * @brief Time functions for WASM/Emscripten
+ * @ingroup platform
  */
 
 #include <ascii-chat/platform/abstraction.h>

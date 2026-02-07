@@ -1,6 +1,7 @@
 /**
- * @file platform/wasm/file.c
+ * @file platform/wasm/stubs/filesystem.c
  * @brief File operation stubs for WASM
+ * @ingroup platform
  */
 
 #include <ascii-chat/platform/abstraction.h>

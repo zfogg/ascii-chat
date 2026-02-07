@@ -1,6 +1,7 @@
 /**
  * @file platform/wasm/terminal.c
  * @brief Terminal abstraction for WASM/Emscripten via EM_JS bridge to xterm.js
+ * @ingroup platform
  */
 
 #include <emscripten.h>

@@ -1,6 +1,7 @@
 /**
- * @file platform/wasm/actions.c
+ * @file platform/wasm/stubs/actions.c
  * @brief Action function stubs for WASM (not needed for mirror mode)
+ * @ingroup platform
  */
 
 #include <ascii-chat/options/actions.h>

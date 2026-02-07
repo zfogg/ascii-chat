@@ -1,6 +1,7 @@
 /**
  * @file platform/wasm/init.c
  * @brief Platform initialization for WASM/Emscripten
+ * @ingroup platform
  */
 
 #include <ascii-chat/platform/init.h>

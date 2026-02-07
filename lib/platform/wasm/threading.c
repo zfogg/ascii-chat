@@ -1,6 +1,7 @@
 /**
  * @file platform/wasm/threading.c
  * @brief Threading abstraction for WASM/Emscripten using pthreads
+ * @ingroup platform
  */
 
 #include <ascii-chat/platform/abstraction.h>

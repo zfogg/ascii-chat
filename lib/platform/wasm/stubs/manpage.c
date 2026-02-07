@@ -1,6 +1,7 @@
 /**
- * @file platform/wasm/manpage_stubs.c
+ * @file platform/wasm/stubs/manpage.c
  * @brief Manpage resource stubs for WASM (not needed for mirror mode)
+ * @ingroup platform
  */
 
 #include <stdio.h>

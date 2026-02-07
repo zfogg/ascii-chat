@@ -1,6 +1,7 @@
 /**
- * @file platform/wasm/environment.c
- * @brief Environment and string utilities for WASM/Emscripten
+ * @file platform/wasm/system.c
+ * @brief System utilities (environment, strings) for WASM/Emscripten
+ * @ingroup platform
  */
 
 #include <ascii-chat/platform/abstraction.h>

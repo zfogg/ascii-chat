@@ -63,15 +63,15 @@ set(PLATFORM_SOURCES
     ${LIB_ROOT}/platform/wasm/init.c
     ${LIB_ROOT}/platform/wasm/terminal.c
     ${LIB_ROOT}/platform/wasm/threading.c
-    ${LIB_ROOT}/platform/wasm/environment.c
+    ${LIB_ROOT}/platform/wasm/system.c
     ${LIB_ROOT}/platform/wasm/time.c
     ${LIB_ROOT}/platform/wasm/string.c
-    ${LIB_ROOT}/platform/wasm/util.c
-    ${LIB_ROOT}/platform/wasm/actions.c
-    ${LIB_ROOT}/platform/wasm/manpage_stubs.c
-    ${LIB_ROOT}/platform/wasm/file.c
-    ${LIB_ROOT}/platform/wasm/video_stubs.c
-    ${LIB_ROOT}/platform/wasm/log_stubs.c
+    ${LIB_ROOT}/platform/wasm/stubs/util.c
+    ${LIB_ROOT}/platform/wasm/stubs/actions.c
+    ${LIB_ROOT}/platform/wasm/stubs/manpage.c
+    ${LIB_ROOT}/platform/wasm/stubs/filesystem.c
+    ${LIB_ROOT}/platform/wasm/stubs/video.c
+    ${LIB_ROOT}/platform/wasm/stubs/log.c
 )
 
 # Third-party dependencies (source-included)

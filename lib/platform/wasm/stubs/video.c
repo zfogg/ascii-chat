@@ -1,6 +1,7 @@
 /**
- * @file platform/wasm/video_stubs.c
+ * @file platform/wasm/stubs/video.c
  * @brief Video utility stubs for WASM
+ * @ingroup platform
  */
 
 #include <ascii-chat/asciichat_errno.h>
