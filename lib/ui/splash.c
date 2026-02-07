@@ -143,6 +143,22 @@ static void build_connection_target(char *buffer, size_t buffer_size) {
   }
   buffer[0] = '\0';
 
+  // Mirror mode - no network connection
+  asciichat_mode_t mode = GET_OPTION(detected_mode);
+  if (mode == MODE_MIRROR) {
+    const char *media_url = GET_OPTION(media_url);
+    const char *media_file = GET_OPTION(media_file);
+
+    if (media_url && media_url[0] != '\0') {
+      snprintf(buffer, buffer_size, "Loading from URL...");
+    } else if (media_file && media_file[0] != '\0') {
+      snprintf(buffer, buffer_size, "Loading from file...");
+    } else {
+      snprintf(buffer, buffer_size, "Initializing...");
+    }
+    return;
+  }
+
   // Check if we have a session string (discovery mode)
   const char *session = GET_OPTION(session_string);
   if (session && session[0] != '\0') {
