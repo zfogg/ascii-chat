@@ -4,6 +4,9 @@
 cmake_minimum_required(VERSION 3.18)
 project(ascii-chat-mirror-wasm)
 
+# Export compile commands for IDE integration
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # Required for Emscripten
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -13,8 +16,9 @@ add_definitions(
     -DEMSCRIPTEN_BUILD=1
 )
 
-# Add compiler flags for pthreads support (atomics + bulk-memory)
-add_compile_options(-pthread -matomics -mbulk-memory)
+# Add compiler flags for pthreads support (atomics + bulk-memory) and WASM SIMD
+# -msse2 enables SSE2 intrinsics emulation on top of WASM SIMD128
+add_compile_options(-pthread -matomics -mbulk-memory -msimd128 -msse2)
 
 # Fetch and build dependencies for WASM
 include(FetchContent)
@@ -152,6 +156,7 @@ set(LIB_SOURCES
     ${LIB_ROOT}/video/rle.c
     ${LIB_ROOT}/video/simd/common.c
     ${LIB_ROOT}/video/simd/ascii_simd.c
+    ${LIB_ROOT}/video/simd/ascii_simd_color.c
 
     # Utilities (minimal set needed by video/options)
     ${LIB_ROOT}/util/format.c

@@ -11,13 +11,18 @@
 # CMakeLists.txt optimized for Emscripten.
 # =============================================================================
 
-# Create custom target that invokes the WASM build
+# Create custom target that invokes the WASM build and merges compile_commands.json
 add_custom_target(mirror-wasm
     COMMAND ${CMAKE_COMMAND} -E echo "Building WASM module..."
     COMMAND ${CMAKE_COMMAND} -E env
         PATH=/usr/lib/emscripten:$ENV{PATH}
         bash -c "cd ${CMAKE_SOURCE_DIR}/web/web.ascii-chat.com/wasm && emcmake cmake -B build && cmake --build build"
-    COMMENT "Building WASM mirror module (emscripten required)"
+    COMMAND ${CMAKE_COMMAND} -E echo "Merging compile_commands.json..."
+    COMMAND bash ${CMAKE_SOURCE_DIR}/cmake/utils/merge-compile-commands.sh
+        ${CMAKE_BINARY_DIR}/compile_commands.json
+        ${CMAKE_SOURCE_DIR}/web/web.ascii-chat.com/wasm/build/compile_commands.json
+        ${CMAKE_BINARY_DIR}/compile_commands.json
+    COMMENT "Building WASM mirror module and merging compile_commands.json"
     VERBATIM
 )
 
