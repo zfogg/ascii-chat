@@ -7,6 +7,10 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/video/ascii.h>
+#include <ascii-chat/video/color_filter.h>
+#include <ascii-chat/video/framebuffer.h>
+#include <ascii-chat/common.h>
 
 // ============================================================================
 // Initialization
@@ -130,4 +134,76 @@ int mirror_set_color_filter(int filter) {
 EMSCRIPTEN_KEEPALIVE
 int mirror_get_color_filter(void) {
   return GET_OPTION(color_filter);
+}
+
+// ============================================================================
+// Frame Conversion API
+// ============================================================================
+
+EMSCRIPTEN_KEEPALIVE
+char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
+  if (!rgba_data || src_width <= 0 || src_height <= 0) {
+    return NULL;
+  }
+
+  // Get current settings from options
+  int dst_width = GET_OPTION(width);
+  int dst_height = GET_OPTION(height);
+  color_filter_t filter = (color_filter_t)GET_OPTION(color_filter);
+  render_mode_t render_mode = (render_mode_t)GET_OPTION(render_mode);
+
+  // Apply color filter to RGBA data if needed
+  if (filter != COLOR_FILTER_NONE) {
+    // Convert RGBA to RGB (color_filter expects RGB24)
+    int stride = src_width * 3;
+    uint8_t *rgb_data = SAFE_MALLOC(src_width * src_height * 3, uint8_t *);
+    if (!rgb_data) {
+      return NULL;
+    }
+
+    // Extract RGB from RGBA
+    for (int i = 0; i < src_width * src_height; i++) {
+      rgb_data[i * 3 + 0] = rgba_data[i * 4 + 0]; // R
+      rgb_data[i * 3 + 1] = rgba_data[i * 4 + 1]; // G
+      rgb_data[i * 3 + 2] = rgba_data[i * 4 + 2]; // B
+    }
+
+    // Apply filter (modifies rgb_data in-place)
+    apply_color_filter(rgb_data, src_width, src_height, stride, filter);
+
+    // Copy filtered RGB back to RGBA
+    for (int i = 0; i < src_width * src_height; i++) {
+      rgba_data[i * 4 + 0] = rgb_data[i * 3 + 0];
+      rgba_data[i * 4 + 1] = rgb_data[i * 3 + 1];
+      rgba_data[i * 4 + 2] = rgb_data[i * 3 + 2];
+      // Alpha unchanged
+    }
+
+    SAFE_FREE(rgb_data);
+  }
+
+  // Create framebuffer for ASCII output
+  framebuffer_t fb;
+  if (framebuffer_init(&fb, dst_width, dst_height) != ASCIICHAT_OK) {
+    return NULL;
+  }
+
+  // Convert to ASCII using full library rendering
+  asciichat_error_t err = convert_image_to_ascii(rgba_data, src_width, src_height, &fb, render_mode);
+
+  if (err != ASCIICHAT_OK) {
+    framebuffer_cleanup(&fb);
+    return NULL;
+  }
+
+  // Generate ANSI escape sequences from framebuffer
+  char *output = generate_ansi_output(&fb, render_mode);
+
+  framebuffer_cleanup(&fb);
+  return output;
+}
+
+EMSCRIPTEN_KEEPALIVE
+void mirror_free_string(char *ptr) {
+  SAFE_FREE(ptr);
 }
