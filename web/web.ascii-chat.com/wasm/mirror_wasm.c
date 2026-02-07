@@ -4,12 +4,15 @@
  */
 
 #include <emscripten.h>
+#include <string.h>
 #include <ascii-chat/options/options.h>
+#include <ascii-chat/options/rcu.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/video/ascii.h>
 #include <ascii-chat/video/color_filter.h>
-#include <ascii-chat/video/framebuffer.h>
+#include <ascii-chat/video/image.h>
+#include <ascii-chat/video/palette.h>
 #include <ascii-chat/common.h>
 
 // ============================================================================
@@ -43,8 +46,8 @@ int mirror_init(int width, int height) {
 
 EMSCRIPTEN_KEEPALIVE
 void mirror_cleanup(void) {
-  options_cleanup();
-  platform_cleanup();
+  options_state_destroy();
+  platform_destroy();
 }
 
 // ============================================================================
@@ -150,57 +153,50 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
   int dst_width = GET_OPTION(width);
   int dst_height = GET_OPTION(height);
   color_filter_t filter = (color_filter_t)GET_OPTION(color_filter);
-  render_mode_t render_mode = (render_mode_t)GET_OPTION(render_mode);
+  bool use_color = (GET_OPTION(color_mode) != COLOR_MODE_NONE);
+  bool aspect_ratio = true; // Always preserve aspect ratio for web
+  bool stretch = false;     // Don't stretch - fit within dimensions
 
-  // Apply color filter to RGBA data if needed
+  // Convert RGBA to RGB (strip alpha channel)
+  rgb_pixel_t *rgb_pixels = SAFE_MALLOC(src_width * src_height * sizeof(rgb_pixel_t), rgb_pixel_t *);
+  if (!rgb_pixels) {
+    return NULL;
+  }
+
+  for (int i = 0; i < src_width * src_height; i++) {
+    rgb_pixels[i].r = rgba_data[i * 4 + 0];
+    rgb_pixels[i].g = rgba_data[i * 4 + 1];
+    rgb_pixels[i].b = rgba_data[i * 4 + 2];
+    // Alpha (rgba_data[i * 4 + 3]) is discarded
+  }
+
+  // Apply color filter if needed
   if (filter != COLOR_FILTER_NONE) {
-    // Convert RGBA to RGB (color_filter expects RGB24)
+    // color_filter operates on packed RGB24 format
+    uint8_t *rgb24 = (uint8_t *)rgb_pixels;
     int stride = src_width * 3;
-    uint8_t *rgb_data = SAFE_MALLOC(src_width * src_height * 3, uint8_t *);
-    if (!rgb_data) {
-      return NULL;
-    }
-
-    // Extract RGB from RGBA
-    for (int i = 0; i < src_width * src_height; i++) {
-      rgb_data[i * 3 + 0] = rgba_data[i * 4 + 0]; // R
-      rgb_data[i * 3 + 1] = rgba_data[i * 4 + 1]; // G
-      rgb_data[i * 3 + 2] = rgba_data[i * 4 + 2]; // B
-    }
-
-    // Apply filter (modifies rgb_data in-place)
-    apply_color_filter(rgb_data, src_width, src_height, stride, filter);
-
-    // Copy filtered RGB back to RGBA
-    for (int i = 0; i < src_width * src_height; i++) {
-      rgba_data[i * 4 + 0] = rgb_data[i * 3 + 0];
-      rgba_data[i * 4 + 1] = rgb_data[i * 3 + 1];
-      rgba_data[i * 4 + 2] = rgb_data[i * 3 + 2];
-      // Alpha unchanged
-    }
-
-    SAFE_FREE(rgb_data);
+    apply_color_filter(rgb24, src_width, src_height, stride, filter);
   }
 
-  // Create framebuffer for ASCII output
-  framebuffer_t fb;
-  if (framebuffer_init(&fb, dst_width, dst_height) != ASCIICHAT_OK) {
+  // Create image structure
+  image_t img = {.w = src_width, .h = src_height, .pixels = rgb_pixels, .alloc_method = IMAGE_ALLOC_SIMD};
+
+  // Build luminance palette from default ASCII chars
+  const char *palette_chars = PALETTE_CHARS_STANDARD;
+  char luminance_palette[256];
+  if (build_client_luminance_palette(palette_chars, strlen(palette_chars), luminance_palette) != 0) {
+    SAFE_FREE(rgb_pixels);
     return NULL;
   }
 
-  // Convert to ASCII using full library rendering
-  asciichat_error_t err = convert_image_to_ascii(rgba_data, src_width, src_height, &fb, render_mode);
+  // Convert to ASCII
+  char *ascii_output =
+      ascii_convert(&img, dst_width, dst_height, use_color, aspect_ratio, stretch, palette_chars, luminance_palette);
 
-  if (err != ASCIICHAT_OK) {
-    framebuffer_cleanup(&fb);
-    return NULL;
-  }
+  // Clean up
+  SAFE_FREE(rgb_pixels);
 
-  // Generate ANSI escape sequences from framebuffer
-  char *output = generate_ansi_output(&fb, render_mode);
-
-  framebuffer_cleanup(&fb);
-  return output;
+  return ascii_output;
 }
 
 EMSCRIPTEN_KEEPALIVE

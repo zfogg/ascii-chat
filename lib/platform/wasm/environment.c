@@ -17,10 +17,9 @@ const char *platform_strerror(int errnum) {
   return strerror(errnum);
 }
 
-int platform_setenv(const char *name, const char *value, int overwrite) {
+int platform_setenv(const char *name, const char *value) {
   (void)name;
   (void)value;
-  (void)overwrite;
   return -1; // Not supported in WASM
 }
 

@@ -11,6 +11,6 @@ asciichat_error_t platform_init(void) {
   return ASCIICHAT_OK;
 }
 
-void platform_cleanup(void) {
-  // No cleanup needed
+void platform_destroy(void) {
+  // No cleanup needed for WASM
 }

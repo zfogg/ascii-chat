@@ -20,16 +20,28 @@ uint64_t platform_get_time_us(void) {
   return (uint64_t)tv.tv_sec * 1000000 + (uint64_t)tv.tv_usec;
 }
 
-void platform_sleep_ms(uint64_t ms) {
+void platform_sleep_ms(unsigned int ms) {
   struct timespec ts;
   ts.tv_sec = ms / 1000;
   ts.tv_nsec = (ms % 1000) * 1000000;
   nanosleep(&ts, NULL);
 }
 
-void platform_sleep_us(uint64_t us) {
+void platform_sleep_us(unsigned int us) {
   struct timespec ts;
   ts.tv_sec = us / 1000000;
   ts.tv_nsec = (us % 1000000) * 1000;
   nanosleep(&ts, NULL);
+}
+
+uint64_t platform_get_monotonic_time_ns(void) {
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
+}
+
+uint64_t platform_get_monotonic_time_us(void) {
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
 }
