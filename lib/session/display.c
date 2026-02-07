@@ -41,7 +41,7 @@
  * Contains all state for terminal display including TTY info, capabilities,
  * palette, and rendering state.
  */
-struct session_display_ctx {
+typedef struct session_display_ctx {
   /** @brief TTY information (file descriptor, path, ownership) */
   tty_info_t tty_info;
 
@@ -80,7 +80,7 @@ struct session_display_ctx {
 
   /** @brief Help screen active flag (toggled with '?') - atomic for thread-safe access */
   atomic_bool help_screen_active;
-};
+} session_display_ctx_t;
 
 /* ============================================================================
  * Internal Helper Functions
