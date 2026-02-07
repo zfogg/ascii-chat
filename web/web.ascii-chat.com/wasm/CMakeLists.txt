@@ -59,7 +59,7 @@ include_directories(
 
 # Source files for WASM entry point
 set(MIRROR_SOURCES
-    ${CMAKE_SOURCE_DIR}/mirror_wasm.c
+    ${CMAKE_SOURCE_DIR}/../../../src/web/mirror.c
 )
 
 # Platform abstraction layer for WASM
@@ -209,7 +209,7 @@ target_link_libraries(mirror PRIVATE
     pcre2-8
 )
 
-# Exported functions (all EMSCRIPTEN_KEEPALIVE functions from mirror_wasm.c)
+# Exported functions (all EMSCRIPTEN_KEEPALIVE functions from mirror.c)
 set(EXPORTED_FUNCTIONS
     _mirror_init
     _mirror_cleanup
