@@ -8,6 +8,7 @@
 #include <ascii-chat/video/color_filter.h>
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/log/logging.h>
+#include <ascii-chat/util/utf8.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -472,8 +473,21 @@ char *digital_rain_apply(digital_rain_t *rain, const char *frame, float delta_ti
         remaining -= (size_t)ansi_len;
       }
 
-      *dst++ = *src++;
-      remaining--;
+      // Decode UTF-8 character to get byte length
+      uint32_t codepoint;
+      int utf8_len = utf8_decode((const uint8_t *)src, &codepoint);
+      if (utf8_len < 0) {
+        // Invalid UTF-8, treat as single byte
+        utf8_len = 1;
+      }
+
+      // Copy all bytes of the UTF-8 character
+      for (int i = 0; i < utf8_len && *src && remaining > 0; i++) {
+        *dst++ = *src++;
+        remaining--;
+      }
+
+      // Only increment column once per character (not per byte)
       col++;
     } else {
       break;
