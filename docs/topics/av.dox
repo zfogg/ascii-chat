@@ -1,5 +1,6 @@
 /**
  * @page topic_av Audio/Video Networking
+ * @ingroup module_network
  * @ingroup av
  *
  * @section av_overview Overview

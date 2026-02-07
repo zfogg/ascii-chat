@@ -1,5 +1,6 @@
 /**
  * @page topic_server_stream Stream Generation
+ * @ingroup module_server
  * @ingroup server_stream
  *
  * @section server_stream_overview Overview

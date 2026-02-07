@@ -1,5 +1,6 @@
 /**
  * @page topic_server_main Server Main Entry Point
+ * @ingroup module_server
  * @ingroup server_main
  *
  * @section server_main_overview Overview

@@ -1,5 +1,6 @@
 /**
  * @page topic_server_crypto Cryptographic Operations
+ * @ingroup module_server
  * @ingroup server_crypto
  *
  * @section server_crypto_overview Overview

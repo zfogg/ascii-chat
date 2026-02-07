@@ -1,5 +1,6 @@
 /**
  * @page topic_server_protocol Server Protocol README
+ * @ingroup module_server
  * @ingroup server_protocol
  *
  * @section server_protocol_overview Overview

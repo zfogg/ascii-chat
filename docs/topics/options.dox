@@ -1,5 +1,6 @@
 /**
  * @page topic_options Options README
+ * @ingroup module_core
  * @ingroup options
  *
  * @section options_overview Overview

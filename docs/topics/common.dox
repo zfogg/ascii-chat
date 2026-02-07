@@ -1,5 +1,6 @@
 /**
  * @page topic_common Common Definitions
+ * @ingroup module_core
  * @ingroup common
  *
  * Core error handling, memory management, logging, and type definitions shared throughout

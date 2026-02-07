@@ -1,5 +1,6 @@
 /**
  * @page topic_server_stats Statistics and Monitoring
+ * @ingroup module_server
  * @ingroup server_stats
  *
  * @section server_stats_overview Overview

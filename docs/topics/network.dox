@@ -1,5 +1,6 @@
 /**
  * @page topic_network Network README
+ * @ingroup module_network
  * @ingroup network
  *
  * @section network_overview Overview

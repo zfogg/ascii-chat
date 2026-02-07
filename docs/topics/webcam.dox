@@ -1,5 +1,6 @@
 /**
  * @page topic_webcam Webcam Capture
+ * @ingroup module_abstractions
  * @ingroup webcam
  *
  * Cross-platform webcam capture functionality for Windows, Linux, and macOS.

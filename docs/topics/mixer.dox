@@ -1,5 +1,6 @@
 /**
  * @page topic_mixer Mixer README
+ * @ingroup module_audio
  * @ingroup audio
  *
  * @section mixer_overview Overview

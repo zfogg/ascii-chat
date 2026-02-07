@@ -1,5 +1,6 @@
 /**
  * @page topic_config Configuration README
+ * @ingroup module_core
  * @ingroup config
  *
  * Command-line argument parsing and TOML-based configuration file management for flexible

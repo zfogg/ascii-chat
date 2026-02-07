@@ -1,5 +1,6 @@
 /**
  * @page topic_platform Platform Abstraction Layer README
+ * @ingroup module_abstractions
  * @ingroup platform
  *
  * @tableofcontents

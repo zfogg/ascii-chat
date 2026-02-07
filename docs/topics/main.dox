@@ -1,5 +1,6 @@
 /**
  * @defgroup main main()
+ * @ingroup module_core
  * @brief 🚀 The binary's entry point
  */
 

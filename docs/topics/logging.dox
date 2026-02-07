@@ -1,5 +1,6 @@
 /**
  * @page topic_logging Logging README
+ * @ingroup module_core
  * @ingroup logging
  *
  * @section logging_overview Overview

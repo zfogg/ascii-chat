@@ -1,5 +1,6 @@
 /**
  * @page topic_server_render Render Threads
+ * @ingroup module_server
  * @ingroup server_render
  *
  * @section server_render_overview Overview

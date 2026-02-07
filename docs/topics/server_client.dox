@@ -1,5 +1,6 @@
 /**
  * @page topic_server_client Client Management
+ * @ingroup module_server
  * @ingroup server_client
  *
  * @section server_client_overview Overview
