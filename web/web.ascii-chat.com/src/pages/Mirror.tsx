@@ -2,16 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { XTerm } from '@pablo-lion/xterm-react'
 import { FitAddon } from '@xterm/addon-fit'
 import 'xterm/css/xterm.css'
-import { initMirrorWasm, convertFrameToAscii, isWasmReady } from '../wasm/mirror'
+import { initMirrorWasm, convertFrameToAscii, isWasmReady, setDimensions } from '../wasm/mirror'
 
 // Configuration
 const TARGET_FPS = 60
 const FRAME_INTERVAL = 1000 / TARGET_FPS
-
-// Large ASCII resolution - FitAddon will scale font to fill container
-// Slightly reduced width to account for container constraints
-const ASCII_WIDTH = 150
-const ASCII_HEIGHT = 60
 
 export function MirrorPage() {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -21,6 +16,8 @@ export function MirrorPage() {
   const fpsRef = useRef<HTMLDivElement>(null)
   const [isRunning, setIsRunning] = useState(false)
   const [error, setError] = useState<string>('')
+  const [terminalDimensions, setTerminalDimensions] = useState({ cols: 0, rows: 0 })
+  const terminalDimensionsRef = useRef({ cols: 0, rows: 0 })
   const streamRef = useRef<MediaStream | null>(null)
   const animationFrameRef = useRef<number | null>(null)
   const lastFrameTimeRef = useRef<number>(0)
@@ -28,9 +25,10 @@ export function MirrorPage() {
   const fpsUpdateTimeRef = useRef<number>(0)
   const setupDoneRef = useRef(false)
 
-  // Initialize WASM on mount
+  // Initialize WASM on mount with default dimensions
+  // Will be updated when terminal is fitted
   useEffect(() => {
-    initMirrorWasm(ASCII_WIDTH, ASCII_HEIGHT)
+    initMirrorWasm(80, 24)
       .catch((err) => {
         console.error('WASM init error:', err)
         setError(`Failed to load WASM module: ${err}`)
@@ -54,8 +52,21 @@ export function MirrorPage() {
 
       try {
         fitAddon.fit()
+
+        // Get actual dimensions after fitting
+        const cols = terminal.cols
+        const rows = terminal.rows
+
+        // Update both ref (synchronous) and state (for display)
+        terminalDimensionsRef.current = { cols, rows }
+        setTerminalDimensions({ cols, rows })
+
+        // Update WASM dimensions immediately (synchronous)
+        if (isWasmReady()) {
+          setDimensions(cols, rows)
+        }
       } catch (e) {
-        // Ignore fit errors
+        console.error('[Mirror] FitAddon error:', e)
       }
 
       fitAddonRef.current = fitAddon
@@ -79,6 +90,18 @@ export function MirrorPage() {
       const handleResize = () => {
         try {
           fitAddon.fit()
+
+          // Update dimensions after resize
+          const cols = terminal.cols
+          const rows = terminal.rows
+
+          // Update both ref (synchronous) and state (for display)
+          terminalDimensionsRef.current = { cols, rows }
+          setTerminalDimensions({ cols, rows })
+
+          if (isWasmReady()) {
+            setDimensions(cols, rows)
+          }
         } catch (e) {
           // Ignore
         }
@@ -99,6 +122,12 @@ export function MirrorPage() {
     if (!xtermRef.current?.terminal) {
       console.error('Terminal not initialized')
       setError('Terminal not initialized. Please refresh the page.')
+      return
+    }
+
+    if (terminalDimensions.cols === 0 || terminalDimensions.rows === 0) {
+      console.error('Terminal dimensions not set')
+      setError('Terminal not ready. Please wait a moment and try again.')
       return
     }
 
@@ -198,6 +227,11 @@ export function MirrorPage() {
 
     if (!video || !canvas || !terminal || !isWasmReady()) return
 
+    // Skip frame if terminal dimensions don't match WASM dimensions (use ref for synchronous check)
+    if (terminal.cols !== terminalDimensionsRef.current.cols || terminal.rows !== terminalDimensionsRef.current.rows) {
+      return // Dimensions are being updated, skip this frame
+    }
+
     const ctx = canvas.getContext('2d', { willReadFrequently: true })
     if (!ctx) return
 
@@ -215,9 +249,22 @@ export function MirrorPage() {
       canvas.height
     )
 
-    // WASM output already includes ANSI color codes and newlines
-    // Just move cursor to home and write the formatted output
-    const output = '\x1b[H' + asciiArt
+    // Pad each line to center it in the terminal
+    const lines = asciiArt.split('\n')
+    const termWidth = terminal.cols
+
+    const paddedLines = lines.map((line, index) => {
+      const lineNoAnsi = line.replace(/\x1b\[[^m]+m/g, '')
+      const padWidth = Math.floor((termWidth - lineNoAnsi.length) / 2)
+      const paddedLine = padWidth > 0 ? ' '.repeat(padWidth) + line : line
+
+      // Add \r\n for proper terminal line ending (except last line)
+      return index < lines.length - 1 ? paddedLine + '\r\n' : paddedLine
+    })
+
+    // WASM output already includes ANSI color codes
+    // Use cursor home + clear screen to prevent artifacts
+    const output = '\x1b[H\x1b[J' + paddedLines.join('')
     terminal.write(output)
   }
 
@@ -245,7 +292,9 @@ export function MirrorPage() {
       {/* Controls and info */}
       <div className="px-4 py-3 flex-shrink-0 border-b border-terminal-8">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-sm font-semibold">ASCII Mirror ({ASCII_WIDTH}x{ASCII_HEIGHT})</h2>
+          <h2 className="text-sm font-semibold">
+            ASCII Mirror {terminalDimensions.cols > 0 && `(${terminalDimensions.cols}x${terminalDimensions.rows})`}
+          </h2>
           <div className="text-xs text-terminal-8">
             FPS: <span className="text-terminal-2" ref={fpsRef}>--</span>
           </div>
@@ -270,12 +319,11 @@ export function MirrorPage() {
       </div>
 
       {/* ASCII output */}
-      <div className="flex-1 px-4 py-2" style={{ pointerEvents: 'none' }}>
+      <div className="flex-1 px-4 py-2 overflow-hidden" style={{ pointerEvents: 'none' }}>
         <XTerm
           ref={handleXTermRef}
           options={{
-            cols: ASCII_WIDTH,
-            rows: ASCII_HEIGHT,
+            // Let FitAddon calculate cols/rows based on container size
             theme: {
               background: '#0c0c0c',
               foreground: '#cccccc',
@@ -288,10 +336,9 @@ export function MirrorPage() {
             disableStdin: true,
             allowTransparency: false,
             convertEol: false,
-            // Explicitly enable ANSI color rendering
             drawBoldTextInBrightColors: true,
           }}
-          className="w-full rounded bg-terminal-bg"
+          className="w-full h-full rounded bg-terminal-bg"
         />
       </div>
 

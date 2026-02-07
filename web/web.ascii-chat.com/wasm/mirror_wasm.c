@@ -165,8 +165,8 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
   int dst_height = GET_OPTION(height);
   color_filter_t filter = (color_filter_t)GET_OPTION(color_filter);
   bool use_color = (GET_OPTION(color_mode) != COLOR_MODE_NONE);
-  bool aspect_ratio = true; // Always preserve aspect ratio for web
-  bool stretch = false;     // Don't stretch - fit within dimensions
+  bool aspect_ratio = true; // Preserve webcam aspect ratio
+  bool stretch = false;     // Don't stretch - maintain proportions
 
   // Convert RGBA to RGB (strip alpha channel)
   rgb_pixel_t *rgb_pixels = SAFE_MALLOC(src_width * src_height * sizeof(rgb_pixel_t), rgb_pixel_t *);
