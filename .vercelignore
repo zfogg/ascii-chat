@@ -32,7 +32,7 @@ notes/
 # CMake and scripts
 cmake-build-*/
 cmake/
-scripts/
+/scripts/
 
 # IDE
 .vscode/
