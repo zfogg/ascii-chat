@@ -523,7 +523,7 @@ int mirror_main(void) {
   log_set_terminal_output(false);
 
   // Print newline to terminal to separate final frame from shutdown message (only on user Ctrl-C)
-  if (mirror_should_exit() && platform_isatty(1)) { // 1 = stdout
+  if (mirror_should_exit() && terminal_is_stdout_tty()) {
     const char newline = '\n';
     (void)platform_write_all(STDOUT_FILENO, &newline, 1);
   }

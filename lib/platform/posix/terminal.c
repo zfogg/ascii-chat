@@ -193,7 +193,7 @@ bool terminal_supports_utf8(void) {
  */
 asciichat_error_t terminal_clear_screen(void) {
   // Skip ANSI codes when not writing to a TTY (e.g., piping to file)
-  if (!platform_isatty(STDOUT_FILENO)) {
+  if (!terminal_is_stdout_tty()) {
     return ASCIICHAT_OK;
   }
 
@@ -214,7 +214,7 @@ asciichat_error_t terminal_clear_screen(void) {
  */
 asciichat_error_t terminal_move_cursor(int row, int col) {
   // Skip ANSI codes when not writing to a TTY (e.g., piping to file)
-  if (!platform_isatty(STDOUT_FILENO)) {
+  if (!terminal_is_stdout_tty()) {
     return 0;
   }
 
@@ -679,7 +679,7 @@ void test_terminal_output_modes(void) {
  */
 terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) {
   // Check if stdout is a TTY - disable colors when piping unless --color=true.
-  if (!platform_isatty(STDOUT_FILENO) && GET_OPTION(color) != COLOR_SETTING_TRUE) {
+  if (!terminal_is_stdout_tty() && GET_OPTION(color) != COLOR_SETTING_TRUE) {
     caps.color_level = TERM_COLOR_NONE;
     caps.capabilities &= ~(uint32_t)(TERM_CAP_COLOR_16 | TERM_CAP_COLOR_256 | TERM_CAP_COLOR_TRUE);
     caps.color_count = 0;
@@ -796,7 +796,7 @@ static inline float _calculate_luminance(uint8_t r, uint8_t g, uint8_t b) {
  */
 bool terminal_has_dark_background(void) {
   // Don't query terminal when output is piped/redirected (causes SIGTTOU)
-  if (!platform_isatty(STDOUT_FILENO)) {
+  if (!terminal_is_stdout_tty()) {
     // When piping, skip color detection and default to dark (most common)
     return true;
   }

@@ -210,7 +210,7 @@ int display_init() {
 
   // Initialize keyboard input for interactive controls (volume, color mode, flip, seek, pause)
   // Only initialize in TTY mode to avoid interfering with piped/redirected I/O
-  if (platform_isatty(STDIN_FILENO)) {
+  if (terminal_is_stdin_tty()) {
     asciichat_error_t kb_result = keyboard_init();
     if (kb_result == ASCIICHAT_OK) {
       g_keyboard_enabled = true;

@@ -83,6 +83,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/network/tcp/server.h>
+#include <ascii-chat/network/websocket/server.h>
 #include <ascii-chat/network/acip/acds_client.h>
 #include <ascii-chat/discovery/strings.h>
 #include <ascii-chat/network/webrtc/stun.h>
@@ -200,6 +201,23 @@ rate_limiter_t *g_rate_limiter = NULL;
  * @ingroup server_main
  */
 static tcp_server_t g_tcp_server;
+
+/**
+ * @brief WebSocket server instance for accepting browser client connections
+ *
+ * Runs in parallel with TCP server to support WASM browser clients.
+ * Uses libwebsockets to handle WebSocket protocol, shares same client handler.
+ *
+ * @ingroup server_main
+ */
+static websocket_server_t g_websocket_server;
+
+/**
+ * @brief WebSocket server thread handle
+ *
+ * Dedicated thread for WebSocket event loop, runs independently of TCP accept loop.
+ */
+static asciichat_thread_t g_websocket_server_thread;
 
 /**
  * @brief Server start time for uptime calculation and status display
@@ -1217,6 +1235,70 @@ static void *ascii_chat_client_handler(void *arg) {
   return NULL;
 }
 
+/**
+ * @brief WebSocket client handler thread function
+ *
+ * Called by websocket_server for each accepted WebSocket connection.
+ * Similar to TCP handler but transport is already created.
+ *
+ * @param arg Pointer to websocket_client_context_t
+ * @return NULL (thread exit value)
+ */
+static void *websocket_client_handler(void *arg) {
+  websocket_client_context_t *ctx = (websocket_client_context_t *)arg;
+  if (!ctx) {
+    log_error("WebSocket client handler: NULL context");
+    return NULL;
+  }
+
+  log_info("WebSocket client connected from %s:%d", ctx->client_ip, ctx->client_port);
+
+  // Extract server context from user_data
+  server_context_t *server_ctx = (server_context_t *)ctx->user_data;
+  if (!server_ctx) {
+    log_error("WebSocket client handler: NULL server context");
+    if (ctx->transport) {
+      acip_transport_destroy(ctx->transport);
+    }
+    SAFE_FREE(ctx);
+    return NULL;
+  }
+
+  // Add client using transport-based API (same as WebRTC clients)
+  int client_id = add_webrtc_client(server_ctx, ctx->transport, ctx->client_ip);
+  if (client_id < 0) {
+    log_error("Failed to add WebSocket client");
+    if (ctx->transport) {
+      acip_transport_destroy(ctx->transport);
+    }
+    SAFE_FREE(ctx);
+    return NULL;
+  }
+
+  // Transport ownership transferred to client structure - don't destroy it here
+  ctx->transport = NULL;
+
+  log_info("WebSocket client %d added successfully", client_id);
+
+  // Wait for client to disconnect (client receive thread handles all I/O)
+  // The client structure will be cleaned up when the transport closes
+  client_info_t *client = find_client_by_id((uint32_t)client_id);
+  if (client) {
+    // Wait for client threads to finish (they'll exit when connection closes)
+    while (atomic_load(&client->client_id) != 0) {
+      platform_sleep_ms(100);
+    }
+  }
+
+  log_info("WebSocket client %d disconnected", client_id);
+
+  // Remove client (cleanup happens in remove_client)
+  remove_client(server_ctx, (uint32_t)client_id);
+
+  SAFE_FREE(ctx);
+  return NULL;
+}
+
 /* ============================================================================
  * Main Function
  * ============================================================================
@@ -1571,6 +1653,21 @@ int server_main(void) {
     FATAL(ERROR_NETWORK, "Failed to initialize TCP server");
   }
 
+  // Initialize WebSocket server (for browser clients)
+  websocket_server_config_t ws_config = {
+      .port = port + 1, // Use port+1 for WebSocket (e.g., 27225 if TCP is 27224)
+      .client_handler = websocket_client_handler,
+      .user_data = &server_ctx,
+  };
+
+  memset(&g_websocket_server, 0, sizeof(g_websocket_server));
+  asciichat_error_t ws_init_result = websocket_server_init(&g_websocket_server, &ws_config);
+  if (ws_init_result != ASCIICHAT_OK) {
+    log_warn("Failed to initialize WebSocket server - browser clients will not be supported");
+  } else {
+    log_info("WebSocket server initialized on port %d", port + 1);
+  }
+
   // =========================================================================
   // UPnP Port Mapping (Quick Win for Direct TCP)
   // =========================================================================
@@ -1743,9 +1840,9 @@ int server_main(void) {
                 has_password ? "password" : "identity");
     } else if (explicit_expose) {
       // Explicit opt-in to public IP disclosure
-      // Only prompt if running interactively (stdin is a TTY)
-      // When stdin is not a TTY (automated/scripted), treat explicit flag as confirmation
-      bool is_interactive = platform_isatty(STDIN_FILENO);
+      // Only prompt if running interactively (can prompt user)
+      // When non-interactive (automated/scripted), treat explicit flag as confirmation
+      bool is_interactive = terminal_can_prompt_user();
 
       if (is_interactive) {
         log_plain_stderr("");
@@ -2108,6 +2205,16 @@ skip_acds_session:
     log_debug("Status screen thread started");
   }
 
+  // Start WebSocket server thread if initialized
+  if (g_websocket_server.context != NULL) {
+    if (asciichat_thread_create(&g_websocket_server_thread, (void *(*)(void *))websocket_server_run,
+                                &g_websocket_server) != 0) {
+      log_error("Failed to create WebSocket server thread");
+    } else {
+      log_info("WebSocket server thread started");
+    }
+  }
+
   // Run TCP server (blocks until shutdown signal received)
   // tcp_server_run() handles:
   // - select() on IPv4/IPv6 sockets with timeout
@@ -2266,6 +2373,15 @@ cleanup:
 
   // Shutdown TCP server (closes listen sockets and cleans up)
   tcp_server_destroy(&g_tcp_server);
+
+  // Shutdown WebSocket server (if initialized)
+  if (g_websocket_server.context != NULL) {
+    log_debug("Shutting down WebSocket server");
+    atomic_store(&g_websocket_server.running, false);
+    asciichat_thread_join(&g_websocket_server_thread, NULL);
+    websocket_server_destroy(&g_websocket_server);
+    log_debug("WebSocket server shut down");
+  }
 
   // Join ACDS threads (if started)
   // NOTE: Must be done BEFORE destroying transport to ensure clean shutdown

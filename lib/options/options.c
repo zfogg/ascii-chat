@@ -93,9 +93,11 @@
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/util.h>
+#include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/url.h>
+#include <ascii-chat/util/utf8.h>
 
 #ifdef _WIN32
 #include <io.h>
@@ -1017,8 +1019,8 @@ asciichat_error_t options_init(int argc, char **argv) {
   char *log_filename = options_get_log_filepath(detected_mode, opts);
   SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", log_filename);
   // Force stderr when stdout is not a TTY (piping or redirecting output)
-  bool is_tty = platform_isatty(STDOUT_FILENO);
-  log_init(opts.log_file, GET_OPTION(log_level), !is_tty, false);
+  bool force_stderr = terminal_is_piped_output();
+  log_init(opts.log_file, GET_OPTION(log_level), force_stderr, false);
   log_dev("Initialized mode-specific logging for mode %d: %s", detected_mode, opts.log_file);
   SAFE_FREE(log_filename);
 
@@ -1404,6 +1406,39 @@ asciichat_error_t options_init(int argc, char **argv) {
     opts.palette_type = PALETTE_CUSTOM;
     opts.palette_custom_set = true;
     log_debug("Set PALETTE_CUSTOM because --palette-chars was provided");
+
+    // Validate palette characters for UTF-8 correctness
+    if (!utf8_is_valid(opts.palette_custom)) {
+      log_error("Error: --palette-chars contains invalid UTF-8 sequences");
+      options_config_destroy(config);
+      SAFE_FREE(allocated_mode_argv);
+      return option_error_invalid();
+    }
+
+    // Check if palette contains non-ASCII characters
+    bool has_non_ascii = !utf8_is_ascii_only(opts.palette_custom);
+    if (has_non_ascii) {
+      // Non-ASCII characters require UTF-8 support
+      // Check if UTF-8 is explicitly disabled or unavailable
+      bool utf8_disabled = (opts.force_utf8 == COLOR_SETTING_FALSE);
+      bool utf8_auto_unavailable = (opts.force_utf8 == COLOR_SETTING_AUTO && !terminal_supports_utf8());
+
+      if (utf8_disabled) {
+        log_error("Error: --palette-chars contains non-ASCII characters but --utf8=false was specified");
+        log_error("       Remove --utf8=false or use ASCII-only palette characters");
+        options_config_destroy(config);
+        SAFE_FREE(allocated_mode_argv);
+        return option_error_invalid();
+      }
+
+      if (utf8_auto_unavailable) {
+        log_error("Error: --palette-chars contains non-ASCII characters but terminal does not support UTF-8");
+        log_error("       Use --utf8=true to force UTF-8 mode or use ASCII-only palette characters");
+        options_config_destroy(config);
+        SAFE_FREE(allocated_mode_argv);
+        return option_error_invalid();
+      }
+    }
   }
 
   // Auto-enable encryption if key was provided

@@ -91,7 +91,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   // Only enable keyboard if BOTH stdin AND stdout are TTYs to avoid buffering issues
   // when tcsetattr() modifies the tty line discipline
   bool keyboard_enabled = false;
-  if (keyboard_handler && platform_isatty(STDIN_FILENO) && platform_isatty(STDOUT_FILENO)) {
+  if (keyboard_handler && terminal_is_interactive()) {
     // Try to initialize keyboard if both stdin and stdout are TTYs in interactive mode
     asciichat_error_t kb_result = keyboard_init();
     if (kb_result == ASCIICHAT_OK) {

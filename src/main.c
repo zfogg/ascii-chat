@@ -367,7 +367,7 @@ int main(int argc, char *argv[]) {
   // Auto-disable colors when piped (unless explicitly enabled with --color=true)
   // This respects user's explicit --color=true request while auto-disabling in other cases
   terminal_color_mode_t color_mode = opts->color_mode;
-  if (!platform_isatty(STDOUT_FILENO) && color_mode == COLOR_MODE_AUTO && opts->color != COLOR_SETTING_TRUE) {
+  if (terminal_is_piped_output() && color_mode == COLOR_MODE_AUTO && opts->color != COLOR_SETTING_TRUE) {
     options_set_int("color_mode", COLOR_MODE_NONE);
     opts = options_get(); // Refresh pointer after update
     // Log to file only, not terminal - avoid polluting piped stdout when stderr is redirected to stdout (2>&1)
