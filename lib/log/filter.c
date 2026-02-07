@@ -23,6 +23,7 @@
 
 #include <pthread.h>
 #include <string.h>
+#include <stdint.h>
 
 /**
  * @brief Default highlight colors (grey)
@@ -168,8 +169,17 @@ static size_t map_plain_to_colored_pos(const char *colored_text, size_t char_pos
         }
       }
     } else {
-      // Regular character
-      byte_pos++;
+      // Regular character - decode UTF-8 to get byte length
+      uint32_t codepoint;
+      int utf8_len = utf8_decode((const uint8_t *)(colored_text + byte_pos), &codepoint);
+      if (utf8_len < 0) {
+        utf8_len = 1; // Invalid UTF-8, treat as single byte
+      }
+
+      // Advance by all bytes of this UTF-8 character
+      byte_pos += utf8_len;
+
+      // Only increment character count once per character (not per byte)
       chars_seen++;
     }
   }

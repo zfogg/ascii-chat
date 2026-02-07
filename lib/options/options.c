@@ -1494,6 +1494,47 @@ asciichat_error_t options_init(int argc, char **argv) {
     }
   }
 
+  // Validate all string options contain valid UTF-8
+  // This prevents crashes and corruption from invalid UTF-8 in any option
+  const char *string_fields[][2] = {{"address", opts.address},
+                                    {"address6", opts.address6},
+                                    {"encrypt_key", opts.encrypt_key},
+                                    {"encrypt_keyfile", opts.encrypt_keyfile},
+                                    {"server_key", opts.server_key},
+                                    {"client_keys", opts.client_keys},
+                                    {"discovery_server", opts.discovery_server},
+                                    {"discovery_service_key", opts.discovery_service_key},
+                                    {"discovery_database_path", opts.discovery_database_path},
+                                    {"log_file", opts.log_file},
+                                    {"media_file", opts.media_file},
+                                    {"palette_custom", opts.palette_custom},
+                                    {"stun_servers", opts.stun_servers},
+                                    {"turn_servers", opts.turn_servers},
+                                    {"turn_username", opts.turn_username},
+                                    {"turn_credential", opts.turn_credential},
+                                    {"turn_secret", opts.turn_secret},
+                                    {"session_string", opts.session_string},
+                                    {NULL, NULL}};
+
+  for (int i = 0; string_fields[i][0] != NULL; i++) {
+    const char *field_name = string_fields[i][0];
+    const char *field_value = string_fields[i][1];
+
+    // Skip empty strings
+    if (!field_value || field_value[0] == '\0') {
+      continue;
+    }
+
+    // Validate UTF-8
+    if (!utf8_is_valid(field_value)) {
+      log_error("Error: Option --%s contains invalid UTF-8 sequences", field_name);
+      log_error("       Value: %s", field_value);
+      options_config_destroy(config);
+      SAFE_FREE(allocated_mode_argv);
+      return option_error_invalid();
+    }
+  }
+
   // Validate options
   result = validate_options_and_report(config, &opts);
   if (result != ASCIICHAT_OK) {
