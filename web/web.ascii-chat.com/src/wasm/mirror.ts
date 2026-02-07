@@ -3,7 +3,7 @@
 
 // Type definition for the Emscripten module
 interface MirrorModuleExports {
-  _mirror_init(width: number, height: number): number;
+  _mirror_init_with_args(args_string: number): number;
   _mirror_cleanup(): void;
   _mirror_set_width(width: number): number;
   _mirror_set_height(height: number): number;
@@ -15,6 +15,8 @@ interface MirrorModuleExports {
   _mirror_get_color_mode(): number;
   _mirror_set_color_filter(filter: number): number;
   _mirror_get_color_filter(): number;
+  _mirror_set_palette(palette_string_ptr: number): number;
+  _mirror_get_palette(): number;
   _mirror_convert_frame(rgba_data_ptr: number, src_width: number, src_height: number): number;
   _mirror_free_string(ptr: number): void;
   _malloc(size: number): number;
@@ -24,7 +26,9 @@ interface MirrorModuleExports {
 interface MirrorModule {
   HEAPU8: Uint8Array;
   UTF8ToString(ptr: number): string;
-  _mirror_init: MirrorModuleExports['_mirror_init'];
+  stringToUTF8(str: string, outPtr: number, maxBytesToWrite: number): void;
+  lengthBytesUTF8(str: string): number;
+  _mirror_init_with_args: MirrorModuleExports['_mirror_init_with_args'];
   _mirror_cleanup: MirrorModuleExports['_mirror_cleanup'];
   _mirror_set_width: MirrorModuleExports['_mirror_set_width'];
   _mirror_set_height: MirrorModuleExports['_mirror_set_height'];
@@ -36,6 +40,8 @@ interface MirrorModule {
   _mirror_get_color_mode: MirrorModuleExports['_mirror_get_color_mode'];
   _mirror_set_color_filter: MirrorModuleExports['_mirror_set_color_filter'];
   _mirror_get_color_filter: MirrorModuleExports['_mirror_get_color_filter'];
+  _mirror_set_palette: MirrorModuleExports['_mirror_set_palette'];
+  _mirror_get_palette: MirrorModuleExports['_mirror_get_palette'];
   _mirror_convert_frame: MirrorModuleExports['_mirror_convert_frame'];
   _mirror_free_string: MirrorModuleExports['_mirror_free_string'];
   _malloc: MirrorModuleExports['_malloc'];
@@ -79,10 +85,51 @@ import MirrorModuleFactory from './dist/mirror.js';
 let wasmModule: MirrorModule | null = null;
 let frameCallCount = 0;
 
+export type Palette = 'standard' | 'blocks' | 'digital' | 'minimal' | 'cool' | 'custom';
+
+export interface MirrorInitOptions {
+  width?: number;
+  height?: number;
+  colorMode?: ColorMode;
+  colorFilter?: ColorFilter;
+  renderMode?: RenderMode;
+  palette?: Palette;
+}
+
+// Map enum values to CLI option strings
+const colorModeNames: Record<ColorMode, string> = {
+  [ColorMode.AUTO]: 'auto',
+  [ColorMode.NONE]: 'none',
+  [ColorMode.COLOR_16]: '16',
+  [ColorMode.COLOR_256]: '256',
+  [ColorMode.TRUECOLOR]: 'truecolor'
+};
+
+const colorFilterNames: Record<ColorFilter, string> = {
+  [ColorFilter.NONE]: 'none',
+  [ColorFilter.BLACK]: 'black',
+  [ColorFilter.WHITE]: 'white',
+  [ColorFilter.GREEN]: 'green',
+  [ColorFilter.MAGENTA]: 'magenta',
+  [ColorFilter.FUCHSIA]: 'fuchsia',
+  [ColorFilter.ORANGE]: 'orange',
+  [ColorFilter.TEAL]: 'teal',
+  [ColorFilter.CYAN]: 'cyan',
+  [ColorFilter.PINK]: 'pink',
+  [ColorFilter.RED]: 'red',
+  [ColorFilter.YELLOW]: 'yellow'
+};
+
+const renderModeNames: Record<RenderMode, string> = {
+  [RenderMode.FOREGROUND]: 'foreground',
+  [RenderMode.BACKGROUND]: 'background',
+  [RenderMode.HALF_BLOCK]: 'half-block'
+};
+
 /**
  * Initialize the WASM module (call once at app start)
  */
-export async function initMirrorWasm(width: number = 150, height: number = 60): Promise<void> {
+export async function initMirrorWasm(options: MirrorInitOptions = {}): Promise<void> {
   if (wasmModule) return;
 
   // Provide runtime environment functions for Emscripten
@@ -99,10 +146,48 @@ export async function initMirrorWasm(width: number = 150, height: number = 60): 
     throw new Error('Failed to load WASM module');
   }
 
-  // Initialize libasciichat
-  const result = wasmModule._mirror_init(width, height);
-  if (result !== 0) {
-    throw new Error('Failed to initialize mirror WASM module');
+  // Build argument string for options_init()
+  const args: string[] = ['mirror'];
+
+  if (options.width !== undefined) {
+    args.push('--width', options.width.toString());
+  }
+  if (options.height !== undefined) {
+    args.push('--height', options.height.toString());
+  }
+  if (options.colorMode !== undefined) {
+    args.push('--color-mode', colorModeNames[options.colorMode]);
+  }
+  if (options.colorFilter !== undefined) {
+    args.push('--color-filter', colorFilterNames[options.colorFilter]);
+  }
+  if (options.renderMode !== undefined) {
+    args.push('--render-mode', renderModeNames[options.renderMode]);
+  }
+  if (options.palette !== undefined) {
+    args.push('--palette', options.palette);
+  }
+
+  const argsString = args.join(' ');
+  console.log('[WASM] Initializing with args:', argsString);
+
+  // Allocate string in WASM memory
+  const strLen = wasmModule.lengthBytesUTF8(argsString) + 1;
+  const strPtr = wasmModule._malloc(strLen);
+  if (!strPtr) {
+    throw new Error('Failed to allocate memory for args string');
+  }
+
+  try {
+    wasmModule.stringToUTF8(argsString, strPtr, strLen);
+
+    // Initialize libasciichat with parsed arguments
+    const result = wasmModule._mirror_init_with_args(strPtr);
+    if (result !== 0) {
+      throw new Error('Failed to initialize mirror WASM module');
+    }
+  } finally {
+    wasmModule._free(strPtr);
   }
 }
 
@@ -160,11 +245,17 @@ export function convertFrameToAscii(
     );
 
     if (!resultPtr) {
+      console.error('[WASM] mirror_convert_frame returned NULL pointer');
       throw new Error('WASM mirror_convert_frame returned null');
     }
 
     // Convert C string to JavaScript string
     const asciiString = wasmModule.UTF8ToString(resultPtr);
+
+    // Debug: log string length on palette change
+    if (frameCallCount % 30 === 0) {
+      console.log(`[WASM] Frame result: ptr=${resultPtr}, length=${asciiString.length}, first 50 chars:`, asciiString.substring(0, 50));
+    }
 
     // Free the result buffer (allocated by WASM)
     wasmModule._mirror_free_string(resultPtr);
@@ -260,6 +351,38 @@ export function setColorFilter(filter: ColorFilter): void {
 export function getColorFilter(): ColorFilter {
   if (!wasmModule) throw new Error('WASM module not initialized');
   return wasmModule._mirror_get_color_filter();
+}
+
+/**
+ * Set palette
+ */
+export function setPalette(palette: Palette): void {
+  if (!wasmModule) throw new Error('WASM module not initialized');
+
+  // Allocate string in WASM memory
+  const strLen = wasmModule.lengthBytesUTF8(palette) + 1;
+  const strPtr = wasmModule._malloc(strLen);
+  if (!strPtr) {
+    throw new Error('Failed to allocate memory for palette string');
+  }
+
+  try {
+    wasmModule.stringToUTF8(palette, strPtr, strLen);
+    const result = wasmModule._mirror_set_palette(strPtr);
+    if (result !== 0) {
+      throw new Error(`Failed to set palette: ${palette}`);
+    }
+  } finally {
+    wasmModule._free(strPtr);
+  }
+}
+
+/**
+ * Get current palette
+ */
+export function getPalette(): number {
+  if (!wasmModule) throw new Error('WASM module not initialized');
+  return wasmModule._mirror_get_palette();
 }
 
 /**

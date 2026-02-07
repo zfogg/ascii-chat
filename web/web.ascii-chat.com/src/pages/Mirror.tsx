@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { XTerm } from '@pablo-lion/xterm-react'
 import { FitAddon } from '@xterm/addon-fit'
 import 'xterm/css/xterm.css'
-import { initMirrorWasm, convertFrameToAscii, isWasmReady, setDimensions, setColorMode, setColorFilter, ColorMode as WasmColorMode, ColorFilter as WasmColorFilter } from '../wasm/mirror'
+import { initMirrorWasm, convertFrameToAscii, isWasmReady, setDimensions, setColorMode, setColorFilter, setPalette, ColorMode as WasmColorMode, ColorFilter as WasmColorFilter } from '../wasm/mirror'
 import { Settings, SettingsConfig, ColorMode, ColorFilter } from '../components/Settings'
 
 // Helper functions to map Settings types to WASM enums
@@ -80,23 +80,23 @@ export function MirrorPage() {
       try {
         setColorMode(mapColorMode(newSettings.colorMode))
         setColorFilter(mapColorFilter(newSettings.colorFilter))
+        setPalette(newSettings.palette)
       } catch (err) {
         console.error('Failed to apply WASM settings:', err)
       }
     }
   }
 
-  // Initialize WASM on mount with default dimensions
-  // Will be updated when terminal is fitted
+  // Initialize WASM on mount with default dimensions and settings
+  // Dimensions will be updated when terminal is fitted
   useEffect(() => {
-    initMirrorWasm(80, 24)
-      .then(() => {
-        // Apply initial settings to WASM
-        if (isWasmReady()) {
-          setColorMode(mapColorMode(settings.colorMode))
-          setColorFilter(mapColorFilter(settings.colorFilter))
-        }
-      })
+    initMirrorWasm({
+      width: 80,
+      height: 24,
+      colorMode: mapColorMode(settings.colorMode),
+      colorFilter: mapColorFilter(settings.colorFilter),
+      palette: settings.palette
+    })
       .catch((err) => {
         console.error('WASM init error:', err)
         setError(`Failed to load WASM module: ${err}`)
@@ -204,6 +204,7 @@ export function MirrorPage() {
       if (isWasmReady()) {
         setColorMode(mapColorMode(settings.colorMode))
         setColorFilter(mapColorFilter(settings.colorFilter))
+        setPalette(settings.palette)
       }
 
       const { width, height } = parseResolution(settings.resolution)
@@ -300,10 +301,14 @@ export function MirrorPage() {
     const canvas = canvasRef.current
     const terminal = xtermRef.current?.terminal
 
-    if (!video || !canvas || !terminal || !isWasmReady()) return
+    if (!video || !canvas || !terminal || !isWasmReady()) {
+      console.log('[renderFrame] Early return:', { video: !!video, canvas: !!canvas, terminal: !!terminal, wasmReady: isWasmReady() })
+      return
+    }
 
     // Skip frame if terminal dimensions don't match WASM dimensions (use ref for synchronous check)
     if (terminal.cols !== terminalDimensionsRef.current.cols || terminal.rows !== terminalDimensionsRef.current.rows) {
+      console.log('[renderFrame] Dimension mismatch, skipping frame:', { termCols: terminal.cols, termRows: terminal.rows, refCols: terminalDimensionsRef.current.cols, refRows: terminalDimensionsRef.current.rows })
       return // Dimensions are being updated, skip this frame
     }
 
@@ -333,6 +338,17 @@ export function MirrorPage() {
     // WASM output already includes ANSI color codes
     // Use cursor home + clear screen to prevent artifacts
     const output = '\x1b[H\x1b[J' + formattedLines.join('')
+
+    // Debug: log every 30 frames
+    if (frameCountRef.current % 30 === 0) {
+      const core = (terminal as any)._core
+      const renderService = core?._renderService
+      const isPaused = renderService?._isPaused
+      console.log('[renderFrame] Writing to terminal, output length:', output.length, 'lines:', lines.length, 'renderService._isPaused:', isPaused)
+    }
+
+    // Force clear and write
+    terminal.clear()
     terminal.write(output)
   }
 
@@ -418,7 +434,7 @@ export function MirrorPage() {
             },
             cursorStyle: 'block',
             cursorBlink: false,
-            fontFamily: '"Courier New", Courier, monospace',
+            fontFamily: '"FiraCode Nerd Font Mono", "Fira Code", monospace',
             fontSize: 12,
             scrollback: 0,
             disableStdin: true,

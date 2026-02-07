@@ -4,9 +4,13 @@
  */
 
 #include <emscripten.h>
+#include <stdlib.h>
 #include <string.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>
+
+// Forward declare parser
+bool parse_palette_type(const char *arg, void *dest, char **error_msg);
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/asciichat_errno.h>
@@ -21,37 +25,47 @@
 // Initialization
 // ============================================================================
 
+/**
+ * Initialize mirror mode with command-line style arguments
+ * @param args_json JSON array of argument strings, e.g. ["mirror", "--width", "80", "--height", "40"]
+ * @return 0 on success, -1 on error
+ */
 EMSCRIPTEN_KEEPALIVE
-int mirror_init(int width, int height) {
+int mirror_init_with_args(const char *args_json) {
   // Initialize platform layer
   asciichat_error_t err = platform_init();
   if (err != ASCIICHAT_OK) {
     return -1;
   }
 
-  // Create minimal argc/argv for options system
-  char *argv[] = {"mirror", NULL};
-  int argc = 1;
+  // Parse JSON array into argc/argv
+  // For simplicity, we'll accept a space-separated string instead
+  // JS can pass: "mirror --width 80 --height 40 --color-filter grayscale"
+  char *args_copy = strdup(args_json);
+  if (!args_copy) {
+    return -1;
+  }
+
+  // Count arguments
+  int argc = 0;
+  char *argv[64] = {NULL}; // Max 64 arguments
+  char *token = strtok(args_copy, " ");
+  while (token != NULL && argc < 63) {
+    argv[argc++] = token;
+    token = strtok(NULL, " ");
+  }
+  argv[argc] = NULL;
 
   // Initialize options (sets up RCU, defaults, etc.)
   err = options_init(argc, argv);
+  free(args_copy);
+
   if (err != ASCIICHAT_OK) {
     return -1;
   }
 
   // Initialize ANSI color code generation (dec3 cache for RGB values)
   ansi_fast_init();
-
-  // Override dimensions with actual values from xterm.js
-  options_set_int("width", width);
-  options_set_int("height", height);
-
-  // Force truecolor mode for web terminal (xterm.js supports 24-bit color)
-  options_set_int("color_mode", TERM_COLOR_TRUECOLOR);
-
-  // Use foreground rendering (RENDER_MODE_FOREGROUND = 0)
-  // Background mode would color the background instead of the text
-  options_set_int("render_mode", RENDER_MODE_FOREGROUND);
 
   return 0;
 }
@@ -131,6 +145,38 @@ int mirror_get_color_mode(void) {
 }
 
 // ============================================================================
+// Settings API - Palette
+// ============================================================================
+
+EMSCRIPTEN_KEEPALIVE
+int mirror_set_palette(const char *palette_name) {
+  if (!palette_name) {
+    return -1;
+  }
+
+  // Parse the palette string using the same parser as CLI
+  palette_type_t palette_value;
+  char *error_msg = NULL;
+
+  if (!parse_palette_type(palette_name, &palette_value, &error_msg)) {
+    if (error_msg) {
+      log_error("Failed to parse palette '%s': %s", palette_name, error_msg);
+      free(error_msg);
+    }
+    return -1;
+  }
+
+  // Use standard RCU setter for palette_type field
+  asciichat_error_t err = options_set_int("palette_type", (int)palette_value);
+  return (err == ASCIICHAT_OK) ? 0 : -1;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int mirror_get_palette(void) {
+  return GET_OPTION(palette_type);
+}
+
+// ============================================================================
 // Settings API - Color Filter
 // ============================================================================
 
@@ -163,6 +209,7 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
   int dst_height = GET_OPTION(height);
   color_filter_t filter = (color_filter_t)GET_OPTION(color_filter);
   terminal_color_mode_t color_mode = (terminal_color_mode_t)GET_OPTION(color_mode);
+  palette_type_t palette_type = (palette_type_t)GET_OPTION(palette_type);
   bool aspect_ratio = true; // Preserve webcam aspect ratio
   bool stretch = false;     // Don't stretch - maintain proportions
 
@@ -178,7 +225,7 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
   caps.detection_reliable = true;
   caps.render_mode = (render_mode_t)GET_OPTION(render_mode);
   caps.wants_background = false;
-  caps.palette_type = PALETTE_STANDARD;
+  caps.palette_type = palette_type;
   caps.desired_fps = 60;
   caps.color_filter = filter;
 
@@ -210,8 +257,33 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
   // Create image structure
   image_t img = {.w = src_width, .h = src_height, .pixels = rgb_pixels, .alloc_method = IMAGE_ALLOC_SIMD};
 
-  // Build luminance palette from default ASCII chars
-  const char *palette_chars = PALETTE_CHARS_STANDARD;
+  // Get palette characters based on selected palette type
+  const char *palette_chars;
+  switch (palette_type) {
+  case PALETTE_BLOCKS:
+    palette_chars = PALETTE_CHARS_BLOCKS;
+    break;
+  case PALETTE_DIGITAL:
+    palette_chars = PALETTE_CHARS_DIGITAL;
+    break;
+  case PALETTE_MINIMAL:
+    palette_chars = PALETTE_CHARS_MINIMAL;
+    break;
+  case PALETTE_COOL:
+    palette_chars = PALETTE_CHARS_COOL;
+    break;
+  case PALETTE_CUSTOM:
+    // Custom palette uses user-provided characters from options
+    palette_chars = GET_OPTION(palette_custom);
+    if (!palette_chars || palette_chars[0] == '\0') {
+      palette_chars = PALETTE_CHARS_STANDARD; // Fallback
+    }
+    break;
+  case PALETTE_STANDARD:
+  default:
+    palette_chars = PALETTE_CHARS_STANDARD;
+    break;
+  }
 
   // Convert to ASCII using capability-aware function
   char *ascii_output =
@@ -219,6 +291,11 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
 
   // Clean up
   SAFE_FREE(rgb_pixels);
+
+  if (!ascii_output) {
+    log_error("ascii_convert_with_capabilities returned NULL");
+    return NULL;
+  }
 
   return ascii_output;
 }

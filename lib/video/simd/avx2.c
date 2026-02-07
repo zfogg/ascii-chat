@@ -459,8 +459,10 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
         const uint8_t G = avx2_g_buffer[i];
         const uint8_t B = avx2_b_buffer[i];
         const uint8_t luma_idx = avx2_luminance_buffer[i] >> 2;
+        // Use luma_idx directly to index cache64 (0-63), not char_index (0-char_count)
+        const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx];
+        // For RLE comparison, we need char_idx
         const uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx];
-        const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
 
         if (use_256color) {
           uint8_t color_idx = rgb_to_256color(R, G, B);
@@ -558,8 +560,10 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
       const uint8_t R = p->r, G = p->g, B = p->b;
       const int luminance = (LUMA_RED * R + LUMA_GREEN * G + LUMA_BLUE * B + 128) >> 8;
       const uint8_t luma_idx = luminance >> 2;
+      // Use luma_idx directly to index cache64 (0-63), not char_index (0-char_count)
+      const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx];
+      // For RLE comparison, we need char_idx
       const uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx];
-      const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
 
       if (use_256color) {
         uint8_t color_idx = rgb_to_256color(R, G, B);

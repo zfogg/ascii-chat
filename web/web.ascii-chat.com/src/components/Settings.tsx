@@ -1,6 +1,6 @@
 export type ColorMode = 'auto' | 'none' | '16' | '256' | 'truecolor'
 export type ColorFilter = 'none' | 'black' | 'white' | 'green' | 'magenta' | 'fuchsia' | 'orange' | 'teal' | 'cyan' | 'pink' | 'red' | 'yellow'
-export type Palette = 'standard' | 'blocks' | 'digital' | 'minimal' | 'cool'
+export type Palette = 'standard' | 'blocks' | 'digital' | 'minimal' | 'cool' | 'custom'
 export type Resolution = '320x240' | '640x480' | '1280x720' | '1920x1080'
 
 export interface SettingsConfig {
@@ -129,6 +129,7 @@ export function Settings({ config, onChange, disabled = false }: SettingsProps) 
               <option value="digital">Digital</option>
               <option value="minimal">Minimal</option>
               <option value="cool">Cool</option>
+              <option value="custom">Custom</option>
             </select>
           </div>
         </div>

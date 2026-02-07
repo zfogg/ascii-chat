@@ -211,7 +211,7 @@ target_link_libraries(mirror PRIVATE
 
 # Exported functions (all EMSCRIPTEN_KEEPALIVE functions from mirror.c)
 set(EXPORTED_FUNCTIONS
-    _mirror_init
+    _mirror_init_with_args
     _mirror_cleanup
     _mirror_set_width
     _mirror_set_height
@@ -223,6 +223,8 @@ set(EXPORTED_FUNCTIONS
     _mirror_get_color_mode
     _mirror_set_color_filter
     _mirror_get_color_filter
+    _mirror_set_palette
+    _mirror_get_palette
     _mirror_convert_frame
     _mirror_free_string
     _malloc
@@ -240,7 +242,7 @@ set_target_properties(mirror PROPERTIES
         -s EXPORT_ES6=1 \
         -s EXPORT_NAME='MirrorModule' \
         -s EXPORTED_FUNCTIONS='${EXPORTED_FUNCTIONS_JSON}' \
-        -s EXPORTED_RUNTIME_METHODS='[\"ccall\",\"cwrap\",\"UTF8ToString\",\"getValue\",\"setValue\",\"HEAPU8\"]' \
+        -s EXPORTED_RUNTIME_METHODS='[\"ccall\",\"cwrap\",\"UTF8ToString\",\"stringToUTF8\",\"lengthBytesUTF8\",\"getValue\",\"setValue\",\"HEAPU8\"]' \
         -s ALLOW_MEMORY_GROWTH=1 \
         -s INITIAL_MEMORY=32MB \
         -s MAXIMUM_MEMORY=256MB \

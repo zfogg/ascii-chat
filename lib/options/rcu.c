@@ -440,6 +440,8 @@ static void int_field_updater(options_t *opts, void *context) {
     opts->render_mode = (render_mode_t)ctx->value;
   else if (strcmp(ctx->field_name, "log_level") == 0)
     opts->log_level = (log_level_t)ctx->value;
+  else if (strcmp(ctx->field_name, "palette_type") == 0)
+    opts->palette_type = (palette_type_t)ctx->value;
 }
 
 asciichat_error_t options_set_int(const char *field_name, int value) {
@@ -453,7 +455,8 @@ asciichat_error_t options_set_int(const char *field_name, int value) {
       strcmp(field_name, "microphone_index") != 0 && strcmp(field_name, "speakers_index") != 0 &&
       strcmp(field_name, "discovery_port") != 0 && strcmp(field_name, "port") != 0 && strcmp(field_name, "fps") != 0 &&
       strcmp(field_name, "color_mode") != 0 && strcmp(field_name, "color_filter") != 0 &&
-      strcmp(field_name, "render_mode") != 0 && strcmp(field_name, "log_level") != 0) {
+      strcmp(field_name, "render_mode") != 0 && strcmp(field_name, "log_level") != 0 &&
+      strcmp(field_name, "palette_type") != 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Unknown integer field: %s", field_name);
     return ERROR_INVALID_PARAM;
   }
