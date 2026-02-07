@@ -5,9 +5,11 @@ set -e
 
 cd "$(dirname "$0")/.."
 
-
-./scripts/manpage-build.sh
-git add public/ascii-chat-man1.html public/ascii-chat-man5.html
+# Skip man page build in Vercel (man pages are pre-built and committed)
+if [ -z "$VERCEL" ]; then
+  ./scripts/manpage-build.sh
+  git add public/ascii-chat-man1.html public/ascii-chat-man5.html
+fi
 
 echo "Formatting code with prettier..."
 bun run format
