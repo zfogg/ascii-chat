@@ -26,9 +26,9 @@ export function Settings({ config, onChange, disabled = false }: SettingsProps) 
     <div className="border-b border-terminal-8 bg-terminal-0">
       <div className="px-4 py-3">
         <h3 className="text-sm font-semibold text-terminal-fg mb-3">Settings</h3>
-        <div className="space-y-3">
+        <div className="flex flex-wrap gap-3">
           {/* Resolution */}
-          <div>
+          <div className="flex-1 min-w-[200px]">
             <label className="block text-xs font-medium text-terminal-8 mb-1">
               Resolution
             </label>
@@ -46,7 +46,7 @@ export function Settings({ config, onChange, disabled = false }: SettingsProps) 
           </div>
 
           {/* Frame Rate */}
-          <div>
+          <div className="flex-1 min-w-[200px]">
             <label className="block text-xs font-medium text-terminal-8 mb-1">
               Frame Rate: {config.targetFps} FPS
             </label>
@@ -69,7 +69,7 @@ export function Settings({ config, onChange, disabled = false }: SettingsProps) 
           </div>
 
           {/* Color Mode */}
-          <div>
+          <div className="flex-1 min-w-[200px]">
             <label className="block text-xs font-medium text-terminal-8 mb-1">
               Color Mode
             </label>
@@ -88,7 +88,7 @@ export function Settings({ config, onChange, disabled = false }: SettingsProps) 
           </div>
 
           {/* Color Filter */}
-          <div>
+          <div className="flex-1 min-w-[200px]">
             <label className="block text-xs font-medium text-terminal-8 mb-1">
               Color Filter
             </label>
@@ -114,7 +114,7 @@ export function Settings({ config, onChange, disabled = false }: SettingsProps) 
           </div>
 
           {/* Palette */}
-          <div>
+          <div className="flex-1 min-w-[200px]">
             <label className="block text-xs font-medium text-terminal-8 mb-1">
               Palette
             </label>
@@ -130,11 +130,6 @@ export function Settings({ config, onChange, disabled = false }: SettingsProps) 
               <option value="minimal">Minimal</option>
               <option value="cool">Cool</option>
             </select>
-          </div>
-
-          {/* Info text */}
-          <div className="text-xs text-terminal-8 pt-2 border-t border-terminal-8">
-            Settings take effect when starting webcam or on the next restart.
           </div>
         </div>
       </div>

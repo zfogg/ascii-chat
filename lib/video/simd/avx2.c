@@ -230,13 +230,12 @@ static inline void avx2_compute_luminance_32(const uint8_t *r_vals, const uint8_
   // Pack back to 8-bit
   __m256i luma_packed = _mm256_packus_epi16(luma_16_lo, luma_16_hi);
 
-  // Fix the 128-bit lane-local packing: [lo0..7, hi0..7, lo8..15, hi8..15] -> [lo0..15, hi0..15]
-  // After packing, bytes are in [Q0,Q1,Q2,Q3] = [0-7, 16-23, 8-15, 24-31]
-  // We want [0-15, 16-31] = [Q0,Q2,Q1,Q3]
-  // Use permute4x64 with 0xD8 = 0b11011000 = (3,1,2,0) to swap middle quarters
-  __m256i luma_final = _mm256_permute4x64_epi64(luma_packed, 0xD8);
-
-  _mm256_storeu_si256((__m256i_u *)luminance_out, luma_final);
+  // After unpack and pack operations, bytes are already in correct order [0-31]
+  // luma_16_lo contains pixels 0-7 (lower 128) and 16-23 (upper 128)
+  // luma_16_hi contains pixels 8-15 (lower 128) and 24-31 (upper 128)
+  // packus produces: [0-7, 8-15] in lower 128, [16-23, 24-31] in upper 128
+  // No permute needed - this is already the correct sequential order
+  _mm256_storeu_si256((__m256i_u *)luminance_out, luma_packed);
 }
 
 // Single-pass AVX2 monochrome renderer with immediate emission
@@ -377,6 +376,8 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
 
   const int width = image->w;
   const int height = image->h;
+
+  log_debug("AVX2 renderer called: width=%d, height=%d, use_256color=%d", width, height, use_256color);
 
   if (width <= 0 || height <= 0) {
     char *empty;

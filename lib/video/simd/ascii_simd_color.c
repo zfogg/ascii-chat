@@ -410,10 +410,11 @@ inline char *append_sgr_truecolor_fg_bg(char *dst, uint8_t fr, uint8_t fg, uint8
  */
 
 char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_256color, const char *ascii_chars) {
-  log_info("WASM: image_print_color_simd called with use_256color=%d", use_256color);
+  log_debug("image_print_color_simd called: width=%d, height=%d, use_256color=%d", image ? image->w : -1,
+            image ? image->h : -1, use_256color);
 
 #if SIMD_SUPPORT_AVX2
-  log_info("WASM: Taking AVX2 path with use_256color=%d", use_256color);
+  log_debug("Taking AVX2 path: width=%d, height=%d", image->w, image->h);
   START_TIMER("render_avx2");
   char *result = render_ascii_avx2_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "render_avx2", "RENDER_AVX2: Complete");
