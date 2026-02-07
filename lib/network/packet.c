@@ -627,7 +627,7 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
       return PACKET_RECV_ERROR;
     }
 
-    int recv_timeout = network_is_test_environment() ? 1 : calculate_packet_timeout(pkt_len);
+    uint64_t recv_timeout = network_is_test_environment() ? (1ULL * NS_PER_SEC_INT) : calculate_packet_timeout(pkt_len);
     received = recv_with_timeout(sockfd, ciphertext, pkt_len, recv_timeout);
     if (received != (ssize_t)pkt_len) {
       SET_ERRNO(ERROR_NETWORK, "Failed to receive encrypted payload: %zd/%u bytes", received, pkt_len);
@@ -709,7 +709,7 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
       return PACKET_RECV_ERROR;
     }
 
-    int recv_timeout = network_is_test_environment() ? 1 : calculate_packet_timeout(pkt_len);
+    uint64_t recv_timeout = network_is_test_environment() ? (1ULL * NS_PER_SEC_INT) : calculate_packet_timeout(pkt_len);
     received = recv_with_timeout(sockfd, payload, pkt_len, recv_timeout);
     if (received != (ssize_t)pkt_len) {
       SET_ERRNO(ERROR_NETWORK, "Failed to receive payload: %zd/%u bytes", received, pkt_len);
