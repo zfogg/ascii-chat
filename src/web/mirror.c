@@ -370,18 +370,21 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
       float delta_time = (float)(elapsed_ms / 1000.0);
       g_last_rain_update_time = current_time;
 
-      // Apply effect and cache result
+      // Apply effect and cache a copy
       char *rain_output = digital_rain_apply(g_digital_rain, ascii_output, delta_time);
       if (rain_output) {
+        // Free old cached output
         if (g_last_rain_output) {
           SAFE_FREE(g_last_rain_output);
         }
-        g_last_rain_output = rain_output;
+        // Cache a copy (we'll return the original rain_output)
+        g_last_rain_output = strdup(rain_output);
+        // Return the rain output (caller will free it)
         SAFE_FREE(ascii_output);
         ascii_output = rain_output;
       }
     } else if (g_last_rain_output) {
-      // Use cached output (no copy - reuse the same string)
+      // Use cached output
       SAFE_FREE(ascii_output);
       ascii_output = strdup(g_last_rain_output);
     }

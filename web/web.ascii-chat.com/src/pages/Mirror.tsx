@@ -357,8 +357,15 @@ export function MirrorPage() {
     // Use cursor home + clear screen to prevent artifacts
     const output = '\x1b[H\x1b[J' + formattedLines.join('')
 
-    // Force clear and write
-    terminal.clear()
+    // Debug: log every 30 frames to track rendering
+    if (frameCountRef.current % 30 === 0) {
+      const core = (terminal as any)._core
+      const renderService = core?._renderService
+      const isPaused = renderService?._isPaused
+      console.log('[renderFrame] Lines:', lines.length, 'Output length:', output.length, 'ASCII length:', asciiArt.length, 'isPaused:', isPaused)
+    }
+
+    // Write output (contains \x1b[H\x1b[J for cursor home + clear screen)
     terminal.write(output)
   }
 
