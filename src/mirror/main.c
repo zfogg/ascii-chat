@@ -217,8 +217,8 @@ int mirror_main(void) {
   // ============================================================================
   // Create a minimal display context just for the splash screen
   // This needs to exist before splash_intro_start, but real initialization happens later
-  session_display_config_t temp_display_config = {0};
-  session_display_ctx_t *temp_display = session_display_create(&temp_display_config);
+  // Pass NULL to auto-detect all settings from command-line options
+  session_display_ctx_t *temp_display = session_display_create(NULL);
   if (temp_display) {
     // Display splash immediately so it shows DURING network activity (yt-dlp extraction, etc.)
     splash_intro_start(temp_display);
