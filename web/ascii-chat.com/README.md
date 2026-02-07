@@ -1,6 +1,6 @@
 # ascii-chat.com
 
-Official website for ascii-chat.
+Official website and documentation for ascii-chat.
 
 Official website for ascii-chat - Video chat in your terminal
 
