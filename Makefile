@@ -177,15 +177,17 @@ analyze:
 
 cloc:
 	@printf $(Purple)"\n\ndocumentation:\n"$(Reset)
-	@cloc --progress=1 --force-lang='Markdown,dox' --force-lang='XML,in' "$(DOCS_DIR)"
+	@cloc --progress=1 --vcs=git --force-lang='Markdown,dox' --force-lang='XML,in' "$(DOCS_DIR)"
 	@printf $(Purple)"\n\nbuild configuration:\n"$(Reset)
-	@cloc --progress=1 --include-lang='C,C/C++,CMake,CMakeLists.txt,JSON,Bash,Bourne Shell,Zsh,RTF' --force-lang='Bourne Shell,sh.in' --force-lang='XML,in' CMakeLists.txt src/**/CMakeLists.txt lib/**/CMakeLists.txt cmake/ Makefile
+	@cloc --progress=1 cmake/ CMakeLists.txt Makefile
 	@printf $(Purple)"\n\ntests:\n"$(Reset)
-	@cloc --progress=1 --include-lang='C,C/C++ Header,Bash,Bourne Shell,PowerShell,Dockerfile,YAML' tests/unit tests/performance tests/integration
+	@cloc --progress=1 --vcs=git --include-lang='C,C/C++ Header,Bash,Bourne Shell,PowerShell,Dockerfile,YAML' tests/unit tests/performance tests/integration
 	@printf $(Purple)"\n\nlibasciichat:\n"$(Reset)
-	@cloc --progress=1 --include-lang='C,C/C++ Header,Objective-C' "$(LIB_DIR)"
+	@cloc --progress=1 --vcs=git --include-lang='C,C/C++ Header,Objective-C' "$(LIB_DIR)"
 	@printf $(Purple)"\n\nascii-chat executable:\n"$(Reset)
-	@cloc --progress=1 --include-lang='C,C/C++ Header,Objective-C' "$(SRC_DIR)"
+	@cloc --progress=1 --vcs=git --include-lang='C,C/C++ Header,Objective-C' "$(SRC_DIR)"
+	@printf $(Purple)"\n\nwebsites:\n"$(Reset)
+	@cloc --progress=1 --vcs=git "./web"
 
 
 # =============================================================================
