@@ -24,6 +24,11 @@ static static_mutex_t g_color256_mutex = STATIC_MUTEX_INIT;
 // Fast foreground color: \033[38;2;R;G;Bm
 // Maximum output: 19 bytes (\033[38;2;255;255;255m)
 char *append_truecolor_fg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
+  // Ensure dec3 cache is initialized
+  if (!g_dec3_cache.dec3_initialized) {
+    init_dec3();
+  }
+
   // Static prefix - 7 bytes
   SAFE_MEMCPY(dst, 19, "\033[38;2;", 7);
   dst += 7;

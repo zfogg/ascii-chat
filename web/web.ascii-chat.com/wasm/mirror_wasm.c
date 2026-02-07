@@ -13,6 +13,7 @@
 #include <ascii-chat/video/color_filter.h>
 #include <ascii-chat/video/image.h>
 #include <ascii-chat/video/palette.h>
+#include <ascii-chat/video/ansi_fast.h>
 #include <ascii-chat/common.h>
 
 // ============================================================================
@@ -37,9 +38,19 @@ int mirror_init(int width, int height) {
     return -1;
   }
 
+  // Initialize ANSI color code generation (dec3 cache for RGB values)
+  ansi_fast_init();
+
   // Override dimensions with actual values from xterm.js
   options_set_int("width", width);
   options_set_int("height", height);
+
+  // Force truecolor mode for web terminal (xterm.js supports 24-bit color)
+  options_set_int("color_mode", 4); // COLOR_MODE_TRUECOLOR
+
+  // Use foreground rendering (RENDER_MODE_FOREGROUND = 0)
+  // Background mode would color the background instead of the text
+  options_set_int("render_mode", 0); // RENDER_MODE_FOREGROUND
 
   return 0;
 }

@@ -95,6 +95,10 @@ export async function initMirrorWasm(width: number = 150, height: number = 60): 
     }
   });
 
+  if (!wasmModule) {
+    throw new Error('Failed to load WASM module');
+  }
+
   // Initialize libasciichat
   const result = wasmModule._mirror_init(width, height);
   if (result !== 0) {

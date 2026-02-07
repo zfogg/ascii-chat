@@ -286,6 +286,10 @@ export function MirrorPage() {
             fontSize: 12,
             scrollback: 0,
             disableStdin: true,
+            allowTransparency: false,
+            convertEol: false,
+            // Explicitly enable ANSI color rendering
+            drawBoldTextInBrightColors: true,
           }}
           className="w-full rounded bg-terminal-bg"
         />
