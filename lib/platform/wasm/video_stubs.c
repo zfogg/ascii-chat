@@ -10,9 +10,12 @@
 // Forward declaration for buffer pool type
 typedef struct buffer_pool buffer_pool_t;
 
-// Image validation stub
-bool image_validate_dimensions(int width, int height) {
-  return (width > 0 && height > 0 && width <= 10000 && height <= 10000);
+// Image validation stub - returns ASCIICHAT_OK (0) on success
+asciichat_error_t image_validate_dimensions(size_t width, size_t height) {
+  if (width > 0 && height > 0 && width <= 10000 && height <= 10000) {
+    return ASCIICHAT_OK;
+  }
+  return ERROR_INVALID_PARAM;
 }
 
 // Buffer pool stub - not needed for WASM mirror mode

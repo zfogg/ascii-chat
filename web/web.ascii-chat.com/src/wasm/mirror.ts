@@ -85,8 +85,6 @@ let frameCallCount = 0;
 export async function initMirrorWasm(width: number = 150, height: number = 60): Promise<void> {
   if (wasmModule) return;
 
-  console.log('[WASM] Starting module initialization...');
-
   // Provide runtime environment functions for Emscripten
   wasmModule = await MirrorModuleFactory({
     // libsodium crypto random - returns 32-bit unsigned integer
@@ -94,43 +92,14 @@ export async function initMirrorWasm(width: number = 150, height: number = 60): 
       const buf = new Uint32Array(1);
       crypto.getRandomValues(buf);
       return buf[0];
-    },
-    // Enable Emscripten runtime error messages
-    print: function(text: string) {
-      console.log('[WASM stdout]', text);
-    },
-    printErr: function(text: string) {
-      console.error('[WASM stderr]', text);
-    },
-    onAbort: function(what: any) {
-      console.error('[WASM ABORT]', what);
     }
   });
 
-  console.log('[WASM] Module loaded, calling _mirror_init...');
-  console.log('[WASM] Module state:', {
-    HEAPU8: wasmModule.HEAPU8 ? `${wasmModule.HEAPU8.length} bytes` : 'undefined',
-    _mirror_init: typeof wasmModule._mirror_init,
-    _malloc: typeof wasmModule._malloc,
-    _free: typeof wasmModule._free,
-    ccall: typeof (wasmModule as any).ccall
-  });
-
-  // Initialize libasciichat using ccall for proper type conversion
-  console.log(`[WASM] Calling _mirror_init(${width}, ${height})`);
-  const result = (wasmModule as any).ccall(
-    'mirror_init',  // Function name without underscore
-    'number',       // Return type
-    ['number', 'number'],  // Argument types
-    [width, height]  // Arguments
-  );
-  console.log('[WASM] _mirror_init returned:', result);
-
+  // Initialize libasciichat
+  const result = wasmModule._mirror_init(width, height);
   if (result !== 0) {
     throw new Error('Failed to initialize mirror WASM module');
   }
-
-  console.log('[WASM] Initialization complete');
 }
 
 /**

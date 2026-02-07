@@ -306,11 +306,12 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       zstd zlib libsodium portaudio opus sqlite libdatachannel miniupnpc ffmpeg \
       openssl \
       abseil-cpp \
-      emscripten \
       criterion \
       doxygen \
       dpkg rpm-tools \
-      yt-dlp
+      yt-dlp \
+      emscripten \
+      bun
 
   else
     echo >&2 "ERROR: No supported package manager found (apt-get, yum, or pacman)"

@@ -215,15 +215,9 @@ export function MirrorPage() {
       canvas.height
     )
 
-    // Efficient rendering: move cursor to home and overwrite in one operation
-    // \x1b[H moves cursor to home (top-left)
-    // Format as lines with \r\n line endings
-    const lines: string[] = []
-    for (let i = 0; i < ASCII_HEIGHT; i++) {
-      lines.push(asciiArt.substring(i * ASCII_WIDTH, (i + 1) * ASCII_WIDTH))
-    }
-
-    const output = '\x1b[H' + lines.join('\r\n')
+    // WASM output already includes ANSI color codes and newlines
+    // Just move cursor to home and write the formatted output
+    const output = '\x1b[H' + asciiArt
     terminal.write(output)
   }
 
