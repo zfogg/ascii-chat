@@ -8,7 +8,7 @@
     "preview": "vite preview",
     "type-check": "tsc --noEmit",
     "lint": "eslint src --ext .ts,.tsx",
-    "wasm:build": "cd ../.. && cmake -B build-wasm -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/Emscripten.cmake && cmake --build build-wasm",
+    "wasm:build": "cd wasm && emcmake cmake -B build && cmake --build build",
     "prebuild": "bun run wasm:build || echo 'WASM build skipped (emscripten not available)'"
   },
   "dependencies": {
