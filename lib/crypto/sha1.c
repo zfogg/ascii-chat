@@ -19,7 +19,7 @@
 
 #define SHA1HANDSOFF
 
-#include "sha1.h"
+#include <ascii-chat/crypto/sha1.h>
 
 /* Portable endianness detection */
 #if !defined(BYTE_ORDER)

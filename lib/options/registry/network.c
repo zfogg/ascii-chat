@@ -9,8 +9,8 @@
  * @date January 2026
  */
 
-#include "common.h"
-#include "metadata.h"
+#include <ascii-chat/options/registry/common.h>
+#include <ascii-chat/options/registry/metadata.h>
 
 #include <ascii-chat/options/parsers.h>
 

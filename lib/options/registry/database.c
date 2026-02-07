@@ -9,7 +9,7 @@
  * @date January 2026
  */
 
-#include "common.h"
+#include <ascii-chat/options/registry/common.h>
 
 // ============================================================================
 // DATABASE CATEGORY - Discovery service database options

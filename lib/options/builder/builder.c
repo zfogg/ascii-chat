@@ -4,7 +4,7 @@
  * @ingroup options
  */
 
-#include "internal.h"
+#include <ascii-chat/options/builder/internal.h>
 #include <ascii-chat/options/builder.h>
 #include <ascii-chat/options/common.h>
 #include <ascii-chat/common.h>

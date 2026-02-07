@@ -10,8 +10,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
-
-#include "sha1.h"
+#include <ascii-chat/crypto/sha1.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>

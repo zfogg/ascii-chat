@@ -11,7 +11,7 @@
  * @date January 2026
  */
 
-#include "internal.h"
+#include <ascii-chat/options/builder/internal.h>
 #include <ascii-chat/options/common.h>
 #include <ascii-chat/util/string.h>
 #include <string.h>
