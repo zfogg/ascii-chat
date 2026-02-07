@@ -32,7 +32,7 @@ export default defineConfig({
     },
   },
   build: {
-    target: 'es2020',
+    target: 'esnext',
     minify: 'terser',
     rollupOptions: {
       input: {
@@ -45,6 +45,9 @@ export default defineConfig({
         },
       },
     },
+  },
+  worker: {
+    format: 'es',
   },
   optimizeDeps: {
     exclude: ['@ffmpeg/ffmpeg', '@ffmpeg/util'],
