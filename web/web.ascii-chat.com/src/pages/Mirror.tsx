@@ -30,7 +30,7 @@ export function MirrorPage() {
 
   // Initialize WASM on mount
   useEffect(() => {
-    initMirrorWasm()
+    initMirrorWasm(ASCII_WIDTH, ASCII_HEIGHT)
       .catch((err) => {
         console.error('WASM init error:', err)
         setError(`Failed to load WASM module: ${err}`)
@@ -212,9 +212,7 @@ export function MirrorPage() {
     const asciiArt = convertFrameToAscii(
       rgbaData,
       canvas.width,
-      canvas.height,
-      ASCII_WIDTH,
-      ASCII_HEIGHT
+      canvas.height
     )
 
     // Efficient rendering: move cursor to home and overwrite in one operation

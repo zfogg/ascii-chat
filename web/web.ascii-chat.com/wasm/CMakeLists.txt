@@ -13,6 +13,9 @@ add_definitions(
     -DEMSCRIPTEN_BUILD=1
 )
 
+# Add compiler flags for pthreads support (atomics + bulk-memory)
+add_compile_options(-pthread -matomics -mbulk-memory)
+
 # Fetch and build dependencies for WASM
 include(FetchContent)
 
@@ -236,7 +239,8 @@ set_target_properties(mirror PROPERTIES
         -s INITIAL_MEMORY=32MB \
         -s MAXIMUM_MEMORY=256MB \
         -s WASM_BIGINT=1 \
-        -s USE_PTHREADS=0 \
+        -s USE_PTHREADS=1 \
+        -pthread \
         -msimd128 \
         -O3 \
         --no-entry"
