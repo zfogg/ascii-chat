@@ -1,6 +1,6 @@
 /**
  * @file platform/wasm/system.c
- * @brief System utilities (environment, strings) for WASM/Emscripten
+ * @brief System utilities (environment) for WASM/Emscripten
  * @ingroup platform
  */
 
