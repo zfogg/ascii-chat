@@ -55,11 +55,13 @@ char *manpage_content_generate_environment(const options_config_t *config) {
   return buffer;
 }
 
-// Structure to hold environment variable info for sorting
+/**
+ * @brief Environment variable entry for manpage generation
+ */
 typedef struct {
-  const char *name;
-  const char *description;
-  const char *option_long_name; // Long option name (for "(see --option)" suffix), or NULL for manual
+  const char *name;             ///< Environment variable name
+  const char *description;      ///< Description text
+  const char *option_long_name; ///< Long option name (for "(see --option)" suffix), or NULL for manual
 } env_var_entry_t;
 
 // Comparison function for qsort

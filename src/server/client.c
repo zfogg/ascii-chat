@@ -159,9 +159,12 @@ typedef void (*client_packet_handler_t)(client_info_t *client, const void *data,
 #define CLIENT_DISPATCH_HASH_SIZE 32
 #define CLIENT_DISPATCH_HANDLER_COUNT 12
 
+/**
+ * @brief Hash table entry for client packet dispatch
+ */
 typedef struct {
-  packet_type_t key;
-  uint8_t handler_idx;
+  packet_type_t key;   ///< Packet type (0 = empty slot)
+  uint8_t handler_idx; ///< Handler index (0-based)
 } client_dispatch_entry_t;
 
 #define CLIENT_DISPATCH_HASH(type) ((type) % CLIENT_DISPATCH_HASH_SIZE)

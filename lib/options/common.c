@@ -663,10 +663,13 @@ void update_dimensions_to_terminal_size(options_t *opts) {
 // Generic Usage Function (Unified Implementation)
 // ============================================================================
 
+/**
+ * @brief Mode metadata for usage display
+ */
 typedef struct {
-  asciichat_mode_t mode;
-  const char *program_name;
-  const char *description;
+  asciichat_mode_t mode;    ///< Application mode
+  const char *program_name; ///< Program name shown in usage
+  const char *description;  ///< One-line description of mode
 } mode_metadata_t;
 
 static const mode_metadata_t mode_info[] = {

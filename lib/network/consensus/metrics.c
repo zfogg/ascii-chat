@@ -12,12 +12,15 @@
 #include <stdio.h>
 
 /**
- * Metrics collection structure
+ * @brief Metrics collection structure for participant quality measurements
+ *
+ * Dynamic array storing network quality metrics for all participants
+ * in a consensus session.
  */
 typedef struct consensus_metrics_collection {
-  participant_metrics_t *metrics;
-  int count;
-  int capacity;
+  participant_metrics_t *metrics; ///< Array of participant metrics
+  int count;                      ///< Number of participants
+  int capacity;                   ///< Allocated capacity
 } consensus_metrics_collection_t;
 
 /**

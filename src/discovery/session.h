@@ -73,6 +73,9 @@ typedef enum {
   MIGRATION_STATE_COMPLETE  ///< Failover complete, call resumed
 } migration_state_t;
 
+/**
+ * @brief Host migration context for tracking failover state
+ */
 typedef struct {
   migration_state_t state;    ///< Current migration state
   uint64_t detection_time_ms; ///< When host disconnect detected (Unix ms)

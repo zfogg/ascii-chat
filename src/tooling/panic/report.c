@@ -36,27 +36,36 @@ typedef struct thread_filter_list {
   size_t capacity;  ///< Allocated capacity
 } thread_filter_list_t;
 
+/**
+ * @brief Configuration for panic report generation
+ */
 typedef struct report_config {
-  const char *log_dir;
-  const char *log_file; // Single log file path (alternative to log_dir)
-  const char *include_filter;
-  const char *exclude_filter;
-  thread_filter_list_t threads;
-  bool emit_raw_line;
+  const char *log_dir;          ///< Directory containing instrumentation log files
+  const char *log_file;         ///< Single log file path (alternative to log_dir)
+  const char *include_filter;   ///< File path substring filter for inclusion
+  const char *exclude_filter;   ///< File path substring filter for exclusion
+  thread_filter_list_t threads; ///< Thread IDs to include in report
+  bool emit_raw_line;           ///< Whether to emit raw log lines in output
 } report_config_t;
 
+/**
+ * @brief Parsed instrumentation log record
+ *
+ * Represents a single line from an instrumentation log file with all
+ * fields extracted and parsed.
+ */
 typedef struct log_record {
-  uint64_t pid;
-  uint64_t tid;
-  uint64_t seq;
-  char *timestamp;
-  char *elapsed;
-  char *file;
-  uint32_t line;
-  char *function;
-  uint32_t macro_flag;
-  char *snippet;
-  char *raw_line;
+  uint64_t pid;        ///< Process ID
+  uint64_t tid;        ///< Thread ID
+  uint64_t seq;        ///< Sequence number
+  char *timestamp;     ///< Timestamp string
+  char *elapsed;       ///< Elapsed time since start
+  char *file;          ///< Source file path
+  uint32_t line;       ///< Source line number
+  char *function;      ///< Function name
+  uint32_t macro_flag; ///< Macro expansion flag
+  char *snippet;       ///< Code snippet
+  char *raw_line;      ///< Original raw log line
 } log_record_t;
 
 /**

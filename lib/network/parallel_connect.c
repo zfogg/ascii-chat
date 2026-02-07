@@ -21,23 +21,24 @@
 #include <fcntl.h>
 #endif
 
+/**
+ * @brief Per-thread connection attempt state for parallel IPv4/IPv6 racing
+ */
 typedef struct {
-  socket_t socket;
-  struct sockaddr_storage addr;
-  socklen_t addr_len;
-  int family;
-  const char *family_name;
-  uint32_t timeout_ms;
-  volatile bool connected;
-  volatile bool done;
-  volatile socket_t *winner_socket;
-  volatile bool *winner_found;
-  mutex_t *lock;
-  cond_t *signal;
-
-  // Optional exit callback for graceful shutdown
-  parallel_connect_should_exit_fn should_exit_callback;
-  void *callback_data;
+  socket_t socket;                                      ///< Socket for this attempt
+  struct sockaddr_storage addr;                         ///< Socket address to connect to
+  socklen_t addr_len;                                   ///< Length of address structure
+  int family;                                           ///< Address family (AF_INET or AF_INET6)
+  const char *family_name;                              ///< Human-readable family name ("IPv4"/"IPv6")
+  uint32_t timeout_ms;                                  ///< Connection timeout in milliseconds
+  volatile bool connected;                              ///< True if this attempt succeeded
+  volatile bool done;                                   ///< True if this attempt finished
+  volatile socket_t *winner_socket;                     ///< Shared pointer to winning socket
+  volatile bool *winner_found;                          ///< Shared flag indicating a winner exists
+  mutex_t *lock;                                        ///< Shared mutex for coordination
+  cond_t *signal;                                       ///< Shared condition variable for signaling
+  parallel_connect_should_exit_fn should_exit_callback; ///< Optional exit callback for graceful shutdown
+  void *callback_data;                                  ///< User data for callback
 } connection_attempt_t;
 
 static void *attempt_connection_thread(void *arg) {

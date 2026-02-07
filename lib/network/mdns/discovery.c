@@ -30,14 +30,16 @@
 // Thread Coordination
 // ============================================================================
 
-/** Thread-safe result sharing between discovery threads */
+/**
+ * @brief Thread-safe result sharing between discovery threads
+ */
 typedef struct {
-  mutex_t lock;
-  cond_t signal;
-  discovery_result_t *result;
-  bool mdns_done;
-  bool acds_done;
-  bool found;
+  mutex_t lock;               ///< Mutex for thread-safe access
+  cond_t signal;              ///< Condition variable for signaling
+  discovery_result_t *result; ///< Shared discovery result
+  bool mdns_done;             ///< Whether mDNS discovery completed
+  bool acds_done;             ///< Whether ACDS discovery completed
+  bool found;                 ///< Whether a session was found
 } discovery_thread_state_t;
 
 // ============================================================================
@@ -270,12 +272,14 @@ void discovery_mdns_destroy(discovery_tui_server_t *servers) {
 // mDNS Discovery Thread
 // ============================================================================
 
-/** Context for mDNS discovery thread */
+/**
+ * @brief Context for mDNS discovery thread
+ */
 typedef struct {
-  const char *session_string;
-  discovery_thread_state_t *state;
-  const uint8_t *expected_pubkey;
-  uint32_t timeout_ms;
+  const char *session_string;      ///< Session string to discover
+  discovery_thread_state_t *state; ///< Shared discovery state
+  const uint8_t *expected_pubkey;  ///< Expected server public key (optional)
+  uint32_t timeout_ms;             ///< Discovery timeout in milliseconds
 } mdns_thread_context_t;
 
 /** Thread function for mDNS discovery */
