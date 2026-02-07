@@ -232,16 +232,19 @@
  * // Generate random session string
  * asciichat_error_t acds_string_generate(char *output, size_t output_size);
  *
- * // Validate session string format
- * bool acds_string_validate(const char *str);
+ * // Validate session string (format + dictionary)
+ * bool is_session_string(const char *str);
  * @endcode
  *
- * **Validation Rules**:
- * - Only lowercase letters and hyphens allowed
- * - Exactly 2 hyphens (3 words)
+ * **Validation Rules** (enforced by is_session_string()):
+ * - Only lowercase ASCII letters and hyphens allowed
+ * - Exactly 2 hyphens separating 3 words (adjective-noun-noun format)
+ * - First word must be a valid adjective from wordlist (2500 adjectives)
+ * - Second and third words must be valid nouns from wordlist (5000 nouns)
+ * - Each word is 2-12 characters
  * - No consecutive hyphens
  * - Cannot start or end with hyphen
- * - Maximum 47 characters
+ * - Length 5-47 characters
  *
  * @section acds_protocol Protocol
  *

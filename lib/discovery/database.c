@@ -320,8 +320,12 @@ asciichat_error_t database_session_create(sqlite3 *db, const acip_session_create
     memcpy(session_string, reserved_str, len);
     session_string[len] = '\0';
 
-    if (!acds_string_validate(session_string)) {
-      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session string format: %s", session_string);
+    if (!is_session_string(session_string)) {
+      asciichat_error_context_t ctx;
+      if (HAS_ERRNO(&ctx)) {
+        return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session string: %s (%s)", session_string, ctx.context_message);
+      }
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session string: %s", session_string);
     }
   } else {
     asciichat_error_t result = acds_string_generate(session_string, sizeof(session_string));

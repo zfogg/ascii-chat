@@ -204,32 +204,32 @@ static const color_scheme_t MONOKAI_SCHEME = {.name = "monokai",
 
 /**
  * @brief Base16 Default color scheme
- * Precision colors for machines and people (auto-adapts to terminal background)
+ * Official Base16 Default colors by Chris Kempson
  */
 static const color_scheme_t BASE16_DEFAULT_SCHEME = {.name = "base16-default",
-                                                     .description = "Base16 Default theme - machine colors",
+                                                     .description = "Base16 Default theme (Chris Kempson)",
                                                      .log_colors_dark =
                                                          {
-                                                             {220, 150, 86},  /* DEV: orange (0x09) */
-                                                             {134, 193, 185}, /* DEBUG: cyan (0x0C) */
-                                                             {161, 181, 108}, /* INFO: green (0x0B) */
-                                                             {247, 202, 136}, /* WARN: yellow (0x0A) */
-                                                             {171, 70, 66},   /* ERROR: red (0x08) */
-                                                             {186, 139, 175}, /* FATAL: magenta (0x0E) */
+                                                             {220, 150, 86},  /* DEV: base09 (orange) */
+                                                             {134, 193, 185}, /* DEBUG: base0C (cyan) */
+                                                             {161, 181, 108}, /* INFO: base0B (green) */
+                                                             {247, 202, 136}, /* WARN: base0A (yellow) */
+                                                             {171, 70, 66},   /* ERROR: base08 (red) */
+                                                             {186, 139, 175}, /* FATAL: base0E (magenta) */
                                                              {88, 88, 88},    /* GREY: base03 */
-                                                             {255, 255, 255}  /* RESET */
+                                                             {248, 248, 248}  /* RESET: base07 */
                                                          },
                                                      .has_light_variant = true,
                                                      .log_colors_light =
                                                          {
-                                                             {161, 105, 70},  /* DEV: brown (0x0F) */
-                                                             {88, 88, 88},    /* DEBUG: darker gray */
-                                                             {88, 88, 88},    /* INFO: darker gray */
-                                                             {161, 105, 70},  /* WARN: brown (0x0F) */
-                                                             {171, 70, 66},   /* ERROR: red (0x08) */
-                                                             {88, 88, 88},    /* FATAL: darker gray */
-                                                             {184, 184, 184}, /* GREY: lighter gray */
-                                                             {0, 0, 0}        /* RESET */
+                                                             {161, 105, 70},  /* DEV: base0F (brown) */
+                                                             {124, 175, 194}, /* DEBUG: base0D (blue) */
+                                                             {161, 181, 108}, /* INFO: base0B (green) */
+                                                             {247, 202, 136}, /* WARN: base0A (yellow) */
+                                                             {171, 70, 66},   /* ERROR: base08 (red) */
+                                                             {186, 139, 175}, /* FATAL: base0E (magenta) */
+                                                             {184, 184, 184}, /* GREY: base04 */
+                                                             {24, 24, 24}     /* RESET: base00 */
                                                          },
                                                      .is_builtin = true};
 

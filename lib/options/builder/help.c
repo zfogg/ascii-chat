@@ -443,7 +443,7 @@ static void print_usage_section(const options_config_t *config, FILE *stream, in
 
   const char *binary_name = PLATFORM_BINARY_NAME;
 
-  fprintf(stream, "%s\n", colored_string(LOG_COLOR_DEBUG, "USAGE:"));
+  fprintf(stream, "%s\n", colored_string(LOG_COLOR_DEBUG, "USAGE"));
 
   // Build colored syntax strings using colored_string() for all components
   for (size_t i = 0; i < config->num_usage_lines; i++) {
@@ -495,7 +495,7 @@ static void print_examples_section(const options_config_t *config, FILE *stream,
 
   const char *binary_name = PLATFORM_BINARY_NAME;
 
-  fprintf(stream, "%s\n", colored_string(LOG_COLOR_DEBUG, "EXAMPLES:"));
+  fprintf(stream, "%s\n", colored_string(LOG_COLOR_DEBUG, "EXAMPLES"));
 
   // Build colored command strings using colored_string() for all components
   for (size_t i = 0; i < config->num_examples; i++) {
@@ -655,7 +655,7 @@ static void print_modes_section(const options_config_t *config, FILE *stream, in
     return;
   }
 
-  fprintf(stream, "%s\n", colored_string(LOG_COLOR_DEBUG, "MODES:"));
+  fprintf(stream, "%s\n", colored_string(LOG_COLOR_DEBUG, "MODES"));
 
   // Print each mode with colored name using colored_string() and global column width
   for (size_t i = 0; i < config->num_modes; i++) {
@@ -674,7 +674,7 @@ static void print_mode_options_section(FILE *stream, int term_width, int max_col
   const char *binary_name = PLATFORM_BINARY_NAME;
 
   // Print section header with colored "MODE-OPTIONS:" label
-  fprintf(stream, "%s\n", colored_string(LOG_COLOR_DEBUG, "MODE-OPTIONS:"));
+  fprintf(stream, "%s\n", colored_string(LOG_COLOR_DEBUG, "MODE-OPTIONS"));
 
   // Build colored command with components
   char usage_buf[512];
@@ -757,7 +757,7 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
     if (g > 0) {
       fprintf(stream, "\n");
     }
-    fprintf(stream, "%s:\n", colored_string(LOG_COLOR_DEBUG, current_group));
+    fprintf(stream, "%s\n", colored_string(LOG_COLOR_DEBUG, current_group));
 
     // Print all options in this group
     for (size_t i = 0; i < config->num_descriptors; i++) {
@@ -813,25 +813,17 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
           desc->help_text && (strstr(desc->help_text, "(default:") || strstr(desc->help_text, "=default)"));
 
       if (desc->default_value && !description_has_default) {
-        desc_len += safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s ",
-                                  colored_string(LOG_COLOR_FATAL, "default:"));
         char default_buf[32];
-        if (format_option_default_value_str(desc, default_buf, sizeof(default_buf)) > 0) {
-          desc_len += safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
-                                    colored_string(LOG_COLOR_FATAL, default_buf));
+        int default_len = format_option_default_value_str(desc, default_buf, sizeof(default_buf));
+        if (default_len > 0) {
+          desc_len +=
+              safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s %s)",
+                            colored_string(LOG_COLOR_FATAL, "default:"), colored_string(LOG_COLOR_FATAL, default_buf));
         }
-        desc_len += safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, ")");
       }
 
       if (desc->required) {
         desc_len += safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " [REQUIRED]");
-      }
-
-      if (desc->env_var_name) {
-        // Color env: label and variable name grey
-        desc_len +=
-            safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s %s)",
-                          colored_string(LOG_COLOR_GREY, "env:"), colored_string(LOG_COLOR_GREY, desc->env_var_name));
       }
 
       // Use layout function with section-specific column width for consistent alignment
@@ -1043,25 +1035,17 @@ void options_config_print_options_sections_with_width(const options_config_t *co
           desc->help_text && (strstr(desc->help_text, "(default:") || strstr(desc->help_text, "=default)"));
 
       if (desc->default_value && !description_has_default) {
-        desc_len += safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s ",
-                                  colored_string(LOG_COLOR_FATAL, "default:"));
         char default_buf[32];
-        if (format_option_default_value_str(desc, default_buf, sizeof(default_buf)) > 0) {
-          desc_len += safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
-                                    colored_string(LOG_COLOR_FATAL, default_buf));
+        int default_len = format_option_default_value_str(desc, default_buf, sizeof(default_buf));
+        if (default_len > 0) {
+          desc_len +=
+              safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s %s)",
+                            colored_string(LOG_COLOR_FATAL, "default:"), colored_string(LOG_COLOR_FATAL, default_buf));
         }
-        desc_len += safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, ")");
       }
 
       if (desc->required) {
         desc_len += safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " [REQUIRED]");
-      }
-
-      if (desc->env_var_name) {
-        // Color env: label and variable name grey
-        desc_len +=
-            safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s %s)",
-                          colored_string(LOG_COLOR_GREY, "env:"), colored_string(LOG_COLOR_GREY, desc->env_var_name));
       }
 
       layout_print_two_column_row(stream, colored_option_str, desc_str, max_col_width, term_width);
@@ -1154,7 +1138,7 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
   bool for_binary_help = (mode == MODE_DISCOVERY);
 
   // Print USAGE section (with section-specific column width and mode filtering)
-  fprintf(desc, "%s\n", colored_string(LOG_COLOR_DEBUG, "USAGE:"));
+  fprintf(desc, "%s\n", colored_string(LOG_COLOR_DEBUG, "USAGE"));
   if (config->num_usage_lines > 0) {
     // Get mode name for filtering usage lines
     const char *mode_name = NULL;
@@ -1305,8 +1289,7 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
       }
 
       if (section->heading) {
-        fprintf(desc, "%s%s\n", colored_string(LOG_COLOR_DEBUG, section->heading),
-                colored_string(LOG_COLOR_DEBUG, ":"));
+        fprintf(desc, "%s\n", colored_string(LOG_COLOR_DEBUG, section->heading));
       }
 
       if (section->content) {

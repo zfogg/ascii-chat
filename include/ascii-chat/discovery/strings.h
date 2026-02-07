@@ -52,19 +52,6 @@
 asciichat_error_t acds_string_generate(char *output, size_t output_size);
 
 /**
- * @brief Validate session string format
- * @param str Session string to validate
- * @return true if valid format, false otherwise
- *
- * Valid format:
- * - Lowercase letters only
- * - Exactly 2 hyphens (3 words)
- * - No leading/trailing hyphens
- * - Length <= 47 characters
- */
-bool acds_string_validate(const char *str);
-
-/**
  * @brief Initialize session string system with cached word validation
  * @return ASCIICHAT_OK on success, error code otherwise
  *

@@ -1,5 +1,5 @@
 # WebAssembly Mirror Mode Build
-# Minimal build for ASCII rendering in browser
+# Full library integration for ASCII rendering in browser
 
 cmake_minimum_required(VERSION 3.18)
 project(ascii-chat-mirror-wasm)

@@ -169,7 +169,7 @@ const options_config_t *options_preset_unified(const char *program_name, const c
                                              (const char *)example_buf8, (const char *)example_buf9};
   options_builder_add_positional(
       b, "session-string", "(optional) Random three words in format adjective-noun-noun that connect you to a call.",
-      false, "POSITIONAL ARGUMENTS:", discovery_examples, ARRAY_SIZE(discovery_examples), OPTION_MODE_DISCOVERY,
+      false, "POSITIONAL ARGUMENTS", discovery_examples, ARRAY_SIZE(discovery_examples), OPTION_MODE_DISCOVERY,
       parse_client_address);
 
   // Server and Discovery Service modes: [bind-address] [bind-address] - can be IP or hostname, up to 2 for IPv4/IPv6
@@ -183,11 +183,11 @@ const options_config_t *options_preset_unified(const char *program_name, const c
                                           "::1 192.168.1.100"};
   options_builder_add_positional(b, "bind-address",
                                  "(optional) 0-2 addresses for a server to bind to, one IPv4 and the other IPv6.",
-                                 false, "POSITIONAL ARGUMENTS:", server_examples, ARRAY_SIZE(server_examples),
+                                 false, "POSITIONAL ARGUMENTS", server_examples, ARRAY_SIZE(server_examples),
                                  OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC, parse_server_bind_address);
 
   options_builder_add_positional(b, "address", "(optional) Server address for client to connect to.", false,
-                                 "POSITIONAL ARGUMENTS:", client_examples, ARRAY_SIZE(client_examples),
+                                 "POSITIONAL ARGUMENTS", client_examples, ARRAY_SIZE(client_examples),
                                  OPTION_MODE_CLIENT, parse_client_address);
 
   // Add usage lines for all modes
@@ -285,6 +285,21 @@ const options_config_t *options_preset_unified(const char *program_name, const c
                                      "  - Available keybindings (?, Space, arrows, m, c, f, r)\n"
                                      "  - Current settings (volume, color mode, audio status, etc.)",
                                      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY);
+
+  // Add environment variables section (all modes)
+  options_builder_add_custom_section(
+      b, "ENVIRONMENT",
+      "All command-line flags that accept values have corresponding environment variables.\n"
+      "  Format: ASCII_CHAT_<FLAG_NAME> where FLAG_NAME is uppercase with hyphens replaced by underscores\n"
+      "  Example: --color-filter maps to ASCII_CHAT_COLOR_FILTER\n"
+      "\n"
+      "  Configuration precedence (lowest to highest):\n"
+      "    1. Config file values (~/.ascii-chat/config.toml)\n"
+      "    2. Environment variables (ASCII_CHAT_*)\n"
+      "    3. Command-line flags (--flag-name)\n"
+      "\n"
+      "  Additional environment variables are documented in the ascii-chat(1) man page.",
+      OPTION_MODE_ALL);
 
   // Add common dependencies (these will be validated after parsing)
   // Note: Dependencies are validated at runtime, so we add them here for documentation

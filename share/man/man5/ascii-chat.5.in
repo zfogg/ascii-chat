@@ -254,34 +254,25 @@ option without needing a colors.toml file:
 .
 .TP
 .B pastel
-Soft, pleasant pastel colors (default)
+Soft pastel colors (default) - auto-adapts to dark/light backgrounds
 .TP
 .B nord
-Arctic, muted Nordic theme
+Arctic, muted Nord theme - auto-adapts to dark/light backgrounds
 .TP
-.B solarized-dark
-Solarized dark theme - precision colors for dark backgrounds
-.TP
-.B solarized-light
-Solarized light theme - precision colors for light backgrounds
+.B solarized
+Solarized theme - precision colors - auto-adapts to dark/light backgrounds
 .TP
 .B dracula
-Dark Dracula project theme
+Dracula dark theme - vampiric colors (dark only)
 .TP
-.B gruvbox-dark
-Gruvbox dark theme - retro groove colors for dark backgrounds
-.TP
-.B gruvbox-light
-Gruvbox light theme - retro groove colors for light backgrounds
+.B gruvbox
+Gruvbox theme - retro warm colors - auto-adapts to dark/light backgrounds
 .TP
 .B monokai
-Popular Monokai dark theme
+Popular Monokai dark theme (dark only)
 .TP
-.B base16-default-dark
-Base16 Default dark theme - machine colors for dark backgrounds
-.TP
-.B base16-default-light
-Base16 Default light theme - machine colors for light backgrounds
+.B base16-default
+Base16 Default theme (Chris Kempson) - auto-adapts to dark/light backgrounds
 .
 .SH KNOWN_HOSTS FORMAT
 SSH-style host verification file for storing server public keys used in TOFU (Trust On First Use)

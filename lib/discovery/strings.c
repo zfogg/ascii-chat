@@ -218,48 +218,6 @@ asciichat_error_t acds_string_generate(char *output, size_t output_size) {
   return ASCIICHAT_OK;
 }
 
-bool acds_string_validate(const char *str) {
-  if (!str) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Session string is NULL");
-    return false;
-  }
-
-  size_t len = strlen(str);
-  if (len == 0 || len > 47) {
-    return false;
-  }
-
-  // Session strings must be ASCII-only (homograph attack prevention)
-  // Example: Cyrillic "а" (U+0430) looks identical to ASCII "a" but is a different character
-  if (!utf8_is_ascii_only(str)) {
-    return false;
-  }
-
-  // Must not start or end with hyphen
-  if (str[0] == '-' || str[len - 1] == '-') {
-    return false;
-  }
-
-  // Count hyphens and validate characters
-  int hyphen_count = 0;
-  for (size_t i = 0; i < len; i++) {
-    char c = str[i];
-    if (c == '-') {
-      hyphen_count++;
-      // No consecutive hyphens
-      if (i > 0 && str[i - 1] == '-') {
-        return false;
-      }
-    } else if (!islower((unsigned char)c)) {
-      // Only lowercase letters and hyphens allowed
-      return false;
-    }
-  }
-
-  // Must have exactly 2 hyphens (3 words)
-  return hyphen_count == 2;
-}
-
 bool is_session_string(const char *str) {
   if (!str || str[0] == '\0') {
     SET_ERRNO(ERROR_INVALID_PARAM, "Session string is NULL or empty");
@@ -283,12 +241,8 @@ bool is_session_string(const char *str) {
   // Get compiled regex (lazy initialization)
   pcre2_code *regex = session_format_regex_get();
   if (!regex) {
-    log_warn("Session string validator not initialized; falling back to format validation");
-    bool valid = acds_string_validate(str);
-    if (!valid) {
-      SET_ERRNO(ERROR_INVALID_PARAM, "Session string has invalid format");
-    }
-    return valid;
+    SET_ERRNO(ERROR_INTERNAL, "Session string PCRE2 regex failed to initialize");
+    return false;
   }
 
   // Validate format using PCRE2 regex
