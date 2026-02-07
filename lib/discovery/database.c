@@ -73,6 +73,18 @@ static const char *schema_sql =
     "  FOREIGN KEY (session_string) REFERENCES sessions(session_string) ON DELETE CASCADE"
     ");"
 
+    // Session keys table (multi-key support with versioning)
+    "CREATE TABLE IF NOT EXISTS session_keys ("
+    "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+    "  session_string TEXT NOT NULL,"
+    "  identity_pubkey BLOB NOT NULL," // Ed25519 public key (32 bytes)
+    "  key_version INTEGER NOT NULL,"  // Versioning for key rotation
+    "  added_at INTEGER NOT NULL,"     // When key was added (Unix ms)
+    "  revoked INTEGER DEFAULT 0,"     // 0=active, 1=revoked
+    "  FOREIGN KEY (session_string) REFERENCES sessions(session_string) ON DELETE CASCADE,"
+    "  UNIQUE(session_string, identity_pubkey)" // Prevent duplicate keys per session
+    ");"
+
     // Rate limiting events
     "CREATE TABLE IF NOT EXISTS rate_events ("
     "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
@@ -85,6 +97,8 @@ static const char *schema_sql =
     "CREATE INDEX IF NOT EXISTS idx_sessions_id ON sessions(session_id);"
     "CREATE INDEX IF NOT EXISTS idx_sessions_activity ON sessions(last_activity_at);"
     "CREATE INDEX IF NOT EXISTS idx_participants_session ON participants(session_string);"
+    "CREATE INDEX IF NOT EXISTS idx_session_keys_session ON session_keys(session_string);"
+    "CREATE INDEX IF NOT EXISTS idx_session_keys_active ON session_keys(session_string, revoked);"
     "CREATE INDEX IF NOT EXISTS idx_rate_events ON rate_events(ip_address, event_type, timestamp);";
 
 // ============================================================================
@@ -1031,4 +1045,118 @@ bool database_session_is_migration_ready(sqlite3 *db, const uint8_t session_id[1
 
   sqlite3_finalize(stmt);
   return ready;
+}
+
+// ============================================================================
+// Multi-Key Management Functions
+// ============================================================================
+
+asciichat_error_t database_session_add_key(sqlite3 *db, const char *session_string, const uint8_t identity_pubkey[32],
+                                           uint32_t key_version) {
+  if (!db || !session_string || !identity_pubkey) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for add_key");
+  }
+
+  const char *sql = "INSERT OR IGNORE INTO session_keys (session_string, identity_pubkey, key_version, added_at) "
+                    "VALUES (?, ?, ?, ?)";
+
+  sqlite3_stmt *stmt = NULL;
+  if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+    return SET_ERRNO(ERROR_CONFIG, "Failed to prepare add_key statement: %s", sqlite3_errmsg(db));
+  }
+
+  sqlite3_bind_text(stmt, 1, session_string, -1, SQLITE_STATIC);
+  sqlite3_bind_blob(stmt, 2, identity_pubkey, 32, SQLITE_STATIC);
+  sqlite3_bind_int(stmt, 3, key_version);
+  sqlite3_bind_int64(stmt, 4, database_get_current_time_ms());
+
+  int rc = sqlite3_step(stmt);
+  sqlite3_finalize(stmt);
+
+  if (rc != SQLITE_DONE) {
+    return SET_ERRNO(ERROR_CONFIG, "Failed to add session key: %s", sqlite3_errmsg(db));
+  }
+
+  log_debug("Added key to session %s (version=%u)", session_string, key_version);
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t database_session_revoke_key(sqlite3 *db, const char *session_string,
+                                              const uint8_t identity_pubkey[32]) {
+  if (!db || !session_string || !identity_pubkey) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for revoke_key");
+  }
+
+  const char *sql = "UPDATE session_keys SET revoked = 1 WHERE session_string = ? AND identity_pubkey = ?";
+
+  sqlite3_stmt *stmt = NULL;
+  if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+    return SET_ERRNO(ERROR_CONFIG, "Failed to prepare revoke_key statement: %s", sqlite3_errmsg(db));
+  }
+
+  sqlite3_bind_text(stmt, 1, session_string, -1, SQLITE_STATIC);
+  sqlite3_bind_blob(stmt, 2, identity_pubkey, 32, SQLITE_STATIC);
+
+  int rc = sqlite3_step(stmt);
+  sqlite3_finalize(stmt);
+
+  if (rc != SQLITE_DONE) {
+    return SET_ERRNO(ERROR_CONFIG, "Failed to revoke session key: %s", sqlite3_errmsg(db));
+  }
+
+  log_debug("Revoked key from session %s", session_string);
+  return ASCIICHAT_OK;
+}
+
+bool database_session_verify_key(sqlite3 *db, const char *session_string, const uint8_t identity_pubkey[32]) {
+  if (!db || !session_string || !identity_pubkey) {
+    return false;
+  }
+
+  const char *sql = "SELECT 1 FROM session_keys WHERE session_string = ? AND identity_pubkey = ? AND revoked = 0";
+
+  sqlite3_stmt *stmt = NULL;
+  if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+    return false;
+  }
+
+  sqlite3_bind_text(stmt, 1, session_string, -1, SQLITE_STATIC);
+  sqlite3_bind_blob(stmt, 2, identity_pubkey, 32, SQLITE_STATIC);
+
+  bool valid = (sqlite3_step(stmt) == SQLITE_ROW);
+  sqlite3_finalize(stmt);
+
+  return valid;
+}
+
+asciichat_error_t database_session_get_keys(sqlite3 *db, const char *session_string, uint8_t (*keys_out)[32],
+                                            size_t max_keys, size_t *count_out) {
+  if (!db || !session_string || !keys_out || !count_out) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for get_keys");
+  }
+
+  const char *sql = "SELECT identity_pubkey FROM session_keys WHERE session_string = ? AND revoked = 0 "
+                    "ORDER BY key_version ASC";
+
+  sqlite3_stmt *stmt = NULL;
+  if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+    return SET_ERRNO(ERROR_CONFIG, "Failed to prepare get_keys statement: %s", sqlite3_errmsg(db));
+  }
+
+  sqlite3_bind_text(stmt, 1, session_string, -1, SQLITE_STATIC);
+
+  size_t count = 0;
+  while (sqlite3_step(stmt) == SQLITE_ROW && count < max_keys) {
+    const void *blob = sqlite3_column_blob(stmt, 0);
+    if (blob && sqlite3_column_bytes(stmt, 0) == 32) {
+      memcpy(keys_out[count], blob, 32);
+      count++;
+    }
+  }
+
+  sqlite3_finalize(stmt);
+  *count_out = count;
+
+  log_debug("Retrieved %zu keys for session %s", count, session_string);
+  return ASCIICHAT_OK;
 }

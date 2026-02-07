@@ -10,9 +10,11 @@
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/network/nat/upnp.h>
+#include <ascii-chat/network/packet.h>
 #include <ascii-chat/network/webrtc/stun.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/socket.h>
+#include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/time.h>
 
 #include <string.h>
@@ -181,8 +183,11 @@ static asciichat_error_t nat_stun_probe(nat_quality_t *quality, const char *stun
     stun_port = (uint16_t)atoi(colon + 1);
   }
 
+  // Detect address family from STUN server hostname (IPv4 vs IPv6)
+  int stun_family = is_valid_ipv6(host_buf) ? AF_INET6 : AF_INET;
+
   // Create UDP socket for STUN probe
-  socket_t sock = socket_create(AF_INET, SOCK_DGRAM, 0);
+  socket_t sock = socket_create(stun_family, SOCK_DGRAM, 0);
   if (sock == INVALID_SOCKET_VALUE) {
     log_warn("Failed to create UDP socket for STUN probe");
     return SET_ERRNO(ERROR_NETWORK, "Cannot create UDP socket");
@@ -193,7 +198,7 @@ static asciichat_error_t nat_stun_probe(nat_quality_t *quality, const char *stun
 
   // Resolve STUN server hostname
   struct addrinfo hints = {0};
-  hints.ai_family = AF_INET;
+  hints.ai_family = stun_family;
   hints.ai_socktype = SOCK_DGRAM;
 
   struct addrinfo *result = NULL;
@@ -335,7 +340,14 @@ asciichat_error_t nat_detect_quality(nat_quality_t *quality, const char *stun_se
   // Set ICE candidate flags based on what we found
   quality->has_host_candidates = true; // We always have local IP
   quality->has_srflx_candidates = quality->upnp_available || quality->has_public_ip || quality->has_srflx_candidates;
-  quality->has_relay_candidates = false; // Set true if TURN is available
+
+  // Check if TURN relay servers are available (configured via options or ACDS)
+  const options_t *opts = options_get();
+  const char *turn_servers = opts ? opts->turn_servers : NULL;
+  quality->has_relay_candidates = (turn_servers && turn_servers[0] != '\0');
+  if (quality->has_relay_candidates) {
+    log_debug("TURN relay servers configured: %s", turn_servers);
+  }
 
   quality->detection_complete = true;
   log_info("NAT detection complete: tier=%d, upnp=%d, has_public_ip=%d, nat_type=%s", nat_compute_tier(quality),
@@ -357,17 +369,75 @@ asciichat_error_t nat_measure_bandwidth(nat_quality_t *quality, socket_t acds_so
     return SET_ERRNO(ERROR_INVALID_PARAM, "invalid socket");
   }
 
-  // TODO: Implement bandwidth test
-  // 1. Send BANDWIDTH_TEST packet with 64KB payload
-  // 2. ACDS measures receive rate
-  // 3. ACDS responds with measured bandwidth
-  // For now, use reasonable defaults
+  // Prepare bandwidth test packet
+  acip_bandwidth_test_t test_msg = {0};
+  memset(test_msg.session_id, 0, sizeof(test_msg.session_id)); // Anonymous test
+  memset(test_msg.participant_id, 0, sizeof(test_msg.participant_id));
+  test_msg.test_size_bytes = 65536; // 64KB test payload
+  test_msg.client_send_time_ns = time_get_ns();
 
-  quality->upload_kbps = 10000;                 // Assume 10 Mbps upload
-  quality->download_kbps = 50000;               // Assume 50 Mbps download
-  quality->rtt_to_acds_ns = 50 * NS_PER_MS_INT; // Assume 50ms RTT
-  quality->jitter_ns = 5 * NS_PER_MS_INT;
-  quality->packet_loss_pct = 0;
+  // Send BANDWIDTH_TEST packet
+  asciichat_error_t result = packet_send(acds_socket, PACKET_TYPE_ACIP_BANDWIDTH_TEST, &test_msg, sizeof(test_msg));
+  if (result != ASCIICHAT_OK) {
+    log_warn("Failed to send bandwidth test packet");
+    return result;
+  }
+
+  // Send test payload (64KB of data)
+  uint8_t *test_data = SAFE_MALLOC(test_msg.test_size_bytes, uint8_t *);
+  if (!test_data) {
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate bandwidth test payload");
+  }
+  memset(test_data, 0xAA, test_msg.test_size_bytes); // Fill with pattern
+
+  ssize_t sent = send(acds_socket, (const char *)test_data, test_msg.test_size_bytes, 0);
+  SAFE_FREE(test_data);
+
+  if (sent != (ssize_t)test_msg.test_size_bytes) {
+    log_warn("Failed to send bandwidth test payload: sent=%zd, expected=%u", sent, test_msg.test_size_bytes);
+    return SET_ERRNO(ERROR_NETWORK, "Bandwidth test payload send failed");
+  }
+
+  log_debug("Sent bandwidth test with %u bytes", test_msg.test_size_bytes);
+
+  // Set socket timeout for response (5 seconds)
+  if (socket_set_timeout(acds_socket, 5 * NS_PER_SEC_INT) != 0) {
+    log_warn("Failed to set socket timeout for bandwidth test");
+    return SET_ERRNO(ERROR_NETWORK, "Failed to set socket timeout");
+  }
+
+  // Wait for BANDWIDTH_RESULT response
+  packet_type_t response_type;
+  void *response_data = NULL;
+  size_t response_len = 0;
+
+  result = packet_receive(acds_socket, &response_type, &response_data, &response_len);
+
+  if (result != ASCIICHAT_OK) {
+    log_warn("Bandwidth test timeout or receive failed");
+    return SET_ERRNO(ERROR_NETWORK_TIMEOUT, "No bandwidth test response from ACDS");
+  }
+
+  if (response_type != PACKET_TYPE_ACIP_BANDWIDTH_RESULT) {
+    POOL_FREE(response_data, response_len);
+    log_warn("Unexpected packet type %d (expected BANDWIDTH_RESULT)", response_type);
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Wrong packet type in bandwidth test response");
+  }
+
+  if (response_len != sizeof(acip_bandwidth_result_t)) {
+    POOL_FREE(response_data, response_len);
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid bandwidth result size");
+  }
+
+  // Parse results
+  acip_bandwidth_result_t *results = (acip_bandwidth_result_t *)response_data;
+  quality->upload_kbps = results->measured_upload_kbps;
+  quality->download_kbps = results->measured_download_kbps;
+  quality->rtt_to_acds_ns = results->rtt_ns;
+  quality->jitter_ns = results->jitter_ns;
+  quality->packet_loss_pct = results->packet_loss_pct;
+
+  POOL_FREE(response_data, response_len);
 
   log_debug("Bandwidth measurement: upload=%u kbps, download=%u kbps, rtt=%lu ns", quality->upload_kbps,
             quality->download_kbps, quality->rtt_to_acds_ns);

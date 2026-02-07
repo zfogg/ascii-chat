@@ -22,6 +22,7 @@
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/platform/network.h>
 #include <ascii-chat/log/logging.h>
+#include <ascii-chat/network/client.h>
 #include <ascii-chat/network/packet.h>
 #include <ascii-chat/ringbuffer.h>
 #include <ascii-chat/session/audio.h>
@@ -49,6 +50,7 @@
  * @brief Internal client record structure
  */
 typedef struct {
+  participant_type_t participant_type; // NETWORK or MEMORY
   uint32_t client_id;
   socket_t socket;
   char ip_address[64];
@@ -940,6 +942,7 @@ uint32_t session_host_add_client(session_host_t *host, socket_t socket, const ch
   // Find empty slot
   for (int i = 0; i < host->max_clients; i++) {
     if (!host->clients[i].active) {
+      host->clients[i].participant_type = PARTICIPANT_TYPE_NETWORK;
       host->clients[i].client_id = host->next_client_id++;
       host->clients[i].socket = socket;
       if (ip) {
@@ -988,6 +991,170 @@ uint32_t session_host_add_client(session_host_t *host, socket_t socket, const ch
 
   mutex_unlock(&host->clients_mutex);
   return 0;
+}
+
+uint32_t session_host_add_memory_participant(session_host_t *host) {
+  if (!host || !host->initialized) {
+    return 0;
+  }
+
+  mutex_lock(&host->clients_mutex);
+
+  // Check if we have room
+  if (host->client_count >= host->max_clients) {
+    mutex_unlock(&host->clients_mutex);
+    SET_ERRNO(ERROR_SESSION_FULL, "Maximum clients reached");
+    return 0;
+  }
+
+  // Check if memory participant already exists (only one allowed)
+  for (int i = 0; i < host->max_clients; i++) {
+    if (host->clients[i].active && host->clients[i].participant_type == PARTICIPANT_TYPE_MEMORY) {
+      mutex_unlock(&host->clients_mutex);
+      SET_ERRNO(ERROR_INVALID_PARAM, "Memory participant already exists");
+      return 0;
+    }
+  }
+
+  // Find empty slot
+  for (int i = 0; i < host->max_clients; i++) {
+    if (!host->clients[i].active) {
+      host->clients[i].participant_type = PARTICIPANT_TYPE_MEMORY;
+      host->clients[i].client_id = host->next_client_id++;
+      host->clients[i].socket = INVALID_SOCKET_VALUE; // No socket for memory participant
+      SAFE_STRNCPY(host->clients[i].ip_address, "memory", sizeof(host->clients[i].ip_address));
+      host->clients[i].port = 0;
+      host->clients[i].active = true;
+      host->clients[i].video_active = false;
+      host->clients[i].audio_active = false;
+      host->clients[i].connected_at = (uint64_t)time(NULL);
+      host->clients[i].transport = NULL;
+
+      // Allocate media buffers (same as network clients)
+      host->clients[i].incoming_video = image_new(480, 270);
+      host->clients[i].incoming_audio = ringbuffer_create(sizeof(float), 960 * 10);
+
+      if (!host->clients[i].incoming_video || !host->clients[i].incoming_audio) {
+        if (host->clients[i].incoming_video) {
+          image_destroy(host->clients[i].incoming_video);
+          host->clients[i].incoming_video = NULL;
+        }
+        if (host->clients[i].incoming_audio) {
+          ringbuffer_destroy(host->clients[i].incoming_audio);
+          host->clients[i].incoming_audio = NULL;
+        }
+        host->clients[i].active = false;
+        mutex_unlock(&host->clients_mutex);
+        SET_ERRNO(ERROR_MEMORY, "Failed to allocate media buffers for memory participant");
+        return 0;
+      }
+
+      uint32_t participant_id = host->clients[i].client_id;
+      host->client_count++;
+
+      mutex_unlock(&host->clients_mutex);
+
+      log_info("Added memory participant with ID %u", participant_id);
+
+      // Invoke callback
+      if (host->callbacks.on_client_join) {
+        host->callbacks.on_client_join(host, participant_id, host->user_data);
+      }
+
+      return participant_id;
+    }
+  }
+
+  mutex_unlock(&host->clients_mutex);
+  return 0;
+}
+
+asciichat_error_t session_host_inject_frame(session_host_t *host, uint32_t participant_id, const image_t *frame) {
+  if (!host || !host->initialized || !frame) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "session_host_inject_frame: invalid parameters");
+  }
+
+  mutex_lock(&host->clients_mutex);
+
+  // Find memory participant
+  for (int i = 0; i < host->max_clients; i++) {
+    if (host->clients[i].active && host->clients[i].client_id == participant_id &&
+        host->clients[i].participant_type == PARTICIPANT_TYPE_MEMORY) {
+
+      if (!host->clients[i].incoming_video) {
+        mutex_unlock(&host->clients_mutex);
+        return SET_ERRNO(ERROR_INVALID_STATE, "Memory participant has no video buffer");
+      }
+
+      // Copy frame data into buffer
+      image_t *dest = host->clients[i].incoming_video;
+      if (dest->w != frame->w || dest->h != frame->h) {
+        // Reallocate if size changed
+        image_destroy(dest);
+        dest = image_new(frame->w, frame->h);
+        if (!dest) {
+          host->clients[i].incoming_video = NULL;
+          mutex_unlock(&host->clients_mutex);
+          return SET_ERRNO(ERROR_MEMORY, "Failed to reallocate video buffer");
+        }
+        host->clients[i].incoming_video = dest;
+      }
+
+      // Copy pixel data
+      memcpy(dest->pixels, frame->pixels, frame->w * frame->h * sizeof(rgb_pixel_t));
+
+      host->clients[i].video_active = true;
+
+      mutex_unlock(&host->clients_mutex);
+      return ASCIICHAT_OK;
+    }
+  }
+
+  mutex_unlock(&host->clients_mutex);
+  return SET_ERRNO(ERROR_NOT_FOUND, "Memory participant not found");
+}
+
+asciichat_error_t session_host_inject_audio(session_host_t *host, uint32_t participant_id, const float *samples,
+                                            size_t count) {
+  if (!host || !host->initialized || !samples || count == 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "session_host_inject_audio: invalid parameters");
+  }
+
+  mutex_lock(&host->clients_mutex);
+
+  // Find memory participant
+  for (int i = 0; i < host->max_clients; i++) {
+    if (host->clients[i].active && host->clients[i].client_id == participant_id &&
+        host->clients[i].participant_type == PARTICIPANT_TYPE_MEMORY) {
+
+      if (!host->clients[i].incoming_audio) {
+        mutex_unlock(&host->clients_mutex);
+        return SET_ERRNO(ERROR_INVALID_STATE, "Memory participant has no audio buffer");
+      }
+
+      // Write samples to ringbuffer (one at a time)
+      size_t written = 0;
+      for (size_t j = 0; j < count; j++) {
+        if (ringbuffer_write(host->clients[i].incoming_audio, &samples[j])) {
+          written++;
+        } else {
+          break; // Buffer full
+        }
+      }
+
+      if (written < count) {
+        log_warn_every(1000000, "Audio ringbuffer full, dropped %zu samples", count - written);
+      }
+
+      host->clients[i].audio_active = true;
+
+      mutex_unlock(&host->clients_mutex);
+      return ASCIICHAT_OK;
+    }
+  }
+
+  mutex_unlock(&host->clients_mutex);
+  return SET_ERRNO(ERROR_NOT_FOUND, "Memory participant not found");
 }
 
 asciichat_error_t session_host_remove_client(session_host_t *host, uint32_t client_id) {

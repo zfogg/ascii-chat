@@ -35,6 +35,7 @@
 #include "session.h"
 #include <ascii-chat/session/capture.h>
 #include <ascii-chat/session/display.h>
+#include <ascii-chat/session/host.h>
 #include <ascii-chat/session/render.h>
 #include <ascii-chat/session/keyboard_handler.h>
 
@@ -262,11 +263,9 @@ static void discovery_keyboard_handler(session_capture_ctx_t *capture, int key, 
  * @return 0 on success, non-zero error code on failure
  */
 int discovery_main(void) {
-  fprintf(stderr, "DEBUG: discovery_main() ENTRY\n");
-  fflush(stderr);
+  log_debug("discovery_main() ENTRY");
   log_info("Starting discovery mode");
-  fprintf(stderr, "DEBUG: After 'Starting discovery mode' log\n");
-  fflush(stderr);
+  log_debug("After 'Starting discovery mode' log");
 
   // Handle keepawake: check for mutual exclusivity and apply mode default
   // Discovery default: keepawake ENABLED (use --no-keepawake to disable)
@@ -389,8 +388,7 @@ int discovery_main(void) {
   }
 
   log_info("Discovery mode running - press Ctrl+C to exit");
-  // NOTE: Temporarily skipping log_set_terminal_output(false) to diagnose WebRTC connection issues
-  // log_set_terminal_output(false);
+  // Keep logs visible until discovery status screen implemented (similar to server mode)
 
   // Main loop: wait for session to become active, then handle media based on role
   while (!discovery_should_exit()) {
@@ -418,17 +416,72 @@ int discovery_main(void) {
     bool we_are_host = discovery_session_is_host(discovery);
 
     if (we_are_host) {
-      // HOST ROLE: Render mixed frames and broadcast to participants
-      // NOTE: This is handled by session_host_t which manages WebRTC and mixing.
-      // For now, just log status (session_host integration pending).
-      log_info("Hosting session - rendering and broadcasting");
+      // HOST ROLE: Capture own media, manage participants, mix and broadcast
+      log_info("Hosting session - capturing and broadcasting");
 
-      // Placeholder: In future, use session_host_render_loop() or similar
-      // For now, continue processing events until shutdown
-      while (!discovery_should_exit() && discovery_session_is_active(discovery)) {
-        discovery_session_process(discovery, 50 * NS_PER_MS_INT);
-        platform_sleep_ms(10);
+      // Create session host for managing participants
+      session_host_config_t host_config = {
+          .port = (int)GET_OPTION(port),
+          .ipv4_address = NULL, // Bind to any
+          .ipv6_address = NULL,
+          .max_clients = 32,
+          .encryption_enabled = false, // TODO: Add crypto support
+          .key_path = NULL,
+          .password = NULL,
+          .callbacks = {0},
+          .user_data = NULL,
+      };
+
+      session_host_t *host = session_host_create(&host_config);
+      if (!host) {
+        log_fatal("Failed to create session host");
+        result = ERROR_MEMORY;
+        break;
       }
+
+      // Start host (accept connections, render threads)
+      result = session_host_start(host);
+      if (result != ASCIICHAT_OK) {
+        log_error("Failed to start session host: %d", result);
+        session_host_destroy(host);
+        break;
+      }
+
+      // Add memory participant for host's own media
+      uint32_t host_participant_id = session_host_add_memory_participant(host);
+      if (host_participant_id == 0) {
+        log_error("Failed to add memory participant for host");
+        session_host_stop(host);
+        session_host_destroy(host);
+        result = ERROR_INVALID_STATE;
+        break;
+      }
+
+      log_info("Host participating with ID %u", host_participant_id);
+
+      // Main loop: capture own media and keep discovery responsive
+      while (!discovery_should_exit() && discovery_session_is_active(discovery)) {
+        // Capture frame from webcam (reuse existing capture context)
+        image_t *frame = session_capture_read_frame(capture);
+        if (frame) {
+          // Inject host's frame into mixer
+          session_host_inject_frame(host, host_participant_id, frame);
+        }
+
+        // Keep discovery session responsive (NAT negotiations, migrations)
+        result = discovery_session_process(discovery, 10 * NS_PER_MS_INT);
+        if (result != ASCIICHAT_OK && result != ERROR_NETWORK_TIMEOUT) {
+          log_error("Discovery session process failed: %d", result);
+          break;
+        }
+
+        // Frame rate limiting (60 FPS)
+        session_capture_sleep_for_fps(capture);
+      }
+
+      // Cleanup
+      session_host_stop(host);
+      session_host_destroy(host);
     } else {
       // PARTICIPANT ROLE: Capture local media and display host's frames
       // Use the unified render loop that handles capture, ASCII conversion, and display

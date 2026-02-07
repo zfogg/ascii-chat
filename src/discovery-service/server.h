@@ -30,6 +30,7 @@
 #include <ascii-chat/network/acip/acds.h>
 #include <ascii-chat/options/options.h> // For MAX_IDENTITY_KEYS
 #include <ascii-chat/thread_pool.h>
+#include <ascii-chat/crypto/handshake/common.h>
 #include "discovery-service/main.h"
 #include <ascii-chat/discovery/session.h> // For host_lost_candidate_t and MAX_PARTICIPANTS
 
@@ -57,6 +58,10 @@ typedef struct {
   uint8_t session_id[16];     ///< Session UUID (valid if joined_session)
   uint8_t participant_id[16]; ///< Participant UUID (valid if joined_session)
   bool joined_session;        ///< Whether client has successfully joined a session
+
+  // Crypto handshake state
+  crypto_handshake_context_t handshake_ctx; ///< Handshake context for encrypted communication
+  bool handshake_complete;                  ///< Whether crypto handshake has completed
 
   // Multi-key session creation state
   bool in_multikey_session_create;                     ///< True during multi-key SESSION_CREATE sequence

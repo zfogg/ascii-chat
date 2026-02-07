@@ -33,6 +33,18 @@ using std::atomic_uint;
 #include "../uthash/uthash.h" // For UT_hash_handle
 
 /**
+ * @brief Participant type for distinguishing network vs memory participants
+ *
+ * Network participants communicate over TCP/IP or WebRTC, while memory
+ * participants inject media directly into the host's mixer (used when
+ * the host participates in the session with their own webcam/audio).
+ */
+typedef enum {
+  PARTICIPANT_TYPE_NETWORK, // Remote participant via socket/transport
+  PARTICIPANT_TYPE_MEMORY   // Local host participant (direct memory access)
+} participant_type_t;
+
+/**
  * @brief Per-client state structure for server-side client management
  *
  * Represents complete state for a single connected client in the ascii-chat server.
@@ -75,6 +87,7 @@ using std::atomic_uint;
  * @note Thread handles are valid only when threads are running.
  */
 typedef struct client_info {
+  participant_type_t participant_type; // Network (socket) or memory (direct injection)
   socket_t socket;
   bool is_tcp_client;                // True for TCP clients, false for WebRTC (for cleanup logic)
   acip_transport_t *transport;       // ACIP transport for protocol-agnostic packet sending

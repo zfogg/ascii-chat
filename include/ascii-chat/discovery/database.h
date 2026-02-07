@@ -180,3 +180,53 @@ asciichat_error_t database_session_start_migration(sqlite3 *db, const uint8_t se
  * @return true if collection window has completed, false otherwise
  */
 bool database_session_is_migration_ready(sqlite3 *db, const uint8_t session_id[16], uint64_t migration_window_ms);
+
+// ============================================================================
+// Multi-Key Management (for session key rotation and multiple identities)
+// ============================================================================
+
+/**
+ * @brief Add a key to a session
+ *
+ * @param db Database handle
+ * @param session_string Session string
+ * @param identity_pubkey Ed25519 public key (32 bytes)
+ * @param key_version Key version for tracking rotation
+ * @return ASCIICHAT_OK on success, error code otherwise
+ */
+asciichat_error_t database_session_add_key(sqlite3 *db, const char *session_string, const uint8_t identity_pubkey[32],
+                                           uint32_t key_version);
+
+/**
+ * @brief Revoke a key from a session
+ *
+ * @param db Database handle
+ * @param session_string Session string
+ * @param identity_pubkey Ed25519 public key to revoke (32 bytes)
+ * @return ASCIICHAT_OK on success, error code otherwise
+ */
+asciichat_error_t database_session_revoke_key(sqlite3 *db, const char *session_string,
+                                              const uint8_t identity_pubkey[32]);
+
+/**
+ * @brief Check if a key is valid for a session (exists and not revoked)
+ *
+ * @param db Database handle
+ * @param session_string Session string
+ * @param identity_pubkey Ed25519 public key to check (32 bytes)
+ * @return true if key is valid, false otherwise
+ */
+bool database_session_verify_key(sqlite3 *db, const char *session_string, const uint8_t identity_pubkey[32]);
+
+/**
+ * @brief Get all active keys for a session
+ *
+ * @param db Database handle
+ * @param session_string Session string
+ * @param keys_out Output array for keys (caller must provide buffer)
+ * @param max_keys Maximum number of keys to retrieve
+ * @param count_out Output: number of keys retrieved
+ * @return ASCIICHAT_OK on success, error code otherwise
+ */
+asciichat_error_t database_session_get_keys(sqlite3 *db, const char *session_string, uint8_t (*keys_out)[32],
+                                            size_t max_keys, size_t *count_out);

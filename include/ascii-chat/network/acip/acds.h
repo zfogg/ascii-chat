@@ -754,6 +754,57 @@ typedef struct __attribute__((packed)) {
 } acip_error_t;
 
 /**
+ * @brief Bandwidth test request packet
+ *
+ * Sent by client to ACDS to request bandwidth measurement. Client sends
+ * this packet followed by test payload data. ACDS measures receive time
+ * and calculates upload speed.
+ *
+ * @ingroup acds
+ */
+typedef struct __attribute__((packed)) {
+  uint8_t session_id[16];       ///< Session identifier
+  uint8_t participant_id[16];   ///< Participant identifier
+  uint32_t test_size_bytes;     ///< Size of test payload (typically 64KB)
+  uint64_t client_send_time_ns; ///< Timestamp when client sent packet
+} acip_bandwidth_test_t;
+
+/**
+ * @brief Bandwidth test result packet
+ *
+ * Sent by ACDS to client with measured bandwidth results. Includes
+ * upload speed (measured by ACDS), download speed (echo test), RTT,
+ * jitter, and packet loss metrics.
+ *
+ * @ingroup acds
+ */
+typedef struct __attribute__((packed)) {
+  uint32_t measured_upload_kbps;   ///< Upload bandwidth in kilobits/sec
+  uint32_t measured_download_kbps; ///< Download bandwidth in kilobits/sec
+  uint32_t rtt_ns;                 ///< Round-trip time in nanoseconds
+  uint32_t jitter_ns;              ///< Packet timing variance in nanoseconds
+  uint8_t packet_loss_pct;         ///< Packet loss percentage (0-100)
+} acip_bandwidth_result_t;
+
+/**
+ * @brief BROADCAST_ACK (PACKET_TYPE_ACIP_BROADCAST_ACK) - Acknowledge broadcast receipt
+ *
+ * Direction: Client -> ACDS
+ *
+ * Sent by clients to acknowledge receipt of critical broadcast messages
+ * (e.g., HOST_DESIGNATED, FUTURE_HOST_ELECTED). ACDS tracks ACKs and
+ * retries broadcasts to clients that haven't acknowledged.
+ *
+ * @ingroup acds
+ */
+typedef struct __attribute__((packed)) {
+  uint8_t session_id[16];     ///< Session UUID
+  uint8_t participant_id[16]; ///< Participant acknowledging
+  uint64_t broadcast_id;      ///< ID of broadcast being acknowledged
+  uint16_t packet_type;       ///< Type of packet being acknowledged
+} acip_broadcast_ack_t;
+
+/**
  * @brief ACIP error codes
  *
  * Standard error codes returned in ACIP error responses.

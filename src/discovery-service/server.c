@@ -16,6 +16,7 @@
 #include <ascii-chat/discovery/database.h>
 #include <ascii-chat/discovery/session.h>
 #include <ascii-chat/discovery/identity.h>
+#include <ascii-chat/crypto/handshake/server.h>
 #include "discovery-service/signaling.h"
 #include <ascii-chat/network/acip/acds.h>
 #include <ascii-chat/network/acip/acds_handlers.h>
@@ -842,6 +843,23 @@ void *acds_client_handler(void *arg) {
   }
   memset(client_data, 0, sizeof(*client_data));
   client_data->joined_session = false;
+  client_data->handshake_complete = false;
+
+  // Initialize crypto handshake context
+  asciichat_error_t handshake_result = crypto_handshake_init(&client_data->handshake_ctx, true);
+  if (handshake_result != ASCIICHAT_OK) {
+    log_error("Failed to initialize crypto handshake for client %s", client_ip);
+    SAFE_FREE(client_data);
+    tcp_server_reject_client(client_socket, "Failed to initialize crypto handshake");
+    SAFE_FREE(ctx);
+    return NULL;
+  }
+
+  // Set server identity keys for handshake
+  client_data->handshake_ctx.server_public_key.type = KEY_TYPE_ED25519;
+  client_data->handshake_ctx.server_private_key.type = KEY_TYPE_ED25519;
+  memcpy(client_data->handshake_ctx.server_public_key.key, server->identity_public, 32);
+  memcpy(client_data->handshake_ctx.server_private_key.key.ed25519, server->identity_secret, 64);
 
   if (tcp_server_add_client(&server->tcp_server, client_socket, client_data) != ASCIICHAT_OK) {
     SAFE_FREE(client_data);
@@ -853,8 +871,38 @@ void *acds_client_handler(void *arg) {
   log_debug("Client %s registered (socket=%d, total=%zu)", client_ip, client_socket,
             tcp_server_get_client_count(&server->tcp_server));
 
-  // TODO: Crypto handshake (when crypto support is added)
-  // For now, accept plain connections
+  // Perform crypto handshake (three-step process)
+  log_debug("Performing crypto handshake with client %s", client_ip);
+
+  // Step 1: Start handshake (send server key, receive client key)
+  handshake_result = crypto_handshake_server_start(&client_data->handshake_ctx, client_socket);
+  if (handshake_result != ASCIICHAT_OK) {
+    log_warn("Crypto handshake start failed for client %s", client_ip);
+    tcp_server_remove_client(&server->tcp_server, client_socket);
+    SAFE_FREE(ctx);
+    return NULL;
+  }
+
+  // Step 2: Authentication challenge (if required)
+  handshake_result = crypto_handshake_server_auth_challenge(&client_data->handshake_ctx, client_socket);
+  if (handshake_result != ASCIICHAT_OK) {
+    log_warn("Crypto handshake auth challenge failed for client %s", client_ip);
+    tcp_server_remove_client(&server->tcp_server, client_socket);
+    SAFE_FREE(ctx);
+    return NULL;
+  }
+
+  // Step 3: Complete handshake (verify and finalize)
+  handshake_result = crypto_handshake_server_complete(&client_data->handshake_ctx, client_socket);
+  if (handshake_result != ASCIICHAT_OK) {
+    log_warn("Crypto handshake complete failed for client %s", client_ip);
+    tcp_server_remove_client(&server->tcp_server, client_socket);
+    SAFE_FREE(ctx);
+    return NULL;
+  }
+
+  client_data->handshake_complete = true;
+  log_info("Crypto handshake complete for client %s", client_ip);
 
   // Main packet processing loop
   while (atomic_load(&server->tcp_server.running)) {

@@ -60,6 +60,22 @@ typedef struct {
 } ring_consensus_t;
 
 /**
+ * @brief Host liveness detection state
+ *
+ * Participants periodically ping the host to detect disconnects.
+ * After 3 consecutive ping failures (10s timeout each), host migration is triggered.
+ */
+typedef struct {
+  uint64_t last_ping_sent_ms;     ///< Timestamp of last ping sent (monotonic)
+  uint64_t last_pong_received_ms; ///< Timestamp of last pong received (monotonic)
+  uint32_t consecutive_failures;  ///< Number of consecutive ping failures
+  uint32_t max_failures;          ///< Threshold for triggering migration (default: 3)
+  uint64_t ping_interval_ms;      ///< Time between pings (default: 3000ms)
+  uint64_t timeout_ms;            ///< Timeout for ping response (default: 10000ms)
+  bool ping_in_flight;            ///< True if waiting for pong
+} host_liveness_t;
+
+/**
  * @brief Migration detection and failover state
  *
  * **SIMPLIFIED DESIGN**: No re-election during migration!
@@ -128,6 +144,10 @@ typedef struct {
   bool is_initiator;
   bool is_host;
 
+  // Identity keys (Ed25519)
+  uint8_t identity_pubkey[32]; ///< Ed25519 public key for this participant
+  uint8_t identity_seckey[64]; ///< Ed25519 secret key for signing
+
   // ACDS connection
   socket_t acds_socket;
   char acds_address[64];
@@ -148,6 +168,9 @@ typedef struct {
 
   // Ring Consensus (NEW P2P design)
   ring_consensus_t ring;
+
+  // Host liveness detection (participants only)
+  host_liveness_t liveness;
 
   // Migration state (host failover)
   migration_ctx_t migration;

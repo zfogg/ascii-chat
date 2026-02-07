@@ -274,6 +274,58 @@ bool session_host_is_running(session_host_t *host);
 uint32_t session_host_add_client(session_host_t *host, socket_t socket, const char *ip, int port);
 
 /**
+ * @brief Add a memory participant (host's own media)
+ * @param host Host handle (must not be NULL)
+ * @return Assigned participant ID on success, 0 on failure
+ *
+ * Registers a memory participant for the host's own webcam/audio. This allows
+ * the host to participate in the session without network loopback. Media is
+ * injected directly into the mixer via session_host_inject_frame().
+ *
+ * @note on_client_join callback is invoked on successful registration.
+ * @note Only one memory participant per host is supported.
+ *
+ * @ingroup session
+ */
+uint32_t session_host_add_memory_participant(session_host_t *host);
+
+/**
+ * @brief Inject a video frame from memory participant
+ * @param host Host handle (must not be NULL)
+ * @param participant_id Memory participant ID
+ * @param frame Video frame image (must not be NULL)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Injects a video frame directly into the mixer from a memory participant.
+ * This bypasses network I/O and is used when the host participates in the
+ * session with their own webcam.
+ *
+ * @note Frame data is copied, so caller retains ownership.
+ *
+ * @ingroup session
+ */
+asciichat_error_t session_host_inject_frame(session_host_t *host, uint32_t participant_id, const image_t *frame);
+
+/**
+ * @brief Inject audio samples from memory participant
+ * @param host Host handle (must not be NULL)
+ * @param participant_id Memory participant ID
+ * @param samples Audio sample buffer (float format, must not be NULL)
+ * @param count Number of samples
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Injects audio samples directly into the mixer from a memory participant.
+ * This bypasses network I/O and is used when the host participates in the
+ * session with their own audio.
+ *
+ * @note Sample data is copied, so caller retains ownership.
+ *
+ * @ingroup session
+ */
+asciichat_error_t session_host_inject_audio(session_host_t *host, uint32_t participant_id, const float *samples,
+                                            size_t count);
+
+/**
  * @brief Remove a client by ID
  * @param host Host handle (must not be NULL)
  * @param client_id Client ID to remove

@@ -468,6 +468,19 @@ typedef enum {
   PACKET_TYPE_ACIP_PARTICIPANT_LEFT = 6068,
 
   // ============================================================================
+  // Bandwidth Testing (6070-6071)
+  // ============================================================================
+  // Used for measuring network bandwidth during NAT quality detection
+
+  /** @brief Bandwidth test request (Client -> ACDS) */
+  PACKET_TYPE_ACIP_BANDWIDTH_TEST = 6070,
+  /** @brief Bandwidth test results (ACDS -> Client) */
+  PACKET_TYPE_ACIP_BANDWIDTH_RESULT = 6071,
+
+  /** @brief Broadcast acknowledgment for reliable delivery */
+  PACKET_TYPE_ACIP_BROADCAST_ACK = 6075,
+
+  // ============================================================================
   // Ring Consensus Protocol (6100-6104)
   // ============================================================================
   // Used for collecting statistics and coordinating ring-based consensus

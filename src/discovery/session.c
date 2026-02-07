@@ -11,10 +11,12 @@
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/network/acip/acds.h>
+#include <ascii-chat/network/acip/acds_client.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/packet.h>
 #include <ascii-chat/network/webrtc/stun.h>
 #include <ascii-chat/network/webrtc/peer_manager.h>
+#include <ascii-chat/discovery/identity.h>
 #include "ascii-chat/common/error_codes.h"
 #include "negotiate.h"
 #include "nat.h"
@@ -67,8 +69,43 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
   session->turn_servers = NULL;
   session->turn_count = 0;
 
+  // Initialize host liveness detection
+  session->liveness.last_ping_sent_ms = 0;
+  session->liveness.last_pong_received_ms = 0;
+  session->liveness.consecutive_failures = 0;
+  session->liveness.max_failures = 3;
+  session->liveness.ping_interval_ms = 3000; // Ping every 3 seconds
+  session->liveness.timeout_ms = 10000;      // 10 second timeout
+  session->liveness.ping_in_flight = false;
+
   log_info("discovery_session_create: After CALLOC - participant_ctx=%p, host_ctx=%p", session->participant_ctx,
            session->host_ctx);
+
+  // Load or generate identity key
+  char identity_path[256];
+  asciichat_error_t id_result = acds_identity_default_path(identity_path, sizeof(identity_path));
+  if (id_result == ASCIICHAT_OK) {
+    id_result = acds_identity_load(identity_path, session->identity_pubkey, session->identity_seckey);
+    if (id_result != ASCIICHAT_OK) {
+      // File doesn't exist or is corrupted - generate new key
+      log_info("Identity key not found, generating new key");
+      id_result = acds_identity_generate(session->identity_pubkey, session->identity_seckey);
+      if (id_result == ASCIICHAT_OK) {
+        // Save for future use
+        acds_identity_save(identity_path, session->identity_pubkey, session->identity_seckey);
+      }
+    }
+  }
+
+  if (id_result != ASCIICHAT_OK) {
+    log_warn("Failed to load/generate identity key, using zero key");
+    memset(session->identity_pubkey, 0, sizeof(session->identity_pubkey));
+    memset(session->identity_seckey, 0, sizeof(session->identity_seckey));
+  } else {
+    char fingerprint[65];
+    acds_identity_fingerprint(session->identity_pubkey, fingerprint);
+    log_info("Using identity key with fingerprint: %.16s...", fingerprint);
+  }
 
   // ACDS connection info
   if (config->acds_address && config->acds_address[0]) {
@@ -203,7 +240,7 @@ static asciichat_error_t gather_nat_quality(nat_quality_t *quality) {
   if (stun_servers_option && stun_servers_option[0] != '\0') {
     // Use the first configured server
     // nat_detect_quality expects just "host:port" without "stun:" prefix
-    // For now, we'll use the fallback and rely on ACDS to provide custom servers
+    // Use the fallback server, ACDS will provide custom servers in SESSION_CREATED
     stun_server_for_probe = OPT_ENDPOINT_STUN_FALLBACK;
   }
 
@@ -329,7 +366,7 @@ static asciichat_error_t connect_to_acds(discovery_session_t *session) {
   // Resolve hostname using getaddrinfo (supports both IP addresses and hostnames)
   struct addrinfo hints, *result = NULL;
   memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_INET; // IPv4 for now
+  hints.ai_family = AF_UNSPEC; // IPv4 and IPv6
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_protocol = IPPROTO_TCP;
 
@@ -377,10 +414,24 @@ static asciichat_error_t create_session(discovery_session_t *session) {
   acip_session_create_t create_msg;
   memset(&create_msg, 0, sizeof(create_msg));
 
-  // TODO: Set identity key from options
-  // For now, use zero key (anonymous session)
+  // Set identity public key
+  memcpy(create_msg.identity_pubkey, session->identity_pubkey, 32);
+
+  // Set timestamp for signature
+  create_msg.timestamp = session_get_current_time_ms();
+
+  // Set capabilities
   create_msg.capabilities = 0x03; // Video + Audio
   create_msg.max_participants = 8;
+
+  // Generate signature (signs: type || timestamp || capabilities || max_participants)
+  asciichat_error_t sig_result =
+      acds_sign_session_create(session->identity_seckey, create_msg.timestamp, create_msg.capabilities,
+                               create_msg.max_participants, create_msg.signature);
+  if (sig_result != ASCIICHAT_OK) {
+    set_error(session, sig_result, "Failed to sign SESSION_CREATE");
+    return sig_result;
+  }
 
   // Check if WebRTC is preferred
   const options_t *opts = options_get();
@@ -942,7 +993,20 @@ static asciichat_error_t join_session(discovery_session_t *session) {
   join_msg.session_string_len = (uint8_t)strlen(session->session_string);
   SAFE_STRNCPY(join_msg.session_string, session->session_string, sizeof(join_msg.session_string));
 
-  // TODO: Set identity key from options
+  // Set identity public key
+  memcpy(join_msg.identity_pubkey, session->identity_pubkey, 32);
+
+  // Set timestamp for signature
+  join_msg.timestamp = session_get_current_time_ms();
+
+  // Generate signature (signs: type || timestamp || session_string)
+  asciichat_error_t sig_result =
+      acds_sign_session_join(session->identity_seckey, join_msg.timestamp, session->session_string, join_msg.signature);
+  if (sig_result != ASCIICHAT_OK) {
+    set_error(session, sig_result, "Failed to sign SESSION_JOIN");
+    return sig_result;
+  }
+
   join_msg.has_password = 0;
 
   // Send SESSION_JOIN
@@ -1089,11 +1153,39 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
 
   // Handle state-specific processing
   switch (session->state) {
-  case DISCOVERY_STATE_WAITING_PEER:
-    // TODO: Wait for PARTICIPANT_JOINED notification from ACDS
-    // For now, just sleep briefly
-    platform_sleep_us(timeout_ns / 1000);
+  case DISCOVERY_STATE_WAITING_PEER: {
+    // Wait for PARTICIPANT_JOINED notification from ACDS
+    if (session->acds_socket != INVALID_SOCKET_VALUE && timeout_ns > 0) {
+      // Set socket timeout
+      if (socket_set_timeout(session->acds_socket, timeout_ns) == 0) {
+        packet_type_t type;
+        void *data = NULL;
+        size_t len = 0;
+
+        // Try to receive a packet (non-blocking with timeout)
+        asciichat_error_t recv_result = packet_receive(session->acds_socket, &type, &data, &len);
+        if (recv_result == ASCIICHAT_OK) {
+          if (type == PACKET_TYPE_ACIP_PARTICIPANT_JOINED) {
+            log_info("Peer joined session, transitioning to negotiation");
+            set_state(session, DISCOVERY_STATE_NEGOTIATING);
+            POOL_FREE(data, len);
+          } else {
+            // Got some other packet, handle it or ignore
+            log_debug("Received packet type %d while waiting for peer", type);
+            POOL_FREE(data, len);
+          }
+        } else if (recv_result == ERROR_NETWORK_TIMEOUT) {
+          // Timeout is normal, just return
+        } else {
+          log_debug("Packet receive error while waiting for peer: %d", recv_result);
+        }
+      }
+    } else {
+      // Fallback to sleep if no timeout or invalid socket
+      platform_sleep_us(timeout_ns / 1000);
+    }
     break;
+  }
 
   case DISCOVERY_STATE_NEGOTIATING: {
     // Handle NAT negotiation
@@ -1645,26 +1737,42 @@ static asciichat_error_t discovery_session_run_election(discovery_session_t *ses
 
   log_debug("Running host election with collected NETWORK_QUALITY");
 
-  // For MVP: Just use host's own quality + placeholder for participants
-  // TODO: When participants start sending NETWORK_QUALITY, collect those instead
+  // TODO: Request fresh NETWORK_QUALITY from all participants
+  // Implementation steps:
+  // 1. Get list of connected participants from session_host_ctx
+  // 2. Send RING_COLLECT or broadcast request via ACDS to each participant
+  // 3. Wait for NETWORK_QUALITY responses (with timeout)
+  // 4. Collect responses into array: nat_quality_t qualities[MAX_PARTICIPANTS]
+  // 5. Run election: negotiate_elect_future_host(qualities, participant_ids, count, &future_host_id)
+  //
+  // For now: Use host's own quality only (single-participant session)
 
   // Measure host's own NAT quality (fresh measurement)
   nat_quality_t host_quality = {0};
   nat_quality_init(&host_quality);
 
-  // TODO: Run NAT detection to get fresh quality data
-  // nat_detect_quality(&host_quality, stun_server_url, local_port);
-  // For now, assume reasonable defaults (we're the host!)
-  host_quality.has_public_ip = true;
-  host_quality.upload_kbps = 100000; // Placeholder: 100 Mbps
-  host_quality.detection_complete = true;
+  // Re-measure host's NAT quality for accurate election
+  const options_t *opts = options_get();
+  const char *stun_server = opts ? opts->stun_servers : NULL;
+  if (stun_server && stun_server[0] != '\0') {
+    log_debug("Re-measuring host NAT quality for election");
+    nat_detect_quality(&host_quality, stun_server, 0);
 
-  // For now, just elect ourselves as the future host (we're already the host!)
-  // TODO: When collecting participant data, run proper election:
-  // negotiate_elect_future_host(collected_qualities, participant_ids, num_participants, &future_host_id);
+    // Measure bandwidth to ACDS
+    if (session->acds_socket != INVALID_SOCKET_VALUE) {
+      nat_measure_bandwidth(&host_quality, session->acds_socket);
+    }
+  } else {
+    // Fallback: use placeholder values
+    host_quality.has_public_ip = true;
+    host_quality.upload_kbps = 100000; // Placeholder: 100 Mbps
+    host_quality.detection_complete = true;
+  }
 
+  // Run election (currently only host quality, will include participants later)
+  // TODO: Pass collected participant qualities to election algorithm
   uint8_t future_host_id[16];
-  memcpy(future_host_id, session->participant_id, 16); // For MVP, host stays host
+  memcpy(future_host_id, session->participant_id, 16); // Host stays host for now
 
   log_info("Election result: Future host elected (round %llu)",
            (unsigned long long)(session->ring.future_host_elected_round + 1));
@@ -1741,7 +1849,6 @@ asciichat_error_t discovery_session_start_ring_round(discovery_session_t *sessio
 
 asciichat_error_t discovery_session_check_host_alive(discovery_session_t *session) {
   if (!session || session->is_host) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL or not is_host");
     // We are the host, so "host" is always alive
     return ASCIICHAT_OK;
   }
@@ -1762,21 +1869,54 @@ asciichat_error_t discovery_session_check_host_alive(discovery_session_t *sessio
     return ERROR_NETWORK;
   }
 
-  // Check if connection to host is still alive
-  // TODO: This requires access to the participant socket, which may need to be exposed
-  // For now, implement a simple check: if we haven't detected a disconnect yet, assume alive
-  // A more robust implementation would:
-  // 1. Try MSG_PEEK on the participant socket (non-blocking)
-  // 2. If read returns 0 bytes with no error, connection closed (RST/FIN detected)
-  // 3. If read returns -1 with ECONNRESET/EPIPE, connection reset
-  // 4. If read returns 0 with error, connection dropped
-
-  // For now, check migration state - if we're already migrating, host is definitely not alive
+  // Check migration state - if we're already migrating, host is definitely not alive
   if (session->migration.state != MIGRATION_STATE_NONE) {
     return ERROR_NETWORK; // Already detected disconnect
   }
 
-  // Assume host is alive if we haven't detected otherwise
+  uint64_t now_ms = session_get_current_time_ms();
+
+  // Check if we have a ping in flight that timed out
+  if (session->liveness.ping_in_flight) {
+    uint64_t ping_age_ms = now_ms - session->liveness.last_ping_sent_ms;
+    if (ping_age_ms > session->liveness.timeout_ms) {
+      // Ping timed out
+      session->liveness.consecutive_failures++;
+      session->liveness.ping_in_flight = false;
+      log_warn("Host ping timeout (attempt %u/%u, age=%llu ms)", session->liveness.consecutive_failures,
+               session->liveness.max_failures, (unsigned long long)ping_age_ms);
+
+      // Check if we've exceeded failure threshold
+      if (session->liveness.consecutive_failures >= session->liveness.max_failures) {
+        log_error("Host declared dead after %u consecutive ping failures", session->liveness.consecutive_failures);
+        return ERROR_NETWORK;
+      }
+    }
+  }
+
+  // Check if it's time to send a new ping
+  uint64_t time_since_last_ping = now_ms - session->liveness.last_ping_sent_ms;
+  if (!session->liveness.ping_in_flight && time_since_last_ping >= session->liveness.ping_interval_ms) {
+    // Send ping to host via participant connection
+    socket_t host_socket = session_participant_get_socket(session->participant_ctx);
+    if (host_socket != INVALID_SOCKET_VALUE) {
+      asciichat_error_t result = packet_send(host_socket, PACKET_TYPE_PING, NULL, 0);
+      if (result == ASCIICHAT_OK) {
+        session->liveness.last_ping_sent_ms = now_ms;
+        session->liveness.ping_in_flight = true;
+        log_debug("Sent ping to host (attempt %u/%u)", session->liveness.consecutive_failures + 1,
+                  session->liveness.max_failures);
+      } else {
+        log_warn("Failed to send ping to host: %d", result);
+        session->liveness.consecutive_failures++;
+        if (session->liveness.consecutive_failures >= session->liveness.max_failures) {
+          log_error("Host declared dead after %u consecutive send failures", session->liveness.consecutive_failures);
+          return ERROR_NETWORK;
+        }
+      }
+    }
+  }
+
   return ASCIICHAT_OK;
 }
 
