@@ -30,9 +30,7 @@ export function MirrorPage() {
 
   // Initialize WASM on mount
   useEffect(() => {
-    console.log('Initializing WASM module...')
     initMirrorWasm()
-      .then(() => console.log('WASM module loaded successfully'))
       .catch((err) => {
         console.error('WASM init error:', err)
         setError(`Failed to load WASM module: ${err}`)
@@ -47,12 +45,8 @@ export function MirrorPage() {
 
     // Wait for next tick to ensure terminal is fully initialized
     setTimeout(() => {
-      if (!instance.terminal) {
-        console.error('[Setup] Terminal not available on instance')
-        return
-      }
+      if (!instance.terminal) return
 
-      console.log('[Setup] Terminal ready, setting up FitAddon and disabling pause')
       const terminal = instance.terminal
 
       const fitAddon = new FitAddon()
@@ -60,48 +54,26 @@ export function MirrorPage() {
 
       try {
         fitAddon.fit()
-        console.log('[Terminal] FitAddon applied successfully')
       } catch (e) {
-        console.warn('[Terminal] FitAddon.fit() failed:', e)
+        // Ignore fit errors
       }
 
       fitAddonRef.current = fitAddon
 
       // FORCE DISABLE IntersectionObserver pause mechanism
-      console.log('[Setup] Attempting to access RenderService via _core...')
       const core = (terminal as any)._core
-      console.log('[Setup] _core exists:', !!core)
-
       if (core) {
-        console.log('[Setup] _core properties:', Object.keys(core))
         const renderService = core._renderService
-        console.log('[Setup] RenderService exists:', !!renderService)
-
         if (renderService) {
-          console.log('[Terminal] Found RenderService, initial _isPaused =', renderService._isPaused)
-
           // Override the _handleIntersectionChange to prevent pausing
           const originalHandler = renderService._handleIntersectionChange.bind(renderService)
           renderService._handleIntersectionChange = (entry: any) => {
-            console.log('[INTERCEPTED] IntersectionObserver fired:', {
-              isIntersecting: entry.isIntersecting,
-              intersectionRatio: entry.intersectionRatio,
-              time: entry.time
-            })
-            // Call original but then force unpause
             originalHandler(entry)
             renderService._isPaused = false
-            console.log('[FORCED] Set _isPaused = false')
           }
-
           // Also force it to false immediately
           renderService._isPaused = false
-          console.log('[Terminal] Forced _isPaused to false')
-        } else {
-          console.error('[Terminal] RenderService not found in _core!')
         }
-      } else {
-        console.error('[Terminal] _core not found! Terminal properties:', Object.keys(terminal))
       }
 
       const handleResize = () => {
@@ -130,7 +102,6 @@ export function MirrorPage() {
       return
     }
 
-    console.log('Requesting webcam access...')
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -140,7 +111,6 @@ export function MirrorPage() {
         },
         audio: false,
       })
-      console.log('Webcam access granted')
 
       streamRef.current = stream
       videoRef.current.srcObject = stream
@@ -210,11 +180,9 @@ export function MirrorPage() {
       frameCountRef.current++
       if (now - fpsUpdateTimeRef.current >= 1000) {
         const currentFps = Math.round(frameCountRef.current / ((now - fpsUpdateTimeRef.current) / 1000))
-        // Update DOM directly without triggering React re-render
         if (fpsRef.current) {
           fpsRef.current.textContent = currentFps.toString()
         }
-        console.log('[FPS]', currentFps, 'frames in last second')
         frameCountRef.current = 0
         fpsUpdateTimeRef.current = now
       }
@@ -228,22 +196,10 @@ export function MirrorPage() {
     const canvas = canvasRef.current
     const terminal = xtermRef.current?.terminal
 
-    // Check _isPaused state every 60 frames
-    if (frameCountRef.current % 60 === 0) {
-      const renderService = (terminal as any)?._core?._renderService
-      const isPaused = renderService?._isPaused
-      console.log('[renderFrame] Frame:', frameCountRef.current, 'terminal:', !!terminal, 'wasm:', isWasmReady(), '_isPaused:', isPaused)
-    }
-
     if (!video || !canvas || !terminal || !isWasmReady()) return
 
     const ctx = canvas.getContext('2d', { willReadFrequently: true })
-    if (!ctx) {
-      if (frameCountRef.current % 60 === 0) {
-        console.log('[renderFrame] No context!')
-      }
-      return
-    }
+    if (!ctx) return
 
     // Draw video frame to canvas
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
@@ -252,15 +208,7 @@ export function MirrorPage() {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
     const rgbaData = new Uint8Array(imageData.data)
 
-    if (frameCountRef.current % 60 === 0) {
-      console.log('[renderFrame] Got imageData, size:', rgbaData.length)
-    }
-
     // Convert to ASCII using WASM
-    if (frameCountRef.current % 60 === 0) {
-      console.log('[renderFrame] Calling convertFrameToAscii...')
-    }
-
     const asciiArt = convertFrameToAscii(
       rgbaData,
       canvas.width,
@@ -268,10 +216,6 @@ export function MirrorPage() {
       ASCII_WIDTH,
       ASCII_HEIGHT
     )
-
-    if (frameCountRef.current % 60 === 0) {
-      console.log('[renderFrame] Got asciiArt, length:', asciiArt?.length)
-    }
 
     // Efficient rendering: move cursor to home and overwrite in one operation
     // \x1b[H moves cursor to home (top-left)
@@ -282,21 +226,6 @@ export function MirrorPage() {
     }
 
     const output = '\x1b[H' + lines.join('\r\n')
-
-    // Debug: Check if write is being called and log DOM state
-    if (frameCountRef.current % 60 === 0) {
-      const scrollY = window.scrollY
-      const termEl = xtermRef.current?.elementRef?.current
-      const termRect = termEl?.getBoundingClientRect()
-      const screenEl = termEl?.querySelector('.xterm-screen')
-      const rowsEl = termEl?.querySelector('.xterm-rows')
-
-      console.log('[WRITE] Frame:', frameCountRef.current, 'scroll:', scrollY.toFixed(0),
-        'termVisible:', termRect ? `top=${termRect.top.toFixed(0)} bot=${termRect.bottom.toFixed(0)}` : 'N/A',
-        'hasScreenEl:', !!screenEl, 'hasRowsEl:', !!rowsEl,
-        'writing:', output.substring(0, 30))
-    }
-
     terminal.write(output)
   }
 
@@ -332,10 +261,7 @@ export function MirrorPage() {
         <div className="flex gap-2">
           {!isRunning ? (
             <button
-              onClick={() => {
-                console.log('Start Webcam button clicked')
-                startWebcam()
-              }}
+              onClick={startWebcam}
               className="px-4 py-2 bg-terminal-2 text-terminal-bg rounded hover:bg-terminal-10"
             >
               Start Webcam
