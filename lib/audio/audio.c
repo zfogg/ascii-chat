@@ -889,8 +889,8 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
   int available = AUDIO_RING_BUFFER_SIZE - 1 - buffer_level;
 
   // HIGH WATER MARK: Drop INCOMING samples to prevent latency accumulation
-  // CRITICAL FIX: Writer must NOT modify read_index (race condition with reader!)
-  // Instead, we drop INCOMING samples to keep buffer bounded.
+  // Writer must not modify read_index (race condition with reader).
+  // Instead, we drop incoming samples to keep buffer bounded.
   // This sacrifices newest data to prevent unbounded latency growth.
   if (buffer_level > AUDIO_JITTER_HIGH_WATER_MARK) {
     // Buffer is already too full - drop incoming samples to maintain target level
@@ -1061,7 +1061,7 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
   // The caller (mixer) expects truthful return values to detect underruns
   // and handle silence padding externally. Internal padding creates double-padding bugs.
   //
-  // CRITICAL FIX: This function was lying by always returning `samples` even when
+  // This function was incorrectly returning `samples` even when
   // it only read `to_read` samples. This broke the mixer's underrun detection.
   return to_read;
 }

@@ -343,7 +343,7 @@ void *stats_logger_thread(void *arg) {
     }
 
     // Check exit condition before proceeding with statistics logging
-    // CRITICAL: Check multiple times to avoid accessing freed resources during shutdown
+    // Check multiple times to avoid accessing freed resources during shutdown.
     if (atomic_load(&g_server_should_exit)) {
       break;
     }
@@ -351,7 +351,7 @@ void *stats_logger_thread(void *arg) {
     // Collect all statistics data first
 #ifndef NDEBUG
     char lock_debug_info[BUFFER_SIZE_MEDIUM] = {0};
-    // CRITICAL: Check exit condition again before accessing lock_debug
+    // Check exit condition again before accessing lock_debug.
     // lock_debug might be destroyed during shutdown
     if (!atomic_load(&g_server_should_exit) && lock_debug_is_initialized()) {
       uint64_t total_acquired = 0, total_released = 0;
@@ -370,8 +370,8 @@ void *stats_logger_thread(void *arg) {
 #endif
 
     // Collect client statistics
-    // CRITICAL: Check exit condition again before accessing rwlock
-    // rwlock might be destroyed during shutdown
+    // Check exit condition again before accessing rwlock.
+    // rwlock might be destroyed during shutdown.
     if (atomic_load(&g_server_should_exit)) {
       break;
     }

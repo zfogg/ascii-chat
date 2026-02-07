@@ -596,7 +596,7 @@ static void *audio_capture_thread_func(void *arg) {
 
       // Sleep briefly to reduce CPU usage when idle
       // 5ms polling = 200 times/sec, fast enough to catch audio promptly
-      // CRITICAL: 50ms was causing 872ms gaps in audio transmission!
+      // Note: 50ms was causing 872ms gaps in audio transmission!
       STOP_TIMER("audio_capture_loop_iteration"); // Must stop before loop repeats
       platform_sleep_us(5 * 1000);                // 5ms (was 50ms - caused huge gaps!)
       continue;
@@ -1056,8 +1056,8 @@ int audio_start_thread() {
  * @ingroup client_audio
  */
 void audio_stop_thread() {
-  // CRITICAL: Signal audio sender thread to exit FIRST
-  // This must happen BEFORE thread_pool_stop_all() is called, otherwise the sender
+  // Signal audio sender thread to exit first.
+  // This must happen before thread_pool_stop_all() is called, otherwise the sender
   // thread will be stuck in cond_wait() and thread_pool_stop_all() will hang forever.
   // The sender thread uses a condition variable to wait for packets - we must wake it up.
   if (g_audio_send_queue_initialized) {
@@ -1126,7 +1126,7 @@ void audio_cleanup() {
   // This must happen before audio_stop_duplex() and audio_destroy()
   audio_terminate_portaudio_final();
 
-  // CRITICAL: Stop audio stream BEFORE destroying pipeline to prevent race condition
+  // Stop audio stream before destroying pipeline to prevent race condition.
   // PortAudio may invoke the callback one more time after we request stop.
   // We need to clear the pipeline pointer first so the callback can't access freed memory.
   if (g_audio_context.initialized) {
@@ -1137,7 +1137,7 @@ void audio_cleanup() {
   // This prevents any lingering PortAudio callbacks from trying to access freed memory
   audio_set_pipeline(&g_audio_context, NULL);
 
-  // CRITICAL: Sleep to allow CoreAudio threads to finish executing callbacks
+  // Sleep to allow CoreAudio threads to finish executing callbacks.
   // On macOS, CoreAudio's internal threads may continue running after Pa_StopStream() returns.
   // The duplex_callback may still be in-flight on other threads. Even after we set the pipeline
   // pointer to NULL, a CoreAudio thread may have already cached the pointer before the assignment.

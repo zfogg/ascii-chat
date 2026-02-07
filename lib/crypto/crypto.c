@@ -694,7 +694,7 @@ crypto_result_t crypto_create_encrypted_packet(crypto_context_t *ctx, const uint
     return CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE;
   }
 
-  // CRITICAL: Validate data_len to prevent integer overflow in size calculations
+  // Validate data_len to prevent integer overflow in size calculations.
   if (data_len > CRYPTO_MAX_PLAINTEXT_SIZE) {
     SET_ERRNO(ERROR_INVALID_PARAM, "crypto_create_encrypted_packet: data_len %zu exceeds max %d", data_len,
               CRYPTO_MAX_PLAINTEXT_SIZE);

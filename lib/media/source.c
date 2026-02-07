@@ -43,7 +43,7 @@ struct media_source_t {
   mutex_t decoder_mutex;
 
   // Mutex to protect decoder access during seeks (prevents audio callback from reading during seek)
-  // CRITICAL: Must be held when:
+  // Must be held when:
   // - Calling ffmpeg_decoder_read_audio() or ffmpeg_decoder_read_video() (audio/video threads)
   // - Calling ffmpeg_decoder_seek_to_timestamp() (main/keyboard thread)
   // This prevents race conditions where audio callback reads stale data while seeking

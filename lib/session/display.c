@@ -142,8 +142,8 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   ctx->tty_info = get_current_tty();
 
   // Determine if we have a valid TTY
-  // CRITICAL: Check if stdout is a TTY, not just any fd (stdin/stderr could be TTY while stdout is piped)
-  // If stdout is piped/redirected, never perform terminal operations regardless of other fds
+  // Check if stdout is a TTY, not just any fd (stdin/stderr could be TTY while stdout is piped).
+  // If stdout is piped/redirected, never perform terminal operations regardless of other fds.
   if (ctx->tty_info.fd >= 0) {
     ctx->has_tty = (platform_isatty(ctx->tty_info.fd) != 0) && (platform_isatty(STDOUT_FILENO) != 0);
   }

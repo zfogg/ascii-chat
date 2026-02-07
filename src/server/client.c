@@ -41,8 +41,8 @@
  *    - Terminal capabilities and rendering preferences
  *    - Protected by per-client mutex (client_state_mutex)
  *
- * CRITICAL SYNCHRONIZATION PATTERNS:
- * ===================================
+ * Synchronization Patterns:
+ * =========================
  *
  * LOCK ORDERING PROTOCOL (prevents deadlocks):
  * 1. Always acquire g_client_manager_rwlock FIRST
@@ -692,8 +692,8 @@ int add_client(server_context_t *server_ctx, socket_t socket, const char *client
 
   rwlock_wrunlock(&g_client_manager_rwlock);
 
-  // CRITICAL: Perform crypto handshake BEFORE starting threads
-  // This ensures the handshake uses the socket directly without interference from receive thread
+  // Perform crypto handshake before starting threads.
+  // This ensures the handshake uses the socket directly without interference from receive thread.
   if (server_crypto_init() == 0) {
     // Set timeout for crypto handshake to prevent indefinite blocking
     // This prevents clients from connecting but never completing the handshake
@@ -1208,15 +1208,15 @@ int remove_client(server_context_t *server_ctx, uint32_t client_id) {
     }
   }
 
-  // CRITICAL: Release write lock before joining threads
-  // This prevents deadlock with render threads that need read locks
+  // Release write lock before joining threads.
+  // This prevents deadlock with render threads that need read locks.
   rwlock_wrunlock(&g_client_manager_rwlock);
 
   // Phase 2: Stop all client threads
   // For TCP clients: use tcp_server thread pool management
   // For WebRTC clients: manually join threads (no socket-based thread pool)
-  // CRITICAL: Use is_tcp_client flag, NOT socket value - socket may already be INVALID_SOCKET_VALUE
-  // even for TCP clients if it was closed earlier during cleanup
+  // Use is_tcp_client flag, not socket value - socket may already be INVALID_SOCKET_VALUE
+  // even for TCP clients if it was closed earlier during cleanup.
   log_debug("Stopping all threads for client %u (socket %d, is_tcp=%d)", client_id, client_socket,
             target_client ? target_client->is_tcp_client : -1);
 
@@ -1272,8 +1272,8 @@ int remove_client(server_context_t *server_ctx, uint32_t client_id) {
   // Phase 3: Clean up resources with write lock
   rwlock_wrlock(&g_client_manager_rwlock);
 
-  // CRITICAL: Re-validate target_client pointer after reacquiring lock
-  // Another thread might have invalidated the pointer while we had the lock released
+  // Re-validate target_client pointer after reacquiring lock.
+  // Another thread might have invalidated the pointer while we had the lock released.
   if (target_client) {
     // Verify client_id still matches and client is still in shutting_down state
     uint32_t current_id = atomic_load(&target_client->client_id);
@@ -1306,8 +1306,8 @@ int remove_client(server_context_t *server_ctx, uint32_t client_id) {
   }
 
   // Remove from uthash table
-  // CRITICAL: Verify client is actually in the hash table before deleting
-  // Another thread might have already removed it
+  // Verify client is actually in the hash table before deleting.
+  // Another thread might have already removed it.
   if (target_client) {
     client_info_t *hash_entry = NULL;
     HASH_FIND(hh, g_client_manager.clients_by_id, &client_id, sizeof(client_id), hash_entry);
@@ -1329,9 +1329,9 @@ int remove_client(server_context_t *server_ctx, uint32_t client_id) {
     log_debug("Crypto context cleaned up for client %u", client_id);
   }
 
-  // CRITICAL: Verify all threads have actually exited before resetting client_id
-  // Threads that are still starting (at RtlUserThreadStart) haven't checked client_id yet
-  // We must ensure threads are fully joined before zeroing the client struct
+  // Verify all threads have actually exited before resetting client_id.
+  // Threads that are still starting (at RtlUserThreadStart) haven't checked client_id yet.
+  // We must ensure threads are fully joined before zeroing the client struct.
   // Use exponential backoff for thread termination verification
   int retry_count = 0;
   const int max_retries = 5;
@@ -1354,9 +1354,9 @@ int remove_client(server_context_t *server_ctx, uint32_t client_id) {
 
   // Only reset client_id to 0 AFTER confirming threads are joined
   // This prevents threads that are starting from accessing a zeroed client struct
-  // CRITICAL: Reset client_id to 0 BEFORE destroying mutexes to prevent race conditions
-  // This ensures worker threads can detect shutdown and exit BEFORE the mutex is destroyed
-  // If we destroy the mutex first, threads might try to access a destroyed mutex
+  // Reset client_id to 0 before destroying mutexes to prevent race conditions.
+  // This ensures worker threads can detect shutdown and exit before the mutex is destroyed.
+  // If we destroy the mutex first, threads might try to access a destroyed mutex.
   atomic_store(&target_client->client_id, 0);
 
   // Wait for threads to observe the client_id reset
@@ -1408,9 +1408,9 @@ void *client_receive_thread(void *arg) {
 
   client_info_t *client = (client_info_t *)arg;
 
-  // CRITICAL: Validate client pointer immediately before any access
+  // Validate client pointer immediately before any access.
   // This prevents crashes if remove_client() has zeroed the client struct
-  // while the thread was still starting at RtlUserThreadStart
+  // while the thread was still starting at RtlUserThreadStart.
   if (!client) {
     log_error("Invalid client info in receive thread (NULL pointer)");
     return NULL;
@@ -1456,8 +1456,8 @@ void *client_receive_thread(void *arg) {
       break;
     }
 
-    // CRITICAL: Check client_id is still valid before accessing transport
-    // This prevents accessing freed memory if remove_client() has zeroed the client struct
+    // Check client_id is still valid before accessing transport.
+    // This prevents accessing freed memory if remove_client() has zeroed the client struct.
     if (atomic_load(&client->client_id) == 0) {
       log_debug("Client client_id reset, exiting receive thread");
       break;
@@ -1502,7 +1502,7 @@ void *client_receive_thread(void *arg) {
   }
 
   // Mark client as inactive and stop all threads
-  // CRITICAL: Must stop render threads when client disconnects
+  // Must stop render threads when client disconnects.
   // OPTIMIZED: Use atomic operations for thread control flags (lock-free)
   atomic_store(&client->active, false);
   atomic_store(&client->send_thread_running, false);
@@ -1523,15 +1523,15 @@ void *client_receive_thread(void *arg) {
 
 // Thread function to handle sending data to a specific client
 void *client_send_thread_func(void *arg) {
-  // CRITICAL: Log entry immediately - this proves the thread actually started
+  // Log entry immediately - this proves the thread actually started.
   fprintf(stderr, "*** SEND_THREAD_STARTED arg=%p ***\n", arg);
   fflush(stderr);
 
   client_info_t *client = (client_info_t *)arg;
 
-  // CRITICAL: Validate client pointer immediately before any access
+  // Validate client pointer immediately before any access.
   // This prevents crashes if remove_client() has zeroed the client struct
-  // while the thread was still starting at RtlUserThreadStart
+  // while the thread was still starting at RtlUserThreadStart.
   if (!client) {
     log_error("Invalid client info in send thread (NULL pointer)");
     return NULL;
@@ -1796,8 +1796,8 @@ void *client_send_thread_func(void *arg) {
     // Always consume frames from the buffer to prevent accumulation
     // Rate-limit the actual sending, but always mark frames as consumed
     if (!client->outgoing_video_buffer) {
-      // CRITICAL: Buffer has been destroyed (client is shutting down)
-      // Exit cleanly instead of looping forever trying to access freed memory
+      // Buffer has been destroyed (client is shutting down).
+      // Exit cleanly instead of looping forever trying to access freed memory.
       log_debug("Client %u send thread exiting: outgoing_video_buffer is NULL", client->client_id);
       break;
     }
@@ -1969,7 +1969,7 @@ void broadcast_server_state_to_all_clients(void) {
   }
 
   // Count active clients and snapshot client data while holding lock
-  // CRITICAL: Use atomic_load for all atomic fields to prevent data races
+  // Use atomic_load for all atomic fields to prevent data races.
   for (int i = 0; i < MAX_CLIENTS; i++) {
     bool is_active = atomic_load(&g_client_manager.clients[i].active);
     if (is_active && atomic_load(&g_client_manager.clients[i].is_sending_video)) {
@@ -2017,7 +2017,7 @@ void broadcast_server_state_to_all_clients(void) {
     log_debug("BROADCAST_DEBUG: Sending SERVER_STATE to client %u (socket %d) with crypto_ctx=%p",
               client_snapshots[i].client_id, client_snapshots[i].socket, (void *)client_snapshots[i].crypto_ctx);
 
-    // CRITICAL: Protect socket write with per-client send_mutex
+    // Protect socket write with per-client send_mutex.
     client_info_t *target = find_client_by_id(client_snapshots[i].client_id);
     if (target) {
       // IMPORTANT: Verify client_id matches expected value - prevents use-after-free

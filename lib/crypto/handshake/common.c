@@ -417,7 +417,7 @@ asciichat_error_t crypto_handshake_rekey_response(crypto_handshake_context_t *ct
 
 /**
  * Send REKEY_COMPLETE packet (initiator side).
- * CRITICAL: This packet is encrypted with the NEW shared secret.
+ * Note: This packet is encrypted with the new shared secret.
  * It proves that both sides have computed the same shared secret.
  */
 asciichat_error_t crypto_handshake_rekey_complete(crypto_handshake_context_t *ctx, socket_t socket) {

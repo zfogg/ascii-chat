@@ -205,7 +205,7 @@ void image_clear(image_t *p) {
     SET_ERRNO(ERROR_INVALID_PARAM, "image_clear: p or p->pixels is NULL");
     return;
   }
-  // CRITICAL: Check for integer overflow before multiplication
+  // Check for integer overflow before multiplication.
   unsigned long w_ul = (unsigned long)p->w;
   unsigned long h_ul = (unsigned long)p->h;
   if (w_ul > 0 && h_ul > ULONG_MAX / w_ul) {

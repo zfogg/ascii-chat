@@ -357,9 +357,9 @@ asciichat_error_t manpage_parser_parse_memory(const char *content, size_t conten
   }
 
   // Write content to temporary file
-  // CRITICAL: Write content_len + 1 to include the null terminator!
-  // The embedded string is content_len + 1 bytes (content_len chars + null terminator)
-  // platform_getline() needs the null terminator to properly handle EOF
+  // Write content_len + 1 to include the null terminator.
+  // The embedded string is content_len + 1 bytes (content_len chars + null terminator).
+  // platform_getline() needs the null terminator to properly handle EOF.
   size_t bytes_to_write = content_len + 1;
   size_t written = fwrite(content, 1, bytes_to_write, tmp);
   if (written != bytes_to_write) {

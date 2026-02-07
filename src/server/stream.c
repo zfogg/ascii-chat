@@ -829,7 +829,7 @@ static char *convert_composite_to_ascii(image_t *composite, uint32_t target_clie
   log_debug_every(LOG_RATE_SLOW, "convert_composite_to_ascii: composite=%dx%d, terminal=%dx%d, h=%d (mode=%d)",
                   composite->w, composite->h, width, height, h, caps_snapshot.render_mode);
 
-  // CRITICAL CHECK: Verify composite width matches terminal width
+  // Verify composite width matches terminal width.
   if (composite->w != width) {
     log_warn_every(1000000, "DIMENSION MISMATCH: composite->w=%d != terminal_width=%d", composite->w, width);
   }
@@ -1032,7 +1032,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
 
   // Convert composite to ASCII using client capabilities
 
-  // CRITICAL: Verify composite width matches expected terminal width
+  // Verify composite width matches expected terminal width.
   if (composite && composite->w != width) {
     log_error_every(1000000, "FRAME_WIDTH_BUG: composite->w=%d != terminal_width=%d for client %u", composite->w, width,
                     target_client_id);
@@ -1043,7 +1043,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
   if (ascii_frame) {
     // Find the actual end of frame by locating the FINAL reset sequence (ESC[0m)
     // This ensures we capture the correct frame size without relying on strlen()
-    // CRITICAL BUG FIX: Use strrchr/strrstr to find LAST occurrence, not first!
+    // Use strrchr/strrstr to find the last occurrence, not first.
     size_t ascii_len = strlen(ascii_frame);
     const char *reset_seq = "\033[0m";
     size_t reset_len = strlen(reset_seq);

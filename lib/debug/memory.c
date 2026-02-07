@@ -793,8 +793,8 @@ void debug_memory_report(void) {
           // Print backtrace if environment variable is set and we haven't hit the limit
           if (backtrace_count < backtrace_limit && curr->backtrace_count > 0) {
             backtrace_count++;
-            // CRITICAL: Unlock mutex before calling platform_backtrace_symbols to avoid deadlock
-            // when backtrace symbol resolution allocates memory
+            // Unlock mutex before calling platform_backtrace_symbols to avoid deadlock
+            // when backtrace symbol resolution allocates memory.
             mutex_unlock(&g_mem.mutex);
 
             // Print backtrace with symbol names

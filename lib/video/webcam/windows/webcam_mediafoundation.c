@@ -506,7 +506,7 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   UINT32 width = (UINT32)ctx->width;
   UINT32 height = (UINT32)ctx->height;
 
-  // CRITICAL: Check for integer overflow before multiplication (prevents heap corruption)
+  // Check for integer overflow before multiplication (prevents heap corruption).
   // Check pixel count overflow
   size_t pixel_count_check = 0;
   if (checked_size_mul((size_t)width, (size_t)height, &pixel_count_check) != ASCIICHAT_OK) {

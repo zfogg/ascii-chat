@@ -192,8 +192,8 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
   log_warn("Disconnecting client %u due to protocol violation: %s", client_id, reason_str);
 
   if (socket_snapshot != INVALID_SOCKET_VALUE) {
-    // CRITICAL: Protect socket writes with send_mutex to prevent race with send_thread
-    // This receive_thread and send_thread both write to same socket
+    // Protect socket writes with send_mutex to prevent race with send_thread.
+    // This receive_thread and send_thread both write to same socket.
     mutex_lock(&client->send_mutex);
 
     asciichat_error_t log_result =
@@ -1698,7 +1698,7 @@ int send_server_state_to_client(client_info_t *client) {
   memset(net_state.reserved, 0, sizeof(net_state.reserved));
 
   // Send server state via ACIP transport
-  // CRITICAL: Protect socket writes with send_mutex to prevent race with send_thread
+  // Protect socket writes with send_mutex to prevent race with send_thread.
   mutex_lock(&client->send_mutex);
   asciichat_error_t result = acip_send_server_state(client->transport, &net_state);
   mutex_unlock(&client->send_mutex);

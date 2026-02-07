@@ -176,8 +176,8 @@ static bool mirror_display_should_exit_adapter(void *user_data) {
  * @return 0 on success, non-zero error code on failure
  */
 int mirror_main(void) {
-  // CRITICAL FIX: Disable terminal logging BEFORE any logging happens when stdout is piped
-  // This prevents buffered log output from corrupting the ASCII frame stream
+  // Disable terminal logging before any logging happens when stdout is piped.
+  // This prevents buffered log output from corrupting the ASCII frame stream.
   if (!platform_isatty(STDOUT_FILENO)) {
     log_set_force_stderr(true);     // Force ALL logs to stderr, not stdout
     log_set_terminal_output(false); // Then disable terminal output entirely

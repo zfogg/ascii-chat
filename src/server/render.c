@@ -68,7 +68,7 @@
  * 3. Release mutex immediately
  * 4. Process using local copies
  *
- * CRITICAL SYNCHRONIZATION POINTS:
+ * Synchronization Points:
  * - Thread running flags (protected by client mutex)
  * - Client dimensions and capabilities (atomic snapshots)
  * - Packet queue access (internally thread-safe)
@@ -343,7 +343,7 @@ void *client_video_render_thread(void *arg) {
   }
 
   // Take snapshot of client ID and socket at start to avoid race conditions
-  // CRITICAL: Use atomic_load for client_id to prevent data races
+  // Use atomic_load for client_id to prevent data races.
   uint32_t thread_client_id = atomic_load(&client->client_id);
   socket_t thread_socket = client->socket;
   bool is_webrtc = (thread_socket == INVALID_SOCKET_VALUE);
@@ -415,14 +415,14 @@ void *client_video_render_thread(void *arg) {
     // Capture timestamp for FPS tracking and frame timestamps
     uint64_t current_time_ns = time_get_ns();
 
-    // CRITICAL: Check thread state again BEFORE acquiring locks (client might have been destroyed during sleep)
+    // Check thread state again before acquiring locks (client might have been destroyed during sleep).
     should_continue = atomic_load(&client->video_render_thread_running) && atomic_load(&client->active) &&
                       !atomic_load(&client->shutting_down);
     if (!should_continue) {
       break;
     }
 
-    // CRITICAL OPTIMIZATION: No mutex needed - all fields are atomic or stable!
+    // Optimization: No mutex needed - all fields are atomic or stable.
     // client_id: atomic_uint - use atomic_load for thread safety
     // width/height: atomic_ushort - use atomic_load
     // active: atomic_bool - use atomic_load
@@ -633,7 +633,7 @@ void *client_audio_render_thread(void *arg) {
   }
 
   // Take snapshot of client ID and display name at start to avoid race conditions
-  // CRITICAL: Use atomic_load for client_id to prevent data races
+  // Use atomic_load for client_id to prevent data races.
   uint32_t thread_client_id = atomic_load(&client->client_id);
   char thread_display_name[64];
   bool is_webrtc = (client->socket == INVALID_SOCKET_VALUE);
@@ -698,7 +698,7 @@ void *client_audio_render_thread(void *arg) {
       break;
     }
 
-    // CRITICAL: Check thread state BEFORE acquiring any locks to prevent use-after-destroy
+    // Check thread state before acquiring any locks to prevent use-after-destroy.
     // If we acquire locks after client is being destroyed, we'll crash with SIGSEGV
     should_continue = (((int)atomic_load(&client->audio_render_thread_running) != 0) &&
                        ((int)atomic_load(&client->active) != 0) && !atomic_load(&client->shutting_down));
@@ -717,7 +717,7 @@ void *client_audio_render_thread(void *arg) {
       continue;
     }
 
-    // CRITICAL OPTIMIZATION: No mutex needed - all fields are atomic or stable!
+    // Optimization: No mutex needed - all fields are atomic or stable.
     // client_id: atomic_uint - use atomic_load for thread safety
     // active: atomic_bool - use atomic_load
     // audio_queue: Assigned once at init and never changes
@@ -863,7 +863,7 @@ void *client_audio_render_thread(void *arg) {
 
       if (apply_backpressure) {
         // Skip this packet to let the queue drain
-        // CRITICAL: Reset accumulation buffer so fresh samples can be captured on next iteration
+        // Reset accumulation buffer so fresh samples can be captured on next iteration.
         // Without this reset, we'd loop forever with stale audio and no space for new samples
         opus_frame_accumulated = 0;
         platform_sleep_ns(5800000);

@@ -22,8 +22,8 @@
  * 4. Audio render thread: Mixes audio streams at 172fps (render.c)
  * 5. Stats logger thread: Periodic performance reporting (stats.c)
  *
- * CRITICAL THREAD SAFETY:
- * ========================
+ * Thread Safety:
+ * ==============
  * - Lock ordering: Always acquire g_client_manager_rwlock BEFORE per-client mutexes
  * - Snapshot pattern: Copy client state under mutex, then process without locks
  * - Signal-safe shutdown: SIGINT handler only sets flags and closes sockets
@@ -1023,8 +1023,8 @@ static void server_handle_sigterm(int sigterm) {
   // Log without file I/O (no mutex, avoids deadlocks in signal handlers)
   log_info_nofile("SIGTERM received - shutting down server...");
 
-  // CRITICAL: Stop the TCP server accept loop immediately
-  // Without this, the select() call with ACCEPT_TIMEOUT could delay shutdown
+  // Stop the TCP server accept loop immediately.
+  // Without this, the select() call with ACCEPT_TIMEOUT could delay shutdown.
   atomic_store(&g_tcp_server.running, false);
   if (g_tcp_server.listen_socket != INVALID_SOCKET_VALUE) {
     socket_close(g_tcp_server.listen_socket);
@@ -2147,7 +2147,7 @@ cleanup:
   // g_shutdown_cond uses STATIC_COND_INIT which doesn't allocate resources that need cleanup
   // Calling cond_destroy() on a static cond is undefined behavior on some platforms
 
-  // CRITICAL: Close all client sockets immediately to unblock receive threads
+  // Close all client sockets immediately to unblock receive threads.
   // The signal handler only closed the listening socket, but client receive threads
   // are still blocked in recv_with_timeout(). We need to close their sockets to unblock them.
   log_debug("Closing all client sockets to unblock receive threads...");
@@ -2226,9 +2226,9 @@ cleanup:
 
   // Clean up audio mixer
   if (g_audio_mixer) {
-    // CRITICAL: Set to NULL FIRST before destroying
-    // Client handler threads may still be running and checking g_audio_mixer
-    // Setting it to NULL first prevents use-after-free race condition
+    // Set to NULL first before destroying.
+    // Client handler threads may still be running and checking g_audio_mixer.
+    // Setting it to NULL first prevents use-after-free race condition.
     // volatile ensures this write is visible to other threads immediately
     mixer_t *mixer_to_destroy = g_audio_mixer;
     g_audio_mixer = NULL;

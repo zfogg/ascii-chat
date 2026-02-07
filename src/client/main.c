@@ -821,8 +821,8 @@ int client_main(void) {
       server_connection_set_transport(connection_ctx.active_transport);
       log_debug("Active transport integrated into server connection layer");
 
-      // CRITICAL: Transfer ownership - NULL out context's pointers to prevent double-free
-      // server_connection_set_transport() now owns the transport, so context must not destroy it
+      // Transfer ownership - NULL out context's pointers to prevent double-free.
+      // server_connection_set_transport() now owns the transport, so context must not destroy it.
       connection_ctx.tcp_transport = NULL;
       connection_ctx.active_transport = NULL;
     } else {
@@ -842,7 +842,7 @@ int client_main(void) {
     if (protocol_start_connection() != 0) {
       log_error("Failed to start connection protocols");
 
-      // CRITICAL: Stop any threads that were started before the failure
+      // Stop any threads that were started before the failure.
       // protocol_start_connection() may fail partway through after spawning some threads
       // (e.g., data reception thread spawned, but webcam capture failed)
       // We MUST stop these threads before closing the connection to prevent them from

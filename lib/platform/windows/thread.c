@@ -383,8 +383,8 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
     return 1;
   }
 
-  // CRITICAL: Validate wrapper structure before accessing its fields
-  // If the wrapper was freed or corrupted, accessing its fields will crash
+  // Validate wrapper structure before accessing its fields.
+  // If the wrapper was freed or corrupted, accessing its fields will crash.
   __try {
     // Test if wrapper is readable by accessing a field
     if (!wrapper->posix_func) {
@@ -423,14 +423,14 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
 
 #ifndef NDEBUG
     // Build consolidated stack trace message
-    // CRITICAL: g_exception_pointers might point to freed stack memory if accessed from another thread
-    // All accesses must be wrapped in __try/__except to prevent crashes
+    // g_exception_pointers might point to freed stack memory if accessed from another thread.
+    // All accesses must be wrapped in __try/__except to prevent crashes.
     if (g_exception_pointers && g_exception_pointers->ContextRecord) {
       // Use minimal output to avoid any potential crashes
       __try {
-        // CRITICAL: Copy ExceptionRecord FIRST - it also points to stack memory that may be invalid
-        // Both ExceptionRecord and ContextRecord point to stack memory from the exception thread
-        // We must copy both before accessing them to avoid stack-use-after-scope errors
+        // Copy ExceptionRecord first - it also points to stack memory that may be invalid.
+        // Both ExceptionRecord and ContextRecord point to stack memory from the exception thread.
+        // We must copy both before accessing them to avoid stack-use-after-scope errors.
         PEXCEPTION_RECORD pExceptionRecord = g_exception_pointers->ExceptionRecord;
         EXCEPTION_RECORD exceptionRecordCopy = {0};
         DWORD exceptionCode = 0;
@@ -578,7 +578,7 @@ int asciichat_thread_create(asciichat_thread_t *thread, void *(*func)(void *), v
   log_debug("About to malloc wrapper (size=%zu)", sizeof(thread_wrapper_t));
 #endif
 
-  // CRITICAL: Use raw malloc for the thread wrapper, not debug_malloc
+  // Use raw malloc for the thread wrapper, not debug_malloc.
   //
   // WHY: The wrapper must be freed in exception handlers (see __except blocks below).
   // If the thread crashes while holding g_mem.mutex (during any debug_malloc/debug_free),

@@ -141,8 +141,8 @@ int gpg_verify_signature(const uint8_t *public_key, const uint8_t *message, size
   }
 
   // Build public key S-expression: (public-key (ecc (curve Ed25519) (flags eddsa) (q %b)))
-  // CRITICAL: Must include (flags eddsa) to match libgcrypt's Ed25519 test suite!
-  // See libgcrypt/tests/t-ed25519.c line 246-251
+  // Must include (flags eddsa) to match libgcrypt's Ed25519 test suite.
+  // See libgcrypt/tests/t-ed25519.c line 246-251.
   err = gcry_sexp_build(&s_pubkey, NULL, "(public-key (ecc (curve Ed25519) (flags eddsa) (q %b)))", 32, public_key);
   if (err) {
     log_error("gpg_verify_signature: Failed to build public key S-expression: %s", gcry_strerror(err));
@@ -159,9 +159,9 @@ int gpg_verify_signature(const uint8_t *public_key, const uint8_t *message, size
   }
 
   // Build data S-expression with raw message
-  // CRITICAL: According to libgcrypt's test suite (t-ed25519.c line 273),
-  // Ed25519 data should be: (data (value %b)) with NO FLAGS!
-  // The (flags eddsa) belongs in the KEY S-expression above, NOT in the data.
+  // According to libgcrypt's test suite (t-ed25519.c line 273),
+  // Ed25519 data should be: (data (value %b)) with no flags.
+  // The (flags eddsa) belongs in the key S-expression above, not in the data.
   // GPG agent's internal format is different - this is the correct libgcrypt API usage.
   err = gcry_sexp_build(&s_data, NULL, "(data (value %b))", message_len, message);
   if (err) {

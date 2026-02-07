@@ -1169,8 +1169,8 @@ Test(ascii_simd_integration, mixed_byte_length_palettes) {
     cr_expect_gt(scalar_len, width, "%s: Scalar output too small", mixed_palettes[p].name);
   }
 
-  // CRITICAL: Cleanup image immediately after loop completes
-  // Using cr_expect above ensures this cleanup runs even if assertions failed
+  // Cleanup image immediately after loop completes.
+  // Using cr_expect above ensures this cleanup runs even if assertions failed.
   if (cleanup_guard) {
     image_destroy(cleanup_guard);
     cleanup_guard = NULL;
@@ -1677,7 +1677,7 @@ Test(ascii_simd_integration, mixed_utf8_output_correctness_mono_and_color) {
       if (scalar_valid && simd_valid) {
         log_debug("  Lengths: Scalar=%zu, SIMD=%zu", scalar_len, simd_len);
 
-        // CRITICAL: Verify that ALL unique characters from palette appear in output
+        // Verify that all unique characters from palette appear in output.
         size_t palette_len = strlen(palette);
         bool palette_coverage[256] = {false}; // Track which palette characters were found
 
@@ -1706,7 +1706,7 @@ Test(ascii_simd_integration, mixed_utf8_output_correctness_mono_and_color) {
         log_debug("  Palette Coverage: %d/%zu unique characters found in output", unique_chars_found, palette_len);
 
         if (length_match) {
-          // CRITICAL: Byte-by-byte comparison only if lengths match
+          // Byte-by-byte comparison only if lengths match.
           for (size_t i = 0; i < scalar_len; i++) {
             if (scalar_result[i] != simd_result[i]) {
               if (first_diff == -1) {
@@ -1784,9 +1784,9 @@ Test(ascii_simd_integration, mixed_utf8_output_correctness_mono_and_color) {
     }
   }
 
-  // CRITICAL: Cleanup image immediately after loops (before any log messages)
+  // Cleanup image immediately after loops (before any log messages).
   // This ensures cleanup happens even if assertions failed in nested loops
-  // and Criterion exited via longjmp
+  // and Criterion exited via longjmp.
   if (cleanup_guard) {
     image_destroy(cleanup_guard);
     cleanup_guard = NULL;

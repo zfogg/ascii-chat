@@ -26,8 +26,8 @@
 
 #pragma once
 
-/* CRITICAL: string.h must come before any platform includes
- * that might use memcpy (used in unaligned access helpers below) */
+/* Note: string.h must come before any platform includes
+ * that might use memcpy (used in unaligned access helpers below). */
 #include <string.h> // For memcpy in unaligned access helpers
 
 // DLL export/import macros (must be included first to avoid circular dependencies)

@@ -284,7 +284,7 @@ typedef struct {
   void *debug_wav_aec3_out; // Microphone output after AEC3
 
   /** Persistent AudioBuffer instances for AEC3 (opaque C++ objects)
-   * CRITICAL: AudioBuffer has internal filterbank state that must persist across frames.
+   * Note: AudioBuffer has internal filterbank state that must persist across frames.
    * Creating new buffers each frame causes discontinuities (static/buzzing).
    */
   void *aec3_render_buffer;  // Persistent render AudioBuffer

@@ -45,7 +45,7 @@ asciichat_error_t keyboard_init(void) {
     return ASCIICHAT_OK;
   }
 
-  // CRITICAL: Hold lock for ENTIRE initialization sequence to prevent TOCTOU race.
+  // Hold lock for entire initialization sequence to prevent TOCTOU race.
   // Multiple threads must not call tcgetattr/tcsetattr/fcntl concurrently.
 
   struct termios new_termios;

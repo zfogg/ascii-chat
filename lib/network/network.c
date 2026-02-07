@@ -404,7 +404,7 @@ asciichat_error_t socket_configure_buffers(socket_t sockfd) {
   }
 
   // Attempt to enable TCP_NODELAY to disable Nagle's algorithm for low-latency transmission
-  // CRITICAL: This must be set even if buffer configuration fails, as it's essential for real-time video
+  // This must be set even if buffer configuration fails, as it's essential for real-time video.
   int tcp_nodelay = 1;
   if (socket_setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &tcp_nodelay, sizeof(tcp_nodelay)) < 0) {
     log_warn("Failed to set TCP_NODELAY: %s", network_error_string());

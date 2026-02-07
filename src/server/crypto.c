@@ -435,7 +435,7 @@ int server_crypto_handshake(client_info_t *client) {
   // Note: Password authentication is not a separate algorithm - it's a mode of operation
   // that affects key derivation. The authentication algorithm refers to signature verification.
   //
-  // CRITICAL: We require Ed25519 authentication if:
+  // We require Ed25519 authentication if:
   //   - Server has an identity key (g_server_encryption_enabled AND g_server_private_key is Ed25519)
   //   - This is needed to send authenticated KEY_EXCHANGE_INIT with identity + signature
   //   - Client whitelist verification happens during authentication phase, not key exchange

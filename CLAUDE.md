@@ -382,7 +382,7 @@ docker-compose -f ./tests/docker-compose.yml run --rm ascii-chat-tests bash -c '
 
 ### Logging Best Practices
 
-**CRITICAL: Never use fprintf() or printf() for debug output**
+**Important: Never use fprintf() or printf() for debug output**
 
 Always use the logging system (`log_debug()`, `log_info()`, etc.) instead of raw `fprintf()` or `printf()` calls:
 
@@ -406,6 +406,50 @@ log_debug("Processing packet");
 2. Use `--grep` to filter noise during debugging
 3. Set appropriate log levels: dev < debug < info < warn < error < fatal
 4. Log to file with `--log-file` when output would interfere with UI
+
+### Comment Style
+
+**Never use emphatic comment prefixes like "CRITICAL:", "WARNING:", "IMPORTANT:", etc.**
+
+All comments in code are important by nature. Write them in a professional, matter-of-fact tone.
+
+**Acceptable prefixes:**
+- ✅ `TODO:` - for planned future work
+- ✅ `FIXME:` - for known issues that need fixing
+- ❌ `CRITICAL:` - everything in production code is critical
+- ❌ `WARNING:` - if it's dangerous, explain why, don't just warn
+- ❌ `IMPORTANT:` - all comments should be important
+- ❌ `HACK:` - if it's a hack, refactor it or explain the constraints
+
+```c
+// ❌ WRONG - emphatic style that doesn't add value
+// CRITICAL: This must be called before the mutex is destroyed!
+// WARNING: Do not modify this without updating the corresponding code!
+// IMPORTANT: Buffer must be freed after use!
+
+// ✅ CORRECT - professional, clear, direct
+// This must be called before the mutex is destroyed.
+// Do not modify this without updating the corresponding code.
+// Buffer must be freed after use.
+
+// ✅ CORRECT - actionable markers for future work
+// TODO: Add support for IPv6 addresses
+// FIXME: Race condition when multiple threads access this simultaneously
+```
+
+**Why:**
+- Emphatic prefixes like CRITICAL/WARNING/IMPORTANT make code look unprofessional
+- All comments in production code should be equally important and carefully considered
+- The comment content itself should convey importance through clear explanation
+- If something is truly critical, explain why and what happens if violated
+
+```c
+// ❌ WRONG
+// CRITICAL: Writer must NOT modify read_index!
+
+// ✅ CORRECT
+// Writer must not modify read_index (race condition with reader).
+```
 
 ### Error Handling Best Practices
 

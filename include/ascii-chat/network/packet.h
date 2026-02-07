@@ -502,8 +502,8 @@ typedef enum {
  * - Initial crypto handshake packets (types 14-23)
  * - Session rekeying packets (types 25-27)
  *
- * CRITICAL HANDLING:
- * - Handshake packets are ALWAYS sent in plaintext
+ * Important Handling:
+ * - Handshake packets are always sent in plaintext
  * - This includes all crypto negotiation packets
  * - PACKET_TYPE_ENCRYPTED (24) is NOT a handshake packet
  * - PACKET_TYPE_CRYPTO_REKEY_COMPLETE (27) is encrypted with NEW key,

@@ -678,7 +678,7 @@ void test_terminal_output_modes(void) {
  * @return Modified capabilities with overrides applied
  */
 terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) {
-  // CRITICAL: Check if stdout is a TTY - disable colors when piping unless --color=true
+  // Check if stdout is a TTY - disable colors when piping unless --color=true.
   if (!platform_isatty(STDOUT_FILENO) && GET_OPTION(color) != COLOR_SETTING_TRUE) {
     caps.color_level = TERM_COLOR_NONE;
     caps.capabilities &= ~(uint32_t)(TERM_CAP_COLOR_16 | TERM_CAP_COLOR_256 | TERM_CAP_COLOR_TRUE);

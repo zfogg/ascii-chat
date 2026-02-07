@@ -1360,7 +1360,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   // unless explicitly set by the user (but defaults shouldn't override it)
   opts.webcam_flip = saved_webcam_flip;
 
-  // CRITICAL: RESTORE detected_mode BEFORE parsing so mode validation works
+  // Restore detected_mode before parsing so mode validation works.
   opts.detected_mode = mode_saved_for_parsing;
 
   // Save webcam_flip before parsing - it should not be reset by the parser
