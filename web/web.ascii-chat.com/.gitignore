@@ -35,3 +35,4 @@ wasm/build/
 .env*.local
 
 /wasm/build_wasm
+
