@@ -36,13 +36,13 @@ typedef struct {
 /**
  * @brief WebRTC peer manager structure
  */
-struct webrtc_peer_manager {
+typedef struct webrtc_peer_manager {
   webrtc_peer_role_t role;                ///< Session role
   webrtc_peer_manager_config_t config;    ///< Manager configuration
   webrtc_signaling_callbacks_t signaling; ///< Signaling callbacks
   peer_entry_t *peers;                    ///< Hash table of peer connections
   mutex_t peers_mutex;                    ///< Protect peers hash table
-};
+} webrtc_peer_manager_t;
 
 // =============================================================================
 // Helper Functions

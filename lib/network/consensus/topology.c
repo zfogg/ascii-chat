@@ -8,10 +8,16 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <string.h>
 
+/**
+ * @brief Ring topology for consensus participants
+ *
+ * Maintains a sorted list of participant IDs for ring-based consensus
+ * algorithms and leader election.
+ */
 typedef struct consensus_topology {
-  uint8_t participant_ids[64][16]; // Sorted order
-  int num_participants;
-  int my_position; // My index in sorted list
+  uint8_t participant_ids[64][16]; ///< Participant UUIDs in sorted order
+  int num_participants;            ///< Total number of participants
+  int my_position;                 ///< My index in the sorted list
 } consensus_topology_t;
 
 // Helper: find position of UUID in array

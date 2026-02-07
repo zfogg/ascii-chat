@@ -47,10 +47,12 @@
 
 /* write_u8() is now in util/number.h */
 
-// Pre-computed 256-color ANSI sequences
+/**
+ * @brief Pre-computed 256-color ANSI SGR sequence
+ */
 typedef struct {
-  char seq[12]; // Max 11 bytes for "\e[38;5;NNNm"
-  uint8_t len;
+  char seq[12]; ///< ANSI sequence string (max 11 bytes for "\e[38;5;NNNm")
+  uint8_t len;  ///< Length of sequence string
 } sgr256_seq_t;
 
 static sgr256_seq_t sgr256_fg_cache[256];

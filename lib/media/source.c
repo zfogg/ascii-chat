@@ -20,44 +20,37 @@
  * Media Source Structure
  * ============================================================================ */
 
+/**
+ * @brief Media source for video and audio capture
+ *
+ * Abstracts multiple media input types (webcam, files, stdin, test patterns)
+ * with unified interface for frame/audio reading.
+ */
 struct media_source_t {
-  media_source_type_t type;
-  bool loop_enabled;
-  bool is_paused;
+  media_source_type_t type; ///< Type of media source (webcam, file, stdin, test)
+  bool loop_enabled;        ///< Whether to loop playback (for files)
+  bool is_paused;           ///< Whether playback is paused
 
   // Webcam context (for WEBCAM and TEST types)
-  webcam_context_t *webcam_ctx;
-  unsigned short int webcam_index;
+  webcam_context_t *webcam_ctx;    ///< Webcam context (NULL for non-webcam types)
+  unsigned short int webcam_index; ///< Webcam device index
 
   // FFmpeg decoders (for FILE and STDIN types)
-  // STRATEGY:
-  // - Local files: Use SEPARATE decoders for video and audio (allows concurrent reads at different rates)
-  // - YouTube URLs: Use SHARED decoder for both (YouTube rejects concurrent connections to same URL)
-  // - is_shared_decoder: true if both streams use same decoder object
-  ffmpeg_decoder_t *video_decoder;
-  ffmpeg_decoder_t *audio_decoder;
-  bool is_shared_decoder;
+  ffmpeg_decoder_t *video_decoder; ///< Video decoder (separate or shared with audio)
+  ffmpeg_decoder_t *audio_decoder; ///< Audio decoder (separate or shared with video)
+  bool is_shared_decoder;          ///< True if both streams share same decoder (YouTube URLs)
 
-  // Mutex to protect shared decoder access from concurrent video/audio threads
-  // Only used when is_shared_decoder is true (YouTube URLs)
-  mutex_t decoder_mutex;
+  // Thread synchronization
+  mutex_t decoder_mutex;     ///< Protects shared decoder access (YouTube URLs)
+  mutex_t seek_access_mutex; ///< Protects decoder access during seeks
+  mutex_t pause_mutex;       ///< Protects pause state
 
-  // Mutex to protect decoder access during seeks (prevents audio callback from reading during seek)
-  // Must be held when:
-  // - Calling ffmpeg_decoder_read_audio() or ffmpeg_decoder_read_video() (audio/video threads)
-  // - Calling ffmpeg_decoder_seek_to_timestamp() (main/keyboard thread)
-  // This prevents race conditions where audio callback reads stale data while seeking
-  mutex_t seek_access_mutex;
+  // Cached paths
+  char *file_path;            ///< File path (for FILE type)
+  char *original_youtube_url; ///< Original YouTube URL for re-extraction
 
-  // Mutex to protect pause state accessed from keyboard input thread and video read thread
-  mutex_t pause_mutex;
-
-  // Cached path (for FILE type) and original YouTube URL for potential re-extraction
-  char *file_path;
-  char *original_youtube_url;
-
-  // Audio context for clearing playback buffers on seek (opaque pointer)
-  void *audio_ctx;
+  // Audio integration
+  void *audio_ctx; ///< Audio context for clearing buffers on seek (opaque)
 };
 
 /* ============================================================================

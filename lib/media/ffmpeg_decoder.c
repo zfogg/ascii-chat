@@ -57,67 +57,70 @@ static void ffmpeg_silent_log_callback(void *avcl, int level, const char *fmt, v
  * FFmpeg Decoder Structure
  * ============================================================================ */
 
+/**
+ * @brief FFmpeg decoder state for video and audio decoding
+ *
+ * Handles video/audio decoding from files, stdin, and URLs using FFmpeg.
+ * Supports double-buffered prefetching for smooth playback.
+ */
 struct ffmpeg_decoder_t {
   // Format context
-  AVFormatContext *format_ctx;
+  AVFormatContext *format_ctx; ///< FFmpeg format/container context
 
   // Video stream
-  AVCodecContext *video_codec_ctx;
-  int video_stream_idx;
-  struct SwsContext *sws_ctx;
+  AVCodecContext *video_codec_ctx; ///< Video codec context
+  int video_stream_idx;            ///< Video stream index (-1 if none)
+  struct SwsContext *sws_ctx;      ///< Software scaler for format conversion
 
   // Audio stream
-  AVCodecContext *audio_codec_ctx;
-  int audio_stream_idx;
-  struct SwrContext *swr_ctx;
+  AVCodecContext *audio_codec_ctx; ///< Audio codec context
+  int audio_stream_idx;            ///< Audio stream index (-1 if none)
+  struct SwrContext *swr_ctx;      ///< Software resampler for format conversion
 
   // Frame and packet buffers
-  AVFrame *frame;
-  AVPacket *packet;
+  AVFrame *frame;   ///< Reusable frame for decoding
+  AVPacket *packet; ///< Reusable packet for reading
 
   // Decoded image cache - double-buffered for prefetching
-  // current_image: working buffer for decoding
-  image_t *current_image;
+  image_t *current_image; ///< Working buffer for decoding
 
   // Audio sample buffer (for partial frame handling)
-  float *audio_buffer;
-  size_t audio_buffer_size;
-  size_t audio_buffer_offset;
+  float *audio_buffer;        ///< Buffer for partial audio frames
+  size_t audio_buffer_size;   ///< Total size of audio buffer
+  size_t audio_buffer_offset; ///< Current offset in audio buffer
 
   // Background thread for frame prefetching (reduces YouTube HTTP blocking)
-  // Double-buffered image: main thread reads from current, prefetch thread decodes into next
-  asciichat_thread_t prefetch_thread;
-  image_t *prefetch_image_a;       // First prefetch buffer
-  image_t *prefetch_image_b;       // Second prefetch buffer
-  image_t *current_prefetch_image; // Currently available prefetched frame
-  bool prefetch_frame_ready;       // Whether current_prefetch_image has valid data
-  bool prefetch_thread_running;    // Whether prefetch thread is active
-  bool prefetch_should_stop;       // Signal to stop prefetch thread
-  bool seeking_in_progress;        // Signal to pause prefetch thread during seek
-  cond_t prefetch_cond;            // Condition variable for pausing during seek
-  mutex_t prefetch_mutex;          // Protect: prefetch frame/stop + FFmpeg decoder access
-  // NOTE: prefetch_mutex MUST be held when calling av_read_frame/avcodec_ functions
+  asciichat_thread_t prefetch_thread; ///< Prefetch thread handle
+  image_t *prefetch_image_a;          ///< First prefetch buffer
+  image_t *prefetch_image_b;          ///< Second prefetch buffer
+  image_t *current_prefetch_image;    ///< Currently available prefetched frame
+  bool prefetch_frame_ready;          ///< Whether current_prefetch_image has valid data
+  bool prefetch_thread_running;       ///< Whether prefetch thread is active
+  bool prefetch_should_stop;          ///< Signal to stop prefetch thread
+  bool seeking_in_progress;           ///< Signal to pause prefetch thread during seek
+  cond_t prefetch_cond;               ///< Condition variable for pausing during seek
+  mutex_t prefetch_mutex;             ///< Protect prefetch state and FFmpeg decoder access
 
-  // Track which buffer is being read by main thread (prevent prefetch thread from overwriting it)
-  image_t *current_read_buffer; // Buffer main thread is currently reading/rendering
-  bool buffer_a_in_use;         // Whether prefetch_image_a is being read by main thread
-  bool buffer_b_in_use;         // Whether prefetch_image_b is being read by main thread
+  // Track which buffer is being read by main thread
+  image_t *current_read_buffer; ///< Buffer main thread is currently reading/rendering
+  bool buffer_a_in_use;         ///< Whether prefetch_image_a is being read by main thread
+  bool buffer_b_in_use;         ///< Whether prefetch_image_b is being read by main thread
 
   // State flags
-  bool eof_reached;
-  bool is_stdin;
+  bool eof_reached; ///< Whether end of file was reached
+  bool is_stdin;    ///< Whether reading from stdin
 
   // Stdin I/O context
-  AVIOContext *avio_ctx;
-  unsigned char *avio_buffer;
+  AVIOContext *avio_ctx;      ///< Custom I/O context for stdin
+  unsigned char *avio_buffer; ///< Buffer for custom I/O
 
   // Position tracking
-  double last_video_pts;
-  double last_audio_pts;
+  double last_video_pts; ///< Last video presentation timestamp
+  double last_audio_pts; ///< Last audio presentation timestamp
 
-  // Sample-based position tracking (continuous position based on samples read)
-  uint64_t audio_samples_read; // Total audio samples decoded and output
-  int audio_sample_rate;       // Audio sample rate (Hz)
+  // Sample-based position tracking
+  uint64_t audio_samples_read; ///< Total audio samples decoded and output
+  int audio_sample_rate;       ///< Audio sample rate (Hz)
 };
 
 /* ============================================================================

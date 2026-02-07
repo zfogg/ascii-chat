@@ -40,7 +40,7 @@
  *
  * Contains connection state, media stream state, and callback configuration.
  */
-struct session_participant {
+typedef struct session_participant {
   /** @brief Server address */
   char address[BUFFER_SIZE_SMALL];
 
@@ -112,7 +112,7 @@ struct session_participant {
 
   /** @brief Context is initialized */
   bool initialized;
-};
+} session_participant_t;
 
 /* ============================================================================
  * Session Participant Lifecycle Functions

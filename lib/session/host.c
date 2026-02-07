@@ -77,7 +77,7 @@ typedef struct {
  *
  * Contains server state, client list, and callback configuration.
  */
-struct session_host {
+typedef struct session_host {
   /** @brief Port to listen on */
   int port;
 
@@ -155,7 +155,7 @@ struct session_host {
 
   /** @brief Context is initialized */
   bool initialized;
-};
+} session_host_t;
 
 /* ============================================================================
  * Session Host Lifecycle Functions

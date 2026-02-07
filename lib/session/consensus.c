@@ -18,7 +18,7 @@
 /**
  * @brief Session consensus handle - wraps all consensus modules
  */
-struct session_consensus {
+typedef struct session_consensus {
   // Consensus modules
   consensus_topology_t *topology;
   consensus_coordinator_t *coordinator;
@@ -33,7 +33,7 @@ struct session_consensus {
   // Local identity
   uint8_t my_id[16];
   bool is_leader;
-};
+} session_consensus_t;
 
 /**
  * @brief Election callback for coordinator

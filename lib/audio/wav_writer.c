@@ -13,26 +13,35 @@
 
 // WAV file header structures
 #pragma pack(push, 1)
+/**
+ * @brief WAV RIFF header (first 12 bytes of WAV file)
+ */
 typedef struct {
-  char riff[4];       // "RIFF"
-  uint32_t file_size; // File size - 8
-  char wave[4];       // "WAVE"
+  char riff[4];       ///< "RIFF" identifier
+  uint32_t file_size; ///< File size - 8 bytes
+  char wave[4];       ///< "WAVE" format identifier
 } wav_riff_header_t;
 
+/**
+ * @brief WAV format chunk describing audio format parameters
+ */
 typedef struct {
-  char fmt[4];              // "fmt "
-  uint32_t chunk_size;      // 16 for PCM
-  uint16_t audio_format;    // 3 = IEEE float
-  uint16_t num_channels;    // 1 = mono, 2 = stereo
-  uint32_t sample_rate;     // 44100, etc.
-  uint32_t byte_rate;       // sample_rate * num_channels * bytes_per_sample
-  uint16_t block_align;     // num_channels * bytes_per_sample
-  uint16_t bits_per_sample; // 32 for float
+  char fmt[4];              ///< "fmt " chunk identifier
+  uint32_t chunk_size;      ///< Chunk size (16 for PCM)
+  uint16_t audio_format;    ///< Audio format (3 = IEEE float)
+  uint16_t num_channels;    ///< Number of channels (1 = mono, 2 = stereo)
+  uint32_t sample_rate;     ///< Sample rate in Hz (e.g., 44100)
+  uint32_t byte_rate;       ///< Bytes per second (sample_rate * num_channels * bytes_per_sample)
+  uint16_t block_align;     ///< Block alignment (num_channels * bytes_per_sample)
+  uint16_t bits_per_sample; ///< Bits per sample (32 for float)
 } wav_fmt_chunk_t;
 
+/**
+ * @brief WAV data chunk header preceding audio samples
+ */
 typedef struct {
-  char data[4];       // "data"
-  uint32_t data_size; // Size of data section
+  char data[4];       ///< "data" chunk identifier
+  uint32_t data_size; ///< Size of data section in bytes
 } wav_data_header_t;
 #pragma pack(pop)
 

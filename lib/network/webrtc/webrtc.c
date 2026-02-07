@@ -25,6 +25,12 @@
 // Internal Structures
 // ============================================================================
 
+/**
+ * @brief WebRTC peer connection state
+ *
+ * Represents a WebRTC peer-to-peer connection using libdatachannel.
+ * Manages ICE state, connection state, and data channels.
+ */
 struct webrtc_peer_connection {
   int rtc_id;                               ///< libdatachannel peer connection ID
   webrtc_config_t config;                   ///< Configuration with callbacks
@@ -34,17 +40,24 @@ struct webrtc_peer_connection {
   webrtc_data_channel_t *dc;                ///< Primary data channel (if created/received)
 };
 
+/**
+ * @brief WebRTC data channel for sending/receiving messages
+ *
+ * Bidirectional communication channel over a WebRTC peer connection.
+ * Supports custom per-channel callbacks for open/close/error/message events.
+ */
 struct webrtc_data_channel {
   int rtc_id;                   ///< libdatachannel data channel ID
   webrtc_peer_connection_t *pc; ///< Parent peer connection
   bool is_open;                 ///< Channel open state
 
   // Per-channel callbacks (set via webrtc_datachannel_set_callbacks)
-  void (*user_on_open)(webrtc_data_channel_t *dc, void *user_data);
-  void (*user_on_close)(webrtc_data_channel_t *dc, void *user_data);
-  void (*user_on_error)(webrtc_data_channel_t *dc, const char *error, void *user_data);
-  void (*user_on_message)(webrtc_data_channel_t *dc, const uint8_t *data, size_t len, void *user_data);
-  void *user_data; ///< User data for per-channel callbacks
+  void (*user_on_open)(webrtc_data_channel_t *dc, void *user_data);                     ///< Open callback
+  void (*user_on_close)(webrtc_data_channel_t *dc, void *user_data);                    ///< Close callback
+  void (*user_on_error)(webrtc_data_channel_t *dc, const char *error, void *user_data); ///< Error callback
+  void (*user_on_message)(webrtc_data_channel_t *dc, const uint8_t *data, size_t len,
+                          void *user_data); ///< Message callback
+  void *user_data;                          ///< User data for per-channel callbacks
 };
 
 // ============================================================================
