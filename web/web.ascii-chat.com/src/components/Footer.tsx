@@ -41,6 +41,10 @@ export function Footer() {
           >
             @zfogg
           </a>
+          {" · "}
+          <span className="text-terminal-8 font-mono text-xs">
+            {__COMMIT_SHA__}
+          </span>
         </p>
       </div>
     </footer>
