@@ -55,7 +55,8 @@
  * # Core dependencies
  * sudo apt-get install libzstd-dev portaudio19-dev libsodium-dev libopus-dev \
  *   libsqlite3-dev libminiupnpc-dev libabsl-dev libutf8proc-dev libpcre2-dev \
- *   libavformat-dev libavcodec-dev libavutil-dev libswscale-dev libswresample-dev
+ *   libavformat-dev libavcodec-dev libavutil-dev libswscale-dev libswresample-dev \
+ *   libwebsockets-dev
  *
  * # Testing (optional)
  * sudo apt-get install libcriterion-dev
@@ -67,13 +68,14 @@
  * **Arch Linux**:
  * @code{.bash}
  * sudo pacman -S pkg-config clang llvm cmake ninja make zstd portaudio libsodium \
- *   opus sqlite miniupnpc abseil-cpp utf8proc pcre2 ffmpeg criterion musl mimalloc
+ *   opus sqlite miniupnpc abseil-cpp utf8proc pcre2 ffmpeg libwebsockets \
+ *   criterion musl mimalloc
  * @endcode
  *
  * **macOS (Homebrew)**:
  * @code{.bash}
  * brew install cmake ninja make llvm zstd portaudio libsodium opus sqlite3 \
- *   miniupnpc abseil utf8proc pcre2 ffmpeg criterion mimalloc
+ *   miniupnpc abseil utf8proc pcre2 ffmpeg libwebsockets criterion mimalloc
  * @endcode
  *
  * **Windows (Scoop + vcpkg)**:
@@ -88,7 +90,8 @@
  * # Dependencies via vcpkg
  * vcpkg install zstd:x64-windows portaudio:x64-windows libsodium:x64-windows \
  *   opus:x64-windows sqlite3:x64-windows miniupnpc:x64-windows \
- *   abseil:x64-windows utf8proc:x64-windows pcre2:x64-windows mimalloc:x64-windows
+ *   abseil:x64-windows utf8proc:x64-windows pcre2:x64-windows \
+ *   libwebsockets:x64-windows mimalloc:x64-windows
  * @endcode
  *
  * @subsection dependencies_ready Ready to Build
@@ -294,6 +297,21 @@
  * Enables NAT traversal via ICE/STUN/TURN when UPnP port forwarding is unavailable.
  * Falls back to relay servers for symmetric NAT scenarios.
  *
+ * @subsection dependencies_libwebsockets libwebsockets - WebSocket Server
+ *
+ * **Purpose**: WebSocket protocol for browser-based clients
+ *
+ * **Website**: https://libwebsockets.org/
+ *
+ * **License**: MIT License
+ *
+ * **Version**: 4.3.0 or later
+ *
+ * Provides WebSocket server functionality enabling browser clients to connect
+ * to ascii-chat servers via standard WebSocket protocol. Bridges the WebSocket
+ * transport to the ACIP protocol, allowing web-based clients to participate
+ * in video chat sessions alongside native terminal clients.
+ *
  * @section dependencies_vendored Vendored Dependencies (Git Submodules)
  *
  * Included in `deps/` and built from source for version consistency.
@@ -419,7 +437,7 @@
  *
  * | License | Dependencies |
  * |---------|--------------|
- * | MIT | BearSSL, PortAudio, Criterion, mimalloc, musl, tomlc17, utf8proc |
+ * | MIT | BearSSL, PortAudio, Criterion, mimalloc, musl, tomlc17, utf8proc, libwebsockets |
  * | ISC | libsodium |
  * | BSD | zstd, uthash, libsodium-bcrypt-pbkdf, miniupnpc, Opus, WebRTC AEC3, PCRE2 |
  * | zlib | sokol |
@@ -445,6 +463,7 @@
  * | FFmpeg | 4.0 | Stable libav API |
  * | SQLite3 | 3.35.0 | Returning clause support |
  * | libdatachannel | 0.20.0 | WebRTC DataChannels |
+ * | libwebsockets | 4.3.0 | WebSocket protocol support |
  * | miniupnpc | 2.3.x | UPnP IGD client (API changes in 2.3) |
  * | Criterion | 2.4.0 | Theories and fixtures |
  *

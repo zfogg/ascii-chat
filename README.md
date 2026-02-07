@@ -417,6 +417,7 @@ ascii-chat is built on operating system code and several libraries.
 - [**Sokol**](https://github.com/floooh/sokol) - Header-only cross-platform utilities (timing, audio)
 - [**SQLite3**](https://www.sqlite.org/) - Database for discovery service session storage
 - [**libdatachannel**](https://github.com/paullouisageneau/libdatachannel) - WebRTC DataChannels
+- [**libwebsockets**](https://libwebsockets.org/) - WebSocket server for browser clients
 - [**miniupnpc**](https://miniupnp.tuxfamily.org/) - Opens ports in your router to ascii-chat so clients can connect
 - [**FFmpeg**](https://ffmpeg.org/) - Media support for `--file` and `--url`. `cat` images or videos into ascii-chat
 - [**yt-dlp**](https://github.com/yt-dlp/yt-dlp) - YouTube.com support for `--url` (optional)
