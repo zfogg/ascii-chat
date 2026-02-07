@@ -2,11 +2,43 @@ import { useEffect, useRef, useState } from 'react'
 import { XTerm } from '@pablo-lion/xterm-react'
 import { FitAddon } from '@xterm/addon-fit'
 import 'xterm/css/xterm.css'
-import { initMirrorWasm, convertFrameToAscii, isWasmReady, setDimensions } from '../wasm/mirror'
+import { initMirrorWasm, convertFrameToAscii, isWasmReady, setDimensions, setColorMode, setColorFilter, ColorMode as WasmColorMode, ColorFilter as WasmColorFilter } from '../wasm/mirror'
+import { Settings, SettingsConfig, ColorMode, ColorFilter } from '../components/Settings'
 
-// Configuration
-const TARGET_FPS = 60
-const FRAME_INTERVAL = 1000 / TARGET_FPS
+// Helper functions to map Settings types to WASM enums
+function mapColorMode(mode: ColorMode): WasmColorMode {
+  const mapping: Record<ColorMode, WasmColorMode> = {
+    'auto': WasmColorMode.AUTO,
+    'none': WasmColorMode.NONE,
+    '16': WasmColorMode.COLOR_16,
+    '256': WasmColorMode.COLOR_256,
+    'truecolor': WasmColorMode.TRUECOLOR
+  }
+  return mapping[mode]
+}
+
+function mapColorFilter(filter: ColorFilter): WasmColorFilter {
+  const mapping: Record<ColorFilter, WasmColorFilter> = {
+    'none': WasmColorFilter.NONE,
+    'black': WasmColorFilter.BLACK,
+    'white': WasmColorFilter.WHITE,
+    'green': WasmColorFilter.GREEN,
+    'magenta': WasmColorFilter.MAGENTA,
+    'fuchsia': WasmColorFilter.FUCHSIA,
+    'orange': WasmColorFilter.ORANGE,
+    'teal': WasmColorFilter.TEAL,
+    'cyan': WasmColorFilter.CYAN,
+    'pink': WasmColorFilter.PINK,
+    'red': WasmColorFilter.RED,
+    'yellow': WasmColorFilter.YELLOW
+  }
+  return mapping[filter]
+}
+
+function parseResolution(resolution: string): { width: number; height: number } {
+  const [width, height] = resolution.split('x').map(Number)
+  return { width, height }
+}
 
 export function MirrorPage() {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -24,11 +56,47 @@ export function MirrorPage() {
   const frameCountRef = useRef<number>(0)
   const fpsUpdateTimeRef = useRef<number>(0)
   const setupDoneRef = useRef(false)
+  const frameIntervalRef = useRef<number>(1000 / 60) // Default to 60 FPS
+
+  // Settings state
+  const [settings, setSettings] = useState<SettingsConfig>({
+    resolution: '640x480',
+    targetFps: 60,
+    colorMode: 'truecolor',
+    colorFilter: 'none',
+    palette: 'standard'
+  })
+  const [showSettings, setShowSettings] = useState(false)
+
+  // Handle settings change
+  const handleSettingsChange = (newSettings: SettingsConfig) => {
+    setSettings(newSettings)
+
+    // Update frame interval
+    frameIntervalRef.current = 1000 / newSettings.targetFps
+
+    // Apply settings to WASM if initialized
+    if (isWasmReady()) {
+      try {
+        setColorMode(mapColorMode(newSettings.colorMode))
+        setColorFilter(mapColorFilter(newSettings.colorFilter))
+      } catch (err) {
+        console.error('Failed to apply WASM settings:', err)
+      }
+    }
+  }
 
   // Initialize WASM on mount with default dimensions
   // Will be updated when terminal is fitted
   useEffect(() => {
     initMirrorWasm(80, 24)
+      .then(() => {
+        // Apply initial settings to WASM
+        if (isWasmReady()) {
+          setColorMode(mapColorMode(settings.colorMode))
+          setColorFilter(mapColorFilter(settings.colorFilter))
+        }
+      })
       .catch((err) => {
         console.error('WASM init error:', err)
         setError(`Failed to load WASM module: ${err}`)
@@ -132,10 +200,17 @@ export function MirrorPage() {
     }
 
     try {
+      // Reapply settings to WASM before starting
+      if (isWasmReady()) {
+        setColorMode(mapColorMode(settings.colorMode))
+        setColorFilter(mapColorFilter(settings.colorFilter))
+      }
+
+      const { width, height } = parseResolution(settings.resolution)
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          width: { ideal: 640 },
-          height: { ideal: 480 },
+          width: { ideal: width },
+          height: { ideal: height },
           facingMode: 'user',
         },
         audio: false,
@@ -193,7 +268,7 @@ export function MirrorPage() {
     const now = performance.now()
     const elapsed = now - lastFrameTimeRef.current
 
-    if (elapsed >= FRAME_INTERVAL) {
+    if (elapsed >= frameIntervalRef.current) {
       lastFrameTimeRef.current = now
 
       try {
@@ -249,22 +324,15 @@ export function MirrorPage() {
       canvas.height
     )
 
-    // Pad each line to center it in the terminal
+    // Add proper terminal line endings (\r\n)
     const lines = asciiArt.split('\n')
-    const termWidth = terminal.cols
-
-    const paddedLines = lines.map((line, index) => {
-      const lineNoAnsi = line.replace(/\x1b\[[^m]+m/g, '')
-      const padWidth = Math.floor((termWidth - lineNoAnsi.length) / 2)
-      const paddedLine = padWidth > 0 ? ' '.repeat(padWidth) + line : line
-
-      // Add \r\n for proper terminal line ending (except last line)
-      return index < lines.length - 1 ? paddedLine + '\r\n' : paddedLine
-    })
+    const formattedLines = lines.map((line, index) =>
+      index < lines.length - 1 ? line + '\r\n' : line
+    )
 
     // WASM output already includes ANSI color codes
     // Use cursor home + clear screen to prevent artifacts
-    const output = '\x1b[H\x1b[J' + paddedLines.join('')
+    const output = '\x1b[H\x1b[J' + formattedLines.join('')
     terminal.write(output)
   }
 
@@ -288,6 +356,14 @@ export function MirrorPage() {
         <video ref={videoRef} autoPlay muted playsInline style={{ width: '640px', height: '480px' }} />
         <canvas ref={canvasRef} />
       </div>
+
+      {/* Settings Panel */}
+      {showSettings && (
+        <Settings
+          config={settings}
+          onChange={handleSettingsChange}
+        />
+      )}
 
       {/* Controls and info */}
       <div className="px-4 py-3 flex-shrink-0 border-b border-terminal-8">
@@ -315,6 +391,13 @@ export function MirrorPage() {
               Stop
             </button>
           )}
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className="px-4 py-2 bg-terminal-8 text-terminal-fg rounded hover:bg-terminal-7"
+            title="Settings"
+          >
+            ⚙️ Settings
+          </button>
         </div>
       </div>
 

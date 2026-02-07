@@ -17,8 +17,8 @@ add_definitions(
 )
 
 # Add compiler flags for pthreads support (atomics + bulk-memory) and WASM SIMD
-# -msse2 enables SSE2 intrinsics emulation on top of WASM SIMD128
-add_compile_options(-pthread -matomics -mbulk-memory -msimd128 -msse2)
+# -mavx2 enables AVX2 intrinsics emulation on top of WASM SIMD128
+add_compile_options(-pthread -matomics -mbulk-memory -msimd128 -mavx2)
 
 # Fetch and build dependencies for WASM
 include(FetchContent)
@@ -157,6 +157,7 @@ set(LIB_SOURCES
     ${LIB_ROOT}/video/simd/common.c
     ${LIB_ROOT}/video/simd/ascii_simd.c
     ${LIB_ROOT}/video/simd/ascii_simd_color.c
+    ${LIB_ROOT}/video/simd/avx2.c
 
     # Utilities (minimal set needed by video/options)
     ${LIB_ROOT}/util/format.c

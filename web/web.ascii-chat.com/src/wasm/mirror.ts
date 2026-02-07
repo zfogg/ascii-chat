@@ -50,11 +50,11 @@ export enum RenderMode {
 }
 
 export enum ColorMode {
-  AUTO = 0,
-  NONE = 1,
-  COLOR_16 = 2,
-  COLOR_256 = 3,
-  TRUECOLOR = 4
+  AUTO = -1,
+  NONE = 0,
+  COLOR_16 = 1,
+  COLOR_256 = 2,
+  TRUECOLOR = 3
 }
 
 export enum ColorFilter {
@@ -63,13 +63,13 @@ export enum ColorFilter {
   WHITE = 2,
   GREEN = 3,
   MAGENTA = 4,
-  CYAN = 5,
-  YELLOW = 6,
-  RED = 7,
-  BLUE = 8,
-  ORANGE = 9,
-  PURPLE = 10,
-  PINK = 11
+  FUCHSIA = 5,
+  ORANGE = 6,
+  TEAL = 7,
+  CYAN = 8,
+  PINK = 9,
+  RED = 10,
+  YELLOW = 11
 }
 
 // Import the Emscripten-generated module factory

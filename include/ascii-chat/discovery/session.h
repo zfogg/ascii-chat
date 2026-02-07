@@ -62,8 +62,9 @@ typedef struct session_entry {
   bool expose_ip_publicly; ///< Allow IP disclosure without verification (explicit opt-in via --acds-expose-ip)
   uint8_t session_type;    ///< acds_session_type_t: 0=DIRECT_TCP, 1=WEBRTC
 
-  uint64_t created_at; ///< Unix timestamp (ms)
-  uint64_t expires_at; ///< Unix timestamp (ms) - created_at + 24h
+  uint64_t created_at;       ///< Unix timestamp (ms) - when session was created
+  uint64_t expires_at;       ///< Unix timestamp (ms) - absolute max lifetime (created_at + 24h)
+  uint64_t last_activity_at; ///< Unix timestamp (ms) - updated on join/leave/host updates (cleanup uses this)
 
   // Server connection information (where clients should connect)
   char server_address[64]; ///< IPv4/IPv6 address or hostname

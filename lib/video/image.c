@@ -735,8 +735,10 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
   char *result = NULL;
 
   // Choose the appropriate printing method based on terminal capabilities
+  log_info("Rendering with color_level=%d", caps->color_level);
   switch (caps->color_level) {
   case TERM_COLOR_TRUECOLOR:
+    log_info("Using TRUECOLOR rendering path");
     // Use existing truecolor printing function with client's palette
 #ifdef SIMD_SUPPORT
     START_TIMER("print_color_simd_truecolor");
@@ -752,6 +754,7 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
     break;
 
   case TERM_COLOR_256:
+    log_info("Using 256-COLOR rendering path");
 #ifdef SIMD_SUPPORT
     START_TIMER("print_color_simd_256");
     result = image_print_color_simd((image_t *)image, use_background_mode, true, palette);

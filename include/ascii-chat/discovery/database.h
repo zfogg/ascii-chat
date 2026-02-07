@@ -116,9 +116,10 @@ session_entry_t *database_session_find_by_id(sqlite3 *db, const uint8_t session_
 session_entry_t *database_session_find_by_string(sqlite3 *db, const char *session_string);
 
 /**
- * @brief Clean up expired sessions
+ * @brief Clean up inactive sessions
  *
- * Removes sessions that have exceeded their 24-hour lifetime.
+ * Removes sessions that have been inactive for more than 3 hours.
+ * Inactivity is measured by last_activity_at (updated on join/leave/host updates).
  * Called periodically by background cleanup thread.
  *
  * @param db Database handle

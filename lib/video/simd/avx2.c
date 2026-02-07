@@ -201,9 +201,9 @@ static inline void avx2_load_rgb32_optimized(const rgb_pixel_t *__restrict pixel
 static inline void avx2_compute_luminance_32(const uint8_t *r_vals, const uint8_t *g_vals, const uint8_t *b_vals,
                                              uint8_t *luminance_out) {
   // Load all 32 RGB values into AVX2 registers
-  __m256i r_all = _mm256_loadu_si256((__m256i *)r_vals);
-  __m256i g_all = _mm256_loadu_si256((__m256i *)g_vals);
-  __m256i b_all = _mm256_loadu_si256((__m256i *)b_vals);
+  __m256i r_all = _mm256_loadu_si256((const __m256i_u *)r_vals);
+  __m256i g_all = _mm256_loadu_si256((const __m256i_u *)g_vals);
+  __m256i b_all = _mm256_loadu_si256((const __m256i_u *)b_vals);
 
   // Process low 16 pixels with accurate coefficients (16-bit math to prevent overflow)
   __m256i r_lo = _mm256_unpacklo_epi8(r_all, _mm256_setzero_si256());
@@ -236,7 +236,7 @@ static inline void avx2_compute_luminance_32(const uint8_t *r_vals, const uint8_
   // Use permute4x64 with 0xD8 = 0b11011000 = (3,1,2,0) to swap middle quarters
   __m256i luma_final = _mm256_permute4x64_epi64(luma_packed, 0xD8);
 
-  _mm256_storeu_si256((__m256i *)luminance_out, luma_final);
+  _mm256_storeu_si256((__m256i_u *)luminance_out, luma_final);
 }
 
 // Single-pass AVX2 monochrome renderer with immediate emission

@@ -8,6 +8,7 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/platform/init.h>
+#include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/video/ascii.h>
 #include <ascii-chat/video/color_filter.h>
@@ -46,11 +47,11 @@ int mirror_init(int width, int height) {
   options_set_int("height", height);
 
   // Force truecolor mode for web terminal (xterm.js supports 24-bit color)
-  options_set_int("color_mode", 4); // COLOR_MODE_TRUECOLOR
+  options_set_int("color_mode", TERM_COLOR_TRUECOLOR);
 
   // Use foreground rendering (RENDER_MODE_FOREGROUND = 0)
   // Background mode would color the background instead of the text
-  options_set_int("render_mode", 0); // RENDER_MODE_FOREGROUND
+  options_set_int("render_mode", RENDER_MODE_FOREGROUND);
 
   return 0;
 }
@@ -99,8 +100,7 @@ int mirror_get_height(void) {
 
 EMSCRIPTEN_KEEPALIVE
 int mirror_set_render_mode(int mode) {
-  // mode: 0=foreground, 1=background, 2=half-block
-  if (mode < 0 || mode > 2) {
+  if (mode < RENDER_MODE_FOREGROUND || mode > RENDER_MODE_HALF_BLOCK) {
     return -1;
   }
   asciichat_error_t err = options_set_int("render_mode", mode);
@@ -118,8 +118,7 @@ int mirror_get_render_mode(void) {
 
 EMSCRIPTEN_KEEPALIVE
 int mirror_set_color_mode(int mode) {
-  // mode: 0=auto, 1=none, 2=16, 3=256, 4=truecolor
-  if (mode < 0 || mode > 4) {
+  if (mode < TERM_COLOR_AUTO || mode > TERM_COLOR_TRUECOLOR) {
     return -1;
   }
   asciichat_error_t err = options_set_int("color_mode", mode);
@@ -137,8 +136,7 @@ int mirror_get_color_mode(void) {
 
 EMSCRIPTEN_KEEPALIVE
 int mirror_set_color_filter(int filter) {
-  // filter: 0=none, 1=black, 2=white, 3=green, 4=magenta, etc.
-  if (filter < 0 || filter > 11) {
+  if (filter < COLOR_FILTER_NONE || filter >= COLOR_FILTER_COUNT) {
     return -1;
   }
   asciichat_error_t err = options_set_int("color_filter", filter);
@@ -164,9 +162,28 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
   int dst_width = GET_OPTION(width);
   int dst_height = GET_OPTION(height);
   color_filter_t filter = (color_filter_t)GET_OPTION(color_filter);
-  bool use_color = (GET_OPTION(color_mode) != COLOR_MODE_NONE);
+  terminal_color_mode_t color_mode = (terminal_color_mode_t)GET_OPTION(color_mode);
   bool aspect_ratio = true; // Preserve webcam aspect ratio
   bool stretch = false;     // Don't stretch - maintain proportions
+
+  // Build terminal capabilities structure with user's color mode
+  terminal_capabilities_t caps = {0}; // Zero-initialize all fields first
+  caps.color_level = color_mode;
+  caps.capabilities = 0;
+  caps.color_count = (color_mode == TERM_COLOR_NONE)  ? 0
+                     : (color_mode == TERM_COLOR_16)  ? 16
+                     : (color_mode == TERM_COLOR_256) ? 256
+                                                      : 16777216;
+  caps.utf8_support = true;
+  caps.detection_reliable = true;
+  caps.render_mode = (render_mode_t)GET_OPTION(render_mode);
+  caps.wants_background = false;
+  caps.palette_type = PALETTE_STANDARD;
+  caps.desired_fps = 60;
+  caps.color_filter = filter;
+
+  // Debug: log what we're actually using
+  log_info("WASM: color_mode=%d, filter=%d, color_count=%d", color_mode, filter, caps.color_count);
 
   // Convert RGBA to RGB (strip alpha channel)
   rgb_pixel_t *rgb_pixels = SAFE_MALLOC(src_width * src_height * sizeof(rgb_pixel_t), rgb_pixel_t *);
@@ -194,15 +211,10 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
 
   // Build luminance palette from default ASCII chars
   const char *palette_chars = PALETTE_CHARS_STANDARD;
-  char luminance_palette[256];
-  if (build_client_luminance_palette(palette_chars, strlen(palette_chars), luminance_palette) != 0) {
-    SAFE_FREE(rgb_pixels);
-    return NULL;
-  }
 
-  // Convert to ASCII
+  // Convert to ASCII using capability-aware function
   char *ascii_output =
-      ascii_convert(&img, dst_width, dst_height, use_color, aspect_ratio, stretch, palette_chars, luminance_palette);
+      ascii_convert_with_capabilities(&img, dst_width, dst_height, &caps, aspect_ratio, stretch, palette_chars);
 
   // Clean up
   SAFE_FREE(rgb_pixels);

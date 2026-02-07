@@ -783,7 +783,10 @@ typedef enum {
 /** @brief Maximum session string length (e.g., "swift-river-mountain" = 20 chars) */
 #define ACIP_MAX_SESSION_STRING_LEN 48
 
-/** @brief Session expiration time (24 hours in milliseconds) */
+/** @brief Session maximum lifetime (24 hours in milliseconds)
+ *  Note: Sessions are actually cleaned up after 3 hours of inactivity (last_activity_at),
+ *  but expires_at serves as an absolute maximum lifetime.
+ */
 #define ACIP_SESSION_EXPIRATION_MS (24ULL * 60 * 60 * 1000)
 
 /** @brief Discovery server default port (use OPT_ACDS_PORT_INT_DEFAULT from options.h) */
