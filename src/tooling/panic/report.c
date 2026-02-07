@@ -27,10 +27,13 @@
 #include <unistd.h>
 #endif
 
+/**
+ * @brief Dynamic array of thread IDs for filtering instrumentation logs
+ */
 typedef struct thread_filter_list {
-  uint64_t *values;
-  size_t count;
-  size_t capacity;
+  uint64_t *values; ///< Array of thread IDs
+  size_t count;     ///< Number of thread IDs
+  size_t capacity;  ///< Allocated capacity
 } thread_filter_list_t;
 
 typedef struct report_config {
@@ -56,10 +59,16 @@ typedef struct log_record {
   char *raw_line;
 } log_record_t;
 
+/**
+ * @brief Hash table entry for thread-local last log record
+ *
+ * Used by uthash to track the most recent log record for each thread
+ * when generating panic reports.
+ */
 typedef struct thread_entry {
-  uint64_t thread_id;
-  log_record_t record;
-  UT_hash_handle hh;
+  uint64_t thread_id;  ///< Thread ID (hash key)
+  log_record_t record; ///< Last log record from this thread
+  UT_hash_handle hh;   ///< uthash handle
 } thread_entry_t;
 
 static const char *macro_flag_label(uint32_t flag) {

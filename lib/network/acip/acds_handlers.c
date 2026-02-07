@@ -30,9 +30,12 @@ typedef asciichat_error_t (*acip_acds_handler_func_t)(const void *payload, size_
 #define ACDS_HASH_SIZE 32
 #define ACDS_HANDLER_COUNT 11
 
+/**
+ * @brief Hash table entry for ACDS packet type to handler mapping
+ */
 typedef struct {
-  packet_type_t key;   // 0 = empty slot
-  uint8_t handler_idx; // handler index (0-based)
+  packet_type_t key;   ///< Packet type (0 = empty slot)
+  uint8_t handler_idx; ///< Handler index (0-based)
 } acds_hash_entry_t;
 
 #define ACDS_HASH(type) ((type) % ACDS_HASH_SIZE)

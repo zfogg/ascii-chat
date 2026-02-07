@@ -348,11 +348,13 @@ static void *mdns_thread_fn(void *arg) {
 // ACDS Discovery Thread
 // ============================================================================
 
-/** Context for ACDS discovery thread */
+/**
+ * @brief Context for ACDS discovery thread
+ */
 typedef struct {
-  const char *session_string;
-  discovery_thread_state_t *state;
-  const discovery_config_t *config;
+  const char *session_string;       ///< Session string to look up
+  discovery_thread_state_t *state;  ///< Shared discovery state
+  const discovery_config_t *config; ///< Discovery configuration
 } acds_thread_context_t;
 
 /** Thread function for ACDS discovery */

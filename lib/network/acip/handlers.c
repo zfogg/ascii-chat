@@ -42,9 +42,12 @@ typedef asciichat_error_t (*acip_server_handler_func_t)(const void *payload, siz
 #define CLIENT_HANDLER_COUNT 14
 #define SERVER_HANDLER_COUNT 16
 
+/**
+ * @brief Hash table entry for packet type to handler mapping
+ */
 typedef struct {
-  packet_type_t key;   // 0 = empty slot
-  uint8_t handler_idx; // handler index (0-based)
+  packet_type_t key;   ///< Packet type (0 = empty slot)
+  uint8_t handler_idx; ///< Handler index (0-based)
 } handler_hash_entry_t;
 
 // Hash function: simple modulo

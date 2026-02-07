@@ -178,15 +178,24 @@ static int looks_like_DER(const unsigned char *buf, size_t len) {
 
 /* ========== PEM DECODING (from BearSSL files.c) ========== */
 
+/**
+ * @brief Dynamic byte vector for PEM decoding
+ *
+ * Type alias for VECTOR(unsigned char) - a dynamic array of bytes used
+ * during PEM parsing and trust anchor conversion.
+ */
 typedef VECTOR(unsigned char) bvector;
 
+/**
+ * @brief Parsed PEM object with name and data
+ */
 typedef struct {
-  char *name;
-  unsigned char *data;
-  size_t data_len;
-} pem_object;
+  char *name;          ///< PEM object name (e.g., "CERTIFICATE", "PRIVATE KEY")
+  unsigned char *data; ///< Decoded binary data
+  size_t data_len;     ///< Length of data in bytes
+} pem_object_t;
 
-static void free_pem_object_contents(pem_object *po) {
+static void free_pem_object_t_contents(pem_object_t *po) {
   if (po != NULL) {
     xfree(po->name);
     xfree(po->data);
@@ -200,12 +209,12 @@ static void vblob_append(void *cc, const void *data, size_t len) {
 
 /**
  * Decode PEM data from memory buffer
- * Returns array of pem_object, terminated by entry with NULL name
+ * Returns array of pem_object_t, terminated by entry with NULL name
  */
-static pem_object *decode_pem(const void *src, size_t len, size_t *num) {
-  VECTOR(pem_object) pem_list = VEC_INIT;
+static pem_object_t *decode_pem(const void *src, size_t len, size_t *num) {
+  VECTOR(pem_object_t) pem_list = VEC_INIT;
   br_pem_decoder_context pc;
-  pem_object po, *pos;
+  pem_object_t po, *pos;
   const unsigned char *buf;
   bvector bv = VEC_INIT;
   int inobj;
@@ -252,7 +261,7 @@ static pem_object *decode_pem(const void *src, size_t len, size_t *num) {
       xfree(po.name);
       VEC_CLEAR(bv);
       log_error("Invalid PEM encoding");
-      VEC_CLEAREXT(pem_list, free_pem_object_contents);
+      VEC_CLEAREXT(pem_list, free_pem_object_t_contents);
       return NULL;
 
     default:
@@ -272,7 +281,7 @@ static pem_object *decode_pem(const void *src, size_t len, size_t *num) {
     log_error("Unfinished PEM object");
     xfree(po.name);
     VEC_CLEAR(bv);
-    VEC_CLEAREXT(pem_list, free_pem_object_contents);
+    VEC_CLEAREXT(pem_list, free_pem_object_t_contents);
     return NULL;
   }
 
@@ -291,7 +300,7 @@ static pem_object *decode_pem(const void *src, size_t len, size_t *num) {
  */
 static br_x509_certificate *read_certificates_from_memory(const unsigned char *buf, size_t len, size_t *num) {
   VECTOR(br_x509_certificate) cert_list = VEC_INIT;
-  pem_object *pos;
+  pem_object_t *pos;
   size_t u, num_pos;
   br_x509_certificate *xcs;
   br_x509_certificate dummy;
@@ -341,7 +350,7 @@ static br_x509_certificate *read_certificates_from_memory(const unsigned char *b
 
   // Free PEM objects
   for (u = 0; u < num_pos; u++) {
-    free_pem_object_contents(&pos[u]);
+    free_pem_object_t_contents(&pos[u]);
   }
   xfree(pos);
 

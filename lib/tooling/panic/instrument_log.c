@@ -71,45 +71,57 @@ typedef enum asciichat_instr_selector_type {
   ASCII_INSTR_SOURCE_PRINT_SELECTOR_MODULE = 3,
 } asciichat_instr_selector_type_t;
 
+/**
+ * @brief Selector for filtering instrumentation output by file, function, or module
+ */
 typedef struct asciichat_instr_only_selector {
-  asciichat_instr_selector_type_t type;
-  char *pattern;
-  char *module;
+  asciichat_instr_selector_type_t type; ///< Type of selector (file substring, glob, function glob, or module)
+  char *pattern;                        ///< Pattern to match (file/function glob pattern)
+  char *module;                         ///< Module name for module-based filtering
 } asciichat_instr_only_selector_t;
 
+/**
+ * @brief Dynamic array of instrumentation selectors for filtering output
+ */
 typedef struct asciichat_instr_only_list {
-  asciichat_instr_only_selector_t *items;
-  size_t count;
-  size_t capacity;
+  asciichat_instr_only_selector_t *items; ///< Array of selectors
+  size_t count;                           ///< Number of active selectors
+  size_t capacity;                        ///< Allocated capacity
 } asciichat_instr_only_list_t;
 
+/**
+ * @brief Per-thread instrumentation runtime state
+ *
+ * Tracks state for source code instrumentation logging, including file descriptors,
+ * filter configuration, and rate limiting for the current thread.
+ */
 typedef struct asciichat_instr_runtime {
-  int fd;
-  int pid;
-  uint64_t thread_id;
-  uint64_t sequence;
-  uint64_t call_counter;
-  char log_path[PATH_MAX];
-  bool filters_enabled;
-  const char *filter_include;
-  const char *filter_exclude;
-  const char *filter_function_include;
-  const char *filter_function_exclude;
-  const char *filter_thread;
+  int fd;                              ///< Log file descriptor (-1 if not open)
+  int pid;                             ///< Process ID
+  uint64_t thread_id;                  ///< Thread ID
+  uint64_t sequence;                   ///< Sequence number for log entries
+  uint64_t call_counter;               ///< Total number of instrumentation calls
+  char log_path[PATH_MAX];             ///< Path to log file
+  bool filters_enabled;                ///< Whether any filters are active
+  const char *filter_include;          ///< File path substring to include (from env var)
+  const char *filter_exclude;          ///< File path substring to exclude (from env var)
+  const char *filter_function_include; ///< Function name substring to include (from env var)
+  const char *filter_function_exclude; ///< Function name substring to exclude (from env var)
+  const char *filter_thread;           ///< Thread ID filter (from env var)
 #if ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX
-  regex_t include_regex;
-  bool include_regex_valid;
-  regex_t exclude_regex;
-  bool exclude_regex_valid;
-  regex_t function_include_regex;
-  bool function_include_regex_valid;
-  regex_t function_exclude_regex;
-  bool function_exclude_regex_valid;
+  regex_t include_regex;             ///< Compiled regex for file path inclusion
+  bool include_regex_valid;          ///< Whether include_regex was successfully compiled
+  regex_t exclude_regex;             ///< Compiled regex for file path exclusion
+  bool exclude_regex_valid;          ///< Whether exclude_regex was successfully compiled
+  regex_t function_include_regex;    ///< Compiled regex for function name inclusion
+  bool function_include_regex_valid; ///< Whether function_include_regex was successfully compiled
+  regex_t function_exclude_regex;    ///< Compiled regex for function name exclusion
+  bool function_exclude_regex_valid; ///< Whether function_exclude_regex was successfully compiled
 #endif
-  uint32_t rate;
-  bool rate_enabled;
-  bool stderr_fallback;
-  asciichat_instr_only_list_t only_selectors;
+  uint32_t rate;                              ///< Rate limiting: log every Nth call
+  bool rate_enabled;                          ///< Whether rate limiting is enabled
+  bool stderr_fallback;                       ///< Use stderr if log file can't be opened
+  asciichat_instr_only_list_t only_selectors; ///< List of "only" selectors for filtering
 } asciichat_instr_runtime_t;
 
 static tls_key_t g_runtime_key;

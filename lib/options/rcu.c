@@ -402,13 +402,16 @@ static asciichat_error_t options_update(void (*updater)(options_t *, void *), vo
 // Generic Option Setters
 // ============================================================================
 
-struct int_field_ctx {
-  const char *field_name;
-  int value;
-};
+/**
+ * @brief Context for integer field updates in RCU updater callback
+ */
+typedef struct {
+  const char *field_name; ///< Name of the field to update
+  int value;              ///< New value to set
+} int_field_ctx_t;
 
 static void int_field_updater(options_t *opts, void *context) {
-  struct int_field_ctx *ctx = (struct int_field_ctx *)context;
+  int_field_ctx_t *ctx = (int_field_ctx_t *)context;
   if (strcmp(ctx->field_name, "width") == 0)
     opts->width = ctx->value;
   else if (strcmp(ctx->field_name, "height") == 0)
@@ -453,17 +456,20 @@ asciichat_error_t options_set_int(const char *field_name, int value) {
     return ERROR_INVALID_PARAM;
   }
 
-  struct int_field_ctx ctx = {.field_name = field_name, .value = value};
+  int_field_ctx_t ctx = {.field_name = field_name, .value = value};
   return options_update(int_field_updater, &ctx);
 }
 
-struct bool_field_ctx {
-  const char *field_name;
-  bool value;
-};
+/**
+ * @brief Context for boolean field updates in RCU updater callback
+ */
+typedef struct {
+  const char *field_name; ///< Name of the field to update
+  bool value;             ///< New value to set
+} bool_field_ctx_t;
 
 static void bool_field_updater(options_t *opts, void *context) {
-  struct bool_field_ctx *ctx = (struct bool_field_ctx *)context;
+  bool_field_ctx_t *ctx = (bool_field_ctx_t *)context;
   if (strcmp(ctx->field_name, "no_compress") == 0)
     opts->no_compress = ctx->value;
   else if (strcmp(ctx->field_name, "encode_audio") == 0)
@@ -572,17 +578,20 @@ asciichat_error_t options_set_bool(const char *field_name, bool value) {
     return ERROR_INVALID_PARAM;
   }
 
-  struct bool_field_ctx ctx = {.field_name = field_name, .value = value};
+  bool_field_ctx_t ctx = {.field_name = field_name, .value = value};
   return options_update(bool_field_updater, &ctx);
 }
 
-struct string_field_ctx {
-  const char *field_name;
-  const char *value;
-};
+/**
+ * @brief Context for string field updates in RCU updater callback
+ */
+typedef struct {
+  const char *field_name; ///< Name of the field to update
+  const char *value;      ///< New value to set
+} string_field_ctx_t;
 
 static void string_field_updater(options_t *opts, void *context) {
-  struct string_field_ctx *ctx = (struct string_field_ctx *)context;
+  string_field_ctx_t *ctx = (string_field_ctx_t *)context;
   if (strcmp(ctx->field_name, "address") == 0)
     SAFE_STRNCPY(opts->address, ctx->value, sizeof(opts->address));
   else if (strcmp(ctx->field_name, "address6") == 0)
@@ -649,17 +658,20 @@ asciichat_error_t options_set_string(const char *field_name, const char *value) 
     return ERROR_INVALID_PARAM;
   }
 
-  struct string_field_ctx ctx = {.field_name = field_name, .value = value};
+  string_field_ctx_t ctx = {.field_name = field_name, .value = value};
   return options_update(string_field_updater, &ctx);
 }
 
-struct double_field_ctx {
-  const char *field_name;
-  double value;
-};
+/**
+ * @brief Context for double field updates in RCU updater callback
+ */
+typedef struct {
+  const char *field_name; ///< Name of the field to update
+  double value;           ///< New value to set
+} double_field_ctx_t;
 
 static void double_field_updater(options_t *opts, void *context) {
-  struct double_field_ctx *ctx = (struct double_field_ctx *)context;
+  double_field_ctx_t *ctx = (double_field_ctx_t *)context;
   if (strcmp(ctx->field_name, "snapshot_delay") == 0)
     opts->snapshot_delay = ctx->value;
   else if (strcmp(ctx->field_name, "microphone_sensitivity") == 0)
@@ -688,6 +700,6 @@ asciichat_error_t options_set_double(const char *field_name, double value) {
     return ERROR_INVALID_PARAM;
   }
 
-  struct double_field_ctx ctx = {.field_name = internal_name, .value = value};
+  double_field_ctx_t ctx = {.field_name = internal_name, .value = value};
   return options_update(double_field_updater, &ctx);
 }
