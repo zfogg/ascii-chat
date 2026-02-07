@@ -228,9 +228,11 @@ int mirror_main(void) {
     }
   }
 
-  // Disable terminal logging AFTER splash starts so splash can display cleanly
-  // This prevents logs from media initialization from interfering with splash animation
-  log_set_terminal_output(false);
+  // Disable terminal logging for piped/snapshot modes to keep output clean
+  // In interactive mode, keep logs enabled so users can see what's happening
+  if (!terminal_is_interactive() || GET_OPTION(snapshot_mode)) {
+    log_set_terminal_output(false);
+  }
 
   session_capture_config_t capture_config = {0};
   capture_config.target_fps = 60; // Default for webcam
