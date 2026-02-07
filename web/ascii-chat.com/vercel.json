@@ -1,7 +1,7 @@
 {
-  "buildCommand": "cd web/ascii-chat.com && bun run build",
-  "outputDirectory": "web/ascii-chat.com/dist",
-  "installCommand": "cd web/ascii-chat.com && bun install",
+  "buildCommand": "bun run build",
+  "outputDirectory": "dist",
+  "installCommand": "bun install",
   "rewrites": [
     {
       "source": "/",
