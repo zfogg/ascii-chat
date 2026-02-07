@@ -983,7 +983,6 @@ int protocol_start_connection() {
   // Server expects this as the first packet after crypto handshake
   log_debug("Sending client capabilities to server...");
   asciichat_error_t cap_result = threaded_send_terminal_size_with_auto_detect(GET_OPTION(width), GET_OPTION(height));
-  log_debug("★ threaded_send_terminal_size_with_auto_detect returned %d", cap_result);
   if (cap_result != ASCIICHAT_OK) {
     log_error("Failed to send client capabilities to server");
     return -1;
@@ -992,7 +991,6 @@ int protocol_start_connection() {
 
   // Send STREAM_START packet with combined stream types BEFORE starting worker threads
   // This tells the server what streams to expect before any data arrives
-  log_debug("★ About to send STREAM_START packet");
   uint32_t stream_types = STREAM_TYPE_VIDEO; // Always have video
   if (GET_OPTION(audio_enabled)) {
     stream_types |= STREAM_TYPE_AUDIO; // Add audio if enabled
@@ -1000,7 +998,6 @@ int protocol_start_connection() {
   log_debug("Sending STREAM_START packet (types=0x%x: %s%s)...", stream_types, "video",
             (stream_types & STREAM_TYPE_AUDIO) ? "+audio" : "");
   asciichat_error_t stream_result = threaded_send_stream_start_packet(stream_types);
-  log_debug("★ threaded_send_stream_start_packet returned %d", stream_result);
   if (stream_result != ASCIICHAT_OK) {
     log_error("Failed to send STREAM_START packet");
     return -1;

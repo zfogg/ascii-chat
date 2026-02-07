@@ -695,6 +695,7 @@ void server_connection_set_transport(acip_transport_t *transport) {
     log_debug("Socket extracted: %d", (int)g_sockfd);
 
     atomic_store(&g_connection_active, true);
+    atomic_store(&g_connection_lost, false); // CRITICAL: Reset lost flag for new connection
     log_debug("Server connection transport set and marked active (sockfd=%d)", (int)g_sockfd);
   } else {
     g_sockfd = INVALID_SOCKET_VALUE;
