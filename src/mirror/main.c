@@ -222,15 +222,17 @@ int mirror_main(void) {
   if (temp_display) {
     // Display splash immediately so it shows DURING network activity (yt-dlp extraction, etc.)
     splash_intro_start(temp_display);
-    // Only sleep for webcam mode - media initialization takes time anyway
-    if (!has_media) {
-      platform_sleep_ms(1000);
+    // For media URLs/files, initialization takes time so no sleep needed
+    // For webcam, show splash briefly but don't delay unnecessarily
+    // The splash will continue until first frame is ready anyway
+    if (!has_media && !GET_OPTION(snapshot_mode)) {
+      platform_sleep_ms(200); // Reduced from 1000ms - just enough to show splash
     }
   }
 
-  // Disable terminal logging for piped/snapshot modes to keep output clean
-  // In interactive mode, keep logs enabled so users can see what's happening
-  if (!terminal_is_interactive() || GET_OPTION(snapshot_mode)) {
+  // Disable terminal logging during interactive video rendering to avoid interfering with ASCII frames
+  // In snapshot mode, keep logs enabled since we're not continuously rendering to terminal
+  if (!GET_OPTION(snapshot_mode)) {
     log_set_terminal_output(false);
   }
 
