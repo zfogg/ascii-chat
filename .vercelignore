@@ -1,37 +1,37 @@
 # C/C++/Objctive-C source
-lib/
-src/
-include/
+/lib/
+/src/
+/include/
 
 # Build artifacts
-build/
-build_*/
-build-*/
+/build/
+/build_*/
+/build-*/
 *.o
 *.a
 *.dylib
 *.so
 
 # Dependencies
-deps/
-.deps-cache/
+/deps/
+/.deps-cache/
 
 # Tests
-tests/
+/tests/
 
 # Documentation
-docs/
-notes/
+/docs/
+/notes/
 
 # Development files
-.git/
-.github/
+/.git/
+/.github/
 *.md
 !web/*.md
 
 # CMake and scripts
-cmake-build-*/
-cmake/
+/cmake-build-*/
+/cmake/
 /scripts/
 
 # IDE
