@@ -1,29 +1,47 @@
 #!/usr/bin/env bash
 
-# Get list of C/C++ files that are staged for commit
-staged_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(c|h|cpp|hpp|m|mm)$' || true)
+# Get list of staged files
+all_staged=$(git diff --cached --name-only --diff-filter=ACM || true)
 
-if [[ -z "$staged_files" ]]; then
-    exit 0
+# Format C/C++ files
+c_files=$(echo "$all_staged" | grep -E '\.(c|h|cpp|hpp|m|mm)$' || true)
+if [[ -n "$c_files" ]]; then
+    for file in $c_files; do
+        if [[ -f "$file" ]]; then
+            clang-format -i "$file"
+        fi
+    done
+
+    formatted_files=""
+    for file in $c_files; do
+        if [[ -f "$file" ]] && git diff --name-only | grep -q "^$file$"; then
+            formatted_files="$formatted_files $file"
+            git add "$file"
+        fi
+    done
+
+    if [[ -n "$formatted_files" ]]; then
+        echo "🎨 Code formatting applied to:$formatted_files"
+    fi
 fi
 
-# Format only the staged files
-for file in $staged_files; do
-    if [[ -f "$file" ]]; then
-        clang-format -i "$file"
-    fi
-done
+# Build web/ascii-chat.com and commit man pages
+if echo "$all_staged" | grep -q "^web/ascii-chat\.com/"; then
+    cd web/ascii-chat.com
+    ./scripts/build.sh
+    cd ../..
+fi
 
-# Re-stage any files that were modified by formatting
-formatted_files=""
-for file in $staged_files; do
-    if [[ -f "$file" ]] && git diff --name-only | grep -q "^$file$"; then
-        formatted_files="$formatted_files $file"
-        git add "$file"
-    fi
-done
+# Build web/web.ascii-chat.com (no auto-add)
+if echo "$all_staged" | grep -q "^web/web\.ascii-chat\.com/"; then
+    cd web/web.ascii-chat.com
+    bun run build
+    cd ../..
+fi
 
-# Show what was formatted
-if [[ -n "$formatted_files" ]]; then
-    echo "🎨 Code formatting applied to:$formatted_files"
+# Build web/discovery.ascii-chat.com (no auto-add)
+if echo "$all_staged" | grep -q "^web/discovery\.ascii-chat\.com/"; then
+    cd web/discovery.ascii-chat.com
+    bun run build
+    cd ../..
 fi
