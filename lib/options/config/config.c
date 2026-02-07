@@ -135,15 +135,24 @@ typedef union {
  * 3. Write: parsed value → struct field
  * 4. Format: struct field → TOML output string
  */
+
+/**
+ * @brief Type handler - encapsulates all 4 operations for one option type
+ *
+ * Function pointers for TOML extraction, validation, writing to options struct,
+ * and formatting output for each option type (bool, int, string, double).
+ */
 typedef struct {
   void (*extract)(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val,
-                  bool *has_value);
+                  bool *has_value); ///< Extract value from TOML datum
   asciichat_error_t (*parse_validate)(const char *value_str, const config_option_metadata_t *meta,
-                                      option_parsed_value_t *parsed, char *error_msg, size_t error_size);
+                                      option_parsed_value_t *parsed, char *error_msg,
+                                      size_t error_size); ///< Parse and validate value
   asciichat_error_t (*write_to_struct)(const option_parsed_value_t *parsed, const config_option_metadata_t *meta,
-                                       options_t *opts, char *error_msg, size_t error_size);
+                                       options_t *opts, char *error_msg,
+                                       size_t error_size); ///< Write to options struct
   void (*format_output)(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf,
-                        size_t bufsize);
+                        size_t bufsize); ///< Format for TOML output
 } option_type_handler_t;
 
 // Forward declarations
