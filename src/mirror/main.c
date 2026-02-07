@@ -33,6 +33,7 @@
 #include <ascii-chat/session/display.h>
 #include <ascii-chat/session/render.h>
 #include <ascii-chat/session/keyboard_handler.h>
+#include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/ui/splash.h>
 
 #include <ascii-chat/media/source.h>
@@ -501,6 +502,9 @@ int mirror_main(void) {
 
   // Clean up webcam resources and cached images (test pattern, etc.)
   webcam_destroy();
+
+  // Cleanup session log buffer (used by splash screen)
+  session_log_buffer_destroy();
 
   // Re-enable terminal output for shutdown logging
   log_set_terminal_output(true);
