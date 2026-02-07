@@ -163,7 +163,7 @@ void packet_queue_destroy(packet_queue_t *queue) {
     return;
 
   // Signal shutdown first
-  packet_queue_destroy(queue);
+  packet_queue_stop(queue);
 
   // Clear any remaining packets
   packet_queue_clear(queue);

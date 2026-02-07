@@ -1176,7 +1176,7 @@ int remove_client(server_context_t *server_ctx, uint32_t client_id) {
 
       // Shutdown packet queues to unblock send thread
       if (client->audio_queue) {
-        packet_queue_destroy(client->audio_queue);
+        packet_queue_stop(client->audio_queue);
       }
       // Video now uses double buffer, no queue to shutdown
 
