@@ -178,7 +178,7 @@ endif()
 # Add musl dependency if building with musl
 if(USE_MUSL)
     # Add dependencies on all musl libraries (they'll build automatically)
-    add_dependencies(ascii-chat portaudio-musl alsa-lib-musl libsodium-musl zstd-musl libexecinfo-musl opus-musl)
+    add_dependencies(ascii-chat ascii-chat-shared portaudio-musl alsa-lib-musl libsodium-musl zstd-musl libexecinfo-musl opus-musl pcre2-musl)
 
     # Link against musl-built static libraries from individual dependency directories
     target_link_directories(ascii-chat PRIVATE
@@ -186,17 +186,22 @@ if(USE_MUSL)
         ${ALSA_PREFIX}/lib
         ${LIBSODIUM_PREFIX}/lib
         ${LIBEXECINFO_PREFIX}/lib
+        ${PCRE2_PREFIX}/lib
     )
     # Note: -rdynamic is incompatible with -static and not needed for musl + libexecinfo
     # Use lld linker for musl+LTO builds (handles LTO without gold plugin)
     target_link_options(ascii-chat PRIVATE -static -fuse-ld=lld)
 
-    # Link all libraries (LTO + dead code elimination removes unused code)
+    # Link internal modules first (provides all ascii-chat code)
+    target_link_libraries(ascii-chat PRIVATE ascii-chat-shared)
+
+    # Link external dependencies (LTO + dead code elimination removes unused code)
     target_link_libraries(ascii-chat PRIVATE
         ${PORTAUDIO_PREFIX}/lib/libportaudio.a
         ${ALSA_PREFIX}/lib/libasound.a
         ${LIBSODIUM_PREFIX}/lib/libsodium.a
         ${LIBEXECINFO_PREFIX}/lib/libexecinfo.a
+        ${PCRE2_PREFIX}/lib/libpcre2-8.a
         -lm -lpthread
     )
 

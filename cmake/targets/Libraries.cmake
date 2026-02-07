@@ -669,6 +669,20 @@ add_library(ascii-chat-shared SHARED EXCLUDE_FROM_ALL
     if(DEFINED LIBSODIUM_BUILD_TARGET)
         add_dependencies(ascii-chat-shared ${LIBSODIUM_BUILD_TARGET})
     endif()
+    # Add musl dependencies to ensure libraries are built before linking
+    if(USE_MUSL)
+        add_dependencies(ascii-chat-shared
+            zstd-musl
+            libsodium-musl
+            opus-musl
+            pcre2-musl
+            portaudio-musl
+            alsa-lib-musl
+            libexecinfo-musl
+            openssl-musl
+            ffmpeg-musl
+        )
+    endif()
 
     # Link external dependencies (libsodium, zstd, opus, etc.)
     # These are needed because shared library is created from OBJECT files,

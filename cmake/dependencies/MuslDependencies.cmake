@@ -11,6 +11,7 @@
 #   - PortAudio (audio I/O)
 #   - Opus (audio codec)
 #   - BearSSL (TLS for SSH key fetching)
+#   - PCRE2 (regular expressions for URL validation)
 #
 # All cached in ${FETCHCONTENT_BASE_DIR} to persist across build/ deletions.
 # =============================================================================
@@ -199,7 +200,7 @@ if(NOT EXISTS "${LIBSODIUM_PREFIX}/lib/libsodium.a")
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
         CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${LIBSODIUM_PREFIX} --enable-static --disable-shared
-        BUILD_COMMAND env REALGCC=${REAL_GCC} make
+        BUILD_COMMAND env REALGCC=${REAL_GCC} CFLAGS=-fPIC make
         INSTALL_COMMAND make install
         DEPENDS zstd-musl
         BUILD_BYPRODUCTS ${LIBSODIUM_PREFIX}/lib/libsodium.a
@@ -427,14 +428,13 @@ if(NOT EXISTS "${FFMPEG_PREFIX}/lib/libavformat.a" OR
         COMMAND ${CMAKE_COMMAND} -E env
             CC=${MUSL_GCC}
             REALGCC=${REAL_GCC}
-            CFLAGS=${MUSL_KERNEL_CFLAGS}
+            CFLAGS=${MUSL_KERNEL_CFLAGS}\ -fPIC
             "${FFMPEG_SOURCE_DIR}/configure"
             --prefix=${FFMPEG_PREFIX}
             --cc=${MUSL_GCC}
             --enable-static
             --disable-shared
             --enable-pic
-            --extra-cflags=-fPIC
             --disable-programs
             --disable-doc
             --disable-htmlpages
@@ -464,7 +464,7 @@ if(NOT EXISTS "${FFMPEG_PREFIX}/lib/libavformat.a" OR
     # Build FFmpeg
     message(STATUS "  Building FFmpeg (this takes several minutes)...")
     execute_process(
-        COMMAND ${CMAKE_COMMAND} -E env REALGCC=${REAL_GCC} CFLAGS=${MUSL_KERNEL_CFLAGS} make -j${CMAKE_BUILD_PARALLEL_LEVEL}
+        COMMAND ${CMAKE_COMMAND} -E env REALGCC=${REAL_GCC} CFLAGS=${MUSL_KERNEL_CFLAGS}\ -fPIC make -j${CMAKE_BUILD_PARALLEL_LEVEL}
         WORKING_DIRECTORY "${FFMPEG_SOURCE_DIR}"
         RESULT_VARIABLE BUILD_RESULT
         OUTPUT_VARIABLE BUILD_OUTPUT
@@ -644,7 +644,7 @@ if(NOT EXISTS "${ALSA_PREFIX}/lib/libasound.a")
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
         CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=${MUSL_KERNEL_CFLAGS} <SOURCE_DIR>/configure --host=x86_64-linux-gnu --prefix=${ALSA_PREFIX} --enable-static --disable-shared --disable-maintainer-mode
-        BUILD_COMMAND env REALGCC=${REAL_GCC} make
+        BUILD_COMMAND env REALGCC=${REAL_GCC} CFLAGS=-fPIC make
         INSTALL_COMMAND make install
         BUILD_BYPRODUCTS ${ALSA_PREFIX}/lib/libasound.a
         LOG_DOWNLOAD TRUE
@@ -685,7 +685,7 @@ if(NOT EXISTS "${PORTAUDIO_PREFIX}/lib/libportaudio.a")
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
         CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC PKG_CONFIG_PATH=${ALSA_PREFIX}/lib/pkgconfig <SOURCE_DIR>/configure --prefix=${PORTAUDIO_PREFIX} --enable-static --disable-shared --with-alsa --without-jack --without-oss
-        BUILD_COMMAND env REALGCC=${REAL_GCC} make
+        BUILD_COMMAND env REALGCC=${REAL_GCC} CFLAGS=-fPIC make
         INSTALL_COMMAND make install
         BUILD_BYPRODUCTS ${PORTAUDIO_PREFIX}/lib/libportaudio.a
         DEPENDS alsa-lib-musl
@@ -725,7 +725,7 @@ if(NOT EXISTS "${OPUS_PREFIX}/lib/libopus.a")
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
         CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${OPUS_PREFIX} --enable-static --disable-shared --disable-doc --disable-extra-programs
-        BUILD_COMMAND env REALGCC=${REAL_GCC} make
+        BUILD_COMMAND env REALGCC=${REAL_GCC} CFLAGS=-fPIC make
         INSTALL_COMMAND make install
         BUILD_BYPRODUCTS ${OPUS_PREFIX}/lib/libopus.a
         LOG_DOWNLOAD TRUE
@@ -847,6 +847,45 @@ else()
     set(BEARSSL_LIBRARIES "")
     set(BEARSSL_INCLUDE_DIRS "")
 endif()
+
+# =============================================================================
+# PCRE2 - Perl Compatible Regular Expressions
+# =============================================================================
+message(STATUS "Configuring ${BoldBlue}PCRE2${ColorReset} from source...")
+
+set(PCRE2_PREFIX "${MUSL_DEPS_DIR_STATIC}/pcre2")
+set(PCRE2_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/pcre2-build")
+
+# Only add external project if library doesn't exist
+if(NOT EXISTS "${PCRE2_PREFIX}/lib/libpcre2-8.a")
+    message(STATUS "  PCRE2 library not found in cache, will build from source")
+    ExternalProject_Add(pcre2-musl
+        URL https://github.com/PCRE2Project/pcre2/archive/refs/tags/pcre2-10.47.tar.gz
+        URL_HASH SHA256=409c443549b13b216da40049850a32f3e6c57d4224ab11553ab5a786878a158e
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        PREFIX ${PCRE2_BUILD_DIR}
+        STAMP_DIR ${PCRE2_BUILD_DIR}/stamps
+        UPDATE_DISCONNECTED 1
+        BUILD_ALWAYS 0
+        CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC <SOURCE_DIR>/configure --host=x86_64-linux-gnu --prefix=${PCRE2_PREFIX} --enable-static --disable-shared --enable-pcre2-8 --disable-pcre2-16 --disable-pcre2-32 --disable-maintainer-mode
+        BUILD_COMMAND env REALGCC=${REAL_GCC} CFLAGS=-fPIC make
+        INSTALL_COMMAND make install
+        BUILD_BYPRODUCTS ${PCRE2_PREFIX}/lib/libpcre2-8.a
+        LOG_DOWNLOAD TRUE
+        LOG_CONFIGURE TRUE
+        LOG_BUILD TRUE
+        LOG_INSTALL TRUE
+        LOG_OUTPUT_ON_FAILURE TRUE
+    )
+else()
+    message(STATUS "  ${BoldBlue}PCRE2${ColorReset} library found in cache: ${BoldMagenta}${PCRE2_PREFIX}/lib/libpcre2-8.a${ColorReset}")
+    # Create a dummy target so dependencies can reference it
+    add_custom_target(pcre2-musl)
+endif()
+
+set(PCRE2_FOUND TRUE)
+set(PCRE2_LIBRARIES "${PCRE2_PREFIX}/lib/libpcre2-8.a")
+set(PCRE2_INCLUDE_DIRS "${PCRE2_PREFIX}/include")
 
 # Restore output directories
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${_SAVED_ARCHIVE_OUTPUT_DIR})
