@@ -1,4 +1,7 @@
 {
+  "buildCommand": "cd web/discovery.ascii-chat.com && bun run build",
+  "outputDirectory": "web/discovery.ascii-chat.com/dist",
+  "installCommand": "cd web/discovery.ascii-chat.com && bun install",
   "rewrites": [
     {
       "source": "/",
