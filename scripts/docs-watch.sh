@@ -16,17 +16,17 @@ echo "  - Doxyfile"
 echo ""
 echo "Ignoring:"
 echo "  - */manpage/content/* (generated)"
-echo "  - version.s (generated)"
+echo "  - version.h* (generated)"
 echo ""
 echo "Press Ctrl+C to stop"
 echo ""
 
 # Find all files to watch and pipe to entr
-# Exclude generated files: version.s and manpage content
+# Exclude generated files: version.h* and manpage content
 {
   find include lib src -type f \( -name "*.h" -o -name "*.c" \) \
     -not -path "*/manpage/content/*" \
-    -not -name "version.s"
+    -not -name "version.h*"
   find docs -type f -name "*.dox"
   echo "Doxyfile"
 } | entr -c cmake --build build --target docs
