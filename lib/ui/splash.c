@@ -19,6 +19,7 @@
 #include <ascii-chat/session/display.h>
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/util/display.h>
+#include <ascii-chat/util/ip.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/video/ansi_fast.h>
@@ -132,14 +133,60 @@ typedef struct {
 } splash_header_ctx_t;
 
 /**
+ * @brief Build connection target string for splash display
+ * @param buffer Output buffer for connection string
+ * @param buffer_size Size of output buffer
+ */
+static void build_connection_target(char *buffer, size_t buffer_size) {
+  if (!buffer || buffer_size == 0) {
+    return;
+  }
+  buffer[0] = '\0';
+
+  // Check if we have a session string (discovery mode)
+  const char *session = GET_OPTION(session_string);
+  if (session && session[0] != '\0') {
+    snprintf(buffer, buffer_size, "Connecting to session: %s", session);
+    return;
+  }
+
+  // Check if we have an address (client mode)
+  const char *addr = GET_OPTION(address);
+
+  if (addr && addr[0] != '\0') {
+    // Use IP utility to classify the connection type
+    const char *ip_type = get_ip_type_string(addr);
+
+    if (strcmp(ip_type, "Localhost") == 0) {
+      snprintf(buffer, buffer_size, "Connecting to localhost...");
+    } else if (strcmp(ip_type, "LAN") == 0) {
+      snprintf(buffer, buffer_size, "Connecting to %s (LAN)", addr);
+    } else if (strcmp(ip_type, "Internet") == 0) {
+      snprintf(buffer, buffer_size, "Connecting to %s (Internet)", addr);
+    } else if (strcmp(addr, "localhost") == 0) {
+      // Hostname "localhost" not detected by IP util
+      snprintf(buffer, buffer_size, "Connecting to localhost...");
+    } else {
+      // Unknown or hostname
+      snprintf(buffer, buffer_size, "Connecting to %s", addr);
+    }
+    return;
+  }
+
+  // Fallback if no connection info available
+  snprintf(buffer, buffer_size, "Initializing...");
+}
+
+/**
  * @brief Render splash header with rainbow animation (callback for terminal_screen)
  *
- * Renders exactly 8 lines:
+ * Renders exactly 9 lines:
  * - Line 1: Top border
  * - Lines 2-5: ASCII logo (4 lines, centered, rainbow animated)
  * - Line 6: Blank line
- * - Line 7: Tagline (centered)
- * - Line 8: Bottom border
+ * - Line 7: Connection target (centered)
+ * - Line 8: Tagline (centered)
+ * - Line 9: Bottom border
  *
  * @param term_size Current terminal dimensions
  * @param user_data Pointer to splash_header_ctx_t
@@ -214,7 +261,35 @@ static void render_splash_header(terminal_size_t term_size, void *user_data) {
   // Line 6: Blank line
   printf("\n");
 
-  // Line 7: Tagline (centered, truncated if too long)
+  // Line 7: Connection target (centered, truncated if too long)
+  char connection_target[512];
+  build_connection_target(connection_target, sizeof(connection_target));
+
+  char plain_connection[512];
+  int connection_len = (int)strlen(connection_target);
+  int connection_pad = (term_size.cols - connection_len) / 2;
+  if (connection_pad < 0) {
+    connection_pad = 0;
+  }
+
+  int cpos = 0;
+  for (int j = 0; j < connection_pad && cpos < (int)sizeof(plain_connection) - 1; j++) {
+    plain_connection[cpos++] = ' ';
+  }
+  snprintf(plain_connection + cpos, sizeof(plain_connection) - cpos, "%s", connection_target);
+
+  // Check visible width and truncate if needed
+  int connection_visible_width = display_width(plain_connection);
+  if (connection_visible_width < 0) {
+    connection_visible_width = (int)strlen(plain_connection);
+  }
+  if (term_size.cols > 0 && connection_visible_width >= term_size.cols) {
+    plain_connection[term_size.cols - 1] = '\0';
+  }
+
+  printf("%s\n", plain_connection);
+
+  // Line 8: Tagline (centered, truncated if too long)
   char plain_tagline[512];
   int tagline_len = (int)strlen(tagline);
   int tagline_pad = (term_size.cols - tagline_len) / 2;
@@ -239,7 +314,7 @@ static void render_splash_header(terminal_size_t term_size, void *user_data) {
 
   printf("%s\n", plain_tagline);
 
-  // Line 8: Bottom border
+  // Line 9: Bottom border
   printf("\033[1;36m━");
   for (int i = 1; i < term_size.cols - 1; i++) {
     printf("━");
@@ -292,7 +367,7 @@ static void *splash_animation_thread(void *arg) {
 
     // Configure terminal screen with splash header callback
     terminal_screen_config_t screen_config = {
-        .fixed_header_lines = 8, // Splash header is exactly 8 lines
+        .fixed_header_lines = 9, // Splash header is exactly 9 lines
         .render_header = render_splash_header,
         .user_data = &header_ctx,
         .show_logs = true, // Show live log feed below splash
