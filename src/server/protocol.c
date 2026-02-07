@@ -220,7 +220,7 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
   atomic_store(&client->audio_render_thread_running, false);
 
   if (client->audio_queue) {
-    packet_queue_destroy(client->audio_queue);
+    packet_queue_stop(client->audio_queue);
   }
 
   mutex_lock(&client->client_state_mutex);
