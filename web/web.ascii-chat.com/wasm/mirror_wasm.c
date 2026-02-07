@@ -74,3 +74,60 @@ EMSCRIPTEN_KEEPALIVE
 int mirror_get_height(void) {
   return GET_OPTION(height);
 }
+
+// ============================================================================
+// Settings API - Render Mode
+// ============================================================================
+
+EMSCRIPTEN_KEEPALIVE
+int mirror_set_render_mode(int mode) {
+  // mode: 0=foreground, 1=background, 2=half-block
+  if (mode < 0 || mode > 2) {
+    return -1;
+  }
+  asciichat_error_t err = options_set_int("render_mode", mode);
+  return (err == ASCIICHAT_OK) ? 0 : -1;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int mirror_get_render_mode(void) {
+  return GET_OPTION(render_mode);
+}
+
+// ============================================================================
+// Settings API - Color Mode
+// ============================================================================
+
+EMSCRIPTEN_KEEPALIVE
+int mirror_set_color_mode(int mode) {
+  // mode: 0=auto, 1=none, 2=16, 3=256, 4=truecolor
+  if (mode < 0 || mode > 4) {
+    return -1;
+  }
+  asciichat_error_t err = options_set_int("color_mode", mode);
+  return (err == ASCIICHAT_OK) ? 0 : -1;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int mirror_get_color_mode(void) {
+  return GET_OPTION(color_mode);
+}
+
+// ============================================================================
+// Settings API - Color Filter
+// ============================================================================
+
+EMSCRIPTEN_KEEPALIVE
+int mirror_set_color_filter(int filter) {
+  // filter: 0=none, 1=black, 2=white, 3=green, 4=magenta, etc.
+  if (filter < 0 || filter > 11) {
+    return -1;
+  }
+  asciichat_error_t err = options_set_int("color_filter", filter);
+  return (err == ASCIICHAT_OK) ? 0 : -1;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int mirror_get_color_filter(void) {
+  return GET_OPTION(color_filter);
+}
