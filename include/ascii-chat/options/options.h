@@ -423,8 +423,13 @@ typedef enum {
 /** @brief Default reconnect attempts (-1 means auto/infinite) */
 #define OPT_RECONNECT_ATTEMPTS_DEFAULT (-1)
 
-/** @brief Default webcam flip state (true = horizontally flipped) */
+/** @brief Default webcam flip state (true = horizontally flipped)
+ * macOS webcams default to flipped (mirrored), other platforms default to normal */
+#ifdef __APPLE__
 #define OPT_WEBCAM_FLIP_DEFAULT true
+#else
+#define OPT_WEBCAM_FLIP_DEFAULT false
+#endif
 
 /** @brief Default color setting (COLOR_SETTING_AUTO = smart detection) */
 #define OPT_COLOR_DEFAULT COLOR_SETTING_AUTO

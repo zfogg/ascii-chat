@@ -823,10 +823,10 @@ bool parse_palette_chars(const char *arg, void *dest, char **error_msg) {
   SAFE_STRNCPY(palette_custom, arg, 256);
   palette_custom[255] = '\0';
 
-  // Also set the palette type to custom
-  // Note: This is a simplification - ideally we'd have access to the full options_t struct
-  // to set palette_custom_set and palette_type, but the callback interface doesn't provide that.
-  // The palette_type should be handled separately or via a dependency.
+  // Also set the palette type to custom by calculating back to options_t pointer
+  // dest points to options_t.palette_custom, so we can get options_t* using offset arithmetic
+  options_t *opts = (options_t *)((char *)dest - offsetof(options_t, palette_custom));
+  opts->palette_type = PALETTE_CUSTOM;
 
   return true;
 }
