@@ -152,11 +152,11 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   // Check if stdout is a TTY, not just any fd (stdin/stderr could be TTY while stdout is piped).
   // If stdout is piped/redirected, never perform terminal operations regardless of other fds.
   if (ctx->tty_info.fd >= 0) {
-    ctx->has_tty = (platform_isatty(ctx->tty_info.fd) != 0) && (platform_isatty(STDOUT_FILENO) != 0);
+    ctx->has_tty = (platform_isatty(ctx->tty_info.fd) != 0) && terminal_is_stdout_tty();
   }
 
   // In piped mode, force all logs to stderr to prevent frame data corruption
-  if (!ctx->has_tty) {
+  if (terminal_should_force_stderr()) {
     log_set_force_stderr(true);
     // Set stdout to line buffering to ensure output is flushed at newlines
     // This helps with snapshot mode where each frame ends with a newline
@@ -172,12 +172,12 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   // - When stdout is not a TTY (piped/redirected output)
   // Enable padding for interactive terminal sessions
   bool is_snapshot_mode = config->snapshot_mode;
-  bool is_interactive_tty = ctx->has_tty && platform_isatty(STDIN_FILENO) && platform_isatty(STDOUT_FILENO);
-  ctx->caps.wants_padding = is_interactive_tty && !is_snapshot_mode;
+  bool is_interactive = terminal_is_interactive();
+  ctx->caps.wants_padding = is_interactive && !is_snapshot_mode;
 
-  log_debug("Padding mode: wants_padding=%d (snapshot=%d, tty=%d, stdin_tty=%d, stdout_tty=%d)",
-            ctx->caps.wants_padding, is_snapshot_mode, ctx->has_tty, platform_isatty(STDIN_FILENO),
-            platform_isatty(STDOUT_FILENO));
+  log_debug("Padding mode: wants_padding=%d (snapshot=%d, interactive=%d, stdin_tty=%d, stdout_tty=%d)",
+            ctx->caps.wants_padding, is_snapshot_mode, is_interactive, terminal_is_stdin_tty(),
+            terminal_is_stdout_tty());
 
   // Apply color mode override if specified
   if (config->color_mode != TERM_COLOR_AUTO) {

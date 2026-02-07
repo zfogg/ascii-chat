@@ -1205,11 +1205,11 @@ asciichat_error_t threaded_send_terminal_size_with_auto_detect(unsigned short wi
   // - When stdout is not a TTY (piped/redirected output)
   // Enable padding for interactive terminal sessions
   bool is_snapshot_mode = GET_OPTION(snapshot_mode);
-  bool is_interactive_tty = platform_isatty(STDIN_FILENO) && platform_isatty(STDOUT_FILENO);
-  caps.wants_padding = is_interactive_tty && !is_snapshot_mode;
+  bool is_interactive = terminal_is_interactive();
+  caps.wants_padding = is_interactive && !is_snapshot_mode;
 
-  log_debug("Client capabilities: wants_padding=%d (snapshot=%d, stdin_tty=%d, stdout_tty=%d)", caps.wants_padding,
-            is_snapshot_mode, platform_isatty(STDIN_FILENO), platform_isatty(STDOUT_FILENO));
+  log_debug("Client capabilities: wants_padding=%d (snapshot=%d, interactive=%d, stdin_tty=%d, stdout_tty=%d)",
+            caps.wants_padding, is_snapshot_mode, is_interactive, terminal_is_stdin_tty(), terminal_is_stdout_tty());
 
   // Apply user's color mode override
   caps = apply_color_mode_override(caps);
@@ -1225,7 +1225,7 @@ asciichat_error_t threaded_send_terminal_size_with_auto_detect(unsigned short wi
     SAFE_STRNCPY(caps.colorterm, "", sizeof(caps.colorterm));
     caps.detection_reliable = 0;
     // Preserve wants_padding even in fallback mode
-    caps.wants_padding = is_interactive_tty && !is_snapshot_mode;
+    caps.wants_padding = is_interactive && !is_snapshot_mode;
   }
 
   // Convert to network packet format with proper byte order

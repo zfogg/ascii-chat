@@ -127,3 +127,61 @@ terminal_color_mode_t terminal_get_effective_color_mode(void) {
   // This will be used by apply_color_mode_override() if needed
   return TERM_COLOR_AUTO; // Let the calling code handle auto-detection
 }
+
+/* ============================================================================
+ * Interactive Mode and TTY State Detection
+ * ============================================================================ */
+
+bool terminal_is_stdin_tty(void) {
+  return platform_isatty(STDIN_FILENO) != 0;
+}
+
+bool terminal_is_stdout_tty(void) {
+  return platform_isatty(STDOUT_FILENO) != 0;
+}
+
+bool terminal_is_stderr_tty(void) {
+  return platform_isatty(STDERR_FILENO) != 0;
+}
+
+bool terminal_is_interactive(void) {
+  return terminal_is_stdin_tty() && terminal_is_stdout_tty();
+}
+
+bool terminal_is_piped_output(void) {
+  return !terminal_is_stdout_tty();
+}
+
+bool terminal_should_force_stderr(void) {
+  // If stdout is piped/redirected, force logs to stderr to avoid corruption
+  if (terminal_is_piped_output()) {
+    // Unless in TESTING environment where test framework may capture stdout
+    const char *testing = SAFE_GETENV("TESTING");
+    if (testing && strcmp(testing, "1") == 0) {
+      return false; // Allow stdout in test environments
+    }
+    return true; // Force stderr when piped
+  }
+  return false; // stdout is TTY, no need to force stderr
+}
+
+bool terminal_can_prompt_user(void) {
+  // Must be fully interactive (stdin and stdout are TTYs)
+  if (!terminal_is_interactive()) {
+    return false;
+  }
+
+  // Must not be in snapshot mode (non-interactive capture)
+  if (GET_OPTION(snapshot_mode)) {
+    return false;
+  }
+
+  // Must not have automated prompt responses configured
+  const char *auto_response = SAFE_GETENV("ASCII_CHAT_QUESTION_PROMPT_RESPONSE");
+  if (auto_response && *auto_response != '\0') {
+    return false; // Automated responses configured, not interactive
+  }
+
+  // All checks passed, interactive prompts are appropriate
+  return true;
+}

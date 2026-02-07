@@ -16,7 +16,8 @@
 #include <unistd.h>
 
 bool platform_is_interactive(void) {
-  return platform_isatty(STDIN_FILENO);
+  // Use centralized function that checks TTY status, snapshot mode, and automation
+  return terminal_can_prompt_user();
 }
 
 int platform_prompt_question(const char *prompt, char *buffer, size_t max_len, prompt_opts_t opts) {

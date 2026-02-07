@@ -286,7 +286,7 @@ int main(int argc, char *argv[]) {
 
   // Route logs to stderr if stdout is piped (MUST happen early, before options_init logs)
   // This keeps stdout clean for data output (e.g., --snapshot mode piped to file)
-  if (!platform_isatty(STDOUT_FILENO)) {
+  if (terminal_should_force_stderr()) {
     log_set_force_stderr(true);
   }
 

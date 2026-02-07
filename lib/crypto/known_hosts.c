@@ -606,7 +606,7 @@ bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t ser
     return true;
   }
 #endif
-  if (!platform_isatty(STDIN_FILENO) || GET_OPTION(snapshot_mode)) {
+  if (!terminal_can_prompt_user()) {
     // SECURITY: Non-interactive mode - REJECT unknown hosts to prevent MITM attacks
     SET_ERRNO(ERROR_CRYPTO, "SECURITY: Cannot verify unknown host in non-interactive mode");
     log_error("ERROR: Cannot verify unknown host in non-interactive mode without environment variable bypass.\n"
@@ -753,14 +753,9 @@ static bool is_automated_mode(void) {
     return true;
   }
 
-  // Check if stdin is a TTY (if not, can't be interactive)
-  if (!platform_isatty(STDIN_FILENO)) {
-    return true;
-  }
-
-  // Check for snapshot mode
-  if (GET_OPTION(snapshot_mode)) {
-    return true;
+  // Check if user prompts are possible (TTY + not snapshot + not automated)
+  if (!terminal_can_prompt_user()) {
+    return true; // Skip interactive prompts in non-interactive environments
   }
 
   return false;

@@ -121,7 +121,7 @@ asciichat_error_t asciichat_shared_init(const char *log_file, bool is_client) {
 
     // 2. LOGGING - Initialize with provided log file
     // Force stderr for client-like modes when stdout is piped to keep stdout clean
-    bool force_stderr = is_client && !platform_isatty(STDOUT_FILENO);
+    bool force_stderr = is_client && terminal_is_piped_output();
     // Use LOG_DEBUG by default; will be reconfigured after options_init()
     log_init(log_file, LOG_DEBUG, force_stderr, false /* don't use_mmap */);
 

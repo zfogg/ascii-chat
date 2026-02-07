@@ -179,7 +179,7 @@ static bool mirror_display_should_exit_adapter(void *user_data) {
 int mirror_main(void) {
   // Disable terminal logging before any logging happens when stdout is piped.
   // This prevents buffered log output from corrupting the ASCII frame stream.
-  if (!platform_isatty(STDOUT_FILENO)) {
+  if (terminal_should_force_stderr()) {
     log_set_force_stderr(true);     // Force ALL logs to stderr, not stdout
     log_set_terminal_output(false); // Then disable terminal output entirely
   }

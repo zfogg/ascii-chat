@@ -832,6 +832,179 @@ bool terminal_query_background_color(uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b
  */
 bool terminal_should_use_control_sequences(int fd);
 
+/* ============================================================================
+ * Interactive Mode and TTY State Detection
+ * @{
+ *
+ * Centralized functions for detecting TTY status and interactive mode.
+ * These functions consolidate scattered isatty() checks throughout the codebase.
+ */
+
+/**
+ * @brief Check if stdin is connected to a TTY
+ * @return true if stdin is a TTY (can read interactive input), false otherwise
+ *
+ * Determines whether standard input is connected to a terminal device.
+ * Returns false when stdin is piped or redirected from a file.
+ *
+ * Use this to decide whether interactive input (prompts, keyboard events) is possible.
+ *
+ * @note Wrapper around platform_isatty(STDIN_FILENO) for clarity
+ * @note Returns false in non-interactive environments (CI, scripts, pipes)
+ *
+ * @ingroup platform
+ */
+bool terminal_is_stdin_tty(void);
+
+/**
+ * @brief Check if stdout is connected to a TTY
+ * @return true if stdout is a TTY (not piped/redirected), false otherwise
+ *
+ * Determines whether standard output is connected to a terminal device.
+ * Returns false when stdout is piped or redirected to a file.
+ *
+ * Use this to decide whether:
+ * - Terminal control sequences (colors, cursor movement) should be used
+ * - Output padding/formatting should be applied
+ * - Progress bars or animations should be shown
+ *
+ * @note Wrapper around platform_isatty(STDOUT_FILENO) for clarity
+ * @note Returns false in piped contexts (e.g., ascii-chat client | less)
+ *
+ * @ingroup platform
+ */
+bool terminal_is_stdout_tty(void);
+
+/**
+ * @brief Check if stderr is connected to a TTY
+ * @return true if stderr is a TTY, false otherwise
+ *
+ * Determines whether standard error is connected to a terminal device.
+ * Returns false when stderr is piped or redirected to a file.
+ *
+ * Use this to decide whether diagnostic messages should include colors.
+ *
+ * @note Wrapper around platform_isatty(STDERR_FILENO) for clarity
+ * @note stderr is often a TTY even when stdout is piped
+ *
+ * @ingroup platform
+ */
+bool terminal_is_stderr_tty(void);
+
+/**
+ * @brief Check if the session is fully interactive
+ * @return true if BOTH stdin AND stdout are TTYs, false otherwise
+ *
+ * Determines whether the session is fully interactive (user at terminal).
+ * Returns true only when BOTH stdin and stdout are connected to TTYs.
+ *
+ * Use this to decide whether:
+ * - User prompts and interactive input should be shown
+ * - Splash screens and animations should be displayed
+ * - Frame padding should be enabled
+ * - Password prompts are appropriate
+ *
+ * Examples:
+ * - `ascii-chat mirror` in terminal → true (interactive)
+ * - `ascii-chat mirror | less` → false (stdout piped)
+ * - `cat file | ascii-chat client` → false (stdin piped)
+ * - `ascii-chat client < input.txt > output.txt` → false (both piped)
+ *
+ * @note Equivalent to: terminal_is_stdin_tty() && terminal_is_stdout_tty()
+ * @note Used for enabling interactive features (prompts, padding, splash)
+ * @note Snapshot mode is checked separately via GET_OPTION(snapshot_mode)
+ *
+ * @ingroup platform
+ */
+bool terminal_is_interactive(void);
+
+/**
+ * @brief Check if stdout is piped or redirected
+ * @return true if stdout is piped/redirected, false if connected to TTY
+ *
+ * Determines whether standard output is being piped or redirected to a file.
+ * This is the logical inverse of terminal_is_stdout_tty().
+ *
+ * Use this to decide whether:
+ * - Logs should be forced to stderr (to avoid corrupting piped output)
+ * - Frame padding should be disabled
+ * - Clean, parseable output should be preferred
+ *
+ * Examples:
+ * - `ascii-chat mirror > output.txt` → true (redirected)
+ * - `ascii-chat client | grep pattern` → true (piped)
+ * - `ascii-chat mirror` in terminal → false (TTY)
+ *
+ * @note Equivalent to: !terminal_is_stdout_tty()
+ * @note Common pattern: force stderr when piped to prevent data corruption
+ *
+ * @ingroup platform
+ */
+bool terminal_is_piped_output(void);
+
+/**
+ * @brief Determine if logs should be forced to stderr
+ * @return true if logs should go to stderr only, false if stdout is acceptable
+ *
+ * Determines whether logging output should be forced to stderr instead of stdout.
+ * Returns true when stdout is piped/redirected (to avoid corrupting output data).
+ *
+ * Use this to decide whether to call log_set_force_stderr(true).
+ *
+ * Logic:
+ * 1. If stdout is piped/redirected → force stderr (true)
+ * 2. If in TESTING environment → allow stdout (false)
+ * 3. Otherwise → allow stdout (false)
+ *
+ * Examples:
+ * - `ascii-chat mirror > frames.txt` → true (don't corrupt frame data)
+ * - `ascii-chat mirror` in terminal → false (stdout is fine)
+ * - `TESTING=1 ascii-chat mirror` → false (tests may capture stdout)
+ *
+ * @note This prevents logs from corrupting piped ASCII frame data
+ * @note TESTING environment variable bypasses this for test environments
+ * @note Typical usage: if (terminal_should_force_stderr()) log_set_force_stderr(true);
+ *
+ * @ingroup platform
+ */
+bool terminal_should_force_stderr(void);
+
+/**
+ * @brief Determine if interactive user prompts are appropriate
+ * @return true if prompts can be shown, false if non-interactive/automated
+ *
+ * Determines whether interactive user prompts (yes/no, passwords, confirmations)
+ * should be displayed. Returns false in non-interactive or automated contexts.
+ *
+ * Use this to decide whether:
+ * - Password prompts should be shown (or auto-cancel)
+ * - Yes/No confirmations should wait for input (or use defaults)
+ * - Known hosts prompts should be interactive (or auto-deny)
+ *
+ * Logic:
+ * 1. If not fully interactive (stdin or stdout not TTY) → false
+ * 2. If in snapshot mode (--snapshot) → false
+ * 3. If ASCII_CHAT_QUESTION_PROMPT_RESPONSE set → false (automated responses)
+ * 4. Otherwise → true (interactive prompts OK)
+ *
+ * Examples:
+ * - `ascii-chat client` in terminal → true (can prompt)
+ * - `ascii-chat client --snapshot` → false (non-interactive mode)
+ * - `echo data | ascii-chat client` → false (stdin piped)
+ * - `ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' ascii-chat client` → false (automated)
+ * - `ascii-chat client > output.txt` → false (stdout redirected)
+ *
+ * @note Combines checks for: TTY status, snapshot mode, automation env vars
+ * @note Used by password prompts, known_hosts verification, user confirmations
+ * @note When false, password prompts should auto-cancel with error
+ * @note When false, yes/no prompts should use default value or deny
+ *
+ * @ingroup platform
+ */
+bool terminal_can_prompt_user(void);
+
+/** @} */
+
 #ifdef _WIN32
 /**
  * @brief Callback function type for terminal resize events
