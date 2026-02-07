@@ -1,6 +1,7 @@
 /**
  * @file platform/posix/agent.c
  * @brief POSIX SSH/GPG agent socket discovery implementation
+ * @ingroup platform
  */
 
 #include <ascii-chat/platform/agent.h>

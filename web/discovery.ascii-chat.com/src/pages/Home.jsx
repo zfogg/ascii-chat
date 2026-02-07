@@ -219,6 +219,8 @@ ascii-chat client session-name \\
           <a href="https://github.com/zfogg/ascii-chat/issues" target="_blank" rel="noopener noreferrer" onClick={() => handleLinkClick('https://github.com/zfogg/ascii-chat/issues', 'Issues')}>🐛 Issues</a>
           {' · '}
           <a href="https://github.com/zfogg/ascii-chat/releases" target="_blank" rel="noopener noreferrer" onClick={() => handleLinkClick('https://github.com/zfogg/ascii-chat/releases', 'Releases')}>📦 Releases</a>
+          {' · '}
+          <a href="https://web.ascii-chat.com" target="_blank" rel="noopener noreferrer" onClick={() => handleLinkClick('https://web.ascii-chat.com', 'Web Client')}>🌐 Web Client</a>
         </p>
         <p className="legal">
           ascii-chat Discovery Service · Hosted at <code>{window.location.hostname}</code>

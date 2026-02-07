@@ -34,6 +34,15 @@ export default function Footer() {
         >
           🔍&nbsp;&nbsp;ACDS
         </TrackedLink>
+        <TrackedLink
+          href="https://web.ascii-chat.com"
+          label="Footer - Web Client"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-yellow-400 hover:text-yellow-300 transition-colors"
+        >
+          🌐&nbsp;&nbsp;Web Client
+        </TrackedLink>
       </div>
       <div className="text-center">
         <p className="text-sm">ascii-chat · Video chat in your terminal</p>
