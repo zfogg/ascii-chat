@@ -319,7 +319,12 @@ export function MirrorPage() {
       </div>
 
       {/* ASCII output */}
-      <div className="flex-1 px-4 py-2 overflow-hidden" style={{ pointerEvents: 'none' }}>
+      <div className="flex-1 px-4 py-2 overflow-hidden" style={{ pointerEvents: 'none', display: 'flex', flexDirection: 'column' }}>
+        <style>{`
+          .xterm {
+            flex: 1 !important;
+          }
+        `}</style>
         <XTerm
           ref={handleXTermRef}
           options={{
@@ -338,7 +343,7 @@ export function MirrorPage() {
             convertEol: false,
             drawBoldTextInBrightColors: true,
           }}
-          className="w-full h-full rounded bg-terminal-bg"
+          className="flex flex-1 rounded bg-terminal-bg"
         />
       </div>
 
