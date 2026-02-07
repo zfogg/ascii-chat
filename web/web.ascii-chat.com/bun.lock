@@ -5,6 +5,7 @@
     "": {
       "name": "ascii-chat-web",
       "dependencies": {
+        "@pablo-lion/xterm-react": "^1.1.2",
         "@vercel/analytics": "^1.1.1",
         "@xterm/addon-fit": "^0.10.0",
         "@xterm/addon-web-links": "^0.11.0",
@@ -287,6 +288,8 @@
     "@nodelib/fs.stat": ["@nodelib/fs.stat@2.0.5", "", {}, "sha512-RkhPPp2zrqDAQA/2jNhnztcPAlv64XdhIp7a7454A5ovI7Bukxgt7MX7udwAu3zg1DcpPU0rz3VV1SeaqvY4+A=="],
 
     "@nodelib/fs.walk": ["@nodelib/fs.walk@1.2.8", "", { "dependencies": { "@nodelib/fs.scandir": "2.1.5", "fastq": "^1.6.0" } }, "sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg=="],
+
+    "@pablo-lion/xterm-react": ["@pablo-lion/xterm-react@1.1.2", "", { "dependencies": { "@xterm/xterm": "^5.5.0" }, "peerDependencies": { "react": ">=17.0.0", "react-dom": ">=17.0.0" } }, "sha512-kwu1mcPICL5LQ0qQlHxH+z+la1hzoPfjWmgG+a6iXRahKG2O0Y3PrCJwPwYifKj1B8I+v0AXSTW9a3EIE6zzNQ=="],
 
     "@rolldown/pluginutils": ["@rolldown/pluginutils@1.0.0-rc.2", "", {}, "sha512-izyXV/v+cHiRfozX62W9htOAvwMo4/bXKDrQ+vom1L1qRuexPock/7VZDAhnpHCLNejd3NJ6hiab+tO0D44Rgw=="],
 
