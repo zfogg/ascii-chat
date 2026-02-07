@@ -107,30 +107,30 @@ bool validate_palette_chars(const char *chars, size_t len) {
     } else {
       // Non-ASCII: use utf8_display_width to check character width
       // Create a temporary buffer with the UTF-8 encoded character
-      char utf8_buf[5] = {0};
+      uint8_t utf8_buf[5] = {0};
 
       // Encode codepoint to UTF-8 (simple for demo, should use proper encoder)
       if (cp <= 0x7F) {
-        utf8_buf[0] = cp;
+        utf8_buf[0] = (uint8_t)cp;
       } else if (cp <= 0x7FF) {
-        utf8_buf[0] = 0xC0 | (cp >> 6);
-        utf8_buf[1] = 0x80 | (cp & 0x3F);
+        utf8_buf[0] = (uint8_t)(0xC0 | (cp >> 6));
+        utf8_buf[1] = (uint8_t)(0x80 | (cp & 0x3F));
       } else if (cp <= 0xFFFF) {
-        utf8_buf[0] = 0xE0 | (cp >> 12);
-        utf8_buf[1] = 0x80 | ((cp >> 6) & 0x3F);
-        utf8_buf[2] = 0x80 | (cp & 0x3F);
+        utf8_buf[0] = (uint8_t)(0xE0 | (cp >> 12));
+        utf8_buf[1] = (uint8_t)(0x80 | ((cp >> 6) & 0x3F));
+        utf8_buf[2] = (uint8_t)(0x80 | (cp & 0x3F));
       } else if (cp <= 0x10FFFF) {
-        utf8_buf[0] = 0xF0 | (cp >> 18);
-        utf8_buf[1] = 0x80 | ((cp >> 12) & 0x3F);
-        utf8_buf[2] = 0x80 | ((cp >> 6) & 0x3F);
-        utf8_buf[3] = 0x80 | (cp & 0x3F);
+        utf8_buf[0] = (uint8_t)(0xF0 | (cp >> 18));
+        utf8_buf[1] = (uint8_t)(0x80 | ((cp >> 12) & 0x3F));
+        utf8_buf[2] = (uint8_t)(0x80 | ((cp >> 6) & 0x3F));
+        utf8_buf[3] = (uint8_t)(0x80 | (cp & 0x3F));
       } else {
         SET_ERRNO(ERROR_INVALID_PARAM, "Palette validation failed: invalid codepoint at position %zu", i);
         return false;
       }
 
       // Check character width - allow width 1 and 2 (for emoji and wide characters)
-      int width = utf8_display_width(utf8_buf);
+      int width = utf8_display_width((const char *)utf8_buf);
       if (width < 0 || width > 2) {
         SET_ERRNO(ERROR_INVALID_PARAM,
                   "Palette validation failed: character at position %zu has invalid width %d (must be 1 or 2)", i,
