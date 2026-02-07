@@ -42,9 +42,14 @@ export function Footer() {
             @zfogg
           </a>
           {" · "}
-          <span className="text-terminal-8 font-mono text-xs">
+          <a
+            href={`https://github.com/zfogg/ascii-chat/commit/${__COMMIT_SHA__}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-terminal-8 hover:text-terminal-cyan transition-colors font-mono text-xs"
+          >
             {__COMMIT_SHA__}
-          </span>
+          </a>
         </p>
       </div>
     </footer>
