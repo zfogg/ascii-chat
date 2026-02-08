@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Analytics } from '@vercel/analytics/react'
+import { CommitLink } from '@ascii-chat/shared/components'
 import '../App.css'
 
 function Home() {
@@ -225,15 +226,11 @@ ascii-chat client session-name \\
         <p className="legal">
           ascii-chat Discovery Service · Hosted at <code>{window.location.hostname}</code>
           {' · '}
-          <a
-            href={`https://github.com/zfogg/ascii-chat/commit/${__COMMIT_SHA__}`}
-            target="_blank"
-            rel="noopener noreferrer"
+          <CommitLink
+            commitSha={__COMMIT_SHA__}
             onClick={() => handleLinkClick(`https://github.com/zfogg/ascii-chat/commit/${__COMMIT_SHA__}`, 'Commit SHA')}
             style={{ fontFamily: 'monospace', fontSize: '0.875rem' }}
-          >
-            {__COMMIT_SHA__}
-          </a>
+          />
         </p>
       </footer>
       <Analytics />

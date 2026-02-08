@@ -12,6 +12,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@ascii-chat/shared": "workspace:*",
     "@vercel/analytics": "^1.4.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

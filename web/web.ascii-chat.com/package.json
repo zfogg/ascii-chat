@@ -12,6 +12,7 @@
     "prebuild": "bun run wasm:build || echo 'WASM build skipped (emscripten not available)'"
   },
   "dependencies": {
+    "@ascii-chat/shared": "workspace:*",
     "@pablo-lion/xterm-react": "^1.1.2",
     "@vercel/analytics": "^1.1.1",
     "@xterm/addon-fit": "^0.10.0",

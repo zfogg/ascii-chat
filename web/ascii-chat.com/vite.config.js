@@ -2,6 +2,10 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import sitemap from "vite-plugin-sitemap";
 import { execSync } from "child_process";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const getCommitSha = () => {
   // Check for Vercel's built-in environment variable first
@@ -21,6 +25,12 @@ const getCommitSha = () => {
 export default defineConfig({
   define: {
     __COMMIT_SHA__: JSON.stringify(getCommitSha()),
+  },
+  resolve: {
+    alias: {
+      "@ascii-chat/shared": path.resolve(__dirname, "../packages/shared/src"),
+    },
+    extensions: [".ts", ".tsx", ".js", ".jsx"],
   },
   plugins: [
     react(),

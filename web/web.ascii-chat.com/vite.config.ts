@@ -5,12 +5,9 @@ import sitemap from 'vite-plugin-sitemap'
 import { execSync } from 'child_process'
 
 const getCommitSha = () => {
-  // Check for Vercel's built-in environment variable first
   if (process.env.VERCEL_GIT_COMMIT_SHA) {
     return process.env.VERCEL_GIT_COMMIT_SHA.substring(0, 8)
   }
-
-  // Fall back to git command for local development
   try {
     return execSync('git rev-parse HEAD').toString().trim().substring(0, 8)
   } catch {
@@ -40,7 +37,9 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@ascii-chat/shared': path.resolve(__dirname, '../packages/shared/src'),
     },
+    extensions: ['.ts', '.tsx', '.js', '.jsx'],
   },
   server: {
     port: 3000,

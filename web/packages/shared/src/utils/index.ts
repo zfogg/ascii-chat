@@ -1,0 +1,1 @@
+export { getCommitSha } from "./getCommitSha";

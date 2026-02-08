@@ -72,7 +72,6 @@ pre {
 @media (max-width: 768px) {
   pre {
     padding: 0.75rem;
-    font-size: 0.85em;
   }
 }
 
