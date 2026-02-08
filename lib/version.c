@@ -55,11 +55,10 @@ semantic_version_t version_parse(const char *version_string) {
 
   const char *p = version_string;
 
-  // Version must start with 'v' prefix
-  if (p[0] != 'v' && p[0] != 'V') {
-    return result; // Invalid: missing 'v' prefix
+  // Optionally skip 'v' prefix if present
+  if (p[0] == 'v' || p[0] == 'V') {
+    p++; // Skip 'v'
   }
-  p++; // Skip 'v'
 
   // Parse major version
   char *endptr = NULL;

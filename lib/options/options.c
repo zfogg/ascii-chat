@@ -785,7 +785,6 @@ asciichat_error_t options_init(int argc, char **argv) {
 
   // Check for binary-level actions FIRST (before mode detection)
   // These actions may take arguments, so we need to check them before mode detection
-  bool show_help = false;
   bool show_version = false;
   bool create_config = false;
   bool create_manpage = false;
@@ -805,6 +804,36 @@ asciichat_error_t options_init(int argc, char **argv) {
   bool color_setting_found = false;
   bool check_update_flag_seen = false;
   bool no_check_update_flag_seen = false;
+
+  // FIRST: Scan entire argv for --help (special case - works before OR after mode)
+  for (int i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
+      // Scan backwards to find if a mode was specified before --help
+      asciichat_mode_t help_mode = MODE_DISCOVERY; // Default to discovery mode (binary-level help)
+      for (int j = i - 1; j >= 1; j--) {
+        if (argv[j][0] != '-') {
+          if (strcmp(argv[j], "server") == 0) {
+            help_mode = MODE_SERVER;
+          } else if (strcmp(argv[j], "client") == 0) {
+            help_mode = MODE_CLIENT;
+          } else if (strcmp(argv[j], "mirror") == 0) {
+            help_mode = MODE_MIRROR;
+          } else if (strcmp(argv[j], "discovery-service") == 0) {
+            help_mode = MODE_DISCOVERY_SERVICE;
+          } else if (strcmp(argv[j], "discovery") == 0) {
+            help_mode = MODE_DISCOVERY;
+          }
+          break; // Found first non-flag argument
+        }
+      }
+
+      // Show help for the detected mode (or binary-level if no mode)
+      usage(stdout, help_mode);
+      exit(0);
+    }
+  }
+
+  // THEN: Scan for other binary-level actions (stops at mode name)
   for (int i = 1; i < argc; i++) {
     // Stop scanning at mode name - binary-level options must come before the mode
     if (argv[i][0] != '-') {
@@ -834,12 +863,7 @@ asciichat_error_t options_init(int argc, char **argv) {
         }
         i++; // Skip the argument in this loop
       }
-      if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
-        show_help = true;
-        has_action = true;
-        // Don't break here - continue scanning for other quick actions in case there are multiple
-        // (though --help is usually the only one passed)
-      }
+      // --help is handled in the first scan loop above (works before OR after mode)
       // Parse --color early so it affects help output colors
       if (strcmp(argv[i], "--color") == 0) {
         if (i + 1 < argc && argv[i + 1][0] != '-') {
@@ -1052,12 +1076,6 @@ asciichat_error_t options_init(int argc, char **argv) {
   // Mode detection and logging already initialized early in STAGE 1B/1C above
   // (moved earlier to ensure logging is available before any log_dev() calls)
 
-  // If --help was found in STAGE 1A, handle it with the detected mode
-  if (show_help) {
-    opts.help = true;
-    options_state_set(&opts);
-    return ASCIICHAT_OK;
-  }
   // Check for binary-level options that can appear before or after mode
   // Search entire argv to find --quiet, --log-file, --log-level, -V, etc.
   // These are documented as binary-level options that can appear anywhere
