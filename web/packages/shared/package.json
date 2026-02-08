@@ -17,8 +17,12 @@
   },
   "devDependencies": {
     "@types/react": "^18.0.0",
+    "@types/react-syntax-highlighter": "^15.5.13",
     "react-dom": "^19.2.4",
     "react-helmet-async": "^2.0.5",
     "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "react-syntax-highlighter": "^16.1.0"
   }
 }
