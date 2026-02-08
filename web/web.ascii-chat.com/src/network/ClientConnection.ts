@@ -251,13 +251,16 @@ export class ClientConnection {
         console.error(`[ClientConnection] >>> SEND encrypted ${name} (type=${packetType}) plaintext=${plaintextPacket.length} ciphertext=${ciphertext.length} wrapped=${encryptedPacket.length} bytes`);
         this.socket.send(encryptedPacket);
         console.log(`[ClientConnection] Encrypted ${name} packet sent to WebSocket`);
-      } else {
+      } else if (state === ConnectionState.HANDSHAKE) {
         // During handshake, send unencrypted
-        console.log(`[ClientConnection] State is ${ConnectionState[state]}, sending unencrypted`);
+        console.log(`[ClientConnection] State is HANDSHAKE, sending unencrypted`);
         const packet = serializePacket(packetType, payload, 0);
         console.error(`[ClientConnection] >>> SEND unencrypted packet type=${packetType} (${name}) total_len=${packet.length} payload_len=${payload.length}`);
         this.socket.send(packet);
         console.log(`[ClientConnection] Unencrypted ${name} packet sent to WebSocket`);
+      } else {
+        // In ERROR, DISCONNECTED, or CONNECTING state - don't send
+        console.error(`[ClientConnection] Cannot send ${name} in state ${ConnectionState[state]} - packet dropped`);
       }
     } catch (error) {
       console.error(`[ClientConnection] Failed to send ${name} packet:`, error);

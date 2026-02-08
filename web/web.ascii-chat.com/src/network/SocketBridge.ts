@@ -66,7 +66,9 @@ export class SocketBridge {
         };
 
         this.ws.onerror = (event) => {
-          console.error('[SocketBridge] WebSocket error:', event);
+          console.error('[SocketBridge] WebSocket error event:', event);
+          console.error('[SocketBridge] WebSocket readyState:', this.ws?.readyState);
+          console.error('[SocketBridge] WebSocket error details - code:', (event as any).code, 'reason:', (event as any).reason);
           const error = new Error('WebSocket error');
           this.onErrorCallback?.(error);
           reject(error);
@@ -74,6 +76,11 @@ export class SocketBridge {
 
         this.ws.onclose = (event) => {
           console.error(`[SocketBridge] WebSocket CLOSED: code=${event.code} reason="${event.reason}" wasClean=${event.wasClean}`);
+          if (!event.wasClean) {
+            console.error('[SocketBridge] ❌ Unclean close - will attempt reconnect');
+          } else {
+            console.log('[SocketBridge] ✅ Clean close');
+          }
           this.onStateChangeCallback?.('closed');
 
           // Attempt reconnection if not a clean close
