@@ -1,6 +1,6 @@
 import Footer from "../components/Footer";
 import TrackedLink from "../components/TrackedLink";
-import { PreCode } from "@ascii-chat/shared/components";
+import { CodeBlock } from "@ascii-chat/shared/components";
 import { AsciiChatHead } from "../components/AsciiChatHead";
 
 export default function Home() {
@@ -63,24 +63,24 @@ export default function Home() {
                 <h3 className="text-xl font-semibold text-purple-300 mb-3">
                   Homebrew
                 </h3>
-                <PreCode>{`brew tap zfogg/ascii-chat
-brew install ascii-chat`}</PreCode>
+                <CodeBlock language="bash">{`brew tap zfogg/ascii-chat
+brew install ascii-chat`}</CodeBlock>
               </div>
 
               <div>
                 <h3 className="text-xl font-semibold text-pink-300 mb-3">
                   Arch Linux (AUR)
                 </h3>
-                <PreCode>{`paru -S ascii-chat
+                <CodeBlock language="bash">{`paru -S ascii-chat
 # or
-yay -S ascii-chat`}</PreCode>
+yay -S ascii-chat`}</CodeBlock>
               </div>
 
               <div>
                 <h3 className="text-xl font-semibold text-teal-300 mb-3">
                   Build from source
                 </h3>
-                <PreCode>{`git clone https://github.com/zfogg/ascii-chat.git
+                <CodeBlock language="bash">{`git clone https://github.com/zfogg/ascii-chat.git
 cd ascii-chat
 
 # Linux/macOS
@@ -90,7 +90,7 @@ cd ascii-chat
 ./scripts/install-deps.ps1
 
 cmake --preset default && cmake --build build
-./build/bin/ascii-chat`}</PreCode>
+./build/bin/ascii-chat`}</CodeBlock>
               </div>
             </div>
           </section>
@@ -183,28 +183,20 @@ cmake --preset default && cmake --build build
                 <h3 className="text-xl font-semibold text-purple-300 mb-3">
                   Start a server
                 </h3>
-                <pre className="bg-gray-900  rounded-lg p-4 overflow-x-auto">
-                  <code className="text-teal-300">
-                    {`# Register with ACDS and get a session string
-ascii-chat server`}
-                    <span className="text-gray-500">{`
-# Session: happy-sunset-ocean`}</span>
-                  </code>
-                </pre>
+                <CodeBlock language="bash">{`# Register with ACDS and get a session string
+ascii-chat server
+
+# Session: happy-sunset-ocean`}</CodeBlock>
               </div>
 
               <div>
                 <h3 className="text-xl font-semibold text-purple-300 mb-3">
                   Join a session
                 </h3>
-                <pre className="bg-gray-900  rounded-lg p-4 overflow-x-auto">
-                  <code className="text-teal-300">
-                    {`# Connect using the session string
-ascii-chat happy-sunset-ocean`}
-                    <span className="text-gray-500">{`
-# That's it! No configuration needed.`}</span>
-                  </code>
-                </pre>
+                <CodeBlock language="bash">{`# Connect using the session string
+ascii-chat happy-sunset-ocean
+
+# That's it! No configuration needed.`}</CodeBlock>
               </div>
             </div>
           </section>
@@ -339,237 +331,145 @@ ascii-chat happy-sunset-ocean`}
                 <h3 className="text-xl font-semibold text-cyan-300 mb-3">
                   Getting help
                 </h3>
-                <pre className="bg-gray-900  rounded-lg p-4 overflow-x-auto">
-                  <code className="text-teal-300">
-                    <span className="text-gray-500">{`# View built-in help
-`}</span>
-                    {`ascii-chat --help
+                <CodeBlock language="bash">{`# View built-in help
+ascii-chat --help
 
-`}
-                    <span className="text-gray-500">{`# Read the full man page
-`}</span>
-                    {`man ascii-chat
+# Read the full man page
+man ascii-chat
 
-`}
-                    <span className="text-gray-500">{`# Get help for specific modes
-`}</span>
-                    {`ascii-chat <mode> --help`}
-                  </code>
-                </pre>
+# Get help for specific modes
+ascii-chat <mode> --help`}</CodeBlock>
               </div>
 
               <div>
                 <h3 className="text-xl font-semibold text-purple-300 mb-3">
                   Local connection (no ACDS)
                 </h3>
-                <pre className="bg-gray-900  rounded-lg p-4 overflow-x-auto">
-                  <code className="text-teal-300">
-                    <span className="text-gray-500">{`# Server binds to localhost
-`}</span>
-                    {`ascii-chat server
+                <CodeBlock language="bash">{`# Server binds to localhost
+ascii-chat server
 
-`}
-                    <span className="text-gray-500">{`# Client connects to localhost
-`}</span>
-                    {`ascii-chat client`}
-                  </code>
-                </pre>
+# Client connects to localhost
+ascii-chat client`}</CodeBlock>
               </div>
 
               <div>
                 <h3 className="text-xl font-semibold text-purple-300 mb-3">
                   Internet session with ACDS
                 </h3>
-                <pre className="bg-gray-900  rounded-lg p-4 overflow-x-auto">
-                  <code className="text-teal-300">
-                    <span className="text-gray-500">{`# Server registers with official ACDS
-`}</span>
-                    {`ascii-chat server
-`}
-                    <span className="text-gray-500">{`# Session: happy-sunset-ocean
+                <CodeBlock language="bash">{`# Server registers with official ACDS
+ascii-chat server
+# Session: happy-sunset-ocean
 
-`}</span>
-                    <span className="text-gray-500">{`# Client looks up session and connects automatically
-`}</span>
-                    {`ascii-chat happy-sunset-ocean`}
-                  </code>
-                </pre>
+# Client looks up session and connects automatically
+ascii-chat happy-sunset-ocean`}</CodeBlock>
               </div>
 
               <div>
                 <h3 className="text-xl font-semibold text-teal-300 mb-3">
                   Authenticated session with SSH keys
                 </h3>
-                <pre className="bg-gray-900  rounded-lg p-4 overflow-x-auto">
-                  <code className="text-teal-300">
-                    <span className="text-gray-500">{`# Server with Ed25519 key
-`}</span>
-                    {`ascii-chat server --key ~/.ssh/id_ed25519
+                <CodeBlock language="bash">{`# Server with Ed25519 key
+ascii-chat server --key ~/.ssh/id_ed25519
 
-`}
-                    <span className="text-gray-500">{`# Client authenticates with their key
-`}</span>
-                    {`ascii-chat happy-sunset-ocean --key ~/.ssh/id_ed25519`}
-                  </code>
-                </pre>
+# Client authenticates with their key
+ascii-chat happy-sunset-ocean --key ~/.ssh/id_ed25519`}</CodeBlock>
               </div>
 
               <div>
                 <h3 className="text-xl font-semibold text-cyan-300 mb-3">
                   Server whitelisting clients with GitHub SSH keys
                 </h3>
-                <pre className="bg-gray-900  rounded-lg p-4 overflow-x-auto">
-                  <code className="text-teal-300">
-                    <span className="text-gray-500">{`# Server whitelists GitHub user's SSH keys
-`}</span>
-                    {`ascii-chat server --key ~/.ssh/id_ed25519 --client-keys github:zfogg
+                <CodeBlock language="bash">{`# Server whitelists GitHub user's SSH keys
+ascii-chat server --key ~/.ssh/id_ed25519 --client-keys github:zfogg
 
-`}
-                    <span className="text-gray-500">{`# Only clients with those keys can connect
-`}</span>
-                    {`ascii-chat happy-sunset-ocean --key ~/.ssh/id_ed25519`}
-                  </code>
-                </pre>
+# Only clients with those keys can connect
+ascii-chat happy-sunset-ocean --key ~/.ssh/id_ed25519`}</CodeBlock>
               </div>
 
               <div>
                 <h3 className="text-xl font-semibold text-purple-300 mb-3">
                   Client whitelisting server with GitHub GPG keys
                 </h3>
-                <pre className="bg-gray-900  rounded-lg p-4 overflow-x-auto">
-                  <code className="text-teal-300">
-                    <span className="text-gray-500">{`# Server with GPG key
-`}</span>
-                    {`ascii-chat server --key gpg:897607FA43DC66F6
+                <CodeBlock language="bash">{`# Server with GPG key
+ascii-chat server --key gpg:897607FA43DC66F6
 
-`}
-                    <span className="text-gray-500">{`# Client verifies server against GitHub GPG keys
-`}</span>
-                    {`ascii-chat happy-sunset-ocean --server-key github:zfogg.gpg`}
-                  </code>
-                </pre>
+# Client verifies server against GitHub GPG keys
+ascii-chat happy-sunset-ocean --server-key github:zfogg.gpg`}</CodeBlock>
               </div>
 
               <div>
                 <h3 className="text-xl font-semibold text-pink-300 mb-3">
                   Mirror mode (test webcam locally)
                 </h3>
-                <pre className="bg-gray-900  rounded-lg p-4 overflow-x-auto">
-                  <code className="text-teal-300">
-                    <span className="text-gray-500">{`# View your webcam as ASCII without connecting anywhere
-`}</span>
-                    {`ascii-chat mirror --palette blocks`}
-                  </code>
-                </pre>
+                <CodeBlock language="bash">{`# View your webcam as ASCII without connecting anywhere
+ascii-chat mirror --palette blocks`}</CodeBlock>
               </div>
 
               <div>
                 <h3 className="text-xl font-semibold text-purple-300 mb-3">
                   Rainbow matrix effect
                 </h3>
-                <pre className="bg-gray-900  rounded-lg p-4 overflow-x-auto">
-                  <code className="text-teal-300">
-                    <span className="text-gray-500">{`# Digital rain effect with rainbow colors
-`}</span>
-                    {`ascii-chat mirror --color-filter rainbow --matrix`}
-                  </code>
-                </pre>
+                <CodeBlock language="bash">{`# Digital rain effect with rainbow colors
+ascii-chat mirror --color-filter rainbow --matrix`}</CodeBlock>
               </div>
 
               <div>
                 <h3 className="text-xl font-semibold text-cyan-300 mb-3">
                   Capture ASCII selfie to file
                 </h3>
-                <pre className="bg-gray-900  rounded-lg p-4 overflow-x-auto">
-                  <code className="text-teal-300">
-                    <span className="text-gray-500">{`# Take a snapshot from your webcam and save to file
-`}</span>
-                    {`ascii-chat --color mirror --snapshot --render-mode half-block > selfie.txt`}
-                  </code>
-                </pre>
+                <CodeBlock language="bash">{`# Take a snapshot from your webcam and save to file
+ascii-chat --color mirror --snapshot --render-mode half-block > selfie.txt`}</CodeBlock>
               </div>
 
               <div>
                 <h3 className="text-xl font-semibold text-purple-300 mb-3">
                   Stream video file as ASCII art
                 </h3>
-                <pre className="bg-gray-900  rounded-lg p-4 overflow-x-auto">
-                  <code className="text-teal-300">
-                    <span className="text-gray-500">{`# Play MP4 video as ASCII (also works with MOV, AVI, MKV, WebM, GIF, ...)
-`}</span>
-                    {`ascii-chat mirror --file video.mp4`}
-                  </code>
-                </pre>
+                <CodeBlock language="bash">{`# Play MP4 video as ASCII (also works with MOV, AVI, MKV, WebM, GIF, ...)
+ascii-chat mirror --file video.mp4`}</CodeBlock>
               </div>
 
               <div>
                 <h3 className="text-xl font-semibold text-teal-300 mb-3">
                   Stream YouTube as ASCII art
                 </h3>
-                <pre className="bg-gray-900  rounded-lg p-4 overflow-x-auto">
-                  <code className="text-teal-300">
-                    <span className="text-gray-500">{`# Watch YouTube video as ASCII art locally (mirror mode)
-`}</span>
-                    {`ascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM' -s 38:29 --color-mode truecolor
-`}
-                    <span className="text-gray-500">{`
+                <CodeBlock language="bash">{`# Watch YouTube video as ASCII art locally (mirror mode)
+ascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM' -s 38:29 --color-mode truecolor
+
 # Share YouTube video with others in a call (client mode)
-`}</span>
-                    {`ascii-chat happy-sunset-ocean --url 'https://youtu.be/7ynHVGCehoM' -s 38:29`}
-                  </code>
-                </pre>
+ascii-chat happy-sunset-ocean --url 'https://youtu.be/7ynHVGCehoM' -s 38:29`}</CodeBlock>
               </div>
 
               <div>
                 <h3 className="text-xl font-semibold text-teal-300 mb-3">
                   Convert video to ASCII and preview
                 </h3>
-                <pre className="bg-gray-900  rounded-lg p-4 overflow-x-auto">
-                  <code className="text-teal-300">
-                    <span className="text-gray-500">{`# Convert video frame to ASCII and preview first 30 lines
-`}</span>
-                    {`ascii-chat mirror --file video.mp4 --snapshot | head -30`}
-                  </code>
-                </pre>
+                <CodeBlock language="bash">{`# Convert video frame to ASCII and preview first 30 lines
+ascii-chat mirror --file video.mp4 --snapshot | head -30`}</CodeBlock>
               </div>
 
               <div>
                 <h3 className="text-xl font-semibold text-purple-300 mb-3">
                   Play animated GIF
                 </h3>
-                <pre className="bg-gray-900  rounded-lg p-4 overflow-x-auto">
-                  <code className="text-teal-300">
-                    <span className="text-gray-500">{`# Loop an animated GIF continuously
-`}</span>
-                    {`ascii-chat mirror --file animation.gif --loop`}
-                  </code>
-                </pre>
+                <CodeBlock language="bash">{`# Loop an animated GIF continuously
+ascii-chat mirror --file animation.gif --loop`}</CodeBlock>
               </div>
 
               <div>
                 <h3 className="text-xl font-semibold text-cyan-300 mb-3">
                   Convert image to ASCII
                 </h3>
-                <pre className="bg-gray-900  rounded-lg p-4 overflow-x-auto">
-                  <code className="text-teal-300">
-                    <span className="text-gray-500">{`# Display JPEG or PNG image as ASCII art
-`}</span>
-                    {`ascii-chat mirror --file photo.jpg --snapshot`}
-                  </code>
-                </pre>
+                <CodeBlock language="bash">{`# Display JPEG or PNG image as ASCII art
+ascii-chat mirror --file photo.jpg --snapshot`}</CodeBlock>
               </div>
 
               <div>
                 <h3 className="text-xl font-semibold text-pink-300 mb-3">
                   Pipe video through stdin
                 </h3>
-                <pre className="bg-gray-900  rounded-lg p-4 overflow-x-auto">
-                  <code className="text-teal-300">
-                    <span className="text-gray-500">{`# Stream from stdin (useful for chaining commands)
-`}</span>
-                    {`cat video.mp4 | ascii-chat mirror --file -`}
-                  </code>
-                </pre>
+                <CodeBlock language="bash">{`# Stream from stdin (useful for chaining commands)
+cat video.mp4 | ascii-chat mirror --file -`}</CodeBlock>
               </div>
             </div>
           </section>
@@ -656,19 +556,15 @@ ascii-chat happy-sunset-ocean`}
                   <div className="space-y-3">
                     <div>
                       <p className="text-gray-400 text-sm mb-2">Homebrew:</p>
-                      <pre className="bg-gray-900  rounded p-3">
-                        <code className="text-teal-300">{`brew install zfogg/ascii-chat/ascii-chat  # includes libasciichat`}</code>
-                      </pre>
+                      <CodeBlock language="bash">{`brew install zfogg/ascii-chat/ascii-chat  # includes libasciichat`}</CodeBlock>
                     </div>
                     <div>
                       <p className="text-gray-400 text-sm mb-2">
                         Arch Linux (AUR):
                       </p>
-                      <pre className="bg-gray-900  rounded p-3">
-                        <code className="text-teal-300">{`paru -S libasciichat
+                      <CodeBlock language="bash">{`paru -S libasciichat
 # or for latest git version
-paru -S libasciichat-git`}</code>
-                      </pre>
+paru -S libasciichat-git`}</CodeBlock>
                     </div>
                     <div>
                       <p className="text-gray-400 text-sm mb-2">
@@ -701,31 +597,25 @@ paru -S libasciichat-git`}</code>
                     <h4 className="text-cyan-400 font-semibold mb-2">
                       With pkg-config:
                     </h4>
-                    <pre className="bg-gray-900  rounded-lg p-3 overflow-x-auto">
-                      <code className="text-teal-300">{`gcc myapp.c $(pkg-config --cflags --libs libasciichat) -o myapp`}</code>
-                    </pre>
+                    <CodeBlock language="bash">{`gcc myapp.c $(pkg-config --cflags --libs libasciichat) -o myapp`}</CodeBlock>
                   </div>
 
                   <div>
                     <h4 className="text-purple-400 font-semibold mb-2">
                       With CMake:
                     </h4>
-                    <pre className="bg-gray-900  rounded-lg p-3 overflow-x-auto">
-                      <code className="text-teal-300">{`find_package(libasciichat REQUIRED)
-target_link_libraries(myapp libasciichat::libasciichat)`}</code>
-                    </pre>
+                    <CodeBlock language="bash">{`find_package(libasciichat REQUIRED)
+target_link_libraries(myapp libasciichat::libasciichat)`}</CodeBlock>
                   </div>
 
                   <div>
                     <h4 className="text-pink-400 font-semibold mb-2">
                       Include headers:
                     </h4>
-                    <pre className="bg-gray-900  rounded-lg p-3 overflow-x-auto">
-                      <code className="text-teal-300">{`#include <ascii-chat/video/ascii.h>
+                    <CodeBlock language="bash">{`#include <ascii-chat/video/ascii.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/network/network.h>
-#include <ascii-chat/crypto/crypto.h>`}</code>
-                    </pre>
+#include <ascii-chat/crypto/crypto.h>`}</CodeBlock>
                   </div>
                 </div>
               </div>

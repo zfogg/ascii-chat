@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import Footer from "../../components/Footer";
 import TrackedLink from "../../components/TrackedLink";
+import { CodeBlock } from "@ascii-chat/shared/components";
 import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
 import { AsciiChatHead } from "../../components/AsciiChatHead";
 
@@ -495,39 +496,28 @@ export default function Crypto() {
                 <h3 className="text-xl font-semibold text-cyan-300 mb-3">
                   Server with SSH key
                 </h3>
-                <pre className="bg-gray-900 border border-gray-800 rounded-lg p-4 overflow-x-auto">
-                  <code className="text-teal-300">{`# Server authenticates with its key
-ascii-chat server --key ~/.ssh/id_ed25519`}</code>
-                </pre>
+                <CodeBlock language="bash">{`# Server authenticates with its key
+ascii-chat server --key ~/.ssh/id_ed25519`}</CodeBlock>
               </div>
 
               <div>
                 <h3 className="text-xl font-semibold text-purple-300 mb-3">
                   Client connects with their key
                 </h3>
-                <pre className="bg-gray-900 border border-gray-800 rounded-lg p-4 overflow-x-auto">
-                  <code className="text-teal-300">{`# Client authenticates with their key
-ascii-chat happy-sunset-ocean --key ~/.ssh/id_ed25519`}</code>
-                </pre>
+                <CodeBlock language="bash">{`# Client authenticates with their key
+ascii-chat happy-sunset-ocean --key ~/.ssh/id_ed25519`}</CodeBlock>
               </div>
 
               <div>
                 <h3 className="text-xl font-semibold text-pink-300 mb-3">
                   Encrypted SSH keys
                 </h3>
-                <pre className="bg-gray-900 border border-gray-800 rounded-lg p-4 overflow-x-auto">
-                  <code className="text-teal-300">
-                    <span className="text-gray-500">{`# Prompts for passphrase or uses ssh-agent
-`}</span>
-                    {`ascii-chat server --key ~/.ssh/id_ed25519_encrypted
+                <CodeBlock language="bash">{`# Prompts for passphrase or uses ssh-agent
+ascii-chat server --key ~/.ssh/id_ed25519_encrypted
 
-`}
-                    <span className="text-gray-500">{`# Or set passphrase via environment variable
-`}</span>
-                    {`export ASCII_CHAT_KEY_PASSWORD="my-passphrase"
-ascii-chat server --key ~/.ssh/id_ed25519_encrypted`}
-                  </code>
-                </pre>
+# Or set passphrase via environment variable
+export ASCII_CHAT_KEY_PASSWORD="my-passphrase"
+ascii-chat server --key ~/.ssh/id_ed25519_encrypted`}</CodeBlock>
                 <p className="text-gray-400 text-sm mt-3">
                   See the{" "}
                   <TrackedLink
@@ -560,18 +550,11 @@ ascii-chat server --key ~/.ssh/id_ed25519_encrypted`}
                 <h3 className="text-xl font-semibold text-cyan-300 mb-3">
                   Using GPG key ID
                 </h3>
-                <pre className="bg-gray-900 border border-gray-800 rounded-lg p-4 overflow-x-auto">
-                  <code className="text-teal-300">
-                    <span className="text-gray-500">{`# Server with GPG key (short/long/full fingerprint)
-`}</span>
-                    {`ascii-chat server --key gpg:7FE90A79F2E80ED3
+                <CodeBlock language="bash">{`# Server with GPG key (short/long/full fingerprint)
+ascii-chat server --key gpg:7FE90A79F2E80ED3
 
-`}
-                    <span className="text-gray-500">{`# Client connects with their GPG key
-`}</span>
-                    {`ascii-chat happy-sunset-ocean --key gpg:897607FA43DC66F612710AF97FE90A79F2E80ED3`}
-                  </code>
-                </pre>
+# Client connects with their GPG key
+ascii-chat happy-sunset-ocean --key gpg:897607FA43DC66F612710AF97FE90A79F2E80ED3`}</CodeBlock>
               </div>
             </div>
           </section>
@@ -592,36 +575,22 @@ ascii-chat server --key ~/.ssh/id_ed25519_encrypted`}
                 <h3 className="text-xl font-semibold text-purple-300 mb-3">
                   Password-only
                 </h3>
-                <pre className="bg-gray-900 border border-gray-800 rounded-lg p-4 overflow-x-auto">
-                  <code className="text-teal-300">
-                    <span className="text-gray-500">{`# Server sets password
-`}</span>
-                    {`ascii-chat server --password "correct-horse-battery-staple"
+                <CodeBlock language="bash">{`# Server sets password
+ascii-chat server --password "correct-horse-battery-staple"
 
-`}
-                    <span className="text-gray-500">{`# Client must know the password
-`}</span>
-                    {`ascii-chat client 192.168.1.100 --password "correct-horse-battery-staple"`}
-                  </code>
-                </pre>
+# Client must know the password
+ascii-chat client 192.168.1.100 --password "correct-horse-battery-staple"`}</CodeBlock>
               </div>
 
               <div>
                 <h3 className="text-xl font-semibold text-cyan-300 mb-3">
                   Key + Password (maximum security)
                 </h3>
-                <pre className="bg-gray-900 border border-gray-800 rounded-lg p-4 overflow-x-auto">
-                  <code className="text-teal-300">
-                    <span className="text-gray-500">{`# Both SSH key and password required
-`}</span>
-                    {`ascii-chat server --key ~/.ssh/id_ed25519 --password "extra-secret"
+                <CodeBlock language="bash">{`# Both SSH key and password required
+ascii-chat server --key ~/.ssh/id_ed25519 --password "extra-secret"
 
-`}
-                    <span className="text-gray-500">{`# Client needs both to connect
-`}</span>
-                    {`ascii-chat happy-sunset-ocean --key ~/.ssh/id_ed25519 --password "extra-secret"`}
-                  </code>
-                </pre>
+# Client needs both to connect
+ascii-chat happy-sunset-ocean --key ~/.ssh/id_ed25519 --password "extra-secret"`}</CodeBlock>
               </div>
             </div>
           </section>
@@ -642,44 +611,27 @@ ascii-chat server --key ~/.ssh/id_ed25519_encrypted`}
                 <h3 className="text-xl font-semibold text-purple-300 mb-3">
                   Verify with local public key file
                 </h3>
-                <pre className="bg-gray-900 border border-gray-800 rounded-lg p-4 overflow-x-auto">
-                  <code className="text-teal-300">
-                    <span className="text-gray-500">{`# Client verifies server identity
-`}</span>
-                    {`ascii-chat happy-sunset-ocean --server-key ~/.ssh/server1.pub`}
-                  </code>
-                </pre>
+                <CodeBlock language="bash">{`# Client verifies server identity
+ascii-chat happy-sunset-ocean --server-key ~/.ssh/server1.pub`}</CodeBlock>
               </div>
 
               <div>
                 <h3 className="text-xl font-semibold text-teal-300 mb-3">
                   Verify with GitHub/GitLab GPG keys
                 </h3>
-                <pre className="bg-gray-900 border border-gray-800 rounded-lg p-4 overflow-x-auto">
-                  <code className="text-teal-300">
-                    <span className="text-gray-500">{`# Fetches server's GPG keys from GitHub
-`}</span>
-                    {`ascii-chat happy-sunset-ocean --server-key github:zfogg.gpg
+                <CodeBlock language="bash">{`# Fetches server's GPG keys from GitHub
+ascii-chat happy-sunset-ocean --server-key github:zfogg.gpg
 
-`}
-                    <span className="text-gray-500">{`# Or from GitLab
-`}</span>
-                    {`ascii-chat happy-sunset-ocean --server-key gitlab:zfogg.gpg`}
-                  </code>
-                </pre>
+# Or from GitLab
+ascii-chat happy-sunset-ocean --server-key gitlab:zfogg.gpg`}</CodeBlock>
               </div>
 
               <div>
                 <h3 className="text-xl font-semibold text-pink-300 mb-3">
                   Verify with GPG key ID
                 </h3>
-                <pre className="bg-gray-900 border border-gray-800 rounded-lg p-4 overflow-x-auto">
-                  <code className="text-teal-300">
-                    <span className="text-gray-500">{`# Verify against specific GPG key
-`}</span>
-                    {`ascii-chat happy-sunset-ocean --server-key gpg:897607FA43DC66F6`}
-                  </code>
-                </pre>
+                <CodeBlock language="bash">{`# Verify against specific GPG key
+ascii-chat happy-sunset-ocean --server-key gpg:897607FA43DC66F6`}</CodeBlock>
               </div>
             </div>
           </section>
@@ -712,11 +664,7 @@ ascii-chat server --key ~/.ssh/id_ed25519_encrypted`}
                     <p className="text-gray-400 text-sm mb-1">
                       Unix/Linux/macOS:
                     </p>
-                    <pre className="bg-gray-950 border border-gray-800 rounded p-3">
-                      <code className="text-teal-300">
-                        ~/.config/ascii-chat/known_hosts
-                      </code>
-                    </pre>
+                    <CodeBlock language="text">{``}</CodeBlock>
                     <p className="text-gray-400 text-xs mt-1">
                       (or{" "}
                       <code className="text-purple-400 bg-gray-950 px-1 py-0.5 rounded">
@@ -727,11 +675,7 @@ ascii-chat server --key ~/.ssh/id_ed25519_encrypted`}
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm mb-1">Windows:</p>
-                    <pre className="bg-gray-950 border border-gray-800 rounded p-3">
-                      <code className="text-teal-300">
-                        %APPDATA%\ascii-chat\known_hosts
-                      </code>
-                    </pre>
+                    <CodeBlock language="text">{``}</CodeBlock>
                   </div>
                 </div>
                 <p className="text-gray-300 text-sm mt-3">
@@ -747,15 +691,11 @@ ascii-chat server --key ~/.ssh/id_ed25519_encrypted`}
                 <p className="text-gray-300 mb-3">
                   Each line represents one known server:
                 </p>
-                <pre className="bg-gray-950 border border-gray-800 rounded p-3 overflow-x-auto">
-                  <code className="text-teal-300">{`<IP:port> x25519 <hex_public_key> [optional comment]`}</code>
-                </pre>
+                <CodeBlock language="text">{`<IP:port> x25519 <hex_public_key> [optional comment]`}</CodeBlock>
                 <p className="text-gray-300 mb-3 mt-3">Example entries:</p>
-                <pre className="bg-gray-950 border border-gray-800 rounded p-3 overflow-x-auto text-sm">
-                  <code className="text-teal-300">{`192.168.1.100:27015 x25519 a1b2c3d4... server-laptop
+                <CodeBlock language="text">{`192.168.1.100:27015 x25519 a1b2c3d4... server-laptop
 10.0.0.5:27015 x25519 5e6f7890... production-server
-[2001:db8::1]:27015 x25519 12345678... ipv6-server`}</code>
-                </pre>
+[2001:db8::1]:27015 x25519 12345678... ipv6-server`}</CodeBlock>
                 <p className="text-gray-300 text-sm mt-3">
                   <strong className="text-purple-400">Note:</strong> IPv6
                   addresses use bracket notation{" "}
@@ -802,8 +742,7 @@ ascii-chat server --key ~/.ssh/id_ed25519_encrypted`}
                 <p className="text-gray-300 mb-3">
                   If a server's key changes, you'll see a warning like:
                 </p>
-                <pre className="bg-gray-950 border border-red-800 rounded p-3 text-sm overflow-x-auto">
-                  <code className="text-red-300">{`@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+                <CodeBlock language="text">{`@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 @    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!    @
 @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -814,8 +753,7 @@ The server's key has changed:
   Expected: a1b2c3d4...
   Received: 9f8e7d6c...
 
-Connection refused. Remove the old key from known_hosts to continue.`}</code>
-                </pre>
+Connection refused. Remove the old key from known_hosts to continue.`}</CodeBlock>
               </div>
 
               <div className="bg-gray-900/50 border border-pink-900/30 rounded-lg p-6">
@@ -860,12 +798,10 @@ Connection refused. Remove the old key from known_hosts to continue.`}</code>
                       in a text editor and delete the line for that IP:port
                       combination:
                     </p>
-                    <pre className="bg-gray-950 border border-gray-800 rounded p-3 text-sm">
-                      <code className="text-teal-300">{`# Before (remove this line):
+                    <CodeBlock language="text">{`# Before (remove this line):
 192.168.1.100:27015 x25519 a1b2c3d4... old-key
 
-# After (line deleted):`}</code>
-                    </pre>
+# After (line deleted):`}</CodeBlock>
                     <p className="text-gray-300 text-sm mt-2">
                       Alternatively, delete the entire file to remove all known
                       hosts:{" "}
@@ -943,39 +879,24 @@ Connection refused. Remove the old key from known_hosts to continue.`}</code>
                     <h4 className="text-lg font-semibold text-cyan-300 mb-3">
                       Whitelist file (authorized_keys format)
                     </h4>
-                    <pre className="bg-gray-900 border border-gray-800 rounded-lg p-4 overflow-x-auto">
-                      <code className="text-teal-300">
-                        <span className="text-gray-500">{`# Create allowed_clients.txt with one public key per line
-`}</span>
-                        {`cat allowed_clients.txt
-`}
-                        <span className="text-gray-500">{`# ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIF... alice@example.com
+                    <CodeBlock language="bash">{`# Create allowed_clients.txt with one public key per line
+cat allowed_clients.txt
+# ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIF... alice@example.com
 # ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIG... bob@example.com
 
-`}</span>
-                        <span className="text-gray-500">{`# Server only accepts whitelisted clients
-`}</span>
-                        {`ascii-chat server --key ~/.ssh/id_ed25519 --client-keys allowed_clients.txt`}
-                      </code>
-                    </pre>
+# Server only accepts whitelisted clients
+ascii-chat server --key ~/.ssh/id_ed25519 --client-keys allowed_clients.txt`}</CodeBlock>
                   </div>
 
                   <div>
                     <h4 className="text-lg font-semibold text-purple-300 mb-3">
                       Whitelist GitHub user's GPG keys
                     </h4>
-                    <pre className="bg-gray-900 border border-gray-800 rounded-lg p-4 overflow-x-auto">
-                      <code className="text-teal-300">
-                        <span className="text-gray-500">{`# Fetch all GPG keys from GitHub user
-`}</span>
-                        {`ascii-chat server --key gpg:MYKEYID --client-keys github:zfogg.gpg
+                    <CodeBlock language="bash">{`# Fetch all GPG keys from GitHub user
+ascii-chat server --key gpg:MYKEYID --client-keys github:zfogg.gpg
 
-`}
-                        <span className="text-gray-500">{`# Client must authenticate with their GPG key
-`}</span>
-                        {`ascii-chat happy-sunset-ocean --key gpg:897607FA43DC66F6`}
-                      </code>
-                    </pre>
+# Client must authenticate with their GPG key
+ascii-chat happy-sunset-ocean --key gpg:897607FA43DC66F6`}</CodeBlock>
                   </div>
                 </div>
               </div>
@@ -993,52 +914,32 @@ Connection refused. Remove the old key from known_hosts to continue.`}</code>
                     <h4 className="text-lg font-semibold text-teal-300 mb-3">
                       Verify with local key file
                     </h4>
-                    <pre className="bg-gray-900 border border-gray-800 rounded-lg p-4 overflow-x-auto">
-                      <code className="text-teal-300">
-                        <span className="text-gray-500">{`# Client verifies server matches this exact key
-`}</span>
-                        {`ascii-chat happy-sunset-ocean --server-key ~/.ssh/known_server.pub`}
-                      </code>
-                    </pre>
+                    <CodeBlock language="bash">{`# Client verifies server matches this exact key
+ascii-chat happy-sunset-ocean --server-key ~/.ssh/known_server.pub`}</CodeBlock>
                   </div>
 
                   <div>
                     <h4 className="text-lg font-semibold text-pink-300 mb-3">
                       Verify with GitHub SSH keys
                     </h4>
-                    <pre className="bg-gray-900 border border-gray-800 rounded-lg p-4 overflow-x-auto">
-                      <code className="text-teal-300">
-                        <span className="text-gray-500">{`# Fetches server's SSH keys from GitHub
-`}</span>
-                        {`ascii-chat happy-sunset-ocean --server-key github:zfogg.keys`}
-                      </code>
-                    </pre>
+                    <CodeBlock language="bash">{`# Fetches server's SSH keys from GitHub
+ascii-chat happy-sunset-ocean --server-key github:zfogg.keys`}</CodeBlock>
                   </div>
 
                   <div>
                     <h4 className="text-lg font-semibold text-cyan-300 mb-3">
                       Verify with GitHub GPG keys
                     </h4>
-                    <pre className="bg-gray-900 border border-gray-800 rounded-lg p-4 overflow-x-auto">
-                      <code className="text-teal-300">
-                        <span className="text-gray-500">{`# Fetches server's GPG keys from GitHub
-`}</span>
-                        {`ascii-chat happy-sunset-ocean --server-key github:zfogg.gpg`}
-                      </code>
-                    </pre>
+                    <CodeBlock language="bash">{`# Fetches server's GPG keys from GitHub
+ascii-chat happy-sunset-ocean --server-key github:zfogg.gpg`}</CodeBlock>
                   </div>
 
                   <div>
                     <h4 className="text-lg font-semibold text-purple-300 mb-3">
                       Verify with GPG key ID
                     </h4>
-                    <pre className="bg-gray-900 border border-gray-800 rounded-lg p-4 overflow-x-auto">
-                      <code className="text-teal-300">
-                        <span className="text-gray-500">{`# Verify against specific GPG key from keyring
-`}</span>
-                        {`ascii-chat happy-sunset-ocean --server-key gpg:897607FA43DC66F6`}
-                      </code>
-                    </pre>
+                    <CodeBlock language="bash">{`# Verify against specific GPG key from keyring
+ascii-chat happy-sunset-ocean --server-key gpg:897607FA43DC66F6`}</CodeBlock>
                   </div>
                 </div>
               </div>
@@ -1059,18 +960,11 @@ Connection refused. Remove the old key from known_hosts to continue.`}</code>
               </p>
             </div>
 
-            <pre className="bg-gray-900 border border-gray-800 rounded-lg p-4 overflow-x-auto">
-              <code className="text-teal-300">
-                <span className="text-gray-500">{`# Server with encryption disabled
-`}</span>
-                {`ascii-chat server --no-encrypt
+            <CodeBlock language="bash">{`# Server with encryption disabled
+ascii-chat server --no-encrypt
 
-`}
-                <span className="text-gray-500">{`# Client must also disable encryption
-`}</span>
-                {`ascii-chat client 127.0.0.1 --no-encrypt`}
-              </code>
-            </pre>
+# Client must also disable encryption
+ascii-chat client 127.0.0.1 --no-encrypt`}</CodeBlock>
 
             <div className="bg-cyan-900/20 border border-cyan-700/50 rounded-lg p-4 mt-6">
               <p className="text-gray-300 text-sm">
