@@ -1,11 +1,10 @@
 /* Import Tailwind and shared styles */
 @import 'tailwindcss';
+@import '@ascii-chat/shared/styles/base.css';
 
 /* Tell Tailwind v4 which files to scan for classes */
 @source "../packages/shared/src";
 @source "../../packages/shared/src";
-
-@import '@ascii-chat/shared/styles/base.css';
 
 @layer base {
   body {

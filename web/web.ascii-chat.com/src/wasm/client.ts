@@ -7,8 +7,9 @@ interface ClientModuleExports {
   _client_cleanup(): void;
   _client_generate_keypair(): number;
   _client_get_public_key_hex(): number;
-  _client_set_server_public_key(pubkey_hex_ptr: number): number;
-  _client_perform_handshake(): number;
+  _client_handle_key_exchange_init(packet_ptr: number, packet_len: number): number;
+  _client_handle_auth_challenge(packet_ptr: number, packet_len: number): number;
+  _client_handle_handshake_complete(packet_ptr: number, packet_len: number): number;
   _client_encrypt_packet(pt_ptr: number, pt_len: number, ct_ptr: number, out_len_ptr: number): number;
   _client_decrypt_packet(ct_ptr: number, ct_len: number, pt_ptr: number, out_len_ptr: number): number;
   _client_parse_packet(pkt_ptr: number, len: number): number;
@@ -26,12 +27,14 @@ interface ClientModule {
   UTF8ToString(ptr: number): string;
   stringToUTF8(str: string, outPtr: number, maxBytesToWrite: number): void;
   lengthBytesUTF8(str: string): number;
+  sendPacketCallback?: (packetType: number, payload: Uint8Array) => void;
   _client_init_with_args: ClientModuleExports['_client_init_with_args'];
   _client_cleanup: ClientModuleExports['_client_cleanup'];
   _client_generate_keypair: ClientModuleExports['_client_generate_keypair'];
   _client_get_public_key_hex: ClientModuleExports['_client_get_public_key_hex'];
-  _client_set_server_public_key: ClientModuleExports['_client_set_server_public_key'];
-  _client_perform_handshake: ClientModuleExports['_client_perform_handshake'];
+  _client_handle_key_exchange_init: ClientModuleExports['_client_handle_key_exchange_init'];
+  _client_handle_auth_challenge: ClientModuleExports['_client_handle_auth_challenge'];
+  _client_handle_handshake_complete: ClientModuleExports['_client_handle_handshake_complete'];
   _client_encrypt_packet: ClientModuleExports['_client_encrypt_packet'];
   _client_decrypt_packet: ClientModuleExports['_client_decrypt_packet'];
   _client_parse_packet: ClientModuleExports['_client_parse_packet'];
