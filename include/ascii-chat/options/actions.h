@@ -198,3 +198,12 @@ void action_completions(const char *shell_name, const char *output_path);
  * Exits with code 0 on success, 1 on error.
  */
 void action_check_update(void);
+
+/**
+ * @brief Execute update check immediately (for binary-level execution)
+ *
+ * Performs immediate update check and exits. Used when --check-update is
+ * specified before mode detection.
+ * Exits with code 0 on success, 1 on error.
+ */
+void action_check_update_immediate(void);

@@ -1543,6 +1543,14 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
   }
 
   // Check if option applies to current mode based on the passed mode_bitmask
+  // First, reject binary-only options when parsing mode-specific arguments
+  if ((desc->mode_bitmask == OPTION_MODE_BINARY) && (mode_bitmask != OPTION_MODE_BINARY)) {
+    // This is a binary-level-only option, but we're parsing mode-specific arguments
+    SAFE_FREE(arg_copy);
+    return SET_ERRNO(ERROR_USAGE, "Option %s is a binary-level option and must be specified before the mode", arg);
+  }
+
+  // Then check mode-specific options
   if (desc->mode_bitmask != 0 && !(desc->mode_bitmask & OPTION_MODE_BINARY)) {
     // Option has specific mode restrictions - use the passed mode_bitmask directly
     if (!(desc->mode_bitmask & mode_bitmask)) {

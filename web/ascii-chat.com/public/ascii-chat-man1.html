@@ -91,9 +91,10 @@
 <div class="Bd-indent"><b>Examples:</b>
 <div class="Bd-indent">
 <pre>(empty) start new session
-charcoal-bounce-marshal
-perky-tide-trader
-sedate-brew-enough</pre>
+fearsome-aid-orange
+sec-counselor-cliff
+funny-stag-fold
+initial-bum-cupid --matrix --color-fil</pre>
 </div>
 </div>
 <dl class="Bl-tag">
@@ -162,48 +163,46 @@ ascii-chat.com
 <dl class="Bl-tag">
   <dt id="ascii-chat"><a class="permalink" href="#ascii-chat"><b>ascii-chat</b></a></dt>
   <dd>Start new session (share the session string)</dd>
-  <dt><b>ascii-chat size-mend-bulk</b></dt>
+  <dt><b>ascii-chat sexy-ghetto-athlete</b></dt>
   <dd>Join a session using the session string</dd>
-  <dt><b>ascii-chat wealthy-rhythm-hallway --discovery-ser</b></dt>
+  <dt><b>ascii-chat dizzy-main-shuttle --discovery-service</b></dt>
   <dd>Join session via custom discovery server</dd>
-  <dt><b>ascii-chat tod-feather-overlook -f video.mp4</b></dt>
+  <dt><b>ascii-chat marital-gunpowder-fish -f video.mp4</b></dt>
   <dd>Join session and stream from local video file</dd>
-  <dt><b>ascii-chat preposterous-wish-babysitter --url 'ht</b></dt>
+  <dt><b>ascii-chat favourite-velocity-signora --url 'http</b></dt>
   <dd>Join session and stream from YouTube video</dd>
-  <dt><b>ascii-chat firstborn-fruit-perfume -f '-'</b></dt>
+  <dt><b>ascii-chat spontaneous-noose-company -f '-'</b></dt>
   <dd>Join session and stream media from stdin (cat file.mov | ascii-chat ... -f
       '-')</dd>
-  <dt><b>ascii-chat social-medic-drought --palette-chars '</b></dt>
+  <dt><b>ascii-chat olympic-supper-coco --palette-chars '@</b></dt>
   <dd>Join session with custom ASCII palette characters</dd>
   <dt><b>ascii-chat server</b></dt>
   <dd>Start on localhost (127.0.0.1 and ::1)</dd>
-  <dt><b>ascii-chat server 0.0.0.0</b></dt>
+  <dt><b>ascii-chat discovery-service 0.0.0.0</b></dt>
   <dd>Start on all IPv4 interfaces</dd>
-  <dt><b>ascii-chat server 0.0.0.0 ::</b></dt>
+  <dt><b>ascii-chat discovery-service 0.0.0.0 ::</b></dt>
   <dd>Start on all IPv4 and IPv6 interfaces (dual-stack)</dd>
   <dt><b>ascii-chat server --port 8080</b></dt>
   <dd>Start on custom port</dd>
   <dt><b>ascii-chat server --key ~/.ssh/id_ed25519 --discovery</b></dt>
   <dd>Start with identity key and discovery registration</dd>
-  <dt><b>ascii-chat client example.com</b></dt>
-  <dd>Connect to specific server</dd>
+  <dt><b>ascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM'</b></dt>
+  <dd>Stream from YouTube URL (also supports RTSP, HTTP, and HTTPS URLs)</dd>
+  <dt><b>ascii-chat mirror -f video.mp4</b></dt>
+  <dd>Stream from local video file</dd>
+  <dt><b>ascii-chat mirror --palette-chars '@%#*+=-:. '</b></dt>
+  <dd>Use custom ASCII palette characters</dd>
+  <dt><b>ascii-chat mirror --snapshot</b></dt>
+  <dd>Capture single frame and exit</dd>
+  <dt><b>ascii-chat mirror --color-filter cyan --palette cool</b></dt>
+  <dd>Apply cyan color filter and cool palette</dd>
   <dt><b>ascii-chat client example.com</b></dt>
   <dd>Connect to remote server</dd>
   <dt><b>ascii-chat client example.com:8080</b></dt>
   <dd>Connect to remote server on custom port</dd>
-  <dt><b>ascii-chat client --url 'https://youtu.be/7ynHVGCehoM'</b></dt>
-  <dd>Stream from YouTube URL (also supports RTSP, HTTP, and HTTPS URLs)</dd>
-  <dt><b>ascii-chat client -f video.mp4</b></dt>
-  <dd>Stream from local video file</dd>
   <dt><b>ascii-chat client --color-mode mono --render-mode half-block --width
     120</b></dt>
   <dd>Connect with custom display options</dd>
-  <dt><b>ascii-chat client --palette-chars '@%#*+=-:. '</b></dt>
-  <dd>Use custom ASCII palette characters</dd>
-  <dt><b>ascii-chat client --snapshot</b></dt>
-  <dd>Capture single frame and exit</dd>
-  <dt><b>ascii-chat client --color-filter cyan --palette cool</b></dt>
-  <dd>Connect with cyan color filter and cool palette</dd>
   <dt><b>ascii-chat mirror</b></dt>
   <dd>View the webcam or files or URLs as ASCII art. Like client mode but
       without network connectivity or a server.</dd>
@@ -211,17 +210,13 @@ ascii-chat.com
   <dd>View webcam in black and white</dd>
   <dt><b>ascii-chat mirror --color-filter green</b></dt>
   <dd>View webcam with green monochromatic color filter</dd>
-  <dt><b>ascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM'</b></dt>
-  <dd>Stream from YouTube URL (also supports RTSP, HTTP, and HTTPS URLs)</dd>
-  <dt><b>ascii-chat mirror -f video.mp4</b></dt>
-  <dd>Stream from local video file (supports mp4, mkv, webm, mov, etc)</dd>
+  <dt><b>ascii-chat mirror --matrix --color-filter rainbow</b></dt>
+  <dd>Matrix rain effect with rainbow colors cycling over 3.5s</dd>
   <dt><b>ascii-chat mirror --file '-'</b></dt>
   <dd>Stream media from stdin (cat file.gif | ascii-chat mirror -f '-')</dd>
   <dt><b>ascii-chat mirror cat video.avi | ascii-chat mirror -f '-' -l -s
     00:30</b></dt>
   <dd>Stream .avi from stdin, looped, seeking to 00:30</dd>
-  <dt><b>ascii-chat mirror --palette-chars '@%#*+=-:. '</b></dt>
-  <dd>View with custom ASCII palette characters</dd>
   <dt><b>ascii-chat mirror --file video.mov --seek 22:10</b></dt>
   <dd>Start playback at exactly 22:10 (also works with --url)</dd>
   <dt><b>ascii-chat mirror -f 'https://youtu.be/LS9W8SO-Two' -S -D 0 -s
@@ -231,12 +226,6 @@ ascii-chat.com
   <dd>Capture single ASCII frame to clipboard (macOS) and file</dd>
   <dt><b>ascii-chat mirror pbpaste | cat -</b></dt>
   <dd>View ASCII frame from clipboard (macOS)</dd>
-  <dt><b>ascii-chat discovery-service</b></dt>
-  <dd>Start on localhost</dd>
-  <dt><b>ascii-chat discovery-service 0.0.0.0</b></dt>
-  <dd>Start on all IPv4 interfaces</dd>
-  <dt><b>ascii-chat discovery-service --port 5000</b></dt>
-  <dd>Start on custom port</dd>
   <dt><b>ascii-chat discovery-service --require-server-identity
     --require-client-identity</b></dt>
   <dd>Enforce identity verification for all parties
@@ -282,6 +271,12 @@ ascii-chat.com
     <i>[BOOLEAN]</i></b></a></dt>
   <dd>Disable system sleep prevention (allow OS to sleep). (default: false)
       (mode: global)</dd>
+  <dt id="check-update"><a class="permalink" href="#check-update"><b>--check-update</b></a></dt>
+  <dd>Check for updates from GitHub releases and exit. (mode: global)</dd>
+  <dt id="no-check-update"><a class="permalink" href="#no-check-update"><b>--no-check-update
+    <i>[BOOLEAN]</i></b></a></dt>
+  <dd>Disable automatic update checks at startup. (default: false) (modes:
+      global, client, server, mirror, discovery-service)</dd>
 </dl>
 </section>
 <section class="Ss">
@@ -381,9 +376,9 @@ ascii-chat.com
   <dt id="color-filter"><a class="permalink" href="#color-filter"><b>--color-filter
     <i>VALUE</i></b></a></dt>
   <dd>Apply a monochromatic color tint to grayscale video. Values: none, black,
-      white, green, magenta, fuchsia, orange, teal, cyan, pink, red, yellow.
-      Using --color-filter automatically sets --color-mode to mono. (modes:
-      default, client, mirror)</dd>
+      white, green, magenta, fuchsia, orange, teal, cyan, pink, red, yellow,
+      rainbow. Using --color-filter automatically sets --color-mode to mono.
+      (modes: default, client, mirror)</dd>
   <dt id="M,"><a class="permalink" href="#M,"><b>-M, --render-mode
     <i>VALUE</i></b></a></dt>
   <dd>Render mode of text for your client to display. Values: foreground,
@@ -421,6 +416,11 @@ ascii-chat.com
       program prints the first frame. --snapshot --snapshot-delay=0 will print
       the first frame and exit. (default: 4.00) (modes: default, client,
     mirror)</dd>
+  <dt id="matrix"><a class="permalink" href="#matrix"><b>--matrix
+    <i>[BOOLEAN]</i></b></a></dt>
+  <dd>Enable Matrix-style digital rain effect. Works with --render-mode
+      truecolor|256 and --color-filter [color]. (default: false) (modes:
+      default, client, mirror)</dd>
 </dl>
 </section>
 <section class="Ss">
@@ -1139,6 +1139,8 @@ ascii-chat.com
   <dd>See: <b>--log-level</b></dd>
   <dt id="ASCII_CHAT_LOOP"><a class="permalink" href="#ASCII_CHAT_LOOP"><b>ASCII_CHAT_LOOP</b></a></dt>
   <dd>See: <b>--loop</b></dd>
+  <dt id="ASCII_CHAT_MATRIX"><a class="permalink" href="#ASCII_CHAT_MATRIX"><b>ASCII_CHAT_MATRIX</b></a></dt>
+  <dd>See: <b>--matrix</b></dd>
   <dt id="ASCII_CHAT_MAX_CLIENTS"><a class="permalink" href="#ASCII_CHAT_MAX_CLIENTS"><b>ASCII_CHAT_MAX_CLIENTS</b></a></dt>
   <dd>See: <b>--max-clients</b></dd>
   <dt id="ASCII_CHAT_MICROPHONE_INDEX"><a class="permalink" href="#ASCII_CHAT_MICROPHONE_INDEX"><b>ASCII_CHAT_MICROPHONE_INDEX</b></a></dt>
@@ -1149,6 +1151,8 @@ ascii-chat.com
   <dd>See: <b>--no-audio-mixer</b></dd>
   <dt id="ASCII_CHAT_NO_AUDIO_PLAYBACK"><a class="permalink" href="#ASCII_CHAT_NO_AUDIO_PLAYBACK"><b>ASCII_CHAT_NO_AUDIO_PLAYBACK</b></a></dt>
   <dd>See: <b>--no-audio-playback</b></dd>
+  <dt id="ASCII_CHAT_NO_CHECK_UPDATE"><a class="permalink" href="#ASCII_CHAT_NO_CHECK_UPDATE"><b>ASCII_CHAT_NO_CHECK_UPDATE</b></a></dt>
+  <dd>See: <b>--no-check-update</b></dd>
   <dt id="ASCII_CHAT_NO_COMPRESS"><a class="permalink" href="#ASCII_CHAT_NO_COMPRESS"><b>ASCII_CHAT_NO_COMPRESS</b></a></dt>
   <dd>See: <b>--no-compress</b></dd>
   <dt id="ASCII_CHAT_NO_COOKIES_FROM_BROWSER"><a class="permalink" href="#ASCII_CHAT_NO_COOKIES_FROM_BROWSER"><b>ASCII_CHAT_NO_COOKIES_FROM_BROWSER</b></a></dt>
@@ -1416,8 +1420,8 @@ ascii-chat.com
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">2026-02-07</td>
-    <td class="foot-os">ascii-chat 0.8.0</td>
+    <td class="foot-date">2026-02-08</td>
+    <td class="foot-os">ascii-chat 0.8.1</td>
   </tr>
 </table>
 </body>

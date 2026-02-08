@@ -235,6 +235,27 @@ void action_show_capabilities(void) {
 // Update Check Action
 // ============================================================================
 
+/**
+ * @brief Execute update check immediately (for early binary-level execution)
+ */
+void action_check_update_immediate(void) {
+  printf("Checking for updates...\n");
+  update_check_result_t result;
+  asciichat_error_t err = update_check_perform(&result);
+  if (err != ASCIICHAT_OK) {
+    printf("\nFailed to check for updates.\n\n");
+    exit(1);
+  }
+  if (result.update_available) {
+    char notification[1024];
+    update_check_format_notification(&result, notification, sizeof(notification));
+    printf("\n%s\n\n", notification);
+  } else {
+    printf("\nYou are already on the latest version: %s (%.8s)\n\n", result.current_version, result.current_sha);
+  }
+  exit(0);
+}
+
 void action_check_update(void) {
   // Defer execution until after options are fully parsed
   actions_defer(ACTION_CHECK_UPDATE, NULL);

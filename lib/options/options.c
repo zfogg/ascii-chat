@@ -229,6 +229,12 @@ static bool is_binary_level_option_with_args(const char *arg, bool *out_takes_ar
       *out_takes_optional_arg = true;
     return true;
   }
+  if (strcmp(opt_name, "check-update") == 0) {
+    return true;
+  }
+  if (strcmp(opt_name, "no-check-update") == 0) {
+    return true;
+  }
 
   return false;
 }
@@ -798,6 +804,15 @@ asciichat_error_t options_init(int argc, char **argv) {
   int parsed_color_setting = COLOR_SETTING_AUTO; // Store parsed color value until opts is created
   bool color_setting_found = false;
   for (int i = 1; i < argc; i++) {
+    // Stop scanning at mode name - binary-level options must come before the mode
+    if (argv[i][0] != '-') {
+      bool is_mode =
+          (strcmp(argv[i], "server") == 0 || strcmp(argv[i], "client") == 0 || strcmp(argv[i], "mirror") == 0 ||
+           strcmp(argv[i], "discovery") == 0 || strcmp(argv[i], "discovery-service") == 0);
+      if (is_mode) {
+        break; // Stop processing at mode name
+      }
+    }
     if (argv[i][0] == '-') {
       if (strcmp(argv[i], "--quiet") == 0 || strcmp(argv[i], "-q") == 0) {
         user_quiet = true;
@@ -871,6 +886,12 @@ asciichat_error_t options_init(int argc, char **argv) {
       if (strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-v") == 0) {
         show_version = true;
         has_action = true;
+        break;
+      }
+      if (strcmp(argv[i], "--check-update") == 0) {
+        has_action = true;
+        action_check_update_immediate();
+        // action_check_update_immediate() calls exit(), so we don't reach here
         break;
       }
       if (strcmp(argv[i], "--config-create") == 0) {
