@@ -467,7 +467,7 @@ to your shell profile.
 Passphrase for encrypted SSH or GPG private keys. Prefer to use ssh-agent or gpg-agent.
 .TP
 .B ASCII_CHAT_QUESTION_PROMPT_RESPONSE
-Stack-based automated responses for interactive prompts. Format: semicolon-separated values like 'y;n;password'. Supports escaping: \\; for literal semicolon, \\\\ for backslash. Useful for CI/CD pipelines, testing, and crypto workflows. Examples: 'pass\\;word;y' sends "pass;word" then "y". Invalid formats (';', ';;', ';y') are rejected and fall back to interactive prompting with warning logs.
+Stack-based automated responses for interactive prompts. Format: semicolon-separated values like 'y;n;password'. Supports escaping: \\; for literal semicolon, \\\\ for backslash. Useful for scripting. Examples: 'pass\\;word;y' sends "pass;word" then "y". Invalid formats (';', ';;', ';y') are rejected and fall back to interactive prompting with warning logs.
 .TP
 .B COLORTERM
 Terminal color capability indicator. Set by your terminal emulator to indicate

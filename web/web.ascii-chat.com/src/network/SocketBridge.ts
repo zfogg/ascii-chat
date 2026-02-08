@@ -36,6 +36,7 @@ export class SocketBridge {
     return new Promise((resolve, reject) => {
       try {
         // Server expects "acip" WebSocket subprotocol
+        console.log('[SocketBridge] Creating WebSocket connection to:', this.options.url);
         this.ws = new WebSocket(this.options.url, 'acip');
         this.ws.binaryType = 'arraybuffer';
 
@@ -49,6 +50,7 @@ export class SocketBridge {
 
         this.ws.onmessage = (event) => {
           const packet = new Uint8Array(event.data);
+          console.log('[SocketBridge] Received message, length:', packet.length);
           this.onPacketCallback?.(packet);
         };
 

@@ -125,6 +125,12 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       conn_data->fragment_capacity = 0;
     }
 
+    // Close the transport to mark it as disconnected
+    // This signals the receive thread to exit, allowing clean shutdown
+    if (conn_data->transport) {
+      conn_data->transport->methods->close(conn_data->transport);
+    }
+
     if (conn_data->handler_started) {
       // Wait for handler thread to complete (thread owns and destroys transport)
       asciichat_thread_join(&conn_data->handler_thread, NULL);
@@ -353,6 +359,9 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
 
   // Store server pointer in protocol user data so callbacks can access it
   websocket_protocols[0].user = server;
+
+  // Enable libwebsockets debug logging
+  lws_set_log_level(LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_INFO | LLL_DEBUG, NULL);
 
   // Configure libwebsockets context
   struct lws_context_creation_info info = {0};

@@ -56,13 +56,20 @@ typedef struct {
 // Lookup function: linear probing, returns handler index or -1 if not found
 static inline int handler_hash_lookup(const handler_hash_entry_t *table, packet_type_t type) {
   uint32_t h = HANDLER_HASH(type);
+  log_debug("HANDLER_HASH_LOOKUP: type=%d, hash=%u", type, h);
   for (int i = 0; i < HANDLER_HASH_SIZE; i++) {
     uint32_t slot = (h + i) % HANDLER_HASH_SIZE;
-    if (table[slot].key == 0)
+    log_debug("  Checking slot %u: key=%d, handler_idx=%d", slot, table[slot].key, table[slot].handler_idx);
+    if (table[slot].key == 0) {
+      log_debug("  Empty slot found - packet type %d not in hash table", type);
       return -1; // empty slot = not found
-    if (table[slot].key == type)
+    }
+    if (table[slot].key == type) {
+      log_debug("  Found match at slot %u, handler_idx=%d", slot, table[slot].handler_idx);
       return table[slot].handler_idx;
+    }
   }
+  log_debug("  No match found after checking all slots");
   return -1;
 }
 
@@ -98,9 +105,6 @@ static const handler_hash_entry_t g_server_handler_hash[HANDLER_HASH_SIZE] = {
     [0]  = {PACKET_TYPE_AUDIO_BATCH,                2},   // hash(4000)=0
     [1]  = {PACKET_TYPE_PROTOCOL_VERSION,           0},   // hash(1)=1
     [2]  = {PACKET_TYPE_AUDIO_OPUS_BATCH,           3},   // hash(4001)=1, probed->2
-    [3]  = {PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP,   16},  // hash(1103)=7, probed->3
-    [4]  = {PACKET_TYPE_CRYPTO_NO_ENCRYPTION,       18},  // hash(1101)=5, probed->4
-    [5]  = {PACKET_TYPE_CRYPTO_AUTH_RESPONSE,       17},  // hash(1105)=9, probed->5
     [8]  = {PACKET_TYPE_CLIENT_CAPABILITIES,        4},   // hash(5000)=8
     [9]  = {PACKET_TYPE_PING,                       5},   // hash(5001)=9
     [10] = {PACKET_TYPE_PONG,                       6},   // hash(5002)=10
@@ -108,11 +112,14 @@ static const handler_hash_entry_t g_server_handler_hash[HANDLER_HASH_SIZE] = {
     [12] = {PACKET_TYPE_CLIENT_LEAVE,               8},   // hash(5004)=12
     [13] = {PACKET_TYPE_STREAM_START,               9},   // hash(5005)=13
     [14] = {PACKET_TYPE_STREAM_STOP,                10},  // hash(5006)=14
+    [15] = {PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP,   16},  // hash(1103)=15
     [17] = {PACKET_TYPE_CRYPTO_REKEY_REQUEST,       13},  // hash(1201)=17
     [18] = {PACKET_TYPE_CRYPTO_REKEY_RESPONSE,      14},  // hash(1202)=18
     [19] = {PACKET_TYPE_ERROR_MESSAGE,              12},  // hash(2003)=19
     [20] = {PACKET_TYPE_REMOTE_LOG,                 11},  // hash(2004)=20
     [21] = {PACKET_TYPE_CRYPTO_REKEY_COMPLETE,      15},  // hash(1203)=19, probed->21
+    [22] = {PACKET_TYPE_CRYPTO_AUTH_RESPONSE,       17},  // hash(1105)=17, probed->22
+    [23] = {PACKET_TYPE_CRYPTO_NO_ENCRYPTION,       18},  // hash(1109)=21, probed->23
     [25] = {PACKET_TYPE_IMAGE_FRAME,                1},   // hash(3001)=25
 };
 // clang-format on

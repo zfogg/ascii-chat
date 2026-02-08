@@ -6,6 +6,7 @@ interface ClientModuleExports {
   _client_init_with_args(args_string: number): number;
   _client_cleanup(): void;
   _client_generate_keypair(): number;
+  _client_set_server_address(server_host: number, server_port: number): number;
   _client_get_public_key_hex(): number;
   _client_handle_key_exchange_init(packet_ptr: number, packet_len: number): number;
   _client_handle_auth_challenge(packet_ptr: number, packet_len: number): number;
@@ -31,6 +32,7 @@ interface ClientModule {
   _client_init_with_args: ClientModuleExports['_client_init_with_args'];
   _client_cleanup: ClientModuleExports['_client_cleanup'];
   _client_generate_keypair: ClientModuleExports['_client_generate_keypair'];
+  _client_set_server_address: ClientModuleExports['_client_set_server_address'];
   _client_get_public_key_hex: ClientModuleExports['_client_get_public_key_hex'];
   _client_handle_key_exchange_init: ClientModuleExports['_client_handle_key_exchange_init'];
   _client_handle_auth_challenge: ClientModuleExports['_client_handle_auth_challenge'];
@@ -202,6 +204,32 @@ export async function generateKeypair(): Promise<string> {
   wasmModule._client_free_string(pubkeyPtr);
 
   return publicKeyHex;
+}
+
+/**
+ * Set server address for known_hosts verification
+ */
+export function setServerAddress(serverHost: string, serverPort: number): void {
+  if (!wasmModule) {
+    throw new Error('WASM module not initialized. Call initClientWasm() first.');
+  }
+
+  // Allocate string for server host
+  const hostLen = wasmModule.lengthBytesUTF8(serverHost) + 1;
+  const hostPtr = wasmModule._malloc(hostLen);
+  if (!hostPtr) {
+    throw new Error('Failed to allocate memory for server host');
+  }
+
+  try {
+    wasmModule.stringToUTF8(serverHost, hostPtr, hostLen);
+    const result = wasmModule._client_set_server_address(hostPtr, serverPort);
+    if (result !== 0) {
+      throw new Error('Failed to set server address');
+    }
+  } finally {
+    wasmModule._free(hostPtr);
+  }
 }
 
 /**

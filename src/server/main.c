@@ -100,6 +100,8 @@
 #include <ascii-chat/platform/symbols.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/crypto/keys.h>
+#include <ascii-chat/crypto/handshake/server.h>
+#include <ascii-chat/crypto/handshake/common.h>
 #include <ascii-chat/network/rate_limit/rate_limit.h>
 #include <ascii-chat/network/mdns/mdns.h>
 #include <ascii-chat/network/mdns/discovery.h>
@@ -1278,7 +1280,7 @@ static void *websocket_client_handler(void *arg) {
     return NULL;
   }
 
-  // Add client using transport-based API (same as WebRTC clients)
+  // STEP 1: Add client first (creates client structure and starts threads)
   int client_id = add_webrtc_client(server_ctx, ctx->transport, ctx->client_ip);
   if (client_id < 0) {
     log_error("Failed to add WebSocket client");
@@ -1294,34 +1296,48 @@ static void *websocket_client_handler(void *arg) {
 
   log_info("WebSocket client %d added successfully", client_id);
 
-  // Wait for client to disconnect (client receive thread handles all I/O)
-  // The client structure will be cleaned up when the transport closes
+  // STEP 2: Get client structure and initialize crypto handshake
   client_info_t *client = find_client_by_id((uint32_t)client_id);
-  if (client) {
-    // WebSocket clients need crypto handshake (unlike WebRTC which does it via ACDS)
-    client->crypto_initialized = false;
+  if (!client) {
+    log_error("WebSocket client %d not found after successful add", client_id);
+    SAFE_FREE(ctx);
+    return NULL;
+  }
 
-    // Initialize handshake context and generate ephemeral keypair
-    if (crypto_handshake_init(&client->crypto_handshake_ctx, true) == ASCIICHAT_OK) {
-      // Send CRYPTO_KEY_EXCHANGE_INIT to start handshake
-      asciichat_error_t send_result = packet_send_via_transport(
-          client->transport, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT, client->crypto_handshake_ctx.crypto_ctx.public_key,
-          client->crypto_handshake_ctx.crypto_ctx.public_key_size);
+  // Initialize crypto handshake context directly in client structure
+  // This must happen BEFORE sending KEY_EXCHANGE_INIT so that when the client
+  // responds, the receive thread has a properly initialized context
+  asciichat_error_t handshake_init_result = crypto_handshake_init(&client->crypto_handshake_ctx, true /* is_server */);
+  if (handshake_init_result != ASCIICHAT_OK) {
+    log_error("Failed to initialize crypto handshake for WebSocket client %d: %s", client_id,
+              asciichat_error_string(handshake_init_result));
+    remove_client(server_ctx, (uint32_t)client_id);
+    SAFE_FREE(ctx);
+    return NULL;
+  }
 
-      if (send_result != ASCIICHAT_OK) {
-        log_error("Failed to send CRYPTO_KEY_EXCHANGE_INIT to WebSocket client %d", client_id);
-      } else {
-        log_debug("Sent CRYPTO_KEY_EXCHANGE_INIT to WebSocket client %d", client_id);
-        client->crypto_handshake_ctx.state = CRYPTO_HANDSHAKE_KEY_EXCHANGE;
-      }
-    } else {
-      log_error("Failed to initialize crypto handshake for WebSocket client %d", client_id);
-    }
+  // Mark crypto as NOT initialized yet (will be set to true when handshake completes)
+  client->crypto_initialized = false;
 
-    // Wait for client threads to finish (they'll exit when connection closes)
-    while (atomic_load(&client->client_id) != 0) {
-      platform_sleep_ms(100);
-    }
+  log_debug("Initialized crypto handshake context for WebSocket client %d", client_id);
+
+  // STEP 3: Now send KEY_EXCHANGE_INIT to start the handshake
+  // The receive thread is already running, but it will use the properly initialized context
+  asciichat_error_t handshake_start_result =
+      crypto_handshake_server_start(&client->crypto_handshake_ctx, client->transport);
+  if (handshake_start_result != ASCIICHAT_OK) {
+    log_error("Failed to start crypto handshake for WebSocket client %d: %s", client_id,
+              asciichat_error_string(handshake_start_result));
+    remove_client(server_ctx, (uint32_t)client_id);
+    SAFE_FREE(ctx);
+    return NULL;
+  }
+
+  log_debug("Sent CRYPTO_KEY_EXCHANGE_INIT to WebSocket client %d", client_id);
+
+  // Wait for client threads to finish (they'll exit when connection closes)
+  while (atomic_load(&client->client_id) != 0) {
+    platform_sleep_ms(100);
   }
 
   log_info("WebSocket client %d disconnected", client_id);

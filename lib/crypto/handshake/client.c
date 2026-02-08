@@ -968,14 +968,9 @@ asciichat_error_t crypto_handshake_client_key_exchange_socket(crypto_handshake_c
     return SET_ERRNO(ERROR_NETWORK, "Failed to create temporary transport");
   }
 
-  // Call new function
+  // Call new function (takes ownership of payload and will free it)
   asciichat_error_t handshake_result =
       crypto_handshake_client_key_exchange(ctx, temp_transport, packet_type, payload, payload_len);
-
-  // Free payload
-  if (payload) {
-    buffer_pool_free(NULL, payload, payload_len);
-  }
 
   // Destroy temporary transport
   acip_transport_destroy(temp_transport);
@@ -1006,14 +1001,9 @@ asciichat_error_t crypto_handshake_client_auth_response_socket(crypto_handshake_
     return SET_ERRNO(ERROR_NETWORK, "Failed to create temporary transport");
   }
 
-  // Call new function
+  // Call new function (takes ownership of payload and will free it)
   asciichat_error_t handshake_result =
       crypto_handshake_client_auth_response(ctx, temp_transport, packet_type, payload, payload_len);
-
-  // Free payload
-  if (payload) {
-    buffer_pool_free(NULL, payload, payload_len);
-  }
 
   // Destroy temporary transport
   acip_transport_destroy(temp_transport);
@@ -1043,14 +1033,9 @@ asciichat_error_t crypto_handshake_client_complete_socket(crypto_handshake_conte
     return SET_ERRNO(ERROR_NETWORK, "Failed to create temporary transport");
   }
 
-  // Call new function
+  // Call new function (takes ownership of payload and will free it)
   asciichat_error_t handshake_result =
       crypto_handshake_client_complete(ctx, temp_transport, packet_type, payload, payload_len);
-
-  // Free payload
-  if (payload) {
-    buffer_pool_free(NULL, payload, payload_len);
-  }
 
   // Destroy temporary transport
   acip_transport_destroy(temp_transport);

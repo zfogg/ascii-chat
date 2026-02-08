@@ -8,6 +8,7 @@ import {
   initClientWasm,
   cleanupClientWasm,
   generateKeypair,
+  setServerAddress,
   handleKeyExchangeInit,
   handleAuthChallenge,
   handleHandshakeComplete,
@@ -50,6 +51,7 @@ export class ClientConnection {
       width: this.options.width,
       height: this.options.height
     });
+    console.log('[ClientConnection] WASM init complete');
 
     // Register callback so WASM can send raw packets back through WebSocket
     registerSendPacketCallback((rawPacket: Uint8Array) => {
@@ -60,11 +62,19 @@ export class ClientConnection {
       }
       this.socket.send(rawPacket);
     });
+    console.log('[ClientConnection] Packet callback registered');
 
     // Generate client keypair
     console.log('[ClientConnection] Generating keypair...');
     this.clientPublicKey = await generateKeypair();
     console.log('[ClientConnection] Client public key:', this.clientPublicKey);
+
+    // Set server address for known_hosts verification
+    const url = new URL(this.options.serverUrl);
+    const serverHost = url.hostname;
+    const serverPort = parseInt(url.port) || 27226; // Default WebSocket port
+    console.log('[ClientConnection] Setting server address:', serverHost, serverPort);
+    setServerAddress(serverHost, serverPort);
 
     // Create WebSocket connection
     console.log('[ClientConnection] Connecting to server:', this.options.serverUrl);
@@ -78,18 +88,24 @@ export class ClientConnection {
       onStateChange: (state) => {
         console.log('[ClientConnection] WebSocket state:', state);
         if (state === 'open') {
+          console.log('[ClientConnection] Setting state to CONNECTING');
           this.onStateChangeCallback?.(ConnectionState.CONNECTING);
         } else if (state === 'closed') {
+          console.log('[ClientConnection] Setting state to DISCONNECTED');
           this.onStateChangeCallback?.(ConnectionState.DISCONNECTED);
         }
       }
     });
 
+    console.log('[ClientConnection] Waiting for WebSocket to connect...');
     await this.socket.connect();
+    console.log('[ClientConnection] WebSocket connected!');
 
     // Wait for server to initiate handshake
     // Server will send CRYPTO_KEY_EXCHANGE_INIT first
+    console.log('[ClientConnection] Setting state to HANDSHAKE');
     this.onStateChangeCallback?.(ConnectionState.HANDSHAKE);
+    console.log('[ClientConnection] Connect complete');
   }
 
 

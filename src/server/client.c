@@ -1544,7 +1544,7 @@ void *client_send_thread_func(void *arg) {
   // Check if client_id is 0 (client struct has been zeroed by remove_client)
   // This must be checked BEFORE accessing any client fields
   if (atomic_load(&client->client_id) == 0) {
-    log_debug("Send thread: client_id is 0, client struct may have been zeroed, exiting");
+    log_debug_every(100000, "Send thread: client_id is 0, client struct may have been zeroed, exiting");
     return NULL;
   }
 

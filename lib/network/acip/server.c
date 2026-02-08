@@ -28,10 +28,14 @@
 
 asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, void *client_ctx,
                                                    const acip_server_callbacks_t *callbacks) {
-  log_debug("ACIP_SERVER_DISPATCH: Entry, transport=%p, client_ctx=%p", (void *)transport, client_ctx);
+  log_debug("ACIP_SERVER_DISPATCH: Entry, transport=%p, client_ctx=%p, callbacks=%p", (void *)transport, client_ctx,
+            (const void *)callbacks);
 
-  if (!transport || !callbacks) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport or callbacks");
+  if (!transport) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport (NULL)");
+  }
+  if (!callbacks) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid callbacks (NULL)");
   }
 
   // Check if transport is connected
@@ -92,6 +96,7 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
   }
 
   // Dispatch packet to appropriate ACIP handler
+  // Server receives packets FROM clients, so use server packet handler
   log_debug("ACIP_SERVER: About to dispatch packet type=%d, data_len=%zu", envelope.type, envelope.len);
   asciichat_error_t dispatch_result =
       acip_handle_server_packet(transport, envelope.type, envelope.data, envelope.len, client_ctx, callbacks);

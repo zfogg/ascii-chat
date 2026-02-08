@@ -42,7 +42,9 @@ asciichat_error_t terminal_get_size(terminal_size_t *size) {
     size->cols = ws.ws_col;
     return ASCIICHAT_OK;
   }
-  return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to get terminal size");
+  // return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to get terminal size");
+  // NOTE: this might be called from wasm or when piping in the terminal so we needn't error here.
+  return ASCIICHAT_OK;
 }
 
 /**

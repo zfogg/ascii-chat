@@ -44,6 +44,11 @@ test.describe('Client Connection to Native Server', () => {
   });
 
   test('should connect to native server and complete handshake', async ({ page }) => {
+    // Capture console logs
+    page.on('console', msg => {
+      console.log('BROWSER:', msg.text());
+    });
+
     // Wait for WASM init and generate keypair
     await page.waitForSelector('button:text("Generate Keypair"):not([disabled])', {
       timeout: 5000

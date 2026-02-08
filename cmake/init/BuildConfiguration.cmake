@@ -104,7 +104,7 @@ else()
 endif()
 option(ASCIICHAT_ENFORCE_STATIC_RELEASE "Fail Release builds if binaries are not statically linked" ${_default_enforce_static})
 
-# Skip hardening validation (useful for CI performance tests where linker checks may fail)
+# Skip hardening validation
 option(ASCIICHAT_SKIP_HARDENING_VALIDATION "Skip security hardening validation for Release binaries" OFF)
 
 # Build type (matches Makefile modes)

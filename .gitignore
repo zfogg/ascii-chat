@@ -56,3 +56,5 @@ scripts/.venv
 scripts/__pycache__
 .vercel
 .env*.local
+
+.playwright-cli/

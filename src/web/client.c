@@ -6,21 +6,44 @@
 #include <emscripten.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
-// Logging macros for debug
-#define WASM_LOG(msg) EM_ASM({ console.log('[C] ' + UTF8ToString($0)); }, msg)
-#define WASM_LOG_INT(msg, val) EM_ASM({ console.log('[C] ' + UTF8ToString($0) + ': ' + $1); }, msg, val)
-#define WASM_ERROR(msg) EM_ASM({ console.error('[C] ' + UTF8ToString($0)); }, msg)
+// Logging macros for debug - use console.error so playwright-cli captures it
+#define WASM_LOG(msg) EM_ASM({ console.error('[C] ' + UTF8ToString($0)); }, msg)
+#define WASM_LOG_INT(msg, val) EM_ASM({ console.error('[C] ' + UTF8ToString($0) + ': ' + $1); }, msg, val)
+#define WASM_ERROR(msg) EM_ASM({ console.error('[C] ERROR: ' + UTF8ToString($0)); }, msg)
+
+// JavaScript callback for sending complete ACIP packets from WASM to WebSocket
+// This will be called by the WASM transport to send complete packets (header + payload)
+EM_JS(void, js_send_raw_packet, (const uint8_t *packet_data, size_t packet_len), {
+  if (!Module.sendPacketCallback) {
+    console.error('[WASM] sendPacketCallback not registered - cannot send packet');
+    return;
+  }
+
+  // Copy complete packet from WASM memory to JavaScript
+  const packetArray = new Uint8Array(HEAPU8.buffer, packet_data, packet_len);
+  const packetCopy = new Uint8Array(packetArray);
+
+  console.log('[WASM→JS] Sending raw packet:', packetCopy.length, 'bytes');
+
+  // Send as raw binary packet via WebSocket
+  Module.sendPacketCallback(packetCopy);
+});
 
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/crypto/crypto.h>
+#include <ascii-chat/crypto/handshake/client.h>
+#include <ascii-chat/crypto/handshake/common.h>
 #include <ascii-chat/network/packet.h>
 #include <ascii-chat/network/packet_parsing.h>
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/network/compression.h>
+#include <ascii-chat/network/acip/send.h>
+#include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/video/ascii.h>
 #include <ascii-chat/video/ansi_fast.h>
 #include <ascii-chat/common.h>
@@ -28,8 +51,62 @@
 #include <ascii-chat/util/magic.h>
 #include <opus.h>
 
+// ============================================================================
+// WASM Transport Implementation
+// ============================================================================
+
+/**
+ * WASM transport that forwards complete ACIP packets to JavaScript
+ */
+static asciichat_error_t wasm_transport_send(acip_transport_t *transport, const void *data, size_t len) {
+  WASM_LOG("wasm_transport_send called");
+  WASM_LOG_INT("  packet length", (int)len);
+
+  // Forward complete packet (header + payload) to JavaScript WebSocket bridge
+  js_send_raw_packet((const uint8_t *)data, len);
+
+  WASM_LOG("wasm_transport_send: packet sent to JS");
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t wasm_transport_recv(acip_transport_t *transport, void **buffer, size_t *out_len,
+                                             void **out_allocated_buffer) {
+  // Not used - packets arrive via JavaScript callbacks
+  return SET_ERRNO(ERROR_NOT_SUPPORTED, "recv not supported on WASM transport");
+}
+
+static asciichat_error_t wasm_transport_close(acip_transport_t *transport) {
+  return ASCIICHAT_OK; // Nothing to close
+}
+
+static acip_transport_type_t wasm_transport_get_type(acip_transport_t *transport) {
+  return ACIP_TRANSPORT_WEBSOCKET; // Closest match
+}
+
+static socket_t wasm_transport_get_socket(acip_transport_t *transport) {
+  return INVALID_SOCKET_VALUE;
+}
+
+static bool wasm_transport_is_connected(acip_transport_t *transport) {
+  return true; // Always "connected" from WASM perspective
+}
+
+static const acip_transport_methods_t wasm_transport_methods = {.send = wasm_transport_send,
+                                                                .recv = wasm_transport_recv,
+                                                                .close = wasm_transport_close,
+                                                                .get_type = wasm_transport_get_type,
+                                                                .get_socket = wasm_transport_get_socket,
+                                                                .is_connected = wasm_transport_is_connected,
+                                                                .destroy_impl = NULL};
+
+static acip_transport_t g_wasm_transport = {.methods = &wasm_transport_methods, .crypto_ctx = NULL, .impl_data = NULL};
+
+// ============================================================================
+// Global State
+// ============================================================================
+
 // Global state for client session
-static crypto_context_t *g_crypto_ctx = NULL;
+static crypto_handshake_context_t g_crypto_handshake_ctx = {0};
 static bool g_initialized = false;
 static bool g_handshake_complete = false;
 
@@ -119,10 +196,9 @@ int client_init_with_args(const char *args_json) {
 
 EMSCRIPTEN_KEEPALIVE
 void client_cleanup(void) {
-  if (g_crypto_ctx) {
-    crypto_destroy(g_crypto_ctx);
-    g_crypto_ctx = NULL;
-  }
+  // Clean up crypto handshake context
+  crypto_handshake_destroy(&g_crypto_handshake_ctx);
+
   g_handshake_complete = false;
   g_connection_state = CONNECTION_STATE_DISCONNECTED;
   g_initialized = false;
@@ -145,29 +221,41 @@ int client_generate_keypair(void) {
     return -1;
   }
 
-  // Create crypto context (this generates keypair automatically)
-  if (g_crypto_ctx) {
-    crypto_destroy(g_crypto_ctx);
-    g_crypto_ctx = NULL;
-  }
-
-  // Allocate crypto context
-  g_crypto_ctx = SAFE_CALLOC(1, sizeof(crypto_context_t), crypto_context_t *);
-  if (!g_crypto_ctx) {
-    WASM_ERROR("Failed to allocate crypto context");
-    return -1;
-  }
-
-  // Initialize crypto context (generates keypair)
-  crypto_result_t result = crypto_init(g_crypto_ctx);
-  if (result != CRYPTO_OK) {
-    WASM_ERROR("Failed to initialize crypto context");
-    SAFE_FREE(g_crypto_ctx);
-    g_crypto_ctx = NULL;
+  // Initialize crypto handshake context
+  asciichat_error_t result = crypto_handshake_init(&g_crypto_handshake_ctx, false /* is_server */);
+  if (result != ASCIICHAT_OK) {
+    WASM_ERROR("Failed to initialize crypto handshake context");
     return -1;
   }
 
   WASM_LOG("Keypair generated successfully");
+  g_connection_state = CONNECTION_STATE_DISCONNECTED;
+  return 0;
+}
+
+/**
+ * Set server address for known_hosts verification
+ * @param server_host Server hostname or IP address
+ * @param server_port Server port number
+ * @return 0 on success, -1 on error
+ */
+EMSCRIPTEN_KEEPALIVE
+int client_set_server_address(const char *server_host, int server_port) {
+  if (!g_initialized) {
+    WASM_ERROR("Client not initialized");
+    return -1;
+  }
+
+  if (!server_host || server_port <= 0 || server_port > 65535) {
+    WASM_ERROR("Invalid server address parameters");
+    return -1;
+  }
+
+  // Set server IP and port in handshake context
+  SAFE_STRNCPY(g_crypto_handshake_ctx.server_ip, server_host, sizeof(g_crypto_handshake_ctx.server_ip));
+  g_crypto_handshake_ctx.server_port = server_port;
+
+  WASM_LOG("Server address set");
   return 0;
 }
 
@@ -177,16 +265,15 @@ int client_generate_keypair(void) {
  */
 EMSCRIPTEN_KEEPALIVE
 char *client_get_public_key_hex(void) {
-  if (!g_crypto_ctx) {
+  if (g_crypto_handshake_ctx.state == CRYPTO_HANDSHAKE_DISABLED) {
     WASM_ERROR("No crypto context (call client_generate_keypair first)");
     return NULL;
   }
 
-  // Allocate buffer for public key bytes
-  uint8_t pubkey[32];
-  crypto_result_t result = crypto_get_public_key(g_crypto_ctx, pubkey);
-  if (result != CRYPTO_OK) {
-    WASM_ERROR("Failed to get public key from crypto context");
+  // Get public key from handshake context
+  const uint8_t *pubkey = g_crypto_handshake_ctx.crypto_ctx.public_key;
+  if (!pubkey) {
+    WASM_ERROR("Public key not available in crypto context");
     return NULL;
   }
 
@@ -207,61 +294,133 @@ char *client_get_public_key_hex(void) {
 }
 
 /**
- * Set server public key from hex string
- * @param server_pubkey_hex Hex-encoded server public key (64 chars)
+ * Handle CRYPTO_KEY_EXCHANGE_INIT packet from server
+ * This is the first step of the crypto handshake
+ * @param packet Raw packet data including header
+ * @param packet_len Total packet length
  * @return 0 on success, -1 on error
  */
 EMSCRIPTEN_KEEPALIVE
-int client_set_server_public_key(const char *server_pubkey_hex) {
-  if (!g_crypto_ctx) {
-    WASM_ERROR("No crypto context");
+int client_handle_key_exchange_init(const uint8_t *packet, size_t packet_len) {
+  WASM_LOG("=== client_handle_key_exchange_init CALLED ===");
+  WASM_LOG_INT("  packet_len", (int)packet_len);
+
+  if (!packet || packet_len == 0) {
+    WASM_ERROR("Invalid packet data");
     return -1;
   }
 
-  if (!server_pubkey_hex || strlen(server_pubkey_hex) != 64) {
-    WASM_ERROR("Invalid server public key hex string");
+  // Extract packet type and payload
+  if (packet_len < sizeof(packet_header_t)) {
+    WASM_ERROR("Packet too small for header");
     return -1;
   }
 
-  // Convert hex to bytes
-  uint8_t server_pubkey[32];
-  for (int i = 0; i < 32; i++) {
-    char byte_str[3] = {server_pubkey_hex[i * 2], server_pubkey_hex[i * 2 + 1], '\0'};
-    server_pubkey[i] = (uint8_t)strtol(byte_str, NULL, 16);
-  }
+  const packet_header_t *header = (const packet_header_t *)packet;
+  packet_type_t packet_type = ntohs(header->type);
+  const uint8_t *payload = packet + sizeof(packet_header_t);
+  size_t payload_len = packet_len - sizeof(packet_header_t);
 
-  // Set peer's public key and compute shared secret
-  crypto_result_t result = crypto_set_peer_public_key(g_crypto_ctx, server_pubkey);
-  if (result != CRYPTO_OK) {
-    WASM_ERROR("Failed to set server public key");
+  WASM_LOG_INT("  packet_type", packet_type);
+  WASM_LOG_INT("  payload_len", (int)payload_len);
+
+  // Process key exchange using transport-abstracted handshake
+  WASM_LOG("Calling crypto_handshake_client_key_exchange...");
+  asciichat_error_t result = crypto_handshake_client_key_exchange(&g_crypto_handshake_ctx, &g_wasm_transport,
+                                                                  packet_type, payload, payload_len);
+
+  WASM_LOG_INT("  handshake result", result);
+
+  if (result != ASCIICHAT_OK) {
+    WASM_ERROR("Failed to process KEY_EXCHANGE_INIT");
+    g_connection_state = CONNECTION_STATE_ERROR;
     return -1;
   }
 
-  WASM_LOG("Server public key set successfully");
+  g_connection_state = CONNECTION_STATE_HANDSHAKE;
+  WASM_LOG("=== KEY_EXCHANGE_INIT processed successfully ===");
   return 0;
 }
 
 /**
- * Perform client-side handshake (compute shared secret)
+ * Handle CRYPTO_AUTH_CHALLENGE packet from server
+ * @param packet Raw packet data including header
+ * @param packet_len Total packet length
  * @return 0 on success, -1 on error
  */
 EMSCRIPTEN_KEEPALIVE
-int client_perform_handshake(void) {
-  if (!g_crypto_ctx) {
-    WASM_ERROR("No crypto context");
+int client_handle_auth_challenge(const uint8_t *packet, size_t packet_len) {
+  WASM_LOG("Handling CRYPTO_AUTH_CHALLENGE from server");
+
+  if (!packet || packet_len == 0) {
+    WASM_ERROR("Invalid packet data");
     return -1;
   }
 
-  // The shared secret was computed when we called crypto_set_remote_key
-  // Just verify the handshake is complete
-  if (!crypto_is_ready(g_crypto_ctx)) {
-    WASM_ERROR("Crypto context not ready after handshake");
+  // Extract packet type and payload
+  if (packet_len < sizeof(packet_header_t)) {
+    WASM_ERROR("Packet too small for header");
+    return -1;
+  }
+
+  const packet_header_t *header = (const packet_header_t *)packet;
+  packet_type_t packet_type = ntohs(header->type);
+  const uint8_t *payload = packet + sizeof(packet_header_t);
+  size_t payload_len = packet_len - sizeof(packet_header_t);
+
+  // Process auth challenge
+  asciichat_error_t result = crypto_handshake_client_auth_response(&g_crypto_handshake_ctx, &g_wasm_transport,
+                                                                   packet_type, payload, payload_len);
+
+  if (result != ASCIICHAT_OK) {
+    WASM_ERROR("Failed to process AUTH_CHALLENGE");
+    g_connection_state = CONNECTION_STATE_ERROR;
+    return -1;
+  }
+
+  WASM_LOG("Processed CRYPTO_AUTH_CHALLENGE and sent response");
+  return 0;
+}
+
+/**
+ * Handle CRYPTO_HANDSHAKE_COMPLETE packet from server
+ * @param packet Raw packet data including header
+ * @param packet_len Total packet length
+ * @return 0 on success, -1 on error
+ */
+EMSCRIPTEN_KEEPALIVE
+int client_handle_handshake_complete(const uint8_t *packet, size_t packet_len) {
+  WASM_LOG("Handling CRYPTO_HANDSHAKE_COMPLETE from server");
+
+  if (!packet || packet_len == 0) {
+    WASM_ERROR("Invalid packet data");
+    return -1;
+  }
+
+  // Extract packet type and payload
+  if (packet_len < sizeof(packet_header_t)) {
+    WASM_ERROR("Packet too small for header");
+    return -1;
+  }
+
+  const packet_header_t *header = (const packet_header_t *)packet;
+  packet_type_t packet_type = ntohs(header->type);
+  const uint8_t *payload = packet + sizeof(packet_header_t);
+  size_t payload_len = packet_len - sizeof(packet_header_t);
+
+  // Complete handshake
+  asciichat_error_t result =
+      crypto_handshake_client_complete(&g_crypto_handshake_ctx, &g_wasm_transport, packet_type, payload, payload_len);
+
+  if (result != ASCIICHAT_OK) {
+    WASM_ERROR("Failed to complete handshake");
+    g_connection_state = CONNECTION_STATE_ERROR;
     return -1;
   }
 
   g_handshake_complete = true;
   g_connection_state = CONNECTION_STATE_CONNECTED;
-  WASM_LOG("Handshake complete, session encrypted");
+  WASM_LOG("Handshake complete - session encrypted");
   return 0;
 }
 
@@ -281,15 +440,15 @@ int client_perform_handshake(void) {
 EMSCRIPTEN_KEEPALIVE
 int client_encrypt_packet(const uint8_t *plaintext, size_t plaintext_len, uint8_t *ciphertext, size_t ciphertext_size,
                           size_t *out_len) {
-  if (!g_handshake_complete || !g_crypto_ctx) {
+  if (!g_handshake_complete) {
     WASM_ERROR("Encryption requires completed handshake");
     return -1;
   }
 
-  // Encrypt the packet
+  // Encrypt the packet using handshake context's crypto context
   size_t ciphertext_len = 0;
-  crypto_result_t result =
-      crypto_encrypt(g_crypto_ctx, plaintext, plaintext_len, ciphertext, ciphertext_size, &ciphertext_len);
+  crypto_result_t result = crypto_encrypt(&g_crypto_handshake_ctx.crypto_ctx, plaintext, plaintext_len, ciphertext,
+                                          ciphertext_size, &ciphertext_len);
   if (result != CRYPTO_OK) {
     WASM_ERROR("Encryption failed");
     return -1;
@@ -311,15 +470,15 @@ int client_encrypt_packet(const uint8_t *plaintext, size_t plaintext_len, uint8_
 EMSCRIPTEN_KEEPALIVE
 int client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_len, uint8_t *plaintext, size_t plaintext_size,
                           size_t *out_len) {
-  if (!g_handshake_complete || !g_crypto_ctx) {
+  if (!g_handshake_complete) {
     WASM_ERROR("Decryption requires completed handshake");
     return -1;
   }
 
-  // Decrypt the packet
+  // Decrypt the packet using handshake context's crypto context
   size_t plaintext_len = 0;
-  crypto_result_t result =
-      crypto_decrypt(g_crypto_ctx, ciphertext, ciphertext_len, plaintext, plaintext_size, &plaintext_len);
+  crypto_result_t result = crypto_decrypt(&g_crypto_handshake_ctx.crypto_ctx, ciphertext, ciphertext_len, plaintext,
+                                          plaintext_size, &plaintext_len);
   if (result != CRYPTO_OK) {
     WASM_ERROR("Decryption failed");
     return -1;
@@ -345,11 +504,18 @@ char *client_parse_packet(const uint8_t *raw_packet, size_t packet_len) {
   // Parse packet header directly from bytes
   const packet_header_t *header = (const packet_header_t *)raw_packet;
 
-  // Validate magic number
-  if (header->magic != PACKET_MAGIC) {
+  // Validate magic number (convert from network byte order)
+  uint64_t magic = NET_TO_HOST_U64(header->magic);
+  if (magic != PACKET_MAGIC) {
     WASM_ERROR("Invalid packet magic number");
     return NULL;
   }
+
+  // Convert header fields from network byte order
+  uint16_t type = NET_TO_HOST_U16(header->type);
+  uint32_t length = NET_TO_HOST_U32(header->length);
+  uint32_t client_id = NET_TO_HOST_U32(header->client_id);
+  uint32_t crc32 = NET_TO_HOST_U32(header->crc32);
 
   // Build JSON response with packet metadata
   char *json = SAFE_MALLOC(1024, char *);
@@ -358,8 +524,7 @@ char *client_parse_packet(const uint8_t *raw_packet, size_t packet_len) {
     return NULL;
   }
 
-  snprintf(json, 1024, "{\"type\":%d,\"length\":%u,\"client_id\":%u,\"crc32\":%u}", header->type, header->length,
-           header->client_id, header->crc32);
+  snprintf(json, 1024, "{\"type\":%u,\"length\":%u,\"client_id\":%u,\"crc32\":%u}", type, length, client_id, crc32);
 
   return json;
 }
@@ -385,12 +550,12 @@ int client_serialize_packet(uint16_t packet_type, const uint8_t *payload, size_t
   // Calculate CRC32 of payload (use software version for WASM)
   uint32_t crc = payload && payload_len > 0 ? asciichat_crc32_sw(payload, payload_len) : 0;
 
-  // Build packet header
-  packet_header_t header = {.magic = PACKET_MAGIC,
-                            .type = packet_type,
-                            .length = (uint32_t)payload_len,
-                            .crc32 = crc,
-                            .client_id = client_id};
+  // Build packet header (convert to network byte order)
+  packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
+                            .type = HOST_TO_NET_U16(packet_type),
+                            .length = HOST_TO_NET_U32((uint32_t)payload_len),
+                            .crc32 = HOST_TO_NET_U32(crc),
+                            .client_id = HOST_TO_NET_U32(client_id)};
 
   // Copy header to output
   memcpy(output, &header, sizeof(packet_header_t));
