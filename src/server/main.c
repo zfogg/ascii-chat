@@ -1090,6 +1090,20 @@ static void server_handle_sigusr1(int sigusr1) {
  * Runs independently at target FPS (default 60 Hz), rendering the status
  * screen with server stats and recent logs. Decoupled from network accept loop.
  */
+/**
+ * @brief Thread wrapper for websocket_server_run
+ *
+ * Converts asciichat_error_t return type to void * for pthread compatibility.
+ */
+static void *websocket_server_thread_wrapper(void *arg) {
+  websocket_server_t *server = (websocket_server_t *)arg;
+  asciichat_error_t result = websocket_server_run(server);
+  if (result != ASCIICHAT_OK) {
+    log_error("WebSocket server thread exited with error");
+  }
+  return NULL;
+}
+
 static void *status_screen_thread(void *arg) {
   (void)arg; // Unused
 
@@ -2227,8 +2241,8 @@ skip_acds_session:
 
   // Start WebSocket server thread if initialized
   if (g_websocket_server.context != NULL) {
-    if (asciichat_thread_create(&g_websocket_server_thread, (void *(*)(void *))websocket_server_run,
-                                &g_websocket_server) != 0) {
+    if (asciichat_thread_create(&g_websocket_server_thread, websocket_server_thread_wrapper, &g_websocket_server) !=
+        0) {
       log_error("Failed to create WebSocket server thread");
     } else {
       log_info("WebSocket server thread started");
