@@ -312,3 +312,57 @@ asciichat_error_t update_check_perform(update_check_result_t *result) {
 
   return ASCIICHAT_OK;
 }
+
+/**
+ * @brief Check if binary path contains Homebrew markers
+ */
+static bool is_homebrew_install(void) {
+  // Check if binary is in Homebrew Cellar directory
+  const char *exe_path = platform_get_executable_path();
+  if (!exe_path) {
+    return false;
+  }
+
+  return (strstr(exe_path, "/Cellar/ascii-chat") != NULL || strstr(exe_path, "/opt/homebrew/") != NULL ||
+          strstr(exe_path, "/usr/local/Cellar/") != NULL);
+}
+
+/**
+ * @brief Check if system is Arch Linux
+ */
+static bool is_arch_linux(void) {
+#ifdef __linux__
+  // Check /etc/os-release for Arch
+  FILE *f = fopen("/etc/os-release", "r");
+  if (!f) {
+    return false;
+  }
+
+  char line[256];
+  bool is_arch = false;
+  while (fgets(line, sizeof(line), f)) {
+    if (strstr(line, "ID=arch") || strstr(line, "ID=\"arch\"")) {
+      is_arch = true;
+      break;
+    }
+  }
+
+  fclose(f);
+  return is_arch;
+#else
+  return false;
+#endif
+}
+
+install_method_t update_check_detect_install_method(void) {
+  if (is_homebrew_install()) {
+    return INSTALL_METHOD_HOMEBREW;
+  }
+
+  if (is_arch_linux()) {
+    return INSTALL_METHOD_ARCH_AUR;
+  }
+
+  // Default to GitHub releases
+  return INSTALL_METHOD_GITHUB;
+}
