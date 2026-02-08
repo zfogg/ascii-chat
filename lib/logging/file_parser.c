@@ -9,6 +9,7 @@
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/colorize.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -244,7 +245,7 @@ size_t log_file_parser_merge_and_dedupe(const session_log_entry_t *buffer_entrie
 
   // Recolor and copy file entries
   // File entries are plain text from disk: [TIMESTAMP] [LEVEL] [tid:...] FILE:LINE in FUNC(): MESSAGE
-  // We must recolor them with ANSI codes for terminal display
+  // We must recolor them with ANSI codes for terminal display AND syntax-highlight the message content
   static int recolor_attempts = 0;
   static int recolor_successes = 0;
   for (size_t i = 0; i < file_count; i++) {
@@ -253,10 +254,64 @@ size_t log_file_parser_merge_and_dedupe(const session_log_entry_t *buffer_entrie
     recolor_attempts++;
 
     if (colored_len > 0) {
-      // Successfully recolored - use colored version
-      strncpy(merged[buffer_count + i].message, colored, SESSION_LOG_LINE_MAX - 1);
-      merged[buffer_count + i].message[SESSION_LOG_LINE_MAX - 1] = '\0';
-      recolor_successes++;
+      // Successfully recolored header - now apply message syntax highlighting
+      // Extract the plain message part for syntax highlighting
+      const char *plain_msg = file_entries[i].message;
+      const char *msg_marker = strstr(plain_msg, "(): ");
+      if (msg_marker) {
+        const char *plain_message = msg_marker + 4;
+
+        // Syntax-highlight just the message part
+        const char *highlighted_msg = colorize_log_message(plain_message);
+        if (highlighted_msg && *highlighted_msg) {
+          // Reconstruct the full line combining colored header + highlighted message
+          // We need to find the "(): " part in the COLORED output and reconstruct from there
+          // Since the colored output contains ANSI codes, we need to skip past them to find the marker
+
+          char final_line[SESSION_LOG_LINE_MAX];
+          size_t final_len = 0;
+
+          // Copy colored output up to and including "(): "
+          // We scan through the colored output looking for the literal sequence "(): "
+          const char *p = colored;
+          int paren_count = 0;
+          while (*p && final_len < SESSION_LOG_LINE_MAX - 1) {
+            final_line[final_len++] = *p;
+
+            // Track when we see "(): "
+            if (*p == '(' && *(p + 1) == ')' && *(p + 2) == ':' && *(p + 3) == ' ') {
+              // Copy the ": " part
+              final_line[final_len++] = *(++p); // ')'
+              final_line[final_len++] = *(++p); // ':'
+              final_line[final_len++] = *(++p); // ' '
+              p++;                              // Move past the space
+              break;                            // Stop here, append highlighted message
+            }
+            p++;
+          }
+
+          // Append the highlighted message
+          const char *msg_ptr = highlighted_msg;
+          while (*msg_ptr && final_len < SESSION_LOG_LINE_MAX - 1) {
+            final_line[final_len++] = *msg_ptr++;
+          }
+          final_line[final_len] = '\0';
+
+          strncpy(merged[buffer_count + i].message, final_line, SESSION_LOG_LINE_MAX - 1);
+          merged[buffer_count + i].message[SESSION_LOG_LINE_MAX - 1] = '\0';
+          recolor_successes++;
+        } else {
+          // Highlighting returned nothing, use colored version as-is
+          strncpy(merged[buffer_count + i].message, colored, SESSION_LOG_LINE_MAX - 1);
+          merged[buffer_count + i].message[SESSION_LOG_LINE_MAX - 1] = '\0';
+          recolor_successes++;
+        }
+      } else {
+        // No message marker found, use colored version
+        strncpy(merged[buffer_count + i].message, colored, SESSION_LOG_LINE_MAX - 1);
+        merged[buffer_count + i].message[SESSION_LOG_LINE_MAX - 1] = '\0';
+        recolor_successes++;
+      }
     } else {
       // Recoloring failed - keep original plain text
       strncpy(merged[buffer_count + i].message, file_entries[i].message, SESSION_LOG_LINE_MAX - 1);
