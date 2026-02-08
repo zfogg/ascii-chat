@@ -18,6 +18,7 @@
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/util/fnv1a.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/util/path.h>
 #include <ascii-chat/uthash/uthash.h>
 #include <stdlib.h>
 #include <time.h>
@@ -193,8 +194,9 @@ static void collect_lock_record_callback(lock_record_t *record, void *user_data)
                            collector->count, lock_type_str, record->lock_address);
   *offset += safe_snprintf(buffer + *offset, SAFE_BUFFER_SIZE(buffer_size, *offset), "  Thread ID: %llu\n",
                            (unsigned long long)record->thread_id);
-  *offset += safe_snprintf(buffer + *offset, SAFE_BUFFER_SIZE(buffer_size, *offset), "  Acquired: %s:%d in %s()\n",
-                           record->file_name, record->line_number, record->function_name);
+  *offset +=
+      safe_snprintf(buffer + *offset, SAFE_BUFFER_SIZE(buffer_size, *offset), "  Acquired: %s:%d in %s()\n",
+                    extract_project_relative_path(record->file_name), record->line_number, record->function_name);
 
   // Calculate how long the lock has been held
   uint64_t current_time_ns = time_get_ns();
@@ -263,8 +265,8 @@ static void print_usage_stats_callback(lock_usage_stats_t *stats, void *user_dat
   int offset = 0;
 
   offset += safe_snprintf(log_message + offset, SAFE_BUFFER_SIZE(sizeof(log_message), offset),
-                          "Usage #%u: %s at %s:%d in %s()\n", *count, lock_type_str, stats->file_name,
-                          stats->line_number, stats->function_name);
+                          "Usage #%u: %s at %s:%d in %s()\n", *count, lock_type_str,
+                          extract_project_relative_path(stats->file_name), stats->line_number, stats->function_name);
   offset += safe_snprintf(log_message + offset, SAFE_BUFFER_SIZE(sizeof(log_message), offset),
                           "  Total acquisitions: %llu\n", (unsigned long long)stats->total_acquisitions);
   offset += safe_snprintf(log_message + offset, SAFE_BUFFER_SIZE(sizeof(log_message), offset),
@@ -334,7 +336,8 @@ void print_orphaned_release_callback(lock_record_t *record, void *user_data) {
 
   log_info("Orphaned Release #%u: %s at %p", *count, lock_type_str, record->lock_address);
   log_info("  Thread ID: %llu", (unsigned long long)record->thread_id);
-  log_info("  Released: %s:%d in %s()", record->file_name, record->line_number, record->function_name);
+  log_info("  Released: %s:%d in %s()", extract_project_relative_path(record->file_name), record->line_number,
+           record->function_name);
   char release_time_str[32];
   format_duration_ns((double)record->acquisition_time_ns, release_time_str, sizeof(release_time_str));
   log_info("  Released at: %s (nanosecond %llu)", release_time_str, (unsigned long long)record->acquisition_time_ns);
@@ -451,8 +454,9 @@ static void check_long_held_locks(void) {
                    "Lock held for %s (threshold: 100ms) - %s at %p\n"
                    "  Acquired: %s:%d in %s()\n"
                    "  Thread ID: %llu",
-                   info->duration_str, info->lock_type_str, info->lock_address, info->file_name, info->line_number,
-                   info->function_name, (unsigned long long)info->thread_id);
+                   info->duration_str, info->lock_type_str, info->lock_address,
+                   extract_project_relative_path(info->file_name), info->line_number, info->function_name,
+                   (unsigned long long)info->thread_id);
   }
 
   // Print backtrace only once if any long-held locks were found
@@ -891,8 +895,8 @@ static bool debug_process_tracked_unlock(void *lock_ptr, uint32_t key, const cha
     if (should_log_warning) {
       log_warn("Lock held for %s (threshold: %d ms) at %s:%d in %s()\n"
                "  Lock type: %s, address: %p",
-               deferred_duration_str, LOCK_HOLD_TIME_WARNING_MS, deferred_file_name, deferred_line_number,
-               deferred_function_name, deferred_lock_type_str, deferred_lock_ptr);
+               deferred_duration_str, LOCK_HOLD_TIME_WARNING_MS, extract_project_relative_path(deferred_file_name),
+               deferred_line_number, deferred_function_name, deferred_lock_type_str, deferred_lock_ptr);
 
       // Print backtrace from when lock was acquired
       if (deferred_backtrace_size > 0 && deferred_backtrace_symbols) {
@@ -941,18 +945,14 @@ static void debug_process_untracked_unlock(void *lock_ptr, uint32_t key, const c
     debug_decrement_lock_counter();
 #endif
   } else {
-#ifdef DEBUG_LOCKS
-    SET_ERRNO(ERROR_INVALID_STATE, "Attempting to release %s lock when no locks held!", lock_type_str);
-#endif
     SET_ERRNO(ERROR_INVALID_STATE, "Attempting to release %s lock when no locks held!", lock_type_str);
   }
 #ifdef DEBUG_LOCKS
-  SET_ERRNO(ERROR_INVALID_STATE, "%s UNTRACKED RELEASED: %p (key=%u) at %s:%d in %s() - total=%llu, held=%u",
-            lock_type_str, lock_ptr, key, file_name, line_number, function_name, (unsigned long long)released, held);
-#endif
-#ifdef DEBUG_LOCKS
-  SET_ERRNO(ERROR_INVALID_STATE, "*** WARNING: %s lock was acquired and tracked but record was lost! ***",
-            lock_type_str);
+  SET_ERRNO(ERROR_INVALID_STATE,
+            "%s UNTRACKED RELEASED: %p (key=%u) at %s:%d in %s() - total=%llu, held=%u (lock was tracked but record "
+            "was lost)",
+            lock_type_str, lock_ptr, key, extract_project_relative_path(file_name), line_number, function_name,
+            (unsigned long long)released, held);
 #endif
 
   // Create an orphaned release record to track this problematic unlock
@@ -1037,21 +1037,23 @@ int debug_mutex_trylock(mutex_t *mutex, const char *file_name, int line_number, 
 int debug_mutex_unlock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name) {
   LOCK_OP_TRACE("UNLOCK", "MUTEX", file_name, line_number, function_name);
   if (debug_should_skip_lock_tracking(mutex, file_name, function_name)) {
+    // Unlock is filtered - the lock was likely acquired in a filtered context too
     return mutex_unlock_impl(mutex);
   }
 
   // Look for mutex lock record specifically
   uint32_t key = lock_record_key(mutex, LOCK_TYPE_MUTEX);
   if (!debug_process_tracked_unlock(mutex, key, "MUTEX", file_name, line_number, function_name)) {
-    // No record found - check if this is because the lock was filtered or because of a tracking error
+    // No record found - this means the lock was acquired in a filtered context
+    // (or it's a tracking error). Don't report if there are no tracked locks at all.
     uint32_t current_held = atomic_load(&g_lock_debug_manager.current_locks_held);
 
     if (current_held > 0) {
-      // We have tracked locks but can't find this specific one - this is a tracking error
+      // We have tracked locks but can't find this specific one
+      // Only report if this is likely a genuine error, not a filtered-acquire scenario
       debug_process_untracked_unlock(mutex, key, "MUTEX", file_name, line_number, function_name);
-    } else {
-      // No tracked locks - this means the lock was filtered during lock operation
     }
+    // If no tracked locks at all, the mutex was acquired in a filtered context (normal)
   }
 
   // Unlock the actual mutex (call implementation to avoid recursion)
@@ -1097,6 +1099,7 @@ int debug_rwlock_wrlock(rwlock_t *rwlock, const char *file_name, int line_number
 int debug_rwlock_rdunlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name) {
   LOCK_OP_TRACE("UNLOCK", "RWLOCK_RD", file_name, line_number, function_name);
   if (debug_should_skip_lock_tracking(rwlock, file_name, function_name)) {
+    // Unlock is filtered - the lock was likely acquired in a filtered context too
     return rwlock_rdunlock_impl(rwlock);
   }
 
@@ -1104,7 +1107,12 @@ int debug_rwlock_rdunlock(rwlock_t *rwlock, const char *file_name, int line_numb
   uint32_t read_key = lock_record_key(rwlock, LOCK_TYPE_RWLOCK_READ);
 
   if (!debug_process_tracked_unlock(rwlock, read_key, "READ", file_name, line_number, function_name)) {
-    debug_process_untracked_unlock(rwlock, read_key, "READ", file_name, line_number, function_name);
+    // Only report untracked unlock if we have other tracked locks
+    // (indicating this is likely a genuine error, not a filtered-acquire scenario)
+    uint32_t current_held = atomic_load(&g_lock_debug_manager.current_locks_held);
+    if (current_held > 0) {
+      debug_process_untracked_unlock(rwlock, read_key, "READ", file_name, line_number, function_name);
+    }
   }
 
   return rwlock_rdunlock_impl(rwlock);
@@ -1113,13 +1121,19 @@ int debug_rwlock_rdunlock(rwlock_t *rwlock, const char *file_name, int line_numb
 int debug_rwlock_wrunlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name) {
   LOCK_OP_TRACE("UNLOCK", "RWLOCK_WR", file_name, line_number, function_name);
   if (debug_should_skip_lock_tracking(rwlock, file_name, function_name)) {
+    // Unlock is filtered - the lock was likely acquired in a filtered context too
     return rwlock_wrunlock_impl(rwlock);
   }
 
   // Look for write lock record specifically
   uint32_t write_key = lock_record_key(rwlock, LOCK_TYPE_RWLOCK_WRITE);
   if (!debug_process_tracked_unlock(rwlock, write_key, "WRITE", file_name, line_number, function_name)) {
-    debug_process_untracked_unlock(rwlock, write_key, "WRITE", file_name, line_number, function_name);
+    // Only report untracked unlock if we have other tracked locks
+    // (indicating this is likely a genuine error, not a filtered-acquire scenario)
+    uint32_t current_held = atomic_load(&g_lock_debug_manager.current_locks_held);
+    if (current_held > 0) {
+      debug_process_untracked_unlock(rwlock, write_key, "WRITE", file_name, line_number, function_name);
+    }
   }
 
   return rwlock_wrunlock_impl(rwlock);
@@ -1308,9 +1322,9 @@ void lock_debug_print_state(void) {
                       "Orphaned Release #%u: %s at %p\n", orphan_count, lock_type_str, orphan_entry->lock_address);
     offset += safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "  Thread ID: %llu\n",
                             (unsigned long long)orphan_entry->thread_id);
-    offset +=
-        safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "  Released: %s:%d in %s()\n",
-                      orphan_entry->file_name, orphan_entry->line_number, orphan_entry->function_name);
+    offset += safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                            "  Released: %s:%d in %s()\n", extract_project_relative_path(orphan_entry->file_name),
+                            orphan_entry->line_number, orphan_entry->function_name);
     char release_time_str[32];
     format_duration_ns((double)orphan_entry->acquisition_time_ns, release_time_str, sizeof(release_time_str));
     offset += safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
