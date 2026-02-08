@@ -140,18 +140,22 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       conn_data->fragment_capacity = 0;
     }
 
-    // Close the transport to mark it as disconnected
-    // This signals the receive thread to exit, allowing clean shutdown
+    // Close the transport to mark it as disconnected.
+    // This signals the receive thread to exit, allowing clean shutdown.
     if (conn_data->transport) {
       conn_data->transport->methods->close(conn_data->transport);
     }
 
     if (conn_data->handler_started) {
-      // Wait for handler thread to complete (thread owns and destroys transport)
+      // Wait for handler thread to complete
       asciichat_thread_join(&conn_data->handler_thread, NULL);
       conn_data->handler_started = false;
-      conn_data->transport = NULL; // Handler thread destroyed it
     }
+
+    // NULL the transport pointer so no subsequent callbacks access it.
+    // The transport object itself is owned by the client_info_t structure
+    // and will be freed by remove_client → acip_transport_destroy.
+    conn_data->transport = NULL;
     break;
 
   case LWS_CALLBACK_SERVER_WRITEABLE: {
@@ -260,8 +264,16 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     bool is_first = lws_is_first_fragment(wsi);
     bool is_final = lws_is_final_fragment(wsi);
 
+    // Log all fragments for debugging
     log_debug("WebSocket fragment: %zu bytes (first=%d, final=%d, buffered=%zu)", len, is_first, is_final,
               conn_data->fragment_size);
+
+    // If this is a single-fragment message (first and final), log the packet type for debugging
+    if (is_first && is_final && len >= 10) {
+      const uint8_t *data = (const uint8_t *)in;
+      uint16_t pkt_type = (data[8] << 8) | data[9];
+      log_debug("  Single-fragment message: packet_type=%d (0x%x), total_size=%zu", pkt_type, pkt_type, len);
+    }
 
     // Allocate or expand fragment buffer
     size_t required_size = conn_data->fragment_size + len;
@@ -426,8 +438,26 @@ asciichat_error_t websocket_server_run(websocket_server_t *server) {
     }
   }
 
-  log_info("WebSocket server event loop exited");
+  log_info("WebSocket server event loop exited, destroying context from event loop thread");
+
+  // Destroy context from the event loop thread. When called from a different
+  // thread after the event loop has stopped, lws_context_destroy tries to
+  // gracefully close WebSocket connections but can't process close responses
+  // (no event loop running), so it waits for the close handshake timeout
+  // (5+ seconds). Destroying from the event loop thread avoids this.
+  if (server->context) {
+    lws_context_destroy(server->context);
+    server->context = NULL;
+  }
+
+  log_info("WebSocket server context destroyed");
   return ASCIICHAT_OK;
+}
+
+void websocket_server_cancel_service(websocket_server_t *server) {
+  if (server && server->context) {
+    lws_cancel_service(server->context);
+  }
 }
 
 void websocket_server_destroy(websocket_server_t *server) {
@@ -437,7 +467,11 @@ void websocket_server_destroy(websocket_server_t *server) {
 
   atomic_store(&server->running, false);
 
+  // Context is normally destroyed by websocket_server_run (from the event loop
+  // thread) for fast shutdown. This handles the case where run() wasn't called
+  // or didn't complete normally.
   if (server->context) {
+    log_debug("WebSocket context still alive in destroy, cleaning up");
     lws_context_destroy(server->context);
     server->context = NULL;
   }

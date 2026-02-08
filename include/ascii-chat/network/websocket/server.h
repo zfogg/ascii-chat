@@ -130,3 +130,14 @@ asciichat_error_t websocket_server_run(websocket_server_t *server);
  * @param server Server instance to destroy
  */
 void websocket_server_destroy(websocket_server_t *server);
+
+/**
+ * @brief Wake the WebSocket server event loop immediately
+ *
+ * Thread-safe. Wakes lws_service() from its timeout wait, allowing the
+ * event loop to check the running flag without waiting for the full
+ * service timeout (50ms).
+ *
+ * @param server Server instance (must have a valid context)
+ */
+void websocket_server_cancel_service(websocket_server_t *server);

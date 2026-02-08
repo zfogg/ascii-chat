@@ -2643,6 +2643,28 @@ cleanup:
     g_rate_limiter = NULL;
   }
 
+  // Shutdown WebSocket server BEFORE removing clients.
+  // The LWS event thread runs callbacks that access transport data (impl_data).
+  // If we destroy transports via remove_client while LWS is still running,
+  // callbacks access freed memory (heap-use-after-free).
+  // lws_context_destroy fires LWS_CALLBACK_CLOSED for all connections, which
+  // closes transports and NULLs the per-session conn_data->transport pointer.
+  // After this, remove_client can safely destroy the transport objects.
+  if (g_websocket_server.context != NULL) {
+    log_debug("Shutting down WebSocket server before client cleanup");
+    atomic_store(&g_websocket_server.running, false);
+    // Wake the LWS event loop immediately instead of waiting for the 50ms
+    // lws_service timeout. This is safe because the event loop thread can't
+    // destroy the context until after it exits its loop (which requires
+    // seeing running=false, which we just set).
+    websocket_server_cancel_service(&g_websocket_server);
+    asciichat_thread_join(&g_websocket_server_thread, NULL);
+    // Context is destroyed by websocket_server_run from the event loop thread.
+    // websocket_server_destroy handles the case where it's already NULL.
+    websocket_server_destroy(&g_websocket_server);
+    log_debug("WebSocket server shut down");
+  }
+
   // Clean up all connected clients
   log_debug("Cleaning up connected clients...");
   // FIXED: Simplified to collect client IDs first, then remove them without holding locks
@@ -2732,14 +2754,7 @@ cleanup:
   // Shutdown TCP server (closes listen sockets and cleans up)
   tcp_server_destroy(&g_tcp_server);
 
-  // Shutdown WebSocket server (if initialized)
-  if (g_websocket_server.context != NULL) {
-    log_debug("Shutting down WebSocket server");
-    atomic_store(&g_websocket_server.running, false);
-    asciichat_thread_join(&g_websocket_server_thread, NULL);
-    websocket_server_destroy(&g_websocket_server);
-    log_debug("WebSocket server shut down");
-  }
+  // WebSocket server already shut down before client cleanup (above).
 
   // Join ACDS threads (if started)
   // NOTE: Must be done BEFORE destroying transport to ensure clean shutdown
