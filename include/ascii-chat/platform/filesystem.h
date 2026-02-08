@@ -601,6 +601,65 @@ void platform_normalize_path_separators(char *path);
  */
 int platform_path_strcasecmp(const char *a, const char *b, size_t n);
 
+/**
+ * @brief Get human-readable error message for file read failure
+ *
+ * Checks errno and provides specific error messages for common cases:
+ * - ENOENT: File does not exist
+ * - EACCES: Permission denied
+ * - EISDIR: Is a directory, not a file
+ * - Other: Generic error with errno description
+ *
+ * @param path File path that failed to open
+ * @return Static string describing the error (do not free)
+ *
+ * @ingroup platform
+ */
+const char *file_read_error_message(const char *path);
+
+/**
+ * @brief Get human-readable error message for file write failure
+ *
+ * Checks errno and provides specific error messages for common cases:
+ * - ENOENT: Directory does not exist
+ * - EACCES: Permission denied
+ * - EROFS: Read-only filesystem
+ * - ENOSPC: No space left on device
+ * - EISDIR: Is a directory, not a file
+ * - Other: Generic error with errno description
+ *
+ * @param path File path that failed to open
+ * @return Static string describing the error (do not free)
+ *
+ * @ingroup platform
+ */
+const char *file_write_error_message(const char *path);
+
+/**
+ * @brief Check if file is readable
+ *
+ * Tests whether the file exists and can be read by the current process.
+ *
+ * @param path File path to check
+ * @return true if file is readable, false otherwise
+ *
+ * @ingroup platform
+ */
+bool file_is_readable(const char *path);
+
+/**
+ * @brief Check if file is writable
+ *
+ * Tests whether the file can be written by the current process.
+ * Returns true even if file doesn't exist (assumes directory is writable).
+ *
+ * @param path File path to check
+ * @return true if file is writable, false otherwise
+ *
+ * @ingroup platform
+ */
+bool file_is_writable(const char *path);
+
 #ifdef __cplusplus
 }
 #endif

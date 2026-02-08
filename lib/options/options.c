@@ -803,6 +803,8 @@ asciichat_error_t options_init(int argc, char **argv) {
   bool user_quiet = false;
   int parsed_color_setting = COLOR_SETTING_AUTO; // Store parsed color value until opts is created
   bool color_setting_found = false;
+  bool check_update_flag_seen = false;
+  bool no_check_update_flag_seen = false;
   for (int i = 1; i < argc; i++) {
     // Stop scanning at mode name - binary-level options must come before the mode
     if (argv[i][0] != '-') {
@@ -889,10 +891,23 @@ asciichat_error_t options_init(int argc, char **argv) {
         break;
       }
       if (strcmp(argv[i], "--check-update") == 0) {
+        check_update_flag_seen = true;
+        if (no_check_update_flag_seen) {
+          log_plain_stderr("Error: Cannot specify both --check-update and --no-check-update");
+          return ERROR_USAGE;
+        }
         has_action = true;
         action_check_update_immediate();
         // action_check_update_immediate() calls exit(), so we don't reach here
         break;
+      }
+      if (strcmp(argv[i], "--no-check-update") == 0) {
+        no_check_update_flag_seen = true;
+        if (check_update_flag_seen) {
+          log_plain_stderr("Error: Cannot specify both --check-update and --no-check-update");
+          return ERROR_USAGE;
+        }
+        // Flag will be parsed normally later
       }
       if (strcmp(argv[i], "--config-create") == 0) {
         create_config = true;

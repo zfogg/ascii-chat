@@ -10,6 +10,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <limits.h>
+#include <errno.h>
 
 // GCC/Clang: Use __attribute__((section)) to place string in custom section
 // ELF (Linux): .section_name format
@@ -52,49 +53,58 @@ semantic_version_t version_parse(const char *version_string) {
     return result;
   }
 
-  // Skip leading 'v' or 'V' if present
   const char *p = version_string;
-  if (p[0] == 'v' || p[0] == 'V') {
-    p++;
+
+  // Version must start with 'v' prefix
+  if (p[0] != 'v' && p[0] != 'V') {
+    return result; // Invalid: missing 'v' prefix
   }
+  p++; // Skip 'v'
 
   // Parse major version
   char *endptr = NULL;
+  errno = 0; // Reset errno before strtol
   long major = strtol(p, &endptr, 10);
-  if (endptr == p || major < 0 || major > INT_MAX) {
-    return result; // Invalid major version
+  if (errno == ERANGE || endptr == p || major < 0 || major > INT_MAX) {
+    return result; // Invalid major version or overflow
   }
   result.major = (int)major;
   p = endptr;
 
-  // If no dot, treat as major.0.0
+  // Version must have all three components (major.minor.patch)
   if (*p != '.') {
-    result.valid = true;
-    return result;
+    return result; // Invalid: missing minor version
   }
   p++; // Skip dot
 
   // Parse minor version
+  errno = 0; // Reset errno before strtol
   long minor = strtol(p, &endptr, 10);
-  if (endptr == p || minor < 0 || minor > INT_MAX) {
-    return result; // Invalid minor version
+  if (errno == ERANGE || endptr == p || minor < 0 || minor > INT_MAX) {
+    return result; // Invalid minor version or overflow
   }
   result.minor = (int)minor;
   p = endptr;
 
-  // If no dot, treat as major.minor.0
+  // Version must have patch component
   if (*p != '.') {
-    result.valid = true;
-    return result;
+    return result; // Invalid: missing patch version
   }
   p++; // Skip dot
 
   // Parse patch version
+  errno = 0; // Reset errno before strtol
   long patch = strtol(p, &endptr, 10);
-  if (endptr == p || patch < 0 || patch > INT_MAX) {
-    return result; // Invalid patch version
+  if (errno == ERANGE || endptr == p || patch < 0 || patch > INT_MAX) {
+    return result; // Invalid patch version or overflow
   }
   result.patch = (int)patch;
+  p = endptr;
+
+  // Reject prerelease tags (e.g., "v1.2.3-beta") - must end after patch number
+  if (*p != '\0') {
+    return result; // Invalid: has extra characters after version
+  }
 
   result.valid = true;
   return result;

@@ -11,6 +11,7 @@
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/platform/network.h>
 #include <ascii-chat/platform/system.h>
+#include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/common.h>
@@ -69,8 +70,9 @@ asciichat_error_t update_check_load_cache(update_check_result_t *result) {
 
   FILE *f = fopen(cache_path, "r");
   if (!f) {
+    const char *error_msg = file_read_error_message(cache_path);
     SAFE_FREE(cache_path);
-    return SET_ERRNO(ERROR_FILE_OPERATION, "Cache file does not exist");
+    return SET_ERRNO(ERROR_FILE_OPERATION, "%s", error_msg);
   }
 
   // Read line 1: timestamp
@@ -103,7 +105,6 @@ asciichat_error_t update_check_load_cache(update_check_result_t *result) {
   }
 
   fclose(f);
-  SAFE_FREE(cache_path);
 
   // Fill in current version/SHA
   SAFE_STRNCPY(result->current_version, ASCII_CHAT_VERSION_STRING, sizeof(result->current_version));
@@ -118,9 +119,19 @@ asciichat_error_t update_check_load_cache(update_check_result_t *result) {
       int cmp = version_compare(latest_ver, current_ver);
       result->update_available = (cmp > 0); // Update available if latest > current
       result->check_succeeded = true;
+    } else {
+      // Cache contains invalid version data - delete it
+      log_warn("Update cache contains invalid version data (current:%s, latest:%s) - deleting corrupted cache",
+               result->current_version, result->latest_version);
+      if (remove(cache_path) != 0) {
+        log_warn("Failed to delete corrupted cache file: %s", cache_path);
+      }
+      SAFE_FREE(cache_path);
+      return SET_ERRNO(ERROR_FORMAT, "Corrupted cache file deleted");
     }
   }
 
+  SAFE_FREE(cache_path);
   return ASCIICHAT_OK;
 }
 
@@ -136,8 +147,9 @@ asciichat_error_t update_check_save_cache(const update_check_result_t *result) {
 
   FILE *f = fopen(cache_path, "w");
   if (!f) {
+    const char *error_msg = file_write_error_message(cache_path);
     SAFE_FREE(cache_path);
-    return SET_ERRNO(ERROR_FILE_OPERATION, "Failed to open cache file for writing");
+    return SET_ERRNO(ERROR_FILE_OPERATION, "%s", error_msg);
   }
 
   // Write timestamp
