@@ -32,11 +32,22 @@ if echo "$all_staged" | grep -q "^web/ascii-chat\.com/"; then
     cd ../..
 fi
 
-# Build web/web.ascii-chat.com (no auto-add)
-if echo "$all_staged" | grep -q "^web/web\.ascii-chat\.com/"; then
+# Build web/web.ascii-chat.com and auto-add changed WASM assets
+# Only auto-add WASM if source files changed (not just WASM dist files)
+web_src_changed=$(echo "$all_staged" | grep -E "^(web/web\.ascii-chat\.com/|src/web/)" | grep -v "^web/web\.ascii-chat\.com/src/wasm/dist/" || true)
+if [[ -n "$web_src_changed" ]]; then
     cd web/web.ascii-chat.com
     bun run build
     cd ../..
+
+    # Auto-add WASM compiled assets if they changed
+    wasm_files="web/web.ascii-chat.com/src/wasm/dist/mirror.js web/web.ascii-chat.com/src/wasm/dist/mirror.wasm"
+    for wasm_file in $wasm_files; do
+        if [[ -f "$wasm_file" ]] && git diff --name-only "$wasm_file" | grep -q "^$wasm_file$"; then
+            git add "$wasm_file"
+            echo "📦 Auto-staged WASM asset: $wasm_file"
+        fi
+    done
 fi
 
 # Build web/discovery.ascii-chat.com (no auto-add)

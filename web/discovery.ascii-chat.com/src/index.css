@@ -1,110 +1,36 @@
-:root {
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
-  line-height: 1.5;
-  font-weight: 400;
+/* Import Tailwind and shared styles */
+@import 'tailwindcss';
 
-  color-scheme: dark;
-  color: #e0e0e0;
-  background-color: #0a0a0a;
+/* Tell Tailwind v4 which files to scan for classes */
+@source "../packages/shared/src";
+@source "../../packages/shared/src";
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+@import '@ascii-chat/shared/styles/base.css';
 
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  padding: 0;
-  min-height: 100vh;
-}
-
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-}
-
-@media (max-width: 768px) {
-  #root {
-    padding: 1rem;
+@layer base {
+  body {
+    background-color: #030712;
+    color: #f3f4f6;
   }
 }
 
-h1 {
-  font-size: 2.5em;
-  line-height: 1.1;
-  margin-bottom: 1rem;
-}
-
-@media (max-width: 768px) {
-  h1 {
-    font-size: 1.75em;
+@layer components {
+  .link-standard {
+    color: rgb(34, 211, 238);
+    transition: color 150ms cubic-bezier(0.4, 0, 0.2, 1);
   }
-}
 
-code {
-  background-color: #1a1a1a;
-  padding: 0.2em 0.4em;
-  border-radius: 3px;
-  font-family: inherit;
-  font-size: 0.9em;
-}
-
-@media (max-width: 768px) {
-  code {
-    font-size: 0.85em;
+  .link-standard:hover {
+    color: rgb(165, 243, 252);
   }
-}
 
-pre {
-  background-color: #1a1a1a;
-  padding: 1rem;
-  border-radius: 8px;
-  overflow-x: auto;
-  border: 1px solid #333;
-}
-
-@media (max-width: 768px) {
-  pre {
-    padding: 0.75rem;
+  .link-underline {
+    color: rgb(34, 211, 238);
+    transition: color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    text-decoration: underline;
   }
-}
 
-pre code {
-  background-color: transparent;
-  padding: 0;
-}
-
-a {
-  color: #4a9eff;
-  text-decoration: none;
-}
-
-a:hover {
-  text-decoration: underline;
-}
-
-.fingerprint {
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
-  font-size: 0.9em;
-  color: #00ff00;
-  background-color: #1a1a1a;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  display: inline-block;
-  margin: 0.5rem 0;
-  border: 1px solid #333;
-  word-break: break-all;
-}
-
-@media (max-width: 768px) {
-  .fingerprint {
-    font-size: 0.75em;
-    padding: 0.5rem 0.75rem;
+  .link-underline:hover {
+    color: rgb(165, 243, 252);
   }
 }

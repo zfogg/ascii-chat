@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from '@ascii-chat/shared/components'
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -19,17 +20,17 @@ export function Header() {
     <header className="border-b border-terminal-8 bg-terminal-0 sticky top-0 z-50">
       <div className="px-4 py-3 md:px-6 md:py-4">
         <div className="flex items-center justify-between">
-          <a
+          <Link
             href="/"
             className="text-xl md:text-2xl font-bold text-terminal-cyan hover:text-terminal-brightCyan transition-colors"
           >
             ascii-chat <span className="text-sm md:text-base text-terminal-8 font-normal">(web client)</span>
-          </a>
+          </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex gap-6 text-sm">
             {navLinks.map(({ href, label }) => (
-              <a
+              <Link
                 key={href}
                 href={href}
                 className={`transition-colors py-1 px-2 rounded ${
@@ -39,7 +40,7 @@ export function Header() {
                 }`}
               >
                 {label}
-              </a>
+              </Link>
             ))}
           </nav>
 
@@ -78,7 +79,7 @@ export function Header() {
         {mobileMenuOpen && (
           <nav className="md:hidden mt-4 pb-2 border-t border-terminal-8 pt-4">
             {navLinks.map(({ href, label }) => (
-              <a
+              <Link
                 key={href}
                 href={href}
                 className={`block py-3 px-4 transition-colors rounded ${
@@ -89,7 +90,7 @@ export function Header() {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 {label}
-              </a>
+              </Link>
             ))}
           </nav>
         )}

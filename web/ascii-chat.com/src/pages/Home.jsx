@@ -1,5 +1,6 @@
 import Footer from "../components/Footer";
 import TrackedLink from "../components/TrackedLink";
+import { PreCode } from "@ascii-chat/shared/components";
 
 export default function Home() {
   return (
@@ -59,29 +60,24 @@ export default function Home() {
               <h3 className="text-xl font-semibold text-purple-300 mb-3">
                 Homebrew
               </h3>
-              <pre className="bg-gray-900  rounded-lg p-4 overflow-x-auto">
-                <code className="text-teal-300">{`brew tap zfogg/ascii-chat
-brew install ascii-chat`}</code>
-              </pre>
+              <PreCode>{`brew tap zfogg/ascii-chat
+brew install ascii-chat`}</PreCode>
             </div>
 
             <div>
               <h3 className="text-xl font-semibold text-pink-300 mb-3">
                 Arch Linux (AUR)
               </h3>
-              <pre className="bg-gray-900  rounded-lg p-4 overflow-x-auto">
-                <code className="text-teal-300">{`paru -S ascii-chat
+              <PreCode>{`paru -S ascii-chat
 # or
-yay -S ascii-chat`}</code>
-              </pre>
+yay -S ascii-chat`}</PreCode>
             </div>
 
             <div>
               <h3 className="text-xl font-semibold text-teal-300 mb-3">
                 Build from source
               </h3>
-              <pre className="bg-gray-900  rounded-lg p-4 overflow-x-auto">
-                <code className="text-teal-300">{`git clone https://github.com/zfogg/ascii-chat.git
+              <PreCode>{`git clone https://github.com/zfogg/ascii-chat.git
 cd ascii-chat
 
 # Linux/macOS
@@ -91,8 +87,7 @@ cd ascii-chat
 ./scripts/install-deps.ps1
 
 cmake --preset default && cmake --build build
-./build/bin/ascii-chat`}</code>
-              </pre>
+./build/bin/ascii-chat`}</PreCode>
             </div>
           </div>
         </section>

@@ -1,3 +1,5 @@
+import { Heading } from '@ascii-chat/shared/components'
+
 export type ColorMode = 'auto' | 'none' | '16' | '256' | 'truecolor'
 export type ColorFilter = 'none' | 'black' | 'white' | 'green' | 'magenta' | 'fuchsia' | 'orange' | 'teal' | 'cyan' | 'pink' | 'red' | 'yellow' | 'rainbow'
 export type Palette = 'standard' | 'blocks' | 'digital' | 'minimal' | 'cool' | 'custom'
@@ -28,7 +30,7 @@ export function Settings({ config, onChange, disabled = false }: SettingsProps) 
   return (
     <div className="border-b border-terminal-8 bg-terminal-0">
       <div className="px-4 py-3">
-        <h3 className="text-sm font-semibold text-terminal-fg mb-3">Settings</h3>
+        <Heading level={3} className="text-sm font-semibold text-terminal-fg mb-3">Settings</Heading>
         <div className="flex flex-wrap gap-3">
           {/* Resolution */}
           <div className="flex-1 min-w-[200px]">

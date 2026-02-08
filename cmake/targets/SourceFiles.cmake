@@ -125,6 +125,7 @@ set(PLATFORM_SRCS_COMMON
     lib/platform/abstraction.c
     lib/platform/socket.c
     lib/platform/thread.c
+    lib/platform/filesystem.c
     # NOTE: lib/platform/system.c is included by windows/system.c and posix/system.c
 )
 
