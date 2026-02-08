@@ -48,7 +48,7 @@ void options_builder_add_logging_group(options_builder_t *b) {
  * mode_bitmask indicating which modes it applies to. The config includes
  * all options, and validation happens after parsing based on detected mode.
  */
-const options_config_t *options_preset_unified(const char *program_name, const char *description) {
+options_config_t *options_preset_unified(const char *program_name, const char *description) {
   options_builder_t *b = options_builder_create(sizeof(options_t));
   if (!b) {
     SET_ERRNO(ERROR_MEMORY, "Failed to create options builder");

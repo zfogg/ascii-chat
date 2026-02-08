@@ -254,7 +254,7 @@ static bool is_binary_level_option_with_args(const char *arg, bool *out_takes_ar
  */
 static bool is_mirror_mode_option(const char *opt_name, char short_name) {
   // Get unified config
-  const options_config_t *config = options_preset_unified(NULL, NULL);
+  options_config_t *config = options_preset_unified(NULL, NULL);
   if (!config) {
     return false;
   }
@@ -1190,7 +1190,7 @@ asciichat_error_t options_init(int argc, char **argv) {
     // Handle --create-man-page-template: generate merged man page template
     // The .1.in file is the existing template to read from (not the output)
     const char *existing_template_path = "share/man/man1/ascii-chat.1.in";
-    const options_config_t *config = options_preset_unified(NULL, NULL);
+    options_config_t *config = options_preset_unified(NULL, NULL);
     if (!config) {
       log_error("Error: Failed to get binary options config");
       return ERROR_MEMORY;
@@ -1415,7 +1415,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   binary_level_opts_t binary_before_defaults = extract_binary_level(&opts);
   asciichat_mode_t mode_saved_for_parsing = detected_mode; // CRITICAL: Save before defaults reset
   // Get unified config
-  const options_config_t *config = options_preset_unified(NULL, NULL);
+  options_config_t *config = options_preset_unified(NULL, NULL);
   if (!config) {
     SAFE_FREE(allocated_mode_argv);
     return SET_ERRNO(ERROR_CONFIG, "Failed to create options configuration");

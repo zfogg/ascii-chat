@@ -15,6 +15,6 @@
  * mode_bitmask indicating which modes it applies to. The config includes
  * all options, and validation happens after parsing based on detected mode.
  */
-const options_config_t *options_preset_unified(const char *program_name, const char *description);
+options_config_t *options_preset_unified(const char *program_name, const char *description);
 
 /** @} */

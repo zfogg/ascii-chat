@@ -75,10 +75,11 @@ typedef enum {
  * This data is used by all shell completion generators (bash, fish, zsh, powershell).
  */
 typedef struct {
-  // Enum values with descriptions
-  const char **enum_values;       ///< Enum value strings (e.g., {"auto", "none", "16", "256", "truecolor"})
-  size_t enum_count;              ///< Number of enum values
-  const char **enum_descriptions; ///< Descriptions parallel to enum_values (e.g., "Auto-detect from terminal")
+  // Enum values with descriptions (null-terminated arrays)
+  const char *
+      *enum_values; ///< Enum value strings (null-terminated, e.g., {"auto", "none", "16", "256", "truecolor", NULL})
+  const char *
+      *enum_descriptions; ///< Descriptions parallel to enum_values (null-terminated, e.g., "Auto-detect from terminal")
   const int *enum_integer_values; ///< Actual enum integer values (e.g., {-1, 0, 1, 2, 3} for non-sequential enums)
 
   // Numeric range
@@ -649,7 +650,7 @@ void options_builder_set_arg_placeholder(options_builder_t *builder, const char 
  * ```
  */
 void options_builder_set_enum_values(options_builder_t *builder, const char *option_name, const char **values,
-                                     const char **descriptions, size_t count);
+                                     const char **descriptions);
 
 /**
  * @brief Set numeric range for an option
@@ -1008,7 +1009,7 @@ void options_builder_add_custom_section(options_builder_t *builder, const char *
  * @param description Optional program description
  * @return Preset config (caller must free after use)
  */
-const options_config_t *options_preset_unified(const char *program_name, const char *description);
+options_config_t *options_preset_unified(const char *program_name, const char *description);
 
 // ============================================================================
 // Parsing and Validation
