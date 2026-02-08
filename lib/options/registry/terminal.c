@@ -94,7 +94,7 @@ const registry_entry_t g_terminal_entries[] = {
      NULL,
      false,
      false,
-     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     OPTION_MODE_BINARY,
      {0}},
     {"utf8",
      '\0',

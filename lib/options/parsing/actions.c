@@ -225,6 +225,79 @@ static void execute_list_speakers(void) {
 // Terminal Capabilities Action
 // ============================================================================
 
+/**
+ * @brief Execute show capabilities immediately (for early binary-level execution)
+ */
+void action_show_capabilities_immediate(void) {
+  terminal_capabilities_t caps = detect_terminal_capabilities();
+
+  // Determine if we should use colored output
+  bool use_colors = terminal_should_color_output(STDOUT_FILENO);
+
+  // Override color level if colors should not be shown
+  if (!use_colors) {
+    caps.color_level = TERM_COLOR_NONE;
+    caps.color_count = 0;
+    caps.capabilities &= ~((uint32_t)(TERM_CAP_COLOR_TRUE | TERM_CAP_COLOR_256 | TERM_CAP_COLOR_16));
+  }
+
+  // Use detected terminal size (immediate execution doesn't have parsed options yet)
+  terminal_size_t size;
+  terminal_get_size(&size);
+  unsigned short width = size.cols;
+  unsigned short height = size.rows;
+
+  log_color_t label_color = use_colors ? LOG_COLOR_GREY : LOG_COLOR_GREY;
+  log_color_t string_color = use_colors ? LOG_COLOR_DEBUG : LOG_COLOR_GREY;
+  log_color_t good_color = use_colors ? LOG_COLOR_INFO : LOG_COLOR_GREY;
+  log_color_t bad_color = use_colors ? LOG_COLOR_ERROR : LOG_COLOR_GREY;
+  log_color_t number_color = use_colors ? LOG_COLOR_FATAL : LOG_COLOR_GREY;
+
+  printf("%s\n", colored_string(LOG_COLOR_WARN, "Terminal Capabilities:"));
+
+  char size_buf[64];
+  snprintf(size_buf, sizeof(size_buf), "%ux%u", width, height);
+  printf("  %s: %s\n", colored_string(label_color, "Terminal Size"), colored_string(number_color, size_buf));
+
+  const char *color_level_name = terminal_color_level_name(caps.color_level);
+  log_color_t color_level_color = (caps.color_level == TERM_COLOR_NONE) ? bad_color : string_color;
+  printf("  %s: %s\n", colored_string(label_color, "Color Level"),
+         colored_string(color_level_color, (char *)color_level_name));
+
+  char colors_buf[64];
+  snprintf(colors_buf, sizeof(colors_buf), "%u", caps.color_count);
+  printf("  %s: %s\n", colored_string(label_color, "Max Colors"), colored_string(number_color, colors_buf));
+
+  log_color_t utf8_color = caps.utf8_support ? good_color : bad_color;
+  printf("  %s: %s\n", colored_string(label_color, "UTF-8 Support"),
+         colored_string(utf8_color, (char *)(caps.utf8_support ? "Yes" : "No")));
+
+  const char *render_mode_str = "unknown";
+  if (caps.render_mode == RENDER_MODE_FOREGROUND) {
+    render_mode_str = "foreground";
+  } else if (caps.render_mode == RENDER_MODE_BACKGROUND) {
+    render_mode_str = "background";
+  } else if (caps.render_mode == RENDER_MODE_HALF_BLOCK) {
+    render_mode_str = "half-block";
+  }
+  printf("  %s: %s\n", colored_string(label_color, "Render Mode"),
+         colored_string(string_color, (char *)render_mode_str));
+  printf("  %s: %s\n", colored_string(label_color, "TERM"), colored_string(string_color, (char *)caps.term_type));
+  printf("  %s: %s\n", colored_string(label_color, "COLORTERM"),
+         colored_string(string_color, (char *)(strlen(caps.colorterm) ? caps.colorterm : "(not set)")));
+
+  log_color_t reliable_color = caps.detection_reliable ? good_color : bad_color;
+  printf("  %s: %s\n", colored_string(label_color, "Detection Reliable"),
+         colored_string(reliable_color, (char *)(caps.detection_reliable ? "Yes" : "No")));
+
+  char bitmask_buf[64];
+  snprintf(bitmask_buf, sizeof(bitmask_buf), "0x%08x", caps.capabilities);
+  printf("  %s: %s\n", colored_string(label_color, "Capabilities Bitmask"), colored_string(number_color, bitmask_buf));
+
+  fflush(stdout);
+  exit(0);
+}
+
 void action_show_capabilities(void) {
   // Defer execution until after options are fully parsed and dimensions updated
   // This ensures --width and --height flags are properly reflected in the output

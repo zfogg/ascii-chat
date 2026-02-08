@@ -993,10 +993,12 @@ asciichat_error_t options_init(int argc, char **argv) {
         // action_list_speakers() calls exit(), so we don't reach here
         break;
       }
-      // Check for other action flags that are parsed by the builder
-      // Note: --show-capabilities is only for client/mirror modes (parsed by builder)
+      // Check for --show-capabilities (binary-level action)
       if (strcmp(argv[i], "--show-capabilities") == 0) {
         has_action = true;
+        action_show_capabilities_immediate();
+        // action_show_capabilities_immediate() calls exit(), so we don't reach here
+        break;
       }
     }
   }

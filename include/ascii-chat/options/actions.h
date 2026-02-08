@@ -104,6 +104,15 @@ void action_list_speakers(void);
 void action_show_capabilities(void);
 
 /**
+ * @brief Execute show capabilities immediately (for binary-level execution)
+ *
+ * Shows terminal capabilities before full options parsing.
+ * Uses detected terminal size (doesn't respect --width/--height).
+ * Exits with code 0.
+ */
+void action_show_capabilities_immediate(void);
+
+/**
  * @brief Show version information and exit
  *
  * Displays ascii-chat version, build type, build date, and
