@@ -40,7 +40,7 @@
  */
 static char *get_cache_file_path(void) {
   // Get config directory
-  char *config_dir = path_get_ascii_chat_config_dir();
+  char *config_dir = get_config_dir();
   if (!config_dir) {
     log_error("Failed to get config directory for update check cache");
     return NULL;
@@ -64,13 +64,13 @@ asciichat_error_t update_check_load_cache(update_check_result_t *result) {
 
   char *cache_path = get_cache_file_path();
   if (!cache_path) {
-    return SET_ERRNO(ERROR_IO, "Could not determine cache file path");
+    return SET_ERRNO(ERROR_FILE_OPERATION, "Could not determine cache file path");
   }
 
   FILE *f = fopen(cache_path, "r");
   if (!f) {
     SAFE_FREE(cache_path);
-    return SET_ERRNO(ERROR_IO, "Cache file does not exist");
+    return SET_ERRNO(ERROR_FILE_OPERATION, "Cache file does not exist");
   }
 
   // Read line 1: timestamp
@@ -78,7 +78,7 @@ asciichat_error_t update_check_load_cache(update_check_result_t *result) {
   if (!fgets(line, sizeof(line), f)) {
     fclose(f);
     SAFE_FREE(cache_path);
-    return SET_ERRNO(ERROR_IO, "Failed to read timestamp from cache");
+    return SET_ERRNO(ERROR_FILE_OPERATION, "Failed to read timestamp from cache");
   }
   result->last_check_time = (time_t)atoll(line);
 
@@ -125,13 +125,13 @@ asciichat_error_t update_check_save_cache(const update_check_result_t *result) {
 
   char *cache_path = get_cache_file_path();
   if (!cache_path) {
-    return SET_ERRNO(ERROR_IO, "Could not determine cache file path");
+    return SET_ERRNO(ERROR_FILE_OPERATION, "Could not determine cache file path");
   }
 
   FILE *f = fopen(cache_path, "w");
   if (!f) {
     SAFE_FREE(cache_path);
-    return SET_ERRNO(ERROR_IO, "Failed to open cache file for writing");
+    return SET_ERRNO(ERROR_FILE_OPERATION, "Failed to open cache file for writing");
   }
 
   // Write timestamp
@@ -286,7 +286,7 @@ asciichat_error_t update_check_perform(update_check_result_t *result) {
     SAFE_FREE(response);
     result->check_succeeded = false;
     update_check_save_cache(result);
-    return SET_ERRNO(ERROR_PARSE, "Failed to parse GitHub API JSON");
+    return SET_ERRNO(ERROR_FORMAT, "Failed to parse GitHub API JSON");
   }
 
   SAFE_FREE(response);
@@ -318,8 +318,8 @@ asciichat_error_t update_check_perform(update_check_result_t *result) {
  */
 static bool is_homebrew_install(void) {
   // Check if binary is in Homebrew Cellar directory
-  const char *exe_path = platform_get_executable_path();
-  if (!exe_path) {
+  char exe_path[1024];
+  if (!platform_get_executable_path(exe_path, sizeof(exe_path))) {
     return false;
   }
 
