@@ -635,33 +635,65 @@ color_mode = truecolor # from ASCII_CHAT_COLOR_MODE env var (overrides config)
 
           {/* Man Page */}
           <section className="docs-section-spacing">
-            <h2 className="heading-2 text-teal-400">
-              📖 Man Page (ascii-chat(1))
-            </h2>
+            <h2 className="heading-2 text-teal-400">📖 Man Pages</h2>
 
             <p className="docs-paragraph">
               The complete reference documentation for ascii-chat is available
-              as a traditional Unix man page. It contains the full list of all
-              options, environment variables, examples, security details, and
-              more.
+              as traditional Unix man pages:
             </p>
 
+            <div className="space-y-3 mb-6">
+              <div className="card-standard accent-teal">
+                <h4 className="text-teal-300 font-semibold mb-2">
+                  <a
+                    href="/man1"
+                    className="text-teal-300 hover:text-teal-200 transition-colors"
+                  >
+                    ascii-chat(1)
+                  </a>{" "}
+                  - Command Reference
+                </h4>
+                <p className="text-gray-400 text-sm">
+                  Complete list of all command-line options, environment
+                  variables, modes, examples, security details, and keyboard
+                  controls.
+                </p>
+              </div>
+              <div className="card-standard accent-purple">
+                <h4 className="text-purple-300 font-semibold mb-2">
+                  <a
+                    href="/man5"
+                    className="text-purple-300 hover:text-purple-200 transition-colors"
+                  >
+                    ascii-chat(5)
+                  </a>{" "}
+                  - File Formats
+                </h4>
+                <p className="text-gray-400 text-sm">
+                  Configuration file format (TOML), color scheme files,
+                  authentication files, and other data formats.
+                </p>
+              </div>
+            </div>
+
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-teal-300 mb-4">
-                View the Man Page
-              </h3>
+              <h3 className="heading-3 text-teal-300 mb-4">View Man Pages</h3>
               <p className="text-gray-400 text-sm mb-3">
                 View ascii-chat documentation in your terminal:
               </p>
               <pre className="code-block">
-                <code className="code-content">man ascii-chat</code>
+                <code className="code-content">
+                  {`man ascii-chat    # Command reference (section 1)
+man 5 ascii-chat  # File formats (section 5)`}
+                </code>
               </pre>
               <p className="text-gray-400 text-sm mt-3 mb-3">
-                Or view it on the web:
+                Or view them on the web:
               </p>
               <pre className="code-block">
                 <code className="code-content">
-                  open https://ascii-chat.com/man1
+                  {`open https://ascii-chat.com/man1  # Command reference
+open https://ascii-chat.com/man5  # File formats`}
                 </code>
               </pre>
             </div>
