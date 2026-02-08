@@ -1533,10 +1533,6 @@ void *client_receive_thread(void *arg) {
 
 // Thread function to handle sending data to a specific client
 void *client_send_thread_func(void *arg) {
-  // Log entry immediately - this proves the thread actually started.
-  fprintf(stderr, "*** SEND_THREAD_STARTED arg=%p ***\n", arg);
-  fflush(stderr);
-
   client_info_t *client = (client_info_t *)arg;
 
   // Validate client pointer immediately before any access.
@@ -1686,9 +1682,6 @@ void *client_send_thread_func(void *arg) {
             if (result != ASCIICHAT_OK) {
               log_error("AUDIO SEND FAIL (batch): client=%u, frames=%d, total_size=%zu, result=%d", client->client_id,
                         audio_packet_count, total_opus_size, result);
-            } else {
-              fprintf(stderr, "[SEND_BATCH] client=%u sent %d Opus frames (%zu bytes total)\n", client->client_id,
-                      audio_packet_count, total_opus_size);
             }
           } else {
             log_error("Failed to allocate buffer for Opus batch");
@@ -1736,9 +1729,6 @@ void *client_send_thread_func(void *arg) {
             if (result != ASCIICHAT_OK) {
               log_error("AUDIO SEND FAIL (raw batch): client=%u, packets=%d, samples=%zu, result=%d", client->client_id,
                         audio_packet_count, total_samples, result);
-            } else {
-              fprintf(stderr, "[SEND_RAW_BATCH] client=%u sent %d audio packets (%zu samples)\n", client->client_id,
-                      audio_packet_count, total_samples);
             }
           } else {
             log_error("Failed to allocate buffer for audio batch");

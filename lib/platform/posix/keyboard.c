@@ -61,7 +61,11 @@ asciichat_error_t keyboard_init(void) {
   // Save original settings and create raw mode version
   new_termios = g_original_termios;
 
-  // Disable canonical mode (line buffering) and echo
+  // Disable canonical mode (line buffering) and echo.
+  // ISIG stays enabled so Ctrl+C generates SIGINT, which properly
+  // interrupts blocking syscalls (select/accept) in other threads.
+  // The SIGINT handler checks an atomic flag to decide whether to
+  // cancel grep mode or shut down the server.
   new_termios.c_lflag &= ~((tcflag_t)(ICANON | ECHO));
 
   // VMIN=1: read() blocks until at least 1 byte is available.

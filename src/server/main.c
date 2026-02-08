@@ -663,6 +663,14 @@ size_t g_num_whitelisted_clients = 0;
  */
 static void server_handle_sigint(int sigint) {
   (void)(sigint);
+
+  // If in grep input mode, cancel grep instead of shutting down.
+  // Uses atomic reads only (no mutex) - safe from signal context.
+  if (interactive_grep_is_entering_atomic()) {
+    interactive_grep_signal_cancel();
+    return;
+  }
+
   static _Atomic int sigint_count = 0;
   int count = atomic_fetch_add(&sigint_count, 1) + 1;
   if (count > 1) {
@@ -672,8 +680,14 @@ static void server_handle_sigint(int sigint) {
   // STEP 1: Set atomic shutdown flag (checked by all worker threads)
   atomic_store(&g_server_should_exit, true);
 
-  // STEP 2: Log without file I/O (no mutex, avoids deadlocks in signal handlers)
-  log_info_nofile("SIGINT received - shutting down server...");
+  // STEP 2: Use raw write() for user feedback (async-signal-safe).
+  // log_info_nofile() is NOT safe here - it calls SAFE_MALLOC (via ansi_strip_escapes),
+  // SAFE_FREE, and server_status_log_append (mutex). If the signal interrupts a thread
+  // holding the memory tracking lock or log buffer lock, the handler deadlocks.
+  // Since SIGINT auto-masks during handler execution, a second Ctrl+C would be
+  // blocked, preventing platform_force_exit() from ever running.
+  static const char sigint_msg[] = "\nSIGINT received - shutting down server...\n";
+  (void)write(STDERR_FILENO, sigint_msg, sizeof(sigint_msg) - 1);
 
   // STEP 3: Signal TCP server to stop and close listening sockets
   // This interrupts the accept() call in the main loop
@@ -1324,7 +1338,16 @@ static void *status_screen_thread(void *arg) {
   while (!atomic_load(&g_server_should_exit)) {
     uint64_t frame_start = platform_get_monotonic_time_us();
 
-    // Process all keys from the queue (keyboard thread captures them)
+    // Check if SIGINT handler cancelled grep mode (Ctrl+C while in grep).
+    // The signal handler sets an atomic flag instead of touching mutex-protected state.
+    if (interactive_grep_check_signal_cancel()) {
+      interactive_grep_exit_mode(false);
+      grep_was_just_cancelled = true;
+    }
+
+    // Process all keys from the queue (keyboard thread captures them).
+    // Ctrl+C is NOT in the queue (ISIG is enabled, so it generates SIGINT
+    // which is handled above). The queue only has regular keypresses.
     if (keyboard_enabled) {
       // Reset the "just cancelled" flag each frame
       grep_was_just_cancelled = false;
@@ -1339,22 +1362,6 @@ static void *status_screen_thread(void *arg) {
           continue;
         }
         skip_next_slash = false;
-
-        // Check if Ctrl+C
-        if (key == 3) {
-          bool in_grep = interactive_grep_is_entering();
-
-          if (in_grep) {
-            // In grep mode - cancel grep directly
-            interactive_grep_exit_mode(false);
-            grep_was_just_cancelled = true;
-            break; // Stop processing keys, continue to next frame
-          } else {
-            // Not in grep mode - shutdown server
-            atomic_store(&g_server_should_exit, true);
-            goto cleanup;
-          }
-        }
 
         // Let grep handle its keys
         if (interactive_grep_should_handle(key)) {

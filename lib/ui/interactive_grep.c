@@ -57,6 +57,8 @@ typedef struct {
 
   mutex_t mutex;
   _Atomic bool needs_rerender;
+  _Atomic bool signal_cancelled; ///< Set by signal handler, checked by render loop
+  _Atomic int mode_atomic;       ///< Shadow of mode for signal-safe reads
   bool initialized;
 } interactive_grep_state_t;
 
@@ -73,6 +75,8 @@ static interactive_grep_state_t g_grep_state = {
     .context_before = 0,
     .context_after = 0,
     .needs_rerender = ATOMIC_VAR_INIT(false),
+    .signal_cancelled = ATOMIC_VAR_INIT(false),
+    .mode_atomic = GREP_MODE_INACTIVE,
     .initialized = false,
 };
 
@@ -251,6 +255,7 @@ asciichat_error_t interactive_grep_init(void) {
   // Initialize state
   memset(&g_grep_state, 0, sizeof(g_grep_state));
   g_grep_state.mode = GREP_MODE_INACTIVE;
+  atomic_store(&g_grep_state.mode_atomic, GREP_MODE_INACTIVE);
   atomic_store(&g_grep_state.needs_rerender, false);
   g_grep_state.initialized = true;
 
@@ -299,6 +304,7 @@ void interactive_grep_enter_mode(void) {
 
   // Enter input mode
   g_grep_state.mode = GREP_MODE_ENTERING;
+  atomic_store(&g_grep_state.mode_atomic, GREP_MODE_ENTERING);
   atomic_store(&g_grep_state.needs_rerender, true);
 
   mutex_unlock(&g_grep_state.mutex);
@@ -326,6 +332,7 @@ void interactive_grep_exit_mode(bool accept) {
     g_grep_state.active_pattern_count = 0;
 
     g_grep_state.mode = GREP_MODE_INACTIVE;
+    atomic_store(&g_grep_state.mode_atomic, GREP_MODE_INACTIVE);
     atomic_store(&g_grep_state.needs_rerender, true);
     mutex_unlock(&g_grep_state.mutex);
     return;
@@ -379,9 +386,26 @@ void interactive_grep_exit_mode(bool accept) {
   // For fixed strings, pattern stays in input_buffer and fixed_string=true
 
   g_grep_state.mode = GREP_MODE_ACTIVE;
+  atomic_store(&g_grep_state.mode_atomic, GREP_MODE_ACTIVE);
   atomic_store(&g_grep_state.needs_rerender, true);
 
   mutex_unlock(&g_grep_state.mutex);
+}
+
+/* ============================================================================
+ * Signal-Safe Interface
+ * ========================================================================== */
+
+bool interactive_grep_is_entering_atomic(void) {
+  return atomic_load(&g_grep_state.mode_atomic) == GREP_MODE_ENTERING;
+}
+
+void interactive_grep_signal_cancel(void) {
+  atomic_store(&g_grep_state.signal_cancelled, true);
+}
+
+bool interactive_grep_check_signal_cancel(void) {
+  return atomic_exchange(&g_grep_state.signal_cancelled, false);
 }
 
 bool interactive_grep_is_entering(void) {

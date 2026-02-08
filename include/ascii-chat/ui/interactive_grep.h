@@ -150,6 +150,34 @@ asciichat_error_t interactive_grep_gather_and_filter_logs(session_log_entry_t **
 void interactive_grep_render_input_line(int width);
 
 /* ============================================================================
+ * Signal-Safe Interface
+ * ========================================================================== */
+
+/**
+ * @brief Check if grep is in entering mode (async-signal-safe)
+ * @return true if in GREP_MODE_ENTERING
+ *
+ * Uses atomic load only (no mutex). Safe to call from signal handlers.
+ */
+bool interactive_grep_is_entering_atomic(void);
+
+/**
+ * @brief Cancel grep mode from a signal handler (async-signal-safe)
+ *
+ * Sets an atomic flag that the status screen loop checks on its next
+ * iteration. Does not use mutexes or allocate memory.
+ */
+void interactive_grep_signal_cancel(void);
+
+/**
+ * @brief Check and clear the signal-cancel flag
+ * @return true if grep was cancelled by a signal since last check
+ *
+ * Called by the status screen loop to detect signal-initiated cancellation.
+ */
+bool interactive_grep_check_signal_cancel(void);
+
+/* ============================================================================
  * Re-render Notification
  * ========================================================================== */
 
