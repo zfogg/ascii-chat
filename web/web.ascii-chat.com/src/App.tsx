@@ -1,6 +1,7 @@
 import { HomePage } from './pages/Home'
 import { MirrorPage } from './pages/Mirror'
 import { NotFoundPage } from './pages/NotFound'
+import { ClientPage } from './pages/Client'
 import { Header } from './components/Header'
 import { Footer } from './components/Footer'
 
@@ -29,18 +30,7 @@ export function App() {
   }
 
   if (path === '/client' || path === '/client/') {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold text-terminal-green mb-4">ascii-chat | Client Mode</h1>
-            <p className="text-terminal-fg mb-8">Coming soon: WebSocket client</p>
-          </div>
-        </div>
-        <Footer />
-      </div>
-    )
+    return <ClientPage />
   }
 
   if (path === '/discovery' || path === '/discovery/') {

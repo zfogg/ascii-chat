@@ -41,6 +41,30 @@ set(PCRE2_BUILD_TESTS OFF CACHE BOOL "Build PCRE2 tests")
 set(PCRE2_BUILD_PCRE2GREP OFF CACHE BOOL "Build pcre2grep")
 FetchContent_MakeAvailable(pcre2)
 
+# Opus codec (for client mode audio encoding/decoding)
+FetchContent_Declare(Opus
+    GIT_REPOSITORY https://github.com/xiph/opus.git
+    GIT_TAG v1.5.2
+)
+set(OPUS_BUILD_PROGRAMS OFF CACHE BOOL "Build Opus programs")
+set(OPUS_BUILD_TESTING OFF CACHE BOOL "Build Opus tests")
+set(OPUS_INSTALL OFF CACHE BOOL "Install Opus")
+# Set minimum CMake version for Opus
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+FetchContent_MakeAvailable(Opus)
+
+# zstd (for compression in client mode)
+FetchContent_Declare(zstd
+    GIT_REPOSITORY https://github.com/facebook/zstd.git
+    GIT_TAG v1.5.5
+    SOURCE_SUBDIR build/cmake
+)
+set(ZSTD_BUILD_PROGRAMS OFF CACHE BOOL "Build zstd programs")
+set(ZSTD_BUILD_TESTS OFF CACHE BOOL "Build zstd tests")
+set(ZSTD_BUILD_SHARED OFF CACHE BOOL "Build shared library")
+set(ZSTD_BUILD_STATIC ON CACHE BOOL "Build static library")
+FetchContent_MakeAvailable(zstd)
+
 # TOML (using tomlc17 from deps)
 # No FetchContent needed - using vendored tomlc17
 
@@ -50,7 +74,9 @@ set(INCLUDE_ROOT ${CMAKE_SOURCE_DIR}/../../../include)
 set(DEPS_ROOT ${CMAKE_SOURCE_DIR}/../../../deps)
 
 # Include directories for library headers
+# IMPORTANT: WASM stubs must come FIRST to override native headers
 include_directories(
+    ${LIB_ROOT}/platform/wasm/stubs  # WASM stub headers (override native)
     ${INCLUDE_ROOT}
     ${LIB_ROOT}
     ${DEPS_ROOT}
@@ -89,8 +115,8 @@ set(UTF8PROC_SOURCES
     ${DEPS_ROOT}/ascii-chat-deps/utf8proc/utf8proc.c
 )
 
-# Library source files (mirror mode + crypto for future client mode)
-set(LIB_SOURCES
+# Library source files (mirror mode)
+set(LIB_SOURCES_MIRROR
     # Core
     ${LIB_ROOT}/common.c
     ${LIB_ROOT}/asciichat_errno.c
@@ -143,7 +169,7 @@ set(LIB_SOURCES
     ${LIB_ROOT}/options/registry/terminal.c
     ${LIB_ROOT}/options/registry/webcam.c
 
-    # Crypto (needed for logging headers + future client mode)
+    # Crypto (needed for logging headers)
     ${LIB_ROOT}/crypto/crypto.c
 
     # Video processing
@@ -197,23 +223,73 @@ set(LIB_SOURCES
     # ${LIB_ROOT}/platform/terminal.c - EXCLUDED: using wasm/terminal.c instead
 )
 
-# Create WASM module
-add_executable(mirror
+# Additional sources for client mode (crypto + network)
+set(CRYPTO_SOURCES
+    ${LIB_ROOT}/crypto/keys.c
+    ${LIB_ROOT}/crypto/keys_validation.c
+    ${LIB_ROOT}/crypto/known_hosts.c
+    ${LIB_ROOT}/crypto/pem_utils.c
+    ${LIB_ROOT}/crypto/sha1.c
+    ${LIB_ROOT}/crypto/regex.c
+    ${LIB_ROOT}/crypto/https_keys.c
+    ${LIB_ROOT}/crypto/discovery_keys.c
+)
+
+set(NETWORK_SOURCES
+    ${LIB_ROOT}/network/packet_parsing.c
+    ${LIB_ROOT}/network/crc32.c
+    ${LIB_ROOT}/network/compression.c
+    ${LIB_ROOT}/network/errors.c
+    ${LIB_ROOT}/network/frame_validator.c
+)
+
+# Create WASM mirror module
+add_executable(mirror-web
     ${MIRROR_SOURCES}
     ${PLATFORM_SOURCES}
-    ${LIB_SOURCES}
+    ${LIB_SOURCES_MIRROR}
     ${TOML_SOURCES}
     ${UTF8PROC_SOURCES}
 )
 
 # Link dependencies (built for WASM via FetchContent)
-target_link_libraries(mirror PRIVATE
+target_link_libraries(mirror-web PRIVATE
     sodium
     pcre2-8
 )
 
-# Exported functions (all EMSCRIPTEN_KEEPALIVE functions from mirror.c)
-set(EXPORTED_FUNCTIONS
+# Source files for client mode WASM entry point
+set(CLIENT_SOURCES
+    ${CMAKE_SOURCE_DIR}/../../../src/web/client.c
+)
+
+# Create WASM client module
+add_executable(client-web
+    ${CLIENT_SOURCES}
+    ${PLATFORM_SOURCES}
+    ${LIB_SOURCES_MIRROR}
+    ${CRYPTO_SOURCES}
+    ${NETWORK_SOURCES}
+    ${TOML_SOURCES}
+    ${UTF8PROC_SOURCES}
+)
+
+# Link dependencies for client mode
+target_link_libraries(client-web PRIVATE
+    sodium
+    pcre2-8
+    opus
+    libzstd_static
+)
+
+# Add include directories for client mode dependencies
+target_include_directories(client-web PRIVATE
+    ${CMAKE_BINARY_DIR}/_deps/zstd-src/lib
+    ${CMAKE_BINARY_DIR}/_deps/opus-src/include
+)
+
+# Exported functions for mirror module (all EMSCRIPTEN_KEEPALIVE functions from mirror.c)
+set(EXPORTED_FUNCTIONS_MIRROR
     _mirror_init_with_args
     _mirror_cleanup
     _mirror_set_width
@@ -240,17 +316,45 @@ set(EXPORTED_FUNCTIONS
     _free
 )
 
-# Convert list to JSON array format for Emscripten
-string(REPLACE ";" "\",\"" EXPORTED_FUNCTIONS_JSON "${EXPORTED_FUNCTIONS}")
-set(EXPORTED_FUNCTIONS_JSON "[\"${EXPORTED_FUNCTIONS_JSON}\"]")
+# Exported functions for client module (all EMSCRIPTEN_KEEPALIVE functions from client.c)
+set(EXPORTED_FUNCTIONS_CLIENT
+    _client_init_with_args
+    _client_cleanup
+    _client_generate_keypair
+    _client_get_public_key_hex
+    _client_set_server_public_key
+    _client_perform_handshake
+    _client_encrypt_packet
+    _client_decrypt_packet
+    _client_parse_packet
+    _client_serialize_packet
+    _client_send_video_frame
+    _client_get_connection_state
+    _client_opus_encoder_init
+    _client_opus_decoder_init
+    _client_opus_encode
+    _client_opus_decode
+    _client_opus_encoder_cleanup
+    _client_opus_decoder_cleanup
+    _client_free_string
+    _malloc
+    _free
+)
 
-set_target_properties(mirror PROPERTIES
+# Convert lists to JSON array format for Emscripten
+string(REPLACE ";" "\",\"" EXPORTED_FUNCTIONS_MIRROR_JSON "${EXPORTED_FUNCTIONS_MIRROR}")
+set(EXPORTED_FUNCTIONS_MIRROR_JSON "[\"${EXPORTED_FUNCTIONS_MIRROR_JSON}\"]")
+
+string(REPLACE ";" "\",\"" EXPORTED_FUNCTIONS_CLIENT_JSON "${EXPORTED_FUNCTIONS_CLIENT}")
+set(EXPORTED_FUNCTIONS_CLIENT_JSON "[\"${EXPORTED_FUNCTIONS_CLIENT_JSON}\"]")
+
+set_target_properties(mirror-web PROPERTIES
     LINK_FLAGS "\
         -s WASM=1 \
         -s MODULARIZE=1 \
         -s EXPORT_ES6=1 \
         -s EXPORT_NAME='MirrorModule' \
-        -s EXPORTED_FUNCTIONS='${EXPORTED_FUNCTIONS_JSON}' \
+        -s EXPORTED_FUNCTIONS='${EXPORTED_FUNCTIONS_MIRROR_JSON}' \
         -s EXPORTED_RUNTIME_METHODS='[\"ccall\",\"cwrap\",\"UTF8ToString\",\"stringToUTF8\",\"lengthBytesUTF8\",\"getValue\",\"setValue\",\"HEAPU8\"]' \
         -s ALLOW_MEMORY_GROWTH=1 \
         -s INITIAL_MEMORY=32MB \
@@ -261,12 +365,42 @@ set_target_properties(mirror PROPERTIES
         --no-entry"
 )
 
+set_target_properties(client-web PROPERTIES
+    LINK_FLAGS "\
+        -s WASM=1 \
+        -s MODULARIZE=1 \
+        -s EXPORT_ES6=1 \
+        -s EXPORT_NAME='ClientModule' \
+        -s EXPORTED_FUNCTIONS='${EXPORTED_FUNCTIONS_CLIENT_JSON}' \
+        -s EXPORTED_RUNTIME_METHODS='[\"ccall\",\"cwrap\",\"UTF8ToString\",\"stringToUTF8\",\"lengthBytesUTF8\",\"getValue\",\"setValue\",\"HEAPU8\"]' \
+        -s ALLOW_MEMORY_GROWTH=1 \
+        -s INITIAL_MEMORY=64MB \
+        -s MAXIMUM_MEMORY=512MB \
+        -s WASM_BIGINT=1 \
+        -msimd128 \
+        -O3 \
+        --no-entry"
+)
+
+# Set output names to match target names
+set_target_properties(mirror-web PROPERTIES OUTPUT_NAME "mirror")
+set_target_properties(client-web PROPERTIES OUTPUT_NAME "client")
+
 # Copy outputs to web/src/wasm/dist/ (so Vite can import them)
-add_custom_command(TARGET mirror POST_BUILD
+add_custom_command(TARGET mirror-web POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/../src/wasm/dist
     COMMAND ${CMAKE_COMMAND} -E copy
         ${CMAKE_BINARY_DIR}/mirror.js
         ${CMAKE_BINARY_DIR}/mirror.wasm
         ${CMAKE_SOURCE_DIR}/../src/wasm/dist/
-    COMMENT "Copying WASM files to web/src/wasm/dist/"
+    COMMENT "Copying mirror WASM files to web/src/wasm/dist/"
+)
+
+add_custom_command(TARGET client-web POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/../src/wasm/dist
+    COMMAND ${CMAKE_COMMAND} -E copy
+        ${CMAKE_BINARY_DIR}/client.js
+        ${CMAKE_BINARY_DIR}/client.wasm
+        ${CMAKE_SOURCE_DIR}/../src/wasm/dist/
+    COMMENT "Copying client WASM files to web/src/wasm/dist/"
 )
