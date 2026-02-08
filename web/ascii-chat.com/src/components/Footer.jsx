@@ -57,6 +57,15 @@ export default function Footer() {
           >
             @zfogg
           </TrackedLink>
+          {" · "}
+          <a
+            href={`https://github.com/zfogg/ascii-chat/commit/${__COMMIT_SHA__}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-cyan-400 hover:text-cyan-300 transition-colors font-mono text-xs"
+          >
+            {__COMMIT_SHA__}
+          </a>
         </p>
       </div>
     </footer>

@@ -224,6 +224,16 @@ ascii-chat client session-name \\
         </p>
         <p className="legal">
           ascii-chat Discovery Service · Hosted at <code>{window.location.hostname}</code>
+          {' · '}
+          <a
+            href={`https://github.com/zfogg/ascii-chat/commit/${__COMMIT_SHA__}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => handleLinkClick(`https://github.com/zfogg/ascii-chat/commit/${__COMMIT_SHA__}`, 'Commit SHA')}
+            style={{ fontFamily: 'monospace', fontSize: '0.875rem' }}
+          >
+            {__COMMIT_SHA__}
+          </a>
         </p>
       </footer>
       <Analytics />

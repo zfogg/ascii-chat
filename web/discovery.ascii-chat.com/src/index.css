@@ -29,10 +29,22 @@ body {
   padding: 2rem;
 }
 
+@media (max-width: 768px) {
+  #root {
+    padding: 1rem;
+  }
+}
+
 h1 {
   font-size: 2.5em;
   line-height: 1.1;
   margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+  h1 {
+    font-size: 1.75em;
+  }
 }
 
 code {
@@ -40,6 +52,13 @@ code {
   padding: 0.2em 0.4em;
   border-radius: 3px;
   font-family: inherit;
+  font-size: 0.9em;
+}
+
+@media (max-width: 768px) {
+  code {
+    font-size: 0.85em;
+  }
 }
 
 pre {
@@ -48,6 +67,13 @@ pre {
   border-radius: 8px;
   overflow-x: auto;
   border: 1px solid #333;
+}
+
+@media (max-width: 768px) {
+  pre {
+    padding: 0.75rem;
+    font-size: 0.85em;
+  }
 }
 
 pre code {
@@ -75,4 +101,11 @@ a:hover {
   margin: 0.5rem 0;
   border: 1px solid #333;
   word-break: break-all;
+}
+
+@media (max-width: 768px) {
+  .fingerprint {
+    font-size: 0.75em;
+    padding: 0.5rem 0.75rem;
+  }
 }

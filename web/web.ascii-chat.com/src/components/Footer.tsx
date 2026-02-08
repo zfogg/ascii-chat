@@ -1,7 +1,7 @@
 export function Footer() {
   return (
-    <footer className="border-t border-terminal-8 pt-8 pb-8 text-terminal-8 mt-auto">
-      <div className="flex justify-center gap-6 sm:gap-8 mb-4 flex-wrap">
+    <footer className="border-t border-terminal-8 pt-6 pb-6 md:pt-8 md:pb-8 text-terminal-8 mt-auto">
+      <div className="flex justify-center gap-4 sm:gap-6 md:gap-8 mb-3 md:mb-4 flex-wrap text-sm md:text-base">
         <a
           href="https://github.com/zfogg/ascii-chat"
           target="_blank"
@@ -28,10 +28,10 @@ export function Footer() {
         </a>
       </div>
       <div className="text-center">
-        <p className="text-sm">
+        <p className="text-xs md:text-sm">
           ascii-chat · Video chat in your <span className="line-through">terminal</span> browser
         </p>
-        <p className="text-sm mt-2">
+        <p className="text-xs md:text-sm mt-2">
           made with ❤️ by{" "}
           <a
             href="https://zfo.gg"
@@ -46,7 +46,7 @@ export function Footer() {
             href={`https://github.com/zfogg/ascii-chat/commit/${__COMMIT_SHA__}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-terminal-8 hover:text-terminal-cyan transition-colors font-mono text-xs"
+            className="text-terminal-cyan hover:text-terminal-brightCyan transition-colors font-mono text-xs"
           >
             {__COMMIT_SHA__}
           </a>

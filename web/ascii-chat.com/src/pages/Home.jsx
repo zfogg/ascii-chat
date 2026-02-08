@@ -464,6 +464,19 @@ ascii-chat happy-sunset-ocean`}
             </div>
 
             <div>
+              <h3 className="text-xl font-semibold text-purple-300 mb-3">
+                Rainbow matrix effect
+              </h3>
+              <pre className="bg-gray-900  rounded-lg p-4 overflow-x-auto">
+                <code className="text-teal-300">
+                  <span className="text-gray-500">{`# Digital rain effect with rainbow colors
+`}</span>
+                  {`ascii-chat mirror --color-filter rainbow --matrix`}
+                </code>
+              </pre>
+            </div>
+
+            <div>
               <h3 className="text-xl font-semibold text-cyan-300 mb-3">
                 Capture ASCII selfie to file
               </h3>

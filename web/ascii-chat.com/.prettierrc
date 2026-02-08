@@ -17,8 +17,12 @@
       "options": { "parser": "html" }
     },
     {
-      "files": ["*.js", "*.jsx", "*.ts", "*.tsx"],
+      "files": ["*.js", "*.jsx"],
       "options": { "parser": "babel" }
+    },
+    {
+      "files": ["*.ts", "*.tsx"],
+      "options": { "parser": "typescript" }
     }
   ]
 }

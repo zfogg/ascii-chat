@@ -4,6 +4,12 @@
   padding: 2rem 1rem;
 }
 
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem 0.75rem;
+  }
+}
+
 header {
   text-align: center;
   margin-bottom: 3rem;
@@ -11,9 +17,23 @@ header {
   border-bottom: 2px solid #333;
 }
 
+@media (max-width: 768px) {
+  header {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+  }
+}
+
 header h1 {
   margin-bottom: 0.5rem;
   color: #4a9eff;
+  font-size: 2rem;
+}
+
+@media (max-width: 768px) {
+  header h1 {
+    font-size: 1.5rem;
+  }
 }
 
 .subtitle {
@@ -22,8 +42,20 @@ header h1 {
   margin: 0;
 }
 
+@media (max-width: 768px) {
+  .subtitle {
+    font-size: 0.95em;
+  }
+}
+
 section {
   margin-bottom: 3rem;
+}
+
+@media (max-width: 768px) {
+  section {
+    margin-bottom: 2rem;
+  }
 }
 
 section h2 {
@@ -31,17 +63,39 @@ section h2 {
   border-bottom: 1px solid #333;
   padding-bottom: 0.5rem;
   margin-bottom: 1rem;
+  font-size: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  section h2 {
+    font-size: 1.25rem;
+  }
 }
 
 section h3 {
   color: #e0e0e0;
   margin-top: 1.5rem;
   margin-bottom: 0.5rem;
+  font-size: 1.2rem;
+}
+
+@media (max-width: 768px) {
+  section h3 {
+    font-size: 1.1rem;
+    margin-top: 1rem;
+  }
 }
 
 p {
   line-height: 1.7;
   margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+  p {
+    font-size: 0.95em;
+    line-height: 1.6;
+  }
 }
 
 ul {
@@ -65,6 +119,14 @@ li {
   color: #4a9eff;
   text-decoration: none;
   transition: all 0.2s;
+  font-size: 0.95em;
+}
+
+@media (max-width: 768px) {
+  .download-link {
+    font-size: 0.85em;
+    padding: 0.5rem 0.75rem;
+  }
 }
 
 .download-link:hover {
@@ -79,14 +141,35 @@ footer {
   border-top: 2px solid #333;
   text-align: center;
   color: #666;
+  font-size: 0.95em;
+}
+
+@media (max-width: 768px) {
+  footer {
+    margin-top: 2.5rem;
+    padding-top: 1.5rem;
+    font-size: 0.85em;
+    line-height: 1.6;
+  }
+}
+
+footer p {
+  margin-bottom: 0.75rem;
 }
 
 footer a {
   color: #4a9eff;
+  white-space: nowrap;
 }
 
 .legal {
   font-size: 0.9em;
   color: #555;
   margin-top: 1rem;
+}
+
+@media (max-width: 768px) {
+  .legal {
+    font-size: 0.8em;
+  }
 }
