@@ -69,10 +69,48 @@ typedef struct {
   mutex_t state_mutex;         ///< Protect state changes
   uint8_t *send_buffer;        ///< Send buffer with LWS_PRE padding
   size_t send_buffer_capacity; ///< Current send buffer capacity
+
+  // Fragment assembly for large messages (client-side only)
+  uint8_t *fragment_buffer; ///< Buffer for assembling fragmented messages
+  size_t fragment_size;     ///< Current size of assembled fragments
+  size_t fragment_capacity; ///< Allocated capacity of fragment buffer
+
+  // Service thread for client-side transports
+  asciichat_thread_t service_thread; ///< Thread that services libwebsockets context
+  volatile bool service_running;     ///< Service thread running flag
 } websocket_transport_data_t;
 
 // Forward declaration for libwebsockets callback
 static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
+
+// =============================================================================
+// Service Thread (Client-side only)
+// =============================================================================
+
+/**
+ * @brief Service thread that continuously processes libwebsockets events
+ *
+ * This thread is necessary for client-side transports to receive incoming messages.
+ * It continuously calls lws_service() to process network events and trigger callbacks.
+ */
+static void *websocket_service_thread(void *arg) {
+  websocket_transport_data_t *ws_data = (websocket_transport_data_t *)arg;
+
+  log_debug("WebSocket service thread started");
+
+  while (ws_data->service_running) {
+    // Service libwebsockets (processes network events, triggers callbacks)
+    // 50ms timeout allows checking service_running flag regularly
+    int result = lws_service(ws_data->context, 50);
+    if (result < 0) {
+      log_error("lws_service error: %d", result);
+      break;
+    }
+  }
+
+  log_debug("WebSocket service thread exiting");
+  return NULL;
+}
 
 // =============================================================================
 // libwebsockets Callbacks
@@ -97,50 +135,92 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
     }
     break;
 
-  case LWS_CALLBACK_CLIENT_RECEIVE:
-    // Message received - push to receive queue
+  case LWS_CALLBACK_CLIENT_RECEIVE: {
+    // Received data from server - may be fragmented for large messages
     if (!ws_data || !in || len == 0) {
       break;
     }
 
-    log_debug_every(100, "WebSocket received %zu bytes", len);
+    bool is_first = lws_is_first_fragment(wsi);
+    bool is_final = lws_is_final_fragment(wsi);
 
-    // Allocate message buffer using buffer pool
-    websocket_recv_msg_t msg;
-    msg.data = buffer_pool_alloc(NULL, len);
-    if (!msg.data) {
-      log_error("Failed to allocate buffer for WebSocket message");
-      break;
-    }
+    log_debug("WebSocket fragment: %zu bytes (first=%d, final=%d, buffered=%zu)", len, is_first, is_final,
+              ws_data->fragment_size);
 
-    // Copy data
-    memcpy(msg.data, in, len);
-    msg.len = len;
-
-    // Push to receive queue
-    mutex_lock(&ws_data->queue_mutex);
-
-    bool success = ringbuffer_write(ws_data->recv_queue, &msg);
-    if (!success) {
-      // Queue full - drop oldest message to make room
-      websocket_recv_msg_t dropped_msg;
-      if (ringbuffer_read(ws_data->recv_queue, &dropped_msg)) {
-        buffer_pool_free(NULL, dropped_msg.data, dropped_msg.len);
-        log_warn("WebSocket receive queue full, dropped oldest message");
+    // Allocate or expand fragment buffer
+    size_t required_size = ws_data->fragment_size + len;
+    if (required_size > ws_data->fragment_capacity) {
+      size_t new_capacity = required_size * 2; // Over-allocate to reduce reallocations
+      uint8_t *new_buffer = SAFE_MALLOC(new_capacity, uint8_t *);
+      if (!new_buffer) {
+        log_error("Failed to allocate fragment buffer");
+        // Reset fragment state
+        SAFE_FREE(ws_data->fragment_buffer);
+        ws_data->fragment_size = 0;
+        ws_data->fragment_capacity = 0;
+        break;
       }
 
-      // Try again
-      success = ringbuffer_write(ws_data->recv_queue, &msg);
+      // Copy existing fragments
+      if (ws_data->fragment_buffer) {
+        memcpy(new_buffer, ws_data->fragment_buffer, ws_data->fragment_size);
+        SAFE_FREE(ws_data->fragment_buffer);
+      }
+
+      ws_data->fragment_buffer = new_buffer;
+      ws_data->fragment_capacity = new_capacity;
+    }
+
+    // Append this fragment
+    memcpy(ws_data->fragment_buffer + ws_data->fragment_size, in, len);
+    ws_data->fragment_size += len;
+
+    // If this is the final fragment, push complete message to receive queue
+    if (is_final) {
+      log_debug("Complete message assembled: %zu bytes", ws_data->fragment_size);
+
+      // Allocate message buffer using buffer pool
+      websocket_recv_msg_t msg;
+      msg.data = buffer_pool_alloc(NULL, ws_data->fragment_size);
+      if (!msg.data) {
+        log_error("Failed to allocate buffer for complete message");
+        ws_data->fragment_size = 0; // Reset for next message
+        break;
+      }
+
+      // Copy assembled message
+      memcpy(msg.data, ws_data->fragment_buffer, ws_data->fragment_size);
+      msg.len = ws_data->fragment_size;
+
+      // Reset fragment buffer for next message
+      ws_data->fragment_size = 0;
+
+      // Push to receive queue
+      mutex_lock(&ws_data->queue_mutex);
+
+      bool success = ringbuffer_write(ws_data->recv_queue, &msg);
       if (!success) {
-        buffer_pool_free(NULL, msg.data, len);
-        log_error("Failed to write to WebSocket receive queue after drop");
-      }
-    }
+        // Queue full - drop oldest message to make room
+        websocket_recv_msg_t dropped_msg;
+        if (ringbuffer_read(ws_data->recv_queue, &dropped_msg)) {
+          buffer_pool_free(NULL, dropped_msg.data, dropped_msg.len);
+          log_warn("WebSocket receive queue full, dropped oldest message");
+        }
 
-    // Signal waiting recv() call
-    cond_signal(&ws_data->queue_cond);
-    mutex_unlock(&ws_data->queue_mutex);
+        // Try again
+        success = ringbuffer_write(ws_data->recv_queue, &msg);
+        if (!success) {
+          buffer_pool_free(NULL, msg.data, msg.len);
+          log_error("Failed to write to WebSocket receive queue after drop");
+        }
+      }
+
+      // Signal waiting recv() call
+      cond_signal(&ws_data->queue_cond);
+      mutex_unlock(&ws_data->queue_mutex);
+    }
     break;
+  }
 
   case LWS_CALLBACK_CLIENT_CLOSED:
   case LWS_CALLBACK_CLOSED:
@@ -376,6 +456,14 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
 
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
 
+  // Stop service thread (client-side only)
+  if (ws_data->service_running) {
+    log_debug("Stopping WebSocket service thread");
+    ws_data->service_running = false;
+    asciichat_thread_join(&ws_data->service_thread, NULL);
+    log_debug("WebSocket service thread stopped");
+  }
+
   // Destroy WebSocket instance (if not already destroyed)
   if (ws_data->wsi) {
     // libwebsockets will clean up the wsi when we destroy the context
@@ -395,7 +483,7 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
     websocket_recv_msg_t msg;
     while (ringbuffer_read(ws_data->recv_queue, &msg)) {
       if (msg.data) {
-        SAFE_FREE(msg.data);
+        buffer_pool_free(NULL, msg.data, msg.len);
       }
     }
 
@@ -413,6 +501,12 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
   if (ws_data->send_buffer) {
     SAFE_FREE(ws_data->send_buffer);
     ws_data->send_buffer = NULL;
+  }
+
+  // Free fragment buffer
+  if (ws_data->fragment_buffer) {
+    SAFE_FREE(ws_data->fragment_buffer);
+    ws_data->fragment_buffer = NULL;
   }
 
   // Destroy synchronization primitives
@@ -679,6 +773,25 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
   }
 
   log_info("WebSocket connection established (crypto: %s)", crypto_ctx ? "enabled" : "disabled");
+
+  // Start service thread to process incoming messages
+  ws_data->service_running = true;
+  if (asciichat_thread_create(&ws_data->service_thread, websocket_service_thread, ws_data) != 0) {
+    log_error("Failed to create WebSocket service thread");
+    ws_data->service_running = false;
+    lws_context_destroy(ws_data->context);
+    SAFE_FREE(ws_data->send_buffer);
+    mutex_destroy(&ws_data->state_mutex);
+    cond_destroy(&ws_data->queue_cond);
+    mutex_destroy(&ws_data->queue_mutex);
+    ringbuffer_destroy(ws_data->recv_queue);
+    SAFE_FREE(ws_data);
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_INTERNAL, "Failed to create service thread");
+    return NULL;
+  }
+
+  log_debug("WebSocket service thread started for client transport");
 
   return transport;
 }
