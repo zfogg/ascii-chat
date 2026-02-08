@@ -9,9 +9,7 @@ import { inject } from '@vercel/analytics'
 inject()
 
 ReactDOM.createRoot(document.getElementById('app')!).render(
-  <React.StrictMode>
-    <HelmetProvider>
-      <App />
-    </HelmetProvider>
-  </React.StrictMode>
+  <HelmetProvider>
+    <App />
+  </HelmetProvider>
 )

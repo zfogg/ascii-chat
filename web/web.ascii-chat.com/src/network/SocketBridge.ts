@@ -3,6 +3,16 @@
  * Bridges JavaScript WebSocket API to WASM client module
  */
 
+/**
+ * Parse packet type from raw bytes (first 10 bytes: 8 magic + 2 type).
+ * Returns type in host byte order. Does NOT validate magic.
+ */
+function quickParseType(packet: Uint8Array): number | null {
+  if (packet.length < 10) return null;
+  // Type is at offset 8, 2 bytes, big-endian (network byte order)
+  return (packet[8] << 8) | packet[9];
+}
+
 export type PacketCallback = (packet: Uint8Array) => void;
 export type ErrorCallback = (error: Error) => void;
 export type StateCallback = (state: 'connecting' | 'open' | 'closing' | 'closed') => void;
@@ -50,7 +60,8 @@ export class SocketBridge {
 
         this.ws.onmessage = (event) => {
           const packet = new Uint8Array(event.data);
-          console.log('[SocketBridge] Received message, length:', packet.length);
+          const pktType = quickParseType(packet);
+          console.error(`[SocketBridge] <<< RECV ${packet.length} bytes, pkt_type=${pktType} (0x${pktType?.toString(16) ?? '??'})`);
           this.onPacketCallback?.(packet);
         };
 
@@ -62,7 +73,7 @@ export class SocketBridge {
         };
 
         this.ws.onclose = (event) => {
-          console.log('[SocketBridge] WebSocket closed:', event.code, event.reason);
+          console.error(`[SocketBridge] WebSocket CLOSED: code=${event.code} reason="${event.reason}" wasClean=${event.wasClean}`);
           this.onStateChangeCallback?.('closed');
 
           // Attempt reconnection if not a clean close
@@ -101,9 +112,11 @@ export class SocketBridge {
    */
   send(packet: Uint8Array): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      console.error('[SocketBridge] ERROR: Cannot send - WebSocket state:', this.ws?.readyState);
       throw new Error('WebSocket not connected');
     }
-    console.log('[SocketBridge] Sending packet, length:', packet.length, 'bytes:', Array.from(packet.slice(0, Math.min(32, packet.length))).map(b => b.toString(16).padStart(2, '0')).join(' '));
+    const pktType = quickParseType(packet);
+    console.error(`[SocketBridge] >>> SEND ${packet.length} bytes, pkt_type=${pktType} (0x${pktType?.toString(16) ?? '??'})`);
     this.ws.send(packet);
   }
 

@@ -116,6 +116,8 @@
 #include <ascii-chat/network/acip/server.h>
 #include <ascii-chat/network/acip/client.h>
 #include <ascii-chat/ui/server_status.h>
+#include <ascii-chat/ui/interactive_grep.h>
+#include <ascii-chat/platform/keyboard.h>
 
 /* ============================================================================
  * Global State
@@ -1117,8 +1119,86 @@ static void *status_screen_thread(void *arg) {
 
   log_debug("Status screen thread started (target %u FPS)", fps);
 
+  // Initialize keyboard for interactive grep
+  bool keyboard_enabled = false;
+  if (terminal_is_interactive()) {
+    log_info("Terminal is interactive, initializing keyboard...");
+    if (keyboard_init() == ASCIICHAT_OK) {
+      keyboard_enabled = true;
+      log_info("✓ Keyboard input enabled for status screen - press '/' to activate grep");
+    } else {
+      log_warn("✗ Failed to initialize keyboard");
+    }
+  } else {
+    log_warn("Terminal is NOT interactive, keyboard disabled");
+  }
+
+  // Track when we just entered grep mode to skip the triggering '/' from buffer
+  bool skip_next_slash = false;
+  bool grep_was_just_cancelled = false;
+
   while (!atomic_load(&g_server_should_exit)) {
     uint64_t frame_start = platform_get_monotonic_time_us();
+
+    // Read keyboard with timeout - waits for keypress instead of polling
+    if (keyboard_enabled) {
+      // Reset the "just cancelled" flag each frame
+      grep_was_just_cancelled = false;
+
+      // Use short timeout for better keyboard responsiveness
+      uint32_t timeout_ms = 10; // 10ms - fast enough to catch all keypresses
+      keyboard_key_t first_key = keyboard_read_with_timeout(timeout_ms);
+
+      // Process first key and all pending keys
+      keyboard_key_t key = first_key;
+      while (key != KEY_NONE && !grep_was_just_cancelled) {
+        // Skip the '/' that just triggered grep mode entry
+        if (skip_next_slash && key == '/') {
+          skip_next_slash = false;
+          key = keyboard_read_nonblocking(); // Get next key
+          continue;
+        }
+        skip_next_slash = false;
+
+        // Check if Ctrl+C
+        if (key == 3) {
+          bool in_grep = interactive_grep_is_entering();
+
+          if (in_grep) {
+            // In grep mode - cancel grep directly
+            interactive_grep_exit_mode(false);
+            grep_was_just_cancelled = true;
+            break; // Stop processing keys, continue to next frame
+          } else {
+            // Not in grep mode - shutdown server
+            atomic_store(&g_server_should_exit, true);
+            goto cleanup;
+          }
+        }
+
+        // Let grep handle its keys
+        if (interactive_grep_should_handle(key)) {
+          bool was_not_in_grep = !interactive_grep_is_entering();
+          bool was_in_grep = interactive_grep_is_entering();
+
+          interactive_grep_handle_key(key);
+
+          // If we just entered grep mode with '/', skip next '/' from buffer
+          if (was_not_in_grep && interactive_grep_is_entering() && key == '/') {
+            skip_next_slash = true;
+          }
+
+          // If grep was cancelled, stop processing keys
+          if (was_in_grep && !interactive_grep_is_entering()) {
+            grep_was_just_cancelled = true;
+            break;
+          }
+        }
+
+        // Get next key (non-blocking check for more keys)
+        key = keyboard_read_nonblocking();
+      }
+    }
 
     // Get the IPv4 and IPv6 addresses from TCP server config
     const char *ipv4_address = g_tcp_server.config.ipv4_address;
@@ -1128,12 +1208,19 @@ static void *status_screen_thread(void *arg) {
     server_status_update(&g_tcp_server, g_session_string, ipv4_address, ipv6_address, GET_OPTION(port),
                          g_server_start_time, "Server", g_session_is_mdns_only, &g_last_status_update);
 
-    // Sleep until next frame
+    // Sleep to maintain frame rate - always sleep to prevent flashing
     uint64_t frame_end = platform_get_monotonic_time_us();
     uint64_t frame_time = frame_end - frame_start;
+
     if (frame_time < frame_interval_us) {
       platform_sleep_us(frame_interval_us - frame_time);
     }
+  }
+
+cleanup:
+  // Cleanup keyboard
+  if (keyboard_enabled) {
+    keyboard_destroy();
   }
 
   log_debug("Status screen thread exiting");
@@ -1334,10 +1421,10 @@ static void *websocket_client_handler(void *arg) {
 
   // STEP 3: Now send KEY_EXCHANGE_INIT to start the handshake
   // The receive thread is already running, but it will use the properly initialized context
-  log_debug("[WS_HANDLER] STEP 3: Calling crypto_handshake_server_start()...");
-  log_debug("[WS_HANDLER] Arguments: ctx=%p (state=%d), transport=%p (type=%d)", (void *)&client->crypto_handshake_ctx,
-            client->crypto_handshake_ctx.state, (void *)client->transport,
-            client->transport ? client->transport->methods->get_type(client->transport) : -1);
+  log_info("[WS_HANDLER] STEP 3: Calling crypto_handshake_server_start()...");
+  log_info("[WS_HANDLER] Arguments: ctx=%p (state=%d), transport=%p (type=%d)", (void *)&client->crypto_handshake_ctx,
+           client->crypto_handshake_ctx.state, (void *)client->transport,
+           client->transport ? client->transport->methods->get_type(client->transport) : -1);
   asciichat_error_t handshake_start_result =
       crypto_handshake_server_start(&client->crypto_handshake_ctx, client->transport);
   if (handshake_start_result != ASCIICHAT_OK) {
@@ -1348,8 +1435,8 @@ static void *websocket_client_handler(void *arg) {
     return NULL;
   }
 
-  log_debug("Sent CRYPTO_KEY_EXCHANGE_INIT to WebSocket client %d", client_id);
-  log_debug("[WS_HANDLER] ===== SUCCESS: Handshake started for client %d =====", client_id);
+  log_info("Sent CRYPTO_KEY_EXCHANGE_INIT to WebSocket client %d", client_id);
+  log_info("[WS_HANDLER] ===== SUCCESS: Handshake started for client %d =====", client_id);
 
   // Handler's job is done - client is set up and handshake started.
   // The receive thread will handle incoming packets and complete the handshake.
@@ -1555,6 +1642,9 @@ int server_main(void) {
   // Initialize status screen log buffer if enabled (terminal output already disabled in main.c)
   if (GET_OPTION(status_screen)) {
     server_status_log_init();
+
+    // Initialize interactive grep for status screen
+    interactive_grep_init();
   }
 
   // Initialize crypto after logging is ready

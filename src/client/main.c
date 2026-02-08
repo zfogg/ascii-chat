@@ -71,6 +71,7 @@
 #include "capture.h"
 #include "audio.h"
 #include <ascii-chat/ui/splash.h>
+#include <ascii-chat/ui/interactive_grep.h>
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/audio/analysis.h>
 #include <ascii-chat/video/webcam/webcam.h>
@@ -527,6 +528,9 @@ int client_main(void) {
   log_info("=== ABOUT TO START SPLASH SCREEN ===");
   splash_intro_start(NULL);
   log_info("=== SPLASH SCREEN STARTED ===");
+
+  // Initialize interactive grep
+  interactive_grep_init();
 
   // Disable terminal logging AFTER splash starts so splash can display cleanly
   // This prevents logs from connection attempts from interfering with splash animation

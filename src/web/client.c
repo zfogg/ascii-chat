@@ -25,7 +25,8 @@ EM_JS(void, js_send_raw_packet, (const uint8_t *packet_data, size_t packet_len),
   const packetArray = new Uint8Array(HEAPU8.buffer, packet_data, packet_len);
   const packetCopy = new Uint8Array(packetArray);
 
-  console.log('[WASM→JS] Sending raw packet:', packetCopy.length, 'bytes');
+  var pktType = packetCopy.length >= 10 ? ((packetCopy[8] << 8) | packetCopy[9]) : -1;
+  console.error('[WASM->JS] Sending raw packet:', packetCopy.length, 'bytes, type=0x' + pktType.toString(16));
 
   // Send as raw binary packet via WebSocket
   Module.sendPacketCallback(packetCopy);
@@ -47,6 +48,7 @@ EM_JS(void, js_send_raw_packet, (const uint8_t *packet_data, size_t packet_len),
 #include <ascii-chat/video/ascii.h>
 #include <ascii-chat/video/ansi_fast.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/util/format.h>
 #include <ascii-chat/util/magic.h>
 #include <opus.h>
@@ -136,22 +138,6 @@ static connection_state_t g_connection_state = CONNECTION_STATE_DISCONNECTED;
  */
 EMSCRIPTEN_KEEPALIVE
 int client_init_with_args(const char *args_json) {
-  WASM_LOG("client_init_with_args: START");
-
-  if (g_initialized) {
-    WASM_ERROR("Client already initialized");
-    return -1;
-  }
-
-  // Initialize platform layer
-  WASM_LOG("Calling platform_init...");
-  asciichat_error_t err = platform_init();
-  if (err != ASCIICHAT_OK) {
-    WASM_ERROR("platform_init FAILED");
-    return -1;
-  }
-  WASM_LOG("platform_init OK");
-
   // Parse arguments
   WASM_LOG("Parsing arguments...");
   char *args_copy = strdup(args_json);
@@ -173,8 +159,23 @@ int client_init_with_args(const char *args_json) {
 
   // Initialize options (sets up RCU, defaults, etc.)
   WASM_LOG("Calling options_init...");
-  err = options_init(argc, argv);
+  asciichat_error_t err = options_init(argc, argv);
   free(args_copy);
+  WASM_LOG("client_init_with_args: START");
+
+  if (g_initialized) {
+    WASM_ERROR("Client already initialized");
+    return -1;
+  }
+
+  // Initialize platform layer
+  WASM_LOG("Calling platform_init...");
+  err = platform_init();
+  if (err != ASCIICHAT_OK) {
+    WASM_ERROR("platform_init FAILED");
+    return -1;
+  }
+  WASM_LOG("platform_init OK");
 
   if (err != ASCIICHAT_OK) {
     WASM_LOG_INT("options_init FAILED", err);
@@ -196,14 +197,22 @@ int client_init_with_args(const char *args_json) {
 
 EMSCRIPTEN_KEEPALIVE
 void client_cleanup(void) {
+  WASM_LOG("=== client_cleanup CALLED ===");
+  WASM_LOG_INT("  g_initialized", g_initialized);
+  WASM_LOG_INT("  g_connection_state", g_connection_state);
+  WASM_LOG_INT("  g_crypto_handshake_ctx.state", g_crypto_handshake_ctx.state);
+
   // Clean up crypto handshake context
   crypto_handshake_destroy(&g_crypto_handshake_ctx);
+  memset(&g_crypto_handshake_ctx, 0, sizeof(g_crypto_handshake_ctx));
 
   g_handshake_complete = false;
   g_connection_state = CONNECTION_STATE_DISCONNECTED;
   g_initialized = false;
   options_state_destroy();
   platform_destroy();
+
+  WASM_LOG("=== client_cleanup COMPLETE ===");
 }
 
 // ============================================================================
@@ -216,19 +225,33 @@ void client_cleanup(void) {
  */
 EMSCRIPTEN_KEEPALIVE
 int client_generate_keypair(void) {
+  WASM_LOG("=== client_generate_keypair CALLED ===");
+  WASM_LOG_INT("  g_initialized", g_initialized);
+  WASM_LOG_INT("  g_crypto_handshake_ctx.state BEFORE", g_crypto_handshake_ctx.state);
+
   if (!g_initialized) {
     WASM_ERROR("Client not initialized");
     return -1;
   }
 
+  // Reset handshake context if previously used (reconnection / React Strict Mode remount)
+  if (g_crypto_handshake_ctx.state != CRYPTO_HANDSHAKE_DISABLED) {
+    WASM_LOG("Destroying previous handshake context before re-init");
+    crypto_handshake_destroy(&g_crypto_handshake_ctx);
+    memset(&g_crypto_handshake_ctx, 0, sizeof(g_crypto_handshake_ctx));
+    g_handshake_complete = false;
+  }
+
   // Initialize crypto handshake context
+  WASM_LOG("Calling crypto_handshake_init...");
   asciichat_error_t result = crypto_handshake_init(&g_crypto_handshake_ctx, false /* is_server */);
   if (result != ASCIICHAT_OK) {
-    WASM_ERROR("Failed to initialize crypto handshake context");
+    WASM_LOG_INT("crypto_handshake_init FAILED, result", result);
     return -1;
   }
 
   WASM_LOG("Keypair generated successfully");
+  WASM_LOG_INT("  g_crypto_handshake_ctx.state AFTER", g_crypto_handshake_ctx.state);
   g_connection_state = CONNECTION_STATE_DISCONNECTED;
   return 0;
 }
@@ -304,6 +327,7 @@ EMSCRIPTEN_KEEPALIVE
 int client_handle_key_exchange_init(const uint8_t *packet, size_t packet_len) {
   WASM_LOG("=== client_handle_key_exchange_init CALLED ===");
   WASM_LOG_INT("  packet_len", (int)packet_len);
+  WASM_LOG_INT("  g_crypto_handshake_ctx.state", g_crypto_handshake_ctx.state);
 
   if (!packet || packet_len == 0) {
     WASM_ERROR("Invalid packet data");
@@ -318,18 +342,34 @@ int client_handle_key_exchange_init(const uint8_t *packet, size_t packet_len) {
 
   const packet_header_t *header = (const packet_header_t *)packet;
   packet_type_t packet_type = ntohs(header->type);
-  const uint8_t *payload = packet + sizeof(packet_header_t);
+  const uint8_t *payload_src = packet + sizeof(packet_header_t);
   size_t payload_len = packet_len - sizeof(packet_header_t);
 
   WASM_LOG_INT("  packet_type", packet_type);
   WASM_LOG_INT("  payload_len", (int)payload_len);
 
+  // Allocate payload copy from buffer pool (crypto function takes ownership and frees it)
+  // The raw packet pointer from JS cannot be passed directly because the crypto
+  // handshake function calls buffer_pool_free() on the payload when done.
+  uint8_t *payload = NULL;
+  if (payload_len > 0) {
+    payload = buffer_pool_alloc(NULL, payload_len);
+    if (!payload) {
+      WASM_ERROR("Failed to allocate payload buffer");
+      g_connection_state = CONNECTION_STATE_ERROR;
+      return -1;
+    }
+    memcpy(payload, payload_src, payload_len);
+  }
+
   // Process key exchange using transport-abstracted handshake
   WASM_LOG("Calling crypto_handshake_client_key_exchange...");
+
   asciichat_error_t result = crypto_handshake_client_key_exchange(&g_crypto_handshake_ctx, &g_wasm_transport,
                                                                   packet_type, payload, payload_len);
 
   WASM_LOG_INT("  handshake result", result);
+  WASM_LOG_INT("  g_crypto_handshake_ctx.state AFTER", g_crypto_handshake_ctx.state);
 
   if (result != ASCIICHAT_OK) {
     WASM_ERROR("Failed to process KEY_EXCHANGE_INIT");
@@ -350,7 +390,9 @@ int client_handle_key_exchange_init(const uint8_t *packet, size_t packet_len) {
  */
 EMSCRIPTEN_KEEPALIVE
 int client_handle_auth_challenge(const uint8_t *packet, size_t packet_len) {
-  WASM_LOG("Handling CRYPTO_AUTH_CHALLENGE from server");
+  WASM_LOG("=== client_handle_auth_challenge CALLED ===");
+  WASM_LOG_INT("  packet_len", (int)packet_len);
+  WASM_LOG_INT("  g_crypto_handshake_ctx.state", g_crypto_handshake_ctx.state);
 
   if (!packet || packet_len == 0) {
     WASM_ERROR("Invalid packet data");
@@ -365,12 +407,29 @@ int client_handle_auth_challenge(const uint8_t *packet, size_t packet_len) {
 
   const packet_header_t *header = (const packet_header_t *)packet;
   packet_type_t packet_type = ntohs(header->type);
-  const uint8_t *payload = packet + sizeof(packet_header_t);
+  const uint8_t *payload_src = packet + sizeof(packet_header_t);
   size_t payload_len = packet_len - sizeof(packet_header_t);
+
+  WASM_LOG_INT("  packet_type", packet_type);
+  WASM_LOG_INT("  payload_len", (int)payload_len);
+
+  // Allocate payload copy from buffer pool (crypto function takes ownership and frees it)
+  uint8_t *payload = NULL;
+  if (payload_len > 0) {
+    payload = buffer_pool_alloc(NULL, payload_len);
+    if (!payload) {
+      WASM_ERROR("Failed to allocate payload buffer");
+      g_connection_state = CONNECTION_STATE_ERROR;
+      return -1;
+    }
+    memcpy(payload, payload_src, payload_len);
+  }
 
   // Process auth challenge
   asciichat_error_t result = crypto_handshake_client_auth_response(&g_crypto_handshake_ctx, &g_wasm_transport,
                                                                    packet_type, payload, payload_len);
+
+  WASM_LOG_INT("  auth_response result", result);
 
   if (result != ASCIICHAT_OK) {
     WASM_ERROR("Failed to process AUTH_CHALLENGE");
@@ -378,7 +437,7 @@ int client_handle_auth_challenge(const uint8_t *packet, size_t packet_len) {
     return -1;
   }
 
-  WASM_LOG("Processed CRYPTO_AUTH_CHALLENGE and sent response");
+  WASM_LOG("=== AUTH_CHALLENGE processed successfully ===");
   return 0;
 }
 
@@ -390,7 +449,9 @@ int client_handle_auth_challenge(const uint8_t *packet, size_t packet_len) {
  */
 EMSCRIPTEN_KEEPALIVE
 int client_handle_handshake_complete(const uint8_t *packet, size_t packet_len) {
-  WASM_LOG("Handling CRYPTO_HANDSHAKE_COMPLETE from server");
+  WASM_LOG("=== client_handle_handshake_complete CALLED ===");
+  WASM_LOG_INT("  packet_len", (int)packet_len);
+  WASM_LOG_INT("  g_crypto_handshake_ctx.state", g_crypto_handshake_ctx.state);
 
   if (!packet || packet_len == 0) {
     WASM_ERROR("Invalid packet data");
@@ -405,12 +466,28 @@ int client_handle_handshake_complete(const uint8_t *packet, size_t packet_len) {
 
   const packet_header_t *header = (const packet_header_t *)packet;
   packet_type_t packet_type = ntohs(header->type);
-  const uint8_t *payload = packet + sizeof(packet_header_t);
+  const uint8_t *payload_src = packet + sizeof(packet_header_t);
   size_t payload_len = packet_len - sizeof(packet_header_t);
 
-  // Complete handshake
+  WASM_LOG_INT("  packet_type", packet_type);
+
+  // Allocate payload copy from buffer pool (crypto function takes ownership and frees it)
+  uint8_t *payload = NULL;
+  if (payload_len > 0) {
+    payload = buffer_pool_alloc(NULL, payload_len);
+    if (!payload) {
+      WASM_ERROR("Failed to allocate payload buffer");
+      g_connection_state = CONNECTION_STATE_ERROR;
+      return -1;
+    }
+    memcpy(payload, payload_src, payload_len);
+  }
+
+  // Complete handshake (takes ownership of payload and will free it)
   asciichat_error_t result =
       crypto_handshake_client_complete(&g_crypto_handshake_ctx, &g_wasm_transport, packet_type, payload, payload_len);
+
+  WASM_LOG_INT("  handshake_complete result", result);
 
   if (result != ASCIICHAT_OK) {
     WASM_ERROR("Failed to complete handshake");
@@ -420,7 +497,7 @@ int client_handle_handshake_complete(const uint8_t *packet, size_t packet_len) {
 
   g_handshake_complete = true;
   g_connection_state = CONNECTION_STATE_CONNECTED;
-  WASM_LOG("Handshake complete - session encrypted");
+  WASM_LOG("=== HANDSHAKE COMPLETE - session encrypted ===");
   return 0;
 }
 

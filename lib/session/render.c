@@ -14,6 +14,7 @@
 #include <ascii-chat/session/capture.h>
 #include <ascii-chat/session/display.h>
 #include <ascii-chat/ui/help_screen.h>
+#include <ascii-chat/ui/interactive_grep.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/options/options.h>
@@ -156,6 +157,12 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         if (keyboard_handler) {
           keyboard_key_t key = keyboard_read_nonblocking();
           if (key != KEY_NONE) {
+            // Check if interactive grep should handle this key
+            if (interactive_grep_should_handle(key)) {
+              interactive_grep_handle_key(key);
+              continue; // Force immediate re-render
+            }
+
             keyboard_handler(capture, key, user_data);
           }
         }
@@ -325,6 +332,13 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
           log_dev("RENDER[%lu] Keyboard read complete (key=%d) in %s", (unsigned long)frame_count, key, _duration_str);
         }
         if (key != KEY_NONE) {
+          // Check if interactive grep should handle this key
+          if (interactive_grep_should_handle(key)) {
+            interactive_grep_handle_key(key);
+            continue; // Force immediate re-render
+          }
+
+          // Normal keyboard handler
           keyboard_handler(capture, key, user_data);
         }
       }

@@ -115,6 +115,12 @@ static struct {
   int buffer_pos;        ///< Current position in buffer
   int lines_after_match; ///< Counter for context_after lines
   int max_context_after; ///< Maximum context_after across all patterns
+
+  // Save/restore for interactive grep
+  log_filter_pattern_t *saved_patterns; ///< Backup of patterns for restore
+  int saved_pattern_count;              ///< Number of saved patterns
+  int saved_pattern_capacity;           ///< Allocated capacity for saved
+  bool saved_enabled;                   ///< Saved enabled state
 } g_filter_state = {
     .patterns = NULL,
     .pattern_count = 0,
@@ -126,6 +132,10 @@ static struct {
     .buffer_pos = 0,
     .lines_after_match = 0,
     .max_context_after = 0,
+    .saved_patterns = NULL,
+    .saved_pattern_count = 0,
+    .saved_pattern_capacity = 0,
+    .saved_enabled = false,
 };
 
 /**
@@ -950,4 +960,120 @@ void log_filter_destroy(void) {
   g_filter_state.enabled = false;
 
   // Note: Thread-local match_data is cleaned up via pthread_key destructor
+}
+
+/* ============================================================================
+ * Save/Restore Functions for Interactive Grep
+ * ========================================================================== */
+
+asciichat_error_t log_filter_save_patterns(void) {
+  // Free previous saved patterns if any
+  if (g_filter_state.saved_patterns) {
+    for (int i = 0; i < g_filter_state.saved_pattern_count; i++) {
+      SAFE_FREE(g_filter_state.saved_patterns[i].parsed_pattern);
+    }
+    SAFE_FREE(g_filter_state.saved_patterns);
+  }
+
+  // Allocate saved pattern array
+  if (g_filter_state.pattern_count > 0) {
+    g_filter_state.saved_patterns =
+        SAFE_MALLOC(g_filter_state.pattern_count * sizeof(log_filter_pattern_t), log_filter_pattern_t *);
+    if (!g_filter_state.saved_patterns) {
+      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate saved pattern array");
+    }
+
+    // Deep copy all patterns
+    for (int i = 0; i < g_filter_state.pattern_count; i++) {
+      log_filter_pattern_t *src = &g_filter_state.patterns[i];
+      log_filter_pattern_t *dst = &g_filter_state.saved_patterns[i];
+
+      // Copy pattern structure
+      *dst = *src;
+
+      // Deep copy parsed_pattern string
+      dst->parsed_pattern = SAFE_MALLOC(strlen(src->parsed_pattern) + 1, char *);
+      if (!dst->parsed_pattern) {
+        // Clean up partial save
+        for (int j = 0; j < i; j++) {
+          SAFE_FREE(g_filter_state.saved_patterns[j].parsed_pattern);
+        }
+        SAFE_FREE(g_filter_state.saved_patterns);
+        g_filter_state.saved_patterns = NULL;
+        return SET_ERRNO(ERROR_MEMORY, "Failed to save pattern string");
+      }
+      strcpy(dst->parsed_pattern, src->parsed_pattern);
+
+      // Singleton pointers are shared (reference counted)
+      dst->singleton = src->singleton;
+    }
+  }
+
+  g_filter_state.saved_pattern_count = g_filter_state.pattern_count;
+  g_filter_state.saved_pattern_capacity = g_filter_state.pattern_count;
+  g_filter_state.saved_enabled = g_filter_state.enabled;
+
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t log_filter_restore_patterns(void) {
+  // Clear current patterns (but don't free the array)
+  for (int i = 0; i < g_filter_state.pattern_count; i++) {
+    SAFE_FREE(g_filter_state.patterns[i].parsed_pattern);
+    g_filter_state.patterns[i].singleton = NULL;
+  }
+
+  // Ensure we have capacity for saved patterns
+  if (g_filter_state.saved_pattern_count > g_filter_state.pattern_capacity) {
+    log_filter_pattern_t *new_patterns =
+        SAFE_REALLOC(g_filter_state.patterns, g_filter_state.saved_pattern_count * sizeof(log_filter_pattern_t),
+                     log_filter_pattern_t *);
+    if (!new_patterns) {
+      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate pattern array for restore");
+    }
+    g_filter_state.patterns = new_patterns;
+    g_filter_state.pattern_capacity = g_filter_state.saved_pattern_count;
+  }
+
+  // Restore patterns
+  if (g_filter_state.saved_patterns) {
+    for (int i = 0; i < g_filter_state.saved_pattern_count; i++) {
+      log_filter_pattern_t *src = &g_filter_state.saved_patterns[i];
+      log_filter_pattern_t *dst = &g_filter_state.patterns[i];
+
+      // Copy pattern structure
+      *dst = *src;
+
+      // Deep copy parsed_pattern string
+      dst->parsed_pattern = SAFE_MALLOC(strlen(src->parsed_pattern) + 1, char *);
+      if (!dst->parsed_pattern) {
+        // Clean up partial restore
+        for (int j = 0; j < i; j++) {
+          SAFE_FREE(g_filter_state.patterns[j].parsed_pattern);
+        }
+        g_filter_state.pattern_count = 0;
+        return SET_ERRNO(ERROR_MEMORY, "Failed to restore pattern string");
+      }
+      strcpy(dst->parsed_pattern, src->parsed_pattern);
+
+      // Singleton pointers are shared (reference counted)
+      dst->singleton = src->singleton;
+    }
+  }
+
+  g_filter_state.pattern_count = g_filter_state.saved_pattern_count;
+  g_filter_state.enabled = g_filter_state.saved_enabled;
+
+  return ASCIICHAT_OK;
+}
+
+void log_filter_clear_patterns(void) {
+  // Don't free patterns, just set count to 0
+  // This allows quick restore without reallocation
+  g_filter_state.pattern_count = 0;
+  g_filter_state.enabled = false;
+}
+
+int log_filter_get_pattern_count(void) {
+  return g_filter_state.pattern_count;
 }

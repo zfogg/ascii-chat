@@ -7,6 +7,7 @@
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/init.h>
+#include <ascii-chat/util/utf8.h>
 
 #include <termios.h>
 #include <unistd.h>
@@ -14,6 +15,7 @@
 #include <sys/time.h>
 #include <fcntl.h>
 #include <string.h>
+#include <stdio.h>
 
 /* ============================================================================
  * Constants
@@ -190,4 +192,259 @@ keyboard_key_t keyboard_read_nonblocking(void) {
 
   // Return regular ASCII character (including control characters 0-31, printable 32-126)
   return (keyboard_key_t)ch;
+}
+
+keyboard_key_t keyboard_read_with_timeout(uint32_t timeout_ms) {
+  // Check if keyboard is initialized
+  static_mutex_lock(&g_keyboard_init_mutex);
+  bool is_initialized = (g_keyboard_init_refcount > 0);
+  static_mutex_unlock(&g_keyboard_init_mutex);
+
+  if (!is_initialized) {
+    return KEY_NONE;
+  }
+
+  // Wait for input with timeout
+  fd_set readfds;
+  struct timeval timeout;
+
+  FD_ZERO(&readfds);
+  FD_SET(STDIN_FILENO, &readfds);
+
+  timeout.tv_sec = timeout_ms / 1000;
+  timeout.tv_usec = (timeout_ms % 1000) * 1000;
+
+  int select_result = select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout);
+  if (select_result <= 0) {
+    return KEY_NONE; // Timeout or error
+  }
+
+  // Input is available, read it (reuse the same logic as nonblocking)
+  unsigned char ch;
+  ssize_t n = read(STDIN_FILENO, &ch, 1);
+  if (n <= 0) {
+    return KEY_NONE;
+  }
+
+  // Handle special characters
+  if (ch == ' ') {
+    return KEY_SPACE;
+  }
+  if (ch == 27) { // ESC
+    FD_ZERO(&readfds);
+    FD_SET(STDIN_FILENO, &readfds);
+    timeout.tv_sec = 0;
+    timeout.tv_usec = (KEYBOARD_ESCAPE_TIMEOUT_NS % NS_PER_SEC_INT) / 1000;
+
+    if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
+      unsigned char ch2;
+      if (read(STDIN_FILENO, &ch2, 1) > 0 && ch2 == '[') {
+        if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
+          unsigned char ch3;
+          if (read(STDIN_FILENO, &ch3, 1) > 0) {
+            switch (ch3) {
+            case 'A':
+              return KEY_UP;
+            case 'B':
+              return KEY_DOWN;
+            case 'C':
+              return KEY_RIGHT;
+            case 'D':
+              return KEY_LEFT;
+            default:
+              return KEY_ESCAPE;
+            }
+          }
+        }
+      }
+    }
+    return KEY_ESCAPE;
+  }
+
+  return (keyboard_key_t)ch;
+}
+
+/* ============================================================================
+ * Interactive Line Editing Implementation
+ * ============================================================================ */
+
+keyboard_line_edit_result_t keyboard_read_line_interactive(keyboard_line_edit_opts_t *opts) {
+  // Validate options
+  if (!opts || !opts->buffer || !opts->len || !opts->cursor) {
+    return LINE_EDIT_NO_INPUT;
+  }
+
+  // Check if keyboard is initialized
+  static_mutex_lock(&g_keyboard_init_mutex);
+  bool is_initialized = (g_keyboard_init_refcount > 0);
+  static_mutex_unlock(&g_keyboard_init_mutex);
+
+  if (!is_initialized) {
+    return LINE_EDIT_NO_INPUT;
+  }
+
+  int c;
+  fd_set readfds;
+  struct timeval timeout;
+
+  // Use pre-read key if provided, otherwise read from stdin
+  if (opts->key != KEY_NONE) {
+    c = opts->key;
+  } else {
+    // Check if input is available using select with zero timeout (non-blocking)
+    FD_ZERO(&readfds);
+    FD_SET(STDIN_FILENO, &readfds);
+
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 0;
+
+    int select_result = select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout);
+    if (select_result <= 0) {
+      return LINE_EDIT_NO_INPUT; // No input available
+    }
+
+    // Read one character
+    c = getchar();
+    if (c == EOF) {
+      return LINE_EDIT_CANCELLED;
+    }
+  }
+
+  size_t len = *opts->len;
+  size_t cursor = *opts->cursor;
+  char *buffer = opts->buffer;
+  size_t max_len = opts->max_len;
+
+  // Handle pre-read special keys (from keyboard_read_nonblocking)
+  if (c == KEY_LEFT) {
+    if (cursor > 0) {
+      cursor--;
+      *opts->cursor = cursor;
+    }
+    return LINE_EDIT_CONTINUE;
+  }
+  if (c == KEY_RIGHT) {
+    if (cursor < len) {
+      cursor++;
+      *opts->cursor = cursor;
+    }
+    return LINE_EDIT_CONTINUE;
+  }
+
+  // Handle newline/carriage return (Enter key) - accept input
+  if (c == '\n' || c == '\r') {
+    return LINE_EDIT_ACCEPTED;
+  }
+
+  // Handle Ctrl+C (interrupt) - cancel
+  if (c == 3) {
+    return LINE_EDIT_CANCELLED;
+  }
+
+  // Handle escape sequences (arrow keys, delete, etc.)
+  if (c == 27) { // ESC
+    // Could be escape key or start of sequence
+    // Check if there's more data available
+    FD_ZERO(&readfds);
+    FD_SET(STDIN_FILENO, &readfds);
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 50000; // 50ms timeout for escape sequence
+
+    if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
+      int next = getchar();
+      if (next == '[') {
+        // Might be an arrow key or delete sequence
+        int code = getchar();
+        switch (code) {
+        case 'D': // Left arrow
+          if (cursor > 0) {
+            cursor--;
+            *opts->cursor = cursor;
+          }
+          return LINE_EDIT_CONTINUE;
+        case 'C': // Right arrow
+          if (cursor < len) {
+            cursor++;
+            *opts->cursor = cursor;
+          }
+          return LINE_EDIT_CONTINUE;
+        case '3': // Delete key (sends ESC[3~)
+          if (getchar() == '~' && cursor < len) {
+            // Shift characters left
+            memmove(&buffer[cursor], &buffer[cursor + 1], len - cursor - 1);
+            len--;
+            *opts->len = len;
+          }
+          return LINE_EDIT_CONTINUE;
+        case 'H': // Home
+          cursor = 0;
+          *opts->cursor = cursor;
+          return LINE_EDIT_CONTINUE;
+        case 'F': // End
+          cursor = len;
+          *opts->cursor = cursor;
+          return LINE_EDIT_CONTINUE;
+        default:
+          // Unknown escape sequence
+          return LINE_EDIT_CONTINUE;
+        }
+      }
+    }
+
+    // Standalone escape key - cancel
+    return LINE_EDIT_CANCELLED;
+  }
+
+  // Handle backspace (BS = 8 or DEL = 127) - delete character before cursor
+  if (c == 8 || c == 127) {
+    if (cursor > 0) {
+      // Shift characters left
+      memmove(&buffer[cursor - 1], &buffer[cursor], len - cursor);
+      cursor--;
+      len--;
+      *opts->len = len;
+      *opts->cursor = cursor;
+    }
+    return LINE_EDIT_CONTINUE;
+  }
+
+  // Ignore other control characters (except tab)
+  if (c < 32 && c != '\t') {
+    return LINE_EDIT_CONTINUE;
+  }
+
+  // Determine how many continuation bytes are needed for this character
+  int continuation_bytes = utf8_continuation_bytes_needed((unsigned char)c);
+  if (continuation_bytes < 0) {
+    // Invalid UTF-8 start byte, skip it
+    return LINE_EDIT_CONTINUE;
+  }
+
+  // Insert first byte (or ASCII character) at cursor position
+  if (len < max_len - 1) {
+    // Shift characters right to make room for this byte
+    memmove(&buffer[cursor + 1], &buffer[cursor], len - cursor);
+    buffer[cursor] = (char)c;
+    len++;
+    cursor++;
+
+    // Read continuation bytes for multi-byte UTF-8 if needed
+    if (continuation_bytes > 0) {
+      if (utf8_read_and_insert_continuation_bytes(buffer, &cursor, &len, max_len, continuation_bytes, getchar) < 0) {
+        // EOF or buffer overflow during continuation bytes
+        // Roll back the first byte
+        memmove(&buffer[cursor - 1], &buffer[cursor], len - cursor);
+        len--;
+        cursor--;
+      }
+    }
+
+    *opts->len = len;
+    *opts->cursor = cursor;
+
+    // Null-terminate
+    buffer[len] = '\0';
+  }
+
+  return LINE_EDIT_CONTINUE;
 }

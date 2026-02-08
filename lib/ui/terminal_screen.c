@@ -14,6 +14,7 @@
  */
 
 #include "ascii-chat/ui/terminal_screen.h"
+#include "ascii-chat/ui/interactive_grep.h"
 #include "ascii-chat/session/session_log_buffer.h"
 #include "ascii-chat/util/display.h"
 #include "ascii-chat/platform/system.h"
@@ -42,11 +43,17 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     g_last_term_size_check_us = now_us;
   }
 
-  // Clear screen (both stdout and stderr to prevent contamination)
-  fprintf(stdout, "\033[2J"); // Clear entire screen
-  fprintf(stderr, "\033[2J"); // Clear stderr too
-  fprintf(stdout, "\033[H");  // Move cursor to home (1,1)
-  fprintf(stderr, "\033[H");  // Move stderr cursor too
+  // Check if grep is entering (we'll handle screen clearing differently)
+  bool grep_entering = interactive_grep_is_entering();
+
+  if (!grep_entering) {
+    // Normal mode: clear entire screen
+    terminal_clear_screen();
+    terminal_cursor_home(STDOUT_FILENO);
+  } else {
+    // Grep mode: just move to home, don't clear
+    terminal_cursor_home(STDOUT_FILENO);
+  }
 
   // Render fixed header via callback
   config->render_header(g_cached_term_size, config->user_data);
@@ -59,20 +66,58 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
 
   // Calculate log area: total rows - header lines - 1 (prevent scroll)
   int log_area_rows = g_cached_term_size.rows - config->fixed_header_lines - 1;
+
+  // Reserve bottom line for grep input if entering (already defined above)
+  if (grep_entering) {
+    log_area_rows -= 1; // One less row for logs
+  }
+
   if (log_area_rows <= 0) {
+    // Still render grep input line even if no space for logs
+    if (grep_entering) {
+      interactive_grep_render_input_line(g_cached_term_size.cols);
+    }
     fflush(stdout);
     return; // No space for logs
   }
 
-  // Fetch recent logs from session_log_buffer
-  session_log_entry_t log_entries[SESSION_LOG_BUFFER_SIZE];
-  size_t log_count = session_log_buffer_get_recent(log_entries, SESSION_LOG_BUFFER_SIZE);
+  // Fetch and filter logs
+  session_log_entry_t *log_entries = NULL;
+  size_t log_count = 0;
+
+  if (interactive_grep_is_active()) {
+    // Grep is active - use filtered logs
+    asciichat_error_t result = interactive_grep_gather_and_filter_logs(&log_entries, &log_count);
+    if (result != ASCIICHAT_OK || !log_entries) {
+      // Fall back to unfiltered logs
+      log_entries = SAFE_MALLOC(SESSION_LOG_BUFFER_SIZE * sizeof(session_log_entry_t), session_log_entry_t *);
+      if (log_entries) {
+        log_count = session_log_buffer_get_recent(log_entries, SESSION_LOG_BUFFER_SIZE);
+      }
+    }
+  } else {
+    // Normal mode - use unfiltered logs from buffer
+    log_entries = SAFE_MALLOC(SESSION_LOG_BUFFER_SIZE * sizeof(session_log_entry_t), session_log_entry_t *);
+    if (log_entries) {
+      log_count = session_log_buffer_get_recent(log_entries, SESSION_LOG_BUFFER_SIZE);
+    }
+  }
 
   if (log_count == 0) {
     // No logs to display, fill remaining lines to prevent scroll
     for (int i = 0; i < log_area_rows; i++) {
       fprintf(stdout, "\n");
     }
+
+    // Still need to render grep input if entering
+    if (grep_entering) {
+      int last_row = g_cached_term_size.rows - 1;
+      terminal_move_cursor(last_row, 0);
+      fprintf(stdout, "\x1b[K");
+      fflush(stdout);
+      interactive_grep_render_input_line(g_cached_term_size.cols);
+    }
+
     fflush(stdout);
     return;
   }
@@ -136,6 +181,20 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
   for (int i = 0; i < remaining_lines; i++) {
     fprintf(stdout, "\n");
   }
+
+  // Position cursor to absolute bottom line and render grep input
+  if (grep_entering) {
+    // Move to the very last row (terminal_move_cursor expects 0-based despite docs)
+    int last_row = g_cached_term_size.rows - 1;
+    terminal_move_cursor(last_row, 0);
+    // Clear the line
+    fprintf(stdout, "\x1b[K");
+    fflush(stdout);
+    interactive_grep_render_input_line(g_cached_term_size.cols);
+  }
+
+  // Free log entries (allocated by interactive_grep or SAFE_MALLOC)
+  SAFE_FREE(log_entries);
 
   // Flush output
   fflush(stdout);

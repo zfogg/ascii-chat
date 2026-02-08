@@ -25,6 +25,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
 #include "../common/error_codes.h"
 
 /* ============================================================================
@@ -154,5 +155,139 @@ void keyboard_destroy(void);
  * @ingroup platform
  */
 keyboard_key_t keyboard_read_nonblocking(void);
+
+/**
+ * @brief Read keyboard input with timeout
+ * @param timeout_ms Timeout in milliseconds (0 for non-blocking)
+ * @return Keyboard key code or KEY_NONE if timeout
+ *
+ * Waits up to timeout_ms for keyboard input. Returns immediately if input
+ * is available, or after timeout if no input. Use this for event-driven
+ * input handling where you want to wait for keypresses.
+ */
+keyboard_key_t keyboard_read_with_timeout(uint32_t timeout_ms);
+
+/* ============================================================================
+ * Interactive Line Editing
+ * @{
+ */
+
+/**
+ * @brief Options for interactive line editing
+ *
+ * Configuration structure for keyboard_read_line_interactive(). Provides
+ * control over echo behavior, masking, prefix display, and validation.
+ *
+ * @ingroup platform
+ */
+typedef struct {
+  char *buffer;                    ///< Input buffer (modified in-place)
+  size_t max_len;                  ///< Maximum buffer size (including null terminator)
+  size_t *len;                     ///< Current length in bytes (in/out parameter)
+  size_t *cursor;                  ///< Cursor position in bytes (in/out parameter)
+  bool echo;                       ///< Echo characters to terminal
+  char mask_char;                  ///< Mask character (0 for no masking, '*' for passwords)
+  const char *prefix;              ///< Prefix to display (e.g., "/" for grep), NULL for none
+  bool (*validator)(const char *); ///< Optional validator callback (for live feedback)
+  keyboard_key_t key;              ///< Pre-read key (use this instead of reading if not KEY_NONE)
+} keyboard_line_edit_opts_t;
+
+/**
+ * @brief Result codes for interactive line editing
+ *
+ * Return values for keyboard_read_line_interactive() indicating the current
+ * state of the editing session after processing one keystroke.
+ *
+ * @ingroup platform
+ */
+typedef enum {
+  LINE_EDIT_CONTINUE,  ///< Keep editing (more input needed)
+  LINE_EDIT_ACCEPTED,  ///< User pressed Enter (accept input)
+  LINE_EDIT_CANCELLED, ///< User pressed Escape/Ctrl+C (cancel input)
+  LINE_EDIT_NO_INPUT   ///< No key available (non-blocking mode)
+} keyboard_line_edit_result_t;
+
+/**
+ * @brief Process one keystroke for interactive line editing
+ * @param opts Line editing options (must not be NULL)
+ * @return Result code indicating editing status
+ *
+ * Non-blocking line editor that processes one keystroke per call. Supports
+ * full text editing with cursor movement, character insertion/deletion,
+ * and UTF-8 multi-byte sequences.
+ *
+ * **Supported editing operations:**
+ * - **Backspace** (8/127): Delete character before cursor
+ * - **Delete** (ESC[3~): Delete character at cursor
+ * - **Left/Right arrows**: Move cursor
+ * - **Home/End**: Jump to start/end of line
+ * - **Enter**: Accept input (return LINE_EDIT_ACCEPTED)
+ * - **Escape/Ctrl+C**: Cancel input (return LINE_EDIT_CANCELLED)
+ * - **Printable characters**: Insert at cursor position
+ * - **UTF-8 multi-byte**: Full support for non-ASCII characters
+ *
+ * **Display behavior:**
+ * - If `opts.echo` is true, characters are displayed as typed
+ * - If `opts.mask_char` is non-zero, characters are masked (e.g., '*' for passwords)
+ * - If `opts.prefix` is non-NULL, it's displayed before the input (e.g., "/" for grep)
+ * - If `opts.validator` is non-NULL, it's called on every change (for live validation)
+ *
+ * **Non-blocking design:**
+ * - Returns immediately if no input available (LINE_EDIT_NO_INPUT)
+ * - Suitable for integration with render loops
+ * - Call repeatedly in a loop until LINE_EDIT_ACCEPTED or LINE_EDIT_CANCELLED
+ *
+ * **Errors:**
+ * - Returns LINE_EDIT_NO_INPUT if keyboard not initialized
+ * - Returns LINE_EDIT_NO_INPUT if opts is NULL or buffer is NULL
+ *
+ * @note Terminal must be in raw mode (call keyboard_init() first)
+ * @note The buffer is modified in-place as user types
+ * @note len and cursor are updated to reflect current state
+ * @note Thread-safe (but only one editing session should be active at a time)
+ *
+ * @par Example
+ * @code
+ * // Interactive grep input
+ * char pattern[256] = {0};
+ * size_t len = 0;
+ * size_t cursor = 0;
+ *
+ * keyboard_line_edit_opts_t opts = {
+ *     .buffer = pattern,
+ *     .max_len = sizeof(pattern),
+ *     .len = &len,
+ *     .cursor = &cursor,
+ *     .echo = false,       // We render ourselves
+ *     .mask_char = 0,      // No masking
+ *     .prefix = "/",       // Show "/" prefix
+ *     .validator = validate_pattern  // Optional validator
+ * };
+ *
+ * while (true) {
+ *     keyboard_line_edit_result_t result = keyboard_read_line_interactive(&opts);
+ *     switch (result) {
+ *         case LINE_EDIT_ACCEPTED:
+ *             // User pressed Enter - pattern is in buffer
+ *             apply_pattern(pattern);
+ *             return;
+ *         case LINE_EDIT_CANCELLED:
+ *             // User pressed Escape - restore previous state
+ *             restore_previous();
+ *             return;
+ *         case LINE_EDIT_CONTINUE:
+ *             // Still editing - re-render display
+ *             render_input_line(pattern, cursor);
+ *             break;
+ *         case LINE_EDIT_NO_INPUT:
+ *             // No input - continue loop
+ *             break;
+ *     }
+ * }
+ * @endcode
+ *
+ * @ingroup platform
+ */
+keyboard_line_edit_result_t keyboard_read_line_interactive(keyboard_line_edit_opts_t *opts);
 
 /** @} */

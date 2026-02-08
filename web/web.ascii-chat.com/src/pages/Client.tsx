@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import {
-  initClientWasm,
+  cleanupClientWasm,
   generateKeypair,
   ConnectionState,
   isWasmReady
@@ -28,25 +28,9 @@ export function ClientPage() {
 
     const init = async () => {
       try {
-        setStatus('Initializing WASM...');
-        await initClientWasm({ width: 80, height: 40 });
-
-        if (!isWasmReady()) {
-          throw new Error('WASM module not ready');
-        }
-
-        setStatus('WASM initialized successfully');
-
-        // Auto-generate keypair
-        setStatus('Generating keypair...');
-        const pubkey = await generateKeypair();
-        setPublicKey(pubkey);
-        setStatus('Keypair generated');
-
-        // Auto-connect to server
         setStatus('Connecting to server...');
 
-        // Create client connection
+        // Create client connection (handles WASM init + keypair + WebSocket)
         const conn = new ClientConnection({
           serverUrl,
           width: 80,
@@ -54,7 +38,7 @@ export function ClientPage() {
         });
         clientConn = conn;
 
-        // Set up callbacks
+        // Set up callbacks before connecting
         conn.onStateChange((state) => {
           setConnectionState(state);
           const stateNames = {
@@ -71,7 +55,7 @@ export function ClientPage() {
           console.log('Received packet:', packet, 'payload length:', payload.length);
         });
 
-        // Connect
+        // Connect (initializes WASM, generates keypair, connects WebSocket)
         await conn.connect();
         setClient(conn);
         setPublicKey(conn.getPublicKey() || '');
@@ -88,6 +72,8 @@ export function ClientPage() {
       if (clientConn) {
         clientConn.disconnect();
       }
+      // Reset WASM crypto state for React Strict Mode remounts
+      cleanupClientWasm();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on mount

@@ -74,25 +74,83 @@ export enum PacketType {
   CRYPTO_HANDSHAKE_COMPLETE = 1108,
   CRYPTO_NO_ENCRYPTION = 1109,
 
+  // Encrypted session data
+  ENCRYPTED = 1200,
+
   // Rekeying
   CRYPTO_REKEY_REQUEST = 1201,
   CRYPTO_REKEY_RESPONSE = 1202,
+  CRYPTO_REKEY_COMPLETE = 1203,
 
-  // Session data (encrypted after handshake)
-  ENCRYPTED = 13,
+  // Messages
+  SIZE_MESSAGE = 2000,
+  AUDIO_MESSAGE = 2001,
+  TEXT_MESSAGE = 2002,
+  ERROR_MESSAGE = 2003,
+  REMOTE_LOG = 2004,
 
-  // Audio/Video
-  AUDIO_BATCH = 5,
-  AUDIO_OPUS_BATCH = 6,
-  IMAGE_FRAME = 7,
-  ASCII_FRAME = 8,
+  // Video
+  ASCII_FRAME = 3000,
+  IMAGE_FRAME = 3001,
+
+  // Audio
+  AUDIO_BATCH = 4000,
+  AUDIO_OPUS_BATCH = 4001,
 
   // Control
-  CLIENT_INFO = 2,
-  SERVER_STATUS = 3,
-  ERROR_MESSAGE = 4,
-  PING = 9,
-  PONG = 10
+  CLIENT_CAPABILITIES = 5000,
+  PING = 5001,
+  PONG = 5002,
+  CLIENT_JOIN = 5003,
+  CLIENT_LEAVE = 5004,
+  STREAM_START = 5005,
+  STREAM_STOP = 5006,
+  CLEAR_CONSOLE = 5007,
+  SERVER_STATE = 5008,
+}
+
+/**
+ * Get human-readable name for a packet type number.
+ * Works for both known and unknown packet types.
+ */
+export function packetTypeName(type: number): string {
+  const names: Record<number, string> = {
+    [PacketType.PROTOCOL_VERSION]: 'PROTOCOL_VERSION',
+    [PacketType.CRYPTO_CLIENT_HELLO]: 'CRYPTO_CLIENT_HELLO',
+    [PacketType.CRYPTO_CAPABILITIES]: 'CRYPTO_CAPABILITIES',
+    [PacketType.CRYPTO_PARAMETERS]: 'CRYPTO_PARAMETERS',
+    [PacketType.CRYPTO_KEY_EXCHANGE_INIT]: 'CRYPTO_KEY_EXCHANGE_INIT',
+    [PacketType.CRYPTO_KEY_EXCHANGE_RESP]: 'CRYPTO_KEY_EXCHANGE_RESP',
+    [PacketType.CRYPTO_AUTH_CHALLENGE]: 'CRYPTO_AUTH_CHALLENGE',
+    [PacketType.CRYPTO_AUTH_RESPONSE]: 'CRYPTO_AUTH_RESPONSE',
+    [PacketType.CRYPTO_AUTH_FAILED]: 'CRYPTO_AUTH_FAILED',
+    [PacketType.CRYPTO_SERVER_AUTH_RESP]: 'CRYPTO_SERVER_AUTH_RESP',
+    [PacketType.CRYPTO_HANDSHAKE_COMPLETE]: 'CRYPTO_HANDSHAKE_COMPLETE',
+    [PacketType.CRYPTO_NO_ENCRYPTION]: 'CRYPTO_NO_ENCRYPTION',
+    [PacketType.ENCRYPTED]: 'ENCRYPTED',
+    [PacketType.CRYPTO_REKEY_REQUEST]: 'CRYPTO_REKEY_REQUEST',
+    [PacketType.CRYPTO_REKEY_RESPONSE]: 'CRYPTO_REKEY_RESPONSE',
+    [PacketType.CRYPTO_REKEY_COMPLETE]: 'CRYPTO_REKEY_COMPLETE',
+    [PacketType.SIZE_MESSAGE]: 'SIZE_MESSAGE',
+    [PacketType.AUDIO_MESSAGE]: 'AUDIO_MESSAGE',
+    [PacketType.TEXT_MESSAGE]: 'TEXT_MESSAGE',
+    [PacketType.ERROR_MESSAGE]: 'ERROR_MESSAGE',
+    [PacketType.REMOTE_LOG]: 'REMOTE_LOG',
+    [PacketType.ASCII_FRAME]: 'ASCII_FRAME',
+    [PacketType.IMAGE_FRAME]: 'IMAGE_FRAME',
+    [PacketType.AUDIO_BATCH]: 'AUDIO_BATCH',
+    [PacketType.AUDIO_OPUS_BATCH]: 'AUDIO_OPUS_BATCH',
+    [PacketType.CLIENT_CAPABILITIES]: 'CLIENT_CAPABILITIES',
+    [PacketType.PING]: 'PING',
+    [PacketType.PONG]: 'PONG',
+    [PacketType.CLIENT_JOIN]: 'CLIENT_JOIN',
+    [PacketType.CLIENT_LEAVE]: 'CLIENT_LEAVE',
+    [PacketType.STREAM_START]: 'STREAM_START',
+    [PacketType.STREAM_STOP]: 'STREAM_STOP',
+    [PacketType.CLEAR_CONSOLE]: 'CLEAR_CONSOLE',
+    [PacketType.SERVER_STATE]: 'SERVER_STATE',
+  };
+  return names[type] || `UNKNOWN(${type})`;
 }
 
 // Import the Emscripten-generated module factory
@@ -175,9 +233,14 @@ export async function initClientWasm(options: ClientInitOptions = {}): Promise<v
  * Cleanup WASM module resources
  */
 export function cleanupClientWasm(): void {
+  console.error('[cleanupClientWasm] ========== CLEANUP CALLED ==========');
   if (wasmModule) {
+    console.error('[cleanupClientWasm] Calling _client_cleanup()...');
     wasmModule._client_cleanup();
     wasmModule = null;
+    console.error('[cleanupClientWasm] Cleanup complete, module set to null');
+  } else {
+    console.error('[cleanupClientWasm] No module to cleanup');
   }
 }
 

@@ -280,11 +280,10 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
       return SET_ERRNO(ERROR_NETWORK, "Send queue full");
     }
 
-    // Request writable callback to send queued data
-    lws_callback_on_writable(ws_data->wsi);
-
-    // Wake up the event loop to process the callback request
-    // This is needed when calling from a non-service thread
+    // Wake the LWS event loop from this non-service thread.
+    // lws_cancel_service() is the only thread-safe LWS call here.
+    // The service thread's LWS_CALLBACK_EVENT_WAIT_CANCELLED handler will
+    // call lws_callback_on_writable_all_protocol() to trigger SERVER_WRITEABLE.
     struct lws_context *ctx = lws_get_context(ws_data->wsi);
     lws_cancel_service(ctx);
 

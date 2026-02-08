@@ -2693,7 +2693,16 @@ static void acip_server_on_crypto_key_exchange_resp(packet_type_t type, const vo
     log_error("Crypto handshake auth challenge failed for client %u", client->client_id);
     disconnect_client_for_bad_data(client, "Crypto handshake auth challenge failed");
   } else {
-    log_debug("Sent AUTH_CHALLENGE to client %u", client->client_id);
+    // Check if handshake completed (no-auth flow) or if AUTH_CHALLENGE was sent (with-auth flow)
+    if (client->crypto_handshake_ctx.state == CRYPTO_HANDSHAKE_READY) {
+      // No-auth flow: handshake complete, HANDSHAKE_COMPLETE was sent
+      log_info("Crypto handshake completed successfully for client %u (no authentication)", client->client_id);
+      client->crypto_initialized = true;
+      client->transport->crypto_ctx = &client->crypto_handshake_ctx.crypto_ctx;
+    } else {
+      // With-auth flow: AUTH_CHALLENGE was sent, waiting for AUTH_RESPONSE
+      log_debug("Sent AUTH_CHALLENGE to client %u", client->client_id);
+    }
   }
 }
 

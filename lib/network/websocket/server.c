@@ -48,11 +48,16 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
                                      size_t len) {
   websocket_connection_data_t *conn_data = (websocket_connection_data_t *)user;
 
+  if (reason == LWS_CALLBACK_ESTABLISHED) {
+    log_error("!!!!! LWS_CALLBACK_ESTABLISHED TRIGGERED !!!!!");
+  }
+
   switch (reason) {
   case LWS_CALLBACK_ESTABLISHED: {
     // New WebSocket connection established
-    log_debug("[LWS_CALLBACK_ESTABLISHED] ===== WebSocket client connection ESTABLISHED =====");
-    log_debug("WebSocket client connected");
+    log_error("[LWS_CALLBACK_ESTABLISHED] ===== WebSocket client connection ESTABLISHED =====");
+    log_info("[LWS_CALLBACK_ESTABLISHED] ===== WebSocket client connection ESTABLISHED =====");
+    log_info("WebSocket client connected");
 
     // Get server instance from protocol user data
     const struct lws_protocols *protocol = lws_get_protocol(wsi);
@@ -329,6 +334,17 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       // Signal waiting recv() call
       cond_signal(&ws_data->queue_cond);
       mutex_unlock(&ws_data->queue_mutex);
+    }
+    break;
+  }
+
+  case LWS_CALLBACK_EVENT_WAIT_CANCELLED: {
+    // Fired on the service thread when lws_cancel_service() is called from another thread.
+    // This is how we safely convert cross-thread send requests into writable callbacks.
+    // lws_callback_on_writable() is only safe from the service thread context.
+    const struct lws_protocols *protocol = lws_get_protocol(wsi);
+    if (protocol) {
+      lws_callback_on_writable_all_protocol(lws_get_context(wsi), protocol);
     }
     break;
   }

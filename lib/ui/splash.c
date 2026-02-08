@@ -16,12 +16,14 @@
 
 #include <ascii-chat/ui/splash.h>
 #include <ascii-chat/ui/terminal_screen.h>
+#include <ascii-chat/ui/interactive_grep.h>
 #include <ascii-chat/session/display.h>
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/video/ansi_fast.h>
@@ -401,11 +403,27 @@ static void *splash_animation_thread(void *arg) {
   // Check if colors should be used (TTY check)
   bool use_colors = terminal_should_color_output(STDOUT_FILENO);
 
+  // Initialize keyboard for interactive grep (if terminal is interactive)
+  bool keyboard_enabled = false;
+  if (terminal_is_interactive()) {
+    if (keyboard_init() == ASCIICHAT_OK) {
+      keyboard_enabled = true;
+    }
+  }
+
   // Animate with rainbow wave effect
   int frame = 0;
   const int anim_speed = 100; // milliseconds per frame
 
   while (!atomic_load(&g_splash_state.should_stop)) {
+    // Poll keyboard for interactive grep
+    if (keyboard_enabled) {
+      keyboard_key_t key = keyboard_read_nonblocking();
+      if (key != KEY_NONE && interactive_grep_should_handle(key)) {
+        interactive_grep_handle_key(key);
+        // Continue to render immediately with grep active
+      }
+    }
     // Set up splash header context for this frame
     splash_header_ctx_t header_ctx = {
         .frame = frame,
@@ -442,8 +460,15 @@ static void *splash_animation_thread(void *arg) {
     // Move to next frame
     frame++;
 
-    // Sleep to control animation speed
-    platform_sleep_ms(anim_speed);
+    // Sleep to control animation speed (unless grep needs immediate rerender)
+    if (!interactive_grep_needs_rerender()) {
+      platform_sleep_ms(anim_speed);
+    }
+  }
+
+  // Cleanup keyboard
+  if (keyboard_enabled) {
+    keyboard_destroy();
   }
 
   atomic_store(&g_splash_state.is_running, false);

@@ -65,3 +65,41 @@ const char *log_filter_highlight_colored(const char *colored_text, const char *p
  * via pthread_key destructor.
  */
 void log_filter_destroy(void);
+
+/**
+ * @brief Save current filter patterns for later restoration
+ *
+ * Saves the current state of CLI --grep patterns so they can be
+ * restored later. Used by interactive grep to preserve initial
+ * filters when entering interactive mode.
+ *
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+asciichat_error_t log_filter_save_patterns(void);
+
+/**
+ * @brief Restore previously saved filter patterns
+ *
+ * Restores filter patterns saved by log_filter_save_patterns().
+ * Used by interactive grep when user cancels (Escape) to restore
+ * CLI --grep patterns.
+ *
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+asciichat_error_t log_filter_restore_patterns(void);
+
+/**
+ * @brief Clear all filter patterns
+ *
+ * Temporarily disables filtering by setting pattern count to 0.
+ * Patterns remain allocated and can be restored later.
+ * Used by interactive grep when user types first character.
+ */
+void log_filter_clear_patterns(void);
+
+/**
+ * @brief Get number of active filter patterns
+ *
+ * @return Number of currently active patterns
+ */
+int log_filter_get_pattern_count(void);

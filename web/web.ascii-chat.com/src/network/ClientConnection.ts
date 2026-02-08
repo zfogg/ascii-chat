@@ -20,6 +20,7 @@ import {
   getConnectionState,
   ConnectionState,
   PacketType,
+  packetTypeName,
   type ParsedPacket
 } from '../wasm/client';
 
@@ -55,14 +56,21 @@ export class ClientConnection {
 
     // Register callback so WASM can send raw packets back through WebSocket
     registerSendPacketCallback((rawPacket: Uint8Array) => {
-      console.log('[ClientConnection] WASM sending raw packet, length:', rawPacket.length);
+      // Try to parse the packet to get its type name
+      let typeInfo = `${rawPacket.length} bytes`;
+      try {
+        const parsed = parsePacket(rawPacket);
+        typeInfo = `type=${parsed.type} (${packetTypeName(parsed.type)}) ${rawPacket.length} bytes`;
+      } catch { /* ignore parse errors */ }
+      console.error(`[ClientConnection] >>> WASM->JS->WS sending raw packet: ${typeInfo}`);
       if (!this.socket) {
         console.error('[ClientConnection] Cannot send packet - socket not connected');
         return;
       }
       this.socket.send(rawPacket);
+      console.error(`[ClientConnection] >>> WASM->JS->WS packet sent OK`);
     });
-    console.log('[ClientConnection] Packet callback registered');
+    console.error('[ClientConnection] WASM send packet callback registered');
 
     // Generate client keypair
     console.log('[ClientConnection] Generating keypair...');
@@ -114,45 +122,54 @@ export class ClientConnection {
    */
   private handlePacket(rawPacket: Uint8Array): void {
     try {
-      console.log('[ClientConnection] Received packet, length:', rawPacket.length);
+      const typeName = (type: number) => packetTypeName(type);
 
       // Parse packet header
       const parsed = parsePacket(rawPacket);
-      console.log('[ClientConnection] Parsed packet type:', parsed.type);
+      const name = typeName(parsed.type);
+      console.error(`[ClientConnection] <<< RECV packet type=${parsed.type} (${name}) len=${rawPacket.length} payload_len=${parsed.length} client_id=${parsed.client_id}`);
 
       // Extract payload (skip header)
-      const HEADER_SIZE = 20; // sizeof(packet_header_t)
+      const HEADER_SIZE = 22; // sizeof(packet_header_t): magic(8) + type(2) + length(4) + crc32(4) + client_id(4)
       const payload = rawPacket.slice(HEADER_SIZE);
 
       // Handle handshake packets using WASM callbacks
       if (parsed.type === PacketType.CRYPTO_KEY_EXCHANGE_INIT) {
-        console.log('[ClientConnection] Handling CRYPTO_KEY_EXCHANGE_INIT via WASM');
+        console.error(`[ClientConnection] >>> Dispatching ${name} to WASM handleKeyExchangeInit (raw ${rawPacket.length} bytes)`);
         handleKeyExchangeInit(rawPacket);
+        console.error(`[ClientConnection] <<< WASM handleKeyExchangeInit returned OK`);
         this.onStateChangeCallback?.(ConnectionState.HANDSHAKE);
         return;
       }
 
       if (parsed.type === PacketType.CRYPTO_AUTH_CHALLENGE) {
-        console.log('[ClientConnection] Handling CRYPTO_AUTH_CHALLENGE via WASM');
+        console.error(`[ClientConnection] >>> Dispatching ${name} to WASM handleAuthChallenge (raw ${rawPacket.length} bytes)`);
         handleAuthChallenge(rawPacket);
+        console.error(`[ClientConnection] <<< WASM handleAuthChallenge returned OK`);
         return;
       }
 
       if (parsed.type === PacketType.CRYPTO_HANDSHAKE_COMPLETE) {
-        console.log('[ClientConnection] Handling CRYPTO_HANDSHAKE_COMPLETE via WASM');
+        console.error(`[ClientConnection] >>> Dispatching ${name} to WASM handleHandshakeComplete (raw ${rawPacket.length} bytes)`);
         handleHandshakeComplete(rawPacket);
+        console.error(`[ClientConnection] <<< WASM handleHandshakeComplete returned OK - transitioning to CONNECTED`);
         this.onStateChangeCallback?.(ConnectionState.CONNECTED);
         return;
       }
 
-      // Decrypt if we're in connected state
+      // For non-handshake packets during handshake, log a warning
       const state = getConnectionState();
+      if (state !== ConnectionState.CONNECTED) {
+        console.error(`[ClientConnection] *** Got non-handshake packet ${name} (${parsed.type}) while in state ${ConnectionState[state]} (${state}) - ignoring`);
+      }
+
+      // Decrypt if we're in connected state
       let decryptedPayload = payload;
 
       if (state === ConnectionState.CONNECTED) {
         try {
           decryptedPayload = new Uint8Array(decryptPacket(payload));
-          console.log('[ClientConnection] Decrypted payload, length:', decryptedPayload.length);
+          console.error(`[ClientConnection] Decrypted payload, length: ${decryptedPayload.length}`);
         } catch (error) {
           console.error('[ClientConnection] Decryption failed:', error);
           return;
@@ -174,6 +191,7 @@ export class ClientConnection {
       throw new Error('Not connected to server');
     }
 
+    const name = packetTypeName(packetType);
     try {
       // Encrypt payload if we're in connected state
       const state = getConnectionState();
@@ -181,17 +199,17 @@ export class ClientConnection {
 
       if (state === ConnectionState.CONNECTED) {
         finalPayload = encryptPacket(payload);
-        console.log('[ClientConnection] Encrypted payload, length:', finalPayload.length);
+        console.error(`[ClientConnection] Encrypted payload for ${name}, length: ${finalPayload.length}`);
       }
 
       // Serialize packet with header
       const packet = serializePacket(packetType, finalPayload, 0 /* client_id TBD */);
-      console.log('[ClientConnection] Sending packet, type:', packetType, 'length:', packet.length);
+      console.error(`[ClientConnection] >>> SEND packet type=${packetType} (${name}) total_len=${packet.length} payload_len=${payload.length}`);
 
       // Send over WebSocket
       this.socket.send(packet);
     } catch (error) {
-      console.error('[ClientConnection] Failed to send packet:', error);
+      console.error(`[ClientConnection] Failed to send ${name} packet:`, error);
       throw error;
     }
   }

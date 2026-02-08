@@ -838,7 +838,9 @@ asciichat_error_t crypto_handshake_client_auth_response(crypto_handshake_context
 asciichat_error_t crypto_handshake_client_complete(crypto_handshake_context_t *ctx, acip_transport_t *transport,
                                                    packet_type_t packet_type, const uint8_t *payload,
                                                    size_t payload_len) {
-  if (!ctx || ctx->state != CRYPTO_HANDSHAKE_AUTHENTICATING) {
+  // Accept both KEY_EXCHANGE and AUTHENTICATING states for simple mode compatibility
+  // In simple mode, server skips AUTH_CHALLENGE and sends HANDSHAKE_COMPLETE directly
+  if (!ctx || (ctx->state != CRYPTO_HANDSHAKE_KEY_EXCHANGE && ctx->state != CRYPTO_HANDSHAKE_AUTHENTICATING)) {
     SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, state=%d", ctx, ctx ? ctx->state : -1);
     return ERROR_INVALID_STATE;
   }
@@ -899,11 +901,23 @@ asciichat_error_t crypto_handshake_client_complete(crypto_handshake_context_t *c
                                                                        // not retry
   }
 
+  // Handle no-auth flow: server sends HANDSHAKE_COMPLETE directly
+  if (packet_type == PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE) {
+    if (payload) {
+      buffer_pool_free(NULL, payload, payload_len);
+    }
+    ctx->state = CRYPTO_HANDSHAKE_READY;
+    log_info("Handshake complete (no authentication required)");
+    return ASCIICHAT_OK;
+  }
+
+  // Handle with-auth flow: server sends SERVER_AUTH_RESP after authentication
   if (packet_type != PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP) {
     if (payload) {
       buffer_pool_free(NULL, payload, payload_len);
     }
-    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Expected SERVER_AUTH_RESPONSE or AUTH_FAILED, got packet type %d",
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL,
+                     "Expected HANDSHAKE_COMPLETE, SERVER_AUTH_RESPONSE, or AUTH_FAILED, got packet type %d",
                      packet_type);
   }
 
