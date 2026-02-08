@@ -7,10 +7,12 @@
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/util/string.h>
+#include <ascii-chat/log/logging.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <errno.h>
 
 // Parse a single log line in format: [TIMESTAMP] [LEVEL] message...
 // Example: [2026-02-08 12:34:56.789] [INFO] Server started
@@ -18,6 +20,8 @@ bool log_file_parser_parse_line(const char *line, session_log_entry_t *out_entry
   if (!line || !out_entry || !*line) {
     return false;
   }
+
+  memset(out_entry, 0, sizeof(*out_entry));
 
   // Skip empty lines and whitespace-only lines
   if (strspn(line, " \t\r\n") == strlen(line)) {
@@ -63,15 +67,9 @@ bool log_file_parser_parse_line(const char *line, session_log_entry_t *out_entry
     return false;
   }
 
-  // Copy message to output, handling the fixed buffer size
-  size_t message_len = strlen(message_start);
-  if (message_len >= SESSION_LOG_LINE_MAX) {
-    // Truncate to fit in buffer (leave room for null terminator)
-    strncpy(out_entry->message, message_start, SESSION_LOG_LINE_MAX - 1);
-    out_entry->message[SESSION_LOG_LINE_MAX - 1] = '\0';
-  } else {
-    strcpy(out_entry->message, message_start);
-  }
+  // Copy message to output, always bounded to prevent overflow
+  strncpy(out_entry->message, message_start, SESSION_LOG_LINE_MAX - 1);
+  out_entry->message[SESSION_LOG_LINE_MAX - 1] = '\0';
 
   // Remove trailing newline if present
   size_t len = strlen(out_entry->message);
@@ -100,12 +98,15 @@ size_t log_file_parser_tail(const char *file_path, size_t max_size, session_log_
   // Open file
   FILE *fp = fopen(file_path, "r");
   if (!fp) {
+    SET_ERRNO(ERROR_FILE_OPERATION, "Cannot open log file for tailing: %s (errno: %s)", file_path,
+              SAFE_STRERROR(errno));
     SAFE_FREE(*out_entries);
     return 0;
   }
 
   // Get file size
   if (fseek(fp, 0, SEEK_END) != 0) {
+    SET_ERRNO(ERROR_FILE_OPERATION, "Cannot seek to end of log file: %s (errno: %s)", file_path, SAFE_STRERROR(errno));
     fclose(fp);
     SAFE_FREE(*out_entries);
     return 0;
@@ -113,6 +114,7 @@ size_t log_file_parser_tail(const char *file_path, size_t max_size, session_log_
 
   long file_size = ftell(fp);
   if (file_size <= 0) {
+    SET_ERRNO(ERROR_FILE_OPERATION, "Invalid log file size for: %s", file_path);
     fclose(fp);
     SAFE_FREE(*out_entries);
     return 0;
@@ -122,6 +124,7 @@ size_t log_file_parser_tail(const char *file_path, size_t max_size, session_log_
   size_t tail_size = (size_t)file_size > max_size ? max_size : (size_t)file_size;
   long seek_pos = file_size - (long)tail_size;
   if (fseek(fp, seek_pos, SEEK_SET) != 0) {
+    log_debug("Cannot seek to tail position in log file: %s (errno: %s)", file_path, SAFE_STRERROR(errno));
     fclose(fp);
     SAFE_FREE(*out_entries);
     return 0;
@@ -208,6 +211,19 @@ static int compare_entries(const void *a, const void *b) {
   return strcmp(entry_a->message, entry_b->message);
 }
 
+/**
+ * Extract timestamp from a log entry for deduplication.
+ * Expected format: [YYYY-MM-DD HH:MM:SS.mmm]
+ * Returns pointer to timestamp string within the message, or NULL if not found.
+ */
+static const char *extract_timestamp_from_message(const char *message) {
+  if (!message || message[0] != '[') {
+    return NULL;
+  }
+  // Point to the timestamp (after the opening bracket)
+  return message + 1;
+}
+
 // Merge and deduplicate entries from two sources
 size_t log_file_parser_merge_and_dedupe(const session_log_entry_t *buffer_entries, size_t buffer_count,
                                         const session_log_entry_t *file_entries, size_t file_count,
@@ -216,7 +232,7 @@ size_t log_file_parser_merge_and_dedupe(const session_log_entry_t *buffer_entrie
     return 0;
   }
 
-  // Allocate space for all entries
+  // Allocate space for all entries (plus extra for recolored versions)
   size_t total_count = buffer_count + file_count;
   if (total_count == 0) {
     *out_merged = NULL;
@@ -229,30 +245,63 @@ size_t log_file_parser_merge_and_dedupe(const session_log_entry_t *buffer_entrie
     return 0;
   }
 
-  // Copy all entries
+  // Copy buffer entries (already colored)
   if (buffer_count > 0) {
     memcpy(merged, buffer_entries, buffer_count * sizeof(session_log_entry_t));
   }
-  if (file_count > 0) {
-    memcpy(merged + buffer_count, file_entries, file_count * sizeof(session_log_entry_t));
+
+  // Copy and recolor file entries (plain text -> colored)
+  for (size_t i = 0; i < file_count; i++) {
+    merged[buffer_count + i] = file_entries[i];
+
+    // Recolor the plain text entry
+    char colored_buf[SESSION_LOG_LINE_MAX];
+    size_t colored_len = log_recolor_plain_entry(file_entries[i].message, colored_buf, sizeof(colored_buf));
+    if (colored_len > 0 && colored_len < SESSION_LOG_LINE_MAX) {
+      strcpy(merged[buffer_count + i].message, colored_buf);
+    }
+    // If recoloring fails, keep the original plain text
   }
 
-  // Assign sequence numbers (use index for now, since parsed entries have seq=0)
-  for (size_t i = 0; i < total_count; i++) {
+  // Assign sequence numbers: file entries are older (lower seq), buffer entries newer (higher seq)
+  uint64_t next_seq = 1;
+  for (size_t i = 0; i < file_count; i++) {
     if (merged[i].sequence == 0) {
-      merged[i].sequence = i;
+      merged[i].sequence = next_seq++;
+    } else {
+      next_seq = merged[i].sequence + 1;
+    }
+  }
+  for (size_t i = file_count; i < total_count; i++) {
+    if (merged[i].sequence == 0) {
+      merged[i].sequence = next_seq++;
+    } else {
+      next_seq = merged[i].sequence + 1;
     }
   }
 
   // Sort by sequence
   qsort(merged, total_count, sizeof(session_log_entry_t), compare_entries);
 
-  // Deduplicate by message content (exact match)
+  // Deduplicate by timestamp extraction: if two logs have the same timestamp,
+  // consider them duplicates (buffer entry already colored, file entry now colored)
   size_t output_idx = 0;
   for (size_t i = 0; i < total_count; i++) {
-    // Skip if this message is the same as the previous one
+    // Skip if this message is the same as the previous one (exact match)
     if (i > 0 && strcmp(merged[i].message, merged[output_idx - 1].message) == 0) {
-      continue; // Duplicate, skip
+      continue; // Exact duplicate, skip
+    }
+
+    // Also skip if timestamps match (different sources of same log)
+    if (i > 0) {
+      const char *ts_curr = extract_timestamp_from_message(merged[i].message);
+      const char *ts_prev = extract_timestamp_from_message(merged[output_idx - 1].message);
+      if (ts_curr && ts_prev) {
+        // Compare first 23 characters (YYYY-MM-DD HH:MM:SS.mmm)
+        if (strncmp(ts_curr, ts_prev, 23) == 0) {
+          continue; // Same timestamp, skip duplicate
+        }
+      }
     }
 
     if (output_idx != i) {

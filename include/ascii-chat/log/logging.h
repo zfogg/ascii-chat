@@ -947,6 +947,30 @@ void log_shutdown_end(void);
  */
 void log_cleanup_colors(void);
 
+/**
+ * @brief Recolor a plain (non-colored) log line with proper ANSI codes
+ *
+ * Converts a plain text log line (from log file) into a colored version
+ * matching the format used for terminal output. Applies colors to:
+ * - Timestamp and level based on log level
+ * - Thread ID in grey
+ * - File path in cyan
+ * - Line number in magenta
+ * - Function name in orange/DEV color
+ * - Message body colorized appropriately
+ *
+ * Expected plain format (debug mode):
+ * `[TIMESTAMP] [LEVEL] [tid:THREAD_ID] FILE:LINE in FUNC(): MESSAGE`
+ *
+ * @param plain_line Plain text log line (from log file)
+ * @param colored_buf Output buffer for colored version (must be large enough)
+ * @param buf_size Size of colored_buf
+ * @return Length of colored string, 0 on error or invalid format
+ * @note Uses static buffer internally, result is reused across calls
+ * @ingroup logging
+ */
+size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t buf_size);
+
 #ifdef __cplusplus
 }
 #endif

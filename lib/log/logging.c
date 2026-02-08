@@ -1607,3 +1607,201 @@ void log_shutdown_end(void) {
 void log_cleanup_colors(void) {
   colorscheme_cleanup_compiled(&g_compiled_colors);
 }
+
+/* ============================================================================
+ * Log Recoloring for Plain Text Entries
+ * ============================================================================ */
+
+/**
+ * @brief Recolor a plain (non-colored) log line with proper ANSI codes
+ *
+ * Parses plain log format: [TIMESTAMP] [LEVEL] [tid:THREAD_ID] FILE:LINE in FUNC(): MESSAGE
+ * And recolors it with appropriate ANSI codes matching the colored format.
+ */
+size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t buf_size) {
+  if (!plain_line || !colored_buf || buf_size < 128) {
+    return 0;
+  }
+
+  static char work_buffer[2048];
+  const char **colors = log_get_color_array();
+  if (!colors) {
+    // No colors available, return plain text
+    size_t len = strlen(plain_line);
+    if (len >= buf_size) {
+      return 0;
+    }
+    strcpy(colored_buf, plain_line);
+    return len;
+  }
+
+  // Parse format: [TIMESTAMP] [LEVEL] [tid:THREAD_ID] FILE:LINE in FUNC(): MESSAGE
+  const char *p = plain_line;
+
+  // Extract timestamp [TIMESTAMP]
+  if (*p != '[') {
+    return 0; // Invalid format
+  }
+  p++;
+  const char *timestamp_start = p;
+  while (*p && *p != ']') {
+    p++;
+  }
+  if (*p != ']') {
+    return 0; // Malformed
+  }
+  size_t timestamp_len = p - timestamp_start;
+  char timestamp[64];
+  if (timestamp_len >= sizeof(timestamp)) {
+    return 0;
+  }
+  strncpy(timestamp, timestamp_start, timestamp_len);
+  timestamp[timestamp_len] = '\0';
+  p++; // Skip ]
+
+  // Skip space
+  while (*p == ' ') {
+    p++;
+  }
+
+  // Extract level [LEVEL]
+  if (*p != '[') {
+    return 0;
+  }
+  p++;
+  const char *level_start = p;
+  while (*p && *p != ']') {
+    p++;
+  }
+  if (*p != ']') {
+    return 0;
+  }
+  size_t level_len = p - level_start;
+  char level_str[16];
+  if (level_len >= sizeof(level_str)) {
+    return 0;
+  }
+  strncpy(level_str, level_start, level_len);
+  level_str[level_len] = '\0';
+  p++; // Skip ]
+
+  // Determine log level for color selection
+  log_level_t level = LOG_INFO; // Default
+  if (strstr(level_str, "DEV") || strstr(level_str, "DEBUG")) {
+    level = LOG_DEBUG;
+  } else if (strstr(level_str, "INFO")) {
+    level = LOG_INFO;
+  } else if (strstr(level_str, "WARN")) {
+    level = LOG_WARN;
+  } else if (strstr(level_str, "ERROR")) {
+    level = LOG_ERROR;
+  } else if (strstr(level_str, "FATAL")) {
+    level = LOG_FATAL;
+  }
+
+  // Skip space
+  while (*p == ' ') {
+    p++;
+  }
+
+  // Extract thread ID [tid:THREAD_ID]
+  uint64_t tid = 0;
+  if (*p == '[' && strncmp(p, "[tid:", 5) == 0) {
+    p += 5;
+    tid = strtoull(p, (char **)&p, 10);
+    if (*p == ']') {
+      p++;
+    }
+    while (*p == ' ') {
+      p++;
+    }
+  }
+
+  // Extract file path (everything up to :LINE)
+  const char *file_start = p;
+  while (*p && *p != ':') {
+    p++;
+  }
+  if (*p != ':') {
+    return 0; // Malformed
+  }
+  size_t file_len = p - file_start;
+  char file_path[256];
+  if (file_len >= sizeof(file_path)) {
+    return 0;
+  }
+  strncpy(file_path, file_start, file_len);
+  file_path[file_len] = '\0';
+  p++; // Skip :
+
+  // Extract line number (digits before " in ")
+  int line_num = 0;
+  line_num = (int)strtol(p, (char **)&p, 10);
+
+  // Skip " in "
+  if (strncmp(p, " in ", 4) != 0) {
+    return 0;
+  }
+  p += 4;
+
+  // Extract function name (everything up to "()")
+  const char *func_start = p;
+  while (*p && *p != '(') {
+    p++;
+  }
+  if (*p != '(') {
+    return 0;
+  }
+  size_t func_len = p - func_start;
+  char func_name[256];
+  if (func_len >= sizeof(func_name)) {
+    return 0;
+  }
+  strncpy(func_name, func_start, func_len);
+  func_name[func_len] = '\0';
+
+  // Skip "(): "
+  while (*p && *p != ':') {
+    p++;
+  }
+  if (*p == ':') {
+    p++;
+  }
+  while (*p == ' ') {
+    p++;
+  }
+
+  // Remaining is the message
+  const char *message = p;
+
+  // Build colored output
+  const char *level_color = colors[level];
+  const char *reset = colors[LOG_COLOR_RESET];
+  const char *file_color = colors[1]; // DEBUG/Cyan
+  const char *line_color = colors[5]; // FATAL/Magenta
+  const char *func_color = colors[0]; // DEV/Orange
+  const char *tid_color = colors[6];  // GREY
+
+  int len = safe_snprintf(work_buffer, sizeof(work_buffer),
+                          "[%s%s%s] [%s%s%s] [tid:%s%llu%s] %s%s%s:%s%d%s in %s%s%s(): %s", level_color, timestamp,
+                          reset, level_color, level_str, reset, tid_color, (unsigned long long)tid, reset, file_color,
+                          file_path, reset, line_color, line_num, reset, func_color, func_name, reset, message);
+
+  if (len <= 0 || len >= (int)sizeof(work_buffer)) {
+    return 0;
+  }
+
+  // Colorize the message part
+  const char *colorized_msg = colorize_log_message(message);
+  len = safe_snprintf(work_buffer, sizeof(work_buffer),
+                      "[%s%s%s] [%s%s%s] [tid:%s%llu%s] %s%s%s:%s%d%s in %s%s%s(): %s", level_color, timestamp, reset,
+                      level_color, level_str, reset, tid_color, (unsigned long long)tid, reset, file_color, file_path,
+                      reset, line_color, line_num, reset, func_color, func_name, reset, colorized_msg);
+
+  if (len <= 0 || len >= (int)sizeof(work_buffer) || len >= (int)buf_size) {
+    return 0;
+  }
+
+  strcpy(colored_buf, work_buffer);
+  return (size_t)len;
+}
