@@ -227,7 +227,7 @@ static void *client_handshake_thread(void *arg) {
 
   // Key exchange
   fprintf(stderr, "[TEST] Client: Starting key exchange\n");
-  if (crypto_handshake_client_key_exchange(args->ctx, args->client_fd) != ASCIICHAT_OK) {
+  if (crypto_handshake_client_key_exchange_socket(args->ctx, args->client_fd) != ASCIICHAT_OK) {
     fprintf(stderr, "[TEST] Client: Key exchange FAILED\n");
     return NULL;
   }
@@ -235,7 +235,7 @@ static void *client_handshake_thread(void *arg) {
 
   // Respond to auth challenge
   fprintf(stderr, "[TEST] Client: Starting auth response\n");
-  if (crypto_handshake_client_auth_response(args->ctx, args->client_fd) != ASCIICHAT_OK) {
+  if (crypto_handshake_client_auth_response_socket(args->ctx, args->client_fd) != ASCIICHAT_OK) {
     fprintf(stderr, "[TEST] Client: Auth response FAILED\n");
     return NULL;
   }
@@ -243,7 +243,7 @@ static void *client_handshake_thread(void *arg) {
 
   // Wait for handshake complete confirmation
   fprintf(stderr, "[TEST] Client: Waiting for handshake complete\n");
-  if (crypto_handshake_client_complete(args->ctx, args->client_fd) != ASCIICHAT_OK) {
+  if (crypto_handshake_client_complete_socket(args->ctx, args->client_fd) != ASCIICHAT_OK) {
     fprintf(stderr, "[TEST] Client: Handshake complete FAILED\n");
     return NULL;
   }
@@ -310,16 +310,16 @@ Test(gpg_handshake, complete_gpg_handshake_with_authentication) {
   cr_assert_eq(server_nego_result, ASCIICHAT_OK, "Server protocol negotiation failed: %d", server_nego_result);
 
   // Server starts key exchange
-  asciichat_error_t server_start = crypto_handshake_server_start(&server_ctx, g_network.server_fd);
+  asciichat_error_t server_start = crypto_handshake_server_start_socket(&server_ctx, g_network.server_fd);
   cr_assert_eq(server_start, ASCIICHAT_OK, "Server start failed: %d", server_start);
 
   // Server sends auth challenge
-  asciichat_error_t server_auth = crypto_handshake_server_auth_challenge(&server_ctx, g_network.server_fd);
+  asciichat_error_t server_auth = crypto_handshake_server_auth_challenge_socket(&server_ctx, g_network.server_fd);
   cr_assert_eq(server_auth, ASCIICHAT_OK, "Server auth challenge failed: %d", server_auth);
 
   // Server completes handshake
   if (server_ctx.state == CRYPTO_HANDSHAKE_AUTHENTICATING) {
-    asciichat_error_t server_complete = crypto_handshake_server_complete(&server_ctx, g_network.server_fd);
+    asciichat_error_t server_complete = crypto_handshake_server_complete_socket(&server_ctx, g_network.server_fd);
     cr_assert_eq(server_complete, ASCIICHAT_OK, "Server complete failed: %d", server_complete);
   }
 

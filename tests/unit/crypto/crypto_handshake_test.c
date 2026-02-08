@@ -72,7 +72,7 @@ typedef struct {
 // Client thread function
 static void *client_handshake_thread(void *arg) {
   client_thread_data_t *data = (client_thread_data_t *)arg;
-  data->result = crypto_handshake_client_key_exchange(data->ctx, data->sock);
+  data->result = crypto_handshake_client_key_exchange_socket(data->ctx, data->sock);
   return NULL;
 }
 
@@ -123,7 +123,7 @@ Test(crypto_handshake, server_start_success, .init = setup_real_sockets, .fini =
   crypto_handshake_context_t ctx;
   crypto_handshake_init(&ctx, true);
 
-  asciichat_error_t result = crypto_handshake_server_start(&ctx, g_server_socket);
+  asciichat_error_t result = crypto_handshake_server_start_socket(&ctx, g_server_socket);
 
   cr_assert_eq(result, ASCIICHAT_OK, "Server start should succeed");
   cr_assert_eq(ctx.state, CRYPTO_HANDSHAKE_KEY_EXCHANGE, "State should be KEY_EXCHANGE");
@@ -132,7 +132,7 @@ Test(crypto_handshake, server_start_success, .init = setup_real_sockets, .fini =
 }
 
 Test(crypto_handshake, server_start_null_context) {
-  asciichat_error_t result = crypto_handshake_server_start(NULL, INVALID_SOCKET_VALUE);
+  asciichat_error_t result = crypto_handshake_server_start_socket(NULL, INVALID_SOCKET_VALUE);
 
   cr_assert_neq(result, ASCIICHAT_OK, "NULL context should fail");
   cr_assert_eq(result, ERROR_INVALID_STATE, "Should return ERROR_INVALID_STATE");
@@ -143,9 +143,9 @@ Test(crypto_handshake, server_auth_challenge, .init = setup_real_sockets, .fini 
   // DISABLED: This test requires receiving CLIENT_KEY_EXCHANGE first, which needs threading
   crypto_handshake_context_t ctx;
   crypto_handshake_init(&ctx, true);
-  crypto_handshake_server_start(&ctx, g_server_socket);
+  crypto_handshake_server_start_socket(&ctx, g_server_socket);
 
-  asciichat_error_t result = crypto_handshake_server_auth_challenge(&ctx, g_server_socket);
+  asciichat_error_t result = crypto_handshake_server_auth_challenge_socket(&ctx, g_server_socket);
 
   cr_assert_eq(result, ASCIICHAT_OK, "Server auth challenge should succeed");
   cr_assert_eq(ctx.state, CRYPTO_HANDSHAKE_AUTHENTICATING, "State should be AUTHENTICATING");
@@ -157,10 +157,10 @@ Test(crypto_handshake, server_complete, .init = setup_real_sockets, .fini = tear
   // DISABLED: This test requires multiple handshake steps with threading
   crypto_handshake_context_t ctx;
   crypto_handshake_init(&ctx, true);
-  crypto_handshake_server_start(&ctx, g_server_socket);
-  crypto_handshake_server_auth_challenge(&ctx, g_server_socket);
+  crypto_handshake_server_start_socket(&ctx, g_server_socket);
+  crypto_handshake_server_auth_challenge_socket(&ctx, g_server_socket);
 
-  asciichat_error_t result = crypto_handshake_server_complete(&ctx, g_server_socket);
+  asciichat_error_t result = crypto_handshake_server_complete_socket(&ctx, g_server_socket);
 
   cr_assert_eq(result, ASCIICHAT_OK, "Server complete should succeed");
   cr_assert_eq(ctx.state, CRYPTO_HANDSHAKE_READY, "State should be COMPLETE");
@@ -193,7 +193,7 @@ Test(crypto_handshake, client_key_exchange, .init = setup_real_sockets, .fini = 
   usleep(10000); // Give client time to start
 
   // Server sends KEY_EXCHANGE_INIT
-  asciichat_error_t server_result = crypto_handshake_server_start(&server_ctx, g_server_socket);
+  asciichat_error_t server_result = crypto_handshake_server_start_socket(&server_ctx, g_server_socket);
   cr_assert_eq(server_result, ASCIICHAT_OK, "Server start should succeed");
 
   // Wait for client to complete
@@ -212,7 +212,7 @@ Test(crypto_handshake, client_auth_response, .init = setup_real_sockets, .fini =
   crypto_handshake_init(&ctx, false);
   ctx.state = CRYPTO_HANDSHAKE_KEY_EXCHANGE;
 
-  asciichat_error_t result = crypto_handshake_client_auth_response(&ctx, g_client_socket);
+  asciichat_error_t result = crypto_handshake_client_auth_response_socket(&ctx, g_client_socket);
 
   cr_assert_eq(result, ASCIICHAT_OK, "Client auth response should succeed");
   cr_assert_eq(ctx.state, CRYPTO_HANDSHAKE_AUTHENTICATING, "State should be AUTHENTICATING");
@@ -221,7 +221,7 @@ Test(crypto_handshake, client_auth_response, .init = setup_real_sockets, .fini =
 }
 
 Test(crypto_handshake, client_key_exchange_null_context) {
-  asciichat_error_t result = crypto_handshake_client_key_exchange(NULL, INVALID_SOCKET_VALUE);
+  asciichat_error_t result = crypto_handshake_client_key_exchange_socket(NULL, INVALID_SOCKET_VALUE);
 
   cr_assert_neq(result, ASCIICHAT_OK, "NULL context should fail");
   cr_assert_eq(result, ERROR_INVALID_STATE, "Should return ERROR_INVALID_STATE");
@@ -256,7 +256,7 @@ Test(crypto_handshake, complete_handshake_flow, .init = setup_real_sockets, .fin
   usleep(10000); // 10ms
 
   // Server starts (sends KEY_EXCHANGE_INIT, receives CLIENT_KEY_EXCHANGE)
-  asciichat_error_t server_result = crypto_handshake_server_start(&server_ctx, g_server_socket);
+  asciichat_error_t server_result = crypto_handshake_server_start_socket(&server_ctx, g_server_socket);
   cr_assert_eq(server_result, ASCIICHAT_OK, "Server start should succeed");
 
   // Wait for client to complete
@@ -289,15 +289,15 @@ Test(crypto_handshake, state_machine_progression, .init = setup_real_sockets, .f
   cr_assert_eq(ctx.state, CRYPTO_HANDSHAKE_INIT, "Should start in INIT state");
 
   // Server start
-  crypto_handshake_server_start(&ctx, g_server_socket);
+  crypto_handshake_server_start_socket(&ctx, g_server_socket);
   cr_assert_eq(ctx.state, CRYPTO_HANDSHAKE_KEY_EXCHANGE, "Should be in KEY_EXCHANGE state");
 
   // Auth challenge
-  crypto_handshake_server_auth_challenge(&ctx, g_server_socket);
+  crypto_handshake_server_auth_challenge_socket(&ctx, g_server_socket);
   cr_assert_eq(ctx.state, CRYPTO_HANDSHAKE_AUTHENTICATING, "Should be in AUTHENTICATING state");
 
   // Complete
-  crypto_handshake_server_complete(&ctx, g_server_socket);
+  crypto_handshake_server_complete_socket(&ctx, g_server_socket);
   cr_assert_eq(ctx.state, CRYPTO_HANDSHAKE_READY, "Should be in COMPLETE state");
 
   crypto_handshake_destroy(&ctx);
@@ -308,7 +308,7 @@ Test(crypto_handshake, invalid_state_transitions, .init = setup_real_sockets, .f
   crypto_handshake_init(&ctx, false);
 
   // Try to do server operations on client context
-  asciichat_error_t result = crypto_handshake_server_start(&ctx, g_client_socket);
+  asciichat_error_t result = crypto_handshake_server_start_socket(&ctx, g_client_socket);
   // The code doesn't prevent client context from calling server_start,
   // so it might succeed. Accept either success or failure as valid -
   // the important thing is it doesn't crash
@@ -327,7 +327,7 @@ Test(crypto_handshake, socket_errors) {
   crypto_handshake_init(&ctx, true);
 
   // Test with invalid socket - will fail when trying to send packet
-  asciichat_error_t result = crypto_handshake_server_start(&ctx, INVALID_SOCKET_VALUE);
+  asciichat_error_t result = crypto_handshake_server_start_socket(&ctx, INVALID_SOCKET_VALUE);
   cr_assert_neq(result, ASCIICHAT_OK, "Invalid socket should fail");
   // Should fail with ERROR_NETWORK when send_packet fails, or ERROR_INVALID_STATE if state check fails first
 
@@ -339,7 +339,7 @@ Test(crypto_handshake, handshake_timeout, .init = setup_real_sockets, .fini = te
   crypto_handshake_init(&ctx, true);
 
   // Simulate timeout by not completing the handshake
-  crypto_handshake_server_start(&ctx, g_server_socket);
+  crypto_handshake_server_start_socket(&ctx, g_server_socket);
 
   // State should remain in KEY_EXCHANGE
   cr_assert_eq(ctx.state, CRYPTO_HANDSHAKE_KEY_EXCHANGE, "Should remain in KEY_EXCHANGE without completion");
@@ -407,7 +407,7 @@ Test(crypto_handshake, handshake_with_large_data, .init = setup_real_sockets, .f
 
   // Test with real sockets - they have system-managed buffers
   // Just verify the handshake works
-  asciichat_error_t result = crypto_handshake_server_start(&ctx, g_server_socket);
+  asciichat_error_t result = crypto_handshake_server_start_socket(&ctx, g_server_socket);
   cr_assert_eq(result, ASCIICHAT_OK, "Should handle large buffers");
 
   crypto_handshake_destroy(&ctx);

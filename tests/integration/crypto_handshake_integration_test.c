@@ -202,18 +202,18 @@ static void *complete_handshake_client_thread(void *arg) {
   }
 
   // Key exchange
-  if (crypto_handshake_client_key_exchange(args->ctx, args->client_fd) != ASCIICHAT_OK) {
+  if (crypto_handshake_client_key_exchange_socket(args->ctx, args->client_fd) != ASCIICHAT_OK) {
     return NULL;
   }
 
   // Auth response (handles both AUTH_CHALLENGE and HANDSHAKE_COMPLETE)
-  if (crypto_handshake_client_auth_response(args->ctx, args->client_fd) != ASCIICHAT_OK) {
+  if (crypto_handshake_client_auth_response_socket(args->ctx, args->client_fd) != ASCIICHAT_OK) {
     return NULL;
   }
 
   // If we're in AUTHENTICATING state, complete the handshake
   if (args->ctx->state == CRYPTO_HANDSHAKE_AUTHENTICATING) {
-    if (crypto_handshake_client_complete(args->ctx, args->client_fd) != ASCIICHAT_OK) {
+    if (crypto_handshake_client_complete_socket(args->ctx, args->client_fd) != ASCIICHAT_OK) {
       return NULL;
     }
   }
@@ -251,16 +251,18 @@ Test(crypto_handshake_integration, complete_handshake_flow) {
                server_nego_result);
 
   // Server starts key exchange
-  asciichat_error_t server_result = crypto_handshake_server_start(&server_ctx, g_network.server_fd);
+  asciichat_error_t server_result = crypto_handshake_server_start_socket(&server_ctx, g_network.server_fd);
   cr_assert_eq(server_result, ASCIICHAT_OK, "Server start should succeed (got %d)", server_result);
 
   // Server processes client key exchange and sends auth challenge (or HANDSHAKE_COMPLETE if no auth needed)
-  asciichat_error_t server_auth_result = crypto_handshake_server_auth_challenge(&server_ctx, g_network.server_fd);
+  asciichat_error_t server_auth_result =
+      crypto_handshake_server_auth_challenge_socket(&server_ctx, g_network.server_fd);
   cr_assert_eq(server_auth_result, ASCIICHAT_OK, "Server auth challenge should succeed (got %d)", server_auth_result);
 
   // If authentication was performed (server is in AUTHENTICATING state), complete the handshake
   if (server_ctx.state == CRYPTO_HANDSHAKE_AUTHENTICATING) {
-    asciichat_error_t server_complete_result = crypto_handshake_server_complete(&server_ctx, g_network.server_fd);
+    asciichat_error_t server_complete_result =
+        crypto_handshake_server_complete_socket(&server_ctx, g_network.server_fd);
     cr_assert_eq(server_complete_result, ASCIICHAT_OK, "Server complete should succeed (got %d)",
                  server_complete_result);
   }
@@ -338,10 +340,10 @@ Test(crypto_handshake_integration, encryption_after_handshake) {
   int nego_result = server_protocol_negotiation(g_network.server_fd, &server_ctx);
   cr_assert_eq(nego_result, ASCIICHAT_OK, "Server protocol negotiation should succeed");
 
-  crypto_handshake_server_start(&server_ctx, g_network.server_fd);
-  crypto_handshake_server_auth_challenge(&server_ctx, g_network.server_fd);
+  crypto_handshake_server_start_socket(&server_ctx, g_network.server_fd);
+  crypto_handshake_server_auth_challenge_socket(&server_ctx, g_network.server_fd);
   if (server_ctx.state == CRYPTO_HANDSHAKE_AUTHENTICATING) {
-    crypto_handshake_server_complete(&server_ctx, g_network.server_fd);
+    crypto_handshake_server_complete_socket(&server_ctx, g_network.server_fd);
   }
 
   pthread_join(client_thread, NULL);
@@ -394,10 +396,10 @@ Test(crypto_handshake_integration, bidirectional_encryption) {
   int nego_result = server_protocol_negotiation(g_network.server_fd, &server_ctx);
   cr_assert_eq(nego_result, ASCIICHAT_OK, "Server protocol negotiation should succeed");
 
-  crypto_handshake_server_start(&server_ctx, g_network.server_fd);
-  crypto_handshake_server_auth_challenge(&server_ctx, g_network.server_fd);
+  crypto_handshake_server_start_socket(&server_ctx, g_network.server_fd);
+  crypto_handshake_server_auth_challenge_socket(&server_ctx, g_network.server_fd);
   if (server_ctx.state == CRYPTO_HANDSHAKE_AUTHENTICATING) {
-    crypto_handshake_server_complete(&server_ctx, g_network.server_fd);
+    crypto_handshake_server_complete_socket(&server_ctx, g_network.server_fd);
   }
 
   pthread_join(client_thread, NULL);
@@ -487,11 +489,11 @@ Theory((const char *auth_method, bool known_hosts_verification, bool client_whit
   }
 
   // Complete handshake
-  int server_start = crypto_handshake_server_start(&server_ctx, g_network.server_fd);
-  int client_key_exchange = crypto_handshake_client_key_exchange(&client_ctx, g_network.client_fd);
-  int server_auth = crypto_handshake_server_auth_challenge(&server_ctx, g_network.server_fd);
-  int client_auth = crypto_handshake_client_auth_response(&client_ctx, g_network.client_fd);
-  int server_complete = crypto_handshake_server_complete(&server_ctx, g_network.server_fd);
+  int server_start = crypto_handshake_server_start_socket(&server_ctx, g_network.server_fd);
+  int client_key_exchange = crypto_handshake_client_key_exchange_socket(&client_ctx, g_network.client_fd);
+  int server_auth = crypto_handshake_server_auth_challenge_socket(&server_ctx, g_network.server_fd);
+  int client_auth = crypto_handshake_client_auth_response_socket(&client_ctx, g_network.client_fd);
+  int server_complete = crypto_handshake_server_complete_socket(&server_ctx, g_network.server_fd);
 
   // Cleanup - do before assertions so it always runs even if assertions fail
   crypto_handshake_destroy(&server_ctx);
@@ -534,20 +536,20 @@ static void *client_handshake_thread(void *arg) {
   }
 
   // Key exchange
-  if (crypto_handshake_client_key_exchange(&client_ctx, args->client_fd) != ASCIICHAT_OK) {
+  if (crypto_handshake_client_key_exchange_socket(&client_ctx, args->client_fd) != ASCIICHAT_OK) {
     crypto_handshake_destroy(&client_ctx);
     return NULL;
   }
 
   // Auth response
-  if (crypto_handshake_client_auth_response(&client_ctx, args->client_fd) != ASCIICHAT_OK) {
+  if (crypto_handshake_client_auth_response_socket(&client_ctx, args->client_fd) != ASCIICHAT_OK) {
     crypto_handshake_destroy(&client_ctx);
     return NULL;
   }
 
   // If we're in AUTHENTICATING state, complete the handshake
   if (client_ctx.state == CRYPTO_HANDSHAKE_AUTHENTICATING) {
-    if (crypto_handshake_client_complete(&client_ctx, args->client_fd) != ASCIICHAT_OK) {
+    if (crypto_handshake_client_complete_socket(&client_ctx, args->client_fd) != ASCIICHAT_OK) {
       crypto_handshake_destroy(&client_ctx);
       return NULL;
     }
@@ -607,14 +609,14 @@ Test(crypto_handshake_integration, concurrent_handshakes) {
     }
 
     // Key exchange
-    int server_start = crypto_handshake_server_start(&server_ctx, server_fds[i]);
+    int server_start = crypto_handshake_server_start_socket(&server_ctx, server_fds[i]);
     if (server_start != ASCIICHAT_OK) {
       crypto_handshake_destroy(&server_ctx);
       continue;
     }
 
     // Auth challenge
-    int auth_result = crypto_handshake_server_auth_challenge(&server_ctx, server_fds[i]);
+    int auth_result = crypto_handshake_server_auth_challenge_socket(&server_ctx, server_fds[i]);
     if (auth_result != ASCIICHAT_OK) {
       crypto_handshake_destroy(&server_ctx);
       continue;
@@ -622,7 +624,7 @@ Test(crypto_handshake_integration, concurrent_handshakes) {
 
     // Complete if in authenticating state
     if (server_ctx.state == CRYPTO_HANDSHAKE_AUTHENTICATING) {
-      crypto_handshake_server_complete(&server_ctx, server_fds[i]);
+      crypto_handshake_server_complete_socket(&server_ctx, server_fds[i]);
     }
 
     crypto_handshake_destroy(&server_ctx);
@@ -674,10 +676,10 @@ Test(crypto_handshake_integration, large_data_encryption) {
   int nego_result = server_protocol_negotiation(g_network.server_fd, &server_ctx);
   cr_assert_eq(nego_result, ASCIICHAT_OK, "Server protocol negotiation should succeed");
 
-  crypto_handshake_server_start(&server_ctx, g_network.server_fd);
-  crypto_handshake_server_auth_challenge(&server_ctx, g_network.server_fd);
+  crypto_handshake_server_start_socket(&server_ctx, g_network.server_fd);
+  crypto_handshake_server_auth_challenge_socket(&server_ctx, g_network.server_fd);
   if (server_ctx.state == CRYPTO_HANDSHAKE_AUTHENTICATING) {
-    crypto_handshake_server_complete(&server_ctx, g_network.server_fd);
+    crypto_handshake_server_complete_socket(&server_ctx, g_network.server_fd);
   }
 
   pthread_join(client_thread, NULL);
@@ -741,15 +743,15 @@ Test(crypto_handshake_integration, handshake_interruption_recovery) {
   setup_client_ctx_for_socketpair(&client_ctx);
 
   // Start handshake
-  crypto_handshake_server_start(&server_ctx, g_network.server_fd);
-  crypto_handshake_client_key_exchange(&client_ctx, g_network.client_fd);
+  crypto_handshake_server_start_socket(&server_ctx, g_network.server_fd);
+  crypto_handshake_client_key_exchange_socket(&client_ctx, g_network.client_fd);
 
   // Simulate network failure by shutting down the socket
   shutdown(g_network.server_fd, SHUT_RDWR);
   shutdown(g_network.client_fd, SHUT_RDWR);
 
   // Try to continue handshake on closed socket (should fail)
-  int server_auth = crypto_handshake_server_auth_challenge(&server_ctx, g_network.server_fd);
+  int server_auth = crypto_handshake_server_auth_challenge_socket(&server_ctx, g_network.server_fd);
   (void)server_auth; // Result depends on implementation - we just care it doesn't crash
 
   // Clean up old handshake state
@@ -765,7 +767,7 @@ Test(crypto_handshake_integration, handshake_interruption_recovery) {
   crypto_handshake_init(&client_ctx, false);
   setup_client_ctx_for_socketpair(&client_ctx);
 
-  int new_server_start = crypto_handshake_server_start(&server_ctx, g_network.server_fd);
+  int new_server_start = crypto_handshake_server_start_socket(&server_ctx, g_network.server_fd);
   cr_assert_eq(new_server_start, 0, "New handshake should succeed after recovery");
 
   crypto_handshake_destroy(&server_ctx);
@@ -792,11 +794,11 @@ Test(crypto_handshake_integration, handshake_performance) {
     // Time the handshake
     clock_t start = clock();
 
-    crypto_handshake_server_start(&server_ctx, g_network.server_fd);
-    crypto_handshake_client_key_exchange(&client_ctx, g_network.client_fd);
-    crypto_handshake_server_auth_challenge(&server_ctx, g_network.server_fd);
-    crypto_handshake_client_auth_response(&client_ctx, g_network.client_fd);
-    crypto_handshake_server_complete(&server_ctx, g_network.server_fd);
+    crypto_handshake_server_start_socket(&server_ctx, g_network.server_fd);
+    crypto_handshake_client_key_exchange_socket(&client_ctx, g_network.client_fd);
+    crypto_handshake_server_auth_challenge_socket(&server_ctx, g_network.server_fd);
+    crypto_handshake_client_auth_response_socket(&client_ctx, g_network.client_fd);
+    crypto_handshake_server_complete_socket(&server_ctx, g_network.server_fd);
 
     clock_t end = clock();
     double handshake_time = ((double)(end - start)) / CLOCKS_PER_SEC;
