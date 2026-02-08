@@ -32,6 +32,7 @@ const registry_entry_t g_database_entries[] = {
      false,
      false,
      OPTION_MODE_DISCOVERY_SVC,
-     {0}},
+     {0},
+     NULL},
 
     REGISTRY_TERMINATOR()};
