@@ -104,6 +104,7 @@ set(PLATFORM_SOURCES
     ${LIB_ROOT}/platform/wasm/stubs/filesystem.c
     ${LIB_ROOT}/platform/wasm/stubs/video.c
     ${LIB_ROOT}/platform/wasm/stubs/log.c
+    ${LIB_ROOT}/platform/wasm/stubs/mode_defaults.c
 )
 
 # Third-party dependencies (source-included)

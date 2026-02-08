@@ -71,3 +71,13 @@ int platform_open(const char *pathname, int flags, ...) {
 int platform_close(int fd) {
   return close(fd);
 }
+
+int platform_access(const char *pathname, int mode) {
+  (void)pathname;
+  (void)mode;
+  return -1; // Not accessible in WASM
+}
+
+char *platform_get_data_dir(void) {
+  return NULL; // No data directory in WASM
+}
