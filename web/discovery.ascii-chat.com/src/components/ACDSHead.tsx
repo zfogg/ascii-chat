@@ -7,7 +7,7 @@ type ACDSHeadProps = Partial<HeadProps> & {
 };
 
 export function ACDSHead({
-  title = 'ACDS - ascii-chat Discovery Service',
+  title = 'ascii-chat Discovery Service',
   description = 'Official ACDS (ascii-chat Discovery Service) public keys and documentation. Enables session discovery using memorable three-word strings for terminal-based video chat.',
   keywords = 'ascii-chat, ACDS, discovery service, session discovery, terminal video chat, WebRTC, NAT traversal',
   url = 'https://discovery.ascii-chat.com/',
