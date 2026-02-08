@@ -20,7 +20,7 @@ export function ClientPage() {
     ConnectionState.DISCONNECTED
   );
   const [client, setClient] = useState<ClientConnection | null>(null);
-  const [serverUrl, setServerUrl] = useState<string>('ws://localhost:27225');
+  const [serverUrl, setServerUrl] = useState<string>('ws://localhost:27226');
 
   // Initialize WASM on mount
   useEffect(() => {

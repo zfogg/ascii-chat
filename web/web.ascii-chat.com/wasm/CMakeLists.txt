@@ -105,6 +105,7 @@ set(PLATFORM_SOURCES
     ${LIB_ROOT}/platform/wasm/stubs/video.c
     ${LIB_ROOT}/platform/wasm/stubs/log.c
     ${LIB_ROOT}/platform/wasm/stubs/mode_defaults.c
+    ${LIB_ROOT}/platform/wasm/stubs/crypto.c
 )
 
 # Third-party dependencies (source-included)
@@ -121,6 +122,7 @@ set(LIB_SOURCES_MIRROR
     # Core
     ${LIB_ROOT}/common.c
     ${LIB_ROOT}/asciichat_errno.c
+    ${LIB_ROOT}/buffer_pool.c
 
     # Options system
     ${LIB_ROOT}/options/options.c
@@ -225,18 +227,10 @@ set(LIB_SOURCES_MIRROR
 )
 
 # Additional sources for client mode (crypto + network)
+# Note: Only minimal crypto handshake for web client (no SSH keys, known_hosts, etc.)
 set(CRYPTO_SOURCES
-    ${LIB_ROOT}/crypto/keys.c
-    ${LIB_ROOT}/crypto/keys_validation.c
-    ${LIB_ROOT}/crypto/known_hosts.c
-    ${LIB_ROOT}/crypto/pem_utils.c
-    ${LIB_ROOT}/crypto/sha1.c
-    ${LIB_ROOT}/crypto/regex.c
-    ${LIB_ROOT}/crypto/https_keys.c
-    ${LIB_ROOT}/crypto/discovery_keys.c
     ${LIB_ROOT}/crypto/handshake/common.c
     ${LIB_ROOT}/crypto/handshake/client.c
-    ${LIB_ROOT}/crypto/handshake/server.c
 )
 
 set(NETWORK_SOURCES
@@ -245,6 +239,7 @@ set(NETWORK_SOURCES
     ${LIB_ROOT}/network/compression.c
     ${LIB_ROOT}/network/errors.c
     ${LIB_ROOT}/network/frame_validator.c
+    ${LIB_ROOT}/network/acip/send.c
 )
 
 # Create WASM mirror module

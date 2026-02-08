@@ -35,7 +35,8 @@ export class SocketBridge {
   async connect(): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
-        this.ws = new WebSocket(this.options.url);
+        // Server expects "acip" WebSocket subprotocol
+        this.ws = new WebSocket(this.options.url, 'acip');
         this.ws.binaryType = 'arraybuffer';
 
         this.ws.onopen = () => {

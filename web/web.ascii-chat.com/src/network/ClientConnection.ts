@@ -8,8 +8,10 @@ import {
   initClientWasm,
   cleanupClientWasm,
   generateKeypair,
-  setServerPublicKey,
-  performHandshake,
+  handleKeyExchangeInit,
+  handleAuthChallenge,
+  handleHandshakeComplete,
+  registerSendPacketCallback,
   encryptPacket,
   decryptPacket,
   parsePacket,
@@ -49,6 +51,16 @@ export class ClientConnection {
       height: this.options.height
     });
 
+    // Register callback so WASM can send raw packets back through WebSocket
+    registerSendPacketCallback((rawPacket: Uint8Array) => {
+      console.log('[ClientConnection] WASM sending raw packet, length:', rawPacket.length);
+      if (!this.socket) {
+        console.error('[ClientConnection] Cannot send packet - socket not connected');
+        return;
+      }
+      this.socket.send(rawPacket);
+    });
+
     // Generate client keypair
     console.log('[ClientConnection] Generating keypair...');
     this.clientPublicKey = await generateKeypair();
@@ -80,51 +92,6 @@ export class ClientConnection {
     this.onStateChangeCallback?.(ConnectionState.HANDSHAKE);
   }
 
-  /**
-   * Send client's public key in response to server's KEY_EXCHANGE_INIT
-   */
-  private sendKeyExchangeResponse(): void {
-    console.log('[ClientConnection] Sending CRYPTO_KEY_EXCHANGE_RESP with client pubkey');
-
-    const clientPubKeyHex = this.clientPublicKey!;
-    const clientPubKeyBytes = this.hexToBytes(clientPubKeyHex);
-
-    this.sendPacket(PacketType.CRYPTO_KEY_EXCHANGE_RESP, clientPubKeyBytes);
-  }
-
-  /**
-   * Handle server's key exchange init
-   */
-  private handleKeyExchangeInit(serverPubKeyBytes: Uint8Array): void {
-    console.log('[ClientConnection] Received CRYPTO_KEY_EXCHANGE_INIT from server');
-
-    // Convert to hex
-    const serverPubKeyHex = Array.from(serverPubKeyBytes)
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
-
-    console.log('[ClientConnection] Server public key:', serverPubKeyHex);
-
-    // Set server's public key and compute shared secret
-    setServerPublicKey(serverPubKeyHex);
-    performHandshake();
-
-    console.log('[ClientConnection] Shared secret computed');
-
-    // Now send our public key in response
-    this.sendKeyExchangeResponse();
-  }
-
-  /**
-   * Convert hex string to bytes
-   */
-  private hexToBytes(hex: string): Uint8Array {
-    const bytes = new Uint8Array(hex.length / 2);
-    for (let i = 0; i < hex.length; i += 2) {
-      bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
-    }
-    return bytes;
-  }
 
   /**
    * Handle incoming packet from WebSocket
@@ -141,14 +108,23 @@ export class ClientConnection {
       const HEADER_SIZE = 20; // sizeof(packet_header_t)
       const payload = rawPacket.slice(HEADER_SIZE);
 
-      // Handle handshake packets (unencrypted)
+      // Handle handshake packets using WASM callbacks
       if (parsed.type === PacketType.CRYPTO_KEY_EXCHANGE_INIT) {
-        this.handleKeyExchangeInit(payload);
+        console.log('[ClientConnection] Handling CRYPTO_KEY_EXCHANGE_INIT via WASM');
+        handleKeyExchangeInit(rawPacket);
+        this.onStateChangeCallback?.(ConnectionState.HANDSHAKE);
+        return;
+      }
+
+      if (parsed.type === PacketType.CRYPTO_AUTH_CHALLENGE) {
+        console.log('[ClientConnection] Handling CRYPTO_AUTH_CHALLENGE via WASM');
+        handleAuthChallenge(rawPacket);
         return;
       }
 
       if (parsed.type === PacketType.CRYPTO_HANDSHAKE_COMPLETE) {
-        console.log('[ClientConnection] Server confirmed handshake complete');
+        console.log('[ClientConnection] Handling CRYPTO_HANDSHAKE_COMPLETE via WASM');
+        handleHandshakeComplete(rawPacket);
         this.onStateChangeCallback?.(ConnectionState.CONNECTED);
         return;
       }

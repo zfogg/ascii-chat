@@ -1,9 +1,9 @@
+import { CodeBlock } from "@ascii-chat/shared/components";
 import { useEffect } from "react";
+import { AsciiChatHead } from "../../components/AsciiChatHead";
 import Footer from "../../components/Footer";
 import TrackedLink from "../../components/TrackedLink";
 import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
-import { AsciiChatHead } from "../../components/AsciiChatHead";
-import { CodeBlock } from "@ascii-chat/shared/components";
 
 export default function Hardware() {
   useEffect(() => {
@@ -549,7 +549,7 @@ export default function Hardware() {
                     <strong>Overrides CLI:</strong> Setting{" "}
                     <code className="text-cyan-300">WEBCAM_DISABLED=1</code>{" "}
                     forces test pattern mode regardless of command-line options.
-                    Useful for CI/CD pipelines.
+                    Used by the developer for testing and debugging.
                   </p>
                 </div>
               </div>

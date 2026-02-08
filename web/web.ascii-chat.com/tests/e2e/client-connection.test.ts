@@ -9,7 +9,7 @@
 
 import { test, expect } from '@playwright/test';
 
-const SERVER_URL = 'ws://localhost:27225';  // WebSocket runs on port+1
+const SERVER_URL = 'ws://localhost:27226';  // Default WebSocket port
 const WEB_CLIENT_URL = 'http://localhost:3000/client';
 
 test.describe('Client Connection to Native Server', () => {

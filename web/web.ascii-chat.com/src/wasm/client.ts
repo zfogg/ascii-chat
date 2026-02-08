@@ -27,7 +27,7 @@ interface ClientModule {
   UTF8ToString(ptr: number): string;
   stringToUTF8(str: string, outPtr: number, maxBytesToWrite: number): void;
   lengthBytesUTF8(str: string): number;
-  sendPacketCallback?: (packetType: number, payload: Uint8Array) => void;
+  sendPacketCallback?: (rawPacket: Uint8Array) => void;
   _client_init_with_args: ClientModuleExports['_client_init_with_args'];
   _client_cleanup: ClientModuleExports['_client_cleanup'];
   _client_generate_keypair: ClientModuleExports['_client_generate_keypair'];
@@ -205,46 +205,82 @@ export async function generateKeypair(): Promise<string> {
 }
 
 /**
- * Set server public key from hex string
+ * Handle CRYPTO_KEY_EXCHANGE_INIT packet from server
+ * This triggers the transport-abstracted crypto handshake flow
  */
-export function setServerPublicKey(serverPublicKeyHex: string): void {
+export function handleKeyExchangeInit(rawPacket: Uint8Array): void {
   if (!wasmModule) {
     throw new Error('WASM module not initialized');
   }
 
-  if (serverPublicKeyHex.length !== 64) {
-    throw new Error('Server public key must be 64 hex characters');
-  }
-
-  const strLen = wasmModule.lengthBytesUTF8(serverPublicKeyHex) + 1;
-  const strPtr = wasmModule._malloc(strLen);
-  if (!strPtr) {
-    throw new Error('Failed to allocate memory for server public key');
-  }
-
+  // Allocate memory for packet
+  const packetPtr = wasmModule._malloc(rawPacket.length);
   try {
-    wasmModule.stringToUTF8(serverPublicKeyHex, strPtr, strLen);
-    const result = wasmModule._client_set_server_public_key(strPtr);
+    // Copy packet to WASM memory
+    wasmModule.HEAPU8.set(rawPacket, packetPtr);
+
+    // Call WASM handshake callback
+    const result = wasmModule._client_handle_key_exchange_init(packetPtr, rawPacket.length);
     if (result !== 0) {
-      throw new Error('Failed to set server public key');
+      throw new Error('Failed to handle KEY_EXCHANGE_INIT');
     }
   } finally {
-    wasmModule._free(strPtr);
+    wasmModule._free(packetPtr);
   }
 }
 
 /**
- * Perform handshake (compute shared secret)
+ * Handle CRYPTO_AUTH_CHALLENGE packet from server
  */
-export function performHandshake(): void {
+export function handleAuthChallenge(rawPacket: Uint8Array): void {
   if (!wasmModule) {
     throw new Error('WASM module not initialized');
   }
 
-  const result = wasmModule._client_perform_handshake();
-  if (result !== 0) {
-    throw new Error('Failed to perform handshake');
+  const packetPtr = wasmModule._malloc(rawPacket.length);
+  try {
+    wasmModule.HEAPU8.set(rawPacket, packetPtr);
+
+    const result = wasmModule._client_handle_auth_challenge(packetPtr, rawPacket.length);
+    if (result !== 0) {
+      throw new Error('Failed to handle AUTH_CHALLENGE');
+    }
+  } finally {
+    wasmModule._free(packetPtr);
   }
+}
+
+/**
+ * Handle CRYPTO_HANDSHAKE_COMPLETE packet from server
+ */
+export function handleHandshakeComplete(rawPacket: Uint8Array): void {
+  if (!wasmModule) {
+    throw new Error('WASM module not initialized');
+  }
+
+  const packetPtr = wasmModule._malloc(rawPacket.length);
+  try {
+    wasmModule.HEAPU8.set(rawPacket, packetPtr);
+
+    const result = wasmModule._client_handle_handshake_complete(packetPtr, rawPacket.length);
+    if (result !== 0) {
+      throw new Error('Failed to handle HANDSHAKE_COMPLETE');
+    }
+  } finally {
+    wasmModule._free(packetPtr);
+  }
+}
+
+/**
+ * Register callback for WASM to send packets back to JavaScript
+ * This is called by crypto handshake callbacks when they need to send responses
+ */
+export function registerSendPacketCallback(callback: (rawPacket: Uint8Array) => void): void {
+  if (!wasmModule) {
+    throw new Error('WASM module not initialized');
+  }
+
+  wasmModule.sendPacketCallback = callback;
 }
 
 /**
