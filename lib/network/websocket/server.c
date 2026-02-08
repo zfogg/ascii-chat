@@ -51,15 +51,19 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
   switch (reason) {
   case LWS_CALLBACK_ESTABLISHED: {
     // New WebSocket connection established
+    log_debug("[LWS_CALLBACK_ESTABLISHED] ===== WebSocket client connection ESTABLISHED =====");
     log_debug("WebSocket client connected");
 
     // Get server instance from protocol user data
     const struct lws_protocols *protocol = lws_get_protocol(wsi);
+    log_debug("[LWS_CALLBACK_ESTABLISHED] Got protocol: %p", (void *)protocol);
     if (!protocol || !protocol->user) {
-      log_error("Missing protocol user data");
+      log_error("[LWS_CALLBACK_ESTABLISHED] FAILED: Missing protocol user data (protocol=%p, user=%p)",
+                (void *)protocol, protocol ? protocol->user : NULL);
       return -1;
     }
     websocket_server_t *server = (websocket_server_t *)protocol->user;
+    log_debug("[LWS_CALLBACK_ESTABLISHED] Got server: %p, handler: %p", (void *)server, (void *)server->handler);
 
     // Initialize connection data
     conn_data->server = server;
@@ -76,14 +80,17 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     lws_get_peer_addresses(wsi, lws_get_socket_fd(wsi), client_name, sizeof(client_name), client_ip, sizeof(client_ip));
 
     log_info("WebSocket client connected from %s", client_ip);
+    log_debug("[LWS_CALLBACK_ESTABLISHED] Client IP: %s", client_ip);
 
     // Create ACIP WebSocket server transport for this connection
     // Note: We pass NULL for crypto_ctx here - crypto handshake happens at ACIP level
+    log_debug("[LWS_CALLBACK_ESTABLISHED] Creating ACIP WebSocket transport...");
     conn_data->transport = acip_websocket_server_transport_create(wsi, NULL);
     if (!conn_data->transport) {
-      log_error("Failed to create ACIP transport for WebSocket client");
+      log_error("[LWS_CALLBACK_ESTABLISHED] FAILED: acip_websocket_server_transport_create returned NULL");
       return -1;
     }
+    log_debug("[LWS_CALLBACK_ESTABLISHED] Transport created: %p", (void *)conn_data->transport);
 
     // Create client context for handler
     websocket_client_context_t *client_ctx =
@@ -101,8 +108,10 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     client_ctx->user_data = server->user_data;
 
     // Spawn handler thread (matches TCP server behavior)
+    log_debug("[LWS_CALLBACK_ESTABLISHED] Spawning handler thread (handler=%p, ctx=%p)...", (void *)server->handler,
+              (void *)client_ctx);
     if (asciichat_thread_create(&conn_data->handler_thread, server->handler, client_ctx) != 0) {
-      log_error("Failed to create client handler thread");
+      log_error("[LWS_CALLBACK_ESTABLISHED] FAILED: asciichat_thread_create returned error");
       SAFE_FREE(client_ctx);
       acip_transport_destroy(conn_data->transport);
       conn_data->transport = NULL;
@@ -111,6 +120,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
     conn_data->handler_started = true;
     log_debug("WebSocket client handler thread started");
+    log_debug("[LWS_CALLBACK_ESTABLISHED] ===== Handler thread started successfully =====");
     break;
   }
 
