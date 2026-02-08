@@ -27,9 +27,12 @@ static color_scheme_t g_active_scheme = {0};
 static bool g_colorscheme_initialized = false;
 
 /* Mutex for color scheme compilation - used by both colorscheme.c and logging.c */
-/* Must be statically initialized with PTHREAD_MUTEX_INITIALIZER to avoid deadlock */
-#ifdef _WIN32
-mutex_t g_colorscheme_mutex = {0}; /* Windows CRITICAL_SECTION - referenced from logging.c via extern */
+/* Must be statically initialized with PTHREAD_MUTEX_INITIALIZER to avoid deadlock
+ * EXCEPTION: Emscripten/WASM with pthreads doesn't support static mutex initialization properly,
+ * so we initialize it explicitly in colorscheme_init() like Windows. */
+#if defined(_WIN32) || defined(__EMSCRIPTEN__)
+mutex_t g_colorscheme_mutex = {
+    0}; /* Windows CRITICAL_SECTION or Emscripten pthread_mutex_t - initialized in colorscheme_init() */
 #else
 mutex_t g_colorscheme_mutex = PTHREAD_MUTEX_INITIALIZER; /* POSIX pthread_mutex_t */
 #endif
@@ -277,14 +280,30 @@ asciichat_error_t colorscheme_init(void) {
   }
 
   /* NOTE: Mutex is already statically initialized on POSIX with PTHREAD_MUTEX_INITIALIZER.
-   * On Windows, we initialize it here. Do NOT call mutex_init() on POSIX because
-   * double-initialization of pthread_mutex_t causes undefined behavior and deadlocks. */
-#ifdef _WIN32
+   * On Windows and Emscripten/WASM, we initialize it here. Do NOT call mutex_init() on native POSIX
+   * because double-initialization of pthread_mutex_t causes undefined behavior and deadlocks.
+   * Emscripten with pthreads requires explicit initialization because PTHREAD_MUTEX_INITIALIZER
+   * doesn't work correctly in threaded WASM builds. */
+#if defined(_WIN32) || defined(__EMSCRIPTEN__)
   static bool mutex_initialized = false;
   if (!mutex_initialized) {
+#ifdef __EMSCRIPTEN__
+    fprintf(stderr, "[WASM DEBUG colorscheme_init] Initializing g_colorscheme_mutex (EMSCRIPTEN)\n");
+#else
+    fprintf(stderr, "[WASM DEBUG colorscheme_init] Initializing g_colorscheme_mutex (WIN32)\n");
+#endif
+    fflush(stderr);
     mutex_init(&g_colorscheme_mutex);
+    fprintf(stderr, "[WASM DEBUG colorscheme_init] mutex_init completed\n");
+    fflush(stderr);
     mutex_initialized = true;
+  } else {
+    fprintf(stderr, "[WASM DEBUG colorscheme_init] Mutex already initialized\n");
+    fflush(stderr);
   }
+#else
+  fprintf(stderr, "[WASM DEBUG colorscheme_init] Using PTHREAD_MUTEX_INITIALIZER (native POSIX)\n");
+  fflush(stderr);
 #endif
 
   /* Load default scheme */
@@ -300,20 +319,45 @@ asciichat_error_t colorscheme_init(void) {
 }
 
 void colorscheme_cleanup_compiled(compiled_color_scheme_t *compiled) {
+  fprintf(stderr, "[WASM DEBUG colorscheme_cleanup_compiled] ENTRY compiled=%p\n", (void *)compiled);
+  fflush(stderr);
   if (!compiled) {
+    fprintf(stderr, "[WASM DEBUG colorscheme_cleanup_compiled] compiled is NULL, returning\n");
+    fflush(stderr);
     return;
   }
 
   /* Free allocated color code strings */
+  fprintf(stderr, "[WASM DEBUG colorscheme_cleanup_compiled] Starting loop to free strings\n");
+  fflush(stderr);
   for (int i = 0; i < 8; i++) {
+    fprintf(stderr, "[WASM DEBUG colorscheme_cleanup_compiled] Loop iteration i=%d\n", i);
+    fflush(stderr);
     char *str_16 = (char *)compiled->codes_16[i];
     char *str_256 = (char *)compiled->codes_256[i];
     char *str_truecolor = (char *)compiled->codes_truecolor[i];
-    SAFE_FREE(str_16);
-    SAFE_FREE(str_256);
-    SAFE_FREE(str_truecolor);
+    fprintf(stderr, "[WASM DEBUG colorscheme_cleanup_compiled] Freeing str_16=%p\n", (void *)str_16);
+    fflush(stderr);
+    /* Only free non-NULL pointers - protects against uninitialized data */
+    if (str_16 != NULL) {
+      SAFE_FREE(str_16);
+    }
+    fprintf(stderr, "[WASM DEBUG colorscheme_cleanup_compiled] Freeing str_256=%p\n", (void *)str_256);
+    fflush(stderr);
+    if (str_256 != NULL) {
+      SAFE_FREE(str_256);
+    }
+    fprintf(stderr, "[WASM DEBUG colorscheme_cleanup_compiled] Freeing str_truecolor=%p\n", (void *)str_truecolor);
+    fflush(stderr);
+    if (str_truecolor != NULL) {
+      SAFE_FREE(str_truecolor);
+    }
   }
+  fprintf(stderr, "[WASM DEBUG colorscheme_cleanup_compiled] Calling memset\n");
+  fflush(stderr);
   memset(compiled, 0, sizeof(compiled_color_scheme_t));
+  fprintf(stderr, "[WASM DEBUG colorscheme_cleanup_compiled] COMPLETE\n");
+  fflush(stderr);
 }
 
 void colorscheme_destroy(void) {
@@ -326,10 +370,11 @@ void colorscheme_destroy(void) {
   g_colorscheme_initialized = false;
   mutex_unlock(&g_colorscheme_mutex);
 
-  /* NOTE: Do NOT call mutex_destroy() on POSIX because the mutex is statically
+  /* NOTE: Do NOT call mutex_destroy() on native POSIX because the mutex is statically
    * initialized with PTHREAD_MUTEX_INITIALIZER. Destroying a statically-initialized
-   * mutex is undefined behavior. On Windows, we must destroy the CRITICAL_SECTION. */
-#ifdef _WIN32
+   * mutex is undefined behavior. On Windows and Emscripten, we must destroy the mutex
+   * because it was explicitly initialized in colorscheme_init(). */
+#if defined(_WIN32) || defined(__EMSCRIPTEN__)
   mutex_destroy(&g_colorscheme_mutex);
 #endif
 }
@@ -519,7 +564,12 @@ void rgb_to_truecolor_ansi(uint8_t r, uint8_t g, uint8_t b, char *buf, size_t si
 
 asciichat_error_t colorscheme_compile_scheme(const color_scheme_t *scheme, terminal_color_mode_t mode,
                                              terminal_background_t background, compiled_color_scheme_t *compiled) {
+  fprintf(stderr, "[WASM DEBUG colorscheme_compile_scheme] ENTRY scheme=%p compiled=%p\n", (void *)scheme,
+          (void *)compiled);
+  fflush(stderr);
   if (!scheme || !compiled) {
+    fprintf(stderr, "[WASM DEBUG colorscheme_compile_scheme] NULL pointer, returning error\n");
+    fflush(stderr);
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL scheme or compiled pointer");
   }
 
@@ -528,18 +578,37 @@ asciichat_error_t colorscheme_compile_scheme(const color_scheme_t *scheme, termi
 
   /* Free any previously compiled strings before recompiling */
   /* This prevents memory leaks when the color scheme is recompiled */
-  colorscheme_cleanup_compiled(compiled);
+  /* Only cleanup if we've actually compiled before (codes_16[0] != NULL means already compiled) */
+  fprintf(stderr, "[WASM DEBUG colorscheme_compile_scheme] Checking if cleanup needed (codes_16[0]=%p)\n",
+          compiled->codes_16[0]);
+  fflush(stderr);
+  if (compiled->codes_16[0] != NULL) {
+    fprintf(stderr, "[WASM DEBUG colorscheme_compile_scheme] Calling colorscheme_cleanup_compiled\n");
+    fflush(stderr);
+    colorscheme_cleanup_compiled(compiled);
+    fprintf(stderr, "[WASM DEBUG colorscheme_compile_scheme] colorscheme_cleanup_compiled returned\n");
+    fflush(stderr);
+  } else {
+    fprintf(stderr, "[WASM DEBUG colorscheme_compile_scheme] Skipping cleanup - first compilation\n");
+    fflush(stderr);
+  }
 
   /* Select color array based on background */
   const rgb_color_t *colors = (background == TERM_BACKGROUND_LIGHT && scheme->has_light_variant)
                                   ? scheme->log_colors_light
                                   : scheme->log_colors_dark;
+  fprintf(stderr, "[WASM DEBUG colorscheme_compile_scheme] Selected colors array %p\n", (void *)colors);
+  fflush(stderr);
 
   /* Helper: allocate and format a color code string */
   char temp_buf[128];
 
   /* Compile for 16-color mode */
+  fprintf(stderr, "[WASM DEBUG colorscheme_compile_scheme] Starting 16-color compilation\n");
+  fflush(stderr);
   for (int i = 0; i < 8; i++) {
+    fprintf(stderr, "[WASM DEBUG colorscheme_compile_scheme] 16-color loop i=%d\n", i);
+    fflush(stderr);
     if (i == 7) {
       /* RESET */
       SAFE_STRNCPY(temp_buf, "\x1b[0m", sizeof(temp_buf));
@@ -554,13 +623,19 @@ asciichat_error_t colorscheme_compile_scheme(const color_scheme_t *scheme, termi
     }
     /* Allocate string with SAFE_MALLOC and copy */
     size_t len = strlen(temp_buf) + 1;
+    fprintf(stderr, "[WASM DEBUG colorscheme_compile_scheme] About to SAFE_MALLOC(%zu)\n", len);
+    fflush(stderr);
     char *allocated = SAFE_MALLOC(len, char *);
+    fprintf(stderr, "[WASM DEBUG colorscheme_compile_scheme] SAFE_MALLOC returned %p\n", (void *)allocated);
+    fflush(stderr);
     if (!allocated) {
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate color code string");
     }
     memcpy(allocated, temp_buf, len);
     compiled->codes_16[i] = allocated;
   }
+  fprintf(stderr, "[WASM DEBUG colorscheme_compile_scheme] 16-color compilation complete\n");
+  fflush(stderr);
 
   /* Compile for 256-color mode */
   for (int i = 0; i < 8; i++) {

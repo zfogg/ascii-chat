@@ -115,6 +115,20 @@ const color_filter_def_t *color_filter_get_metadata(color_filter_t filter);
 color_filter_t color_filter_from_cli_name(const char *cli_name);
 
 /**
+ * @brief Calculate rainbow color from time (3.5s cycle)
+ * @param time Current time in seconds
+ * @param r Output red component (0-255)
+ * @param g Output green component (0-255)
+ * @param b Output blue component (0-255)
+ *
+ * Centralized rainbow color calculation used by both --matrix and --color-filter rainbow.
+ * Cycles through full RGB spectrum over 3.5 seconds.
+ *
+ * @ingroup video
+ */
+void color_filter_calculate_rainbow(float time, uint8_t *r, uint8_t *g, uint8_t *b);
+
+/**
  * @brief Convert ITU-R BT.601 RGB to grayscale using fixed-point math
  * @param r Red channel (0-255)
  * @param g Green channel (0-255)
@@ -140,6 +154,7 @@ static inline uint8_t rgb_to_grayscale(uint8_t r, uint8_t g, uint8_t b) {
  * @param height Image height in pixels
  * @param stride Bytes per row (typically width * 3 for RGB24)
  * @param filter Color filter to apply (COLOR_FILTER_NONE = no-op)
+ * @param time Current time in seconds (used for COLOR_FILTER_RAINBOW animation)
  * @return 0 on success, -1 on error (invalid parameters)
  *
  * Applies the specified color filter to an RGB image. The operation:
@@ -153,12 +168,16 @@ static inline uint8_t rgb_to_grayscale(uint8_t r, uint8_t g, uint8_t b) {
  * For "white on color" mode (all other filters):
  *   Grayscale value scales the color intensity
  *
+ * For COLOR_FILTER_RAINBOW:
+ *   Uses time parameter to cycle through RGB spectrum (3.5s period)
+ *
  * @note This function modifies the image in-place
  * @note If filter == COLOR_FILTER_NONE, this is a no-op
  * @note Expected stride is typically width * 3 for RGB24 format
  *
  * @ingroup video
  */
-int apply_color_filter(uint8_t *pixels, uint32_t width, uint32_t height, uint32_t stride, color_filter_t filter);
+int apply_color_filter(uint8_t *pixels, uint32_t width, uint32_t height, uint32_t stride, color_filter_t filter,
+                       float time);
 
 /** @} */

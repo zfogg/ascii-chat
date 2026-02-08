@@ -191,8 +191,8 @@ set(LIB_SOURCES
     ${LIB_ROOT}/debug/memory.c
     ${LIB_ROOT}/debug/lock.c
 
-    # Terminal abstraction
-    ${LIB_ROOT}/platform/terminal.c
+    # Terminal abstraction (using WASM-specific version from PLATFORM_SOURCES)
+    # ${LIB_ROOT}/platform/terminal.c - EXCLUDED: using wasm/terminal.c instead
 )
 
 # Create WASM module

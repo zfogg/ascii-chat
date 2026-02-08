@@ -81,6 +81,7 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   static char session_buf7[SESSION_STRING_BUFFER_SIZE];
   static char session_buf8[SESSION_STRING_BUFFER_SIZE];
   static char session_buf9[SESSION_STRING_BUFFER_SIZE];
+  static char session_buf10[SESSION_STRING_BUFFER_SIZE];
 
   // Fallback strings if generation fails
   char *example_session_string1 = "adjective-noun-noun";
@@ -92,6 +93,7 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   char *example_session_string7 = "adjective-noun-noun";
   char *example_session_string8 = "adjective-noun-noun";
   char *example_session_string9 = "adjective-noun-noun";
+  char *example_session_string10 = "adjective-noun-noun";
 
   // Generate session strings for examples (sodium_init called as needed by acds_string_generate)
   acds_string_generate(session_buf1, sizeof(session_buf1));
@@ -130,6 +132,10 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   if (session_buf9[0] != '\0') {
     example_session_string9 = session_buf9;
   }
+  acds_string_generate(session_buf10, sizeof(session_buf10));
+  if (session_buf10[0] != '\0') {
+    example_session_string10 = session_buf10;
+  }
 
   // Build session string examples dynamically for discovery mode
   // These appear at the beginning of the examples section, right after "start new session"
@@ -142,6 +148,7 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   static char example_buf7[SESSION_STRING_BUFFER_SIZE];
   static char example_buf8[SESSION_STRING_BUFFER_SIZE];
   static char example_buf9[SESSION_STRING_BUFFER_SIZE];
+  static char example_buf10[SESSION_STRING_BUFFER_SIZE];
 
   safe_snprintf(example_buf1, sizeof(example_buf1), "%s", example_session_string1);
   safe_snprintf(example_buf2, sizeof(example_buf2), "%s --discovery-service discovery.example.com",
@@ -153,6 +160,7 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   safe_snprintf(example_buf7, sizeof(example_buf7), "%s", example_session_string7);
   safe_snprintf(example_buf8, sizeof(example_buf8), "%s", example_session_string8);
   safe_snprintf(example_buf9, sizeof(example_buf9), "%s", example_session_string9);
+  safe_snprintf(example_buf10, sizeof(example_buf10), "%s --matrix --color-filter rainbow", example_session_string10);
 
   // Client mode: [address] - can be IP, hostname, or hostname:port
   static const char *client_examples[] = {"localhost",
@@ -166,7 +174,8 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   // Discovery mode: [session-string] - session string or empty to start new session
   // Use simple static examples for positional arguments section (dynamic strings shown in examples section)
   static const char *discovery_examples[] = {"(empty) start new session", (const char *)example_buf7,
-                                             (const char *)example_buf8, (const char *)example_buf9};
+                                             (const char *)example_buf8, (const char *)example_buf9,
+                                             (const char *)example_buf10};
   options_builder_add_positional(
       b, "session-string", "(optional) Random three words in format adjective-noun-noun that connect you to a call.",
       false, "POSITIONAL ARGUMENTS", discovery_examples, ARRAY_SIZE(discovery_examples), OPTION_MODE_DISCOVERY,
@@ -213,32 +222,35 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   options_builder_add_example(b, OPTION_MODE_BINARY, example_buf6, "Join session with custom ASCII palette characters",
                               true);
 
-  // Add examples for server mode
-  options_builder_add_example(b, OPTION_MODE_SERVER, NULL, "Start on localhost (127.0.0.1 and ::1)", false);
-  options_builder_add_example(b, OPTION_MODE_SERVER, "0.0.0.0", "Start on all IPv4 interfaces", false);
-  options_builder_add_example(b, OPTION_MODE_SERVER, "0.0.0.0 ::", "Start on all IPv4 and IPv6 interfaces (dual-stack)",
-                              false);
-  options_builder_add_example(b, OPTION_MODE_SERVER, "--port 8080", "Start on custom port", false);
+  // Add examples for server-like modes (server + discovery-service)
+  options_builder_add_example(b, OPTION_MODE_SERVER_LIKE, NULL, "Start on localhost (127.0.0.1 and ::1)", false);
+  options_builder_add_example(b, OPTION_MODE_SERVER_LIKE, "0.0.0.0", "Start on all IPv4 interfaces", false);
+  options_builder_add_example(b, OPTION_MODE_SERVER_LIKE,
+                              "0.0.0.0 ::", "Start on all IPv4 and IPv6 interfaces (dual-stack)", false);
+  options_builder_add_example(b, OPTION_MODE_SERVER_LIKE, "--port 8080", "Start on custom port", false);
+
+  // Server-specific examples
   options_builder_add_example(b, OPTION_MODE_SERVER, "--key ~/.ssh/id_ed25519 --discovery",
                               "Start with identity key and discovery registration", false);
 
-  // Add examples for client mode
-  options_builder_add_example(b, OPTION_MODE_CLIENT, "example.com", "Connect to specific server", false);
+  // Add examples for client-like modes (client + mirror)
+  options_builder_add_example(b, OPTION_MODE_CLIENT_LIKE, "--url 'https://youtu.be/7ynHVGCehoM'",
+                              "Stream from YouTube URL (also supports RTSP, HTTP, and HTTPS URLs)", false);
+  options_builder_add_example(b, OPTION_MODE_CLIENT_LIKE, "-f video.mp4", "Stream from local video file", false);
+  options_builder_add_example(b, OPTION_MODE_CLIENT_LIKE, "--palette-chars '@%#*+=-:. '",
+                              "Use custom ASCII palette characters", false);
+  options_builder_add_example(b, OPTION_MODE_CLIENT_LIKE, "--snapshot", "Capture single frame and exit", false);
+  options_builder_add_example(b, OPTION_MODE_CLIENT_LIKE, "--color-filter cyan --palette cool",
+                              "Apply cyan color filter and cool palette", false);
+
+  // Client-specific examples
   options_builder_add_example(b, OPTION_MODE_CLIENT, "example.com", "Connect to remote server", false);
   options_builder_add_example(b, OPTION_MODE_CLIENT, "example.com:8080", "Connect to remote server on custom port",
                               false);
-  options_builder_add_example(b, OPTION_MODE_CLIENT, "--url 'https://youtu.be/7ynHVGCehoM'",
-                              "Stream from YouTube URL (also supports RTSP, HTTP, and HTTPS URLs)", false);
-  options_builder_add_example(b, OPTION_MODE_CLIENT, "-f video.mp4", "Stream from local video file", false);
   options_builder_add_example(b, OPTION_MODE_CLIENT, "--color-mode mono --render-mode half-block --width 120",
                               "Connect with custom display options", false);
-  options_builder_add_example(b, OPTION_MODE_CLIENT, "--palette-chars '@%#*+=-:. '",
-                              "Use custom ASCII palette characters", false);
-  options_builder_add_example(b, OPTION_MODE_CLIENT, "--snapshot", "Capture single frame and exit", false);
-  options_builder_add_example(b, OPTION_MODE_CLIENT, "--color-filter cyan --palette cool",
-                              "Connect with cyan color filter and cool palette", false);
 
-  // Add examples for mirror mode
+  // Mirror-specific examples (unique to mirror mode)
   options_builder_add_example(
       b, OPTION_MODE_MIRROR, NULL,
       "View the webcam or files or URLs as ASCII art. Like client mode but without network connectivity or a server.",
@@ -246,16 +258,12 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   options_builder_add_example(b, OPTION_MODE_MIRROR, "--color-mode mono", "View webcam in black and white", false);
   options_builder_add_example(b, OPTION_MODE_MIRROR, "--color-filter green",
                               "View webcam with green monochromatic color filter", false);
-  options_builder_add_example(b, OPTION_MODE_MIRROR, "--url 'https://youtu.be/7ynHVGCehoM'",
-                              "Stream from YouTube URL (also supports RTSP, HTTP, and HTTPS URLs)", false);
-  options_builder_add_example(b, OPTION_MODE_MIRROR, "-f video.mp4",
-                              "Stream from local video file (supports mp4, mkv, webm, mov, etc)", false);
+  options_builder_add_example(b, OPTION_MODE_MIRROR, "--matrix --color-filter rainbow",
+                              "Matrix rain effect with rainbow colors cycling over 3.5s", false);
   options_builder_add_example(b, OPTION_MODE_MIRROR, "--file '-'",
                               "Stream media from stdin (cat file.gif | ascii-chat mirror -f '-')", false);
   options_builder_add_example_utility(b, OPTION_MODE_MIRROR, "cat video.avi | ascii-chat mirror -f '-' -l -s 00:30",
                                       "Stream .avi from stdin, looped, seeking to 00:30", true);
-  options_builder_add_example(b, OPTION_MODE_MIRROR, "--palette-chars '@%#*+=-:. '",
-                              "View with custom ASCII palette characters", false);
   options_builder_add_example(b, OPTION_MODE_MIRROR, "--file video.mov --seek 22:10",
                               "Start playback at exactly 22:10 (also works with --url)", false);
   options_builder_add_example(b, OPTION_MODE_MIRROR, "-f 'https://youtu.be/LS9W8SO-Two' -S -D 0 -s 5:12",
@@ -265,10 +273,7 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   options_builder_add_example_utility(b, OPTION_MODE_MIRROR, "pbpaste | cat -",
                                       "View ASCII frame from clipboard (macOS)", true);
 
-  // Add examples for discovery-service mode
-  options_builder_add_example(b, OPTION_MODE_DISCOVERY_SVC, NULL, "Start on localhost", false);
-  options_builder_add_example(b, OPTION_MODE_DISCOVERY_SVC, "0.0.0.0", "Start on all IPv4 interfaces", false);
-  options_builder_add_example(b, OPTION_MODE_DISCOVERY_SVC, "--port 5000", "Start on custom port", false);
+  // Discovery-service specific examples
   options_builder_add_example(b, OPTION_MODE_DISCOVERY_SVC, "--require-server-identity --require-client-identity",
                               "Enforce identity verification for all parties", false);
 
@@ -284,7 +289,7 @@ const options_config_t *options_preset_unified(const char *program_name, const c
                                      "While rendering, press '?' to display a keyboard shortcuts help menu showing:\n"
                                      "  - Available keybindings (?, Space, arrows, m, c, f, r)\n"
                                      "  - Current settings (volume, color mode, audio status, etc.)",
-                                     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY);
+                                     OPTION_MODE_CLIENT_LIKE);
 
   // Add environment variables section (all modes)
   options_builder_add_custom_section(

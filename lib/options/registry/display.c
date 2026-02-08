@@ -27,8 +27,7 @@ const registry_entry_t g_display_entries[] = {
      &default_color_filter_value,
      sizeof(color_filter_t),
      "Apply a monochromatic color tint to grayscale video. Values: none, black, white, green, magenta, fuchsia, "
-     "orange, "
-     "teal, cyan, pink, red, yellow. Using --color-filter automatically sets --color-mode to mono.",
+     "orange, teal, cyan, pink, red, yellow, rainbow. Using --color-filter automatically sets --color-mode to mono.",
      "DISPLAY",
      NULL,
      false,

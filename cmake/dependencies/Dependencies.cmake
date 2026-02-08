@@ -69,6 +69,9 @@ include(${CMAKE_SOURCE_DIR}/cmake/dependencies/OpenSSL.cmake)
 # libdatachannel - WebRTC DataChannels for P2P ACIP transport
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libdatachannel.cmake)
 
+# libwebsockets - WebSocket transport for browser clients
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libwebsockets.cmake)
+
 # miniupnpc - UPnP/NAT-PMP for direct TCP without WebRTC (optional, graceful fallback)
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Miniupnpc.cmake)
 

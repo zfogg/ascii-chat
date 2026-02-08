@@ -483,6 +483,9 @@ target_compile_definitions(ascii-chat-network PRIVATE MDNS_NO_MAIN)
 if(PCRE2_INCLUDE_DIRS)
     target_include_directories(ascii-chat-network PRIVATE ${PCRE2_INCLUDE_DIRS})
 endif()
+if(LIBWEBSOCKETS_INCLUDE_DIRS)
+    target_include_directories(ascii-chat-network PRIVATE ${LIBWEBSOCKETS_INCLUDE_DIRS})
+endif()
 target_compile_definitions(ascii-chat-network PRIVATE PCRE2_CODE_UNIT_WIDTH=8)
 if(NOT BUILDING_OBJECT_LIBS)
     target_link_libraries(ascii-chat-network
@@ -496,6 +499,8 @@ if(NOT BUILDING_OBJECT_LIBS)
         libdatachannel  # WebRTC DataChannels for P2P transport
         OpenSSL::Crypto  # Required by libdatachannel for TLS/DTLS
     )
+    # Link libwebsockets
+    target_link_libraries(ascii-chat-network PkgConfig::LIBWEBSOCKETS)
     # Link miniupnpc if available (optional UPnP/NAT-PMP support)
     if(MINIUPNPC_FOUND)
         target_include_directories(ascii-chat-network PRIVATE ${MINIUPNPC_INCLUDE_DIRS})
@@ -508,6 +513,8 @@ if(NOT BUILDING_OBJECT_LIBS)
 else()
     # For OBJECT libs, link external deps only (OpenSSL needed by libdatachannel for TLS/DTLS)
     target_link_libraries(ascii-chat-network ${PCRE2_LIBRARIES} ${ZSTD_LIBRARIES} ${SQLITE3_LIBRARIES} libdatachannel OpenSSL::Crypto)
+    # Link libwebsockets
+    target_link_libraries(ascii-chat-network PkgConfig::LIBWEBSOCKETS)
     if(MINIUPNPC_FOUND)
         target_include_directories(ascii-chat-network PRIVATE ${MINIUPNPC_INCLUDE_DIRS})
         target_link_libraries(ascii-chat-network ${MINIUPNPC_LIBRARIES})
@@ -729,6 +736,8 @@ add_library(ascii-chat-shared SHARED EXCLUDE_FROM_ALL
     if(BEARSSL_FOUND)
         target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
     endif()
+    # Link libwebsockets
+    target_link_libraries(ascii-chat-shared PRIVATE PkgConfig::LIBWEBSOCKETS)
 
     # Suppress linker warnings about duplicate debug symbols in libdatachannel
     # (libdatachannel embeds debug symbols with invalid timestamps - linker warning only, not an error)

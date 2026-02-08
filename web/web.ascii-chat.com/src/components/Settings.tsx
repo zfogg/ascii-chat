@@ -1,5 +1,5 @@
 export type ColorMode = 'auto' | 'none' | '16' | '256' | 'truecolor'
-export type ColorFilter = 'none' | 'black' | 'white' | 'green' | 'magenta' | 'fuchsia' | 'orange' | 'teal' | 'cyan' | 'pink' | 'red' | 'yellow'
+export type ColorFilter = 'none' | 'black' | 'white' | 'green' | 'magenta' | 'fuchsia' | 'orange' | 'teal' | 'cyan' | 'pink' | 'red' | 'yellow' | 'rainbow'
 export type Palette = 'standard' | 'blocks' | 'digital' | 'minimal' | 'cool' | 'custom'
 export type Resolution = '320x240' | '640x480' | '1280x720' | '1920x1080'
 
@@ -112,6 +112,7 @@ export function Settings({ config, onChange, disabled = false }: SettingsProps) 
               <option value="pink">Pink</option>
               <option value="red">Red</option>
               <option value="yellow">Yellow</option>
+              <option value="rainbow">Rainbow (3.5s cycle)</option>
             </select>
           </div>
 

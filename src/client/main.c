@@ -524,12 +524,15 @@ int client_main(void) {
 
   // Start the intro splash screen (non-blocking) - it will display while we initialize
   // The splash will continue until splash_intro_done() is called when first frame is ready
+  log_info("=== ABOUT TO START SPLASH SCREEN ===");
   splash_intro_start(NULL);
+  log_info("=== SPLASH SCREEN STARTED ===");
 
   // Disable terminal logging AFTER splash starts so splash can display cleanly
   // This prevents logs from connection attempts from interfering with splash animation
   // Logs are still written to file and captured by splash screen's log buffer
   log_set_terminal_output(false);
+  log_info("=== TERMINAL LOGGING DISABLED ===");
 
   // Track if we've ever successfully connected during this session
   static bool has_ever_connected = false;
@@ -658,6 +661,8 @@ int client_main(void) {
   const char *session_string =
       opts_discovery && opts_discovery->session_string[0] != '\0' ? opts_discovery->session_string : "";
 
+  log_info("=== BEFORE SESSION DISCOVERY CHECK: session_string='%s' ===", session_string);
+
   if (session_string[0] != '\0') {
     log_debug("Session string detected: '%s' - performing parallel discovery (mDNS + ACDS)", session_string);
 
@@ -728,7 +733,10 @@ int client_main(void) {
     log_info("Connecting to %s:%d", discovered_address, discovery_result.server_port);
   }
 
+  log_info("=== AFTER SESSION DISCOVERY, BEFORE CONNECTION LOOP ===");
+
   const options_t *opts_conn = options_get();
+  log_info("=== ENTERING MAIN CONNECTION LOOP ===");
   while (!should_exit()) {
     // Handle connection establishment or reconnection
     const char *address = discovered_address
@@ -739,6 +747,8 @@ int client_main(void) {
     // Update connection context with current attempt number and reconnection status
     connection_ctx.reconnect_attempt = reconnect_attempt;
     connection_ctx.is_reconnection = has_ever_connected; // Track if this is a reconnection (not first connect)
+
+    log_info("=== ABOUT TO CALL connection_attempt_tcp: address='%s', port=%d ===", address, port);
 
     // Attempt TCP connection
     asciichat_error_t connection_result = connection_attempt_tcp(&connection_ctx, address, (uint16_t)port);

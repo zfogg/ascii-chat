@@ -49,20 +49,12 @@ asciichat_error_t platform_localtime(const time_t *timer, struct tm *result) {
   if (!timer || !result) {
     return ERROR_INVALID_PARAM;
   }
-  // Use standard localtime_r if available, otherwise localtime
-#ifdef __EMSCRIPTEN__
-  struct tm *tm_ptr = localtime(timer);
-  if (tm_ptr) {
-    *result = *tm_ptr;
-    return ASCIICHAT_OK;
-  }
-  return ERROR_PLATFORM_INIT;
-#else
+  // Use thread-safe localtime_r for both WASM and native builds
+  // IMPORTANT: localtime() is NOT thread-safe and causes deadlocks in threaded WASM builds
   if (localtime_r(timer, result) != NULL) {
     return ASCIICHAT_OK;
   }
   return ERROR_PLATFORM_INIT;
-#endif
 }
 
 // Isatty stub

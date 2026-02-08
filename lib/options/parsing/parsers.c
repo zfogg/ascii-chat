@@ -661,6 +661,15 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
   int *port = (int *)((char *)config + offsetof(struct options_state, port));
   log_debug("parse_client_address: Parsing as server address (not a session string)");
 
+  // Check for WebSocket URL (ws:// or wss://)
+  // WebSocket URLs are passed through without validation or port extraction
+  if (strncmp(arg, "ws://", 5) == 0 || strncmp(arg, "wss://", 6) == 0) {
+    log_debug("Detected WebSocket URL: %s", arg);
+    SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, "%s", arg);
+    // Don't set port - WebSocket transport handles URL parsing internally
+    return 1; // Consumed 1 argument
+  }
+
   // Check for port in address (format: address:port or [ipv6]:port)
   const char *colon = strrchr(arg, ':');
 

@@ -85,6 +85,7 @@ typedef struct {
   uint8_t color_g;         ///< Matrix green G component
   uint8_t color_b;         ///< Matrix green B component
   float cursor_brightness; ///< Cursor brightness multiplier
+  bool rainbow_mode;       ///< True if rainbow color cycling is enabled
 
   // Frame tracking
   bool first_frame;           ///< True if this is the first frame

@@ -8,28 +8,33 @@
 #include <pthread.h>
 #include <stdint.h>
 
-// Emscripten provides pthread.h
-// In single-threaded mode (USE_PTHREADS=0), these are no-ops
-// In multi-threaded mode (USE_PTHREADS=1), these are real mutexes
+// Emscripten provides pthread.h but mutexes don't work correctly with pthreads in WASM
+// The JS side is single-threaded, so we can safely make mutexes no-ops
+// This avoids deadlocks from pthread_mutex_t not being properly initialized in WASM
 
 int mutex_init(mutex_t *mutex) {
-  return pthread_mutex_init(mutex, NULL);
+  (void)mutex;
+  return 0; // Success
 }
 
 int mutex_destroy(mutex_t *mutex) {
-  return pthread_mutex_destroy(mutex);
+  (void)mutex;
+  return 0; // Success
 }
 
 int mutex_lock_impl(mutex_t *mutex) {
-  return pthread_mutex_lock(mutex);
+  (void)mutex;
+  return 0; // Success - no-op
 }
 
 int mutex_trylock_impl(mutex_t *mutex) {
-  return pthread_mutex_trylock(mutex);
+  (void)mutex;
+  return 0; // Success - no-op
 }
 
 int mutex_unlock_impl(mutex_t *mutex) {
-  return pthread_mutex_unlock(mutex);
+  (void)mutex;
+  return 0; // Success - no-op
 }
 
 // Thread functions (not used in mirror mode, but provided for completeness)

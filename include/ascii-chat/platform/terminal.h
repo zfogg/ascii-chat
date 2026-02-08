@@ -486,6 +486,8 @@ typedef enum {
   COLOR_FILTER_RED = 10,
   /** @brief Yellow (#FFEB99) */
   COLOR_FILTER_YELLOW = 11,
+  /** @brief Rainbow (cycles through spectrum over 3.5s) */
+  COLOR_FILTER_RAINBOW = 12,
   /** @brief Total count of filters (not a valid filter) */
   COLOR_FILTER_COUNT
 } color_filter_t;

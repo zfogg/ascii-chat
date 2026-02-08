@@ -90,6 +90,47 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
   return ASCIICHAT_OK;
 }
 
+// Terminal UTF-8 support detection
+bool terminal_supports_utf8(void) {
+  return true; // xterm.js supports UTF-8
+}
+
+// Piped output detection
+bool terminal_is_piped_output(void) {
+  return false; // WASM mirror mode is not piped
+}
+
+// Color output detection
+bool terminal_should_color_output(int fd) {
+  (void)fd;
+  return true; // WASM mirror mode supports color
+}
+
+// TTY detection stubs
+bool terminal_is_stdin_tty(void) {
+  return false; // No stdin in WASM
+}
+
+bool terminal_is_stdout_tty(void) {
+  return true; // xterm.js output is a TTY
+}
+
+bool terminal_is_stderr_tty(void) {
+  return true; // xterm.js output is a TTY
+}
+
+bool terminal_is_interactive(void) {
+  return false; // WASM mirror mode is not interactive
+}
+
+bool terminal_should_force_stderr(void) {
+  return false; // Don't force stderr in WASM
+}
+
+bool terminal_can_prompt_user(void) {
+  return false; // Cannot prompt in WASM
+}
+
 // Terminal background detection
 bool terminal_has_dark_background(void) {
   return true; // Default to dark background for xterm.js

@@ -836,8 +836,9 @@ static char *convert_composite_to_ascii(image_t *composite, uint32_t target_clie
 
   // Apply color filter if specified
   if (caps_snapshot.color_filter != COLOR_FILTER_NONE && composite->pixels) {
+    float time_seconds = (float)time_get_ns() / (float)NS_PER_SEC_INT;
     apply_color_filter((uint8_t *)composite->pixels, composite->w, composite->h, composite->w * 3,
-                       caps_snapshot.color_filter);
+                       caps_snapshot.color_filter, time_seconds);
   }
 
   char *ascii_frame = ascii_convert_with_capabilities(composite, width, h, &caps_snapshot, true, false,

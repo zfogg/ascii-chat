@@ -6,6 +6,11 @@
 #include <emscripten.h>
 #include <stdlib.h>
 #include <string.h>
+
+// Logging macros for debug
+#define WASM_LOG(msg) EM_ASM({ console.log('[C] ' + UTF8ToString($0)); }, msg)
+#define WASM_LOG_INT(msg, val) EM_ASM({ console.log('[C] ' + UTF8ToString($0) + ': ' + $1); }, msg, val)
+#define WASM_ERROR(msg) EM_ASM({ console.error('[C] ' + UTF8ToString($0)); }, msg)
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>
 
@@ -39,20 +44,33 @@ static double g_last_rain_update_time = 0.0;
  */
 EMSCRIPTEN_KEEPALIVE
 int mirror_init_with_args(const char *args_json) {
+  WASM_LOG("mirror_init_with_args: START");
+  WASM_LOG("mirror_init_with_args: After START log");
+
   // Initialize platform layer
+  WASM_LOG("Calling platform_init...");
+  WASM_LOG("mirror_init_with_args: About to call platform_init");
   asciichat_error_t err = platform_init();
+  WASM_LOG("mirror_init_with_args: platform_init returned");
   if (err != ASCIICHAT_OK) {
+    WASM_ERROR("platform_init FAILED");
     return -1;
   }
+  WASM_LOG("platform_init OK");
 
   // Parse JSON array into argc/argv
   // For simplicity, we'll accept a space-separated string instead
   // JS can pass: "mirror --width 80 --height 40 --color-filter grayscale"
+  WASM_LOG("Parsing arguments...");
+  WASM_LOG("mirror_init_with_args: About to strdup");
   char *args_copy = strdup(args_json);
+  WASM_LOG("mirror_init_with_args: strdup completed");
   if (!args_copy) {
+    WASM_ERROR("strdup FAILED");
     return -1;
   }
 
+  WASM_LOG("mirror_init_with_args: Starting tokenization");
   // Count arguments
   int argc = 0;
   char *argv[64] = {NULL}; // Max 64 arguments
@@ -62,18 +80,27 @@ int mirror_init_with_args(const char *args_json) {
     token = strtok(NULL, " ");
   }
   argv[argc] = NULL;
+  WASM_LOG_INT("Parsed arguments, argc", argc);
 
   // Initialize options (sets up RCU, defaults, etc.)
+  WASM_LOG("Calling options_init...");
+  WASM_LOG("mirror_init_with_args: About to call options_init");
   err = options_init(argc, argv);
+  WASM_LOG("mirror_init_with_args: options_init returned");
   free(args_copy);
 
   if (err != ASCIICHAT_OK) {
+    WASM_LOG_INT("options_init FAILED", err);
     return -1;
   }
+  WASM_LOG("options_init OK");
 
   // Initialize ANSI color code generation (dec3 cache for RGB values)
+  WASM_LOG("Calling ansi_fast_init...");
   ansi_fast_init();
+  WASM_LOG("ansi_fast_init OK");
 
+  WASM_LOG("mirror_init_with_args: COMPLETE");
   return 0;
 }
 
@@ -293,7 +320,8 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
     // color_filter operates on packed RGB24 format
     uint8_t *rgb24 = (uint8_t *)rgb_pixels;
     int stride = src_width * 3;
-    apply_color_filter(rgb24, src_width, src_height, stride, filter);
+    float time_seconds = (float)(emscripten_get_now() / 1000.0); // Convert ms to seconds
+    apply_color_filter(rgb24, src_width, src_height, stride, filter, time_seconds);
   }
 
   // Create image structure

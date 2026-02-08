@@ -60,7 +60,7 @@ if [[ "$PLATFORM" == "macos" ]]; then
   fi
 
   echo "Installing dependencies via Homebrew..."
-  brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool ninja mimalloc zstd libsodium portaudio opus criterion doxygen sqlite3 openssl miniupnpc libnatpmp ffmpeg abseil emscripten binaryen yt-dlp
+  brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool ninja mimalloc zstd libsodium portaudio opus criterion doxygen sqlite3 openssl miniupnpc libnatpmp ffmpeg abseil emscripten binaryen yt-dlp libwebsockets
 
   echo ""
   echo "Dependencies installed successfully!"
@@ -135,7 +135,8 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       emscripten \
       doxygen \
       dpkg-dev rpm \
-      yt-dlp
+      yt-dlp \
+      libwebsockets-dev
 
     # Try LLVM versions in order from newest to oldest
     LLVM_VERSIONS="21 20 19 18"
@@ -311,7 +312,8 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       dpkg rpm-tools \
       yt-dlp \
       emscripten \
-      bun
+      bun \
+      libwebsockets
 
   else
     echo >&2 "ERROR: No supported package manager found (apt-get, yum, or pacman)"

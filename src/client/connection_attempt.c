@@ -166,15 +166,66 @@ bool connection_check_timeout(const connection_attempt_context_t *ctx) {
  */
 asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, const char *server_address,
                                          uint16_t server_port) {
+  log_info("=== connection_attempt_tcp CALLED: address='%s', port=%u ===", server_address, server_port);
+
   if (!ctx || !server_address) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
-  // Check if shutdown was requested before attempting TCP connection
+  // Check if shutdown was requested before attempting connection
   if (should_exit()) {
-    return SET_ERRNO(ERROR_NETWORK, "TCP connection attempt aborted due to shutdown request");
+    return SET_ERRNO(ERROR_NETWORK, "Connection attempt aborted due to shutdown request");
   }
 
+  // Check for WebSocket URL - handle separately from TCP
+  log_debug("connection_attempt_tcp: server_address='%s', port=%u", server_address, server_port);
+  bool is_websocket = (strncmp(server_address, "ws://", 5) == 0 || strncmp(server_address, "wss://", 6) == 0);
+  log_debug("connection_attempt_tcp: is_websocket=%d", is_websocket);
+  if (is_websocket) {
+    // WebSocket connection path
+    // Note: WebSocket URLs already contain the port (e.g., ws://localhost:27225)
+    // Do not append the server_port parameter
+    const char *ws_url = server_address;
+    log_info("Attempting WebSocket connection to %s", ws_url);
+
+    // Transition to attempting state
+    asciichat_error_t result = connection_state_transition(ctx, CONN_STATE_ATTEMPTING);
+    if (result != ASCIICHAT_OK) {
+      return result;
+    }
+
+    // Set timeout for this attempt
+    ctx->attempt_start_time_ns = time_get_realtime_ns();
+    ctx->timeout_ns = CONN_TIMEOUT_TCP; // Use same timeout as TCP
+
+    // Initialize crypto context if encryption is enabled
+    if (!GET_OPTION(no_encrypt)) {
+      log_debug("Initializing crypto context for WebSocket...");
+      if (client_crypto_init() != 0) {
+        log_error("Failed to initialize crypto context");
+        return SET_ERRNO(ERROR_CRYPTO, "Crypto initialization failed");
+      }
+      log_debug("Crypto context initialized successfully");
+    }
+
+    // Get crypto context
+    const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
+
+    // Create WebSocket transport (handles connection internally)
+    ctx->tcp_transport = acip_websocket_client_transport_create(ws_url, (crypto_context_t *)crypto_ctx);
+    if (!ctx->tcp_transport) {
+      log_error("Failed to create WebSocket ACIP transport");
+      connection_state_transition(ctx, CONN_STATE_FAILED);
+      return SET_ERRNO(ERROR_NETWORK, "WebSocket connection failed");
+    }
+
+    log_info("WebSocket connection established to %s", ws_url);
+    connection_state_transition(ctx, CONN_STATE_CONNECTED);
+    ctx->active_transport = ctx->tcp_transport;
+    return ASCIICHAT_OK;
+  }
+
+  // TCP connection path (original logic)
   log_info("Attempting TCP connection to %s:%u (3s timeout)", server_address, server_port);
 
   // Transition to attempting state

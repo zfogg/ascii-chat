@@ -370,6 +370,12 @@ char *get_config_dir(void) {
 }
 
 char *get_log_dir(void) {
+#ifdef __EMSCRIPTEN__
+  // WASM builds: Return NULL to skip SAFE_MALLOC before memory tracking is initialized
+  // The caller will use a fallback path (temp dir + filename)
+  return NULL;
+#endif
+
 #ifdef NDEBUG
   // Release builds: Use $TMPDIR/ascii-chat/
   // Get system temp directory

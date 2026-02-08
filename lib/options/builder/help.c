@@ -523,8 +523,11 @@ static void print_examples_section(const options_config_t *config, FILE *stream,
     if (!example->is_utility_command) {
       len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s", binary_name);
 
-      // Programmatically add mode name based on mode_bitmask
-      const char *mode_name = get_mode_name_from_bitmask(example->mode_bitmask);
+      // Programmatically add mode name based on current mode being displayed
+      // When example applies to multiple modes (via OR'd bitmask), we show the
+      // current mode's name, not the first mode in the bitmask
+      uint32_t current_mode_bitmask = for_binary_help ? OPTION_MODE_BINARY : (1 << mode);
+      const char *mode_name = get_mode_name_from_bitmask(current_mode_bitmask);
       if (mode_name) {
         len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, " %s", colored_string(LOG_COLOR_FATAL, mode_name));
       }

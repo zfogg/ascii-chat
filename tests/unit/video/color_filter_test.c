@@ -107,7 +107,7 @@ Test(color_filter, colorize_white_on_color) {
       64, // Dark-gray (should become dim color)
   };
 
-  int result = apply_color_filter(pixels, 2, 2, 6, COLOR_FILTER_CYAN);
+  int result = apply_color_filter(pixels, 2, 2, 6, COLOR_FILTER_CYAN, 0.0f);
   cr_assert_eq(result, 0, "apply_color_filter should return 0");
 
   // Check that black pixel became dark cyan (scaled down)
@@ -133,7 +133,7 @@ Test(color_filter, colorize_black_on_white) {
       255, 255, 255, // White (should become white background)
   };
 
-  int result = apply_color_filter(pixels, 2, 1, 6, COLOR_FILTER_BLACK);
+  int result = apply_color_filter(pixels, 2, 1, 6, COLOR_FILTER_BLACK, 0.0f);
   cr_assert_eq(result, 0, "apply_color_filter should return 0");
 
   // Black pixel should remain dark (all components scale toward black)
@@ -155,7 +155,7 @@ Test(color_filter, apply_none_filter) {
   uint8_t original[3 * 3];
   memcpy(original, pixels, sizeof(pixels));
 
-  int result = apply_color_filter(pixels, 1, 1, 3, COLOR_FILTER_NONE);
+  int result = apply_color_filter(pixels, 1, 1, 3, COLOR_FILTER_NONE, 0.0f);
   cr_assert_eq(result, 0, "apply_color_filter(NONE) should return 0");
   cr_assert_arr_eq(pixels, original, 9, "NONE filter should not modify pixels");
 }
@@ -167,23 +167,23 @@ Test(color_filter, apply_invalid_params) {
   uint8_t pixels[3] = {255, 255, 255};
 
   // NULL pixels
-  int result = apply_color_filter(NULL, 1, 1, 3, COLOR_FILTER_GREEN);
+  int result = apply_color_filter(NULL, 1, 1, 3, COLOR_FILTER_GREEN, 0.0f);
   cr_assert_eq(result, -1, "apply_color_filter(NULL pixels) should return -1");
 
   // Zero width
-  result = apply_color_filter(pixels, 0, 1, 3, COLOR_FILTER_GREEN);
+  result = apply_color_filter(pixels, 0, 1, 3, COLOR_FILTER_GREEN, 0.0f);
   cr_assert_eq(result, -1, "apply_color_filter(zero width) should return -1");
 
   // Zero height
-  result = apply_color_filter(pixels, 1, 0, 3, COLOR_FILTER_GREEN);
+  result = apply_color_filter(pixels, 1, 0, 3, COLOR_FILTER_GREEN, 0.0f);
   cr_assert_eq(result, -1, "apply_color_filter(zero height) should return -1");
 
   // Zero stride
-  result = apply_color_filter(pixels, 1, 1, 0, COLOR_FILTER_GREEN);
+  result = apply_color_filter(pixels, 1, 1, 0, COLOR_FILTER_GREEN, 0.0f);
   cr_assert_eq(result, -1, "apply_color_filter(zero stride) should return -1");
 
   // Invalid filter
-  result = apply_color_filter(pixels, 1, 1, 3, (color_filter_t)999);
+  result = apply_color_filter(pixels, 1, 1, 3, (color_filter_t)999, 0.0f);
   cr_assert_eq(result, -1, "apply_color_filter(invalid filter) should return -1");
 }
 

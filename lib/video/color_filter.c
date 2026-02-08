@@ -7,6 +7,7 @@
 #include <ascii-chat/video/color_filter.h>
 #include <ascii-chat/common.h>
 #include <string.h>
+#include <math.h>
 
 /**
  * @brief Color filter registry with metadata for all 11 filters
@@ -126,6 +127,15 @@ static const color_filter_def_t color_filter_registry[COLOR_FILTER_COUNT] = {
             .b = 153,
             .foreground_on_bg = false,
         },
+    [COLOR_FILTER_RAINBOW] =
+        {
+            .name = "rainbow",
+            .cli_name = "rainbow",
+            .r = 255,
+            .g = 0,
+            .b = 0,
+            .foreground_on_bg = false,
+        },
 };
 
 const color_filter_def_t *color_filter_get_metadata(color_filter_t filter) {
@@ -147,6 +157,70 @@ color_filter_t color_filter_from_cli_name(const char *cli_name) {
   }
 
   return COLOR_FILTER_NONE;
+}
+
+/**
+ * Calculate rainbow color from time
+ * Cycles through full spectrum over 3.5 seconds
+ * This is the centralized rainbow implementation used by both matrix and color filter
+ */
+void color_filter_calculate_rainbow(float time, uint8_t *r, uint8_t *g, uint8_t *b) {
+  // Cycle period: 3.5 seconds
+  const float cycle_period = 3.5f;
+
+  // Normalize time to [0, 1] range within cycle
+  float phase = fmodf(time, cycle_period) / cycle_period;
+
+  // Convert to hue angle [0, 360)
+  float hue = phase * 360.0f;
+
+  // HSV to RGB conversion (S=1, V=1 for full saturation and brightness)
+  // Hue divided into 6 segments
+  float h = hue / 60.0f;
+  int i = (int)floorf(h);
+  float f = h - (float)i;
+
+  // Calculate RGB based on hue segment
+  float q = 1.0f - f;
+  float t = f;
+
+  switch (i % 6) {
+  case 0:
+    *r = 255;
+    *g = (uint8_t)(t * 255);
+    *b = 0;
+    break; // Red to Yellow
+  case 1:
+    *r = (uint8_t)(q * 255);
+    *g = 255;
+    *b = 0;
+    break; // Yellow to Green
+  case 2:
+    *r = 0;
+    *g = 255;
+    *b = (uint8_t)(t * 255);
+    break; // Green to Cyan
+  case 3:
+    *r = 0;
+    *g = (uint8_t)(q * 255);
+    *b = 255;
+    break; // Cyan to Blue
+  case 4:
+    *r = (uint8_t)(t * 255);
+    *g = 0;
+    *b = 255;
+    break; // Blue to Magenta
+  case 5:
+    *r = 255;
+    *g = 0;
+    *b = (uint8_t)(q * 255);
+    break; // Magenta to Red
+  default:
+    *r = 255;
+    *g = 0;
+    *b = 0;
+    break; // Fallback to red
+  }
 }
 
 /**
@@ -178,13 +252,44 @@ static inline void colorize_grayscale_pixel(uint8_t gray, const color_filter_def
   }
 }
 
-int apply_color_filter(uint8_t *pixels, uint32_t width, uint32_t height, uint32_t stride, color_filter_t filter) {
+int apply_color_filter(uint8_t *pixels, uint32_t width, uint32_t height, uint32_t stride, color_filter_t filter,
+                       float time) {
   if (!pixels || width == 0 || height == 0 || stride == 0) {
     return -1;
   }
 
   if (filter == COLOR_FILTER_NONE) {
     return 0; // No-op for none filter
+  }
+
+  // Special handling for rainbow filter
+  if (filter == COLOR_FILTER_RAINBOW) {
+    uint8_t rainbow_r, rainbow_g, rainbow_b;
+    color_filter_calculate_rainbow(time, &rainbow_r, &rainbow_g, &rainbow_b);
+
+    // Create temporary filter def with current rainbow color
+    color_filter_def_t rainbow_filter = {
+        .name = "rainbow",
+        .cli_name = "rainbow",
+        .r = rainbow_r,
+        .g = rainbow_g,
+        .b = rainbow_b,
+        .foreground_on_bg = false,
+    };
+
+    // Process each pixel
+    for (uint32_t y = 0; y < height; y++) {
+      uint8_t *row = pixels + y * stride;
+      for (uint32_t x = 0; x < width; x++) {
+        uint8_t *pixel = row + x * 3;
+        uint8_t r = pixel[0];
+        uint8_t g = pixel[1];
+        uint8_t b = pixel[2];
+        uint8_t gray = rgb_to_grayscale(r, g, b);
+        colorize_grayscale_pixel(gray, &rainbow_filter, &pixel[0], &pixel[1], &pixel[2]);
+      }
+    }
+    return 0;
   }
 
   const color_filter_def_t *filter_def = color_filter_get_metadata(filter);

@@ -30,7 +30,8 @@ function mapColorFilter(filter: ColorFilter): WasmColorFilter {
     'cyan': WasmColorFilter.CYAN,
     'pink': WasmColorFilter.PINK,
     'red': WasmColorFilter.RED,
-    'yellow': WasmColorFilter.YELLOW
+    'yellow': WasmColorFilter.YELLOW,
+    'rainbow': WasmColorFilter.RAINBOW
   }
   return mapping[filter]
 }

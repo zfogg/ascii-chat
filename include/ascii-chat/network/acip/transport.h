@@ -21,8 +21,8 @@
  * // Use with ACIP protocol handlers
  * asciichat_error_t result = acip_send_ascii_frame(tcp, frame_data, frame_size);
  *
- * // Or WebSocket transport (future)
- * acip_transport_t *ws = acip_websocket_transport_create(ws_handle, crypto_ctx);
+ * // Or WebSocket transport
+ * acip_transport_t *ws = acip_websocket_client_transport_create("ws://localhost:27225", crypto_ctx);
  * asciichat_error_t result = acip_send_ascii_frame(ws, frame_data, frame_size);
  *
  * // Cleanup
@@ -297,16 +297,36 @@ static inline bool acip_transport_is_connected(acip_transport_t *transport) {
 acip_transport_t *acip_tcp_transport_create(socket_t sockfd, crypto_context_t *crypto_ctx);
 
 /**
- * @brief Create WebSocket transport from existing socket
+ * @brief Create WebSocket client transport
  *
- * @param sockfd Connected socket descriptor (after WebSocket handshake)
- * @param crypto_ctx Optional crypto context (may be NULL)
- * @return Transport instance or NULL on error
+ * Connects to a WebSocket server at the specified URL and creates a transport
+ * for sending/receiving ACIP packets over the WebSocket connection.
  *
- * @note Socket must have completed WebSocket handshake
- * @note Caller retains socket ownership
+ * @param url WebSocket URL (e.g., "ws://localhost:27225" or "wss://example.com/path")
+ * @param crypto_ctx Optional encryption context (can be NULL)
+ * @return Transport instance or NULL on failure
+ *
+ * @note The URL must include the protocol (ws:// or wss://)
+ * @note Port defaults to 80 for ws:// and 443 for wss:// if not specified
+ * @note Connection is established synchronously during creation
  */
-acip_transport_t *acip_websocket_transport_create(socket_t sockfd, crypto_context_t *crypto_ctx);
+acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto_context_t *crypto_ctx);
+
+/**
+ * @brief Create WebSocket server transport from existing connection
+ *
+ * Wraps an already-established libwebsockets connection for server-side use.
+ * Used by the WebSocket server to create transports for incoming connections.
+ *
+ * @param wsi Established libwebsockets connection
+ * @param crypto_ctx Optional encryption context (can be NULL)
+ * @return Transport instance or NULL on failure
+ *
+ * @note The transport does NOT take ownership of wsi - server manages lifecycle
+ * @note This is for server-side only - clients use acip_websocket_client_transport_create()
+ */
+struct lws;
+acip_transport_t *acip_websocket_server_transport_create(struct lws *wsi, crypto_context_t *crypto_ctx);
 
 /**
  * @brief Create WebRTC transport from peer connection and data channel

@@ -14,8 +14,8 @@ static const char *log_level_values[] = {"dev", "debug", "info", "warn", "error"
 
 static const char *color_mode_values[] = {"auto", "none", "16", "256", "truecolor"};
 
-static const char *color_filter_values[] = {"none",   "black", "white", "green", "magenta", "fuchsia",
-                                            "orange", "teal",  "cyan",  "pink",  "red",     "yellow"};
+static const char *color_filter_values[] = {"none", "black", "white", "green", "magenta", "fuchsia", "orange",
+                                            "teal", "cyan",  "pink",  "red",   "yellow",  "rainbow"};
 
 static const char *palette_values[] = {"standard", "blocks", "digital", "minimal", "cool", "custom"};
 

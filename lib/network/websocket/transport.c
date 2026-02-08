@@ -1,40 +1,794 @@
 /**
- * @file network/acip/transport_websocket.c
+ * @file network/websocket/transport.c
  * @brief WebSocket transport implementation for ACIP protocol
  *
- * FUTURE IMPLEMENTATION - WebSocket support for browser clients.
+ * Implements the acip_transport_t interface for WebSocket connections.
+ * Enables browser clients to connect via WebSocket protocol.
  *
- * This will allow browsers to connect to ascii-chat servers using
- * WebSocket protocol, enabling web-based clients.
- *
- * IMPLEMENTATION NOTES:
- * ====================
- * - WebSocket handshake must be completed before creating transport
- * - Frame protocol: opcode, masking, fragmentation
- * - Text frames for JSON, binary frames for ACIP packets
- * - Ping/pong for keepalive
- * - Close handshake for clean disconnection
- *
- * DEPENDENCIES:
+ * ARCHITECTURE:
  * =============
- * - lib/network/websockets/ for frame protocol implementation
- * - HTTP upgrade handshake handling
- * - Base64 encoding for Sec-WebSocket-Accept
- * - SHA-1 for handshake validation
+ * - Uses libwebsockets for WebSocket protocol handling
+ * - Async libwebsockets callbacks bridge to sync recv() via ringbuffer
+ * - Thread-safe receive queue handles async message arrival
+ * - Same pattern as WebRTC transport for consistency
+ *
+ * MESSAGE FLOW:
+ * =============
+ * 1. send(): Synchronous write via lws_write()
+ * 2. LWS callback: Async write to receive ringbuffer
+ * 3. recv(): Blocking read from receive ringbuffer
+ *
+ * MEMORY OWNERSHIP:
+ * =================
+ * - Transport OWNS wsi (WebSocket instance)
+ * - Receive queue owns buffered message data
+ * - recv() allocates message buffer, caller must free
  *
  * @author Zachary Fogg <me@zfo.gg>
- * @date January 2026
+ * @date February 2026
  */
 
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/log/logging.h>
+#include <ascii-chat/ringbuffer.h>
+#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/platform/mutex.h>
+#include <ascii-chat/platform/cond.h>
+#include <ascii-chat/debug/memory.h>
+#include <libwebsockets.h>
+#include <string.h>
 
-acip_transport_t *acip_websocket_transport_create(socket_t sockfd, crypto_context_t *crypto_ctx) {
-  (void)sockfd;
-  (void)crypto_ctx;
+/**
+ * @brief Maximum receive queue size (messages buffered before recv())
+ *
+ * Power of 2 for ringbuffer optimization. 64 messages = ~2-3 seconds
+ * of video frames at 30 FPS, enough for network jitter and processing delays.
+ */
+#define WEBSOCKET_RECV_QUEUE_SIZE 64
 
-  log_error("WebSocket transport not yet implemented");
-  SET_ERRNO(ERROR_INTERNAL, "WebSocket transport is not yet implemented");
+/**
+ * @brief Receive queue element (variable-length message)
+ */
+typedef struct {
+  uint8_t *data; ///< Message data (allocated, caller must free)
+  size_t len;    ///< Message length in bytes
+} websocket_recv_msg_t;
 
-  return NULL;
+/**
+ * @brief WebSocket transport implementation data
+ */
+typedef struct {
+  struct lws *wsi;             ///< libwebsockets instance (owned)
+  struct lws_context *context; ///< libwebsockets context (may be owned or borrowed)
+  bool owns_context;           ///< True if transport owns context (client), false if borrowed (server)
+  ringbuffer_t *recv_queue;    ///< Receive message queue
+  ringbuffer_t *send_queue;    ///< Send message queue (for server-side transports)
+  mutex_t queue_mutex;         ///< Protect queue operations
+  cond_t queue_cond;           ///< Signal when messages arrive
+  bool is_connected;           ///< Connection state
+  mutex_t state_mutex;         ///< Protect state changes
+  uint8_t *send_buffer;        ///< Send buffer with LWS_PRE padding
+  size_t send_buffer_capacity; ///< Current send buffer capacity
+} websocket_transport_data_t;
+
+// Forward declaration for libwebsockets callback
+static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
+
+// =============================================================================
+// libwebsockets Callbacks
+// =============================================================================
+
+/**
+ * @brief libwebsockets callback - handles all WebSocket events
+ *
+ * This is the main callback function that libwebsockets uses to notify us
+ * of events like connection, message arrival, closure, etc.
+ */
+static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len) {
+  websocket_transport_data_t *ws_data = (websocket_transport_data_t *)user;
+
+  switch (reason) {
+  case LWS_CALLBACK_CLIENT_ESTABLISHED:
+    log_info("WebSocket connection established");
+    if (ws_data) {
+      mutex_lock(&ws_data->state_mutex);
+      ws_data->is_connected = true;
+      mutex_unlock(&ws_data->state_mutex);
+    }
+    break;
+
+  case LWS_CALLBACK_CLIENT_RECEIVE:
+    // Message received - push to receive queue
+    if (!ws_data || !in || len == 0) {
+      break;
+    }
+
+    log_debug_every(100, "WebSocket received %zu bytes", len);
+
+    // Allocate message buffer using buffer pool
+    websocket_recv_msg_t msg;
+    msg.data = buffer_pool_alloc(NULL, len);
+    if (!msg.data) {
+      log_error("Failed to allocate buffer for WebSocket message");
+      break;
+    }
+
+    // Copy data
+    memcpy(msg.data, in, len);
+    msg.len = len;
+
+    // Push to receive queue
+    mutex_lock(&ws_data->queue_mutex);
+
+    bool success = ringbuffer_write(ws_data->recv_queue, &msg);
+    if (!success) {
+      // Queue full - drop oldest message to make room
+      websocket_recv_msg_t dropped_msg;
+      if (ringbuffer_read(ws_data->recv_queue, &dropped_msg)) {
+        buffer_pool_free(NULL, dropped_msg.data, dropped_msg.len);
+        log_warn("WebSocket receive queue full, dropped oldest message");
+      }
+
+      // Try again
+      success = ringbuffer_write(ws_data->recv_queue, &msg);
+      if (!success) {
+        buffer_pool_free(NULL, msg.data, len);
+        log_error("Failed to write to WebSocket receive queue after drop");
+      }
+    }
+
+    // Signal waiting recv() call
+    cond_signal(&ws_data->queue_cond);
+    mutex_unlock(&ws_data->queue_mutex);
+    break;
+
+  case LWS_CALLBACK_CLIENT_CLOSED:
+  case LWS_CALLBACK_CLOSED:
+    log_info("WebSocket connection closed");
+    if (ws_data) {
+      mutex_lock(&ws_data->state_mutex);
+      ws_data->is_connected = false;
+      mutex_unlock(&ws_data->state_mutex);
+
+      // Wake any blocking recv() calls
+      cond_broadcast(&ws_data->queue_cond);
+    }
+    break;
+
+  case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
+    log_error("WebSocket connection error: %s", in ? (const char *)in : "unknown");
+    if (ws_data) {
+      mutex_lock(&ws_data->state_mutex);
+      ws_data->is_connected = false;
+      mutex_unlock(&ws_data->state_mutex);
+
+      // Wake any blocking recv() calls
+      cond_broadcast(&ws_data->queue_cond);
+    }
+    break;
+
+  case LWS_CALLBACK_CLIENT_WRITEABLE:
+    // Socket is writable - we don't need to do anything here
+    // as we handle writes synchronously in websocket_send()
+    break;
+
+  default:
+    break;
+  }
+
+  return 0;
+}
+
+// =============================================================================
+// WebSocket Transport Methods
+// =============================================================================
+
+static asciichat_error_t websocket_send(acip_transport_t *transport, const void *data, size_t len) {
+  websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
+
+  mutex_lock(&ws_data->state_mutex);
+  bool connected = ws_data->is_connected;
+  mutex_unlock(&ws_data->state_mutex);
+
+  if (!connected) {
+    return SET_ERRNO(ERROR_NETWORK, "WebSocket transport not connected");
+  }
+
+  // libwebsockets requires LWS_PRE bytes before the payload for protocol headers
+  // Ensure our send buffer is large enough
+  size_t required_size = LWS_PRE + len;
+  if (ws_data->send_buffer_capacity < required_size) {
+    // Reallocate send buffer
+    SAFE_FREE(ws_data->send_buffer);
+    ws_data->send_buffer = SAFE_MALLOC(required_size, uint8_t *);
+    if (!ws_data->send_buffer) {
+      ws_data->send_buffer_capacity = 0;
+      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate WebSocket send buffer");
+    }
+    ws_data->send_buffer_capacity = required_size;
+  }
+
+  // Server-side transports cannot call lws_write() directly
+  // They must queue data and send from LWS_CALLBACK_SERVER_WRITEABLE
+  if (!ws_data->owns_context) {
+    // Queue the data for server-side sending
+    websocket_recv_msg_t msg;
+    msg.data = SAFE_MALLOC(len, uint8_t *);
+    if (!msg.data) {
+      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate send queue buffer");
+    }
+    memcpy(msg.data, data, len);
+    msg.len = len;
+
+    mutex_lock(&ws_data->queue_mutex);
+    bool success = ringbuffer_write(ws_data->send_queue, &msg);
+    mutex_unlock(&ws_data->queue_mutex);
+
+    if (!success) {
+      SAFE_FREE(msg.data);
+      return SET_ERRNO(ERROR_NETWORK, "Send queue full");
+    }
+
+    // Request writable callback
+    lws_callback_on_writable(ws_data->wsi);
+    log_debug("Server-side WebSocket send queued %zu bytes, requesting writable callback", len);
+    return ASCIICHAT_OK;
+  }
+
+  // Client and server: send in fragments using LWS_WRITE_BUFLIST
+  // libwebsockets will buffer and send when socket is writable
+  const size_t FRAGMENT_SIZE = 4096;
+  size_t offset = 0;
+
+  while (offset < len) {
+    size_t chunk_size = (len - offset > FRAGMENT_SIZE) ? FRAGMENT_SIZE : (len - offset);
+    int is_start = (offset == 0);
+    int is_end = (offset + chunk_size >= len);
+
+    // Get appropriate flags for this fragment
+    enum lws_write_protocol flags = lws_write_ws_flags(LWS_WRITE_BINARY, is_start, is_end);
+
+    // Use BUFLIST to let libwebsockets handle buffering and writable callbacks
+    flags = (enum lws_write_protocol)((int)flags | LWS_WRITE_BUFLIST);
+
+    // Copy this chunk after LWS_PRE offset
+    memcpy(ws_data->send_buffer + LWS_PRE, (const uint8_t *)data + offset, chunk_size);
+
+    // Send this fragment
+    int written = lws_write(ws_data->wsi, ws_data->send_buffer + LWS_PRE, chunk_size, flags);
+
+    if (written < 0) {
+      return SET_ERRNO(ERROR_NETWORK, "WebSocket write failed on fragment at offset %zu", offset);
+    }
+
+    if ((size_t)written != chunk_size) {
+      return SET_ERRNO(ERROR_NETWORK, "WebSocket partial write: %d/%zu bytes at offset %zu", written, chunk_size,
+                       offset);
+    }
+
+    offset += chunk_size;
+    log_debug_every(100, "WebSocket sent fragment %zu bytes (offset %zu/%zu)", chunk_size, offset, len);
+  }
+
+  log_debug_every(100, "WebSocket sent complete message: %zu bytes in fragments", len);
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buffer, size_t *out_len,
+                                        void **out_allocated_buffer) {
+  websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
+
+  mutex_lock(&ws_data->queue_mutex);
+
+  // Block until message arrives or connection closes
+  while (ringbuffer_is_empty(ws_data->recv_queue)) {
+    mutex_lock(&ws_data->state_mutex);
+    bool connected = ws_data->is_connected;
+    mutex_unlock(&ws_data->state_mutex);
+
+    if (!connected) {
+      mutex_unlock(&ws_data->queue_mutex);
+      return SET_ERRNO(ERROR_NETWORK, "Connection closed while waiting for data");
+    }
+
+    // Wait for message arrival or connection close
+    cond_wait(&ws_data->queue_cond, &ws_data->queue_mutex);
+  }
+
+  // Read message from queue
+  websocket_recv_msg_t msg;
+  bool success = ringbuffer_read(ws_data->recv_queue, &msg);
+  mutex_unlock(&ws_data->queue_mutex);
+
+  if (!success) {
+    return SET_ERRNO(ERROR_NETWORK, "Failed to read from receive queue");
+  }
+
+  // Return message to caller (caller owns the buffer)
+  *buffer = msg.data;
+  *out_len = msg.len;
+  *out_allocated_buffer = msg.data;
+
+  log_debug_every(100, "WebSocket received %zu bytes from queue", msg.len);
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t websocket_close(acip_transport_t *transport) {
+  websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
+
+  mutex_lock(&ws_data->state_mutex);
+
+  if (!ws_data->is_connected) {
+    mutex_unlock(&ws_data->state_mutex);
+    return ASCIICHAT_OK; // Already closed
+  }
+
+  ws_data->is_connected = false;
+  mutex_unlock(&ws_data->state_mutex);
+
+  // Close WebSocket connection
+  if (ws_data->wsi) {
+    lws_close_reason(ws_data->wsi, LWS_CLOSE_STATUS_NORMAL, NULL, 0);
+  }
+
+  // Wake any blocking recv() calls
+  cond_broadcast(&ws_data->queue_cond);
+
+  log_debug("WebSocket transport closed");
+  return ASCIICHAT_OK;
+}
+
+static acip_transport_type_t websocket_get_type(acip_transport_t *transport) {
+  (void)transport;
+  return ACIP_TRANSPORT_WEBSOCKET;
+}
+
+static socket_t websocket_get_socket(acip_transport_t *transport) {
+  (void)transport;
+  return INVALID_SOCKET_VALUE; // WebSocket has no underlying socket handle we can expose
+}
+
+static bool websocket_is_connected(acip_transport_t *transport) {
+  websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
+
+  mutex_lock(&ws_data->state_mutex);
+  bool connected = ws_data->is_connected;
+  mutex_unlock(&ws_data->state_mutex);
+
+  return connected;
+}
+
+// =============================================================================
+// WebSocket Transport Destroy Implementation
+// =============================================================================
+
+/**
+ * @brief Destroy WebSocket transport and free all resources
+ *
+ * This is called by the generic acip_transport_destroy() after calling close().
+ * Frees WebSocket-specific resources including context, receive queue,
+ * and synchronization primitives.
+ */
+static void websocket_destroy_impl(acip_transport_t *transport) {
+  if (!transport || !transport->impl_data) {
+    return;
+  }
+
+  websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
+
+  // Destroy WebSocket instance (if not already destroyed)
+  if (ws_data->wsi) {
+    // libwebsockets will clean up the wsi when we destroy the context
+    ws_data->wsi = NULL;
+  }
+
+  // Destroy WebSocket context (only if we own it - client transports only)
+  if (ws_data->context && ws_data->owns_context) {
+    lws_context_destroy(ws_data->context);
+    ws_data->context = NULL;
+  }
+
+  // Clear receive queue and free buffered messages
+  if (ws_data->recv_queue) {
+    mutex_lock(&ws_data->queue_mutex);
+
+    websocket_recv_msg_t msg;
+    while (ringbuffer_read(ws_data->recv_queue, &msg)) {
+      if (msg.data) {
+        SAFE_FREE(msg.data);
+      }
+    }
+
+    mutex_unlock(&ws_data->queue_mutex);
+    ringbuffer_destroy(ws_data->recv_queue);
+    ws_data->recv_queue = NULL;
+
+    if (ws_data->send_queue) {
+      ringbuffer_destroy(ws_data->send_queue);
+      ws_data->send_queue = NULL;
+    }
+  }
+
+  // Free send buffer
+  if (ws_data->send_buffer) {
+    SAFE_FREE(ws_data->send_buffer);
+    ws_data->send_buffer = NULL;
+  }
+
+  // Destroy synchronization primitives
+  mutex_destroy(&ws_data->state_mutex);
+  cond_destroy(&ws_data->queue_cond);
+  mutex_destroy(&ws_data->queue_mutex);
+
+  log_debug("Destroyed WebSocket transport resources");
+}
+
+// =============================================================================
+// WebSocket Transport Method Table
+// =============================================================================
+
+static const acip_transport_methods_t websocket_methods = {
+    .send = websocket_send,
+    .recv = websocket_recv,
+    .close = websocket_close,
+    .get_type = websocket_get_type,
+    .get_socket = websocket_get_socket,
+    .is_connected = websocket_is_connected,
+    .destroy_impl = websocket_destroy_impl,
+};
+
+// =============================================================================
+// WebSocket Transport Creation
+// =============================================================================
+
+/**
+ * @brief Create WebSocket client transport
+ *
+ * @param url WebSocket URL (e.g., "ws://localhost:27225")
+ * @param crypto_ctx Optional encryption context (can be NULL)
+ * @return Transport instance or NULL on failure
+ */
+acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto_context_t *crypto_ctx) {
+  if (!url) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "url is required");
+    return NULL;
+  }
+
+  // Parse URL to extract host, port, and path
+  // Format: ws://host:port/path or wss://host:port/path
+  const char *protocol_end = strstr(url, "://");
+  if (!protocol_end) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid WebSocket URL format (missing ://)");
+    return NULL;
+  }
+
+  bool use_ssl = (strncmp(url, "wss://", 6) == 0);
+  const char *host_start = protocol_end + 3;
+
+  // Find port (if specified)
+  const char *port_start = strchr(host_start, ':');
+  const char *path_start = strchr(host_start, '/');
+
+  char host[256] = {0};
+  int port = use_ssl ? 443 : 80;
+  char path[256] = "/";
+
+  if (port_start && (!path_start || port_start < path_start)) {
+    // Port is specified
+    size_t host_len = port_start - host_start;
+    if (host_len >= sizeof(host)) {
+      SET_ERRNO(ERROR_INVALID_PARAM, "Host name too long");
+      return NULL;
+    }
+    memcpy(host, host_start, host_len);
+    host[host_len] = '\0';
+
+    // Extract port
+    port = atoi(port_start + 1);
+    if (port <= 0 || port > 65535) {
+      SET_ERRNO(ERROR_INVALID_PARAM, "Invalid port number");
+      return NULL;
+    }
+  } else {
+    // No port specified, use default
+    size_t host_len = path_start ? (size_t)(path_start - host_start) : strlen(host_start);
+    if (host_len >= sizeof(host)) {
+      SET_ERRNO(ERROR_INVALID_PARAM, "Host name too long");
+      return NULL;
+    }
+    memcpy(host, host_start, host_len);
+    host[host_len] = '\0';
+  }
+
+  // Extract path
+  if (path_start) {
+    strncpy(path, path_start, sizeof(path) - 1);
+    path[sizeof(path) - 1] = '\0';
+  }
+
+  log_info("Connecting to WebSocket: %s (host=%s, port=%d, path=%s, ssl=%d)", url, host, port, path, use_ssl);
+
+  // Allocate transport structure
+  acip_transport_t *transport = SAFE_MALLOC(sizeof(acip_transport_t), acip_transport_t *);
+  if (!transport) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate WebSocket transport");
+    return NULL;
+  }
+
+  // Allocate WebSocket-specific data
+  websocket_transport_data_t *ws_data =
+      SAFE_CALLOC(1, sizeof(websocket_transport_data_t), websocket_transport_data_t *);
+  if (!ws_data) {
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate WebSocket transport data");
+    return NULL;
+  }
+
+  // Create receive queue
+  ws_data->recv_queue = ringbuffer_create(sizeof(websocket_recv_msg_t), WEBSOCKET_RECV_QUEUE_SIZE);
+  if (!ws_data->recv_queue) {
+    SAFE_FREE(ws_data);
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_MEMORY, "Failed to create receive queue");
+    return NULL;
+  }
+
+  // Initialize synchronization primitives
+  if (mutex_init(&ws_data->queue_mutex) != 0) {
+    ringbuffer_destroy(ws_data->recv_queue);
+    SAFE_FREE(ws_data);
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_INTERNAL, "Failed to initialize queue mutex");
+    return NULL;
+  }
+
+  if (cond_init(&ws_data->queue_cond) != 0) {
+    mutex_destroy(&ws_data->queue_mutex);
+    ringbuffer_destroy(ws_data->recv_queue);
+    SAFE_FREE(ws_data);
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_INTERNAL, "Failed to initialize queue condition variable");
+    return NULL;
+  }
+
+  if (mutex_init(&ws_data->state_mutex) != 0) {
+    cond_destroy(&ws_data->queue_cond);
+    mutex_destroy(&ws_data->queue_mutex);
+    ringbuffer_destroy(ws_data->recv_queue);
+    SAFE_FREE(ws_data);
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_INTERNAL, "Failed to initialize state mutex");
+    return NULL;
+  }
+
+  // Allocate initial send buffer
+  ws_data->send_buffer_capacity = LWS_PRE + 8192; // Initial 8KB buffer
+  ws_data->send_buffer = SAFE_MALLOC(ws_data->send_buffer_capacity, uint8_t *);
+  if (!ws_data->send_buffer) {
+    mutex_destroy(&ws_data->state_mutex);
+    cond_destroy(&ws_data->queue_cond);
+    mutex_destroy(&ws_data->queue_mutex);
+    ringbuffer_destroy(ws_data->recv_queue);
+    SAFE_FREE(ws_data);
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate send buffer");
+    return NULL;
+  }
+
+  // Create libwebsockets context
+  // Protocol array must persist for lifetime of context - use static
+  static struct lws_protocols client_protocols[] = {
+      {"acip", websocket_callback, 0, 4096, 0, NULL, 0}, {NULL, NULL, 0, 0, 0, NULL, 0} // Terminator
+  };
+
+  struct lws_context_creation_info info;
+  memset(&info, 0, sizeof(info));
+  info.port = CONTEXT_PORT_NO_LISTEN; // Client mode - no listening
+  info.protocols = client_protocols;
+  info.gid = (gid_t)-1; // Cast to avoid undefined behavior with unsigned type
+  info.uid = (uid_t)-1; // Cast to avoid undefined behavior with unsigned type
+  info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
+
+  ws_data->context = lws_create_context(&info);
+  if (!ws_data->context) {
+    SAFE_FREE(ws_data->send_buffer);
+    mutex_destroy(&ws_data->state_mutex);
+    cond_destroy(&ws_data->queue_cond);
+    mutex_destroy(&ws_data->queue_mutex);
+    ringbuffer_destroy(ws_data->recv_queue);
+    SAFE_FREE(ws_data);
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_NETWORK, "Failed to create libwebsockets context");
+    return NULL;
+  }
+
+  // Connect to WebSocket server
+  log_debug("Initiating WebSocket connection to %s:%d%s", host, port, path);
+  struct lws_client_connect_info connect_info;
+  memset(&connect_info, 0, sizeof(connect_info));
+  connect_info.context = ws_data->context;
+  connect_info.address = host;
+  connect_info.port = port;
+  connect_info.path = path;
+  connect_info.host = host;
+  connect_info.origin = host;
+  connect_info.protocol = "acip";
+  connect_info.ssl_connection = use_ssl ? LCCSCF_USE_SSL : 0;
+  connect_info.userdata = ws_data;
+
+  log_debug("Calling lws_client_connect_via_info...");
+  ws_data->wsi = lws_client_connect_via_info(&connect_info);
+  log_debug("lws_client_connect_via_info returned: %p", (void *)ws_data->wsi);
+  if (!ws_data->wsi) {
+    lws_context_destroy(ws_data->context);
+    SAFE_FREE(ws_data->send_buffer);
+    mutex_destroy(&ws_data->state_mutex);
+    cond_destroy(&ws_data->queue_cond);
+    mutex_destroy(&ws_data->queue_mutex);
+    ringbuffer_destroy(ws_data->recv_queue);
+    SAFE_FREE(ws_data);
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_NETWORK, "Failed to connect to WebSocket server");
+    return NULL;
+  }
+
+  ws_data->is_connected = false; // Will be set to true in LWS_CALLBACK_CLIENT_ESTABLISHED
+  ws_data->owns_context = true;  // Client transport owns the context
+
+  // Initialize transport
+  transport->methods = &websocket_methods;
+  transport->crypto_ctx = crypto_ctx;
+  transport->impl_data = ws_data;
+
+  // Wait for connection to establish (synchronous connection)
+  // Service the libwebsockets event loop until connected or timeout
+  log_debug("Waiting for WebSocket connection to establish...");
+  int timeout_ms = 5000; // 5 second timeout
+  int elapsed_ms = 0;
+  while (!ws_data->is_connected && elapsed_ms < timeout_ms) {
+    // Service libwebsockets (processes network events, triggers callbacks)
+    int result = lws_service(ws_data->context, 50); // 50ms timeout per iteration
+    if (result < 0) {
+      log_error("lws_service error during connection: %d", result);
+      lws_context_destroy(ws_data->context);
+      SAFE_FREE(ws_data->send_buffer);
+      mutex_destroy(&ws_data->state_mutex);
+      cond_destroy(&ws_data->queue_cond);
+      mutex_destroy(&ws_data->queue_mutex);
+      ringbuffer_destroy(ws_data->recv_queue);
+      SAFE_FREE(ws_data);
+      SAFE_FREE(transport);
+      SET_ERRNO(ERROR_NETWORK, "WebSocket connection failed");
+      return NULL;
+    }
+    elapsed_ms += 50;
+  }
+
+  if (!ws_data->is_connected) {
+    log_error("WebSocket connection timeout after %d ms", elapsed_ms);
+    lws_context_destroy(ws_data->context);
+    SAFE_FREE(ws_data->send_buffer);
+    mutex_destroy(&ws_data->state_mutex);
+    cond_destroy(&ws_data->queue_cond);
+    mutex_destroy(&ws_data->queue_mutex);
+    ringbuffer_destroy(ws_data->recv_queue);
+    SAFE_FREE(ws_data);
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_NETWORK, "WebSocket connection timeout");
+    return NULL;
+  }
+
+  log_info("WebSocket connection established (crypto: %s)", crypto_ctx ? "enabled" : "disabled");
+
+  return transport;
+}
+
+/**
+ * @brief Create WebSocket server transport from existing connection
+ *
+ * Wraps an already-established libwebsockets connection (from server accept).
+ * Used by websocket_server module to create transports for incoming clients.
+ *
+ * @param wsi Established libwebsockets connection (not owned by transport)
+ * @param crypto_ctx Optional crypto context
+ * @return Transport instance or NULL on error
+ */
+acip_transport_t *acip_websocket_server_transport_create(struct lws *wsi, crypto_context_t *crypto_ctx) {
+  if (!wsi) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid wsi parameter");
+    return NULL;
+  }
+
+  // Allocate transport structure
+  acip_transport_t *transport = SAFE_CALLOC(1, sizeof(acip_transport_t), acip_transport_t *);
+  if (!transport) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate WebSocket transport");
+    return NULL;
+  }
+
+  // Allocate transport-specific data
+  websocket_transport_data_t *ws_data =
+      SAFE_CALLOC(1, sizeof(websocket_transport_data_t), websocket_transport_data_t *);
+  if (!ws_data) {
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate WebSocket transport data");
+    return NULL;
+  }
+
+  // Initialize receive queue
+  ws_data->recv_queue = ringbuffer_create(sizeof(websocket_recv_msg_t), WEBSOCKET_RECV_QUEUE_SIZE);
+  if (!ws_data->recv_queue) {
+    SAFE_FREE(ws_data);
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_MEMORY, "Failed to create receive queue");
+    return NULL;
+  }
+
+  // Initialize send queue (for server-side transports)
+  ws_data->send_queue = ringbuffer_create(sizeof(websocket_recv_msg_t), WEBSOCKET_RECV_QUEUE_SIZE);
+  if (!ws_data->send_queue) {
+    ringbuffer_destroy(ws_data->recv_queue);
+    SAFE_FREE(ws_data);
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_MEMORY, "Failed to create send queue");
+    return NULL;
+  }
+
+  // Initialize synchronization primitives
+  if (mutex_init(&ws_data->queue_mutex) != 0) {
+    ringbuffer_destroy(ws_data->recv_queue);
+    SAFE_FREE(ws_data);
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_NETWORK, "Failed to initialize queue mutex");
+    return NULL;
+  }
+
+  if (cond_init(&ws_data->queue_cond) != 0) {
+    mutex_destroy(&ws_data->queue_mutex);
+    ringbuffer_destroy(ws_data->recv_queue);
+    SAFE_FREE(ws_data);
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_NETWORK, "Failed to initialize queue condition variable");
+    return NULL;
+  }
+
+  if (mutex_init(&ws_data->state_mutex) != 0) {
+    cond_destroy(&ws_data->queue_cond);
+    mutex_destroy(&ws_data->queue_mutex);
+    ringbuffer_destroy(ws_data->recv_queue);
+    SAFE_FREE(ws_data);
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_NETWORK, "Failed to initialize state mutex");
+    return NULL;
+  }
+
+  // Allocate send buffer with LWS_PRE padding
+  size_t initial_capacity = 4096 + LWS_PRE;
+  ws_data->send_buffer = SAFE_MALLOC(initial_capacity, uint8_t *);
+  if (!ws_data->send_buffer) {
+    mutex_destroy(&ws_data->state_mutex);
+    cond_destroy(&ws_data->queue_cond);
+    mutex_destroy(&ws_data->queue_mutex);
+    ringbuffer_destroy(ws_data->recv_queue);
+    SAFE_FREE(ws_data);
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate send buffer");
+    return NULL;
+  }
+  ws_data->send_buffer_capacity = initial_capacity;
+
+  // Store connection info (server-side: no context ownership, connection already established)
+  ws_data->wsi = wsi;
+  ws_data->context = lws_get_context(wsi); // Get context from wsi (not owned)
+  ws_data->owns_context = false;           // Server owns context, not transport
+  ws_data->is_connected = true;            // Already connected (server-side)
+
+  // Initialize transport
+  transport->methods = &websocket_methods;
+  transport->crypto_ctx = crypto_ctx;
+  transport->impl_data = ws_data;
+
+  log_info("Created WebSocket server transport (crypto: %s)", crypto_ctx ? "enabled" : "disabled");
+
+  return transport;
 }

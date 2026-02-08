@@ -83,7 +83,8 @@ export enum ColorFilter {
   CYAN = 8,
   PINK = 9,
   RED = 10,
-  YELLOW = 11
+  YELLOW = 11,
+  RAINBOW = 12
 }
 
 // Import the Emscripten-generated module factory
@@ -125,7 +126,8 @@ const colorFilterNames: Record<ColorFilter, string> = {
   [ColorFilter.CYAN]: 'cyan',
   [ColorFilter.PINK]: 'pink',
   [ColorFilter.RED]: 'red',
-  [ColorFilter.YELLOW]: 'yellow'
+  [ColorFilter.YELLOW]: 'yellow',
+  [ColorFilter.RAINBOW]: 'rainbow'
 };
 
 const renderModeNames: Record<RenderMode, string> = {
@@ -140,6 +142,7 @@ const renderModeNames: Record<RenderMode, string> = {
 export async function initMirrorWasm(options: MirrorInitOptions = {}): Promise<void> {
   if (wasmModule) return;
 
+  console.log('[WASM] Starting module factory...');
   // Provide runtime environment functions for Emscripten
   wasmModule = await MirrorModuleFactory({
     // libsodium crypto random - returns 32-bit unsigned integer
@@ -149,10 +152,12 @@ export async function initMirrorWasm(options: MirrorInitOptions = {}): Promise<v
       return buf[0];
     }
   });
+  console.log('[WASM] Module factory completed');
 
   if (!wasmModule) {
     throw new Error('Failed to load WASM module');
   }
+  console.log('[WASM] Module loaded successfully');
 
   // Build argument string for options_init()
   const args: string[] = ['mirror'];
@@ -189,11 +194,14 @@ export async function initMirrorWasm(options: MirrorInitOptions = {}): Promise<v
   try {
     wasmModule.stringToUTF8(argsString, strPtr, strLen);
 
+    console.log('[WASM] Calling _mirror_init_with_args...');
     // Initialize libasciichat with parsed arguments
     const result = wasmModule._mirror_init_with_args(strPtr);
+    console.log('[WASM] _mirror_init_with_args returned:', result);
     if (result !== 0) {
       throw new Error('Failed to initialize mirror WASM module');
     }
+    console.log('[WASM] Initialization complete!');
   } finally {
     wasmModule._free(strPtr);
   }

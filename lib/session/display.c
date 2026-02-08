@@ -438,8 +438,10 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
     // Apply the color filter in-place
     if (filter_image && filter_image->pixels) {
       uint64_t t_filter_apply_start = time_get_ns();
+      // Convert current time to seconds for rainbow animation
+      float time_seconds = (float)t_filter_apply_start / (float)NS_PER_SEC_INT;
       apply_color_filter((uint8_t *)filter_image->pixels, filter_image->w, filter_image->h, filter_image->w * 3,
-                         color_filter);
+                         color_filter, time_seconds);
       uint64_t t_filter_apply_end = time_get_ns();
 
       log_dev("TIMING_FILTER_APPLY: %llu us", (t_filter_apply_end - t_filter_apply_start) / 1000);

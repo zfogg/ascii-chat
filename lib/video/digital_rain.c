@@ -143,6 +143,7 @@ digital_rain_t *digital_rain_init(int num_columns, int num_rows) {
   rain->color_g = DIGITAL_RAIN_DEFAULT_COLOR_G;
   rain->color_b = DIGITAL_RAIN_DEFAULT_COLOR_B;
   rain->cursor_brightness = DIGITAL_RAIN_DEFAULT_CURSOR_BRIGHTNESS;
+  rain->rainbow_mode = false;
   rain->first_frame = true;
   rain->time = 0.0f;
 
@@ -204,12 +205,22 @@ void digital_rain_set_color_from_filter(digital_rain_t *rain, color_filter_t fil
 
   // If no filter is set, use default Matrix green
   if (filter == COLOR_FILTER_NONE) {
+    rain->rainbow_mode = false;
     digital_rain_set_color(rain, DIGITAL_RAIN_DEFAULT_COLOR_R, DIGITAL_RAIN_DEFAULT_COLOR_G,
                            DIGITAL_RAIN_DEFAULT_COLOR_B);
     return;
   }
 
+  // Rainbow mode: enable dynamic color cycling
+  if (filter == COLOR_FILTER_RAINBOW) {
+    rain->rainbow_mode = true;
+    // Set initial color to red (will be overridden during rendering)
+    digital_rain_set_color(rain, 255, 0, 0);
+    return;
+  }
+
   // Get color from filter metadata
+  rain->rainbow_mode = false;
   const color_filter_def_t *filter_def = color_filter_get_metadata(filter);
   if (filter_def) {
     digital_rain_set_color(rain, filter_def->r, filter_def->g, filter_def->b);
@@ -364,6 +375,11 @@ char *digital_rain_apply(digital_rain_t *rain, const char *frame, float delta_ti
   // Update time
   rain->time += delta_time * rain->animation_speed;
   float sim_time = rain->time;
+
+  // Update rainbow color if rainbow mode is enabled
+  if (rain->rainbow_mode) {
+    color_filter_calculate_rainbow(sim_time, &rain->color_r, &rain->color_g, &rain->color_b);
+  }
 
   // Allocate output buffer (input size + overhead for ANSI codes)
   // Estimate: each character might need up to 20 bytes for ANSI codes

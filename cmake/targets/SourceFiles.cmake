@@ -304,6 +304,7 @@ set(NETWORK_SRCS
     lib/network/tcp/transport.c
     # WebSocket transport layer
     lib/network/websocket/transport.c
+    lib/network/websocket/server.c
     # WebRTC P2P transport
     lib/network/webrtc/webrtc.c
     lib/network/webrtc/transport.c

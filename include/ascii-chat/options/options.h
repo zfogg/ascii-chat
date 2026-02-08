@@ -787,6 +787,17 @@ typedef enum {
 } option_mode_bitmask_t;
 
 /**
+ * @brief Mode group macros for examples
+ *
+ * These macros combine multiple mode bits to allow examples to apply to
+ * logical groups of modes (e.g., server-like modes, client-like modes).
+ */
+#define OPTION_MODE_SERVER_LIKE (OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC)
+#define OPTION_MODE_CLIENT_LIKE (OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY)
+#define OPTION_MODE_NETWORKED                                                                                          \
+  (OPTION_MODE_SERVER | OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY)
+
+/**
  * @brief Consolidated options structure
  *
  * All options from the scattered extern globals are now in a single struct.
