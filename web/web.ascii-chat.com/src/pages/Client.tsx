@@ -22,8 +22,10 @@ export function ClientPage() {
   const [client, setClient] = useState<ClientConnection | null>(null);
   const [serverUrl, setServerUrl] = useState<string>('ws://localhost:27226');
 
-  // Initialize WASM on mount
+  // Initialize WASM and auto-connect on mount
   useEffect(() => {
+    let clientConn: ClientConnection | null = null;
+
     const init = async () => {
       try {
         setStatus('Initializing WASM...');
@@ -34,14 +36,61 @@ export function ClientPage() {
         }
 
         setStatus('WASM initialized successfully');
+
+        // Auto-generate keypair
+        setStatus('Generating keypair...');
+        const pubkey = await generateKeypair();
+        setPublicKey(pubkey);
+        setStatus('Keypair generated');
+
+        // Auto-connect to server
+        setStatus('Connecting to server...');
+
+        // Create client connection
+        const conn = new ClientConnection({
+          serverUrl,
+          width: 80,
+          height: 40
+        });
+        clientConn = conn;
+
+        // Set up callbacks
+        conn.onStateChange((state) => {
+          setConnectionState(state);
+          const stateNames = {
+            [ConnectionState.DISCONNECTED]: 'Disconnected',
+            [ConnectionState.CONNECTING]: 'Connecting',
+            [ConnectionState.HANDSHAKE]: 'Performing handshake',
+            [ConnectionState.CONNECTED]: 'Connected',
+            [ConnectionState.ERROR]: 'Error'
+          };
+          setStatus(stateNames[state] || 'Unknown state');
+        });
+
+        conn.onPacketReceived((packet, payload) => {
+          console.log('Received packet:', packet, 'payload length:', payload.length);
+        });
+
+        // Connect
+        await conn.connect();
+        setClient(conn);
+        setPublicKey(conn.getPublicKey() || '');
       } catch (error) {
         setStatus(`Error: ${error}`);
-        console.error('Failed to initialize WASM:', error);
+        console.error('Failed to initialize or connect:', error);
       }
     };
 
     init();
-  }, []);
+
+    // Cleanup on unmount
+    return () => {
+      if (clientConn) {
+        clientConn.disconnect();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount
 
   const handleGenerateKeypair = async () => {
     try {

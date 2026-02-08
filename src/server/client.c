@@ -943,7 +943,11 @@ int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
 
   // Initialize crypto context for this client
   memset(&client->crypto_handshake_ctx, 0, sizeof(client->crypto_handshake_ctx));
-  client->crypto_initialized = true; // Already done via ACDS signaling
+  log_debug("[ADD_WEBRTC_CLIENT] Setting crypto_initialized=false (will be set to true after handshake completes)");
+  // Do NOT set crypto_initialized = true here! The handshake must complete first.
+  // For WebSocket clients: websocket_client_handler will perform the handshake
+  // For WebRTC clients: ACDS signaling may have already done crypto (future enhancement)
+  client->crypto_initialized = false;
 
   // Initialize pending packet storage (unused for WebRTC, but keep for consistency)
   client->pending_packet_type = 0;
@@ -1040,11 +1044,13 @@ int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
   // The render threads MUST be created before send thread to avoid the race condition
   // where send thread reads empty frames before render thread generates the first real frame
   uint32_t client_id_snapshot = atomic_load(&client->client_id);
+  log_debug("[ADD_WEBRTC_CLIENT] Starting client threads (receive, render) for client %u...", client_id_snapshot);
   if (start_client_threads(server_ctx, client, false) != 0) {
     log_error("Failed to start threads for WebRTC client %u", client_id_snapshot);
     return -1;
   }
   log_debug("Created receive thread for WebRTC client %u", client_id_snapshot);
+  log_debug("[ADD_WEBRTC_CLIENT] Receive thread started - thread will now be processing packets", client_id_snapshot);
 
   // Create send thread for this client
   char thread_name[64];
@@ -1882,6 +1888,18 @@ void *client_send_thread_func(void *arg) {
       uint64_t step3_ns = time_get_ns();
       uint64_t step4_ns = time_get_ns();
 
+      // Check if crypto handshake is complete before sending (prevents sending to unauthenticated clients)
+      mutex_lock(&client->client_state_mutex);
+      bool crypto_ready = GET_OPTION(no_encrypt) ||
+                          (client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_handshake_ctx));
+      mutex_unlock(&client->client_state_mutex);
+
+      if (!crypto_ready) {
+        log_debug_every(LOG_RATE_DEFAULT, "Skipping frame send to client %u - crypto handshake not complete",
+                        client->client_id);
+        continue; // Skip this frame, will try again on next loop iteration
+      }
+
       // Get transport reference briefly to avoid deadlock on TCP buffer full
       // ACIP transport handles header building, CRC32, encryption internally
       log_debug("Send thread: About to send frame to client %u (width=%u, height=%u, data=%p)", client->client_id,
@@ -1980,12 +1998,20 @@ void broadcast_server_state_to_all_clients(void) {
       active_video_count++;
     }
     if (is_active && g_client_manager.clients[i].socket != INVALID_SOCKET_VALUE) {
-      // Get crypto context and skip if not ready (handshake still in progress)
+      // Skip clients that haven't completed crypto handshake yet
+      // Check both crypto_initialized AND crypto context (defense in depth)
+      if (!GET_OPTION(no_encrypt) && !g_client_manager.clients[i].crypto_initialized) {
+        log_debug("Skipping server_state broadcast to client %u: crypto handshake not complete",
+                  atomic_load(&g_client_manager.clients[i].client_id));
+        continue;
+      }
+
+      // Get crypto context (may be NULL if --no-encrypt)
       const crypto_context_t *crypto_ctx =
           crypto_handshake_get_context(&g_client_manager.clients[i].crypto_handshake_ctx);
-      if (!crypto_ctx) {
-        // Skip clients that haven't completed crypto handshake yet
-        log_debug("Skipping server_state broadcast to client %u: crypto handshake not ready",
+      if (!GET_OPTION(no_encrypt) && !crypto_ctx) {
+        // Skip clients without valid crypto context
+        log_debug("Skipping server_state broadcast to client %u: no crypto context",
                   atomic_load(&g_client_manager.clients[i].client_id));
         continue;
       }

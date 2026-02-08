@@ -103,6 +103,7 @@ export class SocketBridge {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       throw new Error('WebSocket not connected');
     }
+    console.log('[SocketBridge] Sending packet, length:', packet.length, 'bytes:', Array.from(packet.slice(0, Math.min(32, packet.length))).map(b => b.toString(16).padStart(2, '0')).join(' '));
     this.ws.send(packet);
   }
 

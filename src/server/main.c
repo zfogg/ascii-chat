@@ -1268,6 +1268,8 @@ static void *websocket_client_handler(void *arg) {
   }
 
   log_info("WebSocket client connected from %s:%d", ctx->client_ip, ctx->client_port);
+  log_debug("[WS_HANDLER] ===== ENTRY: WebSocket client handler called for %s:%d =====", ctx->client_ip,
+            ctx->client_port);
 
   // Extract server context from user_data
   server_context_t *server_ctx = (server_context_t *)ctx->user_data;
@@ -1281,9 +1283,10 @@ static void *websocket_client_handler(void *arg) {
   }
 
   // STEP 1: Add client first (creates client structure and starts threads)
+  log_debug("[WS_HANDLER] STEP 1: Calling add_webrtc_client()...");
   int client_id = add_webrtc_client(server_ctx, ctx->transport, ctx->client_ip);
   if (client_id < 0) {
-    log_error("Failed to add WebSocket client");
+    log_error("[WS_HANDLER] FAILED: add_webrtc_client returned %d", client_id);
     if (ctx->transport) {
       acip_transport_destroy(ctx->transport);
     }
@@ -1295,38 +1298,50 @@ static void *websocket_client_handler(void *arg) {
   ctx->transport = NULL;
 
   log_info("WebSocket client %d added successfully", client_id);
+  log_debug("[WS_HANDLER] add_webrtc_client returned client_id=%d, transport ownership transferred", client_id);
 
   // STEP 2: Get client structure and initialize crypto handshake
+  log_debug("[WS_HANDLER] STEP 2: Finding client structure for ID %d...", client_id);
   client_info_t *client = find_client_by_id((uint32_t)client_id);
   if (!client) {
-    log_error("WebSocket client %d not found after successful add", client_id);
+    log_error("[WS_HANDLER] FAILED: Client %d not found after successful add", client_id);
     SAFE_FREE(ctx);
     return NULL;
   }
+  log_debug("[WS_HANDLER] Found client structure: client=%p, transport=%p, crypto_initialized=%d", (void *)client,
+            (void *)client->transport, client->crypto_initialized);
 
   // Initialize crypto handshake context directly in client structure
   // This must happen BEFORE sending KEY_EXCHANGE_INIT so that when the client
   // responds, the receive thread has a properly initialized context
+  log_debug("[WS_HANDLER] Calling crypto_handshake_init()...");
   asciichat_error_t handshake_init_result = crypto_handshake_init(&client->crypto_handshake_ctx, true /* is_server */);
   if (handshake_init_result != ASCIICHAT_OK) {
-    log_error("Failed to initialize crypto handshake for WebSocket client %d: %s", client_id,
+    log_error("[WS_HANDLER] FAILED: crypto_handshake_init returned %d: %s", handshake_init_result,
               asciichat_error_string(handshake_init_result));
     remove_client(server_ctx, (uint32_t)client_id);
     SAFE_FREE(ctx);
     return NULL;
   }
+  log_debug("[WS_HANDLER] crypto_handshake_init OK, handshake_ctx.state=%d", client->crypto_handshake_ctx.state);
 
   // Mark crypto as NOT initialized yet (will be set to true when handshake completes)
+  log_debug("[WS_HANDLER] Setting crypto_initialized from %d to false...", client->crypto_initialized);
   client->crypto_initialized = false;
 
   log_debug("Initialized crypto handshake context for WebSocket client %d", client_id);
+  log_debug("[WS_HANDLER] crypto_initialized now = %d", client->crypto_initialized);
 
   // STEP 3: Now send KEY_EXCHANGE_INIT to start the handshake
   // The receive thread is already running, but it will use the properly initialized context
+  log_debug("[WS_HANDLER] STEP 3: Calling crypto_handshake_server_start()...");
+  log_debug("[WS_HANDLER] Arguments: ctx=%p (state=%d), transport=%p (type=%d)", (void *)&client->crypto_handshake_ctx,
+            client->crypto_handshake_ctx.state, (void *)client->transport,
+            client->transport ? client->transport->methods->get_type(client->transport) : -1);
   asciichat_error_t handshake_start_result =
       crypto_handshake_server_start(&client->crypto_handshake_ctx, client->transport);
   if (handshake_start_result != ASCIICHAT_OK) {
-    log_error("Failed to start crypto handshake for WebSocket client %d: %s", client_id,
+    log_error("[WS_HANDLER] FAILED: crypto_handshake_server_start returned %d: %s", handshake_start_result,
               asciichat_error_string(handshake_start_result));
     remove_client(server_ctx, (uint32_t)client_id);
     SAFE_FREE(ctx);
@@ -1334,16 +1349,14 @@ static void *websocket_client_handler(void *arg) {
   }
 
   log_debug("Sent CRYPTO_KEY_EXCHANGE_INIT to WebSocket client %d", client_id);
+  log_debug("[WS_HANDLER] ===== SUCCESS: Handshake started for client %d =====", client_id);
 
-  // Wait for client threads to finish (they'll exit when connection closes)
-  while (atomic_load(&client->client_id) != 0) {
-    platform_sleep_ms(100);
-  }
+  // Handler's job is done - client is set up and handshake started.
+  // The receive thread will handle incoming packets and complete the handshake.
+  // The LWS_CALLBACK_CLOSED callback will handle cleanup when connection closes.
+  // Do NOT call remove_client() here - that causes premature cleanup.
 
-  log_info("WebSocket client %d disconnected", client_id);
-
-  // Remove client (cleanup happens in remove_client)
-  remove_client(server_ctx, (uint32_t)client_id);
+  log_info("WebSocket client %d handler setup complete", client_id);
 
   SAFE_FREE(ctx);
   return NULL;

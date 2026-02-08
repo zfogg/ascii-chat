@@ -205,7 +205,8 @@ int server_crypto_handshake(client_info_t *client) {
     FATAL(init_result, "Failed to initialize crypto handshake for client %u", atomic_load(&client->client_id));
     return -1;
   }
-  client->crypto_initialized = true;
+  // Do NOT set crypto_initialized here - it must be set after handshake completes
+  client->crypto_initialized = false;
 
   // Set up server keys in the handshake context
   if (g_server_encryption_enabled && g_server_private_key.type == KEY_TYPE_ED25519) {
@@ -605,6 +606,7 @@ int server_crypto_handshake(client_info_t *client) {
   // Check if handshake completed during auth challenge (no authentication needed)
   if (client->crypto_handshake_ctx.state == CRYPTO_HANDSHAKE_READY) {
     uint32_t cid = atomic_load(&client->client_id);
+    client->crypto_initialized = true;
     STOP_TIMER_AND_LOG(debug, 100 * NS_PER_MS_INT, "server_crypto_handshake_client_%u",
                        "Crypto handshake completed successfully for client %u (no authentication)", cid);
     return 0;
@@ -633,6 +635,7 @@ int server_crypto_handshake(client_info_t *client) {
   }
 
   uint32_t cid = atomic_load(&client->client_id);
+  client->crypto_initialized = true;
   STOP_TIMER_AND_LOG(debug, 100 * NS_PER_MS_INT, "server_crypto_handshake_client_%u",
                      "Crypto handshake completed successfully for client %u", cid);
 
