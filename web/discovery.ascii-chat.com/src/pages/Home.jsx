@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Analytics } from '@vercel/analytics/react'
-import { Footer, PreCode, Heading, Button, Link } from '@ascii-chat/shared/components'
+import { Footer, CodeBlock, PreCode, Heading, Button, Link } from '@ascii-chat/shared/components'
 import { ACDSHead } from '../components/ACDSHead'
 
 function Home() {
@@ -130,44 +130,44 @@ function Home() {
         <p className="leading-relaxed mb-4 text-base md:text-lg">
           For complete documentation and options, use the built-in help system:
         </p>
-        <PreCode>{`# Read the full ascii-chat manual
+        <CodeBlock language="bash">{`# Read the full ascii-chat manual
 man ascii-chat
 
 # Get ACDS-specific help and options
 ascii-chat discovery-service --help
 
 # General ascii-chat help
-ascii-chat --help`}</PreCode>
+ascii-chat --help`}</CodeBlock>
       </section>
 
       <section className="mb-12">
         <Heading level={2} className="text-blue-400 border-b border-gray-700 pb-2 mb-4 text-2xl md:text-3xl">💻 Usage Examples</Heading>
 
         <Heading level={3} className="text-gray-200 mt-6 mb-2 text-xl md:text-2xl">Server: Create a Session</Heading>
-        <PreCode>{`# Start a server and register with ACDS (uses discovery-service.ascii-chat.com by default)
+        <CodeBlock language="bash">{`# Start a server and register with ACDS (uses discovery-service.ascii-chat.com by default)
 ascii-chat server --discovery
 
 # ACDS will return a session string like:
-# Session: happy-sunset-ocean`}</PreCode>
+# Session: happy-sunset-ocean`}</CodeBlock>
 
         <Heading level={3} className="text-gray-200 mt-6 mb-2 text-xl md:text-2xl">Client: Join a Session</Heading>
-        <PreCode>{`# Connect using the session string (uses discovery-service.ascii-chat.com by default)
+        <CodeBlock language="bash">{`# Connect using the session string (uses discovery-service.ascii-chat.com by default)
 ascii-chat client happy-sunset-ocean
 
 # That's it! No configuration needed - the client automatically:
 # - Connects to discovery-service.ascii-chat.com:27225
 # - Trusts keys from ${window.location.hostname}
-# - Looks up the session and connects to the server`}</PreCode>
+# - Looks up the session and connects to the server`}</CodeBlock>
 
         <Heading level={3} className="text-gray-200 mt-6 mb-2 text-xl md:text-2xl">Manual Key Verification (Optional)</Heading>
-        <PreCode>{`# Download and verify SSH public key
+        <CodeBlock language="bash">{`# Download and verify SSH public key
 curl -O ${baseUrl}/key.pub
 ssh-keygen -lf key.pub
 
 # Verify fingerprint matches: SHA256:Uvr6k+9VjcC60gbVtcvwiVZDsIfB6jZvMuD4G2FME6w
 
 # Connect with explicit key verification (optional - automatic by default)
-ascii-chat client happy-sunset-ocean --discovery-service-key ./key.pub`}</PreCode>
+ascii-chat client happy-sunset-ocean --discovery-service-key ./key.pub`}</CodeBlock>
       </section>
 
       <section className="mb-12">
@@ -187,7 +187,7 @@ ascii-chat client happy-sunset-ocean --discovery-service-key ./key.pub`}</PreCod
           You can run a private ACDS server for your organization. Third-party ACDS servers require
           clients to explicitly configure your public key via the <code className="bg-gray-800 px-1 rounded">--discovery-service-key</code> flag.
         </p>
-        <PreCode>{`# Start your own ACDS server with SSH and GPG keys
+        <CodeBlock language="bash">{`# Start your own ACDS server with SSH and GPG keys
 ascii-chat discovery-service 0.0.0.0 :: --port 27225 \\
   --key ~/.ssh/id_ed25519 \\
   --key gpg:YOUR_GPG_KEY_ID
@@ -200,7 +200,7 @@ ascii-chat client session-name \\
   --discovery-service your-acds.example.com \\
   --discovery-service-key https://your-acds.example.com/key.pub \\
   --key ~/.ssh/id_ed25519 \\
-  --server-key gpg:SERVER_GPG_KEY_ID`}</PreCode>
+  --server-key gpg:SERVER_GPG_KEY_ID`}</CodeBlock>
         <p className="leading-relaxed mb-4 text-base md:text-lg">
           <strong>Important:</strong> You should share the public key with ascii-chatters in a safe way.
           We recommend pre-sharing them safely somehow or hosting them on a website at a domain you control and

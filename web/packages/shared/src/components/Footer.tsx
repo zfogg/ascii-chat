@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Fragment } from "react";
 import { CommitLink } from "./CommitLink";
 import { Link } from "./Link";
 
@@ -21,17 +22,16 @@ export function Footer({ links, commitSha, onCommitClick, extraLine, authorLinkC
     <footer className={`${className} w-full flex flex-col text-center text-sm md:text-base`}>
       <p className="mb-3 mx-auto flex flex-row flex-wrap justify-center items-center gap-2">
         {links.map((link, index) => (
-          <>
-            {index > 0 && <span key={`sep-${index}`} className="text-gray-500">·</span>}
+          <Fragment key={link.href}>
+            {index > 0 && <span className="text-gray-500">·</span>}
             <Link
-              key={link.href}
               href={link.href}
               onClick={link.onClick}
               className={`${link.color} transition-colors whitespace-nowrap`}
             >
               {link.label}
             </Link>
-          </>
+          </Fragment>
         ))}
       </p>
       {extraLine && (

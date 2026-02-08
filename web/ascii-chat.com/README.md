@@ -40,4 +40,5 @@ Deploy to Vercel or any static hosting service. The site is built to `dist/`.
 - **/man** - Complete man page reference (auto-generated)
 
 TODO:
-* SSR
+
+- SSR

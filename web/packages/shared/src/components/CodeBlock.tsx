@@ -38,7 +38,6 @@ export function CodeBlock({
         border: '1px solid #1f2937',
         borderRadius: '0.5rem',
         padding: '1rem',
-        margin: 0,
         fontSize: '0.875rem',
         lineHeight: '1.5',
       }}
