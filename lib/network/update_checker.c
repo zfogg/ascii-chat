@@ -366,3 +366,48 @@ install_method_t update_check_detect_install_method(void) {
   // Default to GitHub releases
   return INSTALL_METHOD_GITHUB;
 }
+
+void update_check_get_upgrade_suggestion(install_method_t method, const char *latest_version, char *buffer,
+                                         size_t buffer_size) {
+  if (!buffer || buffer_size == 0) {
+    return;
+  }
+
+  switch (method) {
+  case INSTALL_METHOD_HOMEBREW:
+    snprintf(buffer, buffer_size, "brew upgrade ascii-chat");
+    break;
+
+  case INSTALL_METHOD_ARCH_AUR:
+    // Check if paru is available, otherwise suggest yay
+    if (system("command -v paru >/dev/null 2>&1") == 0) {
+      snprintf(buffer, buffer_size, "paru -S ascii-chat");
+    } else {
+      snprintf(buffer, buffer_size, "yay -S ascii-chat");
+    }
+    break;
+
+  case INSTALL_METHOD_GITHUB:
+  case INSTALL_METHOD_UNKNOWN:
+  default:
+    snprintf(buffer, buffer_size, "https://github.com/zfogg/ascii-chat/releases/tag/%s",
+             latest_version ? latest_version : "latest");
+    break;
+  }
+}
+
+void update_check_format_notification(const update_check_result_t *result, char *buffer, size_t buffer_size) {
+  if (!result || !buffer || buffer_size == 0) {
+    return;
+  }
+
+  // Get upgrade suggestion
+  install_method_t method = update_check_detect_install_method();
+  char suggestion[512];
+  update_check_get_upgrade_suggestion(method, result->latest_version, suggestion, sizeof(suggestion));
+
+  // Format: "Update available: v0.8.1 (f8dc35e1) → v0.9.0 (a1b2c3d4). Run: brew upgrade ascii-chat"
+  snprintf(buffer, buffer_size, "Update available: %s (%.8s) → %s (%.8s). %s%s", result->current_version,
+           result->current_sha, result->latest_version, result->latest_sha,
+           (method == INSTALL_METHOD_GITHUB || method == INSTALL_METHOD_UNKNOWN) ? "Download: " : "Run: ", suggestion);
+}
