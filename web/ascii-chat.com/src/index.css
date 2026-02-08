@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import "@ascii-chat/shared/styles/base.css";
 
+@source ".";
+@source "../../packages/shared/src";
+
 /* Mobile overflow fix for docs pages */
 .docs-container {
   max-width: min(64rem, 100vw) !important;
