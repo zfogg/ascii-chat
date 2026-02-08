@@ -14,7 +14,7 @@
 #include "ascii-chat/platform/mutex.h"
 #include "ascii-chat/util/pcre2.h"
 #include "ascii-chat/util/utf8.h"
-#include "ascii-chat/util/log_file_parser.h"
+#include "ascii-chat/logging/file_parser.h"
 #include "ascii-chat/session/session_log_buffer.h"
 #include "ascii-chat/options/options.h"
 
