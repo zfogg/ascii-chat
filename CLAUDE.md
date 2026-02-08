@@ -75,24 +75,30 @@ ascii-chat binary has four primary modes:
 
 ### Log Filtering with --grep
 
-Searches logs and log headers.
+Searches logs and log headers. Supports two formats:
+- **Format 1**: `/pattern/flags` - Regex with flags (case-insensitive, context lines, etc.)
+- **Format 2**: `pattern` - Plain regex without slashes or flags
 
 ```bash
-# Filter logs to only show lines matching a pattern. /pattern/flag format.
-./build/bin/ascii-chat server --grep "/DEBUG/"
-./build/bin/ascii-chat server --grep "/handshake/i"
-./build/bin/ascii-chat client --grep "/ERROR|WARN/g"
-# Search for fixed strings with the /F flag.
-./build/bin/ascii-chat client --grep "/(YO)/F"
-# C A and B are flags that take numbers as arguments
+# Plain regex format (no slashes, no flags)
+./build/bin/ascii-chat server --grep "DEBUG"
+./build/bin/ascii-chat server --grep "handshake|crypto"
+./build/bin/ascii-chat client --grep "ERROR|WARN"
+
+# Slash format with flags
+./build/bin/ascii-chat server --grep "/handshake/i"        # Case-insensitive
+./build/bin/ascii-chat client --grep "/ERROR/C2"           # 2 lines of context
+./build/bin/ascii-chat client --grep "/(YO)/F"             # Fixed string (literal)
+
+# Flags: i(case-insensitive), F(fixed string), C/A/B(context), g(global highlight), I(invert)
 ./build/bin/ascii-chat client --grep "/test/igC2"
 ./build/bin/ascii-chat client --grep "/test/igB1A3"
-# Pass --grep multiple times to OR-logic multiple patterns
-./build/bin/ascii-chat client --grep "/test1/igB1A3" --grep "/test2/igC2"
 
+# Pass --grep multiple times to OR-logic multiple patterns (can mix formats)
+./build/bin/ascii-chat client --grep "/test1/igB1A3" --grep "test2"
 
 # Combine with log levels
-./build/bin/ascii-chat --log-level debug server --grep "/crypto/"
+./build/bin/ascii-chat --log-level debug server --grep "crypto"
 ```
 
 ### Other Debug Options

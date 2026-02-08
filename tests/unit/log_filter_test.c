@@ -83,14 +83,106 @@ Test(log_filter, pattern_format_valid) {
 }
 
 Test(log_filter, pattern_format_invalid) {
-  // Invalid formats (missing slashes)
-  cr_assert_not(is_valid_pattern("test"), "Bare string should be invalid");
-  cr_assert_not(is_valid_pattern("test/"), "Missing leading slash should be invalid");
+  // Invalid formats (slash format with missing closing slash)
   cr_assert_not(is_valid_pattern("/test"), "Missing trailing slash should be invalid");
 
   // Empty patterns
   cr_assert_not(is_valid_pattern("//"), "Empty pattern should be invalid");
   cr_assert_not(is_valid_pattern(""), "Empty string should be invalid");
+}
+
+Test(log_filter, pattern_format_edge_cases) {
+  // Edge case: "test/" is valid as plain pattern (matches literal "test/")
+  cr_assert(is_valid_pattern("test/"), "'test/' should be valid as plain pattern");
+  asciichat_error_t result = log_filter_init("test/");
+  cr_assert_eq(result, ASCIICHAT_OK, "Pattern should initialize successfully");
+  cr_assert(line_matches("api/test/endpoint"), "Should match 'test/' in string");
+  cr_assert_not(line_matches("test endpoint"), "Should not match without slash");
+}
+
+Test(log_filter, pattern_format_plain_regex) {
+  // Plain regex patterns (without slashes) should now be valid
+  cr_assert(is_valid_pattern("test"), "Bare string should be valid as plain regex");
+  cr_assert(is_valid_pattern("error"), "Simple word should be valid");
+  cr_assert(is_valid_pattern("error|warn"), "Alternation should be valid");
+  cr_assert(is_valid_pattern("^ERROR"), "Anchored pattern should be valid");
+  cr_assert(is_valid_pattern("\\d+"), "Digit pattern should be valid");
+  cr_assert(is_valid_pattern("test.*end"), "Dot-star pattern should be valid");
+}
+
+/* ============================================================================
+ * Plain Regex Format Tests (without slashes)
+ * ============================================================================ */
+
+typedef struct {
+  char pattern[256];
+  char test_line[256];
+  bool should_match;
+  char description[64];
+} plain_regex_test_t;
+
+static plain_regex_test_t plain_regex_cases[] = {
+    {"error", "This is an error message", true, "Simple word match"},
+    {"error", "This is a warning message", false, "No match"},
+    {"ERROR", "This is an error message", false, "Case sensitive (no i flag)"},
+    {"^error", "error at start", true, "Anchor at start"},
+    {"^error", "not error at start", false, "Anchor at start fails"},
+    {"error$", "message ends with error", true, "Anchor at end"},
+    {"error$", "error not at end", false, "Anchor at end fails"},
+    {"(warn|error)", "This is a warning", true, "Alternation matches first"},
+    {"(warn|error)", "This is an error", true, "Alternation matches second"},
+    {"(warn|error)", "This is info", false, "Alternation no match"},
+    {"\\d+", "Port 8080 opened", true, "Digit pattern matches"},
+    {"\\d+", "No numbers here", false, "Digit pattern no match"},
+    {"test.*end", "test something end", true, "Dot-star matches"},
+    {"test.*end", "test something", false, "Dot-star no match without end"},
+};
+
+ParameterizedTestParameters(log_filter, plain_regex_format) {
+  return cr_make_param_array(plain_regex_test_t, plain_regex_cases,
+                             sizeof(plain_regex_cases) / sizeof(plain_regex_cases[0]));
+}
+
+ParameterizedTest(plain_regex_test_t *tc, log_filter, plain_regex_format) {
+  asciichat_error_t result = log_filter_init(tc->pattern);
+  cr_assert_eq(result, ASCIICHAT_OK, "Plain pattern '%s' should be valid", tc->pattern);
+
+  bool matches = line_matches(tc->test_line);
+  cr_assert_eq(matches, tc->should_match, "%s: '%s' with pattern '%s'", tc->description, tc->test_line, tc->pattern);
+}
+
+Test(log_filter, plain_regex_no_flags) {
+  // Verify plain regex has NO flags (case-sensitive by default)
+  asciichat_error_t result = log_filter_init("test");
+  cr_assert_eq(result, ASCIICHAT_OK, "Plain pattern should be valid");
+
+  cr_assert(line_matches("test message"), "Should match lowercase");
+  cr_assert_not(line_matches("TEST message"), "Should NOT match uppercase (no i flag)");
+  cr_assert_not(line_matches("Test message"), "Should NOT match mixed case (no i flag)");
+}
+
+Test(log_filter, plain_regex_complex_patterns) {
+  // Test complex regex patterns without slashes
+  asciichat_error_t result;
+
+  // IPv4 pattern
+  result = log_filter_init("\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}");
+  cr_assert_eq(result, ASCIICHAT_OK, "IPv4 pattern should be valid");
+  cr_assert(line_matches("Server IP: 192.168.1.1"), "Should match IPv4");
+
+  log_filter_destroy();
+
+  // Email pattern
+  result = log_filter_init("[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}");
+  cr_assert_eq(result, ASCIICHAT_OK, "Email pattern should be valid");
+  cr_assert(line_matches("Contact: user@example.com"), "Should match email");
+
+  log_filter_destroy();
+
+  // URL pattern
+  result = log_filter_init("https?://[^\\s]+");
+  cr_assert_eq(result, ASCIICHAT_OK, "URL pattern should be valid");
+  cr_assert(line_matches("Visit https://example.com"), "Should match URL");
 }
 
 /* ============================================================================
@@ -354,6 +446,20 @@ Test(log_filter, multiple_patterns_mixed_flags) {
   cr_assert(line_matches("critical failure"), "Fixed string should match");
   cr_assert(line_matches("normal message"), "Inverted pattern allows non-match");
   cr_assert_not(line_matches("timeout detected"), "Inverted pattern blocks match");
+}
+
+Test(log_filter, multiple_patterns_mixed_formats) {
+  // Mix of slash format and plain format
+  log_filter_init("/error/i"); // Slash format with flag
+  log_filter_init("warn");     // Plain format
+  log_filter_init("/FATAL/");  // Slash format no flag
+  log_filter_init("\\d{4}");   // Plain format with regex
+
+  cr_assert(line_matches("ERROR: Failed"), "Slash format case-insensitive should match");
+  cr_assert(line_matches("warn: Check this"), "Plain format should match");
+  cr_assert(line_matches("FATAL error"), "Slash format no flags should match");
+  cr_assert(line_matches("Code: 1234"), "Plain regex with digits should match");
+  cr_assert_not(line_matches("INFO: Normal"), "No pattern should match");
 }
 
 /* ============================================================================

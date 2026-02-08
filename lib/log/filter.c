@@ -232,15 +232,19 @@ typedef struct {
 } parse_result_t;
 
 /**
- * @brief Parse pattern in /pattern/flags format
- * @param input Input pattern string (must use /pattern/flags format)
+ * @brief Parse pattern in /pattern/flags format or plain regex format
+ * @param input Input pattern string (either /pattern/flags or plain pattern)
  * @return Parse result with all extracted settings
  *
- * Format: /pattern/flags
- * - All patterns must be enclosed in forward slashes
+ * Format 1 (with flags): /pattern/flags
+ * - Pattern enclosed in forward slashes with optional flags
  * - Use F flag for fixed string (literal) matching
  *
- * Flags:
+ * Format 2 (plain regex): pattern
+ * - Plain regex pattern without slashes or flags
+ * - Treated as regex with default options (no flags)
+ *
+ * Flags (format 1 only):
  * - i: case-insensitive
  * - m: multiline mode (regex only)
  * - s: dotall mode (regex only)
@@ -253,12 +257,14 @@ typedef struct {
  * - C<n>: show n lines before and after match (e.g., C5)
  *
  * Examples:
- * - "/test/" - Simple regex
+ * - "/test/" - Simple regex with slashes
+ * - "test" - Plain regex without slashes
  * - "/query/i" - Case-insensitive regex
  * - "/test/F" - Fixed string match for "test"
  * - "/api/v1/users/F" - Fixed string match for "api/v1/users"
  * - "/ERROR/IA3" - Invert match + 3 lines after
  * - "/FATAL/B2A5F" - Fixed string, 2 before, 5 after
+ * - "error|warn" - Plain regex with alternation
  */
 static parse_result_t parse_pattern_with_flags(const char *input) {
   parse_result_t result = {0};
@@ -270,96 +276,105 @@ static parse_result_t parse_pattern_with_flags(const char *input) {
 
   size_t len = strlen(input);
 
-  // Require /pattern/flags format
-  if (input[0] != '/') {
-    return result; // Invalid: must start with /
-  }
-
-  // Regex or fixed string format: /pattern/flags
-  if (len < 3) {
-    return result; // Invalid: too short
-  }
-
-  // Find closing slash
-  const char *closing_slash = strchr(input + 1, '/');
-  if (!closing_slash) {
-    return result; // Invalid: missing closing /
-  }
-
-  // Extract pattern between slashes
-  size_t pattern_len = (size_t)(closing_slash - (input + 1));
-  if (pattern_len == 0) {
-    return result; // Invalid: empty pattern
-  }
-  if (pattern_len >= sizeof(result.pattern)) {
-    pattern_len = sizeof(result.pattern) - 1;
-  }
-  memcpy(result.pattern, input + 1, pattern_len);
-  result.pattern[pattern_len] = '\0';
-
-  // Parse flags after closing slash
-  // First pass: check for F flag
-  const char *flags = closing_slash + 1;
-  bool has_F_flag = (strchr(flags, 'F') != NULL);
-
-  // Parse all flags
-  for (const char *p = flags; *p; p++) {
-    char c = *p;
-
-    // Single-character flags
-    if (c == 'i') {
-      result.pcre2_options |= PCRE2_CASELESS;
-      result.case_insensitive = true;
-    } else if (c == 'm') {
-      result.pcre2_options |= PCRE2_MULTILINE;
-    } else if (c == 's') {
-      result.pcre2_options |= PCRE2_DOTALL;
-    } else if (c == 'x') {
-      result.pcre2_options |= PCRE2_EXTENDED;
-    } else if (c == 'g') {
-      result.global_flag = true;
-    } else if (c == 'I') {
-      result.invert = true;
-    } else if (c == 'F') {
-      result.is_fixed_string = true;
+  // Check if pattern uses /pattern/flags format
+  if (input[0] == '/') {
+    // Format 1: /pattern/flags
+    if (len < 3) {
+      return result; // Invalid: too short for /pattern/ format
     }
-    // Multi-character flags with integers
-    else if (c == 'A') {
-      p++; // Move to digits
-      int num = 0;
-      while (*p >= '0' && *p <= '9') {
-        num = num * 10 + (*p - '0');
-        p++;
-      }
-      p--;                                        // Back up one (for loop will increment)
-      result.context_after = (num > 0) ? num : 1; // Default to 1 if no number
-    } else if (c == 'B') {
-      p++;
-      int num = 0;
-      while (*p >= '0' && *p <= '9') {
-        num = num * 10 + (*p - '0');
-        p++;
-      }
-      p--;
-      result.context_before = (num > 0) ? num : 1;
-    } else if (c == 'C') {
-      p++;
-      int num = 0;
-      while (*p >= '0' && *p <= '9') {
-        num = num * 10 + (*p - '0');
-        p++;
-      }
-      p--;
-      int ctx = (num > 0) ? num : 1;
-      result.context_before = ctx;
-      result.context_after = ctx;
-    } else {
-      // Invalid flag character - only error if not using F flag
-      if (!has_F_flag) {
-        return result; // Invalid
-      }
-      // Otherwise ignore invalid flags (they're part of the fixed string context)
+
+    // Find closing slash
+    const char *closing_slash = strchr(input + 1, '/');
+    if (!closing_slash) {
+      return result; // Invalid: missing closing /
     }
+
+    // Extract pattern between slashes
+    size_t pattern_len = (size_t)(closing_slash - (input + 1));
+    if (pattern_len == 0) {
+      return result; // Invalid: empty pattern
+    }
+    if (pattern_len >= sizeof(result.pattern)) {
+      pattern_len = sizeof(result.pattern) - 1;
+    }
+    memcpy(result.pattern, input + 1, pattern_len);
+    result.pattern[pattern_len] = '\0';
+
+    // Parse flags after closing slash
+    // First pass: check for F flag
+    const char *flags = closing_slash + 1;
+    bool has_F_flag = (strchr(flags, 'F') != NULL);
+
+    // Parse all flags
+    for (const char *p = flags; *p; p++) {
+      char c = *p;
+
+      // Single-character flags
+      if (c == 'i') {
+        result.pcre2_options |= PCRE2_CASELESS;
+        result.case_insensitive = true;
+      } else if (c == 'm') {
+        result.pcre2_options |= PCRE2_MULTILINE;
+      } else if (c == 's') {
+        result.pcre2_options |= PCRE2_DOTALL;
+      } else if (c == 'x') {
+        result.pcre2_options |= PCRE2_EXTENDED;
+      } else if (c == 'g') {
+        result.global_flag = true;
+      } else if (c == 'I') {
+        result.invert = true;
+      } else if (c == 'F') {
+        result.is_fixed_string = true;
+      }
+      // Multi-character flags with integers
+      else if (c == 'A') {
+        p++; // Move to digits
+        int num = 0;
+        while (*p >= '0' && *p <= '9') {
+          num = num * 10 + (*p - '0');
+          p++;
+        }
+        p--;                                        // Back up one (for loop will increment)
+        result.context_after = (num > 0) ? num : 1; // Default to 1 if no number
+      } else if (c == 'B') {
+        p++;
+        int num = 0;
+        while (*p >= '0' && *p <= '9') {
+          num = num * 10 + (*p - '0');
+          p++;
+        }
+        p--;
+        result.context_before = (num > 0) ? num : 1;
+      } else if (c == 'C') {
+        p++;
+        int num = 0;
+        while (*p >= '0' && *p <= '9') {
+          num = num * 10 + (*p - '0');
+          p++;
+        }
+        p--;
+        int ctx = (num > 0) ? num : 1;
+        result.context_before = ctx;
+        result.context_after = ctx;
+      } else {
+        // Invalid flag character - only error if not using F flag
+        if (!has_F_flag) {
+          return result; // Invalid
+        }
+        // Otherwise ignore invalid flags (they're part of the fixed string context)
+      }
+    }
+  } else {
+    // Format 2: Plain pattern without slashes (treat as regex, no flags)
+    size_t pattern_len = len;
+    if (pattern_len >= sizeof(result.pattern)) {
+      pattern_len = sizeof(result.pattern) - 1;
+    }
+    memcpy(result.pattern, input, pattern_len);
+    result.pattern[pattern_len] = '\0';
+
+    // No flags for plain format - just use default options
+    // (PCRE2_UTF | PCRE2_UCP already set at the top)
   }
 
   result.valid = true;
@@ -379,7 +394,7 @@ asciichat_error_t log_filter_init(const char *pattern) {
   parse_result_t parsed = parse_pattern_with_flags(pattern);
   if (!parsed.valid) {
     log_error("Invalid --grep pattern format: \"%s\"", pattern);
-    log_error("Use /pattern/flags format (e.g., \"/query/ig\") or literal string (e.g., \"my literal string\")");
+    log_error("Use /pattern/flags format (e.g., \"/query/ig\") or plain regex (e.g., \"query\")");
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid --grep pattern format");
   }
 
