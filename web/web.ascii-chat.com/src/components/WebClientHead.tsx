@@ -7,7 +7,7 @@ type WebClientHeadProps = Partial<HeadProps> & {
 };
 
 export function WebClientHead({
-  title = 'ascii-chat | Terminal Video Chat in Your Browser',
+  title = 'ascii-chat Web Client',
   description = 'Real-time video chat with ASCII art rendering, end-to-end encryption, and WebRTC support. Experience the terminal aesthetic in your browser.',
   keywords = 'ascii-chat, webassembly, wasm, browser video chat, ascii art, video conferencing, terminal, encryption, webrtc, real-time communication, mirror mode',
   url = 'https://web.ascii-chat.com/',

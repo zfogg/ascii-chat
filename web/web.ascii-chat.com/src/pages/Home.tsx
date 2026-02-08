@@ -4,7 +4,9 @@ import { WebClientHead } from "../components/WebClientHead";
 export function HomePage() {
   return (
     <>
-      <WebClientHead />
+      <WebClientHead
+        title="ascii-chat Web Client - Video chat in your terminal/browser"
+      />
       <div className="flex-1 flex items-center justify-center pt-8">
       <div className="text-center max-w-2xl px-8">
         <Heading level={1} className="text-4xl sm:text-6xl font-bold text-terminal-cyan mb-2">ascii-chat</Heading>
