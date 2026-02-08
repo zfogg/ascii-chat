@@ -1,3 +1,5 @@
+import { CommitLink } from "@ascii-chat/shared/components";
+
 export function Footer() {
   return (
     <footer className="border-t border-terminal-8 pt-6 pb-6 md:pt-8 md:pb-8 text-terminal-8 mt-auto">
@@ -42,14 +44,10 @@ export function Footer() {
             @zfogg
           </a>
           {" · "}
-          <a
-            href={`https://github.com/zfogg/ascii-chat/commit/${__COMMIT_SHA__}`}
-            target="_blank"
-            rel="noopener noreferrer"
+          <CommitLink
+            commitSha={__COMMIT_SHA__}
             className="text-terminal-cyan hover:text-terminal-brightCyan transition-colors font-mono text-xs"
-          >
-            {__COMMIT_SHA__}
-          </a>
+          />
         </p>
       </div>
     </footer>
