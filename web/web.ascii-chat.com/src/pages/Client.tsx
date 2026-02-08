@@ -172,7 +172,7 @@ export function ClientPage() {
         description="WebAssembly client mode with X25519 key exchange and XSalsa20-Poly1305 encryption. Test real-time encrypted video chat in your browser."
         url="https://web.ascii-chat.com/client"
       />
-      <div className="min-h-screen bg-gray-100 py-8 px-4">
+      <div className="flex-1 bg-gray-100 py-8 px-4">
         <div className="max-w-4xl mx-auto">
           <div className="bg-white rounded-lg shadow-lg p-8">
             <h1 className="text-3xl font-bold mb-2">ASCII Chat - Client WASM Demo</h1>

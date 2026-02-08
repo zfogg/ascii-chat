@@ -40,7 +40,7 @@ export default defineConfig({
       '@ascii-chat/shared': path.resolve(__dirname, '../packages/shared/src'),
     },
     extensions: ['.ts', '.tsx', '.js', '.jsx'],
-    dedupe: ['react', 'react-dom'],
+    dedupe: ['react', 'react-dom', 'react-helmet-async'],
   },
   server: {
     port: 3000,
