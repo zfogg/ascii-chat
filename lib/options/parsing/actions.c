@@ -18,6 +18,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/log/logging.h>
+#include <ascii-chat/network/update_checker.h>
 #include <ascii-chat/options/manpage.h>
 #include <ascii-chat/options/presets.h>
 #include <ascii-chat/options/config.h>
@@ -228,6 +229,15 @@ void action_show_capabilities(void) {
   // Defer execution until after options are fully parsed and dimensions updated
   // This ensures --width and --height flags are properly reflected in the output
   actions_defer(ACTION_SHOW_CAPABILITIES, NULL);
+}
+
+// ============================================================================
+// Update Check Action
+// ============================================================================
+
+void action_check_update(void) {
+  // Defer execution until after options are fully parsed
+  actions_defer(ACTION_CHECK_UPDATE, NULL);
 }
 
 /**
@@ -546,6 +556,38 @@ void action_completions(const char *shell_name, const char *output_path) {
   exit(0);
 }
 
+/**
+ * @brief Internal implementation of check update action
+ *
+ * Called during STAGE 8 of options_init() after all initialization is complete.
+ * Checks for updates from GitHub releases and displays results, then exits.
+ */
+static void execute_check_update(void) {
+  printf("Checking for updates...\n");
+
+  update_check_result_t result;
+  asciichat_error_t err = update_check_perform(&result);
+
+  if (err != ASCIICHAT_OK) {
+    asciichat_error_context_t ctx;
+    if (HAS_ERRNO(&ctx)) {
+      fprintf(stderr, "Update check failed: %s\n", ctx.context_message);
+    }
+    exit(1);
+  }
+
+  // Display results
+  if (result.update_available) {
+    char notification[1024];
+    update_check_format_notification(&result, notification, sizeof(notification));
+    printf("\n%s\n\n", notification);
+  } else {
+    printf("\nYou are already on the latest version: %s (%.8s)\n\n", result.current_version, result.current_sha);
+  }
+
+  exit(0);
+}
+
 // ============================================================================
 // Deferred Action Execution
 // ============================================================================
@@ -572,6 +614,10 @@ void actions_execute_deferred(void) {
 
   case ACTION_SHOW_CAPABILITIES:
     execute_show_capabilities();
+    break;
+
+  case ACTION_CHECK_UPDATE:
+    execute_check_update();
     break;
 
   default:

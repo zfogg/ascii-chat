@@ -20,6 +20,7 @@ typedef enum {
   ACTION_LIST_MICROPHONES,
   ACTION_LIST_SPEAKERS,
   ACTION_SHOW_CAPABILITIES,
+  ACTION_CHECK_UPDATE,
 } deferred_action_t;
 
 /**
@@ -189,3 +190,11 @@ void action_create_config(const char *output_path);
  * @param output_path Optional file path to write completions to. NULL or empty string = stdout.
  */
 void action_completions(const char *shell_name, const char *output_path);
+
+/**
+ * @brief Check for updates and display results
+ *
+ * Performs update check against GitHub releases API and displays results.
+ * Exits with code 0 on success, 1 on error.
+ */
+void action_check_update(void);
