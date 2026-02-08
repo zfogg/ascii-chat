@@ -1284,6 +1284,9 @@ static void *websocket_client_handler(void *arg) {
   // The client structure will be cleaned up when the transport closes
   client_info_t *client = find_client_by_id((uint32_t)client_id);
   if (client) {
+    // WebSocket clients need crypto handshake (unlike WebRTC which does it via ACDS)
+    client->crypto_initialized = false; // Trigger server to send CRYPTO_KEY_EXCHANGE_INIT
+
     // Wait for client threads to finish (they'll exit when connection closes)
     while (atomic_load(&client->client_id) != 0) {
       platform_sleep_ms(100);

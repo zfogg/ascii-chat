@@ -75,33 +75,28 @@ export class ClientConnection {
 
     await this.socket.connect();
 
-    // Start handshake process
-    await this.performHandshake();
+    // Wait for server to initiate handshake
+    // Server will send CRYPTO_KEY_EXCHANGE_INIT first
+    this.onStateChangeCallback?.(ConnectionState.HANDSHAKE);
   }
 
   /**
-   * Perform cryptographic handshake with server
+   * Send client's public key in response to server's KEY_EXCHANGE_INIT
    */
-  private async performHandshake(): Promise<void> {
-    console.log('[ClientConnection] Starting handshake...');
-    this.onStateChangeCallback?.(ConnectionState.HANDSHAKE);
+  private sendKeyExchangeResponse(): void {
+    console.log('[ClientConnection] Sending CRYPTO_KEY_EXCHANGE_RESP with client pubkey');
 
-    // Step 1: Send CRYPTO_KEY_EXCHANGE_INIT with client public key
     const clientPubKeyHex = this.clientPublicKey!;
     const clientPubKeyBytes = this.hexToBytes(clientPubKeyHex);
 
-    console.log('[ClientConnection] Sending CRYPTO_KEY_EXCHANGE_RESP with client pubkey');
     this.sendPacket(PacketType.CRYPTO_KEY_EXCHANGE_RESP, clientPubKeyBytes);
-
-    // Wait for server's CRYPTO_KEY_EXCHANGE_INIT with server public key
-    // This will be handled in handlePacket() when received
   }
 
   /**
    * Handle server's key exchange init
    */
   private handleKeyExchangeInit(serverPubKeyBytes: Uint8Array): void {
-    console.log('[ClientConnection] Received server public key');
+    console.log('[ClientConnection] Received CRYPTO_KEY_EXCHANGE_INIT from server');
 
     // Convert to hex
     const serverPubKeyHex = Array.from(serverPubKeyBytes)
@@ -114,11 +109,10 @@ export class ClientConnection {
     setServerPublicKey(serverPubKeyHex);
     performHandshake();
 
-    console.log('[ClientConnection] Shared secret computed, handshake complete');
-    this.onStateChangeCallback?.(ConnectionState.CONNECTED);
+    console.log('[ClientConnection] Shared secret computed');
 
-    // Optionally send a test encrypted packet to verify
-    // this.sendTestPacket();
+    // Now send our public key in response
+    this.sendKeyExchangeResponse();
   }
 
   /**
