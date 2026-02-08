@@ -395,10 +395,11 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
         log_error("Failed to initialize digital rain effect");
         return ascii_output; // Return without effect on error
       }
-      // Set color from active color filter
-      digital_rain_set_color_from_filter(g_digital_rain, filter);
       g_last_rain_update_time = emscripten_get_now();
     }
+
+    // Update color from active filter (allows filter changes after initialization)
+    digital_rain_set_color_from_filter(g_digital_rain, filter);
 
     // Time-based updates: only update effect every RAIN_UPDATE_INTERVAL_MS
     double current_time = emscripten_get_now();
