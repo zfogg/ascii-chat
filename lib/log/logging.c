@@ -20,6 +20,7 @@
 #include <time.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <ctype.h>
 
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/log/colorize.h>
@@ -1624,17 +1625,8 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
   }
 
   static char work_buffer[2048];
-  const char **colors = log_get_color_array();
-  if (!colors) {
-    // No colors available, return plain text
-    size_t len = strlen(plain_line);
-    if (len >= buf_size) {
-      return 0;
-    }
-    strcpy(colored_buf, plain_line);
-    return len;
-  }
 
+  // Parse format FIRST, regardless of color availability
   // Parse format: [TIMESTAMP] [LEVEL] [tid:THREAD_ID] FILE:LINE in FUNC(): MESSAGE
   const char *p = plain_line;
 
@@ -1644,29 +1636,39 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
   }
   p++;
   const char *timestamp_start = p;
+
+  // Find the closing ] for timestamp - look for pattern that ends with proper timestamp format
+  // Valid timestamp: YYYY-MM-DD HH:MM:SS.mmm
   while (*p && *p != ']') {
     p++;
   }
   if (*p != ']') {
-    return 0; // Malformed
+    return 0; // Malformed - no closing bracket
   }
+
   size_t timestamp_len = p - timestamp_start;
   char timestamp[64];
-  if (timestamp_len >= sizeof(timestamp)) {
-    return 0;
+  if (timestamp_len >= sizeof(timestamp) || timestamp_len < 23) {
+    return 0; // Invalid timestamp length (should be at least 23 chars for YYYY-MM-DD HH:MM:SS.mmm)
   }
   strncpy(timestamp, timestamp_start, timestamp_len);
   timestamp[timestamp_len] = '\0';
   p++; // Skip ]
 
-  // Skip space
-  while (*p == ' ') {
-    p++;
+  // Expect exactly one space after timestamp
+  if (*p != ' ') {
+    return 0; // Must have space after timestamp
+  }
+  p++;
+
+  // No more spaces allowed before level
+  if (*p == ' ') {
+    return 0; // Too many spaces
   }
 
   // Extract level [LEVEL]
   if (*p != '[') {
-    return 0;
+    return 0; // Missing opening bracket for level
   }
   p++;
   const char *level_start = p;
@@ -1674,12 +1676,12 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
     p++;
   }
   if (*p != ']') {
-    return 0;
+    return 0; // Missing closing bracket for level
   }
   size_t level_len = p - level_start;
   char level_str[16];
-  if (level_len >= sizeof(level_str)) {
-    return 0;
+  if (level_len >= sizeof(level_str) || level_len == 0) {
+    return 0; // Level string too long or empty
   }
   strncpy(level_str, level_start, level_len);
   level_str[level_len] = '\0';
@@ -1699,9 +1701,15 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
     level = LOG_FATAL;
   }
 
-  // Skip space
-  while (*p == ' ') {
-    p++;
+  // Expect exactly one space after level
+  if (*p != ' ') {
+    return 0; // Must have space after level
+  }
+  p++;
+
+  // No more spaces allowed
+  if (*p == ' ') {
+    return 0; // Too many spaces
   }
 
   // Extract thread ID [tid:THREAD_ID]
@@ -1709,12 +1717,20 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
   if (*p == '[' && strncmp(p, "[tid:", 5) == 0) {
     p += 5;
     tid = strtoull(p, (char **)&p, 10);
-    if (*p == ']') {
-      p++;
+    if (*p != ']') {
+      return 0; // Missing closing bracket for tid
     }
-    while (*p == ' ') {
-      p++;
+    p++;
+    // Expect exactly one space after tid
+    if (*p != ' ') {
+      return 0; // Must have space after tid
     }
+    p++;
+    if (*p == ' ') {
+      return 0; // Too many spaces
+    }
+  } else {
+    return 0; // tid field is required
   }
 
   // Extract file path (everything up to :LINE)
@@ -1736,21 +1752,29 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
 
   // Extract line number (digits before " in ")
   int line_num = 0;
-  line_num = (int)strtol(p, (char **)&p, 10);
-
-  // Skip " in "
-  if (strncmp(p, " in ", 4) != 0) {
-    return 0;
+  const char *line_start = p;
+  while (*p && isdigit((unsigned char)*p)) {
+    p++;
   }
-  p += 4;
+  if (p == line_start || *p != ' ') {
+    return 0; // No line number or no space after it
+  }
+  line_num = (int)strtol(line_start, NULL, 10);
+  p++; // Skip space
+
+  // Expect " in " exactly
+  if (strncmp(p, "in ", 3) != 0) {
+    return 0; // Missing 'in' keyword
+  }
+  p += 3; // Skip "in "
 
   // Extract function name (everything up to "()")
   const char *func_start = p;
   while (*p && *p != '(') {
     p++;
   }
-  if (*p != '(') {
-    return 0;
+  if (*p != '(' || func_start == p) {
+    return 0; // Missing function name or parentheses
   }
   size_t func_len = p - func_start;
   char func_name[256];
@@ -1760,19 +1784,27 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
   strncpy(func_name, func_start, func_len);
   func_name[func_len] = '\0';
 
-  // Skip "(): "
-  while (*p && *p != ':') {
-    p++;
+  // Expect "(): " exactly
+  if (strncmp(p, "(): ", 4) != 0) {
+    return 0; // Missing function parentheses or colon
   }
-  if (*p == ':') {
-    p++;
-  }
-  while (*p == ' ') {
-    p++;
-  }
+  p += 4; // Skip "(): "
 
   // Remaining is the message
   const char *message = p;
+
+  // Format is valid, now check if colors are available
+  const char **colors = log_get_color_array();
+  if (!colors) {
+    // No colors available, return plain text
+    size_t len = strlen(plain_line);
+    if (len >= buf_size) {
+      return 0;
+    }
+    strncpy(colored_buf, plain_line, buf_size - 1);
+    colored_buf[buf_size - 1] = '\0';
+    return len;
+  }
 
   // Build colored output
   const char *level_color = colors[level];

@@ -39,7 +39,6 @@ set(UTIL_SRCS
     lib/util/display.c
     lib/util/pcre2.c
     lib/util/env.c
-    lib/util/log_file_parser.c
     # utf8proc Unicode library (includes utf8proc_data.c internally)
     deps/ascii-chat-deps/utf8proc/utf8proc.c
 )
@@ -362,6 +361,7 @@ set(CORE_SRCS
     lib/log/colorize.c
     lib/log/mmap.c
     lib/log/filter.c
+    lib/logging/file_parser.c
     lib/platform/terminal.c     # Unified color detection system
     lib/options/colorscheme.c   # Color scheme management and early initialization
     lib/ui/terminal_screen.c  # NEW: Terminal screen rendering abstraction
