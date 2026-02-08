@@ -62,7 +62,7 @@
  * When client whitelist is enabled:
  * - Server requires client authentication during handshake
  * - Client public key must be in whitelist array
- * - Verification happens in crypto_handshake_server_auth_challenge()
+ * - Verification happens in crypto_handshake_server_auth_challenge_socket()
  * - Clients not in whitelist are rejected during handshake
  *
  * ENCRYPTION/DECRYPTION OPERATIONS:
@@ -582,7 +582,7 @@ int server_crypto_handshake(client_info_t *client) {
 
   // Step 1: Send our public key to client
   log_debug("About to call crypto_handshake_server_start");
-  result = crypto_handshake_server_start(&client->crypto_handshake_ctx, socket);
+  result = crypto_handshake_server_start_socket(&client->crypto_handshake_ctx, socket);
   if (result != ASCIICHAT_OK) {
     log_error("Crypto handshake start failed for client %u: %s", atomic_load(&client->client_id),
               asciichat_error_string(result));
@@ -593,7 +593,7 @@ int server_crypto_handshake(client_info_t *client) {
   }
 
   // Step 2: Receive client's public key and send auth challenge
-  result = crypto_handshake_server_auth_challenge(&client->crypto_handshake_ctx, socket);
+  result = crypto_handshake_server_auth_challenge_socket(&client->crypto_handshake_ctx, socket);
   if (result != ASCIICHAT_OK) {
     log_error("Crypto authentication challenge failed for client %u: %s", atomic_load(&client->client_id),
               asciichat_error_string(result));
@@ -611,7 +611,7 @@ int server_crypto_handshake(client_info_t *client) {
   }
 
   // Step 3: Receive auth response and complete handshake
-  result = crypto_handshake_server_complete(&client->crypto_handshake_ctx, socket);
+  result = crypto_handshake_server_complete_socket(&client->crypto_handshake_ctx, socket);
   if (result != ASCIICHAT_OK) {
     if (result == ERROR_NETWORK || result == ERROR_NETWORK_PROTOCOL || result == ERROR_CRYPTO_AUTH ||
         result == ERROR_CRYPTO_VERIFICATION || result == ERROR_CRYPTO) {

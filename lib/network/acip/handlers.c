@@ -38,9 +38,9 @@ typedef asciichat_error_t (*acip_server_handler_func_t)(const void *payload, siz
 // Open-addressing hash table with linear probing. key=0 means empty slot.
 // Stores handler_idx+1 so that 0 can indicate "not found" after lookup.
 
-#define HANDLER_HASH_SIZE 32 // ~50% load factor for 14-16 entries
-#define CLIENT_HANDLER_COUNT 14
-#define SERVER_HANDLER_COUNT 16
+#define HANDLER_HASH_SIZE 32    // ~50% load factor for 14-16 entries
+#define CLIENT_HANDLER_COUNT 19 // Added 5 crypto handshake handlers
+#define SERVER_HANDLER_COUNT 19 // Added 3 crypto handshake handlers
 
 /**
  * @brief Hash table entry for packet type to handler mapping
@@ -70,42 +70,50 @@ static inline int handler_hash_lookup(const handler_hash_entry_t *table, packet_
 // Slots computed via linear probing: hash = type % 32
 // clang-format off
 static const handler_hash_entry_t g_client_handler_hash[HANDLER_HASH_SIZE] = {
-    [0]  = {PACKET_TYPE_AUDIO_BATCH,           1},   // hash(4000)=0
-    [1]  = {PACKET_TYPE_AUDIO_OPUS_BATCH,      2},   // hash(4001)=1
-    [9]  = {PACKET_TYPE_PING,                  6},   // hash(5001)=9
-    [10] = {PACKET_TYPE_PONG,                  7},   // hash(5002)=10
-    [15] = {PACKET_TYPE_CLEAR_CONSOLE,         8},   // hash(5007)=15
-    [16] = {PACKET_TYPE_SERVER_STATE,          3},   // hash(5008)=16
-    [17] = {PACKET_TYPE_CRYPTO_REKEY_REQUEST,  9},   // hash(1201)=17
-    [18] = {PACKET_TYPE_CRYPTO_REKEY_RESPONSE, 10},  // hash(1202)=18
-    [19] = {PACKET_TYPE_ERROR_MESSAGE,         4},   // hash(2003)=19
-    [20] = {PACKET_TYPE_REMOTE_LOG,            5},   // hash(2004)=20
-    [21] = {PACKET_TYPE_ACIP_SESSION_JOINED,   13},  // hash(6005)=21
-    [24] = {PACKET_TYPE_ASCII_FRAME,           0},   // hash(3000)=24
-    [25] = {PACKET_TYPE_ACIP_WEBRTC_SDP,       11},  // hash(6009)=25
-    [26] = {PACKET_TYPE_ACIP_WEBRTC_ICE,       12},  // hash(6010)=26
+    [0]  = {PACKET_TYPE_AUDIO_BATCH,                 1},   // hash(4000)=0
+    [1]  = {PACKET_TYPE_AUDIO_OPUS_BATCH,            2},   // hash(4001)=1
+    [6]  = {PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT,    14},  // hash(1102)=6
+    [7]  = {PACKET_TYPE_CRYPTO_AUTH_CHALLENGE,       15},  // hash(1104)=7, probed from hash(1104)=16
+    [8]  = {PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP,     16},  // hash(1107)=11, probed->8
+    [9]  = {PACKET_TYPE_PING,                        6},   // hash(5001)=9
+    [10] = {PACKET_TYPE_PONG,                        7},   // hash(5002)=10
+    [11] = {PACKET_TYPE_CRYPTO_AUTH_FAILED,          17},  // hash(1108)=12, probed->11
+    [14] = {PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE,   18},  // hash(1106)=10, probed->14
+    [15] = {PACKET_TYPE_CLEAR_CONSOLE,               8},   // hash(5007)=15
+    [16] = {PACKET_TYPE_SERVER_STATE,                3},   // hash(5008)=16
+    [17] = {PACKET_TYPE_CRYPTO_REKEY_REQUEST,        9},   // hash(1201)=17
+    [18] = {PACKET_TYPE_CRYPTO_REKEY_RESPONSE,       10},  // hash(1202)=18
+    [19] = {PACKET_TYPE_ERROR_MESSAGE,               4},   // hash(2003)=19
+    [20] = {PACKET_TYPE_REMOTE_LOG,                  5},   // hash(2004)=20
+    [21] = {PACKET_TYPE_ACIP_SESSION_JOINED,         13},  // hash(6005)=21
+    [24] = {PACKET_TYPE_ASCII_FRAME,                 0},   // hash(3000)=24
+    [25] = {PACKET_TYPE_ACIP_WEBRTC_SDP,             11},  // hash(6009)=25
+    [26] = {PACKET_TYPE_ACIP_WEBRTC_ICE,             12},  // hash(6010)=26
 };
 // clang-format on
 
 // Server packet type -> handler index hash table
 // clang-format off
 static const handler_hash_entry_t g_server_handler_hash[HANDLER_HASH_SIZE] = {
-    [0]  = {PACKET_TYPE_AUDIO_BATCH,           2},   // hash(4000)=0
-    [1]  = {PACKET_TYPE_PROTOCOL_VERSION,      0},   // hash(1)=1
-    [2]  = {PACKET_TYPE_AUDIO_OPUS_BATCH,      3},   // hash(4001)=1, probed->2
-    [8]  = {PACKET_TYPE_CLIENT_CAPABILITIES,   4},   // hash(5000)=8
-    [9]  = {PACKET_TYPE_PING,                  5},   // hash(5001)=9
-    [10] = {PACKET_TYPE_PONG,                  6},   // hash(5002)=10
-    [11] = {PACKET_TYPE_CLIENT_JOIN,           7},   // hash(5003)=11
-    [12] = {PACKET_TYPE_CLIENT_LEAVE,          8},   // hash(5004)=12
-    [13] = {PACKET_TYPE_STREAM_START,          9},   // hash(5005)=13
-    [14] = {PACKET_TYPE_STREAM_STOP,           10},  // hash(5006)=14
-    [17] = {PACKET_TYPE_CRYPTO_REKEY_REQUEST,  13},  // hash(1201)=17
-    [18] = {PACKET_TYPE_CRYPTO_REKEY_RESPONSE, 14},  // hash(1202)=18
-    [19] = {PACKET_TYPE_ERROR_MESSAGE,         12},  // hash(2003)=19
-    [20] = {PACKET_TYPE_REMOTE_LOG,            11},  // hash(2004)=20
-    [21] = {PACKET_TYPE_CRYPTO_REKEY_COMPLETE, 15},  // hash(1203)=19, probed->21
-    [25] = {PACKET_TYPE_IMAGE_FRAME,           1},   // hash(3001)=25
+    [0]  = {PACKET_TYPE_AUDIO_BATCH,                2},   // hash(4000)=0
+    [1]  = {PACKET_TYPE_PROTOCOL_VERSION,           0},   // hash(1)=1
+    [2]  = {PACKET_TYPE_AUDIO_OPUS_BATCH,           3},   // hash(4001)=1, probed->2
+    [3]  = {PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP,   16},  // hash(1103)=7, probed->3
+    [4]  = {PACKET_TYPE_CRYPTO_NO_ENCRYPTION,       18},  // hash(1101)=5, probed->4
+    [5]  = {PACKET_TYPE_CRYPTO_AUTH_RESPONSE,       17},  // hash(1105)=9, probed->5
+    [8]  = {PACKET_TYPE_CLIENT_CAPABILITIES,        4},   // hash(5000)=8
+    [9]  = {PACKET_TYPE_PING,                       5},   // hash(5001)=9
+    [10] = {PACKET_TYPE_PONG,                       6},   // hash(5002)=10
+    [11] = {PACKET_TYPE_CLIENT_JOIN,                7},   // hash(5003)=11
+    [12] = {PACKET_TYPE_CLIENT_LEAVE,               8},   // hash(5004)=12
+    [13] = {PACKET_TYPE_STREAM_START,               9},   // hash(5005)=13
+    [14] = {PACKET_TYPE_STREAM_STOP,                10},  // hash(5006)=14
+    [17] = {PACKET_TYPE_CRYPTO_REKEY_REQUEST,       13},  // hash(1201)=17
+    [18] = {PACKET_TYPE_CRYPTO_REKEY_RESPONSE,      14},  // hash(1202)=18
+    [19] = {PACKET_TYPE_ERROR_MESSAGE,              12},  // hash(2003)=19
+    [20] = {PACKET_TYPE_REMOTE_LOG,                 11},  // hash(2004)=20
+    [21] = {PACKET_TYPE_CRYPTO_REKEY_COMPLETE,      15},  // hash(1203)=19, probed->21
+    [25] = {PACKET_TYPE_IMAGE_FRAME,                1},   // hash(3001)=25
 };
 // clang-format on
 
@@ -142,23 +150,38 @@ static asciichat_error_t handle_client_webrtc_ice(const void *payload, size_t pa
                                                   const acip_client_callbacks_t *callbacks);
 static asciichat_error_t handle_client_session_joined(const void *payload, size_t payload_len,
                                                       const acip_client_callbacks_t *callbacks);
+static asciichat_error_t handle_client_crypto_key_exchange_init(const void *payload, size_t payload_len,
+                                                                const acip_client_callbacks_t *callbacks);
+static asciichat_error_t handle_client_crypto_auth_challenge(const void *payload, size_t payload_len,
+                                                             const acip_client_callbacks_t *callbacks);
+static asciichat_error_t handle_client_crypto_server_auth_resp(const void *payload, size_t payload_len,
+                                                               const acip_client_callbacks_t *callbacks);
+static asciichat_error_t handle_client_crypto_auth_failed(const void *payload, size_t payload_len,
+                                                          const acip_client_callbacks_t *callbacks);
+static asciichat_error_t handle_client_crypto_handshake_complete(const void *payload, size_t payload_len,
+                                                                 const acip_client_callbacks_t *callbacks);
 
 // Client handler dispatch table (indexed by client_handler_index())
 static const acip_client_handler_func_t g_client_handlers[CLIENT_HANDLER_COUNT] = {
-    handle_client_ascii_frame,           // 0
-    handle_client_audio_batch,           // 1
-    handle_client_audio_opus_batch,      // 2
-    handle_client_server_state,          // 3
-    handle_client_error_message,         // 4
-    handle_client_remote_log,            // 5
-    handle_client_ping,                  // 6
-    handle_client_pong,                  // 7
-    handle_client_clear_console,         // 8
-    handle_client_crypto_rekey_request,  // 9
-    handle_client_crypto_rekey_response, // 10
-    handle_client_webrtc_sdp,            // 11
-    handle_client_webrtc_ice,            // 12
-    handle_client_session_joined,        // 13
+    handle_client_ascii_frame,               // 0
+    handle_client_audio_batch,               // 1
+    handle_client_audio_opus_batch,          // 2
+    handle_client_server_state,              // 3
+    handle_client_error_message,             // 4
+    handle_client_remote_log,                // 5
+    handle_client_ping,                      // 6
+    handle_client_pong,                      // 7
+    handle_client_clear_console,             // 8
+    handle_client_crypto_rekey_request,      // 9
+    handle_client_crypto_rekey_response,     // 10
+    handle_client_webrtc_sdp,                // 11
+    handle_client_webrtc_ice,                // 12
+    handle_client_session_joined,            // 13
+    handle_client_crypto_key_exchange_init,  // 14
+    handle_client_crypto_auth_challenge,     // 15
+    handle_client_crypto_server_auth_resp,   // 16
+    handle_client_crypto_auth_failed,        // 17
+    handle_client_crypto_handshake_complete, // 18
 };
 
 asciichat_error_t acip_handle_client_packet(acip_transport_t *transport, packet_type_t type, const void *payload,
@@ -476,6 +499,63 @@ static asciichat_error_t handle_client_session_joined(const void *payload, size_
   return ASCIICHAT_OK;
 }
 
+static asciichat_error_t handle_client_crypto_key_exchange_init(const void *payload, size_t payload_len,
+                                                                const acip_client_callbacks_t *callbacks) {
+  if (!callbacks->on_crypto_key_exchange_init) {
+    return ASCIICHAT_OK;
+  }
+
+  // Dispatch to application callback with packet type
+  callbacks->on_crypto_key_exchange_init(PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT, payload, payload_len,
+                                         callbacks->app_ctx);
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t handle_client_crypto_auth_challenge(const void *payload, size_t payload_len,
+                                                             const acip_client_callbacks_t *callbacks) {
+  if (!callbacks->on_crypto_auth_challenge) {
+    return ASCIICHAT_OK;
+  }
+
+  // Dispatch to application callback with packet type
+  callbacks->on_crypto_auth_challenge(PACKET_TYPE_CRYPTO_AUTH_CHALLENGE, payload, payload_len, callbacks->app_ctx);
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t handle_client_crypto_server_auth_resp(const void *payload, size_t payload_len,
+                                                               const acip_client_callbacks_t *callbacks) {
+  if (!callbacks->on_crypto_server_auth_resp) {
+    return ASCIICHAT_OK;
+  }
+
+  // Dispatch to application callback with packet type
+  callbacks->on_crypto_server_auth_resp(PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP, payload, payload_len, callbacks->app_ctx);
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t handle_client_crypto_auth_failed(const void *payload, size_t payload_len,
+                                                          const acip_client_callbacks_t *callbacks) {
+  if (!callbacks->on_crypto_auth_failed) {
+    return ASCIICHAT_OK;
+  }
+
+  // Dispatch to application callback with packet type
+  callbacks->on_crypto_auth_failed(PACKET_TYPE_CRYPTO_AUTH_FAILED, payload, payload_len, callbacks->app_ctx);
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t handle_client_crypto_handshake_complete(const void *payload, size_t payload_len,
+                                                                 const acip_client_callbacks_t *callbacks) {
+  if (!callbacks->on_crypto_handshake_complete) {
+    return ASCIICHAT_OK;
+  }
+
+  // Dispatch to application callback with packet type
+  callbacks->on_crypto_handshake_complete(PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE, payload, payload_len,
+                                          callbacks->app_ctx);
+  return ASCIICHAT_OK;
+}
+
 // =============================================================================
 // Server-Side Packet Handlers
 // =============================================================================
@@ -513,25 +593,35 @@ static asciichat_error_t handle_server_crypto_rekey_response(const void *payload
                                                              const acip_server_callbacks_t *callbacks);
 static asciichat_error_t handle_server_crypto_rekey_complete(const void *payload, size_t payload_len, void *client_ctx,
                                                              const acip_server_callbacks_t *callbacks);
+static asciichat_error_t handle_server_crypto_key_exchange_resp(const void *payload, size_t payload_len,
+                                                                void *client_ctx,
+                                                                const acip_server_callbacks_t *callbacks);
+static asciichat_error_t handle_server_crypto_auth_response(const void *payload, size_t payload_len, void *client_ctx,
+                                                            const acip_server_callbacks_t *callbacks);
+static asciichat_error_t handle_server_crypto_no_encryption(const void *payload, size_t payload_len, void *client_ctx,
+                                                            const acip_server_callbacks_t *callbacks);
 
 // Server handler dispatch table (indexed by server_handler_index())
 static const acip_server_handler_func_t g_server_handlers[SERVER_HANDLER_COUNT] = {
-    handle_server_protocol_version,      // 0
-    handle_server_image_frame,           // 1
-    handle_server_audio_batch,           // 2
-    handle_server_audio_opus_batch,      // 3
-    handle_server_capabilities,          // 4
-    handle_server_ping,                  // 5
-    handle_server_pong,                  // 6
-    handle_server_client_join,           // 7
-    handle_server_client_leave,          // 8
-    handle_server_stream_start,          // 9
-    handle_server_stream_stop,           // 10
-    handle_server_remote_log,            // 11
-    handle_server_error_message,         // 12
-    handle_server_crypto_rekey_request,  // 13
-    handle_server_crypto_rekey_response, // 14
-    handle_server_crypto_rekey_complete, // 15
+    handle_server_protocol_version,         // 0
+    handle_server_image_frame,              // 1
+    handle_server_audio_batch,              // 2
+    handle_server_audio_opus_batch,         // 3
+    handle_server_capabilities,             // 4
+    handle_server_ping,                     // 5
+    handle_server_pong,                     // 6
+    handle_server_client_join,              // 7
+    handle_server_client_leave,             // 8
+    handle_server_stream_start,             // 9
+    handle_server_stream_stop,              // 10
+    handle_server_remote_log,               // 11
+    handle_server_error_message,            // 12
+    handle_server_crypto_rekey_request,     // 13
+    handle_server_crypto_rekey_response,    // 14
+    handle_server_crypto_rekey_complete,    // 15
+    handle_server_crypto_key_exchange_resp, // 16
+    handle_server_crypto_auth_response,     // 17
+    handle_server_crypto_no_encryption,     // 18
 };
 
 asciichat_error_t acip_handle_server_packet(acip_transport_t *transport, packet_type_t type, const void *payload,
@@ -845,5 +935,42 @@ static asciichat_error_t handle_server_crypto_rekey_complete(const void *payload
   if (callbacks->on_crypto_rekey_complete) {
     callbacks->on_crypto_rekey_complete(payload, payload_len, client_ctx, callbacks->app_ctx);
   }
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t handle_server_crypto_key_exchange_resp(const void *payload, size_t payload_len,
+                                                                void *client_ctx,
+                                                                const acip_server_callbacks_t *callbacks) {
+  if (!callbacks->on_crypto_key_exchange_resp) {
+    return ASCIICHAT_OK;
+  }
+
+  // Dispatch to application callback with packet type
+  callbacks->on_crypto_key_exchange_resp(PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP, payload, payload_len, client_ctx,
+                                         callbacks->app_ctx);
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t handle_server_crypto_auth_response(const void *payload, size_t payload_len, void *client_ctx,
+                                                            const acip_server_callbacks_t *callbacks) {
+  if (!callbacks->on_crypto_auth_response) {
+    return ASCIICHAT_OK;
+  }
+
+  // Dispatch to application callback with packet type
+  callbacks->on_crypto_auth_response(PACKET_TYPE_CRYPTO_AUTH_RESPONSE, payload, payload_len, client_ctx,
+                                     callbacks->app_ctx);
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t handle_server_crypto_no_encryption(const void *payload, size_t payload_len, void *client_ctx,
+                                                            const acip_server_callbacks_t *callbacks) {
+  if (!callbacks->on_crypto_no_encryption) {
+    return ASCIICHAT_OK;
+  }
+
+  // Dispatch to application callback with packet type
+  callbacks->on_crypto_no_encryption(PACKET_TYPE_CRYPTO_NO_ENCRYPTION, payload, payload_len, client_ctx,
+                                     callbacks->app_ctx);
   return ASCIICHAT_OK;
 }

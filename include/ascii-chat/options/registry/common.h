@@ -15,6 +15,17 @@
 #include <stddef.h>
 
 /**
+ * @brief Mode-aware default value getter function type
+ *
+ * Returns the default value for an option based on the current mode.
+ * Used for options that have different defaults per mode (e.g., log-file, port, websocket-port).
+ *
+ * @param mode The mode to get the default for
+ * @return Pointer to the default value for this mode (must remain valid)
+ */
+typedef const void *(*mode_default_getter_fn)(asciichat_mode_t mode);
+
+/**
  * @brief Registry entry - stores option definition with mode bitmask and metadata
  */
 typedef struct {
@@ -22,7 +33,7 @@ typedef struct {
   char short_name;
   option_type_t type;
   size_t offset;
-  const void *default_value;
+  const void *default_value; ///< Default value (single value for all modes, or NULL if mode_default_getter is set)
   size_t default_value_size;
   const char *help_text;
   const char *group;
@@ -35,6 +46,8 @@ typedef struct {
   bool optional_arg;
   option_mode_bitmask_t mode_bitmask;
   option_metadata_t metadata; ///< Enum values, numeric ranges, examples
+  mode_default_getter_fn
+      mode_default_getter; ///< Mode-aware default getter (NULL if using default_value) - LAST for backward compat
 } registry_entry_t;
 
 /**
@@ -55,6 +68,7 @@ typedef struct {
    .type = OPTION_TYPE_BOOL,                                                                                           \
    .offset = 0,                                                                                                        \
    .default_value = NULL,                                                                                              \
+   .mode_default_getter = NULL,                                                                                        \
    .default_value_size = 0,                                                                                            \
    .help_text = NULL,                                                                                                  \
    .group = NULL,                                                                                                      \

@@ -1213,6 +1213,27 @@ static bool config_key_should_be_commented(const char *toml_key) {
          strcmp(toml_key, "network.turn_secret") == 0;
 }
 
+/**
+ * @brief Extract a single mode from a bitmask (for mode-specific config entries)
+ * @param mode_bitmask Bitmask with exactly one mode bit set
+ * @return The mode, or MODE_INVALID if bitmask has zero or multiple bits
+ */
+static asciichat_mode_t extract_mode_from_bitmask(option_mode_bitmask_t mode_bitmask) {
+  // Check each mode bit
+  if (mode_bitmask == OPTION_MODE_SERVER)
+    return MODE_SERVER;
+  if (mode_bitmask == OPTION_MODE_CLIENT)
+    return MODE_CLIENT;
+  if (mode_bitmask == OPTION_MODE_MIRROR)
+    return MODE_MIRROR;
+  if (mode_bitmask == OPTION_MODE_DISCOVERY_SVC)
+    return MODE_DISCOVERY_SERVICE;
+  if (mode_bitmask == OPTION_MODE_DISCOVERY)
+    return MODE_DISCOVERY;
+  // Bitmask has zero or multiple bits set
+  return MODE_INVALID;
+}
+
 asciichat_error_t config_create_default(const char *config_path) {
   char *config_path_expanded = NULL;
 
@@ -1328,10 +1349,12 @@ asciichat_error_t config_create_default(const char *config_path) {
         continue;
       }
 
-      // Skip if this is a duplicate of another option (check by field_offset)
+      // Skip if this is a duplicate of another option (check by TOML key, not field_offset)
+      // Note: Multiple options can map to the same field (e.g., server_log_file, client_log_file)
       bool is_duplicate = false;
       for (size_t j = 0; j < opt_idx; j++) {
-        if (cat_options[j] && cat_options[j]->field_offset == meta->field_offset) {
+        if (cat_options[j] && cat_options[j]->toml_key && meta->toml_key &&
+            strcmp(cat_options[j]->toml_key, meta->toml_key) == 0) {
           is_duplicate = true;
           break;
         }
@@ -1340,8 +1363,31 @@ asciichat_error_t config_create_default(const char *config_path) {
         continue;
       }
 
-      // Get field pointer from default options
+      // Get field pointer from default options (or mode-specific default if available)
       const char *field_ptr = ((const char *)&defaults) + meta->field_offset;
+
+      // Buffer to hold mode-specific default value if needed
+      char mode_default_buffer[OPTIONS_BUFF_SIZE] = {0};
+      int mode_default_int = 0;
+
+      // If this option has a mode_default_getter, use it to get the correct default
+      if (meta->mode_default_getter) {
+        asciichat_mode_t mode = extract_mode_from_bitmask(meta->mode_bitmask);
+        if (mode != MODE_INVALID) {
+          const void *default_value = meta->mode_default_getter(mode);
+          if (default_value) {
+            // Copy the default value to our buffer based on type
+            if (meta->type == OPTION_TYPE_STRING || meta->type == OPTION_TYPE_CALLBACK) {
+              const char *str_value = (const char *)default_value;
+              SAFE_STRNCPY(mode_default_buffer, str_value, sizeof(mode_default_buffer));
+              field_ptr = mode_default_buffer;
+            } else if (meta->type == OPTION_TYPE_INT) {
+              mode_default_int = *(const int *)default_value;
+              field_ptr = (const char *)&mode_default_int;
+            }
+          }
+        }
+      }
 
       // Add description comment if available
       if (meta->description && strlen(meta->description) > 0) {

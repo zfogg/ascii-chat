@@ -163,6 +163,10 @@ typedef struct {
 
   // Completion metadata (NEW - for smart shell completions)
   option_metadata_t metadata; ///< Metadata for shell completions (enums, ranges, examples, etc.)
+
+  // Mode-aware default getter (for options with mode-specific defaults)
+  const void *(*mode_default_getter)(
+      asciichat_mode_t mode); ///< Get mode-specific default value (NULL if not mode-aware)
 } option_descriptor_t;
 
 /**

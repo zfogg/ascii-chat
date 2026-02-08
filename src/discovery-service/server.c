@@ -875,7 +875,7 @@ void *acds_client_handler(void *arg) {
   log_debug("Performing crypto handshake with client %s", client_ip);
 
   // Step 1: Start handshake (send server key, receive client key)
-  handshake_result = crypto_handshake_server_start(&client_data->handshake_ctx, client_socket);
+  handshake_result = crypto_handshake_server_start_socket(&client_data->handshake_ctx, client_socket);
   if (handshake_result != ASCIICHAT_OK) {
     log_warn("Crypto handshake start failed for client %s", client_ip);
     tcp_server_remove_client(&server->tcp_server, client_socket);
@@ -884,7 +884,7 @@ void *acds_client_handler(void *arg) {
   }
 
   // Step 2: Authentication challenge (if required)
-  handshake_result = crypto_handshake_server_auth_challenge(&client_data->handshake_ctx, client_socket);
+  handshake_result = crypto_handshake_server_auth_challenge_socket(&client_data->handshake_ctx, client_socket);
   if (handshake_result != ASCIICHAT_OK) {
     log_warn("Crypto handshake auth challenge failed for client %s", client_ip);
     tcp_server_remove_client(&server->tcp_server, client_socket);
@@ -893,7 +893,7 @@ void *acds_client_handler(void *arg) {
   }
 
   // Step 3: Complete handshake (verify and finalize)
-  handshake_result = crypto_handshake_server_complete(&client_data->handshake_ctx, client_socket);
+  handshake_result = crypto_handshake_server_complete_socket(&client_data->handshake_ctx, client_socket);
   if (handshake_result != ASCIICHAT_OK) {
     log_warn("Crypto handshake complete failed for client %s", client_ip);
     tcp_server_remove_client(&server->tcp_server, client_socket);

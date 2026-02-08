@@ -78,6 +78,10 @@ typedef struct {
       double max;
     } float_range;
   } constraints;
+
+  // Mode-aware default getter (for options with mode-specific defaults)
+  const void *(*mode_default_getter)(
+      asciichat_mode_t mode); ///< Get mode-specific default value (NULL if not mode-aware)
 } config_option_metadata_t;
 
 /**

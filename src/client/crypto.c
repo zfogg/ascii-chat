@@ -629,7 +629,7 @@ int client_crypto_handshake(socket_t socket) {
 
   // Step 1: Receive server's public key and send our public key
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Starting key exchange");
-  result = crypto_handshake_client_key_exchange(&g_crypto_ctx, socket);
+  result = crypto_handshake_client_key_exchange_socket(&g_crypto_ctx, socket);
   if (result != ASCIICHAT_OK) {
 #ifdef _WIN32
     // On Windows: Cleanup capture resources before exiting to prevent Media Foundation threads from hanging exit()
@@ -691,7 +691,7 @@ int client_crypto_handshake(socket_t socket) {
   // Step 2: Receive auth challenge and send response
   log_debug("CLIENT_CRYPTO: Sending auth response to server...");
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Starting auth response");
-  result = crypto_handshake_client_auth_response(&g_crypto_ctx, socket);
+  result = crypto_handshake_client_auth_response_socket(&g_crypto_ctx, socket);
   if (result != ASCIICHAT_OK) {
     FATAL(result, "Crypto authentication failed");
   }
@@ -707,7 +707,7 @@ int client_crypto_handshake(socket_t socket) {
 
   // Step 3: Receive handshake complete message
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Waiting for handshake complete message");
-  result = crypto_handshake_client_complete(&g_crypto_ctx, socket);
+  result = crypto_handshake_client_complete_socket(&g_crypto_ctx, socket);
   if (result != ASCIICHAT_OK) {
     FATAL(result, "Crypto handshake completion failed");
   }

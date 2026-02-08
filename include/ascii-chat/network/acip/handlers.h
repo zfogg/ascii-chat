@@ -97,6 +97,21 @@ typedef struct {
   /** @brief Called when ACDS session join response received (Phase 3 WebRTC integration) */
   void (*on_session_joined)(const acip_session_joined_t *joined, void *ctx);
 
+  /** @brief Called when server sends KEY_EXCHANGE_INIT (crypto handshake) */
+  void (*on_crypto_key_exchange_init)(packet_type_t type, const void *payload, size_t payload_len, void *ctx);
+
+  /** @brief Called when server sends AUTH_CHALLENGE (crypto handshake) */
+  void (*on_crypto_auth_challenge)(packet_type_t type, const void *payload, size_t payload_len, void *ctx);
+
+  /** @brief Called when server sends SERVER_AUTH_RESP (crypto handshake mutual auth) */
+  void (*on_crypto_server_auth_resp)(packet_type_t type, const void *payload, size_t payload_len, void *ctx);
+
+  /** @brief Called when server sends AUTH_FAILED (crypto handshake failure) */
+  void (*on_crypto_auth_failed)(packet_type_t type, const void *payload, size_t payload_len, void *ctx);
+
+  /** @brief Called when server sends HANDSHAKE_COMPLETE (crypto handshake success) */
+  void (*on_crypto_handshake_complete)(packet_type_t type, const void *payload, size_t payload_len, void *ctx);
+
   /** @brief Application context (passed to all callbacks) */
   void *app_ctx;
 } acip_client_callbacks_t;
@@ -183,6 +198,18 @@ typedef struct {
 
   /** @brief Called when client sends crypto rekey complete */
   void (*on_crypto_rekey_complete)(const void *payload, size_t payload_len, void *client_ctx, void *app_ctx);
+
+  /** @brief Called when client sends KEY_EXCHANGE_RESP (crypto handshake) */
+  void (*on_crypto_key_exchange_resp)(packet_type_t type, const void *payload, size_t payload_len, void *client_ctx,
+                                      void *app_ctx);
+
+  /** @brief Called when client sends AUTH_RESPONSE (crypto handshake) */
+  void (*on_crypto_auth_response)(packet_type_t type, const void *payload, size_t payload_len, void *client_ctx,
+                                  void *app_ctx);
+
+  /** @brief Called when client sends NO_ENCRYPTION (crypto handshake rejection) */
+  void (*on_crypto_no_encryption)(packet_type_t type, const void *payload, size_t payload_len, void *client_ctx,
+                                  void *app_ctx);
 
   /** @brief Application context (passed to all callbacks) */
   void *app_ctx;

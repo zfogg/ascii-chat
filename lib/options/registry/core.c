@@ -181,6 +181,7 @@ option_descriptor_t registry_entry_to_descriptor(const registry_entry_t *entry) 
     desc.optional_arg = entry->optional_arg;
     desc.mode_bitmask = entry->mode_bitmask;
     desc.metadata = entry->metadata;
+    desc.mode_default_getter = entry->mode_default_getter;
   }
   return desc;
 }

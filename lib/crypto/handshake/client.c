@@ -14,6 +14,8 @@
 #include <ascii-chat/crypto/known_hosts.h>
 #include <ascii-chat/crypto/gpg/gpg.h>
 #include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/util/password.h>
 #include <stdio.h>
 #include <string.h>
@@ -26,25 +28,21 @@
 #endif
 
 // Client: Process server's public key and send our public key
-asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_t *ctx, socket_t client_socket) {
+asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_t *ctx, acip_transport_t *transport,
+                                                       packet_type_t packet_type, const uint8_t *payload,
+                                                       size_t payload_len) {
   if (!ctx || ctx->state != CRYPTO_HANDSHAKE_INIT) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, state=%d", (void *)ctx, ctx ? (int)ctx->state : -1);
   }
-
-  // Receive server's KEY_EXCHANGE_INIT packet
-  packet_type_t packet_type;
-  uint8_t *payload = NULL;
-  size_t payload_len = 0;
-  int result = receive_packet(client_socket, &packet_type, (void **)&payload, &payload_len);
-  if (result != ASCIICHAT_OK) {
-    return SET_ERRNO(ERROR_NETWORK, "Failed to receive KEY_EXCHANGE_INIT packet");
+  if (!transport) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "transport is NULL");
   }
+
+  // Note: Packet already received by ACIP handler
+  int result;
 
   // Verify packet type
   if (packet_type != PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT) {
-    if (payload) {
-      buffer_pool_free(NULL, payload, payload_len);
-    }
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Expected KEY_EXCHANGE_INIT, got packet type %d", packet_type);
   }
 
@@ -213,29 +211,14 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
       log_info("Server identity key verified against --server-key (%zu key(s) checked)", num_expected_keys);
     }
 
-    // Resolve server IP from socket if not already set
+    // Note: Server IP resolution now handled by caller (TCP transport layer)
+    // For WebSocket/WebRTC transports, server_ip should be set by the transport
+    // before handshake begins. TCP clients will use the legacy wrapper which
+    // handles this.
     if (ctx->server_ip[0] == '\0') {
-      // Try to get server IP from socket
-      struct sockaddr_storage server_addr;
-      socklen_t addr_len = sizeof(server_addr);
-      if (getpeername(client_socket, (struct sockaddr *)&server_addr, &addr_len) == 0) {
-        char ip_str[INET6_ADDRSTRLEN];
-        if (format_ip_address(server_addr.ss_family, (struct sockaddr *)&server_addr, ip_str, sizeof(ip_str)) ==
-            ASCIICHAT_OK) {
-          SAFE_STRNCPY(ctx->server_ip, ip_str, sizeof(ctx->server_ip) - 1);
-          if (server_addr.ss_family == AF_INET) {
-            struct sockaddr_in *addr_in = (struct sockaddr_in *)&server_addr;
-            ctx->server_port = NET_TO_HOST_U16(addr_in->sin_port);
-          } else if (server_addr.ss_family == AF_INET6) {
-            struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)&server_addr;
-            ctx->server_port = NET_TO_HOST_U16(addr_in6->sin6_port);
-          }
-        }
-      } else {
-        log_warn("Failed to get server address from socket");
-      }
+      log_debug("Server IP not set - skipping known_hosts verification (non-TCP transport)");
     } else {
-      log_warn("Server IP already set: %s", ctx->server_ip);
+      log_debug("Server IP already set: %s", ctx->server_ip);
     }
 
     // Check known_hosts for this server (if we have server IP and port)
@@ -527,7 +510,7 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
       log_debug("Including client GPG key ID in KEY_EXCHANGE_RESPONSE: %.*s", gpg_key_id_len, ctx->client_gpg_key_id);
     }
 
-    result = send_packet(client_socket, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP, key_response, response_size);
+    result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP, key_response, response_size);
     if (result != 0) {
       SAFE_FREE(key_response);
       SAFE_FREE(server_ephemeral_key);
@@ -542,8 +525,8 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
   } else {
     // Send X25519 encryption key only to server (no identity key)
     // Format: [X25519 pubkey (kex_size)] = kex_size bytes total
-    result = send_packet(client_socket, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP, ctx->crypto_ctx.public_key,
-                         ctx->crypto_ctx.public_key_size);
+    result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP, ctx->crypto_ctx.public_key,
+                                       ctx->crypto_ctx.public_key_size);
     if (result != 0) {
       SAFE_FREE(server_ephemeral_key);
       SAFE_FREE(server_identity_key);
@@ -562,7 +545,7 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
   return ASCIICHAT_OK;
 }
 // Helper: Send password-based authentication response with mutual auth
-static asciichat_error_t send_password_auth_response(crypto_handshake_context_t *ctx, socket_t client_socket,
+static asciichat_error_t send_password_auth_response(crypto_handshake_context_t *ctx, acip_transport_t *transport,
                                                      const uint8_t *nonce, const char *auth_context) {
   // Ensure shared secret is derived before computing password HMAC
   // This is critical for password HMAC computation which binds to the shared secret
@@ -592,7 +575,7 @@ static asciichat_error_t send_password_auth_response(crypto_handshake_context_t 
   memcpy(auth_packet + ctx->crypto_ctx.hmac_size, ctx->client_challenge_nonce, ctx->crypto_ctx.auth_challenge_size);
 
   log_debug("Sending AUTH_RESPONSE packet with HMAC + client nonce (%zu bytes) - %s", auth_packet_size, auth_context);
-  int result = send_packet(client_socket, PACKET_TYPE_CRYPTO_AUTH_RESPONSE, auth_packet, auth_packet_size);
+  int result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_RESPONSE, auth_packet, auth_packet_size);
   if (result != 0) {
     return SET_ERRNO(ERROR_NETWORK, "Failed to send AUTH_RESPONSE packet");
   }
@@ -601,7 +584,7 @@ static asciichat_error_t send_password_auth_response(crypto_handshake_context_t 
 }
 
 // Helper: Send Ed25519 signature-based authentication response with mutual auth
-static asciichat_error_t send_key_auth_response(crypto_handshake_context_t *ctx, socket_t client_socket,
+static asciichat_error_t send_key_auth_response(crypto_handshake_context_t *ctx, acip_transport_t *transport,
                                                 const uint8_t *nonce, const char *auth_context) {
   // Sign the challenge with our Ed25519 private key
   uint8_t signature[ED25519_SIGNATURE_SIZE]; // Maximum size buffer
@@ -663,7 +646,7 @@ static asciichat_error_t send_key_auth_response(crypto_handshake_context_t *ctx,
   log_debug("Sending AUTH_RESPONSE packet with Ed25519 signature + client "
             "nonce + GPG key ID (%zu bytes) - %s",
             auth_packet_size, auth_context);
-  int result = send_packet(client_socket, PACKET_TYPE_CRYPTO_AUTH_RESPONSE, auth_packet, auth_packet_size);
+  int result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_RESPONSE, auth_packet, auth_packet_size);
   if (result != 0) {
     return SET_ERRNO(ERROR_NETWORK, "Failed to send AUTH_RESPONSE packet");
   }
@@ -671,19 +654,18 @@ static asciichat_error_t send_key_auth_response(crypto_handshake_context_t *ctx,
   return ASCIICHAT_OK;
 }
 // Client: Process auth challenge and send response
-asciichat_error_t crypto_handshake_client_auth_response(crypto_handshake_context_t *ctx, socket_t client_socket) {
+asciichat_error_t crypto_handshake_client_auth_response(crypto_handshake_context_t *ctx, acip_transport_t *transport,
+                                                        packet_type_t packet_type, const uint8_t *payload,
+                                                        size_t payload_len) {
   if (!ctx || ctx->state != CRYPTO_HANDSHAKE_KEY_EXCHANGE) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, state=%d", ctx, ctx ? ctx->state : -1);
   }
-
-  // Receive AUTH_CHALLENGE or HANDSHAKE_COMPLETE packet
-  packet_type_t packet_type;
-  uint8_t *payload = NULL;
-  size_t payload_len = 0;
-  int result = receive_packet(client_socket, &packet_type, (void **)&payload, &payload_len);
-  if (result != ASCIICHAT_OK) {
-    return SET_ERRNO(ERROR_NETWORK, "Failed to receive packet from server");
+  if (!transport) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "transport is NULL");
   }
+
+  // Note: Packet already received by ACIP handler
+  int result;
 
   // If server sent HANDSHAKE_COMPLETE, authentication was skipped (client has
   // no key)
@@ -807,7 +789,7 @@ asciichat_error_t crypto_handshake_client_auth_response(crypto_handshake_context
                                      "Please provide --password for this server");
     }
 
-    result = send_password_auth_response(ctx, client_socket, nonce, "required password");
+    result = send_password_auth_response(ctx, transport, nonce, "required password");
     if (result != ASCIICHAT_OK) {
       SET_ERRNO(ERROR_NETWORK, "Failed to send password auth response");
       return result;
@@ -819,7 +801,7 @@ asciichat_error_t crypto_handshake_client_auth_response(crypto_handshake_context
                                      "Please provide --key with your authorized Ed25519 key");
     }
 
-    result = send_key_auth_response(ctx, client_socket, nonce, "required client key");
+    result = send_key_auth_response(ctx, transport, nonce, "required client key");
     if (result != ASCIICHAT_OK) {
       SET_ERRNO(ERROR_NETWORK, "Failed to send key auth response");
       return result;
@@ -827,7 +809,7 @@ asciichat_error_t crypto_handshake_client_auth_response(crypto_handshake_context
   } else if (has_password) {
     // No server requirements, but client has password → send HMAC + client
     // nonce (optional)
-    result = send_password_auth_response(ctx, client_socket, nonce, "optional password");
+    result = send_password_auth_response(ctx, transport, nonce, "optional password");
     if (result != ASCIICHAT_OK) {
       SET_ERRNO(ERROR_NETWORK, "Failed to send password auth response");
       return result;
@@ -835,7 +817,7 @@ asciichat_error_t crypto_handshake_client_auth_response(crypto_handshake_context
   } else if (has_client_key) {
     // No server requirements, but client has SSH key → send Ed25519 signature +
     // client nonce (optional)
-    result = send_key_auth_response(ctx, client_socket, nonce, "optional identity");
+    result = send_key_auth_response(ctx, transport, nonce, "optional identity");
     if (result != ASCIICHAT_OK) {
       SET_ERRNO(ERROR_NETWORK, "Failed to send key auth response");
       return result;
@@ -853,21 +835,19 @@ asciichat_error_t crypto_handshake_client_auth_response(crypto_handshake_context
   return ASCIICHAT_OK;
 }
 // Client: Wait for handshake complete confirmation
-asciichat_error_t crypto_handshake_client_complete(crypto_handshake_context_t *ctx, socket_t client_socket) {
+asciichat_error_t crypto_handshake_client_complete(crypto_handshake_context_t *ctx, acip_transport_t *transport,
+                                                   packet_type_t packet_type, const uint8_t *payload,
+                                                   size_t payload_len) {
   if (!ctx || ctx->state != CRYPTO_HANDSHAKE_AUTHENTICATING) {
     SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, state=%d", ctx, ctx ? ctx->state : -1);
     return ERROR_INVALID_STATE;
   }
-
-  // Receive HANDSHAKE_COMPLETE or AUTH_FAILED packet
-  packet_type_t packet_type;
-  uint8_t *payload = NULL;
-  size_t payload_len = 0;
-  int result = receive_packet(client_socket, &packet_type, (void **)&payload, &payload_len);
-  if (result != ASCIICHAT_OK) {
-    SET_ERRNO(ERROR_NETWORK, "Failed to receive handshake completion packet");
-    return ERROR_NETWORK;
+  if (!transport) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "transport is NULL");
   }
+
+  // Note: Packet already received by ACIP handler
+  (void)transport; // Unused parameter (this function only receives, doesn't send)
 
   // Check packet type
   if (packet_type == PACKET_TYPE_CRYPTO_AUTH_FAILED) {
@@ -958,4 +938,122 @@ asciichat_error_t crypto_handshake_client_complete(crypto_handshake_context_t *c
   log_info("Server authentication successful - mutual authentication complete");
 
   return ASCIICHAT_OK;
+}
+
+// =============================================================================
+// Legacy TCP Socket Wrappers (backward compatibility)
+// =============================================================================
+// These wrappers maintain the old socket-based interface for TCP clients
+// that do handshake BEFORE creating ACIP transport. Will be removed in Phase 5.
+
+/**
+ * @brief Legacy wrapper: Key exchange using socket (TCP clients only)
+ */
+asciichat_error_t crypto_handshake_client_key_exchange_socket(crypto_handshake_context_t *ctx, socket_t client_socket) {
+  // Receive packet using old method
+  packet_type_t packet_type;
+  uint8_t *payload = NULL;
+  size_t payload_len = 0;
+  int result = receive_packet(client_socket, &packet_type, (void **)&payload, &payload_len);
+  if (result != ASCIICHAT_OK) {
+    return SET_ERRNO(ERROR_NETWORK, "Failed to receive KEY_EXCHANGE_INIT packet");
+  }
+
+  // Create temporary TCP transport
+  acip_transport_t *temp_transport = acip_tcp_transport_create(client_socket, NULL);
+  if (!temp_transport) {
+    if (payload) {
+      buffer_pool_free(NULL, payload, payload_len);
+    }
+    return SET_ERRNO(ERROR_NETWORK, "Failed to create temporary transport");
+  }
+
+  // Call new function
+  asciichat_error_t handshake_result =
+      crypto_handshake_client_key_exchange(ctx, temp_transport, packet_type, payload, payload_len);
+
+  // Free payload
+  if (payload) {
+    buffer_pool_free(NULL, payload, payload_len);
+  }
+
+  // Destroy temporary transport
+  acip_transport_destroy(temp_transport);
+
+  return handshake_result;
+}
+
+/**
+ * @brief Legacy wrapper: Auth response using socket (TCP clients only)
+ */
+asciichat_error_t crypto_handshake_client_auth_response_socket(crypto_handshake_context_t *ctx,
+                                                               socket_t client_socket) {
+  // Receive packet using old method
+  packet_type_t packet_type;
+  uint8_t *payload = NULL;
+  size_t payload_len = 0;
+  int result = receive_packet(client_socket, &packet_type, (void **)&payload, &payload_len);
+  if (result != ASCIICHAT_OK) {
+    return SET_ERRNO(ERROR_NETWORK, "Failed to receive packet from server");
+  }
+
+  // Create temporary TCP transport
+  acip_transport_t *temp_transport = acip_tcp_transport_create(client_socket, NULL);
+  if (!temp_transport) {
+    if (payload) {
+      buffer_pool_free(NULL, payload, payload_len);
+    }
+    return SET_ERRNO(ERROR_NETWORK, "Failed to create temporary transport");
+  }
+
+  // Call new function
+  asciichat_error_t handshake_result =
+      crypto_handshake_client_auth_response(ctx, temp_transport, packet_type, payload, payload_len);
+
+  // Free payload
+  if (payload) {
+    buffer_pool_free(NULL, payload, payload_len);
+  }
+
+  // Destroy temporary transport
+  acip_transport_destroy(temp_transport);
+
+  return handshake_result;
+}
+
+/**
+ * @brief Legacy wrapper: Complete handshake using socket (TCP clients only)
+ */
+asciichat_error_t crypto_handshake_client_complete_socket(crypto_handshake_context_t *ctx, socket_t client_socket) {
+  // Receive packet using old method
+  packet_type_t packet_type;
+  uint8_t *payload = NULL;
+  size_t payload_len = 0;
+  int result = receive_packet(client_socket, &packet_type, (void **)&payload, &payload_len);
+  if (result != ASCIICHAT_OK) {
+    return SET_ERRNO(ERROR_NETWORK, "Failed to receive handshake completion packet");
+  }
+
+  // Create temporary TCP transport
+  acip_transport_t *temp_transport = acip_tcp_transport_create(client_socket, NULL);
+  if (!temp_transport) {
+    if (payload) {
+      buffer_pool_free(NULL, payload, payload_len);
+    }
+    return SET_ERRNO(ERROR_NETWORK, "Failed to create temporary transport");
+  }
+
+  // Call new function
+  asciichat_error_t handshake_result =
+      crypto_handshake_client_complete(ctx, temp_transport, packet_type, payload, payload_len);
+
+  // Free payload
+  if (payload) {
+    buffer_pool_free(NULL, payload, payload_len);
+  }
+
+  // Destroy temporary transport
+  acip_transport_destroy(temp_transport);
+
+  return handshake_result;
 }

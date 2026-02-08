@@ -105,6 +105,7 @@
 #include <ascii-chat/util/fps.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/crypto/crypto.h>
+#include <ascii-chat/crypto/handshake/client.h>
 
 // Forward declaration for client crypto functions
 bool crypto_client_is_ready(void);
@@ -831,6 +832,11 @@ static void acip_on_crypto_rekey_response(const void *payload, size_t payload_le
 static void acip_on_webrtc_sdp(const acip_webrtc_sdp_t *sdp, size_t total_len, void *ctx);
 static void acip_on_webrtc_ice(const acip_webrtc_ice_t *ice, size_t total_len, void *ctx);
 static void acip_on_session_joined(const acip_session_joined_t *joined, void *ctx);
+static void acip_on_crypto_key_exchange_init(packet_type_t type, const void *payload, size_t payload_len, void *ctx);
+static void acip_on_crypto_auth_challenge(packet_type_t type, const void *payload, size_t payload_len, void *ctx);
+static void acip_on_crypto_server_auth_resp(packet_type_t type, const void *payload, size_t payload_len, void *ctx);
+static void acip_on_crypto_auth_failed(packet_type_t type, const void *payload, size_t payload_len, void *ctx);
+static void acip_on_crypto_handshake_complete(packet_type_t type, const void *payload, size_t payload_len, void *ctx);
 
 /**
  * @brief Global ACIP client callbacks structure
@@ -838,24 +844,29 @@ static void acip_on_session_joined(const acip_session_joined_t *joined, void *ct
  * Handles all ACIP packet types including crypto rekey protocol.
  * Integrates with existing client-side packet handlers.
  */
-static const acip_client_callbacks_t g_acip_client_callbacks = {.on_ascii_frame = acip_on_ascii_frame,
-                                                                .on_audio = acip_on_audio,
-                                                                .on_audio_batch = acip_on_audio_batch,
-                                                                .on_audio_opus = acip_on_audio_opus,
-                                                                .on_audio_opus_batch = acip_on_audio_opus_batch,
-                                                                .on_server_state = acip_on_server_state,
-                                                                .on_error = acip_on_error,
-                                                                .on_remote_log = acip_on_remote_log,
-                                                                .on_ping = acip_on_ping,
-                                                                .on_pong = acip_on_pong,
-                                                                .on_clear_console = acip_on_clear_console,
-                                                                .on_crypto_rekey_request = acip_on_crypto_rekey_request,
-                                                                .on_crypto_rekey_response =
-                                                                    acip_on_crypto_rekey_response,
-                                                                .on_webrtc_sdp = acip_on_webrtc_sdp,
-                                                                .on_webrtc_ice = acip_on_webrtc_ice,
-                                                                .on_session_joined = acip_on_session_joined,
-                                                                .app_ctx = NULL};
+static const acip_client_callbacks_t g_acip_client_callbacks = {
+    .on_ascii_frame = acip_on_ascii_frame,
+    .on_audio = acip_on_audio,
+    .on_audio_batch = acip_on_audio_batch,
+    .on_audio_opus = acip_on_audio_opus,
+    .on_audio_opus_batch = acip_on_audio_opus_batch,
+    .on_server_state = acip_on_server_state,
+    .on_error = acip_on_error,
+    .on_remote_log = acip_on_remote_log,
+    .on_ping = acip_on_ping,
+    .on_pong = acip_on_pong,
+    .on_clear_console = acip_on_clear_console,
+    .on_crypto_rekey_request = acip_on_crypto_rekey_request,
+    .on_crypto_rekey_response = acip_on_crypto_rekey_response,
+    .on_webrtc_sdp = acip_on_webrtc_sdp,
+    .on_webrtc_ice = acip_on_webrtc_ice,
+    .on_session_joined = acip_on_session_joined,
+    .on_crypto_key_exchange_init = acip_on_crypto_key_exchange_init,
+    .on_crypto_auth_challenge = acip_on_crypto_auth_challenge,
+    .on_crypto_server_auth_resp = acip_on_crypto_server_auth_resp,
+    .on_crypto_auth_failed = acip_on_crypto_auth_failed,
+    .on_crypto_handshake_complete = acip_on_crypto_handshake_complete,
+    .app_ctx = NULL};
 
 /**
  * @brief Get ACIP client callbacks for packet dispatch
@@ -1442,5 +1453,178 @@ static void acip_on_session_joined(const acip_session_joined_t *joined, void *ct
   } else {
     // Direct TCP - connection is already established or will be established
     log_debug("Direct TCP session - using existing connection");
+  }
+}
+
+/**
+ * @brief Handle CRYPTO_KEY_EXCHANGE_INIT from server (start handshake)
+ *
+ * Server sent its public key, we respond with ours and derive shared secret.
+ * This is step 1 of the crypto handshake protocol.
+ *
+ * @param type Packet type (should be PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT)
+ * @param payload Server's public key packet
+ * @param payload_len Payload length
+ * @param ctx Application context (unused)
+ *
+ * @ingroup client_protocol
+ */
+static void acip_on_crypto_key_exchange_init(packet_type_t type, const void *payload, size_t payload_len, void *ctx) {
+  (void)ctx;
+
+  log_debug("Received CRYPTO_KEY_EXCHANGE_INIT from server");
+
+  acip_transport_t *transport = server_connection_get_transport();
+  if (!transport) {
+    log_error("Cannot handle key exchange - no transport available");
+    return;
+  }
+
+  asciichat_error_t result =
+      crypto_handshake_client_key_exchange(&g_crypto_ctx, transport, type, (const uint8_t *)payload, payload_len);
+  if (result != ASCIICHAT_OK) {
+    log_error("Crypto handshake key exchange failed");
+    server_connection_lost();
+  } else {
+    log_debug("Sent CRYPTO_KEY_EXCHANGE_RESP to server");
+  }
+}
+
+/**
+ * @brief Handle CRYPTO_AUTH_CHALLENGE from server (authenticate)
+ *
+ * Server sent authentication challenge, we respond with proof of identity.
+ * This is step 2 of the crypto handshake protocol.
+ *
+ * @param type Packet type (should be PACKET_TYPE_CRYPTO_AUTH_CHALLENGE)
+ * @param payload Server's auth challenge packet
+ * @param payload_len Payload length
+ * @param ctx Application context (unused)
+ *
+ * @ingroup client_protocol
+ */
+static void acip_on_crypto_auth_challenge(packet_type_t type, const void *payload, size_t payload_len, void *ctx) {
+  (void)ctx;
+
+  log_debug("Received CRYPTO_AUTH_CHALLENGE from server");
+
+  acip_transport_t *transport = server_connection_get_transport();
+  if (!transport) {
+    log_error("Cannot handle auth challenge - no transport available");
+    return;
+  }
+
+  asciichat_error_t result =
+      crypto_handshake_client_auth_response(&g_crypto_ctx, transport, type, (const uint8_t *)payload, payload_len);
+  if (result != ASCIICHAT_OK) {
+    log_error("Crypto handshake auth response failed");
+    server_connection_lost();
+  } else {
+    log_debug("Sent CRYPTO_AUTH_RESPONSE to server");
+  }
+}
+
+/**
+ * @brief Handle CRYPTO_SERVER_AUTH_RESP from server (mutual authentication)
+ *
+ * Server proved its identity, we verify and complete handshake.
+ * This is step 3 of the crypto handshake protocol (mutual auth mode).
+ *
+ * @param type Packet type (should be PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP)
+ * @param payload Server's auth response packet
+ * @param payload_len Payload length
+ * @param ctx Application context (unused)
+ *
+ * @ingroup client_protocol
+ */
+static void acip_on_crypto_server_auth_resp(packet_type_t type, const void *payload, size_t payload_len, void *ctx) {
+  (void)ctx;
+
+  log_debug("Received CRYPTO_SERVER_AUTH_RESP from server");
+
+  acip_transport_t *transport = server_connection_get_transport();
+  if (!transport) {
+    log_error("Cannot handle server auth response - no transport available");
+    return;
+  }
+
+  asciichat_error_t result =
+      crypto_handshake_client_complete(&g_crypto_ctx, transport, type, (const uint8_t *)payload, payload_len);
+  if (result != ASCIICHAT_OK) {
+    log_error("Crypto handshake verification failed");
+    server_connection_lost();
+  } else {
+    log_info("Crypto handshake completed successfully (mutual auth)");
+
+    // Link crypto context to transport for automatic encryption
+    transport->crypto_ctx = &g_crypto_ctx.crypto_ctx;
+  }
+}
+
+/**
+ * @brief Handle CRYPTO_AUTH_FAILED from server (authentication failed)
+ *
+ * Server rejected our authentication credentials.
+ * Connection cannot proceed - disconnect.
+ *
+ * @param type Packet type (should be PACKET_TYPE_CRYPTO_AUTH_FAILED)
+ * @param payload Error message (optional)
+ * @param payload_len Payload length
+ * @param ctx Application context (unused)
+ *
+ * @ingroup client_protocol
+ */
+static void acip_on_crypto_auth_failed(packet_type_t type, const void *payload, size_t payload_len, void *ctx) {
+  (void)ctx;
+  (void)type;
+
+  // Extract error message if present
+  char error_msg[256] = "Unknown error";
+  if (payload && payload_len > 0) {
+    size_t msg_len = payload_len < sizeof(error_msg) - 1 ? payload_len : sizeof(error_msg) - 1;
+    memcpy(error_msg, payload, msg_len);
+    error_msg[msg_len] = '\0';
+  }
+
+  log_error("Server rejected authentication: %s", error_msg);
+  log_error("Disconnecting - crypto handshake failed");
+
+  server_connection_lost();
+}
+
+/**
+ * @brief Handle CRYPTO_HANDSHAKE_COMPLETE from server (handshake success)
+ *
+ * Server confirmed handshake completion, encryption is now active.
+ * This is the final step in simple (non-mutual-auth) handshake mode.
+ *
+ * @param type Packet type (should be PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE)
+ * @param payload Confirmation data (optional)
+ * @param payload_len Payload length
+ * @param ctx Application context (unused)
+ *
+ * @ingroup client_protocol
+ */
+static void acip_on_crypto_handshake_complete(packet_type_t type, const void *payload, size_t payload_len, void *ctx) {
+  (void)ctx;
+
+  log_debug("Received CRYPTO_HANDSHAKE_COMPLETE from server");
+
+  acip_transport_t *transport = server_connection_get_transport();
+  if (!transport) {
+    log_error("Cannot complete handshake - no transport available");
+    return;
+  }
+
+  asciichat_error_t result =
+      crypto_handshake_client_complete(&g_crypto_ctx, transport, type, (const uint8_t *)payload, payload_len);
+  if (result != ASCIICHAT_OK) {
+    log_error("Crypto handshake completion failed");
+    server_connection_lost();
+  } else {
+    log_info("Crypto handshake completed successfully");
+
+    // Link crypto context to transport for automatic encryption
+    transport->crypto_ctx = &g_crypto_ctx.crypto_ctx;
   }
 }

@@ -116,6 +116,7 @@
 #include "stream.h"
 #include "crypto.h"
 #include <ascii-chat/crypto/handshake/common.h>
+#include <ascii-chat/crypto/handshake/server.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/endian.h>
@@ -2240,11 +2241,17 @@ static void acip_server_on_crypto_rekey_response(const void *payload, size_t pay
                                                  void *app_ctx);
 static void acip_server_on_crypto_rekey_complete(const void *payload, size_t payload_len, void *client_ctx,
                                                  void *app_ctx);
+static void acip_server_on_crypto_key_exchange_resp(packet_type_t type, const void *payload, size_t payload_len,
+                                                    void *client_ctx, void *app_ctx);
+static void acip_server_on_crypto_auth_response(packet_type_t type, const void *payload, size_t payload_len,
+                                                void *client_ctx, void *app_ctx);
+static void acip_server_on_crypto_no_encryption(packet_type_t type, const void *payload, size_t payload_len,
+                                                void *client_ctx, void *app_ctx);
 
 /**
  * @brief Global ACIP server callbacks structure
  *
- * Handles all ACIP packet types from clients including crypto rekey protocol.
+ * Handles all ACIP packet types from clients including crypto handshake and rekey protocols.
  * Callback wrappers delegate to existing handler functions in protocol.c
  */
 static const acip_server_callbacks_t g_acip_server_callbacks = {
@@ -2266,6 +2273,9 @@ static const acip_server_callbacks_t g_acip_server_callbacks = {
     .on_crypto_rekey_request = acip_server_on_crypto_rekey_request,
     .on_crypto_rekey_response = acip_server_on_crypto_rekey_response,
     .on_crypto_rekey_complete = acip_server_on_crypto_rekey_complete,
+    .on_crypto_key_exchange_resp = acip_server_on_crypto_key_exchange_resp,
+    .on_crypto_auth_response = acip_server_on_crypto_auth_response,
+    .on_crypto_no_encryption = acip_server_on_crypto_no_encryption,
     .app_ctx = NULL // Not used - client context passed per-call
 };
 
@@ -2640,6 +2650,58 @@ static void acip_server_on_crypto_rekey_complete(const void *payload, size_t pay
     // Notify client that rekeying is complete (new keys now active on both sides)
     log_info_client(client, "Session rekey complete - new encryption keys active");
   }
+}
+
+static void acip_server_on_crypto_key_exchange_resp(packet_type_t type, const void *payload, size_t payload_len,
+                                                    void *client_ctx, void *app_ctx) {
+  (void)app_ctx;
+  client_info_t *client = (client_info_t *)client_ctx;
+
+  log_debug("Received CRYPTO_KEY_EXCHANGE_RESP from client %u", client->client_id);
+
+  // Call refactored handshake function from Phase 2
+  asciichat_error_t result = crypto_handshake_server_auth_challenge(&client->crypto_handshake_ctx, client->transport,
+                                                                    type, payload, payload_len);
+
+  if (result != ASCIICHAT_OK) {
+    log_error("Crypto handshake auth challenge failed for client %u", client->client_id);
+    disconnect_client_for_bad_data(client, "Crypto handshake auth challenge failed");
+  } else {
+    log_debug("Sent AUTH_CHALLENGE to client %u", client->client_id);
+  }
+}
+
+static void acip_server_on_crypto_auth_response(packet_type_t type, const void *payload, size_t payload_len,
+                                                void *client_ctx, void *app_ctx) {
+  (void)app_ctx;
+  client_info_t *client = (client_info_t *)client_ctx;
+
+  log_debug("Received CRYPTO_AUTH_RESPONSE from client %u", client->client_id);
+
+  // Call refactored handshake function from Phase 2
+  asciichat_error_t result =
+      crypto_handshake_server_complete(&client->crypto_handshake_ctx, client->transport, type, payload, payload_len);
+
+  if (result != ASCIICHAT_OK) {
+    log_error("Crypto handshake complete failed for client %u", client->client_id);
+    disconnect_client_for_bad_data(client, "Crypto handshake complete failed");
+  } else {
+    log_info("Crypto handshake completed successfully for client %u", client->client_id);
+    client->crypto_initialized = true;
+    client->transport->crypto_ctx = &client->crypto_handshake_ctx.crypto_ctx;
+  }
+}
+
+static void acip_server_on_crypto_no_encryption(packet_type_t type, const void *payload, size_t payload_len,
+                                                void *client_ctx, void *app_ctx) {
+  (void)app_ctx;
+  (void)type;
+  (void)payload;
+  (void)payload_len;
+  client_info_t *client = (client_info_t *)client_ctx;
+
+  log_error("Client %u sent NO_ENCRYPTION - encryption mode mismatch", client->client_id);
+  disconnect_client_for_bad_data(client, "Encryption mode mismatch - server requires encryption");
 }
 
 /**

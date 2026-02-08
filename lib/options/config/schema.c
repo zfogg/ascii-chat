@@ -348,6 +348,9 @@ asciichat_error_t config_schema_build_from_configs(const options_config_t **conf
     // The descriptor should have mode_bitmask set from the registry
     meta->mode_bitmask = desc->mode_bitmask;
 
+    // Copy mode_default_getter function pointer
+    meta->mode_default_getter = desc->mode_default_getter;
+
     // Copy constraints from descriptor's metadata
     // For integer types, copy numeric_range to int_range (always copy, even if min is 0)
     memset(&meta->constraints, 0, sizeof(meta->constraints));

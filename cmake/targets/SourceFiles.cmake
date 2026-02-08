@@ -394,6 +394,7 @@ set(CORE_SRCS
     lib/options/registry/registry.c       # Master registry composition
     lib/options/registry/core.c           # Internal helper functions
     lib/options/registry/public_api.c     # Public API implementation
+    lib/options/registry/mode_defaults.c  # Mode-aware default value getters
     # Option parsing and validation (parsing/ subdirectory)
     lib/options/parsing/parsers.c         # Custom enum parsers
     lib/options/parsing/validation.c      # Option validation
