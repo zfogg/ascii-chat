@@ -324,6 +324,10 @@ int main(int argc, char *argv[]) {
   // Reconfigure logging with parsed log level
   log_init(log_file, GET_OPTION(log_level), false, false);
 
+  // Initialize colors now that logging is fully initialized
+  // This must happen after log_init() since log_init_colors() checks if g_log.initialized
+  log_init_colors();
+
   // Apply quiet mode OR status screen mode - both disable terminal output
   // Status screen captures logs in its buffer and displays them in the UI
   if (GET_OPTION(quiet) || (opts->detected_mode == MODE_SERVER && GET_OPTION(status_screen))) {
@@ -366,15 +370,11 @@ int main(int argc, char *argv[]) {
   const char *final_log_file = (opts->log_file[0] != '\0') ? opts->log_file : "ascii-chat.log";
   log_dev("Logging initialized to %s", final_log_file);
 
-  // Auto-disable colors when piped (unless explicitly enabled with --color=true)
-  // This respects user's explicit --color=true request while auto-disabling in other cases
-  terminal_color_mode_t color_mode = opts->color_mode;
-  if (terminal_is_piped_output() && color_mode == COLOR_MODE_AUTO && opts->color != COLOR_SETTING_TRUE) {
-    options_set_int("color_mode", COLOR_MODE_NONE);
-    opts = options_get(); // Refresh pointer after update
-    // Log to file only, not terminal - avoid polluting piped stdout when stderr is redirected to stdout (2>&1)
-    log_debug("stdout is piped/redirected - defaulting to none (override with --color-mode)");
-  }
+  // Note: We do NOT auto-disable colors when stdout appears to be piped, because:
+  // 1. Tools like ripgrep can display ANSI colors when piped
+  // 2. Sandboxed/containerized environments may report false positives for isatty()
+  // 3. Users can explicitly disable colors with --color=false if needed
+  // Color behavior is now fully controlled by --color and --color-mode options.
 
 #ifndef NDEBUG
   // Initialize lock debugging system after logging is fully set up

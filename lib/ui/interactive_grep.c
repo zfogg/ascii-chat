@@ -139,9 +139,31 @@ asciichat_error_t interactive_grep_init(void) {
 
   // Initialize state
   memset(&g_grep_state, 0, sizeof(g_grep_state));
-  g_grep_state.mode = GREP_MODE_INACTIVE;
-  atomic_store(&g_grep_state.mode_atomic, GREP_MODE_INACTIVE);
-  atomic_store(&g_grep_state.needs_rerender, false);
+
+  // Set default pattern to "DEBUG" for testing
+  strncpy(g_grep_state.input_buffer, "DEBUG", GREP_INPUT_BUFFER_SIZE - 1);
+  g_grep_state.len = strlen("DEBUG");
+  g_grep_state.cursor = g_grep_state.len;
+  g_grep_state.mode = GREP_MODE_ACTIVE;
+  atomic_store(&g_grep_state.mode_atomic, GREP_MODE_ACTIVE);
+
+  // Compile the default DEBUG pattern
+  log_filter_parse_result_t parsed = log_filter_parse_pattern("DEBUG");
+  if (parsed.valid) {
+    pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile(parsed.pattern, parsed.pcre2_options);
+    if (singleton) {
+      g_grep_state.active_patterns[0] = singleton;
+      g_grep_state.active_pattern_count = 1;
+    }
+    g_grep_state.case_insensitive = parsed.case_insensitive;
+    g_grep_state.fixed_string = parsed.is_fixed_string;
+    g_grep_state.global_highlight = parsed.global_flag;
+    g_grep_state.invert_match = parsed.invert;
+    g_grep_state.context_before = parsed.context_before;
+    g_grep_state.context_after = parsed.context_after;
+  }
+
+  atomic_store(&g_grep_state.needs_rerender, true);
   g_grep_state.initialized = true;
 
   mutex_unlock(&g_grep_state.mutex);

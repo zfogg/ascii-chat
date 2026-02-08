@@ -754,19 +754,15 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   // Format the header using centralized formatting
   char header_buffer[512];
   // Check if colors should be used
-  // Priority 1: If --color was explicitly passed, force colors
+  // Priority 1: If --color=false was explicitly passed, disable colors
   extern bool g_color_flag_passed;
   extern bool g_color_flag_value;
-  bool use_colors = false;
-  if (g_color_flag_passed && g_color_flag_value) {
-    use_colors = true;
+  bool use_colors = true; // Default: enable colors
+  if (g_color_flag_passed && !g_color_flag_value) {
+    use_colors = false; // --color=false explicitly disables colors
   }
-  // Priority 2: If --color NOT explicitly passed, use terminal detection
-  else if (!g_color_flag_passed) {
-    use_colors = terminal_should_color_output(fd);
-  }
-  // Priority 3: If --color=false was explicitly passed, disable colors
-  // (use_colors stays false)
+  // Priority 2: If --color NOT explicitly passed, enable colors by default
+  // (use_colors stays true)
   int header_len =
       format_log_header(header_buffer, sizeof(header_buffer), level, timestamp, file, line, func, use_colors, false);
   if (header_len <= 0 || header_len >= (int)sizeof(header_buffer)) {
@@ -979,16 +975,11 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
       // Priority 1: If --color was explicitly passed, force colors
       extern bool g_color_flag_passed;
       extern bool g_color_flag_value;
-      bool use_colors = false;
-      if (g_color_flag_passed && g_color_flag_value) {
-        use_colors = true;
+      bool use_colors = true; // Default: enable colors
+      if (g_color_flag_passed && !g_color_flag_value) {
+        use_colors = false; // --color=false explicitly disables colors
       }
-      // Priority 2: If --color NOT explicitly passed, use terminal detection
-      else if (!g_color_flag_passed) {
-        use_colors = terminal_should_color_output(fd);
-      }
-      // Priority 3: If --color=false was explicitly passed, disable colors
-      // (use_colors stays false)
+      // Priority 2: If --color NOT explicitly passed, enable colors by default
 
       char header_buffer[512];
       int header_len =
@@ -1655,15 +1646,9 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
   timestamp[timestamp_len] = '\0';
   p++; // Skip ]
 
-  // Expect exactly one space after timestamp
-  if (*p != ' ') {
-    return 0; // Must have space after timestamp
-  }
-  p++;
-
-  // No more spaces allowed before level
-  if (*p == ' ') {
-    return 0; // Too many spaces
+  // Skip whitespace after timestamp
+  while (*p && *p == ' ') {
+    p++;
   }
 
   // Extract level [LEVEL]
@@ -1684,8 +1669,11 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
     return 0; // Level string too long or empty
   }
   strncpy(level_str, level_start, level_len);
+  // Strip trailing whitespace from level (e.g., "DEBUG " -> "DEBUG")
+  while (level_len > 0 && (level_str[level_len - 1] == ' ' || level_str[level_len - 1] == '\t')) {
+    level_len--;
+  }
   level_str[level_len] = '\0';
-  p++; // Skip ]
 
   // Determine log level for color selection
   log_level_t level = LOG_INFO; // Default
@@ -1701,33 +1689,34 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
     level = LOG_FATAL;
   }
 
-  // Expect exactly one space after level
-  if (*p != ' ') {
-    return 0; // Must have space after level
-  }
-  p++;
+  p++; // Skip ]
 
-  // No more spaces allowed
-  if (*p == ' ') {
-    return 0; // Too many spaces
+  // Skip whitespace after level
+  while (*p && *p == ' ') {
+    p++;
   }
 
   // Extract thread ID [tid:THREAD_ID] - optional field
   uint64_t tid = 0;
   if (*p == '[' && strncmp(p, "[tid:", 5) == 0) {
     p += 5;
-    tid = strtoull(p, (char **)&p, 10);
-    if (*p != ']') {
-      return 0; // Missing closing bracket for tid
+    char *tid_end = NULL;
+    tid = strtoull(p, &tid_end, 10);
+    if (!tid_end || *tid_end != ']') {
+      // tid parsing failed, but continue anyway (might still recover)
+      // Try to find the closing bracket
+      while (*p && *p != ']') {
+        p++;
+      }
+      if (*p == ']') {
+        p++;
+      }
+    } else {
+      p = tid_end + 1; // Skip past the ]
     }
-    p++;
-    // Expect exactly one space after tid
-    if (*p != ' ') {
-      return 0; // Must have space after tid
-    }
-    p++;
-    if (*p == ' ') {
-      return 0; // Too many spaces
+    // Skip whitespace after tid
+    while (*p && *p == ' ') {
+      p++;
     }
   }
   // tid is optional - continue parsing if not present
@@ -1749,23 +1738,35 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
   file_path[file_len] = '\0';
   p++; // Skip :
 
-  // Extract line number (digits before " in ")
+  // Extract line number (digits only)
   int line_num = 0;
   const char *line_start = p;
   while (*p && isdigit((unsigned char)*p)) {
     p++;
   }
-  if (p == line_start || *p != ' ') {
-    return 0; // No line number or no space after it
+  if (p == line_start) {
+    return 0; // No line number
   }
   line_num = (int)strtol(line_start, NULL, 10);
-  p++; // Skip space
 
-  // Expect " in " exactly
-  if (strncmp(p, "in ", 3) != 0) {
-    return 0; // Missing 'in' keyword
+  // Skip whitespace and find "in" keyword (be very lenient)
+  while (*p && (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r')) {
+    p++;
   }
-  p += 3; // Skip "in "
+
+  // Try to find "in " - if not found, might still be valid, just harder to parse
+  if (strncmp(p, "in ", 3) == 0) {
+    p += 3; // Skip "in "
+  } else if (*p == 'i' && *(p + 1) == 'n' && (*(p + 2) == ' ' || *(p + 2) == '\t')) {
+    // Allow tab after "in"
+    p += 2; // Skip "in"
+    while (*p && (*p == ' ' || *p == '\t')) {
+      p++;
+    }
+  } else {
+    // Missing "in" keyword - this is a format error
+    return 0;
+  }
 
   // Extract function name (everything up to "()")
   const char *func_start = p;
@@ -1776,18 +1777,36 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
     return 0; // Missing function name or parentheses
   }
   size_t func_len = p - func_start;
+
+  // Trim trailing whitespace from function name
+  while (func_len > 0 && (func_start[func_len - 1] == ' ' || func_start[func_len - 1] == '\t')) {
+    func_len--;
+  }
+
   char func_name[256];
   if (func_len >= sizeof(func_name)) {
-    return 0;
+    func_len = sizeof(func_name) - 1;
   }
-  strncpy(func_name, func_start, func_len);
+  if (func_len > 0) {
+    strncpy(func_name, func_start, func_len);
+  }
   func_name[func_len] = '\0';
 
-  // Expect "(): " exactly
-  if (strncmp(p, "(): ", 4) != 0) {
-    return 0; // Missing function parentheses or colon
+  // Skip "(" and ")" - be lenient about what's between them
+  if (*p == '(') {
+    p++;
+    while (*p && *p != ')') {
+      p++;
+    }
+    if (*p == ')') {
+      p++;
+    }
   }
-  p += 4; // Skip "(): "
+
+  // Skip whitespace and optional colon(s) and other separators
+  while (*p && (*p == ' ' || *p == ':' || *p == '\t')) {
+    p++;
+  }
 
   // Remaining is the message
   const char *message = p;
@@ -1796,6 +1815,11 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
   const char **colors = log_get_color_array();
   if (!colors) {
     // No colors available, return plain text
+    static bool warned_once = false;
+    if (!warned_once) {
+      log_debug("WARNING: log_recolor_plain_entry() called but colors not initialized - returning plain text");
+      warned_once = true;
+    }
     size_t len = strlen(plain_line);
     if (len >= buf_size) {
       return 0;

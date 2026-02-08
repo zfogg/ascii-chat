@@ -242,11 +242,42 @@ size_t log_file_parser_merge_and_dedupe(const session_log_entry_t *buffer_entrie
     memcpy(merged, buffer_entries, buffer_count * sizeof(session_log_entry_t));
   }
 
-  // Copy file entries (already in full format from log file)
-  // File entries contain full format: [TIMESTAMP] [LEVEL] [tid:...] FILE:LINE in FUNC(): MESSAGE
-  // We preserve them as-is since they already have proper structure
+  // Recolor and copy file entries
+  // File entries are plain text from disk: [TIMESTAMP] [LEVEL] [tid:...] FILE:LINE in FUNC(): MESSAGE
+  // We must recolor them with ANSI codes for terminal display
+  static int recolor_attempts = 0;
+  static int recolor_successes = 0;
   for (size_t i = 0; i < file_count; i++) {
-    merged[buffer_count + i] = file_entries[i];
+    char colored[SESSION_LOG_LINE_MAX];
+    size_t colored_len = log_recolor_plain_entry(file_entries[i].message, colored, sizeof(colored));
+    recolor_attempts++;
+
+    if (colored_len > 0) {
+      // Successfully recolored - use colored version
+      strncpy(merged[buffer_count + i].message, colored, SESSION_LOG_LINE_MAX - 1);
+      merged[buffer_count + i].message[SESSION_LOG_LINE_MAX - 1] = '\0';
+      recolor_successes++;
+    } else {
+      // Recoloring failed - keep original plain text
+      strncpy(merged[buffer_count + i].message, file_entries[i].message, SESSION_LOG_LINE_MAX - 1);
+      merged[buffer_count + i].message[SESSION_LOG_LINE_MAX - 1] = '\0';
+
+      // Log failures to help debug format issues
+      static int failure_count = 0;
+      if (failure_count < 10) {
+        // Show hex dump of first 20 bytes to identify format issues
+        const unsigned char *bytes = (const unsigned char *)file_entries[i].message;
+        log_debug("Recolor failed [%d]: starts with: %c%c%c%c (0x%02x%02x%02x%02x) %.80s", failure_count + 1,
+                  bytes[0] >= 32 && bytes[0] < 127 ? bytes[0] : '?', bytes[1] >= 32 && bytes[1] < 127 ? bytes[1] : '?',
+                  bytes[2] >= 32 && bytes[2] < 127 ? bytes[2] : '?', bytes[3] >= 32 && bytes[3] < 127 ? bytes[3] : '?',
+                  bytes[0], bytes[1], bytes[2], bytes[3], file_entries[i].message);
+        failure_count++;
+      }
+    }
+    merged[buffer_count + i].sequence = file_entries[i].sequence;
+  }
+  if (file_count > 0) {
+    log_debug("File log recoloring: %d/%d entries successfully recolored", recolor_successes, recolor_attempts);
   }
 
   // Assign sequence numbers: file entries are older (lower seq), buffer entries newer (higher seq)
