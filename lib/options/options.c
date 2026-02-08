@@ -965,7 +965,6 @@ asciichat_error_t options_init(int argc, char **argv) {
   // Force stderr when stdout is not a TTY (piping or redirecting output)
   bool force_stderr = terminal_is_piped_output();
   log_init(opts.log_file, GET_OPTION(log_level), force_stderr, false);
-  log_set_level(LOG_DEV);
   // NOTE: --color detection now happens in src/main.c BEFORE asciichat_shared_init()
   // This ensures g_color_flag_passed and g_color_flag_value are set before any logging.
   //
