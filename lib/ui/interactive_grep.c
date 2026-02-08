@@ -448,8 +448,9 @@ asciichat_error_t interactive_grep_gather_and_filter_logs(session_log_entry_t **
 
   const char *log_file = GET_OPTION(log_file);
   if (log_file && log_file[0] != '\0') {
-    // Tail last 100KB of log file
-    file_count = log_file_parser_tail(log_file, 100 * 1024, &file_entries, SESSION_LOG_BUFFER_SIZE);
+    // Tail last 100KB of log file, but limit to half SESSION_LOG_BUFFER_SIZE
+    // to avoid buffer overflow when merging with in-memory buffer
+    file_count = log_file_parser_tail(log_file, 100 * 1024, &file_entries, SESSION_LOG_BUFFER_SIZE / 2);
     if (file_count > 0) {
       log_debug("Log file tailing: read %zu entries from %s", file_count, log_file);
     }
@@ -464,6 +465,12 @@ asciichat_error_t interactive_grep_gather_and_filter_logs(session_log_entry_t **
         log_file_parser_merge_and_dedupe(buffer_entries, buffer_count, file_entries, file_count, &merged_entries);
     SAFE_FREE(buffer_entries);
     SAFE_FREE(file_entries);
+
+    // Cap merged entries at SESSION_LOG_BUFFER_SIZE to prevent buffer overflow
+    if (merged_count > SESSION_LOG_BUFFER_SIZE) {
+      merged_count = SESSION_LOG_BUFFER_SIZE;
+    }
+
     buffer_entries = merged_entries;
     buffer_count = merged_count;
   }
