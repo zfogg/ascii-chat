@@ -409,56 +409,76 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
   uint64_t t_flip_end = time_get_ns();
 
   uint64_t t_filter_start = time_get_ns();
-  // Apply color filter if specified
-  if (color_filter != COLOR_FILTER_NONE && display_image->pixels) {
-    START_TIMER("color_filter");
-    // If we have a flipped_image, we can modify it in-place since it's our copy
-    // If not, we need to create a copy for filtering
-    image_t *filter_image = NULL;
-    if (flipped_image) {
-      filter_image = flipped_image;
-    } else {
-      // Create a copy for filtering since the original is const
-      uint64_t t_filter_alloc_start = time_get_ns();
-      filter_image = image_new((size_t)display_image->w, (size_t)display_image->h);
-      uint64_t t_filter_alloc_end = time_get_ns();
-
-      if (filter_image && display_image->pixels) {
-        uint64_t t_filter_memcpy_start = time_get_ns();
-        memcpy(filter_image->pixels, display_image->pixels,
-               (size_t)display_image->w * (size_t)display_image->h * sizeof(rgb_pixel_t));
-        uint64_t t_filter_memcpy_end = time_get_ns();
-        display_image = filter_image;
-
-        log_dev("TIMING_FILTER_COPY: alloc=%llu us, memcpy=%llu us", (t_filter_alloc_end - t_filter_alloc_start) / 1000,
-                (t_filter_memcpy_end - t_filter_memcpy_start) / 1000);
-      }
-    }
-
-    // Apply the color filter in-place
-    if (filter_image && filter_image->pixels) {
-      uint64_t t_filter_apply_start = time_get_ns();
-      // Convert current time to seconds for rainbow animation
-      float time_seconds = (float)t_filter_apply_start / (float)NS_PER_SEC_INT;
-      apply_color_filter((uint8_t *)filter_image->pixels, filter_image->w, filter_image->h, filter_image->w * 3,
-                         color_filter, time_seconds);
-      uint64_t t_filter_apply_end = time_get_ns();
-
-      log_dev("TIMING_FILTER_APPLY: %llu us", (t_filter_apply_end - t_filter_apply_start) / 1000);
-    }
-    STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "color_filter",
-                             "COLOR_FILTER: Filter complete (%.2f ms)");
+  // Calculate rainbow color once for the entire frame if needed
+  uint8_t rainbow_r = 0, rainbow_g = 0, rainbow_b = 0;
+  if (color_filter == COLOR_FILTER_RAINBOW) {
+    float time_seconds = (float)t_filter_start / (float)NS_PER_SEC_INT;
+    color_filter_calculate_rainbow(time_seconds, &rainbow_r, &rainbow_g, &rainbow_b);
   }
   uint64_t t_filter_end = time_get_ns();
 
   uint64_t t_convert_start = time_get_ns();
-  // Call the standard ASCII conversion using context's palette and capabilities
+  // Call the standard ASCII conversion using the display image (unfiltered)
+  // This ensures character selection is based on original image brightness
   START_TIMER("ascii_convert_with_capabilities");
   char *result = ascii_convert_with_capabilities(display_image, width, height, &caps_copy, preserve_aspect_ratio,
                                                  stretch, ctx->palette_chars);
   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "ascii_convert_with_capabilities",
                            "ASCII_CONVERT: Conversion complete (%.2f ms)");
   uint64_t t_convert_end = time_get_ns();
+
+  // Apply color filter to ANSI output by replacing RGB values
+  // This preserves character selection while applying the filter colors
+  if (result && color_filter == COLOR_FILTER_RAINBOW) {
+    uint64_t t_color_replace_start = time_get_ns();
+
+    // Build the replacement string once
+    char rainbow_code[32];
+    snprintf(rainbow_code, sizeof(rainbow_code), "\x1b[38;2;%d;%d;%dm", rainbow_r, rainbow_g, rainbow_b);
+    size_t rainbow_code_len = strlen(rainbow_code);
+
+    // Replace all RGB color codes in ANSI output with rainbow color
+    size_t result_len = strlen(result);
+    char *new_result = SAFE_MALLOC(result_len * 2, char *); // Allocate extra space for safety
+    if (new_result) {
+      char *src = result;
+      char *dst = new_result;
+
+      while (*src) {
+        char *ansi_start = strstr(src, "\x1b[38;2;");
+        if (ansi_start) {
+          // Copy everything before this ANSI code
+          size_t before_len = (size_t)(ansi_start - src);
+          memcpy(dst, src, before_len);
+          dst += before_len;
+
+          // Skip the old ANSI code (find the 'm' that ends it)
+          char *ansi_end = strchr(ansi_start + 7, 'm');
+          if (ansi_end) {
+            // Copy the rainbow replacement code
+            memcpy(dst, rainbow_code, rainbow_code_len);
+            dst += rainbow_code_len;
+
+            // Move source past the old code
+            src = ansi_end + 1;
+          } else {
+            // Malformed ANSI code, just copy it
+            *dst++ = *src++;
+          }
+        } else {
+          // No more ANSI codes, copy the rest
+          strcpy(dst, src);
+          break;
+        }
+      }
+
+      SAFE_FREE(result);
+      result = new_result;
+    }
+
+    uint64_t t_color_replace_end = time_get_ns();
+    log_dev("COLOR_REPLACE: %.2f ms", (double)(t_color_replace_end - t_color_replace_start) / (double)NS_PER_MS_INT);
+  }
 
   // Apply digital rain effect if enabled
   if (result && ctx->digital_rain) {
@@ -478,14 +498,10 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
   }
 
   uint64_t t_cleanup_start = time_get_ns();
-  // Clean up flipped/filtered image if created
+  // Clean up flipped image if created
   START_TIMER("ascii_convert_cleanup");
   if (flipped_image) {
     image_destroy(flipped_image);
-  }
-  // Note: if we created a separate filter_image (not flipped_image), it needs cleanup too
-  if (color_filter != COLOR_FILTER_NONE && !flipped_image && display_image != image) {
-    image_destroy((image_t *)display_image);
   }
   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 2 * NS_PER_MS_INT, "ascii_convert_cleanup",
                            "ASCII_CONVERT_CLEANUP: Cleanup complete (%.2f ms)");
