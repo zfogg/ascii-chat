@@ -210,6 +210,16 @@
   /* ========== DOCS SECTIONS ========== */
   .docs-container {
     @apply max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  .docs-container * {
+    max-width: 100%;
+  }
+
+  .docs-container code {
+    word-break: break-word;
   }
 
   .docs-section-spacing {

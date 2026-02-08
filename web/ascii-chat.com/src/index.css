@@ -1,6 +1,16 @@
 @import "tailwindcss";
 @import "@ascii-chat/shared/styles/base.css";
 
+/* Mobile overflow fix for docs pages */
+.docs-container {
+  max-width: min(64rem, 100vw) !important;
+  overflow-x: hidden !important;
+}
+
+.docs-container code {
+  word-break: break-word;
+}
+
 /* Man page styling (ascii-chat.com specific) */
 .man-page-content {
   font-family:
