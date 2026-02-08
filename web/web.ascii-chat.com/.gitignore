@@ -36,4 +36,5 @@ wasm/build/
 
 /wasm/build_wasm
 
-
+playwright-report/
+test-results/
