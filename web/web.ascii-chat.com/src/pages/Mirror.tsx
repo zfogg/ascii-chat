@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { XTerm } from '@pablo-lion/xterm-react'
 import { FitAddon } from '@xterm/addon-fit'
 import 'xterm/css/xterm.css'
-import { initMirrorWasm, convertFrameToAscii, isWasmReady, setDimensions, setColorMode, setColorFilter, setPalette, setPaletteChars, setMatrixRain, ColorMode as WasmColorMode, ColorFilter as WasmColorFilter } from '../wasm/mirror'
+import { initMirrorWasm, convertFrameToAscii, isWasmReady, setDimensions, setColorMode, setColorFilter, setPalette, setPaletteChars, setMatrixRain, setWebcamFlip, ColorMode as WasmColorMode, ColorFilter as WasmColorFilter } from '../wasm/mirror'
 import { Settings, SettingsConfig, ColorMode, ColorFilter } from '../components/Settings'
 
 // Helper functions to map Settings types to WASM enums
@@ -67,7 +67,8 @@ export function MirrorPage() {
     colorFilter: 'none',
     palette: 'standard',
     paletteChars: ' =#░░▒▒▓▓██',
-    matrixRain: false
+    matrixRain: false,
+    webcamFlip: true
   })
   const [showSettings, setShowSettings] = useState(false)
 
@@ -92,6 +93,9 @@ export function MirrorPage() {
 
         // Apply matrix rain effect
         setMatrixRain(newSettings.matrixRain ?? false)
+
+        // Apply webcam flip
+        setWebcamFlip(newSettings.webcamFlip ?? true)
       } catch (err) {
         console.error('Failed to apply WASM settings:', err)
       }
@@ -224,6 +228,9 @@ export function MirrorPage() {
 
         // Apply matrix rain effect
         setMatrixRain(settings.matrixRain ?? false)
+
+        // Apply webcam flip
+        setWebcamFlip(settings.webcamFlip ?? true)
       }
 
       const { width, height } = parseResolution(settings.resolution)

@@ -231,6 +231,8 @@ set(EXPORTED_FUNCTIONS
     _mirror_get_palette_chars
     _mirror_set_matrix_rain
     _mirror_get_matrix_rain
+    _mirror_set_webcam_flip
+    _mirror_get_webcam_flip
     _mirror_convert_frame
     _mirror_free_string
     _malloc

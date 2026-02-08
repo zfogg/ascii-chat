@@ -268,6 +268,21 @@ int mirror_get_matrix_rain(void) {
 }
 
 // ============================================================================
+// Settings API - Webcam Flip
+// ============================================================================
+
+EMSCRIPTEN_KEEPALIVE
+int mirror_set_webcam_flip(int enabled) {
+  asciichat_error_t err = options_set_bool("webcam_flip", enabled != 0);
+  return (err == ASCIICHAT_OK) ? 0 : -1;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int mirror_get_webcam_flip(void) {
+  return GET_OPTION(webcam_flip) ? 1 : 0;
+}
+
+// ============================================================================
 // Frame Conversion API
 // ============================================================================
 
@@ -302,17 +317,24 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
   caps.desired_fps = 60;
   caps.color_filter = filter;
 
-  // Convert RGBA to RGB (strip alpha channel)
+  // Convert RGBA to RGB (strip alpha channel) and optionally flip horizontally
   rgb_pixel_t *rgb_pixels = SAFE_MALLOC(src_width * src_height * sizeof(rgb_pixel_t), rgb_pixel_t *);
   if (!rgb_pixels) {
     return NULL;
   }
 
-  for (int i = 0; i < src_width * src_height; i++) {
-    rgb_pixels[i].r = rgba_data[i * 4 + 0];
-    rgb_pixels[i].g = rgba_data[i * 4 + 1];
-    rgb_pixels[i].b = rgba_data[i * 4 + 2];
-    // Alpha (rgba_data[i * 4 + 3]) is discarded
+  bool flip = GET_OPTION(webcam_flip);
+  for (int y = 0; y < src_height; y++) {
+    for (int x = 0; x < src_width; x++) {
+      int src_x = flip ? (src_width - 1 - x) : x;
+      int src_idx = (y * src_width + src_x) * 4;
+      int dst_idx = y * src_width + x;
+
+      rgb_pixels[dst_idx].r = rgba_data[src_idx + 0];
+      rgb_pixels[dst_idx].g = rgba_data[src_idx + 1];
+      rgb_pixels[dst_idx].b = rgba_data[src_idx + 2];
+      // Alpha (rgba_data[src_idx + 3]) is discarded
+    }
   }
 
   // Apply color filter to pixels if needed (except rainbow - handled in ANSI stage)

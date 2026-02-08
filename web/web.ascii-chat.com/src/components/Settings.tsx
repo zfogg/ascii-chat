@@ -11,6 +11,7 @@ export interface SettingsConfig {
   palette: Palette
   paletteChars?: string
   matrixRain?: boolean
+  webcamFlip?: boolean
 }
 
 interface SettingsProps {
@@ -151,6 +152,24 @@ export function Settings({ config, onChange, disabled = false }: SettingsProps) 
               }`}
             >
               {config.matrixRain ? '🟢 Matrix Rain' : 'Matrix Rain'}
+            </button>
+          </div>
+
+          {/* Webcam Flip */}
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-xs font-medium text-terminal-8 mb-1">
+              Webcam
+            </label>
+            <button
+              onClick={() => updateConfig({ webcamFlip: !config.webcamFlip })}
+              disabled={disabled}
+              className={`w-full px-4 py-2 rounded text-sm font-medium transition-colors ${
+                config.webcamFlip
+                  ? 'bg-terminal-2 text-terminal-bg hover:bg-terminal-10'
+                  : 'bg-terminal-8 text-terminal-fg hover:bg-terminal-7'
+              }`}
+            >
+              {config.webcamFlip ? '🟢 Flip Horizontal' : 'Flip Horizontal'}
             </button>
           </div>
 

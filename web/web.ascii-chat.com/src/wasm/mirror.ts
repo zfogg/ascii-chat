@@ -21,6 +21,8 @@ interface MirrorModuleExports {
   _mirror_get_palette_chars(): number;
   _mirror_set_matrix_rain(enabled: number): number;
   _mirror_get_matrix_rain(): number;
+  _mirror_set_webcam_flip(enabled: number): number;
+  _mirror_get_webcam_flip(): number;
   _mirror_convert_frame(rgba_data_ptr: number, src_width: number, src_height: number): number;
   _mirror_free_string(ptr: number): void;
   _malloc(size: number): number;
@@ -50,6 +52,8 @@ interface MirrorModule {
   _mirror_get_palette_chars: MirrorModuleExports['_mirror_get_palette_chars'];
   _mirror_set_matrix_rain: MirrorModuleExports['_mirror_set_matrix_rain'];
   _mirror_get_matrix_rain: MirrorModuleExports['_mirror_get_matrix_rain'];
+  _mirror_set_webcam_flip: MirrorModuleExports['_mirror_set_webcam_flip'];
+  _mirror_get_webcam_flip: MirrorModuleExports['_mirror_get_webcam_flip'];
   _mirror_convert_frame: MirrorModuleExports['_mirror_convert_frame'];
   _mirror_free_string: MirrorModuleExports['_mirror_free_string'];
   _malloc: MirrorModuleExports['_malloc'];
@@ -452,6 +456,25 @@ export function setMatrixRain(enabled: boolean): void {
 export function getMatrixRain(): boolean {
   if (!wasmModule) throw new Error('WASM module not initialized');
   return wasmModule._mirror_get_matrix_rain() !== 0;
+}
+
+/**
+ * Set webcam flip (horizontal mirror)
+ */
+export function setWebcamFlip(enabled: boolean): void {
+  if (!wasmModule) throw new Error('WASM module not initialized');
+
+  if (wasmModule._mirror_set_webcam_flip(enabled ? 1 : 0) !== 0) {
+    throw new Error(`Failed to set webcam flip: ${enabled}`);
+  }
+}
+
+/**
+ * Get current webcam flip state
+ */
+export function getWebcamFlip(): boolean {
+  if (!wasmModule) throw new Error('WASM module not initialized');
+  return wasmModule._mirror_get_webcam_flip() !== 0;
 }
 
 /**
