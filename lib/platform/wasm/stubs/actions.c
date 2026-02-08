@@ -45,6 +45,10 @@ void action_show_capabilities(void) {
   // No-op - capabilities not shown in WASM
 }
 
+void action_show_capabilities_immediate(void) {
+  // No-op - capabilities not shown in WASM
+}
+
 void action_check_update(void) {
   // No-op - update checking not supported in WASM
 }

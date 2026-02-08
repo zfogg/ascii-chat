@@ -73,6 +73,7 @@ set(PLATFORM_SOURCES
     ${LIB_ROOT}/platform/wasm/string.c
     ${LIB_ROOT}/platform/wasm/stubs/util.c
     ${LIB_ROOT}/platform/wasm/stubs/actions.c
+    ${LIB_ROOT}/platform/wasm/stubs/terminal.c
     ${LIB_ROOT}/platform/wasm/stubs/manpage.c
     ${LIB_ROOT}/platform/wasm/stubs/filesystem.c
     ${LIB_ROOT}/platform/wasm/stubs/video.c
