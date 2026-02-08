@@ -49,6 +49,9 @@
 // SOKOL_TIME_IMPL is defined only in time.c to avoid duplicate symbols
 #include <ascii-chat-deps/sokol/sokol_time.h>
 
+// Include platform thread for thread ID in timer names
+#include "../platform/thread.h"
+
 // Include uthash wrapper for UBSan-safe hash functions
 // Headers can include this even before common.h is fully processed
 #include "../uthash/uthash.h"
@@ -338,8 +341,11 @@ bool timer_is_initialized(void);
   do {                                                                                                                 \
     if (timer_is_initialized()) {                                                                                      \
       char _timer_name_buf[256];                                                                                       \
+      char _timer_name_with_tid[280];                                                                                  \
       snprintf(_timer_name_buf, sizeof(_timer_name_buf), name_fmt, ##__VA_ARGS__);                                     \
-      (void)timer_start(_timer_name_buf);                                                                              \
+      snprintf(_timer_name_with_tid, sizeof(_timer_name_with_tid), "%s_tid%llu", _timer_name_buf,                      \
+               (unsigned long long)asciichat_thread_current_id());                                                     \
+      (void)timer_start(_timer_name_with_tid);                                                                         \
     }                                                                                                                  \
   } while (0)
 
@@ -363,8 +369,11 @@ bool timer_is_initialized(void);
     double _elapsed = -1.0;                                                                                            \
     if (timer_is_initialized()) {                                                                                      \
       char _timer_name_buf[256];                                                                                       \
+      char _timer_name_with_tid[280];                                                                                  \
       snprintf(_timer_name_buf, sizeof(_timer_name_buf), name_fmt, ##__VA_ARGS__);                                     \
-      _elapsed = timer_stop(_timer_name_buf);                                                                          \
+      snprintf(_timer_name_with_tid, sizeof(_timer_name_with_tid), "%s_tid%llu", _timer_name_buf,                      \
+               (unsigned long long)asciichat_thread_current_id());                                                     \
+      _elapsed = timer_stop(_timer_name_with_tid);                                                                     \
     }                                                                                                                  \
     _elapsed;                                                                                                          \
   })
