@@ -500,7 +500,11 @@ if(NOT BUILDING_OBJECT_LIBS)
         OpenSSL::Crypto  # Required by libdatachannel for TLS/DTLS
     )
     # Link libwebsockets
-    target_link_libraries(ascii-chat-network PkgConfig::LIBWEBSOCKETS)
+    if(TARGET PkgConfig::LIBWEBSOCKETS)
+        target_link_libraries(ascii-chat-network PkgConfig::LIBWEBSOCKETS)
+    else()
+        target_link_libraries(ascii-chat-network ${LIBWEBSOCKETS_LIBRARIES})
+    endif()
     # Link miniupnpc if available (optional UPnP/NAT-PMP support)
     if(MINIUPNPC_FOUND)
         target_include_directories(ascii-chat-network PRIVATE ${MINIUPNPC_INCLUDE_DIRS})
@@ -514,7 +518,11 @@ else()
     # For OBJECT libs, link external deps only (OpenSSL needed by libdatachannel for TLS/DTLS)
     target_link_libraries(ascii-chat-network ${PCRE2_LIBRARIES} ${ZSTD_LIBRARIES} ${SQLITE3_LIBRARIES} libdatachannel OpenSSL::Crypto)
     # Link libwebsockets
-    target_link_libraries(ascii-chat-network PkgConfig::LIBWEBSOCKETS)
+    if(TARGET PkgConfig::LIBWEBSOCKETS)
+        target_link_libraries(ascii-chat-network PkgConfig::LIBWEBSOCKETS)
+    else()
+        target_link_libraries(ascii-chat-network ${LIBWEBSOCKETS_LIBRARIES})
+    endif()
     if(MINIUPNPC_FOUND)
         target_include_directories(ascii-chat-network PRIVATE ${MINIUPNPC_INCLUDE_DIRS})
         target_link_libraries(ascii-chat-network ${MINIUPNPC_LIBRARIES})
@@ -737,7 +745,11 @@ add_library(ascii-chat-shared SHARED EXCLUDE_FROM_ALL
         target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
     endif()
     # Link libwebsockets
-    target_link_libraries(ascii-chat-shared PRIVATE PkgConfig::LIBWEBSOCKETS)
+    if(TARGET PkgConfig::LIBWEBSOCKETS)
+        target_link_libraries(ascii-chat-shared PRIVATE PkgConfig::LIBWEBSOCKETS)
+    else()
+        target_link_libraries(ascii-chat-shared PRIVATE ${LIBWEBSOCKETS_LIBRARIES})
+    endif()
 
     # Suppress linker warnings about duplicate debug symbols in libdatachannel
     # (libdatachannel embeds debug symbols with invalid timestamps - linker warning only, not an error)
