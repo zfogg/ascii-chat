@@ -355,7 +355,8 @@ set_target_properties(mirror-web PROPERTIES
         -s EXPORT_ES6=1 \
         -s EXPORT_NAME='MirrorModule' \
         -s EXPORTED_FUNCTIONS='${EXPORTED_FUNCTIONS_MIRROR_JSON}' \
-        -s EXPORTED_RUNTIME_METHODS='[\"ccall\",\"cwrap\",\"UTF8ToString\",\"stringToUTF8\",\"lengthBytesUTF8\",\"getValue\",\"setValue\",\"HEAPU8\"]' \
+        -s EXPORTED_RUNTIME_METHODS='[\"ccall\",\"cwrap\",\"UTF8ToString\",\"stringToUTF8\",\"lengthBytesUTF8\",\"getValue\",\"setValue\",\"HEAPU8\",\"print\",\"printErr\"]' \
+        -s ENVIRONMENT=web \
         -s ALLOW_MEMORY_GROWTH=1 \
         -s INITIAL_MEMORY=32MB \
         -s MAXIMUM_MEMORY=256MB \
@@ -372,7 +373,8 @@ set_target_properties(client-web PROPERTIES
         -s EXPORT_ES6=1 \
         -s EXPORT_NAME='ClientModule' \
         -s EXPORTED_FUNCTIONS='${EXPORTED_FUNCTIONS_CLIENT_JSON}' \
-        -s EXPORTED_RUNTIME_METHODS='[\"ccall\",\"cwrap\",\"UTF8ToString\",\"stringToUTF8\",\"lengthBytesUTF8\",\"getValue\",\"setValue\",\"HEAPU8\"]' \
+        -s EXPORTED_RUNTIME_METHODS='[\"ccall\",\"cwrap\",\"UTF8ToString\",\"stringToUTF8\",\"lengthBytesUTF8\",\"getValue\",\"setValue\",\"HEAPU8\",\"print\",\"printErr\"]' \
+        -s ENVIRONMENT=web \
         -s ALLOW_MEMORY_GROWTH=1 \
         -s INITIAL_MEMORY=64MB \
         -s MAXIMUM_MEMORY=512MB \

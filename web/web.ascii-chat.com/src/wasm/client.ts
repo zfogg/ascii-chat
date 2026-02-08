@@ -11,8 +11,8 @@ interface ClientModuleExports {
   _client_handle_key_exchange_init(packet_ptr: number, packet_len: number): number;
   _client_handle_auth_challenge(packet_ptr: number, packet_len: number): number;
   _client_handle_handshake_complete(packet_ptr: number, packet_len: number): number;
-  _client_encrypt_packet(pt_ptr: number, pt_len: number, ct_ptr: number, out_len_ptr: number): number;
-  _client_decrypt_packet(ct_ptr: number, ct_len: number, pt_ptr: number, out_len_ptr: number): number;
+  _client_encrypt_packet(pt_ptr: number, pt_len: number, ct_ptr: number, ct_size: number, out_len_ptr: number): number;
+  _client_decrypt_packet(ct_ptr: number, ct_len: number, pt_ptr: number, pt_size: number, out_len_ptr: number): number;
   _client_parse_packet(pkt_ptr: number, len: number): number;
   _client_serialize_packet(type: number, payload_ptr: number, payload_len: number, client_id: number, output_ptr: number, out_len_ptr: number): number;
   _client_send_video_frame(rgba_ptr: number, width: number, height: number): number;
@@ -159,6 +159,17 @@ import ClientModuleFactory from './dist/client.js';
 
 let wasmModule: ClientModule | null = null;
 
+/**
+ * Read a little-endian int32 from WASM memory via HEAPU8.
+ * Emscripten's updateMemoryViews() updates Module.HEAPU8 on memory growth
+ * but does NOT update Module.HEAP32. Using HEAPU8 avoids stale typed array
+ * views after WASM memory growth (which detaches the old ArrayBuffer).
+ */
+function readI32(ptr: number): number {
+  const h = wasmModule!.HEAPU8;
+  return h[ptr] | (h[ptr + 1] << 8) | (h[ptr + 2] << 16) | (h[ptr + 3] << 24);
+}
+
 export interface ClientInitOptions {
   width?: number;
   height?: number;
@@ -185,6 +196,14 @@ export async function initClientWasm(options: ClientInitOptions = {}): Promise<v
       const buf = new Uint32Array(1);
       crypto.getRandomValues(buf);
       return buf[0];
+    },
+    // Forward C stdout (log_debug, log_info, etc.) to browser console
+    print: (text: string) => {
+      console.log('[C] ' + text);
+    },
+    // Forward C stderr to browser console
+    printErr: (text: string) => {
+      console.error('[C] ' + text);
     }
   });
   console.log('[Client WASM] Module factory completed');
@@ -384,7 +403,7 @@ export function encryptPacket(plaintext: Uint8Array): Uint8Array {
 
   // Allocate buffers
   const ptPtr = wasmModule._malloc(plaintext.length);
-  const ctPtr = wasmModule._malloc(plaintext.length + 32); // Room for AEAD overhead
+  const ctPtr = wasmModule._malloc(plaintext.length + 48); // Room for AEAD overhead (24-byte nonce + 16-byte MAC + padding)
   const outLenPtr = wasmModule._malloc(4); // 32-bit size_t
 
   if (!ptPtr || !ctPtr || !outLenPtr) {
@@ -399,9 +418,11 @@ export function encryptPacket(plaintext: Uint8Array): Uint8Array {
     wasmModule.HEAPU8.set(plaintext, ptPtr);
 
     // Call encryption
+    // C signature: client_encrypt_packet(plaintext, plaintext_len, ciphertext, ciphertext_size, out_len)
     const result = wasmModule._client_encrypt_packet(
       ptPtr, plaintext.length,
-      ctPtr, outLenPtr
+      ctPtr, plaintext.length + 48,
+      outLenPtr
     );
 
     if (result !== 0) {
@@ -409,7 +430,7 @@ export function encryptPacket(plaintext: Uint8Array): Uint8Array {
     }
 
     // Read output length
-    const outLen = wasmModule.HEAP32[outLenPtr >> 2];
+    const outLen = readI32(outLenPtr);
 
     // Copy ciphertext from WASM memory
     const ciphertext = new Uint8Array(outLen);
@@ -448,9 +469,11 @@ export function decryptPacket(ciphertext: Uint8Array): Uint8Array {
     wasmModule.HEAPU8.set(ciphertext, ctPtr);
 
     // Call decryption
+    // C signature: client_decrypt_packet(ciphertext, ciphertext_len, plaintext, plaintext_size, out_len)
     const result = wasmModule._client_decrypt_packet(
       ctPtr, ciphertext.length,
-      ptPtr, outLenPtr
+      ptPtr, ciphertext.length,
+      outLenPtr
     );
 
     if (result !== 0) {
@@ -458,7 +481,7 @@ export function decryptPacket(ciphertext: Uint8Array): Uint8Array {
     }
 
     // Read output length
-    const outLen = wasmModule.HEAP32[outLenPtr >> 2];
+    const outLen = readI32(outLenPtr);
 
     // Copy plaintext from WASM memory
     const plaintext = new Uint8Array(outLen);
@@ -550,7 +573,7 @@ export function serializePacket(
     }
 
     // Read output length
-    const outLen = wasmModule.HEAP32[outLenPtr >> 2];
+    const outLen = readI32(outLenPtr);
 
     // Copy serialized packet from WASM memory
     const packet = new Uint8Array(outLen);

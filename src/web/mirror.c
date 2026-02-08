@@ -19,6 +19,7 @@ bool parse_palette_type(const char *arg, void *dest, char **error_msg);
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/log/logging.h>
 #include <ascii-chat/video/ascii.h>
 #include <ascii-chat/video/color_filter.h>
 #include <ascii-chat/video/image.h>
@@ -57,6 +58,11 @@ int mirror_init_with_args(const char *args_json) {
     return -1;
   }
   WASM_LOG("platform_init OK");
+
+  // Initialize logging to stderr (console.error in browser)
+  WASM_LOG("Calling log_init...");
+  log_init(NULL, LOG_DEBUG, true, false);
+  WASM_LOG("log_init OK");
 
   // Parse JSON array into argc/argv
   // For simplicity, we'll accept a space-separated string instead

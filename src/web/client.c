@@ -36,6 +36,7 @@ EM_JS(void, js_send_raw_packet, (const uint8_t *packet_data, size_t packet_len),
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/log/logging.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/crypto/handshake/client.h>
 #include <ascii-chat/crypto/handshake/common.h>
@@ -176,6 +177,11 @@ int client_init_with_args(const char *args_json) {
     return -1;
   }
   WASM_LOG("platform_init OK");
+
+  // Initialize logging to stderr (console.error in browser)
+  WASM_LOG("Calling log_init...");
+  log_init(NULL, LOG_DEBUG, true, false);
+  WASM_LOG("log_init OK");
 
   if (err != ASCIICHAT_OK) {
     WASM_LOG_INT("options_init FAILED", err);
