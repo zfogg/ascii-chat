@@ -9,9 +9,10 @@
 #include <string.h>
 
 const char *platform_getenv(const char *name) {
-  if (!name)
-    return NULL;
-  return getenv(name);
+  (void)name;
+  // Environment variables not supported in WASM browser context
+  // Calling getenv() causes "memory access out of bounds" errors
+  return NULL;
 }
 
 const char *platform_strerror(int errnum) {

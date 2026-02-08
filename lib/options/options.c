@@ -675,14 +675,12 @@ options_t options_t_new_preserve_binary(const options_t *source) {
 }
 
 static char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t opts) {
-  fprintf(stderr, "[WASM DEBUG] options_get_log_filepath: ENTRY, mode=%d\n", detected_mode);
-  fflush(stderr);
-
-  // Use static buffers to avoid SAFE_MALLOC before memory tracking is initialized
+  // Use static buffers to avoid SAFE_MALLOC and malloc before memory tracking is initialized
   static char log_filename_buf[256];
   static char default_log_path_buf[PLATFORM_MAX_PATH_LENGTH];
   static char tmp_dir_buf[PLATFORM_MAX_PATH_LENGTH];
-  static char *result_buf = NULL;
+  // Use a smaller static buffer to avoid WASM memory issues
+  static char result_buf[512]; // Reduced size for WASM compatibility
 
   // Determine log filename based on mode
   const char *log_filename_literal;
@@ -706,17 +704,10 @@ static char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t 
     log_filename_literal = "ascii-chat.log";
     break;
   }
-
-  fprintf(stderr, "[WASM DEBUG] options_get_log_filepath: Selected filename: %s\n", log_filename_literal);
-  fflush(stderr);
-
   strncpy(log_filename_buf, log_filename_literal, sizeof(log_filename_buf) - 1);
   log_filename_buf[sizeof(log_filename_buf) - 1] = '\0';
 
   char *log_dir = get_log_dir();
-  fprintf(stderr, "[WASM DEBUG] options_get_log_filepath: get_log_dir returned: %p\n", (void *)log_dir);
-  fflush(stderr);
-
   if (log_dir) {
     // Build full log file path: log_dir + separator + log_filename
     safe_snprintf(default_log_path_buf, PLATFORM_MAX_PATH_LENGTH, "%s%s%s", log_dir, PATH_SEPARATOR_STR,
@@ -734,45 +725,23 @@ static char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t 
 
     SAFE_FREE(log_dir);
 
-    // Allocate result buffer only once (static, reused across calls)
-    if (!result_buf) {
-      result_buf = malloc(PLATFORM_MAX_PATH_LENGTH);
-    }
-    strncpy(result_buf, default_log_path_buf, PLATFORM_MAX_PATH_LENGTH - 1);
-    result_buf[PLATFORM_MAX_PATH_LENGTH - 1] = '\0';
+    // Copy to static result buffer
+    strncpy(result_buf, default_log_path_buf, sizeof(result_buf) - 1);
+    result_buf[sizeof(result_buf) - 1] = '\0';
     return result_buf;
 
   } else {
-    fprintf(stderr, "[WASM DEBUG] options_get_log_filepath: log_dir is NULL, using fallback\n");
-    fflush(stderr);
     SAFE_FREE(log_dir);
-    fprintf(stderr, "[WASM DEBUG] options_get_log_filepath: About to call platform_get_temp_dir\n");
-    fflush(stderr);
     if (platform_get_temp_dir(tmp_dir_buf, PLATFORM_MAX_PATH_LENGTH)) {
-      fprintf(stderr, "[WASM DEBUG] options_get_log_filepath: platform_get_temp_dir succeeded\n");
-      fflush(stderr);
       safe_snprintf(default_log_path_buf, PLATFORM_MAX_PATH_LENGTH, "%s%s%s", tmp_dir_buf, PATH_SEPARATOR_STR,
                     "ascii-chat.log");
-
-      if (!result_buf) {
-        result_buf = malloc(PLATFORM_MAX_PATH_LENGTH);
-      }
-      strncpy(result_buf, default_log_path_buf, PLATFORM_MAX_PATH_LENGTH - 1);
-      result_buf[PLATFORM_MAX_PATH_LENGTH - 1] = '\0';
-      fprintf(stderr, "[WASM DEBUG] options_get_log_filepath: Returning result_buf: %s\n", result_buf);
-      fflush(stderr);
+      strncpy(result_buf, default_log_path_buf, sizeof(result_buf) - 1);
+      result_buf[sizeof(result_buf) - 1] = '\0';
       return result_buf;
     } else {
-      fprintf(stderr, "[WASM DEBUG] options_get_log_filepath: platform_get_temp_dir failed, using filename only\n");
-      fflush(stderr);
       // Fallback to just the filename
-      if (!result_buf) {
-        result_buf = malloc(256);
-      }
-      strncpy(result_buf, log_filename_buf, 255);
-      result_buf[255] = '\0';
-      fprintf(stderr, "[WASM DEBUG] options_get_log_filepath: Returning filename only: %s\n", result_buf);
-      fflush(stderr);
+      strncpy(result_buf, log_filename_buf, sizeof(result_buf) - 1);
+      result_buf[sizeof(result_buf) - 1] = '\0';
       return result_buf;
     }
   }
@@ -783,21 +752,8 @@ static char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t 
 // ============================================================================
 
 asciichat_error_t options_init(int argc, char **argv) {
-  fprintf(stderr, "[WASM DEBUG] options_init: TOP OF FUNCTION - argc=%d\n", argc);
-  fflush(stderr);
-
   // NOTE: --grep filter is initialized in main.c BEFORE any logging starts
   // This allows ALL logs (including from shared_init) to be filtered
-
-  fprintf(stderr, "[WASM DEBUG] options_init: Skipping early log_set_level (will do after log_init)\n");
-  fflush(stderr);
-
-  log_dev("[WASM DEBUG] options_init: ENTRY - argc=%d, argv[0]=%s, argv[1]=%s", argc, argc > 0 ? argv[0] : "NULL",
-          argc > 1 ? argv[1] : "NULL");
-
-  fprintf(stderr, "[WASM DEBUG] options_init: Validating arguments\n");
-  fflush(stderr);
-  log_dev("[WASM DEBUG] options_init: Validating arguments");
   // Validate arguments (safety check for tests)
   if (argc < 0 || argc > 128) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid argc: %d", argc);
@@ -811,28 +767,12 @@ asciichat_error_t options_init(int argc, char **argv) {
       return SET_ERRNO(ERROR_INVALID_PARAM, "argv[%d] is NULL (argc=%d)", i, argc);
     }
   }
-  fprintf(stderr, "[WASM DEBUG] options_init: Arguments validated\n");
-  fflush(stderr);
-  log_dev("[WASM DEBUG] options_init: Arguments validated successfully");
-
-  fprintf(stderr, "[WASM DEBUG] options_init: About to init RCU\n");
-  fflush(stderr);
-  log_dev("[WASM DEBUG] options_init: Initializing RCU options system");
   // Initialize RCU options system (must be done before any threads start)
   // This must happen FIRST, before any other initialization
   asciichat_error_t rcu_init_result = options_state_init();
-  fprintf(stderr, "[WASM DEBUG] options_init: RCU init returned %d\n", rcu_init_result);
-  fflush(stderr);
   if (rcu_init_result != ASCIICHAT_OK) {
-    log_error("[WASM DEBUG] options_init: RCU init FAILED with error %d", rcu_init_result);
     return rcu_init_result;
   }
-  fprintf(stderr, "[WASM DEBUG] options_init: About to call log_dev after RCU init\n");
-  fflush(stderr);
-  log_dev("[WASM DEBUG] options_init: RCU initialized successfully");
-  fprintf(stderr, "[WASM DEBUG] options_init: log_dev call completed\n");
-  fflush(stderr);
-
   // ========================================================================
   // STAGE 1: Mode Detection and Binary-Level Option Handling
   // ========================================================================
@@ -850,9 +790,6 @@ asciichat_error_t options_init(int argc, char **argv) {
   // ========================================================================
   // STAGE 1A: Quick scan for action flags FIRST (they bypass mode detection)
   // ========================================================================
-  fprintf(stderr, "[WASM DEBUG] options_init: STAGE 1A - About to scan for action flags\n");
-  fflush(stderr);
-  log_dev("[WASM DEBUG] options_init: STAGE 1A - Scanning for action flags");
   // Quick scan for action flags (they may have arguments)
   // This must happen BEFORE logging initialization so we can suppress logs before shared_init()
   // Also scan for --quiet / -q so we can suppress logging from the start
@@ -860,8 +797,6 @@ asciichat_error_t options_init(int argc, char **argv) {
   bool user_quiet = false;
   int parsed_color_setting = COLOR_SETTING_AUTO; // Store parsed color value until opts is created
   bool color_setting_found = false;
-  fprintf(stderr, "[WASM DEBUG] options_init: Starting action flag loop, argc=%d\n", argc);
-  fflush(stderr);
   for (int i = 1; i < argc; i++) {
     if (argv[i][0] == '-') {
       if (strcmp(argv[i], "--quiet") == 0 || strcmp(argv[i], "-q") == 0) {
@@ -1005,24 +940,11 @@ asciichat_error_t options_init(int argc, char **argv) {
       }
     }
   }
-
-  fprintf(stderr, "[WASM DEBUG] options_init: Action flag loop completed - has_action=%d, user_quiet=%d\n", has_action,
-          user_quiet);
-  fflush(stderr);
-
-  fprintf(stderr, "[WASM DEBUG] options_init: About to store action flag\n");
-  fflush(stderr);
   // Store action flag globally for use during cleanup
   set_action_flag(has_action);
-  fprintf(stderr, "[WASM DEBUG] options_init: Action flag stored\n");
-  fflush(stderr);
-
   // ========================================================================
   // STAGE 1B: DO MODE DETECTION EARLY (needed for log_init)
   // ========================================================================
-  fprintf(stderr, "[WASM DEBUG] options_init: STAGE 1B - Detecting mode\n");
-  fflush(stderr);
-
   asciichat_mode_t detected_mode = MODE_DISCOVERY; // Default mode
   char detected_session_string[SESSION_STRING_BUFFER_SIZE] = {0};
   int mode_index = -1;
@@ -1030,37 +952,20 @@ asciichat_error_t options_init(int argc, char **argv) {
   asciichat_error_t mode_detect_result =
       options_detect_mode(argc, argv, &detected_mode, detected_session_string, &mode_index);
   if (mode_detect_result != ASCIICHAT_OK) {
-    fprintf(stderr, "[WASM DEBUG] options_init: Mode detection FAILED with error %d\n", mode_detect_result);
-    fflush(stderr);
     return mode_detect_result;
   }
-  fprintf(stderr, "[WASM DEBUG] options_init: Mode detected: %d (mode_index=%d)\n", detected_mode, mode_index);
-  fflush(stderr);
-
   // ========================================================================
   // STAGE 1C: Initialize logging EARLY (before any log_dev calls)
   // ========================================================================
-  fprintf(stderr, "[WASM DEBUG] options_init: Creating new options struct for log init\n");
-  fflush(stderr);
   // Create local options struct and initialize with defaults
   options_t opts = options_t_new(); // Initialize with all defaults
   opts.detected_mode = detected_mode;
-
-  fprintf(stderr, "[WASM DEBUG] options_init: Getting log filepath for mode %d\n", detected_mode);
-  fflush(stderr);
   char *log_filename = options_get_log_filepath(detected_mode, opts);
   SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", log_filename);
-
-  fprintf(stderr, "[WASM DEBUG] options_init: Initializing logging - file=%s\n", opts.log_file);
-  fflush(stderr);
   // Force stderr when stdout is not a TTY (piping or redirecting output)
   bool force_stderr = terminal_is_piped_output();
   log_init(opts.log_file, GET_OPTION(log_level), force_stderr, false);
-  fprintf(stderr, "[WASM DEBUG] options_init: log_init completed, now setting log level to DEV\n");
-  fflush(stderr);
   log_set_level(LOG_DEV);
-  log_dev("[WASM DEBUG] options_init: Logging system initialized and ready");
-
   // NOTE: --color detection now happens in src/main.c BEFORE asciichat_shared_init()
   // This ensures g_color_flag_passed and g_color_flag_value are set before any logging.
   //
@@ -1070,12 +975,8 @@ asciichat_error_t options_init(int argc, char **argv) {
 
   // If an action flag is detected OR user passed --quiet, silence logs for clean output
   if (user_quiet || has_action) {
-    log_dev("[WASM DEBUG] options_init: Suppressing terminal output");
     log_set_terminal_output(false); // Suppress console logging for clean action output
   }
-
-  log_dev("[WASM DEBUG] options_init: Options struct created");
-
   // Apply parsed color setting from STAGE 1A
   if (color_setting_found) {
     opts.color = parsed_color_setting;
@@ -1122,8 +1023,6 @@ asciichat_error_t options_init(int argc, char **argv) {
     options_state_set(&opts);
     return ASCIICHAT_OK;
   }
-
-  log_dev("[WASM DEBUG] options_init: Parsing binary-level options");
   // Check for binary-level options that can appear before or after mode
   // Search entire argv to find --quiet, --log-file, --log-level, -V, etc.
   // These are documented as binary-level options that can appear anywhere
@@ -1264,8 +1163,6 @@ asciichat_error_t options_init(int argc, char **argv) {
   // ========================================================================
   // STAGE 2: Build argv for mode-specific parsing
   // ========================================================================
-  log_dev("[WASM DEBUG] options_init: STAGE 2 - Building mode-specific argv");
-
   // If mode was found, build argv with only arguments after the mode
   // If mode_index == -1, we use all arguments (they become mode-specific args)
   int mode_argc = argc;
@@ -1333,13 +1230,9 @@ asciichat_error_t options_init(int argc, char **argv) {
   // ========================================================================
   // STAGE 3: Set Mode-Specific Defaults
   // ========================================================================
-  log_dev("[WASM DEBUG] options_init: STAGE 3 - Setting mode-specific defaults");
-
   // Initialize all defaults using options_t_new_preserve_binary() to keep binary-level
   // options (--quiet, --verbose, --log-level, etc.) from being reset
   opts = options_t_new_preserve_binary(&opts);
-  log_dev("[WASM DEBUG] options_init: Mode-specific defaults set");
-
   // If a session string was detected during mode detection, restore it after options reset
   // This ensures discovery mode knows which session to join
   if (detected_session_string[0] != '\0') {
@@ -1375,47 +1268,31 @@ asciichat_error_t options_init(int argc, char **argv) {
   // ========================================================================
   // STAGE 4: Build Dynamic Schema from Unified Options Config
   // ========================================================================
-  log_dev("[WASM DEBUG] options_init: STAGE 4 - Building dynamic schema");
-
   // Build the config schema dynamically from the unified config
   // This generates TOML keys, CLI flags, categories, and types from builder data
-  log_dev("[WASM DEBUG] options_init: Getting unified config preset");
   const options_config_t *unified_config = options_preset_unified(NULL, NULL);
   if (unified_config) {
-    log_dev("[WASM DEBUG] options_init: Building schema from configs");
     asciichat_error_t schema_build_result = config_schema_build_from_configs(&unified_config, 1);
     if (schema_build_result != ASCIICHAT_OK) {
-      log_warn("[WASM DEBUG] options_init: Schema build failed with error %d, continuing with fallback",
-               schema_build_result);
       // Schema build failed, but continue with static schema as fallback
       (void)schema_build_result;
     } else {
-      log_dev("[WASM DEBUG] options_init: Schema built successfully");
     }
     options_config_destroy(unified_config);
   } else {
-    log_warn("[WASM DEBUG] options_init: Failed to get unified config");
   }
 
   // ========================================================================
   // STAGE 5: Load Configuration Files
   // ========================================================================
-  log_dev("[WASM DEBUG] options_init: STAGE 5 - Loading configuration files");
-
   // Extract binary-level options BEFORE config loading (config may reset them)
   binary_level_opts_t binary_before_config = extract_binary_level(&opts);
-
-  log_dev("[WASM DEBUG] options_init: Publishing options to RCU before config loading");
   // Publish options to RCU before config loading so that config logs get proper colors
   // from the parsed --color setting (e.g., --color=true)
   asciichat_error_t config_publish_result = options_state_set(&opts);
   if (config_publish_result != ASCIICHAT_OK) {
-    log_warn("[WASM DEBUG] options_init: Failed to publish options before config loading (non-fatal)");
   } else {
-    log_dev("[WASM DEBUG] options_init: Options published to RCU successfully");
   }
-
-  log_dev("[WASM DEBUG] options_init: Loading system and user config files");
   // Load config files - now uses detected_mode directly for bitmask validation
   // Save webcam_flip as it should not be reset by config files
   // Also save encryption settings - they should only be controlled via CLI, not config file
@@ -1423,8 +1300,6 @@ asciichat_error_t options_init(int argc, char **argv) {
   bool saved_encrypt_enabled = opts.encrypt_enabled;
   asciichat_error_t config_result = config_load_system_and_user(detected_mode, false, &opts);
   (void)config_result; // Continue with defaults and CLI parsing regardless of result
-  log_dev("[WASM DEBUG] options_init: Config loading complete (result=%d)", config_result);
-
   // Restore binary-level options (don't let config override command-line options)
   restore_binary_level(&opts, &binary_before_config);
 
@@ -1439,40 +1314,28 @@ asciichat_error_t options_init(int argc, char **argv) {
   // ========================================================================
   // STAGE 6: Parse Command-Line Arguments (Unified)
   // ========================================================================
-  log_dev("[WASM DEBUG] options_init: STAGE 6 - Parsing command-line arguments");
-
   // Extract binary-level options BEFORE applying unified defaults
   // (which might override them from config files)
   binary_level_opts_t binary_before_defaults = extract_binary_level(&opts);
   asciichat_mode_t mode_saved_for_parsing = detected_mode; // CRITICAL: Save before defaults reset
-
-  log_dev("[WASM DEBUG] options_init: Getting unified config for parsing");
   // Get unified config
   const options_config_t *config = options_preset_unified(NULL, NULL);
   if (!config) {
-    log_error("[WASM DEBUG] options_init: Failed to create unified config");
     SAFE_FREE(allocated_mode_argv);
     return SET_ERRNO(ERROR_CONFIG, "Failed to create options configuration");
   }
-  log_dev("[WASM DEBUG] options_init: Unified config obtained");
-
   int remaining_argc;
   char **remaining_argv;
 
   // Save webcam_flip before applying defaults (should not be reset by defaults)
   bool saved_webcam_flip = opts.webcam_flip;
-
-  log_dev("[WASM DEBUG] options_init: Applying defaults from unified config");
   // Apply defaults from unified config
   asciichat_error_t defaults_result = options_config_set_defaults(config, &opts);
   if (defaults_result != ASCIICHAT_OK) {
-    log_error("[WASM DEBUG] options_init: Failed to apply defaults, error=%d", defaults_result);
     options_config_destroy(config);
     SAFE_FREE(allocated_mode_argv);
     return defaults_result;
   }
-  log_dev("[WASM DEBUG] options_init: Defaults applied successfully");
-
   // Restore binary-level options (they should never be overridden by defaults)
   restore_binary_level(&opts, &binary_before_defaults);
 
@@ -1485,14 +1348,10 @@ asciichat_error_t options_init(int argc, char **argv) {
 
   // Save webcam_flip before parsing - it should not be reset by the parser
   bool saved_webcam_flip_for_parse = opts.webcam_flip;
-
-  log_dev("[WASM DEBUG] options_init: Parsing mode-specific arguments (mode_argc=%d)", mode_argc);
   // Parse mode-specific arguments
   option_mode_bitmask_t mode_bitmask = (1 << mode_saved_for_parsing);
   asciichat_error_t result =
       options_config_parse(config, mode_argc, mode_argv, &opts, mode_bitmask, &remaining_argc, &remaining_argv);
-  log_dev("[WASM DEBUG] options_init: Parse complete, result=%d, remaining_argc=%d", result, remaining_argc);
-
   // Restore webcam_flip - it should keep the default value unless explicitly overridden
   opts.webcam_flip = saved_webcam_flip_for_parse;
   if (result != ASCIICHAT_OK) {
@@ -1654,19 +1513,13 @@ asciichat_error_t options_init(int argc, char **argv) {
       return option_error_invalid();
     }
   }
-
-  log_dev("[WASM DEBUG] options_init: Validating options");
   // Validate options
   result = validate_options_and_report(config, &opts);
   if (result != ASCIICHAT_OK) {
-    log_error("[WASM DEBUG] options_init: Validation FAILED, error=%d", result);
     options_config_destroy(config);
     SAFE_FREE(allocated_mode_argv);
     return result;
   }
-  log_dev("[WASM DEBUG] options_init: Validation passed");
-  log_dev("[WASM DEBUG] options_init: Checking remaining arguments (remaining_argc=%d)", remaining_argc);
-
   // Check for unexpected remaining arguments
   if (remaining_argc > 0) {
     log_error("Error: Unexpected arguments after options:");
@@ -1731,13 +1584,8 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (opts.height != OPT_HEIGHT_DEFAULT && opts.height != 0) {
     opts.auto_height = false;
   }
-
-  log_dev("[WASM DEBUG] options_init: Calling update_dimensions_to_terminal_size");
   update_dimensions_to_terminal_size(&opts);
-  log_dev("[WASM DEBUG] options_init: Calling update_dimensions_for_full_height");
   update_dimensions_for_full_height(&opts);
-  log_dev("[WASM DEBUG] options_init: Dimension updates complete");
-
   // Apply verbose level to log threshold
   // Each -V decreases the log level by 1 (showing more verbose output)
   // Minimum level is LOG_DEV (0)
@@ -1868,11 +1716,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   // are executed here after all options are fully parsed and published via RCU.
   // This ensures action output reflects the final parsed state (e.g., final dimensions
   // for --show-capabilities).
-  log_dev("[WASM DEBUG] options_init: Calling actions_execute_deferred");
   actions_execute_deferred();
-  log_dev("[WASM DEBUG] options_init: actions_execute_deferred returned");
-
   SAFE_FREE(allocated_mode_argv);
-  log_dev("[WASM DEBUG] options_init: SUCCESS - returning ASCIICHAT_OK");
   return ASCIICHAT_OK;
 }

@@ -187,39 +187,56 @@ void color_filter_calculate_rainbow(float time, uint8_t *r, uint8_t *g, uint8_t 
   switch (i % 6) {
   case 0:
     *r = 255;
-    *g = (uint8_t)(t * 255);
+    *g = (uint8_t)(t * 255.0f + 0.5f);
     *b = 0;
     break; // Red to Yellow
   case 1:
-    *r = (uint8_t)(q * 255);
+    *r = (uint8_t)(q * 255.0f + 0.5f);
     *g = 255;
     *b = 0;
     break; // Yellow to Green
   case 2:
     *r = 0;
     *g = 255;
-    *b = (uint8_t)(t * 255);
+    *b = (uint8_t)(t * 255.0f + 0.5f);
     break; // Green to Cyan
   case 3:
     *r = 0;
-    *g = (uint8_t)(q * 255);
+    *g = (uint8_t)(q * 255.0f + 0.5f);
     *b = 255;
     break; // Cyan to Blue
   case 4:
-    *r = (uint8_t)(t * 255);
+    *r = (uint8_t)(t * 255.0f + 0.5f);
     *g = 0;
     *b = 255;
     break; // Blue to Magenta
   case 5:
     *r = 255;
     *g = 0;
-    *b = (uint8_t)(q * 255);
+    *b = (uint8_t)(q * 255.0f + 0.5f);
     break; // Magenta to Red
   default:
     *r = 255;
     *g = 0;
     *b = 0;
     break; // Fallback to red
+  }
+
+  // Ensure minimum perceived brightness by boosting luminance
+  // Pure blue (0,0,255) has luminance ~18, which appears very dark
+  // We need minimum luminance of ~120 for bright, vibrant colors
+  const float min_luminance = 120.0f;
+
+  // Calculate current luminance using ITU-R BT.709 coefficients
+  float luminance = 0.2126f * *r + 0.7152f * *g + 0.0722f * *b;
+
+  if (luminance < min_luminance) {
+    // Boost luminance by adding white (increasing all channels proportionally)
+    // This desaturates the color but makes it much brighter
+    float boost = (min_luminance - luminance) / 3.0f;
+    *r = (uint8_t)fminf(255.0f, *r + boost);
+    *g = (uint8_t)fminf(255.0f, *g + boost);
+    *b = (uint8_t)fminf(255.0f, *b + boost);
   }
 }
 
@@ -277,7 +294,10 @@ int apply_color_filter(uint8_t *pixels, uint32_t width, uint32_t height, uint32_
         .foreground_on_bg = false,
     };
 
-    // Process each pixel
+    // Process each pixel with minimum brightness to prevent black
+    // Minimum brightness is 70% to ensure rainbow colors stay vibrant even for dark input
+    const uint8_t min_brightness = 179; // 70% of 255
+
     for (uint32_t y = 0; y < height; y++) {
       uint8_t *row = pixels + y * stride;
       for (uint32_t x = 0; x < width; x++) {
@@ -286,7 +306,13 @@ int apply_color_filter(uint8_t *pixels, uint32_t width, uint32_t height, uint32_
         uint8_t g = pixel[1];
         uint8_t b = pixel[2];
         uint8_t gray = rgb_to_grayscale(r, g, b);
-        colorize_grayscale_pixel(gray, &rainbow_filter, &pixel[0], &pixel[1], &pixel[2]);
+
+        // Boost grayscale to maintain minimum brightness for rainbow
+        // Formula: adjusted = min + gray * (1 - min/255)
+        // This ensures: black pixels -> min_brightness, white pixels -> 255
+        uint8_t adjusted_gray = min_brightness + (uint8_t)((gray * (255U - min_brightness)) / 255U);
+
+        colorize_grayscale_pixel(adjusted_gray, &rainbow_filter, &pixel[0], &pixel[1], &pixel[2]);
       }
     }
     return 0;

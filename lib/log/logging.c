@@ -153,26 +153,13 @@ static bool g_shutdown_saved_terminal_output = true; /* Saved state for log_shut
 static bool g_shutdown_in_progress = false;          /* Track if shutdown phase is active */
 
 size_t get_current_time_formatted(char *time_buf) {
-  fprintf(stderr, "[WASM DEBUG get_current_time_formatted] ENTRY\n");
-  fflush(stderr);
   /* Get wall-clock time in nanoseconds */
-  fprintf(stderr, "[WASM DEBUG get_current_time_formatted] Calling time_get_realtime_ns\n");
-  fflush(stderr);
   uint64_t ts_ns = time_get_realtime_ns();
-  fprintf(stderr, "[WASM DEBUG get_current_time_formatted] time_get_realtime_ns returned\n");
-  fflush(stderr);
-
   // Extract seconds and nanoseconds from total nanoseconds
   time_t seconds = (time_t)(ts_ns / NS_PER_SEC_INT);
   long nanoseconds = (long)(ts_ns % NS_PER_SEC_INT);
-
-  fprintf(stderr, "[WASM DEBUG get_current_time_formatted] Calling platform_localtime\n");
-  fflush(stderr);
   struct tm tm_info;
   platform_localtime(&seconds, &tm_info);
-  fprintf(stderr, "[WASM DEBUG get_current_time_formatted] platform_localtime returned\n");
-  fflush(stderr);
-
   // Format the time part first
   // strftime returns 0 on error, not negative (and len is size_t/unsigned)
   size_t len = strftime(time_buf, 32, "%H:%M:%S", &tm_info);
@@ -272,9 +259,9 @@ static void validate_log_message_utf8(const char *message, const char *source) {
   }
 
   if (!utf8_is_valid(message)) {
-    // Log warning with context
-    log_warn("Invalid UTF-8 detected in %s", source);
-    // Also output the bad data to stderr via fprintf for debugging
+    // Use fprintf instead of log_warn to avoid infinite recursion
+    // (this function is called from log_msg, which would create a loop)
+    safe_fprintf(stderr, "[WARN] Invalid UTF-8 detected in %s\n", source);
     safe_fprintf(stderr, "[DEBUG] Invalid UTF-8 data: %s\n", message);
   }
 }
@@ -582,12 +569,8 @@ void log_destroy(void) {
 }
 
 void log_set_level(log_level_t level) {
-  fprintf(stderr, "[WASM DEBUG] log_set_level called with level=%d\n", level);
-  fflush(stderr);
   atomic_store(&g_log.level, (int)level);
   atomic_store(&g_log.level_manually_set, true);
-  fprintf(stderr, "[WASM DEBUG] log_set_level completed, g_log.level now=%d\n", (int)atomic_load(&g_log.level));
-  fflush(stderr);
 }
 
 log_level_t log_get_level(void) {
@@ -686,15 +669,9 @@ static void write_to_log_file_atomic(const char *buffer, int length) {
  */
 static int format_log_header(char *buffer, size_t buffer_size, log_level_t level, const char *timestamp,
                              const char *file, int line, const char *func, bool use_colors, bool newline) {
-  fprintf(stderr, "[WASM DEBUG format_log_header] ENTRY use_colors=%d\n", use_colors);
-  fflush(stderr);
   const char **colors = NULL;
   if (use_colors) {
-    fprintf(stderr, "[WASM DEBUG format_log_header] About to call log_get_color_array\n");
-    fflush(stderr);
     colors = log_get_color_array();
-    fprintf(stderr, "[WASM DEBUG format_log_header] log_get_color_array returned\n");
-    fflush(stderr);
   }
   // Safety check: if colors is NULL, disable colors to prevent crashes
   if (use_colors && colors == NULL) {
@@ -764,12 +741,8 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
  */
 static void write_to_terminal_atomic(log_level_t level, const char *timestamp, const char *file, int line,
                                      const char *func, const char *fmt, va_list args) {
-  fprintf(stderr, "[WASM DEBUG write_to_terminal_atomic] ENTRY\n");
-  fflush(stderr);
   // Choose output stream: errors/warnings to stderr, info/debug to stdout
   // When force_stderr is enabled (client mode), ALL logs go to stderr to keep stdout clean
-  fprintf(stderr, "[WASM DEBUG write_to_terminal_atomic] Choosing output stream\n");
-  fflush(stderr);
   FILE *output_stream;
   if (atomic_load(&g_log.force_stderr)) {
     output_stream = stderr;
@@ -777,14 +750,8 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
     output_stream = (level == LOG_ERROR || level == LOG_WARN || level == LOG_FATAL) ? stderr : stdout;
   }
   int fd = output_stream == stderr ? STDERR_FILENO : STDOUT_FILENO;
-  fprintf(stderr, "[WASM DEBUG write_to_terminal_atomic] fd=%d\n", fd);
-  fflush(stderr);
-
   // Format the header using centralized formatting
   char header_buffer[512];
-
-  fprintf(stderr, "[WASM DEBUG write_to_terminal_atomic] Checking if colors should be used\n");
-  fflush(stderr);
   // Check if colors should be used
   // Priority 1: If --color was explicitly passed, force colors
   extern bool g_color_flag_passed;
@@ -795,21 +762,12 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   }
   // Priority 2: If --color NOT explicitly passed, use terminal detection
   else if (!g_color_flag_passed) {
-    fprintf(stderr, "[WASM DEBUG write_to_terminal_atomic] Calling terminal_should_color_output\n");
-    fflush(stderr);
     use_colors = terminal_should_color_output(fd);
-    fprintf(stderr, "[WASM DEBUG write_to_terminal_atomic] terminal_should_color_output returned %d\n", use_colors);
-    fflush(stderr);
   }
   // Priority 3: If --color=false was explicitly passed, disable colors
   // (use_colors stays false)
-
-  fprintf(stderr, "[WASM DEBUG write_to_terminal_atomic] Formatting header (use_colors=%d)\n", use_colors);
-  fflush(stderr);
   int header_len =
       format_log_header(header_buffer, sizeof(header_buffer), level, timestamp, file, line, func, use_colors, false);
-  fprintf(stderr, "[WASM DEBUG write_to_terminal_atomic] format_log_header returned %d\n", header_len);
-  fflush(stderr);
   if (header_len <= 0 || header_len >= (int)sizeof(header_buffer)) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log header");
     return;
@@ -973,36 +931,18 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
 }
 
 void log_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...) {
-  fprintf(stderr, "[WASM DEBUG log_msg] ENTRY\n");
-  fflush(stderr);
   // All state access uses atomic operations - fully lock-free
   if (!atomic_load(&g_log.initialized)) {
-    fprintf(stderr, "[WASM DEBUG log_msg] Not initialized, returning\n");
-    fflush(stderr);
     return;
   }
-
-  fprintf(stderr, "[WASM DEBUG log_msg] Initialized, checking level (msg_level=%d, g_log.level=%d)\n", level,
-          (int)atomic_load(&g_log.level));
-  fflush(stderr);
   if (level < (log_level_t)atomic_load(&g_log.level)) {
-    fprintf(stderr, "[WASM DEBUG log_msg] Level check failed (msg_level=%d < g_log.level=%d), returning\n", level,
-            (int)atomic_load(&g_log.level));
-    fflush(stderr);
     return;
   }
-
-  fprintf(stderr, "[WASM DEBUG log_msg] Level check passed, checking mmap\n");
-  fflush(stderr);
   /* =========================================================================
    * MMAP PATH: When mmap logging is active, writes go to mmap'd file
    * ========================================================================= */
   bool mmap_active = log_mmap_is_active();
-  fprintf(stderr, "[WASM DEBUG log_msg] log_mmap_is_active() returned %d\n", mmap_active);
-  fflush(stderr);
   if (mmap_active) {
-    fprintf(stderr, "[WASM DEBUG log_msg] mmap is active, calling maybe_rotate_log\n");
-    fflush(stderr);
     maybe_rotate_log();
 
     va_list args;
@@ -1069,47 +1009,25 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
         (void)fflush(output_stream);
       }
     }
-    fprintf(stderr, "[WASM DEBUG log_msg] mmap path complete, returning\n");
-    fflush(stderr);
     return;
   }
-
-  fprintf(stderr, "[WASM DEBUG log_msg] mmap not active, using FILE I/O PATH\n");
-  fflush(stderr);
   /* =========================================================================
    * FILE I/O PATH: Lock-free using atomic write() syscalls
    * ========================================================================= */
-  fprintf(stderr, "[WASM DEBUG log_msg] Getting current time\n");
-  fflush(stderr);
   char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
   get_current_time_formatted(time_buf);
-  fprintf(stderr, "[WASM DEBUG log_msg] Got current time\n");
-  fflush(stderr);
-
   // Format message for file output
-  fprintf(stderr, "[WASM DEBUG log_msg] Formatting log message\n");
-  fflush(stderr);
   char log_buffer[LOG_MSG_BUFFER_SIZE];
   va_list args;
   va_start(args, fmt);
-
-  fprintf(stderr, "[WASM DEBUG log_msg] Calling format_log_header\n");
-  fflush(stderr);
   int header_len = format_log_header(log_buffer, sizeof(log_buffer), level, time_buf, file, line, func, false, false);
-  fprintf(stderr, "[WASM DEBUG log_msg] format_log_header returned %d\n", header_len);
-  fflush(stderr);
   if (header_len <= 0 || header_len >= (int)sizeof(log_buffer)) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log header");
     va_end(args);
     return;
   }
-
-  fprintf(stderr, "[WASM DEBUG log_msg] Calling safe_vsnprintf\n");
-  fflush(stderr);
   int msg_len = header_len;
   int formatted_len = safe_vsnprintf(log_buffer + header_len, sizeof(log_buffer) - (size_t)header_len, fmt, args);
-  fprintf(stderr, "[WASM DEBUG log_msg] safe_vsnprintf returned %d\n", formatted_len);
-  fflush(stderr);
   if (formatted_len < 0) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log message");
     va_end(args);
@@ -1117,14 +1035,8 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   }
 
   msg_len += formatted_len;
-
-  fprintf(stderr, "[WASM DEBUG log_msg] Calling truncate_at_whole_line\n");
-  fflush(stderr);
   // Truncate at whole line boundaries to avoid UTF-8 issues
   msg_len = truncate_at_whole_line(log_buffer, msg_len, sizeof(log_buffer));
-  fprintf(stderr, "[WASM DEBUG log_msg] truncate_at_whole_line completed, msg_len=%d\n", msg_len);
-  fflush(stderr);
-
   // Add newline if there's room and message doesn't already end with one
   if (msg_len > 0 && msg_len < (int)sizeof(log_buffer) - 1) {
     if (log_buffer[msg_len - 1] != '\n') {
@@ -1132,45 +1044,19 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
       log_buffer[msg_len] = '\0';
     }
   }
-
-  fprintf(stderr, "[WASM DEBUG log_msg] Calling va_end\n");
-  fflush(stderr);
   va_end(args);
-  fprintf(stderr, "[WASM DEBUG log_msg] va_end completed\n");
-  fflush(stderr);
-
-  fprintf(stderr, "[WASM DEBUG log_msg] Calling validate_log_message_utf8\n");
-  fflush(stderr);
   // Validate UTF-8 in formatted message
   validate_log_message_utf8(log_buffer, "leveled log message");
-  fprintf(stderr, "[WASM DEBUG log_msg] validate_log_message_utf8 completed\n");
-  fflush(stderr);
-
-  fprintf(stderr, "[WASM DEBUG log_msg] Checking file_fd\n");
-  fflush(stderr);
   // Write to file (atomic write syscall)
   int file_fd = atomic_load(&g_log.file);
-  fprintf(stderr, "[WASM DEBUG log_msg] file_fd=%d\n", file_fd);
-  fflush(stderr);
   if (file_fd >= 0 && file_fd != STDERR_FILENO) {
-    fprintf(stderr, "[WASM DEBUG log_msg] Calling write_to_log_file_atomic\n");
-    fflush(stderr);
     write_to_log_file_atomic(log_buffer, msg_len);
-    fprintf(stderr, "[WASM DEBUG log_msg] write_to_log_file_atomic completed\n");
-    fflush(stderr);
   }
-
-  fprintf(stderr, "[WASM DEBUG log_msg] Calling write_to_terminal_atomic\n");
-  fflush(stderr);
   // Write to terminal (atomic state checks)
   va_list args_terminal;
   va_start(args_terminal, fmt);
   write_to_terminal_atomic(level, time_buf, file, line, func, fmt, args_terminal);
-  fprintf(stderr, "[WASM DEBUG log_msg] write_to_terminal_atomic completed\n");
-  fflush(stderr);
   va_end(args_terminal);
-  fprintf(stderr, "[WASM DEBUG log_msg] log_msg COMPLETE\n");
-  fflush(stderr);
 }
 
 void log_terminal_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...) {
@@ -1531,33 +1417,14 @@ void log_redetect_terminal_capabilities(void) {
 
 /* Get the appropriate color array based on terminal capabilities */
 const char **log_get_color_array(void) {
-  fprintf(stderr, "[WASM DEBUG log_get_color_array] ENTRY\n");
-  fflush(stderr);
-  fprintf(stderr, "[WASM DEBUG log_get_color_array] Calling init_terminal_capabilities\n");
-  fflush(stderr);
   init_terminal_capabilities();
-  fprintf(stderr, "[WASM DEBUG log_get_color_array] init_terminal_capabilities returned\n");
-  fflush(stderr);
-
   /* Initialize colors if not already done */
-  fprintf(stderr, "[WASM DEBUG log_get_color_array] Checking g_log_colorscheme_initialized=%d\n",
-          g_log_colorscheme_initialized);
-  fflush(stderr);
   if (!g_log_colorscheme_initialized) {
-    fprintf(stderr, "[WASM DEBUG log_get_color_array] About to call log_init_colors\n");
-    fflush(stderr);
     log_init_colors();
-    fprintf(stderr, "[WASM DEBUG log_get_color_array] log_init_colors returned\n");
-    fflush(stderr);
   }
 
   /* Safety check: if colors are not initialized, return NULL to prevent crashes from null pointers */
-  fprintf(stderr, "[WASM DEBUG log_get_color_array] Final check: g_log_colorscheme_initialized=%d\n",
-          g_log_colorscheme_initialized);
-  fflush(stderr);
   if (!g_log_colorscheme_initialized) {
-    fprintf(stderr, "[WASM DEBUG log_get_color_array] Colors not initialized, returning NULL\n");
-    fflush(stderr);
     return NULL;
   }
 
@@ -1589,74 +1456,41 @@ const char *log_level_color(log_color_t color) {
  * ============================================================================ */
 
 void log_init_colors(void) {
-  fprintf(stderr, "[WASM DEBUG log_init_colors] ENTRY\n");
-  fflush(stderr);
   /* Skip color initialization during terminal detection to avoid mutex deadlock */
   if (g_terminal_caps_detecting) {
-    fprintf(stderr, "[WASM DEBUG log_init_colors] Skipping - g_terminal_caps_detecting=true\n");
-    fflush(stderr);
     return;
   }
 
   /* Skip color initialization before logging is fully initialized */
   if (!atomic_load(&g_log.initialized)) {
-    fprintf(stderr, "[WASM DEBUG log_init_colors] Skipping - g_log.initialized=false\n");
-    fflush(stderr);
     return;
   }
 
   if (g_log_colorscheme_initialized) {
-    fprintf(stderr, "[WASM DEBUG log_init_colors] Skipping - already initialized\n");
-    fflush(stderr);
     return;
   }
 
   /* Get active color scheme - this ensures color system is initialized */
-  fprintf(stderr, "[WASM DEBUG log_init_colors] Calling colorscheme_get_active_scheme\n");
-  fflush(stderr);
   const color_scheme_t *scheme = colorscheme_get_active_scheme();
-  fprintf(stderr, "[WASM DEBUG log_init_colors] colorscheme_get_active_scheme returned %p\n", (void *)scheme);
-  fflush(stderr);
   if (!scheme) {
     /* Don't mark as initialized if we can't get a color scheme - return NULL instead */
-    fprintf(stderr, "[WASM DEBUG log_init_colors] scheme is NULL, returning\n");
-    fflush(stderr);
     return;
   }
 
   /* Acquire mutex for compilation (mutex is now initialized by colorscheme_init) */
-  fprintf(stderr, "[WASM DEBUG log_init_colors] About to acquire mutex_lock(&g_colorscheme_mutex)\n");
-  fflush(stderr);
   mutex_lock(&g_colorscheme_mutex);
-  fprintf(stderr, "[WASM DEBUG log_init_colors] mutex_lock acquired\n");
-  fflush(stderr);
-
   /* Debug: Check if g_compiled_colors is actually zero-initialized */
-  fprintf(stderr, "[WASM DEBUG log_init_colors] g_compiled_colors.codes_16[0]=%p, [1]=%p, [2]=%p\n",
-          g_compiled_colors.codes_16[0], g_compiled_colors.codes_16[1], g_compiled_colors.codes_16[2]);
-  fflush(stderr);
-
   /* Zero the structure on first use to avoid freeing garbage pointers */
   /* (static = {0} produces garbage in this build for unknown reasons) */
   static bool first_compile = true;
   if (first_compile) {
-    fprintf(stderr, "[WASM DEBUG log_init_colors] First compile - zeroing g_compiled_colors\n");
-    fflush(stderr);
     memset(&g_compiled_colors, 0, sizeof(g_compiled_colors));
     first_compile = false;
   }
 
   /* Detect terminal background */
-  fprintf(stderr, "[WASM DEBUG log_init_colors] Calling detect_terminal_background\n");
-  fflush(stderr);
   terminal_background_t background = detect_terminal_background();
-  fprintf(stderr, "[WASM DEBUG log_init_colors] detect_terminal_background returned %d\n", background);
-  fflush(stderr);
-
   /* Determine color mode for compilation */
-  fprintf(stderr, "[WASM DEBUG log_init_colors] Determining color mode (g_terminal_caps.color_level=%d)\n",
-          g_terminal_caps.color_level);
-  fflush(stderr);
   terminal_color_mode_t mode;
   if (g_terminal_caps.color_level >= TERM_COLOR_TRUECOLOR) {
     mode = TERM_COLOR_TRUECOLOR;
@@ -1665,19 +1499,9 @@ void log_init_colors(void) {
   } else {
     mode = TERM_COLOR_16;
   }
-  fprintf(stderr, "[WASM DEBUG log_init_colors] Color mode determined: %d\n", mode);
-  fflush(stderr);
-
   /* Compile the color scheme to ANSI codes */
-  fprintf(stderr, "[WASM DEBUG log_init_colors] Calling colorscheme_compile_scheme\n");
-  fflush(stderr);
   asciichat_error_t result = colorscheme_compile_scheme(scheme, mode, background, &g_compiled_colors);
-  fprintf(stderr, "[WASM DEBUG log_init_colors] colorscheme_compile_scheme returned %d\n", result);
-  fflush(stderr);
-
   g_log_colorscheme_initialized = true;
-  fprintf(stderr, "[WASM DEBUG log_init_colors] Set g_log_colorscheme_initialized=true\n");
-  fflush(stderr);
   mutex_unlock(&g_colorscheme_mutex);
 
   /* Log outside of mutex lock to avoid recursive lock deadlock */

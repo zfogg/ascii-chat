@@ -290,6 +290,19 @@ const char *extract_project_relative_path(const char *file) {
     return "unknown";
   }
 
+#ifdef __EMSCRIPTEN__
+  // WASM builds: Return raw path to avoid recursion in logging system
+  // extract_project_relative_path is called from format_log_header, which is part of logging.
+  // If we call normalize_path or other functions that might use SET_ERRNO or log functions,
+  // we create infinite recursion: log_msg -> format_log_header -> extract_project_relative_path -> SET_ERRNO ->
+  // log_error -> log_msg For WASM, just return the filename without path processing.
+  const char *sep = strrchr(file, '/');
+  if (!sep) {
+    sep = strrchr(file, '\\');
+  }
+  return sep ? sep + 1 : file;
+#endif
+
   /* First normalize the path to resolve .. and . components */
   const char *normalized = normalize_path(file);
 

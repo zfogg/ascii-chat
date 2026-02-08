@@ -16,9 +16,10 @@ add_definitions(
     -DEMSCRIPTEN_BUILD=1
 )
 
-# Add compiler flags for pthreads support (atomics + bulk-memory) and WASM SIMD
+# Add compiler flags for WASM SIMD
 # -mavx2 enables AVX2 intrinsics emulation on top of WASM SIMD128
-add_compile_options(-pthread -matomics -mbulk-memory -msimd128 -mavx2)
+# Note: pthreads disabled for mirror mode (no threading needed, causes malloc hangs)
+add_compile_options(-msimd128 -mavx2)
 
 # Fetch and build dependencies for WASM
 include(FetchContent)
@@ -252,8 +253,6 @@ set_target_properties(mirror PROPERTIES
         -s INITIAL_MEMORY=32MB \
         -s MAXIMUM_MEMORY=256MB \
         -s WASM_BIGINT=1 \
-        -s USE_PTHREADS=1 \
-        -pthread \
         -msimd128 \
         -O3 \
         --no-entry"
