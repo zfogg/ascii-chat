@@ -610,7 +610,16 @@ ascii-chat happy-sunset-ocean`}
                   the core library. It implements{" "}
                   <strong className="text-pink-400">ACIP</strong> (ASCII-Chat
                   Internet Protocol) for encrypted peer-to-peer video and audio
-                  streaming.
+                  streaming.{" "}
+                  <TrackedLink
+                    href="https://zfogg.github.io/ascii-chat/"
+                    label="Home - libasciichat API Documentation"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-cyan-400 hover:text-cyan-300 transition-colors underline"
+                  >
+                    View Doxygen documentation →
+                  </TrackedLink>
                 </p>
 
                 <ul className="list-disc list-inside space-y-2 text-gray-300 mb-4 ml-4">
