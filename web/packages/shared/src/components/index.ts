@@ -4,6 +4,8 @@ export { Card } from "./Card";
 export { CodeBlock } from "./CodeBlock";
 export { CommitLink } from "./CommitLink";
 export { Footer } from "./Footer";
+export { Head } from "./Head";
+export type { HeadProps } from "./Head";
 export { Heading } from "./Heading";
 export { InfoBox } from "./InfoBox";
 export { Link } from "./Link";

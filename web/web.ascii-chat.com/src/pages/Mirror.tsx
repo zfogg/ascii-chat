@@ -4,6 +4,7 @@ import { FitAddon } from '@xterm/addon-fit'
 import 'xterm/css/xterm.css'
 import { initMirrorWasm, convertFrameToAscii, isWasmReady, setDimensions, setColorMode, setColorFilter, setPalette, setPaletteChars, setMatrixRain, setWebcamFlip, ColorMode as WasmColorMode, ColorFilter as WasmColorFilter } from '../wasm/mirror'
 import { Settings, SettingsConfig, ColorMode, ColorFilter } from '../components/Settings'
+import { WebClientHead } from '../components/WebClientHead'
 
 // Helper functions to map Settings types to WASM enums
 function mapColorMode(mode: ColorMode): WasmColorMode {
@@ -388,8 +389,14 @@ export function MirrorPage() {
   }, [])
 
   return (
-    <div className="flex-1 bg-terminal-bg text-terminal-fg flex flex-col">
-      {/* Hidden video and canvas for capture - visually hidden but active */}
+    <>
+      <WebClientHead
+        title="Mirror Mode - ascii-chat"
+        description="Test your webcam with real-time ASCII art rendering. See yourself in terminal-style graphics."
+        url="https://web.ascii-chat.com/mirror"
+      />
+      <div className="flex-1 bg-terminal-bg text-terminal-fg flex flex-col">
+        {/* Hidden video and canvas for capture - visually hidden but active */}
       {/*
         NOTE: The video/canvas container MUST be visible to the browser (not width:0/height:0 or opacity:0)
         to prevent the browser from pausing video playback when the page scrolls. Using position:fixed with
@@ -481,6 +488,7 @@ export function MirrorPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   )
 }

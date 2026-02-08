@@ -1,8 +1,11 @@
 import { Heading, Button } from "@ascii-chat/shared/components";
+import { WebClientHead } from "../components/WebClientHead";
 
 export function HomePage() {
   return (
-    <div className="flex-1 flex items-center justify-center">
+    <>
+      <WebClientHead />
+      <div className="flex-1 flex items-center justify-center">
       <div className="text-center max-w-2xl px-8">
         <Heading level={1} className="text-6xl font-bold text-terminal-cyan mb-4">ascii-chat</Heading>
         <p className="text-xl text-terminal-fg mb-8">
@@ -33,5 +36,6 @@ export function HomePage() {
         </p>
       </div>
     </div>
+    </>
   )
 }
