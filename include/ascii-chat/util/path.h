@@ -167,6 +167,25 @@ char *expand_path(const char *path);
 char *get_config_dir(void);
 
 /**
+ * @brief Get application data directory path
+ * @return Path to data directory (must be freed by caller), or NULL on failure
+ *
+ * Returns XDG_DATA_HOME/ascii-chat/ on Unix (~/.local/share/ascii-chat/ by default)
+ * or AppData\ascii-chat\ on Windows.
+ *
+ * Use this for application data files like databases, not configuration files.
+ *
+ * @par Example:
+ * @code
+ * char *data_dir = get_data_dir();
+ * // Returns: "/home/user/.local/share/ascii-chat/" (on Unix)
+ * // or: "C:\Users\user\AppData\Roaming\ascii-chat\" (on Windows)
+ * free(data_dir);
+ * @endcode
+ */
+char *get_data_dir(void);
+
+/**
  * @brief Get log directory path appropriate for current build type
  * @return Path to log directory (must be freed by caller), or NULL on failure
  *
@@ -202,6 +221,38 @@ char *get_config_dir(void);
  * @endcode
  */
 char *get_log_dir(void);
+
+/**
+ * @brief Get discovery service database directory with system-wide fallback
+ * @return Path to database directory (must be freed by caller), or NULL on failure
+ *
+ * Returns the appropriate directory for the discovery service database, with
+ * system-wide installation support. The path includes a trailing directory separator.
+ *
+ * Directory resolution (in order of preference):
+ * 1. System-wide location: /usr/local/var/ascii-chat/ (Unix) or %PROGRAMDATA%\ascii-chat\ (Windows)
+ * 2. User data directory: $XDG_DATA_HOME/ascii-chat/ or ~/.local/share/ascii-chat/
+ * 3. User config directory: $XDG_CONFIG_HOME/ascii-chat/ or ~/.config/ascii-chat/
+ *
+ * The function tries each location and automatically creates directories with appropriate
+ * permissions (0755 for system directories, 0700 for user directories). If a location
+ * is not writable, it falls back to the next option.
+ *
+ * @note Returned path is allocated with malloc() and must be freed by caller.
+ * @note Path includes directory separator at the end (e.g., "/usr/local/var/ascii-chat/").
+ * @note Returns NULL on failure (all locations inaccessible or memory allocation error).
+ * @note Creates directories if they don't exist and are writable.
+ *
+ * @par Example
+ * @code
+ * char *db_dir = get_discovery_database_dir();
+ * // Returns: "/usr/local/var/ascii-chat/" (if writable)
+ * // or: "/home/user/.local/share/ascii-chat/" (fallback)
+ * // or: "/home/user/.config/ascii-chat/" (final fallback)
+ * free(db_dir);
+ * @endcode
+ */
+char *get_discovery_database_dir(void);
 
 /**
  * @brief Normalize a path and copy it into the provided buffer.

@@ -82,6 +82,7 @@
 #include <ascii-chat/options/manpage.h>
 #include <ascii-chat/options/presets.h>
 #include <ascii-chat/options/actions.h>
+#include <ascii-chat/options/registry/mode_defaults.h> // Mode-aware defaults
 
 #include <ascii-chat/options/config.h>
 #include <ascii-chat/options/strings.h> // Enum/mode string conversions
@@ -1627,31 +1628,23 @@ asciichat_error_t options_init(int argc, char **argv) {
   }
 
   // Mode-specific post-processing
+  // Apply mode-specific defaults (port, websocket-port)
+  apply_mode_specific_defaults(&opts);
+  log_dev("Applied mode-specific defaults: port=%d, websocket_port=%d", opts.port, opts.websocket_port);
+
   if (detected_mode == MODE_DISCOVERY_SERVICE) {
-    // Set default port for discovery service (27225 instead of 27224)
-    // Only override if port is still the server default
-    if (opts.port == OPT_PORT_INT_DEFAULT) {
-      opts.port = OPT_ACDS_PORT_INT_DEFAULT;
-      log_dev("Using discovery service default port: %d", opts.port);
-    }
-
-    // Set default WebSocket port for discovery service (27227 instead of 27226)
-    // Only override if websocket_port is still the server default
-    if (opts.websocket_port == OPT_WEBSOCKET_PORT_SERVER_DEFAULT) {
-      opts.websocket_port = OPT_WEBSOCKET_PORT_ACDS_DEFAULT;
-      log_dev("Using discovery service default WebSocket port: %d", opts.websocket_port);
-    }
-
     // Set default paths if not specified
     if (opts.discovery_database_path[0] == '\0') {
-      char *config_dir = get_config_dir();
-      if (!config_dir) {
+      // Database: Try system-wide location first, fall back to user directories
+      // Preference: /usr/local/var/ascii-chat/ > ~/.local/share/ascii-chat/ > ~/.config/ascii-chat/
+      char *db_dir = get_discovery_database_dir();
+      if (!db_dir) {
         options_config_destroy(config);
         SAFE_FREE(allocated_mode_argv);
-        return SET_ERRNO(ERROR_CONFIG, "Failed to get config directory for database path");
+        return SET_ERRNO(ERROR_CONFIG, "Failed to get database directory (tried system and user locations)");
       }
-      safe_snprintf(opts.discovery_database_path, sizeof(opts.discovery_database_path), "%sdiscovery.db", config_dir);
-      SAFE_FREE(config_dir);
+      safe_snprintf(opts.discovery_database_path, sizeof(opts.discovery_database_path), "%sdiscovery.db", db_dir);
+      SAFE_FREE(db_dir);
     }
   }
 

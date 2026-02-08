@@ -542,6 +542,33 @@ const char *platform_get_home_dir(void);
  */
 char *platform_get_config_dir(void);
 
+/**
+ * @brief Get the application data directory
+ *
+ * Platform-specific implementation:
+ *   - POSIX: Returns $XDG_DATA_HOME/ascii-chat/ (default: ~/.local/share/ascii-chat/)
+ *   - Windows: Returns %APPDATA%\ascii-chat\
+ *
+ * @return Allocated string with data directory path (including trailing separator),
+ *         or NULL on error. Caller must free() the returned string.
+ *
+ * @note Creates the directory if it doesn't exist
+ * @note Thread-safe (returns newly allocated string each time)
+ *
+ * @par Example:
+ * @code{.c}
+ * char *data_dir = platform_get_data_dir();
+ * if (data_dir) {
+ *   // data_dir = "/home/user/.local/share/ascii-chat/" on Linux
+ *   // data_dir = "C:\\Users\\user\\AppData\\Roaming\\ascii-chat\\" on Windows
+ *   SAFE_FREE(data_dir);
+ * }
+ * @endcode
+ *
+ * @ingroup platform
+ */
+char *platform_get_data_dir(void);
+
 // ============================================================================
 // Platform Path Utilities
 // ============================================================================

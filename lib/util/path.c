@@ -382,6 +382,11 @@ char *get_config_dir(void) {
   return platform_get_config_dir();
 }
 
+char *get_data_dir(void) {
+  /* Delegate to platform abstraction layer */
+  return platform_get_data_dir();
+}
+
 char *get_log_dir(void) {
 #ifdef __EMSCRIPTEN__
   // WASM builds: Return NULL to skip SAFE_MALLOC before memory tracking is initialized
@@ -452,6 +457,103 @@ char *get_log_dir(void) {
 
   safe_snprintf(result, strlen(cwd_buf) + 1, "%s", cwd_buf);
   return result;
+#endif
+}
+
+char *get_discovery_database_dir(void) {
+#ifdef _WIN32
+  // Windows: Try %PROGRAMDATA%\ascii-chat\ first, then fall back to user directories
+  const char *program_data = platform_getenv("PROGRAMDATA");
+  if (program_data && program_data[0] != '\0') {
+    size_t len = strlen(program_data) + strlen("\\ascii-chat\\") + 1;
+    char *system_dir = SAFE_MALLOC(len, char *);
+    if (system_dir) {
+      safe_snprintf(system_dir, len, "%s\\ascii-chat\\", program_data);
+
+      // Try to create directory recursively with public permissions (755 equivalent)
+      asciichat_error_t mkdir_result = platform_mkdir_recursive(system_dir, 0755);
+      if (mkdir_result == ASCIICHAT_OK) {
+        // Directory exists or was created - check if writable
+        if (platform_access(system_dir, PLATFORM_ACCESS_WRITE) == 0) {
+          return system_dir; // System-wide location is writable
+        }
+      }
+      SAFE_FREE(system_dir);
+    }
+  }
+
+  // Fall back to user data directory
+  char *data_dir = get_data_dir();
+  if (data_dir) {
+    // Try to create the directory recursively
+    asciichat_error_t mkdir_result = platform_mkdir_recursive(data_dir, DIR_PERM_PRIVATE);
+    if (mkdir_result == ASCIICHAT_OK) {
+      if (platform_access(data_dir, PLATFORM_ACCESS_WRITE) == 0) {
+        return data_dir;
+      }
+    }
+    SAFE_FREE(data_dir);
+  }
+
+  // Final fallback: config directory
+  char *config_dir = get_config_dir();
+  if (config_dir) {
+    asciichat_error_t mkdir_result = platform_mkdir_recursive(config_dir, DIR_PERM_PRIVATE);
+    if (mkdir_result == ASCIICHAT_OK) {
+      if (platform_access(config_dir, PLATFORM_ACCESS_WRITE) == 0) {
+        return config_dir;
+      }
+    }
+    SAFE_FREE(config_dir);
+  }
+
+  return NULL;
+#else
+  // Unix: Try /usr/local/var/ascii-chat/ first (system-wide)
+  const char *system_dir_path = "/usr/local/var/ascii-chat/";
+  size_t system_len = strlen(system_dir_path) + 1;
+  char *system_dir = SAFE_MALLOC(system_len, char *);
+  if (system_dir) {
+    safe_snprintf(system_dir, system_len, "%s", system_dir_path);
+
+    // Try to create directory recursively with public permissions (755) for system-wide use
+    // platform_mkdir_recursive creates parent directories as needed
+    asciichat_error_t mkdir_result = platform_mkdir_recursive(system_dir, 0755);
+    if (mkdir_result == ASCIICHAT_OK) {
+      // Directory exists or was created - check if writable
+      if (platform_access(system_dir, PLATFORM_ACCESS_WRITE) == 0) {
+        return system_dir; // System-wide location is writable
+      }
+    }
+    SAFE_FREE(system_dir);
+  }
+
+  // Fall back to user data directory (XDG_DATA_HOME or ~/.local/share/ascii-chat/)
+  char *data_dir = get_data_dir();
+  if (data_dir) {
+    // Try to create the directory recursively
+    asciichat_error_t mkdir_result = platform_mkdir_recursive(data_dir, DIR_PERM_PRIVATE);
+    if (mkdir_result == ASCIICHAT_OK) {
+      if (platform_access(data_dir, PLATFORM_ACCESS_WRITE) == 0) {
+        return data_dir;
+      }
+    }
+    SAFE_FREE(data_dir);
+  }
+
+  // Final fallback: config directory (XDG_CONFIG_HOME or ~/.config/ascii-chat/)
+  char *config_dir = get_config_dir();
+  if (config_dir) {
+    asciichat_error_t mkdir_result = platform_mkdir_recursive(config_dir, DIR_PERM_PRIVATE);
+    if (mkdir_result == ASCIICHAT_OK) {
+      if (platform_access(config_dir, PLATFORM_ACCESS_WRITE) == 0) {
+        return config_dir;
+      }
+    }
+    SAFE_FREE(config_dir);
+  }
+
+  return NULL;
 #endif
 }
 

@@ -583,6 +583,34 @@ char *platform_get_config_dir(void) {
   return NULL;
 }
 
+char *platform_get_data_dir(void) {
+  /* Unix: Use $XDG_DATA_HOME/ascii-chat/ if set */
+  const char *xdg_data_home = platform_getenv("XDG_DATA_HOME");
+  if (xdg_data_home && xdg_data_home[0] != '\0') {
+    size_t len = strlen(xdg_data_home) + strlen("/ascii-chat/") + 1;
+    char *dir = SAFE_MALLOC(len, char *);
+    if (!dir) {
+      return NULL;
+    }
+    safe_snprintf(dir, len, "%s/ascii-chat/", xdg_data_home);
+    return dir;
+  }
+
+  /* Fallback: ~/.local/share/ascii-chat/ (XDG Base Directory standard) */
+  const char *home = platform_getenv("HOME");
+  if (home && home[0] != '\0') {
+    size_t len = strlen(home) + strlen("/.local/share/ascii-chat/") + 1;
+    char *dir = SAFE_MALLOC(len, char *);
+    if (!dir) {
+      return NULL;
+    }
+    safe_snprintf(dir, len, "%s/.local/share/ascii-chat/", home);
+    return dir;
+  }
+
+  return NULL;
+}
+
 // ============================================================================
 // Platform Path Utilities
 // ============================================================================
