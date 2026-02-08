@@ -518,6 +518,27 @@ char *get_discovery_database_dir(void) {
     SAFE_FREE(system_dir);
   }
 
+#ifdef __APPLE__
+  // On macOS, /usr/local is typically user-writable (set up by Homebrew)
+  // Try it if the install prefix is different (e.g., /opt/homebrew on Apple Silicon)
+  if (strcmp(prefix, "/usr/local") != 0) {
+    const char *usr_local_path = "/usr/local/var/ascii-chat/";
+    size_t usr_local_len = strlen(usr_local_path) + 1;
+    char *usr_local_dir = SAFE_MALLOC(usr_local_len, char *);
+    if (usr_local_dir) {
+      safe_snprintf(usr_local_dir, usr_local_len, "%s", usr_local_path);
+
+      asciichat_error_t mkdir_result = platform_mkdir_recursive(usr_local_dir, 0755);
+      if (mkdir_result == ASCIICHAT_OK) {
+        if (platform_access(usr_local_dir, PLATFORM_ACCESS_WRITE) == 0) {
+          return usr_local_dir; // /usr/local is writable
+        }
+      }
+      SAFE_FREE(usr_local_dir);
+    }
+  }
+#endif
+
   // Fall back to user data directory (XDG_DATA_HOME or ~/.local/share/ascii-chat/)
   char *data_dir = get_data_dir();
   if (data_dir) {

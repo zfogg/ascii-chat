@@ -235,7 +235,8 @@ char *get_log_dir(void);
  *    - Unix: ${ASCIICHAT_INSTALL_PREFIX}/var/ascii-chat/ (e.g., /opt/homebrew/var/ascii-chat/ or
  * /usr/local/var/ascii-chat/)
  *    - Windows: %PROGRAMDATA%\ascii-chat\
- * 2. User data directory: $XDG_DATA_HOME/ascii-chat/ or ~/.local/share/ascii-chat/
+ * 2. macOS only: /usr/local/var/ascii-chat/ (if different from install prefix, typically user-writable)
+ * 3. User data directory: $XDG_DATA_HOME/ascii-chat/ or ~/.local/share/ascii-chat/
  *
  * The install prefix is determined at compile time from CMake's CMAKE_INSTALL_PREFIX,
  * which Homebrew sets appropriately:
@@ -255,9 +256,10 @@ char *get_log_dir(void);
  * @par Example
  * @code
  * char *db_dir = get_discovery_database_dir();
- * // Homebrew (Apple Silicon): "/opt/homebrew/var/ascii-chat/" (if writable)
- * // Homebrew (Intel): "/usr/local/var/ascii-chat/" (if writable)
- * // User fallback: "/home/user/.local/share/ascii-chat/"
+ * // macOS (Apple Silicon): "/opt/homebrew/var/ascii-chat/", then "/usr/local/var/ascii-chat/"
+ * // macOS (Intel): "/usr/local/var/ascii-chat/"
+ * // Linux: "/usr/local/var/ascii-chat/"
+ * // User fallback: "~/.local/share/ascii-chat/"
  * free(db_dir);
  * @endcode
  */
