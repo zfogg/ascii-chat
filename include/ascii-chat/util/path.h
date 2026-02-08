@@ -236,7 +236,6 @@ char *get_log_dir(void);
  * /usr/local/var/ascii-chat/)
  *    - Windows: %PROGRAMDATA%\ascii-chat\
  * 2. User data directory: $XDG_DATA_HOME/ascii-chat/ or ~/.local/share/ascii-chat/
- * 3. User config directory: $XDG_CONFIG_HOME/ascii-chat/ or ~/.config/ascii-chat/
  *
  * The install prefix is determined at compile time from CMake's CMAKE_INSTALL_PREFIX,
  * which Homebrew sets appropriately:
@@ -250,7 +249,7 @@ char *get_log_dir(void);
  *
  * @note Returned path is allocated with malloc() and must be freed by caller.
  * @note Path includes directory separator at the end (e.g., "/opt/homebrew/var/ascii-chat/").
- * @note Returns NULL on failure (all locations inaccessible or memory allocation error).
+ * @note Returns NULL if both system and user data directories are inaccessible.
  * @note Creates directories recursively if they don't exist and parent is writable.
  *
  * @par Example
@@ -259,7 +258,6 @@ char *get_log_dir(void);
  * // Homebrew (Apple Silicon): "/opt/homebrew/var/ascii-chat/" (if writable)
  * // Homebrew (Intel): "/usr/local/var/ascii-chat/" (if writable)
  * // User fallback: "/home/user/.local/share/ascii-chat/"
- * // Final fallback: "/home/user/.config/ascii-chat/"
  * free(db_dir);
  * @endcode
  */

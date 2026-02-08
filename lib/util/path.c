@@ -496,18 +496,6 @@ char *get_discovery_database_dir(void) {
     SAFE_FREE(data_dir);
   }
 
-  // Final fallback: config directory
-  char *config_dir = get_config_dir();
-  if (config_dir) {
-    asciichat_error_t mkdir_result = platform_mkdir_recursive(config_dir, DIR_PERM_PRIVATE);
-    if (mkdir_result == ASCIICHAT_OK) {
-      if (platform_access(config_dir, PLATFORM_ACCESS_WRITE) == 0) {
-        return config_dir;
-      }
-    }
-    SAFE_FREE(config_dir);
-  }
-
   return NULL;
 #else
   // Unix: Try ${INSTALL_PREFIX}/var/ascii-chat/ first (system-wide, Homebrew-aware)
@@ -541,18 +529,6 @@ char *get_discovery_database_dir(void) {
       }
     }
     SAFE_FREE(data_dir);
-  }
-
-  // Final fallback: config directory (XDG_CONFIG_HOME or ~/.config/ascii-chat/)
-  char *config_dir = get_config_dir();
-  if (config_dir) {
-    asciichat_error_t mkdir_result = platform_mkdir_recursive(config_dir, DIR_PERM_PRIVATE);
-    if (mkdir_result == ASCIICHAT_OK) {
-      if (platform_access(config_dir, PLATFORM_ACCESS_WRITE) == 0) {
-        return config_dir;
-      }
-    }
-    SAFE_FREE(config_dir);
   }
 
   return NULL;
