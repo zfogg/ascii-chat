@@ -10,7 +10,7 @@ export function HomePage() {
       <div className="flex-1 flex items-center justify-center pt-8">
       <div className="text-center max-w-2xl px-8">
         <Heading level={1} className="text-4xl sm:text-6xl font-bold text-terminal-cyan mb-2">ascii-chat</Heading>
-        <p className="text-sm md:text-base text-terminal-8 font-normal mb-6">(Web client)</p>
+        <p className="text-sm md:text-base text-terminal-8 font-normal mb-6">(Web Client)</p>
         <p className="text-xl text-terminal-fg mb-8">
           Video chat in your <del className="opacity-60">terminal</del> browser
         </p>

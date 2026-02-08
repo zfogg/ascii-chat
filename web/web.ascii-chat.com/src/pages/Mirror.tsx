@@ -391,7 +391,7 @@ export function MirrorPage() {
   return (
     <>
       <WebClientHead
-        title="Mirror Mode - ascii-chat"
+        title="Mirror Mode - ascii-chat Web Client"
         description="Test your webcam with real-time ASCII art rendering. See yourself in terminal-style graphics."
         url="https://web.ascii-chat.com/mirror"
       />

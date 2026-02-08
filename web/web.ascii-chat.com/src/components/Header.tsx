@@ -24,7 +24,7 @@ export function Header() {
             href="/"
             className="text-xl md:text-2xl font-bold text-terminal-cyan hover:text-terminal-brightCyan transition-colors"
           >
-            ascii-chat <span className="text-sm md:text-base text-terminal-8 font-normal">(web client)</span>
+            ascii-chat <span className="text-sm md:text-base text-terminal-8 font-normal">(Web Client)</span>
           </Link>
 
           {/* Desktop Navigation */}
