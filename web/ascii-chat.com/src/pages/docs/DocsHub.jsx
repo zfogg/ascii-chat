@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import Footer from "../../components/Footer";
 import TrackedLink from "../../components/TrackedLink";
 import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
+import { AsciiChatHead } from "../../components/AsciiChatHead";
 
 export default function DocsHub() {
   useEffect(() => {
@@ -87,40 +88,47 @@ export default function DocsHub() {
   ];
 
   return (
-    <div className="bg-gray-950 text-gray-100 flex flex-col">
-      <div className="flex-1 flex flex-col docs-container">
-        {/* Header */}
-        <header className="mb-12 sm:mb-16 text-center">
-          <h1 className="heading-1 mb-4">📚 Documentation</h1>
-          <p className="text-lg sm:text-xl text-gray-300">
-            Complete guides for configuring, using, and scripting ascii-chat
-          </p>
-        </header>
+    <>
+      <AsciiChatHead
+        title="Documentation - ascii-chat"
+        description="Complete guides for configuring, using, and scripting ascii-chat. Learn about configuration, hardware, terminal modes, snapshots, networking, and media."
+        url="https://ascii-chat.com/docs"
+      />
+      <div className="bg-gray-950 text-gray-100 flex flex-col">
+        <div className="flex-1 flex flex-col docs-container">
+          {/* Header */}
+          <header className="mb-12 sm:mb-16 text-center">
+            <h1 className="heading-1 mb-4">📚 Documentation</h1>
+            <p className="text-lg sm:text-xl text-gray-300">
+              Complete guides for configuring, using, and scripting ascii-chat
+            </p>
+          </header>
 
-        {/* Documentation Grid */}
-        <section className="docs-section-spacing">
-          <div className="grid-cols-2-sm lg:grid-cols-3">
-            {docSections.map((section) => (
-              <TrackedLink
-                key={section.to}
-                to={section.to}
-                label={`Docs - ${section.title}`}
-                className={`card ${section.colorClass} transition-colors`}
-              >
-                <h3
-                  className={`text-2xl ${section.textClass} font-semibold mb-2`}
+          {/* Documentation Grid */}
+          <section className="docs-section-spacing">
+            <div className="grid-cols-2-sm lg:grid-cols-3">
+              {docSections.map((section) => (
+                <TrackedLink
+                  key={section.to}
+                  to={section.to}
+                  label={`Docs - ${section.title}`}
+                  className={`card ${section.colorClass} transition-colors`}
                 >
-                  {section.icon} {section.title}
-                </h3>
-                <p className="text-gray-400 text-sm">{section.description}</p>
-              </TrackedLink>
-            ))}
-          </div>
-        </section>
+                  <h3
+                    className={`text-2xl ${section.textClass} font-semibold mb-2`}
+                  >
+                    {section.icon} {section.title}
+                  </h3>
+                  <p className="text-gray-400 text-sm">{section.description}</p>
+                </TrackedLink>
+              ))}
+            </div>
+          </section>
 
-        {/* Footer */}
-        <Footer />
+          {/* Footer */}
+          <Footer />
+        </div>
       </div>
-    </div>
+    </>
   );
 }

@@ -1,4 +1,5 @@
 import { Heading, Button, Footer } from '@ascii-chat/shared/components'
+import { ACDSHead } from '../components/ACDSHead'
 
 function NotFound() {
   const handleLinkClick = (url, text) => {
@@ -11,8 +12,14 @@ function NotFound() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 md:px-8 py-8 md:py-16">
-      <header className="text-center mb-12 pb-8 border-b-2 border-gray-700">
+    <>
+      <ACDSHead
+        title="404 - Page Not Found | ACDS"
+        description="The page you're looking for doesn't exist."
+        url="https://discovery.ascii-chat.com/404"
+      />
+      <div className="max-w-4xl mx-auto px-4 md:px-8 py-8 md:py-16">
+        <header className="text-center mb-12 pb-8 border-b-2 border-gray-700">
         <Heading level={1} className="text-red-500 text-6xl md:text-7xl mb-2">404</Heading>
         <p className="text-gray-400 text-lg md:text-xl m-0">Page Not Found</p>
         <p className="text-gray-400 text-lg md:text-xl m-0">The page you're looking for doesn't exist.</p>
@@ -36,7 +43,8 @@ function NotFound() {
         onCommitClick={() => handleLinkClick(`https://github.com/zfogg/ascii-chat/commit/${__COMMIT_SHA__}`, 'Commit SHA')}
         extraLine="ascii-chat Discovery Service"
       />
-    </div>
+      </div>
+    </>
   )
 }
 
