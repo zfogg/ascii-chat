@@ -348,6 +348,12 @@ typedef enum {
 /** @brief Default ACDS discovery service port (string) */
 #define OPT_ACDS_PORT_DEFAULT "27225"
 
+/** @brief Default WebSocket port for server mode (integer) */
+#define OPT_WEBSOCKET_PORT_SERVER_DEFAULT 27226
+
+/** @brief Default WebSocket port for discovery-service mode (integer) */
+#define OPT_WEBSOCKET_PORT_ACDS_DEFAULT 27227
+
 /** @brief Default server address for client connections */
 #define OPT_ADDRESS_DEFAULT "localhost"
 
@@ -652,6 +658,7 @@ static const bool default_disable_keepawake_value = false;
 static const int default_width_value = OPT_WIDTH_DEFAULT;
 static const int default_height_value = OPT_HEIGHT_DEFAULT;
 static const int default_port_value = OPT_PORT_INT_DEFAULT;
+static const int default_websocket_port_value = OPT_WEBSOCKET_PORT_SERVER_DEFAULT;
 static const int default_webcam_index_value = OPT_WEBCAM_INDEX_DEFAULT;
 static const bool default_webcam_flip_value = OPT_WEBCAM_FLIP_DEFAULT;
 static const bool default_test_pattern_value = OPT_TEST_PATTERN_DEFAULT;
@@ -831,6 +838,7 @@ typedef struct options_state {
   char address[OPTIONS_BUFF_SIZE];                 ///< Server address (client) or bind address (server)
   char address6[OPTIONS_BUFF_SIZE];                ///< IPv6 bind address (server only)
   int port;                                        ///< Server port number
+  int websocket_port;                              ///< WebSocket server port (server/discovery-service only)
   int max_clients;                                 ///< Maximum concurrent clients (server only)
   char session_string[SESSION_STRING_BUFFER_SIZE]; ///< Session string for ACDS discovery (calculated max size: 38 chars
                                                    ///< + null)

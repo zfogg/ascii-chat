@@ -1285,7 +1285,24 @@ static void *websocket_client_handler(void *arg) {
   client_info_t *client = find_client_by_id((uint32_t)client_id);
   if (client) {
     // WebSocket clients need crypto handshake (unlike WebRTC which does it via ACDS)
-    client->crypto_initialized = false; // Trigger server to send CRYPTO_KEY_EXCHANGE_INIT
+    client->crypto_initialized = false;
+
+    // Initialize handshake context and generate ephemeral keypair
+    if (crypto_handshake_init(&client->crypto_handshake_ctx, true) == ASCIICHAT_OK) {
+      // Send CRYPTO_KEY_EXCHANGE_INIT to start handshake
+      asciichat_error_t send_result = packet_send_via_transport(
+          client->transport, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT, client->crypto_handshake_ctx.crypto_ctx.public_key,
+          client->crypto_handshake_ctx.crypto_ctx.public_key_size);
+
+      if (send_result != ASCIICHAT_OK) {
+        log_error("Failed to send CRYPTO_KEY_EXCHANGE_INIT to WebSocket client %d", client_id);
+      } else {
+        log_debug("Sent CRYPTO_KEY_EXCHANGE_INIT to WebSocket client %d", client_id);
+        client->crypto_handshake_ctx.state = CRYPTO_HANDSHAKE_KEY_EXCHANGE;
+      }
+    } else {
+      log_error("Failed to initialize crypto handshake for WebSocket client %d", client_id);
+    }
 
     // Wait for client threads to finish (they'll exit when connection closes)
     while (atomic_load(&client->client_id) != 0) {
@@ -1658,7 +1675,7 @@ int server_main(void) {
 
   // Initialize WebSocket server (for browser clients)
   websocket_server_config_t ws_config = {
-      .port = port + 1, // Use port+1 for WebSocket (e.g., 27225 if TCP is 27224)
+      .port = GET_OPTION(websocket_port),
       .client_handler = websocket_client_handler,
       .user_data = &server_ctx,
   };
@@ -1668,7 +1685,7 @@ int server_main(void) {
   if (ws_init_result != ASCIICHAT_OK) {
     log_warn("Failed to initialize WebSocket server - browser clients will not be supported");
   } else {
-    log_info("WebSocket server initialized on port %d", port + 1);
+    log_info("WebSocket server initialized on port %d", GET_OPTION(websocket_port));
   }
 
   // =========================================================================

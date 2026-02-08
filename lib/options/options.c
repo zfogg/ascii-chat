@@ -593,6 +593,7 @@ options_t options_t_new(void) {
   // NETWORK
   // ============================================================================
   opts.port = OPT_PORT_INT_DEFAULT;
+  opts.websocket_port = OPT_WEBSOCKET_PORT_SERVER_DEFAULT;
   opts.max_clients = OPT_MAX_CLIENTS_DEFAULT;
   opts.reconnect_attempts = OPT_RECONNECT_ATTEMPTS_DEFAULT;
   opts.lan_discovery = OPT_LAN_DISCOVERY_DEFAULT;
@@ -1632,6 +1633,13 @@ asciichat_error_t options_init(int argc, char **argv) {
     if (opts.port == OPT_PORT_INT_DEFAULT) {
       opts.port = OPT_ACDS_PORT_INT_DEFAULT;
       log_dev("Using discovery service default port: %d", opts.port);
+    }
+
+    // Set default WebSocket port for discovery service (27227 instead of 27226)
+    // Only override if websocket_port is still the server default
+    if (opts.websocket_port == OPT_WEBSOCKET_PORT_SERVER_DEFAULT) {
+      opts.websocket_port = OPT_WEBSOCKET_PORT_ACDS_DEFAULT;
+      log_dev("Using discovery service default WebSocket port: %d", opts.websocket_port);
     }
 
     // Set default paths if not specified

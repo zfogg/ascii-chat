@@ -99,6 +99,7 @@ static const options_t g_default_options = (options_t){
     .max_clients = OPT_MAX_CLIENTS_DEFAULT,
     .discovery_port = OPT_ACDS_PORT_INT_DEFAULT,
     .port = OPT_PORT_INT_DEFAULT,
+    .websocket_port = OPT_WEBSOCKET_PORT_SERVER_DEFAULT,
 
     // Audio
     .audio_enabled = OPT_AUDIO_ENABLED_DEFAULT,

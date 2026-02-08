@@ -31,10 +31,14 @@
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/network/nat/upnp.h>
 #include <ascii-chat/network/mdns/mdns.h>
+#include <ascii-chat/network/websocket/server.h>
 #include <ascii-chat/ui/discovery_status.h>
 
 // Global server instance for signal handler
 static acds_server_t *g_server = NULL;
+
+// Global WebSocket server for browser clients
+static websocket_server_t g_websocket_server;
 
 // Global UPnP context for cleanup on signal
 static nat_upnp_context_t *g_upnp_ctx = NULL;
@@ -312,6 +316,21 @@ int acds_main(void) {
     return result;
   }
 
+  // Initialize WebSocket server (for browser clients)
+  websocket_server_config_t ws_config = {
+      .port = GET_OPTION(websocket_port),
+      .client_handler = NULL, // TODO: Implement WebSocket client handler for discovery-service
+      .user_data = &server,
+  };
+
+  memset(&g_websocket_server, 0, sizeof(g_websocket_server));
+  asciichat_error_t ws_init_result = websocket_server_init(&g_websocket_server, &ws_config);
+  if (ws_init_result != ASCIICHAT_OK) {
+    log_warn("Failed to initialize WebSocket server - browser clients will not be supported");
+  } else {
+    log_info("WebSocket server initialized on port %d", GET_OPTION(websocket_port));
+  }
+
   // Set up status screen callback if enabled
   g_discovery_start_time = time(NULL);
   g_last_status_update = g_discovery_start_time;
@@ -431,6 +450,10 @@ cleanup_resources:
   log_info("Shutting down discovery server...");
   acds_server_shutdown(&server);
   g_server = NULL;
+
+  // Destroy WebSocket server
+  websocket_server_destroy(&g_websocket_server);
+  log_debug("WebSocket server destroyed");
 
   // Clean up UPnP port mapping
   if (g_upnp_ctx) {
