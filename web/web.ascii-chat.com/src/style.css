@@ -10,6 +10,44 @@
 @source ".";
 @source "../../packages/shared/src";
 
+/* Define terminal colors for Tailwind v4 */
+@theme {
+  --color-terminal-bg: #0c0c0c;
+  --color-terminal-fg: #cccccc;
+  --color-terminal-black: #0c0c0c;
+  --color-terminal-red: #c50f1f;
+  --color-terminal-green: #13a10e;
+  --color-terminal-yellow: #c19c00;
+  --color-terminal-blue: #0037da;
+  --color-terminal-magenta: #881798;
+  --color-terminal-cyan: #3a96dd;
+  --color-terminal-white: #cccccc;
+  --color-terminal-bright-black: #767676;
+  --color-terminal-bright-red: #e74856;
+  --color-terminal-bright-green: #16c60c;
+  --color-terminal-bright-yellow: #f9f1a5;
+  --color-terminal-bright-blue: #3b78ff;
+  --color-terminal-bright-magenta: #b4009e;
+  --color-terminal-bright-cyan: #61d6d6;
+  --color-terminal-bright-white: #f2f2f2;
+  --color-terminal-0: #0c0c0c;
+  --color-terminal-1: #c50f1f;
+  --color-terminal-2: #13a10e;
+  --color-terminal-3: #c19c00;
+  --color-terminal-4: #0037da;
+  --color-terminal-5: #881798;
+  --color-terminal-6: #3a96dd;
+  --color-terminal-7: #cccccc;
+  --color-terminal-8: #767676;
+  --color-terminal-9: #e74856;
+  --color-terminal-10: #16c60c;
+  --color-terminal-11: #f9f1a5;
+  --color-terminal-12: #3b78ff;
+  --color-terminal-13: #b4009e;
+  --color-terminal-14: #61d6d6;
+  --color-terminal-15: #f2f2f2;
+}
+
 /* Custom styles for terminal aesthetic */
 body {
   margin: 0;
