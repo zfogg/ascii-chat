@@ -5,6 +5,7 @@
 
 #include <ascii-chat/network/update_checker.h>
 #include <ascii-chat/network/http_client.h>
+#include <ascii-chat/network/dns.h>
 #include <ascii-chat/version.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/platform/socket.h>
@@ -160,32 +161,6 @@ bool update_check_is_cache_fresh(const update_check_result_t *result) {
 }
 
 /**
- * @brief Test DNS connectivity by resolving api.github.com
- * @return true if DNS resolution succeeds, false otherwise
- */
-static bool test_dns_connectivity(void) {
-  struct addrinfo hints, *result = NULL;
-  memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_INET; // IPv4
-  hints.ai_socktype = SOCK_STREAM;
-
-  log_debug("Testing DNS connectivity to %s...", GITHUB_API_HOSTNAME);
-
-  int ret = getaddrinfo(GITHUB_API_HOSTNAME, "443", &hints, &result);
-  if (ret != 0) {
-    log_warn("DNS resolution failed for %s: %s", GITHUB_API_HOSTNAME, gai_strerror(ret));
-    return false;
-  }
-
-  if (result) {
-    freeaddrinfo(result);
-  }
-
-  log_debug("DNS connectivity test succeeded");
-  return true;
-}
-
-/**
  * @brief Extract JSON string field value
  * @param json JSON string to parse
  * @param field Field name to extract (e.g., "tag_name")
@@ -283,7 +258,7 @@ asciichat_error_t update_check_perform(update_check_result_t *result) {
   result->last_check_time = time(NULL);
 
   // Test DNS connectivity first
-  if (!test_dns_connectivity()) {
+  if (!dns_test_connectivity(GITHUB_API_HOSTNAME)) {
     log_warn("No internet connectivity detected, skipping update check");
     // Don't update cache - we'll retry when online
     return SET_ERRNO(ERROR_NETWORK, "DNS connectivity test failed");
