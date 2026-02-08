@@ -18,19 +18,20 @@ interface FooterProps {
 
 export function Footer({ links, commitSha, onCommitClick, extraLine, authorLinkColor = "text-cyan-400 hover:text-cyan-300", className = "mt-16 pt-8 border-t-2 border-gray-700" }: FooterProps) {
   return (
-    <footer className={`${className} text-center text-sm md:text-base`}>
-      <p className="mb-3">
+    <footer className={`${className} w-full flex flex-col text-center text-sm md:text-base`}>
+      <p className="mb-3 mx-auto flex flex-row flex-wrap justify-center items-center gap-2">
         {links.map((link, index) => (
-          <span key={link.href}>
-            {index > 0 && <span className="text-gray-500">{' · '}</span>}
+          <>
+            {index > 0 && <span key={`sep-${index}`} className="text-gray-500">·</span>}
             <Link
+              key={link.href}
               href={link.href}
               onClick={link.onClick}
-              className={`${link.color} transition-colors`}
+              className={`${link.color} transition-colors whitespace-nowrap`}
             >
               {link.label}
             </Link>
-          </span>
+          </>
         ))}
       </p>
       {extraLine && (
