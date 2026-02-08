@@ -10,6 +10,7 @@
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/util/pcre2.h>
+#include <ascii-chat/paths.h>
 #include <string.h>
 #include <stdbool.h>
 #include <ctype.h>
@@ -509,12 +510,13 @@ char *get_discovery_database_dir(void) {
 
   return NULL;
 #else
-  // Unix: Try /usr/local/var/ascii-chat/ first (system-wide)
-  const char *system_dir_path = "/usr/local/var/ascii-chat/";
-  size_t system_len = strlen(system_dir_path) + 1;
+  // Unix: Try ${INSTALL_PREFIX}/var/ascii-chat/ first (system-wide, Homebrew-aware)
+  // This uses the baked-in install prefix from paths.h (e.g., /opt/homebrew or /usr/local)
+  const char *prefix = ASCIICHAT_INSTALL_PREFIX;
+  size_t system_len = strlen(prefix) + strlen("/var/ascii-chat/") + 1;
   char *system_dir = SAFE_MALLOC(system_len, char *);
   if (system_dir) {
-    safe_snprintf(system_dir, system_len, "%s", system_dir_path);
+    safe_snprintf(system_dir, system_len, "%s/var/ascii-chat/", prefix);
 
     // Try to create directory recursively with public permissions (755) for system-wide use
     // platform_mkdir_recursive creates parent directories as needed

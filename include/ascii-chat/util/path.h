@@ -223,32 +223,43 @@ char *get_data_dir(void);
 char *get_log_dir(void);
 
 /**
- * @brief Get discovery service database directory with system-wide fallback
+ * @brief Get discovery service database directory with Homebrew-aware system-wide fallback
  * @return Path to database directory (must be freed by caller), or NULL on failure
  *
  * Returns the appropriate directory for the discovery service database, with
- * system-wide installation support. The path includes a trailing directory separator.
+ * Homebrew-aware system-wide installation support. The path includes a trailing
+ * directory separator.
  *
  * Directory resolution (in order of preference):
- * 1. System-wide location: /usr/local/var/ascii-chat/ (Unix) or %PROGRAMDATA%\ascii-chat\ (Windows)
+ * 1. System-wide location using baked-in install prefix:
+ *    - Unix: ${ASCIICHAT_INSTALL_PREFIX}/var/ascii-chat/ (e.g., /opt/homebrew/var/ascii-chat/ or
+ * /usr/local/var/ascii-chat/)
+ *    - Windows: %PROGRAMDATA%\ascii-chat\
  * 2. User data directory: $XDG_DATA_HOME/ascii-chat/ or ~/.local/share/ascii-chat/
  * 3. User config directory: $XDG_CONFIG_HOME/ascii-chat/ or ~/.config/ascii-chat/
+ *
+ * The install prefix is determined at compile time from CMake's CMAKE_INSTALL_PREFIX,
+ * which Homebrew sets appropriately:
+ * - macOS Apple Silicon: /opt/homebrew
+ * - macOS Intel: /usr/local
+ * - Linux: /usr/local (default)
  *
  * The function tries each location and automatically creates directories with appropriate
  * permissions (0755 for system directories, 0700 for user directories). If a location
  * is not writable, it falls back to the next option.
  *
  * @note Returned path is allocated with malloc() and must be freed by caller.
- * @note Path includes directory separator at the end (e.g., "/usr/local/var/ascii-chat/").
+ * @note Path includes directory separator at the end (e.g., "/opt/homebrew/var/ascii-chat/").
  * @note Returns NULL on failure (all locations inaccessible or memory allocation error).
- * @note Creates directories if they don't exist and are writable.
+ * @note Creates directories recursively if they don't exist and parent is writable.
  *
  * @par Example
  * @code
  * char *db_dir = get_discovery_database_dir();
- * // Returns: "/usr/local/var/ascii-chat/" (if writable)
- * // or: "/home/user/.local/share/ascii-chat/" (fallback)
- * // or: "/home/user/.config/ascii-chat/" (final fallback)
+ * // Homebrew (Apple Silicon): "/opt/homebrew/var/ascii-chat/" (if writable)
+ * // Homebrew (Intel): "/usr/local/var/ascii-chat/" (if writable)
+ * // User fallback: "/home/user/.local/share/ascii-chat/"
+ * // Final fallback: "/home/user/.config/ascii-chat/"
  * free(db_dir);
  * @endcode
  */
