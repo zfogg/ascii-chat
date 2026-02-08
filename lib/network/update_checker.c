@@ -269,3 +269,71 @@ static bool parse_github_release_json(const char *json, char *tag_name, size_t t
 
   return true;
 }
+
+asciichat_error_t update_check_perform(update_check_result_t *result) {
+  if (!result) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL result pointer");
+  }
+
+  memset(result, 0, sizeof(*result));
+
+  // Fill in current version and SHA
+  SAFE_STRNCPY(result->current_version, ASCII_CHAT_VERSION_STRING, sizeof(result->current_version));
+  SAFE_STRNCPY(result->current_sha, ASCII_CHAT_GIT_COMMIT_HASH, sizeof(result->current_sha));
+  result->last_check_time = time(NULL);
+
+  // Test DNS connectivity first
+  if (!test_dns_connectivity()) {
+    log_warn("No internet connectivity detected, skipping update check");
+    // Don't update cache - we'll retry when online
+    return SET_ERRNO(ERROR_NETWORK, "DNS connectivity test failed");
+  }
+
+  // Fetch latest release from GitHub API
+  log_info("Checking for updates from GitHub releases...");
+  char *response = https_get(GITHUB_API_HOSTNAME, GITHUB_RELEASES_PATH);
+  if (!response) {
+    log_warn("Failed to fetch GitHub releases API (timeout or network error)");
+    // Mark as checked even though it failed (prevents repeated offline attempts)
+    result->check_succeeded = false;
+    update_check_save_cache(result);
+    return SET_ERRNO(ERROR_NETWORK, "Failed to fetch GitHub releases");
+  }
+
+  // Parse JSON response
+  char latest_tag[64] = {0};
+  char latest_sha[41] = {0};
+  char release_url[512] = {0};
+
+  if (!parse_github_release_json(response, latest_tag, sizeof(latest_tag), latest_sha, sizeof(latest_sha), release_url,
+                                 sizeof(release_url))) {
+    log_error("Failed to parse GitHub API response");
+    SAFE_FREE(response);
+    result->check_succeeded = false;
+    update_check_save_cache(result);
+    return SET_ERRNO(ERROR_PARSE, "Failed to parse GitHub API JSON");
+  }
+
+  SAFE_FREE(response);
+
+  // Fill in result
+  SAFE_STRNCPY(result->latest_version, latest_tag, sizeof(result->latest_version));
+  SAFE_STRNCPY(result->latest_sha, latest_sha, sizeof(result->latest_sha));
+  SAFE_STRNCPY(result->release_url, release_url, sizeof(result->release_url));
+  result->check_succeeded = true;
+
+  // Compare SHAs to detect update
+  result->update_available = (strcmp(result->current_sha, result->latest_sha) != 0);
+
+  if (result->update_available) {
+    log_info("Update available: %s (%.*s) → %s (%.*s)", result->current_version, 8, result->current_sha,
+             result->latest_version, 8, result->latest_sha);
+  } else {
+    log_info("Already on latest version: %s (%.*s)", result->current_version, 8, result->current_sha);
+  }
+
+  // Save to cache
+  update_check_save_cache(result);
+
+  return ASCIICHAT_OK;
+}
