@@ -78,10 +78,10 @@ asciichat_error_t server_status_gather(tcp_server_t *server, const char *session
 }
 
 /**
- * @brief Truncate text to fit within display_width, preserving ANSI codes
+ * @brief Truncate text to fit within display_width
  *
  * Truncates a plain text string to fit within max_display_width, with ellipsis.
- * Adds "..." when truncated, so actual display width will be up to max_display_width.
+ * Tests progressively shorter substrings until one fits.
  */
 static void truncate_to_fit(const char *src, int max_display_width, char *dst, size_t dst_size) {
   if (!src || !dst || max_display_width < 0) {
@@ -100,44 +100,35 @@ static void truncate_to_fit(const char *src, int max_display_width, char *dst, s
 
   // Reserve 3 characters for ellipsis
   int target_width = max_display_width - 3;
-  if (target_width < 0) {
+  if (target_width <= 0) {
     dst[0] = '\0';
     return;
   }
 
-  // Copy bytes until we reach target width
-  int current_width = 0;
-  size_t i = 0;
-  while (src[i] != '\0' && i < dst_size - 4 && current_width < target_width) {
-    // Calculate width of this character
-    char test_buf[256];
-    size_t j = 0;
-    // Copy up to next char boundary
-    while (src[i + j] != '\0' && j < sizeof(test_buf) - 1) {
-      test_buf[j] = src[i + j];
-      j++;
-      // Check if we've completed a character
-      if ((src[i + j] & 0xC0) != 0x80) {
-        break; // Next byte is start of new char
-      }
+  // Try progressively shorter versions until one fits
+  size_t src_len = strlen(src);
+  for (size_t truncate_at = src_len; truncate_at > 0; truncate_at--) {
+    // Create test string with this length
+    char test_buf[512];
+    if (truncate_at >= sizeof(test_buf) - 4) {
+      continue;
     }
-    test_buf[j] = '\0';
 
-    int char_width = display_width(test_buf);
-    if (current_width + char_width <= target_width) {
-      // Copy this character
-      for (size_t k = 0; k <= j && i + k < dst_size - 4; k++) {
-        dst[i + k] = src[i + k];
-      }
-      current_width += char_width;
-      i += j + 1;
-    } else {
-      break;
+    strncpy(test_buf, src, truncate_at);
+    test_buf[truncate_at] = '\0';
+
+    // Check if this fits
+    if (display_width(test_buf) <= target_width) {
+      // Found a length that fits - copy it and add ellipsis
+      strncpy(dst, test_buf, dst_size - 4);
+      dst[truncate_at] = '\0';
+      strcat(dst, "...");
+      return;
     }
   }
 
-  // Add ellipsis
-  SAFE_STRNCPY(dst + i, "...", dst_size - i);
+  // Fallback: just ellipsis if nothing else fits
+  SAFE_STRNCPY(dst, "...", dst_size);
 }
 
 /**
