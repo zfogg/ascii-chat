@@ -44,7 +44,7 @@ export function Head({
   children,
 }: HeadProps) {
   return (
-    <Helmet>
+    <Helmet defer={false} prioritizeSeoTags>
       <title>{title}</title>
       <meta name="description" content={description} />
       {keywords && <meta name="keywords" content={keywords} />}
