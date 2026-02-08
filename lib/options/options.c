@@ -1219,12 +1219,51 @@ asciichat_error_t options_init(int argc, char **argv) {
   // STAGE 2: Build argv for mode-specific parsing
   // ========================================================================
   // If mode was found, build argv with only arguments after the mode
-  // If mode_index == -1, we use all arguments (they become mode-specific args)
+  // If mode_index == -1, filter out binary-level options from all arguments
   int mode_argc = argc;
   char **mode_argv = (char **)argv;
   char **allocated_mode_argv = NULL; // Track if we need to free mode_argv
 
-  if (mode_index != -1) {
+  if (mode_index == -1) {
+    // No explicit mode - filter binary-level options from entire argv
+    int max_mode_argc = argc; // Worst case: no binary opts skipped
+
+    if (max_mode_argc > 256) {
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Too many arguments: %d", max_mode_argc);
+    }
+
+    char **new_mode_argv = SAFE_MALLOC((size_t)(max_mode_argc + 1) * sizeof(char *), char **);
+    if (!new_mode_argv) {
+      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate mode_argv");
+    }
+    allocated_mode_argv = new_mode_argv;
+
+    new_mode_argv[0] = argv[0]; // Copy program name
+
+    // Copy all args except binary-level options
+    int new_argv_idx = 1;
+    for (int i = 1; i < argc; i++) {
+      bool takes_arg = false;
+      bool takes_optional_arg = false;
+
+      // Check if this is a binary-level option
+      if (is_binary_level_option_with_args(argv[i], &takes_arg, &takes_optional_arg)) {
+        // Skip argument if needed
+        if (takes_arg && i + 1 < argc) {
+          i++; // Skip required argument
+        } else if (takes_optional_arg && i + 1 < argc && argv[i + 1][0] != '-') {
+          i++; // Skip optional argument
+        }
+        continue;
+      }
+      // Not a binary option, copy to mode_argv
+      new_mode_argv[new_argv_idx++] = argv[i];
+    }
+
+    mode_argc = new_argv_idx;
+    new_mode_argv[mode_argc] = NULL;
+    mode_argv = new_mode_argv;
+  } else if (mode_index != -1) {
     // Mode found at position mode_index
     // Build new argv: [program_name, args_before_mode (no binary opts)..., args_after_mode...]
     // Binary-level options are not passed to mode-specific parsers
