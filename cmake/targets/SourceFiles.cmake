@@ -292,6 +292,8 @@ set(NETWORK_SRCS
     lib/network/crc32.c
     lib/network/packet_queue.c
     lib/network/http_client.c
+    lib/network/dns.c
+    lib/network/update_checker.c
     lib/network/errors.c
     lib/network/parallel_connect.c
     # Rate limiting library (backend abstraction)
