@@ -109,10 +109,16 @@ asciichat_error_t update_check_load_cache(update_check_result_t *result) {
   SAFE_STRNCPY(result->current_version, ASCII_CHAT_VERSION_STRING, sizeof(result->current_version));
   SAFE_STRNCPY(result->current_sha, ASCII_CHAT_GIT_COMMIT_HASH, sizeof(result->current_sha));
 
-  // Determine if update is available (if we have cached data)
-  if (result->latest_sha[0] != '\0' && result->current_sha[0] != '\0') {
-    result->update_available = (strcmp(result->latest_sha, result->current_sha) != 0);
-    result->check_succeeded = true;
+  // Determine if update is available using version comparison (if we have cached data)
+  if (result->latest_version[0] != '\0') {
+    semantic_version_t current_ver = version_parse(result->current_version);
+    semantic_version_t latest_ver = version_parse(result->latest_version);
+
+    if (current_ver.valid && latest_ver.valid) {
+      int cmp = version_compare(latest_ver, current_ver);
+      result->update_available = (cmp > 0); // Update available if latest > current
+      result->check_succeeded = true;
+    }
   }
 
   return ASCIICHAT_OK;
@@ -297,8 +303,18 @@ asciichat_error_t update_check_perform(update_check_result_t *result) {
   SAFE_STRNCPY(result->release_url, release_url, sizeof(result->release_url));
   result->check_succeeded = true;
 
-  // Compare SHAs to detect update
-  result->update_available = (strcmp(result->current_sha, result->latest_sha) != 0);
+  // Compare versions semantically
+  semantic_version_t current_ver = version_parse(result->current_version);
+  semantic_version_t latest_ver = version_parse(result->latest_version);
+
+  if (!current_ver.valid || !latest_ver.valid) {
+    log_warn("Failed to parse version strings for comparison (current: %s, latest: %s)", result->current_version,
+             result->latest_version);
+    result->update_available = false;
+  } else {
+    int cmp = version_compare(latest_ver, current_ver);
+    result->update_available = (cmp > 0); // Update available if latest > current
+  }
 
   if (result->update_available) {
     log_info("Update available: %s (%.*s) → %s (%.*s)", result->current_version, 8, result->current_sha,
@@ -410,4 +426,28 @@ void update_check_format_notification(const update_check_result_t *result, char 
   snprintf(buffer, buffer_size, "Update available: %s (%.8s) → %s (%.8s). %s%s", result->current_version,
            result->current_sha, result->latest_version, result->latest_sha,
            (method == INSTALL_METHOD_GITHUB || method == INSTALL_METHOD_UNKNOWN) ? "Download: " : "Run: ", suggestion);
+}
+
+asciichat_error_t update_check_startup(update_check_result_t *result) {
+  update_check_result_t local_result;
+  update_check_result_t *target = result ? result : &local_result;
+
+  // Try to load from cache first
+  asciichat_error_t cache_err = update_check_load_cache(target);
+  if (cache_err == ASCIICHAT_OK && update_check_is_cache_fresh(target)) {
+    // Cache is fresh, use it
+    log_debug("Using cached update check result (age: %.1f days)", (time(NULL) - target->last_check_time) / 86400.0);
+    return ASCIICHAT_OK;
+  }
+
+  // Cache is stale or missing, perform fresh check
+  log_debug("Performing automatic update check (cache %s)", cache_err == ASCIICHAT_OK ? "stale" : "missing");
+  asciichat_error_t check_err = update_check_perform(target);
+  if (check_err != ASCIICHAT_OK) {
+    // Check failed, but don't fail startup
+    log_debug("Automatic update check failed (continuing startup)");
+    return check_err;
+  }
+
+  return ASCIICHAT_OK;
 }

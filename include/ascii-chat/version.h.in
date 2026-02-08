@@ -36,3 +36,36 @@
 const char *ascii_chat_get_version(void);
 const char *ascii_chat_get_comment(void);
 const char *ascii_chat_get_build_info(void);
+
+// Version parsing and comparison
+#include <stdbool.h>
+
+/**
+ * @brief Parsed semantic version structure
+ */
+typedef struct {
+  int major; ///< Major version (0 to INT_MAX)
+  int minor; ///< Minor version (0 to INT_MAX)
+  int patch; ///< Patch version (0 to INT_MAX)
+  bool valid; ///< True if parsing succeeded
+} semantic_version_t;
+
+/**
+ * @brief Parse a version string into semantic version components
+ *
+ * Handles both "v1.2.3" and "1.2.3" formats. Allows missing components
+ * (e.g., "1.2" = 1.2.0, "1" = 1.0.0).
+ *
+ * @param version_string Version string to parse (e.g., "v0.8.1", "1.2.3")
+ * @return Parsed semantic version (check .valid field for success)
+ */
+semantic_version_t version_parse(const char *version_string);
+
+/**
+ * @brief Compare two semantic versions
+ *
+ * @param a First version
+ * @param b Second version
+ * @return -1 if a < b, 0 if a == b, 1 if a > b
+ */
+int version_compare(semantic_version_t a, semantic_version_t b);

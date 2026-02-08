@@ -5,6 +5,11 @@
  */
 
 #include <ascii-chat/version.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <limits.h>
 
 // GCC/Clang: Use __attribute__((section)) to place string in custom section
 // ELF (Linux): .section_name format
@@ -39,3 +44,87 @@ const char *ascii_chat_get_comment(void) {
 #endif
 
 #endif
+
+semantic_version_t version_parse(const char *version_string) {
+  semantic_version_t result = {0, 0, 0, false};
+
+  if (!version_string || version_string[0] == '\0') {
+    return result;
+  }
+
+  // Skip leading 'v' or 'V' if present
+  const char *p = version_string;
+  if (p[0] == 'v' || p[0] == 'V') {
+    p++;
+  }
+
+  // Parse major version
+  char *endptr = NULL;
+  long major = strtol(p, &endptr, 10);
+  if (endptr == p || major < 0 || major > INT_MAX) {
+    return result; // Invalid major version
+  }
+  result.major = (int)major;
+  p = endptr;
+
+  // If no dot, treat as major.0.0
+  if (*p != '.') {
+    result.valid = true;
+    return result;
+  }
+  p++; // Skip dot
+
+  // Parse minor version
+  long minor = strtol(p, &endptr, 10);
+  if (endptr == p || minor < 0 || minor > INT_MAX) {
+    return result; // Invalid minor version
+  }
+  result.minor = (int)minor;
+  p = endptr;
+
+  // If no dot, treat as major.minor.0
+  if (*p != '.') {
+    result.valid = true;
+    return result;
+  }
+  p++; // Skip dot
+
+  // Parse patch version
+  long patch = strtol(p, &endptr, 10);
+  if (endptr == p || patch < 0 || patch > INT_MAX) {
+    return result; // Invalid patch version
+  }
+  result.patch = (int)patch;
+
+  result.valid = true;
+  return result;
+}
+
+int version_compare(semantic_version_t a, semantic_version_t b) {
+  // Compare major version
+  if (a.major < b.major) {
+    return -1;
+  }
+  if (a.major > b.major) {
+    return 1;
+  }
+
+  // Major versions equal, compare minor
+  if (a.minor < b.minor) {
+    return -1;
+  }
+  if (a.minor > b.minor) {
+    return 1;
+  }
+
+  // Minor versions equal, compare patch
+  if (a.patch < b.patch) {
+    return -1;
+  }
+  if (a.patch > b.patch) {
+    return 1;
+  }
+
+  // All components equal
+  return 0;
+}

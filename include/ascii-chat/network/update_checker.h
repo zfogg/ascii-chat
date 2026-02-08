@@ -129,4 +129,19 @@ void update_check_get_upgrade_suggestion(install_method_t method, const char *la
  */
 void update_check_format_notification(const update_check_result_t *result, char *buffer, size_t buffer_size);
 
+/**
+ * @brief Perform startup update check with caching
+ *
+ * Designed for automatic startup checks. Uses cache if fresh (< 7 days),
+ * otherwise performs fresh check. Non-blocking and silent on failure.
+ *
+ * @param[out] result Output structure with check results (can be NULL if you only want logging)
+ * @return ASCIICHAT_OK if check succeeded, error otherwise
+ *
+ * @note Does nothing if cache is fresh
+ * @note Logs warning on network failure but does not fail
+ * @note Updates cache only if check succeeds
+ */
+asciichat_error_t update_check_startup(update_check_result_t *result);
+
 /** @} */
