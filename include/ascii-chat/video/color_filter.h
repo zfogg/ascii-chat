@@ -129,6 +129,32 @@ color_filter_t color_filter_from_cli_name(const char *cli_name);
 void color_filter_calculate_rainbow(float time, uint8_t *r, uint8_t *g, uint8_t *b);
 
 /**
+ * @brief Replace all RGB ANSI codes with rainbow color
+ * @param ansi_string Input string with ANSI escape sequences
+ * @param time_seconds Current time in seconds (for rainbow animation)
+ * @return New string with rainbow colors, or NULL if no changes needed
+ *
+ * Replaces all RGB foreground color codes (\x1b[38;2;R;G;Bm) in the input
+ * string with a single rainbow color calculated from the current time.
+ * This preserves ASCII character selection while applying rainbow colors.
+ *
+ * The function:
+ * 1. Calculates rainbow color from time using color_filter_calculate_rainbow()
+ * 2. Builds replacement ANSI code string
+ * 3. Scans input for \x1b[38;2; sequences
+ * 4. Replaces each RGB code with rainbow code
+ * 5. Returns new string (caller must SAFE_FREE)
+ *
+ * @note Returns NULL if no ANSI codes found (use original string)
+ * @note Caller must free returned string with SAFE_FREE()
+ * @note Input string is not modified
+ * @note Usable in both terminal apps (lib/session) and WASM apps (src/web)
+ *
+ * @ingroup video
+ */
+char *rainbow_replace_ansi_colors(const char *ansi_string, float time_seconds);
+
+/**
  * @brief Convert ITU-R BT.601 RGB to grayscale using fixed-point math
  * @param r Red channel (0-255)
  * @param g Green channel (0-255)

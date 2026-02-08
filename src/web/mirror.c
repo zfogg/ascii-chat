@@ -315,8 +315,8 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
     // Alpha (rgba_data[i * 4 + 3]) is discarded
   }
 
-  // Apply color filter if needed
-  if (filter != COLOR_FILTER_NONE) {
+  // Apply color filter to pixels if needed (except rainbow - handled in ANSI stage)
+  if (filter != COLOR_FILTER_NONE && filter != COLOR_FILTER_RAINBOW) {
     // color_filter operates on packed RGB24 format
     uint8_t *rgb24 = (uint8_t *)rgb_pixels;
     int stride = src_width * 3;
@@ -365,6 +365,17 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
   if (!ascii_output) {
     log_error("ascii_convert_with_capabilities returned NULL");
     return NULL;
+  }
+
+  // Apply rainbow color filter to ANSI output by replacing RGB values
+  // This preserves character selection while applying rainbow colors
+  if (filter == COLOR_FILTER_RAINBOW) {
+    float time_seconds = (float)(emscripten_get_now() / 1000.0); // Convert ms to seconds
+    char *rainbow_output = rainbow_replace_ansi_colors(ascii_output, time_seconds);
+    if (rainbow_output) {
+      SAFE_FREE(ascii_output);
+      ascii_output = rainbow_output;
+    }
   }
 
   // Apply digital rain effect if enabled

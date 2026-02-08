@@ -409,12 +409,7 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
   uint64_t t_flip_end = time_get_ns();
 
   uint64_t t_filter_start = time_get_ns();
-  // Calculate rainbow color once for the entire frame if needed
-  uint8_t rainbow_r = 0, rainbow_g = 0, rainbow_b = 0;
-  if (color_filter == COLOR_FILTER_RAINBOW) {
-    float time_seconds = (float)t_filter_start / (float)NS_PER_SEC_INT;
-    color_filter_calculate_rainbow(time_seconds, &rainbow_r, &rainbow_g, &rainbow_b);
-  }
+  // No pixel-based filtering for rainbow (ANSI replacement happens later)
   uint64_t t_filter_end = time_get_ns();
 
   uint64_t t_convert_start = time_get_ns();
@@ -427,53 +422,16 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
                            "ASCII_CONVERT: Conversion complete (%.2f ms)");
   uint64_t t_convert_end = time_get_ns();
 
-  // Apply color filter to ANSI output by replacing RGB values
+  // Apply rainbow color filter to ANSI output by replacing RGB values
   // This preserves character selection while applying the filter colors
   if (result && color_filter == COLOR_FILTER_RAINBOW) {
     uint64_t t_color_replace_start = time_get_ns();
+    float time_seconds = (float)t_filter_start / (float)NS_PER_SEC_INT;
 
-    // Build the replacement string once
-    char rainbow_code[32];
-    snprintf(rainbow_code, sizeof(rainbow_code), "\x1b[38;2;%d;%d;%dm", rainbow_r, rainbow_g, rainbow_b);
-    size_t rainbow_code_len = strlen(rainbow_code);
-
-    // Replace all RGB color codes in ANSI output with rainbow color
-    size_t result_len = strlen(result);
-    char *new_result = SAFE_MALLOC(result_len * 2, char *); // Allocate extra space for safety
-    if (new_result) {
-      char *src = result;
-      char *dst = new_result;
-
-      while (*src) {
-        char *ansi_start = strstr(src, "\x1b[38;2;");
-        if (ansi_start) {
-          // Copy everything before this ANSI code
-          size_t before_len = (size_t)(ansi_start - src);
-          memcpy(dst, src, before_len);
-          dst += before_len;
-
-          // Skip the old ANSI code (find the 'm' that ends it)
-          char *ansi_end = strchr(ansi_start + 7, 'm');
-          if (ansi_end) {
-            // Copy the rainbow replacement code
-            memcpy(dst, rainbow_code, rainbow_code_len);
-            dst += rainbow_code_len;
-
-            // Move source past the old code
-            src = ansi_end + 1;
-          } else {
-            // Malformed ANSI code, just copy it
-            *dst++ = *src++;
-          }
-        } else {
-          // No more ANSI codes, copy the rest
-          strcpy(dst, src);
-          break;
-        }
-      }
-
+    char *rainbow_result = rainbow_replace_ansi_colors(result, time_seconds);
+    if (rainbow_result) {
       SAFE_FREE(result);
-      result = new_result;
+      result = rainbow_result;
     }
 
     uint64_t t_color_replace_end = time_get_ns();

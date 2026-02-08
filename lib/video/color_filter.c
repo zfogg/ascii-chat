@@ -6,8 +6,10 @@
 
 #include <ascii-chat/video/color_filter.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/debug/memory.h>
 #include <string.h>
 #include <math.h>
+#include <stdio.h>
 
 /**
  * @brief Color filter registry with metadata for all 11 filters
@@ -341,4 +343,65 @@ int apply_color_filter(uint8_t *pixels, uint32_t width, uint32_t height, uint32_
   }
 
   return 0;
+}
+
+char *rainbow_replace_ansi_colors(const char *ansi_string, float time_seconds) {
+  if (!ansi_string) {
+    return NULL;
+  }
+
+  // Calculate rainbow color once for this frame
+  uint8_t rainbow_r = 0, rainbow_g = 0, rainbow_b = 0;
+  color_filter_calculate_rainbow(time_seconds, &rainbow_r, &rainbow_g, &rainbow_b);
+
+  // Build the replacement ANSI code string once
+  char rainbow_code[32];
+  snprintf(rainbow_code, sizeof(rainbow_code), "\x1b[38;2;%d;%d;%dm", rainbow_r, rainbow_g, rainbow_b);
+  size_t rainbow_code_len = strlen(rainbow_code);
+
+  // Check if there are any ANSI codes to replace
+  if (!strstr(ansi_string, "\x1b[38;2;")) {
+    return NULL; // No ANSI codes found, no replacement needed
+  }
+
+  // Allocate buffer for result (2x size for safety with many replacements)
+  size_t input_len = strlen(ansi_string);
+  char *new_result = SAFE_MALLOC(input_len * 2, char *);
+  if (!new_result) {
+    return NULL;
+  }
+
+  // Replace all RGB color codes with rainbow color
+  const char *src = ansi_string;
+  char *dst = new_result;
+
+  while (*src) {
+    const char *ansi_start = strstr(src, "\x1b[38;2;");
+    if (ansi_start) {
+      // Copy everything before this ANSI code
+      size_t before_len = (size_t)(ansi_start - src);
+      memcpy(dst, src, before_len);
+      dst += before_len;
+
+      // Skip the old ANSI code (find the 'm' that ends it)
+      const char *ansi_end = strchr(ansi_start + 7, 'm');
+      if (ansi_end) {
+        // Copy the rainbow replacement code
+        memcpy(dst, rainbow_code, rainbow_code_len);
+        dst += rainbow_code_len;
+
+        // Move source past the old code
+        src = ansi_end + 1;
+      } else {
+        // Malformed ANSI code, just copy it
+        *dst++ = *src++;
+      }
+    } else {
+      // No more ANSI codes, copy the rest
+      strcpy(dst, src);
+      break;
+    }
+  }
+
+  return new_result;
 }
