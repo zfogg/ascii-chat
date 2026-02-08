@@ -350,6 +350,49 @@ bool timer_is_initialized(void);
   } while (0)
 
 /**
+ * @brief Start a timer without thread ID (for cross-thread timers)
+ *
+ * Use this variant when a timer may be stopped on a different thread than
+ * it was started. The timer name will NOT include thread ID, so it must be
+ * globally unique through other means (e.g., including a unique identifier
+ * in the format string).
+ *
+ * @param name_fmt Printf-style format string for timer name
+ * @param ... Format arguments to create unique key
+ * @ingroup module_utilities
+ */
+#define START_TIMER_GLOBAL(name_fmt, ...)                                                                              \
+  do {                                                                                                                 \
+    if (timer_is_initialized()) {                                                                                      \
+      char _timer_name_buf[256];                                                                                       \
+      snprintf(_timer_name_buf, sizeof(_timer_name_buf), name_fmt, ##__VA_ARGS__);                                     \
+      (void)timer_start(_timer_name_buf);                                                                              \
+    }                                                                                                                  \
+  } while (0)
+
+/**
+ * @brief Stop a cross-thread timer and return elapsed time
+ *
+ * Use this variant when stopping a timer started with START_TIMER_GLOBAL.
+ * The timer name must match exactly (without thread ID appended).
+ *
+ * @param name_fmt Printf-style format string for timer name (must match START_TIMER_GLOBAL)
+ * @param ... Format arguments (must match START_TIMER_GLOBAL to create same key)
+ * @return Elapsed time in nanoseconds, or -1.0 if timer not found
+ * @ingroup module_utilities
+ */
+#define STOP_TIMER_GLOBAL(name_fmt, ...)                                                                               \
+  ({                                                                                                                   \
+    double _elapsed = -1.0;                                                                                            \
+    if (timer_is_initialized()) {                                                                                      \
+      char _timer_name_buf[256];                                                                                       \
+      snprintf(_timer_name_buf, sizeof(_timer_name_buf), name_fmt, ##__VA_ARGS__);                                     \
+      _elapsed = timer_stop(_timer_name_buf);                                                                          \
+    }                                                                                                                  \
+    _elapsed;                                                                                                          \
+  })
+
+/**
  * @brief Stop a timer with formatted name and return elapsed time
  *
  * The timer name must match exactly (including all format arguments) with the name
