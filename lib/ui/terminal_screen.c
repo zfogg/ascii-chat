@@ -182,8 +182,10 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
       lines_used += lines_for_this;
     }
 
-    // Fill blank lines up to renderable_log_rows (not log_area_rows)
-    int remaining = renderable_log_rows - lines_used;
+    // Fill blank lines up to renderable_log_rows (not log_area_rows).
+    // Clear one extra row: the gap between renderable_log_rows and the
+    // grep input on the absolute bottom row has stale log content.
+    int remaining = renderable_log_rows - lines_used + 1;
     for (int i = 0; i < remaining; i++) {
       fprintf(stdout, "\x1b[K\n");
     }

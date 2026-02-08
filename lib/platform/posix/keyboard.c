@@ -318,6 +318,7 @@ keyboard_line_edit_result_t keyboard_read_line_interactive(keyboard_line_edit_op
       memmove(&buffer[cursor - 1], &buffer[cursor], len - cursor);
       cursor--;
       len--;
+      buffer[len] = '\0';
       *opts->len = len;
       *opts->cursor = cursor;
     } else if (len == 0) {

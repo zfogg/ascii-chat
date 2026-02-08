@@ -1037,23 +1037,14 @@ int debug_mutex_trylock(mutex_t *mutex, const char *file_name, int line_number, 
 int debug_mutex_unlock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name) {
   LOCK_OP_TRACE("UNLOCK", "MUTEX", file_name, line_number, function_name);
   if (debug_should_skip_lock_tracking(mutex, file_name, function_name)) {
-    // Unlock is filtered - the lock was likely acquired in a filtered context too
     return mutex_unlock_impl(mutex);
   }
 
   // Look for mutex lock record specifically
   uint32_t key = lock_record_key(mutex, LOCK_TYPE_MUTEX);
   if (!debug_process_tracked_unlock(mutex, key, "MUTEX", file_name, line_number, function_name)) {
-    // No record found - this means the lock was acquired in a filtered context
-    // (or it's a tracking error). Don't report if there are no tracked locks at all.
-    uint32_t current_held = atomic_load(&g_lock_debug_manager.current_locks_held);
-
-    if (current_held > 0) {
-      // We have tracked locks but can't find this specific one
-      // Only report if this is likely a genuine error, not a filtered-acquire scenario
-      debug_process_untracked_unlock(mutex, key, "MUTEX", file_name, line_number, function_name);
-    }
-    // If no tracked locks at all, the mutex was acquired in a filtered context (normal)
+    // No record found - this is a genuine tracking error
+    debug_process_untracked_unlock(mutex, key, "MUTEX", file_name, line_number, function_name);
   }
 
   // Unlock the actual mutex (call implementation to avoid recursion)
@@ -1099,7 +1090,6 @@ int debug_rwlock_wrlock(rwlock_t *rwlock, const char *file_name, int line_number
 int debug_rwlock_rdunlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name) {
   LOCK_OP_TRACE("UNLOCK", "RWLOCK_RD", file_name, line_number, function_name);
   if (debug_should_skip_lock_tracking(rwlock, file_name, function_name)) {
-    // Unlock is filtered - the lock was likely acquired in a filtered context too
     return rwlock_rdunlock_impl(rwlock);
   }
 
@@ -1107,12 +1097,7 @@ int debug_rwlock_rdunlock(rwlock_t *rwlock, const char *file_name, int line_numb
   uint32_t read_key = lock_record_key(rwlock, LOCK_TYPE_RWLOCK_READ);
 
   if (!debug_process_tracked_unlock(rwlock, read_key, "READ", file_name, line_number, function_name)) {
-    // Only report untracked unlock if we have other tracked locks
-    // (indicating this is likely a genuine error, not a filtered-acquire scenario)
-    uint32_t current_held = atomic_load(&g_lock_debug_manager.current_locks_held);
-    if (current_held > 0) {
-      debug_process_untracked_unlock(rwlock, read_key, "READ", file_name, line_number, function_name);
-    }
+    debug_process_untracked_unlock(rwlock, read_key, "READ", file_name, line_number, function_name);
   }
 
   return rwlock_rdunlock_impl(rwlock);
@@ -1121,19 +1106,13 @@ int debug_rwlock_rdunlock(rwlock_t *rwlock, const char *file_name, int line_numb
 int debug_rwlock_wrunlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name) {
   LOCK_OP_TRACE("UNLOCK", "RWLOCK_WR", file_name, line_number, function_name);
   if (debug_should_skip_lock_tracking(rwlock, file_name, function_name)) {
-    // Unlock is filtered - the lock was likely acquired in a filtered context too
     return rwlock_wrunlock_impl(rwlock);
   }
 
   // Look for write lock record specifically
   uint32_t write_key = lock_record_key(rwlock, LOCK_TYPE_RWLOCK_WRITE);
   if (!debug_process_tracked_unlock(rwlock, write_key, "WRITE", file_name, line_number, function_name)) {
-    // Only report untracked unlock if we have other tracked locks
-    // (indicating this is likely a genuine error, not a filtered-acquire scenario)
-    uint32_t current_held = atomic_load(&g_lock_debug_manager.current_locks_held);
-    if (current_held > 0) {
-      debug_process_untracked_unlock(rwlock, write_key, "WRITE", file_name, line_number, function_name);
-    }
+    debug_process_untracked_unlock(rwlock, write_key, "WRITE", file_name, line_number, function_name);
   }
 
   return rwlock_wrunlock_impl(rwlock);
