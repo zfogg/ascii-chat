@@ -127,6 +127,11 @@ export class ClientConnection {
       // Parse packet header
       const parsed = parsePacket(rawPacket);
       const name = typeName(parsed.type);
+      console.log(`[ClientConnection] ========== PACKET RECEIVED ==========`);
+      console.log(`[ClientConnection] Type: ${parsed.type} (${name})`);
+      console.log(`[ClientConnection] Raw packet size: ${rawPacket.length} bytes`);
+      console.log(`[ClientConnection] Payload size: ${parsed.length} bytes`);
+      console.log(`[ClientConnection] Client ID: ${parsed.client_id}`);
       console.error(`[ClientConnection] <<< RECV packet type=${parsed.type} (${name}) len=${rawPacket.length} payload_len=${parsed.length} client_id=${parsed.client_id}`);
 
       // Extract payload (skip header)
@@ -161,23 +166,53 @@ export class ClientConnection {
       const state = getConnectionState();
       if (state !== ConnectionState.CONNECTED) {
         console.error(`[ClientConnection] *** Got non-handshake packet ${name} (${parsed.type}) while in state ${ConnectionState[state]} (${state}) - ignoring`);
+        return;
       }
 
-      // Decrypt if we're in connected state
-      let decryptedPayload = payload;
-
-      if (state === ConnectionState.CONNECTED) {
+      // Handle PACKET_TYPE_ENCRYPTED: decrypt to get inner packet, then process
+      if (parsed.type === PacketType.ENCRYPTED) {
+        console.log(`[ClientConnection] ========== ENCRYPTED PACKET ==========`);
+        console.log(`[ClientConnection] Encrypted payload size: ${payload.length} bytes`);
         try {
-          decryptedPayload = new Uint8Array(decryptPacket(payload));
-          console.error(`[ClientConnection] Decrypted payload, length: ${decryptedPayload.length}`);
+          // Decrypt the payload (ciphertext) to get the inner plaintext packet (header + payload)
+          console.log(`[ClientConnection] Calling decryptPacket...`);
+          const plaintext = new Uint8Array(decryptPacket(payload));
+          console.log(`[ClientConnection] Decryption complete, plaintext length: ${plaintext.length} bytes`);
+          console.error(`[ClientConnection] Decrypted ENCRYPTED packet, inner length: ${plaintext.length}`);
+
+          // Parse the inner packet header
+          const innerParsed = parsePacket(plaintext);
+          const innerName = packetTypeName(innerParsed.type);
+          console.log(`[ClientConnection] Inner packet type: ${innerParsed.type} (${innerName})`);
+          console.log(`[ClientConnection] Inner packet payload size: ${innerParsed.length}`);
+          console.error(`[ClientConnection] Inner packet: type=${innerParsed.type} (${innerName}) len=${innerParsed.length}`);
+
+          // Extract inner payload (skip inner header)
+          const innerPayload = plaintext.slice(HEADER_SIZE);
+          console.log(`[ClientConnection] Inner payload extracted: ${innerPayload.length} bytes`);
+
+          if (innerParsed.type === PacketType.ASCII_FRAME) {
+            console.log(`[ClientConnection] ========== INNER PACKET IS ASCII_FRAME ==========`);
+            console.log(`[ClientConnection] Calling user callback with ASCII_FRAME...`);
+          }
+
+          // Call user callback with the decrypted inner packet
+          this.onPacketCallback?.(innerParsed, innerPayload);
+
+          if (innerParsed.type === PacketType.ASCII_FRAME) {
+            console.log(`[ClientConnection] ========== ASCII_FRAME CALLBACK COMPLETE ==========`);
+          }
         } catch (error) {
-          console.error('[ClientConnection] Decryption failed:', error);
-          return;
+          console.error('[ClientConnection] ========== DECRYPTION ERROR ==========');
+          console.error('[ClientConnection] Failed to decrypt ENCRYPTED packet:', error);
+          console.error('[ClientConnection] Error stack:', error instanceof Error ? error.stack : String(error));
+          console.error('[ClientConnection] ========== END ERROR ==========');
         }
+        return;
       }
 
-      // Call user callback with parsed metadata and payload
-      this.onPacketCallback?.(parsed, decryptedPayload);
+      // Non-encrypted, non-handshake packet in connected state - pass through
+      this.onPacketCallback?.(parsed, payload);
     } catch (error) {
       console.error('[ClientConnection] Failed to handle packet:', error);
     }
@@ -188,28 +223,45 @@ export class ClientConnection {
    */
   sendPacket(packetType: number, payload: Uint8Array): void {
     if (!this.socket || !this.socket.isConnected()) {
-      throw new Error('Not connected to server');
+      const name = packetTypeName(packetType);
+      throw new Error(`Not connected to server (cannot send ${name} type=${packetType})`);
     }
 
     const name = packetTypeName(packetType);
+    console.log(`[ClientConnection] sendPacket() called: type=${packetType} (${name}), payload_size=${payload.length}`);
+
     try {
-      // Encrypt payload if we're in connected state
       const state = getConnectionState();
-      let finalPayload = payload;
+      console.log(`[ClientConnection] Current connection state: ${state} (${ConnectionState[state]})`);
 
       if (state === ConnectionState.CONNECTED) {
-        finalPayload = encryptPacket(payload);
-        console.error(`[ClientConnection] Encrypted payload for ${name}, length: ${finalPayload.length}`);
+        console.log(`[ClientConnection] State is CONNECTED, encrypting packet`);
+        // Matching TCP transport protocol: encrypt entire packet, wrap in PACKET_TYPE_ENCRYPTED
+        // 1. Build plaintext packet (header + payload)
+        const plaintextPacket = serializePacket(packetType, payload, 0);
+        console.log(`[ClientConnection] Built plaintext packet: ${plaintextPacket.length} bytes`);
+
+        // 2. Encrypt the entire plaintext packet
+        console.log(`[ClientConnection] Encrypting plaintext packet...`);
+        const ciphertext = encryptPacket(plaintextPacket);
+        console.log(`[ClientConnection] Encryption complete: ciphertext=${ciphertext.length} bytes`);
+
+        // 3. Wrap ciphertext in PACKET_TYPE_ENCRYPTED header
+        const encryptedPacket = serializePacket(PacketType.ENCRYPTED, ciphertext, 0);
+        console.error(`[ClientConnection] >>> SEND encrypted ${name} (type=${packetType}) plaintext=${plaintextPacket.length} ciphertext=${ciphertext.length} wrapped=${encryptedPacket.length} bytes`);
+        this.socket.send(encryptedPacket);
+        console.log(`[ClientConnection] Encrypted ${name} packet sent to WebSocket`);
+      } else {
+        // During handshake, send unencrypted
+        console.log(`[ClientConnection] State is ${ConnectionState[state]}, sending unencrypted`);
+        const packet = serializePacket(packetType, payload, 0);
+        console.error(`[ClientConnection] >>> SEND unencrypted packet type=${packetType} (${name}) total_len=${packet.length} payload_len=${payload.length}`);
+        this.socket.send(packet);
+        console.log(`[ClientConnection] Unencrypted ${name} packet sent to WebSocket`);
       }
-
-      // Serialize packet with header
-      const packet = serializePacket(packetType, finalPayload, 0 /* client_id TBD */);
-      console.error(`[ClientConnection] >>> SEND packet type=${packetType} (${name}) total_len=${packet.length} payload_len=${payload.length}`);
-
-      // Send over WebSocket
-      this.socket.send(packet);
     } catch (error) {
       console.error(`[ClientConnection] Failed to send ${name} packet:`, error);
+      console.error(`[ClientConnection] Error stack:`, error instanceof Error ? error.stack : String(error));
       throw error;
     }
   }

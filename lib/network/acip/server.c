@@ -20,6 +20,7 @@
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/network/crc32.h>
+#include <ascii-chat/crypto/crypto.h>
 #include <string.h>
 
 // =============================================================================
@@ -91,8 +92,48 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
 
     log_debug("ACIP_SERVER_DISPATCH: WebRTC packet parsed: type=%d, len=%u", envelope.type, envelope.len);
 
-    // For WebRTC, header was already validated by transport layer, no further crypto needed
-    // since WebRTC uses DTLS for encryption on the wire
+    // Handle PACKET_TYPE_ENCRYPTED from WebSocket clients that encrypt at application layer
+    if (envelope.type == PACKET_TYPE_ENCRYPTED && transport->crypto_ctx) {
+      uint8_t *ciphertext = (uint8_t *)envelope.data;
+      size_t ciphertext_len = envelope.len;
+
+      // Decrypt to get inner plaintext packet (header + payload)
+      size_t plaintext_size = ciphertext_len + 1024;
+      uint8_t *plaintext = buffer_pool_alloc(NULL, plaintext_size);
+      if (!plaintext) {
+        buffer_pool_free(NULL, allocated_buffer, packet_len);
+        return SET_ERRNO(ERROR_MEMORY, "Failed to allocate plaintext buffer for decryption");
+      }
+
+      size_t plaintext_len;
+      crypto_result_t crypto_result =
+          crypto_decrypt(transport->crypto_ctx, ciphertext, ciphertext_len, plaintext, plaintext_size, &plaintext_len);
+
+      // Free the original encrypted buffer
+      buffer_pool_free(NULL, allocated_buffer, packet_len);
+
+      if (crypto_result != CRYPTO_OK) {
+        buffer_pool_free(NULL, plaintext, plaintext_size);
+        return SET_ERRNO(ERROR_CRYPTO, "Failed to decrypt WebSocket packet: %s",
+                         crypto_result_to_string(crypto_result));
+      }
+
+      if (plaintext_len < sizeof(packet_header_t)) {
+        buffer_pool_free(NULL, plaintext, plaintext_size);
+        return SET_ERRNO(ERROR_CRYPTO, "Decrypted packet too small: %zu < %zu", plaintext_len, sizeof(packet_header_t));
+      }
+
+      // Parse the inner (decrypted) header
+      const packet_header_t *inner_header = (const packet_header_t *)plaintext;
+      envelope.type = NET_TO_HOST_U16(inner_header->type);
+      envelope.len = NET_TO_HOST_U32(inner_header->length);
+      envelope.data = plaintext + sizeof(packet_header_t);
+      envelope.allocated_buffer = plaintext;
+      envelope.allocated_size = plaintext_size;
+
+      log_debug("ACIP_SERVER_DISPATCH: Decrypted WebSocket packet: inner_type=%d, inner_len=%u", envelope.type,
+                envelope.len);
+    }
   }
 
   // Dispatch packet to appropriate ACIP handler

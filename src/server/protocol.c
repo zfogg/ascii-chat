@@ -1471,6 +1471,9 @@ void handle_audio_opus_packet(client_info_t *client, const void *data, size_t le
  * @see terminal_color_level_name() For color level descriptions
  */
 void handle_client_capabilities_packet(client_info_t *client, const void *data, size_t len) {
+  log_error("========== CLIENT_CAPABILITIES HANDLER CALLED ==========");
+  log_error("CLIENT_CAPABILITIES: client_id=%u, data=%p, len=%zu", atomic_load(&client->client_id), data, len);
+
   VALIDATE_PACKET_SIZE(client, data, len, sizeof(terminal_capabilities_packet_t), "CLIENT_CAPABILITIES");
 
   const terminal_capabilities_packet_t *caps = (const terminal_capabilities_packet_t *)data;
@@ -1478,6 +1481,7 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
   // Extract and validate dimensions
   uint16_t width = NET_TO_HOST_U16(caps->width);
   uint16_t height = NET_TO_HOST_U16(caps->height);
+  log_error("CLIENT_CAPABILITIES: dimensions=%ux%u", width, height);
 
   VALIDATE_NONZERO(client, width, "width", "CLIENT_CAPABILITIES");
   VALIDATE_NONZERO(client, height, "height", "CLIENT_CAPABILITIES");

@@ -468,6 +468,8 @@ asciichat_error_t interactive_grep_gather_and_filter_logs(session_log_entry_t **
 
     // Cap merged entries at SESSION_LOG_BUFFER_SIZE to prevent buffer overflow
     if (merged_count > SESSION_LOG_BUFFER_SIZE) {
+      size_t truncated = merged_count - SESSION_LOG_BUFFER_SIZE;
+      log_warn("Log buffer overflow: truncated %zu oldest entries", truncated);
       merged_count = SESSION_LOG_BUFFER_SIZE;
     }
 

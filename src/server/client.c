@@ -2738,6 +2738,11 @@ static void acip_server_on_crypto_no_encryption(packet_type_t type, const void *
  * @param len Packet length
  */
 void process_decrypted_packet(client_info_t *client, packet_type_t type, void *data, size_t len) {
+  if (type == 5000) { // CLIENT_CAPABILITIES
+    log_error("========== SERVER DISPATCH: CLIENT_CAPABILITIES (type=5000) ==========");
+    log_error("CLIENT: client_id=%u, data=%p, len=%zu", atomic_load(&client->client_id), data, len);
+  }
+
   // Rate limiting: Check and record packet-specific rate limits
   if (g_rate_limiter) {
     if (!check_and_record_packet_rate_limit(g_rate_limiter, client->client_ip, client->socket, type)) {
@@ -2748,10 +2753,19 @@ void process_decrypted_packet(client_info_t *client, packet_type_t type, void *d
 
   // O(1) dispatch via hash table lookup
   int idx = client_dispatch_hash_lookup(g_client_dispatch_hash, type);
+  if (type == 5000) {
+    log_error("CLIENT_CAPABILITIES: dispatch hash lookup returned idx=%d", idx);
+  }
   if (idx < 0) {
     disconnect_client_for_bad_data(client, "Unknown packet type: %d (len=%zu)", type, len);
     return;
   }
 
+  if (type == 5000) {
+    log_error("CLIENT_CAPABILITIES: calling handler[%d]...", idx);
+  }
   g_client_dispatch_handlers[idx](client, data, len);
+  if (type == 5000) {
+    log_error("CLIENT_CAPABILITIES: handler returned");
+  }
 }

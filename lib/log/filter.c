@@ -226,20 +226,8 @@ static pcre2_match_data *get_thread_match_data(void) {
   return data;
 }
 
-/**
- * @brief Parsed pattern result
- */
-typedef struct {
-  char pattern[4096];     ///< Parsed pattern string
-  uint32_t pcre2_options; ///< PCRE2 compile options
-  bool is_fixed_string;   ///< True if fixed string (not regex)
-  bool case_insensitive;  ///< Case-insensitive (i flag)
-  bool invert;            ///< Invert match (I flag)
-  bool global_flag;       ///< Highlight all matches (g flag)
-  int context_before;     ///< Lines before match (B<n> flag)
-  int context_after;      ///< Lines after match (A<n> flag)
-  bool valid;             ///< True if parsing succeeded
-} parse_result_t;
+// Use the shared parse_result_t from filter.h
+typedef log_filter_parse_result_t parse_result_t;
 
 /**
  * @brief Parse pattern in /pattern/flags format or plain regex format
@@ -276,7 +264,7 @@ typedef struct {
  * - "/FATAL/B2A5F" - Fixed string, 2 before, 5 after
  * - "error|warn" - Plain regex with alternation
  */
-static parse_result_t parse_pattern_with_flags(const char *input) {
+log_filter_parse_result_t log_filter_parse_pattern(const char *input) {
   parse_result_t result = {0};
   result.pcre2_options = PCRE2_UTF | PCRE2_UCP; // Default: UTF-8 mode
 
@@ -401,7 +389,7 @@ asciichat_error_t log_filter_init(const char *pattern) {
   }
 
   // Parse pattern
-  parse_result_t parsed = parse_pattern_with_flags(pattern);
+  parse_result_t parsed = log_filter_parse_pattern(pattern);
   if (!parsed.valid) {
     log_error("Invalid --grep pattern format: \"%s\"", pattern);
     log_error("Use /pattern/flags format (e.g., \"/query/ig\") or plain regex (e.g., \"query\")");

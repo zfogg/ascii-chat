@@ -39,24 +39,24 @@ describe('Client WASM Module Types', () => {
     });
 
     it('should have data packet types', () => {
-      expect(PacketType.ENCRYPTED).toBe(13);
-      expect(PacketType.AUDIO_BATCH).toBe(5);
-      expect(PacketType.AUDIO_OPUS_BATCH).toBe(6);
-      expect(PacketType.IMAGE_FRAME).toBe(7);
-      expect(PacketType.ASCII_FRAME).toBe(8);
+      expect(PacketType.ENCRYPTED).toBe(1200);
+      expect(PacketType.AUDIO_BATCH).toBe(4000);
+      expect(PacketType.AUDIO_OPUS_BATCH).toBe(4001);
+      expect(PacketType.IMAGE_FRAME).toBe(3001);
+      expect(PacketType.ASCII_FRAME).toBe(3000);
     });
 
     it('should have control packet types', () => {
-      expect(PacketType.CLIENT_INFO).toBe(2);
-      expect(PacketType.SERVER_STATUS).toBe(3);
-      expect(PacketType.ERROR_MESSAGE).toBe(4);
-      expect(PacketType.PING).toBe(9);
-      expect(PacketType.PONG).toBe(10);
+      expect(PacketType.CLIENT_CAPABILITIES).toBe(5000);
+      expect(PacketType.ERROR_MESSAGE).toBe(2003);
+      expect(PacketType.PING).toBe(5001);
+      expect(PacketType.PONG).toBe(5002);
     });
 
     it('should have rekey packet types', () => {
       expect(PacketType.CRYPTO_REKEY_REQUEST).toBe(1201);
       expect(PacketType.CRYPTO_REKEY_RESPONSE).toBe(1202);
+      expect(PacketType.CRYPTO_REKEY_COMPLETE).toBe(1203);
     });
   });
 

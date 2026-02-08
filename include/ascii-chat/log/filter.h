@@ -8,6 +8,40 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
+
+/**
+ * @brief Parsed pattern result from /pattern/flags syntax
+ *
+ * Shared between --grep CLI filtering and interactive grep.
+ */
+typedef struct {
+  char pattern[4096];     ///< Parsed pattern string
+  uint32_t pcre2_options; ///< PCRE2 compile options
+  bool is_fixed_string;   ///< True if fixed string (not regex)
+  bool case_insensitive;  ///< Case-insensitive (i flag)
+  bool invert;            ///< Invert match (I flag)
+  bool global_flag;       ///< Highlight all matches (g flag)
+  int context_before;     ///< Lines before match (B<n> flag)
+  int context_after;      ///< Lines after match (A<n> flag)
+  bool valid;             ///< True if parsing succeeded
+} log_filter_parse_result_t;
+
+/**
+ * @brief Parse pattern in /pattern/flags format or plain regex format
+ *
+ * Supports two formats:
+ * - Format 1: /pattern/flags (e.g., "/error/igC2")
+ * - Format 2: plain pattern (e.g., "error")
+ *
+ * Flags: i(case-insensitive), m(multiline), s(dotall), x(extended),
+ * g(global highlight), I(invert), F(fixed string),
+ * A<n>(after context), B<n>(before context), C<n>(both context)
+ *
+ * @param input Input pattern string
+ * @return Parsed result with pattern, flags, and validity
+ */
+log_filter_parse_result_t log_filter_parse_pattern(const char *input);
 
 /**
  * @brief Initialize log filtering with PCRE2 regex pattern
