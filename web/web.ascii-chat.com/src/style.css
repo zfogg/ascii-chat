@@ -1,13 +1,14 @@
 /* Import xterm.js CSS */
 @import 'xterm/css/xterm.css';
 
-/* Import shared custom styles (must be before @tailwind) */
+/* Import Tailwind v4 */
+@import "tailwindcss";
+
+/* Import shared custom styles */
 @import '@ascii-chat/shared/styles/base.css';
 
-/* Tailwind v3 directives */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@source ".";
+@source "../../packages/shared/src";
 
 /* Custom styles for terminal aesthetic */
 body {
