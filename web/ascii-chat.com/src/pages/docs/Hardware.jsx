@@ -3,6 +3,7 @@ import Footer from "../../components/Footer";
 import TrackedLink from "../../components/TrackedLink";
 import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
 import { AsciiChatHead } from "../../components/AsciiChatHead";
+import { CodeBlock } from "@ascii-chat/shared/components";
 
 export default function Hardware() {
   useEffect(() => {
@@ -88,9 +89,7 @@ export default function Hardware() {
                 See all connected webcam devices and their indices (works in
                 client and mirror modes):
               </p>
-              <pre className="code-block">
-                <code className="code-content">ascii-chat --list-webcams</code>
-              </pre>
+              <CodeBlock language="bash">ascii-chat --list-webcams</CodeBlock>
               <p className="text-gray-400 text-sm mt-2">
                 Shows device index, name, and platform-specific details
               </p>
@@ -113,13 +112,11 @@ export default function Hardware() {
                 </TrackedLink>
                 )
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Use first webcam (default: index 0)\nascii-chat client example.com\n\n# Use second webcam\nascii-chat client example.com --webcam-index 1\n\n# Short form\nascii-chat client example.com -c 2"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Use first webcam (default: index 0)\nascii-chat client example.com\n\n# Use second webcam\nascii-chat client example.com --webcam-index 1\n\n# Short form\nascii-chat client example.com -c 2"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
@@ -130,13 +127,11 @@ export default function Hardware() {
                 Control horizontal mirroring of webcam output (default: enabled,
                 good for front-facing cameras):
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Enable flip (DEFAULT)\nascii-chat client example.com --webcam-flip\n\n# Disable flip (for rear cameras)\nascii-chat client example.com --no-webcam-flip\n\n# Short form\nascii-chat client example.com -g  # Enable\nascii-chat client example.com -g=false  # Disable"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Enable flip (DEFAULT)\nascii-chat client example.com --webcam-flip\n\n# Disable flip (for rear cameras)\nascii-chat client example.com --no-webcam-flip\n\n# Short form\nascii-chat client example.com -g  # Enable\nascii-chat client example.com -g=false  # Disable"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
@@ -147,13 +142,11 @@ export default function Hardware() {
                 Use a test pattern instead of actual webcam (useful for testing,
                 CI/CD, or when no camera is available):
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Test pattern mode\nascii-chat client example.com --test-pattern\nascii-chat mirror --test-pattern\n\n# Via environment variable\nWEBCAM_DISABLED=1 ascii-chat client example.com"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Test pattern mode\nascii-chat client example.com --test-pattern\nascii-chat mirror --test-pattern\n\n# Via environment variable\nWEBCAM_DISABLED=1 ascii-chat client example.com"
+                }
+              </CodeBlock>
             </div>
           </section>
 
@@ -170,13 +163,11 @@ export default function Hardware() {
                 <code className="text-cyan-300">--audio</code> or{" "}
                 <code className="text-cyan-300">-A</code>:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Connect with audio enabled\nascii-chat client example.com --audio\n\n# Short form\nascii-chat client example.com -A"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Connect with audio enabled\nascii-chat client example.com --audio\n\n# Short form\nascii-chat client example.com -A"
+                }
+              </CodeBlock>
               <div className="info-box-info mt-3">
                 <p className="text-gray-300 text-sm">
                   <strong>Note:</strong> Audio is only for client mode. Server
@@ -194,13 +185,11 @@ export default function Hardware() {
                 Control whether to capture from microphone, media (other
                 applications), or both:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Auto-detection (DEFAULT)\n# Uses microphone unless media is playing\nascii-chat client example.com --audio --audio-source auto\n\n# Microphone only (always capture)\nascii-chat client example.com --audio --audio-source mic\n\n# Media only (for screen sharing audio)\nascii-chat mirror --audio-source media\n\n# Both simultaneously\nascii-chat client example.com --audio --audio-source both"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Auto-detection (DEFAULT)\n# Uses microphone unless media is playing\nascii-chat client example.com --audio --audio-source auto\n\n# Microphone only (always capture)\nascii-chat client example.com --audio --audio-source mic\n\n# Media only (for screen sharing audio)\nascii-chat mirror --audio-source media\n\n# Both simultaneously\nascii-chat client example.com --audio --audio-source both"
+                }
+              </CodeBlock>
               <div className="info-box-info mt-3">
                 <p className="text-gray-300 text-sm">
                   <strong>Works in:</strong> client mode (with --audio), mirror
@@ -216,13 +205,11 @@ export default function Hardware() {
               <p className="docs-paragraph">
                 Discover available microphones and speakers:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# List all microphones (audio input devices)\nascii-chat --list-microphones\n\n# List all speakers (audio output devices)\nascii-chat --list-speakers"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# List all microphones (audio input devices)\nascii-chat --list-microphones\n\n# List all speakers (audio output devices)\nascii-chat --list-speakers"
+                }
+              </CodeBlock>
               <p className="text-gray-400 text-sm mt-2">
                 Output shows device index, name, number of channels, default
                 sample rate, and system default marker
@@ -233,13 +220,11 @@ export default function Hardware() {
               <h3 className="heading-3 text-pink-300 mb-3">
                 Select Microphone and Adjust Volume
               </h3>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Use system default microphone (RECOMMENDED)\nascii-chat client example.com --audio --microphone-index -1\n\n# Use specific microphone (index from --list-microphones)\nascii-chat client example.com --audio --microphone-index 2\n\n# Short form\nascii-chat client example.com --audio -m 2\n\n# Adjust microphone volume (0.0-1.0, default 1.0)\nascii-chat client example.com --audio -m -1 --microphone-volume 0.5\n\n# Alias: --ivolume\nascii-chat client example.com --audio --ivolume 0.8"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Use system default microphone (RECOMMENDED)\nascii-chat client example.com --audio --microphone-index -1\n\n# Use specific microphone (index from --list-microphones)\nascii-chat client example.com --audio --microphone-index 2\n\n# Short form\nascii-chat client example.com --audio -m 2\n\n# Adjust microphone volume (0.0-1.0, default 1.0)\nascii-chat client example.com --audio -m -1 --microphone-volume 0.5\n\n# Alias: --ivolume\nascii-chat client example.com --audio --ivolume 0.8"
+                }
+              </CodeBlock>
               <div className="info-box-note mt-3">
                 <p className="text-gray-300 text-sm">
                   Microphone volume is available in client, mirror, and server
@@ -252,26 +237,22 @@ export default function Hardware() {
               <h3 className="heading-3 text-green-300 mb-3">
                 Select Speakers and Adjust Volume
               </h3>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Use system default speakers (RECOMMENDED)\nascii-chat client example.com --audio --speakers-index -1\n\n# Use specific speaker device\nascii-chat client example.com --audio --speakers-index 1\n\n# Adjust speaker volume (0.0-1.0, default 1.0)\nascii-chat client example.com --audio --speakers-volume 0.5\n\n# Alias: --volume\nascii-chat client example.com --audio --volume 0.8\n\n# Combine all audio options\nascii-chat client example.com --audio \\\n  --microphone-index -1 --microphone-volume 0.8 \\\n  --speakers-index -1 --speakers-volume 0.7"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Use system default speakers (RECOMMENDED)\nascii-chat client example.com --audio --speakers-index -1\n\n# Use specific speaker device\nascii-chat client example.com --audio --speakers-index 1\n\n# Adjust speaker volume (0.0-1.0, default 1.0)\nascii-chat client example.com --audio --speakers-volume 0.5\n\n# Alias: --volume\nascii-chat client example.com --audio --volume 0.8\n\n# Combine all audio options\nascii-chat client example.com --audio \\\n  --microphone-index -1 --microphone-volume 0.8 \\\n  --speakers-index -1 --speakers-volume 0.7"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
               <h3 className="heading-3 text-orange-300 mb-3">
                 Audio Playback Control
               </h3>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Disable speaker output (listen-only mode)\nascii-chat client example.com --audio --no-audio-playback\n\n# Control Opus encoding (default: enabled)\nascii-chat client example.com --audio --encode-audio\nascii-chat client example.com --audio --no-encode-audio"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Disable speaker output (listen-only mode)\nascii-chat client example.com --audio --no-audio-playback\n\n# Control Opus encoding (default: enabled)\nascii-chat client example.com --audio --encode-audio\nascii-chat client example.com --audio --no-encode-audio"
+                }
+              </CodeBlock>
             </div>
           </section>
 
@@ -296,13 +277,11 @@ export default function Hardware() {
                 <code className="text-cyan-300">--audio</code> to enable audio
                 playback from the file:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Stream local video file\nascii-chat client example.com -f video.mp4\nascii-chat mirror -f animation.gif\n\n# Mirror mode with audio playback\nascii-chat mirror -f video.mp4 --audio\n\n# Stream from stdin\ncat video.avi | ascii-chat client example.com -f '-'\n\n# Stream from stdin with looping and seeking\ncat video.mov | ascii-chat mirror -f '-' -l -s 00:30"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Stream local video file\nascii-chat client example.com -f video.mp4\nascii-chat mirror -f animation.gif\n\n# Mirror mode with audio playback\nascii-chat mirror -f video.mp4 --audio\n\n# Stream from stdin\ncat video.avi | ascii-chat client example.com -f '-'\n\n# Stream from stdin with looping and seeking\ncat video.mov | ascii-chat mirror -f '-' -l -s 00:30"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
@@ -314,24 +293,20 @@ export default function Hardware() {
                 add <code className="text-cyan-300">--audio</code> to enable
                 audio:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Stream from YouTube\nascii-chat client example.com --url 'https://youtu.be/7ynHVGCehoM' -s 38:29\n\n# Stream from HTTP/HTTPS\nascii-chat mirror -u 'https://example.com/video.mp4'\n\n# Mirror mode with audio\nascii-chat mirror -u 'https://youtu.be/7ynHVGCehoM' -s 38:29 --audio\n\n# Stream RTSP (IP camera)\nascii-chat client example.com -u 'rtsp://camera.local/stream'"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Stream from YouTube\nascii-chat client example.com --url 'https://youtu.be/7ynHVGCehoM' -s 38:29\n\n# Stream from HTTP/HTTPS\nascii-chat mirror -u 'https://example.com/video.mp4'\n\n# Mirror mode with audio\nascii-chat mirror -u 'https://youtu.be/7ynHVGCehoM' -s 38:29 --audio\n\n# Stream RTSP (IP camera)\nascii-chat client example.com -u 'rtsp://camera.local/stream'"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
               <h3 className="heading-3 text-cyan-300 mb-3">Playback Control</h3>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Loop file playback\nascii-chat mirror -f video.mp4 -l\n\n# Start playback paused (toggle with spacebar)\nascii-chat client example.com -f video.mp4 --pause\n\n# Seek to specific timestamp\nascii-chat mirror -f video.mp4 -s 22:10\nascii-chat mirror -f video.mp4 -s 00:30  # MM:SS format\nascii-chat mirror -f video.mp4 -s 1:23:45  # HH:MM:SS format\n\n# Start at specific time and immediately exit (snapshot)\nascii-chat mirror -f video.mp4 -s 5:12 -S -D 0"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Loop file playback\nascii-chat mirror -f video.mp4 -l\n\n# Start playback paused (toggle with spacebar)\nascii-chat client example.com -f video.mp4 --pause\n\n# Seek to specific timestamp\nascii-chat mirror -f video.mp4 -s 22:10\nascii-chat mirror -f video.mp4 -s 00:30  # MM:SS format\nascii-chat mirror -f video.mp4 -s 1:23:45  # HH:MM:SS format\n\n# Start at specific time and immediately exit (snapshot)\nascii-chat mirror -f video.mp4 -s 5:12 -S -D 0"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
@@ -343,13 +318,11 @@ export default function Hardware() {
                 <code className="text-cyan-300">--cookies-from-browser</code> to
                 handle age-restricted or logged-in content:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Use cookies from Chrome (default browser)\nascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM' -s 38:29 --cookies-from-browser\n\n# Specify a browser explicitly\nascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM' -s 38:29 --cookies-from-browser firefox\n\n# Supported browsers: chrome, firefox, edge, safari, brave, opera, vivaldi, whale"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Use cookies from Chrome (default browser)\nascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM' -s 38:29 --cookies-from-browser\n\n# Specify a browser explicitly\nascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM' -s 38:29 --cookies-from-browser firefox\n\n# Supported browsers: chrome, firefox, edge, safari, brave, opera, vivaldi, whale"
+                }
+              </CodeBlock>
             </div>
           </section>
 
@@ -363,13 +336,11 @@ export default function Hardware() {
                 Choose how ASCII characters are rendered (available in client
                 and mirror):
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Foreground mode (DEFAULT - colored text on dark background)\nascii-chat client example.com --render-mode foreground\n\n# Background mode (colored background with white text)\nascii-chat client example.com --render-mode background\n\n# Half-block mode (2x vertical resolution using block characters)\nascii-chat mirror --render-mode half-block -M half-block  # Same thing"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Foreground mode (DEFAULT - colored text on dark background)\nascii-chat client example.com --render-mode foreground\n\n# Background mode (colored background with white text)\nascii-chat client example.com --render-mode background\n\n# Half-block mode (2x vertical resolution using block characters)\nascii-chat mirror --render-mode half-block -M half-block  # Same thing"
+                }
+              </CodeBlock>
               <div className="info-box-info mt-3">
                 <p className="text-gray-300 text-sm">
                   <strong>Half-Block Mode:</strong> Provides twice the vertical
@@ -384,13 +355,11 @@ export default function Hardware() {
               <p className="docs-paragraph">
                 Control which characters are used to render brightness levels:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Built-in palettes (all look different)\nascii-chat mirror --palette standard\nascii-chat mirror --palette blocks\nascii-chat mirror --palette digital\nascii-chat mirror --palette minimal\nascii-chat mirror --palette cool\n\n# Custom palette with your own characters\nascii-chat mirror --palette custom --palette-chars '@%#*+=-:. '"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Built-in palettes (all look different)\nascii-chat mirror --palette standard\nascii-chat mirror --palette blocks\nascii-chat mirror --palette digital\nascii-chat mirror --palette minimal\nascii-chat mirror --palette cool\n\n# Custom palette with your own characters\nascii-chat mirror --palette custom --palette-chars '@%#*+=-:. '"
+                }
+              </CodeBlock>
               <div className="info-box-note mt-3">
                 <p className="text-gray-300 text-sm">
                   <strong>Custom Palette:</strong> Characters should be ordered
@@ -403,24 +372,20 @@ export default function Hardware() {
               <h3 className="heading-3 text-pink-300 mb-3">
                 Frame Rate and Snapshot
               </h3>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Set target frame rate (1-144 FPS, default 60)\nascii-chat client example.com --fps 30\nascii-chat mirror --fps 10  # Lower for slower machines\n\n# Snapshot mode: capture one frame and exit\nascii-chat client example.com --snapshot\nascii-chat mirror --snapshot\n\n# Snapshot with delay (seconds, default 4.0)\nascii-chat client example.com --snapshot --snapshot-delay 10\n\n# Snapshot immediately (no delay)\nascii-chat mirror -S -D 0\n\n# Pipe to clipboard\nascii-chat mirror -S -D 0 | pbcopy  # macOS\nascii-chat mirror -S -D 0 | xclip    # Linux"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Set target frame rate (1-144 FPS, default 60)\nascii-chat client example.com --fps 30\nascii-chat mirror --fps 10  # Lower for slower machines\n\n# Snapshot mode: capture one frame and exit\nascii-chat client example.com --snapshot\nascii-chat mirror --snapshot\n\n# Snapshot with delay (seconds, default 4.0)\nascii-chat client example.com --snapshot --snapshot-delay 10\n\n# Snapshot immediately (no delay)\nascii-chat mirror -S -D 0\n\n# Pipe to clipboard\nascii-chat mirror -S -D 0 | pbcopy  # macOS\nascii-chat mirror -S -D 0 | xclip    # Linux"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
               <h3 className="heading-3 text-teal-300 mb-3">Aspect Ratio</h3>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Preserve aspect ratio (DEFAULT)\nascii-chat mirror video.mp4\n\n# Allow stretching to fill terminal (may distort image)\nascii-chat mirror --stretch"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Preserve aspect ratio (DEFAULT)\nascii-chat mirror video.mp4\n\n# Allow stretching to fill terminal (may distort image)\nascii-chat mirror --stretch"
+                }
+              </CodeBlock>
             </div>
           </section>
 
@@ -618,15 +583,13 @@ export default function Hardware() {
                   <p className="text-gray-300 text-sm">
                     Can select microphone and speakers independently:
                   </p>
-                  <pre className="code-block text-xs mt-2">
-                    <code className="code-content">
-                      {`# USB microphone, built-in speakers
+                  <CodeBlock language="bash">
+                    {`# USB microphone, built-in speakers
 ascii-chat client --audio -m 2 --speakers-index -1
 
 # Built-in mic, USB headset
 ascii-chat client --audio -m -1 --speakers-index 1`}
-                    </code>
-                  </pre>
+                  </CodeBlock>
                 </div>
 
                 <div className="card-standard accent-teal">
@@ -649,13 +612,11 @@ ascii-chat client --audio -m -1 --speakers-index 1`}
 
             <div className="docs-subsection-spacing">
               <h3 className="heading-3 text-blue-300 mb-3">Device Discovery</h3>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Always list devices first\nascii-chat --list-webcams\nascii-chat --list-microphones\nascii-chat --list-speakers\n\n# Note the indices for your devices\n# Then use them in your commands"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Always list devices first\nascii-chat --list-webcams\nascii-chat --list-microphones\nascii-chat --list-speakers\n\n# Note the indices for your devices\n# Then use them in your commands"
+                }
+              </CodeBlock>
               <div className="info-box-info mt-3">
                 <p className="text-gray-300 text-sm">
                   <strong>Tip:</strong> Use{" "}
@@ -673,72 +634,60 @@ ascii-chat client --audio -m -1 --speakers-index 1`}
                   <h4 className="text-cyan-300 font-semibold mb-2">
                     Basic Video Call
                   </h4>
-                  <pre className="code-block text-xs">
-                    <code className="code-content">
-                      ascii-chat client example.com
-                    </code>
-                  </pre>
+                  <CodeBlock language="bash">
+                    ascii-chat client example.com
+                  </CodeBlock>
                 </div>
 
                 <div className="card-standard accent-cyan">
                   <h4 className="text-cyan-300 font-semibold mb-2">
                     With Audio
                   </h4>
-                  <pre className="code-block text-xs">
-                    <code className="code-content">
-                      ascii-chat client example.com --audio
-                    </code>
-                  </pre>
+                  <CodeBlock language="bash">
+                    ascii-chat client example.com --audio
+                  </CodeBlock>
                 </div>
 
                 <div className="card-standard accent-cyan">
                   <h4 className="text-cyan-300 font-semibold mb-2">
                     Custom Audio Devices
                   </h4>
-                  <pre className="code-block text-xs">
-                    <code className="code-content">
-                      {`ascii-chat client example.com --audio \\
+                  <CodeBlock language="bash">
+                    {`ascii-chat client example.com --audio \\
   --microphone-index 2 --microphone-volume 0.8 \\
   --speakers-index 1 --speakers-volume 0.7`}
-                    </code>
-                  </pre>
+                  </CodeBlock>
                 </div>
 
                 <div className="card-standard accent-cyan">
                   <h4 className="text-cyan-300 font-semibold mb-2">
                     High-Quality Display
                   </h4>
-                  <pre className="code-block text-xs">
-                    <code className="code-content">
-                      {`ascii-chat client example.com \\
+                  <CodeBlock language="bash">
+                    {`ascii-chat client example.com \\
   --render-mode half-block --palette blocks --fps 60`}
-                    </code>
-                  </pre>
+                  </CodeBlock>
                 </div>
 
                 <div className="card-standard accent-cyan">
                   <h4 className="text-cyan-300 font-semibold mb-2">
                     Stream YouTube Video
                   </h4>
-                  <pre className="code-block text-xs">
-                    <code className="code-content">
-                      {`ascii-chat client example.com \\
+                  <CodeBlock language="bash">
+                    {`ascii-chat client example.com \\
   --url 'https://youtu.be/7ynHVGCehoM' -s 38:29 --audio`}
-                    </code>
-                  </pre>
+                  </CodeBlock>
                 </div>
 
                 <div className="card-standard accent-cyan">
                   <h4 className="text-cyan-300 font-semibold mb-2">
                     Low Bandwidth
                   </h4>
-                  <pre className="code-block text-xs">
-                    <code className="code-content">
-                      {`ascii-chat client example.com --audio \\
+                  <CodeBlock language="bash">
+                    {`ascii-chat client example.com --audio \\
   --fps 30 --palette minimal \\
   --microphone-volume 0.5 --speakers-volume 0.5`}
-                    </code>
-                  </pre>
+                  </CodeBlock>
                 </div>
               </div>
             </div>

@@ -3,6 +3,7 @@ import Footer from "../../components/Footer";
 import TrackedLink from "../../components/TrackedLink";
 import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
 import { AsciiChatHead } from "../../components/AsciiChatHead";
+import { CodeBlock } from "@ascii-chat/shared/components";
 
 export default function Terminal() {
   useEffect(() => {
@@ -86,13 +87,11 @@ export default function Terminal() {
                 The <code>--color</code> flag controls whether colors are
                 displayed at all (independent of color mode):
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Auto-detect (DEFAULT)\nascii-chat client example.com --color auto\n\n# Force colors on (even when piped)\nascii-chat mirror --color true | tee output.txt\n\n# Force colors off (monochrome)\nascii-chat client --color false\n\n# Via environment variable\nASCII_CHAT_COLOR=false ascii-chat client"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Auto-detect (DEFAULT)\nascii-chat client example.com --color auto\n\n# Force colors on (even when piped)\nascii-chat mirror --color true | tee output.txt\n\n# Force colors off (monochrome)\nascii-chat client --color false\n\n# Via environment variable\nASCII_CHAT_COLOR=false ascii-chat client"
+                }
+              </CodeBlock>
               <div className="info-box-info mt-3">
                 <p className="text-gray-300 text-sm">
                   <strong>When colors are disabled:</strong> Display switches to
@@ -119,13 +118,11 @@ export default function Terminal() {
                 </TrackedLink>
                 )
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Auto-detect (RECOMMENDED)\nascii-chat client --color-mode auto\n\n# Force specific color mode\nascii-chat client --color-mode truecolor  # 16M colors (best quality)\nascii-chat client --color-mode 256        # 256-color xterm\nascii-chat client --color-mode 16         # Basic ANSI colors\nascii-chat client --color-mode none       # Monochrome\n\n# Via environment\nexport ASCII_CHAT_COLOR_MODE=256"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Auto-detect (RECOMMENDED)\nascii-chat client --color-mode auto\n\n# Force specific color mode\nascii-chat client --color-mode truecolor  # 16M colors (best quality)\nascii-chat client --color-mode 256        # 256-color xterm\nascii-chat client --color-mode 16         # Basic ANSI colors\nascii-chat client --color-mode none       # Monochrome\n\n# Via environment\nexport ASCII_CHAT_COLOR_MODE=256"
+                }
+              </CodeBlock>
               <div className="space-y-2 mt-3">
                 <div className="card-standard accent-purple">
                   <h4 className="text-purple-300 font-semibold mb-2">
@@ -165,13 +162,11 @@ export default function Terminal() {
                 Control the color scheme for ascii-chat's debug/log output (not
                 video display):
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Available schemes: pastel, nord, solarized-dark, dracula, gruvbox-dark, monokai, etc.\nascii-chat client --color-scheme dracula\n\n# Via environment\nexport ASCII_CHAT_COLOR_SCHEME=nord"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Available schemes: pastel, nord, solarized-dark, dracula, gruvbox-dark, monokai, etc.\nascii-chat client --color-scheme dracula\n\n# Via environment\nexport ASCII_CHAT_COLOR_SCHEME=nord"
+                }
+              </CodeBlock>
             </div>
           </section>
 
@@ -185,13 +180,11 @@ export default function Terminal() {
                 Control how ASCII characters are rendered to represent
                 brightness:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Foreground (DEFAULT) - colored text on dark background\nascii-chat client --render-mode foreground\n\n# Background - colored background with white text\nascii-chat client --render-mode background\n\n# Half-block - Unicode blocks for 2x vertical resolution\nascii-chat mirror --render-mode half-block\n\n# Short form\nascii-chat mirror -M half-block"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Foreground (DEFAULT) - colored text on dark background\nascii-chat client --render-mode foreground\n\n# Background - colored background with white text\nascii-chat client --render-mode background\n\n# Half-block - Unicode blocks for 2x vertical resolution\nascii-chat mirror --render-mode half-block\n\n# Short form\nascii-chat mirror -M half-block"
+                }
+              </CodeBlock>
               <div className="space-y-2 mt-3">
                 <div className="card-standard accent-green">
                   <h4 className="text-green-300 font-semibold mb-2">
@@ -220,13 +213,11 @@ export default function Terminal() {
                 Control which ASCII characters represent different brightness
                 levels:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    '# Built-in palettes\nascii-chat mirror --palette standard   # Default\nascii-chat mirror --palette blocks      # Unicode blocks\nascii-chat mirror --palette digital     # Digital style\nascii-chat mirror --palette minimal     # Minimal detail\nascii-chat mirror --palette cool        # Alternative\n\n# Custom palette (darkest to brightest)\nascii-chat mirror --palette custom --palette-chars " .:-=+*#%@"'
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  '# Built-in palettes\nascii-chat mirror --palette standard   # Default\nascii-chat mirror --palette blocks      # Unicode blocks\nascii-chat mirror --palette digital     # Digital style\nascii-chat mirror --palette minimal     # Minimal detail\nascii-chat mirror --palette cool        # Alternative\n\n# Custom palette (darkest to brightest)\nascii-chat mirror --palette custom --palette-chars " .:-=+*#%@"'
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
@@ -236,13 +227,11 @@ export default function Terminal() {
                 characters are ~2:1 height:width). Use <code>--stretch</code> to
                 ignore aspect ratio and fill the terminal:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Preserve aspect ratio (DEFAULT)\nascii-chat mirror video.mp4\n\n# Stretch to fill terminal (may distort)\nascii-chat mirror video.mp4 --stretch"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Preserve aspect ratio (DEFAULT)\nascii-chat mirror video.mp4\n\n# Stretch to fill terminal (may distort)\nascii-chat mirror video.mp4 --stretch"
+                }
+              </CodeBlock>
             </div>
           </section>
 
@@ -268,13 +257,11 @@ export default function Terminal() {
                 </li>
                 <li>Fallback defaults: 110×70 if detection fails</li>
               </ul>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Set dimensions via environment variables\nexport COLUMNS=120 ROWS=40\nascii-chat client example.com\n\n# Or set just for this command\nCOLUMNS=150 ROWS=50 ascii-chat mirror video.mp4"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Set dimensions via environment variables\nexport COLUMNS=120 ROWS=40\nascii-chat client example.com\n\n# Or set just for this command\nCOLUMNS=150 ROWS=50 ascii-chat mirror video.mp4"
+                }
+              </CodeBlock>
               <div className="info-box-info mt-3">
                 <p className="text-gray-300 text-sm">
                   <strong>Auto-Update:</strong> When running interactively (not
@@ -291,13 +278,11 @@ export default function Terminal() {
               <p className="docs-paragraph">
                 Override auto-detection with explicit width and height:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Set custom dimensions\nascii-chat client --width 120 --height 40\n\n# Short form\nascii-chat client -x 120 -y 40\n\n# Very wide for multiple columns\nascii-chat mirror -x 200 -y 60\n\n# Minimal size\nascii-chat client -x 20 -y 10\n\n# Via environment variables\nexport ASCII_CHAT_WIDTH=150 ASCII_CHAT_HEIGHT=50"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Set custom dimensions\nascii-chat client --width 120 --height 40\n\n# Short form\nascii-chat client -x 120 -y 40\n\n# Very wide for multiple columns\nascii-chat mirror -x 200 -y 60\n\n# Minimal size\nascii-chat client -x 20 -y 10\n\n# Via environment variables\nexport ASCII_CHAT_WIDTH=150 ASCII_CHAT_HEIGHT=50"
+                }
+              </CodeBlock>
               <div className="info-box-note mt-3">
                 <p className="text-gray-300 text-sm">
                   <strong>Valid Range:</strong> width 20-512, height 10-256
@@ -327,13 +312,11 @@ export default function Terminal() {
                   output
                 </li>
               </ul>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Capture single frame to file with explicit size\nascii-chat mirror -x 120 -y 40 --snapshot -D 0 > frame.txt\n\n# Pipe to file with consistent dimensions\nascii-chat mirror -x 100 -y 30 | tee output.txt\n\n# Use with COLUMNS/ROWS for piped output\nCOLUMNS=200 ROWS=60 ascii-chat mirror | cat"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Capture single frame to file with explicit size\nascii-chat mirror -x 120 -y 40 --snapshot -D 0 > frame.txt\n\n# Pipe to file with consistent dimensions\nascii-chat mirror -x 100 -y 30 | tee output.txt\n\n# Use with COLUMNS/ROWS for piped output\nCOLUMNS=200 ROWS=60 ascii-chat mirror | cat"
+                }
+              </CodeBlock>
             </div>
           </section>
 
@@ -346,13 +329,11 @@ export default function Terminal() {
               <p className="docs-paragraph">
                 Control UTF-8/Unicode character support for palettes and output:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Auto-detect (DEFAULT) - based on locale\nascii-chat mirror --utf8 auto\n\n# Force UTF-8 on\nascii-chat mirror --utf8 true --palette blocks\n\n# Force UTF-8 off (ASCII-only)\nascii-chat mirror --utf8 false\n\n# Via environment\nexport ASCII_CHAT_UTF8=true"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Auto-detect (DEFAULT) - based on locale\nascii-chat mirror --utf8 auto\n\n# Force UTF-8 on\nascii-chat mirror --utf8 true --palette blocks\n\n# Force UTF-8 off (ASCII-only)\nascii-chat mirror --utf8 false\n\n# Via environment\nexport ASCII_CHAT_UTF8=true"
+                }
+              </CodeBlock>
               <div className="info-box-warning mt-3">
                 <p className="text-gray-300 text-sm">
                   <strong>⚠️ Warning:</strong> Some palettes (blocks,
@@ -368,13 +349,11 @@ export default function Terminal() {
                 Remove ANSI escape sequences from output (for saving to files or
                 processing text):
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Capture plain text (no colors/formatting)\nascii-chat mirror --snapshot -D 0 --strip-ansi > frame.txt\n\n# Pipe output and remove ANSI codes\nascii-chat mirror | ascii-chat mirror --strip-ansi | tee plain.txt\n\n# Via environment\nexport ASCII_CHAT_STRIP_ANSI=true"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Capture plain text (no colors/formatting)\nascii-chat mirror --snapshot -D 0 --strip-ansi > frame.txt\n\n# Pipe output and remove ANSI codes\nascii-chat mirror | ascii-chat mirror --strip-ansi | tee plain.txt\n\n# Via environment\nexport ASCII_CHAT_STRIP_ANSI=true"
+                }
+              </CodeBlock>
             </div>
           </section>
 
@@ -404,11 +383,9 @@ export default function Terminal() {
               <p className="docs-paragraph">
                 Display detected terminal capabilities and configuration:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  ascii-chat --show-capabilities
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                ascii-chat --show-capabilities
+              </CodeBlock>
               <p className="text-gray-400 text-sm mt-2">
                 Output includes: color support, Unicode support, terminal size,
                 isatty status, environment variables, and detected TERM type.
@@ -514,12 +491,10 @@ export default function Terminal() {
                   <p className="text-gray-300 text-sm mb-2">
                     When piped, always explicitly set:
                   </p>
-                  <pre className="code-block text-xs mt-2">
-                    <code className="code-content">
-                      {`# For piped output, set all three:
+                  <CodeBlock language="bash">
+                    {`# For piped output, set all three:
 ascii-chat mirror -x 120 -y 40 --color true | tee output.txt`}
-                    </code>
-                  </pre>
+                  </CodeBlock>
                 </div>
               </div>
             </div>
@@ -531,56 +506,48 @@ ascii-chat mirror -x 120 -y 40 --color true | tee output.txt`}
                   <h4 className="text-cyan-300 font-semibold mb-2">
                     Maximum Quality
                   </h4>
-                  <pre className="code-block text-xs">
-                    <code className="code-content">
-                      {`ascii-chat mirror \\
+                  <CodeBlock language="bash">
+                    {`ascii-chat mirror \\
   --color-mode truecolor \\
   --render-mode half-block \\
   --palette blocks \\
   --utf8 true \\
   --fps 60`}
-                    </code>
-                  </pre>
+                  </CodeBlock>
                 </div>
 
                 <div className="card-standard accent-cyan">
                   <h4 className="text-cyan-300 font-semibold mb-2">
                     Over SSH (Slow)
                   </h4>
-                  <pre className="code-block text-xs">
-                    <code className="code-content">
-                      {`ascii-chat client example.com \\
+                  <CodeBlock language="bash">
+                    {`ascii-chat client example.com \\
   --color-mode 256 \\
   --render-mode foreground \\
   --fps 30`}
-                    </code>
-                  </pre>
+                  </CodeBlock>
                 </div>
 
                 <div className="card-standard accent-cyan">
                   <h4 className="text-cyan-300 font-semibold mb-2">
                     Capture to File
                   </h4>
-                  <pre className="code-block text-xs">
-                    <code className="code-content">
-                      {`ascii-chat mirror -x 120 -y 40 \\
+                  <CodeBlock language="bash">
+                    {`ascii-chat mirror -x 120 -y 40 \\
   --snapshot -D 0 \\
   --strip-ansi > frame.txt`}
-                    </code>
-                  </pre>
+                  </CodeBlock>
                 </div>
 
                 <div className="card-standard accent-cyan">
                   <h4 className="text-cyan-300 font-semibold mb-2">
                     Piped Output
                   </h4>
-                  <pre className="code-block text-xs">
-                    <code className="code-content">
-                      {`COLUMNS=150 ROWS=50 ascii-chat mirror \\
+                  <CodeBlock language="bash">
+                    {`COLUMNS=150 ROWS=50 ascii-chat mirror \\
   --color true \\
   --render-mode half-block | lolcat`}
-                    </code>
-                  </pre>
+                  </CodeBlock>
                 </div>
               </div>
             </div>
@@ -614,13 +581,11 @@ ascii-chat mirror -x 120 -y 40 --color true | tee output.txt`}
               <h3 className="heading-3 text-cyan-300 mb-3">
                 SSH & Remote Sessions
               </h3>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Set TERM before SSH\nexport TERM=xterm-256color\nssh user@host ascii-chat client\n\n# Or in ~/.ssh/config\nHost *\n  SetEnv TERM=xterm-256color\n\n# Force color mode over SSH\nssh user@host ascii-chat client --color-mode 256"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Set TERM before SSH\nexport TERM=xterm-256color\nssh user@host ascii-chat client\n\n# Or in ~/.ssh/config\nHost *\n  SetEnv TERM=xterm-256color\n\n# Force color mode over SSH\nssh user@host ascii-chat client --color-mode 256"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">

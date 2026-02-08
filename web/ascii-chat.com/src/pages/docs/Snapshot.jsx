@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import Footer from "../../components/Footer";
 import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
 import { AsciiChatHead } from "../../components/AsciiChatHead";
+import { CodeBlock } from "@ascii-chat/shared/components";
 
 export default function Snapshot() {
   useEffect(() => {
@@ -39,13 +40,11 @@ export default function Snapshot() {
               <p className="docs-paragraph">
                 Capture one frame from webcam and save as ASCII art:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Capture and display\nascii-chat mirror --snapshot\n\n# Capture and save to file\nascii-chat mirror --snapshot > output.txt"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Capture and display\nascii-chat mirror --snapshot\n\n# Capture and save to file\nascii-chat mirror --snapshot > output.txt"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
@@ -53,13 +52,11 @@ export default function Snapshot() {
               <p className="docs-paragraph">
                 Capture for a specific duration, then exit:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Capture for 5 seconds\nascii-chat mirror --snapshot --snapshot-delay 5\n\n# Capture for specific duration then exit\nascii-chat client example.com --snapshot --snapshot-delay 3"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Capture for 5 seconds\nascii-chat mirror --snapshot --snapshot-delay 5\n\n# Capture for specific duration then exit\nascii-chat client example.com --snapshot --snapshot-delay 3"
+                }
+              </CodeBlock>
             </div>
           </section>
 
@@ -107,26 +104,22 @@ export default function Snapshot() {
               <h3 className="heading-3 text-teal-300 mb-3">
                 Practical Examples
               </h3>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Terminal: displayed with colors and animations\nascii-chat mirror --snapshot\n\n# File: clean ASCII saved to disk\nascii-chat mirror --snapshot > frame.txt\n\n# Pipe: clean ASCII sent downstream\nascii-chat mirror --snapshot | pbcopy\n\n# Viewing piped output\nascii-chat mirror --snapshot | cat -\n\n# Force plain ASCII (no color codes at all)\nascii-chat mirror --snapshot --color-mode mono > plain.txt"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Terminal: displayed with colors and animations\nascii-chat mirror --snapshot\n\n# File: clean ASCII saved to disk\nascii-chat mirror --snapshot > frame.txt\n\n# Pipe: clean ASCII sent downstream\nascii-chat mirror --snapshot | pbcopy\n\n# Viewing piped output\nascii-chat mirror --snapshot | cat -\n\n# Force plain ASCII (no color codes at all)\nascii-chat mirror --snapshot --color-mode mono > plain.txt"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
               <h3 className="heading-3 text-pink-300 mb-3">
                 Clipboard Magic (macOS)
               </h3>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Capture to clipboard\nascii-chat mirror --snapshot | pbcopy\n\n# Display clipboard contents\npbpaste | cat -\n\n# Capture AND display\nascii-chat mirror --snapshot | tee /tmp/frame.txt | pbcopy\n\n# Capture from clipboard, modify, save back\npbpaste > frame.txt\nnvim frame.txt  # Edit in neovim\ncat frame.txt | pbcopy  # Copy modified version back"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Capture to clipboard\nascii-chat mirror --snapshot | pbcopy\n\n# Display clipboard contents\npbpaste | cat -\n\n# Capture AND display\nascii-chat mirror --snapshot | tee /tmp/frame.txt | pbcopy\n\n# Capture from clipboard, modify, save back\npbpaste > frame.txt\nnvim frame.txt  # Edit in neovim\ncat frame.txt | pbcopy  # Copy modified version back"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
@@ -141,13 +134,11 @@ export default function Snapshot() {
                 <code className="text-cyan-300">--color</code> or{" "}
                 <code className="text-cyan-300">--color=true</code>:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Terminal: colors enabled by default\nascii-chat mirror --snapshot\n\n# Piped/redirected: colors disabled by default (clean ASCII)\nascii-chat mirror --snapshot > frame.txt\nascii-chat mirror --snapshot | pbcopy\n\n# Piped/redirected: enable colors explicitly\nascii-chat mirror --snapshot --color > frame_color.txt\nascii-chat mirror --snapshot --color | pbcopy\n\n# Specify color mode (--color-mode auto is the default)\nascii-chat mirror --snapshot --color --color-mode 256 > frame_256.txt\nascii-chat mirror --snapshot --color --color-mode truecolor > frame_true.txt\n\n# Force plain ASCII (no color codes)\nascii-chat mirror --snapshot --color-mode mono > plain.txt"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Terminal: colors enabled by default\nascii-chat mirror --snapshot\n\n# Piped/redirected: colors disabled by default (clean ASCII)\nascii-chat mirror --snapshot > frame.txt\nascii-chat mirror --snapshot | pbcopy\n\n# Piped/redirected: enable colors explicitly\nascii-chat mirror --snapshot --color > frame_color.txt\nascii-chat mirror --snapshot --color | pbcopy\n\n# Specify color mode (--color-mode auto is the default)\nascii-chat mirror --snapshot --color --color-mode 256 > frame_256.txt\nascii-chat mirror --snapshot --color --color-mode truecolor > frame_true.txt\n\n# Force plain ASCII (no color codes)\nascii-chat mirror --snapshot --color-mode mono > plain.txt"
+                }
+              </CodeBlock>
             </div>
           </section>
 
@@ -165,13 +156,11 @@ export default function Snapshot() {
                 Capture the very first frame with no warmup delay (useful for
                 scripting and integration tests):
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Capture immediately\nascii-chat mirror -S -D 0\n\n# To clipboard immediately\nascii-chat mirror -S -D 0 | pbcopy\n\n# Save to file immediately\nascii-chat mirror -S -D 0 > frame.txt"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Capture immediately\nascii-chat mirror -S -D 0\n\n# To clipboard immediately\nascii-chat mirror -S -D 0 | pbcopy\n\n# Save to file immediately\nascii-chat mirror -S -D 0 > frame.txt"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
@@ -180,13 +169,11 @@ export default function Snapshot() {
                 By default, <code className="text-cyan-300">--snapshot</code>{" "}
                 waits 4 seconds to allow webcam adjustment. For faster captures:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# 1 second (quick check)\nascii-chat mirror --snapshot --snapshot-delay 1\n\n# 2 seconds (compromise)\nascii-chat mirror --snapshot --snapshot-delay 2"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# 1 second (quick check)\nascii-chat mirror --snapshot --snapshot-delay 1\n\n# 2 seconds (compromise)\nascii-chat mirror --snapshot --snapshot-delay 2"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
@@ -232,13 +219,11 @@ export default function Snapshot() {
               the current frame):
             </p>
 
-            <pre className="code-block">
-              <code className="code-content">
-                {
-                  '#!/bin/bash\n# Capture ASCII art from YouTube, HTTP(S), and RTMP streams\n\n# === YOUTUBE ===\n# Capture opening frame of a YouTube video\nascii-chat mirror --url "https://youtu.be/7ynHVGCehoM" --snapshot \\\n  --color-mode truecolor > youtube_frame.txt\n\n# Jump to 30 seconds and capture\nascii-chat mirror --url "https://youtu.be/7ynHVGCehoM" \\\n  --seek 30 --snapshot --color-mode truecolor > youtube_30sec.txt\n\n# Jump to 1 minute 45 seconds\nascii-chat mirror --url "https://youtu.be/7ynHVGCehoM" \\\n  --seek 105 --snapshot > youtube_105sec.txt\n\n# Process multiple timestamps from one video\nfor time in 0 30 60 90 120; do\n  ascii-chat mirror --url "https://youtu.be/7ynHVGCehoM" \\\n    --seek $time --snapshot --color-mode mono > "frame_${time}s.txt"\ndone\n\n# === HTTP(S) MEDIA ===\n# Capture from HTTP(S) video file\nascii-chat mirror --url "https://example.com/videos/demo.mp4" \\\n  --seek 60 --snapshot --color > http_video_60s.txt\n\n# === RTMP LIVE STREAMS ===\n# Snapshot current frame from RTMP live stream\nascii-chat mirror --url "rtmp://live.example.com/stream" --snapshot > rtmp_live.txt\n\n# Capture RTMP stream with color\nascii-chat mirror --url "rtmp://live.example.com/app/stream" \\\n  --snapshot --color-mode truecolor > rtmp_colored.txt\n\n# Quick preview to clipboard\nascii-chat mirror --url "https://youtu.be/7ynHVGCehoM" --seek 60 \\\n  --snapshot --color | pbcopy'
-                }
-              </code>
-            </pre>
+            <CodeBlock language="bash">
+              {
+                '#!/bin/bash\n# Capture ASCII art from YouTube, HTTP(S), and RTMP streams\n\n# === YOUTUBE ===\n# Capture opening frame of a YouTube video\nascii-chat mirror --url "https://youtu.be/7ynHVGCehoM" --snapshot \\\n  --color-mode truecolor > youtube_frame.txt\n\n# Jump to 30 seconds and capture\nascii-chat mirror --url "https://youtu.be/7ynHVGCehoM" \\\n  --seek 30 --snapshot --color-mode truecolor > youtube_30sec.txt\n\n# Jump to 1 minute 45 seconds\nascii-chat mirror --url "https://youtu.be/7ynHVGCehoM" \\\n  --seek 105 --snapshot > youtube_105sec.txt\n\n# Process multiple timestamps from one video\nfor time in 0 30 60 90 120; do\n  ascii-chat mirror --url "https://youtu.be/7ynHVGCehoM" \\\n    --seek $time --snapshot --color-mode mono > "frame_${time}s.txt"\ndone\n\n# === HTTP(S) MEDIA ===\n# Capture from HTTP(S) video file\nascii-chat mirror --url "https://example.com/videos/demo.mp4" \\\n  --seek 60 --snapshot --color > http_video_60s.txt\n\n# === RTMP LIVE STREAMS ===\n# Snapshot current frame from RTMP live stream\nascii-chat mirror --url "rtmp://live.example.com/stream" --snapshot > rtmp_live.txt\n\n# Capture RTMP stream with color\nascii-chat mirror --url "rtmp://live.example.com/app/stream" \\\n  --snapshot --color-mode truecolor > rtmp_colored.txt\n\n# Quick preview to clipboard\nascii-chat mirror --url "https://youtu.be/7ynHVGCehoM" --seek 60 \\\n  --snapshot --color | pbcopy'
+              }
+            </CodeBlock>
           </section>
 
           {/* Debugging & Verification */}
@@ -297,26 +282,22 @@ export default function Snapshot() {
               <h3 className="heading-3 text-teal-300 mb-3">
                 Verification Examples
               </h3>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    '# Test local webcam only\nascii-chat mirror -S -D 0\necho "Exit code: $?"  # 0 = success\n\n# Test network connection to server\nascii-chat client example.com -S -D 3\necho "Exit code: $?"  # Verifies: network, crypto, frame transmission\n\n# Test with specific encryption\nascii-chat client example.com --key ~/.ssh/id_ed25519 -S -D 3\necho "Exit code: $?"  # Verifies: key auth, handshake, transmission\n\n# Test ACDS discovery and WebRTC\nascii-chat my-session-string -S -D 5\necho "Exit code: $?"  # Verifies: ACDS lookup, NAT traversal, P2P connection'
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  '# Test local webcam only\nascii-chat mirror -S -D 0\necho "Exit code: $?"  # 0 = success\n\n# Test network connection to server\nascii-chat client example.com -S -D 3\necho "Exit code: $?"  # Verifies: network, crypto, frame transmission\n\n# Test with specific encryption\nascii-chat client example.com --key ~/.ssh/id_ed25519 -S -D 3\necho "Exit code: $?"  # Verifies: key auth, handshake, transmission\n\n# Test ACDS discovery and WebRTC\nascii-chat my-session-string -S -D 5\necho "Exit code: $?"  # Verifies: ACDS lookup, NAT traversal, P2P connection'
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
               <h3 className="heading-3 text-cyan-300 mb-3">
                 Exit Codes for Scripting
               </h3>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    '# Check if snapshot succeeded\nif ascii-chat mirror -S -D 1 > /dev/null 2>&1; then\n  echo "✓ Webcam working"\nelse\n  echo "✗ Webcam failed (exit code: $?)"\nfi\n\n# Verify server connection\nif ascii-chat client example.com:8080 -S -D 3 > /tmp/frame.txt 2>&1; then\n  echo "✓ Connected to server and received frame"\n  cat /tmp/frame.txt | head -20  # Show first 20 lines\nelse\n  echo "✗ Server connection failed (exit code: $?)"\nfi\n\n# Retry logic\nfor attempt in {1..3}; do\n  echo "Attempt $attempt..."\n  if ascii-chat client example.com -S -D 2; then\n    echo "Success!"\n    break\n  fi\n  echo "Failed, retrying..."\n  sleep 2\ndone'
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  '# Check if snapshot succeeded\nif ascii-chat mirror -S -D 1 > /dev/null 2>&1; then\n  echo "✓ Webcam working"\nelse\n  echo "✗ Webcam failed (exit code: $?)"\nfi\n\n# Verify server connection\nif ascii-chat client example.com:8080 -S -D 3 > /tmp/frame.txt 2>&1; then\n  echo "✓ Connected to server and received frame"\n  cat /tmp/frame.txt | head -20  # Show first 20 lines\nelse\n  echo "✗ Server connection failed (exit code: $?)"\nfi\n\n# Retry logic\nfor attempt in {1..3}; do\n  echo "Attempt $attempt..."\n  if ascii-chat client example.com -S -D 2; then\n    echo "Success!"\n    break\n  fi\n  echo "Failed, retrying..."\n  sleep 2\ndone'
+                }
+              </CodeBlock>
             </div>
           </section>
 
@@ -406,39 +387,33 @@ export default function Snapshot() {
               <h3 className="heading-3 text-green-300 mb-3">
                 Batch Processing Images
               </h3>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    '# Convert all images in directory\nfor img in *.jpg; do\n  echo "Converting $img..."\n  ascii-chat mirror --file "$img" --snapshot > "ascii_${img}.txt"\ndone\n\n# Convert with specific palette and dimensions\nfor img in *.png; do\n  ascii-chat mirror --file "$img" --snapshot \\\n    --palette blocks --width 100 --height 50 \\\n    > "ascii_${img}.txt"\ndone'
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  '# Convert all images in directory\nfor img in *.jpg; do\n  echo "Converting $img..."\n  ascii-chat mirror --file "$img" --snapshot > "ascii_${img}.txt"\ndone\n\n# Convert with specific palette and dimensions\nfor img in *.png; do\n  ascii-chat mirror --file "$img" --snapshot \\\n    --palette blocks --width 100 --height 50 \\\n    > "ascii_${img}.txt"\ndone'
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
               <h3 className="heading-3 text-cyan-300 mb-3">
                 Integration Testing
               </h3>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    '#!/bin/bash\n# Integration test: verify entire stack works\n\necho "Testing webcam..."\nif ! ascii-chat mirror -S -D 2 > /tmp/local.txt 2>&1; then\n  echo "✗ Webcam test failed"\n  exit 1\nfi\necho "✓ Webcam working"\n\necho "Testing server connection..."\nif ! ascii-chat client example.com -S -D 3 > /tmp/remote.txt 2>&1; then\n  echo "✗ Network test failed"\n  exit 1\nfi\necho "✓ Network connection working"\n\necho "Testing encrypted connection..."\nif ! ascii-chat client example.com --key ~/.ssh/id_ed25519 -S -D 3 > /tmp/encrypted.txt 2>&1; then\n  echo "✗ Encryption test failed"\n  exit 1\nfi\necho "✓ Encryption working"\n\necho "All tests passed!"\nexit 0'
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  '#!/bin/bash\n# Integration test: verify entire stack works\n\necho "Testing webcam..."\nif ! ascii-chat mirror -S -D 2 > /tmp/local.txt 2>&1; then\n  echo "✗ Webcam test failed"\n  exit 1\nfi\necho "✓ Webcam working"\n\necho "Testing server connection..."\nif ! ascii-chat client example.com -S -D 3 > /tmp/remote.txt 2>&1; then\n  echo "✗ Network test failed"\n  exit 1\nfi\necho "✓ Network connection working"\n\necho "Testing encrypted connection..."\nif ! ascii-chat client example.com --key ~/.ssh/id_ed25519 -S -D 3 > /tmp/encrypted.txt 2>&1; then\n  echo "✗ Encryption test failed"\n  exit 1\nfi\necho "✓ Encryption working"\n\necho "All tests passed!"\nexit 0'
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
               <h3 className="heading-3 text-teal-300 mb-3">
                 Video Frame Extraction
               </h3>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    '#!/bin/bash\n# Extract frames from video at intervals\n\nVIDEO="$1"\nFRAMES_PER_SECOND=1\n\nif [ ! -f "$VIDEO" ]; then\n  echo "Usage: $0 <video-file>"\n  exit 1\nfi\n\nmkdir -p frames\n\n# Get video duration\nDURATION=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1:nk=1 "$VIDEO")\nFRAMES=$(echo "$DURATION * $FRAMES_PER_SECOND" | bc)\n\necho "Extracting ~$FRAMES frames from $VIDEO"\n\nfor i in $(seq 0 $((1/$FRAMES_PER_SECOND)) $(echo "$DURATION - 1" | bc)); do\n  TIME=$(printf "%02d:%02d:%06.3f" $((${i%.*}/60/60)) $(((${i%.*}/60)%60)) $(bc -l <<< "$i - int($i) + int($i)"))\n  ascii-chat mirror --file "$VIDEO" --seek "$i" -S -D 1 \\\n    --color-mode mono --palette minimal > "frames/frame_$(printf "%06d" $i).txt"\ndone\n\necho "Frames saved to frames/ directory"'
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  '#!/bin/bash\n# Extract frames from video at intervals\n\nVIDEO="$1"\nFRAMES_PER_SECOND=1\n\nif [ ! -f "$VIDEO" ]; then\n  echo "Usage: $0 <video-file>"\n  exit 1\nfi\n\nmkdir -p frames\n\n# Get video duration\nDURATION=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1:nk=1 "$VIDEO")\nFRAMES=$(echo "$DURATION * $FRAMES_PER_SECOND" | bc)\n\necho "Extracting ~$FRAMES frames from $VIDEO"\n\nfor i in $(seq 0 $((1/$FRAMES_PER_SECOND)) $(echo "$DURATION - 1" | bc)); do\n  TIME=$(printf "%02d:%02d:%06.3f" $((${i%.*}/60/60)) $(((${i%.*}/60)%60)) $(bc -l <<< "$i - int($i) + int($i)"))\n  ascii-chat mirror --file "$VIDEO" --seek "$i" -S -D 1 \\\n    --color-mode mono --palette minimal > "frames/frame_$(printf "%06d" $i).txt"\ndone\n\necho "Frames saved to frames/ directory"'
+                }
+              </CodeBlock>
             </div>
           </section>
 

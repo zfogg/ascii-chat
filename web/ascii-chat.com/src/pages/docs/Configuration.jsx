@@ -3,6 +3,7 @@ import Footer from "../../components/Footer";
 import TrackedLink from "../../components/TrackedLink";
 import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
 import { AsciiChatHead } from "../../components/AsciiChatHead";
+import { CodeBlock } from "@ascii-chat/shared/components";
 
 export default function Configuration() {
   useEffect(() => {
@@ -139,13 +140,11 @@ export default function Configuration() {
               <p className="text-gray-400 text-sm mb-3">
                 Searched in order (first found is used, remaining are skipped):
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "$XDG_CONFIG_HOME/ascii-chat/config.toml      (if XDG_CONFIG_HOME set)\n~/.config/ascii-chat/config.toml              (XDG Base Directory standard)\n/opt/homebrew/etc/ascii-chat/config.toml      (Homebrew - macOS)\n/usr/local/etc/ascii-chat/config.toml         (Unix local)\n/etc/ascii-chat/config.toml                   (system-wide)"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "$XDG_CONFIG_HOME/ascii-chat/config.toml      (if XDG_CONFIG_HOME set)\n~/.config/ascii-chat/config.toml              (XDG Base Directory standard)\n/opt/homebrew/etc/ascii-chat/config.toml      (Homebrew - macOS)\n/usr/local/etc/ascii-chat/config.toml         (Unix local)\n/etc/ascii-chat/config.toml                   (system-wide)"
+                }
+              </CodeBlock>
               <div className="info-box-info mt-3">
                 <p className="text-gray-300 text-sm">
                   <strong>Tip:</strong> If{" "}
@@ -159,13 +158,11 @@ export default function Configuration() {
             <div className="docs-subsection-spacing">
               <h3 className="heading-3 text-pink-300 mb-4">Windows</h3>
               <p className="text-gray-400 text-sm mb-3">Searched in order:</p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "%APPDATA%\\ascii-chat\\config.toml           (user config)\n%PROGRAMDATA%\\ascii-chat\\config.toml       (system-wide)\n%USERPROFILE%\\.ascii-chat\\config.toml      (legacy fallback)"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "%APPDATA%\\ascii-chat\\config.toml           (user config)\n%PROGRAMDATA%\\ascii-chat\\config.toml       (system-wide)\n%USERPROFILE%\\.ascii-chat\\config.toml      (legacy fallback)"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
@@ -175,13 +172,11 @@ export default function Configuration() {
               <p className="text-gray-400 text-sm mb-3">
                 Generate a template config file with all options commented out:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Creates config in standard location\nascii-chat --config-create\n\n# Or specify custom path\nascii-chat --config-create ~/.config/ascii-chat/custom.toml"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Creates config in standard location\nascii-chat --config-create\n\n# Or specify custom path\nascii-chat --config-create ~/.config/ascii-chat/custom.toml"
+                }
+              </CodeBlock>
             </div>
           </section>
 
@@ -300,8 +295,7 @@ export default function Configuration() {
               <p className="text-gray-400 text-sm mb-3">
                 This example demonstrates all major configuration sections:
               </p>
-              <pre className="code-block">
-                <code className="code-content">{`# ===== NETWORK =====
+              <CodeBlock language="bash">{`# ===== NETWORK =====
 [network]
 port = 27224
 
@@ -342,8 +336,7 @@ server_key = "~/.ssh/server_key.pub"
 
 # ===== LOGGING =====
 [logging]
-log_file = "/tmp/ascii-chat.log"`}</code>
-              </pre>
+log_file = "/tmp/ascii-chat.log"`}</CodeBlock>
             </div>
 
             <p className="docs-paragraph text-sm mt-4 text-gray-400">
@@ -453,8 +446,7 @@ log_file = "/tmp/ascii-chat.log"`}</code>
                   <h4 className="text-pink-300 font-semibold mb-2">
                     Example: Override Chain in Action
                   </h4>
-                  <pre className="code-block text-sm">
-                    <code className="code-content">{`# config.toml:
+                  <CodeBlock language="bash">{`# config.toml:
 [network]
 port = 8080
 
@@ -474,8 +466,7 @@ $ ascii-chat client --port 8888
 port = 8888            # from --port CLI flag (HIGHEST priority)
 width = 120            # from ASCII_CHAT_WIDTH env var (overrides config)
 color_mode = truecolor # from ASCII_CHAT_COLOR_MODE env var (overrides config)
-`}</code>
-                  </pre>
+`}</CodeBlock>
                 </div>
               </div>
             </div>
@@ -492,11 +483,9 @@ color_mode = truecolor # from ASCII_CHAT_COLOR_MODE env var (overrides config)
                   <p className="text-gray-400 text-sm mb-2">
                     Specifies config directory location (Linux/macOS)
                   </p>
-                  <pre className="code-block text-xs">
-                    <code className="code-content">
-                      export XDG_CONFIG_HOME=~/.config
-                    </code>
-                  </pre>
+                  <CodeBlock language="bash">
+                    export XDG_CONFIG_HOME=~/.config
+                  </CodeBlock>
                 </div>
                 <div className="card-standard accent-teal">
                   <h4 className="text-teal-300 font-semibold mb-1">
@@ -681,21 +670,17 @@ color_mode = truecolor # from ASCII_CHAT_COLOR_MODE env var (overrides config)
               <p className="text-gray-400 text-sm mb-3">
                 View ascii-chat documentation in your terminal:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {`man ascii-chat    # Command reference (section 1)
+              <CodeBlock language="bash">
+                {`man ascii-chat    # Command reference (section 1)
 man 5 ascii-chat  # File formats (section 5)`}
-                </code>
-              </pre>
+              </CodeBlock>
               <p className="text-gray-400 text-sm mt-3 mb-3">
                 Or view them on the web:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {`open https://ascii-chat.com/man1  # Command reference
+              <CodeBlock language="bash">
+                {`open https://ascii-chat.com/man1  # Command reference
 open https://ascii-chat.com/man5  # File formats`}
-                </code>
-              </pre>
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
@@ -719,18 +704,14 @@ open https://ascii-chat.com/man5  # File formats`}
                   If you installed ascii-chat via Homebrew, add the man page
                   directory to your shell profile:
                 </p>
-                <pre className="code-block">
-                  <code className="code-content">{`# Add to ~/.zshrc or ~/.bashrc
-export MANPATH="$(brew --prefix)/share/man:$MANPATH"`}</code>
-                </pre>
+                <CodeBlock language="bash">{`# Add to ~/.zshrc or ~/.bashrc
+export MANPATH="$(brew --prefix)/share/man:$MANPATH"`}</CodeBlock>
                 <p className="text-gray-400 text-sm mt-2 mb-3">
                   Then reload your shell:
                 </p>
-                <pre className="code-block">
-                  <code className="code-content">
-                    source ~/.zshrc # or source ~/.bashrc
-                  </code>
-                </pre>
+                <CodeBlock language="bash">
+                  source ~/.zshrc # or source ~/.bashrc
+                </CodeBlock>
               </div>
 
               <div className="docs-subsection-spacing">
@@ -745,9 +726,7 @@ export MANPATH="$(brew --prefix)/share/man:$MANPATH"`}</code>
                 <p className="text-gray-400 text-sm">
                   If not, add to your shell profile:
                 </p>
-                <pre className="code-block">
-                  <code className="code-content">{`export MANPATH="/usr/local/share/man:$MANPATH"`}</code>
-                </pre>
+                <CodeBlock language="bash">{`export MANPATH="/usr/local/share/man:$MANPATH"`}</CodeBlock>
               </div>
             </div>
 
@@ -758,15 +737,11 @@ export MANPATH="$(brew --prefix)/share/man:$MANPATH"`}</code>
               <p className="text-gray-400 text-sm mb-3">
                 Generate the man page from the binary:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {"ascii-chat --man-page-create > /tmp/ascii-chat.1"}
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {"ascii-chat --man-page-create > /tmp/ascii-chat.1"}
+              </CodeBlock>
               <p className="text-gray-400 text-sm mt-3">Then view it with:</p>
-              <pre className="code-block">
-                <code className="code-content">man /tmp/ascii-chat.1</code>
-              </pre>
+              <CodeBlock language="bash">man /tmp/ascii-chat.1</CodeBlock>
             </div>
 
             <div className="info-box-info mt-4">
@@ -785,13 +760,11 @@ export MANPATH="$(brew --prefix)/share/man:$MANPATH"`}</code>
             <p className="docs-paragraph">
               Generate shell completions for bash, fish, or zsh:
             </p>
-            <pre className="code-block">
-              <code className="code-content">
-                {
-                  "ascii-chat --completions bash > ~/.bash_completion.d/ascii-chat\nascii-chat --completions fish > ~/.config/fish/completions/ascii-chat.fish\nascii-chat --completions zsh > ~/.zfunc/_ascii-chat"
-                }
-              </code>
-            </pre>
+            <CodeBlock language="bash">
+              {
+                "ascii-chat --completions bash > ~/.bash_completion.d/ascii-chat\nascii-chat --completions fish > ~/.config/fish/completions/ascii-chat.fish\nascii-chat --completions zsh > ~/.zfunc/_ascii-chat"
+              }
+            </CodeBlock>
           </section>
 
           <Footer />

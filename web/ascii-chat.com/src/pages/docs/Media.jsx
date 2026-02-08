@@ -3,6 +3,7 @@ import Footer from "../../components/Footer";
 import TrackedLink from "../../components/TrackedLink";
 import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
 import { AsciiChatHead } from "../../components/AsciiChatHead";
+import { CodeBlock } from "@ascii-chat/shared/components";
 
 export default function Media() {
   useEffect(() => {
@@ -103,13 +104,11 @@ export default function Media() {
                 Stream any video format from disk to ASCII art. Supports MP4,
                 MKV, MOV, WebM, AVI, FLV, and more:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# MP4 video\nascii-chat mirror --file video.mp4\n\n# Matroska container (MKV)\nascii-chat mirror --file movie.mkv\n\n# Apple QuickTime (MOV)\nascii-chat mirror --file clip.mov\n\n# WebM format\nascii-chat mirror --file presentation.webm\n\n# AVI container\nascii-chat mirror --file oldvideo.avi\n\n# Custom playback settings\nascii-chat mirror --file video.mp4 --fps 30 --width 160 --height 40\n\n# Block characters (simpler, more artistic)\nascii-chat mirror --file video.mp4 --palette blocks\n\n# Loop playback with audio\nascii-chat mirror --file movie.mp4 --loop --audio"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# MP4 video\nascii-chat mirror --file video.mp4\n\n# Matroska container (MKV)\nascii-chat mirror --file movie.mkv\n\n# Apple QuickTime (MOV)\nascii-chat mirror --file clip.mov\n\n# WebM format\nascii-chat mirror --file presentation.webm\n\n# AVI container\nascii-chat mirror --file oldvideo.avi\n\n# Custom playback settings\nascii-chat mirror --file video.mp4 --fps 30 --width 160 --height 40\n\n# Block characters (simpler, more artistic)\nascii-chat mirror --file video.mp4 --palette blocks\n\n# Loop playback with audio\nascii-chat mirror --file movie.mp4 --loop --audio"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
@@ -118,13 +117,11 @@ export default function Media() {
                 Play animated GIF files directly with full control over
                 playback:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Basic GIF playback (preserves original animation speed)\nascii-chat mirror --file animation.gif\n\n# GIF with custom frame rate (override timing)\nascii-chat mirror --file animation.gif --fps 24\n\n# Larger GIF display\nascii-chat mirror --file animation.gif --width 160 --height 40\n\n# Loop continuously\nascii-chat mirror --file animation.gif --loop\n\n# Block-style rendering for artistic effect\nascii-chat mirror --file animation.gif --palette blocks\n\n# With truecolor for quality\nascii-chat mirror --file animation.gif --color-mode truecolor"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Basic GIF playback (preserves original animation speed)\nascii-chat mirror --file animation.gif\n\n# GIF with custom frame rate (override timing)\nascii-chat mirror --file animation.gif --fps 24\n\n# Larger GIF display\nascii-chat mirror --file animation.gif --width 160 --height 40\n\n# Loop continuously\nascii-chat mirror --file animation.gif --loop\n\n# Block-style rendering for artistic effect\nascii-chat mirror --file animation.gif --palette blocks\n\n# With truecolor for quality\nascii-chat mirror --file animation.gif --color-mode truecolor"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
@@ -133,13 +130,11 @@ export default function Media() {
                 Display and process individual images. Supports PNG, JPEG, WebP,
                 BMP, TIFF, and more:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# PNG images\nascii-chat mirror --file photo.png\n\n# JPEG images\nascii-chat mirror --file picture.jpg\n\n# WebP format\nascii-chat mirror --file image.webp\n\n# Bitmap format (BMP)\nascii-chat mirror --file bitmap.bmp\n\n# TIFF format\nascii-chat mirror --file scan.tiff\n\n# With custom dimensions\nascii-chat mirror --file image.png --width 140 --height 35\n\n# With truecolor for best quality\nascii-chat mirror --file photo.jpg --color-mode truecolor\n\n# Block-style rendering\nascii-chat mirror --file artwork.png --palette blocks"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# PNG images\nascii-chat mirror --file photo.png\n\n# JPEG images\nascii-chat mirror --file picture.jpg\n\n# WebP format\nascii-chat mirror --file image.webp\n\n# Bitmap format (BMP)\nascii-chat mirror --file bitmap.bmp\n\n# TIFF format\nascii-chat mirror --file scan.tiff\n\n# With custom dimensions\nascii-chat mirror --file image.png --width 140 --height 35\n\n# With truecolor for best quality\nascii-chat mirror --file photo.jpg --color-mode truecolor\n\n# Block-style rendering\nascii-chat mirror --file artwork.png --palette blocks"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
@@ -150,13 +145,11 @@ export default function Media() {
                 Jump to specific timestamps in videos, audio, and streaming URLs
                 using seconds:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Seek to 30 seconds into video\nascii-chat mirror --file video.mp4 --seek 30\n\n# Seek to 2 minutes 30 seconds (150 seconds total)\nascii-chat mirror --file movie.mkv --seek 150\n\n# Seek in YouTube video\nascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM' --seek 120\n\n# Seek in live HLS stream\nascii-chat mirror --url 'https://stream.example.com/live.m3u8' --seek 0\n\n# Seek and take snapshot\nascii-chat mirror --file video.mp4 --seek 45 --snapshot > frame.txt\n\n# Seek with RTMP stream\nascii-chat mirror --url 'rtmp://live.example.com/app/stream' --seek 30"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Seek to 30 seconds into video\nascii-chat mirror --file video.mp4 --seek 30\n\n# Seek to 2 minutes 30 seconds (150 seconds total)\nascii-chat mirror --file movie.mkv --seek 150\n\n# Seek in YouTube video\nascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM' --seek 120\n\n# Seek in live HLS stream\nascii-chat mirror --url 'https://stream.example.com/live.m3u8' --seek 0\n\n# Seek and take snapshot\nascii-chat mirror --file video.mp4 --seek 45 --snapshot > frame.txt\n\n# Seek with RTMP stream\nascii-chat mirror --url 'rtmp://live.example.com/app/stream' --seek 30"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
@@ -165,13 +158,11 @@ export default function Media() {
                 Stream from HTTP/HTTPS, YouTube, and RTMP sources directly
                 without downloading:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# HTTP/HTTPS media file\nascii-chat mirror --url 'https://example.com/video.mp4'\n\n# YouTube video (requires yt-dlp)\nascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM' --audio\n\n# YouTube with truecolor quality\nascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM' \\\n  --color-mode truecolor\n\n# HLS Live Stream\nascii-chat mirror --url 'https://stream.example.com/live.m3u8'\n\n# RTMP Stream\nascii-chat mirror --url 'rtmp://live.example.com/app/stream'\n\n# DASH Manifest\nascii-chat mirror --url 'https://stream.example.com/manifest.mpd'\n\n# Remote file with seek and snapshot\nascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM' \\\n  --seek 60 --snapshot --color-mode truecolor > frame.txt"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# HTTP/HTTPS media file\nascii-chat mirror --url 'https://example.com/video.mp4'\n\n# YouTube video (requires yt-dlp)\nascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM' --audio\n\n# YouTube with truecolor quality\nascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM' \\\n  --color-mode truecolor\n\n# HLS Live Stream\nascii-chat mirror --url 'https://stream.example.com/live.m3u8'\n\n# RTMP Stream\nascii-chat mirror --url 'rtmp://live.example.com/app/stream'\n\n# DASH Manifest\nascii-chat mirror --url 'https://stream.example.com/manifest.mpd'\n\n# Remote file with seek and snapshot\nascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM' \\\n  --seek 60 --snapshot --color-mode truecolor > frame.txt"
+                }
+              </CodeBlock>
             </div>
           </section>
 
@@ -190,39 +181,33 @@ export default function Media() {
               <h3 className="heading-3 text-blue-300 mb-3">
                 Server: Stream Local File
               </h3>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Server: Mirror local file to all connected clients\nascii-chat server --file movie.mp4\n\n# Server: With custom settings\nascii-chat server --file movie.mp4 --fps 30 --width 160 --audio\n\n# Server: On specific port with password\nascii-chat server --file movie.mp4 --port 8080 --password 'watch123'\n\n# Server: Register with ACDS (memorable session string)\nascii-chat server --file movie.mp4 --acds --password 'watch123'\n\n# Server: Stream file repeatedly\nascii-chat server --file movie.mp4 --loop --acds"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Server: Mirror local file to all connected clients\nascii-chat server --file movie.mp4\n\n# Server: With custom settings\nascii-chat server --file movie.mp4 --fps 30 --width 160 --audio\n\n# Server: On specific port with password\nascii-chat server --file movie.mp4 --port 8080 --password 'watch123'\n\n# Server: Register with ACDS (memorable session string)\nascii-chat server --file movie.mp4 --acds --password 'watch123'\n\n# Server: Stream file repeatedly\nascii-chat server --file movie.mp4 --loop --acds"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
               <h3 className="heading-3 text-cyan-300 mb-3">
                 Server: Stream Remote URL
               </h3>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Server: Stream YouTube to all clients\nascii-chat server --url 'https://youtu.be/7ynHVGCehoM' --acds\n\n# Server: Stream live HLS broadcast\nascii-chat server --url 'https://stream.example.com/live.m3u8' \\\n  --fps 15 --acds --password 'live123'\n\n# Server: Stream with high quality\nascii-chat server --url 'https://example.com/video.mp4' \\\n  --color-mode truecolor --acds"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Server: Stream YouTube to all clients\nascii-chat server --url 'https://youtu.be/7ynHVGCehoM' --acds\n\n# Server: Stream live HLS broadcast\nascii-chat server --url 'https://stream.example.com/live.m3u8' \\\n  --fps 15 --acds --password 'live123'\n\n# Server: Stream with high quality\nascii-chat server --url 'https://example.com/video.mp4' \\\n  --color-mode truecolor --acds"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
               <h3 className="heading-3 text-green-300 mb-3">
                 Client: Watch Broadcast
               </h3>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Connect to local broadcast via IP\nascii-chat client 192.168.1.50:27224\n\n# Connect with password\nascii-chat client --password 'watch123' 192.168.1.50\n\n# Join via ACDS session string\nascii-chat --password 'watch123' happy-movie-night\n\n# Adjust for slow network\nascii-chat --fps 15 --color-mode mono happy-movie-night\n\n# Save broadcast to file\nascii-chat --snapshot happy-movie-night > recording.txt"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Connect to local broadcast via IP\nascii-chat client 192.168.1.50:27224\n\n# Connect with password\nascii-chat client --password 'watch123' 192.168.1.50\n\n# Join via ACDS session string\nascii-chat --password 'watch123' happy-movie-night\n\n# Adjust for slow network\nascii-chat --fps 15 --color-mode mono happy-movie-night\n\n# Save broadcast to file\nascii-chat --snapshot happy-movie-night > recording.txt"
+                }
+              </CodeBlock>
             </div>
           </section>
 
@@ -240,13 +225,11 @@ export default function Media() {
                 Stream remote video files via HTTP/HTTPS. No local download
                 needed, streams directly from URL:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Stream remote MP4\nascii-chat mirror --url https://example.com/video.mp4\n\n# Stream with specific dimensions\nascii-chat mirror --url https://cdn.example.com/large_video.mp4 \\\n  --width 200 --height 50\n\n# Stream with frame rate control\nascii-chat mirror --url https://example.com/video.mov --fps 24\n\n# Progressive download (resume friendly)\nascii-chat mirror --url https://example.com/recording.webm"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Stream remote MP4\nascii-chat mirror --url https://example.com/video.mp4\n\n# Stream with specific dimensions\nascii-chat mirror --url https://cdn.example.com/large_video.mp4 \\\n  --width 200 --height 50\n\n# Stream with frame rate control\nascii-chat mirror --url https://example.com/video.mov --fps 24\n\n# Progressive download (resume friendly)\nascii-chat mirror --url https://example.com/recording.webm"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
@@ -255,13 +238,11 @@ export default function Media() {
                 Stream YouTube videos directly to terminal as ASCII art
                 (requires yt-dlp):
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Basic YouTube streaming\nascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM'\n\n# With truecolor for best quality\nascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM' \\\n  --color-mode truecolor\n\n# With audio passthrough\nascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM' --audio\n\n# Jump to specific timestamp (in seconds)\nascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM' --seek 120\n\n# Lower resolution for slow networks\nascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM' \\\n  --width 80 --height 24 --fps 15 --color-mode 16\n\n# Snapshot at specific time\nascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM' \\\n  --seek 60 --snapshot --snapshot-delay 0 --color-mode truecolor > frame.txt"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Basic YouTube streaming\nascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM'\n\n# With truecolor for best quality\nascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM' \\\n  --color-mode truecolor\n\n# With audio passthrough\nascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM' --audio\n\n# Jump to specific timestamp (in seconds)\nascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM' --seek 120\n\n# Lower resolution for slow networks\nascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM' \\\n  --width 80 --height 24 --fps 15 --color-mode 16\n\n# Snapshot at specific time\nascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM' \\\n  --seek 60 --snapshot --snapshot-delay 0 --color-mode truecolor > frame.txt"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
@@ -269,13 +250,11 @@ export default function Media() {
               <p className="docs-paragraph">
                 Stream from HLS, DASH, RTMP, and other live protocols:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# HLS Live Stream\nascii-chat mirror --url 'https://stream.example.com/live.m3u8'\n\n# DASH Manifest\nascii-chat mirror --url 'https://stream.example.com/manifest.mpd'\n\n# RTMP Stream\nascii-chat mirror --url 'rtmp://live.example.com/app/stream'\n\n# RTMP with stream key\nascii-chat mirror --url 'rtmp://broadcaster.example.com/live/mykey'"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# HLS Live Stream\nascii-chat mirror --url 'https://stream.example.com/live.m3u8'\n\n# DASH Manifest\nascii-chat mirror --url 'https://stream.example.com/manifest.mpd'\n\n# RTMP Stream\nascii-chat mirror --url 'rtmp://live.example.com/app/stream'\n\n# RTMP with stream key\nascii-chat mirror --url 'rtmp://broadcaster.example.com/live/mykey'"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
@@ -293,13 +272,11 @@ export default function Media() {
                 </TrackedLink>
                 , live streams):
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Skip to 1 minute\nascii-chat mirror --url 'https://youtu.be/VIDEO_ID' --seek 60\n\n# Jump to 1 minute 45 seconds\nascii-chat mirror --url 'https://youtu.be/VIDEO_ID' --seek 105\n\n# Snapshot at specific time\nascii-chat mirror --url 'https://youtu.be/VIDEO_ID' --seek 30 --snapshot --snapshot-delay 0"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Skip to 1 minute\nascii-chat mirror --url 'https://youtu.be/VIDEO_ID' --seek 60\n\n# Jump to 1 minute 45 seconds\nascii-chat mirror --url 'https://youtu.be/VIDEO_ID' --seek 105\n\n# Snapshot at specific time\nascii-chat mirror --url 'https://youtu.be/VIDEO_ID' --seek 30 --snapshot --snapshot-delay 0"
+                }
+              </CodeBlock>
             </div>
           </section>
 
@@ -317,13 +294,11 @@ export default function Media() {
 
             <div className="docs-subsection-spacing">
               <h3 className="heading-3 text-pink-300 mb-3">Webcam Streaming</h3>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Linux: V4L2 webcam (direct piping)\nffmpeg -f v4l2 -i /dev/video0 \\\n  -vf 'format=rgb24,scale=160:40' -f rawvideo - | \\\n  ascii-chat mirror -f '-' --width 160 --height 40 --fps 30\n\n# Windows: DirectShow (built-in camera)\nffmpeg -f dshow -i video='Built-in Camera' \\\n  -vf 'format=rgb24,scale=160:40' -f rawvideo - | \\\n  ascii-chat mirror -f '-'"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Linux: V4L2 webcam (direct piping)\nffmpeg -f v4l2 -i /dev/video0 \\\n  -vf 'format=rgb24,scale=160:40' -f rawvideo - | \\\n  ascii-chat mirror -f '-' --width 160 --height 40 --fps 30\n\n# Windows: DirectShow (built-in camera)\nffmpeg -f dshow -i video='Built-in Camera' \\\n  -vf 'format=rgb24,scale=160:40' -f rawvideo - | \\\n  ascii-chat mirror -f '-'"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
@@ -333,65 +308,55 @@ export default function Media() {
               <p className="docs-paragraph">
                 Stream your entire screen or specific window:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Linux: Full screen capture (X11)\nffmpeg -f x11grab -i :0 \\\n  -vf 'format=rgb24,scale=200:50' \\\n  -f rawvideo - | ascii-chat mirror -f '-'\n\n# Linux: Specific window (wayland)\nffmpeg -f gdigrab -i desktop \\\n  -vf 'format=rgb24,scale=160:40' \\\n  -f rawvideo - | ascii-chat mirror -f '-'\n\n# Specific region (crop)\nffmpeg -f x11grab -i :0.0+100,100 \\\n  -vf 'format=rgb24,scale=160:40' \\\n  -f rawvideo - | ascii-chat mirror -f '-'"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Linux: Full screen capture (X11)\nffmpeg -f x11grab -i :0 \\\n  -vf 'format=rgb24,scale=200:50' \\\n  -f rawvideo - | ascii-chat mirror -f '-'\n\n# Linux: Specific window (wayland)\nffmpeg -f gdigrab -i desktop \\\n  -vf 'format=rgb24,scale=160:40' \\\n  -f rawvideo - | ascii-chat mirror -f '-'\n\n# Specific region (crop)\nffmpeg -f x11grab -i :0.0+100,100 \\\n  -vf 'format=rgb24,scale=160:40' \\\n  -f rawvideo - | ascii-chat mirror -f '-'"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
               <h3 className="heading-3 text-teal-300 mb-3">
                 Format Conversion & Streaming
               </h3>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Convert video and stream\nffmpeg -i input.mov -pix_fmt rgb24 -f rawvideo - | \\\n  ascii-chat mirror -f '-' --width 160 --height 40\n\n# Slow down video for ASCII processing\nffmpeg -i video.mp4 -vf 'setpts=2*PTS' -pix_fmt rgb24 \\\n  -f rawvideo - | ascii-chat mirror -f '-' --fps 15\n\n# Speed up video\nffmpeg -i video.mp4 -vf 'setpts=0.5*PTS' -pix_fmt rgb24 \\\n  -f rawvideo - | ascii-chat mirror -f '-' --fps 60"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Convert video and stream\nffmpeg -i input.mov -pix_fmt rgb24 -f rawvideo - | \\\n  ascii-chat mirror -f '-' --width 160 --height 40\n\n# Slow down video for ASCII processing\nffmpeg -i video.mp4 -vf 'setpts=2*PTS' -pix_fmt rgb24 \\\n  -f rawvideo - | ascii-chat mirror -f '-' --fps 15\n\n# Speed up video\nffmpeg -i video.mp4 -vf 'setpts=0.5*PTS' -pix_fmt rgb24 \\\n  -f rawvideo - | ascii-chat mirror -f '-' --fps 60"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
               <h3 className="heading-3 text-indigo-300 mb-3">
                 Images via Stdin
               </h3>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Convert image to RGB24 and pipe\nffmpeg -i image.png -pix_fmt rgb24 -f rawvideo - | \\\n  ascii-chat mirror -f '-'\n\n# Multiple images with ffmpeg\nffmpeg -i photo1.jpg -i photo2.jpg -pix_fmt rgb24 -f rawvideo - | \\\n  ascii-chat mirror -f '-'"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Convert image to RGB24 and pipe\nffmpeg -i image.png -pix_fmt rgb24 -f rawvideo - | \\\n  ascii-chat mirror -f '-'\n\n# Multiple images with ffmpeg\nffmpeg -i photo1.jpg -i photo2.jpg -pix_fmt rgb24 -f rawvideo - | \\\n  ascii-chat mirror -f '-'"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
               <h3 className="heading-3 text-pink-300 mb-3">
                 Processing & Effects
               </h3>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Add watermark or overlay\nffmpeg -i video.mp4 -i watermark.png \\\n  -filter_complex 'overlay=10:10' \\\n  -pix_fmt rgb24 -f rawvideo - | ascii-chat mirror -f '-'\n\n# Rotate video\nffmpeg -i video.mp4 -vf 'rotate=90,scale=160:40,format=rgb24' \\\n  -f rawvideo - | ascii-chat mirror -f '-'\n\n# Mirror/flip horizontally\nffmpeg -i video.mp4 -vf 'hflip,scale=160:40,format=rgb24' \\\n  -f rawvideo - | ascii-chat mirror -f '-'\n\n# Extract frames every 2 seconds\nffmpeg -i video.mp4 -vf 'fps=0.5,scale=160:40,format=rgb24' \\\n  -f rawvideo - | ascii-chat mirror -f '-'"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Add watermark or overlay\nffmpeg -i video.mp4 -i watermark.png \\\n  -filter_complex 'overlay=10:10' \\\n  -pix_fmt rgb24 -f rawvideo - | ascii-chat mirror -f '-'\n\n# Rotate video\nffmpeg -i video.mp4 -vf 'rotate=90,scale=160:40,format=rgb24' \\\n  -f rawvideo - | ascii-chat mirror -f '-'\n\n# Mirror/flip horizontally\nffmpeg -i video.mp4 -vf 'hflip,scale=160:40,format=rgb24' \\\n  -f rawvideo - | ascii-chat mirror -f '-'\n\n# Extract frames every 2 seconds\nffmpeg -i video.mp4 -vf 'fps=0.5,scale=160:40,format=rgb24' \\\n  -f rawvideo - | ascii-chat mirror -f '-'"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
               <h3 className="heading-3 text-green-300 mb-3">
                 Live Stream Processing
               </h3>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Receive and display RTMP stream\nffmpeg -i rtmp://broadcaster/stream \\\n  -pix_fmt rgb24 -f rawvideo - | ascii-chat mirror -f '-'\n\n# Receive HLS stream\nffmpeg -i https://stream.example.com/live.m3u8 \\\n  -pix_fmt rgb24 -f rawvideo - | ascii-chat mirror -f '-'\n\n# Receive and scale\nffmpeg -i https://youtu.be/VIDEO_ID \\\n  -vf 'scale=160:40,format=rgb24' \\\n  -f rawvideo - | ascii-chat mirror -f '-' --fps 30"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Receive and display RTMP stream\nffmpeg -i rtmp://broadcaster/stream \\\n  -pix_fmt rgb24 -f rawvideo - | ascii-chat mirror -f '-'\n\n# Receive HLS stream\nffmpeg -i https://stream.example.com/live.m3u8 \\\n  -pix_fmt rgb24 -f rawvideo - | ascii-chat mirror -f '-'\n\n# Receive and scale\nffmpeg -i https://youtu.be/VIDEO_ID \\\n  -vf 'scale=160:40,format=rgb24' \\\n  -f rawvideo - | ascii-chat mirror -f '-' --fps 30"
+                }
+              </CodeBlock>
             </div>
           </section>
 

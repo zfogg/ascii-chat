@@ -3,6 +3,7 @@ import Footer from "../../components/Footer";
 import TrackedLink from "../../components/TrackedLink";
 import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
 import { AsciiChatHead } from "../../components/AsciiChatHead";
+import { CodeBlock } from "@ascii-chat/shared/components";
 
 export default function Network() {
   useEffect(() => {
@@ -61,13 +62,11 @@ export default function Network() {
               <p className="docs-paragraph">
                 Every ACIP packet follows a consistent 22-byte header format:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "Packet Header (22 bytes):\n├─ Magic        (8 bytes) = 0xA5C11C4A1 (ASCIICHAT in hex)\n├─ Type         (2 bytes) = packet type (1-6199)\n├─ Length       (4 bytes) = payload size\n├─ CRC32C       (4 bytes) = hardware-accelerated checksum\n└─ Client ID    (4 bytes) = source client (0 = server)\n\nMax packet size: 5 MB\nData channel max: 16 KB (sufficient for compressed frames)"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "Packet Header (22 bytes):\n├─ Magic        (8 bytes) = 0xA5C11C4A1 (ASCIICHAT in hex)\n├─ Type         (2 bytes) = packet type (1-6199)\n├─ Length       (4 bytes) = payload size\n├─ CRC32C       (4 bytes) = hardware-accelerated checksum\n└─ Client ID    (4 bytes) = source client (0 = server)\n\nMax packet size: 5 MB\nData channel max: 16 KB (sufficient for compressed frames)"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
@@ -561,13 +560,11 @@ export default function Network() {
               <h3 className="heading-3 text-yellow-300 mb-3">
                 TCP Handshake & Crypto Setup
               </h3>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "UNENCRYPTED HANDSHAKE:\n1. TCP handshake\n2. PROTOCOL_VERSION negotiation (version check)\n3. CRYPTO_CLIENT_HELLO (client key fingerprint)\n4. CRYPTO_CAPABILITIES exchange (algorithms)\n5. CRYPTO_KEY_EXCHANGE_INIT (server's ephemeral key)\n6. CRYPTO_KEY_EXCHANGE_RESP (client's ephemeral key)\n7. CRYPTO_AUTH_CHALLENGE (server nonce)\n8. CRYPTO_AUTH_RESPONSE (client signature)\n9. CRYPTO_SERVER_AUTH_RESP (server signature)\n10. CRYPTO_HANDSHAKE_COMPLETE (keys established)\n\nENCRYPTED SESSION:\n11. CLIENT_CAPABILITIES (terminal dims, color support) ← ENCRYPTED\n12. Server responds with session state ← ENCRYPTED\n13. Media frames begin ← ENCRYPTED\n\nKey Property: TCP guarantees packet order,\nACIP relies on this for frame integrity"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "UNENCRYPTED HANDSHAKE:\n1. TCP handshake\n2. PROTOCOL_VERSION negotiation (version check)\n3. CRYPTO_CLIENT_HELLO (client key fingerprint)\n4. CRYPTO_CAPABILITIES exchange (algorithms)\n5. CRYPTO_KEY_EXCHANGE_INIT (server's ephemeral key)\n6. CRYPTO_KEY_EXCHANGE_RESP (client's ephemeral key)\n7. CRYPTO_AUTH_CHALLENGE (server nonce)\n8. CRYPTO_AUTH_RESPONSE (client signature)\n9. CRYPTO_SERVER_AUTH_RESP (server signature)\n10. CRYPTO_HANDSHAKE_COMPLETE (keys established)\n\nENCRYPTED SESSION:\n11. CLIENT_CAPABILITIES (terminal dims, color support) ← ENCRYPTED\n12. Server responds with session state ← ENCRYPTED\n13. Media frames begin ← ENCRYPTED\n\nKey Property: TCP guarantees packet order,\nACIP relies on this for frame integrity"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
@@ -663,13 +660,11 @@ export default function Network() {
               <p className="docs-paragraph">
                 Bandwidth measured from real frames, not synthetic tests:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "Metrics collected:\n├─ Upload Kbps (frame sizes + frame loss)\n├─ RTT (round-trip time via frame timestamps)\n├─ Jitter (RTT variance)\n└─ Packet loss %\n\nScoring: score = (upload_kbps/10) + (100-loss%) + (100-rtt_ms)\nNo delay to media start — measurement is async"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "Metrics collected:\n├─ Upload Kbps (frame sizes + frame loss)\n├─ RTT (round-trip time via frame timestamps)\n├─ Jitter (RTT variance)\n└─ Packet loss %\n\nScoring: score = (upload_kbps/10) + (100-loss%) + (100-rtt_ms)\nNo delay to media start — measurement is async"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
@@ -712,26 +707,22 @@ export default function Network() {
               <p className="docs-paragraph">
                 Direct P2P connection on same LAN (fastest, ~1-10ms latency):
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Server: Bind to all interfaces (IPv4 + IPv6) on default port\nascii-chat server\n\n# Server: Bind to specific IPv4 and IPv6 interfaces together\nascii-chat server 192.168.1.50 '[2001:db8::1]'\n\n# Client: Connect to server via IPv4\nascii-chat client 192.168.1.50:27224\n\n# Client: Connect to server via IPv6\nascii-chat client '[2001:db8::1]:27224'"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Server: Bind to all interfaces (IPv4 + IPv6) on default port\nascii-chat server\n\n# Server: Bind to specific IPv4 and IPv6 interfaces together\nascii-chat server 192.168.1.50 '[2001:db8::1]'\n\n# Client: Connect to server via IPv4\nascii-chat client 192.168.1.50:27224\n\n# Client: Connect to server via IPv6\nascii-chat client '[2001:db8::1]:27224'"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
               <h3 className="heading-3 text-cyan-300 mb-3">
                 Custom Ports & Advanced Options
               </h3>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Server: Listen on custom port (all interfaces)\nascii-chat server --port 8080\n\n# Server: Bind to multiple addresses with custom port\nascii-chat server --port 8080 192.168.1.50 '[2001:db8::1]'\n\n# Client: Connect via IPv4 with custom port\nascii-chat client 192.168.1.50:8080\n\n# Client: Connect via IPv6 with custom port\nascii-chat client '[2001:db8::1]:8080'"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Server: Listen on custom port (all interfaces)\nascii-chat server --port 8080\n\n# Server: Bind to multiple addresses with custom port\nascii-chat server --port 8080 192.168.1.50 '[2001:db8::1]'\n\n# Client: Connect via IPv4 with custom port\nascii-chat client 192.168.1.50:8080\n\n# Client: Connect via IPv6 with custom port\nascii-chat client '[2001:db8::1]:8080'"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
@@ -742,13 +733,11 @@ export default function Network() {
                 Auto-discover servers on local network without knowing IP
                 addresses:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Client: Scan for servers on local network via mDNS\nascii-chat client --scan\n\n# Server: Server can be discovered on local network\nascii-chat server\n\n# Client: Discover and list all available servers\nascii-chat client --scan\n\n# Discovery mode also supports mDNS for peer-to-peer discovery\nascii-chat client session-string --scan"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Client: Scan for servers on local network via mDNS\nascii-chat client --scan\n\n# Server: Server can be discovered on local network\nascii-chat server\n\n# Client: Discover and list all available servers\nascii-chat client --scan\n\n# Discovery mode also supports mDNS for peer-to-peer discovery\nascii-chat client session-string --scan"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
@@ -758,13 +747,11 @@ export default function Network() {
               <p className="docs-paragraph">
                 Enable connections from outside your network:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Server: Enable automatic UPnP/NAT-PMP port mapping\nascii-chat server --port-forwarding\n\n# Server: Port forwarding with custom port\nascii-chat server --port 8080 --port-forwarding\n\n# Client: Connect via hostname (supports IPv4 and IPv6)\nascii-chat client example.com:27224\n\n# Client: Connect to IPv6 address directly\nascii-chat client '[2001:db8::1]:27224'\n\n# Server with discovery and port forwarding\nascii-chat server --discovery --port-forwarding"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Server: Enable automatic UPnP/NAT-PMP port mapping\nascii-chat server --port-forwarding\n\n# Server: Port forwarding with custom port\nascii-chat server --port 8080 --port-forwarding\n\n# Client: Connect via hostname (supports IPv4 and IPv6)\nascii-chat client example.com:27224\n\n# Client: Connect to IPv6 address directly\nascii-chat client '[2001:db8::1]:27224'\n\n# Server with discovery and port forwarding\nascii-chat server --discovery --port-forwarding"
+                }
+              </CodeBlock>
             </div>
           </section>
 
@@ -791,13 +778,11 @@ export default function Network() {
               <p className="docs-paragraph">
                 Format: <code className="code-inline">adjective-noun-noun</code>
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "Examples:\n├─ happy-sunset-ocean\n├─ bright-forest-river\n├─ quick-silver-fox\n└─ silent-morning-sky\n\n16.7 million+ possible combinations\nEasy to speak, remember, type\nExpire when server disconnects"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "Examples:\n├─ happy-sunset-ocean\n├─ bright-forest-river\n├─ quick-silver-fox\n└─ silent-morning-sky\n\n16.7 million+ possible combinations\nEasy to speak, remember, type\nExpire when server disconnects"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
@@ -809,13 +794,11 @@ export default function Network() {
                 ACDS. The session string is auto-generated and printed when the
                 server starts:
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Default: Start server and register with official ACDS\nascii-chat\n\n# With authentication (password + SSH key)\nascii-chat --password 'secret123' --key ~/.ssh/id_ed25519\n\n# With port forwarding for direct TCP\nascii-chat --port-forwarding\n\n# With custom ACDS server\nascii-chat --discovery-service discovery.example.com:27225"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Default: Start server and register with official ACDS\nascii-chat\n\n# With authentication (password + SSH key)\nascii-chat --password 'secret123' --key ~/.ssh/id_ed25519\n\n# With port forwarding for direct TCP\nascii-chat --port-forwarding\n\n# With custom ACDS server\nascii-chat --discovery-service discovery.example.com:27225"
+                }
+              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
@@ -826,13 +809,11 @@ export default function Network() {
                 Connect to a running server using its session string (no IP
                 needed):
               </p>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "# Connect using session string\nascii-chat happy-sunset-ocean\n\n# With authentication\nascii-chat happy-sunset-ocean --password 'secret123' --server-key github:username\n\n# Force TURN relay (very restrictive networks)\nascii-chat happy-sunset-ocean --webrtc-skip-stun\n\n# Custom discovery server\nascii-chat happy-sunset-ocean --discovery-service discovery.example.com"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "# Connect using session string\nascii-chat happy-sunset-ocean\n\n# With authentication\nascii-chat happy-sunset-ocean --password 'secret123' --server-key github:username\n\n# Force TURN relay (very restrictive networks)\nascii-chat happy-sunset-ocean --webrtc-skip-stun\n\n# Custom discovery server\nascii-chat happy-sunset-ocean --discovery-service discovery.example.com"
+                }
+              </CodeBlock>
             </div>
           </section>
 
@@ -864,13 +845,11 @@ export default function Network() {
               <h3 className="heading-3 text-pink-300 mb-3">
                 3-Stage Connection Fallback
               </h3>
-              <pre className="code-block">
-                <code className="code-content">
-                  {
-                    "1. Direct TCP         → 3s timeout  (if server has public IP)\n2. WebRTC + STUN      → 8s timeout  (NAT hole-punching)\n3. WebRTC + TURN      → 15s timeout (relay, always works)\n\nTotal time to first connection: up to 26 seconds worst case\nTypical home networks: 1-2 seconds (direct or UPnP)"
-                  }
-                </code>
-              </pre>
+              <CodeBlock language="bash">
+                {
+                  "1. Direct TCP         → 3s timeout  (if server has public IP)\n2. WebRTC + STUN      → 8s timeout  (NAT hole-punching)\n3. WebRTC + TURN      → 15s timeout (relay, always works)\n\nTotal time to first connection: up to 26 seconds worst case\nTypical home networks: 1-2 seconds (direct or UPnP)"
+                }
+              </CodeBlock>
             </div>
           </section>
 
