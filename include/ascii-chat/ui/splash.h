@@ -108,3 +108,18 @@ int splash_display_status(int mode);
  * @ingroup session
  */
 bool splash_should_display(bool is_intro);
+
+/**
+ * @brief Set update notification to display on splash/status screens
+ *
+ * Sets a notification message that will be displayed on splash screens
+ * (intro and status) to inform users about available updates.
+ *
+ * @param notification Update notification message (can be NULL or empty to clear)
+ *
+ * @note This should be called before splash_intro_start() or splash_display_status()
+ * @note Thread-safe via internal mutex
+ *
+ * @ingroup session
+ */
+void splash_set_update_notification(const char *notification);

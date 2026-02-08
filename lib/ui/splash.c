@@ -20,8 +20,10 @@
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/util/ip.h>
+#include <ascii-chat/util/string.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/platform/system.h>
+#include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/video/ansi_fast.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/log/logging.h>
@@ -40,6 +42,10 @@
 
 #define ASCII_LOGO_LINES 7
 #define ASCII_LOGO_WIDTH 36
+
+// Global update notification (set via splash_set_update_notification)
+static char g_update_notification[1024] = {0};
+static mutex_t g_update_notification_mutex;
 
 /**
  * @brief Rainbow colors in RGB for smooth gradient transitions
@@ -128,8 +134,9 @@ static rgb_color_t get_rainbow_color_rgb(double position) {
  * @brief Context data for splash header rendering
  */
 typedef struct {
-  int frame;       // Current animation frame number
-  bool use_colors; // Whether to use rainbow colors
+  int frame;                      // Current animation frame number
+  bool use_colors;                // Whether to use rainbow colors
+  char update_notification[1024]; // Update notification message (empty if no update)
 } splash_header_ctx_t;
 
 /**
@@ -298,7 +305,35 @@ static void render_splash_header(terminal_size_t term_size, void *user_data) {
 
   printf("%s\n", plain_tagline);
 
-  // Line 7: Connection target (centered, truncated if too long)
+  // Line 7: Update notification (if available)
+  if (ctx->update_notification[0] != '\0') {
+    char plain_update[1024];
+    int update_len = (int)strlen(ctx->update_notification);
+    int update_pad = (term_size.cols - update_len) / 2;
+    if (update_pad < 0) {
+      update_pad = 0;
+    }
+
+    int upos = 0;
+    for (int j = 0; j < update_pad && upos < (int)sizeof(plain_update) - 1; j++) {
+      plain_update[upos++] = ' ';
+    }
+    snprintf(plain_update + upos, sizeof(plain_update) - upos, "%s", ctx->update_notification);
+
+    // Check visible width and truncate if needed
+    int update_visible_width = display_width(plain_update);
+    if (update_visible_width < 0) {
+      update_visible_width = (int)strlen(plain_update);
+    }
+    if (term_size.cols > 0 && update_visible_width >= term_size.cols) {
+      plain_update[term_size.cols - 1] = '\0';
+    }
+
+    // Print in yellow/warning color
+    printf("%s\n", colored_string(LOG_COLOR_WARN, plain_update));
+  }
+
+  // Line 8 (or 7 if no update): Connection target (centered, truncated if too long)
   char connection_target[512];
   build_connection_target(connection_target, sizeof(connection_target));
 
@@ -326,7 +361,7 @@ static void render_splash_header(terminal_size_t term_size, void *user_data) {
 
   printf("%s\n", plain_connection);
 
-  // Line 8: Bottom border
+  // Line 9 (or 8 if no update): Bottom border
   printf("\033[1;36m━");
   for (int i = 1; i < term_size.cols - 1; i++) {
     printf("━");
@@ -377,9 +412,25 @@ static void *splash_animation_thread(void *arg) {
         .use_colors = use_colors,
     };
 
+    // Copy update notification from global state (thread-safe)
+    static bool mutex_initialized = false;
+    if (!mutex_initialized) {
+      mutex_init(&g_update_notification_mutex);
+      mutex_initialized = true;
+    }
+    mutex_lock(&g_update_notification_mutex);
+    SAFE_STRNCPY(header_ctx.update_notification, g_update_notification, sizeof(header_ctx.update_notification));
+    mutex_unlock(&g_update_notification_mutex);
+
+    // Calculate header lines: 8 base lines + 1 if update notification present
+    int header_lines = 8;
+    if (header_ctx.update_notification[0] != '\0') {
+      header_lines = 9;
+    }
+
     // Configure terminal screen with splash header callback
     terminal_screen_config_t screen_config = {
-        .fixed_header_lines = 8, // Splash header is exactly 8 lines
+        .fixed_header_lines = header_lines,
         .render_header = render_splash_header,
         .user_data = &header_ctx,
         .show_logs = true, // Show live log feed below splash
@@ -503,10 +554,43 @@ int splash_display_status(int mode) {
              GET_OPTION(discovery_port));
   }
 
+  // Add update notification if available
+  static bool mutex_initialized_for_status = false;
+  if (!mutex_initialized_for_status) {
+    mutex_init(&g_update_notification_mutex);
+    mutex_initialized_for_status = true;
+  }
+  mutex_lock(&g_update_notification_mutex);
+  if (g_update_notification[0] != '\0') {
+    snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), "\n  %s\n",
+             colored_string(LOG_COLOR_WARN, g_update_notification));
+  }
+  mutex_unlock(&g_update_notification_mutex);
+
   snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), "\n");
 
   printf("%s", buffer);
   fflush(stdout);
 
   return 0; // ASCIICHAT_OK
+}
+
+void splash_set_update_notification(const char *notification) {
+  static bool mutex_initialized = false;
+  if (!mutex_initialized) {
+    mutex_init(&g_update_notification_mutex);
+    mutex_initialized = true;
+  }
+
+  mutex_lock(&g_update_notification_mutex);
+
+  if (!notification || notification[0] == '\0') {
+    g_update_notification[0] = '\0';
+    log_debug("Cleared update notification for splash/status screens");
+  } else {
+    SAFE_STRNCPY(g_update_notification, notification, sizeof(g_update_notification));
+    log_debug("Set update notification for splash/status screens: %s", notification);
+  }
+
+  mutex_unlock(&g_update_notification_mutex);
 }
