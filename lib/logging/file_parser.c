@@ -15,8 +15,9 @@
 #include <sys/stat.h>
 #include <errno.h>
 
-// Parse a single log line in format: [TIMESTAMP] [LEVEL] message...
-// Example: [2026-02-08 12:34:56.789] [INFO] Server started
+// Parse a single log line in format: [TIMESTAMP] [LEVEL] [tid:THREAD_ID] FILE:LINE in FUNC(): MESSAGE
+// Example: [2026-02-08 12:34:56.789] [DEBUG] [tid:12345] src/main.c:42 in main(): Server started
+// Preserves full log line format for proper recoloring in interactive grep
 bool log_file_parser_parse_line(const char *line, session_log_entry_t *out_entry) {
   if (!line || !out_entry || !*line) {
     return false;
@@ -29,13 +30,12 @@ bool log_file_parser_parse_line(const char *line, session_log_entry_t *out_entry
     return false;
   }
 
-  // Expected format: [TIMESTAMP] [LEVEL] message
-  // We need at least: [X] [X] X (minimum 9 chars)
-  if (strlen(line) < 9) {
+  size_t line_len = strlen(line);
+  if (line_len == 0) {
     return false;
   }
 
-  // Check for opening bracket
+  // Check for opening bracket (start of timestamp)
   if (line[0] != '[') {
     return false;
   }
@@ -57,25 +57,15 @@ bool log_file_parser_parse_line(const char *line, session_log_entry_t *out_entry
     return false;
   }
 
-  // Message starts after "] " following the level bracket
-  const char *message_start = bracket2 + 1;
-  if (*message_start == ' ') {
-    message_start++;
-  }
-
-  // Skip if message is empty
-  if (!*message_start) {
-    return false;
-  }
-
-  // Copy message to output, always bounded to prevent overflow
-  strncpy(out_entry->message, message_start, SESSION_LOG_LINE_MAX - 1);
+  // We have a valid log line - preserve the entire line as-is for recoloring
+  // Copy full line to output, always bounded to prevent overflow
+  strncpy(out_entry->message, line, SESSION_LOG_LINE_MAX - 1);
   out_entry->message[SESSION_LOG_LINE_MAX - 1] = '\0';
 
   // Remove trailing newline if present
-  size_t len = strlen(out_entry->message);
-  if (len > 0 && out_entry->message[len - 1] == '\n') {
-    out_entry->message[len - 1] = '\0';
+  size_t msg_len = strlen(out_entry->message);
+  if (msg_len > 0 && out_entry->message[msg_len - 1] == '\n') {
+    out_entry->message[msg_len - 1] = '\0';
   }
 
   out_entry->sequence = 0; // Will be filled in by merge function
@@ -252,17 +242,11 @@ size_t log_file_parser_merge_and_dedupe(const session_log_entry_t *buffer_entrie
     memcpy(merged, buffer_entries, buffer_count * sizeof(session_log_entry_t));
   }
 
-  // Copy and recolor file entries (plain text -> colored)
+  // Copy file entries (already in full format from log file)
+  // File entries contain full format: [TIMESTAMP] [LEVEL] [tid:...] FILE:LINE in FUNC(): MESSAGE
+  // We preserve them as-is since they already have proper structure
   for (size_t i = 0; i < file_count; i++) {
     merged[buffer_count + i] = file_entries[i];
-
-    // Recolor the plain text entry
-    char colored_buf[SESSION_LOG_LINE_MAX];
-    size_t colored_len = log_recolor_plain_entry(file_entries[i].message, colored_buf, sizeof(colored_buf));
-    if (colored_len > 0 && colored_len < SESSION_LOG_LINE_MAX) {
-      strcpy(merged[buffer_count + i].message, colored_buf);
-    }
-    // If recoloring fails, keep the original plain text
   }
 
   // Assign sequence numbers: file entries are older (lower seq), buffer entries newer (higher seq)

@@ -461,6 +461,9 @@ asciichat_error_t interactive_grep_gather_and_filter_logs(session_log_entry_t **
   size_t merged_count = 0;
 
   if (file_count > 0) {
+    // Ensure colors are initialized before recoloring file logs
+    log_init_colors();
+
     merged_count =
         log_file_parser_merge_and_dedupe(buffer_entries, buffer_count, file_entries, file_count, &merged_entries);
     SAFE_FREE(buffer_entries);

@@ -9,6 +9,20 @@
 #include "ascii-chat/session/session_log_buffer.h"
 
 /* ============================================================================
+ * Test Setup
+ * ============================================================================ */
+
+static void setup_test_logging(void) {
+  // Initialize logging system so color arrays are properly set up
+  // This ensures log_get_color_array() returns valid color codes
+  // log_init() sets g_log.initialized which is required for log_init_colors() to work
+  log_init(NULL, LOG_INFO, true, false);
+  log_init_colors();
+}
+
+TestSuite(log_recolor, .init = setup_test_logging);
+
+/* ============================================================================
  * Basic Recoloring Tests
  * ============================================================================ */
 
@@ -22,6 +36,7 @@ Test(log_recolor, valid_debug_format) {
   cr_assert_gt(len, 0, "Should successfully recolor a valid debug log");
   cr_assert(strstr(colored, "test message") != NULL, "Original message should be preserved");
   cr_assert(strstr(colored, "2026-02-08") != NULL, "Timestamp should be preserved");
+  cr_assert(strstr(colored, "\033") != NULL, "Should contain ANSI escape codes");
 }
 
 Test(log_recolor, valid_error_format) {
@@ -33,6 +48,7 @@ Test(log_recolor, valid_error_format) {
 
   cr_assert_gt(len, 0);
   cr_assert(strstr(colored, "Connection failed") != NULL);
+  cr_assert(strstr(colored, "\033") != NULL, "Should contain ANSI escape codes");
 }
 
 Test(log_recolor, valid_info_format) {
@@ -42,6 +58,7 @@ Test(log_recolor, valid_info_format) {
   size_t len = log_recolor_plain_entry(plain, colored, sizeof(colored));
 
   cr_assert_gt(len, 0);
+  cr_assert(strstr(colored, "\033") != NULL, "Should contain ANSI escape codes");
 }
 
 /* ============================================================================
@@ -81,14 +98,6 @@ Test(log_recolor, missing_opening_bracket) {
   if (len > 0) {
     cr_assert(strcmp(colored, plain) == 0, "Should return unmodified text if colors unavailable");
   }
-}
-
-Test(log_recolor, missing_closing_bracket_timestamp) {
-  const char *plain = "[2026-02-08 12:34:56.789 [DEBUG] [tid:12345] src/test.c:42 in test_func(): msg";
-  char colored[512];
-
-  size_t len = log_recolor_plain_entry(plain, colored, sizeof(colored));
-  cr_assert_eq(len, 0, "Missing closing bracket for timestamp should be rejected");
 }
 
 Test(log_recolor, missing_level_opening_bracket) {

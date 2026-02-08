@@ -1648,8 +1648,8 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
 
   size_t timestamp_len = p - timestamp_start;
   char timestamp[64];
-  if (timestamp_len >= sizeof(timestamp) || timestamp_len < 23) {
-    return 0; // Invalid timestamp length (should be at least 23 chars for YYYY-MM-DD HH:MM:SS.mmm)
+  if (timestamp_len >= sizeof(timestamp) || timestamp_len == 0) {
+    return 0; // Invalid timestamp - empty or too long
   }
   strncpy(timestamp, timestamp_start, timestamp_len);
   timestamp[timestamp_len] = '\0';
@@ -1712,7 +1712,7 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
     return 0; // Too many spaces
   }
 
-  // Extract thread ID [tid:THREAD_ID]
+  // Extract thread ID [tid:THREAD_ID] - optional field
   uint64_t tid = 0;
   if (*p == '[' && strncmp(p, "[tid:", 5) == 0) {
     p += 5;
@@ -1729,9 +1729,8 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
     if (*p == ' ') {
       return 0; // Too many spaces
     }
-  } else {
-    return 0; // tid field is required
   }
+  // tid is optional - continue parsing if not present
 
   // Extract file path (everything up to :LINE)
   const char *file_start = p;
@@ -1793,7 +1792,7 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
   // Remaining is the message
   const char *message = p;
 
-  // Format is valid, now check if colors are available
+  // Format is valid, get colors from logging system
   const char **colors = log_get_color_array();
   if (!colors) {
     // No colors available, return plain text
@@ -1834,6 +1833,7 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
     return 0;
   }
 
-  strcpy(colored_buf, work_buffer);
+  strncpy(colored_buf, work_buffer, buf_size - 1);
+  colored_buf[buf_size - 1] = '\0';
   return (size_t)len;
 }
