@@ -7,13 +7,13 @@
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/init.h>
-#include <ascii-chat/util/utf8.h>
+// utf8.h no longer needed - keyboard thread handles raw bytes
 
 #include <termios.h>
 #include <unistd.h>
 #include <sys/select.h>
 #include <sys/time.h>
-#include <fcntl.h>
+// fcntl.h no longer needed - O_NONBLOCK removed
 #include <string.h>
 #include <stdio.h>
 
@@ -48,7 +48,7 @@ asciichat_error_t keyboard_init(void) {
   }
 
   // Hold lock for entire initialization sequence to prevent TOCTOU race.
-  // Multiple threads must not call tcgetattr/tcsetattr/fcntl concurrently.
+  // Multiple threads must not call tcgetattr/tcsetattr concurrently.
 
   struct termios new_termios;
 
@@ -64,9 +64,12 @@ asciichat_error_t keyboard_init(void) {
   // Disable canonical mode (line buffering) and echo
   new_termios.c_lflag &= ~((tcflag_t)(ICANON | ECHO));
 
-  // Set minimum characters to read and timeout
-  new_termios.c_cc[VMIN] = 0;  // Non-blocking: return immediately if no input
-  new_termios.c_cc[VTIME] = 0; // No timeout
+  // VMIN=1: read() blocks until at least 1 byte is available.
+  // VTIME=0: no inter-byte timeout.
+  // The keyboard thread relies on this to do true blocking reads.
+  // Other callers (client, splash) use select() before read() so they're unaffected.
+  new_termios.c_cc[VMIN] = 1;
+  new_termios.c_cc[VTIME] = 0;
 
   // Apply new settings
   if (tcsetattr(STDIN_FILENO, TCSANOW, &new_termios) < 0) {
@@ -74,21 +77,9 @@ asciichat_error_t keyboard_init(void) {
     return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Failed to set terminal attributes");
   }
 
-  // Make stdin non-blocking just in case
-  int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
-  if (flags < 0) {
-    // Restore original settings on error
-    tcsetattr(STDIN_FILENO, TCSANOW, &g_original_termios);
-    static_mutex_unlock(&g_keyboard_init_mutex);
-    return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Failed to get stdin flags");
-  }
-
-  if (fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK) < 0) {
-    // Restore original settings on error
-    tcsetattr(STDIN_FILENO, TCSANOW, &g_original_termios);
-    static_mutex_unlock(&g_keyboard_init_mutex);
-    return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Failed to set stdin non-blocking");
-  }
+  // Do NOT set O_NONBLOCK. The keyboard thread owns stdin reads via
+  // blocking select(). Non-blocking mode is unnecessary and can cause
+  // read() to return EAGAIN spuriously.
 
   // Mark as initialized with reference counting (still under lock)
   g_keyboard_init_refcount = 1;
@@ -274,48 +265,19 @@ keyboard_line_edit_result_t keyboard_read_line_interactive(keyboard_line_edit_op
     return LINE_EDIT_NO_INPUT;
   }
 
-  // Check if keyboard is initialized
-  static_mutex_lock(&g_keyboard_init_mutex);
-  bool is_initialized = (g_keyboard_init_refcount > 0);
-  static_mutex_unlock(&g_keyboard_init_mutex);
-
-  if (!is_initialized) {
+  // This function MUST receive a pre-read key. It never reads from stdin.
+  // The keyboard thread is the sole reader of stdin.
+  if (opts->key == KEY_NONE) {
     return LINE_EDIT_NO_INPUT;
   }
 
-  int c;
-  fd_set readfds;
-  struct timeval timeout;
-
-  // Use pre-read key if provided, otherwise read from stdin
-  if (opts->key != KEY_NONE) {
-    c = opts->key;
-  } else {
-    // Check if input is available using select with zero timeout (non-blocking)
-    FD_ZERO(&readfds);
-    FD_SET(STDIN_FILENO, &readfds);
-
-    timeout.tv_sec = 0;
-    timeout.tv_usec = 0;
-
-    int select_result = select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout);
-    if (select_result <= 0) {
-      return LINE_EDIT_NO_INPUT; // No input available
-    }
-
-    // Read one character
-    c = getchar();
-    if (c == EOF) {
-      return LINE_EDIT_CANCELLED;
-    }
-  }
-
+  int c = opts->key;
   size_t len = *opts->len;
   size_t cursor = *opts->cursor;
   char *buffer = opts->buffer;
   size_t max_len = opts->max_len;
 
-  // Handle pre-read special keys (from keyboard_read_nonblocking)
+  // Arrow keys (already resolved by keyboard thread)
   if (c == KEY_LEFT) {
     if (cursor > 0) {
       cursor--;
@@ -331,118 +293,55 @@ keyboard_line_edit_result_t keyboard_read_line_interactive(keyboard_line_edit_op
     return LINE_EDIT_CONTINUE;
   }
 
-  // Handle newline/carriage return (Enter key) - accept input
+  // Enter - accept input
   if (c == '\n' || c == '\r') {
     return LINE_EDIT_ACCEPTED;
   }
 
-  // Handle Ctrl+C (interrupt) - cancel
+  // Ctrl+C - cancel
   if (c == 3) {
     return LINE_EDIT_CANCELLED;
   }
 
-  // Handle escape sequences (arrow keys, delete, etc.)
-  if (c == 27) { // ESC
-    // Could be escape key or start of sequence
-    // Check if there's more data available
-    FD_ZERO(&readfds);
-    FD_SET(STDIN_FILENO, &readfds);
-    timeout.tv_sec = 0;
-    timeout.tv_usec = 50000; // 50ms timeout for escape sequence
-
-    if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
-      int next = getchar();
-      if (next == '[') {
-        // Might be an arrow key or delete sequence
-        int code = getchar();
-        switch (code) {
-        case 'D': // Left arrow
-          if (cursor > 0) {
-            cursor--;
-            *opts->cursor = cursor;
-          }
-          return LINE_EDIT_CONTINUE;
-        case 'C': // Right arrow
-          if (cursor < len) {
-            cursor++;
-            *opts->cursor = cursor;
-          }
-          return LINE_EDIT_CONTINUE;
-        case '3': // Delete key (sends ESC[3~)
-          if (getchar() == '~' && cursor < len) {
-            // Shift characters left
-            memmove(&buffer[cursor], &buffer[cursor + 1], len - cursor - 1);
-            len--;
-            *opts->len = len;
-          }
-          return LINE_EDIT_CONTINUE;
-        case 'H': // Home
-          cursor = 0;
-          *opts->cursor = cursor;
-          return LINE_EDIT_CONTINUE;
-        case 'F': // End
-          cursor = len;
-          *opts->cursor = cursor;
-          return LINE_EDIT_CONTINUE;
-        default:
-          // Unknown escape sequence
-          return LINE_EDIT_CONTINUE;
-        }
-      }
-    }
-
-    // Standalone escape key - cancel
+  // Escape (already resolved by keyboard thread - standalone ESC)
+  if (c == KEY_ESCAPE) {
     return LINE_EDIT_CANCELLED;
   }
 
-  // Handle backspace (BS = 8 or DEL = 127) - delete character before cursor
+  // Backspace (BS = 8 or DEL = 127)
   if (c == 8 || c == 127) {
     if (cursor > 0) {
-      // Shift characters left
       memmove(&buffer[cursor - 1], &buffer[cursor], len - cursor);
       cursor--;
       len--;
       *opts->len = len;
       *opts->cursor = cursor;
+    } else if (len == 0) {
+      // Backspace with empty buffer - cancel (like vim)
+      return LINE_EDIT_CANCELLED;
     }
     return LINE_EDIT_CONTINUE;
   }
 
-  // Ignore other control characters (except tab)
+  // Ignore control characters (except tab)
   if (c < 32 && c != '\t') {
     return LINE_EDIT_CONTINUE;
   }
 
-  // Determine how many continuation bytes are needed for this character
-  int continuation_bytes = utf8_continuation_bytes_needed((unsigned char)c);
-  if (continuation_bytes < 0) {
-    // Invalid UTF-8 start byte, skip it
+  // Ignore non-ASCII (keyboard thread doesn't handle multi-byte UTF-8 yet)
+  if (c > 127) {
     return LINE_EDIT_CONTINUE;
   }
 
-  // Insert first byte (or ASCII character) at cursor position
+  // Insert printable ASCII character at cursor position
   if (len < max_len - 1) {
-    // Shift characters right to make room for this byte
     memmove(&buffer[cursor + 1], &buffer[cursor], len - cursor);
     buffer[cursor] = (char)c;
     len++;
     cursor++;
 
-    // Read continuation bytes for multi-byte UTF-8 if needed
-    if (continuation_bytes > 0) {
-      if (utf8_read_and_insert_continuation_bytes(buffer, &cursor, &len, max_len, continuation_bytes, getchar) < 0) {
-        // EOF or buffer overflow during continuation bytes
-        // Roll back the first byte
-        memmove(&buffer[cursor - 1], &buffer[cursor], len - cursor);
-        len--;
-        cursor--;
-      }
-    }
-
     *opts->len = len;
     *opts->cursor = cursor;
-
-    // Null-terminate
     buffer[len] = '\0';
   }
 

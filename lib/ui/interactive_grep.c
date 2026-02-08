@@ -680,8 +680,11 @@ void interactive_grep_render_input_line(int width) {
   }
 
   // Just show slash and pattern (cursor already positioned by caller)
-  fprintf(stdout, "/%.*s", (int)g_grep_state.len, g_grep_state.input_buffer);
-  fflush(stdout);
+  char output_buf[256];
+  int len = snprintf(output_buf, sizeof(output_buf), "/%.*s", (int)g_grep_state.len, g_grep_state.input_buffer);
+  if (len > 0) {
+    platform_write_all(STDOUT_FILENO, output_buf, len);
+  }
 
   mutex_unlock(&g_grep_state.mutex);
 }

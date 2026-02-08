@@ -46,7 +46,7 @@
 #else
 #include <sys/select.h>
 #include <unistd.h>
-#include <termios.h>
+// termios.h no longer needed - lock debug thread no longer reads stdin
 #include <fcntl.h>
 #endif
 
@@ -79,11 +79,7 @@
 lock_debug_manager_t g_lock_debug_manager = {0};
 atomic_bool g_initializing = false; // Flag to prevent tracking during initialization
 
-#ifndef _WIN32
-// Terminal state for POSIX systems to enable raw mode input
-static struct termios g_original_termios;
-static bool g_termios_saved = false;
-#endif
+// Terminal state no longer needed - lock debug thread no longer reads stdin
 
 /**
  * @brief Create a new lock record with backtrace
@@ -473,104 +469,28 @@ static void check_long_held_locks(void) {
 static void *debug_thread_func(void *arg) {
   UNUSED(arg);
 
-  // Check if stdin is a terminal (used for keyboard input detection)
-  // This prevents blocking in tmux/SSH sessions without proper TTY
-  bool stdin_is_tty = false;
-#ifndef _WIN32
-  stdin_is_tty = isatty(STDIN_FILENO);
-  // Also check if we're the foreground process group - if not, terminal ops may block
-  // This handles detached tmux sessions where isatty() returns true but we can't interact
-  if (stdin_is_tty) {
-    pid_t fg_pgrp = tcgetpgrp(STDIN_FILENO);
-    pid_t our_pgrp = getpgrp();
-    if (fg_pgrp != our_pgrp && fg_pgrp != -1) {
-      log_debug("Lock debug: not foreground process (fg=%d, us=%d), skipping TTY input", fg_pgrp, our_pgrp);
-      stdin_is_tty = false;
-    }
-  }
-  if (stdin_is_tty) {
-    // Set terminal to raw mode for immediate key detection
-    struct termios raw;
-    if (tcgetattr(STDIN_FILENO, &g_original_termios) == 0) {
-      g_termios_saved = true;
-      raw = g_original_termios;
-      raw.c_lflag &= ~((tcflag_t)(ICANON | ECHO)); // Disable canonical mode and echo
-      raw.c_cc[VMIN] = 0;                          // Non-blocking read
-      raw.c_cc[VTIME] = 0;                         // No timeout
-      if (tcsetattr(STDIN_FILENO, TCSANOW, &raw) != 0) {
-        log_warn("Failed to set terminal to raw mode for lock debug");
-        g_termios_saved = false;
-      }
-    } else {
-      log_warn("Failed to get terminal attributes for lock debug");
-    }
-  } else {
-    log_debug("Lock debug: stdin is not a TTY, skipping raw mode setup");
-  }
-#else
-  // On Windows, assume we have a console
-  stdin_is_tty = true;
-#endif
-
-  log_debug("Lock debug thread started%s", stdin_is_tty ? " - press '?' to print lock state" : " (no TTY input)");
+  log_debug("Lock debug thread started (use SIGUSR1 to print lock state)");
   LOCK_TRACE("debug thread loop starting");
 
   while (atomic_load(&g_lock_debug_manager.debug_thread_running)) {
     // Check for locks held > 100ms and log warnings
     check_long_held_locks();
 
-    // Allow external trigger via flag (non-blocking)
+    // Allow external trigger via flag (non-blocking, set by SIGUSR1 handler)
     if (atomic_exchange(&g_lock_debug_manager.should_print_locks, false)) {
       lock_debug_print_state();
     }
 
-    // Check for keyboard input only if stdin is a TTY
+    // Do not read from stdin. The keyboard thread is the sole reader.
+    // Use SIGUSR1 to trigger lock state printing: kill -USR1 <pid>
 #ifdef _WIN32
-    if (stdin_is_tty && _kbhit()) {
-      int ch = _getch();
-      if (ch == '?') {
-        lock_debug_print_state();
-      }
-    }
-
-    // Small sleep to prevent CPU spinning
     platform_sleep_ms(10);
 #else
-    if (stdin_is_tty) {
-      // POSIX: use select() for non-blocking input (now in raw mode)
-      fd_set readfds;
-      struct timeval timeout;
-
-      FD_ZERO(&readfds);
-      FD_SET(STDIN_FILENO, &readfds);
-      timeout.tv_sec = 0;
-      timeout.tv_usec = 100000; // 100ms timeout
-
-      int result = select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout);
-      if (result > 0 && FD_ISSET(STDIN_FILENO, &readfds)) {
-        char input[2];
-        if (read(STDIN_FILENO, input, 1) == 1) {
-          if (input[0] == '?') {
-            lock_debug_print_state();
-          }
-        }
-      }
-    } else {
-      // No TTY - just sleep instead of trying to read stdin
-      platform_sleep_ms(100);
-    }
+    platform_sleep_ms(100);
 #endif
 
     platform_sleep_ms(100);
   }
-
-#ifndef _WIN32
-  // Restore terminal to original mode
-  if (g_termios_saved) {
-    tcsetattr(STDIN_FILENO, TCSANOW, &g_original_termios);
-    g_termios_saved = false;
-  }
-#endif
 
   // Thread exiting
   return NULL;
@@ -769,11 +689,7 @@ void lock_debug_cleanup_thread(void) {
     atomic_store(&g_lock_debug_manager.debug_thread_created, false);
   }
 
-  // Restore terminal to original mode if it was changed
-  if (g_termios_saved) {
-    tcsetattr(STDIN_FILENO, TCSANOW, &g_original_termios);
-    g_termios_saved = false;
-  }
+  // Terminal restore no longer needed - lock debug thread no longer touches stdin
 #endif
 }
 

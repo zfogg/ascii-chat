@@ -111,10 +111,10 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
 
     // Still need to render grep input if entering
     if (grep_entering) {
-      int last_row = g_cached_term_size.rows - 1;
-      terminal_move_cursor(last_row, 0);
-      fprintf(stdout, "\x1b[K");
-      fflush(stdout);
+      int last_row = g_cached_term_size.rows;
+      char pos_buf[32];
+      int len = snprintf(pos_buf, sizeof(pos_buf), "\x1b[%d;1H\x1b[K", last_row);
+      platform_write_all(STDOUT_FILENO, pos_buf, len);
       interactive_grep_render_input_line(g_cached_term_size.cols);
     }
 
@@ -184,12 +184,11 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
 
   // Position cursor to absolute bottom line and render grep input
   if (grep_entering) {
-    // Move to the very last row (terminal_move_cursor expects 0-based despite docs)
-    int last_row = g_cached_term_size.rows - 1;
-    terminal_move_cursor(last_row, 0);
-    // Clear the line
-    fprintf(stdout, "\x1b[K");
-    fflush(stdout);
+    // Move to the very last row using platform_write_all() to bypass any filtering
+    int last_row = g_cached_term_size.rows;
+    char pos_buf[32];
+    int len = snprintf(pos_buf, sizeof(pos_buf), "\x1b[%d;1H\x1b[K", last_row);
+    platform_write_all(STDOUT_FILENO, pos_buf, len);
     interactive_grep_render_input_line(g_cached_term_size.cols);
   }
 
