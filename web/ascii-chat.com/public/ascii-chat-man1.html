@@ -91,10 +91,10 @@
 <div class="Bd-indent"><b>Examples:</b>
 <div class="Bd-indent">
 <pre>(empty) start new session
-pitiful-access-plug
-boon-christ-camera
-notorious-parcel-austrian
-seventeen-past-warfare --matrix --colo</pre>
+prime-humour-commercial
+poisonous-bingo-gps
+georgian-journal-badge
+effective-red-flop --matrix --color-fi</pre>
 </div>
 </div>
 <dl class="Bl-tag">
@@ -163,38 +163,38 @@ ascii-chat.com
 <dl class="Bl-tag">
   <dt id="ascii-chat"><a class="permalink" href="#ascii-chat"><b>ascii-chat</b></a></dt>
   <dd>Start new session (share the session string)</dd>
-  <dt><b>ascii-chat yellow-community-hire</b></dt>
+  <dt><b>ascii-chat passionate-spade-cappuccino</b></dt>
   <dd>Join a session using the session string</dd>
-  <dt><b>ascii-chat spread-moustache-epidemic --discovery-</b></dt>
+  <dt><b>ascii-chat lively-rook-scottish --discovery-servi</b></dt>
   <dd>Join session via custom discovery server</dd>
-  <dt><b>ascii-chat loose-file-more -f video.mp4</b></dt>
+  <dt><b>ascii-chat numerous-temporal-pledge -f video.mp4</b></dt>
   <dd>Join session and stream from local video file</dd>
-  <dt><b>ascii-chat progressive-beach-vegan --url 'https:/</b></dt>
+  <dt><b>ascii-chat intensive-bunch-present --url 'https:/</b></dt>
   <dd>Join session and stream from YouTube video</dd>
-  <dt><b>ascii-chat blissful-therapy-cheat -f '-'</b></dt>
+  <dt><b>ascii-chat sustainable-million-research -f '-'</b></dt>
   <dd>Join session and stream media from stdin (cat file.mov | ascii-chat ... -f
       '-')</dd>
-  <dt><b>ascii-chat childish-donatello-martian --palette-c</b></dt>
+  <dt><b>ascii-chat fancy-letter-compromise --palette-char</b></dt>
   <dd>Join session with custom ASCII palette characters</dd>
   <dt><b>ascii-chat discovery-service</b></dt>
   <dd>Start on localhost (127.0.0.1 and ::1)</dd>
   <dt><b>ascii-chat server 0.0.0.0</b></dt>
   <dd>Start on all IPv4 interfaces</dd>
-  <dt><b>ascii-chat discovery-service 0.0.0.0 ::</b></dt>
+  <dt><b>ascii-chat server 0.0.0.0 ::</b></dt>
   <dd>Start on all IPv4 and IPv6 interfaces (dual-stack)</dd>
-  <dt><b>ascii-chat server --port 8080</b></dt>
+  <dt><b>ascii-chat discovery-service --port 8080</b></dt>
   <dd>Start on custom port</dd>
   <dt><b>ascii-chat server --key ~/.ssh/id_ed25519 --discovery</b></dt>
   <dd>Start with identity key and discovery registration</dd>
   <dt><b>ascii-chat client --url 'https://youtu.be/7ynHVGCehoM'</b></dt>
   <dd>Stream from YouTube URL (also supports RTSP, HTTP, and HTTPS URLs)</dd>
-  <dt><b>ascii-chat mirror -f video.mp4</b></dt>
+  <dt><b>ascii-chat client -f video.mp4</b></dt>
   <dd>Stream from local video file</dd>
-  <dt><b>ascii-chat client --palette-chars '@%#*+=-:. '</b></dt>
+  <dt><b>ascii-chat mirror --palette-chars '@%#*+=-:. '</b></dt>
   <dd>Use custom ASCII palette characters</dd>
-  <dt><b>ascii-chat client --snapshot</b></dt>
+  <dt><b>ascii-chat mirror --snapshot</b></dt>
   <dd>Capture single frame and exit</dd>
-  <dt><b>ascii-chat client --color-filter cyan --palette cool</b></dt>
+  <dt><b>ascii-chat mirror --color-filter cyan --palette cool</b></dt>
   <dd>Apply cyan color filter and cool palette</dd>
   <dt><b>ascii-chat client example.com</b></dt>
   <dd>Connect to remote server</dd>
@@ -284,7 +284,8 @@ ascii-chat.com
 <dl class="Bl-tag">
   <dt id="L,"><a class="permalink" href="#L,"><b>-L, --log-file
     <i>FILE</i></b></a></dt>
-  <dd>Set FILE as path for log file. (mode: global)</dd>
+  <dd>Set FILE as path for log file (default: /tmp/ascii-chat-&lt;mode&gt;.log
+      or Windows temp dir). (mode: global)</dd>
   <dt id="log-level"><a class="permalink" href="#log-level"><b>--log-level
     <i>VALUE</i></b></a></dt>
   <dd>Set log level: dev, debug, info, warn, error, fatal. Logs at or above this
@@ -539,13 +540,13 @@ ascii-chat.com
   <dt id="p,"><a class="permalink" href="#p,"><b>-p, --port
     <i>VALUE</i></b></a></dt>
   <dd>Port to host a server or discovery-service on, or port to connect to a
-      server as a client. (modes: default, client, server,
+      server as a client (default: 27224 for server/client, 27225 for
+      discovery-service). (modes: default, client, server,
     discovery-service)</dd>
   <dt id="websocket-port"><a class="permalink" href="#websocket-port"><b>--websocket-port
     <i>INTEGER</i></b></a></dt>
   <dd>WebSocket server port (default: 27226 for server, 27227 for
-      discovery-service). (default: 27226) (modes: server,
-    discovery-service)</dd>
+      discovery-service). (default: 0) (modes: server, discovery-service)</dd>
   <dt id="max-clients"><a class="permalink" href="#max-clients"><b>--max-clients
     <i>INTEGER</i></b></a></dt>
   <dd>Maximum concurrent clients. (default: 9) (modes: server,
@@ -574,7 +575,7 @@ ascii-chat.com
   <dt><b>--discovery-service <i>STRING</i></b></dt>
   <dd>Discovery service endpoint (IP address or hostname). (default:
       discovery-service.ascii-chat.com) (modes: default, client, server)</dd>
-  <dt id="discovery-port"><a class="permalink" href="#discovery-port"><b>--discovery-port
+  <dt id="discovery-service-port"><a class="permalink" href="#discovery-service-port"><b>--discovery-service-port
     <i>INTEGER</i></b></a></dt>
   <dd>Discovery service port (1-65535). (default: 27225) (modes: default,
       client, server)</dd>
@@ -1111,12 +1112,12 @@ ascii-chat.com
   <dd>See: <b>--discovery-expose-ip</b></dd>
   <dt id="ASCII_CHAT_DISCOVERY_INSECURE"><a class="permalink" href="#ASCII_CHAT_DISCOVERY_INSECURE"><b>ASCII_CHAT_DISCOVERY_INSECURE</b></a></dt>
   <dd>See: <b>--discovery-insecure</b></dd>
-  <dt id="ASCII_CHAT_DISCOVERY_PORT"><a class="permalink" href="#ASCII_CHAT_DISCOVERY_PORT"><b>ASCII_CHAT_DISCOVERY_PORT</b></a></dt>
-  <dd>See: <b>--discovery-port</b></dd>
   <dt id="ASCII_CHAT_DISCOVERY_SERVER"><a class="permalink" href="#ASCII_CHAT_DISCOVERY_SERVER"><b>ASCII_CHAT_DISCOVERY_SERVER</b></a></dt>
   <dd>See: <b>--discovery-service</b></dd>
   <dt id="ASCII_CHAT_DISCOVERY_SERVER_KEY"><a class="permalink" href="#ASCII_CHAT_DISCOVERY_SERVER_KEY"><b>ASCII_CHAT_DISCOVERY_SERVER_KEY</b></a></dt>
   <dd>See: <b>--discovery-service-key</b></dd>
+  <dt id="ASCII_CHAT_DISCOVERY_SERVICE_PORT"><a class="permalink" href="#ASCII_CHAT_DISCOVERY_SERVICE_PORT"><b>ASCII_CHAT_DISCOVERY_SERVICE_PORT</b></a></dt>
+  <dd>See: <b>--discovery-service-port</b></dd>
   <dt id="ASCII_CHAT_ENCODE_AUDIO"><a class="permalink" href="#ASCII_CHAT_ENCODE_AUDIO"><b>ASCII_CHAT_ENCODE_AUDIO</b></a></dt>
   <dd>See: <b>--encode-audio</b></dd>
   <dt id="ASCII_CHAT_ENCRYPT"><a class="permalink" href="#ASCII_CHAT_ENCRYPT"><b>ASCII_CHAT_ENCRYPT</b></a></dt>

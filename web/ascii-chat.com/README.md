@@ -38,3 +38,6 @@ Deploy to Vercel or any static hosting service. The site is built to `dist/`.
 - **/** - Home page with features, installation, and quick start
 - **/crypto** - Cryptography documentation and key authentication
 - **/man** - Complete man page reference (auto-generated)
+
+TODO:
+* SSR
