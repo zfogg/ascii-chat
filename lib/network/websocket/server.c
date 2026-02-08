@@ -19,35 +19,8 @@
 #include <libwebsockets.h>
 #include <string.h>
 
-/**
- * @brief Receive queue element (variable-length message)
- *
- * Shared with transport.c - matches internal WebSocket transport structure.
- */
-typedef struct {
-  uint8_t *data; ///< Message data (allocated, caller must free)
-  size_t len;    ///< Message length in bytes
-} websocket_recv_msg_t;
-
-/**
- * @brief WebSocket transport implementation data
- *
- * Shared with transport.c - matches internal WebSocket transport structure.
- * Used to access receive queue for forwarding incoming data.
- */
-typedef struct {
-  struct lws *wsi;             ///< libwebsockets instance (owned)
-  struct lws_context *context; ///< libwebsockets context (may be owned or borrowed)
-  bool owns_context;           ///< True if transport owns context (client), false if borrowed (server)
-  ringbuffer_t *recv_queue;    ///< Receive message queue
-  ringbuffer_t *send_queue;    ///< Send message queue (for server-side transports)
-  mutex_t queue_mutex;         ///< Protect queue operations
-  cond_t queue_cond;           ///< Signal when messages arrive
-  bool is_connected;           ///< Connection state
-  mutex_t state_mutex;         ///< Protect state changes
-  uint8_t *send_buffer;        ///< Send buffer with LWS_PRE padding
-  size_t send_buffer_capacity; ///< Current send buffer capacity
-} websocket_transport_data_t;
+// Shared internal types (websocket_recv_msg_t, websocket_transport_data_t)
+#include <ascii-chat/network/websocket/internal.h>
 
 /**
  * @brief Per-connection user data

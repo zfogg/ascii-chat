@@ -432,9 +432,6 @@ void action_create_manpage(const char *output_path) {
     log_plain_stderr("Man page written to stdout");
   }
 
-  // Clean up logging system before exit to prevent cleanup loops
-  log_destroy();
-
   exit(0);
 }
 

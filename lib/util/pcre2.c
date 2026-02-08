@@ -169,7 +169,7 @@ void asciichat_pcre2_singleton_free(pcre2_singleton_t *singleton) {
   }
 
   /* Free the singleton structure itself */
-  free(singleton);
+  SAFE_FREE(singleton);
 }
 
 /**
@@ -212,7 +212,7 @@ void asciichat_pcre2_cleanup_all(void) {
     }
 
     /* Free singleton structure */
-    free(current);
+    SAFE_FREE(current);
 
     current = next;
   }
