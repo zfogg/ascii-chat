@@ -305,18 +305,18 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
   }
 
   // libwebsockets requires LWS_PRE bytes before the payload for protocol headers
-  // Ensure our send buffer is large enough
+  // Allocate a temporary buffer for this send to avoid thread-safety issues
+  // Each send() call gets its own buffer, preventing race conditions with concurrent sends
   size_t required_size = LWS_PRE + send_len;
-  if (ws_data->send_buffer_capacity < required_size) {
-    // Reallocate send buffer
-    SAFE_FREE(ws_data->send_buffer);
-    ws_data->send_buffer = SAFE_MALLOC(required_size, uint8_t *);
-    if (!ws_data->send_buffer) {
-      ws_data->send_buffer_capacity = 0;
-      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate WebSocket send buffer");
-    }
-    ws_data->send_buffer_capacity = required_size;
+  uint8_t *send_buffer = SAFE_MALLOC(required_size, uint8_t *);
+  if (!send_buffer) {
+    if (encrypted_packet)
+      buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate WebSocket send buffer");
   }
+
+  // Copy data after LWS_PRE offset
+  memcpy(send_buffer + LWS_PRE, send_data, send_len);
 
   // Server-side transports cannot call lws_write() directly
   // They must queue data and send from LWS_CALLBACK_SERVER_WRITEABLE
@@ -325,6 +325,7 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     websocket_recv_msg_t msg;
     msg.data = SAFE_MALLOC(send_len, uint8_t *);
     if (!msg.data) {
+      SAFE_FREE(send_buffer);
       if (encrypted_packet)
         buffer_pool_free(NULL, encrypted_packet, send_len);
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate send queue buffer");
@@ -338,6 +339,7 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
 
     if (!success) {
       SAFE_FREE(msg.data);
+      SAFE_FREE(send_buffer);
       if (encrypted_packet)
         buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
       return SET_ERRNO(ERROR_NETWORK, "Send queue full");
@@ -351,12 +353,13 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     lws_cancel_service(ctx);
 
     log_debug("Server-side WebSocket send queued %zu bytes, requesting writable callback", send_len);
+    SAFE_FREE(send_buffer);
     if (encrypted_packet)
       buffer_pool_free(NULL, encrypted_packet, send_len);
     return ASCIICHAT_OK;
   }
 
-  // Client and server: send in fragments using LWS_WRITE_BUFLIST
+  // Client-side: send in fragments using LWS_WRITE_BUFLIST
   // libwebsockets will buffer and send when socket is writable
   const size_t FRAGMENT_SIZE = 4096;
   size_t offset = 0;
@@ -372,19 +375,18 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     // Use BUFLIST to let libwebsockets handle buffering and writable callbacks
     flags = (enum lws_write_protocol)((int)flags | LWS_WRITE_BUFLIST);
 
-    // Copy this chunk after LWS_PRE offset
-    memcpy(ws_data->send_buffer + LWS_PRE, (const uint8_t *)send_data + offset, chunk_size);
-
     // Send this fragment
-    int written = lws_write(ws_data->wsi, ws_data->send_buffer + LWS_PRE, chunk_size, flags);
+    int written = lws_write(ws_data->wsi, send_buffer + LWS_PRE + offset, chunk_size, flags);
 
     if (written < 0) {
+      SAFE_FREE(send_buffer);
       if (encrypted_packet)
         buffer_pool_free(NULL, encrypted_packet, send_len);
       return SET_ERRNO(ERROR_NETWORK, "WebSocket write failed on fragment at offset %zu", offset);
     }
 
     if ((size_t)written != chunk_size) {
+      SAFE_FREE(send_buffer);
       if (encrypted_packet)
         buffer_pool_free(NULL, encrypted_packet, send_len);
       return SET_ERRNO(ERROR_NETWORK, "WebSocket partial write: %d/%zu bytes at offset %zu", written, chunk_size,
@@ -396,6 +398,7 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
   }
 
   log_debug_every(100, "WebSocket sent complete message: %zu bytes in fragments", send_len);
+  SAFE_FREE(send_buffer);
   if (encrypted_packet)
     buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
   return ASCIICHAT_OK;
@@ -539,6 +542,13 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
     ws_data->recv_queue = NULL;
 
     if (ws_data->send_queue) {
+      // Drain send queue before destroying to free allocated message data
+      websocket_recv_msg_t msg;
+      while (ringbuffer_read(ws_data->send_queue, &msg)) {
+        if (msg.data) {
+          SAFE_FREE(msg.data);
+        }
+      }
       ringbuffer_destroy(ws_data->send_queue);
       ws_data->send_queue = NULL;
     }
