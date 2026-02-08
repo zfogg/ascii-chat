@@ -78,6 +78,69 @@ asciichat_error_t server_status_gather(tcp_server_t *server, const char *session
 }
 
 /**
+ * @brief Truncate text to fit within display_width, preserving ANSI codes
+ *
+ * Truncates a plain text string to fit within max_display_width, with ellipsis.
+ * Adds "..." when truncated, so actual display width will be up to max_display_width.
+ */
+static void truncate_to_fit(const char *src, int max_display_width, char *dst, size_t dst_size) {
+  if (!src || !dst || max_display_width < 0) {
+    if (dst && dst_size > 0) {
+      dst[0] = '\0';
+    }
+    return;
+  }
+
+  // Check if it fits without truncation
+  int width = display_width(src);
+  if (width <= max_display_width) {
+    SAFE_STRNCPY(dst, src, dst_size);
+    return;
+  }
+
+  // Reserve 3 characters for ellipsis
+  int target_width = max_display_width - 3;
+  if (target_width < 0) {
+    dst[0] = '\0';
+    return;
+  }
+
+  // Copy bytes until we reach target width
+  int current_width = 0;
+  size_t i = 0;
+  while (src[i] != '\0' && i < dst_size - 4 && current_width < target_width) {
+    // Calculate width of this character
+    char test_buf[256];
+    size_t j = 0;
+    // Copy up to next char boundary
+    while (src[i + j] != '\0' && j < sizeof(test_buf) - 1) {
+      test_buf[j] = src[i + j];
+      j++;
+      // Check if we've completed a character
+      if ((src[i + j] & 0xC0) != 0x80) {
+        break; // Next byte is start of new char
+      }
+    }
+    test_buf[j] = '\0';
+
+    int char_width = display_width(test_buf);
+    if (current_width + char_width <= target_width) {
+      // Copy this character
+      for (size_t k = 0; k <= j && i + k < dst_size - 4; k++) {
+        dst[i + k] = src[i + k];
+      }
+      current_width += char_width;
+      i += j + 1;
+    } else {
+      break;
+    }
+  }
+
+  // Add ellipsis
+  SAFE_STRNCPY(dst + i, "...", dst_size - i);
+}
+
+/**
  * @brief Render server status header (callback for terminal_screen)
  *
  * Renders exactly 4 lines:
@@ -85,6 +148,8 @@ asciichat_error_t server_status_gather(tcp_server_t *server, const char *session
  * - Line 2: Title + client count + uptime
  * - Line 3: Session string + addresses
  * - Line 4: Bottom border
+ *
+ * Lines are truncated if they exceed terminal width.
  */
 static void render_server_status_header(terminal_size_t term_size, void *user_data) {
   const server_status_t *status = (const server_status_t *)user_data;
@@ -108,14 +173,18 @@ static void render_server_status_header(terminal_size_t term_size, void *user_da
 
   // Line 2: Title + Stats (centered)
   char status_line[512];
+  char status_line_truncated[512];
   char status_line_colored[600];
   char uptime_str[12];
   format_uptime_hms(uptime_hours, uptime_mins, uptime_secs_rem, uptime_str, sizeof(uptime_str));
   snprintf(status_line, sizeof(status_line), "ascii-chat %s | 👥 %zu | ⏱️ %s", status->mode_name,
            status->connected_count, uptime_str);
-  snprintf(status_line_colored, sizeof(status_line_colored), "\033[1;36m%s\033[0m", status_line);
 
-  int padding = display_center_horizontal(status_line, term_size.cols);
+  // Truncate if needed
+  truncate_to_fit(status_line, term_size.cols - 2, status_line_truncated, sizeof(status_line_truncated));
+  snprintf(status_line_colored, sizeof(status_line_colored), "\033[1;36m%s\033[0m", status_line_truncated);
+
+  int padding = display_center_horizontal(status_line_truncated, term_size.cols);
   for (int i = 0; i < padding; i++) {
     printf(" ");
   }
@@ -123,6 +192,7 @@ static void render_server_status_header(terminal_size_t term_size, void *user_da
 
   // Line 3: Session + Addresses (centered)
   char addr_line[512];
+  char addr_line_truncated[512];
   int pos = 0;
   if (status->session_string[0] != '\0') {
     pos += snprintf(addr_line + pos, sizeof(addr_line) - pos, "🔗 %s", status->session_string);
@@ -154,11 +224,14 @@ static void render_server_status_header(terminal_size_t term_size, void *user_da
     }
   }
 
-  int addr_padding = display_center_horizontal(addr_line, term_size.cols);
+  // Truncate if needed
+  truncate_to_fit(addr_line, term_size.cols - 2, addr_line_truncated, sizeof(addr_line_truncated));
+
+  int addr_padding = display_center_horizontal(addr_line_truncated, term_size.cols);
   for (int i = 0; i < addr_padding; i++) {
     printf(" ");
   }
-  printf("%s\n", addr_line);
+  printf("%s\n", addr_line_truncated);
 
   // Line 4: Bottom border
   printf("\033[1;36m━");
