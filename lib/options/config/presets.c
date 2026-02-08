@@ -162,7 +162,7 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   safe_snprintf(example_buf9, sizeof(example_buf9), "%s", example_session_string9);
   safe_snprintf(example_buf10, sizeof(example_buf10), "%s --matrix --color-filter rainbow", example_session_string10);
 
-  // Client mode: [address] - can be IP, hostname, or hostname:port
+  // Client mode: [address] - can be IP, hostname, hostname:port, or WebSocket URL
   static const char *client_examples[] = {"localhost",
                                           "ascii-chat.com",
                                           "0.0.0.0",
@@ -170,7 +170,9 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
                                           "192.168.1.1:8080",
                                           "[2001:db8::42]:27224",
                                           "233.27.48.203:27224",
-                                          "62fb:759e:2bce:21d7:9e5d:13f8:3c11:5084:27224"};
+                                          "62fb:759e:2bce:21d7:9e5d:13f8:3c11:5084:27224",
+                                          "ws://example.com:8080",
+                                          "wss://secure.example.com:443"};
   // Discovery mode: [session-string] - session string or empty to start new session
   // Use simple static examples for positional arguments section (dynamic strings shown in examples section)
   static const char *discovery_examples[] = {"(empty) start new session", (const char *)example_buf7,

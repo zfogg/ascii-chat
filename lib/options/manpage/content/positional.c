@@ -57,8 +57,6 @@ char *manpage_content_generate_positional(const options_config_t *config) {
     }
   }
 
-  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "\n");
-
   log_debug("Generated POSITIONAL ARGUMENTS section (%zu bytes)", offset);
   return buffer;
 }

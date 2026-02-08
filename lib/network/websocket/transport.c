@@ -239,6 +239,8 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
   bool connected = ws_data->is_connected;
   mutex_unlock(&ws_data->state_mutex);
 
+  log_debug("websocket_send: is_connected=%d, wsi=%p", connected, (void *)ws_data->wsi);
+
   if (!connected) {
     return SET_ERRNO(ERROR_NETWORK, "WebSocket transport not connected");
   }
@@ -278,8 +280,14 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
       return SET_ERRNO(ERROR_NETWORK, "Send queue full");
     }
 
-    // Request writable callback
+    // Request writable callback to send queued data
     lws_callback_on_writable(ws_data->wsi);
+
+    // Wake up the event loop to process the callback request
+    // This is needed when calling from a non-service thread
+    struct lws_context *ctx = lws_get_context(ws_data->wsi);
+    lws_cancel_service(ctx);
+
     log_debug("Server-side WebSocket send queued %zu bytes, requesting writable callback", len);
     return ASCIICHAT_OK;
   }
@@ -533,7 +541,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
   const char *path_start = strchr(host_start, '/');
 
   char host[256] = {0};
-  int port = use_ssl ? 443 : 80;
+  int port = use_ssl ? 443 : 27226; // Default: wss:// uses 443, ws:// uses 27226 (ascii-chat WebSocket port)
   char path[256] = "/";
 
   if (port_start && (!path_start || port_start < path_start)) {
@@ -864,6 +872,7 @@ acip_transport_t *acip_websocket_server_transport_create(struct lws *wsi, crypto
   ws_data->context = lws_get_context(wsi); // Get context from wsi (not owned)
   ws_data->owns_context = false;           // Server owns context, not transport
   ws_data->is_connected = true;            // Already connected (server-side)
+  log_debug("Server transport created: is_connected=true, wsi=%p", (void *)wsi);
 
   // Initialize transport
   transport->methods = &websocket_methods;
