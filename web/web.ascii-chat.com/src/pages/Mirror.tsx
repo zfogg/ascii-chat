@@ -59,6 +59,9 @@ export function MirrorPage() {
   const setupDoneRef = useRef(false)
   const frameIntervalRef = useRef<number>(1000 / 60) // Default to 60 FPS
 
+  // Detect macOS/iOS for webcam flip default
+  const isMacOS = /Mac|iPhone|iPad|iPod/.test(navigator.userAgent)
+
   // Settings state
   const [settings, setSettings] = useState<SettingsConfig>({
     resolution: '640x480',
@@ -68,7 +71,7 @@ export function MirrorPage() {
     palette: 'standard',
     paletteChars: ' =#░░▒▒▓▓██',
     matrixRain: false,
-    webcamFlip: true
+    webcamFlip: isMacOS
   })
   const [showSettings, setShowSettings] = useState(false)
 
@@ -95,7 +98,7 @@ export function MirrorPage() {
         setMatrixRain(newSettings.matrixRain ?? false)
 
         // Apply webcam flip
-        setWebcamFlip(newSettings.webcamFlip ?? true)
+        setWebcamFlip(newSettings.webcamFlip ?? isMacOS)
       } catch (err) {
         console.error('Failed to apply WASM settings:', err)
       }
@@ -230,7 +233,7 @@ export function MirrorPage() {
         setMatrixRain(settings.matrixRain ?? false)
 
         // Apply webcam flip
-        setWebcamFlip(settings.webcamFlip ?? true)
+        setWebcamFlip(settings.webcamFlip ?? isMacOS)
       }
 
       const { width, height } = parseResolution(settings.resolution)
