@@ -1,7 +1,7 @@
-import Footer from "../components/Footer";
-import TrackedLink from "../components/TrackedLink";
 import { CodeBlock } from "@ascii-chat/shared/components";
 import { AsciiChatHead } from "../components/AsciiChatHead";
+import Footer from "../components/Footer";
+import TrackedLink from "../components/TrackedLink";
 
 export default function Home() {
   return (
@@ -38,13 +38,13 @@ export default function Home() {
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg sm:text-xl font-semibold text-cyan-300 mb-3">
-                  Pre-built static binaries (all platforms)
+                  Pre-built static binaries
                 </h3>
                 <div className="bg-gray-900/50  rounded-lg p-4 sm:p-6">
                   <p className="text-gray-300 mb-3">
-                    Download pre-built static binaries for{" "}
+                    Download for{" "}
                     <strong className="text-cyan-400">macOS</strong>,{" "}
-                    <strong className="text-purple-400">Linux</strong>, and{" "}
+                    <strong className="text-purple-400">Linux</strong>, or{" "}
                     <strong className="text-teal-400">Windows</strong>:
                   </p>
                   <TrackedLink
