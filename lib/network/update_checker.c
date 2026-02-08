@@ -158,3 +158,29 @@ bool update_check_is_cache_fresh(const update_check_result_t *result) {
 
   return (age < UPDATE_CHECK_CACHE_MAX_AGE_SECONDS);
 }
+
+/**
+ * @brief Test DNS connectivity by resolving api.github.com
+ * @return true if DNS resolution succeeds, false otherwise
+ */
+static bool test_dns_connectivity(void) {
+  struct addrinfo hints, *result = NULL;
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_INET; // IPv4
+  hints.ai_socktype = SOCK_STREAM;
+
+  log_debug("Testing DNS connectivity to %s...", GITHUB_API_HOSTNAME);
+
+  int ret = getaddrinfo(GITHUB_API_HOSTNAME, "443", &hints, &result);
+  if (ret != 0) {
+    log_warn("DNS resolution failed for %s: %s", GITHUB_API_HOSTNAME, gai_strerror(ret));
+    return false;
+  }
+
+  if (result) {
+    freeaddrinfo(result);
+  }
+
+  log_debug("DNS connectivity test succeeded");
+  return true;
+}
