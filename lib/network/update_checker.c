@@ -184,3 +184,88 @@ static bool test_dns_connectivity(void) {
   log_debug("DNS connectivity test succeeded");
   return true;
 }
+
+/**
+ * @brief Extract JSON string field value
+ * @param json JSON string to parse
+ * @param field Field name to extract (e.g., "tag_name")
+ * @param[out] output Output buffer
+ * @param output_size Size of output buffer
+ * @return true if field found and extracted, false otherwise
+ */
+static bool parse_json_string_field(const char *json, const char *field, char *output, size_t output_size) {
+  if (!json || !field || !output || output_size == 0) {
+    return false;
+  }
+
+  // Build search pattern: "field":"value"
+  char pattern[128];
+  snprintf(pattern, sizeof(pattern), "\"%s\"", field);
+
+  const char *field_start = strstr(json, pattern);
+  if (!field_start) {
+    return false;
+  }
+
+  // Skip past field name and find opening quote
+  const char *value_start = strchr(field_start + strlen(pattern), '"');
+  if (!value_start) {
+    return false;
+  }
+  value_start++; // Skip opening quote
+
+  // Find closing quote
+  const char *value_end = strchr(value_start, '"');
+  if (!value_end) {
+    return false;
+  }
+
+  // Copy value
+  size_t value_len = value_end - value_start;
+  if (value_len >= output_size) {
+    value_len = output_size - 1;
+  }
+
+  memcpy(output, value_start, value_len);
+  output[value_len] = '\0';
+
+  return true;
+}
+
+/**
+ * @brief Parse GitHub releases API response
+ * @param json JSON response body
+ * @param[out] tag_name Latest release tag (e.g., "v0.9.0")
+ * @param tag_size Size of tag_name buffer
+ * @param[out] commit_sha Commit SHA for the release
+ * @param sha_size Size of commit_sha buffer
+ * @param[out] html_url Release page URL
+ * @param url_size Size of html_url buffer
+ * @return true if parsing succeeded, false otherwise
+ */
+static bool parse_github_release_json(const char *json, char *tag_name, size_t tag_size, char *commit_sha,
+                                      size_t sha_size, char *html_url, size_t url_size) {
+  if (!json) {
+    return false;
+  }
+
+  // Extract tag_name
+  if (!parse_json_string_field(json, "tag_name", tag_name, tag_size)) {
+    log_error("Failed to parse tag_name from GitHub API response");
+    return false;
+  }
+
+  // Extract target_commitish (the SHA)
+  if (!parse_json_string_field(json, "target_commitish", commit_sha, sha_size)) {
+    log_error("Failed to parse target_commitish from GitHub API response");
+    return false;
+  }
+
+  // Extract html_url
+  if (!parse_json_string_field(json, "html_url", html_url, url_size)) {
+    log_error("Failed to parse html_url from GitHub API response");
+    return false;
+  }
+
+  return true;
+}
