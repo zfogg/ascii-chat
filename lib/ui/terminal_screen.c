@@ -72,11 +72,6 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
   // Calculate log area: total rows - header lines - 1 (prevent scroll)
   int log_area_rows = g_cached_term_size.rows - config->fixed_header_lines - 1;
 
-  // Reserve bottom line for grep input
-  if (grep_entering) {
-    log_area_rows -= 1;
-  }
-
   if (log_area_rows <= 0) {
     if (grep_entering) {
       interactive_grep_render_input_line(g_cached_term_size.cols);
@@ -84,6 +79,11 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     fflush(stdout);
     return;
   }
+
+  // When grep input is active, logs still fill the same area but we only
+  // render log_area_rows-1 of them. The last row is cleared and used for
+  // the `/` input. This prevents logs from shifting up when entering grep.
+  int renderable_log_rows = grep_entering ? (log_area_rows - 1) : log_area_rows;
 
   // Fetch and filter logs
   session_log_entry_t *log_entries = NULL;
@@ -104,7 +104,9 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     }
   }
 
-  // Calculate which logs fit (working backwards from most recent)
+  // Calculate which logs fit (working backwards from most recent).
+  // Use renderable_log_rows so that entering grep mode doesn't change
+  // which logs are selected - only the bottom line changes from log to input.
   int total_lines_needed = 0;
   int first_log_to_display = (log_count > 0) ? (int)log_count - 1 : 0;
 
@@ -120,7 +122,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
       lines_for_this_log = (msg_display_width + g_cached_term_size.cols - 1) / g_cached_term_size.cols;
     }
 
-    if (total_lines_needed + lines_for_this_log > log_area_rows) {
+    if (total_lines_needed + lines_for_this_log > renderable_log_rows) {
       first_log_to_display = i + 1;
       break;
     }
@@ -135,15 +137,14 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
       fprintf(stdout, "%s\n", log_entries[i].message);
     }
 
-    // Fill remaining lines
+    // Fill remaining lines (use full log_area_rows)
     int remaining = log_area_rows - total_lines_needed;
     for (int i = 0; i < remaining; i++) {
       fprintf(stdout, "\n");
     }
   } else {
     // Grep mode: diff-based rendering. Only rewrite lines that changed.
-    // For unchanged lines, just move past them. For changed or new lines,
-    // write content + \x1b[K. For blank lines, just \x1b[K.
+    // Logs fill renderable_log_rows; the last row is the `/` input line.
 
     int log_idx = 0;
     int lines_used = 0;
@@ -164,7 +165,6 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
 
       if (same_as_before) {
         // Content unchanged - skip past it without rewriting.
-        // Move cursor down by the number of terminal lines this log occupies.
         if (lines_for_this == 1) {
           fprintf(stdout, "\n");
         } else {
@@ -175,7 +175,6 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
         fprintf(stdout, "%s\x1b[K\n", msg);
       }
 
-      // Cache this pointer for next frame
       if (log_idx < MAX_CACHED_LINES) {
         g_prev_log_ptrs[log_idx] = msg;
       }
@@ -183,23 +182,22 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
       lines_used += lines_for_this;
     }
 
-    // Clear remaining blank lines (stale content from previous render)
-    int remaining = log_area_rows - lines_used;
+    // Fill blank lines up to renderable_log_rows (not log_area_rows)
+    int remaining = renderable_log_rows - lines_used;
     for (int i = 0; i < remaining; i++) {
       fprintf(stdout, "\x1b[K\n");
     }
 
-    // If previous frame had more total terminal lines than now, clear those too.
-    // (Already handled by the remaining loop above since we fill to log_area_rows)
-
     g_prev_log_count = log_idx;
     g_prev_total_lines = lines_used;
 
-    // Render grep input on the bottom line
-    int last_row = g_cached_term_size.rows;
-    char pos_buf[32];
-    int len = snprintf(pos_buf, sizeof(pos_buf), "\x1b[%d;1H\x1b[K", last_row);
-    platform_write_all(STDOUT_FILENO, pos_buf, len);
+    // Jump to the actual last terminal row and render grep input there.
+    // log_area_rows already has a -1 to prevent scrolling, so after filling
+    // renderable_log_rows the cursor is one row above the bottom.
+    // Flush before the jump because interactive_grep_render_input_line uses
+    // platform_write_all (unbuffered) while fprintf is buffered.
+    fprintf(stdout, "\x1b[%d;1H\x1b[K", g_cached_term_size.rows);
+    fflush(stdout);
     interactive_grep_render_input_line(g_cached_term_size.cols);
   }
 
