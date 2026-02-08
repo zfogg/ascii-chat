@@ -39,7 +39,8 @@ asciichat_error_t options_registry_add_all_to_builder(options_builder_t *builder
       break;
     case OPTION_TYPE_INT:
       // Use metadata-aware function if metadata is present
-      if (entry->metadata.numeric_range.max != 0 || entry->metadata.enum_count > 0) {
+      if (entry->metadata.numeric_range.max != 0 ||
+          (entry->metadata.enum_values && entry->metadata.enum_values[0] != NULL)) {
         options_builder_add_int_with_metadata(builder, entry->long_name, entry->short_name, entry->offset,
                                               entry->default_value ? *(const int *)entry->default_value : 0,
                                               entry->help_text, entry->group, entry->required, entry->env_var_name,
@@ -403,7 +404,13 @@ const char **options_registry_get_enum_values(const char *option_name, const cha
     return NULL;
   }
 
-  *count = meta->enum_count;
+  // Count enum values (NULL-terminated array)
+  size_t enum_count = 0;
+  while (meta->enum_values[enum_count] != NULL) {
+    enum_count++;
+  }
+
+  *count = enum_count;
   if (descriptions) {
     *descriptions = meta->enum_descriptions;
   }

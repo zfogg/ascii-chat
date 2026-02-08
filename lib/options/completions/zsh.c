@@ -55,10 +55,10 @@ static void zsh_write_option(FILE *output, const option_descriptor_t *opt) {
   // Build completion spec based on metadata
   char completion_spec[512] = "";
   if (meta) {
-    if (meta->input_type == OPTION_INPUT_ENUM && meta->enum_values && meta->enum_count > 0) {
+    if (meta->input_type == OPTION_INPUT_ENUM && meta->enum_values && meta->enum_values[0] != NULL) {
       // Enum completion: "(value1 value2 value3)"
       strcpy(completion_spec, ":(");
-      for (size_t i = 0; i < meta->enum_count; i++) {
+      for (size_t i = 0; meta->enum_values[i] != NULL; i++) {
         if (i > 0)
           strcat(completion_spec, " ");
         strcat(completion_spec, meta->enum_values[i]);

@@ -56,7 +56,6 @@ const registry_entry_t g_logging_entries[] = {
      false,
      OPTION_MODE_BINARY,
      {.enum_values = g_log_level_values,
-      .enum_count = 6,
       .enum_descriptions = g_log_level_descs,
       .enum_integer_values = g_log_level_integers,
       .input_type = OPTION_INPUT_ENUM},

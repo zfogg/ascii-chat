@@ -45,7 +45,7 @@ static void fish_write_option(FILE *output, const option_descriptor_t *opt, cons
   bool exclusive = false;
 
   if (meta) {
-    if (meta->input_type == OPTION_INPUT_ENUM && meta->enum_values && meta->enum_count > 0) {
+    if (meta->input_type == OPTION_INPUT_ENUM && meta->enum_values && meta->enum_values[0] != NULL) {
       exclusive = true;
       // Enum values as completions
       // Output short option once with first value
@@ -56,7 +56,7 @@ static void fish_write_option(FILE *output, const option_descriptor_t *opt, cons
         fprintf(output, "'\n");
       }
       // Output long option with all values
-      for (size_t i = 0; i < meta->enum_count; i++) {
+      for (size_t i = 0; meta->enum_values[i] != NULL; i++) {
         fprintf(output, "complete -c ascii-chat %s -l %s -x -a '%s' -d '", condition, opt->long_name,
                 meta->enum_values[i]);
         fish_escape_help(output, opt->help_text);

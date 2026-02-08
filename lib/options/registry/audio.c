@@ -163,7 +163,6 @@ const registry_entry_t g_audio_entries[] = {
      false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
      {.enum_values = g_audio_source_values,
-      .enum_count = 4,
       .enum_descriptions = g_audio_source_descs,
       .enum_integer_values = g_audio_source_integers,
       .input_type = OPTION_INPUT_ENUM},

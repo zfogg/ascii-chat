@@ -217,10 +217,10 @@ static void bash_write_enum_cases(FILE *output) {
     fprintf(output, "    COMPREPLY=($(compgen -W \"");
 
     // Write enum values
-    if (meta->input_type == OPTION_INPUT_ENUM && meta->enum_values && meta->enum_count > 0) {
-      for (size_t j = 0; j < meta->enum_count; j++) {
+    if (meta->input_type == OPTION_INPUT_ENUM && meta->enum_values && meta->enum_values[0] != NULL) {
+      for (size_t j = 0; meta->enum_values[j] != NULL; j++) {
         fprintf(output, "%s", meta->enum_values[j]);
-        if (j < meta->enum_count - 1) {
+        if (meta->enum_values[j + 1] != NULL) {
           fprintf(output, " ");
         }
       }

@@ -65,14 +65,19 @@ int format_option_default_value_str(const option_descriptor_t *desc, char *buf, 
 
     // Try to find matching enum value
     if (desc->metadata.enum_integer_values) {
-      for (size_t i = 0; i < desc->metadata.enum_count; i++) {
+      for (size_t i = 0; desc->metadata.enum_values[i] != NULL; i++) {
         if (desc->metadata.enum_integer_values[i] == default_int_val) {
           return safe_snprintf(buf, bufsize, "%s", desc->metadata.enum_values[i]);
         }
       }
     } else {
       // Fallback: assume sequential 0-based indices if integer values not provided
-      if (default_int_val >= 0 && (size_t)default_int_val < desc->metadata.enum_count) {
+      // Count enum values to check bounds
+      size_t enum_count = 0;
+      while (desc->metadata.enum_values[enum_count] != NULL) {
+        enum_count++;
+      }
+      if (default_int_val >= 0 && (size_t)default_int_val < enum_count) {
         return safe_snprintf(buf, bufsize, "%s", desc->metadata.enum_values[default_int_val]);
       }
     }
@@ -990,7 +995,7 @@ static int find_descriptor_in_builder(const options_builder_t *builder, const ch
 }
 
 void options_builder_set_enum_values(options_builder_t *builder, const char *option_name, const char **values,
-                                     const char **descriptions, size_t count) {
+                                     const char **descriptions) {
   if (!builder || !option_name || !values || !descriptions) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Builder or arguments are NULL");
     return;
@@ -1004,7 +1009,6 @@ void options_builder_set_enum_values(options_builder_t *builder, const char *opt
 
   option_descriptor_t *desc = &builder->descriptors[idx];
   desc->metadata.enum_values = values;
-  desc->metadata.enum_count = count;
   desc->metadata.enum_descriptions = descriptions;
 }
 

@@ -42,13 +42,13 @@ static void ps_write_option(FILE *output, const option_descriptor_t *opt) {
 
   // Build values array if metadata exists
   if (meta) {
-    if (meta->input_type == OPTION_INPUT_ENUM && meta->enum_values && meta->enum_count > 0) {
+    if (meta->input_type == OPTION_INPUT_ENUM && meta->enum_values && meta->enum_values[0] != NULL) {
       // Enum values
       if (opt->short_name != '\0') {
         fprintf(output, "    @{ Name = '-%c'; Description = '", opt->short_name);
         ps_escape_help(output, opt->help_text);
         fprintf(output, "'; Values = @(");
-        for (size_t i = 0; i < meta->enum_count; i++) {
+        for (size_t i = 0; meta->enum_values[i] != NULL; i++) {
           if (i > 0)
             fprintf(output, ", ");
           fprintf(output, "'%s'", meta->enum_values[i]);
@@ -58,7 +58,7 @@ static void ps_write_option(FILE *output, const option_descriptor_t *opt) {
       fprintf(output, "    @{ Name = '--%s'; Description = '", opt->long_name);
       ps_escape_help(output, opt->help_text);
       fprintf(output, "'; Values = @(");
-      for (size_t i = 0; i < meta->enum_count; i++) {
+      for (size_t i = 0; meta->enum_values[i] != NULL; i++) {
         if (i > 0)
           fprintf(output, ", ");
         fprintf(output, "'%s'", meta->enum_values[i]);
