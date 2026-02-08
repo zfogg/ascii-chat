@@ -709,6 +709,7 @@ static const bool default_require_server_identity_value = OPT_REQUIRE_SERVER_IDE
 static const bool default_require_client_identity_value = OPT_REQUIRE_CLIENT_IDENTITY_DEFAULT;
 static const bool default_splash_value = OPT_SPLASH_DEFAULT;
 static const bool default_status_screen_value = OPT_STATUS_SCREEN_DEFAULT;
+static const bool default_no_check_update_value = false;
 
 /** @{ @} */
 
@@ -990,6 +991,7 @@ typedef struct options_state {
   bool splash_explicitly_set;        ///< True if splash was explicitly set by user
   bool status_screen;                ///< Show status screen (default: true = show, use --no-status-screen to hide)
   bool status_screen_explicitly_set; ///< True if status_screen was explicitly set by user
+  bool no_check_update;              ///< Disable automatic update checks (default: false = checks enabled)
 
   // Note: Luminance weights (weight_red, weight_green, weight_blue) and
   // lookup tables (RED[], GREEN[], BLUE[], GRAY[]) are kept as globals
