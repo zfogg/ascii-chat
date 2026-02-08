@@ -444,6 +444,13 @@ void *client_video_render_thread(void *arg) {
     log_debug("Video render iteration for client %u: has_video_sources=%d, width=%u, height=%u", thread_client_id,
               has_video_sources, width_snapshot, height_snapshot);
 
+    // Skip frame generation if client dimensions are not yet received (width=0 or height=0)
+    if (width_snapshot == 0 || height_snapshot == 0) {
+      log_debug("Skipping frame generation for client %u: dimensions not yet received (width=%u, height=%u)",
+                thread_client_id, width_snapshot, height_snapshot);
+      continue;
+    }
+
     if (has_video_sources) {
       int sources_count = 0; // Track number of video sources in this frame
 
