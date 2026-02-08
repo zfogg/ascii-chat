@@ -196,13 +196,12 @@ static void build_connection_target(char *buffer, size_t buffer_size) {
 /**
  * @brief Render splash header with rainbow animation (callback for terminal_screen)
  *
- * Renders exactly 9 lines:
+ * Renders exactly 8 lines:
  * - Line 1: Top border
  * - Lines 2-5: ASCII logo (4 lines, centered, rainbow animated)
- * - Line 6: Blank line
+ * - Line 6: Tagline (centered)
  * - Line 7: Connection target (centered)
- * - Line 8: Tagline (centered)
- * - Line 9: Bottom border
+ * - Line 8: Bottom border
  *
  * @param term_size Current terminal dimensions
  * @param user_data Pointer to splash_header_ctx_t
@@ -274,8 +273,30 @@ static void render_splash_header(terminal_size_t term_size, void *user_data) {
     printf("\n");
   }
 
-  // Line 6: Blank line
-  printf("\n");
+  // Line 6: Tagline (centered, truncated if too long)
+  char plain_tagline[512];
+  int tagline_len = (int)strlen(tagline);
+  int tagline_pad = (term_size.cols - tagline_len) / 2;
+  if (tagline_pad < 0) {
+    tagline_pad = 0;
+  }
+
+  int tpos = 0;
+  for (int j = 0; j < tagline_pad && tpos < (int)sizeof(plain_tagline) - 1; j++) {
+    plain_tagline[tpos++] = ' ';
+  }
+  snprintf(plain_tagline + tpos, sizeof(plain_tagline) - tpos, "%s", tagline);
+
+  // Check visible width and truncate if needed
+  int tagline_visible_width = display_width(plain_tagline);
+  if (tagline_visible_width < 0) {
+    tagline_visible_width = (int)strlen(plain_tagline);
+  }
+  if (term_size.cols > 0 && tagline_visible_width >= term_size.cols) {
+    plain_tagline[term_size.cols - 1] = '\0';
+  }
+
+  printf("%s\n", plain_tagline);
 
   // Line 7: Connection target (centered, truncated if too long)
   char connection_target[512];
@@ -305,32 +326,7 @@ static void render_splash_header(terminal_size_t term_size, void *user_data) {
 
   printf("%s\n", plain_connection);
 
-  // Line 8: Tagline (centered, truncated if too long)
-  char plain_tagline[512];
-  int tagline_len = (int)strlen(tagline);
-  int tagline_pad = (term_size.cols - tagline_len) / 2;
-  if (tagline_pad < 0) {
-    tagline_pad = 0;
-  }
-
-  int tpos = 0;
-  for (int j = 0; j < tagline_pad && tpos < (int)sizeof(plain_tagline) - 1; j++) {
-    plain_tagline[tpos++] = ' ';
-  }
-  snprintf(plain_tagline + tpos, sizeof(plain_tagline) - tpos, "%s", tagline);
-
-  // Check visible width and truncate if needed
-  int tagline_visible_width = display_width(plain_tagline);
-  if (tagline_visible_width < 0) {
-    tagline_visible_width = (int)strlen(plain_tagline);
-  }
-  if (term_size.cols > 0 && tagline_visible_width >= term_size.cols) {
-    plain_tagline[term_size.cols - 1] = '\0';
-  }
-
-  printf("%s\n", plain_tagline);
-
-  // Line 9: Bottom border
+  // Line 8: Bottom border
   printf("\033[1;36m━");
   for (int i = 1; i < term_size.cols - 1; i++) {
     printf("━");
@@ -383,7 +379,7 @@ static void *splash_animation_thread(void *arg) {
 
     // Configure terminal screen with splash header callback
     terminal_screen_config_t screen_config = {
-        .fixed_header_lines = 9, // Splash header is exactly 9 lines
+        .fixed_header_lines = 8, // Splash header is exactly 8 lines
         .render_header = render_splash_header,
         .user_data = &header_ctx,
         .show_logs = true, // Show live log feed below splash
