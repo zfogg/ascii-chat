@@ -14,7 +14,9 @@
 #include "ascii-chat/platform/mutex.h"
 #include "ascii-chat/util/pcre2.h"
 #include "ascii-chat/util/utf8.h"
+#include "ascii-chat/util/log_file_parser.h"
 #include "ascii-chat/session/session_log_buffer.h"
+#include "ascii-chat/options/options.h"
 
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
@@ -81,125 +83,8 @@ static interactive_grep_state_t g_grep_state = {
 };
 
 /* ============================================================================
- * Pattern Parsing (from filter.c)
+ * Pattern Validation
  * ========================================================================== */
-
-// Forward declaration - we'll use parse_pattern_with_flags from filter.c
-// For now, we'll create a simple version inline
-
-typedef struct {
-  char pattern[256];
-  bool case_insensitive;
-  bool fixed_string;
-  bool global_flag;
-  bool invert;
-  int context_before;
-  int context_after;
-  bool valid;
-} parse_result_t;
-
-/**
- * @brief Parse pattern with /pattern/flags format
- * @param input User input string
- * @return Parsed result with pattern and flags
- */
-static parse_result_t parse_pattern_with_flags(const char *input) {
-  parse_result_t result = {0};
-
-  if (!input || strlen(input) == 0) {
-    return result; // Invalid: empty pattern
-  }
-
-  size_t len = strlen(input);
-
-  // Check if pattern uses /pattern/flags format
-  if (input[0] == '/') {
-    // Format 1: /pattern/flags
-    if (len < 3) {
-      return result; // Invalid: too short for /pattern/ format
-    }
-
-    // Find closing slash
-    const char *closing_slash = strchr(input + 1, '/');
-    if (!closing_slash) {
-      return result; // Invalid: missing closing /
-    }
-
-    // Extract pattern between slashes
-    size_t pattern_len = (size_t)(closing_slash - (input + 1));
-    if (pattern_len == 0) {
-      return result; // Invalid: empty pattern
-    }
-    if (pattern_len >= sizeof(result.pattern)) {
-      pattern_len = sizeof(result.pattern) - 1;
-    }
-    memcpy(result.pattern, input + 1, pattern_len);
-    result.pattern[pattern_len] = '\0';
-
-    // Parse flags after closing slash
-    const char *flags = closing_slash + 1;
-
-    for (const char *p = flags; *p; p++) {
-      char c = *p;
-
-      // Single-character flags
-      if (c == 'i') {
-        result.case_insensitive = true;
-      } else if (c == 'g') {
-        result.global_flag = true;
-      } else if (c == 'I') {
-        result.invert = true;
-      } else if (c == 'F') {
-        result.fixed_string = true;
-      }
-      // Multi-character flags with integers
-      else if (c == 'A') {
-        p++; // Move to digits
-        int num = 0;
-        while (*p >= '0' && *p <= '9') {
-          num = num * 10 + (*p - '0');
-          p++;
-        }
-        p--;                                        // Back up one (for loop will increment)
-        result.context_after = (num > 0) ? num : 1; // Default to 1 if no number
-      } else if (c == 'B') {
-        p++;
-        int num = 0;
-        while (*p >= '0' && *p <= '9') {
-          num = num * 10 + (*p - '0');
-          p++;
-        }
-        p--;
-        result.context_before = (num > 0) ? num : 1;
-      } else if (c == 'C') {
-        p++;
-        int num = 0;
-        while (*p >= '0' && *p <= '9') {
-          num = num * 10 + (*p - '0');
-          p++;
-        }
-        p--;
-        int ctx = (num > 0) ? num : 1;
-        result.context_before = ctx;
-        result.context_after = ctx;
-      } else {
-        // Invalid flag character
-        return result; // Invalid
-      }
-    }
-  } else {
-    // Format 2: Plain pattern without slashes (treat as regex, no flags)
-    size_t pattern_len = len;
-    if (pattern_len >= sizeof(result.pattern)) {
-      pattern_len = sizeof(result.pattern) - 1;
-    }
-    memcpy(result.pattern, input, pattern_len);
-    result.pattern[pattern_len] = '\0';
-  }
-
-  result.valid = true;
-  return result;
-}
 
 /**
  * @brief Validate PCRE2 pattern (for keyboard validator callback)
@@ -211,20 +96,20 @@ static bool validate_pcre2_pattern(const char *input) {
     return true; // Empty is valid (no filtering)
   }
 
-  // Try to parse as /pattern/flags format
-  parse_result_t parsed = parse_pattern_with_flags(input);
+  // Use the shared parser from filter.c
+  log_filter_parse_result_t parsed = log_filter_parse_pattern(input);
 
   if (!parsed.valid) {
     return false; // Invalid format
   }
 
   // If fixed string, always valid
-  if (parsed.fixed_string) {
+  if (parsed.is_fixed_string) {
     return true;
   }
 
-  // Try to compile pattern
-  pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile(parsed.pattern, parsed.case_insensitive);
+  // Try to compile pattern with full pcre2_options (includes UTF, UCP, CASELESS, etc.)
+  pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile(parsed.pattern, parsed.pcre2_options);
   if (!singleton) {
     return false; // Compilation failed
   }
@@ -339,7 +224,7 @@ void interactive_grep_exit_mode(bool accept) {
   }
 
   // Accept - parse and compile pattern
-  parse_result_t parsed = parse_pattern_with_flags(g_grep_state.input_buffer);
+  log_filter_parse_result_t parsed = log_filter_parse_pattern(g_grep_state.input_buffer);
 
   if (!parsed.valid) {
     log_error("Invalid pattern format");
@@ -355,19 +240,15 @@ void interactive_grep_exit_mode(bool accept) {
 
   // Store parsed flags first
   g_grep_state.case_insensitive = parsed.case_insensitive;
-  g_grep_state.fixed_string = parsed.fixed_string;
+  g_grep_state.fixed_string = parsed.is_fixed_string;
   g_grep_state.global_highlight = parsed.global_flag;
   g_grep_state.invert_match = parsed.invert;
   g_grep_state.context_before = parsed.context_before;
   g_grep_state.context_after = parsed.context_after;
 
   // Compile and store new pattern (if not fixed string)
-  if (strlen(parsed.pattern) > 0 && !parsed.fixed_string) {
-    uint32_t pcre2_flags = 0;
-    if (parsed.case_insensitive) {
-      pcre2_flags |= PCRE2_CASELESS;
-    }
-    pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile(parsed.pattern, pcre2_flags);
+  if (strlen(parsed.pattern) > 0 && !parsed.is_fixed_string) {
+    pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile(parsed.pattern, parsed.pcre2_options);
     if (singleton) {
       // Verify the pattern actually compiles
       pcre2_code *code = asciichat_pcre2_singleton_get_code(singleton);
@@ -409,17 +290,13 @@ bool interactive_grep_check_signal_cancel(void) {
 }
 
 bool interactive_grep_is_entering(void) {
-  mutex_lock(&g_grep_state.mutex);
-  bool result = (g_grep_state.mode == GREP_MODE_ENTERING);
-  mutex_unlock(&g_grep_state.mutex);
-  return result;
+  // Use atomic read (async-signal-safe) to avoid mutex issues when called from signal handlers
+  return atomic_load(&g_grep_state.mode_atomic) == GREP_MODE_ENTERING;
 }
 
 bool interactive_grep_is_active(void) {
-  mutex_lock(&g_grep_state.mutex);
-  bool result = (g_grep_state.mode != GREP_MODE_INACTIVE);
-  mutex_unlock(&g_grep_state.mutex);
-  return result;
+  // Use atomic read (async-signal-safe) to avoid mutex issues when called from signal handlers
+  return atomic_load(&g_grep_state.mode_atomic) != GREP_MODE_INACTIVE;
 }
 
 /* ============================================================================
@@ -492,7 +369,7 @@ asciichat_error_t interactive_grep_handle_key(keyboard_key_t key) {
     }
 
     // Parse and compile pattern for live filtering
-    parse_result_t parsed = parse_pattern_with_flags(g_grep_state.input_buffer);
+    log_filter_parse_result_t parsed = log_filter_parse_pattern(g_grep_state.input_buffer);
 
     if (!parsed.valid) {
       // Invalid pattern - keep previous patterns active (don't clear)
@@ -502,25 +379,17 @@ asciichat_error_t interactive_grep_handle_key(keyboard_key_t key) {
     }
 
     // Valid pattern - update filtering state
-    if (parsed.fixed_string) {
-      // Fixed string matching - we'll handle this in the filter function
-      // Store pattern as-is (no regex compilation needed)
-      g_grep_state.active_pattern_count = 0; // Clear regex patterns
+    if (parsed.is_fixed_string) {
+      // Fixed string matching - no regex compilation needed
+      g_grep_state.active_pattern_count = 0;
       g_grep_state.case_insensitive = parsed.case_insensitive;
       g_grep_state.fixed_string = true;
-      // Pattern is stored in input_buffer, will be used by filter function
     } else {
-      // Regex pattern - compile with PCRE2
-      uint32_t pcre2_flags = 0;
-      if (parsed.case_insensitive) {
-        pcre2_flags |= PCRE2_CASELESS;
-      }
-      pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile(parsed.pattern, pcre2_flags);
+      // Regex pattern - compile with full pcre2_options
+      pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile(parsed.pattern, parsed.pcre2_options);
       if (singleton) {
-        // Try to get the compiled code to verify it compiles successfully
         pcre2_code *code = asciichat_pcre2_singleton_get_code(singleton);
         if (code) {
-          // Compilation successful - use regex pattern
           g_grep_state.active_patterns[0] = singleton;
           g_grep_state.active_pattern_count = 1;
           g_grep_state.case_insensitive = parsed.case_insensitive;
@@ -528,11 +397,10 @@ asciichat_error_t interactive_grep_handle_key(keyboard_key_t key) {
         } else {
           // Compilation failed - fall back to fixed string matching
           g_grep_state.active_pattern_count = 0;
-          g_grep_state.fixed_string = true; // Fall back to fixed string
+          g_grep_state.fixed_string = true;
           g_grep_state.case_insensitive = parsed.case_insensitive;
         }
       } else {
-        // Malloc failed - fall back to fixed string
         g_grep_state.active_pattern_count = 0;
         g_grep_state.fixed_string = true;
         g_grep_state.case_insensitive = parsed.case_insensitive;
@@ -565,7 +433,7 @@ asciichat_error_t interactive_grep_gather_and_filter_logs(session_log_entry_t **
     return SET_ERRNO(ERROR_INVALID_PARAM, "out_entries and out_count must not be NULL");
   }
 
-  // For now, just use in-memory buffer (log file tailing in task #3)
+  // Get logs from in-memory buffer
   session_log_entry_t *buffer_entries =
       SAFE_MALLOC(SESSION_LOG_BUFFER_SIZE * sizeof(session_log_entry_t), session_log_entry_t *);
   if (!buffer_entries) {
@@ -573,6 +441,32 @@ asciichat_error_t interactive_grep_gather_and_filter_logs(session_log_entry_t **
   }
 
   size_t buffer_count = session_log_buffer_get_recent(buffer_entries, SESSION_LOG_BUFFER_SIZE);
+
+  // Try to tail log file if specified
+  session_log_entry_t *file_entries = NULL;
+  size_t file_count = 0;
+
+  const char *log_file = GET_OPTION(log_file);
+  if (log_file && log_file[0] != '\0') {
+    // Tail last 100KB of log file
+    file_count = log_file_parser_tail(log_file, 100 * 1024, &file_entries, SESSION_LOG_BUFFER_SIZE);
+    if (file_count > 0) {
+      log_debug("Log file tailing: read %zu entries from %s", file_count, log_file);
+    }
+  }
+
+  // Merge and deduplicate if we have file entries
+  session_log_entry_t *merged_entries = NULL;
+  size_t merged_count = 0;
+
+  if (file_count > 0) {
+    merged_count =
+        log_file_parser_merge_and_dedupe(buffer_entries, buffer_count, file_entries, file_count, &merged_entries);
+    SAFE_FREE(buffer_entries);
+    SAFE_FREE(file_entries);
+    buffer_entries = merged_entries;
+    buffer_count = merged_count;
+  }
 
   // Check if filtering is active (either regex patterns or fixed string)
   mutex_lock(&g_grep_state.mutex);
@@ -621,9 +515,9 @@ asciichat_error_t interactive_grep_gather_and_filter_logs(session_log_entry_t **
   }
 
   // Parse pattern once before loop (for fixed string mode)
-  parse_result_t parsed = {0};
+  log_filter_parse_result_t parsed = {0};
   if (has_fixed_string) {
-    parsed = parse_pattern_with_flags(g_grep_state.input_buffer);
+    parsed = log_filter_parse_pattern(g_grep_state.input_buffer);
   }
 
   for (size_t i = 0; i < buffer_count; i++) {
