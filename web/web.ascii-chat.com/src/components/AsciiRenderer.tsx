@@ -73,6 +73,18 @@ export const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>
         terminal.write(output)
         console.log(`[AsciiRenderer] Frame written to xterm`)
 
+        // Force terminal render if needed
+        const core = (terminal as any)._core
+        if (core && core._renderService) {
+          const renderService = core._renderService
+          console.log(`[AsciiRenderer] Forcing render: isPaused=${renderService._isPaused}`)
+          renderService._isPaused = false
+          if (renderService._render) {
+            renderService._render()
+            console.log(`[AsciiRenderer] Render called`)
+          }
+        }
+
         // Update FPS counter via direct DOM mutation
         if (showFps && fpsRef.current) {
           frameCountRef.current++
@@ -178,10 +190,16 @@ export const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>
     return (
       <>
         {/* ASCII terminal output */}
-        <div className="flex-1 px-4 py-2 overflow-hidden" style={{ pointerEvents: 'none', display: 'flex', flexDirection: 'column' }}>
+        <div className="flex-1 px-4 py-2 overflow-hidden min-h-0" style={{ pointerEvents: 'none', display: 'flex', flexDirection: 'column' }}>
           <style>{`
             .xterm {
               flex: 1 !important;
+              min-height: 0;
+              width: 100%;
+            }
+            .xterm-viewport {
+              overflow-y: hidden !important;
+              overflow-x: hidden !important;
             }
           `}</style>
           <XTerm

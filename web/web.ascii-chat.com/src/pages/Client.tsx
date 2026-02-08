@@ -474,7 +474,7 @@ export function ClientPage() {
         description="Connect to an ascii-chat server. Real-time encrypted video chat rendered as ASCII art in your browser."
         url="https://web.ascii-chat.com/client"
       />
-      <div className="flex-1 bg-terminal-bg text-terminal-fg flex flex-col">
+      <div className="flex-1 bg-terminal-bg text-terminal-fg flex flex-col min-h-0">
         {/* Hidden video and canvas for webcam capture */}
         <div style={{ position: 'fixed', bottom: 0, right: 0, width: '1px', height: '1px', overflow: 'hidden', pointerEvents: 'none' }}>
           <video ref={videoRef} autoPlay muted playsInline style={{ width: '640px', height: '480px' }} />

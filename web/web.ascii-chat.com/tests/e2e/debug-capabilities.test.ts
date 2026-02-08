@@ -85,7 +85,46 @@ test("Debug CLIENT_CAPABILITIES and ASCII_FRAME flow", async ({
   }
 
   // Wait for webcam to start and send frames
-  await page.waitForTimeout(5000);
+  await page.waitForTimeout(3000);
+
+  // Try to capture terminal content
+  console.log("\n========== CHECKING TERMINAL RENDERING ==========\n");
+  try {
+    const terminalContent = await page.evaluate(() => {
+      const xterm = document.querySelector('.xterm');
+      if (!xterm) {
+        console.log(`[Playwright] .xterm element NOT found in DOM`);
+        return { found: false, content: '' };
+      }
+
+      console.log(`[Playwright] .xterm element found`);
+
+      // Check for xterm-screen (DOM-based)
+      const xtermScreen = xterm.querySelector('.xterm-screen');
+      if (xtermScreen) {
+        const rows = xtermScreen.querySelectorAll('.xterm-row');
+        console.log(`[Playwright] .xterm-screen found with ${rows.length} rows`);
+      }
+
+      // Check for canvas (canvas-based rendering)
+      const canvas = xterm.querySelector('canvas');
+      if (canvas) {
+        console.log(`[Playwright] Canvas found: ${canvas.width}x${canvas.height}`);
+      }
+
+      // Try to get terminal text through selection
+      const allText = xterm.textContent || '';
+      console.log(`[Playwright] Total text content: ${allText.length} chars`);
+      if (allText.length > 0) {
+        console.log(`[Playwright] First 100 chars: "${allText.substring(0, 100)}"`);
+      }
+
+      return { found: true, textLength: allText.length, hasCanvas: !!canvas, hasScreen: !!xtermScreen };
+    });
+    console.log(`Terminal rendering check:`, terminalContent);
+  } catch (e) {
+    console.log(`Error checking terminal: ${e}`);
+  }
 
   console.log("\n\n========== ANALYSIS ==========\n");
 
