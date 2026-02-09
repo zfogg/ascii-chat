@@ -199,6 +199,11 @@ static size_t map_plain_to_colored_pos(const char *colored_text, size_t char_pos
     // Check for ANSI escape sequence (handle all escape types, not just CSI)
     if (colored_text[byte_pos] == '\x1b') {
       byte_pos++;
+      // Check if there's a next byte before reading it
+      if (colored_text[byte_pos] == '\0') {
+        // Incomplete escape sequence at end of string, just break
+        break;
+      }
       unsigned char next = (unsigned char)colored_text[byte_pos];
       if (next == '[') {
         // CSI sequence: \x1b[...final_byte (where final byte is 0x40-0x7E)
