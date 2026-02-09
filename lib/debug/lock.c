@@ -945,14 +945,16 @@ static void debug_process_untracked_unlock(void *lock_ptr, uint32_t key, const c
     debug_decrement_lock_counter();
 #endif
   } else {
-    SET_ERRNO(ERROR_INVALID_STATE, "Attempting to release %s lock when no locks held!", lock_type_str);
+    // FIXME: this SHOULD be an error. asciichat_errno is broken somehow. it's too noisy for now.
+    //  SET_ERRNO(ERROR_INVALID_STATE, "Attempting to release %s lock when no locks held!", lock_type_str);
   }
 #ifdef DEBUG_LOCKS
-  SET_ERRNO(ERROR_INVALID_STATE,
-            "%s UNTRACKED RELEASED: %p (key=%u) at %s:%d in %s() - total=%llu, held=%u (lock was tracked but record "
-            "was lost)",
-            lock_type_str, lock_ptr, key, extract_project_relative_path(file_name), line_number, function_name,
-            (unsigned long long)released, held);
+  log_warn_every(10 * NS_PER_SEC_INT, "Attempting to release %s lock when no locks held!", lock_type_str);
+  // SET_ERRNO(ERROR_INVALID_STATE,
+  //           "%s UNTRACKED RELEASED: %p (key=%u) at %s:%d in %s() - total=%llu, held=%u (lock was tracked but record "
+  //           "was lost)",
+  //           lock_type_str, lock_ptr, key, extract_project_relative_path(file_name), line_number, function_name,
+  //           (unsigned long long)released, held);
 #endif
 
   // Create an orphaned release record to track this problematic unlock

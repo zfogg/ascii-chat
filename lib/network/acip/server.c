@@ -93,6 +93,8 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
     log_debug("ACIP_SERVER_DISPATCH: WebRTC packet parsed: type=%d, len=%u", envelope.type, envelope.len);
 
     // Handle PACKET_TYPE_ENCRYPTED from WebSocket clients that encrypt at application layer
+    log_error("[ENCRYPTED_CHECK] Received packet type=%d, transport->crypto_ctx=%p", envelope.type,
+              (void *)transport->crypto_ctx);
     if (envelope.type == PACKET_TYPE_ENCRYPTED && transport->crypto_ctx) {
       uint8_t *ciphertext = (uint8_t *)envelope.data;
       size_t ciphertext_len = envelope.len;

@@ -316,7 +316,7 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
       if (frame_data_ptr && frame_size_val > 0) {
         for (size_t i = 0; i < frame_size_val && i < 1000; i++) {
           uint8_t byte = ((unsigned char *)frame_data_ptr)[i];
-          incoming_hash = (uint32_t)(incoming_hash * 31 + byte);
+          incoming_hash = (uint32_t)((uint64_t)incoming_hash * 31 + byte);
         }
       }
       log_debug("Video mixer: client %u incoming frame hash=0x%08x size=%zu", snap->client_id, incoming_hash,

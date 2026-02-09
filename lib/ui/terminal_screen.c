@@ -18,8 +18,33 @@
 #include "ascii-chat/session/session_log_buffer.h"
 #include "ascii-chat/util/display.h"
 #include "ascii-chat/platform/system.h"
+#include "ascii-chat/log/filter.h"
+#include "ascii-chat/common.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
+
+// Strip ANSI escape codes from a string
+static void strip_ansi_codes(const char *src, char *dst, size_t dst_size) {
+  if (!src || !dst || dst_size == 0)
+    return;
+
+  size_t pos = 0;
+  while (*src && pos < dst_size - 1) {
+    if (*src == '\x1b' && *(src + 1) == '[') {
+      // CSI sequence - skip until final byte
+      src += 2;
+      while (*src && pos < dst_size - 1 && !(*src >= 0x40 && *src <= 0x7E)) {
+        src++;
+      }
+      if (*src)
+        src++; // Skip final byte
+    } else {
+      dst[pos++] = *src++;
+    }
+  }
+  dst[pos] = '\0';
+}
 
 // Cached terminal size (to avoid flooding logs with terminal_get_size errors)
 static terminal_size_t g_cached_term_size = {.rows = 24, .cols = 80};
@@ -150,7 +175,25 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     int lines_used = 0;
 
     for (int i = first_log_to_display; i < (int)log_count; i++) {
-      const char *msg = log_entries[i].message;
+      const char *original_msg = log_entries[i].message;
+      const char *msg = original_msg;
+
+      // Apply highlighting if match found
+      size_t match_start = 0, match_len = 0;
+      if (interactive_grep_get_match_info(original_msg, &match_start, &match_len) && match_len > 0) {
+        char plain_text[SESSION_LOG_LINE_MAX] = {0};
+        strip_ansi_codes(original_msg, plain_text, sizeof(plain_text));
+
+        // Validate match is within bounds
+        size_t plain_len = strlen(plain_text);
+        if (match_start < plain_len && (match_start + match_len) <= plain_len) {
+          const char *highlighted = log_filter_highlight_colored(original_msg, plain_text, match_start, match_len);
+          if (highlighted && highlighted[0] != '\0') {
+            msg = highlighted;
+          }
+        }
+      }
+
       int msg_display_width = display_width(msg);
       if (msg_display_width < 0) {
         msg_display_width = (int)strlen(msg);
@@ -161,7 +204,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
       }
 
       // Check if this log line is the same as what we rendered last frame
-      bool same_as_before = (log_idx < g_prev_log_count && g_prev_log_ptrs[log_idx] == msg);
+      bool same_as_before = (log_idx < g_prev_log_count && g_prev_log_ptrs[log_idx] == original_msg);
 
       if (same_as_before) {
         // Content unchanged - skip past it without rewriting.
@@ -176,7 +219,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
       }
 
       if (log_idx < MAX_CACHED_LINES) {
-        g_prev_log_ptrs[log_idx] = msg;
+        g_prev_log_ptrs[log_idx] = original_msg;
       }
       log_idx++;
       lines_used += lines_for_this;

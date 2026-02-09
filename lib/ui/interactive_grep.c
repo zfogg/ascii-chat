@@ -17,6 +17,7 @@
 #include "ascii-chat/logging/file_parser.h"
 #include "ascii-chat/session/session_log_buffer.h"
 #include "ascii-chat/options/options.h"
+#include "ascii-chat/video/ansi.h"
 
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
@@ -366,7 +367,7 @@ asciichat_error_t interactive_grep_handle_key(keyboard_key_t key) {
       .cursor = &g_grep_state.cursor,
       .echo = false,                       // We handle rendering ourselves
       .mask_char = 0,                      // No masking
-      .prefix = "/",                       // Show "/" prefix
+      .prefix = NULL,                      // Don't render prefix - interactive_grep_render_input_line() handles it
       .validator = validate_pcre2_pattern, // Live validation
       .key = key                           // Pass the pre-read key
   };
@@ -643,6 +644,105 @@ void interactive_grep_render_input_line(int width) {
   }
 
   mutex_unlock(&g_grep_state.mutex);
+}
+
+/* ============================================================================
+ * Display Highlighting
+ * ========================================================================== */
+
+bool interactive_grep_get_match_info(const char *message, size_t *out_match_start, size_t *out_match_len) {
+  if (!message || !out_match_start || !out_match_len) {
+    return false;
+  }
+
+  *out_match_start = 0;
+  *out_match_len = 0;
+
+  // Use atomic read to avoid mutex contention with keyboard handler
+  if (atomic_load(&g_grep_state.mode_atomic) == GREP_MODE_INACTIVE) {
+    return false;
+  }
+
+  // Make a safe copy of state under mutex, then release before doing expensive work
+  mutex_lock(&g_grep_state.mutex);
+
+  bool has_fixed_string = g_grep_state.fixed_string && g_grep_state.len > 0;
+  bool case_insensitive = g_grep_state.case_insensitive;
+  char pattern_copy[GREP_INPUT_BUFFER_SIZE];
+  size_t pattern_len = g_grep_state.len;
+  int pattern_count = g_grep_state.active_pattern_count;
+  pcre2_singleton_t *patterns_copy[MAX_GREP_PATTERNS];
+
+  if (has_fixed_string) {
+    strncpy(pattern_copy, g_grep_state.input_buffer, sizeof(pattern_copy) - 1);
+    pattern_copy[sizeof(pattern_copy) - 1] = '\0';
+  }
+
+  for (int i = 0; i < pattern_count && i < MAX_GREP_PATTERNS; i++) {
+    patterns_copy[i] = g_grep_state.active_patterns[i];
+  }
+
+  mutex_unlock(&g_grep_state.mutex);
+
+  // Now do matching without holding mutex
+  size_t message_len = strlen(message);
+  bool matches = false;
+
+  // Fixed string matching
+  if (has_fixed_string) {
+    const char *found = NULL;
+
+    if (case_insensitive) {
+      found = utf8_strcasestr(message, pattern_copy);
+    } else {
+      found = strstr(message, pattern_copy);
+    }
+
+    if (found) {
+      matches = true;
+      *out_match_start = (size_t)(found - message);
+      *out_match_len = pattern_len;
+    }
+  }
+  // Regex pattern matching
+  else if (pattern_count > 0) {
+    pcre2_match_data *match_data = NULL;
+    for (int p = 0; p < pattern_count; p++) {
+      if (patterns_copy[p]) {
+        pcre2_code *code = asciichat_pcre2_singleton_get_code(patterns_copy[p]);
+        if (code) {
+          match_data = pcre2_match_data_create_from_pattern(code, NULL);
+          break;
+        }
+      }
+    }
+
+    if (match_data) {
+      for (int p = 0; p < pattern_count; p++) {
+        pcre2_singleton_t *singleton = patterns_copy[p];
+        if (!singleton) {
+          continue;
+        }
+
+        pcre2_code *code = asciichat_pcre2_singleton_get_code(singleton);
+        if (!code) {
+          continue;
+        }
+
+        int rc = pcre2_jit_match(code, (PCRE2_SPTR)message, message_len, 0, 0, match_data, NULL);
+        if (rc >= 0) {
+          matches = true;
+          PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
+          *out_match_start = (size_t)ovector[0];
+          *out_match_len = (size_t)(ovector[1] - ovector[0]);
+          break;
+        }
+      }
+      pcre2_match_data_free(match_data);
+    }
+  }
+
+  return matches;
 }
 
 /* ============================================================================

@@ -166,16 +166,34 @@ static size_t map_plain_to_colored_pos(const char *colored_text, size_t char_pos
   size_t chars_seen = 0;
 
   while (colored_text[byte_pos] != '\0' && chars_seen < char_pos) {
-    // Check for ANSI escape sequence
-    if (colored_text[byte_pos] == '\x1b' && colored_text[byte_pos + 1] == '[') {
-      // Skip entire ANSI sequence
-      byte_pos += 2;
-      while (colored_text[byte_pos] != '\0') {
-        char c = colored_text[byte_pos];
+    // Check for ANSI escape sequence (handle all escape types, not just CSI)
+    if (colored_text[byte_pos] == '\x1b') {
+      byte_pos++;
+      unsigned char next = (unsigned char)colored_text[byte_pos];
+      if (next == '[') {
+        // CSI sequence: \x1b[...final_byte (where final byte is 0x40-0x7E)
         byte_pos++;
-        // Final byte ends the sequence (0x40-0x7E)
-        if (c >= 0x40 && c <= 0x7E) {
-          break;
+        while (colored_text[byte_pos] != '\0') {
+          unsigned char c = (unsigned char)colored_text[byte_pos];
+          byte_pos++;
+          // Final byte ends the sequence (0x40-0x7E)
+          if (c >= 0x40 && c <= 0x7E) {
+            break;
+          }
+        }
+      } else if (next >= 0x40 && next <= 0x7E) {
+        // 2-byte Fe sequence: \x1b + final_byte (e.g., \x1b7, \x1b8)
+        byte_pos++;
+      } else if (next == '(' || next == ')' || next == '*' || next == '+') {
+        // Designate character set sequences: \x1b( + charset (3 bytes total)
+        byte_pos++; // skip designator
+        if (colored_text[byte_pos] != '\0') {
+          byte_pos++; // skip charset ID
+        }
+      } else {
+        // Unknown escape sequence type, try to skip conservatively
+        if (colored_text[byte_pos] != '\0') {
+          byte_pos++;
         }
       }
     } else {
@@ -610,6 +628,19 @@ bool log_filter_should_output(const char *log_line, size_t *match_start, size_t 
   }
 
   return false; // No match, suppress line
+}
+
+char *log_filter_highlight_colored_copy(const char *colored_text, const char *plain_text, size_t match_start,
+                                        size_t match_len) {
+  const char *result = log_filter_highlight_colored(colored_text, plain_text, match_start, match_len);
+  if (result) {
+    char *copy = SAFE_MALLOC(strlen(result) + 1, char *);
+    if (copy) {
+      strcpy(copy, result);
+      return copy;
+    }
+  }
+  return NULL;
 }
 
 const char *log_filter_highlight_colored(const char *colored_text, const char *plain_text, size_t match_start,

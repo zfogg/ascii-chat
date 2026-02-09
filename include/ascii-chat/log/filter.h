@@ -87,10 +87,25 @@ const char *log_filter_highlight(const char *log_line, size_t match_start, size_
  * @param plain_text Stripped plain text (for match positions)
  * @param match_start Match start position in plain text
  * @param match_len Match length in plain text
- * @return Highlighted text with yellow background added to matches
+ * @return Highlighted text with yellow background added to matches (pointer to static thread-local buffer)
  */
 const char *log_filter_highlight_colored(const char *colored_text, const char *plain_text, size_t match_start,
                                          size_t match_len);
+
+/**
+ * @brief Highlight matches in colored text, returning a new allocated copy
+ *
+ * Like log_filter_highlight_colored() but returns a newly allocated string
+ * instead of a static buffer. Caller must free the returned string with SAFE_FREE().
+ *
+ * @param colored_text Original text with ANSI color codes
+ * @param plain_text Stripped plain text (for match positions)
+ * @param match_start Match start position in plain text
+ * @param match_len Match length in plain text
+ * @return Newly allocated highlighted text (caller must free), or NULL on error
+ */
+char *log_filter_highlight_colored_copy(const char *colored_text, const char *plain_text, size_t match_start,
+                                        size_t match_len);
 
 /**
  * @brief Clean up filter resources

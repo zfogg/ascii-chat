@@ -491,7 +491,7 @@ void *client_video_render_thread(void *arg) {
               // Compute hash of ASCII frame to detect duplicates
               uint32_t ascii_hash = 0;
               for (size_t i = 0; i < frame_size && i < 1000; i++) {
-                ascii_hash = (uint32_t)(((ascii_hash << 5) - ascii_hash) + (unsigned char)ascii_frame[i]);
+                ascii_hash = (uint32_t)((((uint64_t)ascii_hash << 5) - ascii_hash) + (unsigned char)ascii_frame[i]);
               }
               log_debug("Client %u: Rendered ASCII frame size=%s hash=0x%08x sources=%d", thread_client_id, pretty_size,
                         ascii_hash, sources_count);

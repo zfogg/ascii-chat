@@ -149,6 +149,18 @@ asciichat_error_t interactive_grep_gather_and_filter_logs(session_log_entry_t **
  */
 void interactive_grep_render_input_line(int width);
 
+/**
+ * @brief Get match info for highlighting a log message
+ * @param message Log message to check
+ * @param out_match_start Output: start position of match in plain text
+ * @param out_match_len Output: length of match
+ * @return true if message matches current filter pattern, false otherwise
+ *
+ * Used by display code to apply highlighting to matching portions of logs.
+ * Returns match position for use with log_filter_highlight().
+ */
+bool interactive_grep_get_match_info(const char *message, size_t *out_match_start, size_t *out_match_len);
+
 /* ============================================================================
  * Signal-Safe Interface
  * ========================================================================== */

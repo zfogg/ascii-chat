@@ -287,6 +287,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
         log_error("Failed to allocate fragment buffer");
         // Reset fragment state
         SAFE_FREE(conn_data->fragment_buffer);
+        conn_data->fragment_buffer = NULL;
         conn_data->fragment_size = 0;
         conn_data->fragment_capacity = 0;
         break;
@@ -315,7 +316,10 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       msg.data = buffer_pool_alloc(NULL, conn_data->fragment_size);
       if (!msg.data) {
         log_error("Failed to allocate buffer for complete message");
+        SAFE_FREE(conn_data->fragment_buffer);
+        conn_data->fragment_buffer = NULL;
         conn_data->fragment_size = 0; // Reset for next message
+        conn_data->fragment_capacity = 0;
         break;
       }
 

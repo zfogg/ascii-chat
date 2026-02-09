@@ -1879,6 +1879,7 @@ void *client_send_thread_func(void *arg) {
 
       // Snapshot frame metadata (safe with double-buffer system)
       const char *frame_data = (const char *)frame->data; // Pointer snapshot - data is stable in front buffer
+      size_t frame_size = frame->size;                    // Size snapshot - prevent race condition with render thread
       uint32_t width = atomic_load(&client->width);
       uint32_t height = atomic_load(&client->height);
       uint64_t step1_ns = time_get_ns();
@@ -1911,7 +1912,7 @@ void *client_send_thread_func(void *arg) {
       mutex_unlock(&client->send_mutex);
 
       // Network I/O happens OUTSIDE the mutex
-      asciichat_error_t send_result = acip_send_ascii_frame(frame_transport, frame_data, frame->size, width, height);
+      asciichat_error_t send_result = acip_send_ascii_frame(frame_transport, frame_data, frame_size, width, height);
       uint64_t step5_ns = time_get_ns();
 
       if (send_result != ASCIICHAT_OK) {
@@ -2721,8 +2722,11 @@ static void acip_server_on_crypto_auth_response(packet_type_t type, const void *
     disconnect_client_for_bad_data(client, "Crypto handshake complete failed");
   } else {
     log_info("Crypto handshake completed successfully for client %u", client->client_id);
+    log_error("[CRYPTO_SETUP] Setting crypto context for client %u: transport=%p, crypto_ctx=%p", client->client_id,
+              (void *)client->transport, (void *)&client->crypto_handshake_ctx.crypto_ctx);
     client->crypto_initialized = true;
     client->transport->crypto_ctx = &client->crypto_handshake_ctx.crypto_ctx;
+    log_error("[CRYPTO_SETUP] Crypto context SET: transport->crypto_ctx=%p", (void *)client->transport->crypto_ctx);
   }
 }
 
