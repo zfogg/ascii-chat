@@ -488,6 +488,14 @@ void *client_video_render_thread(void *arg) {
               char pretty_size[64];
               format_bytes_pretty(frame_size, pretty_size, sizeof(pretty_size));
 
+              // Compute hash of ASCII frame to detect duplicates
+              uint32_t ascii_hash = 0;
+              for (size_t i = 0; i < frame_size && i < 1000; i++) {
+                ascii_hash = (uint32_t)(((ascii_hash << 5) - ascii_hash) + (unsigned char)ascii_frame[i]);
+              }
+              log_debug("Client %u: Rendered ASCII frame size=%s hash=0x%08x sources=%d", thread_client_id, pretty_size,
+                        ascii_hash, sources_count);
+
             } else {
               log_warn("Frame too large for buffer: %zu > %zu", frame_size, vfb_snapshot->allocated_buffer_size);
             }
