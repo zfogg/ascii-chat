@@ -555,7 +555,7 @@ export function ClientPage() {
                   {terminalDimensions.cols}x{terminalDimensions.rows}
                 </span>
               )}
-              <span className="text-xs text-terminal-8">
+              <span className="status text-xs text-terminal-8">
                 {status}
               </span>
             </div>
