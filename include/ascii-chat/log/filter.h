@@ -152,3 +152,14 @@ void log_filter_clear_patterns(void);
  * @return Number of currently active patterns
  */
 int log_filter_get_pattern_count(void);
+
+/**
+ * @brief Get the last (most recent) filter pattern string
+ *
+ * Returns the original pattern string (with /pattern/flags syntax if provided)
+ * of the last --grep argument. Used by interactive grep to populate its input
+ * buffer when starting with CLI --grep patterns.
+ *
+ * @return Pattern string of last CLI --grep, or NULL if no patterns
+ */
+const char *log_filter_get_last_pattern(void);

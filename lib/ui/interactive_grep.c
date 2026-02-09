@@ -144,15 +144,19 @@ asciichat_error_t interactive_grep_init(void) {
   // Restore the mutex
   g_grep_state.mutex = saved_mutex;
 
-  // Set default pattern to "DEBUG" for testing
-  strncpy(g_grep_state.input_buffer, "DEBUG", GREP_INPUT_BUFFER_SIZE - 1);
-  g_grep_state.len = strlen("DEBUG");
+  // Check if there are CLI --grep patterns to use
+  const char *cli_pattern = log_filter_get_last_pattern();
+  const char *initial_pattern = cli_pattern ? cli_pattern : "DEBUG";
+
+  // Load initial pattern into input buffer
+  strncpy(g_grep_state.input_buffer, initial_pattern, GREP_INPUT_BUFFER_SIZE - 1);
+  g_grep_state.len = strlen(initial_pattern);
   g_grep_state.cursor = g_grep_state.len;
   g_grep_state.mode = GREP_MODE_ACTIVE;
   atomic_store(&g_grep_state.mode_atomic, GREP_MODE_ACTIVE);
 
-  // Compile the default DEBUG pattern
-  log_filter_parse_result_t parsed = log_filter_parse_pattern("DEBUG");
+  // Compile the initial pattern
+  log_filter_parse_result_t parsed = log_filter_parse_pattern(initial_pattern);
   if (parsed.valid) {
     pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile(parsed.pattern, parsed.pcre2_options);
     if (singleton) {

@@ -1195,3 +1195,12 @@ void log_filter_clear_patterns(void) {
 int log_filter_get_pattern_count(void) {
   return g_filter_state.pattern_count;
 }
+
+const char *log_filter_get_last_pattern(void) {
+  if (g_filter_state.pattern_count == 0) {
+    return NULL;
+  }
+
+  // Return the original pattern string of the last pattern
+  return g_filter_state.patterns[g_filter_state.pattern_count - 1].original;
+}
