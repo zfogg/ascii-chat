@@ -178,12 +178,13 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
       const char *original_msg = log_entries[i].message;
       const char *msg = original_msg;
 
-      // Apply highlighting if match found
-      size_t match_start = 0, match_len = 0;
-      if (interactive_grep_get_match_info(original_msg, &match_start, &match_len) && match_len > 0) {
-        char plain_text[SESSION_LOG_LINE_MAX] = {0};
-        strip_ansi_codes(original_msg, plain_text, sizeof(plain_text));
+      // Strip ANSI codes first to match against plain text
+      char plain_text[SESSION_LOG_LINE_MAX] = {0};
+      strip_ansi_codes(original_msg, plain_text, sizeof(plain_text));
 
+      // Apply highlighting if match found in plain text
+      size_t match_start = 0, match_len = 0;
+      if (interactive_grep_get_match_info(plain_text, &match_start, &match_len) && match_len > 0) {
         // Validate match is within bounds
         size_t plain_len = strlen(plain_text);
         if (match_start < plain_len && (match_start + match_len) <= plain_len) {

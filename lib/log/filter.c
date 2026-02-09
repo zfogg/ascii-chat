@@ -20,6 +20,7 @@
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/video/ansi_fast.h>
 #include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/ui/interactive_grep.h>
 
 #include <pthread.h>
 #include <string.h>
@@ -44,43 +45,6 @@
  */
 static inline float calculate_luminance(uint8_t r, uint8_t g, uint8_t b) {
   return (0.2126f * r + 0.7152f * g + 0.0722f * b) / 255.0f;
-}
-
-/**
- * @brief Get highlight color based on terminal background
- * Simple logic: dark background = dark highlight, light background = light highlight
- * Falls back to black (dark) or white (light) if background is too close to the grey
- */
-static void get_highlight_color(uint8_t *r, uint8_t *g, uint8_t *b) {
-  // Try to query actual terminal background color via OSC 11
-  uint8_t bg_r, bg_g, bg_b;
-  bool has_bg_color = terminal_query_background_color(&bg_r, &bg_g, &bg_b);
-
-  bool is_dark;
-  if (has_bg_color) {
-    // Calculate luminance from actual background color
-    float luminance = calculate_luminance(bg_r, bg_g, bg_b);
-    is_dark = (luminance < 0.5f); // Dark if luminance < 50%
-  } else {
-    // Fall back to heuristic detection
-    is_dark = terminal_has_dark_background();
-  }
-
-  // Choose highlight: dark bg = dark highlight, light bg = light highlight
-  uint8_t grey = is_dark ? HIGHLIGHT_DARK_BG : HIGHLIGHT_LIGHT_BG;
-
-  // If we have the actual background color, check if it's too close to our grey
-  if (has_bg_color) {
-    uint8_t bg_grey = (uint8_t)((bg_r + bg_g + bg_b) / 3);
-    int distance = abs((int)bg_grey - (int)grey);
-
-    // If background is too close to our grey, use black/white for maximum contrast
-    if (distance < MIN_HIGHLIGHT_DISTANCE) {
-      grey = is_dark ? 0 : 255; // Black for dark terminals, white for light
-    }
-  }
-
-  *r = *g = *b = grey;
 }
 
 /**
@@ -121,6 +85,10 @@ static struct {
   int saved_pattern_count;              ///< Number of saved patterns
   int saved_pattern_capacity;           ///< Allocated capacity for saved
   bool saved_enabled;                   ///< Saved enabled state
+
+  // Cached highlight color (avoid querying terminal every render)
+  uint8_t cached_highlight_r, cached_highlight_g, cached_highlight_b;
+  uint64_t last_color_query_us;
 } g_filter_state = {
     .patterns = NULL,
     .pattern_count = 0,
@@ -136,6 +104,10 @@ static struct {
     .saved_pattern_count = 0,
     .saved_pattern_capacity = 0,
     .saved_enabled = false,
+    .cached_highlight_r = 70,
+    .cached_highlight_g = 70,
+    .cached_highlight_b = 70,
+    .last_color_query_us = 0,
 };
 
 /**
@@ -152,6 +124,64 @@ static void destroy_match_data(void *data) {
  */
 static void create_match_data_key(void) {
   pthread_key_create(&g_filter_state.match_data_key, destroy_match_data);
+}
+
+/**
+ * @brief Get highlight color based on terminal background (with caching)
+ * Caches color query results to avoid terminal I/O on every render, which
+ * interferes with keyboard input during interactive grep.
+ * Only queries terminal once per 2 seconds.
+ */
+static void get_highlight_color(uint8_t *r, uint8_t *g, uint8_t *b) {
+  // Get current time for cache validation
+  uint64_t now_us = platform_get_monotonic_time_us();
+  uint64_t cache_age_us = now_us - g_filter_state.last_color_query_us;
+
+  // Use cached color if recent (refresh every 2 seconds)
+  if (cache_age_us < 2000000ULL) {
+    *r = g_filter_state.cached_highlight_r;
+    *g = g_filter_state.cached_highlight_g;
+    *b = g_filter_state.cached_highlight_b;
+    return;
+  }
+
+  // Query terminal color (only every 2 seconds)
+  uint8_t bg_r, bg_g, bg_b;
+  bool has_bg_color = terminal_query_background_color(&bg_r, &bg_g, &bg_b);
+
+  bool is_dark;
+  if (has_bg_color) {
+    // Calculate luminance from actual background color
+    float luminance = calculate_luminance(bg_r, bg_g, bg_b);
+    is_dark = (luminance < 0.5f); // Dark if luminance < 50%
+  } else {
+    // Fall back to heuristic detection
+    is_dark = terminal_has_dark_background();
+  }
+
+  // Choose highlight: dark bg = dark highlight, light bg = light highlight
+  uint8_t grey = is_dark ? HIGHLIGHT_DARK_BG : HIGHLIGHT_LIGHT_BG;
+
+  // If we have the actual background color, check if it's too close to our grey
+  if (has_bg_color) {
+    uint8_t bg_grey = (uint8_t)((bg_r + bg_g + bg_b) / 3);
+    int distance = abs((int)bg_grey - (int)grey);
+
+    // If background is too close to our grey, use black/white for maximum contrast
+    if (distance < MIN_HIGHLIGHT_DISTANCE) {
+      grey = is_dark ? 0 : 255; // Black for dark terminals, white for light
+    }
+  }
+
+  // Cache the result
+  g_filter_state.cached_highlight_r = grey;
+  g_filter_state.cached_highlight_g = grey;
+  g_filter_state.cached_highlight_b = grey;
+  g_filter_state.last_color_query_us = now_us;
+
+  *r = grey;
+  *g = grey;
+  *b = grey;
 }
 
 /**
@@ -651,17 +681,25 @@ const char *log_filter_highlight_colored(const char *colored_text, const char *p
     return colored_text;
   }
 
-  // If any pattern has global flag, highlight ALL matches for that pattern
-  // Find first pattern with global flag
+  // When interactive grep is active, only apply highlighting to the provided match position
+  // (don't re-match using log filter patterns)
+  bool is_interactive_grep = interactive_grep_is_active();
+  bool should_use_global_pattern = false;
   log_filter_pattern_t *global_pat = NULL;
-  for (int i = 0; i < g_filter_state.pattern_count; i++) {
-    if (g_filter_state.patterns[i].global_flag && !g_filter_state.patterns[i].is_fixed_string) {
-      global_pat = &g_filter_state.patterns[i];
-      break;
+
+  if (!is_interactive_grep) {
+    // If any pattern has global flag, highlight ALL matches for that pattern
+    // Find first pattern with global flag
+    for (int i = 0; i < g_filter_state.pattern_count; i++) {
+      if (g_filter_state.patterns[i].global_flag && !g_filter_state.patterns[i].is_fixed_string) {
+        global_pat = &g_filter_state.patterns[i];
+        should_use_global_pattern = true;
+        break;
+      }
     }
   }
 
-  if (global_pat && global_pat->singleton) {
+  if (should_use_global_pattern && global_pat && global_pat->singleton) {
     pcre2_code *code = asciichat_pcre2_singleton_get_code(global_pat->singleton);
     pcre2_match_data *match_data = get_thread_match_data();
 

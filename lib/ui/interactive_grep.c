@@ -560,9 +560,36 @@ asciichat_error_t interactive_grep_gather_and_filter_logs(session_log_entry_t **
   }
 
   for (size_t i = 0; i < buffer_count; i++) {
-    const char *message = buffer_entries[i].message;
-    size_t message_len = strlen(message);
+    const char *original_message = buffer_entries[i].message;
     bool matches = false;
+
+    // Strip ANSI codes to match against plain text (consistent with highlighting)
+    char plain_message[SESSION_LOG_LINE_MAX] = {0};
+    const char *strip_ansi_codes_fn(const char *src, char *dst, size_t dst_size);
+    // Use inline stripping to avoid function call overhead
+    {
+      size_t pos = 0;
+      const char *src = original_message;
+      char *dst = plain_message;
+      size_t dst_size = sizeof(plain_message);
+
+      while (*src && pos < dst_size - 1) {
+        if (*src == '\x1b' && *(src + 1) == '[') {
+          // CSI sequence - skip until final byte
+          src += 2;
+          while (*src && pos < dst_size - 1 && !(*src >= 0x40 && *src <= 0x7E)) {
+            src++;
+          }
+          if (*src)
+            src++; // Skip final byte
+        } else {
+          dst[pos++] = *src++;
+        }
+      }
+      dst[pos] = '\0';
+    }
+
+    size_t message_len = strlen(plain_message);
 
     // Fixed string matching
     if (has_fixed_string) {
@@ -570,10 +597,10 @@ asciichat_error_t interactive_grep_gather_and_filter_logs(session_log_entry_t **
 
       if (g_grep_state.case_insensitive) {
         // Unicode-aware case-insensitive fixed string search
-        matches = (utf8_strcasestr(message, search_pattern) != NULL);
+        matches = (utf8_strcasestr(plain_message, search_pattern) != NULL);
       } else {
         // Case-sensitive fixed string search
-        matches = (strstr(message, search_pattern) != NULL);
+        matches = (strstr(plain_message, search_pattern) != NULL);
       }
     }
     // Regex pattern matching
@@ -590,8 +617,8 @@ asciichat_error_t interactive_grep_gather_and_filter_logs(session_log_entry_t **
           continue;
         }
 
-        // Match against message
-        int rc = pcre2_jit_match(code, (PCRE2_SPTR)message, message_len, 0, 0, match_data, NULL);
+        // Match against plain message (without ANSI codes)
+        int rc = pcre2_jit_match(code, (PCRE2_SPTR)plain_message, message_len, 0, 0, match_data, NULL);
         if (rc >= 0) {
           matches = true;
           break;
@@ -659,7 +686,8 @@ bool interactive_grep_get_match_info(const char *message, size_t *out_match_star
   *out_match_len = 0;
 
   // Use atomic read to avoid mutex contention with keyboard handler
-  if (atomic_load(&g_grep_state.mode_atomic) == GREP_MODE_INACTIVE) {
+  int mode = atomic_load(&g_grep_state.mode_atomic);
+  if (mode == GREP_MODE_INACTIVE) {
     return false;
   }
 
@@ -700,8 +728,32 @@ bool interactive_grep_get_match_info(const char *message, size_t *out_match_star
 
     if (found) {
       matches = true;
-      *out_match_start = (size_t)(found - message);
-      *out_match_len = pattern_len;
+
+      // Convert byte position to character position (UTF-8 aware)
+      size_t byte_pos = (size_t)(found - message);
+      size_t char_pos = 0;
+      for (size_t i = 0; i < byte_pos && message[i] != '\0';) {
+        uint32_t codepoint;
+        int utf8_len = utf8_decode((const uint8_t *)(message + i), &codepoint);
+        if (utf8_len <= 0)
+          utf8_len = 1;
+        i += utf8_len;
+        char_pos++;
+      }
+
+      // Count characters in the match (pattern_len is in bytes for the pattern)
+      size_t match_char_len = 0;
+      for (size_t i = 0; i < pattern_len && found[i] != '\0';) {
+        uint32_t codepoint;
+        int utf8_len = utf8_decode((const uint8_t *)(found + i), &codepoint);
+        if (utf8_len <= 0)
+          utf8_len = 1;
+        i += utf8_len;
+        match_char_len++;
+      }
+
+      *out_match_start = char_pos;
+      *out_match_len = match_char_len;
     }
   }
   // Regex pattern matching
@@ -733,8 +785,35 @@ bool interactive_grep_get_match_info(const char *message, size_t *out_match_star
         if (rc >= 0) {
           matches = true;
           PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
-          *out_match_start = (size_t)ovector[0];
-          *out_match_len = (size_t)(ovector[1] - ovector[0]);
+
+          // Convert byte positions to character positions (UTF-8 aware)
+          size_t byte_start = (size_t)ovector[0];
+          size_t byte_end = (size_t)ovector[1];
+
+          // Count characters up to byte_start
+          size_t char_start = 0;
+          for (size_t i = 0; i < byte_start && message[i] != '\0';) {
+            uint32_t codepoint;
+            int utf8_len = utf8_decode((const uint8_t *)(message + i), &codepoint);
+            if (utf8_len <= 0)
+              utf8_len = 1;
+            i += utf8_len;
+            char_start++;
+          }
+
+          // Count characters up to byte_end
+          size_t char_end = char_start;
+          for (size_t i = byte_start; i < byte_end && message[i] != '\0';) {
+            uint32_t codepoint;
+            int utf8_len = utf8_decode((const uint8_t *)(message + i), &codepoint);
+            if (utf8_len <= 0)
+              utf8_len = 1;
+            i += utf8_len;
+            char_end++;
+          }
+
+          *out_match_start = char_start;
+          *out_match_len = char_end - char_start;
           break;
         }
       }
