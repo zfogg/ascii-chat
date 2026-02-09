@@ -137,8 +137,12 @@ asciichat_error_t interactive_grep_init(void) {
     return ASCIICHAT_OK;
   }
 
-  // Initialize state
+  // Initialize state (careful not to destroy the mutex!)
+  // Save the mutex before clearing state
+  mutex_t saved_mutex = g_grep_state.mutex;
   memset(&g_grep_state, 0, sizeof(g_grep_state));
+  // Restore the mutex
+  g_grep_state.mutex = saved_mutex;
 
   // Set default pattern to "DEBUG" for testing
   strncpy(g_grep_state.input_buffer, "DEBUG", GREP_INPUT_BUFFER_SIZE - 1);
