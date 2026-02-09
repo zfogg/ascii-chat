@@ -66,7 +66,7 @@ typedef struct {
  * @brief Global filter state (supports multiple patterns ORed together)
  */
 static struct {
-  grep_pattern_t *patterns; ///< Array of patterns
+  grep_pattern_t *patterns;       ///< Array of patterns
   int pattern_count;              ///< Number of active patterns
   int pattern_capacity;           ///< Allocated capacity
   bool enabled;                   ///< Is filtering active?
@@ -82,9 +82,9 @@ static struct {
 
   // Save/restore for interactive grep
   grep_pattern_t *saved_patterns; ///< Backup of patterns for restore
-  int saved_pattern_count;              ///< Number of saved patterns
-  int saved_pattern_capacity;           ///< Allocated capacity for saved
-  bool saved_enabled;                   ///< Saved enabled state
+  int saved_pattern_count;        ///< Number of saved patterns
+  int saved_pattern_capacity;     ///< Allocated capacity for saved
+  bool saved_enabled;             ///< Saved enabled state
 
   // Cached highlight color (avoid querying terminal every render)
   uint8_t cached_highlight_r, cached_highlight_g, cached_highlight_b;
@@ -342,7 +342,8 @@ grep_parse_result_t grep_parse_pattern(const char *input) {
       return result; // Invalid: too short for /pattern/ format
     }
 
-    // Find closing slash
+    // Find closing slash - don't treat backslash as an escape character
+    // (backslashes are regex escapes, not delimiter escapes)
     closing_slash = strchr(input + 1, '/');
     if (!closing_slash) {
       return result; // Invalid: missing closing /
@@ -351,7 +352,7 @@ grep_parse_result_t grep_parse_pattern(const char *input) {
     pattern_start = input + 1;
   } else {
     // Check for pattern/flags format (implicit, no leading slash)
-    // Find the last slash to use as delimiter
+    // Find the last forward slash to use as delimiter
     closing_slash = strrchr(input, '/');
 
     if (closing_slash && closing_slash > input) {
@@ -699,7 +700,7 @@ bool grep_should_output(const char *log_line, size_t *match_start, size_t *match
 }
 
 char *grep_highlight_colored_copy(const char *colored_text, const char *plain_text, size_t match_start,
-                                        size_t match_len) {
+                                  size_t match_len) {
   const char *result = grep_highlight_colored(colored_text, plain_text, match_start, match_len);
   if (result) {
     char *copy = SAFE_MALLOC(strlen(result) + 1, char *);
@@ -712,7 +713,7 @@ char *grep_highlight_colored_copy(const char *colored_text, const char *plain_te
 }
 
 const char *grep_highlight_colored(const char *colored_text, const char *plain_text, size_t match_start,
-                                         size_t match_len) {
+                                   size_t match_len) {
   static __thread char highlight_buffer[16384];
 
   if (!colored_text || !plain_text || match_len == 0) {
@@ -1154,9 +1155,8 @@ asciichat_error_t grep_restore_patterns(void) {
 
   // Ensure we have capacity for saved patterns
   if (g_filter_state.saved_pattern_count > g_filter_state.pattern_capacity) {
-    grep_pattern_t *new_patterns =
-        SAFE_REALLOC(g_filter_state.patterns, g_filter_state.saved_pattern_count * sizeof(grep_pattern_t),
-                     grep_pattern_t *);
+    grep_pattern_t *new_patterns = SAFE_REALLOC(
+        g_filter_state.patterns, g_filter_state.saved_pattern_count * sizeof(grep_pattern_t), grep_pattern_t *);
     if (!new_patterns) {
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate pattern array for restore");
     }
