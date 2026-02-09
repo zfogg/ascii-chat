@@ -711,8 +711,7 @@ const char *log_filter_highlight_colored(const char *colored_text, const char *p
     return colored_text;
   }
 
-  // When interactive grep is active, only apply highlighting to the provided match position
-  // (don't re-match using log filter patterns)
+  // When interactive grep is active, check if it has global flag
   bool is_interactive_grep = interactive_grep_is_active();
   bool should_use_global_pattern = false;
   log_filter_pattern_t *global_pat = NULL;
@@ -727,13 +726,39 @@ const char *log_filter_highlight_colored(const char *colored_text, const char *p
         break;
       }
     }
+  } else if (interactive_grep_get_global_highlight()) {
+    // Interactive grep is active and has /g flag - do global matching on the provided pattern
+    // We'll do all-match highlighting using the match position to extract the pattern
+    // and re-match for all occurrences
+    should_use_global_pattern = true;
+    // global_pat stays NULL, but we set the flag to enable global matching below
   }
 
-  if (should_use_global_pattern && global_pat && global_pat->singleton) {
-    pcre2_code *code = asciichat_pcre2_singleton_get_code(global_pat->singleton);
-    pcre2_match_data *match_data = get_thread_match_data();
+  if (should_use_global_pattern) {
+    pcre2_code *code = NULL;
+    pcre2_match_data *match_data = NULL;
+
+    // Get code from CLI pattern or interactive grep pattern
+    if (global_pat && global_pat->singleton) {
+      code = asciichat_pcre2_singleton_get_code(global_pat->singleton);
+      match_data = get_thread_match_data();
+    } else if (is_interactive_grep) {
+      // Interactive grep global highlighting - get pattern from grep state
+      void *grep_singleton_void = interactive_grep_get_pattern_singleton();
+      if (grep_singleton_void) {
+        pcre2_singleton_t *grep_singleton = (pcre2_singleton_t *)grep_singleton_void;
+        code = asciichat_pcre2_singleton_get_code(grep_singleton);
+        // Create match data for this pattern
+        if (code) {
+          match_data = pcre2_match_data_create_from_pattern(code, NULL);
+        }
+      }
+    }
 
     if (!code || !match_data) {
+      if (match_data && is_interactive_grep) {
+        pcre2_match_data_free(match_data); // Free if we created it
+      }
       return colored_text; // Fall back to no highlighting
     }
 
@@ -786,9 +811,9 @@ const char *log_filter_highlight_colored(const char *colored_text, const char *p
           *dst++ = match_src[i++]; // '0'
           *dst++ = match_src[i++]; // 'm'
           // Re-apply highlight background after reset
-          uint8_t r, g, b;
-          get_highlight_color(&r, &g, &b);
-          dst = append_truecolor_bg(dst, r, g, b);
+          uint8_t r2, g2, b2;
+          get_highlight_color(&r2, &g2, &b2);
+          dst = append_truecolor_bg(dst, r2, g2, b2);
         } else if (i + 5 <= match_byte_len && match_src[i] == '\x1b' && match_src[i + 1] == '[' &&
                    match_src[i + 2] == '0' && match_src[i + 3] == '0' && match_src[i + 4] == 'm') {
           // Found [00m - copy it and re-apply background
@@ -800,9 +825,9 @@ const char *log_filter_highlight_colored(const char *colored_text, const char *p
           *dst++ = match_src[i++]; // '0'
           *dst++ = match_src[i++]; // 'm'
           // Re-apply highlight background after reset
-          uint8_t r, g, b;
-          get_highlight_color(&r, &g, &b);
-          dst = append_truecolor_bg(dst, r, g, b);
+          uint8_t r2, g2, b2;
+          get_highlight_color(&r2, &g2, &b2);
+          dst = append_truecolor_bg(dst, r2, g2, b2);
         } else {
           // Regular character - just copy
           if (dst + 1 >= dst_end)
@@ -831,6 +856,12 @@ const char *log_filter_highlight_colored(const char *colored_text, const char *p
     }
 
     *dst = '\0';
+
+    // Clean up match data if we created it for interactive grep
+    if (is_interactive_grep && match_data && !global_pat) {
+      pcre2_match_data_free(match_data);
+    }
+
     return highlight_buffer;
   }
 

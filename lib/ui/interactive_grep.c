@@ -831,3 +831,43 @@ bool interactive_grep_needs_rerender(void) {
   }
   return needs;
 }
+
+/* ============================================================================
+ * Query Functions
+ * ========================================================================== */
+
+bool interactive_grep_get_global_highlight(void) {
+  // Use atomic read to avoid mutex contention with keyboard handler
+  int mode = atomic_load(&g_grep_state.mode_atomic);
+  if (mode == GREP_MODE_INACTIVE) {
+    return false;
+  }
+
+  // Safe read under mutex (quick operation)
+  mutex_lock(&g_grep_state.mutex);
+  bool result = g_grep_state.global_highlight;
+  mutex_unlock(&g_grep_state.mutex);
+
+  return result;
+}
+
+void *interactive_grep_get_pattern_singleton(void) {
+  // Use atomic read to check if active
+  int mode = atomic_load(&g_grep_state.mode_atomic);
+  if (mode == GREP_MODE_INACTIVE) {
+    return NULL;
+  }
+
+  // Safe read under mutex
+  mutex_lock(&g_grep_state.mutex);
+
+  // Return the compiled pattern if we have one (not fixed string)
+  void *result = NULL;
+  if (g_grep_state.active_pattern_count > 0 && !g_grep_state.fixed_string) {
+    result = (void *)g_grep_state.active_patterns[0];
+  }
+
+  mutex_unlock(&g_grep_state.mutex);
+
+  return result;
+}

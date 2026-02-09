@@ -161,6 +161,25 @@ void interactive_grep_render_input_line(int width);
  */
 bool interactive_grep_get_match_info(const char *message, size_t *out_match_start, size_t *out_match_len);
 
+/**
+ * @brief Check if global highlighting (/g flag) is enabled in current pattern
+ * @return true if interactive grep is active and /g flag is set, false otherwise
+ *
+ * Used by filter highlighting code to determine if all matches should be highlighted
+ * or just the first match. Returns false when interactive grep is inactive.
+ */
+bool interactive_grep_get_global_highlight(void);
+
+/**
+ * @brief Get the compiled regex pattern for interactive grep (internal use)
+ * @return Opaque PCRE2 singleton for the current pattern, or NULL if inactive/no pattern
+ *
+ * Internal function used by filter highlighting code to enable global match
+ * highlighting in interactive grep mode. Returns NULL when not in active mode
+ * or if pattern is fixed string type (no regex compilation).
+ */
+void *interactive_grep_get_pattern_singleton(void);
+
 /* ============================================================================
  * Signal-Safe Interface
  * ========================================================================== */
