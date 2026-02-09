@@ -240,10 +240,60 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
       lines_used += lines_for_this;
     }
 
-    // Fill blank lines up to renderable_log_rows (not log_area_rows).
-    // Clear one extra row: the gap between renderable_log_rows and the
-    // grep input on the absolute bottom row has stale log content.
+    // Fill blank lines up to renderable_log_rows. If there's one line of space left,
+    // render one more partial log (truncated to fit terminal width) instead of blank line.
     int remaining = renderable_log_rows - lines_used + 1;
+
+    if (remaining >= 1 && first_log_to_display > 0) {
+      // Render one more log line above the displayed ones, truncated to fit terminal width
+      int prev_idx = first_log_to_display - 1;
+      const char *prev_msg = log_entries[prev_idx].message;
+
+      int prev_width = display_width(prev_msg);
+      if (prev_width < 0) {
+        prev_width = (int)strlen(prev_msg);
+      }
+
+      if (prev_width > g_cached_term_size.cols) {
+        // Truncate to fit: progressively test shorter substrings until one fits
+        int target_width = g_cached_term_size.cols - 3; // Reserve space for ellipsis
+        if (target_width <= 0) {
+          fprintf(stdout, "...\x1b[K\n");
+        } else {
+          size_t src_len = strlen(prev_msg);
+          bool found = false;
+
+          for (size_t truncate_at = src_len; truncate_at > 0; truncate_at--) {
+            char test_buf[SESSION_LOG_LINE_MAX];
+            strncpy(test_buf, prev_msg, truncate_at);
+            test_buf[truncate_at] = '\0';
+
+            int test_width = display_width(test_buf);
+            if (test_width < 0) {
+              test_width = (int)strlen(test_buf);
+            }
+
+            if (test_width <= target_width) {
+              // Found a length that fits
+              fprintf(stdout, "%s...\x1b[K\n", test_buf);
+              found = true;
+              break;
+            }
+          }
+
+          if (!found) {
+            fprintf(stdout, "...\x1b[K\n");
+          }
+        }
+      } else {
+        // Fits without truncation
+        fprintf(stdout, "%s\x1b[K\n", prev_msg);
+      }
+
+      remaining--;
+    }
+
+    // Fill remaining blank lines
     for (int i = 0; i < remaining; i++) {
       fprintf(stdout, "\x1b[K\n");
     }
