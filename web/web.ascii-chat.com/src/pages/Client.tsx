@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react'
 import {
   cleanupClientWasm,
   ConnectionState,
@@ -91,18 +91,36 @@ export function ClientPage() {
   const frameIntervalRef = useRef<number>(1000 / 30) // 30 FPS for sending frames
   const frameCountRef = useRef<number>(0)
   const lastLogTimeRef = useRef<number>(0)
+  const receivedFrameCountRef = useRef<number>(0)
+  const frameReceiptTimesRef = useRef<number[]>([])
 
   const [status, setStatus] = useState<string>('Connecting...')
   const [publicKey, setPublicKey] = useState<string>('')
   const [connectionState, setConnectionState] = useState<ConnectionState>(
     ConnectionState.DISCONNECTED
   )
-  const [serverUrl, setServerUrl] = useState<string>('ws://localhost:27226')
+  const [serverUrl, setServerUrl] = useState<string>('ws://localhost:9000')
   const [showModal, setShowModal] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [error, setError] = useState<string>('')
   const [terminalDimensions, setTerminalDimensions] = useState({ cols: 0, rows: 0 })
   const [isWebcamRunning, setIsWebcamRunning] = useState(false)
+  const [hasAutoConnected, setHasAutoConnected] = useState(false)
+
+  // Read server URL from query parameter (for E2E tests)
+  // Use useLayoutEffect to ensure this runs before render and auto-connect
+  useLayoutEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const testServerUrl = params.get('testServerUrl')
+    console.log(`[Client] Query params: search="${window.location.search}"`)
+    console.log(`[Client] testServerUrl from query: "${testServerUrl}"`)
+    if (testServerUrl) {
+      console.log(`[Client] Setting serverUrl to: "${testServerUrl}"`)
+      setServerUrl(testServerUrl)
+    } else {
+      console.log(`[Client] No testServerUrl in query, using default: "${serverUrl}"`)
+    }
+  }, [])
 
   // Settings state
   const [settings, setSettings] = useState<SettingsConfig>({
@@ -153,6 +171,7 @@ export function ClientPage() {
       console.log('[Client] connectToServer() called')
       console.log(`[Client] Server URL: ${serverUrl}`)
       console.log(`[Client] Terminal dimensions state: ${terminalDimensions.cols}x${terminalDimensions.rows}`)
+      console.log(`[Client] Starting connection attempt to: ${serverUrl}`)
 
       setStatus('Connecting...')
       setError('')
@@ -215,11 +234,22 @@ export function ClientPage() {
       })
 
       conn.onPacketReceived((parsed, decryptedPayload) => {
+        const now = performance.now()
         console.log(`[Client] Packet received: type=${parsed.type}, size=${decryptedPayload.length}`)
 
         if (parsed.type === PacketType.ASCII_FRAME) {
-          console.log(`[Client] ========== ASCII_FRAME PACKET RECEIVED ==========`)
+          receivedFrameCountRef.current++
+          frameReceiptTimesRef.current.push(now)
+          console.log(`[Client] ========== ASCII_FRAME PACKET RECEIVED (COUNT: ${receivedFrameCountRef.current}) ==========`)
           console.log(`[Client] Payload size: ${decryptedPayload.length} bytes`)
+
+          // Log frame receipt timing
+          if (frameReceiptTimesRef.current.length > 1) {
+            const prevTime = frameReceiptTimesRef.current[frameReceiptTimesRef.current.length - 2]
+            const deltaMs = now - prevTime
+            console.log(`[Client] Time since last frame: ${deltaMs.toFixed(1)}ms`)
+          }
+          console.log(`[Client] Total frames received so far: ${receivedFrameCountRef.current}`)
 
           // Log first 100 bytes as hex for debugging
           const hexPreview = Array.from(decryptedPayload.slice(0, 100))
@@ -436,11 +466,23 @@ export function ClientPage() {
     setIsWebcamRunning(false)
   }, [])
 
-  // Auto-connect on mount
+  // Auto-connect on mount with serverUrl
+  // This depends on serverUrl to ensure it uses the correct URL from query params
+  // Use a separate effect to trigger connection only after serverUrl is fully set
   useEffect(() => {
-    console.log('[Client] Component mounted, auto-connecting...')
-    connectToServer()
+    if (hasAutoConnected) return
 
+    const timer = setTimeout(() => {
+      console.log('[Client] Auto-connecting with serverUrl:', serverUrl)
+      setHasAutoConnected(true)
+      connectToServer()
+    }, 0)
+
+    return () => clearTimeout(timer)
+  }, [serverUrl])
+
+  // Cleanup on unmount
+  useEffect(() => {
     return () => {
       console.log('[Client] Component unmounting')
       stopWebcam()

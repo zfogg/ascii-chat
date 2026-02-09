@@ -4,12 +4,14 @@ import { ServerFixture, getRandomPort } from "./server-fixture";
 const TEST_TIMEOUT = 20000; // 20 second timeout for all tests
 
 let server: ServerFixture | null = null;
+let serverUrl: string = "";
 
 test.beforeAll(async () => {
   const port = getRandomPort();
   server = new ServerFixture(port);
   await server.start();
-  console.log(`✓ Server started for connection-persistence tests on port ${port}`);
+  serverUrl = server.getUrl();
+  console.log(`✓ Server started for connection-persistence tests on port ${port} at ${serverUrl}`);
 });
 
 test.afterAll(async () => {
@@ -64,18 +66,33 @@ test("Client connection persists and renders continuous frames", async ({
 
   const terminalSnapshots: string[] = [];
 
+  const asciiFrames: { timestamp: number; content: string }[] = [];
+
   page.on("console", (msg) => {
     const text = msg.text();
+    const type = msg.type();
+    // Log everything to stdout for debugging
+    console.log(`[BROWSER:${type.toUpperCase()}] ${text}`);
+
     if (text.includes("State change:")) {
       stateChangeLogs.push(text);
     }
     if (text.includes("WRITE FRAME") || text.includes("ASCII_FRAME PACKET RECEIVED")) {
       frameUpdateLogs.push(text);
     }
+
+    // Capture actual ASCII frame content
+    if (text.includes("Frame ANSI string length:")) {
+      asciiFrames.push({
+        timestamp: Date.now(),
+        content: text
+      });
+    }
   });
 
   console.log("========== NAVIGATING ==========");
-  await page.goto("http://localhost:3000/client", { waitUntil: "networkidle" });
+  const clientUrl = `http://localhost:3000/client?testServerUrl=${encodeURIComponent(serverUrl)}`;
+  await page.goto(clientUrl, { waitUntil: "networkidle" });
 
   console.log("========== WAITING 3.5 SECONDS FOR CONTINUOUS FRAMES ==========");
 
@@ -105,19 +122,35 @@ test("Client connection persists and renders continuous frames", async ({
     }
   }
 
+  console.log("\n========== ASCII FRAMES CAPTURED ==========");
+  console.log(`Total unique ASCII frame logs captured: ${asciiFrames.length}`);
+  asciiFrames.forEach((frame, idx) => {
+    console.log(`[Frame ${idx}] ${frame.content}`);
+  });
+
   console.log("\n========== CHECKING RESULTS ==========");
+  console.log(`\nDEBUG: Full state change log:\n${stateChangeLogs.join("\n")}\n`);
 
   // Test 1: Check connection is STILL CONNECTED (not DISCONNECTED or ERROR)
   const hasDisconnect = stateChangeLogs.some(
     (log) => log.includes("State change: 0 (Disconnected)") ||
              log.includes("State change: 4 (Error)")
   );
+  const hasDisconnectAfterConnect = stateChangeLogs.some((log, idx) => {
+    const isDisconnect = log.includes("State change: 0 (Disconnected)") || log.includes("State change: 4 (Error)");
+    if (!isDisconnect) return false;
+    // Check if there was a CONNECTED state before this disconnect
+    return stateChangeLogs.slice(0, idx).some(l => l.includes("State change: 3 (Connected)"));
+  });
+
   const connectCount = stateChangeLogs.filter((l) =>
     l.includes("State change: 3 (Connected)")
   ).length;
 
   console.log(`Test 1 - Connection persists:`);
+  console.log(`  - Full state log length: ${stateChangeLogs.length} entries`);
   console.log(`  - Has DISCONNECTED/ERROR state: ${hasDisconnect ? "YES ❌" : "NO ✅"}`);
+  console.log(`  - Disconnected AFTER connecting: ${hasDisconnectAfterConnect ? "YES ❌" : "NO ✅"}`);
   console.log(`  - CONNECTED state reached: ${connectCount > 0 ? "YES ✅" : "NO ❌"}`);
   console.log(`  - Still connected at 3.5s: ${!hasDisconnect ? "YES ✅" : "NO ❌"}`);
 
@@ -126,9 +159,16 @@ test("Client connection persists and renders continuous frames", async ({
     l.includes("WRITE FRAME")
   ).length;
 
+  // Count actual ASCII frame packets (not just write operations)
+  const asciiFramePackets = frameUpdateLogs.filter((l) =>
+    l.includes("ASCII_FRAME PACKET RECEIVED")
+  ).length;
+
   console.log(`\nTest 2 - Continuous rendering:`);
-  console.log(`  - Frame writes after initial: ${frameWriteCount}`);
+  console.log(`  - Frame writes: ${frameWriteCount}`);
+  console.log(`  - ASCII frame packets received: ${asciiFramePackets}`);
   console.log(`  - Multiple frames rendered (>1): ${frameWriteCount > 1 ? "YES ✅" : "NO ❌"}`);
+  console.log(`  - Multiple ASCII packets received: ${asciiFramePackets > 1 ? "YES ✅" : "NO ❌"}`);
 
   // Test 3: Check no connection errors during rendering
   const hasError = frameUpdateLogs.some((l) =>

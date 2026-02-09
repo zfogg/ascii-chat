@@ -4,12 +4,14 @@ import { ServerFixture, getRandomPort } from "./server-fixture";
 const TEST_TIMEOUT = 20000; // 20 second timeout for all tests
 
 let server: ServerFixture | null = null;
+let serverUrl: string = "";
 
 test.beforeAll(async () => {
   const port = getRandomPort();
   server = new ServerFixture(port);
   await server.start();
-  console.log(`✓ Server started for debug-capabilities tests on port ${port}`);
+  serverUrl = server.getUrl();
+  console.log(`✓ Server started for debug-capabilities tests on port ${port} at ${serverUrl}`);
 });
 
 test.afterAll(async () => {
@@ -84,7 +86,8 @@ test("Debug CLIENT_CAPABILITIES and ASCII_FRAME flow", async ({
   });
 
   console.log("\n========== NAVIGATING TO CLIENT PAGE ==========\n");
-  await page.goto("http://localhost:3000/client", { waitUntil: "networkidle" });
+  const clientUrl = `http://localhost:3000/client?testServerUrl=${encodeURIComponent(serverUrl)}`;
+  await page.goto(clientUrl, { waitUntil: "networkidle" });
 
   console.log(
     "\n========== WAITING FOR CONNECTION AND CAPABILITIES EXCHANGE ==========\n",

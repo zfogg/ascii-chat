@@ -73,16 +73,35 @@ export const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>
         terminal.write(output)
         console.log(`[AsciiRenderer] Frame written to xterm`)
 
-        // Force terminal render if needed
+        // Ensure terminal is not paused and will render
         const core = (terminal as any)._core
         if (core && core._renderService) {
           const renderService = core._renderService
-          console.log(`[AsciiRenderer] Forcing render: isPaused=${renderService._isPaused}`)
+          const wasPaused = renderService._isPaused
+          console.log(`[AsciiRenderer] ===== RENDER SERVICE STATE =====`)
+          console.log(`[AsciiRenderer] isPaused BEFORE: ${wasPaused}`)
+
+          // Force unpause - this is the critical step
           renderService._isPaused = false
-          if (renderService._render) {
-            renderService._render()
-            console.log(`[AsciiRenderer] Render called`)
+          console.log(`[AsciiRenderer] isPaused AFTER setting to false: ${renderService._isPaused}`)
+
+          // Try multiple approaches to ensure rendering
+          // 1. Try calling refresh/render methods if they exist
+          if (renderService.refresh) {
+            renderService.refresh()
+            console.log(`[AsciiRenderer] Called renderService.refresh()`)
           }
+          if ((renderService as any).markDirty) {
+            (renderService as any).markDirty()
+            console.log(`[AsciiRenderer] Called renderService.markDirty()`)
+          }
+
+          // 2. Try direct render method if it exists
+          const renderMethods = Object.getOwnPropertyNames(Object.getPrototypeOf(renderService))
+            .filter(m => m.toLowerCase().includes('render') || m.toLowerCase().includes('draw'))
+          console.log(`[AsciiRenderer] Available render methods: ${renderMethods.join(', ')}`)
+        } else {
+          console.error(`[AsciiRenderer] ERROR: Cannot access render service. core=${!!core}, _renderService=${core?._renderService}`)
         }
 
         // Update FPS counter via direct DOM mutation

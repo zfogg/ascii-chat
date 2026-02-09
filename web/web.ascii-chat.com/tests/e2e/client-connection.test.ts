@@ -41,8 +41,9 @@ test.beforeEach(async ({ page }) => {
 
 test.describe("Client Connection to Native Server", () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to client demo page
-    await page.goto(WEB_CLIENT_URL);
+    // Navigate to client demo page with test server URL
+    const clientUrl = `${WEB_CLIENT_URL}?testServerUrl=${encodeURIComponent(serverUrl)}`;
+    await page.goto(clientUrl);
   });
 
   test("should load client demo page", async ({ page }) => {

@@ -1,6 +1,7 @@
 import { spawn, ChildProcess } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
+import * as net from "net";
 
 /**
  * Server fixture for E2E tests - starts a dedicated server on a dynamic port
@@ -34,8 +35,13 @@ export class ServerFixture {
       // Use separate ports for TCP and WebSocket: TCP on basePort, WebSocket on basePort+1
       const tcpPort = this.port;
       const wsPort = this.port + 1;
+      const debugLogFile = path.join(process.cwd(), `.server-debug-${this.port}.log`);
 
       this.process = spawn(binaryPath, [
+        "--log-level",
+        "debug",
+        "--log-file",
+        debugLogFile,
         "server",
         "--port",
         tcpPort.toString(),
@@ -43,43 +49,67 @@ export class ServerFixture {
         wsPort.toString(),
       ]);
 
-      let startupOutput = "";
-
       this.process.stdout?.on("data", (data) => {
-        const text = data.toString();
-        startupOutput += text;
-        this.logStream?.write(text);
-
-        if (text.includes("listening") || text.includes("WebSocket")) {
-          clearTimeout(timeout);
-          resolve();
+        if (this.logStream && !this.logStream.destroyed && !this.logStream.writableEnded) {
+          try {
+            this.logStream.write(data);
+          } catch (e) {
+            // Stream closed, ignore
+          }
         }
       });
 
       this.process.stderr?.on("data", (data) => {
-        const text = data.toString();
-        this.logStream?.write(text);
+        if (this.logStream && !this.logStream.destroyed && !this.logStream.writableEnded) {
+          try {
+            this.logStream.write(data);
+          } catch (e) {
+            // Stream closed, ignore
+          }
+        }
       });
 
       this.process.on("error", (err) => {
         clearTimeout(timeout);
-        this.logStream?.destroy();
+        try {
+          this.logStream?.end();
+        } catch (e) {
+          // Ignore stream errors
+        }
         reject(new Error(`Failed to spawn server: ${err.message}`));
       });
 
       this.process.on("exit", (code) => {
         clearTimeout(timeout);
-        this.logStream?.destroy();
+        try {
+          this.logStream?.end();
+        } catch (e) {
+          // Ignore stream errors
+        }
         if (code !== 0 && code !== null) {
           reject(new Error(`Server exited with code ${code}`));
         }
       });
+
+      // Poll for port availability to detect startup
+      const pollInterval = setInterval(async () => {
+        const isListening = await isPortListening(tcpPort);
+        if (isListening) {
+          clearInterval(pollInterval);
+          clearTimeout(timeout);
+          resolve();
+        }
+      }, 100);
     });
   }
 
   async stop(): Promise<void> {
     return new Promise((resolve) => {
-      this.logStream?.destroy();
+      try {
+        this.logStream?.end();
+      } catch (e) {
+        // Ignore stream errors
+      }
 
       if (!this.process) {
         resolve();
@@ -113,6 +143,27 @@ export class ServerFixture {
   getPort(): number {
     return this.port;
   }
+}
+
+/**
+ * Check if a port is listening
+ */
+function isPortListening(port: number, host: string = "127.0.0.1"): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = net.createConnection({ port, host });
+    socket.on("connect", () => {
+      socket.destroy();
+      resolve(true);
+    });
+    socket.on("error", () => {
+      resolve(false);
+    });
+    socket.setTimeout(500);
+    socket.on("timeout", () => {
+      socket.destroy();
+      resolve(false);
+    });
+  });
 }
 
 /**
