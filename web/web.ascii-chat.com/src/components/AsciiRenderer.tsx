@@ -81,25 +81,22 @@ export const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>
           console.log(`[AsciiRenderer] ===== RENDER SERVICE STATE =====`)
           console.log(`[AsciiRenderer] isPaused BEFORE: ${wasPaused}`)
 
-          // Force unpause - this is the critical step
+          // Force unpause - this is critical for continuous rendering
           renderService._isPaused = false
           console.log(`[AsciiRenderer] isPaused AFTER setting to false: ${renderService._isPaused}`)
 
-          // Try multiple approaches to ensure rendering
-          // 1. Try calling refresh/render methods if they exist
-          if (renderService.refresh) {
-            renderService.refresh()
-            console.log(`[AsciiRenderer] Called renderService.refresh()`)
+          // Call _renderRows to force immediate render of the updated content
+          // This is the actual render method in xterm 5.3.0
+          if ((renderService as any)._renderRows) {
+            try {
+              (renderService as any)._renderRows(0, terminal.rows)
+              console.log(`[AsciiRenderer] Called _renderRows(0, ${terminal.rows})`)
+            } catch (e) {
+              console.error(`[AsciiRenderer] Error calling _renderRows: ${e}`)
+            }
+          } else {
+            console.error(`[AsciiRenderer] _renderRows method not found!`)
           }
-          if ((renderService as any).markDirty) {
-            (renderService as any).markDirty()
-            console.log(`[AsciiRenderer] Called renderService.markDirty()`)
-          }
-
-          // 2. Try direct render method if it exists
-          const renderMethods = Object.getOwnPropertyNames(Object.getPrototypeOf(renderService))
-            .filter(m => m.toLowerCase().includes('render') || m.toLowerCase().includes('draw'))
-          console.log(`[AsciiRenderer] Available render methods: ${renderMethods.join(', ')}`)
         } else {
           console.error(`[AsciiRenderer] ERROR: Cannot access render service. core=${!!core}, _renderService=${core?._renderService}`)
         }
