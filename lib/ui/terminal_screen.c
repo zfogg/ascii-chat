@@ -31,7 +31,7 @@ static void strip_ansi_codes(const char *src, char *dst, size_t dst_size) {
 
   size_t pos = 0;
   while (*src && pos < dst_size - 1) {
-    if (*src == '\x1b' && *(src + 1) == '[') {
+    if (*src == '\x1b' && src[1] != '\0' && src[1] == '[') {
       // CSI sequence - skip until final byte
       src += 2;
       while (*src && pos < dst_size - 1 && !(*src >= 0x40 && *src <= 0x7E)) {
@@ -58,6 +58,12 @@ static const char *g_prev_log_ptrs[MAX_CACHED_LINES];
 static int g_prev_log_count = 0;
 static int g_prev_total_lines = 0; // Total terminal lines used by logs last frame
 
+static void terminal_screen_clear_cache(void) {
+  memset(g_prev_log_ptrs, 0, sizeof(g_prev_log_ptrs));
+  g_prev_log_count = 0;
+  g_prev_total_lines = 0;
+}
+
 void terminal_screen_render(const terminal_screen_config_t *config) {
   // Validate config
   if (!config || !config->render_header) {
@@ -75,6 +81,14 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
   }
 
   bool grep_entering = interactive_grep_is_entering();
+
+  // When transitioning out of grep mode, clear the log cache so all logs are redrawn
+  // (grep mode may have shown filtered logs, need to refresh for normal view)
+  static bool last_grep_state = false;
+  if (last_grep_state && !grep_entering) {
+    terminal_screen_clear_cache();
+  }
+  last_grep_state = grep_entering;
 
   if (!grep_entering) {
     // Normal mode: clear and redraw (no flicker concern without grep)
