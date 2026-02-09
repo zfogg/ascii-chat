@@ -246,8 +246,8 @@ size_t log_file_parser_merge_and_dedupe(const session_log_entry_t *buffer_entrie
   // Recolor and copy file entries
   // File entries are plain text from disk: [TIMESTAMP] [LEVEL] [tid:...] FILE:LINE in FUNC(): MESSAGE
   // We must recolor them with ANSI codes for terminal display AND syntax-highlight the message content
-  static int recolor_attempts = 0;
-  static int recolor_successes = 0;
+  int recolor_attempts = 0;
+  int recolor_successes = 0;
   for (size_t i = 0; i < file_count; i++) {
     char colored[SESSION_LOG_LINE_MAX];
     size_t colored_len = log_recolor_plain_entry(file_entries[i].message, colored, sizeof(colored));
