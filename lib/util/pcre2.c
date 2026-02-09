@@ -127,7 +127,6 @@ pcre2_code *asciichat_pcre2_singleton_get_code(pcre2_singleton_t *singleton) {
   atomic_store(&singleton->code, code);
   atomic_store(&singleton->compiled, true);
 
-  log_dev("PCRE2 regex compiled: pattern at %p, flags=%u", singleton->pattern, singleton->flags);
   return code;
 }
 
