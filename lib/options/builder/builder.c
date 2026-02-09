@@ -1507,6 +1507,15 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
   }
 
   const char *arg = argv[argv_index];
+
+  // Skip --grep (already handled in main.c before mode-specific parsing)
+  if (strcmp(arg, "--grep") == 0) {
+    // --grep requires a value, skip both the flag and its argument
+    if (argv_index + 1 < argc) {
+      *consumed_count = 2;
+    }
+    return ASCIICHAT_OK;
+  }
   char *long_opt_value = NULL;
   char *equals = NULL;
   char *arg_copy = NULL;            // Copy of arg for safe parsing without modifying original
