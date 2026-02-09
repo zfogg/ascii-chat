@@ -159,6 +159,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     break;
 
   case LWS_CALLBACK_SERVER_WRITEABLE: {
+    log_error("!!! LWS_CALLBACK_SERVER_WRITEABLE triggered !!!");
     log_debug("LWS_CALLBACK_SERVER_WRITEABLE triggered");
 
     // Dequeue and send pending data
@@ -177,9 +178,11 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
     if (ringbuffer_is_empty(ws_data->send_queue)) {
       mutex_unlock(&ws_data->queue_mutex);
-      log_debug("SERVER_WRITEABLE: Send queue is empty");
+      log_debug("SERVER_WRITEABLE: Send queue is empty, nothing to send");
       break;
     }
+
+    log_error(">>> SERVER_WRITEABLE: Processing message from send queue");
 
     // Dequeue message
     websocket_recv_msg_t msg;
@@ -354,9 +357,13 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     // Fired on the service thread when lws_cancel_service() is called from another thread.
     // This is how we safely convert cross-thread send requests into writable callbacks.
     // lws_callback_on_writable() is only safe from the service thread context.
+    log_error("!!! LWS_CALLBACK_EVENT_WAIT_CANCELLED triggered - requesting writable callbacks !!!");
     const struct lws_protocols *protocol = lws_get_protocol(wsi);
     if (protocol) {
+      log_debug("EVENT_WAIT_CANCELLED: Calling lws_callback_on_writable_all_protocol");
       lws_callback_on_writable_all_protocol(lws_get_context(wsi), protocol);
+    } else {
+      log_error("EVENT_WAIT_CANCELLED: No protocol found on wsi");
     }
     break;
   }
