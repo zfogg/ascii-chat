@@ -88,6 +88,12 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
   if (last_grep_state && !grep_entering) {
     terminal_screen_clear_cache();
   }
+
+  // Also clear cache when pattern changes while still in grep mode (e.g., user backspaces to empty)
+  if (grep_entering && interactive_grep_needs_rerender()) {
+    terminal_screen_clear_cache();
+  }
+
   last_grep_state = grep_entering;
 
   if (!grep_entering) {
