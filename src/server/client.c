@@ -204,13 +204,13 @@ static const client_dispatch_entry_t g_client_dispatch_hash[CLIENT_DISPATCH_HASH
     [0]  = {PACKET_TYPE_AUDIO_BATCH,           2},   // hash(4000)=0
     [1]  = {PACKET_TYPE_PROTOCOL_VERSION,      0},   // hash(1)=1
     [2]  = {PACKET_TYPE_AUDIO_OPUS_BATCH,      3},   // hash(4001)=1, probed->2
-    [8]  = {PACKET_TYPE_CLIENT_CAPABILITIES,   4},   // hash(5000)=8
-    [9]  = {PACKET_TYPE_PING,                  5},   // hash(5001)=9
-    [10] = {PACKET_TYPE_PONG,                  6},   // hash(5002)=10
-    [11] = {PACKET_TYPE_CLIENT_JOIN,           7},   // hash(5003)=11
-    [12] = {PACKET_TYPE_CLIENT_LEAVE,          8},   // hash(5004)=12
-    [13] = {PACKET_TYPE_STREAM_START,          9},   // hash(5005)=13
-    [14] = {PACKET_TYPE_STREAM_STOP,           10},  // hash(5006)=14
+    [8]  = {PACKET_TYPE_CLIENT_CAPABILITIES,   8},   // hash(5000)=8
+    [9]  = {PACKET_TYPE_PING,                  9},   // hash(5001)=9
+    [10] = {PACKET_TYPE_PONG,                  10},  // hash(5002)=10
+    [11] = {PACKET_TYPE_CLIENT_JOIN,           4},   // hash(5003)=11
+    [12] = {PACKET_TYPE_CLIENT_LEAVE,          5},   // hash(5004)=12
+    [13] = {PACKET_TYPE_STREAM_START,          6},   // hash(5005)=13
+    [14] = {PACKET_TYPE_STREAM_STOP,           7},   // hash(5006)=14
     [20] = {PACKET_TYPE_REMOTE_LOG,            11},  // hash(2004)=20
     [25] = {PACKET_TYPE_IMAGE_FRAME,           1},   // hash(3001)=25
 };
@@ -1163,6 +1163,7 @@ int remove_client(server_context_t *server_ctx, uint32_t client_id) {
         return 0; // Return success - removal is in progress
       }
       // Mark as shutting down and inactive immediately to stop new operations
+      log_error("🔴 TRACE: Setting active=false in remove_client (client_id=%d, socket=%d)", client_id, client->socket);
       log_info("Removing client %d (socket=%d) - marking inactive and clearing video flags", client_id, client->socket);
       atomic_store(&client->shutting_down, true);
       atomic_store(&client->active, false);
@@ -1489,6 +1490,8 @@ void *client_receive_thread(void *arg) {
       // Check error type to determine if we should disconnect
       asciichat_error_context_t err_ctx;
       if (HAS_ERRNO(&err_ctx)) {
+        log_error("🔴 ACIP error for client %u: code=%u msg=%s", client->client_id, err_ctx.code,
+                  err_ctx.context_message);
         if (err_ctx.code == ERROR_NETWORK) {
           // Network error or EOF - client disconnected
           log_debug("Client %u disconnected (network error): %s", client->client_id, err_ctx.context_message);
@@ -1500,6 +1503,9 @@ void *client_receive_thread(void *arg) {
           atomic_store(&g_server_should_exit, true);
           break;
         }
+      } else {
+        log_error("🔴 ACIP error for client %u (NO ERRNO): result=%s", client->client_id,
+                  asciichat_error_string(acip_result));
       }
 
       // Any other error - disconnect client to prevent infinite retry loop
@@ -1514,6 +1520,8 @@ void *client_receive_thread(void *arg) {
   // Mark client as inactive and stop all threads
   // Must stop render threads when client disconnects.
   // OPTIMIZED: Use atomic operations for thread control flags (lock-free)
+  log_error("🔴 TRACE: Setting active=false in receive_thread_fn (client_id=%u, exiting receive loop)",
+            atomic_load(&client->client_id));
   atomic_store(&client->active, false);
   atomic_store(&client->send_thread_running, false);
   atomic_store(&client->video_render_thread_running, false);
@@ -2093,6 +2101,7 @@ void stop_client_threads(client_info_t *client) {
   }
 
   // Signal threads to stop
+  log_error("🔴 TRACE: Setting active=false in stop_client_threads (client_id=%u)", atomic_load(&client->client_id));
   atomic_store(&client->active, false);
   atomic_store(&client->send_thread_running, false);
 
