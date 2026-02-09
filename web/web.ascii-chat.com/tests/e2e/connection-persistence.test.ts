@@ -4,22 +4,18 @@ test("Client connection persists and renders continuous frames", async ({
   page,
   context,
 }) => {
-  // Use headed mode for debugging
-  test.slow(); // This test is slow, give it more time
+  test.slow();
 
-  const logs: string[] = [];
-  const frameContents: string[] = [];
+  const stateChangeLogs: string[] = [];
+  const frameUpdateLogs: string[] = [];
 
-  // Grant permissions
   await context.grantPermissions(["camera", "microphone"]);
 
-  // Inject fake animated video
   await page.addInitScript(() => {
     const canvas = document.createElement("canvas");
     canvas.width = 640;
     canvas.height = 480;
     const ctx = canvas.getContext("2d");
-
     const stream = canvas.captureStream(30);
 
     let frameCount = 0;
@@ -40,111 +36,130 @@ test("Client connection persists and renders continuous frames", async ({
       const originalGetUserMedia =
         navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
       navigator.mediaDevices.getUserMedia = async (constraints) => {
-        if (constraints.video) {
-          return stream;
-        }
+        if (constraints.video) return stream;
         return originalGetUserMedia(constraints);
       };
     }
   });
 
-  // Capture console logs
+  const terminalSnapshots: string[] = [];
+
   page.on("console", (msg) => {
     const text = msg.text();
-    console.log(`[${msg.type()}] ${text}`);
-    logs.push(text);
+    if (text.includes("State change:")) {
+      stateChangeLogs.push(text);
+    }
+    if (text.includes("WRITE FRAME") || text.includes("ASCII_FRAME PACKET RECEIVED")) {
+      frameUpdateLogs.push(text);
+    }
   });
 
-  console.log("========== NAVIGATING TO CLIENT PAGE ==========");
-  await page.goto("http://localhost:3000/client", {
-    waitUntil: "networkidle",
-  });
+  console.log("========== NAVIGATING ==========");
+  await page.goto("http://localhost:3000/client", { waitUntil: "networkidle" });
 
-  console.log("========== WAITING FOR FIRST FRAME ==========");
-  await page.waitForTimeout(2000);
+  console.log("========== WAITING 3.5 SECONDS FOR CONTINUOUS FRAMES ==========");
 
-  // Check connection state at T=2s
-  const stateAt2s = await page.evaluate(() => {
-    return document.body.innerText;
-  });
-  console.log("Page content at 2s:", stateAt2s.substring(0, 200));
+  // Capture terminal content every 0.5 seconds to see if it changes
+  for (let i = 0; i < 7; i++) {
+    await page.waitForTimeout(500);
+    const terminalContent = await page.evaluate(() => {
+      // Get the actual rendered text from xterm - look in the rows/text elements
+      const rows = document.querySelectorAll(".xterm-rows");
+      if (rows.length === 0) return "[xterm not ready]";
 
-  // Get first frame content from terminal
-  const firstFrameContent = await page.evaluate(() => {
-    const xterm = document.querySelector(".xterm");
-    return xterm?.textContent?.substring(0, 500) || "";
-  });
-  frameContents.push(firstFrameContent);
-  console.log("First frame content length:", firstFrameContent.length);
+      let text = "";
+      rows.forEach((row) => {
+        const spans = row.querySelectorAll("span");
+        spans.forEach((span) => {
+          // Get text content, handling ANSI color codes
+          text += span.textContent || "";
+        });
+        text += "\n";
+      });
 
-  // Wait another 1.5 seconds (total 3.5s from load)
-  console.log("========== WAITING 1.5 MORE SECONDS ==========");
-  await page.waitForTimeout(1500);
+      return text || "[no text content]";
+    });
+    if (terminalContent) {
+      terminalSnapshots.push(terminalContent);
+      console.log(`[Snapshot ${i}] Got ${terminalContent.length} chars`);
+    }
+  }
 
-  // Check connection state at T=3.5s
-  const stateAt3s = await page.evaluate(() => {
-    const text = document.body.innerText;
-    const isConnected = text.includes("Connected");
-    const isConnecting = text.includes("Connecting");
-    const isError = text.includes("Error");
-    return { text: text.substring(0, 300), isConnected, isConnecting, isError };
-  });
+  console.log("\n========== CHECKING RESULTS ==========");
 
-  console.log("Connection state at 3.5s:", stateAt3s);
-
-  // Get second frame content
-  const secondFrameContent = await page.evaluate(() => {
-    const xterm = document.querySelector(".xterm");
-    return xterm?.textContent?.substring(0, 500) || "";
-  });
-  frameContents.push(secondFrameContent);
-  console.log("Second frame content length:", secondFrameContent.length);
-
-  // Check if frames are different
-  const framesDifferent = firstFrameContent !== secondFrameContent;
-  console.log("Frames are different:", framesDifferent);
-
-  // Wait one more second for more frames
-  await page.waitForTimeout(1000);
-
-  const thirdFrameContent = await page.evaluate(() => {
-    const xterm = document.querySelector(".xterm");
-    return xterm?.textContent?.substring(0, 500) || "";
-  });
-  frameContents.push(thirdFrameContent);
-  console.log("Third frame content length:", thirdFrameContent.length);
-
-  // Count unique frames
-  const uniqueFrames = new Set(frameContents).size;
-  console.log(`Total frames captured: ${frameContents.length}, Unique: ${uniqueFrames}`);
-
-  // Check metrics
-  const connectionCount = logs.filter((l) =>
-    l.includes("CONNECTED state reached")
-  ).length;
-  const asciiFramesCount = logs.filter((l) =>
-    l.includes("ASCII_FRAME PACKET RECEIVED")
-  ).length;
-  const errorCount = logs.filter(
-    (l) => l.includes("ERROR") || l.includes("Error")
-  ).length;
-
-  console.log(`\n========== RESULTS ==========`);
-  console.log(`✅ Connection established: ${connectionCount > 0 ? "YES" : "NO"}`);
-  console.log(
-    `✅ Still connected at 3.5s: ${stateAt3s.isConnected ? "YES" : "NO"}`
+  // Test 1: Check connection is STILL CONNECTED (not DISCONNECTED or ERROR)
+  const hasDisconnect = stateChangeLogs.some(
+    (log) => log.includes("State change: 0 (Disconnected)") ||
+             log.includes("State change: 4 (Error)")
   );
-  console.log(
-    `✅ ASCII frames received: ${asciiFramesCount} frames`
-  );
-  console.log(`✅ Frames are animating: ${framesDifferent ? "YES" : "NO"}`);
-  console.log(`✅ Unique frames: ${uniqueFrames}/${frameContents.length}`);
-  console.log(`⚠️  Errors: ${errorCount}`);
+  const connectCount = stateChangeLogs.filter((l) =>
+    l.includes("State change: 3 (Connected)")
+  ).length;
 
-  // Assertions
-  expect(connectionCount > 0).toBeTruthy();
-  expect(stateAt3s.isConnected).toBeTruthy();
-  expect(asciiFramesCount > 0).toBeTruthy();
-  expect(framesDifferent).toBeTruthy();
-  expect(uniqueFrames > 1).toBeTruthy();
+  console.log(`Test 1 - Connection persists:`);
+  console.log(`  - Has DISCONNECTED/ERROR state: ${hasDisconnect ? "YES ❌" : "NO ✅"}`);
+  console.log(`  - CONNECTED state reached: ${connectCount > 0 ? "YES ✅" : "NO ❌"}`);
+  console.log(`  - Still connected at 3.5s: ${!hasDisconnect ? "YES ✅" : "NO ❌"}`);
+
+  // Test 2: Check MULTIPLE frames rendered (not just one)
+  const frameWriteCount = frameUpdateLogs.filter((l) =>
+    l.includes("WRITE FRAME")
+  ).length;
+
+  console.log(`\nTest 2 - Continuous rendering:`);
+  console.log(`  - Frame writes after initial: ${frameWriteCount}`);
+  console.log(`  - Multiple frames rendered (>1): ${frameWriteCount > 1 ? "YES ✅" : "NO ❌"}`);
+
+  // Test 3: Check no connection errors during rendering
+  const hasError = frameUpdateLogs.some((l) =>
+    l.includes("ERROR") || l.includes("State is ERROR")
+  );
+
+  console.log(`\nTest 3 - No errors:`);
+  console.log(`  - Errors during frame rendering: ${hasError ? "YES ❌" : "NO ✅"}`);
+
+  // Test 4: Check that frames are ACTUALLY DIFFERENT (not the same frame repeated)
+  // Compare terminal snapshots - sum the character codes to get a content hash
+  const snapshotHashes = terminalSnapshots.map((snapshot) => {
+    let hash = 0;
+    for (let i = 0; i < snapshot.length; i++) {
+      hash += snapshot.charCodeAt(i);
+    }
+    return hash;
+  });
+
+  const uniqueHashes = new Set(snapshotHashes);
+
+  console.log(`\nTest 4 - Frames are different (terminal content analysis):`);
+  console.log(`  - Total snapshots captured: ${terminalSnapshots.length}`);
+  console.log(`  - Unique content hashes: ${uniqueHashes.size}`);
+  console.log(`  - Are frames changing: ${uniqueHashes.size > 1 ? "YES ✅" : "NO ❌ (same frame repeated)"}`);
+
+  console.log(`\n  - Snapshot hashes: ${Array.from(snapshotHashes).join(", ")}`);
+  console.log(`  - First snapshot length: ${terminalSnapshots[0]?.length || 0} chars`);
+  if (terminalSnapshots.length > 1) {
+    console.log(`  - Second snapshot length: ${terminalSnapshots[1]?.length || 0} chars`);
+    console.log(`  - Snapshots identical: ${terminalSnapshots[0] === terminalSnapshots[1] ? "YES" : "NO"}`);
+  }
+
+  console.log("\n========== STATE CHANGE LOG ==========");
+  stateChangeLogs.forEach((l) => console.log(l));
+
+  console.log("\n========== FRAME UPDATE LOG (first 10) ==========");
+  frameUpdateLogs.slice(0, 10).forEach((l) => console.log(l));
+  if (frameUpdateLogs.length > 10) {
+    console.log(`... and ${frameUpdateLogs.length - 10} more frame updates`);
+  }
+
+  console.log("\n========== TERMINAL SNAPSHOTS ==========");
+  terminalSnapshots.slice(0, 3).forEach((snap, i) => {
+    console.log(`[Snapshot ${i}] Length: ${snap.length}, First 100 chars: ${snap.substring(0, 100)}`);
+  });
+
+  // Assertions - test what ACTUALLY matters
+  expect(hasDisconnect).toBe(false); // MUST not disconnect
+  expect(connectCount).toBeGreaterThan(0); // MUST connect at least once
+  expect(frameWriteCount).toBeGreaterThan(1); // MUST have multiple frame updates
+  expect(hasError).toBe(false); // MUST not have errors
+  expect(uniqueHashes.size).toBeGreaterThan(1); // MUST have different frames, not same repeated
 });
