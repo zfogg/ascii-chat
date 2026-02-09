@@ -330,8 +330,9 @@ size_t log_file_parser_merge_and_dedupe(const session_log_entry_t *buffer_entrie
     }
     merged[buffer_count + i].sequence = file_entries[i].sequence;
   }
-  if (file_count > 0) {
-    log_debug("File log recoloring: %d/%d entries successfully recolored", recolor_successes, recolor_attempts);
+  if (file_count > 0 && recolor_successes < recolor_attempts) {
+    log_debug("File log recoloring: %d/%d entries successfully recolored (failures detected)", recolor_successes,
+              recolor_attempts);
   }
 
   // Assign sequence numbers: file entries are older (lower seq), buffer entries newer (higher seq)

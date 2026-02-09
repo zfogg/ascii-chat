@@ -19,7 +19,6 @@
 #include "ascii-chat/options/options.h"
 #include "ascii-chat/video/ansi.h"
 
-#define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
 #include <string.h>
 #include <stdio.h>
@@ -478,9 +477,6 @@ asciichat_error_t interactive_grep_gather_and_filter_logs(session_log_entry_t **
     // Tail last 100KB of log file, but limit to half SESSION_LOG_BUFFER_SIZE
     // to avoid buffer overflow when merging with in-memory buffer
     file_count = log_file_parser_tail(log_file, 100 * 1024, &file_entries, SESSION_LOG_BUFFER_SIZE / 2);
-    if (file_count > 0) {
-      log_debug("Log file tailing: read %zu entries from %s", file_count, log_file);
-    }
   }
 
   // Merge and deduplicate if we have file entries
