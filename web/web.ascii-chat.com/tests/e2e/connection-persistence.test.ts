@@ -1,9 +1,29 @@
 import { test, expect } from "@playwright/test";
+import { ServerFixture, getRandomPort } from "./server-fixture";
+
+const TEST_TIMEOUT = 20000; // 20 second timeout for all tests
+
+let server: ServerFixture | null = null;
+
+test.beforeAll(async () => {
+  const port = getRandomPort();
+  server = new ServerFixture(port);
+  await server.start();
+  console.log(`✓ Server started for connection-persistence tests on port ${port}`);
+});
+
+test.afterAll(async () => {
+  if (server) {
+    await server.stop();
+    console.log(`✓ Server stopped`);
+  }
+});
 
 test("Client connection persists and renders continuous frames", async ({
   page,
   context,
 }) => {
+  test.setTimeout(TEST_TIMEOUT);
   test.slow();
 
   const stateChangeLogs: string[] = [];

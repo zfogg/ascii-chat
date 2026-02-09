@@ -1,9 +1,29 @@
 import { test } from "@playwright/test";
+import { ServerFixture, getRandomPort } from "./server-fixture";
+
+const TEST_TIMEOUT = 20000; // 20 second timeout for all tests
+
+let server: ServerFixture | null = null;
+
+test.beforeAll(async () => {
+  const port = getRandomPort();
+  server = new ServerFixture(port);
+  await server.start();
+  console.log(`✓ Server started for debug-capabilities tests on port ${port}`);
+});
+
+test.afterAll(async () => {
+  if (server) {
+    await server.stop();
+    console.log(`✓ Server stopped`);
+  }
+});
 
 test("Debug CLIENT_CAPABILITIES and ASCII_FRAME flow", async ({
   page,
   context,
 }) => {
+  test.setTimeout(TEST_TIMEOUT);
   const logs: string[] = [];
   const errors: string[] = [];
 
@@ -125,6 +145,11 @@ test("Debug CLIENT_CAPABILITIES and ASCII_FRAME flow", async ({
   } catch (e) {
     console.log(`Error checking terminal: ${e}`);
   }
+
+  // Take screenshot to see what's actually rendered
+  console.log("\n========== TAKING SCREENSHOT ==========\n");
+  await page.screenshot({ path: 'test-screenshot.png', fullPage: true });
+  console.log("Screenshot saved to test-screenshot.png");
 
   console.log("\n\n========== ANALYSIS ==========\n");
 

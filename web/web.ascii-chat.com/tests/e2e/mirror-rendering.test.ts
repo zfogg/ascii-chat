@@ -8,6 +8,7 @@
 import { test, expect } from '@playwright/test';
 
 const MIRROR_URL = 'http://localhost:3000/mirror';
+const TEST_TIMEOUT = 20000; // 20 second timeout for all tests
 
 test.use({
   // Grant camera permission and use Chromium's built-in fake webcam
@@ -30,6 +31,7 @@ test.beforeEach(async ({ page }) => {
 
 test.describe('Mirror Page Rendering', () => {
   test('should render ASCII art in truecolor after clicking Start Webcam', async ({ page }) => {
+    test.setTimeout(TEST_TIMEOUT);
     await page.goto(MIRROR_URL);
 
     // Verify the page loaded with the control bar
@@ -97,6 +99,7 @@ test.describe('Mirror Page Rendering', () => {
   });
 
   test('should stop rendering when Stop is clicked', async ({ page }) => {
+    test.setTimeout(TEST_TIMEOUT);
     await page.goto(MIRROR_URL);
 
     // Wait for terminal to initialize (dimensions appear in header)

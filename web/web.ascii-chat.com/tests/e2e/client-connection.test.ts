@@ -1,16 +1,34 @@
 /**
  * E2E tests for WebSocket client connection to native ascii-chat server
  *
- * These tests require a native ascii-chat server to be running with WebSocket support:
- *   ./build/bin/ascii-chat server --websocket-port 27226
- *
+ * Each test starts its own server on a unique port to enable parallel execution.
  * Run with: bun run test:e2e
  */
 
 import { expect, test } from "@playwright/test";
+import { ServerFixture, getRandomPort } from "./server-fixture";
 
-const SERVER_URL = "ws://localhost:27226"; // Default WebSocket port
 const WEB_CLIENT_URL = "http://localhost:3000/client";
+const TEST_TIMEOUT = 20000; // 20 second timeout for all tests
+
+// Create server fixture for this test file
+let server: ServerFixture | null = null;
+let serverUrl: string = "";
+
+test.beforeAll(async () => {
+  const port = getRandomPort();
+  server = new ServerFixture(port);
+  await server.start();
+  serverUrl = server.getUrl();
+  console.log(`✓ Server started on ${serverUrl}`);
+});
+
+test.afterAll(async () => {
+  if (server) {
+    await server.stop();
+    console.log(`✓ Server stopped`);
+  }
+});
 
 // Capture ALL browser console messages to stdout immediately for every test
 test.beforeEach(async ({ page }) => {
@@ -28,12 +46,14 @@ test.describe("Client Connection to Native Server", () => {
   });
 
   test("should load client demo page", async ({ page }) => {
+    test.setTimeout(TEST_TIMEOUT);
     await expect(page.locator("h1")).toContainText(
       "ASCII Chat - Client WASM Demo",
     );
   });
 
   test("should initialize WASM module and auto-generate keypair", async ({ page }) => {
+    test.setTimeout(TEST_TIMEOUT);
     // Wait for public key to be displayed (WASM init + keypair gen happens during connect flow)
     await expect(page.locator('h2:text("Client Public Key")')).toBeVisible({
       timeout: 2000,
@@ -42,6 +62,7 @@ test.describe("Client Connection to Native Server", () => {
   });
 
   test("raw WebSocket should receive packets from server", async ({ page }) => {
+    test.setTimeout(TEST_TIMEOUT);
     // Bypass React/WASM entirely - just test raw WebSocket connectivity
     const result = await page.evaluate((url) => {
       return new Promise<string>((resolve) => {
@@ -76,7 +97,7 @@ test.describe("Client Connection to Native Server", () => {
           resolve(msgs.join(" | "));
         }, 10000);
       });
-    }, SERVER_URL);
+    }, serverUrl);
 
     console.log("=== Raw WebSocket result ===");
     console.log(result);
@@ -86,6 +107,7 @@ test.describe("Client Connection to Native Server", () => {
   });
 
   test("should auto-connect to native server and complete handshake", async ({ page }) => {
+    test.setTimeout(TEST_TIMEOUT);
     // Collect all received packet types for debugging
     const packetTypes: string[] = [];
     page.on("console", (msg) => {
@@ -102,7 +124,7 @@ test.describe("Client Connection to Native Server", () => {
     // Page should auto-connect on load
     // Wait for final connected state (may transition quickly through intermediate states)
     await expect(page.locator(".status")).toContainText("Connected", {
-      timeout: 30000,
+      timeout: 20000,
     });
 
     // Verify connection state indicator shows "Connected" as active
@@ -120,9 +142,10 @@ test.describe("Client Connection to Native Server", () => {
   });
 
   test("should disconnect cleanly", async ({ page }) => {
+    test.setTimeout(TEST_TIMEOUT);
     // Wait for auto-connection to complete
     await expect(page.locator(".status")).toContainText("Connected", {
-      timeout: 30000,
+      timeout: 20000,
     });
 
     // Now disconnect
@@ -140,10 +163,11 @@ test.describe("Client Connection to Native Server", () => {
   });
 
   test("should receive video frames from server", async ({ page }) => {
+    test.setTimeout(TEST_TIMEOUT);
     // This test assumes the server is sending video frames
     // Wait for auto-connection to complete
     await expect(page.locator(".status")).toContainText("Connected", {
-      timeout: 30000,
+      timeout: 20000,
     });
 
     // Listen for packet received events in console
@@ -167,6 +191,7 @@ test.describe("Client Connection to Native Server", () => {
 
 test.describe("Opus Audio Codec", () => {
   test("should initialize Opus encoder/decoder", async ({ page }) => {
+    test.setTimeout(TEST_TIMEOUT);
     await page.goto(WEB_CLIENT_URL);
 
     // Wait for WASM module to initialize

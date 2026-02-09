@@ -60,3 +60,4 @@ scripts/__pycache__
 .playwright-cli/
 test_results/
 test-results/
+test-screenshot.png

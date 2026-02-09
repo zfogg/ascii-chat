@@ -319,13 +319,20 @@ export function ClientPage() {
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
       const rgbaData = new Uint8Array(imageData.data)
 
+      // Compute hash of RGB data to detect changes
+      let hash = 0
+      for (let i = 0; i < Math.min(rgbaData.length, 10000); i++) {
+        hash = ((hash << 5) - hash) + rgbaData[i]
+        hash = hash & hash
+      }
+
       const payload = buildImageFramePayload(rgbaData, canvas.width, canvas.height)
       frameCountRef.current++
 
       // Log every 30 frames (once per second at 30 FPS)
       const now = performance.now()
       if (now - lastLogTimeRef.current > 1000) {
-        console.log(`[Client] Sent ${frameCountRef.current} IMAGE_FRAME packets (${canvas.width}x${canvas.height}, ${payload.length} bytes each)`)
+        console.log(`[Client] Sent ${frameCountRef.current} IMAGE_FRAME packets (${canvas.width}x${canvas.height}, hash=${hash}, ${payload.length} bytes each)`)
         frameCountRef.current = 0
         lastLogTimeRef.current = now
       }
@@ -348,7 +355,7 @@ export function ClientPage() {
     animationFrameRef.current = requestAnimationFrame(webcamCaptureLoop)
   }, [captureAndSendFrame])
 
-  const startWebcam = async () => {
+  const startWebcam = useCallback(async () => {
     console.log('[Client] startWebcam() called')
 
     if (!videoRef.current || !canvasRef.current) {
@@ -378,7 +385,7 @@ export function ClientPage() {
 
       console.log('[Client] Webcam stream acquired')
       streamRef.current = stream
-      videoRef.current.srcObject = stream
+      videoRef.current!.srcObject = stream
 
       await new Promise<void>((resolve) => {
         videoRef.current!.addEventListener('loadedmetadata', () => {
@@ -403,7 +410,7 @@ export function ClientPage() {
       console.error('[Client] Error:', err)
       setError(errMsg)
     }
-  }
+  }, [connectionState, settings.resolution, settings.targetFps, webcamCaptureLoop])
 
   const stopWebcam = useCallback(() => {
     console.log('[Client] stopWebcam() called')
@@ -451,7 +458,9 @@ export function ClientPage() {
       console.log('[Client] Connected and ready, auto-starting webcam...')
       startWebcam()
     }
-  }, [connectionState, isWebcamRunning, startWebcam])
+    // Note: startWebcam is NOT in deps array to avoid circular dependency issues
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connectionState, isWebcamRunning])
 
   const getStatusDotColor = () => {
     switch (connectionState) {
