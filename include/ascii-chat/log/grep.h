@@ -25,7 +25,7 @@ typedef struct {
   int context_before;     ///< Lines before match (B<n> flag)
   int context_after;      ///< Lines after match (A<n> flag)
   bool valid;             ///< True if parsing succeeded
-} log_filter_parse_result_t;
+} grep_parse_result_t;
 
 /**
  * @brief Parse pattern in /pattern/flags format or plain regex format
@@ -41,7 +41,7 @@ typedef struct {
  * @param input Input pattern string
  * @return Parsed result with pattern, flags, and validity
  */
-log_filter_parse_result_t log_filter_parse_pattern(const char *input);
+grep_parse_result_t grep_parse_pattern(const char *input);
 
 /**
  * @brief Initialize log filtering with PCRE2 regex pattern
@@ -52,7 +52,7 @@ log_filter_parse_result_t log_filter_parse_pattern(const char *input);
  * @param pattern PCRE2 regex pattern (NULL or empty = no filtering)
  * @return ASCIICHAT_OK on success, ERROR_INVALID_PARAM on bad regex
  */
-asciichat_error_t log_filter_init(const char *pattern);
+asciichat_error_t grep_init(const char *pattern);
 
 /**
  * @brief Check if log line should be output (matches filter)
@@ -65,7 +65,7 @@ asciichat_error_t log_filter_init(const char *pattern);
  * @param match_len Output: length of match
  * @return true if line should be output, false to suppress
  */
-bool log_filter_should_output(const char *log_line, size_t *match_start, size_t *match_len);
+bool grep_should_output(const char *log_line, size_t *match_start, size_t *match_len);
 
 /**
  * @brief Highlight matched portion with background color
@@ -78,7 +78,7 @@ bool log_filter_should_output(const char *log_line, size_t *match_start, size_t 
  * @param match_len Length of match
  * @return Highlighted string (pointer to static thread-local buffer)
  */
-const char *log_filter_highlight(const char *log_line, size_t match_start, size_t match_len);
+const char *grep_highlight(const char *log_line, size_t match_start, size_t match_len);
 
 /**
  * @brief Highlight matches in colored text while preserving original colors
@@ -89,13 +89,13 @@ const char *log_filter_highlight(const char *log_line, size_t match_start, size_
  * @param match_len Match length in plain text
  * @return Highlighted text with yellow background added to matches (pointer to static thread-local buffer)
  */
-const char *log_filter_highlight_colored(const char *colored_text, const char *plain_text, size_t match_start,
+const char *grep_highlight_colored(const char *colored_text, const char *plain_text, size_t match_start,
                                          size_t match_len);
 
 /**
  * @brief Highlight matches in colored text, returning a new allocated copy
  *
- * Like log_filter_highlight_colored() but returns a newly allocated string
+ * Like grep_highlight_colored() but returns a newly allocated string
  * instead of a static buffer. Caller must free the returned string with SAFE_FREE().
  *
  * @param colored_text Original text with ANSI color codes
@@ -104,7 +104,7 @@ const char *log_filter_highlight_colored(const char *colored_text, const char *p
  * @param match_len Match length in plain text
  * @return Newly allocated highlighted text (caller must free), or NULL on error
  */
-char *log_filter_highlight_colored_copy(const char *colored_text, const char *plain_text, size_t match_start,
+char *grep_highlight_colored_copy(const char *colored_text, const char *plain_text, size_t match_start,
                                         size_t match_len);
 
 /**
@@ -113,7 +113,7 @@ char *log_filter_highlight_colored_copy(const char *colored_text, const char *pl
  * Frees compiled regex. Thread-local match_data is cleaned up
  * via pthread_key destructor.
  */
-void log_filter_destroy(void);
+void grep_destroy(void);
 
 /**
  * @brief Save current filter patterns for later restoration
@@ -124,18 +124,18 @@ void log_filter_destroy(void);
  *
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t log_filter_save_patterns(void);
+asciichat_error_t grep_save_patterns(void);
 
 /**
  * @brief Restore previously saved filter patterns
  *
- * Restores filter patterns saved by log_filter_save_patterns().
+ * Restores filter patterns saved by grep_save_patterns().
  * Used by interactive grep when user cancels (Escape) to restore
  * CLI --grep patterns.
  *
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t log_filter_restore_patterns(void);
+asciichat_error_t grep_restore_patterns(void);
 
 /**
  * @brief Clear all filter patterns
@@ -144,14 +144,14 @@ asciichat_error_t log_filter_restore_patterns(void);
  * Patterns remain allocated and can be restored later.
  * Used by interactive grep when user types first character.
  */
-void log_filter_clear_patterns(void);
+void grep_clear_patterns(void);
 
 /**
  * @brief Get number of active filter patterns
  *
  * @return Number of currently active patterns
  */
-int log_filter_get_pattern_count(void);
+int grep_get_pattern_count(void);
 
 /**
  * @brief Get the last (most recent) filter pattern string
@@ -162,4 +162,4 @@ int log_filter_get_pattern_count(void);
  *
  * @return Pattern string of last CLI --grep, or NULL if no patterns
  */
-const char *log_filter_get_last_pattern(void);
+const char *grep_get_last_pattern(void);

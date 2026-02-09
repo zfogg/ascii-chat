@@ -6,10 +6,10 @@
  * Supports full /pattern/flags syntax with real-time filtering.
  */
 
-#include "ascii-chat/ui/interactive_grep.h"
+#include "ascii-chat/log/interactive_grep.h"
 #include "ascii-chat/common.h"
 #include "ascii-chat/log/logging.h"
-#include "ascii-chat/log/filter.h"
+#include "ascii-chat/log/grep.h"
 #include "ascii-chat/platform/keyboard.h"
 #include "ascii-chat/platform/mutex.h"
 #include "ascii-chat/util/pcre2.h"
@@ -99,7 +99,7 @@ static bool validate_pcre2_pattern(const char *input) {
   }
 
   // Use the shared parser from filter.c
-  log_filter_parse_result_t parsed = log_filter_parse_pattern(input);
+  grep_parse_result_t parsed = grep_parse_pattern(input);
 
   if (!parsed.valid) {
     return false; // Invalid format
@@ -147,7 +147,7 @@ asciichat_error_t interactive_grep_init(void) {
   g_grep_state.mutex = saved_mutex;
 
   // Check if there are CLI --grep patterns to use
-  const char *cli_pattern = log_filter_get_last_pattern();
+  const char *cli_pattern = grep_get_last_pattern();
   const char *initial_pattern = cli_pattern ? cli_pattern : "DEBUG";
 
   // Load initial pattern into input buffer
@@ -158,7 +158,7 @@ asciichat_error_t interactive_grep_init(void) {
   atomic_store(&g_grep_state.mode_atomic, GREP_MODE_ACTIVE);
 
   // Compile the initial pattern
-  log_filter_parse_result_t parsed = log_filter_parse_pattern(initial_pattern);
+  grep_parse_result_t parsed = grep_parse_pattern(initial_pattern);
   if (parsed.valid) {
     pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile(parsed.pattern, parsed.pcre2_options);
     if (singleton) {
@@ -209,7 +209,7 @@ void interactive_grep_enter_mode(void) {
   mutex_lock(&g_grep_state.mutex);
 
   // Save current patterns (CLI --grep patterns)
-  asciichat_error_t result = log_filter_save_patterns();
+  asciichat_error_t result = grep_save_patterns();
   if (result != ASCIICHAT_OK) {
     log_warn("Failed to save filter patterns");
   }
@@ -221,7 +221,7 @@ void interactive_grep_enter_mode(void) {
 
   // Pre-populate with CLI --grep pattern if available (only once at startup)
   if (!g_grep_state.cli_pattern_auto_populated) {
-    const char *cli_pattern = log_filter_get_last_pattern();
+    const char *cli_pattern = grep_get_last_pattern();
     if (cli_pattern && cli_pattern[0] != '\0') {
       // Skip leading slash if present (prompt already shows "/")
       const char *pattern_to_use = cli_pattern;
@@ -237,7 +237,7 @@ void interactive_grep_enter_mode(void) {
         g_grep_state.cli_pattern_auto_populated = true;
 
         // Compile and apply the pattern immediately so it starts filtering
-        log_filter_parse_result_t parsed = log_filter_parse_pattern(g_grep_state.input_buffer);
+        grep_parse_result_t parsed = grep_parse_pattern(g_grep_state.input_buffer);
         if (parsed.valid) {
           // Store parsed flags
           g_grep_state.case_insensitive = parsed.case_insensitive;
@@ -285,7 +285,7 @@ void interactive_grep_exit_mode(bool accept) {
 
   if (!accept) {
     // Cancel - restore previous patterns
-    asciichat_error_t result = log_filter_restore_patterns();
+    asciichat_error_t result = grep_restore_patterns();
     if (result != ASCIICHAT_OK) {
       log_warn("Failed to restore filter patterns");
     }
@@ -304,7 +304,7 @@ void interactive_grep_exit_mode(bool accept) {
   }
 
   // Accept - parse and compile pattern
-  log_filter_parse_result_t parsed = log_filter_parse_pattern(g_grep_state.input_buffer);
+  grep_parse_result_t parsed = grep_parse_pattern(g_grep_state.input_buffer);
 
   if (!parsed.valid) {
     log_error("Invalid pattern format");
@@ -449,7 +449,7 @@ asciichat_error_t interactive_grep_handle_key(keyboard_key_t key) {
     }
 
     // Parse and compile pattern for live filtering
-    log_filter_parse_result_t parsed = log_filter_parse_pattern(g_grep_state.input_buffer);
+    grep_parse_result_t parsed = grep_parse_pattern(g_grep_state.input_buffer);
 
     if (!parsed.valid) {
       // Invalid pattern - keep previous patterns active (don't clear)
@@ -604,9 +604,9 @@ asciichat_error_t interactive_grep_gather_and_filter_logs(session_log_entry_t **
   }
 
   // Parse pattern once before loop (for fixed string mode)
-  log_filter_parse_result_t parsed = {0};
+  grep_parse_result_t parsed = {0};
   if (has_fixed_string) {
-    parsed = log_filter_parse_pattern(g_grep_state.input_buffer);
+    parsed = grep_parse_pattern(g_grep_state.input_buffer);
   }
 
   for (size_t i = 0; i < buffer_count; i++) {

@@ -90,7 +90,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
-#include <ascii-chat/log/filter.h>
+#include <ascii-chat/log/grep.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/util.h>
@@ -1547,9 +1547,9 @@ asciichat_error_t options_init(int argc, char **argv) {
     }
   }
 
-  // Auto-disable splash and status screen when grep is used
-  // UNLESS they were explicitly set by the user
-  // Check if grep pattern was explicitly provided by checking mode_argv
+  // Auto-disable splash when grep is used (since it's one-time startup screen)
+  // UNLESS it was explicitly set by the user
+  // Status screen is now compatible with --grep since we support auto-loading patterns
   bool grep_was_provided = false;
   for (int i = 0; i < mode_argc; i++) {
     if (mode_argv[i] && (strcmp(mode_argv[i], "--grep") == 0 || strncmp(mode_argv[i], "--grep=", 7) == 0)) {
@@ -1562,10 +1562,6 @@ asciichat_error_t options_init(int argc, char **argv) {
     if (!opts.splash_explicitly_set) {
       opts.splash = false;
       log_debug("Auto-disabled splash because --grep was provided");
-    }
-    if (!opts.status_screen_explicitly_set) {
-      opts.status_screen = false;
-      log_debug("Auto-disabled status screen because --grep was provided");
     }
   }
 

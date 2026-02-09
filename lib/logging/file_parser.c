@@ -17,7 +17,7 @@
 #include <errno.h>
 
 // Parse a single log line in format: [TIMESTAMP] [LEVEL] [tid:THREAD_ID] FILE:LINE in FUNC(): MESSAGE
-// Example: [2026-02-08 12:34:56.789] [DEBUG] [tid:12345] src/main.c:42 in main(): Server started
+// Example: [01:00:02.366779] [DEBUG] [tid:12345] src/main.c:42 in main(): Server started
 // Preserves full log line format for proper recoloring in interactive grep
 bool log_file_parser_parse_line(const char *line, session_log_entry_t *out_entry) {
   if (!line || !out_entry || !*line) {
@@ -206,7 +206,7 @@ static int compare_entries(const void *a, const void *b) {
 
 /**
  * Extract timestamp from a log entry for deduplication.
- * Expected format: [YYYY-MM-DD HH:MM:SS.mmm]
+ * Expected format: [HH:MM:SS.UUUUUU] where UUUUUU is microseconds
  * Returns pointer to timestamp string within the message, or NULL if not found.
  */
 static const char *extract_timestamp_from_message(const char *message) {
@@ -250,77 +250,56 @@ size_t log_file_parser_merge_and_dedupe(const session_log_entry_t *buffer_entrie
     char colored[SESSION_LOG_LINE_MAX];
     size_t colored_len = log_recolor_plain_entry(file_entries[i].message, colored, sizeof(colored));
 
-    if (colored_len > 0) {
-      // Successfully recolored header - now apply message syntax highlighting
-      // Extract the plain message part for syntax highlighting
-      const char *plain_msg = file_entries[i].message;
-      const char *msg_marker = strstr(plain_msg, "(): ");
-      if (msg_marker) {
-        const char *plain_message = msg_marker + 4;
+    // Attempt to use colored version if recoloring succeeded, otherwise use plain text as base
+    const char *base_text = (colored_len > 0) ? colored : file_entries[i].message;
 
-        // Syntax-highlight just the message part
-        const char *highlighted_msg = colorize_log_message(plain_message);
-        if (highlighted_msg && *highlighted_msg) {
-          // Reconstruct the full line combining colored header + highlighted message
-          // We need to find the "(): " part in the COLORED output and reconstruct from there
-          // Since the colored output contains ANSI codes, we need to skip past them to find the marker
+    // Try to apply message syntax highlighting
+    const char *plain_msg = file_entries[i].message;
+    const char *msg_marker = strstr(plain_msg, "(): ");
+    if (msg_marker) {
+      const char *plain_message = msg_marker + 4;
+      const char *highlighted_msg = colorize_log_message(plain_message);
 
-          char final_line[SESSION_LOG_LINE_MAX];
-          size_t final_len = 0;
+      if (highlighted_msg && *highlighted_msg) {
+        // Reconstruct the full line combining base (colored or plain) + highlighted message
+        char final_line[SESSION_LOG_LINE_MAX];
+        size_t final_len = 0;
 
-          // Copy colored output up to and including "(): "
-          // We scan through the colored output looking for the literal sequence "(): "
-          const char *p = colored;
-          while (*p && final_len < SESSION_LOG_LINE_MAX - 1) {
-            final_line[final_len++] = *p;
+        // Copy base text up to and including "(): "
+        const char *p = base_text;
+        while (*p && final_len < SESSION_LOG_LINE_MAX - 1) {
+          final_line[final_len++] = *p;
 
-            // Track when we see "(): "
-            if (*p == '(' && *(p + 1) == ')' && *(p + 2) == ':' && *(p + 3) == ' ') {
-              // Copy the ": " part
-              final_line[final_len++] = *(++p); // ')'
-              final_line[final_len++] = *(++p); // ':'
-              final_line[final_len++] = *(++p); // ' '
-              p++;                              // Move past the space
-              break;                            // Stop here, append highlighted message
-            }
-            p++;
+          // Track when we see "(): "
+          if (*p == '(' && *(p + 1) == ')' && *(p + 2) == ':' && *(p + 3) == ' ') {
+            // Copy the ": " part
+            final_line[final_len++] = *(++p); // ')'
+            final_line[final_len++] = *(++p); // ':'
+            final_line[final_len++] = *(++p); // ' '
+            p++;                              // Move past the space
+            break;                            // Stop here, append highlighted message
           }
-
-          // Append the highlighted message
-          const char *msg_ptr = highlighted_msg;
-          while (*msg_ptr && final_len < SESSION_LOG_LINE_MAX - 1) {
-            final_line[final_len++] = *msg_ptr++;
-          }
-          final_line[final_len] = '\0';
-
-          strncpy(merged[buffer_count + i].message, final_line, SESSION_LOG_LINE_MAX - 1);
-          merged[buffer_count + i].message[SESSION_LOG_LINE_MAX - 1] = '\0';
-        } else {
-          // Highlighting returned nothing, use colored version as-is
-          strncpy(merged[buffer_count + i].message, colored, SESSION_LOG_LINE_MAX - 1);
-          merged[buffer_count + i].message[SESSION_LOG_LINE_MAX - 1] = '\0';
+          p++;
         }
+
+        // Append the highlighted message
+        const char *msg_ptr = highlighted_msg;
+        while (*msg_ptr && final_len < SESSION_LOG_LINE_MAX - 1) {
+          final_line[final_len++] = *msg_ptr++;
+        }
+        final_line[final_len] = '\0';
+
+        strncpy(merged[buffer_count + i].message, final_line, SESSION_LOG_LINE_MAX - 1);
+        merged[buffer_count + i].message[SESSION_LOG_LINE_MAX - 1] = '\0';
       } else {
-        // No message marker found, use colored version
-        strncpy(merged[buffer_count + i].message, colored, SESSION_LOG_LINE_MAX - 1);
+        // Highlighting failed, use base text as-is
+        strncpy(merged[buffer_count + i].message, base_text, SESSION_LOG_LINE_MAX - 1);
         merged[buffer_count + i].message[SESSION_LOG_LINE_MAX - 1] = '\0';
       }
     } else {
-      // Recoloring failed - keep original plain text
-      strncpy(merged[buffer_count + i].message, file_entries[i].message, SESSION_LOG_LINE_MAX - 1);
+      // No message marker found, use base text as-is
+      strncpy(merged[buffer_count + i].message, base_text, SESSION_LOG_LINE_MAX - 1);
       merged[buffer_count + i].message[SESSION_LOG_LINE_MAX - 1] = '\0';
-
-      // Log failures to help debug format issues
-      static int failure_count = 0;
-      if (failure_count < 10) {
-        // Show hex dump of first 20 bytes to identify format issues
-        const unsigned char *bytes = (const unsigned char *)file_entries[i].message;
-        log_debug("Recolor failed [%d]: starts with: %c%c%c%c (0x%02x%02x%02x%02x) %.80s", failure_count + 1,
-                  bytes[0] >= 32 && bytes[0] < 127 ? bytes[0] : '?', bytes[1] >= 32 && bytes[1] < 127 ? bytes[1] : '?',
-                  bytes[2] >= 32 && bytes[2] < 127 ? bytes[2] : '?', bytes[3] >= 32 && bytes[3] < 127 ? bytes[3] : '?',
-                  bytes[0], bytes[1], bytes[2], bytes[3], file_entries[i].message);
-        failure_count++;
-      }
     }
     merged[buffer_count + i].sequence = file_entries[i].sequence;
   }
@@ -359,8 +338,8 @@ size_t log_file_parser_merge_and_dedupe(const session_log_entry_t *buffer_entrie
       const char *ts_curr = extract_timestamp_from_message(merged[i].message);
       const char *ts_prev = extract_timestamp_from_message(merged[output_idx - 1].message);
       if (ts_curr && ts_prev) {
-        // Compare first 23 characters (YYYY-MM-DD HH:MM:SS.mmm)
-        if (strncmp(ts_curr, ts_prev, 23) == 0) {
+        // Compare first 15 characters (HH:MM:SS.UUUUUU where UUUUUU is microseconds)
+        if (strncmp(ts_curr, ts_prev, 15) == 0) {
           continue; // Same timestamp, skip duplicate
         }
       }

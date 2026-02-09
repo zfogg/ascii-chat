@@ -13,14 +13,14 @@
  * - Compiled regex is immutable after init
  */
 
-#include <ascii-chat/log/filter.h>
+#include <ascii-chat/log/grep.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/util/pcre2.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/video/ansi_fast.h>
 #include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/ui/interactive_grep.h>
+#include <ascii-chat/log/interactive_grep.h>
 
 #include <pthread.h>
 #include <string.h>
@@ -60,13 +60,13 @@ typedef struct {
   bool global_flag;             ///< Highlight all matches (g flag)
   int context_before;           ///< Lines before match (B flag)
   int context_after;            ///< Lines after match (A flag)
-} log_filter_pattern_t;
+} grep_pattern_t;
 
 /**
  * @brief Global filter state (supports multiple patterns ORed together)
  */
 static struct {
-  log_filter_pattern_t *patterns; ///< Array of patterns
+  grep_pattern_t *patterns; ///< Array of patterns
   int pattern_count;              ///< Number of active patterns
   int pattern_capacity;           ///< Allocated capacity
   bool enabled;                   ///< Is filtering active?
@@ -81,7 +81,7 @@ static struct {
   int max_context_after; ///< Maximum context_after across all patterns
 
   // Save/restore for interactive grep
-  log_filter_pattern_t *saved_patterns; ///< Backup of patterns for restore
+  grep_pattern_t *saved_patterns; ///< Backup of patterns for restore
   int saved_pattern_count;              ///< Number of saved patterns
   int saved_pattern_capacity;           ///< Allocated capacity for saved
   bool saved_enabled;                   ///< Saved enabled state
@@ -280,7 +280,7 @@ static pcre2_match_data *get_thread_match_data(void) {
 }
 
 // Use the shared parse_result_t from filter.h
-typedef log_filter_parse_result_t parse_result_t;
+typedef grep_parse_result_t parse_result_t;
 
 /**
  * @brief Parse pattern in /pattern/flags or pattern/flags format
@@ -323,7 +323,7 @@ typedef log_filter_parse_result_t parse_result_t;
  * - "search/i" - Interactive grep: case-insensitive "search"
  * - "api/v1/users/F" - Interactive grep: fixed string match
  */
-log_filter_parse_result_t log_filter_parse_pattern(const char *input) {
+grep_parse_result_t grep_parse_pattern(const char *input) {
   parse_result_t result = {0};
   result.pcre2_options = PCRE2_UTF | PCRE2_UCP; // Default: UTF-8 mode
 
@@ -457,7 +457,7 @@ log_filter_parse_result_t log_filter_parse_pattern(const char *input) {
   return result;
 }
 
-asciichat_error_t log_filter_init(const char *pattern) {
+asciichat_error_t grep_init(const char *pattern) {
   // Reject NULL or empty patterns
   if (!pattern) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Pattern cannot be NULL");
@@ -467,7 +467,7 @@ asciichat_error_t log_filter_init(const char *pattern) {
   }
 
   // Parse pattern
-  parse_result_t parsed = log_filter_parse_pattern(pattern);
+  parse_result_t parsed = grep_parse_pattern(pattern);
   if (!parsed.valid) {
     log_error("Invalid --grep pattern format: \"%s\"", pattern);
     log_error("Use /pattern/flags format (e.g., \"/query/ig\") or plain regex (e.g., \"query\")");
@@ -477,8 +477,8 @@ asciichat_error_t log_filter_init(const char *pattern) {
   // Allocate or expand pattern array
   if (g_filter_state.pattern_count >= g_filter_state.pattern_capacity) {
     int new_capacity = (g_filter_state.pattern_capacity == 0) ? 4 : g_filter_state.pattern_capacity * 2;
-    log_filter_pattern_t *new_patterns =
-        SAFE_REALLOC(g_filter_state.patterns, new_capacity * sizeof(log_filter_pattern_t), log_filter_pattern_t *);
+    grep_pattern_t *new_patterns =
+        SAFE_REALLOC(g_filter_state.patterns, new_capacity * sizeof(grep_pattern_t), grep_pattern_t *);
     if (!new_patterns) {
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate pattern array");
     }
@@ -487,12 +487,20 @@ asciichat_error_t log_filter_init(const char *pattern) {
   }
 
   // Add new pattern
-  log_filter_pattern_t *new_pat = &g_filter_state.patterns[g_filter_state.pattern_count];
+  grep_pattern_t *new_pat = &g_filter_state.patterns[g_filter_state.pattern_count];
   memset(new_pat, 0, sizeof(*new_pat));
 
-  new_pat->original = pattern;
+  // Make a copy of the original pattern string (argv pointers may be deallocated)
+  char *original_copy = SAFE_MALLOC(strlen(pattern) + 1, char *);
+  if (!original_copy) {
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate original pattern string");
+  }
+  strcpy(original_copy, pattern);
+  new_pat->original = original_copy;
+
   new_pat->parsed_pattern = SAFE_MALLOC(strlen(parsed.pattern) + 1, char *);
   if (!new_pat->parsed_pattern) {
+    SAFE_FREE(original_copy);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate pattern string");
   }
   strcpy(new_pat->parsed_pattern, parsed.pattern);
@@ -548,7 +556,7 @@ asciichat_error_t log_filter_init(const char *pattern) {
   return ASCIICHAT_OK;
 }
 
-bool log_filter_should_output(const char *log_line, size_t *match_start, size_t *match_len) {
+bool grep_should_output(const char *log_line, size_t *match_start, size_t *match_len) {
   // Reject NULL lines
   if (!log_line) {
     if (match_start)
@@ -587,10 +595,10 @@ bool log_filter_should_output(const char *log_line, size_t *match_start, size_t 
 
   // Try each pattern (OR logic)
   bool any_match = false;
-  log_filter_pattern_t *matched_pattern = NULL;
+  grep_pattern_t *matched_pattern = NULL;
 
   for (int i = 0; i < g_filter_state.pattern_count; i++) {
-    log_filter_pattern_t *pat = &g_filter_state.patterns[i];
+    grep_pattern_t *pat = &g_filter_state.patterns[i];
     bool this_match = false;
 
     if (pat->is_fixed_string) {
@@ -690,9 +698,9 @@ bool log_filter_should_output(const char *log_line, size_t *match_start, size_t 
   return false; // No match, suppress line
 }
 
-char *log_filter_highlight_colored_copy(const char *colored_text, const char *plain_text, size_t match_start,
+char *grep_highlight_colored_copy(const char *colored_text, const char *plain_text, size_t match_start,
                                         size_t match_len) {
-  const char *result = log_filter_highlight_colored(colored_text, plain_text, match_start, match_len);
+  const char *result = grep_highlight_colored(colored_text, plain_text, match_start, match_len);
   if (result) {
     char *copy = SAFE_MALLOC(strlen(result) + 1, char *);
     if (copy) {
@@ -703,7 +711,7 @@ char *log_filter_highlight_colored_copy(const char *colored_text, const char *pl
   return NULL;
 }
 
-const char *log_filter_highlight_colored(const char *colored_text, const char *plain_text, size_t match_start,
+const char *grep_highlight_colored(const char *colored_text, const char *plain_text, size_t match_start,
                                          size_t match_len) {
   static __thread char highlight_buffer[16384];
 
@@ -714,7 +722,7 @@ const char *log_filter_highlight_colored(const char *colored_text, const char *p
   // When interactive grep is active, check if it has global flag
   bool is_interactive_grep = interactive_grep_is_active();
   bool should_use_global_pattern = false;
-  log_filter_pattern_t *global_pat = NULL;
+  grep_pattern_t *global_pat = NULL;
 
   if (!is_interactive_grep) {
     // If any pattern has global flag, highlight ALL matches for that pattern
@@ -940,7 +948,7 @@ const char *log_filter_highlight_colored(const char *colored_text, const char *p
   return highlight_buffer;
 }
 
-const char *log_filter_highlight(const char *log_line, size_t match_start, size_t match_len) {
+const char *grep_highlight(const char *log_line, size_t match_start, size_t match_len) {
   static __thread char highlight_buffer[16384];
 
   if (!log_line || match_len == 0) {
@@ -957,7 +965,7 @@ const char *log_filter_highlight(const char *log_line, size_t match_start, size_
   size_t pos = 0;
 
   // If any pattern has global flag, highlight ALL matches
-  log_filter_pattern_t *global_pat = NULL;
+  grep_pattern_t *global_pat = NULL;
   for (int i = 0; i < g_filter_state.pattern_count; i++) {
     if (g_filter_state.patterns[i].global_flag && !g_filter_state.patterns[i].is_fixed_string) {
       global_pat = &g_filter_state.patterns[i];
@@ -1049,10 +1057,13 @@ const char *log_filter_highlight(const char *log_line, size_t match_start, size_
   return highlight_buffer;
 }
 
-void log_filter_destroy(void) {
+void grep_destroy(void) {
   // Free all patterns
   for (int i = 0; i < g_filter_state.pattern_count; i++) {
-    log_filter_pattern_t *pat = &g_filter_state.patterns[i];
+    grep_pattern_t *pat = &g_filter_state.patterns[i];
+    // Free the copied original string (need temp variable due to const qualifier)
+    char *original_to_free = (char *)pat->original;
+    SAFE_FREE(original_to_free);
     SAFE_FREE(pat->parsed_pattern);
     // Singletons are auto-cleaned by asciichat_pcre2_cleanup_all()
     pat->singleton = NULL;
@@ -1084,7 +1095,7 @@ void log_filter_destroy(void) {
  * Save/Restore Functions for Interactive Grep
  * ========================================================================== */
 
-asciichat_error_t log_filter_save_patterns(void) {
+asciichat_error_t grep_save_patterns(void) {
   // Free previous saved patterns if any
   if (g_filter_state.saved_patterns) {
     for (int i = 0; i < g_filter_state.saved_pattern_count; i++) {
@@ -1096,15 +1107,15 @@ asciichat_error_t log_filter_save_patterns(void) {
   // Allocate saved pattern array
   if (g_filter_state.pattern_count > 0) {
     g_filter_state.saved_patterns =
-        SAFE_MALLOC(g_filter_state.pattern_count * sizeof(log_filter_pattern_t), log_filter_pattern_t *);
+        SAFE_MALLOC(g_filter_state.pattern_count * sizeof(grep_pattern_t), grep_pattern_t *);
     if (!g_filter_state.saved_patterns) {
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate saved pattern array");
     }
 
     // Deep copy all patterns
     for (int i = 0; i < g_filter_state.pattern_count; i++) {
-      log_filter_pattern_t *src = &g_filter_state.patterns[i];
-      log_filter_pattern_t *dst = &g_filter_state.saved_patterns[i];
+      grep_pattern_t *src = &g_filter_state.patterns[i];
+      grep_pattern_t *dst = &g_filter_state.saved_patterns[i];
 
       // Copy pattern structure
       *dst = *src;
@@ -1134,7 +1145,7 @@ asciichat_error_t log_filter_save_patterns(void) {
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t log_filter_restore_patterns(void) {
+asciichat_error_t grep_restore_patterns(void) {
   // Clear current patterns (but don't free the array)
   for (int i = 0; i < g_filter_state.pattern_count; i++) {
     SAFE_FREE(g_filter_state.patterns[i].parsed_pattern);
@@ -1143,9 +1154,9 @@ asciichat_error_t log_filter_restore_patterns(void) {
 
   // Ensure we have capacity for saved patterns
   if (g_filter_state.saved_pattern_count > g_filter_state.pattern_capacity) {
-    log_filter_pattern_t *new_patterns =
-        SAFE_REALLOC(g_filter_state.patterns, g_filter_state.saved_pattern_count * sizeof(log_filter_pattern_t),
-                     log_filter_pattern_t *);
+    grep_pattern_t *new_patterns =
+        SAFE_REALLOC(g_filter_state.patterns, g_filter_state.saved_pattern_count * sizeof(grep_pattern_t),
+                     grep_pattern_t *);
     if (!new_patterns) {
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate pattern array for restore");
     }
@@ -1156,8 +1167,8 @@ asciichat_error_t log_filter_restore_patterns(void) {
   // Restore patterns
   if (g_filter_state.saved_patterns) {
     for (int i = 0; i < g_filter_state.saved_pattern_count; i++) {
-      log_filter_pattern_t *src = &g_filter_state.saved_patterns[i];
-      log_filter_pattern_t *dst = &g_filter_state.patterns[i];
+      grep_pattern_t *src = &g_filter_state.saved_patterns[i];
+      grep_pattern_t *dst = &g_filter_state.patterns[i];
 
       // Copy pattern structure
       *dst = *src;
@@ -1185,18 +1196,18 @@ asciichat_error_t log_filter_restore_patterns(void) {
   return ASCIICHAT_OK;
 }
 
-void log_filter_clear_patterns(void) {
+void grep_clear_patterns(void) {
   // Don't free patterns, just set count to 0
   // This allows quick restore without reallocation
   g_filter_state.pattern_count = 0;
   g_filter_state.enabled = false;
 }
 
-int log_filter_get_pattern_count(void) {
+int grep_get_pattern_count(void) {
   return g_filter_state.pattern_count;
 }
 
-const char *log_filter_get_last_pattern(void) {
+const char *grep_get_last_pattern(void) {
   if (g_filter_state.pattern_count == 0) {
     return NULL;
   }

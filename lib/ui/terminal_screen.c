@@ -14,11 +14,11 @@
  */
 
 #include "ascii-chat/ui/terminal_screen.h"
-#include "ascii-chat/ui/interactive_grep.h"
+#include "ascii-chat/log/interactive_grep.h"
 #include "ascii-chat/session/session_log_buffer.h"
 #include "ascii-chat/util/display.h"
 #include "ascii-chat/platform/system.h"
-#include "ascii-chat/log/filter.h"
+#include "ascii-chat/log/grep.h"
 #include "ascii-chat/common.h"
 #include <stdio.h>
 #include <string.h>
@@ -208,7 +208,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
         // Validate match is within bounds
         size_t plain_len = strlen(plain_text);
         if (match_start < plain_len && (match_start + match_len) <= plain_len) {
-          const char *highlighted = log_filter_highlight_colored(original_msg, plain_text, match_start, match_len);
+          const char *highlighted = grep_highlight_colored(original_msg, plain_text, match_start, match_len);
           if (highlighted && highlighted[0] != '\0') {
             msg = highlighted;
           }

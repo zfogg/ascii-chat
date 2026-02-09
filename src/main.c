@@ -43,7 +43,7 @@
 #include <ascii-chat/options/builder.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/log/logging.h>
-#include <ascii-chat/log/filter.h>
+#include <ascii-chat/log/grep.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/options/colorscheme.h>
@@ -205,7 +205,7 @@ int main(int argc, char *argv[]) {
   for (int i = 1; i < argc - 1; i++) {
     if (strcmp(argv[i], "--grep") == 0) {
       const char *pattern = argv[i + 1];
-      asciichat_error_t filter_result = log_filter_init(pattern);
+      asciichat_error_t filter_result = grep_init(pattern);
       if (filter_result != ASCIICHAT_OK) {
         fprintf(stderr,
                 "ERROR: Invalid --grep pattern or invalid flags: \"%s\" - use /pattern/flags format (e.g., "

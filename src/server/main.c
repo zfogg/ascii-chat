@@ -118,7 +118,7 @@
 #include <ascii-chat/network/acip/server.h>
 #include <ascii-chat/network/acip/client.h>
 #include <ascii-chat/ui/server_status.h>
-#include <ascii-chat/ui/interactive_grep.h>
+#include <ascii-chat/log/interactive_grep.h>
 #include <ascii-chat/platform/keyboard.h>
 
 /* ============================================================================

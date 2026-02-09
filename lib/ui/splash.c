@@ -16,7 +16,7 @@
 
 #include <ascii-chat/ui/splash.h>
 #include <ascii-chat/ui/terminal_screen.h>
-#include <ascii-chat/ui/interactive_grep.h>
+#include <ascii-chat/log/interactive_grep.h>
 #include <ascii-chat/session/display.h>
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/util/display.h>

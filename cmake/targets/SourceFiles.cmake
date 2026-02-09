@@ -360,12 +360,12 @@ set(CORE_SRCS
     lib/log/logging.c
     lib/log/colorize.c
     lib/log/mmap.c
-    lib/log/filter.c
+    lib/log/grep.c
     lib/logging/file_parser.c
     lib/platform/terminal.c     # Unified color detection system
     lib/options/colorscheme.c   # Color scheme management and early initialization
     lib/ui/terminal_screen.c  # NEW: Terminal screen rendering abstraction
-    lib/ui/interactive_grep.c # Interactive grep for status/splash screens
+    lib/log/interactive_grep.c # Interactive grep for status/splash screens
     lib/options/options.c
     lib/options/common.c
     lib/options/enums.c         # Enum value registry

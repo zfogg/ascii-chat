@@ -25,7 +25,7 @@
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/log/colorize.h>
 #include <ascii-chat/log/mmap.h>
-#include <ascii-chat/log/filter.h>
+#include <ascii-chat/log/grep.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/platform/thread.h>
@@ -552,7 +552,7 @@ void log_destroy(void) {
   }
 
   // Cleanup grep filter
-  log_filter_destroy();
+  grep_destroy();
 
   // Lock-free cleanup using atomic operations
   int old_file = atomic_load(&g_log.file);
@@ -866,7 +866,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   // Apply grep filter (terminal output only - file logs are unfiltered)
   // Match against PLAIN text (no ANSI codes) so offsets are correct
   size_t match_start = 0, match_len = 0;
-  if (!log_filter_should_output(plain_log_line, &match_start, &match_len)) {
+  if (!grep_should_output(plain_log_line, &match_start, &match_len)) {
     if (stripped_msg) {
       SAFE_FREE(stripped_msg);
     }
@@ -888,8 +888,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
       snprintf(full_plain_line, sizeof(full_plain_line), "%s%s", plain_header_buffer, clean_msg);
 
       // Apply highlighting to the full line, respecting existing ANSI codes
-      const char *highlighted_line =
-          log_filter_highlight_colored(full_colored_line, full_plain_line, match_start, match_len);
+      const char *highlighted_line = grep_highlight_colored(full_colored_line, full_plain_line, match_start, match_len);
       safe_fprintf(output_stream, "%s\n", highlighted_line);
     } else {
       // No grep match - output normally with colored header
@@ -1615,7 +1614,7 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
   const char *timestamp_start = p;
 
   // Find the closing ] for timestamp - look for pattern that ends with proper timestamp format
-  // Valid timestamp: YYYY-MM-DD HH:MM:SS.mmm
+  // Valid timestamp: HH:MM:SS.UUUUUU (time with microseconds, no date)
   while (*p && *p != ']') {
     p++;
   }
