@@ -243,21 +243,26 @@ int client_generate_keypair(void) {
   // Reset handshake context if previously used (reconnection / React Strict Mode remount)
   if (g_crypto_handshake_ctx.state != CRYPTO_HANDSHAKE_DISABLED) {
     WASM_LOG("Destroying previous handshake context before re-init");
+    WASM_LOG_INT("  State before destroy", g_crypto_handshake_ctx.state);
     crypto_handshake_destroy(&g_crypto_handshake_ctx);
+    WASM_LOG_INT("  State after destroy", g_crypto_handshake_ctx.state);
     memset(&g_crypto_handshake_ctx, 0, sizeof(g_crypto_handshake_ctx));
+    WASM_LOG_INT("  State after memset", g_crypto_handshake_ctx.state);
     g_handshake_complete = false;
   }
 
   // Initialize crypto handshake context
   WASM_LOG("Calling crypto_handshake_init...");
+  WASM_LOG_INT("  State before init", g_crypto_handshake_ctx.state);
   asciichat_error_t result = crypto_handshake_init(&g_crypto_handshake_ctx, false /* is_server */);
   if (result != ASCIICHAT_OK) {
     WASM_LOG_INT("crypto_handshake_init FAILED, result", result);
+    WASM_LOG_INT("  State after failed init", g_crypto_handshake_ctx.state);
     return -1;
   }
 
   WASM_LOG("Keypair generated successfully");
-  WASM_LOG_INT("  g_crypto_handshake_ctx.state AFTER", g_crypto_handshake_ctx.state);
+  WASM_LOG_INT("  g_crypto_handshake_ctx.state AFTER init", g_crypto_handshake_ctx.state);
   g_connection_state = CONNECTION_STATE_DISCONNECTED;
   return 0;
 }

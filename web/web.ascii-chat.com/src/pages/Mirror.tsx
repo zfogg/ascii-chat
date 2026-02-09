@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import 'xterm/css/xterm.css'
 import { initMirrorWasm, convertFrameToAscii, isWasmReady, setDimensions, setColorMode, setColorFilter, setPalette, setPaletteChars, setMatrixRain, setWebcamFlip, ColorMode as WasmColorMode, ColorFilter as WasmColorFilter } from '../wasm/mirror'
 import { Settings, SettingsConfig, ColorMode, ColorFilter } from '../components/Settings'
 import { AsciiRenderer, AsciiRendererHandle } from '../components/AsciiRenderer'
 import { WebClientHead } from '../components/WebClientHead'
+import { useCanvasCapture } from '../hooks/useCanvasCapture'
 
 // Helper functions to map Settings types to WASM enums
 function mapColorMode(mode: ColorMode): WasmColorMode {
@@ -45,6 +46,7 @@ export function MirrorPage() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rendererRef = useRef<AsciiRendererHandle>(null)
+  const { captureFrame } = useCanvasCapture(videoRef, canvasRef)
   const [isRunning, setIsRunning] = useState(false)
   const [error, setError] = useState<string>('')
   const [terminalDimensions, setTerminalDimensions] = useState({ cols: 0, rows: 0 })
@@ -208,22 +210,15 @@ export function MirrorPage() {
     animationFrameRef.current = requestAnimationFrame(renderLoop)
   }
 
-  const renderFrame = () => {
-    const video = videoRef.current
-    const canvas = canvasRef.current
+  const renderFrame = useCallback(() => {
+    if (!isWasmReady() || !rendererRef.current) return
 
-    if (!video || !canvas || !isWasmReady() || !rendererRef.current) return
+    const frame = captureFrame()
+    if (!frame) return
 
-    const ctx = canvas.getContext('2d', { willReadFrequently: true })
-    if (!ctx) return
-
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-    const rgbaData = new Uint8Array(imageData.data)
-
-    const asciiArt = convertFrameToAscii(rgbaData, canvas.width, canvas.height)
+    const asciiArt = convertFrameToAscii(frame.data, frame.width, frame.height)
     rendererRef.current.writeFrame(asciiArt)
-  }
+  }, [captureFrame])
 
   // Cleanup on unmount
   useEffect(() => {

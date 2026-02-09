@@ -10,6 +10,7 @@ import { AsciiRenderer, AsciiRendererHandle } from '../components/AsciiRenderer'
 import { ConnectionPanelModal } from '../components/ConnectionPanelModal'
 import { Settings, SettingsConfig } from '../components/Settings'
 import { WebClientHead } from '../components/WebClientHead'
+import { useCanvasCapture } from '../hooks/useCanvasCapture'
 
 const CAPABILITIES_PACKET_SIZE = 160
 const IMAGE_FRAME_HEADER_SIZE = 24
@@ -133,6 +134,9 @@ export function ClientPage() {
     matrixRain: false,
     webcamFlip: false,
   })
+
+  // Use shared canvas capture hook
+  const { captureFrame } = useCanvasCapture(videoRef, canvasRef)
 
   const STATE_NAMES: Record<number, string> = {
     [ConnectionState.DISCONNECTED]: 'Disconnected',
@@ -322,56 +326,29 @@ export function ClientPage() {
 
   // Webcam capture loop: reads canvas pixels and sends IMAGE_FRAME to server
   const captureAndSendFrame = useCallback(() => {
-    const video = videoRef.current
-    const canvas = canvasRef.current
     const conn = clientRef.current
-
-    if (!video) {
-      return
-    }
-    if (!canvas) {
-      return
-    }
-    if (!conn) {
-      return
-    }
-    if (connectionState !== ConnectionState.CONNECTED) {
+    if (!conn || connectionState !== ConnectionState.CONNECTED) {
       return
     }
 
-    const ctx = canvas.getContext('2d', { willReadFrequently: true })
-    if (!ctx) {
+    const frame = captureFrame()
+    if (!frame) {
       return
     }
 
-    try {
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-      const rgbaData = new Uint8Array(imageData.data)
+    const payload = buildImageFramePayload(frame.data, frame.width, frame.height)
+    frameCountRef.current++
 
-      // Compute hash of RGB data to detect changes
-      let hash = 0
-      for (let i = 0; i < Math.min(rgbaData.length, 10000); i++) {
-        hash = ((hash << 5) - hash) + rgbaData[i]
-        hash = hash & hash
-      }
-
-      const payload = buildImageFramePayload(rgbaData, canvas.width, canvas.height)
-      frameCountRef.current++
-
-      // Log every 30 frames (once per second at 30 FPS)
-      const now = performance.now()
-      if (now - lastLogTimeRef.current > 1000) {
-        console.log(`[Client] Sent ${frameCountRef.current} IMAGE_FRAME packets (${canvas.width}x${canvas.height}, hash=${hash}, ${payload.length} bytes each)`)
-        frameCountRef.current = 0
-        lastLogTimeRef.current = now
-      }
-
-      conn.sendPacket(PacketType.IMAGE_FRAME, payload)
-    } catch (err) {
-      console.error('[Client] Failed to send image frame:', err)
+    // Log every 30 frames (once per second at 30 FPS)
+    const now = performance.now()
+    if (now - lastLogTimeRef.current > 1000) {
+      console.log(`[Client] Sent ${frameCountRef.current} IMAGE_FRAME packets (${frame.width}x${frame.height}, ${payload.length} bytes each)`)
+      frameCountRef.current = 0
+      lastLogTimeRef.current = now
     }
-  }, [connectionState])
+
+    conn.sendPacket(PacketType.IMAGE_FRAME, payload)
+  }, [captureFrame, connectionState])
 
   const webcamCaptureLoop = useCallback(() => {
     const now = performance.now()
