@@ -100,7 +100,7 @@ export function ClientPage() {
   const [connectionState, setConnectionState] = useState<ConnectionState>(
     ConnectionState.DISCONNECTED
   )
-  const [serverUrl, setServerUrl] = useState<string>('ws://localhost:9000')
+  const [serverUrl, setServerUrl] = useState<string>('ws://localhost:27226')
   const [showModal, setShowModal] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [error, setError] = useState<string>('')
