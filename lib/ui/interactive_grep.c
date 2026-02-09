@@ -235,6 +235,34 @@ void interactive_grep_enter_mode(void) {
         g_grep_state.len = pattern_len;
         g_grep_state.cursor = pattern_len;
         g_grep_state.cli_pattern_auto_populated = true;
+
+        // Compile and apply the pattern immediately so it starts filtering
+        log_filter_parse_result_t parsed = log_filter_parse_pattern(g_grep_state.input_buffer);
+        if (parsed.valid) {
+          // Store parsed flags
+          g_grep_state.case_insensitive = parsed.case_insensitive;
+          g_grep_state.fixed_string = parsed.is_fixed_string;
+          g_grep_state.global_highlight = parsed.global_flag;
+          g_grep_state.invert_match = parsed.invert;
+          g_grep_state.context_before = parsed.context_before;
+          g_grep_state.context_after = parsed.context_after;
+
+          // Compile pattern if not fixed string
+          if (strlen(parsed.pattern) > 0 && !parsed.is_fixed_string) {
+            pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile(parsed.pattern, parsed.pcre2_options);
+            if (singleton) {
+              pcre2_code *code = asciichat_pcre2_singleton_get_code(singleton);
+              if (code) {
+                g_grep_state.active_patterns[0] = singleton;
+                g_grep_state.active_pattern_count = 1;
+              } else {
+                g_grep_state.fixed_string = true;
+              }
+            } else {
+              g_grep_state.fixed_string = true;
+            }
+          }
+        }
       }
     }
   }
