@@ -283,19 +283,23 @@ static pcre2_match_data *get_thread_match_data(void) {
 typedef log_filter_parse_result_t parse_result_t;
 
 /**
- * @brief Parse pattern in /pattern/flags format or plain regex format
- * @param input Input pattern string (either /pattern/flags or plain pattern)
+ * @brief Parse pattern in /pattern/flags or pattern/flags format
+ * @param input Input pattern string (either /pattern/flags, pattern/flags, or plain pattern)
  * @return Parse result with all extracted settings
  *
- * Format 1 (with flags): /pattern/flags
+ * Format 1 (with flags, explicit): /pattern/flags
  * - Pattern enclosed in forward slashes with optional flags
  * - Use F flag for fixed string (literal) matching
  *
- * Format 2 (plain regex): pattern
+ * Format 2 (with flags, implicit): pattern/flags
+ * - Interactive grep format (no leading slash, since / starts the grep command)
+ * - Treats last slash as delimiter
+ *
+ * Format 3 (plain regex): pattern
  * - Plain regex pattern without slashes or flags
  * - Treated as regex with default options (no flags)
  *
- * Flags (format 1 only):
+ * Flags (formats 1 & 2):
  * - i: case-insensitive
  * - m: multiline mode (regex only)
  * - s: dotall mode (regex only)
@@ -316,6 +320,8 @@ typedef log_filter_parse_result_t parse_result_t;
  * - "/ERROR/IA3" - Invert match + 3 lines after
  * - "/FATAL/B2A5F" - Fixed string, 2 before, 5 after
  * - "error|warn" - Plain regex with alternation
+ * - "search/i" - Interactive grep: case-insensitive "search"
+ * - "api/v1/users/F" - Interactive grep: fixed string match
  */
 log_filter_parse_result_t log_filter_parse_pattern(const char *input) {
   parse_result_t result = {0};
@@ -326,8 +332,10 @@ log_filter_parse_result_t log_filter_parse_pattern(const char *input) {
   }
 
   size_t len = strlen(input);
+  const char *closing_slash = NULL;
+  const char *pattern_start = input;
 
-  // Check if pattern uses /pattern/flags format
+  // Check if pattern uses /pattern/flags format (explicit)
   if (input[0] == '/') {
     // Format 1: /pattern/flags
     if (len < 3) {
@@ -335,20 +343,37 @@ log_filter_parse_result_t log_filter_parse_pattern(const char *input) {
     }
 
     // Find closing slash
-    const char *closing_slash = strchr(input + 1, '/');
+    closing_slash = strchr(input + 1, '/');
     if (!closing_slash) {
       return result; // Invalid: missing closing /
     }
 
-    // Extract pattern between slashes
-    size_t pattern_len = (size_t)(closing_slash - (input + 1));
+    pattern_start = input + 1;
+  } else {
+    // Check for pattern/flags format (implicit, no leading slash)
+    // Find the last slash to use as delimiter
+    closing_slash = strrchr(input, '/');
+
+    if (closing_slash && closing_slash > input) {
+      // There's at least one slash (not at the beginning)
+      // Try to parse as pattern/flags format
+      pattern_start = input;
+    } else {
+      // No slash or slash at beginning - treat as plain pattern
+      closing_slash = NULL;
+    }
+  }
+
+  if (closing_slash) {
+    // Extract pattern between start and closing slash
+    size_t pattern_len = (size_t)(closing_slash - pattern_start);
     if (pattern_len == 0) {
       return result; // Invalid: empty pattern
     }
     if (pattern_len >= sizeof(result.pattern)) {
       pattern_len = sizeof(result.pattern) - 1;
     }
-    memcpy(result.pattern, input + 1, pattern_len);
+    memcpy(result.pattern, pattern_start, pattern_len);
     result.pattern[pattern_len] = '\0';
 
     // Parse flags after closing slash
@@ -416,7 +441,7 @@ log_filter_parse_result_t log_filter_parse_pattern(const char *input) {
       }
     }
   } else {
-    // Format 2: Plain pattern without slashes (treat as regex, no flags)
+    // Format 3: Plain pattern without slashes (treat as regex, no flags)
     size_t pattern_len = len;
     if (pattern_len >= sizeof(result.pattern)) {
       pattern_len = sizeof(result.pattern) - 1;
