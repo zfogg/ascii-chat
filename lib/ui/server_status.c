@@ -5,7 +5,9 @@
 
 #include <ascii-chat/ui/server_status.h>
 #include <ascii-chat/ui/terminal_screen.h>
+#include <ascii-chat/ui/interactive_grep.h>
 #include <ascii-chat/session/session_log_buffer.h>
+#include <ascii-chat/log/filter.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/options/options.h>
@@ -235,6 +237,14 @@ static void render_server_status_header(terminal_size_t term_size, void *user_da
 void server_status_display(const server_status_t *status) {
   if (!status) {
     return;
+  }
+
+  // If --grep pattern was provided, enter interactive grep mode with it pre-populated
+  // Only do this once (check if not already entering)
+  static bool grep_mode_entered = false;
+  if (!grep_mode_entered && log_filter_get_last_pattern() && log_filter_get_last_pattern()[0] != '\0') {
+    interactive_grep_enter_mode();
+    grep_mode_entered = true;
   }
 
   // Use terminal_screen abstraction for rendering

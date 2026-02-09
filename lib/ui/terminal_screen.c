@@ -163,7 +163,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     }
 
     int lines_for_this_log = 1;
-    if (msg_display_width > g_cached_term_size.cols) {
+    if (g_cached_term_size.cols > 0 && msg_display_width > g_cached_term_size.cols) {
       lines_for_this_log = (msg_display_width + g_cached_term_size.cols - 1) / g_cached_term_size.cols;
     }
 
@@ -220,7 +220,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
         msg_display_width = (int)strlen(msg);
       }
       int lines_for_this = 1;
-      if (msg_display_width > g_cached_term_size.cols) {
+      if (g_cached_term_size.cols > 0 && msg_display_width > g_cached_term_size.cols) {
         lines_for_this = (msg_display_width + g_cached_term_size.cols - 1) / g_cached_term_size.cols;
       }
 

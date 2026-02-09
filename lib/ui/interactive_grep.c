@@ -62,6 +62,7 @@ typedef struct {
   _Atomic bool signal_cancelled; ///< Set by signal handler, checked by render loop
   _Atomic int mode_atomic;       ///< Shadow of mode for signal-safe reads
   bool initialized;
+  bool cli_pattern_auto_populated; ///< Track if CLI pattern was already populated
 } interactive_grep_state_t;
 
 static interactive_grep_state_t g_grep_state = {
@@ -80,6 +81,7 @@ static interactive_grep_state_t g_grep_state = {
     .signal_cancelled = ATOMIC_VAR_INIT(false),
     .mode_atomic = GREP_MODE_INACTIVE,
     .initialized = false,
+    .cli_pattern_auto_populated = false,
 };
 
 /* ============================================================================
@@ -216,6 +218,26 @@ void interactive_grep_enter_mode(void) {
   memset(g_grep_state.input_buffer, 0, sizeof(g_grep_state.input_buffer));
   g_grep_state.len = 0;
   g_grep_state.cursor = 0;
+
+  // Pre-populate with CLI --grep pattern if available (only once at startup)
+  if (!g_grep_state.cli_pattern_auto_populated) {
+    const char *cli_pattern = log_filter_get_last_pattern();
+    if (cli_pattern && cli_pattern[0] != '\0') {
+      // Skip leading slash if present (prompt already shows "/")
+      const char *pattern_to_use = cli_pattern;
+      if (cli_pattern[0] == '/') {
+        pattern_to_use = cli_pattern + 1;
+      }
+
+      size_t pattern_len = strlen(pattern_to_use);
+      if (pattern_len < sizeof(g_grep_state.input_buffer) - 1) {
+        strcpy(g_grep_state.input_buffer, pattern_to_use);
+        g_grep_state.len = pattern_len;
+        g_grep_state.cursor = pattern_len;
+        g_grep_state.cli_pattern_auto_populated = true;
+      }
+    }
+  }
 
   // Enter input mode
   g_grep_state.mode = GREP_MODE_ENTERING;
