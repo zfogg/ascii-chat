@@ -274,7 +274,6 @@ size_t log_file_parser_merge_and_dedupe(const session_log_entry_t *buffer_entrie
           // Copy colored output up to and including "(): "
           // We scan through the colored output looking for the literal sequence "(): "
           const char *p = colored;
-          int paren_count = 0;
           while (*p && final_len < SESSION_LOG_LINE_MAX - 1) {
             final_line[final_len++] = *p;
 
