@@ -184,9 +184,21 @@ void *buffer_pool_alloc(buffer_pool_t *pool, size_t size) {
     // CAS failed - someone else allocated, reload and check again
   }
 
-  // Pool at capacity - fall back to malloc
+  // Pool at capacity - fall back to malloc with node header for consistent cleanup
+  total_size = sizeof(buffer_node_t) + size;
+  node = SAFE_MALLOC(total_size, buffer_node_t *);
+  if (!node) {
+    return NULL;
+  }
+  node->magic = MAGIC_BUFFER_POOL_FALLBACK;
+  node->_pad = 0;
+  node->size = size;
+  atomic_init(&node->next, NULL);
+  atomic_init(&node->returned_at_ns, 0);
+  node->pool = pool;
+
   atomic_fetch_add_explicit(&pool->malloc_fallbacks, 1, memory_order_relaxed);
-  return SAFE_MALLOC(size, void *);
+  return data_from_node(node);
 }
 
 void buffer_pool_free(buffer_pool_t *pool, void *data, size_t size) {

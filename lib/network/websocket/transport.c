@@ -426,8 +426,9 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
       return SET_ERRNO(ERROR_NETWORK, "Connection closed while waiting for data");
     }
 
-    // Wait for message arrival or connection close
-    cond_wait(&ws_data->queue_cond, &ws_data->queue_mutex);
+    // Wait for message arrival or connection close (with timeout to prevent deadlock)
+    // Timeout after 100ms to allow re-checking connection status
+    cond_timedwait(&ws_data->queue_cond, &ws_data->queue_mutex, 100000000); // 100ms in nanoseconds
   }
 
   // Read message from queue
