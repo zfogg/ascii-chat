@@ -574,7 +574,7 @@ asciichat_error_t interactive_grep_gather_and_filter_logs(session_log_entry_t **
       size_t dst_size = sizeof(plain_message);
 
       while (*src && pos < dst_size - 1) {
-        if (*src == '\x1b' && *(src + 1) == '[') {
+        if (*src == '\x1b' && src[1] != '\0' && src[1] == '[') {
           // CSI sequence - skip until final byte
           src += 2;
           while (*src && pos < dst_size - 1 && !(*src >= 0x40 && *src <= 0x7E)) {
