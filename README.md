@@ -561,7 +561,10 @@ build/bin/test_performance_ascii_simd --filter "*monochrome*"
 - [x] Client should continuously attempt to reconnect
 - [x] switch Client "-a/--address" option to "host" and make it accept domains as well as ipv4
 - [x] Colorize ASCII output
+- [/] 60fps in Kitty and the browser.
 - [ ] Refactor image processing algorithms
+- [ ] Edge detection and other things like that to make the image nicer.
+- [ ] Square packing / grid packing / putting multiple squares into one square efficiently. For the multi-client grid layout system.
 - [x] Grid packing algorithm.
 - [x] client reconnect logic
 - [x] terminal resize events
@@ -569,28 +572,33 @@ build/bin/test_performance_ascii_simd --filter "*monochrome*"
 - [x] client requests a frame size
 - [x] Client should gracefully handle `frame width > term width`
 - [x] Client should gracefully handle `term resize` event
-- [ ] Compile to WASM/WASI and run in the browser
+- [x] Compile to WASM/WASI and run in the browser
 - [x] Socket multiplexing.
-- [ ] Edge detection and other things like that to make the image nicer.
-- [ ] Square packing / grid packing / putting multiple squares into one square efficiently. For the multi-client grid layout system.
+- [x] WebRTC transport.
+- [x] Websocket transport.
+- [x] JavaScript Websocket transport.
 - [x] Multiple clients. Grid to display them.
 - [x] Snapshot mode for clients with --snapshot to "take a photo" of a call and print it to the terminal or a file, rather than rendering video for a long time.
 - [x] Audio mixing for multiple clients with compression and ducking.
-- [ ] Color filters so you can pick a color for all the ascii so it can look like the matrix when you pick green (Gurpreet suggested).
+- [x] WebRTC AEC3.
+- [x] Color filters so you can pick a color for all the ascii so it can look like the matrix when you pick green (Gurpreet suggested).
 - [x] Lock-free packet send queues.
 - [x] Hardware-accelerated ASCII-conversion via SIMD.
 - [x] Windows support.
 - [x] Linux support.
-- [ ] Fix v4l2 usage because the ascii rendered looks corrupted on Linux.
-- [x] Crypto.
+- [x] Fix v4l2 usage because the ascii rendered looks corrupted on Linux.
+- [x] Crypto. Custom handshake protocol with auth and rekeying.
 - [x] GPG key support for crypto (Ed25519 via gpg-agent).
+- [x] Matrix digital rain (--matrix works. try with --color-filter rainbow).
 - [ ] zalgo text generator
 - [x] v4l2 webcam images working.
 - [ ] make more little todos from the github issues so they're tracked in the readme because i like the changelog (i can check with git when things are checked off)
 - [ ] submit an ascii-chat internet protocol (ACIP) ietf rfc
-- [ ] ascii-chat discovery service
+- [/] ascii-chat discovery service
 - [ ] submit an ascii-chat discovery service (ACDS) ietf rfc
-- [ ] ascii-chat official homebrew bottles
+- [x] ascii-chat homebrew tap (zfogg/homebrew-ascii-chat)
+- [ ] ascii-chat official homebrew bottles (brew install ascii-chat with no tap)
+- [ ] get libgcrypt and gpg fixed and integrate with libgcrypt
 
 ## Notes
 
