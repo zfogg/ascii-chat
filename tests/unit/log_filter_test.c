@@ -11,7 +11,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include <ascii-chat/log/filter.h>
+#include <ascii-chat/log/grep.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/tests/common.h>
 
@@ -21,12 +21,12 @@
 
 static void setup_filter_tests(void) {
   // Ensure clean state
-  log_filter_destroy();
+  grep_destroy();
 }
 
 static void teardown_filter_tests(void) {
   // Clean up after tests
-  log_filter_destroy();
+  grep_destroy();
 }
 
 // IMPORTANT: These tests MUST run serially (.jobs = 1) because log_filter uses
@@ -42,13 +42,13 @@ TestSuite(log_filter, .init = setup_filter_tests, .fini = teardown_filter_tests)
 
 /**
  * @brief Check if a pattern is valid
- * Note: Doesn't clean up - relies on test teardown to call log_filter_destroy()
+ * Note: Doesn't clean up - relies on test teardown to call grep_destroy()
  */
 static bool is_valid_pattern(const char *pattern) {
   // Destroy any previous pattern first
-  log_filter_destroy();
+  grep_destroy();
 
-  asciichat_error_t result = log_filter_init(pattern);
+  asciichat_error_t result = grep_init(pattern);
   return (result == ASCIICHAT_OK);
 }
 
@@ -57,14 +57,14 @@ static bool is_valid_pattern(const char *pattern) {
  */
 static bool line_matches(const char *line) {
   size_t match_start = 0, match_len = 0;
-  return log_filter_should_output(line, &match_start, &match_len);
+  return grep_should_output(line, &match_start, &match_len);
 }
 
 /**
  * @brief Test if a line matches and extract match position
  */
 static bool line_matches_pos(const char *line, size_t *match_start, size_t *match_len) {
-  return log_filter_should_output(line, match_start, match_len);
+  return grep_should_output(line, match_start, match_len);
 }
 
 /* ============================================================================
@@ -94,7 +94,7 @@ Test(log_filter, pattern_format_invalid) {
 Test(log_filter, pattern_format_edge_cases) {
   // Edge case: "test/" is valid as plain pattern (matches literal "test/")
   cr_assert(is_valid_pattern("test/"), "'test/' should be valid as plain pattern");
-  asciichat_error_t result = log_filter_init("test/");
+  asciichat_error_t result = grep_init("test/");
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern should initialize successfully");
   cr_assert(line_matches("api/test/endpoint"), "Should match 'test/' in string");
   cr_assert_not(line_matches("test endpoint"), "Should not match without slash");
@@ -144,7 +144,7 @@ ParameterizedTestParameters(log_filter, plain_regex_format) {
 }
 
 ParameterizedTest(plain_regex_test_t *tc, log_filter, plain_regex_format) {
-  asciichat_error_t result = log_filter_init(tc->pattern);
+  asciichat_error_t result = grep_init(tc->pattern);
   cr_assert_eq(result, ASCIICHAT_OK, "Plain pattern '%s' should be valid", tc->pattern);
 
   bool matches = line_matches(tc->test_line);
@@ -153,7 +153,7 @@ ParameterizedTest(plain_regex_test_t *tc, log_filter, plain_regex_format) {
 
 Test(log_filter, plain_regex_no_flags) {
   // Verify plain regex has NO flags (case-sensitive by default)
-  asciichat_error_t result = log_filter_init("test");
+  asciichat_error_t result = grep_init("test");
   cr_assert_eq(result, ASCIICHAT_OK, "Plain pattern should be valid");
 
   cr_assert(line_matches("test message"), "Should match lowercase");
@@ -166,21 +166,21 @@ Test(log_filter, plain_regex_complex_patterns) {
   asciichat_error_t result;
 
   // IPv4 pattern
-  result = log_filter_init("\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}");
+  result = grep_init("\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}");
   cr_assert_eq(result, ASCIICHAT_OK, "IPv4 pattern should be valid");
   cr_assert(line_matches("Server IP: 192.168.1.1"), "Should match IPv4");
 
-  log_filter_destroy();
+  grep_destroy();
 
   // Email pattern
-  result = log_filter_init("[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}");
+  result = grep_init("[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}");
   cr_assert_eq(result, ASCIICHAT_OK, "Email pattern should be valid");
   cr_assert(line_matches("Contact: user@example.com"), "Should match email");
 
-  log_filter_destroy();
+  grep_destroy();
 
   // URL pattern
-  result = log_filter_init("https?://[^\\s]+");
+  result = grep_init("https?://[^\\s]+");
   cr_assert_eq(result, ASCIICHAT_OK, "URL pattern should be valid");
   cr_assert(line_matches("Visit https://example.com"), "Should match URL");
 }
@@ -218,7 +218,7 @@ ParameterizedTestParameters(log_filter, basic_regex_matching) {
 }
 
 ParameterizedTest(basic_match_test_t *tc, log_filter, basic_regex_matching) {
-  asciichat_error_t result = log_filter_init(tc->pattern);
+  asciichat_error_t result = grep_init(tc->pattern);
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern '%s' should be valid", tc->pattern);
 
   bool matches = line_matches(tc->test_line);
@@ -255,7 +255,7 @@ ParameterizedTestParameters(log_filter, fixed_string_matching) {
 }
 
 ParameterizedTest(fixed_string_test_t *tc, log_filter, fixed_string_matching) {
-  asciichat_error_t result = log_filter_init(tc->pattern);
+  asciichat_error_t result = grep_init(tc->pattern);
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern '%s' should be valid", tc->pattern);
 
   bool matches = line_matches(tc->test_line);
@@ -267,7 +267,7 @@ ParameterizedTest(fixed_string_test_t *tc, log_filter, fixed_string_matching) {
  * ============================================================================ */
 
 Test(log_filter, invert_match_basic) {
-  asciichat_error_t result = log_filter_init("/error/I");
+  asciichat_error_t result = grep_init("/error/I");
   cr_assert_eq(result, ASCIICHAT_OK, "Invert pattern should be valid");
 
   // Lines WITHOUT "error" should match
@@ -280,7 +280,7 @@ Test(log_filter, invert_match_basic) {
 
 Test(log_filter, invert_match_with_flags) {
   // Invert + case-insensitive
-  asciichat_error_t result = log_filter_init("/error/Ii");
+  asciichat_error_t result = grep_init("/error/Ii");
   cr_assert_eq(result, ASCIICHAT_OK, "Invert with flags should be valid");
 
   cr_assert(line_matches("This is a warning"), "Non-matching line should pass");
@@ -289,7 +289,7 @@ Test(log_filter, invert_match_with_flags) {
 
 Test(log_filter, invert_match_fixed_string) {
   // Invert + fixed string
-  asciichat_error_t result = log_filter_init("/test.*/IF");
+  asciichat_error_t result = grep_init("/test.*/IF");
   cr_assert_eq(result, ASCIICHAT_OK, "Invert fixed string should be valid");
 
   cr_assert(line_matches("This is a message"), "Non-matching line should pass");
@@ -301,7 +301,7 @@ Test(log_filter, invert_match_fixed_string) {
  * ============================================================================ */
 
 Test(log_filter, global_flag_multiple_matches) {
-  asciichat_error_t result = log_filter_init("/the/g");
+  asciichat_error_t result = grep_init("/the/g");
   cr_assert_eq(result, ASCIICHAT_OK, "Global pattern should be valid");
 
   size_t match_start = 0, match_len = 0;
@@ -321,7 +321,7 @@ Test(log_filter, global_flag_multiple_matches) {
  * ============================================================================ */
 
 Test(log_filter, context_after_lines) {
-  asciichat_error_t result = log_filter_init("/ERROR/A2");
+  asciichat_error_t result = grep_init("/ERROR/A2");
   cr_assert_eq(result, ASCIICHAT_OK, "Context-after pattern should be valid");
 
   // First line matches
@@ -341,8 +341,8 @@ Test(log_filter, context_after_multiple_values) {
   int expected_context[] = {0, 1, 5, 10};
 
   for (int i = 0; i < 4; i++) {
-    log_filter_destroy();
-    asciichat_error_t result = log_filter_init(patterns[i]);
+    grep_destroy();
+    asciichat_error_t result = grep_init(patterns[i]);
     cr_assert_eq(result, ASCIICHAT_OK, "Pattern '%s' should be valid", patterns[i]);
 
     // Trigger match
@@ -366,7 +366,7 @@ Test(log_filter, context_after_multiple_values) {
  * ============================================================================ */
 
 Test(log_filter, context_before_lines) {
-  asciichat_error_t result = log_filter_init("/ERROR/B2");
+  asciichat_error_t result = grep_init("/ERROR/B2");
   cr_assert_eq(result, ASCIICHAT_OK, "Context-before pattern should be valid");
 
   // Feed lines before match (these get buffered)
@@ -383,7 +383,7 @@ Test(log_filter, context_before_lines) {
  * ============================================================================ */
 
 Test(log_filter, context_both_lines) {
-  asciichat_error_t result = log_filter_init("/ERROR/C3");
+  asciichat_error_t result = grep_init("/ERROR/C3");
   cr_assert_eq(result, ASCIICHAT_OK, "Context-both pattern should be valid");
 
   // Feed lines before match
@@ -409,10 +409,10 @@ Test(log_filter, context_both_lines) {
 
 Test(log_filter, multiple_patterns_or_logic) {
   // Add two patterns
-  asciichat_error_t result1 = log_filter_init("/ERROR/");
+  asciichat_error_t result1 = grep_init("/ERROR/");
   cr_assert_eq(result1, ASCIICHAT_OK, "First pattern should be valid");
 
-  asciichat_error_t result2 = log_filter_init("/WARN/");
+  asciichat_error_t result2 = grep_init("/WARN/");
   cr_assert_eq(result2, ASCIICHAT_OK, "Second pattern should be valid");
 
   // Lines matching either pattern should pass
@@ -426,9 +426,9 @@ Test(log_filter, multiple_patterns_or_logic) {
 
 Test(log_filter, multiple_patterns_three) {
   // Add three patterns
-  log_filter_init("/ERROR/");
-  log_filter_init("/WARN/");
-  log_filter_init("/FATAL/");
+  grep_init("/ERROR/");
+  grep_init("/WARN/");
+  grep_init("/FATAL/");
 
   cr_assert(line_matches("ERROR message"), "First pattern should match");
   cr_assert(line_matches("WARN message"), "Second pattern should match");
@@ -438,9 +438,9 @@ Test(log_filter, multiple_patterns_three) {
 
 Test(log_filter, multiple_patterns_mixed_flags) {
   // Mix of different flags
-  log_filter_init("/error/i");    // Case-insensitive
-  log_filter_init("/critical/F"); // Fixed string
-  log_filter_init("/timeout/I");  // Inverted
+  grep_init("/error/i");    // Case-insensitive
+  grep_init("/critical/F"); // Fixed string
+  grep_init("/timeout/I");  // Inverted
 
   cr_assert(line_matches("ERROR in caps"), "Case-insensitive should match");
   cr_assert(line_matches("critical failure"), "Fixed string should match");
@@ -450,10 +450,10 @@ Test(log_filter, multiple_patterns_mixed_flags) {
 
 Test(log_filter, multiple_patterns_mixed_formats) {
   // Mix of slash format and plain format
-  log_filter_init("/error/i"); // Slash format with flag
-  log_filter_init("warn");     // Plain format
-  log_filter_init("/FATAL/");  // Slash format no flag
-  log_filter_init("\\d{4}");   // Plain format with regex
+  grep_init("/error/i"); // Slash format with flag
+  grep_init("warn");     // Plain format
+  grep_init("/FATAL/");  // Slash format no flag
+  grep_init("\\d{4}");   // Plain format with regex
 
   cr_assert(line_matches("ERROR: Failed"), "Slash format case-insensitive should match");
   cr_assert(line_matches("warn: Check this"), "Plain format should match");
@@ -510,7 +510,7 @@ ParameterizedTestParameters(log_filter, flag_combinations) {
 }
 
 ParameterizedTest(flag_combo_test_t *tc, log_filter, flag_combinations) {
-  asciichat_error_t result = log_filter_init(tc->pattern);
+  asciichat_error_t result = grep_init(tc->pattern);
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern '%s' should be valid", tc->pattern);
 
   bool matches = line_matches(tc->test_line);
@@ -535,7 +535,7 @@ Test(log_filter, invalid_flags_with_fixed_string) {
   cr_assert(is_valid_pattern("/test/FzZ123"), "Multiple invalid flags with F should be ignored");
 
   // Verify the pattern still works
-  asciichat_error_t result = log_filter_init("/test/Fz");
+  asciichat_error_t result = grep_init("/test/Fz");
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern with F and invalid flags should work");
   cr_assert(line_matches("test message"), "Should still match as fixed string");
 }
@@ -562,7 +562,7 @@ Test(log_filter, special_characters_in_pattern) {
 }
 
 Test(log_filter, unicode_in_pattern) {
-  asciichat_error_t result = log_filter_init("/café/");
+  asciichat_error_t result = grep_init("/café/");
   cr_assert_eq(result, ASCIICHAT_OK, "Unicode pattern should be valid");
   cr_assert(line_matches("I went to a café"), "Unicode match should work");
   cr_assert_not(line_matches("I went to a cafe"), "ASCII should not match Unicode");
@@ -582,25 +582,25 @@ Test(log_filter, very_long_pattern) {
 
 Test(log_filter, pattern_with_newlines) {
   // Patterns should not contain newlines
-  asciichat_error_t result = log_filter_init("/test\nline/");
+  asciichat_error_t result = grep_init("/test\nline/");
   // This might be valid for multiline matching, depending on implementation
   // Just verify it doesn't crash
   (void)result;
 }
 
 Test(log_filter, null_pattern) {
-  asciichat_error_t result = log_filter_init(NULL);
+  asciichat_error_t result = grep_init(NULL);
   // NULL pattern should be handled gracefully (either error or disable filtering)
   cr_assert_neq(result, ASCIICHAT_OK, "NULL pattern should fail");
 }
 
 Test(log_filter, null_line) {
-  asciichat_error_t result = log_filter_init("/test/");
+  asciichat_error_t result = grep_init("/test/");
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
 
   // NULL line should return false without crashing
   size_t match_start = 0, match_len = 0;
-  bool matches = log_filter_should_output(NULL, &match_start, &match_len);
+  bool matches = grep_should_output(NULL, &match_start, &match_len);
   cr_assert_not(matches, "NULL line should not match");
 }
 
@@ -609,7 +609,7 @@ Test(log_filter, null_line) {
  * ============================================================================ */
 
 Test(log_filter, multiline_mode) {
-  asciichat_error_t result = log_filter_init("/^test/m");
+  asciichat_error_t result = grep_init("/^test/m");
   cr_assert_eq(result, ASCIICHAT_OK, "Multiline pattern should be valid");
 
   // In multiline mode, ^ matches after newlines too
@@ -618,7 +618,7 @@ Test(log_filter, multiline_mode) {
 }
 
 Test(log_filter, dotall_mode) {
-  asciichat_error_t result = log_filter_init("/test.end/s");
+  asciichat_error_t result = grep_init("/test.end/s");
   cr_assert_eq(result, ASCIICHAT_OK, "Dotall pattern should be valid");
 
   // With 's' flag, . matches newlines
@@ -626,7 +626,7 @@ Test(log_filter, dotall_mode) {
 }
 
 Test(log_filter, extended_mode) {
-  asciichat_error_t result = log_filter_init("/test # comment/x");
+  asciichat_error_t result = grep_init("/test # comment/x");
   cr_assert_eq(result, ASCIICHAT_OK, "Extended pattern should be valid");
 
   // With 'x' flag, whitespace and comments are ignored
@@ -642,7 +642,7 @@ Test(log_filter, many_patterns) {
   for (int i = 0; i < 50; i++) {
     char pattern[64];
     snprintf(pattern, sizeof(pattern), "/pattern%d/", i);
-    asciichat_error_t result = log_filter_init(pattern);
+    asciichat_error_t result = grep_init(pattern);
     cr_assert_eq(result, ASCIICHAT_OK, "Pattern %d should be valid", i);
   }
 
@@ -654,7 +654,7 @@ Test(log_filter, many_patterns) {
 }
 
 Test(log_filter, rapid_matching) {
-  asciichat_error_t result = log_filter_init("/test/");
+  asciichat_error_t result = grep_init("/test/");
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
 
   // Match many times rapidly
@@ -669,7 +669,7 @@ Test(log_filter, rapid_matching) {
  * ============================================================================ */
 
 Test(log_filter, match_position_simple) {
-  asciichat_error_t result = log_filter_init("/error/");
+  asciichat_error_t result = grep_init("/error/");
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
 
   size_t match_start = 0, match_len = 0;
@@ -681,7 +681,7 @@ Test(log_filter, match_position_simple) {
 }
 
 Test(log_filter, match_position_start) {
-  asciichat_error_t result = log_filter_init("/^error/");
+  asciichat_error_t result = grep_init("/^error/");
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
 
   size_t match_start = 0, match_len = 0;
@@ -693,7 +693,7 @@ Test(log_filter, match_position_start) {
 }
 
 Test(log_filter, match_position_end) {
-  asciichat_error_t result = log_filter_init("/error$/");
+  asciichat_error_t result = grep_init("/error$/");
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
 
   size_t match_start = 0, match_len = 0;
@@ -711,7 +711,7 @@ Test(log_filter, match_position_end) {
 
 Test(log_filter, context_after_functional) {
   // Test that A3 actually outputs 3 lines after match
-  asciichat_error_t result = log_filter_init("/MATCH/A3");
+  asciichat_error_t result = grep_init("/MATCH/A3");
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
 
   // Feed lines before match (these should NOT output)
@@ -736,7 +736,7 @@ Test(log_filter, context_after_functional) {
 Test(log_filter, context_before_functional) {
   // Test that B2 actually outputs 2 lines before match
   // NOTE: This test verifies the circular buffer behavior
-  asciichat_error_t result = log_filter_init("/MATCH/B2");
+  asciichat_error_t result = grep_init("/MATCH/B2");
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
 
   // Feed lines before match (these get buffered)
@@ -755,7 +755,7 @@ Test(log_filter, context_before_functional) {
 
 Test(log_filter, context_both_functional) {
   // Test that C2 outputs 2 lines before AND 2 lines after match
-  asciichat_error_t result = log_filter_init("/MATCH/C2");
+  asciichat_error_t result = grep_init("/MATCH/C2");
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
 
   // Feed lines before match (buffered for context-before)
@@ -775,7 +775,7 @@ Test(log_filter, context_both_functional) {
 
 Test(log_filter, context_separate_matches) {
   // Test that separate matches each get their own context windows
-  asciichat_error_t result = log_filter_init("/MATCH/A2");
+  asciichat_error_t result = grep_init("/MATCH/A2");
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
 
   // First match
@@ -801,7 +801,7 @@ Test(log_filter, context_separate_matches) {
 
 Test(log_filter, utf8_fixed_string_ascii) {
   // Basic ASCII fixed string
-  asciichat_error_t result = log_filter_init("/test/F");
+  asciichat_error_t result = grep_init("/test/F");
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
 
   cr_assert(line_matches("This is a test message"), "Should match");
@@ -810,7 +810,7 @@ Test(log_filter, utf8_fixed_string_ascii) {
 
 Test(log_filter, utf8_fixed_string_accented) {
   // French accented characters
-  asciichat_error_t result = log_filter_init("/café/F");
+  asciichat_error_t result = grep_init("/café/F");
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
 
   cr_assert(line_matches("J'aime le café français"), "Should match café");
@@ -820,7 +820,7 @@ Test(log_filter, utf8_fixed_string_accented) {
 
 Test(log_filter, utf8_fixed_string_greek) {
   // Greek characters
-  asciichat_error_t result = log_filter_init("/ελληνικά/F");
+  asciichat_error_t result = grep_init("/ελληνικά/F");
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
 
   cr_assert(line_matches("Μιλάω ελληνικά"), "Should match Greek lowercase");
@@ -829,7 +829,7 @@ Test(log_filter, utf8_fixed_string_greek) {
 
 Test(log_filter, utf8_fixed_string_cyrillic) {
   // Cyrillic characters
-  asciichat_error_t result = log_filter_init("/русский/F");
+  asciichat_error_t result = grep_init("/русский/F");
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
 
   cr_assert(line_matches("Я говорю по-русский"), "Should match Cyrillic lowercase");
@@ -838,7 +838,7 @@ Test(log_filter, utf8_fixed_string_cyrillic) {
 
 Test(log_filter, utf8_fixed_string_cjk) {
   // Chinese characters
-  asciichat_error_t result = log_filter_init("/中文/F");
+  asciichat_error_t result = grep_init("/中文/F");
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
 
   cr_assert(line_matches("我说中文"), "Should match Chinese");
@@ -847,7 +847,7 @@ Test(log_filter, utf8_fixed_string_cjk) {
 
 Test(log_filter, utf8_fixed_string_emoji) {
   // Emoji (4-byte UTF-8)
-  asciichat_error_t result = log_filter_init("/🎉/F");
+  asciichat_error_t result = grep_init("/🎉/F");
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
 
   cr_assert(line_matches("Celebration 🎉 time!"), "Should match emoji");
@@ -860,7 +860,7 @@ Test(log_filter, utf8_fixed_string_emoji) {
 
 Test(log_filter, utf8_fixed_string_case_insensitive_ascii) {
   // ASCII case-insensitive
-  asciichat_error_t result = log_filter_init("/test/iF");
+  asciichat_error_t result = grep_init("/test/iF");
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
 
   cr_assert(line_matches("This is a test message"), "Should match lowercase");
@@ -870,7 +870,7 @@ Test(log_filter, utf8_fixed_string_case_insensitive_ascii) {
 
 Test(log_filter, utf8_fixed_string_case_insensitive_accented) {
   // French with case-insensitive
-  asciichat_error_t result = log_filter_init("/café/iF");
+  asciichat_error_t result = grep_init("/café/iF");
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
 
   cr_assert(line_matches("J'aime le café"), "Should match lowercase café");
@@ -881,7 +881,7 @@ Test(log_filter, utf8_fixed_string_case_insensitive_accented) {
 
 Test(log_filter, utf8_fixed_string_case_insensitive_greek) {
   // Greek case-insensitive
-  asciichat_error_t result = log_filter_init("/ελληνικά/iF");
+  asciichat_error_t result = grep_init("/ελληνικά/iF");
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
 
   cr_assert(line_matches("Μιλάω ελληνικά"), "Should match lowercase");
@@ -890,7 +890,7 @@ Test(log_filter, utf8_fixed_string_case_insensitive_greek) {
 
 Test(log_filter, utf8_fixed_string_case_insensitive_cyrillic) {
   // Cyrillic case-insensitive
-  asciichat_error_t result = log_filter_init("/русский/iF");
+  asciichat_error_t result = grep_init("/русский/iF");
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
 
   cr_assert(line_matches("Я говорю по-русский"), "Should match lowercase");
@@ -900,7 +900,7 @@ Test(log_filter, utf8_fixed_string_case_insensitive_cyrillic) {
 
 Test(log_filter, utf8_fixed_string_case_insensitive_mixed) {
   // Mixed scripts with case-insensitive
-  asciichat_error_t result = log_filter_init("/Café Μπαρ/iF");
+  asciichat_error_t result = grep_init("/Café Μπαρ/iF");
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
 
   cr_assert(line_matches("Welcome to Café Μπαρ"), "Should match mixed case");
@@ -914,7 +914,7 @@ Test(log_filter, utf8_fixed_string_case_insensitive_mixed) {
 
 Test(log_filter, utf8_regex_ascii) {
   // ASCII regex patterns
-  asciichat_error_t result = log_filter_init("/test[0-9]+/");
+  asciichat_error_t result = grep_init("/test[0-9]+/");
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
 
   cr_assert(line_matches("test123 passed"), "Should match test followed by digits");
@@ -923,7 +923,7 @@ Test(log_filter, utf8_regex_ascii) {
 
 Test(log_filter, utf8_regex_unicode_class) {
   // Unicode character class (any letter)
-  asciichat_error_t result = log_filter_init("/café.*français/");
+  asciichat_error_t result = grep_init("/café.*français/");
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
 
   cr_assert(line_matches("Le café est français"), "Should match with accents");
@@ -933,7 +933,7 @@ Test(log_filter, utf8_regex_unicode_class) {
 
 Test(log_filter, utf8_regex_case_insensitive) {
   // Regex with case-insensitive flag
-  asciichat_error_t result = log_filter_init("/café|thé/i");
+  asciichat_error_t result = grep_init("/café|thé/i");
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
 
   cr_assert(line_matches("J'aime le café"), "Should match café");
@@ -944,7 +944,7 @@ Test(log_filter, utf8_regex_case_insensitive) {
 
 Test(log_filter, utf8_regex_greek_pattern) {
   // Greek word boundary
-  asciichat_error_t result = log_filter_init("/\\bελληνικά\\b/");
+  asciichat_error_t result = grep_init("/\\bελληνικά\\b/");
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
 
   cr_assert(line_matches("Μιλάω ελληνικά καλά"), "Should match Greek word");
@@ -953,7 +953,7 @@ Test(log_filter, utf8_regex_greek_pattern) {
 
 Test(log_filter, utf8_regex_cyrillic_alternation) {
   // Cyrillic alternation pattern
-  asciichat_error_t result = log_filter_init("/(русский|английский)/");
+  asciichat_error_t result = grep_init("/(русский|английский)/");
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
 
   cr_assert(line_matches("Я говорю по-русский"), "Should match русский");
@@ -963,7 +963,7 @@ Test(log_filter, utf8_regex_cyrillic_alternation) {
 
 Test(log_filter, utf8_regex_mixed_scripts) {
   // Pattern with multiple Unicode scripts
-  asciichat_error_t result = log_filter_init("/Hello.*你好.*Привет/");
+  asciichat_error_t result = grep_init("/Hello.*你好.*Привет/");
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
 
   cr_assert(line_matches("Hello world 你好 世界 Привет мир"), "Should match mixed scripts");
@@ -975,23 +975,23 @@ Test(log_filter, utf8_regex_mixed_scripts) {
  * ============================================================================ */
 
 Test(log_filter, destroy_idempotent) {
-  asciichat_error_t result = log_filter_init("/test/");
+  asciichat_error_t result = grep_init("/test/");
   cr_assert_eq(result, ASCIICHAT_OK, "Pattern should be valid");
 
   // Multiple destroys should not crash
-  log_filter_destroy();
-  log_filter_destroy();
-  log_filter_destroy();
+  grep_destroy();
+  grep_destroy();
+  grep_destroy();
 }
 
 Test(log_filter, reinitialize_after_destroy) {
-  asciichat_error_t result = log_filter_init("/test/");
+  asciichat_error_t result = grep_init("/test/");
   cr_assert_eq(result, ASCIICHAT_OK, "First pattern should be valid");
   cr_assert(line_matches("test message"), "First pattern should match");
 
-  log_filter_destroy();
+  grep_destroy();
 
-  result = log_filter_init("/other/");
+  result = grep_init("/other/");
   cr_assert_eq(result, ASCIICHAT_OK, "Second pattern should be valid");
   cr_assert(line_matches("other message"), "Second pattern should match");
   cr_assert_not(line_matches("test message"), "Old pattern should not match");
