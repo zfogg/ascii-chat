@@ -217,17 +217,22 @@ export function ClientPage() {
           const dims = (rendererDims && rendererDims.cols > 0) ? rendererDims : { cols: 80, rows: 40 }
           console.log(`[Client] Using dimensions for capabilities: ${dims.cols}x${dims.rows}`)
 
-          try {
-            console.log(`[Client] Building CLIENT_CAPABILITIES packet (type=${PacketType.CLIENT_CAPABILITIES})`)
-            const payload = buildCapabilitiesPacket(dims.cols, dims.rows)
-            console.log(`[Client] Payload size: ${payload.length} bytes`)
-            console.log(`[Client] Sending CLIENT_CAPABILITIES packet...`)
-            conn.sendPacket(PacketType.CLIENT_CAPABILITIES, payload)
-            console.log(`[Client] CLIENT_CAPABILITIES sent successfully`)
-          } catch (err) {
-            console.error('[Client] Failed to send capabilities:', err)
-            console.error('[Client] Error stack:', err instanceof Error ? err.stack : 'unknown')
+          // Send capabilities with retry logic since WASM state might not match React state immediately
+          const sendCapabilities = () => {
+            try {
+              console.log(`[Client] Building CLIENT_CAPABILITIES packet (type=${PacketType.CLIENT_CAPABILITIES})`)
+              const payload = buildCapabilitiesPacket(dims.cols, dims.rows)
+              console.log(`[Client] Payload size: ${payload.length} bytes`)
+              console.log(`[Client] Sending CLIENT_CAPABILITIES packet...`)
+              conn.sendPacket(PacketType.CLIENT_CAPABILITIES, payload)
+              console.log(`[Client] CLIENT_CAPABILITIES sent successfully`)
+            } catch (err) {
+              console.error('[Client] Failed to send capabilities:', err)
+              // Retry after 100ms if it failed
+              setTimeout(sendCapabilities, 100)
+            }
           }
+          sendCapabilities()
         }
 
         if (state === ConnectionState.ERROR) {
@@ -324,43 +329,53 @@ export function ClientPage() {
     setPublicKey('')
   }
 
-  // Webcam capture loop: reads canvas pixels and sends IMAGE_FRAME to server
-  const captureAndSendFrame = useCallback(() => {
-    const conn = clientRef.current
-    if (!conn || connectionState !== ConnectionState.CONNECTED) {
-      return
+  // Webcam capture loop - must avoid stale closures in RAF recursion
+  // Instead, captureAndSendFrame is called by reference within the callback
+  const webcamCaptureLoopRef = useRef<(() => void) | null>(null)
+
+  // Inner loop function that doesn't have dependencies - this prevents RAF recursion from breaking
+  const createWebcamCaptureLoop = useCallback(() => {
+    return () => {
+      const now = performance.now()
+      const elapsed = now - lastFrameTimeRef.current
+
+      if (elapsed >= frameIntervalRef.current) {
+        lastFrameTimeRef.current = now
+        // Call captureAndSendFrame through ref to get the latest version
+        const conn = clientRef.current
+        if (conn && connectionState === ConnectionState.CONNECTED) {
+          const frame = captureFrame()
+          if (frame) {
+            const payload = buildImageFramePayload(frame.data, frame.width, frame.height)
+            frameCountRef.current++
+
+            const now = performance.now()
+            if (now - lastLogTimeRef.current > 1000) {
+              console.log(`[Client] Sent ${frameCountRef.current} IMAGE_FRAME packets (${frame.width}x${frame.height}, ${payload.length} bytes each)`)
+              frameCountRef.current = 0
+              lastLogTimeRef.current = now
+            }
+
+            try {
+              conn.sendPacket(PacketType.IMAGE_FRAME, payload)
+            } catch (err) {
+              console.error('[Client] Failed to send IMAGE_FRAME:', err)
+            }
+          }
+        }
+      }
+
+      // Schedule next frame - must use ref to ensure we always schedule the latest version
+      if (webcamCaptureLoopRef.current) {
+        animationFrameRef.current = requestAnimationFrame(webcamCaptureLoopRef.current)
+      }
     }
-
-    const frame = captureFrame()
-    if (!frame) {
-      return
-    }
-
-    const payload = buildImageFramePayload(frame.data, frame.width, frame.height)
-    frameCountRef.current++
-
-    // Log every 30 frames (once per second at 30 FPS)
-    const now = performance.now()
-    if (now - lastLogTimeRef.current > 1000) {
-      console.log(`[Client] Sent ${frameCountRef.current} IMAGE_FRAME packets (${frame.width}x${frame.height}, ${payload.length} bytes each)`)
-      frameCountRef.current = 0
-      lastLogTimeRef.current = now
-    }
-
-    conn.sendPacket(PacketType.IMAGE_FRAME, payload)
   }, [captureFrame, connectionState])
 
-  const webcamCaptureLoop = useCallback(() => {
-    const now = performance.now()
-    const elapsed = now - lastFrameTimeRef.current
-
-    if (elapsed >= frameIntervalRef.current) {
-      lastFrameTimeRef.current = now
-      captureAndSendFrame()
-    }
-
-    animationFrameRef.current = requestAnimationFrame(webcamCaptureLoop)
-  }, [captureAndSendFrame])
+  // Update the ref whenever dependencies change (including connectionState)
+  useEffect(() => {
+    webcamCaptureLoopRef.current = createWebcamCaptureLoop()
+  }, [createWebcamCaptureLoop])
 
   const startWebcam = useCallback(async () => {
     console.log('[Client] startWebcam() called')
@@ -392,13 +407,23 @@ export function ClientPage() {
 
       console.log('[Client] Webcam stream acquired')
       streamRef.current = stream
-      videoRef.current!.srcObject = stream
+      const video = videoRef.current!
+      video.srcObject = stream
+
+      // Ensure video actually plays
+      console.log('[Client] Attempting to play video...')
+      try {
+        await video.play()
+        console.log('[Client] Video is playing')
+      } catch (playErr) {
+        console.error('[Client] Video play failed (may be expected):', playErr)
+      }
 
       await new Promise<void>((resolve) => {
         videoRef.current!.addEventListener('loadedmetadata', () => {
           const video = videoRef.current!
           const canvas = canvasRef.current!
-          console.log(`[Client] Webcam metadata loaded: ${video.videoWidth}x${video.videoHeight}`)
+          console.log(`[Client] Webcam metadata loaded: ${video.videoWidth}x${video.videoHeight}, videoTime=${video.currentTime}, paused=${video.paused}`)
           canvas.width = video.videoWidth
           canvas.height = video.videoHeight
           console.log(`[Client] Canvas resized to: ${canvas.width}x${canvas.height}`)
@@ -410,14 +435,20 @@ export function ClientPage() {
       lastFrameTimeRef.current = performance.now()
       frameIntervalRef.current = 1000 / settings.targetFps
       console.log(`[Client] Starting webcam capture loop at ${settings.targetFps} FPS`)
-      animationFrameRef.current = requestAnimationFrame(webcamCaptureLoop)
+      // Start the capture loop using the ref (which always has the latest version)
+      if (webcamCaptureLoopRef.current) {
+        console.log('[Client] Scheduling first RAF call')
+        animationFrameRef.current = requestAnimationFrame(webcamCaptureLoopRef.current)
+      } else {
+        console.error('[Client] webcamCaptureLoopRef.current is null - capture loop not ready')
+      }
     } catch (err) {
       const errMsg = `Failed to start webcam: ${err}`
       console.error('[Client]', errMsg)
       console.error('[Client] Error:', err)
       setError(errMsg)
     }
-  }, [connectionState, settings.resolution, settings.targetFps, webcamCaptureLoop])
+  }, [connectionState, settings.resolution, settings.targetFps])
 
   const stopWebcam = useCallback(() => {
     console.log('[Client] stopWebcam() called')

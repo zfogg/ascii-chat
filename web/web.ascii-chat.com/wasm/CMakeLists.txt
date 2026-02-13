@@ -216,7 +216,8 @@ set(LIB_SOURCES_MIRROR
     # Logging
     ${LIB_ROOT}/log/logging.c
     ${LIB_ROOT}/log/colorize.c
-    ${LIB_ROOT}/log/filter.c
+    ${LIB_ROOT}/log/grep.c
+    ${LIB_ROOT}/log/interactive_grep.c
 
     # Debug/memory tracking
     ${LIB_ROOT}/debug/memory.c
