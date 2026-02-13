@@ -611,24 +611,24 @@ void asciichat_shared_destroy(void);
  * @brief Global argc for early argument inspection (e.g., --color flag detection)
  * Set by main() for access from lib/platform/terminal.c during early execution
  */
-extern int g_argc;
+extern ASCIICHAT_API int g_argc;
 
 /**
  * @brief Global argv for early argument inspection (e.g., --color flag detection)
  * Set by main() for access from lib/platform/terminal.c during early execution
  */
-extern char **g_argv;
+extern ASCIICHAT_API char **g_argv;
 
 /**
  * @brief Was --color explicitly passed in command-line arguments?
  * Set by options_init() before RCU is initialized, used by terminal_should_color_output()
  */
-extern bool g_color_flag_passed;
+extern ASCIICHAT_API bool g_color_flag_passed;
 
 /**
  * @brief Value of --color flag (true if --color was in argv)
  * Set by options_init() before RCU is initialized, used by terminal_should_color_output()
  */
-extern bool g_color_flag_value;
+extern ASCIICHAT_API bool g_color_flag_value;
 
 /** @} */

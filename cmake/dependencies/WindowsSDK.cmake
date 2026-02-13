@@ -289,21 +289,20 @@ if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
 
         # Configure CRT linking for Clang on Windows
         # External libraries (WebRTC Abseil, FFmpeg) need CRT symbols
-        # For Debug builds with dynamic CRT (-D_MT -D_DLL -D_DEBUG), we need debug CRT libs
         set(CMAKE_MSVC_RUNTIME_LIBRARY "")
 
         # Build the list of required CRT libraries based on build type
         # Use full paths from the Windows SDK and MSVC directories we already located
         set(UCRT_LIB_DIR "${WINDOWS_KITS_DIR}/Lib/${WINDOWS_SDK_VERSION}/ucrt/${WIN_ARCH}")
         if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
-            # Debug CRT (dynamic)
+            # Debug/Dev builds: use debug CRT
             set(WIN_CRT_LIBS
                 "${UCRT_LIB_DIR}/ucrtd.lib"
                 "${MSVC_LIB_DIR}/vcruntimed.lib"
                 "${MSVC_LIB_DIR}/msvcrtd.lib"
             )
         else()
-            # Release CRT (dynamic for now, but could be static for fully static builds)
+            # Release CRT (dynamic)
             set(WIN_CRT_LIBS
                 "${UCRT_LIB_DIR}/ucrt.lib"
                 "${MSVC_LIB_DIR}/vcruntime.lib"

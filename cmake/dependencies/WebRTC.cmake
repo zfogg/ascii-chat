@@ -97,12 +97,18 @@ if(NOT webrtc_aec3_POPULATED)
         file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}/lib")
 
         # Prepare CMake args for WebRTC build
+        # On Windows Debug builds, use debug CRT (/MDd) to match the main project
+        set(_webrtc_msvc_runtime "")
+        if(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+            set(_webrtc_msvc_runtime "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDebugDLL")
+        endif()
         set(WEBRTC_CMAKE_ARGS
             -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
             -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
             -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
             -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
             -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+            ${_webrtc_msvc_runtime}
             -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=${WEBRTC_BUILD_DIR}/lib
             -DCMAKE_LIBRARY_OUTPUT_DIRECTORY=${WEBRTC_BUILD_DIR}/lib
             -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=${WEBRTC_BUILD_DIR}/bin
@@ -211,17 +217,13 @@ if(NOT webrtc_aec3_POPULATED)
             set(_webrtc_win_c_flags "-DWIN32_LEAN_AND_MEAN")
             set(_webrtc_win_cxx_flags "-DWIN32_LEAN_AND_MEAN")
 
-            # For Debug builds, add sanitizer flags and debug settings to match the main project
-            # This ensures ABI compatibility (especially for annotate_string ASAN feature and iterator debug level)
+            # For Debug builds, add sanitizer flags and debug CRT settings to match the main project
             if(CMAKE_BUILD_TYPE STREQUAL "Debug")
                 set(_webrtc_sanitizer_flags "-fsanitize=address -fsanitize=undefined -fsanitize=integer -fsanitize=nullability -fsanitize=implicit-conversion -fsanitize=float-divide-by-zero")
-                # Disable MSVC iterator debugging to match Clang's defaults (prevents /failifmismatch)
-                # Use dynamic debug CRT (/MDd) - required for ASan on Windows
-                # The _MT _DLL _DEBUG defines tell MSVC headers to use msvcrtd.dll
-                set(_webrtc_debug_flags "-D_ITERATOR_DEBUG_LEVEL=0 -D_MT -D_DLL -D_DEBUG")
-                string(APPEND _webrtc_win_c_flags " ${_webrtc_sanitizer_flags} ${_webrtc_debug_flags}")
-                string(APPEND _webrtc_win_cxx_flags " ${_webrtc_sanitizer_flags} ${_webrtc_debug_flags}")
-                message(STATUS "WebRTC Windows Debug build: Adding sanitizer flags and /MDd runtime for ABI compatibility")
+                set(_webrtc_crt_flags "-D_MT -D_DLL -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=2")
+                string(APPEND _webrtc_win_c_flags " ${_webrtc_sanitizer_flags} ${_webrtc_crt_flags}")
+                string(APPEND _webrtc_win_cxx_flags " ${_webrtc_sanitizer_flags} ${_webrtc_crt_flags}")
+                message(STATUS "WebRTC Windows Debug build: Adding sanitizer flags with debug CRT")
             endif()
 
             # On Windows ARM64, explicitly set the processor so Abseil doesn't try

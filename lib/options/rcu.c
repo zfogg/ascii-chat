@@ -10,13 +10,12 @@
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/init.h>
+#include <ascii-chat/platform/process.h>
 
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
 #ifndef _WIN32
-#include <unistd.h>
 #include <pthread.h>
 #endif
 
@@ -218,7 +217,7 @@ asciichat_error_t options_state_init(void) {
   // Detect fork: after fork(), child process must reinitialize mutexes BEFORE locking
   // The inherited mutex is in an inconsistent state and can cause deadlocks/signals
   // We must reset it before calling static_mutex_lock
-  pid_t current_pid = getpid();
+  pid_t current_pid = platform_get_pid();
   if ((g_options_initialized || g_init_pid != -1) && g_init_pid != current_pid) {
 // We're in a forked child - reset the static mutex state before using it
 // On POSIX, set initialized=0 so static_mutex_lock will reinitialize it

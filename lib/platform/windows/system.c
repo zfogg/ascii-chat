@@ -8,7 +8,7 @@
 
 #include <ascii-chat/platform/api.h>
 #include <ascii-chat/platform/internal.h>
-#include <ascii-chat/socket.h>
+#include <ascii-chat/platform/socket.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/asciichat_errno.h>
@@ -213,14 +213,6 @@ asciichat_error_t platform_gtime(const time_t *timer, struct tm *result) {
   }
 
   return ASCIICHAT_OK;
-}
-
-/**
- * @brief Get current process ID
- * @return Process ID as integer
- */
-int platform_get_pid(void) {
-  return (int)GetCurrentProcessId();
 }
 
 /**

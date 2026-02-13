@@ -97,6 +97,14 @@ elseif(NOT DEFINED VCPKG_TARGET_TRIPLET)
     if(WIN32 AND CMAKE_BUILD_TYPE MATCHES "Release")
         set(VCPKG_TARGET_TRIPLET "${_vcpkg_arch}-${_vcpkg_platform}-static")
         message(STATUS "vcpkg: Using ${BoldGreen}static triplet${ColorReset} for Windows Release: ${BoldCyan}${VCPKG_TARGET_TRIPLET}${ColorReset}")
+    elseif(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang" AND CMAKE_BUILD_TYPE MATCHES "Debug|Sanitize")
+        # Windows Debug with Clang = ASan enabled
+        # ASan requires release CRT, so use our custom triplet that builds deps with release CRT
+        # See: https://learn.microsoft.com/en-us/cpp/sanitizers/asan-runtime
+        # "ASan does not support linking with the debug CRT versions"
+        set(VCPKG_TARGET_TRIPLET "${_vcpkg_arch}-${_vcpkg_platform}-asan")
+        set(VCPKG_OVERLAY_TRIPLETS "${CMAKE_SOURCE_DIR}/vcpkg-triplets")
+        message(STATUS "vcpkg: Using ${BoldGreen}ASan triplet${ColorReset} (release CRT for ASan compatibility): ${BoldCyan}${VCPKG_TARGET_TRIPLET}${ColorReset}")
     else()
         set(VCPKG_TARGET_TRIPLET "${_vcpkg_arch}-${_vcpkg_platform}")
         if(WIN32)

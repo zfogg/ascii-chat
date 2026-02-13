@@ -12,12 +12,13 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/video/ansi_fast.h>
+#include <ascii-chat/platform/stat.h>
+#include <ascii-chat/platform/util.h>
 #include <ascii-chat-deps/tomlc17/src/tomlc17.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <limits.h>
-#include <sys/stat.h>
 
 /* ============================================================================
  * Global State
@@ -697,10 +698,10 @@ terminal_background_t detect_terminal_background(void) {
   /* Method 1: Check environment variable override (highest priority) */
   const char *term_bg = SAFE_GETENV("TERM_BACKGROUND");
   if (term_bg) {
-    if (strcasecmp(term_bg, "light") == 0) {
+    if (platform_strcasecmp(term_bg, "light") == 0) {
       return TERM_BACKGROUND_LIGHT;
     }
-    if (strcasecmp(term_bg, "dark") == 0) {
+    if (platform_strcasecmp(term_bg, "dark") == 0) {
       return TERM_BACKGROUND_DARK;
     }
   }

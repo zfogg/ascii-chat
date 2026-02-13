@@ -755,6 +755,13 @@ add_library(ascii-chat-shared SHARED EXCLUDE_FROM_ALL
     # (libdatachannel embeds debug symbols with invalid timestamps - linker warning only, not an error)
     if(APPLE)
         target_link_options(ascii-chat-shared PRIVATE "-Wl,-w")
+    elseif(WIN32)
+        # Delay-load datachannel.dll to avoid loading it for simple commands like --help/--version.
+        # Note: We cannot delay-load MSVCP140D.dll because it breaks CRT initialization.
+        target_link_options(ascii-chat-shared PRIVATE
+            "LINKER:/DELAYLOAD:datachannel.dll"
+        )
+        target_link_libraries(ascii-chat-shared PRIVATE delayimp)
     endif()
 
     # Note: System library dependencies will be added below
@@ -784,6 +791,12 @@ if(WIN32)
     if(USE_MIMALLOC)
         target_link_libraries(ascii-chat-shared PRIVATE ${MIMALLOC_LIBRARIES})
     endif()
+    # Delay-load datachannel.dll to avoid loading it for simple commands like --help/--version.
+    # Note: We cannot delay-load MSVCP140D.dll because it breaks CRT initialization.
+    target_link_options(ascii-chat-shared PRIVATE
+        "LINKER:/DELAYLOAD:datachannel.dll"
+    )
+    target_link_libraries(ascii-chat-shared PRIVATE delayimp)
 else()
     # For musl builds, shared library links against system glibc libraries
     # Musl-built static libraries use incompatible TLS model (local-dynamic) and cannot be embedded in .so

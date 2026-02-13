@@ -10,12 +10,19 @@
  * @date January 2026
  */
 
-#include <ascii-chat/network/webrtc/ice.h>
-#include <ascii-chat/network/webrtc/webrtc.h>
-
 #include <rtc/rtc.hpp>
 #include <string>
 #include <cstring>
+
+#include <ascii-chat/network/webrtc/ice.h>
+#include <ascii-chat/network/webrtc/webrtc.h>
+
+// Windows.h defines these as macros which conflict with our error codes
+#ifdef _WIN32
+#undef ERROR_INVALID_STATE
+#undef ERROR_INVALID_PARAM
+#endif
+#include <ascii-chat/common/error_codes.h>
 
 /**
  * @brief Parse ICE candidate string from libdatachannel into ice_candidate_t

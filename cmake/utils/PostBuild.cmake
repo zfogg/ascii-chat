@@ -49,7 +49,12 @@ function(copy_windows_dlls TARGET_NAME)
             endif()
 
             # DLLs to copy from vcpkg
-            set(VCPKG_DLLS zstd.dll portaudio.dll libsodium.dll)
+            # Core dependencies
+            set(VCPKG_DLLS zstd.dll portaudio.dll libsodium.dll opus.dll sqlite3.dll miniupnpc.dll)
+            # FFmpeg libraries
+            list(APPEND VCPKG_DLLS avformat-61.dll avcodec-61.dll swresample-5.dll swscale-8.dll avutil-59.dll)
+            # WebRTC/datachannel and its dependencies
+            list(APPEND VCPKG_DLLS datachannel.dll juice.dll libssl-3-x64.dll libcrypto-3-x64.dll)
             if(CMAKE_BUILD_TYPE STREQUAL "Debug")
                 list(APPEND VCPKG_DLLS mimalloc-debug.dll mimalloc-redirect.dll)
                 set(VCPKG_PDBS zstd.pdb portaudio.pdb libsodium.pdb mimalloc-debug.dll.pdb)

@@ -31,6 +31,7 @@
 #include <stdarg.h>
 #include <time.h>
 #include "../common.h"
+#include "process.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -240,14 +241,6 @@ asciichat_error_t platform_localtime(const time_t *timer, struct tm *result);
  * @ingroup platform
  */
 asciichat_error_t platform_gtime(const time_t *timer, struct tm *result);
-
-/**
- * @brief Get the current process ID
- * @return Process ID of the calling process
- *
- * @ingroup platform
- */
-int platform_get_pid(void);
 
 /**
  * @brief Get the current username

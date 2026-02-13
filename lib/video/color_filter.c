@@ -7,6 +7,7 @@
 #include <ascii-chat/video/color_filter.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/memory.h>
+#include <ascii-chat/platform/util.h>
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
@@ -153,7 +154,7 @@ color_filter_t color_filter_from_cli_name(const char *cli_name) {
   }
 
   for (int i = 0; i < COLOR_FILTER_COUNT; i++) {
-    if (strcasecmp(color_filter_registry[i].cli_name, cli_name) == 0) {
+    if (platform_strcasecmp(color_filter_registry[i].cli_name, cli_name) == 0) {
       return (color_filter_t)i;
     }
   }

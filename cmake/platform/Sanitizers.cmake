@@ -105,6 +105,31 @@ function(configure_asan_ubsan_sanitizers)
                 message(STATUS "  To enable sanitizers, install LLVM with sanitizer runtimes or use Dev build")
                 return()
             endif()
+
+            # Extract specific ASan libraries for early linking
+            # The ASan DLL must load BEFORE other DLLs (like MSVCP140D.dll) to track their allocations
+            # This is achieved by making it first in the Import Directory Table via link order
+            # See: https://github.com/llvm/llvm-project/issues/61685
+            set(ASAN_DYNAMIC_IMPORT_LIB "")
+            set(ASAN_RUNTIME_THUNK_LIB "")
+            foreach(_lib ${ASAN_LIB})
+                # Get just the filename
+                get_filename_component(_lib_name "${_lib}" NAME)
+                # Match the main import library (not dbg or cxx variants)
+                if(_lib_name MATCHES "^clang_rt\\.asan_dynamic-x86_64\\.lib$")
+                    set(ASAN_DYNAMIC_IMPORT_LIB "${_lib}")
+                endif()
+            endforeach()
+
+            # Find the runtime thunk library for wholearchive linking
+            get_filename_component(_asan_lib_dir "${ASAN_DYNAMIC_IMPORT_LIB}" DIRECTORY)
+            if(EXISTS "${_asan_lib_dir}/clang_rt.asan_dynamic_runtime_thunk-x86_64.lib")
+                set(ASAN_RUNTIME_THUNK_LIB "${_asan_lib_dir}/clang_rt.asan_dynamic_runtime_thunk-x86_64.lib")
+            endif()
+
+            if(NOT ASAN_DYNAMIC_IMPORT_LIB)
+                message(WARNING "Could not find clang_rt.asan_dynamic-x86_64.lib - ASan DLL load order may cause false positives")
+            endif()
         endif()
 
         # Base debug flags (always supported)
@@ -119,10 +144,17 @@ function(configure_asan_ubsan_sanitizers)
         add_compiler_flag_if_supported(-fsanitize-recover=unsigned-integer-overflow)
         add_compiler_flag_if_supported(-fsanitize-undefined-ignore-overflow-pattern=all)
         if(WIN32)
-            # Windows with Clang
-            # ASan on Windows requires the dynamic CRT (msvcrtd.dll for debug)
-            # These defines tell MSVC headers to use the DLL runtime, matching WebRTC's configuration
-            # _ITERATOR_DEBUG_LEVEL=0 prevents iterator debugging which causes ABI mismatches
+            # Windows with Clang - use RELEASE CRT (/MD) with ASan
+            # ASan does NOT support the debug CRT (/MDd) because debug CRT's memory tracking
+            # interferes with ASan's malloc/free interposition. This is documented behavior:
+            # https://learn.microsoft.com/en-us/cpp/sanitizers/asan-runtime
+            # "ASan does not support linking with the debug CRT versions"
+            #
+            # This is NOT a limitation - ASan provides SUPERIOR memory debugging compared
+            # to the debug CRT's checks. You get:
+            # - Better memory error detection (use-after-free, buffer overflows, etc.)
+            # - Full debug symbols (-g) preserved
+            # - Stack traces for all memory errors
             add_compile_options(
                 -fsanitize=address
                 -fsanitize=undefined
@@ -135,11 +167,25 @@ function(configure_asan_ubsan_sanitizers)
                 -fno-optimize-sibling-calls
                 -D_MT
                 -D_DLL
-                -D_DEBUG
-                -D_ITERATOR_DEBUG_LEVEL=0
             )
-            # On Windows, ASan intercepts malloc/free via thunks which can conflict with UCRT
-            # Use /FORCE:MULTIPLE to allow duplicate symbols (ASan takes precedence)
+
+            # Link the ASan import library FIRST to ensure it's first in the Import Directory Table
+            # This makes Windows load the ASan DLL before other DLLs like MSVCP140D.dll
+            # Without this, allocations made during MSVCP140D.dll initialization are missed by ASan,
+            # causing "bad-free" errors when those allocations are freed at exit
+            if(ASAN_DYNAMIC_IMPORT_LIB)
+                # Use link_libraries() to add ASan lib BEFORE other link dependencies
+                # This affects all targets defined after this point
+                link_libraries("${ASAN_DYNAMIC_IMPORT_LIB}")
+                message(STATUS "  ASan import library (linked first): ${ASAN_DYNAMIC_IMPORT_LIB}")
+            endif()
+
+            # Link the runtime thunk with /wholearchive to ensure ASan init routines are included
+            if(ASAN_RUNTIME_THUNK_LIB)
+                add_link_options("-Xlinker" "/wholearchive:${ASAN_RUNTIME_THUNK_LIB}")
+                message(STATUS "  ASan runtime thunk (wholearchive): ${ASAN_RUNTIME_THUNK_LIB}")
+            endif()
+
             add_link_options(
                 -fsanitize=address
                 -fsanitize=undefined
@@ -147,9 +193,9 @@ function(configure_asan_ubsan_sanitizers)
                 -fsanitize=nullability
                 -fsanitize=implicit-conversion
                 -fsanitize=float-divide-by-zero
-                -Xlinker /FORCE:MULTIPLE
+                "SHELL:-Xlinker /FORCE:MULTIPLE"
             )
-            message(STATUS "Debug build: Enabled ${BoldGreen}ASan${ColorReset} + ${BoldGreen}UBSan${ColorReset} + ${BoldGreen}Integer${ColorReset} + ${BoldGreen}Nullability${ColorReset} + ${BoldGreen}ImplicitConversion${ColorReset} sanitizers (dynamic CRT)")
+            message(STATUS "Debug build: Enabled ${BoldGreen}ASan${ColorReset} + ${BoldGreen}UBSan${ColorReset} + ${BoldGreen}Integer${ColorReset} + ${BoldGreen}Nullability${ColorReset} + ${BoldGreen}ImplicitConversion${ColorReset} sanitizers (debug CRT)")
         elseif(APPLE)
             # macOS - sanitizers except thread and leak (not supported on ARM64)
             add_compile_options(

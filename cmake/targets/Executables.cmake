@@ -56,11 +56,20 @@ if(_use_shared_lib)
         if(BEARSSL_FOUND)
             target_link_libraries(ascii-chat ${BEARSSL_LIBRARIES})
         endif()
-        # Link WebRTC audio processing for echo cancellation
-        if(TARGET webrtc_audio_processing)
-            target_link_libraries(ascii-chat webrtc_audio_processing)
-        endif()
+        # Note: On Windows, we do NOT link webrtc_audio_processing directly to the executable.
+        # The shared library (asciichat.dll) already links it, and direct C++ library linkage
+        # would pull in MSVCP140D.dll as a direct dependency of the exe, causing ASan bad-free
+        # errors during process exit (iostream objects allocated before ASan hooks are active).
         # Note: mimalloc comes from ascii-chat-shared (PUBLIC linkage), no need to link explicitly
+
+        # Delay-load datachannel.dll to defer loading when it's not needed.
+        # Note: We cannot delay-load asciichat.dll because the executable accesses
+        # global variables (g_argc, g_argv) defined in the DLL, and delay-loading
+        # only works for function calls, not variable access.
+        target_link_options(ascii-chat PRIVATE
+            "LINKER:/DELAYLOAD:datachannel.dll"
+        )
+        target_link_libraries(ascii-chat delayimp)
     else()
         # Unix: Also need explicit dependencies when linking against shared library
         get_core_deps_libraries(CORE_LIBS)

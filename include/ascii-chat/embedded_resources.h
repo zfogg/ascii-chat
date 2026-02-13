@@ -78,20 +78,6 @@ extern const char embedded_manpage_template[];
  */
 extern const size_t embedded_manpage_template_len;
 
-/**
- * @brief Embedded man page content (auto-generated at build time)
- * @ingroup embedded
- * @internal
- */
-extern const char embedded_manpage_content[];
-
-/**
- * @brief Length of embedded_manpage_content (excluding null terminator)
- * @ingroup embedded
- * @internal
- */
-extern const size_t embedded_manpage_content_len;
-
 // =============================================================================
 // Resource Access Functions
 // =============================================================================

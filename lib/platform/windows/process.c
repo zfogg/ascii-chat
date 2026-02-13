@@ -11,6 +11,15 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <windows.h>
+
+/**
+ * @brief Get current process ID (Windows implementation)
+ * @return Process ID as pid_t
+ */
+pid_t platform_get_pid(void) {
+  return (pid_t)GetCurrentProcessId();
+}
 
 /**
  * @brief Execute a command and return a file stream (Windows implementation)

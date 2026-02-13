@@ -57,4 +57,26 @@ asciichat_error_t platform_escape_shell_path(const char *path, char *output, siz
   return ASCIICHAT_OK;
 }
 
+/**
+ * Safe string copy with bounds checking (Windows implementation)
+ */
+asciichat_error_t platform_strcpy(char *dest, size_t dest_size, const char *src) {
+  if (!dest || !src) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid pointers for strcpy");
+  }
+  if (dest_size == 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Destination buffer size is zero");
+  }
+
+  size_t src_len = strlen(src);
+  if (src_len >= dest_size) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Source string too long for destination buffer: %zu >= %zu", src_len,
+                     dest_size);
+  }
+
+  strncpy(dest, src, dest_size - 1);
+  dest[dest_size - 1] = '\0';
+  return ASCIICHAT_OK;
+}
+
 #endif

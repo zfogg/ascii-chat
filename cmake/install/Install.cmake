@@ -515,25 +515,44 @@ file(MAKE_DIRECTORY
 # CRITICAL: Use $<TARGET_FILE:ascii-chat> for DEPENDS to ensure the actual binary
 # file is built and linked before these commands run. Without this, parallel builds
 # might start the completions generation before linking completes.
-add_custom_command(
-    OUTPUT
-        "${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat"
-        "${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish"
-        "${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii-chat"
-        "${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1"
-    COMMAND bash -c "ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' timeout -k 1 0.65 '$<TARGET_FILE:ascii-chat>' --completions bash '${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat' >/dev/null 2>&1"
-    COMMAND bash -c "ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' timeout -k 1 0.65 '$<TARGET_FILE:ascii-chat>' --completions fish '${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish' >/dev/null 2>&1"
-    COMMAND bash -c "ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' timeout -k 1 0.65 '$<TARGET_FILE:ascii-chat>' --completions zsh '${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii-chat' >/dev/null 2>&1"
-    COMMAND bash -c "ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' timeout -k 1 0.65 '$<TARGET_FILE:ascii-chat>' --completions powershell '${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1' >/dev/null 2>&1"
-    DEPENDS $<TARGET_FILE:ascii-chat>
-    COMMENT "Building shell completions"
-    VERBATIM
-)
+if(WIN32)
+    # Windows: Use PowerShell to run commands and redirect output
+    add_custom_command(
+        OUTPUT
+            "${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat"
+            "${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish"
+            "${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii-chat"
+            "${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1"
+        COMMAND powershell -NoProfile -Command
+            "$env:ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y'; & '$<TARGET_FILE:ascii-chat>' --completions bash '${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat'" > NUL 2>&1
+        COMMAND powershell -NoProfile -Command
+            "$env:ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y'; & '$<TARGET_FILE:ascii-chat>' --completions fish '${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish'" > NUL 2>&1
+        COMMAND powershell -NoProfile -Command
+            "$env:ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y'; & '$<TARGET_FILE:ascii-chat>' --completions zsh '${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii-chat'" > NUL 2>&1
+        COMMAND powershell -NoProfile -Command
+            "$env:ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y'; & '$<TARGET_FILE:ascii-chat>' --completions powershell '${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1'" > NUL 2>&1
+        DEPENDS $<TARGET_FILE:ascii-chat>
+        COMMENT "Building shell completions"
+        VERBATIM
+    )
+else()
+    # Unix: Use bash with timeout and environment variables
+    add_custom_command(
+        OUTPUT
+            "${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat"
+            "${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish"
+            "${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii-chat"
+            "${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1"
+        COMMAND bash -c "ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' timeout -k 1 0.65 '$<TARGET_FILE:ascii-chat>' --completions bash '${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat' >/dev/null 2>&1"
+        COMMAND bash -c "ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' timeout -k 1 0.65 '$<TARGET_FILE:ascii-chat>' --completions fish '${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish' >/dev/null 2>&1"
+        COMMAND bash -c "ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' timeout -k 1 0.65 '$<TARGET_FILE:ascii-chat>' --completions zsh '${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii-chat' >/dev/null 2>&1"
+        COMMAND bash -c "ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' timeout -k 1 0.65 '$<TARGET_FILE:ascii-chat>' --completions powershell '${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1' >/dev/null 2>&1"
+        DEPENDS $<TARGET_FILE:ascii-chat>
+        COMMENT "Building shell completions"
+        VERBATIM
+    )
+endif()
 
-# Create target for generating all completions
-# CRITICAL: The custom_command DEPENDS on $<TARGET_FILE:ascii-chat> which ensures
-# the ascii-chat binary is fully built and linked before completions generation.
-# This prevents parallel build races where completions run before linking completes.
 add_custom_target(completions ALL
     DEPENDS
         "${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat"

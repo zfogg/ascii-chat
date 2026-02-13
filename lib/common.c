@@ -41,12 +41,13 @@
 // These globals are used by lib/platform/terminal.c to detect --color flag
 // during early execution phases (e.g., when --help is processed before
 // options are fully parsed and published to RCU)
-int g_argc = 0;
-char **g_argv = NULL;
+// ASCIICHAT_API is required for proper DLL export on Windows
+ASCIICHAT_API int g_argc = 0;
+ASCIICHAT_API char **g_argv = NULL;
 
 // Global flags for --color detection (set during options_init before RCU is ready)
-bool g_color_flag_passed = false; // Was --color explicitly passed in argv?
-bool g_color_flag_value = false;  // What was the value of --color?
+ASCIICHAT_API bool g_color_flag_passed = false; // Was --color explicitly passed in argv?
+ASCIICHAT_API bool g_color_flag_value = false;  // What was the value of --color?
 
 /* ============================================================================
  * Shutdown Check System Implementation

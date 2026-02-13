@@ -11,6 +11,15 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <unistd.h>
+
+/**
+ * @brief Get current process ID (POSIX implementation)
+ * @return Process ID as pid_t
+ */
+pid_t platform_get_pid(void) {
+  return getpid();
+}
 
 /**
  * @brief Execute a command and return a file stream (POSIX implementation)

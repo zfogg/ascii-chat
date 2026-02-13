@@ -10,7 +10,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/util/parsing.h>
-#include <ascii-chat/windows/getopt.h>
+#include <ascii-chat/platform/windows/getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <io.h>
@@ -814,6 +814,9 @@ terminal_capabilities_t detect_terminal_capabilities(void) {
     caps.detection_reliable = false;
     break;
 
+  case TERM_COLOR_AUTO:
+    // TERM_COLOR_AUTO should never be returned from detection - treat as NONE
+    // Fall through intentionally
   case TERM_COLOR_NONE:
     caps.color_count = 0;
     caps.detection_reliable = false;

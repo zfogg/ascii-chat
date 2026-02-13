@@ -175,14 +175,6 @@ asciichat_error_t platform_gtime(const time_t *timer, struct tm *result) {
 }
 
 /**
- * @brief Get current process ID
- * @return Process ID as integer
- */
-int platform_get_pid(void) {
-  return (int)getpid();
-}
-
-/**
  * @brief Get current username
  * @return Username string or "unknown" if not found
  */

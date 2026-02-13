@@ -2,13 +2,15 @@
 
 /**
  * @file platform/process.h
- * @brief Cross-platform process execution utilities
+ * @brief Cross-platform process types and execution utilities
  * @ingroup platform
  * @addtogroup platform
  * @{
  *
- * Provides platform-independent process execution functions for running
+ * Provides platform-independent process types and execution functions for running
  * external programs (like ssh-keygen, gpg) and capturing their output.
+ *
+ * Windows does not provide pid_t natively, so we typedef it here.
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date December 2025
@@ -17,9 +19,41 @@
 #include <stdio.h>
 #include "../asciichat_errno.h"
 
+// ============================================================================
+// Process ID Type (pid_t)
+// ============================================================================
+
+#ifdef _WIN32
+/**
+ * @brief Process ID type (Windows)
+ *
+ * Windows _getpid() returns int, so we typedef pid_t to int for compatibility
+ * with POSIX code that uses pid_t.
+ */
+#ifndef _PID_T_DEFINED
+typedef int pid_t;
+#define _PID_T_DEFINED
+#endif
+#else
+/* POSIX platforms - pid_t is defined in <sys/types.h> */
+#include <sys/types.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/**
+ * @brief Get the current process ID
+ * @return Process ID of the calling process
+ *
+ * Platform-specific implementations:
+ *   - POSIX: Uses getpid()
+ *   - Windows: Uses _getpid()
+ *
+ * @ingroup platform
+ */
+pid_t platform_get_pid(void);
 
 /**
  * @brief Execute a command and return a file stream for reading/writing
