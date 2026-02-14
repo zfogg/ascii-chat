@@ -61,3 +61,7 @@ scripts/__pycache__
 test_results/
 test-results/
 test-screenshot.png
+
+# vcpkg build artifacts
+vcpkg-triplets/
+vcpkg_installed/
