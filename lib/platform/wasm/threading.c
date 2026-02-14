@@ -5,6 +5,7 @@
  */
 
 #include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/thread.h>
 #include <pthread.h>
 #include <stdint.h>
 
@@ -82,4 +83,21 @@ int rwlock_wrunlock_impl(rwlock_t *rwlock) {
 // Thread ID function
 uint64_t asciichat_thread_current_id(void) {
   return (uint64_t)pthread_self();
+}
+
+// Thread-local storage functions
+int ascii_tls_key_create(tls_key_t *key, void (*destructor)(void *)) {
+  return pthread_key_create(key, destructor);
+}
+
+int ascii_tls_key_delete(tls_key_t key) {
+  return pthread_key_delete(key);
+}
+
+void *ascii_tls_get(tls_key_t key) {
+  return pthread_getspecific(key);
+}
+
+int ascii_tls_set(tls_key_t key, void *value) {
+  return pthread_setspecific(key, value);
 }

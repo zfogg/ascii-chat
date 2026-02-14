@@ -5,8 +5,10 @@
  */
 
 #include <ascii-chat/platform/abstraction.h>
+#include <sys/types.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 const char *platform_getenv(const char *name) {
   (void)name;
@@ -28,4 +30,8 @@ int platform_setenv(const char *name, const char *value) {
 int platform_unsetenv(const char *name) {
   (void)name;
   return -1; // Not supported in WASM
+}
+
+pid_t platform_get_pid(void) {
+  return 1; // WASM runs in browser - no process ID concept
 }

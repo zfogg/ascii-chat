@@ -344,46 +344,45 @@ set(EXPORTED_FUNCTIONS_CLIENT
 )
 
 # Convert lists to JSON array format for Emscripten
-string(REPLACE ";" "\",\"" EXPORTED_FUNCTIONS_MIRROR_JSON "${EXPORTED_FUNCTIONS_MIRROR}")
-set(EXPORTED_FUNCTIONS_MIRROR_JSON "[\"${EXPORTED_FUNCTIONS_MIRROR_JSON}\"]")
+# Use comma-separated format without outer brackets (emcc will add them)
+string(REPLACE ";" "," EXPORTED_FUNCTIONS_MIRROR_CSV "${EXPORTED_FUNCTIONS_MIRROR}")
+string(REPLACE ";" "," EXPORTED_FUNCTIONS_CLIENT_CSV "${EXPORTED_FUNCTIONS_CLIENT}")
 
-string(REPLACE ";" "\",\"" EXPORTED_FUNCTIONS_CLIENT_JSON "${EXPORTED_FUNCTIONS_CLIENT}")
-set(EXPORTED_FUNCTIONS_CLIENT_JSON "[\"${EXPORTED_FUNCTIONS_CLIENT_JSON}\"]")
+set(EXPORTED_RUNTIME_METHODS_CSV "ccall,cwrap,UTF8ToString,stringToUTF8,lengthBytesUTF8,getValue,setValue,HEAPU8,print,printErr")
 
-set_target_properties(mirror-web PROPERTIES
-    LINK_FLAGS "\
-        -s WASM=1 \
-        -s MODULARIZE=1 \
-        -s EXPORT_ES6=1 \
-        -s EXPORT_NAME='MirrorModule' \
-        -s EXPORTED_FUNCTIONS='${EXPORTED_FUNCTIONS_MIRROR_JSON}' \
-        -s EXPORTED_RUNTIME_METHODS='[\"ccall\",\"cwrap\",\"UTF8ToString\",\"stringToUTF8\",\"lengthBytesUTF8\",\"getValue\",\"setValue\",\"HEAPU8\",\"print\",\"printErr\"]' \
-        -s ENVIRONMENT=web \
-        -s ALLOW_MEMORY_GROWTH=1 \
-        -s INITIAL_MEMORY=32MB \
-        -s MAXIMUM_MEMORY=256MB \
-        -s WASM_BIGINT=1 \
-        -msimd128 \
-        -O3 \
-        --no-entry"
+# Use target_link_options for better cross-platform quoting
+target_link_options(mirror-web PRIVATE
+    -sWASM=1
+    -sMODULARIZE=1
+    -sEXPORT_ES6=1
+    "-sEXPORT_NAME=MirrorModule"
+    "-sEXPORTED_FUNCTIONS=${EXPORTED_FUNCTIONS_MIRROR_CSV}"
+    "-sEXPORTED_RUNTIME_METHODS=${EXPORTED_RUNTIME_METHODS_CSV}"
+    -sENVIRONMENT=web
+    -sALLOW_MEMORY_GROWTH=1
+    -sINITIAL_MEMORY=32MB
+    -sMAXIMUM_MEMORY=256MB
+    -sWASM_BIGINT=1
+    -msimd128
+    -O3
+    --no-entry
 )
 
-set_target_properties(client-web PROPERTIES
-    LINK_FLAGS "\
-        -s WASM=1 \
-        -s MODULARIZE=1 \
-        -s EXPORT_ES6=1 \
-        -s EXPORT_NAME='ClientModule' \
-        -s EXPORTED_FUNCTIONS='${EXPORTED_FUNCTIONS_CLIENT_JSON}' \
-        -s EXPORTED_RUNTIME_METHODS='[\"ccall\",\"cwrap\",\"UTF8ToString\",\"stringToUTF8\",\"lengthBytesUTF8\",\"getValue\",\"setValue\",\"HEAPU8\",\"print\",\"printErr\"]' \
-        -s ENVIRONMENT=web \
-        -s ALLOW_MEMORY_GROWTH=1 \
-        -s INITIAL_MEMORY=64MB \
-        -s MAXIMUM_MEMORY=512MB \
-        -s WASM_BIGINT=1 \
-        -msimd128 \
-        -O3 \
-        --no-entry"
+target_link_options(client-web PRIVATE
+    -sWASM=1
+    -sMODULARIZE=1
+    -sEXPORT_ES6=1
+    "-sEXPORT_NAME=ClientModule"
+    "-sEXPORTED_FUNCTIONS=${EXPORTED_FUNCTIONS_CLIENT_CSV}"
+    "-sEXPORTED_RUNTIME_METHODS=${EXPORTED_RUNTIME_METHODS_CSV}"
+    -sENVIRONMENT=web
+    -sALLOW_MEMORY_GROWTH=1
+    -sINITIAL_MEMORY=64MB
+    -sMAXIMUM_MEMORY=512MB
+    -sWASM_BIGINT=1
+    -msimd128
+    -O3
+    --no-entry
 )
 
 # Set output names to match target names
