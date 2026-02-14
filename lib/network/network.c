@@ -16,7 +16,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdatomic.h>
+#ifndef _WIN32
 #include <sys/time.h>
+#endif
 
 /* ============================================================================
  * Core Network I/O Operations
@@ -330,7 +332,7 @@ asciichat_error_t set_socket_timeout(socket_t sockfd, uint64_t timeout_ns) {
   // Set both receive and send timeouts using struct timeval
   struct timeval tv;
   tv.tv_sec = (time_t)(timeout_ms / 1000);
-  tv.tv_usec = (suseconds_t)((timeout_ms % 1000) * 1000);
+  tv.tv_usec = (long)((timeout_ms % 1000) * 1000);
 
   // Set receive timeout
   if (socket_setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) != 0) {

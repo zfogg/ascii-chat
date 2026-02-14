@@ -39,6 +39,9 @@
 
 #pragma comment(lib, "winmm.lib") // Link Windows Multimedia library for timeBeginPeriod/timeEndPeriod
 
+// Forward declarations
+void cleanup_windows_symbols(void);
+
 /**
  * @brief Get username from environment variables
  * @return Username string or "unknown" if not found

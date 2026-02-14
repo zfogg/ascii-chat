@@ -19,6 +19,8 @@
       "platform": "windows | (linux & !static) | osx"
     },
     "libdatachannel",
+    "libwebsockets",
+    "pcre2",
     {
       "name": "ffmpeg",
       "default-features": false,

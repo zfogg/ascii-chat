@@ -1303,7 +1303,9 @@ static void *status_screen_thread(void *arg) {
   log_debug("Status screen thread started (target %u FPS)", fps);
 
   // Initialize keyboard for interactive grep
+  // On Windows, pipe()+select() with stdin is not supported, so keyboard input is disabled
   bool keyboard_enabled = false;
+#ifndef _WIN32
   if (terminal_is_interactive()) {
     log_info("Terminal is interactive, initializing keyboard...");
     if (keyboard_init() == ASCIICHAT_OK) {
@@ -1330,6 +1332,10 @@ static void *status_screen_thread(void *arg) {
   } else {
     log_warn("Terminal is NOT interactive, keyboard disabled");
   }
+#else
+  (void)keyboard_enabled; // Suppress unused variable warning on Windows
+  log_info("Keyboard input disabled on Windows (select() with stdin not supported)");
+#endif
 
   // Track when we just entered grep mode to skip the triggering '/' from buffer
   bool skip_next_slash = false;
@@ -1406,6 +1412,7 @@ static void *status_screen_thread(void *arg) {
   }
 
 cleanup:
+#ifndef _WIN32
   // Stop keyboard thread: write to shutdown pipe to unblock the blocking select()
   if (keyboard_enabled) {
     log_debug("Stopping keyboard thread...");
@@ -1427,6 +1434,7 @@ cleanup:
 
     keyboard_destroy();
   }
+#endif
 
   log_debug("Status screen thread exiting");
   return NULL;

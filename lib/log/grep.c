@@ -20,11 +20,17 @@
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/video/ansi_fast.h>
 #include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/platform/thread.h>
 #include <ascii-chat/log/interactive_grep.h>
 
-#include <pthread.h>
 #include <string.h>
 #include <stdint.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <sched.h>
+#endif
 
 /**
  * @brief Default highlight colors (grey)
@@ -70,8 +76,8 @@ static struct {
   int pattern_count;              ///< Number of active patterns
   int pattern_capacity;           ///< Allocated capacity
   bool enabled;                   ///< Is filtering active?
-  pthread_key_t match_data_key;   ///< Thread-local match_data key
-  pthread_once_t match_data_once; ///< Initialize key once
+  tls_key_t match_data_key;       ///< Thread-local match_data key
+  volatile int match_data_initialized; ///< Once flag for key initialization
 
   // Context line buffering
   char **line_buffer;    ///< Circular buffer for context_before
@@ -94,7 +100,7 @@ static struct {
     .pattern_count = 0,
     .pattern_capacity = 0,
     .enabled = false,
-    .match_data_once = PTHREAD_ONCE_INIT,
+    .match_data_initialized = 0,
     .line_buffer = NULL,
     .buffer_size = 0,
     .buffer_pos = 0,
@@ -123,7 +129,7 @@ static void destroy_match_data(void *data) {
  * @brief Initialize thread-local storage key (called once)
  */
 static void create_match_data_key(void) {
-  pthread_key_create(&g_filter_state.match_data_key, destroy_match_data);
+  ascii_tls_key_create(&g_filter_state.match_data_key, destroy_match_data);
 }
 
 /**
@@ -254,12 +260,50 @@ static size_t map_plain_to_colored_pos(const char *colored_text, size_t char_pos
 }
 
 /**
+ * @brief Ensure TLS key is initialized (thread-safe)
+ */
+static void ensure_match_data_key_initialized(void) {
+  // Simple once-flag pattern using atomic compare-and-swap
+  // 0 = uninitialized, 1 = in progress, 2 = done
+  if (g_filter_state.match_data_initialized == 2) {
+    return; // Already initialized
+  }
+
+#ifdef _WIN32
+  // Windows: Use InterlockedCompareExchange
+  if (InterlockedCompareExchange((volatile LONG *)&g_filter_state.match_data_initialized, 1, 0) == 0) {
+    create_match_data_key();
+    InterlockedExchange((volatile LONG *)&g_filter_state.match_data_initialized, 2);
+  } else {
+    // Another thread is initializing, spin wait
+    while (g_filter_state.match_data_initialized != 2) {
+      // Yield to let the other thread complete
+      SwitchToThread();
+    }
+  }
+#else
+  // POSIX: Use __sync_bool_compare_and_swap
+  if (__sync_bool_compare_and_swap(&g_filter_state.match_data_initialized, 0, 1)) {
+    create_match_data_key();
+    __sync_synchronize();
+    g_filter_state.match_data_initialized = 2;
+  } else {
+    // Another thread is initializing, spin wait
+    while (g_filter_state.match_data_initialized != 2) {
+      // Yield to let the other thread complete
+      sched_yield();
+    }
+  }
+#endif
+}
+
+/**
  * @brief Get thread-local match_data (lazy allocation)
  */
 static pcre2_match_data *get_thread_match_data(void) {
-  pthread_once(&g_filter_state.match_data_once, create_match_data_key);
+  ensure_match_data_key_initialized();
 
-  pcre2_match_data *data = pthread_getspecific(g_filter_state.match_data_key);
+  pcre2_match_data *data = ascii_tls_get(g_filter_state.match_data_key);
   if (!data) {
     // Find any regex pattern to create match data from
     for (int i = 0; i < g_filter_state.pattern_count; i++) {
@@ -268,7 +312,7 @@ static pcre2_match_data *get_thread_match_data(void) {
         if (code) {
           data = pcre2_match_data_create_from_pattern(code, NULL);
           if (data) {
-            pthread_setspecific(g_filter_state.match_data_key, data);
+            ascii_tls_set(g_filter_state.match_data_key, data);
             break;
           }
         }

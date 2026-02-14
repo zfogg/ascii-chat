@@ -36,7 +36,22 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <time.h>
+// C11 stdatomic.h conflicts with MSVC's C++ <atomic> header on Windows.
+// Include the appropriate header based on the compilation mode.
+#if defined(__cplusplus) && defined(_WIN32)
+#include <atomic>
+using std::atomic_compare_exchange_weak_explicit;
+using std::atomic_load_explicit;
+using std::memory_order_relaxed;
+// C11 _Atomic(T) syntax doesn't work in C++ - use std::atomic<T> instead
+#define TIME_ATOMIC_UINT64 std::atomic<uint64_t>
+#define TIME_ATOMIC_UINT64_INIT(val) {val}
+#else
 #include <stdatomic.h>
+// C11 _Atomic type qualifier syntax
+#define TIME_ATOMIC_UINT64 _Atomic uint64_t
+#define TIME_ATOMIC_UINT64_INIT(val) val
+#endif
 
 // Forward declarations for rate-limited logging
 #include "../log/logging.h" // For log_* functions
@@ -573,7 +588,7 @@ int format_uptime_hms(int hours, int minutes, int seconds, char *buffer, size_t 
   do {                                                                                                                 \
     double _elapsed_ns = STOP_TIMER(timer_name, ##__VA_ARGS__);                                                        \
     if (_elapsed_ns >= 0.0 && (threshold_ns == 0 || _elapsed_ns >= (double)(threshold_ns))) {                          \
-      static _Atomic(uint64_t) _log_every_last_time = 0;                                                               \
+      static TIME_ATOMIC_UINT64 _log_every_last_time = TIME_ATOMIC_UINT64_INIT(0);                                      \
       uint64_t _log_every_now = time_get_ns();                                                                         \
       uint64_t _log_every_last = atomic_load_explicit(&_log_every_last_time, memory_order_relaxed);                    \
       if (_log_every_now - _log_every_last >= (uint64_t)(interval_ns)) {                                               \

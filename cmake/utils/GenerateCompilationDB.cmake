@@ -142,16 +142,6 @@ function(generate_compilation_database)
 
     if(WIN32)
         list(APPEND _cmake_configure_args "-DCMAKE_RC_COMPILER=CMAKE_RC_COMPILER-NOTFOUND")
-        # Pass vcpkg configuration to temp build so dependencies are found
-        if(DEFINED VCPKG_TARGET_TRIPLET)
-            list(APPEND _cmake_configure_args "-DVCPKG_TARGET_TRIPLET=${VCPKG_TARGET_TRIPLET}")
-        endif()
-        if(DEFINED VCPKG_INSTALLED_DIR)
-            list(APPEND _cmake_configure_args "-DVCPKG_INSTALLED_DIR=${VCPKG_INSTALLED_DIR}")
-        endif()
-        if(DEFINED ENV{VCPKG_ROOT})
-            list(APPEND _cmake_configure_args "-DCMAKE_TOOLCHAIN_FILE=$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
-        endif()
     endif()
 
     # Add disable options
