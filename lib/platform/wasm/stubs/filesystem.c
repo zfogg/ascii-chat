@@ -6,6 +6,7 @@
 
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/platform/wasm_console.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -48,6 +49,13 @@ void config_file_list_destroy(config_file_list_t *list) {
 
 // File descriptor operations
 ssize_t platform_write(int fd, const void *buf, size_t count) {
+  // For WASM, route stdout/stderr to browser console
+  if ((fd == 1 || fd == 2) && buf && count > 0) {
+    wasm_log_to_console(fd, (const uint8_t *)buf, count);
+    return (ssize_t)count; // Report all bytes as written
+  }
+
+  // Fallback: use standard write for other fds
   return write(fd, buf, count);
 }
 
