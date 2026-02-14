@@ -274,6 +274,17 @@ ASCIICHAT_API int validate_opt_password(const char *value_str, char *error_msg, 
  */
 ASCIICHAT_API int options_collect_identity_keys(options_t *opts, int argc, char *argv[]);
 
+/**
+ * @brief Check if a key path is a remote/virtual key (not a local file)
+ * @param key_path Key path to check
+ * @return true if the key is remote (github:, gitlab:, gpg:, http://, https://), false otherwise
+ *
+ * Remote keys are fetched at runtime and don't need file existence validation.
+ *
+ * @ingroup options
+ */
+ASCIICHAT_API bool is_remote_key_path(const char *key_path);
+
 /** @} */
 
 #ifdef __cplusplus

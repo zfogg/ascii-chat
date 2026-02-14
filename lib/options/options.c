@@ -74,6 +74,7 @@
  */
 
 #include <ctype.h>
+#include <sys/stat.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h> // RCU-based thread-safe options
 #include <ascii-chat/options/common.h>
@@ -1518,6 +1519,22 @@ asciichat_error_t options_init(int argc, char **argv) {
 
   // Auto-enable encryption if key was provided
   if (opts.encrypt_key[0] != '\0') {
+    // Validate key file exists (skip for remote/virtual keys)
+    if (!is_remote_key_path(opts.encrypt_key)) {
+      struct stat st;
+      if (stat(opts.encrypt_key, &st) != 0) {
+        log_error("Key file not found: %s", opts.encrypt_key);
+        options_config_destroy(config);
+        SAFE_FREE(allocated_mode_argv);
+        return SET_ERRNO(ERROR_CRYPTO_KEY, "Key file not found: %s", opts.encrypt_key);
+      }
+      if ((st.st_mode & S_IFMT) != S_IFREG) {
+        log_error("Key path is not a regular file: %s", opts.encrypt_key);
+        options_config_destroy(config);
+        SAFE_FREE(allocated_mode_argv);
+        return SET_ERRNO(ERROR_CRYPTO_KEY, "Key path is not a regular file: %s", opts.encrypt_key);
+      }
+    }
     opts.encrypt_enabled = 1;
     log_debug("Auto-enabled encryption because --key was provided");
   }

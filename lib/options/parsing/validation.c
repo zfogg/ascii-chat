@@ -9,6 +9,7 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
@@ -554,6 +555,22 @@ int options_collect_identity_keys(options_t *opts, int argc, char *argv[]) {
     }
 
     if (is_key_flag && key_value && strlen(key_value) > 0) {
+      // Validate that local key files exist (skip for remote/virtual keys)
+      if (!is_remote_key_path(key_value)) {
+        struct stat st;
+        if (stat(key_value, &st) != 0) {
+          log_error("Key file not found: %s", key_value);
+          SET_ERRNO(ERROR_CRYPTO_KEY, "Key file not found: %s", key_value);
+          return -1;
+        }
+        // Check if it's a regular file (S_IFREG) - works on both Windows and Unix
+        if ((st.st_mode & S_IFMT) != S_IFREG) {
+          log_error("Key path is not a regular file: %s", key_value);
+          SET_ERRNO(ERROR_CRYPTO_KEY, "Key path is not a regular file: %s", key_value);
+          return -1;
+        }
+      }
+
       // Store in identity_keys array
       SAFE_STRNCPY(opts->identity_keys[key_count], key_value, OPTIONS_BUFF_SIZE);
 
@@ -574,4 +591,15 @@ int options_collect_identity_keys(options_t *opts, int argc, char *argv[]) {
   }
 
   return (int)key_count;
+}
+
+bool is_remote_key_path(const char *key_path) {
+  if (!key_path || key_path[0] == '\0') {
+    return false;
+  }
+  return (strncmp(key_path, "github:", 7) == 0 ||
+          strncmp(key_path, "gitlab:", 7) == 0 ||
+          strncmp(key_path, "gpg:", 4) == 0 ||
+          strncmp(key_path, "http://", 7) == 0 ||
+          strncmp(key_path, "https://", 8) == 0);
 }

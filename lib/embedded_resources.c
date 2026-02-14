@@ -62,7 +62,9 @@ int get_manpage_template(FILE **out_file, const char **out_content, size_t *out_
   const char *path = "share/man/man1/ascii-chat.1.in";
 #endif
 
-  FILE *f = fopen(path, "r");
+  // Use binary mode to ensure fread byte count matches ftell file size.
+  // Text mode on Windows translates \r\n to \n, causing size mismatch.
+  FILE *f = fopen(path, "rb");
   if (!f) {
     SET_ERRNO_SYS(ERROR_CONFIG, "Failed to open man page template: %s", path);
     return -1;
