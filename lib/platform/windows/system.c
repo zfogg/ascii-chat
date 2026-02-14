@@ -28,6 +28,7 @@
 #include <share.h> // For _SH_DENYNO in _sopen_s
 #include <process.h>
 #include <signal.h>
+#include <ctype.h>
 #include <string.h>
 #include <stdio.h>
 #include <stddef.h>
@@ -319,7 +320,7 @@ const char *platform_getenv(const char *name) {
   }
   // Use thread-local static buffer to avoid memory leak
   // (callers never free the returned pointer, matching POSIX getenv behavior)
-  _Thread_local static char buffer[4096];
+  _Thread_local static char buffer[PLATFORM_MAX_ENV_VALUE_LENGTH];
   size_t required_size = 0;
 
   errno_t err = getenv_s(&required_size, buffer, sizeof(buffer), name);

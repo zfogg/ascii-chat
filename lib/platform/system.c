@@ -155,6 +155,37 @@ static bool is_executable_file(const char *path) {
 }
 
 /**
+ * @brief Convert Unix-style path to Windows path (e.g., /c/foo -> C:\foo)
+ * @param unix_path Input path (potentially Unix-style)
+ * @param win_path Output buffer for Windows path
+ * @param win_path_size Size of output buffer
+ * @return true if conversion happened, false if path was already Windows-style
+ */
+#ifdef _WIN32
+static bool convert_unix_path_to_windows(const char *unix_path, char *win_path, size_t win_path_size) {
+  if (!unix_path || !win_path || win_path_size < 4) {
+    return false;
+  }
+
+  // Check for Unix-style path like /c/foo or /d/bar (Git Bash format)
+  if (unix_path[0] == '/' && unix_path[1] != '\0' && unix_path[2] == '/') {
+    // Convert /x/... to X:\...
+    char drive_letter = (char)toupper((unsigned char)unix_path[1]);
+    safe_snprintf(win_path, win_path_size, "%c:%s", drive_letter, unix_path + 2);
+    // Convert remaining forward slashes to backslashes
+    for (char *p = win_path; *p; p++) {
+      if (*p == '/') *p = '\\';
+    }
+    return true;
+  }
+
+  // Already Windows-style or relative path
+  SAFE_STRNCPY(win_path, unix_path, win_path_size);
+  return false;
+}
+#endif
+
+/**
  * @brief Check if binary is in PATH (no caching)
  */
 static bool check_binary_in_path_uncached(const char *bin_name) {
@@ -187,19 +218,38 @@ static bool check_binary_in_path_uncached(const char *bin_name) {
   SAFE_STRNCPY(path_copy, path_env, path_len + 1);
 
   // Search each directory in PATH
+  // On Windows, try both ';' (native) and ':' (Git Bash) as separators
   bool found = false;
   char *saveptr = NULL;
-  char *dir = platform_strtok_r(path_copy, PATH_ENV_SEPARATOR, &saveptr);
+
+#ifdef _WIN32
+  // Detect separator: Git Bash uses ':' with Unix-style paths (/c/foo)
+  // Native Windows uses ';' with Windows paths (C:\foo)
+  const char *separator = (strchr(path_copy, ';') != NULL) ? ";" : ":";
+#else
+  const char *separator = PATH_ENV_SEPARATOR;
+#endif
+
+  char *dir = platform_strtok_r(path_copy, separator, &saveptr);
 
   while (dir != NULL) {
     // Skip empty directory entries
     if (dir[0] == '\0') {
-      dir = platform_strtok_r(NULL, PATH_ENV_SEPARATOR, &saveptr);
+      dir = platform_strtok_r(NULL, separator, &saveptr);
       continue;
     }
 
+#ifdef _WIN32
+    // Convert Unix-style paths from Git Bash to Windows paths
+    char win_dir[PLATFORM_MAX_PATH_LENGTH];
+    convert_unix_path_to_windows(dir, win_dir, sizeof(win_dir));
+
+    // Build full path to binary (use backslash for Windows)
+    safe_snprintf(full_path, sizeof(full_path), "%s\\%s", win_dir, bin_with_suffix);
+#else
     // Build full path to binary
     safe_snprintf(full_path, sizeof(full_path), "%s%c%s", dir, PATH_DELIM, bin_with_suffix);
+#endif
 
     // Check if file exists and is executable
     if (is_executable_file(full_path)) {
@@ -207,7 +257,7 @@ static bool check_binary_in_path_uncached(const char *bin_name) {
       break;
     }
 
-    dir = platform_strtok_r(NULL, PATH_ENV_SEPARATOR, &saveptr);
+    dir = platform_strtok_r(NULL, separator, &saveptr);
   }
 
   SAFE_FREE(path_copy);

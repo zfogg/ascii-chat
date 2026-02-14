@@ -25,8 +25,10 @@ include_guard(GLOBAL)
 # =============================================================================
 macro(version_detect)
     # Get git describe output at configure time
+    # Use bash -c to invoke GNU timeout (Windows' timeout.exe is a "wait N seconds"
+    # utility, not a command wrapper, and CMake's execute_process finds it first)
     execute_process(
-        COMMAND timeout 3 git describe --tags --long --dirty --always --match v[0-9]*
+        COMMAND bash -c "timeout 3 git describe --tags --long --dirty --always --match 'v[0-9]*'"
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
         OUTPUT_VARIABLE GIT_DESCRIBE_CONFIGURE
         OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -80,7 +82,7 @@ endmacro()
 macro(library_version_detect)
     # Get the highest lib/v* tag (sorted by version)
     execute_process(
-        COMMAND timeout 3 git tag -l "lib/v[0-9]*.[0-9]*.[0-9]*" --sort=-v:refname
+        COMMAND bash -c "timeout 3 git tag -l 'lib/v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname"
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
         OUTPUT_VARIABLE _LIB_TAGS
         OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -131,7 +133,7 @@ function(version_setup_targets)
     file(WRITE "${VERSION_SCRIPT_PATH}" "
 # Get git describe output (includes commits since last tag)
 execute_process(
-    COMMAND timeout 3 git describe --tags --long --dirty --always --match v[0-9]*
+    COMMAND bash -c \"timeout 3 git describe --tags --long --dirty --always --match 'v[0-9]*'\"
     WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\"
     OUTPUT_VARIABLE GIT_DESCRIBE
     OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -212,7 +214,7 @@ set(VERSION_OS \"${CMAKE_SYSTEM_NAME}\")
 
 # Get git commit hash and dirty state
 execute_process(
-    COMMAND timeout 3 git rev-parse HEAD
+    COMMAND bash -c \"timeout 3 git rev-parse HEAD\"
     WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\"
     OUTPUT_VARIABLE GIT_COMMIT_HASH
     OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -224,7 +226,7 @@ endif()
 
 # Check if working tree is dirty
 execute_process(
-    COMMAND timeout 3 git diff-index --quiet HEAD --
+    COMMAND bash -c \"timeout 3 git diff-index --quiet HEAD --\"
     WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\"
     RESULT_VARIABLE GIT_DIRTY_RESULT
     ERROR_QUIET
@@ -242,7 +244,7 @@ string(TIMESTAMP BUILD_DATE \"%Y-%m-%d\" UTC)
 if(\"${CMAKE_BUILD_TYPE}\" STREQUAL \"Release\")
     # Get list of all tracked files from git
     execute_process(
-        COMMAND timeout 3 git ls-files
+        COMMAND bash -c \"timeout 3 git ls-files\"
         WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\"
         OUTPUT_VARIABLE GIT_TRACKED_FILES
         OUTPUT_STRIP_TRAILING_WHITESPACE

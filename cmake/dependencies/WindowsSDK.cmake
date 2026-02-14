@@ -297,16 +297,17 @@ if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
         # For Release builds, use static CRT (libcmt, libvcruntime, libucrt) to match
         # WebRTC which is also built with static CRT.
         #
-        # For Debug/Dev builds with ASan: use RELEASE DLL CRT (/MD, not /MDd)
-        # ASan does NOT support debug CRT because debug CRT's memory tracking
-        # interferes with ASan's malloc/free interposition. This is documented:
-        # https://learn.microsoft.com/en-us/cpp/sanitizers/asan-runtime
-        # "ASan does not support linking with the debug CRT versions"
+        # For Debug/Dev builds: use RELEASE DLL CRT (/MD, not /MDd).
+        # Two reasons:
+        # 1. ASan (Debug builds) does NOT support debug CRT - debug CRT's heap tracking
+        #    interferes with ASan's malloc/free interposition, causing bad-free errors.
+        #    See: https://learn.microsoft.com/en-us/cpp/sanitizers/asan-runtime
+        # 2. vcpkg x64-windows packages use release CRT. Mixing debug CRT in our binary
+        #    with release CRT in vcpkg DLLs causes heap corruption from CRT mismatch.
+        #
+        # For Release builds: use static CRT to match WebRTC.
         set(UCRT_LIB_DIR "${WINDOWS_KITS_DIR}/Lib/${WINDOWS_SDK_VERSION}/ucrt/${WIN_ARCH}")
         if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
-            # Debug/Dev builds: use RELEASE DLL CRT (required for ASan compatibility)
-            # Using debug CRT (ucrtd, vcruntimed, msvcrtd) causes heap corruption
-            # because ASan and debug CRT both try to track memory allocations
             set(WIN_CRT_LIBS
                 "${UCRT_LIB_DIR}/ucrt.lib"
                 "${MSVC_LIB_DIR}/vcruntime.lib"

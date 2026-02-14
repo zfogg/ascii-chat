@@ -69,9 +69,16 @@ if(NOT webrtc_aec3_POPULATED)
     set(WEBRTC_SIMD_CONFIG "SSE2=${ENABLE_SIMD_SSE2};SSSE3=${ENABLE_SIMD_SSSE3};AVX2=${ENABLE_SIMD_AVX2};NEON=${ENABLE_SIMD_NEON};SVE=${ENABLE_SIMD_SVE}")
     set(WEBRTC_SIMD_MARKER "${WEBRTC_BUILD_DIR}/.simd_config")
 
+    # Determine platform-correct library names for cache check
+    if(WIN32)
+        set(_webrtc_check_prefix "")
+    else()
+        set(_webrtc_check_prefix "lib")
+    endif()
+
     # Check if cached build exists with matching SIMD config
     set(WEBRTC_NEEDS_REBUILD FALSE)
-    if(NOT EXISTS "${WEBRTC_BUILD_DIR}/lib/libAudioProcess.a" OR NOT EXISTS "${WEBRTC_BUILD_DIR}/lib/libaec3.a")
+    if(NOT EXISTS "${WEBRTC_BUILD_DIR}/lib/${_webrtc_check_prefix}AudioProcess${CMAKE_STATIC_LIBRARY_SUFFIX}" OR NOT EXISTS "${WEBRTC_BUILD_DIR}/lib/${_webrtc_check_prefix}aec3${CMAKE_STATIC_LIBRARY_SUFFIX}")
         set(WEBRTC_NEEDS_REBUILD TRUE)
         message(STATUS "WebRTC AEC3 libraries not found, will build from source")
     elseif(NOT EXISTS "${WEBRTC_SIMD_MARKER}")
@@ -213,6 +220,10 @@ if(NOT webrtc_aec3_POPULATED)
         # Visual Studio generator ignores CMAKE_C_COMPILER and uses cl.exe
         if(WIN32)
             list(PREPEND WEBRTC_CMAKE_ARGS -G Ninja)
+            # Prevent ABI detection from trying to link an executable.
+            # CMake's Windows-Clang platform adds -nostartfiles -nostdlib to link rules,
+            # which causes lld-link to hang during ABI detection.
+            list(APPEND WEBRTC_CMAKE_ARGS -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY)
             # Add WIN32_LEAN_AND_MEAN to prevent winsock.h/winsock2.h conflicts
             set(_webrtc_win_c_flags "-DWIN32_LEAN_AND_MEAN")
             set(_webrtc_win_cxx_flags "-DWIN32_LEAN_AND_MEAN")

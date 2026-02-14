@@ -55,6 +55,12 @@ function(copy_windows_dlls TARGET_NAME)
             list(APPEND VCPKG_DLLS avformat-61.dll avcodec-61.dll swresample-5.dll swscale-8.dll avutil-59.dll)
             # WebRTC/datachannel and its dependencies
             list(APPEND VCPKG_DLLS datachannel.dll juice.dll libssl-3-x64.dll libcrypto-3-x64.dll)
+            # Regex, websocket, and libuv libraries
+            if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+                list(APPEND VCPKG_DLLS pcre2-8d.dll websockets.dll uv.dll)
+            else()
+                list(APPEND VCPKG_DLLS pcre2-8.dll websockets.dll uv.dll)
+            endif()
             if(CMAKE_BUILD_TYPE STREQUAL "Debug")
                 list(APPEND VCPKG_DLLS mimalloc-debug.dll mimalloc-redirect.dll)
                 set(VCPKG_PDBS zstd.pdb portaudio.pdb libsodium.pdb mimalloc-debug.dll.pdb)

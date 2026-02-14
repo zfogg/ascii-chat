@@ -186,14 +186,15 @@ function(configure_asan_ubsan_sanitizers)
                 message(STATUS "  ASan runtime thunk (wholearchive): ${ASAN_RUNTIME_THUNK_LIB}")
             endif()
 
+            # Don't pass -fsanitize=address to the linker - it adds the static
+            # runtime thunk which conflicts with the dynamic thunk linked above.
+            # The ASan runtime is already handled by the manual import lib + thunk linking.
             add_link_options(
-                -fsanitize=address
                 -fsanitize=undefined
                 -fsanitize=integer
                 -fsanitize=nullability
                 -fsanitize=implicit-conversion
                 -fsanitize=float-divide-by-zero
-                "SHELL:-Xlinker /FORCE:MULTIPLE"
             )
             message(STATUS "Debug build: Enabled ${BoldGreen}ASan${ColorReset} + ${BoldGreen}UBSan${ColorReset} + ${BoldGreen}Integer${ColorReset} + ${BoldGreen}Nullability${ColorReset} + ${BoldGreen}ImplicitConversion${ColorReset} sanitizers (debug CRT)")
         elseif(APPLE)

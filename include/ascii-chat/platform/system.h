@@ -939,6 +939,18 @@ void platform_cleanup_binary_path_cache(void);
 #endif
 
 /**
+ * @brief Maximum environment variable value length
+ *
+ * Windows theoretically supports 32767 chars per env var value.
+ * Unix systems typically have no hard limit per variable, but total
+ * environment size is limited (usually ~128KB-2MB).
+ *
+ * We use 32KB as a reasonable maximum that handles Windows PATH
+ * (which can easily exceed 4KB) while not being excessive.
+ */
+#define PLATFORM_MAX_ENV_VALUE_LENGTH 32768
+
+/**
  * @brief Get the path to the current executable
  *
  * Retrieves the full path to the currently running executable using
