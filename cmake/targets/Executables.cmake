@@ -97,8 +97,15 @@ endif()
 if((APPLE OR UNIX) AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     # Explicitly set BUILD_RPATH to put build/lib first, before any system paths
     # This ensures we use the freshly built library, not any installed version
+    # For macOS, also include /opt/homebrew/lib for Homebrew-installed dependencies
+    if(APPLE)
+        set(_debug_install_rpath "${CMAKE_LIBRARY_OUTPUT_DIRECTORY};${CMAKE_BUILD_RPATH};/opt/homebrew/lib")
+    else()
+        set(_debug_install_rpath "${CMAKE_LIBRARY_OUTPUT_DIRECTORY};${CMAKE_BUILD_RPATH}")
+    endif()
     set_target_properties(ascii-chat PROPERTIES
-        BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY};${CMAKE_BUILD_RPATH}"
+        BUILD_RPATH "${_debug_install_rpath}"
+        INSTALL_RPATH "${_debug_install_rpath}"
         INSTALL_RPATH_USE_LINK_PATH TRUE
     )
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release" AND ASCIICHAT_SHARED_DEPS)
@@ -106,8 +113,9 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release" AND ASCIICHAT_SHARED_DEPS)
     # Include:
     #   - @loader_path/../lib for libasciichat.dylib (relative to binary)
     #   - CMAKE_BUILD_RPATH for LLVM library paths (libc++, libunwind)
+    #   - /opt/homebrew/lib for Homebrew-installed libraries on macOS
     if(APPLE)
-        set(_install_rpath "@loader_path/../lib;${CMAKE_BUILD_RPATH}")
+        set(_install_rpath "@loader_path/../lib;${CMAKE_BUILD_RPATH};/opt/homebrew/lib")
     else()
         set(_install_rpath "$ORIGIN/../lib;${CMAKE_BUILD_RPATH}")
     endif()
@@ -122,7 +130,7 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
     # Use relative rpath to avoid embedding developer paths in the binary
     # This satisfies the ValidatePaths.cmake security check
     if(APPLE)
-        set(_release_rpath "@loader_path/../lib;/usr/local/lib")
+        set(_release_rpath "@loader_path/../lib;/usr/local/lib;/opt/homebrew/lib")
     else()
         set(_release_rpath "$ORIGIN/../lib:/usr/local/lib")
     endif()
