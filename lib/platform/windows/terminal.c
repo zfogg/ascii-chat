@@ -1064,7 +1064,7 @@ bool terminal_query_background_color(uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b
   }
 
   // Set raw mode for reading response
-  DWORD new_mode = old_mode & ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
+  DWORD new_mode = old_mode & ~((DWORD)(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT));
   new_mode |= ENABLE_VIRTUAL_TERMINAL_INPUT;
   if (!SetConsoleMode(hConsole, new_mode)) {
     CloseHandle(hConsole);
