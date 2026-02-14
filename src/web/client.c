@@ -182,6 +182,7 @@ int client_init_with_args(const char *args_json) {
   WASM_LOG("Calling log_init...");
   log_init(NULL, LOG_DEBUG, true, false);
   WASM_LOG("log_init OK");
+  log_info("WASM client initialized via logging system");
 
   if (err != ASCIICHAT_OK) {
     WASM_LOG_INT("options_init FAILED", err);
