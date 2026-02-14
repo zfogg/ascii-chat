@@ -33,6 +33,13 @@
 #include <ascii-chat/network/packet.h>
 #include <ascii-chat/video/ansi.h>
 
+/* Platform-specific log hook (weak, can be overridden by platform implementations) */
+__attribute__((weak)) void platform_log_hook(log_level_t level, const char *message) {
+  (void)level;
+  (void)message;
+  // Default: no-op
+}
+
 /* ============================================================================
  * Logging System Internal State
  * ============================================================================ */
@@ -971,6 +978,9 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
           format_log_header(header_buffer, sizeof(header_buffer), level, time_buf, file, line, func, use_colors, false);
 
       if (header_len > 0 && header_len < (int)sizeof(header_buffer)) {
+        // Platform-specific log hook (e.g., for WASM browser console)
+        platform_log_hook(level, msg_buffer);
+
         if (use_colors) {
           const char *colorized_msg = colorize_log_message(msg_buffer);
           const char **colors = log_get_color_array();

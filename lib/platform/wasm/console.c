@@ -35,6 +35,14 @@ EM_JS(void, js_console_log, (int level, const char *message), {
   }
 });
 
+// Platform hook called by logging system
+// This is called after each log message is formatted, before printing to stderr/stdout
+void platform_log_hook(log_level_t level, const char *message) {
+  if (message) {
+    js_console_log((int)level, message);
+  }
+}
+
 // Parse log level from formatted message: "[LEVEL] message..."
 // Returns the log_level_t enum value, or -1 if not found
 int wasm_parse_log_level(const uint8_t *buf, size_t count) {
