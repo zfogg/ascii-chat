@@ -19,12 +19,24 @@
 int platform_snprintf(char *str, size_t size, const char *format, ...) {
   va_list ap;
   va_start(ap, format);
-  int ret = _vsnprintf_s(str, size, _TRUNCATE, format, ap);
+  int ret;
+  // Handle NULL buffer case for size calculation (standard snprintf behavior).
+  // _vsnprintf_s does NOT accept NULL buffer, so use _vscprintf for size calculation.
+  if (str == NULL || size == 0) {
+    ret = _vscprintf(format, ap);
+  } else {
+    ret = _vsnprintf_s(str, size, _TRUNCATE, format, ap);
+  }
   va_end(ap);
   return ret;
 }
 
 int platform_vsnprintf(char *str, size_t size, const char *format, va_list ap) {
+  // Handle NULL buffer case for size calculation (standard vsnprintf behavior).
+  // _vsnprintf_s does NOT accept NULL buffer, so use _vscprintf for size calculation.
+  if (str == NULL || size == 0) {
+    return _vscprintf(format, ap);
+  }
   return _vsnprintf_s(str, size, _TRUNCATE, format, ap);
 }
 

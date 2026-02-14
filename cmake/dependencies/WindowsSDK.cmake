@@ -293,20 +293,26 @@ if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
 
         # Build the list of required CRT libraries based on build type
         # Use full paths from the Windows SDK and MSVC directories we already located
+        #
+        # For Release builds, use static CRT (libcmt, libvcruntime, libucrt) to match
+        # WebRTC which is also built with static CRT.
+        # For Debug/Dev builds, use DLL CRT because AddressSanitizer requires it.
         set(UCRT_LIB_DIR "${WINDOWS_KITS_DIR}/Lib/${WINDOWS_SDK_VERSION}/ucrt/${WIN_ARCH}")
         if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
-            # Debug/Dev builds: use debug CRT
+            # Debug/Dev builds: use DLL CRT (required for ASan)
             set(WIN_CRT_LIBS
                 "${UCRT_LIB_DIR}/ucrtd.lib"
                 "${MSVC_LIB_DIR}/vcruntimed.lib"
                 "${MSVC_LIB_DIR}/msvcrtd.lib"
+                "${MSVC_LIB_DIR}/legacy_stdio_definitions.lib"
             )
         else()
-            # Release CRT (dynamic)
+            # Release builds: use static CRT to match WebRTC
             set(WIN_CRT_LIBS
-                "${UCRT_LIB_DIR}/ucrt.lib"
-                "${MSVC_LIB_DIR}/vcruntime.lib"
-                "${MSVC_LIB_DIR}/msvcrt.lib"
+                "${UCRT_LIB_DIR}/libucrt.lib"
+                "${MSVC_LIB_DIR}/libvcruntime.lib"
+                "${MSVC_LIB_DIR}/libcmt.lib"
+                "${MSVC_LIB_DIR}/legacy_stdio_definitions.lib"
             )
         endif()
 

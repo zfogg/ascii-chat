@@ -217,13 +217,15 @@ if(NOT webrtc_aec3_POPULATED)
             set(_webrtc_win_c_flags "-DWIN32_LEAN_AND_MEAN")
             set(_webrtc_win_cxx_flags "-DWIN32_LEAN_AND_MEAN")
 
-            # For Debug builds, add sanitizer flags and debug CRT settings to match the main project
+            # For Debug builds, add sanitizer flags to match the main project
+            # Use release CRT settings (_MT _DLL without _DEBUG) because ASan requires release CRT
+            # Set _ITERATOR_DEBUG_LEVEL=0 to match the main project's settings
             if(CMAKE_BUILD_TYPE STREQUAL "Debug")
                 set(_webrtc_sanitizer_flags "-fsanitize=address -fsanitize=undefined -fsanitize=integer -fsanitize=nullability -fsanitize=implicit-conversion -fsanitize=float-divide-by-zero")
-                set(_webrtc_crt_flags "-D_MT -D_DLL -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=2")
+                set(_webrtc_crt_flags "-D_MT -D_DLL -D_ITERATOR_DEBUG_LEVEL=0")
                 string(APPEND _webrtc_win_c_flags " ${_webrtc_sanitizer_flags} ${_webrtc_crt_flags}")
                 string(APPEND _webrtc_win_cxx_flags " ${_webrtc_sanitizer_flags} ${_webrtc_crt_flags}")
-                message(STATUS "WebRTC Windows Debug build: Adding sanitizer flags with debug CRT")
+                message(STATUS "WebRTC Windows Debug build: Adding sanitizer flags with release CRT")
             endif()
 
             # On Windows ARM64, explicitly set the processor so Abseil doesn't try
@@ -297,7 +299,15 @@ if(NOT webrtc_aec3_POPULATED)
             list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DCMAKE_CXX_FLAGS=")
             list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_C_FLAGS=${_webrtc_win_c_flags}")
             list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_CXX_FLAGS=${_webrtc_win_cxx_flags}")
-            message(STATUS "WebRTC Windows build: forcing Ninja generator to use Clang")
+            # For Debug builds with ASan, use MultiThreadedDLL (required by ASan)
+            # For Release builds, use MultiThreaded (static) to match main project
+            if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+                list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL")
+                message(STATUS "WebRTC Windows Debug build: using DLL CRT (ASan requirement)")
+            else()
+                list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded")
+                message(STATUS "WebRTC Windows Release build: using static CRT")
+            endif()
         endif()
 
         # Build WebRTC at configure time (not part of main build)
