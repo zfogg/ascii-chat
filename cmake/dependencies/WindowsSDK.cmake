@@ -296,14 +296,21 @@ if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
         #
         # For Release builds, use static CRT (libcmt, libvcruntime, libucrt) to match
         # WebRTC which is also built with static CRT.
-        # For Debug/Dev builds, use DLL CRT because AddressSanitizer requires it.
+        #
+        # For Debug/Dev builds with ASan: use RELEASE DLL CRT (/MD, not /MDd)
+        # ASan does NOT support debug CRT because debug CRT's memory tracking
+        # interferes with ASan's malloc/free interposition. This is documented:
+        # https://learn.microsoft.com/en-us/cpp/sanitizers/asan-runtime
+        # "ASan does not support linking with the debug CRT versions"
         set(UCRT_LIB_DIR "${WINDOWS_KITS_DIR}/Lib/${WINDOWS_SDK_VERSION}/ucrt/${WIN_ARCH}")
         if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
-            # Debug/Dev builds: use DLL CRT (required for ASan)
+            # Debug/Dev builds: use RELEASE DLL CRT (required for ASan compatibility)
+            # Using debug CRT (ucrtd, vcruntimed, msvcrtd) causes heap corruption
+            # because ASan and debug CRT both try to track memory allocations
             set(WIN_CRT_LIBS
-                "${UCRT_LIB_DIR}/ucrtd.lib"
-                "${MSVC_LIB_DIR}/vcruntimed.lib"
-                "${MSVC_LIB_DIR}/msvcrtd.lib"
+                "${UCRT_LIB_DIR}/ucrt.lib"
+                "${MSVC_LIB_DIR}/vcruntime.lib"
+                "${MSVC_LIB_DIR}/msvcrt.lib"
                 "${MSVC_LIB_DIR}/legacy_stdio_definitions.lib"
             )
         else()

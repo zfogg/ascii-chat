@@ -1,0 +1,6 @@
+# ASan Suppressions for ASCII-Chat
+#
+# ODR Violations on Windows DLL builds
+# These are false positives caused by string literals and globals being registered
+# in both the DLL and the import library stub in the EXE
+odr_violation:*
