@@ -92,6 +92,7 @@ set(MIRROR_SOURCES
 # Platform abstraction layer for WASM
 set(PLATFORM_SOURCES
     ${LIB_ROOT}/platform/wasm/init.c
+    ${LIB_ROOT}/platform/wasm/console.c
     ${LIB_ROOT}/platform/wasm/terminal.c
     ${LIB_ROOT}/platform/wasm/threading.c
     ${LIB_ROOT}/platform/wasm/system.c
