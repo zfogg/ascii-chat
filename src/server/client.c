@@ -1819,19 +1819,20 @@ void *client_send_thread_func(void *arg) {
     if (!client->outgoing_video_buffer) {
       // Buffer has been destroyed (client is shutting down).
       // Exit cleanly instead of looping forever trying to access freed memory.
-      log_debug("Client %u send thread exiting: outgoing_video_buffer is NULL", client->client_id);
+      log_dev("Client %u send thread exiting: outgoing_video_buffer is NULL", client->client_id);
       break;
     }
 
     // Get latest frame from double buffer (lock-free operation)
     // This marks the frame as consumed even if we don't send it yet
     const video_frame_t *frame = video_frame_get_latest(client->outgoing_video_buffer);
-    log_debug("Send thread: video_frame_get_latest returned %p for client %u", (void *)frame, client->client_id);
+    log_dev_every(4500000, "Send thread: video_frame_get_latest returned %p for client %u", (void *)frame,
+                  client->client_id);
 
     // Check if get_latest failed (buffer might have been destroyed)
     if (!frame) {
-      log_debug("Client %u send thread: video_frame_get_latest returned NULL, buffer may be destroyed",
-                client->client_id);
+      log_dev("Client %u send thread: video_frame_get_latest returned NULL, buffer may be destroyed",
+              client->client_id);
       break; // Exit thread if buffer is invalid
     }
 
@@ -1840,9 +1841,9 @@ void *client_send_thread_func(void *arg) {
     uint64_t current_time_ns = time_get_ns();
     uint64_t current_time_us = time_ns_to_us(current_time_ns);
     uint64_t time_since_last_send_us = current_time_us - last_video_send_time;
-    log_debug("Send thread timing check: time_since_last=%llu us, interval=%llu us, should_send=%d",
-              (unsigned long long)time_since_last_send_us, (unsigned long long)video_send_interval_us,
-              (time_since_last_send_us >= video_send_interval_us));
+    log_dev_every(4500000, "Send thread timing check: time_since_last=%llu us, interval=%llu us, should_send=%d",
+                  (unsigned long long)time_since_last_send_us, (unsigned long long)video_send_interval_us,
+                  (time_since_last_send_us >= video_send_interval_us));
 
     if (current_time_us - last_video_send_time >= video_send_interval_us) {
       uint64_t frame_start_ns = time_get_ns();
@@ -1871,20 +1872,20 @@ void *client_send_thread_func(void *arg) {
         sent_something = true;
       }
 
-      log_debug("Send thread: frame validation - frame=%p, frame->data=%p, frame->size=%zu", (void *)frame,
-                (void *)frame->data, frame->size);
+      log_dev_every(4500000, "Send thread: frame validation - frame=%p, frame->data=%p, frame->size=%zu", (void *)frame,
+                    (void *)frame->data, frame->size);
 
       if (!frame->data) {
         SET_ERRNO(ERROR_INVALID_STATE, "Client %u has no valid frame data: frame=%p, data=%p", client->client_id, frame,
                   frame->data);
-        log_debug("Send thread: Skipping frame send due to NULL frame->data");
+        log_dev_every(4500000, "Send thread: Skipping frame send due to NULL frame->data");
         continue;
       }
 
       if (frame->data && frame->size == 0) {
         // NOTE: This means the we're not ready to send ascii to the client and
         // should wait a little bit.
-        log_debug("Send thread: Skipping frame send due to frame->size == 0");
+        log_dev_every(4500000, "Send thread: Skipping frame send due to frame->size == 0");
         log_warn_every(LOG_RATE_FAST, "Client %u has no valid frame size: size=%zu", client->client_id, frame->size);
         platform_sleep_us(1000); // 1ms sleep
         continue;
@@ -1914,8 +1915,8 @@ void *client_send_thread_func(void *arg) {
 
       // Get transport reference briefly to avoid deadlock on TCP buffer full
       // ACIP transport handles header building, CRC32, encryption internally
-      log_debug("Send thread: About to send frame to client %u (width=%u, height=%u, size=%zu, data=%p)",
-                client->client_id, width, height, frame_size, (void *)frame_data);
+      log_dev_every(4500000, "Send thread: About to send frame to client %u (width=%u, height=%u, size=%zu, data=%p)",
+                    client->client_id, width, height, frame_size, (void *)frame_data);
       mutex_lock(&client->send_mutex);
       if (atomic_load(&client->shutting_down) || !client->transport) {
         mutex_unlock(&client->send_mutex);
