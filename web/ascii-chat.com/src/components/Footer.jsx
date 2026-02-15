@@ -26,7 +26,7 @@ export default function Footer() {
         },
         {
           href: "https://discovery.ascii-chat.com",
-          label: "🔍 ACDS",
+          label: "🔍 Discovery",
           color: "text-pink-400 hover:text-pink-300",
         },
         {
