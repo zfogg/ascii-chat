@@ -515,14 +515,9 @@ const char *colorize_log_message(const char *message) {
     return message;
   }
 
-  // Check if colors are globally enabled (same logic as logging terminal output)
-  // If --color was explicitly passed, check that setting; otherwise default to enabled
-  extern bool g_color_flag_passed;
-  extern bool g_color_flag_value;
-  bool should_colorize = true; // Default: enable colors
-  if (g_color_flag_passed && !g_color_flag_value) {
-    should_colorize = false; // --color=false explicitly disables colors
-  }
+  // Check if colors should be used based on TTY status (same as ASCII art)
+  // Colors are only applied when output is actually a TTY
+  bool should_colorize = terminal_should_color_output(STDOUT_FILENO);
 
   if (!should_colorize) {
     return message;

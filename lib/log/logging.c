@@ -759,16 +759,9 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   }
   // Format the header using centralized formatting
   char header_buffer[512];
-  // Check if colors should be used
-  // Priority 1: If --color=false was explicitly passed, disable colors
-  extern bool g_color_flag_passed;
-  extern bool g_color_flag_value;
-  bool use_colors = true; // Default: enable colors
-  if (g_color_flag_passed && !g_color_flag_value) {
-    use_colors = false; // --color=false explicitly disables colors
-  }
-  // Priority 2: If --color NOT explicitly passed, enable colors by default
-  // (use_colors stays true)
+  // Check if colors should be used based on TTY status (same as ASCII art)
+  int fd = (output_stream == stderr) ? STDERR_FILENO : STDOUT_FILENO;
+  bool use_colors = terminal_should_color_output(fd);
   int header_len =
       format_log_header(header_buffer, sizeof(header_buffer), level, timestamp, file, line, func, use_colors, false);
   if (header_len <= 0 || header_len >= (int)sizeof(header_buffer)) {
