@@ -119,7 +119,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     frame_start_ns = time_get_ns();
 
     // Frame capture and timing - mode-dependent
-    image_t *image;
+    image_t *image = NULL;
     uint64_t capture_start_ns = 0;
     uint64_t capture_end_ns = 0;
     uint64_t pre_convert_ns = 0;
@@ -175,6 +175,11 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       uint64_t capture_elapsed_ns = 0;
 
       do {
+        // Check for exit request before blocking on frame read
+        if (should_exit(user_data)) {
+          break;
+        }
+
         log_debug_every(3000000, "RENDER[%lu]: Starting frame read", frame_count);
         image = session_capture_read_frame(capture);
         log_debug_every(3000000, "RENDER[%lu]: Frame read done, image=%p", frame_count, (void *)image);
@@ -186,6 +191,12 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
             log_info("Media source reached end of file");
             break; // Exit render loop - end of media
           }
+
+          // Check for exit request during retry loop
+          if (should_exit(user_data)) {
+            break;
+          }
+
           loop_retry_count++;
 
           // Brief delay before retry on temporary frame unavailability

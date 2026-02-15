@@ -79,14 +79,17 @@ void keyboard_destroy(void) {
   }
 
   g_keyboard_init_refcount--;
-  static_mutex_unlock(&g_keyboard_init_mutex);
 
-  // Restore original console mode
-  if (g_console_input != NULL && g_console_input != INVALID_HANDLE_VALUE) {
-    if (!SetConsoleMode(g_console_input, g_original_console_mode)) {
-      log_error("Failed to restore console mode");
+  // Only restore console mode when last reference is released
+  if (g_keyboard_init_refcount == 0) {
+    if (g_console_input != NULL && g_console_input != INVALID_HANDLE_VALUE) {
+      if (!SetConsoleMode(g_console_input, g_original_console_mode)) {
+        log_error("Failed to restore console mode");
+      }
     }
   }
+
+  static_mutex_unlock(&g_keyboard_init_mutex);
 }
 
 keyboard_key_t keyboard_read_nonblocking(void) {
@@ -148,6 +151,44 @@ keyboard_key_t keyboard_read_nonblocking(void) {
 
   // Return regular ASCII character (including control characters 1-31, printable 32-126)
   return (keyboard_key_t)ch;
+}
+
+keyboard_key_t keyboard_read_with_timeout(uint32_t timeout_ms) {
+  // Check if keyboard is initialized
+  static_mutex_lock(&g_keyboard_init_mutex);
+  bool is_initialized = (g_keyboard_init_refcount > 0);
+  static_mutex_unlock(&g_keyboard_init_mutex);
+
+  if (!is_initialized) {
+    return KEY_NONE;
+  }
+
+  // Zero timeout: non-blocking
+  if (timeout_ms == 0) {
+    return keyboard_read_nonblocking();
+  }
+
+  // Poll _kbhit() at 10ms intervals until input or timeout.
+  // WaitForSingleObject on console input handles is unreliable when
+  // console mode has been reconfigured, so polling is the robust approach.
+  uint32_t elapsed = 0;
+  const uint32_t poll_interval = 10;
+
+  while (elapsed < timeout_ms) {
+    if (_kbhit()) {
+      return keyboard_read_nonblocking();
+    }
+    uint32_t sleep_time = (timeout_ms - elapsed < poll_interval) ? (timeout_ms - elapsed) : poll_interval;
+    Sleep(sleep_time);
+    elapsed += sleep_time;
+  }
+
+  // Final check after timeout
+  if (_kbhit()) {
+    return keyboard_read_nonblocking();
+  }
+
+  return KEY_NONE;
 }
 
 /* ============================================================================
