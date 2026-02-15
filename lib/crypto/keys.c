@@ -351,8 +351,9 @@ asciichat_error_t parse_public_keys(const char *input, public_key_t *keys_out, s
 
   // Handle comma-separated key specifiers
   if (strchr(input, ',') != NULL) {
-    char *input_copy = SAFE_MALLOC(strlen(input) + 1, char *);
-    strcpy(input_copy, input);
+    size_t input_len = strlen(input);
+    char *input_copy = SAFE_MALLOC(input_len + 1, char *);
+    memcpy(input_copy, input, input_len + 1);
 
     char *saveptr = NULL;
     char *specifier = platform_strtok_r(input_copy, ",", &saveptr);

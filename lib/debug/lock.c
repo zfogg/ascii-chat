@@ -929,21 +929,10 @@ static bool debug_process_tracked_unlock(void *lock_ptr, uint32_t key, const cha
  */
 static void debug_process_untracked_unlock(void *lock_ptr, uint32_t key, const char *lock_type_str,
                                            const char *file_name, int line_number, const char *function_name) {
-#ifdef DEBUG_LOCKS
-  uint64_t released = atomic_fetch_add(&g_lock_debug_manager.total_locks_released, 1) + 1;
-#else
   atomic_fetch_add(&g_lock_debug_manager.total_locks_released, 1);
-#endif
   uint32_t current_held = atomic_load(&g_lock_debug_manager.current_locks_held);
-#ifdef DEBUG_LOCKS
-  uint32_t held = 0;
-#endif
   if (current_held > 0) {
-#ifdef DEBUG_LOCKS
-    held = debug_decrement_lock_counter();
-#else
     debug_decrement_lock_counter();
-#endif
   } else {
     // FIXME: this SHOULD be an error. asciichat_errno is broken somehow. it's too noisy for now.
     //  SET_ERRNO(ERROR_INVALID_STATE, "Attempting to release %s lock when no locks held!", lock_type_str);

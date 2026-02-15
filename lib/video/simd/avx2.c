@@ -453,7 +453,7 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
 
       // Process each pixel in the chunk
       int i = 0;
-      int output_col = x; // Track output column position
+      (void)x;
       while (i < 32) {
         const uint8_t R = avx2_r_buffer[i];
         const uint8_t G = avx2_g_buffer[i];
@@ -504,7 +504,6 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
               pos += char_info->byte_len;
             }
           }
-          output_col += run;
           i += run;
         } else {
           // Truecolor mode
@@ -547,7 +546,6 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
               pos += char_info->byte_len;
             }
           }
-          output_col += run;
           i += run;
         }
       }

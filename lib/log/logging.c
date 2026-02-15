@@ -757,7 +757,6 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   } else {
     output_stream = (level == LOG_ERROR || level == LOG_WARN || level == LOG_FATAL) ? stderr : stdout;
   }
-  int fd = output_stream == stderr ? STDERR_FILENO : STDOUT_FILENO;
   // Format the header using centralized formatting
   char header_buffer[512];
   // Check if colors should be used
@@ -961,8 +960,6 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
       } else {
         output_stream = (level == LOG_ERROR || level == LOG_WARN || level == LOG_FATAL) ? stderr : stdout;
       }
-      int fd = output_stream == stderr ? STDERR_FILENO : STDOUT_FILENO;
-
       // Check if colors should be used
       // Priority 1: If --color was explicitly passed, force colors
       extern bool g_color_flag_passed;

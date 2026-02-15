@@ -1411,7 +1411,6 @@ static void *status_screen_thread(void *arg) {
     }
   }
 
-cleanup:
 #ifndef _WIN32
   // Stop keyboard thread: write to shutdown pipe to unblock the blocking select()
   if (keyboard_enabled) {

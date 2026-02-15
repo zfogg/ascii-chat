@@ -100,6 +100,7 @@ asciichat_error_t platform_mkdir(const char *path, int mode) {
 }
 
 asciichat_error_t platform_mkdir_recursive(const char *path, int mode) {
+  (void)mode; // Windows ignores POSIX permission modes
   if (!path || path[0] == '\0') {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid path to platform_mkdir_recursive");
   }
@@ -255,7 +256,7 @@ asciichat_error_t platform_mkdtemp(char *path_out, size_t path_size, const char 
   // Generate a unique directory name
   for (int attempt = 0; attempt < 100; attempt++) {
     char unique[32];
-    snprintf(unique, sizeof(unique), "%s%u%d", prefix, GetTickCount(), attempt);
+    snprintf(unique, sizeof(unique), "%s%lu%d", prefix, GetTickCount(), attempt);
 
     int needed = snprintf(path_out, path_size, "%s%s", temp_dir, unique);
     if (needed < 0 || (size_t)needed >= path_size) {

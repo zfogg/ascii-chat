@@ -116,15 +116,13 @@ static void truncate_to_fit(const char *src, int max_display_width, char *dst, s
       continue;
     }
 
-    strncpy(test_buf, src, truncate_at);
+    memcpy(test_buf, src, truncate_at);
     test_buf[truncate_at] = '\0';
 
     // Check if this fits
     if (display_width(test_buf) <= target_width) {
       // Found a length that fits - copy it and add ellipsis
-      strncpy(dst, test_buf, dst_size - 4);
-      dst[truncate_at] = '\0';
-      strcat(dst, "...");
+      safe_snprintf(dst, dst_size, "%.*s...", (int)truncate_at, src);
       return;
     }
   }

@@ -240,8 +240,13 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
                               "Stream from YouTube URL (also supports RTSP, HTTP, and HTTPS URLs)", false);
   options_builder_add_example(b, OPTION_MODE_CLIENT_LIKE, "-f video.mp4", "Stream from local video file", false);
   options_builder_add_example(b, OPTION_MODE_CLIENT_LIKE, "--palette-chars '@%#*+=-:. '",
-                              "Use custom ASCII palette characters", false);
-  options_builder_add_example(b, OPTION_MODE_CLIENT_LIKE, "--snapshot", "Capture single frame and exit", false);
+                              "Custom palette characters to use. UTF-8 is allowed.", false);
+  options_builder_add_example(
+      b, OPTION_MODE_CLIENT_LIKE, "--snapshot",
+      "Print ascii art for --snapshot-delay's value of seconds then print the last frame and exit. "
+      "In snapshot mode, --width, --height, and --color are NOT autodetected when piping stdin in or redirecting "
+      "output.",
+      false);
   options_builder_add_example(b, OPTION_MODE_CLIENT_LIKE, "--color-filter cyan --palette cool",
                               "Apply cyan color filter and cool palette", false);
 

@@ -4,6 +4,7 @@
  */
 
 #include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/platform/util.h>
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
@@ -23,7 +24,7 @@ const char *file_read_error_message(const char *path) {
     snprintf(error_msg_buffer, sizeof(error_msg_buffer), "Is a directory, not a file: %s", path);
     break;
   default:
-    snprintf(error_msg_buffer, sizeof(error_msg_buffer), "Failed to open for reading: %s (%s)", path, strerror(errno));
+    snprintf(error_msg_buffer, sizeof(error_msg_buffer), "Failed to open for reading: %s (%s)", path, platform_strerror(errno));
     break;
   }
   return error_msg_buffer;
@@ -47,7 +48,7 @@ const char *file_write_error_message(const char *path) {
     snprintf(error_msg_buffer, sizeof(error_msg_buffer), "Is a directory, not a file: %s", path);
     break;
   default:
-    snprintf(error_msg_buffer, sizeof(error_msg_buffer), "Failed to open for writing: %s (%s)", path, strerror(errno));
+    snprintf(error_msg_buffer, sizeof(error_msg_buffer), "Failed to open for writing: %s (%s)", path, platform_strerror(errno));
     break;
   }
   return error_msg_buffer;

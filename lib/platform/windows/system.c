@@ -1017,7 +1017,7 @@ int platform_format_backtrace_symbols(char *buffer, size_t buffer_size, const ch
     offset += safe_snprintf(buffer + offset, buffer_size - (size_t)offset, "    [");
 
     // Append colored frame number
-    if (offset + colored_len < (int)buffer_size) {
+    if ((size_t)offset + colored_len < buffer_size) {
       memcpy(buffer + offset, colored_frame, colored_len);
       offset += (int)colored_len;
     }
@@ -1730,9 +1730,6 @@ asciichat_error_t platform_register_signal_handlers(const platform_signal_handle
   }
 
   // On Windows, we only support SIGINT and SIGTERM via console control handlers
-  // Find handlers for these signals
-  console_ctrl_handler_t ctrl_handler = NULL;
-
   for (int i = 0; i < count; i++) {
     if (handlers[i].sig == SIGINT || handlers[i].sig == SIGTERM) {
       // Create a wrapper that adapts console control handler to signal handler

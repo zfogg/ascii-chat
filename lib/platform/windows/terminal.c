@@ -1144,17 +1144,23 @@ parse_response:
   }
   rgb_start += 4; // Skip "rgb:"
 
-  // Parse hex values
-  unsigned int r16, g16, b16;
-  if (sscanf(rgb_start, "%x/%x/%x", &r16, &g16, &b16) == 3) {
-    // Convert from 16-bit to 8-bit
-    *bg_r = (uint8_t)(r16 >> 8);
-    *bg_g = (uint8_t)(g16 >> 8);
-    *bg_b = (uint8_t)(b16 >> 8);
-    return true;
+  // Parse hex values (RRRR/GGGG/BBBB) using strtoul
+  char *end = NULL;
+  unsigned long r16 = strtoul(rgb_start, &end, 16);
+  if (!end || *end != '/') {
+    return false;
   }
+  unsigned long g16 = strtoul(end + 1, &end, 16);
+  if (!end || *end != '/') {
+    return false;
+  }
+  unsigned long b16 = strtoul(end + 1, &end, 16);
 
-  return false;
+  // Convert from 16-bit to 8-bit
+  *bg_r = (uint8_t)(r16 >> 8);
+  *bg_g = (uint8_t)(g16 >> 8);
+  *bg_b = (uint8_t)(b16 >> 8);
+  return true;
 }
 
 #endif // _WIN32

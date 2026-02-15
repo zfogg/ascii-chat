@@ -9,6 +9,7 @@
 #include <ascii-chat/common/error_codes.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/platform/util.h>
 #include <ascii-chat/util/pcre2.h>
 #include <ascii-chat/paths.h>
 #include <string.h>
@@ -811,7 +812,7 @@ static bool is_file_empty(const char *path) {
     return false;
   }
 
-  FILE *f = fopen(path, "r");
+  FILE *f = platform_fopen(path, "r");
   if (!f) {
     return false;
   }
@@ -832,7 +833,7 @@ static bool is_existing_ascii_chat_log(const char *path) {
   }
 
   // Try to open and read the first line
-  FILE *f = fopen(path, "r");
+  FILE *f = platform_fopen(path, "r");
   if (!f) {
     return false; // Can't read file
   }
