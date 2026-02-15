@@ -37,6 +37,12 @@ typedef struct {
   uint8_t *fragment_buffer; ///< Buffer for assembling fragmented messages
   size_t fragment_size;     ///< Current size of assembled fragments
   size_t fragment_capacity; ///< Allocated capacity of fragment buffer
+
+  // Pending message send state (for LWS_CALLBACK_SERVER_WRITEABLE)
+  uint8_t *pending_send_data; ///< Current message being sent
+  size_t pending_send_len;    ///< Total length of message being sent
+  size_t pending_send_offset; ///< Current offset in message (bytes already sent)
+  bool has_pending_send;      ///< True if there's an in-progress message
 } websocket_connection_data_t;
 
 /**
@@ -72,6 +78,10 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     conn_data->fragment_buffer = NULL;
     conn_data->fragment_size = 0;
     conn_data->fragment_capacity = 0;
+    conn_data->pending_send_data = NULL;
+    conn_data->pending_send_len = 0;
+    conn_data->pending_send_offset = 0;
+    conn_data->has_pending_send = false;
 
     // Get client address
     char client_name[128];
@@ -134,6 +144,12 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       conn_data->fragment_capacity = 0;
     }
 
+    // Clean up pending send data
+    if (conn_data && conn_data->pending_send_data) {
+      SAFE_FREE(conn_data->pending_send_data);
+      conn_data->has_pending_send = false;
+    }
+
     // Close the transport to mark it as disconnected.
     // This signals the receive thread to exit, allowing clean shutdown.
     // Guard against use-after-free: check both conn_data and transport are valid
@@ -161,7 +177,6 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
   case LWS_CALLBACK_SERVER_WRITEABLE: {
     log_dev_every(4500000, "=== LWS_CALLBACK_SERVER_WRITEABLE FIRED === wsi=%p", (void *)wsi);
-    log_dev_every(4500000, "LWS_CALLBACK_SERVER_WRITEABLE triggered");
 
     // Dequeue and send pending data
     if (!conn_data || !conn_data->transport) {
@@ -175,36 +190,15 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       break;
     }
 
-    mutex_lock(&ws_data->queue_mutex);
-
-    if (ringbuffer_is_empty(ws_data->send_queue)) {
-      mutex_unlock(&ws_data->queue_mutex);
-      log_dev_every(4500000, "SERVER_WRITEABLE: Send queue is empty, nothing to send");
-      break;
-    }
-
-    log_dev_every(4500000, ">>> SERVER_WRITEABLE: Processing message from send queue");
-
-    // Dequeue message
-    websocket_recv_msg_t msg;
-    bool success = ringbuffer_read(ws_data->send_queue, &msg);
-    mutex_unlock(&ws_data->queue_mutex);
-
-    log_dev_every(4500000, "SERVER_WRITEABLE: Dequeued message %zu bytes (success=%d)", msg.len, success);
-
-    if (!success || !msg.data) {
-      break;
-    }
-
-    // Send in fragments using the same logic as client-side
     const size_t FRAGMENT_SIZE = 4096;
-    size_t offset = 0;
-    bool send_failed = false;
 
-    while (offset < msg.len && !send_failed) {
-      size_t chunk_size = (msg.len - offset > FRAGMENT_SIZE) ? FRAGMENT_SIZE : (msg.len - offset);
-      int is_start = (offset == 0);
-      int is_end = (offset + chunk_size >= msg.len);
+    // Check if we have a message in progress
+    if (conn_data->has_pending_send) {
+      size_t chunk_size = (conn_data->pending_send_len - conn_data->pending_send_offset > FRAGMENT_SIZE)
+                              ? FRAGMENT_SIZE
+                              : (conn_data->pending_send_len - conn_data->pending_send_offset);
+      int is_start = (conn_data->pending_send_offset == 0);
+      int is_end = (conn_data->pending_send_offset + chunk_size >= conn_data->pending_send_len);
 
       enum lws_write_protocol flags = lws_write_ws_flags(LWS_WRITE_BINARY, is_start, is_end);
 
@@ -214,39 +208,123 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
         SAFE_FREE(ws_data->send_buffer);
         ws_data->send_buffer = SAFE_MALLOC(required_size, uint8_t *);
         if (!ws_data->send_buffer) {
-          send_failed = true;
+          log_error("Failed to allocate send buffer");
+          SAFE_FREE(conn_data->pending_send_data);
+          conn_data->has_pending_send = false;
           break;
         }
         ws_data->send_buffer_capacity = required_size;
       }
 
-      memcpy(ws_data->send_buffer + LWS_PRE, msg.data + offset, chunk_size);
+      memcpy(ws_data->send_buffer + LWS_PRE, conn_data->pending_send_data + conn_data->pending_send_offset, chunk_size);
 
       int written = lws_write(wsi, ws_data->send_buffer + LWS_PRE, chunk_size, flags);
-      if (written < 0 || (size_t)written != chunk_size) {
-        log_error("Server WebSocket write failed: %d/%zu bytes at offset %zu", written, chunk_size, offset);
-        send_failed = true;
+      if (written < 0) {
+        log_error("Server WebSocket write error: %d at offset %zu/%zu", written, conn_data->pending_send_offset,
+                  conn_data->pending_send_len);
+        SAFE_FREE(conn_data->pending_send_data);
+        conn_data->has_pending_send = false;
         break;
       }
 
-      offset += chunk_size;
+      if ((size_t)written != chunk_size) {
+        log_warn("Server WebSocket partial write: %d/%zu bytes at offset %zu/%zu", written, chunk_size,
+                 conn_data->pending_send_offset, conn_data->pending_send_len);
+        // Don't fail on partial write - request another callback to continue
+        conn_data->pending_send_offset += written;
+        lws_callback_on_writable(wsi);
+        break;
+      }
+
+      conn_data->pending_send_offset += chunk_size;
+
+      if (is_end) {
+        // Message fully sent
+        log_dev_every(4500000, "SERVER_WRITEABLE: Message fully sent (%zu bytes)", conn_data->pending_send_len);
+        SAFE_FREE(conn_data->pending_send_data);
+        conn_data->has_pending_send = false;
+      } else {
+        // More fragments to send
+        log_dev_every(4500000, "SERVER_WRITEABLE: Sent fragment %zu/%zu bytes, requesting another callback",
+                      conn_data->pending_send_offset, conn_data->pending_send_len);
+        lws_callback_on_writable(wsi);
+        break;
+      }
     }
 
-    // Free the message data (allocated with SAFE_MALLOC in websocket_send)
-    SAFE_FREE(msg.data);
-
-    if (!send_failed) {
-      log_dev_every(4500000, "SERVER_WRITEABLE: Successfully sent %zu bytes in fragments", offset);
-    }
-
-    // If there are more messages, request another writable callback
+    // Try to dequeue next message if current one is done
     mutex_lock(&ws_data->queue_mutex);
-    bool has_more = !ringbuffer_is_empty(ws_data->send_queue);
+    bool has_messages = !ringbuffer_is_empty(ws_data->send_queue);
     mutex_unlock(&ws_data->queue_mutex);
 
-    if (has_more) {
-      log_dev_every(4500000, "SERVER_WRITEABLE: More messages queued, requesting another callback");
-      lws_callback_on_writable(wsi);
+    if (has_messages) {
+      mutex_lock(&ws_data->queue_mutex);
+      websocket_recv_msg_t msg;
+      bool success = ringbuffer_read(ws_data->send_queue, &msg);
+      mutex_unlock(&ws_data->queue_mutex);
+
+      if (success && msg.data) {
+        // Start sending this message
+        conn_data->pending_send_data = msg.data;
+        conn_data->pending_send_len = msg.len;
+        conn_data->pending_send_offset = 0;
+        conn_data->has_pending_send = true;
+
+        log_dev_every(4500000, ">>> SERVER_WRITEABLE: Dequeued message %zu bytes, sending first fragment", msg.len);
+
+        // Send first fragment
+        size_t chunk_size = (msg.len > FRAGMENT_SIZE) ? FRAGMENT_SIZE : msg.len;
+        int is_start = 1;
+        int is_end = (chunk_size >= msg.len);
+
+        enum lws_write_protocol flags = lws_write_ws_flags(LWS_WRITE_BINARY, is_start, is_end);
+
+        size_t required_size = LWS_PRE + chunk_size;
+        if (ws_data->send_buffer_capacity < required_size) {
+          SAFE_FREE(ws_data->send_buffer);
+          ws_data->send_buffer = SAFE_MALLOC(required_size, uint8_t *);
+          if (!ws_data->send_buffer) {
+            log_error("Failed to allocate send buffer");
+            SAFE_FREE(msg.data);
+            conn_data->has_pending_send = false;
+            break;
+          }
+          ws_data->send_buffer_capacity = required_size;
+        }
+
+        memcpy(ws_data->send_buffer + LWS_PRE, msg.data, chunk_size);
+
+        int written = lws_write(wsi, ws_data->send_buffer + LWS_PRE, chunk_size, flags);
+        if (written < 0) {
+          log_error("Server WebSocket write error on first fragment: %d", written);
+          SAFE_FREE(msg.data);
+          conn_data->has_pending_send = false;
+          break;
+        }
+
+        if ((size_t)written != chunk_size) {
+          log_warn("Server WebSocket partial write on first fragment: %d/%zu", written, chunk_size);
+          conn_data->pending_send_offset = written;
+        } else {
+          conn_data->pending_send_offset = chunk_size;
+        }
+
+        if (!is_end) {
+          log_dev_every(4500000, ">>> SERVER_WRITEABLE: First fragment sent, requesting callback for next fragment");
+          lws_callback_on_writable(wsi);
+        } else {
+          log_dev_every(4500000, "SERVER_WRITEABLE: Message fully sent in first fragment (%zu bytes)", chunk_size);
+          SAFE_FREE(msg.data);
+          conn_data->has_pending_send = false;
+
+          // Check if there are more messages
+          mutex_lock(&ws_data->queue_mutex);
+          if (!ringbuffer_is_empty(ws_data->send_queue)) {
+            lws_callback_on_writable(wsi);
+          }
+          mutex_unlock(&ws_data->queue_mutex);
+        }
+      }
     }
 
     break;
