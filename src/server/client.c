@@ -1479,7 +1479,8 @@ void *client_receive_thread(void *arg) {
     log_error("🔄 RECV_THREAD: About to call dispatch for client %u", atomic_load(&client->client_id));
     asciichat_error_t acip_result =
         acip_server_receive_and_dispatch(client->transport, client, &g_acip_server_callbacks);
-    log_error("🔄 RECV_THREAD: Dispatch returned %d for client %u", acip_result, atomic_load(&client->client_id));
+    log_dev_every(4500000, "🔄 RECV_THREAD: Dispatch returned %d for client %u", acip_result,
+                  atomic_load(&client->client_id));
 
     // Check if shutdown was requested during the network call
     if (atomic_load(&g_server_should_exit)) {
