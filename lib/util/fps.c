@@ -25,8 +25,8 @@ static void log_fps_report(const char *tracker_name, double actual_fps, uint64_t
 static void log_lag_event(const char *tracker_name, const char *context, double late_ms, double expected_ms,
                           double actual_ms, double actual_fps) {
   // Rate limit to once per second to avoid log spam
-  log_error_every(1000000, "[%s] LAG: %s late by %.1fms (expected %.1fms, got %.1fms, %.2f fps)", tracker_name, context,
-                  late_ms, expected_ms, actual_ms, actual_fps);
+  log_warn_every(1000000, "[%s] LAG: %s late by %.1fms (expected %.1fms, got %.1fms, %.2f fps)", tracker_name, context,
+                 late_ms, expected_ms, actual_ms, actual_fps);
 }
 
 void fps_init(fps_t *tracker, int expected_fps, const char *name) {

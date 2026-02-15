@@ -48,15 +48,10 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
                                      size_t len) {
   websocket_connection_data_t *conn_data = (websocket_connection_data_t *)user;
 
-  if (reason == LWS_CALLBACK_ESTABLISHED) {
-    log_error("!!!!! LWS_CALLBACK_ESTABLISHED TRIGGERED !!!!!");
-  }
-
   switch (reason) {
   case LWS_CALLBACK_ESTABLISHED: {
     // New WebSocket connection established
-    log_error("[LWS_CALLBACK_ESTABLISHED] ===== WebSocket client connection ESTABLISHED =====");
-    log_info("[LWS_CALLBACK_ESTABLISHED] ===== WebSocket client connection ESTABLISHED =====");
+    log_info("[LWS_CALLBACK_ESTABLISHED] WebSocket client connection established");
     log_info("WebSocket client connected");
 
     // Get server instance from protocol user data
@@ -337,15 +332,27 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     bool is_first = lws_is_first_fragment(wsi);
     bool is_final = lws_is_final_fragment(wsi);
 
-    // Log all fragments for debugging
+    // Debug: Log raw bytes of incoming fragment
     log_dev_every(4500000, "WebSocket fragment: %zu bytes (first=%d, final=%d, buffered=%zu)", len, is_first, is_final,
                   conn_data->fragment_size);
+    if (len > 0 && len <= 256) {
+      const uint8_t *bytes = (const uint8_t *)in;
+      char hex_buf[1024];
+      size_t hex_pos = 0;
+      for (size_t i = 0; i < len && hex_pos < sizeof(hex_buf) - 4; i++) {
+        hex_pos += snprintf(hex_buf + hex_pos, sizeof(hex_buf) - hex_pos, "%02x ", bytes[i]);
+      }
+      log_dev_every(4500000, "   Raw bytes: %s", hex_buf);
+    }
 
     // If this is a single-fragment message (first and final), log the packet type for debugging
-    if (is_first && is_final && len >= 10) {
+    if (is_first && is_final && len >= 18) {
       const uint8_t *data = (const uint8_t *)in;
+      // ACIP packet header: magic(8) + type(2) + length(4) + crc(4) + client_id(2)
       uint16_t pkt_type = (data[8] << 8) | data[9];
-      log_debug("  Single-fragment message: packet_type=%d (0x%x), total_size=%zu", pkt_type, pkt_type, len);
+      uint32_t pkt_len = (data[10] << 24) | (data[11] << 16) | (data[12] << 8) | data[13];
+      log_dev_every(4500000, "Single-fragment ACIP packet: type=%d (0x%x) len=%u total_size=%zu", pkt_type, pkt_type,
+                    pkt_len, len);
     }
 
     // Allocate or expand fragment buffer
@@ -405,19 +412,17 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
       bool success = ringbuffer_write(ws_data->recv_queue, &msg);
       if (!success) {
-        // Queue full - drop oldest message to make room
-        websocket_recv_msg_t dropped_msg;
-        if (ringbuffer_read(ws_data->recv_queue, &dropped_msg)) {
-          buffer_pool_free(NULL, dropped_msg.data, dropped_msg.len);
-          log_warn("WebSocket receive queue full, dropped oldest message");
-        }
+        // Queue full - store as pending message and apply backpressure
+        log_warn("WebSocket receive queue full, pausing RX flow for backpressure");
+        lws_rx_flow_control(wsi, 0); // Disable RX flow
 
-        // Try again
-        success = ringbuffer_write(ws_data->recv_queue, &msg);
-        if (!success) {
-          buffer_pool_free(NULL, msg.data, msg.len);
-          log_error("Failed to write to WebSocket receive queue after drop");
+        // Store the message for later retry instead of dropping it
+        if (ws_data->has_pending_msg) {
+          // Previous pending message wasn't consumed - discard it to make room for new one
+          buffer_pool_free(NULL, ws_data->pending_msg.data, ws_data->pending_msg.len);
         }
+        ws_data->pending_msg = msg;
+        ws_data->has_pending_msg = true;
       }
 
       // Signal waiting recv() call
@@ -431,10 +436,10 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     // Fired on the service thread when lws_cancel_service() is called from another thread.
     // This is how we safely convert cross-thread send requests into writable callbacks.
     // lws_callback_on_writable() is only safe from the service thread context.
-    log_error("!!! LWS_CALLBACK_EVENT_WAIT_CANCELLED triggered - requesting writable callbacks !!!");
+    log_dev_every(4500000, "LWS_CALLBACK_EVENT_WAIT_CANCELLED triggered - requesting writable callbacks");
     const struct lws_protocols *protocol = lws_get_protocol(wsi);
     if (protocol) {
-      log_debug("EVENT_WAIT_CANCELLED: Calling lws_callback_on_writable_all_protocol");
+      log_dev_every(4500000, "EVENT_WAIT_CANCELLED: Calling lws_callback_on_writable_all_protocol");
       lws_callback_on_writable_all_protocol(lws_get_context(wsi), protocol);
     } else {
       log_error("EVENT_WAIT_CANCELLED: No protocol found on wsi");

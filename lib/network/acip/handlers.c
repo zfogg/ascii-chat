@@ -78,50 +78,50 @@ static inline int handler_hash_lookup(const handler_hash_entry_t *table, packet_
 // Slots computed via linear probing: hash = type % 32
 // clang-format off
 static const handler_hash_entry_t g_client_handler_hash[HANDLER_HASH_SIZE] = {
-    [0]  = {PACKET_TYPE_AUDIO_BATCH,                 1},   // hash(4000)=0
-    [1]  = {PACKET_TYPE_AUDIO_OPUS_BATCH,            2},   // hash(4001)=1
-    [6]  = {PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT,    14},  // hash(1102)=6
-    [7]  = {PACKET_TYPE_CRYPTO_AUTH_CHALLENGE,       15},  // hash(1104)=7, probed from hash(1104)=16
-    [8]  = {PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP,     16},  // hash(1107)=11, probed->8
-    [9]  = {PACKET_TYPE_PING,                        6},   // hash(5001)=9
-    [10] = {PACKET_TYPE_PONG,                        7},   // hash(5002)=10
-    [11] = {PACKET_TYPE_CRYPTO_AUTH_FAILED,          17},  // hash(1108)=12, probed->11
-    [14] = {PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE,   18},  // hash(1106)=10, probed->14
-    [15] = {PACKET_TYPE_CLEAR_CONSOLE,               8},   // hash(5007)=15
-    [16] = {PACKET_TYPE_SERVER_STATE,                3},   // hash(5008)=16
-    [17] = {PACKET_TYPE_CRYPTO_REKEY_REQUEST,        9},   // hash(1201)=17
-    [18] = {PACKET_TYPE_CRYPTO_REKEY_RESPONSE,       10},  // hash(1202)=18
-    [19] = {PACKET_TYPE_ERROR_MESSAGE,               4},   // hash(2003)=19
-    [20] = {PACKET_TYPE_REMOTE_LOG,                  5},   // hash(2004)=20
-    [21] = {PACKET_TYPE_ACIP_SESSION_JOINED,         13},  // hash(6005)=21
-    [24] = {PACKET_TYPE_ASCII_FRAME,                 0},   // hash(3000)=24
-    [25] = {PACKET_TYPE_ACIP_WEBRTC_SDP,             11},  // hash(6009)=25
-    [26] = {PACKET_TYPE_ACIP_WEBRTC_ICE,             12},  // hash(6010)=26
+   [0]  = {PACKET_TYPE_AUDIO_BATCH,                 1},   // hash(4000)=0
+   [1]  = {PACKET_TYPE_AUDIO_OPUS_BATCH,            2},   // hash(4001)=1
+   [6]  = {PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT,    14},  // hash(1102)=6
+   [7]  = {PACKET_TYPE_CRYPTO_AUTH_CHALLENGE,       15},  // hash(1104)=7, probed from hash(1104)=16
+   [8]  = {PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP,     16},  // hash(1107)=11, probed->8
+   [9]  = {PACKET_TYPE_PING,                        6},   // hash(5001)=9
+   [10] = {PACKET_TYPE_PONG,                        7},   // hash(5002)=10
+   [11] = {PACKET_TYPE_CRYPTO_AUTH_FAILED,          17},  // hash(1108)=12, probed->11
+   [14] = {PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE,   18},  // hash(1106)=10, probed->14
+   [15] = {PACKET_TYPE_CLEAR_CONSOLE,               8},   // hash(5007)=15
+   [16] = {PACKET_TYPE_SERVER_STATE,                3},   // hash(5008)=16
+   [17] = {PACKET_TYPE_CRYPTO_REKEY_REQUEST,        9},   // hash(1201)=17
+   [18] = {PACKET_TYPE_CRYPTO_REKEY_RESPONSE,       10},  // hash(1202)=18
+   [19] = {PACKET_TYPE_ERROR_MESSAGE,               4},   // hash(2003)=19
+   [20] = {PACKET_TYPE_REMOTE_LOG,                  5},   // hash(2004)=20
+   [21] = {PACKET_TYPE_ACIP_SESSION_JOINED,         13},  // hash(6005)=21
+   [24] = {PACKET_TYPE_ASCII_FRAME,                 0},   // hash(3000)=24
+   [25] = {PACKET_TYPE_ACIP_WEBRTC_SDP,             11},  // hash(6009)=25
+   [26] = {PACKET_TYPE_ACIP_WEBRTC_ICE,             12},  // hash(6010)=26
 };
 // clang-format on
 
 // Server packet type -> handler index hash table
 // clang-format off
 static const handler_hash_entry_t g_server_handler_hash[HANDLER_HASH_SIZE] = {
-    [0]  = {PACKET_TYPE_AUDIO_BATCH,                2},   // hash(4000)=0
-    [1]  = {PACKET_TYPE_PROTOCOL_VERSION,           0},   // hash(1)=1
-    [2]  = {PACKET_TYPE_AUDIO_OPUS_BATCH,           3},   // hash(4001)=1, probed->2
-    [8]  = {PACKET_TYPE_CLIENT_CAPABILITIES,        4},   // hash(5000)=8
-    [9]  = {PACKET_TYPE_PING,                       5},   // hash(5001)=9
-    [10] = {PACKET_TYPE_PONG,                       6},   // hash(5002)=10
-    [11] = {PACKET_TYPE_CLIENT_JOIN,                7},   // hash(5003)=11
-    [12] = {PACKET_TYPE_CLIENT_LEAVE,               8},   // hash(5004)=12
-    [13] = {PACKET_TYPE_STREAM_START,               9},   // hash(5005)=13
-    [14] = {PACKET_TYPE_STREAM_STOP,                10},  // hash(5006)=14
-    [15] = {PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP,   16},  // hash(1103)=15
-    [17] = {PACKET_TYPE_CRYPTO_REKEY_REQUEST,       13},  // hash(1201)=17
-    [18] = {PACKET_TYPE_CRYPTO_REKEY_RESPONSE,      14},  // hash(1202)=18
-    [19] = {PACKET_TYPE_ERROR_MESSAGE,              12},  // hash(2003)=19
-    [20] = {PACKET_TYPE_REMOTE_LOG,                 11},  // hash(2004)=20
-    [21] = {PACKET_TYPE_CRYPTO_REKEY_COMPLETE,      15},  // hash(1203)=19, probed->21
-    [22] = {PACKET_TYPE_CRYPTO_AUTH_RESPONSE,       17},  // hash(1105)=17, probed->22
-    [23] = {PACKET_TYPE_CRYPTO_NO_ENCRYPTION,       18},  // hash(1109)=21, probed->23
-    [25] = {PACKET_TYPE_IMAGE_FRAME,                1},   // hash(3001)=25
+   [0]  = {PACKET_TYPE_AUDIO_BATCH,                2},   // hash(4000)=0
+   [1]  = {PACKET_TYPE_PROTOCOL_VERSION,           0},   // hash(1)=1
+   [2]  = {PACKET_TYPE_AUDIO_OPUS_BATCH,           3},   // hash(4001)=1, probed->2
+   [8]  = {PACKET_TYPE_CLIENT_CAPABILITIES,        4},   // hash(5000)=8
+   [9]  = {PACKET_TYPE_PING,                       5},   // hash(5001)=9
+   [10] = {PACKET_TYPE_PONG,                       6},   // hash(5002)=10
+   [11] = {PACKET_TYPE_CLIENT_JOIN,                7},   // hash(5003)=11
+   [12] = {PACKET_TYPE_CLIENT_LEAVE,               8},   // hash(5004)=12
+   [13] = {PACKET_TYPE_STREAM_START,               9},   // hash(5005)=13
+   [14] = {PACKET_TYPE_STREAM_STOP,                10},  // hash(5006)=14
+   [15] = {PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP,   16},  // hash(1103)=15
+   [17] = {PACKET_TYPE_CRYPTO_REKEY_REQUEST,       13},  // hash(1201)=17
+   [18] = {PACKET_TYPE_CRYPTO_REKEY_RESPONSE,      14},  // hash(1202)=18
+   [19] = {PACKET_TYPE_ERROR_MESSAGE,              12},  // hash(2003)=19
+   [20] = {PACKET_TYPE_REMOTE_LOG,                 11},  // hash(2004)=20
+   [21] = {PACKET_TYPE_CRYPTO_REKEY_COMPLETE,      15},  // hash(1203)=19, probed->21
+   [22] = {PACKET_TYPE_CRYPTO_AUTH_RESPONSE,       17},  // hash(1105)=17, probed->22
+   [23] = {PACKET_TYPE_CRYPTO_NO_ENCRYPTION,       18},  // hash(1109)=21, probed->23
+   [25] = {PACKET_TYPE_IMAGE_FRAME,                1},   // hash(3001)=25
 };
 // clang-format on
 
@@ -660,12 +660,29 @@ static asciichat_error_t handle_server_image_frame(const void *payload, size_t p
   }
 
   if (payload_len < sizeof(image_frame_packet_t)) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "IMAGE_FRAME payload too small");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "IMAGE_FRAME payload too small: %zu bytes (need %zu)", payload_len,
+                     sizeof(image_frame_packet_t));
   }
+
+  // Debug: Log raw payload bytes
+  const uint8_t *payload_bytes = (const uint8_t *)payload;
+  log_dev_every(4500000, "IMAGE_FRAME payload (%zu bytes):", payload_len);
+  char hex_buf[512];
+  size_t hex_pos = 0;
+  size_t max_bytes = (payload_len < 48) ? payload_len : 48;
+  for (size_t i = 0; i < max_bytes && hex_pos < sizeof(hex_buf) - 4; i++) {
+    hex_pos += snprintf(hex_buf + hex_pos, sizeof(hex_buf) - hex_pos, "%02x ", payload_bytes[i]);
+  }
+  log_dev_every(4500000, "   First bytes: %s", hex_buf);
 
   // Extract header
   image_frame_packet_t header;
   memcpy(&header, payload, sizeof(header));
+
+  // Debug: Log raw header before byte order conversion
+  log_dev_every(4500000, "IMAGE_FRAME header (raw network order):");
+  log_dev_every(4500000, "   width=0x%08x height=0x%08x pixel_format=0x%08x compressed_size=0x%08x", header.width,
+                header.height, header.pixel_format, header.compressed_size);
 
   // Convert from network byte order
   header.width = NET_TO_HOST_U32(header.width);
@@ -674,6 +691,11 @@ static asciichat_error_t handle_server_image_frame(const void *payload, size_t p
   header.compressed_size = NET_TO_HOST_U32(header.compressed_size);
   header.checksum = NET_TO_HOST_U32(header.checksum);
   header.timestamp = NET_TO_HOST_U32(header.timestamp);
+
+  // Debug: Log header after byte order conversion
+  log_dev_every(4500000, "IMAGE_FRAME header (after host byte order):");
+  log_dev_every(4500000, "   width=%u height=%u pixel_format=%u compressed_size=%u", header.width, header.height,
+                header.pixel_format, header.compressed_size);
 
   // Get pixel data (after header)
   const void *pixel_data = (const uint8_t *)payload + sizeof(image_frame_packet_t);

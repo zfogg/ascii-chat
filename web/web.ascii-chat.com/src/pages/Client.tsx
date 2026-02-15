@@ -66,15 +66,25 @@ function buildCapabilitiesPacket(cols: number, rows: number): Uint8Array {
 function buildImageFramePayload(rgbaData: Uint8Array, width: number, height: number): Uint8Array {
   const pixelCount = width * height
   const rgb24Size = pixelCount * 3
-  const headerSize = 8 // width(4) + height(4) only - legacy format
+  // image_frame_packet_t structure:
+  // width(4) + height(4) + pixel_format(4) + compressed_size(4) + checksum(4) + timestamp(4) + rgb24_data
+  const headerSize = 24
   const totalSize = headerSize + rgb24Size
   const buf = new ArrayBuffer(totalSize)
   const view = new DataView(buf)
   const bytes = new Uint8Array(buf)
 
-  // Legacy header format (8 bytes, network byte order big-endian)
-  view.setUint32(0, width, false)   // width
-  view.setUint32(4, height, false)  // height
+  console.log(`[buildImageFramePayload] Building 24-byte header + ${rgb24Size} bytes RGB24 data = ${totalSize} total`)
+
+  // Fill header (network byte order big-endian)
+  view.setUint32(0, width, false)           // width
+  view.setUint32(4, height, false)          // height
+  view.setUint32(8, 3, false)               // pixel_format: 3 = RGB24
+  view.setUint32(12, 0, false)              // compressed_size: 0 (not compressed)
+  view.setUint32(16, 0, false)              // checksum: 0 (TODO: calculate proper CRC32 if needed)
+  view.setUint32(20, Date.now(), false)     // timestamp: current time in milliseconds
+
+  console.log(`[buildImageFramePayload] Header: width=${width} height=${height} pixel_format=3 compressed_size=0 timestamp=${Date.now()}`)
 
   // Convert RGBA to RGB24 (strip alpha channel)
   let srcIdx = 0
@@ -86,6 +96,8 @@ function buildImageFramePayload(rgbaData: Uint8Array, width: number, height: num
     srcIdx += 4
     dstIdx += 3
   }
+
+  console.log(`[buildImageFramePayload] First RGB bytes: ${bytes[24]},${bytes[25]},${bytes[26]} ${bytes[27]},${bytes[28]},${bytes[29]} ${bytes[30]},${bytes[31]},${bytes[32]}`)
 
   return bytes
 }

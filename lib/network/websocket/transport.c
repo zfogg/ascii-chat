@@ -46,8 +46,8 @@
 /**
  * @brief Maximum receive queue size (messages buffered before recv())
  *
- * Power of 2 for ringbuffer optimization. 64 messages = ~2-3 seconds
- * of video frames at 30 FPS, enough for network jitter and processing delays.
+ * Power of 2 for ringbuffer optimization. Backpressure via lws_rx_flow_control()
+ * prevents queue overflow by pausing websocket reception when queue is full.
  */
 #define WEBSOCKET_RECV_QUEUE_SIZE 64
 
@@ -423,6 +423,20 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   }
 
   mutex_lock(&ws_data->queue_mutex);
+
+  // Retry writing pending message if one exists and queue has space
+  if (ws_data->has_pending_msg) {
+    bool success = ringbuffer_write(ws_data->recv_queue, &ws_data->pending_msg);
+    if (success) {
+      ws_data->has_pending_msg = false;
+      log_debug("Successfully queued pending message on retry");
+
+      // Resume RX flow now that queue has space
+      if (ws_data->wsi) {
+        lws_rx_flow_control(ws_data->wsi, 1);
+      }
+    }
+  }
 
   int wait_count = 0;
   // Block until message arrives or connection closes

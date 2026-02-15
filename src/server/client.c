@@ -435,13 +435,12 @@ static int start_client_threads(server_context_t *server_ctx, client_info_t *cli
         tcp_server_spawn_thread(server_ctx->tcp_server, client->socket, client_receive_thread, client, 1, thread_name);
   } else {
     safe_snprintf(thread_name, sizeof(thread_name), "webrtc_recv_%u", client_id);
-    log_error("═══ THREAD_CREATE: WebRTC client %u ═══", client_id);
-    log_error("  client=%p, func=%p, &receive_thread=%p", (void *)client, (void *)client_receive_thread,
+    log_debug("THREAD_CREATE: WebRTC client %u", client_id);
+    log_debug("  client=%p, func=%p, &receive_thread=%p", (void *)client, (void *)client_receive_thread,
               (void *)&client->receive_thread);
-    log_error("  Pre-create: receive_thread value=%p", (void *)(uintptr_t)client->receive_thread);
+    log_debug("  Pre-create: receive_thread value=%p", (void *)(uintptr_t)client->receive_thread);
     result = asciichat_thread_create(&client->receive_thread, client_receive_thread, client);
-    log_error("  Post-create: result=%d, receive_thread value=%p", result, (void *)(uintptr_t)client->receive_thread);
-    log_error("═══════════════════════════════════════");
+    log_debug("  Post-create: result=%d, receive_thread value=%p", result, (void *)(uintptr_t)client->receive_thread);
   }
 
   if (result != ASCIICHAT_OK) {
@@ -1163,7 +1162,7 @@ int remove_client(server_context_t *server_ctx, uint32_t client_id) {
         return 0; // Return success - removal is in progress
       }
       // Mark as shutting down and inactive immediately to stop new operations
-      log_error("🔴 TRACE: Setting active=false in remove_client (client_id=%d, socket=%d)", client_id, client->socket);
+      log_debug("Setting active=false in remove_client (client_id=%d, socket=%d)", client_id, client->socket);
       log_info("Removing client %d (socket=%d) - marking inactive and clearing video flags", client_id, client->socket);
       atomic_store(&client->shutting_down, true);
       atomic_store(&client->active, false);
@@ -1414,8 +1413,8 @@ int remove_client(server_context_t *server_ctx, uint32_t client_id) {
 static const acip_server_callbacks_t g_acip_server_callbacks;
 
 void *client_receive_thread(void *arg) {
-  // Log IMMEDIATELY to verify thread is running AT ALL
-  log_error("RECV_THREAD_RAW: Thread function entered, arg=%p", arg);
+  // Log thread startup
+  log_debug("RECV_THREAD: Thread function entered, arg=%p", arg);
 
   client_info_t *client = (client_info_t *)arg;
 
@@ -1523,7 +1522,7 @@ void *client_receive_thread(void *arg) {
   // Mark client as inactive and stop all threads
   // Must stop render threads when client disconnects.
   // OPTIMIZED: Use atomic operations for thread control flags (lock-free)
-  log_error("🔴 TRACE: Setting active=false in receive_thread_fn (client_id=%u, exiting receive loop)",
+  log_debug("Setting active=false in receive_thread_fn (client_id=%u, exiting receive loop)",
             atomic_load(&client->client_id));
   atomic_store(&client->active, false);
   atomic_store(&client->send_thread_running, false);
@@ -2124,7 +2123,7 @@ void stop_client_threads(client_info_t *client) {
   }
 
   // Signal threads to stop
-  log_error("🔴 TRACE: Setting active=false in stop_client_threads (client_id=%u)", atomic_load(&client->client_id));
+  log_debug("Setting active=false in stop_client_threads (client_id=%u)", atomic_load(&client->client_id));
   atomic_store(&client->active, false);
   atomic_store(&client->send_thread_running, false);
 

@@ -45,6 +45,10 @@ typedef struct {
   // Service thread for client-side transports
   asciichat_thread_t service_thread; ///< Thread that services libwebsockets context
   volatile bool service_running;     ///< Service thread running flag
+
+  // Backpressure handling: store message when queue is full
+  websocket_recv_msg_t pending_msg; ///< Message waiting to be queued due to full queue
+  bool has_pending_msg;             ///< True if pending_msg contains valid data
 } websocket_transport_data_t;
 
 #endif // ASCIICHAT_NETWORK_WEBSOCKET_INTERNAL_H
