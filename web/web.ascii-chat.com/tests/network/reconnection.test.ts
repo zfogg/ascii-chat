@@ -31,56 +31,84 @@ describe('Reconnection with Server Restart', () => {
 
   it('reaches CONNECTED even when server restarts during reconnection', async () => {
     const states: number[] = [];
+    const stateNames: string[] = [];
     const connection = new ClientConnection({
       serverUrl,
     });
 
     connection.onStateChange((state) => {
-      console.log(`[State] ${state} (${ConnectionState[state]}) (WASM state: ${getConnectionState()} ${ConnectionState[getConnectionState()]})`);
+      const stateName = ConnectionState[state];
+      console.log(`[State] ${stateName}`);
       states.push(state);
+      stateNames.push(stateName);
     });
 
-    // Connect
+    // Test Phase 1: Initial connection
     console.log('[1] Connecting to running server...');
     await connection.connect();
     await new Promise(r => setTimeout(r, 1000));
-    console.log(`[After initial connect] UI state: ${states[states.length - 1]}, WASM state: ${getConnectionState()}`);
-    expect(getConnectionState()).toBe(ConnectionState.CONNECTED);
-    console.log('[✓] Connected (WASM confirmed CONNECTED)');
 
-    // Kill server
+    const afterInitialConnect = states.length;
+    console.log(`[After initial connect] States: ${stateNames.join(' → ')}`);
+
+    // Verify initial connection sequence
+    expect(states[states.length - 1]).toBe(ConnectionState.CONNECTED);
+    expect(stateNames).toContain('CONNECTING');
+    expect(stateNames).toContain('HANDSHAKE');
+    expect(stateNames).toContain('CONNECTED');
+    console.log('[✓] Initial connection: CONNECTING → HANDSHAKE → CONNECTED');
+
+    // Test Phase 2: Server dies - wait for reconnection attempts
     console.log('[2] Killing server...');
     await server!.stop();
     server = null;
     await new Promise(r => setTimeout(r, 500));
 
-    // Now server is DOWN - client tries to reconnect but fails
-    console.log('[3] Server is DOWN - client attempting reconnect (will fail)...');
-    await new Promise(r => setTimeout(r, 2000)); // Wait for reconnect attempts
+    console.log('[3] Waiting for reconnection attempts...');
+    await new Promise(r => setTimeout(r, 2500));
 
+    const afterReconnectAttempts = states.length;
+    const reconnectAttemptStates = stateNames.slice(afterInitialConnect);
+    console.log(`[After reconnect attempts] New states: ${reconnectAttemptStates.join(' → ')}`);
+
+    // Should have started reconnecting (CONNECTING state)
+    expect(reconnectAttemptStates).toContain('CONNECTING');
+    console.log('[✓] Reconnection attempts started: saw CONNECTING state');
+
+    // Test Phase 3: Server restarts and client reconnects
     console.log('[4] Restarting server on same port...');
     server = new ServerFixture(serverPort);
     await server.start();
     serverUrl = server.getUrl();
-    console.log(`[Server restarted on ${serverUrl}]`);
+    console.log(`[Server restarted]`);
 
-    // Client should successfully reconnect (it will keep trying)
     console.log('[5] Waiting for successful reconnection...');
     await new Promise(r => setTimeout(r, 5000));
 
-    console.log('[Final states]', states);
-    console.log(`[Final WASM state] ${getConnectionState()} (${ConnectionState[getConnectionState()]})`);
+    const finalStates = stateNames.join(' → ');
+    console.log(`[Final UI state sequence] ${finalStates}`);
+    console.log(`[Final WASM state] ${ConnectionState[getConnectionState()]}`);
 
-    // The real test: is the WASM state machine in CONNECTED?
+    // Verify final state is CONNECTED
+    expect(states[states.length - 1]).toBe(ConnectionState.CONNECTED);
+    expect(ConnectionState[states[states.length - 1]]).toBe('CONNECTED');
+    console.log('[✓] Final UI state: CONNECTED');
+
+    // Verify we saw reconnection states
+    const connectingCount = stateNames.filter(s => s === 'CONNECTING').length;
+    expect(connectingCount).toBeGreaterThan(1);
+    console.log(`[✓] Multiple CONNECTING states during reconnection (${connectingCount} total)`);
+
+    // Verify we returned to HANDSHAKE during reconnection
+    const postReconnectStates = stateNames.slice(afterReconnectAttempts);
+    expect(postReconnectStates).toContain('HANDSHAKE');
+    console.log('[✓] Reconnection handshake: saw HANDSHAKE state');
+
+    // Verify WASM state matches UI state
     const wasmConnected = getConnectionState() === ConnectionState.CONNECTED;
-    console.log(`[Result] WASM CONNECTED: ${wasmConnected}`);
-
-    if (wasmConnected) {
-      console.log('[✅] PASSED - WASM state machine reached CONNECTED after reconnect');
-    } else {
-      console.log(`[❌] FAILED - WASM stuck in state ${getConnectionState()} (${ConnectionState[getConnectionState()]})`);
-    }
-
     expect(wasmConnected).toBe(true);
+    console.log('[✓] WASM state synchronized with UI state');
+
+    console.log('[✅] PASSED - Full reconnection cycle verified');
   }, 15000); // 15 second timeout for server startup/shutdown
 });

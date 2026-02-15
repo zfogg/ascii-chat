@@ -42,15 +42,51 @@ test('UI: browser auto-reconnects when server restarts', async ({ page }) => {
 
   const getConnectionState = async () => {
     return await page.evaluate(() => {
+      // Get connection state from the React component by looking at the control bar status text
+      // The status text is in: <span class="status text-xs text-terminal-8">{status}</span>
+
+      const statusSpan = document.querySelector('.status');
+      if (statusSpan) {
+        const text = statusSpan.textContent?.trim() || '';
+        // Map the full status text to state names
+        if (text === 'Connected') return 'Connected';
+        if (text === 'Connecting...') return 'Connecting';
+        if (text === 'Connecting') return 'Connecting';
+        if (text === 'Performing handshake') return 'Handshake';
+        if (text === 'Disconnected') return 'Disconnected';
+        if (text.startsWith('Error')) return 'Error';
+        return text || 'Unknown';
+      }
+
+      // Fallback: search all elements
       const elements = document.querySelectorAll('*');
       for (const el of elements) {
         const text = el.textContent?.trim();
-        if (el.children.length === 0 && text &&
-            (text === 'Connected' || text === 'Connecting' || text === 'Disconnected' || text === 'Error')) {
-          return text;
+        // Look for leaf nodes with exact state text
+        if (el.children.length === 0 && text && text.length < 30) {
+          if (text === 'Connected') return 'Connected';
+          if (text === 'Connecting') return 'Connecting';
+          if (text === 'Performing handshake') return 'Handshake';
+          if (text === 'Disconnected') return 'Disconnected';
+          if (text === 'Error') return 'Error';
         }
       }
+
       return 'Unknown';
+    });
+  };
+
+  const getAllStatuses = async () => {
+    return await page.evaluate(() => {
+      // Debug: return all text that contains "connect", "handshake", "error", etc
+      const results: string[] = [];
+      document.querySelectorAll('*').forEach(el => {
+        const text = el.textContent?.trim() || '';
+        if ((text.includes('connect') || text.includes('handshake') || text.includes('disconnect') || text.includes('error')) && text.length < 100) {
+          results.push(text);
+        }
+      });
+      return [...new Set(results)];
     });
   };
 
@@ -73,7 +109,7 @@ test('UI: browser auto-reconnects when server restarts', async ({ page }) => {
   await page.waitForTimeout(1000);
   console.log('✓ Page loaded with test server URL');
 
-  // Step 3: Open Connection panel
+  // Step 3: Open Connection panel and keep it open
   console.log('\n📋 Step 3: Open Connection panel');
   await page.evaluate(() => {
     const btn = Array.from(document.querySelectorAll('button')).find(b =>
@@ -120,62 +156,115 @@ test('UI: browser auto-reconnects when server restarts', async ({ page }) => {
   console.log('\n📋 Step 6: KILL SERVER - watch UI reaction');
   await stopServer();
 
-  console.log('  Monitoring UI for 10 seconds after disconnect...');
+  console.log('  Monitoring UI for 12 seconds after disconnect (100ms polling)...');
   const killTime = Date.now();
-  const stateTimeline: string[] = [];
+  const stateTimeline: Array<{ state: string; elapsed: number }> = [];
 
-  while (Date.now() - killTime < 10000) {
+  while (Date.now() - killTime < 12000) {
     const state = await getConnectionState();
     const elapsed = Date.now() - killTime;
 
-    if (!stateTimeline.includes(state) || elapsed % 1000 === 0) {
+    // Record every state change (not duplicates)
+    if (!stateTimeline.length || stateTimeline[stateTimeline.length - 1].state !== state) {
+      stateTimeline.push({ state, elapsed });
       console.log(`  +${elapsed}ms: ${state}`);
-      if (!stateTimeline.includes(state)) {
-        stateTimeline.push(state);
-      }
     }
 
-    await page.screenshot({ path: `/tmp/ui-state-${elapsed}ms.png`, fullPage: true });
-    await page.waitForTimeout(500);
+    // Fast polling (100ms) to catch all state changes
+    await page.waitForTimeout(100);
   }
 
   console.log('\n📋 State progression after server kill:');
-  console.log('  ', stateTimeline.join(' → '));
+  const progression = stateTimeline.map((s, i) => {
+    const nextIdx = i + 1;
+    const duration = nextIdx < stateTimeline.length
+      ? stateTimeline[nextIdx].elapsed - s.elapsed
+      : '...';
+    return `${s.state}(${s.elapsed}ms, ${duration}ms)`;
+  }).join(' → ');
+  console.log('  ', progression);
 
-  // Validate: should NOT stay Connected, should show Error, Connecting, or Disconnected
-  if (stateTimeline[0] === 'Connected' && stateTimeline.length === 1) {
+  // Validate: should NOT stay Connected, should show Connecting or Disconnected
+  if (stateTimeline.length === 1 && stateTimeline[0].state === 'Connected') {
     console.log('\n✗✗✗ BROKEN: Browser never detected server disconnect!');
     console.log('     Stayed in Connected state the entire time');
-  } else if (stateTimeline.includes('Error')) {
-    console.log('\n✗ Browser went to Error state (bug?)');
-  } else if (stateTimeline.includes('Connecting')) {
+  } else if (stateTimeline.map(s => s.state).includes('Connecting')) {
     console.log('\n✓ Browser detected disconnect and entered Connecting state');
-  } else if (stateTimeline.includes('Disconnected')) {
+  } else if (stateTimeline.map(s => s.state).includes('Disconnected')) {
     console.log('\n✓ Browser detected disconnect and entered Disconnected state');
+  } else if (stateTimeline.map(s => s.state).includes('Error')) {
+    console.log('\n✗ Browser went to Error state (unexpected)');
   }
 
-  // Step 7: Restart the server and verify it reconnects
-  console.log('\n📋 Step 7: Restart server and verify reconnection');
-  await startServer();
-  console.log('✓ Server restarted');
+  // Step 7: Restart the server and monitor reconnection process
+  console.log('\n📋 Step 7: Restart server while monitoring state...');
 
-  console.log('  Monitoring for reconnection...');
-  const reconnectStart = Date.now();
-  let reconnected = false;
+  // Check state BEFORE restarting server
+  let stateBeforeRestart = await getConnectionState();
+  console.log(`  State before restart: ${stateBeforeRestart}`);
 
-  while (Date.now() - reconnectStart < 10000) {
-    const state = await getConnectionState();
-    if (state === 'Connected') {
-      reconnected = true;
-      console.log(`✓ RECONNECTED after ${Date.now() - reconnectStart}ms`);
-      break;
+  // Verify modal is still open
+  const modalOpen = await page.evaluate(() => {
+    const dialog = document.querySelector('[role="dialog"]');
+    return dialog ? 'open' : 'closed';
+  });
+  console.log(`  Connection modal: ${modalOpen}`);
+
+  // Start monitoring BEFORE the server restart so we catch the full reconnection sequence
+  const fullReconnectTimeline: Array<{ state: string; elapsed: number }> = [];
+  const reconnectMonitorStart = Date.now();
+  let monitoringDone = false;
+
+  // Start server in background (don't await immediately)
+  const serverStartPromise = (async () => {
+    console.log('  Starting server...');
+    await startServer();
+    console.log('✓ Server restarted');
+  })();
+
+  // Monitor state while server is restarting
+  const monitorReconnection = async () => {
+    while (Date.now() - reconnectMonitorStart < 15000) {
+      const state = await getConnectionState();
+      const elapsed = Date.now() - reconnectMonitorStart;
+
+      // Record every state change
+      if (!fullReconnectTimeline.length || fullReconnectTimeline[fullReconnectTimeline.length - 1].state !== state) {
+        fullReconnectTimeline.push({ state, elapsed });
+        console.log(`  +${elapsed}ms: ${state}`);
+
+        // Stop if we reach Connected
+        if (state === 'Connected') {
+          monitoringDone = true;
+          break;
+        }
+      }
+
+      // Fast polling (100ms) to catch all state changes
+      await page.waitForTimeout(100);
     }
-    await page.waitForTimeout(200);
-  }
+  };
+
+  // Run both in parallel
+  await Promise.all([serverStartPromise, monitorReconnection()]);
+
+  const reconnectTimeline = fullReconnectTimeline;
+
+  console.log('\n📋 State progression during reconnection:');
+  const reconnectProgression = reconnectTimeline.map((s, i) => {
+    const nextIdx = i + 1;
+    const duration = nextIdx < reconnectTimeline.length
+      ? reconnectTimeline[nextIdx].elapsed - s.elapsed
+      : '...';
+    return `${s.state}(${s.elapsed}ms, ${duration}ms)`;
+  }).join(' → ');
+  console.log('  ', reconnectProgression);
 
   if (!reconnected) {
     const finalState = await getConnectionState();
     console.log(`✗ Did not reconnect. Final state: ${finalState}`);
+  } else {
+    console.log(`✓ RECONNECTED to Connected state`);
   }
 
   await page.screenshot({ path: '/tmp/ui-final-state.png', fullPage: true });
