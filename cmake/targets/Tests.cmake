@@ -291,6 +291,20 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         # - logging.c: Provides test-specific logging utilities (stdout/stderr redirection)
         add_executable(${test_exe_name} ${test_src} lib/tests/common.c lib/tests/globals.c lib/tests/logging.c)
 
+        # Configure BUILD_RPATH to prefer locally built libraries over system-installed ones
+        # This ensures tests use the correct libasciichat from build/lib instead of /usr/local/lib
+        # Priority: local build lib > LLVM libs > system libs
+        if(APPLE)
+            set_target_properties(${test_exe_name} PROPERTIES
+                BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY};${CMAKE_BUILD_RPATH};/opt/homebrew/lib;/usr/local/lib"
+                MACOSX_RPATH ON
+            )
+        else()
+            set_target_properties(${test_exe_name} PROPERTIES
+                BUILD_RPATH "$<TARGET_FILE_DIR:ascii-chat-shared>;${CMAKE_BUILD_RPATH}"
+            )
+        endif()
+
         # Add timer dependency so timing starts before first test compiles
         if(TARGET tests-timer-start)
             add_dependencies(${test_exe_name} tests-timer-start)
