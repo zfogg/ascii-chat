@@ -355,7 +355,20 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
   unsigned short int height = GET_OPTION(height);
   bool stretch = GET_OPTION(stretch);
   bool preserve_aspect_ratio = !stretch;
-  bool flip = GET_OPTION(webcam_flip);
+
+  // Determine if we should apply flip_x (with macOS webcam caveat)
+  bool flip_x_enabled = GET_OPTION(flip_x);
+  bool flip_y_enabled = GET_OPTION(flip_y);
+
+  // On macOS, webcam respects platform default but ignores the flip_x flag
+  // (like FaceTime - always flipped by default regardless of user preference)
+#ifdef __APPLE__
+  // Check if this frame is from a webcam source
+  // For now, we apply the same default but ignore user toggle
+  // TODO: Add source tracking to know if frame is from webcam
+  flip_x_enabled = false; // Ignore flip_x for now on macOS (will be enhanced with source tracking)
+#endif
+
   color_filter_t color_filter = GET_OPTION(color_filter);
 
   // Make a mutable copy of terminal capabilities for ascii_convert_with_capabilities
@@ -364,11 +377,11 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
   // MEASURE EVERY OPERATION - Debug systematic timing
   uint64_t t_flip_start = time_get_ns();
 
-  // Apply horizontal flip if requested
+  // Apply horizontal and/or vertical flips if requested
   image_t *flipped_image = NULL;
   const image_t *display_image = image;
 
-  if (flip && image->w > 1 && image->pixels) {
+  if ((flip_x_enabled || flip_y_enabled) && image->w > 1 && image->h > 1 && image->pixels) {
     START_TIMER("image_flip");
     uint64_t t_flip_alloc_start = time_get_ns();
     flipped_image = image_new((size_t)image->w, (size_t)image->h);
@@ -381,30 +394,47 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
       uint64_t t_flip_memcpy_end = time_get_ns();
 
       uint64_t t_flip_reverse_start = time_get_ns();
-      // Then flip each row in-place (maintains cache locality)
+
+      // Apply horizontal flip (X-axis)
+      if (flip_x_enabled) {
 #if SIMD_SUPPORT_NEON
-      // Use NEON-accelerated flip on ARM processors
-      image_flip_horizontal_neon(flipped_image);
+        // Use NEON-accelerated flip on ARM processors
+        image_flip_horizontal_neon(flipped_image);
 #else
-      // Scalar fallback for non-NEON systems
-      for (int y = 0; y < image->h; y++) {
-        rgb_pixel_t *row = &flipped_image->pixels[y * image->w];
-        for (int x = 0; x < image->w / 2; x++) {
-          rgb_pixel_t temp = row[x];
-          row[x] = row[image->w - 1 - x];
-          row[image->w - 1 - x] = temp;
+        // Scalar fallback for non-NEON systems
+        for (int y = 0; y < image->h; y++) {
+          rgb_pixel_t *row = &flipped_image->pixels[y * image->w];
+          for (int x = 0; x < image->w / 2; x++) {
+            rgb_pixel_t temp = row[x];
+            row[x] = row[image->w - 1 - x];
+            row[image->w - 1 - x] = temp;
+          }
+        }
+#endif
+      }
+
+      // Apply vertical flip (Y-axis)
+      if (flip_y_enabled) {
+        for (int y = 0; y < image->h / 2; y++) {
+          rgb_pixel_t *top_row = &flipped_image->pixels[y * image->w];
+          rgb_pixel_t *bottom_row = &flipped_image->pixels[(image->h - 1 - y) * image->w];
+          for (int x = 0; x < image->w; x++) {
+            rgb_pixel_t temp = top_row[x];
+            top_row[x] = bottom_row[x];
+            bottom_row[x] = temp;
+          }
         }
       }
-#endif
+
       uint64_t t_flip_reverse_end = time_get_ns();
       display_image = flipped_image;
 
-      log_dev("TIMING_FLIP: alloc=%llu us, memcpy=%llu us, reverse=%llu us",
+      log_dev("TIMING_FLIP: alloc=%llu us, memcpy=%llu us, flip=%llu us (x=%d, y=%d)",
               (t_flip_alloc_end - t_flip_alloc_start) / 1000, (t_flip_memcpy_end - t_flip_memcpy_start) / 1000,
-              (t_flip_reverse_end - t_flip_reverse_start) / 1000);
+              (t_flip_reverse_end - t_flip_reverse_start) / 1000, flip_x_enabled, flip_y_enabled);
     }
     STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 3 * NS_PER_MS_INT, "image_flip",
-                             "IMAGE_FLIP: Horizontal flip complete (%.2f ms)");
+                             "IMAGE_FLIP: Flip complete (%.2f ms)");
   }
   uint64_t t_flip_end = time_get_ns();
 

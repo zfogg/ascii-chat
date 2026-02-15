@@ -358,7 +358,8 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   double current_volume = GET_OPTION(speakers_volume);
   int current_color_mode = (int)GET_OPTION(color_mode);
   int current_render_mode = (int)GET_OPTION(render_mode);
-  bool current_flip = (bool)GET_OPTION(webcam_flip);
+  bool flip_x = (bool)GET_OPTION(flip_x);
+  bool flip_y = (bool)GET_OPTION(flip_y);
   bool current_audio = (bool)GET_OPTION(audio_enabled);
 
   // Format volume bar as "[========  ] 80%"
@@ -369,10 +370,17 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   const char *color_str = color_mode_to_string(current_color_mode);
   const char *render_str = render_mode_to_string(current_render_mode);
 
-  // Create colored strings for boolean values
-  // Webcam flip state (Flipped = enabled, Normal = disabled)
-  const char *flip_text =
-      current_flip ? colored_string(ENABLED_COLOR, "Flipped") : colored_string(DISABLED_COLOR, "Normal");
+  // Create colored strings for flip state
+  const char *flip_text = "None";
+  if (flip_x && flip_y) {
+    flip_text = colored_string(ENABLED_COLOR, "X & Y");
+  } else if (flip_x) {
+    flip_text = colored_string(ENABLED_COLOR, "X");
+  } else if (flip_y) {
+    flip_text = colored_string(ENABLED_COLOR, "Y");
+  } else {
+    flip_text = colored_string(DISABLED_COLOR, "None");
+  }
 
   // Audio state (Enabled = green, Disabled = red)
   const char *audio_text =
@@ -396,7 +404,7 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   APPEND("%s", line_buf);
 
   APPEND("\033[%d;%dH", start_row + 21, start_col + 1);
-  build_settings_line(line_buf, sizeof(line_buf), "Webcam", flip_text);
+  build_settings_line(line_buf, sizeof(line_buf), "Flip", flip_text);
   APPEND("%s", line_buf);
 
   // Blank line before footer
