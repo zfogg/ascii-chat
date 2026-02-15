@@ -5,9 +5,9 @@
 # build system optimized for Emscripten.
 #
 # Available targets:
-#   mirror-wasm  - Build mirror mode WASM module only
-#   client-wasm  - Build client mode WASM module only
-#   wasm         - Build both mirror and client WASM modules
+#   mirror-web  - Build mirror mode WASM module only
+#   client-web  - Build client mode WASM module only
+#   wasm        - Build both mirror and client WASM modules
 #
 # Example:
 #   cmake --build build --target wasm
@@ -137,7 +137,7 @@ message(STATUS \"WASM build complete\")
 ")
 
 # Mirror mode WASM target
-add_custom_target(mirror-wasm
+add_custom_target(mirror-web
     COMMAND ${CMAKE_COMMAND} -E echo "Building mirror WASM module..."
     COMMAND ${CMAKE_COMMAND} -DTARGET_NAME=mirror-web -P "${WASM_BUILD_SCRIPT}"
     COMMENT "Building WASM mirror module"
@@ -145,7 +145,7 @@ add_custom_target(mirror-wasm
 )
 
 # Client mode WASM target
-add_custom_target(client-wasm
+add_custom_target(client-web
     COMMAND ${CMAKE_COMMAND} -E echo "Building client WASM module..."
     COMMAND ${CMAKE_COMMAND} -DTARGET_NAME=client-web -P "${WASM_BUILD_SCRIPT}"
     COMMENT "Building WASM client module"
@@ -161,9 +161,9 @@ add_custom_target(wasm
 )
 
 message(STATUS "WASM targets configured:")
-message(STATUS "  mirror-wasm - Build mirror mode WASM only")
-message(STATUS "  client-wasm - Build client mode WASM only")
-message(STATUS "  wasm        - Build both mirror and client WASM")
+message(STATUS "  mirror-web - Build mirror mode WASM only")
+message(STATUS "  client-web - Build client mode WASM only")
+message(STATUS "  wasm       - Build both mirror and client WASM")
 if(EMCMAKE_EXECUTABLE)
     message(STATUS "  Using emcmake: ${EMCMAKE_EXECUTABLE}")
 else()
