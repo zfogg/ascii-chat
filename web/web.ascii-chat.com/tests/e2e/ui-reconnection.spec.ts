@@ -260,7 +260,9 @@ test('UI: browser auto-reconnects when server restarts', async ({ page }) => {
   }).join(' → ');
   console.log('  ', reconnectProgression);
 
-  if (!reconnected) {
+  // Check if we reached Connected state
+  const didReconnect = monitoringDone || reconnectTimeline.some(s => s.state === 'Connected');
+  if (!didReconnect) {
     const finalState = await getConnectionState();
     console.log(`✗ Did not reconnect. Final state: ${finalState}`);
   } else {

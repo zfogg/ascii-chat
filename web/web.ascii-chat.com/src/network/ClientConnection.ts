@@ -42,6 +42,7 @@ export class ClientConnection {
   private wasEverConnected = false;
   private wasmReinitInProgress = false;
   private deferredPackets: Uint8Array[] = [];
+  private socketHasEverOpened = false;  // Track if this socket instance has ever opened
 
   constructor(private options: ClientConnectionOptions) {}
 
@@ -102,16 +103,22 @@ export class ClientConnection {
         console.error(`[ClientConnection] *** onStateChange: state='${state}' wasEverConnected=${this.wasEverConnected}`);
         console.log('[ClientConnection] WebSocket state:', state);
         if (state === 'open') {
-          console.error(`[ClientConnection] *** State is OPEN, wasEverConnected=${this.wasEverConnected}`);
+          console.error(`[ClientConnection] *** State is OPEN, socketHasEverOpened=${this.socketHasEverOpened}`);
           console.log('[ClientConnection] WebSocket opened, setting state to CONNECTING');
-          // On reconnection, fully reinitialize WASM to reset state machine
-          if (this.wasEverConnected) {
-            console.error('[ClientConnection] ✓ wasEverConnected is TRUE, starting WASM reinit');
-            console.log('[ClientConnection] Reinitializing WASM for reconnection...');
+
+          // Check if this is a reconnection (socket opened before, now opening again)
+          const isReconnection = this.socketHasEverOpened;
+          if (!this.socketHasEverOpened) {
+            this.socketHasEverOpened = true;
+            console.error('[ClientConnection] ✓ First time socket opened - this is initial connection');
           } else {
-            console.error('[ClientConnection] ✗ wasEverConnected is FALSE - WASM reinit will NOT happen (this is a fresh connection)');
+            console.error('[ClientConnection] ✓ Socket opening again - this is a reconnection, reinitializing WASM');
           }
-          if (this.wasEverConnected) {
+
+          // On reconnection, fully reinitialize WASM to reset state machine
+          if (isReconnection) {
+            console.error('[ClientConnection] ✓ RECONNECTION DETECTED - starting WASM reinit');
+            console.log('[ClientConnection] Reinitializing WASM for reconnection...');
             this.wasmReinitInProgress = true;
             this.deferredPackets = [];
             cleanupClientWasm();
