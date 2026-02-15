@@ -102,12 +102,16 @@ export class ClientConnection {
         console.error(`[ClientConnection] *** onStateChange: state='${state}' wasEverConnected=${this.wasEverConnected}`);
         console.log('[ClientConnection] WebSocket state:', state);
         if (state === 'open') {
-          console.error('[ClientConnection] *** State is OPEN');
+          console.error(`[ClientConnection] *** State is OPEN, wasEverConnected=${this.wasEverConnected}`);
           console.log('[ClientConnection] WebSocket opened, setting state to CONNECTING');
           // On reconnection, fully reinitialize WASM to reset state machine
           if (this.wasEverConnected) {
-            console.error('[ClientConnection] *** wasEverConnected is TRUE, starting WASM reinit');
+            console.error('[ClientConnection] ✓ wasEverConnected is TRUE, starting WASM reinit');
             console.log('[ClientConnection] Reinitializing WASM for reconnection...');
+          } else {
+            console.error('[ClientConnection] ✗ wasEverConnected is FALSE - WASM reinit will NOT happen (this is a fresh connection)');
+          }
+          if (this.wasEverConnected) {
             this.wasmReinitInProgress = true;
             this.deferredPackets = [];
             cleanupClientWasm();
