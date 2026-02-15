@@ -109,6 +109,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   cam->height = 0;
   cam->mf_initialized = FALSE;
   cam->com_initialized = FALSE;
+  cam->cached_frame = NULL;
 
   HRESULT hr;
   IMFAttributes *attr = NULL;
