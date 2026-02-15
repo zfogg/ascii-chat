@@ -74,7 +74,7 @@ asciichat_error_t platform_strcpy(char *dest, size_t dest_size, const char *src)
                      dest_size);
   }
 
-  strncpy(dest, src, dest_size - 1);
+  SAFE_STRNCPY(dest, src, dest_size - 1);
   dest[dest_size - 1] = '\0';
   return ASCIICHAT_OK;
 }

@@ -51,9 +51,7 @@
 #ifdef _WIN32
 #include <io.h>
 #else
-#include <unistd.h>     // For write(), read(), pipe(), STDIN_FILENO, STDOUT_FILENO
-#include <sys/select.h> // For select(), fd_set
-#include <sys/time.h>   // For struct timeval
+#include <unistd.h> // For write(), STDERR_FILENO (signal handler)
 #endif
 
 #include <ascii-chat/platform/network.h> // Consolidates platform-specific network headers
@@ -252,14 +250,13 @@ static asciichat_thread_t g_status_screen_thread;
 /**
  * @brief Keyboard input thread for instant keypress capture.
  *
- * This is the ONLY thing that reads from stdin. It does a blocking select()
- * on stdin + a shutdown pipe, reads bytes directly, resolves escape sequences,
- * and pushes complete key codes into a lock-free ring buffer queue.
+ * This is the ONLY thing that reads from stdin. It polls
+ * keyboard_read_with_timeout() (platform-abstracted) and pushes complete
+ * key codes into a lock-free ring buffer queue.
  * The main (render) thread only pops from the queue.
  */
 static asciichat_thread_t g_keyboard_thread;
 static _Atomic bool g_keyboard_thread_running = false;
-static int g_keyboard_shutdown_pipe[2] = {-1, -1};
 
 /**
  * @brief Thread-safe keyboard queue (lock-free SPSC ring buffer)
@@ -291,125 +288,22 @@ static keyboard_key_t keyboard_queue_pop(void) {
 }
 
 /**
- * @brief Read one byte from stdin, blocking until available or shutdown.
- * @return The byte read, or -1 on shutdown/error.
- */
-static int keyboard_read_byte_blocking(void) {
-  int maxfd = (STDIN_FILENO > g_keyboard_shutdown_pipe[0]) ? STDIN_FILENO : g_keyboard_shutdown_pipe[0];
-
-  while (atomic_load(&g_keyboard_thread_running)) {
-    fd_set fds;
-    FD_ZERO(&fds);
-    FD_SET(STDIN_FILENO, &fds);
-    FD_SET(g_keyboard_shutdown_pipe[0], &fds);
-
-    // Block forever until stdin has data or shutdown pipe is written to
-    int ret = select(maxfd + 1, &fds, NULL, NULL, NULL);
-    if (ret <= 0) {
-      continue;
-    }
-    if (FD_ISSET(g_keyboard_shutdown_pipe[0], &fds)) {
-      return -1; // Shutdown
-    }
-    if (FD_ISSET(STDIN_FILENO, &fds)) {
-      unsigned char ch;
-      ssize_t n = read(STDIN_FILENO, &ch, 1);
-      if (n == 1) {
-        return (int)ch;
-      }
-    }
-  }
-  return -1;
-}
-
-/**
- * @brief Try to read one byte from stdin with a short timeout (for escape sequences).
- * @return The byte read, or -1 on timeout/error.
- */
-static int keyboard_read_byte_timeout(int timeout_us) {
-  fd_set fds;
-  FD_ZERO(&fds);
-  FD_SET(STDIN_FILENO, &fds);
-
-  struct timeval tv;
-  tv.tv_sec = 0;
-  tv.tv_usec = timeout_us;
-
-  int ret = select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv);
-  if (ret > 0 && FD_ISSET(STDIN_FILENO, &fds)) {
-    unsigned char ch;
-    if (read(STDIN_FILENO, &ch, 1) == 1) {
-      return (int)ch;
-    }
-  }
-  return -1;
-}
-
-/**
  * @brief Keyboard thread: sole reader of stdin.
  *
- * Blocks on select(stdin, shutdown_pipe). Reads raw bytes, resolves escape
- * sequences into key codes, pushes completed keys into the queue.
+ * Polls keyboard_read_with_timeout() (platform-abstracted) in a loop.
+ * The platform keyboard module handles raw mode, escape sequence resolution,
+ * and extended key codes, so this thread just pushes complete key codes
+ * into the queue.
  */
 static void *keyboard_thread_func(void *arg) {
   (void)arg;
-  log_debug("Keyboard thread started (blocking mode)");
+  log_debug("Keyboard thread started (polling mode, 100ms interval)");
 
   while (atomic_load(&g_keyboard_thread_running)) {
-    int ch = keyboard_read_byte_blocking();
-    if (ch < 0) {
-      break; // Shutdown
+    keyboard_key_t key = keyboard_read_with_timeout(100);
+    if (key != KEY_NONE) {
+      keyboard_queue_push(key);
     }
-
-    keyboard_key_t key;
-
-    if (ch == 27) {
-      // ESC byte: might be standalone ESC or start of escape sequence.
-      // Wait up to 50ms for a follow-up byte.
-      int ch2 = keyboard_read_byte_timeout(50000);
-      if (ch2 < 0) {
-        key = KEY_ESCAPE; // Standalone ESC
-      } else if (ch2 == '[') {
-        // CSI sequence: read the final byte
-        int ch3 = keyboard_read_byte_timeout(50000);
-        if (ch3 < 0) {
-          key = KEY_ESCAPE;
-        } else {
-          switch (ch3) {
-          case 'A':
-            key = KEY_UP;
-            break;
-          case 'B':
-            key = KEY_DOWN;
-            break;
-          case 'C':
-            key = KEY_RIGHT;
-            break;
-          case 'D':
-            key = KEY_LEFT;
-            break;
-          case '3': {
-            // Delete key: ESC[3~
-            int ch4 = keyboard_read_byte_timeout(50000);
-            (void)ch4; // Consume the '~'
-            key = 127; // Treat delete as DEL
-            break;
-          }
-          // Home (H) and End (F) fall through to default
-          default:
-            key = KEY_ESCAPE;
-            break;
-          }
-        }
-      } else {
-        // ESC followed by something other than '[' - treat as ESC
-        key = KEY_ESCAPE;
-      }
-    } else {
-      key = (keyboard_key_t)ch;
-    }
-
-    keyboard_queue_push(key);
   }
 
   log_debug("Keyboard thread exiting");
@@ -1302,28 +1196,18 @@ static void *status_screen_thread(void *arg) {
 
   log_debug("Status screen thread started (target %u FPS)", fps);
 
-  // Initialize keyboard for interactive grep
-  // On Windows, pipe()+select() with stdin is not supported, so keyboard input is disabled
+  // Initialize keyboard for interactive grep (cross-platform)
   bool keyboard_enabled = false;
-#ifndef _WIN32
   if (terminal_is_interactive()) {
     log_info("Terminal is interactive, initializing keyboard...");
     if (keyboard_init() == ASCIICHAT_OK) {
-      // Create shutdown pipe for clean thread termination
-      if (pipe(g_keyboard_shutdown_pipe) == 0) {
-        atomic_store(&g_keyboard_thread_running, true);
-        if (asciichat_thread_create(&g_keyboard_thread, keyboard_thread_func, NULL) == 0) {
-          keyboard_enabled = true;
-          log_info("Keyboard thread started - press '/' to activate grep");
-        } else {
-          log_warn("Failed to create keyboard thread");
-          close(g_keyboard_shutdown_pipe[0]);
-          close(g_keyboard_shutdown_pipe[1]);
-          g_keyboard_shutdown_pipe[0] = g_keyboard_shutdown_pipe[1] = -1;
-          keyboard_destroy();
-        }
+      atomic_store(&g_keyboard_thread_running, true);
+      if (asciichat_thread_create(&g_keyboard_thread, keyboard_thread_func, NULL) == 0) {
+        keyboard_enabled = true;
+        log_info("Keyboard thread started - press '/' to activate grep");
       } else {
-        log_warn("Failed to create keyboard shutdown pipe");
+        log_warn("Failed to create keyboard thread");
+        atomic_store(&g_keyboard_thread_running, false);
         keyboard_destroy();
       }
     } else {
@@ -1332,10 +1216,6 @@ static void *status_screen_thread(void *arg) {
   } else {
     log_warn("Terminal is NOT interactive, keyboard disabled");
   }
-#else
-  (void)keyboard_enabled; // Suppress unused variable warning on Windows
-  log_info("Keyboard input disabled on Windows (select() with stdin not supported)");
-#endif
 
   // Track when we just entered grep mode to skip the triggering '/' from buffer
   bool skip_next_slash = false;
@@ -1411,29 +1291,14 @@ static void *status_screen_thread(void *arg) {
     }
   }
 
-#ifndef _WIN32
-  // Stop keyboard thread: write to shutdown pipe to unblock the blocking select()
+  // Stop keyboard thread (polls at 100ms, so join completes within ~100ms)
   if (keyboard_enabled) {
     log_debug("Stopping keyboard thread...");
     atomic_store(&g_keyboard_thread_running, false);
-    // Wake the keyboard thread from its blocking select()
-    if (g_keyboard_shutdown_pipe[1] >= 0) {
-      (void)write(g_keyboard_shutdown_pipe[1], "x", 1);
-    }
     asciichat_thread_join(&g_keyboard_thread, NULL);
     log_debug("Keyboard thread stopped");
-
-    if (g_keyboard_shutdown_pipe[0] >= 0) {
-      close(g_keyboard_shutdown_pipe[0]);
-    }
-    if (g_keyboard_shutdown_pipe[1] >= 0) {
-      close(g_keyboard_shutdown_pipe[1]);
-    }
-    g_keyboard_shutdown_pipe[0] = g_keyboard_shutdown_pipe[1] = -1;
-
     keyboard_destroy();
   }
-#endif
 
   log_debug("Status screen thread exiting");
   return NULL;

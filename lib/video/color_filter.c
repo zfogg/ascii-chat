@@ -399,7 +399,7 @@ char *rainbow_replace_ansi_colors(const char *ansi_string, float time_seconds) {
       }
     } else {
       // No more ANSI codes, copy the rest
-      strcpy(dst, src);
+      memcpy(dst, src, strlen(src) + 1);
       break;
     }
   }

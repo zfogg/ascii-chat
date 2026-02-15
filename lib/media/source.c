@@ -11,6 +11,7 @@
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/util.h>
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/util/time.h>
 #include <stdlib.h>
@@ -153,14 +154,14 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
       log_debug("Using extracted YouTube stream URL");
 
       // Store original YouTube URL for potential re-extraction if stream expires
-      source->original_youtube_url = strdup(path);
+      source->original_youtube_url = platform_strdup(path);
       if (!source->original_youtube_url) {
         log_warn("Failed to cache original YouTube URL");
       }
     }
 
     // Cache file path for potential reopen on loop
-    source->file_path = strdup(effective_path);
+    source->file_path = platform_strdup(effective_path);
     if (!source->file_path) {
       SET_ERRNO(ERROR_MEMORY, "Failed to duplicate file path");
       SAFE_FREE(source->original_youtube_url);

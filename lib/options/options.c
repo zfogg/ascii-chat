@@ -185,7 +185,7 @@ static bool is_binary_level_option_with_args(const char *arg, bool *out_takes_ar
   if (opt_len >= sizeof(opt_buffer)) {
     opt_len = sizeof(opt_buffer) - 1;
   }
-  strncpy(opt_buffer, opt_name, opt_len);
+  SAFE_STRNCPY(opt_buffer, opt_name, opt_len);
   opt_buffer[opt_len] = '\0';
   opt_name = opt_buffer;
 
@@ -713,7 +713,7 @@ static char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t 
     log_filename_literal = "ascii-chat.log";
     break;
   }
-  strncpy(log_filename_buf, log_filename_literal, sizeof(log_filename_buf) - 1);
+  SAFE_STRNCPY(log_filename_buf, log_filename_literal, sizeof(log_filename_buf) - 1);
   log_filename_buf[sizeof(log_filename_buf) - 1] = '\0';
 
   char *log_dir = get_log_dir();
@@ -735,7 +735,7 @@ static char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t 
     SAFE_FREE(log_dir);
 
     // Copy to static result buffer
-    strncpy(result_buf, default_log_path_buf, sizeof(result_buf) - 1);
+    SAFE_STRNCPY(result_buf, default_log_path_buf, sizeof(result_buf) - 1);
     result_buf[sizeof(result_buf) - 1] = '\0';
     return result_buf;
 
@@ -744,12 +744,12 @@ static char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t 
     if (platform_get_temp_dir(tmp_dir_buf, PLATFORM_MAX_PATH_LENGTH)) {
       safe_snprintf(default_log_path_buf, PLATFORM_MAX_PATH_LENGTH, "%s%s%s", tmp_dir_buf, PATH_SEPARATOR_STR,
                     "ascii-chat.log");
-      strncpy(result_buf, default_log_path_buf, sizeof(result_buf) - 1);
+      SAFE_STRNCPY(result_buf, default_log_path_buf, sizeof(result_buf) - 1);
       result_buf[sizeof(result_buf) - 1] = '\0';
       return result_buf;
     } else {
       // Fallback to just the filename
-      strncpy(result_buf, log_filename_buf, sizeof(result_buf) - 1);
+      SAFE_STRNCPY(result_buf, log_filename_buf, sizeof(result_buf) - 1);
       result_buf[sizeof(result_buf) - 1] = '\0';
       return result_buf;
     }

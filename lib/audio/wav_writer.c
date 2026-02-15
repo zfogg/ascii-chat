@@ -6,6 +6,7 @@
 #include <ascii-chat/audio/wav_writer.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/string.h>
+#include <ascii-chat/platform/util.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -55,7 +56,7 @@ wav_writer_t *wav_writer_open(const char *filepath, int sample_rate, int channel
     return NULL;
   }
 
-  writer->file = fopen(filepath, "wb");
+  writer->file = platform_fopen(filepath, "wb");
   if (!writer->file) {
     SAFE_FREE(writer);
     return NULL;

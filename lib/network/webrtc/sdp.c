@@ -118,11 +118,9 @@ asciichat_error_t sdp_generate_offer(const terminal_capability_t *capabilities, 
 
   // Video media section with terminal capabilities
   char codec_list[128] = "96";
-  for (size_t i = 1; i < capability_count; i++) {
-    char codec_num[4];
-    safe_snprintf(codec_num, sizeof(codec_num), " %d", 96 + (int)i);
-    size_t len = strlen(codec_list);
-    strncat(codec_list, codec_num, sizeof(codec_list) - len - 1);
+  size_t codec_pos = strlen(codec_list);
+  for (size_t i = 1; i < capability_count && codec_pos < sizeof(codec_list) - 1; i++) {
+    codec_pos += safe_snprintf(codec_list + codec_pos, sizeof(codec_list) - codec_pos, " %d", 96 + (int)i);
   }
 
   written = safe_snprintf(sdp, remaining, "m=video 9 UDP/TLS/RTP/SAVPF %s\r\n", codec_list);
@@ -525,9 +523,12 @@ asciichat_error_t sdp_parse(const char *sdp_string, sdp_session_t *session) {
         const char *rtpmap = value + 7; // Skip "rtpmap:"
 
         // Parse: PT codec/rate[/channels]
-        int pt = 0;
+        char *endptr = NULL;
+        int pt = (int)strtol(rtpmap, &endptr, 10);
         char codec_name[32] = {0};
-        sscanf(rtpmap, "%d %s", &pt, codec_name);
+        if (endptr && *endptr == ' ') {
+          SAFE_STRNCPY(codec_name, endptr + 1, sizeof(codec_name));
+        }
 
         if (in_audio_section && pt == 111 && strstr(codec_name, "opus")) {
           // Opus audio

@@ -111,7 +111,7 @@ static asciichat_error_t build_validation_caches(void) {
       acds_strings_destroy();
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for adjective word");
     }
-    strcpy(entry->word, adjectives[i]);
+    memcpy(entry->word, adjectives[i], word_len);
 
     HASH_ADD_KEYPTR(hh, g_adjectives_cache, entry->word, strlen(entry->word), entry);
   }
@@ -133,7 +133,7 @@ static asciichat_error_t build_validation_caches(void) {
       acds_strings_destroy();
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for noun word");
     }
-    strcpy(entry->word, nouns[i]);
+    memcpy(entry->word, nouns[i], word_len);
 
     HASH_ADD_KEYPTR(hh, g_nouns_cache, entry->word, strlen(entry->word), entry);
   }

@@ -1241,7 +1241,7 @@ void options_builder_add_example(options_builder_t *builder, uint32_t mode_bitma
 
   if (owns_args) {
     // If owning, duplicate the string and track it
-    char *owned_args = strdup(args);
+    char *owned_args = platform_strdup(args);
     if (!owned_args) {
       log_fatal("Failed to duplicate example args string");
       return;
@@ -1813,7 +1813,7 @@ asciichat_error_t options_config_validate(const options_config_t *config, const 
       if (option_is_set && !depends_is_set) {
         if (error_message) {
           if (dep->error_message) {
-            *error_message = strdup(dep->error_message);
+            *error_message = platform_strdup(dep->error_message);
           } else {
             asprintf(error_message, "Option --%s requires --%s to be set", dep->option_name, dep->depends_on);
           }
@@ -1826,7 +1826,7 @@ asciichat_error_t options_config_validate(const options_config_t *config, const 
       if (option_is_set && depends_is_set) {
         if (error_message) {
           if (dep->error_message) {
-            *error_message = strdup(dep->error_message);
+            *error_message = platform_strdup(dep->error_message);
           } else {
             asprintf(error_message, "Option --%s conflicts with --%s", dep->option_name, dep->depends_on);
           }

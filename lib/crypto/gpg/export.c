@@ -15,6 +15,7 @@
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/platform/process.h>
+#include <ascii-chat/platform/util.h>
 
 #include <ctype.h>
 #include <errno.h>
@@ -74,7 +75,7 @@ static int gpg_export_public_key(const char *key_id, uint8_t *public_key_out) {
   log_debug("GPG export completed successfully");
 
   // Read the exported key file
-  FILE *fp = fopen(temp_path, "rb");
+  FILE *fp = platform_fopen(temp_path, "rb");
   if (!fp) {
     log_error("Failed to open exported GPG key file");
     platform_delete_temp_file(temp_path);

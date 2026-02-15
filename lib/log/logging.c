@@ -1634,7 +1634,7 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
   if (timestamp_len >= sizeof(timestamp) || timestamp_len == 0) {
     return 0; // Invalid timestamp - empty or too long
   }
-  strncpy(timestamp, timestamp_start, timestamp_len);
+  SAFE_STRNCPY(timestamp, timestamp_start, timestamp_len);
   timestamp[timestamp_len] = '\0';
   p++; // Skip ]
 
@@ -1660,7 +1660,7 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
   if (level_len >= sizeof(level_str) || level_len == 0) {
     return 0; // Level string too long or empty
   }
-  strncpy(level_str, level_start, level_len);
+  SAFE_STRNCPY(level_str, level_start, level_len);
   // Strip trailing whitespace from level (e.g., "DEBUG " -> "DEBUG")
   while (level_len > 0 && (level_str[level_len - 1] == ' ' || level_str[level_len - 1] == '\t')) {
     level_len--;
@@ -1726,7 +1726,7 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
   if (file_len >= sizeof(file_path)) {
     return 0;
   }
-  strncpy(file_path, file_start, file_len);
+  SAFE_STRNCPY(file_path, file_start, file_len);
   file_path[file_len] = '\0';
   p++; // Skip :
 
@@ -1780,7 +1780,7 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
     func_len = sizeof(func_name) - 1;
   }
   if (func_len > 0) {
-    strncpy(func_name, func_start, func_len);
+    SAFE_STRNCPY(func_name, func_start, func_len);
   }
   func_name[func_len] = '\0';
 
@@ -1816,7 +1816,7 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
     if (len >= buf_size) {
       return 0;
     }
-    strncpy(colored_buf, plain_line, buf_size - 1);
+    SAFE_STRNCPY(colored_buf, plain_line, buf_size - 1);
     colored_buf[buf_size - 1] = '\0';
     return len;
   }
@@ -1849,7 +1849,7 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
     return 0;
   }
 
-  strncpy(colored_buf, work_buffer, buf_size - 1);
+  SAFE_STRNCPY(colored_buf, work_buffer, buf_size - 1);
   colored_buf[buf_size - 1] = '\0';
   return (size_t)len;
 }

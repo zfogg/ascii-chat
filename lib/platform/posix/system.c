@@ -493,6 +493,10 @@ FILE *platform_fopen(const char *filename, const char *mode) {
   return fopen(filename, mode);
 }
 
+FILE *platform_tmpfile(void) {
+  return tmpfile();
+}
+
 /**
  * @brief Delete file
  * @param pathname File path

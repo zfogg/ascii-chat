@@ -6,6 +6,7 @@
 #include "ascii-chat/common/error_codes.h"
 #include <ascii-chat/logging/file_parser.h>
 #include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/util.h>
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/log/logging.h>
@@ -60,7 +61,7 @@ bool log_file_parser_parse_line(const char *line, session_log_entry_t *out_entry
 
   // We have a valid log line - preserve the entire line as-is for recoloring
   // Copy full line to output, always bounded to prevent overflow
-  strncpy(out_entry->message, line, SESSION_LOG_LINE_MAX - 1);
+  SAFE_STRNCPY(out_entry->message, line, SESSION_LOG_LINE_MAX - 1);
   out_entry->message[SESSION_LOG_LINE_MAX - 1] = '\0';
 
   // Remove trailing newline if present
@@ -88,7 +89,7 @@ size_t log_file_parser_tail(const char *file_path, size_t max_size, session_log_
   }
 
   // Open file
-  FILE *fp = fopen(file_path, "r");
+  FILE *fp = platform_fopen(file_path, "r");
   if (!fp) {
     SET_ERRNO(ERROR_FILE_OPERATION, "Cannot open log file for tailing: %s (errno: %s)", file_path,
               SAFE_STRERROR(errno));
@@ -289,16 +290,16 @@ size_t log_file_parser_merge_and_dedupe(const session_log_entry_t *buffer_entrie
         }
         final_line[final_len] = '\0';
 
-        strncpy(merged[buffer_count + i].message, final_line, SESSION_LOG_LINE_MAX - 1);
+        SAFE_STRNCPY(merged[buffer_count + i].message, final_line, SESSION_LOG_LINE_MAX - 1);
         merged[buffer_count + i].message[SESSION_LOG_LINE_MAX - 1] = '\0';
       } else {
         // Highlighting failed, use base text as-is
-        strncpy(merged[buffer_count + i].message, base_text, SESSION_LOG_LINE_MAX - 1);
+        SAFE_STRNCPY(merged[buffer_count + i].message, base_text, SESSION_LOG_LINE_MAX - 1);
         merged[buffer_count + i].message[SESSION_LOG_LINE_MAX - 1] = '\0';
       }
     } else {
       // No message marker found, use base text as-is
-      strncpy(merged[buffer_count + i].message, base_text, SESSION_LOG_LINE_MAX - 1);
+      SAFE_STRNCPY(merged[buffer_count + i].message, base_text, SESSION_LOG_LINE_MAX - 1);
       merged[buffer_count + i].message[SESSION_LOG_LINE_MAX - 1] = '\0';
     }
     merged[buffer_count + i].sequence = file_entries[i].sequence;

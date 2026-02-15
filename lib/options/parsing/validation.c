@@ -106,7 +106,7 @@ bool validate_port_callback(const void *options_struct, char **error_msg) {
   // Instead, check if the port value is in range (this will catch the range but not format issues)
   if (opts->port < 1 || opts->port > 65535) {
     if (error_msg) {
-      *error_msg = strdup("Port must be between 1 and 65535");
+      *error_msg = platform_strdup("Port must be between 1 and 65535");
     }
     return false;
   }

@@ -57,32 +57,34 @@ static void zsh_write_option(FILE *output, const option_descriptor_t *opt) {
   if (meta) {
     if (meta->input_type == OPTION_INPUT_ENUM && meta->enum_values && meta->enum_values[0] != NULL) {
       // Enum completion: "(value1 value2 value3)"
-      strcpy(completion_spec, ":(");
-      for (size_t i = 0; meta->enum_values[i] != NULL; i++) {
+      size_t pos = 0;
+      pos += safe_snprintf(completion_spec + pos, sizeof(completion_spec) - pos, ":(");
+      for (size_t i = 0; meta->enum_values[i] != NULL && pos < sizeof(completion_spec) - 1; i++) {
         if (i > 0)
-          strcat(completion_spec, " ");
-        strcat(completion_spec, meta->enum_values[i]);
+          pos += safe_snprintf(completion_spec + pos, sizeof(completion_spec) - pos, " ");
+        pos += safe_snprintf(completion_spec + pos, sizeof(completion_spec) - pos, "%s", meta->enum_values[i]);
       }
-      strcat(completion_spec, ")");
+      safe_snprintf(completion_spec + pos, sizeof(completion_spec) - pos, ")");
     } else if (meta->input_type == OPTION_INPUT_FILEPATH) {
       // File path completion
-      strcpy(completion_spec, ":_files");
+      SAFE_STRNCPY(completion_spec, ":_files", sizeof(completion_spec));
     } else if (meta->examples && meta->examples[0] != NULL) {
       // Examples: "(example1 example2)" - practical values, higher priority than calculated ranges
-      strcpy(completion_spec, ":(");
-      for (size_t i = 0; meta->examples[i] != NULL; i++) {
+      size_t pos = 0;
+      pos += safe_snprintf(completion_spec + pos, sizeof(completion_spec) - pos, ":(");
+      for (size_t i = 0; meta->examples[i] != NULL && pos < sizeof(completion_spec) - 1; i++) {
         if (i > 0)
-          strcat(completion_spec, " ");
-        strcat(completion_spec, meta->examples[i]);
+          pos += safe_snprintf(completion_spec + pos, sizeof(completion_spec) - pos, " ");
+        pos += safe_snprintf(completion_spec + pos, sizeof(completion_spec) - pos, "%s", meta->examples[i]);
       }
-      strcat(completion_spec, ")");
+      safe_snprintf(completion_spec + pos, sizeof(completion_spec) - pos, ")");
     } else if (meta->input_type == OPTION_INPUT_NUMERIC) {
       // Numeric completion with range - only if no examples
       if (meta->numeric_range.min > 0 || meta->numeric_range.max > 0) {
         safe_snprintf(completion_spec, sizeof(completion_spec), ":(numeric %d-%d)", meta->numeric_range.min,
                       meta->numeric_range.max);
       } else {
-        strcpy(completion_spec, ":(numeric)");
+        SAFE_STRNCPY(completion_spec, ":(numeric)", sizeof(completion_spec));
       }
     }
   }

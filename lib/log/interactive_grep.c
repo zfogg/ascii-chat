@@ -151,7 +151,7 @@ asciichat_error_t interactive_grep_init(void) {
   const char *initial_pattern = cli_pattern ? cli_pattern : "DEBUG";
 
   // Load initial pattern into input buffer
-  strncpy(g_grep_state.input_buffer, initial_pattern, GREP_INPUT_BUFFER_SIZE - 1);
+  SAFE_STRNCPY(g_grep_state.input_buffer, initial_pattern, GREP_INPUT_BUFFER_SIZE - 1);
   g_grep_state.len = strlen(initial_pattern);
   g_grep_state.cursor = g_grep_state.len;
   g_grep_state.mode = GREP_MODE_ACTIVE;
@@ -231,7 +231,7 @@ void interactive_grep_enter_mode(void) {
 
       size_t pattern_len = strlen(pattern_to_use);
       if (pattern_len < sizeof(g_grep_state.input_buffer) - 1) {
-        strcpy(g_grep_state.input_buffer, pattern_to_use);
+        memcpy(g_grep_state.input_buffer, pattern_to_use, pattern_len + 1);
         g_grep_state.len = pattern_len;
         g_grep_state.cursor = pattern_len;
         g_grep_state.cli_pattern_auto_populated = true;
@@ -752,7 +752,7 @@ bool interactive_grep_get_match_info(const char *message, size_t *out_match_star
   pcre2_singleton_t *patterns_copy[MAX_GREP_PATTERNS];
 
   if (has_fixed_string) {
-    strncpy(pattern_copy, g_grep_state.input_buffer, sizeof(pattern_copy) - 1);
+    SAFE_STRNCPY(pattern_copy, g_grep_state.input_buffer, sizeof(pattern_copy) - 1);
     pattern_copy[sizeof(pattern_copy) - 1] = '\0';
   }
 

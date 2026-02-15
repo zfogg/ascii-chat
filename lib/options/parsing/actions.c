@@ -27,6 +27,7 @@
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/platform/question.h>
 #include <ascii-chat/platform/stat.h>
+#include <ascii-chat/platform/util.h>
 #include <ascii-chat/version.h>
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/audio/audio.h>
@@ -627,7 +628,7 @@ void action_completions(const char *shell_name, const char *output_path) {
       log_plain("Overwriting existing completions file...");
     }
 
-    output = fopen(output_path, "w");
+    output = platform_fopen(output_path, "w");
     if (!output) {
       log_plain_stderr("Error: Failed to open %s for writing", output_path);
       exit(ERROR_FILE_OPERATION);

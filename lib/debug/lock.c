@@ -432,10 +432,10 @@ static void check_long_held_locks(void) {
       // Copy all info we need for logging later
       format_duration_ns((double)held_ns, info->duration_str, sizeof(info->duration_str));
       info->lock_address = entry->lock_address;
-      strncpy(info->file_name, entry->file_name, sizeof(info->file_name) - 1);
+      SAFE_STRNCPY(info->file_name, entry->file_name, sizeof(info->file_name) - 1);
       info->file_name[sizeof(info->file_name) - 1] = '\0';
       info->line_number = entry->line_number;
-      strncpy(info->function_name, entry->function_name, sizeof(info->function_name) - 1);
+      SAFE_STRNCPY(info->function_name, entry->function_name, sizeof(info->function_name) - 1);
       info->function_name[sizeof(info->function_name) - 1] = '\0';
       info->thread_id = entry->thread_id;
 
@@ -869,9 +869,9 @@ static bool debug_process_tracked_unlock(void *lock_ptr, uint32_t key, const cha
     if (held_ms > LOCK_HOLD_TIME_WARNING_MS) {
       should_log_warning = true;
       format_duration_ms((double)held_ms, deferred_duration_str, sizeof(deferred_duration_str));
-      strncpy(deferred_file_name, file_name, sizeof(deferred_file_name) - 1);
+      SAFE_STRNCPY(deferred_file_name, file_name, sizeof(deferred_file_name) - 1);
       deferred_line_number = line_number;
-      strncpy(deferred_function_name, function_name, sizeof(deferred_function_name) - 1);
+      SAFE_STRNCPY(deferred_function_name, function_name, sizeof(deferred_function_name) - 1);
       deferred_lock_ptr = lock_ptr;
       deferred_lock_type_str = lock_type_str;
 

@@ -10,6 +10,7 @@
 #include <ascii-chat/embedded_resources.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
+#include <ascii-chat/platform/util.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -64,7 +65,7 @@ int get_manpage_template(FILE **out_file, const char **out_content, size_t *out_
 
   // Use binary mode to ensure fread byte count matches ftell file size.
   // Text mode on Windows translates \r\n to \n, causing size mismatch.
-  FILE *f = fopen(path, "rb");
+  FILE *f = platform_fopen(path, "rb");
   if (!f) {
     SET_ERRNO_SYS(ERROR_CONFIG, "Failed to open man page template: %s", path);
     return -1;

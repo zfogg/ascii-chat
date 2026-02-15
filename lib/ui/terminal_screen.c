@@ -271,7 +271,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
 
           for (size_t truncate_at = src_len; truncate_at > 0; truncate_at--) {
             char test_buf[SESSION_LOG_LINE_MAX];
-            strncpy(test_buf, prev_msg, truncate_at);
+            SAFE_STRNCPY(test_buf, prev_msg, truncate_at);
             test_buf[truncate_at] = '\0';
 
             int test_width = display_width(test_buf);

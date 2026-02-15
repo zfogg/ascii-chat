@@ -17,6 +17,7 @@
 #include <string.h>
 #include <io.h>
 #include <fcntl.h>
+#include <share.h>
 #include <sys/stat.h>
 #include <direct.h>
 #include <errno.h>
@@ -111,7 +112,7 @@ asciichat_error_t platform_mkdir_recursive(const char *path, int mode) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Path too long for platform_mkdir_recursive: %zu", len);
   }
 
-  strncpy(tmp, path, sizeof(tmp) - 1);
+  SAFE_STRNCPY(tmp, path, sizeof(tmp) - 1);
   tmp[sizeof(tmp) - 1] = '\0';
 
   // Create each directory in the path
@@ -226,11 +227,12 @@ int platform_create_temp_file(char *path_out, size_t path_size, const char *pref
     return -1;
   }
 
-  strcpy(path_out, temp_file);
+  SAFE_STRNCPY(path_out, temp_file, path_size);
 
   // Open the file and get the file descriptor
-  int temp_fd = _open(temp_file, _O_RDWR | _O_BINARY);
-  if (temp_fd < 0) {
+  int temp_fd = -1;
+  errno_t err = _sopen_s(&temp_fd, temp_file, _O_RDWR | _O_BINARY, _SH_DENYNO, _S_IREAD | _S_IWRITE);
+  if (err != 0 || temp_fd < 0) {
     DeleteFileA(temp_file);
     return -1;
   }
@@ -525,8 +527,9 @@ asciichat_error_t platform_temp_file_open(const char *path, int *fd_out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
-  int temp_fd = _open(path, _O_RDWR | _O_BINARY);
-  if (temp_fd < 0) {
+  int temp_fd = -1;
+  errno_t err = _sopen_s(&temp_fd, path, _O_RDWR | _O_BINARY, _SH_DENYNO, _S_IREAD | _S_IWRITE);
+  if (err != 0 || temp_fd < 0) {
     return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Failed to open temp file: %s", path);
   }
 

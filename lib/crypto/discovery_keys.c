@@ -14,6 +14,7 @@
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/platform/util.h>
 #include <ascii-chat/platform/question.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/util/path.h>
@@ -229,7 +230,7 @@ asciichat_error_t discovery_keys_save_cached(const char *acds_server, const uint
   }
 
   // Save key in OpenSSH public key format
-  FILE *f = fopen(cache_path, "w");
+  FILE *f = platform_fopen(cache_path, "w");
   if (!f) {
     return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Failed to create cache file: %s", cache_path);
   }

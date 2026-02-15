@@ -46,7 +46,7 @@ char *platform_strdup(const char *s) {
   size_t len = strlen(s) + 1;
   char *dup = SAFE_MALLOC(len, char *);
   if (dup)
-    strcpy(dup, s);
+    memcpy(dup, s, len);
   return dup;
 }
 

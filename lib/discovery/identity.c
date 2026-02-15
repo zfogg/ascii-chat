@@ -8,6 +8,7 @@
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/platform/util.h>
 #include <sodium.h>
 #include <stdio.h>
 #include <string.h>
@@ -34,7 +35,7 @@ asciichat_error_t acds_identity_load(const char *path, uint8_t public_key[32], u
   }
 
   // Open file for reading
-  FILE *fp = fopen(path, "rb");
+  FILE *fp = platform_fopen(path, "rb");
   if (!fp) {
     if (errno == ENOENT) {
       return SET_ERRNO(ERROR_CONFIG, "Identity file does not exist: %s", path);

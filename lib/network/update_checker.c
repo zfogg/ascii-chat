@@ -12,6 +12,7 @@
 #include <ascii-chat/platform/network.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/platform/util.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/common.h>
@@ -68,7 +69,7 @@ asciichat_error_t update_check_load_cache(update_check_result_t *result) {
     return SET_ERRNO(ERROR_FILE_OPERATION, "Could not determine cache file path");
   }
 
-  FILE *f = fopen(cache_path, "r");
+  FILE *f = platform_fopen(cache_path, "r");
   if (!f) {
     const char *error_msg = file_read_error_message(cache_path);
     SAFE_FREE(cache_path);
@@ -145,7 +146,7 @@ asciichat_error_t update_check_save_cache(const update_check_result_t *result) {
     return SET_ERRNO(ERROR_FILE_OPERATION, "Could not determine cache file path");
   }
 
-  FILE *f = fopen(cache_path, "w");
+  FILE *f = platform_fopen(cache_path, "w");
   if (!f) {
     const char *error_msg = file_write_error_message(cache_path);
     SAFE_FREE(cache_path);
@@ -361,7 +362,7 @@ static bool is_homebrew_install(void) {
 static bool is_arch_linux(void) {
 #ifdef __linux__
   // Check /etc/os-release for Arch
-  FILE *f = fopen("/etc/os-release", "r");
+  FILE *f = platform_fopen("/etc/os-release", "r");
   if (!f) {
     return false;
   }

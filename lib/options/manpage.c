@@ -26,6 +26,7 @@
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/platform/question.h>
 #include <ascii-chat/platform/stat.h>
+#include <ascii-chat/platform/util.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -102,7 +103,7 @@ asciichat_error_t options_config_generate_manpage_template(const options_config_
   bool should_close = false;
 
   if (output_path) {
-    f = fopen(output_path, "w");
+    f = platform_fopen(output_path, "w");
     if (!f) {
       return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to open output file: %s", output_path);
     }
@@ -259,7 +260,7 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
       log_plain("Overwriting existing man page file...");
     }
 
-    f = fopen(output_path, "w");
+    f = platform_fopen(output_path, "w");
     if (!f) {
       return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to open output file: %s", output_path);
     }
@@ -347,7 +348,7 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
 
         size_t section_name_len = (size_t)(section_name_end - section_start);
         if (section_name_len > 0 && section_name_len < sizeof(current_merge_section)) {
-          strncpy(current_merge_section, section_start, section_name_len);
+          SAFE_STRNCPY(current_merge_section, section_start, section_name_len);
           current_merge_section[section_name_len] = '\0';
         }
       }
@@ -462,7 +463,7 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
           size_t var_len = (size_t)(var_end - var_start);
           if (var_len > 0) {
             char *var_name = SAFE_MALLOC(var_len + 1, char *);
-            strncpy(var_name, var_start, var_len);
+            SAFE_STRNCPY(var_name, var_start, var_len);
             var_name[var_len] = '\0';
 
             // Trim trailing whitespace
@@ -493,7 +494,7 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
           size_t desc_len = (size_t)(line_end - desc_start);
           if (desc_len > 0 && manual_env_descs[manual_env_count - 1] == NULL) {
             char *desc = SAFE_MALLOC(desc_len + 1, char *);
-            strncpy(desc, desc_start, desc_len);
+            SAFE_STRNCPY(desc, desc_start, desc_len);
             desc[desc_len] = '\0';
 
             // Trim trailing whitespace
@@ -561,7 +562,7 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
 
         size_t section_name_len = (size_t)(section_name_end - section_start);
         if (section_name_len > 0 && section_name_len < sizeof(current_auto_section)) {
-          strncpy(current_auto_section, section_start, section_name_len);
+          SAFE_STRNCPY(current_auto_section, section_start, section_name_len);
           current_auto_section[section_name_len] = '\0';
         }
       }
@@ -678,7 +679,7 @@ parsed_section_t *parse_manpage_sections(const char *filepath, size_t *num_secti
     return NULL;
   }
 
-  FILE *f = fopen(filepath, "r");
+  FILE *f = platform_fopen(filepath, "r");
   if (!f) {
     SET_ERRNO_SYS(ERROR_CONFIG, "Failed to open file: %s", filepath);
     return NULL;

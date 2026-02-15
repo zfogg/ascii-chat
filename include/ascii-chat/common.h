@@ -426,8 +426,12 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
 /* Platform-safe environment variable access */
 #define SAFE_GETENV(name) platform_getenv(name)
 
-/* Platform-safe sscanf */
+/* Platform-safe sscanf (only used with numeric format specifiers) */
+#ifdef _WIN32
+#define SAFE_SSCANF(str, format, ...) sscanf_s(str, format, __VA_ARGS__)
+#else
 #define SAFE_SSCANF(str, format, ...) sscanf(str, format, __VA_ARGS__)
+#endif
 
 /* Platform-safe strerror */
 #include "platform/abstraction.h" // IWYU pragma: keep

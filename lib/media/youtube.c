@@ -122,7 +122,7 @@ static bool youtube_cache_get(const char *youtube_url, char *output_url, size_t 
     return false;
   }
 
-  strncpy(output_url, g_youtube_cache.stream_url, output_size - 1);
+  SAFE_STRNCPY(output_url, g_youtube_cache.stream_url, output_size - 1);
   output_url[output_size - 1] = '\0';
 
   if (url_len == 0) {
@@ -151,11 +151,11 @@ static void youtube_cache_set(const char *youtube_url, const char *stream_url) {
     return; // Stream URL too long to cache
   }
 
-  strncpy(g_youtube_cache.youtube_url, youtube_url, sizeof(g_youtube_cache.youtube_url) - 1);
+  SAFE_STRNCPY(g_youtube_cache.youtube_url, youtube_url, sizeof(g_youtube_cache.youtube_url) - 1);
   g_youtube_cache.youtube_url[sizeof(g_youtube_cache.youtube_url) - 1] = '\0';
 
   if (stream_url) {
-    strncpy(g_youtube_cache.stream_url, stream_url, sizeof(g_youtube_cache.stream_url) - 1);
+    SAFE_STRNCPY(g_youtube_cache.stream_url, stream_url, sizeof(g_youtube_cache.stream_url) - 1);
   } else {
     // Mark as empty (failure state)
     g_youtube_cache.stream_url[0] = '\0';
@@ -296,7 +296,7 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
   if (youtube_cache_get(youtube_url, cached_url, sizeof(cached_url))) {
     if (cached_url[0] != '\0') {
       // Cached success - return the URL
-      strncpy(output_url, cached_url, output_size - 1);
+      SAFE_STRNCPY(output_url, cached_url, output_size - 1);
       output_url[output_size - 1] = '\0';
       return ASCIICHAT_OK;
     } else {
@@ -444,7 +444,7 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
   }
 
   // Copy the URL directly (it's already properly formatted)
-  strncpy(output_url, url_buffer, output_size - 1);
+  SAFE_STRNCPY(output_url, url_buffer, output_size - 1);
   output_url[output_size - 1] = '\0';
 
   // Cache the extracted URL to avoid redundant yt-dlp calls during initialization

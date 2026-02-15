@@ -420,7 +420,7 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
 
 #ifdef _WIN32
   // On Windows, platform_create_temp_file returns fd=-1, need to open separately
-  fd = open(temp_file, O_WRONLY | O_BINARY);
+  fd = platform_open(temp_file, O_WRONLY | O_BINARY);
   if (fd < 0) {
     platform_delete_temp_file(temp_file);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to open temp file for writing");

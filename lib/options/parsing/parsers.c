@@ -10,6 +10,7 @@
 #include <ctype.h>
 #include <stddef.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/platform/util.h>
 #include <ascii-chat/options/builder.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/strings.h>    // For fuzzy matching suggestions
@@ -80,7 +81,7 @@ static bool parse_setting_generic(const char *arg, void *dest, const setting_map
                                   char **error_msg) {
   if (!dest || !lookup_table) {
     if (error_msg) {
-      *error_msg = strdup("Internal error: NULL destination or lookup table");
+      *error_msg = platform_strdup("Internal error: NULL destination or lookup table");
     }
     return false;
   }
@@ -101,7 +102,7 @@ static bool parse_setting_generic(const char *arg, void *dest, const setting_map
   pcre2_code *regex = setting_regex_get();
   if (!regex) {
     if (error_msg) {
-      *error_msg = strdup("Internal error: PCRE2 regex not available");
+      *error_msg = platform_strdup("Internal error: PCRE2 regex not available");
     }
     return false;
   }
@@ -109,7 +110,7 @@ static bool parse_setting_generic(const char *arg, void *dest, const setting_map
   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
   if (!match_data) {
     if (error_msg) {
-      *error_msg = strdup("Internal error: Failed to allocate match data");
+      *error_msg = platform_strdup("Internal error: Failed to allocate match data");
     }
     return false;
   }
@@ -120,7 +121,7 @@ static bool parse_setting_generic(const char *arg, void *dest, const setting_map
   if (rc < 0) {
     // No match - invalid setting
     if (error_msg) {
-      *error_msg = strdup("Invalid setting value");
+      *error_msg = platform_strdup("Invalid setting value");
     }
     return false;
   }
@@ -135,7 +136,7 @@ static bool parse_setting_generic(const char *arg, void *dest, const setting_map
 
   // Should not reach here if regex validated correctly
   if (error_msg) {
-    *error_msg = strdup("Internal error: Regex matched but lookup failed");
+    *error_msg = platform_strdup("Internal error: Regex matched but lookup failed");
   }
   return false;
 }
@@ -159,7 +160,7 @@ static const setting_map_entry_t g_color_setting_map[] = {
 bool parse_color_setting(const char *arg, void *dest, char **error_msg) {
   if (!dest) {
     if (error_msg) {
-      *error_msg = strdup("Internal error: NULL destination");
+      *error_msg = platform_strdup("Internal error: NULL destination");
     }
     return false;
   }
@@ -190,7 +191,7 @@ static const setting_map_entry_t g_utf8_setting_map[] = {
 bool parse_utf8_setting(const char *arg, void *dest, char **error_msg) {
   if (!dest) {
     if (error_msg) {
-      *error_msg = strdup("Internal error: NULL destination");
+      *error_msg = platform_strdup("Internal error: NULL destination");
     }
     return false;
   }
@@ -209,7 +210,7 @@ bool parse_utf8_setting(const char *arg, void *dest, char **error_msg) {
 bool parse_color_mode(const char *arg, void *dest, char **error_msg) {
   if (!arg || !dest) {
     if (error_msg) {
-      *error_msg = strdup("Internal error: NULL argument or destination");
+      *error_msg = platform_strdup("Internal error: NULL argument or destination");
     }
     return false;
   }
@@ -260,7 +261,7 @@ bool parse_color_mode(const char *arg, void *dest, char **error_msg) {
     } else {
       safe_snprintf(msg, sizeof(msg), "Invalid color mode '%s'. Valid values: auto, none, 16, 256, truecolor", arg);
     }
-    *error_msg = strdup(msg);
+    *error_msg = platform_strdup(msg);
   }
   return false;
 }
@@ -268,7 +269,7 @@ bool parse_color_mode(const char *arg, void *dest, char **error_msg) {
 bool parse_color_filter(const char *arg, void *dest, char **error_msg) {
   if (!arg || !dest) {
     if (error_msg) {
-      *error_msg = strdup("Internal error: NULL argument or destination");
+      *error_msg = platform_strdup("Internal error: NULL argument or destination");
     }
     return false;
   }
@@ -290,7 +291,7 @@ bool parse_color_filter(const char *arg, void *dest, char **error_msg) {
                   "Invalid color filter '%s'. Valid values: none, black, white, green, magenta, fuchsia, "
                   "orange, teal, cyan, pink, red, yellow",
                   arg);
-    *error_msg = strdup(msg);
+    *error_msg = platform_strdup(msg);
   }
   return false;
 }
@@ -298,7 +299,7 @@ bool parse_color_filter(const char *arg, void *dest, char **error_msg) {
 bool parse_render_mode(const char *arg, void *dest, char **error_msg) {
   if (!arg || !dest) {
     if (error_msg) {
-      *error_msg = strdup("Internal error: NULL argument or destination");
+      *error_msg = platform_strdup("Internal error: NULL argument or destination");
     }
     return false;
   }
@@ -335,7 +336,7 @@ bool parse_render_mode(const char *arg, void *dest, char **error_msg) {
       safe_snprintf(msg, sizeof(msg), "Invalid render mode '%s'. Valid values: foreground, background, half-block",
                     arg);
     }
-    *error_msg = strdup(msg);
+    *error_msg = platform_strdup(msg);
   }
   return false;
 }
@@ -343,7 +344,7 @@ bool parse_render_mode(const char *arg, void *dest, char **error_msg) {
 bool parse_palette_type(const char *arg, void *dest, char **error_msg) {
   if (!arg || !dest) {
     if (error_msg) {
-      *error_msg = strdup("Internal error: NULL argument or destination");
+      *error_msg = platform_strdup("Internal error: NULL argument or destination");
     }
     return false;
   }
@@ -398,7 +399,7 @@ bool parse_palette_type(const char *arg, void *dest, char **error_msg) {
       safe_snprintf(msg, sizeof(msg),
                     "Invalid palette type '%s'. Valid values: standard, blocks, digital, minimal, cool, custom", arg);
     }
-    *error_msg = strdup(msg);
+    *error_msg = platform_strdup(msg);
   }
   return false;
 }
@@ -406,7 +407,7 @@ bool parse_palette_type(const char *arg, void *dest, char **error_msg) {
 bool parse_log_level(const char *arg, void *dest, char **error_msg) {
   if (!dest) {
     if (error_msg) {
-      *error_msg = strdup("Internal error: NULL destination");
+      *error_msg = platform_strdup("Internal error: NULL destination");
     }
     return false;
   }
@@ -462,7 +463,7 @@ bool parse_log_level(const char *arg, void *dest, char **error_msg) {
   if (error_msg) {
     char msg[256];
     safe_snprintf(msg, sizeof(msg), "Invalid log level '%s'. Valid values: dev, debug, info, warn, error, fatal", arg);
-    *error_msg = strdup(msg);
+    *error_msg = platform_strdup(msg);
   }
   return false;
 }
@@ -470,7 +471,7 @@ bool parse_log_level(const char *arg, void *dest, char **error_msg) {
 bool parse_port_option(const char *arg, void *dest, char **error_msg) {
   if (!arg || !dest) {
     if (error_msg) {
-      *error_msg = strdup("Internal error: NULL argument or destination");
+      *error_msg = platform_strdup("Internal error: NULL argument or destination");
     }
     return false;
   }
@@ -484,7 +485,7 @@ bool parse_port_option(const char *arg, void *dest, char **error_msg) {
     if (error_msg) {
       char msg[256];
       safe_snprintf(msg, sizeof(msg), "Invalid port '%s'. Port must be a number between 1 and 65535.", arg);
-      *error_msg = strdup(msg);
+      *error_msg = platform_strdup(msg);
     }
     return false;
   }
@@ -510,7 +511,7 @@ bool parse_port_option(const char *arg, void *dest, char **error_msg) {
 int parse_server_bind_address(const char *arg, void *config, char **remaining, int num_remaining, char **error_msg) {
   if (!arg || !config) {
     if (error_msg) {
-      *error_msg = strdup("Internal error: NULL argument or config");
+      *error_msg = platform_strdup("Internal error: NULL argument or config");
     }
     return -1;
   }
@@ -542,7 +543,7 @@ int parse_server_bind_address(const char *arg, void *config, char **remaining, i
                       "Already have: %s\n"
                       "Cannot add: %s",
                       address, addr_to_check);
-        *error_msg = strdup(msg);
+        *error_msg = platform_strdup(msg);
       }
       return -1;
     }
@@ -559,7 +560,7 @@ int parse_server_bind_address(const char *arg, void *config, char **remaining, i
                       "Already have: %s\n"
                       "Cannot add: %s",
                       address6, addr_to_check);
-        *error_msg = strdup(msg);
+        *error_msg = platform_strdup(msg);
       }
       return -1;
     }
@@ -576,7 +577,7 @@ int parse_server_bind_address(const char *arg, void *config, char **remaining, i
                     "  ascii-chat server ::1\n"
                     "  ascii-chat server 0.0.0.0 ::1",
                     arg);
-      *error_msg = strdup(msg);
+      *error_msg = platform_strdup(msg);
     }
     return -1;
   }
@@ -635,7 +636,7 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
 
   if (!arg || !config) {
     if (error_msg) {
-      *error_msg = strdup("Internal error: NULL argument or config");
+      *error_msg = platform_strdup("Internal error: NULL argument or config");
     }
     return -1;
   }
@@ -683,7 +684,7 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
         size_t addr_len = (size_t)(closing_bracket - arg - 1);
         if (addr_len >= OPTIONS_BUFF_SIZE) {
           if (error_msg) {
-            *error_msg = strdup("IPv6 address too long");
+            *error_msg = platform_strdup("IPv6 address too long");
           }
           return -1;
         }
@@ -697,7 +698,7 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
           if (error_msg) {
             char msg[256];
             safe_snprintf(msg, sizeof(msg), "Invalid port number '%s'. Must be 1-65535.", port_str);
-            *error_msg = strdup(msg);
+            *error_msg = platform_strdup(msg);
           }
           return -1;
         }
@@ -717,7 +718,7 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
         size_t addr_len = (size_t)(colon - arg);
         if (addr_len >= OPTIONS_BUFF_SIZE) {
           if (error_msg) {
-            *error_msg = strdup("Address too long");
+            *error_msg = platform_strdup("Address too long");
           }
           return -1;
         }
@@ -731,7 +732,7 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
           if (error_msg) {
             char msg[256];
             safe_snprintf(msg, sizeof(msg), "Invalid port number '%s'. Must be 1-65535.", port_str);
-            *error_msg = strdup(msg);
+            *error_msg = platform_strdup(msg);
           }
           return -1;
         }
@@ -762,7 +763,7 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
                       "Examples: ::1, 2001:db8::1, fe80::1\n"
                       "Or use hostnames like example.com",
                       address);
-        *error_msg = strdup(msg);
+        *error_msg = platform_strdup(msg);
       }
       return -1;
     }
@@ -777,7 +778,7 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
                       "Examples: 127.0.0.1, 192.168.1.1\n"
                       "For hostnames, use letters: example.com, localhost",
                       address);
-        *error_msg = strdup(msg);
+        *error_msg = platform_strdup(msg);
       }
       return -1;
     }
@@ -800,7 +801,7 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
 bool parse_palette_chars(const char *arg, void *dest, char **error_msg) {
   if (!arg || !dest) {
     if (error_msg) {
-      *error_msg = strdup("Internal error: NULL argument or destination");
+      *error_msg = platform_strdup("Internal error: NULL argument or destination");
     }
     return false;
   }
@@ -814,7 +815,7 @@ bool parse_palette_chars(const char *arg, void *dest, char **error_msg) {
   size_t len = strlen(arg);
   if (len == 0) {
     if (error_msg) {
-      *error_msg = strdup("Invalid palette-chars: value cannot be empty");
+      *error_msg = platform_strdup("Invalid palette-chars: value cannot be empty");
     }
     return false;
   }
@@ -823,7 +824,7 @@ bool parse_palette_chars(const char *arg, void *dest, char **error_msg) {
     if (error_msg) {
       char msg[256];
       safe_snprintf(msg, sizeof(msg), "Invalid palette-chars: too long (%zu chars, max 255)", len);
-      *error_msg = strdup(msg);
+      *error_msg = platform_strdup(msg);
     }
     return false;
   }
@@ -881,7 +882,7 @@ bool parse_verbose_flag(const char *arg, void *dest, char **error_msg) {
 bool parse_timestamp(const char *arg, void *dest, char **error_msg) {
   if (!arg || arg[0] == '\0') {
     if (error_msg) {
-      *error_msg = strdup("--seek requires a timestamp argument");
+      *error_msg = platform_strdup("--seek requires a timestamp argument");
     }
     return false;
   }
@@ -902,7 +903,7 @@ bool parse_timestamp(const char *arg, void *dest, char **error_msg) {
     *timestamp = strtod(arg, &endptr);
     if (*endptr != '\0' || *timestamp < 0.0) {
       if (error_msg) {
-        *error_msg = strdup("Invalid timestamp: expected non-negative seconds");
+        *error_msg = platform_strdup("Invalid timestamp: expected non-negative seconds");
       }
       return false;
     }
@@ -912,7 +913,7 @@ bool parse_timestamp(const char *arg, void *dest, char **error_msg) {
     strtol_result = strtol(arg, &endptr, 10);
     if (*endptr != ':' || strtol_result < 0) {
       if (error_msg) {
-        *error_msg = strdup("Invalid timestamp: expected MM:SS or MM:SS.ms format");
+        *error_msg = platform_strdup("Invalid timestamp: expected MM:SS or MM:SS.ms format");
       }
       return false;
     }
@@ -920,7 +921,7 @@ bool parse_timestamp(const char *arg, void *dest, char **error_msg) {
     double seconds = strtod(endptr + 1, &endptr);
     if (*endptr != '\0' && *endptr != '.' && *endptr != '\0') {
       if (error_msg) {
-        *error_msg = strdup("Invalid timestamp: expected MM:SS or MM:SS.ms format");
+        *error_msg = platform_strdup("Invalid timestamp: expected MM:SS or MM:SS.ms format");
       }
       return false;
     }
@@ -931,7 +932,7 @@ bool parse_timestamp(const char *arg, void *dest, char **error_msg) {
     strtol_result = strtol(arg, &endptr, 10);
     if (*endptr != ':' || strtol_result < 0) {
       if (error_msg) {
-        *error_msg = strdup("Invalid timestamp: expected HH:MM:SS or HH:MM:SS.ms format");
+        *error_msg = platform_strdup("Invalid timestamp: expected HH:MM:SS or HH:MM:SS.ms format");
       }
       return false;
     }
@@ -940,7 +941,7 @@ bool parse_timestamp(const char *arg, void *dest, char **error_msg) {
     strtol_result = strtol(endptr + 1, &endptr, 10);
     if (*endptr != ':' || strtol_result < 0 || strtol_result >= 60) {
       if (error_msg) {
-        *error_msg = strdup("Invalid timestamp: minutes must be 0-59");
+        *error_msg = platform_strdup("Invalid timestamp: minutes must be 0-59");
       }
       return false;
     }
@@ -949,7 +950,7 @@ bool parse_timestamp(const char *arg, void *dest, char **error_msg) {
     double seconds = strtod(endptr + 1, &endptr);
     if (*endptr != '\0') {
       if (error_msg) {
-        *error_msg = strdup("Invalid timestamp: expected HH:MM:SS or HH:MM:SS.ms format");
+        *error_msg = platform_strdup("Invalid timestamp: expected HH:MM:SS or HH:MM:SS.ms format");
       }
       return false;
     }
@@ -957,7 +958,7 @@ bool parse_timestamp(const char *arg, void *dest, char **error_msg) {
     return true;
   } else {
     if (error_msg) {
-      *error_msg = strdup("Invalid timestamp format: too many colons");
+      *error_msg = platform_strdup("Invalid timestamp format: too many colons");
     }
     return false;
   }
@@ -971,13 +972,13 @@ bool parse_cookies_from_browser(const char *arg, void *dest, char **error_msg) {
 
   if (!arg || arg[0] == '\0') {
     // No argument provided, default to chrome
-    strncpy(browser_buf, "chrome", max_size - 1);
+    SAFE_STRNCPY(browser_buf, "chrome", max_size - 1);
     browser_buf[max_size - 1] = '\0';
     return true;
   }
 
   // Copy the provided browser name
-  strncpy(browser_buf, arg, max_size - 1);
+  SAFE_STRNCPY(browser_buf, arg, max_size - 1);
   browser_buf[max_size - 1] = '\0';
   return true;
 }
@@ -985,7 +986,7 @@ bool parse_cookies_from_browser(const char *arg, void *dest, char **error_msg) {
 bool parse_volume(const char *arg, void *dest, char **error_msg) {
   if (!arg || !dest) {
     if (error_msg) {
-      *error_msg = strdup("Internal error: NULL argument or destination");
+      *error_msg = platform_strdup("Internal error: NULL argument or destination");
     }
     return false;
   }
@@ -996,7 +997,7 @@ bool parse_volume(const char *arg, void *dest, char **error_msg) {
 
   if (*endptr != '\0' || arg == endptr) {
     if (error_msg) {
-      *error_msg = strdup("Invalid volume value. Must be a number between 0.0 and 1.0");
+      *error_msg = platform_strdup("Invalid volume value. Must be a number between 0.0 and 1.0");
     }
     return false;
   }
@@ -1005,7 +1006,7 @@ bool parse_volume(const char *arg, void *dest, char **error_msg) {
     if (error_msg) {
       char buf[256];
       SAFE_SNPRINTF(buf, sizeof(buf), "Volume must be between 0.0 and 1.0 (got %.2f)", val);
-      *error_msg = strdup(buf);
+      *error_msg = platform_strdup(buf);
     }
     return false;
   }
@@ -1017,7 +1018,7 @@ bool parse_volume(const char *arg, void *dest, char **error_msg) {
 bool parse_log_file(const char *arg, void *dest, char **error_msg) {
   if (!arg || !dest) {
     if (error_msg) {
-      *error_msg = strdup("Internal error: NULL argument or destination");
+      *error_msg = platform_strdup("Internal error: NULL argument or destination");
     }
     return false;
   }
@@ -1030,9 +1031,9 @@ bool parse_log_file(const char *arg, void *dest, char **error_msg) {
     if (error_msg) {
       asciichat_error_context_t err_ctx;
       if (HAS_ERRNO(&err_ctx)) {
-        *error_msg = strdup(err_ctx.context_message);
+        *error_msg = platform_strdup(err_ctx.context_message);
       } else {
-        *error_msg = strdup("Log file path validation failed");
+        *error_msg = platform_strdup("Log file path validation failed");
       }
     }
     return false;
@@ -1041,7 +1042,7 @@ bool parse_log_file(const char *arg, void *dest, char **error_msg) {
   // Copy validated path to destination
   char *log_file_buf = (char *)dest;
   const size_t max_size = 256;
-  strncpy(log_file_buf, normalized, max_size - 1);
+  SAFE_STRNCPY(log_file_buf, normalized, max_size - 1);
   log_file_buf[max_size - 1] = '\0';
 
   SAFE_FREE(normalized);
@@ -1051,7 +1052,7 @@ bool parse_log_file(const char *arg, void *dest, char **error_msg) {
 bool parse_audio_source(const char *arg, void *dest, char **error_msg) {
   if (!arg || !dest) {
     if (error_msg) {
-      *error_msg = strdup("Internal error: NULL argument or destination");
+      *error_msg = platform_strdup("Internal error: NULL argument or destination");
     }
     return false;
   }
@@ -1085,7 +1086,7 @@ bool parse_audio_source(const char *arg, void *dest, char **error_msg) {
   }
 
   if (error_msg) {
-    *error_msg = strdup("Audio source must be 'auto', 'mic', 'media', or 'both'");
+    *error_msg = platform_strdup("Audio source must be 'auto', 'mic', 'media', or 'both'");
   }
   return false;
 }

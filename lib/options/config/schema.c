@@ -304,7 +304,7 @@ asciichat_error_t config_schema_build_from_configs(const options_config_t **conf
     meta->type = desc->type;
 
     // Generate category: lowercase the group name from builder
-    strncpy(category_buffer, desc->group, sizeof(category_buffer) - 1);
+    SAFE_STRNCPY(category_buffer, desc->group, sizeof(category_buffer) - 1);
     category_buffer[sizeof(category_buffer) - 1] = '\0';
     str_tolower(category_buffer);
 

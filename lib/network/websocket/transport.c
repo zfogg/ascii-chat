@@ -659,7 +659,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
 
   // Extract path
   if (path_start) {
-    strncpy(path, path_start, sizeof(path) - 1);
+    SAFE_STRNCPY(path, path_start, sizeof(path) - 1);
     path[sizeof(path) - 1] = '\0';
   }
 

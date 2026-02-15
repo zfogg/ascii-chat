@@ -1393,6 +1393,15 @@ FILE *platform_fopen(const char *filename, const char *mode) {
   return file;
 }
 
+FILE *platform_tmpfile(void) {
+  FILE *file = NULL;
+  errno_t err = tmpfile_s(&file);
+  if (err != 0 || file == NULL) {
+    return NULL;
+  }
+  return file;
+}
+
 /**
  * @brief Delete file
  * @param pathname File path

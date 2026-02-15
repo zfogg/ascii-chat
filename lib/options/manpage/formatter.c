@@ -9,6 +9,7 @@
 
 #include <ascii-chat/options/manpage/formatter.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/platform/system.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -77,9 +78,10 @@ void manpage_fmt_write_title(FILE *f, const char *program_name, const char *mode
   }
 
   time_t now = time(NULL);
-  struct tm *tm_info = localtime(&now);
+  struct tm tm_buf;
+  platform_localtime(&now, &tm_buf);
   char date_str[32];
-  strftime(date_str, sizeof(date_str), "%B %Y", tm_info);
+  strftime(date_str, sizeof(date_str), "%B %Y", &tm_buf);
 
   // Build full program name (e.g., "ascii-chat-server" or just "ascii-chat")
   char full_name[256];

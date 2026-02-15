@@ -290,6 +290,16 @@ int platform_open(const char *pathname, int flags, ...);
 FILE *platform_fopen(const char *filename, const char *mode);
 
 /**
+ * @brief Create a temporary file (tmpfile replacement)
+ * @return FILE pointer, or NULL on error
+ *
+ * Uses tmpfile_s on Windows and tmpfile on POSIX.
+ *
+ * @ingroup platform
+ */
+FILE *platform_tmpfile(void);
+
+/**
  * @brief Convert file descriptor to stream (fdopen replacement)
  * @param fd File descriptor
  * @param mode Open mode string for the stream

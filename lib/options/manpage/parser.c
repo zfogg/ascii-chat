@@ -351,7 +351,7 @@ asciichat_error_t manpage_parser_parse_memory(const char *content, size_t conten
   }
 
   // Create temporary file from memory
-  FILE *tmp = tmpfile();
+  FILE *tmp = platform_tmpfile();
   if (!tmp) {
     return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create temporary file for memory parsing");
   }

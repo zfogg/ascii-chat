@@ -19,6 +19,10 @@ FILE *platform_fopen(const char *filename, const char *mode) {
   return fopen(filename, mode); // Use standard fopen
 }
 
+FILE *platform_tmpfile(void) {
+  return tmpfile();
+}
+
 size_t platform_write_all(int fd, const void *buf, size_t count) {
   (void)fd;
   (void)buf;

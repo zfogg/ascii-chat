@@ -540,7 +540,7 @@ asciichat_error_t grep_init(const char *pattern) {
   if (!original_copy) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate original pattern string");
   }
-  strcpy(original_copy, pattern);
+  memcpy(original_copy, pattern, strlen(pattern) + 1);
   new_pat->original = original_copy;
 
   new_pat->parsed_pattern = SAFE_MALLOC(strlen(parsed.pattern) + 1, char *);
@@ -548,7 +548,7 @@ asciichat_error_t grep_init(const char *pattern) {
     SAFE_FREE(original_copy);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate pattern string");
   }
-  strcpy(new_pat->parsed_pattern, parsed.pattern);
+  memcpy(new_pat->parsed_pattern, parsed.pattern, strlen(parsed.pattern) + 1);
 
   new_pat->is_fixed_string = parsed.is_fixed_string;
   new_pat->case_insensitive = parsed.case_insensitive;
@@ -625,9 +625,10 @@ bool grep_should_output(const char *log_line, size_t *match_start, size_t *match
     // Store in buffer even during context-after mode
     if (g_filter_state.buffer_size > 0) {
       SAFE_FREE(g_filter_state.line_buffer[g_filter_state.buffer_pos]);
-      g_filter_state.line_buffer[g_filter_state.buffer_pos] = SAFE_MALLOC(strlen(log_line) + 1, char *);
+      size_t line_len = strlen(log_line) + 1;
+      g_filter_state.line_buffer[g_filter_state.buffer_pos] = SAFE_MALLOC(line_len, char *);
       if (g_filter_state.line_buffer[g_filter_state.buffer_pos]) {
-        strcpy(g_filter_state.line_buffer[g_filter_state.buffer_pos], log_line);
+        memcpy(g_filter_state.line_buffer[g_filter_state.buffer_pos], log_line, line_len);
       }
       g_filter_state.buffer_pos = (g_filter_state.buffer_pos + 1) % g_filter_state.buffer_size;
     }
@@ -733,9 +734,10 @@ bool grep_should_output(const char *log_line, size_t *match_start, size_t *match
   // No match - store in context buffer for potential future use
   if (g_filter_state.buffer_size > 0) {
     SAFE_FREE(g_filter_state.line_buffer[g_filter_state.buffer_pos]);
-    g_filter_state.line_buffer[g_filter_state.buffer_pos] = SAFE_MALLOC(strlen(log_line) + 1, char *);
+    size_t line_len_copy = strlen(log_line) + 1;
+    g_filter_state.line_buffer[g_filter_state.buffer_pos] = SAFE_MALLOC(line_len_copy, char *);
     if (g_filter_state.line_buffer[g_filter_state.buffer_pos]) {
-      strcpy(g_filter_state.line_buffer[g_filter_state.buffer_pos], log_line);
+      memcpy(g_filter_state.line_buffer[g_filter_state.buffer_pos], log_line, line_len_copy);
     }
     g_filter_state.buffer_pos = (g_filter_state.buffer_pos + 1) % g_filter_state.buffer_size;
   }
@@ -747,9 +749,10 @@ char *grep_highlight_colored_copy(const char *colored_text, const char *plain_te
                                   size_t match_len) {
   const char *result = grep_highlight_colored(colored_text, plain_text, match_start, match_len);
   if (result) {
-    char *copy = SAFE_MALLOC(strlen(result) + 1, char *);
+    size_t result_len = strlen(result) + 1;
+    char *copy = SAFE_MALLOC(result_len, char *);
     if (copy) {
-      strcpy(copy, result);
+      memcpy(copy, result, result_len);
       return copy;
     }
   }
@@ -1176,7 +1179,7 @@ asciichat_error_t grep_save_patterns(void) {
         g_filter_state.saved_patterns = NULL;
         return SET_ERRNO(ERROR_MEMORY, "Failed to save pattern string");
       }
-      strcpy(dst->parsed_pattern, src->parsed_pattern);
+      memcpy(dst->parsed_pattern, src->parsed_pattern, strlen(src->parsed_pattern) + 1);
 
       // Singleton pointers are shared (reference counted)
       dst->singleton = src->singleton;
@@ -1227,7 +1230,7 @@ asciichat_error_t grep_restore_patterns(void) {
         g_filter_state.pattern_count = 0;
         return SET_ERRNO(ERROR_MEMORY, "Failed to restore pattern string");
       }
-      strcpy(dst->parsed_pattern, src->parsed_pattern);
+      memcpy(dst->parsed_pattern, src->parsed_pattern, strlen(src->parsed_pattern) + 1);
 
       // Singleton pointers are shared (reference counted)
       dst->singleton = src->singleton;

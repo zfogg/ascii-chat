@@ -321,10 +321,10 @@ static void *mdns_thread_fn(void *arg) {
           ctx->state->result->server_port = server->port;
 
           const char *best_addr = (server->ipv4[0] != '\0') ? server->ipv4 : server->ipv6;
-          strncpy(ctx->state->result->server_address, best_addr, sizeof(ctx->state->result->server_address) - 1);
+          SAFE_STRNCPY(ctx->state->result->server_address, best_addr, sizeof(ctx->state->result->server_address) - 1);
           ctx->state->result->server_address[sizeof(ctx->state->result->server_address) - 1] = '\0';
 
-          strncpy(ctx->state->result->mdns_service_name, server->name,
+          SAFE_STRNCPY(ctx->state->result->mdns_service_name, server->name,
                   sizeof(ctx->state->result->mdns_service_name) - 1);
           ctx->state->result->mdns_service_name[sizeof(ctx->state->result->mdns_service_name) - 1] = '\0';
 
@@ -373,7 +373,7 @@ static void *acds_thread_fn(void *arg) {
   acds_client_config_t client_config;
   memset(&client_config, 0, sizeof(client_config));
 
-  strncpy(client_config.server_address, ctx->config->acds_server, sizeof(client_config.server_address) - 1);
+  SAFE_STRNCPY(client_config.server_address, ctx->config->acds_server, sizeof(client_config.server_address) - 1);
   client_config.server_port = ctx->config->acds_port;
   client_config.timeout_ms = ctx->config->acds_timeout_ms;
 
@@ -443,7 +443,7 @@ static void *acds_thread_fn(void *arg) {
   }
   if (ctx->config->password) {
     join_params.has_password = true;
-    strncpy(join_params.password, ctx->config->password, sizeof(join_params.password) - 1);
+    SAFE_STRNCPY(join_params.password, ctx->config->password, sizeof(join_params.password) - 1);
   }
 
   acds_session_join_result_t join_result;
@@ -474,7 +474,7 @@ static void *acds_thread_fn(void *arg) {
       memcpy(ctx->state->result->session_id, join_result.session_id, 16);
       memcpy(ctx->state->result->participant_id, join_result.participant_id, 16);
 
-      strncpy(ctx->state->result->server_address, join_result.server_address,
+      SAFE_STRNCPY(ctx->state->result->server_address, join_result.server_address,
               sizeof(ctx->state->result->server_address) - 1);
       ctx->state->result->server_port = join_result.server_port;
 
@@ -502,10 +502,10 @@ void discovery_config_init_defaults(discovery_config_t *config) {
   // Check if debug or release build
 #ifdef NDEBUG
   // Release: use internet ACDS
-  strncpy(config->acds_server, "discovery.ascii-chat.com", sizeof(config->acds_server) - 1);
+  SAFE_STRNCPY(config->acds_server, "discovery.ascii-chat.com", sizeof(config->acds_server) - 1);
 #else
   // Debug: use local ACDS
-  strncpy(config->acds_server, "127.0.0.1", sizeof(config->acds_server) - 1);
+  SAFE_STRNCPY(config->acds_server, "127.0.0.1", sizeof(config->acds_server) - 1);
 #endif
 
   config->acds_port = OPT_ACDS_PORT_INT_DEFAULT;
