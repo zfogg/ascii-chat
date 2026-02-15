@@ -319,8 +319,8 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
           incoming_hash = (uint32_t)((uint64_t)incoming_hash * 31 + byte);
         }
       }
-      log_debug("Video mixer: client %u incoming frame hash=0x%08x size=%zu", snap->client_id, incoming_hash,
-                frame_size_val);
+      log_debug_every(5000000, "Video mixer: client %u incoming frame hash=0x%08x size=%zu", snap->client_id,
+                      incoming_hash, frame_size_val);
 
       if (frame_data_ptr && frame_size_val > 0) {
         // We have frame data - copy it to our working structure

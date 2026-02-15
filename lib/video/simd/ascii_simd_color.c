@@ -414,31 +414,31 @@ char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_
             image ? image->h : -1, use_256color);
 
 #if SIMD_SUPPORT_AVX2
-  log_debug("Taking AVX2 path: width=%d, height=%d", image->w, image->h);
+  log_debug_every(10000000, "Taking AVX2 path: width=%d, height=%d", image->w, image->h);
   START_TIMER("render_avx2");
   char *result = render_ascii_avx2_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "render_avx2", "RENDER_AVX2: Complete");
   return result;
 #elif SIMD_SUPPORT_SSSE3
-  log_info("WASM: Taking SSSE3 path with use_256color=%d", use_256color);
+  log_info_every(10000000, "WASM: Taking SSSE3 path with use_256color=%d", use_256color);
   START_TIMER("render_ssse3");
   char *result = render_ascii_ssse3_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "render_ssse3", "RENDER_SSSE3: Complete");
   return result;
 #elif SIMD_SUPPORT_SSE2
-  log_info("WASM: Taking SSE2 path with use_256color=%d", use_256color);
+  log_info_every(10000000, "WASM: Taking SSE2 path with use_256color=%d", use_256color);
   START_TIMER("render_sse2");
   char *result = render_ascii_sse2_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "render_sse2", "RENDER_SSE2: Complete");
   return result;
 #elif SIMD_SUPPORT_NEON
-  log_info("WASM: Taking NEON path with use_256color=%d", use_256color);
+  log_info_every(10000000, "WASM: Taking NEON path with use_256color=%d", use_256color);
   START_TIMER("render_neon");
   char *result = render_ascii_neon_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "render_neon", "RENDER_NEON: Complete");
   return result;
 #else
-  log_info("WASM: Taking FALLBACK path (no SIMD), use_256color=%d is IGNORED", use_256color);
+  log_info_every(10000000, "WASM: Taking FALLBACK path (no SIMD), use_256color=%d is IGNORED", use_256color);
   // Fallback implementation for non-SIMD platforms
   // Use scalar image function for fallback path - no SIMD allocation needed
   (void)use_256color;        // Suppress unused parameter warning

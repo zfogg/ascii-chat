@@ -441,29 +441,31 @@ void *client_video_render_thread(void *arg) {
 
     // Check if any clients are sending video
     bool has_video_sources = any_clients_sending_video();
-    log_debug("Video render iteration for client %u: has_video_sources=%d, width=%u, height=%u", thread_client_id,
-              has_video_sources, width_snapshot, height_snapshot);
+    log_debug_every(5000000, "Video render iteration for client %u: has_video_sources=%d, width=%u, height=%u",
+                    thread_client_id, has_video_sources, width_snapshot, height_snapshot);
 
     // Skip frame generation if client dimensions are not yet received (width=0 or height=0)
     if (width_snapshot == 0 || height_snapshot == 0) {
-      log_debug("Skipping frame generation for client %u: dimensions not yet received (width=%u, height=%u)",
-                thread_client_id, width_snapshot, height_snapshot);
+      log_debug_every(5000000,
+                      "Skipping frame generation for client %u: dimensions not yet received (width=%u, height=%u)",
+                      thread_client_id, width_snapshot, height_snapshot);
       continue;
     }
 
     if (has_video_sources) {
       int sources_count = 0; // Track number of video sources in this frame
 
-      log_debug("About to call create_mixed_ascii_frame_for_client for client %u with dims %ux%u", thread_client_id,
-                width_snapshot, height_snapshot);
+      log_debug_every(5000000, "About to call create_mixed_ascii_frame_for_client for client %u with dims %ux%u",
+                      thread_client_id, width_snapshot, height_snapshot);
       char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot,
                                                               false, &frame_size, NULL, &sources_count);
-      log_debug("create_mixed_ascii_frame_for_client returned: ascii_frame=%p, frame_size=%zu, sources_count=%d",
-                (void *)ascii_frame, frame_size, sources_count);
+      log_debug_every(5000000,
+                      "create_mixed_ascii_frame_for_client returned: ascii_frame=%p, frame_size=%zu, sources_count=%d",
+                      (void *)ascii_frame, frame_size, sources_count);
 
       // Phase 2 IMPLEMENTED: Write frame to double buffer (never drops!)
       if (ascii_frame && frame_size > 0) {
-        log_debug("Buffering frame for client %u (size=%zu)", thread_client_id, frame_size);
+        log_debug_every(5000000, "Buffering frame for client %u (size=%zu)", thread_client_id, frame_size);
         // GRID LAYOUT CHANGE DETECTION: Store source count with frame
         // Send thread will compare this with last sent count to detect grid changes
         atomic_store(&client->last_rendered_grid_sources, sources_count);
@@ -764,7 +766,7 @@ void *client_audio_render_thread(void *arg) {
           float buffer_latency_ms = (float)available / 48.0f; // samples / (48000 / 1000)
 
           // Log source buffer latency
-          log_dev_every(500000, "LATENCY: Server incoming buffer for client %u: %.1fms (%zu samples)",
+          log_dev_every(5000000, "LATENCY: Server incoming buffer for client %u: %.1fms (%zu samples)",
                         g_audio_mixer->source_ids[i], buffer_latency_ms, available);
 
           // If buffer is getting too full, read faster to reduce latency
@@ -780,7 +782,7 @@ void *client_audio_render_thread(void *arg) {
       // Log outgoing queue latency
       size_t queue_depth = packet_queue_size(audio_queue_snapshot);
       float queue_latency_ms = (float)queue_depth * 20.0f; // ~20ms per Opus packet
-      log_dev_every(500000, "LATENCY: Server send queue for client %u: %.1fms (%zu packets)", client_id_snapshot,
+      log_dev_every(5000000, "LATENCY: Server send queue for client %u: %.1fms (%zu packets)", client_id_snapshot,
                     queue_latency_ms, queue_depth);
     }
 
