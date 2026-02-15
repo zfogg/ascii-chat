@@ -155,33 +155,11 @@ else()
         OPTIONAL
     )
 
-    # Strip debug info from static library after installation
-    # This removes DWARF sections containing source file paths (fixes AUR $srcdir warnings)
-    # Note: We use find_program at config time but run strip at install time
-    find_program(STRIP_EXECUTABLE strip)
-    if(STRIP_EXECUTABLE)
-        install(CODE "
-            # Handle DESTDIR for staged installs (like AUR/makepkg)
-            if(DEFINED ENV{DESTDIR})
-                set(_install_root \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}\")
-            else()
-                set(_install_root \"\${CMAKE_INSTALL_PREFIX}\")
-            endif()
-            set(_static_lib \"\${_install_root}/lib/libasciichat.a\")
-            if(EXISTS \"\${_static_lib}\")
-                message(STATUS \"Stripping debug info from libasciichat.a...\")
-                execute_process(
-                    COMMAND ${STRIP_EXECUTABLE} --strip-debug \"\${_static_lib}\"
-                    RESULT_VARIABLE _strip_result
-                )
-                if(_strip_result EQUAL 0)
-                    message(STATUS \"  Stripped debug info successfully\")
-                else()
-                    message(WARNING \"  Failed to strip debug info (exit code: \${_strip_result})\")
-                endif()
-            endif()
-        " COMPONENT Development)
-    endif()
+    # Note: Static library stripping skipped
+    # llvm-strip and other strip tools don't reliably handle static archives (.a files)
+    # Debug symbols in static libraries are less critical than in executables
+    # Static libraries are typically only used during compilation, not at runtime
+    # Users can manually strip with: ar d libasciichat.a if needed
 
     # Install shared library with proper versioning (if built)
     # Uses install(TARGETS) to properly handle VERSION/SOVERSION symlink chain:
