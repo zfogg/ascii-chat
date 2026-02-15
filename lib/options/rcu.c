@@ -85,6 +85,8 @@ static const options_t g_default_options = (options_t){
     .palette_type = PALETTE_STANDARD,
     .render_mode = RENDER_MODE_FOREGROUND,
     .fps = OPT_FPS_DEFAULT,
+    .flip_x = OPT_FLIP_X_DEFAULT,
+    .flip_y = OPT_FLIP_Y_DEFAULT,
 
     // Performance
     .compression_level = OPT_COMPRESSION_LEVEL_DEFAULT,
@@ -92,7 +94,6 @@ static const options_t g_default_options = (options_t){
     // Webcam
     .test_pattern = false,
     .webcam_index = OPT_WEBCAM_INDEX_DEFAULT,
-    .webcam_flip = OPT_WEBCAM_FLIP_DEFAULT,
 
     // Network
     .max_clients = OPT_MAX_CLIENTS_DEFAULT,
@@ -479,8 +480,10 @@ static void bool_field_updater(options_t *opts, void *context) {
     opts->no_compress = ctx->value;
   else if (strcmp(ctx->field_name, "encode_audio") == 0)
     opts->encode_audio = ctx->value;
-  else if (strcmp(ctx->field_name, "webcam_flip") == 0)
-    opts->webcam_flip = ctx->value;
+  else if (strcmp(ctx->field_name, "flip_x") == 0)
+    opts->flip_x = ctx->value;
+  else if (strcmp(ctx->field_name, "flip_y") == 0)
+    opts->flip_y = ctx->value;
   else if (strcmp(ctx->field_name, "test_pattern") == 0)
     opts->test_pattern = ctx->value;
   else if (strcmp(ctx->field_name, "no_audio_mixer") == 0)
@@ -563,25 +566,25 @@ asciichat_error_t options_set_bool(const char *field_name, bool value) {
 
   // Validate field exists
   if (strcmp(field_name, "no_compress") != 0 && strcmp(field_name, "encode_audio") != 0 &&
-      strcmp(field_name, "webcam_flip") != 0 && strcmp(field_name, "test_pattern") != 0 &&
-      strcmp(field_name, "no_audio_mixer") != 0 && strcmp(field_name, "show_capabilities") != 0 &&
-      strcmp(field_name, "force_utf8") != 0 && strcmp(field_name, "audio_enabled") != 0 &&
-      strcmp(field_name, "audio_analysis_enabled") != 0 && strcmp(field_name, "audio_no_playback") != 0 &&
-      strcmp(field_name, "stretch") != 0 && strcmp(field_name, "snapshot_mode") != 0 &&
-      strcmp(field_name, "strip_ansi") != 0 && strcmp(field_name, "quiet") != 0 &&
-      strcmp(field_name, "encrypt_enabled") != 0 && strcmp(field_name, "no_encrypt") != 0 &&
-      strcmp(field_name, "discovery") != 0 && strcmp(field_name, "discovery_expose_ip") != 0 &&
-      strcmp(field_name, "discovery_insecure") != 0 && strcmp(field_name, "webrtc") != 0 &&
-      strcmp(field_name, "lan_discovery") != 0 && strcmp(field_name, "no_mdns_advertise") != 0 &&
-      strcmp(field_name, "prefer_webrtc") != 0 && strcmp(field_name, "no_webrtc") != 0 &&
-      strcmp(field_name, "webrtc_skip_stun") != 0 && strcmp(field_name, "webrtc_disable_turn") != 0 &&
-      strcmp(field_name, "enable_upnp") != 0 && strcmp(field_name, "require_server_identity") != 0 &&
-      strcmp(field_name, "require_client_identity") != 0 && strcmp(field_name, "require_server_verify") != 0 &&
-      strcmp(field_name, "require_client_verify") != 0 && strcmp(field_name, "palette_custom_set") != 0 &&
-      strcmp(field_name, "media_loop") != 0 && strcmp(field_name, "media_from_stdin") != 0 &&
-      strcmp(field_name, "auto_width") != 0 && strcmp(field_name, "auto_height") != 0 &&
-      strcmp(field_name, "splash") != 0 && strcmp(field_name, "status_screen") != 0 &&
-      strcmp(field_name, "matrix_rain") != 0) {
+      strcmp(field_name, "flip_x") != 0 && strcmp(field_name, "flip_y") != 0 &&
+      strcmp(field_name, "test_pattern") != 0 && strcmp(field_name, "no_audio_mixer") != 0 &&
+      strcmp(field_name, "show_capabilities") != 0 && strcmp(field_name, "force_utf8") != 0 &&
+      strcmp(field_name, "audio_enabled") != 0 && strcmp(field_name, "audio_analysis_enabled") != 0 &&
+      strcmp(field_name, "audio_no_playback") != 0 && strcmp(field_name, "stretch") != 0 &&
+      strcmp(field_name, "snapshot_mode") != 0 && strcmp(field_name, "strip_ansi") != 0 &&
+      strcmp(field_name, "quiet") != 0 && strcmp(field_name, "encrypt_enabled") != 0 &&
+      strcmp(field_name, "no_encrypt") != 0 && strcmp(field_name, "discovery") != 0 &&
+      strcmp(field_name, "discovery_expose_ip") != 0 && strcmp(field_name, "discovery_insecure") != 0 &&
+      strcmp(field_name, "webrtc") != 0 && strcmp(field_name, "lan_discovery") != 0 &&
+      strcmp(field_name, "no_mdns_advertise") != 0 && strcmp(field_name, "prefer_webrtc") != 0 &&
+      strcmp(field_name, "no_webrtc") != 0 && strcmp(field_name, "webrtc_skip_stun") != 0 &&
+      strcmp(field_name, "webrtc_disable_turn") != 0 && strcmp(field_name, "enable_upnp") != 0 &&
+      strcmp(field_name, "require_server_identity") != 0 && strcmp(field_name, "require_client_identity") != 0 &&
+      strcmp(field_name, "require_server_verify") != 0 && strcmp(field_name, "require_client_verify") != 0 &&
+      strcmp(field_name, "palette_custom_set") != 0 && strcmp(field_name, "media_loop") != 0 &&
+      strcmp(field_name, "media_from_stdin") != 0 && strcmp(field_name, "auto_width") != 0 &&
+      strcmp(field_name, "auto_height") != 0 && strcmp(field_name, "splash") != 0 &&
+      strcmp(field_name, "status_screen") != 0 && strcmp(field_name, "matrix_rain") != 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Unknown boolean field: %s", field_name);
     return ERROR_INVALID_PARAM;
   }
