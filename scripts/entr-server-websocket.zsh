@@ -10,17 +10,14 @@ source scripts/developer-helpers.zsh
 
 rebuild_and_start() {
   cbb --target ascii-chat
+  pkill -9 lldb 2>/dev/null || true
   pkill -9 -x ascii-chat 2>/dev/null || true
-  pkill -9 -f "lldb.*ascii-chat" 2>/dev/null || true
   sleep 0.5
-  script -q /dev/null lldb --batch \
+  lldb \
     -o "process handle -p true -s true -n false SIGSEGV SIGABRT SIGBUS SIGILL" \
     -o "process handle -p true -s true -n false SIGTERM SIGINT" \
     -o "run" \
-    -o "bt all" \
-    -o "thread list" \
-    -o "frame variable" \
-    ./build/bin/ascii-chat -- --log-file server.log --log-level debug server 0.0.0.0 "::" --no-status-screen --websocket-port 27226 &
+    ./build/bin/ascii-chat -- --log-file server.log --log-level debug server 0.0.0.0 "::" --no-status-screen --websocket-port 27226 || true
 }
 
 # Initialize marker file
@@ -34,17 +31,23 @@ trap "rm -f $_marker_file" EXIT
 rebuild_and_start
 touch "$_marker_file"
 
-while true; do
-  # Find files modified after the marker
-  _changed=$(find src/ lib/ include/ -type f \( -name "*.c" -o -name "*.h" -o -name "*.cpp" -o -name "*.hpp" -o -name "*.m" \) -newer "$_marker_file" 2>/dev/null)
+# Run watcher loop in background
+{
+  while true; do
+    # Find files modified after the marker
+    _changed=$(find src/ lib/ include/ -type f \( -name "*.c" -o -name "*.h" -o -name "*.cpp" -o -name "*.hpp" -o -name "*.m" \) -newer "$_marker_file" 2>/dev/null)
 
-  if [ -n "$_changed" ]; then
-    clear
-    echo "Changes detected:"
-    echo "$_changed" | head -3
-    echo ""
-    rebuild_and_start
-    touch "$_marker_file"
-  fi
-  sleep 0.1
-done
+    if [ -n "$_changed" ]; then
+      clear
+      echo "Changes detected:"
+      echo "$_changed" | head -3
+      echo ""
+      rebuild_and_start
+      touch "$_marker_file"
+    fi
+    sleep 0.1
+  done
+} &
+
+# Keep script alive
+wait
