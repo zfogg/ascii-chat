@@ -111,12 +111,28 @@ export class ClientConnection {
             this.wasmReinitInProgress = true;
             this.deferredPackets = [];
             cleanupClientWasm();
+
+            // Extract server address BEFORE async operations
+            const url = new URL(this.options.serverUrl);
+            const serverHost = url.hostname;
+            const serverPort = parseInt(url.port) || 27226;
+
             initClientWasm({ width: this.options.width, height: this.options.height }).then(() => {
               console.log('[ClientConnection] WASM reinitialized');
-              // Regenerate keypair
+              // Regenerate keypair (this clears the crypto context, so must do before setServerAddress)
               return generateKeypair().then((publicKey) => {
                 this.clientPublicKey = publicKey;
                 console.log('[ClientConnection] New keypair generated');
+
+                // Set server address AFTER generateKeypair() because generateKeypair() clears the context
+                console.log('[ClientConnection] Re-setting server address for reconnect:', serverHost, serverPort);
+                try {
+                  setServerAddress(serverHost, serverPort);
+                  console.log('[ClientConnection] Server address set successfully (after generateKeypair)');
+                } catch (e) {
+                  console.error('[ClientConnection] Failed to set server address:', e);
+                }
+
                 // Re-register send callback
                 registerSendPacketCallback((rawPacket: Uint8Array) => {
                   if (!this.socket) return;
