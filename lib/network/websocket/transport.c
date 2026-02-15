@@ -41,6 +41,7 @@
 #include <ascii-chat/debug/memory.h>
 #include <libwebsockets.h>
 #include <string.h>
+#include <unistd.h>
 
 /**
  * @brief Maximum receive queue size (messages buffered before recv())
@@ -413,22 +414,35 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
                                         void **out_allocated_buffer) {
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
 
+  // Check connection first without holding queue lock
+  mutex_lock(&ws_data->state_mutex);
+  bool connected = ws_data->is_connected;
+  mutex_unlock(&ws_data->state_mutex);
+
+  if (!connected) {
+    return SET_ERRNO(ERROR_NETWORK, "Connection not established");
+  }
+
   mutex_lock(&ws_data->queue_mutex);
 
   // Block until message arrives or connection closes
   while (ringbuffer_is_empty(ws_data->recv_queue)) {
+    // Release queue lock while checking connection state to reduce deadlock risk
+    mutex_unlock(&ws_data->queue_mutex);
+
     mutex_lock(&ws_data->state_mutex);
-    bool connected = ws_data->is_connected;
+    bool still_connected = ws_data->is_connected;
     mutex_unlock(&ws_data->state_mutex);
 
-    if (!connected) {
-      mutex_unlock(&ws_data->queue_mutex);
+    if (!still_connected) {
       return SET_ERRNO(ERROR_NETWORK, "Connection closed while waiting for data");
     }
 
-    // Wait for message arrival or connection close (with timeout to prevent deadlock)
-    // Timeout after 100ms to allow re-checking connection status
-    cond_timedwait(&ws_data->queue_cond, &ws_data->queue_mutex, 100000000); // 100ms in nanoseconds
+    // Short sleep to avoid busy waiting (10ms)
+    usleep(10000);
+
+    // Re-acquire lock for next iteration
+    mutex_lock(&ws_data->queue_mutex);
   }
 
   // Read message from queue

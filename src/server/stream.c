@@ -840,10 +840,9 @@ static char *convert_composite_to_ascii(image_t *composite, uint32_t target_clie
   log_debug_every(LOG_RATE_SLOW, "convert_composite_to_ascii: composite=%dx%d, terminal=%dx%d, h=%d (mode=%d)",
                   composite->w, composite->h, width, height, h, caps_snapshot.render_mode);
 
-  // Verify composite width matches terminal width.
-  if (composite->w != width) {
-    log_warn_every(1000000, "DIMENSION MISMATCH: composite->w=%d != terminal_width=%d", composite->w, width);
-  }
+  // Use actual composite dimensions for ASCII conversion
+  // The composite may be smaller than terminal to preserve aspect ratio
+  unsigned short actual_width = composite->w;
 
   // Apply color filter if specified
   if (caps_snapshot.color_filter != COLOR_FILTER_NONE && composite->pixels) {
@@ -852,7 +851,7 @@ static char *convert_composite_to_ascii(image_t *composite, uint32_t target_clie
                        caps_snapshot.color_filter, time_seconds);
   }
 
-  char *ascii_frame = ascii_convert_with_capabilities(composite, width, h, &caps_snapshot, true, false,
+  char *ascii_frame = ascii_convert_with_capabilities(composite, actual_width, h, &caps_snapshot, true, false,
                                                       render_client->client_palette_chars);
 
   return ascii_frame;
@@ -1043,44 +1042,64 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
   }
 
   // Convert composite to ASCII using client capabilities
-
-  // Verify composite width matches expected terminal width.
-  if (composite && composite->w != width) {
-    log_error_every(1000000, "FRAME_WIDTH_BUG: composite->w=%d != terminal_width=%d for client %u", composite->w, width,
-                    target_client_id);
-  }
-
+  // Pass terminal dimensions so the frame can be padded to full width
   char *ascii_frame = convert_composite_to_ascii(composite, target_client_id, width, height);
 
   if (ascii_frame) {
-    // Find the actual end of frame by locating the FINAL reset sequence (ESC[0m)
-    // This ensures we capture the correct frame size without relying on strlen()
-    // Use strrchr/strrstr to find the last occurrence, not first.
-    size_t ascii_len = strlen(ascii_frame);
-    const char *reset_seq = "\033[0m";
-    size_t reset_len = strlen(reset_seq);
-
-    // Find LAST occurrence of reset sequence by searching from the end
-    const char *frame_end = NULL;
-    if (ascii_len >= reset_len) {
-      // Start searching from near the end of the string
-      for (const char *p = ascii_frame + ascii_len - reset_len; p >= ascii_frame; p--) {
-        if (strncmp(p, reset_seq, reset_len) == 0) {
-          frame_end = p;
-          break;
-        }
+    // The frame should have been null-terminated by the padding functions.
+    // Count the actual string length safely without relying on strlen().
+    size_t ascii_len = 0;
+    for (const char *p = ascii_frame; *p != '\0'; p++) {
+      ascii_len++;
+      // Safety check: don't read past a reasonable buffer size (10MB for large frames)
+      if (ascii_len > 10 * 1024 * 1024) {
+        log_error("Frame size exceeds 10MB safety limit (possible buffer overflow)");
+        SET_ERRNO(ERROR_INVALID_PARAM, "Frame size exceeds 10MB");
+        return NULL;
       }
     }
 
-    if (frame_end) {
-      // Include the reset sequence in the count and null-terminate right after it
-      *out_size = (size_t)(frame_end - ascii_frame) + reset_len;
-      // Null-terminate right after the reset sequence to remove any garbage
-      ascii_frame[*out_size] = '\0';
+    // Ensure frame ends with a reset sequence to avoid garbage at terminal
+    // This prevents color codes from leaking into uninitialized memory
+    const char reset_seq[] = "\033[0m";
+    const size_t reset_len = 4;
+
+    if (ascii_len >= reset_len) {
+      // Check if frame already ends with reset
+      const char *frame_end = ascii_frame + ascii_len - reset_len;
+      if (strncmp(frame_end, reset_seq, reset_len) == 0) {
+        // Frame properly ends with reset, use full length
+        *out_size = ascii_len;
+      } else {
+        // Frame doesn't end with reset - this is the REAL bug!
+        // Truncate to the last occurrence of reset sequence
+        const char *last_reset = NULL;
+        for (const char *p = ascii_frame + ascii_len - reset_len; p >= ascii_frame; p--) {
+          if (strncmp(p, reset_seq, reset_len) == 0) {
+            last_reset = p;
+            break;
+          }
+        }
+
+        if (last_reset) {
+          // Include the reset sequence and truncate after it
+          *out_size = (size_t)(last_reset - ascii_frame) + reset_len;
+          ascii_frame[*out_size] = '\0'; // Ensure null termination
+          log_warn("Frame was missing reset at end (had garbage), truncated from %zu to %zu bytes", ascii_len,
+                   *out_size);
+        } else {
+          // No reset found, use full length as fallback
+          *out_size = ascii_len;
+          log_warn("Frame has no reset sequences, sending full %zu bytes", ascii_len);
+        }
+      }
     } else {
-      // Fallback: use strlen if no reset sequence found
+      // Frame too short to have a reset, use as-is
       *out_size = ascii_len;
     }
+
+    log_debug_every(LOG_RATE_SLOW, "create_mixed_ascii_frame_for_client: Final frame size=%zu bytes for client %u",
+                    *out_size, target_client_id);
     out = ascii_frame;
   } else {
     SET_ERRNO(ERROR_TERMINAL, "Per-client %u: Failed to convert image to ASCII", target_client_id);

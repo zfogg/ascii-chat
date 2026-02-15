@@ -134,7 +134,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     log_debug("WebSocket client disconnected");
 
     // Clean up fragment buffer
-    if (conn_data->fragment_buffer) {
+    if (conn_data && conn_data->fragment_buffer) {
       SAFE_FREE(conn_data->fragment_buffer);
       conn_data->fragment_size = 0;
       conn_data->fragment_capacity = 0;
@@ -142,20 +142,27 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
     // Close the transport to mark it as disconnected.
     // This signals the receive thread to exit, allowing clean shutdown.
-    if (conn_data->transport) {
-      conn_data->transport->methods->close(conn_data->transport);
+    // Guard against use-after-free: check both conn_data and transport are valid
+    if (conn_data && conn_data->transport) {
+      acip_transport_t *transport_snapshot = conn_data->transport;
+      conn_data->transport = NULL; // NULL out immediately to prevent race condition
+
+      // Now safely close the transport (methods pointer is stable)
+      if (transport_snapshot && transport_snapshot->methods) {
+        transport_snapshot->methods->close(transport_snapshot);
+      }
     }
 
-    if (conn_data->handler_started) {
+    if (conn_data && conn_data->handler_started) {
       // Wait for handler thread to complete
       asciichat_thread_join(&conn_data->handler_thread, NULL);
       conn_data->handler_started = false;
     }
 
-    // NULL the transport pointer so no subsequent callbacks access it.
-    // The transport object itself is owned by the client_info_t structure
-    // and will be freed by remove_client → acip_transport_destroy.
-    conn_data->transport = NULL;
+    // Ensure transport pointer is NULL
+    if (conn_data) {
+      conn_data->transport = NULL;
+    }
     break;
 
   case LWS_CALLBACK_SERVER_WRITEABLE: {

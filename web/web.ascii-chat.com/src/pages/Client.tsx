@@ -146,7 +146,7 @@ export function ClientPage() {
     [ConnectionState.ERROR]: 'Error',
   }
 
-  const handleDimensionsChange = (dims: { cols: number; rows: number }) => {
+  const handleDimensionsChange = useCallback((dims: { cols: number; rows: number }) => {
     console.log(`[Client] Dimensions changed: ${dims.cols}x${dims.rows}`)
     setTerminalDimensions(dims)
 
@@ -168,7 +168,7 @@ export function ClientPage() {
     } else {
       console.log('[Client] ClientRef not available, cannot send capabilities')
     }
-  }
+  }, [connectionState])
 
   const connectToServer = async () => {
     try {
@@ -410,7 +410,22 @@ export function ClientPage() {
       const video = videoRef.current!
       video.srcObject = stream
 
-      // Ensure video actually plays
+      // Set up metadata listener BEFORE playing to catch the event
+      const metadataPromise = new Promise<void>((resolve) => {
+        const handleMetadata = () => {
+          const video = videoRef.current!
+          const canvas = canvasRef.current!
+          console.log(`[Client] Webcam metadata loaded: ${video.videoWidth}x${video.videoHeight}, videoTime=${video.currentTime}, paused=${video.paused}`)
+          canvas.width = video.videoWidth
+          canvas.height = video.videoHeight
+          console.log(`[Client] Canvas resized to: ${canvas.width}x${canvas.height}`)
+          video.removeEventListener('loadedmetadata', handleMetadata)
+          resolve()
+        }
+        videoRef.current!.addEventListener('loadedmetadata', handleMetadata)
+      })
+
+      // Now play the video (metadata event may already be queued)
       console.log('[Client] Attempting to play video...')
       try {
         await video.play()
@@ -419,17 +434,24 @@ export function ClientPage() {
         console.error('[Client] Video play failed (may be expected):', playErr)
       }
 
-      await new Promise<void>((resolve) => {
-        videoRef.current!.addEventListener('loadedmetadata', () => {
-          const video = videoRef.current!
-          const canvas = canvasRef.current!
-          console.log(`[Client] Webcam metadata loaded: ${video.videoWidth}x${video.videoHeight}, videoTime=${video.currentTime}, paused=${video.paused}`)
-          canvas.width = video.videoWidth
-          canvas.height = video.videoHeight
-          console.log(`[Client] Canvas resized to: ${canvas.width}x${canvas.height}`)
+      // Wait for metadata with a timeout (5 seconds) in case it never fires
+      const timeoutPromise = new Promise<void>((resolve) => {
+        setTimeout(() => {
+          console.warn('[Client] Metadata timeout - setting canvas dimensions from current video properties')
+          if (videoRef.current && canvasRef.current) {
+            const video = videoRef.current
+            const canvas = canvasRef.current
+            if (video.videoWidth > 0 && video.videoHeight > 0) {
+              canvas.width = video.videoWidth
+              canvas.height = video.videoHeight
+              console.log(`[Client] Canvas resized from timeout: ${canvas.width}x${canvas.height}`)
+            }
+          }
           resolve()
-        }, { once: true })
+        }, 5000)
       })
+
+      await Promise.race([metadataPromise, timeoutPromise])
 
       setIsWebcamRunning(true)
       lastFrameTimeRef.current = performance.now()

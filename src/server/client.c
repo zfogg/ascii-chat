@@ -1566,6 +1566,9 @@ void *client_send_thread_func(void *arg) {
   bool has_transport = (client->transport != NULL);
   mutex_unlock(&client->send_mutex);
 
+  log_info("SEND_THREAD_VALIDATION: client_id=%u socket_valid=%d transport_valid=%d transport_ptr=%p",
+           atomic_load(&client->client_id), has_socket, has_transport, (void *)client->transport);
+
   if (!has_socket && !has_transport) {
     log_error("Invalid client connection in send thread (no socket or transport)");
     return NULL;
@@ -1576,6 +1579,10 @@ void *client_send_thread_func(void *arg) {
   // Mark thread as running
   atomic_store(&client->send_thread_running, true);
 
+  log_info("SEND_THREAD_LOOP_START: client_id=%u active=%d shutting_down=%d running=%d",
+           atomic_load(&client->client_id), atomic_load(&client->active), atomic_load(&client->shutting_down),
+           atomic_load(&client->send_thread_running));
+
   // Track timing for video frame sends
   uint64_t last_video_send_time = 0;
   const uint64_t video_send_interval_us = 16666; // 60fps = ~16.67ms
@@ -1584,8 +1591,13 @@ void *client_send_thread_func(void *arg) {
   // to ensure audio packets are sent immediately, not rate-limited by video
 #define MAX_AUDIO_BATCH 8
   int silence_log_count = 0;
+  int loop_iteration_count = 0;
   while (!atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down) && atomic_load(&client->active) &&
          atomic_load(&client->send_thread_running)) {
+    loop_iteration_count++;
+    if (loop_iteration_count % 100 == 0) {
+      log_info("SEND_LOOP_ITERATION: client_id=%u iteration=%d", atomic_load(&client->client_id), loop_iteration_count);
+    }
 
     bool sent_something = false;
 
@@ -1901,17 +1913,21 @@ void *client_send_thread_func(void *arg) {
 
       // Get transport reference briefly to avoid deadlock on TCP buffer full
       // ACIP transport handles header building, CRC32, encryption internally
-      log_debug("Send thread: About to send frame to client %u (width=%u, height=%u, data=%p)", client->client_id,
-                width, height, (void *)frame_data);
+      log_debug("Send thread: About to send frame to client %u (width=%u, height=%u, size=%zu, data=%p)",
+                client->client_id, width, height, frame_size, (void *)frame_data);
       mutex_lock(&client->send_mutex);
       if (atomic_load(&client->shutting_down) || !client->transport) {
         mutex_unlock(&client->send_mutex);
+        log_warn("SEND_FRAME_ABORT: client_id=%u shutting_down=%d transport=%p", atomic_load(&client->client_id),
+                 atomic_load(&client->shutting_down), (void *)client->transport);
         break; // Client is shutting down, exit thread
       }
       acip_transport_t *frame_transport = client->transport;
       mutex_unlock(&client->send_mutex);
 
       // Network I/O happens OUTSIDE the mutex
+      log_info("SEND_ASCII_FRAME: client_id=%u size=%zu width=%u height=%u", atomic_load(&client->client_id),
+               frame_size, width, height);
       asciichat_error_t send_result = acip_send_ascii_frame(frame_transport, frame_data, frame_size, width, height);
       uint64_t step5_ns = time_get_ns();
 
@@ -1920,11 +1936,12 @@ void *client_send_thread_func(void *arg) {
           SET_ERRNO(ERROR_NETWORK, "Failed to send video frame to client %u: %s", client->client_id,
                     asciichat_error_string(send_result));
         }
-        log_debug("Send thread: Frame send FAILED for client %u: result=%d", client->client_id, send_result);
+        log_error("SEND_FRAME_FAILED: client_id=%u result=%d message=%s", atomic_load(&client->client_id), send_result,
+                  asciichat_error_string(send_result));
         break;
       }
 
-      log_debug("Send thread: Frame sent SUCCESSFULLY to client %u", client->client_id);
+      log_info("SEND_FRAME_SUCCESS: client_id=%u size=%zu", atomic_load(&client->client_id), frame_size);
       sent_something = true;
       last_video_send_time = current_time_us;
 
