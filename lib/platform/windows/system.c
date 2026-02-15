@@ -238,8 +238,22 @@ signal_handler_t platform_signal(int sig, signal_handler_t handler) {
   return signal(sig, handler);
 }
 
-// Global console control handler (used by SetConsoleCtrlHandler)
+// Global console control handler (used by SetConsoleCtrlHandler and SIGINT)
 static console_ctrl_handler_t g_console_ctrl_handler = NULL;
+
+/**
+ * @brief SIGINT signal handler for Git Bash/mintty compatibility
+ *
+ * Git Bash (mintty) on Windows sends POSIX-style SIGINT signals instead of
+ * Windows Console control events. This handler converts SIGINT to a
+ * CONSOLE_CTRL_C event so the same handler logic works in both environments.
+ */
+static void windows_sigint_handler(int sig) {
+  (void)sig;
+  if (g_console_ctrl_handler) {
+    g_console_ctrl_handler(CONSOLE_CTRL_C);
+  }
+}
 
 /**
  * @brief Windows console control handler callback
@@ -282,8 +296,9 @@ static BOOL WINAPI windows_console_ctrl_handler(DWORD ctrl_type) {
  * @param handler Handler function to register, or NULL to unregister
  * @return true on success, false on failure
  *
- * Uses SetConsoleCtrlHandler() for proper Ctrl+C handling on Windows.
- * This is more reliable than the CRT signal() emulation which has known issues.
+ * Uses SetConsoleCtrlHandler() for Windows Console Ctrl+C handling.
+ * Also registers SIGINT handler for Git Bash/mintty compatibility,
+ * which sends POSIX signals instead of Windows Console events.
  */
 bool platform_set_console_ctrl_handler(console_ctrl_handler_t handler) {
   if (handler != NULL) {
@@ -292,12 +307,15 @@ bool platform_set_console_ctrl_handler(console_ctrl_handler_t handler) {
       if (!SetConsoleCtrlHandler(windows_console_ctrl_handler, TRUE)) {
         return false;
       }
+      // Also register SIGINT for Git Bash/mintty compatibility
+      signal(SIGINT, windows_sigint_handler);
     }
     g_console_ctrl_handler = handler;
   } else {
     // Unregister handler
     if (g_console_ctrl_handler != NULL) {
       SetConsoleCtrlHandler(windows_console_ctrl_handler, FALSE);
+      signal(SIGINT, SIG_DFL);
       g_console_ctrl_handler = NULL;
     }
   }
