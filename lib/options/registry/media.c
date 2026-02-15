@@ -136,7 +136,7 @@ const registry_entry_t g_media_entries[] = {
      '\0',
      OPTION_TYPE_BOOL,
      offsetof(options_t, no_cookies_from_browser),
-     false,
+     NULL,
      sizeof(bool),
      "yt-dlp option (man yt-dlp). Explicitly disable reading cookies from browser.",
      "MEDIA",
