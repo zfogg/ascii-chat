@@ -147,7 +147,15 @@ export class SocketBridge {
       this.reconnectTimeoutId = null;
       console.log('[SocketBridge] Attempting to reconnect...');
       try {
-        this.createAndSetupWebSocket(() => {}, () => {});
+        this.createAndSetupWebSocket(
+          () => {
+            console.log('[SocketBridge] Reconnection successful');
+          },
+          (error: Error) => {
+            console.error('[SocketBridge] Reconnection failed:', error.message);
+            this.scheduleReconnect();
+          }
+        );
       } catch (error) {
         console.error('[SocketBridge] Reconnect attempt failed:', error);
         this.scheduleReconnect();
