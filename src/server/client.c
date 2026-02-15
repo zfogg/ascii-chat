@@ -1675,7 +1675,7 @@ void *client_send_thread_func(void *arg) {
                 offset += audio_packets[i]->data_len;
               }
               result = acip_send_audio_opus_batch(transport, batched_opus, total_opus_size, frame_sizes,
-                                                  AUDIO_SAMPLE_RATE, 20, audio_packet_count);
+                                                  (uint32_t)audio_packet_count, AUDIO_SAMPLE_RATE, 20);
               if (result != ASCIICHAT_OK) {
                 log_error("AUDIO SEND FAIL (opus batch): client=%u, frames=%d, total_size=%zu, result=%d",
                           atomic_load(&client->client_id), audio_packet_count, total_opus_size, result);
