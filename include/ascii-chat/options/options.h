@@ -429,13 +429,16 @@ typedef enum {
 /** @brief Default reconnect attempts (-1 means auto/infinite) */
 #define OPT_RECONNECT_ATTEMPTS_DEFAULT (-1)
 
-/** @brief Default webcam flip state (true = horizontally flipped)
+/** @brief Default horizontal flip state (true = horizontally flipped)
  * macOS webcams default to flipped (mirrored), other platforms default to normal */
 #ifdef __APPLE__
-#define OPT_WEBCAM_FLIP_DEFAULT true
+#define OPT_FLIP_X_DEFAULT true
 #else
-#define OPT_WEBCAM_FLIP_DEFAULT false
+#define OPT_FLIP_X_DEFAULT false
 #endif
+
+/** @brief Default vertical flip state (false = no vertical flip) */
+#define OPT_FLIP_Y_DEFAULT false
 
 /** @brief Default color setting (COLOR_SETTING_AUTO = smart detection) */
 #define OPT_COLOR_DEFAULT COLOR_SETTING_AUTO
@@ -657,7 +660,8 @@ static const int default_height_value = OPT_HEIGHT_DEFAULT;
 static const int default_port_value = OPT_PORT_INT_DEFAULT;
 static const int default_websocket_port_value = OPT_WEBSOCKET_PORT_SERVER_DEFAULT;
 static const int default_webcam_index_value = OPT_WEBCAM_INDEX_DEFAULT;
-static const bool default_webcam_flip_value = OPT_WEBCAM_FLIP_DEFAULT;
+static const bool default_flip_x_value = OPT_FLIP_X_DEFAULT;
+static const bool default_flip_y_value = OPT_FLIP_Y_DEFAULT;
 static const bool default_test_pattern_value = OPT_TEST_PATTERN_DEFAULT;
 static const int default_color_value = OPT_COLOR_DEFAULT;
 static const int default_color_mode_value = OPT_COLOR_MODE_DEFAULT;
@@ -873,7 +877,6 @@ typedef struct options_state {
   // Webcam Options
   // ============================================================================
   unsigned short int webcam_index; ///< Webcam device index (0 = first)
-  bool webcam_flip;                ///< Flip webcam image horizontally
   bool test_pattern;               ///< Use test pattern instead of webcam
   bool no_audio_mixer;             ///< Disable audio mixer (debug)
 
@@ -899,6 +902,8 @@ typedef struct options_state {
   unsigned short int show_capabilities; ///< Show terminal capabilities and exit
   int force_utf8;                       ///< UTF-8 support setting (auto/true/false)
   int fps;                              ///< Target framerate (1-144, default: 60)
+  bool flip_x;                          ///< Flip video horizontally (X-axis). Ignored for webcam on macOS
+  bool flip_y;                          ///< Flip video vertically (Y-axis)
 
   // ============================================================================
   // Audio Configuration
@@ -1028,7 +1033,7 @@ const options_t *options_get(void);
  * // Simple field access
  * const char *addr = GET_OPTION(address6);
  * int width = GET_OPTION(width);
- * bool flip = GET_OPTION(webcam_flip);
+ * bool flip_x = GET_OPTION(flip_x);
  *
  * // In expressions
  * if (GET_OPTION(encrypt_enabled)) {
