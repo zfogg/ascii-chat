@@ -144,9 +144,10 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       conn_data->fragment_capacity = 0;
     }
 
-    // Clean up pending send data
-    if (conn_data && conn_data->pending_send_data) {
+    // Clean up pending send data only if not already freed
+    if (conn_data && conn_data->has_pending_send && conn_data->pending_send_data) {
       SAFE_FREE(conn_data->pending_send_data);
+      conn_data->pending_send_data = NULL;
       conn_data->has_pending_send = false;
     }
 
@@ -210,6 +211,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
         if (!ws_data->send_buffer) {
           log_error("Failed to allocate send buffer");
           SAFE_FREE(conn_data->pending_send_data);
+          conn_data->pending_send_data = NULL;
           conn_data->has_pending_send = false;
           break;
         }
@@ -223,6 +225,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
         log_error("Server WebSocket write error: %d at offset %zu/%zu", written, conn_data->pending_send_offset,
                   conn_data->pending_send_len);
         SAFE_FREE(conn_data->pending_send_data);
+        conn_data->pending_send_data = NULL;
         conn_data->has_pending_send = false;
         break;
       }
@@ -242,6 +245,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
         // Message fully sent
         log_dev_every(4500000, "SERVER_WRITEABLE: Message fully sent (%zu bytes)", conn_data->pending_send_len);
         SAFE_FREE(conn_data->pending_send_data);
+        conn_data->pending_send_data = NULL;
         conn_data->has_pending_send = false;
       } else {
         // More fragments to send
