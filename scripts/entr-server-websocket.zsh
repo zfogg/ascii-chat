@@ -11,16 +11,8 @@ source scripts/developer-helpers.zsh
 rebuild_and_start() {
   cbb --target ascii-chat
   pkill -9 -x ascii-chat 2>/dev/null || true
-  pkill -9 -f "lldb.*ascii-chat" 2>/dev/null || true
   sleep 0.5
-  lldb --batch \
-    -o "process handle -p true -s true -n false SIGSEGV SIGABRT SIGBUS SIGILL" \
-    -o "process handle -p true -s true -n false SIGTERM SIGINT" \
-    -o "run" \
-    -o "bt all" \
-    -o "thread list" \
-    -o "frame variable" \
-    ./build/bin/ascii-chat -- --log-file server.log --log-level debug server 0.0.0.0 "::" --no-status-screen --websocket-port 27226 &
+  ./build/bin/ascii-chat --log-file server.log --log-level debug server 0.0.0.0 "::" --no-status-screen --websocket-port 27226 &
   echo "Server started"
 }
 
