@@ -124,7 +124,7 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
       int text_len = p - line_start;
       if (text_len > 0) {
         char seg[BUFFER_SIZE_MEDIUM];
-        SAFE_STRNCPY(seg, line_start, text_len);
+        memcpy(seg, line_start, text_len);
         seg[text_len] = '\0';
         layout_print_colored_segment(stream, seg);
       }
@@ -177,7 +177,7 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
       // Print text up to break point with colors applied
       int text_len = last_space - line_start;
       char seg[BUFFER_SIZE_MEDIUM];
-      SAFE_STRNCPY(seg, line_start, text_len);
+      memcpy(seg, line_start, text_len);
       seg[text_len] = '\0';
       layout_print_colored_segment(stream, seg);
 
@@ -196,7 +196,7 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
   if (p > line_start) {
     char seg[BUFFER_SIZE_MEDIUM];
     int text_len = p - line_start;
-    SAFE_STRNCPY(seg, line_start, text_len);
+    memcpy(seg, line_start, text_len);
     seg[text_len] = '\0';
     layout_print_colored_segment(stream, seg);
   }
