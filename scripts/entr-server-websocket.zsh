@@ -29,12 +29,12 @@ mkdir -p "$_marker_dir"
 touch "$_marker_file"
 trap "rm -f $_marker_file" EXIT
 
-# Start server immediately
-rebuild_and_start
-touch "$_marker_file"
-
 # Run watcher loop in background
 {
+  # Initial build before loop starts
+  rebuild_and_start
+  touch "$_marker_file"
+
   while true; do
     # Find files modified after the marker
     _changed=$(find src/ lib/ include/ -type f \( -name "*.c" -o -name "*.h" -o -name "*.cpp" -o -name "*.hpp" -o -name "*.m" \) -newer "$_marker_file" 2>/dev/null)
