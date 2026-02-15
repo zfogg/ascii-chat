@@ -339,7 +339,29 @@ EMSCRIPTEN_KEEPALIVE
 int client_handle_key_exchange_init(const uint8_t *packet, size_t packet_len) {
   WASM_LOG("=== client_handle_key_exchange_init CALLED ===");
   WASM_LOG_INT("  packet_len", (int)packet_len);
-  WASM_LOG_INT("  g_crypto_handshake_ctx.state", g_crypto_handshake_ctx.state);
+  WASM_LOG_INT("  g_crypto_handshake_ctx.state BEFORE", g_crypto_handshake_ctx.state);
+
+  // Safety check: if handshake context is not in INIT state, reinitialize it
+  // This handles cases where previous handshakes weren't properly cleaned up
+  if (g_crypto_handshake_ctx.state != CRYPTO_HANDSHAKE_INIT) {
+    WASM_LOG("Handshake context not in INIT state, reinitializing...");
+    WASM_LOG_INT("  Previous state", g_crypto_handshake_ctx.state);
+
+    // Destroy and reset
+    if (g_crypto_handshake_ctx.state != CRYPTO_HANDSHAKE_DISABLED) {
+      crypto_handshake_destroy(&g_crypto_handshake_ctx);
+    }
+    memset(&g_crypto_handshake_ctx, 0, sizeof(g_crypto_handshake_ctx));
+
+    // Reinitialize to INIT state
+    asciichat_error_t init_result = crypto_handshake_init(&g_crypto_handshake_ctx, false);
+    if (init_result != ASCIICHAT_OK) {
+      WASM_ERROR("Failed to reinitialize crypto handshake context");
+      WASM_LOG_INT("  init result", init_result);
+      return -1;
+    }
+    WASM_LOG("Crypto handshake context reinitialized");
+  }
 
   if (!packet || packet_len == 0) {
     WASM_ERROR("Invalid packet data");
