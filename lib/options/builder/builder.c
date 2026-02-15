@@ -611,8 +611,9 @@ void options_config_destroy(options_config_t *config) {
   SAFE_FREE(config->custom_sections);
 
   // Free all owned strings before freeing the array
+  // Use SAFE_FREE because platform_strdup uses SAFE_MALLOC (mimalloc on Windows)
   for (size_t i = 0; i < config->num_owned_strings; i++) {
-    free(config->owned_strings[i]);
+    SAFE_FREE(config->owned_strings[i]);
   }
   SAFE_FREE(config->owned_strings);
 
