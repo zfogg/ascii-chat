@@ -84,19 +84,19 @@ asciichat_error_t crypto_handshake_server_start(crypto_handshake_context_t *ctx,
     log_debug("Sending authenticated KEY_EXCHANGE_INIT (%zu bytes: ephemeral + "
               "identity + signature)",
               expected_packet_size);
-    log_debug("[HANDSHAKE_START] Calling packet_send_via_transport(type=%d, payload_len=%zu)...",
+    log_debug("[HANDSHAKE_START] Calling packet_send_via_transport(type=%d, payload_len=%zu, 0)...",
               PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT, expected_packet_size);
     result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT, extended_packet,
-                                       expected_packet_size);
+                                       expected_packet_size, 0);
     log_debug("[HANDSHAKE_START] packet_send_via_transport returned %d", result);
     SAFE_FREE(extended_packet);
   } else {
     // No identity key - send just the ephemeral key
     log_debug("Sending simple KEY_EXCHANGE_INIT (%zu bytes: ephemeral key only)", ctx->crypto_ctx.public_key_size);
-    log_debug("[HANDSHAKE_START] Calling packet_send_via_transport(type=%d, payload_len=%zu)...",
+    log_debug("[HANDSHAKE_START] Calling packet_send_via_transport(type=%d, payload_len=%zu, 0)...",
               PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT, ctx->crypto_ctx.public_key_size);
     result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT, ctx->crypto_ctx.public_key,
-                                       ctx->crypto_ctx.public_key_size);
+                                       ctx->crypto_ctx.public_key_size, 0);
     log_debug("[HANDSHAKE_START] packet_send_via_transport returned %d", result);
   }
 
@@ -130,7 +130,8 @@ asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_contex
     // Send AUTH_FAILED to inform client (though they already know)
     auth_failure_packet_t failure = {0};
     failure.reason_flags = 0; // No specific auth failure, just encryption mismatch
-    int send_result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_FAILED, &failure, sizeof(failure));
+    int send_result =
+        packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_FAILED, &failure, sizeof(failure), 0);
     if (send_result != 0) {
       return SET_ERRNO(ERROR_NETWORK, "Failed to send AUTH_FAILED packet");
     }
@@ -238,7 +239,7 @@ asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_contex
           auth_failure_packet_t failure = {0};
           failure.reason_flags = AUTH_FAIL_SIGNATURE_INVALID;
           int send_result =
-              packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_FAILED, &failure, sizeof(failure));
+              packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_FAILED, &failure, sizeof(failure), 0);
           if (send_result != 0) {
             return SET_ERRNO(ERROR_NETWORK, "Failed to send AUTH_FAILED packet");
           }
@@ -364,7 +365,7 @@ asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_contex
 
     // Send AUTH_CHALLENGE with flags + nonce (challenge_packet_size bytes)
     result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_CHALLENGE, challenge_packet,
-                                       challenge_packet_size);
+                                       challenge_packet_size, 0);
     if (result != 0) {
       return SET_ERRNO(ERROR_NETWORK, "Failed to send AUTH_CHALLENGE packet");
     }
@@ -375,7 +376,7 @@ asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_contex
     log_debug("Skipping authentication (no password and client has no identity key)");
 
     // Send HANDSHAKE_COMPLETE immediately
-    result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE, NULL, 0);
+    result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE, NULL, 0, 0);
     if (result != 0) {
       return SET_ERRNO(ERROR_NETWORK, "Failed to send HANDSHAKE_COMPLETE packet");
     }
@@ -426,7 +427,7 @@ asciichat_error_t crypto_handshake_server_complete(crypto_handshake_context_t *c
       if (ctx->require_client_auth) {
         failure.reason_flags |= AUTH_FAIL_CLIENT_KEY_REQUIRED;
       }
-      packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_FAILED, &failure, sizeof(failure));
+      packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_FAILED, &failure, sizeof(failure), 0);
       return ERROR_NETWORK;
     }
 
@@ -453,7 +454,7 @@ asciichat_error_t crypto_handshake_server_complete(crypto_handshake_context_t *c
       if (ctx->require_client_auth) {
         failure.reason_flags |= AUTH_FAIL_CLIENT_KEY_REQUIRED;
       }
-      packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_FAILED, &failure, sizeof(failure));
+      packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_FAILED, &failure, sizeof(failure), 0);
       return ERROR_NETWORK;
     }
 
@@ -509,7 +510,7 @@ asciichat_error_t crypto_handshake_server_complete(crypto_handshake_context_t *c
           failure.reason_flags = AUTH_FAIL_CLIENT_KEY_REJECTED;
           SET_ERRNO(ERROR_CRYPTO_AUTH, "%s signature verification failed on challenge nonce",
                     ctx->client_ed25519_key.type == KEY_TYPE_GPG ? "GPG" : "Ed25519");
-          packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_FAILED, &failure, sizeof(failure));
+          packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_FAILED, &failure, sizeof(failure), 0);
           return ERROR_CRYPTO_AUTH;
         }
         log_debug("%s signature on challenge nonce verified successfully",
@@ -550,7 +551,7 @@ asciichat_error_t crypto_handshake_server_complete(crypto_handshake_context_t *c
         // Password was verified, but key was not
         SET_ERRNO(ERROR_CRYPTO_AUTH, "Note: Password was correct, but client key is required");
       }
-      packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_FAILED, &failure, sizeof(failure));
+      packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_FAILED, &failure, sizeof(failure), 0);
       return ERROR_NETWORK;
     }
     log_info("Client key authentication successful (whitelist verified)");
@@ -574,8 +575,8 @@ asciichat_error_t crypto_handshake_server_complete(crypto_handshake_context_t *c
   log_debug("Sending SERVER_AUTH_RESPONSE packet with server HMAC (%u bytes) "
             "for mutual authentication",
             ctx->crypto_ctx.hmac_size);
-  result =
-      packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP, server_hmac, ctx->crypto_ctx.hmac_size);
+  result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP, server_hmac,
+                                     ctx->crypto_ctx.hmac_size, 0);
   if (result != ASCIICHAT_OK) {
     SET_ERRNO(ERROR_NETWORK, "Failed to send SERVER_AUTH_RESPONSE packet");
     return ERROR_NETWORK;

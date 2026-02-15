@@ -429,7 +429,7 @@ static void acds_on_session_create(const acip_session_create_t *req, int client_
       }
 
       // Send complete response with variable-length data
-      packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_CREATED, payload, total_size);
+      packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_CREATED, payload, total_size, 0);
       SAFE_FREE(payload);
 
       log_info("Session created: %.*s (UUID: %02x%02x..., %zu keys, %d STUN, %d TURN servers)", resp.session_string_len,

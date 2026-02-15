@@ -408,7 +408,7 @@ static log_color_t get_value_color(const char *value) {
 
   // Try to detect value type in order of specificity
   if (is_numeric_pattern(value, 0, &end_pos)) {
-    return LOG_COLOR_DEBUG; // Cyan for numbers
+    return LOG_COLOR_GREY; // Grey for numbers (matching line numbers and tid)
   }
 
   if (is_url(value, 0, &end_pos)) {
@@ -416,7 +416,7 @@ static log_color_t get_value_color(const char *value) {
   }
 
   if (is_file_path(value, 0, &end_pos)) {
-    return LOG_COLOR_FATAL; // Magenta for paths
+    return LOG_COLOR_DEBUG; // Cyan/Blue for paths
   }
 
   if (is_env_var(value, 0, &end_pos)) {
@@ -586,7 +586,7 @@ const char *colorize_log_message(const char *message) {
       char pattern_buf[256];
       safe_snprintf(pattern_buf, sizeof(pattern_buf), "%.*s", (int)pattern_len, message + i);
 
-      const char *colored = colored_string(LOG_COLOR_DEBUG, pattern_buf);
+      const char *colored = colored_string(LOG_COLOR_GREY, pattern_buf);
       size_t colored_len = strlen(colored);
       if (out_pos + colored_len < max_size) {
         memcpy(output + out_pos, colored, colored_len);
@@ -602,7 +602,7 @@ const char *colorize_log_message(const char *message) {
       char path_buf[512];
       safe_snprintf(path_buf, sizeof(path_buf), "%.*s", (int)path_len, message + i);
 
-      const char *colored = colored_string(LOG_COLOR_FATAL, path_buf);
+      const char *colored = colored_string(LOG_COLOR_DEBUG, path_buf);
       size_t colored_len = strlen(colored);
       if (out_pos + colored_len < max_size) {
         memcpy(output + out_pos, colored, colored_len);

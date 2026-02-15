@@ -164,7 +164,7 @@ static asciichat_error_t client_send_sdp(const uint8_t session_id[16], const uin
 
   // Send via ACDS transport using generic packet sender
   asciichat_error_t result =
-      packet_send_via_transport(g_acds_transport, PACKET_TYPE_ACIP_WEBRTC_SDP, packet, total_len);
+      packet_send_via_transport(g_acds_transport, PACKET_TYPE_ACIP_WEBRTC_SDP, packet, total_len, 0);
 
   mutex_unlock(&g_signaling_mutex);
 
@@ -245,7 +245,7 @@ static asciichat_error_t client_send_ice(const uint8_t session_id[16], const uin
 
   // Send via ACDS transport using generic packet sender
   asciichat_error_t result =
-      packet_send_via_transport(g_acds_transport, PACKET_TYPE_ACIP_WEBRTC_ICE, packet, total_len);
+      packet_send_via_transport(g_acds_transport, PACKET_TYPE_ACIP_WEBRTC_ICE, packet, total_len, 0);
 
   mutex_unlock(&g_signaling_mutex);
 

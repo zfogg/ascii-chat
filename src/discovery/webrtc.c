@@ -143,7 +143,7 @@ static asciichat_error_t discovery_send_sdp(const uint8_t session_id[16], const 
   // Send via direct TCP transport (not ACDS)
   size_t msg_size = sizeof(acip_webrtc_sdp_t) + sdp_len;
   asciichat_error_t result =
-      packet_send_via_transport(g_tcp_transport, PACKET_TYPE_ACIP_WEBRTC_SDP, sdp_msg_buf, msg_size);
+      packet_send_via_transport(g_tcp_transport, PACKET_TYPE_ACIP_WEBRTC_SDP, sdp_msg_buf, msg_size, 0);
 
   mutex_unlock(&g_webrtc_mutex);
 
@@ -224,7 +224,7 @@ static asciichat_error_t discovery_send_ice(const uint8_t session_id[16], const 
   // Send via direct TCP transport (not ACDS)
   size_t msg_size = sizeof(acip_webrtc_ice_t) + payload_len;
   asciichat_error_t result =
-      packet_send_via_transport(g_tcp_transport, PACKET_TYPE_ACIP_WEBRTC_ICE, ice_msg_buf, msg_size);
+      packet_send_via_transport(g_tcp_transport, PACKET_TYPE_ACIP_WEBRTC_ICE, ice_msg_buf, msg_size, 0);
 
   mutex_unlock(&g_webrtc_mutex);
 

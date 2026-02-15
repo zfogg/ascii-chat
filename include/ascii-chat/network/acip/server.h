@@ -56,12 +56,14 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
  *
  * @param transport Transport instance
  * @param frame_data ASCII frame data (null-terminated string)
+ * @param frame_size Frame data size in bytes
  * @param width Frame width in characters
  * @param height Frame height in characters
+ * @param client_id Client ID to include in packet header
  * @return ASCIICHAT_OK on success, error code on failure
  */
 asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, const char *frame_data, size_t frame_size,
-                                        uint32_t width, uint32_t height);
+                                        uint32_t width, uint32_t height, uint32_t client_id);
 
 /**
  * @brief Send clear console command to client (server → client)

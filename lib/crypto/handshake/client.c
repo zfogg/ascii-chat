@@ -510,7 +510,7 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
       log_debug("Including client GPG key ID in KEY_EXCHANGE_RESPONSE: %.*s", gpg_key_id_len, ctx->client_gpg_key_id);
     }
 
-    result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP, key_response, response_size);
+    result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP, key_response, response_size, 0);
     if (result != 0) {
       SAFE_FREE(key_response);
       SAFE_FREE(server_ephemeral_key);
@@ -526,7 +526,7 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
     // Send X25519 encryption key only to server (no identity key)
     // Format: [X25519 pubkey (kex_size)] = kex_size bytes total
     result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP, ctx->crypto_ctx.public_key,
-                                       ctx->crypto_ctx.public_key_size);
+                                       ctx->crypto_ctx.public_key_size, 0);
     if (result != 0) {
       SAFE_FREE(server_ephemeral_key);
       SAFE_FREE(server_identity_key);
@@ -575,7 +575,7 @@ static asciichat_error_t send_password_auth_response(crypto_handshake_context_t 
   memcpy(auth_packet + ctx->crypto_ctx.hmac_size, ctx->client_challenge_nonce, ctx->crypto_ctx.auth_challenge_size);
 
   log_debug("Sending AUTH_RESPONSE packet with HMAC + client nonce (%zu bytes) - %s", auth_packet_size, auth_context);
-  int result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_RESPONSE, auth_packet, auth_packet_size);
+  int result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_RESPONSE, auth_packet, auth_packet_size, 0);
   if (result != 0) {
     return SET_ERRNO(ERROR_NETWORK, "Failed to send AUTH_RESPONSE packet");
   }
@@ -646,7 +646,7 @@ static asciichat_error_t send_key_auth_response(crypto_handshake_context_t *ctx,
   log_debug("Sending AUTH_RESPONSE packet with Ed25519 signature + client "
             "nonce + GPG key ID (%zu bytes) - %s",
             auth_packet_size, auth_context);
-  int result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_RESPONSE, auth_packet, auth_packet_size);
+  int result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_RESPONSE, auth_packet, auth_packet_size, 0);
   if (result != 0) {
     return SET_ERRNO(ERROR_NETWORK, "Failed to send AUTH_RESPONSE packet");
   }

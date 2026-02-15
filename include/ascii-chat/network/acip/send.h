@@ -43,10 +43,11 @@
  * @param type Packet type
  * @param payload Packet payload (can be NULL if payload_len==0)
  * @param payload_len Payload length
+ * @param client_id Client ID to include in packet header
  * @return ASCIICHAT_OK on success, error code on failure
  */
 asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_type_t type, const void *payload,
-                                            size_t payload_len);
+                                            size_t payload_len, uint32_t client_id);
 
 // Video/ASCII frame functions moved to:
 // - acip_send_ascii_frame → lib/network/acip/server.h

@@ -93,8 +93,6 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
     log_debug("ACIP_SERVER_DISPATCH: WebRTC packet parsed: type=%d, len=%u", envelope.type, envelope.len);
 
     // Handle PACKET_TYPE_ENCRYPTED from WebSocket clients that encrypt at application layer
-    log_error("[ENCRYPTED_CHECK] Received packet type=%d, transport->crypto_ctx=%p", envelope.type,
-              (void *)transport->crypto_ctx);
     if (envelope.type == PACKET_TYPE_ENCRYPTED && transport->crypto_ctx) {
       uint8_t *ciphertext = (uint8_t *)envelope.data;
       size_t ciphertext_len = envelope.len;
@@ -159,7 +157,7 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
 // =============================================================================
 
 asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, const char *frame_data, size_t frame_size,
-                                        uint32_t width, uint32_t height) {
+                                        uint32_t width, uint32_t height, uint32_t client_id) {
   if (!transport || !frame_data) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport or frame_data");
   }
@@ -196,8 +194,9 @@ asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, const char 
   memcpy(buffer, &header, sizeof(header));
   memcpy(buffer + sizeof(header), frame_data, frame_size);
 
-  // Send via transport
-  asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_ASCII_FRAME, buffer, total_size);
+  // Send via transport with client_id
+  asciichat_error_t result =
+      packet_send_via_transport(transport, PACKET_TYPE_ASCII_FRAME, buffer, total_size, client_id);
 
   buffer_pool_free(NULL, buffer, total_size);
   return result;
@@ -208,7 +207,7 @@ asciichat_error_t acip_send_clear_console(acip_transport_t *transport) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport");
   }
 
-  return packet_send_via_transport(transport, PACKET_TYPE_CLEAR_CONSOLE, NULL, 0);
+  return packet_send_via_transport(transport, PACKET_TYPE_CLEAR_CONSOLE, NULL, 0, 0);
 }
 
 asciichat_error_t acip_send_server_state(acip_transport_t *transport, const server_state_packet_t *state) {
@@ -216,5 +215,5 @@ asciichat_error_t acip_send_server_state(acip_transport_t *transport, const serv
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport or state");
   }
 
-  return packet_send_via_transport(transport, PACKET_TYPE_SERVER_STATE, state, sizeof(*state));
+  return packet_send_via_transport(transport, PACKET_TYPE_SERVER_STATE, state, sizeof(*state), 0);
 }

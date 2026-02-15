@@ -975,7 +975,7 @@ asciichat_error_t threaded_send_packet(packet_type_t type, const void *data, siz
   mutex_unlock(&g_send_mutex);
 
   // Network I/O happens OUTSIDE the mutex to prevent deadlock on TCP buffer full
-  asciichat_error_t result = packet_send_via_transport(transport, type, data, len);
+  asciichat_error_t result = packet_send_via_transport(transport, type, data, len, 0);
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {
@@ -1076,7 +1076,7 @@ asciichat_error_t threaded_send_audio_opus(const uint8_t *opus_data, size_t opus
 
   // Network I/O happens OUTSIDE the mutex to prevent deadlock on TCP buffer full
   asciichat_error_t result =
-      packet_send_via_transport(transport, PACKET_TYPE_AUDIO_OPUS_BATCH, packet_data, total_size);
+      packet_send_via_transport(transport, PACKET_TYPE_AUDIO_OPUS_BATCH, packet_data, total_size, 0);
 
   // Clean up
   buffer_pool_free(NULL, packet_data, total_size);

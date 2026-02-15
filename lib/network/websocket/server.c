@@ -112,7 +112,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     client_ctx->client_port = 0; // WebSocket doesn't expose client port easily
     client_ctx->user_data = server->user_data;
 
-    // Spawn handler thread (matches TCP server behavior)
+    // Spawn handler thread - this calls websocket_client_handler which creates client_info_t
     log_debug("[LWS_CALLBACK_ESTABLISHED] Spawning handler thread (handler=%p, ctx=%p)...", (void *)server->handler,
               (void *)client_ctx);
     if (asciichat_thread_create(&conn_data->handler_thread, server->handler, client_ctx) != 0) {
@@ -124,8 +124,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     }
 
     conn_data->handler_started = true;
-    log_debug("WebSocket client handler thread started");
-    log_debug("[LWS_CALLBACK_ESTABLISHED] ===== Handler thread started successfully =====");
+    log_debug("[LWS_CALLBACK_ESTABLISHED] Handler thread spawned successfully");
     break;
   }
 
@@ -260,9 +259,73 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
   case LWS_CALLBACK_RECEIVE: {
     // Received data from client - may be fragmented for large messages
-    if (!conn_data || !conn_data->transport || !in || len == 0) {
+    log_debug("LWS_CALLBACK_RECEIVE: conn_data=%p, transport=%p, len=%zu", (void *)conn_data,
+              conn_data ? (void *)conn_data->transport : NULL, len);
+
+    if (!conn_data) {
+      log_error("LWS_CALLBACK_RECEIVE: conn_data is NULL! Need to initialize from ESTABLISHED or handle here");
       break;
     }
+
+    if (!conn_data->transport) {
+      log_error("LWS_CALLBACK_RECEIVE: conn_data->transport is NULL! ESTABLISHED never called?");
+      // Try to initialize the transport here as a fallback
+      const struct lws_protocols *protocol = lws_get_protocol(wsi);
+      if (!protocol || !protocol->user) {
+        log_error("LWS_CALLBACK_RECEIVE: Cannot get protocol or user data for fallback initialization");
+        break;
+      }
+
+      websocket_server_t *server = (websocket_server_t *)protocol->user;
+      char client_ip[64];
+      lws_get_peer_addresses(wsi, lws_get_socket_fd(wsi), NULL, 0, client_ip, sizeof(client_ip));
+
+      log_info("LWS_CALLBACK_RECEIVE: Initializing transport as fallback (client_ip=%s)", client_ip);
+      conn_data->server = server;
+      conn_data->transport = acip_websocket_server_transport_create(wsi, NULL);
+      conn_data->handler_started = false;
+      conn_data->fragment_buffer = NULL;
+      conn_data->fragment_size = 0;
+      conn_data->fragment_capacity = 0;
+
+      if (!conn_data->transport) {
+        log_error("LWS_CALLBACK_RECEIVE: Failed to create transport in fallback");
+        break;
+      }
+
+      log_debug("LWS_CALLBACK_RECEIVE: Spawning handler thread in fallback");
+      websocket_client_context_t *client_ctx =
+          SAFE_CALLOC(1, sizeof(websocket_client_context_t), websocket_client_context_t *);
+      if (!client_ctx) {
+        log_error("Failed to allocate client context");
+        acip_transport_destroy(conn_data->transport);
+        conn_data->transport = NULL;
+        break;
+      }
+
+      client_ctx->transport = conn_data->transport;
+      SAFE_STRNCPY(client_ctx->client_ip, client_ip, sizeof(client_ctx->client_ip));
+      client_ctx->client_port = 0;
+      client_ctx->user_data = server->user_data;
+
+      if (asciichat_thread_create(&conn_data->handler_thread, server->handler, client_ctx) != 0) {
+        log_error("LWS_CALLBACK_RECEIVE: Failed to spawn handler thread");
+        SAFE_FREE(client_ctx);
+        acip_transport_destroy(conn_data->transport);
+        conn_data->transport = NULL;
+        break;
+      }
+
+      conn_data->handler_started = true;
+      log_info("LWS_CALLBACK_RECEIVE: Handler thread spawned in fallback");
+    }
+
+    if (!in || len == 0) {
+      break;
+    }
+
+    // Handler thread was spawned in LWS_CALLBACK_ESTABLISHED (or RECEIVE fallback)
+    // (It fires for server-side connections and properly initializes client_info_t)
 
     // Get transport data
     websocket_transport_data_t *ws_data = (websocket_transport_data_t *)conn_data->transport->impl_data;

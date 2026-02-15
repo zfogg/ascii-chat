@@ -714,12 +714,12 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
   const char *rel_file = extract_project_relative_path(file);
   uint64_t tid = asciichat_thread_current_id();
   if (use_colors) {
-    // Use specific colors for file/function info: file=yellow, line=magenta, function=blue, tid=grey
+    // Use specific colors for file/function info: file=cyan, line=grey, function=orange, tid=grey
     // Array indices: 0=DEV(Orange), 1=DEBUG(Cyan), 2=INFO(Green), 3=WARN(Yellow), 4=ERROR(Red), 5=FATAL(Magenta),
     // 6=GREY
     const char *file_color = colors[1]; // DEBUG: Cyan for file paths
-    const char *line_color = colors[5]; // FATAL: Magenta for line numbers
-    const char *func_color = colors[0]; // DEV: Blue for function names
+    const char *line_color = colors[6]; // GREY: Grey for line numbers (matching tid)
+    const char *func_color = colors[0]; // DEV: Orange for function names
     const char *tid_color = colors[6];  // GREY: Grey for thread ID
     result = safe_snprintf(buffer, buffer_size, "[%s%s%s] [%s%s%s] [tid:%s%llu%s] %s%s%s:%s%d%s in %s%s%s(): %s%s",
                            color, timestamp, reset, color, level_string, reset, tid_color, (unsigned long long)tid,
@@ -1818,7 +1818,7 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
   const char *level_color = colors[level];
   const char *reset = colors[LOG_COLOR_RESET];
   const char *file_color = colors[1]; // DEBUG/Cyan
-  const char *line_color = colors[5]; // FATAL/Magenta
+  const char *line_color = colors[6]; // GREY (matching tid)
   const char *func_color = colors[0]; // DEV/Orange
   const char *tid_color = colors[6];  // GREY
 

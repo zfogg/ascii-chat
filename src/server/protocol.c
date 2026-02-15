@@ -519,7 +519,7 @@ void handle_stream_start_packet(client_info_t *client, const void *data, size_t 
   VALIDATE_FLAGS_MASK(client, stream_type, VALID_STREAM_MASK, "STREAM_START");
 
   if (stream_type & STREAM_TYPE_VIDEO) {
-    // Wait for first IMAGE_FRAME before marking sending_video true (avoids race)
+    atomic_store(&client->is_sending_video, true);
   }
   if (stream_type & STREAM_TYPE_AUDIO) {
     atomic_store(&client->is_sending_audio, true);
@@ -773,74 +773,30 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
     return;
   }
 
-  // Check if this is the new compressed format (has 4 fields) or old format (has 2 fields)
+  // Only support legacy format: [width:4][height:4][rgb_data:w*h*3]
   if (rgb_size > SIZE_MAX - FRAME_HEADER_SIZE_LEGACY) {
     char size_str[32];
     format_bytes_pretty(rgb_size, size_str, sizeof(size_str));
     disconnect_client_for_bad_data(client, "IMAGE_FRAME legacy packet size overflow: %s", size_str);
     return;
   }
-  size_t old_format_size = FRAME_HEADER_SIZE_LEGACY + rgb_size;
-  bool is_new_format = (len != old_format_size) && (len > FRAME_HEADER_SIZE_NEW);
+  size_t expected_size = FRAME_HEADER_SIZE_LEGACY + rgb_size;
 
-  void *rgb_data = NULL;
-  size_t rgb_data_size = 0;
-  bool needs_free = false;
-
-  if (is_new_format) {
-    // New format: [width:4][height:4][compressed_flag:4][data_size:4][data:data_size]
-    // Use frame_validator to validate the new format frame
-    bool is_compressed = false;
-    uint32_t data_size_field = 0;
-    asciichat_error_t validate_result = frame_validate_new(data, len, &is_compressed, &data_size_field);
-    if (validate_result != ASCIICHAT_OK) {
-      disconnect_client_for_bad_data(client, "IMAGE_FRAME new-format validation failed");
-      return;
-    }
-
-    uint32_t data_size = data_size_field;
-    void *frame_data = (char *)data + FRAME_HEADER_SIZE_NEW;
-
-    if (is_compressed) {
-      // Decompress the data
-      rgb_data = SAFE_MALLOC(rgb_size, void *);
-      if (!rgb_data) {
-        SET_ERRNO(ERROR_MEMORY, "Failed to allocate decompression buffer for client %u",
-                  atomic_load(&client->client_id));
-        return;
-      }
-
-      asciichat_error_t decompress_result = decompress_data(frame_data, data_size, rgb_data, rgb_size);
-      if (decompress_result != ASCIICHAT_OK) {
-        SAFE_FREE(rgb_data);
-        disconnect_client_for_bad_data(client, "IMAGE_FRAME decompression failure for %zu bytes: %s", (size_t)data_size,
-                                       asciichat_error_string(decompress_result));
-        return;
-      }
-
-      rgb_data_size = rgb_size;
-      needs_free = true;
-    } else {
-      // Uncompressed data
-      rgb_data = frame_data;
-      rgb_data_size = data_size;
-      if (rgb_data_size != rgb_size) {
-        disconnect_client_for_bad_data(client, "IMAGE_FRAME uncompressed size mismatch: expected %zu got %zu", rgb_size,
-                                       rgb_data_size);
-        return;
-      }
-    }
-  } else {
-    // Old format: [width:4][height:4][rgb_data:w*h*3]
-    // Use frame_validator to validate the legacy format frame
-    asciichat_error_t validate_result = frame_validate_legacy(len, rgb_size);
-    if (validate_result != ASCIICHAT_OK) {
-      disconnect_client_for_bad_data(client, "IMAGE_FRAME legacy validation failed");
-      return;
-    }
-    rgb_data = (char *)data + FRAME_HEADER_SIZE_LEGACY;
-    rgb_data_size = rgb_size;
+  if (len != expected_size) {
+    disconnect_client_for_bad_data(client, "IMAGE_FRAME size mismatch: expected %zu bytes got %zu", expected_size, len);
+    return;
   }
+
+  // Validate legacy format
+  asciichat_error_t validate_result = frame_validate_legacy(len, rgb_size);
+  if (validate_result != ASCIICHAT_OK) {
+    disconnect_client_for_bad_data(client, "IMAGE_FRAME legacy validation failed");
+    return;
+  }
+
+  void *rgb_data = (char *)data + FRAME_HEADER_SIZE_LEGACY;
+  size_t rgb_data_size = rgb_size;
+  bool needs_free = false;
 
   if (client->incoming_video_buffer) {
     // Get the write buffer

@@ -40,10 +40,11 @@
 /**
  * @brief Maximum receive queue size (messages buffered before recv())
  *
- * Power of 2 for ringbuffer optimization. 64 messages = ~2-3 seconds
- * of video frames at 30 FPS, enough for network jitter and processing delays.
+ * Power of 2 for ringbuffer optimization. 512 messages provides adequate buffering
+ * for large video frames (921KB each) with WebRTC DataChannel fragmentation.
+ * At 30 FPS: 512 / 30 = ~17 seconds of buffering for burst traffic and processing delays.
  */
-#define WEBRTC_RECV_QUEUE_SIZE 64
+#define WEBRTC_RECV_QUEUE_SIZE 512
 
 /**
  * @brief Receive queue element (variable-length message)

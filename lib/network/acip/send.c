@@ -35,10 +35,11 @@
  * @param type Packet type
  * @param payload Payload data (may be NULL if payload_len is 0)
  * @param payload_len Payload length
+ * @param client_id Client ID to include in packet header
  * @return ASCIICHAT_OK on success, error code on failure
  */
 asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_type_t type, const void *payload,
-                                            size_t payload_len) {
+                                            size_t payload_len, uint32_t client_id) {
   if (!transport) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport");
   }
@@ -52,15 +53,15 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
     return SET_ERRNO(ERROR_INVALID_PARAM, "Packet payload too large: %zu bytes (max 25MB)", payload_len);
   }
 
-  log_debug("★ PACKET_SEND_VIA_TRANSPORT: type=%d, payload_len=%zu, transport=%p", type, payload_len,
-            (void *)transport);
+  log_debug("★ PACKET_SEND_VIA_TRANSPORT: type=%d, payload_len=%zu, client_id=%u, transport=%p", type, payload_len,
+            client_id, (void *)transport);
 
   // Build packet header
   packet_header_t header;
   header.magic = HOST_TO_NET_U64(PACKET_MAGIC);
   header.type = HOST_TO_NET_U16(type);
   header.length = HOST_TO_NET_U32((uint32_t)payload_len);
-  header.client_id = 0; // Set by caller if needed
+  header.client_id = client_id;
 
   // Calculate CRC32 if we have payload
   if (payload && payload_len > 0) {
@@ -135,7 +136,7 @@ asciichat_error_t acip_send_audio_batch(acip_transport_t *transport, const float
   memcpy(buffer, &header, sizeof(header));
   memcpy(buffer + sizeof(header), samples, samples_size);
 
-  asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_AUDIO_BATCH, buffer, total_size);
+  asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_AUDIO_BATCH, buffer, total_size, 0);
 
   buffer_pool_free(NULL, buffer, total_size);
   return result;
@@ -187,7 +188,7 @@ asciichat_error_t acip_send_audio_opus_batch(acip_transport_t *transport, const 
 
   memcpy(buffer + sizeof(header) + sizes_len, opus_data, opus_len);
 
-  asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_AUDIO_OPUS_BATCH, buffer, total_size);
+  asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_AUDIO_OPUS_BATCH, buffer, total_size, 0);
 
   buffer_pool_free(NULL, buffer, total_size);
   return result;
@@ -203,7 +204,7 @@ asciichat_error_t acip_send_ping(acip_transport_t *transport) {
   }
 
   // Ping has no payload
-  return packet_send_via_transport(transport, PACKET_TYPE_PING, NULL, 0);
+  return packet_send_via_transport(transport, PACKET_TYPE_PING, NULL, 0, 0);
 }
 
 asciichat_error_t acip_send_pong(acip_transport_t *transport) {
@@ -212,7 +213,7 @@ asciichat_error_t acip_send_pong(acip_transport_t *transport) {
   }
 
   // Pong has no payload
-  return packet_send_via_transport(transport, PACKET_TYPE_PONG, NULL, 0);
+  return packet_send_via_transport(transport, PACKET_TYPE_PONG, NULL, 0, 0);
 }
 
 // Client control functions moved to lib/network/acip/client.c:
@@ -258,7 +259,7 @@ asciichat_error_t acip_send_error(acip_transport_t *transport, uint32_t error_co
     memcpy(buffer + sizeof(header), message, msg_len);
   }
 
-  asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_ERROR_MESSAGE, buffer, total_size);
+  asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_ERROR_MESSAGE, buffer, total_size, 0);
 
   buffer_pool_free(NULL, buffer, total_size);
   return result;
@@ -289,7 +290,7 @@ asciichat_error_t acip_send_remote_log(acip_transport_t *transport, uint8_t log_
   memcpy(buffer, &header, sizeof(header));
   memcpy(buffer + sizeof(header), message, msg_len);
 
-  asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_REMOTE_LOG, buffer, total_size);
+  asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_REMOTE_LOG, buffer, total_size, 0);
 
   buffer_pool_free(NULL, buffer, total_size);
   return result;
@@ -304,7 +305,7 @@ asciichat_error_t acip_send_session_created(acip_transport_t *transport, const a
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport or response");
   }
 
-  return packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_CREATED, response, sizeof(*response));
+  return packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_CREATED, response, sizeof(*response), 0);
 }
 
 asciichat_error_t acip_send_session_info(acip_transport_t *transport, const acip_session_info_t *info) {
@@ -312,7 +313,7 @@ asciichat_error_t acip_send_session_info(acip_transport_t *transport, const acip
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport or info");
   }
 
-  return packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_INFO, info, sizeof(*info));
+  return packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_INFO, info, sizeof(*info), 0);
 }
 
 asciichat_error_t acip_send_session_joined(acip_transport_t *transport, const acip_session_joined_t *response) {
@@ -320,5 +321,5 @@ asciichat_error_t acip_send_session_joined(acip_transport_t *transport, const ac
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport or response");
   }
 
-  return packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_JOINED, response, sizeof(*response));
+  return packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_JOINED, response, sizeof(*response), 0);
 }

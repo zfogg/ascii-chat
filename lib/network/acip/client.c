@@ -159,7 +159,7 @@ asciichat_error_t acip_send_image_frame(acip_transport_t *transport, const void 
 
   log_debug("★ ACIP_SEND_IMAGE_FRAME: About to send packet");
   // Send via transport
-  asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_IMAGE_FRAME, buffer, total_size);
+  asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_IMAGE_FRAME, buffer, total_size, 0);
 
   log_debug("★ ACIP_SEND_IMAGE_FRAME: packet_send_via_transport returned %d", result);
 
@@ -173,7 +173,7 @@ asciichat_error_t acip_send_client_join(acip_transport_t *transport, uint8_t cap
   }
 
   // Simple capability byte payload
-  return packet_send_via_transport(transport, PACKET_TYPE_CLIENT_JOIN, &capabilities, sizeof(capabilities));
+  return packet_send_via_transport(transport, PACKET_TYPE_CLIENT_JOIN, &capabilities, sizeof(capabilities), 0);
 }
 
 asciichat_error_t acip_send_client_leave(acip_transport_t *transport) {
@@ -182,7 +182,7 @@ asciichat_error_t acip_send_client_leave(acip_transport_t *transport) {
   }
 
   // Leave has no payload
-  return packet_send_via_transport(transport, PACKET_TYPE_CLIENT_LEAVE, NULL, 0);
+  return packet_send_via_transport(transport, PACKET_TYPE_CLIENT_LEAVE, NULL, 0, 0);
 }
 
 asciichat_error_t acip_send_stream_start(acip_transport_t *transport, uint8_t stream_types) {
@@ -192,7 +192,7 @@ asciichat_error_t acip_send_stream_start(acip_transport_t *transport, uint8_t st
 
   // Server expects uint32_t (4 bytes), not uint8_t
   uint32_t stream_types_net = HOST_TO_NET_U32((uint32_t)stream_types);
-  return packet_send_via_transport(transport, PACKET_TYPE_STREAM_START, &stream_types_net, sizeof(stream_types_net));
+  return packet_send_via_transport(transport, PACKET_TYPE_STREAM_START, &stream_types_net, sizeof(stream_types_net), 0);
 }
 
 asciichat_error_t acip_send_stream_stop(acip_transport_t *transport, uint8_t stream_types) {
@@ -202,7 +202,7 @@ asciichat_error_t acip_send_stream_stop(acip_transport_t *transport, uint8_t str
 
   // Server expects uint32_t (4 bytes), not uint8_t
   uint32_t stream_types_net = HOST_TO_NET_U32((uint32_t)stream_types);
-  return packet_send_via_transport(transport, PACKET_TYPE_STREAM_STOP, &stream_types_net, sizeof(stream_types_net));
+  return packet_send_via_transport(transport, PACKET_TYPE_STREAM_STOP, &stream_types_net, sizeof(stream_types_net), 0);
 }
 
 asciichat_error_t acip_send_capabilities(acip_transport_t *transport, const void *cap_data, size_t cap_len) {
@@ -210,7 +210,7 @@ asciichat_error_t acip_send_capabilities(acip_transport_t *transport, const void
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport or cap_data");
   }
 
-  return packet_send_via_transport(transport, PACKET_TYPE_CLIENT_CAPABILITIES, cap_data, cap_len);
+  return packet_send_via_transport(transport, PACKET_TYPE_CLIENT_CAPABILITIES, cap_data, cap_len, 0);
 }
 
 asciichat_error_t acip_send_protocol_version(acip_transport_t *transport, const protocol_version_packet_t *version) {
@@ -218,5 +218,5 @@ asciichat_error_t acip_send_protocol_version(acip_transport_t *transport, const 
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport or version");
   }
 
-  return packet_send_via_transport(transport, PACKET_TYPE_PROTOCOL_VERSION, version, sizeof(*version));
+  return packet_send_via_transport(transport, PACKET_TYPE_PROTOCOL_VERSION, version, sizeof(*version), 0);
 }

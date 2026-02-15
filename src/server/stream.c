@@ -1047,16 +1047,14 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
 
   if (ascii_frame) {
     // The frame should have been null-terminated by the padding functions.
-    // Count the actual string length safely without relying on strlen().
-    size_t ascii_len = 0;
-    for (const char *p = ascii_frame; *p != '\0'; p++) {
-      ascii_len++;
-      // Safety check: don't read past a reasonable buffer size (10MB for large frames)
-      if (ascii_len > 10 * 1024 * 1024) {
-        log_error("Frame size exceeds 10MB safety limit (possible buffer overflow)");
-        SET_ERRNO(ERROR_INVALID_PARAM, "Frame size exceeds 10MB");
-        return NULL;
-      }
+    // Use strlen() which is optimized and reliable
+    size_t ascii_len = strlen(ascii_frame);
+
+    // Safety check: don't accept unreasonably large frames (10MB limit)
+    if (ascii_len > 10 * 1024 * 1024) {
+      log_error("Frame size exceeds 10MB safety limit (possible buffer overflow)");
+      SET_ERRNO(ERROR_INVALID_PARAM, "Frame size exceeds 10MB");
+      return NULL;
     }
 
     // Ensure frame ends with a reset sequence to avoid garbage at terminal
@@ -1100,6 +1098,33 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
 
     log_debug_every(LOG_RATE_SLOW, "create_mixed_ascii_frame_for_client: Final frame size=%zu bytes for client %u",
                     *out_size, target_client_id);
+
+    // Debug: Log the last 50 bytes of the frame to see what's really there
+    if (*out_size >= 50) {
+      char hex_buf[300] = {0};
+      size_t hex_len = 0;
+      const uint8_t *last_bytes = (const uint8_t *)ascii_frame + (*out_size - 50);
+      for (int i = 0; i < 50 && hex_len < sizeof(hex_buf) - 5; i++) {
+        hex_len += snprintf(hex_buf + hex_len, sizeof(hex_buf) - hex_len, "%02X ", last_bytes[i]);
+      }
+      log_warn("FRAME_LAST_50_BYTES (hex): %s", hex_buf);
+
+      // Also log as ASCII for readability
+      char ascii_buf[100] = {0};
+      for (int i = 0; i < 50 && i < (int)sizeof(ascii_buf) - 1; i++) {
+        if (last_bytes[i] >= 32 && last_bytes[i] < 127) {
+          ascii_buf[i] = (char)last_bytes[i];
+        } else if (last_bytes[i] == '\n') {
+          ascii_buf[i] = 'N';
+        } else if (last_bytes[i] == '\0') {
+          ascii_buf[i] = '0';
+        } else {
+          ascii_buf[i] = '.';
+        }
+      }
+      log_warn("FRAME_LAST_50_ASCII: %s", ascii_buf);
+    }
+
     out = ascii_frame;
   } else {
     SET_ERRNO(ERROR_TERMINAL, "Per-client %u: Failed to convert image to ASCII", target_client_id);

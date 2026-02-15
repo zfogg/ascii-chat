@@ -1652,7 +1652,8 @@ void *client_send_thread_func(void *arg) {
         mutex_unlock(&client->send_mutex);
 
         // Network I/O happens OUTSIDE the mutex
-        result = packet_send_via_transport(transport, pkt_type, audio_packets[0]->data, audio_packets[0]->data_len);
+        result = packet_send_via_transport(transport, pkt_type, audio_packets[0]->data, audio_packets[0]->data_len,
+                                           atomic_load(&client->client_id));
         if (result != ASCIICHAT_OK) {
           log_error("AUDIO SEND FAIL: client=%u, len=%zu, result=%d", client->client_id, audio_packets[0]->data_len,
                     result);
@@ -1928,7 +1929,8 @@ void *client_send_thread_func(void *arg) {
       // Network I/O happens OUTSIDE the mutex
       log_info("SEND_ASCII_FRAME: client_id=%u size=%zu width=%u height=%u", atomic_load(&client->client_id),
                frame_size, width, height);
-      asciichat_error_t send_result = acip_send_ascii_frame(frame_transport, frame_data, frame_size, width, height);
+      asciichat_error_t send_result = acip_send_ascii_frame(frame_transport, frame_data, frame_size, width, height,
+                                                            atomic_load(&client->client_id));
       uint64_t step5_ns = time_get_ns();
 
       if (send_result != ASCIICHAT_OK) {

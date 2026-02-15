@@ -13,7 +13,19 @@ import { WebClientHead } from '../components/WebClientHead'
 import { useCanvasCapture } from '../hooks/useCanvasCapture'
 
 const CAPABILITIES_PACKET_SIZE = 160
-const IMAGE_FRAME_HEADER_SIZE = 24
+const STREAM_TYPE_VIDEO = 0x01
+const STREAM_TYPE_AUDIO = 0x02
+
+function buildStreamStartPacket(includeAudio: boolean = false): Uint8Array {
+  const streamType = includeAudio ? (STREAM_TYPE_VIDEO | STREAM_TYPE_AUDIO) : STREAM_TYPE_VIDEO
+  const buf = new ArrayBuffer(4)
+  const view = new DataView(buf)
+
+  // Network byte order (big-endian)
+  view.setUint32(0, streamType, false)
+
+  return new Uint8Array(buf)
+}
 
 function buildCapabilitiesPacket(cols: number, rows: number): Uint8Array {
   const buf = new ArrayBuffer(CAPABILITIES_PACKET_SIZE)
@@ -48,28 +60,25 @@ function buildCapabilitiesPacket(cols: number, rows: number): Uint8Array {
 }
 
 /**
- * Build IMAGE_FRAME payload: image_frame_packet_t header (24 bytes) + RGB24 pixel data.
- * Server expects pixel_size = width * height * 3 (RGB24).
+ * Build IMAGE_FRAME payload: legacy 8-byte header + RGB24 pixel data.
+ * Server expects: [width:4][height:4][rgb_data:w*h*3] (network byte order, big-endian)
  */
 function buildImageFramePayload(rgbaData: Uint8Array, width: number, height: number): Uint8Array {
   const pixelCount = width * height
   const rgb24Size = pixelCount * 3
-  const totalSize = IMAGE_FRAME_HEADER_SIZE + rgb24Size
+  const headerSize = 8 // width(4) + height(4) only - legacy format
+  const totalSize = headerSize + rgb24Size
   const buf = new ArrayBuffer(totalSize)
   const view = new DataView(buf)
   const bytes = new Uint8Array(buf)
 
-  // image_frame_packet_t header - network byte order (big-endian)
-  view.setUint32(0, width, false)       // width
-  view.setUint32(4, height, false)      // height
-  view.setUint32(8, 1, false)           // pixel_format = 1 (matching native client)
-  view.setUint32(12, 0, false)          // compressed_size = 0 (uncompressed)
-  view.setUint32(16, 0, false)          // checksum = 0
-  view.setUint32(20, Date.now() & 0xFFFFFFFF, false) // timestamp
+  // Legacy header format (8 bytes, network byte order big-endian)
+  view.setUint32(0, width, false)   // width
+  view.setUint32(4, height, false)  // height
 
   // Convert RGBA to RGB24 (strip alpha channel)
   let srcIdx = 0
-  let dstIdx = IMAGE_FRAME_HEADER_SIZE
+  let dstIdx = headerSize
   for (let i = 0; i < pixelCount; i++) {
     bytes[dstIdx]     = rgbaData[srcIdx]     // R
     bytes[dstIdx + 1] = rgbaData[srcIdx + 1] // G
@@ -205,7 +214,7 @@ export function ClientPage() {
         setStatus(stateName)
 
         if (state === ConnectionState.CONNECTED) {
-          console.log('[Client] CONNECTED state reached, attempting to send CLIENT_CAPABILITIES')
+          console.log('[Client] CONNECTED state reached, attempting to send CLIENT_CAPABILITIES and STREAM_START')
 
           // Check renderer dimensions
           const rendererDims = rendererRef.current?.getDimensions()
@@ -217,22 +226,29 @@ export function ClientPage() {
           const dims = (rendererDims && rendererDims.cols > 0) ? rendererDims : { cols: 80, rows: 40 }
           console.log(`[Client] Using dimensions for capabilities: ${dims.cols}x${dims.rows}`)
 
-          // Send capabilities with retry logic since WASM state might not match React state immediately
-          const sendCapabilities = () => {
+          // Send capabilities and stream start with retry logic since WASM state might not match React state immediately
+          const sendSetupPackets = () => {
             try {
               console.log(`[Client] Building CLIENT_CAPABILITIES packet (type=${PacketType.CLIENT_CAPABILITIES})`)
-              const payload = buildCapabilitiesPacket(dims.cols, dims.rows)
-              console.log(`[Client] Payload size: ${payload.length} bytes`)
+              const capsPayload = buildCapabilitiesPacket(dims.cols, dims.rows)
+              console.log(`[Client] Payload size: ${capsPayload.length} bytes`)
               console.log(`[Client] Sending CLIENT_CAPABILITIES packet...`)
-              conn.sendPacket(PacketType.CLIENT_CAPABILITIES, payload)
+              conn.sendPacket(PacketType.CLIENT_CAPABILITIES, capsPayload)
               console.log(`[Client] CLIENT_CAPABILITIES sent successfully`)
+
+              // Send STREAM_START to tell server we're about to send video
+              console.log(`[Client] Building STREAM_START packet (type=${PacketType.STREAM_START})`)
+              const streamPayload = buildStreamStartPacket(false) // Video only, no audio
+              console.log(`[Client] Sending STREAM_START packet...`)
+              conn.sendPacket(PacketType.STREAM_START, streamPayload)
+              console.log(`[Client] STREAM_START sent successfully`)
             } catch (err) {
-              console.error('[Client] Failed to send capabilities:', err)
+              console.error('[Client] Failed to send setup packets:', err)
               // Retry after 100ms if it failed
-              setTimeout(sendCapabilities, 100)
+              setTimeout(sendSetupPackets, 100)
             }
           }
-          sendCapabilities()
+          sendSetupPackets()
         }
 
         if (state === ConnectionState.ERROR) {
@@ -393,6 +409,14 @@ export function ClientPage() {
     }
 
     try {
+      // Send STREAM_START to notify server we're about to send video
+      if (clientRef.current) {
+        console.log('[Client] Sending STREAM_START before webcam...')
+        const streamPayload = buildStreamStartPacket(false)
+        clientRef.current.sendPacket(PacketType.STREAM_START, streamPayload)
+        console.log('[Client] STREAM_START sent')
+      }
+
       const [w, h] = settings.resolution.split('x').map(Number)
       console.log(`[Client] Requesting webcam stream: ${w}x${h}`)
 
