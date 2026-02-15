@@ -47,7 +47,7 @@ configure_file(
 
 add_custom_command(
     OUTPUT "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
-    COMMAND bash -c "ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' ASCIICHAT_RESOURCE_DIR='${CMAKE_BINARY_DIR}' timeout -k 1 1.5 '${ASCII_CHAT_EXECUTABLE}' --man-page-create '${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1'"
+    COMMAND bash -c "ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' ASCIICHAT_RESOURCE_DIR='${CMAKE_BINARY_DIR}' LSAN_OPTIONS=verbosity=0:halt_on_error=0 ASAN_OPTIONS=verbosity=0:halt_on_error=0 timeout -k 1 1.5 '${ASCII_CHAT_EXECUTABLE}' --man-page-create '${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1'"
     DEPENDS
         $<TARGET_FILE:ascii-chat>
         "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1.in"

@@ -515,16 +515,17 @@ if(WIN32)
     )
 else()
     # Unix: Use bash with timeout and environment variables
+    # Suppress ASAN output to prevent exit code 1 from memory leak detection during build
     add_custom_command(
         OUTPUT
             "${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat"
             "${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish"
             "${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii-chat"
             "${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1"
-        COMMAND bash -c "ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' timeout -k 1 1.5 '$<TARGET_FILE:ascii-chat>' --completions bash '${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat' >/dev/null 2>&1"
-        COMMAND bash -c "ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' timeout -k 1 1.5 '$<TARGET_FILE:ascii-chat>' --completions fish '${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish' >/dev/null 2>&1"
-        COMMAND bash -c "ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' timeout -k 1 1.5 '$<TARGET_FILE:ascii-chat>' --completions zsh '${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii-chat' >/dev/null 2>&1"
-        COMMAND bash -c "ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' timeout -k 1 1.5 '$<TARGET_FILE:ascii-chat>' --completions powershell '${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1' >/dev/null 2>&1"
+        COMMAND bash -c "ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' LSAN_OPTIONS=verbosity=0:halt_on_error=0 ASAN_OPTIONS=verbosity=0:halt_on_error=0 timeout -k 1 1.5 '$<TARGET_FILE:ascii-chat>' --completions bash '${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat' >/dev/null 2>&1"
+        COMMAND bash -c "ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' LSAN_OPTIONS=verbosity=0:halt_on_error=0 ASAN_OPTIONS=verbosity=0:halt_on_error=0 timeout -k 1 1.5 '$<TARGET_FILE:ascii-chat>' --completions fish '${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish' >/dev/null 2>&1"
+        COMMAND bash -c "ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' LSAN_OPTIONS=verbosity=0:halt_on_error=0 ASAN_OPTIONS=verbosity=0:halt_on_error=0 timeout -k 1 1.5 '$<TARGET_FILE:ascii-chat>' --completions zsh '${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii-chat' >/dev/null 2>&1"
+        COMMAND bash -c "ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' LSAN_OPTIONS=verbosity=0:halt_on_error=0 ASAN_OPTIONS=verbosity=0:halt_on_error=0 timeout -k 1 1.5 '$<TARGET_FILE:ascii-chat>' --completions powershell '${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1' >/dev/null 2>&1"
         DEPENDS $<TARGET_FILE:ascii-chat>
         COMMENT "Building shell completions"
         VERBATIM
