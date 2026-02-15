@@ -225,7 +225,17 @@ endif()
 # =============================================================================
 # ascii-chat-Specific Stuff: Source code, Library modules, Headers, and Executable Config
 # =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/targets/SourceFiles.cmake)
+# Source files - recursive CMakeLists.txt (replaces SourceFiles.cmake)
+# Each subdirectory defines its own sources and propagates via PARENT_SCOPE
+add_subdirectory(${CMAKE_SOURCE_DIR}/lib/util ${CMAKE_BINARY_DIR}/lib/util)
+add_subdirectory(${CMAKE_SOURCE_DIR}/lib/platform ${CMAKE_BINARY_DIR}/lib/platform)
+add_subdirectory(${CMAKE_SOURCE_DIR}/lib/crypto ${CMAKE_BINARY_DIR}/lib/crypto)
+add_subdirectory(${CMAKE_SOURCE_DIR}/lib/video ${CMAKE_BINARY_DIR}/lib/video)
+add_subdirectory(${CMAKE_SOURCE_DIR}/lib/audio ${CMAKE_BINARY_DIR}/lib/audio)
+add_subdirectory(${CMAKE_SOURCE_DIR}/lib/network ${CMAKE_BINARY_DIR}/lib/network)
+add_subdirectory(${CMAKE_SOURCE_DIR}/lib/tooling ${CMAKE_BINARY_DIR}/lib/tooling)
+add_subdirectory(${CMAKE_SOURCE_DIR}/lib ${CMAKE_BINARY_DIR}/lib-core)
+add_subdirectory(${CMAKE_SOURCE_DIR}/src ${CMAKE_BINARY_DIR}/src)
 
 # =============================================================================
 # Embedded Resource Generation (Man Pages, etc.)

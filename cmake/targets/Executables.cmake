@@ -60,7 +60,11 @@ if(_use_shared_lib)
         # The shared library (asciichat.dll) already links it, and direct C++ library linkage
         # would pull in MSVCP140D.dll as a direct dependency of the exe, causing ASan bad-free
         # errors during process exit (iostream objects allocated before ASan hooks are active).
-        # Note: mimalloc comes from ascii-chat-shared (PUBLIC linkage), no need to link explicitly
+
+        # Link mimalloc explicitly - the shared library links it PRIVATE so symbols don't propagate
+        if(USE_MIMALLOC AND MIMALLOC_LIBRARIES)
+            target_link_libraries(ascii-chat ${MIMALLOC_LIBRARIES})
+        endif()
 
         # Delay-load datachannel.dll to defer loading when it's not needed.
         # Note: We cannot delay-load asciichat.dll because the executable accesses

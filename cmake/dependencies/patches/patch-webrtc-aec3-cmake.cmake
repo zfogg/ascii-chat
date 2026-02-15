@@ -631,4 +631,70 @@ else()
     message(STATUS "Abseil AbseilConfigureCopts.cmake not found at ${ABSEIL_COPTS_FILE}")
 endif()
 
+# =============================================================================
+# Patch 17: absl/meta/type_traits.h - Fix std::result_of for C++20+
+# =============================================================================
+# std::result_of was deprecated in C++17 and removed in C++20/C++23/C++26.
+# Abseil's type_traits.h uses std::result_of which fails with C++26.
+# Replace it with std::invoke_result which is the C++17+ replacement.
+
+set(TYPE_TRAITS_FILE "${WEBRTC_AEC3_SOURCE_DIR}/base/abseil/absl/meta/type_traits.h")
+if(EXISTS "${TYPE_TRAITS_FILE}")
+    file(READ "${TYPE_TRAITS_FILE}" TYPE_TRAITS_CONTENT)
+
+    # Check if we need to patch (has std::result_of and not already patched)
+    if(TYPE_TRAITS_CONTENT MATCHES "std::result_of" AND NOT TYPE_TRAITS_CONTENT MATCHES "invoke_result_extractor")
+        # Replace the entire result_of_t block:
+        # template <typename T>
+        # using result_of_t = typename std::result_of<T>::type;
+        #
+        # With a C++20-compatible version that uses invoke_result
+        string(REPLACE
+            "template <typename T>
+using result_of_t = typename std::result_of<T>::type;"
+            "// C++20+ compatibility: use invoke_result instead of removed result_of
+#if __cplusplus >= 202002L
+namespace result_of_detail {
+template<typename T>
+struct extractor;
+
+template<typename F, typename... Args>
+struct extractor<F(Args...)> {
+    using type = std::invoke_result_t<F, Args...>;
+};
+}  // namespace result_of_detail
+
+template <typename T>
+using result_of_t = typename result_of_detail::extractor<T>::type;
+#else
+template <typename T>
+using result_of_t = typename std::result_of<T>::type;
+#endif"
+            TYPE_TRAITS_CONTENT
+            "${TYPE_TRAITS_CONTENT}"
+        )
+
+        # Also add <type_traits> include if not present (for std::invoke_result_t)
+        if(NOT TYPE_TRAITS_CONTENT MATCHES "#include <type_traits>")
+            string(REPLACE
+                "#ifndef ABSL_META_TYPE_TRAITS_H_"
+                "#ifndef ABSL_META_TYPE_TRAITS_H_\n#include <type_traits>"
+                TYPE_TRAITS_CONTENT
+                "${TYPE_TRAITS_CONTENT}"
+            )
+        endif()
+
+        file(WRITE "${TYPE_TRAITS_FILE}" "${TYPE_TRAITS_CONTENT}")
+        message(STATUS "Patched Abseil type_traits.h - replaced std::result_of with std::invoke_result for C++20+")
+    else()
+        if(TYPE_TRAITS_CONTENT MATCHES "invoke_result_extractor")
+            message(STATUS "Abseil type_traits.h - already patched")
+        else()
+            message(STATUS "Abseil type_traits.h - std::result_of not found (different version)")
+        endif()
+    endif()
+else()
+    message(STATUS "Abseil type_traits.h not found at ${TYPE_TRAITS_FILE}")
+endif()
+
 message(STATUS "WebRTC AEC3 patching complete: Full stack (api/aec3/base/AudioProcess) enabled")

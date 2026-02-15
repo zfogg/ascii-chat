@@ -22,12 +22,11 @@
 #   - All platforms: llvm-nm (for symbol validation)
 # =============================================================================
 
-# Copy DLL dependencies and PDBs to bin directory on Windows (for non-static builds)
+# Copy DLL dependencies and PDBs to bin directory on Windows
 # vcpkg's applocal.ps1 is disabled via VCPKG_APPLOCAL_DEPS=OFF in Init.cmake
 function(copy_windows_dlls TARGET_NAME)
-    if(WIN32 AND NOT CMAKE_BUILD_TYPE MATCHES "Release")
-        # Only copy DLLs for non-static builds (Debug, Dev builds use dynamic libraries)
-        # Release builds use static libraries (x64-windows-static triplet) so no DLLs needed
+    if(WIN32)
+        # Copy DLLs for all builds (Debug, Dev, Release all use dynamic libraries)
 
         include(${CMAKE_SOURCE_DIR}/cmake/utils/CopyDLL.cmake)
 

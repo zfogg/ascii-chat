@@ -64,10 +64,11 @@ if(NOT webrtc_aec3_POPULATED)
     set(WEBRTC_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/webrtc_aec3-build")
     file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
 
-    # Create a SIMD configuration string to detect when rebuild is needed
-    # This ensures cached WebRTC libs match the current SIMD settings
-    set(WEBRTC_SIMD_CONFIG "SSE2=${ENABLE_SIMD_SSE2};SSSE3=${ENABLE_SIMD_SSSE3};AVX2=${ENABLE_SIMD_AVX2};NEON=${ENABLE_SIMD_NEON};SVE=${ENABLE_SIMD_SVE}")
-    set(WEBRTC_SIMD_MARKER "${WEBRTC_BUILD_DIR}/.simd_config")
+    # Create a configuration string to detect when rebuild is needed
+    # This ensures cached WebRTC libs match the current build settings
+    # Include build type because Debug uses ASan which affects ABI (annotate_string mismatch)
+    set(WEBRTC_BUILD_CONFIG "BUILD_TYPE=${CMAKE_BUILD_TYPE};SSE2=${ENABLE_SIMD_SSE2};SSSE3=${ENABLE_SIMD_SSSE3};AVX2=${ENABLE_SIMD_AVX2};NEON=${ENABLE_SIMD_NEON};SVE=${ENABLE_SIMD_SVE}")
+    set(WEBRTC_CONFIG_MARKER "${WEBRTC_BUILD_DIR}/.build_config")
 
     # Determine platform-correct library names for cache check
     if(WIN32)
@@ -76,27 +77,27 @@ if(NOT webrtc_aec3_POPULATED)
         set(_webrtc_check_prefix "lib")
     endif()
 
-    # Check if cached build exists with matching SIMD config
+    # Check if cached build exists with matching build config
     set(WEBRTC_NEEDS_REBUILD FALSE)
     if(NOT EXISTS "${WEBRTC_BUILD_DIR}/lib/${_webrtc_check_prefix}AudioProcess${CMAKE_STATIC_LIBRARY_SUFFIX}" OR NOT EXISTS "${WEBRTC_BUILD_DIR}/lib/${_webrtc_check_prefix}aec3${CMAKE_STATIC_LIBRARY_SUFFIX}")
         set(WEBRTC_NEEDS_REBUILD TRUE)
         message(STATUS "WebRTC AEC3 libraries not found, will build from source")
-    elseif(NOT EXISTS "${WEBRTC_SIMD_MARKER}")
+    elseif(NOT EXISTS "${WEBRTC_CONFIG_MARKER}")
         set(WEBRTC_NEEDS_REBUILD TRUE)
-        message(STATUS "WebRTC AEC3 SIMD config marker not found, will rebuild to ensure correct SIMD support")
+        message(STATUS "WebRTC AEC3 build config marker not found, will rebuild")
     else()
-        file(READ "${WEBRTC_SIMD_MARKER}" CACHED_SIMD_CONFIG)
-        string(STRIP "${CACHED_SIMD_CONFIG}" CACHED_SIMD_CONFIG)
-        if(NOT "${CACHED_SIMD_CONFIG}" STREQUAL "${WEBRTC_SIMD_CONFIG}")
+        file(READ "${WEBRTC_CONFIG_MARKER}" CACHED_BUILD_CONFIG)
+        string(STRIP "${CACHED_BUILD_CONFIG}" CACHED_BUILD_CONFIG)
+        if(NOT "${CACHED_BUILD_CONFIG}" STREQUAL "${WEBRTC_BUILD_CONFIG}")
             set(WEBRTC_NEEDS_REBUILD TRUE)
-            message(STATUS "WebRTC AEC3 SIMD config changed (was: ${CACHED_SIMD_CONFIG}, now: ${WEBRTC_SIMD_CONFIG}), will rebuild")
+            message(STATUS "WebRTC AEC3 build config changed (was: ${CACHED_BUILD_CONFIG}, now: ${WEBRTC_BUILD_CONFIG}), will rebuild")
         endif()
     endif()
 
     if(WEBRTC_NEEDS_REBUILD)
         message(STATUS "${BoldYellow}WebRTC AEC3${ColorReset} building from source...")
 
-        # Clean old build to ensure fresh compilation with new SIMD config
+        # Clean old build to ensure fresh compilation with new build config
         if(EXISTS "${WEBRTC_BUILD_DIR}/lib")
             file(REMOVE_RECURSE "${WEBRTC_BUILD_DIR}/lib")
             message(STATUS "Cleaned old WebRTC AEC3 build artifacts")
@@ -349,9 +350,9 @@ if(NOT webrtc_aec3_POPULATED)
             message(FATAL_ERROR "Failed to build WebRTC AEC3")
         endif()
 
-        # Write SIMD config marker for future cache validation
-        file(WRITE "${WEBRTC_SIMD_MARKER}" "${WEBRTC_SIMD_CONFIG}")
-        message(STATUS "${BoldGreen}WebRTC AEC3${ColorReset} libraries built and cached successfully (SIMD: ${WEBRTC_SIMD_CONFIG})")
+        # Write build config marker for future cache validation
+        file(WRITE "${WEBRTC_CONFIG_MARKER}" "${WEBRTC_BUILD_CONFIG}")
+        message(STATUS "${BoldGreen}WebRTC AEC3${ColorReset} libraries built and cached successfully (${WEBRTC_BUILD_CONFIG})")
     else()
         message(STATUS "${BoldGreen}WebRTC AEC3${ColorReset} libraries found in cache: ${BoldCyan}${WEBRTC_BUILD_DIR}/lib${ColorReset}")
     endif()

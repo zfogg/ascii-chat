@@ -15,41 +15,16 @@
 #   - CMAKE_*_OUTPUT_DIRECTORY set
 # =============================================================================
 
-# C standard selection - intelligently detect the best available standard
-# Uses modern CMake compiler feature detection instead of manual flag checking
-# Only set C23 for GNU/Clang compilers
-if(NOT CMAKE_C_STANDARD)
-    # macOS: Use C17 due to system header incompatibilities with C23
-    # macOS SDK headers (OSByteOrder.h, mach headers) contain inline functions
-    # that violate C23's stricter inline function rules
-    if(APPLE)
-        set(CMAKE_C_STANDARD 17)
-        set(CMAKE_C_STANDARD_REQUIRED ON)
-        set(CMAKE_C_EXTENSIONS ON)  # Enable GNU extensions (typeof, statement expressions)
-        message(STATUS "Using ${BoldCyan}C17${ColorReset} standard for macOS (C23 incompatible with SDK headers)")
-    # Only configure C23 for Clang and GCC compilers on non-macOS platforms
-    elseif(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
-        # Set C23 standard - CMake will automatically handle fallback to C2X if needed
-        # CMAKE_C_STANDARD_REQUIRED OFF allows CMake to gracefully fall back
-        set(CMAKE_C_STANDARD 23)
-        set(CMAKE_C_STANDARD_REQUIRED OFF)  # Allow fallback to C2X if C23 not available
+# Language standards (Clang only)
+set(CMAKE_C_STANDARD 23)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
 
-        # Try strict C23 without GNU extensions
-        set(CMAKE_C_EXTENSIONS OFF)
+set(CMAKE_CXX_STANDARD 26)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-        # Verify the standard was set (CMake will warn if it falls back)
-        message(STATUS "Using ${BoldCyan}C23${ColorReset} standard (will fall back to ${Yellow}C2X${ColorReset} if not supported)")
-    else()
-        # Non-Clang/GCC compilers: use C17 (widely supported)
-        set(CMAKE_C_STANDARD 17)
-        set(CMAKE_C_STANDARD_REQUIRED ON)
-        set(CMAKE_C_EXTENSIONS ON)
-        message(STATUS "Using C17 standard for ${CMAKE_C_COMPILER_ID} compiler")
-    endif()
-endif()
-
-# Note: CMAKE_C_STANDARD_REQUIRED is set per-compiler above
-# This ensures we get the best available standard with graceful fallback
+message(STATUS "Using ${BoldCyan}C23${ColorReset} and ${BoldCyan}C++26${ColorReset} standards")
 
 # =============================================================================
 # Windows Install Prefix Configuration
@@ -83,7 +58,10 @@ option(BUILD_TESTS "Build test executables" ON)
 # Automatically disable when USE_MUSL is OFF on Linux (no static linking available)
 # - Docker without musl: dynamic glibc linking
 # - ARM64 Linux: musl not enabled by default (limited GitHub runner support)
-if(NOT USE_MUSL AND UNIX AND NOT APPLE)
+if(WIN32)
+    # Windows uses shared libraries (DLLs), not static linking
+    set(_default_enforce_static OFF)
+elseif(NOT USE_MUSL AND UNIX AND NOT APPLE)
     # Check if we're on ARM64 (CMAKE_SYSTEM_PROCESSOR may not be set yet, use uname)
     execute_process(
         COMMAND uname -m
