@@ -945,4 +945,9 @@ bool terminal_query_background_color(uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b
   return false;
 }
 
+void terminal_stop_resize_detection(void) {
+  // POSIX doesn't use a resize detection thread like Windows
+  // This is a no-op stub for compatibility
+}
+
 #endif // !_WIN32
