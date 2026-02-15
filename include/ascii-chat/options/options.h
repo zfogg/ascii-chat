@@ -461,9 +461,6 @@ typedef enum {
 /** @brief Default color mode (auto-detect) */
 #define OPT_COLOR_MODE_DEFAULT COLOR_MODE_AUTO
 
-/** @brief Default cookies from browser (disabled) */
-#define OPT_NO_COOKIES_FROM_BROWSER_DEFAULT false
-
 /** @brief Default require-server-identity setting for ACDS */
 #define OPT_REQUIRE_SERVER_IDENTITY_DEFAULT false
 
@@ -698,7 +695,6 @@ static const int default_webrtc_reconnect_attempts_value = OPT_WEBRTC_RECONNECT_
 static const bool default_media_loop_value = OPT_MEDIA_LOOP_DEFAULT;
 static const bool default_pause_value = OPT_PAUSE_DEFAULT;
 static const double default_media_seek_value = OPT_MEDIA_SEEK_TIMESTAMP_DEFAULT;
-static const bool default_no_cookies_value = OPT_NO_COOKIES_FROM_BROWSER_DEFAULT;
 static const bool default_audio_enabled_value = OPT_AUDIO_ENABLED_DEFAULT;
 static const audio_source_t default_audio_source_value = OPT_AUDIO_SOURCE_DEFAULT;
 static const int default_microphone_index_value = OPT_MICROPHONE_INDEX_DEFAULT;

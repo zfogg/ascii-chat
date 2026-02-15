@@ -45,8 +45,9 @@ const registry_entry_t g_media_entries[] = {
      offsetof(options_t, media_url),
      "",
      0,
-     "Stream from network URL (HTTP/HTTPS/YouTube/RTSP). URL handler: see man yt-dlp; supported formats: see man "
-     "ffmpeg-formats; codecs: see man ffmpeg-codecs.",
+     "Stream from network URL. Direct HTTP/HTTPS/RTSP streams use FFmpeg; complex sites (YouTube, TikTok, etc.) use "
+     "yt-dlp. Supported formats: see man ffmpeg-formats; codecs: see man ffmpeg-codecs; sites: yt-dlp "
+     "https://github.com/yt-dlp/yt-dlp/blob/master/README.md#supported-sites",
      "MEDIA",
      NULL,
      false,
@@ -118,8 +119,8 @@ const registry_entry_t g_media_entries[] = {
      offsetof(options_t, yt_dlp_options),
      NULL,
      sizeof(((options_t *)0)->yt_dlp_options),
-     "Arbitrary yt-dlp options passed to the extraction subprocess. "
-     "Examples: \"--cookies-from-browser=chrome\" or \"--proxy socks5://127.0.0.1:1080\"",
+     "Arbitrary yt-dlp options passed to the extraction subprocess for URL resolution. "
+     "Examples: \"--no-warnings\" or \"--proxy socks5://127.0.0.1:1080\" or \"--cookies-from-browser=firefox\"",
      "MEDIA",
      NULL,
      false,

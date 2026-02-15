@@ -219,6 +219,77 @@ Both status screen and splash screen use the same "fixed header + scrolling logs
 ./build/bin/ascii-chat client
 ```
 
+## Media Resolution and Streaming
+
+ascii-chat supports media from files and URLs using a smart resolution system:
+
+### Supported Media Sources
+
+**Direct Streams & Files (FFmpeg-handled):**
+- Local files: `.mp4`, `.mkv`, `.webm`, `.avi`, `.mov`, `.flv`, `.gif`, `.jpg`, `.png`, etc.
+- Streaming protocols: `http://`, `https://`, `rtsp://`, `rtmp://`, HLS (`.m3u8`), DASH
+- Any format or protocol supported by FFmpeg
+
+**Complex Streaming Sites (yt-dlp-resolved):**
+- 1000+ supported sites including YouTube, TikTok, Twitch, Reddit, Instagram, Twitter, etc.
+- Requires `yt-dlp` installed: `pip install yt-dlp` or `brew install yt-dlp`
+- yt-dlp extracts the actual playable stream URL, which is then handled by FFmpeg
+
+### Smart Resolution Strategy
+
+The media source resolver (`lib/media/source.c`) uses this strategy:
+
+1. **Direct detection**: Check if URL has a direct file extension (`.mp4`, `.mkv`, `.m3u8`, etc.) or protocol (`rtsp://`, `rtmp://`) → use FFmpeg directly (fastest)
+2. **yt-dlp extraction**: If not a direct stream, try to extract stream URL using yt-dlp (for YouTube, TikTok, etc.)
+3. **Fallback**: If yt-dlp fails, try FFmpeg as a last resort (may fail for truly unsupported sites)
+4. **Error reporting**: Log failures at each step with the `--grep` system
+
+### Usage Examples
+
+```bash
+# Direct file (FFmpeg handles it)
+./build/bin/ascii-chat mirror --file /path/to/video.mp4
+
+# Direct HTTP stream (FFmpeg handles it)
+./build/bin/ascii-chat mirror --url "https://example.com/stream.m3u8"
+
+# YouTube video (yt-dlp extracts stream, FFmpeg plays it)
+./build/bin/ascii-chat mirror --url "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+
+# TikTok video (yt-dlp extracts stream)
+./build/bin/ascii-chat mirror --url "https://www.tiktok.com/@user/video/123456"
+
+# Custom yt-dlp options
+./build/bin/ascii-chat mirror --url "https://www.youtube.com/..." --yt-dlp-options "--no-warnings --restrict-filenames"
+
+# Server streaming media to clients
+./build/bin/ascii-chat server --file video.mp4
+./build/bin/ascii-chat server --url "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+```
+
+### Caching
+
+Stream URLs extracted by yt-dlp are cached for 30 seconds to avoid repeated subprocess calls during initialization (FPS detection, audio probing, format detection). Cache keys include both URL and yt-dlp options.
+
+### Debugging Media Resolution
+
+```bash
+# Watch media resolution process
+./build/bin/ascii-chat --log-level debug mirror --file video.mp4 --grep "Media source|resolve|stream"
+
+# Watch yt-dlp execution
+./build/bin/ascii-chat --log-level debug mirror --url "https://www.youtube.com/watch?v=..." --grep "yt-dlp"
+
+# Check FFmpeg fallback
+./build/bin/ascii-chat --log-level debug mirror --url "https://example.com/unknown-format" --grep "ffmpeg|stream"
+```
+
+### Implementation Details
+
+- **lib/media/yt_dlp.c/h** - yt-dlp subprocess integration with caching
+- **lib/media/source.c** - Smart routing logic and media source creation
+- **include/ascii-chat/options/options.h** - `yt_dlp_options` STRING option
+
 ## Cryptographic Protocol
 
 ### End-to-End Encryption

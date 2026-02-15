@@ -330,13 +330,6 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   // Audio encoding conflicts
   options_builder_add_dependency_conflicts(b, "encode-audio", "no-encode-audio",
                                            "Cannot use both --encode-audio and --no-encode-audio");
-  // Cookies conflicts
-  options_builder_add_dependency_conflicts(
-      b, "cookies-from-browser", "no-cookies-from-browser",
-      "--cookies-from-browser and --no-cookies-from-browser are mutually exclusive");
-  options_builder_add_dependency_conflicts(
-      b, "no-cookies-from-browser", "cookies-from-browser",
-      "--no-cookies-from-browser and --cookies-from-browser are mutually exclusive");
   // Requirements
   options_builder_add_dependency_requires(b, "snapshot-delay", "snapshot",
                                           "Option --snapshot-delay requires --snapshot");

@@ -964,25 +964,6 @@ bool parse_timestamp(const char *arg, void *dest, char **error_msg) {
   }
 }
 
-bool parse_cookies_from_browser(const char *arg, void *dest, char **error_msg) {
-  (void)error_msg; // Unused but required by function signature
-
-  char *browser_buf = (char *)dest;
-  const size_t max_size = 256;
-
-  if (!arg || arg[0] == '\0') {
-    // No argument provided, default to chrome
-    SAFE_STRNCPY(browser_buf, "chrome", max_size - 1);
-    browser_buf[max_size - 1] = '\0';
-    return true;
-  }
-
-  // Copy the provided browser name
-  SAFE_STRNCPY(browser_buf, arg, max_size - 1);
-  browser_buf[max_size - 1] = '\0';
-  return true;
-}
-
 bool parse_volume(const char *arg, void *dest, char **error_msg) {
   if (!arg || !dest) {
     if (error_msg) {

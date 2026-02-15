@@ -30,7 +30,7 @@ desktop environment at all to video chat with ascii-chat. (\*)
 
 🆕 Audio is now supported - turn on your microphone and start talking! See the **[Audio System docs](https://zfogg.github.io/ascii-chat/group__audio.html#topic_audio)**. (TODO: buggy - needs work). Update: works with --file and --url.
 
-🆕 --file and --url and YouTube support! Turning media via files and URLS into ascii art is now supported via ffmpeg, with special YouTube support via yt-dlp. You can now turn media from any format ffmpeg supports into ascii art, including animated gifs. You can use ascii-chat to watch or stream any youtube video or other files or internet video streams as ascii art by simply passing the file or url to ascii-chat with --file or --url, and you can livestream the result with audio into an ascii-chat call. This means you could stream a video from YouTube into a call and discuss it live with your friends, all as ascii art.
+🆕 **Media support with smart resolution!** ascii-chat can turn media from files and URLs into ascii art. Use `--file` for local files (all FFmpeg-supported formats) or `--url` for streaming. For complex streaming sites (YouTube, TikTok, Twitch, etc.), ascii-chat automatically uses yt-dlp to extract playable streams. For direct HTTP streams and media files, FFmpeg handles them natively. You can livestream the result with audio into an ascii-chat call, so you could watch a video with friends and discuss it live, all as ascii art. Pass arbitrary yt-dlp options with `--yt-dlp-options` if needed (e.g., `--yt-dlp-options "--no-warnings"`)
 
 \(\*) Testing needed to verify a decent framerate.
 
@@ -419,8 +419,8 @@ ascii-chat is built on operating system code and several libraries.
 - [**libdatachannel**](https://github.com/paullouisageneau/libdatachannel) - WebRTC DataChannels
 - [**libwebsockets**](https://libwebsockets.org/) - WebSocket server for browser clients
 - [**miniupnpc**](https://miniupnp.tuxfamily.org/) - Opens ports in your router to ascii-chat so clients can connect
-- [**FFmpeg**](https://ffmpeg.org/) - Media support for `--file` and `--url`. `cat` images or videos into ascii-chat
-- [**yt-dlp**](https://github.com/yt-dlp/yt-dlp) - YouTube.com support for `--url` (optional)
+- [**FFmpeg**](https://ffmpeg.org/) - Media support for `--file` and `--url`. Direct handling of FFmpeg-supported formats, protocols (HTTP, RTSP, RTMP), and files
+- [**yt-dlp**](https://github.com/yt-dlp/yt-dlp) - Supports 1000+ streaming sites for `--url` (YouTube, TikTok, Twitch, etc.). Optional; ascii-chat falls back to FFmpeg for direct streams (optional)
 - [**ssh-agent**](https://linux.die.net/man/1/ssh-agent) - SSH key agent authentication (optional)
 - [**gpg-agent**](https://linux.die.net/man/1/gpg-agent) - GPG key agent authentication (optional)
 

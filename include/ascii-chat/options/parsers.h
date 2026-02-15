@@ -232,19 +232,6 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
 bool parse_verbose_flag(const char *arg, void *dest, char **error_msg);
 
 /**
- * @brief Custom parser for --cookies-from-browser flag
- *
- * Allows --cookies-from-browser to work both as a flag (without argument) and with an optional
- * argument. Sets cookies_from_browser to the provided browser name.
- */
-bool parse_cookies_from_browser(const char *arg, void *dest, char **error_msg);
-
-/**
- * @brief Custom parser for --no-cookies-from-browser flag
- */
-bool parse_no_cookies_from_browser(const char *arg, void *dest, char **error_msg);
-
-/**
  * @brief Custom parser for --timestamp flag
  *
  * Allows --timestamp to work both as a flag with an argument.
