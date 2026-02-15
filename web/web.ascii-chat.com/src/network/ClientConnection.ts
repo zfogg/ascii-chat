@@ -38,6 +38,8 @@ export class ClientConnection {
   private clientPublicKey: string | null = null;
   private onStateChangeCallback: ConnectionStateChangeCallback | null = null;
   private onPacketCallback: PacketReceivedCallback | null = null;
+  private isUserDisconnecting = false;
+  private wasEverConnected = false;
 
   constructor(private options: ClientConnectionOptions) {}
 
@@ -96,11 +98,29 @@ export class ClientConnection {
       onStateChange: (state) => {
         console.log('[ClientConnection] WebSocket state:', state);
         if (state === 'open') {
-          console.log('[ClientConnection] Setting state to CONNECTING');
+          console.log('[ClientConnection] WebSocket opened, setting state to CONNECTING');
+          this.wasEverConnected = false; // Reset for handshake
+          this.onStateChangeCallback?.(ConnectionState.CONNECTING);
+        } else if (state === 'connecting') {
+          // SocketBridge is attempting to reconnect
+          console.log('[ClientConnection] SocketBridge reconnecting, resetting WASM state...');
+          if (this.wasEverConnected) {
+            // Clean up old WASM state for reconnection
+            cleanupClientWasm();
+          }
           this.onStateChangeCallback?.(ConnectionState.CONNECTING);
         } else if (state === 'closed') {
-          console.log('[ClientConnection] Setting state to DISCONNECTED');
-          this.onStateChangeCallback?.(ConnectionState.DISCONNECTED);
+          console.log('[ClientConnection] WebSocket closed');
+          if (this.isUserDisconnecting) {
+            console.log('[ClientConnection] User-initiated disconnect');
+            this.onStateChangeCallback?.(ConnectionState.DISCONNECTED);
+          } else if (this.wasEverConnected) {
+            console.log('[ClientConnection] Unexpected disconnect, SocketBridge will attempt reconnect');
+            // State changes will come from 'connecting' or 'open' events
+          } else {
+            console.log('[ClientConnection] Disconnected before ever connecting');
+            this.onStateChangeCallback?.(ConnectionState.DISCONNECTED);
+          }
         }
       }
     });
@@ -158,6 +178,7 @@ export class ClientConnection {
         console.error(`[ClientConnection] >>> Dispatching ${name} to WASM handleHandshakeComplete (raw ${rawPacket.length} bytes)`);
         handleHandshakeComplete(rawPacket);
         console.error(`[ClientConnection] <<< WASM handleHandshakeComplete returned OK - transitioning to CONNECTED`);
+        this.wasEverConnected = true; // Mark that we've successfully connected at least once
         this.onStateChangeCallback?.(ConnectionState.CONNECTED);
         return;
       }
@@ -302,6 +323,8 @@ export class ClientConnection {
    */
   disconnect(): void {
     console.log('[ClientConnection] Disconnecting...');
+    this.isUserDisconnecting = true;
+
     if (this.socket) {
       this.socket.close();
       this.socket = null;

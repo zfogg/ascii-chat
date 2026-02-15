@@ -13,11 +13,13 @@ class MockWebSocket {
   static CLOSED = 3;
 
   readyState = MockWebSocket.CONNECTING;
-  onopen: (() => void) | null = null;
-  onmessage: ((event: any) => void) | null = null;
-  onerror: ((event: any) => void) | null = null;
-  onclose: ((event: any) => void) | null = null;
+  onopen: ((this: MockWebSocket, ev: Event) => void) | null = null;
+  onmessage: ((this: MockWebSocket, ev: MessageEvent) => void) | null = null;
+  onerror: ((this: MockWebSocket, ev: Event) => void) | null = null;
+  onclose: ((this: MockWebSocket, ev: CloseEvent) => void) | null = null;
   binaryType = '';
+
+  private eventListeners: Map<string, Set<Function>> = new Map();
 
   constructor(public url: string, public protocol: string) {}
 
@@ -25,23 +27,59 @@ class MockWebSocket {
     // Mock send
   }
 
+  addEventListener(event: string, handler: Function) {
+    if (!this.eventListeners.has(event)) {
+      this.eventListeners.set(event, new Set());
+    }
+    this.eventListeners.get(event)!.add(handler);
+  }
+
+  removeEventListener(event: string, handler: Function) {
+    this.eventListeners.get(event)?.delete(handler);
+  }
+
+  private dispatchEvent(event: string, data: any) {
+    // Call event listeners (primary method)
+    const handlers = this.eventListeners.get(event);
+    if (handlers) {
+      handlers.forEach((handler) => {
+        handler({ type: event, ...data });
+      });
+    }
+
+    // Also call property handlers for backward compatibility
+    if (event === 'open' && this.onopen) {
+      this.onopen.call(this, { type: 'open' } as any);
+    } else if (event === 'message' && this.onmessage) {
+      this.onmessage.call(this, { type: 'message', data } as any);
+    } else if (event === 'error' && this.onerror) {
+      this.onerror.call(this, { type: 'error', ...data } as any);
+    } else if (event === 'close' && this.onclose) {
+      this.onclose.call(this, { type: 'close', ...data } as any);
+    }
+  }
+
   close() {
     this.readyState = MockWebSocket.CLOSED;
-    this.onclose?.({ code: 1000, reason: 'Normal closure', wasClean: true });
+    this.dispatchEvent('close', { code: 1000, reason: 'Normal closure', wasClean: true });
   }
 
   simulateOpen() {
     this.readyState = MockWebSocket.OPEN;
-    this.onopen?.();
+    this.dispatchEvent('open', {});
   }
 
   simulateClose(code = 1006, reason = 'Abnormal closure', wasClean = false) {
     this.readyState = MockWebSocket.CLOSED;
-    this.onclose?.({ code, reason, wasClean });
+    this.dispatchEvent('close', { code, reason, wasClean });
   }
 
   simulateError() {
-    this.onerror?.({ code: 'error', reason: 'Test error' });
+    this.dispatchEvent('error', { code: 'error', reason: 'Test error' });
+  }
+
+  simulateMessage(data: any) {
+    this.dispatchEvent('message', { data });
   }
 }
 
@@ -253,7 +291,7 @@ describe('SocketBridge Auto-Reconnection', () => {
 
     // Send a packet
     const testPacket = new Uint8Array([0, 1, 2, 3, 4, 5, 6, 7, 0x12, 0x34]);
-    createdWebSockets[0]!.onmessage?.({ data: testPacket.buffer });
+    createdWebSockets[0]!.simulateMessage(testPacket.buffer);
 
     expect(receivedPackets).toHaveLength(1);
     expect(receivedPackets[0]).toEqual(testPacket);
@@ -300,5 +338,55 @@ describe('SocketBridge Auto-Reconnection', () => {
     await vi.runAllTimersAsync();
 
     expect(bridge.isConnected()).toBe(true);
+  });
+
+  it('should reconnect multiple times after repeated disconnects', async () => {
+    const stateChanges: string[] = [];
+    const bridge = new SocketBridge({
+      url: 'ws://localhost:8080',
+      onStateChange: (state) => stateChanges.push(state),
+    });
+
+    // Initial connection
+    const connectPromise = bridge.connect();
+    createdWebSockets[0]!.simulateOpen();
+    await connectPromise;
+    expect(bridge.isConnected()).toBe(true);
+
+    // Cycle 1: Disconnect and reconnect
+    createdWebSockets[0]!.simulateClose();
+    expect(bridge.isConnected()).toBe(false);
+    await vi.advanceTimersByTimeAsync(1000);
+    createdWebSockets[1]!.simulateOpen();
+    await vi.runAllTimersAsync();
+    expect(bridge.isConnected()).toBe(true);
+    expect(createdWebSockets).toHaveLength(2);
+
+    // Cycle 2: Disconnect and reconnect again
+    createdWebSockets[1]!.simulateClose();
+    expect(bridge.isConnected()).toBe(false);
+    await vi.advanceTimersByTimeAsync(1000);
+    createdWebSockets[2]!.simulateOpen();
+    await vi.runAllTimersAsync();
+    expect(bridge.isConnected()).toBe(true);
+    expect(createdWebSockets).toHaveLength(3);
+
+    // Cycle 3: One more disconnect and reconnect
+    createdWebSockets[2]!.simulateClose();
+    expect(bridge.isConnected()).toBe(false);
+    await vi.advanceTimersByTimeAsync(1000);
+    createdWebSockets[3]!.simulateOpen();
+    await vi.runAllTimersAsync();
+    expect(bridge.isConnected()).toBe(true);
+    expect(createdWebSockets).toHaveLength(4);
+
+    // Verify state progression
+    expect(stateChanges).toContain('connecting');
+    expect(stateChanges).toContain('open');
+    expect(stateChanges).toContain('closed');
+    const openCount = stateChanges.filter((s) => s === 'open').length;
+    expect(openCount).toBe(4); // 4 successful connections
+    const closedCount = stateChanges.filter((s) => s === 'closed').length;
+    expect(closedCount).toBe(3); // 3 disconnects
   });
 });

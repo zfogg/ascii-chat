@@ -413,6 +413,9 @@ asciichat_error_t interactive_grep_handle_key(keyboard_key_t key) {
   }
 
   // In input mode - use keyboard_read_line_interactive()
+  // CRITICAL: Keep mutex held during keyboard_read_line_interactive() to prevent races
+  // with the rendering thread. The validator callback and buffer modifications must be
+  // synchronized with readers in interactive_grep_gather_and_filter_logs().
   keyboard_line_edit_opts_t opts = {
       .buffer = g_grep_state.input_buffer,
       .max_len = sizeof(g_grep_state.input_buffer),
@@ -425,20 +428,22 @@ asciichat_error_t interactive_grep_handle_key(keyboard_key_t key) {
       .key = key                           // Pass the pre-read key
   };
 
-  mutex_unlock(&g_grep_state.mutex);
-
   keyboard_line_edit_result_t result = keyboard_read_line_interactive(&opts);
 
   switch (result) {
   case LINE_EDIT_ACCEPTED:
+    // Unlock before exit_mode since it acquires the mutex
+    mutex_unlock(&g_grep_state.mutex);
     interactive_grep_exit_mode(true); // Parse and accept pattern
     break;
   case LINE_EDIT_CANCELLED:
+    // Unlock before exit_mode since it acquires the mutex
+    mutex_unlock(&g_grep_state.mutex);
     interactive_grep_exit_mode(false); // Restore previous
     break;
   case LINE_EDIT_CONTINUE:
     // Still editing - compile pattern for live filtering
-    mutex_lock(&g_grep_state.mutex);
+    // Mutex is still held here
 
     // If buffer is empty, clear patterns to show all logs (don't exit grep mode)
     if (g_grep_state.len == 0) {
@@ -498,6 +503,7 @@ asciichat_error_t interactive_grep_handle_key(keyboard_key_t key) {
     break;
   case LINE_EDIT_NO_INPUT:
     // No input available
+    mutex_unlock(&g_grep_state.mutex);
     break;
   }
 

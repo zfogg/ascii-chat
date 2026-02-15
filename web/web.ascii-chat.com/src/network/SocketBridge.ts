@@ -62,7 +62,7 @@ export class SocketBridge {
     this.ws = new WebSocket(this.options.url, 'acip');
     this.ws.binaryType = 'arraybuffer';
 
-    this.ws.onopen = () => {
+    const handleOpen = () => {
       console.log('[SocketBridge] WebSocket connected');
       this.wasEverConnected = true;
       this.reconnectAttempts = 0;
@@ -70,24 +70,27 @@ export class SocketBridge {
       resolve();
     };
 
-    this.ws.onmessage = (event) => {
-      const packet = new Uint8Array(event.data);
+    const handleMessage = (event: Event) => {
+      const msgEvent = event as MessageEvent;
+      const packet = new Uint8Array(msgEvent.data);
       const pktType = quickParseType(packet);
       console.error(`[SocketBridge] <<< RECV ${packet.length} bytes, pkt_type=${pktType} (0x${pktType?.toString(16) ?? '??'})`);
       this.onPacketCallback?.(packet);
     };
 
-    this.ws.onerror = (event) => {
+    const handleError = (event: Event) => {
       console.error('[SocketBridge] WebSocket error event:', event);
       console.error('[SocketBridge] WebSocket readyState:', this.ws?.readyState);
-      console.error('[SocketBridge] WebSocket error details - code:', (event as any).code, 'reason:', (event as any).reason);
+      const errorEvent = event as any;
+      console.error('[SocketBridge] WebSocket error details - code:', errorEvent.code, 'reason:', errorEvent.reason);
       const error = new Error('WebSocket error');
       this.onErrorCallback?.(error);
       reject(error);
     };
 
-    this.ws.onclose = (event) => {
-      console.error(`[SocketBridge] WebSocket CLOSED: code=${event.code} reason="${event.reason}" wasClean=${event.wasClean}`);
+    const handleClose = (event: Event) => {
+      const closeEvent = event as CloseEvent;
+      console.error(`[SocketBridge] WebSocket CLOSED: code=${closeEvent.code} reason="${closeEvent.reason}" wasClean=${closeEvent.wasClean}`);
       this.onStateChangeCallback?.('closed');
 
       // If user explicitly closed the connection, don't reconnect
@@ -103,7 +106,20 @@ export class SocketBridge {
       }
     };
 
+    // Use addEventListener for event handling (works better with mocks and real browsers)
+    this.ws.addEventListener('open', handleOpen);
+    this.ws.addEventListener('message', handleMessage);
+    this.ws.addEventListener('error', handleError);
+    this.ws.addEventListener('close', handleClose);
+
     this.onStateChangeCallback?.('connecting');
+
+    // Handle race condition: onopen might fire before we set the handler
+    // Check readyState after setting up handlers and manually fire if already open
+    if (this.ws.readyState === WebSocket.OPEN) {
+      console.log('[SocketBridge] WebSocket already OPEN, firing handleOpen immediately');
+      handleOpen();
+    }
   }
 
   /**

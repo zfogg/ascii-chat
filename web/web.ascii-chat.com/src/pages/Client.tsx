@@ -363,7 +363,11 @@ export function ClientPage() {
 
   // Inner loop function that doesn't have dependencies - this prevents RAF recursion from breaking
   const createWebcamCaptureLoop = useCallback(() => {
+    let callCount = 0
     return () => {
+      callCount++
+      if (callCount % 30 === 0) console.log(`[RAF] Animation frame called ${callCount} times, connectionState=${connectionState}`)
+
       const now = performance.now()
       const elapsed = now - lastFrameTimeRef.current
 
@@ -374,6 +378,7 @@ export function ClientPage() {
         if (conn && connectionState === ConnectionState.CONNECTED) {
           const frame = captureFrame()
           if (frame) {
+            console.log(`[Client] *** CAPTURE FRAME: ${frame.width}x${frame.height}, building payload...`)
             const payload = buildImageFramePayload(frame.data, frame.width, frame.height)
             frameCountRef.current++
 
@@ -407,6 +412,7 @@ export function ClientPage() {
 
   const startWebcam = useCallback(async () => {
     console.log('[Client] startWebcam() called')
+    console.log(`[DEBUG] videoRef.current=${!!videoRef.current}, canvasRef.current=${!!canvasRef.current}`)
 
     if (!videoRef.current || !canvasRef.current) {
       console.error('[Client] Video or canvas element not ready')
@@ -414,11 +420,14 @@ export function ClientPage() {
       return
     }
 
+    console.log(`[DEBUG] connectionState=${connectionState} vs CONNECTED=${ConnectionState.CONNECTED}`)
     if (connectionState !== ConnectionState.CONNECTED) {
       console.error(`[Client] Not connected (state=${connectionState}), cannot start webcam`)
       setError('Must be connected to server before starting webcam')
       return
     }
+
+    console.log('[Client] Passed all initial checks')
 
     try {
       // Send STREAM_START to notify server we're about to send video
@@ -427,6 +436,8 @@ export function ClientPage() {
         const streamPayload = buildStreamStartPacket(false)
         clientRef.current.sendPacket(PacketType.STREAM_START, streamPayload)
         console.log('[Client] STREAM_START sent')
+      } else {
+        console.log('[Client] clientRef.current is null, skipping STREAM_START')
       }
 
       const [w, h] = settings.resolution.split('x').map(Number)
@@ -489,6 +500,11 @@ export function ClientPage() {
 
       await Promise.race([metadataPromise, timeoutPromise])
 
+      console.log(`[startWebcam] About to start capture loop, videoRef=${videoRef.current ? 'OK' : 'NULL'}, canvasRef=${canvasRef.current ? 'OK' : 'NULL'}`)
+      if (videoRef.current) {
+        console.log(`[startWebcam] Video: playing=${!videoRef.current.paused}, width=${videoRef.current.videoWidth}, height=${videoRef.current.videoHeight}`)
+      }
+
       setIsWebcamRunning(true)
       lastFrameTimeRef.current = performance.now()
       frameIntervalRef.current = 1000 / settings.targetFps
@@ -496,7 +512,9 @@ export function ClientPage() {
       // Start the capture loop using the ref (which always has the latest version)
       if (webcamCaptureLoopRef.current) {
         console.log('[Client] Scheduling first RAF call')
+        console.log(`[Client] RAF scheduled - connectionState=${connectionState}, webcamCaptureLoopRef exists=${!!webcamCaptureLoopRef.current}`)
         animationFrameRef.current = requestAnimationFrame(webcamCaptureLoopRef.current)
+        console.log(`[Client] RAF ID: ${animationFrameRef.current}`)
       } else {
         console.error('[Client] webcamCaptureLoopRef.current is null - capture loop not ready')
       }
