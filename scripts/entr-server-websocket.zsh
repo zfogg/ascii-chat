@@ -9,9 +9,11 @@ source scripts/color.zsh
 source scripts/developer-helpers.zsh
 
 rebuild_and_start() {
-  cbb --target ascii-chat
   pkill -9 lldb 2>/dev/null || true
   pkill -9 -x ascii-chat 2>/dev/null || true
+  sleep 1
+  rm -f build/lib/libasciichat.0.dylib build/lib/libasciichat.dylib
+  cbb --target ascii-chat
   sleep 0.5
   lldb \
     -o "process handle -p true -s true -n false SIGSEGV SIGABRT SIGBUS SIGILL" \
