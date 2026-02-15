@@ -5,8 +5,9 @@
 
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/media/ffmpeg_decoder.h>
-#include <ascii-chat/media/youtube.h>
+#include <ascii-chat/media/yt_dlp.h>
 #include <ascii-chat/video/webcam/webcam.h>
+#include <ascii-chat/options/options.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/asciichat_errno.h>
@@ -53,6 +54,116 @@ struct media_source_t {
   // Audio integration
   void *audio_ctx; ///< Audio context for clearing buffers on seek (opaque)
 };
+
+/* ============================================================================
+ * Stream Type Detection
+ * ============================================================================ */
+
+/**
+ * @brief Check if URL has FFmpeg-native file extension
+ */
+static bool url_has_ffmpeg_native_extension(const char *url) {
+  if (!url)
+    return false;
+
+  // Extract extension from URL (ignore query params)
+  const char *question = strchr(url, '?');
+  size_t url_len = question ? (size_t)(question - url) : strlen(url);
+
+  // Find last dot
+  const char *dot = NULL;
+  for (const char *p = url + url_len - 1; p >= url; p--) {
+    if (*p == '.') {
+      dot = p;
+      break;
+    }
+    if (*p == '/')
+      break;
+  }
+
+  if (!dot)
+    return false;
+
+  const char *ext = dot + 1;
+
+  // Video containers
+  if (strcasecmp(ext, "mp4") == 0 || strcasecmp(ext, "mkv") == 0 || strcasecmp(ext, "webm") == 0 ||
+      strcasecmp(ext, "mov") == 0 || strcasecmp(ext, "avi") == 0 || strcasecmp(ext, "flv") == 0 ||
+      strcasecmp(ext, "ogv") == 0 || strcasecmp(ext, "ts") == 0 || strcasecmp(ext, "m2ts") == 0 ||
+      strcasecmp(ext, "mts") == 0 || strcasecmp(ext, "3gp") == 0 || strcasecmp(ext, "3g2") == 0 ||
+      strcasecmp(ext, "f4v") == 0 || strcasecmp(ext, "asf") == 0 || strcasecmp(ext, "wmv") == 0) {
+    return true;
+  }
+
+  // Audio containers
+  if (strcasecmp(ext, "ogg") == 0 || strcasecmp(ext, "oga") == 0 || strcasecmp(ext, "wma") == 0 ||
+      strcasecmp(ext, "wav") == 0 || strcasecmp(ext, "flac") == 0 || strcasecmp(ext, "aac") == 0 ||
+      strcasecmp(ext, "m4a") == 0 || strcasecmp(ext, "m4b") == 0 || strcasecmp(ext, "mp3") == 0 ||
+      strcasecmp(ext, "aiff") == 0 || strcasecmp(ext, "au") == 0) {
+    return true;
+  }
+
+  // Streaming
+  if (strcasecmp(ext, "m3u8") == 0 || strcasecmp(ext, "mpd") == 0) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * @brief Check if URL is a direct stream
+ */
+static bool url_is_direct_stream(const char *url) {
+  if (!url)
+    return false;
+
+  // RTSP and RTMP are streaming protocols, always direct
+  if (strncmp(url, "rtsp://", 7) == 0 || strncmp(url, "rtmp://", 7) == 0) {
+    return true;
+  }
+
+  // Check for FFmpeg-native file extension
+  return url_has_ffmpeg_native_extension(url);
+}
+
+/**
+ * @brief Resolve URL to playable stream URL using smart routing
+ */
+static asciichat_error_t media_source_resolve_url(const char *url, const char *yt_dlp_options, char *output_url,
+                                                  size_t output_size) {
+  if (!url || !output_url || output_size < 256) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for URL resolution");
+    return ERROR_INVALID_PARAM;
+  }
+
+  bool is_direct = url_is_direct_stream(url);
+
+  if (is_direct) {
+    log_debug("URL is direct stream, passing to FFmpeg directly: %s", url);
+    SAFE_STRNCPY(output_url, url, output_size - 1);
+    output_url[output_size - 1] = '\0';
+    return ASCIICHAT_OK;
+  }
+
+  log_debug("URL is complex site, attempting yt-dlp extraction: %s", url);
+
+  // Try yt-dlp extraction (for complex sites like YouTube, Twitch, etc.)
+  asciichat_error_t yt_dlp_result = yt_dlp_extract_stream_url(url, yt_dlp_options, output_url, output_size);
+  if (yt_dlp_result == ASCIICHAT_OK) {
+    log_debug("yt-dlp successfully extracted stream URL");
+    return ASCIICHAT_OK;
+  }
+
+  log_error("yt-dlp extraction failed for URL: %s", url);
+
+  // For complex sites, try FFmpeg as last resort
+  log_debug("yt-dlp failed, trying FFmpeg as fallback for: %s", url);
+  SAFE_STRNCPY(output_url, url, output_size - 1);
+  output_url[output_size - 1] = '\0';
+  log_info("FFmpeg will attempt to handle URL (yt-dlp extraction failed)");
+  return ASCIICHAT_OK; // Let FFmpeg try - if it fails, that's ok too
+}
 
 /* ============================================================================
  * Media Source Lifecycle
@@ -133,31 +244,25 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
       return NULL;
     }
 
-    // Check if this is a YouTube URL and extract direct stream URL
+    // Resolve URL using smart FFmpeg/yt-dlp routing
     const char *effective_path = path;
-    char extracted_url[BUFFER_SIZE_XLARGE] = {0};
-    bool is_youtube = youtube_is_youtube_url(path);
+    char resolved_url[BUFFER_SIZE_XLARGE] = {0};
+    const char *yt_dlp_options = GET_OPTION(yt_dlp_options);
 
-    if (is_youtube) {
-      log_info("Detected YouTube URL, extracting stream URL");
-      asciichat_error_t extract_err = youtube_extract_stream_url(path, extracted_url, sizeof(extracted_url));
-      if (extract_err != ASCIICHAT_OK) {
-        // Note: youtube_extract_stream_url already logs the error via SET_ERRNO on first attempt
-        // On cached failures, it returns silently. Only log here if it's not a cached failure.
-        // We detect this by checking if there's already an error context (from youtube_extract_stream_url's SET_ERRNO)
-        log_debug("Failed to extract YouTube stream URL (error: %d) - error logged by extraction function",
-                  extract_err);
-        SAFE_FREE(source);
-        return NULL;
-      }
-      effective_path = extracted_url;
-      log_debug("Using extracted YouTube stream URL");
+    log_debug("Resolving URL: %s", path);
+    asciichat_error_t resolve_err = media_source_resolve_url(path, yt_dlp_options, resolved_url, sizeof(resolved_url));
+    if (resolve_err != ASCIICHAT_OK) {
+      log_debug("Failed to resolve URL (error: %d)", resolve_err);
+      SAFE_FREE(source);
+      return NULL;
+    }
+    effective_path = resolved_url;
+    log_debug("Using resolved URL for playback");
 
-      // Store original YouTube URL for potential re-extraction if stream expires
-      source->original_youtube_url = platform_strdup(path);
-      if (!source->original_youtube_url) {
-        log_warn("Failed to cache original YouTube URL");
-      }
+    // Store original URL for potential re-extraction if needed
+    source->original_youtube_url = platform_strdup(path);
+    if (!source->original_youtube_url) {
+      log_warn("Failed to cache original URL");
     }
 
     // Cache file path for potential reopen on loop
@@ -180,7 +285,7 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
       return NULL;
     }
 
-    // Start prefetch thread for video frames (critical for YouTube HTTP performance)
+    // Start prefetch thread for video frames (critical for HTTP performance)
     // This thread continuously reads frames into a buffer so the render loop never blocks
     asciichat_error_t prefetch_err = ffmpeg_decoder_start_prefetch(source->video_decoder);
     if (prefetch_err != ASCIICHAT_OK) {
@@ -200,11 +305,7 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
     }
     source->is_shared_decoder = false;
 
-    if (is_youtube) {
-      log_debug("Media source: YouTube (separate video/audio decoders)");
-    } else {
-      log_debug("Media source: File '%s' (separate video/audio decoders)", effective_path);
-    }
+    log_debug("Media source: URL resolved to stream (separate video/audio decoders)");
     break;
   }
 

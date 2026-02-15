@@ -711,7 +711,7 @@ static void format_callback(const char *field_ptr, size_t field_size, const conf
 
   if (meta->field_offset == offsetof(options_t, log_file) ||
       meta->field_offset == offsetof(options_t, palette_custom) ||
-      meta->field_offset == offsetof(options_t, cookies_from_browser)) {
+      meta->field_offset == offsetof(options_t, yt_dlp_options)) {
     format_string(field_ptr, field_size, meta, buf, bufsize);
     return;
   }
@@ -1209,7 +1209,7 @@ static bool config_key_should_be_commented(const char *toml_key) {
   return strcmp(toml_key, "logging.log_file") == 0 || strcmp(toml_key, "security.password") == 0 ||
          strcmp(toml_key, "security.key") == 0 || strcmp(toml_key, "security.server_key") == 0 ||
          strcmp(toml_key, "security.client_keys") == 0 || strcmp(toml_key, "media.file") == 0 ||
-         strcmp(toml_key, "media.url") == 0 || strcmp(toml_key, "media.cookies_from_browser") == 0 ||
+         strcmp(toml_key, "media.url") == 0 || strcmp(toml_key, "media.yt_dlp_options") == 0 ||
          strcmp(toml_key, "network.turn_secret") == 0;
 }
 

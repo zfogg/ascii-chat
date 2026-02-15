@@ -37,7 +37,6 @@
 #include <ascii-chat/ui/splash.h>
 
 #include <ascii-chat/media/source.h>
-#include <ascii-chat/media/youtube.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/common.h>

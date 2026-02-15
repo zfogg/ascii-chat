@@ -625,8 +625,7 @@ options_t options_t_new(void) {
   opts.pause = OPT_PAUSE_DEFAULT;
   opts.media_from_stdin = OPT_MEDIA_FROM_STDIN_DEFAULT;
   opts.media_seek_timestamp = OPT_MEDIA_SEEK_TIMESTAMP_DEFAULT;
-  // cookies_from_browser is already zeroed by memset
-  opts.no_cookies_from_browser = OPT_NO_COOKIES_FROM_BROWSER_DEFAULT;
+  // yt_dlp_options is already zeroed by memset
 
   // ============================================================================
   // AUDIO

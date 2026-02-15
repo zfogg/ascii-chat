@@ -17,7 +17,7 @@ if(FFMPEG_FOUND)
     list(APPEND VIDEO_SRCS
         ${CMAKE_SOURCE_DIR}/lib/media/source.c
         ${CMAKE_SOURCE_DIR}/lib/media/ffmpeg_decoder.c
-        ${CMAKE_SOURCE_DIR}/lib/media/youtube.c
+        ${CMAKE_SOURCE_DIR}/lib/media/yt_dlp.c
     )
 endif()
 

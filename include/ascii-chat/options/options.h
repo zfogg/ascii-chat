@@ -890,8 +890,7 @@ typedef struct options_state {
   bool media_from_stdin;              ///< Reading from stdin (detected from "--file -")
   double media_seek_timestamp;        ///< Seek to timestamp in seconds before playback
   bool pause;                         ///< Start playback paused (toggle with spacebar)
-  char cookies_from_browser[256]; ///< Browser/keyring for cookies: empty=default, or "chrome"/"firefox"/etc to specify
-  bool no_cookies_from_browser;   ///< Disable reading cookies from browser (--no-cookies-from-browser flag)
+  char yt_dlp_options[512];           ///< Arbitrary yt-dlp options (e.g., "--cookies-from-browser=chrome --embed-subs")
 
   // ============================================================================
   // Display Options
