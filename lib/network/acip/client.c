@@ -81,7 +81,8 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
     envelope.allocated_size = packet_len;
     envelope.was_encrypted = false; // WebRTC currently doesn't support encryption in this path
 
-    log_info("WebRTC received packet: type=%u, len=%u, total_size=%zu", envelope.type, envelope.len, packet_len);
+    log_dev_every(4500000, "WebRTC received packet: type=%u, len=%u, total_size=%zu", envelope.type, envelope.len,
+                  packet_len);
 
     // Validate packet length
     if (envelope.len != packet_len - sizeof(packet_header_t)) {

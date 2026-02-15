@@ -641,9 +641,8 @@ static void discovery_on_gathering_timeout(const uint8_t participant_id[16], uin
                                            void *user_data) {
   (void)user_data; // Session context not needed for logging
 
-  log_error("========== ICE GATHERING TIMEOUT ==========");
-  log_error("Peer connection failed to gather ICE candidates");
-  log_error("  Participant: %02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x", participant_id[0],
+  log_warn("Peer connection failed to gather ICE candidates");
+  log_debug("  Participant: %02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x", participant_id[0],
             participant_id[1], participant_id[2], participant_id[3], participant_id[4], participant_id[5],
             participant_id[6], participant_id[7], participant_id[8], participant_id[9], participant_id[10],
             participant_id[11], participant_id[12], participant_id[13], participant_id[14], participant_id[15]);

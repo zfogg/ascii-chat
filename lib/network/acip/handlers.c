@@ -852,8 +852,8 @@ static asciichat_error_t handle_server_stream_stop(const void *payload, size_t p
 
 static asciichat_error_t handle_server_capabilities(const void *payload, size_t payload_len, void *client_ctx,
                                                     const acip_server_callbacks_t *callbacks) {
-  log_error("========== ACIP handle_server_capabilities CALLED ==========");
-  log_error("payload_len=%zu, client_ctx=%p, callbacks=%p", payload_len, client_ctx, (const void *)callbacks);
+  log_debug("handle_server_capabilities: payload_len=%zu, client_ctx=%p, callbacks=%p", payload_len, client_ctx,
+            (const void *)callbacks);
 
   if (!callbacks->on_capabilities) {
     log_error("on_capabilities callback is NULL!");

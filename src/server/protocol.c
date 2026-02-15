@@ -213,8 +213,7 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
 
   platform_sleep_ms(500);
 
-  log_error("🔴 TRACE: Setting active=false in disconnect_client_for_bad_data (client_id=%u, reason=%s)", client_id,
-            reason_str);
+  log_debug("Setting active=false in disconnect_client_for_bad_data (client_id=%u, reason=%s)", client_id, reason_str);
   atomic_store(&client->active, false);
   atomic_store(&client->shutting_down, true);
   atomic_store(&client->send_thread_running, false);
@@ -461,7 +460,7 @@ void handle_client_leave_packet(client_info_t *client, const void *data, size_t 
 
   // Deactivate client to stop processing packets
   // Sets client->active = false immediately - triggers client cleanup procedures
-  log_error("🔴 TRACE: Setting active=false in handle_client_leave_packet (client_id=%u)", client_id);
+  log_debug("Setting active=false in handle_client_leave_packet (client_id=%u)", client_id);
   atomic_store(&client->active, false);
 
   // Note: We don't disconnect the client here - that happens when socket closes
@@ -1430,8 +1429,7 @@ void handle_audio_opus_packet(client_info_t *client, const void *data, size_t le
  * @see terminal_color_level_name() For color level descriptions
  */
 void handle_client_capabilities_packet(client_info_t *client, const void *data, size_t len) {
-  log_error("========== CLIENT_CAPABILITIES HANDLER CALLED ==========");
-  log_error("CLIENT_CAPABILITIES: client_id=%u, data=%p, len=%zu", atomic_load(&client->client_id), data, len);
+  log_debug("CLIENT_CAPABILITIES: client_id=%u, data=%p, len=%zu", atomic_load(&client->client_id), data, len);
 
   VALIDATE_PACKET_SIZE(client, data, len, sizeof(terminal_capabilities_packet_t), "CLIENT_CAPABILITIES");
 

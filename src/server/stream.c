@@ -1107,7 +1107,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
       for (int i = 0; i < 50 && hex_len < sizeof(hex_buf) - 5; i++) {
         hex_len += snprintf(hex_buf + hex_len, sizeof(hex_buf) - hex_len, "%02X ", last_bytes[i]);
       }
-      log_warn_every(4500000, "FRAME_LAST_50_BYTES (hex): %s", hex_buf);
+      log_dev_every(4500000, "FRAME_LAST_50_BYTES (hex): %s", hex_buf);
 
       // Also log as ASCII for readability
       char ascii_buf[100] = {0};
@@ -1122,7 +1122,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
           ascii_buf[i] = '.';
         }
       }
-      log_warn_every(4500000, "FRAME_LAST_50_ASCII: %s", ascii_buf);
+      log_dev_every(4500000, "FRAME_LAST_50_ASCII: %s", ascii_buf);
     }
 
     out = ascii_frame;
