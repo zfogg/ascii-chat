@@ -467,16 +467,17 @@ const char *symbol_cache_lookup(void *addr) {
   symbol_entry_t *entry = NULL;
   HASH_FIND_PTR(g_symbol_cache, &addr, entry);
 
+  const char *result = NULL;
   if (entry) {
-    const char *symbol = entry->symbol;
+    // Copy string while holding lock to prevent use-after-free
+    result = platform_strdup(entry->symbol);
     atomic_fetch_add(&g_cache_hits, 1);
-    rwlock_rdunlock(&g_symbol_cache_lock);
-    return symbol;
+  } else {
+    atomic_fetch_add(&g_cache_misses, 1);
   }
 
-  atomic_fetch_add(&g_cache_misses, 1);
   rwlock_rdunlock(&g_symbol_cache_lock);
-  return NULL;
+  return result;
 }
 
 bool symbol_cache_insert(void *addr, const char *symbol) {
@@ -1087,12 +1088,8 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
   for (int i = 0; i < size; i++) {
     const char *cached = symbol_cache_lookup(buffer[i]);
     if (cached) {
-      // Cache hit - duplicate the string
-      result[i] = platform_strdup(cached);
-      // If allocation failed, use sentinel string instead of NULL
-      if (!result[i]) {
-        result[i] = platform_strdup(NULL_SENTINEL);
-      }
+      // Cache hit - symbol_cache_lookup already duplicated the string
+      result[i] = (char *)cached;
     } else {
       // Cache miss - track for batch resolution
       uncached_addrs[uncached_count] = buffer[i];

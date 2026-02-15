@@ -354,8 +354,8 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     lws_callback_on_writable(ws_data->wsi);
 
     log_dev_every(4500000, ">>> WRITABLE CALLBACK REQUESTED for wsi=%p", (void *)ws_data->wsi);
-    log_debug("Server-side WebSocket send queued %zu bytes, requested writable callback for wsi=%p", send_len,
-              (void *)ws_data->wsi);
+    log_dev_every(4500000, "Server-side WebSocket send queued %zu bytes, requested writable callback for wsi=%p",
+                  send_len, (void *)ws_data->wsi);
     SAFE_FREE(send_buffer);
     if (encrypted_packet)
       buffer_pool_free(NULL, encrypted_packet, send_len);
