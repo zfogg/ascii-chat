@@ -23,6 +23,7 @@
 #include <signal.h>
 #include <time.h>
 #include <errno.h>
+#include <stdint.h>
 
 #define SERVER_PORT 29998
 #define MAX_CLIENTS 3
