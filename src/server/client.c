@@ -1051,20 +1051,6 @@ int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
   log_debug("Created receive thread for WebRTC client %u", client_id_snapshot);
   log_debug("[ADD_WEBRTC_CLIENT] Receive thread started - thread will now be processing packets", client_id_snapshot);
 
-  // Create send thread for this client
-  char thread_name[64];
-  safe_snprintf(thread_name, sizeof(thread_name), "webrtc_send_%u", client_id_snapshot);
-  asciichat_error_t send_result = asciichat_thread_create(&client->send_thread, client_send_thread_func, client);
-  if (send_result != ASCIICHAT_OK) {
-    log_error("Failed to create send thread for WebRTC client %u: %s", client_id_snapshot,
-              asciichat_error_string(send_result));
-    if (remove_client(server_ctx, client_id_snapshot) != 0) {
-      log_error("Failed to remove WebRTC client after send thread creation failure");
-    }
-    return -1;
-  }
-  log_debug("Created send thread for WebRTC client %u", client_id_snapshot);
-
   // Send initial server state to the new client
   if (send_server_state_to_client(client) != 0) {
     log_warn("Failed to send initial server state to WebRTC client %u", client_id_snapshot);
@@ -1098,17 +1084,6 @@ int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
     log_debug("Sent initial server state to WebRTC client %u: %u connected clients", client_id_snapshot,
               state.connected_client_count);
   }
-
-  // Create per-client rendering threads
-  log_debug("Creating render threads for WebRTC client %u", client_id_snapshot);
-  if (create_client_render_threads(server_ctx, client) != 0) {
-    log_error("Failed to create render threads for WebRTC client %u", client_id_snapshot);
-    if (remove_client(server_ctx, client_id_snapshot) != 0) {
-      log_error("Failed to remove WebRTC client after render thread creation failure");
-    }
-    return -1;
-  }
-  log_debug("Successfully created render threads for WebRTC client %u", client_id_snapshot);
 
   // Register client with session_host (for discovery mode support)
   // WebRTC clients use INVALID_SOCKET_VALUE since they don't have a TCP socket
@@ -1483,7 +1458,7 @@ void *client_receive_thread(void *arg) {
 
     // Check if shutdown was requested during the network call
     if (atomic_load(&g_server_should_exit)) {
-      log_error("RECV_EXIT: Server shutdown requested, breaking loop");
+      log_debug("RECV_EXIT: Server shutdown requested, breaking loop");
       break;
     }
 
@@ -2783,8 +2758,7 @@ static void acip_server_on_crypto_no_encryption(packet_type_t type, const void *
  */
 void process_decrypted_packet(client_info_t *client, packet_type_t type, void *data, size_t len) {
   if (type == 5000) { // CLIENT_CAPABILITIES
-    log_error("========== SERVER DISPATCH: CLIENT_CAPABILITIES (type=5000) ==========");
-    log_error("CLIENT: client_id=%u, data=%p, len=%zu", atomic_load(&client->client_id), data, len);
+    log_debug("CLIENT: client_id=%u, data=%p, len=%zu", atomic_load(&client->client_id), data, len);
   }
 
   // Rate limiting: Check and record packet-specific rate limits
