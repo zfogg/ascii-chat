@@ -186,12 +186,10 @@ if(NOT libdatachannel_POPULATED)
     if(NOT SUBMODULE_RESULT EQUAL 0)
         message(WARNING "Failed to initialize libdatachannel submodules (git may not be available)")
         # Continue anyway - CMake build will fail later if submodules are actually required
-    else()
-        # Only clean git metadata after successful submodule initialization
-        # .git is large (274MB) and not needed once submodules are initialized
-        message(STATUS "Removing .git from libdatachannel cache (UPDATE_DISCONNECTED=TRUE prevents re-cloning)...")
-        file(REMOVE_RECURSE "${libdatachannel_SOURCE_DIR}/.git")
     endif()
+    # Note: Keep .git directory - FetchContent with UPDATE_DISCONNECTED=TRUE still needs it
+    # to verify the cached source (runs 'git rev-parse HEAD' on subsequent configures).
+    # While .git is large (~274MB), it's necessary for correct CMake behavior across build types.
 
     # Patch dependency CMakeLists to require modern CMake
     # plog
