@@ -95,7 +95,8 @@ export class ClientConnection {
       onPacket: this.handlePacket.bind(this),
       onError: (error) => {
         console.error('[ClientConnection] WebSocket error:', error);
-        this.onStateChangeCallback?.(ConnectionState.ERROR);
+        // Don't set ERROR state for transient connection errors
+        // The reconnection logic will handle these - just log them
       },
       onStateChange: (state) => {
         console.log('[ClientConnection] WebSocket state:', state);
@@ -115,6 +116,8 @@ export class ClientConnection {
             }).catch(error => {
               console.error('[ClientConnection] WASM reinit failed:', error);
               this.wasmReinitInProgress = false;
+              // WASM reinit failure will be retried on next reconnection attempt
+              // Don't set ERROR state - let reconnection logic handle it
             });
           }
           this.wasEverConnected = false; // Reset for new handshake
