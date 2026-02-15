@@ -8,11 +8,19 @@ cd "$_repo_root"
 source scripts/color.zsh
 source scripts/developer-helpers.zsh
 
-rebuild_and_start() {
+cleanup() {
+  local cleanup_marker=${1:-true}
   pkill -9 lldb 2>/dev/null || true
   pkill -9 -x ascii-chat 2>/dev/null || true
-  sleep 1
   rm -f build/lib/libasciichat.0.dylib build/lib/libasciichat.dylib
+  if [ "$cleanup_marker" = true ]; then
+    rm -f "$_marker_file"
+  fi
+}
+
+rebuild_and_start() {
+  cleanup false
+  sleep 1
   cbb --target ascii-chat
   sleep 0.5
   lldb \
@@ -27,7 +35,7 @@ _marker_dir="/tmp/$(basename "$0")"
 _marker_file="$_marker_dir/marker.$$"
 mkdir -p "$_marker_dir"
 touch "$_marker_file"
-trap "rm -f $_marker_file" EXIT
+trap "cleanup true" EXIT INT
 
 # Run watcher loop in background
 {
