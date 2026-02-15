@@ -51,6 +51,14 @@
  */
 #define WEBSOCKET_RECV_QUEUE_SIZE 64
 
+/**
+ * @brief Maximum send queue size (messages buffered for server-side sending)
+ *
+ * Larger than receive queue because video frames are continuously sent.
+ * Must be large enough to buffer frames while event loop processes them.
+ */
+#define WEBSOCKET_SEND_QUEUE_SIZE 256
+
 // Shared internal types (websocket_recv_msg_t, websocket_transport_data_t)
 #include <ascii-chat/network/websocket/internal.h>
 
@@ -336,26 +344,31 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
 
     mutex_lock(&ws_data->queue_mutex);
     bool success = ringbuffer_write(ws_data->send_queue, &msg);
-    mutex_unlock(&ws_data->queue_mutex);
 
     if (!success) {
+      mutex_unlock(&ws_data->queue_mutex);
+      log_error("WebSocket server send queue FULL - cannot queue %zu byte message for wsi=%p", send_len,
+                (void *)ws_data->wsi);
       SAFE_FREE(msg.data);
       SAFE_FREE(send_buffer);
       if (encrypted_packet)
         buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
-      return SET_ERRNO(ERROR_NETWORK, "Send queue full");
+      return SET_ERRNO(ERROR_NETWORK, "Send queue full (cannot queue %zu bytes)", send_len);
     }
+    mutex_unlock(&ws_data->queue_mutex);
 
     // Wake the LWS event loop from this non-service thread.
-    log_dev_every(4500000, ">>> FRAME QUEUED: %zu bytes for wsi=%p", send_len, (void *)ws_data->wsi);
+    log_debug(">>> FRAME QUEUED: %zu bytes for wsi=%p (send_len=%zu)", send_len, (void *)ws_data->wsi, send_len);
 
     struct lws_context *ctx = lws_get_context(ws_data->wsi);
+    log_debug(">>> Calling lws_cancel_service(ctx=%p) and lws_callback_on_writable(wsi=%p)", (void *)ctx,
+              (void *)ws_data->wsi);
+
     lws_cancel_service(ctx);
     lws_callback_on_writable(ws_data->wsi);
 
-    log_dev_every(4500000, ">>> WRITABLE CALLBACK REQUESTED for wsi=%p", (void *)ws_data->wsi);
-    log_dev_every(4500000, "Server-side WebSocket send queued %zu bytes, requested writable callback for wsi=%p",
-                  send_len, (void *)ws_data->wsi);
+    log_debug(">>> WRITABLE CALLBACK REQUESTED - will be processed on next event loop iteration");
+    log_debug("Server-side WebSocket: queued %zu bytes, requested writable for wsi=%p", send_len, (void *)ws_data->wsi);
     SAFE_FREE(send_buffer);
     if (encrypted_packet)
       buffer_pool_free(NULL, encrypted_packet, send_len);
@@ -938,7 +951,7 @@ acip_transport_t *acip_websocket_server_transport_create(struct lws *wsi, crypto
   }
 
   // Initialize send queue (for server-side transports)
-  ws_data->send_queue = ringbuffer_create(sizeof(websocket_recv_msg_t), WEBSOCKET_RECV_QUEUE_SIZE);
+  ws_data->send_queue = ringbuffer_create(sizeof(websocket_recv_msg_t), WEBSOCKET_SEND_QUEUE_SIZE);
   if (!ws_data->send_queue) {
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
