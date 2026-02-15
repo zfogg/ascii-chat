@@ -473,6 +473,19 @@ ascii-chat happy-sunset-ocean --url 'https://youtu.be/7ynHVGCehoM' -s 38:29`}
               </div>
 
               <div>
+                <h3 className="text-xl font-semibold text-pink-300 mb-3">
+                  Watch Twitch stream as ASCII art
+                </h3>
+                <CodeBlock language="bash">
+                  {`# Watch Twitch stream locally in ASCII (mirror mode)
+ascii-chat mirror --url 'https://www.twitch.tv/ludwig'
+
+# Share Twitch stream with others in a call (client mode)
+ascii-chat happy-sunset-ocean --url 'https://www.twitch.tv/ludwig'`}
+                </CodeBlock>
+              </div>
+
+              <div>
                 <h3 className="text-xl font-semibold text-teal-300 mb-3">
                   Convert video to ASCII and preview
                 </h3>

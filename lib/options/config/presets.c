@@ -238,6 +238,8 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   // Add examples for client-like modes (client + mirror)
   options_builder_add_example(b, OPTION_MODE_CLIENT_LIKE, "--url 'https://youtu.be/7ynHVGCehoM'",
                               "Stream from YouTube URL (also supports RTSP, HTTP, and HTTPS URLs)", false);
+  options_builder_add_example(b, OPTION_MODE_CLIENT_LIKE, "--url 'https://www.twitch.tv/ludwig'",
+                              "Stream Ludwig from videogames on Twitch", false);
   options_builder_add_example(b, OPTION_MODE_CLIENT_LIKE, "-f video.mp4", "Stream from local video file", false);
   options_builder_add_example(b, OPTION_MODE_CLIENT_LIKE, "--palette-chars '@%#*+=-:. '",
                               "Custom palette characters to use. UTF-8 is allowed.", false);
