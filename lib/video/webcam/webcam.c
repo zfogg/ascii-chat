@@ -111,18 +111,6 @@ image_t *webcam_read(void) {
       }
     }
 
-    // Apply horizontal flip if requested (same as real webcam)
-    if (GET_OPTION(webcam_flip)) {
-      for (int y = 0; y < cached_webcam_frame->h; y++) {
-        for (int x = 0; x < cached_webcam_frame->w / 2; x++) {
-          rgb_pixel_t temp = cached_webcam_frame->pixels[y * cached_webcam_frame->w + x];
-          cached_webcam_frame->pixels[y * cached_webcam_frame->w + x] =
-              cached_webcam_frame->pixels[y * cached_webcam_frame->w + (cached_webcam_frame->w - 1 - x)];
-          cached_webcam_frame->pixels[y * cached_webcam_frame->w + (cached_webcam_frame->w - 1 - x)] = temp;
-        }
-      }
-    }
-
     return cached_webcam_frame;
   }
 
@@ -135,30 +123,6 @@ image_t *webcam_read(void) {
 
   if (!frame) {
     return NULL;
-  }
-
-  // Apply horizontal flip if requested
-  if (GET_OPTION(webcam_flip) && frame->w > 1) {
-    // Flip the image horizontally - optimized for large images
-    // Process entire rows to improve cache locality
-    rgb_pixel_t *left = frame->pixels;
-    rgb_pixel_t *right = frame->pixels + frame->w - 1;
-
-    for (int y = 0; y < frame->h; y++) {
-      rgb_pixel_t *row_left = left;
-      rgb_pixel_t *row_right = right;
-
-      // Swap pixels from both ends moving inward
-      for (int x = 0; x < frame->w / 2; x++) {
-        rgb_pixel_t temp = *row_left;
-        *row_left++ = *row_right;
-        *row_right-- = temp;
-      }
-
-      // Move to next row
-      left += frame->w;
-      right += frame->w;
-    }
   }
 
   return frame;
