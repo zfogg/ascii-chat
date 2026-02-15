@@ -1577,8 +1577,8 @@ void *client_send_thread_func(void *arg) {
   while (!atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down) && atomic_load(&client->active) &&
          atomic_load(&client->send_thread_running)) {
     loop_iteration_count++;
-    log_dev_every(4500000, "SEND_LOOP_ITERATION: client_id=%u iteration=%d", atomic_load(&client->client_id),
-                  loop_iteration_count);
+    log_warn_every(LOG_RATE_FAST, "SEND_LOOP_ITERATION: client_id=%u iteration=%d", atomic_load(&client->client_id),
+                   loop_iteration_count);
 
     bool sent_something = false;
 
@@ -1628,6 +1628,8 @@ void *client_send_thread_func(void *arg) {
         mutex_lock(&client->send_mutex);
         if (atomic_load(&client->shutting_down) || !client->transport) {
           mutex_unlock(&client->send_mutex);
+          log_warn("BREAK_AUDIO_SINGLE: client_id=%u shutting_down=%d transport=%p", atomic_load(&client->client_id),
+                   atomic_load(&client->shutting_down), (void *)client->transport);
           break; // Client is shutting down, exit thread
         }
         acip_transport_t *transport = client->transport;
@@ -1641,101 +1643,74 @@ void *client_send_thread_func(void *arg) {
                     result);
         }
       } else {
-        // Multiple packets - batch them together
-        // Check if these are Opus-encoded packets or raw float audio
+        // Multiple packets - batch them together and send via transport (works for all client types)
         packet_type_t first_pkt_type = (packet_type_t)NET_TO_HOST_U16(audio_packets[0]->header.type);
 
-        if (first_pkt_type == PACKET_TYPE_AUDIO_OPUS_BATCH) {
-          // Opus packets - batch using proper Opus batching format
-          // Calculate total Opus data size
-          size_t total_opus_size = 0;
-          for (int i = 0; i < audio_packet_count; i++) {
-            total_opus_size += audio_packets[i]->data_len;
-          }
-
-          // Allocate buffers for batched Opus data and frame sizes
-          uint8_t *batched_opus = SAFE_MALLOC(total_opus_size, uint8_t *);
-          uint16_t *frame_sizes = SAFE_MALLOC((size_t)audio_packet_count * sizeof(uint16_t), uint16_t *);
-
-          if (batched_opus && frame_sizes) {
-            // Copy all Opus frames into batch buffer
-            size_t offset = 0;
-            for (int i = 0; i < audio_packet_count; i++) {
-              frame_sizes[i] = (uint16_t)audio_packets[i]->data_len;
-              memcpy(batched_opus + offset, audio_packets[i]->data, audio_packets[i]->data_len);
-              offset += audio_packets[i]->data_len;
-            }
-
-            // Send batched Opus packet - get socket reference briefly to avoid deadlock on TCP buffer full
-            mutex_lock(&client->send_mutex);
-            if (atomic_load(&client->shutting_down) || client->socket == INVALID_SOCKET_VALUE) {
-              mutex_unlock(&client->send_mutex);
-              SAFE_FREE(batched_opus);
-              SAFE_FREE(frame_sizes);
-              break; // Client is shutting down, exit thread
-            }
-            socket_t send_socket = client->socket;
-            mutex_unlock(&client->send_mutex);
-
-            // Network I/O happens OUTSIDE the mutex
-            result =
-                av_send_audio_opus_batch(send_socket, batched_opus, total_opus_size, frame_sizes, AUDIO_SAMPLE_RATE, 20,
-                                         audio_packet_count, (crypto_context_t *)crypto_ctx);
-
-            if (result != ASCIICHAT_OK) {
-              log_error("AUDIO SEND FAIL (batch): client=%u, frames=%d, total_size=%zu, result=%d", client->client_id,
-                        audio_packet_count, total_opus_size, result);
-            }
-          } else {
-            log_error("Failed to allocate buffer for Opus batch");
-            result = ERROR_MEMORY;
-          }
-
-          if (batched_opus)
-            SAFE_FREE(batched_opus);
-          if (frame_sizes)
-            SAFE_FREE(frame_sizes);
+        // Get transport reference
+        mutex_lock(&client->send_mutex);
+        if (atomic_load(&client->shutting_down) || !client->transport) {
+          mutex_unlock(&client->send_mutex);
+          log_warn("BREAK_AUDIO_BATCH: client_id=%u shutting_down=%d transport=%p", atomic_load(&client->client_id),
+                   atomic_load(&client->shutting_down), (void *)client->transport);
+          result = ERROR_NETWORK;
         } else {
-          // Raw float audio - use existing batching logic
-          size_t total_samples = 0;
-          for (int i = 0; i < audio_packet_count; i++) {
-            total_samples += audio_packets[i]->data_len / sizeof(float);
-          }
+          acip_transport_t *transport = client->transport;
+          mutex_unlock(&client->send_mutex);
 
-          // Allocate buffer for batched audio
-          float *batched_audio = SAFE_MALLOC(total_samples * sizeof(float), float *);
-          if (batched_audio) {
-            // Copy all audio packets into batch buffer
-            size_t offset = 0;
+          if (first_pkt_type == PACKET_TYPE_AUDIO_OPUS_BATCH) {
+            // Opus packets - batch and send via transport
+            size_t total_opus_size = 0;
             for (int i = 0; i < audio_packet_count; i++) {
-              size_t packet_samples = audio_packets[i]->data_len / sizeof(float);
-              memcpy(batched_audio + offset, audio_packets[i]->data, audio_packets[i]->data_len);
-              offset += packet_samples;
+              total_opus_size += audio_packets[i]->data_len;
             }
 
-            // Send batched audio packet - get socket reference briefly to avoid deadlock on TCP buffer full
-            mutex_lock(&client->send_mutex);
-            if (atomic_load(&client->shutting_down) || client->socket == INVALID_SOCKET_VALUE) {
-              mutex_unlock(&client->send_mutex);
-              SAFE_FREE(batched_audio);
-              break; // Client is shutting down, exit thread
+            uint8_t *batched_opus = SAFE_MALLOC(total_opus_size, uint8_t *);
+            uint16_t *frame_sizes = SAFE_MALLOC((size_t)audio_packet_count * sizeof(uint16_t), uint16_t *);
+
+            if (batched_opus && frame_sizes) {
+              size_t offset = 0;
+              for (int i = 0; i < audio_packet_count; i++) {
+                frame_sizes[i] = (uint16_t)audio_packets[i]->data_len;
+                memcpy(batched_opus + offset, audio_packets[i]->data, audio_packets[i]->data_len);
+                offset += audio_packets[i]->data_len;
+              }
+              result = acip_send_audio_opus_batch(transport, batched_opus, total_opus_size, frame_sizes,
+                                                  AUDIO_SAMPLE_RATE, 20, audio_packet_count);
+              if (result != ASCIICHAT_OK) {
+                log_error("AUDIO SEND FAIL (opus batch): client=%u, frames=%d, total_size=%zu, result=%d",
+                          atomic_load(&client->client_id), audio_packet_count, total_opus_size, result);
+              }
+            } else {
+              log_error("Failed to allocate buffer for Opus batch");
+              result = ERROR_MEMORY;
             }
-            socket_t send_socket = client->socket;
-            mutex_unlock(&client->send_mutex);
-
-            // Network I/O happens OUTSIDE the mutex
-            result = send_audio_batch_packet(send_socket, batched_audio, (int)total_samples, audio_packet_count,
-                                             (crypto_context_t *)crypto_ctx);
-
-            SAFE_FREE(batched_audio);
-
-            if (result != ASCIICHAT_OK) {
-              log_error("AUDIO SEND FAIL (raw batch): client=%u, packets=%d, samples=%zu, result=%d", client->client_id,
-                        audio_packet_count, total_samples, result);
-            }
+            SAFE_FREE(batched_opus);
+            SAFE_FREE(frame_sizes);
           } else {
-            log_error("Failed to allocate buffer for audio batch");
-            result = ERROR_MEMORY;
+            // Raw float audio - batch and send via transport
+            size_t total_samples = 0;
+            for (int i = 0; i < audio_packet_count; i++) {
+              total_samples += audio_packets[i]->data_len / sizeof(float);
+            }
+
+            float *batched_audio = SAFE_MALLOC(total_samples * sizeof(float), float *);
+            if (batched_audio) {
+              size_t offset = 0;
+              for (int i = 0; i < audio_packet_count; i++) {
+                size_t packet_samples = audio_packets[i]->data_len / sizeof(float);
+                memcpy(batched_audio + offset, audio_packets[i]->data, audio_packets[i]->data_len);
+                offset += packet_samples;
+              }
+              result = acip_send_audio_batch(transport, batched_audio, (uint32_t)total_samples, AUDIO_SAMPLE_RATE);
+              if (result != ASCIICHAT_OK) {
+                log_error("AUDIO SEND FAIL (raw batch): client=%u, packets=%d, samples=%zu, result=%d",
+                          atomic_load(&client->client_id), audio_packet_count, total_samples, result);
+              }
+            } else {
+              log_error("Failed to allocate buffer for audio batch");
+              result = ERROR_MEMORY;
+            }
+            SAFE_FREE(batched_audio);
           }
         }
       }
@@ -1749,6 +1724,7 @@ void *client_send_thread_func(void *arg) {
         if (!atomic_load(&g_server_should_exit)) {
           log_error("Failed to send audio to client %u: %s", client->client_id, asciichat_error_string(result));
         }
+        log_warn("BREAK_AUDIO_ERROR: client_id=%u result=%d", atomic_load(&client->client_id), result);
         break; // Socket error, exit thread
       }
 
@@ -1777,6 +1753,8 @@ void *client_send_thread_func(void *arg) {
         if (atomic_load(&client->shutting_down) || client->socket == INVALID_SOCKET_VALUE) {
           mutex_unlock(&client->send_mutex);
           mutex_unlock(&client->client_state_mutex);
+          log_warn("BREAK_REKEY: client_id=%u shutting_down=%d socket=%d", atomic_load(&client->client_id),
+                   atomic_load(&client->shutting_down), (int)client->socket);
           break; // Client is shutting down, exit thread
         }
         socket_t rekey_socket = client->socket;
@@ -1801,7 +1779,8 @@ void *client_send_thread_func(void *arg) {
     if (!client->outgoing_video_buffer) {
       // Buffer has been destroyed (client is shutting down).
       // Exit cleanly instead of looping forever trying to access freed memory.
-      log_dev("Client %u send thread exiting: outgoing_video_buffer is NULL", client->client_id);
+      log_warn("⚠️  Send thread exiting: outgoing_video_buffer is NULL for client %u (client shutting down?)",
+               client->client_id);
       break;
     }
 
@@ -1813,8 +1792,8 @@ void *client_send_thread_func(void *arg) {
 
     // Check if get_latest failed (buffer might have been destroyed)
     if (!frame) {
-      log_dev("Client %u send thread: video_frame_get_latest returned NULL, buffer may be destroyed",
-              client->client_id);
+      log_warn("⚠️  Send thread exiting: video_frame_get_latest returned NULL for client %u (buffer destroyed?)",
+               client->client_id);
       break; // Exit thread if buffer is invalid
     }
 
@@ -1841,6 +1820,8 @@ void *client_send_thread_func(void *arg) {
         mutex_lock(&client->send_mutex);
         if (atomic_load(&client->shutting_down) || !client->transport) {
           mutex_unlock(&client->send_mutex);
+          log_warn("BREAK_CLEAR_CONSOLE: client_id=%u shutting_down=%d transport=%p", atomic_load(&client->client_id),
+                   atomic_load(&client->shutting_down), (void *)client->transport);
           break; // Client is shutting down, exit thread
         }
         acip_transport_t *clear_transport = client->transport;
@@ -1902,8 +1883,9 @@ void *client_send_thread_func(void *arg) {
       mutex_lock(&client->send_mutex);
       if (atomic_load(&client->shutting_down) || !client->transport) {
         mutex_unlock(&client->send_mutex);
-        log_warn("SEND_FRAME_ABORT: client_id=%u shutting_down=%d transport=%p", atomic_load(&client->client_id),
-                 atomic_load(&client->shutting_down), (void *)client->transport);
+        log_warn("BREAK_FRAME_SEND: client_id=%u shutting_down=%d transport=%p loop_iter=%d",
+                 atomic_load(&client->client_id), atomic_load(&client->shutting_down), (void *)client->transport,
+                 loop_iteration_count);
         break; // Client is shutting down, exit thread
       }
       acip_transport_t *frame_transport = client->transport;
@@ -1921,8 +1903,9 @@ void *client_send_thread_func(void *arg) {
           SET_ERRNO(ERROR_NETWORK, "Failed to send video frame to client %u: %s", client->client_id,
                     asciichat_error_string(send_result));
         }
-        log_error("SEND_FRAME_FAILED: client_id=%u result=%d message=%s", atomic_load(&client->client_id), send_result,
-                  asciichat_error_string(send_result));
+        log_error("SEND_FRAME_FAILED: client_id=%u result=%d message=%s loop_iter=%d", atomic_load(&client->client_id),
+                  send_result, asciichat_error_string(send_result), loop_iteration_count);
+        log_warn("BREAK_SEND_ERROR: client_id=%u (frame send failed)", atomic_load(&client->client_id));
         break;
       }
 
@@ -1952,6 +1935,12 @@ void *client_send_thread_func(void *arg) {
       platform_sleep_us(1000); // 1ms sleep
     }
   }
+
+  // Log why the send thread exited
+  log_warn("Send thread exit conditions - client_id=%u g_server_should_exit=%d shutting_down=%d active=%d "
+           "send_thread_running=%d",
+           atomic_load(&client->client_id), atomic_load(&g_server_should_exit), atomic_load(&client->shutting_down),
+           atomic_load(&client->active), atomic_load(&client->send_thread_running));
 
   // Mark thread as stopped
   atomic_store(&client->send_thread_running, false);
