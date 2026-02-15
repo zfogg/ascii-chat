@@ -42,14 +42,11 @@
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>
+#include <ascii-chat/platform/abstraction.h>
 
 #include <signal.h>
-#include <stdlib.h>
-#include <stdio.h>
 #include <stdatomic.h>
-#include <time.h>
 #include <string.h>
-#include <ascii-chat/platform/abstraction.h>
 
 /* ============================================================================
  * Global State Variables
@@ -226,7 +223,7 @@ int mirror_main(void) {
     // For webcam, show splash briefly but don't delay unnecessarily
     // The splash will continue until first frame is ready anyway
     if (!has_media && !GET_OPTION(snapshot_mode)) {
-      platform_sleep_ms(200); // Reduced from 1000ms - just enough to show splash
+      platform_sleep_ms(250);
     }
   }
 
@@ -262,12 +259,12 @@ int mirror_main(void) {
         capture_config.target_fps = (uint32_t)(url_fps + 0.5);
         log_info("Using target FPS: %u", capture_config.target_fps);
       } else {
-        log_warn("FPS detection failed for HTTP stream, using default 30 FPS");
-        capture_config.target_fps = 30;
+        log_warn("FPS detection failed for HTTP stream, using default 60 FPS");
+        capture_config.target_fps = 60;
       }
     } else {
-      log_warn("Failed to create probe source for HTTP stream, using default 30 FPS");
-      capture_config.target_fps = 30;
+      log_warn("Failed to create probe source for HTTP stream, using default 60 FPS");
+      capture_config.target_fps = 60;
     }
 
     capture_config.loop = false; // Network URLs cannot be looped
@@ -487,15 +484,12 @@ int mirror_main(void) {
 
   // Cleanup - must happen AFTER PortAudio is terminated
   // Stop audio FIRST to prevent callback from accessing media_source
-  log_debug("mirror_main: starting cleanup, audio_ctx=%p", (void *)audio_ctx);
+  log_dev("mirror_main: starting cleanup, audio_ctx=%p", (void *)audio_ctx);
   if (audio_ctx) {
-    log_debug("mirror_main: stopping audio duplex");
     audio_stop_duplex(audio_ctx);
-    log_debug("mirror_main: destroying audio");
     audio_destroy(audio_ctx);
-    log_debug("mirror_main: freeing audio_ctx");
     SAFE_FREE(audio_ctx);
-    log_debug("mirror_main: audio cleanup complete");
+    log_dev("mirror_main: audio cleanup complete");
   }
 
   session_display_destroy(display);
