@@ -834,10 +834,8 @@ void *client_audio_render_thread(void *arg) {
     // DEBUG: Log samples mixed every iteration
     // NOTE: mixer_debug_count is now per-thread (not static), so each client thread has its own counter
     mixer_debug_count++;
-    if (samples_mixed > 0 && (mixer_debug_count <= 3 || mixer_debug_count % 50 == 0)) {
-      log_info("Server mixer iteration #%d for client %u: samples_mixed=%d, opus_frame_accumulated=%d/%d",
-               mixer_debug_count, client_id_snapshot, samples_mixed, opus_frame_accumulated, OPUS_FRAME_SAMPLES);
-    }
+    log_dev_every(4500000, "Server mixer iteration #%d for client %u: samples_mixed=%d, opus_frame_accumulated=%d/%d",
+                  mixer_debug_count, client_id_snapshot, samples_mixed, opus_frame_accumulated, OPUS_FRAME_SAMPLES);
 
     // Accumulate all samples (including 0 or partial) until we have a full Opus frame
     // This maintains continuous stream without silence padding
@@ -872,8 +870,8 @@ void *client_audio_render_thread(void *arg) {
         apply_backpressure = (queue_depth > 50); // > 50 packets = ~1s buffered at 50 FPS
 
         if (apply_backpressure) {
-          log_warn("Audio backpressure for client %u: queue depth %zu packets (%.1fs buffered)", client_id_snapshot,
-                   queue_depth, (float)queue_depth / 50.0f);
+          log_warn_every(4500000, "Audio backpressure for client %u: queue depth %zu packets (%.1fs buffered)",
+                         client_id_snapshot, queue_depth, (float)queue_depth / 50.0f);
         }
       }
 
@@ -911,10 +909,11 @@ void *client_audio_render_thread(void *arg) {
         server_audio_frame_count++;
         if (server_audio_frame_count <= 5 || server_audio_frame_count % 20 == 0) {
           // Log first 4 samples to verify they look like valid audio (not NaN/Inf/garbage)
-          log_info("Server audio frame #%d for client %u: samples_mixed=%d, Peak=%.6f, RMS=%.6f, opus_size=%d, "
-                   "first4=[%.4f,%.4f,%.4f,%.4f]",
-                   server_audio_frame_count, client_id_snapshot, samples_mixed, peak, rms, opus_size,
-                   opus_frame_buffer[0], opus_frame_buffer[1], opus_frame_buffer[2], opus_frame_buffer[3]);
+          log_dev_every(4500000,
+                        "Server audio frame #%d for client %u: samples_mixed=%d, Peak=%.6f, RMS=%.6f, opus_size=%d, "
+                        "first4=[%.4f,%.4f,%.4f,%.4f]",
+                        server_audio_frame_count, client_id_snapshot, samples_mixed, peak, rms, opus_size,
+                        opus_frame_buffer[0], opus_frame_buffer[1], opus_frame_buffer[2], opus_frame_buffer[3]);
         }
       }
 

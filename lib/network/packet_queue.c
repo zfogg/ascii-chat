@@ -219,7 +219,7 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
         }
         node_pool_put(queue->node_pool, head);
 
-        log_debug_every(LOG_RATE_FAST, "Dropped packet from queue (full): type=%d, client=%u", type, client_id);
+        log_dev_every(4500000, "Dropped packet from queue (full): type=%d, client=%u", type, client_id);
       }
       // If CAS failed, another thread already dequeued - continue to enqueue
     }

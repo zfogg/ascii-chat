@@ -991,12 +991,9 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
   }
 
   // Periodic buffer health logging (every 5 seconds when healthy)
-  static unsigned int health_log_counter = 0;
-  if (++health_log_counter % 250 == 0) { // ~5 seconds at 50Hz callback rate
-    unsigned int underruns = atomic_load_explicit(&rb->underrun_count, memory_order_relaxed);
-    log_debug("Buffer health: %zu/%d samples (%.1f%%), underruns=%u", available, AUDIO_RING_BUFFER_SIZE,
-              (100.0f * available) / AUDIO_RING_BUFFER_SIZE, underruns);
-  }
+  unsigned int underruns = atomic_load_explicit(&rb->underrun_count, memory_order_relaxed);
+  log_dev_every(5000000, "Buffer health: %zu/%d samples (%.1f%%), underruns=%u", available, AUDIO_RING_BUFFER_SIZE,
+                (100.0f * available) / AUDIO_RING_BUFFER_SIZE, underruns);
 
   // Low buffer handling: DON'T pause playback - continue reading what's available
   // and fill the rest with silence. Pausing causes a feedback loop where:
