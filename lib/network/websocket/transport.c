@@ -244,7 +244,7 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
   bool connected = ws_data->is_connected;
   mutex_unlock(&ws_data->state_mutex);
 
-  log_debug("websocket_send: is_connected=%d, wsi=%p", connected, (void *)ws_data->wsi);
+  log_dev_every(4500000, "websocket_send: is_connected=%d, wsi=%p", connected, (void *)ws_data->wsi);
 
   if (!connected) {
     return SET_ERRNO(ERROR_NETWORK, "WebSocket transport not connected");
@@ -347,13 +347,13 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     }
 
     // Wake the LWS event loop from this non-service thread.
-    log_error(">>> FRAME QUEUED: %zu bytes for wsi=%p", send_len, (void *)ws_data->wsi);
+    log_dev_every(4500000, ">>> FRAME QUEUED: %zu bytes for wsi=%p", send_len, (void *)ws_data->wsi);
 
     struct lws_context *ctx = lws_get_context(ws_data->wsi);
     lws_cancel_service(ctx);
     lws_callback_on_writable(ws_data->wsi);
 
-    log_error(">>> WRITABLE CALLBACK REQUESTED for wsi=%p", (void *)ws_data->wsi);
+    log_dev_every(4500000, ">>> WRITABLE CALLBACK REQUESTED for wsi=%p", (void *)ws_data->wsi);
     log_debug("Server-side WebSocket send queued %zu bytes, requested writable callback for wsi=%p", send_len,
               (void *)ws_data->wsi);
     SAFE_FREE(send_buffer);

@@ -165,18 +165,18 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     break;
 
   case LWS_CALLBACK_SERVER_WRITEABLE: {
-    log_error("=== LWS_CALLBACK_SERVER_WRITEABLE FIRED === wsi=%p", (void *)wsi);
-    log_debug("LWS_CALLBACK_SERVER_WRITEABLE triggered");
+    log_dev_every(4500000, "=== LWS_CALLBACK_SERVER_WRITEABLE FIRED === wsi=%p", (void *)wsi);
+    log_dev_every(4500000, "LWS_CALLBACK_SERVER_WRITEABLE triggered");
 
     // Dequeue and send pending data
     if (!conn_data || !conn_data->transport) {
-      log_debug("SERVER_WRITEABLE: No conn_data or transport");
+      log_dev_every(4500000, "SERVER_WRITEABLE: No conn_data or transport");
       break;
     }
 
     websocket_transport_data_t *ws_data = (websocket_transport_data_t *)conn_data->transport->impl_data;
     if (!ws_data || !ws_data->send_queue) {
-      log_debug("SERVER_WRITEABLE: No ws_data or send_queue");
+      log_dev_every(4500000, "SERVER_WRITEABLE: No ws_data or send_queue");
       break;
     }
 
@@ -184,18 +184,18 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
     if (ringbuffer_is_empty(ws_data->send_queue)) {
       mutex_unlock(&ws_data->queue_mutex);
-      log_debug("SERVER_WRITEABLE: Send queue is empty, nothing to send");
+      log_dev_every(4500000, "SERVER_WRITEABLE: Send queue is empty, nothing to send");
       break;
     }
 
-    log_error(">>> SERVER_WRITEABLE: Processing message from send queue");
+    log_dev_every(4500000, ">>> SERVER_WRITEABLE: Processing message from send queue");
 
     // Dequeue message
     websocket_recv_msg_t msg;
     bool success = ringbuffer_read(ws_data->send_queue, &msg);
     mutex_unlock(&ws_data->queue_mutex);
 
-    log_debug("SERVER_WRITEABLE: Dequeued message %zu bytes (success=%d)", msg.len, success);
+    log_dev_every(4500000, "SERVER_WRITEABLE: Dequeued message %zu bytes (success=%d)", msg.len, success);
 
     if (!success || !msg.data) {
       break;
@@ -241,7 +241,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     SAFE_FREE(msg.data);
 
     if (!send_failed) {
-      log_debug("SERVER_WRITEABLE: Successfully sent %zu bytes in fragments", offset);
+      log_dev_every(4500000, "SERVER_WRITEABLE: Successfully sent %zu bytes in fragments", offset);
     }
 
     // If there are more messages, request another writable callback
@@ -250,7 +250,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     mutex_unlock(&ws_data->queue_mutex);
 
     if (has_more) {
-      log_debug("SERVER_WRITEABLE: More messages queued, requesting another callback");
+      log_dev_every(4500000, "SERVER_WRITEABLE: More messages queued, requesting another callback");
       lws_callback_on_writable(wsi);
     }
 
