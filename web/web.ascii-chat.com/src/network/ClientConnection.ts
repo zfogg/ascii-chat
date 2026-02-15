@@ -99,28 +99,44 @@ export class ClientConnection {
         // The reconnection logic will handle these - just log them
       },
       onStateChange: (state) => {
+        console.error(`[ClientConnection] *** onStateChange: state='${state}' wasEverConnected=${this.wasEverConnected}`);
         console.log('[ClientConnection] WebSocket state:', state);
         if (state === 'open') {
+          console.error('[ClientConnection] *** State is OPEN');
           console.log('[ClientConnection] WebSocket opened, setting state to CONNECTING');
-          // On reconnection, reinitialize WASM client if we've connected before
+          // On reconnection, fully reinitialize WASM to reset state machine
           if (this.wasEverConnected) {
+            console.error('[ClientConnection] *** wasEverConnected is TRUE, starting WASM reinit');
             console.log('[ClientConnection] Reinitializing WASM for reconnection...');
             this.wasmReinitInProgress = true;
             this.deferredPackets = [];
-            this.reinitializeWasmForReconnect().then(() => {
+            cleanupClientWasm();
+            initClientWasm({ width: this.options.width, height: this.options.height }).then(() => {
+              console.log('[ClientConnection] WASM reinitialized');
+              // Regenerate keypair
+              return generateKeypair().then((publicKey) => {
+                this.clientPublicKey = publicKey;
+                console.log('[ClientConnection] New keypair generated');
+                // Re-register send callback
+                registerSendPacketCallback((rawPacket: Uint8Array) => {
+                  if (!this.socket) return;
+                  this.socket.send(rawPacket);
+                });
+                console.log('[ClientConnection] WASM reconnection setup complete');
+              });
+            }).then(() => {
+              console.log('[ClientConnection] WASM reinit fully complete, processing deferred packets');
               this.wasmReinitInProgress = false;
               // Process any packets that arrived while WASM was reinitializing
               const deferred = this.deferredPackets;
               this.deferredPackets = [];
+              console.log(`[ClientConnection] Processing ${deferred.length} deferred packets`);
               deferred.forEach(packet => this.handlePacket(packet));
-            }).catch(error => {
+            }).catch((error) => {
               console.error('[ClientConnection] WASM reinit failed:', error);
               this.wasmReinitInProgress = false;
-              // WASM reinit failure will be retried on next reconnection attempt
-              // Don't set ERROR state - let reconnection logic handle it
             });
           }
-          this.wasEverConnected = false; // Reset for new handshake
           this.onStateChangeCallback?.(ConnectionState.CONNECTING);
         } else if (state === 'connecting') {
           // SocketBridge is attempting to reconnect
@@ -153,55 +169,13 @@ export class ClientConnection {
     console.log('[ClientConnection] Connect complete');
   }
 
-
-  /**
-   * Reinitialize WASM client for reconnection after disconnect
-   */
-  private async reinitializeWasmForReconnect(): Promise<void> {
-    try {
-      console.log('[ClientConnection] Starting WASM reinitialization...');
-      cleanupClientWasm();
-
-      await initClientWasm({
-        width: this.options.width,
-        height: this.options.height
-      });
-      console.log('[ClientConnection] WASM reinitialized');
-
-      // Regenerate keypair for new handshake
-      this.clientPublicKey = await generateKeypair();
-      console.log('[ClientConnection] New keypair generated:', this.clientPublicKey);
-
-      // Re-register send callback
-      registerSendPacketCallback((rawPacket: Uint8Array) => {
-        let typeInfo = `${rawPacket.length} bytes`;
-        try {
-          const parsed = parsePacket(rawPacket);
-          typeInfo = `type=${parsed.type} (${packetTypeName(parsed.type)}) ${rawPacket.length} bytes`;
-        } catch { /* ignore parse errors */ }
-        console.error(`[ClientConnection] >>> WASM->JS->WS sending raw packet: ${typeInfo}`);
-        if (!this.socket) {
-          console.error('[ClientConnection] Cannot send packet - socket not connected');
-          return;
-        }
-        this.socket.send(rawPacket);
-        console.error(`[ClientConnection] >>> WASM->JS->WS packet sent OK`);
-      });
-
-      console.log('[ClientConnection] WASM reinitialization complete');
-    } catch (error) {
-      console.error('[ClientConnection] WASM reinitialization failed:', error);
-      this.onStateChangeCallback?.(ConnectionState.ERROR);
-    }
-  }
-
   /**
    * Handle incoming packet from WebSocket
    */
   private handlePacket(rawPacket: Uint8Array): void {
     // Defer packet handling if WASM is being reinitialized
     if (this.wasmReinitInProgress) {
-      console.log('[ClientConnection] WASM reinit in progress, deferring packet...');
+      console.error(`[ClientConnection] WASM reinit in progress, deferring packet (${rawPacket.length} bytes)`);
       this.deferredPackets.push(rawPacket);
       return;
     }
@@ -244,6 +218,8 @@ export class ClientConnection {
         handleHandshakeComplete(rawPacket);
         console.error(`[ClientConnection] <<< WASM handleHandshakeComplete returned OK - transitioning to CONNECTED`);
         this.wasEverConnected = true; // Mark that we've successfully connected at least once
+        // Note: Don't start heartbeat here - it interferes with ACIP protocol
+        // The protocol exchange will complete and normal operation will resume
         this.onStateChangeCallback?.(ConnectionState.CONNECTED);
         return;
       }

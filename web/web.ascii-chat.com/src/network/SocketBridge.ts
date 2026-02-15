@@ -29,11 +29,13 @@ export class SocketBridge {
   private onPacketCallback: PacketCallback | null = null;
   private onErrorCallback: ErrorCallback | null = null;
   private onStateChangeCallback: StateCallback | null = null;
-  private reconnectTimeoutId: NodeJS.Timeout | null = null;
+  private reconnectTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private heartbeatTimeoutId: ReturnType<typeof setInterval> | null = null;
   private reconnectAttempts = 0;
   private isUserDisconnecting = false;
   private wasEverConnected = false;
   private readonly RECONNECT_DELAY = 1000; // 1 second fixed delay
+  private readonly HEARTBEAT_INTERVAL = 1000; // 1 second heartbeat check (detect disconnects quickly)
 
   constructor(private options: SocketBridgeOptions) {
     this.onPacketCallback = options.onPacket || null;
@@ -63,11 +65,15 @@ export class SocketBridge {
     this.ws.binaryType = 'arraybuffer';
 
     const handleOpen = () => {
+      console.error('[SocketBridge] ✓✓✓ handleOpen CALLED');
       console.log('[SocketBridge] WebSocket connected');
       this.wasEverConnected = true;
       this.reconnectAttempts = 0;
+      console.error('[SocketBridge] About to call onStateChangeCallback(open)');
       this.onStateChangeCallback?.('open');
+      console.error('[SocketBridge] onStateChangeCallback(open) returned, calling resolve()');
       resolve();
+      console.error('[SocketBridge] resolve() returned');
     };
 
     const handleMessage = (event: Event) => {
@@ -91,6 +97,7 @@ export class SocketBridge {
     const handleClose = (event: Event) => {
       const closeEvent = event as CloseEvent;
       console.error(`[SocketBridge] WebSocket CLOSED: code=${closeEvent.code} reason="${closeEvent.reason}" wasClean=${closeEvent.wasClean}`);
+      this.stopHeartbeat();
       this.onStateChangeCallback?.('closed');
 
       // If user explicitly closed the connection, don't reconnect
@@ -130,34 +137,26 @@ export class SocketBridge {
       return; // Already scheduled
     }
 
-    // Check if we should retry
-    const isProduction = process.env.NODE_ENV === 'production';
-    const maxAttempts = isProduction ? 5 : Infinity;
-
-    if (this.reconnectAttempts >= maxAttempts && isProduction) {
-      console.error(`[SocketBridge] Max reconnection attempts (${maxAttempts}) reached, giving up`);
-      return;
-    }
-
+    // Always retry indefinitely - don't give up after N attempts
     this.reconnectAttempts++;
-    const attemptStr = isProduction ? `${this.reconnectAttempts}/${maxAttempts}` : `${this.reconnectAttempts}`;
-    console.log(`[SocketBridge] Scheduling reconnect attempt ${attemptStr} in ${this.RECONNECT_DELAY}ms`);
+    console.log(`[SocketBridge] Scheduling reconnect attempt ${this.reconnectAttempts} in ${this.RECONNECT_DELAY}ms`);
 
     this.reconnectTimeoutId = setTimeout(() => {
       this.reconnectTimeoutId = null;
-      console.log('[SocketBridge] Attempting to reconnect...');
+      console.error(`[SocketBridge] ⏱️ RECONNECT TIMER FIRED: attempt ${this.reconnectAttempts}, calling createAndSetupWebSocket`);
       try {
-        this.createAndSetupWebSocket(
-          () => {
-            console.log('[SocketBridge] Reconnection successful');
-          },
-          (error: Error) => {
-            console.error('[SocketBridge] Reconnection failed:', error.message);
-            this.scheduleReconnect();
-          }
-        );
+        const resolve = () => {
+          console.error('[SocketBridge] ✅ Reconnection successful - resolve callback fired');
+        };
+        const reject = (error: Error) => {
+          console.error(`[SocketBridge] ❌ Reconnection failed (attempt ${this.reconnectAttempts}): ${error.message}`);
+          this.scheduleReconnect();
+        };
+        console.error(`[SocketBridge] About to call createAndSetupWebSocket with resolve/reject`);
+        this.createAndSetupWebSocket(resolve, reject);
+        console.error(`[SocketBridge] createAndSetupWebSocket returned`);
       } catch (error) {
-        console.error('[SocketBridge] Reconnect attempt failed:', error);
+        console.error('[SocketBridge] Exception in reconnect timeout:', error);
         this.scheduleReconnect();
       }
     }, this.RECONNECT_DELAY);
@@ -198,6 +197,51 @@ export class SocketBridge {
   }
 
   /**
+   * Start heartbeat to detect dead connections
+   */
+  startHeartbeat(): void {
+    this.stopHeartbeat();
+    console.log('[SocketBridge] Starting heartbeat (interval:', this.HEARTBEAT_INTERVAL, 'ms)');
+    this.heartbeatTimeoutId = setInterval(() => {
+      if (!this.ws) {
+        console.log('[SocketBridge] Heartbeat: WebSocket is null, stopping');
+        this.stopHeartbeat();
+        return;
+      }
+
+      const readyState = this.ws.readyState;
+      if (readyState !== WebSocket.OPEN) {
+        console.log('[SocketBridge] Heartbeat: WebSocket not in OPEN state:', readyState);
+        this.stopHeartbeat();
+        return;
+      }
+
+      // Try to send a test message to detect dead connections
+      try {
+        console.log('[SocketBridge] Heartbeat: sending test ping');
+        this.ws.send(new Uint8Array([0xFF])); // Send a single byte as keep-alive
+      } catch (error) {
+        console.error('[SocketBridge] Heartbeat: send failed:', error);
+        // Manually trigger close to simulate what the browser should do
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+          console.error('[SocketBridge] Heartbeat: forcing close due to send failure');
+          this.ws.close(1006, 'Heartbeat send failed');
+        }
+      }
+    }, this.HEARTBEAT_INTERVAL);
+  }
+
+  /**
+   * Stop heartbeat
+   */
+  private stopHeartbeat(): void {
+    if (this.heartbeatTimeoutId !== null) {
+      clearInterval(this.heartbeatTimeoutId);
+      this.heartbeatTimeoutId = null;
+    }
+  }
+
+  /**
    * Close WebSocket connection (user-initiated)
    */
   close(): void {
@@ -209,6 +253,9 @@ export class SocketBridge {
       clearTimeout(this.reconnectTimeoutId);
       this.reconnectTimeoutId = null;
     }
+
+    // Stop heartbeat
+    this.stopHeartbeat();
 
     // Reset reconnection state when user explicitly closes
     this.reconnectAttempts = 0;

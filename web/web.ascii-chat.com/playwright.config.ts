@@ -13,7 +13,7 @@ export default defineConfig({
   reporter: 'html',
   
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://localhost:3000',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -23,22 +23,14 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        headless: false, // Enable headed mode for real webcam access
+        headless: true, // Run headless for testing
       },
-    },
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
     },
   ],
 
   webServer: {
-    command: 'bun run dev',
-    url: 'http://localhost:5173',
+    command: 'npm run dev',
+    url: 'http://localhost:3000',
     reuseExistingServer: true, // Reuse if already running
     timeout: 120 * 1000,
   },

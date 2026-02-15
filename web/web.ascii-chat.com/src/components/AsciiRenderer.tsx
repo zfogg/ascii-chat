@@ -27,6 +27,8 @@ export const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>
     const frameCountRef = useRef(0)
     const fpsUpdateTimeRef = useRef(performance.now())
     const lastDimsRef = useRef({ cols: 0, rows: 0 })
+    const pendingFrameRef = useRef<string | null>(null)
+    const rafIdRef = useRef<number | null>(null)
 
     const updateDimensions = useCallback((cols: number, rows: number) => {
       console.log(`[AsciiRenderer] updateDimensions: ${cols}x${rows}`)
@@ -36,82 +38,93 @@ export const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>
 
     useImperativeHandle(ref, () => ({
       writeFrame(ansiString: string) {
-        const terminal = xtermRef.current?.terminal
-        if (!terminal) {
-          console.log('[AsciiRenderer] writeFrame: terminal not ready')
-          return
+        // Queue latest frame
+        pendingFrameRef.current = ansiString
+
+        // Cancel previous RAF if pending
+        if (rafIdRef.current !== null) {
+          cancelAnimationFrame(rafIdRef.current)
         }
 
-        console.log(`[AsciiRenderer] ========== WRITE FRAME ==========`)
-        console.log(`[AsciiRenderer] Input ANSI string: ${ansiString.length} chars`)
+        // Schedule render on next animation frame
+        rafIdRef.current = requestAnimationFrame(() => {
+          const terminal = xtermRef.current?.terminal
+          if (!terminal || !pendingFrameRef.current) return
 
-        const lines = ansiString.split('\n')
-        console.log(`[AsciiRenderer] Lines in input: ${lines.length}`)
-        console.log(`[AsciiRenderer] First 3 lines (first 80 chars each):`)
-        lines.slice(0, 3).forEach((line, i) => {
-          console.log(`[AsciiRenderer]   Line ${i}: "${line.substring(0, 80)}"`)
-        })
+          const ansiString = pendingFrameRef.current
+          console.log(`[AsciiRenderer] ========== WRITE FRAME ==========`)
+          console.log(`[AsciiRenderer] Input ANSI string: ${ansiString.length} chars`)
 
-        const formattedLines = lines.map((line: string, index: number) =>
-          index < lines.length - 1 ? line + '\r\n' : line
-        )
+          const lines = ansiString.split('\n')
+          console.log(`[AsciiRenderer] Lines in input: ${lines.length}`)
+          console.log(`[AsciiRenderer] First 3 lines (first 80 chars each):`)
+          lines.slice(0, 3).forEach((line, i) => {
+            console.log(`[AsciiRenderer]   Line ${i}: "${line.substring(0, 80)}"`)
+          })
 
-        // Use cursor home only. Clear screen only when dimensions changed.
-        const dims = dimensionsRef.current
-        let prefix = '\x1b[H'
-        if (lastDimsRef.current.cols !== dims.cols || lastDimsRef.current.rows !== dims.rows) {
-          prefix = '\x1b[H\x1b[J'
-          lastDimsRef.current = { ...dims }
-          console.log(`[AsciiRenderer] Dimensions changed, clearing screen: ${dims.cols}x${dims.rows}`)
-        }
+          const formattedLines = lines.map((line: string, index: number) =>
+            index < lines.length - 1 ? line + '\r\n' : line
+          )
 
-        const output = prefix + formattedLines.join('')
-        console.log(`[AsciiRenderer] Output to terminal: ${output.length} chars`)
-        console.log(`[AsciiRenderer] Prefix bytes: ${Array.from(prefix).map(c => '0x' + c.charCodeAt(0).toString(16)).join(' ')}`)
-        console.log(`[AsciiRenderer] ========== WRITING TO XTERM ==========`)
+          // Use cursor home only. Clear screen only when dimensions changed.
+          const dims = dimensionsRef.current
+          let prefix = '\x1b[H'
+          if (lastDimsRef.current.cols !== dims.cols || lastDimsRef.current.rows !== dims.rows) {
+            prefix = '\x1b[H\x1b[J'
+            lastDimsRef.current = { ...dims }
+            console.log(`[AsciiRenderer] Dimensions changed, clearing screen: ${dims.cols}x${dims.rows}`)
+          }
 
-        terminal.write(output)
-        console.log(`[AsciiRenderer] Frame written to xterm`)
+          const output = prefix + formattedLines.join('')
+          console.log(`[AsciiRenderer] Output to terminal: ${output.length} chars`)
+          console.log(`[AsciiRenderer] Prefix bytes: ${Array.from(prefix).map(c => '0x' + c.charCodeAt(0).toString(16)).join(' ')}`)
+          console.log(`[AsciiRenderer] ========== WRITING TO XTERM ==========`)
 
-        // Ensure terminal is not paused and will render
-        const core = (terminal as any)._core
-        if (core && core._renderService) {
-          const renderService = core._renderService
-          const wasPaused = renderService._isPaused
-          console.log(`[AsciiRenderer] ===== RENDER SERVICE STATE =====`)
-          console.log(`[AsciiRenderer] isPaused BEFORE: ${wasPaused}`)
+          terminal.write(output)
+          console.log(`[AsciiRenderer] Frame written to xterm`)
 
-          // Force unpause - this is critical for continuous rendering
-          renderService._isPaused = false
-          console.log(`[AsciiRenderer] isPaused AFTER setting to false: ${renderService._isPaused}`)
+          // Ensure terminal is not paused and will render
+          const core = (terminal as any)._core
+          if (core && core._renderService) {
+            const renderService = core._renderService
+            const wasPaused = renderService._isPaused
+            console.log(`[AsciiRenderer] ===== RENDER SERVICE STATE =====`)
+            console.log(`[AsciiRenderer] isPaused BEFORE: ${wasPaused}`)
 
-          // Call _renderRows to force immediate render of the updated content
-          // This is the actual render method in xterm 5.3.0
-          if ((renderService as any)._renderRows) {
-            try {
-              (renderService as any)._renderRows(0, terminal.rows)
-              console.log(`[AsciiRenderer] Called _renderRows(0, ${terminal.rows})`)
-            } catch (e) {
-              console.error(`[AsciiRenderer] Error calling _renderRows: ${e}`)
+            // Force unpause - this is critical for continuous rendering
+            renderService._isPaused = false
+            console.log(`[AsciiRenderer] isPaused AFTER setting to false: ${renderService._isPaused}`)
+
+            // Call _renderRows to force immediate render of the updated content
+            // This is the actual render method in xterm 5.3.0
+            if ((renderService as any)._renderRows) {
+              try {
+                (renderService as any)._renderRows(0, terminal.rows)
+                console.log(`[AsciiRenderer] Called _renderRows(0, ${terminal.rows})`)
+              } catch (e) {
+                console.error(`[AsciiRenderer] Error calling _renderRows: ${e}`)
+              }
+            } else {
+              console.error(`[AsciiRenderer] _renderRows method not found!`)
             }
           } else {
-            console.error(`[AsciiRenderer] _renderRows method not found!`)
+            console.error(`[AsciiRenderer] ERROR: Cannot access render service. core=${!!core}, _renderService=${core?._renderService}`)
           }
-        } else {
-          console.error(`[AsciiRenderer] ERROR: Cannot access render service. core=${!!core}, _renderService=${core?._renderService}`)
-        }
 
-        // Update FPS counter via direct DOM mutation
-        if (showFps && fpsRef.current) {
-          frameCountRef.current++
-          const now = performance.now()
-          if (now - fpsUpdateTimeRef.current >= 1000) {
-            const fps = Math.round(frameCountRef.current / ((now - fpsUpdateTimeRef.current) / 1000))
-            fpsRef.current.textContent = fps.toString()
-            frameCountRef.current = 0
-            fpsUpdateTimeRef.current = now
+          // Update FPS counter via direct DOM mutation
+          if (showFps && fpsRef.current) {
+            frameCountRef.current++
+            const now = performance.now()
+            if (now - fpsUpdateTimeRef.current >= 1000) {
+              const fps = Math.round(frameCountRef.current / ((now - fpsUpdateTimeRef.current) / 1000))
+              fpsRef.current.textContent = fps.toString()
+              frameCountRef.current = 0
+              fpsUpdateTimeRef.current = now
+            }
           }
-        }
+
+          rafIdRef.current = null
+        })
       },
 
       getDimensions() {
