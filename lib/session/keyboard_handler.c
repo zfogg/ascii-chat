@@ -198,11 +198,11 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
     break;
   }
 
-  // ===== WEBCAM FLIP CONTROL =====
+  // ===== HORIZONTAL FLIP CONTROL =====
   case KEY_F: {
-    bool current_flip = (bool)GET_OPTION(webcam_flip);
-    options_set_bool("webcam_flip", !current_flip);
-    log_info("Webcam flip: %s", !current_flip ? "enabled" : "disabled");
+    bool current_flip_x = (bool)GET_OPTION(flip_x);
+    options_set_bool("flip_x", !current_flip_x);
+    log_info("Horizontal flip: %s", !current_flip_x ? "enabled" : "disabled");
     break;
   }
 
