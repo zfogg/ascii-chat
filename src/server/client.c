@@ -1476,7 +1476,7 @@ void *client_receive_thread(void *arg) {
 
     // Receive and dispatch packet using ACIP transport API
     // This combines packet reception, decryption, parsing, handler dispatch, and cleanup
-    log_error("🔄 RECV_THREAD: About to call dispatch for client %u", atomic_load(&client->client_id));
+    log_dev_every(4500000, "🔄 RECV_THREAD: About to call dispatch for client %u", atomic_load(&client->client_id));
     asciichat_error_t acip_result =
         acip_server_receive_and_dispatch(client->transport, client, &g_acip_server_callbacks);
     log_dev_every(4500000, "🔄 RECV_THREAD: Dispatch returned %d for client %u", acip_result,
@@ -2358,6 +2358,15 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
     log_error("Image dimensions too large: %ux%u (max: %ux%u)", header->width, header->height, MAX_WIDTH, MAX_HEIGHT);
     disconnect_client_for_bad_data(client, "IMAGE_FRAME dimensions too large");
     return;
+  }
+
+  // Auto-set dimensions from IMAGE_FRAME if not already set (fallback for missing CLIENT_CAPABILITIES)
+  // This ensures render thread can start even if CLIENT_CAPABILITIES was never sent
+  if (atomic_load(&client->width) == 0 || atomic_load(&client->height) == 0) {
+    atomic_store(&client->width, header->width);
+    atomic_store(&client->height, header->height);
+    log_info("Client %u: Auto-set dimensions from IMAGE_FRAME: %ux%u (CLIENT_CAPABILITIES not received)",
+             atomic_load(&client->client_id), header->width, header->height);
   }
 
   // Auto-enable video stream if not already enabled

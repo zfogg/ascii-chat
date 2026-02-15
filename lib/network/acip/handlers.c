@@ -56,7 +56,7 @@ typedef struct {
 // Lookup function: linear probing, returns handler index or -1 if not found
 static inline int handler_hash_lookup(const handler_hash_entry_t *table, packet_type_t type) {
   uint32_t h = HANDLER_HASH(type);
-  log_debug("HANDLER_HASH_LOOKUP: type=%d, hash=%u", type, h);
+  log_dev_every(4500000, "HANDLER_HASH_LOOKUP: type=%d, hash=%u", type, h);
   for (int i = 0; i < HANDLER_HASH_SIZE; i++) {
     uint32_t slot = (h + i) % HANDLER_HASH_SIZE;
     log_debug("  Checking slot %u: key=%d, handler_idx=%d", slot, table[slot].key, table[slot].handler_idx);

@@ -411,7 +411,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
                                         void **out_allocated_buffer) {
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
 
-  log_error("🔄 WEBSOCKET_RECV: ENTRY");
+  log_dev_every(4500000, "🔄 WEBSOCKET_RECV: ENTRY");
 
   // Check connection first without holding queue lock
   mutex_lock(&ws_data->state_mutex);
@@ -428,7 +428,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   // Block until message arrives or connection closes
   while (ringbuffer_is_empty(ws_data->recv_queue)) {
     if (wait_count == 0) {
-      log_error("🔄 WEBSOCKET_RECV: Queue empty, waiting for packets...");
+      log_dev_every(4500000, "🔄 WEBSOCKET_RECV: Queue empty, waiting for packets...");
     }
     wait_count++;
 
@@ -451,7 +451,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   }
 
   if (wait_count > 0) {
-    log_error("🔄 WEBSOCKET_RECV: Got packet after waiting %d iterations", wait_count);
+    log_dev_every(4500000, "🔄 WEBSOCKET_RECV: Got packet after waiting %d iterations", wait_count);
   }
 
   // Read message from queue

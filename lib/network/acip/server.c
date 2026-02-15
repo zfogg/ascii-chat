@@ -29,8 +29,8 @@
 
 asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, void *client_ctx,
                                                    const acip_server_callbacks_t *callbacks) {
-  log_debug("ACIP_SERVER_DISPATCH: Entry, transport=%p, client_ctx=%p, callbacks=%p", (void *)transport, client_ctx,
-            (const void *)callbacks);
+  log_dev_every(4500000, "ACIP_SERVER_DISPATCH: Entry, transport=%p, client_ctx=%p, callbacks=%p", (void *)transport,
+                client_ctx, (const void *)callbacks);
 
   if (!transport) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport (NULL)");
@@ -49,7 +49,7 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
 
   // Try to get socket from transport
   socket_t sock = transport->methods->get_socket(transport);
-  log_debug("ACIP_SERVER_DISPATCH: Socket=%d (INVALID=%d)", sock, INVALID_SOCKET_VALUE);
+  log_dev_every(4500000, "ACIP_SERVER_DISPATCH: Socket=%d (INVALID=%d)", sock, INVALID_SOCKET_VALUE);
 
   if (sock != INVALID_SOCKET_VALUE) {
     // Socket-based transport (TCP): use receive_packet_secure() for socket I/O + parsing
@@ -90,7 +90,7 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
     envelope.allocated_buffer = allocated_buffer;
     envelope.allocated_size = packet_len;
 
-    log_debug("ACIP_SERVER_DISPATCH: WebRTC packet parsed: type=%d, len=%u", envelope.type, envelope.len);
+    log_dev_every(4500000, "ACIP_SERVER_DISPATCH: WebRTC packet parsed: type=%d, len=%u", envelope.type, envelope.len);
 
     // Handle PACKET_TYPE_ENCRYPTED from WebSocket clients that encrypt at application layer
     if (envelope.type == PACKET_TYPE_ENCRYPTED && transport->crypto_ctx) {
@@ -131,8 +131,8 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
       envelope.allocated_buffer = plaintext;
       envelope.allocated_size = plaintext_size;
 
-      log_debug("ACIP_SERVER_DISPATCH: Decrypted WebSocket packet: inner_type=%d, inner_len=%u", envelope.type,
-                envelope.len);
+      log_dev_every(4500000, "ACIP_SERVER_DISPATCH: Decrypted WebSocket packet: inner_type=%d, inner_len=%u",
+                    envelope.type, envelope.len);
     }
   }
 
