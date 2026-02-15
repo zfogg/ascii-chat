@@ -179,10 +179,17 @@ static inline void test_set_test_pattern(bool value) {
 }
 
 /**
- * @brief Helper to set webcam_flip option in tests
+ * @brief Helper to set flip_x option in tests
  */
-static inline void test_set_webcam_flip(bool value) {
-  options_set_bool("webcam_flip", value);
+static inline void test_set_flip_x(bool value) {
+  options_set_bool("flip_x", value);
+}
+
+/**
+ * @brief Helper to set flip_y option in tests
+ */
+static inline void test_set_flip_y(bool value) {
+  options_set_bool("flip_y", value);
 }
 
 /**
