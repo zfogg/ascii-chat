@@ -25,11 +25,13 @@ if [[ -n "$c_files" ]]; then
   fi
 fi
 
-# Build web/ascii-chat.com and commit man pages
-if echo "$all_staged" | grep -q "^web/ascii-chat\.com/"; then
+# Build web/ascii-chat.com and git add man pages
+if echo "$all_staged" | grep -q "^(web/ascii-chat\.com/|web/packages/)"; then
   cd web/ascii-chat.com
   ./scripts/build.sh
   cd ../..
+
+  # Auto-add generated man page html pages if changed.
   manpage_files=$(command -p ls web/ascii-chat.com/public/ascii-chat*-man*.html)
   for manpage_file in $manpage_files; do
     if [[ -f "$manpage_file" ]] && git diff --name-only "$manpage_file" | grep -q "^$manpage_file$"; then
@@ -39,25 +41,25 @@ if echo "$all_staged" | grep -q "^web/ascii-chat\.com/"; then
   done
 fi
 
-# Build web/web.ascii-chat.com and auto-add changed WASM assets
-web_src_changed=$(echo "$all_staged" | grep -E "^(web/web\.ascii-chat\.com/|src/web/)" | grep -v "^web/web\.ascii-chat\.com/src/wasm/dist/" || true)
+# Build web/web.ascii-chat.com and git add WASM assets
+web_src_changed=$(echo "$all_staged" | grep -E "^(web/web\.ascii-chat\.com/|src/web/|web/packages/)" | grep -v "^web/web\.ascii-chat\.com/src/wasm/dist/" || true)
 if [[ -n "$web_src_changed" ]]; then
   cd web/web.ascii-chat.com
   bun run build
   cd ../..
 
-    # Auto-add WASM compiled assets only if they changed
-    wasm_files="web/web.ascii-chat.com/src/wasm/dist/mirror.js web/web.ascii-chat.com/src/wasm/dist/mirror.wasm"
-    for wasm_file in $wasm_files; do
-      if [[ -f "$wasm_file" ]] && git diff --name-only "$wasm_file" | grep -q "^$wasm_file$"; then
-        git add "$wasm_file"
-        echo "📦 Auto-staged WASM asset: $wasm_file"
-      fi
-    done
+  # Auto-add WASM compiled assets only if they changed
+  wasm_files="web/web.ascii-chat.com/src/wasm/dist/mirror.js web/web.ascii-chat.com/src/wasm/dist/mirror.wasm"
+  for wasm_file in $wasm_files; do
+    if [[ -f "$wasm_file" ]] && git diff --name-only "$wasm_file" | grep -q "^$wasm_file$"; then
+      git add "$wasm_file"
+      echo "📦 Auto-staged WASM asset: $wasm_file"
+    fi
+  done
 fi
 
 # Build web/discovery.ascii-chat.com (no auto-add)
-if echo "$all_staged" | grep -q "^web/discovery\.ascii-chat\.com/"; then
+if echo "$all_staged" | grep -q "^(web/discovery\.ascii-chat\.com/|web/packages/)"; then
   cd web/discovery.ascii-chat.com
   bun run build
   cd ../..
