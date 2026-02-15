@@ -1476,8 +1476,10 @@ void *client_receive_thread(void *arg) {
 
     // Receive and dispatch packet using ACIP transport API
     // This combines packet reception, decryption, parsing, handler dispatch, and cleanup
+    log_error("🔄 RECV_THREAD: About to call dispatch for client %u", atomic_load(&client->client_id));
     asciichat_error_t acip_result =
         acip_server_receive_and_dispatch(client->transport, client, &g_acip_server_callbacks);
+    log_error("🔄 RECV_THREAD: Dispatch returned %d for client %u", acip_result, atomic_load(&client->client_id));
 
     // Check if shutdown was requested during the network call
     if (atomic_load(&g_server_should_exit)) {
@@ -1590,7 +1592,6 @@ void *client_send_thread_func(void *arg) {
   // High-frequency audio loop - separate from video frame loop
   // to ensure audio packets are sent immediately, not rate-limited by video
 #define MAX_AUDIO_BATCH 8
-  int silence_log_count = 0;
   int loop_iteration_count = 0;
   while (!atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down) && atomic_load(&client->active) &&
          atomic_load(&client->send_thread_running)) {
@@ -1615,8 +1616,9 @@ void *client_send_thread_func(void *arg) {
           break; // No more packets available
         }
       }
-      if (audio_packet_count > 0 || silence_log_count++ % 1000 == 0) {
-        log_info("SEND_AUDIO: client=%u dequeued=%d packets", atomic_load(&client->client_id), audio_packet_count);
+      if (audio_packet_count > 0) {
+        log_dev_every(4500000, "SEND_AUDIO: client=%u dequeued=%d packets", atomic_load(&client->client_id),
+                      audio_packet_count);
       }
     } else {
       log_warn("Send thread: audio_queue is NULL for client %u", atomic_load(&client->client_id));
@@ -1885,7 +1887,7 @@ void *client_send_thread_func(void *arg) {
         // NOTE: This means the we're not ready to send ascii to the client and
         // should wait a little bit.
         log_dev_every(4500000, "Send thread: Skipping frame send due to frame->size == 0");
-        log_warn_every(LOG_RATE_FAST, "Client %u has no valid frame size: size=%zu", client->client_id, frame->size);
+        log_dev_every(4500000, "Client %u has no valid frame size: size=%zu", client->client_id, frame->size);
         platform_sleep_us(1000); // 1ms sleep
         continue;
       }

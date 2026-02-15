@@ -642,9 +642,9 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
         (unsigned long long)active_mask);
   } else {
     // DIAGNOSTIC: Failed to exclude - log why
-    log_warn_every(1000000, "MIXER EXCLUSION FAILED: exclude_client=%u, exclude_index=%u (valid=%d), lookup_id=%u",
-                   exclude_client_id, exclude_index, valid_exclude,
-                   (exclude_index < MIXER_MAX_SOURCES && exclude_index != 0xFF) ? mixer->source_ids[exclude_index] : 0);
+    log_dev_every(4500000, "MIXER EXCLUSION FAILED: exclude_client=%u, exclude_index=%u (valid=%d), lookup_id=%u",
+                  exclude_client_id, exclude_index, valid_exclude,
+                  (exclude_index < MIXER_MAX_SOURCES && exclude_index != 0xFF) ? mixer->source_ids[exclude_index] : 0);
   }
 
   // Fast check: any sources to mix?
