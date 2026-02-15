@@ -108,7 +108,7 @@ configure_file(
 # This is required by Debian policy and shows license information in package managers
 install(FILES "${CMAKE_BINARY_DIR}/generated/copyright"
     DESTINATION "share/doc/ascii-chat"
-    COMPONENT applications
+    COMPONENT Documentation
 )
 
 # Generate AppStream metadata file for Ubuntu App Center and other software centers
@@ -125,7 +125,7 @@ configure_file(
 # This is used by GNOME Software, KDE Discover, Ubuntu App Center, etc.
 install(FILES "${CMAKE_BINARY_DIR}/generated/ascii-chat.metainfo.xml"
     DESTINATION "share/metainfo"
-    COMPONENT applications
+    COMPONENT Documentation
 )
 
 message(STATUS "${Yellow}CPack:${ColorReset} DEB configuration complete")
