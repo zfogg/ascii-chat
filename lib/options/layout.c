@@ -11,7 +11,6 @@
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/video/ansi.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat-deps/utf8proc/utf8proc.h>
 #include <string.h>
 #include <stdio.h>
 
@@ -159,9 +158,8 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
       last_space = p;
     }
 
-    // Decode UTF-8 character using utf8proc_iterate
-    utf8proc_int32_t codepoint;
-    utf8proc_ssize_t char_bytes = utf8proc_iterate((const utf8proc_uint8_t *)p, -1, &codepoint);
+    // Decode UTF-8 character length
+    int char_bytes = utf8_next_char_bytes(p, strlen(p));
 
     if (char_bytes <= 0) {
       // Invalid UTF-8 or end of string, stop
