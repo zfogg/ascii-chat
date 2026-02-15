@@ -63,7 +63,7 @@ export default function Navigation() {
           </TrackedLink>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex gap-6 text-sm">
+          <div className="hidden md:flex gap-6 text-sm items-center">
             {navItems.map(({ to, label, paths }) => (
               <TrackedLink
                 key={to}
@@ -74,6 +74,15 @@ export default function Navigation() {
                 {label}
               </TrackedLink>
             ))}
+            <TrackedLink
+              href="https://web.ascii-chat.com"
+              label="Nav - Web Client"
+              className="transition-colors py-1 px-2 rounded text-gray-400 hover:text-fuchsia-300"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Web Client
+            </TrackedLink>
           </div>
 
           {/* Mobile Menu Button */}
@@ -121,6 +130,16 @@ export default function Navigation() {
                 {label}
               </TrackedLink>
             ))}
+            <TrackedLink
+              href="https://web.ascii-chat.com"
+              label="Nav - Web Client"
+              className={getMobileNavLinkClass()}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Web Client
+            </TrackedLink>
           </div>
         )}
       </div>
