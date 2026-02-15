@@ -138,10 +138,10 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
 
   // Dispatch packet to appropriate ACIP handler
   // Server receives packets FROM clients, so use server packet handler
-  log_debug("ACIP_SERVER: About to dispatch packet type=%d, data_len=%zu", envelope.type, envelope.len);
+  log_dev_every(4500000, "ACIP_SERVER: About to dispatch packet type=%d, data_len=%zu", envelope.type, envelope.len);
   asciichat_error_t dispatch_result =
       acip_handle_server_packet(transport, envelope.type, envelope.data, envelope.len, client_ctx, callbacks);
-  log_debug("ACIP_SERVER: Dispatch completed with result=%d", dispatch_result);
+  log_dev_every(4500000, "ACIP_SERVER: Dispatch completed with result=%d", dispatch_result);
 
   // Always free the allocated buffer (even if handler failed)
   if (envelope.allocated_buffer) {

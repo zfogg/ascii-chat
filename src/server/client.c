@@ -2341,7 +2341,8 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
   (void)app_ctx;
   client_info_t *client = (client_info_t *)client_ctx;
 
-  log_debug(
+  log_dev_every(
+      4500000,
       "ACIP callback received IMAGE_FRAME: width=%u, height=%u, pixel_format=%u, compressed_size=%u, data_len=%zu",
       header->width, header->height, header->pixel_format, header->compressed_size, data_len);
 

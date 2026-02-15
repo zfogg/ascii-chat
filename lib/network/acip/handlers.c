@@ -59,13 +59,14 @@ static inline int handler_hash_lookup(const handler_hash_entry_t *table, packet_
   log_dev_every(4500000, "HANDLER_HASH_LOOKUP: type=%d, hash=%u", type, h);
   for (int i = 0; i < HANDLER_HASH_SIZE; i++) {
     uint32_t slot = (h + i) % HANDLER_HASH_SIZE;
-    log_debug("  Checking slot %u: key=%d, handler_idx=%d", slot, table[slot].key, table[slot].handler_idx);
+    log_dev_every(4500000, "  Checking slot %u: key=%d, handler_idx=%d", slot, table[slot].key,
+                  table[slot].handler_idx);
     if (table[slot].key == 0) {
-      log_debug("  Empty slot found - packet type %d not in hash table", type);
+      log_dev_every(4500000, "  Empty slot found - packet type %d not in hash table", type);
       return -1; // empty slot = not found
     }
     if (table[slot].key == type) {
-      log_debug("  Found match at slot %u, handler_idx=%d", slot, table[slot].handler_idx);
+      log_dev_every(4500000, "  Found match at slot %u, handler_idx=%d", slot, table[slot].handler_idx);
       return table[slot].handler_idx;
     }
   }
