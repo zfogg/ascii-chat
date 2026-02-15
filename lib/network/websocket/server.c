@@ -135,7 +135,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
   case LWS_CALLBACK_CLOSED:
     // Connection closed
-    log_debug("WebSocket client disconnected");
+    log_info("[LWS_CALLBACK_CLOSED] WebSocket client disconnected, wsi=%p, handler_started=%d", (void *)wsi,
+             conn_data ? conn_data->handler_started : -1);
 
     // Clean up fragment buffer
     if (conn_data && conn_data->fragment_buffer) {
@@ -158,6 +159,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       acip_transport_t *transport_snapshot = conn_data->transport;
       conn_data->transport = NULL; // NULL out immediately to prevent race condition
 
+      log_debug("[LWS_CALLBACK_CLOSED] Closing transport=%p for wsi=%p", (void *)transport_snapshot, (void *)wsi);
       // Now safely close the transport (methods pointer is stable)
       if (transport_snapshot && transport_snapshot->methods) {
         transport_snapshot->methods->close(transport_snapshot);
@@ -166,8 +168,10 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
     if (conn_data && conn_data->handler_started) {
       // Wait for handler thread to complete
+      log_debug("[LWS_CALLBACK_CLOSED] Waiting for handler thread to complete...");
       asciichat_thread_join(&conn_data->handler_thread, NULL);
       conn_data->handler_started = false;
+      log_debug("[LWS_CALLBACK_CLOSED] Handler thread completed");
     }
 
     // Ensure transport pointer is NULL
@@ -469,6 +473,20 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     // If this is the final fragment, push complete message to receive queue
     if (is_final) {
       log_dev_every(4500000, "Complete message assembled: %zu bytes", conn_data->fragment_size);
+
+      // DEFENSIVE: Log tiny packets
+      if (conn_data->fragment_size < 22) {
+        log_warn("⚠️  TINY PACKET ALERT: %zu bytes (< 22 bytes minimum)", conn_data->fragment_size);
+        if (conn_data->fragment_size > 0) {
+          const uint8_t *bytes = (const uint8_t *)conn_data->fragment_buffer;
+          char hex_buf[256];
+          size_t hex_pos = 0;
+          for (size_t i = 0; i < conn_data->fragment_size && hex_pos < sizeof(hex_buf) - 4; i++) {
+            hex_pos += snprintf(hex_buf + hex_pos, sizeof(hex_buf) - hex_pos, "%02x ", bytes[i]);
+          }
+          log_warn("⚠️  Tiny packet data: %s", hex_buf);
+        }
+      }
 
       // Allocate message buffer using buffer pool
       websocket_recv_msg_t msg;
