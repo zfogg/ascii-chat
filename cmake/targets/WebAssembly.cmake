@@ -16,7 +16,7 @@
 # CMakeLists.txt optimized for Emscripten.
 # =============================================================================
 
-set(WASM_SOURCE_DIR "${CMAKE_SOURCE_DIR}/web/web.ascii-chat.com/wasm")
+set(WASM_SOURCE_DIR "${CMAKE_SOURCE_DIR}/src/web")
 set(WASM_BUILD_DIR "${WASM_SOURCE_DIR}/build")
 
 # Find emcmake - check common locations on Windows and Unix
@@ -153,7 +153,7 @@ add_custom_target(client-web
 )
 
 # Combined WASM target (builds both mirror and client)
-add_custom_target(wasm
+add_custom_target(web
     COMMAND ${CMAKE_COMMAND} -E echo "Building all WASM modules..."
     COMMAND ${CMAKE_COMMAND} -DTARGET_NAME=all -P "${WASM_BUILD_SCRIPT}"
     COMMENT "Building all WASM modules"
@@ -163,7 +163,7 @@ add_custom_target(wasm
 message(STATUS "WASM targets configured:")
 message(STATUS "  mirror-web - Build mirror mode WASM only")
 message(STATUS "  client-web - Build client mode WASM only")
-message(STATUS "  wasm       - Build both mirror and client WASM")
+message(STATUS "  web        - Build all WASM")
 if(EMCMAKE_EXECUTABLE)
     message(STATUS "  Using emcmake: ${EMCMAKE_EXECUTABLE}")
 else()
