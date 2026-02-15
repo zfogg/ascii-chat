@@ -536,7 +536,6 @@ options_t options_t_new(void) {
   // WEBCAM
   // ============================================================================
   opts.webcam_index = OPT_WEBCAM_INDEX_DEFAULT;
-  opts.webcam_flip = OPT_WEBCAM_FLIP_DEFAULT;
   opts.test_pattern = OPT_TEST_PATTERN_DEFAULT;
   opts.no_audio_mixer = OPT_NO_AUDIO_MIXER_DEFAULT;
 
@@ -554,6 +553,8 @@ options_t options_t_new(void) {
   opts.stretch = OPT_STRETCH_DEFAULT;
   opts.strip_ansi = OPT_STRIP_ANSI_DEFAULT;
   opts.fps = OPT_FPS_DEFAULT;
+  opts.flip_x = OPT_FLIP_X_DEFAULT;
+  opts.flip_y = OPT_FLIP_Y_DEFAULT;
   opts.splash = OPT_SPLASH_DEFAULT;
   opts.splash_explicitly_set = false;
   opts.status_screen = OPT_STATUS_SCREEN_DEFAULT;
@@ -1390,17 +1391,19 @@ asciichat_error_t options_init(int argc, char **argv) {
   } else {
   }
   // Load config files - now uses detected_mode directly for bitmask validation
-  // Save webcam_flip as it should not be reset by config files
+  // Save flip_x and flip_y as they should not be reset by config files
   // Also save encryption settings - they should only be controlled via CLI, not config file
-  bool saved_webcam_flip_from_config = opts.webcam_flip;
+  bool saved_flip_x_from_config = opts.flip_x;
+  bool saved_flip_y_from_config = opts.flip_y;
   bool saved_encrypt_enabled = opts.encrypt_enabled;
   asciichat_error_t config_result = config_load_system_and_user(detected_mode, false, &opts);
   (void)config_result; // Continue with defaults and CLI parsing regardless of result
   // Restore binary-level options (don't let config override command-line options)
   restore_binary_level(&opts, &binary_before_config);
 
-  // Restore webcam_flip - config shouldn't override the default
-  opts.webcam_flip = saved_webcam_flip_from_config;
+  // Restore flip_x and flip_y - config shouldn't override the defaults
+  opts.flip_x = saved_flip_x_from_config;
+  opts.flip_y = saved_flip_y_from_config;
 
   // Restore encrypt_enabled - it should only be set via CLI, not config file
   // The config can set key/password which auto-enables encryption, but the encrypt_enabled
@@ -1423,8 +1426,9 @@ asciichat_error_t options_init(int argc, char **argv) {
   int remaining_argc;
   char **remaining_argv;
 
-  // Save webcam_flip before applying defaults (should not be reset by defaults)
-  bool saved_webcam_flip = opts.webcam_flip;
+  // Save flip_x and flip_y before applying defaults (should not be reset by defaults)
+  bool saved_flip_x = opts.flip_x;
+  bool saved_flip_y = opts.flip_y;
   // Apply defaults from unified config
   asciichat_error_t defaults_result = options_config_set_defaults(config, &opts);
   if (defaults_result != ASCIICHAT_OK) {
@@ -1435,21 +1439,24 @@ asciichat_error_t options_init(int argc, char **argv) {
   // Restore binary-level options (they should never be overridden by defaults)
   restore_binary_level(&opts, &binary_before_defaults);
 
-  // Restore webcam_flip - it should keep the value from options_t_new()
-  // unless explicitly set by the user (but defaults shouldn't override it)
-  opts.webcam_flip = saved_webcam_flip;
+  // Restore flip_x and flip_y - they should keep the values from options_t_new()
+  // unless explicitly set by the user (but defaults shouldn't override them)
+  opts.flip_x = saved_flip_x;
+  opts.flip_y = saved_flip_y;
 
   // Restore detected_mode before parsing so mode validation works.
   opts.detected_mode = mode_saved_for_parsing;
 
-  // Save webcam_flip before parsing - it should not be reset by the parser
-  bool saved_webcam_flip_for_parse = opts.webcam_flip;
+  // Save flip_x and flip_y before parsing - they should not be reset by the parser
+  bool saved_flip_x_for_parse = opts.flip_x;
+  bool saved_flip_y_for_parse = opts.flip_y;
   // Parse mode-specific arguments
   option_mode_bitmask_t mode_bitmask = (1 << mode_saved_for_parsing);
   asciichat_error_t result =
       options_config_parse(config, mode_argc, mode_argv, &opts, mode_bitmask, &remaining_argc, &remaining_argv);
-  // Restore webcam_flip - it should keep the default value unless explicitly overridden
-  opts.webcam_flip = saved_webcam_flip_for_parse;
+  // Restore flip_x and flip_y - they should keep the default values unless explicitly overridden
+  opts.flip_x = saved_flip_x_for_parse;
+  opts.flip_y = saved_flip_y_for_parse;
   if (result != ASCIICHAT_OK) {
     options_config_destroy(config);
     SAFE_FREE(allocated_mode_argv);
