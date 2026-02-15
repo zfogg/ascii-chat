@@ -1577,9 +1577,6 @@ void *client_send_thread_func(void *arg) {
   while (!atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down) && atomic_load(&client->active) &&
          atomic_load(&client->send_thread_running)) {
     loop_iteration_count++;
-    log_warn_every(LOG_RATE_FAST, "SEND_LOOP_ITERATION: client_id=%u iteration=%d", atomic_load(&client->client_id),
-                   loop_iteration_count);
-
     bool sent_something = false;
 
     // PRIORITY: Drain all queued audio packets before video
