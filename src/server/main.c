@@ -790,7 +790,8 @@ static void on_webrtc_transport_ready(acip_transport_t *transport, const uint8_t
   participant_str[32] = '\0';
 
   // Add client to server (calls add_webrtc_client internally)
-  int client_id = add_webrtc_client(server_ctx, transport, participant_str);
+  // For WebRTC DataChannel: start threads immediately (crypto already handled by ACDS)
+  int client_id = add_webrtc_client(server_ctx, transport, participant_str, true);
   if (client_id < 0) {
     log_error("Failed to add WebRTC client for participant %s", participant_str);
     acip_transport_destroy(transport);
@@ -1446,9 +1447,9 @@ static void *websocket_client_handler(void *arg) {
     return NULL;
   }
 
-  // STEP 1: Add client first (creates client structure and starts threads)
+  // STEP 1: Add client first (creates client structure WITHOUT starting threads yet)
   log_debug("[WS_HANDLER] STEP 1: Calling add_webrtc_client()...");
-  int client_id = add_webrtc_client(server_ctx, ctx->transport, ctx->client_ip);
+  int client_id = add_webrtc_client(server_ctx, ctx->transport, ctx->client_ip, false);
   if (client_id < 0) {
     log_error("[WS_HANDLER] FAILED: add_webrtc_client returned %d", client_id);
     if (ctx->transport) {
@@ -1515,7 +1516,18 @@ static void *websocket_client_handler(void *arg) {
   log_info("Sent CRYPTO_KEY_EXCHANGE_INIT to WebSocket client %d", client_id);
   log_info("[WS_HANDLER] ===== SUCCESS: Handshake started for client %d =====", client_id);
 
-  // Handler's job is done - client is set up and handshake started.
+  // STEP 4: Now start the threads after crypto is initialized
+  // This ensures receive thread doesn't try to process packets before crypto context exists
+  log_debug("[WS_HANDLER] STEP 4: Starting client threads after crypto initialization...");
+  if (start_webrtc_client_threads(server_ctx, (uint32_t)client_id) != 0) {
+    log_error("[WS_HANDLER] FAILED: start_webrtc_client_threads returned error");
+    remove_client(server_ctx, (uint32_t)client_id);
+    SAFE_FREE(ctx);
+    return NULL;
+  }
+  log_info("[WS_HANDLER] Client threads started successfully for client %d", client_id);
+
+  // Handler's job is done - client is set up, handshake started, and threads running.
   // The receive thread will handle incoming packets and complete the handshake.
   // The LWS_CALLBACK_CLOSED callback will handle cleanup when connection closes.
   // Do NOT call remove_client() here - that causes premature cleanup.

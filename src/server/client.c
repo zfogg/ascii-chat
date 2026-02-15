@@ -880,7 +880,8 @@ error_cleanup:
  * @note The transport must be fully initialized and ready to send/receive
  * @note Client capabilities are still expected as first packet
  */
-int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport, const char *client_ip) {
+int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport, const char *client_ip,
+                      bool start_threads) {
   if (!server_ctx || !transport || !client_ip) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters to add_webrtc_client");
     return -1;
@@ -1038,18 +1039,23 @@ int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
   // WebRTC uses the transport abstraction which handles packet reception automatically.
   log_debug("WebRTC client %u initialized - receive thread will process capabilities", atomic_load(&client->client_id));
 
-  // Start all client threads in the correct order (unified path for TCP and WebRTC)
-  // This creates: receive thread -> render threads -> send thread
-  // The render threads MUST be created before send thread to avoid the race condition
-  // where send thread reads empty frames before render thread generates the first real frame
   uint32_t client_id_snapshot = atomic_load(&client->client_id);
-  log_debug("[ADD_WEBRTC_CLIENT] Starting client threads (receive, render) for client %u...", client_id_snapshot);
-  if (start_client_threads(server_ctx, client, false) != 0) {
-    log_error("Failed to start threads for WebRTC client %u", client_id_snapshot);
-    return -1;
+
+  // Conditionally start threads based on caller preference
+  // WebSocket handler passes start_threads=false to defer thread startup until after crypto init
+  // This ensures receive thread doesn't try to process packets before crypto context is ready
+  if (start_threads) {
+    log_debug("[ADD_WEBRTC_CLIENT] Starting client threads (receive, render) for client %u...", client_id_snapshot);
+    if (start_client_threads(server_ctx, client, false) != 0) {
+      log_error("Failed to start threads for WebRTC client %u", client_id_snapshot);
+      return -1;
+    }
+    log_debug("Created receive thread for WebRTC client %u", client_id_snapshot);
+    log_debug("[ADD_WEBRTC_CLIENT] Receive thread started - thread will now be processing packets", client_id_snapshot);
+  } else {
+    log_debug("[ADD_WEBRTC_CLIENT] Deferring thread startup for client %u (caller will start after crypto init)",
+              client_id_snapshot);
   }
-  log_debug("Created receive thread for WebRTC client %u", client_id_snapshot);
-  log_debug("[ADD_WEBRTC_CLIENT] Receive thread started - thread will now be processing packets", client_id_snapshot);
 
   // Send initial server state to the new client
   if (send_server_state_to_client(client) != 0) {
@@ -1904,8 +1910,8 @@ void *client_send_thread_func(void *arg) {
       mutex_unlock(&client->send_mutex);
 
       // Network I/O happens OUTSIDE the mutex
-      log_info("SEND_ASCII_FRAME: client_id=%u size=%zu width=%u height=%u", atomic_load(&client->client_id),
-               frame_size, width, height);
+      log_dev_every(4500000, "SEND_ASCII_FRAME: client_id=%u size=%zu width=%u height=%u",
+                    atomic_load(&client->client_id), frame_size, width, height);
       asciichat_error_t send_result = acip_send_ascii_frame(frame_transport, frame_data, frame_size, width, height,
                                                             atomic_load(&client->client_id));
       uint64_t step5_ns = time_get_ns();
@@ -1920,7 +1926,7 @@ void *client_send_thread_func(void *arg) {
         break;
       }
 
-      log_info("SEND_FRAME_SUCCESS: client_id=%u size=%zu", atomic_load(&client->client_id), frame_size);
+      log_dev_every(4500000, "SEND_FRAME_SUCCESS: client_id=%u size=%zu", atomic_load(&client->client_id), frame_size);
       sent_something = true;
       last_video_send_time = current_time_us;
 
@@ -2090,6 +2096,32 @@ void broadcast_server_state_to_all_clients(void) {
  * Helper Functions
  * ============================================================================
  */
+
+/**
+ * @brief Start threads for a WebRTC client after crypto initialization
+ *
+ * This is called by WebSocket handler after crypto handshake is initialized.
+ * It ensures receive thread doesn't try to process packets before crypto context exists.
+ *
+ * @param server_ctx Server context
+ * @param client_id Client ID to start threads for
+ * @return 0 on success, -1 on failure
+ */
+int start_webrtc_client_threads(server_context_t *server_ctx, uint32_t client_id) {
+  if (!server_ctx) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Server context is NULL");
+    return -1;
+  }
+
+  client_info_t *client = find_client_by_id(client_id);
+  if (!client) {
+    SET_ERRNO(ERROR_NOT_FOUND, "Client %u not found", client_id);
+    return -1;
+  }
+
+  log_debug("Starting threads for WebRTC client %u...", client_id);
+  return start_client_threads(server_ctx, client, false);
+}
 
 void stop_client_threads(client_info_t *client) {
   if (!client) {
