@@ -49,7 +49,7 @@
  * Power of 2 for ringbuffer optimization. Backpressure via lws_rx_flow_control()
  * prevents queue overflow by pausing websocket reception when queue is full.
  */
-#define WEBSOCKET_RECV_QUEUE_SIZE 64
+#define WEBSOCKET_RECV_QUEUE_SIZE 512
 
 /**
  * @brief Maximum send queue size (messages buffered for server-side sending)
@@ -252,10 +252,11 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
   bool connected = ws_data->is_connected;
   mutex_unlock(&ws_data->state_mutex);
 
-  log_dev_every(4500000, "websocket_send: is_connected=%d, wsi=%p", connected, (void *)ws_data->wsi);
+  log_dev_every(1000000, "websocket_send: is_connected=%d, wsi=%p, send_len=%zu", connected, (void *)ws_data->wsi, len);
 
   if (!connected) {
-    return SET_ERRNO(ERROR_NETWORK, "WebSocket transport not connected");
+    log_error("WebSocket send called but transport NOT connected! wsi=%p, len=%zu", (void *)ws_data->wsi, len);
+    return SET_ERRNO(ERROR_NETWORK, "WebSocket transport not connected (wsi=%p)", (void *)ws_data->wsi);
   }
 
   // Check if encryption is needed (matching tcp_send logic)
@@ -307,9 +308,8 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
       send_len = total_encrypted_size;
       encrypted_packet_size = total_encrypted_size;
 
-      log_debug_every(LOG_RATE_SLOW,
-                      "WebSocket: encrypted packet (original type %d as PACKET_TYPE_ENCRYPTED, %zu bytes)", packet_type,
-                      send_len);
+      log_dev_every(1000000, "WebSocket: encrypted packet (original type %d as PACKET_TYPE_ENCRYPTED, %zu bytes)",
+                    packet_type, send_len);
     }
   }
 
@@ -358,17 +358,19 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     mutex_unlock(&ws_data->queue_mutex);
 
     // Wake the LWS event loop from this non-service thread.
-    log_debug(">>> FRAME QUEUED: %zu bytes for wsi=%p (send_len=%zu)", send_len, (void *)ws_data->wsi, send_len);
+    log_dev_every(1000000, ">>> FRAME QUEUED: %zu bytes for wsi=%p (send_len=%zu)", send_len, (void *)ws_data->wsi,
+                  send_len);
 
     struct lws_context *ctx = lws_get_context(ws_data->wsi);
-    log_debug(">>> Calling lws_cancel_service(ctx=%p) and lws_callback_on_writable(wsi=%p)", (void *)ctx,
-              (void *)ws_data->wsi);
+    log_dev_every(1000000, ">>> Calling lws_cancel_service(ctx=%p) and lws_callback_on_writable(wsi=%p)", (void *)ctx,
+                  (void *)ws_data->wsi);
 
     lws_cancel_service(ctx);
     lws_callback_on_writable(ws_data->wsi);
 
-    log_debug(">>> WRITABLE CALLBACK REQUESTED - will be processed on next event loop iteration");
-    log_debug("Server-side WebSocket: queued %zu bytes, requested writable for wsi=%p", send_len, (void *)ws_data->wsi);
+    log_dev_every(1000000, ">>> WRITABLE CALLBACK REQUESTED - will be processed on next event loop iteration");
+    log_dev_every(1000000, "Server-side WebSocket: queued %zu bytes, requested writable for wsi=%p", send_len,
+                  (void *)ws_data->wsi);
     SAFE_FREE(send_buffer);
     if (encrypted_packet)
       buffer_pool_free(NULL, encrypted_packet, send_len);
@@ -410,10 +412,10 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     }
 
     offset += chunk_size;
-    log_debug_every(100, "WebSocket sent fragment %zu bytes (offset %zu/%zu)", chunk_size, offset, send_len);
+    log_dev_every(1000000, "WebSocket sent fragment %zu bytes (offset %zu/%zu)", chunk_size, offset, send_len);
   }
 
-  log_debug_every(100, "WebSocket sent complete message: %zu bytes in fragments", send_len);
+  log_dev_every(1000000, "WebSocket sent complete message: %zu bytes in fragments", send_len);
   SAFE_FREE(send_buffer);
   if (encrypted_packet)
     buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
@@ -506,14 +508,17 @@ static asciichat_error_t websocket_close(acip_transport_t *transport) {
 
   if (!ws_data->is_connected) {
     mutex_unlock(&ws_data->state_mutex);
+    log_debug("websocket_close: Already closed (is_connected=false), wsi=%p", (void *)ws_data->wsi);
     return ASCIICHAT_OK; // Already closed
   }
 
+  log_info("websocket_close: Setting is_connected=false, wsi=%p", (void *)ws_data->wsi);
   ws_data->is_connected = false;
   mutex_unlock(&ws_data->state_mutex);
 
   // Close WebSocket connection
   if (ws_data->wsi) {
+    log_debug("websocket_close: Calling lws_close_reason for wsi=%p", (void *)ws_data->wsi);
     lws_close_reason(ws_data->wsi, LWS_CLOSE_STATUS_NORMAL, NULL, 0);
   }
 
