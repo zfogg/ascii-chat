@@ -212,9 +212,8 @@ ascii-chat client session-name \\
       <Footer
         links={[
           { href: 'https://github.com/zfogg/ascii-chat', label: '📦 GitHub', color: 'text-cyan-400 hover:text-cyan-300', onClick: () => handleLinkClick('https://github.com/zfogg/ascii-chat', 'GitHub (footer)') },
-          { href: 'https://zfogg.github.io/ascii-chat/group__module__acds.html', label: '📚 ACDS Documentation', color: 'text-teal-400 hover:text-teal-300', onClick: () => handleLinkClick('https://zfogg.github.io/ascii-chat/group__module__acds.html', 'ACDS Documentation (footer)') },
-          { href: 'https://github.com/zfogg/ascii-chat/issues', label: '🐛 Issues', color: 'text-purple-400 hover:text-purple-300', onClick: () => handleLinkClick('https://github.com/zfogg/ascii-chat/issues', 'Issues') },
-          { href: 'https://github.com/zfogg/ascii-chat/releases', label: '📦 Releases', color: 'text-pink-400 hover:text-pink-300', onClick: () => handleLinkClick('https://github.com/zfogg/ascii-chat/releases', 'Releases') },
+          { href: 'https://zfogg.github.io/ascii-chat/group__module__acds.html', label: '📚 Documentation', color: 'text-teal-400 hover:text-teal-300', onClick: () => handleLinkClick('https://zfogg.github.io/ascii-chat/group__module__acds.html', 'Documentation (footer)') },
+          { href: 'https://ascii-chat.com', label: '🌐 www', color: 'text-pink-400 hover:text-pink-300', onClick: () => handleLinkClick('https://ascii-chat.com', 'www') },
           { href: 'https://web.ascii-chat.com', label: '🌐 Web Client', color: 'text-yellow-400 hover:text-yellow-300', onClick: () => handleLinkClick('https://web.ascii-chat.com', 'Web Client') },
         ]}
         commitSha={__COMMIT_SHA__}
