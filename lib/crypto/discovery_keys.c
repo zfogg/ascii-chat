@@ -8,6 +8,7 @@
  */
 
 #include <ascii-chat/crypto/discovery_keys.h>
+#include <ascii-chat/crypto/known_hosts.h>
 
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
@@ -49,19 +50,6 @@ static bool is_official_server(const char *acds_server) {
   }
 
   return strcmp(server_lower, "discovery.ascii-chat.com") == 0;
-}
-
-/**
- * @brief Compute SHA256 fingerprint of Ed25519 public key
- */
-static void compute_key_fingerprint(const uint8_t pubkey[32], char fingerprint_out[65]) {
-  uint8_t hash[32];
-  crypto_hash_sha256(hash, pubkey, 32);
-
-  for (int i = 0; i < 32; i++) {
-    safe_snprintf(&fingerprint_out[i * 2], 3, "%02x", hash[i]);
-  }
-  fingerprint_out[64] = '\0';
 }
 
 // ============================================================================
