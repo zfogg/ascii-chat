@@ -118,8 +118,8 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
     bool is_first = lws_is_first_fragment(wsi);
     bool is_final = lws_is_final_fragment(wsi);
 
-    log_debug("WebSocket fragment: %zu bytes (first=%d, final=%d, buffered=%zu)", len, is_first, is_final,
-              ws_data->fragment_size);
+    log_dev_every(4500000, "WebSocket fragment: %zu bytes (first=%d, final=%d, buffered=%zu)", len, is_first, is_final,
+                  ws_data->fragment_size);
 
     // Allocate or expand fragment buffer
     size_t required_size = ws_data->fragment_size + len;
@@ -151,7 +151,7 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
 
     // If this is the final fragment, push complete message to receive queue
     if (is_final) {
-      log_debug("Complete message assembled: %zu bytes", ws_data->fragment_size);
+      log_dev_every(4500000, "Complete message assembled: %zu bytes", ws_data->fragment_size);
 
       // Allocate message buffer using buffer pool
       websocket_recv_msg_t msg;
@@ -347,16 +347,13 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     }
 
     // Wake the LWS event loop from this non-service thread.
-    // Use both lws_cancel_service() AND lws_callback_on_writable() for reliability:
-    // - lws_cancel_service() wakes the service thread
-    // - lws_callback_on_writable() queues a writable callback for THIS wsi
-    // - This ensures frames are sent even if EVENT_WAIT_CANCELLED doesn't fire
+    log_error(">>> FRAME QUEUED: %zu bytes for wsi=%p", send_len, (void *)ws_data->wsi);
+
     struct lws_context *ctx = lws_get_context(ws_data->wsi);
     lws_cancel_service(ctx);
-
-    // Also request a writable callback directly (safe to call from any thread)
     lws_callback_on_writable(ws_data->wsi);
 
+    log_error(">>> WRITABLE CALLBACK REQUESTED for wsi=%p", (void *)ws_data->wsi);
     log_debug("Server-side WebSocket send queued %zu bytes, requested writable callback for wsi=%p", send_len,
               (void *)ws_data->wsi);
     SAFE_FREE(send_buffer);
@@ -414,6 +411,8 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
                                         void **out_allocated_buffer) {
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
 
+  log_error("🔄 WEBSOCKET_RECV: ENTRY");
+
   // Check connection first without holding queue lock
   mutex_lock(&ws_data->state_mutex);
   bool connected = ws_data->is_connected;
@@ -425,8 +424,14 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
 
   mutex_lock(&ws_data->queue_mutex);
 
+  int wait_count = 0;
   // Block until message arrives or connection closes
   while (ringbuffer_is_empty(ws_data->recv_queue)) {
+    if (wait_count == 0) {
+      log_error("🔄 WEBSOCKET_RECV: Queue empty, waiting for packets...");
+    }
+    wait_count++;
+
     // Release queue lock while checking connection state to reduce deadlock risk
     mutex_unlock(&ws_data->queue_mutex);
 
@@ -443,6 +448,10 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
 
     // Re-acquire lock for next iteration
     mutex_lock(&ws_data->queue_mutex);
+  }
+
+  if (wait_count > 0) {
+    log_error("🔄 WEBSOCKET_RECV: Got packet after waiting %d iterations", wait_count);
   }
 
   // Read message from queue

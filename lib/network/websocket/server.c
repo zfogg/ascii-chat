@@ -165,7 +165,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     break;
 
   case LWS_CALLBACK_SERVER_WRITEABLE: {
-    log_error("!!! LWS_CALLBACK_SERVER_WRITEABLE triggered !!!");
+    log_error("=== LWS_CALLBACK_SERVER_WRITEABLE FIRED === wsi=%p", (void *)wsi);
     log_debug("LWS_CALLBACK_SERVER_WRITEABLE triggered");
 
     // Dequeue and send pending data
@@ -259,8 +259,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
   case LWS_CALLBACK_RECEIVE: {
     // Received data from client - may be fragmented for large messages
-    log_debug("LWS_CALLBACK_RECEIVE: conn_data=%p, transport=%p, len=%zu", (void *)conn_data,
-              conn_data ? (void *)conn_data->transport : NULL, len);
+    log_dev_every(4500000, "LWS_CALLBACK_RECEIVE: conn_data=%p, transport=%p, len=%zu", (void *)conn_data,
+                  conn_data ? (void *)conn_data->transport : NULL, len);
 
     if (!conn_data) {
       log_error("LWS_CALLBACK_RECEIVE: conn_data is NULL! Need to initialize from ESTABLISHED or handle here");
@@ -338,8 +338,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     bool is_final = lws_is_final_fragment(wsi);
 
     // Log all fragments for debugging
-    log_debug("WebSocket fragment: %zu bytes (first=%d, final=%d, buffered=%zu)", len, is_first, is_final,
-              conn_data->fragment_size);
+    log_dev_every(4500000, "WebSocket fragment: %zu bytes (first=%d, final=%d, buffered=%zu)", len, is_first, is_final,
+                  conn_data->fragment_size);
 
     // If this is a single-fragment message (first and final), log the packet type for debugging
     if (is_first && is_final && len >= 10) {
@@ -379,7 +379,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
     // If this is the final fragment, push complete message to receive queue
     if (is_final) {
-      log_debug("Complete message assembled: %zu bytes", conn_data->fragment_size);
+      log_dev_every(4500000, "Complete message assembled: %zu bytes", conn_data->fragment_size);
 
       // Allocate message buffer using buffer pool
       websocket_recv_msg_t msg;
