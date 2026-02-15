@@ -44,10 +44,10 @@ trap "rm -f $_marker_file" EXIT
       echo "Changes detected:"
       echo "$_changed" | head -3
       echo ""
-      rebuild_and_start
       touch "$_marker_file"
+      rebuild_and_start
     fi
-    sleep 0.1
+    sleep 0.5
   done
 } &
 
