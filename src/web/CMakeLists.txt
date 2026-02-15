@@ -69,9 +69,9 @@ FetchContent_MakeAvailable(zstd)
 # No FetchContent needed - using vendored tomlc17
 
 # Path to main ascii-chat library
-set(LIB_ROOT ${CMAKE_SOURCE_DIR}/../../../lib)
-set(INCLUDE_ROOT ${CMAKE_SOURCE_DIR}/../../../include)
-set(DEPS_ROOT ${CMAKE_SOURCE_DIR}/../../../deps)
+set(LIB_ROOT ${CMAKE_SOURCE_DIR}/../../lib)
+set(INCLUDE_ROOT ${CMAKE_SOURCE_DIR}/../../include)
+set(DEPS_ROOT ${CMAKE_SOURCE_DIR}/../../deps)
 
 # Include directories for library headers
 # IMPORTANT: WASM stubs must come FIRST to override native headers
@@ -86,7 +86,7 @@ include_directories(
 
 # Source files for WASM entry point
 set(MIRROR_SOURCES
-    ${CMAKE_SOURCE_DIR}/../../../src/web/mirror.c
+    ${CMAKE_SOURCE_DIR}/mirror.c
 )
 
 # Platform abstraction layer for WASM
@@ -261,7 +261,7 @@ target_link_libraries(mirror-web PRIVATE
 
 # Source files for client mode WASM entry point
 set(CLIENT_SOURCES
-    ${CMAKE_SOURCE_DIR}/../../../src/web/client.c
+    ${CMAKE_SOURCE_DIR}/client.c
 )
 
 # Create WASM client module
@@ -391,19 +391,19 @@ set_target_properties(client-web PROPERTIES OUTPUT_NAME "client")
 
 # Copy outputs to web/src/wasm/dist/ (so Vite can import them)
 add_custom_command(TARGET mirror-web POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/../src/wasm/dist
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/../../../web/web.ascii-chat.com/src/wasm/dist
     COMMAND ${CMAKE_COMMAND} -E copy
         ${CMAKE_BINARY_DIR}/mirror.js
         ${CMAKE_BINARY_DIR}/mirror.wasm
-        ${CMAKE_SOURCE_DIR}/../src/wasm/dist/
+        ${CMAKE_SOURCE_DIR}/../../../web/web.ascii-chat.com/src/wasm/dist/
     COMMENT "Copying mirror WASM files to web/src/wasm/dist/"
 )
 
 add_custom_command(TARGET client-web POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/../src/wasm/dist
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/../../../web/web.ascii-chat.com/src/wasm/dist
     COMMAND ${CMAKE_COMMAND} -E copy
         ${CMAKE_BINARY_DIR}/client.js
         ${CMAKE_BINARY_DIR}/client.wasm
-        ${CMAKE_SOURCE_DIR}/../src/wasm/dist/
+        ${CMAKE_SOURCE_DIR}/../../../web/web.ascii-chat.com/src/wasm/dist/
     COMMENT "Copying client WASM files to web/src/wasm/dist/"
 )
