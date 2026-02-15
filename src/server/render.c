@@ -387,7 +387,7 @@ void *client_video_render_thread(void *arg) {
 
   bool should_continue = true;
   while (should_continue && !atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down)) {
-    log_debug_every(LOG_RATE_FAST, "Video render loop iteration for client %u", thread_client_id);
+    log_dev_every(10000000, "Video render loop iteration for client %u", thread_client_id);
 
     // Check for immediate shutdown
     if (atomic_load(&g_server_should_exit)) {
@@ -510,8 +510,7 @@ void *client_video_render_thread(void *arg) {
         SAFE_FREE(ascii_frame);
       } else {
         // No frame generated (probably no video sources) - this is normal, no error logging needed
-        log_debug_every(LOG_RATE_NORMAL, "Per-client render: No video sources available for client %u",
-                        client_id_snapshot);
+        log_dev_every(10000000, "Per-client render: No video sources available for client %u", client_id_snapshot);
       }
     } else {
       // No video sources - skip frame generation but DON'T update last_render_time
@@ -726,7 +725,7 @@ void *client_audio_render_thread(void *arg) {
     }
 
     if (!g_audio_mixer) {
-      log_info_every(LOG_RATE_FAST, "Audio render waiting for mixer (client %u)", thread_client_id);
+      log_dev_every(10000000, "Audio render waiting for mixer (client %u)", thread_client_id);
       // Check shutdown flag while waiting
       if (atomic_load(&g_server_should_exit))
         break;
