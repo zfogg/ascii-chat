@@ -468,7 +468,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   *out_len = msg.len;
   *out_allocated_buffer = msg.data;
 
-  log_debug_every(100, "WebSocket received %zu bytes from queue", msg.len);
+  log_dev_every(4500000, "WebSocket received %zu bytes from queue", msg.len);
   return ASCIICHAT_OK;
 }
 

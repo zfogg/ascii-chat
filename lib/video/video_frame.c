@@ -140,8 +140,8 @@ void video_frame_commit(video_frame_buffer_t *vfb) {
     uint64_t drops = atomic_fetch_add(&vfb->total_frames_dropped, 1) + 1;
     // Throttle drop logging - only log every 100 drops to avoid spam
     if (drops == 1 || drops % 100 == 0) {
-      log_debug("Dropping frame for client %u (reader too slow, total drops: %llu)", vfb->client_id,
-                (unsigned long long)drops);
+      log_dev_every(4500000, "Dropping frame for client %u (reader too slow, total drops: %llu)", vfb->client_id,
+                    (unsigned long long)drops);
     }
   }
 
