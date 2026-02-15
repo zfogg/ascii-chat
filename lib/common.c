@@ -172,6 +172,22 @@ void asciichat_shared_destroy(void) {
   // Cleanup in reverse order of initialization (LIFO)
   // This ensures dependencies are properly handled
 
+  // 0. Stop background threads first (before any cleanup that might use them)
+  // Terminal resize detection thread (Windows only, checks if active)
+  extern void terminal_stop_resize_detection(void);
+  terminal_stop_resize_detection();
+
+#ifndef NDEBUG
+  // Lock debug thread - must join before any lock cleanup
+  extern void lock_debug_cleanup_thread(void);
+  lock_debug_cleanup_thread();
+
+  // Lock debug system - set initialized=false so mutex_lock uses mutex_lock_impl directly
+  // This must happen after thread cleanup but before any subsystem that uses mutex_lock
+  extern void lock_debug_destroy(void);
+  lock_debug_destroy();
+#endif
+
   // 1. Webcam - cleanup resources
   webcam_destroy();
 

@@ -415,7 +415,7 @@ static void *splash_animation_thread(void *arg) {
   int frame = 0;
   const int anim_speed = 100; // milliseconds per frame
 
-  while (!atomic_load(&g_splash_state.should_stop)) {
+  while (!atomic_load(&g_splash_state.should_stop) && !shutdown_is_requested()) {
     // Poll keyboard for interactive grep
     if (keyboard_enabled) {
       keyboard_key_t key = keyboard_read_nonblocking();

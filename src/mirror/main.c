@@ -332,6 +332,8 @@ int mirror_main(void) {
     }
     // Clean up webcam resources and cached images on failure
     webcam_destroy();
+    // Stop splash thread before returning
+    splash_intro_done();
     return ERROR_MEDIA_INIT;
   }
 
@@ -419,6 +421,8 @@ int mirror_main(void) {
     }
     // Clean up webcam resources and cached images on failure
     webcam_destroy();
+    // Stop splash thread before returning
+    splash_intro_done();
     return ERROR_DISPLAY;
   }
 
