@@ -105,21 +105,15 @@ project(${PROJECT_NAME_FULL}
 # Interprocedural optimization (LTO) support detection
 # MUST be after project() when languages are enabled
 include(CheckIPOSupported)
-# Disable IPO on x86-64 for Release builds - ThinLTO creates TLS symbols
-# incompatible with shared objects (known LLVM issue)
 if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-    if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")
-        check_ipo_supported(RESULT IPO_SUPPORTED OUTPUT IPO_ERROR)
-        if(IPO_SUPPORTED)
-            set(ASCIICHAT_ENABLE_IPO TRUE CACHE INTERNAL "Enable IPO for release builds" FORCE)
-            set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
-            set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO ON)
-            message(STATUS "Interprocedural optimization ${BoldGreen}enabled${ColorReset} for ${CMAKE_BUILD_TYPE} builds")
-        else()
-            message(STATUS "Interprocedural optimization ${BoldYellow}disabled${ColorReset}: ${IPO_ERROR}")
-        endif()
+    check_ipo_supported(RESULT IPO_SUPPORTED OUTPUT IPO_ERROR)
+    if(IPO_SUPPORTED)
+        set(ASCIICHAT_ENABLE_IPO TRUE CACHE INTERNAL "Enable IPO for release builds" FORCE)
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO ON)
+        message(STATUS "Interprocedural optimization ${BoldGreen}enabled${ColorReset} for ${CMAKE_BUILD_TYPE} builds")
     else()
-        message(STATUS "Interprocedural optimization ${BoldYellow}disabled${ColorReset} on x86-64: ThinLTO incompatible with shared objects")
+        message(STATUS "Interprocedural optimization ${BoldYellow}disabled${ColorReset}: ${IPO_ERROR}")
     endif()
 endif()
 
