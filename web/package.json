@@ -1,4 +1,5 @@
 {
+  "type": "module",
   "name": "ascii-chat-web",
   "private": true,
   "workspaces": [
@@ -12,5 +13,16 @@
     "build": "bun run --filter '*' build",
     "build:shared": "bun run --filter '@ascii-chat/shared' build",
     "build:sites": "bun run build:shared && bun run --filter './ascii-chat.com' --filter './discovery.ascii-chat.com' --filter './web.ascii-chat.com' build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^8.56.0",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.0",
+    "globals": "^17.3.0",
+    "prettier": "^3.8.1",
+    "typescript-eslint": "^8.0.0"
   }
 }

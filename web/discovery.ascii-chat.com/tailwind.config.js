@@ -1,4 +1,4 @@
-import sharedConfig from '@ascii-chat/shared/tailwind.config.js'
+import sharedConfig from "@ascii-chat/shared/tailwind.config.js";
 
 /** @type {import('tailwindcss').Config} */
 export default {
@@ -8,4 +8,4 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
     "../packages/shared/src/**/*.{js,ts,jsx,tsx}",
   ],
-}
+};

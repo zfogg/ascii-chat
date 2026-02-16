@@ -24,7 +24,9 @@ export class ServerFixture {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.process?.kill();
-        reject(new Error(`Server failed to start on port ${this.port} within 20s`));
+        reject(
+          new Error(`Server failed to start on port ${this.port} within 20s`),
+        );
       }, 20000);
 
       this.logStream = fs.createWriteStream(this.logFile, { flags: "a" });
@@ -35,7 +37,10 @@ export class ServerFixture {
       // Use separate ports for TCP and WebSocket: TCP on basePort, WebSocket on basePort+1
       const tcpPort = this.port;
       const wsPort = this.port + 1;
-      const debugLogFile = path.join(process.cwd(), `.server-debug-${this.port}.log`);
+      const debugLogFile = path.join(
+        process.cwd(),
+        `.server-debug-${this.port}.log`,
+      );
 
       this.process = spawn(binaryPath, [
         "--log-level",
@@ -50,7 +55,11 @@ export class ServerFixture {
       ]);
 
       this.process.stdout?.on("data", (data) => {
-        if (this.logStream && !this.logStream.destroyed && !this.logStream.writableEnded) {
+        if (
+          this.logStream &&
+          !this.logStream.destroyed &&
+          !this.logStream.writableEnded
+        ) {
           try {
             this.logStream.write(data);
           } catch (e) {
@@ -60,7 +69,11 @@ export class ServerFixture {
       });
 
       this.process.stderr?.on("data", (data) => {
-        if (this.logStream && !this.logStream.destroyed && !this.logStream.writableEnded) {
+        if (
+          this.logStream &&
+          !this.logStream.destroyed &&
+          !this.logStream.writableEnded
+        ) {
           try {
             this.logStream.write(data);
           } catch (e) {
@@ -148,7 +161,10 @@ export class ServerFixture {
 /**
  * Check if a port is listening
  */
-function isPortListening(port: number, host: string = "127.0.0.1"): Promise<boolean> {
+function isPortListening(
+  port: number,
+  host: string = "127.0.0.1",
+): Promise<boolean> {
   return new Promise((resolve) => {
     const socket = net.createConnection({ port, host });
     socket.on("connect", () => {

@@ -2,10 +2,6 @@ import TrackedLink from "./TrackedLink";
 import { Footer as SharedFooter } from "@ascii-chat/shared/components";
 
 export default function Footer() {
-  const trackClick = (label) => {
-    // Analytics tracking is handled by TrackedLink wrapping
-  };
-
   return (
     <SharedFooter
       links={[

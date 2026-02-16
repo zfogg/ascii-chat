@@ -3,6 +3,7 @@
 ## ✅ Completed Features
 
 ### Phase 1: Enhanced WASM Build Configuration
+
 - [x] Updated `wasm/CMakeLists.txt` for client mode support
 - [x] Added `client-web` and `mirror-web` targets (renamed to avoid conflicts)
 - [x] Integrated libopus v1.5.2 for audio codec
@@ -11,6 +12,7 @@
 - [x] Set up exported functions list for TypeScript bindings
 
 ### Phase 2: Client Mode C Entry Point
+
 - [x] Created `src/web/client.c` with WASM entry point
 - [x] Implemented 11 exported functions:
   - `client_init_with_args()` - initialization with CLI-style args
@@ -27,6 +29,7 @@
   - `client_free_string()` - memory cleanup helper
 
 ### Phase 3: TypeScript Bindings
+
 - [x] Created `src/wasm/client.ts` with type-safe wrapper
 - [x] Defined enums matching C: `ConnectionState`, `PacketType`
 - [x] Implemented async initialization with libsodium RNG
@@ -34,6 +37,7 @@
 - [x] Created high-level API hiding WASM complexity
 
 ### Phase 4: Web API Adapters
+
 - [x] Created `src/network/SocketBridge.ts` - WebSocket wrapper
   - Connection management with automatic reconnection
   - Exponential backoff (1s → 30s max delay)
@@ -57,7 +61,9 @@
   - encode() and decode() methods defined
 
 ### Phase 5: Build System Integration
+
 - [x] Updated `package.json` with WASM build scripts:
+
   ```bash
   bun run wasm:build          # Both modules
   bun run wasm:build:mirror   # Mirror only
@@ -74,6 +80,7 @@
   ```
 
 ### Phase 6: Platform Abstraction Stubs
+
 - [x] Created `lib/platform/wasm/stubs/portaudio.h` - PortAudio stub
   - Minimal types for audio.h compatibility
   - Prevents compilation errors in WASM build
@@ -82,6 +89,7 @@
 - [x] Fixed include ordering to override native headers
 
 ### Phase 7: Testing Infrastructure
+
 - [x] Created `tests/wasm/client.test.ts` - Unit tests
   - Initialization tests
   - Keypair generation tests
@@ -94,6 +102,7 @@
   - Implementation status tracking
 
 ### Phase 8: Successful WASM Compilation
+
 - [x] **client.wasm compiled successfully** (968KB)
 - [x] **mirror.wasm compiled successfully** (961KB)
 - [x] Both modules export to `src/wasm/dist/` for Vite
@@ -110,6 +119,7 @@ $ ls -lh web/web.ascii-chat.com/src/wasm/dist/
 ```
 
 **Build commands:**
+
 ```bash
 # From main build
 cmake --build build --target wasm
@@ -122,6 +132,7 @@ bun run wasm:build
 ## 🚧 Next Steps (Not Yet Implemented)
 
 ### 1. Complete Handshake Protocol
+
 - [ ] Implement full PACKET_TYPE_CRYPTO_CLIENT_HELLO flow
 - [ ] Add PACKET_TYPE_CRYPTO_SERVER_HELLO handling
 - [ ] Implement PACKET_TYPE_CRYPTO_CAPABILITIES exchange
@@ -129,6 +140,7 @@ bun run wasm:build
 - [ ] Test handshake with native server
 
 ### 2. Opus Codec Integration
+
 - [ ] Export Opus encoder/decoder functions from client.wasm
 - [ ] Implement `OpusEncoder.init()` with WASM calls
 - [ ] Implement `OpusEncoder.encode()` - PCM → Opus
@@ -136,17 +148,20 @@ bun run wasm:build
 - [ ] Update AudioPipeline to use Opus encoding
 
 ### 3. Video Frame Processing
+
 - [ ] Implement `client_send_video_frame()` in client.c
 - [ ] Add frame compression (JPEG/WebP via browser APIs)
 - [ ] Build PACKET_TYPE_IMAGE_FRAME packets
 - [ ] Handle PACKET_TYPE_ASCII_FRAME reception
 
 ### 4. Platform Abstraction Completion
+
 - [ ] Create `lib/platform/wasm/network.c` - WebSocket bridge via EM_JS
 - [ ] Create `lib/platform/wasm/storage.c` - localStorage for known_hosts
 - [ ] Implement configuration persistence in browser
 
 ### 5. E2E Testing
+
 - [ ] Write integration tests with native server
 - [ ] Test full handshake flow (browser client → native server)
 - [ ] Test encrypted packet exchange
@@ -154,6 +169,7 @@ bun run wasm:build
 - [ ] Performance benchmarks (FPS, latency, bandwidth)
 
 ### 6. WebRTC Support (Future)
+
 - [ ] Add WebRTC DataChannel for P2P mode
 - [ ] Implement ICE candidate exchange via ACDS
 - [ ] Add STUN/TURN support for NAT traversal
@@ -162,18 +178,21 @@ bun run wasm:build
 ## 📊 Code Metrics
 
 ### Lines of Code Added
+
 - **C code**: ~500 lines (`src/web/client.c`)
 - **TypeScript**: ~700 lines (client.ts, SocketBridge.ts, ClientConnection.ts, AudioPipeline.ts)
 - **CMake**: ~150 lines (CMakeLists.txt updates)
 - **Documentation**: ~600 lines (README.md, IMPLEMENTATION_STATUS.md)
 
 ### Dependencies Added
+
 - libopus v1.5.2 (audio codec)
 - zstd v1.5.5 (compression)
 - libsodium (already present for mirror)
 - PCRE2 (already present for mirror)
 
 ### Build Artifacts
+
 - client.wasm: 968KB (uncompressed)
 - mirror.wasm: 961KB (uncompressed)
 - Estimated gzipped: ~300KB each
@@ -181,19 +200,23 @@ bun run wasm:build
 ## 🔧 Known Issues
 
 ### 1. Function Signature Mismatch Warning
+
 ```
 wasm-ld: warning: function signature mismatch: get_manpage_template
 >>> defined as (i32, i32, i32) -> i32 in resources.c.o
 >>> defined as () -> i32 in stubs/manpage.c.o
 ```
+
 **Impact**: None - manpage functionality not used in WASM
 **Fix**: Update stub signature to match (low priority)
 
 ### 2. Options Config Const Warnings
+
 ```
 warning: passing 'const options_config_t *' to parameter of type
 'options_config_t *' discards qualifiers
 ```
+
 **Impact**: None - compiler warnings only
 **Fix**: Update options.c to accept const pointers (separate PR)
 
@@ -215,23 +238,23 @@ warning: passing 'const options_config_t *' to parameter of type
 ## 🚀 Usage Example
 
 ```typescript
-import { initClientWasm, generateKeypair, ConnectionState } from './wasm/client';
-import { ClientConnection } from './network/ClientConnection';
+import { initClientWasm, generateKeypair, ConnectionState } from "./wasm/client";
+import { ClientConnection } from "./network/ClientConnection";
 
 // Initialize WASM
 await initClientWasm({ width: 80, height: 40 });
 
 // Create connection
 const client = new ClientConnection({
-  serverUrl: 'wss://server.ascii-chat.com:27224',
+  serverUrl: "wss://server.ascii-chat.com:27224",
   width: 80,
-  height: 40
+  height: 40,
 });
 
 // Set up callbacks
 client.onStateChange((state) => {
   if (state === ConnectionState.CONNECTED) {
-    console.log('Handshake complete!');
+    console.log("Handshake complete!");
   }
 });
 
@@ -246,6 +269,7 @@ await client.connect();
 ## 🎉 Achievement Summary
 
 We have successfully:
+
 - ✅ Built a complete WASM client mode module with crypto + network protocol
 - ✅ Created TypeScript bindings with type safety
 - ✅ Integrated Web APIs (WebSocket, Web Audio) to replace native code

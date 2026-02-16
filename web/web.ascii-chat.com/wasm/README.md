@@ -50,12 +50,14 @@ bun run wasm:clean
 ### Mirror Mode (`mirror-web`)
 
 **Sources:**
+
 - Entry point: `src/web/mirror.c`
 - Video processing: `lib/video/**/*.c`
 - Options system: `lib/options/**/*.c`
 - Utilities: `lib/util/**/*.c`
 
 **Features:**
+
 - RGBA to ASCII conversion with SIMD optimization
 - Color filters (grayscale, rainbow, etc.)
 - Multiple render modes (foreground, background, half-block)
@@ -64,18 +66,21 @@ bun run wasm:clean
 - Real-time webcam processing
 
 **Dependencies:**
+
 - libsodium (crypto for logging)
 - PCRE2 (regex for log filtering)
 
 ### Client Mode (`client-web`)
 
 **Sources:**
+
 - Entry point: `src/web/client.c`
 - All mirror mode sources
 - Crypto: `lib/crypto/**/*.c`
 - Network protocol: `lib/network/packet_parsing.c`, `crc32.c`, `compression.c`
 
 **Features:**
+
 - X25519 key exchange
 - XSalsa20-Poly1305 encryption/decryption
 - Packet serialization/deserialization
@@ -84,6 +89,7 @@ bun run wasm:clean
 - Connection state management
 
 **Dependencies:**
+
 - libsodium (X25519, XSalsa20-Poly1305)
 - PCRE2 (regex)
 - Opus (audio codec - prepared but not yet integrated)
@@ -94,12 +100,7 @@ bun run wasm:clean
 ### Mirror Mode
 
 ```typescript
-import {
-  initMirrorWasm,
-  convertFrameToAscii,
-  setColorFilter,
-  ColorFilter
-} from './src/wasm/mirror';
+import { initMirrorWasm, convertFrameToAscii, setColorFilter, ColorFilter } from "./src/wasm/mirror";
 
 // Initialize
 await initMirrorWasm({ width: 80, height: 40 });
@@ -120,8 +121,8 @@ import {
   performHandshake,
   encryptPacket,
   decryptPacket,
-  ConnectionState
-} from './src/wasm/client';
+  ConnectionState,
+} from "./src/wasm/client";
 
 // Initialize
 await initClientWasm({ width: 80, height: 40 });
@@ -146,10 +147,10 @@ Replaces native BSD sockets with WebSocket API:
 
 ```typescript
 const socket = new SocketBridge({
-  url: 'wss://server.example.com:27224',
+  url: "wss://server.example.com:27224",
   onPacket: (packet) => {
     // Handle received packet
-  }
+  },
 });
 
 await socket.connect();
@@ -162,17 +163,17 @@ High-level abstraction combining WebSocket + WASM crypto:
 
 ```typescript
 const client = new ClientConnection({
-  serverUrl: 'wss://server.example.com:27224',
+  serverUrl: "wss://server.example.com:27224",
   width: 80,
-  height: 40
+  height: 40,
 });
 
 client.onStateChange((state) => {
-  console.log('Connection state:', state);
+  console.log("Connection state:", state);
 });
 
 client.onPacketReceived((packet, payload) => {
-  console.log('Received:', packet.type);
+  console.log("Received:", packet.type);
 });
 
 await client.connect(); // Initializes WASM, connects WebSocket, performs handshake
@@ -189,7 +190,7 @@ const audio = new AudioPipeline({
   echoCancellation: true,
   onAudioData: (opusData) => {
     // Send encoded audio to server
-  }
+  },
 });
 
 await audio.startCapture(); // Request microphone permission
@@ -249,6 +250,7 @@ WASM-specific implementations in `lib/platform/wasm/`:
 - `stubs/` - Stub implementations for unsupported features
 
 Future additions for client mode:
+
 - `network.c` - WebSocket bridge via EM_JS
 - `storage.c` - localStorage bridge for config/keys
 
@@ -262,6 +264,7 @@ bun test tests/wasm/client.test.ts
 ```
 
 Tests verify:
+
 - WASM module initialization
 - Keypair generation
 - Connection state management
@@ -335,6 +338,7 @@ ASCII_CHAT_MEMORY_REPORT_BACKTRACE=1 bun run dev
 ### WASM Inspector
 
 Use Chrome DevTools:
+
 1. Open DevTools → Sources
 2. Find `.wasm` files in file tree
 3. Set breakpoints in WASM code

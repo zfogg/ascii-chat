@@ -1,20 +1,20 @@
-import { useState } from 'react'
-import { Link } from '@ascii-chat/shared/components'
+import { useState } from "react";
+import { Link } from "@ascii-chat/shared/components";
 
 export function Header() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const currentPath = window.location.pathname.replace(/\/$/, '') || '/'
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const currentPath = window.location.pathname.replace(/\/$/, "") || "/";
 
   const isActive = (path: string) => {
-    return currentPath === path
-  }
+    return currentPath === path;
+  };
 
   const navLinks = [
-    { href: '/', label: 'Home' },
-    { href: '/mirror', label: 'Mirror' },
-    { href: '/client', label: 'Client' },
-    { href: '/discovery', label: 'Discovery' },
-  ]
+    { href: "/", label: "Home" },
+    { href: "/mirror", label: "Mirror" },
+    { href: "/client", label: "Client" },
+    { href: "/discovery", label: "Discovery" },
+  ];
 
   return (
     <header className="border-b border-terminal-8 bg-terminal-0 sticky top-0 z-50">
@@ -24,7 +24,10 @@ export function Header() {
             href="/"
             className="text-xl md:text-2xl font-bold text-terminal-cyan hover:text-terminal-brightCyan transition-colors"
           >
-            ascii-chat <span className="text-sm md:text-base text-terminal-8 font-normal">(Web Client)</span>
+            ascii-chat{" "}
+            <span className="text-sm md:text-base text-terminal-8 font-normal">
+              (Web Client)
+            </span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -35,8 +38,8 @@ export function Header() {
                 href={href}
                 className={`transition-colors py-1 px-2 rounded ${
                   isActive(href)
-                    ? 'text-terminal-brightCyan bg-terminal-8 font-semibold'
-                    : 'text-terminal-fg hover:text-terminal-cyan'
+                    ? "text-terminal-brightCyan bg-terminal-8 font-semibold"
+                    : "text-terminal-fg hover:text-terminal-cyan"
                 }`}
               >
                 {label}
@@ -84,8 +87,8 @@ export function Header() {
                 href={href}
                 className={`block py-3 px-4 transition-colors rounded ${
                   isActive(href)
-                    ? 'text-terminal-brightCyan bg-terminal-8 font-semibold'
-                    : 'text-terminal-fg hover:text-terminal-cyan hover:bg-terminal-8/50'
+                    ? "text-terminal-brightCyan bg-terminal-8 font-semibold"
+                    : "text-terminal-fg hover:text-terminal-cyan hover:bg-terminal-8/50"
                 }`}
                 onClick={() => setMobileMenuOpen(false)}
               >
@@ -96,5 +99,5 @@ export function Header() {
         )}
       </div>
     </header>
-  )
+  );
 }

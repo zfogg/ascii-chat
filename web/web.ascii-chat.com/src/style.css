@@ -1,11 +1,11 @@
 /* Import xterm.js CSS */
-@import 'xterm/css/xterm.css';
+@import "xterm/css/xterm.css";
 
 /* Import Tailwind v4 */
 @import "tailwindcss";
 
 /* Import shared custom styles */
-@import '@ascii-chat/shared/styles/base.css';
+@import "@ascii-chat/shared/styles/base.css";
 
 @source ".";
 @source "../../packages/shared/src";

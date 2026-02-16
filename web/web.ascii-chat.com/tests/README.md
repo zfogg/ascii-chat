@@ -18,6 +18,7 @@ tests/
 ### Prerequisites
 
 1. **Build WASM modules** (required for unit tests):
+
    ```bash
    bun run wasm:build
    # Or build client module only:
@@ -45,6 +46,7 @@ bun run vitest tests/wasm/client.test.ts
 ```
 
 **Test coverage:**
+
 - ConnectionState enum values
 - PacketType enum values
 - TypeScript type exports and definitions
@@ -56,21 +58,25 @@ bun run vitest tests/wasm/client.test.ts
 E2E tests verify integration with the native ascii-chat server.
 
 **Prerequisites:**
+
 1. Start native ascii-chat server:
+
    ```bash
    # From project root
    ./build/bin/ascii-chat server --port 27224
    ```
 
 2. Run E2E tests:
+
    ```bash
    bun run test:e2e
-   
+
    # With UI for debugging
    bun run test:e2e:ui
    ```
 
 **Test coverage:**
+
 - WebSocket connection to native server
 - Complete crypto handshake (CRYPTO_KEY_EXCHANGE_INIT → RESP → HANDSHAKE_COMPLETE)
 - Video frame reception
@@ -82,33 +88,39 @@ E2E tests verify integration with the native ascii-chat server.
 ### Unit Tests (`tests/wasm/client.test.ts`)
 
 **Initialization:**
+
 - Verifies WASM module loads successfully
 - Checks initial connection state is DISCONNECTED
 
 **Keypair Generation:**
+
 - Generates valid X25519 public keys (32 bytes = 64 hex chars)
 - Verifies keys are unique on each generation
 
 **Handshake Protocol:**
+
 - Accepts server public key
 - Completes handshake and transitions to CONNECTED state
 - Enables encryption after handshake
 
 **Encryption/Decryption:**
+
 - Encrypts plaintext with XSalsa20-Poly1305 AEAD
 - Decrypts ciphertext back to original plaintext
 - Handles payloads up to 1KB+
 - Rejects corrupted ciphertext
 
 **Packet Handling:**
+
 - Serializes packets with 20-byte header (magic + type + length + CRC32 + client_id)
 - Parses serialized packets correctly
 - Validates packet magic constant
-- Supports all packet types (VIDEO_FRAME, AUDIO_FRAME, CRYPTO_*, etc.)
+- Supports all packet types (VIDEO*FRAME, AUDIO_FRAME, CRYPTO*\*, etc.)
 
 ### E2E Tests (`tests/e2e/client-connection.test.ts`)
 
 **Connection Flow:**
+
 1. Load web client at http://localhost:5173/client
 2. Initialize WASM module
 3. Generate client keypair
@@ -118,6 +130,7 @@ E2E tests verify integration with the native ascii-chat server.
 7. Disconnect cleanly
 
 **Error Scenarios:**
+
 - Invalid server URL (connection refused)
 - Network timeout
 - Handshake failure
@@ -126,6 +139,7 @@ E2E tests verify integration with the native ascii-chat server.
 ## Implementation Status
 
 ### ✅ Completed
+
 - [x] Unit test infrastructure (vitest)
 - [x] E2E test infrastructure (playwright)
 - [x] WASM client bindings tests
@@ -134,6 +148,7 @@ E2E tests verify integration with the native ascii-chat server.
 - [x] Connection state tests
 
 ### 🚧 Pending
+
 - [ ] Opus codec unit tests
 - [ ] Audio pipeline integration tests
 - [ ] Video frame processing tests
@@ -145,6 +160,7 @@ E2E tests verify integration with the native ascii-chat server.
 ### Unit Tests
 
 Enable verbose logging in tests:
+
 ```typescript
 // In client.test.ts
 beforeAll(async () => {
@@ -155,6 +171,7 @@ beforeAll(async () => {
 ### E2E Tests
 
 Debug E2E tests with headed browser:
+
 ```bash
 # Open Playwright UI
 bun run test:e2e:ui
@@ -167,6 +184,7 @@ npx playwright test --debug -g "should connect to native server"
 ```
 
 View test reports:
+
 ```bash
 npx playwright show-report
 ```
@@ -193,12 +211,14 @@ The tests are designed to run in CI environments:
 ## Troubleshooting
 
 ### "WASM module not found"
+
 ```bash
 # Rebuild WASM modules
 bun run wasm:build
 ```
 
 ### "Connection refused" in E2E tests
+
 ```bash
 # Ensure server is running
 ./build/bin/ascii-chat server --port 27224
@@ -208,6 +228,7 @@ lsof -i :27224
 ```
 
 ### "Handshake timeout"
+
 ```bash
 # Check server logs
 ./build/bin/ascii-chat --log-level debug server --grep "handshake"
@@ -216,6 +237,7 @@ lsof -i :27224
 ```
 
 ### Tests fail with memory errors
+
 ```bash
 # Clean and rebuild WASM
 bun run wasm:clean
@@ -225,10 +247,12 @@ bun run wasm:build
 ## Performance
 
 Typical test execution times:
+
 - Unit tests: ~2-5 seconds
 - E2E tests: ~10-30 seconds (depends on server startup)
 
 WASM module sizes:
+
 - `client.wasm`: ~1.3MB (includes libsodium, Opus, zstd)
 - `mirror.wasm`: ~961KB (minimal, no crypto/audio)
 

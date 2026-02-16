@@ -1,36 +1,64 @@
-import { Heading } from '@ascii-chat/shared/components'
+import { Heading } from "@ascii-chat/shared/components";
 
-export type ColorMode = 'auto' | 'none' | '16' | '256' | 'truecolor'
-export type ColorFilter = 'none' | 'black' | 'white' | 'green' | 'magenta' | 'fuchsia' | 'orange' | 'teal' | 'cyan' | 'pink' | 'red' | 'yellow' | 'rainbow'
-export type Palette = 'standard' | 'blocks' | 'digital' | 'minimal' | 'cool' | 'custom'
-export type Resolution = '320x240' | '640x480' | '1280x720' | '1920x1080'
+export type ColorMode = "auto" | "none" | "16" | "256" | "truecolor";
+export type ColorFilter =
+  | "none"
+  | "black"
+  | "white"
+  | "green"
+  | "magenta"
+  | "fuchsia"
+  | "orange"
+  | "teal"
+  | "cyan"
+  | "pink"
+  | "red"
+  | "yellow"
+  | "rainbow";
+export type Palette =
+  | "standard"
+  | "blocks"
+  | "digital"
+  | "minimal"
+  | "cool"
+  | "custom";
+export type Resolution = "320x240" | "640x480" | "1280x720" | "1920x1080";
 
 export interface SettingsConfig {
-  resolution: Resolution
-  targetFps: number
-  colorMode: ColorMode
-  colorFilter: ColorFilter
-  palette: Palette
-  paletteChars?: string
-  matrixRain?: boolean
-  webcamFlip?: boolean
+  resolution: Resolution;
+  targetFps: number;
+  colorMode: ColorMode;
+  colorFilter: ColorFilter;
+  palette: Palette;
+  paletteChars?: string;
+  matrixRain?: boolean;
+  webcamFlip?: boolean;
 }
 
 interface SettingsProps {
-  config: SettingsConfig
-  onChange: (config: SettingsConfig) => void
-  disabled?: boolean
+  config: SettingsConfig;
+  onChange: (config: SettingsConfig) => void;
+  disabled?: boolean;
 }
 
-export function Settings({ config, onChange, disabled = false }: SettingsProps) {
+export function Settings({
+  config,
+  onChange,
+  disabled = false,
+}: SettingsProps) {
   const updateConfig = (updates: Partial<SettingsConfig>) => {
-    onChange({ ...config, ...updates })
-  }
+    onChange({ ...config, ...updates });
+  };
 
   return (
     <div className="border-b border-terminal-8 bg-terminal-0">
       <div className="px-4 py-3">
-        <Heading level={3} className="text-sm font-semibold text-terminal-fg mb-3">Settings</Heading>
+        <Heading
+          level={3}
+          className="text-sm font-semibold text-terminal-fg mb-3"
+        >
+          Settings
+        </Heading>
         <div className="flex flex-wrap gap-3">
           {/* Resolution */}
           <div className="flex-1 min-w-[200px]">
@@ -39,7 +67,9 @@ export function Settings({ config, onChange, disabled = false }: SettingsProps) 
             </label>
             <select
               value={config.resolution}
-              onChange={(e) => updateConfig({ resolution: e.target.value as Resolution })}
+              onChange={(e) =>
+                updateConfig({ resolution: e.target.value as Resolution })
+              }
               disabled={disabled}
               className="w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-sm text-terminal-fg focus:outline-none focus:border-terminal-4"
             >
@@ -61,7 +91,9 @@ export function Settings({ config, onChange, disabled = false }: SettingsProps) 
               max="60"
               step="15"
               value={config.targetFps}
-              onChange={(e) => updateConfig({ targetFps: parseInt(e.target.value) })}
+              onChange={(e) =>
+                updateConfig({ targetFps: parseInt(e.target.value) })
+              }
               disabled={disabled}
               className="w-full"
             />
@@ -80,7 +112,9 @@ export function Settings({ config, onChange, disabled = false }: SettingsProps) 
             </label>
             <select
               value={config.colorMode}
-              onChange={(e) => updateConfig({ colorMode: e.target.value as ColorMode })}
+              onChange={(e) =>
+                updateConfig({ colorMode: e.target.value as ColorMode })
+              }
               disabled={disabled}
               className="w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-sm text-terminal-fg focus:outline-none focus:border-terminal-4"
             >
@@ -99,7 +133,9 @@ export function Settings({ config, onChange, disabled = false }: SettingsProps) 
             </label>
             <select
               value={config.colorFilter}
-              onChange={(e) => updateConfig({ colorFilter: e.target.value as ColorFilter })}
+              onChange={(e) =>
+                updateConfig({ colorFilter: e.target.value as ColorFilter })
+              }
               disabled={disabled}
               className="w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-sm text-terminal-fg focus:outline-none focus:border-terminal-4"
             >
@@ -126,7 +162,9 @@ export function Settings({ config, onChange, disabled = false }: SettingsProps) 
             </label>
             <select
               value={config.palette}
-              onChange={(e) => updateConfig({ palette: e.target.value as Palette })}
+              onChange={(e) =>
+                updateConfig({ palette: e.target.value as Palette })
+              }
               disabled={disabled}
               className="w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-sm text-terminal-fg focus:outline-none focus:border-terminal-4"
             >
@@ -149,11 +187,11 @@ export function Settings({ config, onChange, disabled = false }: SettingsProps) 
               disabled={disabled}
               className={`w-full px-4 py-2 rounded text-sm font-medium transition-colors ${
                 config.matrixRain
-                  ? 'bg-terminal-2 text-terminal-bg hover:bg-terminal-10'
-                  : 'bg-terminal-8 text-terminal-fg hover:bg-terminal-7'
+                  ? "bg-terminal-2 text-terminal-bg hover:bg-terminal-10"
+                  : "bg-terminal-8 text-terminal-fg hover:bg-terminal-7"
               }`}
             >
-              {config.matrixRain ? '🟢 Matrix Rain' : 'Matrix Rain'}
+              {config.matrixRain ? "🟢 Matrix Rain" : "Matrix Rain"}
             </button>
           </div>
 
@@ -167,23 +205,23 @@ export function Settings({ config, onChange, disabled = false }: SettingsProps) 
               disabled={disabled}
               className={`w-full px-4 py-2 rounded text-sm font-medium transition-colors ${
                 config.webcamFlip
-                  ? 'bg-terminal-2 text-terminal-bg hover:bg-terminal-10'
-                  : 'bg-terminal-8 text-terminal-fg hover:bg-terminal-7'
+                  ? "bg-terminal-2 text-terminal-bg hover:bg-terminal-10"
+                  : "bg-terminal-8 text-terminal-fg hover:bg-terminal-7"
               }`}
             >
-              {config.webcamFlip ? '🟢 Flip Horizontal' : 'Flip Horizontal'}
+              {config.webcamFlip ? "🟢 Flip Horizontal" : "Flip Horizontal"}
             </button>
           </div>
 
           {/* Custom Palette Characters (shown when palette is custom) */}
-          {config.palette === 'custom' && (
+          {config.palette === "custom" && (
             <div className="flex-1 min-w-[200px]">
               <label className="block text-xs font-medium text-terminal-8 mb-1">
                 Custom Characters (dark → bright)
               </label>
               <input
                 type="text"
-                value={config.paletteChars || ' =#░░▒▒▓▓██'}
+                value={config.paletteChars || " =#░░▒▒▓▓██"}
                 onChange={(e) => updateConfig({ paletteChars: e.target.value })}
                 disabled={disabled}
                 placeholder=" =#░░▒▒▓▓██"
@@ -197,5 +235,5 @@ export function Settings({ config, onChange, disabled = false }: SettingsProps) 
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -1,4 +1,4 @@
-import { WebClientHead } from '../components/WebClientHead'
+import { WebClientHead } from "../components/WebClientHead";
 
 export function DiscoveryPage() {
   return (
@@ -10,10 +10,14 @@ export function DiscoveryPage() {
       />
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-4xl font-bold text-terminal-magenta mb-4">ascii-chat | Discovery Mode</h1>
-          <p className="text-terminal-fg mb-8">Coming soon: WebRTC P2P connections</p>
+          <h1 className="text-4xl font-bold text-terminal-magenta mb-4">
+            ascii-chat | Discovery Mode
+          </h1>
+          <p className="text-terminal-fg mb-8">
+            Coming soon: WebRTC P2P connections
+          </p>
         </div>
       </div>
     </>
-  )
+  );
 }

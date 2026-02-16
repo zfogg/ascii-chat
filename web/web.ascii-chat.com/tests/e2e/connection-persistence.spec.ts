@@ -11,7 +11,9 @@ test.beforeAll(async () => {
   server = new ServerFixture(port);
   await server.start();
   serverUrl = server.getUrl();
-  console.log(`✓ Server started for connection-persistence tests on port ${port} at ${serverUrl}`);
+  console.log(
+    `✓ Server started for connection-persistence tests on port ${port} at ${serverUrl}`,
+  );
 });
 
 test.afterAll(async () => {
@@ -55,8 +57,9 @@ test("Client connection persists and renders continuous frames", async ({
         configurable: true,
       });
     } else {
-      const originalGetUserMedia =
-        navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+      const originalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(
+        navigator.mediaDevices,
+      );
       navigator.mediaDevices.getUserMedia = async (constraints) => {
         if (constraints.video) return stream;
         return originalGetUserMedia(constraints);
@@ -77,7 +80,10 @@ test("Client connection persists and renders continuous frames", async ({
     if (text.includes("State change:")) {
       stateChangeLogs.push(text);
     }
-    if (text.includes("WRITE FRAME") || text.includes("ASCII_FRAME PACKET RECEIVED")) {
+    if (
+      text.includes("WRITE FRAME") ||
+      text.includes("ASCII_FRAME PACKET RECEIVED")
+    ) {
       frameUpdateLogs.push(text);
     }
 
@@ -85,7 +91,7 @@ test("Client connection persists and renders continuous frames", async ({
     if (text.includes("Frame ANSI string length:")) {
       asciiFrames.push({
         timestamp: Date.now(),
-        content: text
+        content: text,
       });
     }
   });
@@ -94,7 +100,9 @@ test("Client connection persists and renders continuous frames", async ({
   const clientUrl = `http://localhost:3000/client?testServerUrl=${encodeURIComponent(serverUrl)}`;
   await page.goto(clientUrl, { waitUntil: "networkidle" });
 
-  console.log("========== WAITING 3.5 SECONDS FOR CONTINUOUS FRAMES ==========");
+  console.log(
+    "========== WAITING 3.5 SECONDS FOR CONTINUOUS FRAMES ==========",
+  );
 
   // Capture terminal content every 0.5 seconds to see if it changes
   for (let i = 0; i < 7; i++) {
@@ -129,54 +137,75 @@ test("Client connection persists and renders continuous frames", async ({
   });
 
   console.log("\n========== CHECKING RESULTS ==========");
-  console.log(`\nDEBUG: Full state change log:\n${stateChangeLogs.join("\n")}\n`);
+  console.log(
+    `\nDEBUG: Full state change log:\n${stateChangeLogs.join("\n")}\n`,
+  );
 
   // Test 1: Check connection is STILL CONNECTED (not DISCONNECTED or ERROR)
   const hasDisconnect = stateChangeLogs.some(
-    (log) => log.includes("State change: 0 (Disconnected)") ||
-             log.includes("State change: 4 (Error)")
+    (log) =>
+      log.includes("State change: 0 (Disconnected)") ||
+      log.includes("State change: 4 (Error)"),
   );
   const hasDisconnectAfterConnect = stateChangeLogs.some((log, idx) => {
-    const isDisconnect = log.includes("State change: 0 (Disconnected)") || log.includes("State change: 4 (Error)");
+    const isDisconnect =
+      log.includes("State change: 0 (Disconnected)") ||
+      log.includes("State change: 4 (Error)");
     if (!isDisconnect) return false;
     // Check if there was a CONNECTED state before this disconnect
-    return stateChangeLogs.slice(0, idx).some(l => l.includes("State change: 3 (Connected)"));
+    return stateChangeLogs
+      .slice(0, idx)
+      .some((l) => l.includes("State change: 3 (Connected)"));
   });
 
   const connectCount = stateChangeLogs.filter((l) =>
-    l.includes("State change: 3 (Connected)")
+    l.includes("State change: 3 (Connected)"),
   ).length;
 
   console.log(`Test 1 - Connection persists:`);
   console.log(`  - Full state log length: ${stateChangeLogs.length} entries`);
-  console.log(`  - Has DISCONNECTED/ERROR state: ${hasDisconnect ? "YES ❌" : "NO ✅"}`);
-  console.log(`  - Disconnected AFTER connecting: ${hasDisconnectAfterConnect ? "YES ❌" : "NO ✅"}`);
-  console.log(`  - CONNECTED state reached: ${connectCount > 0 ? "YES ✅" : "NO ❌"}`);
-  console.log(`  - Still connected at 3.5s: ${!hasDisconnect ? "YES ✅" : "NO ❌"}`);
+  console.log(
+    `  - Has DISCONNECTED/ERROR state: ${hasDisconnect ? "YES ❌" : "NO ✅"}`,
+  );
+  console.log(
+    `  - Disconnected AFTER connecting: ${hasDisconnectAfterConnect ? "YES ❌" : "NO ✅"}`,
+  );
+  console.log(
+    `  - CONNECTED state reached: ${connectCount > 0 ? "YES ✅" : "NO ❌"}`,
+  );
+  console.log(
+    `  - Still connected at 3.5s: ${!hasDisconnect ? "YES ✅" : "NO ❌"}`,
+  );
 
   // Test 2: Check MULTIPLE frames rendered (not just one)
   const frameWriteCount = frameUpdateLogs.filter((l) =>
-    l.includes("WRITE FRAME")
+    l.includes("WRITE FRAME"),
   ).length;
 
   // Count actual ASCII frame packets (not just write operations)
   const asciiFramePackets = frameUpdateLogs.filter((l) =>
-    l.includes("ASCII_FRAME PACKET RECEIVED")
+    l.includes("ASCII_FRAME PACKET RECEIVED"),
   ).length;
 
   console.log(`\nTest 2 - Continuous rendering:`);
   console.log(`  - Frame writes: ${frameWriteCount}`);
   console.log(`  - ASCII frame packets received: ${asciiFramePackets}`);
-  console.log(`  - Multiple frames rendered (>1): ${frameWriteCount > 1 ? "YES ✅" : "NO ❌"}`);
-  console.log(`  - Multiple ASCII packets received: ${asciiFramePackets > 1 ? "YES ✅" : "NO ❌"}`);
+  console.log(
+    `  - Multiple frames rendered (>1): ${frameWriteCount > 1 ? "YES ✅" : "NO ❌"}`,
+  );
+  console.log(
+    `  - Multiple ASCII packets received: ${asciiFramePackets > 1 ? "YES ✅" : "NO ❌"}`,
+  );
 
   // Test 3: Check no connection errors during rendering
-  const hasError = frameUpdateLogs.some((l) =>
-    l.includes("ERROR") || l.includes("State is ERROR")
+  const hasError = frameUpdateLogs.some(
+    (l) => l.includes("ERROR") || l.includes("State is ERROR"),
   );
 
   console.log(`\nTest 3 - No errors:`);
-  console.log(`  - Errors during frame rendering: ${hasError ? "YES ❌" : "NO ✅"}`);
+  console.log(
+    `  - Errors during frame rendering: ${hasError ? "YES ❌" : "NO ✅"}`,
+  );
 
   // Test 4: Check that frames are ACTUALLY DIFFERENT (not the same frame repeated)
   // Compare terminal snapshots - sum the character codes to get a content hash
@@ -193,13 +222,23 @@ test("Client connection persists and renders continuous frames", async ({
   console.log(`\nTest 4 - Frames are different (terminal content analysis):`);
   console.log(`  - Total snapshots captured: ${terminalSnapshots.length}`);
   console.log(`  - Unique content hashes: ${uniqueHashes.size}`);
-  console.log(`  - Are frames changing: ${uniqueHashes.size > 1 ? "YES ✅" : "NO ❌ (same frame repeated)"}`);
+  console.log(
+    `  - Are frames changing: ${uniqueHashes.size > 1 ? "YES ✅" : "NO ❌ (same frame repeated)"}`,
+  );
 
-  console.log(`\n  - Snapshot hashes: ${Array.from(snapshotHashes).join(", ")}`);
-  console.log(`  - First snapshot length: ${terminalSnapshots[0]?.length || 0} chars`);
+  console.log(
+    `\n  - Snapshot hashes: ${Array.from(snapshotHashes).join(", ")}`,
+  );
+  console.log(
+    `  - First snapshot length: ${terminalSnapshots[0]?.length || 0} chars`,
+  );
   if (terminalSnapshots.length > 1) {
-    console.log(`  - Second snapshot length: ${terminalSnapshots[1]?.length || 0} chars`);
-    console.log(`  - Snapshots identical: ${terminalSnapshots[0] === terminalSnapshots[1] ? "YES" : "NO"}`);
+    console.log(
+      `  - Second snapshot length: ${terminalSnapshots[1]?.length || 0} chars`,
+    );
+    console.log(
+      `  - Snapshots identical: ${terminalSnapshots[0] === terminalSnapshots[1] ? "YES" : "NO"}`,
+    );
   }
 
   console.log("\n========== STATE CHANGE LOG ==========");
@@ -213,7 +252,9 @@ test("Client connection persists and renders continuous frames", async ({
 
   console.log("\n========== TERMINAL SNAPSHOTS ==========");
   terminalSnapshots.slice(0, 3).forEach((snap, i) => {
-    console.log(`[Snapshot ${i}] Length: ${snap.length}, First 100 chars: ${snap.substring(0, 100)}`);
+    console.log(
+      `[Snapshot ${i}] Length: ${snap.length}, First 100 chars: ${snap.substring(0, 100)}`,
+    );
   });
 
   // Assertions - test what ACTUALLY matters

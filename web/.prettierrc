@@ -1,0 +1,28 @@
+{
+  "overrides": [
+    {
+      "files": "*.json",
+      "options": { "parser": "json" }
+    },
+    {
+      "files": "*.md",
+      "options": { "parser": "markdown" }
+    },
+    {
+      "files": ["*.css", "*.scss"],
+      "options": { "parser": "css" }
+    },
+    {
+      "files": "*.html",
+      "options": { "parser": "html" }
+    },
+    {
+      "files": ["*.js", "*.jsx"],
+      "options": { "parser": "babel" }
+    },
+    {
+      "files": ["*.ts", "*.tsx"],
+      "options": { "parser": "typescript" }
+    }
+  ]
+}

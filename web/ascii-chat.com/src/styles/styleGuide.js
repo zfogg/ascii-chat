@@ -263,9 +263,9 @@ export function combineStyles(...classes) {
 
 /**
  * Create accent card with border color
- * Usage: createAccentCard('cyan', 'My content')
+ * Usage: createAccentCard('cyan')
  */
-export function createAccentCard(accentColor = "cyan", content) {
+export function createAccentCard(accentColor = "cyan") {
   return {
     className: combineStyles(card.standard, `border-${accentColor}-900/30`),
   };

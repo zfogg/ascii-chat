@@ -1,25 +1,25 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import sitemap from 'vite-plugin-sitemap'
-import { execSync } from 'child_process'
-import path from 'path'
-import { fileURLToPath } from 'url'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import sitemap from "vite-plugin-sitemap";
+import { execSync } from "child_process";
+import path from "path";
+import { fileURLToPath } from "url";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const getCommitSha = () => {
   // Check for Vercel's built-in environment variable first
   if (process.env.VERCEL_GIT_COMMIT_SHA) {
-    return process.env.VERCEL_GIT_COMMIT_SHA.substring(0, 8)
+    return process.env.VERCEL_GIT_COMMIT_SHA.substring(0, 8);
   }
 
   // Fall back to git command for local development
   try {
-    return execSync('git rev-parse HEAD').toString().trim().substring(0, 8)
+    return execSync("git rev-parse HEAD").toString().trim().substring(0, 8);
   } catch {
-    return 'unknown'
+    return "unknown";
   }
-}
+};
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -28,15 +28,15 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@ascii-chat/shared': path.resolve(__dirname, '../packages/shared/src'),
+      "@ascii-chat/shared": path.resolve(__dirname, "../packages/shared/src"),
     },
-    extensions: ['.ts', '.tsx', '.js', '.jsx'],
-    dedupe: ['react', 'react-dom'],
+    extensions: [".ts", ".tsx", ".js", ".jsx"],
+    dedupe: ["react", "react-dom"],
   },
   plugins: [
     react(),
     sitemap({
-      hostname: 'https://discovery.ascii-chat.com',
+      hostname: "https://discovery.ascii-chat.com",
     }),
   ],
-})
+});

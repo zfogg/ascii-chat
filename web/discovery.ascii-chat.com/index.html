@@ -2,21 +2,33 @@
 <html lang="en">
   <head>
     <!-- Google Tag Manager -->
-    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-    })(window,document,'script','dataLayer','GTM-NR5TM4QT');</script>
+    <script>
+      (function (w, d, s, l, i) {
+        w[l] = w[l] || [];
+        w[l].push({ "gtm.start": new Date().getTime(), event: "gtm.js" });
+        var f = d.getElementsByTagName(s)[0],
+          j = d.createElement(s),
+          dl = l != "dataLayer" ? "&l=" + l : "";
+        j.async = true;
+        j.src = "https://www.googletagmanager.com/gtm.js?id=" + i + dl;
+        f.parentNode.insertBefore(j, f);
+      })(window, document, "script", "dataLayer", "GTM-NR5TM4QT");
+    </script>
     <!-- End Google Tag Manager -->
 
     <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-P1WZMDDSTE"></script>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-P1WZMDDSTE"
+    ></script>
     <script>
       window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
 
-      gtag('config', 'G-P1WZMDDSTE');
+      gtag("config", "G-P1WZMDDSTE");
     </script>
 
     <meta charset="UTF-8" />
@@ -30,28 +42,28 @@
 
     <!-- Schema.org Structured Data (Organization) -->
     <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "Organization",
-      "name": "ascii-chat Discovery Service",
-      "url": "https://discovery.ascii-chat.com",
-      "logo": "https://discovery.ascii-chat.com/og-image.png",
-      "description": "Official ACDS (ascii-chat Discovery Service) for session discovery and NAT traversal",
-      "parentOrganization": {
+      {
+        "@context": "https://schema.org",
         "@type": "Organization",
-        "name": "ascii-chat",
-        "url": "https://ascii-chat.com",
-        "sameAs": "https://github.com/zfogg/ascii-chat"
-      },
-      "contactPoint": {
-        "@type": "ContactPoint",
-        "url": "https://github.com/zfogg/ascii-chat/issues"
-      },
-      "sameAs": [
-        "https://github.com/zfogg/ascii-chat",
-        "https://github.com/zfogg"
-      ]
-    }
+        "name": "ascii-chat Discovery Service",
+        "url": "https://discovery.ascii-chat.com",
+        "logo": "https://discovery.ascii-chat.com/og-image.png",
+        "description": "Official ACDS (ascii-chat Discovery Service) for session discovery and NAT traversal",
+        "parentOrganization": {
+          "@type": "Organization",
+          "name": "ascii-chat",
+          "url": "https://ascii-chat.com",
+          "sameAs": "https://github.com/zfogg/ascii-chat"
+        },
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "url": "https://github.com/zfogg/ascii-chat/issues"
+        },
+        "sameAs": [
+          "https://github.com/zfogg/ascii-chat",
+          "https://github.com/zfogg"
+        ]
+      }
     </script>
 
     <!-- Default title (overridden by Helmet) -->
@@ -59,8 +71,14 @@
   </head>
   <body>
     <!-- Google Tag Manager (noscript) -->
-    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NR5TM4QT"
-    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <noscript
+      ><iframe
+        src="https://www.googletagmanager.com/ns.html?id=GTM-NR5TM4QT"
+        height="0"
+        width="0"
+        style="display: none; visibility: hidden"
+      ></iframe
+    ></noscript>
     <!-- End Google Tag Manager (noscript) -->
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>

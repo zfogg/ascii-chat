@@ -11,7 +11,9 @@ test.beforeAll(async () => {
   server = new ServerFixture(port);
   await server.start();
   serverUrl = server.getUrl();
-  console.log(`✓ Server started for debug-capabilities tests on port ${port} at ${serverUrl}`);
+  console.log(
+    `✓ Server started for debug-capabilities tests on port ${port} at ${serverUrl}`,
+  );
 });
 
 test.afterAll(async () => {
@@ -60,8 +62,9 @@ test("Debug CLIENT_CAPABILITIES and ASCII_FRAME flow", async ({
         configurable: true,
       });
     } else {
-      const originalGetUserMedia =
-        navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+      const originalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(
+        navigator.mediaDevices,
+      );
       navigator.mediaDevices.getUserMedia = async (constraints) => {
         if (constraints.video) {
           return stream;
@@ -100,7 +103,7 @@ test("Debug CLIENT_CAPABILITIES and ASCII_FRAME flow", async ({
         const text = document.body.innerText;
         return text.includes("Connected");
       },
-      { timeout: 5000 }
+      { timeout: 5000 },
     );
     console.log("✅ CONNECTED state reached");
   } catch {
@@ -114,35 +117,46 @@ test("Debug CLIENT_CAPABILITIES and ASCII_FRAME flow", async ({
   console.log("\n========== CHECKING TERMINAL RENDERING ==========\n");
   try {
     const terminalContent = await page.evaluate(() => {
-      const xterm = document.querySelector('.xterm');
+      const xterm = document.querySelector(".xterm");
       if (!xterm) {
         console.log(`[Playwright] .xterm element NOT found in DOM`);
-        return { found: false, content: '' };
+        return { found: false, content: "" };
       }
 
       console.log(`[Playwright] .xterm element found`);
 
       // Check for xterm-screen (DOM-based)
-      const xtermScreen = xterm.querySelector('.xterm-screen');
+      const xtermScreen = xterm.querySelector(".xterm-screen");
       if (xtermScreen) {
-        const rows = xtermScreen.querySelectorAll('.xterm-row');
-        console.log(`[Playwright] .xterm-screen found with ${rows.length} rows`);
+        const rows = xtermScreen.querySelectorAll(".xterm-row");
+        console.log(
+          `[Playwright] .xterm-screen found with ${rows.length} rows`,
+        );
       }
 
       // Check for canvas (canvas-based rendering)
-      const canvas = xterm.querySelector('canvas');
+      const canvas = xterm.querySelector("canvas");
       if (canvas) {
-        console.log(`[Playwright] Canvas found: ${canvas.width}x${canvas.height}`);
+        console.log(
+          `[Playwright] Canvas found: ${canvas.width}x${canvas.height}`,
+        );
       }
 
       // Try to get terminal text through selection
-      const allText = xterm.textContent || '';
+      const allText = xterm.textContent || "";
       console.log(`[Playwright] Total text content: ${allText.length} chars`);
       if (allText.length > 0) {
-        console.log(`[Playwright] First 100 chars: "${allText.substring(0, 100)}"`);
+        console.log(
+          `[Playwright] First 100 chars: "${allText.substring(0, 100)}"`,
+        );
       }
 
-      return { found: true, textLength: allText.length, hasCanvas: !!canvas, hasScreen: !!xtermScreen };
+      return {
+        found: true,
+        textLength: allText.length,
+        hasCanvas: !!canvas,
+        hasScreen: !!xtermScreen,
+      };
     });
     console.log(`Terminal rendering check:`, terminalContent);
   } catch (e) {
@@ -151,29 +165,29 @@ test("Debug CLIENT_CAPABILITIES and ASCII_FRAME flow", async ({
 
   // Take screenshot to see what's actually rendered
   console.log("\n========== TAKING SCREENSHOT ==========\n");
-  await page.screenshot({ path: 'test-screenshot.png', fullPage: true });
+  await page.screenshot({ path: "test-screenshot.png", fullPage: true });
   console.log("Screenshot saved to test-screenshot.png");
 
   console.log("\n\n========== ANALYSIS ==========\n");
 
   // Parse key events
   const clientCapsSent = logs.filter((l) =>
-    l.includes("CLIENT_CAPABILITIES sent successfully")
+    l.includes("CLIENT_CAPABILITIES sent successfully"),
   );
-  const imageFramesSent = logs.filter((l) =>
-    l.includes("Sent") && l.includes("IMAGE_FRAME")
+  const imageFramesSent = logs.filter(
+    (l) => l.includes("Sent") && l.includes("IMAGE_FRAME"),
   );
   const asciiFramesReceived = logs.filter((l) =>
-    l.includes("ASCII_FRAME PACKET RECEIVED")
+    l.includes("ASCII_FRAME PACKET RECEIVED"),
   );
   const asciiFrameHeaders = logs.filter((l) =>
-    l.includes("AsciiFrameParser] Header parsed")
+    l.includes("AsciiFrameParser] Header parsed"),
   );
   const rendererWrites = logs.filter((l) => l.includes("WRITE FRAME"));
   const encryptedPackets = logs.filter((l) => l.includes("ENCRYPTED PACKET"));
   const innerPackets = logs.filter((l) => l.includes("Inner packet type"));
   const connectedState = logs.filter((l) =>
-    l.includes("CONNECTED state reached")
+    l.includes("CONNECTED state reached"),
   );
 
   console.log(`📊 CONNECTION FLOW:`);
@@ -203,7 +217,7 @@ test("Debug CLIENT_CAPABILITIES and ASCII_FRAME flow", async ({
   });
   console.log(`  Packet types:`);
   typeBreakdown.forEach((count, type) =>
-    console.log(`    - ${type}: ${count}`)
+    console.log(`    - ${type}: ${count}`),
   );
 
   console.log(`\n📺 ASCII_FRAME RECEPTION:`);
@@ -228,41 +242,40 @@ test("Debug CLIENT_CAPABILITIES and ASCII_FRAME flow", async ({
     console.log(`❌ FAILED: Server not responding with encrypted packets`);
   } else if (!hasImageFrames) {
     console.log(
-      `⚠️  INCOMPLETE: CLIENT_CAPABILITIES working, but no IMAGE_FRAME packets`
+      `⚠️  INCOMPLETE: CLIENT_CAPABILITIES working, but no IMAGE_FRAME packets`,
     );
     console.log(`  This likely means the webcam failed to initialize`);
   } else if (!hasAsciiFrames) {
     console.log(
-      `⚠️  INCOMPLETE: Video captured, but server not sending ASCII frames`
+      `⚠️  INCOMPLETE: Video captured, but server not sending ASCII frames`,
     );
     console.log(
-      `  Check server logs: palette may not have initialized correctly`
+      `  Check server logs: palette may not have initialized correctly`,
     );
   } else {
     console.log(
-      `✅ FULL SUCCESS: Complete CLIENT_CAPABILITIES → IMAGE_FRAME → ASCII_FRAME flow!`
+      `✅ FULL SUCCESS: Complete CLIENT_CAPABILITIES → IMAGE_FRAME → ASCII_FRAME flow!`,
     );
   }
 
   console.log(`\n📊 Test Results:`);
   console.log(
-    `  Connection Established:        ${hasConnection ? "✅" : "❌"}`
+    `  Connection Established:        ${hasConnection ? "✅" : "❌"}`,
   );
   console.log(
-    `  CLIENT_CAPABILITIES Sent:      ${hasCapabilities ? "✅" : "❌"} ${hasCapabilities ? `(${clientCapsSent.length} packet)` : ""}`
+    `  CLIENT_CAPABILITIES Sent:      ${hasCapabilities ? "✅" : "❌"} ${hasCapabilities ? `(${clientCapsSent.length} packet)` : ""}`,
   );
   console.log(
-    `  Server Encrypted Response:     ${hasEncryption ? "✅" : "❌"} ${hasEncryption ? `(${encryptedPackets.length} packets)` : ""}`
+    `  Server Encrypted Response:     ${hasEncryption ? "✅" : "❌"} ${hasEncryption ? `(${encryptedPackets.length} packets)` : ""}`,
   );
   console.log(
-    `  IMAGE_FRAME Packets Sent:      ${hasImageFrames ? "✅" : "❌"} ${hasImageFrames ? `(${imageFramesSent.length} packets)` : ""}`
+    `  IMAGE_FRAME Packets Sent:      ${hasImageFrames ? "✅" : "❌"} ${hasImageFrames ? `(${imageFramesSent.length} packets)` : ""}`,
   );
   console.log(
-    `  ASCII_FRAME Packets Received:  ${hasAsciiFrames ? "✅" : "❌"} ${hasAsciiFrames ? `(${asciiFramesReceived.length} packets)` : ""}`
+    `  ASCII_FRAME Packets Received:  ${hasAsciiFrames ? "✅" : "❌"} ${hasAsciiFrames ? `(${asciiFramesReceived.length} packets)` : ""}`,
   );
 
   console.log(`${"═".repeat(60)}`);
-
 
   if (errors.length > 0) {
     console.log(`\n⚠️  ERRORS:`);

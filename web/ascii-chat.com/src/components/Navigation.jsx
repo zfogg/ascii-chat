@@ -8,17 +8,6 @@ export default function Navigation() {
 
   const isActive = (path) => location.pathname === path;
 
-  const getNavLinkClass = (paths) => {
-    const active = Array.isArray(paths)
-      ? paths.some((p) => isActive(p))
-      : isActive(paths);
-    return `transition-colors ${
-      active
-        ? "text-fuchsia-400 font-semibold"
-        : "text-gray-400 hover:text-fuchsia-300"
-    }`;
-  };
-
   const getDesktopNavLinkClass = (paths) => {
     const active = Array.isArray(paths)
       ? paths.some((p) => isActive(p))

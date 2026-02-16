@@ -64,9 +64,9 @@ export function ConnectionPanelModal({
             <div className="mb-4 p-3 bg-terminal-bg rounded border border-terminal-8">
               <div className="text-xs text-terminal-8 mb-1">Status</div>
               <div
-                className={`font-mono text-sm ${
-                  getStateColor(connectionState)
-                }`}
+                className={`font-mono text-sm ${getStateColor(
+                  connectionState,
+                )}`}
               >
                 {status}
               </div>
@@ -107,23 +107,21 @@ export function ConnectionPanelModal({
 
             {/* Connect / Disconnect */}
             <div className="mb-4">
-              {!isConnected
-                ? (
-                  <button
-                    onClick={onConnect}
-                    className="w-full px-4 py-2 bg-terminal-2 text-terminal-bg rounded hover:bg-terminal-10 text-sm font-medium"
-                  >
-                    Connect
-                  </button>
-                )
-                : (
-                  <button
-                    onClick={onDisconnect}
-                    className="w-full px-4 py-2 bg-terminal-1 text-terminal-bg rounded hover:bg-terminal-9 text-sm font-medium"
-                  >
-                    Disconnect
-                  </button>
-                )}
+              {!isConnected ? (
+                <button
+                  onClick={onConnect}
+                  className="w-full px-4 py-2 bg-terminal-2 text-terminal-bg rounded hover:bg-terminal-10 text-sm font-medium"
+                >
+                  Connect
+                </button>
+              ) : (
+                <button
+                  onClick={onDisconnect}
+                  className="w-full px-4 py-2 bg-terminal-1 text-terminal-bg rounded hover:bg-terminal-9 text-sm font-medium"
+                >
+                  Disconnect
+                </button>
+              )}
             </div>
 
             {/* Public Key */}

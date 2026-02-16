@@ -8,14 +8,43 @@ interface ClientModuleExports {
   _client_generate_keypair(): number;
   _client_set_server_address(server_host: number, server_port: number): number;
   _client_get_public_key_hex(): number;
-  _client_handle_key_exchange_init(packet_ptr: number, packet_len: number): number;
+  _client_handle_key_exchange_init(
+    packet_ptr: number,
+    packet_len: number,
+  ): number;
   _client_handle_auth_challenge(packet_ptr: number, packet_len: number): number;
-  _client_handle_handshake_complete(packet_ptr: number, packet_len: number): number;
-  _client_encrypt_packet(pt_ptr: number, pt_len: number, ct_ptr: number, ct_size: number, out_len_ptr: number): number;
-  _client_decrypt_packet(ct_ptr: number, ct_len: number, pt_ptr: number, pt_size: number, out_len_ptr: number): number;
+  _client_handle_handshake_complete(
+    packet_ptr: number,
+    packet_len: number,
+  ): number;
+  _client_encrypt_packet(
+    pt_ptr: number,
+    pt_len: number,
+    ct_ptr: number,
+    ct_size: number,
+    out_len_ptr: number,
+  ): number;
+  _client_decrypt_packet(
+    ct_ptr: number,
+    ct_len: number,
+    pt_ptr: number,
+    pt_size: number,
+    out_len_ptr: number,
+  ): number;
   _client_parse_packet(pkt_ptr: number, len: number): number;
-  _client_serialize_packet(type: number, payload_ptr: number, payload_len: number, client_id: number, output_ptr: number, out_len_ptr: number): number;
-  _client_send_video_frame(rgba_ptr: number, width: number, height: number): number;
+  _client_serialize_packet(
+    type: number,
+    payload_ptr: number,
+    payload_len: number,
+    client_id: number,
+    output_ptr: number,
+    out_len_ptr: number,
+  ): number;
+  _client_send_video_frame(
+    rgba_ptr: number,
+    width: number,
+    height: number,
+  ): number;
   _client_get_connection_state(): number;
   _client_free_string(ptr: number): void;
   _malloc(size: number): number;
@@ -29,23 +58,23 @@ interface ClientModule {
   stringToUTF8(str: string, outPtr: number, maxBytesToWrite: number): void;
   lengthBytesUTF8(str: string): number;
   sendPacketCallback?: (rawPacket: Uint8Array) => void;
-  _client_init_with_args: ClientModuleExports['_client_init_with_args'];
-  _client_cleanup: ClientModuleExports['_client_cleanup'];
-  _client_generate_keypair: ClientModuleExports['_client_generate_keypair'];
-  _client_set_server_address: ClientModuleExports['_client_set_server_address'];
-  _client_get_public_key_hex: ClientModuleExports['_client_get_public_key_hex'];
-  _client_handle_key_exchange_init: ClientModuleExports['_client_handle_key_exchange_init'];
-  _client_handle_auth_challenge: ClientModuleExports['_client_handle_auth_challenge'];
-  _client_handle_handshake_complete: ClientModuleExports['_client_handle_handshake_complete'];
-  _client_encrypt_packet: ClientModuleExports['_client_encrypt_packet'];
-  _client_decrypt_packet: ClientModuleExports['_client_decrypt_packet'];
-  _client_parse_packet: ClientModuleExports['_client_parse_packet'];
-  _client_serialize_packet: ClientModuleExports['_client_serialize_packet'];
-  _client_send_video_frame: ClientModuleExports['_client_send_video_frame'];
-  _client_get_connection_state: ClientModuleExports['_client_get_connection_state'];
-  _client_free_string: ClientModuleExports['_client_free_string'];
-  _malloc: ClientModuleExports['_malloc'];
-  _free: ClientModuleExports['_free'];
+  _client_init_with_args: ClientModuleExports["_client_init_with_args"];
+  _client_cleanup: ClientModuleExports["_client_cleanup"];
+  _client_generate_keypair: ClientModuleExports["_client_generate_keypair"];
+  _client_set_server_address: ClientModuleExports["_client_set_server_address"];
+  _client_get_public_key_hex: ClientModuleExports["_client_get_public_key_hex"];
+  _client_handle_key_exchange_init: ClientModuleExports["_client_handle_key_exchange_init"];
+  _client_handle_auth_challenge: ClientModuleExports["_client_handle_auth_challenge"];
+  _client_handle_handshake_complete: ClientModuleExports["_client_handle_handshake_complete"];
+  _client_encrypt_packet: ClientModuleExports["_client_encrypt_packet"];
+  _client_decrypt_packet: ClientModuleExports["_client_decrypt_packet"];
+  _client_parse_packet: ClientModuleExports["_client_parse_packet"];
+  _client_serialize_packet: ClientModuleExports["_client_serialize_packet"];
+  _client_send_video_frame: ClientModuleExports["_client_send_video_frame"];
+  _client_get_connection_state: ClientModuleExports["_client_get_connection_state"];
+  _client_free_string: ClientModuleExports["_client_free_string"];
+  _malloc: ClientModuleExports["_malloc"];
+  _free: ClientModuleExports["_free"];
 }
 
 // Enums matching libasciichat definitions
@@ -54,7 +83,7 @@ export enum ConnectionState {
   CONNECTING = 1,
   HANDSHAKE = 2,
   CONNECTED = 3,
-  ERROR = 4
+  ERROR = 4,
 }
 
 export enum PacketType {
@@ -115,47 +144,47 @@ export enum PacketType {
  */
 export function packetTypeName(type: number): string {
   const names: Record<number, string> = {
-    [PacketType.PROTOCOL_VERSION]: 'PROTOCOL_VERSION',
-    [PacketType.CRYPTO_CLIENT_HELLO]: 'CRYPTO_CLIENT_HELLO',
-    [PacketType.CRYPTO_CAPABILITIES]: 'CRYPTO_CAPABILITIES',
-    [PacketType.CRYPTO_PARAMETERS]: 'CRYPTO_PARAMETERS',
-    [PacketType.CRYPTO_KEY_EXCHANGE_INIT]: 'CRYPTO_KEY_EXCHANGE_INIT',
-    [PacketType.CRYPTO_KEY_EXCHANGE_RESP]: 'CRYPTO_KEY_EXCHANGE_RESP',
-    [PacketType.CRYPTO_AUTH_CHALLENGE]: 'CRYPTO_AUTH_CHALLENGE',
-    [PacketType.CRYPTO_AUTH_RESPONSE]: 'CRYPTO_AUTH_RESPONSE',
-    [PacketType.CRYPTO_AUTH_FAILED]: 'CRYPTO_AUTH_FAILED',
-    [PacketType.CRYPTO_SERVER_AUTH_RESP]: 'CRYPTO_SERVER_AUTH_RESP',
-    [PacketType.CRYPTO_HANDSHAKE_COMPLETE]: 'CRYPTO_HANDSHAKE_COMPLETE',
-    [PacketType.CRYPTO_NO_ENCRYPTION]: 'CRYPTO_NO_ENCRYPTION',
-    [PacketType.ENCRYPTED]: 'ENCRYPTED',
-    [PacketType.CRYPTO_REKEY_REQUEST]: 'CRYPTO_REKEY_REQUEST',
-    [PacketType.CRYPTO_REKEY_RESPONSE]: 'CRYPTO_REKEY_RESPONSE',
-    [PacketType.CRYPTO_REKEY_COMPLETE]: 'CRYPTO_REKEY_COMPLETE',
-    [PacketType.SIZE_MESSAGE]: 'SIZE_MESSAGE',
-    [PacketType.AUDIO_MESSAGE]: 'AUDIO_MESSAGE',
-    [PacketType.TEXT_MESSAGE]: 'TEXT_MESSAGE',
-    [PacketType.ERROR_MESSAGE]: 'ERROR_MESSAGE',
-    [PacketType.REMOTE_LOG]: 'REMOTE_LOG',
-    [PacketType.ASCII_FRAME]: 'ASCII_FRAME',
-    [PacketType.IMAGE_FRAME]: 'IMAGE_FRAME',
-    [PacketType.AUDIO_BATCH]: 'AUDIO_BATCH',
-    [PacketType.AUDIO_OPUS_BATCH]: 'AUDIO_OPUS_BATCH',
-    [PacketType.CLIENT_CAPABILITIES]: 'CLIENT_CAPABILITIES',
-    [PacketType.PING]: 'PING',
-    [PacketType.PONG]: 'PONG',
-    [PacketType.CLIENT_JOIN]: 'CLIENT_JOIN',
-    [PacketType.CLIENT_LEAVE]: 'CLIENT_LEAVE',
-    [PacketType.STREAM_START]: 'STREAM_START',
-    [PacketType.STREAM_STOP]: 'STREAM_STOP',
-    [PacketType.CLEAR_CONSOLE]: 'CLEAR_CONSOLE',
-    [PacketType.SERVER_STATE]: 'SERVER_STATE',
+    [PacketType.PROTOCOL_VERSION]: "PROTOCOL_VERSION",
+    [PacketType.CRYPTO_CLIENT_HELLO]: "CRYPTO_CLIENT_HELLO",
+    [PacketType.CRYPTO_CAPABILITIES]: "CRYPTO_CAPABILITIES",
+    [PacketType.CRYPTO_PARAMETERS]: "CRYPTO_PARAMETERS",
+    [PacketType.CRYPTO_KEY_EXCHANGE_INIT]: "CRYPTO_KEY_EXCHANGE_INIT",
+    [PacketType.CRYPTO_KEY_EXCHANGE_RESP]: "CRYPTO_KEY_EXCHANGE_RESP",
+    [PacketType.CRYPTO_AUTH_CHALLENGE]: "CRYPTO_AUTH_CHALLENGE",
+    [PacketType.CRYPTO_AUTH_RESPONSE]: "CRYPTO_AUTH_RESPONSE",
+    [PacketType.CRYPTO_AUTH_FAILED]: "CRYPTO_AUTH_FAILED",
+    [PacketType.CRYPTO_SERVER_AUTH_RESP]: "CRYPTO_SERVER_AUTH_RESP",
+    [PacketType.CRYPTO_HANDSHAKE_COMPLETE]: "CRYPTO_HANDSHAKE_COMPLETE",
+    [PacketType.CRYPTO_NO_ENCRYPTION]: "CRYPTO_NO_ENCRYPTION",
+    [PacketType.ENCRYPTED]: "ENCRYPTED",
+    [PacketType.CRYPTO_REKEY_REQUEST]: "CRYPTO_REKEY_REQUEST",
+    [PacketType.CRYPTO_REKEY_RESPONSE]: "CRYPTO_REKEY_RESPONSE",
+    [PacketType.CRYPTO_REKEY_COMPLETE]: "CRYPTO_REKEY_COMPLETE",
+    [PacketType.SIZE_MESSAGE]: "SIZE_MESSAGE",
+    [PacketType.AUDIO_MESSAGE]: "AUDIO_MESSAGE",
+    [PacketType.TEXT_MESSAGE]: "TEXT_MESSAGE",
+    [PacketType.ERROR_MESSAGE]: "ERROR_MESSAGE",
+    [PacketType.REMOTE_LOG]: "REMOTE_LOG",
+    [PacketType.ASCII_FRAME]: "ASCII_FRAME",
+    [PacketType.IMAGE_FRAME]: "IMAGE_FRAME",
+    [PacketType.AUDIO_BATCH]: "AUDIO_BATCH",
+    [PacketType.AUDIO_OPUS_BATCH]: "AUDIO_OPUS_BATCH",
+    [PacketType.CLIENT_CAPABILITIES]: "CLIENT_CAPABILITIES",
+    [PacketType.PING]: "PING",
+    [PacketType.PONG]: "PONG",
+    [PacketType.CLIENT_JOIN]: "CLIENT_JOIN",
+    [PacketType.CLIENT_LEAVE]: "CLIENT_LEAVE",
+    [PacketType.STREAM_START]: "STREAM_START",
+    [PacketType.STREAM_STOP]: "STREAM_STOP",
+    [PacketType.CLEAR_CONSOLE]: "CLEAR_CONSOLE",
+    [PacketType.SERVER_STATE]: "SERVER_STATE",
   };
   return names[type] || `UNKNOWN(${type})`;
 }
 
 // Import the Emscripten-generated module factory
 // @ts-expect-error - Generated file without types
-import ClientModuleFactory from './dist/client.js';
+import ClientModuleFactory from "./dist/client.js";
 
 let wasmModule: ClientModule | null = null;
 
@@ -166,8 +195,13 @@ let wasmModule: ClientModule | null = null;
  * views after WASM memory growth (which detaches the old ArrayBuffer).
  */
 function readI32(ptr: number): number {
-  const h = wasmModule!.HEAPU8;
-  return h[ptr] | (h[ptr + 1] << 8) | (h[ptr + 2] << 16) | (h[ptr + 3] << 24);
+  if (!wasmModule) throw new Error("WASM module not initialized");
+  const h = wasmModule.HEAPU8;
+  const b0 = h[ptr] ?? 0;
+  const b1 = h[ptr + 1] ?? 0;
+  const b2 = h[ptr + 2] ?? 0;
+  const b3 = h[ptr + 3] ?? 0;
+  return b0 | (b1 << 8) | (b2 << 16) | (b3 << 24);
 }
 
 export interface ClientInitOptions {
@@ -185,64 +219,66 @@ export interface ParsedPacket {
 /**
  * Initialize the WASM module (call once at app start)
  */
-export async function initClientWasm(options: ClientInitOptions = {}): Promise<void> {
+export async function initClientWasm(
+  options: ClientInitOptions = {},
+): Promise<void> {
   if (wasmModule) return;
 
-  console.log('[Client WASM] Starting module factory...');
+  console.log("[Client WASM] Starting module factory...");
   // Provide runtime environment functions for Emscripten
   wasmModule = await ClientModuleFactory({
     // libsodium crypto random - returns 32-bit unsigned integer
-    getRandomValue: function() {
+    getRandomValue: function () {
       const buf = new Uint32Array(1);
       crypto.getRandomValues(buf);
       return buf[0];
     },
     // Forward C stdout (log_debug, log_info, etc.) to browser console
     print: (text: string) => {
-      console.log('[C] ' + text);
+      console.log("[C] " + text);
     },
     // Forward C stderr to browser console
     printErr: (text: string) => {
-      console.error('[C] ' + text);
-    }
+      console.error("[C] " + text);
+    },
   });
-  console.log('[Client WASM] Module factory completed');
+  console.log("[Client WASM] Module factory completed");
 
   if (!wasmModule) {
-    throw new Error('Failed to load client WASM module');
+    throw new Error("Failed to load client WASM module");
   }
-  console.log('[Client WASM] Module loaded successfully');
+  console.log("[Client WASM] Module loaded successfully");
 
   // Build argument string for options_init()
-  const args: string[] = ['client'];
+  const args: string[] = ["client"];
 
   if (options.width !== undefined) {
-    args.push('--width', options.width.toString());
+    args.push("--width", options.width.toString());
   }
   if (options.height !== undefined) {
-    args.push('--height', options.height.toString());
+    args.push("--height", options.height.toString());
   }
 
-  const argsString = args.join(' ');
-  console.log('[Client WASM] Initializing with args:', argsString);
+  const argsString = args.join(" ");
+  console.log("[Client WASM] Initializing with args:", argsString);
 
   // Allocate string in WASM memory
   const strLen = wasmModule.lengthBytesUTF8(argsString) + 1;
   const strPtr = wasmModule._malloc(strLen);
   if (!strPtr) {
-    throw new Error('Failed to allocate memory for args string');
+    throw new Error("Failed to allocate memory for args string");
   }
 
   try {
     wasmModule.stringToUTF8(argsString, strPtr, strLen);
 
-    console.log('[Client WASM] Calling _client_init_with_args...');
+    console.log("[Client WASM] Calling _client_init_with_args...");
     const result = wasmModule._client_init_with_args(strPtr);
-    console.log('[Client WASM] _client_init_with_args returned:', result);
+    console.log("[Client WASM] _client_init_with_args returned:", result);
     if (result !== 0) {
-      throw new Error('Failed to initialize client WASM module');
+      throw new Error("Failed to initialize client WASM module");
     }
-    console.log('[Client WASM] Initialization complete!');
+    console.log("[Client WASM] Initialization complete!");
   } finally {
     wasmModule._free(strPtr);
   }
@@ -252,14 +288,14 @@ export async function initClientWasm(options: ClientInitOptions = {}): Promise<v
  * Cleanup WASM module resources
  */
 export function cleanupClientWasm(): void {
-  console.error('[cleanupClientWasm] ========== CLEANUP CALLED ==========');
+  console.error("[cleanupClientWasm] ========== CLEANUP CALLED ==========");
   if (wasmModule) {
-    console.error('[cleanupClientWasm] Calling _client_cleanup()...');
+    console.error("[cleanupClientWasm] Calling _client_cleanup()...");
     wasmModule._client_cleanup();
     wasmModule = null;
-    console.error('[cleanupClientWasm] Cleanup complete, module set to null');
+    console.error("[cleanupClientWasm] Cleanup complete, module set to null");
   } else {
-    console.error('[cleanupClientWasm] No module to cleanup');
+    console.error("[cleanupClientWasm] No module to cleanup");
   }
 }
 
@@ -268,18 +304,20 @@ export function cleanupClientWasm(): void {
  */
 export async function generateKeypair(): Promise<string> {
   if (!wasmModule) {
-    throw new Error('WASM module not initialized. Call initClientWasm() first.');
+    throw new Error(
+      "WASM module not initialized. Call initClientWasm() first.",
+    );
   }
 
   const result = wasmModule._client_generate_keypair();
   if (result !== 0) {
-    throw new Error('Failed to generate keypair');
+    throw new Error("Failed to generate keypair");
   }
 
   // Get the public key as hex string
   const pubkeyPtr = wasmModule._client_get_public_key_hex();
   if (!pubkeyPtr) {
-    throw new Error('Failed to retrieve public key');
+    throw new Error("Failed to retrieve public key");
   }
 
   const publicKeyHex = wasmModule.UTF8ToString(pubkeyPtr);
@@ -293,21 +331,23 @@ export async function generateKeypair(): Promise<string> {
  */
 export function setServerAddress(serverHost: string, serverPort: number): void {
   if (!wasmModule) {
-    throw new Error('WASM module not initialized. Call initClientWasm() first.');
+    throw new Error(
+      "WASM module not initialized. Call initClientWasm() first.",
+    );
   }
 
   // Allocate string for server host
   const hostLen = wasmModule.lengthBytesUTF8(serverHost) + 1;
   const hostPtr = wasmModule._malloc(hostLen);
   if (!hostPtr) {
-    throw new Error('Failed to allocate memory for server host');
+    throw new Error("Failed to allocate memory for server host");
   }
 
   try {
     wasmModule.stringToUTF8(serverHost, hostPtr, hostLen);
     const result = wasmModule._client_set_server_address(hostPtr, serverPort);
     if (result !== 0) {
-      throw new Error('Failed to set server address');
+      throw new Error("Failed to set server address");
     }
   } finally {
     wasmModule._free(hostPtr);
@@ -320,7 +360,7 @@ export function setServerAddress(serverHost: string, serverPort: number): void {
  */
 export function handleKeyExchangeInit(rawPacket: Uint8Array): void {
   if (!wasmModule) {
-    throw new Error('WASM module not initialized');
+    throw new Error("WASM module not initialized");
   }
 
   // Allocate memory for packet
@@ -330,9 +370,12 @@ export function handleKeyExchangeInit(rawPacket: Uint8Array): void {
     wasmModule.HEAPU8.set(rawPacket, packetPtr);
 
     // Call WASM handshake callback
-    const result = wasmModule._client_handle_key_exchange_init(packetPtr, rawPacket.length);
+    const result = wasmModule._client_handle_key_exchange_init(
+      packetPtr,
+      rawPacket.length,
+    );
     if (result !== 0) {
-      throw new Error('Failed to handle KEY_EXCHANGE_INIT');
+      throw new Error("Failed to handle KEY_EXCHANGE_INIT");
     }
   } finally {
     wasmModule._free(packetPtr);
@@ -344,16 +387,19 @@ export function handleKeyExchangeInit(rawPacket: Uint8Array): void {
  */
 export function handleAuthChallenge(rawPacket: Uint8Array): void {
   if (!wasmModule) {
-    throw new Error('WASM module not initialized');
+    throw new Error("WASM module not initialized");
   }
 
   const packetPtr = wasmModule._malloc(rawPacket.length);
   try {
     wasmModule.HEAPU8.set(rawPacket, packetPtr);
 
-    const result = wasmModule._client_handle_auth_challenge(packetPtr, rawPacket.length);
+    const result = wasmModule._client_handle_auth_challenge(
+      packetPtr,
+      rawPacket.length,
+    );
     if (result !== 0) {
-      throw new Error('Failed to handle AUTH_CHALLENGE');
+      throw new Error("Failed to handle AUTH_CHALLENGE");
     }
   } finally {
     wasmModule._free(packetPtr);
@@ -365,16 +411,19 @@ export function handleAuthChallenge(rawPacket: Uint8Array): void {
  */
 export function handleHandshakeComplete(rawPacket: Uint8Array): void {
   if (!wasmModule) {
-    throw new Error('WASM module not initialized');
+    throw new Error("WASM module not initialized");
   }
 
   const packetPtr = wasmModule._malloc(rawPacket.length);
   try {
     wasmModule.HEAPU8.set(rawPacket, packetPtr);
 
-    const result = wasmModule._client_handle_handshake_complete(packetPtr, rawPacket.length);
+    const result = wasmModule._client_handle_handshake_complete(
+      packetPtr,
+      rawPacket.length,
+    );
     if (result !== 0) {
-      throw new Error('Failed to handle HANDSHAKE_COMPLETE');
+      throw new Error("Failed to handle HANDSHAKE_COMPLETE");
     }
   } finally {
     wasmModule._free(packetPtr);
@@ -385,9 +434,11 @@ export function handleHandshakeComplete(rawPacket: Uint8Array): void {
  * Register callback for WASM to send packets back to JavaScript
  * This is called by crypto handshake callbacks when they need to send responses
  */
-export function registerSendPacketCallback(callback: (rawPacket: Uint8Array) => void): void {
+export function registerSendPacketCallback(
+  callback: (rawPacket: Uint8Array) => void,
+): void {
   if (!wasmModule) {
-    throw new Error('WASM module not initialized');
+    throw new Error("WASM module not initialized");
   }
 
   wasmModule.sendPacketCallback = callback;
@@ -398,7 +449,7 @@ export function registerSendPacketCallback(callback: (rawPacket: Uint8Array) => 
  */
 export function encryptPacket(plaintext: Uint8Array): Uint8Array {
   if (!wasmModule) {
-    throw new Error('WASM module not initialized');
+    throw new Error("WASM module not initialized");
   }
 
   // Allocate buffers
@@ -410,7 +461,7 @@ export function encryptPacket(plaintext: Uint8Array): Uint8Array {
     if (ptPtr) wasmModule._free(ptPtr);
     if (ctPtr) wasmModule._free(ctPtr);
     if (outLenPtr) wasmModule._free(outLenPtr);
-    throw new Error('Failed to allocate memory for encryption');
+    throw new Error("Failed to allocate memory for encryption");
   }
 
   try {
@@ -420,13 +471,15 @@ export function encryptPacket(plaintext: Uint8Array): Uint8Array {
     // Call encryption
     // C signature: client_encrypt_packet(plaintext, plaintext_len, ciphertext, ciphertext_size, out_len)
     const result = wasmModule._client_encrypt_packet(
-      ptPtr, plaintext.length,
-      ctPtr, plaintext.length + 48,
-      outLenPtr
+      ptPtr,
+      plaintext.length,
+      ctPtr,
+      plaintext.length + 48,
+      outLenPtr,
     );
 
     if (result !== 0) {
-      throw new Error('Encryption failed');
+      throw new Error("Encryption failed");
     }
 
     // Read output length
@@ -449,7 +502,7 @@ export function encryptPacket(plaintext: Uint8Array): Uint8Array {
  */
 export function decryptPacket(ciphertext: Uint8Array): Uint8Array {
   if (!wasmModule) {
-    throw new Error('WASM module not initialized');
+    throw new Error("WASM module not initialized");
   }
 
   // Allocate buffers
@@ -461,7 +514,7 @@ export function decryptPacket(ciphertext: Uint8Array): Uint8Array {
     if (ctPtr) wasmModule._free(ctPtr);
     if (ptPtr) wasmModule._free(ptPtr);
     if (outLenPtr) wasmModule._free(outLenPtr);
-    throw new Error('Failed to allocate memory for decryption');
+    throw new Error("Failed to allocate memory for decryption");
   }
 
   try {
@@ -471,13 +524,15 @@ export function decryptPacket(ciphertext: Uint8Array): Uint8Array {
     // Call decryption
     // C signature: client_decrypt_packet(ciphertext, ciphertext_len, plaintext, plaintext_size, out_len)
     const result = wasmModule._client_decrypt_packet(
-      ctPtr, ciphertext.length,
-      ptPtr, ciphertext.length,
-      outLenPtr
+      ctPtr,
+      ciphertext.length,
+      ptPtr,
+      ciphertext.length,
+      outLenPtr,
     );
 
     if (result !== 0) {
-      throw new Error('Decryption failed');
+      throw new Error("Decryption failed");
     }
 
     // Read output length
@@ -500,12 +555,12 @@ export function decryptPacket(ciphertext: Uint8Array): Uint8Array {
  */
 export function parsePacket(rawPacket: Uint8Array): ParsedPacket {
   if (!wasmModule) {
-    throw new Error('WASM module not initialized');
+    throw new Error("WASM module not initialized");
   }
 
   const pktPtr = wasmModule._malloc(rawPacket.length);
   if (!pktPtr) {
-    throw new Error('Failed to allocate memory for packet');
+    throw new Error("Failed to allocate memory for packet");
   }
 
   try {
@@ -515,7 +570,7 @@ export function parsePacket(rawPacket: Uint8Array): ParsedPacket {
     // Call parse function
     const jsonPtr = wasmModule._client_parse_packet(pktPtr, rawPacket.length);
     if (!jsonPtr) {
-      throw new Error('Failed to parse packet');
+      throw new Error("Failed to parse packet");
     }
 
     // Read JSON string
@@ -535,13 +590,14 @@ export function parsePacket(rawPacket: Uint8Array): ParsedPacket {
 export function serializePacket(
   packetType: number,
   payload: Uint8Array,
-  clientId: number
+  clientId: number,
 ): Uint8Array {
   if (!wasmModule) {
-    throw new Error('WASM module not initialized');
+    throw new Error("WASM module not initialized");
   }
 
-  const payloadPtr = payload.length > 0 ? wasmModule._malloc(payload.length) : 0;
+  const payloadPtr =
+    payload.length > 0 ? wasmModule._malloc(payload.length) : 0;
   const outputPtr = wasmModule._malloc(payload.length + 256); // Room for header
   const outLenPtr = wasmModule._malloc(4); // 32-bit size_t
 
@@ -549,7 +605,7 @@ export function serializePacket(
     if (payloadPtr) wasmModule._free(payloadPtr);
     if (outputPtr) wasmModule._free(outputPtr);
     if (outLenPtr) wasmModule._free(outLenPtr);
-    throw new Error('Failed to allocate memory for serialization');
+    throw new Error("Failed to allocate memory for serialization");
   }
 
   try {
@@ -565,11 +621,11 @@ export function serializePacket(
       payload.length,
       clientId,
       outputPtr,
-      outLenPtr
+      outLenPtr,
     );
 
     if (result !== 0) {
-      throw new Error('Serialization failed');
+      throw new Error("Serialization failed");
     }
 
     // Read output length
@@ -590,21 +646,25 @@ export function serializePacket(
 /**
  * Send a video frame (placeholder for now)
  */
-export async function sendVideoFrame(rgbaData: Uint8Array, width: number, height: number): Promise<void> {
+export async function sendVideoFrame(
+  rgbaData: Uint8Array,
+  width: number,
+  height: number,
+): Promise<void> {
   if (!wasmModule) {
-    throw new Error('WASM module not initialized');
+    throw new Error("WASM module not initialized");
   }
 
   const dataPtr = wasmModule._malloc(rgbaData.length);
   if (!dataPtr) {
-    throw new Error('Failed to allocate memory for video frame');
+    throw new Error("Failed to allocate memory for video frame");
   }
 
   try {
     wasmModule.HEAPU8.set(rgbaData, dataPtr);
     const result = wasmModule._client_send_video_frame(dataPtr, width, height);
     if (result !== 0) {
-      throw new Error('Failed to send video frame');
+      throw new Error("Failed to send video frame");
     }
   } finally {
     wasmModule._free(dataPtr);
@@ -616,7 +676,7 @@ export async function sendVideoFrame(rgbaData: Uint8Array, width: number, height
  */
 export function getConnectionState(): ConnectionState {
   if (!wasmModule) {
-    throw new Error('WASM module not initialized');
+    throw new Error("WASM module not initialized");
   }
   return wasmModule._client_get_connection_state();
 }

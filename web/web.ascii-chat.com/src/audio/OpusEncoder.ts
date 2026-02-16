@@ -5,10 +5,25 @@
 
 // Import WASM module interface (will be available after client WASM loads)
 interface ClientWasmModule {
-  _client_opus_encoder_init(sampleRate: number, channels: number, bitrate: number): number;
+  _client_opus_encoder_init(
+    sampleRate: number,
+    channels: number,
+    bitrate: number,
+  ): number;
   _client_opus_decoder_init(sampleRate: number, channels: number): number;
-  _client_opus_encode(pcmPtr: number, frameSize: number, opusPtr: number, maxBytes: number): number;
-  _client_opus_decode(opusPtr: number, opusBytes: number, pcmPtr: number, frameSize: number, decodeFec: number): number;
+  _client_opus_encode(
+    pcmPtr: number,
+    frameSize: number,
+    opusPtr: number,
+    maxBytes: number,
+  ): number;
+  _client_opus_decode(
+    opusPtr: number,
+    opusBytes: number,
+    pcmPtr: number,
+    frameSize: number,
+    decodeFec: number,
+  ): number;
   _client_opus_encoder_cleanup(): void;
   _client_opus_decoder_cleanup(): void;
   _malloc(size: number): number;
@@ -48,25 +63,25 @@ export class OpusEncoder {
     const encResult = wasmModule._client_opus_encoder_init(
       this.options.sampleRate,
       this.options.channelCount,
-      bitrate
+      bitrate,
     );
 
     if (encResult !== 0) {
-      throw new Error('Failed to initialize Opus encoder');
+      throw new Error("Failed to initialize Opus encoder");
     }
 
     // Initialize decoder
     const decResult = wasmModule._client_opus_decoder_init(
       this.options.sampleRate,
-      this.options.channelCount
+      this.options.channelCount,
     );
 
     if (decResult !== 0) {
-      throw new Error('Failed to initialize Opus decoder');
+      throw new Error("Failed to initialize Opus decoder");
     }
 
     this.initialized = true;
-    console.log('[OpusEncoder] Initialized with', this.options);
+    console.log("[OpusEncoder] Initialized with", this.options);
   }
 
   /**
@@ -76,7 +91,7 @@ export class OpusEncoder {
    */
   encode(pcmData: Int16Array): Uint8Array {
     if (!this.initialized || !this.wasmModule) {
-      throw new Error('Opus encoder not initialized');
+      throw new Error("Opus encoder not initialized");
     }
 
     const frameSize = pcmData.length / this.options.channelCount;
@@ -95,16 +110,18 @@ export class OpusEncoder {
         pcmPtr,
         frameSize,
         opusPtr,
-        maxOpusBytes
+        maxOpusBytes,
       );
 
       if (encodedBytes < 0) {
-        throw new Error('Opus encoding failed');
+        throw new Error("Opus encoding failed");
       }
 
       // Copy encoded data from WASM memory
       const opusData = new Uint8Array(encodedBytes);
-      opusData.set(this.wasmModule.HEAPU8.subarray(opusPtr, opusPtr + encodedBytes));
+      opusData.set(
+        this.wasmModule.HEAPU8.subarray(opusPtr, opusPtr + encodedBytes),
+      );
 
       return opusData;
     } finally {
@@ -122,7 +139,7 @@ export class OpusEncoder {
    */
   decode(opusData: Uint8Array, frameSize: number = 960): Int16Array {
     if (!this.initialized || !this.wasmModule) {
-      throw new Error('Opus decoder not initialized');
+      throw new Error("Opus decoder not initialized");
     }
 
     const maxPcmSamples = frameSize * this.options.channelCount;
@@ -141,17 +158,22 @@ export class OpusEncoder {
         opusData.length,
         pcmPtr,
         frameSize,
-        0 // decode_fec = false
+        0, // decode_fec = false
       );
 
       if (decodedSamples < 0) {
-        throw new Error('Opus decoding failed');
+        throw new Error("Opus decoding failed");
       }
 
       // Copy decoded PCM from WASM memory
       const totalSamples = decodedSamples * this.options.channelCount;
       const pcmData = new Int16Array(totalSamples);
-      pcmData.set(this.wasmModule.HEAP16.subarray(pcmPtr >> 1, (pcmPtr >> 1) + totalSamples));
+      pcmData.set(
+        this.wasmModule.HEAP16.subarray(
+          pcmPtr >> 1,
+          (pcmPtr >> 1) + totalSamples,
+        ),
+      );
 
       return pcmData;
     } finally {
@@ -174,7 +196,7 @@ export class OpusEncoder {
 
     this.initialized = false;
     this.wasmModule = null;
-    console.log('[OpusEncoder] Cleaned up');
+    console.log("[OpusEncoder] Cleaned up");
   }
 
   /**

@@ -9,8 +9,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const getCommitSha = () => {
   // Check for Vercel's built-in environment variable first
-  if (process.env.VERCEL_GIT_COMMIT_SHA) {
-    return process.env.VERCEL_GIT_COMMIT_SHA.substring(0, 8);
+  const vercelSha =
+    typeof process !== "undefined" && process.env?.VERCEL_GIT_COMMIT_SHA;
+  if (vercelSha) {
+    return vercelSha.substring(0, 8);
   }
 
   // Fall back to git command for local development

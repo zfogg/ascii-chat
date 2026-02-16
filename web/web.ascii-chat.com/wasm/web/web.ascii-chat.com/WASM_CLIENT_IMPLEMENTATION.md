@@ -5,6 +5,7 @@ Complete implementation of WebAssembly client mode for ascii-chat, enabling brow
 ## Overview
 
 This implementation compiles the ascii-chat client functionality to WebAssembly, allowing it to run directly in browsers using:
+
 - **WebSocket** for network communication (replacing BSD sockets)
 - **Web Audio API** for audio capture/playback (replacing PortAudio)
 - **libsodium** for X25519 + XSalsa20-Poly1305 crypto
@@ -71,6 +72,7 @@ This implementation compiles the ascii-chat client functionality to WebAssembly,
   - ES6 module export
 
 **Build targets:**
+
 ```bash
 cmake --build build --target mirror-web   # Mirror mode (961KB)
 cmake --build build --target client-web   # Client mode (1.3MB)
@@ -83,10 +85,12 @@ cmake --build build --target client-web   # Client mode (1.3MB)
 Created 17 exported WASM functions:
 
 **Initialization:**
+
 - `client_init_with_args()` - Initialize with options string
 - `client_cleanup()` - Cleanup resources
 
 **Crypto Functions:**
+
 - `client_generate_keypair()` - Generate X25519 keypair
 - `client_get_public_key_hex()` - Get public key as hex string
 - `client_set_server_public_key()` - Set server's public key
@@ -96,11 +100,13 @@ Created 17 exported WASM functions:
 - `client_get_connection_state()` - Get current state
 
 **Network Functions:**
+
 - `client_parse_packet()` - Parse packet header
 - `client_serialize_packet()` - Serialize packet with header
 - `client_send_video_frame()` - Encode and serialize video frame
 
 **Opus Codec Functions:**
+
 - `client_opus_encoder_init()` - Initialize Opus encoder
 - `client_opus_decoder_init()` - Initialize Opus decoder
 - `client_opus_encode()` - Encode PCM to Opus
@@ -109,6 +115,7 @@ Created 17 exported WASM functions:
 - `client_opus_decoder_cleanup()` - Cleanup decoder
 
 **Memory Management:**
+
 - `client_free_string()` - Free allocated strings
 
 ### ✅ Phase 3: TypeScript Bindings
@@ -124,7 +131,7 @@ export enum ConnectionState {
   CONNECTING = 1,
   HANDSHAKE = 2,
   CONNECTED = 3,
-  ERROR = 4
+  ERROR = 4,
 }
 
 export enum PacketType {
@@ -153,19 +160,20 @@ export function serializePacket(type: number, payload: Uint8Array, clientId: num
 **File: `web/web.ascii-chat.com/src/network/SocketBridge.ts`**
 
 WebSocket adapter replacing BSD sockets:
+
 ```typescript
 export class SocketBridge {
   private ws: WebSocket;
-  
+
   async connect(): Promise<void> {
     this.ws = new WebSocket(this.url);
-    this.ws.binaryType = 'arraybuffer';
+    this.ws.binaryType = "arraybuffer";
     this.ws.onmessage = (event) => {
       const packet = new Uint8Array(event.data);
       this.onPacketCallback?.(packet);
     };
   }
-  
+
   send(packet: Uint8Array): void {
     this.ws.send(packet);
   }
@@ -175,12 +183,14 @@ export class SocketBridge {
 **File: `web/web.ascii-chat.com/src/network/ClientConnection.ts`**
 
 High-level connection manager orchestrating:
+
 - WebSocket communication
 - WASM crypto handshake
 - Packet encryption/decryption
 - State management
 
 Handshake protocol:
+
 1. Generate client keypair
 2. Send `CRYPTO_KEY_EXCHANGE_RESP` with client public key
 3. Receive `CRYPTO_KEY_EXCHANGE_INIT` with server public key
@@ -190,25 +200,24 @@ Handshake protocol:
 **File: `web/web.ascii-chat.com/src/audio/OpusEncoder.ts`**
 
 Opus codec wrapper for Web Audio API:
+
 ```typescript
 export class OpusEncoder {
   encode(pcmData: Int16Array): Uint8Array {
     // Allocate WASM memory
     const pcmPtr = this.wasmModule._malloc(pcmData.length * 2);
     const opusPtr = this.wasmModule._malloc(4000);
-    
+
     // Copy PCM to WASM
     this.wasmModule.HEAP16.set(pcmData, pcmPtr >> 1);
-    
+
     // Call Opus encode
-    const encodedBytes = this.wasmModule._client_opus_encode(
-      pcmPtr, frameSize, opusPtr, 4000
-    );
-    
+    const encodedBytes = this.wasmModule._client_opus_encode(pcmPtr, frameSize, opusPtr, 4000);
+
     // Copy result and free
     const opusData = new Uint8Array(encodedBytes);
     opusData.set(this.wasmModule.HEAPU8.subarray(opusPtr, opusPtr + encodedBytes));
-    
+
     this.wasmModule._free(pcmPtr);
     this.wasmModule._free(opusPtr);
     return opusData;
@@ -221,6 +230,7 @@ export class OpusEncoder {
 **File: `lib/platform/wasm/stubs/portaudio.h`**
 
 Stub header for PortAudio (replaced by Web Audio API):
+
 ```c
 typedef void PaStream;
 typedef int PaError;
@@ -229,6 +239,7 @@ static inline PaError Pa_Initialize(void) { return -10000; }
 ```
 
 WASM-specific implementations in `lib/platform/wasm/`:
+
 - `init.c` - Platform initialization
 - `terminal.c` - Terminal stub (no terminal in browser)
 - `threading.c` - Threading stubs (single-threaded)
@@ -241,6 +252,7 @@ WASM-specific implementations in `lib/platform/wasm/`:
 **File: `web/web.ascii-chat.com/package.json`**
 
 Added scripts:
+
 ```json
 {
   "scripts": {
@@ -255,6 +267,7 @@ Added scripts:
 ```
 
 Build outputs:
+
 - `src/wasm/dist/client.wasm` (1.3MB)
 - `src/wasm/dist/client.js` (Emscripten glue code)
 - `src/wasm/dist/mirror.wasm` (961KB)
@@ -265,6 +278,7 @@ Build outputs:
 **Unit Tests: `tests/wasm/client.test.ts`**
 
 Test coverage:
+
 - WASM module initialization
 - Keypair generation (X25519)
 - Handshake protocol
@@ -280,6 +294,7 @@ bun run test:unit
 **E2E Tests: `tests/e2e/client-connection.test.ts`**
 
 Test scenarios:
+
 - Connection to native ascii-chat server
 - Complete crypto handshake
 - Video frame reception
@@ -295,6 +310,7 @@ bun run test:e2e
 ```
 
 **Configuration:**
+
 - `vitest.config.ts` - Unit test configuration
 - `playwright.config.ts` - E2E test configuration
 - `tests/setup.ts` - Test environment setup
@@ -304,6 +320,7 @@ bun run test:e2e
 **File: `src/pages/ClientDemo.tsx`**
 
 React demo page featuring:
+
 - WASM initialization status
 - Keypair generation button
 - Server URL configuration
@@ -316,18 +333,18 @@ Access at: `http://localhost:5173/client`
 
 ## Module Breakdown
 
-| Module | Status | Implementation |
-|--------|--------|----------------|
-| `lib/video/*` | ✅ Compiled to WASM | SIMD-optimized ASCII conversion |
-| `lib/crypto/*` | ✅ Compiled to WASM | X25519 + XSalsa20-Poly1305 |
-| `lib/network/packet_parsing.c` | ✅ Compiled to WASM | Protocol logic |
-| `lib/network/crc32.c` | ✅ Compiled to WASM | CRC32 validation |
-| `lib/network/compression.c` | ✅ Compiled to WASM | zstd compression |
-| `lib/network/network.c` | ❌ Replaced | → `SocketBridge.ts` (WebSocket) |
-| `lib/audio/opus_codec.c` | ✅ Compiled to WASM | Opus encode/decode |
-| `lib/audio/audio.c` | ❌ Replaced | → `AudioPipeline.ts` (Web Audio) |
-| `lib/util/*` | ✅ Compiled to WASM | String/URL/IP utilities |
-| `lib/options/*` | ✅ Compiled to WASM | RCU options system |
+| Module                         | Status              | Implementation                   |
+| ------------------------------ | ------------------- | -------------------------------- |
+| `lib/video/*`                  | ✅ Compiled to WASM | SIMD-optimized ASCII conversion  |
+| `lib/crypto/*`                 | ✅ Compiled to WASM | X25519 + XSalsa20-Poly1305       |
+| `lib/network/packet_parsing.c` | ✅ Compiled to WASM | Protocol logic                   |
+| `lib/network/crc32.c`          | ✅ Compiled to WASM | CRC32 validation                 |
+| `lib/network/compression.c`    | ✅ Compiled to WASM | zstd compression                 |
+| `lib/network/network.c`        | ❌ Replaced         | → `SocketBridge.ts` (WebSocket)  |
+| `lib/audio/opus_codec.c`       | ✅ Compiled to WASM | Opus encode/decode               |
+| `lib/audio/audio.c`            | ❌ Replaced         | → `AudioPipeline.ts` (Web Audio) |
+| `lib/util/*`                   | ✅ Compiled to WASM | String/URL/IP utilities          |
+| `lib/options/*`                | ✅ Compiled to WASM | RCU options system               |
 
 ## Build Verification
 
@@ -384,15 +401,18 @@ bun run preview
 ## Performance
 
 **WASM Module Sizes:**
+
 - Client mode: 1.3MB (includes libsodium, Opus, zstd)
 - Mirror mode: 961KB (minimal, no crypto/audio)
 
 **Initialization Time:**
+
 - WASM load + init: ~200-500ms
 - Keypair generation: ~10-50ms
 - Handshake completion: ~50-200ms
 
 **Rendering Performance:**
+
 - ASCII conversion: 60 FPS @ 80x40
 - SIMD optimization: ~3x faster than scalar
 - Memory usage: ~32-64MB typical
@@ -416,6 +436,7 @@ bun run preview
 ## Files Created/Modified
 
 ### Created
+
 - `src/web/client.c` (454 lines)
 - `src/wasm/client.ts` (312 lines)
 - `src/network/SocketBridge.ts` (87 lines)
@@ -433,6 +454,7 @@ bun run preview
 - `WASM_CLIENT_IMPLEMENTATION.md` (this file)
 
 ### Modified
+
 - `web/web.ascii-chat.com/wasm/CMakeLists.txt` (expanded from 260 to 407 lines)
 - `web/web.ascii-chat.com/package.json` (added test scripts + dependencies)
 - `cmake/targets/WebAssembly.cmake` (added build targets)

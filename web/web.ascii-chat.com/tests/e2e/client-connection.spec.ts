@@ -56,7 +56,9 @@ test.describe("Client Connection to Native Server", () => {
     );
   });
 
-  test("should initialize WASM module and auto-generate keypair", async ({ page }) => {
+  test("should initialize WASM module and auto-generate keypair", async ({
+    page,
+  }) => {
     test.setTimeout(TEST_TIMEOUT);
     // Wait for public key to be displayed (WASM init + keypair gen happens during connect flow)
     await expect(page.locator('h2:text("Client Public Key")')).toBeVisible({
@@ -79,12 +81,12 @@ test.describe("Client Connection to Native Server", () => {
         };
         ws.onmessage = (e) => {
           const data = new Uint8Array(e.data as ArrayBuffer);
-          const type = data.length >= 10 ? ((data[8] << 8) | data[9]) : -1;
+          const type = data.length >= 10 ? (data[8] << 8) | data[9] : -1;
           msgs.push(`MSG:len=${data.length},type=${type}`);
           console.error(
-            `[RAW WS] Received ${data.length} bytes, type=${type} (0x${
-              type.toString(16)
-            })`,
+            `[RAW WS] Received ${data.length} bytes, type=${type} (0x${type.toString(
+              16,
+            )})`,
           );
         };
         ws.onerror = (e) => {
@@ -110,7 +112,9 @@ test.describe("Client Connection to Native Server", () => {
     expect(result).toContain("MSG:");
   });
 
-  test("should auto-connect to native server and complete handshake", async ({ page }) => {
+  test("should auto-connect to native server and complete handshake", async ({
+    page,
+  }) => {
     test.setTimeout(TEST_TIMEOUT);
     // Collect all received packet types for debugging
     const packetTypes: string[] = [];
@@ -119,7 +123,8 @@ test.describe("Client Connection to Native Server", () => {
       // Capture packet type info from our debug logging
       if (
         text.includes("RECV packet type=") ||
-        text.includes("SEND packet type=") || text.includes("WASM->JS->WS")
+        text.includes("SEND packet type=") ||
+        text.includes("WASM->JS->WS")
       ) {
         packetTypes.push(text);
       }
@@ -162,8 +167,9 @@ test.describe("Client Connection to Native Server", () => {
     ).toBeVisible();
 
     // Connect button should be available again
-    await expect(page.locator('button:text("Connect to Server")'))
-      .toBeVisible();
+    await expect(
+      page.locator('button:text("Connect to Server")'),
+    ).toBeVisible();
   });
 
   test("should receive video frames from server", async ({ page }) => {
@@ -176,9 +182,8 @@ test.describe("Client Connection to Native Server", () => {
     });
 
     // Listen for packet received events in console
-    const packetReceived = page.waitForEvent(
-      "console",
-      (msg) => msg.text().includes("Received packet"),
+    const packetReceived = page.waitForEvent("console", (msg) =>
+      msg.text().includes("Received packet"),
     );
 
     // Wait for first packet (timeout after 10s)

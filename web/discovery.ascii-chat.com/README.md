@@ -9,6 +9,7 @@ Official ACDS (ASCII-Chat Discovery Service) public key distribution website
 This repository hosts the static website for ACDS public key distribution. The website serves Ed25519 public keys over HTTPS, which clients use to verify the identity of the official ACDS server at `discovery-service.ascii-chat.com:27225`.
 
 The site provides:
+
 - SSH Ed25519 public key (`/key.pub`)
 - GPG Ed25519 public key (`/key.gpg`)
 - Documentation on ACDS trust model and usage
@@ -28,11 +29,13 @@ The `export-keys.sh` script extracts the public key and converts it to distribut
 ### Website Build
 
 The site is a React/Vite SPA that:
+
 - Fetches public keys from `/key.pub` and `/key.gpg`
 - Displays fingerprints and usage examples
 - Provides ACDS documentation
 
 **Tech stack:**
+
 - React 18
 - Vite 6 (build tool)
 - Vercel Analytics
@@ -42,6 +45,7 @@ The site is a React/Vite SPA that:
 The website is deployed to Vercel and serves keys over HTTPS. Clients download keys via HTTPS (verified by system CA certificates), establishing trust for the raw TCP connection to the ACDS server.
 
 **Trust chain:**
+
 ```
 HTTPS CA → discovery.ascii-chat.com → ACDS public key → discovery-service.ascii-chat.com:27225
 ```

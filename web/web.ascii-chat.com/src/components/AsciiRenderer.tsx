@@ -1,226 +1,318 @@
-import { forwardRef, useImperativeHandle, useRef, useCallback } from 'react'
-import { XTerm } from '@pablo-lion/xterm-react'
-import { FitAddon } from '@xterm/addon-fit'
-import 'xterm/css/xterm.css'
+import {
+  forwardRef,
+  useImperativeHandle,
+  useRef,
+  useCallback,
+  useEffect,
+} from "react";
+import type { Terminal } from "xterm";
+import { XTerm, type XTerm as XTermType } from "@pablo-lion/xterm-react";
+import { FitAddon } from "@xterm/addon-fit";
+import "xterm/css/xterm.css";
 
 export interface AsciiRendererHandle {
-  writeFrame(ansiString: string): void
-  getDimensions(): { cols: number; rows: number }
-  clear(): void
+  writeFrame(ansiString: string): void;
+  getDimensions(): { cols: number; rows: number };
+  clear(): void;
 }
 
 export interface AsciiRendererProps {
-  onDimensionsChange?: (dims: { cols: number; rows: number }) => void
-  error?: string
-  showFps?: boolean
+  onDimensionsChange?: (dims: { cols: number; rows: number }) => void;
+  error?: string;
+  showFps?: boolean;
 }
 
-export const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
-  function AsciiRenderer({ onDimensionsChange, error, showFps = true }, ref) {
-    const xtermRef = useRef<any>(null)
-    const fitAddonRef = useRef<FitAddon | null>(null)
-    const fpsRef = useRef<HTMLDivElement>(null)
-    const setupDoneRef = useRef(false)
-    const dimensionsRef = useRef({ cols: 0, rows: 0 })
+export const AsciiRenderer = forwardRef<
+  AsciiRendererHandle,
+  AsciiRendererProps
+>(function AsciiRenderer({ onDimensionsChange, error, showFps = true }, ref) {
+  const xtermRef = useRef<XTermType | null>(null);
+  const fitAddonRef = useRef<FitAddon | null>(null);
+  const fpsRef = useRef<HTMLDivElement>(null);
+  const setupDoneRef = useRef(false);
+  const dimensionsRef = useRef({ cols: 0, rows: 0 });
 
-    // FPS tracking via direct DOM updates
-    const frameCountRef = useRef(0)
-    const fpsUpdateTimeRef = useRef(performance.now())
-    const lastDimsRef = useRef({ cols: 0, rows: 0 })
-    const pendingFrameRef = useRef<string | null>(null)
-    const rafIdRef = useRef<number | null>(null)
+  // FPS tracking via direct DOM updates
+  const frameCountRef = useRef(0);
+  const fpsUpdateTimeRef = useRef<number | null>(null);
+  const lastDimsRef = useRef({ cols: 0, rows: 0 });
+  const pendingFrameRef = useRef<string | null>(null);
+  const rafIdRef = useRef<number | null>(null);
 
-    const updateDimensions = useCallback((cols: number, rows: number) => {
-      console.log(`[AsciiRenderer] updateDimensions: ${cols}x${rows}`)
-      dimensionsRef.current = { cols, rows }
-      onDimensionsChange?.({ cols, rows })
-    }, [onDimensionsChange])
+  // Initialize FPS timer
+  useEffect(() => {
+    fpsUpdateTimeRef.current = performance.now();
+  }, []);
 
-    useImperativeHandle(ref, () => ({
+  const updateDimensions = useCallback(
+    (cols: number, rows: number) => {
+      console.log(`[AsciiRenderer] updateDimensions: ${cols}x${rows}`);
+      dimensionsRef.current = { cols, rows };
+      onDimensionsChange?.({ cols, rows });
+    },
+    [onDimensionsChange],
+  );
+
+  useImperativeHandle(
+    ref,
+    () => ({
       writeFrame(ansiString: string) {
         // Queue latest frame
-        pendingFrameRef.current = ansiString
+        pendingFrameRef.current = ansiString;
 
         // Cancel previous RAF if pending
         if (rafIdRef.current !== null) {
-          cancelAnimationFrame(rafIdRef.current)
+          cancelAnimationFrame(rafIdRef.current);
         }
 
         // Schedule render on next animation frame
         rafIdRef.current = requestAnimationFrame(() => {
-          const terminal = xtermRef.current?.terminal
-          if (!terminal || !pendingFrameRef.current) return
+          const xterm = xtermRef.current;
+          if (!xterm || !pendingFrameRef.current) return;
 
-          const ansiString = pendingFrameRef.current
-          console.log(`[AsciiRenderer] ========== WRITE FRAME ==========`)
-          console.log(`[AsciiRenderer] Input ANSI string: ${ansiString.length} chars`)
+          const terminal = (xterm as XTermType & { terminal: Terminal })
+            .terminal;
+          if (!terminal) return;
 
-          const lines = ansiString.split('\n')
-          console.log(`[AsciiRenderer] Lines in input: ${lines.length}`)
-          console.log(`[AsciiRenderer] First 3 lines (first 80 chars each):`)
+          const ansiString = pendingFrameRef.current;
+          console.log(`[AsciiRenderer] ========== WRITE FRAME ==========`);
+          console.log(
+            `[AsciiRenderer] Input ANSI string: ${ansiString.length} chars`,
+          );
+
+          const lines = ansiString.split("\n");
+          console.log(`[AsciiRenderer] Lines in input: ${lines.length}`);
+          console.log(`[AsciiRenderer] First 3 lines (first 80 chars each):`);
           lines.slice(0, 3).forEach((line, i) => {
-            console.log(`[AsciiRenderer]   Line ${i}: "${line.substring(0, 80)}"`)
-          })
+            console.log(
+              `[AsciiRenderer]   Line ${i}: "${line.substring(0, 80)}"`,
+            );
+          });
 
           const formattedLines = lines.map((line: string, index: number) =>
-            index < lines.length - 1 ? line + '\r\n' : line
-          )
+            index < lines.length - 1 ? line + "\r\n" : line,
+          );
 
           // Use cursor home only. Clear screen only when dimensions changed.
-          const dims = dimensionsRef.current
-          let prefix = '\x1b[H'
-          if (lastDimsRef.current.cols !== dims.cols || lastDimsRef.current.rows !== dims.rows) {
-            prefix = '\x1b[H\x1b[J'
-            lastDimsRef.current = { ...dims }
-            console.log(`[AsciiRenderer] Dimensions changed, clearing screen: ${dims.cols}x${dims.rows}`)
+          const dims = dimensionsRef.current;
+          let prefix = "\x1b[H";
+          if (
+            lastDimsRef.current.cols !== dims.cols ||
+            lastDimsRef.current.rows !== dims.rows
+          ) {
+            prefix = "\x1b[H\x1b[J";
+            lastDimsRef.current = { ...dims };
+            console.log(
+              `[AsciiRenderer] Dimensions changed, clearing screen: ${dims.cols}x${dims.rows}`,
+            );
           }
 
-          const output = prefix + formattedLines.join('')
-          console.log(`[AsciiRenderer] Output to terminal: ${output.length} chars`)
-          console.log(`[AsciiRenderer] Prefix bytes: ${Array.from(prefix).map(c => '0x' + c.charCodeAt(0).toString(16)).join(' ')}`)
-          console.log(`[AsciiRenderer] ========== WRITING TO XTERM ==========`)
+          const output = prefix + formattedLines.join("");
+          console.log(
+            `[AsciiRenderer] Output to terminal: ${output.length} chars`,
+          );
+          console.log(
+            `[AsciiRenderer] Prefix bytes: ${Array.from(prefix)
+              .map((c) => "0x" + c.charCodeAt(0).toString(16))
+              .join(" ")}`,
+          );
+          console.log(`[AsciiRenderer] ========== WRITING TO XTERM ==========`);
 
-          terminal.write(output)
-          console.log(`[AsciiRenderer] Frame written to xterm`)
+          terminal.write(output);
+          console.log(`[AsciiRenderer] Frame written to xterm`);
 
           // Ensure terminal is not paused and will render
-          const core = (terminal as any)._core
+          const core = (
+            terminal as Terminal & {
+              _core?: {
+                _renderService?: {
+                  _isPaused: boolean;
+                  _renderRows?: (start: number, end: number) => void;
+                };
+              };
+            }
+          )._core;
           if (core && core._renderService) {
-            const renderService = core._renderService
-            const wasPaused = renderService._isPaused
-            console.log(`[AsciiRenderer] ===== RENDER SERVICE STATE =====`)
-            console.log(`[AsciiRenderer] isPaused BEFORE: ${wasPaused}`)
+            const renderService = core._renderService;
+            const wasPaused = renderService._isPaused;
+            console.log(`[AsciiRenderer] ===== RENDER SERVICE STATE =====`);
+            console.log(`[AsciiRenderer] isPaused BEFORE: ${wasPaused}`);
 
             // Force unpause - this is critical for continuous rendering
-            renderService._isPaused = false
-            console.log(`[AsciiRenderer] isPaused AFTER setting to false: ${renderService._isPaused}`)
+            renderService._isPaused = false;
+            console.log(
+              `[AsciiRenderer] isPaused AFTER setting to false: ${renderService._isPaused}`,
+            );
 
             // Call _renderRows to force immediate render of the updated content
             // This is the actual render method in xterm 5.3.0
-            if ((renderService as any)._renderRows) {
+            if (renderService._renderRows) {
               try {
-                (renderService as any)._renderRows(0, terminal.rows)
-                console.log(`[AsciiRenderer] Called _renderRows(0, ${terminal.rows})`)
+                renderService._renderRows(0, terminal.rows);
+                console.log(
+                  `[AsciiRenderer] Called _renderRows(0, ${terminal.rows})`,
+                );
               } catch (e) {
-                console.error(`[AsciiRenderer] Error calling _renderRows: ${e}`)
+                console.error(
+                  `[AsciiRenderer] Error calling _renderRows: ${e}`,
+                );
               }
             } else {
-              console.error(`[AsciiRenderer] _renderRows method not found!`)
+              console.error(`[AsciiRenderer] _renderRows method not found!`);
             }
           } else {
-            console.error(`[AsciiRenderer] ERROR: Cannot access render service. core=${!!core}, _renderService=${core?._renderService}`)
+            console.error(
+              `[AsciiRenderer] ERROR: Cannot access render service. core=${!!core}, _renderService=${core?._renderService}`,
+            );
           }
 
           // Update FPS counter via direct DOM mutation
-          if (showFps && fpsRef.current) {
-            frameCountRef.current++
-            const now = performance.now()
-            if (now - fpsUpdateTimeRef.current >= 1000) {
-              const fps = Math.round(frameCountRef.current / ((now - fpsUpdateTimeRef.current) / 1000))
-              fpsRef.current.textContent = fps.toString()
-              frameCountRef.current = 0
-              fpsUpdateTimeRef.current = now
+          if (showFps && fpsRef.current && fpsUpdateTimeRef.current !== null) {
+            frameCountRef.current++;
+            const now = performance.now();
+            const elapsed = now - fpsUpdateTimeRef.current;
+            if (elapsed >= 1000) {
+              const fps = Math.round(frameCountRef.current / (elapsed / 1000));
+              fpsRef.current.textContent = fps.toString();
+              frameCountRef.current = 0;
+              fpsUpdateTimeRef.current = now;
             }
           }
 
-          rafIdRef.current = null
-        })
+          rafIdRef.current = null;
+        });
       },
 
       getDimensions() {
-        const dims = dimensionsRef.current
-        console.log(`[AsciiRenderer] getDimensions: ${dims.cols}x${dims.rows}`)
-        return dims
+        const dims = dimensionsRef.current;
+        console.log(`[AsciiRenderer] getDimensions: ${dims.cols}x${dims.rows}`);
+        return dims;
       },
 
       clear() {
-        const terminal = xtermRef.current?.terminal
-        if (terminal) {
-          console.log('[AsciiRenderer] clear()')
-          terminal.clear()
-        } else {
-          console.log('[AsciiRenderer] clear() - terminal not available')
+        const xterm = xtermRef.current;
+        if (xterm) {
+          const terminal = (xterm as XTermType & { terminal: Terminal })
+            .terminal;
+          if (terminal) {
+            console.log("[AsciiRenderer] clear()");
+            terminal.clear();
+          }
         }
-      }
-    }), [showFps])
+      },
+    }),
+    [showFps],
+  );
 
-    const handleXTermRef = useCallback((instance: any) => {
-      console.log('[AsciiRenderer] handleXTermRef called')
-      xtermRef.current = instance
+  const handleXTermRef = useCallback(
+    (instance: XTermType | null) => {
+      console.log("[AsciiRenderer] handleXTermRef called");
+      xtermRef.current = instance;
 
-      if (!instance) {
-        console.log('[AsciiRenderer] instance is null, skipping setup')
-        return
-      }
+      if (!instance) return;
 
       if (setupDoneRef.current) {
-        console.log('[AsciiRenderer] setup already done, skipping')
-        return
+        console.log("[AsciiRenderer] setup already done, skipping");
+        return;
       }
 
-      console.log('[AsciiRenderer] Scheduling xterm setup...')
+      console.log("[AsciiRenderer] Scheduling xterm setup...");
       setTimeout(() => {
-        console.log('[AsciiRenderer] Setup timeout triggered')
-        if (!instance.terminal) {
-          console.log('[AsciiRenderer] terminal not available yet')
-          return
+        console.log("[AsciiRenderer] Setup timeout triggered");
+        if (!instance) return;
+
+        const terminal = (instance as XTermType & { terminal: Terminal })
+          .terminal;
+        if (!terminal) {
+          console.error("[AsciiRenderer] No terminal instance found");
+          return;
         }
 
-        console.log('[AsciiRenderer] Terminal instance ready, setting up')
-        const terminal = instance.terminal
-        const fitAddon = new FitAddon()
-        console.log('[AsciiRenderer] Loading FitAddon')
-        terminal.loadAddon(fitAddon)
+        console.log("[AsciiRenderer] Terminal instance ready, setting up");
+        const fitAddon = new FitAddon();
+        console.log("[AsciiRenderer] Loading FitAddon");
+        terminal.loadAddon(fitAddon);
 
         try {
-          console.log('[AsciiRenderer] Calling fitAddon.fit()')
-          fitAddon.fit()
-          console.log(`[AsciiRenderer] FitAddon fit complete: ${terminal.cols}x${terminal.rows}`)
-          updateDimensions(terminal.cols, terminal.rows)
+          console.log("[AsciiRenderer] Calling fitAddon.fit()");
+          fitAddon.fit();
+          console.log(
+            `[AsciiRenderer] FitAddon fit complete: ${terminal.cols}x${terminal.rows}`,
+          );
+          updateDimensions(terminal.cols, terminal.rows);
         } catch (e) {
-          console.error('[AsciiRenderer] FitAddon error:', e)
+          console.error("[AsciiRenderer] FitAddon error:", e);
         }
 
-        fitAddonRef.current = fitAddon
+        fitAddonRef.current = fitAddon;
 
         // Disable IntersectionObserver pause mechanism
-        console.log('[AsciiRenderer] Disabling IntersectionObserver pause mechanism')
-        const core = (terminal as any)._core
+        console.log(
+          "[AsciiRenderer] Disabling IntersectionObserver pause mechanism",
+        );
+        const core = (
+          terminal as Terminal & {
+            _core?: {
+              _renderService?: {
+                _handleIntersectionChange: {
+                  bind: (
+                    context: unknown,
+                  ) => (entry: IntersectionObserverEntry) => void;
+                };
+                _isPaused: boolean;
+              };
+            };
+          }
+        )._core;
         if (core) {
-          const renderService = core._renderService
+          const renderService = core._renderService;
           if (renderService) {
-            const originalHandler = renderService._handleIntersectionChange.bind(renderService)
-            renderService._handleIntersectionChange = (entry: any) => {
-              originalHandler(entry)
-              renderService._isPaused = false
-            }
-            renderService._isPaused = false
-            console.log('[AsciiRenderer] IntersectionObserver override applied')
+            const originalHandler =
+              renderService._handleIntersectionChange.bind(renderService);
+            renderService._handleIntersectionChange = (
+              entry: IntersectionObserverEntry,
+            ) => {
+              originalHandler(entry);
+              renderService._isPaused = false;
+            };
+            renderService._isPaused = false;
+            console.log(
+              "[AsciiRenderer] IntersectionObserver override applied",
+            );
           }
         }
 
         const handleResize = () => {
           try {
-            console.log('[AsciiRenderer] Window resize event')
-            fitAddon.fit()
-            updateDimensions(terminal.cols, terminal.rows)
+            console.log("[AsciiRenderer] Window resize event");
+            fitAddon.fit();
+            updateDimensions(terminal.cols, terminal.rows);
           } catch (e) {
-            console.error('[AsciiRenderer] Resize error:', e)
+            console.error("[AsciiRenderer] Resize error:", e);
           }
-        }
-        window.addEventListener('resize', handleResize)
-        console.log('[AsciiRenderer] Resize event listener added')
+        };
+        window.addEventListener("resize", handleResize);
+        console.log("[AsciiRenderer] Resize event listener added");
 
-        console.log('[AsciiRenderer] Setup complete')
-        setupDoneRef.current = true
-      }, 100)
-    }, [updateDimensions])
+        console.log("[AsciiRenderer] Setup complete");
+        setupDoneRef.current = true;
+      }, 100);
+    },
+    [updateDimensions],
+  );
 
-    return (
-      <>
-        {/* ASCII terminal output */}
-        <div className="flex-1 px-4 py-2 overflow-hidden min-h-0" style={{ pointerEvents: 'none', display: 'flex', flexDirection: 'column' }}>
-          <style>{`
+  return (
+    <>
+      {/* ASCII terminal output */}
+      <div
+        className="flex-1 px-4 py-2 overflow-hidden min-h-0"
+        style={{
+          pointerEvents: "none",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <style>{`
             .xterm {
               flex: 1 !important;
               min-height: 0;
@@ -231,43 +323,48 @@ export const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>
               overflow-x: hidden !important;
             }
           `}</style>
-          <XTerm
-            ref={handleXTermRef}
-            options={{
-              theme: {
-                background: '#0c0c0c',
-                foreground: '#cccccc',
-              },
-              cursorStyle: 'block',
-              cursorBlink: false,
-              fontFamily: '"FiraCode Nerd Font Mono", "Fira Code", monospace',
-              fontSize: 12,
-              scrollback: 0,
-              disableStdin: true,
-              allowTransparency: false,
-              convertEol: false,
-              drawBoldTextInBrightColors: true,
-            }}
-            className="flex flex-1 rounded bg-terminal-bg"
-          />
+        <XTerm
+          ref={handleXTermRef}
+          options={{
+            theme: {
+              background: "#0c0c0c",
+              foreground: "#cccccc",
+            },
+            cursorStyle: "block",
+            cursorBlink: false,
+            fontFamily: '"FiraCode Nerd Font Mono", "Fira Code", monospace',
+            fontSize: 12,
+            scrollback: 0,
+            disableStdin: true,
+            allowTransparency: false,
+            convertEol: false,
+            drawBoldTextInBrightColors: true,
+          }}
+          className="flex flex-1 rounded bg-terminal-bg"
+        />
+      </div>
+
+      {/* FPS counter */}
+      {showFps && (
+        <div
+          className="text-xs text-terminal-8 absolute top-0 right-0 px-2 py-1"
+          style={{ pointerEvents: "none" }}
+        >
+          FPS:{" "}
+          <span className="text-terminal-2" ref={fpsRef}>
+            --
+          </span>
         </div>
+      )}
 
-        {/* FPS counter */}
-        {showFps && (
-          <div className="text-xs text-terminal-8 absolute top-0 right-0 px-2 py-1" style={{ pointerEvents: 'none' }}>
-            FPS: <span className="text-terminal-2" ref={fpsRef}>--</span>
+      {/* Error bar */}
+      {error && (
+        <div className="px-4 pb-2">
+          <div className="p-4 bg-terminal-1 text-terminal-fg rounded">
+            {error}
           </div>
-        )}
-
-        {/* Error bar */}
-        {error && (
-          <div className="px-4 pb-2">
-            <div className="p-4 bg-terminal-1 text-terminal-fg rounded">
-              {error}
-            </div>
-          </div>
-        )}
-      </>
-    )
-  }
-)
+        </div>
+      )}
+    </>
+  );
+});

@@ -3,7 +3,6 @@ import { trackLinkClick } from "../utils/analytics";
 
 export default function TrackedLink({ to, href, label, children, ...props }) {
   const url = to || href;
-  const isExternal = href && (href.startsWith("http") || href.startsWith("//"));
 
   const handleClick = () => {
     trackLinkClick(url, label);

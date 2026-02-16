@@ -50,8 +50,9 @@ test("Browser receives multiple ENCRYPTED packets from server", async ({
         configurable: true,
       });
     } else {
-      const originalGetUserMedia =
-        navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+      const originalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(
+        navigator.mediaDevices,
+      );
       navigator.mediaDevices.getUserMedia = async (constraints) => {
         if (constraints.video) return stream;
         return originalGetUserMedia(constraints);
@@ -63,9 +64,14 @@ test("Browser receives multiple ENCRYPTED packets from server", async ({
     const text = msg.text();
 
     // Count ENCRYPTED packet receives
-    if (text.includes("[SocketBridge] <<< RECV") && text.includes("pkt_type=1200")) {
+    if (
+      text.includes("[SocketBridge] <<< RECV") &&
+      text.includes("pkt_type=1200")
+    ) {
       encryptedPackets.push(Date.now());
-      console.log(`[TEST] ENCRYPTED packet #${encryptedPackets.length}: ${text}`);
+      console.log(
+        `[TEST] ENCRYPTED packet #${encryptedPackets.length}: ${text}`,
+      );
     }
 
     // Count ASCII_FRAME packets processed
@@ -89,10 +95,10 @@ test("Browser receives multiple ENCRYPTED packets from server", async ({
   // CRITICAL: Must receive multiple frames
   expect(encryptedPackets.length).toBeGreaterThan(
     1,
-    `Expected multiple ENCRYPTED packets but got ${encryptedPackets.length}`
+    `Expected multiple ENCRYPTED packets but got ${encryptedPackets.length}`,
   );
   expect(asciiFrames.length).toBeGreaterThan(
     1,
-    `Expected multiple ASCII_FRAME packets but got ${asciiFrames.length}`
+    `Expected multiple ASCII_FRAME packets but got ${asciiFrames.length}`,
   );
 });

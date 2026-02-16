@@ -26,7 +26,7 @@ export class AudioPipeline {
    * Start audio capture from microphone
    */
   async startCapture(): Promise<void> {
-    console.log('[AudioPipeline] Starting audio capture...');
+    console.log("[AudioPipeline] Starting audio capture...");
 
     // Request microphone access
     const stream = await navigator.mediaDevices.getUserMedia({
@@ -35,15 +35,15 @@ export class AudioPipeline {
         channelCount: this.options.channelCount || 1,
         echoCancellation: this.options.echoCancellation ?? true,
         noiseSuppression: this.options.noiseSuppression ?? true,
-        autoGainControl: true
-      }
+        autoGainControl: true,
+      },
     });
 
     this.mediaStream = stream;
 
     // Create audio context
     this.audioContext = new AudioContext({
-      sampleRate: this.options.sampleRate || 48000
+      sampleRate: this.options.sampleRate || 48000,
     });
 
     // Create source node from media stream
@@ -60,8 +60,11 @@ export class AudioPipeline {
       // Convert Float32Array to Int16Array (PCM)
       const pcmData = new Int16Array(inputData.length);
       for (let i = 0; i < inputData.length; i++) {
-        const sample = Math.max(-1, Math.min(1, inputData[i]));
-        pcmData[i] = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+        const inputSample = inputData[i];
+        if (inputSample !== undefined) {
+          const sample = Math.max(-1, Math.min(1, inputSample));
+          pcmData[i] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
+        }
       }
 
       // TODO: Encode with Opus WASM codec
@@ -75,7 +78,7 @@ export class AudioPipeline {
     this.sourceNode.connect(this.processorNode);
     this.processorNode.connect(this.audioContext.destination);
 
-    console.log('[AudioPipeline] Audio capture started');
+    console.log("[AudioPipeline] Audio capture started");
   }
 
   /**
@@ -84,7 +87,7 @@ export class AudioPipeline {
   async playAudioData(opusData: Uint8Array): Promise<void> {
     if (!this.audioContext) {
       this.audioContext = new AudioContext({
-        sampleRate: this.options.sampleRate || 48000
+        sampleRate: this.options.sampleRate || 48000,
       });
     }
 
@@ -99,14 +102,17 @@ export class AudioPipeline {
       // Convert Int16 PCM to Float32
       const floatData = new Float32Array(pcmData.length);
       for (let i = 0; i < pcmData.length; i++) {
-        floatData[i] = pcmData[i] / (pcmData[i] < 0 ? 0x8000 : 0x7FFF);
+        const sample = pcmData[i];
+        if (sample !== undefined) {
+          floatData[i] = sample / (sample < 0 ? 0x8000 : 0x7fff);
+        }
       }
 
       // Create audio buffer
       const audioBuffer = this.audioContext.createBuffer(
         1, // Mono
         floatData.length,
-        this.audioContext.sampleRate
+        this.audioContext.sampleRate,
       );
 
       // Copy data to buffer
@@ -118,7 +124,7 @@ export class AudioPipeline {
       source.connect(this.audioContext.destination);
       source.start();
     } catch (error) {
-      console.error('[AudioPipeline] Failed to play audio:', error);
+      console.error("[AudioPipeline] Failed to play audio:", error);
     }
   }
 
@@ -133,7 +139,7 @@ export class AudioPipeline {
    * Stop audio capture
    */
   stopCapture(): void {
-    console.log('[AudioPipeline] Stopping audio capture...');
+    console.log("[AudioPipeline] Stopping audio capture...");
 
     if (this.processorNode) {
       this.processorNode.disconnect();
@@ -146,7 +152,7 @@ export class AudioPipeline {
     }
 
     if (this.mediaStream) {
-      this.mediaStream.getTracks().forEach(track => track.stop());
+      this.mediaStream.getTracks().forEach((track) => track.stop());
       this.mediaStream = null;
     }
 
@@ -155,7 +161,7 @@ export class AudioPipeline {
       this.audioContext = null;
     }
 
-    console.log('[AudioPipeline] Audio capture stopped');
+    console.log("[AudioPipeline] Audio capture stopped");
   }
 
   /**

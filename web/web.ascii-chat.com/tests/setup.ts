@@ -8,12 +8,12 @@
 // that aren't available in the test environment
 
 // Mock Web Audio API if needed
-if (typeof AudioContext === 'undefined') {
+if (typeof AudioContext === "undefined") {
   global.AudioContext = class MockAudioContext {} as any;
 }
 
 // Mock WebSocket if needed
-if (typeof WebSocket === 'undefined') {
+if (typeof WebSocket === "undefined") {
   global.WebSocket = class MockWebSocket {
     constructor(public url: string) {}
     send() {}
@@ -23,4 +23,4 @@ if (typeof WebSocket === 'undefined') {
   } as any;
 }
 
-console.log('[Test Setup] Test environment initialized');
+console.log("[Test Setup] Test environment initialized");
