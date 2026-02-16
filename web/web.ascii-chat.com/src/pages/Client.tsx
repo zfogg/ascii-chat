@@ -316,7 +316,7 @@ export function ClientPage() {
         }
       }
     },
-    [connectionState, optionsManager],
+    [connectionState, optionsManager, settings],
   );
 
   const connectToServer = useCallback(async () => {
@@ -457,7 +457,7 @@ export function ClientPage() {
       setError(errMsg);
       setShowModal(true);
     }
-  }, [serverUrl, terminalDimensions]);
+  }, [serverUrl, terminalDimensions, settings]);
 
   const handleDisconnect = () => {
     console.log("[Client] handleDisconnect() called");

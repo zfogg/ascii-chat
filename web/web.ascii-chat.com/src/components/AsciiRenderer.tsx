@@ -223,7 +223,9 @@ export const AsciiRenderer = forwardRef<
             _core?: {
               _renderService?: {
                 _handleIntersectionChange: {
-                  bind: (context: unknown) => (entry: IntersectionObserverEntry) => void;
+                  bind: (
+                    context: unknown,
+                  ) => (entry: IntersectionObserverEntry) => void;
                 };
                 _isPaused: boolean;
               };
