@@ -687,7 +687,6 @@ add_library(ascii-chat-shared SHARED EXCLUDE_FROM_ALL
         # Force TLS model in ThinLTO optimizer - pass via linker plugin
         target_link_options(ascii-chat-shared PRIVATE
             -Wl,-mllvm,-relocation-model=pic
-            -Wl,-mllvm,-enable-pie
         )
     endif()
 
