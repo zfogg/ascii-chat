@@ -328,9 +328,6 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
         uint32_t peek_width = NET_TO_HOST_U32(read_u32_unaligned(frame_data_ptr));
         uint32_t peek_height = NET_TO_HOST_U32(read_u32_unaligned(frame_data_ptr + sizeof(uint32_t)));
 
-        log_debug_every(100000, "Per-client %u: parsed dimensions %ux%u from frame", snap->client_id, peek_width,
-                        peek_height);
-
         // Reject obviously corrupted dimensions
         if (peek_width == 0 || peek_height == 0 || peek_width > 4096 || peek_height > 2160) {
           log_debug("Per-client %u: rejected dimensions %ux%u as corrupted", snap->client_id, peek_width, peek_height);
