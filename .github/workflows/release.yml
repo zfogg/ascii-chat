@@ -110,7 +110,7 @@ jobs:
             echo "" >> $GITHUB_OUTPUT
 
             echo "### Bug Fixes" >> $GITHUB_OUTPUT
-            FIXES=$(git log --format="- %s (%an)" $LAST_TAG..HEAD | grep -iE '^- fix(\(.*\))?:')
+            FIXES=$(git log --format="- %s (%an)" $LAST_TAG..HEAD | grep -iE '^- (fix|bugfix)(\(.*\))?:')
             if [[ -n "$FIXES" ]]; then
               echo "$FIXES" >> $GITHUB_OUTPUT
             else
@@ -118,43 +118,8 @@ jobs:
             fi
             echo "" >> $GITHUB_OUTPUT
 
-            echo "### Documentation" >> $GITHUB_OUTPUT
-            DOCS=$(git log --format="- %s (%an)" $LAST_TAG..HEAD | grep -iE '^- docs(\(.*\))?:')
-            if [[ -n "$DOCS" ]]; then
-              echo "$DOCS" >> $GITHUB_OUTPUT
-            fi
-            echo "" >> $GITHUB_OUTPUT
-
-            echo "### Performance" >> $GITHUB_OUTPUT
-            PERF=$(git log --format="- %s (%an)" $LAST_TAG..HEAD | grep -iE '^- perf(\(.*\))?:')
-            if [[ -n "$PERF" ]]; then
-              echo "$PERF" >> $GITHUB_OUTPUT
-            fi
-            echo "" >> $GITHUB_OUTPUT
-
-            echo "### Refactoring" >> $GITHUB_OUTPUT
-            REFACTOR=$(git log --format="- %s (%an)" $LAST_TAG..HEAD | grep -iE '^- refactor(\(.*\))?:')
-            if [[ -n "$REFACTOR" ]]; then
-              echo "$REFACTOR" >> $GITHUB_OUTPUT
-            fi
-            echo "" >> $GITHUB_OUTPUT
-
-            echo "### Testing" >> $GITHUB_OUTPUT
-            TEST=$(git log --format="- %s (%an)" $LAST_TAG..HEAD | grep -iE '^- test(\(.*\))?:')
-            if [[ -n "$TEST" ]]; then
-              echo "$TEST" >> $GITHUB_OUTPUT
-            fi
-            echo "" >> $GITHUB_OUTPUT
-
-            echo "### Build System" >> $GITHUB_OUTPUT
-            BUILD=$(git log --format="- %s (%an)" $LAST_TAG..HEAD | grep -iE '^- (build|ci)(\(.*\))?:')
-            if [[ -n "$BUILD" ]]; then
-              echo "$BUILD" >> $GITHUB_OUTPUT
-            fi
-            echo "" >> $GITHUB_OUTPUT
-
             echo "### Other Changes" >> $GITHUB_OUTPUT
-            OTHER=$(git log --format="- %s (%an)" $LAST_TAG..HEAD | grep -ivE '^- (feat|fix|docs|perf|refactor|test|build|ci)(\(.*\))?:' | head -n 50)
+            OTHER=$(git log --format="- %s (%an)" $LAST_TAG..HEAD | grep -ivE '^- (feat|fix|bugfix)(\(.*\))?:' | head -n 50)
             if [[ -n "$OTHER" ]]; then
               echo "$OTHER" >> $GITHUB_OUTPUT
             fi
