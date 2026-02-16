@@ -257,7 +257,7 @@ export function ClientPage() {
       setServerUrl(testServerUrl);
     } else {
       console.log(
-        `[Client] No testServerUrl in query, using default: "${serverUrl}"`,
+        "[Client] No testServerUrl in query, using default localhost:27226",
       );
     }
   }, []);
