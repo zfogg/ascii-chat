@@ -54,6 +54,21 @@ export const AsciiRenderer = forwardRef<
 
   const updateDimensions = useCallback(
     (cols: number, rows: number) => {
+      // If dimensions changed, clear the terminal to prevent leftover ASCII art
+      if (
+        dimensionsRef.current.cols !== cols ||
+        dimensionsRef.current.rows !== rows
+      ) {
+        const xterm = xtermRef.current;
+        if (xterm) {
+          const terminal = (xterm as XTermType & { terminal: Terminal })
+            .terminal;
+          if (terminal) {
+            terminal.write("\x1b[H\x1b[J"); // cursor home + clear screen
+          }
+        }
+      }
+
       dimensionsRef.current = { cols, rows };
       onDimensionsChange?.({ cols, rows });
     },
@@ -268,9 +283,9 @@ export const AsciiRenderer = forwardRef<
         });
 
         // Observe the xterm viewport to know when container is ready
-        const xtermViewport = (instance as XTermWithElement).element?.querySelector(
-          ".xterm-viewport",
-        );
+        const xtermViewport = (
+          instance as XTermWithElement
+        ).element?.querySelector(".xterm-viewport");
         if (xtermViewport) {
           resizeObserver.observe(xtermViewport);
         } else {
