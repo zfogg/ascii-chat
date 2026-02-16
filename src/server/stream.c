@@ -1011,7 +1011,18 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
 
   if (sources_with_video == 1) {
     // Single source handling - create composite and convert to ASCII
-    composite = create_single_source_composite(sources, source_count, target_client_id, width, height);
+    // Note: create_single_source_composite returns a reference to sources[i].image
+    // which could be modified by other threads. Make a copy to prevent concurrent
+    // modification during ascii_convert_with_capabilities.
+    image_t *single_source = create_single_source_composite(sources, source_count, target_client_id, width, height);
+    if (single_source) {
+      composite = image_new_copy(single_source);
+      if (!composite) {
+        SET_ERRNO(ERROR_MEMORY, "Failed to copy single source composite");
+        *out_size = 0;
+        return NULL;
+      }
+    }
   } else {
     // Multiple sources - create grid layout
     composite =

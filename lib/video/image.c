@@ -221,6 +221,28 @@ void image_clear(image_t *p) {
   SAFE_MEMSET(p->pixels, clear_size, 0, clear_size);
 }
 
+image_t *image_new_copy(const image_t *source) {
+  if (!source) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "image_new_copy: source is NULL");
+    return NULL;
+  }
+
+  // Create new image with same dimensions
+  image_t *copy = image_new((size_t)source->w, (size_t)source->h);
+  if (!copy) {
+    return NULL;
+  }
+
+  // Copy pixel data from source to copy
+  if (source->pixels && copy->pixels) {
+    size_t pixel_count = (size_t)source->w * (size_t)source->h;
+    size_t pixels_size = pixel_count * sizeof(rgb_pixel_t);
+    memcpy(copy->pixels, source->pixels, pixels_size);
+  }
+
+  return copy;
+}
+
 inline rgb_pixel_t *image_pixel(image_t *p, const int x, const int y) {
   // Add bounds checking to prevent buffer overflow on invalid coordinates
   if (!p || !p->pixels || x < 0 || x >= p->w || y < 0 || y >= p->h) {
@@ -274,14 +296,30 @@ void image_resize_interpolation(const image_t *source, image_t *dest) {
 
   for (int y = 0; y < dst_h; y++) {
     const uint32_t src_y = ((uint32_t)(unsigned int)y * y_ratio) >> 16;
-    const uint32_t safe_src_y = (src_y >= (uint32_t)(unsigned int)src_h) ? (uint32_t)(src_h - 1) : src_y;
+    // Explicitly clamp to valid range [0, src_h-1]
+    const uint32_t safe_src_y = src_y >= (uint32_t)(unsigned int)src_h ? (uint32_t)(src_h - 1) : src_y;
+
+    // Bounds check: ensure safe_src_y is valid
+    if (safe_src_y >= (uint32_t)(unsigned int)src_h) {
+      SET_ERRNO(ERROR_INVALID_PARAM, "safe_src_y out of bounds: %u >= %d", safe_src_y, src_h);
+      return;
+    }
+
     const rgb_pixel_t *src_row = src_pixels + (safe_src_y * (size_t)src_w);
 
     rgb_pixel_t *dst_row = dst_pixels + ((size_t)y * (size_t)dst_w);
 
     for (int x = 0; x < dst_w; x++) {
       const uint32_t src_x = ((uint32_t)(unsigned int)x * x_ratio) >> 16;
-      const uint32_t safe_src_x = (src_x >= (uint32_t)(unsigned int)src_w) ? (uint32_t)(src_w - 1) : src_x;
+      // Explicitly clamp to valid range [0, src_w-1]
+      const uint32_t safe_src_x = src_x >= (uint32_t)(unsigned int)src_w ? (uint32_t)(src_w - 1) : src_x;
+
+      // Bounds check: ensure safe_src_x is valid
+      if (safe_src_x >= (uint32_t)(unsigned int)src_w) {
+        SET_ERRNO(ERROR_INVALID_PARAM, "safe_src_x out of bounds: %u >= %d", safe_src_x, src_w);
+        return;
+      }
+
       dst_row[x] = src_row[safe_src_x];
     }
   }

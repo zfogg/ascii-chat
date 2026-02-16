@@ -296,6 +296,25 @@ void image_destroy_to_pool(image_t *image);
  */
 void image_clear(image_t *p);
 
+/**
+ * @brief Create a copy of an existing image
+ * @param source Source image to copy (must not be NULL)
+ * @return Newly allocated copy of the image, or NULL on error
+ *
+ * Creates a deep copy of an image, allocating new memory for the copy.
+ * The source and destination images are completely independent - modifying
+ * one does not affect the other. Useful for creating snapshots to prevent
+ * concurrent modification issues.
+ *
+ * @note Returns NULL on error (invalid image, memory allocation failure).
+ * @note Caller must free the returned image with image_destroy().
+ * @note Copy is allocated with standard malloc() allocation.
+ * @note Pixels are fully copied (not shared with source).
+ *
+ * @ingroup video
+ */
+image_t *image_new_copy(const image_t *source);
+
 /** @} */
 
 /* ============================================================================
