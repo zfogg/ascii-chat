@@ -683,7 +683,7 @@ add_library(ascii-chat-shared SHARED EXCLUDE_FROM_ALL
     if(NOT WIN32)
         target_compile_options(ascii-chat-shared PRIVATE
             -fvisibility=default
-            -ftls-model=local-dynamic
+            -ftls-model=initial-exec
             -fno-pie
         )
         # Force TLS model in ThinLTO optimizer - pass via linker plugin

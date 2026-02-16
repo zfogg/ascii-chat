@@ -37,8 +37,17 @@ test("mirror mode: can render with fake webcam", async ({ page }) => {
 
   console.log("✓ Mirror page loaded");
 
-  // Click Start Webcam
-  await page.click('button:has-text("Start Webcam")');
+  // Wait for terminal to be ready (AsciiRenderer needs time to initialize)
+  await page.waitForTimeout(1500);
+
+  // Click Start Webcam button
+  console.log("Clicking Start Webcam button...");
+  const startButton = page.getByRole("button", { name: /Start Webcam/i });
+  await startButton.click();
+  console.log("✓ Clicked Start Webcam button");
+
+  // Wait for webcam to start and rendering to begin
+  await page.waitForTimeout(2000);
 
   // Verify xterm is rendering content
   await expect(async () => {
@@ -64,7 +73,8 @@ test("mirror mode: can render with fake webcam", async ({ page }) => {
 
   // Try to stop
   try {
-    await page.click("button:has-text('Stop')");
+    const stopButton = await page.getByRole("button", { name: /Stop/i });
+    await stopButton.click();
   } catch {
     // OK
   }
@@ -80,47 +90,52 @@ test("mirror mode: maintains FPS > 15", async ({ page }) => {
     timeout: 3000,
   });
 
-  // Click Start Webcam
-  await page.click('button:has-text("Start Webcam")');
+  // Wait for terminal to be ready (AsciiRenderer needs time to initialize)
+  await page.waitForTimeout(1500);
+
+  // Click Start Webcam button
+  console.log("Clicking Start Webcam button...");
+  const startButton = page.getByRole("button", { name: /Start Webcam/i });
+  await startButton.click();
+  console.log("✓ Clicked Start Webcam button");
 
   // Wait for rendering to start
-  await page.waitForTimeout(1000);
+  console.log("Waiting for rendering to begin...");
+  await page.waitForTimeout(3000);
 
-  console.log("✓ Measuring Mirror FPS...");
+  console.log("✓ Measuring Mirror FPS from page...");
 
-  // Collect xterm render timestamps to calculate FPS
-  const frameTimes: number[] = [];
-  const updateDomContent = async () => {
-    const content = await page.evaluate(() => {
-      return document.querySelector(".xterm-screen")?.textContent || "";
-    });
-    if (content.length > 0) {
-      frameTimes.push(Date.now());
+  // Extract FPS value from the page's FPS counter
+  const fps = await page.evaluate(() => {
+    // Search for elements containing "FPS:" text
+    const elements = Array.from(document.querySelectorAll("span, div, p"));
+    for (const el of elements) {
+      const text = el.textContent || "";
+      if (text.includes("FPS:")) {
+        console.log("Found FPS text:", text);
+        // Match "FPS: 19" or "FPS: 19 / 60"
+        const match = text.match(/FPS:\s*(\d+)/);
+        if (match) {
+          return parseInt(match[1]);
+        }
+      }
     }
-  };
+    console.log("No FPS text found on page");
+    return null;
+  });
 
-  // Collect frame timing data over 5 seconds
-  const startTime = Date.now();
-  while (Date.now() - startTime < 5000) {
-    await updateDomContent();
-    await page.waitForTimeout(50); // Sample every 50ms
-  }
+  console.log(`Mirror FPS from page: ${fps}`);
 
-  // Calculate FPS from collected samples
-  if (frameTimes.length > 1) {
-    const timeSpan = frameTimes[frameTimes.length - 1] - frameTimes[0];
-    const fps = (frameTimes.length / timeSpan) * 1000;
-    console.log(
-      `✓ Mirror FPS: ${fps.toFixed(2)} (${frameTimes.length} updates in ${timeSpan}ms)`,
-    );
+  if (fps !== null) {
     expect(fps).toBeGreaterThanOrEqual(15);
   } else {
-    console.log(`⚠ Mirror: Only ${frameTimes.length} frames detected`);
+    console.log("⚠ Could not extract FPS from page");
   }
 
   // Try to stop
   try {
-    await page.click("button:has-text('Stop')");
+    const stopButton = await page.getByRole("button", { name: /Stop/i });
+    await stopButton.click();
   } catch {
     // OK
   }

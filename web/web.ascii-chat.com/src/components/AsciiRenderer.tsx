@@ -121,6 +121,11 @@ export const AsciiRenderer = forwardRef<
           if (core && core._renderService) {
             const renderService = core._renderService;
 
+            // Log if render service is paused
+            if (renderService._isPaused) {
+              console.log("[AsciiRenderer] Xterm renderService is PAUSED");
+            }
+
             // Force unpause - this is critical for continuous rendering
             renderService._isPaused = false;
 

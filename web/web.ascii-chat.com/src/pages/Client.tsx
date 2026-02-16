@@ -421,13 +421,27 @@ export function ClientPage() {
       conn.onPacketReceived((parsed, decryptedPayload) => {
         if (parsed.type === PacketType.ASCII_FRAME) {
           receivedFrameCountRef.current++;
-          frameReceiptTimesRef.current.push(performance.now());
+          const now = performance.now();
+          frameReceiptTimesRef.current.push(now);
+
+          // Log frame arrival rate every 10 frames
+          if (receivedFrameCountRef.current % 10 === 0) {
+            const recentTimes = frameReceiptTimesRef.current.slice(-10);
+            if (recentTimes.length > 1) {
+              const timeDiff =
+                recentTimes[recentTimes.length - 1]! - recentTimes[0]!;
+              const framesPerSecond = (9 / timeDiff) * 1000; // 9 intervals over 10 frames
+              console.log(
+                `[Client] Frame arrival rate: ${framesPerSecond.toFixed(1)} FPS (received ${receivedFrameCountRef.current} total frames)`,
+              );
+            }
+          }
 
           try {
             const frame = parseAsciiFrame(decryptedPayload);
             // Queue frame for the render loop to process at target FPS
             // This prevents frame accumulation when tab is hidden
-            pendingFrameRef.current = frame.ansiString;
+            frameQueueRef.current.push(frame.ansiString);
           } catch (err) {
             console.error("[Client] Failed to parse ASCII frame:", err);
           }
@@ -473,12 +487,100 @@ export function ClientPage() {
   };
 
   // Render loop for displaying received frames at target FPS (decoupled from network arrival rate)
-  const pendingFrameRef = useRef<string | null>(null);
+  const frameQueueRef = useRef<string[]>([]);
+
+  const renderLoopStartTimeRef = useRef<number>(0);
+
+  const renderCallCountRef = useRef(0);
+  const frameHashesRef = useRef<Record<string, number>>({});
+
+  // Simple hash function for frame content
+  const hashFrame = (content: string): string => {
+    let hash = 0;
+    for (let i = 0; i < content.length; i += 10) {
+      hash = (hash << 5) - hash + content.charCodeAt(i);
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    return hash.toString(36);
+  };
+
+  const renderNoOpCountRef = useRef(0);
+
+  // Expose frame count for testing
+  useEffect(() => {
+    const metrics = {
+      rendered: frameCountRef.current,
+      received: receivedFrameCountRef.current,
+      queueDepth: frameQueueRef.current.length,
+    };
+    (window as any).__clientFrameMetrics = metrics;
+    if (frameCountRef.current % 60 === 0 && frameCountRef.current > 0) {
+      console.log("[Client] Exposed metrics:", metrics);
+    }
+  });
 
   const renderFrame = useCallback(() => {
-    if (pendingFrameRef.current && rendererRef.current) {
-      rendererRef.current.writeFrame(pendingFrameRef.current);
-      pendingFrameRef.current = null;
+    renderCallCountRef.current++;
+
+    if (frameQueueRef.current.length === 0 || !rendererRef.current) {
+      renderNoOpCountRef.current++;
+    }
+
+    // Log every 60 calls to renderFrame (regardless of whether we actually render)
+    if (renderCallCountRef.current % 60 === 0) {
+      const noOpRate = (
+        (renderNoOpCountRef.current / renderCallCountRef.current) *
+        100
+      ).toFixed(1);
+      console.log(
+        `[Client] renderFrame called ${renderCallCountRef.current} times (${noOpRate}% no-op), queue depth: ${frameQueueRef.current.length}`,
+      );
+    }
+
+    // Render one frame per RAF callback to maintain 60 FPS display sync
+    // Discard old frames if queue builds up (keep only latest)
+    if (frameQueueRef.current.length > 0 && rendererRef.current) {
+      if (renderLoopStartTimeRef.current === 0) {
+        renderLoopStartTimeRef.current = performance.now();
+      }
+
+      // If queue has multiple frames, discard old ones and render the latest
+      let frameContent: string;
+      if (frameQueueRef.current.length > 1) {
+        // Drop older frames, keep only the latest two (current + next)
+        while (frameQueueRef.current.length > 1) {
+          frameQueueRef.current.shift();
+        }
+        frameContent = frameQueueRef.current.shift()!;
+      } else {
+        // Single frame in queue, render it
+        frameContent = frameQueueRef.current.shift()!;
+      }
+
+      const frameHash = hashFrame(frameContent);
+      frameHashesRef.current[frameHash] =
+        (frameHashesRef.current[frameHash] || 0) + 1;
+
+      rendererRef.current.writeFrame(frameContent);
+      frameCountRef.current++;
+
+      // Log render rate every 60 rendered frames
+      if (frameCountRef.current % 60 === 0) {
+        const now = performance.now();
+        const elapsed = now - renderLoopStartTimeRef.current;
+        const renderFps = (frameCountRef.current / elapsed) * 1000;
+        const uniqueFrames = Object.keys(frameHashesRef.current).length;
+        console.log(
+          `[Client] Rendered ${frameCountRef.current} frames in ${elapsed.toFixed(0)}ms = ${renderFps.toFixed(1)} FPS (${uniqueFrames} unique frame hashes)`,
+        );
+        console.log(
+          `[Client] Frame hash distribution:`,
+          frameHashesRef.current,
+        );
+        renderLoopStartTimeRef.current = now;
+        frameCountRef.current = 0;
+        frameHashesRef.current = {};
+      }
     }
   }, []);
 
@@ -655,15 +757,22 @@ export function ClientPage() {
       setIsWebcamRunning(true);
       lastFrameTimeRef.current = performance.now();
       frameIntervalRef.current = 1000 / settings.targetFps;
-      pendingFrameRef.current = null;
+      frameQueueRef.current = [];
+
+      console.log("[Client] Starting render loops...");
+      console.log(
+        `[Client] frameInterval set to: ${frameIntervalRef.current}ms (${settings.targetFps} FPS)`,
+      );
 
       // Start both the capture loop (sends to server) and render loop (displays frames)
       if (webcamCaptureLoopRef.current) {
         animationFrameRef.current = requestAnimationFrame(
           webcamCaptureLoopRef.current,
         );
+        console.log("[Client] Webcam capture loop started");
       }
       startRenderLoop();
+      console.log("[Client] Render loop started");
     } catch (err) {
       const errMsg = `Failed to start webcam: ${err}`;
       console.error("[Client]", errMsg);
@@ -693,7 +802,7 @@ export function ClientPage() {
       videoRef.current.srcObject = null;
     }
 
-    pendingFrameRef.current = null;
+    frameQueueRef.current = [];
     setIsWebcamRunning(false);
   }, []);
 

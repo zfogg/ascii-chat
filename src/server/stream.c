@@ -163,36 +163,12 @@
  */
 static atomic_int g_previous_active_video_count = 0;
 
-/* ============================================================================
- * Helper Functions
- * ============================================================================
- */
-
-/**
- * @brief Clean up frame data using buffer pool or standard free
- * @param frame Frame structure with data to clean up
- * @ingroup server_stream
- */
-static void cleanup_current_frame_data(multi_source_frame_t *frame) {
-  if (frame && frame->data) {
-    buffer_pool_t *pool = buffer_pool_get_global();
-    if (pool) {
-      buffer_pool_free(pool, frame->data, frame->size);
-    } else {
-      SAFE_FREE(frame->data);
-    }
-    frame->data = NULL;
-  }
-}
-
 /**
  * @brief Image source structure for multi-client video mixing
  *
  * Represents a single video source (client) in the video mixing pipeline.
  * This structure is used to collect video frames from all active clients
  * before creating composite layouts for multi-user display.
- *
- * CORE FIELDS:
  * ============
  * - image: Pointer to the client's current video frame (image_t structure)
  * - client_id: Unique identifier for this client
@@ -248,10 +224,6 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
   if (atomic_load(&g_server_should_exit)) {
     return 0;
   }
-
-  // LOCK OPTIMIZATION: No locks needed! All client fields are atomic or stable pointers
-  // client_id, active, is_sending_video are all atomic variables
-  // incoming_video_buffer is set once during client creation and never changes
 
   // Collect client info snapshots WITHOUT holding rwlock
   typedef struct {
@@ -618,8 +590,8 @@ static void calculate_optimal_grid_layout(image_source_t *sources, int source_co
     float utilization = total_area_used / total_available_area;
 
     float test_cell_visual_aspect = (float)cell_width / ((float)cell_height * CHAR_ASPECT);
-    log_debug_every(LOG_RATE_NORMAL, "  Testing %dx%d: cell=%dx%d (visual aspect %.2f), utilization=%.1f%%", cols, rows,
-                    cell_width, cell_height, test_cell_visual_aspect, utilization * 100.0f);
+    log_dev_every(LOG_RATE_NORMAL, "  Testing %dx%d: cell=%dx%d (visual aspect %.2f), utilization=%.1f%%", cols, rows,
+                  cell_width, cell_height, test_cell_visual_aspect, utilization * 100.0f);
 
     // Prefer configurations with better utilization
     if (utilization > best_utilization) {
@@ -633,10 +605,11 @@ static void calculate_optimal_grid_layout(image_source_t *sources, int source_co
   *out_rows = best_rows;
 
   float terminal_visual_aspect = (float)terminal_width / ((float)terminal_height * CHAR_ASPECT);
-  log_info("Grid layout: %d clients -> %dx%d grid (%.1f%% utilization) | terminal=%dx%d (char aspect %.2f, VISUAL "
-           "aspect %.2f), video aspect: %.2f",
-           sources_with_video, best_cols, best_rows, best_utilization * 100.0f, terminal_width, terminal_height,
-           (float)terminal_width / (float)terminal_height, terminal_visual_aspect, avg_aspect);
+  log_dev_every(LOG_RATE_NORMAL,
+                "Grid layout: %d clients -> %dx%d grid (%.1f%% utilization) | terminal=%dx%d (char aspect %.2f, VISUAL "
+                "aspect %.2f), video aspect: %.2f",
+                sources_with_video, best_cols, best_rows, best_utilization * 100.0f, terminal_width, terminal_height,
+                (float)terminal_width / (float)terminal_height, terminal_visual_aspect, avg_aspect);
 }
 
 /**
@@ -703,9 +676,9 @@ static image_t *create_multi_source_composite(image_source_t *sources, int sourc
       target_width_px = (int)((cell_height_px * src_aspect) + 0.5f);
     }
 
-    log_info("Cell %d: %dx%d px, video %.2f, cell %.2f → target %dx%d px (fill %s)", video_source_index - 1,
-             cell_width_px, cell_height_px, src_aspect, cell_visual_aspect, target_width_px, target_height_px,
-             (src_aspect > cell_visual_aspect) ? "WIDTH" : "HEIGHT");
+    log_dev_every(LOG_RATE_NORMAL, "Cell %d: %dx%d px, video %.1f, cell %.2f → target %dx%d px (fill %s)",
+                  video_source_index - 1, cell_width_px, cell_height_px, src_aspect, cell_visual_aspect,
+                  target_width_px, target_height_px, (src_aspect > cell_visual_aspect) ? "WIDTH" : "HEIGHT");
 
     // Create resized image with standard allocation
     image_t *resized = image_new_from_pool(target_width_px, target_height_px);
@@ -819,8 +792,8 @@ static char *convert_composite_to_ascii(image_t *composite, uint32_t target_clie
   const int h = caps_snapshot.render_mode == RENDER_MODE_HALF_BLOCK ? height * 2 : height;
 
   // DEBUG: Log dimensions being used for ASCII conversion
-  log_debug_every(LOG_RATE_SLOW, "convert_composite_to_ascii: composite=%dx%d, terminal=%dx%d, h=%d (mode=%d)",
-                  composite->w, composite->h, width, height, h, caps_snapshot.render_mode);
+  log_dev_every(LOG_RATE_SLOW, "convert_composite_to_ascii: composite=%dx%d, terminal=%dx%d, h=%d (mode=%d)",
+                composite->w, composite->h, width, height, h, caps_snapshot.render_mode);
 
   // Pass full terminal dimensions so ascii_convert_with_capabilities can fit the image correctly
   // with proper CHAR_ASPECT correction. The composite may have been pre-fitted in pixel space,
@@ -979,7 +952,8 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
   if (sources_with_video != previous_count) {
     // Use compare-and-swap to ensure only ONE thread detects the change
     if (atomic_compare_exchange_strong(&g_previous_active_video_count, &previous_count, sources_with_video)) {
-      log_info(
+      log_dev_every(
+          LOG_RATE_DEFAULT,
           "Grid layout changing: %d -> %d active video sources - caller will broadcast clear AFTER buffering frame",
           previous_count, sources_with_video);
       if (out_grid_changed) {
@@ -1081,8 +1055,8 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
       *out_size = ascii_len;
     }
 
-    log_debug_every(LOG_RATE_SLOW, "create_mixed_ascii_frame_for_client: Final frame size=%zu bytes for client %u",
-                    *out_size, target_client_id);
+    log_dev_every(LOG_RATE_SLOW, "create_mixed_ascii_frame_for_client: Final frame size=%zu bytes for client %u",
+                  *out_size, target_client_id);
 
     // Debug: Log the last 50 bytes of the frame to see what's really there
     if (*out_size >= 50) {
