@@ -6,6 +6,7 @@
 
 #include "nat.h"
 
+#include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/log/logging.h>
