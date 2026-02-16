@@ -96,10 +96,10 @@ if(WIN32)
     )
 elseif(APPLE)
     set(_LLVM_SEARCH_PATHS
-        /usr/local/bin
-        /usr/local/opt/llvm/bin
         /opt/homebrew/opt/llvm/bin
         /opt/homebrew/bin
+        /usr/local/bin
+        /usr/local/opt/llvm/bin
         /usr/bin
     )
     set(_BASH_SEARCH_PATHS /bin /usr/bin /usr/local/bin)

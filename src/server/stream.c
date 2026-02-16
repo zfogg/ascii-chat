@@ -437,8 +437,10 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
  * @return Composite image or NULL on error
  * @ingroup server_stream
  */
-static image_t *create_single_source_composite(image_source_t *sources, int source_count, uint32_t target_client_id,
-                                               unsigned short width, unsigned short height) {
+static image_t *create_single_source_composite(image_source_t *sources, int source_count,
+                                               uint32_t target_client_id __attribute__((unused)),
+                                               unsigned short width __attribute__((unused)),
+                                               unsigned short height __attribute__((unused))) {
   // Find the single source with video
   image_t *single_source = NULL;
   for (int i = 0; i < source_count; i++) {
@@ -453,58 +455,12 @@ static image_t *create_single_source_composite(image_source_t *sources, int sour
     return NULL;
   }
 
-  // Single source - check if target client wants half-block mode for 2x resolution
-  // LOCK OPTIMIZATION: Find client without calling find_client_by_id() to avoid rwlock
-  client_info_t *target_client = NULL;
-  for (int i = 0; i < MAX_CLIENTS; i++) {
-    client_info_t *client = &g_client_manager.clients[i];
-    if (atomic_load(&client->client_id) == target_client_id) {
-      target_client = client;
-      break;
-    }
-  }
-  bool use_half_block = target_client && target_client->has_terminal_caps &&
-                        target_client->terminal_caps.render_mode == RENDER_MODE_HALF_BLOCK;
-
-  // Calculate terminal dimensions for fitting
-  int max_width_px = width;
-  int max_height_px = use_half_block ? height * 2 : height;
-
-  // Calculate video aspect ratio and fit it within terminal dimensions (CONTAIN strategy)
-  float src_aspect = (float)single_source->w / (float)single_source->h;
-  float terminal_aspect = (float)max_width_px / (float)max_height_px;
-
-  int target_width_px, target_height_px;
-
-  if (src_aspect > terminal_aspect) {
-    // Video is wider than terminal → fill WIDTH (height will be smaller)
-    target_width_px = max_width_px;
-    target_height_px = (int)((max_width_px / src_aspect) + 0.5f);
-  } else {
-    // Video is taller than terminal → fill HEIGHT (width will be smaller)
-    target_height_px = max_height_px;
-    target_width_px = (int)((max_height_px * src_aspect) + 0.5f);
-  }
-
-  // Clamp to terminal boundaries
-  if (target_width_px > max_width_px)
-    target_width_px = max_width_px;
-  if (target_height_px > max_height_px)
-    target_height_px = max_height_px;
-  if (target_width_px < 1)
-    target_width_px = 1;
-  if (target_height_px < 1)
-    target_height_px = 1;
-
-  // Create composite at fitted dimensions (not full terminal dimensions)
-  // This allows ascii_convert_with_capabilities to calculate and add padding
-  image_t *composite = image_new_from_pool(target_width_px, target_height_px);
-  image_clear(composite);
-
-  // Resize source to fitted dimensions and place in composite
-  image_resize(single_source, composite);
-
-  return composite;
+  // For single source, don't pre-fit the image. Let ascii_convert_with_capabilities handle
+  // all aspect ratio fitting with proper CHAR_ASPECT correction. This avoids double-correction
+  // that was happening when the image was pre-fitted in pixel space and then aspect_ratio()
+  // was called again with CHAR_ASPECT=2.0.
+  // Just return the source image as-is; ascii_convert_with_capabilities will fit it properly.
+  return single_source;
 }
 
 /**
@@ -840,18 +796,10 @@ static char *convert_composite_to_ascii(image_t *composite, uint32_t target_clie
   log_debug_every(LOG_RATE_SLOW, "convert_composite_to_ascii: composite=%dx%d, terminal=%dx%d, h=%d (mode=%d)",
                   composite->w, composite->h, width, height, h, caps_snapshot.render_mode);
 
-  // Use actual composite dimensions for ASCII conversion
-  // The composite may be smaller than terminal to preserve aspect ratio
-  unsigned short actual_width = composite->w;
-
-  // Apply color filter if specified
-  if (caps_snapshot.color_filter != COLOR_FILTER_NONE && composite->pixels) {
-    float time_seconds = (float)time_get_ns() / (float)NS_PER_SEC_INT;
-    apply_color_filter((uint8_t *)composite->pixels, composite->w, composite->h, composite->w * 3,
-                       caps_snapshot.color_filter, time_seconds);
-  }
-
-  char *ascii_frame = ascii_convert_with_capabilities(composite, actual_width, h, &caps_snapshot, true, false,
+  // Pass full terminal dimensions so ascii_convert_with_capabilities can fit the image correctly
+  // with proper CHAR_ASPECT correction. The composite may have been pre-fitted in pixel space,
+  // but ascii_convert will handle terminal character aspect ratio properly when aspect_ratio=true.
+  char *ascii_frame = ascii_convert_with_capabilities(composite, width, h, &caps_snapshot, true, false,
                                                       render_client->client_palette_chars);
 
   return ascii_frame;
