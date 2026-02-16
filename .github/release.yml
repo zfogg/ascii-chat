@@ -1,0 +1,39 @@
+changelog:
+  exclude:
+    labels:
+      - ignore-for-release
+      - skip-changelog
+    authors:
+      - dependabot
+      - github-actions
+  categories:
+    - title: Features
+      labels:
+        - feat
+        - feature
+    - title: Bug Fixes
+      labels:
+        - fix
+        - bugfix
+    - title: Documentation
+      labels:
+        - docs
+        - documentation
+    - title: Performance
+      labels:
+        - perf
+        - performance
+    - title: Refactoring
+      labels:
+        - refactor
+    - title: Testing
+      labels:
+        - test
+    - title: Build System
+      labels:
+        - build
+        - ci
+    - title: Other Changes
+      labels:
+        - chore
+        - style
