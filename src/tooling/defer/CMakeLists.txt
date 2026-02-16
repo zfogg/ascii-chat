@@ -163,11 +163,14 @@ if(APPLE)
     # Use -isystem for libc++ headers BEFORE -isysroot to ensure libc++'s C header
     # wrappers (stddef.h, stdio.h) are found first, enabling their #include_next
     # chains to work correctly.
+    #
+    # Use -fno-exceptions to avoid libunwind dependency (defer tool doesn't use exceptions).
+    # This eliminates the runtime dependency on libunwind.1.dylib that caused macOS failures.
     target_compile_options(ascii-instr-defer PRIVATE
         --no-default-config
         -O2
         -fno-rtti
-        -fexceptions
+        -fno-exceptions
         -stdlib=libc++
         ${_libcxx_include_flag}
         -isysroot
@@ -235,6 +238,7 @@ if(APPLE)
     endif()
 
     # Build link options based on what we found
+    # Use -fno-exceptions to avoid libunwind dependency (defer tool doesn't use exceptions)
     set(_defer_link_options -stdlib=libc++ "-Wl,-rpath,${LLVM_LIBRARY_DIRS}" "LINKER:-lc++")
     set(_defer_link_dirs ${LLVM_LIBRARY_DIRS})
 
@@ -245,7 +249,8 @@ if(APPLE)
             list(APPEND _defer_link_dirs "${_llvm_libcxx_dir}")
         endif()
         if(_llvm_unwind_dir)
-            list(APPEND _defer_link_options "-Wl,-rpath,${_llvm_unwind_dir}")
+            # Link libunwind statically to avoid runtime dependency on libunwind.dylib
+            list(APPEND _defer_link_options "-Wl,-rpath,${_llvm_unwind_dir}" "${_llvm_unwind_dir}/libunwind.a")
             list(APPEND _defer_link_dirs "${_llvm_unwind_dir}")
         endif()
     endif()
