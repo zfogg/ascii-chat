@@ -320,7 +320,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     // This prevents the race condition where logs appear between the cursor
     // positioning command and the grep input line rendering.
     char grep_ui_buffer[512];
-    int pos = snprintf(grep_ui_buffer, sizeof(grep_ui_buffer), "\x1b[%d;1H\x1b[0m\x1b[K", g_cached_term_size.rows);
+    int pos = snprintf(grep_ui_buffer, sizeof(grep_ui_buffer), "\x1b[%d;1H\x1b[0m\x1b[K", g_cached_term_size.rows - 1);
 
     // Append the grep input line to the same buffer
     if (pos > 0 && pos < (int)sizeof(grep_ui_buffer) - 256) {
