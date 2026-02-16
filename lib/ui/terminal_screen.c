@@ -26,21 +26,45 @@
 #include <string.h>
 #include <stdbool.h>
 
-// Strip ANSI escape codes from a string
+// Strip ANSI escape codes from a string (matches map_plain_to_colored_pos logic)
 static void strip_ansi_codes(const char *src, char *dst, size_t dst_size) {
   if (!src || !dst || dst_size == 0)
     return;
 
   size_t pos = 0;
   while (*src && pos < dst_size - 1) {
-    if (*src == '\x1b' && src[1] != '\0' && src[1] == '[') {
-      // CSI sequence - skip until final byte
-      src += 2;
-      while (*src && pos < dst_size - 1 && !(*src >= 0x40 && *src <= 0x7E)) {
-        src++;
+    if (*src == '\x1b') {
+      src++;
+      // Check if there's a next byte
+      if (*src == '\0') {
+        break;
       }
-      if (*src)
-        src++; // Skip final byte
+      unsigned char next = (unsigned char)*src;
+      if (next == '[') {
+        // CSI sequence: \x1b[...final_byte (where final byte is 0x40-0x7E)
+        src++;
+        while (*src != '\0') {
+          unsigned char c = (unsigned char)*src;
+          src++;
+          if (c >= 0x40 && c <= 0x7E) {
+            break;
+          }
+        }
+      } else if (next >= 0x40 && next <= 0x7E) {
+        // Fe sequence: \x1b + final_byte (e.g., \x1b7, \x1b8)
+        src++;
+      } else if (next == '(' || next == ')' || next == '*' || next == '+') {
+        // Designate character set sequences: \x1b( + charset (3 bytes total)
+        src++; // skip designator
+        if (*src != '\0') {
+          src++; // skip charset ID
+        }
+      } else {
+        // Unknown escape sequence type, try to skip conservatively
+        if (*src != '\0') {
+          src++;
+        }
+      }
     } else {
       dst[pos++] = *src++;
     }
