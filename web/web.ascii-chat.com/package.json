@@ -19,7 +19,7 @@
     "wasm:build:client": "cd ../.. && cmake --build build --target client-web",
     "wasm:watch": "nodemon --watch ../../../lib --watch ../../../src/web -e c,h --exec 'bun run wasm:build'",
     "wasm:clean": "rm -rf src/wasm/dist",
-    "prebuild": "[ -z \"${VERCEL+x}\" ] && x=0 || x=1; ([ \"$x\" -eq \"1\" ] && exit 0) || cd ../.. && ls build 2>/dev/null 1>&2 || cmake --preset default -B build"
+    "prebuild": "cd ../.. && ls build 2>/dev/null 1>&2 || cmake --preset default -B build || true"
   },
   "dependencies": {
     "@ascii-chat/shared": "workspace:*",
