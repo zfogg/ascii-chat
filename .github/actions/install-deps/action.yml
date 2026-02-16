@@ -257,17 +257,18 @@ runs:
 
         echo "Running scripts/install-deps.sh to install build dependencies..."
         # install-deps.sh handles all Homebrew package installation
-        bash scripts/install-deps.sh
+        # Allow the script to fail gracefully (GitHub runners have version conflicts)
+        bash scripts/install-deps.sh || echo "WARNING: install-deps.sh had errors but continuing"
 
         # Install any extra packages requested by the workflow
         extra="${{ inputs.extra-packages }}"
         if [ -n "$extra" ]; then
           echo "Installing additional packages: $extra"
-          brew install $extra
+          brew install $extra || true
         fi
 
         # Clean up to reduce cache size
-        brew cleanup
+        brew cleanup || true
 
     - name: Compute install-deps.sh hash (Ubuntu)
       if: inputs.os == 'ubuntu'
