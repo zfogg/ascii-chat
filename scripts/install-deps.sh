@@ -9,6 +9,8 @@
 # Usage:
 #   ./install-deps.sh
 
+set -e
+
 # Parse arguments
 DANGEROUSLY_DELETE_CONFLICTS=false
 for arg in "$@"; do
