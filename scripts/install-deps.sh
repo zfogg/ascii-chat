@@ -60,6 +60,13 @@ if [[ "$PLATFORM" == "macos" ]]; then
   fi
 
   echo "Installing dependencies via Homebrew..."
+
+  # Uninstall openssl@3 if present to avoid conflicts with openssl
+  if brew list openssl@3 &>/dev/null; then
+    echo "Uninstalling conflicting openssl@3..."
+    brew uninstall openssl@3
+  fi
+
   brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool ninja mimalloc zstd libsodium portaudio opus criterion doxygen sqlite3 openssl miniupnpc libnatpmp ffmpeg abseil emscripten binaryen yt-dlp libwebsockets
 
   echo ""
