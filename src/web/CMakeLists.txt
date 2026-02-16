@@ -138,6 +138,7 @@ set(LIB_SOURCES_MIRROR
     ${LIB_ROOT}/options/manpage.c
     ${LIB_ROOT}/options/layout.c
     ${LIB_ROOT}/options/levenshtein.c
+    ${LIB_ROOT}/options/help_api.c
     ${LIB_ROOT}/options/completions/completions.c
     ${LIB_ROOT}/options/completions/bash.c
     ${LIB_ROOT}/options/completions/fish.c
@@ -314,6 +315,7 @@ set(EXPORTED_FUNCTIONS_MIRROR
     _mirror_get_webcam_flip
     _mirror_convert_frame
     _mirror_free_string
+    _get_help_text
     _malloc
     _free
 )
@@ -340,6 +342,7 @@ set(EXPORTED_FUNCTIONS_CLIENT
     _client_opus_encoder_cleanup
     _client_opus_decoder_cleanup
     _client_free_string
+    _get_help_text
     _malloc
     _free
 )

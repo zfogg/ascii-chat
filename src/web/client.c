@@ -854,3 +854,23 @@ void client_opus_decoder_cleanup(void) {
     WASM_LOG("Opus decoder cleaned up");
   }
 }
+
+/**
+ * Get help text for an option in a specific mode
+ * Exported for web client to retrieve tooltips for settings
+ * @param mode The mode (0=server, 1=client, 2=mirror, etc.)
+ * @param option_name The long name of the option (e.g., "color-mode", "fps")
+ * @return Help text string, or NULL if option doesn't apply to mode
+ */
+EMSCRIPTEN_KEEPALIVE
+const char *get_help_text(int mode, const char *option_name) {
+  if (!option_name || !option_name[0]) {
+    return NULL;
+  }
+
+  // Convert int mode to asciichat_mode_t
+  asciichat_mode_t mode_enum = (asciichat_mode_t)mode;
+
+  // Call the C API function
+  return options_get_help_text(mode_enum, option_name);
+}

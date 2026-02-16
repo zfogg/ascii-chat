@@ -10,7 +10,7 @@
 declare global {
   interface Window {
     asciiChatWasm?: {
-      getHelpText(mode: number, optionName: string): string | null;
+      get_help_text(mode: number, optionName: string): string | null;
     };
   }
 }
@@ -35,15 +35,15 @@ export enum AsciiChatMode {
  */
 export function getHelpText(
   mode: AsciiChatMode,
-  optionName: string
+  optionName: string,
 ): string | null {
   try {
-    if (!window.asciiChatWasm?.getHelpText) {
+    if (!window.asciiChatWasm?.get_help_text) {
       console.warn("WASM module not loaded, help text unavailable");
       return null;
     }
 
-    const result = window.asciiChatWasm.getHelpText(mode, optionName);
+    const result = window.asciiChatWasm.get_help_text(mode, optionName);
     return result || null;
   } catch (error) {
     console.error(`Failed to get help text for ${optionName}:`, error);
@@ -56,7 +56,7 @@ export function getHelpText(
  */
 export function getOptionHelp(
   mode: AsciiChatMode,
-  optionName: string
+  optionName: string,
 ): string | undefined {
   const help = getHelpText(mode, optionName);
   return help || undefined;
