@@ -143,7 +143,11 @@ Test(options, default_values) {
   cr_assert_str_eq(opts->address, "localhost");
   cr_assert_eq(opts->port, 27224);
   cr_assert_eq(opts->webcam_index, 0);
-  cr_assert_eq(opts->webcam_flip, true);
+#ifdef __APPLE__
+  cr_assert_eq(opts->flip_x, true);
+#else
+  cr_assert_eq(opts->flip_x, false);
+#endif
   cr_assert_eq(opts->color_mode, COLOR_MODE_AUTO);
   cr_assert_eq(opts->render_mode, RENDER_MODE_FOREGROUND);
   cr_assert_eq(opts->show_capabilities, 0);

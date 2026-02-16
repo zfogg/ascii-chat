@@ -447,7 +447,9 @@ Test(config_sections, client_webcam_settings) {
 
   const char *content = "[webcam]\n"
                         "webcam_index = 2\n"
-                        "webcam_flip = false\n";
+                        "\n"
+                        "[display]\n"
+                        "flip_x = false\n";
 
   char *config_path = create_temp_config(content);
   cr_assert_not_null(config_path, "Failed to create temp config file");
@@ -457,7 +459,7 @@ Test(config_sections, client_webcam_settings) {
   options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->webcam_index, 2, "Webcam index should be set to 2");
-  cr_assert_eq(opts->webcam_flip, false, "Webcam flip should be false");
+  cr_assert_eq(opts->flip_x, false, "Flip X should be false");
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -1129,9 +1131,9 @@ Test(config_sections, full_client_config) {
                         "\n"
                         "[webcam]\n"
                         "webcam_index = 1\n"
-                        "webcam_flip = false\n"
                         "\n"
                         "[display]\n"
+                        "flip_x = false\n"
                         "render_mode = \"half-block\"\n"
                         "fps = 60\n"
                         "stretch = true\n"
@@ -1170,7 +1172,7 @@ Test(config_sections, full_client_config) {
   cr_assert_eq(opts->width, 160, "Width should be 160");
   cr_assert_eq(opts->height, 48, "Height should be 48");
   cr_assert_eq(opts->webcam_index, 1, "Webcam index should be 1");
-  cr_assert_eq(opts->webcam_flip, false, "Webcam flip should be false");
+  cr_assert_eq(opts->flip_x, false, "Flip X should be false");
   cr_assert_eq(opts->color_mode, TERM_COLOR_256, "Color mode should be 256");
   cr_assert_eq(opts->render_mode, RENDER_MODE_HALF_BLOCK, "Render mode should be half-block");
   cr_assert_eq(opts->stretch, 1, "Stretch should be enabled");
