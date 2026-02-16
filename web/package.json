@@ -9,12 +9,12 @@
     "web.ascii-chat.com"
   ],
   "scripts": {
-    "dev": "bun run --filter --filter './ascii-chat.com' --filter './discovery.ascii-chat.com' --filter './web.ascii-chat.com' dev",
+    "dev": "bun run --filter './ascii-chat.com' --filter './discovery.ascii-chat.com' --filter './web.ascii-chat.com' dev",
     "build": "bun run --filter '*' build",
     "build:shared": "bun run --filter '@ascii-chat/shared' build",
-    "build:websites": "bun run --filter --filter './ascii-chat.com' --filter './discovery.ascii-chat.com' --filter './web.ascii-chat.com' build",
-    "type-check": "bun run --filter --filter './ascii-chat.com' --filter './discovery.ascii-chat.com' --filter './web.ascii-chat.com' type-check",
-    "lint": "bun run --filter --filter './ascii-chat.com' --filter './discovery.ascii-chat.com' --filter './web.ascii-chat.com' lint",
+    "build:websites": "bun run --filter './ascii-chat.com' --filter './discovery.ascii-chat.com' --filter './web.ascii-chat.com' build",
+    "type-check": "bun run --filter './ascii-chat.com' --filter './discovery.ascii-chat.com' --filter './web.ascii-chat.com' type-check",
+    "lint": "bun run --filter './ascii-chat.com' --filter './discovery.ascii-chat.com' --filter './web.ascii-chat.com' lint",
     "format": "bun run --filter './ascii-chat.com' --filter './discovery.ascii-chat.com' --filter './web.ascii-chat.com' format",
     "format:check": "bun run --filter './ascii-chat.com' --filter './discovery.ascii-chat.com' --filter './web.ascii-chat.com' format:check",
     "build:sites": "bun run build:shared && bun run --filter './ascii-chat.com' --filter './discovery.ascii-chat.com' --filter './web.ascii-chat.com' build"
