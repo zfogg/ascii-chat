@@ -46,6 +46,11 @@ macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
     if(ASCIICHAT_ENABLE_IPO AND CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
         target_compile_options(${MODULE_NAME} PRIVATE -fPIC)
     endif()
+    # On x86-64 Release builds, explicitly add -fPIC
+    # (POSITION_INDEPENDENT_CODE alone is insufficient when IPO is disabled)
+    if(CMAKE_BUILD_TYPE STREQUAL "Release" AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")
+        target_compile_options(${MODULE_NAME} PRIVATE -fPIC)
+    endif()
     # On Unix, use global-dynamic TLS model for thread-local variables
     # This is required for compatibility with shared libraries on x86-64
     if(NOT WIN32)
@@ -685,9 +690,6 @@ add_library(ascii-chat-shared SHARED EXCLUDE_FROM_ALL
             -fno-pie
         )
     endif()
-    # Disable IPO for shared libraries - ThinLTO creates internal TLS symbols
-    # that can't be relocated in shared objects on x86-64
-    set_property(TARGET ascii-chat-shared PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
 
     # Add dependencies from modules
     add_dependencies(ascii-chat-shared generate_version)

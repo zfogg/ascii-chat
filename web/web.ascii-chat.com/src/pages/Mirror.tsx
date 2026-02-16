@@ -151,13 +151,40 @@ export function MirrorPage() {
     }
   };
 
-  // Handle dimension changes from AsciiRenderer
+  // Handle dimension changes from AsciiRenderer (terminal display size, not webcam input)
   const handleDimensionsChange = (dims: { cols: number; rows: number }) => {
     setTerminalDimensions(dims);
-    if (isWasmReady()) {
-      setDimensions(dims.cols, dims.rows);
-    }
   };
+
+  // Apply initial settings to WASM after it initializes
+  useEffect(() => {
+    if (wasmInitialized && optionsManager && isWasmReady()) {
+      try {
+        optionsManager.applySettings(settings);
+      } catch (err) {
+        console.error("Failed to apply initial WASM settings:", err);
+      }
+    }
+  }, [wasmInitialized, optionsManager, settings]);
+
+  // Update WASM terminal dimensions when terminal size changes
+  useEffect(() => {
+    if (
+      optionsManager &&
+      isWasmReady() &&
+      terminalDimensions.cols > 0 &&
+      terminalDimensions.rows > 0
+    ) {
+      try {
+        optionsManager.setDimensions(
+          terminalDimensions.cols,
+          terminalDimensions.rows,
+        );
+      } catch (err) {
+        console.error("Failed to set terminal dimensions in WASM:", err);
+      }
+    }
+  }, [terminalDimensions, optionsManager]);
 
   // Initialize WASM on mount
   useEffect(() => {

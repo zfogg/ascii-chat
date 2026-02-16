@@ -16,6 +16,10 @@ export interface AsciiRendererHandle {
   clear(): void;
 }
 
+interface XTermWithElement extends XTermType {
+  element?: HTMLElement;
+}
+
 export interface AsciiRendererProps {
   onDimensionsChange?: (dims: { cols: number; rows: number }) => void;
   onFpsChange?: (fps: number) => void;
@@ -201,17 +205,6 @@ export const AsciiRenderer = forwardRef<
         console.log("[AsciiRenderer] Loading FitAddon");
         terminal.loadAddon(fitAddon);
 
-        try {
-          console.log("[AsciiRenderer] Calling fitAddon.fit()");
-          fitAddon.fit();
-          console.log(
-            `[AsciiRenderer] FitAddon fit complete: ${terminal.cols}x${terminal.rows}`,
-          );
-          updateDimensions(terminal.cols, terminal.rows);
-        } catch (e) {
-          console.error("[AsciiRenderer] FitAddon error:", e);
-        }
-
         fitAddonRef.current = fitAddon;
 
         // Disable IntersectionObserver pause mechanism
@@ -250,15 +243,42 @@ export const AsciiRenderer = forwardRef<
           }
         }
 
+        // Define resize handler used for both initial sizing and window resize
         const handleResize = () => {
           try {
-            console.log("[AsciiRenderer] Window resize event");
+            console.log("[AsciiRenderer] Resizing terminal");
             fitAddon.fit();
+            console.log(
+              `[AsciiRenderer] FitAddon fit complete: ${terminal.cols}x${terminal.rows}`,
+            );
             updateDimensions(terminal.cols, terminal.rows);
           } catch (e) {
             console.error("[AsciiRenderer] Resize error:", e);
           }
         };
+
+        // Use ResizeObserver to detect when the xterm container has actual dimensions
+        const resizeObserver = new ResizeObserver(() => {
+          console.log(
+            "[AsciiRenderer] Container resized, applying initial fit",
+          );
+          handleResize();
+          // Only need initial fit once, then listen to window resize
+          resizeObserver.disconnect();
+        });
+
+        // Observe the xterm viewport to know when container is ready
+        const xtermViewport = (instance as XTermWithElement).element?.querySelector(
+          ".xterm-viewport",
+        );
+        if (xtermViewport) {
+          resizeObserver.observe(xtermViewport);
+        } else {
+          console.warn("[AsciiRenderer] Could not find xterm-viewport");
+          handleResize();
+        }
+
+        // Listen for future window resize events
         window.addEventListener("resize", handleResize);
         console.log("[AsciiRenderer] Resize event listener added");
 
