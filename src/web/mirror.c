@@ -279,7 +279,7 @@ int mirror_get_matrix_rain(void) {
 
 EMSCRIPTEN_KEEPALIVE
 int mirror_set_webcam_flip(int enabled) {
-  asciichat_error_t err = options_set_bool("webcam_flip", enabled != 0);
+  asciichat_error_t err = options_set_bool("flip_x", enabled != 0);
   return (err == ASCIICHAT_OK) ? 0 : -1;
 }
 
