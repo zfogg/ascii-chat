@@ -18,6 +18,7 @@ export interface AsciiRendererHandle {
 
 export interface AsciiRendererProps {
   onDimensionsChange?: (dims: { cols: number; rows: number }) => void;
+  onFpsChange?: (fps: number) => void;
   error?: string;
   showFps?: boolean;
 }
@@ -25,7 +26,10 @@ export interface AsciiRendererProps {
 export const AsciiRenderer = forwardRef<
   AsciiRendererHandle,
   AsciiRendererProps
->(function AsciiRenderer({ onDimensionsChange, error, showFps = true }, ref) {
+>(function AsciiRenderer(
+  { onDimensionsChange, onFpsChange, error, showFps = true },
+  ref,
+) {
   const xtermRef = useRef<XTermType | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const fpsRef = useRef<HTMLDivElement>(null);
@@ -166,14 +170,17 @@ export const AsciiRenderer = forwardRef<
             );
           }
 
-          // Update FPS counter via direct DOM mutation
-          if (showFps && fpsRef.current && fpsUpdateTimeRef.current !== null) {
+          // Update FPS counter via direct DOM mutation and callback
+          if (showFps && fpsUpdateTimeRef.current !== null) {
             frameCountRef.current++;
             const now = performance.now();
             const elapsed = now - fpsUpdateTimeRef.current;
             if (elapsed >= 1000) {
               const fps = Math.round(frameCountRef.current / (elapsed / 1000));
-              fpsRef.current.textContent = fps.toString();
+              if (fpsRef.current) {
+                fpsRef.current.textContent = fps.toString();
+              }
+              onFpsChange?.(fps);
               frameCountRef.current = 0;
               fpsUpdateTimeRef.current = now;
             }
@@ -201,7 +208,7 @@ export const AsciiRenderer = forwardRef<
         }
       },
     }),
-    [showFps],
+    [showFps, onFpsChange],
   );
 
   const handleXTermRef = useCallback(
@@ -344,16 +351,10 @@ export const AsciiRenderer = forwardRef<
         />
       </div>
 
-      {/* FPS counter */}
+      {/* FPS counter - hidden, displayed in control bar instead */}
       {showFps && (
-        <div
-          className="text-xs text-terminal-8 absolute top-0 right-0 px-2 py-1"
-          style={{ pointerEvents: "none" }}
-        >
-          FPS:{" "}
-          <span className="text-terminal-2" ref={fpsRef}>
-            --
-          </span>
+        <div ref={fpsRef} style={{ display: "none" }}>
+          --
         </div>
       )}
 

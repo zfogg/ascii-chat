@@ -24,6 +24,8 @@ import {
   AsciiRenderer,
   AsciiRendererHandle,
 } from "../components/AsciiRenderer";
+import { PageControlBar } from "../components/PageControlBar";
+import { PageLayout } from "../components/PageLayout";
 import { WebClientHead } from "../components/WebClientHead";
 import { useCanvasCapture } from "../hooks/useCanvasCapture";
 
@@ -79,6 +81,7 @@ export function MirrorPage() {
     cols: 0,
     rows: 0,
   });
+  const [fps, setFps] = useState<number | undefined>();
   const streamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastFrameTimeRef = useRef<number>(0);
@@ -276,82 +279,37 @@ export function MirrorPage() {
         description="Test your webcam with real-time ASCII art rendering. See yourself in terminal-style graphics."
         url="https://web.ascii-chat.com/mirror"
       />
-      <div className="flex-1 bg-terminal-bg text-terminal-fg flex flex-col">
-        {/* Hidden video and canvas for capture */}
-        {/*
-          The video/canvas container uses position:fixed with 1px dimensions + overflow:hidden
-          to keep elements technically "visible" while visually hidden. Using opacity:0 or
-          width/height:0 causes browsers to pause invisible videos on scroll.
-        */}
-        <div
-          style={{
-            position: "fixed",
-            bottom: 0,
-            right: 0,
-            width: "1px",
-            height: "1px",
-            overflow: "hidden",
-            pointerEvents: "none",
-          }}
-        >
-          <video
-            ref={videoRef}
-            autoPlay
-            muted
-            playsInline
-            style={{ width: "640px", height: "480px" }}
-          />
-          <canvas ref={canvasRef} />
-        </div>
-
-        {/* Settings Panel */}
-        {showSettings && (
+      <PageLayout
+        videoRef={videoRef}
+        canvasRef={canvasRef}
+        showSettings={showSettings}
+        settingsPanel={
           <Settings config={settings} onChange={handleSettingsChange} />
-        )}
-
-        {/* Controls and info */}
-        <div className="px-4 py-3 flex-shrink-0 border-b border-terminal-8">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-semibold">
-              ASCII Mirror{" "}
-              {terminalDimensions.cols > 0 &&
-                `(${terminalDimensions.cols}x${terminalDimensions.rows})`}
-            </h2>
-          </div>
-          <div className="flex gap-2">
-            {!isRunning ? (
-              <button
-                onClick={startWebcam}
-                className="px-4 py-2 bg-terminal-2 text-terminal-bg rounded hover:bg-terminal-10"
-              >
-                Start Webcam
-              </button>
-            ) : (
-              <button
-                onClick={stopWebcam}
-                className="px-4 py-2 bg-terminal-1 text-terminal-bg rounded hover:bg-terminal-9"
-              >
-                Stop
-              </button>
-            )}
-            <button
-              onClick={() => setShowSettings(!showSettings)}
-              className="px-4 py-2 bg-terminal-8 text-terminal-fg rounded hover:bg-terminal-7"
-              title="Settings"
-            >
-              Settings
-            </button>
-          </div>
-        </div>
-
-        {/* ASCII output via shared renderer */}
-        <AsciiRenderer
-          ref={rendererRef}
-          onDimensionsChange={handleDimensionsChange}
-          error={error}
-          showFps={isRunning}
-        />
-      </div>
+        }
+        controlBar={
+          <PageControlBar
+            title="ASCII Mirror"
+            dimensions={terminalDimensions}
+            fps={fps}
+            targetFps={settings.targetFps}
+            isWebcamRunning={isRunning}
+            onStartWebcam={startWebcam}
+            onStopWebcam={stopWebcam}
+            onSettingsClick={() => setShowSettings(!showSettings)}
+            showConnectionButton={false}
+            showSettingsButton={true}
+          />
+        }
+        renderer={
+          <AsciiRenderer
+            ref={rendererRef}
+            onDimensionsChange={handleDimensionsChange}
+            onFpsChange={setFps}
+            error={error}
+            showFps={isRunning}
+          />
+        }
+      />
     </>
   );
 }

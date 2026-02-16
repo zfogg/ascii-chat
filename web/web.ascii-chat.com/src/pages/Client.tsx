@@ -15,6 +15,8 @@ import {
 import { ConnectionPanelModal } from "../components/ConnectionPanelModal";
 import { Settings, SettingsConfig } from "../components/Settings";
 import { WebClientHead } from "../components/WebClientHead";
+import { PageControlBar } from "../components/PageControlBar";
+import { PageLayout } from "../components/PageLayout";
 import { useCanvasCapture } from "../hooks/useCanvasCapture";
 
 const CAPABILITIES_PACKET_SIZE = 160;
@@ -151,6 +153,7 @@ export function ClientPage() {
   });
   const [isWebcamRunning, setIsWebcamRunning] = useState(false);
   const [hasAutoConnected, setHasAutoConnected] = useState(false);
+  const [fps, setFps] = useState<number | undefined>();
 
   // Read server URL from query parameter (for E2E tests)
   // Use useLayoutEffect to ensure this runs before render and auto-connect
@@ -748,104 +751,56 @@ export function ClientPage() {
         description="Connect to an ascii-chat server. Real-time encrypted video chat rendered as ASCII art in your browser."
         url="https://web.ascii-chat.com/client"
       />
-      <div className="flex-1 bg-terminal-bg text-terminal-fg flex flex-col min-h-0">
-        {/* Hidden video and canvas for webcam capture */}
-        <div
-          style={{
-            position: "fixed",
-            bottom: 0,
-            right: 0,
-            width: "1px",
-            height: "1px",
-            overflow: "hidden",
-            pointerEvents: "none",
-          }}
-        >
-          <video
-            ref={videoRef}
-            autoPlay
-            muted
-            playsInline
-            style={{ width: "640px", height: "480px" }}
+      <PageLayout
+        videoRef={videoRef}
+        canvasRef={canvasRef}
+        showSettings={showSettings}
+        settingsPanel={<Settings config={settings} onChange={setSettings} />}
+        controlBar={
+          <PageControlBar
+            title="Client"
+            status={status}
+            statusDotColor={getStatusDotColor()}
+            dimensions={terminalDimensions}
+            fps={fps}
+            targetFps={settings.targetFps}
+            isWebcamRunning={isWebcamRunning}
+            onStartWebcam={
+              connectionState === ConnectionState.CONNECTED
+                ? startWebcam
+                : undefined
+            }
+            onStopWebcam={isWebcamRunning ? stopWebcam : undefined}
+            showConnectionButton={true}
+            onConnectionClick={() => setShowModal(true)}
+            onSettingsClick={() => setShowSettings(!showSettings)}
+            showSettingsButton={true}
           />
-          <canvas ref={canvasRef} />
-        </div>
-
-        {/* Settings Panel */}
-        {showSettings && <Settings config={settings} onChange={setSettings} />}
-
-        {/* Control bar */}
-        <div className="px-4 py-3 flex-shrink-0 border-b border-terminal-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <div
-                  className={`w-2 h-2 rounded-full ${getStatusDotColor()}`}
-                />
-                <span className="text-sm font-semibold">Client</span>
-              </div>
-              {terminalDimensions.cols > 0 && (
-                <span className="text-xs text-terminal-8">
-                  {terminalDimensions.cols}x{terminalDimensions.rows}
-                </span>
-              )}
-              <span className="status text-xs text-terminal-8">{status}</span>
-            </div>
-            <div className="flex gap-2">
-              {connectionState === ConnectionState.CONNECTED &&
-                (!isWebcamRunning ? (
-                  <button
-                    onClick={startWebcam}
-                    className="px-4 py-2 bg-terminal-2 text-terminal-bg rounded hover:bg-terminal-10 text-sm font-medium"
-                  >
-                    Start Webcam
-                  </button>
-                ) : (
-                  <button
-                    onClick={stopWebcam}
-                    className="px-4 py-2 bg-terminal-1 text-terminal-bg rounded hover:bg-terminal-9 text-sm font-medium"
-                  >
-                    Stop Webcam
-                  </button>
-                ))}
-              <button
-                onClick={() => setShowModal(true)}
-                className="px-4 py-2 bg-terminal-8 text-terminal-fg rounded hover:bg-terminal-7 text-sm"
-              >
-                Connection
-              </button>
-              <button
-                onClick={() => setShowSettings(!showSettings)}
-                className="px-4 py-2 bg-terminal-8 text-terminal-fg rounded hover:bg-terminal-7 text-sm"
-              >
-                Settings
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* ASCII output */}
-        <AsciiRenderer
-          ref={rendererRef}
-          onDimensionsChange={handleDimensionsChange}
-          error={error}
-          showFps={isWebcamRunning}
-        />
-
-        {/* Connection modal */}
-        <ConnectionPanelModal
-          isOpen={showModal}
-          onClose={() => setShowModal(false)}
-          connectionState={connectionState}
-          status={status}
-          publicKey={publicKey}
-          serverUrl={serverUrl}
-          onServerUrlChange={setServerUrl}
-          onConnect={connectToServer}
-          onDisconnect={handleDisconnect}
-          isConnected={connectionState === ConnectionState.CONNECTED}
-        />
-      </div>
+        }
+        renderer={
+          <AsciiRenderer
+            ref={rendererRef}
+            onDimensionsChange={handleDimensionsChange}
+            onFpsChange={setFps}
+            error={error}
+            showFps={isWebcamRunning}
+          />
+        }
+        modal={
+          <ConnectionPanelModal
+            isOpen={showModal}
+            onClose={() => setShowModal(false)}
+            connectionState={connectionState}
+            status={status}
+            publicKey={publicKey}
+            serverUrl={serverUrl}
+            onServerUrlChange={setServerUrl}
+            onConnect={connectToServer}
+            onDisconnect={handleDisconnect}
+            isConnected={connectionState === ConnectionState.CONNECTED}
+          />
+        }
+      />
     </>
   );
 }
