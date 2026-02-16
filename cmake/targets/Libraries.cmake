@@ -685,6 +685,9 @@ add_library(ascii-chat-shared SHARED EXCLUDE_FROM_ALL
             -fno-pie
         )
     endif()
+    # Disable IPO for shared libraries - ThinLTO creates internal TLS symbols
+    # that can't be relocated in shared objects on x86-64
+    set_property(TARGET ascii-chat-shared PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
 
     # Add dependencies from modules
     add_dependencies(ascii-chat-shared generate_version)
