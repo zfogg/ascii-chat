@@ -272,7 +272,8 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     if (!packet_is_handshake_type((packet_type_t)packet_type)) {
       // Encrypt the entire packet (header + payload)
       size_t ciphertext_size = len + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
-      uint8_t *ciphertext = buffer_pool_alloc(NULL, ciphertext_size);
+      // Use SAFE_MALLOC (not buffer pool - encrypted_packet also uses pool and causes overlap)
+      uint8_t *ciphertext = SAFE_MALLOC(ciphertext_size, uint8_t *);
       if (!ciphertext) {
         return SET_ERRNO(ERROR_MEMORY, "Failed to allocate ciphertext buffer for WebSocket");
       }
@@ -281,7 +282,7 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
       crypto_result_t result =
           crypto_encrypt(transport->crypto_ctx, data, len, ciphertext, ciphertext_size, &ciphertext_len);
       if (result != CRYPTO_OK) {
-        buffer_pool_free(NULL, ciphertext, ciphertext_size);
+        SAFE_FREE(ciphertext);
         return SET_ERRNO(ERROR_CRYPTO, "Failed to encrypt WebSocket packet: %s", crypto_result_to_string(result));
       }
 
@@ -289,7 +290,7 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
       size_t total_encrypted_size = sizeof(packet_header_t) + ciphertext_len;
       encrypted_packet = buffer_pool_alloc(NULL, total_encrypted_size);
       if (!encrypted_packet) {
-        buffer_pool_free(NULL, ciphertext, ciphertext_size);
+        SAFE_FREE(ciphertext);
         return SET_ERRNO(ERROR_MEMORY, "Failed to allocate encrypted packet buffer");
       }
 
@@ -302,7 +303,7 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
 
       memcpy(encrypted_packet, &encrypted_header, sizeof(encrypted_header));
       memcpy(encrypted_packet + sizeof(encrypted_header), ciphertext, ciphertext_len);
-      buffer_pool_free(NULL, ciphertext, ciphertext_size);
+      SAFE_FREE(ciphertext);
 
       send_data = encrypted_packet;
       send_len = total_encrypted_size;

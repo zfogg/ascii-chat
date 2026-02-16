@@ -77,7 +77,8 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
   size_t total_size = sizeof(header) + payload_len;
 
   // Allocate buffer for complete packet
-  uint8_t *packet = buffer_pool_alloc(NULL, total_size);
+  // Use SAFE_MALLOC (not buffer pool - payload may also be from pool and causes overlap)
+  uint8_t *packet = SAFE_MALLOC(total_size, uint8_t *);
   if (!packet) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate packet buffer");
   }
@@ -98,7 +99,7 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
     log_error("★ PACKET_SEND: FAILED - acip_transport_send returned %d (%s)", result, asciichat_error_string(result));
   }
 
-  buffer_pool_free(NULL, packet, total_size);
+  SAFE_FREE(packet);
   return result;
 }
 
