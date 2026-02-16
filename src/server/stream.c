@@ -322,23 +322,65 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
       log_debug_every(5000000, "Video mixer: client %u incoming frame hash=0x%08x size=%zu", snap->client_id,
                       incoming_hash, frame_size_val);
 
-      if (frame_data_ptr && frame_size_val > 0) {
-        // We have frame data - copy it to our working structure
+      if (frame_data_ptr && frame_size_val > 0 && frame_size_val >= (sizeof(uint32_t) * 2 + 3)) {
+        // PARSE AND VALIDATE DIMENSIONS BEFORE COPYING
+        // Don't trust frame->size - calculate correct size from dimensions
+        uint32_t peek_width = NET_TO_HOST_U32(read_u32_unaligned(frame_data_ptr));
+        uint32_t peek_height = NET_TO_HOST_U32(read_u32_unaligned(frame_data_ptr + sizeof(uint32_t)));
+
+        log_debug_every(100000, "Per-client %u: parsed dimensions %ux%u from frame", snap->client_id, peek_width,
+                        peek_height);
+
+        // Reject obviously corrupted dimensions
+        if (peek_width == 0 || peek_height == 0 || peek_width > 4096 || peek_height > 2160) {
+          log_debug("Per-client %u: rejected dimensions %ux%u as corrupted", snap->client_id, peek_width, peek_height);
+          continue;
+        }
+
+        // Validate dimensions
+        if (image_validate_dimensions((size_t)peek_width, (size_t)peek_height) != ASCIICHAT_OK) {
+          continue;
+        }
+
+        // Calculate CORRECT frame size based on dimensions (don't trust frame->size)
+        size_t correct_frame_size = sizeof(uint32_t) * 2;
+        {
+          size_t rgb_size = 0;
+          if (image_calc_rgb_size((size_t)peek_width, (size_t)peek_height, &rgb_size) != ASCIICHAT_OK) {
+            log_debug("Per-client: rgb_size calc failed for %ux%u", peek_width, peek_height);
+            continue;
+          }
+          correct_frame_size += rgb_size;
+        }
+
+        log_debug_every(1000000, "Per-client: frame dimensions=%ux%u, frame_size=%zu, correct_size=%zu", peek_width,
+                        peek_height, frame_size_val, correct_frame_size);
+
+        // Verify frame is at least large enough for the correct size
+        if (frame_size_val < correct_frame_size) {
+          log_debug("Per-client: frame too small: got %zu, need %zu", frame_size_val, correct_frame_size);
+          continue;
+        }
+
+        // We have frame data - copy ONLY the correct amount based on dimensions
         buffer_pool_t *pool = buffer_pool_get_global();
         if (pool) {
-          current_frame.data = buffer_pool_alloc(pool, frame->size);
+          current_frame.data = buffer_pool_alloc(pool, correct_frame_size);
         }
         if (!current_frame.data) {
           // 64-byte cache-line alignment improves performance for large video frames
-          current_frame.data = SAFE_MALLOC_ALIGNED(frame->size, 64, void *);
+          current_frame.data = SAFE_MALLOC_ALIGNED(correct_frame_size, 64, void *);
         }
 
         if (current_frame.data) {
-          memcpy(current_frame.data, frame->data, frame->size);
-          current_frame.size = frame->size;
+          log_debug("Per-client %u: copying %zu bytes (dims %ux%u, orig_size=%zu)", snap->client_id, correct_frame_size,
+                    peek_width, peek_height, frame_size_val);
+          memcpy(current_frame.data, frame->data, correct_frame_size);
+          current_frame.size = correct_frame_size;
           current_frame.source_client_id = snap->client_id;
           current_frame.timestamp = (uint32_t)(frame->capture_timestamp_ns / NS_PER_SEC_INT);
           got_new_frame = true;
+          log_debug("Per-client %u: copy completed successfully", snap->client_id);
         }
       } else {
       }
@@ -369,10 +411,6 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
         SET_ERRNO(ERROR_INVALID_STATE,
                   "Per-client: Invalid image dimensions from client %u: %ux%u (data may be corrupted)", snap->client_id,
                   img_width, img_height);
-        // Clean up the current frame if we got a new one
-        if (got_new_frame) {
-          cleanup_current_frame_data(&current_frame);
-        }
         source_count++;
         continue;
       }
@@ -384,9 +422,6 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
         if (image_calc_rgb_size((size_t)img_width, (size_t)img_height, &rgb_size) != ASCIICHAT_OK) {
           SET_ERRNO(ERROR_INVALID_STATE, "Per-client: RGB size calculation failed for client %u: %ux%u",
                     snap->client_id, img_width, img_height);
-          if (got_new_frame) {
-            cleanup_current_frame_data(&current_frame);
-          }
           source_count++;
           continue;
         }
@@ -396,28 +431,27 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
         SET_ERRNO(ERROR_INVALID_STATE,
                   "Per-client: Frame size mismatch from client %u: got %zu, expected %zu for %ux%u image",
                   snap->client_id, frame_to_use->size, expected_size, img_width, img_height);
-        // Clean up the current frame if we got a new one
-        if (got_new_frame) {
-          cleanup_current_frame_data(&current_frame);
-        }
         source_count++;
         continue;
       }
 
-      // Extract pixel data
+      // Extract pixel data pointer
       rgb_pixel_t *pixels = (rgb_pixel_t *)(frame_to_use->data + (sizeof(uint32_t) * 2));
 
       // Create image from buffer pool for consistent video pipeline management
+      log_debug("Per-client: creating image %ux%u from pixels at offset %zu", img_width, img_height,
+                (size_t)(pixels - (rgb_pixel_t *)frame_to_use->data));
       image_t *img = image_new_from_pool(img_width, img_height);
+      if (!img) {
+        log_error("Per-client: image_new_from_pool failed for %ux%u", img_width, img_height);
+        continue;
+      }
+      log_debug("Per-client: copying %zu bytes to image pixels",
+                (size_t)img_width * (size_t)img_height * sizeof(rgb_pixel_t));
       memcpy(img->pixels, pixels, (size_t)img_width * (size_t)img_height * sizeof(rgb_pixel_t));
+      log_debug("Per-client: memcpy completed, assigning to sources");
       sources[source_count].image = img;
       sources[source_count].has_video = true;
-    }
-
-    // Clean up current_frame.data if we allocated it but frame_to_use check failed
-    // This handles cases where: frame too small, no data, etc.
-    if (got_new_frame && current_frame.data) {
-      cleanup_current_frame_data(&current_frame);
     }
 
     // Increment source count for this active client (with or without video)
