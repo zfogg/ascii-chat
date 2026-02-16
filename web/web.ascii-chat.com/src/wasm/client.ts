@@ -3,6 +3,12 @@
 
 import type { Palette } from "../components/Settings";
 
+// Type for WASM exports exposed to window.asciiChatWasm
+interface AsciiChatWasmExports {
+  _wasmModule?: ClientModule;
+  get_help_text?(mode: number, option_name: number): number;
+}
+
 // Type definition for the Emscripten module
 interface ClientModuleExports {
   _client_init_with_args(args_string: number): number;
@@ -67,6 +73,7 @@ interface ClientModuleExports {
   _client_set_height(height: number): number;
   _client_get_height(): number;
   _client_free_string(ptr: number): void;
+  _get_help_text(mode: number, option_name: number): number;
   _malloc(size: number): number;
   _free(ptr: number): void;
 }
@@ -111,6 +118,7 @@ interface ClientModule {
   _client_set_height: ClientModuleExports["_client_set_height"];
   _client_get_height: ClientModuleExports["_client_get_height"];
   _client_free_string: ClientModuleExports["_client_free_string"];
+  _get_help_text: ClientModuleExports["_get_help_text"];
   _malloc: ClientModuleExports["_malloc"];
   _free: ClientModuleExports["_free"];
 }
@@ -341,6 +349,15 @@ export async function initClientWasm(
       throw new Error("Failed to initialize client WASM module");
     }
     console.log("[Client WASM] Initialization complete!");
+
+    // Expose WASM module to window for JavaScript access (e.g., tooltips)
+    const globalWindow = globalThis as typeof globalThis & {
+      asciiChatWasm: AsciiChatWasmExports;
+    };
+    globalWindow.asciiChatWasm = {
+      _wasmModule: wasmModule,
+      get_help_text: wasmModule._get_help_text.bind(wasmModule),
+    };
   } finally {
     wasmModule._free(strPtr);
   }

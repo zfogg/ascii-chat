@@ -3,6 +3,12 @@
 
 import type { Palette } from "../components/Settings";
 
+// Type for WASM exports exposed to window.asciiChatWasm
+interface AsciiChatWasmExports {
+  _wasmModule?: MirrorModule;
+  get_help_text?(mode: number, option_name: number): number;
+}
+
 // Type definition for the Emscripten module
 interface MirrorModuleExports {
   _mirror_init_with_args(args_string: number): number;
@@ -33,6 +39,7 @@ interface MirrorModuleExports {
     src_height: number,
   ): number;
   _mirror_free_string(ptr: number): void;
+  _get_help_text(mode: number, option_name: number): number;
   _malloc(size: number): number;
   _free(ptr: number): void;
 }
@@ -66,6 +73,7 @@ interface MirrorModule {
   _mirror_get_target_fps: MirrorModuleExports["_mirror_get_target_fps"];
   _mirror_convert_frame: MirrorModuleExports["_mirror_convert_frame"];
   _mirror_free_string: MirrorModuleExports["_mirror_free_string"];
+  _get_help_text: MirrorModuleExports["_get_help_text"];
   _malloc: MirrorModuleExports["_malloc"];
   _free: MirrorModuleExports["_free"];
 }
@@ -216,6 +224,15 @@ export async function initMirrorWasm(
       throw new Error("Failed to initialize mirror WASM module");
     }
     console.log("[WASM] Initialization complete!");
+
+    // Expose WASM module to window for JavaScript access (e.g., tooltips)
+    const globalWindow = globalThis as typeof globalThis & {
+      asciiChatWasm: AsciiChatWasmExports;
+    };
+    globalWindow.asciiChatWasm = {
+      _wasmModule: wasmModule,
+      get_help_text: wasmModule._get_help_text.bind(wasmModule),
+    };
   } finally {
     wasmModule._free(strPtr);
   }
