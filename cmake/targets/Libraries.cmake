@@ -591,8 +591,11 @@ add_library(ascii-chat-shared SHARED EXCLUDE_FROM_ALL
     if(ASCIICHAT_ENABLE_UNITY_BUILDS)
         set_target_properties(ascii-chat-shared PROPERTIES UNITY_BUILD ON)
     endif()
-    # Disable IPO for shared libraries on ARM64 - LTO generates non-PIC code that fails linking on aarch64
-    if(ASCIICHAT_ENABLE_IPO AND NOT CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+    # Disable IPO for shared libraries - LTO causes TLS model incompatibilities
+    # On ARM64: LTO generates non-PIC code that fails linking on aarch64
+    # On x86-64: LTO-generated internal TLS symbols don't respect -ftls-model=global-dynamic
+    # Shared libraries need to link cleanly without LTO-related TLS issues
+    if(ASCIICHAT_ENABLE_IPO AND NOT CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|x86_64")
         set_property(TARGET ascii-chat-shared PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
     endif()
     set_target_properties(ascii-chat-shared PROPERTIES
