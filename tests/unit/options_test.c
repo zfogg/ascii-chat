@@ -189,7 +189,7 @@ GENERATE_OPTIONS_TEST(
       cr_assert_gt(opts->width, 0, "Width should be positive");
       cr_assert_gt(opts->height, 0, "Height should be positive");
       cr_assert_eq(opts->webcam_index, 0);
-      cr_assert_eq(opts->webcam_flip, true);
+      cr_assert_eq(opts->flip_x, true);
     },
     { cr_assert_eq(exit_code, 0, "Basic server options should not exit"); })
 
@@ -1013,7 +1013,7 @@ GENERATE_OPTIONS_TEST(
       cr_assert_eq(opts->encrypt_enabled, 1);
       cr_assert_eq(opts->force_utf8, 1);
       cr_assert_eq(opts->show_capabilities, 1);
-      cr_assert_eq(opts->webcam_flip, false);
+      cr_assert_eq(opts->flip_x, false);
     },
     { cr_assert_eq(exit_code, 0, "flag values should not cause exit"); })
 
@@ -1034,7 +1034,7 @@ GENERATE_OPTIONS_TEST(
     test_webcam_values, ARGV_LIST("client", "-c", "3", "-g"), true,
     {
       cr_assert_eq(opts->webcam_index, 3);
-      cr_assert_eq(opts->webcam_flip, false);
+      cr_assert_eq(opts->flip_x, false);
     },
     { cr_assert_eq(exit_code, 0, "webcam values should not cause exit"); })
 
@@ -1052,7 +1052,7 @@ GENERATE_OPTIONS_TEST(
       cr_assert_eq(opts->width, 200);
       cr_assert_eq(opts->height, 100);
       cr_assert_eq(opts->webcam_index, 2);
-      cr_assert_eq(opts->webcam_flip, false);
+      cr_assert_eq(opts->flip_x, false);
       cr_assert_eq(opts->color_mode, COLOR_MODE_256_COLOR);
       cr_assert_eq(opts->render_mode, RENDER_MODE_BACKGROUND);
       cr_assert_eq(opts->palette_type, PALETTE_DIGITAL);
@@ -1179,7 +1179,7 @@ GENERATE_OPTIONS_TEST(
     test_webcam_index_only, ARGV_LIST("client", "-c", "5"), true,
     {
       cr_assert_eq(opts->webcam_index, 5);
-      cr_assert_eq(opts->webcam_flip, true); // Should remain default
+      cr_assert_eq(opts->flip_x, true); // Should remain default
     },
     { cr_assert_eq(exit_code, 0, "webcam index should not cause exit"); })
 
@@ -1187,7 +1187,7 @@ GENERATE_OPTIONS_TEST(
     test_webcam_flip_only, ARGV_LIST("client", "-g"), true,
     {
       cr_assert_eq(opts->webcam_index, 0); // Should remain default
-      cr_assert_eq(opts->webcam_flip, false);
+      cr_assert_eq(opts->flip_x, false);
     },
     { cr_assert_eq(exit_code, 0, "webcam flip should not cause exit"); })
 
@@ -1201,10 +1201,10 @@ GENERATE_OPTIONS_TEST(
       cr_assert_str_eq(opts->address, "127.0.0.1");
       cr_assert_eq(opts->port, 8080);
       // Server should use default values for client-only options
-      cr_assert_eq(opts->width, 110);        // Should use default width
-      cr_assert_eq(opts->height, 70);        // Should use default height
-      cr_assert_eq(opts->webcam_index, 0);   // Should use default
-      cr_assert_eq(opts->webcam_flip, true); // Should use default
+      cr_assert_eq(opts->width, 110);      // Should use default width
+      cr_assert_eq(opts->height, 70);      // Should use default height
+      cr_assert_eq(opts->webcam_index, 0); // Should use default
+      cr_assert_eq(opts->flip_x, true);    // Should use default
     },
     { cr_assert_eq(exit_code, 0, "server basic options should not cause exit"); })
 
