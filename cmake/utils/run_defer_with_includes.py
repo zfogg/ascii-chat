@@ -20,10 +20,10 @@ def main():
     source_file = sys.argv[3]
     defer_args = sys.argv[4:] if len(sys.argv) > 4 else []
 
-    # Find compilation database
-    db_path = os.path.join(db_dir, 'compile_commands.json')
+    # Find compilation database (defer tool uses compile_commands_defer.json)
+    db_path = os.path.join(db_dir, 'compile_commands_defer.json')
     if not os.path.exists(db_path):
-        print(f"Error: compile_commands.json not found in {db_dir}", file=sys.stderr)
+        print(f"Error: compile_commands_defer.json not found in {db_dir}", file=sys.stderr)
         sys.exit(1)
 
     # Build command: defer_tool -p <db_dir> [other_args] source_file

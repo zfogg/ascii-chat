@@ -166,8 +166,8 @@ function(ascii_defer_prepare)
         add_custom_command(
             OUTPUT "${_gen_path}"
             COMMAND ${CMAKE_COMMAND} -E make_directory "${_gen_dir}"
-            COMMAND echo "DEBUG: Transforming ${_rel_path} with compilation db at ${_ascii_temp_build_dir}"
-            COMMAND python3 "${CMAKE_SOURCE_DIR}/cmake/utils/run_defer_with_includes.py" "${_ascii_temp_build_dir}" "${_defer_tool_exe}" "${_rel_path}" --output-dir=${defer_transformed_dir}
+            COMMAND echo "DEBUG: Transforming ${_rel_path} with compilation db at ${CMAKE_BINARY_DIR}"
+            COMMAND python3 "${CMAKE_SOURCE_DIR}/cmake/utils/run_defer_with_includes.py" "${CMAKE_BINARY_DIR}" "${_defer_tool_exe}" "${_rel_path}" --output-dir=${defer_transformed_dir}
             DEPENDS defer-all-timer-start ${_defer_tool_depends} "${_abs_path}" "${CMAKE_BINARY_DIR}/compile_commands_defer.json"
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             COMMENT "Defer: ${_rel_path}"
