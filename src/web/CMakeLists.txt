@@ -63,6 +63,7 @@ set(ZSTD_BUILD_PROGRAMS OFF CACHE BOOL "Build zstd programs")
 set(ZSTD_BUILD_TESTS OFF CACHE BOOL "Build zstd tests")
 set(ZSTD_BUILD_SHARED OFF CACHE BOOL "Build shared library")
 set(ZSTD_BUILD_STATIC ON CACHE BOOL "Build static library")
+set(ZSTD_MULTITHREAD_SUPPORT OFF CACHE BOOL "Disable zstd threading for WASM")
 FetchContent_MakeAvailable(zstd)
 
 # TOML (using tomlc17 from deps)

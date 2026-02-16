@@ -1,5 +1,10 @@
 import { useCallback } from "react";
-import { SettingsConfig, ColorMode, ColorFilter, Palette } from "../components/Settings";
+import {
+  SettingsConfig,
+  ColorMode,
+  ColorFilter,
+  Palette,
+} from "../components/Settings";
 
 export interface WasmOptionsManager {
   setDimensions: (width: number, height: number) => void;
