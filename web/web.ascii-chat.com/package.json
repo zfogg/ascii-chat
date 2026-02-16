@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && prettier --check . && eslint src && vite build",
+    "build": "bash scripts/build.sh",
     "preview": "vite preview",
     "type-check": "tsc --noEmit",
     "format": "prettier --write .",
