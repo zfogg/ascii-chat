@@ -367,14 +367,11 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
         current_frame.data = SAFE_MALLOC(correct_frame_size, void *);
 
         if (current_frame.data) {
-          log_debug("Per-client %u: copying %zu bytes (dims %ux%u, orig_size=%zu)", snap->client_id, correct_frame_size,
-                    peek_width, peek_height, frame_size_val);
           memcpy(current_frame.data, frame->data, correct_frame_size);
           current_frame.size = correct_frame_size;
           current_frame.source_client_id = snap->client_id;
           current_frame.timestamp = (uint32_t)(frame->capture_timestamp_ns / NS_PER_SEC_INT);
           got_new_frame = true;
-          log_debug("Per-client %u: copy completed successfully", snap->client_id);
         }
       } else {
       }
@@ -432,17 +429,12 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
       rgb_pixel_t *pixels = (rgb_pixel_t *)(frame_to_use->data + (sizeof(uint32_t) * 2));
 
       // Create image from buffer pool for consistent video pipeline management
-      log_debug("Per-client: creating image %ux%u from pixels at offset %zu", img_width, img_height,
-                (size_t)(pixels - (rgb_pixel_t *)frame_to_use->data));
       image_t *img = image_new_from_pool(img_width, img_height);
       if (!img) {
         log_error("Per-client: image_new_from_pool failed for %ux%u", img_width, img_height);
         continue;
       }
-      log_debug("Per-client: copying %zu bytes to image pixels",
-                (size_t)img_width * (size_t)img_height * sizeof(rgb_pixel_t));
       memcpy(img->pixels, pixels, (size_t)img_width * (size_t)img_height * sizeof(rgb_pixel_t));
-      log_debug("Per-client: memcpy completed, assigning to sources");
       sources[source_count].image = img;
       sources[source_count].has_video = true;
 
