@@ -48,6 +48,10 @@ const char *options_get_help_text(asciichat_mode_t mode, const char *option_name
 
     // Check if this option applies to the requested mode
     // Convert mode to bitmask for comparison
+    // Validate mode is in valid range (0-4) to avoid undefined behavior in bit shift
+    if (mode < 0 || mode >= MODE_INVALID) {
+      continue; // Skip invalid mode
+    }
     uint32_t mode_bitmask = (1 << mode) | OPTION_MODE_BINARY;
 
     if ((entry->mode_bitmask & mode_bitmask) == 0) {
