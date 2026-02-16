@@ -199,7 +199,8 @@ endif()
 # Add musl dependency if building with musl
 if(USE_MUSL)
     # Add dependencies on all musl libraries (they'll build automatically)
-    add_dependencies(ascii-chat ascii-chat-shared portaudio-musl alsa-lib-musl libsodium-musl zstd-musl libexecinfo-musl opus-musl pcre2-musl)
+    # Note: Do NOT add ascii-chat-shared as a dependency - we'll link OBJECT libraries directly
+    add_dependencies(ascii-chat portaudio-musl alsa-lib-musl libsodium-musl zstd-musl libexecinfo-musl opus-musl pcre2-musl)
 
     # Link against musl-built static libraries from individual dependency directories
     target_link_directories(ascii-chat PRIVATE
@@ -213,8 +214,21 @@ if(USE_MUSL)
     # Use lld linker for musl+LTO builds (handles LTO without gold plugin)
     target_link_options(ascii-chat PRIVATE -static -fuse-ld=lld)
 
-    # Link internal modules first (provides all ascii-chat code)
-    target_link_libraries(ascii-chat PRIVATE ascii-chat-shared)
+    # Link internal modules directly (OBJECT libraries avoid shared library dependency)
+    # These are the same modules that make up ascii-chat-shared
+    target_link_libraries(ascii-chat PRIVATE
+        ascii-chat-util
+        ascii-chat-data-structures
+        ascii-chat-platform
+        ascii-chat-crypto
+        ascii-chat-simd
+        ascii-chat-video
+        ascii-chat-audio
+        ascii-chat-network
+        ascii-chat-core
+        ascii-chat-session
+        ascii-chat-panic
+    )
 
     # Link external dependencies (LTO + dead code elimination removes unused code)
     target_link_libraries(ascii-chat PRIVATE
