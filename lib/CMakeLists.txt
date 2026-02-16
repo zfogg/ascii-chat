@@ -26,6 +26,7 @@ set(CORE_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/options/rcu.c
     ${CMAKE_CURRENT_SOURCE_DIR}/options/layout.c
     ${CMAKE_CURRENT_SOURCE_DIR}/options/manpage.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/options/help_api.c
     # options/builder/
     ${CMAKE_CURRENT_SOURCE_DIR}/options/builder/builder.c
     ${CMAKE_CURRENT_SOURCE_DIR}/options/builder/handlers.c
