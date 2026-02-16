@@ -285,7 +285,7 @@ int mirror_set_webcam_flip(int enabled) {
 
 EMSCRIPTEN_KEEPALIVE
 int mirror_get_webcam_flip(void) {
-  return GET_OPTION(webcam_flip) ? 1 : 0;
+  return GET_OPTION(flip_x) ? 1 : 0;
 }
 
 // ============================================================================
@@ -329,7 +329,7 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
     return NULL;
   }
 
-  bool flip = GET_OPTION(webcam_flip);
+  bool flip = GET_OPTION(flip_x);
   for (int y = 0; y < src_height; y++) {
     for (int x = 0; x < src_width; x++) {
       int src_x = flip ? (src_width - 1 - x) : x;
