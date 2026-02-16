@@ -127,10 +127,10 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     return;
   }
 
-  // When grep input is active, logs still fill the same area but we only
-  // render log_area_rows-1 of them. The last row is cleared and used for
-  // the `/` input. This prevents logs from shifting up when entering grep.
-  int renderable_log_rows = grep_entering ? (log_area_rows - 1) : log_area_rows;
+  // When grep input is active, use full log area for logs since grep input
+  // will be rendered on the last row (which is normally reserved for preventing scroll).
+  // This maximizes vertical space usage while keeping grep input at the bottom.
+  int renderable_log_rows = log_area_rows;
 
   // Fetch and filter logs
   session_log_entry_t *log_entries = NULL;
