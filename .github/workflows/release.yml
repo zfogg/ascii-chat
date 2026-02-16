@@ -95,36 +95,37 @@ jobs:
           LAST_TAG=$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' HEAD^ 2>/dev/null || echo "")
 
           if [[ -n "$LAST_TAG" ]]; then
-            echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
-            echo "## Changes since $LAST_TAG" >> $GITHUB_OUTPUT
-            echo "" >> $GITHUB_OUTPUT
+            # Get commits by type
+            FEATURES=$(git log --format="- %s (%an)" $LAST_TAG..HEAD | grep -iE '^- feat(\(.*\))?:' || echo "")
+            FIXES=$(git log --format="- %s (%an)" $LAST_TAG..HEAD | grep -iE '^- (fix|bugfix)(\(.*\))?:' || echo "")
+            OTHER=$(git log --format="- %s (%an)" $LAST_TAG..HEAD | grep -ivE '^- (feat|fix|bugfix)(\(.*\))?:' | head -n 50 || echo "")
 
-            # Group commits by type (handle conventional commits with scopes like feat(web):)
-            echo "### Features" >> $GITHUB_OUTPUT
-            FEATURES=$(git log --format="- %s (%an)" $LAST_TAG..HEAD | grep -iE '^- feat(\(.*\))?:')
-            if [[ -n "$FEATURES" ]]; then
-              echo "$FEATURES" >> $GITHUB_OUTPUT
-            else
-              echo "- None" >> $GITHUB_OUTPUT
-            fi
-            echo "" >> $GITHUB_OUTPUT
-
-            echo "### Bug Fixes" >> $GITHUB_OUTPUT
-            FIXES=$(git log --format="- %s (%an)" $LAST_TAG..HEAD | grep -iE '^- (fix|bugfix)(\(.*\))?:')
-            if [[ -n "$FIXES" ]]; then
-              echo "$FIXES" >> $GITHUB_OUTPUT
-            else
-              echo "- None" >> $GITHUB_OUTPUT
-            fi
-            echo "" >> $GITHUB_OUTPUT
-
-            echo "### Other Changes" >> $GITHUB_OUTPUT
-            OTHER=$(git log --format="- %s (%an)" $LAST_TAG..HEAD | grep -ivE '^- (feat|fix|bugfix)(\(.*\))?:' | head -n 50)
-            if [[ -n "$OTHER" ]]; then
-              echo "$OTHER" >> $GITHUB_OUTPUT
-            fi
-            echo "" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
+            # Build changelog with proper heredoc
+            {
+              echo "## Changes since $LAST_TAG"
+              echo ""
+              echo "### Features"
+              if [[ -n "$FEATURES" ]]; then
+                echo "$FEATURES"
+              else
+                echo "- None"
+              fi
+              echo ""
+              echo "### Bug Fixes"
+              if [[ -n "$FIXES" ]]; then
+                echo "$FIXES"
+              else
+                echo "- None"
+              fi
+              echo ""
+              echo "### Other Changes"
+              [[ -n "$OTHER" ]] && echo "$OTHER"
+            } | {
+              # Use printf to safely handle multiline content
+              printf 'CHANGELOG<<EOF\n'
+              cat
+              printf '\nEOF'
+            } >> $GITHUB_OUTPUT
           else
             echo "CHANGELOG=Initial release of ascii-chat" >> $GITHUB_OUTPUT
           fi
