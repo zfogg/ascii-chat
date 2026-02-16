@@ -887,6 +887,53 @@ set(PCRE2_FOUND TRUE)
 set(PCRE2_LIBRARIES "${PCRE2_PREFIX}/lib/libpcre2-8.a")
 set(PCRE2_INCLUDE_DIRS "${PCRE2_PREFIX}/include")
 
+# =============================================================================
+# Abseil-cpp - Google's C++ library for WebRTC dependencies
+# =============================================================================
+message(STATUS "Configuring ${BoldBlue}Abseil-cpp${ColorReset} from source...")
+
+set(ABSEIL_PREFIX "${MUSL_DEPS_DIR_STATIC}/abseil")
+set(ABSEIL_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/abseil-build")
+
+# Only add external project if library doesn't exist
+if(NOT EXISTS "${ABSEIL_PREFIX}/lib/libabsl_base.a")
+    message(STATUS "  Abseil library not found in cache, will build from source")
+    ExternalProject_Add(abseil-musl
+        URL https://github.com/abseil/abseil-cpp/archive/refs/tags/20250814.1.tar.gz
+        URL_HASH SHA256=0b6a7d23d86c148c4f53a5e0c34a68fba0b4f2fbde9a28849289e7f63f0dd0ba
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        PREFIX ${ABSEIL_BUILD_DIR}
+        STAMP_DIR ${ABSEIL_BUILD_DIR}/stamps
+        UPDATE_DISCONNECTED 1
+        BUILD_ALWAYS 0
+        CMAKE_ARGS
+            -DCMAKE_C_COMPILER=${MUSL_GCC}
+            -DCMAKE_CXX_COMPILER=${MUSL_GCC}
+            -DCMAKE_CXX_STANDARD=17
+            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_INSTALL_PREFIX=${ABSEIL_PREFIX}
+            -DBUILD_SHARED_LIBS=OFF
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+            -DCMAKE_CXX_FLAGS="-O3 -fPIC -target x86_64-linux-musl -stdlib=libc++"
+        BUILD_BYPRODUCTS
+            ${ABSEIL_PREFIX}/lib/libabsl_base.a
+            ${ABSEIL_PREFIX}/lib/libabsl_strings.a
+        LOG_DOWNLOAD TRUE
+        LOG_CONFIGURE TRUE
+        LOG_BUILD TRUE
+        LOG_INSTALL TRUE
+        LOG_OUTPUT_ON_FAILURE TRUE
+    )
+else()
+    message(STATUS "  ${BoldBlue}Abseil${ColorReset} library found in cache: ${BoldMagenta}${ABSEIL_PREFIX}/lib/libabsl_base.a${ColorReset}")
+    # Create a dummy target so dependencies can reference it
+    add_custom_target(abseil-musl)
+endif()
+
+set(ABSEIL_FOUND TRUE)
+set(ABSEIL_LIBRARIES "${ABSEIL_PREFIX}/lib")
+set(ABSEIL_INCLUDE_DIRS "${ABSEIL_PREFIX}/include")
+
 # Restore output directories
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${_SAVED_ARCHIVE_OUTPUT_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${_SAVED_LIBRARY_OUTPUT_DIR})
