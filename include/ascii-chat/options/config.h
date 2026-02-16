@@ -79,7 +79,7 @@
  * Supported configuration sections:
  * - `[network]`: `port`
  * - `[server]`: `bind_ipv4`, `bind_ipv6`
- * - `[client]`: `address`, `width`, `height`, `webcam_index`, `webcam_flip`,
+ * - `[client]`: `address`, `width`, `height`, `webcam_index`, `flip_x`, `flip_y`,
  *               `color_mode`, `render_mode`, `fps`, `stretch`, `quiet`,
  *               `snapshot_mode`, `snapshot_delay`, `test_pattern`,
  *               `show_capabilities`, `force_utf8`
