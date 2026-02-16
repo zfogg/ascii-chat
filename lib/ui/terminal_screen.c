@@ -231,14 +231,17 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
 
       if (same_as_before) {
         // Content unchanged - skip past it without rewriting.
+        // Still need to reset colors to prevent them from leaking to next output.
         if (lines_for_this == 1) {
-          fprintf(stdout, "\n");
+          fprintf(stdout, "\x1b[0m\n");
         } else {
-          fprintf(stdout, "\x1b[%dB", lines_for_this);
+          fprintf(stdout, "\x1b[0m\x1b[%dB", lines_for_this);
         }
       } else {
-        // Content changed - overwrite and clear tail
-        fprintf(stdout, "%s\x1b[K\n", msg);
+        // Content changed - overwrite and clear tail.
+        // Reset both foreground and background colors to prevent color bleeding
+        // to the next line (important for grep UI which follows).
+        fprintf(stdout, "%s\x1b[0m\x1b[K\n", msg);
       }
 
       if (log_idx < MAX_CACHED_LINES) {
@@ -309,6 +312,9 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     g_prev_log_count = log_idx;
     g_prev_total_lines = lines_used;
 
+    // Flush buffered output before rendering grep UI to ensure correct order
+    fflush(stdout);
+
     // Atomic grep UI rendering: combine cursor positioning and input line into
     // a single write to prevent log output from interrupting the escape sequences.
     // This prevents the race condition where logs appear between the cursor
@@ -348,5 +354,4 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
   }
 
   SAFE_FREE(log_entries);
-  fflush(stdout);
 }
