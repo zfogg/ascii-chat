@@ -91,16 +91,28 @@ def main():
         os.makedirs(defer_db_link_dir, exist_ok=True)
         link_path = os.path.join(defer_db_link_dir, 'compile_commands.json')
 
-        # Always update the symlink/copy to ensure we have the latest
-        if os.path.exists(link_path):
-            os.unlink(link_path)
+        # Use atomic rename to avoid race conditions when multiple processes update simultaneously
         try:
-            # Use relative symlink so it works if directory is moved
-            os.symlink(os.path.relpath(defer_db_path, defer_db_link_dir), link_path)
-        except OSError:
-            # Symlink failed (e.g., Windows), copy instead
-            import shutil
-            shutil.copy2(defer_db_path, link_path)
+            # Create symlink in a temp file first
+            temp_link = link_path + '.tmp'
+            if os.path.exists(temp_link):
+                os.unlink(temp_link)
+            try:
+                # Use relative symlink so it works if directory is moved
+                os.symlink(os.path.relpath(defer_db_path, defer_db_link_dir), temp_link)
+                # Atomically move temp to final location
+                os.replace(temp_link, link_path)
+            except OSError:
+                # Symlink failed (e.g., Windows), use copy instead
+                import shutil
+                shutil.copy2(defer_db_path, temp_link)
+                os.replace(temp_link, link_path)
+        except Exception as e:
+            # If symlink creation still fails, it's likely already created by another process
+            # Just verify it exists
+            if not os.path.exists(link_path):
+                print(f"Warning: Could not create symlink at {link_path}: {e}", file=sys.stderr)
+
         db_dir_to_use = defer_db_link_dir
     else:
         db_dir_to_use = db_dir
