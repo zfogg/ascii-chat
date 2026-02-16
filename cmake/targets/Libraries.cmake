@@ -581,7 +581,8 @@ add_library(ascii-chat-shared SHARED EXCLUDE_FROM_ALL
     if(ASCIICHAT_ENABLE_UNITY_BUILDS)
         set_target_properties(ascii-chat-shared PROPERTIES UNITY_BUILD ON)
     endif()
-    if(ASCIICHAT_ENABLE_IPO)
+    # Disable IPO for shared libraries on ARM64 - LTO generates non-PIC code that fails linking on aarch64
+    if(ASCIICHAT_ENABLE_IPO AND NOT CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
         set_property(TARGET ascii-chat-shared PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
     endif()
     set_target_properties(ascii-chat-shared PROPERTIES

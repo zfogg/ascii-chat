@@ -61,15 +61,25 @@ if [[ "$PLATFORM" == "macos" ]]; then
 
   echo "Installing dependencies via Homebrew..."
 
-  # Build the package list, skipping openssl if openssl@3 is already installed
-  packages="cmake coreutils pkg-config llvm ccache make autoconf automake libtool ninja mimalloc zstd libsodium portaudio opus criterion doxygen sqlite3 miniupnpc libnatpmp ffmpeg abseil emscripten binaryen yt-dlp libwebsockets"
+  # Build the package list, only including packages that aren't already installed
+  # This avoids Homebrew version conflicts on GitHub runners that have pre-installed packages
+  all_packages="cmake coreutils pkg-config llvm ccache make autoconf automake libtool ninja mimalloc zstd libsodium portaudio opus criterion doxygen sqlite3 miniupnpc libnatpmp ffmpeg abseil emscripten binaryen yt-dlp libwebsockets openssl"
 
-  # Only install openssl if neither openssl nor openssl@3 is already present
-  if ! brew list openssl &>/dev/null && ! brew list openssl@3 &>/dev/null; then
-    packages="$packages openssl"
+  packages=""
+  for pkg in $all_packages; do
+    if ! brew list "$pkg" &>/dev/null 2>&1; then
+      packages="$packages $pkg"
+    else
+      echo "Skipping $pkg (already installed)"
+    fi
+  done
+
+  if [ -z "$packages" ]; then
+    echo "All dependencies are already installed!"
+  else
+    echo "Installing missing packages: $packages"
+    brew install $packages
   fi
-
-  brew install $packages
 
   echo ""
   echo "Dependencies installed successfully!"
