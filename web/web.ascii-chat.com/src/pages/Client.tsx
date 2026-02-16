@@ -40,6 +40,7 @@ import {
 import { ConnectionPanelModal } from "../components/ConnectionPanelModal";
 import { Settings, SettingsConfig } from "../components/Settings";
 import { WebClientHead } from "../components/WebClientHead";
+import { AsciiChatMode } from "../utils/optionsHelp";
 import { PageControlBar } from "../components/PageControlBar";
 import { PageLayout } from "../components/PageLayout";
 import {
@@ -763,7 +764,13 @@ export function ClientPage() {
         videoRef={videoRef}
         canvasRef={canvasRef}
         showSettings={showSettings}
-        settingsPanel={<Settings config={settings} onChange={setSettings} />}
+        settingsPanel={
+          <Settings
+            config={settings}
+            onChange={setSettings}
+            mode={AsciiChatMode.CLIENT}
+          />
+        }
         controlBar={
           <PageControlBar
             title="Client"

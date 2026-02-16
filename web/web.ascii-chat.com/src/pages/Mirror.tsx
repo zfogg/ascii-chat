@@ -36,6 +36,7 @@ import {
 import { PageControlBar } from "../components/PageControlBar";
 import { PageLayout } from "../components/PageLayout";
 import { WebClientHead } from "../components/WebClientHead";
+import { AsciiChatMode } from "../utils/optionsHelp";
 import { useCanvasCapture } from "../hooks/useCanvasCapture";
 import {
   createWasmOptionsManager,
@@ -298,7 +299,11 @@ export function MirrorPage() {
         canvasRef={canvasRef}
         showSettings={showSettings}
         settingsPanel={
-          <Settings config={settings} onChange={handleSettingsChange} />
+          <Settings
+            config={settings}
+            onChange={handleSettingsChange}
+            mode={AsciiChatMode.MIRROR}
+          />
         }
         controlBar={
           <PageControlBar

@@ -1,4 +1,6 @@
 import { Heading } from "@ascii-chat/shared/components";
+import { getOptionHelp, AsciiChatMode } from "../utils/optionsHelp";
+import { Tooltip } from "./Tooltip";
 
 export type ColorMode = "auto" | "none" | "16" | "256" | "truecolor";
 export type ColorFilter =
@@ -39,12 +41,14 @@ interface SettingsProps {
   config: SettingsConfig;
   onChange: (config: SettingsConfig) => void;
   disabled?: boolean;
+  mode: AsciiChatMode;
 }
 
 export function Settings({
   config,
   onChange,
   disabled = false,
+  mode,
 }: SettingsProps) {
   const updateConfig = (updates: Partial<SettingsConfig>) => {
     onChange({ ...config, ...updates });
@@ -62,9 +66,11 @@ export function Settings({
         <div className="flex flex-wrap gap-3">
           {/* Resolution */}
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-xs font-medium text-terminal-8 mb-1">
-              Resolution
-            </label>
+            <Tooltip text={getOptionHelp(mode, "width")}>
+              <label className="block text-xs font-medium text-terminal-8 mb-1">
+                Resolution
+              </label>
+            </Tooltip>
             <select
               value={config.resolution}
               onChange={(e) =>
@@ -82,9 +88,11 @@ export function Settings({
 
           {/* Frame Rate */}
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-xs font-medium text-terminal-8 mb-1">
-              Frame Rate: {config.targetFps} FPS
-            </label>
+            <Tooltip text={getOptionHelp(mode, "fps")}>
+              <label className="block text-xs font-medium text-terminal-8 mb-1">
+                Frame Rate: {config.targetFps} FPS
+              </label>
+            </Tooltip>
             <input
               type="range"
               min="15"
@@ -107,9 +115,11 @@ export function Settings({
 
           {/* Color Mode */}
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-xs font-medium text-terminal-8 mb-1">
-              Color Mode
-            </label>
+            <Tooltip text={getOptionHelp(mode, "color-mode")}>
+              <label className="block text-xs font-medium text-terminal-8 mb-1">
+                Color Mode
+              </label>
+            </Tooltip>
             <select
               value={config.colorMode}
               onChange={(e) =>
@@ -128,9 +138,11 @@ export function Settings({
 
           {/* Color Filter */}
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-xs font-medium text-terminal-8 mb-1">
-              Color Filter
-            </label>
+            <Tooltip text={getOptionHelp(mode, "color-filter")}>
+              <label className="block text-xs font-medium text-terminal-8 mb-1">
+                Color Filter
+              </label>
+            </Tooltip>
             <select
               value={config.colorFilter}
               onChange={(e) =>
@@ -157,9 +169,11 @@ export function Settings({
 
           {/* Palette */}
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-xs font-medium text-terminal-8 mb-1">
-              Palette
-            </label>
+            <Tooltip text={getOptionHelp(mode, "palette")}>
+              <label className="block text-xs font-medium text-terminal-8 mb-1">
+                Palette
+              </label>
+            </Tooltip>
             <select
               value={config.palette}
               onChange={(e) =>
@@ -179,9 +193,11 @@ export function Settings({
 
           {/* Matrix Rain Effect */}
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-xs font-medium text-terminal-8 mb-1">
-              Effects
-            </label>
+            <Tooltip text={getOptionHelp(mode, "matrix-rain")}>
+              <label className="block text-xs font-medium text-terminal-8 mb-1">
+                Effects
+              </label>
+            </Tooltip>
             <button
               onClick={() => updateConfig({ matrixRain: !config.matrixRain })}
               disabled={disabled}
@@ -197,9 +213,11 @@ export function Settings({
 
           {/* Webcam Flip */}
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-xs font-medium text-terminal-8 mb-1">
-              Webcam
-            </label>
+            <Tooltip text={getOptionHelp(mode, "flip-x")}>
+              <label className="block text-xs font-medium text-terminal-8 mb-1">
+                Webcam
+              </label>
+            </Tooltip>
             <button
               onClick={() => updateConfig({ webcamFlip: !config.webcamFlip })}
               disabled={disabled}
@@ -216,9 +234,11 @@ export function Settings({
           {/* Custom Palette Characters (shown when palette is custom) */}
           {config.palette === "custom" && (
             <div className="flex-1 min-w-[200px]">
-              <label className="block text-xs font-medium text-terminal-8 mb-1">
-                Custom Characters (dark → bright)
-              </label>
+              <Tooltip text={getOptionHelp(mode, "palette")}>
+                <label className="block text-xs font-medium text-terminal-8 mb-1">
+                  Custom Characters (dark → bright)
+                </label>
+              </Tooltip>
               <input
                 type="text"
                 value={config.paletteChars || " =#░░▒▒▓▓██"}
