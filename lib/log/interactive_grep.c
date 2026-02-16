@@ -931,3 +931,19 @@ void *interactive_grep_get_pattern_singleton(void) {
 
   return result;
 }
+
+/* ============================================================================
+ * Internal Access for Atomic Rendering
+ * ========================================================================== */
+
+void *interactive_grep_get_mutex(void) {
+  return (void *)&g_grep_state.mutex;
+}
+
+int interactive_grep_get_input_len(void) {
+  return (int)g_grep_state.len;
+}
+
+const char *interactive_grep_get_input_buffer(void) {
+  return g_grep_state.input_buffer;
+}

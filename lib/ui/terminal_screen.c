@@ -18,6 +18,8 @@
 #include "ascii-chat/session/session_log_buffer.h"
 #include "ascii-chat/util/display.h"
 #include "ascii-chat/platform/system.h"
+#include "ascii-chat/platform/abstraction.h"
+#include "ascii-chat/platform/mutex.h"
 #include "ascii-chat/log/grep.h"
 #include "ascii-chat/common.h"
 #include <stdio.h>
@@ -307,14 +309,42 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     g_prev_log_count = log_idx;
     g_prev_total_lines = lines_used;
 
-    // Jump to the actual last terminal row and render grep input there.
-    // log_area_rows already has a -1 to prevent scrolling, so after filling
-    // renderable_log_rows the cursor is one row above the bottom.
-    // Flush before the jump because interactive_grep_render_input_line uses
-    // platform_write_all (unbuffered) while fprintf is buffered.
-    fprintf(stdout, "\x1b[%d;1H\x1b[K", g_cached_term_size.rows);
-    fflush(stdout);
-    interactive_grep_render_input_line(g_cached_term_size.cols);
+    // Atomic grep UI rendering: combine cursor positioning and input line into
+    // a single write to prevent log output from interrupting the escape sequences.
+    // This prevents the race condition where logs appear between the cursor
+    // positioning command and the grep input line rendering.
+    char grep_ui_buffer[512];
+    int pos = snprintf(grep_ui_buffer, sizeof(grep_ui_buffer), "\x1b[%d;1H\x1b[K", g_cached_term_size.rows);
+
+    // Append the grep input line to the same buffer
+    if (pos > 0 && pos < (int)sizeof(grep_ui_buffer) - 256) {
+      // Lock while reading grep state to ensure atomic render
+      // Get the search pattern under mutex protection
+      mutex_t *grep_mutex = interactive_grep_get_mutex();
+      if (grep_mutex) {
+        mutex_lock(grep_mutex);
+        int pattern_len = interactive_grep_get_input_len();
+        const char *pattern = interactive_grep_get_input_buffer();
+
+        if (pattern_len > 0 && pattern) {
+          int remaining = snprintf(grep_ui_buffer + pos, sizeof(grep_ui_buffer) - pos, "/%.*s", pattern_len, pattern);
+          if (remaining > 0) {
+            pos += remaining;
+          }
+        } else {
+          int remaining = snprintf(grep_ui_buffer + pos, sizeof(grep_ui_buffer) - pos, "/");
+          if (remaining > 0) {
+            pos += remaining;
+          }
+        }
+        mutex_unlock(grep_mutex);
+      }
+    }
+
+    // Write entire grep UI (cursor positioning + input) in single operation
+    if (pos > 0) {
+      platform_write_all(STDOUT_FILENO, grep_ui_buffer, pos);
+    }
   }
 
   SAFE_FREE(log_entries);

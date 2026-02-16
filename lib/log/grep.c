@@ -72,11 +72,11 @@ typedef struct {
  * @brief Global filter state (supports multiple patterns ORed together)
  */
 static struct {
-  grep_pattern_t *patterns;       ///< Array of patterns
-  int pattern_count;              ///< Number of active patterns
-  int pattern_capacity;           ///< Allocated capacity
-  bool enabled;                   ///< Is filtering active?
-  tls_key_t match_data_key;       ///< Thread-local match_data key
+  grep_pattern_t *patterns;            ///< Array of patterns
+  int pattern_count;                   ///< Number of active patterns
+  int pattern_capacity;                ///< Allocated capacity
+  bool enabled;                        ///< Is filtering active?
+  tls_key_t match_data_key;            ///< Thread-local match_data key
   volatile int match_data_initialized; ///< Once flag for key initialization
 
   // Context line buffering
@@ -911,6 +911,10 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
       dst += (colored_len - colored_pos);
     }
 
+    // Reset both background and foreground at end to prevent color bleeding
+    memcpy(dst, "\x1b[0m", 4);
+    dst += 4;
+
     *dst = '\0';
 
     // Clean up match data if we created it for interactive grep
@@ -981,9 +985,9 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
     }
   }
 
-  // Reset background only
-  memcpy(dst, "\x1b[49m", 5);
-  dst += 5;
+  // Reset background and foreground to prevent color bleeding to next output
+  memcpy(dst, "\x1b[0m", 4);
+  dst += 4;
 
   // Copy remaining text
   size_t remaining = colored_len - colored_end;

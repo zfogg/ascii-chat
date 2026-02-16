@@ -220,3 +220,32 @@ bool interactive_grep_check_signal_cancel(void);
  * Automatically clears flag after returning true.
  */
 bool interactive_grep_needs_rerender(void);
+
+/* ============================================================================
+ * Internal Access (for atomic rendering)
+ * ========================================================================== */
+
+/**
+ * @brief Get the mutex protecting grep state
+ * @return Pointer to the grep state mutex (internal use only)
+ *
+ * Used by terminal rendering to perform atomic read of grep input
+ * for consistent rendering without flicker.
+ */
+void *interactive_grep_get_mutex(void);
+
+/**
+ * @brief Get current input buffer length (must hold mutex)
+ * @return Length of the current grep input pattern
+ *
+ * Must be called while holding the mutex from interactive_grep_get_mutex().
+ */
+int interactive_grep_get_input_len(void);
+
+/**
+ * @brief Get current input buffer content (must hold mutex)
+ * @return Pointer to the input buffer (valid only while holding mutex)
+ *
+ * Must be called while holding the mutex from interactive_grep_get_mutex().
+ */
+const char *interactive_grep_get_input_buffer(void);
