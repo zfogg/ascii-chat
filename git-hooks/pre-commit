@@ -36,14 +36,6 @@ check_web_project() {
     echo "📝 Checking $project_name..."
     cd "$project_dir"
 
-    # Type check
-    echo "  ✓ Type checking..."
-    bun run type-check || {
-      echo "  ✗ Type check failed in $project_name"
-      cd - > /dev/null
-      return 1
-    }
-
     # Format staged files and git add them
     echo "  ✓ Formatting..."
     staged_files=$(git diff --cached --name-only --diff-filter=ACM || true)
@@ -57,15 +49,14 @@ check_web_project() {
       done
     fi
 
-    # Lint check
-    echo "  ✓ Linting..."
-    bun run lint || {
-      echo "  ✗ Lint check failed in $project_name"
+    # Type check
+    echo "  ✓ Type checking and linting..."
+    bun run build || {
+      echo "  ✗ Build failed in $project_name"
       cd - > /dev/null
       return 1
     }
 
-    cd - > /dev/null
   fi
 }
 
@@ -76,10 +67,6 @@ check_web_project "web/discovery.ascii-chat.com" || exit 1
 
 # Build web/ascii-chat.com and git add man pages
 if echo "$all_staged" | grep -q "^(web/ascii-chat\.com/|web/packages/)"; then
-  cd web/ascii-chat.com
-  ./scripts/build.sh
-  cd ../..
-
   manpage_files=$(command -p ls web/ascii-chat.com/public/ascii-chat*-man*.html 2>/dev/null || true)
   for manpage_file in $manpage_files; do
     if [[ -f "$manpage_file" ]] && git diff --name-only "$manpage_file" | grep -q "^$manpage_file$"; then
@@ -92,10 +79,6 @@ fi
 # Build web/web.ascii-chat.com and git add WASM assets
 web_src_changed=$(echo "$all_staged" | grep -E "^(web/web\.ascii-chat\.com/|src/web/|web/packages/)" | grep -v "^web/web\.ascii-chat\.com/src/wasm/dist/" || true)
 if [[ -n "$web_src_changed" ]]; then
-  cd web/web.ascii-chat.com
-  bun run build
-  cd ../..
-
   wasm_files="web/web.ascii-chat.com/src/wasm/dist/mirror.js web/web.ascii-chat.com/src/wasm/dist/mirror.wasm"
   for wasm_file in $wasm_files; do
     if [[ -f "$wasm_file" ]] && git diff --name-only "$wasm_file" | grep -q "^$wasm_file$"; then
@@ -103,13 +86,6 @@ if [[ -n "$web_src_changed" ]]; then
       echo "📦 Auto-staged WASM asset: $wasm_file"
     fi
   done
-fi
-
-# Build web/discovery.ascii-chat.com (no auto-add)
-if echo "$all_staged" | grep -q "^(web/discovery\.ascii-chat\.com/|web/packages/)"; then
-  cd web/discovery.ascii-chat.com
-  bun run build
-  cd ../..
 fi
 
 echo "✅ Pre-commit checks passed"
