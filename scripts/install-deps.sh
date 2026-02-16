@@ -61,13 +61,15 @@ if [[ "$PLATFORM" == "macos" ]]; then
 
   echo "Installing dependencies via Homebrew..."
 
-  # Uninstall openssl@3 if present to avoid conflicts with openssl
-  if brew list openssl@3 &>/dev/null; then
-    echo "Uninstalling conflicting openssl@3..."
-    brew uninstall openssl@3
+  # Build the package list, skipping openssl if openssl@3 is already installed
+  packages="cmake coreutils pkg-config llvm ccache make autoconf automake libtool ninja mimalloc zstd libsodium portaudio opus criterion doxygen sqlite3 miniupnpc libnatpmp ffmpeg abseil emscripten binaryen yt-dlp libwebsockets"
+
+  # Only install openssl if neither openssl nor openssl@3 is already present
+  if ! brew list openssl &>/dev/null && ! brew list openssl@3 &>/dev/null; then
+    packages="$packages openssl"
   fi
 
-  brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool ninja mimalloc zstd libsodium portaudio opus criterion doxygen sqlite3 openssl miniupnpc libnatpmp ffmpeg abseil emscripten binaryen yt-dlp libwebsockets
+  brew install $packages
 
   echo ""
   echo "Dependencies installed successfully!"
