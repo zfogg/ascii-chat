@@ -21,13 +21,15 @@ def fix_compilation_database(db_path, source_file):
     try:
         with open(db_path, 'r') as f:
             db = json.load(f)
-    except Exception:
+    except Exception as e:
+        print(f"Warning: Could not read compilation database: {e}", file=sys.stderr)
         return False
 
     # Try to find an entry for this source file
     # First, try exact match (shouldn't happen but worth checking)
     for entry in db:
         if entry.get('file', '').endswith(source_file):
+            print(f"DEBUG: Found exact match for {source_file} in database", file=sys.stderr)
             return True  # Found exact match, no need to fix
 
     # Look for a transformed version of this file
@@ -38,6 +40,7 @@ def fix_compilation_database(db_path, source_file):
         file_path = entry.get('file', '')
         # Check if this is a defer_transformed version of our target file
         if f'defer_transformed/{source_file}' in file_path:
+            print(f"DEBUG: Found transformed version, fixing path for {source_file}", file=sys.stderr)
             # Update this entry to use the original file path
             # Keep everything else (command, directory, etc) the same
             original_abs_path = os.path.join(os.path.dirname(file_path).replace('defer_transformed/', ''), source_dir, source_name)
@@ -47,10 +50,13 @@ def fix_compilation_database(db_path, source_file):
             try:
                 with open(db_path, 'w') as f:
                     json.dump(db, f)
+                print(f"DEBUG: Updated database with corrected path", file=sys.stderr)
                 return True
-            except Exception:
+            except Exception as e:
+                print(f"Warning: Could not write compilation database: {e}", file=sys.stderr)
                 return False
 
+    print(f"DEBUG: No matching entry found for {source_file} (checked {len(db)} entries)", file=sys.stderr)
     return False
 
 def main():
