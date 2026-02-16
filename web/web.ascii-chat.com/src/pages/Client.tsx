@@ -21,8 +21,8 @@ import {
   getPaletteChars,
   setMatrixRain,
   getMatrixRain,
-  setWebcamFlip,
-  getWebcamFlip,
+  setFlipX,
+  getFlipX,
   setTargetFps,
   getTargetFps,
   setWidth,
@@ -229,8 +229,8 @@ export function ClientPage() {
       getPaletteChars,
       setMatrixRain,
       getMatrixRain,
-      setWebcamFlip,
-      getWebcamFlip,
+      setFlipX,
+      getFlipX,
       (width, height) => {
         setWidth(width);
         setHeight(height);
@@ -272,7 +272,7 @@ export function ClientPage() {
     palette: "standard",
     paletteChars: " =#░░▒▒▓▓██",
     matrixRain: false,
-    webcamFlip: false,
+    flipX: false,
   });
 
   // Apply WASM settings when they change

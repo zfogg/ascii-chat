@@ -274,17 +274,17 @@ int mirror_get_matrix_rain(void) {
 }
 
 // ============================================================================
-// Settings API - Webcam Flip
+// Settings API - Flip X (Horizontal Flip)
 // ============================================================================
 
 EMSCRIPTEN_KEEPALIVE
-int mirror_set_webcam_flip(int enabled) {
+int mirror_set_flip_x(int enabled) {
   asciichat_error_t err = options_set_bool("flip_x", enabled != 0);
   return (err == ASCIICHAT_OK) ? 0 : -1;
 }
 
 EMSCRIPTEN_KEEPALIVE
-int mirror_get_webcam_flip(void) {
+int mirror_get_flip_x(void) {
   return GET_OPTION(flip_x) ? 1 : 0;
 }
 

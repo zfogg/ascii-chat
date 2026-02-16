@@ -19,8 +19,8 @@ export interface WasmOptionsManager {
   getPaletteChars: () => string;
   setMatrixRain: (enabled: boolean) => void;
   getMatrixRain: () => boolean;
-  setWebcamFlip: (enabled: boolean) => void;
-  getWebcamFlip: () => boolean;
+  setFlipX: (enabled: boolean) => void;
+  getFlipX: () => boolean;
   setTargetFps: (fps: number) => void;
   getTargetFps: () => number;
   applySettings: (settings: SettingsConfig) => void;
@@ -41,8 +41,8 @@ export function createWasmOptionsManager(
   getPaletteCharsFn: () => string,
   setMatrixRainFn: (enabled: boolean) => void,
   getMatrixRainFn: () => boolean,
-  setWebcamFlipFn: (enabled: boolean) => void,
-  getWebcamFlipFn: () => boolean,
+  setFlipXFn: (enabled: boolean) => void,
+  getFlipXFn: () => boolean,
   setDimensionsFn: (width: number, height: number) => void,
   getDimensionsFn: () => { width: number; height: number },
   setTargetFpsFn: (fps: number) => void,
@@ -94,8 +94,8 @@ export function createWasmOptionsManager(
     getPaletteChars: getPaletteCharsFn,
     setMatrixRain: setMatrixRainFn,
     getMatrixRain: getMatrixRainFn,
-    setWebcamFlip: setWebcamFlipFn,
-    getWebcamFlip: getWebcamFlipFn,
+    setFlipX: setFlipXFn,
+    getFlipX: getFlipXFn,
     setTargetFps: setTargetFpsFn,
     getTargetFps: getTargetFpsFn,
     applySettings: (settings: SettingsConfig) => {
@@ -106,7 +106,7 @@ export function createWasmOptionsManager(
         setPaletteCharsFn(settings.paletteChars);
       }
       setMatrixRainFn(settings.matrixRain ?? false);
-      setWebcamFlipFn(settings.webcamFlip ?? false);
+      setFlipXFn(settings.flipX ?? false);
       setTargetFpsFn(settings.targetFps);
     },
   };

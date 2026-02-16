@@ -311,8 +311,8 @@ set(EXPORTED_FUNCTIONS_MIRROR
     _mirror_get_palette_chars
     _mirror_set_matrix_rain
     _mirror_get_matrix_rain
-    _mirror_set_webcam_flip
-    _mirror_get_webcam_flip
+    _mirror_set_flip_x
+    _mirror_get_flip_x
     _mirror_convert_frame
     _mirror_free_string
     _get_help_text
@@ -341,6 +341,24 @@ set(EXPORTED_FUNCTIONS_CLIENT
     _client_opus_decode
     _client_opus_encoder_cleanup
     _client_opus_decoder_cleanup
+    _client_set_width
+    _client_set_height
+    _client_get_width
+    _client_get_height
+    _client_set_color_mode
+    _client_get_color_mode
+    _client_set_color_filter
+    _client_get_color_filter
+    _client_set_palette
+    _client_get_palette
+    _client_set_palette_chars
+    _client_get_palette_chars
+    _client_set_matrix_rain
+    _client_get_matrix_rain
+    _client_set_flip_x
+    _client_get_flip_x
+    _client_set_target_fps
+    _client_get_target_fps
     _client_free_string
     _get_help_text
     _malloc

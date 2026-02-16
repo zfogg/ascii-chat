@@ -34,7 +34,7 @@ export interface SettingsConfig {
   palette: Palette;
   paletteChars?: string;
   matrixRain?: boolean;
-  webcamFlip?: boolean;
+  flipX?: boolean;
 }
 
 interface SettingsProps {
@@ -219,15 +219,15 @@ export function Settings({
               </label>
             </Tooltip>
             <button
-              onClick={() => updateConfig({ webcamFlip: !config.webcamFlip })}
+              onClick={() => updateConfig({ flipX: !config.flipX })}
               disabled={disabled}
               className={`w-full px-4 py-2 rounded text-sm font-medium transition-colors ${
-                config.webcamFlip
+                config.flipX
                   ? "bg-terminal-2 text-terminal-bg hover:bg-terminal-10"
                   : "bg-terminal-8 text-terminal-fg hover:bg-terminal-7"
               }`}
             >
-              {config.webcamFlip ? "🟢 Flip Horizontal" : "Flip Horizontal"}
+              {config.flipX ? "🟢 Flip Horizontal" : "Flip Horizontal"}
             </button>
           </div>
 

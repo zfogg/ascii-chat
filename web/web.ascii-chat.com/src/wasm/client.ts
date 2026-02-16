@@ -64,8 +64,8 @@ interface ClientModuleExports {
   _client_get_palette_chars(): number;
   _client_set_matrix_rain(enabled: number): number;
   _client_get_matrix_rain(): number;
-  _client_set_webcam_flip(enabled: number): number;
-  _client_get_webcam_flip(): number;
+  _client_set_flip_x(enabled: number): number;
+  _client_get_flip_x(): number;
   _client_set_target_fps(fps: number): number;
   _client_get_target_fps(): number;
   _client_set_width(width: number): number;
@@ -109,8 +109,8 @@ interface ClientModule {
   _client_get_palette_chars: ClientModuleExports["_client_get_palette_chars"];
   _client_set_matrix_rain: ClientModuleExports["_client_set_matrix_rain"];
   _client_get_matrix_rain: ClientModuleExports["_client_get_matrix_rain"];
-  _client_set_webcam_flip: ClientModuleExports["_client_set_webcam_flip"];
-  _client_get_webcam_flip: ClientModuleExports["_client_get_webcam_flip"];
+  _client_set_flip_x: ClientModuleExports["_client_set_flip_x"];
+  _client_get_flip_x: ClientModuleExports["_client_get_flip_x"];
   _client_set_target_fps: ClientModuleExports["_client_set_target_fps"];
   _client_get_target_fps: ClientModuleExports["_client_get_target_fps"];
   _client_set_width: ClientModuleExports["_client_set_width"];
@@ -884,22 +884,22 @@ export function getMatrixRain(): boolean {
 }
 
 /**
- * Set webcam flip (horizontal mirror)
+ * Set flip X (horizontal flip)
  */
-export function setWebcamFlip(enabled: boolean): void {
+export function setFlipX(enabled: boolean): void {
   if (!wasmModule) throw new Error("WASM module not initialized");
 
-  if (wasmModule._client_set_webcam_flip(enabled ? 1 : 0) !== 0) {
-    throw new Error(`Failed to set webcam flip: ${enabled}`);
+  if (wasmModule._client_set_flip_x(enabled ? 1 : 0) !== 0) {
+    throw new Error(`Failed to set flip X: ${enabled}`);
   }
 }
 
 /**
- * Get current webcam flip state
+ * Get current flip X state
  */
-export function getWebcamFlip(): boolean {
+export function getFlipX(): boolean {
   if (!wasmModule) throw new Error("WASM module not initialized");
-  return wasmModule._client_get_webcam_flip() !== 0;
+  return wasmModule._client_get_flip_x() !== 0;
 }
 
 /**

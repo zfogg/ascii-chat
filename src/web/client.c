@@ -34,6 +34,7 @@ EM_JS(void, js_send_raw_packet, (const uint8_t *packet_data, size_t packet_len),
 
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>
+#include <ascii-chat/options/parsers.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/log/logging.h>
@@ -853,6 +854,170 @@ void client_opus_decoder_cleanup(void) {
     g_opus_decoder = NULL;
     WASM_LOG("Opus decoder cleaned up");
   }
+}
+
+// ============================================================================
+// Settings API - Dimensions
+// ============================================================================
+
+EMSCRIPTEN_KEEPALIVE
+int client_set_width(int width) {
+  if (width <= 0 || width > 1000) {
+    return -1;
+  }
+  asciichat_error_t err = options_set_int("width", width);
+  return (err == ASCIICHAT_OK) ? 0 : -1;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int client_set_height(int height) {
+  if (height <= 0 || height > 1000) {
+    return -1;
+  }
+  asciichat_error_t err = options_set_int("height", height);
+  return (err == ASCIICHAT_OK) ? 0 : -1;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int client_get_width(void) {
+  return GET_OPTION(width);
+}
+
+EMSCRIPTEN_KEEPALIVE
+int client_get_height(void) {
+  return GET_OPTION(height);
+}
+
+// ============================================================================
+// Settings API - Color Mode
+// ============================================================================
+
+EMSCRIPTEN_KEEPALIVE
+int client_set_color_mode(int mode) {
+  if (mode < TERM_COLOR_AUTO || mode > TERM_COLOR_TRUECOLOR) {
+    return -1;
+  }
+  asciichat_error_t err = options_set_int("color_mode", mode);
+  return (err == ASCIICHAT_OK) ? 0 : -1;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int client_get_color_mode(void) {
+  return GET_OPTION(color_mode);
+}
+
+// ============================================================================
+// Settings API - Color Filter
+// ============================================================================
+
+EMSCRIPTEN_KEEPALIVE
+int client_set_color_filter(int filter) {
+  if (filter < COLOR_FILTER_NONE || filter >= COLOR_FILTER_COUNT) {
+    return -1;
+  }
+  asciichat_error_t err = options_set_int("color_filter", filter);
+  return (err == ASCIICHAT_OK) ? 0 : -1;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int client_get_color_filter(void) {
+  return GET_OPTION(color_filter);
+}
+
+// ============================================================================
+// Settings API - Palette
+// ============================================================================
+
+EMSCRIPTEN_KEEPALIVE
+int client_set_palette(const char *palette_name) {
+  if (!palette_name) {
+    return -1;
+  }
+
+  // Parse the palette string using the same parser as CLI
+  palette_type_t palette_value;
+  char *error_msg = NULL;
+
+  if (!parse_palette_type(palette_name, &palette_value, &error_msg)) {
+    if (error_msg) {
+      log_error("Failed to parse palette '%s': %s", palette_name, error_msg);
+      free(error_msg);
+    }
+    return -1;
+  }
+
+  // Use standard RCU setter for palette_type field
+  asciichat_error_t err = options_set_int("palette_type", (int)palette_value);
+  return (err == ASCIICHAT_OK) ? 0 : -1;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int client_get_palette(void) {
+  return GET_OPTION(palette_type);
+}
+
+EMSCRIPTEN_KEEPALIVE
+int client_set_palette_chars(const char *chars) {
+  if (!chars) {
+    return -1;
+  }
+
+  // Set custom palette characters - this will automatically set palette_type to PALETTE_CUSTOM
+  asciichat_error_t err = options_set_string("palette_custom", chars);
+  return (err == ASCIICHAT_OK) ? 0 : -1;
+}
+
+EMSCRIPTEN_KEEPALIVE
+const char *client_get_palette_chars(void) {
+  return GET_OPTION(palette_custom);
+}
+
+// ============================================================================
+// Settings API - Matrix Rain Effect
+// ============================================================================
+
+EMSCRIPTEN_KEEPALIVE
+int client_set_matrix_rain(int enabled) {
+  asciichat_error_t err = options_set_bool("matrix_rain", enabled != 0);
+  return (err == ASCIICHAT_OK) ? 0 : -1;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int client_get_matrix_rain(void) {
+  return GET_OPTION(matrix_rain) ? 1 : 0;
+}
+
+// ============================================================================
+// Settings API - Flip X (Horizontal Flip)
+// ============================================================================
+
+EMSCRIPTEN_KEEPALIVE
+int client_set_flip_x(int enabled) {
+  asciichat_error_t err = options_set_bool("flip_x", enabled != 0);
+  return (err == ASCIICHAT_OK) ? 0 : -1;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int client_get_flip_x(void) {
+  return GET_OPTION(flip_x) ? 1 : 0;
+}
+
+// ============================================================================
+// Settings API - Target FPS
+// ============================================================================
+
+EMSCRIPTEN_KEEPALIVE
+int client_set_target_fps(int fps) {
+  if (fps < 15 || fps > 60) {
+    return -1;
+  }
+  asciichat_error_t err = options_set_int("fps", fps);
+  return (err == ASCIICHAT_OK) ? 0 : -1;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int client_get_target_fps(void) {
+  return GET_OPTION(fps);
 }
 
 /**

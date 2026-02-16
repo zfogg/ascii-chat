@@ -16,8 +16,8 @@ import {
   getPaletteChars,
   setMatrixRain,
   getMatrixRain,
-  setWebcamFlip,
-  getWebcamFlip,
+  setFlipX,
+  getFlipX,
   setTargetFps,
   getTargetFps,
   ColorMode as WasmColorMode,
@@ -114,7 +114,7 @@ export function MirrorPage() {
     palette: "standard",
     paletteChars: " =#░░▒▒▓▓██",
     matrixRain: false,
-    webcamFlip: isMacOS,
+    flipX: isMacOS,
   });
   const [showSettings, setShowSettings] = useState(false);
   const [optionsManager] = useState<WasmOptionsManager | null>(() => {
@@ -131,8 +131,8 @@ export function MirrorPage() {
       getPaletteChars,
       setMatrixRain,
       getMatrixRain,
-      setWebcamFlip,
-      getWebcamFlip,
+      setFlipX,
+      getFlipX,
       setDimensions,
       getDimensions,
       setTargetFps,
@@ -151,7 +151,7 @@ export function MirrorPage() {
       try {
         optionsManager.applySettings({
           ...newSettings,
-          webcamFlip: newSettings.webcamFlip ?? isMacOS,
+          flipX: newSettings.flipX ?? isMacOS,
         });
       } catch (err) {
         console.error("Failed to apply WASM settings:", err);
@@ -242,7 +242,7 @@ export function MirrorPage() {
           setPaletteChars(settings.paletteChars);
         }
         setMatrixRain(settings.matrixRain ?? false);
-        setWebcamFlip(settings.webcamFlip ?? isMacOS);
+        setFlipX(settings.flipX ?? isMacOS);
       }
 
       const { width, height } = parseResolution(settings.resolution);
