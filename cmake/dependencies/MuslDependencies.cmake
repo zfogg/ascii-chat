@@ -900,7 +900,7 @@ if(NOT EXISTS "${ABSEIL_PREFIX}/lib/libabsl_base.a")
     message(STATUS "  Abseil library not found in cache, will build from source")
     ExternalProject_Add(abseil-musl
         URL https://github.com/abseil/abseil-cpp/archive/refs/tags/20250814.1.tar.gz
-        URL_HASH SHA256=0b6a7d23d86c148c4f53a5e0c34a68fba0b4f2fbde9a28849289e7f63f0dd0ba
+        URL_HASH SHA256=1692f77d1739bacf3f94337188b78583cf09bab7e420d2dc6c5605a4f86785a1
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         PREFIX ${ABSEIL_BUILD_DIR}
         STAMP_DIR ${ABSEIL_BUILD_DIR}/stamps
