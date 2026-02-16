@@ -1128,7 +1128,13 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
   }
 
   if (composite) {
-    image_destroy_to_pool(composite);
+    // For single source, composite is a malloc-allocated copy, not from pool
+    // Check alloc method to determine correct destroy function
+    if (composite->alloc_method == IMAGE_ALLOC_POOL) {
+      image_destroy_to_pool(composite);
+    } else {
+      image_destroy(composite);
+    }
   }
   for (int i = 0; i < source_count; i++) {
     if (sources[i].image) {
