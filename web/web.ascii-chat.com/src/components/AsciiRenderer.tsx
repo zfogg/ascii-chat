@@ -50,7 +50,6 @@ export const AsciiRenderer = forwardRef<
 
   const updateDimensions = useCallback(
     (cols: number, rows: number) => {
-      console.log(`[AsciiRenderer] updateDimensions: ${cols}x${rows}`);
       dimensionsRef.current = { cols, rows };
       onDimensionsChange?.({ cols, rows });
     },
@@ -79,19 +78,8 @@ export const AsciiRenderer = forwardRef<
           if (!terminal) return;
 
           const ansiString = pendingFrameRef.current;
-          console.log(`[AsciiRenderer] ========== WRITE FRAME ==========`);
-          console.log(
-            `[AsciiRenderer] Input ANSI string: ${ansiString.length} chars`,
-          );
 
           const lines = ansiString.split("\n");
-          console.log(`[AsciiRenderer] Lines in input: ${lines.length}`);
-          console.log(`[AsciiRenderer] First 3 lines (first 80 chars each):`);
-          lines.slice(0, 3).forEach((line, i) => {
-            console.log(
-              `[AsciiRenderer]   Line ${i}: "${line.substring(0, 80)}"`,
-            );
-          });
 
           const formattedLines = lines.map((line: string, index: number) =>
             index < lines.length - 1 ? line + "\r\n" : line,
@@ -112,18 +100,8 @@ export const AsciiRenderer = forwardRef<
           }
 
           const output = prefix + formattedLines.join("");
-          console.log(
-            `[AsciiRenderer] Output to terminal: ${output.length} chars`,
-          );
-          console.log(
-            `[AsciiRenderer] Prefix bytes: ${Array.from(prefix)
-              .map((c) => "0x" + c.charCodeAt(0).toString(16))
-              .join(" ")}`,
-          );
-          console.log(`[AsciiRenderer] ========== WRITING TO XTERM ==========`);
 
           terminal.write(output);
-          console.log(`[AsciiRenderer] Frame written to xterm`);
 
           // Ensure terminal is not paused and will render
           const core = (
@@ -138,36 +116,21 @@ export const AsciiRenderer = forwardRef<
           )._core;
           if (core && core._renderService) {
             const renderService = core._renderService;
-            const wasPaused = renderService._isPaused;
-            console.log(`[AsciiRenderer] ===== RENDER SERVICE STATE =====`);
-            console.log(`[AsciiRenderer] isPaused BEFORE: ${wasPaused}`);
 
             // Force unpause - this is critical for continuous rendering
             renderService._isPaused = false;
-            console.log(
-              `[AsciiRenderer] isPaused AFTER setting to false: ${renderService._isPaused}`,
-            );
 
             // Call _renderRows to force immediate render of the updated content
             // This is the actual render method in xterm 5.3.0
             if (renderService._renderRows) {
               try {
                 renderService._renderRows(0, terminal.rows);
-                console.log(
-                  `[AsciiRenderer] Called _renderRows(0, ${terminal.rows})`,
-                );
               } catch (e) {
                 console.error(
                   `[AsciiRenderer] Error calling _renderRows: ${e}`,
                 );
               }
-            } else {
-              console.error(`[AsciiRenderer] _renderRows method not found!`);
             }
-          } else {
-            console.error(
-              `[AsciiRenderer] ERROR: Cannot access render service. core=${!!core}, _renderService=${core?._renderService}`,
-            );
           }
 
           // Update FPS counter via direct DOM mutation and callback
@@ -191,9 +154,7 @@ export const AsciiRenderer = forwardRef<
       },
 
       getDimensions() {
-        const dims = dimensionsRef.current;
-        console.log(`[AsciiRenderer] getDimensions: ${dims.cols}x${dims.rows}`);
-        return dims;
+        return dimensionsRef.current;
       },
 
       clear() {
@@ -262,9 +223,7 @@ export const AsciiRenderer = forwardRef<
             _core?: {
               _renderService?: {
                 _handleIntersectionChange: {
-                  bind: (
-                    context: unknown,
-                  ) => (entry: IntersectionObserverEntry) => void;
+                  bind: (context: unknown) => (entry: IntersectionObserverEntry) => void;
                 };
                 _isPaused: boolean;
               };

@@ -19,7 +19,8 @@ export function NotFoundPage() {
             Page not found
           </Heading>
           <p className="text-terminal-8 mb-8">
-            The page you're looking for doesn't exist or has been moved.
+            The page you&apos;re looking for doesn&apos;t exist or has been
+            moved.
           </p>
           <Button
             href="/"

@@ -47,6 +47,7 @@ import {
   WasmOptionsManager,
 } from "../hooks/useWasmOptions";
 import { useCanvasCapture } from "../hooks/useCanvasCapture";
+import { useRenderLoop } from "../hooks/useRenderLoop";
 
 const CAPABILITIES_PACKET_SIZE = 160;
 const STREAM_TYPE_VIDEO = 0x01;
@@ -96,7 +97,11 @@ function buildStreamStartPacket(includeAudio: boolean = false): Uint8Array {
   return new Uint8Array(buf);
 }
 
-function buildCapabilitiesPacket(cols: number, rows: number): Uint8Array {
+function buildCapabilitiesPacket(
+  cols: number,
+  rows: number,
+  targetFps: number = 60,
+): Uint8Array {
   const buf = new ArrayBuffer(CAPABILITIES_PACKET_SIZE);
   const view = new DataView(buf);
   const bytes = new Uint8Array(buf);
@@ -121,7 +126,7 @@ function buildCapabilitiesPacket(cols: number, rows: number): Uint8Array {
   view.setUint32(85, 1, false); // utf8_support
   view.setUint32(89, 1, false); // palette_type (PALETTE_STANDARD=1)
   // palette_custom[64] at offset 93 - zeroed
-  bytes[157] = 60; // desired_fps
+  bytes[157] = Math.min(targetFps, 144); // desired_fps (0-144)
   bytes[158] = 0; // color_filter (none)
   bytes[159] = 1; // wants_padding
 
@@ -147,10 +152,6 @@ function buildImageFramePayload(
   const view = new DataView(buf);
   const bytes = new Uint8Array(buf);
 
-  console.log(
-    `[buildImageFramePayload] Building 24-byte header + ${rgb24Size} bytes RGB24 data = ${totalSize} total`,
-  );
-
   // Fill header (network byte order big-endian)
   view.setUint32(0, width, false); // width
   view.setUint32(4, height, false); // height
@@ -158,10 +159,6 @@ function buildImageFramePayload(
   view.setUint32(12, 0, false); // compressed_size: 0 (not compressed)
   view.setUint32(16, 0, false); // checksum: 0 (TODO: calculate proper CRC32 if needed)
   view.setUint32(20, Date.now(), false); // timestamp: current time in milliseconds
-
-  console.log(
-    `[buildImageFramePayload] Header: width=${width} height=${height} pixel_format=3 compressed_size=0 timestamp=${Date.now()}`,
-  );
 
   // Convert RGBA to RGB24 (strip alpha channel)
   let srcIdx = 0;
@@ -176,10 +173,6 @@ function buildImageFramePayload(
     srcIdx += 4;
     dstIdx += 3;
   }
-
-  console.log(
-    `[buildImageFramePayload] First RGB bytes: ${bytes[24]},${bytes[25]},${bytes[26]} ${bytes[27]},${bytes[28]},${bytes[29]} ${bytes[30]},${bytes[31]},${bytes[32]}`,
-  );
 
   return bytes;
 }
@@ -200,9 +193,8 @@ export function ClientPage() {
   const streamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastFrameTimeRef = useRef<number>(0);
-  const frameIntervalRef = useRef<number>(1000 / 30); // 30 FPS for sending frames
+  const frameIntervalRef = useRef<number>(1000 / 60); // 60 FPS
   const frameCountRef = useRef<number>(0);
-  const lastLogTimeRef = useRef<number>(0);
   const receivedFrameCountRef = useRef<number>(0);
   const frameReceiptTimesRef = useRef<number[]>([]);
 
@@ -273,7 +265,7 @@ export function ClientPage() {
   // Settings state
   const [settings, setSettings] = useState<SettingsConfig>({
     resolution: "640x480",
-    targetFps: 30,
+    targetFps: 60,
     colorMode: "truecolor",
     colorFilter: "none",
     palette: "standard",
@@ -293,48 +285,38 @@ export function ClientPage() {
     }
   }, [optionsManager, settings]);
 
+  // Update frame interval when target FPS changes
+  useEffect(() => {
+    frameIntervalRef.current = 1000 / settings.targetFps;
+  }, [settings.targetFps]);
+
   // Use shared canvas capture hook
   const { captureFrame } = useCanvasCapture(videoRef, canvasRef);
 
   const handleDimensionsChange = useCallback(
     (dims: { cols: number; rows: number }) => {
-      console.log(`[Client] Dimensions changed: ${dims.cols}x${dims.rows}`);
       setTerminalDimensions(dims);
 
+      // Tell WASM about new dimensions (for proper ASCII rendering)
+      if (optionsManager && isClientWasmReady()) {
+        optionsManager.setDimensions(dims.cols, dims.rows);
+      }
+
       // If connected, send updated dimensions to server
-      if (clientRef.current) {
-        console.log(
-          `[Client] ClientRef available, connectionState=${connectionState}`,
-        );
-        if (connectionState === ConnectionState.CONNECTED) {
-          try {
-            console.log(
-              `[Client] Sending updated capabilities: ${dims.cols}x${dims.rows}`,
-            );
-            const payload = buildCapabilitiesPacket(dims.cols, dims.rows);
-            clientRef.current.sendPacket(
-              PacketType.CLIENT_CAPABILITIES,
-              payload,
-            );
-            console.log("[Client] Updated capabilities sent");
-          } catch (err) {
-            console.error(
-              "[Client] Failed to send capabilities on resize:",
-              err,
-            );
-          }
-        } else {
-          console.log(
-            `[Client] Not connected (state=${connectionState}), not sending capabilities`,
+      if (clientRef.current && connectionState === ConnectionState.CONNECTED) {
+        try {
+          const payload = buildCapabilitiesPacket(
+            dims.cols,
+            dims.rows,
+            settings.targetFps,
           );
+          clientRef.current.sendPacket(PacketType.CLIENT_CAPABILITIES, payload);
+        } catch (err) {
+          console.error("[Client] Failed to send capabilities on resize:", err);
         }
-      } else {
-        console.log(
-          "[Client] ClientRef not available, cannot send capabilities",
-        );
       }
     },
-    [connectionState],
+    [connectionState, optionsManager],
   );
 
   const connectToServer = useCallback(async () => {
@@ -405,7 +387,11 @@ export function ClientPage() {
               console.log(
                 `[Client] Building CLIENT_CAPABILITIES packet (type=${PacketType.CLIENT_CAPABILITIES})`,
               );
-              const capsPayload = buildCapabilitiesPacket(dims.cols, dims.rows);
+              const capsPayload = buildCapabilitiesPacket(
+                dims.cols,
+                dims.rows,
+                settings.targetFps,
+              );
               console.log(`[Client] Payload size: ${capsPayload.length} bytes`);
               console.log(`[Client] Sending CLIENT_CAPABILITIES packet...`);
               conn.sendPacket(PacketType.CLIENT_CAPABILITIES, capsPayload);
@@ -436,86 +422,18 @@ export function ClientPage() {
       });
 
       conn.onPacketReceived((parsed, decryptedPayload) => {
-        const now = performance.now();
-        console.log(
-          `[Client] Packet received: type=${parsed.type}, size=${decryptedPayload.length}`,
-        );
-
         if (parsed.type === PacketType.ASCII_FRAME) {
           receivedFrameCountRef.current++;
-          frameReceiptTimesRef.current.push(now);
-          console.log(
-            `[Client] ========== ASCII_FRAME PACKET RECEIVED (COUNT: ${receivedFrameCountRef.current}) ==========`,
-          );
-          console.log(
-            `[Client] Payload size: ${decryptedPayload.length} bytes`,
-          );
-
-          // Log frame receipt timing
-          if (frameReceiptTimesRef.current.length > 1) {
-            const prevTime =
-              frameReceiptTimesRef.current[
-                frameReceiptTimesRef.current.length - 2
-              ];
-            if (prevTime !== undefined) {
-              const deltaMs = now - prevTime;
-              console.log(
-                `[Client] Time since last frame: ${deltaMs.toFixed(1)}ms`,
-              );
-            }
-          }
-          console.log(
-            `[Client] Total frames received so far: ${receivedFrameCountRef.current}`,
-          );
-
-          // Log first 100 bytes as hex for debugging
-          const hexPreview = Array.from(decryptedPayload.slice(0, 100))
-            .map((b) => b.toString(16).padStart(2, "0"))
-            .join(" ");
-          console.log(`[Client] Hex preview (first 100 bytes): ${hexPreview}`);
+          frameReceiptTimesRef.current.push(performance.now());
 
           try {
-            console.log("[Client] Parsing ASCII frame...");
             const frame = parseAsciiFrame(decryptedPayload);
-            console.log(
-              `[Client] Frame header: ${frame.header.width}x${frame.header.height}`,
-            );
-            console.log(
-              `[Client] Frame ANSI string length: ${frame.ansiString.length} characters`,
-            );
-            console.log(
-              `[Client] Frame flags: 0x${frame.header.flags.toString(16)}`,
-            );
-            console.log(
-              `[Client] Frame original_size: ${frame.header.originalSize}, compressed_size: ${frame.header.compressedSize}`,
-            );
-
-            // Print first 500 chars of the ASCII art
-            console.log(
-              `[Client] ========== ASCII FRAME CONTENT (first 500 chars) ==========`,
-            );
-            const preview = frame.ansiString
-              .substring(0, 500)
-              .replace(/\r\n/g, "\\r\\n\n");
-            console.log(preview);
-            console.log(`[Client] ========== END FRAME PREVIEW ==========`);
-
-            console.log("[Client] Writing frame to renderer...");
-            rendererRef.current?.writeFrame(frame.ansiString);
-            console.log("[Client] Frame written successfully");
+            // Queue frame for the render loop to process at target FPS
+            // This prevents frame accumulation when tab is hidden
+            pendingFrameRef.current = frame.ansiString;
           } catch (err) {
-            console.error("[Client] ========== FRAME PARSING ERROR ==========");
             console.error("[Client] Failed to parse ASCII frame:", err);
-            console.error(
-              "[Client] Error stack:",
-              err instanceof Error ? err.stack : "unknown",
-            );
-            console.error("[Client] ========== END ERROR ==========");
           }
-        } else {
-          console.log(
-            `[Client] Packet type ${parsed.type} (not ASCII_FRAME=${PacketType.ASCII_FRAME})`,
-          );
         }
       });
 
@@ -557,48 +475,46 @@ export function ClientPage() {
     setPublicKey("");
   };
 
+  // Render loop for displaying received frames at target FPS (decoupled from network arrival rate)
+  const pendingFrameRef = useRef<string | null>(null);
+
+  const renderFrame = useCallback(() => {
+    if (pendingFrameRef.current && rendererRef.current) {
+      rendererRef.current.writeFrame(pendingFrameRef.current);
+      pendingFrameRef.current = null;
+    }
+  }, []);
+
+  const { startRenderLoop } = useRenderLoop(
+    renderFrame,
+    frameIntervalRef,
+    lastFrameTimeRef,
+  );
+
   // Webcam capture loop - must avoid stale closures in RAF recursion
-  // Instead, captureAndSendFrame is called by reference within the callback
   const webcamCaptureLoopRef = useRef<(() => void) | null>(null);
 
   // Inner loop function that doesn't have dependencies - this prevents RAF recursion from breaking
   const createWebcamCaptureLoop = useCallback(() => {
-    let callCount = 0;
+    let sendFrameTimeRef = performance.now();
     return () => {
-      callCount++;
-      if (callCount % 30 === 0)
-        console.log(
-          `[RAF] Animation frame called ${callCount} times, connectionState=${connectionState}`,
-        );
-
       const now = performance.now();
-      const elapsed = now - lastFrameTimeRef.current;
+      const elapsed = now - sendFrameTimeRef;
+      const sendInterval = 1000 / settings.targetFps; // Send at target FPS
 
-      if (elapsed >= frameIntervalRef.current) {
-        lastFrameTimeRef.current = now;
+      if (elapsed >= sendInterval) {
+        sendFrameTimeRef = now;
         // Call captureAndSendFrame through ref to get the latest version
         const conn = clientRef.current;
         if (conn && connectionState === ConnectionState.CONNECTED) {
           const frame = captureFrame();
           if (frame) {
-            console.log(
-              `[Client] *** CAPTURE FRAME: ${frame.width}x${frame.height}, building payload...`,
-            );
             const payload = buildImageFramePayload(
               frame.data,
               frame.width,
               frame.height,
             );
             frameCountRef.current++;
-
-            const now = performance.now();
-            if (now - lastLogTimeRef.current > 1000) {
-              console.log(
-                `[Client] Sent ${frameCountRef.current} IMAGE_FRAME packets (${frame.width}x${frame.height}, ${payload.length} bytes each)`,
-              );
-              frameCountRef.current = 0;
-              lastLogTimeRef.current = now;
-            }
 
             try {
               conn.sendPacket(PacketType.IMAGE_FRAME, payload);
@@ -609,14 +525,14 @@ export function ClientPage() {
         }
       }
 
-      // Schedule next frame - must use ref to ensure we always schedule the latest version
+      // Schedule next frame
       if (webcamCaptureLoopRef.current) {
         animationFrameRef.current = requestAnimationFrame(
           webcamCaptureLoopRef.current,
         );
       }
     };
-  }, [captureFrame, connectionState]);
+  }, [captureFrame, connectionState, settings.targetFps]);
 
   // Update the ref whenever dependencies change (including connectionState)
   useEffect(() => {
@@ -743,59 +659,50 @@ export function ClientPage() {
       setIsWebcamRunning(true);
       lastFrameTimeRef.current = performance.now();
       frameIntervalRef.current = 1000 / settings.targetFps;
-      console.log(
-        `[Client] Starting webcam capture loop at ${settings.targetFps} FPS`,
-      );
-      // Start the capture loop using the ref (which always has the latest version)
+      pendingFrameRef.current = null;
+
+      // Start both the capture loop (sends to server) and render loop (displays frames)
       if (webcamCaptureLoopRef.current) {
-        console.log("[Client] Scheduling first RAF call");
-        console.log(
-          `[Client] RAF scheduled - connectionState=${connectionState}, webcamCaptureLoopRef exists=${!!webcamCaptureLoopRef.current}`,
-        );
         animationFrameRef.current = requestAnimationFrame(
           webcamCaptureLoopRef.current,
         );
-        console.log(`[Client] RAF ID: ${animationFrameRef.current}`);
-      } else {
-        console.error(
-          "[Client] webcamCaptureLoopRef.current is null - capture loop not ready",
-        );
       }
+      startRenderLoop();
     } catch (err) {
       const errMsg = `Failed to start webcam: ${err}`;
       console.error("[Client]", errMsg);
       console.error("[Client] Error:", err);
       setError(errMsg);
     }
-  }, [connectionState, settings.resolution, settings.targetFps]);
+  }, [
+    connectionState,
+    settings.resolution,
+    settings.targetFps,
+    startRenderLoop,
+  ]);
 
   const stopWebcam = useCallback(() => {
-    console.log("[Client] stopWebcam() called");
-
     if (animationFrameRef.current !== null) {
-      console.log("[Client] Cancelling animation frame");
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
     }
 
     if (streamRef.current) {
-      console.log("[Client] Stopping video tracks");
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
 
     if (videoRef.current) {
-      console.log("[Client] Clearing video source");
       videoRef.current.srcObject = null;
     }
 
-    console.log("[Client] Webcam stopped");
+    pendingFrameRef.current = null;
     setIsWebcamRunning(false);
   }, []);
 
   // Auto-connect on mount with serverUrl
+  // Delay to ensure terminal has been sized by AsciiRenderer's 100ms setup timeout
   // This depends on serverUrl to ensure it uses the correct URL from query params
-  // Use a separate effect to trigger connection only after serverUrl is fully set
   useEffect(() => {
     if (hasAutoConnected) return;
 
@@ -803,7 +710,7 @@ export function ClientPage() {
       console.log("[Client] Auto-connecting with serverUrl:", serverUrl);
       setHasAutoConnected(true);
       connectToServer();
-    }, 0);
+    }, 150);
 
     return () => clearTimeout(timer);
   }, [serverUrl, hasAutoConnected, connectToServer]);

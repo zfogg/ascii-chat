@@ -41,6 +41,7 @@ import {
   createWasmOptionsManager,
   WasmOptionsManager,
 } from "../hooks/useWasmOptions";
+import { useRenderLoop } from "../hooks/useRenderLoop";
 
 // Helper functions to map Settings types to WASM enums
 function mapColorMode(mode: ColorMode): WasmColorMode {
@@ -208,35 +209,15 @@ export function MirrorPage() {
     rendererRef.current.writeFrame(asciiArt);
   }, [captureFrame]);
 
-  const renderLoopRef = useRef<(() => void) | null>(null);
-
-  useEffect(() => {
-    renderLoopRef.current = () => {
-      const now = performance.now();
-      const elapsed = now - lastFrameTimeRef.current;
-
-      if (elapsed >= frameIntervalRef.current) {
-        lastFrameTimeRef.current = now;
-
-        try {
-          renderFrame();
-        } catch (err) {
-          console.error("[renderLoop] Frame render error:", err);
-          setError(`Render error: ${err}`);
-          stopWebcam();
-          return;
-        }
-      }
-
-      animationFrameRef.current = requestAnimationFrame(() => {
-        renderLoopRef.current?.();
-      });
-    };
-  }, [renderFrame, stopWebcam]);
-
-  const renderLoop = useCallback(() => {
-    renderLoopRef.current?.();
-  }, []);
+  const { startRenderLoop } = useRenderLoop(
+    renderFrame,
+    frameIntervalRef,
+    lastFrameTimeRef,
+    (err) => {
+      setError(`Render error: ${err}`);
+      stopWebcam();
+    },
+  );
 
   const startWebcam = useCallback(async () => {
     if (!videoRef.current || !canvasRef.current) {
@@ -292,11 +273,11 @@ export function MirrorPage() {
 
       lastFrameTimeRef.current = performance.now();
       setIsRunning(true);
-      renderLoop();
+      startRenderLoop();
     } catch (err) {
       setError(`Failed to start webcam: ${err}`);
     }
-  }, [settings, isMacOS, renderLoop]);
+  }, [settings, isMacOS, startRenderLoop]);
 
   // Cleanup on unmount
   useEffect(() => {

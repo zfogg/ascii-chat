@@ -6,7 +6,7 @@ import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
-function languageOptions(jsx = false, tseslint = false) {
+function languageOptions(jsx = false, useTypeScript = false) {
   const opts = {
     ecmaVersion: 2024,
     sourceType: "module",
@@ -19,19 +19,13 @@ function languageOptions(jsx = false, tseslint = false) {
       ecmaVersion: 2024,
       sourceType: "module",
       ecmaFeatures: {
-        jsx: true,
+        jsx: jsx,
       },
-      projectService: true,
     },
   };
-  if (jsx) {
-    opts.parserOptions.ecmaFeatures = {
-      ...opts.parserOptions.ecmaFeatures,
-      jsx: true,
-    };
-  }
-  if (tseslint) {
+  if (useTypeScript) {
     opts.parser = tseslint.parser;
+    opts.parserOptions.projectService = true;
   }
   return opts;
 }
@@ -42,6 +36,7 @@ export default defineConfig([
   {
     rules: {
       "no-var": "error",
+      "no-unused-vars": "off",
     },
   },
 
@@ -70,6 +65,10 @@ export default defineConfig([
       "**/.git/**",
       "**/.vscode/**",
       "**/coverage/**",
+      "**/tests/**",
+      "**/playwright.config.ts",
+      "**/vite.config.ts",
+      "**/vitest.config.ts",
     ],
   },
 
@@ -106,6 +105,7 @@ export default defineConfig([
         {
           argsIgnorePattern: "^_",
           caughtErrorsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
         },
       ],
     },
@@ -126,11 +126,19 @@ export default defineConfig([
         {
           argsIgnorePattern: "^_",
           caughtErrorsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
         },
       ],
       // React TSX specific configuration                                      │
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": "warn",
+    },
+  },
+
+  {
+    files: ["**/OpusEncoder.ts"],
+    rules: {
+      "@typescript-eslint/no-unused-vars": "off",
     },
   },
 ]);

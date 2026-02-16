@@ -120,6 +120,7 @@ export function parseAsciiFrame(payload: Uint8Array): AsciiFrame {
   );
 
   // Log number of escape sequences
+  // eslint-disable-next-line no-control-regex
   const escapeCount = (ansiString.match(/\x1b\[/g) || []).length;
   console.log(`[AsciiFrameParser] Escape sequences found: ${escapeCount}`);
 
