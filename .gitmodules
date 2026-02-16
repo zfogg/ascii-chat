@@ -1,6 +1,6 @@
 [submodule "deps/ascii-chat-deps/bearssl"]
 	path = deps/ascii-chat-deps/bearssl
-	url = https://www.bearssl.org/git/BearSSL
+	url = https://github.com/zfogg/BearSSL.git
 [submodule "deps/ascii-chat-deps/tomlc17"]
 	path = deps/ascii-chat-deps/tomlc17
 	url = https://github.com/cktan/tomlc17
