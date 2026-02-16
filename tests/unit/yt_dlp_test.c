@@ -125,7 +125,7 @@ Test(yt_dlp, extract_null_terminates_output) {
   // Fill entire buffer with non-null characters
   memset(output, 'X', sizeof(output));
 
-  asciichat_error_t err = yt_dlp_extract_stream_url("http://invalid.invalid/fake.mp4", NULL, output, sizeof(output));
+  (void)yt_dlp_extract_stream_url("http://invalid.invalid/fake.mp4", NULL, output, sizeof(output));
 
   // Regardless of success/failure, output should be null-terminated
   // (The test framework will detect buffer overrun if not)

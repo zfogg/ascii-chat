@@ -25,7 +25,7 @@ function NotFound() {
           </Heading>
           <p className="text-gray-400 text-lg md:text-xl m-0">Page Not Found</p>
           <p className="text-gray-400 text-lg md:text-xl m-0">
-            The page you're looking for doesn't exist.
+            The page you&#39;re looking for doesn&#39;t exist.
           </p>
         </header>
 

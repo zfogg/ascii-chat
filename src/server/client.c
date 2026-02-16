@@ -1604,16 +1604,12 @@ void *client_send_thread_func(void *arg) {
 
     // Send batched audio if we have packets
     if (audio_packet_count > 0) {
-      // Get crypto context for this client
       // Protect crypto field access with mutex
-      const crypto_context_t *crypto_ctx = NULL;
       mutex_lock(&client->client_state_mutex);
       bool crypto_ready = !GET_OPTION(no_encrypt) && client->crypto_initialized &&
                           crypto_handshake_is_ready(&client->crypto_handshake_ctx);
-      if (crypto_ready) {
-        crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
-      }
       mutex_unlock(&client->client_state_mutex);
+      (void)crypto_ready; // Currently unused - kept for potential future encryption support
 
       asciichat_error_t result = ASCIICHAT_OK;
 

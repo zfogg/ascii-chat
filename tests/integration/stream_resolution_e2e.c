@@ -27,14 +27,14 @@
 /**
  * Helper to check if yt-dlp is available for conditional test execution
  */
-static bool is_yt_dlp_available(void) {
+__attribute__((unused)) static bool is_yt_dlp_available(void) {
   return yt_dlp_is_available();
 }
 
 /**
  * Helper to check if URL is reachable (for real URL tests)
  */
-static bool can_reach_url(const char *url) {
+__attribute__((unused)) static bool can_reach_url(const char *url) {
   if (!url)
     return false;
 
@@ -417,7 +417,7 @@ Test(stream_resolution_e2e, logs_cache_hits) {
   yt_dlp_extract_stream_url(url, NULL, output1, sizeof(output1));
 
   // Second call should log cache hit
-  asciichat_error_t err = yt_dlp_extract_stream_url(url, NULL, output2, sizeof(output2));
+  (void)yt_dlp_extract_stream_url(url, NULL, output2, sizeof(output2));
 
   // Should log and return same result
   cr_assert_eq(strlen(output1), strlen(output2), "Cache hit should return same output");

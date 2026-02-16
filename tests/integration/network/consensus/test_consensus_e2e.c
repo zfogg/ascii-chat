@@ -85,7 +85,7 @@ static void set_nonblocking(int fd) {
 /**
  * Wait for pattern in process output, with timeout
  */
-static int wait_for_pattern(process_t *proc, const char *pattern, int timeout_ms) {
+__attribute__((unused)) static int wait_for_pattern(process_t *proc, const char *pattern, int timeout_ms) {
   time_t start = time(NULL);
 
   while (time(NULL) - start < timeout_ms / 1000) {
@@ -287,14 +287,14 @@ static void cleanup_processes(void) {
 /**
  * Criterion fixture for proper cleanup
  */
-static void consensus_teardown(void) {
+__attribute__((unused)) static void consensus_teardown(void) {
   cleanup_processes();
 }
 
 /**
  * Parse election result from logs
  */
-static int parse_election_host(const char *buf, uint8_t *out_host_id) {
+__attribute__((unused)) static int parse_election_host(const char *buf, uint8_t *out_host_id) {
   // Look for: "Election result received: host=XX, backup=YY"
   // or: "Election complete: host=XX, backup=YY"
   const char *pattern = "host=";

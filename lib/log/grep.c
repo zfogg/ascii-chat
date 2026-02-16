@@ -154,7 +154,7 @@ static void get_highlight_color(uint8_t *r, uint8_t *g, uint8_t *b) {
   // Query terminal color (only every 2 seconds)
   // Note: Skip querying during interactive grep mode to avoid PTY state issues
   // that can cause spurious ESC bytes in stdin
-  uint8_t bg_r, bg_g, bg_b;
+  uint8_t bg_r = 0, bg_g = 0, bg_b = 0;
   bool has_bg_color = interactive_grep_is_active() ? false : terminal_query_background_color(&bg_r, &bg_g, &bg_b);
 
   bool is_dark;
