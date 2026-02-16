@@ -64,14 +64,9 @@ if [[ "$PLATFORM" == "macos" ]]; then
   # Install all required packages
   # Homebrew automatically skips packages that are already installed
   # We avoid version conflicts on GitHub runners by letting Homebrew manage dependencies
-  all_packages=(
-    cmake coreutils pkg-config llvm ccache make autoconf automake libtool
-    ninja mimalloc zstd libsodium portaudio opus criterion doxygen sqlite3
-    miniupnpc libnatpmp ffmpeg abseil emscripten binaryen yt-dlp libwebsockets openssl
-  )
-
-  echo "Installing packages: ${all_packages[@]}"
-  brew install "${all_packages[@]}" || true
+  brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool \
+    ninja mimalloc zstd libsodium portaudio opus criterion doxygen sqlite3 \
+    miniupnpc libnatpmp ffmpeg abseil emscripten binaryen yt-dlp libwebsockets openssl || true
 
   echo ""
   echo "Dependencies installed successfully!"
