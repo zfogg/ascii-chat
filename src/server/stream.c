@@ -363,14 +363,8 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
         }
 
         // We have frame data - copy ONLY the correct amount based on dimensions
-        buffer_pool_t *pool = buffer_pool_get_global();
-        if (pool) {
-          current_frame.data = buffer_pool_alloc(pool, correct_frame_size);
-        }
-        if (!current_frame.data) {
-          // 64-byte cache-line alignment improves performance for large video frames
-          current_frame.data = SAFE_MALLOC_ALIGNED(correct_frame_size, 64, void *);
-        }
+        // Use SAFE_MALLOC (not buffer pool - image_new_from_pool uses pool and causes overlap)
+        current_frame.data = SAFE_MALLOC(correct_frame_size, void *);
 
         if (current_frame.data) {
           log_debug("Per-client %u: copying %zu bytes (dims %ux%u, orig_size=%zu)", snap->client_id, correct_frame_size,
@@ -384,7 +378,6 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
         }
       } else {
       }
-    } else {
     }
 
     multi_source_frame_t *frame_to_use = got_new_frame ? &current_frame : NULL;
@@ -452,6 +445,16 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
       log_debug("Per-client: memcpy completed, assigning to sources");
       sources[source_count].image = img;
       sources[source_count].has_video = true;
+
+      // Free temporary frame buffer - image has its own pixel data now
+      if (got_new_frame) {
+        SAFE_FREE(current_frame.data);
+      }
+    } else {
+      // frame_to_use check failed - clean up allocated frame data
+      if (got_new_frame && current_frame.data) {
+        SAFE_FREE(current_frame.data);
+      }
     }
 
     // Increment source count for this active client (with or without video)
