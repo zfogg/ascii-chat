@@ -908,14 +908,14 @@ if(NOT EXISTS "${ABSEIL_PREFIX}/lib/libabsl_base.a")
         BUILD_ALWAYS 0
         CMAKE_ARGS
             -DCMAKE_C_COMPILER=${MUSL_GCC}
-            -DCMAKE_CXX_COMPILER=${MUSL_GCC}
+            -DCMAKE_CXX_COMPILER=clang++
             -DCMAKE_CXX_STANDARD=17
             -DCMAKE_BUILD_TYPE=Release
             -DCMAKE_INSTALL_PREFIX=${ABSEIL_PREFIX}
             -DBUILD_SHARED_LIBS=OFF
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON
             -DCMAKE_C_FLAGS=-O3\ -fPIC
-            -DCMAKE_CXX_FLAGS=-O3\ -fPIC
+            -DCMAKE_CXX_FLAGS=-O3\ -fPIC\ -target\ x86_64-linux-musl\ -stdlib=libc++
         BUILD_BYPRODUCTS
             ${ABSEIL_PREFIX}/lib/libabsl_base.a
             ${ABSEIL_PREFIX}/lib/libabsl_strings.a
