@@ -633,6 +633,12 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
   cond_destroy(&ws_data->queue_cond);
   mutex_destroy(&ws_data->queue_mutex);
 
+  // Clear impl_data pointer BEFORE freeing to prevent use-after-free in callbacks
+  transport->impl_data = NULL;
+
+  // Free the websocket transport data structure
+  SAFE_FREE(ws_data);
+
   log_debug("Destroyed WebSocket transport resources");
 }
 
