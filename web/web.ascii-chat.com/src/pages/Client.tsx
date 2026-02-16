@@ -5,7 +5,32 @@ import {
   useState,
   useCallback,
 } from "react";
-import { cleanupClientWasm, ConnectionState, PacketType } from "../wasm/client";
+import {
+  cleanupClientWasm,
+  ConnectionState,
+  PacketType,
+  ColorMode as ClientColorMode,
+  ColorFilter as ClientColorFilter,
+  setColorMode,
+  getColorMode,
+  setColorFilter,
+  getColorFilter,
+  setPalette,
+  getPalette,
+  setPaletteChars,
+  getPaletteChars,
+  setMatrixRain,
+  getMatrixRain,
+  setWebcamFlip,
+  getWebcamFlip,
+  setTargetFps,
+  getTargetFps,
+  setWidth,
+  getWidth,
+  setHeight,
+  getHeight,
+  isWasmReady as isClientWasmReady,
+} from "../wasm/client";
 import { ClientConnection } from "../network/ClientConnection";
 import { parseAsciiFrame } from "../network/AsciiFrameParser";
 import {
@@ -17,11 +42,46 @@ import { Settings, SettingsConfig } from "../components/Settings";
 import { WebClientHead } from "../components/WebClientHead";
 import { PageControlBar } from "../components/PageControlBar";
 import { PageLayout } from "../components/PageLayout";
+import {
+  createWasmOptionsManager,
+  WasmOptionsManager,
+} from "../hooks/useWasmOptions";
 import { useCanvasCapture } from "../hooks/useCanvasCapture";
 
 const CAPABILITIES_PACKET_SIZE = 160;
 const STREAM_TYPE_VIDEO = 0x01;
 const STREAM_TYPE_AUDIO = 0x02;
+
+// Helper functions to map Settings types to WASM enums
+function mapColorMode(mode: string): ClientColorMode {
+  const mapping: Record<string, ClientColorMode> = {
+    auto: ClientColorMode.AUTO,
+    none: ClientColorMode.NONE,
+    "16": ClientColorMode.COLOR_16,
+    "256": ClientColorMode.COLOR_256,
+    truecolor: ClientColorMode.TRUECOLOR,
+  };
+  return mapping[mode] || ClientColorMode.AUTO;
+}
+
+function mapColorFilter(filter: string): ClientColorFilter {
+  const mapping: Record<string, ClientColorFilter> = {
+    none: ClientColorFilter.NONE,
+    black: ClientColorFilter.BLACK,
+    white: ClientColorFilter.WHITE,
+    green: ClientColorFilter.GREEN,
+    magenta: ClientColorFilter.MAGENTA,
+    fuchsia: ClientColorFilter.FUCHSIA,
+    orange: ClientColorFilter.ORANGE,
+    teal: ClientColorFilter.TEAL,
+    cyan: ClientColorFilter.CYAN,
+    pink: ClientColorFilter.PINK,
+    red: ClientColorFilter.RED,
+    yellow: ClientColorFilter.YELLOW,
+    rainbow: ClientColorFilter.RAINBOW,
+  };
+  return mapping[filter] || ClientColorFilter.NONE;
+}
 
 function buildStreamStartPacket(includeAudio: boolean = false): Uint8Array {
   const streamType = includeAudio
@@ -154,6 +214,36 @@ export function ClientPage() {
   const [isWebcamRunning, setIsWebcamRunning] = useState(false);
   const [hasAutoConnected, setHasAutoConnected] = useState(false);
   const [fps, setFps] = useState<number | undefined>();
+  const [optionsManager] = useState<WasmOptionsManager | null>(() => {
+    if (!isClientWasmReady()) return null;
+
+    return createWasmOptionsManager(
+      setColorMode,
+      getColorMode,
+      setColorFilter,
+      getColorFilter,
+      setPalette,
+      getPalette,
+      setPaletteChars,
+      getPaletteChars,
+      setMatrixRain,
+      getMatrixRain,
+      setWebcamFlip,
+      getWebcamFlip,
+      (width, height) => {
+        setWidth(width);
+        setHeight(height);
+      },
+      () => ({
+        width: getWidth(),
+        height: getHeight(),
+      }),
+      setTargetFps,
+      getTargetFps,
+      mapColorMode,
+      mapColorFilter,
+    );
+  });
 
   // Read server URL from query parameter (for E2E tests)
   // Use useLayoutEffect to ensure this runs before render and auto-connect
@@ -183,6 +273,17 @@ export function ClientPage() {
     matrixRain: false,
     webcamFlip: false,
   });
+
+  // Apply WASM settings when they change
+  useEffect(() => {
+    if (optionsManager && isClientWasmReady()) {
+      try {
+        optionsManager.applySettings(settings);
+      } catch (err) {
+        console.error("Failed to apply WASM settings:", err);
+      }
+    }
+  }, [optionsManager, settings]);
 
   // Use shared canvas capture hook
   const { captureFrame } = useCanvasCapture(videoRef, canvasRef);

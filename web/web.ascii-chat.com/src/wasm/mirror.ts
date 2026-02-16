@@ -23,6 +23,8 @@ interface MirrorModuleExports {
   _mirror_get_matrix_rain(): number;
   _mirror_set_webcam_flip(enabled: number): number;
   _mirror_get_webcam_flip(): number;
+  _mirror_set_target_fps(fps: number): number;
+  _mirror_get_target_fps(): number;
   _mirror_convert_frame(
     rgba_data_ptr: number,
     src_width: number,
@@ -58,6 +60,8 @@ interface MirrorModule {
   _mirror_get_matrix_rain: MirrorModuleExports["_mirror_get_matrix_rain"];
   _mirror_set_webcam_flip: MirrorModuleExports["_mirror_set_webcam_flip"];
   _mirror_get_webcam_flip: MirrorModuleExports["_mirror_get_webcam_flip"];
+  _mirror_set_target_fps: MirrorModuleExports["_mirror_set_target_fps"];
+  _mirror_get_target_fps: MirrorModuleExports["_mirror_get_target_fps"];
   _mirror_convert_frame: MirrorModuleExports["_mirror_convert_frame"];
   _mirror_free_string: MirrorModuleExports["_mirror_free_string"];
   _malloc: MirrorModuleExports["_malloc"];
@@ -419,9 +423,18 @@ export function setPalette(palette: Palette): void {
 /**
  * Get current palette
  */
-export function getPalette(): number {
+export function getPalette(): string {
   if (!wasmModule) throw new Error("WASM module not initialized");
-  return wasmModule._mirror_get_palette();
+  const paletteNum = wasmModule._mirror_get_palette();
+  const paletteMap: Record<number, string> = {
+    0: "standard",
+    1: "blocks",
+    2: "digital",
+    3: "minimal",
+    4: "cool",
+    5: "custom",
+  };
+  return paletteMap[paletteNum] || "standard";
 }
 
 /**
@@ -494,6 +507,25 @@ export function setWebcamFlip(enabled: boolean): void {
 export function getWebcamFlip(): boolean {
   if (!wasmModule) throw new Error("WASM module not initialized");
   return wasmModule._mirror_get_webcam_flip() !== 0;
+}
+
+/**
+ * Set target FPS
+ */
+export function setTargetFps(fps: number): void {
+  if (!wasmModule) throw new Error("WASM module not initialized");
+
+  if (wasmModule._mirror_set_target_fps(fps) !== 0) {
+    throw new Error(`Invalid target FPS: ${fps}`);
+  }
+}
+
+/**
+ * Get current target FPS
+ */
+export function getTargetFps(): number {
+  if (!wasmModule) throw new Error("WASM module not initialized");
+  return wasmModule._mirror_get_target_fps();
 }
 
 /**

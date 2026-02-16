@@ -46,6 +46,24 @@ interface ClientModuleExports {
     height: number,
   ): number;
   _client_get_connection_state(): number;
+  _client_set_color_mode(mode: number): number;
+  _client_get_color_mode(): number;
+  _client_set_color_filter(filter: number): number;
+  _client_get_color_filter(): number;
+  _client_set_palette(palette_ptr: number): number;
+  _client_get_palette(): number;
+  _client_set_palette_chars(chars_ptr: number): number;
+  _client_get_palette_chars(): number;
+  _client_set_matrix_rain(enabled: number): number;
+  _client_get_matrix_rain(): number;
+  _client_set_webcam_flip(enabled: number): number;
+  _client_get_webcam_flip(): number;
+  _client_set_target_fps(fps: number): number;
+  _client_get_target_fps(): number;
+  _client_set_width(width: number): number;
+  _client_get_width(): number;
+  _client_set_height(height: number): number;
+  _client_get_height(): number;
   _client_free_string(ptr: number): void;
   _malloc(size: number): number;
   _free(ptr: number): void;
@@ -72,6 +90,24 @@ interface ClientModule {
   _client_serialize_packet: ClientModuleExports["_client_serialize_packet"];
   _client_send_video_frame: ClientModuleExports["_client_send_video_frame"];
   _client_get_connection_state: ClientModuleExports["_client_get_connection_state"];
+  _client_set_color_mode: ClientModuleExports["_client_set_color_mode"];
+  _client_get_color_mode: ClientModuleExports["_client_get_color_mode"];
+  _client_set_color_filter: ClientModuleExports["_client_set_color_filter"];
+  _client_get_color_filter: ClientModuleExports["_client_get_color_filter"];
+  _client_set_palette: ClientModuleExports["_client_set_palette"];
+  _client_get_palette: ClientModuleExports["_client_get_palette"];
+  _client_set_palette_chars: ClientModuleExports["_client_set_palette_chars"];
+  _client_get_palette_chars: ClientModuleExports["_client_get_palette_chars"];
+  _client_set_matrix_rain: ClientModuleExports["_client_set_matrix_rain"];
+  _client_get_matrix_rain: ClientModuleExports["_client_get_matrix_rain"];
+  _client_set_webcam_flip: ClientModuleExports["_client_set_webcam_flip"];
+  _client_get_webcam_flip: ClientModuleExports["_client_get_webcam_flip"];
+  _client_set_target_fps: ClientModuleExports["_client_set_target_fps"];
+  _client_get_target_fps: ClientModuleExports["_client_get_target_fps"];
+  _client_set_width: ClientModuleExports["_client_set_width"];
+  _client_get_width: ClientModuleExports["_client_get_width"];
+  _client_set_height: ClientModuleExports["_client_set_height"];
+  _client_get_height: ClientModuleExports["_client_get_height"];
   _client_free_string: ClientModuleExports["_client_free_string"];
   _malloc: ClientModuleExports["_malloc"];
   _free: ClientModuleExports["_free"];
@@ -84,6 +120,30 @@ export enum ConnectionState {
   HANDSHAKE = 2,
   CONNECTED = 3,
   ERROR = 4,
+}
+
+export enum ColorMode {
+  AUTO = 0,
+  NONE = 1,
+  COLOR_16 = 2,
+  COLOR_256 = 3,
+  TRUECOLOR = 4,
+}
+
+export enum ColorFilter {
+  NONE = 0,
+  BLACK = 1,
+  WHITE = 2,
+  GREEN = 3,
+  MAGENTA = 4,
+  FUCHSIA = 5,
+  ORANGE = 6,
+  TEAL = 7,
+  CYAN = 8,
+  PINK = 9,
+  RED = 10,
+  YELLOW = 11,
+  RAINBOW = 12,
 }
 
 export enum PacketType {
@@ -181,6 +241,14 @@ export function packetTypeName(type: number): string {
   };
   return names[type] || `UNKNOWN(${type})`;
 }
+
+export type Palette =
+  | "standard"
+  | "blocks"
+  | "digital"
+  | "minimal"
+  | "cool"
+  | "custom";
 
 // Import the Emscripten-generated module factory
 // @ts-expect-error - Generated file without types
@@ -679,6 +747,205 @@ export function getConnectionState(): ConnectionState {
     throw new Error("WASM module not initialized");
   }
   return wasmModule._client_get_connection_state();
+}
+
+/**
+ * Set color mode
+ */
+export function setColorMode(mode: ColorMode): void {
+  if (!wasmModule) throw new Error("WASM module not initialized");
+
+  if (wasmModule._client_set_color_mode(mode) !== 0) {
+    throw new Error(`Invalid color mode: ${mode}`);
+  }
+}
+
+/**
+ * Get current color mode
+ */
+export function getColorMode(): ColorMode {
+  if (!wasmModule) throw new Error("WASM module not initialized");
+  return wasmModule._client_get_color_mode();
+}
+
+/**
+ * Set color filter
+ */
+export function setColorFilter(filter: ColorFilter): void {
+  if (!wasmModule) throw new Error("WASM module not initialized");
+
+  if (wasmModule._client_set_color_filter(filter) !== 0) {
+    throw new Error(`Invalid color filter: ${filter}`);
+  }
+}
+
+/**
+ * Get current color filter
+ */
+export function getColorFilter(): ColorFilter {
+  if (!wasmModule) throw new Error("WASM module not initialized");
+  return wasmModule._client_get_color_filter();
+}
+
+/**
+ * Set palette
+ */
+export function setPalette(palette: Palette): void {
+  if (!wasmModule) throw new Error("WASM module not initialized");
+
+  const strLen = wasmModule.lengthBytesUTF8(palette) + 1;
+  const strPtr = wasmModule._malloc(strLen);
+  if (!strPtr) {
+    throw new Error("Failed to allocate memory for palette string");
+  }
+
+  try {
+    wasmModule.stringToUTF8(palette, strPtr, strLen);
+    const result = wasmModule._client_set_palette(strPtr);
+    if (result !== 0) {
+      throw new Error(`Failed to set palette: ${palette}`);
+    }
+  } finally {
+    wasmModule._free(strPtr);
+  }
+}
+
+/**
+ * Get current palette
+ */
+export function getPalette(): string {
+  if (!wasmModule) throw new Error("WASM module not initialized");
+  const ptr = wasmModule._client_get_palette();
+  if (!ptr) return "";
+  return wasmModule.UTF8ToString(ptr);
+}
+
+/**
+ * Set custom palette characters
+ */
+export function setPaletteChars(chars: string): void {
+  if (!wasmModule) throw new Error("WASM module not initialized");
+
+  const strLen = wasmModule.lengthBytesUTF8(chars) + 1;
+  const strPtr = wasmModule._malloc(strLen);
+  if (!strPtr) {
+    throw new Error("Failed to allocate memory for palette chars");
+  }
+
+  try {
+    wasmModule.stringToUTF8(chars, strPtr, strLen);
+    const result = wasmModule._client_set_palette_chars(strPtr);
+    if (result !== 0) {
+      throw new Error(`Failed to set palette chars: ${chars}`);
+    }
+  } finally {
+    wasmModule._free(strPtr);
+  }
+}
+
+/**
+ * Get current custom palette characters
+ */
+export function getPaletteChars(): string {
+  if (!wasmModule) throw new Error("WASM module not initialized");
+  const ptr = wasmModule._client_get_palette_chars();
+  if (!ptr) return "";
+  return wasmModule.UTF8ToString(ptr);
+}
+
+/**
+ * Set Matrix rain effect
+ */
+export function setMatrixRain(enabled: boolean): void {
+  if (!wasmModule) throw new Error("WASM module not initialized");
+
+  if (wasmModule._client_set_matrix_rain(enabled ? 1 : 0) !== 0) {
+    throw new Error(`Failed to set matrix rain: ${enabled}`);
+  }
+}
+
+/**
+ * Get current matrix rain state
+ */
+export function getMatrixRain(): boolean {
+  if (!wasmModule) throw new Error("WASM module not initialized");
+  return wasmModule._client_get_matrix_rain() !== 0;
+}
+
+/**
+ * Set webcam flip (horizontal mirror)
+ */
+export function setWebcamFlip(enabled: boolean): void {
+  if (!wasmModule) throw new Error("WASM module not initialized");
+
+  if (wasmModule._client_set_webcam_flip(enabled ? 1 : 0) !== 0) {
+    throw new Error(`Failed to set webcam flip: ${enabled}`);
+  }
+}
+
+/**
+ * Get current webcam flip state
+ */
+export function getWebcamFlip(): boolean {
+  if (!wasmModule) throw new Error("WASM module not initialized");
+  return wasmModule._client_get_webcam_flip() !== 0;
+}
+
+/**
+ * Set target FPS
+ */
+export function setTargetFps(fps: number): void {
+  if (!wasmModule) throw new Error("WASM module not initialized");
+
+  if (wasmModule._client_set_target_fps(fps) !== 0) {
+    throw new Error(`Invalid target FPS: ${fps}`);
+  }
+}
+
+/**
+ * Get current target FPS
+ */
+export function getTargetFps(): number {
+  if (!wasmModule) throw new Error("WASM module not initialized");
+  return wasmModule._client_get_target_fps();
+}
+
+/**
+ * Set ASCII width (columns)
+ */
+export function setWidth(width: number): void {
+  if (!wasmModule) throw new Error("WASM module not initialized");
+
+  if (wasmModule._client_set_width(width) !== 0) {
+    throw new Error(`Invalid width: ${width}`);
+  }
+}
+
+/**
+ * Get current ASCII width
+ */
+export function getWidth(): number {
+  if (!wasmModule) throw new Error("WASM module not initialized");
+  return wasmModule._client_get_width();
+}
+
+/**
+ * Set ASCII height (rows)
+ */
+export function setHeight(height: number): void {
+  if (!wasmModule) throw new Error("WASM module not initialized");
+
+  if (wasmModule._client_set_height(height) !== 0) {
+    throw new Error(`Invalid height: ${height}`);
+  }
+}
+
+/**
+ * Get current ASCII height
+ */
+export function getHeight(): number {
+  if (!wasmModule) throw new Error("WASM module not initialized");
+  return wasmModule._client_get_height();
 }
 
 /**

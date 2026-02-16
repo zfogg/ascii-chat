@@ -5,12 +5,21 @@ import {
   convertFrameToAscii,
   isWasmReady,
   setDimensions,
+  getDimensions,
   setColorMode,
+  getColorMode,
   setColorFilter,
+  getColorFilter,
   setPalette,
+  getPalette,
   setPaletteChars,
+  getPaletteChars,
   setMatrixRain,
+  getMatrixRain,
   setWebcamFlip,
+  getWebcamFlip,
+  setTargetFps,
+  getTargetFps,
   ColorMode as WasmColorMode,
   ColorFilter as WasmColorFilter,
 } from "../wasm/mirror";
@@ -28,6 +37,10 @@ import { PageControlBar } from "../components/PageControlBar";
 import { PageLayout } from "../components/PageLayout";
 import { WebClientHead } from "../components/WebClientHead";
 import { useCanvasCapture } from "../hooks/useCanvasCapture";
+import {
+  createWasmOptionsManager,
+  WasmOptionsManager,
+} from "../hooks/useWasmOptions";
 
 // Helper functions to map Settings types to WASM enums
 function mapColorMode(mode: ColorMode): WasmColorMode {
@@ -102,22 +115,42 @@ export function MirrorPage() {
     webcamFlip: isMacOS,
   });
   const [showSettings, setShowSettings] = useState(false);
+  const [optionsManager] = useState<WasmOptionsManager | null>(() => {
+    if (!isWasmReady()) return null;
+
+    return createWasmOptionsManager(
+      setColorMode,
+      getColorMode,
+      setColorFilter,
+      getColorFilter,
+      setPalette,
+      getPalette,
+      setPaletteChars,
+      getPaletteChars,
+      setMatrixRain,
+      getMatrixRain,
+      setWebcamFlip,
+      getWebcamFlip,
+      setDimensions,
+      getDimensions,
+      setTargetFps,
+      getTargetFps,
+      mapColorMode,
+      mapColorFilter,
+    );
+  });
 
   // Handle settings change
   const handleSettingsChange = (newSettings: SettingsConfig) => {
     setSettings(newSettings);
     frameIntervalRef.current = 1000 / newSettings.targetFps;
 
-    if (isWasmReady()) {
+    if (optionsManager && isWasmReady()) {
       try {
-        setColorMode(mapColorMode(newSettings.colorMode));
-        setColorFilter(mapColorFilter(newSettings.colorFilter));
-        setPalette(newSettings.palette);
-        if (newSettings.palette === "custom" && newSettings.paletteChars) {
-          setPaletteChars(newSettings.paletteChars);
-        }
-        setMatrixRain(newSettings.matrixRain ?? false);
-        setWebcamFlip(newSettings.webcamFlip ?? isMacOS);
+        optionsManager.applySettings({
+          ...newSettings,
+          webcamFlip: newSettings.webcamFlip ?? isMacOS,
+        });
       } catch (err) {
         console.error("Failed to apply WASM settings:", err);
       }
