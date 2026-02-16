@@ -947,3 +947,7 @@ int interactive_grep_get_input_len(void) {
 const char *interactive_grep_get_input_buffer(void) {
   return g_grep_state.input_buffer;
 }
+
+bool interactive_grep_get_case_insensitive(void) {
+  return g_grep_state.case_insensitive;
+}

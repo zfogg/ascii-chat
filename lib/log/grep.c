@@ -793,6 +793,9 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
   if (should_use_global_pattern) {
     pcre2_code *code = NULL;
     pcre2_match_data *match_data = NULL;
+    char fixed_string_pattern[256] = {0};
+    bool is_fixed_string_pattern = false;
+    bool case_insensitive_fixed = false;
 
     // Get code from CLI pattern or interactive grep pattern
     if (global_pat && global_pat->singleton) {
@@ -808,10 +811,19 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
         if (code) {
           match_data = pcre2_match_data_create_from_pattern(code, NULL);
         }
+      } else {
+        // No regex pattern - check if it's a fixed string pattern in interactive grep
+        int pattern_len = interactive_grep_get_input_len();
+        const char *pattern = interactive_grep_get_input_buffer();
+        if (pattern_len > 0 && pattern && pattern_len < (int)sizeof(fixed_string_pattern)) {
+          SAFE_STRNCPY(fixed_string_pattern, pattern, sizeof(fixed_string_pattern) - 1);
+          is_fixed_string_pattern = true;
+          case_insensitive_fixed = interactive_grep_get_case_insensitive();
+        }
       }
     }
 
-    if (!code || !match_data) {
+    if (!code && !is_fixed_string_pattern) {
       if (match_data && is_interactive_grep) {
         pcre2_match_data_free(match_data); // Free if we created it
       }
@@ -824,7 +836,67 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
     size_t plain_offset = 0;
     size_t colored_pos = 0;
 
-    // Find all matches in plain text and highlight in colored text
+    // Handle fixed string global matching
+    if (is_fixed_string_pattern) {
+      while (plain_offset < plain_len) {
+        // Find next occurrence of fixed string
+        const char *found = NULL;
+        if (case_insensitive_fixed) {
+          found = utf8_strcasestr(plain_text + plain_offset, fixed_string_pattern);
+        } else {
+          found = strstr(plain_text + plain_offset, fixed_string_pattern);
+        }
+
+        if (!found) {
+          break; // No more matches
+        }
+
+        size_t plain_match_start = (size_t)(found - plain_text);
+        size_t plain_match_end = plain_match_start + strlen(fixed_string_pattern);
+
+        // Map to colored text positions
+        size_t colored_match_start = map_plain_to_colored_pos(colored_text, plain_match_start);
+        size_t colored_match_end = map_plain_to_colored_pos(colored_text, plain_match_end);
+
+        // Copy text before match
+        if (colored_match_start > colored_pos) {
+          memcpy(dst, colored_text + colored_pos, colored_match_start - colored_pos);
+          dst += (colored_match_start - colored_pos);
+        }
+
+        // Add highlight background
+        uint8_t r, g, b;
+        get_highlight_color(&r, &g, &b);
+        dst = append_truecolor_bg(dst, r, g, b);
+
+        // Copy matched text with background
+        size_t match_byte_len = colored_match_end - colored_match_start;
+        memcpy(dst, colored_text + colored_match_start, match_byte_len);
+        dst += match_byte_len;
+
+        // Reset background
+        memcpy(dst, "\x1b[49m", 5);
+        dst += 5;
+
+        colored_pos = colored_match_end;
+        plain_offset = plain_match_end;
+      }
+
+      // Copy remaining text
+      if (colored_pos < colored_len) {
+        memcpy(dst, colored_text + colored_pos, colored_len - colored_pos);
+        dst += (colored_len - colored_pos);
+      }
+
+      // Reset both background and foreground at end
+      memcpy(dst, "\x1b[0m", 4);
+      dst += 4;
+
+      *dst = '\0';
+      return highlight_buffer;
+    }
+
+    // Find all matches in plain text and highlight in colored text (regex matching)
     while (plain_offset < plain_len) {
       int rc = pcre2_jit_match(code, (PCRE2_SPTR)plain_text, plain_len, plain_offset, 0, match_data, NULL);
       if (rc < 0) {

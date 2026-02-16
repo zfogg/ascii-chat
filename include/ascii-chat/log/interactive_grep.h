@@ -249,3 +249,11 @@ int interactive_grep_get_input_len(void);
  * Must be called while holding the mutex from interactive_grep_get_mutex().
  */
 const char *interactive_grep_get_input_buffer(void);
+
+/**
+ * @brief Check if case-insensitive flag is set (must hold mutex)
+ * @return true if /i flag is set, false otherwise
+ *
+ * Must be called while holding the mutex from interactive_grep_get_mutex().
+ */
+bool interactive_grep_get_case_insensitive(void);
