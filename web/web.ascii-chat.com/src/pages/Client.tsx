@@ -184,6 +184,14 @@ function buildImageFramePayload(
   return bytes;
 }
 
+const STATE_NAMES: Record<number, string> = {
+  [ConnectionState.DISCONNECTED]: "Disconnected",
+  [ConnectionState.CONNECTING]: "Connecting",
+  [ConnectionState.HANDSHAKE]: "Performing handshake",
+  [ConnectionState.CONNECTED]: "Connected",
+  [ConnectionState.ERROR]: "Error",
+};
+
 export function ClientPage() {
   const rendererRef = useRef<AsciiRendererHandle>(null);
   const clientRef = useRef<ClientConnection | null>(null);
@@ -287,14 +295,6 @@ export function ClientPage() {
 
   // Use shared canvas capture hook
   const { captureFrame } = useCanvasCapture(videoRef, canvasRef);
-
-  const STATE_NAMES: Record<number, string> = {
-    [ConnectionState.DISCONNECTED]: "Disconnected",
-    [ConnectionState.CONNECTING]: "Connecting",
-    [ConnectionState.HANDSHAKE]: "Performing handshake",
-    [ConnectionState.CONNECTED]: "Connected",
-    [ConnectionState.ERROR]: "Error",
-  };
 
   const handleDimensionsChange = useCallback(
     (dims: { cols: number; rows: number }) => {
@@ -806,7 +806,7 @@ export function ClientPage() {
     }, 0);
 
     return () => clearTimeout(timer);
-  }, [serverUrl, hasAutoConnected]);
+  }, [serverUrl, hasAutoConnected, connectToServer]);
 
   // Cleanup on unmount
   useEffect(() => {
