@@ -4,9 +4,10 @@ Web-based clients for ascii-chat, providing browser access to mirror, client, an
 
 ## Overview
 
-This is a React + Vite application that runs ascii-chat in the browser via WebAssembly. The core ascii-chat C code is compiled to WASM using Emscripten, enabling real-time video chat with ASCII rendering directly in your browser.
+This is a React + Vite application that runs ascii-chat in the browser via WebAssembly. The core ascii-chat C code is
+compiled to WASM using Emscripten, enabling real-time video chat with ASCII rendering directly in your browser.
 
-## Tech Stack
+## Stack
 
 - **Bun** - JavaScript runtime and package manager
 - **Vite** - Fast frontend build tool
@@ -27,9 +28,8 @@ bun install
 
 ```bash
 bun run dev
+# It will print the dev url then livereload and refresh the page as you hack
 ```
-
-This starts the Vite dev server at `http://localhost:5173`.
 
 ### Building
 
@@ -47,30 +47,32 @@ The WASM modules (mirror-web and client-web) are built automatically during the 
 bun run wasm:build
 ```
 
-This invokes Emscripten to compile `src/web/mirror.c` and `src/web/client.c` to WebAssembly modules and places them in `src/wasm/dist/`.
+This invokes Emscripten to compile `src/web/mirror.c` and `src/web/client.c` to WebAssembly modules and places them in
+`src/wasm/dist/`.
 
-**Prerequisites:** Emscripten must be installed (`brew install emscripten` on macOS).
+**Prerequisites:** Emscripten must be installed (`brew install emscripten` on macOS, `pacman -S emscripten` on Arch,
+etc).
 
 ## Project Structure
 
 ```
-src/
-├── pages/           # Route pages (Mirror, Client, Discovery)
-├── components/      # Reusable React components
-├── wasm/           # WASM module integration and types
-├── hooks/          # Custom React hooks
-├── styles/         # Tailwind CSS + custom styles
-└── App.tsx         # Main application component
-
+src/               # Website source code
+├── pages/              # Route pages (Mirror, Client, Discovery)
+├── components/         # Reusable React components
+├── wasm/               # WASM module integration and types
+├── hooks/              # Custom React hooks
+├── styles/             # Tailwind CSS + custom styles
+└── App.tsx             # Main application component
 scripts/            # Build and deployment scripts
-build.sh           # Builds WASM, runs type checking, linting, and Vite
+└── build.sh            # Builds WASM, runs type checking, linting, and Vite
 ```
 
 ## Deployment
 
 The application is deployed to Vercel and automatically triggers on git pushes to the main branch.
 
-**Pre-commit checks:** TypeScript type checking, Prettier formatting, ESLint, and WASM compilation all run before commits are accepted.
+**Pre-commit checks:** TypeScript type checking, Prettier formatting, ESLint, and WASM compilation all run before
+commits are accepted if you setup `../../git-hooks/pre-commit`.
 
 ## Shared Dependencies
 
@@ -82,14 +84,8 @@ Modern browsers with WebAssembly support (Chrome, Firefox, Safari, Edge).
 
 ## Troubleshooting
 
-**WASM build fails with "emcc: command not found"**
-Install Emscripten: `brew install emscripten`
-
-**Port 5173 already in use**
-Vite will automatically use the next available port.
-
-**Type errors after dependency updates**
-Run `bun run type-check` to verify TypeScript compatibility.
+Q: **WASM build fails with "emcc: command not found"**?
+A: Install Emscripten.
 
 ## License
 
