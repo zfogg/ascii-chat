@@ -63,16 +63,13 @@ if [[ "$PLATFORM" == "macos" ]]; then
 
   echo "Installing dependencies via Homebrew..."
 
-  # Install packages - ignore errors since many are already installed on GitHub runners
-  # Use --quiet to suppress warnings about already-installed packages
-  brew install --quiet cmake coreutils pkg-config llvm ccache make autoconf automake libtool \
+  # Install packages - completely ignore all errors since many are already installed
+  # GitHub runners have pre-installed packages with version conflicts that can't be resolved
+  brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool \
     ninja mimalloc zstd libsodium portaudio opus criterion doxygen sqlite3 \
-    miniupnpc libnatpmp ffmpeg abseil emscripten binaryen yt-dlp libwebsockets || true
+    miniupnpc libnatpmp ffmpeg abseil emscripten binaryen yt-dlp libwebsockets openssl@3 >/dev/null 2>&1 || true
 
-  # Also try openssl@3 explicitly since "openssl" might conflict
-  brew install --quiet openssl@3 || true
-
-  echo "Homebrew package installation completed (some may have already been installed)"
+  echo "Homebrew packages: installation attempt completed"
 
   echo ""
   echo "Dependencies installed successfully!"
