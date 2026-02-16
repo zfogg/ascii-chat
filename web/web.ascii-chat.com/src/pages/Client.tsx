@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
   useCallback,
+  useMemo,
 } from "react";
 import {
   cleanupClientWasm,
@@ -11,6 +12,9 @@ import {
   PacketType,
   ColorMode as ClientColorMode,
   ColorFilter as ClientColorFilter,
+  isWasmReady as isClientWasmReady,
+} from "../wasm/client";
+import {
   setColorMode,
   getColorMode,
   setColorFilter,
@@ -25,12 +29,9 @@ import {
   getFlipX,
   setTargetFps,
   getTargetFps,
-  setWidth,
-  getWidth,
-  setHeight,
-  getHeight,
-  isWasmReady as isClientWasmReady,
-} from "../wasm/client";
+  setDimensions,
+  getDimensions,
+} from "../wasm/settings";
 import { ClientConnection } from "../network/ClientConnection";
 import { parseAsciiFrame } from "../network/AsciiFrameParser";
 import {
@@ -43,10 +44,7 @@ import { WebClientHead } from "../components/WebClientHead";
 import { AsciiChatMode } from "../utils/optionsHelp";
 import { PageControlBar } from "../components/PageControlBar";
 import { PageLayout } from "../components/PageLayout";
-import {
-  createWasmOptionsManager,
-  WasmOptionsManager,
-} from "../hooks/useWasmOptions";
+import { createWasmOptionsManager } from "../hooks/useWasmOptions";
 import { useCanvasCapture } from "../hooks/useCanvasCapture";
 import { useRenderLoop } from "../hooks/useRenderLoop";
 
@@ -215,8 +213,10 @@ export function ClientPage() {
   const [isWebcamRunning, setIsWebcamRunning] = useState(false);
   const [hasAutoConnected, setHasAutoConnected] = useState(false);
   const [fps, setFps] = useState<number | undefined>();
-  const [optionsManager] = useState<WasmOptionsManager | null>(() => {
-    if (!isClientWasmReady()) return null;
+  const [wasmInitialized, setWasmInitialized] = useState(false);
+
+  const optionsManager = useMemo(() => {
+    if (!wasmInitialized || !isClientWasmReady()) return null;
 
     return createWasmOptionsManager(
       setColorMode,
@@ -231,20 +231,14 @@ export function ClientPage() {
       getMatrixRain,
       setFlipX,
       getFlipX,
-      (width, height) => {
-        setWidth(width);
-        setHeight(height);
-      },
-      () => ({
-        width: getWidth(),
-        height: getHeight(),
-      }),
+      setDimensions,
+      getDimensions,
       setTargetFps,
       getTargetFps,
       mapColorMode,
       mapColorFilter,
     );
-  });
+  }, [wasmInitialized]);
 
   // Read server URL from query parameter (for E2E tests)
   // Use useLayoutEffect to ensure this runs before render and auto-connect
@@ -265,7 +259,8 @@ export function ClientPage() {
 
   // Settings state
   const [settings, setSettings] = useState<SettingsConfig>({
-    resolution: "640x480",
+    width: 640,
+    height: 480,
     targetFps: 60,
     colorMode: "truecolor",
     colorFilter: "none",
@@ -323,6 +318,7 @@ export function ClientPage() {
   const connectToServer = useCallback(async () => {
     try {
       console.log("[Client] connectToServer() called");
+      setWasmInitialized(true);
       console.log(`[Client] Server URL: ${serverUrl}`);
       console.log(
         `[Client] Terminal dimensions state: ${terminalDimensions.cols}x${terminalDimensions.rows}`,
@@ -578,9 +574,8 @@ export function ClientPage() {
         );
       }
 
-      const parts = settings.resolution.split("x").map(Number);
-      const w = parts[0] || 1280;
-      const h = parts[1] || 720;
+      const w = settings.width || 1280;
+      const h = settings.height || 720;
       console.log(`[Client] Requesting webcam stream: ${w}x${h}`);
 
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -677,7 +672,8 @@ export function ClientPage() {
     }
   }, [
     connectionState,
-    settings.resolution,
+    settings.width,
+    settings.height,
     settings.targetFps,
     startRenderLoop,
   ]);

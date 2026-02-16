@@ -99,6 +99,7 @@ export function createWasmOptionsManager(
     setTargetFps: setTargetFpsFn,
     getTargetFps: getTargetFpsFn,
     applySettings: (settings: SettingsConfig) => {
+      setDimensionsFn(settings.width, settings.height);
       setColorModeFn(mapColorMode(settings.colorMode));
       setColorFilterFn(mapColorFilter(settings.colorFilter));
       setPaletteFn(settings.palette);

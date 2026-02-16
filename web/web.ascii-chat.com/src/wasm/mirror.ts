@@ -1,7 +1,15 @@
 // TypeScript wrapper for Mirror WASM module
 // Provides type-safe interface to libasciichat mirror mode
 
-import type { Palette } from "../components/Settings";
+import { createOptionAccessor, type WasmModule } from "./common/optionsWrapper";
+import {
+  initializeSettings,
+  cleanupSettings,
+  RenderMode,
+  ColorMode,
+  ColorFilter,
+  type Palette,
+} from "./settings";
 
 // Type for WASM exports exposed to window.asciiChatWasm
 interface AsciiChatWasmExports {
@@ -13,26 +21,6 @@ interface AsciiChatWasmExports {
 interface MirrorModuleExports {
   _mirror_init_with_args(args_string: number): number;
   _mirror_cleanup(): void;
-  _mirror_set_width(width: number): number;
-  _mirror_set_height(height: number): number;
-  _mirror_get_width(): number;
-  _mirror_get_height(): number;
-  _mirror_set_render_mode(mode: number): number;
-  _mirror_get_render_mode(): number;
-  _mirror_set_color_mode(mode: number): number;
-  _mirror_get_color_mode(): number;
-  _mirror_set_color_filter(filter: number): number;
-  _mirror_get_color_filter(): number;
-  _mirror_set_palette(palette_string_ptr: number): number;
-  _mirror_get_palette(): number;
-  _mirror_set_palette_chars(chars_ptr: number): number;
-  _mirror_get_palette_chars(): number;
-  _mirror_set_matrix_rain(enabled: number): number;
-  _mirror_get_matrix_rain(): number;
-  _mirror_set_flip_x(enabled: number): number;
-  _mirror_get_flip_x(): number;
-  _mirror_set_target_fps(fps: number): number;
-  _mirror_get_target_fps(): number;
   _mirror_convert_frame(
     rgba_data_ptr: number,
     src_width: number,
@@ -44,70 +32,17 @@ interface MirrorModuleExports {
   _free(ptr: number): void;
 }
 
-interface MirrorModule {
-  HEAPU8: Uint8Array;
-  UTF8ToString(ptr: number): string;
-  stringToUTF8(str: string, outPtr: number, maxBytesToWrite: number): void;
-  lengthBytesUTF8(str: string): number;
+interface MirrorModule extends WasmModule {
   _mirror_init_with_args: MirrorModuleExports["_mirror_init_with_args"];
   _mirror_cleanup: MirrorModuleExports["_mirror_cleanup"];
-  _mirror_set_width: MirrorModuleExports["_mirror_set_width"];
-  _mirror_set_height: MirrorModuleExports["_mirror_set_height"];
-  _mirror_get_width: MirrorModuleExports["_mirror_get_width"];
-  _mirror_get_height: MirrorModuleExports["_mirror_get_height"];
-  _mirror_set_render_mode: MirrorModuleExports["_mirror_set_render_mode"];
-  _mirror_get_render_mode: MirrorModuleExports["_mirror_get_render_mode"];
-  _mirror_set_color_mode: MirrorModuleExports["_mirror_set_color_mode"];
-  _mirror_get_color_mode: MirrorModuleExports["_mirror_get_color_mode"];
-  _mirror_set_color_filter: MirrorModuleExports["_mirror_set_color_filter"];
-  _mirror_get_color_filter: MirrorModuleExports["_mirror_get_color_filter"];
-  _mirror_set_palette: MirrorModuleExports["_mirror_set_palette"];
-  _mirror_get_palette: MirrorModuleExports["_mirror_get_palette"];
-  _mirror_set_palette_chars: MirrorModuleExports["_mirror_set_palette_chars"];
-  _mirror_get_palette_chars: MirrorModuleExports["_mirror_get_palette_chars"];
-  _mirror_set_matrix_rain: MirrorModuleExports["_mirror_set_matrix_rain"];
-  _mirror_get_matrix_rain: MirrorModuleExports["_mirror_get_matrix_rain"];
-  _mirror_set_flip_x: MirrorModuleExports["_mirror_set_flip_x"];
-  _mirror_get_flip_x: MirrorModuleExports["_mirror_get_flip_x"];
-  _mirror_set_target_fps: MirrorModuleExports["_mirror_set_target_fps"];
-  _mirror_get_target_fps: MirrorModuleExports["_mirror_get_target_fps"];
   _mirror_convert_frame: MirrorModuleExports["_mirror_convert_frame"];
   _mirror_free_string: MirrorModuleExports["_mirror_free_string"];
   _get_help_text: MirrorModuleExports["_get_help_text"];
-  _malloc: MirrorModuleExports["_malloc"];
-  _free: MirrorModuleExports["_free"];
 }
 
-// Enums matching libasciichat definitions
-export enum RenderMode {
-  FOREGROUND = 0,
-  BACKGROUND = 1,
-  HALF_BLOCK = 2,
-}
-
-export enum ColorMode {
-  AUTO = -1,
-  NONE = 0,
-  COLOR_16 = 1,
-  COLOR_256 = 2,
-  TRUECOLOR = 3,
-}
-
-export enum ColorFilter {
-  NONE = 0,
-  BLACK = 1,
-  WHITE = 2,
-  GREEN = 3,
-  MAGENTA = 4,
-  FUCHSIA = 5,
-  ORANGE = 6,
-  TEAL = 7,
-  CYAN = 8,
-  PINK = 9,
-  RED = 10,
-  YELLOW = 11,
-  RAINBOW = 12,
-}
+// Re-export enums and types from shared settings module
+export { RenderMode, ColorMode, ColorFilter };
+export type { Palette };
 
 // Import the Emscripten-generated module factory
 // @ts-expect-error - Generated file without types
@@ -233,6 +168,10 @@ export async function initMirrorWasm(
     }
     console.log("[WASM] Initialization complete!");
 
+    // Initialize shared settings module with option accessor
+    const optionsAccessor = createOptionAccessor(wasmModule);
+    initializeSettings(optionsAccessor);
+
     // Expose WASM module to window for JavaScript access (e.g., tooltips)
     const globalWindow = globalThis as typeof globalThis & {
       asciiChatWasm: AsciiChatWasmExports;
@@ -253,6 +192,7 @@ export function cleanupMirrorWasm(): void {
   if (wasmModule) {
     wasmModule._mirror_cleanup();
     wasmModule = null;
+    cleanupSettings();
   }
 }
 
@@ -330,221 +270,6 @@ export function convertFrameToAscii(
     // Always free the input buffer
     wasmModule._free(dataPtr);
   }
-}
-
-/**
- * Set ASCII output dimensions
- */
-export function setDimensions(width: number, height: number): void {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-
-  if (wasmModule._mirror_set_width(width) !== 0) {
-    throw new Error(`Invalid width: ${width}`);
-  }
-  if (wasmModule._mirror_set_height(height) !== 0) {
-    throw new Error(`Invalid height: ${height}`);
-  }
-}
-
-/**
- * Get current ASCII dimensions
- */
-export function getDimensions(): { width: number; height: number } {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-
-  return {
-    width: wasmModule._mirror_get_width(),
-    height: wasmModule._mirror_get_height(),
-  };
-}
-
-/**
- * Set render mode (foreground, background, or half-block)
- */
-export function setRenderMode(mode: RenderMode): void {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-
-  if (wasmModule._mirror_set_render_mode(mode) !== 0) {
-    throw new Error(`Invalid render mode: ${mode}`);
-  }
-}
-
-/**
- * Get current render mode
- */
-export function getRenderMode(): RenderMode {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  return wasmModule._mirror_get_render_mode();
-}
-
-/**
- * Set color mode
- */
-export function setColorMode(mode: ColorMode): void {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-
-  if (wasmModule._mirror_set_color_mode(mode) !== 0) {
-    throw new Error(`Invalid color mode: ${mode}`);
-  }
-}
-
-/**
- * Get current color mode
- */
-export function getColorMode(): ColorMode {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  return wasmModule._mirror_get_color_mode();
-}
-
-/**
- * Set color filter
- */
-export function setColorFilter(filter: ColorFilter): void {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-
-  if (wasmModule._mirror_set_color_filter(filter) !== 0) {
-    throw new Error(`Invalid color filter: ${filter}`);
-  }
-}
-
-/**
- * Get current color filter
- */
-export function getColorFilter(): ColorFilter {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  return wasmModule._mirror_get_color_filter();
-}
-
-/**
- * Set palette
- */
-export function setPalette(palette: Palette): void {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-
-  // Allocate string in WASM memory
-  const strLen = wasmModule.lengthBytesUTF8(palette) + 1;
-  const strPtr = wasmModule._malloc(strLen);
-  if (!strPtr) {
-    throw new Error("Failed to allocate memory for palette string");
-  }
-
-  try {
-    wasmModule.stringToUTF8(palette, strPtr, strLen);
-    const result = wasmModule._mirror_set_palette(strPtr);
-    if (result !== 0) {
-      throw new Error(`Failed to set palette: ${palette}`);
-    }
-  } finally {
-    wasmModule._free(strPtr);
-  }
-}
-
-/**
- * Get current palette
- */
-export function getPalette(): string {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  const paletteNum = wasmModule._mirror_get_palette();
-  const paletteMap: Record<number, string> = {
-    0: "standard",
-    1: "blocks",
-    2: "digital",
-    3: "minimal",
-    4: "cool",
-    5: "custom",
-  };
-  return paletteMap[paletteNum] || "standard";
-}
-
-/**
- * Set custom palette characters
- */
-export function setPaletteChars(chars: string): void {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-
-  // Allocate string in WASM memory
-  const strLen = wasmModule.lengthBytesUTF8(chars) + 1;
-  const strPtr = wasmModule._malloc(strLen);
-  if (!strPtr) {
-    throw new Error("Failed to allocate memory for palette chars");
-  }
-
-  try {
-    wasmModule.stringToUTF8(chars, strPtr, strLen);
-    const result = wasmModule._mirror_set_palette_chars(strPtr);
-    if (result !== 0) {
-      throw new Error(`Failed to set palette chars: ${chars}`);
-    }
-  } finally {
-    wasmModule._free(strPtr);
-  }
-}
-
-/**
- * Get current custom palette characters
- */
-export function getPaletteChars(): string {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  const ptr = wasmModule._mirror_get_palette_chars();
-  if (!ptr) return "";
-  return wasmModule.UTF8ToString(ptr);
-}
-
-/**
- * Set Matrix rain effect
- */
-export function setMatrixRain(enabled: boolean): void {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-
-  if (wasmModule._mirror_set_matrix_rain(enabled ? 1 : 0) !== 0) {
-    throw new Error(`Failed to set matrix rain: ${enabled}`);
-  }
-}
-
-/**
- * Get current matrix rain state
- */
-export function getMatrixRain(): boolean {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  return wasmModule._mirror_get_matrix_rain() !== 0;
-}
-
-/**
- * Set flip X (horizontal flip)
- */
-export function setFlipX(enabled: boolean): void {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-
-  if (wasmModule._mirror_set_flip_x(enabled ? 1 : 0) !== 0) {
-    throw new Error(`Failed to set flip X: ${enabled}`);
-  }
-}
-
-/**
- * Get current flip X state
- */
-export function getFlipX(): boolean {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  return wasmModule._mirror_get_flip_x() !== 0;
-}
-
-/**
- * Set target FPS
- */
-export function setTargetFps(fps: number): void {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-
-  if (wasmModule._mirror_set_target_fps(fps) !== 0) {
-    throw new Error(`Invalid target FPS: ${fps}`);
-  }
-}
-
-/**
- * Get current target FPS
- */
-export function getTargetFps(): number {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  return wasmModule._mirror_get_target_fps();
 }
 
 /**

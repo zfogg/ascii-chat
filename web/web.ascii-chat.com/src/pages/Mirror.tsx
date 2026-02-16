@@ -1,9 +1,13 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import "xterm/css/xterm.css";
 import {
   initMirrorWasm,
   convertFrameToAscii,
   isWasmReady,
+  ColorMode as WasmColorMode,
+  ColorFilter as WasmColorFilter,
+} from "../wasm/mirror";
+import {
   setDimensions,
   getDimensions,
   setColorMode,
@@ -20,9 +24,7 @@ import {
   getFlipX,
   setTargetFps,
   getTargetFps,
-  ColorMode as WasmColorMode,
-  ColorFilter as WasmColorFilter,
-} from "../wasm/mirror";
+} from "../wasm/settings";
 import {
   Settings,
   SettingsConfig,
@@ -38,10 +40,7 @@ import { PageLayout } from "../components/PageLayout";
 import { WebClientHead } from "../components/WebClientHead";
 import { AsciiChatMode } from "../utils/optionsHelp";
 import { useCanvasCapture } from "../hooks/useCanvasCapture";
-import {
-  createWasmOptionsManager,
-  WasmOptionsManager,
-} from "../hooks/useWasmOptions";
+import { createWasmOptionsManager } from "../hooks/useWasmOptions";
 import { useRenderLoop } from "../hooks/useRenderLoop";
 
 // Helper functions to map Settings types to WASM enums
@@ -75,16 +74,6 @@ function mapColorFilter(filter: ColorFilter): WasmColorFilter {
   return mapping[filter];
 }
 
-function parseResolution(resolution: string): {
-  width: number;
-  height: number;
-} {
-  const parts = resolution.split("x").map(Number);
-  const width = parts[0] || 0;
-  const height = parts[1] || 0;
-  return { width, height };
-}
-
 export function MirrorPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -107,7 +96,8 @@ export function MirrorPage() {
 
   // Settings state
   const [settings, setSettings] = useState<SettingsConfig>({
-    resolution: "640x480",
+    width: 640,
+    height: 480,
     targetFps: 60,
     colorMode: "truecolor",
     colorFilter: "none",
@@ -117,8 +107,10 @@ export function MirrorPage() {
     flipX: isMacOS,
   });
   const [showSettings, setShowSettings] = useState(false);
-  const [optionsManager] = useState<WasmOptionsManager | null>(() => {
-    if (!isWasmReady()) return null;
+  const [wasmInitialized, setWasmInitialized] = useState(false);
+
+  const optionsManager = useMemo(() => {
+    if (!wasmInitialized || !isWasmReady()) return null;
 
     return createWasmOptionsManager(
       setColorMode,
@@ -140,7 +132,7 @@ export function MirrorPage() {
       mapColorMode,
       mapColorFilter,
     );
-  });
+  }, [wasmInitialized]);
 
   // Handle settings change
   const handleSettingsChange = (newSettings: SettingsConfig) => {
@@ -169,17 +161,13 @@ export function MirrorPage() {
 
   // Initialize WASM on mount
   useEffect(() => {
-    initMirrorWasm({
-      width: 80,
-      height: 24,
-      colorMode: mapColorMode(settings.colorMode),
-      colorFilter: mapColorFilter(settings.colorFilter),
-      palette: settings.palette,
-    }).catch((err) => {
-      console.error("WASM init error:", err);
-      setError(`Failed to load WASM module: ${err}`);
-    });
-  }, [settings.colorMode, settings.colorFilter, settings.palette]);
+    initMirrorWasm({})
+      .then(() => setWasmInitialized(true))
+      .catch((err) => {
+        console.error("WASM init error:", err);
+        setError(`Failed to load WASM module: ${err}`);
+      });
+  }, []);
 
   const stopWebcam = useCallback(() => {
     if (animationFrameRef.current !== null) {
@@ -245,11 +233,10 @@ export function MirrorPage() {
         setFlipX(settings.flipX ?? isMacOS);
       }
 
-      const { width, height } = parseResolution(settings.resolution);
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          width: { ideal: width },
-          height: { ideal: height },
+          width: { ideal: settings.width },
+          height: { ideal: settings.height },
           facingMode: "user",
         },
         audio: false,

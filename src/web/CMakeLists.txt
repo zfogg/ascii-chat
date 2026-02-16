@@ -246,9 +246,15 @@ set(NETWORK_SOURCES
     ${LIB_ROOT}/network/acip/send.c
 )
 
+# Common WASM abstraction layer (shared between mirror and client)
+set(COMMON_WEB_SOURCES
+    ${CMAKE_SOURCE_DIR}/common/options.c
+)
+
 # Create WASM mirror module
 add_executable(mirror-web
     ${MIRROR_SOURCES}
+    ${COMMON_WEB_SOURCES}
     ${PLATFORM_SOURCES}
     ${LIB_SOURCES_MIRROR}
     ${TOML_SOURCES}
@@ -269,6 +275,7 @@ set(CLIENT_SOURCES
 # Create WASM client module
 add_executable(client-web
     ${CLIENT_SOURCES}
+    ${COMMON_WEB_SOURCES}
     ${PLATFORM_SOURCES}
     ${LIB_SOURCES_MIRROR}
     ${CRYPTO_SOURCES}
@@ -291,28 +298,30 @@ target_include_directories(client-web PRIVATE
     ${CMAKE_BINARY_DIR}/_deps/opus-src/include
 )
 
-# Exported functions for mirror module (all EMSCRIPTEN_KEEPALIVE functions from mirror.c)
+# Exported functions for mirror module (all EMSCRIPTEN_KEEPALIVE functions from mirror.c and common/options.c)
 set(EXPORTED_FUNCTIONS_MIRROR
     _mirror_init_with_args
     _mirror_cleanup
-    _mirror_set_width
-    _mirror_set_height
-    _mirror_get_width
-    _mirror_get_height
-    _mirror_set_render_mode
-    _mirror_get_render_mode
-    _mirror_set_color_mode
-    _mirror_get_color_mode
-    _mirror_set_color_filter
-    _mirror_get_color_filter
-    _mirror_set_palette
-    _mirror_get_palette
-    _mirror_set_palette_chars
-    _mirror_get_palette_chars
-    _mirror_set_matrix_rain
-    _mirror_get_matrix_rain
-    _mirror_set_flip_x
-    _mirror_get_flip_x
+    _set_width
+    _set_height
+    _get_width
+    _get_height
+    _set_render_mode
+    _get_render_mode
+    _set_color_mode
+    _get_color_mode
+    _set_color_filter
+    _get_color_filter
+    _set_palette
+    _get_palette
+    _set_palette_chars
+    _get_palette_chars
+    _set_matrix_rain
+    _get_matrix_rain
+    _set_flip_x
+    _get_flip_x
+    _set_target_fps
+    _get_target_fps
     _mirror_convert_frame
     _mirror_free_string
     _get_help_text
@@ -320,7 +329,7 @@ set(EXPORTED_FUNCTIONS_MIRROR
     _free
 )
 
-# Exported functions for client module (all EMSCRIPTEN_KEEPALIVE functions from client.c)
+# Exported functions for client module (all EMSCRIPTEN_KEEPALIVE functions from client.c and common/options.c)
 set(EXPORTED_FUNCTIONS_CLIENT
     _client_init_with_args
     _client_cleanup
@@ -341,24 +350,24 @@ set(EXPORTED_FUNCTIONS_CLIENT
     _client_opus_decode
     _client_opus_encoder_cleanup
     _client_opus_decoder_cleanup
-    _client_set_width
-    _client_set_height
-    _client_get_width
-    _client_get_height
-    _client_set_color_mode
-    _client_get_color_mode
-    _client_set_color_filter
-    _client_get_color_filter
-    _client_set_palette
-    _client_get_palette
-    _client_set_palette_chars
-    _client_get_palette_chars
-    _client_set_matrix_rain
-    _client_get_matrix_rain
-    _client_set_flip_x
-    _client_get_flip_x
-    _client_set_target_fps
-    _client_get_target_fps
+    _set_width
+    _set_height
+    _get_width
+    _get_height
+    _set_color_mode
+    _get_color_mode
+    _set_color_filter
+    _get_color_filter
+    _set_palette
+    _get_palette
+    _set_palette_chars
+    _get_palette_chars
+    _set_matrix_rain
+    _get_matrix_rain
+    _set_flip_x
+    _get_flip_x
+    _set_target_fps
+    _get_target_fps
     _client_free_string
     _get_help_text
     _malloc
