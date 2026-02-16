@@ -54,21 +54,6 @@ export const AsciiRenderer = forwardRef<
 
   const updateDimensions = useCallback(
     (cols: number, rows: number) => {
-      // If dimensions changed, clear the terminal to prevent leftover ASCII art
-      if (
-        dimensionsRef.current.cols !== cols ||
-        dimensionsRef.current.rows !== rows
-      ) {
-        const xterm = xtermRef.current;
-        if (xterm) {
-          const terminal = (xterm as XTermType & { terminal: Terminal })
-            .terminal;
-          if (terminal) {
-            terminal.write("\x1b[H\x1b[J"); // cursor home + clear screen
-          }
-        }
-      }
-
       dimensionsRef.current = { cols, rows };
       onDimensionsChange?.({ cols, rows });
     },
@@ -295,6 +280,19 @@ export const AsciiRenderer = forwardRef<
 
         // Listen for future window resize events
         window.addEventListener("resize", handleResize);
+
+        // Clear terminal immediately on resize to prevent leftover ASCII art
+        window.addEventListener("resize", () => {
+          const xterm = xtermRef.current;
+          if (xterm) {
+            const terminal = (xterm as XTermType & { terminal: Terminal })
+              .terminal;
+            if (terminal) {
+              terminal.write("\x1b[H\x1b[2J\x1b[3J");
+              terminal.clear();
+            }
+          }
+        });
         console.log("[AsciiRenderer] Resize event listener added");
 
         console.log("[AsciiRenderer] Setup complete");
