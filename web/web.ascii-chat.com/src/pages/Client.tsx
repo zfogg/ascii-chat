@@ -806,7 +806,7 @@ export function ClientPage() {
     }, 0);
 
     return () => clearTimeout(timer);
-  }, [serverUrl]);
+  }, [serverUrl, hasAutoConnected, connectToServer]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -819,7 +819,7 @@ export function ClientPage() {
       }
       cleanupClientWasm();
     };
-  }, []);
+  }, [stopWebcam]);
 
   // Auto-start webcam once connected
   useEffect(() => {

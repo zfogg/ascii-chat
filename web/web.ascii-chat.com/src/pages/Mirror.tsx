@@ -177,7 +177,7 @@ export function MirrorPage() {
       console.error("WASM init error:", err);
       setError(`Failed to load WASM module: ${err}`);
     });
-  }, []);
+  }, [settings.colorMode, settings.colorFilter, settings.palette]);
 
   const stopWebcam = useCallback(() => {
     if (animationFrameRef.current !== null) {
@@ -234,9 +234,9 @@ export function MirrorPage() {
     };
   }, [renderFrame, stopWebcam]);
 
-  const renderLoop = () => {
+  const renderLoop = useCallback(() => {
     renderLoopRef.current?.();
-  };
+  }, []);
 
   const startWebcam = useCallback(async () => {
     if (!videoRef.current || !canvasRef.current) {
@@ -303,7 +303,7 @@ export function MirrorPage() {
     return () => {
       stopWebcam();
     };
-  }, []);
+  }, [stopWebcam]);
 
   return (
     <>
