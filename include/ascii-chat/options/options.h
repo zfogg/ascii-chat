@@ -1091,6 +1091,32 @@ asciichat_error_t options_set_bool(const char *field_name, bool value);
 asciichat_error_t options_set_string(const char *field_name, const char *value);
 asciichat_error_t options_set_double(const char *field_name, double value);
 
+/**
+ * @brief Get help text for an option in a specific mode
+ * @param mode The mode context (MODE_SERVER, MODE_CLIENT, MODE_MIRROR, etc.)
+ * @param option_name The long name of the option (e.g., "color-mode", "fps")
+ * @return Help text string (const, do not modify), or NULL if option doesn't apply to mode
+ *
+ * Searches the options registry for the given option name and mode combination.
+ * Returns the help text if the option applies to the mode, or NULL otherwise.
+ *
+ * **Example:**
+ * ```c
+ * const char *help = options_get_help_text(MODE_CLIENT, "color-mode");
+ * if (help) {
+ *     printf("Help: %s\n", help);
+ * } else {
+ *     printf("Option not applicable to client mode\n");
+ * }
+ * ```
+ *
+ * @note Returned pointer is valid for the lifetime of the program (points to static data)
+ * @note Thread-safe: reads only static registry data
+ *
+ * @ingroup options
+ */
+const char *options_get_help_text(asciichat_mode_t mode, const char *option_name);
+
 /** @brief Red weight for luminance calculation
  *
  * Weight for red channel in luminance calculation.
