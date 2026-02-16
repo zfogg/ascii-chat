@@ -63,20 +63,48 @@ def main():
     source_file = sys.argv[3]
     defer_args = sys.argv[4:] if len(sys.argv) > 4 else []
 
-    # Find compilation database (standard LibTooling expects compile_commands.json)
-    # The compilation database generation utility copies the defer-specific database back
-    # to the temp directory as compile_commands.json
-    db_path = os.path.join(db_dir, 'compile_commands.json')
-    if not os.path.exists(db_path):
-        print(f"Error: compile_commands.json not found in {db_dir}", file=sys.stderr)
+    # Find compilation database
+    # Prefer compile_commands_defer.json (generated without PCH) over compile_commands.json
+    defer_db_path = os.path.join(db_dir, 'compile_commands_defer.json')
+    standard_db_path = os.path.join(db_dir, 'compile_commands.json')
+
+    if os.path.exists(defer_db_path):
+        db_path = defer_db_path
+    elif os.path.exists(standard_db_path):
+        db_path = standard_db_path
+    else:
+        print(f"Error: No compilation database found in {db_dir}", file=sys.stderr)
         sys.exit(1)
+
+    # LibTooling expects -p to point to a directory containing compile_commands.json
+    # If we're using the defer-specific database, we need to point to a directory
+    # where compile_commands.json exists with the correct content
+    if db_path == defer_db_path:
+        # Create a temp directory with a symlink to the defer database as compile_commands.json
+        defer_db_link_dir = os.path.join(db_dir, 'defer_db_link')
+        os.makedirs(defer_db_link_dir, exist_ok=True)
+        link_path = os.path.join(defer_db_link_dir, 'compile_commands.json')
+
+        # Always update the symlink/copy to ensure we have the latest
+        if os.path.exists(link_path):
+            os.unlink(link_path)
+        try:
+            # Use relative symlink so it works if directory is moved
+            os.symlink(os.path.relpath(defer_db_path, defer_db_link_dir), link_path)
+        except OSError:
+            # Symlink failed (e.g., Windows), copy instead
+            import shutil
+            shutil.copy2(defer_db_path, link_path)
+        db_dir_to_use = defer_db_link_dir
+    else:
+        db_dir_to_use = db_dir
 
     # Fix the database if it has defer-transformed file paths instead of original paths
     fix_compilation_database(db_path, source_file)
 
     # Build command: defer_tool -p <db_dir> [other_args] source_file
     # The defer tool will read include paths from the compilation database automatically
-    cmd = [defer_tool, "-p", db_dir] + defer_args + [source_file]
+    cmd = [defer_tool, "-p", db_dir_to_use] + defer_args + [source_file]
 
     # Run the defer tool
     print(f"Running: {' '.join(cmd)}", file=sys.stderr)

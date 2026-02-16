@@ -174,27 +174,89 @@ if(APPLE)
         ${_macos_sdk_path}
     )
 
-    # Link against Homebrew LLVM's libc++ C++ standard library
-    # Note: We use -stdlib=libc++ for linking but NOT -isysroot, because
-    # -isysroot causes the linker to prefer SDK stub libraries over Homebrew's real libc++
-    # We explicitly add -lc++ to ensure the actual libc++ library is linked
-    # We need RPATHs for both the main lib dir and the subdirectories (c++, unwind)
-    target_link_options(ascii-instr-defer PRIVATE
-        -stdlib=libc++
-        "-Wl,-rpath,${LLVM_LIBRARY_DIRS}"
-        "-Wl,-rpath,${LLVM_LIBRARY_DIRS}/c++"
-        "-Wl,-rpath,${LLVM_LIBRARY_DIRS}/unwind"
-        "LINKER:-lc++"
-    )
+    # Find the actual libc++ location
+    # LLVM_LIBRARY_DIRS from llvm-config may point to different locations depending on install:
+    # - Git-built LLVM: libc++ in LLVM_LIBRARY_DIRS directly (e.g., /usr/local/lib/libc++.dylib)
+    # - Homebrew LLVM: libc++ in c++ subdirectory (e.g., /opt/homebrew/opt/llvm/lib/c++/libc++.dylib)
+    set(_llvm_libcxx_dir "")
+    set(_llvm_unwind_dir "")
+    set(_libcxx_in_main_dir FALSE)
 
-    # Link against Homebrew LLVM libraries with proper rpath
-    # Note: libc++ is in the c++ subdirectory, libunwind is in unwind subdirectory
-    # Use LLVM_LIBRARY_DIRS dynamically instead of hardcoded paths for portability
-    target_link_directories(ascii-instr-defer PRIVATE
-        ${LLVM_LIBRARY_DIRS}
-        "${LLVM_LIBRARY_DIRS}/c++"
-        "${LLVM_LIBRARY_DIRS}/unwind"
-    )
+    # Option 1: Check if libc++ is directly in LLVM_LIBRARY_DIRS (git-built LLVM)
+    if(EXISTS "${LLVM_LIBRARY_DIRS}/libc++.dylib" OR EXISTS "${LLVM_LIBRARY_DIRS}/libc++.a")
+        # libc++ is in the main lib dir, no separate c++ subdir needed
+        set(_libcxx_in_main_dir TRUE)
+        message(STATUS "Found libc++ directly in LLVM_LIBRARY_DIRS: ${LLVM_LIBRARY_DIRS}")
+    endif()
+
+    # Option 2: Check LLVM_LIBRARY_DIRS/c++ (Homebrew-style install)
+    if(NOT _libcxx_in_main_dir)
+        if(EXISTS "${LLVM_LIBRARY_DIRS}/c++/libc++.dylib" OR EXISTS "${LLVM_LIBRARY_DIRS}/c++/libc++.a")
+            set(_llvm_libcxx_dir "${LLVM_LIBRARY_DIRS}/c++")
+            message(STATUS "Found libc++ in LLVM_LIBRARY_DIRS/c++: ${_llvm_libcxx_dir}")
+        endif()
+        if(EXISTS "${LLVM_LIBRARY_DIRS}/unwind/libunwind.dylib" OR EXISTS "${LLVM_LIBRARY_DIRS}/unwind/libunwind.a")
+            set(_llvm_unwind_dir "${LLVM_LIBRARY_DIRS}/unwind")
+        endif()
+    endif()
+
+    # Option 3: Derive LLVM root from compiler path and check there
+    if(NOT _libcxx_in_main_dir AND NOT _llvm_libcxx_dir AND CMAKE_CXX_COMPILER)
+        get_filename_component(_llvm_bin_dir "${CMAKE_CXX_COMPILER}" DIRECTORY)
+        get_filename_component(_llvm_root_from_compiler "${_llvm_bin_dir}/.." ABSOLUTE)
+        set(_alt_libcxx_dir "${_llvm_root_from_compiler}/lib/c++")
+        set(_alt_unwind_dir "${_llvm_root_from_compiler}/lib/unwind")
+        if(EXISTS "${_alt_libcxx_dir}/libc++.dylib" OR EXISTS "${_alt_libcxx_dir}/libc++.a")
+            set(_llvm_libcxx_dir "${_alt_libcxx_dir}")
+            message(STATUS "Found libc++ via compiler path: ${_llvm_libcxx_dir}")
+        endif()
+        if(NOT _llvm_unwind_dir AND (EXISTS "${_alt_unwind_dir}/libunwind.dylib" OR EXISTS "${_alt_unwind_dir}/libunwind.a"))
+            set(_llvm_unwind_dir "${_alt_unwind_dir}")
+        endif()
+    endif()
+
+    # Option 4: Check Homebrew locations for Intel and ARM Macs
+    if(NOT _libcxx_in_main_dir AND NOT _llvm_libcxx_dir)
+        foreach(_brew_llvm_lib IN ITEMS
+            "/usr/local/opt/llvm/lib/c++"
+            "/opt/homebrew/opt/llvm/lib/c++"
+            "/usr/local/Cellar/llvm/21.1.6/lib/c++"
+            "/opt/homebrew/Cellar/llvm/21.1.6/lib/c++")
+            if(EXISTS "${_brew_llvm_lib}/libc++.dylib" OR EXISTS "${_brew_llvm_lib}/libc++.a")
+                set(_llvm_libcxx_dir "${_brew_llvm_lib}")
+                get_filename_component(_brew_llvm_base "${_brew_llvm_lib}/.." ABSOLUTE)
+                if(EXISTS "${_brew_llvm_base}/unwind")
+                    set(_llvm_unwind_dir "${_brew_llvm_base}/unwind")
+                endif()
+                message(STATUS "Found libc++ in Homebrew location: ${_llvm_libcxx_dir}")
+                break()
+            endif()
+        endforeach()
+    endif()
+
+    # Build link options based on what we found
+    set(_defer_link_options -stdlib=libc++ "-Wl,-rpath,${LLVM_LIBRARY_DIRS}" "LINKER:-lc++")
+    set(_defer_link_dirs ${LLVM_LIBRARY_DIRS})
+
+    # Only add separate libc++ paths if libc++ is not in the main LLVM lib dir
+    if(NOT _libcxx_in_main_dir)
+        if(_llvm_libcxx_dir)
+            list(APPEND _defer_link_options "-Wl,-rpath,${_llvm_libcxx_dir}")
+            list(APPEND _defer_link_dirs "${_llvm_libcxx_dir}")
+        endif()
+        if(_llvm_unwind_dir)
+            list(APPEND _defer_link_options "-Wl,-rpath,${_llvm_unwind_dir}")
+            list(APPEND _defer_link_dirs "${_llvm_unwind_dir}")
+        endif()
+    endif()
+
+    # Link against LLVM's libc++ C++ standard library
+    # We use -stdlib=libc++ for linking but NOT -isysroot, because
+    # -isysroot causes the linker to prefer SDK stub libraries over LLVM's real libc++
+    target_link_options(ascii-instr-defer PRIVATE ${_defer_link_options})
+
+    # Link against LLVM libraries with proper paths
+    target_link_directories(ascii-instr-defer PRIVATE ${_defer_link_dirs})
 
     # Find all required Clang static libraries on macOS
     find_library(CLANG_TOOLING_LIB NAMES clangTooling.a clangTooling PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
