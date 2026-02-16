@@ -253,13 +253,21 @@ void image_resize_interpolation(const image_t *source, image_t *dest) {
 
   // Handle edge cases
   if (src_w <= 0 || src_h <= 0 || dst_w <= 0 || dst_h <= 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid image dimensions for resize");
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid image dimensions for resize: src=%dx%d dst=%dx%d", src_w, src_h, dst_w,
+              dst_h);
+    return;
+  }
+
+  // Defensive checks to prevent invalid shift (UBSan protection)
+  if (src_w < 1 || src_h < 1 || dst_w < 1 || dst_h < 1) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid dimensions detected after first check");
     return;
   }
 
   // Use fixed-point arithmetic for better performance
-  const uint32_t x_ratio = (((uint32_t)(unsigned int)src_w << 16) / (uint32_t)(unsigned int)dst_w) + 1;
-  const uint32_t y_ratio = (((uint32_t)(unsigned int)src_h << 16) / (uint32_t)(unsigned int)dst_h) + 1;
+  // Use uint64_t intermediate to prevent overflow when shifting large dimensions
+  const uint32_t x_ratio = (uint32_t)((((uint64_t)src_w << 16) / (uint64_t)dst_w) + 1);
+  const uint32_t y_ratio = (uint32_t)((((uint64_t)src_h << 16) / (uint64_t)dst_h) + 1);
 
   const rgb_pixel_t *src_pixels = source->pixels;
   rgb_pixel_t *dst_pixels = dest->pixels;
