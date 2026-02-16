@@ -33,8 +33,10 @@ echo ""
 echo "=== ascii-chat Dependency Installer ==="
 echo ""
 
-echo "Getting submodules"
-git submodule update --recursive --init --depth 1
+echo "Getting submodules..."
+if ! git submodule update --recursive --init --depth 1; then
+  echo "WARNING: git submodule update failed with exit code $?, continuing anyway"
+fi
 
 # Detect platform
 if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -64,9 +66,14 @@ if [[ "$PLATFORM" == "macos" ]]; then
   # Install all required packages
   # Homebrew automatically skips packages that are already installed
   # We avoid version conflicts on GitHub runners by letting Homebrew manage dependencies
-  brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool \
+  if brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool \
     ninja mimalloc zstd libsodium portaudio opus criterion doxygen sqlite3 \
-    miniupnpc libnatpmp ffmpeg abseil emscripten binaryen yt-dlp libwebsockets openssl || true
+    miniupnpc libnatpmp ffmpeg abseil emscripten binaryen yt-dlp libwebsockets openssl; then
+    echo "Homebrew packages installed successfully"
+  else
+    brew_exit=$?
+    echo "WARNING: brew install exited with code $brew_exit, continuing anyway"
+  fi
 
   echo ""
   echo "Dependencies installed successfully!"
