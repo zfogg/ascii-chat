@@ -233,12 +233,8 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
                 "-L/usr/local/lib"
             )
         endif()
-        # Add criterion library name (pkg-config provides this in CRITERION_LIBRARIES)
-        if(CRITERION_LIBRARIES)
-            list(APPEND TEST_LDFLAGS ${CRITERION_LIBRARIES})
-        else()
-            list(APPEND TEST_LDFLAGS criterion)
-        endif()
+        # Note: CRITERION_LIBRARIES is already added to TEST_LDFLAGS on line 87,
+        # so we only add the library search directories here
     endif()
 
     # Use mimalloc include directories from Mimalloc.cmake
