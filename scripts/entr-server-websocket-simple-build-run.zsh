@@ -12,4 +12,5 @@ pkill -f 'ascii-chat.*server 0.0.0.0' || true
 ./build/bin/ascii-chat --log-file server.log --log-level debug \
   server 0.0.0.0 :: \
   --websocket-port 27226 \
-  --no-status-screen "$@"
+  "$@"
+  #--no-status-screen "$@"
