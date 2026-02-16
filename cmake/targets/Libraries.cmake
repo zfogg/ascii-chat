@@ -41,6 +41,11 @@ macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
     add_library(${MODULE_NAME} OBJECT ${MODULE_SRCS})
     # OBJECT libraries need PIC for linking into shared libraries
     set_target_properties(${MODULE_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    # On ARM64 with LTO, explicitly add -fPIC to compiler flags
+    # (POSITION_INDEPENDENT_CODE alone is insufficient for LTO on aarch64)
+    if(ASCIICHAT_ENABLE_IPO AND CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+        target_compile_options(${MODULE_NAME} PRIVATE -fPIC)
+    endif()
     # Mark all symbols for export when building DLL from OBJECT libraries
     target_compile_definitions(${MODULE_NAME} PRIVATE
         _WIN32_WINNT=0x0A00  # Windows 10
