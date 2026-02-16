@@ -1,6 +1,8 @@
 // TypeScript wrapper for Mirror WASM module
 // Provides type-safe interface to libasciichat mirror mode
 
+import type { Palette } from "../components/Settings";
+
 // Type definition for the Emscripten module
 interface MirrorModuleExports {
   _mirror_init_with_args(args_string: number): number;
@@ -105,14 +107,6 @@ import MirrorModuleFactory from "./dist/mirror.js";
 
 let wasmModule: MirrorModule | null = null;
 let frameCallCount = 0;
-
-export type Palette =
-  | "standard"
-  | "blocks"
-  | "digital"
-  | "minimal"
-  | "cool"
-  | "custom";
 
 export interface MirrorInitOptions {
   width?: number;

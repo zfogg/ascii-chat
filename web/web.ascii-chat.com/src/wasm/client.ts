@@ -1,6 +1,8 @@
 // TypeScript wrapper for Client WASM module
 // Provides type-safe interface to libasciichat client mode
 
+import type { Palette } from "../components/Settings";
+
 // Type definition for the Emscripten module
 interface ClientModuleExports {
   _client_init_with_args(args_string: number): number;
@@ -241,14 +243,6 @@ export function packetTypeName(type: number): string {
   };
   return names[type] || `UNKNOWN(${type})`;
 }
-
-export type Palette =
-  | "standard"
-  | "blocks"
-  | "digital"
-  | "minimal"
-  | "cool"
-  | "custom";
 
 // Import the Emscripten-generated module factory
 // @ts-expect-error - Generated file without types
