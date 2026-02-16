@@ -1,9 +1,9 @@
 import {
   forwardRef,
-  useImperativeHandle,
-  useRef,
   useCallback,
   useEffect,
+  useImperativeHandle,
+  useRef,
 } from "react";
 import type { Terminal } from "xterm";
 import { XTerm, type XTerm as XTermType } from "@pablo-lion/xterm-react";
@@ -94,7 +94,7 @@ export const AsciiRenderer = forwardRef<
           });
 
           const formattedLines = lines.map((line: string, index: number) =>
-            index < lines.length - 1 ? line + "\r\n" : line,
+            index < lines.length - 1 ? line + "\r\n" : line
           );
 
           // Use cursor home only. Clear screen only when dimensions changed.
@@ -116,9 +116,11 @@ export const AsciiRenderer = forwardRef<
             `[AsciiRenderer] Output to terminal: ${output.length} chars`,
           );
           console.log(
-            `[AsciiRenderer] Prefix bytes: ${Array.from(prefix)
-              .map((c) => "0x" + c.charCodeAt(0).toString(16))
-              .join(" ")}`,
+            `[AsciiRenderer] Prefix bytes: ${
+              Array.from(prefix)
+                .map((c) => "0x" + c.charCodeAt(0).toString(16))
+                .join(" ")
+            }`,
           );
           console.log(`[AsciiRenderer] ========== WRITING TO XTERM ==========`);
 
@@ -274,8 +276,8 @@ export const AsciiRenderer = forwardRef<
         if (core) {
           const renderService = core._renderService;
           if (renderService) {
-            const originalHandler =
-              renderService._handleIntersectionChange.bind(renderService);
+            const originalHandler = renderService._handleIntersectionChange
+              .bind(renderService);
             renderService._handleIntersectionChange = (
               entry: IntersectionObserverEntry,
             ) => {
@@ -312,14 +314,10 @@ export const AsciiRenderer = forwardRef<
     <>
       {/* ASCII terminal output */}
       <div
-        className="flex-1 px-4 py-2 overflow-hidden min-h-0"
-        style={{
-          pointerEvents: "none",
-          display: "flex",
-          flexDirection: "column",
-        }}
+        className="flex flex-col flex-1 px-4 py-2 overflow-hidden min-h-0"
       >
-        <style>{`
+        <style>
+          {`
             .xterm {
               flex: 1 !important;
               min-height: 0;
@@ -329,7 +327,8 @@ export const AsciiRenderer = forwardRef<
               overflow-y: hidden !important;
               overflow-x: hidden !important;
             }
-          `}</style>
+          `}
+        </style>
         <XTerm
           ref={handleXTermRef}
           options={{
