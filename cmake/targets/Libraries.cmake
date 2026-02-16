@@ -601,6 +601,8 @@ add_library(ascii-chat-shared SHARED EXCLUDE_FROM_ALL
         # Library version is from lib/v* tags, separate from app version
         VERSION ${ASCIICHAT_LIB_VERSION}
         SOVERSION ${ASCIICHAT_LIB_VERSION_MAJOR}
+        # Disable LTO for shared library due to TLS relocation incompatibilities
+        INTERPROCEDURAL_OPTIMIZATION FALSE
     )
 
     # Windows: Explicitly set import library location for Windows
