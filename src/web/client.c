@@ -8,10 +8,10 @@
 #include <string.h>
 #include <stdint.h>
 
-// Logging macros for debug - use console.error so playwright-cli captures it
-#define WASM_LOG(msg) EM_ASM({ console.error('[C] ' + UTF8ToString($0)); }, msg)
-#define WASM_LOG_INT(msg, val) EM_ASM({ console.error('[C] ' + UTF8ToString($0) + ': ' + $1); }, msg, val)
-#define WASM_ERROR(msg) EM_ASM({ console.error('[C] ERROR: ' + UTF8ToString($0)); }, msg)
+// Logging macros for debug - disabled in WASM build to avoid EM_ASM initialization errors
+#define WASM_LOG(msg) ((void)0)
+#define WASM_LOG_INT(msg, val) ((void)0)
+#define WASM_ERROR(msg) ((void)0)
 
 // JavaScript callback for sending complete ACIP packets from WASM to WebSocket
 // This will be called by the WASM transport to send complete packets (header + payload)

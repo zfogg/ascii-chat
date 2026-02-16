@@ -8,9 +8,11 @@
 #include <string.h>
 
 // Logging macros for debug
-#define WASM_LOG(msg) EM_ASM({ console.log('[C] ' + UTF8ToString($0)); }, msg)
-#define WASM_LOG_INT(msg, val) EM_ASM({ console.log('[C] ' + UTF8ToString($0) + ': ' + $1); }, msg, val)
-#define WASM_ERROR(msg) EM_ASM({ console.error('[C] ' + UTF8ToString($0)); }, msg)
+// NOTE: Disabled EM_ASM macros in WASM build - they cause initialization errors
+// Use standard logging functions instead
+#define WASM_LOG(msg) ((void)0)
+#define WASM_LOG_INT(msg, val) ((void)0)
+#define WASM_ERROR(msg) ((void)0)
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>
 
