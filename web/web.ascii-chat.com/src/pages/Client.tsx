@@ -337,7 +337,7 @@ export function ClientPage() {
     [connectionState],
   );
 
-  const connectToServer = async () => {
+  const connectToServer = useCallback(async () => {
     try {
       console.log("[Client] connectToServer() called");
       console.log(`[Client] Server URL: ${serverUrl}`);
@@ -539,7 +539,7 @@ export function ClientPage() {
       setError(errMsg);
       setShowModal(true);
     }
-  };
+  }, [serverUrl, terminalDimensions]);
 
   const handleDisconnect = () => {
     console.log("[Client] handleDisconnect() called");
@@ -806,7 +806,7 @@ export function ClientPage() {
     }, 0);
 
     return () => clearTimeout(timer);
-  }, [serverUrl, hasAutoConnected, connectToServer]);
+  }, [serverUrl, hasAutoConnected]);
 
   // Cleanup on unmount
   useEffect(() => {
