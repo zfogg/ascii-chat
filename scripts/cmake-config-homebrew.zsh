@@ -169,14 +169,14 @@ export LD_LIBRARY_PATH="$LLVM_DIR/lib:${LD_LIBRARY_PATH:-}"
 # Add Homebrew-installed LLVM tools to PATH
 export PATH="$LLVM_DIR/bin:$PATH"
 
-# CMake invocation
+# CMake invocation with explicit Homebrew LLVM paths
 CMAKE_ARGS=(
     "--preset" "$PRESET"
     "-B" "$BUILD_DIR"
-)
-
-# Add architecture-specific flag for multi-architecture builds (if needed)
-CMAKE_ARGS+=(
+    "-DCMAKE_C_COMPILER=$LLVM_DIR/bin/clang"
+    "-DCMAKE_CXX_COMPILER=$LLVM_DIR/bin/clang++"
+    "-DCMAKE_AR=$LLVM_DIR/bin/llvm-ar"
+    "-DCMAKE_RANLIB=$LLVM_DIR/bin/llvm-ranlib"
     "-DCMAKE_OSX_ARCHITECTURES=$CMAKE_OSX_ARCH"
 )
 
