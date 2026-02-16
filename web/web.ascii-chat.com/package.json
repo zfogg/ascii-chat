@@ -9,7 +9,7 @@
     "type-check": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 0",
     "test": "vitest",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
