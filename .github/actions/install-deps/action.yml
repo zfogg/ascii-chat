@@ -253,12 +253,18 @@ runs:
       if: inputs.os == 'macos'
       shell: bash
       run: |
-        set -euo pipefail
+        # Don't use set -e here - we need to survive install-deps failures
+        set -uo pipefail
 
         echo "Running scripts/install-deps.sh to install build dependencies..."
         # install-deps.sh handles all Homebrew package installation
-        # Allow the script to fail gracefully (GitHub runners have version conflicts)
-        bash scripts/install-deps.sh || echo "WARNING: install-deps.sh had errors but continuing"
+        # GitHub runners have pre-installed packages with version conflicts
+        # Allow complete failure without stopping the workflow
+        bash scripts/install-deps.sh
+        install_status=$?
+        if [ $install_status -ne 0 ]; then
+          echo "WARNING: install-deps.sh exited with code $install_status, continuing with pre-installed packages"
+        fi
 
         # Install any extra packages requested by the workflow
         extra="${{ inputs.extra-packages }}"
@@ -269,6 +275,8 @@ runs:
 
         # Clean up to reduce cache size
         brew cleanup || true
+
+        echo "Dependency installation phase completed"
 
     - name: Compute install-deps.sh hash (Ubuntu)
       if: inputs.os == 'ubuntu'
