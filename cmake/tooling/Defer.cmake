@@ -122,6 +122,17 @@ function(ascii_defer_prepare)
         LOG_FILE "${CMAKE_BINARY_DIR}/defer_compile_db.log"
         COMMENT "Generating compilation database for defer transformation tool"
         CLANG_RESOURCE_DIR "${_clang_resource_dir_db}"
+        BUILD_TARGETS
+            generate_version
+            ascii-chat-util
+            ascii-chat-data-structures
+            ascii-chat-platform
+            ascii-chat-crypto
+            ascii-chat-simd
+            ascii-chat-video
+            ascii-chat-audio
+            ascii-chat-core
+            ascii-chat-network
         DISABLE_OPTIONS
             ASCIICHAT_USE_PCH
             ASCIICHAT_ENABLE_ANALYZERS

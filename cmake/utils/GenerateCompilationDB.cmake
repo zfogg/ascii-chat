@@ -44,7 +44,7 @@ function(generate_compilation_database)
     # Parse arguments
     set(_options)
     set(_one_value_args OUTPUT TEMP_DIR LOG_FILE COMMENT CLANG_RESOURCE_DIR)
-    set(_multi_value_args DISABLE_OPTIONS)
+    set(_multi_value_args DISABLE_OPTIONS BUILD_TARGETS)
     cmake_parse_arguments(_DB "${_options}" "${_one_value_args}" "${_multi_value_args}" ${ARGN})
 
     # Validate required arguments
@@ -170,7 +170,16 @@ function(generate_compilation_database)
     list(JOIN _cmake_configure_args " " _cmake_args_str)
 
     # Build the cmake build command
-    set(_cmake_build_cmd "${CMAKE_COMMAND} --build ${_DB_TEMP_DIR} --target generate_version")
+    # Use provided targets or default to generate_version
+    if(NOT _DB_BUILD_TARGETS)
+        set(_DB_BUILD_TARGETS "generate_version")
+    endif()
+
+    # Build command for all targets
+    set(_cmake_build_cmd "${CMAKE_COMMAND} --build ${_DB_TEMP_DIR}")
+    foreach(_target IN LISTS _DB_BUILD_TARGETS)
+        list(APPEND _cmake_build_cmd "--target" "${_target}")
+    endforeach()
 
     # Write cmake arguments to a response file for the helper script
     # This avoids issues with complex quoting and special characters
