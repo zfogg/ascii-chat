@@ -173,6 +173,14 @@ export async function initMirrorWasm(
       crypto.getRandomValues(buf);
       return buf[0];
     },
+    // Forward C stdout to browser console
+    print: (text: string) => {
+      console.log("[C] " + text);
+    },
+    // Forward C stderr to browser console
+    printErr: (text: string) => {
+      console.error("[C] " + text);
+    },
   });
   console.log("[WASM] Module factory completed");
 
