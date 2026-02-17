@@ -361,17 +361,15 @@ typedef enum {
 #define OPT_LOG_FORMAT_DEFAULT_DEBUG                                                                                   \
   "[%time(%H:%M:%S)] [%level_aligned] [tid:%tid] %file_relative:%line in %func(): %message"
 
-/** @brief Default log format string (selected based on build mode, must match log_format_default() in format.c)
+/** @brief Default log format string (selected based on build mode)
  *
- * This is defined conditionally based on NDEBUG to match the mode-aware default in log_format_default().
- * The getter function get_default_log_format() uses this macro to provide the default to the options system.
+ * Release builds use simple format. Debug builds use verbose format with thread ID, file path, line, and function.
+ * The get_default_log_format() function returns this value via the options system.
  */
-#ifndef OPT_LOG_FORMAT_DEFAULT
 #ifdef NDEBUG
 #define OPT_LOG_FORMAT_DEFAULT OPT_LOG_FORMAT_DEFAULT_RELEASE
 #else
 #define OPT_LOG_FORMAT_DEFAULT OPT_LOG_FORMAT_DEFAULT_DEBUG
-#endif
 #endif
 
 /** @brief Default server address for client connections */

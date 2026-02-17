@@ -17,6 +17,14 @@
 #include <ascii-chat/options/parsers.h>
 
 // ============================================================================
+// Default values for STRING options (need static storage for registry)
+// ============================================================================
+
+/* Note: For STRING type options, default_value should be a pointer to the string,
+ * and the help system will dereference it as a pointer-to-pointer */
+static const char *const default_log_format_ptr = OPT_LOG_FORMAT_DEFAULT;
+
+// ============================================================================
 // LOGGING CATEGORY - Binary-level logging options
 // ============================================================================
 const registry_entry_t g_logging_entries[] = {
@@ -141,7 +149,7 @@ const registry_entry_t g_logging_entries[] = {
      '\0',
      OPTION_TYPE_STRING,
      offsetof(options_t, log_format),
-     OPT_LOG_FORMAT_DEFAULT,
+     NULL,
      sizeof(((options_t *)0)->log_format),
      "Custom log format string. Format specifiers: %time(fmt) - time with strftime format (see 'man 3 strftime' for "
      "codes like %Y, %m, %d, %H, %M, %S); "
@@ -149,7 +157,9 @@ const registry_entry_t g_logging_entries[] = {
      "%file - full file path; %file_relative - file path relative to project root; %line - line number; "
      "%func - function name; %tid - thread ID; %message - log message. "
      "Example: '[%time(%Y-%m-%d %H:%M:%S)] [%level_aligned] %file_relative:%line %message'. "
-     "Escape %% for literal %, \\\\ for literal backslash.",
+     "Escape %% for literal %, \\\\ for literal backslash. "
+     "Default: release mode '[%time(%H:%M:%S)] [%level_aligned] %message' or debug mode '[%time(%H:%M:%S)] "
+     "[%level_aligned] [tid:%tid] %file_relative:%line in %func(): %message'.",
      "LOGGING",
      "FORMAT",
      false,
