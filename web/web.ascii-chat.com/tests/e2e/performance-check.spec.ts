@@ -11,32 +11,31 @@ import { ServerFixture, getRandomPort } from "./server-fixture";
 const WEB_CLIENT_URL = "http://localhost:3000/client";
 const TEST_TIMEOUT = 30000;
 
-// Run these tests serially to avoid port/server conflicts
-test.describe.serial("Client Performance", () => {
-  let server: ServerFixture | null = null;
-  let serverUrl: string = "";
+// Use fake media device for E2E tests (real hardware may not be available)
+test.use({
+  launchOptions: {
+    args: [
+      "--use-fake-device-for-media-stream",
+      "--use-fake-ui-for-media-stream",
+    ],
+  },
+});
 
-  test.beforeAll(async () => {
-    const port = getRandomPort();
-    server = new ServerFixture(port);
-    await server.start();
-    serverUrl = server.getUrl();
-    console.log(`✓ Server started on ${serverUrl}`);
-  });
+test.beforeEach(async ({ page }) => {
+  page.on("console", (msg) => console.log(`BROWSER: ${msg.text()}`));
+});
 
-  test.afterAll(async () => {
-    if (server) {
-      await server.stop();
-    }
-  });
+test("client mode: can initialize and connect", async ({ page, context }) => {
+  test.setTimeout(TEST_TIMEOUT);
 
-  test.beforeEach(async ({ page }) => {
-    page.on("console", (msg) => console.log(`BROWSER: ${msg.text()}`));
-  });
+  // Start server for this test
+  const port = getRandomPort();
+  const server = new ServerFixture(port);
+  await server.start();
+  const serverUrl = server.getUrl();
+  console.log(`✓ Server started on ${serverUrl}`);
 
-  test("client mode: can initialize and connect", async ({ page, context }) => {
-    test.setTimeout(TEST_TIMEOUT);
-
+  try {
     await context.grantPermissions(["camera", "microphone"]);
     const clientUrl = `${WEB_CLIENT_URL}?testServerUrl=${encodeURIComponent(serverUrl)}`;
     await page.goto(clientUrl, { waitUntil: "networkidle" });
@@ -54,11 +53,22 @@ test.describe.serial("Client Performance", () => {
     });
     expect(hasXTerm).toBeTruthy();
     console.log("✓ Client has xterm terminal ready");
-  });
+  } finally {
+    await server.stop();
+  }
+});
 
-  test("client mode: maintains FPS > 15", async ({ page, context }) => {
-    test.setTimeout(TEST_TIMEOUT);
+test("client mode: maintains FPS > 15", async ({ page, context }) => {
+  test.setTimeout(TEST_TIMEOUT);
 
+  // Start server for this test
+  const port = getRandomPort();
+  const server = new ServerFixture(port);
+  await server.start();
+  const serverUrl = server.getUrl();
+  console.log(`✓ Server started on ${serverUrl}`);
+
+  try {
     await context.grantPermissions(["camera", "microphone"]);
     const clientUrl = `${WEB_CLIENT_URL}?testServerUrl=${encodeURIComponent(serverUrl)}`;
     await page.goto(clientUrl, { waitUntil: "networkidle" });
@@ -77,9 +87,9 @@ test.describe.serial("Client Performance", () => {
     const startMetrics = await page.evaluate(() => {
       console.log(
         "[Test] Start metrics - window.__clientFrameMetrics =",
-        (window as any).__clientFrameMetrics,
+        window.__clientFrameMetrics,
       );
-      const metrics = (window as any).__clientFrameMetrics || {
+      const metrics = window.__clientFrameMetrics || {
         rendered: 0,
         received: 0,
         queueDepth: 0,
@@ -93,9 +103,9 @@ test.describe.serial("Client Performance", () => {
     const endMetrics = await page.evaluate(() => {
       console.log(
         "[Test] End metrics - window.__clientFrameMetrics =",
-        (window as any).__clientFrameMetrics,
+        window.__clientFrameMetrics,
       );
-      const metrics = (window as any).__clientFrameMetrics || {
+      const metrics = window.__clientFrameMetrics || {
         rendered: 0,
         received: 0,
         queueDepth: 0,
@@ -108,14 +118,39 @@ test.describe.serial("Client Performance", () => {
 
     const elapsedMs = endMetrics.endTime - startMetrics.startTime;
     const renderedFrames = endMetrics.rendered - (startMetrics.rendered || 0);
+    const receivedFrames = endMetrics.received - (startMetrics.received || 0);
+    const uniqueRendered = (endMetrics as any).uniqueRendered || 0;
     const fps = Math.round((renderedFrames / elapsedMs) * 1000);
+    const receivedFps = Math.round((receivedFrames / elapsedMs) * 1000);
+    const uniqueFps = Math.round((uniqueRendered / elapsedMs) * 1000);
 
     console.log(
-      `Frame metrics: rendered ${renderedFrames} frames in ${elapsedMs.toFixed(0)}ms = ${fps} FPS`,
+      `Frame metrics: received ${receivedFrames} frames, rendered ${renderedFrames} frames in ${elapsedMs.toFixed(0)}ms`,
     );
-    console.log(`Client FPS measured: ${fps}`);
-    // Client mode should maintain at least 30 FPS
-    // Low FPS indicates a bug in rendering or frame processing
+    console.log(
+      `FPS breakdown - Received: ${receivedFps}, Rendered (calls): ${fps}, Unique changes: ${uniqueFps}`,
+    );
+    console.log(
+      `Start metrics: rendered=${startMetrics.rendered}, received=${startMetrics.received}`,
+    );
+    console.log(
+      `End metrics: rendered=${endMetrics.rendered}, received=${endMetrics.received}, unique=${uniqueRendered}`,
+    );
+    if ((endMetrics as any).frameHashes) {
+      console.log(`Frame hash distribution:`, (endMetrics as any).frameHashes);
+    }
+
+    // Client mode MUST:
+    // 1. Receive at least 30 different frames per second from network
+    // 2. Render calls at least 30 times per second
+    // 3. Actually show different content (unique frames) at least 30 times per second
+    console.log(
+      `\n*** CRITICAL TEST CHECKS ***\nReceived unique frames per sec: ${receivedFps} (should be >= 30)\nRendered calls per sec: ${fps} (should be >= 30)\nUNIQUE frame changes per sec: ${uniqueFps} (should be >= 30) ← THIS IS THE REAL REQUIREMENT`,
+    );
+    expect(receivedFps).toBeGreaterThanOrEqual(30);
     expect(fps).toBeGreaterThanOrEqual(30);
-  });
+    expect(uniqueFps).toBeGreaterThanOrEqual(30);
+  } finally {
+    await server.stop();
+  }
 });

@@ -23,7 +23,10 @@ export default defineConfig({
       name: "chromium",
       use: {
         ...devices["Desktop Chrome"],
-        headless: true, // Run headless for testing
+        // Set headless based on environment: --headed flag or HEADED env var for real media testing
+        headless: process.env.HEADED !== "true",
+        // Grant permissions for camera/microphone access
+        permissions: ["camera", "microphone"],
       },
     },
   ],
