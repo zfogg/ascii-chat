@@ -429,6 +429,15 @@ if(USE_MIMALLOC)
             message(STATUS "Configured ${BoldGreen}mimalloc${ColorReset} build environment with REALGCC=${BoldCyan}${REAL_GCC}${ColorReset}")
         endif()
 
+        # For musl builds, disable LTO on mimalloc-shared to avoid TPOFF32 relocation errors.
+        # The mimalloc-shared target is built with -fPIC for embedding in the shared library.
+        # When LTO is enabled, LLVM generates incompatible TPOFF32 relocations for TLS variables.
+        if(USE_MUSL)
+            set_target_properties(mimalloc-shared PROPERTIES
+                INTERPROCEDURAL_OPTIMIZATION FALSE
+            )
+        endif()
+
         # Update status messages based on ASAN support
         set(MIMALLOC_VERSION "2.2.4")
         if(CMAKE_BUILD_TYPE STREQUAL "Debug")
