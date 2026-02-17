@@ -272,33 +272,29 @@ message(STATUS "Configuring ${BoldBlue}libsodium${ColorReset} from source...")
 set(LIBSODIUM_PREFIX "${MUSL_DEPS_DIR_STATIC}/libsodium")
 set(LIBSODIUM_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/libsodium-build")
 
-# Only add external project if library doesn't exist
-if(NOT EXISTS "${LIBSODIUM_PREFIX}/lib/libsodium.a")
-    message(STATUS "  libsodium library not found in cache, will build from source")
-    ExternalProject_Add(libsodium-musl
-        URL https://github.com/jedisct1/libsodium/releases/download/1.0.20-RELEASE/libsodium-1.0.20.tar.gz
-        URL_HASH SHA256=ebb65ef6ca439333c2bb41a0c1990587288da07f6c7fd07cb3a18cc18d30ce19
-        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-        PREFIX ${LIBSODIUM_BUILD_DIR}
-        STAMP_DIR ${LIBSODIUM_BUILD_DIR}/stamps
-        UPDATE_DISCONNECTED 1
-        BUILD_ALWAYS 0
-        CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${LIBSODIUM_PREFIX} --enable-static --disable-shared
-        BUILD_COMMAND env REALGCC=${REAL_GCC} CFLAGS=-fPIC make
-        INSTALL_COMMAND make install
-        DEPENDS zstd-musl
-        BUILD_BYPRODUCTS ${LIBSODIUM_PREFIX}/lib/libsodium.a
-        LOG_DOWNLOAD TRUE
-        LOG_CONFIGURE TRUE
-        LOG_BUILD TRUE
-        LOG_INSTALL TRUE
-        LOG_OUTPUT_ON_FAILURE TRUE
-    )
-else()
-    message(STATUS "  ${BoldBlue}libsodium${ColorReset} library found in cache: ${BoldMagenta}${LIBSODIUM_PREFIX}/lib/libsodium.a${ColorReset}")
-    # Create a dummy target so dependencies can reference it
-    add_custom_target(libsodium-musl DEPENDS zstd-musl)
-endif()
+# Always rebuild libsodium to ensure -fPIC compilation for shared library linking
+# (ExternalProject cache check happens regardless, but this forces rebuild of external project)
+ExternalProject_Add(libsodium-musl
+    URL https://github.com/jedisct1/libsodium/releases/download/1.0.20-RELEASE/libsodium-1.0.20.tar.gz
+    URL_HASH SHA256=ebb65ef6ca439333c2bb41a0c1990587288da07f6c7fd07cb3a18cc18d30ce19
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    PREFIX ${LIBSODIUM_BUILD_DIR}
+    STAMP_DIR ${LIBSODIUM_BUILD_DIR}/stamps
+    UPDATE_DISCONNECTED 1
+    BUILD_ALWAYS 0
+    # For shared library support, ALL object files must be compiled with -fPIC.
+    # Use --with-pic to force position-independent code generation.
+    CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} <SOURCE_DIR>/configure --prefix=${LIBSODIUM_PREFIX} --enable-static --disable-shared --with-pic
+    BUILD_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} make
+    INSTALL_COMMAND make install
+    DEPENDS zstd-musl
+    BUILD_BYPRODUCTS ${LIBSODIUM_PREFIX}/lib/libsodium.a
+    LOG_DOWNLOAD TRUE
+    LOG_CONFIGURE TRUE
+    LOG_BUILD TRUE
+    LOG_INSTALL TRUE
+    LOG_OUTPUT_ON_FAILURE TRUE
+)
 
 set(LIBSODIUM_FOUND TRUE)
 set(LIBSODIUM_LIBRARIES "${LIBSODIUM_PREFIX}/lib/libsodium.a")
