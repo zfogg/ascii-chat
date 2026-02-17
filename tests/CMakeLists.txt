@@ -241,15 +241,15 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     set(_ascii_tests_mimalloc_include "${MIMALLOC_INCLUDE_DIRS}")
 
     # Find test files (excluding problematic ones, matches Makefile)
-    file(GLOB_RECURSE TEST_SRCS_ALL tests/unit/*.c tests/integration/*.c tests/performance/*.c)
+    file(GLOB_RECURSE TEST_SRCS_ALL ${CMAKE_CURRENT_SOURCE_DIR}/unit/*.c ${CMAKE_CURRENT_SOURCE_DIR}/integration/*.c ${CMAKE_CURRENT_SOURCE_DIR}/performance/*.c)
     # GLOB_RECURSE returns absolute paths, so TEST_EXCLUDES must also be absolute
     set(TEST_EXCLUDES
-        ${PROJECT_SOURCE_DIR}/tests/integration/server_multiclient_test.c
-        ${PROJECT_SOURCE_DIR}/tests/integration/video_pipeline_test.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/server_multiclient_test.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/video_pipeline_test.c
     )
     # Exclude query tests if query runtime library not available
     if(NOT TARGET ascii-query-runtime)
-        list(APPEND TEST_EXCLUDES ${PROJECT_SOURCE_DIR}/tests/unit/tooling/query_test.c)
+        list(APPEND TEST_EXCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/unit/tooling/query_test.c)
     endif()
 
     set(TEST_SRCS)
@@ -267,7 +267,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         # tests/unit/common_test.c -> test_unit_common
         # tests/integration/crypto_network_test.c -> test_integration_crypto_network
         # Determine the top-level test category (unit/integration/performance)
-        file(RELATIVE_PATH test_rel ${PROJECT_SOURCE_DIR}/tests ${test_src})
+        file(RELATIVE_PATH test_rel ${CMAKE_CURRENT_SOURCE_DIR} ${test_src})
         string(REPLACE "\\" "/" test_rel ${test_rel})
         string(REGEX MATCH "^[^/]+" test_category ${test_rel})
         if(NOT test_category)
@@ -285,7 +285,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         # - common.c: Provides shared test utilities (test_get_binary_path, etc.)
         # - globals.c: Provides global symbols (g_should_exit) needed by lib code
         # - logging.c: Provides test-specific logging utilities (stdout/stderr redirection)
-        add_executable(${test_exe_name} ${test_src} lib/tests/common.c lib/tests/globals.c lib/tests/logging.c)
+        add_executable(${test_exe_name} ${test_src} ${CMAKE_SOURCE_DIR}/lib/tests/common.c ${CMAKE_SOURCE_DIR}/lib/tests/globals.c ${CMAKE_SOURCE_DIR}/lib/tests/logging.c)
 
         # Configure BUILD_RPATH to prefer locally built libraries over system-installed ones
         # This ensures tests use the correct libasciichat from build/lib instead of /usr/local/lib
@@ -387,7 +387,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             target_compile_options(${test_exe_name} PRIVATE -O3 -DNDEBUG)
         endif()
 
-        # CRITICAL: Disable dead code elimination for test executables
+        # Disable dead code elimination for test executables
         # Criterion uses __attribute__((constructor)) to register tests, which the linker
         # considers "unused" and removes with --gc-sections/-dead_strip. This causes all
         # tests to be stripped in Release builds, resulting in "Tested: 0" output.
@@ -414,7 +414,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             endif()
         endif()
 
-        # CRITICAL: Disable IPO/LTO for test executables
+        # Disable IPO/LTO for test executables
         # LTO can see that Criterion's __attribute__((constructor)) test registration
         # functions are never called and removes them as dead code. This happens even
         # with --no-gc-sections because LTO operates at a different (interprocedural)
@@ -444,7 +444,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
 
         # Set test properties
         set_tests_properties(${test_exe_name} PROPERTIES
-            ENVIRONMENT "TESTING=1;CRITERION_TEST=1;LSAN_OPTIONS=suppressions=${PROJECT_SOURCE_DIR}/tests/lsan_suppressions.txt"
+            ENVIRONMENT "TESTING=1;CRITERION_TEST=1;LSAN_OPTIONS=suppressions=${CMAKE_CURRENT_SOURCE_DIR}/lsan_suppressions.txt"
             TIMEOUT ${CTEST_TEST_TIMEOUT}
             LABELS "${test_category}"
         )
@@ -600,4 +600,3 @@ endif()
 # Library runtime tests (test-static-lib, test-shared-lib) are handled by
 # TestLibs.cmake and only require BUILD_TESTS, not Criterion.
 # Note: The defer runtime library was removed when we switched to direct code insertion.
-

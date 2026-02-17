@@ -78,11 +78,14 @@ include(${CMAKE_SOURCE_DIR}/cmake/init/BuildConfiguration.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/platform/Musl.cmake)
 configure_musl_pre_project()
 
-# Disable LTO for musl builds globally to prevent TPOFF32 TLS relocation errors (LLVM issue #55909)
+# Configure musl-specific compiler flags BEFORE project()
 if(USE_MUSL)
-    add_compile_options(-fno-lto)
-    add_link_options(-fno-lto)
-    message(STATUS "Disabling LTO globally for musl build (TPOFF32 TLS relocation fix)")
+    # Disable LTO to prevent TPOFF32 TLS relocation errors (LLVM issue #55909)
+    # Use global-dynamic TLS model for shared library compatibility
+    # Set via CMAKE_C_FLAGS_INIT and CMAKE_CXX_FLAGS_INIT before project() is called
+    set(CMAKE_C_FLAGS_INIT "${CMAKE_C_FLAGS_INIT} -fno-lto -ftls-model=global-dynamic -fPIC")
+    set(CMAKE_CXX_FLAGS_INIT "${CMAKE_CXX_FLAGS_INIT} -fno-lto -ftls-model=global-dynamic -fPIC")
+    message(STATUS "Configuring musl build: -fno-lto -ftls-model=global-dynamic -fPIC")
 endif()
 
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/LLVM.cmake)
@@ -112,6 +115,7 @@ project(${PROJECT_NAME_FULL}
 
 # Interprocedural optimization (LTO) support detection
 # MUST be after project() when languages are enabled
+message(STATUS "DEBUG IPO setup: USE_MUSL=${USE_MUSL}")
 include(CheckIPOSupported)
 if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
     # Musl builds disable LTO via -fno-lto compile options added earlier to prevent TPOFF32 errors
@@ -185,6 +189,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/compiler/HeaderChecks.cmake)
 configure_llvm_post_project()
 fix_llvm_ranlib()
 configure_musl_post_project()
+
 include(${CMAKE_SOURCE_DIR}/cmake/platform/WindowsWorkarounds.cmake)
 fix_windows_clang_linking()
 find_msvc_libraries()
@@ -340,7 +345,7 @@ ascii_panic_finalize()
 ascii_defer_finalize()
 ascii_query_finalize()
 
-include(${CMAKE_SOURCE_DIR}/cmake/targets/Tests.cmake)
+add_subdirectory(${CMAKE_SOURCE_DIR}/tests ${CMAKE_BINARY_DIR}/tests)
 # Optional CTest dashboard integration
 if(ASCIICHAT_ENABLE_CTEST_DASHBOARD)
     include(CTest)
