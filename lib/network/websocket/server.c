@@ -283,7 +283,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     // We configured rx_buffer_size=524288 (512KB) above in websocket_protocols.
     // This reduces 1.2MB frames from 300x4KB fragments to 2-3x512KB fragments,
     // dramatically improving throughput and FPS.
-    const size_t FRAGMENT_SIZE = 491520; // 480KB (leaves 32KB margin for frame headers in 512KB rx_buffer)
+    const size_t FRAGMENT_SIZE = 262144; // 256KB - balance between throughput and stability
 
     // Check if we have a message in progress
     if (conn_data->has_pending_send) {
