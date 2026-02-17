@@ -188,8 +188,29 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     log_info("★★★ LWS_CALLBACK_CLOSED FIRED - WHY IS CONNECTION CLOSING? ★★★");
     log_info("[LWS_CALLBACK_CLOSED] WebSocket client disconnected, wsi=%p, handler_started=%d, timestamp=%llu",
              (void *)wsi, conn_data ? conn_data->handler_started : -1, (unsigned long long)close_callback_start_ns);
-    log_info("★ Reason code in 'in' parameter: %p", in);
-    log_info("★ Length: %zu", len);
+
+    // Try to extract close code from 'in' parameter if available
+    uint16_t close_code = 0;
+    if (in && len >= 2) {
+      close_code = (uint16_t)((uint8_t *)in)[0] << 8 | ((uint8_t *)in)[1];
+      log_info("[LWS_CALLBACK_CLOSED] Close frame received with code=%u (1000=normal, 1001=going away, 1006=abnormal, "
+               "1009=message too big)",
+               close_code);
+    } else {
+      log_info(
+          "[LWS_CALLBACK_CLOSED] No close frame (in=%p, len=%zu) - connection closed without WebSocket close handshake",
+          in, len);
+    }
+
+    // Log any incomplete fragments at time of close
+    if (conn_data && conn_data->fragment_buffer && conn_data->fragment_size > 0) {
+      log_warn("[LWS_CALLBACK_CLOSED] ⚠️  CONNECTION CLOSED WITH INCOMPLETE MESSAGE: %zu bytes buffered (expecting more "
+               "fragments!)",
+               conn_data->fragment_size);
+    } else if (conn_data) {
+      log_info("[LWS_CALLBACK_CLOSED] No incomplete fragments (fragment_buffer=%p, fragment_size=%zu)",
+               (void *)conn_data->fragment_buffer, conn_data->fragment_size);
+    }
 
     // Mark cleanup in progress to prevent race conditions with other threads accessing transport
     if (conn_data) {
@@ -198,6 +219,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
     // Clean up fragment buffer
     if (conn_data && conn_data->fragment_buffer) {
+      log_debug("[LWS_CALLBACK_CLOSED] Freeing fragment buffer (%zu bytes)", conn_data->fragment_size);
       SAFE_FREE(conn_data->fragment_buffer);
       conn_data->fragment_size = 0;
       conn_data->fragment_capacity = 0;
@@ -532,6 +554,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     bool is_first = lws_is_first_fragment(wsi);
     bool is_final = lws_is_final_fragment(wsi);
     log_debug("[WS_TIMING] is_first=%d is_final=%d, about to increment callback count", is_first, is_final);
+    log_info("[WS_FRAG_DEBUG] === RECEIVE CALLBACK: is_first=%d is_final=%d len=%zu buffered=%zu ===", is_first,
+             is_final, len, conn_data ? conn_data->fragment_size : 0);
 
     atomic_fetch_add(&g_receive_callback_count, 1);
     log_debug("[WS_TIMING] incremented callback count");
@@ -679,8 +703,11 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
       log_info("[WS_FRAG] Queued complete message: %zu bytes", msg.len);
     } else {
-      log_dev_every(4500000, "[WS_FRAG] Buffered fragment %zu bytes (total buffered: %zu, final: %d)", len,
-                    conn_data->fragment_size, is_final);
+      log_info("[WS_FRAG] ⏳ BUFFERING INTERMEDIATE FRAGMENT: received %zu bytes, total_buffered=%zu bytes, expecting "
+               "more fragments (final=%d, is_final=%d)",
+               len, conn_data->fragment_size, is_final, is_final);
+      log_info("[WS_FRAG] ⏳ NEXT CALLBACK SHOULD HAVE first=0 to continue this %zu-byte message",
+               conn_data->fragment_size);
     }
 
     // Log callback duration
@@ -690,7 +717,12 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       if (callback_dur_us > 200) {
         log_warn("[WS_CALLBACK_DURATION] RECEIVE callback took %.1f µs (> 200µs threshold)", callback_dur_us);
       }
+      log_debug("[WS_CALLBACK_DURATION] RECEIVE callback completed in %.1f µs (fragment: first=%d final=%d len=%zu)",
+                callback_dur_us, is_first, is_final, len);
     }
+    log_debug("[WS_RECEIVE] ===== RECEIVE CALLBACK COMPLETE, returning 0 to continue =====");
+    log_info("[WS_RECEIVE_RETURN] Returning 0 from RECEIVE callback (success). fragmented=%d (first=%d final=%d)",
+             (!is_final ? 1 : 0), is_first, is_final);
     break;
   }
 
