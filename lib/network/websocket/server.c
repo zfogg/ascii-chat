@@ -275,7 +275,15 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       break;
     }
 
-    const size_t FRAGMENT_SIZE = 4096;
+    // Fragment size must match rx_buffer_size per LWS performance guidelines.
+    // Sending fragments larger than rx_buffer_size causes lws_write() to internally
+    // buffer data, leading to performance degradation. The recommended approach is to
+    // send chunks equal to (or slightly smaller than) the rx_buffer_size.
+    // See: https://github.com/warmcat/libwebsockets/issues/464
+    // We configured rx_buffer_size=524288 (512KB) above in websocket_protocols.
+    // This reduces 1.2MB frames from 300x4KB fragments to 2-3x512KB fragments,
+    // dramatically improving throughput and FPS.
+    const size_t FRAGMENT_SIZE = 524288; // Match rx_buffer_size (512KB)
 
     // Check if we have a message in progress
     if (conn_data->has_pending_send) {
