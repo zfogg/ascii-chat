@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
+#include <ctype.h>
 
 // ============================================================================
 // Global State
@@ -449,4 +450,171 @@ void adaptive_sleep_do(adaptive_sleep_state_t *state, size_t queue_depth, size_t
   if (sleep_ns > 0) {
     platform_sleep_ns(sleep_ns);
   }
+}
+
+/* ============================================================================
+ * Time Format Validation and Formatting Implementation
+ * ============================================================================ */
+
+/**
+ * @brief Complete list of safe/supported POSIX strftime specifiers
+ * These are the only specifiers we allow in format strings
+ */
+static const char SUPPORTED_SPECIFIERS[] = "YmmdHMSaAbBjwuIpZzcxXFTsGgV";
+
+bool time_format_is_valid_strftime(const char *format_str) {
+  if (!format_str) {
+    return false;
+  }
+
+  for (const char *p = format_str; *p; p++) {
+    if (*p == '%') {
+      p++;
+      if (!*p) {
+        /* Unterminated % at end of string */
+        log_error("Invalid time format: unterminated %% at end");
+        return false;
+      }
+
+      if (*p == '%') {
+        /* Escaped %% - this is valid, just skip it */
+        continue;
+      }
+
+      /* Optional: flag characters (-, 0, +, space) */
+      if (*p == '-' || *p == '0' || *p == '+' || *p == ' ') {
+        p++;
+        if (!*p) {
+          log_error("Invalid time format: flag character without specifier");
+          return false;
+        }
+      }
+
+      /* Optional: width specifier (digits or *) */
+      if (*p == '*' || isdigit((unsigned char)*p)) {
+        while (*p && (isdigit((unsigned char)*p) || *p == '*')) {
+          p++;
+        }
+        if (!*p) {
+          log_error("Invalid time format: width specifier without specifier character");
+          return false;
+        }
+      }
+
+      /* Optional: precision specifier (.digits or .*) */
+      if (*p == '.') {
+        p++;
+        if (!*p) {
+          log_error("Invalid time format: precision specifier incomplete");
+          return false;
+        }
+        while (*p && (isdigit((unsigned char)*p) || *p == '*')) {
+          p++;
+        }
+        if (!*p) {
+          log_error("Invalid time format: precision specifier without specifier character");
+          return false;
+        }
+      }
+
+      /* Optional: modifier characters (E for %Ex, O for %Ox) */
+      if (*p == 'E' || *p == 'O') {
+        p++;
+        if (!*p) {
+          log_error("Invalid time format: modifier character without specifier");
+          return false;
+        }
+      }
+
+      /* Validate that the final character is a supported specifier */
+      if (!strchr(SUPPORTED_SPECIFIERS, *p)) {
+        log_error("Invalid time format: unsupported specifier %%%c (at position %ld)", *p, (p - format_str));
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+int time_format_now(const char *format_str, char *buf, size_t buf_size) {
+  if (!format_str || !buf || buf_size < 2) {
+    return 0;
+  }
+
+  /* Get current wall-clock time in nanoseconds */
+  uint64_t ts_ns = time_get_realtime_ns();
+
+  /* Extract seconds and nanoseconds */
+  time_t seconds = (time_t)(ts_ns / NS_PER_SEC_INT);
+  long nanoseconds = (long)(ts_ns % NS_PER_SEC_INT);
+
+  /* Convert seconds to struct tm */
+  struct tm tm_info;
+  platform_localtime(&seconds, &tm_info);
+
+  /* Format using strftime */
+  size_t len = strftime(buf, buf_size, format_str, &tm_info);
+
+  /* Check for strftime errors or buffer overflow */
+  if (len == 0) {
+    /* strftime returned 0 - either error or exact buffer fill */
+    log_debug("strftime returned 0 for format: %s", format_str);
+    return 0;
+  }
+
+  if (len >= buf_size - 1) {
+    /* Buffer would overflow - strftime filled entire buffer or hit exact size */
+    log_error("time_format_now: buffer too small (need %zu, have %zu)", len + 1, buf_size);
+    return 0;
+  }
+
+  /* If format contains %S and we have room in buffer, append microseconds */
+  if (strchr(format_str, 'S') && len + 7 < buf_size) {
+    long microseconds = nanoseconds / 1000;
+
+    /* Clamp microseconds to valid range [0, 999999] */
+    if (microseconds < 0) {
+      microseconds = 0;
+    }
+    if (microseconds > 999999) {
+      microseconds = 999999;
+    }
+
+    int result = safe_snprintf(buf + len, buf_size - len, ".%06ld", microseconds);
+    if (result > 0 && (size_t)result < buf_size - len) {
+      len += (size_t)result;
+    }
+  }
+
+  return (int)len;
+}
+
+asciichat_error_t time_format_safe(const char *format_str, char *buf, size_t buf_size) {
+  /* Check NULL pointers */
+  if (!format_str) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "time_format_safe: format_str is NULL");
+  }
+
+  if (!buf) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "time_format_safe: buf is NULL");
+  }
+
+  /* Check minimum buffer size */
+  if (buf_size < 64) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "time_format_safe: buffer too small (minimum 64 bytes, got %zu)", buf_size);
+  }
+
+  /* Validate format string */
+  if (!time_format_is_valid_strftime(format_str)) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "time_format_safe: invalid time format: %s", format_str);
+  }
+
+  /* Format the time */
+  int result = time_format_now(format_str, buf, buf_size);
+  if (result <= 0) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "time_format_safe: strftime formatting failed");
+  }
+
+  return ASCIICHAT_OK;
 }

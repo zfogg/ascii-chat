@@ -588,7 +588,7 @@ int format_uptime_hms(int hours, int minutes, int seconds, char *buffer, size_t 
   do {                                                                                                                 \
     double _elapsed_ns = STOP_TIMER(timer_name, ##__VA_ARGS__);                                                        \
     if (_elapsed_ns >= 0.0 && (threshold_ns == 0 || _elapsed_ns >= (double)(threshold_ns))) {                          \
-      static TIME_ATOMIC_UINT64 _log_every_last_time = TIME_ATOMIC_UINT64_INIT(0);                                      \
+      static TIME_ATOMIC_UINT64 _log_every_last_time = TIME_ATOMIC_UINT64_INIT(0);                                     \
       uint64_t _log_every_now = time_get_ns();                                                                         \
       uint64_t _log_every_last = atomic_load_explicit(&_log_every_last_time, memory_order_relaxed);                    \
       if (_log_every_now - _log_every_last >= (uint64_t)(interval_ns)) {                                               \
@@ -703,5 +703,92 @@ uint64_t adaptive_sleep_calculate(adaptive_sleep_state_t *state, size_t queue_de
  * @ingroup module_utilities
  */
 void adaptive_sleep_do(adaptive_sleep_state_t *state, size_t queue_depth, size_t target_depth);
+
+/* ============================================================================
+ * Time Format Validation and Formatting
+ * ============================================================================ */
+
+/**
+ * @brief Validate strftime format string against known safe specifiers
+ * @param format_str Format string to validate (e.g., "%H:%M:%S")
+ * @return true if valid, false if contains invalid specifiers or syntax
+ *
+ * Validates format string by checking each % specifier against a whitelist
+ * of known safe POSIX strftime specifiers. Returns false if:
+ * - Contains unterminated % sequences
+ * - Contains invalid/unsupported specifiers
+ * - Contains malformed width/precision
+ * - Contains unsupported locale-dependent specifiers
+ *
+ * **Supported specifiers:**
+ * - Date: %Y (4-digit year), %m (month), %d (day), %j (day of year)
+ * - Date (ISO): %F (full date), %G (ISO year), %g (ISO year short), %V (ISO week)
+ * - Time: %H (24-hour), %M (minute), %S (second), %I (12-hour), %p (AM/PM)
+ * - Time (combined): %T (full time HH:MM:SS), %s (seconds since epoch)
+ * - Locale: %a (abbrev weekday), %A (full weekday), %b (abbrev month), %B (full month)
+ * - Locale: %c (locale date/time), %x (locale date), %X (locale time)
+ * - Timezone: %z (offset), %Z (name)
+ * - Weekday: %w (0-6), %u (1-7)
+ *
+ * @ingroup module_utilities
+ */
+bool time_format_is_valid_strftime(const char *format_str);
+
+/**
+ * @brief Format current time using strftime format string
+ * @param format_str strftime format string (should be validated with time_format_is_valid_strftime)
+ * @param buf Output buffer
+ * @param buf_size Output buffer size
+ * @return Number of characters written (excluding null terminator), or 0 on error
+ *
+ * Formats current wall-clock time (CLOCK_REALTIME) using the provided strftime format.
+ * Handles nanosecond precision separately: if format contains %S and buffer has room,
+ * appends ".NNNNNN" for microseconds (rounded from nanoseconds).
+ *
+ * **Example outputs:**
+ * - Format "%H:%M:%S" → "14:30:45.123456"
+ * - Format "%Y-%m-%d" → "2026-02-16"
+ * - Format "%F %T" → "2026-02-16 14:30:45.123456"
+ *
+ * **Notes:**
+ * - Buffer size should be at least 64 bytes
+ * - Automatic microsecond appending occurs only when %S is in format
+ * - Output is locale-aware (UTF-8 safe from strftime)
+ * - Returns 0 on error (strftime failure or buffer overflow)
+ *
+ * @ingroup module_utilities
+ */
+int time_format_now(const char *format_str, char *buf, size_t buf_size);
+
+/**
+ * @brief Safe wrapper for time formatting with validation and error codes
+ * @param format_str Format string to use
+ * @param buf Output buffer
+ * @param buf_size Output buffer size
+ * @return ASCIICHAT_OK on success, error code on failure (includes error context)
+ *
+ * Validates format string first, then formats time. Returns detailed error if:
+ * - format_str is NULL
+ * - buf is NULL
+ * - buf_size < 64 (minimum safe size)
+ * - format_str contains invalid specifiers
+ * - strftime fails
+ *
+ * All errors include context message via SET_ERRNO for debugging.
+ *
+ * **Example:**
+ * ```c
+ * char timebuf[64];
+ * asciichat_error_t err = time_format_safe("%H:%M:%S", timebuf, sizeof(timebuf));
+ * if (err != ASCIICHAT_OK) {
+ *     log_error("Failed to format time");
+ *     return err;
+ * }
+ * log_info("Current time: %s", timebuf);
+ * ```
+ *
+ * @ingroup module_utilities
+ */
+asciichat_error_t time_format_safe(const char *format_str, char *buf, size_t buf_size);
 
 /** @} */
