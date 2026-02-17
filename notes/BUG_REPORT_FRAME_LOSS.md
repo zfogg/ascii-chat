@@ -331,3 +331,20 @@ The original architecture tried to do everything in the LWS callback (buffer, re
 - **Application layer**: See only complete packets (unchanged API)
 
 This satisfies LWS's state machine requirements while maintaining a clean separation of concerns.
+
+**Current Status (Post-Fix):**
+- Fragment handling has been refactored to follow LWS design patterns
+- Build succeeds without errors
+- e2e tests still show 0 FPS with abnormal WebSocket closure (code 1006)
+
+**Next Debugging Steps:**
+The connection is closing abnormally before receiving any frames from the server. This suggests either:
+1. A protocol-level issue with how fragments are being queued or processed
+2. A race condition or deadlock in the reassembly logic
+3. An unrelated issue preventing the server from sending video data back
+
+Recommended approach:
+- Run server with `--log-level debug` and capture full logs when connection closes
+- Add breakpoints or timing instrumentation to identify where connection closure occurs
+- Test with a minimal C WebSocket client that sends simple fragmented messages
+- Verify LWS callback firing sequence and error codes
