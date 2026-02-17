@@ -680,12 +680,13 @@ add_library(ascii-chat-shared SHARED EXCLUDE_FROM_ALL
     endif()
 
     # Unix: Set proper visibility and TLS model for shared library
+    # Shared libraries must use global-dynamic or local-dynamic TLS model (not initial-exec)
+    # initial-exec is only valid for executables and generates incompatible TPOFF32 relocations
     if(NOT WIN32)
         target_compile_options(ascii-chat-shared PRIVATE
             -fvisibility=default
-            -ftls-model=initial-exec
+            -ftls-model=global-dynamic
             -fPIC
-            -fno-semantic-interposition
         )
         # Force TLS model in ThinLTO optimizer - pass via linker plugin
         target_link_options(ascii-chat-shared PRIVATE
