@@ -981,6 +981,18 @@ void log_cleanup_colors(void);
  */
 size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t buf_size);
 
+/* ============================================================================
+ * Internal Utilities (used by log formatting modules)
+ * ============================================================================ */
+
+/**
+ * @brief Get padded log level string (internal utility for formatting)
+ * @param level Log level
+ * @return Padded level string (5 chars: "DEBUG", "INFO ", "WARN ", "DEV  ", "ERROR", "FATAL")
+ * @note Internal function - do not use directly in application code
+ */
+const char *get_level_string_padded(log_level_t level);
+
 #ifdef __cplusplus
 }
 #endif

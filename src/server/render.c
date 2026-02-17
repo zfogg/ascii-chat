@@ -441,6 +441,15 @@ void *client_video_render_thread(void *arg) {
 
     // Check if any clients are sending video
     bool has_video_sources = any_clients_sending_video();
+
+    // DIAGNOSTIC: Track when video sources become available
+    static bool last_has_sources = false;
+    if (has_video_sources != last_has_sources) {
+      log_warn("DIAGNOSTIC: Client %u video sources: %s", thread_client_id,
+               has_video_sources ? "AVAILABLE" : "UNAVAILABLE");
+      last_has_sources = has_video_sources;
+    }
+
     log_debug_every(5000000, "Video render iteration for client %u: has_video_sources=%d, width=%u, height=%u",
                     thread_client_id, has_video_sources, width_snapshot, height_snapshot);
 
@@ -454,6 +463,24 @@ void *client_video_render_thread(void *arg) {
 
     if (has_video_sources) {
       int sources_count = 0; // Track number of video sources in this frame
+
+      // DIAGNOSTIC: Track every frame generation attempt
+      // Use per-client static variables to track frequency independently
+      static uint32_t frame_gen_count = 0;
+      static uint64_t frame_gen_start_time = 0;
+
+      frame_gen_count++;
+      if (frame_gen_count == 1) {
+        frame_gen_start_time = current_time_ns;
+      }
+
+      // Log every 120 attempts (should be ~2 seconds at 60 Hz)
+      if (frame_gen_count % 120 == 0) {
+        uint64_t elapsed_ns = current_time_ns - frame_gen_start_time;
+        double gen_fps = (120.0 / (elapsed_ns / 1000000000.0));
+        log_warn("DIAGNOSTIC: Client %u LOOP running at %.1f FPS (120 iterations in %.2fs)", thread_client_id, gen_fps,
+                 elapsed_ns / 1000000000.0);
+      }
 
       log_dev_every(5000000, "About to call create_mixed_ascii_frame_for_client for client %u with dims %ux%u",
                     thread_client_id, width_snapshot, height_snapshot);
@@ -514,6 +541,20 @@ void *client_video_render_thread(void *arg) {
                 char commit_duration_str[32];
                 format_duration_ns((double)(commit_end_ns - commit_start_ns), commit_duration_str,
                                    sizeof(commit_duration_str));
+
+                static uint32_t commits_count = 0;
+                static uint64_t commits_start_time = 0;
+                commits_count++;
+                if (commits_count == 1) {
+                  commits_start_time = commit_end_ns;
+                }
+                if (commits_count % 10 == 0) {
+                  uint64_t elapsed_ns = commit_end_ns - commits_start_time;
+                  double commit_fps = (10.0 / (elapsed_ns / 1000000000.0));
+                  log_warn("DIAGNOSTIC: Client %u UNIQUE frames being sent at %.1f FPS (10 commits counted)",
+                           thread_client_id, commit_fps);
+                }
+
                 log_info("[FRAME_COMMIT_TIMING] Client %u frame commit took %s (hash=0x%08x)", thread_client_id,
                          commit_duration_str, current_frame_hash);
               } else {

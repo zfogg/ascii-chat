@@ -1439,6 +1439,10 @@ void *client_receive_thread(void *arg) {
   // Main receive loop - processes packets from transport
   // For TCP clients: receives from socket
   // For WebRTC clients: receives from transport ringbuffer (via ACDS signaling)
+
+  log_info("RECV_THREAD_LOOP_START: client_id=%u, is_tcp=%d, transport=%p, active=%d", atomic_load(&client->client_id),
+           client->is_tcp_client, (void *)client->transport, atomic_load(&client->active));
+
   while (!atomic_load(&g_server_should_exit) && atomic_load(&client->active)) {
     // For TCP clients, check socket validity
     // For WebRTC clients, continue even if no socket (transport handles everything)
@@ -1456,11 +1460,17 @@ void *client_receive_thread(void *arg) {
 
     // Receive and dispatch packet using ACIP transport API
     // This combines packet reception, decryption, parsing, handler dispatch, and cleanup
-    log_dev_every(4500000, "🔄 RECV_THREAD: About to call dispatch for client %u", atomic_load(&client->client_id));
+    static int dispatch_call_count = 0;
+    dispatch_call_count++;
+    if (dispatch_call_count <= 10 || dispatch_call_count % 100 == 0) {
+      log_info("🔄 RECV_THREAD: About to call dispatch (#%d) for client %u", dispatch_call_count,
+               atomic_load(&client->client_id));
+    }
     asciichat_error_t acip_result =
         acip_server_receive_and_dispatch(client->transport, client, &g_acip_server_callbacks);
-    log_dev_every(4500000, "🔄 RECV_THREAD: Dispatch returned %d for client %u", acip_result,
-                  atomic_load(&client->client_id));
+    if (dispatch_call_count <= 10 || dispatch_call_count % 100 == 0) {
+      log_info("🔄 RECV_THREAD: Dispatch returned %d for client %u", acip_result, atomic_load(&client->client_id));
+    }
 
     // Check if shutdown was requested during the network call
     if (atomic_load(&g_server_should_exit)) {
@@ -2329,10 +2339,9 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
   (void)app_ctx;
   client_info_t *client = (client_info_t *)client_ctx;
 
-  log_dev_every(
-      4500000,
-      "ACIP callback received IMAGE_FRAME: width=%u, height=%u, pixel_format=%u, compressed_size=%u, data_len=%zu",
-      header->width, header->height, header->pixel_format, header->compressed_size, data_len);
+  log_info("CALLBACK_IMAGE_FRAME: client_id=%u, width=%u, height=%u, pixel_format=%u, compressed_size=%u, data_len=%zu",
+           atomic_load(&client->client_id), header->width, header->height, header->pixel_format,
+           header->compressed_size, data_len);
 
   // Validate frame dimensions to prevent DoS and buffer overflow attacks
   if (header->width == 0 || header->height == 0) {
@@ -2382,11 +2391,16 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
   // This ensures frame data is available immediately for the render thread
   if (client->incoming_video_buffer) {
     video_frame_t *frame = video_frame_begin_write(client->incoming_video_buffer);
+    log_info("STORE_FRAME: client_id=%u, frame_ptr=%p, frame->data=%p", atomic_load(&client->client_id), (void *)frame,
+             frame ? frame->data : NULL);
     if (frame && frame->data && data_len > 0) {
       // Store frame data: [width:4][height:4][pixel_data]
       uint32_t width_net = HOST_TO_NET_U32(header->width);
       uint32_t height_net = HOST_TO_NET_U32(header->height);
       size_t total_size = sizeof(uint32_t) * 2 + data_len;
+
+      log_info("STORE_FRAME_DATA: total_size=%zu, max_allowed=2097152, fits=%d", total_size,
+               total_size <= 2 * 1024 * 1024);
 
       if (total_size <= 2 * 1024 * 1024) { // Max 2MB
         memcpy(frame->data, &width_net, sizeof(uint32_t));
@@ -2398,8 +2412,17 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
         frame->capture_timestamp_ns = (uint64_t)time(NULL) * NS_PER_SEC_INT;
         frame->sequence_number = ++client->frames_received;
         video_frame_commit(client->incoming_video_buffer);
+        log_info("FRAME_COMMITTED: client_id=%u, seq=%u, size=%zu", atomic_load(&client->client_id),
+                 frame->sequence_number, total_size);
+      } else {
+        log_warn("FRAME_TOO_LARGE: client_id=%u, size=%zu > max 2MB", atomic_load(&client->client_id), total_size);
       }
+    } else {
+      log_warn("STORE_FRAME_FAILED: frame_ptr=%p, frame->data=%p, data_len=%zu", (void *)frame,
+               frame ? frame->data : NULL, data_len);
     }
+  } else {
+    log_warn("NO_INCOMING_VIDEO_BUFFER: client_id=%u", atomic_load(&client->client_id));
   }
 }
 
@@ -2785,19 +2808,19 @@ void process_decrypted_packet(client_info_t *client, packet_type_t type, void *d
 
   // O(1) dispatch via hash table lookup
   int idx = client_dispatch_hash_lookup(g_client_dispatch_hash, type);
-  if (type == 5000) {
-    log_error("CLIENT_CAPABILITIES: dispatch hash lookup returned idx=%d", idx);
+  if (type == 5000 || type == 3001) {
+    log_error("DISPATCH_LOOKUP: type=%d, idx=%d (len=%zu)", type, idx, len);
   }
   if (idx < 0) {
     disconnect_client_for_bad_data(client, "Unknown packet type: %d (len=%zu)", type, len);
     return;
   }
 
-  if (type == 5000) {
-    log_error("CLIENT_CAPABILITIES: calling handler[%d]...", idx);
+  if (type == 5000 || type == 3001) {
+    log_error("DISPATCH_HANDLER: type=%d, calling handler[%d]...", type, idx);
   }
   g_client_dispatch_handlers[idx](client, data, len);
-  if (type == 5000) {
-    log_error("CLIENT_CAPABILITIES: handler returned");
+  if (type == 5000 || type == 3001) {
+    log_error("DISPATCH_HANDLER: type=%d, handler returned", type);
   }
 }

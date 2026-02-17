@@ -253,12 +253,17 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
   }
 
   // Process frames (expensive operations)
+  log_dev_every(5000000, "collect_video_sources: Processing %d snapshots", snapshot_count);
   for (int i = 0; i < snapshot_count && source_count < max_sources; i++) {
     client_snapshot_t *snap = &client_snapshots[i];
 
     if (!snap->is_active) {
+      log_dev_every(5000000, "collect_video_sources: Skipping inactive client %u", snap->client_id);
       continue;
     }
+
+    log_dev_every(5000000, "collect_video_sources: Client %u: is_sending_video=%d", snap->client_id,
+                  snap->is_sending_video);
 
     sources[source_count].client_id = snap->client_id;
     sources[source_count].image = NULL; // Will be set if video is available
@@ -798,8 +803,18 @@ static char *convert_composite_to_ascii(image_t *composite, uint32_t target_clie
   // Pass full terminal dimensions so ascii_convert_with_capabilities can fit the image correctly
   // with proper CHAR_ASPECT correction. The composite may have been pre-fitted in pixel space,
   // but ascii_convert will handle terminal character aspect ratio properly when aspect_ratio=true.
+  uint64_t convert_start_ns = time_get_ns();
   char *ascii_frame = ascii_convert_with_capabilities(composite, width, h, &caps_snapshot, true, false,
                                                       render_client->client_palette_chars);
+  uint64_t convert_end_ns = time_get_ns();
+  uint64_t convert_duration_ns = convert_end_ns - convert_start_ns;
+
+  if (convert_duration_ns > 5000000) { // Log if > 5ms
+    char duration_str[32];
+    format_duration_ns((double)convert_duration_ns, duration_str, sizeof(duration_str));
+    log_warn("SLOW_ASCII_CONVERT: Client %u took %s to convert %dx%d image to ASCII", target_client_id, duration_str,
+             composite->w, composite->h);
+  }
 
   return ascii_frame;
 }
@@ -911,6 +926,8 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
                                           int *out_sources_count) {
   (void)wants_stretch; // Unused - we always handle aspect ratio ourselves
 
+  uint64_t frame_gen_start_ns = time_get_ns();
+
   // Initialize output parameters
   if (out_grid_changed) {
     *out_grid_changed = false;
@@ -928,7 +945,9 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
 
   // Collect all active clients and their image sources
   image_source_t sources[MAX_CLIENTS];
+  uint64_t collect_start_ns = time_get_ns();
   int source_count = collect_video_sources(sources, MAX_CLIENTS);
+  uint64_t collect_end_ns = time_get_ns();
 
   // Count sources that actually have video data
   int sources_with_video = 0;
@@ -936,6 +955,14 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     if (sources[i].has_video && sources[i].image) {
       sources_with_video++;
     }
+  }
+
+  static uint64_t last_detailed_log = 0;
+  uint64_t now_ns = collect_end_ns;
+  if (now_ns - last_detailed_log > 333333333) { // Log every 333ms (3x per second)
+    last_detailed_log = now_ns;
+    log_info("FRAME_GEN_START: target_client=%u sources=%d collect=%.1fms", target_client_id, sources_with_video,
+             (collect_end_ns - collect_start_ns) / 1000000.0);
   }
 
   // Return the source count for debugging/tracking
@@ -1103,6 +1130,14 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     if (sources[i].image) {
       image_destroy_to_pool(sources[i].image);
     }
+  }
+
+  uint64_t frame_gen_end_ns = time_get_ns();
+  uint64_t frame_gen_duration_ns = frame_gen_end_ns - frame_gen_start_ns;
+  if (frame_gen_duration_ns > 10000000) { // Log if > 10ms
+    char duration_str[32];
+    format_duration_ns((double)frame_gen_duration_ns, duration_str, sizeof(duration_str));
+    log_warn("SLOW_FRAME_GENERATION: Client %u full frame gen took %s", target_client_id, duration_str);
   }
 
   return out;

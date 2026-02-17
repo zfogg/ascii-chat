@@ -449,6 +449,10 @@ export function handleKeyExchangeInit(rawPacket: Uint8Array): void {
     throw new Error("WASM module not initialized");
   }
 
+  console.log(
+    `[WASM] handleKeyExchangeInit: Starting, state=${getConnectionState()}, packet_len=${rawPacket.length}`,
+  );
+
   // Allocate memory for packet
   const packetPtr = wasmModule._malloc(rawPacket.length);
   try {
@@ -459,6 +463,9 @@ export function handleKeyExchangeInit(rawPacket: Uint8Array): void {
     const result = wasmModule._client_handle_key_exchange_init(
       packetPtr,
       rawPacket.length,
+    );
+    console.log(
+      `[WASM] handleKeyExchangeInit: Result=${result}, state after=${getConnectionState()}`,
     );
     if (result !== 0) {
       throw new Error("Failed to handle KEY_EXCHANGE_INIT");
@@ -476,6 +483,10 @@ export function handleAuthChallenge(rawPacket: Uint8Array): void {
     throw new Error("WASM module not initialized");
   }
 
+  console.log(
+    `[WASM] handleAuthChallenge: Starting, state=${getConnectionState()}, packet_len=${rawPacket.length}`,
+  );
+
   const packetPtr = wasmModule._malloc(rawPacket.length);
   try {
     wasmModule.HEAPU8.set(rawPacket, packetPtr);
@@ -483,6 +494,9 @@ export function handleAuthChallenge(rawPacket: Uint8Array): void {
     const result = wasmModule._client_handle_auth_challenge(
       packetPtr,
       rawPacket.length,
+    );
+    console.log(
+      `[WASM] handleAuthChallenge: Result=${result}, state after=${getConnectionState()}`,
     );
     if (result !== 0) {
       throw new Error("Failed to handle AUTH_CHALLENGE");
@@ -500,6 +514,10 @@ export function handleHandshakeComplete(rawPacket: Uint8Array): void {
     throw new Error("WASM module not initialized");
   }
 
+  console.log(
+    `[WASM] handleHandshakeComplete: Starting, state=${getConnectionState()}, packet_len=${rawPacket.length}`,
+  );
+
   const packetPtr = wasmModule._malloc(rawPacket.length);
   try {
     wasmModule.HEAPU8.set(rawPacket, packetPtr);
@@ -507,6 +525,9 @@ export function handleHandshakeComplete(rawPacket: Uint8Array): void {
     const result = wasmModule._client_handle_handshake_complete(
       packetPtr,
       rawPacket.length,
+    );
+    console.log(
+      `[WASM] handleHandshakeComplete: Result=${result}, state after=${getConnectionState()}`,
     );
     if (result !== 0) {
       throw new Error("Failed to handle HANDSHAKE_COMPLETE");

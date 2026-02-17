@@ -326,19 +326,11 @@ int log_format_apply(const log_format_t *format, char *buf, size_t buf_size, log
 
     case LOG_FORMAT_LEVEL:
       /* Log level as string (DEV, DEBUG, INFO, WARN, ERROR, FATAL) */
-      if (remaining < 3) {
-        log_debug("log_format_apply: not enough buffer space for level");
-        return -1;
-      }
       written = safe_snprintf(p, remaining + 1, "%s", get_level_string(level));
       break;
 
     case LOG_FORMAT_LEVEL_ALIGNED:
-      /* Log level padded to 5 characters */
-      if (remaining < 5) {
-        log_debug("log_format_apply: not enough buffer space for padded level");
-        return -1;
-      }
+      /* Log level padded to exactly 5 characters (prevents truncation to [DEBU]/[ERRO]) */
       written = safe_snprintf(p, remaining + 1, "%s", get_level_string_padded(level));
       break;
 

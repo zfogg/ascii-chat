@@ -70,9 +70,15 @@ else()
         find_package(Threads REQUIRED)
 
         # Audio libraries (required for static portaudio with JACK support)
-        find_library(JACK_LIB jack)
-        if(NOT JACK_LIB)
-            message(WARNING "libjack not found - PortAudio JACK support will be unavailable")
+        # Skip jack for musl builds since ALSA is built without jack support
+        if(NOT USE_MUSL)
+            find_library(JACK_LIB jack)
+            if(NOT JACK_LIB)
+                message(WARNING "libjack not found - PortAudio JACK support will be unavailable")
+            endif()
+        else()
+            message(STATUS "Skipping jack library for musl build (ALSA built without jack support)")
+            set(JACK_LIB "")
         endif()
 
         # Linux library search paths (Debian/Ubuntu multiarch and Arch/Fedora standard paths)

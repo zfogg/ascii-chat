@@ -640,13 +640,20 @@ asciichat_error_t acip_handle_server_packet(acip_transport_t *transport, packet_
   }
   (void)transport;
 
+  // DEBUG: Log all packet types received
+  log_info("ACIP_HANDLE: Received packet type=%d (0x%04x), payload_len=%zu", type, type, payload_len);
+
   // O(1) dispatch via hash table lookup
   int idx = handler_hash_lookup(g_server_handler_hash, type);
   if (idx < 0) {
+    log_error("ACIP_HANDLER_NOT_FOUND: No handler for packet type=%d (0x%04x)", type, type);
     return SET_ERRNO(ERROR_INVALID_PARAM, "Unhandled server packet type: %d", type);
   }
 
-  return g_server_handlers[idx](payload, payload_len, client_ctx, callbacks);
+  log_info("ACIP_DISPATCH_HANDLER: type=%d, handler_idx=%d, calling handler...", type, idx);
+  asciichat_error_t result = g_server_handlers[idx](payload, payload_len, client_ctx, callbacks);
+  log_info("ACIP_HANDLER_RESULT: type=%d, result=%d", type, result);
+  return result;
 }
 
 // =============================================================================
@@ -655,11 +662,20 @@ asciichat_error_t acip_handle_server_packet(acip_transport_t *transport, packet_
 
 static asciichat_error_t handle_server_image_frame(const void *payload, size_t payload_len, void *client_ctx,
                                                    const acip_server_callbacks_t *callbacks) {
+  log_info("ACIP_IMAGE_FRAME_HANDLER: Received IMAGE_FRAME packet, payload_len=%zu, client_ctx=%p", payload_len,
+           client_ctx);
+
   if (!callbacks->on_image_frame) {
+    log_warn("ACIP_IMAGE_FRAME_HANDLER: No callback registered for on_image_frame");
     return ASCIICHAT_OK;
   }
 
+  log_info("ACIP_IMAGE_FRAME_HANDLER: Callback is registered, checking payload size (need %zu bytes)",
+           sizeof(image_frame_packet_t));
+
   if (payload_len < sizeof(image_frame_packet_t)) {
+    log_error("ACIP_IMAGE_FRAME_HANDLER: Payload too small: %zu bytes (need %zu)", payload_len,
+              sizeof(image_frame_packet_t));
     return SET_ERRNO(ERROR_INVALID_PARAM, "IMAGE_FRAME payload too small: %zu bytes (need %zu)", payload_len,
                      sizeof(image_frame_packet_t));
   }

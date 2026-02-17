@@ -443,10 +443,17 @@ ctest --test-dir build --label-regex "^unit$" --output-on-failure
 ctest --test-dir build -R "crypto_handshake" --output-on-failure
 ```
 
-**Note**: On macOS, use Docker for Criterion tests:
+**Note**: On Intel macOS (not ARM), use Docker for Criterion tests:
 ```bash
 docker-compose -f ./tests/docker-compose.yml run --rm ascii-chat-tests bash -c 'build_docker/bin/test_unit_crypto_handshake'
 ```
+On Linux run the tests directly.
+On Windows Criterion isn't supported.
+
+
+When running Criterion test binaries, run individual tests inside of a test suite by using a filter like `--filter
+"*my_test_name_filter*"` (don't forget the asterisks).
+
 
 ## Development Best Practices
 

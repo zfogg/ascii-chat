@@ -621,6 +621,7 @@ export function ClientPage() {
   const captureLoopFrameCountRef = useRef(0);
   const lastFrameHashRef = useRef(0);
   const uniqueFrameCountRef = useRef(0);
+  const videFrameUpdateCountRef = useRef(0); // Track actual VIDEO updates
   const createWebcamCaptureLoop = useCallback(() => {
     let sendFrameTimeRef = performance.now();
     let lastLogTime = performance.now();
@@ -634,7 +635,7 @@ export function ClientPage() {
       if (now - lastLogTime > 100) {
         lastLogTime = now;
         console.log(
-          `[Client] RAF cycle: calls=${captureLoopCountRef.current}, frames_sent=${captureLoopFrameCountRef.current}, unique=${uniqueFrameCountRef.current}, ready=${!!clientRef.current && connectionState === ConnectionState.CONNECTED}`,
+          `[Client] RAF cycle: calls=${captureLoopCountRef.current}, frames_sent=${captureLoopFrameCountRef.current}, unique=${uniqueFrameCountRef.current}, video_updates=${videFrameUpdateCountRef.current}, ready=${!!clientRef.current && connectionState === ConnectionState.CONNECTED}`,
         );
       }
 
@@ -649,6 +650,7 @@ export function ClientPage() {
             const frameHash = computeFrameHash(frame.data);
             if (frameHash !== lastFrameHashRef.current) {
               uniqueFrameCountRef.current++;
+              videFrameUpdateCountRef.current++;
               lastFrameHashRef.current = frameHash;
               console.log(
                 `[Client] NEW UNIQUE FRAME #${uniqueFrameCountRef.current}: hash=0x${frameHash.toString(16)}`,

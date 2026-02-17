@@ -46,6 +46,7 @@ export class ClientConnection {
   private wasmReinitInProgress = false;
   private deferredPackets: Uint8Array[] = [];
   private socketHasEverOpened = false; // Track if this socket instance has ever opened
+  private packetStats: Map<number, number> = new Map(); // Track packets by type
 
   constructor(private options: ClientConnectionOptions) {}
 
@@ -274,6 +275,26 @@ export class ClientConnection {
       // Parse packet header
       const parsed = parsePacket(rawPacket);
       const name = typeName(parsed.type);
+
+      // Track packet statistics
+      const count = (this.packetStats.get(parsed.type) || 0) + 1;
+      this.packetStats.set(parsed.type, count);
+
+      // Log stats every 100 packets
+      if (
+        Array.from(this.packetStats.values()).reduce((a, b) => a + b, 0) %
+          100 ===
+        0
+      ) {
+        const stats: string[] = [];
+        for (const [type, cnt] of this.packetStats.entries()) {
+          stats.push(`${packetTypeName(type)}=${cnt}`);
+        }
+        console.error(
+          `[ClientConnection] PACKET STATS (total packets): ${stats.join(", ")}`,
+        );
+      }
+
       console.log(`[ClientConnection] ========== PACKET RECEIVED ==========`);
       console.log(`[ClientConnection] Type: ${parsed.type} (${name})`);
       console.log(
@@ -328,6 +349,17 @@ export class ClientConnection {
         return;
       }
 
+      // Allow SERVER_STATE packets during any state (they arrive early in connection)
+      if (parsed.type === PacketType.SERVER_STATE) {
+        console.error(
+          `[ClientConnection] >>> Got SERVER_STATE packet during ${ConnectionState[getConnectionState()]} state - processing anyway`,
+        );
+        // Dispatch to callback but don't require CONNECTED state
+        const payload = rawPacket.slice(22); // Skip header
+        this.onPacketCallback?.(parsed, payload);
+        return;
+      }
+
       // For non-handshake packets during handshake, log a warning
       const state = getConnectionState();
       if (state !== ConnectionState.CONNECTED) {
@@ -374,6 +406,10 @@ export class ClientConnection {
           console.log(
             `[ClientConnection] Inner payload extracted: ${innerPayload.length} bytes`,
           );
+
+          // Track inner packet types too
+          const innerCount = (this.packetStats.get(innerParsed.type) || 0) + 1;
+          this.packetStats.set(innerParsed.type, innerCount);
 
           if (innerParsed.type === PacketType.ASCII_FRAME) {
             console.log(

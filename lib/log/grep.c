@@ -927,37 +927,41 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
       // Copy matched text, re-applying background after any [0m or [00m reset codes
       size_t match_byte_len = colored_match_end - colored_match_start;
       const char *match_src = colored_text + colored_match_start;
-      char *dst_end = highlight_buffer + sizeof(highlight_buffer) - 50; // Leave room for final codes
+      char *dst_end = highlight_buffer + sizeof(highlight_buffer) - 1; // Absolute buffer end
       size_t i = 0;
-      while (i < match_byte_len && dst < dst_end) {
+      while (i < match_byte_len) {
         // Check for [0m or [00m reset codes
         if (i + 4 <= match_byte_len && match_src[i] == '\x1b' && match_src[i + 1] == '[' && match_src[i + 2] == '0' &&
             match_src[i + 3] == 'm') {
-          // Found [0m - copy it and re-apply background
-          if (dst + 23 >= dst_end)
-            break;                 // Need room for [0m + background code
+          // Found [0m - copy it and re-apply background (if room)
+          if (dst + 4 >= dst_end)
+            break;                 // Not enough space for the reset code itself
           *dst++ = match_src[i++]; // ESC
           *dst++ = match_src[i++]; // '['
           *dst++ = match_src[i++]; // '0'
           *dst++ = match_src[i++]; // 'm'
-          // Re-apply highlight background after reset
-          uint8_t r2, g2, b2;
-          get_highlight_color(&r2, &g2, &b2);
-          dst = append_truecolor_bg(dst, r2, g2, b2);
+          // Re-apply highlight background after reset (only if room)
+          if (dst + 20 < dst_end) {
+            uint8_t r2, g2, b2;
+            get_highlight_color(&r2, &g2, &b2);
+            dst = append_truecolor_bg(dst, r2, g2, b2);
+          }
         } else if (i + 5 <= match_byte_len && match_src[i] == '\x1b' && match_src[i + 1] == '[' &&
                    match_src[i + 2] == '0' && match_src[i + 3] == '0' && match_src[i + 4] == 'm') {
-          // Found [00m - copy it and re-apply background
-          if (dst + 24 >= dst_end)
-            break;                 // Need room for [00m + background code
+          // Found [00m - copy it and re-apply background (if room)
+          if (dst + 5 >= dst_end)
+            break;                 // Not enough space for the reset code itself
           *dst++ = match_src[i++]; // ESC
           *dst++ = match_src[i++]; // '['
           *dst++ = match_src[i++]; // '0'
           *dst++ = match_src[i++]; // '0'
           *dst++ = match_src[i++]; // 'm'
-          // Re-apply highlight background after reset
-          uint8_t r2, g2, b2;
-          get_highlight_color(&r2, &g2, &b2);
-          dst = append_truecolor_bg(dst, r2, g2, b2);
+          // Re-apply highlight background after reset (only if room)
+          if (dst + 20 < dst_end) {
+            uint8_t r2, g2, b2;
+            get_highlight_color(&r2, &g2, &b2);
+            dst = append_truecolor_bg(dst, r2, g2, b2);
+          }
         } else {
           // Regular character - just copy
           if (dst + 1 >= dst_end)
@@ -1020,37 +1024,41 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
   // Copy matched text, re-applying background after any [0m or [00m reset codes
   size_t match_byte_len = colored_end - colored_start;
   const char *match_src = colored_text + colored_start;
-  char *dst_end = highlight_buffer + sizeof(highlight_buffer) - 50; // Leave room for final codes
+  char *dst_end = highlight_buffer + sizeof(highlight_buffer) - 1; // Absolute buffer end
   size_t i = 0;
-  while (i < match_byte_len && dst < dst_end) {
+  while (i < match_byte_len) {
     // Check for [0m or [00m reset codes
     if (i + 4 <= match_byte_len && match_src[i] == '\x1b' && match_src[i + 1] == '[' && match_src[i + 2] == '0' &&
         match_src[i + 3] == 'm') {
-      // Found [0m - copy it and re-apply background
-      if (dst + 23 >= dst_end)
-        break;                 // Need room for [0m + background code
+      // Found [0m - copy it and re-apply background (only if room)
+      if (dst + 4 >= dst_end)
+        break;                 // Not enough space for even the reset code
       *dst++ = match_src[i++]; // ESC
       *dst++ = match_src[i++]; // '['
       *dst++ = match_src[i++]; // '0'
       *dst++ = match_src[i++]; // 'm'
-      // Re-apply highlight background after reset
-      uint8_t r2, g2, b2;
-      get_highlight_color(&r2, &g2, &b2);
-      dst = append_truecolor_bg(dst, r2, g2, b2);
+      // Re-apply highlight background after reset (only if room)
+      if (dst + 20 < dst_end) {
+        uint8_t r2, g2, b2;
+        get_highlight_color(&r2, &g2, &b2);
+        dst = append_truecolor_bg(dst, r2, g2, b2);
+      }
     } else if (i + 5 <= match_byte_len && match_src[i] == '\x1b' && match_src[i + 1] == '[' &&
                match_src[i + 2] == '0' && match_src[i + 3] == '0' && match_src[i + 4] == 'm') {
-      // Found [00m - copy it and re-apply background
-      if (dst + 24 >= dst_end)
-        break;                 // Need room for [00m + background code
+      // Found [00m - copy it and re-apply background (only if room)
+      if (dst + 5 >= dst_end)
+        break;                 // Not enough space for even the reset code
       *dst++ = match_src[i++]; // ESC
       *dst++ = match_src[i++]; // '['
       *dst++ = match_src[i++]; // '0'
       *dst++ = match_src[i++]; // '0'
       *dst++ = match_src[i++]; // 'm'
-      // Re-apply highlight background after reset
-      uint8_t r3, g3, b3;
-      get_highlight_color(&r3, &g3, &b3);
-      dst = append_truecolor_bg(dst, r3, g3, b3);
+      // Re-apply highlight background after reset (only if room)
+      if (dst + 20 < dst_end) {
+        uint8_t r3, g3, b3;
+        get_highlight_color(&r3, &g3, &b3);
+        dst = append_truecolor_bg(dst, r3, g3, b3);
+      }
     } else {
       // Regular character - just copy
       if (dst + 1 >= dst_end)

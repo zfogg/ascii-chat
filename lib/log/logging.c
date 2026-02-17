@@ -119,22 +119,35 @@ static const char DEFAULT_LOG_FORMAT[] =
  * @return Padded level string (e.g., "INFO ", "WARN ", "DEBUG")
  */
 const char *get_level_string_padded(log_level_t level) {
+  const char *result;
   switch (level) {
   case LOG_INFO:
-    return "INFO "; // 5 chars: INFO + 1 space
+    result = "INFO "; // 5 chars: INFO + 1 space
+    break;
   case LOG_WARN:
-    return "WARN "; // 5 chars: WARN + 1 space
+    result = "WARN "; // 5 chars: WARN + 1 space
+    break;
   case LOG_DEV:
-    return "DEV  "; // 5 chars: DEV + 2 spaces
+    result = "DEV  "; // 5 chars: DEV + 2 spaces
+    break;
   case LOG_DEBUG:
-    return "DEBUG"; // 5 chars: DEBUG (no padding needed)
+    result = "DEBUG"; // 5 chars: DEBUG (no padding needed)
+    break;
   case LOG_ERROR:
-    return "ERROR"; // 5 chars: ERROR (no padding needed)
+    result = "ERROR"; // 5 chars: ERROR (no padding needed)
+    break;
   case LOG_FATAL:
-    return "FATAL"; // 5 chars: FATAL (no padding needed)
+    result = "FATAL"; // 5 chars: FATAL (no padding needed)
+    break;
   default:
-    return level_strings[level]; // Fallback to unpadded
+    result = "?????"; // Invalid level - return 5 question marks
   }
+  // Verify length
+  if (strlen(result) != 5) {
+    fprintf(stderr, "ERROR: get_level_string_padded() returned non-5-char string: '%s' (len=%zu)\n", result,
+            strlen(result));
+  }
+  return result;
 }
 
 #define LOG_COLOR_COUNT 8 /* DEV, DEBUG, WARN, INFO, ERROR, FATAL, GREY, RESET */
@@ -888,8 +901,17 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
 
   /* For colored output, recolor the plain text with ANSI codes */
   int colored_len = 0;
-  if (use_colors) {
+  if (use_colors && plain_len > 0) {
     colored_len = (int)log_recolor_plain_entry(plain_log_line, colored_log_line, sizeof(colored_log_line));
+    /* If recoloring failed, fall back to plain text */
+    if (colored_len <= 0) {
+      // log_recolor_plain_entry failed - use plain text (no colors) since the format isn't compatible
+      // This happens when using simple formats like "[%time] [%level] %message"
+      colored_len = plain_len;
+      if (plain_len > 0 && plain_len < (int)sizeof(colored_log_line)) {
+        memcpy(colored_log_line, plain_log_line, (size_t)plain_len + 1);
+      }
+    }
   } else {
     /* No colors - use plain text */
     colored_len = plain_len;
@@ -1732,10 +1754,7 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
     return 0; // Level string too long or empty
   }
   SAFE_STRNCPY(level_str, level_start, level_len);
-  // Strip trailing whitespace from level (e.g., "DEBUG " -> "DEBUG")
-  while (level_len > 0 && (level_str[level_len - 1] == ' ' || level_str[level_len - 1] == '\t')) {
-    level_len--;
-  }
+  // Preserve level string with padding intact for correct grep highlighting position mapping
   level_str[level_len] = '\0';
 
   // Determine log level for color selection

@@ -716,6 +716,9 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
   // New format: [width:4][height:4][compressed_flag:4][data_size:4][rgb_data:data_size]
   // Old format: [width:4][height:4][rgb_data:w*h*3] (for backward compatibility)
   // Use atomic compare-and-swap to avoid race condition - ensures thread-safe auto-enabling of video stream
+
+  log_info("RECV_IMAGE_FRAME: client_id=%u, len=%zu", atomic_load(&client->client_id), len);
+
   if (!data || len < sizeof(uint32_t) * 2) {
     disconnect_client_for_bad_data(client, "IMAGE_FRAME payload too small: %zu bytes", len);
     return;
@@ -828,6 +831,24 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
         frame->height = img_height;
         frame->capture_timestamp_ns = (uint64_t)time(NULL) * NS_PER_SEC_INT;
         frame->sequence_number = ++client->frames_received;
+
+        // DEBUG: Compute hash of incoming RGB data to detect duplicates
+        uint32_t incoming_rgb_hash = 0;
+        for (size_t i = 0; i < rgb_data_size && i < 1000; i++) {
+          incoming_rgb_hash = (uint32_t)((uint64_t)incoming_rgb_hash * 31 + ((unsigned char *)rgb_data)[i]);
+        }
+        static uint32_t last_incoming_hash = 0;
+        if (incoming_rgb_hash != last_incoming_hash) {
+          log_info(
+              "INCOMING_FRAME CHANGE: Client %u sent NEW frame #%u: size=%zu, dims=%ux%u, hash=0x%08x (prev=0x%08x)",
+              atomic_load(&client->client_id), client->frames_received, rgb_data_size, img_width, img_height,
+              incoming_rgb_hash, last_incoming_hash);
+          last_incoming_hash = incoming_rgb_hash;
+        } else {
+          log_dev_every(25000, "INCOMING_FRAME DUPLICATE: Client %u frame #%u hash=0x%08x (no change)",
+                        atomic_load(&client->client_id), client->frames_received, incoming_rgb_hash);
+        }
+
         video_frame_commit(client->incoming_video_buffer);
       } else {
         if (needs_free && rgb_data) {
