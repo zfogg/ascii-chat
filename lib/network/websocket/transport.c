@@ -385,7 +385,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
                                         void **out_allocated_buffer) {
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
 
-  log_dev_every(4500000, "🔄 WEBSOCKET_RECV: ENTRY");
+  log_info("🔄 WEBSOCKET_RECV: ENTRY - Starting to wait for fragments");
 
   // Check connection first without holding queue lock
   mutex_lock(&ws_data->state_mutex);
@@ -447,7 +447,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
     }
 
     fragment_count++;
-    log_info("[WS_REASSEMBLE] Fragment #%d: %zu bytes, first=%d, final=%d, assembled_so_far=%zu", fragment_count,
+    log_warn("[WS_REASSEMBLE] Fragment #%d: %zu bytes, first=%d, final=%d, assembled_so_far=%zu", fragment_count,
              frag.len, frag.first, frag.final, assembled_size);
 
     // Sanity check: first fragment must have first=1, continuations must have first=0
