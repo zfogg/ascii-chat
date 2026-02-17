@@ -628,7 +628,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       // Reset fragment buffer for next message
       SAFE_FREE(conn_data->fragment_buffer);
       conn_data->fragment_size = 0;
-      // Don't reset capacity - keep the allocation for next message
+      conn_data->fragment_capacity = 0; // Reset capacity so next fragment allocates fresh buffer
 
       mutex_lock(&ws_data->queue_mutex);
       bool success = ringbuffer_write(ws_data->recv_queue, &msg);
