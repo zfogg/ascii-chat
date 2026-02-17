@@ -308,6 +308,25 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
                       snap->client_id, incoming_hash, frame_size_val);
       }
 
+      // DETAILED BUFFER INSPECTION: Extract and log frame dimensions + first pixels
+      if (frame_data_ptr && frame_size_val >= 8) {
+        uint32_t width_net, height_net;
+        memcpy(&width_net, frame_data_ptr, sizeof(uint32_t));
+        memcpy(&height_net, (char *)frame_data_ptr + sizeof(uint32_t), sizeof(uint32_t));
+        uint32_t width = NET_TO_HOST_U32(width_net);
+        uint32_t height = NET_TO_HOST_U32(height_net);
+
+        // Extract first 3 RGB pixels to inspect actual pixel data
+        uint8_t *pixel_ptr = (uint8_t *)frame_data_ptr + 8;
+        uint32_t first_pixel_rgb = 0;
+        if (frame_size_val >= 11) {
+          first_pixel_rgb = ((uint32_t)pixel_ptr[0] << 16) | ((uint32_t)pixel_ptr[1] << 8) | (uint32_t)pixel_ptr[2];
+        }
+
+        log_info("BUFFER_INSPECT: Client %u dims=%ux%u pixel_data_size=%zu first_pixel_rgb=0x%06x data_hash=0x%08x",
+                 snap->client_id, width, height, frame_size_val - 8, first_pixel_rgb, incoming_hash);
+      }
+
       log_debug_every(5000000, "Video mixer: client %u incoming frame hash=0x%08x size=%zu", snap->client_id,
                       incoming_hash, frame_size_val);
 

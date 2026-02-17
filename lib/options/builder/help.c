@@ -310,6 +310,14 @@ static int calculate_section_max_col_width(const options_config_t *config, const
       int len = 0;
       len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, "%s", binary_name);
 
+      // Include mode name in width calculation (using plain text, not colored)
+      if (!example->is_utility_command) {
+        const char *mode_name = get_mode_name_from_bitmask(example->mode_bitmask);
+        if (mode_name) {
+          len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", mode_name);
+        }
+      }
+
       if (example->args) {
         len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", example->args);
       }
@@ -319,9 +327,8 @@ static int calculate_section_max_col_width(const options_config_t *config, const
         max_width = w;
     }
 
-    // Cap EXAMPLES section at 75 chars max
-    if (max_width > 75)
-      max_width = 75;
+    // Allow examples to expand wider (no hard cap) - layout function will handle based on terminal width
+    // Previously capped at 75, but long URLs and other content may exceed this
   } else if (strcmp(section_type, "modes") == 0) {
     // Calculate max width for MODES section
     if (config->num_modes == 0)

@@ -218,10 +218,16 @@ void layout_print_two_column_row(FILE *stream, const char *first_column, const c
 
   SAFE_FREE(stripped);
 
-  // Define first column as a relatively small, fixed width (around 35 chars)
-  // This is intentionally small to allow descriptions to be wide and wrap across multiple lines
-  // We ignore first_col_len parameter here because it's calculated as the max width of all items
-  int fixed_first_col_width = 35;
+  // Use calculated first_col_len if provided (accounts for UTF-8 and ANSI codes),
+  // otherwise default to 35. The provided width respects both colored text and UTF-8 characters.
+  // Allow the first column to expand up to 60% of terminal width, but leave room for description.
+  int fixed_first_col_width = (first_col_len > 0) ? first_col_len : 35;
+  int max_first_col_width = (term_width * 6) / 10;
+  if (max_first_col_width < 40)
+    max_first_col_width = 40;
+  if (fixed_first_col_width > max_first_col_width) {
+    fixed_first_col_width = max_first_col_width;
+  }
 
   // Second column starts after first column (with 2 spaces padding)
   // This allows descriptions to be quite wide for wrapping

@@ -2397,14 +2397,22 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
   uint32_t client_id = atomic_load(&client->client_id);
   bool is_new_frame = (incoming_pixel_hash != client->last_received_frame_hash);
 
+  // Inspect first few pixels of incoming frame
+  uint32_t first_pixel_rgb = 0;
+  if (data_len >= 3) {
+    first_pixel_rgb = ((uint32_t)((unsigned char *)pixel_data)[0] << 16) |
+                      ((uint32_t)((unsigned char *)pixel_data)[1] << 8) | (uint32_t)((unsigned char *)pixel_data)[2];
+  }
+
   if (is_new_frame) {
-    log_info("RECV_FRAME #%u NEW: Client %u dimensions=%ux%u pixel_size=%zu hash=0x%08x (prev=0x%08x)",
+    log_info("RECV_FRAME #%u NEW: Client %u dimensions=%ux%u pixel_size=%zu hash=0x%08x first_rgb=0x%06x (prev=0x%08x)",
              client->frames_received, client_id, header->width, header->height, data_len, incoming_pixel_hash,
-             client->last_received_frame_hash);
+             first_pixel_rgb, client->last_received_frame_hash);
     client->last_received_frame_hash = incoming_pixel_hash;
   } else {
-    log_info("RECV_FRAME #%u DUP: Client %u dimensions=%ux%u pixel_size=%zu hash=0x%08x", client->frames_received,
-             client_id, header->width, header->height, data_len, incoming_pixel_hash);
+    log_info("RECV_FRAME #%u DUP: Client %u dimensions=%ux%u pixel_size=%zu hash=0x%08x first_rgb=0x%06x",
+             client->frames_received, client_id, header->width, header->height, data_len, incoming_pixel_hash,
+             first_pixel_rgb);
   }
 
   // Store frame data directly to incoming_video_buffer (don't wait for legacy handler)
