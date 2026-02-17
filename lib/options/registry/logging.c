@@ -143,9 +143,13 @@ const registry_entry_t g_logging_entries[] = {
      offsetof(options_t, log_format),
      NULL,
      sizeof(((options_t *)0)->log_format),
-     "Custom log format string. Supported specifiers: %time(fmt), %level, %level_aligned, %file, %line, %func, %tid, "
-     "%message. "
-     "Example: '[%time(%H:%M:%S)] [%level_aligned] %message'. Escape %% for literal %, \\\\ for literal backslash.",
+     "Custom log format string. Format specifiers: %time(fmt) - time with strftime format (see 'man 3 strftime' for "
+     "codes like %Y, %m, %d, %H, %M, %S); "
+     "%level - log level (DEV/DEBUG/INFO/WARN/ERROR/FATAL); %level_aligned - level padded to 5 chars; "
+     "%file - full file path; %file_relative - file path relative to project root; %line - line number; "
+     "%func - function name; %tid - thread ID; %message - log message. "
+     "Example: '[%time(%Y-%m-%d %H:%M:%S)] [%level_aligned] %file_relative:%line %message'. "
+     "Escape %% for literal %, \\\\ for literal backslash.",
      "LOGGING",
      "FORMAT",
      false,
@@ -163,7 +167,8 @@ const registry_entry_t g_logging_entries[] = {
      offsetof(options_t, log_format_console_only),
      NULL,
      sizeof(bool),
-     "Apply log format only to console output (file logs use default format).",
+     "Apply custom log format (--log-format) only to console output (file logs use default format). See --log-format "
+     "for supported format specifiers.",
      "LOGGING",
      NULL,
      false,
