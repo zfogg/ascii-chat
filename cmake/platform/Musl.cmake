@@ -489,14 +489,19 @@ function(configure_musl_post_project)
     # Define helper function to link Alpine libc++ to static executables
     # Usage: link_alpine_libcxx(target_name)
     # Always uses PRIVATE keyword signature (modern CMake best practice)
+    # Uses LINKER: syntax for proper linker directive handling
     function(link_alpine_libcxx TARGET_NAME)
         if(ALPINE_LIBCXX_STATIC AND ALPINE_LIBCXXABI_STATIC)
+            # Link libc++ and libc++abi using explicit linker directives
+            # The LINKER: prefix ensures CMake processes this as a linker flag
             target_link_libraries(${TARGET_NAME} PRIVATE
-                ${ALPINE_LIBCXX_STATIC}
-                ${ALPINE_LIBCXXABI_STATIC}
+                "LINKER:--whole-archive"
+                "${ALPINE_LIBCXX_STATIC}"
+                "${ALPINE_LIBCXXABI_STATIC}"
+                "LINKER:--no-whole-archive"
             )
             if(ALPINE_LIBUNWIND_STATIC)
-                target_link_libraries(${TARGET_NAME} PRIVATE ${ALPINE_LIBUNWIND_STATIC})
+                target_link_libraries(${TARGET_NAME} PRIVATE "${ALPINE_LIBUNWIND_STATIC}")
             endif()
         endif()
     endfunction()

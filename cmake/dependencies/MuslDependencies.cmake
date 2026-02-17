@@ -970,40 +970,15 @@ set(PCRE2_INCLUDE_DIRS "${PCRE2_PREFIX}/include")
 # =============================================================================
 # systemd - System daemon library for hardware discovery and session management
 # =============================================================================
-message(STATUS "Skipping ${BoldBlue}systemd${ColorReset} for musl build (meson.version issue) - keepawake feature will be disabled")
+# systemd is intentionally skipped for musl builds. The code explicitly excludes
+# systemd linking for musl (lib/CMakeLists.txt: if(NOT USE_MUSL)). The keepawake
+# feature uses a glibc-independent fallback for musl. Attempting to build systemd
+# v259.1 for musl fails due to extensive glibc/musl incompatibilities and is
+# unnecessary since the built library is never linked.
+message(STATUS "Skipping ${BoldBlue}systemd${ColorReset} for musl build - keepawake uses glibc-independent fallback")
 
-set(SYSTEMD_PREFIX "${MUSL_DEPS_DIR_STATIC}/systemd")
-set(SYSTEMD_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/systemd-build")
-
-# Only add external project if library doesn't exist
-if(NOT EXISTS "${SYSTEMD_PREFIX}/lib/libsystemd.a")
-    message(STATUS "  systemd library not found in cache, will build from source")
-    ExternalProject_Add(systemd-musl
-        URL https://github.com/systemd/systemd/archive/refs/tags/v259.1.tar.gz
-        URL_HASH SHA256=7af4f36db512ad2f0f749a0f9886370edeb2bb5128014fc47cdf73702c7e1911
-        PREFIX ${SYSTEMD_BUILD_DIR}
-        STAMP_DIR ${SYSTEMD_BUILD_DIR}/stamps
-        UPDATE_DISCONNECTED 1
-        BUILD_ALWAYS 0
-        CONFIGURE_COMMAND env CC=clang CXX=clang++ CFLAGS=-fPIC\ -O2\ -target\ x86_64-linux-musl CXXFLAGS=-fPIC\ -O2\ -target\ x86_64-linux-musl\ -stdlib=libc++ LDFLAGS=-fPIC meson setup --prefix=${SYSTEMD_PREFIX} --default-library=static -Dman=disabled -Dhwdb=false -Dtests=false -Dselinux=false -Dapparmor=false -Dsmack=false <BUILD_DIR> <SOURCE_DIR>
-        BUILD_COMMAND meson compile -C <BUILD_DIR> -j 4
-        INSTALL_COMMAND meson install -C <BUILD_DIR>
-        BUILD_BYPRODUCTS ${SYSTEMD_PREFIX}/lib/libsystemd.a
-        LOG_DOWNLOAD TRUE
-        LOG_CONFIGURE TRUE
-        LOG_BUILD TRUE
-        LOG_INSTALL TRUE
-        LOG_OUTPUT_ON_FAILURE TRUE
-    )
-else()
-    message(STATUS "  ${BoldBlue}systemd${ColorReset} library found in cache: ${BoldMagenta}${SYSTEMD_PREFIX}/lib/libsystemd.a${ColorReset}")
-    # Create a dummy target so dependencies can reference it
-    add_custom_target(systemd-musl)
-endif()
-
-set(SYSTEMD_FOUND TRUE)
-set(SYSTEMD_LIBRARIES "${SYSTEMD_PREFIX}/lib/libsystemd.a")
-set(SYSTEMD_INCLUDE_DIRS "${SYSTEMD_PREFIX}/include")
+# Create dummy target for any cmake code that might check for it
+add_custom_target(systemd-musl)
 
 # =============================================================================
 # libwebsockets - WebSocket transport for browser clients
