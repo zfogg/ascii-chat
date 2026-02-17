@@ -33,6 +33,7 @@ typedef struct {
   acip_transport_t *transport;       ///< ACIP transport for this connection
   asciichat_thread_t handler_thread; ///< Client handler thread
   bool handler_started;              ///< True if handler thread was started
+  bool cleaning_up;                  ///< True if cleanup is in progress (prevents race with remove_client)
 
   // Fragment assembly for large messages
   uint8_t *fragment_buffer; ///< Buffer for assembling fragmented messages
@@ -142,6 +143,11 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     log_info("[LWS_CALLBACK_CLOSED] WebSocket client disconnected, wsi=%p, handler_started=%d, timestamp=%llu",
              (void *)wsi, conn_data ? conn_data->handler_started : -1, (unsigned long long)close_callback_start_ns);
 
+    // Mark cleanup in progress to prevent race conditions with other threads accessing transport
+    if (conn_data) {
+      conn_data->cleaning_up = true;
+    }
+
     // Clean up fragment buffer
     if (conn_data && conn_data->fragment_buffer) {
       SAFE_FREE(conn_data->fragment_buffer);
@@ -201,12 +207,25 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
                   (unsigned long long)writeable_callback_start_ns);
 
     // Dequeue and send pending data
-    if (!conn_data || !conn_data->transport) {
-      log_dev_every(4500000, "SERVER_WRITEABLE: No conn_data or transport");
+    if (!conn_data) {
+      log_dev_every(4500000, "SERVER_WRITEABLE: No conn_data");
       break;
     }
 
-    websocket_transport_data_t *ws_data = (websocket_transport_data_t *)conn_data->transport->impl_data;
+    // Check if cleanup is in progress to avoid race condition with remove_client
+    if (conn_data->cleaning_up) {
+      log_dev_every(4500000, "SERVER_WRITEABLE: Cleanup in progress, skipping");
+      break;
+    }
+
+    // Snapshot the transport pointer to avoid race condition with cleanup thread
+    acip_transport_t *transport_snapshot = conn_data->transport;
+    if (!transport_snapshot) {
+      log_dev_every(4500000, "SERVER_WRITEABLE: No transport");
+      break;
+    }
+
+    websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport_snapshot->impl_data;
     if (!ws_data || !ws_data->send_queue) {
       log_dev_every(4500000, "SERVER_WRITEABLE: No ws_data or send_queue");
       break;
@@ -372,8 +391,16 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       break;
     }
 
-    if (!conn_data->transport) {
-      log_error("LWS_CALLBACK_RECEIVE: conn_data->transport is NULL! ESTABLISHED never called?");
+    // Check if cleanup is in progress to avoid race condition with remove_client
+    if (conn_data->cleaning_up) {
+      log_debug("LWS_CALLBACK_RECEIVE: Cleanup in progress, discarding received data");
+      break;
+    }
+
+    // Snapshot the transport pointer to avoid race condition with cleanup thread
+    acip_transport_t *transport_snapshot = conn_data->transport;
+    if (!transport_snapshot) {
+      log_error("LWS_CALLBACK_RECEIVE: transport is NULL! ESTABLISHED never called?");
       // Try to initialize the transport here as a fallback
       const struct lws_protocols *protocol = lws_get_protocol(wsi);
       if (!protocol || !protocol->user) {
@@ -423,6 +450,9 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
       conn_data->handler_started = true;
       log_info("LWS_CALLBACK_RECEIVE: Handler thread spawned in fallback");
+
+      // Update snapshot after creating transport
+      transport_snapshot = conn_data->transport;
     }
 
     if (!in || len == 0) {
@@ -432,8 +462,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     // Handler thread was spawned in LWS_CALLBACK_ESTABLISHED (or RECEIVE fallback)
     // (It fires for server-side connections and properly initializes client_info_t)
 
-    // Get transport data
-    websocket_transport_data_t *ws_data = (websocket_transport_data_t *)conn_data->transport->impl_data;
+    // Get transport data using snapshotted pointer
+    websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport_snapshot->impl_data;
     if (!ws_data) {
       log_error("WebSocket transport has no implementation data");
       break;
