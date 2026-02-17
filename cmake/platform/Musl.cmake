@@ -40,7 +40,7 @@ function(configure_musl_pre_project)
     # Homebrew provides its own glibc and libraries on macOS, so we should use those
     # However, respect explicit preset override (e.g., release-musl preset)
     # Note: linuxbrew on Linux should still use musl for better performance
-    if(APPLE AND (DEFINED ENV{HOMEBREW_PREFIX} OR DEFINED ENV{HOMEBREW_CELLAR}))
+    if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin" AND (DEFINED ENV{HOMEBREW_PREFIX} OR DEFINED ENV{HOMEBREW_CELLAR}))
         # Check if USE_MUSL is already set in cache (from preset cacheVariables)
         get_property(_use_musl_cached CACHE USE_MUSL PROPERTY VALUE SET)
         if(_use_musl_cached)
