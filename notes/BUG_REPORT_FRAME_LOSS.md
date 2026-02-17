@@ -218,14 +218,30 @@ All of these operations complete in microseconds. If our code is NOT achieving m
 
 When investigating slow network operations, the question is not "is this operation too slow for a computer?" but rather "what in our code is blocking progress?"
 
-## NEW BUG FOUND: Missing RX Flow Control Implementation (2026-02-17)
+## Investigation: WebSocket Abnormal Closures (2026-02-17)
 
-**The real issue:** When recv_queue fills up, we log a warning but **do NOT call `lws_rx_flow_control(wsi, 0)`** to pause receiving.
+**Observed behavior:**
+- Browser client sends frames continuously (confirmed: 200+ frames sent)
+- Server receives approximately 180-200 frames total
+- Connection closes with code 1006 (abnormal closure) after ~10 seconds
+- Client receives 0 frames from server (0 FPS)
 
-- Line 643-648 in `lib/network/websocket/server.c`: when ringbuffer_write fails, we just drop the message
-- Missing: `lws_rx_flow_control(wsi, 0)` to tell LWS to pause receiving
-- Result: messages are dropped, recv thread gets out of sync, WebSocket closes abnormally (code 1006)
+**Attempted fixes and results:**
+1. **Flow control implementation** - Added `lws_rx_flow_control(wsi, 0)` when recv_queue fills
+   - Result: No improvement, code 1006 still occurs
+   - Thread-safety concerns identified and addressed
 
-**The fix:** When recv_queue is full, apply backpressure by calling `lws_rx_flow_control(wsi, 0)`. When recv_queue drains, resume with `lws_rx_flow_control(wsi, 1)`.
+2. **Increased recv_queue size** - Changed WEBSOCKET_RECV_QUEUE_SIZE from 512 to 4096
+   - Result: No improvement, connection still closes abnormally
 
-This is the root cause of 0 FPS on WebSocket clients - the connection closes when the queue fills because we don't tell LWS to pause.
+3. **Removed unsafe flow control** - Reverted to simple drop-on-overflow
+   - Result: Still code 1006, confirming it's not a flow control issue
+
+**Key insight:** The WebSocket closes abnormally BEFORE the recv_queue becomes a bottleneck.
+The problem occurs during the initial frame transmission phase, not during queue overflow.
+
+**Root cause is still unknown:** Need to investigate:
+- LWS event loop behavior with large messages
+- Fragment reassembly issues
+- Protocol-level errors in fragment handling
+- Possible memory corruption or buffer overruns
