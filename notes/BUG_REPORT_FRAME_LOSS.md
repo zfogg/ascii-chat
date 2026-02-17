@@ -2,8 +2,30 @@
 
 **Date:** 2026-02-17
 **Severity:** HIGH
-**Status:** ROOT CAUSE IDENTIFIED — FIXED WITH EXTENSIONS + ASYNC DISPATCH
+**Status:** PARTIALLY FIXED — 19 FPS ACHIEVED (NEED 30 FPS)
 **Component:** WebSocket Server / RX Flow Control + Message Dispatch Threading (`lib/network/websocket/server.c`, `lib/network/acip/server.c`)
+
+## Latest Update (2026-02-17 18:50 UTC)
+
+### Key Finding: permessage-deflate Causes Connection Closure
+
+When permessage-deflate extension was enabled, multi-fragment messages caused immediate abnormal connection closure (LWS_CALLBACK_CLOSED code 1006):
+- Browser sends first fragment (first=1, final=0)
+- Server queues fragment, returns 0 (success)
+- LWS immediately fires LWS_CALLBACK_CLOSED
+- Continuation frames never arrive
+
+**Workaround:** Disabled permessage-deflate extension. Now achieving **19 FPS** in e2e test (up from 0 FPS).
+
+**Performance:** Without compression, 921KB frames take 151-259ms to reassemble (21 fragments at ~32KB/fragment).
+
+**With compression working properly:** ~50-100KB frames (10:1 compression) should reassemble in ~15-30ms, enabling **30+ FPS**.
+
+**TODO:** Debug why LWS closes connection with permessage-deflate enabled. Possible causes:
+1. Browser not sending continuation frames properly
+2. LWS extension callback configuration issue
+3. Frame format incompatibility with compression
+4. Race condition in fragment delivery
 
 ## Executive Summary
 
