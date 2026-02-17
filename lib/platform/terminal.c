@@ -36,12 +36,9 @@ bool terminal_should_color_output(int fd) {
 
   // Get current color setting (auto/true/false)
   int color_setting = GET_OPTION(color);
-  fprintf(stderr, "DEBUG: terminal_should_color_output: color_setting=%d, COLOR_SETTING_TRUE=%d\n", color_setting,
-          COLOR_SETTING_TRUE);
 
   // Priority 1: --color=true - Force colors ON (overrides everything)
   if (color_setting == COLOR_SETTING_TRUE) {
-    fprintf(stderr, "DEBUG: terminal_should_color_output: returning true (--color=true)\n");
     return true; // ALWAYS colorize
   }
 
