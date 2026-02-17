@@ -355,16 +355,7 @@ if(ASCIICHAT_ENABLE_CTEST_DASHBOARD)
     include(${CMAKE_SOURCE_DIR}/cmake/test/CTest.cmake)
 endif()
 
-# =============================================================================
-# Post-Build Processing (must come after Executables.cmake)
-# =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/utils/PostBuild.cmake)
-# Copy DLL dependencies to bin directory on Windows (for non-static builds)
-if(WIN32)
-    copy_windows_dlls(ascii-chat)
-endif()
-# Check static linking for Release builds
-check_static_linking(ascii-chat)
+# Post-Build Processing is now included from src/CMakeLists.txt to ensure correct target scope
 
 # =============================================================================
 # Project meta stuff like documentation, installation packages, and custom targets like clang-tidy and clang-format
