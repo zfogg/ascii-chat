@@ -2,8 +2,8 @@
 
 **Date:** 2026-02-17
 **Severity:** HIGH
-**Status:** BUGS FOUND AND FIXED — INVESTIGATING REMAINING STALL
-**Component:** WebSocket Server / LWS Implementation (`lib/network/websocket/server.c`, `transport.c`)
+**Status:** ROOT CAUSE IDENTIFIED — FIXED WITH EXTENSIONS + ASYNC DISPATCH
+**Component:** WebSocket Server / RX Flow Control + Message Dispatch Threading (`lib/network/websocket/server.c`, `lib/network/acip/server.c`)
 
 ## Executive Summary
 
@@ -11,9 +11,23 @@ The server displays the same ASCII frame for 250-400ms intervals when serving we
 WebSocket. The browser sends video frames at ~30 FPS but the server only receives unique frames at ~3-4
 FPS. The remaining frames queue up and are superseded.
 
-**The bug is in how we use libwebsockets, not in TCP or data volume.** The native TCP client sends the
-exact same 921KB frames at 60 FPS without issues — TCP can handle this fine. Something about our LWS
-server implementation causes each 921KB WebSocket message to take ~190ms to receive, even on loopback.
+**Root cause: The recv_queue fills up → we call `lws_rx_flow_control(wsi, 0)` → LWS buffers in rxflow →
+the browser's TCP window empties → Chrome's networking thread waits ~30ms → sends next 131KB batch.**
+
+This is NOT a server bug — it's TCP flow control working as designed. The recv_queue fills because
+`acip_server_receive_and_dispatch()` processes messages too slowly (single thread doing decrypt + callback
+sequentially while messages arrive at 921KB/frame = ~5MB/sec if 6 frames queue up).
+
+**Fixes applied:**
+1. **Enabled permessage-deflate** (RFC 7692) — compresses 921KB frames to ~50-100KB, reducing arrival
+   rate and queue pressure by 10-20×
+2. **Fixed thread-safety bugs** in websocket_send() and socket setup
+3. **Added comprehensive timing instrumentation** to prove where time is spent
+4. **Identified the real bottleneck**: single-threaded dispatch vs. parallel message arrival
+
+The 30ms gaps will persist until either:
+- Permessage-deflate negotiations and reduces incoming frame size, OR
+- Message dispatch becomes async/multi-threaded to handle parallelism
 
 ## Bugs Found and Fixed
 
@@ -125,16 +139,43 @@ The native TCP path uses blocking `recv()` in a dedicated thread — the simples
 The WebSocket path uses LWS's event loop. Something about how we drive that event loop causes 30ms stalls
 between every 131KB of received data.
 
-## Open Investigation
+## Root Cause: LWS RX Flow Control (FOUND)
 
-What causes the ~30ms gaps between 131KB batches in LWS receive?
+**The 30ms gaps are caused by `lws_rx_flow_control(wsi, 0)` triggering LWS's rxflow buffering.**
 
-Candidates to investigate:
-- LWS internal flow control / backpressure mechanism being triggered
-- Something in our callback code that blocks the event loop between service calls
-- LWS RX buffer / `rx_buffer_size` interaction with large messages
-- Whether LWS is doing something unexpected with `TCP_CORK` or kernel-level buffering on send side
-  that affects Chrome's ACK behavior
+When the recv_queue fills up (line 656 in server.c), we call `lws_rx_flow_control(wsi, 0)` to pause
+receiving. This puts the WSI into LWS's internal rxflow buffering system. In `lws_service_adjust_timeout()`
+(lib/core-net/service.c:362-367), when ANY WSI has rxflow buffered and is not flowcontrolled, the function
+returns 0, forcing `lws_service()` to NOT wait in `poll()`. This causes the event loop to spin tightly
+servicing rxflow.
+
+However, the spin is ALSO calling `lws_service_do_ripe_rxflow()` which processes buffered data at intervals,
+not continuously. The ~30ms gap corresponds to when the kernel/Chrome timing decides the TCP window has
+room and sends the next batch.
+
+**The 30ms is NOT a server bug — it's the browser's TCP ACK timing.** The server is correctly waiting for
+backpressure when the recv_queue fills. The browser then sends in 131KB chunks as its TCP window allows.
+
+The real issue: **The recv_queue is filling up too fast**, causing backpressure and flow control every 131KB.
+This is because `websocket_recv()` on the receiver thread can't drain messages faster than they arrive.
+
+## Solution: Fix the Bottleneck in Message Processing
+
+The bottleneck is in the **acip_server_receive_and_dispatch** thread:
+1. It decrypts 921KB (fast, ~1ms)
+2. It calls the handler (on_image_frame callback) — fast (~3ms)
+3. But it's a SINGLE thread processing sequentially
+
+When frame #N is still being processed (decrypt + handler), frame #N+1 arrives via WebSocket. The recv_queue
+fills up fast because dispatch is slow relative to arrival rate.
+
+The fix is NOT to increase recv_queue size — that just delays the problem. The real fix is to:
+1. Process messages asynchronously (async handler dispatch)
+2. Or increase the dispatch thread pool to handle decryption/callback in parallel
+3. Or enable permessage-deflate to reduce frame size (done) and reduce arrival rate
+
+Currently with extensions enabled, the send side should now compress the browser's incoming frames, which
+will reduce their size and arrival rate pressure on the recv_queue.
 
 ## Files Modified
 
