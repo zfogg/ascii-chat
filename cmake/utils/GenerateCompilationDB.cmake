@@ -99,35 +99,17 @@ function(generate_compilation_database)
         set(_macos_sdk_for_db "")
 
         if(ASCIICHAT_MACOS_SDK_FOR_TOOLS)
-            # This is the SDK path saved in configure_llvm_post_project() before clearing CMAKE_OSX_SYSROOT
             set(_macos_sdk_for_db "${ASCIICHAT_MACOS_SDK_FOR_TOOLS}")
-        elseif(CMAKE_OSX_SYSROOT)
-            # Use current CMAKE_OSX_SYSROOT if set
-            set(_macos_sdk_for_db "${CMAKE_OSX_SYSROOT}")
-        elseif(DEFINED ENV{HOMEBREW_SDKROOT})
-            # Try Homebrew's environment variable
-            set(_macos_sdk_for_db "$ENV{HOMEBREW_SDKROOT}")
         else()
-            # Final fallback: detect using xcrun
-            find_program(_XCRUN_EXECUTABLE xcrun)
-            if(_XCRUN_EXECUTABLE)
-                execute_process(
-                    COMMAND ${_XCRUN_EXECUTABLE} --show-sdk-path
-                    OUTPUT_VARIABLE _MACOS_SDK_PATH
-                    OUTPUT_STRIP_TRAILING_WHITESPACE
-                    ERROR_QUIET
-                )
-                if(_MACOS_SDK_PATH AND EXISTS "${_MACOS_SDK_PATH}")
-                    set(_macos_sdk_for_db "${_MACOS_SDK_PATH}")
-                endif()
-            endif()
+            # Fallback: detect via the centralized SDK detection cascade
+            include(${CMAKE_SOURCE_DIR}/cmake/utils/DetectMacOSSDK.cmake)
+            asciichat_detect_macos_sdk(_macos_sdk_for_db)
         endif()
 
         # Pass SDK path to the temp cmake build
         # Note: LLVM.cmake will clear CMAKE_OSX_SYSROOT in main build, but temp build needs it for header detection
         if(_macos_sdk_for_db)
             list(APPEND _cmake_configure_args "-DCMAKE_OSX_SYSROOT=${_macos_sdk_for_db}")
-            # Also pass it as ASCIICHAT_MACOS_SDK_FOR_TOOLS so LLVM.cmake can find it
             list(APPEND _cmake_configure_args "-DASCIICHAT_MACOS_SDK_FOR_TOOLS=${_macos_sdk_for_db}")
             message(STATUS "Using macOS SDK for compilation database: ${_macos_sdk_for_db}")
         else()

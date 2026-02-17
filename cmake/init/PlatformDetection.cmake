@@ -57,18 +57,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     # This is important for finding system headers with tools like the defer transformation tool
     # which use libclang/libTooling to process source files
     if(NOT CMAKE_OSX_SYSROOT)
-        find_program(_XCRUN_EXECUTABLE xcrun)
-        if(_XCRUN_EXECUTABLE)
-            execute_process(
-                COMMAND ${_XCRUN_EXECUTABLE} --show-sdk-path
-                OUTPUT_VARIABLE _MACOS_SDK_PATH
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-                ERROR_QUIET
-            )
-            if(_MACOS_SDK_PATH)
-                set(CMAKE_OSX_SYSROOT "${_MACOS_SDK_PATH}" CACHE PATH "macOS SDK path" FORCE)
-                message(STATUS "Detected macOS SDK: ${CMAKE_OSX_SYSROOT}")
-            endif()
+        include(${CMAKE_SOURCE_DIR}/cmake/utils/DetectMacOSSDK.cmake)
+        asciichat_detect_macos_sdk(_detected_sdk)
+        if(_detected_sdk)
+            set(CMAKE_OSX_SYSROOT "${_detected_sdk}" CACHE PATH "macOS SDK path" FORCE)
+            message(STATUS "Detected macOS SDK: ${CMAKE_OSX_SYSROOT}")
         endif()
     endif()
 

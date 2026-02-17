@@ -174,18 +174,15 @@ macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
     add_library(${MODULE_NAME} OBJECT ${MODULE_SRCS})
     # OBJECT libraries need PIC for linking into shared libraries
     set_target_properties(${MODULE_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
-    # On ARM64 with LTO, explicitly add -fPIC to compiler flags
-    # (POSITION_INDEPENDENT_CODE alone is insufficient for LTO on aarch64)
-    if(ASCIICHAT_ENABLE_IPO AND CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+    # With LTO, explicitly add -fPIC to compiler flags
+    # (POSITION_INDEPENDENT_CODE alone is insufficient for LTO with LLD)
+    if(ASCIICHAT_ENABLE_IPO)
         target_compile_options(${MODULE_NAME} PRIVATE -fPIC)
     endif()
-    # On Unix, use initial-exec TLS model for thread-local variables
-    # initial-exec generates TPOFF32 relocations (fast, but only works in executables)
-    # Skip for musl builds: musl static-PIE handles TLS natively, and initial-exec
-    # relocations are incompatible with the shared library target's -shared flag
-    if(NOT WIN32 AND NOT USE_MUSL)
-        target_compile_options(${MODULE_NAME} PRIVATE -ftls-model=initial-exec)
-    endif()
+    # Use global-dynamic TLS model since OBJECT libs are shared between the main
+    # binary and the shared library. initial-exec generates TPOFF32 relocations that
+    # are invalid in shared libraries. With LTO, the linker performs TLS relaxation
+    # (global-dynamic → initial-exec) in the executable link automatically.
     # Mark all symbols for export when building DLL from OBJECT libraries
     target_compile_definitions(${MODULE_NAME} PRIVATE
         _WIN32_WINNT=0x0A00  # Windows 10
@@ -331,21 +328,15 @@ else()
         )
     elseif(PLATFORM_LINUX)
         target_link_libraries(ascii-chat-platform ${CMAKE_THREAD_LIBS_INIT})
-        # Optional: Link libsystemd on Linux for keepawake functionality
+        # Link libsystemd on Linux for keepawake functionality
         # Skip for musl builds: system libsystemd is glibc-linked and incompatible with static musl linking
         if(NOT USE_MUSL)
-            find_package(PkgConfig QUIET)
-            if(PkgConfig_FOUND)
-                pkg_check_modules(LIBSYSTEMD QUIET libsystemd)
-                if(LIBSYSTEMD_FOUND)
-                    target_include_directories(ascii-chat-platform PRIVATE ${LIBSYSTEMD_INCLUDE_DIRS})
-                    target_link_libraries(ascii-chat-platform ${LIBSYSTEMD_LIBRARIES})
-                    target_compile_definitions(ascii-chat-platform PRIVATE HAVE_LIBSYSTEMD=1)
-                    message(STATUS "libsystemd found: keepawake support enabled")
-                else()
-                    message(STATUS "libsystemd not found: keepawake disabled on Linux (non-critical)")
-                endif()
-            endif()
+            find_package(PkgConfig REQUIRED)
+            pkg_check_modules(LIBSYSTEMD REQUIRED libsystemd)
+            target_include_directories(ascii-chat-platform PRIVATE ${LIBSYSTEMD_INCLUDE_DIRS})
+            target_link_libraries(ascii-chat-platform ${LIBSYSTEMD_LIBRARIES})
+            target_compile_definitions(ascii-chat-platform PRIVATE HAVE_LIBSYSTEMD=1)
+            message(STATUS "libsystemd found: keepawake support enabled")
         else()
             message(STATUS "libsystemd skipped: musl static builds use glibc-independent keepawake")
         endif()
@@ -643,6 +634,9 @@ endif()
 if(LIBWEBSOCKETS_INCLUDE_DIRS)
     target_include_directories(ascii-chat-network PRIVATE ${LIBWEBSOCKETS_INCLUDE_DIRS})
 endif()
+if(LIBWEBSOCKETS_BUILD_TARGET)
+    add_dependencies(ascii-chat-network ${LIBWEBSOCKETS_BUILD_TARGET})
+endif()
 target_compile_definitions(ascii-chat-network PRIVATE PCRE2_CODE_UNIT_WIDTH=8)
 if(NOT BUILDING_OBJECT_LIBS)
     target_link_libraries(ascii-chat-network
@@ -900,6 +894,11 @@ add_library(ascii-chat-shared SHARED
         )
     else()
         target_link_libraries(ascii-chat-shared PRIVATE ${PORTAUDIO_LIBRARIES})
+    endif()
+
+    # Link libsystemd (required for keepawake)
+    if(NOT USE_MUSL)
+        target_link_libraries(ascii-chat-shared PRIVATE ${LIBSYSTEMD_LIBRARIES})
     endif()
 
     # Link WebRTC and other network libraries

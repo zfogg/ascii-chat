@@ -92,17 +92,12 @@ macro(find_dependency_library)
         )
 
         if(${_DEP_NAME}_LIBRARY_RELEASE OR ${_DEP_NAME}_LIBRARY_DEBUG)
-            # Only add libraries that were actually found
-            if(${_DEP_NAME}_LIBRARY_RELEASE AND ${_DEP_NAME}_LIBRARY_DEBUG)
-                set(${_DEP_NAME}_LIBRARIES
-                    optimized ${${_DEP_NAME}_LIBRARY_RELEASE}
-                    debug ${${_DEP_NAME}_LIBRARY_DEBUG}
-                )
-            elseif(${_DEP_NAME}_LIBRARY_RELEASE)
-                set(${_DEP_NAME}_LIBRARIES ${${_DEP_NAME}_LIBRARY_RELEASE})
-            else()
-                set(${_DEP_NAME}_LIBRARIES ${${_DEP_NAME}_LIBRARY_DEBUG})
-            endif()
+            include(${CMAKE_SOURCE_DIR}/cmake/utils/SelectLibraryConfig.cmake)
+            asciichat_select_library_config(
+                RELEASE_LIB ${${_DEP_NAME}_LIBRARY_RELEASE}
+                DEBUG_LIB   ${${_DEP_NAME}_LIBRARY_DEBUG}
+                OUTPUT      ${_DEP_NAME}_LIBRARIES
+            )
             set(${_DEP_NAME}_INCLUDE_DIRS ${${_DEP_NAME}_INCLUDE_DIR})
             set(${_DEP_NAME}_FOUND TRUE)
             message(STATUS "Found ${BoldGreen}${_DEP_NAME}${ColorReset} via vcpkg: ${${_DEP_NAME}_LIBRARY_RELEASE}${${_DEP_NAME}_LIBRARY_DEBUG}")

@@ -42,6 +42,9 @@ endfunction()
 # =============================================================================
 
 function(configure_build_type_post_project)
+    # Use LLD for all build types (required for -Wl,-mllvm flags, faster linking)
+    configure_lld_linker()
+
     # Build type specific flags and sanitizer configuration
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         # Debug mode WITH sanitizers (default)

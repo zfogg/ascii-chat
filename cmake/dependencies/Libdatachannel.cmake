@@ -22,6 +22,21 @@
 #   6. This prevents cluttering the main project with submodule targets
 # =============================================================================
 
+# Platform-specific system libraries for libdatachannel (used by both vcpkg and source builds)
+macro(_libdatachannel_link_platform_libs)
+    if(APPLE)
+        target_link_libraries(libdatachannel INTERFACE
+            "-framework Foundation"
+            "-framework Security"
+            ${ASCIICHAT_STATIC_LIBCXX_LIBS}
+        )
+    elseif(WIN32)
+        target_link_libraries(libdatachannel INTERFACE ws2_32 iphlpapi bcrypt)
+    else()
+        target_link_libraries(libdatachannel INTERFACE $<$<NOT:$<BOOL:${USE_MUSL}>>:stdc++> pthread)
+    endif()
+endmacro()
+
 # =============================================================================
 # Try vcpkg first if enabled
 # =============================================================================
@@ -58,47 +73,35 @@ if(USE_VCPKG AND VCPKG_ROOT)
         find_library(LIBUSRSCTP_LIBRARY_RELEASE NAMES usrsctp libusrsctp PATHS "${VCPKG_LIB_PATH}" NO_DEFAULT_PATH)
         find_library(LIBUSRSCTP_LIBRARY_DEBUG NAMES usrsctp libusrsctp PATHS "${VCPKG_DEBUG_LIB_PATH}" NO_DEFAULT_PATH)
 
-        # Link libdatachannel and its dependencies
-        if(LIBDATACHANNEL_LIBRARY_RELEASE AND LIBDATACHANNEL_LIBRARY_DEBUG)
-            target_link_libraries(libdatachannel INTERFACE
-                optimized ${LIBDATACHANNEL_LIBRARY_RELEASE}
-                debug ${LIBDATACHANNEL_LIBRARY_DEBUG}
-            )
-        elseif(LIBDATACHANNEL_LIBRARY_RELEASE)
-            target_link_libraries(libdatachannel INTERFACE ${LIBDATACHANNEL_LIBRARY_RELEASE})
-        else()
-            target_link_libraries(libdatachannel INTERFACE ${LIBDATACHANNEL_LIBRARY_DEBUG})
+        # Link libdatachannel and its dependencies using release/debug selection
+        include(${CMAKE_SOURCE_DIR}/cmake/utils/SelectLibraryConfig.cmake)
+
+        asciichat_select_library_config(
+            RELEASE_LIB ${LIBDATACHANNEL_LIBRARY_RELEASE}
+            DEBUG_LIB   ${LIBDATACHANNEL_LIBRARY_DEBUG}
+            OUTPUT      _LIBDATACHANNEL_LIBS
+        )
+        target_link_libraries(libdatachannel INTERFACE ${_LIBDATACHANNEL_LIBS})
+
+        asciichat_select_library_config(
+            RELEASE_LIB ${LIBJUICE_LIBRARY_RELEASE}
+            DEBUG_LIB   ${LIBJUICE_LIBRARY_DEBUG}
+            OUTPUT      _LIBJUICE_LIBS
+        )
+        if(_LIBJUICE_LIBS)
+            target_link_libraries(libdatachannel INTERFACE ${_LIBJUICE_LIBS})
         endif()
 
-        # Link dependencies
-        if(LIBJUICE_LIBRARY_RELEASE AND LIBJUICE_LIBRARY_DEBUG)
-            target_link_libraries(libdatachannel INTERFACE optimized ${LIBJUICE_LIBRARY_RELEASE} debug ${LIBJUICE_LIBRARY_DEBUG})
-        elseif(LIBJUICE_LIBRARY_RELEASE)
-            target_link_libraries(libdatachannel INTERFACE ${LIBJUICE_LIBRARY_RELEASE})
-        elseif(LIBJUICE_LIBRARY_DEBUG)
-            target_link_libraries(libdatachannel INTERFACE ${LIBJUICE_LIBRARY_DEBUG})
+        asciichat_select_library_config(
+            RELEASE_LIB ${LIBUSRSCTP_LIBRARY_RELEASE}
+            DEBUG_LIB   ${LIBUSRSCTP_LIBRARY_DEBUG}
+            OUTPUT      _LIBUSRSCTP_LIBS
+        )
+        if(_LIBUSRSCTP_LIBS)
+            target_link_libraries(libdatachannel INTERFACE ${_LIBUSRSCTP_LIBS})
         endif()
 
-        if(LIBUSRSCTP_LIBRARY_RELEASE AND LIBUSRSCTP_LIBRARY_DEBUG)
-            target_link_libraries(libdatachannel INTERFACE optimized ${LIBUSRSCTP_LIBRARY_RELEASE} debug ${LIBUSRSCTP_LIBRARY_DEBUG})
-        elseif(LIBUSRSCTP_LIBRARY_RELEASE)
-            target_link_libraries(libdatachannel INTERFACE ${LIBUSRSCTP_LIBRARY_RELEASE})
-        elseif(LIBUSRSCTP_LIBRARY_DEBUG)
-            target_link_libraries(libdatachannel INTERFACE ${LIBUSRSCTP_LIBRARY_DEBUG})
-        endif()
-
-        # Platform-specific system libraries
-        if(APPLE)
-            target_link_libraries(libdatachannel INTERFACE
-                "-framework Foundation"
-                "-framework Security"
-                ${ASCIICHAT_STATIC_LIBCXX_LIBS}
-            )
-        elseif(WIN32)
-            target_link_libraries(libdatachannel INTERFACE ws2_32 iphlpapi bcrypt)
-        else()
-            target_link_libraries(libdatachannel INTERFACE $<$<NOT:$<BOOL:${USE_MUSL}>>:stdc++> pthread)
-        endif()
+        _libdatachannel_link_platform_libs()
 
         # OpenSSL for TURN credentials
         if(NOT TARGET OpenSSL::Crypto)
@@ -333,18 +336,10 @@ if(NOT libdatachannel_POPULATED)
             list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_CXX_FLAGS=${_libdc_cxx_flags}")
 
             # Pass the macOS SDK sysroot for proper SDK header resolution
-            if(CMAKE_OSX_SYSROOT)
-                list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_OSX_SYSROOT=${CMAKE_OSX_SYSROOT}")
-            else()
-                execute_process(
-                    COMMAND xcrun --show-sdk-path
-                    OUTPUT_VARIABLE _macos_sdk_path
-                    OUTPUT_STRIP_TRAILING_WHITESPACE
-                    ERROR_QUIET
-                )
-                if(_macos_sdk_path)
-                    list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_OSX_SYSROOT=${_macos_sdk_path}")
-                endif()
+            include(${CMAKE_SOURCE_DIR}/cmake/utils/DetectMacOSSDK.cmake)
+            asciichat_detect_macos_sdk(_macos_sdk_path)
+            if(_macos_sdk_path)
+                list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_OSX_SYSROOT=${_macos_sdk_path}")
             endif()
         endif()
 
@@ -480,18 +475,7 @@ endif()
         "${LIBUSRSCTP_STATIC_LIB}"
     )
 
-    # Platform-specific system libraries
-    if(APPLE)
-        target_link_libraries(libdatachannel INTERFACE
-            "-framework Foundation"
-            "-framework Security"
-            ${ASCIICHAT_STATIC_LIBCXX_LIBS}
-        )
-    elseif(WIN32)
-        target_link_libraries(libdatachannel INTERFACE ws2_32 iphlpapi bcrypt)
-    else()
-        target_link_libraries(libdatachannel INTERFACE $<$<NOT:$<BOOL:${USE_MUSL}>>:stdc++> pthread)
-    endif()
+    _libdatachannel_link_platform_libs()
 
     # OpenSSL for TURN credentials
     if(NOT TARGET OpenSSL::Crypto)

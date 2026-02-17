@@ -19,6 +19,11 @@
 #include <ascii-chat/util/time.h>
 #include <libwebsockets.h>
 #include <string.h>
+#ifndef _WIN32
+#include <sys/socket.h>
+#include <netinet/tcp.h>
+#include <netinet/in.h>
+#endif
 
 // Shared internal types (websocket_recv_msg_t, websocket_transport_data_t)
 #include <ascii-chat/network/websocket/internal.h>
@@ -46,6 +51,12 @@ typedef struct {
   size_t pending_send_offset; ///< Current offset in message (bytes already sent)
   bool has_pending_send;      ///< True if there's an in-progress message
 } websocket_connection_data_t;
+
+// Per-connection callback counters for diagnosing event loop interleaving.
+// These track how many RECEIVE vs WRITEABLE callbacks fire during message assembly.
+static _Atomic uint64_t g_receive_callback_count = 0;
+static _Atomic uint64_t g_writeable_callback_count = 0;
+static _Atomic uint64_t g_receive_first_fragment_ns = 0;
 
 /**
  * @brief libwebsockets callback for ACIP protocol
@@ -95,6 +106,38 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
     log_info("WebSocket client connected from %s", client_ip);
     log_debug("[LWS_CALLBACK_ESTABLISHED] Client IP: %s", client_ip);
+
+    // Optimize TCP for high-throughput large message transfer.
+    // TCP delayed ACK (default ~40ms) causes the sender to stall waiting for ACKs,
+    // creating ~30ms gaps between 128KB chunk deliveries for large messages.
+    // TCP_QUICKACK forces immediate ACKs so the sender can push data continuously.
+    // TCP_NODELAY disables Nagle's algorithm for the send path.
+#ifndef _WIN32
+    {
+      int fd = lws_get_socket_fd(wsi);
+      if (fd >= 0) {
+        int quickack = 1;
+        if (setsockopt(fd, IPPROTO_TCP, TCP_QUICKACK, &quickack, sizeof(quickack)) < 0) {
+          log_warn("Failed to set TCP_QUICKACK: %s", SAFE_STRERROR(errno));
+        }
+        int nodelay = 1;
+        if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay)) < 0) {
+          log_warn("Failed to set TCP_NODELAY: %s", SAFE_STRERROR(errno));
+        }
+        // Do NOT set SO_RCVBUF/SO_SNDBUF manually.
+        // Setting SO_RCVBUF disables TCP autotuning on Linux, which locks the receive buffer
+        // at the rmem_default (212KB). Without manual override, the kernel can autotune up to
+        // tcp_rmem max (typically 6MB), allowing the entire 921KB video frame to fit in one
+        // TCP window without flow control stalls.
+        int actual_rcv = 0, actual_snd = 0;
+        socklen_t optlen = sizeof(int);
+        getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &actual_rcv, &optlen);
+        getsockopt(fd, SOL_SOCKET, SO_SNDBUF, &actual_snd, &optlen);
+        log_info("[WS_SOCKET] TCP_QUICKACK=1, TCP_NODELAY=1, SO_RCVBUF=%d (autotuned), SO_SNDBUF=%d", actual_rcv,
+                 actual_snd);
+      }
+    }
+#endif
 
     // Create ACIP WebSocket server transport for this connection
     // Note: We pass NULL for crypto_ctx here - crypto handshake happens at ACIP level
@@ -203,6 +246,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
   case LWS_CALLBACK_SERVER_WRITEABLE: {
     uint64_t writeable_callback_start_ns = time_get_ns();
+    atomic_fetch_add(&g_writeable_callback_count, 1);
     log_dev_every(4500000, "=== LWS_CALLBACK_SERVER_WRITEABLE FIRED === wsi=%p, timestamp=%llu", (void *)wsi,
                   (unsigned long long)writeable_callback_start_ns);
 
@@ -469,8 +513,40 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       break;
     }
 
+    uint64_t callback_enter_ns = time_get_ns(); // Capture entry time for duration measurement
     bool is_first = lws_is_first_fragment(wsi);
     bool is_final = lws_is_final_fragment(wsi);
+    atomic_fetch_add(&g_receive_callback_count, 1);
+
+    // Re-enable TCP_QUICKACK on EVERY fragment delivery.
+    // Linux resets TCP_QUICKACK after each ACK, reverting to delayed ACK mode (~40ms).
+    // Without this, only the first fragment batch benefits from quick ACKs, and subsequent
+    // batches see ~30ms gaps as the sender waits for delayed ACKs before sending more data.
+#ifndef _WIN32
+    {
+      int fd = lws_get_socket_fd(wsi);
+      if (fd >= 0) {
+        int quickack = 1;
+        setsockopt(fd, IPPROTO_TCP, TCP_QUICKACK, &quickack, sizeof(quickack));
+      }
+    }
+#endif
+
+    if (is_first) {
+      // Reset counters at start of new message
+      atomic_store(&g_receive_first_fragment_ns, time_get_ns());
+      atomic_store(&g_writeable_callback_count, 0);
+      atomic_store(&g_receive_callback_count, 1);
+    }
+
+    // Log every fragment's arrival time relative to first fragment
+    {
+      uint64_t first_ns = atomic_load(&g_receive_first_fragment_ns);
+      double elapsed_ms = (double)(callback_enter_ns - first_ns) / 1e6;
+      uint64_t frag_num = atomic_load(&g_receive_callback_count);
+      log_info("[WS_FRAG] #%llu: +%.1fms, %zu bytes (first=%d final=%d buffered=%zu)", (unsigned long long)frag_num,
+               elapsed_ms, len, is_first, is_final, conn_data->fragment_size);
+    }
 
     // Debug: Log raw bytes of incoming fragment
     log_dev_every(4500000, "WebSocket fragment: %zu bytes (first=%d, final=%d, buffered=%zu)", len, is_first, is_final,
@@ -527,6 +603,16 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     // If this is the final fragment, push complete message to receive queue
     if (is_final) {
       log_dev_every(4500000, "Complete message assembled: %zu bytes", conn_data->fragment_size);
+      uint64_t queue_time_ns = time_get_ns();
+      uint64_t first_frag_ns = atomic_load(&g_receive_first_fragment_ns);
+      uint64_t recv_count = atomic_load(&g_receive_callback_count);
+      uint64_t write_count = atomic_load(&g_writeable_callback_count);
+      char assembly_duration_str[32];
+      format_duration_ns((double)(queue_time_ns - first_frag_ns), assembly_duration_str, sizeof(assembly_duration_str));
+      log_info("[WS_TIMING] LWS assembled %zu bytes: %llu RECEIVE callbacks, %llu WRITEABLE callbacks interleaved, "
+               "assembly took %s",
+               conn_data->fragment_size, (unsigned long long)recv_count, (unsigned long long)write_count,
+               assembly_duration_str);
 
       // DEFENSIVE: Log tiny packets
       if (conn_data->fragment_size < 22) {
@@ -583,6 +669,15 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       cond_signal(&ws_data->queue_cond);
       mutex_unlock(&ws_data->queue_mutex);
     }
+
+    // Log callback duration
+    {
+      uint64_t callback_exit_ns = time_get_ns();
+      double callback_dur_us = (double)(callback_exit_ns - callback_enter_ns) / 1e3;
+      if (callback_dur_us > 200) {
+        log_warn("[WS_CALLBACK_DURATION] RECEIVE callback took %.1f µs (> 200µs threshold)", callback_dur_us);
+      }
+    }
     break;
   }
 
@@ -624,6 +719,21 @@ static struct lws_protocols websocket_protocols[] = {
     {NULL, NULL, 0, 0, 0, NULL, 0} // Terminator
 };
 
+/**
+ * @brief WebSocket extensions for the server
+ *
+ * permessage-deflate (RFC 7692) compresses WebSocket messages at the protocol
+ * level. Browsers negotiate this automatically during the handshake. For raw
+ * RGB video frames (~921KB), deflate typically achieves 10:1+ compression,
+ * reducing data to ~50-100KB which fits within a single TCP window and
+ * eliminates the multi-round-trip receive stalls seen with uncompressed data.
+ */
+static const struct lws_extension websocket_extensions[] = {{"permessage-deflate", lws_extension_callback_pm_deflate,
+                                                             "permessage-deflate"
+                                                             "; server_max_window_bits"
+                                                             "; client_max_window_bits"},
+                                                            {NULL, NULL, NULL}};
+
 asciichat_error_t websocket_server_init(websocket_server_t *server, const websocket_server_config_t *config) {
   if (!server || !config || !config->client_handler) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
@@ -648,6 +758,7 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   info.gid = (gid_t)-1; // Cast to avoid undefined behavior with unsigned type
   info.uid = (uid_t)-1; // Cast to avoid undefined behavior with unsigned type
   info.options = LWS_SERVER_OPTION_VALIDATE_UTF8;
+  info.extensions = websocket_extensions;
   info.pt_serv_buf_size = 524288; // 512KB per-thread server buffer for large video frames
 
   // Create libwebsockets context
@@ -668,10 +779,22 @@ asciichat_error_t websocket_server_run(websocket_server_t *server) {
   log_info("WebSocket server starting event loop on port %d", server->port);
 
   // Run libwebsockets event loop
+  uint64_t last_service_ns = 0;
   while (atomic_load(&server->running)) {
-    // Service the context with 50ms timeout
-    // Returns 0 on success, negative on error
-    int result = lws_service(server->context, 50);
+    // Negative timeout means non-blocking: poll(timeout=0).
+    // LWS quirk: passing 0 to lws_service() does NOT mean zero timeout.
+    // Internally, non-negative values get replaced with LWS_POLL_WAIT_LIMIT (~23 days),
+    // and the actual timeout is determined by LWS's internal SUL timer system.
+    // Passing -1 forces timeout_ms=0 in the code path: `if (timeout_ms < 0) timeout_ms = 0;`
+    // This eliminates ~30ms gaps between fragment deliveries that were caused by poll()
+    // blocking on internal LWS timers between socket reads.
+    uint64_t service_start_ns = time_get_ns();
+    if (last_service_ns && service_start_ns - last_service_ns > 30000000) {
+      // > 30ms gap between service calls
+      double gap_ms = (double)(service_start_ns - last_service_ns) / 1e6;
+      log_info_every(1000, "[LWS_SERVICE_GAP] %.1fms gap between lws_service calls", gap_ms);
+    }
+    int result = lws_service(server->context, -1);
     if (result < 0) {
       log_error("libwebsockets service error: %d", result);
       break;

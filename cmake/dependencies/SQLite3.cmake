@@ -46,13 +46,12 @@ if(USE_VCPKG AND VCPKG_ROOT)
 
     if(SQLITE3_LIB_RELEASE OR SQLITE3_LIB_DEBUG)
         set(SQLITE3_FOUND TRUE)
-        if(SQLITE3_LIB_RELEASE AND SQLITE3_LIB_DEBUG)
-            set(SQLITE3_LIBRARIES optimized ${SQLITE3_LIB_RELEASE} debug ${SQLITE3_LIB_DEBUG})
-        elseif(SQLITE3_LIB_RELEASE)
-            set(SQLITE3_LIBRARIES ${SQLITE3_LIB_RELEASE})
-        else()
-            set(SQLITE3_LIBRARIES ${SQLITE3_LIB_DEBUG})
-        endif()
+        include(${CMAKE_SOURCE_DIR}/cmake/utils/SelectLibraryConfig.cmake)
+        asciichat_select_library_config(
+            RELEASE_LIB ${SQLITE3_LIB_RELEASE}
+            DEBUG_LIB   ${SQLITE3_LIB_DEBUG}
+            OUTPUT      SQLITE3_LIBRARIES
+        )
         set(SQLITE3_INCLUDE_DIRS "${SQLITE3_INC}")
         message(STATUS "Found ${BoldGreen}SQLite3${ColorReset} via vcpkg: ${SQLITE3_LIB_RELEASE}${SQLITE3_LIB_DEBUG}")
         return()

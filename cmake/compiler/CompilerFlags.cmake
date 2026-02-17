@@ -5,6 +5,7 @@
 #
 # Functions:
 #   - configure_base_compiler_flags(): Sets base warning flags and frame pointer options
+#   - configure_lld_linker(): Configures LLD linker for all build types
 #   - configure_debug_memory(): Configures DEBUG_MEMORY based on mimalloc, musl, sanitizers
 #   - configure_debug_build_flags(): Sets debug build flags
 #   - configure_release_flags(): Sets release build optimization flags
@@ -157,6 +158,35 @@ function(configure_base_compiler_flags)
 endfunction()
 
 # =============================================================================
+# LLD Linker Configuration (all build types)
+# =============================================================================
+# Use LLD linker for all builds — required for -Wl,-mllvm flags (ThinLTO, PIC)
+# and 2-3x faster than GNU ld / ld64.
+function(configure_lld_linker)
+    if(NOT WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
+        if(ASCIICHAT_LLD_EXECUTABLE)
+            execute_process(
+                COMMAND "${ASCIICHAT_LLD_EXECUTABLE}" --version
+                RESULT_VARIABLE LLD_CHECK_RESULT
+                OUTPUT_QUIET
+                ERROR_QUIET
+            )
+            if(LLD_CHECK_RESULT EQUAL 0)
+                add_link_options(-fuse-ld=lld)
+                if(PLATFORM_LINUX)
+                    add_link_options("LINKER:--allow-multiple-definition")
+                endif()
+                message(STATUS "Using ${BoldCyan}LLD linker${ColorReset} (${ASCIICHAT_LLD_EXECUTABLE})")
+            else()
+                message(STATUS "${Yellow}LLD linker found but not functional${ColorReset} - using default linker")
+            endif()
+        else()
+            message(STATUS "${Yellow}LLD linker not found${ColorReset} - using default linker")
+        endif()
+    endif()
+endfunction()
+
+# =============================================================================
 # DEBUG_MEMORY Configuration
 # =============================================================================
 # Configure DEBUG_MEMORY based on mimalloc, musl, and sanitizer settings
@@ -220,36 +250,7 @@ function(configure_debug_build_flags BUILD_TYPE)
     # Stack protection in debug builds (helps catch buffer overflows early)
     add_compile_options(-fstack-protector-strong)
 
-    # Use LLD linker for faster link times in Debug/Dev builds
-    # LLD is 2-3x faster than default linker (ld64 on macOS, GNU ld on Linux)
-    # Only for Debug/Dev - Release uses default linker for maximum stability
-    if(NOT WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
-        # Use centralized ASCIICHAT_LLD_EXECUTABLE from FindPrograms.cmake
-        # (already searched for platform-appropriate LLD flavor: ld64.lld on macOS, ld.lld on Linux)
-        if(ASCIICHAT_LLD_EXECUTABLE)
-            # Verify the linker actually works (handles broken symlinks)
-            execute_process(
-                COMMAND "${ASCIICHAT_LLD_EXECUTABLE}" --version
-                RESULT_VARIABLE LLD_CHECK_RESULT
-                OUTPUT_QUIET
-                ERROR_QUIET
-            )
-            if(LLD_CHECK_RESULT EQUAL 0)
-                add_link_options(-fuse-ld=lld)
-                # Allow undefined symbols and multiple definitions for WebRTC build tools
-                if(PLATFORM_LINUX)
-                    # Linux ld.lld: use --allow-multiple-definition (GNU ld compatibility)
-                    # This handles any duplicate symbols that might arise from linking WebRTC
-                    add_link_options("LINKER:--allow-multiple-definition")
-                endif()
-                message(STATUS "Using ${BoldCyan}LLD linker${ColorReset} for faster Debug/Dev builds (${ASCIICHAT_LLD_EXECUTABLE})")
-            else()
-                message(STATUS "${Yellow}LLD linker found but not functional${ColorReset} - using default linker")
-            endif()
-        else()
-            message(STATUS "${Yellow}LLD linker not found${ColorReset} - using default linker")
-        endif()
-    endif()
+    # LLD linker setup moved to configure_lld_linker() — called for all build types
 
     # Windows-specific debug info formats
     if(WIN32)

@@ -314,30 +314,9 @@ function(configure_llvm_post_project)
     # macOS SDK handling:
     # - Self-contained LLVM (Homebrew, git-built): clang finds headers automatically, don't use -isysroot
     # - System clang: needs Apple's SDK path to find system headers
-    # IMPORTANT: Save SDK path BEFORE clearing CMAKE_OSX_SYSROOT, so compilation database generation can use it
-    set(_macos_sdk_for_tools "")
-
-    if(CMAKE_OSX_SYSROOT)
-        set(_macos_sdk_for_tools "${CMAKE_OSX_SYSROOT}")
-    elseif(DEFINED ENV{HOMEBREW_SDKROOT})
-        # Homebrew sets HOMEBREW_SDKROOT in the environment
-        set(_macos_sdk_for_tools "$ENV{HOMEBREW_SDKROOT}")
-    else()
-        # If not set yet, try to detect via xcrun
-        find_program(_XCRUN_EXECUTABLE xcrun)
-        if(_XCRUN_EXECUTABLE)
-            execute_process(
-                COMMAND ${_XCRUN_EXECUTABLE} --show-sdk-path
-                OUTPUT_VARIABLE _detected_sdk_path
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-                ERROR_QUIET
-            )
-            if(_detected_sdk_path AND EXISTS "${_detected_sdk_path}")
-                set(_macos_sdk_for_tools "${_detected_sdk_path}")
-            endif()
-            unset(_XCRUN_EXECUTABLE)
-        endif()
-    endif()
+    # Save SDK path BEFORE clearing CMAKE_OSX_SYSROOT, so compilation database generation can use it
+    include(${CMAKE_SOURCE_DIR}/cmake/utils/DetectMacOSSDK.cmake)
+    asciichat_detect_macos_sdk(_macos_sdk_for_tools)
 
     if(_macos_sdk_for_tools)
         set(ASCIICHAT_MACOS_SDK_FOR_TOOLS "${_macos_sdk_for_tools}" CACHE INTERNAL "Saved macOS SDK path for tools (defer, panic, etc.)")

@@ -42,13 +42,12 @@ if(USE_VCPKG AND VCPKG_ROOT)
 
     if(OPUS_LIB_RELEASE OR OPUS_LIB_DEBUG)
         set(OPUS_FOUND TRUE)
-        if(OPUS_LIB_RELEASE AND OPUS_LIB_DEBUG)
-            set(OPUS_LIBRARIES optimized ${OPUS_LIB_RELEASE} debug ${OPUS_LIB_DEBUG})
-        elseif(OPUS_LIB_RELEASE)
-            set(OPUS_LIBRARIES ${OPUS_LIB_RELEASE})
-        else()
-            set(OPUS_LIBRARIES ${OPUS_LIB_DEBUG})
-        endif()
+        include(${CMAKE_SOURCE_DIR}/cmake/utils/SelectLibraryConfig.cmake)
+        asciichat_select_library_config(
+            RELEASE_LIB ${OPUS_LIB_RELEASE}
+            DEBUG_LIB   ${OPUS_LIB_DEBUG}
+            OUTPUT      OPUS_LIBRARIES
+        )
         set(OPUS_INCLUDE_DIRS "${OPUS_INC}")
         message(STATUS "Found ${BoldGreen}Opus${ColorReset} via vcpkg: ${OPUS_LIB_RELEASE}${OPUS_LIB_DEBUG}")
         return()
