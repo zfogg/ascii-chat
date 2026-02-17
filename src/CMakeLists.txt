@@ -492,3 +492,33 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" AND UNIX AND NOT APPLE)
         message(STATUS "Release binary validation: ${BoldYellow}disabled${ColorReset} (llvm-readelf not found)")
     endif()
 endif()
+
+# =============================================================================
+# Post-Build Processing (must be included after ascii-chat target is created)
+# =============================================================================
+include(${CMAKE_SOURCE_DIR}/cmake/utils/PostBuild.cmake)
+# Copy DLL dependencies to bin directory on Windows (for non-static builds)
+if(WIN32)
+    copy_windows_dlls(ascii-chat)
+endif()
+# Check static linking for Release builds
+check_static_linking(ascii-chat)
+
+# =============================================================================
+# WebAssembly Build Targets (Wrappers)
+# =============================================================================
+# Provides WASM build targets that invoke the separate web/web.ascii-chat.com/wasm/
+# build system optimized for Emscripten.
+#
+# Available targets:
+#   mirror-web  - Build mirror mode WASM module only
+#   client-web  - Build client mode WASM module only
+#   wasm        - Build both mirror and client WASM modules
+#
+# Example:
+#   cmake --build build --target wasm
+#
+# The actual WASM build is in web/web.ascii-chat.com/wasm/ with its own
+# CMakeLists.txt optimized for Emscripten.
+# =============================================================================
+# Note: WebAssembly.cmake moved here - append the content below when implementing

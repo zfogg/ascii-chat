@@ -218,6 +218,7 @@ set(LIB_SOURCES_MIRROR
 
     # Logging
     ${LIB_ROOT}/log/logging.c
+    ${LIB_ROOT}/log/format.c
     ${LIB_ROOT}/log/colorize.c
     ${LIB_ROOT}/log/grep.c
     ${LIB_ROOT}/log/interactive_grep.c
