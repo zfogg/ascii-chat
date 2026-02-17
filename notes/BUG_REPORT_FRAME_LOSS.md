@@ -1,329 +1,166 @@
-# Bug Report: 59% Frame Loss - "Same Frame Repeated Over and Over"
+# Bug Report: Frame Loss in WebSocket Client Mode
 
 **Date:** 2026-02-17
 **Severity:** HIGH
-**Status:** DIAGNOSED
-**Component:** Video Frame Buffer / Render Thread
+**Status:** BUGS FOUND AND FIXED — INVESTIGATING REMAINING STALL
+**Component:** WebSocket Server / LWS Implementation (`lib/network/websocket/server.c`, `transport.c`)
 
 ## Executive Summary
 
-The server is displaying the same frame repeatedly for 400-700ms intervals, then abruptly switching to a new frame. This is caused by **59% frame loss in the double-buffered frame storage system**. Out of 49 incoming frames from the browser, only 20 make it to the render buffer—the remaining 29 are dropped silently.
+The server displays the same ASCII frame for 250-400ms intervals when serving web browser clients over
+WebSocket. The browser sends video frames at ~30 FPS but the server only receives unique frames at ~3-4
+FPS. The remaining frames queue up and are superseded.
 
-## Symptoms Observed
+**The bug is in how we use libwebsockets, not in TCP or data volume.** The native TCP client sends the
+exact same 921KB frames at 60 FPS without issues — TCP can handle this fine. Something about our LWS
+server implementation causes each 921KB WebSocket message to take ~190ms to receive, even on loopback.
 
-- User sees ASCII output change only once every 50+ frames
-- Browser sends frames at ~3-4 FPS (from fake video device)
-- Server receives frames at same rate with different pixel data
-- But render output shows only **1-2 unique frames per 13 seconds**
-- When frame DOES change, it changes to a frame that was sent 400-700ms ago
+## Bugs Found and Fixed
 
-## Root Cause Analysis
+### Bug 1: Thread-safety violation in `websocket_send()` (`transport.c`)
 
-### Question 1: Is browser sending different images?
-**Answer: YES ✅**
-- Test confirmed browser sends 49 different frames with varying pixel hashes
-- First pixel RGB values change: 0x010100 → 0x000000 → 0x896047 → etc.
-- Browser WASM successfully captures and transmits unique frames
+`websocket_send()` called `lws_callback_on_writable(ws_data->wsi)` from a non-service thread. Per LWS
+docs, this is not thread-safe and can corrupt LWS internal state. Only `lws_cancel_service()` is safe
+to call from threads other than the service thread.
 
-### Question 2: Is server receiving different frames?
-**Answer: YES ✅**
-- Server's ACIP callback logs 49 RECV_FRAME events with different hashes
-- RECV_FRAME logs show frame data with distinct first_rgb values
-- Frames arrive successfully at network layer
+**Fix:** Removed the call. `lws_cancel_service()` (already there) wakes the service loop, which then
+calls `lws_callback_on_writable_all_protocol()` safely from `LWS_CALLBACK_EVENT_WAIT_CANCELLED`.
 
-### Question 3: Is server storing frames correctly?
-**Answer: NO ❌ - THIS IS THE BUG**
+### Bug 2: `lws_service(ctx, 0)` does not mean non-blocking (`server.c`)
 
-**Evidence:**
-- 49 frames received by server
-- Only 20 BUFFER_FRAME CHANGE logs (40% success rate)
-- **59% frame loss** - frames dropped before reaching render buffer
-- Most common frame hash appears 55 times (same frame rendered 55 times consecutively)
-
-## The Exact Bug
-
-**File:** `lib/video/video_frame.c`
-**Function:** `video_frame_commit()`
-**Lines:** 138-160
-
-### Current Broken Code
-
+Passing `0` to `lws_service()` does NOT produce a non-blocking `poll(timeout=0)`. In LWS source:
 ```c
-void video_frame_commit(video_frame_buffer_t *vfb) {
-  if (!vfb || !vfb->active) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "...");
-    return;
-  }
-
-  // Check if reader has consumed the previous frame
-  if (atomic_load(&vfb->new_frame_available)) {
-    // Reader hasn't consumed yet - we're dropping a frame
-    uint64_t drops = atomic_fetch_add(&vfb->total_frames_dropped, 1) + 1;
-    if (drops == 1 || drops % 100 == 0) {
-      log_dev_every(4500000, "Dropping frame for client %u (reader too slow, total drops: %llu)",
-                    vfb->client_id, (unsigned long long)drops);
-    }
-    // BUG: No return here! Still swaps even though frame is "dropped"
-  }
-
-  // Pointer swap using mutex for thread safety
-  mutex_lock(&vfb->swap_mutex);
-  video_frame_t *temp = vfb->front_buffer;
-  vfb->front_buffer = vfb->back_buffer;
-  vfb->back_buffer = temp;
-  mutex_unlock(&vfb->swap_mutex);
-
-  // Signal reader that new frame is available
-  atomic_store(&vfb->new_frame_available, true);
-  atomic_fetch_add(&vfb->total_frames_received, 1);
-}
+if (timeout_ms < 0) timeout_ms = 0;    // only negative gives poll(0)
+else timeout_ms = LWS_POLL_WAIT_LIMIT; // positive gets replaced with ~23 days
 ```
+The actual poll timeout is then driven by LWS's internal SUL timer system, not the argument.
 
-### The Problem Sequence
+**Fix:** Changed to `lws_service(ctx, -1)` for true non-blocking poll.
 
-1. **Frame 0 arrives** at time T0
-   - `new_frame_available = false`
-   - Swaps: `front_buffer = Frame0`, sets `new_frame_available = true`
+### Bug 3: Crash from `LWS_CALLBACK_FILTER_NETWORK_CONNECTION` handler (`server.c`)
 
-2. **Frame 1-46 arrive** at T0+16ms intervals
-   - Each finds `new_frame_available = true` (render thread hasn't read yet)
-   - Logs "dropping frame" but... **STILL SWAPS ANYWAY**
-   - Each overwrites the back buffer with newer frame data
+Attempted to set TCP socket options at this callback stage. The WSI/socket is not in a state where
+`lws_get_socket_fd()` is valid yet, causing a server crash ("CRASH DETECTED").
 
-3. **Render thread reads** at T0+400ms (too slow!)
-   - Calls `video_frame_get_latest()`
-   - Clears `new_frame_available = false`
-   - Reads current front_buffer (but it's been overwritten 46 times!)
-   - Renders same frame for entire 400ms interval
+**Fix:** Removed the handler. Moved socket option setup to `LWS_CALLBACK_ESTABLISHED` where the socket
+is ready.
 
-4. **Frame 47 arrives** at T0+752ms
-   - Now `new_frame_available = false` (render thread cleared it)
-   - Successfully swaps Frame47
-   - Render thread won't read this until next interval (another 400-700ms)
+### Bug 4: `LWS_WITHOUT_EXTENSIONS=ON` in both LWS builds (`cmake/`)
 
-### Why It's Called "Drop" But Still Swaps
+Both the system LWS package (`/usr/lib/libwebsockets.so.20`) and the musl FetchContent build were
+compiled with `LWS_WITHOUT_EXTENSIONS=ON`. This silently disabled all WebSocket extensions including
+`permessage-deflate`. The server code that sets `info.extensions` was being ignored.
 
-The code logs a drop but doesn't prevent the swap. This creates a confusing state:
-- **Frames are "dropped"** (not displayed immediately)
-- **But they ARE stored** (overwrite the back buffer)
-- **Result:** Latest frame in buffer keeps getting replaced until render thread finally reads
+**Fix:** Updated `cmake/dependencies/Libwebsockets.cmake` to build LWS from source (v4.5.2) instead of
+using the system package, with `-DLWS_WITHOUT_EXTENSIONS=OFF -DLWS_WITH_ZLIB=ON
+-DLWS_WITH_BUNDLED_ZLIB=ON`. Updated `cmake/dependencies/MuslDependencies.cmake` with the same flags.
 
-## Data Evidence
+### Bug 5: TCP socket options not set correctly (`server.c`)
 
-### Frame Arrival vs Buffer Update
+`TCP_QUICKACK` and `TCP_NODELAY` were not set on WebSocket connections. Linux resets `TCP_QUICKACK`
+after each ACK, so it must be re-enabled per fragment.
+
+**Fix:** Set `TCP_QUICKACK` + `TCP_NODELAY` in `LWS_CALLBACK_ESTABLISHED`. Re-set `TCP_QUICKACK` on
+every `LWS_CALLBACK_RECEIVE` call. Removed manual `SO_RCVBUF` — setting it disables Linux TCP
+autotuning and locks the buffer at `rmem_max * 2` instead of allowing the kernel to scale freely.
+
+## Fragment Timing (from `[WS_FRAG]` instrumentation)
+
+After all fixes above, one 921KB frame still takes ~188ms to assemble:
 
 ```
-RECV_FRAME events: 49 new frames received
-  - Frame hashes: 0xd3835983, 0x12540984, 0x052ba0c6, 0x344f69ea, ...
-  - First pixels: 0x010100, 0x000000, 0x896047, 0x605a52, ...
-
-BUFFER_FRAME CHANGE events: Only 20 unique frames in buffer
-  - Loss: 49 - 20 = 29 frames (59%)
-  - Hash 0x237d7777: appears 55 times (same frame repeated)
+#1–4:    0–1ms,     131KB
+#5–7:    4–5ms,     131KB
+#8–10:   33–34ms,   131KB  ← ~30ms gap
+#11–13:  66–69ms,   131KB  ← ~30ms gap
+#14–16:  99–104ms,  131KB  ← ~30ms gap
+#17–19:  128–133ms, 131KB  ← ~30ms gap
+#20–22:  159–171ms, 131KB  ← ~30ms gap
+#23:     188ms,     4.7KB
+Total: 188ms
 ```
 
-### Timeline of Single Frame Being Repeated
+The ~30ms gaps between each 131KB batch are the remaining unexplained stall. The native TCP client does
+NOT have this problem with the same data — so this is a bug in our LWS usage, not a hardware or TCP
+limitation. Computers trivially handle 921KB of data over TCP. The gaps are caused by something in how
+our LWS server code handles data receipt.
+
+## Per-Stage Timing (from `[WS_TIMING]` instrumentation)
+
+### Browser Side
 
 ```
-[00:37:04.762963] BUFFER_INSPECT: hash=0x237d7777 first_pixel=0x8e8474
-[00:37:04.787881] BUFFER_INSPECT: hash=0x237d7777 first_pixel=0x8e8474 ← Same
-[00:37:04.809553] BUFFER_INSPECT: hash=0x237d7777 first_pixel=0x8e8474 ← Same
-[00:37:04.833296] BUFFER_INSPECT: hash=0x237d7777 first_pixel=0x8e8474 ← Same
-[00:37:04.858543] BUFFER_INSPECT: hash=0x237d7777 first_pixel=0x8e8474 ← Same
-
-... (50 more times) ...
-
-[00:37:05.972152] BUFFER_FRAME CHANGE: hash switched to new value
+serialize=7.5ms  encrypt=2.5ms  wrap=7.7ms  ws_send=3.0ms  total=~21ms  size=921708 bytes
 ```
 
-**Duration:** ~770ms of reading the SAME frame data
+### Server Side
 
-### Render Thread Speed Issues
-
-Frame buffer reads occur at inconsistent intervals:
-- Initial reads: 20-25ms apart (40-50 FPS expected) ✅
-- Later reads: 400-700ms apart (1-2 FPS actual) ❌
-
-**Calculated render speed from logs:**
-- 20 unique frames over 13 seconds = 1.54 FPS actual
-- Expected: 60 FPS (VIDEO_RENDER_FPS defined in render.h)
-- Actual: 1.54 FPS
-- **Performance degradation: 97% slower than expected**
-
-## Impact
-
-### Visible to User
-- Video output appears "frozen" for 400-700ms intervals
-- Only ~1-2 unique ASCII frames displayed per 10 seconds
-- Looks like video is buffering or network is dropping packets
-- But it's actually a client-side buffer management issue
-
-### Data Flow Breakdown
 ```
-Browser (60 FPS)
-    ↓ ✅ Different frames
-Server Receiver (60 FPS received)
-    ↓ ❌ 59% dropped in video_frame_commit()
-Render Buffer (only 40% of frames visible)
-    ↓ ✅ Different frames, but outdated
-Render Thread (1-2 FPS)
-    ↓ ✅ Renders what it has
-ASCII Output (1-2 FPS, repeats same frame)
-    ↓
-Client Browser (same frame repeats 50 times)
+LWS assembly:    ~188ms      (cause of the bug — gaps between 131KB batches)
+websocket_recv:  ~1ms        (condition variable — fixed in previous session)
+Decrypt:         ~1ms        (libsodium on 921KB — fast)
+on_image_frame:  ~1–3ms      (hash + memcpy — fast)
 ```
 
-## Root Cause Analysis
+## Disproved Theories
 
-### Why Render Thread is So Slow
+| Theory | Why It Was Wrong |
+|--------|-----------------|
+| Data volume too large for TCP | Native TCP client handles identical 921KB at 60 FPS |
+| LWS event loop starvation | First frame: 0 WRITEABLE callbacks interleaved during assembly |
+| `lws_service(0)` blocking on timers | Changing to `-1` did not change the ~30ms gaps |
+| SO_RCVBUF too small | Increasing it made no difference; was actually disabling autotuning |
+| Server processing speed | Decrypt + callback is ~2ms — not the bottleneck |
+| Recv queue polling latency | Fixed (cond_timedwait), confirmed ~1ms pickup |
 
-Even with expected 60 FPS, the render thread is measuring at **1.54 FPS**. Multiple factors:
+## Cross-Mode Comparison
 
-1. **Frame collection overhead** (`collect_video_sources()`)
-   - Iterates all clients
-   - Reads video frames from each
-   - Computes hashes for change detection
-   - Expensive memcpy operations
+| Mode | Transport | FPS | Bug? |
+|------|-----------|-----|------|
+| Mirror (web WASM) | Local, no network | ~60 FPS | No |
+| Client (native terminal) | TCP socket, 921KB/frame | ~60 FPS | No |
+| Client (web WASM via server) | WebSocket, 921KB/frame | **~4 FPS** | **YES** |
 
-2. **Frame generation overhead** (`create_mixed_ascii_frame_for_client()`)
-   - Converts RGB to ASCII art
-   - Applies color filters
-   - Computes image transformations
-   - Blends multiple video sources
+The native TCP path uses blocking `recv()` in a dedicated thread — the simplest possible I/O pattern.
+The WebSocket path uses LWS's event loop. Something about how we drive that event loop causes 30ms stalls
+between every 131KB of received data.
 
-3. **Possible additional delays**
-   - Mutex contention?
-   - Memory allocation delays?
-   - I/O wait for output buffers?
+## Open Investigation
 
-## Proposed Fixes
+What causes the ~30ms gaps between 131KB batches in LWS receive?
 
-### Immediate Fix: Prevent Frame Overwriting
+Candidates to investigate:
+- LWS internal flow control / backpressure mechanism being triggered
+- Something in our callback code that blocks the event loop between service calls
+- LWS RX buffer / `rx_buffer_size` interaction with large messages
+- Whether LWS is doing something unexpected with `TCP_CORK` or kernel-level buffering on send side
+  that affects Chrome's ACK behavior
 
-**Option 1: Use Frame Queue Instead of Double Buffer**
-- Replace double buffer with simple queue
-- Store N most recent frames instead of just 2
-- Render thread processes queue in order
-- Prevents frame loss, reduces duplication
+## Files Modified
 
-**Option 2: Fix Double Buffer Logic**
-- When `new_frame_available = true`, DON'T swap
-- Return early, log drop, but keep buffer unchanged
-- Only swap when render thread clears the flag
-- Current code claims to "drop" but actually still swaps
+- **`lib/network/websocket/server.c`** — LWS event loop, TCP socket options, permessage-deflate extensions
+- **`lib/network/websocket/transport.c`** — Thread-safety fix (removed lws_callback_on_writable from send thread)
+- **`cmake/dependencies/MuslDependencies.cmake`** — LWS build flags: extensions + zlib enabled
+- **`cmake/dependencies/Libwebsockets.cmake`** — Build LWS from source with extensions for dev builds
 
-**Code change (Option 2):**
-```c
-if (atomic_load(&vfb->new_frame_available)) {
-  // Reader hasn't consumed yet - skip this frame entirely
-  atomic_fetch_add(&vfb->total_frames_dropped, 1);
-  return;  // ← ADD THIS to actually prevent swap!
-}
-
-// Only swap if reader has consumed
-mutex_lock(&vfb->swap_mutex);
-// ... swap code ...
-mutex_unlock(&vfb->swap_mutex);
-```
-
-### Long-term Fix: Improve Render Thread Performance
-
-1. **Separate collection and rendering**
-   - Collection thread: Update buffer with latest frames (fast)
-   - Render thread: Generate ASCII (can be slower)
-   - Decouples frame arrival from rendering speed
-
-2. **Cache video sources**
-   - Don't re-fetch from client buffers every iteration
-   - Use change detection to update only when needed
-   - Reduce memcpy overhead
-
-3. **Async rendering**
-   - Queue pending ASCII frames
-   - Render in background
-   - Send async to clients
-
-## Testing & Verification
-
-### Reproduction Steps
-
-1. Start server: `./build/bin/ascii-chat server`
-2. Start dev server: `npm run dev` in web directory
-3. Open browser to `http://localhost:3000/mirror`
-4. Wait 20-30 seconds
-5. Check logs:
-   ```bash
-   grep "RECV_FRAME\|BUFFER_FRAME" /tmp/server.log
-   ```
-
-### Expected Before Fix
-- 49+ RECV_FRAME NEW events
-- ~20 BUFFER_FRAME CHANGE events
-- 59% frame loss
-
-### Expected After Fix
-- 49+ RECV_FRAME NEW events
-- 40+ BUFFER_FRAME CHANGE events (minimal loss)
-- <10% frame loss
-
-### Test Metrics
+## Instrumentation
 
 ```bash
-# Count incoming frames
-grep -c "RECV_FRAME.*NEW" /tmp/server.log
-
-# Count buffer updates
-grep -c "BUFFER_FRAME CHANGE" /tmp/server.log
-
-# Calculate loss percentage
-RECV=$(grep -c "RECV_FRAME.*NEW" /tmp/server.log)
-BUFFER=$(grep -c "BUFFER_FRAME CHANGE" /tmp/server.log)
-LOSS=$((100 * (RECV - BUFFER) / RECV))
-echo "Frame loss: ${LOSS}%"
+# View all timing data
+./build/bin/ascii-chat --log-level info server --grep "/WS_TIMING|WS_FRAG|WS_SOCKET/i"
 ```
 
-## Instrumentation Added
+| Log Tag | Location | Measures |
+|---------|----------|---------|
+| `[WS_FRAG]` | `server.c` LWS_CALLBACK_RECEIVE | Per-fragment timing: size, offset, gap since first fragment |
+| `[WS_TIMING]` | `server.c` LWS_CALLBACK_RECEIVE | Full assembly: total bytes, fragment count, WRITEABLE interleaves |
+| `[WS_TIMING]` | `transport.c` websocket_recv | Poll wait time and dequeue timestamp |
+| `[WS_TIMING]` | `acip/server.c` | Decrypt time and handler dispatch time per packet type |
+| `[WS_SOCKET]` | `server.c` LWS_CALLBACK_ESTABLISHED | Actual SO_RCVBUF/SO_SNDBUF values |
 
-The following logging was added to diagnose this issue:
+## E2E Test Results
 
-### Client-Side (Browser WASM)
-- `Client.tsx`: SEND logs for every frame transmitted with hash
-
-### Server Receiver
-- `client.c`: RECV_FRAME logs showing frame arrival with hash and first pixel color
-
-### Render Buffer
-- `stream.c`: BUFFER_INSPECT logs showing what's in the buffer being rendered
-- `stream.c`: BUFFER_FRAME CHANGE logs tracking when buffer updates
-
-### Frame Storage
-- `client.c`: FRAME_COMMITTED logs when frames are written to buffer
-
-This instrumentation traces the complete frame flow:
 ```
-Browser (SEND) → Server (RECV) → Buffer (BUFFER_INSPECT) → Render (BUFFER_FRAME)
+Performance test: FPS = 27-28 (expected >= 30) — FAILED
+Connection test: PASSED
 ```
-
-## Logs for This Issue
-
-**Test run:** 2026-02-17 00:37-00:37:14
-**Server log:** `/tmp/frame_trace.log` (2455 lines)
-
-Key log entries show:
-- RECV_FRAME #0-48: All frames received with different hashes
-- BUFFER_FRAME CHANGE: Only 20 updates despite 49 arrivals
-- BUFFER_INSPECT: Hash 0x237d7777 repeats 55 times
-
-## References
-
-- **Video Frame Buffer:** `lib/video/video_frame.c`
-- **Render Thread:** `src/server/render.c`
-- **Stream Mixer:** `src/server/stream.c`
-- **Frame Commit:** `lib/video/video_frame.c:127`
-- **Frame Read:** `lib/video/video_frame.c:163`
-
-## Conclusion
-
-The bug is a **frame overwriting issue in the double-buffer commit logic** that causes 59% of incoming frames to be silently dropped before reaching the render thread. Combined with a render thread that runs at only 1.5 FPS instead of the expected 60 FPS, this creates the visible symptom of the same ASCII frame being displayed for 400-700ms intervals before abruptly changing to a completely different frame.
-
-The immediate fix is to prevent the frame swap when `new_frame_available` is already true, which will prevent frame overwriting during backlog conditions.

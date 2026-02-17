@@ -359,18 +359,17 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     mutex_unlock(&ws_data->queue_mutex);
 
     // Wake the LWS event loop from this non-service thread.
+    // Only lws_cancel_service() is thread-safe from non-service threads.
+    // lws_callback_on_writable() must NOT be called here — it's only safe
+    // from the service thread. LWS_CALLBACK_EVENT_WAIT_CANCELLED (in server.c)
+    // handles calling lws_callback_on_writable_all_protocol() on the service thread.
     log_dev_every(1000000, ">>> FRAME QUEUED: %zu bytes for wsi=%p (send_len=%zu)", send_len, (void *)ws_data->wsi,
                   send_len);
 
     struct lws_context *ctx = lws_get_context(ws_data->wsi);
-    log_dev_every(1000000, ">>> Calling lws_cancel_service(ctx=%p) and lws_callback_on_writable(wsi=%p)", (void *)ctx,
-                  (void *)ws_data->wsi);
-
     lws_cancel_service(ctx);
-    lws_callback_on_writable(ws_data->wsi);
 
-    log_dev_every(1000000, ">>> WRITABLE CALLBACK REQUESTED - will be processed on next event loop iteration");
-    log_dev_every(1000000, "Server-side WebSocket: queued %zu bytes, requested writable for wsi=%p", send_len,
+    log_dev_every(1000000, "Server-side WebSocket: queued %zu bytes, cancel_service sent for wsi=%p", send_len,
                   (void *)ws_data->wsi);
     SAFE_FREE(send_buffer);
     if (encrypted_packet)
@@ -455,6 +454,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   }
 
   int wait_count = 0;
+  uint64_t wait_start_ns = time_get_ns();
   // Block until message arrives or connection closes
   while (ringbuffer_is_empty(ws_data->recv_queue)) {
     if (wait_count == 0) {
@@ -462,26 +462,28 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
     }
     wait_count++;
 
-    // Release queue lock while checking connection state to reduce deadlock risk
-    mutex_unlock(&ws_data->queue_mutex);
-
+    // Check connection state while holding queue lock (quick atomic check)
     mutex_lock(&ws_data->state_mutex);
     bool still_connected = ws_data->is_connected;
     mutex_unlock(&ws_data->state_mutex);
 
     if (!still_connected) {
+      mutex_unlock(&ws_data->queue_mutex);
       return SET_ERRNO(ERROR_NETWORK, "Connection closed while waiting for data");
     }
 
-    // Short sleep to avoid busy waiting (10ms)
-    usleep(10000);
-
-    // Re-acquire lock for next iteration
-    mutex_lock(&ws_data->queue_mutex);
+    // Wait on condition variable with 50ms timeout as safety net.
+    // Producer signals queue_cond when a complete message is enqueued,
+    // so this typically wakes in microseconds rather than polling at 10ms intervals.
+    cond_timedwait(&ws_data->queue_cond, &ws_data->queue_mutex, 50 * 1000000ULL);
   }
 
+  uint64_t wait_end_ns = time_get_ns();
   if (wait_count > 0) {
-    log_dev_every(4500000, "🔄 WEBSOCKET_RECV: Got packet after waiting %d iterations", wait_count);
+    char wait_duration_str[32];
+    format_duration_ns((double)(wait_end_ns - wait_start_ns), wait_duration_str, sizeof(wait_duration_str));
+    log_info_every(LOG_RATE_DEFAULT, "[WS_TIMING] websocket_recv poll waited %s (%d iterations)", wait_duration_str,
+                   wait_count);
   }
 
   // Read message from queue
@@ -498,7 +500,8 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   *out_len = msg.len;
   *out_allocated_buffer = msg.data;
 
-  log_dev_every(4500000, "WebSocket received %zu bytes from queue", msg.len);
+  log_info_every(LOG_RATE_DEFAULT, "[WS_TIMING] websocket_recv dequeued %zu bytes at t=%llu", msg.len,
+                 (unsigned long long)time_get_ns());
   return ASCIICHAT_OK;
 }
 
