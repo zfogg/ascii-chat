@@ -338,12 +338,9 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/TimerTargets.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/ToolingRuntime.cmake)
 ascii_build_tooling_runtime()
 
-include(${CMAKE_SOURCE_DIR}/cmake/targets/TestLibs.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/PCH.cmake)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/src ${CMAKE_BINARY_DIR}/src)
-# include(${CMAKE_SOURCE_DIR}/cmake/targets/ACDSExecutable.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/targets/WebAssembly.cmake)
 ascii_panic_finalize()
 ascii_defer_finalize()
 ascii_query_finalize()
