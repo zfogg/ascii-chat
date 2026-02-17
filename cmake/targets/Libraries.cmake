@@ -61,8 +61,14 @@ macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
         set_target_properties(${MODULE_NAME} PROPERTIES UNITY_BUILD ON)
     endif()
 
+    # For musl builds with shared library, disable LTO to avoid TLS relocation issues
+    # (known LLVM limitation - issue #55909)
     if(ASCIICHAT_ENABLE_IPO)
-        set_property(TARGET ${MODULE_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+        if(USE_MUSL)
+            set_property(TARGET ${MODULE_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
+        else()
+            set_property(TARGET ${MODULE_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+        endif()
     endif()
 
     # Version dependency (build-timer-start removed to prevent unnecessary rebuilds)
