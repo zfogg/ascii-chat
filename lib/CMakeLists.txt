@@ -174,9 +174,9 @@ macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
     add_library(${MODULE_NAME} OBJECT ${MODULE_SRCS})
     # OBJECT libraries need PIC for linking into shared libraries
     set_target_properties(${MODULE_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
-    # With LTO, explicitly add -fPIC to compiler flags
-    # (POSITION_INDEPENDENT_CODE alone is insufficient for LTO with LLD)
-    if(ASCIICHAT_ENABLE_IPO)
+    # Always explicitly add -fPIC for non-Windows to ensure it's applied
+    # (POSITION_INDEPENDENT_CODE property alone doesn't always work with musl toolchain)
+    if(NOT WIN32)
         target_compile_options(${MODULE_NAME} PRIVATE -fPIC)
     endif()
     # Use global-dynamic TLS model since OBJECT libs are shared between the main
