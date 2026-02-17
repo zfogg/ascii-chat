@@ -62,29 +62,34 @@ function(ascii_build_tooling_runtime)
     # =========================================================================
     # This utility reads panic instrumentation log files and summarizes them.
     # Cross-platform: uses dirent.h on Unix, _findfirst/_findnext on Windows.
+    # Skip for musl builds: ascii-panic-report links against ascii-chat-shared,
+    # but OBJECT files compiled with -fPIE produce relocations incompatible with
+    # shared libraries (-shared requires -fPIC). Musl static builds don't need
+    # the report utility.
+    if(NOT USE_MUSL)
+        add_executable(ascii-panic-report
+            ${TOOLING_PANIC_REPORT_SRCS}
+        )
+        target_include_directories(ascii-panic-report
+            PRIVATE
+                ${CMAKE_SOURCE_DIR}/lib
+                ${CMAKE_BINARY_DIR}/generated
+        )
 
-    add_executable(ascii-panic-report
-        ${TOOLING_PANIC_REPORT_SRCS}
-    )
-    target_include_directories(ascii-panic-report
-        PRIVATE
-            ${CMAKE_SOURCE_DIR}/lib
-            ${CMAKE_BINARY_DIR}/generated
-    )
+        # Add mimalloc include if enabled (needed for common.h)
+        # Use MIMALLOC_INCLUDE_DIRS which handles system, vcpkg, and FetchContent mimalloc
+        if(USE_MIMALLOC AND MIMALLOC_INCLUDE_DIRS)
+            target_include_directories(ascii-panic-report PRIVATE ${MIMALLOC_INCLUDE_DIRS})
+        endif()
 
-    # Add mimalloc include if enabled (needed for common.h)
-    # Use MIMALLOC_INCLUDE_DIRS which handles system, vcpkg, and FetchContent mimalloc
-    if(USE_MIMALLOC AND MIMALLOC_INCLUDE_DIRS)
-        target_include_directories(ascii-panic-report PRIVATE ${MIMALLOC_INCLUDE_DIRS})
+        # Always use shared library (built from OBJECT libraries for all build types)
+        target_link_libraries(ascii-panic-report PRIVATE ascii-chat-shared)
+        # Link mimalloc explicitly - shared library links it PRIVATE so symbols don't propagate
+        if(USE_MIMALLOC AND MIMALLOC_LIBRARIES)
+            target_link_libraries(ascii-panic-report PRIVATE ${MIMALLOC_LIBRARIES})
+        endif()
+        set_target_properties(ascii-panic-report PROPERTIES OUTPUT_NAME "ascii-panic-report")
     endif()
-
-    # Always use shared library (built from OBJECT libraries for all build types)
-    target_link_libraries(ascii-panic-report PRIVATE ascii-chat-shared)
-    # Link mimalloc explicitly - shared library links it PRIVATE so symbols don't propagate
-    if(USE_MIMALLOC AND MIMALLOC_LIBRARIES)
-        target_link_libraries(ascii-panic-report PRIVATE ${MIMALLOC_LIBRARIES})
-    endif()
-    set_target_properties(ascii-panic-report PROPERTIES OUTPUT_NAME "ascii-panic-report")
 
 endfunction()
 

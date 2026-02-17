@@ -425,11 +425,26 @@ target_include_directories(webrtc_audio_processing
     "${webrtc_aec3_SOURCE_DIR}/base/abseil"
 )
 
-# Link against system Abseil if available (matches what base library uses)
+# Link against Abseil (matches what base library uses)
 # The base library links against absl::strings, absl::base, absl::optional via find_package
 # Since we import the static .a files, we need to also link Abseil here for transitive deps
-find_package(absl QUIET CONFIG)
-if(absl_FOUND)
+# For musl builds, skip system Abseil (shared .so files are glibc-linked, incompatible with static musl)
+# and use the musl-built static Abseil from MuslDependencies.cmake instead
+if(NOT USE_MUSL)
+    find_package(absl QUIET CONFIG)
+endif()
+if(USE_MUSL)
+    # Use musl-built static Abseil libraries
+    set(MUSL_ABSEIL_LIB_DIR "${MUSL_DEPS_DIR_STATIC}/abseil/lib")
+    file(GLOB MUSL_ABSEIL_LIBS "${MUSL_ABSEIL_LIB_DIR}/libabsl_*.a")
+    if(MUSL_ABSEIL_LIBS)
+        target_link_libraries(webrtc_audio_processing INTERFACE ${MUSL_ABSEIL_LIBS})
+        list(LENGTH MUSL_ABSEIL_LIBS _absl_count)
+        message(STATUS "  WebRTC AEC3: Linking against ${_absl_count} musl-built static Abseil libraries")
+    else()
+        message(WARNING "  WebRTC AEC3: No musl-built Abseil libraries found in ${MUSL_ABSEIL_LIB_DIR}")
+    endif()
+elseif(absl_FOUND)
     # On Windows with Clang, vcpkg's Abseil CMake targets include MSVC-specific flags
     # like -ignore:4221 that Clang doesn't understand. Link directly to the DLL instead.
     if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")

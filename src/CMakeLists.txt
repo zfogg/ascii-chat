@@ -234,7 +234,7 @@ endif()
 if(USE_MUSL)
     # Add dependencies on all musl libraries (they'll build automatically)
     # Note: Do NOT add ascii-chat-shared as a dependency - we'll link OBJECT libraries directly
-    add_dependencies(ascii-chat portaudio-musl alsa-lib-musl libsodium-musl zstd-musl libexecinfo-musl opus-musl pcre2-musl)
+    add_dependencies(ascii-chat portaudio-musl alsa-lib-musl libsodium-musl zstd-musl libexecinfo-musl opus-musl pcre2-musl ffmpeg-musl libwebsockets-musl)
 
     # Link against musl-built static libraries from individual dependency directories
     target_link_directories(ascii-chat PRIVATE
@@ -273,6 +273,16 @@ if(USE_MUSL)
         ${PCRE2_PREFIX}/lib/libpcre2-8.a
         -lm -lpthread
     )
+
+    # Link FFmpeg for media file streaming (musl-built static libraries)
+    if(FFMPEG_FOUND AND FFMPEG_LINK_LIBRARIES)
+        target_link_libraries(ascii-chat PRIVATE ${FFMPEG_LINK_LIBRARIES})
+    endif()
+
+    # Link libwebsockets for WebSocket transport (musl-built static library)
+    if(LIBWEBSOCKETS_FOUND AND LIBWEBSOCKETS_LIBRARIES)
+        target_link_libraries(ascii-chat PRIVATE ${LIBWEBSOCKETS_LIBRARIES})
+    endif()
 
     # libdatachannel and its dependencies (must be linked explicitly for static builds)
     # The libdatachannel INTERFACE target's dependencies don't propagate through

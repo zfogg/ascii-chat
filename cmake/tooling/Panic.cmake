@@ -50,8 +50,9 @@ set(ASCII_PANIC_LIBRARY_TARGETS
     ascii-chat-network
 )
 
-# ascii-panic-report uses POSIX headers - only available on Unix/Linux/macOS
-if(WIN32)
+# ascii-panic-report uses POSIX headers (Unix only) and links against ascii-chat-shared
+# Skip for musl builds: shared library can't be built from PIE-compiled OBJECT files
+if(WIN32 OR USE_MUSL)
     set(ASCII_PANIC_EXECUTABLE_TARGETS
         ascii-chat
     )

@@ -89,8 +89,7 @@ static struct log_context_t {
 };
 #pragma GCC diagnostic pop
 
-/* Level strings for log output - must match log_level_t enum order */
-static const char *level_strings[] = {"DEV", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
+/* Level strings are defined in format.c (get_level_string_padded / get_level_string) */
 
 /* ============================================================================
  * Default Log Format Strings

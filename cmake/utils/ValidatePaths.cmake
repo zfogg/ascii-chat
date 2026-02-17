@@ -66,7 +66,7 @@ execute_process(
     COMMAND bash -c "
         SUSPECT=\$(${LLVM_STRINGS} '${BINARY}' | grep -E 'C:\\\\\\\\Users\\\\\\\\|C:/Users/|/home/|/Users/|/mnt/c/Users/|/mnt/d/')
         if [ -z \"\$SUSPECT\" ]; then exit 1; fi
-        echo \"\$SUSPECT\" | grep -v -e '/usr/local/' -e '.deps-cache/' -e 'llvm-project/' | head -20
+        echo \"\$SUSPECT\" | grep -v -e '/usr/local/' -e '.deps-cache/' -e 'llvm-project/' -e '/home/buildozer/aports/' -e '/home/linuxbrew/' -e '/opt/homebrew/' | head -20
     "
     OUTPUT_VARIABLE FOUND_PATHS
     RESULT_VARIABLE GREP_RESULT

@@ -926,6 +926,75 @@ set(SYSTEMD_LIBRARIES "${SYSTEMD_PREFIX}/lib/libsystemd.a")
 set(SYSTEMD_INCLUDE_DIRS "${SYSTEMD_PREFIX}/include")
 
 # =============================================================================
+# libwebsockets - WebSocket transport for browser clients
+# =============================================================================
+message(STATUS "Configuring ${BoldBlue}libwebsockets${ColorReset} from source...")
+
+set(LWS_PREFIX "${MUSL_DEPS_DIR_STATIC}/libwebsockets")
+set(LWS_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/libwebsockets-build")
+
+if(NOT EXISTS "${LWS_PREFIX}/lib/libwebsockets.a")
+    message(STATUS "  libwebsockets library not found in cache, will build from source")
+
+    # Pass musl-gcc path to the toolchain file via cache variable
+    set(MUSL_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/cmake/toolchains/MuslGcc.cmake")
+
+    ExternalProject_Add(libwebsockets-musl
+        URL https://github.com/warmcat/libwebsockets/archive/refs/tags/v4.5.2.tar.gz
+        URL_HASH SHA256=04244efb7a6438c8c6bfc79b21214db5950f72c9cf57e980af57ca321aae87b2
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        PREFIX ${LWS_BUILD_DIR}
+        STAMP_DIR ${LWS_BUILD_DIR}/stamps
+        UPDATE_DISCONNECTED 1
+        BUILD_ALWAYS 0
+        CMAKE_ARGS
+            -DCMAKE_TOOLCHAIN_FILE=${MUSL_TOOLCHAIN_FILE}
+            -DMUSL_GCC_PATH=${MUSL_GCC}
+            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_INSTALL_PREFIX=${LWS_PREFIX}
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+            -DCMAKE_C_FLAGS=-O2\ -fPIC\ -Wno-sign-conversion\ -Wno-error\ -isystem\ ${KERNEL_HEADERS_DIR}
+            -DLWS_WITH_SHARED=OFF
+            -DLWS_WITH_STATIC=ON
+            -DLWS_WITHOUT_TESTAPPS=ON
+            -DLWS_WITHOUT_TEST_SERVER=ON
+            -DLWS_WITHOUT_TEST_SERVER_EXTPOLL=ON
+            -DLWS_WITHOUT_TEST_PING=ON
+            -DLWS_WITHOUT_TEST_CLIENT=ON
+            -DLWS_WITH_SSL=OFF
+            -DLWS_WITH_LIBEV=OFF
+            -DLWS_WITH_LIBUV=OFF
+            -DLWS_WITH_LIBEVENT=OFF
+            -DLWS_WITH_GLIB=OFF
+            -DLWS_WITH_SYSTEMD=OFF
+            -DLWS_WITH_LIBCAP=OFF
+            -DLWS_WITH_JOSE=OFF
+            -DLWS_WITH_GENCRYPTO=OFF
+            -DLWS_IPV6=ON
+            -DLWS_UNIX_SOCK=ON
+            -DLWS_WITHOUT_DAEMONIZE=ON
+            -DLWS_WITHOUT_EXTENSIONS=ON
+            -DLWS_WITH_ZLIB=OFF
+            -DLWS_WITH_BUNDLED_ZLIB=OFF
+            -DLWS_WITH_SOCKS5=OFF
+        BUILD_BYPRODUCTS ${LWS_PREFIX}/lib/libwebsockets.a
+        LOG_DOWNLOAD TRUE
+        LOG_CONFIGURE TRUE
+        LOG_BUILD TRUE
+        LOG_INSTALL TRUE
+        LOG_OUTPUT_ON_FAILURE TRUE
+    )
+else()
+    message(STATUS "  ${BoldBlue}libwebsockets${ColorReset} library found in cache: ${BoldMagenta}${LWS_PREFIX}/lib/libwebsockets.a${ColorReset}")
+    add_custom_target(libwebsockets-musl)
+endif()
+
+set(LIBWEBSOCKETS_FOUND TRUE)
+set(LIBWEBSOCKETS_LIBRARIES "${LWS_PREFIX}/lib/libwebsockets.a")
+set(LIBWEBSOCKETS_INCLUDE_DIRS "${LWS_PREFIX}/include")
+add_compile_definitions(HAVE_LIBWEBSOCKETS=1)
+
+# =============================================================================
 # Abseil-cpp - Google's C++ library for WebRTC dependencies
 # =============================================================================
 message(STATUS "Configuring ${BoldBlue}Abseil-cpp${ColorReset} from source...")

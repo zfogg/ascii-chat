@@ -303,16 +303,15 @@ add_custom_command(
     VERBATIM
 )
 
-# Add generated sources to CORE_SRCS for compilation
-list(APPEND CORE_SRCS
-    "${MANPAGE_TEMPLATE_EMBEDDED}"
-)
-
-# Mark generated files as generated (CMake housekeeping)
+# Add generated source directly to the ascii-chat-core target.
+# CORE_SRCS was already consumed by create_ascii_chat_module() inside lib/CMakeLists.txt,
+# so list(APPEND CORE_SRCS ...) would be too late. target_sources() adds to the
+# already-created target instead.
 set_source_files_properties(
     "${MANPAGE_TEMPLATE_EMBEDDED}"
     PROPERTIES GENERATED TRUE
 )
+target_sources(ascii-chat-core PRIVATE "${MANPAGE_TEMPLATE_EMBEDDED}")
 
 # Define resource paths for development builds
 # Point to BINARY_DIR where configured templates are located (not SOURCE_DIR raw templates)

@@ -23,8 +23,11 @@
 #   - LIBWEBSOCKETS_FOUND: Whether libwebsockets was found
 # =============================================================================
 
-# Skip for musl builds - libwebsockets is configured in MuslDependencies.cmake
+# Skip for musl builds - libwebsockets is built from source in MuslDependencies.cmake
 if(USE_MUSL)
+    if(LIBWEBSOCKETS_FOUND)
+        message(STATUS "${BoldGreen}✓${ColorReset} libwebsockets (musl): using musl-built static library")
+    endif()
     return()
 endif()
 

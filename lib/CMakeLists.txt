@@ -190,8 +190,10 @@ macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
         target_compile_options(${MODULE_NAME} PRIVATE -fPIC)
     endif()
     # On Unix, use initial-exec TLS model for thread-local variables
-    # This is compatible with both executables and shared libraries, and works with LTO
-    if(NOT WIN32)
+    # initial-exec generates TPOFF32 relocations (fast, but only works in executables)
+    # Skip for musl builds: musl static-PIE handles TLS natively, and initial-exec
+    # relocations are incompatible with the shared library target's -shared flag
+    if(NOT WIN32 AND NOT USE_MUSL)
         target_compile_options(${MODULE_NAME} PRIVATE -ftls-model=initial-exec)
     endif()
     # Mark all symbols for export when building DLL from OBJECT libraries
@@ -340,17 +342,22 @@ else()
     elseif(PLATFORM_LINUX)
         target_link_libraries(ascii-chat-platform ${CMAKE_THREAD_LIBS_INIT})
         # Optional: Link libsystemd on Linux for keepawake functionality
-        find_package(PkgConfig QUIET)
-        if(PkgConfig_FOUND)
-            pkg_check_modules(LIBSYSTEMD QUIET libsystemd)
-            if(LIBSYSTEMD_FOUND)
-                target_include_directories(ascii-chat-platform PRIVATE ${LIBSYSTEMD_INCLUDE_DIRS})
-                target_link_libraries(ascii-chat-platform ${LIBSYSTEMD_LIBRARIES})
-                target_compile_definitions(ascii-chat-platform PRIVATE HAVE_LIBSYSTEMD=1)
-                message(STATUS "libsystemd found: keepawake support enabled")
-            else()
-                message(STATUS "libsystemd not found: keepawake disabled on Linux (non-critical)")
+        # Skip for musl builds: system libsystemd is glibc-linked and incompatible with static musl linking
+        if(NOT USE_MUSL)
+            find_package(PkgConfig QUIET)
+            if(PkgConfig_FOUND)
+                pkg_check_modules(LIBSYSTEMD QUIET libsystemd)
+                if(LIBSYSTEMD_FOUND)
+                    target_include_directories(ascii-chat-platform PRIVATE ${LIBSYSTEMD_INCLUDE_DIRS})
+                    target_link_libraries(ascii-chat-platform ${LIBSYSTEMD_LIBRARIES})
+                    target_compile_definitions(ascii-chat-platform PRIVATE HAVE_LIBSYSTEMD=1)
+                    message(STATUS "libsystemd found: keepawake support enabled")
+                else()
+                    message(STATUS "libsystemd not found: keepawake disabled on Linux (non-critical)")
+                endif()
             endif()
+        else()
+            message(STATUS "libsystemd skipped: musl static builds use glibc-independent keepawake")
         endif()
     endif()
 endif()
@@ -537,8 +544,9 @@ if(APPLE)
         ${AUDIOTOOLBOX_FRAMEWORK}
         ${CORESERVICES_FRAMEWORK}
     )
-elseif(PLATFORM_LINUX AND JACK_LIB)
+elseif(PLATFORM_LINUX AND JACK_LIB AND NOT USE_MUSL)
     # Link JACK on Linux if available (required by vcpkg's PortAudio build)
+    # Skip for musl: musl PortAudio is built with ALSA only, system libjack.so is glibc-linked
     target_link_libraries(ascii-chat-audio ${JACK_LIB})
 endif()
 
@@ -870,6 +878,7 @@ add_library(ascii-chat-shared SHARED EXCLUDE_FROM_ALL
             libexecinfo-musl
             openssl-musl
             ffmpeg-musl
+            libwebsockets-musl
         )
     endif()
 

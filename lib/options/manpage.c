@@ -664,11 +664,11 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
 
   manpage_resources_destroy(&resources);
 
+  fflush(f);
   if (should_close) {
     fclose(f);
   }
 
-  fflush(f);
   log_debug("Generated merged man page to %s", output_path ? output_path : "stdout");
   return ASCIICHAT_OK;
 }
