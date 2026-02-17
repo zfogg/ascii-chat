@@ -428,3 +428,362 @@ Test(log_format, default_format) {
   cr_assert_not_null(def);
   cr_assert_str_eq(def, "[%time(%H:%M:%S)] [%level_aligned] %message");
 }
+
+/* ============================================================================
+ * File Relative Path Tests
+ * ============================================================================ */
+
+Test(log_format, parse_file_relative) {
+  log_format_t *fmt = log_format_parse("%file_relative", false);
+  cr_assert_not_null(fmt);
+  cr_assert_eq(fmt->spec_count, 1);
+  cr_assert_eq(fmt->specs[0].type, LOG_FORMAT_FILE_RELATIVE);
+  log_format_free(fmt);
+}
+
+Test(log_format, parse_file_relative_in_context) {
+  log_format_t *fmt = log_format_parse("[%file_relative:%line]", false);
+  cr_assert_not_null(fmt);
+  cr_assert_eq(fmt->specs[0].type, LOG_FORMAT_LITERAL); /* [ */
+  cr_assert_eq(fmt->specs[1].type, LOG_FORMAT_FILE_RELATIVE);
+  cr_assert_eq(fmt->specs[3].type, LOG_FORMAT_LINE);
+  log_format_free(fmt);
+}
+
+Test(log_format, parse_file_relative_before_file) {
+  /* %file_relative should be checked before %file since it's longer */
+  log_format_t *fmt = log_format_parse("%file_relative:%file", false);
+  cr_assert_not_null(fmt);
+  cr_assert_eq(fmt->specs[0].type, LOG_FORMAT_FILE_RELATIVE);
+  cr_assert_eq(fmt->specs[2].type, LOG_FORMAT_FILE);
+  log_format_free(fmt);
+}
+
+Test(log_format, apply_file_relative) {
+  log_format_t *fmt = log_format_parse("%file_relative:%line", false);
+  cr_assert_not_null(fmt);
+
+  char buf[256] = {0};
+  int len =
+      log_format_apply(fmt, buf, sizeof(buf), LOG_DEBUG, "12:34:56", "src/main.c", 42, "main", 1234, "msg", false);
+  cr_assert_gt(len, 0);
+  /* Should contain the relative path (extracted by extract_project_relative_path) */
+  cr_assert(strchr(buf, ':') != NULL, "Should contain colon separator");
+  log_format_free(fmt);
+}
+
+/* ============================================================================
+ * Strftime Format Tests - Various Time Formats
+ * ============================================================================ */
+
+Test(log_format, apply_time_format_iso8601) {
+  log_format_t *fmt = log_format_parse("%time(%Y-%m-%d %H:%M:%S)", false);
+  cr_assert_not_null(fmt);
+
+  char buf[256] = {0};
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "dummy", "test.c", 42, "main", 1234, "msg", false);
+  cr_assert_gt(len, 0);
+  /* Should have format like: YYYY-MM-DD HH:MM:SS.NNNNNN */
+  cr_assert(strchr(buf, '-') != NULL && strchr(buf, ' ') != NULL && strchr(buf, '.') != NULL);
+  log_format_free(fmt);
+}
+
+Test(log_format, apply_time_format_with_weekday) {
+  log_format_t *fmt = log_format_parse("%time(%A, %B %d, %Y)", false);
+  cr_assert_not_null(fmt);
+
+  char buf[256] = {0};
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "dummy", "test.c", 42, "main", 1234, "msg", false);
+  cr_assert_gt(len, 0);
+  /* Should contain comma and have reasonable length for full weekday + month name */
+  cr_assert_gt(strlen(buf), 15);
+  log_format_free(fmt);
+}
+
+Test(log_format, apply_time_format_short_date) {
+  log_format_t *fmt = log_format_parse("%time(%a %b %d %H:%M)", false);
+  cr_assert_not_null(fmt);
+
+  char buf[256] = {0};
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "dummy", "test.c", 42, "main", 1234, "msg", false);
+  cr_assert_gt(len, 0);
+  /* Should be shorter than full format */
+  cr_assert_lt(strlen(buf), 30);
+  log_format_free(fmt);
+}
+
+Test(log_format, apply_time_format_with_percent) {
+  log_format_t *fmt = log_format_parse("%time(%%Y-%%m-%%d)", false);
+  cr_assert_not_null(fmt);
+
+  char buf[256] = {0};
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "dummy", "test.c", 42, "main", 1234, "msg", false);
+  cr_assert_gt(len, 0);
+  /* Should contain percent signs from escaped %% */
+  cr_assert(strchr(buf, '%') != NULL);
+  log_format_free(fmt);
+}
+
+/* ============================================================================
+ * Newline and Multi-Line Output Tests
+ * ============================================================================ */
+
+Test(log_format, apply_newline_in_format) {
+  log_format_t *fmt = log_format_parse("[%level]\\n%message", false);
+  cr_assert_not_null(fmt);
+
+  char buf[256] = {0};
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "Hello", false);
+  cr_assert_gt(len, 0);
+  cr_assert(strchr(buf, '\n') != NULL, "Should contain newline");
+  cr_assert_str_eq(buf, "[INFO]\nHello");
+  log_format_free(fmt);
+}
+
+Test(log_format, apply_multiple_newlines) {
+  log_format_t *fmt = log_format_parse("[%level]\\n%file:%line\\n%message", false);
+  cr_assert_not_null(fmt);
+
+  char buf[512] = {0};
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_WARN, "12:34:56", "src.c", 10, "main", 1234, "Test", false);
+  cr_assert_gt(len, 0);
+  /* Count newlines */
+  int newline_count = 0;
+  for (const char *p = buf; *p; p++) {
+    if (*p == '\n')
+      newline_count++;
+  }
+  cr_assert_eq(newline_count, 2);
+  log_format_free(fmt);
+}
+
+Test(log_format, apply_message_first_then_newline_then_header) {
+  log_format_t *fmt = log_format_parse("%message\\n[%level_aligned] %file:%line in %func", false);
+  cr_assert_not_null(fmt);
+
+  char buf[512] = {0};
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_ERROR, "12:34:56", "error.c", 99, "process", 1234,
+                             "Error occurred", false);
+  cr_assert_gt(len, 0);
+  cr_assert(strchr(buf, '\n') != NULL);
+
+  /* First part should be the message */
+  cr_assert_eq(strncmp(buf, "Error occurred", 14), 0, "Message should come first");
+  /* After newline should be the header */
+  const char *after_newline = strchr(buf, '\n') + 1;
+  cr_assert(strstr(after_newline, "ERROR") != NULL);
+  log_format_free(fmt);
+}
+
+Test(log_format, apply_newline_at_end) {
+  log_format_t *fmt = log_format_parse("[%level] %message\\n", false);
+  cr_assert_not_null(fmt);
+
+  char buf[256] = {0};
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "msg", false);
+  cr_assert_gt(len, 0);
+  cr_assert_eq(buf[strlen(buf) - 1], '\n', "Should end with newline");
+  log_format_free(fmt);
+}
+
+/* ============================================================================
+ * Different Specifier Order Tests
+ * ============================================================================ */
+
+Test(log_format, apply_specifiers_reverse_order) {
+  log_format_t *fmt = log_format_parse("%message - %func() at %file:%line", false);
+  cr_assert_not_null(fmt);
+
+  char buf[256] = {0};
+  int len =
+      log_format_apply(fmt, buf, sizeof(buf), LOG_DEBUG, "12:34:56", "app.c", 50, "process", 1234, "Starting", false);
+  cr_assert_gt(len, 0);
+  /* Message should come first */
+  cr_assert(strncmp(buf, "Starting", 8) == 0);
+  log_format_free(fmt);
+}
+
+Test(log_format, apply_message_in_middle) {
+  log_format_t *fmt = log_format_parse("[%time(%H:%M:%S)] %message [%level_aligned]", false);
+  cr_assert_not_null(fmt);
+
+  char buf[256] = {0};
+  int len =
+      log_format_apply(fmt, buf, sizeof(buf), LOG_WARN, "14:30:00", "test.c", 42, "main", 1234, "Warning!", false);
+  cr_assert_gt(len, 0);
+  /* Time should come first, message in middle, level at end */
+  const char *msg_pos = strstr(buf, "Warning!");
+  const char *level_pos = strstr(buf, "WARN");
+  cr_assert(msg_pos < level_pos, "Message should come before level");
+  log_format_free(fmt);
+}
+
+Test(log_format, apply_duplicate_specifiers) {
+  log_format_t *fmt = log_format_parse("[%level] [%level] %message", false);
+  cr_assert_not_null(fmt);
+
+  char buf[256] = {0};
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_FATAL, "12:34:56", "test.c", 42, "main", 1234, "msg", false);
+  cr_assert_gt(len, 0);
+  /* Should have FATAL twice */
+  int count = 0;
+  for (const char *p = buf; (p = strstr(p, "FATAL")) != NULL; p++, count++)
+    ;
+  cr_assert_eq(count, 2);
+  log_format_free(fmt);
+}
+
+Test(log_format, apply_all_specifiers_together) {
+  log_format_t *fmt =
+      log_format_parse("[%time(%H:%M:%S)] [%level_aligned] [%file_relative:%line] {%func} <tid:%tid> %message", false);
+  cr_assert_not_null(fmt);
+
+  char buf[512] = {0};
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_DEBUG, "12:34:56", "lib/core.c", 42, "initialize", 5678,
+                             "Initializing system", false);
+  cr_assert_gt(len, 0);
+  /* All parts should be present */
+  cr_assert(strchr(buf, '[') != NULL);
+  cr_assert(strchr(buf, '{') != NULL);
+  cr_assert(strchr(buf, '<') != NULL);
+  cr_assert(strstr(buf, "Initializing system") != NULL);
+  log_format_free(fmt);
+}
+
+/* ============================================================================
+ * Edge Cases and Robustness Tests
+ * ============================================================================ */
+
+Test(log_format, apply_empty_message) {
+  log_format_t *fmt = log_format_parse("[%level] %message", false);
+  cr_assert_not_null(fmt);
+
+  char buf[256] = {0};
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "", false);
+  cr_assert_gt(len, 0);
+  cr_assert_str_eq(buf, "[INFO] ");
+  log_format_free(fmt);
+}
+
+Test(log_format, apply_very_long_message) {
+  log_format_t *fmt = log_format_parse("[%level] %message", false);
+  cr_assert_not_null(fmt);
+
+  char long_msg[500];
+  memset(long_msg, 'A', sizeof(long_msg) - 1);
+  long_msg[sizeof(long_msg) - 1] = '\0';
+
+  char buf[1024] = {0};
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, long_msg, false);
+  cr_assert_gt(len, 0);
+  cr_assert(strstr(buf, long_msg) != NULL);
+  log_format_free(fmt);
+}
+
+Test(log_format, apply_special_characters_in_message) {
+  log_format_t *fmt = log_format_parse("%message", false);
+  cr_assert_not_null(fmt);
+
+  char buf[256] = {0};
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234,
+                             "Test %% %% backslash \\ newline \\n", false);
+  cr_assert_gt(len, 0);
+  /* Message should be copied as-is (these are in the message, not format specifiers) */
+  cr_assert_str_eq(buf, "Test %% %% backslash \\ newline \\n");
+  log_format_free(fmt);
+}
+
+Test(log_format, apply_large_thread_id) {
+  log_format_t *fmt = log_format_parse("tid=%tid", false);
+  cr_assert_not_null(fmt);
+
+  char buf[256] = {0};
+  uint64_t large_tid = 18446744073709551615ULL; /* Max uint64_t */
+  int len =
+      log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", large_tid, "msg", false);
+  cr_assert_gt(len, 0);
+  cr_assert(strstr(buf, "tid=") != NULL);
+  log_format_free(fmt);
+}
+
+Test(log_format, apply_all_log_levels) {
+  log_format_t *fmt = log_format_parse("[%level_aligned]", false);
+  cr_assert_not_null(fmt);
+
+  const log_level_t levels[] = {LOG_DEV, LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL};
+  const char *expected[] = {"[DEV  ]", "[DEBUG]", "[INFO ]", "[WARN ]", "[ERROR]", "[FATAL]"};
+
+  for (size_t i = 0; i < sizeof(levels) / sizeof(levels[0]); i++) {
+    char buf[256] = {0};
+    int len = log_format_apply(fmt, buf, sizeof(buf), levels[i], "12:34:56", "test.c", 42, "main", 1234, "msg", false);
+    cr_assert_gt(len, 0);
+    cr_assert_str_eq(buf, expected[i], "Level %d should format correctly", i);
+  }
+
+  log_format_free(fmt);
+}
+
+Test(log_format, apply_zero_line_number) {
+  log_format_t *fmt = log_format_parse("line=%line", false);
+  cr_assert_not_null(fmt);
+
+  char buf[256] = {0};
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 0, "main", 1234, "msg", false);
+  cr_assert_gt(len, 0);
+  /* Zero line should not be printed (line > 0 check in format.c) */
+  cr_assert_str_eq(buf, "line=");
+  log_format_free(fmt);
+}
+
+Test(log_format, apply_negative_line_number) {
+  log_format_t *fmt = log_format_parse("line=%line", false);
+  cr_assert_not_null(fmt);
+
+  char buf[256] = {0};
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", -1, "main", 1234, "msg", false);
+  cr_assert_gt(len, 0);
+  /* Negative line should not be printed (line > 0 check) */
+  cr_assert_str_eq(buf, "line=");
+  log_format_free(fmt);
+}
+
+/* ============================================================================
+ * Format Consistency Tests
+ * ============================================================================ */
+
+Test(log_format, apply_consistent_output) {
+  /* Use format without %time since time changes between calls */
+  log_format_t *fmt = log_format_parse("[%level] %message", false);
+  cr_assert_not_null(fmt);
+
+  char buf1[256] = {0};
+  char buf2[256] = {0};
+
+  int len1 = log_format_apply(fmt, buf1, sizeof(buf1), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "msg", false);
+  int len2 = log_format_apply(fmt, buf2, sizeof(buf2), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "msg", false);
+
+  cr_assert_eq(len1, len2, "Same inputs should produce same length output");
+  cr_assert_str_eq(buf1, buf2, "Same inputs should produce identical output");
+  log_format_free(fmt);
+}
+
+Test(log_format, apply_time_consistency_multiple_calls) {
+  /* Test that time formatting works consistently across multiple calls */
+  log_format_t *fmt = log_format_parse("%time(%Y-%m-%d)", false);
+  cr_assert_not_null(fmt);
+
+  char buf1[256] = {0};
+  char buf2[256] = {0};
+
+  int len1 = log_format_apply(fmt, buf1, sizeof(buf1), LOG_INFO, "dummy", "test.c", 42, "main", 1234, "msg", false);
+  int len2 = log_format_apply(fmt, buf2, sizeof(buf2), LOG_INFO, "dummy", "test.c", 42, "main", 1234, "msg", false);
+
+  cr_assert_gt(len1, 0);
+  cr_assert_gt(len2, 0);
+  /* Both should have the date format (YYYY-MM-DD) = 10 chars */
+  cr_assert_eq(len1, 10, "Date format should be exactly 10 chars");
+  cr_assert_eq(len2, 10, "Date format should be exactly 10 chars");
+  /* Both should have same date (not guaranteed to be identical if test spans midnight, but very unlikely) */
+  cr_assert_str_eq(buf1, buf2, "Date should be same on consecutive calls");
+  log_format_free(fmt);
+}
