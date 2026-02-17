@@ -99,15 +99,51 @@ export function createWasmOptionsManager(
     setTargetFps: setTargetFpsFn,
     getTargetFps: getTargetFpsFn,
     applySettings: (settings: SettingsConfig) => {
-      setColorModeFn(mapColorMode(settings.colorMode));
-      setColorFilterFn(mapColorFilter(settings.colorFilter));
-      setPaletteFn(settings.palette);
-      if (settings.palette === "custom" && settings.paletteChars) {
-        setPaletteCharsFn(settings.paletteChars);
+      console.log("[WasmOptionsManager] applySettings called with:", settings);
+      try {
+        console.log(
+          "[WasmOptionsManager] Setting colorMode:",
+          settings.colorMode,
+          "->",
+          mapColorMode(settings.colorMode),
+        );
+        setColorModeFn(mapColorMode(settings.colorMode));
+        console.log(
+          "[WasmOptionsManager] Setting colorFilter:",
+          settings.colorFilter,
+          "->",
+          mapColorFilter(settings.colorFilter),
+        );
+        setColorFilterFn(mapColorFilter(settings.colorFilter));
+        console.log("[WasmOptionsManager] Setting palette:", settings.palette);
+        setPaletteFn(settings.palette);
+        if (settings.palette === "custom" && settings.paletteChars) {
+          console.log(
+            "[WasmOptionsManager] Setting paletteChars:",
+            settings.paletteChars,
+          );
+          setPaletteCharsFn(settings.paletteChars);
+        }
+        console.log(
+          "[WasmOptionsManager] Setting matrixRain:",
+          settings.matrixRain ?? false,
+        );
+        setMatrixRainFn(settings.matrixRain ?? false);
+        console.log(
+          "[WasmOptionsManager] Setting flipX:",
+          settings.flipX ?? false,
+        );
+        setFlipXFn(settings.flipX ?? false);
+        console.log(
+          "[WasmOptionsManager] Setting targetFps:",
+          settings.targetFps,
+        );
+        setTargetFpsFn(settings.targetFps);
+        console.log("[WasmOptionsManager] All settings applied successfully");
+      } catch (err) {
+        console.error("[WasmOptionsManager] Error applying settings:", err);
+        throw err;
       }
-      setMatrixRainFn(settings.matrixRain ?? false);
-      setFlipXFn(settings.flipX ?? false);
-      setTargetFpsFn(settings.targetFps);
     },
   };
 }

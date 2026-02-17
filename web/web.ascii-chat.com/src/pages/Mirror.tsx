@@ -136,18 +136,26 @@ export function MirrorPage() {
 
   // Handle settings change
   const handleSettingsChange = (newSettings: SettingsConfig) => {
+    console.log("[Mirror] handleSettingsChange:", newSettings);
     setSettings(newSettings);
     frameIntervalRef.current = 1000 / newSettings.targetFps;
 
     if (optionsManager && isWasmReady()) {
       try {
+        console.log("[Mirror] Calling optionsManager.applySettings");
         optionsManager.applySettings({
           ...newSettings,
           flipX: newSettings.flipX ?? isMacOS,
         });
+        console.log("[Mirror] applySettings completed successfully");
       } catch (err) {
         console.error("Failed to apply WASM settings:", err);
       }
+    } else {
+      console.log(
+        "[Mirror] Cannot apply settings - optionsManager or WASM not ready",
+        { optionsManager: !!optionsManager, wasmReady: isWasmReady() },
+      );
     }
   };
 

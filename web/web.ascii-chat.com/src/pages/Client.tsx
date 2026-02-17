@@ -6,6 +6,17 @@ import {
   useCallback,
   useMemo,
 } from "react";
+
+// Extend Window interface for frame metrics
+declare global {
+  interface Window {
+    __clientFrameMetrics?: {
+      rendered: number;
+      received: number;
+      queueDepth: number;
+    };
+  }
+}
 import {
   cleanupClientWasm,
   ConnectionState,
@@ -505,6 +516,8 @@ export function ClientPage() {
   };
 
   const renderNoOpCountRef = useRef(0);
+  const diagnosticFrameCountRef = useRef(0);
+  const cumulativeUniqueFramesRef = useRef(0);
 
   // Expose frame count for testing
   useEffect(() => {
@@ -512,8 +525,10 @@ export function ClientPage() {
       rendered: frameCountRef.current,
       received: receivedFrameCountRef.current,
       queueDepth: frameQueueRef.current.length,
+      uniqueRendered: cumulativeUniqueFramesRef.current,
+      frameHashes: frameHashesRef.current,
     };
-    (window as any).__clientFrameMetrics = metrics;
+    window.__clientFrameMetrics = metrics;
     if (frameCountRef.current % 60 === 0 && frameCountRef.current > 0) {
       console.log("[Client] Exposed metrics:", metrics);
     }
@@ -544,41 +559,38 @@ export function ClientPage() {
         renderLoopStartTimeRef.current = performance.now();
       }
 
-      // If queue has multiple frames, discard old ones and render the latest
-      let frameContent: string;
-      if (frameQueueRef.current.length > 1) {
-        // Drop older frames, keep only the latest two (current + next)
-        while (frameQueueRef.current.length > 1) {
-          frameQueueRef.current.shift();
-        }
-        frameContent = frameQueueRef.current.shift()!;
-      } else {
-        // Single frame in queue, render it
-        frameContent = frameQueueRef.current.shift()!;
-      }
+      // Render frames in FIFO order (first in, first out)
+      // This ensures we display the video stream in proper sequence
+      // rather than always jumping to the latest frame
+      const frameContent = frameQueueRef.current.shift()!;
 
       const frameHash = hashFrame(frameContent);
+      // Track if this is a new unique frame we haven't seen before
+      if (!frameHashesRef.current[frameHash]) {
+        cumulativeUniqueFramesRef.current++;
+      }
       frameHashesRef.current[frameHash] =
         (frameHashesRef.current[frameHash] || 0) + 1;
 
       rendererRef.current.writeFrame(frameContent);
       frameCountRef.current++;
+      diagnosticFrameCountRef.current++;
 
-      // Log render rate every 60 rendered frames
-      if (frameCountRef.current % 60 === 0) {
+      // Log render rate every 60 rendered frames (using diagnostic counter)
+      if (diagnosticFrameCountRef.current % 60 === 0) {
         const now = performance.now();
         const elapsed = now - renderLoopStartTimeRef.current;
-        const renderFps = (frameCountRef.current / elapsed) * 1000;
+        const renderFps = (diagnosticFrameCountRef.current / elapsed) * 1000;
         const uniqueFrames = Object.keys(frameHashesRef.current).length;
         console.log(
-          `[Client] Rendered ${frameCountRef.current} frames in ${elapsed.toFixed(0)}ms = ${renderFps.toFixed(1)} FPS (${uniqueFrames} unique frame hashes)`,
+          `[Client] Rendered ${diagnosticFrameCountRef.current} frames in ${elapsed.toFixed(0)}ms = ${renderFps.toFixed(1)} FPS (${uniqueFrames} unique frame hashes)`,
         );
         console.log(
           `[Client] Frame hash distribution:`,
           frameHashesRef.current,
         );
         renderLoopStartTimeRef.current = now;
-        frameCountRef.current = 0;
+        diagnosticFrameCountRef.current = 0;
         frameHashesRef.current = {};
       }
     }
@@ -613,7 +625,6 @@ export function ClientPage() {
               frame.width,
               frame.height,
             );
-            frameCountRef.current++;
 
             try {
               conn.sendPacket(PacketType.IMAGE_FRAME, payload);
