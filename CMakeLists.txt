@@ -77,6 +77,14 @@ include(${CMAKE_SOURCE_DIR}/cmake/init/BuildConfiguration.cmake)
 
 include(${CMAKE_SOURCE_DIR}/cmake/platform/Musl.cmake)
 configure_musl_pre_project()
+
+# Disable LTO for musl builds globally to prevent TPOFF32 TLS relocation errors (LLVM issue #55909)
+if(USE_MUSL)
+    add_compile_options(-fno-lto)
+    add_link_options(-fno-lto)
+    message(STATUS "Disabling LTO globally for musl build (TPOFF32 TLS relocation fix)")
+endif()
+
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/LLVM.cmake)
 configure_llvm_pre_project()
 
@@ -106,8 +114,7 @@ project(${PROJECT_NAME_FULL}
 # MUST be after project() when languages are enabled
 include(CheckIPOSupported)
 if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-    message(STATUS "DEBUG: USE_MUSL=${USE_MUSL}")
-    # Disable LTO for musl builds due to TPOFF32 TLS relocation incompatibilities (LLVM issue #55909)
+    # Musl builds disable LTO via -fno-lto compile options added earlier to prevent TPOFF32 errors
     if(NOT USE_MUSL)
         check_ipo_supported(RESULT IPO_SUPPORTED OUTPUT IPO_ERROR)
         if(IPO_SUPPORTED)
@@ -120,7 +127,6 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebI
         endif()
     else()
         set(ASCIICHAT_ENABLE_IPO FALSE CACHE INTERNAL "Disable IPO for musl builds" FORCE)
-        message(STATUS "Interprocedural optimization ${BoldYellow}disabled${ColorReset} for musl compatibility (TPOFF32 relocations)")
     endif()
 endif()
 
