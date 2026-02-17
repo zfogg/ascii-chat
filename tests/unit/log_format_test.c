@@ -94,8 +94,8 @@ Test(log_format, time_format_now_with_microseconds) {
   char buf[64] = {0};
   int len = time_format_now("%H:%M:%S", buf, sizeof(buf));
   cr_assert_gt(len, 0);
-  /* Format: HH:MM:SS.NNNNNN (19 chars minimum) */
-  cr_assert_gt(len, 15, "Should include microseconds");
+  /* Format: HH:MM:SS.NNNNNN (15 chars total: 8 + 7) */
+  cr_assert_eq(len, 15, "Should include microseconds appended to timestamp");
   const char *dot = strchr(buf, '.');
   cr_assert_not_null(dot, "Should have decimal point");
   cr_assert_eq(strlen(dot), 7, "Should have exactly .NNNNNN"); /* .NNNNNN = 7 chars */
