@@ -324,6 +324,15 @@ int main(int argc, char *argv[]) {
   // Reconfigure logging with parsed log level
   log_init(log_file, GET_OPTION(log_level), false, false);
 
+  // Apply custom log format if specified
+  const char *custom_format = GET_OPTION(log_format);
+  if (custom_format && custom_format[0] != '\0') {
+    asciichat_error_t fmt_result = log_set_format(custom_format, GET_OPTION(log_format_console_only));
+    if (fmt_result != ASCIICHAT_OK) {
+      log_error("Failed to apply custom log format");
+    }
+  }
+
   // Initialize colors now that logging is fully initialized
   // This must happen after log_init() since log_init_colors() checks if g_log.initialized
   log_init_colors();

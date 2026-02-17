@@ -882,11 +882,14 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   char colored_log_line[LOG_MSG_BUFFER_SIZE + 512];
   char plain_log_line[LOG_MSG_BUFFER_SIZE + 512];
 
+  /* Select format: use console-only if available, otherwise use main format */
+  const log_format_t *format_to_use = g_log.format_console_only ? g_log.format_console_only : g_log.format;
+
   /* Apply format with colors */
-  int colored_len = log_format_apply(g_log.format, colored_log_line, sizeof(colored_log_line), level, timestamp, file,
+  int colored_len = log_format_apply(format_to_use, colored_log_line, sizeof(colored_log_line), level, timestamp, file,
                                      line, func, asciichat_thread_current_id(), clean_msg, use_colors);
 
-  /* Apply format without colors for grep matching */
+  /* Apply format without colors for grep matching (always use main format for consistency) */
   int plain_len = log_format_apply(g_log.format, plain_log_line, sizeof(plain_log_line), level, timestamp, file, line,
                                    func, asciichat_thread_current_id(), clean_msg, false);
 
