@@ -2337,6 +2337,7 @@ static void acip_server_on_protocol_version(const protocol_version_packet_t *ver
 static void acip_server_on_image_frame(const image_frame_packet_t *header, const void *pixel_data, size_t data_len,
                                        void *client_ctx, void *app_ctx) {
   (void)app_ctx;
+  uint64_t callback_start_ns = time_get_ns();
   client_info_t *client = (client_info_t *)client_ctx;
 
   log_info("CALLBACK_IMAGE_FRAME: client_id=%u, width=%u, height=%u, pixel_format=%u, compressed_size=%u, data_len=%zu",
@@ -2452,6 +2453,11 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
   } else {
     log_warn("NO_INCOMING_VIDEO_BUFFER: client_id=%u", atomic_load(&client->client_id));
   }
+
+  uint64_t callback_end_ns = time_get_ns();
+  char cb_duration_str[32];
+  format_duration_ns((double)(callback_end_ns - callback_start_ns), cb_duration_str, sizeof(cb_duration_str));
+  log_info("[WS_TIMING] on_image_frame callback took %s (data_len=%zu)", cb_duration_str, data_len);
 }
 
 static void acip_server_on_audio(const void *audio_data, size_t audio_len, void *client_ctx, void *app_ctx) {

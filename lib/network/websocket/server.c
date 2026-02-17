@@ -652,17 +652,12 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
       bool success = ringbuffer_write(ws_data->recv_queue, &msg);
       if (!success) {
-        // Queue full - store as pending message and apply backpressure
-        log_warn("WebSocket receive queue full, pausing RX flow for backpressure");
-        lws_rx_flow_control(wsi, 0); // Disable RX flow
-
-        // Store the message for later retry instead of dropping it
-        if (ws_data->has_pending_msg) {
-          // Previous pending message wasn't consumed - discard it to make room for new one
-          buffer_pool_free(NULL, ws_data->pending_msg.data, ws_data->pending_msg.len);
-        }
-        ws_data->pending_msg = msg;
-        ws_data->has_pending_msg = true;
+        // Queue full - DROP the frame instead of applying backpressure.
+        // Backpressure causes lws_rx_flow_control(wsi, 0) which triggers rxflow buffering,
+        // forcing the event loop to slow down waiting for the recv thread to drain.
+        // It's better to lose frames than get 1 FPS due to flow control stalls.
+        log_warn("WebSocket receive queue full, dropping frame (buffer_pool freed)");
+        buffer_pool_free(NULL, msg.data, msg.len);
       }
 
       // Signal waiting recv() call

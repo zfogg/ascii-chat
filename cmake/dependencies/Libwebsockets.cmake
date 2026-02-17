@@ -103,9 +103,9 @@ if(NOT EXISTS "${LWS_NATIVE_PREFIX}/lib/libwebsockets.a")
             -DLWS_IPV6=ON
             -DLWS_UNIX_SOCK=ON
             -DLWS_WITHOUT_DAEMONIZE=ON
-            -DLWS_WITHOUT_EXTENSIONS=OFF
-            -DLWS_WITH_ZLIB=ON
-            -DLWS_WITH_BUNDLED_ZLIB=ON
+            -DLWS_WITHOUT_EXTENSIONS=ON
+            -DLWS_WITH_ZLIB=OFF
+            -DLWS_WITH_BUNDLED_ZLIB=OFF
             -DLWS_WITH_SOCKS5=OFF
         BUILD_BYPRODUCTS ${LWS_NATIVE_PREFIX}/lib/libwebsockets.a
         LOG_DOWNLOAD TRUE

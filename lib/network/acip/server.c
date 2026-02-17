@@ -105,6 +105,7 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
 
     // Handle PACKET_TYPE_ENCRYPTED from WebSocket clients that encrypt at application layer
     if (envelope.type == PACKET_TYPE_ENCRYPTED && transport->crypto_ctx) {
+      uint64_t decrypt_start_ns = time_get_ns();
       uint8_t *ciphertext = (uint8_t *)envelope.data;
       size_t ciphertext_len = envelope.len;
 
@@ -142,17 +143,26 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
       envelope.allocated_buffer = plaintext;
       envelope.allocated_size = plaintext_size;
 
-      log_info("ACIP_SERVER_DECRYPT: Decrypted WebSocket packet: inner_type=%d, inner_len=%u", envelope.type,
-               envelope.len);
+      uint64_t decrypt_end_ns = time_get_ns();
+      char decrypt_duration_str[32];
+      format_duration_ns((double)(decrypt_end_ns - decrypt_start_ns), decrypt_duration_str,
+                         sizeof(decrypt_duration_str));
+      log_info("[WS_TIMING] Decrypt %zu bytes → %zu bytes in %s (inner_type=%d)", ciphertext_len, plaintext_len,
+               decrypt_duration_str, envelope.type);
     }
   }
 
   // Dispatch packet to appropriate ACIP handler
   // Server receives packets FROM clients, so use server packet handler
   log_info("ACIP_DISPATCH_PKT: type=%d, len=%zu, client_ctx=%p", envelope.type, envelope.len, client_ctx);
+  uint64_t dispatch_handler_start_ns = time_get_ns();
   asciichat_error_t dispatch_result =
       acip_handle_server_packet(transport, envelope.type, envelope.data, envelope.len, client_ctx, callbacks);
-  log_info("ACIP_DISPATCH_RESULT: type=%d, result=%d", envelope.type, dispatch_result);
+  uint64_t dispatch_handler_end_ns = time_get_ns();
+  char handler_duration_str[32];
+  format_duration_ns((double)(dispatch_handler_end_ns - dispatch_handler_start_ns), handler_duration_str,
+                     sizeof(handler_duration_str));
+  log_info("[WS_TIMING] Handler for type=%d took %s (result=%d)", envelope.type, handler_duration_str, dispatch_result);
 
   // Always free the allocated buffer (even if handler failed)
   if (envelope.allocated_buffer) {

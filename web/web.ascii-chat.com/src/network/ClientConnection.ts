@@ -475,20 +475,15 @@ export class ClientConnection {
       );
 
       if (state === ConnectionState.CONNECTED) {
-        console.log(`[ClientConnection] State is CONNECTED, encrypting packet`);
         // Matching TCP transport protocol: encrypt entire packet, wrap in PACKET_TYPE_ENCRYPTED
         // 1. Build plaintext packet (header + payload)
+        const t0 = performance.now();
         const plaintextPacket = serializePacket(packetType, payload, 0);
-        console.log(
-          `[ClientConnection] Built plaintext packet: ${plaintextPacket.length} bytes`,
-        );
+        const t1 = performance.now();
 
         // 2. Encrypt the entire plaintext packet
-        console.log(`[ClientConnection] Encrypting plaintext packet...`);
         const ciphertext = encryptPacket(plaintextPacket);
-        console.log(
-          `[ClientConnection] Encryption complete: ciphertext=${ciphertext.length} bytes`,
-        );
+        const t2 = performance.now();
 
         // 3. Wrap ciphertext in PACKET_TYPE_ENCRYPTED header
         const encryptedPacket = serializePacket(
@@ -496,13 +491,16 @@ export class ClientConnection {
           ciphertext,
           0,
         );
-        console.error(
-          `[ClientConnection] >>> SEND encrypted ${name} (type=${packetType}) plaintext=${plaintextPacket.length} ciphertext=${ciphertext.length} wrapped=${encryptedPacket.length} bytes`,
-        );
+        const t3 = performance.now();
         this.socket.send(encryptedPacket);
-        console.log(
-          `[ClientConnection] Encrypted ${name} packet sent to WebSocket`,
-        );
+        const t4 = performance.now();
+
+        // Timing for IMAGE_FRAME packets (large frames)
+        if (packetType === PacketType.IMAGE_FRAME) {
+          console.log(
+            `[WS_TIMING] Browser send ${name}: serialize=${(t1 - t0).toFixed(1)}ms encrypt=${(t2 - t1).toFixed(1)}ms wrap=${(t3 - t2).toFixed(1)}ms ws_send=${(t4 - t3).toFixed(1)}ms total=${(t4 - t0).toFixed(1)}ms size=${encryptedPacket.length}`,
+          );
+        }
       } else if (state === ConnectionState.HANDSHAKE) {
         // During handshake, send unencrypted
         console.log(
