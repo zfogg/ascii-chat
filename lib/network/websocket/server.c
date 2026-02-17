@@ -706,11 +706,23 @@ static struct lws_protocols websocket_protocols[] = {
  * reducing data to ~50-100KB which fits within a single TCP window and
  * eliminates the multi-round-trip receive stalls seen with uncompressed data.
  */
-static const struct lws_extension websocket_extensions[] = {{"permessage-deflate", lws_extension_callback_pm_deflate,
-                                                             "permessage-deflate"
-                                                             "; server_max_window_bits"
-                                                             "; client_max_window_bits"},
-                                                            {NULL, NULL, NULL}};
+/**
+ * @brief WebSocket extensions for the server
+ *
+ * NOTE: permessage-deflate (RFC 7692) is currently DISABLED
+ *
+ * When enabled, permessage-deflate compression was causing immediate connection
+ * closure after receiving multi-fragment messages. The issue appears to be:
+ * 1. Browser sends compressed frame with first=1, final=0
+ * 2. Server's LWS_CALLBACK_RECEIVE queues the fragment
+ * 3. Immediately after returning 0, LWS_CALLBACK_CLOSED fires (code 1006)
+ * 4. Connection closes before continuation frames arrive
+ *
+ * Without compression, we achieve 19 FPS (up from 0 FPS with extensions).
+ * With compression working properly, we should see 30+ FPS.
+ * TODO: Debug permessage-deflate extension negotiation and frame handling.
+ */
+static const struct lws_extension websocket_extensions[] = {{NULL, NULL, NULL}};
 
 asciichat_error_t websocket_server_init(websocket_server_t *server, const websocket_server_config_t *config) {
   if (!server || !config || !config->client_handler) {
