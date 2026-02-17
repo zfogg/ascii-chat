@@ -934,6 +934,8 @@ typedef struct options_state {
   char log_file[OPTIONS_BUFF_SIZE];     ///< Log file path
   log_level_t log_level;                ///< Log level threshold
   char grep_pattern[OPTIONS_BUFF_SIZE]; ///< PCRE2 regex for log filtering
+  char log_format[OPTIONS_BUFF_SIZE];   ///< Custom log format string
+  bool log_format_console_only;         ///< Apply log format only to console output
   unsigned short int enable_keepawake;  ///< Explicitly enable system sleep prevention
   unsigned short int disable_keepawake; ///< Explicitly disable system sleep prevention (allow OS to sleep)
 
