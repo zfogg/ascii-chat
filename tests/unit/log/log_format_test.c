@@ -420,21 +420,6 @@ Test(log_format, apply_buffer_overflow) {
 }
 
 /* ============================================================================
- * Format Default Tests
- * ============================================================================ */
-
-Test(log_format, default_format) {
-  const char *def = log_format_default();
-  cr_assert_not_null(def);
-  /* Default format depends on build mode (debug vs release) */
-#ifdef NDEBUG
-  cr_assert_str_eq(def, "[%time(%H:%M:%S)] [%level_aligned] %message");
-#else
-  cr_assert_str_eq(def, "[%time(%H:%M:%S)] [%level_aligned] [tid:%tid] %file_relative:%line in %func(): %message");
-#endif
-}
-
-/* ============================================================================
  * File Relative Path Tests
  * ============================================================================ */
 
@@ -722,7 +707,7 @@ Test(log_format, apply_all_log_levels) {
     char buf[256] = {0};
     int len = log_format_apply(fmt, buf, sizeof(buf), levels[i], "12:34:56", "test.c", 42, "main", 1234, "msg", false);
     cr_assert_gt(len, 0);
-    cr_assert_str_eq(buf, expected[i], "Level %d should format correctly", i);
+    cr_assert_str_eq(buf, expected[i], "Level %lu should format correctly", i);
   }
 
   log_format_free(fmt);
@@ -790,5 +775,138 @@ Test(log_format, apply_time_consistency_multiple_calls) {
   cr_assert_eq(len2, 10, "Date format should be exactly 10 chars");
   /* Both should have same date (not guaranteed to be identical if test spans midnight, but very unlikely) */
   cr_assert_str_eq(buf1, buf2, "Date should be same on consecutive calls");
+  log_format_free(fmt);
+}
+
+/* ============================================================================
+ * Color Format Tests (Validate ANSI codes are actually present)
+ * ============================================================================ */
+
+Test(log_format, color_with_use_colors_true) {
+  /* Test that %color() produces ANSI codes with correct color from enum when use_colors=true */
+  log_format_t *fmt = log_format_parse("%color(INFO, %message)", false);
+  cr_assert_not_null(fmt);
+
+  /* Force enable colors for testing */
+  extern bool g_color_flag_passed;
+  extern bool g_color_flag_value;
+  bool saved_passed = g_color_flag_passed;
+  bool saved_value = g_color_flag_value;
+  g_color_flag_passed = true;
+  g_color_flag_value = true;
+
+  char buf[256] = {0};
+  int len =
+      log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "test message", true);
+  cr_assert_gt(len, 0, "Should produce output with colors");
+
+  /* Get the actual INFO color code from the enum */
+  extern const char *log_level_color(log_color_t color);
+  const char *info_color = log_level_color(LOG_COLOR_INFO);
+  const char *reset_code = log_level_color(LOG_COLOR_RESET);
+
+  /* Should contain the specific INFO color code */
+  if (info_color && strlen(info_color) > 0) {
+    cr_assert(strstr(buf, info_color) != NULL, "Should contain INFO color code from enum in colored output");
+  }
+  /* Should contain the message text */
+  cr_assert(strstr(buf, "test message") != NULL, "Should contain message text");
+  /* Should contain reset code */
+  if (reset_code && strlen(reset_code) > 0) {
+    cr_assert(strstr(buf, reset_code) != NULL, "Should contain reset code from enum");
+  }
+
+  /* Restore saved state */
+  g_color_flag_passed = saved_passed;
+  g_color_flag_value = saved_value;
+  log_format_free(fmt);
+}
+
+Test(log_format, color_with_use_colors_false) {
+  /* Test that %color() produces plain text when use_colors=false */
+  log_format_t *fmt = log_format_parse("%color(INFO, %message)", false);
+  cr_assert_not_null(fmt);
+
+  char buf[256] = {0};
+  int len =
+      log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "test message", false);
+  cr_assert_gt(len, 0);
+
+  /* Get the INFO color code - should NOT appear when use_colors=false */
+  extern const char *log_level_color(log_color_t color);
+  const char *info_color = log_level_color(LOG_COLOR_INFO);
+
+  /* When use_colors=false, INFO color code should NOT be in the output */
+  if (info_color && strlen(info_color) > 0) {
+    cr_assert(strstr(buf, info_color) == NULL, "Should NOT contain color codes when use_colors=false");
+  }
+  /* Should contain the message text */
+  cr_assert(strstr(buf, "test message") != NULL, "Should contain message text");
+  log_format_free(fmt);
+}
+
+Test(log_format, colored_message_with_colorize) {
+  /* Test that %colored_message applies colorize_log_message() rendering
+   * Note: In test environment, colorize_log_message might not apply colors due to TTY detection,
+   * but we still verify the format specifier is correctly rendered */
+  log_format_t *fmt = log_format_parse("%colored_message", false);
+  cr_assert_not_null(fmt);
+
+  char buf[512] = {0};
+  /* Use message with numbers and hex that would be colorized in a TTY */
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234,
+                             "Buffer size: 256 bytes (0x100)", true);
+  cr_assert_gt(len, 0, "Should render colored_message format");
+
+  /* Should contain the message text */
+  cr_assert(strstr(buf, "Buffer size") != NULL, "Should contain message text");
+  cr_assert(strstr(buf, "256") != NULL, "Should contain number in message");
+  cr_assert(strstr(buf, "0x100") != NULL, "Should contain hex value");
+
+  log_format_free(fmt);
+}
+
+Test(log_format, color_different_levels) {
+  /* Test that %color(*,...) uses different color codes for different log levels */
+  log_format_t *fmt = log_format_parse("%color(*, %message)", false);
+  cr_assert_not_null(fmt);
+
+  /* Force enable colors for testing */
+  extern bool g_color_flag_passed;
+  extern bool g_color_flag_value;
+  bool saved_passed = g_color_flag_passed;
+  bool saved_value = g_color_flag_value;
+  g_color_flag_passed = true;
+  g_color_flag_value = true;
+
+  char buf_info[256] = {0};
+  char buf_error[256] = {0};
+
+  log_format_apply(fmt, buf_info, sizeof(buf_info), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "message", true);
+  log_format_apply(fmt, buf_error, sizeof(buf_error), LOG_ERROR, "12:34:56", "test.c", 42, "main", 1234, "message",
+                   true);
+
+  /* Get the actual color codes from the enum */
+  extern const char *log_level_color(log_color_t color);
+  const char *info_color = log_level_color(LOG_COLOR_INFO);
+  const char *error_color = log_level_color(LOG_COLOR_ERROR);
+
+  /* INFO message should contain INFO color code */
+  if (info_color && strlen(info_color) > 0) {
+    cr_assert(strstr(buf_info, info_color) != NULL, "INFO message should have INFO color from enum");
+  }
+  /* ERROR message should contain ERROR color code */
+  if (error_color && strlen(error_color) > 0) {
+    cr_assert(strstr(buf_error, error_color) != NULL, "ERROR message should have ERROR color from enum");
+  }
+  /* Verify they actually use different colors if the codes are different */
+  if (info_color && error_color && strcmp(info_color, error_color) != 0) {
+    cr_assert(strstr(buf_info, error_color) == NULL, "INFO message should NOT have ERROR color");
+    cr_assert(strstr(buf_error, info_color) == NULL, "ERROR message should NOT have INFO color");
+  }
+
+  /* Restore saved state */
+  g_color_flag_passed = saved_passed;
+  g_color_flag_value = saved_value;
   log_format_free(fmt);
 }

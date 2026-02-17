@@ -23,18 +23,20 @@
  * @brief Types of format specifiers that can appear in a format string
  */
 typedef enum {
-  LOG_FORMAT_LITERAL,        /* Plain text (no % prefix) */
-  LOG_FORMAT_TIME,           /* %time(fmt) - custom time format */
-  LOG_FORMAT_LEVEL,          /* %level - log level as string */
-  LOG_FORMAT_LEVEL_ALIGNED,  /* %level_aligned - log level padded */
-  LOG_FORMAT_FILE,           /* %file - file path */
-  LOG_FORMAT_FILE_RELATIVE,  /* %file_relative - file path relative to project root */
-  LOG_FORMAT_LINE,           /* %line - line number */
-  LOG_FORMAT_FUNC,           /* %func - function name */
-  LOG_FORMAT_TID,            /* %tid - thread ID */
-  LOG_FORMAT_MESSAGE,        /* %message - log message */
-  LOG_FORMAT_COLORLOG_LEVEL, /* %colorlog_level_string_to_color - color code */
-  LOG_FORMAT_NEWLINE,        /* Platform-aware newline (\n) */
+  LOG_FORMAT_LITERAL,         /* Plain text (no % prefix) */
+  LOG_FORMAT_TIME,            /* %time(fmt) - custom time format */
+  LOG_FORMAT_LEVEL,           /* %level - log level as string */
+  LOG_FORMAT_LEVEL_ALIGNED,   /* %level_aligned - log level padded */
+  LOG_FORMAT_FILE,            /* %file - file path */
+  LOG_FORMAT_FILE_RELATIVE,   /* %file_relative - file path relative to project root */
+  LOG_FORMAT_LINE,            /* %line - line number */
+  LOG_FORMAT_FUNC,            /* %func - function name */
+  LOG_FORMAT_TID,             /* %tid - thread ID */
+  LOG_FORMAT_MESSAGE,         /* %message - log message */
+  LOG_FORMAT_COLORLOG_LEVEL,  /* %colorlog_level_string_to_color - color code */
+  LOG_FORMAT_COLOR,           /* %color(LEVEL, content) - colorize content using LEVEL's color */
+  LOG_FORMAT_COLORED_MESSAGE, /* %colored_message - message with things like filenames and 0x numbers colored */
+  LOG_FORMAT_NEWLINE,         /* Platform-aware newline (\n) */
 } log_format_type_t;
 
 /* ============================================================================
@@ -128,17 +130,6 @@ void log_format_free(log_format_t *format);
  */
 int log_format_apply(const log_format_t *format, char *buf, size_t buf_size, log_level_t level, const char *timestamp,
                      const char *file, int line, const char *func, uint64_t tid, const char *message, bool use_colors);
-
-/**
- * @brief Get the default format string (matches current hardcoded format)
- * @return Default format string (static, do not free)
- *
- * Returns format string that produces output identical to the original
- * hardcoded logging format. Used when no custom format is specified.
- *
- * @ingroup logging
- */
-const char *log_format_default(void);
 
 #ifdef __cplusplus
 }
