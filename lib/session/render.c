@@ -355,6 +355,12 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         // snapshot_delay=0 means exit immediately after rendering first frame
         // snapshot_delay>0 means wait that many seconds after first frame
         if (elapsed_sec >= snapshot_delay) {
+          // We don't end frames with newlines so the next log would print on the same line as the frame's
+          // last row without an \n here. We only need this \n in stdout in snapshot mode and when interactive,
+          // so piped snapshots don't have a weird newline in stdout that they don't need.
+          if (GET_OPTION(snapshot_mode) && terminal_is_interactive()) {
+            printf("\n");
+          }
           log_info("Snapshot delay %.2f seconds elapsed, exiting", snapshot_delay);
           snapshot_done = true;
         }

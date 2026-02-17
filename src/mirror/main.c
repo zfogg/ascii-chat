@@ -29,6 +29,7 @@
  */
 
 #include "main.h"
+#include "ascii-chat/platform/terminal.h"
 #include <ascii-chat/session/capture.h>
 #include <ascii-chat/session/display.h>
 #include <ascii-chat/session/render.h>
@@ -506,9 +507,6 @@ int mirror_main(void) {
 
   // Cleanup session log buffer (used by splash screen)
   session_log_buffer_destroy();
-
-  // Re-enable terminal output for shutdown logging
-  log_set_terminal_output(true);
 
   // Disable keepawake mode (re-allow OS to sleep)
   log_debug("mirror_main: disabling keepawake");
