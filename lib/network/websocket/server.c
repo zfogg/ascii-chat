@@ -571,99 +571,35 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
                     pkt_len, len);
     }
 
-    // Allocate or expand fragment buffer
-    size_t required_size = conn_data->fragment_size + len;
-    if (required_size > conn_data->fragment_capacity) {
-      size_t new_capacity = required_size * 2; // Over-allocate to reduce reallocations
-      uint8_t *new_buffer = SAFE_MALLOC(new_capacity, uint8_t *);
-      if (!new_buffer) {
-        log_error("Failed to allocate fragment buffer");
-        // Reset fragment state
-        SAFE_FREE(conn_data->fragment_buffer);
-        conn_data->fragment_buffer = NULL;
-        conn_data->fragment_size = 0;
-        conn_data->fragment_capacity = 0;
-        break;
-      }
+    // CRITICAL FIX: Queue each fragment immediately, don't buffer in fragment_buffer
+    // LWS expects data to flow through the pipeline immediately.
+    // Holding fragments without queueing breaks LWS flow control and causes disconnection.
+    // Multi-fragment message assembly happens in the application layer, not LWS callback.
 
-      // Copy existing fragments
-      if (conn_data->fragment_buffer) {
-        memcpy(new_buffer, conn_data->fragment_buffer, conn_data->fragment_size);
-        SAFE_FREE(conn_data->fragment_buffer);
-      }
-
-      conn_data->fragment_buffer = new_buffer;
-      conn_data->fragment_capacity = new_capacity;
+    websocket_recv_msg_t msg;
+    msg.data = buffer_pool_alloc(NULL, len);
+    if (!msg.data) {
+      log_error("Failed to allocate buffer for fragment (%zu bytes)", len);
+      break;
     }
 
-    // Append this fragment
-    memcpy(conn_data->fragment_buffer + conn_data->fragment_size, in, len);
-    conn_data->fragment_size += len;
+    memcpy(msg.data, in, len);
+    msg.len = len;
 
-    // If this is the final fragment, push complete message to receive queue
-    if (is_final) {
-      log_dev_every(4500000, "Complete message assembled: %zu bytes", conn_data->fragment_size);
-      uint64_t queue_time_ns = time_get_ns();
-      uint64_t first_frag_ns = atomic_load(&g_receive_first_fragment_ns);
-      uint64_t recv_count = atomic_load(&g_receive_callback_count);
-      uint64_t write_count = atomic_load(&g_writeable_callback_count);
-      char assembly_duration_str[32];
-      format_duration_ns((double)(queue_time_ns - first_frag_ns), assembly_duration_str, sizeof(assembly_duration_str));
-      log_info("[WS_TIMING] LWS assembled %zu bytes: %llu RECEIVE callbacks, %llu WRITEABLE callbacks interleaved, "
-               "assembly took %s",
-               conn_data->fragment_size, (unsigned long long)recv_count, (unsigned long long)write_count,
-               assembly_duration_str);
-
-      // DEFENSIVE: Log tiny packets
-      if (conn_data->fragment_size < 22) {
-        log_warn("⚠️  TINY PACKET ALERT: %zu bytes (< 22 bytes minimum)", conn_data->fragment_size);
-        if (conn_data->fragment_size > 0) {
-          const uint8_t *bytes = (const uint8_t *)conn_data->fragment_buffer;
-          char hex_buf[256];
-          size_t hex_pos = 0;
-          for (size_t i = 0; i < conn_data->fragment_size && hex_pos < sizeof(hex_buf) - 4; i++) {
-            hex_pos += snprintf(hex_buf + hex_pos, sizeof(hex_buf) - hex_pos, "%02x ", bytes[i]);
-          }
-          log_warn("⚠️  Tiny packet data: %s", hex_buf);
-        }
-      }
-
-      // Allocate message buffer using buffer pool
-      websocket_recv_msg_t msg;
-      msg.data = buffer_pool_alloc(NULL, conn_data->fragment_size);
-      if (!msg.data) {
-        log_error("Failed to allocate buffer for complete message");
-        SAFE_FREE(conn_data->fragment_buffer);
-        conn_data->fragment_buffer = NULL;
-        conn_data->fragment_size = 0; // Reset for next message
-        conn_data->fragment_capacity = 0;
-        break;
-      }
-
-      // Copy assembled message
-      memcpy(msg.data, conn_data->fragment_buffer, conn_data->fragment_size);
-      msg.len = conn_data->fragment_size;
-
-      // Reset fragment buffer for next message
-      conn_data->fragment_size = 0;
-
-      // Push to receive queue
-      mutex_lock(&ws_data->queue_mutex);
-
-      bool success = ringbuffer_write(ws_data->recv_queue, &msg);
-      if (!success) {
-        // Queue full - DROP the frame instead of applying backpressure.
-        // Backpressure causes lws_rx_flow_control(wsi, 0) which triggers rxflow buffering,
-        // forcing the event loop to slow down waiting for the recv thread to drain.
-        // It's better to lose frames than get 1 FPS due to flow control stalls.
-        log_warn("WebSocket receive queue full, dropping frame (buffer_pool freed)");
-        buffer_pool_free(NULL, msg.data, msg.len);
-      }
-
-      // Signal waiting recv() call
-      cond_signal(&ws_data->queue_cond);
+    mutex_lock(&ws_data->queue_mutex);
+    bool success = ringbuffer_write(ws_data->recv_queue, &msg);
+    if (!success) {
+      log_warn("WebSocket receive queue full, dropping fragment (%zu bytes) - queue cannot keep up", len);
+      buffer_pool_free(NULL, msg.data, msg.len);
       mutex_unlock(&ws_data->queue_mutex);
+      break;
     }
+
+    // Signal waiting recv() call
+    cond_signal(&ws_data->queue_cond);
+    mutex_unlock(&ws_data->queue_mutex);
+
+    log_info("[WS_FRAG] Queued fragment: %zu bytes (first=%d final=%d)", len, is_first, is_final);
 
     // Log callback duration
     {
