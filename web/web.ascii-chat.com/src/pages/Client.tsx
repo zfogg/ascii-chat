@@ -605,10 +605,26 @@ export function ClientPage() {
   // Webcam capture loop - must avoid stale closures in RAF recursion
   const webcamCaptureLoopRef = useRef<(() => void) | null>(null);
 
+  // Helper to compute simple frame hash
+  const computeFrameHash = (data: Uint8Array): number => {
+    let hash = 0;
+    // Sample every 256th byte for speed
+    for (let i = 0; i < data.length; i += 256) {
+      hash = (hash << 5) - hash + (data[i] ?? 0);
+      hash = hash & hash;
+    }
+    return Math.abs(hash);
+  };
+
   // Inner loop function that doesn't have dependencies - this prevents RAF recursion from breaking
+  const captureLoopCountRef = useRef(0);
+  const captureLoopFrameCountRef = useRef(0);
+  const lastFrameHashRef = useRef(0);
+  const uniqueFrameCountRef = useRef(0);
   const createWebcamCaptureLoop = useCallback(() => {
     let sendFrameTimeRef = performance.now();
     return () => {
+      captureLoopCountRef.current++;
       const now = performance.now();
       const elapsed = now - sendFrameTimeRef;
       const sendInterval = 1000 / settings.targetFps; // Send at target FPS
@@ -619,18 +635,36 @@ export function ClientPage() {
         const conn = clientRef.current;
         if (conn && connectionState === ConnectionState.CONNECTED) {
           const frame = captureFrame();
-          if (frame) {
+          if (frame && frame.data) {
+            captureLoopFrameCountRef.current++;
+            const frameHash = computeFrameHash(frame.data);
+            if (frameHash !== lastFrameHashRef.current) {
+              uniqueFrameCountRef.current++;
+              lastFrameHashRef.current = frameHash;
+            }
+
             const payload = buildImageFramePayload(
               frame.data,
               frame.width,
               frame.height,
             );
 
+            // Log every 30 frames
+            if (captureLoopFrameCountRef.current % 30 === 0) {
+              console.log(
+                `[Client] Capture loop: ${captureLoopCountRef.current} calls, ${captureLoopFrameCountRef.current} frames sent, ${uniqueFrameCountRef.current} unique (hash: 0x${frameHash.toString(16)})`,
+              );
+            }
+
             try {
               conn.sendPacket(PacketType.IMAGE_FRAME, payload);
             } catch (err) {
               console.error("[Client] Failed to send IMAGE_FRAME:", err);
             }
+          } else {
+            console.warn(
+              "[Client] captureFrame returned null - video/canvas not ready?",
+            );
           }
         }
       }
