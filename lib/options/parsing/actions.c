@@ -16,7 +16,6 @@
 
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/debug/memory.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/network/update_checker.h>
 #include <ascii-chat/options/manpage.h>
@@ -37,6 +36,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+// ============================================================================
+// Action Exit Helper
+// ============================================================================
+
+/**
+ * @brief Exit from an action without running atexit handlers.
+ *
+ * Actions are informational commands (--help, --version, --list-webcams, etc.)
+ * that print output and exit. Using _Exit() skips atexit handlers so the
+ * debug memory report doesn't pollute action output.
+ */
+static _Noreturn void action_exit(int code) {
+  fflush(NULL);
+  _Exit(code);
+}
 
 // ============================================================================
 // Deferred Action Tracking System
@@ -108,7 +123,7 @@ static void execute_list_webcams(void) {
   asciichat_error_t result = webcam_list_devices(&devices, &device_count);
   if (result != ASCIICHAT_OK) {
     log_plain_stderr("Error: Failed to enumerate webcam devices");
-    exit(ERROR_WEBCAM);
+    action_exit(ERROR_WEBCAM);
   }
 
   if (device_count == 0) {
@@ -123,7 +138,7 @@ static void execute_list_webcams(void) {
   }
 
   webcam_free_device_list(devices);
-  exit(0);
+  action_exit(0);
 }
 
 // ============================================================================
@@ -148,7 +163,7 @@ static void execute_list_microphones(void) {
   asciichat_error_t result = audio_list_input_devices(&devices, &device_count);
   if (result != ASCIICHAT_OK) {
     log_plain_stderr("Error: Failed to enumerate audio input devices");
-    exit(ERROR_AUDIO);
+    action_exit(ERROR_AUDIO);
   }
 
   if (device_count == 0) {
@@ -173,7 +188,7 @@ static void execute_list_microphones(void) {
   }
 
   audio_free_device_list(devices);
-  exit(0);
+  action_exit(0);
 }
 
 void action_list_speakers(void) {
@@ -194,7 +209,7 @@ static void execute_list_speakers(void) {
   asciichat_error_t result = audio_list_output_devices(&devices, &device_count);
   if (result != ASCIICHAT_OK) {
     log_plain_stderr("Error: Failed to enumerate audio output devices");
-    exit(ERROR_AUDIO);
+    action_exit(ERROR_AUDIO);
   }
 
   if (device_count == 0) {
@@ -219,7 +234,7 @@ static void execute_list_speakers(void) {
   }
 
   audio_free_device_list(devices);
-  exit(0);
+  action_exit(0);
 }
 
 // ============================================================================
@@ -296,7 +311,7 @@ void action_show_capabilities_immediate(void) {
   printf("  %s: %s\n", colored_string(label_color, "Capabilities Bitmask"), colored_string(number_color, bitmask_buf));
 
   fflush(stdout);
-  exit(0);
+  action_exit(0);
 }
 
 void action_show_capabilities(void) {
@@ -318,7 +333,7 @@ void action_check_update_immediate(void) {
   asciichat_error_t err = update_check_perform(&result);
   if (err != ASCIICHAT_OK) {
     printf("\nFailed to check for updates.\n\n");
-    exit(1);
+    action_exit(1);
   }
   if (result.update_available) {
     char notification[1024];
@@ -327,7 +342,7 @@ void action_check_update_immediate(void) {
   } else {
     printf("\nYou are already on the latest version: %s (%.8s)\n\n", result.current_version, result.current_sha);
   }
-  exit(0);
+  action_exit(0);
 }
 
 void action_check_update(void) {
@@ -422,7 +437,7 @@ static void execute_show_capabilities(void) {
 
   fflush(stdout);
 
-  exit(0);
+  action_exit(0);
 }
 
 // ============================================================================
@@ -430,36 +445,17 @@ static void execute_show_capabilities(void) {
 // ============================================================================
 
 void action_show_version(void) {
-  log_plain_stderr("ascii-chat %s (%s, %s)", ASCII_CHAT_VERSION_FULL, ASCII_CHAT_BUILD_TYPE, ASCII_CHAT_BUILD_DATE);
-  log_plain_stderr("");
-  log_plain_stderr("Built with:");
+  bool use_colors = terminal_should_color_output(STDOUT_FILENO);
+  if (use_colors) {
+    printf("%s %s (%s, %s)\n", colored_string(LOG_COLOR_WARN, "ascii-chat"),
+           colored_string(LOG_COLOR_INFO, (char *)ASCII_CHAT_VERSION_FULL),
+           colored_string(LOG_COLOR_DEBUG, (char *)ASCII_CHAT_BUILD_TYPE),
+           colored_string(LOG_COLOR_GREY, (char *)ASCII_CHAT_BUILD_DATE));
+  } else {
+    printf("ascii-chat %s (%s, %s)\n", ASCII_CHAT_VERSION_FULL, ASCII_CHAT_BUILD_TYPE, ASCII_CHAT_BUILD_DATE);
+  }
 
-#ifdef __clang__
-  log_plain_stderr("  Compiler: Clang %s", __clang_version__);
-#elif defined(__GNUC__)
-  log_plain_stderr("  Compiler: GCC %d.%d.%d", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
-#elif defined(_MSC_VER)
-  log_plain_stderr("  Compiler: MSVC %d", _MSC_VER);
-#else
-  log_plain_stderr("  Compiler: Unknown");
-#endif
-
-#ifdef USE_MUSL
-  log_plain_stderr("  C Library: musl");
-#elif defined(__GLIBC__)
-  log_plain_stderr("  C Library: glibc %d.%d", __GLIBC__, __GLIBC_MINOR__);
-#elif defined(_WIN32)
-  log_plain_stderr("  C Library: MSVCRT");
-#elif defined(__APPLE__)
-  log_plain_stderr("  C Library: libSystem");
-#else
-  log_plain_stderr("  C Library: Unknown");
-#endif
-
-  log_plain_stderr("");
-  log_plain_stderr("For more information: https://github.com/zfogg/ascii-chat");
-
-  exit(0);
+  action_exit(0);
 }
 
 // ============================================================================
@@ -468,27 +464,27 @@ void action_show_version(void) {
 
 void action_help_server(void) {
   usage(stdout, MODE_SERVER);
-  exit(0);
+  action_exit(0);
 }
 
 void action_help_client(void) {
   usage(stdout, MODE_CLIENT);
-  exit(0);
+  action_exit(0);
 }
 
 void action_help_mirror(void) {
   usage(stdout, MODE_MIRROR);
-  exit(0);
+  action_exit(0);
 }
 
 void action_help_acds(void) {
   usage(stdout, MODE_DISCOVERY_SERVICE);
-  exit(0);
+  action_exit(0);
 }
 
 void action_help_discovery(void) {
   usage(stdout, MODE_DISCOVERY);
-  exit(0);
+  action_exit(0);
 }
 
 // ============================================================================
@@ -501,7 +497,7 @@ void action_create_manpage(const char *output_path) {
 
   if (!config) {
     log_plain_stderr("Error: Failed to get binary options config");
-    exit(ERROR_FILE_OPERATION);
+    action_exit(ERROR_FILE_OPERATION);
   }
 
   // Determine output path: use provided path, or NULL for stdout
@@ -528,7 +524,7 @@ void action_create_manpage(const char *output_path) {
     } else {
       log_plain_stderr("Error: Failed to generate man page");
     }
-    exit(ERROR_FILE_OPERATION);
+    action_exit(ERROR_FILE_OPERATION);
   }
 
   if (path_to_use) {
@@ -537,7 +533,7 @@ void action_create_manpage(const char *output_path) {
     log_plain_stderr("Man page written to stdout");
   }
 
-  exit(0);
+  action_exit(0);
 }
 
 // ============================================================================
@@ -576,7 +572,7 @@ void action_create_config(const char *output_path) {
     } else {
       log_plain_stderr("Error: Failed to create config file");
     }
-    exit(ERROR_CONFIG);
+    action_exit(ERROR_CONFIG);
   }
 
   if (config_path) {
@@ -584,7 +580,7 @@ void action_create_config(const char *output_path) {
   } else {
     log_plain_stderr("Config written to stdout");
   }
-  exit(0);
+  action_exit(0);
 }
 
 // ============================================================================
@@ -592,20 +588,15 @@ void action_create_config(const char *output_path) {
 // ============================================================================
 
 void action_completions(const char *shell_name, const char *output_path) {
-  // Suppress memory report for clean output
-#if defined(DEBUG_MEMORY) && !defined(NDEBUG)
-  debug_memory_set_quiet_mode(true);
-#endif
-
   if (!shell_name || strlen(shell_name) == 0) {
     log_plain_stderr("Error: --completions requires shell name (bash, fish, zsh, powershell)");
-    exit(ERROR_USAGE);
+    action_exit(ERROR_USAGE);
   }
 
   completion_format_t format = completions_parse_shell_name(shell_name);
   if (format == COMPLETION_FORMAT_UNKNOWN) {
     log_plain_stderr("Error: Unknown shell '%s' (supported: bash, fish, zsh, powershell)", shell_name);
-    exit(ERROR_USAGE);
+    action_exit(ERROR_USAGE);
   }
 
   FILE *output = stdout;
@@ -622,7 +613,7 @@ void action_completions(const char *shell_name, const char *output_path) {
       bool overwrite = platform_prompt_yes_no("Overwrite", false); // Default to No
       if (!overwrite) {
         log_plain("Completions generation cancelled.");
-        exit(0);
+        action_exit(0);
       }
 
       log_plain("Overwriting existing completions file...");
@@ -631,7 +622,7 @@ void action_completions(const char *shell_name, const char *output_path) {
     output = platform_fopen(output_path, "w");
     if (!output) {
       log_plain_stderr("Error: Failed to open %s for writing", output_path);
-      exit(ERROR_FILE_OPERATION);
+      action_exit(ERROR_FILE_OPERATION);
     }
     should_close = true;
   }
@@ -644,11 +635,11 @@ void action_completions(const char *shell_name, const char *output_path) {
 
   if (result != ASCIICHAT_OK) {
     log_plain_stderr("Error: Failed to generate %s completions", completions_get_shell_name(format));
-    exit(ERROR_USAGE);
+    action_exit(ERROR_USAGE);
   }
 
   // Silently exit - completions are written (either to file or stdout)
-  exit(0);
+  action_exit(0);
 }
 
 /**
@@ -668,7 +659,7 @@ static void execute_check_update(void) {
     if (HAS_ERRNO(&ctx)) {
       fprintf(stderr, "Update check failed: %s\n", ctx.context_message);
     }
-    exit(1);
+    action_exit(1);
   }
 
   // Display results
@@ -680,7 +671,7 @@ static void execute_check_update(void) {
     printf("\nYou are already on the latest version: %s (%.8s)\n\n", result.current_version, result.current_sha);
   }
 
-  exit(0);
+  action_exit(0);
 }
 
 // ============================================================================

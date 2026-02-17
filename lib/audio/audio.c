@@ -63,10 +63,8 @@ static asciichat_error_t audio_ensure_portaudio_initialized(void) {
   // First initialization - call Pa_Initialize() exactly once
   // Suppress PortAudio backend probe errors (ALSA/JACK/OSS warnings)
   // These are harmless - PortAudio tries multiple backends until one works
-  fprintf(stderr, "[PORTAUDIO_INIT] Calling Pa_Initialize() (init_count will be %d)\n", g_pa_init_count + 1);
   fflush(stderr);
-
-  // Suppress PortAudio output by redirecting both stdout and stderr to /dev/null
+  fflush(stdout);
   platform_stderr_redirect_handle_t stdio_handle = platform_stdout_stderr_redirect_to_null();
 
   g_pa_init_count++;
@@ -74,10 +72,6 @@ static asciichat_error_t audio_ensure_portaudio_initialized(void) {
 
   // Restore stdout and stderr before checking errors
   platform_stdout_stderr_restore(stdio_handle);
-
-  fprintf(stderr, "[PORTAUDIO_INIT] Pa_Initialize() returned: %s (err=%d, init_count=%d)\n", Pa_GetErrorText(err), err,
-          g_pa_init_count);
-  fflush(stderr);
 
   if (err != paNoError) {
     static_mutex_unlock(&g_pa_refcount_mutex);

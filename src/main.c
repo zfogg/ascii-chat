@@ -41,6 +41,7 @@
 #include <ascii-chat/options/common.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/options/builder.h>
+#include <ascii-chat/options/actions.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/log/grep.h>
@@ -105,10 +106,6 @@ static const mode_descriptor_t g_mode_table[] = {
 static void print_usage(asciichat_mode_t mode) {
   // Use the new usage() function from common.c which handles mode-specific help properly
   usage(stdout, mode);
-}
-
-static void print_version(void) {
-  printf("%s %s (%s, %s)\n", APP_NAME, VERSION, ASCII_CHAT_BUILD_TYPE, ASCII_CHAT_BUILD_DATE);
 }
 
 // Discovery mode is implicit (no keyword) so it has a separate descriptor
@@ -361,12 +358,14 @@ int main(int argc, char *argv[]) {
   // Terminal capabilities already initialized before options_init() at startup
   if (opts->help) {
     print_usage(opts->detected_mode);
-    return 0;
+    fflush(NULL);
+    _Exit(0);
   }
 
   if (opts->version) {
-    print_version();
-    exit(0);
+    log_set_terminal_output(true);
+    action_show_version();
+    // action_show_version() calls _Exit(), so we don't reach here
   }
 
   // For server mode with status screen: disable terminal output IMMEDIATELY

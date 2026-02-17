@@ -832,7 +832,8 @@ asciichat_error_t options_init(int argc, char **argv) {
 
       // Show help for the detected mode (or binary-level if no mode)
       usage(stdout, help_mode);
-      exit(0);
+      fflush(NULL);
+      _Exit(0);
     }
   }
 
@@ -925,7 +926,7 @@ asciichat_error_t options_init(int argc, char **argv) {
         }
         has_action = true;
         action_check_update_immediate();
-        // action_check_update_immediate() calls exit(), so we don't reach here
+        // action_check_update_immediate() calls _Exit(), so we don't reach here
         break;
       }
       if (strcmp(argv[i], "--no-check-update") == 0) {
@@ -971,7 +972,7 @@ asciichat_error_t options_init(int argc, char **argv) {
           }
 
           action_completions(shell_name, output_file);
-          // action_completions() calls exit(), so we don't reach here
+          // action_completions() calls _Exit(), so we don't reach here
         } else {
           log_plain_stderr("Error: --completions requires shell name (bash, fish, zsh, powershell)");
           return ERROR_USAGE;
@@ -981,26 +982,26 @@ asciichat_error_t options_init(int argc, char **argv) {
       if (strcmp(argv[i], "--list-webcams") == 0) {
         has_action = true;
         action_list_webcams();
-        // action_list_webcams() calls exit(), so we don't reach here
+        // action_list_webcams() calls _Exit(), so we don't reach here
         break;
       }
       if (strcmp(argv[i], "--list-microphones") == 0) {
         has_action = true;
         action_list_microphones();
-        // action_list_microphones() calls exit(), so we don't reach here
+        // action_list_microphones() calls _Exit(), so we don't reach here
         break;
       }
       if (strcmp(argv[i], "--list-speakers") == 0) {
         has_action = true;
         action_list_speakers();
-        // action_list_speakers() calls exit(), so we don't reach here
+        // action_list_speakers() calls _Exit(), so we don't reach here
         break;
       }
       // Check for --show-capabilities (binary-level action)
       if (strcmp(argv[i], "--show-capabilities") == 0) {
         has_action = true;
         action_show_capabilities_immediate();
-        // action_show_capabilities_immediate() calls exit(), so we don't reach here
+        // action_show_capabilities_immediate() calls _Exit(), so we don't reach here
         break;
       }
     }
@@ -1069,12 +1070,12 @@ asciichat_error_t options_init(int argc, char **argv) {
 
       // Call action handler which handles all output and prompts properly
       action_create_config(config_create_path);
-      // action_create_config() calls exit(), so we don't reach here
+      // action_create_config() calls _Exit(), so we don't reach here
     }
     if (create_manpage) {
       // Call action handler which handles all output and prompts properly
       action_create_manpage(manpage_create_path);
-      // action_create_manpage() calls exit(), so we don't reach here
+      // action_create_manpage() calls _Exit(), so we don't reach here
     }
   }
 
@@ -1830,6 +1831,11 @@ asciichat_error_t options_init(int argc, char **argv) {
   // are executed here after all options are fully parsed and published via RCU.
   // This ensures action output reflects the final parsed state (e.g., final dimensions
   // for --show-capabilities).
+  // Re-enable terminal output so deferred actions can print their results.
+  // It was disabled earlier (STAGE 1C) to suppress log noise during option parsing.
+  if (has_action) {
+    log_set_terminal_output(true);
+  }
   actions_execute_deferred();
   SAFE_FREE(allocated_mode_argv);
   return ASCIICHAT_OK;
