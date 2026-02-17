@@ -18,19 +18,23 @@
 #include <time.h>
 
 /* ============================================================================
- * Default Format String (matches hardcoded format)
+ * Default Format String (mode-aware)
  * ============================================================================ */
 
 /**
- * @brief Default log format that matches the original hardcoded format
+ * @brief Get default log format based on build mode
  *
- * This format produces output identical to what was hardcoded before custom
- * formatting support. Used when no --log-format is specified.
+ * Release mode uses a simple format with just timestamp, level, and message.
+ * Debug mode uses a verbose format with thread ID, file path, line number, and function name.
  */
-static const char DEFAULT_FORMAT[] = "[%time(%H:%M:%S)] [%level_aligned] %message";
-
 const char *log_format_default(void) {
-  return DEFAULT_FORMAT;
+#ifdef NDEBUG
+  /* Release mode: minimal format with timestamp and level */
+  return "[%time(%H:%M:%S)] [%level_aligned] %message";
+#else
+  /* Debug mode: verbose format with thread ID, file (relative to project root), line, and function */
+  return "[%time(%H:%M:%S)] [%level_aligned] [tid:%tid] %file_relative:%line in %func(): %message";
+#endif
 }
 
 /* ============================================================================

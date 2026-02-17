@@ -354,6 +354,26 @@ typedef enum {
 /** @brief Default WebSocket port for discovery-service mode (integer) */
 #define OPT_WEBSOCKET_PORT_ACDS_DEFAULT 27227
 
+/** @brief Default log format string - release mode (simple format with timestamp, level, and message) */
+#define OPT_LOG_FORMAT_DEFAULT_RELEASE "[%time(%H:%M:%S)] [%level_aligned] %message"
+
+/** @brief Default log format string - debug mode (verbose with thread ID, file relative path, line, and function) */
+#define OPT_LOG_FORMAT_DEFAULT_DEBUG                                                                                   \
+  "[%time(%H:%M:%S)] [%level_aligned] [tid:%tid] %file_relative:%line in %func(): %message"
+
+/** @brief Default log format string (selected based on build mode, must match log_format_default() in format.c)
+ *
+ * This is defined conditionally based on NDEBUG to match the mode-aware default in log_format_default().
+ * The getter function get_default_log_format() uses this macro to provide the default to the options system.
+ */
+#ifndef OPT_LOG_FORMAT_DEFAULT
+#ifdef NDEBUG
+#define OPT_LOG_FORMAT_DEFAULT OPT_LOG_FORMAT_DEFAULT_RELEASE
+#else
+#define OPT_LOG_FORMAT_DEFAULT OPT_LOG_FORMAT_DEFAULT_DEBUG
+#endif
+#endif
+
 /** @brief Default server address for client connections */
 #define OPT_ADDRESS_DEFAULT "localhost"
 

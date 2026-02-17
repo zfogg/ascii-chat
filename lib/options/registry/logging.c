@@ -160,7 +160,7 @@ const registry_entry_t g_logging_entries[] = {
      false,
      OPTION_MODE_BINARY,
      {.input_type = OPTION_INPUT_STRING},
-     NULL},
+     get_default_log_format},
     {"log-format-console",
      '\0',
      OPTION_TYPE_BOOL,

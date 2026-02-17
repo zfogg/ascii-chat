@@ -16,6 +16,20 @@
 #include <stdio.h>
 
 // ============================================================================
+// Mode-Aware Default: log-format
+// ============================================================================
+
+/**
+ * @brief Get mode-specific default value for --log-format
+ *
+ * Returns the default log format string for all modes.
+ */
+const void *get_default_log_format(asciichat_mode_t mode) {
+  (void)mode; /* All modes use the same default format string */
+  return OPT_LOG_FORMAT_DEFAULT;
+}
+
+// ============================================================================
 // Mode-Aware Default: log-file
 // ============================================================================
 

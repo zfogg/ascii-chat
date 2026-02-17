@@ -426,7 +426,12 @@ Test(log_format, apply_buffer_overflow) {
 Test(log_format, default_format) {
   const char *def = log_format_default();
   cr_assert_not_null(def);
+  /* Default format depends on build mode (debug vs release) */
+#ifdef NDEBUG
   cr_assert_str_eq(def, "[%time(%H:%M:%S)] [%level_aligned] %message");
+#else
+  cr_assert_str_eq(def, "[%time(%H:%M:%S)] [%level_aligned] [tid:%tid] %file_relative:%line in %func(): %message");
+#endif
 }
 
 /* ============================================================================
