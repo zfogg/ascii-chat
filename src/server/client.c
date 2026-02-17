@@ -515,185 +515,171 @@ static int start_client_threads(server_context_t *server_ctx, client_info_t *cli
 }
 
 int add_client(server_context_t *server_ctx, socket_t socket, const char *client_ip, int port) {
-  rwlock_wrlock(&g_client_manager_rwlock);
-
-  // Find empty slot - this is the authoritative check
+  // Find empty slot WITHOUT holding the global lock
+  // We'll re-verify under lock after allocations complete
   int slot = -1;
   int existing_count = 0;
   for (int i = 0; i < MAX_CLIENTS; i++) {
     if (slot == -1 && atomic_load(&g_client_manager.clients[i].client_id) == 0) {
       slot = i; // Take first available slot
     }
-    // Count only active clients
     if (atomic_load(&g_client_manager.clients[i].client_id) != 0 && atomic_load(&g_client_manager.clients[i].active)) {
       existing_count++;
     }
   }
 
-  // Check if we've hit the configured max-clients limit (not the array size)
-  if (existing_count >= GET_OPTION(max_clients)) {
-    rwlock_wrunlock(&g_client_manager_rwlock);
-    SET_ERRNO(ERROR_RESOURCE_EXHAUSTED, "Maximum client limit reached (%d/%d active clients)", existing_count,
-              GET_OPTION(max_clients));
-    log_error("Maximum client limit reached (%d/%d active clients)", existing_count, GET_OPTION(max_clients));
-
-    // Send a rejection message to the client before closing
-    // Use platform-abstracted socket_send() instead of raw send() for Windows portability
+  // Quick pre-check before expensive allocations
+  if (existing_count >= GET_OPTION(max_clients) || slot == -1) {
     const char *reject_msg = "SERVER_FULL: Maximum client limit reached\n";
     ssize_t send_result = socket_send(socket, reject_msg, strlen(reject_msg), 0);
     if (send_result < 0) {
       log_warn("Failed to send rejection message to client: %s", SAFE_STRERROR(errno));
     }
-
     return -1;
   }
 
-  if (slot == -1) {
+  // DO EXPENSIVE ALLOCATIONS OUTSIDE THE LOCK
+  // This prevents blocking frame processing during client initialization
+  uint32_t new_client_id = atomic_fetch_add(&g_client_manager.next_client_id, 1) + 1;
+
+  video_frame_buffer_t *incoming_video_buffer = video_frame_buffer_create(new_client_id);
+  if (!incoming_video_buffer) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to create video buffer for client %u", new_client_id);
+    log_error("Failed to create video buffer for client %u", new_client_id);
+    return -1;
+  }
+
+  audio_ring_buffer_t *incoming_audio_buffer = audio_ring_buffer_create_for_capture();
+  if (!incoming_audio_buffer) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to create audio buffer for client %u", new_client_id);
+    log_error("Failed to create audio buffer for client %u", new_client_id);
+    video_frame_buffer_destroy(incoming_video_buffer);
+    return -1;
+  }
+
+  packet_queue_t *audio_queue = packet_queue_create_with_pools(500, 1000, false);
+  if (!audio_queue) {
+    LOG_ERRNO_IF_SET("Failed to create audio queue for client");
+    audio_ring_buffer_destroy(incoming_audio_buffer);
+    video_frame_buffer_destroy(incoming_video_buffer);
+    return -1;
+  }
+
+  video_frame_buffer_t *outgoing_video_buffer = video_frame_buffer_create(new_client_id);
+  if (!outgoing_video_buffer) {
+    LOG_ERRNO_IF_SET("Failed to create outgoing video buffer for client");
+    packet_queue_destroy(audio_queue);
+    audio_ring_buffer_destroy(incoming_audio_buffer);
+    video_frame_buffer_destroy(incoming_video_buffer);
+    return -1;
+  }
+
+  void *send_buffer = SAFE_MALLOC_ALIGNED(MAX_FRAME_BUFFER_SIZE, 64, void *);
+  if (!send_buffer) {
+    log_error("Failed to allocate send buffer for client %u", new_client_id);
+    video_frame_buffer_destroy(outgoing_video_buffer);
+    packet_queue_destroy(audio_queue);
+    audio_ring_buffer_destroy(incoming_audio_buffer);
+    video_frame_buffer_destroy(incoming_video_buffer);
+    return -1;
+  }
+
+  // NOW acquire the lock only for the critical section: slot assignment + registration
+  rwlock_wrlock(&g_client_manager_rwlock);
+
+  // Re-check slot availability under lock (another thread might have taken it)
+  if (atomic_load(&g_client_manager.clients[slot].client_id) != 0) {
     rwlock_wrunlock(&g_client_manager_rwlock);
-    SET_ERRNO(ERROR_RESOURCE_EXHAUSTED, "No available client slots (all %d array slots are in use)", MAX_CLIENTS);
-    log_error("No available client slots (all %d array slots are in use)", MAX_CLIENTS);
+    SAFE_FREE(send_buffer);
+    video_frame_buffer_destroy(outgoing_video_buffer);
+    packet_queue_destroy(audio_queue);
+    audio_ring_buffer_destroy(incoming_audio_buffer);
+    video_frame_buffer_destroy(incoming_video_buffer);
 
-    // Send a rejection message to the client before closing
-    // Use platform-abstracted socket_send() instead of raw send() for Windows portability
-    const char *reject_msg = "SERVER_FULL: Maximum client limit reached\n";
-    ssize_t send_result = socket_send(socket, reject_msg, strlen(reject_msg), 0);
-    if (send_result < 0) {
-      log_warn("Failed to send rejection message to client: %s", SAFE_STRERROR(errno));
-    }
-
+    const char *reject_msg = "SERVER_FULL: Slot reassigned, try again\n";
+    socket_send(socket, reject_msg, strlen(reject_msg), 0);
     return -1;
   }
 
-  // Update client_count to match actual count before adding new client
-  g_client_manager.client_count = existing_count;
-
-  // Initialize client
+  // Now we have exclusive access to the slot - do the actual registration
   client_info_t *client = &g_client_manager.clients[slot];
   memset(client, 0, sizeof(client_info_t));
 
   client->socket = socket;
-  client->is_tcp_client = true; // TCP client - threads managed by tcp_server thread pool
-  uint32_t new_client_id = atomic_fetch_add(&g_client_manager.next_client_id, 1) + 1;
+  client->is_tcp_client = true;
   atomic_store(&client->client_id, new_client_id);
   SAFE_STRNCPY(client->client_ip, client_ip, sizeof(client->client_ip) - 1);
   client->port = port;
   atomic_store(&client->active, true);
-  log_info("Added new client ID=%u from %s:%d (socket=%d, slot=%d)", new_client_id, client_ip, port, socket, slot);
   atomic_store(&client->shutting_down, false);
-  atomic_store(&client->last_rendered_grid_sources, 0); // Render thread updates this
-  atomic_store(&client->last_sent_grid_sources, 0);     // Send thread updates this
-  log_debug("Client slot assigned: client_id=%u assigned to slot %d, socket=%d", atomic_load(&client->client_id), slot,
-            socket);
+  atomic_store(&client->last_rendered_grid_sources, 0);
+  atomic_store(&client->last_sent_grid_sources, 0);
   client->connected_at = time(NULL);
 
-  // Initialize crypto context for this client
   memset(&client->crypto_handshake_ctx, 0, sizeof(client->crypto_handshake_ctx));
   client->crypto_initialized = false;
 
-  // Initialize pending packet storage (for --no-encrypt mode)
   client->pending_packet_type = 0;
   client->pending_packet_payload = NULL;
   client->pending_packet_length = 0;
 
-  // Configure socket options for optimal performance
-  configure_client_socket(socket, atomic_load(&client->client_id));
+  // Assign pre-allocated buffers
+  client->incoming_video_buffer = incoming_video_buffer;
+  client->incoming_audio_buffer = incoming_audio_buffer;
+  client->audio_queue = audio_queue;
+  client->outgoing_video_buffer = outgoing_video_buffer;
+  client->send_buffer = send_buffer;
+  client->send_buffer_size = MAX_FRAME_BUFFER_SIZE;
 
-  // Register socket with tcp_server for thread pool management
-  // Must be done before spawning any threads
+  safe_snprintf(client->display_name, sizeof(client->display_name), "Client%u", new_client_id);
+  log_info("Added new client ID=%u from %s:%d (socket=%d, slot=%d)", new_client_id, client_ip, port, socket, slot);
+  log_debug("Client slot assigned: client_id=%u assigned to slot %d, socket=%d", new_client_id, slot, socket);
+
+  // Register socket with tcp_server
   asciichat_error_t reg_result = tcp_server_add_client(server_ctx->tcp_server, socket, client);
   if (reg_result != ASCIICHAT_OK) {
     SET_ERRNO(ERROR_INTERNAL, "Failed to register client socket with tcp_server");
-    log_error("Failed to register client %u socket with tcp_server", atomic_load(&client->client_id));
+    log_error("Failed to register client %u socket with tcp_server", new_client_id);
+    // Don't unlock here - error_cleanup will do it
     goto error_cleanup;
   }
 
-  safe_snprintf(client->display_name, sizeof(client->display_name), "Client%u", atomic_load(&client->client_id));
-
-  // Create individual video buffer for this client using modern double-buffering
-  client->incoming_video_buffer = video_frame_buffer_create(atomic_load(&client->client_id));
-  if (!client->incoming_video_buffer) {
-    SET_ERRNO(ERROR_MEMORY, "Failed to create video buffer for client %u", atomic_load(&client->client_id));
-    log_error("Failed to create video buffer for client %u", atomic_load(&client->client_id));
-    goto error_cleanup;
-  }
-
-  // Create individual audio buffer for this client
-  // NOTE: Use capture version (no jitter buffering) because incoming audio is from network decode,
-  // not from real-time microphone. Jitter buffering would cause buffer overflow since decoder
-  // outputs at constant rate (48kHz) but mixer needs time to process.
-  client->incoming_audio_buffer = audio_ring_buffer_create_for_capture();
-  if (!client->incoming_audio_buffer) {
-    SET_ERRNO(ERROR_MEMORY, "Failed to create audio buffer for client %u", atomic_load(&client->client_id));
-    log_error("Failed to create audio buffer for client %u", atomic_load(&client->client_id));
-    goto error_cleanup;
-  }
-
-  // Create packet queues for outgoing data
-  // Use node pools but share the global buffer pool
-  // Audio queue needs larger capacity to handle jitter and render thread lag
-  // 500 packets @ 172fps = ~2.9 seconds of buffering (was 100 = 0.58s)
-  client->audio_queue =
-      packet_queue_create_with_pools(500, 1000, false); // Max 500 audio packets, 1000 nodes, NO local buffer pool
-  if (!client->audio_queue) {
-    LOG_ERRNO_IF_SET("Failed to create audio queue for client");
-    goto error_cleanup;
-  }
-
-  // Create outgoing video buffer for ASCII frames (double buffered, no dropping)
-  client->outgoing_video_buffer = video_frame_buffer_create(atomic_load(&client->client_id));
-  if (!client->outgoing_video_buffer) {
-    LOG_ERRNO_IF_SET("Failed to create outgoing video buffer for client");
-    goto error_cleanup;
-  }
-
-  // Pre-allocate send buffer to avoid malloc/free in send thread (prevents deadlocks)
-  client->send_buffer_size = MAX_FRAME_BUFFER_SIZE; // 2MB should handle largest frames
-  // 64-byte cache-line alignment improves performance for large network buffers
-  client->send_buffer = SAFE_MALLOC_ALIGNED(client->send_buffer_size, 64, void *);
-  if (!client->send_buffer) {
-    log_error("Failed to allocate send buffer for client %u", atomic_load(&client->client_id));
-    goto error_cleanup;
-  }
-
-  g_client_manager.client_count = existing_count + 1; // We just added a client
+  g_client_manager.client_count++;
   log_debug("Client count updated: now %d clients (added client_id=%u to slot %d)", g_client_manager.client_count,
-            atomic_load(&client->client_id), slot);
+            new_client_id, slot);
 
-  // Add client to uthash table for O(1) lookup
-  // Note: HASH_ADD_INT uses the client_id field directly from the client structure
   uint32_t cid = atomic_load(&client->client_id);
   HASH_ADD_INT(g_client_manager.clients_by_id, client_id, client);
   log_debug("Added client %u to uthash table", cid);
 
-  // Register this client's audio buffer with the mixer
+  rwlock_wrunlock(&g_client_manager_rwlock);
+
+  // Configure socket OUTSIDE lock
+  configure_client_socket(socket, new_client_id);
+
+  // Initialize mutexes OUTSIDE lock
+  if (mutex_init(&client->client_state_mutex) != 0) {
+    log_error("Failed to initialize client state mutex for client %u", new_client_id);
+    remove_client(server_ctx, new_client_id);
+    return -1;
+  }
+
+  if (mutex_init(&client->send_mutex) != 0) {
+    log_error("Failed to initialize send mutex for client %u", new_client_id);
+    remove_client(server_ctx, new_client_id);
+    return -1;
+  }
+
+  // Register with audio mixer OUTSIDE lock
   if (g_audio_mixer && client->incoming_audio_buffer) {
-    if (mixer_add_source(g_audio_mixer, atomic_load(&client->client_id), client->incoming_audio_buffer) < 0) {
-      log_warn("Failed to add client %u to audio mixer", atomic_load(&client->client_id));
+    if (mixer_add_source(g_audio_mixer, new_client_id, client->incoming_audio_buffer) < 0) {
+      log_warn("Failed to add client %u to audio mixer", new_client_id);
     } else {
 #ifdef DEBUG_AUDIO
-      log_debug("Added client %u to audio mixer", atomic_load(&client->client_id));
+      log_debug("Added client %u to audio mixer", new_client_id);
 #endif
     }
   }
-
-  // Initialize mutexes BEFORE creating any threads to prevent race conditions
-  // These mutexes might be accessed by receive thread which starts before render threads
-  if (mutex_init(&client->client_state_mutex) != 0) {
-    log_error("Failed to initialize client state mutex for client %u", atomic_load(&client->client_id));
-    // Client is already in hash table - use remove_client for proper cleanup
-    remove_client(server_ctx, atomic_load(&client->client_id));
-    return -1;
-  }
-
-  // Initialize send mutex to protect concurrent socket writes
-  if (mutex_init(&client->send_mutex) != 0) {
-    log_error("Failed to initialize send mutex for client %u", atomic_load(&client->client_id));
-    // Client is already in hash table - use remove_client for proper cleanup
-    remove_client(server_ctx, atomic_load(&client->client_id));
-    return -1;
-  }
-
-  rwlock_wrunlock(&g_client_manager_rwlock);
 
   // Perform crypto handshake before starting threads.
   // This ensures the handshake uses the socket directly without interference from receive thread.
