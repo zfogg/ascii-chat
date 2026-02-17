@@ -94,8 +94,13 @@ pcre2_code *asciichat_pcre2_singleton_get_code(pcre2_singleton_t *singleton) {
     return code;
   }
 
-  /* Slow path: first call, need to compile. Use compare-and-swap to ensure
-   * only one thread does the compilation work. */
+  /* If compilation was already attempted (code freed during cleanup, or compilation
+   * failed), don't recompile. Prevents re-entrant allocation during shutdown. */
+  if (atomic_load(&singleton->compiled)) {
+    return NULL;
+  }
+
+  /* Slow path: first call, need to compile. */
   int errornumber;
   PCRE2_SIZE erroroffset;
 
