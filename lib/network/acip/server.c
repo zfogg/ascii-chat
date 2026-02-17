@@ -19,6 +19,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/overflow.h>
+#include <ascii-chat/util/time.h>
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <string.h>
@@ -29,8 +30,9 @@
 
 asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, void *client_ctx,
                                                    const acip_server_callbacks_t *callbacks) {
-  log_dev_every(4500000, "ACIP_SERVER_DISPATCH: Entry, transport=%p, client_ctx=%p, callbacks=%p", (void *)transport,
-                client_ctx, (const void *)callbacks);
+  uint64_t dispatch_start_ns = time_get_ns();
+  log_dev_every(4500000, "ACIP_SERVER_DISPATCH: Entry, transport=%p, client_ctx=%p, callbacks=%p, timestamp=%llu",
+                (void *)transport, client_ctx, (const void *)callbacks, (unsigned long long)dispatch_start_ns);
 
   if (!transport) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport (NULL)");
@@ -71,11 +73,20 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
     void *allocated_buffer = NULL;
     size_t packet_len = 0;
 
+    uint64_t recv_start_ns = time_get_ns();
     asciichat_error_t recv_result = transport->methods->recv(transport, &packet_data, &packet_len, &allocated_buffer);
+    uint64_t recv_end_ns = time_get_ns();
 
     if (recv_result != ASCIICHAT_OK) {
+      char recv_duration_str[32];
+      format_duration_ns((double)(recv_end_ns - recv_start_ns), recv_duration_str, sizeof(recv_duration_str));
+      log_warn("[ACIP_RECV_ERROR] recv() failed after %s (result=%d)", recv_duration_str, recv_result);
       return SET_ERRNO(ERROR_NETWORK, "Transport recv() failed");
     }
+
+    char recv_duration_str[32];
+    format_duration_ns((double)(recv_end_ns - recv_start_ns), recv_duration_str, sizeof(recv_duration_str));
+    log_info("[ACIP_RECV_SUCCESS] Received %zu bytes in %s", packet_len, recv_duration_str);
 
     // Parse packet header
     if (packet_len < sizeof(packet_header_t)) {
@@ -131,17 +142,17 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
       envelope.allocated_buffer = plaintext;
       envelope.allocated_size = plaintext_size;
 
-      log_dev_every(4500000, "ACIP_SERVER_DISPATCH: Decrypted WebSocket packet: inner_type=%d, inner_len=%u",
-                    envelope.type, envelope.len);
+      log_info("ACIP_SERVER_DECRYPT: Decrypted WebSocket packet: inner_type=%d, inner_len=%u", envelope.type,
+               envelope.len);
     }
   }
 
   // Dispatch packet to appropriate ACIP handler
   // Server receives packets FROM clients, so use server packet handler
-  log_dev_every(4500000, "ACIP_SERVER: About to dispatch packet type=%d, data_len=%zu", envelope.type, envelope.len);
+  log_info("ACIP_DISPATCH_PKT: type=%d, len=%zu, client_ctx=%p", envelope.type, envelope.len, client_ctx);
   asciichat_error_t dispatch_result =
       acip_handle_server_packet(transport, envelope.type, envelope.data, envelope.len, client_ctx, callbacks);
-  log_dev_every(4500000, "ACIP_SERVER: Dispatch completed with result=%d", dispatch_result);
+  log_info("ACIP_DISPATCH_RESULT: type=%d, result=%d", envelope.type, dispatch_result);
 
   // Always free the allocated buffer (even if handler failed)
   if (envelope.allocated_buffer) {
