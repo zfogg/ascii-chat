@@ -508,6 +508,9 @@ int mirror_main(void) {
   // Cleanup session log buffer (used by splash screen)
   session_log_buffer_destroy();
 
+  // Re-enable terminal output for shutdown logging
+  log_set_terminal_output(true);
+
   // Disable keepawake mode (re-allow OS to sleep)
   log_debug("mirror_main: disabling keepawake");
   platform_disable_keepawake();
