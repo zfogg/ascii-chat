@@ -2,6 +2,8 @@
 // Provides type-safe interface to libasciichat client mode
 
 import type { Palette } from "../components/Settings";
+import { createOptionAccessor } from "./common/optionsWrapper";
+import { initializeSettings, cleanupSettings } from "./settings";
 
 // Type for WASM exports exposed to window.asciiChatWasm
 interface AsciiChatWasmExports {
@@ -350,6 +352,10 @@ export async function initClientWasm(
     }
     console.log("[Client WASM] Initialization complete!");
 
+    // Initialize shared settings module with option accessor
+    const optionsAccessor = createOptionAccessor(wasmModule);
+    initializeSettings(optionsAccessor);
+
     // Expose WASM module to window for JavaScript access (e.g., tooltips)
     const globalWindow = globalThis as typeof globalThis & {
       asciiChatWasm: AsciiChatWasmExports;
@@ -372,6 +378,7 @@ export function cleanupClientWasm(): void {
     console.error("[cleanupClientWasm] Calling _client_cleanup()...");
     wasmModule._client_cleanup();
     wasmModule = null;
+    cleanupSettings();
     console.error("[cleanupClientWasm] Cleanup complete, module set to null");
   } else {
     console.error("[cleanupClientWasm] No module to cleanup");
