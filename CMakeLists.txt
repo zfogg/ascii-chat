@@ -113,6 +113,15 @@ project(${PROJECT_NAME_FULL}
 # Post-project() Config (code that must be run after project())
 # =============================================================================
 
+# Musl release build optimization adjustment
+# Use -O2 instead of -O3 for musl release builds to avoid TPOFF32 relocation errors
+# The -O2 flag will override the default -O3 from CMAKE_C_FLAGS_RELEASE
+if(USE_MUSL AND (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
+    string(REPLACE "-O3" "-O2" CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
+    string(REPLACE "-O3" "-O2" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+    message(STATUS "Musl release build: using -O2 optimization instead of -O3 to avoid TPOFF32 relocations")
+endif()
+
 # Interprocedural optimization (LTO) support detection
 # MUST be after project() when languages are enabled
 message(STATUS "DEBUG IPO setup: USE_MUSL=${USE_MUSL}")

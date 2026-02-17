@@ -370,8 +370,8 @@ void platform_memory_barrier(void) {
 // Error Handling
 // ============================================================================
 
-// Thread-local storage for error strings
-static __thread char error_buffer[BUFFER_SIZE_SMALL];
+// Thread-local storage for error strings (non-static for shared library compatibility)
+__thread char error_buffer[BUFFER_SIZE_SMALL];
 
 /**
  * @brief Get thread-safe error string

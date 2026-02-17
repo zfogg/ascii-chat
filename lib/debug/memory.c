@@ -37,7 +37,8 @@ typedef struct mem_block {
   struct mem_block *next;
 } mem_block_t;
 
-static __thread bool g_in_debug_memory = false;
+// Non-static for shared library compatibility (still thread-local)
+__thread bool g_in_debug_memory = false;
 
 /**
  * @brief Allocation ignore list for memory report
