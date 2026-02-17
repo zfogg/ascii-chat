@@ -1700,7 +1700,7 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
     return 0;
   }
 
-  static char work_buffer[2048];
+  static char work_buffer[LOG_MSG_BUFFER_SIZE + 1024];
 
   // Parse format FIRST, regardless of color availability
   // Parse format: [TIMESTAMP] [LEVEL] [tid:THREAD_ID] FILE:LINE in FUNC(): MESSAGE
@@ -1753,8 +1753,8 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
   if (level_len >= sizeof(level_str) || level_len == 0) {
     return 0; // Level string too long or empty
   }
-  SAFE_STRNCPY(level_str, level_start, level_len);
-  // Preserve level string with padding intact for correct grep highlighting position mapping
+  /* Use strncpy directly for substring extraction (not null-terminated source) */
+  strncpy(level_str, level_start, level_len);
   level_str[level_len] = '\0';
 
   // Determine log level for color selection
@@ -1816,7 +1816,8 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
   if (file_len >= sizeof(file_path)) {
     return 0;
   }
-  SAFE_STRNCPY(file_path, file_start, file_len);
+  /* Use strncpy directly for substring extraction (not null-terminated source) */
+  strncpy(file_path, file_start, file_len);
   file_path[file_len] = '\0';
   p++; // Skip :
 
@@ -1870,7 +1871,8 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
     func_len = sizeof(func_name) - 1;
   }
   if (func_len > 0) {
-    SAFE_STRNCPY(func_name, func_start, func_len);
+    /* Use strncpy directly for substring extraction (not null-terminated source) */
+    strncpy(func_name, func_start, func_len);
   }
   func_name[func_len] = '\0';
 
