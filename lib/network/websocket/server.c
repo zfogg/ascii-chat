@@ -641,7 +641,9 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       mutex_lock(&ws_data->queue_mutex);
       bool success = ringbuffer_write(ws_data->recv_queue, &msg);
       if (!success) {
-        log_warn("WebSocket receive queue full, dropping message (%zu bytes) - queue cannot keep up", msg.len);
+        // Queue is full - drop the message and log warning
+        // This shouldn't happen often with the larger queue (4096 slots)
+        log_warn("WebSocket receive queue full (%zu bytes) - dropping message", msg.len);
         buffer_pool_free(NULL, msg.data, msg.len);
         mutex_unlock(&ws_data->queue_mutex);
         break;

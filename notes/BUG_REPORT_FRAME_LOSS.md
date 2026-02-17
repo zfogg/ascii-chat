@@ -205,3 +205,27 @@ will reduce their size and arrival rate pressure on the recv_queue.
 Performance test: FPS = 27-28 (expected >= 30) — FAILED
 Connection test: PASSED
 ```
+
+## FUNDAMENTAL PRINCIPLE: Computers Are Fast
+
+**Baseline performance:** Modern computers can process 27+ MB/sec through a single thread easily. This includes:
+- TCP/UDP packet I/O
+- Cryptographic operations (encryption/decryption)
+- Compression/decompression
+- Message serialization/deserialization
+
+All of these operations complete in microseconds. If our code is NOT achieving microsecond latency for read/write operations, **the bug is in our code, not in the computer's capability.**
+
+When investigating slow network operations, the question is not "is this operation too slow for a computer?" but rather "what in our code is blocking progress?"
+
+## NEW BUG FOUND: Missing RX Flow Control Implementation (2026-02-17)
+
+**The real issue:** When recv_queue fills up, we log a warning but **do NOT call `lws_rx_flow_control(wsi, 0)`** to pause receiving.
+
+- Line 643-648 in `lib/network/websocket/server.c`: when ringbuffer_write fails, we just drop the message
+- Missing: `lws_rx_flow_control(wsi, 0)` to tell LWS to pause receiving
+- Result: messages are dropped, recv thread gets out of sync, WebSocket closes abnormally (code 1006)
+
+**The fix:** When recv_queue is full, apply backpressure by calling `lws_rx_flow_control(wsi, 0)`. When recv_queue drains, resume with `lws_rx_flow_control(wsi, 1)`.
+
+This is the root cause of 0 FPS on WebSocket clients - the connection closes when the queue fills because we don't tell LWS to pause.

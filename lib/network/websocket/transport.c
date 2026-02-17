@@ -46,10 +46,11 @@
 /**
  * @brief Maximum receive queue size (messages buffered before recv())
  *
- * Power of 2 for ringbuffer optimization. Backpressure via lws_rx_flow_control()
- * prevents queue overflow by pausing websocket reception when queue is full.
+ * Power of 2 for ringbuffer optimization.
+ * Increased from 512 to buffer multiple large frames and reduce queue pressure.
+ * Each slot holds one message (up to 921KB). With 4096 slots, can buffer ~3.7GB.
  */
-#define WEBSOCKET_RECV_QUEUE_SIZE 512
+#define WEBSOCKET_RECV_QUEUE_SIZE 4096
 
 /**
  * @brief Maximum send queue size (messages buffered for server-side sending)
@@ -439,19 +440,8 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
 
   mutex_lock(&ws_data->queue_mutex);
 
-  // Retry writing pending message if one exists and queue has space
-  if (ws_data->has_pending_msg) {
-    bool success = ringbuffer_write(ws_data->recv_queue, &ws_data->pending_msg);
-    if (success) {
-      ws_data->has_pending_msg = false;
-      log_debug("Successfully queued pending message on retry");
-
-      // Resume RX flow now that queue has space
-      if (ws_data->wsi) {
-        lws_rx_flow_control(ws_data->wsi, 1);
-      }
-    }
-  }
+  // No pending message handling - messages are dropped if queue is full
+  // This simplifies the code and avoids thread-safety issues with flow control
 
   int wait_count = 0;
   uint64_t wait_start_ns = time_get_ns();

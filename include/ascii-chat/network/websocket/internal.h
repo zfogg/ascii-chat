@@ -49,6 +49,9 @@ typedef struct {
   // Backpressure handling: store message when queue is full
   websocket_recv_msg_t pending_msg; ///< Message waiting to be queued due to full queue
   bool has_pending_msg;             ///< True if pending_msg contains valid data
+
+  // Flow control state (must be modified only via LWS service thread)
+  volatile bool should_resume_rx_flow; ///< Flag to resume RX flow control in next callback
 } websocket_transport_data_t;
 
 #endif // ASCIICHAT_NETWORK_WEBSOCKET_INTERNAL_H
