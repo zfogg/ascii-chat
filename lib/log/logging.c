@@ -95,7 +95,7 @@ static struct log_context_t {
  * Level Strings
  * ============================================================================
  * The actual default log format is defined in lib/log/format.c
- * and accessed via log_format_default() to support different modes.
+ * and accessed via OPT_LOG_FORMAT_DEFAULT macro to support different modes.
  */
 
 /**
@@ -660,7 +660,7 @@ asciichat_error_t log_set_format(const char *format_str, bool console_only) {
   }
 
   /* Use default format if NULL or empty string */
-  const char *format_to_use = (format_str && format_str[0] != '\0') ? format_str : log_format_default();
+  const char *format_to_use = (format_str && format_str[0] != '\0') ? format_str : OPT_LOG_FORMAT_DEFAULT;
   bool is_custom = (format_str && format_str[0] != '\0');
 
   /* Parse the format string (always parse, never skip) */
@@ -672,7 +672,7 @@ asciichat_error_t log_set_format(const char *format_str, bool console_only) {
 
   /* If console_only is true, we also need the default format for file output */
   if (console_only && is_custom) {
-    log_format_t *default_format = log_format_parse(log_format_default(), false);
+    log_format_t *default_format = log_format_parse(OPT_LOG_FORMAT_DEFAULT, false);
     if (!default_format) {
       log_format_free(parsed_format);
       log_error("Failed to parse default log format");
@@ -817,18 +817,18 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   char colored_log_line[LOG_MSG_BUFFER_SIZE + 512];
   char plain_log_line[LOG_MSG_BUFFER_SIZE + 512];
 
-  /* Apply format without colors first (this is the canonical format) */
+  /* Apply format without colors first (plain version for grep matching) */
   int plain_len = log_format_apply(g_log.format, plain_log_line, sizeof(plain_log_line), level, timestamp, file, line,
                                    func, asciichat_thread_current_id(), clean_msg, false);
 
-  /* For colored output, recolor the plain text with ANSI codes */
+  /* For colored output, apply format with colors enabled */
   int colored_len = 0;
   if (use_colors && plain_len > 0) {
-    colored_len = (int)log_recolor_plain_entry(plain_log_line, colored_log_line, sizeof(colored_log_line));
-    /* If recoloring failed, fall back to plain text */
+    colored_len = log_format_apply(g_log.format, colored_log_line, sizeof(colored_log_line), level, timestamp, file,
+                                   line, func, asciichat_thread_current_id(), clean_msg, true);
+    /* If applying with colors failed, fall back to plain text */
     if (colored_len <= 0) {
-      // log_recolor_plain_entry failed - use plain text (no colors) since the format isn't compatible
-      // This happens when using simple formats like "[%time] [%level] %message"
+      // Applying with colors failed - use plain text (no colors)
       colored_len = plain_len;
       if (plain_len > 0 && plain_len < (int)sizeof(colored_log_line)) {
         memcpy(colored_log_line, plain_log_line, (size_t)plain_len + 1);

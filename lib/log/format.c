@@ -5,6 +5,7 @@
  */
 
 #include <ascii-chat/log/format.h>
+#include <ascii-chat/log/colorize.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/util/time.h>
@@ -20,22 +21,6 @@
 /* ============================================================================
  * Default Format String (mode-aware)
  * ============================================================================ */
-
-/**
- * @brief Get default log format based on build mode
- *
- * Release mode uses a simple format with just timestamp, level, and message.
- * Debug mode uses a verbose format with thread ID, file path, line number, and function name.
- */
-const char *log_format_default(void) {
-#ifdef NDEBUG
-  /* Release mode: minimal format with timestamp and level */
-  return "[%time(%H:%M:%S)] [%level_aligned] %message";
-#else
-  /* Debug mode: verbose format with thread ID, file (relative to project root), line, and function */
-  return "[%time(%H:%M:%S)] [%level_aligned] [tid:%tid] %file_relative:%line in %func(): %message";
-#endif
-}
 
 /* ============================================================================
  * Format Parser Implementation
@@ -193,6 +178,10 @@ static log_format_t *parse_format_string(const char *format_str, bool console_on
           result->specs[spec_idx].type = LOG_FORMAT_TID;
           spec_idx++;
           p += 3;
+        } else if (strncmp(p, "colored_message", 15) == 0) {
+          result->specs[spec_idx].type = LOG_FORMAT_COLORED_MESSAGE;
+          spec_idx++;
+          p += 15;
         } else if (strncmp(p, "message", 7) == 0) {
           result->specs[spec_idx].type = LOG_FORMAT_MESSAGE;
           spec_idx++;
@@ -201,6 +190,42 @@ static log_format_t *parse_format_string(const char *format_str, bool console_on
           result->specs[spec_idx].type = LOG_FORMAT_COLORLOG_LEVEL;
           spec_idx++;
           p += 30;
+        } else if (strncmp(p, "color(", 6) == 0) {
+          /* Parse %color(LEVEL, content) */
+          p += 6; /* Skip "color(" */
+
+          /* Find the matching closing paren */
+          int paren_depth = 1;
+          const char *color_start = p;
+          while (*p && paren_depth > 0) {
+            if (*p == '(')
+              paren_depth++;
+            else if (*p == ')')
+              paren_depth--;
+            if (paren_depth > 0)
+              p++;
+          }
+
+          if (!*p || paren_depth != 0) {
+            /* Parse error: unterminated color format */
+            log_error("Invalid %%color format: missing closing )");
+            goto cleanup;
+          }
+
+          size_t color_arg_len = p - color_start;
+
+          /* Store as "LEVEL|content" for later parsing */
+          result->specs[spec_idx].type = LOG_FORMAT_COLOR;
+          result->specs[spec_idx].literal = SAFE_MALLOC(color_arg_len + 1, char *);
+          if (!result->specs[spec_idx].literal) {
+            goto cleanup;
+          }
+          memcpy(result->specs[spec_idx].literal, color_start, color_arg_len);
+          result->specs[spec_idx].literal[color_arg_len] = '\0';
+          result->specs[spec_idx].literal_len = color_arg_len;
+
+          spec_idx++;
+          p++; /* Skip closing paren */
         } else {
           /* Unknown specifier */
           log_error("Unknown format specifier: %%%s", p);
@@ -301,6 +326,105 @@ static const char *get_level_string(log_level_t level) {
   }
 }
 
+/**
+ * @brief Parse a level name string to log_color_t
+ *
+ * Maps level names like "INFO", "DEBUG", "ERROR" to their corresponding
+ * log_color_t values. Special cases:
+ * - "*" means use the current log level
+ * - "GREY" maps to LOG_COLOR_GREY
+ *
+ * @param level_name String like "INFO", "DEBUG", "ERROR", "*", "GREY", etc.
+ * @param current_level Current log level (used when level_name is "*")
+ * @return log_color_t value, or LOG_COLOR_RESET if not recognized
+ */
+static log_color_t parse_color_level(const char *level_name, log_level_t current_level) {
+  if (!level_name) {
+    return LOG_COLOR_RESET;
+  }
+
+  /* Special case: "*" means use the current log level */
+  if (strcmp(level_name, "*") == 0) {
+    switch (current_level) {
+    case LOG_DEV:
+      return LOG_COLOR_DEV;
+    case LOG_DEBUG:
+      return LOG_COLOR_DEBUG;
+    case LOG_INFO:
+      return LOG_COLOR_INFO;
+    case LOG_WARN:
+      return LOG_COLOR_WARN;
+    case LOG_ERROR:
+      return LOG_COLOR_ERROR;
+    case LOG_FATAL:
+      return LOG_COLOR_FATAL;
+    default:
+      return LOG_COLOR_RESET;
+    }
+  }
+
+  /* Log level names */
+  if (strcmp(level_name, "DEV") == 0) {
+    return LOG_COLOR_DEV;
+  } else if (strcmp(level_name, "DEBUG") == 0) {
+    return LOG_COLOR_DEBUG;
+  } else if (strcmp(level_name, "INFO") == 0) {
+    return LOG_COLOR_INFO;
+  } else if (strcmp(level_name, "WARN") == 0) {
+    return LOG_COLOR_WARN;
+  } else if (strcmp(level_name, "ERROR") == 0) {
+    return LOG_COLOR_ERROR;
+  } else if (strcmp(level_name, "FATAL") == 0) {
+    return LOG_COLOR_FATAL;
+  }
+
+  /* Literal color names */
+  if (strcmp(level_name, "GREY") == 0 || strcmp(level_name, "GRAY") == 0) {
+    return LOG_COLOR_GREY;
+  }
+
+  return LOG_COLOR_RESET;
+}
+
+/**
+ * @brief Recursively render format content (internal helper)
+ *
+ * Renders content string which may contain format specifiers like %tid, %level, etc.
+ * This is used for the content part of %color(LEVEL, content).
+ *
+ * @param content Format string to render (e.g., "tid:%tid" or just "%tid")
+ * @param buf Output buffer
+ * @param buf_size Output buffer size
+ * @param level Log level
+ * @param timestamp Pre-formatted timestamp string
+ * @param file Source file name (or NULL)
+ * @param line Source line number (or 0)
+ * @param func Function name (or NULL)
+ * @param tid Thread ID
+ * @param message Log message text
+ * @param use_colors If true, apply ANSI color codes
+ * @return Number of characters written (excluding null terminator), or -1 on error
+ */
+static int render_format_content(const char *content, char *buf, size_t buf_size, log_level_t level,
+                                 const char *timestamp, const char *file, int line, const char *func, uint64_t tid,
+                                 const char *message, bool use_colors) {
+  if (!content || !buf || buf_size == 0) {
+    return -1;
+  }
+
+  /* Parse content as a format string and apply it */
+  log_format_t *content_format = log_format_parse(content, false);
+  if (!content_format) {
+    return -1;
+  }
+
+  int written =
+      log_format_apply(content_format, buf, buf_size, level, timestamp, file, line, func, tid, message, use_colors);
+  log_format_free(content_format);
+
+  return written;
+}
+
 int log_format_apply(const log_format_t *format, char *buf, size_t buf_size, log_level_t level, const char *timestamp,
                      const char *file, int line, const char *func, uint64_t tid, const char *message, bool use_colors) {
   if (!format || !buf || buf_size == 0) {
@@ -378,11 +502,76 @@ int log_format_apply(const log_format_t *format, char *buf, size_t buf_size, log
       }
       break;
 
+    case LOG_FORMAT_COLORED_MESSAGE: {
+      /* Apply colorize_log_message() for number/unit/hex highlighting (keeps text white) */
+      if (message) {
+        const char *colorized_msg = colorize_log_message(message);
+        written = safe_snprintf(p, remaining + 1, "%s", colorized_msg);
+      }
+      break;
+    }
+
     case LOG_FORMAT_COLORLOG_LEVEL:
       /* Color code for the log level (placeholder for future color support) */
       (void)use_colors; /* Suppress unused parameter warning */
       written = 0;
       break;
+
+    case LOG_FORMAT_COLOR: {
+      /* Parse and apply %color(LEVEL, content)
+       * literal stores "LEVEL,content" where LEVEL is the color level name (or "*" for current level)
+       * and content is a format string to render and colorize */
+      if (!spec->literal || spec->literal_len == 0) {
+        written = 0;
+        break;
+      }
+
+      /* Find the comma separating LEVEL and content */
+      const char *comma_pos = strchr(spec->literal, ',');
+      if (!comma_pos) {
+        /* Invalid format - no comma found */
+        log_debug("log_format_apply: %%color format missing comma in: %s", spec->literal);
+        written = 0;
+        break;
+      }
+
+      /* Extract level name (before comma) */
+      size_t level_len = comma_pos - spec->literal;
+      char level_name[32];
+      if (level_len >= sizeof(level_name)) {
+        /* Level name too long */
+        written = 0;
+        break;
+      }
+      memcpy(level_name, spec->literal, level_len);
+      level_name[level_len] = '\0';
+
+      /* Parse level name to log_color_t (pass current level for "*" support) */
+      log_color_t color = parse_color_level(level_name, level);
+
+      /* Extract content (after comma), skip leading whitespace */
+      const char *content_start = comma_pos + 1;
+      while (*content_start == ' ' || *content_start == '\t') {
+        content_start++;
+      }
+
+      /* Render content recursively */
+      char content_buf[512];
+      int content_len = render_format_content(content_start, content_buf, sizeof(content_buf), level, timestamp, file,
+                                              line, func, tid, message, use_colors);
+
+      if (content_len < 0 || content_len >= (int)sizeof(content_buf)) {
+        written = 0;
+        break;
+      }
+
+      /* Apply color to rendered content using colored_string */
+      const char *colored_content = colored_string(color, content_buf);
+
+      /* Copy colored content to output buffer */
+      written = safe_snprintf(p, remaining + 1, "%s", colored_content);
+      break;
+    }
 
     case LOG_FORMAT_NEWLINE:
       /* Platform-aware newline */

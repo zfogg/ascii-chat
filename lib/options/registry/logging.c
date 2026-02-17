@@ -13,16 +13,7 @@
 #include <ascii-chat/options/registry/common.h>
 #include <ascii-chat/options/registry/metadata.h>
 #include <ascii-chat/options/registry/mode_defaults.h>
-
 #include <ascii-chat/options/parsers.h>
-
-// ============================================================================
-// Default values for STRING options (need static storage for registry)
-// ============================================================================
-
-/* Note: For STRING type options, default_value should be a pointer to the string,
- * and the help system will dereference it as a pointer-to-pointer */
-static const char *const default_log_format_ptr = OPT_LOG_FORMAT_DEFAULT;
 
 // ============================================================================
 // LOGGING CATEGORY - Binary-level logging options
@@ -155,7 +146,8 @@ const registry_entry_t g_logging_entries[] = {
      "codes like %Y, %m, %d, %H, %M, %S); "
      "%level - log level (DEV/DEBUG/INFO/WARN/ERROR/FATAL); %level_aligned - level padded to 5 chars; "
      "%file - full file path; %file_relative - file path relative to project root; %line - line number; "
-     "%func - function name; %tid - thread ID; %message - log message. "
+     "%func - function name; %tid - thread ID; %message - log message; "
+     "%color(LEVEL, text) - colorize text using LEVEL's color from current scheme (e.g., %color(INFO, %tid)). "
      "Example: '[%time(%Y-%m-%d %H:%M:%S)] [%level_aligned] %file_relative:%line %message'. "
      "Escape %% for literal %, \\\\ for literal backslash. "
      "Default: release mode '[%time(%H:%M:%S)] [%level_aligned] %message' or debug mode '[%time(%H:%M:%S)] "
