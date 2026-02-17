@@ -191,6 +191,16 @@ void log_set_level(log_level_t level);
 log_level_t log_get_level(void);
 
 /**
+ * @brief Set a custom log format string
+ * @param format_str Format string with specifiers like %time(%H:%M:%S), %level, %message, etc.
+ *                   Pass NULL to use default format. Empty string "" also uses default.
+ * @param console_only If true, apply format only to console output (file logs use default)
+ * @return ASCIICHAT_OK on success, error code on failure
+ * @ingroup logging
+ */
+asciichat_error_t log_set_format(const char *format_str, bool console_only);
+
+/**
  * @brief Control stderr output to terminal
  * @param enabled true to enable terminal output, false to disable
  * @ingroup logging

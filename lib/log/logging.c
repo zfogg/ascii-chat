@@ -23,6 +23,7 @@
 #include <ctype.h>
 
 #include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/format.h>
 #include <ascii-chat/log/colorize.h>
 #include <ascii-chat/log/mmap.h>
 #include <ascii-chat/log/grep.h>
@@ -66,6 +67,9 @@ static struct log_context_t {
   _Atomic unsigned int flush_delay_ms;     /* Delay between each buffered log flush (0 = disabled) */
   mutex_t rotation_mutex;                  /* Mutex for log rotation only (not for logging!) */
   _Atomic bool rotation_mutex_initialized; /* Track if rotation mutex is ready */
+  log_format_t *format;                    /* Compiled log format (NULL = use default) */
+  log_format_t *format_console_only;       /* Console-only format variant */
+  _Atomic bool has_custom_format;          /* True if format was customized */
 } g_log = {
     .file = 2, /* STDERR_FILENO - fd 0 is STDIN (read-only!) */
     .level = DEFAULT_LOG_LEVEL,
@@ -79,6 +83,9 @@ static struct log_context_t {
     .terminal_owner_thread = 0,
     .flush_delay_ms = 0,
     .rotation_mutex_initialized = false,
+    .format = NULL,
+    .format_console_only = NULL,
+    .has_custom_format = false,
 };
 #pragma GCC diagnostic pop
 
@@ -561,6 +568,17 @@ void log_destroy(void) {
   // Cleanup grep filter
   grep_destroy();
 
+  // Cleanup custom format structures
+  if (g_log.format) {
+    log_format_free(g_log.format);
+    g_log.format = NULL;
+  }
+  if (g_log.format_console_only) {
+    log_format_free(g_log.format_console_only);
+    g_log.format_console_only = NULL;
+  }
+  atomic_store(&g_log.has_custom_format, false);
+
   // Lock-free cleanup using atomic operations
   int old_file = atomic_load(&g_log.file);
   if (old_file >= 0 && old_file != STDERR_FILENO) {
@@ -606,6 +624,49 @@ void log_set_force_stderr(bool enabled) {
 
 bool log_get_force_stderr(void) {
   return atomic_load(&g_log.force_stderr);
+}
+
+asciichat_error_t log_set_format(const char *format_str, bool console_only) {
+  /* Free old format if it exists */
+  if (g_log.format) {
+    log_format_free(g_log.format);
+    g_log.format = NULL;
+  }
+  if (g_log.format_console_only) {
+    log_format_free(g_log.format_console_only);
+    g_log.format_console_only = NULL;
+  }
+
+  /* NULL or empty string means use default format */
+  if (!format_str || format_str[0] == '\0') {
+    atomic_store(&g_log.has_custom_format, false);
+    return ASCIICHAT_OK;
+  }
+
+  /* Parse the format string */
+  log_format_t *parsed_format = log_format_parse(format_str, false);
+  if (!parsed_format) {
+    log_error("Failed to parse custom log format: %s", format_str);
+    return SET_ERRNO(ERROR_INVALID_STATE, "Invalid log format string");
+  }
+
+  /* If console_only is true, we also need the default format for file output */
+  if (console_only) {
+    log_format_t *default_format = log_format_parse(log_format_default(), false);
+    if (!default_format) {
+      log_format_free(parsed_format);
+      log_error("Failed to parse default log format");
+      return SET_ERRNO(ERROR_INVALID_STATE, "Failed to parse default format");
+    }
+    g_log.format = default_format;
+    g_log.format_console_only = parsed_format;
+  } else {
+    g_log.format = parsed_format;
+    g_log.format_console_only = NULL;
+  }
+
+  atomic_store(&g_log.has_custom_format, true);
+  return ASCIICHAT_OK;
 }
 
 bool log_lock_terminal(void) {
@@ -674,9 +735,29 @@ static void write_to_log_file_atomic(const char *buffer, int length) {
 
 /* Helper: Format log message header (timestamp, level, location info)
  * Returns the number of characters written to the buffer
+ *
+ * When a custom format is set, uses log_format_apply() to generate output.
+ * Otherwise uses hardcoded format for backward compatibility.
  */
 static int format_log_header(char *buffer, size_t buffer_size, log_level_t level, const char *timestamp,
                              const char *file, int line, const char *func, bool use_colors, bool newline) {
+  /* If custom format is set, use it to generate output
+   * Note: Custom format doesn't support colors (format system handles that separately)
+   * so we bypass colors when custom format is active */
+  if (atomic_load(&g_log.has_custom_format)) {
+    const log_format_t *format = g_log.format;
+    if (format) {
+      /* log_format_apply() generates the complete formatted output */
+      int written = log_format_apply(format, buffer, buffer_size, level, timestamp, file, line, func,
+                                     asciichat_thread_current_id(), "", use_colors);
+      if (written > 0) {
+        return written;
+      }
+      /* Fall through to hardcoded format on error */
+    }
+  }
+
+  /* Hardcoded format (backward compatibility when no custom format is set) */
   const char **colors = NULL;
   if (use_colors) {
     colors = log_get_color_array();
