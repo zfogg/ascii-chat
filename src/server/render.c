@@ -518,11 +518,6 @@ void *client_video_render_thread(void *arg) {
         continue;
       }
 
-      // If we're about to render due to force_rerender, update the timeout for next check
-      if (force_rerender && !input_frame_changed) {
-        last_render_time_ns = current_time_ns;
-      }
-
       log_dev_every(5000000, "About to call create_mixed_ascii_frame_for_client for client %u with dims %ux%u",
                     thread_client_id, width_snapshot, height_snapshot);
       char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot,
