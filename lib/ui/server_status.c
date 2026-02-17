@@ -238,6 +238,12 @@ void server_status_display(const server_status_t *status) {
     return;
   }
 
+  // Only render the status screen in interactive mode
+  // In non-interactive mode, logs flow to stdout/stderr normally
+  if (!terminal_is_interactive()) {
+    return;
+  }
+
   // If --grep pattern was provided, enter interactive grep mode with it pre-populated
   // Only do this once (check if not already entering)
   static bool grep_mode_entered = false;
@@ -261,12 +267,6 @@ void server_status_update(tcp_server_t *server, const char *session_string, cons
                           const char *ipv6_address, uint16_t port, time_t start_time, const char *mode_name,
                           bool session_is_mdns_only, uint64_t *last_update_ns) {
   if (!server || !last_update_ns) {
-    return;
-  }
-
-  // Don't render status screen when non-interactive (piped/redirected)
-  // Logs will go to stdout+stderr as normal
-  if (!terminal_is_interactive()) {
     return;
   }
 

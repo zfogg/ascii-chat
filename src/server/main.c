@@ -77,6 +77,7 @@
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/platform/question.h>
+#include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/video/image.h>
 #include <ascii-chat/video/simd/ascii_simd.h>
 #include <ascii-chat/video/simd/common.h>
@@ -1728,8 +1729,9 @@ int server_main(void) {
   // Register shutdown check callback for library code
   shutdown_register_callback(check_shutdown);
 
-  // Initialize status screen log buffer if enabled (terminal output already disabled in main.c)
-  if (GET_OPTION(status_screen)) {
+  // Initialize status screen log buffer if enabled AND terminal is interactive
+  // In non-interactive mode (piped output), logs go directly to stdout/stderr
+  if (GET_OPTION(status_screen) && terminal_is_interactive()) {
     server_status_log_init();
 
     // Initialize interactive grep for status screen

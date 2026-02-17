@@ -448,8 +448,11 @@ static void *splash_animation_thread(void *arg) {
         .show_logs = true, // Show live log feed below splash
     };
 
-    // Render the screen (header + logs)
-    terminal_screen_render(&screen_config);
+    // Render the screen (header + logs) only in interactive mode
+    // In non-interactive mode, logs flow to stdout/stderr normally
+    if (terminal_is_interactive()) {
+      terminal_screen_render(&screen_config);
+    }
 
     // Move to next frame
     frame++;
@@ -475,6 +478,11 @@ int splash_intro_start(session_display_ctx_t *ctx) {
   // Pre-checks
   if (!splash_should_display(true)) {
     return 0; // ASCIICHAT_OK equivalent
+  }
+
+  // Don't initialize log buffer in non-interactive mode - logs go directly to stdout/stderr
+  if (!terminal_is_interactive()) {
+    return 0;
   }
 
   // Check terminal size

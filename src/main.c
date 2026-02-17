@@ -334,9 +334,11 @@ int main(int argc, char *argv[]) {
   // This must happen after log_init() since log_init_colors() checks if g_log.initialized
   log_init_colors();
 
-  // Apply quiet mode OR status screen mode - both disable terminal output
-  // Status screen captures logs in its buffer and displays them in the UI
-  if (GET_OPTION(quiet) || (opts->detected_mode == MODE_SERVER && GET_OPTION(status_screen))) {
+  // Apply quiet mode - disables terminal output
+  // Status screen mode only disables terminal output if terminal is interactive
+  // In non-interactive mode (piped output), logs go to stdout/stderr normally
+  if (GET_OPTION(quiet) ||
+      (opts->detected_mode == MODE_SERVER && GET_OPTION(status_screen) && terminal_is_interactive())) {
     log_set_terminal_output(false);
   }
 
@@ -368,10 +370,10 @@ int main(int argc, char *argv[]) {
     // action_show_version() calls _Exit(), so we don't reach here
   }
 
-  // For server mode with status screen: disable terminal output IMMEDIATELY
-  // This must happen BEFORE any log_*() calls to prevent logs from appearing on terminal
-  // The status screen will capture and display logs in its buffer instead
-  if (opts->detected_mode == MODE_SERVER && opts->status_screen) {
+  // For server mode with status screen: disable terminal output only if interactive
+  // In non-interactive mode (piped output), logs go to stdout/stderr normally
+  // The status screen (when shown) will capture and display logs in its buffer instead
+  if (opts->detected_mode == MODE_SERVER && opts->status_screen && terminal_is_interactive()) {
     log_set_terminal_output(false);
   }
 
