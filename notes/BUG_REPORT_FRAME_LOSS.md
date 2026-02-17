@@ -290,3 +290,44 @@ if (callback_enter_ns >= first_ns) {
 - Fragment timing now shows correct values: "+0.0ms" for first fragments (correct)
 - No more SIGSEGV crashes from corrupted memory/timing values
 - WebSocket connections remain open longer, allowing tests to progress
+
+## Bug Fix: Manual Fragment Buffering Breaks LWS State Machine (2026-02-17)
+
+**Root Cause Identified:**
+After systematic investigation with LWS source code examples, found that our manual fragment buffering in the RECEIVE callback violated LWS's internal state machine expectations. LWS expects each fragment callback to either:
+1. Process and queue each fragment individually with first/final flags, OR
+2. Not manually buffer fragments at all
+
+Our implementation was manually buffering intermediate fragments and only queuing when final=1, which breaks LWS's continuation_possible flag tracking and causes abnormal closure (code 1006).
+
+**The Fix:**
+1. **Removed manual buffering from LWS callbacks**
+   - Both server (LWS_CALLBACK_RECEIVE) and client (LWS_CALLBACK_CLIENT_RECEIVE) now queue each fragment immediately with first/final flags
+   - Follows the pattern used in LWS examples (minimal-ws-server-echo, etc)
+
+2. **Modified websocket_recv_msg_t structure**
+   - Added `uint8_t first` and `uint8_t final` fields to track fragment metadata
+   - Allows transport layer to know which fragments are which
+
+3. **Implemented fragment reassembly at transport layer**
+   - websocket_recv() now handles fragment reassembly instead of the LWS callback
+   - Maintains proper separation: LWS handles protocol fragmentation, transport layer handles reassembly, application sees complete packets
+   - Application layer (acip_server_receive_and_dispatch) continues to receive complete messages unchanged
+
+4. **Removed fragment buffering structures**
+   - Deleted fragment_buffer, fragment_size, fragment_capacity from websocket_transport_data_t
+   - Deleted per-connection fragment buffering from websocket_connection_data_t
+   - Cleaned up all related initialization and cleanup code
+
+**Files Modified:**
+- `include/ascii-chat/network/websocket/internal.h` - Updated websocket_recv_msg_t
+- `lib/network/websocket/server.c` - Queue fragments immediately, remove buffering
+- `lib/network/websocket/transport.c` - Fragment reassembly in websocket_recv(), remove old buffering
+
+**Key Insight - Proper Layering:**
+The original architecture tried to do everything in the LWS callback (buffer, reassemble, queue). The correct layering is:
+- **LWS callback**: Queue each fragment immediately with metadata
+- **Transport layer**: Reassemble fragments into complete messages
+- **Application layer**: See only complete packets (unchanged API)
+
+This satisfies LWS's state machine requirements while maintaining a clean separation of concerns.
