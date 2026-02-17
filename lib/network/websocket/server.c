@@ -50,9 +50,9 @@ typedef struct {
 
 // Per-connection callback counters for diagnosing event loop interleaving.
 // These track how many RECEIVE vs WRITEABLE callbacks fire during message assembly.
+// TODO: Make these per-connection instead of global for proper multi-client support
 static _Atomic uint64_t g_receive_callback_count = 0;
 static _Atomic uint64_t g_writeable_callback_count = 0;
-static _Atomic uint64_t g_receive_first_fragment_ns = 0;
 
 /**
  * @brief libwebsockets callback for ACIP protocol
@@ -545,33 +545,18 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 #endif
 
     if (is_first) {
-      // Reset counters at start of new message
-      uint64_t now_ns = time_get_ns();
-      log_debug("[WS_TIMING] is_first=true, storing first fragment time: %llu", (unsigned long long)now_ns);
-      atomic_store(&g_receive_first_fragment_ns, now_ns);
+      // Reset fragment counters at start of new message
       atomic_store(&g_writeable_callback_count, 0);
       atomic_store(&g_receive_callback_count, 1);
-      log_debug("[WS_TIMING] stored and reset counters");
     }
 
-    // Log every fragment's arrival time relative to first fragment
+    // Log fragment arrival
+    // Note: Timing calculation with global g_receive_first_fragment_ns is broken for multi-fragment
+    // messages and will be fixed with per-connection tracking
     {
-      uint64_t first_ns = atomic_load(&g_receive_first_fragment_ns);
       uint64_t frag_num = atomic_load(&g_receive_callback_count);
-
-      // Calculate elapsed time since first fragment
-      // For the first fragment, first_ns was just set to now_ns above, so elapsed should be ~0
-      // For subsequent fragments, this calculates (current_time - first_fragment_time)
-      double elapsed_ms;
-      if (callback_enter_ns >= first_ns) {
-        elapsed_ms = (double)(callback_enter_ns - first_ns) / 1e6;
-      } else {
-        // Safety check: if clock goes backwards (shouldn't happen), report 0
-        elapsed_ms = 0.0;
-      }
-
-      log_info("[WS_FRAG] #%llu: +%.1fms, %zu bytes (first=%d final=%d)", (unsigned long long)frag_num, elapsed_ms, len,
-               is_first, is_final);
+      log_info("[WS_FRAG] Fragment #%llu: %zu bytes (first=%d final=%d)", (unsigned long long)frag_num, len, is_first,
+               is_final);
     }
 
     // Debug: Log raw bytes of incoming fragment
