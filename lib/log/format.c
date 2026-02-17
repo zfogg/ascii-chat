@@ -8,6 +8,7 @@
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/util/path.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
 #include <stdio.h>
@@ -168,6 +169,10 @@ static log_format_t *parse_format_string(const char *format_str, bool console_on
           result->specs[spec_idx].type = LOG_FORMAT_LEVEL;
           spec_idx++;
           p += 5;
+        } else if (strncmp(p, "file_relative", 13) == 0) {
+          result->specs[spec_idx].type = LOG_FORMAT_FILE_RELATIVE;
+          spec_idx++;
+          p += 13;
         } else if (strncmp(p, "file", 4) == 0) {
           result->specs[spec_idx].type = LOG_FORMAT_FILE;
           spec_idx++;
@@ -337,6 +342,13 @@ int log_format_apply(const log_format_t *format, char *buf, size_t buf_size, log
     case LOG_FORMAT_FILE:
       if (file) {
         written = safe_snprintf(p, remaining + 1, "%s", file);
+      }
+      break;
+
+    case LOG_FORMAT_FILE_RELATIVE:
+      if (file) {
+        const char *rel_file = extract_project_relative_path(file);
+        written = safe_snprintf(p, remaining + 1, "%s", rel_file);
       }
       break;
 

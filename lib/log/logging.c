@@ -103,9 +103,9 @@ static const char *level_strings[] = {"DEV", "DEBUG", "INFO", "WARN", "ERROR", "
 /* Release mode: minimal format with timestamp and level */
 static const char DEFAULT_LOG_FORMAT[] = "[%time(%H:%M:%S)] [%level_aligned] %message";
 #else
-/* Debug mode: verbose format with thread ID, file, line, and function */
+/* Debug mode: verbose format with thread ID, file (relative to project root), line, and function */
 static const char DEFAULT_LOG_FORMAT[] =
-    "[%time(%H:%M:%S)] [%level_aligned] [tid:%tid] %file:%line in %func(): %message";
+    "[%time(%H:%M:%S)] [%level_aligned] [tid:%tid] %file_relative:%line in %func(): %message";
 #endif
 
 /**

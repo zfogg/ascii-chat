@@ -27,7 +27,8 @@ typedef enum {
   LOG_FORMAT_TIME,           /* %time(fmt) - custom time format */
   LOG_FORMAT_LEVEL,          /* %level - log level as string */
   LOG_FORMAT_LEVEL_ALIGNED,  /* %level_aligned - log level padded */
-  LOG_FORMAT_FILE,           /* %file - relative filename */
+  LOG_FORMAT_FILE,           /* %file - file path */
+  LOG_FORMAT_FILE_RELATIVE,  /* %file_relative - file path relative to project root */
   LOG_FORMAT_LINE,           /* %line - line number */
   LOG_FORMAT_FUNC,           /* %func - function name */
   LOG_FORMAT_TID,            /* %tid - thread ID */
