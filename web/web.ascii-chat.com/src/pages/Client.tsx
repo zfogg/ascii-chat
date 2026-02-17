@@ -453,6 +453,7 @@ export function ClientPage() {
             // Queue frame for the render loop to process at target FPS
             // This prevents frame accumulation when tab is hidden
             frameQueueRef.current.push(frame.ansiString);
+            console.log("ASCII_FRAME PACKET RECEIVED");
           } catch (err) {
             console.error("[Client] Failed to parse ASCII frame:", err);
           }
@@ -552,8 +553,7 @@ export function ClientPage() {
       );
     }
 
-    // Render one frame per RAF callback to maintain 60 FPS display sync
-    // Discard old frames if queue builds up (keep only latest)
+    // Render one frame per RAF callback to maintain display sync with server
     if (frameQueueRef.current.length > 0 && rendererRef.current) {
       if (renderLoopStartTimeRef.current === 0) {
         renderLoopStartTimeRef.current = performance.now();
@@ -561,7 +561,6 @@ export function ClientPage() {
 
       // Render frames in FIFO order (first in, first out)
       // This ensures we display the video stream in proper sequence
-      // rather than always jumping to the latest frame
       const frameContent = frameQueueRef.current.shift()!;
 
       const frameHash = hashFrame(frameContent);
@@ -573,6 +572,7 @@ export function ClientPage() {
         (frameHashesRef.current[frameHash] || 0) + 1;
 
       rendererRef.current.writeFrame(frameContent);
+
       frameCountRef.current++;
       diagnosticFrameCountRef.current++;
 

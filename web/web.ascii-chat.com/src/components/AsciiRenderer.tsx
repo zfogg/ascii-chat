@@ -44,8 +44,6 @@ export const AsciiRenderer = forwardRef<
   const frameCountRef = useRef(0);
   const fpsUpdateTimeRef = useRef<number | null>(null);
   const lastDimsRef = useRef({ cols: 0, rows: 0 });
-  const pendingFrameRef = useRef<string | null>(null);
-  const rafIdRef = useRef<number | null>(null);
 
   // Initialize FPS timer
   useEffect(() => {
@@ -64,102 +62,86 @@ export const AsciiRenderer = forwardRef<
     ref,
     () => ({
       writeFrame(ansiString: string) {
-        // Queue latest frame
-        pendingFrameRef.current = ansiString;
+        // Write directly to terminal without RAF indirection to prevent frame drops
+        // when frames arrive faster than RAF cycle (~16.67ms at 60 FPS)
+        const xterm = xtermRef.current;
+        if (!xterm) return;
 
-        // Cancel previous RAF if pending
-        if (rafIdRef.current !== null) {
-          cancelAnimationFrame(rafIdRef.current);
+        const terminal = (xterm as XTermType & { terminal: Terminal }).terminal;
+        if (!terminal) return;
+
+        const lines = ansiString.split("\n");
+
+        const formattedLines = lines.map((line: string, index: number) =>
+          index < lines.length - 1 ? line + "\r\n" : line,
+        );
+
+        // Use cursor home only. Clear screen only when dimensions changed.
+        const dims = dimensionsRef.current;
+        let prefix = "\x1b[H";
+        if (
+          lastDimsRef.current.cols !== dims.cols ||
+          lastDimsRef.current.rows !== dims.rows
+        ) {
+          prefix = "\x1b[H\x1b[J";
+          lastDimsRef.current = { ...dims };
+          console.log(
+            `[AsciiRenderer] Dimensions changed, clearing screen: ${dims.cols}x${dims.rows}`,
+          );
         }
 
-        // Schedule render on next animation frame
-        rafIdRef.current = requestAnimationFrame(() => {
-          const xterm = xtermRef.current;
-          if (!xterm || !pendingFrameRef.current) return;
+        const output = prefix + formattedLines.join("");
 
-          const terminal = (xterm as XTermType & { terminal: Terminal })
-            .terminal;
-          if (!terminal) return;
+        terminal.write(output);
 
-          const ansiString = pendingFrameRef.current;
-
-          const lines = ansiString.split("\n");
-
-          const formattedLines = lines.map((line: string, index: number) =>
-            index < lines.length - 1 ? line + "\r\n" : line,
-          );
-
-          // Use cursor home only. Clear screen only when dimensions changed.
-          const dims = dimensionsRef.current;
-          let prefix = "\x1b[H";
-          if (
-            lastDimsRef.current.cols !== dims.cols ||
-            lastDimsRef.current.rows !== dims.rows
-          ) {
-            prefix = "\x1b[H\x1b[J";
-            lastDimsRef.current = { ...dims };
-            console.log(
-              `[AsciiRenderer] Dimensions changed, clearing screen: ${dims.cols}x${dims.rows}`,
-            );
-          }
-
-          const output = prefix + formattedLines.join("");
-
-          terminal.write(output);
-
-          // Ensure terminal is not paused and will render
-          const core = (
-            terminal as Terminal & {
-              _core?: {
-                _renderService?: {
-                  _isPaused: boolean;
-                  _renderRows?: (start: number, end: number) => void;
-                };
+        // Ensure terminal is not paused and will render
+        const core = (
+          terminal as Terminal & {
+            _core?: {
+              _renderService?: {
+                _isPaused: boolean;
+                _renderRows?: (start: number, end: number) => void;
               };
-            }
-          )._core;
-          if (core && core._renderService) {
-            const renderService = core._renderService;
+            };
+          }
+        )._core;
+        if (core && core._renderService) {
+          const renderService = core._renderService;
 
-            // Log if render service is paused
-            if (renderService._isPaused) {
-              console.log("[AsciiRenderer] Xterm renderService is PAUSED");
-            }
-
-            // Force unpause - this is critical for continuous rendering
-            renderService._isPaused = false;
-
-            // Call _renderRows to force immediate render of the updated content
-            // This is the actual render method in xterm 5.3.0
-            if (renderService._renderRows) {
-              try {
-                renderService._renderRows(0, terminal.rows);
-              } catch (e) {
-                console.error(
-                  `[AsciiRenderer] Error calling _renderRows: ${e}`,
-                );
-              }
-            }
+          // Log if render service is paused
+          if (renderService._isPaused) {
+            console.log("[AsciiRenderer] Xterm renderService is PAUSED");
           }
 
-          // Update FPS counter via direct DOM mutation and callback
-          if (showFps && fpsUpdateTimeRef.current !== null) {
-            frameCountRef.current++;
-            const now = performance.now();
-            const elapsed = now - fpsUpdateTimeRef.current;
-            if (elapsed >= 1000) {
-              const fps = Math.round(frameCountRef.current / (elapsed / 1000));
-              if (fpsRef.current) {
-                fpsRef.current.textContent = fps.toString();
-              }
-              onFpsChange?.(fps);
-              frameCountRef.current = 0;
-              fpsUpdateTimeRef.current = now;
+          // Force unpause - this is critical for continuous rendering
+          renderService._isPaused = false;
+
+          // Call _renderRows to force immediate render of the updated content
+          // This is the actual render method in xterm 5.3.0
+          if (renderService._renderRows) {
+            try {
+              renderService._renderRows(0, terminal.rows);
+            } catch (e) {
+              console.error(`[AsciiRenderer] Error calling _renderRows: ${e}`);
             }
           }
+        }
 
-          rafIdRef.current = null;
-        });
+        // Update FPS counter via direct DOM mutation and callback
+        if (showFps && fpsUpdateTimeRef.current !== null) {
+          frameCountRef.current++;
+          const now = performance.now();
+          const elapsed = now - fpsUpdateTimeRef.current;
+          if (elapsed >= 1000) {
+            const fps = Math.round(frameCountRef.current / (elapsed / 1000));
+            if (fpsRef.current) {
+              fpsRef.current.textContent = fps.toString();
+            }
+            onFpsChange?.(fps);
+            frameCountRef.current = 0;
+            fpsUpdateTimeRef.current = now;
+          }
+        }
       },
 
       getDimensions() {
