@@ -16,6 +16,7 @@
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/platform/cond.h>
+#include <ascii-chat/util/time.h>
 #include <libwebsockets.h>
 #include <string.h>
 
@@ -57,7 +58,9 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
   switch (reason) {
   case LWS_CALLBACK_ESTABLISHED: {
     // New WebSocket connection established
-    log_info("[LWS_CALLBACK_ESTABLISHED] WebSocket client connection established");
+    uint64_t established_ns = time_get_ns();
+    log_info("[LWS_CALLBACK_ESTABLISHED] WebSocket client connection established at timestamp=%llu",
+             (unsigned long long)established_ns);
     log_info("WebSocket client connected");
 
     // Get server instance from protocol user data
@@ -133,10 +136,11 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     break;
   }
 
-  case LWS_CALLBACK_CLOSED:
+  case LWS_CALLBACK_CLOSED: {
     // Connection closed
-    log_info("[LWS_CALLBACK_CLOSED] WebSocket client disconnected, wsi=%p, handler_started=%d", (void *)wsi,
-             conn_data ? conn_data->handler_started : -1);
+    uint64_t close_callback_start_ns = time_get_ns();
+    log_info("[LWS_CALLBACK_CLOSED] WebSocket client disconnected, wsi=%p, handler_started=%d, timestamp=%llu",
+             (void *)wsi, conn_data ? conn_data->handler_started : -1, (unsigned long long)close_callback_start_ns);
 
     // Clean up fragment buffer
     if (conn_data && conn_data->fragment_buffer) {
@@ -168,20 +172,33 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
     if (conn_data && conn_data->handler_started) {
       // Wait for handler thread to complete
+      uint64_t join_start_ns = time_get_ns();
       log_debug("[LWS_CALLBACK_CLOSED] Waiting for handler thread to complete...");
       asciichat_thread_join(&conn_data->handler_thread, NULL);
+      uint64_t join_end_ns = time_get_ns();
+      char join_duration_str[32];
+      format_duration_ns((double)(join_end_ns - join_start_ns), join_duration_str, sizeof(join_duration_str));
       conn_data->handler_started = false;
-      log_debug("[LWS_CALLBACK_CLOSED] Handler thread completed");
+      log_info("[LWS_CALLBACK_CLOSED] Handler thread completed (join took %s)", join_duration_str);
     }
 
     // Ensure transport pointer is NULL
     if (conn_data) {
       conn_data->transport = NULL;
     }
+
+    uint64_t close_callback_end_ns = time_get_ns();
+    char total_duration_str[32];
+    format_duration_ns((double)(close_callback_end_ns - close_callback_start_ns), total_duration_str,
+                       sizeof(total_duration_str));
+    log_info("[LWS_CALLBACK_CLOSED] Complete cleanup took %s", total_duration_str);
     break;
+  }
 
   case LWS_CALLBACK_SERVER_WRITEABLE: {
-    log_dev_every(4500000, "=== LWS_CALLBACK_SERVER_WRITEABLE FIRED === wsi=%p", (void *)wsi);
+    uint64_t writeable_callback_start_ns = time_get_ns();
+    log_dev_every(4500000, "=== LWS_CALLBACK_SERVER_WRITEABLE FIRED === wsi=%p, timestamp=%llu", (void *)wsi,
+                  (unsigned long long)writeable_callback_start_ns);
 
     // Dequeue and send pending data
     if (!conn_data || !conn_data->transport) {
@@ -224,7 +241,14 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
       memcpy(ws_data->send_buffer + LWS_PRE, conn_data->pending_send_data + conn_data->pending_send_offset, chunk_size);
 
+      uint64_t write_start_ns = time_get_ns();
       int written = lws_write(wsi, ws_data->send_buffer + LWS_PRE, chunk_size, flags);
+      uint64_t write_end_ns = time_get_ns();
+      char write_duration_str[32];
+      format_duration_ns((double)(write_end_ns - write_start_ns), write_duration_str, sizeof(write_duration_str));
+      log_dev_every(4500000, "lws_write returned %d bytes in %s (chunk_size=%zu)", written, write_duration_str,
+                    chunk_size);
+
       if (written < 0) {
         log_error("Server WebSocket write error: %d at offset %zu/%zu", written, conn_data->pending_send_offset,
                   conn_data->pending_send_len);

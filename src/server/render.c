@@ -507,8 +507,15 @@ void *client_video_render_thread(void *arg) {
               // Only commit the frame if it's actually NEW (different from last committed frame)
               // This prevents sending duplicate frames and improves client-side FPS tracking
               if (frame_is_new) {
+                uint64_t commit_start_ns = time_get_ns();
                 // Commit the frame (swaps buffers atomically using vfb->swap_mutex, NOT rwlock)
                 video_frame_commit(vfb_snapshot);
+                uint64_t commit_end_ns = time_get_ns();
+                char commit_duration_str[32];
+                format_duration_ns((double)(commit_end_ns - commit_start_ns), commit_duration_str,
+                                   sizeof(commit_duration_str));
+                log_info("[FRAME_COMMIT_TIMING] Client %u frame commit took %s (hash=0x%08x)", thread_client_id,
+                         commit_duration_str, current_frame_hash);
               } else {
                 // Discard duplicate frame by not committing (back buffer is safe to reuse)
                 log_dev_every(25000, "Skipping commit for duplicate frame for client %u (hash=0x%08x)",
