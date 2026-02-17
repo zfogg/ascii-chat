@@ -36,10 +36,11 @@ function(configure_musl_pre_project)
     #     - Debug/Dev: OFF (use glibc for better debugging experience)
     #   macOS/Windows: OFF (not applicable - use system libc + mimalloc)
     #
-    # Detect Homebrew environment - use system libraries instead of musl
-    # Homebrew provides its own glibc and libraries, so we should use those
+    # Detect Homebrew environment on macOS only - use system libraries instead of musl
+    # Homebrew provides its own glibc and libraries on macOS, so we should use those
     # However, respect explicit preset override (e.g., release-musl preset)
-    if(DEFINED ENV{HOMEBREW_PREFIX} OR DEFINED ENV{HOMEBREW_CELLAR})
+    # Note: linuxbrew on Linux should still use musl for better performance
+    if(APPLE AND (DEFINED ENV{HOMEBREW_PREFIX} OR DEFINED ENV{HOMEBREW_CELLAR}))
         # Check if USE_MUSL is already set in cache (from preset cacheVariables)
         get_property(_use_musl_cached CACHE USE_MUSL PROPERTY VALUE SET)
         if(_use_musl_cached)
