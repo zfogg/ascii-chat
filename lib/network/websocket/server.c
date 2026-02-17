@@ -19,6 +19,7 @@
 #include <ascii-chat/util/time.h>
 #include <libwebsockets.h>
 #include <string.h>
+#include <errno.h>
 #ifndef _WIN32
 #include <sys/socket.h>
 #include <netinet/tcp.h>
@@ -177,14 +178,18 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
     conn_data->handler_started = true;
     log_debug("[LWS_CALLBACK_ESTABLISHED] Handler thread spawned successfully");
+    log_info("★★★ ESTABLISHED CALLBACK SUCCESS - returning 0 from callback ★★★");
     break;
   }
 
   case LWS_CALLBACK_CLOSED: {
     // Connection closed
     uint64_t close_callback_start_ns = time_get_ns();
+    log_info("★★★ LWS_CALLBACK_CLOSED FIRED - WHY IS CONNECTION CLOSING? ★★★");
     log_info("[LWS_CALLBACK_CLOSED] WebSocket client disconnected, wsi=%p, handler_started=%d, timestamp=%llu",
              (void *)wsi, conn_data ? conn_data->handler_started : -1, (unsigned long long)close_callback_start_ns);
+    log_info("★ Reason code in 'in' parameter: %p", in);
+    log_info("★ Length: %zu", len);
 
     // Mark cleanup in progress to prevent race conditions with other threads accessing transport
     if (conn_data) {
@@ -522,9 +527,14 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     }
 
     uint64_t callback_enter_ns = time_get_ns(); // Capture entry time for duration measurement
+    log_debug("[WS_TIMING] callback_enter_ns captured: %llu", (unsigned long long)callback_enter_ns);
+
     bool is_first = lws_is_first_fragment(wsi);
     bool is_final = lws_is_final_fragment(wsi);
+    log_debug("[WS_TIMING] is_first=%d is_final=%d, about to increment callback count", is_first, is_final);
+
     atomic_fetch_add(&g_receive_callback_count, 1);
+    log_debug("[WS_TIMING] incremented callback count");
 
     // Re-enable TCP_QUICKACK on EVERY fragment delivery.
     // Linux resets TCP_QUICKACK after each ACK, reverting to delayed ACK mode (~40ms).
@@ -542,16 +552,30 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
     if (is_first) {
       // Reset counters at start of new message
-      atomic_store(&g_receive_first_fragment_ns, time_get_ns());
+      uint64_t now_ns = time_get_ns();
+      log_debug("[WS_TIMING] is_first=true, storing first fragment time: %llu", (unsigned long long)now_ns);
+      atomic_store(&g_receive_first_fragment_ns, now_ns);
       atomic_store(&g_writeable_callback_count, 0);
       atomic_store(&g_receive_callback_count, 1);
+      log_debug("[WS_TIMING] stored and reset counters");
     }
 
     // Log every fragment's arrival time relative to first fragment
     {
       uint64_t first_ns = atomic_load(&g_receive_first_fragment_ns);
-      double elapsed_ms = (double)(callback_enter_ns - first_ns) / 1e6;
       uint64_t frag_num = atomic_load(&g_receive_callback_count);
+
+      // Calculate elapsed time since first fragment
+      // For the first fragment, first_ns was just set to now_ns above, so elapsed should be ~0
+      // For subsequent fragments, this calculates (current_time - first_fragment_time)
+      double elapsed_ms;
+      if (callback_enter_ns >= first_ns) {
+        elapsed_ms = (double)(callback_enter_ns - first_ns) / 1e6;
+      } else {
+        // Safety check: if clock goes backwards (shouldn't happen), report 0
+        elapsed_ms = 0.0;
+      }
+
       log_info("[WS_FRAG] #%llu: +%.1fms, %zu bytes (first=%d final=%d buffered=%zu)", (unsigned long long)frag_num,
                elapsed_ms, len, is_first, is_final, conn_data->fragment_size);
     }
