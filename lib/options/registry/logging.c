@@ -141,7 +141,7 @@ const registry_entry_t g_logging_entries[] = {
      '\0',
      OPTION_TYPE_STRING,
      offsetof(options_t, log_format),
-     NULL,
+     OPT_LOG_FORMAT_DEFAULT,
      sizeof(((options_t *)0)->log_format),
      "Custom log format string. Format specifiers: %time(fmt) - time with strftime format (see 'man 3 strftime' for "
      "codes like %Y, %m, %d, %H, %M, %S); "
@@ -160,7 +160,7 @@ const registry_entry_t g_logging_entries[] = {
      false,
      OPTION_MODE_BINARY,
      {.input_type = OPTION_INPUT_STRING},
-     get_default_log_format},
+     NULL},
     {"log-format-console",
      '\0',
      OPTION_TYPE_BOOL,

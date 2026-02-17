@@ -12,13 +12,6 @@
 #include <ascii-chat/options/options.h>
 
 /**
- * @brief Get mode-specific default value for --log-format
- * @param mode The mode to get the default for
- * @return Pointer to the default log format string for this mode
- */
-const void *get_default_log_format(asciichat_mode_t mode);
-
-/**
  * @brief Get mode-specific default value for --log-file
  * @param mode The mode to get the default for
  * @return Pointer to the default log file path for this mode
