@@ -623,11 +623,20 @@ export function ClientPage() {
   const uniqueFrameCountRef = useRef(0);
   const createWebcamCaptureLoop = useCallback(() => {
     let sendFrameTimeRef = performance.now();
+    let lastLogTime = performance.now();
     return () => {
       captureLoopCountRef.current++;
       const now = performance.now();
       const elapsed = now - sendFrameTimeRef;
       const sendInterval = 1000 / settings.targetFps; // Send at target FPS
+
+      // Log every 100ms regardless of frame sends
+      if (now - lastLogTime > 100) {
+        lastLogTime = now;
+        console.log(
+          `[Client] RAF cycle: calls=${captureLoopCountRef.current}, frames_sent=${captureLoopFrameCountRef.current}, unique=${uniqueFrameCountRef.current}, ready=${!!clientRef.current && connectionState === ConnectionState.CONNECTED}`,
+        );
+      }
 
       if (elapsed >= sendInterval) {
         sendFrameTimeRef = now;
@@ -641,6 +650,9 @@ export function ClientPage() {
             if (frameHash !== lastFrameHashRef.current) {
               uniqueFrameCountRef.current++;
               lastFrameHashRef.current = frameHash;
+              console.log(
+                `[Client] NEW UNIQUE FRAME #${uniqueFrameCountRef.current}: hash=0x${frameHash.toString(16)}`,
+              );
             }
 
             const payload = buildImageFramePayload(
@@ -649,13 +661,6 @@ export function ClientPage() {
               frame.height,
             );
 
-            // Log every 30 frames
-            if (captureLoopFrameCountRef.current % 30 === 0) {
-              console.log(
-                `[Client] Capture loop: ${captureLoopCountRef.current} calls, ${captureLoopFrameCountRef.current} frames sent, ${uniqueFrameCountRef.current} unique (hash: 0x${frameHash.toString(16)})`,
-              );
-            }
-
             try {
               conn.sendPacket(PacketType.IMAGE_FRAME, payload);
             } catch (err) {
@@ -663,7 +668,7 @@ export function ClientPage() {
             }
           } else {
             console.warn(
-              "[Client] captureFrame returned null - video/canvas not ready?",
+              `[Client] captureFrame returned null at call ${captureLoopCountRef.current}`,
             );
           }
         }
