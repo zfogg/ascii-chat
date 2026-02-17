@@ -648,12 +648,19 @@ export function ClientPage() {
           if (frame && frame.data) {
             captureLoopFrameCountRef.current++;
             const frameHash = computeFrameHash(frame.data);
-            if (frameHash !== lastFrameHashRef.current) {
+
+            // Log EVERY frame sent, not just unique ones
+            const isNewFrame = frameHash !== lastFrameHashRef.current;
+            if (isNewFrame) {
               uniqueFrameCountRef.current++;
               videFrameUpdateCountRef.current++;
               lastFrameHashRef.current = frameHash;
               console.log(
-                `[Client] NEW UNIQUE FRAME #${uniqueFrameCountRef.current}: hash=0x${frameHash.toString(16)}`,
+                `[Client] SEND #${captureLoopFrameCountRef.current} (UNIQUE #${uniqueFrameCountRef.current}): hash=0x${frameHash.toString(16)}, size=${frame.data.length}`,
+              );
+            } else {
+              console.log(
+                `[Client] SEND #${captureLoopFrameCountRef.current} (DUPLICATE): hash=0x${frameHash.toString(16)}, size=${frame.data.length}`,
               );
             }
 

@@ -296,6 +296,18 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
           incoming_hash = (uint32_t)((uint64_t)incoming_hash * 31 + byte);
         }
       }
+
+      // DIAGNOSTIC: Track incoming frame changes from buffer
+      static uint32_t last_buffer_hash = 0;
+      if (incoming_hash != last_buffer_hash) {
+        log_info("BUFFER_FRAME CHANGE: Client %u got NEW frame from buffer: hash=0x%08x (prev=0x%08x) size=%zu",
+                 snap->client_id, incoming_hash, last_buffer_hash, frame_size_val);
+        last_buffer_hash = incoming_hash;
+      } else {
+        log_dev_every(25000, "BUFFER_FRAME DUPLICATE: Client %u frame hash=0x%08x size=%zu (no change)",
+                      snap->client_id, incoming_hash, frame_size_val);
+      }
+
       log_debug_every(5000000, "Video mixer: client %u incoming frame hash=0x%08x size=%zu", snap->client_id,
                       incoming_hash, frame_size_val);
 

@@ -837,16 +837,19 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
         for (size_t i = 0; i < rgb_data_size && i < 1000; i++) {
           incoming_rgb_hash = (uint32_t)((uint64_t)incoming_rgb_hash * 31 + ((unsigned char *)rgb_data)[i]);
         }
-        static uint32_t last_incoming_hash = 0;
-        if (incoming_rgb_hash != last_incoming_hash) {
-          log_info(
-              "INCOMING_FRAME CHANGE: Client %u sent NEW frame #%u: size=%zu, dims=%ux%u, hash=0x%08x (prev=0x%08x)",
-              atomic_load(&client->client_id), client->frames_received, rgb_data_size, img_width, img_height,
-              incoming_rgb_hash, last_incoming_hash);
-          last_incoming_hash = incoming_rgb_hash;
+
+        // Per-client hash tracking (not static!) to avoid cross-client interference
+        uint32_t client_id = atomic_load(&client->client_id);
+        bool is_new_frame = (incoming_rgb_hash != client->last_received_frame_hash);
+
+        if (is_new_frame) {
+          log_info("RECV_FRAME #%u NEW: Client %u size=%zu dims=%ux%u hash=0x%08x (prev=0x%08x)",
+                   client->frames_received, client_id, rgb_data_size, img_width, img_height, incoming_rgb_hash,
+                   client->last_received_frame_hash);
+          client->last_received_frame_hash = incoming_rgb_hash;
         } else {
-          log_dev_every(25000, "INCOMING_FRAME DUPLICATE: Client %u frame #%u hash=0x%08x (no change)",
-                        atomic_load(&client->client_id), client->frames_received, incoming_rgb_hash);
+          log_info("RECV_FRAME #%u DUP: Client %u size=%zu dims=%ux%u hash=0x%08x", client->frames_received, client_id,
+                   rgb_data_size, img_width, img_height, incoming_rgb_hash);
         }
 
         video_frame_commit(client->incoming_video_buffer);

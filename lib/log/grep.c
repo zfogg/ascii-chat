@@ -255,9 +255,6 @@ static size_t map_plain_to_colored_pos(const char *colored_text, size_t char_pos
     }
   }
 
-  // Note: We used to skip past ANSI sequences at the insertion point here,
-  // but this caused highlighting bugs when ANSI reset codes appeared before  // the last character of a match. The
-  // current implementation correctly handles ANSI codes within the match by re-applying background after resets.
   return byte_pos;
 }
 
@@ -857,8 +854,13 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
         size_t plain_match_end = plain_match_start + strlen(fixed_string_pattern);
 
         // Map to colored text positions
-        size_t colored_match_start = map_plain_to_colored_pos(colored_text, plain_match_start);
+        // Apply the same fix as in single-match path: get position AT the start, not after it
+        size_t colored_match_start =
+            (plain_match_start == 0) ? 0 : map_plain_to_colored_pos(colored_text, plain_match_start - 1);
         size_t colored_match_end = map_plain_to_colored_pos(colored_text, plain_match_end);
+
+        fprintf(stderr, "GLOBAL_MATCH_PATH: colored_match_start=%zu, colored_match_end=%zu\n", colored_match_start,
+                colored_match_end);
 
         // Copy text before match
         if (colored_match_start > colored_pos) {
@@ -1004,8 +1006,21 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
   }
 
   // Single match highlighting (original behavior without /g)
-  size_t colored_start = map_plain_to_colored_pos(colored_text, match_start);
+  // map_plain_to_colored_pos(N) returns byte position after counting N characters
+  // For match_start position, we call with (match_start - 1) to get the position AT match_start
+  // For match_end, we call with (match_start + match_len) to get position after the match
+  size_t colored_start = (match_start == 0) ? 0 : map_plain_to_colored_pos(colored_text, match_start - 1);
   size_t colored_end = map_plain_to_colored_pos(colored_text, match_start + match_len);
+
+  fprintf(stderr, "SINGLE_MATCH_PATH: colored_start=%zu, colored_end=%zu, bytes: ", colored_start, colored_end);
+  for (size_t j = colored_start; j < colored_end && j < colored_start + 15; j++) {
+    unsigned char c = colored_text[j];
+    if (c >= 32 && c < 127)
+      fprintf(stderr, "'%c' ", c);
+    else
+      fprintf(stderr, "0x%02x ", c);
+  }
+  fprintf(stderr, "\n");
 
   size_t colored_len = strlen(colored_text);
   char *dst = highlight_buffer;
@@ -1026,6 +1041,21 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
   const char *match_src = colored_text + colored_start;
   char *dst_end = highlight_buffer + sizeof(highlight_buffer) - 1; // Absolute buffer end
   size_t i = 0;
+
+  // DEBUG: For any 5-byte or longer match (to debug the truncation issue)
+  bool is_debug_match = (match_byte_len >= 5 && match_byte_len <= 10);
+  if (is_debug_match) {
+    fprintf(stderr, "DEBUG_COPY: Starting copy of %zu bytes, match_src first 10 bytes: ", match_byte_len);
+    for (size_t j = 0; j < (match_byte_len < 10 ? match_byte_len : 10); j++) {
+      unsigned char c = match_src[j];
+      if (c >= 32 && c < 127)
+        fprintf(stderr, "'%c' ", c);
+      else
+        fprintf(stderr, "0x%02x ", c);
+    }
+    fprintf(stderr, "\n");
+  }
+
   while (i < match_byte_len) {
     // Check for [0m or [00m reset codes
     if (i + 4 <= match_byte_len && match_src[i] == '\x1b' && match_src[i + 1] == '[' && match_src[i + 2] == '0' &&
@@ -1061,10 +1091,22 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
       }
     } else {
       // Regular character - just copy
-      if (dst + 1 >= dst_end)
+      if (is_debug_match) {
+        unsigned char c = match_src[i];
+        fprintf(stderr, "  Loop i=%zu: char='%c'(0x%02x), dst_space=%zu\n", i, (c >= 32 && c < 127) ? c : '?', c,
+                (size_t)(dst_end - dst));
+      }
+      if (dst + 1 >= dst_end) {
+        if (is_debug_match)
+          fprintf(stderr, "  BREAK: Out of buffer space at i=%zu\n", i);
         break;
+      }
       *dst++ = match_src[i++];
     }
+  }
+
+  if (is_debug_match) {
+    fprintf(stderr, "DEBUG_COPY: Loop ended, i=%zu/%zu\n", i, match_byte_len);
   }
 
   // Reset background and foreground to prevent color bleeding to next output

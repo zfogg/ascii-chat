@@ -2387,6 +2387,26 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
     mutex_unlock(&client->client_state_mutex);
   }
 
+  // Compute hash of incoming pixel data to detect duplicates
+  uint32_t incoming_pixel_hash = 0;
+  for (size_t i = 0; i < data_len && i < 1000; i++) {
+    incoming_pixel_hash = (uint32_t)((uint64_t)incoming_pixel_hash * 31 + ((unsigned char *)pixel_data)[i]);
+  }
+
+  // Per-client hash tracking to detect duplicate frames
+  uint32_t client_id = atomic_load(&client->client_id);
+  bool is_new_frame = (incoming_pixel_hash != client->last_received_frame_hash);
+
+  if (is_new_frame) {
+    log_info("RECV_FRAME #%u NEW: Client %u dimensions=%ux%u pixel_size=%zu hash=0x%08x (prev=0x%08x)",
+             client->frames_received, client_id, header->width, header->height, data_len, incoming_pixel_hash,
+             client->last_received_frame_hash);
+    client->last_received_frame_hash = incoming_pixel_hash;
+  } else {
+    log_info("RECV_FRAME #%u DUP: Client %u dimensions=%ux%u pixel_size=%zu hash=0x%08x", client->frames_received,
+             client_id, header->width, header->height, data_len, incoming_pixel_hash);
+  }
+
   // Store frame data directly to incoming_video_buffer (don't wait for legacy handler)
   // This ensures frame data is available immediately for the render thread
   if (client->incoming_video_buffer) {
@@ -2412,8 +2432,8 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
         frame->capture_timestamp_ns = (uint64_t)time(NULL) * NS_PER_SEC_INT;
         frame->sequence_number = ++client->frames_received;
         video_frame_commit(client->incoming_video_buffer);
-        log_info("FRAME_COMMITTED: client_id=%u, seq=%u, size=%zu", atomic_load(&client->client_id),
-                 frame->sequence_number, total_size);
+        log_info("FRAME_COMMITTED: client_id=%u, seq=%u, size=%zu hash=0x%08x", atomic_load(&client->client_id),
+                 frame->sequence_number, total_size, incoming_pixel_hash);
       } else {
         log_warn("FRAME_TOO_LARGE: client_id=%u, size=%zu > max 2MB", atomic_load(&client->client_id), total_size);
       }
