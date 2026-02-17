@@ -645,6 +645,13 @@ typedef enum {
 /** @brief Default status screen flag (true = show status, false = hide status) */
 #define OPT_STATUS_SCREEN_DEFAULT true
 
+/** @brief Default log format string */
+#define OPT_LOG_FORMAT_DEFAULT                                                                                         \
+  "[%time(%Y-%m-%d %H:%M:%S.%3)] [%level_aligned] [tid:%tid] %file:%line in %func(): %message"
+
+/** @brief Default log format console only flag (false = use default format everywhere) */
+#define OPT_LOG_FORMAT_CONSOLE_DEFAULT false
+
 // ============================================================================
 // Static Default Value Variables
 // ============================================================================
@@ -717,6 +724,7 @@ static const bool default_require_client_identity_value = OPT_REQUIRE_CLIENT_IDE
 static const bool default_splash_value = OPT_SPLASH_DEFAULT;
 static const bool default_status_screen_value = OPT_STATUS_SCREEN_DEFAULT;
 static const bool default_no_check_update_value = false;
+static const bool default_log_format_console_only_value = OPT_LOG_FORMAT_CONSOLE_DEFAULT;
 
 /** @{ @} */
 

@@ -161,7 +161,7 @@ const registry_entry_t g_logging_entries[] = {
      '\0',
      OPTION_TYPE_BOOL,
      offsetof(options_t, log_format_console_only),
-     "false",
+     NULL,
      sizeof(bool),
      "Apply log format only to console output (file logs use default format).",
      "LOGGING",
