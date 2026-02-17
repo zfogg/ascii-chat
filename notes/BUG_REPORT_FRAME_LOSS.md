@@ -367,3 +367,65 @@ The browser is successfully sending frames to the server (confirmed: 200+ IMAGE_
 3. Run server with `--log-level info` during e2e test and capture server logs at moment of connection close
 4. Check if there's a deadlock between RECEIVE callback (LWS service thread) and handler thread (waiting for reassembled messages)
 5. Test with simpler protocol: send single-fragment messages only (no fragmentation)
+
+## Multi-Fragment Connection Close Bug (2026-02-17)
+
+**Observed Behavior:**
+- Single-fragment WebSocket messages work fine (54, 244, 88 bytes all processed)
+- Browser successfully sends ~172 IMAGE_FRAME packets to server
+- Server receives and processes messages successfully (crypto handshake, capabilities, etc.)
+- **When first multi-fragment message arrives (first=1, final=0, 1024 bytes): WebSocket closes abnormally (code 1006)**
+- Browser then receives **0 video frames** from server
+
+**Evidence from Server Logs:**
+```
+[WS_FRAG] #1: +54 bytes (first=1 final=1) ✓ Processed
+[WS_FRAG] #1: +244 bytes (first=1 final=1) ✓ Processed
+[WS_FRAG] #1: +88 bytes (first=1 final=1) ✓ Processed
+[WS_FRAG] #1: +1024 bytes (first=1 final=0) ← Multi-fragment starts
+[LWS_CALLBACK_CLOSED] WebSocket client disconnected ← Connection closes immediately
+```
+
+**Fragment Timing Bug Still Present:**
+- Fragment timing shows `+18446744073709.6ms` (which is 2^64 / 1e6)
+- This is an unsigned integer underflow in the timing calculation
+- Indicates `elapsed_ms` calculation overflowing even with the safety check at lines 566-571
+- **Root cause**: `g_receive_first_fragment_ns` is a GLOBAL variable shared across ALL connections
+  - For first fragment: callback_enter_ns < first_ns, should print 0.0ms
+  - For continuation: callback_enter_ns > first_ns, should print positive value
+  - But it's printing 18446744073709.6 for continuation frames, suggesting first_ns has stale/corrupted value
+
+**Why Multi-Fragment Messages Cause Closure:**
+1. Browser sends large message fragmented into 1024-byte WebSocket frames
+2. Our code queues each fragment immediately with first/final flags ✓ (correct)
+3. BUT: Our websocket_recv() reassembly logic has a bug that's exposed by multi-fragment messages
+4. When reassembly fails or timeouts, the handler thread may:
+   - Hang waiting for missing fragments
+   - Fail with an error that closes the transport
+   - Trigger LWS to close the connection
+
+**Critical Architectural Issue:**
+The LWS example (minimal-ws-server-echo) is designed for ECHO scenarios where:
+- Server receives a fragment
+- Server immediately sends it back (relays it)
+
+Our implementation tries to:
+- Receive fragments from browser
+- Reassemble them into complete messages
+- Process them in handler thread
+- Send responses back
+
+This is more complex than the LWS example pattern. Our reassembly logic at websocket_recv() (lines 413-510 in transport.c) has potential issues:
+- Waits indefinitely for fragments with `cond_timedwait(50ms timeout)`
+- If a fragment is lost or delayed, reassembly stalls
+- Handler thread blocks, connection hangs
+- LWS times out and closes with code 1006
+
+**Solution:**
+Per the user's instruction to "delete the manual code and rely on lws":
+1. Don't do fragment reassembly in LWS callbacks - just queue raw fragments
+2. Keep fragment reassembly in transport layer, BUT:
+   - Add per-connection tracking of fragment state (not global g_receive_first_fragment_ns)
+   - Fix timeout handling to gracefully handle missing fragments
+   - Test with single-threaded processing first to isolate issues
+
