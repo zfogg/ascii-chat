@@ -110,6 +110,10 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   uint64_t frame_start_ns = 0;
   uint64_t frame_to_render_ns = 0;
 
+  // Disable console logging during rendering to prevent logs from corrupting frame display
+  // This must be done BEFORE the render loop to avoid repeated lock/unlock cycles that could cause deadlocks
+  log_set_terminal_output(false);
+
   // Main render loop - works for both synchronous and event-driven modes
   while (!should_exit(user_data)) {
     // Frame timing - measure total time to maintain target FPS
@@ -437,6 +441,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     // Note: Images returned by media sources are cached/reused and should NOT be destroyed
     // The image pointers are managed by the source and will be cleaned up on source shutdown
   } // while (!should_exit(user_data)) {
+
+  // Re-enable console logging after rendering completes
+  log_set_terminal_output(true);
 
   // Keyboard input cleanup (if it was initialized)
   if (keyboard_enabled) {
