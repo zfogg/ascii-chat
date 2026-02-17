@@ -890,7 +890,7 @@ set(PCRE2_INCLUDE_DIRS "${PCRE2_PREFIX}/include")
 # =============================================================================
 # systemd - System daemon library for hardware discovery and session management
 # =============================================================================
-message(STATUS "Configuring ${BoldBlue}systemd${ColorReset} from source...")
+message(STATUS "Skipping ${BoldBlue}systemd${ColorReset} for musl build (meson.version issue) - keepawake feature will be disabled")
 
 set(SYSTEMD_PREFIX "${MUSL_DEPS_DIR_STATIC}/systemd")
 set(SYSTEMD_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/systemd-build")
@@ -905,7 +905,7 @@ if(NOT EXISTS "${SYSTEMD_PREFIX}/lib/libsystemd.a")
         STAMP_DIR ${SYSTEMD_BUILD_DIR}/stamps
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
-        CONFIGURE_COMMAND env CC=clang CXX=clang++ CFLAGS=-fPIC\ -O2\ -target\ x86_64-linux-musl CXXFLAGS=-fPIC\ -O2\ -target\ x86_64-linux-musl\ -stdlib=libc++ LDFLAGS=-fPIC meson setup --prefix=${SYSTEMD_PREFIX} --default-library=static -Dman=false -Dhwdb=false -Dtests=false -Ddbus=disabled <BUILD_DIR> <SOURCE_DIR>
+        CONFIGURE_COMMAND env CC=clang CXX=clang++ CFLAGS=-fPIC\ -O2\ -target\ x86_64-linux-musl CXXFLAGS=-fPIC\ -O2\ -target\ x86_64-linux-musl\ -stdlib=libc++ LDFLAGS=-fPIC meson setup --prefix=${SYSTEMD_PREFIX} --default-library=static -Dman=false -Dhwdb=false -Dtests=false <BUILD_DIR> <SOURCE_DIR>
         BUILD_COMMAND meson compile -C <BUILD_DIR> -j 4
         INSTALL_COMMAND meson install -C <BUILD_DIR>
         BUILD_BYPRODUCTS ${SYSTEMD_PREFIX}/lib/libsystemd.a
