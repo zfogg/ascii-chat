@@ -301,6 +301,8 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     }
     memcpy(msg.data, send_data, send_len);
     msg.len = send_len;
+    msg.first = 1;
+    msg.final = 1;
 
     mutex_lock(&ws_data->queue_mutex);
     bool success = ringbuffer_write(ws_data->send_queue, &msg);
