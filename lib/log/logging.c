@@ -92,20 +92,11 @@ static struct log_context_t {
 /* Level strings are defined in format.c (get_level_string_padded / get_level_string) */
 
 /* ============================================================================
- * Default Log Format Strings
+ * Level Strings
  * ============================================================================
- * These are used when no custom format is specified via --log-format.
- * time_format_now() automatically appends microseconds when %S is present.
+ * The actual default log format is defined in lib/log/format.c
+ * and accessed via log_format_default() to support different modes.
  */
-
-#ifdef NDEBUG
-/* Release mode: minimal format with timestamp and level */
-static const char DEFAULT_LOG_FORMAT[] = "[%time(%H:%M:%S)] [%level_aligned] %message";
-#else
-/* Debug mode: verbose format with thread ID, file (relative to project root), line, and function */
-static const char DEFAULT_LOG_FORMAT[] =
-    "[%time(%H:%M:%S)] [%level_aligned] [tid:%tid] %file_relative:%line in %func(): %message";
-#endif
 
 /**
  * @brief Get padded level string for consistent alignment
@@ -571,8 +562,8 @@ void log_init(const char *filename, log_level_t level, bool force_stderr, bool u
     g_log.filename[0] = '\0';
   }
 
-  /* Initialize default log format (both debug and release modes supported) */
-  log_set_format(DEFAULT_LOG_FORMAT, false);
+  /* Initialize default log format (NULL means use mode-specific default) */
+  log_set_format(NULL, false);
 
   atomic_store(&g_log.initialized, true);
   atomic_store(&g_log.terminal_output_enabled, preserve_terminal_output);
@@ -668,21 +659,19 @@ asciichat_error_t log_set_format(const char *format_str, bool console_only) {
     g_log.format_console_only = NULL;
   }
 
-  /* NULL or empty string means use default format */
-  if (!format_str || format_str[0] == '\0') {
-    atomic_store(&g_log.has_custom_format, false);
-    return ASCIICHAT_OK;
-  }
+  /* Use default format if NULL or empty string */
+  const char *format_to_use = (format_str && format_str[0] != '\0') ? format_str : log_format_default();
+  bool is_custom = (format_str && format_str[0] != '\0');
 
-  /* Parse the format string */
-  log_format_t *parsed_format = log_format_parse(format_str, false);
+  /* Parse the format string (always parse, never skip) */
+  log_format_t *parsed_format = log_format_parse(format_to_use, false);
   if (!parsed_format) {
-    log_error("Failed to parse custom log format: %s", format_str);
+    log_error("Failed to parse log format: %s", format_to_use);
     return SET_ERRNO(ERROR_INVALID_STATE, "Invalid log format string");
   }
 
   /* If console_only is true, we also need the default format for file output */
-  if (console_only) {
+  if (console_only && is_custom) {
     log_format_t *default_format = log_format_parse(log_format_default(), false);
     if (!default_format) {
       log_format_free(parsed_format);
@@ -696,7 +685,7 @@ asciichat_error_t log_set_format(const char *format_str, bool console_only) {
     g_log.format_console_only = NULL;
   }
 
-  atomic_store(&g_log.has_custom_format, true);
+  atomic_store(&g_log.has_custom_format, is_custom);
   return ASCIICHAT_OK;
 }
 
@@ -764,92 +753,26 @@ static void write_to_log_file_atomic(const char *buffer, int length) {
   }
 }
 
-/* Helper: Format log message header (timestamp, level, location info)
+/* Helper: Format log message header using the format system
  * Returns the number of characters written to the buffer
- *
- * When a custom format is set, uses log_format_apply() to generate output.
- * Otherwise uses hardcoded format for backward compatibility.
  */
 static int format_log_header(char *buffer, size_t buffer_size, log_level_t level, const char *timestamp,
-                             const char *file, int line, const char *func, bool use_colors, bool newline) {
-  /* If custom format is set, use it to generate output
-   * Note: Custom format doesn't support colors (format system handles that separately)
-   * so we bypass colors when custom format is active */
-  if (atomic_load(&g_log.has_custom_format)) {
-    const log_format_t *format = g_log.format;
-    if (format) {
-      /* log_format_apply() generates the complete formatted output */
-      int written = log_format_apply(format, buffer, buffer_size, level, timestamp, file, line, func,
-                                     asciichat_thread_current_id(), "", use_colors);
-      if (written > 0) {
-        return written;
-      }
-      /* Fall through to hardcoded format on error */
-    }
+                             const char *file, int line, const char *func, bool use_colors) {
+  const log_format_t *format = g_log.format;
+  if (!format) {
+    LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Log format not initialized");
+    return -1;
   }
 
-  /* Hardcoded format (backward compatibility when no custom format is set) */
-  const char **colors = NULL;
-  if (use_colors) {
-    colors = log_get_color_array();
-  }
-  // Safety check: if colors is NULL, disable colors to prevent crashes
-  if (use_colors && colors == NULL) {
-    use_colors = false;
-  }
-  const char *color = use_colors ? colors[level] : "";
-  const char *reset = use_colors ? colors[LOG_COLOR_RESET] : "";
-
-  // Use centralized padding function for consistent alignment
-  const char *level_string = get_level_string_padded(level);
-
-  const char *newline_or_not = newline ? "\n" : "";
-
-  int result = 0;
-
-#ifdef NDEBUG
-  (void)newline_or_not;
-  (void)file;
-  (void)line;
-  (void)func;
-
-  // Release mode: Simple one-line format without file/line/function
-  if (use_colors) {
-    result =
-        safe_snprintf(buffer, buffer_size, "[%s%s%s] [%s%s%s] ", color, timestamp, reset, color, level_string, reset);
-  } else {
-    // Plain text uses same padding as colored (level_string from get_level_string_padded)
-    result = safe_snprintf(buffer, buffer_size, "[%s] [%s] ", timestamp, level_string);
-  }
-#else
-  // Debug mode: full format with file location, function, and thread ID
-  const char *rel_file = extract_project_relative_path(file);
-  uint64_t tid = asciichat_thread_current_id();
-  if (use_colors) {
-    // Use specific colors for file/function info: file=cyan, line=grey, function=orange, tid=grey
-    // Array indices: 0=DEV(Orange), 1=DEBUG(Cyan), 2=INFO(Green), 3=WARN(Yellow), 4=ERROR(Red), 5=FATAL(Magenta),
-    // 6=GREY
-    const char *file_color = colors[1]; // DEBUG: Cyan for file paths
-    const char *line_color = colors[6]; // GREY: Grey for line numbers (matching tid)
-    const char *func_color = colors[0]; // DEV: Orange for function names
-    const char *tid_color = colors[6];  // GREY: Grey for thread ID
-    result = safe_snprintf(buffer, buffer_size, "[%s%s%s] [%s%s%s] [tid:%s%llu%s] %s%s%s:%s%d%s in %s%s%s(): %s%s",
-                           color, timestamp, reset, color, level_string, reset, tid_color, (unsigned long long)tid,
-                           reset, file_color, rel_file, reset, line_color, line, reset, func_color, func, reset, reset,
-                           newline_or_not);
-  } else {
-    // Plain text uses same padding as colored (level_string from get_level_string_padded)
-    result = safe_snprintf(buffer, buffer_size, "[%s] [%s] [tid:%llu] %s:%d in %s(): %s", timestamp, level_string,
-                           (unsigned long long)tid, rel_file, line, func, newline_or_not);
-  }
-#endif
-
-  if (result <= 0 || result >= (int)buffer_size) {
+  /* Use log_format_apply() to generate the complete formatted output */
+  int written = log_format_apply(format, buffer, buffer_size, level, timestamp, file, line, func,
+                                 asciichat_thread_current_id(), "", use_colors);
+  if (written <= 0 || written >= (int)buffer_size) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log header");
     return -1;
   }
 
-  return result;
+  return written;
 }
 
 /* Note: Terminal buffering removed for lock-free design.
@@ -1064,7 +987,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 
       char header_buffer[512];
       int header_len =
-          format_log_header(header_buffer, sizeof(header_buffer), level, time_buf, file, line, func, use_colors, false);
+          format_log_header(header_buffer, sizeof(header_buffer), level, time_buf, file, line, func, use_colors);
 
       if (header_len > 0 && header_len < (int)sizeof(header_buffer)) {
         // Platform-specific log hook (e.g., for WASM browser console)
@@ -1096,7 +1019,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   char log_buffer[LOG_MSG_BUFFER_SIZE];
   va_list args;
   va_start(args, fmt);
-  int header_len = format_log_header(log_buffer, sizeof(log_buffer), level, time_buf, file, line, func, false, false);
+  int header_len = format_log_header(log_buffer, sizeof(log_buffer), level, time_buf, file, line, func, false);
   if (header_len <= 0 || header_len >= (int)sizeof(log_buffer)) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log header");
     va_end(args);
@@ -1193,7 +1116,7 @@ void log_plain_msg(const char *fmt, ...) {
 
       char header_buffer[512];
       int header_len = format_log_header(header_buffer, sizeof(header_buffer), LOG_INFO, time_buf, "lib/log/logging.c",
-                                         0, "log_plain_msg", false, false);
+                                         0, "log_plain_msg", false);
 
       if (header_len > 0) {
         write_to_log_file_atomic(header_buffer, header_len);
@@ -1261,7 +1184,7 @@ static void log_plain_stderr_internal_atomic(const char *fmt, va_list args, bool
 
       char header_buffer[512];
       int header_len = format_log_header(header_buffer, sizeof(header_buffer), LOG_INFO, time_buf, "lib/log/logging.c",
-                                         0, "log_plain_stderr_msg", false, false);
+                                         0, "log_plain_stderr_msg", false);
 
       if (header_len > 0) {
         write_to_log_file_atomic(header_buffer, header_len);
