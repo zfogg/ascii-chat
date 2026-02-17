@@ -752,7 +752,7 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   info.protocols = websocket_protocols;
   info.gid = (gid_t)-1; // Cast to avoid undefined behavior with unsigned type
   info.uid = (uid_t)-1; // Cast to avoid undefined behavior with unsigned type
-  info.options = LWS_SERVER_OPTION_VALIDATE_UTF8;
+  info.options = 0;     // Don't validate UTF8 - we send binary frames (ACIP packets)
   info.extensions = websocket_extensions;
   info.pt_serv_buf_size = 524288; // 512KB per-thread server buffer for large video frames
 
