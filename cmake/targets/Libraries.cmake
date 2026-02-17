@@ -616,6 +616,9 @@ add_library(ascii-chat-shared SHARED EXCLUDE_FROM_ALL
         set_target_properties(ascii-chat-shared PROPERTIES
             INTERPROCEDURAL_OPTIMIZATION FALSE
         )
+        # Explicitly override -flto flags in the compile/link commands
+        target_compile_options(ascii-chat-shared PRIVATE -fno-lto)
+        target_link_options(ascii-chat-shared PRIVATE -fno-lto)
     endif()
 
     # Windows: Explicitly set import library location for Windows
