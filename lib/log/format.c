@@ -85,91 +85,122 @@ static log_format_t *parse_format_string(const char *format_str, bool console_on
   size_t spec_idx = 0;
 
   while (*p) {
-    if (*p == '%' && *(p + 1) && *(p + 1) != '%') {
-      /* Start of specifier */
-      p++;
+    /* Check for escape sequences first */
+    if (*p == '\\' && *(p + 1)) {
+      char next = *(p + 1);
 
-      if (strncmp(p, "time(", 5) == 0) {
-        /* Parse %time(format) */
-        p += 5;
-        const char *fmt_start = p;
-        const char *fmt_end = strchr(p, ')');
-        if (!fmt_end) {
-          /* Parse error: unterminated time format */
-          log_error("Invalid %%time format: missing closing )");
-          goto cleanup;
-        }
-
-        result->specs[spec_idx].type = LOG_FORMAT_TIME;
-        size_t fmt_len = fmt_end - fmt_start;
-        result->specs[spec_idx].literal = SAFE_MALLOC(fmt_len + 1, char *);
+      if (next == 'n') {
+        /* \n - platform-aware newline */
+        result->specs[spec_idx].type = LOG_FORMAT_NEWLINE;
+        spec_idx++;
+        p += 2;
+      } else if (next == '\\') {
+        /* \\ - escaped backslash (output single \) */
+        result->specs[spec_idx].type = LOG_FORMAT_LITERAL;
+        result->specs[spec_idx].literal = SAFE_MALLOC(2, char *);
         if (!result->specs[spec_idx].literal) {
           goto cleanup;
         }
-        memcpy(result->specs[spec_idx].literal, fmt_start, fmt_len);
-        result->specs[spec_idx].literal[fmt_len] = '\0';
-        result->specs[spec_idx].literal_len = fmt_len;
-
+        result->specs[spec_idx].literal[0] = '\\';
+        result->specs[spec_idx].literal[1] = '\0';
+        result->specs[spec_idx].literal_len = 1;
         spec_idx++;
-        p = fmt_end + 1;
-      } else if (strncmp(p, "level_aligned", 13) == 0) {
-        result->specs[spec_idx].type = LOG_FORMAT_LEVEL_ALIGNED;
-        spec_idx++;
-        p += 13;
-      } else if (strncmp(p, "level", 5) == 0) {
-        result->specs[spec_idx].type = LOG_FORMAT_LEVEL;
-        spec_idx++;
-        p += 5;
-      } else if (strncmp(p, "file", 4) == 0) {
-        result->specs[spec_idx].type = LOG_FORMAT_FILE;
-        spec_idx++;
-        p += 4;
-      } else if (strncmp(p, "line", 4) == 0) {
-        result->specs[spec_idx].type = LOG_FORMAT_LINE;
-        spec_idx++;
-        p += 4;
-      } else if (strncmp(p, "func", 4) == 0) {
-        result->specs[spec_idx].type = LOG_FORMAT_FUNC;
-        spec_idx++;
-        p += 4;
-      } else if (strncmp(p, "tid", 3) == 0) {
-        result->specs[spec_idx].type = LOG_FORMAT_TID;
-        spec_idx++;
-        p += 3;
-      } else if (strncmp(p, "message", 7) == 0) {
-        result->specs[spec_idx].type = LOG_FORMAT_MESSAGE;
-        spec_idx++;
-        p += 7;
-      } else if (strncmp(p, "colorlog_level_string_to_color", 30) == 0) {
-        result->specs[spec_idx].type = LOG_FORMAT_COLORLOG_LEVEL;
-        spec_idx++;
-        p += 30;
+        p += 2;
       } else {
-        /* Unknown specifier */
-        log_error("Unknown format specifier: %%%s", p);
-        goto cleanup;
+        /* Invalid escape sequence - treat backslash as literal */
+        result->specs[spec_idx].type = LOG_FORMAT_LITERAL;
+        result->specs[spec_idx].literal = SAFE_MALLOC(2, char *);
+        if (!result->specs[spec_idx].literal) {
+          goto cleanup;
+        }
+        result->specs[spec_idx].literal[0] = '\\';
+        result->specs[spec_idx].literal[1] = '\0';
+        result->specs[spec_idx].literal_len = 1;
+        spec_idx++;
+        p++;
       }
-    } else if (*p == '\\' && *(p + 1) == 'n') {
-      /* Platform-aware newline */
-      result->specs[spec_idx].type = LOG_FORMAT_NEWLINE;
-      spec_idx++;
-      p += 2;
-    } else if (*p == '%' && *(p + 1) == '%') {
-      /* Escaped % */
-      result->specs[spec_idx].type = LOG_FORMAT_LITERAL;
-      result->specs[spec_idx].literal = SAFE_MALLOC(2, char *);
-      if (!result->specs[spec_idx].literal) {
-        goto cleanup;
+    } else if (*p == '%' && *(p + 1)) {
+      if (*(p + 1) == '%') {
+        /* %% - escaped percent (output single %) */
+        result->specs[spec_idx].type = LOG_FORMAT_LITERAL;
+        result->specs[spec_idx].literal = SAFE_MALLOC(2, char *);
+        if (!result->specs[spec_idx].literal) {
+          goto cleanup;
+        }
+        result->specs[spec_idx].literal[0] = '%';
+        result->specs[spec_idx].literal[1] = '\0';
+        result->specs[spec_idx].literal_len = 1;
+        spec_idx++;
+        p += 2;
+      } else {
+        /* Start of format specifier */
+        p++;
+
+        if (strncmp(p, "time(", 5) == 0) {
+          /* Parse %time(format) */
+          p += 5;
+          const char *fmt_start = p;
+          const char *fmt_end = strchr(p, ')');
+          if (!fmt_end) {
+            /* Parse error: unterminated time format */
+            log_error("Invalid %%time format: missing closing )");
+            goto cleanup;
+          }
+
+          result->specs[spec_idx].type = LOG_FORMAT_TIME;
+          size_t fmt_len = fmt_end - fmt_start;
+          result->specs[spec_idx].literal = SAFE_MALLOC(fmt_len + 1, char *);
+          if (!result->specs[spec_idx].literal) {
+            goto cleanup;
+          }
+          memcpy(result->specs[spec_idx].literal, fmt_start, fmt_len);
+          result->specs[spec_idx].literal[fmt_len] = '\0';
+          result->specs[spec_idx].literal_len = fmt_len;
+
+          spec_idx++;
+          p = fmt_end + 1;
+        } else if (strncmp(p, "level_aligned", 13) == 0) {
+          result->specs[spec_idx].type = LOG_FORMAT_LEVEL_ALIGNED;
+          spec_idx++;
+          p += 13;
+        } else if (strncmp(p, "level", 5) == 0) {
+          result->specs[spec_idx].type = LOG_FORMAT_LEVEL;
+          spec_idx++;
+          p += 5;
+        } else if (strncmp(p, "file", 4) == 0) {
+          result->specs[spec_idx].type = LOG_FORMAT_FILE;
+          spec_idx++;
+          p += 4;
+        } else if (strncmp(p, "line", 4) == 0) {
+          result->specs[spec_idx].type = LOG_FORMAT_LINE;
+          spec_idx++;
+          p += 4;
+        } else if (strncmp(p, "func", 4) == 0) {
+          result->specs[spec_idx].type = LOG_FORMAT_FUNC;
+          spec_idx++;
+          p += 4;
+        } else if (strncmp(p, "tid", 3) == 0) {
+          result->specs[spec_idx].type = LOG_FORMAT_TID;
+          spec_idx++;
+          p += 3;
+        } else if (strncmp(p, "message", 7) == 0) {
+          result->specs[spec_idx].type = LOG_FORMAT_MESSAGE;
+          spec_idx++;
+          p += 7;
+        } else if (strncmp(p, "colorlog_level_string_to_color", 30) == 0) {
+          result->specs[spec_idx].type = LOG_FORMAT_COLORLOG_LEVEL;
+          spec_idx++;
+          p += 30;
+        } else {
+          /* Unknown specifier */
+          log_error("Unknown format specifier: %%%s", p);
+          goto cleanup;
+        }
       }
-      result->specs[spec_idx].literal[0] = '%';
-      result->specs[spec_idx].literal[1] = '\0';
-      result->specs[spec_idx].literal_len = 1;
-      spec_idx++;
-      p += 2;
     } else {
-      /* Literal text until next % or end */
+      /* Literal text until next escape or specifier */
       const char *text_start = p;
-      while (*p && *p != '%' && !(*p == '\\' && *(p + 1) == 'n')) {
+      while (*p && *p != '\\' && *p != '%') {
         p++;
       }
 
