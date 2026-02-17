@@ -10,6 +10,7 @@
 #include <ascii-chat/log/grep.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/system.h>
+#include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/util/ip.h>
@@ -260,6 +261,12 @@ void server_status_update(tcp_server_t *server, const char *session_string, cons
                           const char *ipv6_address, uint16_t port, time_t start_time, const char *mode_name,
                           bool session_is_mdns_only, uint64_t *last_update_ns) {
   if (!server || !last_update_ns) {
+    return;
+  }
+
+  // Don't render status screen when non-interactive (piped/redirected)
+  // Logs will go to stdout+stderr as normal
+  if (!terminal_is_interactive()) {
     return;
   }
 
