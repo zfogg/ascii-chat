@@ -334,7 +334,24 @@ if(USE_MIMALLOC)
         # Suppress CMake dev warnings from mimalloc (GNUInstallDirs before project() is upstream bug)
         set(_SAVED_SUPPRESS_DEV_WARNINGS ${CMAKE_SUPPRESS_DEVELOPER_WARNINGS})
         set(CMAKE_SUPPRESS_DEVELOPER_WARNINGS ON)
+
+        # For musl builds, disable LTO on mimalloc to avoid TPOFF32 relocation errors.
+        # LLVM issue #55909: LTO generates incompatible TPOFF32 relocations for TLS variables in shared libraries.
+        # These are only valid for executables, not shared libraries.
+        set(_SAVED_IPO ${CMAKE_INTERPROCEDURAL_OPTIMIZATION})
+        set(_SAVED_IPO_RELEASE ${CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE})
+        if(USE_MUSL)
+            set(CMAKE_INTERPROCEDURAL_OPTIMIZATION FALSE)
+            set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE FALSE)
+            message(STATUS "Disabling LTO on mimalloc for musl compatibility (TPOFF32 relocation fix)")
+        endif()
+
         FetchContent_MakeAvailable(mimalloc)
+
+        # Restore IPO settings
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ${_SAVED_IPO})
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ${_SAVED_IPO_RELEASE})
+
         set(CMAKE_SUPPRESS_DEVELOPER_WARNINGS ${_SAVED_SUPPRESS_DEV_WARNINGS})
 
         # Restore original output directory settings
