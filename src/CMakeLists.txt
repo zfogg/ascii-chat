@@ -505,20 +505,62 @@ endif()
 check_static_linking(ascii-chat)
 
 # =============================================================================
-# WebAssembly Build Targets (Wrappers)
+# WebAssembly Build Targets
 # =============================================================================
-# Provides WASM build targets that invoke the separate web/web.ascii-chat.com/wasm/
-# build system optimized for Emscripten.
-#
-# Available targets:
-#   mirror-web  - Build mirror mode WASM module only
-#   client-web  - Build client mode WASM module only
-#   wasm        - Build both mirror and client WASM modules
-#
-# Example:
-#   cmake --build build --target wasm
-#
-# The actual WASM build is in web/web.ascii-chat.com/wasm/ with its own
-# CMakeLists.txt optimized for Emscripten.
-# =============================================================================
-# Note: WebAssembly.cmake moved here - append the content below when implementing
+# WASM is built as a standalone project via src/web/CMakeLists.txt
+# emcmake is used to set up the Emscripten environment before invoking cmake
+
+set(WASM_SOURCE_DIR "${CMAKE_SOURCE_DIR}/src/web")
+set(WASM_BUILD_DIR "${CMAKE_BINARY_DIR}/web")
+
+# Find emcmake
+if(DEFINED ENV{EMSDK})
+    set(EMCMAKE_SEARCH_PATHS "$ENV{EMSDK}/upstream/emscripten")
+else()
+    set(EMCMAKE_SEARCH_PATHS
+        "/usr/lib/emscripten"
+        "/usr/local/lib/emscripten"
+        "$ENV{HOME}/emsdk/upstream/emscripten"
+    )
+endif()
+
+find_program(EMCMAKE_EXECUTABLE NAMES emcmake HINTS ${EMCMAKE_SEARCH_PATHS})
+if(NOT EMCMAKE_EXECUTABLE)
+    set(EMCMAKE_EXECUTABLE "emcmake")
+endif()
+
+# Mirror mode WASM target
+add_custom_target(mirror-web
+    COMMAND ${EMCMAKE_EXECUTABLE} ${CMAKE_COMMAND} -B "${WASM_BUILD_DIR}" "${WASM_SOURCE_DIR}"
+    COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target mirror-web
+    WORKING_DIRECTORY "${WASM_SOURCE_DIR}"
+    COMMENT "Building WASM mirror module"
+    VERBATIM
+)
+
+# Client mode WASM target
+add_custom_target(client-web
+    COMMAND ${EMCMAKE_EXECUTABLE} ${CMAKE_COMMAND} -B "${WASM_BUILD_DIR}" "${WASM_SOURCE_DIR}"
+    COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target client-web
+    WORKING_DIRECTORY "${WASM_SOURCE_DIR}"
+    COMMENT "Building WASM client module"
+    VERBATIM
+)
+
+# Combined WASM target (builds both mirror and client)
+add_custom_target(web
+    COMMAND ${EMCMAKE_EXECUTABLE} ${CMAKE_COMMAND} -B "${WASM_BUILD_DIR}" "${WASM_SOURCE_DIR}"
+    COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target mirror-web
+    COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target client-web
+    WORKING_DIRECTORY "${WASM_SOURCE_DIR}"
+    COMMENT "Building all WASM modules"
+    VERBATIM
+)
+
+message(STATUS "WASM targets configured:")
+message(STATUS "  mirror-web - Build mirror mode WASM only")
+message(STATUS "  client-web - Build client mode WASM only")
+message(STATUS "  web        - Build all WASM modules")
+if(EMCMAKE_EXECUTABLE)
+    message(STATUS "  Using emcmake: ${EMCMAKE_EXECUTABLE}")
+endif()
