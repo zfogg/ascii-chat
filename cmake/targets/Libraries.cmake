@@ -685,6 +685,7 @@ add_library(ascii-chat-shared SHARED EXCLUDE_FROM_ALL
             -fvisibility=default
             -ftls-model=initial-exec
             -fPIC
+            -fno-semantic-interposition
         )
         # Force TLS model in ThinLTO optimizer - pass via linker plugin
         target_link_options(ascii-chat-shared PRIVATE
