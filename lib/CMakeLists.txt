@@ -1,87 +1,90 @@
 # lib/ - Core application infrastructure
 # Sources from: log/, logging/, options/, discovery/, debug/, ui/, session/
 
+# Store lib directory since this file may be included() from parent scope
+set(LIB_DIR ${CMAKE_SOURCE_DIR}/lib)
+
 set(CORE_SRCS
-    ${CMAKE_CURRENT_SOURCE_DIR}/common.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/asciichat_errno.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/embedded_resources.c
+    ${LIB_DIR}/common.c
+    ${LIB_DIR}/asciichat_errno.c
+    ${LIB_DIR}/embedded_resources.c
     # log/
-    ${CMAKE_CURRENT_SOURCE_DIR}/log/logging.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/log/format.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/log/colorize.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/log/mmap.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/log/grep.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/log/interactive_grep.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/logging/file_parser.c
+    ${LIB_DIR}/log/logging.c
+    ${LIB_DIR}/log/format.c
+    ${LIB_DIR}/log/colorize.c
+    ${LIB_DIR}/log/mmap.c
+    ${LIB_DIR}/log/grep.c
+    ${LIB_DIR}/log/interactive_grep.c
+    ${LIB_DIR}/logging/file_parser.c
     # platform/terminal.c - unified color detection
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/terminal.c
+    ${LIB_DIR}/platform/terminal.c
     # ui/
-    ${CMAKE_CURRENT_SOURCE_DIR}/ui/terminal_screen.c
+    ${LIB_DIR}/ui/terminal_screen.c
     # options/
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/colorscheme.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/options.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/common.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/enums.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/strings.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/levenshtein.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/rcu.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/layout.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/manpage.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/help_api.c
+    ${LIB_DIR}/options/colorscheme.c
+    ${LIB_DIR}/options/options.c
+    ${LIB_DIR}/options/common.c
+    ${LIB_DIR}/options/enums.c
+    ${LIB_DIR}/options/strings.c
+    ${LIB_DIR}/options/levenshtein.c
+    ${LIB_DIR}/options/rcu.c
+    ${LIB_DIR}/options/layout.c
+    ${LIB_DIR}/options/manpage.c
+    ${LIB_DIR}/options/help_api.c
     # options/builder/
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/builder/builder.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/builder/handlers.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/builder/help.c
+    ${LIB_DIR}/options/builder/builder.c
+    ${LIB_DIR}/options/builder/handlers.c
+    ${LIB_DIR}/options/builder/help.c
     # options/config/
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/config/config.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/config/schema.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/config/presets.c
+    ${LIB_DIR}/options/config/config.c
+    ${LIB_DIR}/options/config/schema.c
+    ${LIB_DIR}/options/config/presets.c
     # options/registry/
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/registry/metadata.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/registry/general.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/registry/logging.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/registry/configuration.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/registry/terminal.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/registry/webcam.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/registry/display.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/registry/network.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/registry/security.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/registry/media.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/registry/audio.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/registry/database.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/registry/registry.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/registry/core.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/registry/public_api.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/registry/mode_defaults.c
+    ${LIB_DIR}/options/registry/metadata.c
+    ${LIB_DIR}/options/registry/general.c
+    ${LIB_DIR}/options/registry/logging.c
+    ${LIB_DIR}/options/registry/configuration.c
+    ${LIB_DIR}/options/registry/terminal.c
+    ${LIB_DIR}/options/registry/webcam.c
+    ${LIB_DIR}/options/registry/display.c
+    ${LIB_DIR}/options/registry/network.c
+    ${LIB_DIR}/options/registry/security.c
+    ${LIB_DIR}/options/registry/media.c
+    ${LIB_DIR}/options/registry/audio.c
+    ${LIB_DIR}/options/registry/database.c
+    ${LIB_DIR}/options/registry/registry.c
+    ${LIB_DIR}/options/registry/core.c
+    ${LIB_DIR}/options/registry/public_api.c
+    ${LIB_DIR}/options/registry/mode_defaults.c
     # options/parsing/
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/parsing/parsers.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/parsing/validation.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/parsing/actions.c
+    ${LIB_DIR}/options/parsing/parsers.c
+    ${LIB_DIR}/options/parsing/validation.c
+    ${LIB_DIR}/options/parsing/actions.c
     # options/manpage/
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/manpage/resources.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/manpage/parser.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/manpage/formatter.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/manpage/merger.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/manpage/content/options.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/manpage/content/environment.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/manpage/content/usage.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/manpage/content/examples.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/manpage/content/positional.c
+    ${LIB_DIR}/options/manpage/resources.c
+    ${LIB_DIR}/options/manpage/parser.c
+    ${LIB_DIR}/options/manpage/formatter.c
+    ${LIB_DIR}/options/manpage/merger.c
+    ${LIB_DIR}/options/manpage/content/options.c
+    ${LIB_DIR}/options/manpage/content/environment.c
+    ${LIB_DIR}/options/manpage/content/usage.c
+    ${LIB_DIR}/options/manpage/content/examples.c
+    ${LIB_DIR}/options/manpage/content/positional.c
     # options/completions/
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/completions/completions.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/completions/bash.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/completions/fish.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/completions/zsh.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/options/completions/powershell.c
+    ${LIB_DIR}/options/completions/completions.c
+    ${LIB_DIR}/options/completions/bash.c
+    ${LIB_DIR}/options/completions/fish.c
+    ${LIB_DIR}/options/completions/zsh.c
+    ${LIB_DIR}/options/completions/powershell.c
     # version
-    ${CMAKE_CURRENT_SOURCE_DIR}/version.c
+    ${LIB_DIR}/version.c
     # discovery/ (library)
-    ${CMAKE_CURRENT_SOURCE_DIR}/discovery/session.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/discovery/database.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/discovery/identity.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/discovery/strings.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/discovery/adjectives.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/discovery/nouns.c
+    ${LIB_DIR}/discovery/session.c
+    ${LIB_DIR}/discovery/database.c
+    ${LIB_DIR}/discovery/identity.c
+    ${LIB_DIR}/discovery/strings.c
+    ${LIB_DIR}/discovery/adjectives.c
+    ${LIB_DIR}/discovery/nouns.c
     # src/discovery/ (client code that's part of lib)
     ${CMAKE_SOURCE_DIR}/src/discovery/nat.c
     ${CMAKE_SOURCE_DIR}/src/discovery/negotiate.c
@@ -94,8 +97,8 @@ set(CORE_SRCS
 # Debug sources only in non-Release builds
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     list(APPEND CORE_SRCS
-        ${CMAKE_CURRENT_SOURCE_DIR}/debug/lock.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/debug/memory.c
+        ${LIB_DIR}/debug/lock.c
+        ${LIB_DIR}/debug/memory.c
     )
 endif()
 
@@ -111,31 +114,31 @@ set_source_files_properties(
 
 # Session library
 set(SESSION_SRCS
-    ${CMAKE_CURRENT_SOURCE_DIR}/session/consensus.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/session/consensus_integration.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/session/capture.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/session/display.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/session/render.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/session/settings.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/session/audio.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/session/participant.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/session/host.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/session/keyboard_handler.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/session/session_log_buffer.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/ui/help_screen.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/ui/splash.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/ui/server_status.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/ui/discovery_status.c
+    ${LIB_DIR}/session/consensus.c
+    ${LIB_DIR}/session/consensus_integration.c
+    ${LIB_DIR}/session/capture.c
+    ${LIB_DIR}/session/display.c
+    ${LIB_DIR}/session/render.c
+    ${LIB_DIR}/session/settings.c
+    ${LIB_DIR}/session/audio.c
+    ${LIB_DIR}/session/participant.c
+    ${LIB_DIR}/session/host.c
+    ${LIB_DIR}/session/keyboard_handler.c
+    ${LIB_DIR}/session/session_log_buffer.c
+    ${LIB_DIR}/ui/help_screen.c
+    ${LIB_DIR}/ui/splash.c
+    ${LIB_DIR}/ui/server_status.c
+    ${LIB_DIR}/ui/discovery_status.c
 )
 
 # Include subdirectories that define module source variables
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/util ${CMAKE_BINARY_DIR}/lib/util)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/platform ${CMAKE_BINARY_DIR}/lib/platform)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/crypto ${CMAKE_BINARY_DIR}/lib/crypto)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/video ${CMAKE_BINARY_DIR}/lib/video)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/audio ${CMAKE_BINARY_DIR}/lib/audio)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/network ${CMAKE_BINARY_DIR}/lib/network)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/tooling ${CMAKE_BINARY_DIR}/lib/tooling)
+add_subdirectory(${LIB_DIR}/util ${CMAKE_BINARY_DIR}/lib/util)
+add_subdirectory(${LIB_DIR}/platform ${CMAKE_BINARY_DIR}/lib/platform)
+add_subdirectory(${LIB_DIR}/crypto ${CMAKE_BINARY_DIR}/lib/crypto)
+add_subdirectory(${LIB_DIR}/video ${CMAKE_BINARY_DIR}/lib/video)
+add_subdirectory(${LIB_DIR}/audio ${CMAKE_BINARY_DIR}/lib/audio)
+add_subdirectory(${LIB_DIR}/network ${CMAKE_BINARY_DIR}/lib/network)
+add_subdirectory(${LIB_DIR}/tooling ${CMAKE_BINARY_DIR}/lib/tooling)
 
 # Now include the Libraries configuration (moved from cmake/targets/Libraries.cmake)
 # =============================================================================

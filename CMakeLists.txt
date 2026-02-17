@@ -244,16 +244,11 @@ endif()
 # ascii-chat-Specific Stuff: Source code, Library modules, Headers, and Executable Config
 # =============================================================================
 # Source files - recursive CMakeLists.txt (replaces SourceFiles.cmake)
-# Each subdirectory defines its own sources and propagates via PARENT_SCOPE
-add_subdirectory(${CMAKE_SOURCE_DIR}/lib/util ${CMAKE_BINARY_DIR}/lib/util)
-add_subdirectory(${CMAKE_SOURCE_DIR}/lib/platform ${CMAKE_BINARY_DIR}/lib/platform)
-add_subdirectory(${CMAKE_SOURCE_DIR}/lib/crypto ${CMAKE_BINARY_DIR}/lib/crypto)
-add_subdirectory(${CMAKE_SOURCE_DIR}/lib/video ${CMAKE_BINARY_DIR}/lib/video)
-add_subdirectory(${CMAKE_SOURCE_DIR}/lib/audio ${CMAKE_BINARY_DIR}/lib/audio)
-add_subdirectory(${CMAKE_SOURCE_DIR}/lib/network ${CMAKE_BINARY_DIR}/lib/network)
-add_subdirectory(${CMAKE_SOURCE_DIR}/lib/tooling ${CMAKE_BINARY_DIR}/lib/tooling)
-add_subdirectory(${CMAKE_SOURCE_DIR}/lib ${CMAKE_BINARY_DIR}/lib-core)
-add_subdirectory(${CMAKE_SOURCE_DIR}/src ${CMAKE_BINARY_DIR}/src)
+# lib/CMakeLists.txt handles adding its own subdirectories
+# Note: Using include() instead of add_subdirectory() so defer/panic tooling
+# runs in the same scope as source variable definitions
+# =============================================================================
+include(${CMAKE_SOURCE_DIR}/lib/CMakeLists.txt)
 
 # =============================================================================
 # Embedded Resource Generation (Man Pages, etc.)
@@ -329,7 +324,6 @@ ascii_panic_prepare()
 ascii_query_prepare()
 
 include(${CMAKE_SOURCE_DIR}/cmake/utils/TimerTargets.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/targets/Libraries.cmake)
 
 # Build panic runtime after Libraries.cmake creates ascii-chat-panic target
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/ToolingRuntime.cmake)
@@ -338,7 +332,7 @@ ascii_build_tooling_runtime()
 include(${CMAKE_SOURCE_DIR}/cmake/targets/TestLibs.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/PCH.cmake)
 
-include(${CMAKE_SOURCE_DIR}/cmake/targets/Executables.cmake)
+add_subdirectory(${CMAKE_SOURCE_DIR}/src ${CMAKE_BINARY_DIR}/src)
 # include(${CMAKE_SOURCE_DIR}/cmake/targets/ACDSExecutable.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/targets/WebAssembly.cmake)
 ascii_panic_finalize()
