@@ -118,7 +118,7 @@ static const char DEFAULT_LOG_FORMAT[] =
  * @param level Log level
  * @return Padded level string (e.g., "INFO ", "WARN ", "DEBUG")
  */
-static inline const char *get_level_string_padded(log_level_t level) {
+const char *get_level_string_padded(log_level_t level) {
   switch (level) {
   case LOG_INFO:
     return "INFO "; // 5 chars: INFO + 1 space
@@ -882,18 +882,23 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   char colored_log_line[LOG_MSG_BUFFER_SIZE + 512];
   char plain_log_line[LOG_MSG_BUFFER_SIZE + 512];
 
-  /* Select format: use console-only if available, otherwise use main format */
-  const log_format_t *format_to_use = g_log.format_console_only ? g_log.format_console_only : g_log.format;
-
-  /* Apply format with colors */
-  int colored_len = log_format_apply(format_to_use, colored_log_line, sizeof(colored_log_line), level, timestamp, file,
-                                     line, func, asciichat_thread_current_id(), clean_msg, use_colors);
-
-  /* Apply format without colors for grep matching (always use main format for consistency) */
+  /* Apply format without colors first (this is the canonical format) */
   int plain_len = log_format_apply(g_log.format, plain_log_line, sizeof(plain_log_line), level, timestamp, file, line,
                                    func, asciichat_thread_current_id(), clean_msg, false);
 
-  // Feed log to status screen buffer
+  /* For colored output, recolor the plain text with ANSI codes */
+  int colored_len = 0;
+  if (use_colors) {
+    colored_len = (int)log_recolor_plain_entry(plain_log_line, colored_log_line, sizeof(colored_log_line));
+  } else {
+    /* No colors - use plain text */
+    colored_len = plain_len;
+    if (plain_len > 0 && plain_len < (int)sizeof(colored_log_line)) {
+      memcpy(colored_log_line, plain_log_line, (size_t)plain_len + 1);
+    }
+  }
+
+  // Feed log to status screen buffer (use colored version if available, otherwise plain)
   if (colored_len > 0 && colored_len < (int)sizeof(colored_log_line)) {
     extern void server_status_log_append(const char *message);
     server_status_log_append(colored_log_line);

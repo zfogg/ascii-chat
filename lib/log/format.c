@@ -265,24 +265,7 @@ void log_format_free(log_format_t *format) {
  * @param level Log level
  * @return Padded level string (e.g., "INFO ", "WARN ", "DEBUG")
  */
-static const char *get_level_string_padded(log_level_t level) {
-  switch (level) {
-  case LOG_DEV:
-    return "DEV  ";
-  case LOG_DEBUG:
-    return "DEBUG";
-  case LOG_INFO:
-    return "INFO ";
-  case LOG_WARN:
-    return "WARN ";
-  case LOG_ERROR:
-    return "ERROR";
-  case LOG_FATAL:
-    return "FATAL";
-  default:
-    return "     ";
-  }
-}
+// get_level_string_padded is declared in logging.h and defined in logging.c
 
 /**
  * @brief Get unpadded level string
@@ -343,12 +326,22 @@ int log_format_apply(const log_format_t *format, char *buf, size_t buf_size, log
 
     case LOG_FORMAT_LEVEL:
       /* Log level as string (DEV, DEBUG, INFO, WARN, ERROR, FATAL) */
-      written = safe_snprintf(p, remaining + 1, "%s", get_level_string(level));
+      if (use_colors) {
+        const char *colored = colored_string((log_color_t)level, get_level_string(level));
+        written = safe_snprintf(p, remaining + 1, "%s", colored);
+      } else {
+        written = safe_snprintf(p, remaining + 1, "%s", get_level_string(level));
+      }
       break;
 
     case LOG_FORMAT_LEVEL_ALIGNED:
       /* Log level padded to 5 characters */
-      written = safe_snprintf(p, remaining + 1, "%s", get_level_string_padded(level));
+      if (use_colors) {
+        const char *colored = colored_string((log_color_t)level, get_level_string_padded(level));
+        written = safe_snprintf(p, remaining + 1, "%s", colored);
+      } else {
+        written = safe_snprintf(p, remaining + 1, "%s", get_level_string_padded(level));
+      }
       break;
 
     case LOG_FORMAT_FILE:
