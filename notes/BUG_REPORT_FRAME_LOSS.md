@@ -337,14 +337,33 @@ This satisfies LWS's state machine requirements while maintaining a clean separa
 - Build succeeds without errors
 - e2e tests still show 0 FPS with abnormal WebSocket closure (code 1006)
 
-**Next Debugging Steps:**
-The connection is closing abnormally before receiving any frames from the server. This suggests either:
-1. A protocol-level issue with how fragments are being queued or processed
-2. A race condition or deadlock in the reassembly logic
-3. An unrelated issue preventing the server from sending video data back
+**Flow Control Implementation (2026-02-17):**
+After comparing with LWS examples, identified missing RX flow control. The minimal-ws-server-echo example shows:
+- Line 175: Check if ring has free space BEFORE allocating
+- Line 202-204: If queue gets low on space, pause RX with `lws_rx_flow_control(wsi, 0)`
+- Line 145-148: Resume RX when space recovers with `lws_rx_flow_control(wsi, 1)`
 
-Recommended approach:
-- Run server with `--log-level debug` and capture full logs when connection closes
-- Add breakpoints or timing instrumentation to identify where connection closure occurs
-- Test with a minimal C WebSocket client that sends simple fragmented messages
-- Verify LWS callback firing sequence and error codes
+**Added to our code:**
+- Check queue fullness before each write
+- If queue full, pause RX and set `should_resume_rx_flow` flag
+- After successful writes, check if queue has recovered and resume
+
+However, e2e tests still show 0 FPS with connection closing. Browser sends 190+ unique frames but receives 0 from server.
+
+**Key Observation:**
+The browser is successfully sending frames to the server (confirmed: 200+ IMAGE_FRAME packets sent). But the server is not sending video frames back to the browser (0 received). This could indicate:
+1. Handler thread isn't processing received frames (deadlock/issue in websocket_recv?)
+2. Application layer can't send response frames for some reason
+3. Connection is closed before any server→browser communication happens
+
+**Remaining Differences from LWS Example:**
+1. LWS example uses `lws_ring` directly, we use custom `ringbuffer`
+2. LWS example calls `lws_callback_on_writable()` after queuing (line 200), but this is for sending echo back
+3. Need to verify if our ringbuffer implementation is compatible with multi-threaded access
+
+**Next Debugging Steps:**
+1. Add logging to websocket_recv() to confirm it's called and making progress
+2. Add logging to handler thread to confirm it's spawned and running
+3. Run server with `--log-level info` during e2e test and capture server logs at moment of connection close
+4. Check if there's a deadlock between RECEIVE callback (LWS service thread) and handler thread (waiting for reassembled messages)
+5. Test with simpler protocol: send single-fragment messages only (no fragmentation)
