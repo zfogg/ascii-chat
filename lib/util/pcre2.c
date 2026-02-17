@@ -22,7 +22,7 @@ typedef struct pcre2_singleton {
   _Atomic(pcre2_code *) code;   ///< Compiled regex (lazy init, atomic)
   pcre2_jit_stack *jit_stack;   ///< JIT stack for performance
   _Atomic(bool) compiled;       ///< Whether compilation was attempted
-  const char *pattern;          ///< Pattern string (for error messages)
+  char *pattern;                ///< Pattern string (owned by singleton, dynamically allocated)
   uint32_t flags;               ///< PCRE2 compile flags
   struct pcre2_singleton *next; ///< Next singleton in global registry
 } pcre2_singleton_t;
@@ -56,11 +56,20 @@ pcre2_singleton_t *asciichat_pcre2_singleton_compile(const char *pattern, uint32
     return NULL;
   }
 
+  /* Copy pattern string to avoid stack-use-after-return bugs */
+  size_t pattern_len = strlen(pattern);
+  singleton->pattern = SAFE_MALLOC(pattern_len + 1, char *);
+  if (!singleton->pattern) {
+    log_error("PCRE2 singleton: failed to allocate pattern buffer");
+    SAFE_FREE(singleton);
+    return NULL;
+  }
+  memcpy(singleton->pattern, pattern, pattern_len + 1);
+
   /* Initialize fields */
   atomic_store(&singleton->code, NULL);
   singleton->jit_stack = NULL;
   atomic_store(&singleton->compiled, false);
-  singleton->pattern = pattern;
   singleton->flags = flags;
 
   /* Register singleton in global list for automatic cleanup */
@@ -172,6 +181,9 @@ void asciichat_pcre2_singleton_free(pcre2_singleton_t *singleton) {
     pcre2_jit_stack_free(singleton->jit_stack);
   }
 
+  /* Free pattern string */
+  SAFE_FREE(singleton->pattern);
+
   /* Free the singleton structure itself */
   SAFE_FREE(singleton);
 }
@@ -214,6 +226,9 @@ void asciichat_pcre2_cleanup_all(void) {
       pcre2_jit_stack_free(current->jit_stack);
       current->jit_stack = NULL;
     }
+
+    /* Free pattern string */
+    SAFE_FREE(current->pattern);
 
     /* Free singleton structure */
     SAFE_FREE(current);
