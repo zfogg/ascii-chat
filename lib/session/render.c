@@ -74,13 +74,10 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   }
 
   // Snapshot mode state tracking
-  uint64_t snapshot_start_time_ns = 0;
+  uint64_t snapshot_start_time_ns = 0; // Initialized when first frame is rendered
   bool snapshot_done = false;
+  bool first_frame_rendered = false;
   bool snapshot_mode = GET_OPTION(snapshot_mode);
-
-  if (snapshot_mode) {
-    snapshot_start_time_ns = time_get_ns();
-  }
 
   // Pause mode state tracking
   bool initial_paused_frame_rendered = false;
@@ -262,20 +259,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       }
     }
 
-    // Snapshot mode: check if delay has elapsed (AFTER we have a frame)
-    // This ensures we capture at least one frame before considering snapshot done
-    if (snapshot_mode && !snapshot_done) {
-      uint64_t current_time_ns = time_get_ns();
-      double elapsed_sec = time_ns_to_s(time_elapsed_ns(snapshot_start_time_ns, current_time_ns));
-      float snapshot_delay = GET_OPTION(snapshot_delay);
-
-      // snapshot_delay=0 means exit immediately after first frame
-      // snapshot_delay>0 means wait that many seconds after first frame
-      if (elapsed_sec >= snapshot_delay) {
-        snapshot_done = true;
-      }
-    }
-
     // Convert image to ASCII using display context
     // Handles all palette, terminal caps, width, height, stretch settings
     pre_convert_ns = time_get_ns();
@@ -354,6 +337,29 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         }
       }
 
+      // Snapshot mode timing: start timer right after rendering first frame
+      if (snapshot_mode && !first_frame_rendered) {
+        snapshot_start_time_ns = time_get_ns();
+        first_frame_rendered = true;
+        log_debug("Snapshot mode: first frame rendered, timer started");
+      }
+
+      // Snapshot mode: check if delay has elapsed after rendering a frame
+      if (snapshot_mode && !snapshot_done && first_frame_rendered) {
+        uint64_t current_time_ns = time_get_ns();
+        double elapsed_sec = time_ns_to_s(time_elapsed_ns(snapshot_start_time_ns, current_time_ns));
+        double snapshot_delay = GET_OPTION(snapshot_delay);
+
+        log_debug_every(1000000, "SNAPSHOT_DELAY_CHECK: elapsed=%.2f delay=%.2f", elapsed_sec, snapshot_delay);
+
+        // snapshot_delay=0 means exit immediately after rendering first frame
+        // snapshot_delay>0 means wait that many seconds after first frame
+        if (elapsed_sec >= snapshot_delay) {
+          log_info("Snapshot delay %.2f seconds elapsed, exiting", snapshot_delay);
+          snapshot_done = true;
+        }
+      }
+
       // Exit conditions: snapshot mode exits after capturing the final frame or initial paused frame
       if (snapshot_mode && (snapshot_done || output_paused_frame)) {
         SAFE_FREE(ascii_frame);
@@ -381,6 +387,11 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
             frame_count, prestart_ms, capture_ms, convert_ms, render_ms, total_ms);
       }
     } else {
+      // Snapshot mode: even if frame conversion failed, check if we should exit
+      // This ensures snapshot_delay is honored even if display context isn't rendering
+      if (snapshot_mode && snapshot_done) {
+        break;
+      }
     }
 
     // Audio-Video Synchronization: Keep audio and video in sync by periodically adjusting audio to match video time
