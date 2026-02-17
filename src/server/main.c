@@ -1528,12 +1528,29 @@ static void *websocket_client_handler(void *arg) {
   }
   log_info("[WS_HANDLER] Client threads started successfully for client %d", client_id);
 
-  // Handler's job is done - client is set up, handshake started, and threads running.
-  // The receive thread will handle incoming packets and complete the handshake.
-  // The LWS_CALLBACK_CLOSED callback will handle cleanup when connection closes.
-  // Do NOT call remove_client() here - that causes premature cleanup.
+  // CRITICAL: Block until client disconnects (matches TCP handler behavior)
+  // The receive thread sets active=false when the client disconnects.
+  // We MUST wait here - if we return immediately, the handler thread exits and
+  // the LWS event loop may interpret this as the connection being done and close it.
+  // See ascii_chat_client_handler() for TCP comparison - it also blocks here.
+  log_debug("[WS_HANDLER] STEP 5: Blocking until client disconnects (client_id=%d)...", client_id);
+  client_info_t *client_check = find_client_by_id((uint32_t)client_id);
+  if (!client_check) {
+    log_error("[WS_HANDLER] CRITICAL: Client %d not found after successful setup!", client_id);
+    SAFE_FREE(ctx);
+    return NULL;
+  }
 
-  log_info("WebSocket client %d handler setup complete", client_id);
+  int wait_count = 0;
+  while (atomic_load(&client_check->active) && !atomic_load(server_ctx->server_should_exit)) {
+    wait_count++;
+    if (wait_count % 10 == 0) {
+      log_debug("[WS_HANDLER] Client %d still active (waited %d seconds)", client_id, wait_count / 10);
+    }
+    platform_sleep_ms(100);
+  }
+  log_info("[WS_HANDLER] Client %d disconnected (waited %d seconds, active=%d, server_should_exit=%d)", client_id,
+           wait_count / 10, atomic_load(&client_check->active), atomic_load(server_ctx->server_should_exit));
 
   SAFE_FREE(ctx);
   return NULL;
