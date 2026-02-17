@@ -601,9 +601,16 @@ add_library(ascii-chat-shared SHARED EXCLUDE_FROM_ALL
         # Library version is from lib/v* tags, separate from app version
         VERSION ${ASCIICHAT_LIB_VERSION}
         SOVERSION ${ASCIICHAT_LIB_VERSION_MAJOR}
-        # Disable LTO for shared library due to TLS relocation incompatibilities
-        INTERPROCEDURAL_OPTIMIZATION FALSE
     )
+
+    # Disable LTO for shared library when building for musl due to TLS relocation incompatibilities
+    # LTO generates TPOFF32 relocations for TLS variables that cannot be used with -shared
+    # This is a known LLVM limitation (issue #55909) - LTO ignores TLS model flags
+    if(USE_MUSL)
+        set_target_properties(ascii-chat-shared PROPERTIES
+            INTERPROCEDURAL_OPTIMIZATION FALSE
+        )
+    endif()
 
     # Windows: Explicitly set import library location for Windows
     if(WIN32)
