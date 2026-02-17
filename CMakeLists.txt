@@ -106,6 +106,7 @@ project(${PROJECT_NAME_FULL}
 # MUST be after project() when languages are enabled
 include(CheckIPOSupported)
 if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+    message(STATUS "DEBUG: USE_MUSL=${USE_MUSL}")
     # Disable LTO for musl builds due to TPOFF32 TLS relocation incompatibilities (LLVM issue #55909)
     if(NOT USE_MUSL)
         check_ipo_supported(RESULT IPO_SUPPORTED OUTPUT IPO_ERROR)
