@@ -14,11 +14,17 @@
 #include <stddef.h>
 
 /**
- * @brief Receive queue element (variable-length message)
+ * @brief Receive queue element (individual WebSocket frame or fragment)
+ *
+ * Each RECEIVE callback queues a frame, which may be a complete message or
+ * a fragment of a larger fragmented message. The receiver checks first/final
+ * flags to reassemble if needed.
  */
 typedef struct {
-  uint8_t *data; ///< Message data (allocated, caller must free)
-  size_t len;    ///< Message length in bytes
+  uint8_t *data; ///< Frame data (allocated, caller must free)
+  size_t len;    ///< Frame length in bytes
+  uint8_t first; ///< 1 if first frame of message (or complete message)
+  uint8_t final; ///< 1 if final frame of message (or complete message)
 } websocket_recv_msg_t;
 
 /**
@@ -36,11 +42,6 @@ typedef struct {
   mutex_t state_mutex;         ///< Protect state changes
   uint8_t *send_buffer;        ///< Send buffer with LWS_PRE padding
   size_t send_buffer_capacity; ///< Current send buffer capacity
-
-  // Fragment assembly for large messages (client-side only)
-  uint8_t *fragment_buffer; ///< Buffer for assembling fragmented messages
-  size_t fragment_size;     ///< Current size of assembled fragments
-  size_t fragment_capacity; ///< Allocated capacity of fragment buffer
 
   // Service thread for client-side transports
   asciichat_thread_t service_thread; ///< Thread that services libwebsockets context

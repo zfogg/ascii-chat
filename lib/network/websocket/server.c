@@ -41,11 +41,6 @@ typedef struct {
   bool handler_started;              ///< True if handler thread was started
   bool cleaning_up;                  ///< True if cleanup is in progress (prevents race with remove_client)
 
-  // Fragment assembly for large messages
-  uint8_t *fragment_buffer; ///< Buffer for assembling fragmented messages
-  size_t fragment_size;     ///< Current size of assembled fragments
-  size_t fragment_capacity; ///< Allocated capacity of fragment buffer
-
   // Pending message send state (for LWS_CALLBACK_SERVER_WRITEABLE)
   uint8_t *pending_send_data; ///< Current message being sent
   size_t pending_send_len;    ///< Total length of message being sent
@@ -91,9 +86,6 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     conn_data->server = server;
     conn_data->transport = NULL;
     conn_data->handler_started = false;
-    conn_data->fragment_buffer = NULL;
-    conn_data->fragment_size = 0;
-    conn_data->fragment_capacity = 0;
     conn_data->pending_send_data = NULL;
     conn_data->pending_send_len = 0;
     conn_data->pending_send_offset = 0;
@@ -202,27 +194,9 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
           in, len);
     }
 
-    // Log any incomplete fragments at time of close
-    if (conn_data && conn_data->fragment_buffer && conn_data->fragment_size > 0) {
-      log_warn("[LWS_CALLBACK_CLOSED] ⚠️  CONNECTION CLOSED WITH INCOMPLETE MESSAGE: %zu bytes buffered (expecting more "
-               "fragments!)",
-               conn_data->fragment_size);
-    } else if (conn_data) {
-      log_info("[LWS_CALLBACK_CLOSED] No incomplete fragments (fragment_buffer=%p, fragment_size=%zu)",
-               (void *)conn_data->fragment_buffer, conn_data->fragment_size);
-    }
-
     // Mark cleanup in progress to prevent race conditions with other threads accessing transport
     if (conn_data) {
       conn_data->cleaning_up = true;
-    }
-
-    // Clean up fragment buffer
-    if (conn_data && conn_data->fragment_buffer) {
-      log_debug("[LWS_CALLBACK_CLOSED] Freeing fragment buffer (%zu bytes)", conn_data->fragment_size);
-      SAFE_FREE(conn_data->fragment_buffer);
-      conn_data->fragment_size = 0;
-      conn_data->fragment_capacity = 0;
     }
 
     // Clean up pending send data only if not already freed
@@ -495,9 +469,6 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       conn_data->server = server;
       conn_data->transport = acip_websocket_server_transport_create(wsi, NULL);
       conn_data->handler_started = false;
-      conn_data->fragment_buffer = NULL;
-      conn_data->fragment_size = 0;
-      conn_data->fragment_capacity = 0;
 
       if (!conn_data->transport) {
         log_error("LWS_CALLBACK_RECEIVE: Failed to create transport in fallback");
@@ -554,8 +525,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     bool is_first = lws_is_first_fragment(wsi);
     bool is_final = lws_is_final_fragment(wsi);
     log_debug("[WS_TIMING] is_first=%d is_final=%d, about to increment callback count", is_first, is_final);
-    log_info("[WS_FRAG_DEBUG] === RECEIVE CALLBACK: is_first=%d is_final=%d len=%zu buffered=%zu ===", is_first,
-             is_final, len, conn_data ? conn_data->fragment_size : 0);
+    log_info("[WS_FRAG_DEBUG] === RECEIVE CALLBACK: is_first=%d is_final=%d len=%zu ===", is_first, is_final, len);
 
     atomic_fetch_add(&g_receive_callback_count, 1);
     log_debug("[WS_TIMING] incremented callback count");
@@ -600,13 +570,12 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
         elapsed_ms = 0.0;
       }
 
-      log_info("[WS_FRAG] #%llu: +%.1fms, %zu bytes (first=%d final=%d buffered=%zu)", (unsigned long long)frag_num,
-               elapsed_ms, len, is_first, is_final, conn_data->fragment_size);
+      log_info("[WS_FRAG] #%llu: +%.1fms, %zu bytes (first=%d final=%d)", (unsigned long long)frag_num, elapsed_ms, len,
+               is_first, is_final);
     }
 
     // Debug: Log raw bytes of incoming fragment
-    log_dev_every(4500000, "WebSocket fragment: %zu bytes (first=%d, final=%d, buffered=%zu)", len, is_first, is_final,
-                  conn_data->fragment_size);
+    log_dev_every(4500000, "WebSocket fragment: %zu bytes (first=%d, final=%d)", len, is_first, is_final);
     if (len > 0 && len <= 256) {
       const uint8_t *bytes = (const uint8_t *)in;
       char hex_buf[1024];
@@ -627,88 +596,41 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
                     pkt_len, len);
     }
 
-    // Reassemble multi-fragment WebSocket messages into complete ACIP packets.
-    // The application layer expects recv() to return complete messages, not fragments.
-    // We reassemble fragments quickly in the callback to minimize hold time and buffer correctly.
+    // Queue this fragment immediately with first/final flags.
+    // Per LWS design, each fragment is processed individually by the callback.
+    // We must NOT manually reassemble fragments - that breaks LWS's internal state machine.
+    // Instead, queue each fragment with metadata, and let the receiver decide on reassembly.
+    // This follows the pattern in lws examples (minimal-ws-server-echo, etc).
 
-    // Allocate or expand fragment buffer to hold this fragment
-    size_t required_size = conn_data->fragment_size + len;
-    if (required_size > conn_data->fragment_capacity) {
-      // Grow buffer by 50% to avoid frequent reallocations
-      size_t new_capacity = (conn_data->fragment_capacity == 0) ? 8192 : (conn_data->fragment_capacity * 3 / 2);
-      if (new_capacity < required_size)
-        new_capacity = required_size;
-
-      uint8_t *new_buffer = SAFE_MALLOC(new_capacity, uint8_t *);
-      if (!new_buffer) {
-        log_error("Failed to allocate fragment buffer");
-        // Reset fragment state
-        SAFE_FREE(conn_data->fragment_buffer);
-        conn_data->fragment_size = 0;
-        conn_data->fragment_capacity = 0;
-        break;
-      }
-
-      // Copy existing fragments to new buffer
-      if (conn_data->fragment_buffer) {
-        memcpy(new_buffer, conn_data->fragment_buffer, conn_data->fragment_size);
-        SAFE_FREE(conn_data->fragment_buffer);
-      }
-
-      conn_data->fragment_buffer = new_buffer;
-      conn_data->fragment_capacity = new_capacity;
+    websocket_recv_msg_t msg;
+    msg.data = buffer_pool_alloc(NULL, len);
+    if (!msg.data) {
+      log_error("Failed to allocate buffer for fragment (%zu bytes)", len);
+      break;
     }
 
-    // Append this fragment to buffer
-    memcpy(conn_data->fragment_buffer + conn_data->fragment_size, in, len);
-    conn_data->fragment_size += len;
+    memcpy(msg.data, in, len);
+    msg.len = len;
+    msg.first = is_first;
+    msg.final = is_final;
 
-    // If this is the final fragment, push complete message to receive queue
-    if (is_final) {
-      log_info("[WS_FRAG] Complete message reassembled: %zu bytes (was %lld fragments)", conn_data->fragment_size,
-               (unsigned long long)atomic_load(&g_receive_callback_count));
-
-      websocket_recv_msg_t msg;
-      msg.data = buffer_pool_alloc(NULL, conn_data->fragment_size);
-      if (!msg.data) {
-        log_error("Failed to allocate buffer for complete message (%zu bytes)", conn_data->fragment_size);
-        SAFE_FREE(conn_data->fragment_buffer);
-        conn_data->fragment_size = 0;
-        conn_data->fragment_capacity = 0;
-        break;
-      }
-
-      memcpy(msg.data, conn_data->fragment_buffer, conn_data->fragment_size);
-      msg.len = conn_data->fragment_size;
-
-      // Reset fragment buffer for next message
-      SAFE_FREE(conn_data->fragment_buffer);
-      conn_data->fragment_size = 0;
-      conn_data->fragment_capacity = 0; // Reset capacity so next fragment allocates fresh buffer
-
-      mutex_lock(&ws_data->queue_mutex);
-      bool success = ringbuffer_write(ws_data->recv_queue, &msg);
-      if (!success) {
-        // Queue is full - drop the message and log warning
-        // This shouldn't happen often with the larger queue (4096 slots)
-        log_warn("WebSocket receive queue full (%zu bytes) - dropping message", msg.len);
-        buffer_pool_free(NULL, msg.data, msg.len);
-        mutex_unlock(&ws_data->queue_mutex);
-        break;
-      }
-
-      // Signal waiting recv() call that complete message is available
-      cond_signal(&ws_data->queue_cond);
+    mutex_lock(&ws_data->queue_mutex);
+    bool success = ringbuffer_write(ws_data->recv_queue, &msg);
+    if (!success) {
+      // Queue is full - drop the fragment and log warning
+      log_warn("WebSocket receive queue full - dropping fragment (len=%zu, first=%d, final=%d)", len, is_first,
+               is_final);
+      buffer_pool_free(NULL, msg.data, msg.len);
       mutex_unlock(&ws_data->queue_mutex);
-
-      log_info("[WS_FRAG] Queued complete message: %zu bytes", msg.len);
-    } else {
-      log_info("[WS_FRAG] ⏳ BUFFERING INTERMEDIATE FRAGMENT: received %zu bytes, total_buffered=%zu bytes, expecting "
-               "more fragments (final=%d, is_final=%d)",
-               len, conn_data->fragment_size, is_final, is_final);
-      log_info("[WS_FRAG] ⏳ NEXT CALLBACK SHOULD HAVE first=0 to continue this %zu-byte message",
-               conn_data->fragment_size);
+      break;
     }
+
+    // Signal waiting recv() call that a fragment is available
+    cond_signal(&ws_data->queue_cond);
+    mutex_unlock(&ws_data->queue_mutex);
+
+    log_info("[WS_FRAG] Queued fragment: %zu bytes (first=%d final=%d, total_fragments=%llu)", len, is_first, is_final,
+             (unsigned long long)atomic_load(&g_receive_callback_count));
 
     // Log callback duration
     {
