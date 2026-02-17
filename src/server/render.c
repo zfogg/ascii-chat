@@ -459,6 +459,27 @@ void *client_video_render_thread(void *arg) {
                     thread_client_id, width_snapshot, height_snapshot);
       char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot,
                                                               false, &frame_size, NULL, &sources_count);
+
+      // DEBUG: Log frame generation details
+      static uint32_t last_frame_hash = -1; // Initialize to -1 so first frame is always new
+      uint32_t current_frame_hash = 0;
+      bool frame_is_new = false;
+      if (ascii_frame && frame_size > 0) {
+        for (size_t i = 0; i < frame_size && i < 1000; i++) {
+          current_frame_hash = (uint32_t)((uint64_t)current_frame_hash * 31 + ((unsigned char *)ascii_frame)[i]);
+        }
+        if (current_frame_hash != last_frame_hash) {
+          log_info("RENDER_FRAME CHANGE: Client %u frame #%zu sources=%d hash=0x%08x (prev=0x%08x)", thread_client_id,
+                   frame_size, sources_count, current_frame_hash, last_frame_hash);
+          last_frame_hash = current_frame_hash;
+          frame_is_new = true;
+        } else {
+          log_dev_every(25000, "RENDER_FRAME DUPLICATE: Client %u frame #%zu sources=%d hash=0x%08x (no change)",
+                        thread_client_id, frame_size, sources_count, current_frame_hash);
+          frame_is_new = false;
+        }
+      }
+
       log_dev_every(5000000,
                     "create_mixed_ascii_frame_for_client returned: ascii_frame=%p, frame_size=%zu, sources_count=%d",
                     (void *)ascii_frame, frame_size, sources_count);
@@ -483,8 +504,16 @@ void *client_video_render_thread(void *arg) {
               write_frame->size = frame_size;
               write_frame->capture_timestamp_ns = current_time_ns;
 
-              // Commit the frame (swaps buffers atomically using vfb->swap_mutex, NOT rwlock)
-              video_frame_commit(vfb_snapshot);
+              // Only commit the frame if it's actually NEW (different from last committed frame)
+              // This prevents sending duplicate frames and improves client-side FPS tracking
+              if (frame_is_new) {
+                // Commit the frame (swaps buffers atomically using vfb->swap_mutex, NOT rwlock)
+                video_frame_commit(vfb_snapshot);
+              } else {
+                // Discard duplicate frame by not committing (back buffer is safe to reuse)
+                log_dev_every(25000, "Skipping commit for duplicate frame for client %u (hash=0x%08x)",
+                              thread_client_id, current_frame_hash);
+              }
 
               // Log occasionally for monitoring
               char pretty_size[64];
