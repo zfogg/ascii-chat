@@ -468,8 +468,6 @@ void *client_video_render_thread(void *arg) {
       // Use per-client static variables to track frequency independently
       static uint32_t frame_gen_count = 0;
       static uint64_t frame_gen_start_time = 0;
-      static uint32_t last_input_frame_hash = 0; // Track incoming frame changes
-      static uint64_t last_render_time_ns = 0;   // Force re-render every 500ms even if input unchanged
 
       frame_gen_count++;
       if (frame_gen_count == 1) {
@@ -482,40 +480,6 @@ void *client_video_render_thread(void *arg) {
         double gen_fps = (120.0 / (elapsed_ns / 1000000000.0));
         log_warn("DIAGNOSTIC: Client %u LOOP running at %.1f FPS (120 iterations in %.2fs)", thread_client_id, gen_fps,
                  elapsed_ns / 1000000000.0);
-      }
-
-      // Check if incoming video frame has changed
-      uint32_t current_input_hash = 0;
-      bool input_frame_changed = false;
-      bool force_rerender = false;
-
-      // Get a snapshot of the incoming frame to detect changes
-      if (client->incoming_video_buffer) {
-        const video_frame_t *incoming_frame = video_frame_get_latest(client->incoming_video_buffer);
-        if (incoming_frame && incoming_frame->data && incoming_frame->size > 0) {
-          // Compute hash of incoming RGB data (first 1000 bytes for speed)
-          for (size_t i = 0; i < incoming_frame->size && i < 1000; i++) {
-            current_input_hash =
-                (uint32_t)((uint64_t)current_input_hash * 31 + ((unsigned char *)incoming_frame->data)[i]);
-          }
-
-          input_frame_changed = (current_input_hash != last_input_frame_hash);
-          if (input_frame_changed) {
-            last_input_frame_hash = current_input_hash;
-            last_render_time_ns = current_time_ns;
-          }
-
-          // Force re-render every 500ms to catch format/size changes (avoids stale frames)
-          uint64_t time_since_last_render = current_time_ns - last_render_time_ns;
-          force_rerender = (time_since_last_render > 500000000); // 500ms
-        }
-      }
-
-      // Skip render if input frame hasn't changed (unless we need to force rerender)
-      if (!input_frame_changed && !force_rerender) {
-        log_dev_every(10000, "Skipping render for client %u: input frame unchanged (hash=0x%08x)", thread_client_id,
-                      current_input_hash);
-        continue;
       }
 
       log_dev_every(5000000, "About to call create_mixed_ascii_frame_for_client for client %u with dims %ux%u",
