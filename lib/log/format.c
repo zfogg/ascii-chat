@@ -4,7 +4,7 @@
  * @ingroup logging
  */
 
-#include "format.h"
+#include <ascii-chat/log/format.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/util/time.h>
