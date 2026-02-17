@@ -73,8 +73,9 @@ static log_format_t *parse_format_string(const char *format_str, bool console_on
   strcpy(result->original, format_str);
   result->console_only = console_only;
 
-  /* Pre-allocate spec array (worst case: every char is a specifier) */
-  result->specs = SAFE_MALLOC(strlen(format_str) + 1, log_format_spec_t *);
+  /* Pre-allocate spec array (worst case: every char is a specifier)
+   * Use CALLOC to zero-initialize to ensure all fields are NULL/0 */
+  result->specs = SAFE_CALLOC(strlen(format_str) + 1, sizeof(log_format_spec_t), log_format_spec_t *);
   if (!result->specs) {
     SAFE_FREE(result->original);
     SAFE_FREE(result);

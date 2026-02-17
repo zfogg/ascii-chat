@@ -92,6 +92,22 @@ static struct log_context_t {
 /* Level strings for log output - must match log_level_t enum order */
 static const char *level_strings[] = {"DEV", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
 
+/* ============================================================================
+ * Default Log Format Strings
+ * ============================================================================
+ * These are used when no custom format is specified via --log-format.
+ * time_format_now() automatically appends microseconds when %S is present.
+ */
+
+#ifdef NDEBUG
+/* Release mode: minimal format with timestamp and level */
+static const char DEFAULT_LOG_FORMAT[] = "[%time(%H:%M:%S)] [%level_aligned] %message";
+#else
+/* Debug mode: verbose format with thread ID, file, line, and function */
+static const char DEFAULT_LOG_FORMAT[] =
+    "[%time(%H:%M:%S)] [%level_aligned] [tid:%tid] %file:%line in %func(): %message";
+#endif
+
 /**
  * @brief Get padded level string for consistent alignment
  *
@@ -543,6 +559,9 @@ void log_init(const char *filename, log_level_t level, bool force_stderr, bool u
     g_log.filename[0] = '\0';
   }
 
+  /* Initialize default log format (both debug and release modes supported) */
+  log_set_format(DEFAULT_LOG_FORMAT, false);
+
   atomic_store(&g_log.initialized, true);
   atomic_store(&g_log.terminal_output_enabled, preserve_terminal_output);
 
@@ -838,26 +857,10 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   } else {
     output_stream = (level == LOG_ERROR || level == LOG_WARN || level == LOG_FATAL) ? stderr : stdout;
   }
-  // Format the header using centralized formatting
-  char header_buffer[512];
-  // Check if colors should be used based on TTY status (same as ASCII art)
+
+  // Check if colors should be used based on TTY status
   int fd = (output_stream == stderr) ? STDERR_FILENO : STDOUT_FILENO;
   bool use_colors = terminal_should_color_output(fd);
-  int header_len =
-      format_log_header(header_buffer, sizeof(header_buffer), level, timestamp, file, line, func, use_colors, false);
-  if (header_len <= 0 || header_len >= (int)sizeof(header_buffer)) {
-    LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log header");
-    return;
-  }
-
-  // Format plain header for grep matching (without ANSI codes)
-  char plain_header_buffer[512];
-  int plain_header_len = format_log_header(plain_header_buffer, sizeof(plain_header_buffer), level, timestamp, file,
-                                           line, func, false, false);
-  if (plain_header_len <= 0 || plain_header_len >= (int)sizeof(plain_header_buffer)) {
-    LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format plain log header");
-    return;
-  }
 
   // Format message first (needed for status screen capture even if terminal output disabled)
   char msg_buffer[LOG_MSG_BUFFER_SIZE];
@@ -875,26 +878,25 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
     clean_msg = stripped_msg ? stripped_msg : msg_buffer;
   }
 
-  // Construct PLAIN log line (without ANSI codes) for grep matching
+  // Use format system to generate the complete log line
+  char colored_log_line[LOG_MSG_BUFFER_SIZE + 512];
   char plain_log_line[LOG_MSG_BUFFER_SIZE + 512];
-  int plain_len = snprintf(plain_log_line, sizeof(plain_log_line), "%s%s", plain_header_buffer, clean_msg);
 
-  // Feed COLORED log to status screen buffer (uses same formatting as terminal output)
-  // This ensures status screen displays match normal terminal output
-  if (use_colors) {
-    const char *colorized_msg = colorize_log_message(msg_buffer);
-    char colored_log_line[LOG_MSG_BUFFER_SIZE + 1024];
-    int colored_len = snprintf(colored_log_line, sizeof(colored_log_line), "%s%s", header_buffer, colorized_msg);
-    if (colored_len > 0 && colored_len < (int)sizeof(colored_log_line)) {
-      extern void server_status_log_append(const char *message);
-      server_status_log_append(colored_log_line);
-    }
-  } else {
-    // No colors - use plain version
-    if (plain_len > 0 && plain_len < (int)sizeof(plain_log_line)) {
-      extern void server_status_log_append(const char *message);
-      server_status_log_append(plain_log_line);
-    }
+  /* Apply format with colors */
+  int colored_len = log_format_apply(g_log.format, colored_log_line, sizeof(colored_log_line), level, timestamp, file,
+                                     line, func, asciichat_thread_current_id(), clean_msg, use_colors);
+
+  /* Apply format without colors for grep matching */
+  int plain_len = log_format_apply(g_log.format, plain_log_line, sizeof(plain_log_line), level, timestamp, file, line,
+                                   func, asciichat_thread_current_id(), clean_msg, false);
+
+  // Feed log to status screen buffer
+  if (colored_len > 0 && colored_len < (int)sizeof(colored_log_line)) {
+    extern void server_status_log_append(const char *message);
+    server_status_log_append(colored_log_line);
+  } else if (plain_len > 0 && plain_len < (int)sizeof(plain_log_line)) {
+    extern void server_status_log_append(const char *message);
+    server_status_log_append(plain_log_line);
   }
 
   // Check if terminal output is enabled (atomic load)
@@ -922,7 +924,6 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   // Handle message formatting errors for terminal output
   if (msg_len <= 0 || msg_len >= (int)sizeof(msg_buffer)) {
     // Message formatting failed - skip filtering and try direct output
-    safe_fprintf(output_stream, "%s", header_buffer);
     (void)vfprintf(output_stream, fmt, args);
     safe_fprintf(output_stream, "\n");
     (void)fflush(output_stream);
@@ -932,10 +933,11 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
     return;
   }
 
-  // Handle plain log line formatting errors for terminal output
-  if (plain_len <= 0 || plain_len >= (int)sizeof(plain_log_line)) {
-    // Line too long - skip filtering
-    safe_fprintf(output_stream, "%s%s\n", header_buffer, msg_buffer);
+  // Handle log formatting errors
+  if (colored_len <= 0 || colored_len >= (int)sizeof(colored_log_line) || plain_len <= 0 ||
+      plain_len >= (int)sizeof(plain_log_line)) {
+    // Formatting failed - try to output something
+    safe_fprintf(output_stream, "%s\n", clean_msg);
     (void)fflush(output_stream);
     if (stripped_msg) {
       SAFE_FREE(stripped_msg);
@@ -955,33 +957,20 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
 
   // Output with colors
   if (use_colors) {
-    // Apply normal colorization to message
-    const char *colorized_msg = colorize_log_message(msg_buffer);
     const char **colors = log_get_color_array();
 
-    // When grep matches, use plain header for highlighting but colored header for display
-    if (match_len > 0) {
-      // Build full colored line for highlighting application
-      char full_colored_line[LOG_MSG_BUFFER_SIZE + 1024];
-      char full_plain_line[LOG_MSG_BUFFER_SIZE + 1024];
-      snprintf(full_colored_line, sizeof(full_colored_line), "%s%s", header_buffer, colorized_msg);
-      snprintf(full_plain_line, sizeof(full_plain_line), "%s%s", plain_header_buffer, clean_msg);
-
+    // When grep matches, highlight in the colored line
+    if (match_len > 0 && colors != NULL) {
       // Apply highlighting to the full line, respecting existing ANSI codes
-      const char *highlighted_line = grep_highlight_colored(full_colored_line, full_plain_line, match_start, match_len);
+      const char *highlighted_line = grep_highlight_colored(colored_log_line, plain_log_line, match_start, match_len);
       safe_fprintf(output_stream, "%s\n", highlighted_line);
     } else {
-      // No grep match - output normally with colored header
-      if (colors == NULL) {
-        safe_fprintf(output_stream, "%s%s\n", header_buffer, colorized_msg);
-      } else {
-        safe_fprintf(output_stream, "%s%s%s%s\n", header_buffer, colors[LOG_COLOR_RESET], colorized_msg,
-                     colors[LOG_COLOR_RESET]);
-      }
+      // No grep match - output colored line as-is
+      safe_fprintf(output_stream, "%s\n", colored_log_line);
     }
   } else {
-    // No colors - output plain
-    safe_fprintf(output_stream, "%s%s\n", header_buffer, msg_buffer);
+    // No colors - output plain line
+    safe_fprintf(output_stream, "%s\n", plain_log_line);
   }
 
   // Clean up stripped message
