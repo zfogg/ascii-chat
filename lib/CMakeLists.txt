@@ -183,6 +183,10 @@ macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
     # binary and the shared library. initial-exec generates TPOFF32 relocations that
     # are invalid in shared libraries. With LTO, the linker performs TLS relaxation
     # (global-dynamic → initial-exec) in the executable link automatically.
+    # For musl with shared library, explicitly use global-dynamic to avoid TPOFF32 errors
+    if(NOT WIN32)
+        target_compile_options(${MODULE_NAME} PRIVATE -ftls-model=global-dynamic)
+    endif()
     # Mark all symbols for export when building DLL from OBJECT libraries
     target_compile_definitions(${MODULE_NAME} PRIVATE
         _WIN32_WINNT=0x0A00  # Windows 10
@@ -732,6 +736,16 @@ add_library(ascii-chat-shared SHARED
     if(ASCIICHAT_ENABLE_UNITY_BUILDS)
         set_target_properties(ascii-chat-shared PROPERTIES UNITY_BUILD ON)
     endif()
+
+    # Disable LTO for musl builds BEFORE other properties - must come first
+    # LTO generates TPOFF32 relocations for TLS variables that cannot be used with -shared
+    # This is a known LLVM limitation (issue #55909) - LTO ignores TLS model flags
+    if(USE_MUSL)
+        set_target_properties(ascii-chat-shared PROPERTIES
+            INTERPROCEDURAL_OPTIMIZATION FALSE
+        )
+    endif()
+
     set_target_properties(ascii-chat-shared PROPERTIES
         OUTPUT_NAME "asciichat"
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}  # DLL goes in bin/
@@ -743,18 +757,6 @@ add_library(ascii-chat-shared SHARED
         VERSION ${ASCIICHAT_LIB_VERSION}
         SOVERSION ${ASCIICHAT_LIB_VERSION_MAJOR}
     )
-
-    # Disable LTO for shared library when building for musl due to TLS relocation incompatibilities
-    # LTO generates TPOFF32 relocations for TLS variables that cannot be used with -shared
-    # This is a known LLVM limitation (issue #55909) - LTO ignores TLS model flags
-    if(USE_MUSL)
-        set_target_properties(ascii-chat-shared PROPERTIES
-            INTERPROCEDURAL_OPTIMIZATION FALSE
-        )
-        # Explicitly override -flto flags in the compile/link commands
-        target_compile_options(ascii-chat-shared PRIVATE -fno-lto)
-        target_link_options(ascii-chat-shared PRIVATE -fno-lto)
-    endif()
 
     # Windows: Explicitly set import library location for Windows
     if(WIN32)
