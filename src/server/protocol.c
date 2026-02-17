@@ -176,6 +176,7 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
 
   socket_t socket_snapshot = INVALID_SOCKET_VALUE;
   const crypto_context_t *crypto_ctx = NULL;
+  acip_transport_t *transport_snapshot = NULL;
 
   mutex_lock(&client->client_state_mutex);
   if (client->socket != INVALID_SOCKET_VALUE) {
@@ -185,6 +186,11 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
     }
   }
   mutex_unlock(&client->client_state_mutex);
+
+  // Get transport reference for WebSocket clients
+  mutex_lock(&client->send_mutex);
+  transport_snapshot = client->transport;
+  mutex_unlock(&client->send_mutex);
 
   // NOTE: Disconnecting a client due to the client's own bad behavior isn't an
   // error for us, it's desired behavior for us, so we simply warn and do not
@@ -209,6 +215,10 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
     }
 
     mutex_unlock(&client->send_mutex);
+  } else if (transport_snapshot) {
+    // For WebSocket clients, try to send error via transport
+    log_debug("Sending error to WebSocket client %u via transport", client_id);
+    acip_send_error(transport_snapshot, ERROR_NETWORK_PROTOCOL, reason_str);
   }
 
   platform_sleep_ms(500);
@@ -305,8 +315,10 @@ void handle_client_join_packet(client_info_t *client, const void *data, size_t l
            client->display_name, client->can_send_video, client->can_send_audio, client->wants_stretch);
 
   // Notify client of successful join (encrypted channel)
-  log_info_client(client, "Joined as '%s' (video=%s, audio=%s)", client->display_name,
-                  client->can_send_video ? "yes" : "no", client->can_send_audio ? "yes" : "no");
+  if (client->socket != INVALID_SOCKET_VALUE) {
+    log_info_client(client, "Joined as '%s' (video=%s, audio=%s)", client->display_name,
+                    client->can_send_video ? "yes" : "no", client->can_send_audio ? "yes" : "no");
+  }
 }
 
 /**
@@ -545,7 +557,10 @@ void handle_stream_start_packet(client_info_t *client, const void *data, size_t 
   const char *streams = (stream_type & STREAM_TYPE_VIDEO) && (stream_type & STREAM_TYPE_AUDIO)
                             ? "video+audio"
                             : ((stream_type & STREAM_TYPE_VIDEO) ? "video" : "audio");
-  log_info_client(client, "Stream started: %s", streams);
+  // Only send remote log to TCP clients (WebSocket clients have invalid socket)
+  if (client->socket != INVALID_SOCKET_VALUE) {
+    log_info_client(client, "Stream started: %s", streams);
+  }
 }
 
 /**
@@ -615,7 +630,10 @@ void handle_stream_stop_packet(client_info_t *client, const void *data, size_t l
   const char *streams = (stream_type & STREAM_TYPE_VIDEO) && (stream_type & STREAM_TYPE_AUDIO)
                             ? "video+audio"
                             : ((stream_type & STREAM_TYPE_VIDEO) ? "video" : "audio");
-  log_info_client(client, "Stream stopped: %s", streams);
+  // Only send remote log to TCP clients (WebSocket clients have invalid socket)
+  if (client->socket != INVALID_SOCKET_VALUE) {
+    log_info_client(client, "Stream stopped: %s", streams);
+  }
 }
 
 /**
@@ -730,7 +748,9 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
     if (atomic_compare_exchange_strong(&client->is_sending_video, &was_sending_video, true)) {
       log_info("Client %u auto-enabled video stream (received IMAGE_FRAME)", atomic_load(&client->client_id));
       // Notify client that their first video frame was received
-      log_info_client(client, "First video frame received - streaming active");
+      if (client->socket != INVALID_SOCKET_VALUE) {
+        log_info_client(client, "First video frame received - streaming active");
+      }
     }
   } else {
     // Log periodically to confirm we're receiving frames
@@ -1543,12 +1563,14 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
            client->terminal_caps.wants_padding);
 
   // Send capabilities acknowledgment to client
-  log_info_client(client, "Terminal configured: %ux%u, %s, %s mode, %u fps", client->width, client->height,
-                  terminal_color_level_name(client->terminal_caps.color_level),
-                  (client->terminal_caps.render_mode == RENDER_MODE_HALF_BLOCK
-                       ? "half-block"
-                       : (client->terminal_caps.render_mode == RENDER_MODE_BACKGROUND ? "background" : "foreground")),
-                  client->terminal_caps.desired_fps);
+  if (client->socket != INVALID_SOCKET_VALUE) {
+    log_info_client(client, "Terminal configured: %ux%u, %s, %s mode, %u fps", client->width, client->height,
+                    terminal_color_level_name(client->terminal_caps.color_level),
+                    (client->terminal_caps.render_mode == RENDER_MODE_HALF_BLOCK
+                         ? "half-block"
+                         : (client->terminal_caps.render_mode == RENDER_MODE_BACKGROUND ? "background" : "foreground")),
+                    client->terminal_caps.desired_fps);
+  }
 
   mutex_unlock(&client->client_state_mutex);
 }
