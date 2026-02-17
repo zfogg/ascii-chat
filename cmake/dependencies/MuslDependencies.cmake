@@ -178,6 +178,90 @@ endif()
 
 set(ZSTD_FOUND TRUE)
 set(ZSTD_LIBRARIES "${ZSTD_PREFIX}/lib/libzstd.a")
+
+# =============================================================================
+# zlib - Compression library (required by libwebsockets)
+# =============================================================================
+set(ZLIB_PREFIX "${MUSL_DEPS_DIR_STATIC}/zlib")
+set(ZLIB_INCLUDE_DIR "${ZLIB_PREFIX}/include")
+set(ZLIB_LIBRARY "${ZLIB_PREFIX}/lib/libz.a")
+
+if(NOT EXISTS "${ZLIB_LIBRARY}")
+    message(STATUS "  zlib library not found in cache, will build from source")
+
+    # Download zlib source manually first - GitHub archive endpoint has non-deterministic hashes
+    # So we download, verify, and let ExternalProject use the cached file
+    set(ZLIB_DOWNLOAD_DIR "${MUSL_DEPS_DIR_STATIC}/zlib-src")
+    set(ZLIB_TARBALL "${ZLIB_DOWNLOAD_DIR}/zlib-1.3.1.tar.gz")
+    set(ZLIB_EXTRACTED "${ZLIB_DOWNLOAD_DIR}/zlib-1.3.1")
+
+    file(MAKE_DIRECTORY "${ZLIB_DOWNLOAD_DIR}")
+
+    if(NOT EXISTS "${ZLIB_EXTRACTED}")
+        if(NOT EXISTS "${ZLIB_TARBALL}")
+            message(STATUS "  Downloading zlib 1.3.1...")
+            # Use official zlib source from GitHub releases (not archive endpoint)
+            file(DOWNLOAD
+                "https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz"
+                "${ZLIB_TARBALL}"
+                TIMEOUT 30
+                STATUS DOWNLOAD_STATUS
+                SHOW_PROGRESS
+            )
+            list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
+            if(NOT STATUS_CODE EQUAL 0)
+                list(GET DOWNLOAD_STATUS 1 ERROR_MSG)
+                message(WARNING "Failed to download from releases endpoint: ${ERROR_MSG}")
+                message(STATUS "  Attempting fallback: downloading from archive endpoint...")
+                # Fallback to archive endpoint without hash verification
+                file(DOWNLOAD
+                    "https://github.com/madler/zlib/archive/refs/tags/v1.3.1.tar.gz"
+                    "${ZLIB_TARBALL}"
+                    TIMEOUT 30
+                    STATUS DOWNLOAD_STATUS
+                    SHOW_PROGRESS
+                )
+                list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
+                if(NOT STATUS_CODE EQUAL 0)
+                    list(GET DOWNLOAD_STATUS 1 ERROR_MSG)
+                    message(FATAL_ERROR "Failed to download zlib from both endpoints: ${ERROR_MSG}")
+                endif()
+            endif()
+        endif()
+
+        message(STATUS "  Extracting zlib...")
+        execute_process(
+            COMMAND ${CMAKE_COMMAND} -E tar xzf "${ZLIB_TARBALL}"
+            WORKING_DIRECTORY "${ZLIB_DOWNLOAD_DIR}"
+            RESULT_VARIABLE EXTRACT_RESULT
+            OUTPUT_VARIABLE EXTRACT_OUTPUT
+            ERROR_VARIABLE EXTRACT_ERROR
+        )
+        if(NOT EXTRACT_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to extract zlib: ${EXTRACT_ERROR}")
+        endif()
+    endif()
+
+    ExternalProject_Add(zlib-musl
+        SOURCE_DIR "${ZLIB_EXTRACTED}"
+        DOWNLOAD_COMMAND ""
+        UPDATE_COMMAND ""
+        STAMP_DIR ${MUSL_DEPS_DIR_STATIC}/zlib-build/stamps
+        UPDATE_DISCONNECTED 1
+        BUILD_ALWAYS 0
+        CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} <SOURCE_DIR>/configure --prefix=${ZLIB_PREFIX} --static
+        BUILD_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC make
+        INSTALL_COMMAND make install
+        BUILD_BYPRODUCTS ${ZLIB_LIBRARY}
+        LOG_CONFIGURE TRUE
+        LOG_BUILD TRUE
+        LOG_INSTALL TRUE
+        LOG_OUTPUT_ON_FAILURE TRUE
+    )
+else()
+    message(STATUS "  ${BoldBlue}zlib${ColorReset} library found in cache: ${BoldMagenta}${ZLIB_LIBRARY}${ColorReset}")
+    add_custom_target(zlib-musl)
+endif()
 set(ZSTD_INCLUDE_DIRS "${ZSTD_PREFIX}/include")
 
 # =============================================================================
@@ -947,6 +1031,7 @@ if(NOT EXISTS "${LWS_PREFIX}/lib/libwebsockets.a")
         STAMP_DIR ${LWS_BUILD_DIR}/stamps
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
+        DEPENDS zlib-musl
         CMAKE_ARGS
             -DCMAKE_TOOLCHAIN_FILE=${MUSL_TOOLCHAIN_FILE}
             -DMUSL_GCC_PATH=${MUSL_GCC}
@@ -976,6 +1061,8 @@ if(NOT EXISTS "${LWS_PREFIX}/lib/libwebsockets.a")
             -DLWS_WITHOUT_EXTENSIONS=OFF
             -DLWS_WITH_ZLIB=ON
             -DLWS_WITH_BUNDLED_ZLIB=ON
+            -DZLIB_INCLUDE_DIR=${ZLIB_INCLUDE_DIR}
+            -DZLIB_LIBRARY=${ZLIB_LIBRARY}
             -DLWS_WITH_SOCKS5=OFF
         BUILD_BYPRODUCTS ${LWS_PREFIX}/lib/libwebsockets.a
         LOG_DOWNLOAD TRUE

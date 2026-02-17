@@ -271,6 +271,7 @@ if(USE_MUSL)
         ${LIBSODIUM_PREFIX}/lib/libsodium.a
         ${LIBEXECINFO_PREFIX}/lib/libexecinfo.a
         ${PCRE2_PREFIX}/lib/libpcre2-8.a
+        ${ZLIB_LIBRARY}
         -lm -lpthread
     )
 
