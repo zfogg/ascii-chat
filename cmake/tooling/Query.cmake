@@ -15,7 +15,7 @@ set(ASCIICHAT_QUERY_TOOL "" CACHE FILEPATH "Path to pre-built ascii-query-server
 
 option(ASCIICHAT_BUILD_WITH_QUERY "Build query debug tool (requires LLDB)" OFF)
 
-include(ExternalProject)
+include(${CMAKE_SOURCE_DIR}/cmake/utils/BuildLLVMTool.cmake)
 
 function(ascii_query_prepare)
     if(NOT ASCIICHAT_BUILD_WITH_QUERY)
@@ -31,117 +31,21 @@ function(ascii_query_prepare)
         return()
     endif()
 
-    # Determine which query tool to use
-    # Priority: 1. ASCIICHAT_QUERY_TOOL (explicit), 2. Cached build, 3. Build new
-    set(_query_cache_dir "${CMAKE_SOURCE_DIR}/.deps-cache/query-tool")
-    set(_query_cached_exe "${_query_cache_dir}/ascii-query-server${CMAKE_EXECUTABLE_SUFFIX}")
-
-    # Clean up any partial cache state BEFORE checking if exe exists
-    set(_query_stamp_dir "${CMAKE_BINARY_DIR}/ascii-query-server-external-prefix/src/ascii-query-server-external-stamp")
-    set(_query_needs_rebuild FALSE)
-
-    if(EXISTS "${_query_cache_dir}")
-        if(NOT EXISTS "${_query_cache_dir}/CMakeCache.txt")
-            message(STATUS "Cleaning incomplete query tool cache (no CMakeCache.txt): ${_query_cache_dir}")
-            file(REMOVE_RECURSE "${_query_cache_dir}")
-            set(_query_needs_rebuild TRUE)
-        elseif(NOT EXISTS "${_query_cached_exe}")
-            message(STATUS "Cleaning incomplete query tool cache (no exe): ${_query_cache_dir}")
-            file(REMOVE_RECURSE "${_query_cache_dir}")
-            set(_query_needs_rebuild TRUE)
-        endif()
-    else()
-        set(_query_needs_rebuild TRUE)
-    endif()
-
-    # Clean up stale stamp files if we need a rebuild
-    if(_query_needs_rebuild AND EXISTS "${_query_stamp_dir}")
-        message(STATUS "Cleaning stale query tool stamp files: ${_query_stamp_dir}")
-        file(REMOVE_RECURSE "${_query_stamp_dir}")
-    endif()
-
-    if(ASCIICHAT_QUERY_TOOL AND EXISTS "${ASCIICHAT_QUERY_TOOL}")
-        set(_query_tool_exe "${ASCIICHAT_QUERY_TOOL}")
-        set(_query_tool_depends "")
-        message(STATUS "Using external query tool: ${_query_tool_exe}")
-    elseif(EXISTS "${_query_cached_exe}" AND EXISTS "${_query_cache_dir}/CMakeCache.txt")
-        # Use cached query tool (persists across build directory deletes)
-        set(_query_tool_exe "${_query_cached_exe}")
-        set(_query_tool_depends "")
-        message(STATUS "Using cached query tool: ${_query_tool_exe}")
-    else()
-        # Build query tool to cache directory (survives rm -rf build)
-        set(_query_build_dir "${_query_cache_dir}")
-        set(_query_tool_exe "${_query_build_dir}/ascii-query-server${CMAKE_EXECUTABLE_SUFFIX}")
-
-        # Detect the C++ compiler for building the query tool
-        # Prioritize Homebrew LLVM's clang++ for consistency
-        if(ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE)
-            set(_query_cxx_compiler "${ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE}")
-            message(STATUS "Query tool: Using clang++ from Homebrew LLVM: ${_query_cxx_compiler}")
-        elseif(CMAKE_CXX_COMPILER)
-            set(_query_cxx_compiler "${CMAKE_CXX_COMPILER}")
-            message(STATUS "Query tool: Using CMAKE_CXX_COMPILER: ${_query_cxx_compiler}")
-        else()
-            message(FATAL_ERROR "Cannot find clang++ for building query tool. Set CMAKE_CXX_COMPILER or ensure clang++ is in PATH.")
-        endif()
-
-        # CMake arguments for the external project
-        set(_query_cmake_args
-            -DCMAKE_CXX_COMPILER=${_query_cxx_compiler}
-            -DCMAKE_BUILD_TYPE=Release
-            -DOUTPUT_DIR=${_query_build_dir}
-        )
-
-        # On Windows with vcpkg, pass the vcpkg root
-        if(WIN32 AND DEFINED VCPKG_INSTALLED_DIR)
-            list(APPEND _query_cmake_args
-                -DVCPKG_INSTALLED_DIR=${VCPKG_INSTALLED_DIR}
-                -DVCPKG_TARGET_TRIPLET=${VCPKG_TARGET_TRIPLET}
-            )
-            set(_query_cache_args
-                -DCMAKE_CXX_COMPILER_WORKS:BOOL=TRUE
-                -DCMAKE_C_COMPILER_WORKS:BOOL=TRUE
-                -DCMAKE_EXE_LINKER_FLAGS:STRING=
-                -DCMAKE_EXE_LINKER_FLAGS_DEBUG:STRING=
-                -DCMAKE_EXE_LINKER_FLAGS_RELEASE:STRING=
-                -DCMAKE_SHARED_LINKER_FLAGS:STRING=
-                -DCMAKE_MODULE_LINKER_FLAGS:STRING=
-                -DCMAKE_PLATFORM_REQUIRED_RUNTIME_PATH:STRING=
-            )
-        else()
-            set(_query_cache_args "")
-        endif()
-
-        # Verify that the query tool CMakeLists.txt exists
-        set(_query_source_dir "${CMAKE_SOURCE_DIR}/src/tooling/query")
-        set(_query_cmake_file "${_query_source_dir}/CMakeLists.txt")
-        if(NOT EXISTS "${_query_cmake_file}")
-            message(FATAL_ERROR
-                "ERROR: Query tool CMakeLists.txt not found at: ${_query_cmake_file}\n"
-                "The query tool requires a CMakeLists.txt file in src/tooling/query/ to build.\n"
-                "Please ensure src/tooling/query/CMakeLists.txt exists in the repository."
-            )
-        endif()
-
-        ExternalProject_Add(ascii-query-server-external
-            SOURCE_DIR "${_query_source_dir}"
-            BINARY_DIR "${_query_build_dir}"
-            CMAKE_ARGS ${_query_cmake_args}
-            CMAKE_CACHE_ARGS ${_query_cache_args}
-            BUILD_ALWAYS FALSE
-            INSTALL_COMMAND ""
-            BUILD_BYPRODUCTS "${_query_tool_exe}"
-        )
-
-        set(_query_tool_depends ascii-query-server-external)
-        message(STATUS "Building query tool to cache: ${_query_cache_dir}")
-        message(STATUS "  (To force rebuild, delete: ${_query_cached_exe})")
-    endif()
+    # Build/find the query tool using the common utility
+    build_llvm_tool(
+        NAME query
+        SOURCE_DIR "${CMAKE_SOURCE_DIR}/src/tooling/query"
+        CACHE_DIR_NAME "query-tool"
+        OUTPUT_EXECUTABLE "ascii-query-server"
+        PREBUILT_VAR ASCIICHAT_QUERY_TOOL
+        CLEAN_INCOMPLETE_CACHE
+        EXTRA_CMAKE_ARGS
+            "-DASCIICHAT_INCLUDE_DIR=${CMAKE_SOURCE_DIR}/include"
+    )
 
     # Store the tool path for later use
-    set(ASCII_QUERY_TOOL_EXE "${_query_tool_exe}" PARENT_SCOPE)
-    set(ASCII_QUERY_TOOL_DEPENDS "${_query_tool_depends}" PARENT_SCOPE)
+    set(ASCII_QUERY_TOOL_EXE "${QUERY_TOOL_EXECUTABLE}" PARENT_SCOPE)
+    set(ASCII_QUERY_TOOL_DEPENDS "${QUERY_TOOL_DEPENDS}" PARENT_SCOPE)
     set(ASCII_QUERY_ENABLED TRUE PARENT_SCOPE)
 
     # Build the runtime library (for QUERY_INIT/SHUTDOWN macros)
