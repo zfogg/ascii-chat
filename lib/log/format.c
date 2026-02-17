@@ -326,22 +326,20 @@ int log_format_apply(const log_format_t *format, char *buf, size_t buf_size, log
 
     case LOG_FORMAT_LEVEL:
       /* Log level as string (DEV, DEBUG, INFO, WARN, ERROR, FATAL) */
-      if (use_colors) {
-        const char *colored = colored_string((log_color_t)level, get_level_string(level));
-        written = safe_snprintf(p, remaining + 1, "%s", colored);
-      } else {
-        written = safe_snprintf(p, remaining + 1, "%s", get_level_string(level));
+      if (remaining < 3) {
+        log_debug("log_format_apply: not enough buffer space for level");
+        return -1;
       }
+      written = safe_snprintf(p, remaining + 1, "%s", get_level_string(level));
       break;
 
     case LOG_FORMAT_LEVEL_ALIGNED:
       /* Log level padded to 5 characters */
-      if (use_colors) {
-        const char *colored = colored_string((log_color_t)level, get_level_string_padded(level));
-        written = safe_snprintf(p, remaining + 1, "%s", colored);
-      } else {
-        written = safe_snprintf(p, remaining + 1, "%s", get_level_string_padded(level));
+      if (remaining < 5) {
+        log_debug("log_format_apply: not enough buffer space for padded level");
+        return -1;
       }
+      written = safe_snprintf(p, remaining + 1, "%s", get_level_string_padded(level));
       break;
 
     case LOG_FORMAT_FILE:
