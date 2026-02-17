@@ -767,7 +767,7 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
   /* Use log_format_apply() to generate the complete formatted output */
   int written = log_format_apply(format, buffer, buffer_size, level, timestamp, file, line, func,
                                  asciichat_thread_current_id(), "", use_colors);
-  if (written <= 0 || written >= (int)buffer_size) {
+  if (written < 0 || written >= (int)buffer_size) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log header");
     return -1;
   }
@@ -989,7 +989,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
       int header_len =
           format_log_header(header_buffer, sizeof(header_buffer), level, time_buf, file, line, func, use_colors);
 
-      if (header_len > 0 && header_len < (int)sizeof(header_buffer)) {
+      if (header_len >= 0 && header_len < (int)sizeof(header_buffer)) {
         // Platform-specific log hook (e.g., for WASM browser console)
         platform_log_hook(level, msg_buffer);
 
@@ -1020,7 +1020,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   va_list args;
   va_start(args, fmt);
   int header_len = format_log_header(log_buffer, sizeof(log_buffer), level, time_buf, file, line, func, false);
-  if (header_len <= 0 || header_len >= (int)sizeof(log_buffer)) {
+  if (header_len < 0 || header_len >= (int)sizeof(log_buffer)) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log header");
     va_end(args);
     return;
