@@ -554,7 +554,7 @@ asciichat_error_t colorscheme_compile_scheme(const color_scheme_t *scheme, termi
   }
 
   /* Select color array based on background */
-  const rgb_color_t *colors = (background == TERM_BACKGROUND_LIGHT && scheme->has_light_variant)
+  const rgb_pixel_t *colors = (background == TERM_BACKGROUND_LIGHT && scheme->has_light_variant)
                                   ? scheme->log_colors_light
                                   : scheme->log_colors_dark;
   /* Helper: allocate and format a color code string */

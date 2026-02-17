@@ -15,11 +15,15 @@ set(CORE_SRCS
     ${LIB_DIR}/log/mmap.c
     ${LIB_DIR}/log/grep.c
     ${LIB_DIR}/log/interactive_grep.c
-    ${LIB_DIR}/logging/file_parser.c
+    ${LIB_DIR}/log/file_parser.c
     # platform/terminal.c - unified color detection
     ${LIB_DIR}/platform/terminal.c
     # ui/
     ${LIB_DIR}/ui/terminal_screen.c
+    ${LIB_DIR}/ui/help_screen.c
+    ${LIB_DIR}/ui/splash.c
+    ${LIB_DIR}/ui/server_status.c
+    ${LIB_DIR}/ui/discovery_status.c
     # options/
     ${LIB_DIR}/options/colorscheme.c
     ${LIB_DIR}/options/options.c
@@ -102,16 +106,6 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     )
 endif()
 
-# Third-party code properties (tomlc17)
-set_source_files_properties(
-    ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/tomlc17/src/tomlc17.c
-    PROPERTIES
-    SKIP_PRECOMPILE_HEADERS ON
-    SKIP_LINTING ON
-    COMPILE_FLAGS "-fno-sanitize=implicit-conversion"
-    DIRECTORY ${CMAKE_SOURCE_DIR}
-)
-
 # Session library
 set(SESSION_SRCS
     ${LIB_DIR}/session/consensus.c
@@ -125,10 +119,6 @@ set(SESSION_SRCS
     ${LIB_DIR}/session/host.c
     ${LIB_DIR}/session/keyboard_handler.c
     ${LIB_DIR}/session/session_log_buffer.c
-    ${LIB_DIR}/ui/help_screen.c
-    ${LIB_DIR}/ui/splash.c
-    ${LIB_DIR}/ui/server_status.c
-    ${LIB_DIR}/ui/discovery_status.c
 )
 
 # Include subdirectories that define module source variables
@@ -732,7 +722,7 @@ endif()
 # link to the same compiled object files.
 # Note: ascii-chat-panic is always included as it provides runtime logging functions
 # that may be called by panic-instrumented code
-add_library(ascii-chat-shared SHARED EXCLUDE_FROM_ALL
+add_library(ascii-chat-shared SHARED
         $<TARGET_OBJECTS:ascii-chat-util>
         $<TARGET_OBJECTS:ascii-chat-data-structures>
         $<TARGET_OBJECTS:ascii-chat-platform>

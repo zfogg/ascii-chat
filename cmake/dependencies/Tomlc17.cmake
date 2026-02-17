@@ -42,4 +42,13 @@ function(configure_tomlc17)
     if(NOT EXISTS "${DEP_DIR}/src/tomlc17.c")
         message(FATAL_ERROR "tomlc17 source file not found: ${DEP_DIR}/src/tomlc17.c")
     endif()
+
+    set_source_files_properties(
+        ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/tomlc17/src/tomlc17.c
+        PROPERTIES
+        SKIP_PRECOMPILE_HEADERS ON
+        SKIP_LINTING ON
+        COMPILE_FLAGS "-fno-sanitize=implicit-conversion"
+        DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
 endfunction()

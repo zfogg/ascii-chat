@@ -20,6 +20,7 @@
 
 #include "../common.h"
 #include "../platform/terminal.h"
+#include "../video/image.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,15 +29,6 @@ extern "C" {
 /* ============================================================================
  * Color Definitions
  * ============================================================================ */
-
-/**
- * @brief RGB color representation
- */
-typedef struct {
-  uint8_t r; /**< Red channel (0-255) */
-  uint8_t g; /**< Green channel (0-255) */
-  uint8_t b; /**< Blue channel (0-255) */
-} rgb_color_t;
 
 /**
  * @brief Terminal background detection result
@@ -58,11 +50,11 @@ typedef struct color_scheme_t {
   char description[256]; /**< Scheme description */
 
   /* Dark mode colors (default, 8 colors for log levels) */
-  rgb_color_t log_colors_dark[8]; /**< DEV, DEBUG, WARN, INFO, ERROR, FATAL, GREY, RESET */
+  rgb_pixel_t log_colors_dark[8]; /**< DEV, DEBUG, WARN, INFO, ERROR, FATAL, GREY, RESET */
 
   /* Light mode colors (optional) */
   bool has_light_variant;          /**< Whether light variant is defined */
-  rgb_color_t log_colors_light[8]; /**< Light variant colors */
+  rgb_pixel_t log_colors_light[8]; /**< Light variant colors */
 
   /* Metadata */
   bool is_builtin;                            /**< Whether scheme is built-in */

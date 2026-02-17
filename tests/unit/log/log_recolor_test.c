@@ -5,7 +5,7 @@
 
 // Include the headers we're testing
 #include "ascii-chat/log/logging.h"
-#include "ascii-chat/logging/file_parser.h"
+#include "ascii-chat/log/file_parser.h"
 #include "ascii-chat/session/session_log_buffer.h"
 #include "ascii-chat/options/colorscheme.h"
 

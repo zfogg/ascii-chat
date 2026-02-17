@@ -4,7 +4,7 @@
  */
 
 #include "ascii-chat/common/error_codes.h"
-#include <ascii-chat/logging/file_parser.h>
+#include <ascii-chat/log/file_parser.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/util.h>
 #include <ascii-chat/debug/memory.h>

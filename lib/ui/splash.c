@@ -26,6 +26,7 @@
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/video/image.h>
 #include <ascii-chat/video/ansi_fast.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/log/logging.h>
@@ -49,14 +50,7 @@
 static char g_update_notification[1024] = {0};
 static mutex_t g_update_notification_mutex;
 
-/**
- * @brief Rainbow colors in RGB for smooth gradient transitions
- */
-typedef struct {
-  uint8_t r, g, b;
-} rgb_color_t;
-
-static const rgb_color_t g_rainbow_colors[] = {
+static const rgb_pixel_t g_rainbow_colors[] = {
     {255, 0, 0},   // Red
     {255, 165, 0}, // Orange
     {255, 255, 0}, // Yellow
@@ -92,8 +86,8 @@ static struct {
  * @param t Interpolation factor (0.0 = color1, 1.0 = color2)
  * @return Interpolated RGB color
  */
-static rgb_color_t interpolate_color(rgb_color_t color1, rgb_color_t color2, double t) {
-  rgb_color_t result;
+static rgb_pixel_t interpolate_color(rgb_pixel_t color1, rgb_pixel_t color2, double t) {
+  rgb_pixel_t result;
   result.r = (uint8_t)(color1.r * (1.0 - t) + color2.r * t);
   result.g = (uint8_t)(color1.g * (1.0 - t) + color2.g * t);
   result.b = (uint8_t)(color1.b * (1.0 - t) + color2.b * t);
@@ -105,7 +99,7 @@ static rgb_color_t interpolate_color(rgb_color_t color1, rgb_color_t color2, dou
  * @param position Position in the rainbow (0.0 to 1.0 or beyond for cycling)
  * @return RGB color at that position
  */
-static rgb_color_t get_rainbow_color_rgb(double position) {
+static rgb_pixel_t get_rainbow_color_rgb(double position) {
   // Normalize position to 0-1 range
   double norm_pos = position - (long)position;
   if (norm_pos < 0) {
@@ -271,7 +265,7 @@ static void render_splash_header(terminal_size_t term_size, void *user_data) {
         printf(" ");
       } else if (ctx->use_colors) {
         double char_pos = (ctx->frame * 52 + char_idx + offset) / 30.0;
-        rgb_color_t color = get_rainbow_color_rgb(char_pos);
+        rgb_pixel_t color = get_rainbow_color_rgb(char_pos);
         printf("\x1b[38;2;%u;%u;%um%c\x1b[0m", color.r, color.g, color.b, ch);
         char_idx++;
       } else {
