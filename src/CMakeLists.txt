@@ -144,9 +144,9 @@ endif()
 if((APPLE OR UNIX) AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     # Explicitly set BUILD_RPATH to put build/lib first, before any system paths
     # This ensures we use the freshly built library, not any installed version
-    # For macOS, also include /opt/homebrew/lib for Homebrew-installed dependencies
+    # For macOS, also include ${HOMEBREW_PREFIX}/lib for Homebrew-installed dependencies
     if(APPLE)
-        set(_debug_install_rpath "${CMAKE_LIBRARY_OUTPUT_DIRECTORY};${CMAKE_BUILD_RPATH};/opt/homebrew/lib")
+        set(_debug_install_rpath "${CMAKE_LIBRARY_OUTPUT_DIRECTORY};${CMAKE_BUILD_RPATH};${HOMEBREW_PREFIX}/lib")
     else()
         set(_debug_install_rpath "${CMAKE_LIBRARY_OUTPUT_DIRECTORY};${CMAKE_BUILD_RPATH}")
     endif()
@@ -160,9 +160,9 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release" AND ASCIICHAT_SHARED_DEPS)
     # Include:
     #   - @loader_path/../lib for libasciichat.dylib (relative to binary)
     #   - CMAKE_BUILD_RPATH for LLVM library paths (libc++, libunwind)
-    #   - /opt/homebrew/lib for Homebrew-installed libraries on macOS
+    #   - ${HOMEBREW_PREFIX}/lib for Homebrew-installed libraries on macOS
     if(APPLE)
-        set(_install_rpath "@loader_path/../lib;${CMAKE_BUILD_RPATH};/opt/homebrew/lib")
+        set(_install_rpath "@loader_path/../lib;${CMAKE_BUILD_RPATH};${HOMEBREW_PREFIX}/lib")
     else()
         set(_install_rpath "$ORIGIN/../lib;${CMAKE_BUILD_RPATH}")
     endif()
@@ -177,7 +177,7 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
     # Use relative rpath to avoid embedding developer paths in the binary
     # This satisfies the ValidatePaths.cmake security check
     if(APPLE)
-        set(_release_rpath "@loader_path/../lib;/usr/local/lib;/opt/homebrew/lib")
+        set(_release_rpath "@loader_path/../lib;/usr/local/lib;${HOMEBREW_PREFIX}/lib")
     else()
         set(_release_rpath "$ORIGIN/../lib:/usr/local/lib")
     endif()
@@ -518,30 +518,46 @@ check_static_linking(ascii-chat)
 # WebAssembly Build Targets
 # =============================================================================
 # WASM is built as a standalone project via src/web/CMakeLists.txt
-# emcmake is used to set up the Emscripten environment before invoking cmake
+# We pass the Emscripten toolchain file directly instead of wrapping through emcmake.
 
 set(WASM_SOURCE_DIR "${CMAKE_SOURCE_DIR}/src/web")
 set(WASM_BUILD_DIR "${CMAKE_BINARY_DIR}/web")
+set(WASM_DEPS_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/web")
 
-# Find emcmake
+# Find Emscripten toolchain file
 if(DEFINED ENV{EMSDK})
-    set(EMCMAKE_SEARCH_PATHS "$ENV{EMSDK}/upstream/emscripten")
+    set(EMSCRIPTEN_SEARCH_PATHS "$ENV{EMSDK}/upstream/emscripten")
 else()
-    set(EMCMAKE_SEARCH_PATHS
+    set(EMSCRIPTEN_SEARCH_PATHS
         "/usr/lib/emscripten"
         "/usr/local/lib/emscripten"
         "$ENV{HOME}/emsdk/upstream/emscripten"
     )
+    if(HOMEBREW_PREFIX)
+        list(APPEND EMSCRIPTEN_SEARCH_PATHS "${HOMEBREW_PREFIX}/share/emscripten")
+    endif()
 endif()
 
-find_program(EMCMAKE_EXECUTABLE NAMES emcmake HINTS ${EMCMAKE_SEARCH_PATHS})
-if(NOT EMCMAKE_EXECUTABLE)
-    set(EMCMAKE_EXECUTABLE "emcmake")
+find_file(EMSCRIPTEN_TOOLCHAIN_FILE
+    NAMES Emscripten.cmake
+    PATHS ${EMSCRIPTEN_SEARCH_PATHS}
+    PATH_SUFFIXES cmake/Modules/Platform
+)
+
+if(NOT EMSCRIPTEN_TOOLCHAIN_FILE)
+    message(STATUS "Emscripten toolchain not found - WASM targets will not work")
 endif()
+
+set(WASM_CMAKE_ARGS
+    -B "${WASM_BUILD_DIR}"
+    "${WASM_SOURCE_DIR}"
+    -DCMAKE_TOOLCHAIN_FILE=${EMSCRIPTEN_TOOLCHAIN_FILE}
+    -DASCIICHAT_WEB_DEPS_DIR=${WASM_DEPS_DIR}
+)
 
 # Mirror mode WASM target
 add_custom_target(mirror-web
-    COMMAND ${EMCMAKE_EXECUTABLE} ${CMAKE_COMMAND} -B "${WASM_BUILD_DIR}" "${WASM_SOURCE_DIR}"
+    COMMAND ${CMAKE_COMMAND} ${WASM_CMAKE_ARGS}
     COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target mirror-web
     WORKING_DIRECTORY "${WASM_SOURCE_DIR}"
     COMMENT "Building WASM mirror module"
@@ -550,7 +566,7 @@ add_custom_target(mirror-web
 
 # Client mode WASM target
 add_custom_target(client-web
-    COMMAND ${EMCMAKE_EXECUTABLE} ${CMAKE_COMMAND} -B "${WASM_BUILD_DIR}" "${WASM_SOURCE_DIR}"
+    COMMAND ${CMAKE_COMMAND} ${WASM_CMAKE_ARGS}
     COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target client-web
     WORKING_DIRECTORY "${WASM_SOURCE_DIR}"
     COMMENT "Building WASM client module"
@@ -559,7 +575,7 @@ add_custom_target(client-web
 
 # Combined WASM target (builds both mirror and client)
 add_custom_target(web
-    COMMAND ${EMCMAKE_EXECUTABLE} ${CMAKE_COMMAND} -B "${WASM_BUILD_DIR}" "${WASM_SOURCE_DIR}"
+    COMMAND ${CMAKE_COMMAND} ${WASM_CMAKE_ARGS}
     COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target mirror-web
     COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target client-web
     WORKING_DIRECTORY "${WASM_SOURCE_DIR}"
@@ -571,6 +587,6 @@ message(STATUS "WASM targets configured:")
 message(STATUS "  mirror-web - Build mirror mode WASM only")
 message(STATUS "  client-web - Build client mode WASM only")
 message(STATUS "  web        - Build all WASM modules")
-if(EMCMAKE_EXECUTABLE)
-    message(STATUS "  Using emcmake: ${EMCMAKE_EXECUTABLE}")
+if(EMSCRIPTEN_TOOLCHAIN_FILE)
+    message(STATUS "  Emscripten toolchain: ${EMSCRIPTEN_TOOLCHAIN_FILE}")
 endif()

@@ -125,15 +125,13 @@ macro(find_dependency_library)
             find_library(${_DEP_NAME}_STATIC_LIBRARY
                 NAMES ${_DEP_STATIC_LIB_NAME}
                 PATHS
-                    /usr/local/opt/${_DEP_HOMEBREW_PKG}/lib
-                    /opt/homebrew/opt/${_DEP_HOMEBREW_PKG}/lib
+                    ${HOMEBREW_PREFIX}/opt/${_DEP_HOMEBREW_PKG}/lib
                 NO_DEFAULT_PATH
             )
             find_path(${_DEP_NAME}_INCLUDE_DIR
                 NAMES ${_DEP_HEADER}
                 PATHS
-                    /usr/local/opt/${_DEP_HOMEBREW_PKG}/include
-                    /opt/homebrew/opt/${_DEP_HOMEBREW_PKG}/include
+                    ${HOMEBREW_PREFIX}/opt/${_DEP_HOMEBREW_PKG}/include
                 NO_DEFAULT_PATH
             )
 

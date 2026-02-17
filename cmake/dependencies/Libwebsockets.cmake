@@ -35,10 +35,8 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/FindDependency.cmake)
 
 # On macOS, prefer Homebrew libwebsockets over system version if available
 if(APPLE AND NOT USE_MUSL)
-    if(EXISTS "/usr/local/opt/libwebsockets/lib/pkgconfig/libwebsockets.pc")
-        set(ENV{PKG_CONFIG_PATH} "/usr/local/opt/libwebsockets/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
-    elseif(EXISTS "/opt/homebrew/opt/libwebsockets/lib/pkgconfig/libwebsockets.pc")
-        set(ENV{PKG_CONFIG_PATH} "/opt/homebrew/opt/libwebsockets/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
+    if(HOMEBREW_PREFIX AND EXISTS "${HOMEBREW_PREFIX}/opt/libwebsockets/lib/pkgconfig/libwebsockets.pc")
+        set(ENV{PKG_CONFIG_PATH} "${HOMEBREW_PREFIX}/opt/libwebsockets/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
     endif()
 endif()
 

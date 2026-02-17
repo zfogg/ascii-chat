@@ -220,11 +220,13 @@ if(APPLE)
 
     # Option 4: Check Homebrew locations for Intel and ARM Macs
     if(NOT _libcxx_in_main_dir AND NOT _llvm_libcxx_dir)
-        foreach(_brew_llvm_lib IN ITEMS
-            "/usr/local/opt/llvm/lib/c++"
-            "/opt/homebrew/opt/llvm/lib/c++"
-            "/usr/local/Cellar/llvm/21.1.6/lib/c++"
-            "/opt/homebrew/Cellar/llvm/21.1.6/lib/c++")
+        set(_brew_llvm_lib_candidates "")
+        if(HOMEBREW_PREFIX)
+            list(APPEND _brew_llvm_lib_candidates
+                "${HOMEBREW_PREFIX}/opt/llvm/lib/c++"
+                "${HOMEBREW_PREFIX}/Cellar/llvm/21.1.6/lib/c++")
+        endif()
+        foreach(_brew_llvm_lib IN LISTS _brew_llvm_lib_candidates)
             if(EXISTS "${_brew_llvm_lib}/libc++.dylib" OR EXISTS "${_brew_llvm_lib}/libc++.a")
                 set(_llvm_libcxx_dir "${_brew_llvm_lib}")
                 get_filename_component(_brew_llvm_base "${_brew_llvm_lib}/.." ABSOLUTE)

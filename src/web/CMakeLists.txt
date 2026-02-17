@@ -21,6 +21,11 @@ add_definitions(
 # Note: pthreads disabled for mirror mode (no threading needed, causes malloc hangs)
 add_compile_options(-msimd128 -mavx2)
 
+# Cache WASM dependencies outside build/ to persist across rebuilds
+if(ASCIICHAT_WEB_DEPS_DIR)
+    set(FETCHCONTENT_BASE_DIR "${ASCIICHAT_WEB_DEPS_DIR}" CACHE PATH "FetchContent cache for web deps")
+endif()
+
 # Fetch and build dependencies for WASM
 include(FetchContent)
 
@@ -295,8 +300,8 @@ target_link_libraries(client-web PRIVATE
 
 # Add include directories for client mode dependencies
 target_include_directories(client-web PRIVATE
-    ${CMAKE_BINARY_DIR}/_deps/zstd-src/lib
-    ${CMAKE_BINARY_DIR}/_deps/opus-src/include
+    ${zstd_SOURCE_DIR}/lib
+    ${opus_SOURCE_DIR}/include
 )
 
 # Exported functions for mirror module (all EMSCRIPTEN_KEEPALIVE functions from mirror.c and common/options.c)
@@ -393,7 +398,7 @@ target_link_options(mirror-web PRIVATE
     -sENVIRONMENT=web
     -sALLOW_MEMORY_GROWTH=1
     -sINITIAL_MEMORY=32MB
-    -sMAXIMUM_MEMORY=256MB
+    -sMAXIMUM_MEMORY=128MB
     -sWASM_BIGINT=1
     -msimd128
     -O3
@@ -409,8 +414,8 @@ target_link_options(client-web PRIVATE
     "-sEXPORTED_RUNTIME_METHODS=${EXPORTED_RUNTIME_METHODS_CSV}"
     -sENVIRONMENT=web
     -sALLOW_MEMORY_GROWTH=1
-    -sINITIAL_MEMORY=64MB
-    -sMAXIMUM_MEMORY=512MB
+    -sINITIAL_MEMORY=32MB
+    -sMAXIMUM_MEMORY=128MB
     -sWASM_BIGINT=1
     -msimd128
     -O3
@@ -439,82 +444,3 @@ add_custom_command(TARGET client-web POST_BUILD
         ${CMAKE_SOURCE_DIR}/../../../web/web.ascii-chat.com/src/wasm/dist/
     COMMENT "Copying client WASM files to web/src/wasm/dist/"
 )
-# =============================================================================
-# WebAssembly Build Targets (Wrappers)
-# =============================================================================
-# Provides WASM build targets that invoke the separate web/web.ascii-chat.com/wasm/
-# build system optimized for Emscripten.
-#
-# Available targets:
-#   mirror-web  - Build mirror mode WASM module only
-#   client-web  - Build client mode WASM module only
-#   wasm        - Build both mirror and client WASM modules
-#
-# Example:
-#   cmake --build build --target wasm
-#
-# The actual WASM build is in web/web.ascii-chat.com/wasm/ with its own
-# CMakeLists.txt optimized for Emscripten.
-# =============================================================================
-
-set(WASM_SOURCE_DIR "${CMAKE_SOURCE_DIR}/src/web")
-set(WASM_BUILD_DIR "${WASM_SOURCE_DIR}/build")
-
-# Find emcmake - check common locations on Windows and Unix
-if(WIN32)
-    # Windows: Check EMSDK env var, scoop install location, or PATH
-    if(DEFINED ENV{EMSDK})
-        set(EMCMAKE_SEARCH_PATHS
-            "$ENV{EMSDK}/upstream/emscripten"
-            "$ENV{EMSDK}"
-        )
-    else()
-        # Common scoop install location
-        set(EMCMAKE_SEARCH_PATHS
-            "$ENV{USERPROFILE}/scoop/apps/emscripten/current/upstream/emscripten"
-            "$ENV{LOCALAPPDATA}/emsdk/upstream/emscripten"
-            "C:/emsdk/upstream/emscripten"
-        )
-    endif()
-    find_program(EMCMAKE_EXECUTABLE
-        NAMES emcmake.bat emcmake
-        HINTS ${EMCMAKE_SEARCH_PATHS}
-        PATHS ${EMCMAKE_SEARCH_PATHS}
-    )
-else()
-    # Unix: Check EMSDK env var or common paths
-    if(DEFINED ENV{EMSDK})
-        set(EMCMAKE_SEARCH_PATHS
-            "$ENV{EMSDK}/upstream/emscripten"
-        )
-    else()
-        set(EMCMAKE_SEARCH_PATHS
-            "/usr/lib/emscripten"
-            "/usr/local/lib/emscripten"
-            "$ENV{HOME}/emsdk/upstream/emscripten"
-        )
-    endif()
-    find_program(EMCMAKE_EXECUTABLE
-        NAMES emcmake
-        HINTS ${EMCMAKE_SEARCH_PATHS}
-        PATHS ${EMCMAKE_SEARCH_PATHS}
-    )
-endif()
-
-if(EMCMAKE_EXECUTABLE)
-    message(STATUS "Found emcmake: ${EMCMAKE_EXECUTABLE}")
-    get_filename_component(EMSCRIPTEN_DIR "${EMCMAKE_EXECUTABLE}" DIRECTORY)
-else()
-    message(STATUS "emcmake not found - WASM targets will search PATH at build time")
-    if(WIN32)
-        set(EMCMAKE_EXECUTABLE "emcmake.bat")
-    else()
-        set(EMCMAKE_EXECUTABLE "emcmake")
-    endif()
-endif()
-
-if(EMCMAKE_EXECUTABLE)
-    message(STATUS "  Using emcmake: ${EMCMAKE_EXECUTABLE}")
-else()
-    message(STATUS "  Requires: emscripten toolchain in PATH")
-endif()

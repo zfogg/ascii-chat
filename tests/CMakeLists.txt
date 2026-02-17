@@ -226,12 +226,13 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             endforeach()
         else()
             # Fallback for Homebrew (Criterion is keg-only, so provide both opt prefixes)
-            list(APPEND TEST_LDFLAGS
-                "-L/opt/homebrew/opt/criterion/lib"
-                "-L/usr/local/opt/criterion/lib"
-                "-L/opt/homebrew/lib"
-                "-L/usr/local/lib"
-            )
+            if(HOMEBREW_PREFIX)
+                list(APPEND TEST_LDFLAGS
+                    "-L${HOMEBREW_PREFIX}/opt/criterion/lib"
+                    "-L${HOMEBREW_PREFIX}/lib"
+                )
+            endif()
+            list(APPEND TEST_LDFLAGS "-L/usr/local/lib")
         endif()
         # Note: CRITERION_LIBRARIES is already added to TEST_LDFLAGS on line 87,
         # so we only add the library search directories here
@@ -292,7 +293,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         # Priority: local build lib > LLVM libs > system libs
         if(APPLE)
             set_target_properties(${test_exe_name} PROPERTIES
-                BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY};${CMAKE_BUILD_RPATH};/opt/homebrew/lib;/usr/local/lib"
+                BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY};${CMAKE_BUILD_RPATH};${HOMEBREW_PREFIX}/lib;/usr/local/lib"
                 MACOSX_RPATH ON
             )
         else()

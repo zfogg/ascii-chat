@@ -52,14 +52,12 @@ else()
         find_library(PORTAUDIO_STATIC_LIB
             NAMES libportaudio.a
             PATHS
-                /opt/homebrew/opt/portaudio/lib
-                /usr/local/opt/portaudio/lib
+                ${HOMEBREW_PREFIX}/opt/portaudio/lib
             NO_DEFAULT_PATH
         )
         find_path(PORTAUDIO_INC NAMES portaudio.h
             PATHS
-                /opt/homebrew/opt/portaudio/include
-                /usr/local/opt/portaudio/include
+                ${HOMEBREW_PREFIX}/opt/portaudio/include
             NO_DEFAULT_PATH
         )
 

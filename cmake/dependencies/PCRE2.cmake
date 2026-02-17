@@ -33,10 +33,8 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/FindDependency.cmake)
 
 # On macOS, prefer Homebrew PCRE2 over system PCRE2 for consistency
 if(APPLE AND NOT USE_MUSL AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
-    if(EXISTS "/usr/local/opt/pcre2/lib/pkgconfig/libpcre2-8.pc")
-        set(ENV{PKG_CONFIG_PATH} "/usr/local/opt/pcre2/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
-    elseif(EXISTS "/opt/homebrew/opt/pcre2/lib/pkgconfig/libpcre2-8.pc")
-        set(ENV{PKG_CONFIG_PATH} "/opt/homebrew/opt/pcre2/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
+    if(HOMEBREW_PREFIX AND EXISTS "${HOMEBREW_PREFIX}/opt/pcre2/lib/pkgconfig/libpcre2-8.pc")
+        set(ENV{PKG_CONFIG_PATH} "${HOMEBREW_PREFIX}/opt/pcre2/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
     endif()
 endif()
 

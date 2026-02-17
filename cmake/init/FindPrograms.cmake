@@ -33,6 +33,7 @@
 #   - ASCIICHAT_LLVM_LIB_EXECUTABLE: llvm-lib library archive tool (Windows only)
 #   - ASCIICHAT_MUSL_GCC_EXECUTABLE: musl-gcc compiler wrapper (Linux only, for USE_MUSL builds)
 #   - ASCIICHAT_GCC_EXECUTABLE: GCC compiler (Linux only, used by musl-gcc via REALGCC)
+#   - ASCIICHAT_BREW_EXECUTABLE: Homebrew package manager (macOS/Linux)
 #
 # Exported paths (for modules that need to find additional LLVM tools):
 #   - ASCIICHAT_LLVM_BINDIR: LLVM bin directory from llvm-config --bindir
@@ -57,6 +58,34 @@ if(DEFINED _ASCIICHAT_FIND_PROGRAMS_INCLUDED)
     return()
 endif()
 set(_ASCIICHAT_FIND_PROGRAMS_INCLUDED TRUE)
+
+# =============================================================================
+# Homebrew detection (must run before other search paths)
+# =============================================================================
+# Find brew first so we can use HOMEBREW_PREFIX in all subsequent search hints.
+# This sets HOMEBREW_PREFIX as a CACHE INTERNAL variable for use by all cmake files.
+set(HOMEBREW_PREFIX "" CACHE INTERNAL "Homebrew installation prefix")
+if(NOT WIN32)
+    find_program(ASCIICHAT_BREW_EXECUTABLE
+        NAMES brew
+        HINTS /opt/homebrew/bin /home/linuxbrew/.linuxbrew/bin /usr/local/bin
+        DOC "Homebrew package manager"
+    )
+    if(ASCIICHAT_BREW_EXECUTABLE)
+        execute_process(
+            COMMAND ${ASCIICHAT_BREW_EXECUTABLE} --prefix
+            OUTPUT_VARIABLE _BREW_PREFIX_OUTPUT
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+            RESULT_VARIABLE _BREW_PREFIX_RESULT
+        )
+        if(_BREW_PREFIX_RESULT EQUAL 0 AND _BREW_PREFIX_OUTPUT)
+            set(HOMEBREW_PREFIX "${_BREW_PREFIX_OUTPUT}" CACHE INTERNAL "Homebrew installation prefix")
+        endif()
+        unset(_BREW_PREFIX_OUTPUT)
+        unset(_BREW_PREFIX_RESULT)
+    endif()
+endif()
 
 # =============================================================================
 # Platform-specific search paths
@@ -96,10 +125,9 @@ if(WIN32)
     )
 elseif(APPLE)
     set(_LLVM_SEARCH_PATHS
-        /opt/homebrew/opt/llvm/bin
-        /opt/homebrew/bin
+        ${HOMEBREW_PREFIX}/opt/llvm/bin
+        ${HOMEBREW_PREFIX}/bin
         /usr/local/bin
-        /usr/local/opt/llvm/bin
         /usr/bin
     )
     set(_BASH_SEARCH_PATHS /bin /usr/bin /usr/local/bin)
@@ -135,7 +163,7 @@ if(WIN32)
     )
 elseif(APPLE)
     set(_CCACHE_HINTS
-        /opt/homebrew/bin
+        ${HOMEBREW_PREFIX}/bin
         /usr/local/bin
     )
 else()
@@ -288,7 +316,7 @@ if(WIN32)
         "C:/Program Files/Cppcheck"
     )
 elseif(APPLE)
-    set(_CPPCHECK_HINTS /opt/homebrew/bin /usr/local/bin)
+    set(_CPPCHECK_HINTS ${HOMEBREW_PREFIX}/bin /usr/local/bin)
 else()
     set(_CPPCHECK_HINTS /usr/bin /usr/local/bin)
 endif()
@@ -397,7 +425,7 @@ if(WIN32)
         "$ENV{ProgramFiles}/Python311"
     )
 elseif(APPLE)
-    set(_PYTHON_HINTS /opt/homebrew/bin /usr/local/bin /usr/bin)
+    set(_PYTHON_HINTS ${HOMEBREW_PREFIX}/bin /usr/local/bin /usr/bin)
 else()
     set(_PYTHON_HINTS /usr/bin /usr/local/bin)
 endif()
@@ -418,7 +446,7 @@ if(WIN32)
         "$ENV{ProgramFiles}/Ninja"
     )
 elseif(APPLE)
-    set(_NINJA_HINTS /opt/homebrew/bin /usr/local/bin)
+    set(_NINJA_HINTS ${HOMEBREW_PREFIX}/bin /usr/local/bin)
 else()
     set(_NINJA_HINTS /usr/bin /usr/local/bin)
 endif()
@@ -439,7 +467,7 @@ if(WIN32)
         "C:/Program Files/Git/usr/bin"
     )
 elseif(APPLE)
-    set(_ZIP_HINTS /usr/bin /opt/homebrew/bin)
+    set(_ZIP_HINTS /usr/bin ${HOMEBREW_PREFIX}/bin)
 else()
     set(_ZIP_HINTS /usr/bin /usr/local/bin)
 endif()
@@ -460,7 +488,7 @@ if(WIN32)
         "C:/Program Files/doxygen/bin"
     )
 elseif(APPLE)
-    set(_DOXYGEN_HINTS /opt/homebrew/bin /usr/local/bin /Applications/Doxygen.app/Contents/Resources)
+    set(_DOXYGEN_HINTS ${HOMEBREW_PREFIX}/bin /usr/local/bin /Applications/Doxygen.app/Contents/Resources)
 else()
     set(_DOXYGEN_HINTS /usr/bin /usr/local/bin)
 endif()
@@ -477,7 +505,7 @@ unset(_DOXYGEN_HINTS)
 if(APPLE)
     find_program(ASCIICHAT_GMAKE_EXECUTABLE
         NAMES gmake
-        HINTS /opt/homebrew/bin /usr/local/bin
+        HINTS ${HOMEBREW_PREFIX}/bin /usr/local/bin
         DOC "GNU Make"
     )
 endif()

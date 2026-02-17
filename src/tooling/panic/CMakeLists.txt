@@ -42,8 +42,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_program(LLVM_CONFIG_EXECUTABLE
     NAMES llvm-config llvm-config.exe
     HINTS
-        /opt/homebrew/opt/llvm/bin    # Homebrew on Apple Silicon
-        /usr/local/opt/llvm/bin        # Homebrew on Intel Mac
+        ${HOMEBREW_PREFIX}/opt/llvm/bin
         /usr/lib/llvm-21/bin           # Debian/Ubuntu LLVM 21
         /usr/lib/llvm-20/bin           # Debian/Ubuntu LLVM 20
         /usr/lib/llvm-19/bin           # Debian/Ubuntu LLVM 19

@@ -16,10 +16,8 @@ set(_OPENSSL_STATIC_FOUND FALSE)
 if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
     # Find static OpenSSL libraries from Homebrew
     set(_OPENSSL_HOMEBREW_PATH "")
-    if(EXISTS "/opt/homebrew/opt/openssl@3/lib")
-        set(_OPENSSL_HOMEBREW_PATH "/opt/homebrew/opt/openssl@3")
-    elseif(EXISTS "/usr/local/opt/openssl@3/lib")
-        set(_OPENSSL_HOMEBREW_PATH "/usr/local/opt/openssl@3")
+    if(HOMEBREW_PREFIX AND EXISTS "${HOMEBREW_PREFIX}/opt/openssl@3/lib")
+        set(_OPENSSL_HOMEBREW_PATH "${HOMEBREW_PREFIX}/opt/openssl@3")
     endif()
 
     if(_OPENSSL_HOMEBREW_PATH)

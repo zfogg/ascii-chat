@@ -140,9 +140,8 @@ else()
         # find_program respects PATH, so user's PATH takes priority
         if(APPLE)
             set(_llvm_config_hints
-                /opt/homebrew/opt/llvm/bin    # Homebrew on Apple Silicon
-                /usr/local/opt/llvm/bin        # Homebrew on Intel Mac
-                /opt/homebrew/bin
+                ${HOMEBREW_PREFIX}/opt/llvm/bin
+                ${HOMEBREW_PREFIX}/bin
                 /usr/local/bin
                 /usr/bin
             )

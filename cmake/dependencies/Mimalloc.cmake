@@ -51,12 +51,11 @@ if(USE_MIMALLOC)
             /usr/local/lib/cmake/mimalloc
         )
 
-        # Add Homebrew paths on macOS (ARM: /opt/homebrew, Intel: /usr/local)
-        if(APPLE)
+        # Add Homebrew paths on macOS
+        if(APPLE AND HOMEBREW_PREFIX)
             list(APPEND _MIMALLOC_SEARCH_PATHS
-                /opt/homebrew/opt/mimalloc/lib/cmake/mimalloc
-                /opt/homebrew/lib/cmake/mimalloc
-                /usr/local/opt/mimalloc/lib/cmake/mimalloc
+                ${HOMEBREW_PREFIX}/opt/mimalloc/lib/cmake/mimalloc
+                ${HOMEBREW_PREFIX}/lib/cmake/mimalloc
             )
         endif()
 

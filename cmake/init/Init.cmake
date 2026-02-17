@@ -25,6 +25,9 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/Colors.cmake)
 # Other modules should use the ASCIICHAT_* cached variables instead of find_program
 include(${CMAKE_SOURCE_DIR}/cmake/init/FindPrograms.cmake)
 
+# Detect Homebrew prefix for dependency search paths (uses ASCIICHAT_BREW_EXECUTABLE)
+include(${CMAKE_SOURCE_DIR}/cmake/platform/Homebrew.cmake)
+
 # Detect CPU cores for parallel builds
 # Note: Use CMAKE_HOST_SYSTEM_NAME because CMAKE_SYSTEM_NAME is not set until after project()
 set(_ASCII_CPU_FALLBACK 4)

@@ -268,7 +268,7 @@ function(configure_llvm_post_project)
     # Determine LLVM source name for display purposes only
     # (all sources are detected via LLVM_ROOT_PREFIX from llvm-config)
     set(LLVM_SOURCE_NAME "LLVM")
-    if(LLVM_ROOT_PREFIX MATCHES "/opt/homebrew/opt/llvm" OR LLVM_ROOT_PREFIX MATCHES "/usr/local/opt/llvm")
+    if(HOMEBREW_PREFIX AND LLVM_ROOT_PREFIX MATCHES "${HOMEBREW_PREFIX}/opt/llvm")
         set(LLVM_SOURCE_NAME "Homebrew LLVM")
     elseif(LLVM_ROOT_PREFIX MATCHES "/usr/local$")
         set(LLVM_SOURCE_NAME "git-built LLVM")
