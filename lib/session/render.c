@@ -444,6 +444,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
   // Re-enable console logging after rendering completes
   log_set_terminal_output(true);
+  if (!GET_OPTION(snapshot_mode) && terminal_is_interactive()) {
+    printf("\n");
+  }
 
   // Keyboard input cleanup (if it was initialized)
   if (keyboard_enabled) {
