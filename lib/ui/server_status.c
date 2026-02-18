@@ -11,6 +11,7 @@
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/util/ip.h>
@@ -261,6 +262,67 @@ void server_status_display(const server_status_t *status) {
   };
 
   terminal_screen_render(&config);
+}
+
+/**
+ * @brief Display status screen with keyboard input support
+ * Returns true if status screen should continue, false if Escape was pressed to exit
+ */
+bool server_status_display_interactive(const server_status_t *status) {
+  if (!status) {
+    return true;
+  }
+
+  // Only render the status screen in interactive mode
+  if (!terminal_is_interactive()) {
+    return true;
+  }
+
+  // If --grep pattern was provided, enter interactive grep mode with it pre-populated
+  static bool grep_mode_entered = false;
+  if (!grep_mode_entered && grep_get_last_pattern() && grep_get_last_pattern()[0] != '\0') {
+    interactive_grep_enter_mode();
+    grep_mode_entered = true;
+  }
+
+  // Initialize keyboard for interactive grep
+  bool keyboard_enabled = false;
+  if (keyboard_init() == ASCIICHAT_OK) {
+    keyboard_enabled = true;
+  }
+
+  // Use terminal_screen abstraction for rendering
+  terminal_screen_config_t config = {
+      .fixed_header_lines = 4,
+      .render_header = render_server_status_header,
+      .user_data = (void *)status,
+      .show_logs = true,
+  };
+
+  terminal_screen_render(&config);
+
+  // Poll keyboard for Escape to exit or for interactive grep
+  bool should_exit_status = false;
+  if (keyboard_enabled) {
+    keyboard_key_t key = keyboard_read_nonblocking();
+    if (key == KEY_ESCAPE) {
+      // Escape key: cancel grep if active, otherwise exit status screen
+      if (interactive_grep_is_active()) {
+        interactive_grep_exit_mode(false); // Cancel grep without applying
+      } else {
+        should_exit_status = true; // Exit status screen
+      }
+    } else if (key != KEY_NONE && interactive_grep_should_handle(key)) {
+      interactive_grep_handle_key(key);
+    }
+  }
+
+  // Cleanup keyboard
+  if (keyboard_enabled) {
+    keyboard_destroy();
+  }
+
+  return !should_exit_status; // Return false if user wants to exit
 }
 
 void server_status_update(tcp_server_t *server, const char *session_string, const char *ipv4_address,

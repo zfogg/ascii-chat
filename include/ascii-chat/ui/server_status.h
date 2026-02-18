@@ -72,6 +72,18 @@ asciichat_error_t server_status_gather(tcp_server_t *server, const char *session
 void server_status_display(const server_status_t *status);
 
 /**
+ * @brief Display server status screen with interactive keyboard support
+ *
+ * Renders status screen and handles keyboard input:
+ * - Escape cancels grep if active, otherwise exits status screen
+ * - Other keys handled by interactive grep if active
+ *
+ * @param status Server status information
+ * @return true if status screen should continue, false if user pressed Escape to exit
+ */
+bool server_status_display_interactive(const server_status_t *status);
+
+/**
  * @brief Periodically update server status display with live logs at FPS rate
  *
  * Gathers and displays server status with live log feed if enough time has
