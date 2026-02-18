@@ -49,7 +49,7 @@
  *
  * Power of 2 for ringbuffer optimization.
  * Each slot holds one WebSocket fragment (typically 4096 bytes, max 921KB).
- * With 512 slots, buffers ~2MB maximum. Fragments beyond capacity are dropped.
+ * With 512 slots, buffers ~460MB maximum. Fragments beyond capacity are dropped.
  * The dispatch thread must drain this queue by reassembling and processing packets.
  */
 #define WEBSOCKET_RECV_QUEUE_SIZE 512
