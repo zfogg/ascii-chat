@@ -71,6 +71,7 @@
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/util/url.h> // For WebSocket URL detection
 #include <ascii-chat/common.h>
 #include "display.h"
 #include <ascii-chat/options/options.h>
@@ -345,7 +346,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
   }
 
   // Check for WebSocket URL - handle separately from TCP
-  bool is_websocket = (strncmp(address, "ws://", 5) == 0 || strncmp(address, "wss://", 6) == 0);
+  bool is_websocket = url_looks_like_websocket(address);
   if (is_websocket) {
     // WebSocket connection - bypass TCP socket creation
     char ws_url[512];

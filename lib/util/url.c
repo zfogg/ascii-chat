@@ -8,6 +8,7 @@
  * for high performance.
  */
 
+#include "ascii-chat/common/error_codes.h"
 #include <ascii-chat/util/url.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/pcre2.h>
@@ -17,15 +18,15 @@
 #include <stdio.h>
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * PRODUCTION-GRADE URL REGEX (Diego Perini, MIT License)
+ * PRODUCTION-GRADE URL REGEX (Diego Perini, MIT License, extended for WebSocket)
  *
- * Supports: http/https, public IPv4, IPv6 with zone IDs, hostnames, localhost
- * Rejects: Private IPs, schemeless URLs, non-http(s) schemes
+ * Supports: http/https/ws/wss, public IPv4, IPv6 with zone IDs, hostnames, localhost
+ * Rejects: Private IPs, schemeless URLs, non-http(s)/ws(s) schemes
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 static const char *URL_REGEX_PATTERN =
-    // SCHEME: http or https (case-insensitive)
-    "^(?<scheme>https?)://(?:(?<userinfo>\\S+(?::\\S*)?)@)?"
+    // SCHEME: http, https, ws, or wss (case-insensitive)
+    "^(?<scheme>https?|wss?)://(?:(?<userinfo>\\S+(?::\\S*)?)@)?"
     // HOST: one of three alternatives below
     "(?<host>"
     "(?:"
@@ -294,4 +295,23 @@ void url_parts_destroy(url_parts_t *parts) {
   parts->port = 0;
 
   memset(parts, 0, sizeof(*parts));
+}
+
+bool url_is_websocket_scheme(const char *scheme) {
+  if (!scheme || !*scheme) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "scheme is NULL or empty");
+    return false;
+  }
+
+  /* Case-insensitive comparison for "ws" or "wss" */
+  return (strcasecmp(scheme, "ws") == 0 || strcasecmp(scheme, "wss") == 0);
+}
+
+bool url_looks_like_websocket(const char *url) {
+  if (!url || !*url) {
+    return false;
+  }
+
+  /* Quick check for ws:// or wss:// prefix (case-insensitive) */
+  return (strncasecmp(url, "ws://", 5) == 0 || strncasecmp(url, "wss://", 6) == 0);
 }

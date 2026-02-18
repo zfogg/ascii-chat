@@ -90,6 +90,7 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h> // For RCU-based options access
 #include <ascii-chat/util/time.h>   // For time macros
+#include <ascii-chat/util/url.h>    // For URL parsing and WebSocket detection
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/video/palette.h>
 #include <ascii-chat/network/network.h>
@@ -665,8 +666,7 @@ int client_main(void) {
   log_info("=== BEFORE SESSION DISCOVERY CHECK: session_string='%s' ===", session_string);
 
   // Check if this is a direct WebSocket URL (ws:// or wss://) instead of a session string
-  bool is_websocket_url = (session_string[0] != '\0' &&
-                           (strncmp(session_string, "ws://", 5) == 0 || strncmp(session_string, "wss://", 6) == 0));
+  bool is_websocket_url = (session_string[0] != '\0' && url_looks_like_websocket(session_string));
 
   log_info("=== is_websocket_url check: session_string='%s' result=%d ===", session_string, is_websocket_url);
 

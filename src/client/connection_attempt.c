@@ -27,6 +27,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/options/options.h>
+#include <ascii-chat/util/url.h> // For WebSocket URL detection
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/network/acip/client.h>
 #include <ascii-chat/network/tcp/client.h>
@@ -187,7 +188,7 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
 
   // Check for WebSocket URL - handle separately from TCP
   log_debug("connection_attempt_tcp: server_address='%s', port=%u", server_address, server_port);
-  bool is_websocket = (strncmp(server_address, "ws://", 5) == 0 || strncmp(server_address, "wss://", 6) == 0);
+  bool is_websocket = url_looks_like_websocket(server_address);
   log_debug("connection_attempt_tcp: is_websocket=%d", is_websocket);
   if (is_websocket) {
     // WebSocket connection path
