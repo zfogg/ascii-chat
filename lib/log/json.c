@@ -125,9 +125,12 @@ void log_json_write(int fd, log_level_t level, uint64_t time_nanoseconds, const 
     uint64_t tid = (uint64_t)asciichat_thread_current_id();
     yyjson_mut_obj_add_uint(doc, header, "tid", tid);
 
-    /* Add file (if not NULL) */
+    /* Add file (if not NULL) - normalize to project-relative path */
     if (file) {
-      yyjson_mut_obj_add_str(doc, header, "file", file);
+      // Import from path.h for relative path extraction
+      extern const char *extract_project_relative_path(const char *file);
+      const char *rel_file = extract_project_relative_path(file);
+      yyjson_mut_obj_add_str(doc, header, "file", rel_file);
     }
 
     /* Add line (if > 0) */

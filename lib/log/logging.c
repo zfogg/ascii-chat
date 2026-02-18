@@ -1198,7 +1198,7 @@ void log_plain_msg(const char *fmt, ...) {
     // Output JSON for plain messages too
     uint64_t time_ns = time_get_realtime_ns();
     int console_fd = terminal_choose_log_fd(LOG_INFO);
-    log_json_write(console_fd, LOG_INFO, time_ns, "lib/log/logging.c", 0, "log_plain_msg", log_buffer);
+    log_json_write(console_fd, LOG_INFO, time_ns, __FILE__, __LINE__, "log_plain_msg", log_buffer);
   } else {
     // Choose output stream using unified routing logic (LOG_INFO level)
     int fd = terminal_choose_log_fd(LOG_INFO);
