@@ -151,6 +151,9 @@ typedef struct client_info {
   atomic_int last_rendered_grid_sources; // Render thread: source count in buffered frame
   atomic_int last_sent_grid_sources;     // Send thread: source count in last sent frame
 
+  // Frame statistics for debugging
+  atomic_ulong frames_sent_count; // Total ASCII frames sent to this client
+
   // Pre-allocated buffers to avoid malloc/free in send thread (prevents buffer pool contention)
   void *send_buffer;
   size_t send_buffer_size;

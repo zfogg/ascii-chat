@@ -1562,6 +1562,10 @@ static void *websocket_client_handler(void *arg) {
   log_info("[WS_HANDLER] Client %d disconnected (waited %d seconds, active=%d, server_should_exit=%d)", client_id,
            wait_count / 10, atomic_load(&client_check->active), atomic_load(server_ctx->server_should_exit));
 
+  // Remove the client from the client manager array to free up the slot.
+  // Without this, the client array fills up and new connections fail (max 32 slots).
+  remove_client(server_ctx, (uint32_t)client_id);
+
   SAFE_FREE(ctx);
   return NULL;
 }

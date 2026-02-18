@@ -1454,23 +1454,80 @@ void *client_dispatch_thread(void *arg) {
     // The queued packet contains the complete ACIP packet (header + payload) from websocket_recv()
     const packet_header_t *header = (const packet_header_t *)queued_pkt->data;
     size_t total_len = queued_pkt->data_len;
+    uint8_t *payload = (uint8_t *)header + sizeof(packet_header_t);
+    size_t payload_len = 0;
 
     log_info("DISPATCH_THREAD: Processing %zu byte packet for client %u", total_len, client_id);
 
     if (total_len >= sizeof(packet_header_t)) {
       packet_type_t packet_type = (packet_type_t)NET_TO_HOST_U16(header->type);
-      uint32_t payload_len = NET_TO_HOST_U32(header->length);
+      payload_len = NET_TO_HOST_U32(header->length);
 
       log_info("DISPATCH_THREAD: Packet type=%d, payload_len=%u", packet_type, payload_len);
 
-      // Dispatch to ACIP handler
-      asciichat_error_t dispatch_result =
-          acip_handle_server_packet(client->transport, packet_type, (uint8_t *)header + sizeof(packet_header_t),
-                                    payload_len, client, &g_acip_server_callbacks);
+      // Handle PACKET_TYPE_ENCRYPTED from WebSocket clients that encrypt at application layer
+      // This mirrors the decryption logic in acip_server_receive_and_dispatch()
+      if (packet_type == PACKET_TYPE_ENCRYPTED && client->transport->crypto_ctx) {
+        log_info("DISPATCH_THREAD: Decrypting PACKET_TYPE_ENCRYPTED for client %u", client_id);
 
-      if (dispatch_result != ASCIICHAT_OK) {
-        log_error("DISPATCH_THREAD: Handler failed for packet type=%d: %s", packet_type,
-                  asciichat_error_string(dispatch_result));
+        uint8_t *ciphertext = payload;
+        size_t ciphertext_len = payload_len;
+
+        // Decrypt to get inner plaintext packet (header + payload)
+        size_t plaintext_size = ciphertext_len + 1024;
+        uint8_t *plaintext = SAFE_MALLOC(plaintext_size, uint8_t *);
+        if (!plaintext) {
+          log_error("DISPATCH_THREAD: Failed to allocate plaintext buffer for decryption");
+          packet_queue_free_packet(queued_pkt);
+          continue;
+        }
+
+        size_t plaintext_len;
+        crypto_result_t crypto_result = crypto_decrypt(client->transport->crypto_ctx, ciphertext, ciphertext_len,
+                                                       plaintext, plaintext_size, &plaintext_len);
+
+        if (crypto_result != CRYPTO_OK) {
+          log_error("DISPATCH_THREAD: Failed to decrypt packet: %s", crypto_result_to_string(crypto_result));
+          SAFE_FREE(plaintext);
+          packet_queue_free_packet(queued_pkt);
+          continue;
+        }
+
+        if (plaintext_len < sizeof(packet_header_t)) {
+          log_error("DISPATCH_THREAD: Decrypted packet too small: %zu < %zu", plaintext_len, sizeof(packet_header_t));
+          SAFE_FREE(plaintext);
+          packet_queue_free_packet(queued_pkt);
+          continue;
+        }
+
+        // Parse the inner (decrypted) header
+        const packet_header_t *inner_header = (const packet_header_t *)plaintext;
+        packet_type = (packet_type_t)NET_TO_HOST_U16(inner_header->type);
+        payload_len = NET_TO_HOST_U32(inner_header->length);
+        payload = plaintext + sizeof(packet_header_t);
+
+        log_info("DISPATCH_THREAD: Decrypted inner packet type=%d, payload_len=%u", packet_type, payload_len);
+
+        // Dispatch the decrypted packet
+        asciichat_error_t dispatch_result = acip_handle_server_packet(client->transport, packet_type, payload,
+                                                                      payload_len, client, &g_acip_server_callbacks);
+
+        if (dispatch_result != ASCIICHAT_OK) {
+          log_error("DISPATCH_THREAD: Handler failed for decrypted packet type=%d: %s", packet_type,
+                    asciichat_error_string(dispatch_result));
+        }
+
+        // Free the decrypted buffer
+        SAFE_FREE(plaintext);
+      } else {
+        // Not encrypted or no crypto context - dispatch as-is
+        asciichat_error_t dispatch_result = acip_handle_server_packet(client->transport, packet_type, payload,
+                                                                      payload_len, client, &g_acip_server_callbacks);
+
+        if (dispatch_result != ASCIICHAT_OK) {
+          log_error("DISPATCH_THREAD: Handler failed for packet type=%d: %s", packet_type,
+                    asciichat_error_string(dispatch_result));
+        }
       }
     }
 
@@ -1608,11 +1665,18 @@ void *client_receive_thread(void *arg) {
       // This prevents the receive thread from blocking on dispatch
       log_info("RECV_THREAD: Queuing %zu byte packet for async dispatch (client %u)", packet_len, client->client_id);
 
+      // Extract packet type from the header to preserve it when queueing
+      packet_type_t pkt_type = PACKET_TYPE_PROTOCOL_VERSION;
+      if (packet_len >= sizeof(packet_header_t)) {
+        const packet_header_t *pkt_header = (const packet_header_t *)allocated_buffer;
+        pkt_type = (packet_type_t)NET_TO_HOST_U16(pkt_header->type);
+      }
+
       // Build a complete packet to queue (header + payload)
       // The entire buffer (allocated_buffer) contains the full packet
       // copy_data=false because we want to transfer ownership to the queue
-      int enqueue_result = packet_queue_enqueue(client->received_packet_queue, PACKET_TYPE_PROTOCOL_VERSION,
-                                                allocated_buffer, packet_len, atomic_load(&client->client_id), false);
+      int enqueue_result = packet_queue_enqueue(client->received_packet_queue, pkt_type, allocated_buffer, packet_len,
+                                                atomic_load(&client->client_id), false);
 
       if (enqueue_result < 0) {
         log_warn("Failed to queue received packet for client %u (queue full?) - packet dropped", client->client_id);
@@ -2026,6 +2090,12 @@ void *client_send_thread_func(void *arg) {
       }
 
       log_dev_every(4500000, "SEND_FRAME_SUCCESS: client_id=%u size=%zu", atomic_load(&client->client_id), frame_size);
+
+      // Increment frame counter and log
+      unsigned long frame_count = atomic_fetch_add(&client->frames_sent_count, 1) + 1;
+      log_info("FRAME_SENT: client_id=%u frame_num=%lu size=%zu", atomic_load(&client->client_id), frame_count,
+               frame_size);
+
       sent_something = true;
       last_video_send_time = current_time_us;
 
