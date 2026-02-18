@@ -619,8 +619,8 @@ static uint32_t calculate_backoff_delay_ms(int attempt) {
   uint32_t base_delay_ms = 1000U << attempt; // 1s, 2s, 4s, 8s, 16s...
 
   // Cap at 30 seconds
-  if (base_delay_ms > 30000) {
-    base_delay_ms = 30000;
+  if (base_delay_ms > 30 * MS_PER_SEC_INT) {
+    base_delay_ms = 30 * MS_PER_SEC_INT;
   }
 
   // Add jitter (0-1000ms) to prevent thundering herd
@@ -1624,7 +1624,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
       // Migration completed successfully
       set_state(session, DISCOVERY_STATE_ACTIVE);
       log_info("Migration complete, session resumed");
-    } else if (session_get_current_time_ms() - session->migration.detection_time_ms > 30000) {
+    } else if (session_get_current_time_ms() - session->migration.detection_time_ms > 30 * MS_PER_SEC_INT) {
       // Migration timed out after 30 seconds
       log_error("Host migration timeout - session cannot recover");
       set_state(session, DISCOVERY_STATE_FAILED);

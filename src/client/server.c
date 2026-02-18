@@ -258,7 +258,7 @@ static int close_socket(socket_t socketfd) {
 
     // Small delay to ensure socket resources are fully released
     // This prevents WSA error 10038 on subsequent connections
-    platform_sleep_us(50000); // 50ms delay
+    platform_sleep_us(50 * US_PER_MS_INT); // 50ms delay
 
     return 0;
   }

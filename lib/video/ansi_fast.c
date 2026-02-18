@@ -146,8 +146,8 @@ void ansi_rle_add_pixel(ansi_rle_context_t *ctx, uint8_t r, uint8_t g, uint8_t b
   if (color_changed) {
     if (ctx->length + 40 >= ctx->capacity) {
       // Log when we can't add a color change due to buffer capacity
-      log_warn_every(1000000, "RLE_CAPACITY: Cannot add SGR at length=%zu, capacity=%zu (need 40 bytes)", ctx->length,
-                     ctx->capacity);
+      log_warn_every(US_PER_SEC_INT, "RLE_CAPACITY: Cannot add SGR at length=%zu, capacity=%zu (need 40 bytes)",
+                     ctx->length, ctx->capacity);
     }
   }
 

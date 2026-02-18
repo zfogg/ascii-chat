@@ -220,12 +220,12 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
     ssize_t pad_height_ss = height > resized_height ? (height - resized_height) / 2 : 0;
     pad_height = (size_t)pad_height_ss;
 
-    log_debug_every(10000000,
+    log_debug_every(10 * US_PER_SEC_INT,
                     "ascii_convert_with_capabilities: width=%zd, height=%zd, resized_width=%zd, resized_height=%zd, "
                     "pad_width=%zu, pad_height=%zu, stretch=%d, wants_padding=%d",
                     width, height, resized_width, resized_height, pad_width, pad_height, stretch, caps->wants_padding);
   } else if (!caps->wants_padding) {
-    log_debug_every(10000000,
+    log_debug_every(10 * US_PER_SEC_INT,
                     "ascii_convert_with_capabilities: padding disabled (wants_padding=false), width=%zd, height=%zd",
                     width, height);
   }
@@ -271,9 +271,9 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   uint64_t prof_print_start_ns = prof_resize_end_ns;
 
   // DEBUG: Log dimensions going to renderer
-  log_debug_every(10000000, "ascii_convert: original=%dx%d, requested=%zdx%zd, resized=%dx%d, pad=%zux%zu (mode=%d)",
-                  original->w, original->h, width, height, resized->w, resized->h, pad_width, pad_height,
-                  caps->render_mode);
+  log_debug_every(10 * US_PER_SEC_INT,
+                  "ascii_convert: original=%dx%d, requested=%zdx%zd, resized=%dx%d, pad=%zux%zu (mode=%d)", original->w,
+                  original->h, width, height, resized->w, resized->h, pad_width, pad_height, caps->render_mode);
 
   // Use the capability-aware image printing function with client's palette
   START_TIMER("image_print_with_capabilities");

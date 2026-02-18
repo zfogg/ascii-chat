@@ -331,7 +331,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
 
     if (frame_decoded) {
       uint64_t read_time_ns = time_elapsed_ns(read_start_ns, time_get_ns());
-      double read_ms = (double)read_time_ns / 1000000.0;
+      double read_ms = (double)read_time_ns / NS_PER_MS;
 
       // Get current decode buffer
       image_t *decode_buffer = use_image_a ? decoder->prefetch_image_a : decoder->prefetch_image_b;
@@ -342,7 +342,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
       decoder->prefetch_frame_ready = true;
       mutex_unlock(&decoder->prefetch_mutex);
 
-      log_dev_every(5000000, "PREFETCH: decoded frame in %.2f ms", read_ms);
+      log_dev_every(5 * US_PER_SEC_INT, "PREFETCH: decoded frame in %.2f ms", read_ms);
 
       // Switch to the other buffer for next iteration (MUST use boolean flag, not pointer comparison)
       use_image_a = !use_image_a;
@@ -907,7 +907,7 @@ image_t *ffmpeg_decoder_read_video_frame(ffmpeg_decoder_t *decoder) {
 
     // Use the prefetched frame
     decoder->current_image = frame;
-    log_dev_every(5000000, "Using prefetched frame");
+    log_dev_every(5 * US_PER_SEC_INT, "Using prefetched frame");
     return frame;
   }
   mutex_unlock(&decoder->prefetch_mutex);
@@ -915,7 +915,8 @@ image_t *ffmpeg_decoder_read_video_frame(ffmpeg_decoder_t *decoder) {
   // No fallback synchronous decode - rely on background prefetch thread
   // Skipping frames when prefetch not ready allows audio timing to advance
   // This is critical for proper audio-video sync when prefetch is active
-  log_dev_every(5000000, "Prefetch frame not ready, skipping to next iteration (allow prefetch to catch up)");
+  log_dev_every(5 * US_PER_SEC_INT,
+                "Prefetch frame not ready, skipping to next iteration (allow prefetch to catch up)");
   return NULL;
 }
 
@@ -1069,7 +1070,7 @@ size_t ffmpeg_decoder_read_audio_samples(ffmpeg_decoder_t *decoder, float *buffe
       continue;
     }
 
-    log_info_every(50000, "Audio packet #%lu: pts=%ld dts=%ld duration=%d size=%d", packet_count++,
+    log_info_every(50 * US_PER_MS_INT, "Audio packet #%lu: pts=%ld dts=%ld duration=%d size=%d", packet_count++,
                    decoder->packet->pts, decoder->packet->dts, decoder->packet->duration, decoder->packet->size);
 
     // Send packet to decoder

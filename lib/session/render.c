@@ -181,9 +181,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
           break;
         }
 
-        log_debug_every(3000000, "RENDER[%lu]: Starting frame read", frame_count);
+        log_debug_every(3 * US_PER_SEC_INT, "RENDER[%lu]: Starting frame read", frame_count);
         image = session_capture_read_frame(capture);
-        log_debug_every(3000000, "RENDER[%lu]: Frame read done, image=%p", frame_count, (void *)image);
+        log_debug_every(3 * US_PER_SEC_INT, "RENDER[%lu]: Frame read done, image=%p", frame_count, (void *)image);
         capture_elapsed_ns = time_elapsed_ns(capture_start_ns, time_get_ns());
 
         if (!image) {
@@ -203,8 +203,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
           // Brief delay before retry on temporary frame unavailability
           if (loop_retry_count <= 1 || frame_count % 100 == 0) {
             if (loop_retry_count == 1 && frame_count > 0) {
-              log_debug_every(500000, "FRAME_WAIT: retry at frame %lu (waited %.1f ms so far)", frame_count,
-                              (double)capture_elapsed_ns / NS_PER_MS);
+              log_debug_every(500 * US_PER_MS_INT, "FRAME_WAIT: retry at frame %lu (waited %.1f ms so far)",
+                              frame_count, (double)capture_elapsed_ns / NS_PER_MS);
             }
           }
 
@@ -213,14 +213,15 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
             max_retries = loop_retry_count;
           }
 
-          platform_sleep_us(10000); // 10ms
+          platform_sleep_us(10 * US_PER_MS_INT); // 10ms
           continue;
         }
 
         // Frame obtained successfully
         if (loop_retry_count > 0) {
           double wait_ms = (double)capture_elapsed_ns / NS_PER_MS;
-          log_debug_every(1000000, "FRAME_OBTAINED: after %lu retries, waited %.1f ms", loop_retry_count, wait_ms);
+          log_debug_every(US_PER_SEC_INT, "FRAME_OBTAINED: after %lu retries, waited %.1f ms", loop_retry_count,
+                          wait_ms);
         }
         break; // Exit retry loop
       } while (true);
@@ -239,7 +240,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       // Log capture time every 30 frames
       if (frame_count % 30 == 0) {
         double capture_ms = (double)capture_elapsed_ns / NS_PER_MS;
-        log_dev_every(5000000, "PROFILE[%lu]: CAPTURE=%.2f ms", frame_count, capture_ms);
+        log_dev_every(5 * US_PER_SEC_INT, "PROFILE[%lu]: CAPTURE=%.2f ms", frame_count, capture_ms);
       }
 
       // Pause after first frame if requested via --pause flag
@@ -311,7 +312,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         if (frame_count % 150 == 0) {
           double conversion_ms = (double)conversion_elapsed_ns / NS_PER_MS;
           double render_ms = (double)render_elapsed_ns / NS_PER_MS;
-          log_dev_every(5000000, "PROFILE[%lu]: CONVERT=%.2f ms, RENDER=%.2f ms", frame_count, conversion_ms,
+          log_dev_every(5 * US_PER_SEC_INT, "PROFILE[%lu]: CONVERT=%.2f ms, RENDER=%.2f ms", frame_count, conversion_ms,
                         render_ms);
         }
       }
@@ -354,7 +355,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         double elapsed_sec = time_ns_to_s(time_elapsed_ns(snapshot_start_time_ns, current_time_ns));
         double snapshot_delay = GET_OPTION(snapshot_delay);
 
-        log_debug_every(1000000, "SNAPSHOT_DELAY_CHECK: elapsed=%.2f delay=%.2f", elapsed_sec, snapshot_delay);
+        log_debug_every(US_PER_SEC_INT, "SNAPSHOT_DELAY_CHECK: elapsed=%.2f delay=%.2f", elapsed_sec, snapshot_delay);
 
         // snapshot_delay=0 means exit immediately after rendering first frame
         // snapshot_delay>0 means wait that many seconds after first frame
@@ -383,12 +384,15 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       uint64_t frame_end_render_ns = time_get_ns();
 
       // Calculate each phase duration
-      uint64_t prestart_ms = (capture_start_ns > frame_start_ns) ? (capture_start_ns - frame_start_ns) / 1000000 : 0;
-      uint64_t capture_ms = (capture_end_ns > capture_start_ns) ? (capture_end_ns - capture_start_ns) / 1000000 : 0;
+      uint64_t prestart_ms =
+          (capture_start_ns > frame_start_ns) ? (capture_start_ns - frame_start_ns) / NS_PER_MS_INT : 0;
+      uint64_t capture_ms =
+          (capture_end_ns > capture_start_ns) ? (capture_end_ns - capture_start_ns) / NS_PER_MS_INT : 0;
       uint64_t convert_ms = conversion_elapsed_ns / NS_PER_MS_INT;
       uint64_t render_ms =
-          (post_render_ns > pre_render_ns && post_render_ns > 0) ? (post_render_ns - pre_render_ns) / 1000000 : 0;
-      uint64_t total_ms = (frame_end_render_ns > frame_start_ns) ? (frame_end_render_ns - frame_start_ns) / 1000000 : 0;
+          (post_render_ns > pre_render_ns && post_render_ns > 0) ? (post_render_ns - pre_render_ns) / NS_PER_MS_INT : 0;
+      uint64_t total_ms =
+          (frame_end_render_ns > frame_start_ns) ? (frame_end_render_ns - frame_start_ns) / NS_PER_MS_INT : 0;
 
       // Log phase breakdown every 5 frames
       if (frame_count % 5 == 0) {
@@ -431,8 +435,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         if (frame_elapsed_ns < frame_target_ns) {
           uint64_t sleep_ns = frame_target_ns - frame_elapsed_ns;
           // Sleep with 500us overhead reserved for recovery
-          if (sleep_ns > 500000) {
-            platform_sleep_ns(sleep_ns - 500000);
+          if (sleep_ns > 500 * US_PER_MS_INT) {
+            platform_sleep_ns((sleep_ns - 500 * US_PER_MS_INT));
           }
         }
       }

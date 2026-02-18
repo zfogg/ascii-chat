@@ -202,7 +202,7 @@ static void *webcam_capture_thread_func(void *arg) {
     // Check connection status
     if (!server_connection_is_active()) {
       log_debug_every(LOG_RATE_NORMAL, "Capture thread: waiting for connection to become active");
-      platform_sleep_us(100 * 1000); // Wait for connection
+      platform_sleep_us(100 * US_PER_MS_INT); // Wait for connection
       continue;
     }
 
@@ -228,7 +228,7 @@ static void *webcam_capture_thread_func(void *arg) {
         break; // Exit capture loop - end of media
       } else {
         log_debug_every(LOG_RATE_SLOW, "No frame available from media source yet (returned NULL)");
-        platform_sleep_us(10000); // 10ms delay before retry
+        platform_sleep_us(10 * US_PER_MS_INT); // 10ms delay before retry
         continue;
       }
     }
@@ -309,7 +309,7 @@ static void *webcam_capture_thread_func(void *arg) {
     processed_image = NULL;
 
     // Yield to reduce CPU usage
-    platform_sleep_us(1000); // 1ms
+    platform_sleep_us(1 * US_PER_MS_INT); // 1ms
   }
 
 #ifdef DEBUG_THREADS

@@ -771,11 +771,11 @@ void *client_audio_render_thread(void *arg) {
   // Adaptive sleep for audio rate limiting at 100 FPS (10ms intervals, 480 samples @ 48kHz)
   adaptive_sleep_state_t audio_sleep_state = {0};
   adaptive_sleep_config_t audio_config = {
-      .baseline_sleep_ns = 10000000, // 10ms = 100 FPS (480 samples @ 48kHz)
-      .min_speed_multiplier = 1.0,   // Constant rate (no slowdown)
-      .max_speed_multiplier = 1.0,   // Constant rate (no speedup)
-      .speedup_rate = 0.0,           // No adaptive behavior (constant rate)
-      .slowdown_rate = 0.0           // No adaptive behavior (constant rate)
+      .baseline_sleep_ns = 10 * NS_PER_MS_INT, // 10ms = 100 FPS (480 samples @ 48kHz)
+      .min_speed_multiplier = 1.0,             // Constant rate (no slowdown)
+      .max_speed_multiplier = 1.0,             // Constant rate (no speedup)
+      .speedup_rate = 0.0,                     // No adaptive behavior (constant rate)
+      .slowdown_rate = 0.0                     // No adaptive behavior (constant rate)
   };
   adaptive_sleep_init(&audio_sleep_state, &audio_config);
 
@@ -951,7 +951,8 @@ void *client_audio_render_thread(void *arg) {
         apply_backpressure = (queue_depth > 50); // > 50 packets = ~1s buffered at 50 FPS
 
         if (apply_backpressure) {
-          log_warn_every(4500000, "Audio backpressure for client %u: queue depth %zu packets (%.1fs buffered)",
+          log_warn_every(4500 * US_PER_MS_INT,
+                         "Audio backpressure for client %u: queue depth %zu packets (%.1fs buffered)",
                          client_id_snapshot, queue_depth, (float)queue_depth / 50.0f);
         }
       }

@@ -277,7 +277,7 @@ void server_status_update(tcp_server_t *server, const char *session_string, cons
   }
 
   // Calculate frame interval in microseconds
-  uint64_t frame_interval_us = 1000000ULL / fps;
+  uint64_t frame_interval_us = US_PER_SEC_INT / fps;
 
   // Get current time in microseconds using platform abstraction
   uint64_t now_us = platform_get_monotonic_time_us();

@@ -1306,7 +1306,7 @@ static void *status_screen_thread(void *arg) {
     // Periodic memory reporting (every ~5 seconds)
     static uint64_t last_memory_report = 0;
     uint64_t now = platform_get_monotonic_time_us();
-    if (now - last_memory_report > 5000000) { // 5 seconds in microseconds
+    if (now - last_memory_report > 5 * US_PER_SEC_INT) { // 5 seconds in microseconds
       last_memory_report = now;
       log_debug("[STATUS_SCREEN] Before memory report call");
       debug_memory_report();

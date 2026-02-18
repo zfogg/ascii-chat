@@ -523,8 +523,8 @@ static void *receive_loop_thread(void *arg) {
                 size_t expected_size = (size_t)frame_hdr->width * frame_hdr->height * 3;
                 if (pixel_data_size >= expected_size) {
                   memcpy(img->pixels, pixel_data, expected_size);
-                  log_debug_every(500000, "Frame received from client %u (%ux%u)", client_id, frame_hdr->width,
-                                  frame_hdr->height);
+                  log_debug_every(500 * US_PER_MS_INT, "Frame received from client %u (%ux%u)", client_id,
+                                  frame_hdr->width, frame_hdr->height);
                 }
               }
               break;

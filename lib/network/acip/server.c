@@ -31,7 +31,8 @@
 asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, void *client_ctx,
                                                    const acip_server_callbacks_t *callbacks) {
   uint64_t dispatch_start_ns = time_get_ns();
-  log_dev_every(4500000, "ACIP_SERVER_DISPATCH: Entry, transport=%p, client_ctx=%p, callbacks=%p, timestamp=%llu",
+  log_dev_every(4500 * US_PER_MS_INT,
+                "ACIP_SERVER_DISPATCH: Entry, transport=%p, client_ctx=%p, callbacks=%p, timestamp=%llu",
                 (void *)transport, client_ctx, (const void *)callbacks, (unsigned long long)dispatch_start_ns);
 
   if (!transport) {
@@ -51,7 +52,7 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
 
   // Try to get socket from transport
   socket_t sock = transport->methods->get_socket(transport);
-  log_dev_every(4500000, "ACIP_SERVER_DISPATCH: Socket=%d (INVALID=%d)", sock, INVALID_SOCKET_VALUE);
+  log_dev_every(4500 * US_PER_MS_INT, "ACIP_SERVER_DISPATCH: Socket=%d (INVALID=%d)", sock, INVALID_SOCKET_VALUE);
 
   if (sock != INVALID_SOCKET_VALUE) {
     // Socket-based transport (TCP): use receive_packet_secure() for socket I/O + parsing
@@ -101,7 +102,8 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
     envelope.allocated_buffer = allocated_buffer;
     envelope.allocated_size = packet_len;
 
-    log_dev_every(4500000, "ACIP_SERVER_DISPATCH: WebRTC packet parsed: type=%d, len=%u", envelope.type, envelope.len);
+    log_dev_every(4500 * US_PER_MS_INT, "ACIP_SERVER_DISPATCH: WebRTC packet parsed: type=%d, len=%u", envelope.type,
+                  envelope.len);
 
     // Handle PACKET_TYPE_ENCRYPTED from WebSocket clients that encrypt at application layer
     if (envelope.type == PACKET_TYPE_ENCRYPTED && transport->crypto_ctx) {

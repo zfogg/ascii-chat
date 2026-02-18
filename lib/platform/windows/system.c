@@ -153,7 +153,7 @@ uint64_t platform_get_monotonic_time_us(void) {
   QueryPerformanceCounter(&counter);
 
   // Convert to microseconds: (counter * 1,000,000) / freq
-  return (uint64_t)((counter.QuadPart * 1000000ULL) / freq.QuadPart);
+  return (uint64_t)((counter.QuadPart * US_PER_SEC_INT) / freq.QuadPart);
 }
 
 /**

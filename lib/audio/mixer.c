@@ -636,7 +636,7 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
 
     // DIAGNOSTIC: Log which client was excluded and which remain active
     log_dev_every(
-        4500000,
+        4500 * US_PER_MS_INT,
         "MIXER EXCLUSION: exclude_client=%u, exclude_index=%u, active_mask_before=0x%llx, active_mask_after=0x%llx",
         exclude_client_id, exclude_index, (unsigned long long)(active_mask | (1ULL << exclude_index)),
         (unsigned long long)active_mask);

@@ -277,31 +277,31 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
   case LWS_CALLBACK_SERVER_WRITEABLE: {
     uint64_t writeable_callback_start_ns = time_get_ns();
     atomic_fetch_add(&g_writeable_callback_count, 1);
-    log_dev_every(4500000, "=== LWS_CALLBACK_SERVER_WRITEABLE FIRED === wsi=%p, timestamp=%llu", (void *)wsi,
-                  (unsigned long long)writeable_callback_start_ns);
+    log_dev_every(4500 * US_PER_MS_INT, "=== LWS_CALLBACK_SERVER_WRITEABLE FIRED === wsi=%p, timestamp=%llu",
+                  (void *)wsi, (unsigned long long)writeable_callback_start_ns);
 
     // Dequeue and send pending data
     if (!conn_data) {
-      log_dev_every(4500000, "SERVER_WRITEABLE: No conn_data");
+      log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: No conn_data");
       break;
     }
 
     // Check if cleanup is in progress to avoid race condition with remove_client
     if (conn_data->cleaning_up) {
-      log_dev_every(4500000, "SERVER_WRITEABLE: Cleanup in progress, skipping");
+      log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: Cleanup in progress, skipping");
       break;
     }
 
     // Snapshot the transport pointer to avoid race condition with cleanup thread
     acip_transport_t *transport_snapshot = conn_data->transport;
     if (!transport_snapshot) {
-      log_dev_every(4500000, "SERVER_WRITEABLE: No transport");
+      log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: No transport");
       break;
     }
 
     websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport_snapshot->impl_data;
     if (!ws_data || !ws_data->send_queue) {
-      log_dev_every(4500000, "SERVER_WRITEABLE: No ws_data or send_queue");
+      log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: No ws_data or send_queue");
       break;
     }
 
@@ -347,8 +347,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       uint64_t write_end_ns = time_get_ns();
       char write_duration_str[32];
       format_duration_ns((double)(write_end_ns - write_start_ns), write_duration_str, sizeof(write_duration_str));
-      log_dev_every(4500000, "lws_write returned %d bytes in %s (chunk_size=%zu)", written, write_duration_str,
-                    chunk_size);
+      log_dev_every(4500 * US_PER_MS_INT, "lws_write returned %d bytes in %s (chunk_size=%zu)", written,
+                    write_duration_str, chunk_size);
 
       if (written < 0) {
         log_error("Server WebSocket write error: %d at offset %zu/%zu", written, conn_data->pending_send_offset,
@@ -372,13 +372,15 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
       if (is_end) {
         // Message fully sent
-        log_dev_every(4500000, "SERVER_WRITEABLE: Message fully sent (%zu bytes)", conn_data->pending_send_len);
+        log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: Message fully sent (%zu bytes)",
+                      conn_data->pending_send_len);
         SAFE_FREE(conn_data->pending_send_data);
         conn_data->pending_send_data = NULL;
         conn_data->has_pending_send = false;
       } else {
         // More fragments to send
-        log_dev_every(4500000, "SERVER_WRITEABLE: Sent fragment %zu/%zu bytes, requesting another callback",
+        log_dev_every(4500 * US_PER_MS_INT,
+                      "SERVER_WRITEABLE: Sent fragment %zu/%zu bytes, requesting another callback",
                       conn_data->pending_send_offset, conn_data->pending_send_len);
         lws_callback_on_writable(wsi);
         break;
@@ -403,7 +405,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
         conn_data->pending_send_offset = 0;
         conn_data->has_pending_send = true;
 
-        log_dev_every(4500000, ">>> SERVER_WRITEABLE: Dequeued message %zu bytes, sending first fragment", msg.len);
+        log_dev_every(4500 * US_PER_MS_INT, ">>> SERVER_WRITEABLE: Dequeued message %zu bytes, sending first fragment",
+                      msg.len);
 
         // Send first fragment
         size_t chunk_size = (msg.len > FRAGMENT_SIZE) ? FRAGMENT_SIZE : msg.len;
@@ -443,10 +446,12 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
         }
 
         if (!is_end) {
-          log_dev_every(4500000, ">>> SERVER_WRITEABLE: First fragment sent, requesting callback for next fragment");
+          log_dev_every(4500 * US_PER_MS_INT,
+                        ">>> SERVER_WRITEABLE: First fragment sent, requesting callback for next fragment");
           lws_callback_on_writable(wsi);
         } else {
-          log_dev_every(4500000, "SERVER_WRITEABLE: Message fully sent in first fragment (%zu bytes)", chunk_size);
+          log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: Message fully sent in first fragment (%zu bytes)",
+                        chunk_size);
           SAFE_FREE(msg.data);
           conn_data->has_pending_send = false;
 
@@ -465,7 +470,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
   case LWS_CALLBACK_RECEIVE: {
     // Received data from client - may be fragmented for large messages
-    log_dev_every(4500000, "LWS_CALLBACK_RECEIVE: conn_data=%p, transport=%p, len=%zu", (void *)conn_data,
+    log_dev_every(4500 * US_PER_MS_INT, "LWS_CALLBACK_RECEIVE: conn_data=%p, transport=%p, len=%zu", (void *)conn_data,
                   conn_data ? (void *)conn_data->transport : NULL, len);
 
     if (!conn_data) {
@@ -602,7 +607,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     }
 
     // Debug: Log raw bytes of incoming fragment
-    log_dev_every(4500000, "WebSocket fragment: %zu bytes (first=%d, final=%d)", len, is_first, is_final);
+    log_dev_every(4500 * US_PER_MS_INT, "WebSocket fragment: %zu bytes (first=%d, final=%d)", len, is_first, is_final);
     if (len > 0 && len <= 256) {
       const uint8_t *bytes = (const uint8_t *)in;
       char hex_buf[1024];
@@ -610,7 +615,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       for (size_t i = 0; i < len && hex_pos < sizeof(hex_buf) - 4; i++) {
         hex_pos += snprintf(hex_buf + hex_pos, sizeof(hex_buf) - hex_pos, "%02x ", bytes[i]);
       }
-      log_dev_every(4500000, "   Raw bytes: %s", hex_buf);
+      log_dev_every(4500 * US_PER_MS_INT, "   Raw bytes: %s", hex_buf);
     }
 
     // If this is a single-fragment message (first and final), log the packet type for debugging
@@ -619,8 +624,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       // ACIP packet header: magic(8) + type(2) + length(4) + crc(4) + client_id(2)
       uint16_t pkt_type = (data[8] << 8) | data[9];
       uint32_t pkt_len = (data[10] << 24) | (data[11] << 16) | (data[12] << 8) | data[13];
-      log_dev_every(4500000, "Single-fragment ACIP packet: type=%d (0x%x) len=%u total_size=%zu", pkt_type, pkt_type,
-                    pkt_len, len);
+      log_dev_every(4500 * US_PER_MS_INT, "Single-fragment ACIP packet: type=%d (0x%x) len=%u total_size=%zu", pkt_type,
+                    pkt_type, pkt_len, len);
     }
 
     // Queue this fragment immediately with first/final flags.
@@ -656,7 +661,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     size_t queue_current_size = ringbuffer_size(ws_data->recv_queue);
     size_t queue_capacity = ws_data->recv_queue->capacity;
     size_t queue_free = queue_capacity - queue_current_size;
-    log_dev_every(4500000, "[WS_FLOW] Queue: free=%zu/%zu (used=%zu)", queue_free, queue_capacity, queue_current_size);
+    log_dev_every(4500 * US_PER_MS_INT, "[WS_FLOW] Queue: free=%zu/%zu (used=%zu)", queue_free, queue_capacity,
+                  queue_current_size);
 
     bool success = ringbuffer_write(ws_data->recv_queue, &msg);
     if (!success) {
@@ -715,10 +721,10 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     // Fired on the service thread when lws_cancel_service() is called from another thread.
     // This is how we safely convert cross-thread send requests into writable callbacks.
     // lws_callback_on_writable() is only safe from the service thread context.
-    log_dev_every(4500000, "LWS_CALLBACK_EVENT_WAIT_CANCELLED triggered - requesting writable callbacks");
+    log_dev_every(4500 * US_PER_MS_INT, "LWS_CALLBACK_EVENT_WAIT_CANCELLED triggered - requesting writable callbacks");
     const struct lws_protocols *protocol = lws_get_protocol(wsi);
     if (protocol) {
-      log_dev_every(4500000, "EVENT_WAIT_CANCELLED: Calling lws_callback_on_writable_all_protocol");
+      log_dev_every(4500 * US_PER_MS_INT, "EVENT_WAIT_CANCELLED: Calling lws_callback_on_writable_all_protocol");
       lws_callback_on_writable_all_protocol(lws_get_context(wsi), protocol);
     } else {
       log_error("EVENT_WAIT_CANCELLED: No protocol found on wsi");
@@ -837,13 +843,14 @@ asciichat_error_t websocket_server_run(websocket_server_t *server) {
     // This eliminates ~30ms gaps between fragment deliveries that were caused by poll()
     // blocking on internal LWS timers between socket reads.
     uint64_t service_start_ns = time_get_ns();
-    if (last_service_ns && service_start_ns - last_service_ns > 30000000) {
+    if (last_service_ns && service_start_ns - last_service_ns > 30 * US_PER_MS_INT) {
       // > 30ms gap between service calls
       double gap_ms = (double)(service_start_ns - last_service_ns) / 1e6;
-      log_info_every(1000, "[LWS_SERVICE_GAP] %.1fms gap between lws_service calls", gap_ms);
+      log_info_every(1 * US_PER_MS_INT, "[LWS_SERVICE_GAP] %.1fms gap between lws_service calls", gap_ms);
     }
     service_call_count++;
-    log_debug_every(500000, "[LWS_SERVICE] Call #%d, context=%p", service_call_count, (void *)server->context);
+    log_debug_every(500 * US_PER_MS_INT, "[LWS_SERVICE] Call #%d, context=%p", service_call_count,
+                    (void *)server->context);
     int result = lws_service(server->context, 50);
     if (result < 0) {
       log_error("libwebsockets service error: %d", result);

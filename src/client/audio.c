@@ -564,14 +564,14 @@ static void *audio_capture_thread_func(void *arg) {
 
     if (!server_connection_is_active()) {
       STOP_TIMER("audio_capture_loop_iteration"); // Don't count sleep time
-      platform_sleep_us(100 * 1000);              // Wait for connection
+      platform_sleep_us(100 * US_PER_MS_INT);     // Wait for connection
       continue;
     }
 
     // Check if pipeline is ready
     if (!g_audio_pipeline) {
       STOP_TIMER("audio_capture_loop_iteration"); // Don't count sleep time
-      platform_sleep_us(100 * 1000);
+      platform_sleep_us(100 * US_PER_MS_INT);
       continue;
     }
 

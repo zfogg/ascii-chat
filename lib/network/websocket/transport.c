@@ -128,7 +128,7 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
     bool is_first = lws_is_first_fragment(wsi);
     bool is_final = lws_is_final_fragment(wsi);
 
-    log_dev_every(4500000, "WebSocket fragment: %zu bytes (first=%d, final=%d)", len, is_first, is_final);
+    log_dev_every(4500 * US_PER_MS_INT, "WebSocket fragment: %zu bytes (first=%d, final=%d)", len, is_first, is_final);
 
     // Queue this fragment immediately with first/final flags.
     // Per LWS design, each fragment is processed individually by the callback.
@@ -456,7 +456,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
     // Check if still empty after wait timeout
     if (ringbuffer_is_empty(ws_data->recv_queue)) {
       mutex_unlock(&ws_data->recv_mutex);
-      log_dev_every(4500000,
+      log_dev_every(4500 * US_PER_MS_INT,
                     "🔄 WEBSOCKET_RECV: Queue empty after timeout, looping back for timeout/connection checks");
       continue;
     }

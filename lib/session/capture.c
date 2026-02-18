@@ -354,8 +354,8 @@ image_t *session_capture_read_frame(session_capture_ctx_t *ctx) {
       double to_get_ms = (double)time_to_get_frame_ns / NS_PER_MS;
 
       if (ctx->frame_count % 30 == 0) {
-        log_dev_every(3000000, "FRAME_TIMING[%lu]: since_last=%.1f ms, to_get=%.1f ms", ctx->frame_count, since_last_ms,
-                      to_get_ms);
+        log_dev_every(3 * US_PER_SEC_INT, "FRAME_TIMING[%lu]: since_last=%.1f ms, to_get=%.1f ms", ctx->frame_count,
+                      since_last_ms, to_get_ms);
       }
     }
     last_frame_time_ns = frame_available_time_ns;

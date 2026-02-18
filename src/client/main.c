@@ -903,7 +903,7 @@ int client_main(void) {
         break;
       }
 
-      platform_sleep_us(100 * 1000); // 0.1 second monitoring interval
+      platform_sleep_us(100 * US_PER_MS_INT); // 0.1 second monitoring interval
     }
 
     if (should_exit()) {
