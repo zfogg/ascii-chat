@@ -67,7 +67,7 @@ static const ignore_entry_t g_ignore_list[] = {
     {"lib/platform/posix/util.c", 35, 15}, // Symbol cache strings (backtrace during memory report)
     {"lib/platform/symbols.c", 1074, 2},   // Symbol array allocations (backtrace during memory report)
     {"lib/asciichat_errno.c", 149, 2},     // Error context message (backtrace during memory report)
-    {"lib/util/path.c", 1095, 1},          // Normalized path allocation (caller responsibility to free)
+    {"lib/util/path.c", 1203, 1},          // Normalized path allocation (caller responsibility to free)
     {NULL, 0, 0}                           // Sentinel
 };
 
@@ -106,19 +106,11 @@ static bool acquire_mutex_with_polling(mutex_t *mutex, int timeout_ms) {
 }
 
 static bool should_ignore_allocation(const char *file, int line) {
-  // During shutdown, extract_project_relative_path() may call stat() which can hang.
-  // Just use the filename without path processing if possible.
-  const char *relative_path = file;
-  const char *sep = strrchr(file, '/');
-  if (!sep) {
-    sep = strrchr(file, '\\');
-  }
-  if (sep) {
-    relative_path = sep + 1;
-  }
+  // file is already the normalized relative path (e.g., "lib/options/colorscheme.c")
+  // from when it was stored in debug_malloc/debug_calloc/etc.
 
   for (size_t i = 0; g_ignore_list[i].file != NULL; i++) {
-    if (line == g_ignore_list[i].line && strcmp(relative_path, g_ignore_list[i].file) == 0) {
+    if (line == g_ignore_list[i].line && strcmp(file, g_ignore_list[i].file) == 0) {
       // Found matching ignore entry - check if we've exceeded expected count
       if (g_ignore_counts[i] < g_ignore_list[i].expected_count) {
         g_ignore_counts[i]++;
@@ -657,6 +649,44 @@ void debug_memory_report(void) {
 
     // Reset ignore counters after counting suppressed bytes
     reset_ignore_counters();
+
+    // Log suppression details
+    if (suppressed_count > 0) {
+      SAFE_IGNORE_PRINTF_RESULT(
+          safe_fprintf(stderr, "\n%s\n", colored_string(LOG_COLOR_DEV, "Suppressed allocations:")));
+
+      if (ensure_mutex_initialized()) {
+        if (acquire_mutex_with_polling(&g_mem.mutex, 100)) {
+          // Count and display actual suppressions
+          mem_block_t *curr = g_mem.head;
+          while (curr) {
+            if (should_ignore_allocation(curr->file, curr->line)) {
+              char pretty_size[64];
+              char line_str[32];
+              format_bytes_pretty(curr->size, pretty_size, sizeof(pretty_size));
+              safe_snprintf(line_str, sizeof(line_str), "%d", curr->line);
+              SAFE_IGNORE_PRINTF_RESULT(
+                  safe_fprintf(stderr, "  - %s:%s - %s\n", colored_string(LOG_COLOR_GREY, curr->file),
+                               colored_string(LOG_COLOR_FATAL, line_str), colored_string(LOG_COLOR_INFO, pretty_size)));
+            }
+            curr = curr->next;
+          }
+          mutex_unlock(&g_mem.mutex);
+        }
+      }
+
+      // Check if expected suppressions match actual
+      reset_ignore_counters();
+      for (size_t i = 0; g_ignore_list[i].file != NULL; i++) {
+        if (g_ignore_counts[i] != g_ignore_list[i].expected_count) {
+          SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(
+              stderr, "%s\n", colored_string(LOG_COLOR_ERROR, "  WARNING: Suppression mismatch detected")));
+          SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "  %s:%d - expected %d, found %d\n", g_ignore_list[i].file,
+                                                 g_ignore_list[i].line, g_ignore_list[i].expected_count,
+                                                 g_ignore_counts[i]));
+        }
+      }
+    }
 
     char pretty_total[64];
     char pretty_freed[64];
