@@ -64,40 +64,39 @@ Use a **50ms timeout** instead of -1. This keeps the event loop responsive:
 
 This matches the correct pattern already used in `transport.c:87` for the client-side WebSocket service thread.
 
-## Current Bug: Processing Stops After First Frame (2026-02-17 22:42)
+## Current Bug: WebSocket Frames Not Sent Back to Client (2026-02-17 23:10)
 
 **Observed Behavior:**
 1. Browser connects to server via WebSocket ✓
-2. Server receives FIRST frame ✓
-3. Server processes it and sends ASCII art back to browser ✓
-4. Browser displays ONE frame ✓
-5. **Processing STOPS** - server no longer processes incoming frames
-6. Connection persists - frames continue arriving from client
-7. Server has frames in memory and COULD process them
-8. But server is NOT processing them and NOT sending responses back
+2. Frames arrive continuously (RECEIVE callbacks firing) ✓
+3. Send thread loops and gets video frames ✓
+4. Frame->data pointer is valid ✓
+5. **Frame->size is 0** - frame skipped
+6. No ASCII art sent back to browser ✗
 
-**The Bug:**
-After processing the first frame, the processing/dispatch/send pipeline stops. The server is no longer:
-- Reading from the received_packet_queue
-- Processing queued frames
-- Converting to ASCII art
-- Sending responses back to the client
+**Root Cause Chain:**
+1. **WebSocket frames aren't being processed into incoming_video_buffer**
+   - No RECV_FRAME logs appear (incoming frames should be logged)
+   - TCP clients show RECV_FRAME logs immediately upon connection
+   - WebSocket client never shows ANY RECV_FRAME logs
 
-**Why the recv_queue fills up:**
-Frames arrive faster than they're being processed (because processing stopped), so they queue up until the buffer overflows and fragments are dropped.
+2. **incoming_video_buffer stays empty → sources_with_video = 0**
+   - Render thread: sources=0 (no active video sources)
+   - create_mixed_ascii_frame_for_client returns NULL when sources=0
+   - Frame size set to 0
 
-**What Works:**
-- WebSocket connection ✓
-- ACIP protocol negotiation ✓
-- Fragment reception ✓
-- First frame processing ✓
-- Frame queuing ✓
+3. **Send thread skips zero-size frames**
+   - Logs show: FRAME_DATA_OK but SKIP_ZERO_SIZE
+   - Nothing sent back to client
 
-**What's Broken:**
-- **Processing loop never continues after first frame**
-- Dispatch/send threads stop running or block
-- No subsequent frames are converted to ASCII art
-- No responses sent back to client
+**Why TCP Works, WebSocket Doesn't:**
+- Same code path for storing incoming frames
+- Same send thread implementation
+- TCP clients' incoming frames ARE being stored (RECV_FRAME logs appear)
+- WebSocket clients' incoming frames are NOT being stored (no logs)
+
+**Missing Link:**
+WebSocket client frames are arriving but not being decoded/dispatched to the IMAGE_FRAME handler. The receive thread isn't processing WebSocket packets correctly or isn't dispatching them to protocol handlers.
 
 ## Files Modified
 
