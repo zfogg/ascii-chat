@@ -2528,8 +2528,12 @@ cleanup:
   // Wait for status screen thread to finish if it was started
   if (GET_OPTION(status_screen)) {
     log_debug("Waiting for status screen thread to exit...");
-    asciichat_thread_join(&g_status_screen_thread, NULL);
-    log_debug("Status screen thread exited");
+    int join_result = asciichat_thread_join_timeout(&g_status_screen_thread, NULL, 1000000000UL); // 1 second
+    if (join_result != 0) {
+      log_warn("Status screen thread did not exit cleanly (timeout)");
+    } else {
+      log_debug("Status screen thread exited");
+    }
   }
 
   // Cleanup status screen log capture
@@ -2593,9 +2597,18 @@ cleanup:
     // destroy the context until after it exits its loop (which requires
     // seeing running=false, which we just set).
     websocket_server_cancel_service(&g_websocket_server);
-    asciichat_thread_join(&g_websocket_server_thread, NULL);
+
+    // Join with 2-second timeout. lws_context_destroy() can take 5+ seconds
+    // if called from a different thread (waiting for close handshake), but
+    // we're destroying from the event loop thread so it's fast. 2s accounts
+    // for any slow lws_service() calls or LWS cleanup.
+    int join_result = asciichat_thread_join_timeout(&g_websocket_server_thread, NULL, 2000000000UL); // 2 seconds in ns
+    if (join_result != 0) {
+      log_warn("WebSocket thread did not exit cleanly (timeout), forcing cleanup");
+    }
+
     // Context is destroyed by websocket_server_run from the event loop thread.
-    // websocket_server_destroy handles the case where it's already NULL.
+    // websocket_server_destroy handles the case where it's already NULL or context already destroyed.
     websocket_server_destroy(&g_websocket_server);
     log_debug("WebSocket server shut down");
   }
