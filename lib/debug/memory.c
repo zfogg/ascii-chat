@@ -19,6 +19,7 @@
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/memory.h>
+#include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/util/format.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/string.h>
@@ -611,7 +612,7 @@ void debug_memory_report(void) {
   // Reset ignore counters at start of report
   reset_ignore_counters();
 
-  if (!quiet) {
+  if (!quiet && terminal_is_interactive()) {
     SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "\n%s\n", colored_string(LOG_COLOR_DEV, "=== Memory Report ===")));
 
     size_t total_allocated = atomic_load(&g_mem.total_allocated);
