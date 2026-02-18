@@ -450,13 +450,21 @@ const char *extract_project_relative_path(const char *file) {
     free(project_root);
   }
 
-  /* Fallback: If no project root found, try to find just the filename */
+  /* Fallback: Extract relative path by looking for common separators */
   const char *last_sep = strrchr(normalized, PATH_DELIM);
+  if (!last_sep) {
+    last_sep = strrchr(normalized, '/');
+  }
+  if (!last_sep) {
+    last_sep = strrchr(normalized, '\\');
+  }
+
+  /* If we found a separator, return the part after it */
   if (last_sep) {
     return last_sep + 1;
   }
 
-  /* Last resort: return the normalized path */
+  /* Last resort: return just the filename (don't return absolute path) */
   return normalized;
 }
 
