@@ -66,6 +66,7 @@ static const ignore_entry_t g_ignore_list[] = {
     {"lib/platform/posix/util.c", 35, 15}, // Symbol cache strings (backtrace during memory report)
     {"lib/platform/symbols.c", 1074, 2},   // Symbol array allocations (backtrace during memory report)
     {"lib/asciichat_errno.c", 149, 2},     // Error context message (backtrace during memory report)
+    {"lib/util/path.c", 1095, 1},          // Normalized path allocation (caller responsibility to free)
     {NULL, 0, 0}                           // Sentinel
 };
 
