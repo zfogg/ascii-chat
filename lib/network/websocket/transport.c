@@ -227,7 +227,8 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
   uint8_t *encrypted_packet = NULL;
   size_t encrypted_packet_size = 0;
 
-  if (len >= sizeof(packet_header_t) && transport->crypto_ctx && crypto_is_ready(transport->crypto_ctx)) {
+  if (len >= sizeof(packet_header_t) && transport->crypto_ctx && transport->crypto_ctx->encrypt_data &&
+      crypto_is_ready(transport->crypto_ctx)) {
     const packet_header_t *header = (const packet_header_t *)data;
     uint16_t packet_type = NET_TO_HOST_U16(header->type);
 

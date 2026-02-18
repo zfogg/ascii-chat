@@ -324,8 +324,6 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
       b, "url", "loop", "Option --url cannot be used with --loop (network streams cannot be looped)");
   // Encryption conflicts
   options_builder_add_dependency_conflicts(b, "no-encrypt", "encrypt", "Cannot use --no-encrypt with --encrypt");
-  options_builder_add_dependency_conflicts(b, "no-encrypt", "key", "Cannot use --no-encrypt with --key");
-  options_builder_add_dependency_conflicts(b, "no-encrypt", "password", "Cannot use --no-encrypt with --password");
   // Compression conflicts
   options_builder_add_dependency_conflicts(b, "no-compress", "compression-level",
                                            "Cannot use --no-compress with --compression-level");

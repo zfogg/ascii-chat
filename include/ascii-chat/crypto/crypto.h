@@ -290,6 +290,7 @@ typedef struct crypto_context_t {
   bool key_exchange_complete; /**< Whether DH key exchange is complete */
   bool peer_key_received;     /**< Whether peer's public key has been received */
   bool handshake_complete;    /**< Whether full handshake is complete */
+  bool encrypt_data;          /**< Whether payload encryption is enabled (false = auth-only mode) */
 
   /** Authentication state */
   uint8_t auth_nonce[AUTH_CHALLENGE_SIZE]; /**< Server-generated challenge nonce */

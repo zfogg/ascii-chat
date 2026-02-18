@@ -114,7 +114,8 @@ crypto_result_t crypto_init(crypto_context_t *ctx) {
   ctx->key_exchange_complete = false;
   ctx->peer_key_received = false;
   ctx->handshake_complete = false;
-  ctx->nonce_counter = 1; // Start from 1 (0 reserved for testing)
+  ctx->encrypt_data = true; // Default: enable payload encryption
+  ctx->nonce_counter = 1;   // Start from 1 (0 reserved for testing)
   ctx->bytes_encrypted = 0;
   ctx->bytes_decrypted = 0;
 

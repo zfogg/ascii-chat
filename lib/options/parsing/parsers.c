@@ -653,6 +653,12 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
   if (strncmp(arg, "ws://", 5) == 0 || strncmp(arg, "wss://", 6) == 0) {
     log_debug("Detected WebSocket URL: %s", arg);
     SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, "%s", arg);
+    // For wss://, default to no ACIP-level encryption (TLS handles it)
+    if (strncmp(arg, "wss://", 6) == 0) {
+      bool *no_encrypt = (bool *)config + offsetof(struct options_state, no_encrypt);
+      *no_encrypt = true;
+      log_debug("Auto-detected wss:// - setting no_encrypt=true (TLS handles encryption)");
+    }
     // Don't set port - WebSocket transport handles URL parsing internally
     return 1; // Consumed 1 argument
   }

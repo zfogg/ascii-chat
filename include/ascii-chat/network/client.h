@@ -180,6 +180,7 @@ typedef struct client_info {
   // Per-client crypto context for secure communication
   crypto_handshake_context_t crypto_handshake_ctx;
   bool crypto_initialized;
+  bool encrypt_data; // Whether payload encryption is enabled (false = auth-only mode)
 
   // Pending packet storage for --no-encrypt mode
   // When client uses --no-encrypt, the first packet (e.g., CLIENT_JOIN) arrives

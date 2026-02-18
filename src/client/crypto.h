@@ -20,6 +20,18 @@
 #include <ascii-chat/platform/socket.h>
 
 /**
+ * @brief Set crypto mode for handshake (encryption + authentication)
+ *
+ * Sets the crypto mode bitmask (ACIP_CRYPTO_*) to negotiate with server.
+ * Must be called before client_crypto_init().
+ *
+ * @param mode Crypto mode bitmask (ACIP_CRYPTO_NONE, ACIP_CRYPTO_ENCRYPT, ACIP_CRYPTO_AUTH, ACIP_CRYPTO_FULL)
+ *
+ * @ingroup client_crypto
+ */
+void client_crypto_set_mode(uint8_t mode);
+
+/**
  * @brief Initialize client crypto handshake
  *
  * Sets up the client-side cryptographic context with authentication

@@ -212,8 +212,30 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     ctx->attempt_start_time_ns = time_get_realtime_ns();
     ctx->timeout_ns = CONN_TIMEOUT_TCP; // Use same timeout as TCP
 
-    // Initialize crypto context if encryption is enabled
-    if (!GET_OPTION(no_encrypt)) {
+    // Compute crypto mode from CLI options
+    // Determine if client has authentication material (keys or password)
+    bool has_auth_material =
+        (GET_OPTION(encrypt_key)[0] != '\0' || GET_OPTION(num_identity_keys) > 0 || GET_OPTION(password)[0] != '\0');
+    bool no_encrypt = GET_OPTION(no_encrypt);
+
+    uint8_t crypto_mode;
+    if (!no_encrypt && !has_auth_material)
+      crypto_mode = ACIP_CRYPTO_ENCRYPT; // default: encrypt only
+    else if (!no_encrypt && has_auth_material)
+      crypto_mode = ACIP_CRYPTO_FULL; // full: encrypt + auth
+    else if (no_encrypt && has_auth_material)
+      crypto_mode = ACIP_CRYPTO_AUTH; // auth-only mode
+    else
+      crypto_mode = ACIP_CRYPTO_NONE; // no crypto
+
+    log_debug("WebSocket crypto mode computed: 0x%02x (encrypt=%d, auth=%d)", crypto_mode,
+              ACIP_CRYPTO_HAS_ENCRYPT(crypto_mode), ACIP_CRYPTO_HAS_AUTH(crypto_mode));
+
+    // Set crypto mode before initialization
+    client_crypto_set_mode(crypto_mode);
+
+    // Initialize crypto context if mode requires handshake (not ACIP_CRYPTO_NONE)
+    if (crypto_mode != ACIP_CRYPTO_NONE) {
       log_debug("Initializing crypto context for WebSocket...");
       if (client_crypto_init() != 0) {
         log_error("Failed to initialize crypto context");
@@ -302,9 +324,31 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     log_warn("TCP client did not populate server_ip field");
   }
 
-  // Initialize crypto context if encryption is enabled
+  // Compute crypto mode from CLI options
+  // Determine if client has authentication material (keys or password)
+  bool has_auth_material =
+      (GET_OPTION(encrypt_key)[0] != '\0' || GET_OPTION(num_identity_keys) > 0 || GET_OPTION(password)[0] != '\0');
+  bool no_encrypt = GET_OPTION(no_encrypt);
+
+  uint8_t crypto_mode;
+  if (!no_encrypt && !has_auth_material)
+    crypto_mode = ACIP_CRYPTO_ENCRYPT; // default: encrypt only
+  else if (!no_encrypt && has_auth_material)
+    crypto_mode = ACIP_CRYPTO_FULL; // full: encrypt + auth
+  else if (no_encrypt && has_auth_material)
+    crypto_mode = ACIP_CRYPTO_AUTH; // auth-only mode
+  else
+    crypto_mode = ACIP_CRYPTO_NONE; // no crypto
+
+  log_debug("TCP crypto mode computed: 0x%02x (encrypt=%d, auth=%d)", crypto_mode, ACIP_CRYPTO_HAS_ENCRYPT(crypto_mode),
+            ACIP_CRYPTO_HAS_AUTH(crypto_mode));
+
+  // Set crypto mode before initialization
+  client_crypto_set_mode(crypto_mode);
+
+  // Initialize crypto context if mode requires handshake (not ACIP_CRYPTO_NONE)
   // This must happen AFTER setting server IP, as crypto init reads server IP/port
-  if (!GET_OPTION(no_encrypt)) {
+  if (crypto_mode != ACIP_CRYPTO_NONE) {
     log_debug("Initializing crypto context...");
     if (client_crypto_init() != 0) {
       log_error("Failed to initialize crypto context");
