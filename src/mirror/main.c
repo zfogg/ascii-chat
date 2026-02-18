@@ -234,7 +234,6 @@ int mirror_main(void) {
   }
 
   session_capture_config_t capture_config = {0};
-  capture_config.target_fps = 60; // Default for webcam
   capture_config.resize_for_network = false;
   capture_config.should_exit_callback = mirror_capture_should_exit_adapter;
   capture_config.callback_data = NULL;
@@ -243,6 +242,10 @@ int mirror_main(void) {
   // Reuse same source to avoid multiple YouTube yt-dlp extractions
   media_source_t *probe_source = NULL;
 
+  // Check if user specified --fps explicitly
+  int user_fps = GET_OPTION(fps);
+  bool fps_explicitly_set = user_fps > 0;
+
   if (media_url && strlen(media_url) > 0) {
     // User specified a network URL (takes priority over --file)
     // Don't open webcam when streaming from URL
@@ -250,21 +253,27 @@ int mirror_main(void) {
     capture_config.type = MEDIA_SOURCE_FILE;
     capture_config.path = media_url;
 
-    // Detect FPS for HTTP URLs using probe source (safe now with lazy initialization)
-    probe_source = media_source_create(MEDIA_SOURCE_FILE, media_url);
-    if (probe_source) {
-      double url_fps = media_source_get_video_fps(probe_source);
-      log_info("Detected HTTP stream video FPS: %.1f", url_fps);
-      if (url_fps > 0.0) {
-        capture_config.target_fps = (uint32_t)(url_fps + 0.5);
-        log_info("Using target FPS: %u", capture_config.target_fps);
+    // If user explicitly set FPS, use that; otherwise auto-detect
+    if (fps_explicitly_set) {
+      capture_config.target_fps = (uint32_t)user_fps;
+      log_info("Using user-specified FPS: %u", capture_config.target_fps);
+    } else {
+      // Detect FPS for HTTP URLs using probe source (safe now with lazy initialization)
+      probe_source = media_source_create(MEDIA_SOURCE_FILE, media_url);
+      if (probe_source) {
+        double url_fps = media_source_get_video_fps(probe_source);
+        log_info("Detected HTTP stream video FPS: %.1f", url_fps);
+        if (url_fps > 0.0) {
+          capture_config.target_fps = (uint32_t)(url_fps + 0.5);
+          log_info("Using target FPS: %u", capture_config.target_fps);
+        } else {
+          log_warn("FPS detection failed for HTTP stream, using default 60 FPS");
+          capture_config.target_fps = 60;
+        }
       } else {
-        log_warn("FPS detection failed for HTTP stream, using default 60 FPS");
+        log_warn("Failed to create probe source for HTTP stream, using default 60 FPS");
         capture_config.target_fps = 60;
       }
-    } else {
-      log_warn("Failed to create probe source for HTTP stream, using default 60 FPS");
-      capture_config.target_fps = 60;
     }
 
     capture_config.loop = false; // Network URLs cannot be looped
@@ -274,25 +283,33 @@ int mirror_main(void) {
       log_info("Using stdin for media streaming (webcam disabled)");
       capture_config.type = MEDIA_SOURCE_STDIN;
       capture_config.path = NULL;
+      capture_config.target_fps = fps_explicitly_set ? (uint32_t)user_fps : 60;
     } else {
       log_info("Using media file: %s (webcam disabled)", media_file);
       capture_config.type = MEDIA_SOURCE_FILE;
       capture_config.path = media_file;
 
-      // Create probe source once and reuse for FPS and audio detection
-      probe_source = media_source_create(MEDIA_SOURCE_FILE, media_file);
-      if (probe_source) {
-        double file_fps = media_source_get_video_fps(probe_source);
-        log_info("Detected file video FPS: %.1f", file_fps);
-        if (file_fps > 0.0) {
-          capture_config.target_fps = (uint32_t)(file_fps + 0.5);
-          log_info("Using target FPS: %u", capture_config.target_fps);
+      // If user explicitly set FPS, use that; otherwise auto-detect
+      if (fps_explicitly_set) {
+        capture_config.target_fps = (uint32_t)user_fps;
+        log_info("Using user-specified FPS: %u", capture_config.target_fps);
+      } else {
+        // Create probe source once and reuse for FPS and audio detection
+        probe_source = media_source_create(MEDIA_SOURCE_FILE, media_file);
+        if (probe_source) {
+          double file_fps = media_source_get_video_fps(probe_source);
+          log_info("Detected file video FPS: %.1f", file_fps);
+          if (file_fps > 0.0) {
+            capture_config.target_fps = (uint32_t)(file_fps + 0.5);
+            log_info("Using target FPS: %u", capture_config.target_fps);
+          } else {
+            log_warn("FPS detection failed, using default 60 FPS");
+            capture_config.target_fps = 60;
+          }
         } else {
-          log_warn("FPS detection failed, using default 60 FPS");
+          log_warn("Failed to create probe source for FPS detection");
           capture_config.target_fps = 60;
         }
-      } else {
-        log_warn("Failed to create probe source for FPS detection");
       }
     }
     capture_config.loop = GET_OPTION(media_loop);
@@ -301,12 +318,14 @@ int mirror_main(void) {
     log_info("Using test pattern");
     capture_config.type = MEDIA_SOURCE_TEST;
     capture_config.path = NULL;
+    capture_config.target_fps = fps_explicitly_set ? (uint32_t)user_fps : 60;
     capture_config.loop = false;
   } else {
     // Default to webcam (no --file, --url, or --test-pattern specified)
     log_info("Using local webcam");
     capture_config.type = MEDIA_SOURCE_WEBCAM;
     capture_config.path = NULL;
+    capture_config.target_fps = fps_explicitly_set ? (uint32_t)user_fps : 60;
     capture_config.loop = false;
   }
 
