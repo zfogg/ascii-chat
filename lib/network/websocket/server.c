@@ -63,10 +63,14 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
                                      size_t len) {
   websocket_connection_data_t *conn_data = (websocket_connection_data_t *)user;
 
+  // LOG EVERY SINGLE CALLBACK
+  log_info("🔴🔴🔴 CALLBACK FIRED: reason=%d, wsi=%p", reason, (void *)wsi);
+
   switch (reason) {
   case LWS_CALLBACK_ESTABLISHED: {
     // New WebSocket connection established
     uint64_t established_ns = time_get_ns();
+    log_info("🔴🔴🔴 LWS_CALLBACK_ESTABLISHED FIRED! wsi=%p", (void *)wsi);
     log_info("[LWS_CALLBACK_ESTABLISHED] WebSocket client connection established at timestamp=%llu",
              (unsigned long long)established_ns);
     log_info("WebSocket client connected");
@@ -158,9 +162,12 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     client_ctx->user_data = server->user_data;
 
     // Spawn handler thread - this calls websocket_client_handler which creates client_info_t
+    log_info("🔴 ABOUT TO SPAWN HANDLER THREAD: handler=%p, ctx=%p", (void *)server->handler, (void *)client_ctx);
     log_debug("[LWS_CALLBACK_ESTABLISHED] Spawning handler thread (handler=%p, ctx=%p)...", (void *)server->handler,
               (void *)client_ctx);
-    if (asciichat_thread_create(&conn_data->handler_thread, server->handler, client_ctx) != 0) {
+    int handler_create_result = asciichat_thread_create(&conn_data->handler_thread, server->handler, client_ctx);
+    log_info("🔴 asciichat_thread_create returned: %d", handler_create_result);
+    if (handler_create_result != 0) {
       log_error("[LWS_CALLBACK_ESTABLISHED] FAILED: asciichat_thread_create returned error");
       SAFE_FREE(client_ctx);
       acip_transport_destroy(conn_data->transport);
@@ -170,7 +177,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
     conn_data->handler_started = true;
     log_debug("[LWS_CALLBACK_ESTABLISHED] Handler thread spawned successfully");
-    log_info("★★★ ESTABLISHED CALLBACK SUCCESS - returning 0 from callback ★★★");
+    log_info("★★★ ESTABLISHED CALLBACK SUCCESS - handler thread spawned! ★★★");
     break;
   }
 
@@ -691,7 +698,16 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
  */
 static struct lws_protocols websocket_protocols[] = {
     {
-        "acip",                              // Protocol name
+        "http",                              // Default HTTP protocol (required for WebSocket upgrade)
+        websocket_server_callback,           // Use same callback for all protocols
+        sizeof(websocket_connection_data_t), // Per-session data size
+        524288,                              // RX buffer size (512KB for video frames)
+        0,                                   // ID (auto-assigned)
+        NULL,                                // User pointer (set to server instance)
+        524288                               // TX packet size (512KB for video frames)
+    },
+    {
+        "acip",                              // ACIP WebSocket subprotocol
         websocket_server_callback,           // Callback function
         sizeof(websocket_connection_data_t), // Per-session data size
         524288,                              // RX buffer size (512KB for video frames)
@@ -733,7 +749,9 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   atomic_store(&server->running, true);
 
   // Store server pointer in protocol user data so callbacks can access it
-  websocket_protocols[0].user = server;
+  // Both the HTTP and ACIP protocols need access to the server
+  websocket_protocols[0].user = server; // http protocol
+  websocket_protocols[1].user = server; // acip protocol
 
   // Enable libwebsockets debug logging
   lws_set_log_level(LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_INFO | LLL_DEBUG, NULL);
