@@ -55,6 +55,25 @@ static _Atomic uint64_t g_receive_callback_count = 0;
 static _Atomic uint64_t g_writeable_callback_count = 0;
 
 /**
+ * @brief Custom logging callback for libwebsockets
+ * This captures LWS internal logging so we can see what's happening
+ */
+static void websocket_lws_log_callback(int level, const char *line) {
+  // Convert LWS log level to our log level
+  if (level & LLL_ERR) {
+    log_error("[LWS] %s", line);
+  } else if (level & LLL_WARN) {
+    log_warn("[LWS] %s", line);
+  } else if (level & LLL_NOTICE) {
+    log_info("[LWS] %s", line);
+  } else if (level & LLL_INFO) {
+    log_info("[LWS] %s", line);
+  } else if (level & LLL_DEBUG) {
+    log_debug("[LWS] %s", line);
+  }
+}
+
+/**
  * @brief libwebsockets callback for ACIP protocol
  *
  * Handles connection lifecycle events for WebSocket clients.
@@ -462,6 +481,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
     // Snapshot the transport pointer to avoid race condition with cleanup thread
     acip_transport_t *transport_snapshot = conn_data->transport;
+    log_info("🔴 [WS_RECEIVE] conn_data=%p transport_snapshot=%p handler_started=%d", (void *)conn_data,
+             (void *)transport_snapshot, conn_data ? conn_data->handler_started : -1);
     if (!transport_snapshot) {
       log_error("LWS_CALLBACK_RECEIVE: transport is NULL! ESTABLISHED never called?");
       // Try to initialize the transport here as a fallback
@@ -684,6 +705,12 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     return 0; // Allow the connection
   }
 
+  case LWS_CALLBACK_PROTOCOL_INIT: {
+    // Protocol initialization
+    log_info("[PROTOCOL_INIT] Protocol initialized, proto=%s", proto_name);
+    break;
+  }
+
   case LWS_CALLBACK_EVENT_WAIT_CANCELLED: {
     // Fired on the service thread when lws_cancel_service() is called from another thread.
     // This is how we safely convert cross-thread send requests into writable callbacks.
@@ -766,8 +793,8 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   websocket_protocols[0].user = server; // http protocol
   websocket_protocols[1].user = server; // acip protocol
 
-  // Enable libwebsockets debug logging
-  lws_set_log_level(LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_INFO | LLL_DEBUG, NULL);
+  // Enable libwebsockets debug logging with custom callback
+  lws_set_log_level(LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_INFO | LLL_DEBUG, websocket_lws_log_callback);
 
   // Configure libwebsockets context
   struct lws_context_creation_info info = {0};
@@ -787,7 +814,7 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
     return SET_ERRNO(ERROR_NETWORK_BIND, "Failed to create libwebsockets context");
   }
 
-  log_info("WebSocket server initialized on port %d", config->port);
+  log_info("WebSocket server initialized on port %d with static file serving", config->port);
   return ASCIICHAT_OK;
 }
 
@@ -800,6 +827,7 @@ asciichat_error_t websocket_server_run(websocket_server_t *server) {
 
   // Run libwebsockets event loop
   uint64_t last_service_ns = 0;
+  int service_call_count = 0;
   while (atomic_load(&server->running)) {
     // Negative timeout means non-blocking: poll(timeout=0).
     // LWS quirk: passing 0 to lws_service() does NOT mean zero timeout.
@@ -814,6 +842,8 @@ asciichat_error_t websocket_server_run(websocket_server_t *server) {
       double gap_ms = (double)(service_start_ns - last_service_ns) / 1e6;
       log_info_every(1000, "[LWS_SERVICE_GAP] %.1fms gap between lws_service calls", gap_ms);
     }
+    service_call_count++;
+    log_debug_every(500000, "[LWS_SERVICE] Call #%d, context=%p", service_call_count, (void *)server->context);
     int result = lws_service(server->context, 50);
     if (result < 0) {
       log_error("libwebsockets service error: %d", result);
