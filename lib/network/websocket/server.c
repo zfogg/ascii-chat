@@ -84,9 +84,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
   const char *proto_name = lws_get_protocol(wsi) ? lws_get_protocol(wsi)->name : "NULL";
 
   // LOG EVERY SINGLE CALLBACK WITH PROTOCOL NAME
-  if (reason == 6 || reason == 8 || reason == 11) {
-    log_info("🔴 CALLBACK: reason=%d, proto=%s, wsi=%p, len=%zu", reason, proto_name, (void *)wsi, len);
-  }
+  log_dev("🔴 CALLBACK: reason=%d, proto=%s, wsi=%p, len=%zu", reason, proto_name, (void *)wsi, len);
 
   switch (reason) {
   case LWS_CALLBACK_ESTABLISHED: {
