@@ -59,9 +59,9 @@ typedef struct {
 
 static const ignore_entry_t g_ignore_list[] = {
     {"lib/util/pcre2.c", 53, 50},          // PCRE2 singleton allocations (16+ total, cleaned after report)
-    {"lib/options/colorscheme.c", 578, 8}, // 8 16-color ANSI strings (cleaned after report)
-    {"lib/options/colorscheme.c", 595, 8}, // 8 256-color ANSI strings (cleaned after report)
-    {"lib/options/colorscheme.c", 612, 8}, // 8 truecolor ANSI strings (cleaned after report)
+    {"lib/options/colorscheme.c", 579, 8}, // 8 16-color ANSI strings (cleaned after report)
+    {"lib/options/colorscheme.c", 596, 8}, // 8 256-color ANSI strings (cleaned after report)
+    {"lib/options/colorscheme.c", 613, 8}, // 8 truecolor ANSI strings (cleaned after report)
     {"lib/session/display.c", 131, 1},     // Session display context (cleaned after report)
     {"lib/platform/posix/util.c", 35, 15}, // Symbol cache strings (backtrace during memory report)
     {"lib/platform/symbols.c", 1074, 2},   // Symbol array allocations (backtrace during memory report)

@@ -224,7 +224,10 @@ void asciichat_shared_destroy(void) {
   // 11. Error context cleanup
   asciichat_errno_destroy();
 
-  // 12. Memory stats (debug builds only) - runs with colors still available
+  // 12. Logging cleanup - free log format buffers before memory report
+  log_destroy();
+
+  // 13. Memory stats (debug builds only) - runs with colors still available
   //     Note: PCRE2 singletons are ignored in the report (expected system allocations)
 #if defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
   print_mimalloc_stats();
