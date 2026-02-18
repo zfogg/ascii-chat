@@ -1389,7 +1389,7 @@ int remove_client(server_context_t *server_ctx, uint32_t client_id) {
 
   // Wait for threads to observe the client_id reset
   // Use sufficient delay for memory visibility across all CPU cores
-  platform_sleep_us(5000); // 5ms delay for memory barrier propagation
+  platform_sleep_us(5 * US_PER_MS_INT); // 5ms delay for memory barrier propagation
 
   // Destroy mutexes
   // IMPORTANT: Always destroy these even if threads didn't join properly
@@ -1932,7 +1932,7 @@ void *client_send_thread_func(void *arg) {
     } else {
       // No audio packets - brief sleep to avoid busy-looping, then check for other tasks
       log_info_every(5000 * US_PER_MS_INT, "[SEND_LOOP_%d] NO_AUDIO: sleeping 1ms", loop_iteration_count);
-      platform_sleep_us(1000); // 1ms - enough for audio render thread to queue more packets
+      platform_sleep_us(1 * US_PER_MS_INT); // 1ms - enough for audio render thread to queue more packets
 
       // Check if session rekeying should be triggered
       mutex_lock(&client->client_state_mutex);
@@ -2053,7 +2053,7 @@ void *client_send_thread_func(void *arg) {
       if (frame->data && frame->size == 0) {
         log_info_every(5000 * US_PER_MS_INT, "✗ SKIP_ZERO_SIZE: client_id=%u size=%zu", atomic_load(&client->client_id),
                        frame->size);
-        platform_sleep_us(1000); // 1ms sleep
+        platform_sleep_us(1 * US_PER_MS_INT); // 1ms sleep
         continue;
       }
       log_info_every(5000 * US_PER_MS_INT, "✓ FRAME_SIZE_OK: client_id=%u size=%zu", atomic_load(&client->client_id),
@@ -2155,7 +2155,7 @@ void *client_send_thread_func(void *arg) {
     // If we didn't send anything, sleep briefly to prevent busy waiting
     if (!sent_something) {
       log_info("[SEND_LOOP_%d] IDLE_SLEEP: nothing sent", loop_iteration_count);
-      platform_sleep_us(1000); // 1ms sleep
+      platform_sleep_us(1 * US_PER_MS_INT); // 1ms sleep
     }
     uint64_t loop_end_ns = time_get_ns();
     uint64_t loop_ms = (loop_end_ns - loop_start_ns) / 1e6;
