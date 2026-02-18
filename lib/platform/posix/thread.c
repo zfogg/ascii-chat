@@ -16,6 +16,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <sched.h>
+#include <unistd.h>
 
 #ifdef __APPLE__
 #include <mach/mach.h>
@@ -77,7 +78,34 @@ int asciichat_thread_join_timeout(asciichat_thread_t *thread, void **retval, uin
   // Convert nanoseconds to timespec for pthread_timedjoin_np
   time_ns_to_timespec(deadline_ns, &timeout);
 
-  int result = pthread_timedjoin_np(*thread, retval, &timeout);
+  // pthread_timedjoin_np hangs indefinitely on some systems, so use pthread_tryjoin_np
+  // with polling to ensure the timeout is respected during shutdown
+  int result;
+  const uint64_t sleep_duration_ns = 10000000ULL; // 10ms sleep per iteration
+
+  while (true) {
+    result = pthread_tryjoin_np(*thread, retval);
+
+    if (result == 0) {
+      // Thread successfully joined
+      break;
+    }
+    if (result != EBUSY) {
+      // Some other error
+      break;
+    }
+
+    // Check if timeout expired
+    uint64_t current_ns = time_get_realtime_ns();
+    if (current_ns >= deadline_ns) {
+      // Timeout reached
+      result = ETIMEDOUT;
+      break;
+    }
+
+    // Sleep a bit before retrying
+    usleep((unsigned int)(sleep_duration_ns / 1000));
+  }
   if (result == ETIMEDOUT) {
     return -2;
   }

@@ -229,10 +229,14 @@ void asciichat_shared_destroy(void) {
 
   // 13. Memory stats (debug builds only) - runs with colors still available
   //     Note: PCRE2 singletons are ignored in the report (expected system allocations)
-  //     Note: debug_memory_report() is called manually during shutdown, so skip it here
-  //     to avoid calling it twice and potentially deadlocking
+  //     Note: debug_memory_report() is also called manually during shutdown in server_main()
+  //     The function is safe to call multiple times with polling-based locking
 #if defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
   print_mimalloc_stats();
+#endif
+
+#if defined(DEBUG_MEMORY) && !defined(NDEBUG)
+  debug_memory_report();
 #endif
 
   // 14. Color cleanup - free compiled ANSI strings (AFTER memory report)
