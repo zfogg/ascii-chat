@@ -56,14 +56,3 @@ void log_json_write(int fd, log_level_t level, uint64_t time_nanoseconds, const 
  * @note This function is thread-safe (uses atomic operations)
  */
 void log_set_json_output(int fd);
-
-/**
- * @brief Set the log format output type (text vs JSON).
- *
- * Enables or disables JSON output mode for the logging system.
- *
- * @param type Format output type (LOG_OUTPUT_TEXT or LOG_OUTPUT_JSON)
- *
- * @note This function is thread-safe
- */
-void log_set_format_output(int type);

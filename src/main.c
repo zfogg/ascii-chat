@@ -351,8 +351,7 @@ int main(int argc, char *argv[]) {
 
   // Determine final log file path (use mode-specific default from options if available)
   // Determine output format early to decide on filename and logging strategy
-  log_format_output_t log_format = GET_OPTION(log_format_output);
-  bool use_json_logging = (log_format == LOG_OUTPUT_JSON);
+  bool use_json_logging = GET_OPTION(json);
 
   // Determine the log filename
   // Check if user explicitly passed --log-file (not just the mode-specific default from options_init)
@@ -413,7 +412,6 @@ int main(int argc, char *argv[]) {
     int json_fd = platform_open(final_log_file, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
     if (json_fd >= 0) {
       log_set_json_output(json_fd);
-      log_set_format_output(LOG_OUTPUT_JSON);
     } else {
       // Failed to open JSON file - report error and exit
       SET_ERRNO(ERROR_CONFIG, "Failed to open JSON output file: %s", final_log_file);

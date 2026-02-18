@@ -15,8 +15,8 @@
 #include <time.h>
 
 /* ============================================================================
- * Note: log_set_json_output() and log_set_format_output() are implemented
- * in logging.c where the g_log struct is defined.
+ * Note: log_set_json_output() is implemented in logging.c where the g_log
+ * struct is defined.
  * ============================================================================ */
 
 /**

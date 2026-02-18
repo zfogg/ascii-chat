@@ -131,11 +131,6 @@ const char *g_audio_source_descs[] = {"Smart selection (media-only when playing 
 // Log Format Output Type Metadata (--log-format flag values)
 // ============================================================================
 
-const char *g_log_format_output_values[] = {"text", "json", NULL};
-const int g_log_format_output_integers[] = {LOG_OUTPUT_TEXT, LOG_OUTPUT_JSON};
-const char *g_log_format_output_descs[] = {"Human-readable text format (default)",
-                                           "Machine-readable JSON (NDJSON) format", NULL};
-
 // ============================================================================
 // Example Arrays (null-terminated)
 // ============================================================================

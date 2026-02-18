@@ -280,22 +280,6 @@ typedef enum {
 } audio_source_t;
 
 /**
- * @brief Log format output type (--log-format flag values)
- *
- * Enumeration for the --log-format option which controls structured logging output:
- * - LOG_OUTPUT_TEXT: Human-readable text format (default)
- * - LOG_OUTPUT_JSON: Machine-readable JSON (NDJSON) format
- *
- * @ingroup options
- */
-typedef enum {
-  /** @brief Human-readable text format (default) */
-  LOG_OUTPUT_TEXT = 0,
-  /** @brief Machine-readable JSON (NDJSON) format */
-  LOG_OUTPUT_JSON = 1
-} log_format_output_t;
-
-/**
  * @name Configuration Constants
  * @{
  */
@@ -697,6 +681,7 @@ typedef enum {
 
 static const int default_log_level_value = DEFAULT_LOG_LEVEL;
 static const bool default_quiet_value = false;
+static const bool default_json_value = false;
 static const bool default_enable_keepawake_value = false;
 static const bool default_disable_keepawake_value = false;
 static const int default_width_value = OPT_WIDTH_DEFAULT;
@@ -970,20 +955,20 @@ typedef struct options_state {
   // ============================================================================
   // Output Options
   // ============================================================================
-  unsigned short int quiet;              ///< Quiet mode (suppress logs)
-  unsigned short int verbose_level;      ///< Verbosity level (stackable -V)
-  unsigned short int snapshot_mode;      ///< Snapshot mode (one frame and exit)
-  double snapshot_delay;                 ///< Snapshot delay in seconds
-  unsigned short int matrix_rain;        ///< Matrix digital rain effect (false = disabled)
-  unsigned short int strip_ansi;         ///< Strip ANSI escape sequences
-  char log_file[OPTIONS_BUFF_SIZE];      ///< Log file path
-  log_level_t log_level;                 ///< Log level threshold
-  char grep_pattern[OPTIONS_BUFF_SIZE];  ///< PCRE2 regex for log filtering
-  log_format_output_t log_format_output; ///< Log output format (text or JSON)
-  char log_template[OPTIONS_BUFF_SIZE];  ///< Custom log format string (formerly --log-format)
-  bool log_format_console_only;          ///< Apply log format only to console output
-  unsigned short int enable_keepawake;   ///< Explicitly enable system sleep prevention
-  unsigned short int disable_keepawake;  ///< Explicitly disable system sleep prevention (allow OS to sleep)
+  unsigned short int quiet;             ///< Quiet mode (suppress logs)
+  unsigned short int verbose_level;     ///< Verbosity level (stackable -V)
+  unsigned short int snapshot_mode;     ///< Snapshot mode (one frame and exit)
+  double snapshot_delay;                ///< Snapshot delay in seconds
+  unsigned short int matrix_rain;       ///< Matrix digital rain effect (false = disabled)
+  unsigned short int strip_ansi;        ///< Strip ANSI escape sequences
+  char log_file[OPTIONS_BUFF_SIZE];     ///< Log file path
+  log_level_t log_level;                ///< Log level threshold
+  char grep_pattern[OPTIONS_BUFF_SIZE]; ///< PCRE2 regex for log filtering
+  bool json;                            ///< Enable JSON logging (--json flag)
+  char log_template[OPTIONS_BUFF_SIZE]; ///< Custom log format string (formerly --log-format)
+  bool log_format_console_only;         ///< Apply log format only to console output
+  unsigned short int enable_keepawake;  ///< Explicitly enable system sleep prevention
+  unsigned short int disable_keepawake; ///< Explicitly disable system sleep prevention (allow OS to sleep)
 
   // ============================================================================
   // Encryption Options

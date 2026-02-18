@@ -655,11 +655,6 @@ void log_set_json_output(int fd) {
   atomic_store(&g_log.json_file, fd);
 }
 
-void log_set_format_output(int type) {
-  /* Currently just stores the type for reference - actual logic is in log_msg() */
-  (void)type; /* Unused parameter */
-}
-
 void log_disable_file_output(void) {
   /* Close the current file if it's not stderr */
   int old_file = atomic_load(&g_log.file);

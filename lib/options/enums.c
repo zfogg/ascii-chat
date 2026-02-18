@@ -23,16 +23,11 @@ static const char *render_mode_values[] = {"foreground", "fg", "background", "bg
 
 static const char *reconnect_values[] = {"off", "auto"};
 
-static const char *log_format_output_values[] = {"text", "json"};
-
 /* Enum registry - maps option names to their values */
 static const enum_descriptor_t enum_registry[] = {
     {.option_name = "log-level",
      .values = log_level_values,
      .value_count = sizeof(log_level_values) / sizeof(log_level_values[0])},
-    {.option_name = "log-format",
-     .values = log_format_output_values,
-     .value_count = sizeof(log_format_output_values) / sizeof(log_format_output_values[0])},
     {.option_name = "color-mode",
      .values = color_mode_values,
      .value_count = sizeof(color_mode_values) / sizeof(color_mode_values[0])},
