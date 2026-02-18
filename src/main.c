@@ -258,46 +258,92 @@ int main(int argc, char *argv[]) {
   // Initialize logging colors so they're ready for help output
   log_init_colors();
 
+  // EARLY PARSE: Find the mode position (first positional argument)
+  // Binary-level options must appear BEFORE the mode
+  int mode_position = -1;
+  for (int i = 1; i < argc; i++) {
+    if (argv[i][0] != '-') {
+      // Found a positional argument - this is the mode or session string
+      mode_position = i;
+      break;
+    }
+
+    // Skip option and its argument if needed
+    // Check if this is an option that takes a required argument
+    const char *arg = argv[i];
+    const char *opt_name = arg;
+    if (arg[0] == '-') {
+      opt_name = arg + (arg[1] == '-' ? 2 : 1);
+    }
+
+    // Handle --option=value format
+    if (strchr(opt_name, '=')) {
+      continue; // Value is part of this arg, no need to skip next
+    }
+
+    // Options that take required arguments
+    if (strcmp(arg, "--log-file") == 0 || strcmp(arg, "-L") == 0 || strcmp(arg, "--log-level") == 0 ||
+        strcmp(arg, "--config") == 0 || strcmp(arg, "--color-scheme") == 0 || strcmp(arg, "--log-template") == 0) {
+      if (i + 1 < argc) {
+        i++; // Skip the argument value
+      }
+    }
+  }
+
   // EARLY PARSE: Determine mode from argv to know if this is client-like mode
   // The first positional argument (after options) is the mode: client, server, mirror, discovery, acds
   bool is_client_like_mode = false;
-  if (argc > 1) {
-    const char *first_arg = argv[1];
+  if (mode_position > 0) {
+    const char *first_arg = argv[mode_position];
     if (strcmp(first_arg, "client") == 0 || strcmp(first_arg, "mirror") == 0 || strcmp(first_arg, "discovery") == 0) {
       is_client_like_mode = true;
     }
   }
 
   // EARLY PARSE: Extract log file from argv (--log-file or -L)
+  // Must appear BEFORE the mode
   const char *log_file = "ascii-chat.log"; // default
-  for (int i = 1; i < argc - 1; i++) {
+  int max_search = (mode_position > 0) ? mode_position : argc;
+  for (int i = 1; i < max_search - 1; i++) {
     if ((strcmp(argv[i], "--log-file") == 0 || strcmp(argv[i], "-L") == 0)) {
       log_file = argv[i + 1];
       break;
     }
   }
 
-  // EARLY PARSE: Check for --log-format json (output format, not template)
+  // EARLY PARSE: Check for --json (JSON logging format)
   // If JSON format is enabled, we'll use the JSON filename during early init
+  // --json MUST appear BEFORE the mode
   bool early_json_format = false;
-  for (int i = 1; i < argc - 1; i++) {
-    if (strcmp(argv[i], "--log-format") == 0 && i + 1 < argc && strcmp(argv[i + 1], "json") == 0) {
-      early_json_format = true;
-      break;
+  if (mode_position > 0) {
+    for (int i = 1; i < mode_position; i++) {
+      if (strcmp(argv[i], "--json") == 0) {
+        early_json_format = true;
+        break;
+      }
+    }
+  } else {
+    // If no mode found, search entire argv
+    for (int i = 1; i < argc; i++) {
+      if (strcmp(argv[i], "--json") == 0) {
+        early_json_format = true;
+        break;
+      }
     }
   }
 
   // EARLY PARSE: Extract log template from argv (--log-template)
   // Note: This is for format templates, different from --log-format which is the output format
+  // Binary-level options must appear BEFORE the mode
   const char *early_log_template = NULL;
   bool early_log_template_console_only = false;
-  for (int i = 1; i < argc - 1; i++) {
+  for (int i = 1; i < max_search - 1; i++) {
     if (strcmp(argv[i], "--log-template") == 0) {
       early_log_template = argv[i + 1];
       break;
     }
   }
-  for (int i = 1; i < argc; i++) {
+  for (int i = 1; i < max_search; i++) {
     if (strcmp(argv[i], "--log-format-console-only") == 0) {
       early_log_template_console_only = true;
       break;
