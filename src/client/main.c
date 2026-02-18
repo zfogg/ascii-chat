@@ -92,6 +92,7 @@
 #include <ascii-chat/video/palette.h>
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/network/tcp/client.h>
+#include <ascii-chat/network/client.h>
 #include <ascii-chat/network/acip/acds_client.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/network/acip/acds.h>
@@ -135,16 +136,16 @@ atomic_bool g_should_exit = false;
 thread_pool_t *g_client_worker_pool = NULL;
 
 /**
- * Global TCP client instance
+ * Global application client context
  *
- * Central connection and state management structure for the client.
- * Replaces scattered global variables from server.c, protocol.c, audio.c, etc.
- * Follows the same pattern as tcp_server_t used by the server.
+ * Central connection and application state for the client.
+ * Contains transport-agnostic state: audio, threads, display, crypto.
+ * Network-specific state (socket, connection flags) is in the active transport client.
  *
- * Initialized by tcp_client_create() in client_main().
- * Destroyed by tcp_client_destroy() at cleanup.
+ * Initialized by app_client_create() in client_main().
+ * Destroyed by app_client_destroy() at cleanup.
  */
-tcp_client_t *g_client = NULL;
+app_client_t *g_client = NULL;
 
 /**
  * @brief Global WebRTC peer manager (legacy compatibility)
@@ -303,10 +304,10 @@ static void shutdown_client() {
     g_client_worker_pool = NULL;
   }
 
-  // Destroy TCP client instance (replaces scattered server.c cleanup)
+  // Destroy application client context
   if (g_client) {
-    tcp_client_destroy(&g_client);
-    log_debug("TCP client instance destroyed successfully");
+    app_client_destroy(&g_client);
+    log_debug("Application client context destroyed successfully");
   }
 
   // Now safe to cleanup server connection (socket already closed by protocol_stop_connection)
@@ -402,14 +403,14 @@ static int initialize_client_systems(void) {
     return ERROR_DISPLAY;
   }
 
-  // Initialize TCP client instance (replaces scattered server.c globals)
+  // Initialize application client context
   if (!g_client) {
-    g_client = tcp_client_create();
+    g_client = app_client_create();
     if (!g_client) {
-      log_fatal("Failed to create TCP client instance");
+      log_fatal("Failed to create application client context");
       return ERROR_NETWORK;
     }
-    log_debug("TCP client instance created successfully");
+    log_debug("Application client context created successfully");
   }
 
   // Initialize server connection management (legacy - will be migrated to tcp_client)
