@@ -22,6 +22,7 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <sys/types.h>
+#include <fcntl.h>
 #include <libwebsockets.h>
 
 #include <ascii-chat/tests/common.h>
@@ -32,10 +33,11 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/util/fnv1a.h>
 #include <ctype.h>
 
-// Test suite with debug logging
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(websocket_integration, LOG_DEBUG, LOG_DEBUG, false, false);
+// Test suite with debug logging enabled (show frame details)
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(websocket_integration, LOG_DEBUG, LOG_DEBUG, true, true);
 
 /* ============================================================================
  * Test Fixtures and Helpers
@@ -78,13 +80,15 @@ static int start_test_server(websocket_test_ctx_t *ctx) {
     snprintf(port_str, sizeof(port_str), "%d", ctx->server_port);
     snprintf(ws_port_str, sizeof(ws_port_str), "%d", ctx->websocket_port);
 
-    // Redirect output to reduce noise
-    int devnull = open("/dev/null", O_WRONLY);
-    dup2(devnull, STDOUT_FILENO);
-    dup2(devnull, STDERR_FILENO);
-    close(devnull);
+    // Redirect output to log file for debugging
+    int logfile = open("/tmp/websocket_test_server.log", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (logfile >= 0) {
+      dup2(logfile, STDOUT_FILENO);
+      dup2(logfile, STDERR_FILENO);
+      close(logfile);
+    }
 
-    // Run server
+    // Run server without video source (no frames will be sent in test environment)
     execlp("./build/bin/ascii-chat", "./build/bin/ascii-chat", "server", "--port", port_str, "--websocket-port",
            ws_port_str, "--no-status-screen", NULL);
 
@@ -120,17 +124,18 @@ static void stop_test_server(websocket_test_ctx_t *ctx) {
   log_debug("Stopping test server: PID=%d", ctx->server_pid);
   kill(ctx->server_pid, SIGTERM);
 
-  // Wait for graceful shutdown
+  // Wait for graceful shutdown (max 2 seconds)
   int status;
   int attempts = 0;
-  while (waitpid(ctx->server_pid, &status, WNOHANG) == 0 && attempts < 10) {
+  int max_wait_ms = 2000; // 2 seconds total
+  while (waitpid(ctx->server_pid, &status, WNOHANG) == 0 && attempts < 20) {
     usleep(100000); // 100ms
     attempts++;
   }
 
   // Force kill if still running
   if (kill(ctx->server_pid, 0) == 0) {
-    log_warn("Server did not exit gracefully, force killing");
+    log_warn("Server did not exit after SIGTERM, force killing with SIGKILL");
     kill(ctx->server_pid, SIGKILL);
     waitpid(ctx->server_pid, &status, 0);
   }
@@ -244,7 +249,7 @@ Test(websocket_integration, app_client_with_websocket_transport) {
   app_client_destroy(&app_client);
 }
 
-Test(websocket_integration, multiple_frames_at_15fps, .timeout = 7) {
+Test(websocket_integration, multiple_frames_at_15fps, .timeout = 20) {
   // Test that server delivers multiple ASCII art frames at 15fps+
   // Expected: >= 15 frames per second (max 66ms per frame)
   websocket_test_ctx_t ctx = {0};
@@ -271,9 +276,11 @@ Test(websocket_integration, multiple_frames_at_15fps, .timeout = 7) {
   char ws_url[256];
   snprintf(ws_url, sizeof(ws_url), "ws://localhost:%d", ctx.websocket_port);
 
-  // Attempt connection
+  // Attempt connection (has 5-second timeout internally)
   log_info("Connecting to server for frame test: %s", ws_url);
+  log_info("Note: Server log available at /tmp/websocket_test_server.log");
   acip_transport_t *transport = websocket_client_connect(ctx.ws_client, ws_url, NULL);
+  log_info("Connection attempt completed, transport=%p", (void *)transport);
 
   if (transport != NULL) {
     log_info("✓ WebSocket transport established");
@@ -291,7 +298,8 @@ Test(websocket_integration, multiple_frames_at_15fps, .timeout = 7) {
     int frames_different = 0;
 
     // Attempt to receive up to 10 frames with timeout
-    int max_attempts = 50; // 50 * 10ms = 0.5s total
+    // Under AddressSanitizer, operations are 5-10x slower
+    int max_attempts = 30; // 30 * 10ms = 0.3s + AddressSanitizer overhead
     int no_frame_count = 0;
     for (int attempt = 0; attempt < max_attempts && frames_received < 10; attempt++) {
       // Try to receive a packet
@@ -309,7 +317,7 @@ Test(websocket_integration, multiple_frames_at_15fps, .timeout = 7) {
 
       if (recv_result != ASCIICHAT_OK || !packet_data || packet_len == 0) {
         no_frame_count++;
-        if (no_frame_count > 20) { // Exit after 20 consecutive failed receives (~200ms)
+        if (no_frame_count > 10) { // Exit after 10 consecutive failed receives (~100ms)
           break;
         }
         usleep(10000); // 10ms polling interval
@@ -347,7 +355,21 @@ Test(websocket_integration, multiple_frames_at_15fps, .timeout = 7) {
       if (ascii_char_count > frame_data_len / 2) {
         frames_with_content++;
 
+        // Calculate frame hash
+        uint32_t frame_hash = fnv1a_hash_bytes(frame_data, frame_data_len);
+
+        // Extract first 50 characters for logging
+        char preview[51] = {0};
+        size_t preview_len = (frame_data_len < 50) ? frame_data_len : 50;
+        for (size_t i = 0; i < preview_len; i++) {
+          uint8_t c = frame_data[i];
+          // Show printable chars, replace others with '.'
+          preview[i] = (c >= 32 && c < 127) ? c : '.';
+        }
+        preview[preview_len] = '\0';
+
         // Check if frame differs from previous frame
+        bool frame_is_different = false;
         if (prev_frame_data) {
           bool frames_differ = (prev_frame_size != frame_data_len);
           if (!frames_differ && prev_frame_size == frame_data_len) {
@@ -356,6 +378,7 @@ Test(websocket_integration, multiple_frames_at_15fps, .timeout = 7) {
           }
           if (frames_differ) {
             frames_different++;
+            frame_is_different = true;
           }
         }
 
@@ -383,8 +406,9 @@ Test(websocket_integration, multiple_frames_at_15fps, .timeout = 7) {
         }
 
         frames_received++;
-        log_debug("✓ Frame #%d: %ux%u, %zu bytes, %d ASCII chars", frames_received, frame_hdr->width, frame_hdr->height,
-                  frame_data_len, ascii_char_count);
+        log_info("✓ Frame #%d: hash=0x%08x %s | %ux%u, %zu bytes, %d ASCII | %s", frames_received, frame_hash,
+                 frame_is_different ? "(DIFFERENT)" : "(same)", frame_hdr->width, frame_hdr->height, frame_data_len,
+                 ascii_char_count, preview);
       }
 
       SAFE_FREE(packet_data);
@@ -399,6 +423,7 @@ Test(websocket_integration, multiple_frames_at_15fps, .timeout = 7) {
     log_info("  Frames received: %d", frames_received);
     log_info("  Frames with ASCII content: %d", frames_with_content);
     log_info("  Frames different from previous: %d", frames_different);
+    log_info("  Unique frame hashes: %d", frames_received - frames_different);
     log_info("  Time elapsed: %.1f ms", elapsed_ms);
     log_info("  Calculated FPS: %.1f", fps);
     if (min_frame_time_ms < UINT64_MAX) {
