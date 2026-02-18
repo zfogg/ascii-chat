@@ -106,11 +106,11 @@ static bool acquire_mutex_with_polling(mutex_t *mutex, int timeout_ms) {
 }
 
 static bool should_ignore_allocation(const char *file, int line) {
-  // file is already the normalized relative path (e.g., "lib/options/colorscheme.c")
-  // from when it was stored in debug_malloc/debug_calloc/etc.
+  // Normalize the file path to match ignore list entries
+  const char *normalized_file = extract_project_relative_path(file);
 
   for (size_t i = 0; g_ignore_list[i].file != NULL; i++) {
-    if (line == g_ignore_list[i].line && strcmp(file, g_ignore_list[i].file) == 0) {
+    if (line == g_ignore_list[i].line && strcmp(normalized_file, g_ignore_list[i].file) == 0) {
       // Found matching ignore entry - check if we've exceeded expected count
       if (g_ignore_counts[i] < g_ignore_list[i].expected_count) {
         g_ignore_counts[i]++;
