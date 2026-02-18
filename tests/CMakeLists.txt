@@ -310,8 +310,12 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         # Disable precompiled headers for test targets to avoid conflicts with Criterion macros
         set_target_properties(${test_exe_name} PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
 
-        # Add Criterion include directories
-        target_include_directories(${test_exe_name} PRIVATE ${CRITERION_INCLUDE_DIRS} ${_ascii_tests_mimalloc_include})
+        # Add Criterion and project include directories
+        target_include_directories(${test_exe_name} PRIVATE
+            ${CRITERION_INCLUDE_DIRS}
+            ${_ascii_tests_mimalloc_include}
+            ${LIBWEBSOCKETS_INCLUDE_DIRS}
+        )
 
         # Define CRITERION_TEST for test environment detection
         target_compile_definitions(${test_exe_name} PRIVATE CRITERION_TEST=1)
@@ -338,6 +342,8 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             ${ZSTD_LIBRARIES}
             ${OPUS_LIBRARIES}
             ${SQLITE3_LIBRARIES}
+            ${LIBWEBSOCKETS_LIBRARIES}
+            z  # zlib needed for libwebsockets compression support
             libdatachannel
             OpenSSL::Crypto
             -lc++  # C++ stdlib needed for libdatachannel
