@@ -2460,18 +2460,16 @@ skip_acds_session:
   // wiping it away
   // ====================================================================
   if (session_string[0] != '\0') {
-    log_plain("");
-    log_plain("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     if (session_is_mdns_only) {
-      log_plain("📋 Session String: %s (LAN only via mDNS)", session_string);
-      log_plain("🔗 Share with others on your LAN to join:");
+      log_plain("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📋 Session String: %s (LAN only via "
+                "mDNS)\n🔗 Share with others on your LAN to join:\n   ascii-chat "
+                "%s\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+                session_string, session_string);
     } else {
-      log_plain("📋 Session String: %s", session_string);
-      log_plain("🔗 Share this globally to join:");
+      log_plain("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📋 Session String: %s\n🔗 Share this "
+                "globally to join:\n   ascii-chat %s\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+                session_string, session_string);
     }
-    log_plain("   ascii-chat %s", session_string);
-    log_plain("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    log_plain("");
   }
 
   // Copy session info to globals for status screen display
