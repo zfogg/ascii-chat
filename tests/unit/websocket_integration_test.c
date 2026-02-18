@@ -91,8 +91,8 @@ static int start_test_server(websocket_test_ctx_t *ctx) {
   }
 
   // Parent process - wait for server to fully initialize
-  // WebSocket server needs extra time to start event loop and bind port
-  sleep(5);
+  // WebSocket server needs time to start event loop and bind port
+  usleep(500000); // 500ms
 
   // Verify server is still running
   if (kill(ctx->server_pid, 0) != 0) {
@@ -242,7 +242,7 @@ Test(websocket_integration, app_client_with_websocket_transport) {
   app_client_destroy(&app_client);
 }
 
-Test(websocket_integration, multiple_frames_at_15fps, .timeout = 15) {
+Test(websocket_integration, multiple_frames_at_15fps, .timeout = 8) {
   // Test that server delivers multiple ASCII art frames at 15fps+
   // Expected: >= 15 frames per second (max 66ms per frame)
   websocket_test_ctx_t ctx = {0};
@@ -319,7 +319,7 @@ Test(websocket_integration, multiple_frames_at_15fps, .timeout = 15) {
   stop_test_server(&ctx);
 }
 
-Test(websocket_integration, ascii_art_frame_rendering, .timeout = 10) {
+Test(websocket_integration, ascii_art_frame_rendering, .timeout = 7) {
   // Test that received frames are properly rendered to ASCII art
   // Validates the rendering pipeline for WebSocket-received frames
 
