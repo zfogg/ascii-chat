@@ -230,17 +230,54 @@ static void apply_env_action(void *field, const char *env_value, const option_de
 }
 
 // --- apply_cli handlers ---
-static asciichat_error_t apply_cli_bool(void *field, const char *opt_value, const option_descriptor_t *desc) {
-  (void)opt_value;
-  (void)desc;
-  // For boolean flags, toggle the current value
-  // If default is true, flag toggles to false. If default is false, flag toggles to true.
-  unsigned char current_byte = 0;
-  memcpy(&current_byte, field, 1);
-  bool current_value = (current_byte != 0);
+// Helper function to parse boolean value from string
+// Accepts: "true", "1", "yes", "on" → true
+//          "false", "0", "no", "off" → false
+// Returns ERROR_USAGE if value is invalid
+static asciichat_error_t parse_bool_value(const char *value_str, bool *out_value, const option_descriptor_t *desc) {
+  if (!value_str || value_str[0] == '\0') {
+    return SET_ERRNO(ERROR_USAGE, "Option --%s requires a value (true/false, yes/no, 1/0, on/off)",
+                     desc ? desc->long_name : "unknown");
+  }
 
-  // Toggle the value
-  unsigned char new_value_byte = current_value ? 0 : 1;
+  // Check for true values
+  if (strcasecmp(value_str, "true") == 0 || strcasecmp(value_str, "yes") == 0 || strcasecmp(value_str, "1") == 0 ||
+      strcasecmp(value_str, "on") == 0) {
+    *out_value = true;
+    return ASCIICHAT_OK;
+  }
+
+  // Check for false values
+  if (strcasecmp(value_str, "false") == 0 || strcasecmp(value_str, "no") == 0 || strcasecmp(value_str, "0") == 0 ||
+      strcasecmp(value_str, "off") == 0) {
+    *out_value = false;
+    return ASCIICHAT_OK;
+  }
+
+  // Invalid value
+  return SET_ERRNO(ERROR_USAGE, "Invalid boolean value for --%s: '%s' (use: true/false, yes/no, 1/0, on/off)",
+                   desc ? desc->long_name : "unknown", value_str);
+}
+
+static asciichat_error_t apply_cli_bool(void *field, const char *opt_value, const option_descriptor_t *desc) {
+  bool new_value;
+
+  if (opt_value == NULL) {
+    // No value provided (flag without =value), toggle the current value
+    unsigned char current_byte = 0;
+    memcpy(&current_byte, field, 1);
+    bool current_value = (current_byte != 0);
+    new_value = !current_value;
+  } else {
+    // Value provided (--option=value), parse it
+    asciichat_error_t parse_result = parse_bool_value(opt_value, &new_value, desc);
+    if (parse_result != ASCIICHAT_OK) {
+      return parse_result;
+    }
+  }
+
+  // Set the new value
+  unsigned char new_value_byte = new_value ? 1 : 0;
   memcpy(field, &new_value_byte, 1);
   return ASCIICHAT_OK;
 }

@@ -239,6 +239,9 @@ static bool is_binary_level_option_with_args(const char *arg, bool *out_takes_ar
   if (strcmp(opt_name, "json") == 0) {
     return true;
   }
+  if (strcmp(opt_name, "log-format-console") == 0) {
+    return true;
+  }
 
   return false;
 }
@@ -476,8 +479,9 @@ typedef struct {
   bool version;
   char config_file[OPTIONS_BUFF_SIZE];
   asciichat_mode_t detected_mode;
-  int color; // Color setting (COLOR_SETTING_AUTO/TRUE/FALSE) - binary-level option parsed early
-  bool json; // JSON logging format - binary-level option
+  int color;                    // Color setting (COLOR_SETTING_AUTO/TRUE/FALSE) - binary-level option parsed early
+  bool json;                    // JSON logging format - binary-level option
+  bool log_format_console_only; // Apply log template only to console - binary-level option
 } binary_level_opts_t;
 
 static inline binary_level_opts_t extract_binary_level(const options_t *opts) {
@@ -492,8 +496,9 @@ static inline binary_level_opts_t extract_binary_level(const options_t *opts) {
   binary.version = opts->version;
   SAFE_STRNCPY(binary.config_file, opts->config_file, sizeof(binary.config_file));
   binary.detected_mode = opts->detected_mode;
-  binary.color = opts->color; // Save color setting (parsed in STAGE 1A)
-  binary.json = opts->json;   // Save JSON logging flag (binary-level option)
+  binary.color = opts->color;                                     // Save color setting (parsed in STAGE 1A)
+  binary.json = opts->json;                                       // Save JSON logging flag (binary-level option)
+  binary.log_format_console_only = opts->log_format_console_only; // Save log format console setting
   return binary;
 }
 
@@ -508,8 +513,9 @@ static inline void restore_binary_level(options_t *opts, const binary_level_opts
   opts->version = binary->version;
   SAFE_STRNCPY(opts->config_file, binary->config_file, sizeof(opts->config_file));
   opts->detected_mode = binary->detected_mode;
-  opts->color = binary->color; // Restore color setting (parsed in STAGE 1A)
-  opts->json = binary->json;   // Restore JSON logging flag (binary-level option)
+  opts->color = binary->color;                                     // Restore color setting (parsed in STAGE 1A)
+  opts->json = binary->json;                                       // Restore JSON logging flag (binary-level option)
+  opts->log_format_console_only = binary->log_format_console_only; // Restore log format console setting
 }
 
 options_t options_t_new(void) {
@@ -761,6 +767,58 @@ static char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t 
       return result_buf;
     }
   }
+}
+
+// ============================================================================
+// Binary-Level Boolean Option Parser
+// ============================================================================
+
+// Parses binary-level boolean options with support for multiple formats:
+// - --long-name → sets field to true
+// - --long-name=true/false/yes/no/1/0/on/off → parses value
+// - -X (short form) → sets field to true
+// - -X=value (short form with value) → parses value
+static inline bool parse_binary_bool_arg(const char *arg, bool *field, const char *long_name, char short_name) {
+  if (!arg || !field || !long_name)
+    return false;
+
+  // Check long form: --long-name
+  char long_form[256];
+  snprintf(long_form, sizeof(long_form), "--%s", long_name);
+  if (strcmp(arg, long_form) == 0) {
+    *field = true;
+    return true;
+  }
+
+  // Check long form with =value: --long-name=...
+  char long_form_eq[256];
+  snprintf(long_form_eq, sizeof(long_form_eq), "--%s=", long_name);
+  if (strncmp(arg, long_form_eq, strlen(long_form_eq)) == 0) {
+    const char *value = arg + strlen(long_form_eq);
+    if (strcasecmp(value, "true") == 0 || strcasecmp(value, "yes") == 0 || strcasecmp(value, "1") == 0 ||
+        strcasecmp(value, "on") == 0) {
+      *field = true;
+      return true;
+    } else if (strcasecmp(value, "false") == 0 || strcasecmp(value, "no") == 0 || strcasecmp(value, "0") == 0 ||
+               strcasecmp(value, "off") == 0) {
+      *field = false;
+      return true;
+    }
+    // If invalid value, still consume it (builder will validate later)
+    return true;
+  }
+
+  // Check short form: -X (if defined)
+  if (short_name != '\0') {
+    char short_form[3];
+    snprintf(short_form, sizeof(short_form), "-%c", short_name);
+    if (strcmp(arg, short_form) == 0) {
+      *field = true;
+      return true;
+    }
+  }
+
+  return false;
 }
 
 // ============================================================================
@@ -1126,13 +1184,16 @@ asciichat_error_t options_init(int argc, char **argv) {
         // No valid number, just increment
         opts.verbose_level++;
       }
-      // Handle -q and --quiet (disable console logging)
-      if (strcmp(argv[i], "-q") == 0 || strcmp(argv[i], "--quiet") == 0) {
-        opts.quiet = true;
+      // Handle binary-level boolean options using the abstraction function
+      // -q/--quiet, --json, --log-format-console all use the same parser
+      if (parse_binary_bool_arg(argv[i], &opts.quiet, "quiet", 'q')) {
+        continue;
       }
-      // Handle --json (JSON logging format)
-      if (strcmp(argv[i], "--json") == 0) {
-        opts.json = true;
+      if (parse_binary_bool_arg(argv[i], &opts.json, "json", '\0')) {
+        continue;
+      }
+      if (parse_binary_bool_arg(argv[i], &opts.log_format_console_only, "log-format-console", '\0')) {
+        continue;
       }
       // Handle --log-level LEVEL (set log threshold)
       if (strcmp(argv[i], "--log-level") == 0) {
