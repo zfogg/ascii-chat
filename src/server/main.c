@@ -224,6 +224,7 @@ static websocket_server_t g_websocket_server;
  * Dedicated thread for WebSocket event loop, runs independently of TCP accept loop.
  */
 static asciichat_thread_t g_websocket_server_thread;
+static bool g_websocket_server_thread_started = false;
 
 /**
  * @brief Server start time for uptime calculation and status display
@@ -1213,7 +1214,7 @@ static void *status_screen_thread(void *arg) {
   if (fps == 0) {
     fps = 60; // Default
   }
-  uint64_t frame_interval_us = 1000000ULL / fps;
+  uint64_t frame_interval_us = US_PER_SEC_INT / fps;
 
   log_debug("Status screen thread started (target %u FPS)", fps);
 
@@ -2505,6 +2506,7 @@ skip_acds_session:
         0) {
       log_error("Failed to create WebSocket server thread");
     } else {
+      g_websocket_server_thread_started = true;
       log_info("WebSocket server thread started");
     }
   }
@@ -2599,13 +2601,17 @@ cleanup:
     // seeing running=false, which we just set).
     websocket_server_cancel_service(&g_websocket_server);
 
-    // Join with 2-second timeout. lws_context_destroy() can take 5+ seconds
-    // if called from a different thread (waiting for close handshake), but
-    // we're destroying from the event loop thread so it's fast. 2s accounts
-    // for any slow lws_service() calls or LWS cleanup.
-    int join_result = asciichat_thread_join_timeout(&g_websocket_server_thread, NULL, 2000000000UL); // 2 seconds in ns
-    if (join_result != 0) {
-      log_warn("WebSocket thread did not exit cleanly (timeout), forcing cleanup");
+    // Join with 2-second timeout only if thread was successfully created.
+    // lws_context_destroy() can take 5+ seconds if called from a different thread
+    // (waiting for close handshake), but we're destroying from the event loop thread
+    // so it's fast. 2s accounts for any slow lws_service() calls or LWS cleanup.
+    if (g_websocket_server_thread_started) {
+      int join_result =
+          asciichat_thread_join_timeout(&g_websocket_server_thread, NULL, 2000000000UL); // 2 seconds in ns
+      if (join_result != 0) {
+        log_warn("WebSocket thread did not exit cleanly (timeout), forcing cleanup");
+      }
+      g_websocket_server_thread_started = false;
     }
 
     // Context is destroyed by websocket_server_run from the event loop thread.
