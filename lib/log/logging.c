@@ -802,17 +802,9 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
  */
 static void write_to_terminal_atomic(log_level_t level, const char *timestamp, const char *file, int line,
                                      const char *func, const char *fmt, va_list args, uint64_t time_nanoseconds) {
-  // Choose output stream: errors/warnings to stderr, info/debug to stdout
-  // When force_stderr is enabled (client mode), ALL logs go to stderr to keep stdout clean
-  FILE *output_stream;
-  if (atomic_load(&g_log.force_stderr)) {
-    output_stream = stderr;
-  } else {
-    output_stream = (level == LOG_ERROR || level == LOG_WARN || level == LOG_FATAL) ? stderr : stdout;
-  }
-
-  // Check if colors should be used based on TTY status
-  int fd = (output_stream == stderr) ? STDERR_FILENO : STDOUT_FILENO;
+  // Choose output file descriptor using unified routing logic
+  int fd = terminal_choose_log_fd(level);
+  FILE *output_stream = (fd == STDERR_FILENO) ? stderr : stdout;
   bool use_colors = terminal_should_color_output(fd);
 
   // Format message first (needed for status screen capture even if terminal output disabled)
@@ -988,12 +980,9 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
       uint64_t time_ns = time_get_realtime_ns();
       get_current_time_formatted(time_buf);
 
-      FILE *output_stream;
-      if (atomic_load(&g_log.force_stderr)) {
-        output_stream = stderr;
-      } else {
-        output_stream = (level == LOG_ERROR || level == LOG_WARN || level == LOG_FATAL) ? stderr : stdout;
-      }
+      // Choose output stream using unified routing logic
+      int fd = terminal_choose_log_fd(level);
+      FILE *output_stream = (fd == STDERR_FILENO) ? stderr : stdout;
       // Check if colors should be used
       // Priority 1: If --color was explicitly passed, force colors
       extern bool g_color_flag_passed;
@@ -1099,8 +1088,8 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   if (json_format_enabled) {
     // Output JSON to the JSON file descriptor
     log_json_write(json_fd, level, time_ns, file, line, func, json_message);
-    // Also output JSON to console (stderr for WARN/ERROR/FATAL, stdout for others)
-    int console_fd = (level >= LOG_WARN) ? STDERR_FILENO : STDOUT_FILENO;
+    // Also output JSON to console using unified routing logic
+    int console_fd = terminal_choose_log_fd(level);
     log_json_write(console_fd, level, time_ns, file, line, func, json_message);
   } else {
     // Text format: output to file and terminal

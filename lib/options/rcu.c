@@ -72,6 +72,7 @@ static const options_t g_default_options = (options_t){
     // Logging
     .log_level = LOG_INFO,
     .quiet = false,
+    .json = false,
     .verbose_level = OPT_VERBOSE_LEVEL_DEFAULT,
 
     // Terminal Dimensions

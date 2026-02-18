@@ -360,18 +360,11 @@ tty_info_t get_current_tty(void) {
     result.owns_fd = false;
     return result;
   }
-  if (isatty(STDERR_FILENO)) {
-    result.fd = STDERR_FILENO;
-    result.path = ttyname(STDERR_FILENO);
-    result.owns_fd = false;
-    log_dev("POSIX TTY from stderr: %s (fd=%d)", result.path ? result.path : "unknown", result.fd);
-    return result;
-  }
 
-  // Method 3: Try controlling terminal device (but only if stdout is not piped)
-  // If stdout is piped/redirected, don't try /dev/tty - respect the user's intent to pipe output
-  // Instead of opening /dev/tty when stdout is piped, just fail gracefully
-  log_dev("POSIX TTY: No TTY available");
+  // If stdout is not a TTY (piped/redirected), don't use stderr as a fallback
+  // This respects the user's intent to pipe output without mixing ASCII art into stderr
+  // log_dev is safe to call here since logging doesn't require a TTY
+  log_dev("POSIX TTY: stdout is not a TTY - no fallback to stderr to keep piped output clean");
   return result; // No TTY available
 }
 

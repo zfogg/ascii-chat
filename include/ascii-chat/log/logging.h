@@ -54,21 +54,8 @@ struct crypto_context_t;
 struct color_scheme_t; /* Opaque - full definition in ui/colors.h, only included in logging.c */
 typedef struct color_scheme_t color_scheme_t;
 
-/**
- * @brief Logging levels enumeration
- * @ingroup logging
- *
- * @note This typedef MUST be defined before #include "network/logging.h"
- *       to avoid circular dependency issues with packet.h
- */
-typedef enum {
-  LOG_DEV = 0, /**< Development messages (most verbose) */
-  LOG_DEBUG,   /**< Debug messages */
-  LOG_INFO,    /**< Informational messages */
-  LOG_WARN,    /**< Warning messages */
-  LOG_ERROR,   /**< Error messages */
-  LOG_FATAL    /**< Fatal error messages (most severe) */
-} log_level_t;
+/* Include log types (must be before network/logging.h to avoid circular dependency) */
+#include "types.h"
 
 #include "../network/logging.h"
 

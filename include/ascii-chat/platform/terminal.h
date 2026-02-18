@@ -26,6 +26,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "../common.h"
+#include "../log/types.h"
 
 // ============================================================================
 // Cross-platform CLI Utilities
@@ -970,6 +971,25 @@ bool terminal_is_piped_output(void);
  * @ingroup platform
  */
 bool terminal_should_force_stderr(void);
+
+/**
+ * @brief Choose output file descriptor for logging based on level and interactivity
+ * @param level Log level (determines default routing: WARN+ to stderr, others to stdout)
+ * @return STDERR_FILENO or STDOUT_FILENO based on log level and terminal state
+ *
+ * Routes logs appropriately:
+ * - When terminal is NOT interactive (piped): ALL logs to stderr
+ * - When force_stderr enabled: ALL logs to stderr
+ * - Otherwise: WARN/ERROR/FATAL to stderr, others to stdout
+ *
+ * This consolidates log routing logic used throughout the codebase.
+ *
+ * @note Use: int fd = terminal_choose_log_fd(LOG_INFO);
+ * @note Common usage: platform_write_all(terminal_choose_log_fd(level), data, len);
+ *
+ * @ingroup platform
+ */
+int terminal_choose_log_fd(log_level_t level);
 
 /**
  * @brief Determine if interactive user prompts are appropriate
