@@ -411,11 +411,15 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
 
   while (true) {
     // Lock only for queue operations, not for buffer work
+    log_dev("[WS_DEBUG] About to lock recv_mutex");
     mutex_lock(&ws_data->recv_mutex);
+    log_dev("[WS_DEBUG] Locked recv_mutex, checking queue");
 
     // Wait for next fragment if queue is empty
     int wait_count = 0;
+    size_t queue_before = ringbuffer_size(ws_data->recv_queue);
     while (ringbuffer_is_empty(ws_data->recv_queue)) {
+      log_dev("[WS_DEBUG] Queue empty (size=%zu), entering wait loop", queue_before);
       // Check if we've exceeded max wait time
       uint64_t elapsed_ns = time_get_ns() - assembly_start_ns;
       if (elapsed_ns > MAX_REASSEMBLY_TIME_NS) {
@@ -458,7 +462,9 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
       }
 
       // Wait for fragment arrival with 1ms timeout (hold recv_mutex during wait)
+      log_dev("[WS_DEBUG] Calling cond_timedwait on recv_cond");
       cond_timedwait(&ws_data->recv_cond, &ws_data->recv_mutex, 1 * 1000000ULL); // 1ms timeout
+      log_dev("[WS_DEBUG] Woke from cond_timedwait, queue size now=%zu", ringbuffer_size(ws_data->recv_queue));
     }
 
     // Read next fragment from queue (still holding recv_mutex)

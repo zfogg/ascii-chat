@@ -619,8 +619,11 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     }
 
     // Signal waiting recv() call that a fragment is available
+    log_dev("[WS_DEBUG] RECEIVE: About to signal recv_cond (queue size=%zu)", ringbuffer_size(ws_data->recv_queue));
     cond_signal(&ws_data->recv_cond);
+    log_dev("[WS_DEBUG] RECEIVE: Signaled recv_cond");
     mutex_unlock(&ws_data->recv_mutex);
+    log_dev("[WS_DEBUG] RECEIVE: Unlocked recv_mutex");
 
     // Signal LWS to call WRITEABLE callback (matches lws example pattern)
     // This keeps the event loop active and allows server to send responses
