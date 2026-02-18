@@ -355,47 +355,44 @@ int main(int argc, char *argv[]) {
   bool use_json_logging = (log_format == LOG_OUTPUT_JSON);
 
   // Determine the log filename
-  const char *final_log_file = opts->log_file[0] != '\0' ? opts->log_file : NULL;
+  // Check if user explicitly passed --log-file (not just the mode-specific default from options_init)
+  bool user_specified_log_file = false;
+  for (int i = 1; i < argc - 1; i++) {
+    if (strcmp(argv[i], "--log-file") == 0 || strcmp(argv[i], "-L") == 0) {
+      user_specified_log_file = true;
+      break;
+    }
+  }
+
+  const char *final_log_file = opts->log_file;
   char json_filename_buf[256];
 
   if (use_json_logging) {
     // When JSON logging is enabled, determine JSON output filename
-    if (final_log_file) {
-      // User specified a log file - use it exactly for JSON output
+    if (user_specified_log_file) {
+      // User explicitly specified a log file - use it exactly for JSON output
       SAFE_STRNCPY(json_filename_buf, final_log_file, sizeof(json_filename_buf) - 1);
     } else {
-      // No explicit file: construct JSON filename from mode-specific default
-      // Mode-specific defaults: server.log -> server.json, client.log -> client.json, etc.
-      const char *default_log_name;
-      switch (opts->detected_mode) {
-      case MODE_SERVER:
-        default_log_name = "server.json";
-        break;
-      case MODE_CLIENT:
-        default_log_name = "client.json";
-        break;
-      case MODE_MIRROR:
-        default_log_name = "mirror.json";
-        break;
-      case MODE_DISCOVERY_SERVICE:
-        default_log_name = "acds.json";
-        break;
-      case MODE_DISCOVERY:
-        default_log_name = "discovery.json";
-        break;
-      default:
-        default_log_name = "ascii-chat.json";
-        break;
+      // Using default: replace .log with .json in the mode-specific default
+      // e.g., server.log -> server.json, mirror.log -> mirror.json, etc.
+      size_t len = strlen(final_log_file);
+      if (len > 4 && strcmp(&final_log_file[len - 4], ".log") == 0) {
+        // File ends with .log - replace with .json
+        SAFE_STRNCPY(json_filename_buf, final_log_file, sizeof(json_filename_buf) - 1);
+        // Replace .log with .json
+        strcpy(&json_filename_buf[len - 4], ".json");
+      } else {
+        // File doesn't end with .log - just append .json
+        SAFE_STRNCPY(json_filename_buf, final_log_file, sizeof(json_filename_buf) - 1);
+        strncat(json_filename_buf, ".json", sizeof(json_filename_buf) - strlen(json_filename_buf) - 1);
       }
-      SAFE_STRNCPY(json_filename_buf, default_log_name, sizeof(json_filename_buf) - 1);
     }
     final_log_file = json_filename_buf;
     // For JSON mode: Initialize logging without file (text will be disabled)
     // We'll set up JSON output separately below
     log_init(NULL, GET_OPTION(log_level), false, false);
   } else {
-    // Text logging mode: use user's file or default
-    // If opts->log_file is empty, log_init will use stderr
+    // Text logging mode: use the file from options (which is mode-specific default or user-specified)
     log_init(final_log_file, GET_OPTION(log_level), false, false);
   }
 
