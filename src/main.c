@@ -57,12 +57,33 @@
 #include <ascii-chat/debug/lock.h>
 #endif
 
+#ifndef _WIN32
+#include <signal.h>
+#endif
+
 /* ============================================================================
  * Constants and Configuration
  * ============================================================================ */
 
 #define APP_NAME "ascii-chat"
 #define VERSION ASCII_CHAT_VERSION_FULL
+
+/* ============================================================================
+ * Debug Signal Handlers (all modes)
+ * ============================================================================ */
+
+#ifndef NDEBUG
+#ifndef _WIN32
+/**
+ * @brief Common SIGUSR1 handler - triggers lock debugging output in all modes
+ * @param sig The signal number (unused, required by signal handler signature)
+ */
+static void common_handle_sigusr1(int sig) {
+  (void)sig;
+  lock_debug_trigger_print();
+}
+#endif
+#endif
 
 /* ============================================================================
  * Mode Registration Table
@@ -529,6 +550,18 @@ int main(int argc, char *argv[]) {
     FATAL(ERROR_PLATFORM_INIT, "Lock debug system initialization failed");
   }
   log_debug("Lock debug system initialized successfully");
+
+  // Start lock debug thread in all modes (not just server)
+  if (lock_debug_start_thread() != 0) {
+    LOG_ERRNO_IF_SET("Lock debug thread startup failed");
+    FATAL(ERROR_THREAD, "Lock debug thread startup failed");
+  }
+  log_debug("Lock debug thread started");
+
+#ifndef _WIN32
+  // Register SIGUSR1 to trigger lock state printing in all modes
+  platform_signal(SIGUSR1, common_handle_sigusr1);
+#endif
 #endif
 
   if (opts->fps > 0) {

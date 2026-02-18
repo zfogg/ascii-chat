@@ -683,7 +683,8 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
   }
 
   // Log entire backtrace in single statement using logging system
-  log_plain_stderr("%s", buffer);
+  // Using log_warn adds [WARN] header, making backtrace identifiable with --grep WARN
+  log_warn("%s", buffer);
 }
 
 /**

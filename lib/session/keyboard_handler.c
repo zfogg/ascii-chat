@@ -15,6 +15,10 @@
 #include <string.h>
 #include <signal.h>
 
+#ifndef NDEBUG
+#include <ascii-chat/debug/lock.h>
+#endif
+
 /* ============================================================================
  * Internal Helpers
  * ============================================================================ */
@@ -219,6 +223,15 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
     log_info("Horizontal flip: %s", !current_flip_x ? "enabled" : "disabled");
     break;
   }
+
+  // ===== LOCK DEBUG (debug builds only) =====
+#ifndef NDEBUG
+  case KEY_CTRL_L: {
+    lock_debug_trigger_print();
+    log_debug("Lock state dump triggered via Ctrl+L");
+    break;
+  }
+#endif
 
   default:
     // Unknown key - silently ignore

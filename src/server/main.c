@@ -1155,24 +1155,6 @@ static void server_handle_sigterm(int sigterm) {
   websocket_server_cancel_service(&g_websocket_server);
 }
 
-/**
- * @brief Handler for SIGUSR1 - triggers lock debugging output
- *
- * This signal handler allows external triggering of lock debugging output
- * by sending SIGUSR1 to the server process. This is useful for debugging
- * deadlocks without modifying the running server.
- *
- * @param sigusr1 The signal number (unused, required by signal handler signature)
- */
-static void server_handle_sigusr1(int sigusr1) {
-  (void)(sigusr1);
-
-#ifndef NDEBUG
-  // Trigger lock debugging output (signal-safe)
-  lock_debug_trigger_print();
-#endif
-}
-
 /* ============================================================================
  * Status Screen Update Callback (for tcp_server integration)
  * ============================================================================
@@ -1809,22 +1791,14 @@ int server_main(void) {
   platform_signal(SIGINT, server_handle_sigint);
   // Handle termination signal (SIGTERM is defined with limited support on Windows)
   platform_signal(SIGTERM, server_handle_sigterm);
-  // Handle lock debugging trigger signal
-#ifndef _WIN32
-  platform_signal(SIGUSR1, server_handle_sigusr1);
-#else
-  UNUSED(server_handle_sigusr1);
-#endif
 #ifndef _WIN32
   // SIGPIPE not supported on Windows
   platform_signal(SIGPIPE, SIG_IGN);
+  // Note: SIGUSR1 is registered in src/main.c for all modes
 #endif
 
 #ifndef NDEBUG
-  // Start the lock debug thread (system already initialized earlier)
-  if (lock_debug_start_thread() != 0) {
-    FATAL(ERROR_THREAD, "Failed to start lock debug thread");
-  }
+  // Lock debug thread is now started in src/main.c (all modes)
   // Initialize statistics system
   if (stats_init() != 0) {
     FATAL(ERROR_THREAD, "Statistics system initialization failed");
