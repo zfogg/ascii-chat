@@ -835,13 +835,11 @@ asciichat_error_t websocket_server_run(websocket_server_t *server) {
   uint64_t last_service_ns = 0;
   int service_call_count = 0;
   while (atomic_load(&server->running)) {
-    // Negative timeout means non-blocking: poll(timeout=0).
-    // LWS quirk: passing 0 to lws_service() does NOT mean zero timeout.
-    // Internally, non-negative values get replaced with LWS_POLL_WAIT_LIMIT (~23 days),
-    // and the actual timeout is determined by LWS's internal SUL timer system.
-    // Passing -1 forces timeout_ms=0 in the code path: `if (timeout_ms < 0) timeout_ms = 0;`
-    // This eliminates ~30ms gaps between fragment deliveries that were caused by poll()
-    // blocking on internal LWS timers between socket reads.
+    // Service libwebsockets with 50ms timeout.
+    // This provides frequent event processing (~20 callback invocations per second) for all
+    // connected WebSocket clients while avoiding excessive CPU usage from polling.
+    // All client connections share this single server context, so a single lws_service() call
+    // services fragments and events for all clients simultaneously.
     uint64_t service_start_ns = time_get_ns();
     if (last_service_ns && service_start_ns - last_service_ns > 30 * US_PER_MS_INT) {
       // > 30ms gap between service calls
