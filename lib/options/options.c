@@ -185,8 +185,7 @@ static bool is_binary_level_option_with_args(const char *arg, bool *out_takes_ar
   if (opt_len >= sizeof(opt_buffer)) {
     opt_len = sizeof(opt_buffer) - 1;
   }
-  SAFE_STRNCPY(opt_buffer, opt_name, opt_len);
-  opt_buffer[opt_len] = '\0';
+  SAFE_STRNCPY(opt_buffer, opt_name, opt_len + 1);
   opt_name = opt_buffer;
 
   // Check option against binary-level options
@@ -235,6 +234,9 @@ static bool is_binary_level_option_with_args(const char *arg, bool *out_takes_ar
     return true;
   }
   if (strcmp(opt_name, "no-check-update") == 0) {
+    return true;
+  }
+  if (strcmp(opt_name, "json") == 0) {
     return true;
   }
 
@@ -1022,6 +1024,39 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (mode_detect_result != ASCIICHAT_OK) {
     return mode_detect_result;
   }
+
+  // VALIDATE: Binary-level options must appear BEFORE the mode
+  // Check if any binary-level options appear after the mode position
+  log_dev("Mode detection: mode_index=%d, detected_mode=%d, argc=%d", mode_index, detected_mode, argc);
+  if (mode_index > 0) {
+    log_dev("Checking for binary-level options after position %d", mode_index);
+    for (int i = mode_index + 1; i < argc; i++) {
+      if (argv[i][0] == '-') {
+        bool takes_arg = false;
+        bool takes_optional_arg = false;
+
+        if (is_binary_level_option_with_args(argv[i], &takes_arg, &takes_optional_arg)) {
+          // Extract option name for error message
+          const char *opt_name = argv[i];
+          if (opt_name[0] == '-') {
+            opt_name = opt_name + (opt_name[1] == '-' ? 2 : 1);
+          }
+          // Stop at '=' if present
+          char opt_buffer[64];
+          const char *equals = strchr(opt_name, '=');
+          size_t opt_len = equals ? (size_t)(equals - opt_name) : strlen(opt_name);
+          if (opt_len >= sizeof(opt_buffer)) {
+            opt_len = sizeof(opt_buffer) - 1;
+          }
+          SAFE_STRNCPY(opt_buffer, opt_name, opt_len);
+          opt_buffer[opt_len] = '\0';
+
+          return SET_ERRNO(ERROR_USAGE, "Binary-level option '%s' must appear before the mode '%s', not after it",
+                           argv[i], argv[mode_index]);
+        }
+      }
+    }
+  }
   // ========================================================================
   // STAGE 1C: Initialize logging EARLY (before any log_dev calls)
   // ========================================================================
@@ -1317,11 +1352,27 @@ asciichat_error_t options_init(int argc, char **argv) {
       // Not a binary option, copy to mode_argv
       new_mode_argv[new_argv_idx++] = argv[i];
     }
-    for (int i = 0; i < args_after_mode; i++) {
-      new_mode_argv[new_argv_idx + i] = argv[mode_index + 1 + i];
+    // Copy args after mode, filtering out any binary-level options (they shouldn't appear here)
+    int args_after_mode_idx = 0;
+    for (int i = mode_index + 1; i < argc; i++) {
+      bool takes_arg = false;
+      bool takes_optional_arg = false;
+
+      // Check if this is a binary-level option (shouldn't appear after mode)
+      if (is_binary_level_option_with_args(argv[i], &takes_arg, &takes_optional_arg)) {
+        // Skip binary-level option and its argument if needed
+        if (takes_arg && i + 1 < argc) {
+          i++; // Skip required argument
+        } else if (takes_optional_arg && i + 1 < argc && argv[i + 1][0] != '-') {
+          i++; // Skip optional argument
+        }
+        continue; // Skip this option
+      }
+      // Not a binary option, copy to mode_argv
+      new_mode_argv[new_argv_idx + args_after_mode_idx++] = argv[i];
     }
-    // Calculate actual argc (program + filtered args before + args after)
-    mode_argc = new_argv_idx + args_after_mode;
+    // Calculate actual argc (program + filtered args before + filtered args after)
+    mode_argc = new_argv_idx + args_after_mode_idx;
     new_mode_argv[mode_argc] = NULL;
 
     mode_argv = new_mode_argv;
