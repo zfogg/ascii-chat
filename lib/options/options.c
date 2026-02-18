@@ -732,7 +732,9 @@ static char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t 
       SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", default_log_path_buf);
     }
 
-    SAFE_FREE(log_dir);
+    // log_dir comes from find_project_root() which uses malloc() to avoid debug_malloc recursion
+    // So it must be freed with free(), not SAFE_FREE()
+    free(log_dir);
 
     // Copy to static result buffer
     SAFE_STRNCPY(result_buf, default_log_path_buf, sizeof(result_buf) - 1);
