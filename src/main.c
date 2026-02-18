@@ -276,6 +276,22 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  // EARLY PARSE: Extract log format from argv (--log-format)
+  const char *early_log_format = NULL;
+  bool early_log_format_console_only = false;
+  for (int i = 1; i < argc - 1; i++) {
+    if (strcmp(argv[i], "--log-format") == 0) {
+      early_log_format = argv[i + 1];
+      break;
+    }
+  }
+  for (int i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "--log-format-console-only") == 0) {
+      early_log_format_console_only = true;
+      break;
+    }
+  }
+
   // Initialize shared subsystems BEFORE options_init()
   // This ensures options parsing can use properly configured logging with colors
   asciichat_error_t init_result = asciichat_shared_init(log_file, is_client_like_mode);
@@ -324,10 +340,12 @@ int main(int argc, char *argv[]) {
   // Reconfigure logging with parsed log level and correct log file path
   log_init(final_log_file, GET_OPTION(log_level), false, false);
 
-  // Apply custom log format if specified
-  const char *custom_format = GET_OPTION(log_format);
-  if (custom_format && custom_format[0] != '\0') {
-    asciichat_error_t fmt_result = log_set_format(custom_format, GET_OPTION(log_format_console_only));
+  // Apply custom log format if specified (use early parsed value if available, otherwise use options)
+  const char *final_format = early_log_format ? early_log_format : GET_OPTION(log_format);
+  bool final_format_console_only =
+      early_log_format ? early_log_format_console_only : GET_OPTION(log_format_console_only);
+  if (final_format && final_format[0] != '\0') {
+    asciichat_error_t fmt_result = log_set_format(final_format, final_format_console_only);
     if (fmt_result != ASCIICHAT_OK) {
       log_error("Failed to apply custom log format");
     }
