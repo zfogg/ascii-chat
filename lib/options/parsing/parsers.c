@@ -643,6 +643,19 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
 
   log_debug("parse_client_address: Processing argument: '%s'", arg);
 
+  // Access address and port fields from options_state struct
+  char *address = (char *)config + offsetof(struct options_state, address);
+  int *port = (int *)((char *)config + offsetof(struct options_state, port));
+
+  // Check for WebSocket URL (ws:// or wss://) FIRST before session string validation
+  // WebSocket URLs are passed through without validation or port extraction
+  if (strncmp(arg, "ws://", 5) == 0 || strncmp(arg, "wss://", 6) == 0) {
+    log_debug("Detected WebSocket URL: %s", arg);
+    SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, "%s", arg);
+    // Don't set port - WebSocket transport handles URL parsing internally
+    return 1; // Consumed 1 argument
+  }
+
   // Check if this is a session string (format: adjective-noun-noun)
   // Session strings have exactly 2 hyphens, only lowercase letters, length 5-47
   bool is_session = is_session_string(arg);
@@ -657,19 +670,7 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
   }
 
   // Not a session string, parse as server address
-  // Access address and port fields from options_state struct
-  char *address = (char *)config + offsetof(struct options_state, address);
-  int *port = (int *)((char *)config + offsetof(struct options_state, port));
   log_debug("parse_client_address: Parsing as server address (not a session string)");
-
-  // Check for WebSocket URL (ws:// or wss://)
-  // WebSocket URLs are passed through without validation or port extraction
-  if (strncmp(arg, "ws://", 5) == 0 || strncmp(arg, "wss://", 6) == 0) {
-    log_debug("Detected WebSocket URL: %s", arg);
-    SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, "%s", arg);
-    // Don't set port - WebSocket transport handles URL parsing internally
-    return 1; // Consumed 1 argument
-  }
 
   // Check for port in address (format: address:port or [ipv6]:port)
   const char *colon = strrchr(arg, ':');

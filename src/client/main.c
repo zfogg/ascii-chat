@@ -110,6 +110,7 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <stdatomic.h>
 #ifndef _WIN32
 #include <unistd.h>
@@ -668,7 +669,18 @@ int client_main(void) {
 
   log_info("=== BEFORE SESSION DISCOVERY CHECK: session_string='%s' ===", session_string);
 
-  if (session_string[0] != '\0') {
+  // Check if this is a direct WebSocket URL (ws:// or wss://) instead of a session string
+  bool is_websocket_url = (session_string[0] != '\0' &&
+                           (strncmp(session_string, "ws://", 5) == 0 || strncmp(session_string, "wss://", 6) == 0));
+
+  log_info("=== is_websocket_url check: session_string='%s' result=%d ===", session_string, is_websocket_url);
+
+  if (is_websocket_url) {
+    // Direct WebSocket connection - bypass discovery
+    log_info("Direct WebSocket URL detected: '%s' - connecting directly", session_string);
+    discovered_address = session_string;
+    discovered_port = 0; // Port is embedded in the URL
+  } else if (session_string[0] != '\0') {
     log_debug("Session string detected: '%s' - performing parallel discovery (mDNS + ACDS)", session_string);
 
     // Configure discovery coordinator
