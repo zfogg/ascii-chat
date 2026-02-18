@@ -1075,23 +1075,30 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   // Extract the user message part (without header) for JSON logging
   const char *user_message = log_buffer + header_len;
 
-  // Write to file (atomic write syscall)
-  int file_fd = atomic_load(&g_log.file);
-  if (file_fd >= 0 && file_fd != STDERR_FILENO) {
-    write_to_log_file_atomic(log_buffer, msg_len);
-  }
-
-  // Write JSON output if enabled (hook after file write)
+  // Check if JSON format is enabled
   int json_fd = atomic_load(&g_log.json_file);
-  if (json_fd >= 0) {
-    log_json_write(json_fd, level, time_ns, file, line, func, user_message);
-  }
+  bool json_format_enabled = (json_fd >= 0);
 
-  // Write to terminal (atomic state checks)
-  va_list args_terminal;
-  va_start(args_terminal, fmt);
-  write_to_terminal_atomic(level, time_buf, file, line, func, fmt, args_terminal, time_ns);
-  va_end(args_terminal);
+  // If JSON format is enabled, output ONLY JSON (skip text output)
+  if (json_format_enabled) {
+    // Output JSON to the JSON file descriptor
+    log_json_write(json_fd, level, time_ns, file, line, func, user_message);
+    // Also output JSON to stderr for terminal display
+    log_json_write(STDERR_FILENO, level, time_ns, file, line, func, user_message);
+  } else {
+    // Text format: output to file and terminal
+    // Write to file (atomic write syscall)
+    int file_fd = atomic_load(&g_log.file);
+    if (file_fd >= 0 && file_fd != STDERR_FILENO) {
+      write_to_log_file_atomic(log_buffer, msg_len);
+    }
+
+    // Write to terminal (atomic state checks)
+    va_list args_terminal;
+    va_start(args_terminal, fmt);
+    write_to_terminal_atomic(level, time_buf, file, line, func, fmt, args_terminal, time_ns);
+    va_end(args_terminal);
+  }
 }
 
 void log_terminal_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...) {

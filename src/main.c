@@ -306,9 +306,9 @@ int main(int argc, char *argv[]) {
 
   // Initialize shared subsystems BEFORE options_init()
   // This ensures options parsing can use properly configured logging with colors
-  // If JSON format is requested and no explicit file is specified, use stderr for early logging
-  // to avoid creating a .log file that will be superseded by a .json file later
-  const char *early_log_file = (early_json_format && log_file == "ascii-chat.log") ? NULL : log_file;
+  // If JSON format is requested, don't write text logs to file
+  // All logs will be JSON formatted later once options_init() runs
+  const char *early_log_file = early_json_format ? NULL : log_file;
   asciichat_error_t init_result = asciichat_shared_init(early_log_file, is_client_like_mode);
   if (init_result != ASCIICHAT_OK) {
     return init_result;
