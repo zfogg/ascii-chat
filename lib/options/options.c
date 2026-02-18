@@ -477,6 +477,7 @@ typedef struct {
   char config_file[OPTIONS_BUFF_SIZE];
   asciichat_mode_t detected_mode;
   int color; // Color setting (COLOR_SETTING_AUTO/TRUE/FALSE) - binary-level option parsed early
+  bool json; // JSON logging format - binary-level option
 } binary_level_opts_t;
 
 static inline binary_level_opts_t extract_binary_level(const options_t *opts) {
@@ -492,6 +493,7 @@ static inline binary_level_opts_t extract_binary_level(const options_t *opts) {
   SAFE_STRNCPY(binary.config_file, opts->config_file, sizeof(binary.config_file));
   binary.detected_mode = opts->detected_mode;
   binary.color = opts->color; // Save color setting (parsed in STAGE 1A)
+  binary.json = opts->json;   // Save JSON logging flag (binary-level option)
   return binary;
 }
 
@@ -507,6 +509,7 @@ static inline void restore_binary_level(options_t *opts, const binary_level_opts
   SAFE_STRNCPY(opts->config_file, binary->config_file, sizeof(opts->config_file));
   opts->detected_mode = binary->detected_mode;
   opts->color = binary->color; // Restore color setting (parsed in STAGE 1A)
+  opts->json = binary->json;   // Restore JSON logging flag (binary-level option)
 }
 
 options_t options_t_new(void) {
@@ -1027,30 +1030,13 @@ asciichat_error_t options_init(int argc, char **argv) {
 
   // VALIDATE: Binary-level options must appear BEFORE the mode
   // Check if any binary-level options appear after the mode position
-  log_dev("Mode detection: mode_index=%d, detected_mode=%d, argc=%d", mode_index, detected_mode, argc);
   if (mode_index > 0) {
-    log_dev("Checking for binary-level options after position %d", mode_index);
     for (int i = mode_index + 1; i < argc; i++) {
       if (argv[i][0] == '-') {
         bool takes_arg = false;
         bool takes_optional_arg = false;
 
         if (is_binary_level_option_with_args(argv[i], &takes_arg, &takes_optional_arg)) {
-          // Extract option name for error message
-          const char *opt_name = argv[i];
-          if (opt_name[0] == '-') {
-            opt_name = opt_name + (opt_name[1] == '-' ? 2 : 1);
-          }
-          // Stop at '=' if present
-          char opt_buffer[64];
-          const char *equals = strchr(opt_name, '=');
-          size_t opt_len = equals ? (size_t)(equals - opt_name) : strlen(opt_name);
-          if (opt_len >= sizeof(opt_buffer)) {
-            opt_len = sizeof(opt_buffer) - 1;
-          }
-          SAFE_STRNCPY(opt_buffer, opt_name, opt_len);
-          opt_buffer[opt_len] = '\0';
-
           return SET_ERRNO(ERROR_USAGE, "Binary-level option '%s' must appear before the mode '%s', not after it",
                            argv[i], argv[mode_index]);
         }
@@ -1143,6 +1129,10 @@ asciichat_error_t options_init(int argc, char **argv) {
       // Handle -q and --quiet (disable console logging)
       if (strcmp(argv[i], "-q") == 0 || strcmp(argv[i], "--quiet") == 0) {
         opts.quiet = true;
+      }
+      // Handle --json (JSON logging format)
+      if (strcmp(argv[i], "--json") == 0) {
+        opts.json = true;
       }
       // Handle --log-level LEVEL (set log threshold)
       if (strcmp(argv[i], "--log-level") == 0) {
@@ -1504,13 +1494,15 @@ asciichat_error_t options_init(int argc, char **argv) {
   // Save flip_x and flip_y before parsing - they should not be reset by the parser
   bool saved_flip_x_for_parse = opts.flip_x;
   bool saved_flip_y_for_parse = opts.flip_y;
+  // Note: json is already saved via extract_binary_level/restore_binary_level mechanism
   // Parse mode-specific arguments
   option_mode_bitmask_t mode_bitmask = (1 << mode_saved_for_parsing);
   asciichat_error_t result =
       options_config_parse(config, mode_argc, mode_argv, &opts, mode_bitmask, &remaining_argc, &remaining_argv);
-  // Restore flip_x and flip_y - they should keep the default values unless explicitly overridden
+  // Restore flip_x and flip_y - they should keep their values unless explicitly overridden
   opts.flip_x = saved_flip_x_for_parse;
   opts.flip_y = saved_flip_y_for_parse;
+  // json is already restored via the call to options_state_set which calls restore_binary_level
   if (result != ASCIICHAT_OK) {
     options_config_destroy(config);
     SAFE_FREE(allocated_mode_argv);
