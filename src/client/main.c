@@ -577,26 +577,17 @@ int client_main(void) {
     if (selected_index < 0) {
       // User cancelled or no servers found
       if (discovered_count == 0) {
-        // No servers found - print message and prevent any further output
-        // Lock the terminal so other threads can't write
+        // No servers found - log message and prevent any further output
+        // Lock the terminal so other threads can't write and our error
+        // will be the last message
         log_lock_terminal();
 
-        fprintf(stderr, "\n");
-        fprintf(stderr, "No ascii-chat servers found on the local network.\n");
-        fprintf(stderr, "Use 'ascii-chat client <address>' to connect manually.\n");
-        fflush(stderr);
+        // Log single message with embedded newlines to prevent multiple log entries
+        log_error("No ascii-chat servers found on the local network.\nUse 'ascii-chat client <address>' to connect "
+                  "manually.");
 
-        // Log to file for debugging
-        log_file_msg("\n");
-        log_file_msg("No ascii-chat servers found on the local network.\n");
-        log_file_msg("Use 'ascii-chat client <address>' to connect manually.\n");
-
-        // Redirect stderr and stdout to /dev/null so cleanup handlers can't write to console
-        // This is safe because we've already printed our final message
-        platform_stdio_redirect_to_null_permanent();
-
-        // Exit - cleanup handlers will try to write to /dev/null instead of console
-        exit(1);
+        // Exit without cleanup
+        platform_force_exit(1);
       }
       // User cancelled (had servers to choose from but pressed cancel)
       log_debug("LAN discovery: User cancelled server selection");
