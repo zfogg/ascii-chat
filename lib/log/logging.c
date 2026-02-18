@@ -1075,6 +1075,27 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   // Extract the user message part (without header) for JSON logging
   const char *user_message = log_buffer + header_len;
 
+  // For JSON output: strip automatic trailing newline (keep explicit ones)
+  char json_message_buf[LOG_MSG_BUFFER_SIZE];
+  const char *json_message = user_message;
+  size_t user_msg_len = strlen(user_message);
+
+  // If message ends with newline and it was added automatically (not in original message)
+  if (user_msg_len > 0 && user_message[user_msg_len - 1] == '\n') {
+    // The newline was added automatically if the message part didn't end with one
+    // before we added it on line 1067. We can check this by looking at msg_len - 1
+    // If msg_len >= header_len + 2, then msg_len - 2 would be the char before the newline
+    int msg_content_len = msg_len - header_len;
+    if (msg_content_len > 1 && log_buffer[msg_len - 2] != '\n') {
+      // Newline was added automatically - strip it for JSON
+      if (user_msg_len - 1 < sizeof(json_message_buf)) {
+        memcpy(json_message_buf, user_message, user_msg_len - 1);
+        json_message_buf[user_msg_len - 1] = '\0';
+        json_message = json_message_buf;
+      }
+    }
+  }
+
   // Check if JSON format is enabled
   int json_fd = atomic_load(&g_log.json_file);
   bool json_format_enabled = (json_fd >= 0);
@@ -1082,9 +1103,9 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   // If JSON format is enabled, output ONLY JSON (skip text output)
   if (json_format_enabled) {
     // Output JSON to the JSON file descriptor
-    log_json_write(json_fd, level, time_ns, file, line, func, user_message);
+    log_json_write(json_fd, level, time_ns, file, line, func, json_message);
     // Also output JSON to stderr for terminal display
-    log_json_write(STDERR_FILENO, level, time_ns, file, line, func, user_message);
+    log_json_write(STDERR_FILENO, level, time_ns, file, line, func, json_message);
   } else {
     // Text format: output to file and terminal
     // Write to file (atomic write syscall)
