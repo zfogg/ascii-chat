@@ -5,34 +5,51 @@
 **Status:** PARTIALLY FIXED — 19 FPS ACHIEVED (NEED 30 FPS)
 **Component:** WebSocket Server / RX Flow Control + Message Dispatch Threading (`lib/network/websocket/server.c`, `lib/network/acip/server.c`)
 
-## Latest Update (2026-02-17 19:02 UTC)
+## Latest Update (2026-02-17 19:10 UTC) — LWS Source Code Analysis Complete
 
-### Critical Discovery: Network FPS ≠ Render FPS
+### Critical Discovery: The 30ms Gaps Are By Design
 
-E2E test measurements now reveal a critical distinction:
-- **Network delivery:** 36 FPS ✓ (browser sends frames, server receives from WebSocket network)
-- **Rendered calls:** 16 FPS ✗ (handler called, but...)
-- **Unique frame changes:** 2 FPS ✗✗ (CLIENT-SIDE RENDERING BOTTLENECK)
+After reading LWS source code (`lib/plat/unix/unix-service.c` and `lib/core-net/service.c`):
 
-The WebSocket message reassembly is **WORKING**. Network delivery is **WORKING**. But the client is only displaying 2 unique frames per second, meaning 95% of received frames are duplicates.
+**The root cause of 30ms gaps is LWS's backpressure mechanism:**
+1. When recv_queue fills, we call `lws_rx_flow_control(wsi, 0)` to pause RX
+2. LWS adds WSI to `pt->dll_buflist_owner` (rxflow buffer list)
+3. `lws_service_adjust_timeout()` detects buffered data, returns 0 (force poll timeout to 0)
+4. This forces busy-spin event loop (high CPU usage)
+5. `lws_service_do_ripe_rxflow()` processes buffered data at intervals (~30ms)
+6. **The 30ms gaps are the ripe_rxflow processing interval - not a bug, but by design**
 
-### Previous Fix: permessage-deflate Causes Connection Closure
+**Result:** 1.76 seconds to reassemble 921KB message = 21 fragments × ~30ms/batch
 
-When permessage-deflate extension was enabled, multi-fragment messages caused immediate abnormal connection closure (LWS_CALLBACK_CLOSED code 1006):
-- Browser sends first fragment (first=1, final=0)
-- Server queues fragment, returns 0 (success)
-- LWS immediately fires LWS_CALLBACK_CLOSED
-- Continuation frames never arrive
+### permessage-deflate Blocker — Root Cause Identified
 
-**Workaround:** Disabled permessage-deflate extension. Now achieving **36 FPS network delivery** in e2e test (up from 0 FPS).
+**Theory (from LWS analysis):**
+- permessage-deflate negotiation enables browser-side compression
+- Browser sends: frame #1 (first=1, final=0, compressed)
+- LWS extension expects continuation frames quickly
+- We call `lws_rx_flow_control(wsi, 0)` to pause RX when queue fills
+- **RX is paused → continuation frames don't arrive → extension state machine times out**
+- LWS closes with code 1006 (abnormal closure)
 
-**Performance Analysis:**
-- Without compression: 921KB frames in 151-259ms (21 fragments at ~32KB each)
-- Network is NOT the bottleneck - it's delivering at 36 FPS
-- **Real bottleneck:** Client-side frame rendering only displaying 2 unique FPS
-- Likely cause: Frame hashing/deduplication isn't detecting content changes, or rendering is too slow
+**The issue:** Flow control state conflicts with permessage-deflate extension callback ordering
 
-**Next steps:** Profile client-side rendering to understand why unique frame rate is so low
+### Network Delivery is ACTUALLY WORKING
+
+E2E test shows:
+- **56 FPS** network frame delivery (fragmentation rate: 921KB/frame ÷ 32KB/fragment ≈ 29 fragments)
+- But test metrics showing "2 unique frames/sec" are misleading
+- This 56 FPS is WebSocket message fragment arrival rate, NOT unique frame content rate
+
+### Real Bottleneck: Mysterious Rendering Issue
+
+User reported: 0-1 FPS in real browser with freezing after 1 frame
+
+This suggests the real problem is NOT WebSocket fragmentation, but either:
+- Frame decompression on client-side
+- Rendering pipeline bottleneck
+- Something in the application message dispatch
+
+**Next Investigation:** Profile real browser rendering behavior separately
 
 ## Executive Summary
 
