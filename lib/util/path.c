@@ -308,23 +308,15 @@ static char *find_project_root(void) {
   static bool search_done = false;
 
   if (search_done) {
-    printf("[CACHE] Using cached result, cached_root[0]='%c'\n", cached_root[0]);
-    fflush(stdout);
     if (cached_root[0] != '\0') {
-      printf("[CACHE] Allocating copy using malloc\n");
-      fflush(stdout);
       // Return a new allocation using malloc (not SAFE_MALLOC) to avoid debug_malloc
       // recursion when called during memory report while holding g_mem.mutex
       char *copy = malloc(strlen(cached_root) + 1);
       if (copy) {
         strcpy(copy, cached_root);
-        printf("[CACHE] malloc and strcpy done, returning copy\n");
-        fflush(stdout);
       }
       return copy;
     }
-    printf("[CACHE] Returning NULL (not found)\n");
-    fflush(stdout);
     return NULL; // Not found
   }
 
@@ -435,21 +427,11 @@ const char *extract_project_relative_path(const char *file) {
 #endif
 
   /* First normalize the path to resolve .. and . components */
-  printf("[PATH] normalize_path starting\n");
-  fflush(stdout);
   const char *normalized = normalize_path(file);
-  printf("[PATH] normalize_path done\n");
-  fflush(stdout);
 
   /* Try to find and strip the project root from the absolute path */
-  printf("[PATH] find_project_root starting\n");
-  fflush(stdout);
   char *project_root = find_project_root();
-  printf("[PATH] find_project_root done\n");
-  fflush(stdout);
   if (project_root) {
-    printf("[PATH] project_root found\n");
-    fflush(stdout);
     size_t root_len = strlen(project_root);
     size_t norm_len = strlen(normalized);
 
