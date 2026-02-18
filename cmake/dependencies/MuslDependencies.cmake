@@ -1101,6 +1101,52 @@ set(ABSEIL_FOUND TRUE)
 set(ABSEIL_LIBRARIES "${ABSEIL_PREFIX}/lib")
 set(ABSEIL_INCLUDE_DIRS "${ABSEIL_PREFIX}/include")
 
+# =============================================================================
+# yyjson - Fast JSON library (writer-only for structured logging)
+# =============================================================================
+# yyjson is a high-performance JSON library. We use only the writer API
+# for structured log output. YYJSON_DISABLE_READER is enabled to reduce
+# binary size (reader code is not needed).
+message(STATUS "Configuring ${BoldBlue}yyjson${ColorReset} from source...")
+
+set(YYJSON_PREFIX "${MUSL_DEPS_DIR_STATIC}/yyjson")
+set(YYJSON_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/yyjson-build")
+
+if(NOT EXISTS "${YYJSON_PREFIX}/lib/libyyjson.a")
+    message(STATUS "  yyjson library not found in cache, will build from source")
+    ExternalProject_Add(yyjson-musl
+        URL https://github.com/ibireme/yyjson/archive/refs/tags/0.12.0.tar.gz
+        URL_HASH SHA256=f75c26cb1e5d6f0e20b8f3a89b9f7e26c47bb4cdc6f3bc3abc8a3da4d006c5df
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        PREFIX ${YYJSON_BUILD_DIR}
+        STAMP_DIR ${YYJSON_BUILD_DIR}/stamps
+        UPDATE_DISCONNECTED 1
+        BUILD_ALWAYS 0
+        CMAKE_ARGS
+            -DCMAKE_C_COMPILER=${MUSL_GCC}
+            -DCMAKE_INSTALL_PREFIX=${YYJSON_PREFIX}
+            -DCMAKE_BUILD_TYPE=Release
+            -DYYJSON_DISABLE_READER=ON
+            -DBUILD_SHARED_LIBS=OFF
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+            -DCMAKE_C_FLAGS=-O3\ -fPIC
+        BUILD_BYPRODUCTS ${YYJSON_PREFIX}/lib/libyyjson.a
+        LOG_DOWNLOAD TRUE
+        LOG_CONFIGURE TRUE
+        LOG_BUILD TRUE
+        LOG_INSTALL TRUE
+        LOG_OUTPUT_ON_FAILURE TRUE
+    )
+else()
+    message(STATUS "  ${BoldBlue}yyjson${ColorReset} library found in cache: ${BoldMagenta}${YYJSON_PREFIX}/lib/libyyjson.a${ColorReset}")
+    # Create a dummy target so dependencies can reference it
+    add_custom_target(yyjson-musl)
+endif()
+
+set(YYJSON_FOUND TRUE)
+set(YYJSON_LIBRARIES "${YYJSON_PREFIX}/lib/libyyjson.a")
+set(YYJSON_INCLUDE_DIRS "${YYJSON_PREFIX}/include")
+
 # Restore output directories
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${_SAVED_ARCHIVE_OUTPUT_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${_SAVED_LIBRARY_OUTPUT_DIR})

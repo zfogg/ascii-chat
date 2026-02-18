@@ -27,6 +27,7 @@
 #include <ascii-chat/log/colorize.h>
 #include <ascii-chat/log/mmap.h>
 #include <ascii-chat/log/grep.h>
+#include <ascii-chat/log/json.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/platform/thread.h>
@@ -55,6 +56,7 @@ __attribute__((weak)) void platform_log_hook(log_level_t level, const char *mess
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 static struct log_context_t {
   _Atomic int file;                        /* File descriptor (atomic for safe access) */
+  _Atomic int json_file;                   /* JSON output file descriptor (-1 = disabled) */
   _Atomic int level;                       /* Log level as int for atomic ops */
   _Atomic bool initialized;                /* Initialization flag */
   char filename[LOG_MSG_BUFFER_SIZE];      /* Store filename (set once at init) */
@@ -67,11 +69,12 @@ static struct log_context_t {
   _Atomic unsigned int flush_delay_ms;     /* Delay between each buffered log flush (0 = disabled) */
   mutex_t rotation_mutex;                  /* Mutex for log rotation only (not for logging!) */
   _Atomic bool rotation_mutex_initialized; /* Track if rotation mutex is ready */
-  log_format_t *format;                    /* Compiled log format (NULL = use default) */
-  log_format_t *format_console_only;       /* Console-only format variant */
+  log_template_t *format;                  /* Compiled log format (NULL = use default) */
+  log_template_t *format_console_only;     /* Console-only format variant */
   _Atomic bool has_custom_format;          /* True if format was customized */
 } g_log = {
     .file = 2, /* STDERR_FILENO - fd 0 is STDIN (read-only!) */
+    .json_file = -1,
     .level = DEFAULT_LOG_LEVEL,
     .initialized = false,
     .filename = {0},
@@ -95,7 +98,7 @@ static struct log_context_t {
  * Level Strings
  * ============================================================================
  * The actual default log format is defined in lib/log/format.c
- * and accessed via OPT_LOG_FORMAT_DEFAULT macro to support different modes.
+ * and accessed via OPT_LOG_TEMPLATE_DEFAULT macro to support different modes.
  */
 
 /**
@@ -592,11 +595,11 @@ void log_destroy(void) {
 
   // Cleanup custom format structures
   if (g_log.format) {
-    log_format_free(g_log.format);
+    log_template_free(g_log.format);
     g_log.format = NULL;
   }
   if (g_log.format_console_only) {
-    log_format_free(g_log.format_console_only);
+    log_template_free(g_log.format_console_only);
     g_log.format_console_only = NULL;
   }
   atomic_store(&g_log.has_custom_format, false);
@@ -648,23 +651,43 @@ bool log_get_force_stderr(void) {
   return atomic_load(&g_log.force_stderr);
 }
 
+void log_set_json_output(int fd) {
+  atomic_store(&g_log.json_file, fd);
+}
+
+void log_set_format_output(int type) {
+  /* Currently just stores the type for reference - actual logic is in log_msg() */
+  (void)type; /* Unused parameter */
+}
+
+void log_disable_file_output(void) {
+  /* Close the current file if it's not stderr */
+  int old_file = atomic_load(&g_log.file);
+  if (old_file >= 0 && old_file != STDERR_FILENO) {
+    platform_close(old_file);
+  }
+  /* Redirect file output to stderr */
+  atomic_store(&g_log.file, STDERR_FILENO);
+  g_log.filename[0] = '\0';
+}
+
 asciichat_error_t log_set_format(const char *format_str, bool console_only) {
   /* Free old format if it exists */
   if (g_log.format) {
-    log_format_free(g_log.format);
+    log_template_free(g_log.format);
     g_log.format = NULL;
   }
   if (g_log.format_console_only) {
-    log_format_free(g_log.format_console_only);
+    log_template_free(g_log.format_console_only);
     g_log.format_console_only = NULL;
   }
 
   /* Use default format if NULL or empty string */
-  const char *format_to_use = (format_str && format_str[0] != '\0') ? format_str : OPT_LOG_FORMAT_DEFAULT;
+  const char *format_to_use = (format_str && format_str[0] != '\0') ? format_str : OPT_LOG_TEMPLATE_DEFAULT;
   bool is_custom = (format_str && format_str[0] != '\0');
 
   /* Parse the format string (always parse, never skip) */
-  log_format_t *parsed_format = log_format_parse(format_to_use, false);
+  log_template_t *parsed_format = log_template_parse(format_to_use, false);
   if (!parsed_format) {
     log_error("Failed to parse log format: %s", format_to_use);
     return SET_ERRNO(ERROR_INVALID_STATE, "Invalid log format string");
@@ -672,9 +695,9 @@ asciichat_error_t log_set_format(const char *format_str, bool console_only) {
 
   /* If console_only is true, we also need the default format for file output */
   if (console_only && is_custom) {
-    log_format_t *default_format = log_format_parse(OPT_LOG_FORMAT_DEFAULT, false);
+    log_template_t *default_format = log_template_parse(OPT_LOG_TEMPLATE_DEFAULT, false);
     if (!default_format) {
-      log_format_free(parsed_format);
+      log_template_free(parsed_format);
       log_error("Failed to parse default log format");
       return SET_ERRNO(ERROR_INVALID_STATE, "Failed to parse default format");
     }
@@ -758,15 +781,15 @@ static void write_to_log_file_atomic(const char *buffer, int length) {
  */
 static int format_log_header(char *buffer, size_t buffer_size, log_level_t level, const char *timestamp,
                              const char *file, int line, const char *func, bool use_colors, uint64_t time_nanoseconds) {
-  const log_format_t *format = g_log.format;
+  const log_template_t *format = g_log.format;
   if (!format) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Log format not initialized");
     return -1;
   }
 
-  /* Use log_format_apply() to generate the complete formatted output */
-  int written = log_format_apply(format, buffer, buffer_size, level, timestamp, file, line, func,
-                                 asciichat_thread_current_id(), "", use_colors, time_nanoseconds);
+  /* Use log_template_apply() to generate the complete formatted output */
+  int written = log_template_apply(format, buffer, buffer_size, level, timestamp, file, line, func,
+                                   asciichat_thread_current_id(), "", use_colors, time_nanoseconds);
   if (written < 0 || written >= (int)buffer_size) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log header");
     return -1;
@@ -818,14 +841,14 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   char plain_log_line[LOG_MSG_BUFFER_SIZE + 512];
 
   /* Apply format without colors first (plain version for grep matching) */
-  int plain_len = log_format_apply(g_log.format, plain_log_line, sizeof(plain_log_line), level, timestamp, file, line,
-                                   func, asciichat_thread_current_id(), clean_msg, false, time_nanoseconds);
+  int plain_len = log_template_apply(g_log.format, plain_log_line, sizeof(plain_log_line), level, timestamp, file, line,
+                                     func, asciichat_thread_current_id(), clean_msg, false, time_nanoseconds);
 
   /* For colored output, apply format with colors enabled */
   int colored_len = 0;
   if (use_colors && plain_len > 0) {
-    colored_len = log_format_apply(g_log.format, colored_log_line, sizeof(colored_log_line), level, timestamp, file,
-                                   line, func, asciichat_thread_current_id(), clean_msg, true, time_nanoseconds);
+    colored_len = log_template_apply(g_log.format, colored_log_line, sizeof(colored_log_line), level, timestamp, file,
+                                     line, func, asciichat_thread_current_id(), clean_msg, true, time_nanoseconds);
     /* If applying with colors failed, fall back to plain text */
     if (colored_len <= 0) {
       // Applying with colors failed - use plain text (no colors)
@@ -1048,11 +1071,22 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   va_end(args);
   // Validate UTF-8 in formatted message
   validate_log_message_utf8(log_buffer, "leveled log message");
+
+  // Extract the user message part (without header) for JSON logging
+  const char *user_message = log_buffer + header_len;
+
   // Write to file (atomic write syscall)
   int file_fd = atomic_load(&g_log.file);
   if (file_fd >= 0 && file_fd != STDERR_FILENO) {
     write_to_log_file_atomic(log_buffer, msg_len);
   }
+
+  // Write JSON output if enabled (hook after file write)
+  int json_fd = atomic_load(&g_log.json_file);
+  if (json_fd >= 0) {
+    log_json_write(json_fd, level, time_ns, file, line, func, user_message);
+  }
+
   // Write to terminal (atomic state checks)
   va_list args_terminal;
   va_start(args_terminal, fmt);

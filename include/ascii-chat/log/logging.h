@@ -235,6 +235,15 @@ void log_set_force_stderr(bool enabled);
 bool log_get_force_stderr(void);
 
 /**
+ * @brief Disable file output and use stderr instead
+ *
+ * Closes the current log file and redirects file output to stderr.
+ * Used when switching to JSON-only logging or when disabling text file output.
+ * @ingroup logging
+ */
+void log_disable_file_output(void);
+
+/**
  * @brief Manually truncate large log files
  *
  * Checks if the log file exceeds MAX_LOG_SIZE and truncates it if necessary.

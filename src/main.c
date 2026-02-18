@@ -44,6 +44,7 @@
 #include <ascii-chat/options/actions.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/json.h>
 #include <ascii-chat/log/grep.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/util/path.h>
@@ -276,25 +277,39 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  // EARLY PARSE: Extract log format from argv (--log-format)
-  const char *early_log_format = NULL;
-  bool early_log_format_console_only = false;
+  // EARLY PARSE: Check for --log-format json (output format, not template)
+  // If JSON format is enabled, we'll use the JSON filename during early init
+  bool early_json_format = false;
   for (int i = 1; i < argc - 1; i++) {
-    if (strcmp(argv[i], "--log-format") == 0) {
-      early_log_format = argv[i + 1];
+    if (strcmp(argv[i], "--log-format") == 0 && i + 1 < argc && strcmp(argv[i + 1], "json") == 0) {
+      early_json_format = true;
+      break;
+    }
+  }
+
+  // EARLY PARSE: Extract log template from argv (--log-template)
+  // Note: This is for format templates, different from --log-format which is the output format
+  const char *early_log_template = NULL;
+  bool early_log_template_console_only = false;
+  for (int i = 1; i < argc - 1; i++) {
+    if (strcmp(argv[i], "--log-template") == 0) {
+      early_log_template = argv[i + 1];
       break;
     }
   }
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "--log-format-console-only") == 0) {
-      early_log_format_console_only = true;
+      early_log_template_console_only = true;
       break;
     }
   }
 
   // Initialize shared subsystems BEFORE options_init()
   // This ensures options parsing can use properly configured logging with colors
-  asciichat_error_t init_result = asciichat_shared_init(log_file, is_client_like_mode);
+  // If JSON format is requested and no explicit file is specified, use stderr for early logging
+  // to avoid creating a .log file that will be superseded by a .json file later
+  const char *early_log_file = (early_json_format && log_file == "ascii-chat.log") ? NULL : log_file;
+  asciichat_error_t init_result = asciichat_shared_init(early_log_file, is_client_like_mode);
   if (init_result != ASCIICHAT_OK) {
     return init_result;
   }
@@ -335,19 +350,77 @@ int main(int argc, char *argv[]) {
   }
 
   // Determine final log file path (use mode-specific default from options if available)
-  const char *final_log_file = (opts->log_file[0] != '\0') ? opts->log_file : "ascii-chat.log";
+  // Determine output format early to decide on filename and logging strategy
+  log_format_output_t log_format = GET_OPTION(log_format_output);
+  bool use_json_logging = (log_format == LOG_OUTPUT_JSON);
 
-  // Reconfigure logging with parsed log level and correct log file path
-  log_init(final_log_file, GET_OPTION(log_level), false, false);
+  // Determine the log filename
+  const char *final_log_file = opts->log_file[0] != '\0' ? opts->log_file : NULL;
+  char json_filename_buf[256];
 
-  // Apply custom log format if specified (use early parsed value if available, otherwise use options)
-  const char *final_format = early_log_format ? early_log_format : GET_OPTION(log_format);
+  if (use_json_logging) {
+    // When JSON logging is enabled, determine JSON output filename
+    if (final_log_file) {
+      // User specified a log file - use it exactly for JSON output
+      SAFE_STRNCPY(json_filename_buf, final_log_file, sizeof(json_filename_buf) - 1);
+    } else {
+      // No explicit file: construct JSON filename from mode-specific default
+      // Mode-specific defaults: server.log -> server.json, client.log -> client.json, etc.
+      const char *default_log_name;
+      switch (opts->detected_mode) {
+      case MODE_SERVER:
+        default_log_name = "server.json";
+        break;
+      case MODE_CLIENT:
+        default_log_name = "client.json";
+        break;
+      case MODE_MIRROR:
+        default_log_name = "mirror.json";
+        break;
+      case MODE_DISCOVERY_SERVICE:
+        default_log_name = "acds.json";
+        break;
+      case MODE_DISCOVERY:
+        default_log_name = "discovery.json";
+        break;
+      default:
+        default_log_name = "ascii-chat.json";
+        break;
+      }
+      SAFE_STRNCPY(json_filename_buf, default_log_name, sizeof(json_filename_buf) - 1);
+    }
+    final_log_file = json_filename_buf;
+    // For JSON mode: Initialize logging without file (text will be disabled)
+    // We'll set up JSON output separately below
+    log_init(NULL, GET_OPTION(log_level), false, false);
+  } else {
+    // Text logging mode: use user's file or default
+    // If opts->log_file is empty, log_init will use stderr
+    log_init(final_log_file, GET_OPTION(log_level), false, false);
+  }
+
+  // Apply custom log template if specified (use early parsed value if available, otherwise use options)
+  const char *final_format = early_log_template ? early_log_template : GET_OPTION(log_template);
   bool final_format_console_only =
-      early_log_format ? early_log_format_console_only : GET_OPTION(log_format_console_only);
+      early_log_template ? early_log_template_console_only : GET_OPTION(log_format_console_only);
   if (final_format && final_format[0] != '\0') {
     asciichat_error_t fmt_result = log_set_format(final_format, final_format_console_only);
     if (fmt_result != ASCIICHAT_OK) {
       log_error("Failed to apply custom log format");
+    }
+  }
+
+  // Configure JSON output if requested
+  if (use_json_logging) {
+    // Open the JSON file for output
+    int json_fd = platform_open(final_log_file, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
+    if (json_fd >= 0) {
+      log_set_json_output(json_fd);
+      log_set_format_output(LOG_OUTPUT_JSON);
+    } else {
+      // Failed to open JSON file - report error and exit
+      SET_ERRNO(ERROR_CONFIG, "Failed to open JSON output file: %s", final_log_file);
+      return ERROR_CONFIG;
     }
   }
 

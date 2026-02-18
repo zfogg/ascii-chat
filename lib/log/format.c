@@ -39,7 +39,7 @@
  * @param console_only Applied-to-console-only flag
  * @return Compiled format, or NULL on error
  */
-static log_format_t *parse_format_string(const char *format_str, bool console_only) {
+static log_template_t *parse_format_string(const char *format_str, bool console_only) {
   if (!format_str) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid format string: %s", format_str);
     return NULL;
@@ -50,7 +50,7 @@ static log_format_t *parse_format_string(const char *format_str, bool console_on
     return NULL;
   }
 
-  log_format_t *result = SAFE_CALLOC(1, sizeof(log_format_t), log_format_t *);
+  log_template_t *result = SAFE_CALLOC(1, sizeof(log_template_t), log_template_t *);
   result->original = SAFE_MALLOC(strlen(format_str) + 1, char *);
   strcpy(result->original, format_str);
   result->console_only = console_only;
@@ -282,15 +282,15 @@ static log_format_t *parse_format_string(const char *format_str, bool console_on
   return result;
 
 cleanup:
-  log_format_free(result);
+  log_template_free(result);
   return NULL;
 }
 
-log_format_t *log_format_parse(const char *format_str, bool console_only) {
+log_template_t *log_template_parse(const char *format_str, bool console_only) {
   return parse_format_string(format_str, console_only);
 }
 
-void log_format_free(log_format_t *format) {
+void log_template_free(log_template_t *format) {
   if (!format) {
     SET_ERRNO(ERROR_INVALID_PARAM, "null format");
     return;
@@ -440,21 +440,21 @@ static int render_format_content(const char *content, char *buf, size_t buf_size
   }
 
   /* Parse content as a format string and apply it */
-  log_format_t *content_format = log_format_parse(content, false);
+  log_template_t *content_format = log_template_parse(content, false);
   if (!content_format) {
     return -1;
   }
 
-  int written = log_format_apply(content_format, buf, buf_size, level, timestamp, file, line, func, tid, message,
-                                 use_colors, time_nanoseconds);
-  log_format_free(content_format);
+  int written = log_template_apply(content_format, buf, buf_size, level, timestamp, file, line, func, tid, message,
+                                   use_colors, time_nanoseconds);
+  log_template_free(content_format);
 
   return written;
 }
 
-int log_format_apply(const log_format_t *format, char *buf, size_t buf_size, log_level_t level, const char *timestamp,
-                     const char *file, int line, const char *func, uint64_t tid, const char *message, bool use_colors,
-                     uint64_t time_nanoseconds) {
+int log_template_apply(const log_template_t *format, char *buf, size_t buf_size, log_level_t level,
+                       const char *timestamp, const char *file, int line, const char *func, uint64_t tid,
+                       const char *message, bool use_colors, uint64_t time_nanoseconds) {
   if (!format || !buf || buf_size == 0) {
     return -1;
   }
@@ -603,7 +603,7 @@ int log_format_apply(const log_format_t *format, char *buf, size_t buf_size, log
       const char *comma_pos = strchr(spec->literal, ',');
       if (!comma_pos) {
         /* Invalid format - no comma found */
-        log_debug("log_format_apply: %%color format missing comma in: %s", spec->literal);
+        log_debug("log_template_apply: %%color format missing comma in: %s", spec->literal);
         written = 0;
         break;
       }
@@ -666,7 +666,7 @@ int log_format_apply(const log_format_t *format, char *buf, size_t buf_size, log
 
     if ((size_t)written > remaining) {
       /* Buffer overflow prevention */
-      log_debug("log_format_apply: buffer overflow prevented");
+      log_debug("log_template_apply: buffer overflow prevented");
       return -1;
     }
 

@@ -274,3 +274,12 @@ bool parse_log_file(const char *arg, void *dest, char **error_msg);
  * - "both" - Both microphone and media (AUDIO_SOURCE_BOTH)
  */
 bool parse_audio_source(const char *arg, void *dest, char **error_msg);
+
+/**
+ * @brief Parse log format output type (text or json)
+ *
+ * Parses --log-format values into log_format_output_t enum values:
+ * - "text" - Human-readable text format (LOG_OUTPUT_TEXT)
+ * - "json" - Machine-readable JSON format (LOG_OUTPUT_JSON)
+ */
+bool parse_log_format_output(const char *arg, void *dest, char **error_msg);

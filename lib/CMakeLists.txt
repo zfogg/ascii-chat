@@ -16,6 +16,7 @@ set(CORE_SRCS
     ${LIB_DIR}/log/grep.c
     ${LIB_DIR}/log/interactive_grep.c
     ${LIB_DIR}/log/file_parser.c
+    ${LIB_DIR}/log/json.c
     # platform/terminal.c - unified color detection
     ${LIB_DIR}/platform/terminal.c
     # ui/
@@ -601,6 +602,30 @@ if(USE_MIMALLOC)
     endif()
 endif()
 
+# yyjson - Fast JSON library for structured logging
+# Prevents reader API from being declared in our translation units (only writer needed)
+target_compile_definitions(ascii-chat-core PRIVATE YYJSON_DISABLE_READER=1)
+
+# Add yyjson include directory
+if(YYJSON_INCLUDE_DIRS)
+    target_include_directories(ascii-chat-core PRIVATE ${YYJSON_INCLUDE_DIRS})
+endif()
+
+# Link yyjson library
+if(USE_MUSL)
+    if(DEFINED YYJSON_BUILD_TARGET)
+        add_dependencies(ascii-chat-core ${YYJSON_BUILD_TARGET})
+    endif()
+endif()
+
+# Link yyjson - use YYJSON_LIBRARIES which is set by Yyjson.cmake
+if(YYJSON_LIBRARIES)
+    target_link_libraries(ascii-chat-core ${YYJSON_LIBRARIES})
+else()
+    # Fallback: try to link against system yyjson
+    target_link_libraries(ascii-chat-core yyjson)
+endif()
+
 # -----------------------------------------------------------------------------
 # Module 9: Panic Instrumentation Runtime (depends on: util, platform, core)
 # -----------------------------------------------------------------------------
@@ -821,6 +846,11 @@ add_library(ascii-chat-shared SHARED
         target_include_directories(ascii-chat-shared PRIVATE $<BUILD_INTERFACE:${MIMALLOC_INCLUDE_DIRS}>)
     endif()
 
+    # Add yyjson include directory
+    if(YYJSON_INCLUDE_DIRS)
+        target_include_directories(ascii-chat-shared PRIVATE ${YYJSON_INCLUDE_DIRS})
+    endif()
+
     # Add PCRE2 include directory and library directory for the shared library
     # PUBLIC because public header include/ascii-chat/util/pcre2.h includes pcre2.h
     if(PCRE2_INCLUDE_DIRS)
@@ -877,6 +907,7 @@ add_library(ascii-chat-shared SHARED
         ${OPUS_LIBRARIES}
         ${SQLITE3_LIBRARIES}
         ${PCRE2_LIBRARIES}
+        ${YYJSON_LIBRARIES}
     )
 
     # Link PortAudio with platform-specific dependencies

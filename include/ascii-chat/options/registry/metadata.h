@@ -49,6 +49,11 @@ extern const char *g_audio_source_values[];
 extern const int g_audio_source_integers[];
 extern const char *g_audio_source_descs[];
 
+// Log format output metadata
+extern const char *g_log_format_output_values[];
+extern const int g_log_format_output_integers[];
+extern const char *g_log_format_output_descs[];
+
 // Example arrays
 extern const char *g_compression_examples[];
 extern const char *g_fps_examples[];

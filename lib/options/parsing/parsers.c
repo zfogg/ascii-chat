@@ -1073,3 +1073,33 @@ bool parse_audio_source(const char *arg, void *dest, char **error_msg) {
   }
   return false;
 }
+
+bool parse_log_format_output(const char *arg, void *dest, char **error_msg) {
+  if (!arg || !dest) {
+    if (error_msg) {
+      *error_msg = platform_strdup("Internal error: NULL argument or destination");
+    }
+    return false;
+  }
+
+  log_format_output_t *format_output = (log_format_output_t *)dest;
+  char lower[32];
+  to_lower(arg, lower, sizeof(lower));
+
+  // Text format (human-readable)
+  if (strcmp(lower, "text") == 0) {
+    *format_output = LOG_OUTPUT_TEXT;
+    return true;
+  }
+
+  // JSON format (machine-readable)
+  if (strcmp(lower, "json") == 0) {
+    *format_output = LOG_OUTPUT_JSON;
+    return true;
+  }
+
+  if (error_msg) {
+    *error_msg = platform_strdup("Log format must be 'text' or 'json'");
+  }
+  return false;
+}

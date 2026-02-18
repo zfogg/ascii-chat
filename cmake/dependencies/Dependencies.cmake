@@ -88,6 +88,12 @@ include(${CMAKE_SOURCE_DIR}/cmake/dependencies/BearSSL.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Mdns.cmake)
 configure_mdns()
 
+# yyjson - Fast JSON library for structured logging (non-musl only)
+if(NOT USE_MUSL)
+    include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Yyjson.cmake)
+    configure_yyjson()
+endif()
+
 # FFmpeg - Media file decoding (optional - enables --file support)
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/FFmpeg.cmake)
 
