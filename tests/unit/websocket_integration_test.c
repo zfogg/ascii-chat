@@ -84,7 +84,7 @@ static int start_test_server(websocket_test_ctx_t *ctx) {
 
     // Run server
     execlp("./build/bin/ascii-chat", "./build/bin/ascii-chat", "server", "--port", port_str, "--websocket-port",
-           ws_port_str, "--test-pattern", "--no-status-screen", NULL);
+           ws_port_str, "--no-status-screen", NULL);
 
     // Should not reach here
     exit(EXIT_FAILURE);
@@ -92,7 +92,7 @@ static int start_test_server(websocket_test_ctx_t *ctx) {
 
   // Parent process - wait for server to fully initialize
   // WebSocket server needs extra time to start event loop and bind port
-  sleep(3);
+  sleep(5);
 
   // Verify server is still running
   if (kill(ctx->server_pid, 0) != 0) {
@@ -275,6 +275,7 @@ Test(websocket_integration, multiple_frames_at_15fps, .timeout = 15) {
 
   if (transport != NULL) {
     log_info("✓ WebSocket transport established");
+    ctx.app_client->active_transport = transport; // Set active transport for frame reception
     cr_assert_not_null(ctx.app_client->active_transport, "Transport should be set");
 
     // Simulate frame reception loop (would normally be async)
