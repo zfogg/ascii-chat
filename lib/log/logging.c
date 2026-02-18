@@ -1188,14 +1188,9 @@ void log_plain_msg(const char *fmt, ...) {
     }
   }
 
-  // Choose output stream: respect force_stderr flag to keep stdout clean for piped output
-  FILE *output_stream;
-  if (atomic_load(&g_log.force_stderr)) {
-    output_stream = stderr;
-  } else {
-    output_stream = stdout;
-  }
-  int fd = output_stream == stderr ? STDERR_FILENO : STDOUT_FILENO;
+  // Choose output stream using unified routing logic (LOG_INFO level)
+  int fd = terminal_choose_log_fd(LOG_INFO);
+  FILE *output_stream = (fd == STDERR_FILENO) ? stderr : stdout;
 
   // Apply colorization for TTY output
   if (terminal_should_color_output(fd)) {
