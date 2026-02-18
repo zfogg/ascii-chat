@@ -64,29 +64,40 @@ Use a **50ms timeout** instead of -1. This keeps the event loop responsive:
 
 This matches the correct pattern already used in `transport.c:87` for the client-side WebSocket service thread.
 
-## Remaining Issue: recv_queue Backpressure (2026-02-17 20:35)
+## Current Bug: Processing Stops After First Frame (2026-02-17 22:42)
 
-When starting the server with WebSocket client:
-1. Initial ~15 seconds: **Heavy LWS debug log spam** from receive callbacks
-2. After ~15 seconds: Logs **slow to a few per second**
-3. Only **1-3 frames** actually converted to ASCII art during entire session
+**Observed Behavior:**
+1. Browser connects to server via WebSocket ✓
+2. Server receives FIRST frame ✓
+3. Server processes it and sends ASCII art back to browser ✓
+4. Browser displays ONE frame ✓
+5. **Processing STOPS** - server no longer processes incoming frames
+6. Connection persists - frames continue arriving from client
+7. Server has frames in memory and COULD process them
+8. But server is NOT processing them and NOT sending responses back
 
-**Root Cause:** The dispatch thread (acip_server_receive_and_dispatch) is **synchronous and blocking**. When it calls websocket_recv(), it blocks the handler thread waiting for frame reassembly to complete. During this time:
-- recv_queue cannot dequeue new fragments (lock is held)
-- More fragments arrive from LWS callbacks
-- recv_queue fills up (16384 slots)
-- New fragments get dropped (server.c:611-618)
-- Message reassembly fails → 0 FPS
+**The Bug:**
+After processing the first frame, the processing/dispatch/send pipeline stops. The server is no longer:
+- Reading from the received_packet_queue
+- Processing queued frames
+- Converting to ASCII art
+- Sending responses back to the client
 
-**Solution:** Implement **async dispatch** - decouple frame receiving from frame processing:
-- LWS callbacks queue fragments immediately (current behavior ✓)
-- websocket_recv() returns partial messages or signals completion differently
-- Frame processing happens asynchronously, doesn't block receive path
+**Why the recv_queue fills up:**
+Frames arrive faster than they're being processed (because processing stopped), so they queue up until the buffer overflows and fragments are dropped.
 
-**Lock Contention Improvements (committed):**
-- Reduced recv_mutex lock time from 2.46s to 101ms (24x improvement)
-- Reduced memory peak from 520MB to 30MB (17x improvement)
-- But throughput still limited due to synchronous dispatch blocking
+**What Works:**
+- WebSocket connection ✓
+- ACIP protocol negotiation ✓
+- Fragment reception ✓
+- First frame processing ✓
+- Frame queuing ✓
+
+**What's Broken:**
+- **Processing loop never continues after first frame**
+- Dispatch/send threads stop running or block
+- No subsequent frames are converted to ASCII art
+- No responses sent back to client
 
 ## Files Modified
 
