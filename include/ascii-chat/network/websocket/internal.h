@@ -36,9 +36,8 @@ typedef struct {
   bool owns_context;           ///< True if transport owns context (client), false if borrowed (server)
   ringbuffer_t *recv_queue;    ///< Receive message queue
   ringbuffer_t *send_queue;    ///< Send message queue (for server-side transports)
-  mutex_t recv_mutex;          ///< Protect recv_queue operations only
-  cond_t recv_cond;            ///< Signal when recv_queue messages arrive
-  mutex_t send_mutex;          ///< Protect send_queue operations only
+  mutex_t queue_mutex;         ///< Protect queue operations
+  cond_t queue_cond;           ///< Signal when messages arrive
   bool is_connected;           ///< Connection state
   mutex_t state_mutex;         ///< Protect state changes
   uint8_t *send_buffer;        ///< Send buffer with LWS_PRE padding
