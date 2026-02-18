@@ -13,6 +13,7 @@
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/audio/audio.h>
 #include <string.h>
+#include <signal.h>
 
 /* ============================================================================
  * Internal Helpers
@@ -75,11 +76,15 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
     break;
   }
 
-  // ===== HELP SCREEN CLOSE =====
+  // ===== HELP SCREEN CLOSE / QUIT =====
   case KEY_ESCAPE: {
     if (display && session_display_is_help_active(display)) {
+      // Close help screen if it's active
       session_display_toggle_help(display);
-      // Force re-render of normal frame
+    } else {
+      // If help screen is not active, quit the app (like Ctrl-C)
+      // The signal handler will gracefully shutdown all modes (client, server, mirror, etc.)
+      raise(SIGINT);
     }
     break;
   }
