@@ -1,9 +1,23 @@
 # Bug Report: Frame Loss in WebSocket Client Mode
 
 **Date:** 2026-02-17
-**Severity:** HIGH
-**Status:** PARTIALLY FIXED — 19 FPS ACHIEVED (NEED 30 FPS)
-**Component:** WebSocket Server / RX Flow Control + Message Dispatch Threading (`lib/network/websocket/server.c`, `lib/network/acip/server.c`)
+**Severity:** CRITICAL
+**Status:** ACTIVE — REPRODUCER DOCUMENTED
+**Component:** Client-side frame buffering / rendering stall (`web/web.ascii-chat.com/src/pages/Client.tsx`)
+
+## User-Observed Behavior (ACTUAL SYMPTOM)
+
+1. Start server, navigate to `/client` in browser
+2. **ONE frame renders**
+3. Several more frames render over the next few seconds
+4. **Frame rendering STOPS completely**
+5. After **1-2 minutes**, the client suddenly renders many frames at once (catching up to real-time), then **STOPS again**
+6. Minutes pass
+7. **Pattern repeats**: long pause, burst of catch-up frames, stop
+
+**This is NOT a network delivery issue.** The WebSocket is clearly working (frames arrive eventually). This is a **client-side rendering stall with periodic catch-up bursts**.
+
+---
 
 ## Latest Update (2026-02-17 19:15 UTC)
 
