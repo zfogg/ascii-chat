@@ -225,20 +225,28 @@ static log_format_t *parse_format_string(const char *format_str, bool console_on
 
           spec_idx++;
           p++; /* Skip closing paren */
-        } else if (*p && isalpha((unsigned char)*p) && *(p + 1) && !isalpha((unsigned char)*(p + 1))) {
-          /* Single-character strftime specifier (like %H, %M, %S, %Y, %m, %d, etc.) */
-          result->specs[spec_idx].type = LOG_FORMAT_STRFTIME;
-          result->specs[spec_idx].literal = SAFE_MALLOC(2, char *);
-          if (!result->specs[spec_idx].literal) {
+        } else if (isalpha((unsigned char)*p)) {
+          /* Check if this is a single-character strftime specifier */
+          char next_char = *(p + 1);
+          if (next_char == '\0' || !isalpha((unsigned char)next_char)) {
+            /* Single-character strftime specifier (like %H, %M, %S, %Y, %m, %d, etc.) */
+            result->specs[spec_idx].type = LOG_FORMAT_STRFTIME;
+            result->specs[spec_idx].literal = SAFE_MALLOC(2, char *);
+            if (!result->specs[spec_idx].literal) {
+              goto cleanup;
+            }
+            result->specs[spec_idx].literal[0] = *p;
+            result->specs[spec_idx].literal[1] = '\0';
+            result->specs[spec_idx].literal_len = 1;
+            spec_idx++;
+            p++;
+          } else {
+            /* Unknown multi-character specifier */
+            log_error("Unknown format specifier: %%%s", p);
             goto cleanup;
           }
-          result->specs[spec_idx].literal[0] = *p;
-          result->specs[spec_idx].literal[1] = '\0';
-          result->specs[spec_idx].literal_len = 1;
-          spec_idx++;
-          p++;
         } else {
-          /* Unknown specifier */
+          /* Unknown specifier (starts with non-alpha) */
           log_error("Unknown format specifier: %%%s", p);
           goto cleanup;
         }
@@ -472,19 +480,6 @@ int log_format_apply(const log_format_t *format, char *buf, size_t buf_size, log
       }
       break;
 
-    case LOG_FORMAT_STRFTIME: {
-      /* Single-character strftime specifier (like %H, %M, %S, etc.) */
-      if (spec->literal && spec->literal[0]) {
-        char format_str[3] = {'%', spec->literal[0], '\0'};
-        written = time_format_now(format_str, p, remaining + 1);
-        if (written <= 0) {
-          log_debug("time_format_now failed for specifier: %s", format_str);
-          written = 0;
-        }
-      }
-      break;
-    }
-
     case LOG_FORMAT_LEVEL:
       /* Log level as string (DEV, DEBUG, INFO, WARN, ERROR, FATAL) */
       written = safe_snprintf(p, remaining + 1, "%s", get_level_string(level));
@@ -544,6 +539,19 @@ int log_format_apply(const log_format_t *format, char *buf, size_t buf_size, log
       if (nanoseconds > 999999999)
         nanoseconds = 999999999;
       written = safe_snprintf(p, remaining + 1, "%09ld", nanoseconds);
+      break;
+    }
+
+    case LOG_FORMAT_STRFTIME: {
+      /* Single-character strftime specifier (like %H, %M, %S, etc.) */
+      if (spec->literal && spec->literal[0]) {
+        char format_str[3] = {'%', spec->literal[0], '\0'};
+        written = time_format_now(format_str, p, remaining + 1);
+        if (written <= 0) {
+          log_debug("time_format_now failed for specifier: %s", format_str);
+          written = 0;
+        }
+      }
       break;
     }
 
