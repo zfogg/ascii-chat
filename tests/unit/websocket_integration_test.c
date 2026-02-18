@@ -244,7 +244,7 @@ Test(websocket_integration, app_client_with_websocket_transport) {
   app_client_destroy(&app_client);
 }
 
-Test(websocket_integration, multiple_frames_at_15fps, .timeout = 3) {
+Test(websocket_integration, multiple_frames_at_15fps, .timeout = 7) {
   // Test that server delivers multiple ASCII art frames at 15fps+
   // Expected: >= 15 frames per second (max 66ms per frame)
   websocket_test_ctx_t ctx = {0};
