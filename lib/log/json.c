@@ -19,6 +19,9 @@
  * struct is defined.
  * ============================================================================ */
 
+#include <unistd.h>
+#include <stdarg.h>
+
 /**
  * @brief Format nanoseconds as HH:MM:SS.microseconds
  *
@@ -168,4 +171,123 @@ void log_json_write(int fd, log_level_t level, uint64_t time_nanoseconds, const 
 
   /* Free document */
   yyjson_mut_doc_free(doc);
+}
+
+/**
+ * @brief Escape a string for JSON output (async-safe)
+ *
+ * Handles only the most common escapes needed in signal handlers.
+ * Uses stack buffer to avoid allocations.
+ *
+ * @param src Source string
+ * @param dest Destination buffer
+ * @param dest_size Size of destination buffer
+ * @return Number of characters written (not including null terminator)
+ */
+static size_t json_escape_async_safe(const char *src, char *dest, size_t dest_size) {
+  if (!src || !dest || dest_size < 2) {
+    return 0;
+  }
+
+  size_t pos = 0;
+  for (const char *p = src; *p && pos < dest_size - 1; p++) {
+    char c = *p;
+    if (c == '"' || c == '\\') {
+      if (pos + 1 < dest_size - 1) {
+        dest[pos++] = '\\';
+        dest[pos++] = c;
+      } else {
+        break;
+      }
+    } else if (c == '\n') {
+      if (pos + 1 < dest_size - 1) {
+        dest[pos++] = '\\';
+        dest[pos++] = 'n';
+      } else {
+        break;
+      }
+    } else if (c == '\r') {
+      if (pos + 1 < dest_size - 1) {
+        dest[pos++] = '\\';
+        dest[pos++] = 'r';
+      } else {
+        break;
+      }
+    } else if (c == '\t') {
+      if (pos + 1 < dest_size - 1) {
+        dest[pos++] = '\\';
+        dest[pos++] = 't';
+      } else {
+        break;
+      }
+    } else if ((unsigned char)c < 32) {
+      /* Skip other control characters */
+      continue;
+    } else {
+      dest[pos++] = c;
+    }
+  }
+  dest[pos] = '\0';
+  return pos;
+}
+
+/**
+ * @brief Async-safe JSON logging for signal handlers
+ *
+ * This function formats and writes JSON logs using ONLY async-safe operations:
+ * - snprintf for string formatting
+ * - write() for output
+ * - No allocations, no locks, no library calls
+ *
+ * Suitable for calling from signal handlers (SIGTERM, SIGINT, etc.)
+ *
+ * @param fd File descriptor to write to (typically STDOUT_FILENO or STDERR_FILENO)
+ * @param level Log level
+ * @param file Source file name (may be NULL)
+ * @param line Source line number
+ * @param func Function name (may be NULL)
+ * @param message Log message (must not be NULL)
+ */
+void log_json_async_safe(int fd, log_level_t level, const char *file, int line, const char *func, const char *message) {
+  if (fd < 0 || !message) {
+    return;
+  }
+
+  /* Format JSON manually on stack using only async-safe operations */
+  char json_buffer[2048];
+  char escaped_message[512];
+  char escaped_file[256];
+  char escaped_func[128];
+  char timestamp_buf[32];
+
+  /* Escape the strings (normalize file path to project-relative) */
+  json_escape_async_safe(message, escaped_message, sizeof(escaped_message));
+  if (file) {
+    extern const char *extract_project_relative_path(const char *file);
+    const char *rel_file = extract_project_relative_path(file);
+    json_escape_async_safe(rel_file, escaped_file, sizeof(escaped_file));
+  } else {
+    escaped_file[0] = '\0';
+  }
+  json_escape_async_safe(func ? func : "", escaped_func, sizeof(escaped_func));
+
+  /* Format timestamp using only async-safe operations */
+  uint64_t time_ns = time_get_realtime_ns();
+  format_timestamp_microseconds(time_ns, timestamp_buf, sizeof(timestamp_buf));
+
+  /* Get thread ID (note: asciichat_thread_current_id is assumed to be async-safe) */
+  uint64_t tid = (uint64_t)asciichat_thread_current_id();
+
+  /* Format complete JSON object with timestamp */
+  int written = snprintf(json_buffer, sizeof(json_buffer),
+                         "{\"header\":{\"timestamp\":\"%s\",\"level\":\"%s\",\"tid\":%" PRIu64
+                         ",\"file\":\"%s\",\"line\":%d,\"func\":\"%s\"},"
+                         "\"body\":{\"message\":\"%s\"}}\n",
+                         timestamp_buf, log_level_to_string(level), tid, file ? escaped_file : "", line,
+                         func ? escaped_func : "", escaped_message);
+
+  /* Write to fd if successful */
+  if (written > 0 && written < (int)sizeof(json_buffer)) {
+    platform_write_all(fd, (const uint8_t *)json_buffer, (size_t)written);
+  }
 }

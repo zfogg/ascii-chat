@@ -119,6 +119,7 @@
 #include <ascii-chat/network/acip/client.h>
 #include <ascii-chat/ui/server_status.h>
 #include <ascii-chat/log/interactive_grep.h>
+#include <ascii-chat/log/json.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/debug/memory.h>
 
@@ -1132,11 +1133,9 @@ static void server_handle_sigterm(int sigterm) {
   (void)(sigterm);
   atomic_store(&g_server_should_exit, true);
 
-  // Use raw write() instead of log_info_nofile() - see SIGINT handler for explanation.
-  // log_info_nofile() calls functions that are NOT signal-safe (can deadlock if signal
-  // interrupts a thread holding a lock that log_info_nofile() tries to acquire).
-  static const char sigterm_msg[] = "SIGTERM received - shutting down server...\n";
-  (void)write(STDERR_FILENO, sigterm_msg, sizeof(sigterm_msg) - 1);
+  // Log to console only (text or JSON depending on --json flag)
+  // Using log_console() which is signal-safe and handles both formats
+  log_console(LOG_INFO, "SIGTERM received - shutting down server...");
 
   // Stop the TCP server accept loop immediately.
   // Without this, the select() call with ACCEPT_TIMEOUT could delay shutdown.
@@ -1984,13 +1983,15 @@ int server_main(void) {
     if (upnp_result == ASCIICHAT_OK && g_upnp_ctx) {
       char public_addr[22];
       if (nat_upnp_get_address(g_upnp_ctx, public_addr, sizeof(public_addr)) == ASCIICHAT_OK) {
-        printf("🌐 Public endpoint: %s (direct TCP)\\n", public_addr);
+        char msg[256];
+        safe_snprintf(msg, sizeof(msg), "🌐 Public endpoint: %s (direct TCP)", public_addr);
+        log_console(LOG_INFO, msg);
         log_info("UPnP: Port mapping successful, public endpoint: %s", public_addr);
         upnp_succeeded = true;
       }
     } else {
       log_info("UPnP: Port mapping unavailable or failed - will use WebRTC fallback");
-      printf("📡 Clients behind strict NATs will use WebRTC fallback\\n");
+      log_console(LOG_INFO, "📡 Clients behind strict NATs will use WebRTC fallback");
     }
   } else {
     log_debug("UPnP: Disabled (use --upnp to enable automatic port mapping)");

@@ -96,7 +96,8 @@ static bool discovery_console_ctrl_handler(console_ctrl_event_t event) {
 #ifndef _WIN32
 static void discovery_handle_sigterm(int sig) {
   (void)sig; // Unused
-  log_info_nofile("SIGTERM received - shutting down discovery...");
+  // Log to console only (text or JSON depending on --json flag)
+  log_console(LOG_INFO, "SIGTERM received - shutting down discovery...");
   discovery_signal_exit();
 }
 #else

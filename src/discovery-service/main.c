@@ -75,7 +75,7 @@ static void acds_signal_exit(void) {
  */
 static void acds_handle_signal(int sig) {
   (void)sig;
-  log_info_nofile("Signal received - shutting down discovery service...");
+  log_console(LOG_INFO, "Signal received - shutting down discovery service...");
   if (g_server) {
     atomic_store(&g_server->tcp_server.running, false);
   }
@@ -369,12 +369,14 @@ int acds_main(void) {
     if (upnp_result == ASCIICHAT_OK && g_upnp_ctx) {
       char public_addr[22];
       if (nat_upnp_get_address(g_upnp_ctx, public_addr, sizeof(public_addr)) == ASCIICHAT_OK) {
-        printf("🌐 Public endpoint: %s (direct TCP)\n", public_addr);
+        char msg[256];
+        safe_snprintf(msg, sizeof(msg), "🌐 Public endpoint: %s (direct TCP)", public_addr);
+        log_console(LOG_INFO, msg);
         log_info("UPnP: Port mapping successful, public endpoint: %s", public_addr);
       }
     } else {
       log_info("UPnP: Port mapping unavailable or failed - will use WebRTC fallback");
-      printf("📡 Clients behind strict NATs will use WebRTC fallback\n");
+      log_console(LOG_INFO, "📡 Clients behind strict NATs will use WebRTC fallback");
     }
   } else {
     log_debug("UPnP: Disabled (use --upnp to enable automatic port mapping)");

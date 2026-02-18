@@ -41,6 +41,7 @@
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/abstraction.h>
 
@@ -78,7 +79,8 @@ static void mirror_signal_exit(void) {
  */
 static void mirror_handle_sigterm(int sig) {
   (void)sig; // Unused
-  log_info_nofile("SIGTERM received - shutting down mirror...");
+  // Log to console only (text or JSON depending on --json flag)
+  log_console(LOG_INFO, "SIGTERM received - shutting down mirror...");
   mirror_signal_exit();
 }
 

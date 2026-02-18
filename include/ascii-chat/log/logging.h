@@ -573,68 +573,6 @@ asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t
  * WARN/ERROR/FATAL go to stderr, other levels go to stdout.
  */
 
-/** @brief Log DEV message to terminal only (no file) */
-#if LOG_COMPILE_LEVEL <= LOG_DEV
-#ifdef NDEBUG
-#define log_dev_nofile(...) log_terminal_msg(LOG_DEV, NULL, 0, NULL, __VA_ARGS__)
-#else
-#define log_dev_nofile(...) log_terminal_msg(LOG_DEV, __FILE__, __LINE__, __func__, __VA_ARGS__)
-#endif
-#else
-#define log_dev_nofile(...) ((void)0)
-#endif
-
-/** @brief Log DEBUG message to terminal only (no file) */
-#if LOG_COMPILE_LEVEL <= LOG_DEBUG
-#ifdef NDEBUG
-#define log_debug_nofile(...) log_terminal_msg(LOG_DEBUG, NULL, 0, NULL, __VA_ARGS__)
-#else
-#define log_debug_nofile(...) log_terminal_msg(LOG_DEBUG, __FILE__, __LINE__, __func__, __VA_ARGS__)
-#endif
-#else
-#define log_debug_nofile(...) ((void)0)
-#endif
-
-/** @brief Log INFO message to terminal only (no file) */
-#if LOG_COMPILE_LEVEL <= LOG_INFO
-#ifdef NDEBUG
-#define log_info_nofile(...) log_terminal_msg(LOG_INFO, NULL, 0, NULL, __VA_ARGS__)
-#else
-#define log_info_nofile(...) log_terminal_msg(LOG_INFO, __FILE__, __LINE__, __func__, __VA_ARGS__)
-#endif
-#else
-#define log_info_nofile(...) ((void)0)
-#endif
-
-/** @brief Log WARN message to terminal only (no file), outputs to stderr */
-#if LOG_COMPILE_LEVEL <= LOG_WARN
-#ifdef NDEBUG
-#define log_warn_nofile(...) log_terminal_msg(LOG_WARN, NULL, 0, NULL, __VA_ARGS__)
-#else
-#define log_warn_nofile(...) log_terminal_msg(LOG_WARN, __FILE__, __LINE__, __func__, __VA_ARGS__)
-#endif
-#else
-#define log_warn_nofile(...) ((void)0)
-#endif
-
-/** @brief Log ERROR message to terminal only (no file), outputs to stderr */
-#if LOG_COMPILE_LEVEL <= LOG_ERROR
-#ifdef NDEBUG
-#define log_error_nofile(...) log_terminal_msg(LOG_ERROR, NULL, 0, NULL, __VA_ARGS__)
-#else
-#define log_error_nofile(...) log_terminal_msg(LOG_ERROR, __FILE__, __LINE__, __func__, __VA_ARGS__)
-#endif
-#else
-#define log_error_nofile(...) ((void)0)
-#endif
-
-/** @brief Log FATAL message to terminal only (no file), outputs to stderr */
-#ifdef NDEBUG
-#define log_fatal_nofile(...) log_terminal_msg(LOG_FATAL, NULL, 0, NULL, __VA_ARGS__)
-#else
-#define log_fatal_nofile(...) log_terminal_msg(LOG_FATAL, __FILE__, __LINE__, __func__, __VA_ARGS__)
-#endif
-
 /** @} */
 
 /**
@@ -986,6 +924,13 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
  * @note Internal function - do not use directly in application code
  */
 const char *get_level_string_padded(log_level_t level);
+
+// Console-only logging helper (text or JSON, no file output)
+// For signal handlers and initialization paths where file logging is not safe
+// Automatically chooses between text and JSON based on --json flag
+// Captures call site (file, line, function) for better debugging
+void log_console_impl(log_level_t level, const char *file, int line, const char *func, const char *message);
+#define log_console(level, message) log_console_impl((level), __FILE__, __LINE__, __func__, (message))
 
 /* Include crypto.h at the end to avoid circular dependency with time.h */
 #include "../crypto/crypto.h"

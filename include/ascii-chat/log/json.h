@@ -56,3 +56,22 @@ void log_json_write(int fd, log_level_t level, uint64_t time_nanoseconds, const 
  * @note This function is thread-safe (uses atomic operations)
  */
 void log_set_json_output(int fd);
+
+/**
+ * @brief Async-safe JSON logging for signal handlers
+ *
+ * This function formats and writes JSON logs using ONLY async-safe operations:
+ * - snprintf for string formatting
+ * - write() for output
+ * - No allocations, no locks, no library calls
+ *
+ * Suitable for calling from signal handlers (SIGTERM, SIGINT, etc.)
+ *
+ * @param fd File descriptor to write to (typically STDOUT_FILENO or STDERR_FILENO)
+ * @param level Log level (DEBUG, INFO, WARN, ERROR, FATAL)
+ * @param file Source file name (can be NULL)
+ * @param line Source line number (can be 0)
+ * @param func Function name (can be NULL)
+ * @param message Log message (must not be NULL)
+ */
+void log_json_async_safe(int fd, log_level_t level, const char *file, int line, const char *func, const char *message);

@@ -1927,3 +1927,33 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
   colored_buf[buf_size - 1] = '\0';
   return (size_t)len;
 }
+
+// Internal implementation - don't use directly, use log_console_impl macro
+void log_console_impl(log_level_t level, const char *file, int line, const char *func, const char *message) {
+  if (!message) {
+    return;
+  }
+
+  int fd = terminal_choose_log_fd(level);
+  if (fd < 0) {
+    return;
+  }
+
+  // Check if JSON output is enabled (json_file >= 0 means enabled)
+  int json_fd = atomic_load(&g_log.json_file);
+  bool use_json = (json_fd >= 0);
+
+  if (use_json) {
+    // Use async-safe JSON formatter (safe for signal handlers)
+    extern void log_json_async_safe(int fd, log_level_t level, const char *file, int line, const char *func,
+                                    const char *message);
+    log_json_async_safe(fd, level, file, line, func, message);
+  } else {
+    // Text output to console using platform_write_all to handle partial writes
+    size_t msg_len = strlen(message);
+    platform_write_all(fd, (const uint8_t *)message, msg_len);
+    if (msg_len == 0 || message[msg_len - 1] != '\n') {
+      platform_write_all(fd, (const uint8_t *)"\n", 1);
+    }
+  }
+}

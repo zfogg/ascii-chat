@@ -86,6 +86,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/json.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h> // For RCU-based options access
 #include <ascii-chat/util/time.h>   // For time macros
@@ -219,7 +220,9 @@ static bool console_ctrl_handler(console_ctrl_event_t event) {
 #ifndef _WIN32
 static void client_handle_sigterm(int sig) {
   (void)sig; // Unused
-  log_info_nofile("SIGTERM received - shutting down client...");
+  // Log to console only (text or JSON depending on --json flag)
+  // Using log_console() which is signal-safe and handles both formats
+  log_console(LOG_INFO, "SIGTERM received - shutting down client...");
   // Signal all subsystems to shutdown (async-signal-safe operations only)
   atomic_store(&g_should_exit, true);
   server_connection_shutdown(); // Only uses atomics and socket_shutdown
@@ -270,7 +273,7 @@ static void client_handle_sigwinch(int sigwinch) {
 // Windows-compatible signal handler (no-op implementation)
 static void client_handle_sigwinch(int sigwinch) {
   (void)(sigwinch);
-  log_debug_nofile("SIGWINCH received (Windows no-op implementation)");
+  log_console(LOG_DEBUG, "SIGWINCH received (Windows no-op implementation)");
 }
 #endif
 
@@ -727,12 +730,16 @@ int client_main(void) {
     asciichat_error_t discovery_err = discover_session_parallel(session_string, &discovery_cfg, &discovery_result);
 
     if (discovery_err != ASCIICHAT_OK || !discovery_result.success) {
-      fprintf(stderr, "Error: Failed to discover session '%s'\n", session_string);
-      fprintf(stderr, "  - Not found via mDNS (local network)\n");
-      fprintf(stderr, "  - Not found via ACDS (discovery server)\n");
-      fprintf(stderr, "\nDid you mean to:\n");
-      fprintf(stderr, "  ascii-chat server           # Start a new server\n");
-      fprintf(stderr, "  ascii-chat client HOST      # Connect to specific host\n");
+      char error_msg[512];
+      safe_snprintf(error_msg, sizeof(error_msg),
+                    "Error: Failed to discover session '%s'\n"
+                    "  - Not found via mDNS (local network)\n"
+                    "  - Not found via ACDS (discovery server)\n"
+                    "\nDid you mean to:\n"
+                    "  ascii-chat server           # Start a new server\n"
+                    "  ascii-chat client HOST      # Connect to specific host",
+                    session_string);
+      log_console(LOG_ERROR, error_msg);
       return 1;
     }
 
