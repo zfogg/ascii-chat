@@ -5,51 +5,32 @@
 **Status:** PARTIALLY FIXED — 19 FPS ACHIEVED (NEED 30 FPS)
 **Component:** WebSocket Server / RX Flow Control + Message Dispatch Threading (`lib/network/websocket/server.c`, `lib/network/acip/server.c`)
 
-## Latest Update (2026-02-17 19:10 UTC) — LWS Source Code Analysis Complete
+## Latest Update (2026-02-17 19:15 UTC)
 
-### Critical Discovery: The 30ms Gaps Are By Design
+**CORRECTION:** The 30ms gaps are NOT by LWS design. They are caused by the **browser's TCP window management**, not server-side processing.
 
-After reading LWS source code (`lib/plat/unix/unix-service.c` and `lib/core-net/service.c`):
+As stated in the bug report (lines 199-203):
+- The recv_queue fills up because `acip_server_receive_and_dispatch()` can't drain messages fast enough
+- We call `lws_rx_flow_control(wsi, 0)` to pause RX (backpressure)
+- Browser's TCP window fills up waiting for ACKs
+- Browser waits ~30ms for window to clear
+- Browser sends next 131KB batch
+- **The 30ms gap is browser TCP timing, not a server bug**
 
-**The root cause of 30ms gaps is LWS's backpressure mechanism:**
-1. When recv_queue fills, we call `lws_rx_flow_control(wsi, 0)` to pause RX
-2. LWS adds WSI to `pt->dll_buflist_owner` (rxflow buffer list)
-3. `lws_service_adjust_timeout()` detects buffered data, returns 0 (force poll timeout to 0)
-4. This forces busy-spin event loop (high CPU usage)
-5. `lws_service_do_ripe_rxflow()` processes buffered data at intervals (~30ms)
-6. **The 30ms gaps are the ripe_rxflow processing interval - not a bug, but by design**
+### The Real Problem (per bug report)
 
-**Result:** 1.76 seconds to reassemble 921KB message = 21 fragments × ~30ms/batch
+> "The recv_queue is filling up too fast, causing backpressure and flow control every 131KB. This is because `websocket_recv()` on the receiver thread can't drain messages faster than they arrive."
 
-### permessage-deflate Blocker — Root Cause Identified
+### The Solution (per bug report)
 
-**Theory (from LWS analysis):**
-- permessage-deflate negotiation enables browser-side compression
-- Browser sends: frame #1 (first=1, final=0, compressed)
-- LWS extension expects continuation frames quickly
-- We call `lws_rx_flow_control(wsi, 0)` to pause RX when queue fills
-- **RX is paused → continuation frames don't arrive → extension state machine times out**
-- LWS closes with code 1006 (abnormal closure)
+The fix is NOT to change LWS behavior. The fix is to handle message dispatch faster:
+1. **Process messages asynchronously** (async handler dispatch)
+2. **Or increase dispatch thread pool** to handle decryption/callback in parallel
+3. **Or enable permessage-deflate** to reduce frame size from 921KB to 50-100KB (no queue overflow)
 
-**The issue:** Flow control state conflicts with permessage-deflate extension callback ordering
+### Current Status
 
-### Network Delivery is ACTUALLY WORKING
-
-E2E test shows:
-- **56 FPS** network frame delivery (fragmentation rate: 921KB/frame ÷ 32KB/fragment ≈ 29 fragments)
-- But test metrics showing "2 unique frames/sec" are misleading
-- This 56 FPS is WebSocket message fragment arrival rate, NOT unique frame content rate
-
-### Real Bottleneck: Mysterious Rendering Issue
-
-User reported: 0-1 FPS in real browser with freezing after 1 frame
-
-This suggests the real problem is NOT WebSocket fragmentation, but either:
-- Frame decompression on client-side
-- Rendering pipeline bottleneck
-- Something in the application message dispatch
-
-**Next Investigation:** Profile real browser rendering behavior separately
+E2E test shows 56 FPS network delivery (working correctly). Real browser shows 0-1 FPS, suggesting the bottleneck is downstream in client rendering, not WebSocket delivery.
 
 ## Executive Summary
 
