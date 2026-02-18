@@ -914,8 +914,12 @@ asciichat_error_t options_init(int argc, char **argv) {
       }
     }
     if (argv[i][0] == '-') {
-      if (strcmp(argv[i], "--quiet") == 0 || strcmp(argv[i], "-q") == 0) {
-        user_quiet = true;
+      // Handle --quiet, -q, --quiet=value formats
+      bool temp_quiet = false;
+      if (parse_binary_bool_arg(argv[i], &temp_quiet, "quiet", 'q')) {
+        if (temp_quiet) {
+          user_quiet = true;
+        }
       }
       // Validate --log-level and --log-file require arguments
       if (strcmp(argv[i], "--log-level") == 0) {
