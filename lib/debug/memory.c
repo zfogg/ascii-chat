@@ -59,14 +59,9 @@ typedef struct {
 } ignore_entry_t;
 
 static const ignore_entry_t g_ignore_list[] = {
-    {"lib/util/pcre2.c", 53, 50},          // PCRE2 singleton allocations (16+ total, cleaned after report)
     {"lib/options/colorscheme.c", 579, 8}, // 8 16-color ANSI strings (cleaned after report)
     {"lib/options/colorscheme.c", 596, 8}, // 8 256-color ANSI strings (cleaned after report)
     {"lib/options/colorscheme.c", 613, 8}, // 8 truecolor ANSI strings (cleaned after report)
-    {"lib/session/display.c", 131, 1},     // Session display context (cleaned after report)
-    {"lib/platform/posix/util.c", 35, 15}, // Symbol cache strings (backtrace during memory report)
-    {"lib/platform/symbols.c", 1074, 2},   // Symbol array allocations (backtrace during memory report)
-    {"lib/asciichat_errno.c", 149, 2},     // Error context message (backtrace during memory report)
     {"lib/util/path.c", 1203, 1},          // Normalized path allocation (caller responsibility to free)
     {NULL, 0, 0}                           // Sentinel
 };
@@ -106,11 +101,12 @@ static bool acquire_mutex_with_polling(mutex_t *mutex, int timeout_ms) {
 }
 
 static bool should_ignore_allocation(const char *file, int line) {
-  // Normalize the file path to match ignore list entries
-  const char *normalized_file = extract_project_relative_path(file);
+  // file is already the normalized relative path from curr->file
+  // (set during debug_malloc/debug_calloc using extract_project_relative_path)
+  // Do NOT call extract_project_relative_path again - it won't work on already-relative paths
 
   for (size_t i = 0; g_ignore_list[i].file != NULL; i++) {
-    if (line == g_ignore_list[i].line && strcmp(normalized_file, g_ignore_list[i].file) == 0) {
+    if (line == g_ignore_list[i].line && strcmp(file, g_ignore_list[i].file) == 0) {
       // Found matching ignore entry - check if we've exceeded expected count
       if (g_ignore_counts[i] < g_ignore_list[i].expected_count) {
         g_ignore_counts[i]++;
@@ -650,37 +646,29 @@ void debug_memory_report(void) {
     // Reset ignore counters after counting suppressed bytes
     reset_ignore_counters();
 
-    // Log suppression details
-    if (suppressed_count > 0) {
-      SAFE_IGNORE_PRINTF_RESULT(
-          safe_fprintf(stderr, "\n%s\n", colored_string(LOG_COLOR_DEV, "Suppressed allocations:")));
-
+    // Count actual unfreed allocations early so we can use it to filter suppression warnings
+    size_t unfreed_count = 0;
+    if (g_mem.head) {
       if (ensure_mutex_initialized()) {
         if (acquire_mutex_with_polling(&g_mem.mutex, 100)) {
-          // Count and display actual suppressions
           mem_block_t *curr = g_mem.head;
           while (curr) {
-            if (should_ignore_allocation(curr->file, curr->line)) {
-              char pretty_size[64];
-              char line_str[32];
-              format_bytes_pretty(curr->size, pretty_size, sizeof(pretty_size));
-              safe_snprintf(line_str, sizeof(line_str), "%d", curr->line);
-              SAFE_IGNORE_PRINTF_RESULT(
-                  safe_fprintf(stderr, "  - %s:%s - %s\n", colored_string(LOG_COLOR_GREY, curr->file),
-                               colored_string(LOG_COLOR_FATAL, line_str), colored_string(LOG_COLOR_INFO, pretty_size)));
+            if (!should_ignore_allocation(curr->file, curr->line)) {
+              unfreed_count++;
             }
             curr = curr->next;
           }
           mutex_unlock(&g_mem.mutex);
         }
       }
+    }
 
-      // Check if expected suppressions match actual
-      reset_ignore_counters();
+    // Only warn about suppression mismatches if there are outstanding allocations
+    if (unfreed_count > 0) {
       for (size_t i = 0; g_ignore_list[i].file != NULL; i++) {
         if (g_ignore_counts[i] != g_ignore_list[i].expected_count) {
-          SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(
-              stderr, "%s\n", colored_string(LOG_COLOR_ERROR, "  WARNING: Suppression mismatch detected")));
+          SAFE_IGNORE_PRINTF_RESULT(
+              safe_fprintf(stderr, "%s\n", colored_string(LOG_COLOR_ERROR, "WARNING: Suppression mismatch detected")));
           SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "  %s:%d - expected %d, found %d\n", g_ignore_list[i].file,
                                                  g_ignore_list[i].line, g_ignore_list[i].expected_count,
                                                  g_ignore_counts[i]));
@@ -756,23 +744,7 @@ void debug_memory_report(void) {
     }
     PRINT_MEM_LINE_COLORED(label_peak, pretty_peak, peak_color);
 
-    // diff - count actual unfreed allocations in the linked list (excluding ignored)
-    // (Calculate early so we can use it for colorization)
-    size_t unfreed_count = 0;
-    if (g_mem.head) {
-      if (ensure_mutex_initialized()) {
-        if (acquire_mutex_with_polling(&g_mem.mutex, 100)) {
-          mem_block_t *curr = g_mem.head;
-          while (curr) {
-            if (!should_ignore_allocation(curr->file, curr->line)) {
-              unfreed_count++;
-            }
-            curr = curr->next;
-          }
-          mutex_unlock(&g_mem.mutex);
-        }
-      }
-    }
+    // unfreed_count already calculated earlier for suppression warning filtering
 
     // Colorize malloc/calloc/free calls: green if unfreed == 0, red if unfreed != 0
     log_color_t calls_color = (unfreed_count == 0) ? LOG_COLOR_INFO : LOG_COLOR_ERROR;
@@ -844,7 +816,7 @@ void debug_memory_report(void) {
 
           char pretty_size[64];
           format_bytes_pretty(curr->size, pretty_size, sizeof(pretty_size));
-          const char *file_location = extract_project_relative_path(curr->file);
+          const char *file_location = curr->file; // Already normalized relative path
 
           // Determine color based on unit (1 MB and over=red, KB=yellow, B=light blue)
           log_color_t size_color = LOG_COLOR_DEBUG; // Default to light blue for bytes
