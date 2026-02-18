@@ -687,43 +687,18 @@ static struct lws_protocols websocket_protocols[] = {
 };
 
 /**
- * @brief WebSocket extensions for the server
+ * @brief WebSocket extensions - permessage-deflate compression (RFC 7692)
  *
- * permessage-deflate (RFC 7692) compresses WebSocket messages at the protocol
- * level. Browsers negotiate this automatically during the handshake. For raw
- * RGB video frames (~921KB), deflate typically achieves 10:1+ compression,
- * reducing data to ~50-100KB which fits within a single TCP window and
- * eliminates the multi-round-trip receive stalls seen with uncompressed data.
+ * Enables permessage-deflate compression for WebSocket messages.
+ * Browsers negotiate this automatically during handshake.
+ *
+ * Performance benefits:
+ * - Compresses raw RGB video frames (~921KB) to ~50-100KB (10:1+ ratio)
+ * - Reduces multi-fragment receive stalls
+ * - Improves throughput by reducing TCP round-trips
  */
-/**
- * @brief WebSocket extensions for the server
- *
- * NOTE: permessage-deflate (RFC 7692) is DISABLED - see below for details
- *
- * With permessage-deflate enabled:
- * - Should compress 921KB frames to ~50-100KB (10:1 compression)
- * - Should prevent recv_queue overflow causing TCP flow control stalls
- * - Should eliminate ~30ms gaps between frame deliveries
- *
- * BUG: When permessage-deflate is negotiated, WebSocket connections close
- * abnormally (code 1006) immediately upon receiving multi-fragment messages:
- * 1. Browser sends compressed frame with first=1, final=0
- * 2. Server LWS_CALLBACK_RECEIVE queues the fragment
- * 3. Immediately after returning 0, LWS_CALLBACK_CLOSED fires
- * 4. Continuation fragments never arrive
- *
- * ROOT CAUSE (in bug_report): The recv_queue fills up → we call
- * lws_rx_flow_control(wsi, 0) → LWS buffers in rxflow → browser's TCP window
- * empties → Chrome's networking thread waits ~30ms → sends next batch.
- *
- * SOLUTION: When permessage-deflate is enabled, compressed frames should fit
- * in single TCP window, preventing queue overflow and flow control trigger.
- *
- * BLOCKER: Multi-fragment handling is broken when compression negotiated.
- * Need to debug: fragment reassembly with compression, lws_rx_flow_control
- * interaction with permessage-deflate extension negotiation.
- */
-static const struct lws_extension websocket_extensions[] = {{NULL, NULL, NULL}};
+static const struct lws_extension websocket_extensions[] = {
+    {"permessage-deflate", lws_extension_callback_pm_deflate, 0}, {NULL, NULL, NULL}};
 
 asciichat_error_t websocket_server_init(websocket_server_t *server, const websocket_server_config_t *config) {
   if (!server || !config || !config->client_handler) {

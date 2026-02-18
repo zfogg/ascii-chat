@@ -20,17 +20,14 @@ using std::atomic_uint;
 #include <stdint.h>
 #include <time.h>
 
-#include "../network/network.h"
 #include "../network/packet.h"
 #include "../network/packet_queue.h"
-#include "../network/logging.h"
 #include "../network/acip/transport.h"  // For acip_transport_t
 #include "../crypto/handshake/common.h" // For crypto_handshake_context_t (complete type needed for field)
 #include "../ringbuffer.h"
 #include "../video/video_frame.h"
 #include "../platform/terminal.h"
 #include "../video/palette.h"
-#include "../uthash/uthash.h" // For UT_hash_handle
 
 /**
  * @brief Participant type for distinguishing network vs memory participants
@@ -140,6 +137,11 @@ typedef struct client_info {
 
   // Packet queue for audio only (video uses double buffer now)
   packet_queue_t *audio_queue; // Queue for audio packets to send to this client
+
+  // Async dispatch: queue for received packets (async processing)
+  packet_queue_t *received_packet_queue; // Queue of complete received packets waiting for dispatch
+  asciichat_thread_t dispatch_thread;    // Async dispatch thread processes queued packets
+  atomic_bool dispatch_thread_running;   // Flag to signal dispatch thread to exit
 
   // Dedicated send thread for this client
   asciichat_thread_t send_thread;

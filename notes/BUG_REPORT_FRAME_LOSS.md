@@ -64,25 +64,29 @@ Use a **50ms timeout** instead of -1. This keeps the event loop responsive:
 
 This matches the correct pattern already used in `transport.c:87` for the client-side WebSocket service thread.
 
-## New Observation: LWS Log Spam & Queue Backpressure (2026-02-17 20:35)
+## Remaining Issue: recv_queue Backpressure (2026-02-17 20:35)
 
-When starting the server:
+When starting the server with WebSocket client:
 1. Initial ~15 seconds: **Heavy LWS debug log spam** from receive callbacks
 2. After ~15 seconds: Logs **slow to a few per second**
 3. Only **1-3 frames** actually converted to ASCII art during entire session
 
-**Analysis:** This suggests the recv_queue or video frame buffer is **filling up and hitting a limit**, causing backpressure. The pipeline is not consuming frames fast enough. Frames are queued but not being processed/rendered into ASCII art.
+**Root Cause:** The dispatch thread (acip_server_receive_and_dispatch) is **synchronous and blocking**. When it calls websocket_recv(), it blocks the handler thread waiting for frame reassembly to complete. During this time:
+- recv_queue cannot dequeue new fragments (lock is held)
+- More fragments arrive from LWS callbacks
+- recv_queue fills up (16384 slots)
+- New fragments get dropped (server.c:611-618)
+- Message reassembly fails → 0 FPS
 
-**Possible causes:**
-- recv_queue capacity limit being hit
-- Video frame buffer not being consumed by render thread
-- Render thread blocked or slow
-- Memory allocation failures when queue/buffers get large
+**Solution:** Implement **async dispatch** - decouple frame receiving from frame processing:
+- LWS callbacks queue fragments immediately (current behavior ✓)
+- websocket_recv() returns partial messages or signals completion differently
+- Frame processing happens asynchronously, doesn't block receive path
 
-**Lock Contention Fix Impact (committed):**
+**Lock Contention Improvements (committed):**
 - Reduced recv_mutex lock time from 2.46s to 101ms (24x improvement)
 - Reduced memory peak from 520MB to 30MB (17x improvement)
-- However, frame rendering throughput still limited (only 1-3 frames converted)
+- But throughput still limited due to synchronous dispatch blocking
 
 ## Files Modified
 

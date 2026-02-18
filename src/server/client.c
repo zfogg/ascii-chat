@@ -272,6 +272,7 @@ rwlock_t g_client_manager_rwlock = {0};
 // Forward declarations for internal functions
 // client_receive_thread is implemented below
 void *client_send_thread_func(void *arg);         ///< Client packet send thread
+void *client_dispatch_thread(void *arg);          ///< Async dispatch thread for WebRTC clients
 void broadcast_server_state_to_all_clients(void); ///< Notify all clients of state changes
 static int start_client_threads(server_context_t *server_ctx, client_info_t *client,
                                 bool is_tcp); ///< Common thread initialization
@@ -450,6 +451,20 @@ static int start_client_threads(server_context_t *server_ctx, client_info_t *cli
     return -1;
   }
   log_debug("Created receive thread for %s client %u", is_tcp ? "TCP" : "WebRTC", client_id);
+
+  // Step 1b: Create async dispatch thread (processes queued packets)
+  // This decouples receive from dispatch to prevent backpressure on the socket
+  if (!is_tcp) { // Only for WebRTC/WebSocket clients that need async dispatch
+    safe_snprintf(thread_name, sizeof(thread_name), "dispatch_%u", client_id);
+    atomic_store(&client->dispatch_thread_running, true);
+    result = asciichat_thread_create(&client->dispatch_thread, client_dispatch_thread, client);
+    if (result != ASCIICHAT_OK) {
+      log_error("Failed to create dispatch thread for client %u: %s", client_id, asciichat_error_string(result));
+      remove_client(server_ctx, client_id);
+      return -1;
+    }
+    log_debug("Created async dispatch thread for client %u", client_id);
+  }
 
   // Step 2: Create render threads BEFORE send thread
   // This ensures the render threads generate the first frame before the send thread tries to read it
@@ -984,6 +999,14 @@ int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
     goto error_cleanup_webrtc;
   }
 
+  // Create packet queue for async dispatch: received packets waiting to be processed
+  // Capacity of 100 packets allows buffering of ~10-50 frames (depending on fragmentation)
+  client->received_packet_queue = packet_queue_create_with_pools(100, 500, false);
+  if (!client->received_packet_queue) {
+    LOG_ERRNO_IF_SET("Failed to create received packet queue for client");
+    goto error_cleanup_webrtc;
+  }
+
   // Create outgoing video buffer for ASCII frames (double buffered, no dropping)
   client->outgoing_video_buffer = video_frame_buffer_create(atomic_load(&client->client_id));
   if (!client->outgoing_video_buffer) {
@@ -1398,6 +1421,67 @@ int remove_client(server_context_t *server_ctx, uint32_t client_id) {
 // Forward declaration for ACIP server callbacks (defined later in file)
 static const acip_server_callbacks_t g_acip_server_callbacks;
 
+/**
+ * @brief Async dispatch thread - processes queued received packets
+ *
+ * Decouples receive from dispatch to prevent backpressure on the network socket.
+ * Received packets are queued by the receive thread, and processed asynchronously here.
+ * This allows the receive thread to keep accepting packets while dispatch processes them.
+ */
+void *client_dispatch_thread(void *arg) {
+  client_info_t *client = (client_info_t *)arg;
+
+  if (!client) {
+    log_error("Invalid client info in dispatch thread (NULL pointer)");
+    return NULL;
+  }
+
+  uint32_t client_id = atomic_load(&client->client_id);
+  log_info("DISPATCH_THREAD: Started for client %u", client_id);
+
+  while (!atomic_load(&g_server_should_exit) && atomic_load(&client->dispatch_thread_running)) {
+    // Try to dequeue next packet (non-blocking)
+    // Use try_dequeue to avoid blocking - allows checking exit flag frequently
+    queued_packet_t *queued_pkt = packet_queue_try_dequeue(client->received_packet_queue);
+
+    if (!queued_pkt) {
+      // Queue was empty, sleep briefly to avoid busy-waiting
+      usleep(10000); // 10ms sleep
+      continue;
+    }
+
+    // Process the dequeued packet
+    // The queued packet contains the complete ACIP packet (header + payload) from websocket_recv()
+    const packet_header_t *header = (const packet_header_t *)queued_pkt->data;
+    size_t total_len = queued_pkt->data_len;
+
+    log_info("DISPATCH_THREAD: Processing %zu byte packet for client %u", total_len, client_id);
+
+    if (total_len >= sizeof(packet_header_t)) {
+      packet_type_t packet_type = (packet_type_t)NET_TO_HOST_U16(header->type);
+      uint32_t payload_len = NET_TO_HOST_U32(header->length);
+
+      log_info("DISPATCH_THREAD: Packet type=%d, payload_len=%u", packet_type, payload_len);
+
+      // Dispatch to ACIP handler
+      asciichat_error_t dispatch_result =
+          acip_handle_server_packet(client->transport, packet_type, (uint8_t *)header + sizeof(packet_header_t),
+                                    payload_len, client, &g_acip_server_callbacks);
+
+      if (dispatch_result != ASCIICHAT_OK) {
+        log_error("DISPATCH_THREAD: Handler failed for packet type=%d: %s", packet_type,
+                  asciichat_error_string(dispatch_result));
+      }
+    }
+
+    // Free the queued packet
+    packet_queue_free_packet(queued_pkt);
+  }
+
+  log_info("DISPATCH_THREAD: Exiting for client %u", client_id);
+  return NULL;
+}
+
 void *client_receive_thread(void *arg) {
   // Log thread startup
   log_debug("RECV_THREAD: Thread function entered, arg=%p", arg);
@@ -1463,56 +1547,80 @@ void *client_receive_thread(void *arg) {
       break;
     }
 
-    // Receive and dispatch packet using ACIP transport API
-    // This combines packet reception, decryption, parsing, handler dispatch, and cleanup
-    static int dispatch_call_count = 0;
-    dispatch_call_count++;
-    if (dispatch_call_count <= 10 || dispatch_call_count % 100 == 0) {
-      log_info("🔄 RECV_THREAD: About to call dispatch (#%d) for client %u", dispatch_call_count,
-               atomic_load(&client->client_id));
-    }
-    asciichat_error_t acip_result =
-        acip_server_receive_and_dispatch(client->transport, client, &g_acip_server_callbacks);
-    if (dispatch_call_count <= 10 || dispatch_call_count % 100 == 0) {
-      log_info("🔄 RECV_THREAD: Dispatch returned %d for client %u", acip_result, atomic_load(&client->client_id));
-    }
+    // Receive packet (without dispatching) - decouple from dispatch for async processing
+    // For WebRTC clients with async dispatch, we queue packets instead of processing immediately
+    // This prevents backpressure on the network socket
 
-    // Check if shutdown was requested during the network call
-    if (atomic_load(&g_server_should_exit)) {
-      log_debug("RECV_EXIT: Server shutdown requested, breaking loop");
-      break;
-    }
+    if (client->is_tcp_client) {
+      // TCP clients: use original synchronous dispatch
+      asciichat_error_t acip_result =
+          acip_server_receive_and_dispatch(client->transport, client, &g_acip_server_callbacks);
 
-    // Handle receive errors
-    if (acip_result != ASCIICHAT_OK) {
-      // Check error type to determine if we should disconnect
-      asciichat_error_context_t err_ctx;
-      if (HAS_ERRNO(&err_ctx)) {
-        log_error("🔴 ACIP error for client %u: code=%u msg=%s", client->client_id, err_ctx.code,
-                  err_ctx.context_message);
-        if (err_ctx.code == ERROR_NETWORK) {
-          // Network error or EOF - client disconnected
-          log_debug("Client %u disconnected (network error): %s", client->client_id, err_ctx.context_message);
-          break;
-        } else if (err_ctx.code == ERROR_CRYPTO) {
-          // Security violation
-          log_error_client(client,
-                           "SECURITY VIOLATION: Unencrypted packet when encryption required - terminating connection");
-          atomic_store(&g_server_should_exit, true);
-          break;
-        }
-      } else {
-        log_error("🔴 ACIP error for client %u (NO ERRNO): result=%s", client->client_id,
-                  asciichat_error_string(acip_result));
+      // Check if shutdown was requested during the network call
+      if (atomic_load(&g_server_should_exit)) {
+        log_debug("RECV_EXIT: Server shutdown requested, breaking loop");
+        break;
       }
 
-      // Any other error - disconnect client to prevent infinite retry loop
-      // This prevents zombie clients when error context is unavailable or error is non-recoverable
-      log_warn("ACIP receive/dispatch failed for client %u: %s (disconnecting client to prevent infinite loop)",
-               client->client_id, asciichat_error_string(acip_result));
-      break;
+      // Handle receive errors
+      if (acip_result != ASCIICHAT_OK) {
+        asciichat_error_context_t err_ctx;
+        if (HAS_ERRNO(&err_ctx)) {
+          log_error("🔴 ACIP error for client %u: code=%u msg=%s", client->client_id, err_ctx.code,
+                    err_ctx.context_message);
+          if (err_ctx.code == ERROR_NETWORK) {
+            log_debug("Client %u disconnected (network error): %s", client->client_id, err_ctx.context_message);
+            break;
+          } else if (err_ctx.code == ERROR_CRYPTO) {
+            log_error_client(
+                client, "SECURITY VIOLATION: Unencrypted packet when encryption required - terminating connection");
+            atomic_store(&g_server_should_exit, true);
+            break;
+          }
+        }
+        log_warn("ACIP error for TCP client %u: %s (disconnecting)", client->client_id,
+                 asciichat_error_string(acip_result));
+        break;
+      }
+    } else {
+      // WebRTC/WebSocket clients: async dispatch - receive packet and queue for async processing
+      void *packet_data = NULL;
+      void *allocated_buffer = NULL;
+      size_t packet_len = 0;
+
+      asciichat_error_t recv_result =
+          client->transport->methods->recv(client->transport, &packet_data, &packet_len, &allocated_buffer);
+
+      if (recv_result != ASCIICHAT_OK) {
+        asciichat_error_context_t err_ctx;
+        if (HAS_ERRNO(&err_ctx)) {
+          if (err_ctx.code == ERROR_NETWORK) {
+            log_debug("Client %u disconnected (network error): %s", client->client_id, err_ctx.context_message);
+            break;
+          }
+        }
+        log_warn("Receive failed for WebRTC client %u: %s (disconnecting)", client->client_id,
+                 asciichat_error_string(recv_result));
+        break;
+      }
+
+      // Queue the received packet for async dispatch
+      // This prevents the receive thread from blocking on dispatch
+      log_info("RECV_THREAD: Queuing %zu byte packet for async dispatch (client %u)", packet_len, client->client_id);
+
+      // Build a complete packet to queue (header + payload)
+      // The entire buffer (allocated_buffer) contains the full packet
+      // copy_data=false because we want to transfer ownership to the queue
+      int enqueue_result = packet_queue_enqueue(client->received_packet_queue, PACKET_TYPE_PROTOCOL_VERSION,
+                                                allocated_buffer, packet_len, atomic_load(&client->client_id), false);
+
+      if (enqueue_result < 0) {
+        log_warn("Failed to queue received packet for client %u (queue full?) - packet dropped", client->client_id);
+        if (allocated_buffer) {
+          buffer_pool_free(NULL, allocated_buffer, packet_len);
+        }
+      }
     }
-    // Success - continue receiving next packet
   }
 
   // Mark client as inactive and stop all threads
@@ -2138,6 +2246,11 @@ void stop_client_threads(client_info_t *client) {
   if (asciichat_thread_is_initialized(&client->receive_thread)) {
     asciichat_thread_join(&client->receive_thread, NULL);
   }
+  // For async dispatch: stop dispatch thread if running
+  if (asciichat_thread_is_initialized(&client->dispatch_thread)) {
+    atomic_store(&client->dispatch_thread_running, false);
+    asciichat_thread_join(&client->dispatch_thread, NULL);
+  }
 }
 
 void cleanup_client_media_buffers(client_info_t *client) {
@@ -2183,6 +2296,12 @@ void cleanup_client_packet_queues(client_info_t *client) {
   if (client->audio_queue) {
     packet_queue_destroy(client->audio_queue);
     client->audio_queue = NULL;
+  }
+
+  // Async dispatch: clean up received packet queue
+  if (client->received_packet_queue) {
+    packet_queue_destroy(client->received_packet_queue);
+    client->received_packet_queue = NULL;
   }
 
   // Video now uses double buffer, cleaned up in cleanup_client_media_buffers
