@@ -144,7 +144,8 @@ help:
 	@echo "  format-check    - Check code formatting without modifying files"
 	@echo "  clang-tidy      - Run clang-tidy on sources"
 	@echo "  analyze         - Run static analysis (clang --analyze, cppcheck)"
-	@echo "  cloc            - Count lines of code"
+	@echo "  cloc            - Count lines of code for sections of the codebase like lib/ and src/ and web/"
+	@echo "  cloc-all-code   - Count lines of code for the whole codebase"
 	@echo "  help            - Show this help message"
 
 format:
@@ -175,20 +176,31 @@ analyze:
 		--suppress=missingIncludeSystem \
 		$(C_FILES) $(C_HEADERS)
 
-cloc:
-	@printf $(Purple)"\n\ndocumentation:\n"$(Reset)
-	@cloc --progress=1 --vcs=git --force-lang='Markdown,dox' --force-lang='XML,in' "$(DOCS_DIR)"
-	@printf $(Purple)"\n\nbuild configuration:\n"$(Reset)
-	@cloc --progress=1 cmake/ CMakeLists.txt Makefile
-	@printf $(Purple)"\n\ntests:\n"$(Reset)
-	@cloc --progress=1 --vcs=git --include-lang='C,C/C++ Header,Bash,Bourne Shell,PowerShell,Dockerfile,YAML' tests/unit tests/performance tests/integration
-	@printf $(Purple)"\n\nlibasciichat:\n"$(Reset)
-	@cloc --progress=1 --vcs=git --include-lang='C,C/C++ Header,Objective-C' "$(LIB_DIR)"
-	@printf $(Purple)"\n\nascii-chat executable:\n"$(Reset)
-	@cloc --progress=1 --vcs=git --include-lang='C,C/C++ Header,Objective-C' "$(SRC_DIR)"
-	@printf $(Purple)"\n\nwebsites:\n"$(Reset)
-	@cloc --progress=1 --vcs=git "./web"
 
+CLOC_EXCLUDE := --exclude-dir=$(shell tr '\n' ',' < .clocignore)
+CLOC_ARGS := --progress=1 --vcs=git $(CLOC_EXCLUDE)
+
+cloc:
+	@printf $(Purple)"documentation:\n"$(Reset)
+	@cloc $(CLOC_ARGS) --force-lang='Markdown,dox' --force-lang='XML,in' "$(DOCS_DIR)"
+	@printf $(Purple)"\n\nbuild configuration:\n"$(Reset)
+	@cloc $(CLOC_ARGS) cmake/ CMakeLists.txt Makefile
+	@printf $(Purple)"\n\ntests:\n"$(Reset)
+	@cloc $(CLOC_ARGS) --include-lang='C,C/C++ Header,Bash,Bourne Shell,PowerShell,Dockerfile,YAML' tests/unit tests/performance tests/integration
+	@printf $(Purple)"\n\nlibasciichat:\n"$(Reset)
+	@cloc $(CLOC_ARGS) --include-lang='C,C/C++ Header,Objective-C' "$(LIB_DIR)"
+	@printf $(Purple)"\n\nascii-chat executable:\n"$(Reset)
+	@cloc $(CLOC_ARGS) --include-lang='C,C/C++ Header,Objective-C' "$(SRC_DIR)"
+	@printf $(Purple)"\n\nwebsites:\n"$(Reset)
+	@cloc $(CLOC_ARGS) "./web"
+
+cloc-all-code:
+	@printf $(Purple)"All of ascii-chat repo's code (only code and real code, no TODOs or cmake config):\n"$(Reset)
+	@cloc $(CLOC_ARGS) \
+		tests/unit tests/performance tests/integration \
+		"$(LIB_DIR)" \
+ 		"$(SRC_DIR)" \
+ 		"./web"
 
 # =============================================================================
 # Extra Makefile stuff
