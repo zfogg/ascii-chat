@@ -1102,10 +1102,8 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 
   // If JSON format is enabled, output ONLY JSON (skip text output)
   if (json_format_enabled) {
-    // Output JSON to the JSON file descriptor
+    // Output JSON to the JSON file descriptor only (not stderr, to keep piped output clean)
     log_json_write(json_fd, level, time_ns, file, line, func, json_message);
-    // Also output JSON to stderr for terminal display
-    log_json_write(STDERR_FILENO, level, time_ns, file, line, func, json_message);
   } else {
     // Text format: output to file and terminal
     // Write to file (atomic write syscall)
