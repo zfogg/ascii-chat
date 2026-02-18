@@ -186,7 +186,7 @@ discovery_tui_server_t *discovery_mdns_query(int timeout_ms, int max_servers, bo
 
   // Apply defaults
   if (timeout_ms <= 0) {
-    timeout_ms = 2000;
+    timeout_ms = 2 * MS_PER_SEC_INT;
   }
   if (max_servers <= 0) {
     max_servers = 20;
@@ -325,7 +325,7 @@ static void *mdns_thread_fn(void *arg) {
           ctx->state->result->server_address[sizeof(ctx->state->result->server_address) - 1] = '\0';
 
           SAFE_STRNCPY(ctx->state->result->mdns_service_name, server->name,
-                  sizeof(ctx->state->result->mdns_service_name) - 1);
+                       sizeof(ctx->state->result->mdns_service_name) - 1);
           ctx->state->result->mdns_service_name[sizeof(ctx->state->result->mdns_service_name) - 1] = '\0';
 
           log_info("mDNS: Found session '%s' at %s:%d", ctx->session_string, ctx->state->result->server_address,
@@ -475,7 +475,7 @@ static void *acds_thread_fn(void *arg) {
       memcpy(ctx->state->result->participant_id, join_result.participant_id, 16);
 
       SAFE_STRNCPY(ctx->state->result->server_address, join_result.server_address,
-              sizeof(ctx->state->result->server_address) - 1);
+                   sizeof(ctx->state->result->server_address) - 1);
       ctx->state->result->server_port = join_result.server_port;
 
       log_info("ACDS: Found session '%s' at %s:%d", ctx->session_string, ctx->state->result->server_address,
@@ -509,8 +509,8 @@ void discovery_config_init_defaults(discovery_config_t *config) {
 #endif
 
   config->acds_port = OPT_ACDS_PORT_INT_DEFAULT;
-  config->mdns_timeout_ms = 2000;
-  config->acds_timeout_ms = 5000;
+  config->mdns_timeout_ms = 2 * MS_PER_SEC_INT;
+  config->acds_timeout_ms = 5 * MS_PER_SEC_INT;
   config->insecure_mode = false;
   config->expected_pubkey = NULL;
 }

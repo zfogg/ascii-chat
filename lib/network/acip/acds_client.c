@@ -50,7 +50,7 @@ void acds_client_config_init_defaults(acds_client_config_t *config) {
   memset(config, 0, sizeof(*config));
   SAFE_STRNCPY(config->server_address, "127.0.0.1", sizeof(config->server_address));
   config->server_port = ACIP_DISCOVERY_DEFAULT_PORT;
-  config->timeout_ms = 5000;
+  config->timeout_ms = 5 * MS_PER_SEC_INT;
 }
 
 // ============================================================================

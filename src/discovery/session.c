@@ -74,8 +74,8 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
   session->liveness.last_pong_received_ms = 0;
   session->liveness.consecutive_failures = 0;
   session->liveness.max_failures = 3;
-  session->liveness.ping_interval_ms = 3000; // Ping every 3 seconds
-  session->liveness.timeout_ms = 10000;      // 10 second timeout
+  session->liveness.ping_interval_ms = 3 * MS_PER_SEC_INT; // Ping every 3 seconds
+  session->liveness.timeout_ms = 10 * MS_PER_SEC_INT;      // 10 second timeout
   session->liveness.ping_in_flight = false;
 
   log_info("discovery_session_create: After CALLOC - participant_ctx=%p, host_ctx=%p", session->participant_ctx,

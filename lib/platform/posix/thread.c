@@ -81,7 +81,7 @@ int asciichat_thread_join_timeout(asciichat_thread_t *thread, void **retval, uin
   // pthread_timedjoin_np hangs indefinitely on some systems, so use pthread_tryjoin_np
   // with polling to ensure the timeout is respected during shutdown
   int result;
-  const uint64_t sleep_duration_ns = 10000000ULL; // 10ms sleep per iteration
+  const uint64_t sleep_duration_ns = 10 * US_PER_MS_INT; // 10ms sleep per iteration
 
   while (true) {
     result = pthread_tryjoin_np(*thread, retval);

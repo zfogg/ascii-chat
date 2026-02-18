@@ -915,7 +915,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
   // Wait for connection to establish (synchronous connection)
   // Service the libwebsockets event loop until connected or timeout
   log_debug("Waiting for WebSocket connection to establish...");
-  int timeout_ms = 5000; // 5 second timeout
+  int timeout_ms = 5 * MS_PER_SEC_INT; // 5 second timeout
   int elapsed_ms = 0;
   while (!ws_data->is_connected && elapsed_ms < timeout_ms) {
     // Service libwebsockets (processes network events, triggers callbacks)

@@ -72,6 +72,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/ip.h>
+#include <ascii-chat/util/time.h>
 #include <ascii-chat/uthash/uthash.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/socket.h>
@@ -2180,7 +2181,7 @@ int server_main(void) {
     acds_client_config_init_defaults(&acds_config);
     SAFE_STRNCPY(acds_config.server_address, acds_server, sizeof(acds_config.server_address));
     acds_config.server_port = acds_port;
-    acds_config.timeout_ms = 5000;
+    acds_config.timeout_ms = 5 * MS_PER_SEC_INT;
 
     // Allocate ACDS client on heap for server lifecycle
     g_acds_client = SAFE_MALLOC(sizeof(acds_client_t), acds_client_t *);
@@ -2531,7 +2532,7 @@ cleanup:
   // Wait for status screen thread to finish if it was started
   if (GET_OPTION(status_screen)) {
     log_debug("Waiting for status screen thread to exit...");
-    int join_result = asciichat_thread_join_timeout(&g_status_screen_thread, NULL, 1000000000UL); // 1 second
+    int join_result = asciichat_thread_join_timeout(&g_status_screen_thread, NULL, NS_PER_SEC_INT); // 1 second
     if (join_result != 0) {
       log_warn("Status screen thread did not exit cleanly (timeout)");
     } else {
@@ -2607,7 +2608,7 @@ cleanup:
     // so it's fast. 2s accounts for any slow lws_service() calls or LWS cleanup.
     if (g_websocket_server_thread_started) {
       int join_result =
-          asciichat_thread_join_timeout(&g_websocket_server_thread, NULL, 2000000000UL); // 2 seconds in ns
+          asciichat_thread_join_timeout(&g_websocket_server_thread, NULL, 2 * NS_PER_SEC_INT); // 2 seconds in ns
       if (join_result != 0) {
         log_warn("WebSocket thread did not exit cleanly (timeout), forcing cleanup");
       }

@@ -561,9 +561,9 @@ int client_main(void) {
 
     discovery_tui_config_t lan_config;
     memset(&lan_config, 0, sizeof(lan_config));
-    lan_config.timeout_ms = 2000; // Wait up to 2 seconds for responses
-    lan_config.max_servers = 20;  // Support up to 20 servers on LAN
-    lan_config.quiet = true;      // Quiet during discovery, TUI will show status
+    lan_config.timeout_ms = 2 * MS_PER_SEC_INT; // Wait up to 2 seconds for responses
+    lan_config.max_servers = 20;                // Support up to 20 servers on LAN
+    lan_config.quiet = true;                    // Quiet during discovery, TUI will show status
 
     int discovered_count = 0;
     discovery_tui_server_t *discovered_servers = discovery_tui_query(&lan_config, &discovered_count);
