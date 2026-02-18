@@ -64,6 +64,27 @@ Use a **50ms timeout** instead of -1. This keeps the event loop responsive:
 
 This matches the correct pattern already used in `transport.c:87` for the client-side WebSocket service thread.
 
+## New Observation: LWS Log Spam & Queue Backpressure (2026-02-17 20:35)
+
+When starting the server:
+1. Initial ~15 seconds: **Heavy LWS debug log spam** from receive callbacks
+2. After ~15 seconds: Logs **slow to a few per second**
+3. Only **1-3 frames** actually converted to ASCII art during entire session
+
+**Analysis:** This suggests the recv_queue or video frame buffer is **filling up and hitting a limit**, causing backpressure. The pipeline is not consuming frames fast enough. Frames are queued but not being processed/rendered into ASCII art.
+
+**Possible causes:**
+- recv_queue capacity limit being hit
+- Video frame buffer not being consumed by render thread
+- Render thread blocked or slow
+- Memory allocation failures when queue/buffers get large
+
+**Lock Contention Fix Impact (committed):**
+- Reduced recv_mutex lock time from 2.46s to 101ms (24x improvement)
+- Reduced memory peak from 520MB to 30MB (17x improvement)
+- However, frame rendering throughput still limited (only 1-3 frames converted)
+
 ## Files Modified
 
 - `lib/network/websocket/server.c` - Fixed lws_service() timeout parameter from -1 to 50ms
+- `lib/network/websocket/transport.c` - Reduced recv_mutex lock contention (2026-02-17)
