@@ -50,7 +50,7 @@
  * Increased from 512 to buffer multiple large frames and reduce queue pressure.
  * Each slot holds one message (up to 921KB). With 4096 slots, can buffer ~3.7GB.
  */
-#define WEBSOCKET_RECV_QUEUE_SIZE 4096
+#define WEBSOCKET_RECV_QUEUE_SIZE 65536
 
 /**
  * @brief Maximum send queue size (messages buffered for server-side sending)
