@@ -85,20 +85,18 @@ Test(log_format, time_format_now_basic) {
   char buf[64] = {0};
   int len = time_format_now("%H:%M:%S", buf, sizeof(buf));
   cr_assert_gt(len, 0, "time_format_now should return > 0");
-  /* Check format: HH:MM:SS.NNNNNN */
+  /* Check format: HH:MM:SS (without automatic microseconds appending) */
   cr_assert(strchr(buf, ':') != NULL, "Should contain colons");
-  cr_assert(strchr(buf, '.') != NULL, "Should contain decimal point for microseconds");
+  cr_assert_eq(len, 8, "Should be exactly HH:MM:SS (8 chars)");
 }
 
 Test(log_format, time_format_now_with_microseconds) {
   char buf[64] = {0};
   int len = time_format_now("%H:%M:%S", buf, sizeof(buf));
   cr_assert_gt(len, 0);
-  /* Format: HH:MM:SS.NNNNNN (15 chars total: 8 + 7) */
-  cr_assert_eq(len, 15, "Should include microseconds appended to timestamp");
-  const char *dot = strchr(buf, '.');
-  cr_assert_not_null(dot, "Should have decimal point");
-  cr_assert_eq(strlen(dot), 7, "Should have exactly .NNNNNN"); /* .NNNNNN = 7 chars */
+  /* Format: HH:MM:SS (8 chars - microseconds are now separate via %ms specifier) */
+  cr_assert_eq(len, 8, "Should be HH:MM:SS without automatic microseconds");
+  cr_assert_null(strchr(buf, '.'), "Should NOT have decimal point (use %ms specifier instead)");
 }
 
 Test(log_format, time_format_now_date) {
@@ -132,7 +130,8 @@ Test(log_format, time_format_safe_valid) {
   char buf[64] = {0};
   asciichat_error_t err = time_format_safe("%H:%M:%S", buf, sizeof(buf));
   cr_assert_eq(err, ASCIICHAT_OK);
-  cr_assert(strchr(buf, ':') != NULL && strchr(buf, '.') != NULL, "Should be formatted time");
+  cr_assert(strchr(buf, ':') != NULL, "Should be formatted time with colons");
+  cr_assert_null(strchr(buf, '.'), "Should NOT have decimal point (use %ms for microseconds)");
 }
 
 Test(log_format, time_format_safe_invalid_format) {
@@ -482,8 +481,9 @@ Test(log_format, apply_time_format_iso8601) {
   int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "dummy", "test.c", 42, "main", 1234, "msg", false,
                              45296123456000);
   cr_assert_gt(len, 0);
-  /* Should have format like: YYYY-MM-DD HH:MM:SS.NNNNNN */
-  cr_assert(strchr(buf, '-') != NULL && strchr(buf, ' ') != NULL && strchr(buf, '.') != NULL);
+  /* Should have format like: YYYY-MM-DD HH:MM:SS (no automatic microseconds) */
+  cr_assert(strchr(buf, '-') != NULL && strchr(buf, ' ') != NULL);
+  cr_assert_null(strchr(buf, '.'), "Should NOT have decimal point (use %ms for microseconds)");
   log_format_free(fmt);
 }
 
