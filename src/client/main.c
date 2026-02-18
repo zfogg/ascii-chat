@@ -826,7 +826,7 @@ int client_main(void) {
         }
       } else {
         // Add newline to separate from ASCII art display for first-time connection failures
-        printf("\n");
+        log_console(LOG_INFO, "");
       }
 
       if (has_ever_connected) {

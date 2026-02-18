@@ -115,14 +115,12 @@ void audio_terminate_portaudio_final(void) {
   static_mutex_lock(&g_pa_refcount_mutex);
 
   if (g_pa_init_refcount == 0 && g_pa_init_count > 0 && g_pa_terminate_count == 0) {
-    fprintf(stderr, "[PORTAUDIO_TERM] Calling Pa_Terminate() to release PortAudio\n");
-    fflush(stderr);
+    log_debug("[PORTAUDIO_TERM] Calling Pa_Terminate() to release PortAudio");
 
     PaError err = Pa_Terminate();
     g_pa_terminate_count++;
 
-    fprintf(stderr, "[PORTAUDIO_TERM] Pa_Terminate() returned: %s\n", Pa_GetErrorText(err));
-    fflush(stderr);
+    log_debug("[PORTAUDIO_TERM] Pa_Terminate() returned: %s", Pa_GetErrorText(err));
   }
 
   static_mutex_unlock(&g_pa_refcount_mutex);

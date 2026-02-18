@@ -172,7 +172,9 @@ int acds_main(void) {
   char fingerprint[65];
   acds_identity_fingerprint(public_key, fingerprint);
   log_info("Discovery server identity: SHA256:%s", fingerprint);
-  printf("🔑 Server fingerprint: SHA256:%s\n", fingerprint);
+  char msg[256];
+  safe_snprintf(msg, sizeof(msg), "🔑 Server fingerprint: SHA256:%s", fingerprint);
+  log_console(LOG_INFO, msg);
 
   // Create config from options for server initialization
   acds_config_t config;
@@ -419,7 +421,7 @@ int acds_main(void) {
       asciichat_mdns_destroy(g_mdns_ctx);
       g_mdns_ctx = NULL;
     } else {
-      printf("🌐 mDNS: ACDS advertised as '_ascii-chat-discovery-service._tcp.local' on LAN\n");
+      log_console(LOG_INFO, "🌐 mDNS: ACDS advertised as '_ascii-chat-discovery-service._tcp.local' on LAN");
       log_info("mDNS: ACDS advertised as '_ascii-chat-discovery-service._tcp.local' (port=%d)", config.port);
     }
   }
