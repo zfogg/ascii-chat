@@ -294,12 +294,43 @@ build_normalized:;
  * either a .git directory or a CMakeLists.txt file, which indicate the project root.
  * Searches up to 128 directories deep.
  *
+ * Results are cached to avoid repeated stat() calls which can hang during shutdown.
+ * Uses malloc/free instead of SAFE_MALLOC/SAFE_FREE to avoid deadlock when called
+ * during memory report (which holds g_mem.mutex) - debug_malloc would try to acquire
+ * that same mutex to record the allocation, causing a deadlock.
+ *
  * @return Allocated string containing project root path, or NULL if not found.
- *         Caller must SAFE_FREE the result.
+ *         Caller must free() the result (not SAFE_FREE).
  */
 static char *find_project_root(void) {
+  // Cache the result so we don't repeatedly call stat() which can hang during shutdown
+  static char cached_root[PLATFORM_MAX_PATH_LENGTH] = {0};
+  static bool search_done = false;
+
+  if (search_done) {
+    printf("[CACHE] Using cached result, cached_root[0]='%c'\n", cached_root[0]);
+    fflush(stdout);
+    if (cached_root[0] != '\0') {
+      printf("[CACHE] Allocating copy using malloc\n");
+      fflush(stdout);
+      // Return a new allocation using malloc (not SAFE_MALLOC) to avoid debug_malloc
+      // recursion when called during memory report while holding g_mem.mutex
+      char *copy = malloc(strlen(cached_root) + 1);
+      if (copy) {
+        strcpy(copy, cached_root);
+        printf("[CACHE] malloc and strcpy done, returning copy\n");
+        fflush(stdout);
+      }
+      return copy;
+    }
+    printf("[CACHE] Returning NULL (not found)\n");
+    fflush(stdout);
+    return NULL; // Not found
+  }
+
   char cwd_buf[PLATFORM_MAX_PATH_LENGTH];
   if (!platform_get_cwd(cwd_buf, sizeof(cwd_buf))) {
+    search_done = true;
     return NULL;
   }
 
@@ -315,8 +346,14 @@ static char *find_project_root(void) {
     bool git_found = stat(git_check, &git_stat) == 0 && S_ISDIR(git_stat.st_mode);
     if (git_found) {
       // Found .git directory - this is the repo root
-      char *result = SAFE_MALLOC(strlen(search_path) + 1, char *);
-      safe_snprintf(result, strlen(search_path) + 1, "%s", search_path);
+      safe_snprintf(cached_root, sizeof(cached_root), "%s", search_path);
+      search_done = true;
+      // Return a new allocation using malloc (not SAFE_MALLOC) to avoid debug_malloc
+      // recursion when called during memory report while holding g_mem.mutex
+      char *result = malloc(strlen(search_path) + 1);
+      if (result) {
+        strcpy(result, search_path);
+      }
       return result;
     }
 
@@ -333,8 +370,14 @@ static char *find_project_root(void) {
     bool cmake_found = stat(cmake_check, &cmake_stat) == 0 && S_ISREG(cmake_stat.st_mode);
     if (license_found && cmake_found) {
       // Found LICENSE.txt
-      char *result = SAFE_MALLOC(strlen(search_path) + 1, char *);
-      safe_snprintf(result, strlen(search_path) + 1, "%s", search_path);
+      safe_snprintf(cached_root, sizeof(cached_root), "%s", search_path);
+      search_done = true;
+      // Return a new allocation using malloc (not SAFE_MALLOC) to avoid debug_malloc
+      // recursion when called during memory report while holding g_mem.mutex
+      char *result = malloc(strlen(search_path) + 1);
+      if (result) {
+        strcpy(result, search_path);
+      }
       return result;
     }
 
@@ -368,6 +411,7 @@ static char *find_project_root(void) {
     search_path[last_sep] = '\0';
   }
 
+  search_done = true;
   return NULL;
 }
 
@@ -391,11 +435,21 @@ const char *extract_project_relative_path(const char *file) {
 #endif
 
   /* First normalize the path to resolve .. and . components */
+  printf("[PATH] normalize_path starting\n");
+  fflush(stdout);
   const char *normalized = normalize_path(file);
+  printf("[PATH] normalize_path done\n");
+  fflush(stdout);
 
   /* Try to find and strip the project root from the absolute path */
+  printf("[PATH] find_project_root starting\n");
+  fflush(stdout);
   char *project_root = find_project_root();
+  printf("[PATH] find_project_root done\n");
+  fflush(stdout);
   if (project_root) {
+    printf("[PATH] project_root found\n");
+    fflush(stdout);
     size_t root_len = strlen(project_root);
     size_t norm_len = strlen(normalized);
 
@@ -408,10 +462,10 @@ const char *extract_project_relative_path(const char *file) {
         remainder++;
       }
 
-      SAFE_FREE(project_root);
+      free(project_root);
       return remainder;
     }
-    SAFE_FREE(project_root);
+    free(project_root);
   }
 
   /* Fallback: If no project root found, try to find just the filename */

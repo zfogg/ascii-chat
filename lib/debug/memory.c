@@ -582,15 +582,18 @@ void debug_memory_set_quiet_mode(bool quiet) {
   g_mem.quiet_mode = quiet;
 }
 
-static const char *strip_project_path(const char *full_path) {
-  return extract_project_relative_path(full_path);
-}
-
 void debug_memory_report(void) {
+  // Guard against multiple calls during shutdown
+  static bool report_done = false;
+  if (report_done) {
+    return;
+  }
+
   // Check for usage error BEFORE cleanup clears it
   asciichat_error_t error = GET_ERRNO();
 
   asciichat_errno_destroy();
+  report_done = true;
 
   // Skip memory report if an action flag was passed (for clean action output)
   // unless explicitly forced via ASCII_CHAT_MEMORY_DEBUG environment variable
@@ -791,9 +794,12 @@ void debug_memory_report(void) {
 
     if (g_mem.head && unfreed_count > 0) {
       if (ensure_mutex_initialized()) {
+        (void)write(STDERR_FILENO, "[MEM] About to acquire mutex for allocation list\n", 50);
         if (!acquire_mutex_with_polling(&g_mem.mutex, 100)) {
+          (void)write(STDERR_FILENO, "[MEM] Failed to acquire mutex, skipping\n", 41);
           goto skip_allocations_list;
         }
+        (void)write(STDERR_FILENO, "[MEM] Mutex acquired, starting iteration\n", 41);
 
         // Check if we should print backtraces
         const char *print_backtrace = SAFE_GETENV("ASCII_CHAT_MEMORY_REPORT_BACKTRACE");
@@ -801,16 +807,23 @@ void debug_memory_report(void) {
         int backtrace_limit = (print_backtrace != NULL) ? 5 : 0; // Only print first 5 backtraces to save time
 
         mem_block_t *curr = g_mem.head;
+        int iter_count = 0;
         while (curr) {
+          iter_count++;
+          (void)write(STDERR_FILENO, "[MEM] Iteration starting\n", 25);
           // Skip ignored allocations (e.g., PCRE2 singletons)
           if (should_ignore_allocation(curr->file, curr->line)) {
+            (void)write(STDERR_FILENO, "[MEM] Skipping ignored allocation\n", 34);
             curr = curr->next;
             continue;
           }
 
+          (void)write(STDERR_FILENO, "[MEM] Processing allocation\n", 28);
           char pretty_size[64];
           format_bytes_pretty(curr->size, pretty_size, sizeof(pretty_size));
-          const char *file_location = strip_project_path(curr->file);
+          (void)write(STDERR_FILENO, "[MEM] format_bytes_pretty done\n", 31);
+          const char *file_location = extract_project_relative_path(curr->file);
+          (void)write(STDERR_FILENO, "[MEM] extract_project_relative_path done\n", 41);
 
           // Determine color based on unit (1 MB and over=red, KB=yellow, B=light blue)
           log_color_t size_color = LOG_COLOR_DEBUG; // Default to light blue for bytes
@@ -825,12 +838,15 @@ void debug_memory_report(void) {
 
           char line_str[32];
           safe_snprintf(line_str, sizeof(line_str), "%d", curr->line);
+          (void)write(STDERR_FILENO, "[MEM] About to fprintf allocation\n", 34);
           SAFE_IGNORE_PRINTF_RESULT(
               safe_fprintf(stderr, "  - %s:%s - %s\n", colored_string(LOG_COLOR_GREY, file_location),
                            colored_string(LOG_COLOR_FATAL, line_str), colored_string(size_color, pretty_size)));
+          (void)write(STDERR_FILENO, "[MEM] fprintf completed\n", 24);
 
           // Print backtrace if environment variable is set and we haven't hit the limit
           if (backtrace_count < backtrace_limit && curr->backtrace_count > 0) {
+            (void)write(STDERR_FILENO, "[MEM] About to print backtrace\n", 31);
             backtrace_count++;
             // Unlock mutex before calling platform_backtrace_symbols to avoid deadlock
             // when backtrace symbol resolution allocates memory.
@@ -847,15 +863,21 @@ void debug_memory_report(void) {
             }
 
             // Re-acquire mutex for next iteration (with polling, not blocking)
+            (void)write(STDERR_FILENO, "[MEM] Re-acquiring mutex\n", 25);
             if (!acquire_mutex_with_polling(&g_mem.mutex, 100)) {
+              (void)write(STDERR_FILENO, "[MEM] Failed to re-acquire mutex\n", 33);
               break; // Exit loop if we can't re-acquire the lock
             }
+            (void)write(STDERR_FILENO, "[MEM] Re-acquired mutex\n", 24);
           }
 
+          (void)write(STDERR_FILENO, "[MEM] Moving to next allocation\n", 32);
           curr = curr->next;
         }
 
+        (void)write(STDERR_FILENO, "[MEM] Releasing mutex\n", 22);
         mutex_unlock(&g_mem.mutex);
+        (void)write(STDERR_FILENO, "[MEM] Mutex released\n", 21);
       } else {
         SAFE_IGNORE_PRINTF_RESULT(
             safe_fprintf(stderr, "\n%s\n",
