@@ -129,9 +129,9 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     // Optimize TCP for high-throughput large message transfer.
     // TCP delayed ACK (default ~40ms) causes the sender to stall waiting for ACKs,
     // creating ~30ms gaps between 128KB chunk deliveries for large messages.
-    // TCP_QUICKACK forces immediate ACKs so the sender can push data continuously.
+    // TCP_QUICKACK forces immediate ACKs so the sender can push data continuously (Linux only).
     // TCP_NODELAY disables Nagle's algorithm for the send path.
-#ifndef _WIN32
+#ifdef __linux__
     {
       int fd = lws_get_socket_fd(wsi);
       if (fd >= 0) {
@@ -577,11 +577,11 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     atomic_fetch_add(&g_receive_callback_count, 1);
     log_debug("[WS_TIMING] incremented callback count");
 
-    // Re-enable TCP_QUICKACK on EVERY fragment delivery.
+    // Re-enable TCP_QUICKACK on EVERY fragment delivery (Linux only).
     // Linux resets TCP_QUICKACK after each ACK, reverting to delayed ACK mode (~40ms).
     // Without this, only the first fragment batch benefits from quick ACKs, and subsequent
     // batches see ~30ms gaps as the sender waits for delayed ACKs before sending more data.
-#ifndef _WIN32
+#ifdef __linux__
     {
       int fd = lws_get_socket_fd(wsi);
       if (fd >= 0) {
