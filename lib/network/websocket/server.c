@@ -609,13 +609,10 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
     bool success = ringbuffer_write(ws_data->recv_queue, &msg);
     if (!success) {
-      // Queue is full - don't drop, but pause incoming data with flow control
-      log_warn("[WS_FLOW] Receive queue FULL - pausing RX (len=%zu, first=%d, final=%d)", len, is_first, is_final);
+      // Queue is full - drop fragment (flow control would deadlock the dispatch thread)
+      log_warn("[WS_FLOW] Receive queue FULL - dropping fragment (len=%zu, first=%d, final=%d)", len, is_first,
+               is_final);
       buffer_pool_free(NULL, msg.data, msg.len);
-
-      // Pause incoming data to let application catch up
-      lws_rx_flow_control(wsi, 0);
-      ws_data->should_resume_rx_flow = true;
 
       mutex_unlock(&ws_data->queue_mutex);
       break;
@@ -631,17 +628,6 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
     log_info("[WS_FRAG] Queued fragment: %zu bytes (first=%d final=%d, total_fragments=%llu)", len, is_first, is_final,
              (unsigned long long)atomic_load(&g_receive_callback_count));
-
-    // After a successful write, check if we should resume RX if it was paused
-    if (ws_data->should_resume_rx_flow) {
-      size_t new_free = queue_capacity - ringbuffer_size(ws_data->recv_queue);
-      // Resume if queue has at least 1/4 capacity free (recovery threshold)
-      if (new_free > queue_capacity / 4) {
-        log_info("[WS_FLOW] Queue recovered - resuming RX (free=%zu/%zu)", new_free, queue_capacity);
-        ws_data->should_resume_rx_flow = false;
-        lws_rx_flow_control(wsi, 1);
-      }
-    }
 
     // Log callback duration
     {

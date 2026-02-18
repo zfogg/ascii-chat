@@ -409,11 +409,35 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   size_t assembled_capacity = 0;
   uint64_t assembly_start_ns = time_get_ns();
   int fragment_count = 0;
+  const uint64_t MAX_REASSEMBLY_TIME_NS = 200 * 1000000ULL; // 200ms max wait for message reassembly
 
   while (true) {
     // Wait for next fragment if queue is empty
     int wait_count = 0;
     while (ringbuffer_is_empty(ws_data->recv_queue)) {
+      // Check if we've exceeded max wait time
+      uint64_t elapsed_ns = time_get_ns() - assembly_start_ns;
+      if (elapsed_ns > MAX_REASSEMBLY_TIME_NS) {
+        // Timeout: return partial message if we have any fragments, otherwise error
+        if (assembled_size > 0) {
+          log_warn(
+              "[WS_REASSEMBLE] Timeout after %lldms while waiting for fragments (have %zu bytes, expected final=1)",
+              (long long)(elapsed_ns / 1000000ULL), assembled_size);
+          *buffer = assembled_buffer;
+          *out_len = assembled_size;
+          *out_allocated_buffer = assembled_buffer;
+          mutex_unlock(&ws_data->queue_mutex);
+          return ASCIICHAT_OK; // Return partial message
+        } else {
+          // No fragments at all - queue must be empty
+          if (assembled_buffer) {
+            buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
+          }
+          mutex_unlock(&ws_data->queue_mutex);
+          return SET_ERRNO(ERROR_NETWORK, "Timeout waiting for first fragment");
+        }
+      }
+
       if (wait_count == 0) {
         log_dev_every(4500000, "🔄 WEBSOCKET_RECV: Queue empty, waiting for %s fragment...",
                       (assembled_size == 0) ? "first" : "continuation");
@@ -433,8 +457,8 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
         return SET_ERRNO(ERROR_NETWORK, "Connection closed while reassembling fragments");
       }
 
-      // Wait for fragment arrival
-      cond_timedwait(&ws_data->queue_cond, &ws_data->queue_mutex, 50 * 1000000ULL);
+      // Wait for fragment arrival with 1ms timeout
+      cond_timedwait(&ws_data->queue_cond, &ws_data->queue_mutex, 1 * 1000000ULL); // 1ms timeout
     }
 
     // Read next fragment from queue
