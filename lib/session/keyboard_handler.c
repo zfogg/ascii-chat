@@ -75,6 +75,15 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
     break;
   }
 
+  // ===== HELP SCREEN CLOSE =====
+  case KEY_ESCAPE: {
+    if (display && session_display_is_help_active(display)) {
+      session_display_toggle_help(display);
+      // Force re-render of normal frame
+    }
+    break;
+  }
+
   // ===== SEEK CONTROLS (file sources only) =====
   case KEY_LEFT: { // Seek backward 30 seconds
     if (capture) {
