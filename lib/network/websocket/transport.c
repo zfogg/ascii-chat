@@ -32,6 +32,7 @@
 #include <ascii-chat/network/packet.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/util/endian.h>
+#include <ascii-chat/util/time.h>
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/ringbuffer.h>
@@ -211,7 +212,8 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
   bool connected = ws_data->is_connected;
   mutex_unlock(&ws_data->state_mutex);
 
-  log_dev_every(1000000, "websocket_send: is_connected=%d, wsi=%p, send_len=%zu", connected, (void *)ws_data->wsi, len);
+  log_dev_every(NS_PER_MS_INT, "websocket_send: is_connected=%d, wsi=%p, send_len=%zu", connected, (void *)ws_data->wsi,
+                len);
 
   if (!connected) {
     log_error("WebSocket send called but transport NOT connected! wsi=%p, len=%zu", (void *)ws_data->wsi, len);
@@ -268,7 +270,7 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
       send_len = total_encrypted_size;
       encrypted_packet_size = total_encrypted_size;
 
-      log_dev_every(1000000, "WebSocket: encrypted packet (original type %d as PACKET_TYPE_ENCRYPTED, %zu bytes)",
+      log_dev_every(NS_PER_MS_INT, "WebSocket: encrypted packet (original type %d as PACKET_TYPE_ENCRYPTED, %zu bytes)",
                     packet_type, send_len);
     }
   }
@@ -324,13 +326,13 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     // lws_callback_on_writable() must NOT be called here — it's only safe
     // from the service thread. LWS_CALLBACK_EVENT_WAIT_CANCELLED (in server.c)
     // handles calling lws_callback_on_writable_all_protocol() on the service thread.
-    log_dev_every(1000000, ">>> FRAME QUEUED: %zu bytes for wsi=%p (send_len=%zu)", send_len, (void *)ws_data->wsi,
-                  send_len);
+    log_dev_every(NS_PER_MS_INT, ">>> FRAME QUEUED: %zu bytes for wsi=%p (send_len=%zu)", send_len,
+                  (void *)ws_data->wsi, send_len);
 
     struct lws_context *ctx = lws_get_context(ws_data->wsi);
     lws_cancel_service(ctx);
 
-    log_dev_every(1000000, "Server-side WebSocket: queued %zu bytes, cancel_service sent for wsi=%p", send_len,
+    log_dev_every(NS_PER_MS_INT, "Server-side WebSocket: queued %zu bytes, cancel_service sent for wsi=%p", send_len,
                   (void *)ws_data->wsi);
     SAFE_FREE(send_buffer);
     if (encrypted_packet)
@@ -373,10 +375,10 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     }
 
     offset += chunk_size;
-    log_dev_every(1000000, "WebSocket sent fragment %zu bytes (offset %zu/%zu)", chunk_size, offset, send_len);
+    log_dev_every(NS_PER_MS_INT, "WebSocket sent fragment %zu bytes (offset %zu/%zu)", chunk_size, offset, send_len);
   }
 
-  log_dev_every(1000000, "WebSocket sent complete message: %zu bytes in fragments", send_len);
+  log_dev_every(NS_PER_MS_INT, "WebSocket sent complete message: %zu bytes in fragments", send_len);
   SAFE_FREE(send_buffer);
   if (encrypted_packet)
     buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
@@ -408,7 +410,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   uint64_t assembly_start_ns = time_get_ns();
   int fragment_count = 0;
   const uint64_t MAX_REASSEMBLY_TIME_NS =
-      2000 * 1000000ULL; // 2s max wait for message reassembly (handles slow networks)
+      2 * NS_PER_SEC_INT; // 2s max wait for message reassembly (handles slow networks)
 
   while (true) {
     // Check timeout OUTSIDE the recv_mutex to avoid holding lock during timeout checks
@@ -417,7 +419,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
       if (elapsed_ns > MAX_REASSEMBLY_TIME_NS) {
         log_error("[WS_REASSEMBLE] Timeout after %lldms while reassembling message (have %zu bytes of %d fragments, "
                   "expected final=1)",
-                  (long long)(elapsed_ns / 1000000ULL), assembled_size, fragment_count);
+                  (long long)(elapsed_ns / NS_PER_MS_INT), assembled_size, fragment_count);
         if (assembled_buffer) {
           buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
         }
@@ -443,8 +445,9 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
 
     // If queue is empty, wait for data with timeout
     if (ringbuffer_is_empty(ws_data->recv_queue)) {
-      uint64_t wait_timeout_ns =
-          (assembled_size == 0) ? (100 * 1000000ULL) : (500 * 1000000ULL); // 100ms for first, 500ms for continuation
+      uint64_t wait_timeout_ns = (assembled_size == 0)
+                                     ? (100 * NS_PER_MS_INT)
+                                     : (500 * NS_PER_MS_INT); // 100ms for first, 500ms for continuation
       log_dev("[WS_DEBUG] Queue empty, calling cond_timedwait on recv_cond");
       cond_timedwait(&ws_data->recv_cond, &ws_data->recv_mutex, wait_timeout_ns);
       log_dev("[WS_DEBUG] Woke from cond_timedwait, queue size now=%zu", ringbuffer_size(ws_data->recv_queue));

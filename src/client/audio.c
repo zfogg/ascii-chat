@@ -403,7 +403,7 @@ void audio_process_received_samples(const float *samples, int num_samples) {
   }
 
   if (!GET_OPTION(audio_enabled)) {
-    log_warn_every(1000000, "Received audio samples but audio is disabled");
+    log_warn_every(NS_PER_MS_INT, "Received audio samples but audio is disabled");
     return;
   }
 

@@ -358,8 +358,8 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
           correct_frame_size += rgb_size;
         }
 
-        log_debug_every(1000000, "Per-client: frame dimensions=%ux%u, frame_size=%zu, correct_size=%zu", peek_width,
-                        peek_height, frame_size_val, correct_frame_size);
+        log_debug_every(NS_PER_MS_INT, "Per-client: frame dimensions=%ux%u, frame_size=%zu, correct_size=%zu",
+                        peek_width, peek_height, frame_size_val, correct_frame_size);
 
         // Verify frame is at least large enough for the correct size
         if (frame_size_val < correct_frame_size) {
@@ -993,7 +993,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
   if (now_ns - last_detailed_log > 333333333) { // Log every 333ms (3x per second)
     last_detailed_log = now_ns;
     log_info("FRAME_GEN_START: target_client=%u sources=%d collect=%.1fms", target_client_id, sources_with_video,
-             (collect_end_ns - collect_start_ns) / 1000000.0);
+             (collect_end_ns - collect_start_ns) / NS_PER_MS);
   }
 
   // Return the source count for debugging/tracking
@@ -1165,7 +1165,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
 
   uint64_t frame_gen_end_ns = time_get_ns();
   uint64_t frame_gen_duration_ns = frame_gen_end_ns - frame_gen_start_ns;
-  if (frame_gen_duration_ns > 10000000) { // Log if > 10ms
+  if (frame_gen_duration_ns > 10 * NS_PER_MS_INT) { // Log if > 10ms
     char duration_str[32];
     format_duration_ns((double)frame_gen_duration_ns, duration_str, sizeof(duration_str));
     log_warn("SLOW_FRAME_GENERATION: Client %u full frame gen took %s", target_client_id, duration_str);

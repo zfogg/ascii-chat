@@ -88,6 +88,7 @@
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h> // For RCU-based options access
+#include <ascii-chat/util/time.h>   // For time macros
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/video/palette.h>
 #include <ascii-chat/network/network.h>
@@ -961,7 +962,7 @@ int client_main(void) {
     // Add a brief delay before attempting reconnection to prevent excessive reconnection loops
     if (has_ever_connected) {
       log_debug("Waiting 1 second before attempting reconnection...");
-      platform_sleep_us(1000000); // 1 second delay
+      platform_sleep_us(US_PER_SEC_INT); // 1 second delay
     }
 
     log_debug("Cleanup complete, will attempt reconnection");
