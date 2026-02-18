@@ -5,9 +5,18 @@
 **Status:** PARTIALLY FIXED — 19 FPS ACHIEVED (NEED 30 FPS)
 **Component:** WebSocket Server / RX Flow Control + Message Dispatch Threading (`lib/network/websocket/server.c`, `lib/network/acip/server.c`)
 
-## Latest Update (2026-02-17 18:50 UTC)
+## Latest Update (2026-02-17 19:02 UTC)
 
-### Key Finding: permessage-deflate Causes Connection Closure
+### Critical Discovery: Network FPS ≠ Render FPS
+
+E2E test measurements now reveal a critical distinction:
+- **Network delivery:** 36 FPS ✓ (browser sends frames, server receives from WebSocket network)
+- **Rendered calls:** 16 FPS ✗ (handler called, but...)
+- **Unique frame changes:** 2 FPS ✗✗ (CLIENT-SIDE RENDERING BOTTLENECK)
+
+The WebSocket message reassembly is **WORKING**. Network delivery is **WORKING**. But the client is only displaying 2 unique frames per second, meaning 95% of received frames are duplicates.
+
+### Previous Fix: permessage-deflate Causes Connection Closure
 
 When permessage-deflate extension was enabled, multi-fragment messages caused immediate abnormal connection closure (LWS_CALLBACK_CLOSED code 1006):
 - Browser sends first fragment (first=1, final=0)
@@ -15,17 +24,15 @@ When permessage-deflate extension was enabled, multi-fragment messages caused im
 - LWS immediately fires LWS_CALLBACK_CLOSED
 - Continuation frames never arrive
 
-**Workaround:** Disabled permessage-deflate extension. Now achieving **19 FPS** in e2e test (up from 0 FPS).
+**Workaround:** Disabled permessage-deflate extension. Now achieving **36 FPS network delivery** in e2e test (up from 0 FPS).
 
-**Performance:** Without compression, 921KB frames take 151-259ms to reassemble (21 fragments at ~32KB/fragment).
+**Performance Analysis:**
+- Without compression: 921KB frames in 151-259ms (21 fragments at ~32KB each)
+- Network is NOT the bottleneck - it's delivering at 36 FPS
+- **Real bottleneck:** Client-side frame rendering only displaying 2 unique FPS
+- Likely cause: Frame hashing/deduplication isn't detecting content changes, or rendering is too slow
 
-**With compression working properly:** ~50-100KB frames (10:1 compression) should reassemble in ~15-30ms, enabling **30+ FPS**.
-
-**TODO:** Debug why LWS closes connection with permessage-deflate enabled. Possible causes:
-1. Browser not sending continuation frames properly
-2. LWS extension callback configuration issue
-3. Frame format incompatibility with compression
-4. Race condition in fragment delivery
+**Next steps:** Profile client-side rendering to understand why unique frame rate is so low
 
 ## Executive Summary
 
