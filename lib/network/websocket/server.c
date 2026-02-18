@@ -238,8 +238,9 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     // Close the transport to mark it as disconnected.
     // This signals the receive thread to exit, allowing clean shutdown.
     // Guard against use-after-free: check both conn_data and transport are valid
+    acip_transport_t *transport_snapshot = NULL;
     if (conn_data && conn_data->transport) {
-      acip_transport_t *transport_snapshot = conn_data->transport;
+      transport_snapshot = conn_data->transport;
       conn_data->transport = NULL; // NULL out immediately to prevent race condition
 
       log_debug("[LWS_CALLBACK_CLOSED] Closing transport=%p for wsi=%p", (void *)transport_snapshot, (void *)wsi);
@@ -259,6 +260,12 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       format_duration_ns((double)(join_end_ns - join_start_ns), join_duration_str, sizeof(join_duration_str));
       conn_data->handler_started = false;
       log_info("[LWS_CALLBACK_CLOSED] Handler thread completed (join took %s)", join_duration_str);
+    }
+
+    // Destroy the transport and free all its resources (send_queue, recv_queue, etc)
+    if (transport_snapshot) {
+      log_debug("[LWS_CALLBACK_CLOSED] Destroying transport=%p", (void *)transport_snapshot);
+      acip_transport_destroy(transport_snapshot);
     }
 
     // Ensure transport pointer is NULL
