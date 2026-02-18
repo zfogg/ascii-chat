@@ -1469,10 +1469,21 @@ void *client_receive_thread(void *arg) {
       // Check error type to determine if we should disconnect
       asciichat_error_context_t err_ctx;
       if (HAS_ERRNO(&err_ctx)) {
+        // Check for "no packet available" errors (non-blocking recv returning nothing)
+        // These are NOT connection failures - just no data ready yet
+        if ((err_ctx.code == ERROR_NETWORK) &&
+            (strstr(err_ctx.context_message, "No WebSocket packets available") ||
+             strstr(err_ctx.context_message, "Incomplete WebSocket frame"))) {
+          // No packet available - this is normal, just sleep briefly and retry
+          log_dev_every(100000, "Client %u: no packets ready, sleeping briefly before retry", client->client_id);
+          platform_sleep_ms(10); // Sleep 10ms to allow fragments to arrive
+          continue;             // Retry immediately without disconnecting
+        }
+
         log_error("🔴 ACIP error for client %u: code=%u msg=%s", client->client_id, err_ctx.code,
                   err_ctx.context_message);
         if (err_ctx.code == ERROR_NETWORK) {
-          // Network error or EOF - client disconnected
+          // Real network error or EOF - client disconnected
           log_debug("Client %u disconnected (network error): %s", client->client_id, err_ctx.context_message);
           break;
         } else if (err_ctx.code == ERROR_CRYPTO) {
