@@ -225,30 +225,35 @@ static log_format_t *parse_format_string(const char *format_str, bool console_on
 
           spec_idx++;
           p++; /* Skip closing paren */
-        } else if (isalpha((unsigned char)*p)) {
-          /* Check if this is a single-character strftime specifier */
-          char next_char = *(p + 1);
-          if (next_char == '\0' || !isalpha((unsigned char)next_char)) {
-            /* Single-character strftime specifier (like %H, %M, %S, %Y, %m, %d, etc.) */
-            result->specs[spec_idx].type = LOG_FORMAT_STRFTIME;
-            result->specs[spec_idx].literal = SAFE_MALLOC(2, char *);
-            if (!result->specs[spec_idx].literal) {
-              goto cleanup;
-            }
-            result->specs[spec_idx].literal[0] = *p;
-            result->specs[spec_idx].literal[1] = '\0';
-            result->specs[spec_idx].literal_len = 1;
-            spec_idx++;
+        } else {
+          /* Unknown ascii-chat specifier - treat as strftime format code and pass to strftime
+           * This allows strftime formats like %H, %M, %S, %A, %B, etc. to work
+           * without needing custom parsing for each one. strftime will handle validation. */
+          const char *fmt_start = p;
+          size_t fmt_len = 0;
+
+          /* Collect the format code (usually 1-2 chars, but allow flexibility) */
+          while (*p && *p != '%' && *p != '\\' && fmt_len < 8) {
             p++;
-          } else {
-            /* Unknown multi-character specifier */
-            log_error("Unknown format specifier: %%%s", p);
+            fmt_len++;
+          }
+
+          if (fmt_len == 0) {
+            log_error("Empty format specifier: %%");
             goto cleanup;
           }
-        } else {
-          /* Unknown specifier (starts with non-alpha) */
-          log_error("Unknown format specifier: %%%s", p);
-          goto cleanup;
+
+          result->specs[spec_idx].type = LOG_FORMAT_STRFTIME_CODE;
+          result->specs[spec_idx].literal = SAFE_MALLOC(fmt_len + 1, char *);
+          if (!result->specs[spec_idx].literal) {
+            goto cleanup;
+          }
+          memcpy(result->specs[spec_idx].literal, fmt_start, fmt_len);
+          result->specs[spec_idx].literal[fmt_len] = '\0';
+          result->specs[spec_idx].literal_len = fmt_len;
+
+          spec_idx++;
+          /* p already advanced in the while loop above */
         }
       }
     } else {
@@ -542,14 +547,23 @@ int log_format_apply(const log_format_t *format, char *buf, size_t buf_size, log
       break;
     }
 
-    case LOG_FORMAT_STRFTIME: {
-      /* Single-character strftime specifier (like %H, %M, %S, etc.) */
-      if (spec->literal && spec->literal[0]) {
-        char format_str[3] = {'%', spec->literal[0], '\0'};
-        written = time_format_now(format_str, p, remaining + 1);
-        if (written <= 0) {
-          log_debug("time_format_now failed for specifier: %s", format_str);
-          written = 0;
+    case LOG_FORMAT_STRFTIME_CODE: {
+      /* strftime format code (like %H, %M, %S, %A, %B, etc.)
+       * Let strftime handle all the parsing and validation */
+      if (spec->literal) {
+        /* Construct format string with % prefix */
+        size_t fmt_len = spec->literal_len + 1;
+        char *format_str = SAFE_MALLOC(fmt_len + 1, char *);
+        if (format_str) {
+          format_str[0] = '%';
+          memcpy(format_str + 1, spec->literal, spec->literal_len);
+          format_str[fmt_len] = '\0';
+          written = time_format_now(format_str, p, remaining + 1);
+          if (written <= 0) {
+            log_debug("time_format_now failed for format code: %s", format_str);
+            written = 0;
+          }
+          SAFE_FREE(format_str);
         }
       }
       break;

@@ -38,7 +38,7 @@ typedef enum {
   LOG_FORMAT_COLORED_MESSAGE, /* %colored_message - message with things like filenames and 0x numbers colored */
   LOG_FORMAT_MICROSECONDS,    /* %ms - microseconds component of current time (000000-999999) */
   LOG_FORMAT_NANOSECONDS,     /* %ns - nanoseconds component of current time (000000000-999999999) */
-  LOG_FORMAT_STRFTIME,        /* %H, %M, %S, etc. - single-char strftime specifiers */
+  LOG_FORMAT_STRFTIME_CODE,   /* %H, %M, %S, %A, %B, etc. - strftime format codes */
   LOG_FORMAT_NEWLINE,         /* Platform-aware newline (\n) */
 } log_format_type_t;
 

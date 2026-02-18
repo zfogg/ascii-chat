@@ -276,8 +276,30 @@ Test(log_format, parse_null_format) {
 }
 
 Test(log_format, parse_unknown_specifier) {
+  /* Unknown specifiers are now treated as strftime format codes
+     and validation is deferred to strftime at format time */
   log_format_t *fmt = log_format_parse("%unknown", false);
-  cr_assert_null(fmt, "Should reject unknown specifier");
+  cr_assert_not_null(fmt, "Should accept unknown specifier as strftime code");
+  cr_assert_eq(fmt->spec_count, 1);
+  cr_assert_eq(fmt->specs[0].type, LOG_FORMAT_STRFTIME_CODE);
+  log_format_free(fmt);
+}
+
+Test(log_format, apply_strftime_codes) {
+  /* Test that strftime codes work end-to-end */
+  log_format_t *fmt = log_format_parse("[%H:%M:%S] %message", false);
+  cr_assert_not_null(fmt, "Should parse strftime codes");
+
+  char buf[256];
+  uint64_t now = time_get_realtime_ns();
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "", NULL, 0, NULL, 0, "test", false, now);
+
+  cr_assert_gt(len, 0, "Should format successfully with strftime codes");
+  cr_assert(strstr(buf, "test") != NULL, "Should contain message");
+  /* Should contain formatted time with colons like HH:MM:SS */
+  cr_assert(strchr(buf, ':') != NULL, "Should contain time separator");
+
+  log_format_free(fmt);
 }
 
 Test(log_format, parse_unterminated_time_format) {
