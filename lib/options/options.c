@@ -778,7 +778,7 @@ static char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t 
 // - --long-name=true/false/yes/no/1/0/on/off → parses value
 // - -X (short form) → sets field to true
 // - -X=value (short form with value) → parses value
-static inline bool parse_binary_bool_arg(const char *arg, bool *field, const char *long_name, char short_name) {
+static bool parse_binary_bool_arg(const char *arg, bool *field, const char *long_name, char short_name) {
   if (!arg || !field || !long_name)
     return false;
 
