@@ -181,7 +181,9 @@ asciichat_error_t url_parse(const char *url, url_parts_t *parts_out) {
   }
 
   /* Check if URL needs http:// prefix (bare hostname or IP) */
-  char url_with_scheme[2048];
+  // allocate twice the "safe limit" of 2048 for website URLs, even though modern browsers can handle up
+  // to 80k character URLs in some cases.
+  char url_with_scheme[4096];
   const char *url_to_match = url;
   const char *original_url = url;
 
@@ -196,11 +198,6 @@ asciichat_error_t url_parse(const char *url, url_parts_t *parts_out) {
     /* Reject URLs that look like malformed schemes (http/ instead of http://) */
     if (strncmp(url, "http/", 5) == 0 || strncmp(url, "https/", 6) == 0) {
       return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid URL format (looks like malformed scheme): %s", url);
-    }
-
-    /* Reject if it contains @ (email-like) */
-    if (strchr(url, '@')) {
-      return SET_ERRNO(ERROR_INVALID_PARAM, "Ambiguous format looks like email address, not URL: %s", url);
     }
 
     /* Reject pure hex strings (raw keys, not hostnames) */
@@ -309,6 +306,7 @@ bool url_is_websocket_scheme(const char *scheme) {
 
 bool url_looks_like_websocket(const char *url) {
   if (!url || !*url) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "url is NULL or empty");
     return false;
   }
 
