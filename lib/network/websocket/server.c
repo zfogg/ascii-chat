@@ -697,8 +697,9 @@ static struct lws_protocols websocket_protocols[] = {
  * - Reduces multi-fragment receive stalls
  * - Improves throughput by reducing TCP round-trips
  */
-static const struct lws_extension websocket_extensions[] = {
-    {"permessage-deflate", lws_extension_callback_pm_deflate, 0}, {NULL, NULL, NULL}};
+// Compression disabled - fragmented messages + permessage-deflate cause rx buffer underflow
+// Setting this to empty array instead of defining permessage-deflate callback
+static const struct lws_extension websocket_extensions[] = {{NULL, NULL, NULL}};
 
 asciichat_error_t websocket_server_init(websocket_server_t *server, const websocket_server_config_t *config) {
   if (!server || !config || !config->client_handler) {
