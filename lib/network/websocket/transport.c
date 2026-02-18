@@ -520,6 +520,11 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
     assembled_size += frag.len;
     buffer_pool_free(NULL, frag.data, frag.len);
 
+    // Reset reassembly timeout after each fragment received.
+    // This allows slow networks to deliver fragments over time without hitting the absolute timeout.
+    // Each fragment gets MAX_REASSEMBLY_TIME_NS to arrive after the previous one.
+    assembly_start_ns = time_get_ns();
+
     // If this is the final fragment, we're done
     if (frag.final) {
       uint64_t assembly_end_ns = time_get_ns();
