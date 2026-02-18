@@ -62,9 +62,12 @@ static _Atomic uint64_t g_writeable_callback_count = 0;
 static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in,
                                      size_t len) {
   websocket_connection_data_t *conn_data = (websocket_connection_data_t *)user;
+  const char *proto_name = lws_get_protocol(wsi) ? lws_get_protocol(wsi)->name : "NULL";
 
-  // LOG EVERY SINGLE CALLBACK
-  log_info("🔴🔴🔴 CALLBACK FIRED: reason=%d, wsi=%p", reason, (void *)wsi);
+  // LOG EVERY SINGLE CALLBACK WITH PROTOCOL NAME
+  if (reason == 6 || reason == 8 || reason == 11) {
+    log_info("🔴 CALLBACK: reason=%d, proto=%s, wsi=%p, len=%zu", reason, proto_name, (void *)wsi, len);
+  }
 
   switch (reason) {
   case LWS_CALLBACK_ESTABLISHED: {
@@ -476,6 +479,10 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       conn_data->server = server;
       conn_data->transport = acip_websocket_server_transport_create(wsi, NULL);
       conn_data->handler_started = false;
+      conn_data->pending_send_data = NULL;
+      conn_data->pending_send_len = 0;
+      conn_data->pending_send_offset = 0;
+      conn_data->has_pending_send = false;
 
       if (!conn_data->transport) {
         log_error("LWS_CALLBACK_RECEIVE: Failed to create transport in fallback");
@@ -669,6 +676,12 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     log_info("[WS_RECEIVE_RETURN] Returning 0 from RECEIVE callback (success). fragmented=%d (first=%d final=%d)",
              (!is_final ? 1 : 0), is_first, is_final);
     break;
+  }
+
+  case LWS_CALLBACK_FILTER_HTTP_CONNECTION: {
+    // WebSocket upgrade handshake - allow all connections
+    log_info("[FILTER_HTTP_CONNECTION] WebSocket upgrade request (allow protocol upgrade)");
+    return 0; // Allow the connection
   }
 
   case LWS_CALLBACK_EVENT_WAIT_CANCELLED: {
