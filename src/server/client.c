@@ -909,6 +909,25 @@ int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
 
   // Initialize client
   client_info_t *client = &g_client_manager.clients[slot];
+
+  // Free any existing buffers from previous client in this slot
+  if (client->incoming_video_buffer) {
+    video_frame_buffer_destroy(client->incoming_video_buffer);
+    client->incoming_video_buffer = NULL;
+  }
+  if (client->outgoing_video_buffer) {
+    video_frame_buffer_destroy(client->outgoing_video_buffer);
+    client->outgoing_video_buffer = NULL;
+  }
+  if (client->incoming_audio_buffer) {
+    audio_ring_buffer_destroy(client->incoming_audio_buffer);
+    client->incoming_audio_buffer = NULL;
+  }
+  if (client->send_buffer) {
+    SAFE_FREE(client->send_buffer);
+    client->send_buffer = NULL;
+  }
+
   memset(client, 0, sizeof(client_info_t));
 
   // Set up WebRTC-specific fields

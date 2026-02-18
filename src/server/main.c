@@ -119,6 +119,7 @@
 #include <ascii-chat/ui/server_status.h>
 #include <ascii-chat/log/interactive_grep.h>
 #include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/debug/memory.h>
 
 /* ============================================================================
  * Global State
@@ -1282,6 +1283,15 @@ static void *status_screen_thread(void *arg) {
     // Render status screen (server_status_update handles rate limiting internally)
     server_status_update(&g_tcp_server, g_session_string, ipv4_address, ipv6_address, GET_OPTION(port),
                          g_server_start_time, "Server", g_session_is_mdns_only, &g_last_status_update);
+
+    // Periodic memory reporting (every ~5 seconds)
+    static uint64_t last_memory_report = 0;
+    uint64_t now = platform_get_monotonic_time_us();
+    if (now - last_memory_report > 5000000) { // 5 seconds in microseconds
+      last_memory_report = now;
+      log_info("=== MEMORY REPORT (periodic) ===");
+      debug_memory_report();
+    }
 
     // Sleep to maintain frame rate
     uint64_t frame_end = platform_get_monotonic_time_us();

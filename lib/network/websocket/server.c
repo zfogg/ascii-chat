@@ -785,7 +785,7 @@ asciichat_error_t websocket_server_run(websocket_server_t *server) {
       double gap_ms = (double)(service_start_ns - last_service_ns) / 1e6;
       log_info_every(1000, "[LWS_SERVICE_GAP] %.1fms gap between lws_service calls", gap_ms);
     }
-    int result = lws_service(server->context, -1);
+    int result = lws_service(server->context, 50);
     if (result < 0) {
       log_error("libwebsockets service error: %d", result);
       break;

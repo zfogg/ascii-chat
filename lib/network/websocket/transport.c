@@ -407,67 +407,58 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   size_t assembled_capacity = 0;
   uint64_t assembly_start_ns = time_get_ns();
   int fragment_count = 0;
-  const uint64_t MAX_REASSEMBLY_TIME_NS = 200 * 1000000ULL; // 200ms max wait for message reassembly
+  const uint64_t MAX_REASSEMBLY_TIME_NS =
+      2000 * 1000000ULL; // 2s max wait for message reassembly (handles slow networks)
 
   while (true) {
-    // Lock only for queue operations, not for buffer work
-    log_dev("[WS_DEBUG] About to lock recv_mutex");
-    mutex_lock(&ws_data->recv_mutex);
-    log_dev("[WS_DEBUG] Locked recv_mutex, checking queue");
-
-    // Wait for next fragment if queue is empty
-    int wait_count = 0;
-    size_t queue_before = ringbuffer_size(ws_data->recv_queue);
-    while (ringbuffer_is_empty(ws_data->recv_queue)) {
-      log_dev("[WS_DEBUG] Queue empty (size=%zu), entering wait loop", queue_before);
-      // Check if we've exceeded max wait time
+    // Check timeout OUTSIDE the recv_mutex to avoid holding lock during timeout checks
+    if (assembled_size > 0) {
       uint64_t elapsed_ns = time_get_ns() - assembly_start_ns;
       if (elapsed_ns > MAX_REASSEMBLY_TIME_NS) {
-        // Timeout: return partial message if we have any fragments, otherwise error
-        mutex_unlock(&ws_data->recv_mutex);
-        if (assembled_size > 0) {
-          log_warn(
-              "[WS_REASSEMBLE] Timeout after %lldms while waiting for fragments (have %zu bytes, expected final=1)",
-              (long long)(elapsed_ns / 1000000ULL), assembled_size);
-          *buffer = assembled_buffer;
-          *out_len = assembled_size;
-          *out_allocated_buffer = assembled_buffer;
-          return ASCIICHAT_OK; // Return partial message
-        } else {
-          // No fragments at all - queue must be empty
-          if (assembled_buffer) {
-            buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
-          }
-          return SET_ERRNO(ERROR_NETWORK, "Timeout waiting for first fragment");
-        }
-      }
-
-      if (wait_count == 0) {
-        log_dev_every(4500000, "🔄 WEBSOCKET_RECV: Queue empty, waiting for %s fragment...",
-                      (assembled_size == 0) ? "first" : "continuation");
-      }
-      wait_count++;
-
-      // Check connection state (separate lock)
-      mutex_lock(&ws_data->state_mutex);
-      bool still_connected = ws_data->is_connected;
-      mutex_unlock(&ws_data->state_mutex);
-
-      if (!still_connected) {
-        mutex_unlock(&ws_data->recv_mutex);
+        log_error("[WS_REASSEMBLE] Timeout after %lldms while reassembling message (have %zu bytes of %d fragments, "
+                  "expected final=1)",
+                  (long long)(elapsed_ns / 1000000ULL), assembled_size, fragment_count);
         if (assembled_buffer) {
           buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
         }
-        return SET_ERRNO(ERROR_NETWORK, "Connection closed while reassembling fragments");
+        return SET_ERRNO(ERROR_NETWORK, "Fragment reassembly timeout - incomplete message discarded");
       }
+    }
 
-      // Wait for fragment arrival with 1ms timeout (hold recv_mutex during wait)
-      log_dev("[WS_DEBUG] Calling cond_timedwait on recv_cond");
-      cond_timedwait(&ws_data->recv_cond, &ws_data->recv_mutex, 1 * 1000000ULL); // 1ms timeout
+    // Check connection state OUTSIDE recv_mutex (uses separate state_mutex)
+    mutex_lock(&ws_data->state_mutex);
+    bool still_connected = ws_data->is_connected;
+    mutex_unlock(&ws_data->state_mutex);
+
+    if (!still_connected) {
+      if (assembled_buffer) {
+        buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
+      }
+      return SET_ERRNO(ERROR_NETWORK, "Connection closed while reassembling fragments");
+    }
+
+    // NOW lock recv_mutex ONLY for queue access
+    log_dev("[WS_DEBUG] About to lock recv_mutex for queue access");
+    mutex_lock(&ws_data->recv_mutex);
+
+    // If queue is empty, wait for data with timeout
+    if (ringbuffer_is_empty(ws_data->recv_queue)) {
+      uint64_t wait_timeout_ns =
+          (assembled_size == 0) ? (100 * 1000000ULL) : (1 * 1000000ULL); // 100ms for first, 1ms for continuation
+      log_dev("[WS_DEBUG] Queue empty, calling cond_timedwait on recv_cond");
+      cond_timedwait(&ws_data->recv_cond, &ws_data->recv_mutex, wait_timeout_ns);
       log_dev("[WS_DEBUG] Woke from cond_timedwait, queue size now=%zu", ringbuffer_size(ws_data->recv_queue));
     }
 
-    // Read next fragment from queue (still holding recv_mutex)
+    // Check if still empty after wait timeout
+    if (ringbuffer_is_empty(ws_data->recv_queue)) {
+      mutex_unlock(&ws_data->recv_mutex);
+      log_dev_every(4500000,
+                    "🔄 WEBSOCKET_RECV: Queue empty after timeout, looping back for timeout/connection checks");
+      continue;
+    }
+
+    // Read next fragment from queue
     websocket_recv_msg_t frag;
     bool success = ringbuffer_read(ws_data->recv_queue, &frag);
     mutex_unlock(&ws_data->recv_mutex);
