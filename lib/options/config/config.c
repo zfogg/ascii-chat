@@ -1116,6 +1116,7 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
 
   // Parse TOML file
   toml_result_t result = toml_parse_file_ex(config_path_expanded);
+  // Ensure TOML resources are freed at ALL function exit points (defer handles cleanup)
   defer(toml_free(result));
 
   if (!result.ok) {
@@ -1128,15 +1129,19 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
       // So we need to format the error message ourselves here
       char error_buffer[BUFFER_SIZE_MEDIUM];
       safe_snprintf(error_buffer, sizeof(error_buffer), "Failed to parse config file '%s': %s", display_path, errmsg);
+      toml_free(result); // Explicit cleanup before return (defer transformation not applied)
       return SET_ERRNO(ERROR_CONFIG, "%s", error_buffer);
     }
     CONFIG_WARN("Failed to parse config file '%s': %s (skipping)", display_path, errmsg);
+    toml_free(result);   // Explicit cleanup before return (defer transformation not applied)
     return ASCIICHAT_OK; // Non-fatal error
   }
 
   // Apply configuration using schema-driven parser with bitmask validation
   asciichat_error_t schema_result = config_apply_schema(result.toptab, detected_mode, opts, strict);
+
   if (schema_result != ASCIICHAT_OK && strict) {
+    toml_free(result); // Explicit cleanup before return (defer transformation not applied)
     return schema_result;
   }
   // In non-strict mode, continue even if some options failed validation
@@ -1158,6 +1163,7 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
     CONFIG_WARN("Failed to update RCU options state: %d (values may not be persisted)", rcu_result);
   }
 
+  toml_free(result); // Explicit cleanup before return (defer transformation not applied)
   return ASCIICHAT_OK;
 }
 
@@ -1521,6 +1527,7 @@ asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, bo
   // Use platform abstraction to find all config.toml files across standard locations
   config_file_list_t config_files = {0};
   asciichat_error_t search_result = platform_find_config_file("config.toml", &config_files);
+  defer(config_file_list_destroy(&config_files));
 
   if (search_result != ASCIICHAT_OK) {
     CONFIG_DEBUG("Failed to search for config files: %d", search_result);
@@ -1558,9 +1565,6 @@ asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, bo
       }
     }
   }
-
-  // Clean up search results
-  config_file_list_destroy(&config_files);
 
   return result;
 }
