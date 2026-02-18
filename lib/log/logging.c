@@ -1088,9 +1088,11 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   if (json_format_enabled) {
     // Output JSON to the JSON file descriptor
     log_json_write(json_fd, level, time_ns, file, line, func, json_message);
-    // Also output JSON to console using unified routing logic
-    int console_fd = terminal_choose_log_fd(level);
-    log_json_write(console_fd, level, time_ns, file, line, func, json_message);
+    // Also output JSON to console using unified routing logic, respecting quiet flag
+    if (atomic_load(&g_log.terminal_output_enabled)) {
+      int console_fd = terminal_choose_log_fd(level);
+      log_json_write(console_fd, level, time_ns, file, line, func, json_message);
+    }
   } else {
     // Text format: output to file and terminal
     // Write to file (atomic write syscall)
@@ -1188,18 +1190,29 @@ void log_plain_msg(const char *fmt, ...) {
     }
   }
 
-  // Choose output stream using unified routing logic (LOG_INFO level)
-  int fd = terminal_choose_log_fd(LOG_INFO);
-  FILE *output_stream = (fd == STDERR_FILENO) ? stderr : stdout;
+  // Check if JSON format is enabled
+  int json_fd = atomic_load(&g_log.json_file);
+  bool json_format_enabled = (json_fd >= 0);
 
-  // Apply colorization for TTY output
-  if (terminal_should_color_output(fd)) {
-    const char *colorized_msg = colorize_log_message(log_buffer);
-    safe_fprintf(output_stream, "%s\n", colorized_msg);
+  if (json_format_enabled) {
+    // Output JSON for plain messages too
+    uint64_t time_ns = time_get_realtime_ns();
+    int console_fd = terminal_choose_log_fd(LOG_INFO);
+    log_json_write(console_fd, LOG_INFO, time_ns, "lib/log/logging.c", 0, "log_plain_msg", log_buffer);
   } else {
-    safe_fprintf(output_stream, "%s\n", log_buffer);
+    // Choose output stream using unified routing logic (LOG_INFO level)
+    int fd = terminal_choose_log_fd(LOG_INFO);
+    FILE *output_stream = (fd == STDERR_FILENO) ? stderr : stdout;
+
+    // Apply colorization for TTY output
+    if (terminal_should_color_output(fd)) {
+      const char *colorized_msg = colorize_log_message(log_buffer);
+      safe_fprintf(output_stream, "%s\n", colorized_msg);
+    } else {
+      safe_fprintf(output_stream, "%s\n", log_buffer);
+    }
+    (void)fflush(output_stream);
   }
-  (void)fflush(output_stream);
 }
 
 // Helper for log_plain_stderr variants (lock-free)
