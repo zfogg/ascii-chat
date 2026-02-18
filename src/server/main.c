@@ -1285,16 +1285,6 @@ static void *status_screen_thread(void *arg) {
     server_status_update(&g_tcp_server, g_session_string, ipv4_address, ipv6_address, GET_OPTION(port),
                          g_server_start_time, "Server", g_session_is_mdns_only, &g_last_status_update);
 
-    // Periodic memory reporting (every ~5 seconds)
-    static uint64_t last_memory_report = 0;
-    uint64_t now = platform_get_monotonic_time_us();
-    if (now - last_memory_report > 5 * US_PER_SEC_INT) { // 5 seconds in microseconds
-      last_memory_report = now;
-      log_debug("[STATUS_SCREEN] Before memory report call");
-      debug_memory_report();
-      log_debug("[STATUS_SCREEN] After memory report call");
-    }
-
     // Sleep to maintain frame rate
     uint64_t frame_end = platform_get_monotonic_time_us();
     uint64_t frame_time = frame_end - frame_start;
