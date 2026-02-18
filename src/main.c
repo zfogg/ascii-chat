@@ -318,8 +318,11 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  // Reconfigure logging with parsed log level
-  log_init(log_file, GET_OPTION(log_level), false, false);
+  // Determine final log file path (use mode-specific default from options if available)
+  const char *final_log_file = (opts->log_file[0] != '\0') ? opts->log_file : "ascii-chat.log";
+
+  // Reconfigure logging with parsed log level and correct log file path
+  log_init(final_log_file, GET_OPTION(log_level), false, false);
 
   // Apply custom log format if specified
   const char *custom_format = GET_OPTION(log_format);
@@ -377,7 +380,6 @@ int main(int argc, char *argv[]) {
     log_set_terminal_output(false);
   }
 
-  const char *final_log_file = (opts->log_file[0] != '\0') ? opts->log_file : "ascii-chat.log";
   log_dev("Logging initialized to %s", final_log_file);
 
   // Note: We do NOT auto-disable colors when stdout appears to be piped, because:
