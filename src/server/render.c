@@ -387,7 +387,7 @@ void *client_video_render_thread(void *arg) {
 
   bool should_continue = true;
   while (should_continue && !atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down)) {
-    log_dev_every(10000000, "Video render loop iteration for client %u", thread_client_id);
+    log_dev_every(10 * NS_PER_MS_INT, "Video render loop iteration for client %u", thread_client_id);
 
     // Check for immediate shutdown
     if (atomic_load(&g_server_should_exit)) {
@@ -450,12 +450,13 @@ void *client_video_render_thread(void *arg) {
       last_has_sources = has_video_sources;
     }
 
-    log_debug_every(5000000, "Video render iteration for client %u: has_video_sources=%d, width=%u, height=%u",
-                    thread_client_id, has_video_sources, width_snapshot, height_snapshot);
+    log_debug_every(5 * NS_PER_MS_INT,
+                    "Video render iteration for client %u: has_video_sources=%d, width=%u, height=%u", thread_client_id,
+                    has_video_sources, width_snapshot, height_snapshot);
 
     // Skip frame generation if client dimensions are not yet received (width=0 or height=0)
     if (width_snapshot == 0 || height_snapshot == 0) {
-      log_dev_every(5000000,
+      log_dev_every(5 * NS_PER_MS_INT,
                     "Skipping frame generation for client %u: dimensions not yet received (width=%u, height=%u)",
                     thread_client_id, width_snapshot, height_snapshot);
       continue;
@@ -482,8 +483,9 @@ void *client_video_render_thread(void *arg) {
                  elapsed_ns / (double)NS_PER_SEC_INT);
       }
 
-      log_dev_every(5000000, "About to call create_mixed_ascii_frame_for_client for client %u with dims %ux%u",
-                    thread_client_id, width_snapshot, height_snapshot);
+      log_dev_every(5 * NS_PER_MS_INT,
+                    "About to call create_mixed_ascii_frame_for_client for client %u with dims %ux%u", thread_client_id,
+                    width_snapshot, height_snapshot);
       char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot,
                                                               false, &frame_size, NULL, &sources_count);
 
@@ -507,13 +509,13 @@ void *client_video_render_thread(void *arg) {
         }
       }
 
-      log_dev_every(5000000,
+      log_dev_every(5 * NS_PER_MS_INT,
                     "create_mixed_ascii_frame_for_client returned: ascii_frame=%p, frame_size=%zu, sources_count=%d",
                     (void *)ascii_frame, frame_size, sources_count);
 
       // Phase 2 IMPLEMENTED: Write frame to double buffer (never drops!)
       if (ascii_frame && frame_size > 0) {
-        log_debug_every(5000000, "Buffering frame for client %u (size=%zu)", thread_client_id, frame_size);
+        log_debug_every(5 * NS_PER_MS_INT, "Buffering frame for client %u (size=%zu)", thread_client_id, frame_size);
         // GRID LAYOUT CHANGE DETECTION: Store source count with frame
         // Send thread will compare this with last sent count to detect grid changes
         atomic_store(&client->last_rendered_grid_sources, sources_count);
@@ -572,8 +574,8 @@ void *client_video_render_thread(void *arg) {
               for (size_t i = 0; i < frame_size && i < 1000; i++) {
                 ascii_hash = (uint32_t)((((uint64_t)ascii_hash << 5) - ascii_hash) + (unsigned char)ascii_frame[i]);
               }
-              log_dev_every(5000000, "Client %u: Rendered ASCII frame size=%s hash=0x%08x sources=%d", thread_client_id,
-                            pretty_size, ascii_hash, sources_count);
+              log_dev_every(5 * NS_PER_MS_INT, "Client %u: Rendered ASCII frame size=%s hash=0x%08x sources=%d",
+                            thread_client_id, pretty_size, ascii_hash, sources_count);
 
             } else {
               log_warn("Frame too large for buffer: %zu > %zu", frame_size, vfb_snapshot->allocated_buffer_size);
@@ -587,7 +589,8 @@ void *client_video_render_thread(void *arg) {
         SAFE_FREE(ascii_frame);
       } else {
         // No frame generated (probably no video sources) - this is normal, no error logging needed
-        log_dev_every(10000000, "Per-client render: No video sources available for client %u", client_id_snapshot);
+        log_dev_every(10 * NS_PER_MS_INT, "Per-client render: No video sources available for client %u",
+                      client_id_snapshot);
       }
     } else {
       // No video sources - skip frame generation but DON'T update last_render_time
@@ -802,7 +805,7 @@ void *client_audio_render_thread(void *arg) {
     }
 
     if (!g_audio_mixer) {
-      log_dev_every(10000000, "Audio render waiting for mixer (client %u)", thread_client_id);
+      log_dev_every(10 * NS_PER_MS_INT, "Audio render waiting for mixer (client %u)", thread_client_id);
       // Check shutdown flag while waiting
       if (atomic_load(&g_server_should_exit))
         break;
@@ -842,7 +845,7 @@ void *client_audio_render_thread(void *arg) {
           float buffer_latency_ms = (float)available / 48.0f; // samples / (48000 / 1000)
 
           // Log source buffer latency
-          log_dev_every(5000000, "LATENCY: Server incoming buffer for client %u: %.1fms (%zu samples)",
+          log_dev_every(5 * NS_PER_MS_INT, "LATENCY: Server incoming buffer for client %u: %.1fms (%zu samples)",
                         g_audio_mixer->source_ids[i], buffer_latency_ms, available);
 
           // If buffer is getting too full, read faster to reduce latency
@@ -858,8 +861,8 @@ void *client_audio_render_thread(void *arg) {
       // Log outgoing queue latency
       size_t queue_depth = packet_queue_size(audio_queue_snapshot);
       float queue_latency_ms = (float)queue_depth * 20.0f; // ~20ms per Opus packet
-      log_dev_every(5000000, "LATENCY: Server send queue for client %u: %.1fms (%zu packets)", client_id_snapshot,
-                    queue_latency_ms, queue_depth);
+      log_dev_every(5 * NS_PER_MS_INT, "LATENCY: Server send queue for client %u: %.1fms (%zu packets)",
+                    client_id_snapshot, queue_latency_ms, queue_depth);
     }
 
     int samples_mixed = 0;
@@ -911,7 +914,8 @@ void *client_audio_render_thread(void *arg) {
     // DEBUG: Log samples mixed every iteration
     // NOTE: mixer_debug_count is now per-thread (not static), so each client thread has its own counter
     mixer_debug_count++;
-    log_dev_every(4500000, "Server mixer iteration #%d for client %u: samples_mixed=%d, opus_frame_accumulated=%d/%d",
+    log_dev_every(4500 * US_PER_MS_INT,
+                  "Server mixer iteration #%d for client %u: samples_mixed=%d, opus_frame_accumulated=%d/%d",
                   mixer_debug_count, client_id_snapshot, samples_mixed, opus_frame_accumulated, OPUS_FRAME_SAMPLES);
 
     // Accumulate all samples (including 0 or partial) until we have a full Opus frame
@@ -957,7 +961,7 @@ void *client_audio_render_thread(void *arg) {
         // Reset accumulation buffer so fresh samples can be captured on next iteration.
         // Without this reset, we'd loop forever with stale audio and no space for new samples
         opus_frame_accumulated = 0;
-        platform_sleep_ns(5800000);
+        platform_sleep_ns(5800 * NS_PER_US_INT);
         continue;
       }
 
@@ -986,7 +990,7 @@ void *client_audio_render_thread(void *arg) {
         server_audio_frame_count++;
         if (server_audio_frame_count <= 5 || server_audio_frame_count % 20 == 0) {
           // Log first 4 samples to verify they look like valid audio (not NaN/Inf/garbage)
-          log_dev_every(4500000,
+          log_dev_every(4500 * US_PER_MS_INT,
                         "Server audio frame #%d for client %u: samples_mixed=%d, Peak=%.6f, RMS=%.6f, opus_size=%d, "
                         "first4=[%.4f,%.4f,%.4f,%.4f]",
                         server_audio_frame_count, client_id_snapshot, samples_mixed, peak, rms, opus_size,

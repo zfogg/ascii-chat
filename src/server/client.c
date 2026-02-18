@@ -1733,7 +1733,7 @@ void *client_send_thread_func(void *arg) {
   // Check if client_id is 0 (client struct has been zeroed by remove_client)
   // This must be checked BEFORE accessing any client fields
   if (atomic_load(&client->client_id) == 0) {
-    log_debug_every(100000, "Send thread: client_id is 0, client struct may have been zeroed, exiting");
+    log_debug_every(100 * US_PER_MS_INT, "Send thread: client_id is 0, client struct may have been zeroed, exiting");
     return NULL;
   }
 
@@ -1793,8 +1793,8 @@ void *client_send_thread_func(void *arg) {
         }
       }
       if (audio_packet_count > 0) {
-        log_dev_every(4500000, "SEND_AUDIO: client=%u dequeued=%d packets", atomic_load(&client->client_id),
-                      audio_packet_count);
+        log_dev_every(4500 * US_PER_MS_INT, "SEND_AUDIO: client=%u dequeued=%d packets",
+                      atomic_load(&client->client_id), audio_packet_count);
       }
     } else {
       log_warn("Send thread: audio_queue is NULL for client %u", atomic_load(&client->client_id));
@@ -1985,7 +1985,7 @@ void *client_send_thread_func(void *arg) {
     uint64_t frame_get_ns = time_get_ns();
     log_info("[SEND_LOOP_%d] VIDEO_GET_FRAME: took %.3fms, frame=%p", loop_iteration_count,
              (frame_get_ns - video_check_ns) / 1e6, (void *)frame);
-    log_dev_every(4500000, "Send thread: video_frame_get_latest returned %p for client %u", (void *)frame,
+    log_dev_every(4500 * US_PER_MS_INT, "Send thread: video_frame_get_latest returned %p for client %u", (void *)frame,
                   client->client_id);
 
     // Check if get_latest failed (buffer might have been destroyed)
@@ -2000,7 +2000,8 @@ void *client_send_thread_func(void *arg) {
     uint64_t current_time_ns = time_get_ns();
     uint64_t current_time_us = time_ns_to_us(current_time_ns);
     uint64_t time_since_last_send_us = current_time_us - last_video_send_time;
-    log_dev_every(4500000, "Send thread timing check: time_since_last=%llu us, interval=%llu us, should_send=%d",
+    log_dev_every(4500 * US_PER_MS_INT,
+                  "Send thread timing check: time_since_last=%llu us, interval=%llu us, should_send=%d",
                   (unsigned long long)time_since_last_send_us, (unsigned long long)video_send_interval_us,
                   (time_since_last_send_us >= video_send_interval_us));
 
@@ -2035,8 +2036,8 @@ void *client_send_thread_func(void *arg) {
         sent_something = true;
       }
 
-      log_dev_every(4500000, "Send thread: frame validation - frame=%p, frame->data=%p, frame->size=%zu", (void *)frame,
-                    (void *)frame->data, frame->size);
+      log_dev_every(4500 * US_PER_MS_INT, "Send thread: frame validation - frame=%p, frame->data=%p, frame->size=%zu",
+                    (void *)frame, (void *)frame->data, frame->size);
 
       if (!frame->data) {
         log_info("✗ SKIP_NO_DATA: client_id=%u frame=%p data=%p", atomic_load(&client->client_id), (void *)frame,
@@ -2077,7 +2078,8 @@ void *client_send_thread_func(void *arg) {
 
       // Get transport reference briefly to avoid deadlock on TCP buffer full
       // ACIP transport handles header building, CRC32, encryption internally
-      log_dev_every(4500000, "Send thread: About to send frame to client %u (width=%u, height=%u, size=%zu, data=%p)",
+      log_dev_every(4500 * US_PER_MS_INT,
+                    "Send thread: About to send frame to client %u (width=%u, height=%u, size=%zu, data=%p)",
                     client->client_id, width, height, frame_size, (void *)frame_data);
       mutex_lock(&client->send_mutex);
       if (atomic_load(&client->shutting_down) || !client->transport) {
@@ -2091,7 +2093,7 @@ void *client_send_thread_func(void *arg) {
       mutex_unlock(&client->send_mutex);
 
       // Network I/O happens OUTSIDE the mutex
-      log_dev_every(4500000, "SEND_ASCII_FRAME: client_id=%u size=%zu width=%u height=%u",
+      log_dev_every(4500 * US_PER_MS_INT, "SEND_ASCII_FRAME: client_id=%u size=%zu width=%u height=%u",
                     atomic_load(&client->client_id), frame_size, width, height);
       uint64_t send_start_ns = time_get_ns();
       log_info("[SEND_LOOP_%d] FRAME_SEND_START: size=%zu", loop_iteration_count, frame_size);
@@ -2113,7 +2115,8 @@ void *client_send_thread_func(void *arg) {
         break;
       }
 
-      log_dev_every(4500000, "SEND_FRAME_SUCCESS: client_id=%u size=%zu", atomic_load(&client->client_id), frame_size);
+      log_dev_every(4500 * US_PER_MS_INT, "SEND_FRAME_SUCCESS: client_id=%u size=%zu", atomic_load(&client->client_id),
+                    frame_size);
 
       // Increment frame counter and log
       unsigned long frame_count = atomic_fetch_add(&client->frames_sent_count, 1) + 1;

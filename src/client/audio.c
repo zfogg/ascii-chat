@@ -461,8 +461,8 @@ void audio_process_received_samples(const float *samples, int num_samples) {
   if (g_audio_context.playback_buffer) {
     size_t buffer_samples = audio_ring_buffer_available_read(g_audio_context.playback_buffer);
     float buffer_latency_ms = (float)buffer_samples / 48.0f;
-    log_dev_every(500000, "LATENCY: Client playback buffer after recv: %.1fms (%zu samples)", buffer_latency_ms,
-                  buffer_samples);
+    log_dev_every(500 * US_PER_MS_INT, "LATENCY: Client playback buffer after recv: %.1fms (%zu samples)",
+                  buffer_latency_ms, buffer_samples);
   }
 
 #ifdef DEBUG_AUDIO
@@ -1078,7 +1078,7 @@ void audio_stop_thread() {
   // Wait for thread to exit gracefully
   int wait_count = 0;
   while (wait_count < 20 && !atomic_load(&g_audio_capture_thread_exited)) {
-    platform_sleep_us(100000); // 100ms
+    platform_sleep_us(100 * US_PER_MS_INT); // 100ms
     wait_count++;
   }
 
@@ -1143,7 +1143,7 @@ void audio_cleanup() {
   // pointer to NULL, a CoreAudio thread may have already cached the pointer before the assignment.
   // This sleep ensures all in-flight callbacks have fully completed before we destroy the pipeline.
   // 500ms is sufficient on macOS for CoreAudio's internal thread pool to completely wind down.
-  platform_sleep_us(500000); // 500ms - macOS CoreAudio needs time to shut down all threads
+  platform_sleep_us(500 * US_PER_MS_INT); // 500ms - macOS CoreAudio needs time to shut down all threads
 
   // Destroy audio pipeline (handles Opus, AEC, etc.)
   if (g_audio_pipeline) {

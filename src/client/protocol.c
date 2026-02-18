@@ -1082,7 +1082,7 @@ void protocol_stop_connection() {
   // Wait for data reception thread to exit gracefully
   int wait_count = 0;
   while (wait_count < 20 && !atomic_load(&g_data_thread_exited)) {
-    platform_sleep_us(100000); // 100ms
+    platform_sleep_us(100 * US_PER_MS_INT); // 100ms
     wait_count++;
   }
 

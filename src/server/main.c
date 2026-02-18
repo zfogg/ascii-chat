@@ -1307,8 +1307,9 @@ static void *status_screen_thread(void *arg) {
     uint64_t now = platform_get_monotonic_time_us();
     if (now - last_memory_report > 5000000) { // 5 seconds in microseconds
       last_memory_report = now;
-      log_info("=== MEMORY REPORT (periodic) ===");
+      log_debug("[STATUS_SCREEN] Before memory report call");
       debug_memory_report();
+      log_debug("[STATUS_SCREEN] After memory report call");
     }
 
     // Sleep to maintain frame rate

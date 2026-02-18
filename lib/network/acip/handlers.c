@@ -56,17 +56,17 @@ typedef struct {
 // Lookup function: linear probing, returns handler index or -1 if not found
 static inline int handler_hash_lookup(const handler_hash_entry_t *table, packet_type_t type) {
   uint32_t h = HANDLER_HASH(type);
-  log_dev_every(4500000, "HANDLER_HASH_LOOKUP: type=%d, hash=%u", type, h);
+  log_dev_every(4500 * US_PER_MS_INT, "HANDLER_HASH_LOOKUP: type=%d, hash=%u", type, h);
   for (int i = 0; i < HANDLER_HASH_SIZE; i++) {
     uint32_t slot = (h + i) % HANDLER_HASH_SIZE;
-    log_dev_every(4500000, "  Checking slot %u: key=%d, handler_idx=%d", slot, table[slot].key,
+    log_dev_every(4500 * US_PER_MS_INT, "  Checking slot %u: key=%d, handler_idx=%d", slot, table[slot].key,
                   table[slot].handler_idx);
     if (table[slot].key == 0) {
-      log_dev_every(4500000, "  Empty slot found - packet type %d not in hash table", type);
+      log_dev_every(4500 * US_PER_MS_INT, "  Empty slot found - packet type %d not in hash table", type);
       return -1; // empty slot = not found
     }
     if (table[slot].key == type) {
-      log_dev_every(4500000, "  Found match at slot %u, handler_idx=%d", slot, table[slot].handler_idx);
+      log_dev_every(4500 * US_PER_MS_INT, "  Found match at slot %u, handler_idx=%d", slot, table[slot].handler_idx);
       return table[slot].handler_idx;
     }
   }
@@ -682,23 +682,23 @@ static asciichat_error_t handle_server_image_frame(const void *payload, size_t p
 
   // Debug: Log raw payload bytes
   const uint8_t *payload_bytes = (const uint8_t *)payload;
-  log_dev_every(4500000, "IMAGE_FRAME payload (%zu bytes):", payload_len);
+  log_dev_every(4500 * US_PER_MS_INT, "IMAGE_FRAME payload (%zu bytes):", payload_len);
   char hex_buf[512];
   size_t hex_pos = 0;
   size_t max_bytes = (payload_len < 48) ? payload_len : 48;
   for (size_t i = 0; i < max_bytes && hex_pos < sizeof(hex_buf) - 4; i++) {
     hex_pos += snprintf(hex_buf + hex_pos, sizeof(hex_buf) - hex_pos, "%02x ", payload_bytes[i]);
   }
-  log_dev_every(4500000, "   First bytes: %s", hex_buf);
+  log_dev_every(4500 * US_PER_MS_INT, "   First bytes: %s", hex_buf);
 
   // Extract header
   image_frame_packet_t header;
   memcpy(&header, payload, sizeof(header));
 
   // Debug: Log raw header before byte order conversion
-  log_dev_every(4500000, "IMAGE_FRAME header (raw network order):");
-  log_dev_every(4500000, "   width=0x%08x height=0x%08x pixel_format=0x%08x compressed_size=0x%08x", header.width,
-                header.height, header.pixel_format, header.compressed_size);
+  log_dev_every(4500 * US_PER_MS_INT, "IMAGE_FRAME header (raw network order):");
+  log_dev_every(4500 * US_PER_MS_INT, "   width=0x%08x height=0x%08x pixel_format=0x%08x compressed_size=0x%08x",
+                header.width, header.height, header.pixel_format, header.compressed_size);
 
   // Convert from network byte order
   header.width = NET_TO_HOST_U32(header.width);
@@ -709,9 +709,9 @@ static asciichat_error_t handle_server_image_frame(const void *payload, size_t p
   header.timestamp = NET_TO_HOST_U32(header.timestamp);
 
   // Debug: Log header after byte order conversion
-  log_dev_every(4500000, "IMAGE_FRAME header (after host byte order):");
-  log_dev_every(4500000, "   width=%u height=%u pixel_format=%u compressed_size=%u", header.width, header.height,
-                header.pixel_format, header.compressed_size);
+  log_dev_every(4500 * US_PER_MS_INT, "IMAGE_FRAME header (after host byte order):");
+  log_dev_every(4500 * US_PER_MS_INT, "   width=%u height=%u pixel_format=%u compressed_size=%u", header.width,
+                header.height, header.pixel_format, header.compressed_size);
 
   // Get pixel data (after header)
   const void *pixel_data = (const uint8_t *)payload + sizeof(image_frame_packet_t);

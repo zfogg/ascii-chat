@@ -253,16 +253,16 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
   }
 
   // Process frames (expensive operations)
-  log_dev_every(5000000, "collect_video_sources: Processing %d snapshots", snapshot_count);
+  log_dev_every(5 * NS_PER_MS_INT, "collect_video_sources: Processing %d snapshots", snapshot_count);
   for (int i = 0; i < snapshot_count && source_count < max_sources; i++) {
     client_snapshot_t *snap = &client_snapshots[i];
 
     if (!snap->is_active) {
-      log_dev_every(5000000, "collect_video_sources: Skipping inactive client %u", snap->client_id);
+      log_dev_every(5 * NS_PER_MS_INT, "collect_video_sources: Skipping inactive client %u", snap->client_id);
       continue;
     }
 
-    log_dev_every(5000000, "collect_video_sources: Client %u: is_sending_video=%d", snap->client_id,
+    log_dev_every(5 * NS_PER_MS_INT, "collect_video_sources: Client %u: is_sending_video=%d", snap->client_id,
                   snap->is_sending_video);
 
     sources[source_count].client_id = snap->client_id;
@@ -327,7 +327,7 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
                  snap->client_id, width, height, frame_size_val - 8, first_pixel_rgb, incoming_hash);
       }
 
-      log_debug_every(5000000, "Video mixer: client %u incoming frame hash=0x%08x size=%zu", snap->client_id,
+      log_debug_every(5 * NS_PER_MS_INT, "Video mixer: client %u incoming frame hash=0x%08x size=%zu", snap->client_id,
                       incoming_hash, frame_size_val);
 
       if (frame_data_ptr && frame_size_val > 0 && frame_size_val >= (sizeof(uint32_t) * 2 + 3)) {
@@ -840,7 +840,7 @@ static char *convert_composite_to_ascii(image_t *composite, uint32_t target_clie
   uint64_t convert_end_ns = time_get_ns();
   uint64_t convert_duration_ns = convert_end_ns - convert_start_ns;
 
-  if (convert_duration_ns > 5000000) { // Log if > 5ms
+  if (convert_duration_ns > 5 * NS_PER_MS_INT) { // Log if > 5ms
     char duration_str[32];
     format_duration_ns((double)convert_duration_ns, duration_str, sizeof(duration_str));
     log_warn("SLOW_ASCII_CONVERT: Client %u took %s to convert %dx%d image to ASCII", target_client_id, duration_str,
@@ -990,7 +990,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
 
   static uint64_t last_detailed_log = 0;
   uint64_t now_ns = collect_end_ns;
-  if (now_ns - last_detailed_log > 333333333) { // Log every 333ms (3x per second)
+  if (now_ns - last_detailed_log > 333 * NS_PER_MS_INT) { // Log every 333ms (3x per second)
     last_detailed_log = now_ns;
     log_info("FRAME_GEN_START: target_client=%u sources=%d collect=%.1fms", target_client_id, sources_with_video,
              (collect_end_ns - collect_start_ns) / NS_PER_MS);
@@ -1124,7 +1124,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
       for (int i = 0; i < 50 && hex_len < sizeof(hex_buf) - 5; i++) {
         hex_len += snprintf(hex_buf + hex_len, sizeof(hex_buf) - hex_len, "%02X ", last_bytes[i]);
       }
-      log_dev_every(4500000, "FRAME_LAST_50_BYTES (hex): %s", hex_buf);
+      log_dev_every(4500 * US_PER_MS_INT, "FRAME_LAST_50_BYTES (hex): %s", hex_buf);
 
       // Also log as ASCII for readability
       char ascii_buf[100] = {0};
@@ -1139,7 +1139,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
           ascii_buf[i] = '.';
         }
       }
-      log_dev_every(4500000, "FRAME_LAST_50_ASCII: %s", ascii_buf);
+      log_dev_every(4500 * US_PER_MS_INT, "FRAME_LAST_50_ASCII: %s", ascii_buf);
     }
 
     out = ascii_frame;

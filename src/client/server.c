@@ -70,6 +70,7 @@
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/ip.h>
+#include <ascii-chat/util/time.h>
 #include <ascii-chat/common.h>
 #include "display.h"
 #include <ascii-chat/options/options.h>
@@ -225,7 +226,7 @@ static unsigned int get_reconnect_delay(unsigned int reconnect_attempt) {
   // Use integer arithmetic for microsecond calculations
   // Initial delay: 100,000 us (0.1 seconds)
   // Additional delay per attempt: 200,000 us (0.2 seconds)
-  unsigned int delay_us = 100000 + (reconnect_attempt - 1) * 200000;
+  unsigned int delay_us = 100 * US_PER_MS_INT + (reconnect_attempt - 1) * 200 * US_PER_MS_INT;
   if (delay_us > MAX_RECONNECT_DELAY)
     delay_us = MAX_RECONNECT_DELAY;
   return delay_us;

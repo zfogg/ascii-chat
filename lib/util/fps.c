@@ -13,7 +13,7 @@
  * @brief Format and log FPS report in a single line
  */
 static void log_fps_report(const char *tracker_name, double actual_fps, uint64_t frame_count, double elapsed_seconds) {
-  log_dev_every(4500000, "[%s] %.1f fps (%llu frames in %.1fs)", tracker_name, actual_fps,
+  log_dev_every(4500 * US_PER_MS_INT, "[%s] %.1f fps (%llu frames in %.1fs)", tracker_name, actual_fps,
                 (unsigned long long)frame_count, elapsed_seconds);
 }
 

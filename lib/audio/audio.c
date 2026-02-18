@@ -407,7 +407,7 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
     return paAbort;
   }
 
-  log_info_every(100000000, "CB_START: ctx=%p output=%p inputBuffer=%p", (void *)ctx, (void *)outputBuffer,
+  log_info_every(100 * NS_PER_MS_INT, "CB_START: ctx=%p output=%p inputBuffer=%p", (void *)ctx, (void *)outputBuffer,
                  inputBuffer);
 
   const float *input = (const float *)inputBuffer;
@@ -481,7 +481,7 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
       SAFE_MEMSET(output + samples_read, (num_samples - samples_read) * sizeof(float), 0,
                   (num_samples - samples_read) * sizeof(float));
       if (ctx->media_source) {
-        log_debug_every(5000000, "Media playback: got %zu/%zu samples", samples_read, num_samples);
+        log_debug_every(5 * NS_PER_MS_INT, "Media playback: got %zu/%zu samples", samples_read, num_samples);
       } else {
         log_debug_every(NS_PER_MS_INT, "Network playback underrun: got %zu/%zu samples", samples_read, num_samples);
         underrun_count_local++;
@@ -986,8 +986,8 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
 
   // Periodic buffer health logging (every 5 seconds when healthy)
   unsigned int underruns = atomic_load_explicit(&rb->underrun_count, memory_order_relaxed);
-  log_dev_every(5000000, "Buffer health: %zu/%d samples (%.1f%%), underruns=%u", available, AUDIO_RING_BUFFER_SIZE,
-                (100.0f * available) / AUDIO_RING_BUFFER_SIZE, underruns);
+  log_dev_every(5 * NS_PER_MS_INT, "Buffer health: %zu/%d samples (%.1f%%), underruns=%u", available,
+                AUDIO_RING_BUFFER_SIZE, (100.0f * available) / AUDIO_RING_BUFFER_SIZE, underruns);
 
   // Low buffer handling: DON'T pause playback - continue reading what's available
   // and fill the rest with silence. Pausing causes a feedback loop where:
