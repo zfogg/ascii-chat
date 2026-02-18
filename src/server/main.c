@@ -1558,33 +1558,16 @@ static void *websocket_client_handler(void *arg) {
   }
   log_info("[WS_HANDLER] Client threads started successfully for client %d", client_id);
 
-  // CRITICAL: Block until client disconnects (matches TCP handler behavior)
-  // The receive thread sets active=false when the client disconnects.
-  // We MUST wait here - if we return immediately, the handler thread exits and
-  // the LWS event loop may interpret this as the connection being done and close it.
-  // See ascii_chat_client_handler() for TCP comparison - it also blocks here.
-  log_debug("[WS_HANDLER] STEP 5: Blocking until client disconnects (client_id=%d)...", client_id);
-  client_info_t *client_check = find_client_by_id((uint32_t)client_id);
-  if (!client_check) {
-    log_error("[WS_HANDLER] CRITICAL: Client %d not found after successful setup!", client_id);
-    SAFE_FREE(ctx);
-    return NULL;
-  }
-
-  int wait_count = 0;
-  while (atomic_load(&client_check->active) && !atomic_load(server_ctx->server_should_exit)) {
-    wait_count++;
-    if (wait_count % 10 == 0) {
-      log_debug("[WS_HANDLER] Client %d still active (waited %d seconds)", client_id, wait_count / 10);
-    }
-    platform_sleep_ms(100);
-  }
-  log_info("[WS_HANDLER] Client %d disconnected (waited %d seconds, active=%d, server_should_exit=%d)", client_id,
-           wait_count / 10, atomic_load(&client_check->active), atomic_load(server_ctx->server_should_exit));
-
-  // Remove the client from the client manager array to free up the slot.
-  // Without this, the client array fills up and new connections fail (max 32 slots).
-  remove_client(server_ctx, (uint32_t)client_id);
+  // Handler thread exit - cleanup happens in the receive thread
+  // The receive thread is responsible for calling remove_client() when it detects connection closure.
+  // We exit immediately instead of blocking - this prevents the LWS service thread from being blocked
+  // in thread_join() during LWS_CALLBACK_CLOSED, which would freeze the event loop.
+  // The removal logic is now handled by the receive thread, which:
+  // 1. Detects transport closure (recv fails or returns error)
+  // 2. Sets active=false and signals other threads to stop
+  // 3. Calls remove_client() with proper self-join detection to avoid deadlock
+  log_debug("[WS_HANDLER] STEP 5: Handler thread exiting (client_id=%d, cleanup will happen in receive thread)",
+            client_id);
 
   SAFE_FREE(ctx);
   return NULL;

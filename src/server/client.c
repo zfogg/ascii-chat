@@ -628,6 +628,7 @@ int add_client(server_context_t *server_ctx, socket_t socket, const char *client
   SAFE_STRNCPY(client->client_ip, client_ip, sizeof(client->client_ip) - 1);
   client->port = port;
   atomic_store(&client->active, true);
+  client->server_ctx = server_ctx; // Store server context for cleanup
   atomic_store(&client->shutting_down, false);
   atomic_store(&client->last_rendered_grid_sources, 0);
   atomic_store(&client->last_sent_grid_sources, 0);
@@ -956,6 +957,7 @@ int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
   SAFE_STRNCPY(client->client_ip, client_ip, sizeof(client->client_ip) - 1);
   client->port = 0; // WebRTC doesn't use port numbers
   atomic_store(&client->active, true);
+  client->server_ctx = server_ctx; // Store server context for receive thread cleanup
   log_info("Added new WebRTC client ID=%u from %s (transport=%p, slot=%d)", new_client_id, client_ip, transport, slot);
   atomic_store(&client->shutting_down, false);
   atomic_store(&client->last_rendered_grid_sources, 0); // Render thread updates this
@@ -1257,14 +1259,21 @@ int remove_client(server_context_t *server_ctx, uint32_t client_id) {
   } else if (target_client) {
     // WebRTC client: manually join threads
     log_debug("Stopping WebRTC client %u threads (receive and send)", client_id);
-    // Join receive thread
-    void *recv_result = NULL;
-    asciichat_error_t recv_join_result = asciichat_thread_join(&target_client->receive_thread, &recv_result);
-    if (recv_join_result != ASCIICHAT_OK) {
-      log_warn("Failed to join receive thread for WebRTC client %u: error %d", client_id, recv_join_result);
+
+    // Join receive thread (but skip if called from the receive thread itself to avoid deadlock)
+    thread_id_t current_thread_id = asciichat_thread_self();
+    if (asciichat_thread_equal(current_thread_id, target_client->receive_thread_id)) {
+      log_debug("remove_client() called from receive thread for client %u, skipping self-join", client_id);
     } else {
-      log_debug("Joined receive thread for WebRTC client %u", client_id);
+      void *recv_result = NULL;
+      asciichat_error_t recv_join_result = asciichat_thread_join(&target_client->receive_thread, &recv_result);
+      if (recv_join_result != ASCIICHAT_OK) {
+        log_warn("Failed to join receive thread for WebRTC client %u: error %d", client_id, recv_join_result);
+      } else {
+        log_debug("Joined receive thread for WebRTC client %u", client_id);
+      }
     }
+
     // Join send thread
     void *send_result = NULL;
     asciichat_error_t send_join_result = asciichat_thread_join(&target_client->send_thread, &send_result);
@@ -1562,6 +1571,9 @@ void *client_receive_thread(void *arg) {
     return NULL;
   }
 
+  // Save this thread's ID so remove_client() can detect self-joins
+  client->receive_thread_id = asciichat_thread_self();
+
   log_debug("RECV_THREAD_DEBUG: Thread started, client=%p, client_id=%u, is_tcp=%d", (void *)client,
             atomic_load(&client->client_id), client->is_tcp_client);
 
@@ -1699,18 +1711,27 @@ void *client_receive_thread(void *arg) {
   // Mark client as inactive and stop all threads
   // Must stop render threads when client disconnects.
   // OPTIMIZED: Use atomic operations for thread control flags (lock-free)
-  log_debug("Setting active=false in receive_thread_fn (client_id=%u, exiting receive loop)",
-            atomic_load(&client->client_id));
+  uint32_t client_id_snapshot = atomic_load(&client->client_id);
+  log_debug("Setting active=false in receive_thread_fn (client_id=%u, exiting receive loop)", client_id_snapshot);
   atomic_store(&client->active, false);
   atomic_store(&client->send_thread_running, false);
   atomic_store(&client->video_render_thread_running, false);
   atomic_store(&client->audio_render_thread_running, false);
 
-  // Don't call remove_client() from the receive thread itself - this causes a deadlock
-  // because main thread may be trying to join this thread via remove_client()
-  // The main cleanup code will handle client removal after threads exit
+  // Call remove_client() to trigger cleanup
+  // Safe to call from receive thread now: remove_client() detects self-join via thread IDs
+  // and skips the receive thread join when called from the receive thread itself
+  log_debug("Receive thread for client %u calling remove_client() for cleanup", client_id_snapshot);
+  server_context_t *server_ctx = (server_context_t *)client->server_ctx;
+  if (server_ctx) {
+    if (remove_client(server_ctx, client_id_snapshot) != 0) {
+      log_warn("Failed to remove client %u from receive thread cleanup", client_id_snapshot);
+    }
+  } else {
+    log_error("Receive thread for client %u: server_ctx is NULL, cannot call remove_client()", client_id_snapshot);
+  }
 
-  log_debug("Receive thread for client %u terminated, signaled all threads to stop", client->client_id);
+  log_debug("Receive thread for client %u terminated", client_id_snapshot);
 
   // Clean up thread-local error context before exit
   asciichat_errno_destroy();

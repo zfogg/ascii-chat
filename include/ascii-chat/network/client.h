@@ -28,6 +28,7 @@ using std::atomic_uint;
 #include "../ringbuffer.h"
 #include "../video/video_frame.h"
 #include "../platform/terminal.h"
+#include "../platform/thread.h" // For thread_id_t
 #include "../video/palette.h"
 #include "../audio/audio.h"
 
@@ -91,6 +92,8 @@ typedef struct client_info {
   bool is_tcp_client;                // True for TCP clients, false for WebRTC (for cleanup logic)
   acip_transport_t *transport;       // ACIP transport for protocol-agnostic packet sending
   asciichat_thread_t receive_thread; // Thread for receiving client data
+  thread_id_t receive_thread_id;     // Thread ID of receive thread (for self-join detection)
+  void *server_ctx;                  // Pointer to server_context_t (avoid circular includes)
   atomic_uint client_id;             // Thread-safe client ID
   char display_name[MAX_DISPLAY_NAME_LEN];
   char client_ip[INET_ADDRSTRLEN];
