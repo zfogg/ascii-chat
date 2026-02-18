@@ -721,11 +721,15 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   struct lws_context_creation_info info = {0};
   info.port = config->port;
   info.protocols = websocket_protocols;
-  info.gid = (gid_t)-1; // Cast to avoid undefined behavior with unsigned type
-  info.uid = (uid_t)-1; // Cast to avoid undefined behavior with unsigned type
-  info.options = 0;     // Don't validate UTF8 - we send binary frames (ACIP packets)
-  info.extensions = websocket_extensions;
-  info.pt_serv_buf_size = 524288; // 512KB per-thread server buffer for large video frames
+  info.gid = (gid_t)-1;   // Cast to avoid undefined behavior with unsigned type
+  info.uid = (uid_t)-1;   // Cast to avoid undefined behavior with unsigned type
+  info.options = 0;       // Don't validate UTF8 - we send binary frames (ACIP packets)
+  info.extensions = NULL; // Disable permessage-deflate compression to prevent fragmentation issues
+  // Fragmented messages + compression don't mix well in libwebsockets.
+  // ACIP packets are encrypted and not compressible anyway, so disabling compression
+  // eliminates the "rx buffer underflow" errors that occur when browsers send
+  // compressed fragmented messages.
+  info.pt_serv_buf_size = 131072; // 128KB (default size, sufficient for uncompressed binary frames)
 
   // Create libwebsockets context
   server->context = lws_create_context(&info);

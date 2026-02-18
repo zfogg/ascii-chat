@@ -444,7 +444,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
     // If queue is empty, wait for data with timeout
     if (ringbuffer_is_empty(ws_data->recv_queue)) {
       uint64_t wait_timeout_ns =
-          (assembled_size == 0) ? (100 * 1000000ULL) : (1 * 1000000ULL); // 100ms for first, 1ms for continuation
+          (assembled_size == 0) ? (100 * 1000000ULL) : (500 * 1000000ULL); // 100ms for first, 500ms for continuation
       log_dev("[WS_DEBUG] Queue empty, calling cond_timedwait on recv_cond");
       cond_timedwait(&ws_data->recv_cond, &ws_data->recv_mutex, wait_timeout_ns);
       log_dev("[WS_DEBUG] Woke from cond_timedwait, queue size now=%zu", ringbuffer_size(ws_data->recv_queue));
