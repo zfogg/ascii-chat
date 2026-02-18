@@ -304,6 +304,21 @@ bool url_is_websocket_scheme(const char *scheme) {
   return (strcasecmp(scheme, "ws") == 0 || strcasecmp(scheme, "wss") == 0);
 }
 
+bool url_is_websocket(const char *url) {
+  if (!url || !*url) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "url is NULL or empty");
+    return false;
+  }
+
+  /* Parse URL to validate and check scheme */
+  url_parts_t parts = {0};
+  asciichat_error_t result = url_parse(url, &parts);
+  bool is_ws = (result == ASCIICHAT_OK && url_is_websocket_scheme(parts.scheme));
+  url_parts_destroy(&parts);
+
+  return is_ws;
+}
+
 bool url_looks_like_websocket(const char *url) {
   if (!url || !*url) {
     SET_ERRNO(ERROR_INVALID_PARAM, "url is NULL or empty");

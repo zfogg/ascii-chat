@@ -666,19 +666,23 @@ int client_main(void) {
   log_info("=== BEFORE SESSION DISCOVERY CHECK: session_string='%s' ===", session_string);
 
   // Check if this is a direct WebSocket URL (ws:// or wss://) instead of a session string
-  url_parts_t ws_url_parts = {0};
-  asciichat_error_t ws_parse_result = url_parse(session_string, &ws_url_parts);
-  bool is_websocket_url = (ws_parse_result == ASCIICHAT_OK && url_is_websocket_scheme(ws_url_parts.scheme));
+  bool is_websocket_url = url_is_websocket(session_string);
 
   log_info("=== is_websocket_url check: session_string='%s' result=%d ===", session_string, is_websocket_url);
 
   if (is_websocket_url) {
     // Direct WebSocket connection - bypass discovery
-    log_info("Direct WebSocket URL detected: '%s' - scheme=%s, host=%s, port=%d", session_string, ws_url_parts.scheme,
-             ws_url_parts.host, ws_url_parts.port);
+    // Parse for debug logging
+    url_parts_t ws_url_parts = {0};
+    if (url_parse(session_string, &ws_url_parts) == ASCIICHAT_OK) {
+      log_info("Direct WebSocket URL detected: '%s' - scheme=%s, host=%s, port=%d", session_string, ws_url_parts.scheme,
+               ws_url_parts.host, ws_url_parts.port);
+      url_parts_destroy(&ws_url_parts);
+    } else {
+      log_info("Direct WebSocket URL detected: '%s'", session_string);
+    }
     discovered_address = session_string;
     discovered_port = 0; // Port is embedded in the URL
-    url_parts_destroy(&ws_url_parts);
   } else if (session_string[0] != '\0') {
     log_debug("Session string detected: '%s' - performing parallel discovery (mDNS + ACDS)", session_string);
 
@@ -735,7 +739,6 @@ int client_main(void) {
                     "  ascii-chat client HOST      # Connect to specific host",
                     session_string);
       log_console(LOG_ERROR, error_msg);
-      url_parts_destroy(&ws_url_parts);
       return 1;
     }
 
@@ -753,9 +756,6 @@ int client_main(void) {
 
     log_info("Connecting to %s:%d", discovered_address, discovery_result.server_port);
   }
-
-  // Clean up WebSocket URL parts regardless of which path was taken
-  url_parts_destroy(&ws_url_parts);
 
   log_info("=== AFTER SESSION DISCOVERY, BEFORE CONNECTION LOOP ===");
 

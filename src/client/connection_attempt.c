@@ -188,18 +188,23 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
 
   // Check for WebSocket URL - handle separately from TCP
   log_debug("connection_attempt_tcp: server_address='%s', port=%u", server_address, server_port);
-  bool is_websocket = url_looks_like_websocket(server_address);
-  log_debug("connection_attempt_tcp: is_websocket=%d", is_websocket);
-  if (is_websocket) {
+
+  if (url_is_websocket(server_address)) {
     // WebSocket connection path
-    // Note: WebSocket URLs already contain the port (e.g., ws://localhost:27225)
-    // Do not append the server_port parameter
     const char *ws_url = server_address;
+
+    // Parse for debug logging
+    url_parts_t url_parts = {0};
+    if (url_parse(server_address, &url_parts) == ASCIICHAT_OK) {
+      log_debug("WebSocket URL parsed: host=%s, port=%d, scheme=%s", url_parts.host, url_parts.port, url_parts.scheme);
+    }
+
     log_info("Attempting WebSocket connection to %s", ws_url);
 
     // Transition to attempting state
     asciichat_error_t result = connection_state_transition(ctx, CONN_STATE_ATTEMPTING);
     if (result != ASCIICHAT_OK) {
+      url_parts_destroy(&url_parts);
       return result;
     }
 
@@ -212,6 +217,7 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
       log_debug("Initializing crypto context for WebSocket...");
       if (client_crypto_init() != 0) {
         log_error("Failed to initialize crypto context");
+        url_parts_destroy(&url_parts);
         return SET_ERRNO(ERROR_CRYPTO, "Crypto initialization failed");
       }
       log_debug("Crypto context initialized successfully");
@@ -225,6 +231,7 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     if (!ws_client) {
       log_error("Failed to create WebSocket client");
       connection_state_transition(ctx, CONN_STATE_FAILED);
+      url_parts_destroy(&url_parts);
       return SET_ERRNO(ERROR_NETWORK, "WebSocket client creation failed");
     }
 
@@ -234,6 +241,7 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
       log_error("Failed to create WebSocket ACIP transport");
       websocket_client_destroy(&ws_client);
       connection_state_transition(ctx, CONN_STATE_FAILED);
+      url_parts_destroy(&url_parts);
       return SET_ERRNO(ERROR_NETWORK, "WebSocket connection failed");
     }
 
@@ -241,6 +249,7 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     connection_state_transition(ctx, CONN_STATE_CONNECTED);
     ctx->active_transport = transport;
     ctx->ws_client_instance = ws_client;
+    url_parts_destroy(&url_parts);
     return ASCIICHAT_OK;
   }
 

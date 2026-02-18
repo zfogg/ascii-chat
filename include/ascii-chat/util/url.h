@@ -176,6 +176,29 @@ void url_parts_destroy(url_parts_t *parts);
 bool url_is_websocket_scheme(const char *scheme);
 
 /**
+ * @brief Check if a URL string is a valid WebSocket URL
+ * @param url URL string to validate
+ * @return True if URL is valid and has WebSocket scheme (ws or wss), false otherwise
+ *
+ * Parses a URL and checks if it has a WebSocket scheme. This is the primary
+ * function for WebSocket URL validation - use this instead of manually calling
+ * url_parse() and url_is_websocket_scheme().
+ *
+ * @par Example
+ * @code
+ * if (url_is_websocket("wss://example.com:443")) {
+ *     // Safe to use as WebSocket URL
+ *     connection_attempt_websocket(&ctx, "wss://example.com:443");
+ * } else if (url_is_valid(address)) {
+ *     // Use regular HTTP(S) transport
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+bool url_is_websocket(const char *url);
+
+/**
  * @brief Quick check if a string is a WebSocket URL
  * @param url String to check
  * @return True if string starts with ws:// or wss://, false otherwise
