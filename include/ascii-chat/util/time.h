@@ -53,9 +53,6 @@ using std::memory_order_relaxed;
 #define TIME_ATOMIC_UINT64_INIT(val) val
 #endif
 
-// Forward declarations for rate-limited logging
-#include "../log/logging.h" // For log_* functions
-
 // ============================================================================
 // sokol_time.h Integration
 // ============================================================================
@@ -147,17 +144,17 @@ uint64_t time_elapsed_ns(uint64_t start_ns, uint64_t end_ns);
 
 // Floating-point versions (for format_duration functions)
 #define NS_PER_US 1000.0
-#define NS_PER_MS 1000000.0
-#define NS_PER_SEC 1000000000.0
-#define NS_PER_MIN (NS_PER_SEC * 60.0)
-#define NS_PER_HOUR (NS_PER_MIN * 60.0)
-#define NS_PER_DAY (NS_PER_HOUR * 24.0)
-#define NS_PER_YEAR (NS_PER_DAY * 365.25) // Account for leap years
+#define NS_PER_MS (1000.0 * NS_PER_US)
+#define NS_PER_SEC (1000.0 * NS_PER_MS)
+#define NS_PER_MIN (60.0 * NS_PER_SEC)
+#define NS_PER_HOUR (60.0 * NS_PER_MIN)
+#define NS_PER_DAY (24.0 * NS_PER_HOUR)
+#define NS_PER_YEAR (365.25 * NS_PER_DAY) // Account for leap years
 
 // Integer versions (for comparing uint64_t nanosecond values)
 #define NS_PER_US_INT 1000ULL
-#define NS_PER_MS_INT 1000000ULL
-#define NS_PER_SEC_INT 1000000000ULL
+#define NS_PER_MS_INT (1000ULL * NS_PER_US_INT)
+#define NS_PER_SEC_INT (1000ULL * NS_PER_MS_INT)
 
 // Microsecond versions (for API compatibility)
 #define US_PER_MS_INT 1000ULL
@@ -165,6 +162,16 @@ uint64_t time_elapsed_ns(uint64_t start_ns, uint64_t end_ns);
 
 // Millisecond versions (for API compatibility)
 #define MS_PER_SEC_INT 1000ULL
+
+// Standard time unit conversions (seconds-based)
+#define SEC_PER_MIN 60ULL
+#define SEC_PER_HOUR (SEC_PER_MIN * SEC_PER_MIN)
+#define SEC_PER_DAY (24ULL * SEC_PER_HOUR)
+
+// Minute/hour/day to nanoseconds conversions
+#define NS_PER_MIN_INT (SEC_PER_MIN * NS_PER_SEC_INT)
+#define NS_PER_HOUR_INT (SEC_PER_HOUR * NS_PER_SEC_INT)
+#define NS_PER_DAY_INT (SEC_PER_DAY * NS_PER_SEC_INT)
 
 // ============================================================================
 // Inline Time Conversion Helpers
@@ -228,35 +235,6 @@ static inline uint64_t time_ms_to_ns(uint64_t ms) {
  */
 static inline uint64_t time_s_to_ns(double s) {
   return (uint64_t)(s * 1e9);
-}
-
-/**
- * @brief Convert struct timespec to nanoseconds (inline)
- * @param ts Pointer to timespec structure
- * @return Time in nanoseconds
- * @ingroup module_utilities
- *
- * Useful for converting CLOCK_MONOTONIC or CLOCK_REALTIME readings to nanoseconds.
- */
-static inline uint64_t time_timespec_to_ns(const struct timespec *ts) {
-  if (!ts)
-    return 0;
-  return (uint64_t)ts->tv_sec * NS_PER_SEC_INT + (uint64_t)ts->tv_nsec;
-}
-
-/**
- * @brief Convert nanoseconds to struct timespec (inline)
- * @param ns Time in nanoseconds
- * @param ts Pointer to timespec structure (output)
- * @ingroup module_utilities
- *
- * Useful for nanosleep() or other system calls that require struct timespec.
- */
-static inline void time_ns_to_timespec(uint64_t ns, struct timespec *ts) {
-  if (!ts)
-    return;
-  ts->tv_sec = (time_t)(ns / NS_PER_SEC_INT);
-  ts->tv_nsec = (long)(ns % NS_PER_SEC_INT);
 }
 
 // ============================================================================
@@ -792,3 +770,43 @@ int time_format_now(const char *format_str, char *buf, size_t buf_size);
 asciichat_error_t time_format_safe(const char *format_str, char *buf, size_t buf_size);
 
 /** @} */
+
+/* Include errno support late to avoid circular dependencies */
+#include <ascii-chat/asciichat_errno.h>
+
+/* ============================================================================
+ * Inline Conversion Functions (defined at end to ensure SET_ERRNO is available)
+ * ============================================================================ */
+
+/**
+ * @brief Convert struct timespec to nanoseconds (inline)
+ * @param ts Pointer to timespec structure
+ * @return Time in nanoseconds
+ * @ingroup module_utilities
+ *
+ * Useful for converting CLOCK_MONOTONIC or CLOCK_REALTIME readings to nanoseconds.
+ */
+static inline uint64_t time_timespec_to_ns(const struct timespec *ts) {
+  if (!ts) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "null ts");
+    return 0;
+  }
+  return (uint64_t)ts->tv_sec * NS_PER_SEC_INT + (uint64_t)ts->tv_nsec;
+}
+
+/**
+ * @brief Convert nanoseconds to struct timespec (inline)
+ * @param ns Time in nanoseconds
+ * @param ts Pointer to timespec structure (output)
+ * @ingroup module_utilities
+ *
+ * Useful for nanosleep() or other system calls that require struct timespec.
+ */
+static inline void time_ns_to_timespec(uint64_t ns, struct timespec *ts) {
+  if (!ts) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "null ts");
+    return;
+  }
+  ts->tv_sec = (time_t)(ns / NS_PER_SEC_INT);
+  ts->tv_nsec = (long)(ns % NS_PER_SEC_INT);
+}

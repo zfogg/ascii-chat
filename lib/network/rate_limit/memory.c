@@ -181,7 +181,7 @@ static asciichat_error_t memory_cleanup(void *backend_data, uint32_t max_age_sec
 
   // Default to 1 hour cleanup window
   if (max_age_secs == 0) {
-    max_age_secs = 3600;
+    max_age_secs = SEC_PER_HOUR;
   }
 
   // Calculate cutoff time in nanoseconds

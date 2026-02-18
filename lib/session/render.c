@@ -150,7 +150,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       // If paused and already rendered initial frame, skip frame capture and poll for resume
       if (is_paused && initial_paused_frame_rendered) {
         // Sleep briefly to avoid busy-waiting while paused
-        uint64_t idle_sleep_ns = (uint64_t)(1000000000 / GET_OPTION(fps)); // Frame period in nanoseconds
+        uint64_t idle_sleep_ns = (uint64_t)(NS_PER_SEC_INT / GET_OPTION(fps)); // Frame period in nanoseconds
         platform_sleep_ns(idle_sleep_ns);
 
         // Keep polling keyboard to allow unpausing (even if keyboard wasn't formally initialized)
@@ -204,7 +204,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
           if (loop_retry_count <= 1 || frame_count % 100 == 0) {
             if (loop_retry_count == 1 && frame_count > 0) {
               log_debug_every(500000, "FRAME_WAIT: retry at frame %lu (waited %.1f ms so far)", frame_count,
-                              (double)capture_elapsed_ns / 1000000.0);
+                              (double)capture_elapsed_ns / NS_PER_MS);
             }
           }
 
@@ -219,7 +219,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
         // Frame obtained successfully
         if (loop_retry_count > 0) {
-          double wait_ms = (double)capture_elapsed_ns / 1000000.0;
+          double wait_ms = (double)capture_elapsed_ns / NS_PER_MS;
           log_debug_every(1000000, "FRAME_OBTAINED: after %lu retries, waited %.1f ms", loop_retry_count, wait_ms);
         }
         break; // Exit retry loop
@@ -238,7 +238,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
       // Log capture time every 30 frames
       if (frame_count % 30 == 0) {
-        double capture_ms = (double)capture_elapsed_ns / 1000000.0;
+        double capture_ms = (double)capture_elapsed_ns / NS_PER_MS;
         log_dev_every(5000000, "PROFILE[%lu]: CAPTURE=%.2f ms", frame_count, capture_ms);
       }
 
@@ -302,15 +302,15 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         // Calculate total time from frame START (frame_start_ns) to render COMPLETE
         frame_to_render_ns = time_elapsed_ns(frame_start_ns, post_render_ns);
         if (frame_count % 30 == 0) {
-          double total_frame_time_ms = (double)frame_to_render_ns / 1000000.0;
+          double total_frame_time_ms = (double)frame_to_render_ns / NS_PER_MS;
           log_dev("ACTUAL_TIME[%lu]: Total frame time from start to render complete: %.1f ms", frame_count,
                   total_frame_time_ms);
         }
 
         // Log render time every 30 frames
         if (frame_count % 150 == 0) {
-          double conversion_ms = (double)conversion_elapsed_ns / 1000000.0;
-          double render_ms = (double)render_elapsed_ns / 1000000.0;
+          double conversion_ms = (double)conversion_elapsed_ns / NS_PER_MS;
+          double render_ms = (double)render_elapsed_ns / NS_PER_MS;
           log_dev_every(5000000, "PROFILE[%lu]: CONVERT=%.2f ms, RENDER=%.2f ms", frame_count, conversion_ms,
                         render_ms);
         }
@@ -385,7 +385,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       // Calculate each phase duration
       uint64_t prestart_ms = (capture_start_ns > frame_start_ns) ? (capture_start_ns - frame_start_ns) / 1000000 : 0;
       uint64_t capture_ms = (capture_end_ns > capture_start_ns) ? (capture_end_ns - capture_start_ns) / 1000000 : 0;
-      uint64_t convert_ms = conversion_elapsed_ns / 1000000;
+      uint64_t convert_ms = conversion_elapsed_ns / NS_PER_MS_INT;
       uint64_t render_ms =
           (post_render_ns > pre_render_ns && post_render_ns > 0) ? (post_render_ns - pre_render_ns) / 1000000 : 0;
       uint64_t total_ms = (frame_end_render_ns > frame_start_ns) ? (frame_end_render_ns - frame_start_ns) / 1000000 : 0;
@@ -424,7 +424,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         uint64_t frame_target_ns = NS_PER_SEC_INT / target_fps;
 
         log_dev("RENDER[%lu] TIMING_TOTAL: frame_time_ms=%.2f target_ms=%.2f", frame_count,
-                (double)frame_elapsed_ns / 1000000.0, (double)frame_target_ns / 1000000.0);
+                (double)frame_elapsed_ns / NS_PER_MS, (double)frame_target_ns / NS_PER_MS);
 
         // Only sleep if we have time budget remaining
         // If already behind, skip sleep to catch up

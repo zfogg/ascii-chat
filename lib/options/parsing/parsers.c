@@ -18,6 +18,7 @@
 #include <ascii-chat/util/parsing.h>       // For parse_port() validation
 #include <ascii-chat/util/path.h>          // For path_validate_user_path()
 #include <ascii-chat/util/pcre2.h>         // For centralized PCRE2 singleton
+#include <ascii-chat/util/time.h>          // For SEC_PER_HOUR, SEC_PER_MIN
 #include <ascii-chat/video/color_filter.h> // For color_filter_from_cli_name()
 #include <pcre2.h>
 
@@ -955,7 +956,7 @@ bool parse_timestamp(const char *arg, void *dest, char **error_msg) {
       }
       return false;
     }
-    *timestamp = hours * 3600.0 + minutes * 60.0 + seconds;
+    *timestamp = hours * (double)SEC_PER_HOUR + minutes * (double)SEC_PER_MIN + seconds;
     return true;
   } else {
     if (error_msg) {

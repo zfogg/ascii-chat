@@ -464,8 +464,8 @@ image_t *media_source_read_video(media_source_t *source) {
 
       // Log statistics every 30 successful frames
       if (successful_frames % 30 == 0) {
-        double avg_read_ms = (double)total_read_time_ns / (double)successful_frames / 1000000.0;
-        double max_read_ms = (double)max_read_time_ns / 1000000.0;
+        double avg_read_ms = (double)total_read_time_ns / (double)successful_frames / NS_PER_MS;
+        double max_read_ms = (double)max_read_time_ns / NS_PER_MS;
         double null_rate = (double)null_frame_count * 100.0 / (double)total_attempts;
         log_info_every(3000000,
                        "FRAME_STATS[%lu]: avg_read=%.2f ms, max_read=%.2f ms, null_rate=%.1f%% "

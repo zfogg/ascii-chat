@@ -520,8 +520,8 @@ void audio_analysis_print_report(void) {
   g_sent_stats.timestamp_end_ns = now_us;
   g_received_stats.timestamp_end_ns = now_us;
 
-  int64_t sent_duration_ms = (g_sent_stats.timestamp_end_ns - g_sent_stats.timestamp_start_ns) / 1000000;
-  int64_t recv_duration_ms = (g_received_stats.timestamp_end_ns - g_received_stats.timestamp_start_ns) / 1000000;
+  int64_t sent_duration_ms = (g_sent_stats.timestamp_end_ns - g_sent_stats.timestamp_start_ns) / NS_PER_MS_INT;
+  int64_t recv_duration_ms = (g_received_stats.timestamp_end_ns - g_received_stats.timestamp_start_ns) / NS_PER_MS_INT;
 
   // Calculate RMS levels
   float sent_rms = 0.0f;

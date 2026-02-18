@@ -375,11 +375,11 @@ void *client_video_render_thread(void *arg) {
   // Adaptive sleep for frame rate limiting
   adaptive_sleep_state_t sleep_state = {0};
   adaptive_sleep_config_t config = {
-      .baseline_sleep_ns = (uint64_t)(1000000000 / client_fps), // Dynamic FPS (typically 16.67ms for 60 FPS)
-      .min_speed_multiplier = 1.0,                              // Constant rate (no slowdown)
-      .max_speed_multiplier = 1.0,                              // Constant rate (no speedup)
-      .speedup_rate = 0.0,                                      // No adaptive behavior (constant FPS)
-      .slowdown_rate = 0.0                                      // No adaptive behavior (constant FPS)
+      .baseline_sleep_ns = (uint64_t)(NS_PER_SEC_INT / client_fps), // Dynamic FPS (typically 16.67ms for 60 FPS)
+      .min_speed_multiplier = 1.0,                                  // Constant rate (no slowdown)
+      .max_speed_multiplier = 1.0,                                  // Constant rate (no speedup)
+      .speedup_rate = 0.0,                                          // No adaptive behavior (constant FPS)
+      .slowdown_rate = 0.0                                          // No adaptive behavior (constant FPS)
   };
   adaptive_sleep_init(&sleep_state, &config);
 
@@ -477,9 +477,9 @@ void *client_video_render_thread(void *arg) {
       // Log every 120 attempts (should be ~2 seconds at 60 Hz)
       if (frame_gen_count % 120 == 0) {
         uint64_t elapsed_ns = current_time_ns - frame_gen_start_time;
-        double gen_fps = (120.0 / (elapsed_ns / 1000000000.0));
+        double gen_fps = (120.0 / (elapsed_ns / (double)NS_PER_SEC_INT));
         log_warn("DIAGNOSTIC: Client %u LOOP running at %.1f FPS (120 iterations in %.2fs)", thread_client_id, gen_fps,
-                 elapsed_ns / 1000000000.0);
+                 elapsed_ns / (double)NS_PER_SEC_INT);
       }
 
       log_dev_every(5000000, "About to call create_mixed_ascii_frame_for_client for client %u with dims %ux%u",
@@ -550,7 +550,7 @@ void *client_video_render_thread(void *arg) {
                 }
                 if (commits_count % 10 == 0) {
                   uint64_t elapsed_ns = commit_end_ns - commits_start_time;
-                  double commit_fps = (10.0 / (elapsed_ns / 1000000000.0));
+                  double commit_fps = (10.0 / (elapsed_ns / (double)NS_PER_SEC_INT));
                   log_warn("DIAGNOSTIC: Client %u UNIQUE frames being sent at %.1f FPS (10 commits counted)",
                            thread_client_id, commit_fps);
                 }

@@ -152,8 +152,8 @@ static void render_server_status_header(terminal_size_t term_size, void *user_da
   // Calculate uptime
   time_t now = time(NULL);
   time_t uptime_secs = now - status->start_time;
-  int uptime_hours = uptime_secs / 3600;
-  int uptime_mins = (uptime_secs % 3600) / 60;
+  int uptime_hours = uptime_secs / SEC_PER_HOUR;
+  int uptime_mins = (uptime_secs % SEC_PER_HOUR) / SEC_PER_MIN;
   int uptime_secs_rem = uptime_secs % 60;
 
   // Line 1: Top border

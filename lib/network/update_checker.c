@@ -14,6 +14,7 @@
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/platform/util.h>
 #include <ascii-chat/util/path.h>
+#include <ascii-chat/util/time.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/common.h>
 
@@ -449,7 +450,8 @@ asciichat_error_t update_check_startup(update_check_result_t *result) {
   asciichat_error_t cache_err = update_check_load_cache(target);
   if (cache_err == ASCIICHAT_OK && update_check_is_cache_fresh(target)) {
     // Cache is fresh, use it
-    log_debug("Using cached update check result (age: %.1f days)", (time(NULL) - target->last_check_time) / 86400.0);
+    log_debug("Using cached update check result (age: %.1f days)",
+              (time(NULL) - target->last_check_time) / (double)SEC_PER_DAY);
     return ASCIICHAT_OK;
   }
 

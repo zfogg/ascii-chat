@@ -306,7 +306,7 @@ static void *audio_worker_thread(void *arg) {
             if (aec3_count % 100 == 0) {
               long avg_ns = aec3_total_ns / aec3_count;
               log_info("AEC3 performance: avg=%.2fms, max=%.2fms, latest=%.2fms (samples=%zu, %d calls)",
-                       avg_ns / 1000000.0, aec3_max_ns / 1000000.0, aec3_ns / 1000000.0, capture_read, aec3_count);
+                       avg_ns / NS_PER_MS, aec3_max_ns / NS_PER_MS, aec3_ns / NS_PER_MS, capture_read, aec3_count);
             }
           }
         }
@@ -331,7 +331,7 @@ static void *audio_worker_thread(void *arg) {
         // Write processed capture to encoder buffer
         audio_ring_buffer_write(ctx->capture_buffer, ctx->worker_capture_batch, (int)capture_read);
 
-        log_debug_every(1000000, "Worker processed %zu capture samples (AEC3 %s)", capture_read,
+        log_debug_every(NS_PER_MS_INT, "Worker processed %zu capture samples (AEC3 %s)", capture_read,
                         bypass_aec3_worker
                             ? "BYPASSED"
                             : (render_available >= WORKER_BATCH_SAMPLES ? "applied" : "skipped-no-render"));
@@ -483,7 +483,7 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
       if (ctx->media_source) {
         log_debug_every(5000000, "Media playback: got %zu/%zu samples", samples_read, num_samples);
       } else {
-        log_debug_every(1000000, "Network playback underrun: got %zu/%zu samples", samples_read, num_samples);
+        log_debug_every(NS_PER_MS_INT, "Network playback underrun: got %zu/%zu samples", samples_read, num_samples);
         underrun_count_local++;
       }
     }
@@ -978,7 +978,7 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
       fade_in = true;
     } else {
       // Log buffer fill progress every second
-      log_debug_every(1000000, "Jitter buffer filling: %zu/%d samples (%.1f%%)", available,
+      log_debug_every(NS_PER_MS_INT, "Jitter buffer filling: %zu/%d samples (%.1f%%)", available,
                       AUDIO_JITTER_BUFFER_THRESHOLD, (100.0f * available) / AUDIO_JITTER_BUFFER_THRESHOLD);
       return 0; // Return 0 samples - caller will pad with silence
     }

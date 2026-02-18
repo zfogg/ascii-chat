@@ -269,7 +269,7 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
         // Local files are faster - 100-200ms is usually sufficient
         // Use 1 second as a safe default to handle both cases
         log_debug("Waiting for prefetch thread after seek (snapshot_delay=0, HTTP streams need ~1 second)");
-        platform_sleep_us(1000000); // 1 second - ensures prefetch thread has delivered seeked frame
+        platform_sleep_us(US_PER_SEC_INT); // 1 second - ensures prefetch thread has delivered seeked frame
       }
     }
   }
@@ -350,8 +350,8 @@ image_t *session_capture_read_frame(session_capture_ctx_t *ctx) {
     if (last_frame_time_ns > 0) {
       uint64_t time_since_last_frame_ns = time_elapsed_ns(last_frame_time_ns, frame_request_time_ns);
       uint64_t time_to_get_frame_ns = time_elapsed_ns(frame_request_time_ns, frame_available_time_ns);
-      double since_last_ms = (double)time_since_last_frame_ns / 1000000.0;
-      double to_get_ms = (double)time_to_get_frame_ns / 1000000.0;
+      double since_last_ms = (double)time_since_last_frame_ns / NS_PER_MS;
+      double to_get_ms = (double)time_to_get_frame_ns / NS_PER_MS;
 
       if (ctx->frame_count % 30 == 0) {
         log_dev_every(3000000, "FRAME_TIMING[%lu]: since_last=%.1f ms, to_get=%.1f ms", ctx->frame_count, since_last_ms,
