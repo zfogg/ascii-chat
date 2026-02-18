@@ -302,7 +302,8 @@ Test(log_format, apply_literal_only) {
   cr_assert_not_null(fmt);
 
   char buf[256] = {0};
-  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "msg", false);
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "msg", false,
+                             45296123456000);
   cr_assert_gt(len, 0);
   cr_assert_str_eq(buf, "Static text");
   log_format_free(fmt);
@@ -313,7 +314,8 @@ Test(log_format, apply_level) {
   cr_assert_not_null(fmt);
 
   char buf[256] = {0};
-  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "msg", false);
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "msg", false,
+                             45296123456000);
   cr_assert_gt(len, 0);
   cr_assert_str_eq(buf, "[INFO]");
   log_format_free(fmt);
@@ -324,7 +326,8 @@ Test(log_format, apply_level_aligned) {
   cr_assert_not_null(fmt);
 
   char buf[256] = {0};
-  log_format_apply(fmt, buf, sizeof(buf), LOG_WARN, "12:34:56", "test.c", 42, "main", 1234, "msg", false);
+  log_format_apply(fmt, buf, sizeof(buf), LOG_WARN, "12:34:56", "test.c", 42, "main", 1234, "msg", false,
+                   45296123456000);
   cr_assert_str_eq(buf, "[WARN ]");
   log_format_free(fmt);
 }
@@ -334,7 +337,8 @@ Test(log_format, apply_file_and_line) {
   cr_assert_not_null(fmt);
 
   char buf[256] = {0};
-  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_DEBUG, "12:34:56", "test.c", 42, "main", 1234, "msg", false);
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_DEBUG, "12:34:56", "test.c", 42, "main", 1234, "msg", false,
+                             45296123456000);
   cr_assert_gt(len, 0);
   cr_assert_str_eq(buf, "test.c:42");
   log_format_free(fmt);
@@ -345,7 +349,8 @@ Test(log_format, apply_func) {
   cr_assert_not_null(fmt);
 
   char buf[256] = {0};
-  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_DEBUG, "12:34:56", "test.c", 42, "main", 1234, "msg", false);
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_DEBUG, "12:34:56", "test.c", 42, "main", 1234, "msg", false,
+                             45296123456000);
   cr_assert_gt(len, 0);
   cr_assert_str_eq(buf, "in main()");
   log_format_free(fmt);
@@ -356,7 +361,8 @@ Test(log_format, apply_tid) {
   cr_assert_not_null(fmt);
 
   char buf[256] = {0};
-  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_DEBUG, "12:34:56", "test.c", 42, "main", 5678, "msg", false);
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_DEBUG, "12:34:56", "test.c", 42, "main", 5678, "msg", false,
+                             45296123456000);
   cr_assert_gt(len, 0);
   cr_assert_str_eq(buf, "tid:5678");
   log_format_free(fmt);
@@ -367,7 +373,8 @@ Test(log_format, apply_message) {
   cr_assert_not_null(fmt);
 
   char buf[256] = {0};
-  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "Hello", false);
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "Hello", false,
+                             45296123456000);
   cr_assert_gt(len, 0);
   cr_assert_str_eq(buf, "Message: Hello");
   log_format_free(fmt);
@@ -379,7 +386,7 @@ Test(log_format, apply_complex_format) {
 
   char buf[256] = {0};
   int len = log_format_apply(fmt, buf, sizeof(buf), LOG_ERROR, "12:34:56", "error.c", 99, "error_func", 1234,
-                             "Critical error", false);
+                             "Critical error", false, 45296123456000);
   cr_assert_gt(len, 0);
   cr_assert_str_eq(buf, "[ERROR] error.c:99 - Critical error");
   log_format_free(fmt);
@@ -391,7 +398,7 @@ Test(log_format, apply_with_utf8_message) {
 
   char buf[256] = {0};
   int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "Processing café",
-                             false);
+                             false, 45296123456000);
   cr_assert_gt(len, 0);
   cr_assert_str_eq(buf, "[INFO] Processing café");
   log_format_free(fmt);
@@ -402,7 +409,8 @@ Test(log_format, apply_null_optionals) {
   cr_assert_not_null(fmt);
 
   char buf[256] = {0};
-  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", NULL, 0, NULL, 1234, "msg", false);
+  int len =
+      log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", NULL, 0, NULL, 1234, "msg", false, 45296123456000);
   cr_assert_gt(len, 0);
   cr_assert_str_eq(buf, "[] []"); /* Empty optional fields */
   log_format_free(fmt);
@@ -414,7 +422,7 @@ Test(log_format, apply_buffer_overflow) {
 
   char buf[10] = {0}; /* Too small */
   int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234,
-                             "Very long message", false);
+                             "Very long message", false, 45296123456000);
   cr_assert_eq(len, -1, "Should fail on buffer overflow");
   log_format_free(fmt);
 }
@@ -454,8 +462,8 @@ Test(log_format, apply_file_relative) {
   cr_assert_not_null(fmt);
 
   char buf[256] = {0};
-  int len =
-      log_format_apply(fmt, buf, sizeof(buf), LOG_DEBUG, "12:34:56", "src/main.c", 42, "main", 1234, "msg", false);
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_DEBUG, "12:34:56", "src/main.c", 42, "main", 1234, "msg", false,
+                             45296123456000);
   cr_assert_gt(len, 0);
   /* Should contain the relative path (extracted by extract_project_relative_path) */
   cr_assert(strchr(buf, ':') != NULL, "Should contain colon separator");
@@ -471,7 +479,8 @@ Test(log_format, apply_time_format_iso8601) {
   cr_assert_not_null(fmt);
 
   char buf[256] = {0};
-  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "dummy", "test.c", 42, "main", 1234, "msg", false);
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "dummy", "test.c", 42, "main", 1234, "msg", false,
+                             45296123456000);
   cr_assert_gt(len, 0);
   /* Should have format like: YYYY-MM-DD HH:MM:SS.NNNNNN */
   cr_assert(strchr(buf, '-') != NULL && strchr(buf, ' ') != NULL && strchr(buf, '.') != NULL);
@@ -483,7 +492,8 @@ Test(log_format, apply_time_format_with_weekday) {
   cr_assert_not_null(fmt);
 
   char buf[256] = {0};
-  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "dummy", "test.c", 42, "main", 1234, "msg", false);
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "dummy", "test.c", 42, "main", 1234, "msg", false,
+                             45296123456000);
   cr_assert_gt(len, 0);
   /* Should contain comma and have reasonable length for full weekday + month name */
   cr_assert_gt(strlen(buf), 15);
@@ -495,7 +505,8 @@ Test(log_format, apply_time_format_short_date) {
   cr_assert_not_null(fmt);
 
   char buf[256] = {0};
-  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "dummy", "test.c", 42, "main", 1234, "msg", false);
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "dummy", "test.c", 42, "main", 1234, "msg", false,
+                             45296123456000);
   cr_assert_gt(len, 0);
   /* Should be shorter than full format */
   cr_assert_lt(strlen(buf), 30);
@@ -507,7 +518,8 @@ Test(log_format, apply_time_format_with_percent) {
   cr_assert_not_null(fmt);
 
   char buf[256] = {0};
-  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "dummy", "test.c", 42, "main", 1234, "msg", false);
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "dummy", "test.c", 42, "main", 1234, "msg", false,
+                             45296123456000);
   cr_assert_gt(len, 0);
   /* Should contain percent signs from escaped %% */
   cr_assert(strchr(buf, '%') != NULL);
@@ -523,7 +535,8 @@ Test(log_format, apply_newline_in_format) {
   cr_assert_not_null(fmt);
 
   char buf[256] = {0};
-  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "Hello", false);
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "Hello", false,
+                             45296123456000);
   cr_assert_gt(len, 0);
   cr_assert(strchr(buf, '\n') != NULL, "Should contain newline");
   cr_assert_str_eq(buf, "[INFO]\nHello");
@@ -535,7 +548,8 @@ Test(log_format, apply_multiple_newlines) {
   cr_assert_not_null(fmt);
 
   char buf[512] = {0};
-  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_WARN, "12:34:56", "src.c", 10, "main", 1234, "Test", false);
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_WARN, "12:34:56", "src.c", 10, "main", 1234, "Test", false,
+                             45296123456000);
   cr_assert_gt(len, 0);
   /* Count newlines */
   int newline_count = 0;
@@ -553,7 +567,7 @@ Test(log_format, apply_message_first_then_newline_then_header) {
 
   char buf[512] = {0};
   int len = log_format_apply(fmt, buf, sizeof(buf), LOG_ERROR, "12:34:56", "error.c", 99, "process", 1234,
-                             "Error occurred", false);
+                             "Error occurred", false, 45296123456000);
   cr_assert_gt(len, 0);
   cr_assert(strchr(buf, '\n') != NULL);
 
@@ -570,7 +584,8 @@ Test(log_format, apply_newline_at_end) {
   cr_assert_not_null(fmt);
 
   char buf[256] = {0};
-  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "msg", false);
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "msg", false,
+                             45296123456000);
   cr_assert_gt(len, 0);
   cr_assert_eq(buf[strlen(buf) - 1], '\n', "Should end with newline");
   log_format_free(fmt);
@@ -585,8 +600,8 @@ Test(log_format, apply_specifiers_reverse_order) {
   cr_assert_not_null(fmt);
 
   char buf[256] = {0};
-  int len =
-      log_format_apply(fmt, buf, sizeof(buf), LOG_DEBUG, "12:34:56", "app.c", 50, "process", 1234, "Starting", false);
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_DEBUG, "12:34:56", "app.c", 50, "process", 1234, "Starting",
+                             false, 45296123456000);
   cr_assert_gt(len, 0);
   /* Message should come first */
   cr_assert(strncmp(buf, "Starting", 8) == 0);
@@ -598,8 +613,8 @@ Test(log_format, apply_message_in_middle) {
   cr_assert_not_null(fmt);
 
   char buf[256] = {0};
-  int len =
-      log_format_apply(fmt, buf, sizeof(buf), LOG_WARN, "14:30:00", "test.c", 42, "main", 1234, "Warning!", false);
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_WARN, "14:30:00", "test.c", 42, "main", 1234, "Warning!", false,
+                             45296123456000);
   cr_assert_gt(len, 0);
   /* Time should come first, message in middle, level at end */
   const char *msg_pos = strstr(buf, "Warning!");
@@ -613,7 +628,8 @@ Test(log_format, apply_duplicate_specifiers) {
   cr_assert_not_null(fmt);
 
   char buf[256] = {0};
-  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_FATAL, "12:34:56", "test.c", 42, "main", 1234, "msg", false);
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_FATAL, "12:34:56", "test.c", 42, "main", 1234, "msg", false,
+                             45296123456000);
   cr_assert_gt(len, 0);
   /* Should have FATAL twice */
   int count = 0;
@@ -630,7 +646,7 @@ Test(log_format, apply_all_specifiers_together) {
 
   char buf[512] = {0};
   int len = log_format_apply(fmt, buf, sizeof(buf), LOG_DEBUG, "12:34:56", "lib/core.c", 42, "initialize", 5678,
-                             "Initializing system", false);
+                             "Initializing system", false, 45296123456000);
   cr_assert_gt(len, 0);
   /* All parts should be present */
   cr_assert(strchr(buf, '[') != NULL);
@@ -649,7 +665,8 @@ Test(log_format, apply_empty_message) {
   cr_assert_not_null(fmt);
 
   char buf[256] = {0};
-  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "", false);
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "", false,
+                             45296123456000);
   cr_assert_gt(len, 0);
   cr_assert_str_eq(buf, "[INFO] ");
   log_format_free(fmt);
@@ -664,7 +681,8 @@ Test(log_format, apply_very_long_message) {
   long_msg[sizeof(long_msg) - 1] = '\0';
 
   char buf[1024] = {0};
-  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, long_msg, false);
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, long_msg, false,
+                             45296123456000);
   cr_assert_gt(len, 0);
   cr_assert(strstr(buf, long_msg) != NULL);
   log_format_free(fmt);
@@ -676,7 +694,7 @@ Test(log_format, apply_special_characters_in_message) {
 
   char buf[256] = {0};
   int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234,
-                             "Test %% %% backslash \\ newline \\n", false);
+                             "Test %% %% backslash \\ newline \\n", false, 45296123456000);
   cr_assert_gt(len, 0);
   /* Message should be copied as-is (these are in the message, not format specifiers) */
   cr_assert_str_eq(buf, "Test %% %% backslash \\ newline \\n");
@@ -689,8 +707,8 @@ Test(log_format, apply_large_thread_id) {
 
   char buf[256] = {0};
   uint64_t large_tid = 18446744073709551615ULL; /* Max uint64_t */
-  int len =
-      log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", large_tid, "msg", false);
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", large_tid, "msg", false,
+                             45296123456000);
   cr_assert_gt(len, 0);
   cr_assert(strstr(buf, "tid=") != NULL);
   log_format_free(fmt);
@@ -705,7 +723,8 @@ Test(log_format, apply_all_log_levels) {
 
   for (size_t i = 0; i < sizeof(levels) / sizeof(levels[0]); i++) {
     char buf[256] = {0};
-    int len = log_format_apply(fmt, buf, sizeof(buf), levels[i], "12:34:56", "test.c", 42, "main", 1234, "msg", false);
+    int len = log_format_apply(fmt, buf, sizeof(buf), levels[i], "12:34:56", "test.c", 42, "main", 1234, "msg", false,
+                               45296123456000);
     cr_assert_gt(len, 0);
     cr_assert_str_eq(buf, expected[i], "Level %lu should format correctly", i);
   }
@@ -718,7 +737,8 @@ Test(log_format, apply_zero_line_number) {
   cr_assert_not_null(fmt);
 
   char buf[256] = {0};
-  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 0, "main", 1234, "msg", false);
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 0, "main", 1234, "msg", false,
+                             45296123456000);
   cr_assert_gt(len, 0);
   /* Zero line should not be printed (line > 0 check in format.c) */
   cr_assert_str_eq(buf, "line=");
@@ -730,7 +750,8 @@ Test(log_format, apply_negative_line_number) {
   cr_assert_not_null(fmt);
 
   char buf[256] = {0};
-  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", -1, "main", 1234, "msg", false);
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", -1, "main", 1234, "msg", false,
+                             45296123456000);
   cr_assert_gt(len, 0);
   /* Negative line should not be printed (line > 0 check) */
   cr_assert_str_eq(buf, "line=");
@@ -749,8 +770,10 @@ Test(log_format, apply_consistent_output) {
   char buf1[256] = {0};
   char buf2[256] = {0};
 
-  int len1 = log_format_apply(fmt, buf1, sizeof(buf1), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "msg", false);
-  int len2 = log_format_apply(fmt, buf2, sizeof(buf2), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "msg", false);
+  int len1 = log_format_apply(fmt, buf1, sizeof(buf1), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "msg", false,
+                              45296123456000);
+  int len2 = log_format_apply(fmt, buf2, sizeof(buf2), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "msg", false,
+                              45296123456000);
 
   cr_assert_eq(len1, len2, "Same inputs should produce same length output");
   cr_assert_str_eq(buf1, buf2, "Same inputs should produce identical output");
@@ -765,8 +788,10 @@ Test(log_format, apply_time_consistency_multiple_calls) {
   char buf1[256] = {0};
   char buf2[256] = {0};
 
-  int len1 = log_format_apply(fmt, buf1, sizeof(buf1), LOG_INFO, "dummy", "test.c", 42, "main", 1234, "msg", false);
-  int len2 = log_format_apply(fmt, buf2, sizeof(buf2), LOG_INFO, "dummy", "test.c", 42, "main", 1234, "msg", false);
+  int len1 = log_format_apply(fmt, buf1, sizeof(buf1), LOG_INFO, "dummy", "test.c", 42, "main", 1234, "msg", false,
+                              45296123456000);
+  int len2 = log_format_apply(fmt, buf2, sizeof(buf2), LOG_INFO, "dummy", "test.c", 42, "main", 1234, "msg", false,
+                              45296123456000);
 
   cr_assert_gt(len1, 0);
   cr_assert_gt(len2, 0);
@@ -796,8 +821,8 @@ Test(log_format, color_with_use_colors_true) {
   g_color_flag_value = true;
 
   char buf[256] = {0};
-  int len =
-      log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "test message", true);
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "test message",
+                             true, 45296123456000);
   cr_assert_gt(len, 0, "Should produce output with colors");
 
   /* Get the actual INFO color code from the enum */
@@ -828,8 +853,8 @@ Test(log_format, color_with_use_colors_false) {
   cr_assert_not_null(fmt);
 
   char buf[256] = {0};
-  int len =
-      log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "test message", false);
+  int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "test message",
+                             false, 45296123456000);
   cr_assert_gt(len, 0);
 
   /* Get the INFO color code - should NOT appear when use_colors=false */
@@ -855,7 +880,7 @@ Test(log_format, colored_message_with_colorize) {
   char buf[512] = {0};
   /* Use message with numbers and hex that would be colorized in a TTY */
   int len = log_format_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234,
-                             "Buffer size: 256 bytes (0x100)", true);
+                             "Buffer size: 256 bytes (0x100)", true, 45296123456000);
   cr_assert_gt(len, 0, "Should render colored_message format");
 
   /* Should contain the message text */
@@ -882,9 +907,10 @@ Test(log_format, color_different_levels) {
   char buf_info[256] = {0};
   char buf_error[256] = {0};
 
-  log_format_apply(fmt, buf_info, sizeof(buf_info), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "message", true);
+  log_format_apply(fmt, buf_info, sizeof(buf_info), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "message", true,
+                   45296123456000);
   log_format_apply(fmt, buf_error, sizeof(buf_error), LOG_ERROR, "12:34:56", "test.c", 42, "main", 1234, "message",
-                   true);
+                   true, 45296123456000);
 
   /* Get the actual color codes from the enum */
   extern const char *log_level_color(log_color_t color);

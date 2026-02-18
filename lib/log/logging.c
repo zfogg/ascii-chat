@@ -757,7 +757,7 @@ static void write_to_log_file_atomic(const char *buffer, int length) {
  * Returns the number of characters written to the buffer
  */
 static int format_log_header(char *buffer, size_t buffer_size, log_level_t level, const char *timestamp,
-                             const char *file, int line, const char *func, bool use_colors) {
+                             const char *file, int line, const char *func, bool use_colors, uint64_t time_nanoseconds) {
   const log_format_t *format = g_log.format;
   if (!format) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Log format not initialized");
@@ -766,7 +766,7 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
 
   /* Use log_format_apply() to generate the complete formatted output */
   int written = log_format_apply(format, buffer, buffer_size, level, timestamp, file, line, func,
-                                 asciichat_thread_current_id(), "", use_colors);
+                                 asciichat_thread_current_id(), "", use_colors, time_nanoseconds);
   if (written < 0 || written >= (int)buffer_size) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log header");
     return -1;
@@ -783,7 +783,7 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
  * Uses atomic loads for state checks, skips output if terminal is locked by another thread
  */
 static void write_to_terminal_atomic(log_level_t level, const char *timestamp, const char *file, int line,
-                                     const char *func, const char *fmt, va_list args) {
+                                     const char *func, const char *fmt, va_list args, uint64_t time_nanoseconds) {
   // Choose output stream: errors/warnings to stderr, info/debug to stdout
   // When force_stderr is enabled (client mode), ALL logs go to stderr to keep stdout clean
   FILE *output_stream;
@@ -819,13 +819,13 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
 
   /* Apply format without colors first (plain version for grep matching) */
   int plain_len = log_format_apply(g_log.format, plain_log_line, sizeof(plain_log_line), level, timestamp, file, line,
-                                   func, asciichat_thread_current_id(), clean_msg, false);
+                                   func, asciichat_thread_current_id(), clean_msg, false, time_nanoseconds);
 
   /* For colored output, apply format with colors enabled */
   int colored_len = 0;
   if (use_colors && plain_len > 0) {
     colored_len = log_format_apply(g_log.format, colored_log_line, sizeof(colored_log_line), level, timestamp, file,
-                                   line, func, asciichat_thread_current_id(), clean_msg, true);
+                                   line, func, asciichat_thread_current_id(), clean_msg, true, time_nanoseconds);
     /* If applying with colors failed, fall back to plain text */
     if (colored_len <= 0) {
       // Applying with colors failed - use plain text (no colors)
@@ -967,6 +967,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     // Terminal output (check with atomic loads)
     if (atomic_load(&g_log.terminal_output_enabled) && !atomic_load(&g_log.terminal_locked)) {
       char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
+      uint64_t time_ns = time_get_realtime_ns();
       get_current_time_formatted(time_buf);
 
       FILE *output_stream;
@@ -986,8 +987,8 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
       // Priority 2: If --color NOT explicitly passed, enable colors by default
 
       char header_buffer[512];
-      int header_len =
-          format_log_header(header_buffer, sizeof(header_buffer), level, time_buf, file, line, func, use_colors);
+      int header_len = format_log_header(header_buffer, sizeof(header_buffer), level, time_buf, file, line, func,
+                                         use_colors, time_ns);
 
       if (header_len >= 0 && header_len < (int)sizeof(header_buffer)) {
         // Platform-specific log hook (e.g., for WASM browser console)
@@ -1014,12 +1015,13 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
    * FILE I/O PATH: Lock-free using atomic write() syscalls
    * ========================================================================= */
   char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
+  uint64_t time_ns = time_get_realtime_ns();
   get_current_time_formatted(time_buf);
   // Format message for file output
   char log_buffer[LOG_MSG_BUFFER_SIZE];
   va_list args;
   va_start(args, fmt);
-  int header_len = format_log_header(log_buffer, sizeof(log_buffer), level, time_buf, file, line, func, false);
+  int header_len = format_log_header(log_buffer, sizeof(log_buffer), level, time_buf, file, line, func, false, time_ns);
   if (header_len < 0 || header_len >= (int)sizeof(log_buffer)) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log header");
     va_end(args);
@@ -1054,7 +1056,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   // Write to terminal (atomic state checks)
   va_list args_terminal;
   va_start(args_terminal, fmt);
-  write_to_terminal_atomic(level, time_buf, file, line, func, fmt, args_terminal);
+  write_to_terminal_atomic(level, time_buf, file, line, func, fmt, args_terminal, time_ns);
   va_end(args_terminal);
 }
 
@@ -1070,11 +1072,12 @@ void log_terminal_msg(log_level_t level, const char *file, int line, const char 
 
   // Terminal output only - no file/mmap writing
   char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
+  uint64_t time_ns = time_get_realtime_ns();
   get_current_time_formatted(time_buf);
 
   va_list args;
   va_start(args, fmt);
-  write_to_terminal_atomic(level, time_buf, file, line, func, fmt, args);
+  write_to_terminal_atomic(level, time_buf, file, line, func, fmt, args, time_ns);
   va_end(args);
 }
 
@@ -1112,11 +1115,12 @@ void log_plain_msg(const char *fmt, ...) {
     if (file_fd >= 0 && file_fd != STDERR_FILENO) {
       // Add header with timestamp and log level to file output
       char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
+      uint64_t time_ns = time_get_realtime_ns();
       get_current_time_formatted(time_buf);
 
       char header_buffer[512];
       int header_len = format_log_header(header_buffer, sizeof(header_buffer), LOG_INFO, time_buf, "lib/log/logging.c",
-                                         0, "log_plain_msg", false);
+                                         0, "log_plain_msg", false, time_ns);
 
       if (header_len > 0) {
         write_to_log_file_atomic(header_buffer, header_len);
@@ -1180,11 +1184,12 @@ static void log_plain_stderr_internal_atomic(const char *fmt, va_list args, bool
     if (file_fd >= 0 && file_fd != STDERR_FILENO) {
       // Add header with timestamp and log level to file output
       char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
+      uint64_t time_ns = time_get_realtime_ns();
       get_current_time_formatted(time_buf);
 
       char header_buffer[512];
       int header_len = format_log_header(header_buffer, sizeof(header_buffer), LOG_INFO, time_buf, "lib/log/logging.c",
-                                         0, "log_plain_stderr_msg", false);
+                                         0, "log_plain_stderr_msg", false, time_ns);
 
       if (header_len > 0) {
         write_to_log_file_atomic(header_buffer, header_len);

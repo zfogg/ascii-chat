@@ -41,30 +41,21 @@
  */
 static log_format_t *parse_format_string(const char *format_str, bool console_only) {
   if (!format_str) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid format string: %s", format_str);
     return NULL;
   }
 
-  /* Validate UTF-8 in format string */
   if (!utf8_is_valid(format_str)) {
-    log_error("Invalid UTF-8 in log format string");
+    SET_ERRNO(ERROR_INVALID_STATE, "Invalid UTF-8 in log format string");
     return NULL;
   }
 
   log_format_t *result = SAFE_CALLOC(1, sizeof(log_format_t), log_format_t *);
-  if (!result) {
-    return NULL;
-  }
-
   result->original = SAFE_MALLOC(strlen(format_str) + 1, char *);
-  if (!result->original) {
-    SAFE_FREE(result);
-    return NULL;
-  }
   strcpy(result->original, format_str);
   result->console_only = console_only;
 
-  /* Pre-allocate spec array (worst case: every char is a specifier)
-   * Use CALLOC to zero-initialize to ensure all fields are NULL/0 */
+  /* Pre-allocate spec array (worst case: every char is a specifier) */
   result->specs = SAFE_CALLOC(strlen(format_str) + 1, sizeof(log_format_spec_t), log_format_spec_t *);
   if (!result->specs) {
     SAFE_FREE(result->original);
@@ -182,6 +173,14 @@ static log_format_t *parse_format_string(const char *format_str, bool console_on
           result->specs[spec_idx].type = LOG_FORMAT_COLORED_MESSAGE;
           spec_idx++;
           p += 15;
+        } else if (strncmp(p, "ms", 2) == 0) {
+          result->specs[spec_idx].type = LOG_FORMAT_MICROSECONDS;
+          spec_idx++;
+          p += 2;
+        } else if (strncmp(p, "ns", 2) == 0) {
+          result->specs[spec_idx].type = LOG_FORMAT_NANOSECONDS;
+          spec_idx++;
+          p += 2;
         } else if (strncmp(p, "message", 7) == 0) {
           result->specs[spec_idx].type = LOG_FORMAT_MESSAGE;
           spec_idx++;
@@ -268,6 +267,7 @@ log_format_t *log_format_parse(const char *format_str, bool console_only) {
 
 void log_format_free(log_format_t *format) {
   if (!format) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "null format");
     return;
   }
 
@@ -403,12 +403,14 @@ static log_color_t parse_color_level(const char *level_name, log_level_t current
  * @param tid Thread ID
  * @param message Log message text
  * @param use_colors If true, apply ANSI color codes
+ * @param time_nanoseconds Raw wall-clock time in nanoseconds
  * @return Number of characters written (excluding null terminator), or -1 on error
  */
 static int render_format_content(const char *content, char *buf, size_t buf_size, log_level_t level,
                                  const char *timestamp, const char *file, int line, const char *func, uint64_t tid,
-                                 const char *message, bool use_colors) {
+                                 const char *message, bool use_colors, uint64_t time_nanoseconds) {
   if (!content || !buf || buf_size == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments: content=%p, buf=%p, buf_size=%zu", content, buf, buf_size);
     return -1;
   }
 
@@ -418,15 +420,16 @@ static int render_format_content(const char *content, char *buf, size_t buf_size
     return -1;
   }
 
-  int written =
-      log_format_apply(content_format, buf, buf_size, level, timestamp, file, line, func, tid, message, use_colors);
+  int written = log_format_apply(content_format, buf, buf_size, level, timestamp, file, line, func, tid, message,
+                                 use_colors, time_nanoseconds);
   log_format_free(content_format);
 
   return written;
 }
 
 int log_format_apply(const log_format_t *format, char *buf, size_t buf_size, log_level_t level, const char *timestamp,
-                     const char *file, int line, const char *func, uint64_t tid, const char *message, bool use_colors) {
+                     const char *file, int line, const char *func, uint64_t tid, const char *message, bool use_colors,
+                     uint64_t time_nanoseconds) {
   if (!format || !buf || buf_size == 0) {
     return -1;
   }
@@ -496,6 +499,29 @@ int log_format_apply(const log_format_t *format, char *buf, size_t buf_size, log
       written = safe_snprintf(p, remaining + 1, "%llu", (unsigned long long)tid);
       break;
 
+    case LOG_FORMAT_MICROSECONDS: {
+      /* Extract microseconds from nanoseconds (ns_value % 1_000_000_000 / 1000) */
+      long nanoseconds = (long)(time_nanoseconds % NS_PER_SEC_INT);
+      long microseconds = nanoseconds / 1000;
+      if (microseconds < 0)
+        microseconds = 0;
+      if (microseconds > 999999)
+        microseconds = 999999;
+      written = safe_snprintf(p, remaining + 1, "%06ld", microseconds);
+      break;
+    }
+
+    case LOG_FORMAT_NANOSECONDS: {
+      /* Extract nanoseconds component (ns_value % 1_000_000_000) */
+      long nanoseconds = (long)(time_nanoseconds % NS_PER_SEC_INT);
+      if (nanoseconds < 0)
+        nanoseconds = 0;
+      if (nanoseconds > 999999999)
+        nanoseconds = 999999999;
+      written = safe_snprintf(p, remaining + 1, "%09ld", nanoseconds);
+      break;
+    }
+
     case LOG_FORMAT_MESSAGE:
       if (message) {
         written = safe_snprintf(p, remaining + 1, "%s", message);
@@ -558,7 +584,7 @@ int log_format_apply(const log_format_t *format, char *buf, size_t buf_size, log
       /* Render content recursively */
       char content_buf[512];
       int content_len = render_format_content(content_start, content_buf, sizeof(content_buf), level, timestamp, file,
-                                              line, func, tid, message, use_colors);
+                                              line, func, tid, message, use_colors, time_nanoseconds);
 
       if (content_len < 0 || content_len >= (int)sizeof(content_buf)) {
         written = 0;

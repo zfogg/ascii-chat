@@ -429,8 +429,6 @@ char *format_message(const char *format, va_list args);
  */
 size_t get_current_time_formatted(char *time_buf);
 
-#include "../crypto/crypto.h"
-
 /**
  * @brief Send a formatted log message over the network.
  * @param sockfd Destination socket
@@ -992,6 +990,9 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
  * @note Internal function - do not use directly in application code
  */
 const char *get_level_string_padded(log_level_t level);
+
+/* Include crypto.h at the end to avoid circular dependency with time.h */
+#include "../crypto/crypto.h"
 
 #ifdef __cplusplus
 }

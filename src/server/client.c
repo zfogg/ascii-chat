@@ -426,6 +426,8 @@ static int start_client_threads(server_context_t *server_ctx, client_info_t *cli
   }
 
   uint32_t client_id = atomic_load(&client->client_id);
+  log_info("★ START_CLIENT_THREADS: client_id=%u is_tcp=%d (about to create %s threads)", client_id, is_tcp,
+           is_tcp ? "TCP" : "WebRTC/WebSocket");
   char thread_name[64];
   asciichat_error_t result;
 

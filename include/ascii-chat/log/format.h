@@ -36,6 +36,8 @@ typedef enum {
   LOG_FORMAT_COLORLOG_LEVEL,  /* %colorlog_level_string_to_color - color code */
   LOG_FORMAT_COLOR,           /* %color(LEVEL, content) - colorize content using LEVEL's color */
   LOG_FORMAT_COLORED_MESSAGE, /* %colored_message - message with things like filenames and 0x numbers colored */
+  LOG_FORMAT_MICROSECONDS,    /* %microseconds - microseconds component of current time (000000-999999) */
+  LOG_FORMAT_NANOSECONDS,     /* %nanoseconds - nanoseconds component of current time (000000000-999999999) */
   LOG_FORMAT_NEWLINE,         /* Platform-aware newline (\n) */
 } log_format_type_t;
 
@@ -112,6 +114,7 @@ void log_format_free(log_format_t *format);
  * @param tid Thread ID
  * @param message Log message text
  * @param use_colors If true, apply ANSI color codes
+ * @param time_nanoseconds Raw wall-clock time in nanoseconds (for %microseconds and %nanoseconds)
  * @return Number of characters written (excluding null terminator), or -1 on error
  *
  * Renders the compiled format using provided log entry values. Evaluates each
@@ -119,17 +122,19 @@ void log_format_free(log_format_t *format);
  *
  * **Example:**
  * ```c
- * log_format_t *fmt = log_format_parse("[%time(%H:%M:%S)] [%level] %message", false);
+ * log_format_t *fmt = log_format_parse("[%time(%H:%M:%S)] [%level] %microseconds %message", false);
  * char output[512];
+ * uint64_t now = time_get_realtime_ns();
  * int len = log_format_apply(fmt, output, sizeof(output),
- *                            LOG_INFO, "14:30:45.123456", "test.c", 42, "main",
- *                            1234, "Test message", false);
+ *                            LOG_INFO, "14:30:45", "test.c", 42, "main",
+ *                            1234, "Test message", false, now);
  * ```
  *
  * @ingroup logging
  */
 int log_format_apply(const log_format_t *format, char *buf, size_t buf_size, log_level_t level, const char *timestamp,
-                     const char *file, int line, const char *func, uint64_t tid, const char *message, bool use_colors);
+                     const char *file, int line, const char *func, uint64_t tid, const char *message, bool use_colors,
+                     uint64_t time_nanoseconds);
 
 #ifdef __cplusplus
 }

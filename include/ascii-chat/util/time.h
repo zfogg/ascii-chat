@@ -771,42 +771,26 @@ asciichat_error_t time_format_safe(const char *format_str, char *buf, size_t buf
 
 /** @} */
 
-/* Include errno support late to avoid circular dependencies */
-#include <ascii-chat/asciichat_errno.h>
-
 /* ============================================================================
- * Inline Conversion Functions (defined at end to ensure SET_ERRNO is available)
+ * Conversion Functions
  * ============================================================================ */
 
 /**
- * @brief Convert struct timespec to nanoseconds (inline)
+ * @brief Convert struct timespec to nanoseconds
  * @param ts Pointer to timespec structure
  * @return Time in nanoseconds
  * @ingroup module_utilities
  *
  * Useful for converting CLOCK_MONOTONIC or CLOCK_REALTIME readings to nanoseconds.
  */
-static inline uint64_t time_timespec_to_ns(const struct timespec *ts) {
-  if (!ts) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "null ts");
-    return 0;
-  }
-  return (uint64_t)ts->tv_sec * NS_PER_SEC_INT + (uint64_t)ts->tv_nsec;
-}
+uint64_t time_timespec_to_ns(const struct timespec *ts);
 
 /**
- * @brief Convert nanoseconds to struct timespec (inline)
+ * @brief Convert nanoseconds to struct timespec
  * @param ns Time in nanoseconds
  * @param ts Pointer to timespec structure (output)
  * @ingroup module_utilities
  *
  * Useful for nanosleep() or other system calls that require struct timespec.
  */
-static inline void time_ns_to_timespec(uint64_t ns, struct timespec *ts) {
-  if (!ts) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "null ts");
-    return;
-  }
-  ts->tv_sec = (time_t)(ns / NS_PER_SEC_INT);
-  ts->tv_nsec = (long)(ns % NS_PER_SEC_INT);
-}
+void time_ns_to_timespec(uint64_t ns, struct timespec *ts);
