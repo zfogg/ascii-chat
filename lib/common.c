@@ -229,17 +229,17 @@ void asciichat_shared_destroy(void) {
 
   // 13. Memory stats (debug builds only) - runs with colors still available
   //     Note: PCRE2 singletons are ignored in the report (expected system allocations)
+  //     Note: debug_memory_report() is called manually during shutdown, so skip it here
+  //     to avoid calling it twice and potentially deadlocking
 #if defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
   print_mimalloc_stats();
-#elif defined(DEBUG_MEMORY) && !defined(NDEBUG)
-  debug_memory_report();
 #endif
 
-  // 13. Color cleanup - free compiled ANSI strings (AFTER memory report)
+  // 14. Color cleanup - free compiled ANSI strings (AFTER memory report)
   log_cleanup_colors();
   colorscheme_destroy();
 
-  // 14. PCRE2 - cleanup all regex singletons together
+  // 15. PCRE2 - cleanup all regex singletons together
   asciichat_pcre2_cleanup_all();
 }
 

@@ -2525,27 +2525,17 @@ skip_acds_session:
 cleanup:
   // Signal status screen thread to exit
   atomic_store(&g_server_should_exit, true);
-  static const char cleanup_start[] = "[SHUTDOWN_DEBUG] Cleanup started\n";
-  (void)write(STDERR_FILENO, cleanup_start, sizeof(cleanup_start) - 1);
 
   // Wait for status screen thread to finish if it was started
-  static const char status_check[] = "[SHUTDOWN_DEBUG] Checking status_screen option\n";
-  (void)write(STDERR_FILENO, status_check, sizeof(status_check) - 1);
   if (GET_OPTION(status_screen)) {
-    static const char status_joining[] = "[SHUTDOWN_DEBUG] Joining status_screen_thread\n";
-    (void)write(STDERR_FILENO, status_joining, sizeof(status_joining) - 1);
     log_debug("Waiting for status screen thread to exit...");
     int join_result = asciichat_thread_join_timeout(&g_status_screen_thread, NULL, 1000000000UL); // 1 second
-    static const char status_joined[] = "[SHUTDOWN_DEBUG] Status_screen_thread joined\n";
-    (void)write(STDERR_FILENO, status_joined, sizeof(status_joined) - 1);
     if (join_result != 0) {
       log_warn("Status screen thread did not exit cleanly (timeout)");
     } else {
       log_debug("Status screen thread exited");
     }
   }
-  static const char after_status[] = "[SHUTDOWN_DEBUG] After status_screen cleanup\n";
-  (void)write(STDERR_FILENO, after_status, sizeof(after_status) - 1);
 
   // Cleanup status screen log capture
   server_status_log_destroy();
@@ -2795,7 +2785,6 @@ cleanup:
   log_info("Server shutdown complete");
 
   asciichat_error_stats_print();
-
   log_destroy();
 
   // Use exit() to allow atexit() handlers to run

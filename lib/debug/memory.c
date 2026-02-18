@@ -86,8 +86,35 @@ static void reset_ignore_counters(void) {
  * Tracks how many allocations from each ignore location have been seen.
  * Only ignores up to the expected_count for each location.
  */
+// Helper function to acquire mutex with polling instead of blocking.
+// mutex_lock() can be unsafe during shutdown when signals may arrive.
+// Use trylock polling instead to avoid hanging indefinitely.
+static bool acquire_mutex_with_polling(mutex_t *mutex, int timeout_ms) {
+  int max_retries = (timeout_ms + 9) / 10; // 10ms per retry
+  for (int retry = 0; retry < max_retries; retry++) {
+    int lock_result = mutex_trylock(mutex);
+    if (lock_result == 0) {
+      return true;
+    }
+    if (lock_result != EBUSY) {
+      return false; // Unexpected error
+    }
+    platform_sleep_ms(10); // Sleep 10ms before retry
+  }
+  return false; // Timeout
+}
+
 static bool should_ignore_allocation(const char *file, int line) {
-  const char *relative_path = extract_project_relative_path(file);
+  // During shutdown, extract_project_relative_path() may call stat() which can hang.
+  // Just use the filename without path processing if possible.
+  const char *relative_path = file;
+  const char *sep = strrchr(file, '/');
+  if (!sep) {
+    sep = strrchr(file, '\\');
+  }
+  if (sep) {
+    relative_path = sep + 1;
+  }
 
   for (size_t i = 0; g_ignore_list[i].file != NULL; i++) {
     if (line == g_ignore_list[i].line && strcmp(relative_path, g_ignore_list[i].file) == 0) {
@@ -597,7 +624,12 @@ void debug_memory_report(void) {
     size_t suppressed_count = 0;
     if (g_mem.head) {
       if (ensure_mutex_initialized()) {
-        mutex_lock(&g_mem.mutex);
+        // Use polling instead of blocking mutex_lock to avoid hangs during shutdown.
+        if (!acquire_mutex_with_polling(&g_mem.mutex, 100)) {
+          goto skip_memory_iter;
+        }
+
+        // Now we have the lock - iterate memory blocks
         mem_block_t *curr = g_mem.head;
         while (curr) {
           if (should_ignore_allocation(curr->file, curr->line)) {
@@ -609,6 +641,8 @@ void debug_memory_report(void) {
         mutex_unlock(&g_mem.mutex);
       }
     }
+
+  skip_memory_iter:
 
     // Adjust current usage to exclude suppressed allocations
     size_t adjusted_current_usage = (current_usage >= suppressed_bytes) ? (current_usage - suppressed_bytes) : 0;
@@ -693,15 +727,16 @@ void debug_memory_report(void) {
     size_t unfreed_count = 0;
     if (g_mem.head) {
       if (ensure_mutex_initialized()) {
-        mutex_lock(&g_mem.mutex);
-        mem_block_t *curr = g_mem.head;
-        while (curr) {
-          if (!should_ignore_allocation(curr->file, curr->line)) {
-            unfreed_count++;
+        if (acquire_mutex_with_polling(&g_mem.mutex, 100)) {
+          mem_block_t *curr = g_mem.head;
+          while (curr) {
+            if (!should_ignore_allocation(curr->file, curr->line)) {
+              unfreed_count++;
+            }
+            curr = curr->next;
           }
-          curr = curr->next;
+          mutex_unlock(&g_mem.mutex);
         }
-        mutex_unlock(&g_mem.mutex);
       }
     }
 
@@ -756,7 +791,9 @@ void debug_memory_report(void) {
 
     if (g_mem.head && unfreed_count > 0) {
       if (ensure_mutex_initialized()) {
-        mutex_lock(&g_mem.mutex);
+        if (!acquire_mutex_with_polling(&g_mem.mutex, 100)) {
+          goto skip_allocations_list;
+        }
 
         // Check if we should print backtraces
         const char *print_backtrace = SAFE_GETENV("ASCII_CHAT_MEMORY_REPORT_BACKTRACE");
@@ -809,8 +846,10 @@ void debug_memory_report(void) {
               platform_backtrace_symbols_destroy(symbols);
             }
 
-            // Re-acquire mutex for next iteration
-            mutex_lock(&g_mem.mutex);
+            // Re-acquire mutex for next iteration (with polling, not blocking)
+            if (!acquire_mutex_with_polling(&g_mem.mutex, 100)) {
+              break; // Exit loop if we can't re-acquire the lock
+            }
           }
 
           curr = curr->next;
@@ -824,6 +863,8 @@ void debug_memory_report(void) {
                                         "Current allocations unavailable: failed to initialize debug memory mutex")));
       }
     }
+
+  skip_allocations_list:
   }
 }
 
