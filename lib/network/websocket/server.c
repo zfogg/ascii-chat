@@ -357,15 +357,15 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     }
 
     // Try to dequeue next message if current one is done
-    mutex_lock(&ws_data->queue_mutex);
+    mutex_lock(&ws_data->send_mutex);
     bool has_messages = !ringbuffer_is_empty(ws_data->send_queue);
-    mutex_unlock(&ws_data->queue_mutex);
+    mutex_unlock(&ws_data->send_mutex);
 
     if (has_messages) {
-      mutex_lock(&ws_data->queue_mutex);
+      mutex_lock(&ws_data->send_mutex);
       websocket_recv_msg_t msg;
       bool success = ringbuffer_read(ws_data->send_queue, &msg);
-      mutex_unlock(&ws_data->queue_mutex);
+      mutex_unlock(&ws_data->send_mutex);
 
       if (success && msg.data) {
         // Start sending this message
@@ -422,11 +422,11 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
           conn_data->has_pending_send = false;
 
           // Check if there are more messages
-          mutex_lock(&ws_data->queue_mutex);
+          mutex_lock(&ws_data->send_mutex);
           if (!ringbuffer_is_empty(ws_data->send_queue)) {
             lws_callback_on_writable(wsi);
           }
-          mutex_unlock(&ws_data->queue_mutex);
+          mutex_unlock(&ws_data->send_mutex);
         }
       }
     }
@@ -599,7 +599,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     msg.first = is_first;
     msg.final = is_final;
 
-    mutex_lock(&ws_data->queue_mutex);
+    mutex_lock(&ws_data->recv_mutex);
 
     // Check available space BEFORE writing to decide on flow control
     size_t queue_current_size = ringbuffer_size(ws_data->recv_queue);
@@ -614,13 +614,13 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
                is_final);
       buffer_pool_free(NULL, msg.data, msg.len);
 
-      mutex_unlock(&ws_data->queue_mutex);
+      mutex_unlock(&ws_data->recv_mutex);
       break;
     }
 
     // Signal waiting recv() call that a fragment is available
-    cond_signal(&ws_data->queue_cond);
-    mutex_unlock(&ws_data->queue_mutex);
+    cond_signal(&ws_data->recv_cond);
+    mutex_unlock(&ws_data->recv_mutex);
 
     // Signal LWS to call WRITEABLE callback (matches lws example pattern)
     // This keeps the event loop active and allows server to send responses
@@ -782,7 +782,7 @@ asciichat_error_t websocket_server_run(websocket_server_t *server) {
       double gap_ms = (double)(service_start_ns - last_service_ns) / 1e6;
       log_info_every(1000, "[LWS_SERVICE_GAP] %.1fms gap between lws_service calls", gap_ms);
     }
-    int result = lws_service(server->context, 50); // 50ms timeout to keep event loop responsive
+    int result = lws_service(server->context, -1);
     if (result < 0) {
       log_error("libwebsockets service error: %d", result);
       break;
