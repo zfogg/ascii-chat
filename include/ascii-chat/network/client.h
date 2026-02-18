@@ -1,9 +1,10 @@
 /**
  * @file lib/network/client.h
- * @brief Client state structure and network logging macros
+ * @brief Client state structures
  *
- * This header defines the client_info_t structure used by both library code
- * and server code. It also provides convenience macros for network logging.
+ * Defines two client structures:
+ * - client_info_t: Server-side per-client state
+ * - app_client_t: Client-side application state (replaces mixed-concern tcp_client_t)
  */
 #pragma once
 
@@ -28,6 +29,7 @@ using std::atomic_uint;
 #include "../video/video_frame.h"
 #include "../platform/terminal.h"
 #include "../video/palette.h"
+#include "../audio/audio.h"
 
 /**
  * @brief Participant type for distinguishing network vs memory participants
@@ -186,3 +188,116 @@ typedef struct client_info {
   // uthash handle for hash table operations
   UT_hash_handle hh;
 } client_info_t;
+
+/* ============================================================================
+ * Client-Side Application State (replaces tcp_client_t mixed concerns)
+ * ============================================================================ */
+
+/** Forward declarations */
+struct tcp_client;
+struct websocket_client;
+
+/**
+ * @brief Audio packet for async transmission
+ */
+typedef struct {
+  uint8_t data[4096];       ///< Opus-encoded audio data
+  size_t size;              ///< Size of encoded data
+  uint16_t frame_sizes[48]; ///< Individual frame sizes for Opus batching
+  int frame_count;          ///< Number of frames in packet
+} app_client_audio_packet_t;
+
+#define APP_CLIENT_AUDIO_QUEUE_SIZE 256
+
+/**
+ * @brief Client-side application state
+ *
+ * Transport-agnostic container for application-layer state previously mixed
+ * in tcp_client_t. Holds audio queues, thread handles, crypto context, and
+ * display state. Maintains references to active network client and transport.
+ */
+typedef struct app_client {
+  /* ========================================================================
+   * Active Transport & Network Client
+   * ======================================================================== */
+
+  acip_transport_t *active_transport;
+  acip_transport_type_t transport_type;
+  struct tcp_client *tcp_client;
+  struct websocket_client *ws_client;
+
+  /* ========================================================================
+   * Audio State
+   * ======================================================================== */
+
+  audio_context_t audio_ctx;
+  app_client_audio_packet_t audio_send_queue[APP_CLIENT_AUDIO_QUEUE_SIZE];
+  int audio_send_queue_head;
+  int audio_send_queue_tail;
+  mutex_t audio_send_queue_mutex;
+  cond_t audio_send_queue_cond;
+  bool audio_send_queue_initialized;
+  atomic_bool audio_sender_should_exit;
+  asciichat_thread_t audio_capture_thread;
+  asciichat_thread_t audio_sender_thread;
+  bool audio_capture_thread_created;
+  bool audio_sender_thread_created;
+  atomic_bool audio_capture_thread_exited;
+
+  /* ========================================================================
+   * Protocol State
+   * ======================================================================== */
+
+  asciichat_thread_t data_reception_thread;
+  bool data_thread_created;
+  atomic_bool data_thread_exited;
+  uint32_t last_active_count;
+  bool server_state_initialized;
+  bool should_clear_before_next_frame;
+  uint32_t my_client_id;
+  bool encryption_enabled;
+
+  /* ========================================================================
+   * Capture State
+   * ======================================================================== */
+
+  asciichat_thread_t capture_thread;
+  bool capture_thread_created;
+  atomic_bool capture_thread_exited;
+
+  /* ========================================================================
+   * Keepalive State
+   * ======================================================================== */
+
+  asciichat_thread_t ping_thread;
+  bool ping_thread_created;
+  atomic_bool ping_thread_exited;
+
+  /* ========================================================================
+   * Display State
+   * ======================================================================== */
+
+  bool has_tty;
+  atomic_bool is_first_frame_of_connection;
+  tty_info_t tty_info;
+
+  /* ========================================================================
+   * Crypto State
+   * ======================================================================== */
+
+  crypto_handshake_context_t crypto_ctx;
+  bool crypto_initialized;
+
+} app_client_t;
+
+/**
+ * @brief Create and initialize client application context
+ * @return Pointer to initialized context, or NULL on failure
+ */
+app_client_t *app_client_create(void);
+
+/**
+ * @brief Destroy client application context and free all resources
+ * @param client_ptr Pointer to client pointer (set to NULL after free)
+ */
+void app_client_destroy(app_client_t **client_ptr);

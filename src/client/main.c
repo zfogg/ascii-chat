@@ -837,7 +837,6 @@ int client_main(void) {
 
       // Transfer ownership - NULL out context's pointers to prevent double-free.
       // server_connection_set_transport() now owns the transport, so context must not destroy it.
-      connection_ctx.tcp_transport = NULL;
       connection_ctx.active_transport = NULL;
     } else {
       log_error("Connection succeeded but no active transport - this should never happen");

@@ -30,6 +30,7 @@
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/network/acip/client.h>
 #include <ascii-chat/network/tcp/client.h>
+#include <ascii-chat/network/websocket/client.h>
 #include <ascii-chat/platform/abstraction.h>
 
 #include <time.h>
@@ -107,14 +108,21 @@ void connection_context_cleanup(connection_attempt_context_t *ctx) {
     log_debug("TCP client instance destroyed");
   }
 
-  // Close TCP transport if still open
-  if (ctx->tcp_transport) {
-    acip_transport_close(ctx->tcp_transport);
-    acip_transport_destroy(ctx->tcp_transport);
-    ctx->tcp_transport = NULL;
+  // Destroy WebSocket client instance if created
+  if (ctx->ws_client_instance) {
+    websocket_client_destroy(&ctx->ws_client_instance);
+    ctx->ws_client_instance = NULL;
+    log_debug("WebSocket client instance destroyed");
   }
 
-  ctx->active_transport = NULL;
+  // Close active transport if still open
+  if (ctx->active_transport) {
+    acip_transport_close(ctx->active_transport);
+    acip_transport_destroy(ctx->active_transport);
+    ctx->active_transport = NULL;
+    log_debug("Transport connection closed");
+  }
+
   log_debug("Connection context cleaned up");
 }
 
@@ -211,17 +219,27 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     // Get crypto context
     const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
 
-    // Create WebSocket transport (handles connection internally)
-    ctx->tcp_transport = acip_websocket_client_transport_create(ws_url, (crypto_context_t *)crypto_ctx);
-    if (!ctx->tcp_transport) {
+    // Create WebSocket client instance
+    websocket_client_t *ws_client = websocket_client_create();
+    if (!ws_client) {
+      log_error("Failed to create WebSocket client");
+      connection_state_transition(ctx, CONN_STATE_FAILED);
+      return SET_ERRNO(ERROR_NETWORK, "WebSocket client creation failed");
+    }
+
+    // Connect via WebSocket
+    acip_transport_t *transport = websocket_client_connect(ws_client, ws_url, (crypto_context_t *)crypto_ctx);
+    if (!transport) {
       log_error("Failed to create WebSocket ACIP transport");
+      websocket_client_destroy(&ws_client);
       connection_state_transition(ctx, CONN_STATE_FAILED);
       return SET_ERRNO(ERROR_NETWORK, "WebSocket connection failed");
     }
 
     log_info("WebSocket connection established to %s", ws_url);
     connection_state_transition(ctx, CONN_STATE_CONNECTED);
-    ctx->active_transport = ctx->tcp_transport;
+    ctx->active_transport = transport;
+    ctx->ws_client_instance = ws_client;
     return ASCIICHAT_OK;
   }
 
@@ -299,8 +317,8 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
   const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
 
   // Create ACIP transport for protocol-agnostic packet sending/receiving
-  ctx->tcp_transport = acip_tcp_transport_create(sockfd, (crypto_context_t *)crypto_ctx);
-  if (!ctx->tcp_transport) {
+  acip_transport_t *transport = acip_tcp_transport_create(sockfd, (crypto_context_t *)crypto_ctx);
+  if (!transport) {
     log_error("Failed to create ACIP transport for TCP");
     tcp_client_destroy(&tcp_client);
     return SET_ERRNO(ERROR_NETWORK, "Failed to create ACIP transport");
@@ -308,12 +326,81 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
 
   log_info("TCP connection established to %s:%u", server_address, server_port);
   connection_state_transition(ctx, CONN_STATE_CONNECTED);
-  ctx->active_transport = ctx->tcp_transport;
+  ctx->active_transport = transport;
 
   // Store tcp_client in context for proper lifecycle management
   // It will be destroyed in connection_context_cleanup()
   ctx->tcp_client_instance = tcp_client;
   log_debug("TCP client instance stored in connection context");
+
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Attempt WebSocket connection (ws:// or wss://)
+ *
+ * Connects to server via WebSocket, performs crypto handshake if enabled,
+ * and creates ACIP transport for protocol communication.
+ */
+asciichat_error_t connection_attempt_websocket(connection_attempt_context_t *ctx, const char *ws_url) {
+  log_info("=== connection_attempt_websocket CALLED: url='%s' ===", ws_url);
+
+  if (!ctx || !ws_url) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
+  }
+
+  // Check if shutdown was requested
+  if (should_exit()) {
+    return SET_ERRNO(ERROR_NETWORK, "Connection attempt aborted due to shutdown request");
+  }
+
+  log_info("Attempting WebSocket connection to %s", ws_url);
+
+  // Transition to attempting state
+  asciichat_error_t result = connection_state_transition(ctx, CONN_STATE_ATTEMPTING);
+  if (result != ASCIICHAT_OK) {
+    return result;
+  }
+
+  // Set timeout for this attempt
+  ctx->attempt_start_time_ns = time_get_realtime_ns();
+  ctx->timeout_ns = CONN_TIMEOUT_TCP;
+
+  // Initialize crypto context if encryption is enabled
+  if (!GET_OPTION(no_encrypt)) {
+    log_debug("Initializing crypto context for WebSocket...");
+    if (client_crypto_init() != 0) {
+      log_error("Failed to initialize crypto context");
+      return SET_ERRNO(ERROR_CRYPTO, "Crypto initialization failed");
+    }
+    log_debug("Crypto context initialized successfully");
+  }
+
+  // Get crypto context
+  const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
+
+  // Create WebSocket client instance
+  websocket_client_t *ws_client = websocket_client_create();
+  if (!ws_client) {
+    log_error("Failed to create WebSocket client");
+    connection_state_transition(ctx, CONN_STATE_FAILED);
+    return SET_ERRNO(ERROR_NETWORK, "WebSocket client creation failed");
+  }
+
+  // Connect via WebSocket
+  acip_transport_t *transport = websocket_client_connect(ws_client, ws_url, (crypto_context_t *)crypto_ctx);
+  if (!transport) {
+    log_error("Failed to create WebSocket ACIP transport");
+    websocket_client_destroy(&ws_client);
+    connection_state_transition(ctx, CONN_STATE_FAILED);
+    return SET_ERRNO(ERROR_NETWORK, "WebSocket connection failed");
+  }
+
+  log_info("WebSocket connection established to %s", ws_url);
+  connection_state_transition(ctx, CONN_STATE_CONNECTED);
+  ctx->active_transport = transport;
+  ctx->ws_client_instance = ws_client;
+  log_debug("WebSocket client instance stored in connection context");
 
   return ASCIICHAT_OK;
 }

@@ -15,6 +15,7 @@ set(NETWORK_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/update_checker.c
     ${CMAKE_CURRENT_SOURCE_DIR}/errors.c
     ${CMAKE_CURRENT_SOURCE_DIR}/parallel_connect.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/client.c
     # rate_limit/
     ${CMAKE_CURRENT_SOURCE_DIR}/rate_limit/rate_limit.c
     ${CMAKE_CURRENT_SOURCE_DIR}/rate_limit/memory.c
@@ -26,6 +27,7 @@ set(NETWORK_SRCS
     # websocket/
     ${CMAKE_CURRENT_SOURCE_DIR}/websocket/transport.c
     ${CMAKE_CURRENT_SOURCE_DIR}/websocket/server.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/websocket/client.c
     # webrtc/
     ${CMAKE_CURRENT_SOURCE_DIR}/webrtc/webrtc.c
     ${CMAKE_CURRENT_SOURCE_DIR}/webrtc/transport.c
