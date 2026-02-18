@@ -1455,7 +1455,7 @@ void *client_dispatch_thread(void *arg) {
 
     if (!queued_pkt) {
       // Queue was empty, sleep briefly to avoid busy-waiting
-      usleep(10000); // 10ms sleep
+      usleep(10 * US_PER_MS_INT); // 10ms sleep
       continue;
     }
 
@@ -1775,7 +1775,8 @@ void *client_send_thread_func(void *arg) {
     loop_iteration_count++;
     bool sent_something = false;
     uint64_t loop_start_ns = time_get_ns();
-    log_info("[SEND_LOOP_%d] START: client=%u", loop_iteration_count, atomic_load(&client->client_id));
+    log_info_every(5000 * US_PER_MS_INT, "[SEND_LOOP_%d] START: client=%u", loop_iteration_count,
+                   atomic_load(&client->client_id));
 
     // PRIORITY: Drain all queued audio packets before video
     // Audio must not be rate-limited by video frame sending (16.67ms)
@@ -1921,7 +1922,8 @@ void *client_send_thread_func(void *arg) {
 
       sent_something = true;
       uint64_t audio_done_ns = time_get_ns();
-      log_info("[SEND_LOOP_%d] AUDIO_SENT: took %.2fms", loop_iteration_count, (audio_done_ns - loop_start_ns) / 1e6);
+      log_info_every(5000 * US_PER_MS_INT, "[SEND_LOOP_%d] AUDIO_SENT: took %.2fms", loop_iteration_count,
+                     (audio_done_ns - loop_start_ns) / 1e6);
 
       // Small sleep to let more audio packets queue (helps batching efficiency)
       if (audio_packet_count > 0) {
@@ -1929,7 +1931,7 @@ void *client_send_thread_func(void *arg) {
       }
     } else {
       // No audio packets - brief sleep to avoid busy-looping, then check for other tasks
-      log_info("[SEND_LOOP_%d] NO_AUDIO: sleeping 1ms", loop_iteration_count);
+      log_info_every(5000 * US_PER_MS_INT, "[SEND_LOOP_%d] NO_AUDIO: sleeping 1ms", loop_iteration_count);
       platform_sleep_us(1000); // 1ms - enough for audio render thread to queue more packets
 
       // Check if session rekeying should be triggered
@@ -2128,7 +2130,7 @@ void *client_send_thread_func(void *arg) {
 
       uint64_t frame_end_ns = time_get_ns();
       uint64_t frame_time_us = time_ns_to_us(time_elapsed_ns(frame_start_ns, frame_end_ns));
-      if (frame_time_us > 15000) { // Log if sending a frame takes > 15ms (encryption adds ~5-6ms)
+      if (frame_time_us > 15 * US_PER_MS_INT) { // Log if sending a frame takes > 15ms (encryption adds ~5-6ms)
         uint64_t step1_us = time_ns_to_us(time_elapsed_ns(frame_start_ns, step1_ns));
         uint64_t step2_us = time_ns_to_us(time_elapsed_ns(step1_ns, step2_ns));
         uint64_t step3_us = time_ns_to_us(time_elapsed_ns(step2_ns, step3_ns));
