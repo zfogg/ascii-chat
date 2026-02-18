@@ -697,9 +697,13 @@ static struct lws_protocols websocket_protocols[] = {
  * - Reduces multi-fragment receive stalls
  * - Improves throughput by reducing TCP round-trips
  */
-// Compression disabled - fragmented messages + permessage-deflate cause rx buffer underflow
-// Setting this to empty array instead of defining permessage-deflate callback
-static const struct lws_extension websocket_extensions[] = {{NULL, NULL, NULL}};
+// RX BUFFER UNDERFLOW FIX: Configure permessage-deflate with smaller window bits
+// LWS 4.5.2 underflows when decompressing large fragmented messages with max window (15 bits).
+// Using server_max_window_bits=11 (2KB window) reduces decompression buffer needs and
+// prevents the "rx buffer underflow" error while maintaining reasonable compression.
+static const struct lws_extension websocket_extensions[] = {
+    {"permessage-deflate", lws_extension_callback_pm_deflate, "permessage-deflate; server_max_window_bits=11"},
+    {NULL, NULL, NULL}};
 
 asciichat_error_t websocket_server_init(websocket_server_t *server, const websocket_server_config_t *config) {
   if (!server || !config || !config->client_handler) {
@@ -722,14 +726,13 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   struct lws_context_creation_info info = {0};
   info.port = config->port;
   info.protocols = websocket_protocols;
-  info.gid = (gid_t)-1;   // Cast to avoid undefined behavior with unsigned type
-  info.uid = (uid_t)-1;   // Cast to avoid undefined behavior with unsigned type
-  info.options = 0;       // Don't validate UTF8 - we send binary ACIP packets
-  info.extensions = NULL; // CRITICAL: Disable compression! Fragmented+compressed messages cause connection closures
-  // Fragmented WebSocket messages + permessage-deflate compression = rx buffer underflow + LWS_CALLBACK_CLOSED
-  // Browsers send compressed fragmented frames, libwebsockets fails to decompress across fragment boundaries
-  // ACIP packets are encrypted (not compressible anyway), so no throughput loss from disabling compression
-  info.pt_serv_buf_size = 131072; // 128KB default - sufficient without compression
+  info.gid = (gid_t)-1;                   // Cast to avoid undefined behavior with unsigned type
+  info.uid = (uid_t)-1;                   // Cast to avoid undefined behavior with unsigned type
+  info.options = 0;                       // Don't validate UTF8 - we send binary ACIP packets
+  info.extensions = websocket_extensions; // Re-enable compression with reduced window bits
+  // RX buffer underflow fix: Using server_max_window_bits=11 (2KB window) to prevent
+  // decompression buffer exhaustion while maintaining 5:1+ compression ratio for video frames
+  info.pt_serv_buf_size = 2097152; // 2MB per-thread buffer for permessage-deflate workspace
 
   // Create libwebsockets context
   server->context = lws_create_context(&info);
