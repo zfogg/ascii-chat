@@ -45,11 +45,12 @@
 #include <unistd.h>
 
 /**
- * @brief Maximum receive queue size (messages buffered before recv())
+ * @brief Maximum receive queue size (fragments buffered before reassembly)
  *
  * Power of 2 for ringbuffer optimization.
- * Increased from 512 to buffer multiple large frames and reduce queue pressure.
- * Each slot holds one message (up to 921KB). With 4096 slots, can buffer ~3.7GB.
+ * Each slot holds one WebSocket fragment (typically 4096 bytes, max 921KB).
+ * With 512 slots, buffers ~2MB maximum. Fragments beyond capacity are dropped.
+ * The dispatch thread must drain this queue by reassembling and processing packets.
  */
 #define WEBSOCKET_RECV_QUEUE_SIZE 512
 
