@@ -509,13 +509,20 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       break;
     }
 
+    // Check if cleanup is already in progress to avoid race condition with LWS_CALLBACK_CLOSED
+    if (conn_data && conn_data->cleaning_up) {
+      log_debug("RECEIVE: Cleanup in progress, ignoring fragment");
+      break;
+    }
+
     // Handler thread was spawned in LWS_CALLBACK_ESTABLISHED (or RECEIVE fallback)
     // (It fires for server-side connections and properly initializes client_info_t)
 
     // Get transport data using snapshotted pointer
     websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport_snapshot->impl_data;
-    if (!ws_data) {
-      log_error("WebSocket transport has no implementation data");
+    if (!ws_data || !ws_data->recv_queue) {
+      log_error("WebSocket transport has no implementation data or recv_queue (ws_data=%p, recv_queue=%p)",
+                (void *)ws_data, ws_data ? (void *)ws_data->recv_queue : NULL);
       break;
     }
 
@@ -601,7 +608,16 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
     mutex_lock(&ws_data->recv_mutex);
 
-    // Check available space BEFORE writing to decide on flow control
+    // Re-check recv_queue is still valid after acquiring lock
+    // (LWS_CALLBACK_CLOSED may have cleared it while we were waiting for the lock)
+    if (!ws_data->recv_queue) {
+      log_warn("recv_queue was cleared during lock wait, dropping fragment");
+      mutex_unlock(&ws_data->recv_mutex);
+      buffer_pool_free(NULL, msg.data, msg.len);
+      break;
+    }
+
+    // Snapshot queue status for logging (safe now that we hold the lock)
     size_t queue_current_size = ringbuffer_size(ws_data->recv_queue);
     size_t queue_capacity = ws_data->recv_queue->capacity;
     size_t queue_free = queue_capacity - queue_current_size;
@@ -702,7 +718,7 @@ static struct lws_protocols websocket_protocols[] = {
 // Using server_max_window_bits=11 (2KB window) reduces decompression buffer needs and
 // prevents the "rx buffer underflow" error while maintaining reasonable compression.
 static const struct lws_extension websocket_extensions[] = {
-    {"permessage-deflate", lws_extension_callback_pm_deflate, "permessage-deflate; server_max_window_bits=11"},
+    {"permessage-deflate", lws_extension_callback_pm_deflate, "permessage-deflate; server_max_window_bits=8"},
     {NULL, NULL, NULL}};
 
 asciichat_error_t websocket_server_init(websocket_server_t *server, const websocket_server_config_t *config) {
@@ -726,13 +742,13 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   struct lws_context_creation_info info = {0};
   info.port = config->port;
   info.protocols = websocket_protocols;
-  info.gid = (gid_t)-1;                   // Cast to avoid undefined behavior with unsigned type
-  info.uid = (uid_t)-1;                   // Cast to avoid undefined behavior with unsigned type
-  info.options = 0;                       // Don't validate UTF8 - we send binary ACIP packets
-  info.extensions = websocket_extensions; // Re-enable compression with reduced window bits
-  // RX buffer underflow fix: Using server_max_window_bits=11 (2KB window) to prevent
-  // decompression buffer exhaustion while maintaining 5:1+ compression ratio for video frames
-  info.pt_serv_buf_size = 2097152; // 2MB per-thread buffer for permessage-deflate workspace
+  info.gid = (gid_t)-1;   // Cast to avoid undefined behavior with unsigned type
+  info.uid = (uid_t)-1;   // Cast to avoid undefined behavior with unsigned type
+  info.options = 0;       // Don't validate UTF8 - we send binary ACIP packets
+  info.extensions = NULL; // Disable permessage-deflate - causes rx buffer underflow in LWS 4.5.2
+  // TODO: Re-enable compression with proper LWS configuration if needed for bandwidth optimization
+  // Current issue: Even with server_max_window_bits=11, large fragmented messages still trigger
+  // "lws_extension_callback_pm_deflate: rx buffer underflow" errors in LWS 4.5.2
 
   // Create libwebsockets context
   server->context = lws_create_context(&info);

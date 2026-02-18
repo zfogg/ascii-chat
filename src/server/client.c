@@ -1276,10 +1276,17 @@ int remove_client(server_context_t *server_ctx, uint32_t client_id) {
   }
 
   // Destroy ACIP transport before closing socket
-  if (target_client && target_client->transport) {
+  // For WebSocket clients: LWS_CALLBACK_CLOSED already closed and destroyed the transport
+  // Trying to destroy it again causes heap-use-after-free since LWS callbacks might still fire
+  // For TCP clients: transport is ours to clean up
+  if (target_client && target_client->transport && target_client->is_tcp_client) {
     acip_transport_destroy(target_client->transport);
     target_client->transport = NULL;
-    log_debug("Destroyed ACIP transport for client %u", client_id);
+    log_debug("Destroyed ACIP transport for TCP client %u", client_id);
+  } else if (target_client && target_client->transport && !target_client->is_tcp_client) {
+    // WebSocket client - just NULL it out, LWS_CALLBACK_CLOSED already destroyed it
+    target_client->transport = NULL;
+    log_debug("Skipped transport destruction for WebSocket client %u (LWS already destroyed)", client_id);
   }
 
   // Now safe to close the socket (threads are stopped)
