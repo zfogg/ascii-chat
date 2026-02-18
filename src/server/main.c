@@ -1562,13 +1562,6 @@ static void *websocket_client_handler(void *arg) {
   log_info("[WS_HANDLER] Client %d disconnected (waited %d seconds, active=%d, server_should_exit=%d)", client_id,
            wait_count / 10, atomic_load(&client_check->active), atomic_load(server_ctx->server_should_exit));
 
-  // Cleanup client from server (matches TCP handler behavior at line 1418)
-  // This calls session_host_remove_client and stops all threads
-  if (remove_client(server_ctx, (uint32_t)client_id) != 0) {
-    log_error("CRITICAL BUG: Failed to remove WebSocket client %d from server (potential zombie client leak!)",
-              client_id);
-  }
-
   SAFE_FREE(ctx);
   return NULL;
 }
