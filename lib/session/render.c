@@ -85,11 +85,12 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   bool is_paused = false;
 
   // Keyboard input initialization (if keyboard handler is provided)
-  // Allow keyboard in snapshot mode too (for help screen toggle debugging)
-  // Only enable keyboard if BOTH stdin AND stdout are TTYs to avoid buffering issues
-  // when tcsetattr() modifies the tty line discipline
+  // Disable keyboard in snapshot mode and non-interactive terminals
+  // Only enable keyboard if BOTH:
+  // 1. Terminal is interactive (stdin/stdout are TTYs)
+  // 2. NOT in snapshot mode
   bool keyboard_enabled = false;
-  if (keyboard_handler && terminal_is_interactive()) {
+  if (keyboard_handler && terminal_is_interactive() && !snapshot_mode) {
     // Try to initialize keyboard if both stdin and stdout are TTYs in interactive mode
     asciichat_error_t kb_result = keyboard_init();
     if (kb_result == ASCIICHAT_OK) {
@@ -291,7 +292,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         START_TIMER("render_frame");
 
         // Check if help screen is active - if so, render help instead of frame
-        if (display && session_display_is_help_active(display)) {
+        // Help screen is disabled in snapshot mode and non-interactive terminals (keyboard disabled)
+        if (display && session_display_is_help_active(display) && terminal_is_interactive() && !snapshot_mode) {
           session_display_render_help(display);
         } else {
           session_display_render_frame(display, ascii_frame);
