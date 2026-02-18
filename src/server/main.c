@@ -590,10 +590,18 @@ static void server_handle_sigint(int sigint) {
   atomic_store(&g_tcp_server.running, false);
   if (g_tcp_server.listen_socket != INVALID_SOCKET_VALUE) {
     socket_close(g_tcp_server.listen_socket);
+    g_tcp_server.listen_socket = INVALID_SOCKET_VALUE;
   }
   if (g_tcp_server.listen_socket6 != INVALID_SOCKET_VALUE) {
     socket_close(g_tcp_server.listen_socket6);
+    g_tcp_server.listen_socket6 = INVALID_SOCKET_VALUE;
   }
+
+  // STEP 3b: Signal WebSocket server to stop
+  // Without this, lws_service() could block for up to 50ms before checking the running flag.
+  // websocket_server_cancel_service() is async-signal-safe (uses only atomic operations).
+  atomic_store(&g_websocket_server.running, false);
+  websocket_server_cancel_service(&g_websocket_server);
 
   // STEP 4: DO NOT access client data structures in signal handler
   // Signal handlers CANNOT safely use mutexes, rwlocks, or access complex data structures
@@ -1122,18 +1130,28 @@ static void server_handle_sigterm(int sigterm) {
   (void)(sigterm);
   atomic_store(&g_server_should_exit, true);
 
-  // Log without file I/O (no mutex, avoids deadlocks in signal handlers)
-  log_info_nofile("SIGTERM received - shutting down server...");
+  // Use raw write() instead of log_info_nofile() - see SIGINT handler for explanation.
+  // log_info_nofile() calls functions that are NOT signal-safe (can deadlock if signal
+  // interrupts a thread holding a lock that log_info_nofile() tries to acquire).
+  static const char sigterm_msg[] = "SIGTERM received - shutting down server...\n";
+  (void)write(STDERR_FILENO, sigterm_msg, sizeof(sigterm_msg) - 1);
 
   // Stop the TCP server accept loop immediately.
   // Without this, the select() call with ACCEPT_TIMEOUT could delay shutdown.
   atomic_store(&g_tcp_server.running, false);
   if (g_tcp_server.listen_socket != INVALID_SOCKET_VALUE) {
     socket_close(g_tcp_server.listen_socket);
+    g_tcp_server.listen_socket = INVALID_SOCKET_VALUE;
   }
   if (g_tcp_server.listen_socket6 != INVALID_SOCKET_VALUE) {
     socket_close(g_tcp_server.listen_socket6);
+    g_tcp_server.listen_socket6 = INVALID_SOCKET_VALUE;
   }
+
+  // Stop the WebSocket server event loop immediately.
+  // Without this, lws_service() could block for up to 50ms before checking the running flag.
+  atomic_store(&g_websocket_server.running, false);
+  websocket_server_cancel_service(&g_websocket_server);
 }
 
 /**

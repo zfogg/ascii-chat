@@ -646,12 +646,14 @@ typedef enum {
 #define OPT_STATUS_SCREEN_DEFAULT true
 
 /** @brief Default log format string - release mode (simple format with timestamp, level, and message) */
-#define OPT_LOG_FORMAT_DEFAULT_RELEASE "%color(*, [%time(%H:%M:%S)]) %color(*, [%level_aligned]) %colored_message"
+#define OPT_LOG_FORMAT_DEFAULT_RELEASE                                                                                 \
+  "[%color(*, %time(%H)):%color(*, %time(%M)):%color(*, %time(%S))] [%color(*, %level_aligned)] %colored_message"
 
 /** @brief Default log format string - debug mode (verbose with thread ID, file relative path, line, and function) */
 #define OPT_LOG_FORMAT_DEFAULT_DEBUG                                                                                   \
-  "%color(*, [%time(%H:%M:%S)]) %color(*, [%level_aligned]) [tid:%color(GREY, %tid)] %color(DEBUG, "                   \
-  "%file_relative):%color(GREY, %line) in %color(DEV, %func)(): %colored_message"
+  "[%color(*, %time(%H)):%color(*, %time(%M)):%color(*, %time(%S))] [%color(*, %level_aligned)]"                       \
+  "[tid:%color(GREY, %tid)] %color(DEBUG, %file_relative):%color(GREY, %line)@%color(DEV, %func)(): "                  \
+  "%colored_message"
 
 /** @brief Default log format string (selected based on build mode)
  *
