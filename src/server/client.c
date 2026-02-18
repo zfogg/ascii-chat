@@ -1772,6 +1772,8 @@ void *client_send_thread_func(void *arg) {
          atomic_load(&client->send_thread_running)) {
     loop_iteration_count++;
     bool sent_something = false;
+    uint64_t loop_start_ns = time_get_ns();
+    log_info("[SEND_LOOP_%d] START: client=%u", loop_iteration_count, atomic_load(&client->client_id));
 
     // PRIORITY: Drain all queued audio packets before video
     // Audio must not be rate-limited by video frame sending (16.67ms)
@@ -1916,6 +1918,8 @@ void *client_send_thread_func(void *arg) {
       }
 
       sent_something = true;
+      uint64_t audio_done_ns = time_get_ns();
+      log_info("[SEND_LOOP_%d] AUDIO_SENT: took %.2fms", loop_iteration_count, (audio_done_ns - loop_start_ns) / 1e6);
 
       // Small sleep to let more audio packets queue (helps batching efficiency)
       if (audio_packet_count > 0) {
@@ -1923,6 +1927,7 @@ void *client_send_thread_func(void *arg) {
       }
     } else {
       // No audio packets - brief sleep to avoid busy-looping, then check for other tasks
+      log_info("[SEND_LOOP_%d] NO_AUDIO: sleeping 1ms", loop_iteration_count);
       platform_sleep_us(1000); // 1ms - enough for audio render thread to queue more packets
 
       // Check if session rekeying should be triggered
@@ -1963,6 +1968,7 @@ void *client_send_thread_func(void *arg) {
 
     // Always consume frames from the buffer to prevent accumulation
     // Rate-limit the actual sending, but always mark frames as consumed
+    uint64_t video_check_ns = time_get_ns();
     if (!client->outgoing_video_buffer) {
       // Buffer has been destroyed (client is shutting down).
       // Exit cleanly instead of looping forever trying to access freed memory.
@@ -1974,6 +1980,9 @@ void *client_send_thread_func(void *arg) {
     // Get latest frame from double buffer (lock-free operation)
     // This marks the frame as consumed even if we don't send it yet
     const video_frame_t *frame = video_frame_get_latest(client->outgoing_video_buffer);
+    uint64_t frame_get_ns = time_get_ns();
+    log_info("[SEND_LOOP_%d] VIDEO_GET_FRAME: took %.3fms, frame=%p", loop_iteration_count,
+             (frame_get_ns - video_check_ns) / 1e6, (void *)frame);
     log_dev_every(4500000, "Send thread: video_frame_get_latest returned %p for client %u", (void *)frame,
                   client->client_id);
 
@@ -1994,6 +2003,8 @@ void *client_send_thread_func(void *arg) {
                   (time_since_last_send_us >= video_send_interval_us));
 
     if (current_time_us - last_video_send_time >= video_send_interval_us) {
+      log_info("✓ SEND_TIME_READY: client_id=%u time_since=%llu interval=%llu", atomic_load(&client->client_id),
+               (unsigned long long)time_since_last_send_us, (unsigned long long)video_send_interval_us);
       uint64_t frame_start_ns = time_get_ns();
 
       // GRID LAYOUT CHANGE: Check if render thread has buffered a frame with different source count
@@ -2026,20 +2037,18 @@ void *client_send_thread_func(void *arg) {
                     (void *)frame->data, frame->size);
 
       if (!frame->data) {
-        SET_ERRNO(ERROR_INVALID_STATE, "Client %u has no valid frame data: frame=%p, data=%p", client->client_id, frame,
-                  frame->data);
-        log_dev_every(4500000, "Send thread: Skipping frame send due to NULL frame->data");
+        log_info("✗ SKIP_NO_DATA: client_id=%u frame=%p data=%p", atomic_load(&client->client_id), (void *)frame,
+                 (void *)frame->data);
         continue;
       }
+      log_info("✓ FRAME_DATA_OK: client_id=%u data=%p", atomic_load(&client->client_id), (void *)frame->data);
 
       if (frame->data && frame->size == 0) {
-        // NOTE: This means the we're not ready to send ascii to the client and
-        // should wait a little bit.
-        log_dev_every(4500000, "Send thread: Skipping frame send due to frame->size == 0");
-        log_dev_every(4500000, "Client %u has no valid frame size: size=%zu", client->client_id, frame->size);
+        log_info("✗ SKIP_ZERO_SIZE: client_id=%u size=%zu", atomic_load(&client->client_id), frame->size);
         platform_sleep_us(1000); // 1ms sleep
         continue;
       }
+      log_info("✓ FRAME_SIZE_OK: client_id=%u size=%zu", atomic_load(&client->client_id), frame->size);
 
       // Snapshot frame metadata (safe with double-buffer system)
       const char *frame_data = (const char *)frame->data; // Pointer snapshot - data is stable in front buffer
@@ -2058,10 +2067,11 @@ void *client_send_thread_func(void *arg) {
       mutex_unlock(&client->client_state_mutex);
 
       if (!crypto_ready) {
-        log_debug_every(LOG_RATE_DEFAULT, "Skipping frame send to client %u - crypto handshake not complete",
-                        client->client_id);
+        log_info("⚠️  SKIP_SEND_CRYPTO: client_id=%u crypto_initialized=%d no_encrypt=%d",
+                 atomic_load(&client->client_id), client->crypto_initialized, GET_OPTION(no_encrypt));
         continue; // Skip this frame, will try again on next loop iteration
       }
+      log_info("✓ CRYPTO_READY: client_id=%u about to send frame", atomic_load(&client->client_id));
 
       // Get transport reference briefly to avoid deadlock on TCP buffer full
       // ACIP transport handles header building, CRC32, encryption internally
@@ -2081,8 +2091,13 @@ void *client_send_thread_func(void *arg) {
       // Network I/O happens OUTSIDE the mutex
       log_dev_every(4500000, "SEND_ASCII_FRAME: client_id=%u size=%zu width=%u height=%u",
                     atomic_load(&client->client_id), frame_size, width, height);
+      uint64_t send_start_ns = time_get_ns();
+      log_info("[SEND_LOOP_%d] FRAME_SEND_START: size=%zu", loop_iteration_count, frame_size);
       asciichat_error_t send_result = acip_send_ascii_frame(frame_transport, frame_data, frame_size, width, height,
                                                             atomic_load(&client->client_id));
+      uint64_t send_end_ns = time_get_ns();
+      uint64_t send_ms = (send_end_ns - send_start_ns) / 1e6;
+      log_info("[SEND_LOOP_%d] FRAME_SEND_END: took %.2fms, result=%d", loop_iteration_count, send_ms, send_result);
       uint64_t step5_ns = time_get_ns();
 
       if (send_result != ASCIICHAT_OK) {
@@ -2125,7 +2140,14 @@ void *client_send_thread_func(void *arg) {
 
     // If we didn't send anything, sleep briefly to prevent busy waiting
     if (!sent_something) {
+      log_info("[SEND_LOOP_%d] IDLE_SLEEP: nothing sent", loop_iteration_count);
       platform_sleep_us(1000); // 1ms sleep
+    }
+    uint64_t loop_end_ns = time_get_ns();
+    uint64_t loop_ms = (loop_end_ns - loop_start_ns) / 1e6;
+    if (loop_ms > 10) {
+      log_warn("[SEND_LOOP_%d] SLOW_ITERATION: took %.2fms (client=%u)", loop_iteration_count, loop_ms,
+               atomic_load(&client->client_id));
     }
   }
 
