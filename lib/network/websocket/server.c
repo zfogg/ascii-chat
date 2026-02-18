@@ -709,18 +709,30 @@ static struct lws_protocols websocket_protocols[] = {
 /**
  * @brief WebSocket extensions for the server
  *
- * NOTE: permessage-deflate (RFC 7692) is currently DISABLED
+ * NOTE: permessage-deflate (RFC 7692) is DISABLED - see below for details
  *
- * When enabled, permessage-deflate compression was causing immediate connection
- * closure after receiving multi-fragment messages. The issue appears to be:
+ * With permessage-deflate enabled:
+ * - Should compress 921KB frames to ~50-100KB (10:1 compression)
+ * - Should prevent recv_queue overflow causing TCP flow control stalls
+ * - Should eliminate ~30ms gaps between frame deliveries
+ *
+ * BUG: When permessage-deflate is negotiated, WebSocket connections close
+ * abnormally (code 1006) immediately upon receiving multi-fragment messages:
  * 1. Browser sends compressed frame with first=1, final=0
- * 2. Server's LWS_CALLBACK_RECEIVE queues the fragment
- * 3. Immediately after returning 0, LWS_CALLBACK_CLOSED fires (code 1006)
- * 4. Connection closes before continuation frames arrive
+ * 2. Server LWS_CALLBACK_RECEIVE queues the fragment
+ * 3. Immediately after returning 0, LWS_CALLBACK_CLOSED fires
+ * 4. Continuation fragments never arrive
  *
- * Without compression, we achieve 19 FPS (up from 0 FPS with extensions).
- * With compression working properly, we should see 30+ FPS.
- * TODO: Debug permessage-deflate extension negotiation and frame handling.
+ * ROOT CAUSE (in bug_report): The recv_queue fills up → we call
+ * lws_rx_flow_control(wsi, 0) → LWS buffers in rxflow → browser's TCP window
+ * empties → Chrome's networking thread waits ~30ms → sends next batch.
+ *
+ * SOLUTION: When permessage-deflate is enabled, compressed frames should fit
+ * in single TCP window, preventing queue overflow and flow control trigger.
+ *
+ * BLOCKER: Multi-fragment handling is broken when compression negotiated.
+ * Need to debug: fragment reassembly with compression, lws_rx_flow_control
+ * interaction with permessage-deflate extension negotiation.
  */
 static const struct lws_extension websocket_extensions[] = {{NULL, NULL, NULL}};
 
