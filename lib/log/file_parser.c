@@ -249,59 +249,73 @@ size_t log_file_parser_merge_and_dedupe(const session_log_entry_t *buffer_entrie
   // We must recolor them with ANSI codes for terminal display AND syntax-highlight the message content
   for (size_t i = 0; i < file_count; i++) {
     char colored[SESSION_LOG_LINE_MAX];
+    char final_line[SESSION_LOG_LINE_MAX];
+    char fallback_line[SESSION_LOG_LINE_MAX];
+
     size_t colored_len = log_recolor_plain_entry(file_entries[i].message, colored, sizeof(colored));
 
-    // Attempt to use colored version if recoloring succeeded, otherwise use plain text as base
+    // Determine base text: colored version if recoloring succeeded, otherwise plain
     const char *base_text = (colored_len > 0) ? colored : file_entries[i].message;
+    const char *final_content = base_text; // Default fallback
 
     // Try to apply message syntax highlighting
     const char *plain_msg = file_entries[i].message;
     const char *msg_marker = strstr(plain_msg, "(): ");
+
     if (msg_marker) {
       const char *plain_message = msg_marker + 4;
       const char *highlighted_msg = colorize_log_message(plain_message);
 
       if (highlighted_msg && *highlighted_msg) {
-        // Reconstruct the full line combining base (colored or plain) + highlighted message
-        char final_line[SESSION_LOG_LINE_MAX];
+        // Reconstruct header + highlighted message
         size_t final_len = 0;
-
-        // Copy base text up to and including "(): "
         const char *p = base_text;
         while (*p && final_len < SESSION_LOG_LINE_MAX - 1) {
           final_line[final_len++] = *p;
-
-          // Track when we see "(): "
+          // Stop after "(): "
           if (*p == '(' && *(p + 1) == ')' && *(p + 2) == ':' && *(p + 3) == ' ') {
-            // Copy the ": " part
             final_line[final_len++] = *(++p); // ')'
             final_line[final_len++] = *(++p); // ':'
             final_line[final_len++] = *(++p); // ' '
-            p++;                              // Move past the space
-            break;                            // Stop here, append highlighted message
+            p++;
+            break;
           }
           p++;
         }
-
-        // Append the highlighted message
+        // Append highlighted message
         const char *msg_ptr = highlighted_msg;
         while (*msg_ptr && final_len < SESSION_LOG_LINE_MAX - 1) {
           final_line[final_len++] = *msg_ptr++;
         }
         final_line[final_len] = '\0';
-
-        SAFE_STRNCPY(merged[buffer_count + i].message, final_line, SESSION_LOG_LINE_MAX - 1);
-        merged[buffer_count + i].message[SESSION_LOG_LINE_MAX - 1] = '\0';
-      } else {
-        // Highlighting failed, use base text as-is
-        SAFE_STRNCPY(merged[buffer_count + i].message, base_text, SESSION_LOG_LINE_MAX - 1);
-        merged[buffer_count + i].message[SESSION_LOG_LINE_MAX - 1] = '\0';
+        final_content = final_line;
       }
-    } else {
-      // No message marker found, use base text as-is
-      SAFE_STRNCPY(merged[buffer_count + i].message, base_text, SESSION_LOG_LINE_MAX - 1);
-      merged[buffer_count + i].message[SESSION_LOG_LINE_MAX - 1] = '\0';
+    } else if (colored_len == 0) {
+      // No message marker and recoloring failed - try message colorization fallback
+      // Search for "(): " (function delimiter) to find where message starts
+      const char *msg_delimiter = strstr(plain_msg, "(): ");
+      const char *msg_start = msg_delimiter ? (msg_delimiter + 4) : plain_msg;
+
+      const char *colored_msg = colorize_log_message(msg_start);
+      if (colored_msg && *colored_msg) {
+        // Combine plain header with colored message
+        size_t header_len = msg_start - plain_msg;
+        if (header_len < sizeof(fallback_line) - 1) {
+          memcpy(fallback_line, plain_msg, header_len);
+          size_t pos = header_len;
+          const char *src = colored_msg;
+          while (*src && pos < sizeof(fallback_line) - 1) {
+            fallback_line[pos++] = *src++;
+          }
+          fallback_line[pos] = '\0';
+          final_content = fallback_line;
+        }
+      }
     }
+
+    // Single strncpy at the end
+    SAFE_STRNCPY(merged[buffer_count + i].message, final_content, SESSION_LOG_LINE_MAX - 1);
+    merged[buffer_count + i].message[SESSION_LOG_LINE_MAX - 1] = '\0';
     merged[buffer_count + i].sequence = file_entries[i].sequence;
   }
 
