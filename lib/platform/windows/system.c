@@ -999,15 +999,15 @@ int platform_format_backtrace_symbols(char *buffer, size_t buffer_size, const ch
  *
  * Captures and prints a backtrace using platform_print_backtrace_symbols().
  */
-void platform_print_backtrace(int skip_frames) {
+void platform_print_backtrace_impl(int skip_frames, const char *file, int line, const char *func) {
   void *buffer[32];
   int size = platform_backtrace(buffer, 32);
 
   if (size > 0) {
     char **symbols = platform_backtrace_symbols(buffer, size);
 
-    // Skip platform_print_backtrace itself (1 frame) + any additional frames requested
-    platform_print_backtrace_symbols("Backtrace", symbols, size, 1 + skip_frames, 0, NULL);
+    // Skip platform_print_backtrace_impl itself (1 frame) + any additional frames requested
+    platform_print_backtrace_symbols("Backtrace", symbols, size, 1 + skip_frames, 0, NULL, file, line, func);
 
     platform_backtrace_symbols_destroy(symbols);
   }

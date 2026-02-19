@@ -557,6 +557,7 @@ typedef bool (*backtrace_frame_filter_t)(const char *frame);
  * @brief Print pre-resolved backtrace symbols with consistent formatting
  *
  * Uses colored format for all backtraces:
+ *   [HH:MM:SS.MS] [WARN] [tid:TID] file:line@func(): Label
  *   [0] crypto_handshake_server_complete() (lib/crypto/handshake.c:1471)
  *   [1] server_crypto_handshake() (src/server/crypto.c:511)
  *
@@ -566,11 +567,14 @@ typedef bool (*backtrace_frame_filter_t)(const char *frame);
  * @param skip_frames Number of frames to skip from the start
  * @param max_frames Maximum frames to print (0 = unlimited)
  * @param filter Optional filter callback to skip specific frames (NULL = no filtering)
+ * @param file Source file where backtrace was triggered (or NULL in release builds)
+ * @param line Source line where backtrace was triggered (or 0 in release builds)
+ * @param func Function where backtrace was triggered (or NULL in release builds)
  *
  * @ingroup platform
  */
 void platform_print_backtrace_symbols(const char *label, char **symbols, int count, int skip_frames, int max_frames,
-                                      backtrace_frame_filter_t filter);
+                                      backtrace_frame_filter_t filter, const char *file, int line, const char *func);
 
 /**
  * @brief Format pre-resolved backtrace symbols to a buffer
@@ -593,15 +597,35 @@ int platform_format_backtrace_symbols(char *buffer, size_t buffer_size, const ch
                                       int skip_frames, int max_frames, backtrace_frame_filter_t filter);
 
 /**
- * @brief Print a backtrace of the current call stack
+ * @brief Print a backtrace of the current call stack (implementation)
  * @param skip_frames Number of frames to skip from the top
+ * @param file Source file name (or NULL in release builds)
+ * @param line Source line number (or 0 in release builds)
+ * @param func Function name (or NULL in release builds)
  *
+ * Implementation function - use platform_print_backtrace() macro instead.
  * Captures a backtrace and prints it using platform_print_backtrace_symbols().
  * Useful for debugging crashes or errors.
  *
  * @ingroup platform
  */
-void platform_print_backtrace(int skip_frames);
+void platform_print_backtrace_impl(int skip_frames, const char *file, int line, const char *func);
+
+/**
+ * @brief Print a backtrace of the current call stack
+ * @param skip_frames Number of frames to skip from the top
+ *
+ * Macro that captures the call site (file, line, function) and passes it
+ * to the implementation. In release builds, file/line/func are NULL.
+ * Useful for debugging crashes or errors.
+ *
+ * @ingroup platform
+ */
+#ifndef NDEBUG
+#define platform_print_backtrace(skip_frames) platform_print_backtrace_impl((skip_frames), __FILE__, __LINE__, __func__)
+#else
+#define platform_print_backtrace(skip_frames) platform_print_backtrace_impl((skip_frames), NULL, 0, NULL)
+#endif
 
 // ============================================================================
 // Safe String Functions

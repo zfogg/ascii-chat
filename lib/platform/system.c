@@ -533,7 +533,7 @@ int safe_vsnprintf(char *buffer, size_t buffer_size, const char *format, va_list
  * @param filter Optional filter callback to skip specific frames (NULL = no filtering)
  */
 void platform_print_backtrace_symbols(const char *label, char **symbols, int count, int skip_frames, int max_frames,
-                                      backtrace_frame_filter_t filter) {
+                                      backtrace_frame_filter_t filter, const char *file, int line, const char *func) {
   if (!symbols || count <= 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: symbols=%p, count=%d", symbols, count);
     return;
@@ -574,8 +574,8 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
     strncpy(colored_label_buf, colored_label_ptr, sizeof(colored_label_buf) - 1);
     colored_label_buf[sizeof(colored_label_buf) - 1] = '\0';
 
-    int len = log_template_apply(format, log_header_buf, sizeof(log_header_buf), LOG_WARN, timestamp, __FILE__,
-                                 __LINE__, __func__, tid_val, colored_label_buf, true, time_ns);
+    int len = log_template_apply(format, log_header_buf, sizeof(log_header_buf), LOG_WARN, timestamp, file, line, func,
+                                 tid_val, colored_label_buf, true, time_ns);
     if (len > 0) {
       // Successfully formatted with logging template
       colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,

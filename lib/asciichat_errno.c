@@ -302,7 +302,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
   if (size > 0) {
     char **symbols = platform_backtrace_symbols(buffer, size);
     if (symbols) {
-      platform_print_backtrace_symbols("\nFATAL BACKTRACE", symbols, size, 0, 0, skip_backtrace_frame);
+      platform_print_backtrace_symbols("\nFATAL BACKTRACE", symbols, size, 0, 0, skip_backtrace_frame, NULL, 0, NULL);
       platform_backtrace_symbols_destroy(symbols);
     }
   }
@@ -353,7 +353,7 @@ void asciichat_print_error_context(const asciichat_error_context_t *context) {
   // Print stack trace from library error
   if (context->stack_depth > 0 && context->backtrace_symbols) {
     platform_print_backtrace_symbols("\nBacktrace from library error", context->backtrace_symbols, context->stack_depth,
-                                     0, 0, skip_backtrace_frame);
+                                     0, 0, skip_backtrace_frame, NULL, 0, NULL);
   }
 }
 

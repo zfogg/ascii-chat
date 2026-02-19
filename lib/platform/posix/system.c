@@ -718,7 +718,7 @@ int platform_format_backtrace_symbols(char *buffer, size_t buffer_size, const ch
  *
  * Captures and prints a backtrace using platform_print_backtrace_symbols().
  */
-void platform_print_backtrace(int skip_frames) {
+void platform_print_backtrace_impl(int skip_frames, const char *file, int line, const char *func) {
   void *buffer[32];
   int size = platform_backtrace(buffer, 32);
 
@@ -728,7 +728,9 @@ void platform_print_backtrace(int skip_frames) {
     // Skip internal frames (platform_backtrace + unresolvable return address) + any additional frames requested
     // TODO: Verify if skipping 2 frames is correct across all platforms and compiler optimizations.
     // This value may need adjustment on macOS, Windows, or with different optimization levels.
-    platform_print_backtrace_symbols("Backtrace", symbols, size, 2 + skip_frames, 0, NULL);
+    // In debug builds, file/line/func from call site are used in the header;
+    // in release builds, they are NULL
+    platform_print_backtrace_symbols("Backtrace", symbols, size, 2 + skip_frames, 0, NULL, file, line, func);
 
     platform_backtrace_symbols_destroy(symbols);
   }
