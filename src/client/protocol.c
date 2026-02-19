@@ -75,6 +75,7 @@
 
 #include "protocol.h"
 #include "main.h"
+#include "../main.h" // Global exit API
 #include "server.h"
 #include "display.h"
 #include "capture.h"

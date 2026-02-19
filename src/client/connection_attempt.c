@@ -24,6 +24,7 @@
 #include "protocol.h"
 #include "crypto.h"
 #include "main.h"
+#include "../main.h" // Global exit API
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/options/options.h>

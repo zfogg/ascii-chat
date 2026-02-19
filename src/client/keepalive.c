@@ -63,6 +63,7 @@
 
 #include "keepalive.h"
 #include "main.h"
+#include "../main.h" // Global exit API
 #include "server.h"
 #include "crypto.h"
 #include <ascii-chat/util/fps.h>

@@ -87,6 +87,7 @@
  */
 #include "capture.h"
 #include "main.h"
+#include "../main.h" // Global exit API
 #include "server.h"
 #include "audio.h"
 #include <ascii-chat/session/capture.h>

@@ -66,21 +66,3 @@
  * @endcode
  */
 int discovery_main(void);
-
-/**
- * @brief Check if discovery mode should exit
- *
- * Thread-safe check of the global exit flag. Used by all discovery mode
- * threads to coordinate graceful shutdown.
- *
- * @return true if exit signal received, false otherwise
- */
-bool discovery_should_exit(void);
-
-/**
- * @brief Signal discovery mode to exit
- *
- * Sets the global exit flag to trigger graceful shutdown of all discovery
- * mode threads. Thread-safe and can be called from signal handlers.
- */
-void discovery_signal_exit(void);

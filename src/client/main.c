@@ -64,6 +64,7 @@
  */
 
 #include "main.h"
+#include "../main.h" // Global exit API
 #include "server.h"
 #include "protocol.h"
 #include "crypto.h"
@@ -124,9 +125,6 @@
  * Global State Variables
  * ============================================================================ */
 
-/** Global flag indicating shutdown has been requested */
-atomic_bool g_should_exit = false;
-
 /**
  * Global client worker thread pool
  *
@@ -159,82 +157,10 @@ app_client_t *g_client = NULL;
  */
 struct webrtc_peer_manager *g_peer_manager = NULL;
 
-/**
- * Check if shutdown has been requested
- *
- * @return true if shutdown requested, false otherwise
+/* Signal handling is now centralized in src/main.c via setup_signal_handlers()
+ * Client mode uses set_interrupt_callback(server_connection_shutdown) to register
+ * its network shutdown as the interrupt handler. SIGWINCH is still client-specific.
  */
-bool should_exit() {
-  return atomic_load(&g_should_exit);
-}
-
-/**
- * Signal that shutdown should be requested
- */
-void signal_exit() {
-  atomic_store(&g_should_exit, true);
-}
-
-/**
- * Console control handler for Ctrl+C and related events
- *
- * Implements double-tap behavior: first Ctrl+C requests graceful shutdown,
- * second Ctrl+C within the same session forces immediate exit.
- *
- * @note On Windows, this runs in a separate thread (via SetConsoleCtrlHandler)
- *       and can safely use standard library functions.
- * @note On Unix, this runs in signal context - use only async-signal-safe functions.
- *
- * @param event The control event that occurred
- * @return true if the event was handled
- */
-static bool console_ctrl_handler(console_ctrl_event_t event) {
-  // Handle Ctrl+C, Ctrl+Break, and SIGTERM (CONSOLE_CLOSE)
-  if (event != CONSOLE_CTRL_C && event != CONSOLE_CTRL_BREAK && event != CONSOLE_CLOSE) {
-    return false;
-  }
-
-  // If this is the second Ctrl-C, force exit
-  static _Atomic int ctrl_c_count = 0;
-  int count = atomic_fetch_add(&ctrl_c_count, 1) + 1;
-
-  if (count > 1) {
-    platform_force_exit(1);
-  }
-
-  // Signal all subsystems to shutdown (async-signal-safe operations only)
-  atomic_store(&g_should_exit, true);
-  server_connection_shutdown(); // Only uses atomics and socket_shutdown
-
-  // Let the main thread handle cleanup via atexit handlers.
-  // The webcam_flush() call in capture_stop_thread() will interrupt
-  // any blocking ReadSample() calls, allowing clean shutdown.
-
-  return true; // Event handled
-}
-
-/**
- * Unix signal handler for graceful shutdown on SIGTERM
- *
- * @param sig The signal number (unused)
- */
-#ifndef _WIN32
-static void client_handle_sigterm(int sig) {
-  (void)sig; // Unused
-  // Log to console only (text or JSON depending on --json flag)
-  // Using log_console() which is signal-safe and handles both formats
-  log_console(LOG_INFO, "SIGTERM received - shutting down client...");
-  // Signal all subsystems to shutdown (async-signal-safe operations only)
-  atomic_store(&g_should_exit, true);
-  server_connection_shutdown(); // Only uses atomics and socket_shutdown
-}
-#else
-// Windows-compatible signal handler (no-op implementation)
-static void client_handle_sigterm(int sig) {
-  (void)sig;
-  // SIGTERM handled via console_ctrl_handler on Windows
-}
-#endif
 
 /**
  * Platform-compatible SIGWINCH handler for terminal resize events
@@ -296,7 +222,7 @@ static void shutdown_client() {
   shutdown_done = true;
 
   // Set global shutdown flag to stop all threads
-  atomic_store(&g_should_exit, true);
+  signal_exit();
 
   // IMPORTANT: Stop all protocol threads BEFORE cleaning up resources
   // protocol_stop_connection() shuts down the socket to interrupt blocking recv(),
@@ -514,17 +440,14 @@ int client_main(void) {
     (void)platform_enable_keepawake();
   }
 
-  // Install console control handler for graceful Ctrl+C handling
-  // Uses SetConsoleCtrlHandler on Windows, sigaction on Unix - more reliable than CRT signal()
-  platform_set_console_ctrl_handler(console_ctrl_handler);
+  // Register client interrupt callback (socket shutdown on SIGTERM/Ctrl+C)
+  // Global signal handlers (SIGTERM, SIGPIPE, Ctrl+C) are set up in setup_signal_handlers() in src/main.c
+  set_interrupt_callback(server_connection_shutdown);
 
-  // Register signal handlers for graceful shutdown, terminal resize, and error handling
-  platform_signal_handler_t signal_handlers[] = {
-      {SIGWINCH, client_handle_sigwinch}, // Terminal resize (Unix only)
-      {SIGTERM, client_handle_sigterm},   // SIGTERM for timeout(1) support
-      {SIGPIPE, SIG_IGN},                 // Ignore broken pipe (we handle write errors ourselves)
-  };
-  platform_register_signal_handlers(signal_handlers, 3);
+#ifndef _WIN32
+  // Register SIGWINCH for terminal resize handling (client-specific)
+  platform_signal(SIGWINCH, client_handle_sigwinch);
+#endif
 
   // Keep terminal logging enabled so user can see connection attempts
   // It will be disabled after first successful connection

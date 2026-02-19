@@ -71,6 +71,7 @@
 
 #include "display.h"
 #include "main.h"
+#include "../main.h" // Global exit API
 
 #include <ascii-chat/session/display.h>
 #include <ascii-chat/session/capture.h>

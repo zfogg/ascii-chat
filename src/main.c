@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdatomic.h>
 
 // Mode-specific entry points
 #include "server/main.h"
@@ -28,6 +29,9 @@
 #include "discovery-service/main.h"
 #include "discovery/main.h"
 #include <ascii-chat/discovery/session.h>
+
+// Global exit API (exported in main.h)
+#include "main.h"
 
 // Utilities
 #include <ascii-chat/util/utf8.h>
@@ -70,6 +74,76 @@
 #define VERSION ASCII_CHAT_VERSION_FULL
 
 /* ============================================================================
+ * Global Application Exit State (Centralized Signal Handling)
+ * ============================================================================ */
+
+/** Global flag indicating application should exit */
+static atomic_bool g_app_should_exit = false;
+
+/** Mode-specific interrupt callback (called from signal handlers) */
+static void (*g_interrupt_callback)(void) = NULL;
+
+/* ============================================================================
+ * Global Exit API Implementation (from main.h)
+ * ============================================================================ */
+
+bool should_exit(void) {
+  return atomic_load(&g_app_should_exit);
+}
+
+void signal_exit(void) {
+  atomic_store(&g_app_should_exit, true);
+  void (*cb)(void) = g_interrupt_callback;
+  if (cb) {
+    cb();
+  }
+}
+
+void set_interrupt_callback(void (*cb)(void)) {
+  g_interrupt_callback = cb;
+}
+
+/* ============================================================================
+ * Signal Handlers
+ * ============================================================================ */
+
+#ifndef _WIN32
+/**
+ * SIGTERM handler for graceful shutdown
+ * Called when process receives SIGTERM (e.g., from timeout(1) or systemd)
+ */
+static void handle_sigterm(int sig) {
+  (void)sig;
+  // Use log_console for SIGTERM - it's async-signal-safe
+  log_console(LOG_INFO, "SIGTERM received - shutting down");
+  signal_exit();
+}
+#endif
+
+/**
+ * Console Ctrl+C handler (called from signal dispatcher on all platforms)
+ * Counts consecutive Ctrl+C presses - double press forces immediate exit
+ */
+static bool console_ctrl_handler(console_ctrl_event_t event) {
+  if (event != CONSOLE_CTRL_C && event != CONSOLE_CTRL_BREAK && event != CONSOLE_CLOSE) {
+    return false;
+  }
+
+  // Double Ctrl+C forces immediate exit
+  static _Atomic int ctrl_c_count = 0;
+  if (atomic_fetch_add(&ctrl_c_count, 1) + 1 > 1) {
+    platform_force_exit(1);
+  }
+
+  // Note: Don't use log_console() here - on Unix, this is called from SIGINT context
+  // where SAFE_MALLOC may be holding its mutex, causing deadlock. Windows runs this
+  // in a separate thread so it would be safe there, but we keep both paths identical
+  // for simplicity. The shutdown message will appear from normal thread context.
+  signal_exit();
+  return true;
+}
+
+/* ============================================================================
  * Debug Signal Handlers (all modes)
  * ============================================================================ */
 
@@ -85,6 +159,22 @@ static void common_handle_sigusr1(int sig) {
 }
 #endif
 #endif
+
+/**
+ * Set up global signal handlers
+ * Called once at startup before mode dispatch
+ */
+void setup_signal_handlers(void) {
+  platform_set_console_ctrl_handler(console_ctrl_handler);
+
+#ifndef _WIN32
+  platform_signal_handler_t handlers[] = {
+      {SIGTERM, handle_sigterm},
+      {SIGPIPE, SIG_IGN},
+  };
+  platform_register_signal_handlers(handlers, 2);
+#endif
+}
 
 /* ============================================================================
  * Mode Registration Table
@@ -600,6 +690,17 @@ int main(int argc, char *argv[]) {
       splash_set_update_notification(notification);
     }
   }
+
+  // Set up global signal handlers BEFORE mode dispatch
+  // All modes use the same centralized exit mechanism
+  setup_signal_handlers();
+
+  // Register SIGUSR1 for lock debugging in debug builds (uses shared handler)
+#ifndef NDEBUG
+#ifndef _WIN32
+  platform_signal(SIGUSR1, common_handle_sigusr1);
+#endif
+#endif
 
   // Find and dispatch to mode entry point
   const mode_descriptor_t *mode = find_mode(opts->detected_mode);

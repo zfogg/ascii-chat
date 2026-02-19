@@ -124,21 +124,3 @@ extern struct webrtc_peer_manager *g_peer_manager;
  * @endcode
  */
 int client_main(void);
-
-/**
- * @brief Check if client should exit
- *
- * Thread-safe check of the global exit flag. Used by all client threads
- * to coordinate graceful shutdown.
- *
- * @return true if exit signal received, false otherwise
- */
-bool should_exit(void);
-
-/**
- * @brief Signal client to exit
- *
- * Sets the global exit flag to trigger graceful shutdown of all client
- * threads. Thread-safe and can be called from signal handlers.
- */
-void signal_exit(void);

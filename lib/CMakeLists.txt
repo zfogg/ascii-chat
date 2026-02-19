@@ -109,6 +109,7 @@ endif()
 
 # Session library
 set(SESSION_SRCS
+    ${LIB_DIR}/session/client_like.c
     ${LIB_DIR}/session/consensus.c
     ${LIB_DIR}/session/consensus_integration.c
     ${LIB_DIR}/session/capture.c

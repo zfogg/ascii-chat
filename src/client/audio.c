@@ -74,6 +74,7 @@
 #include "audio.h"
 #include <ascii-chat/audio/analysis.h>
 #include "main.h"
+#include "../main.h" // Global exit API
 #include "server.h"
 #include <ascii-chat/util/fps.h>
 #include <ascii-chat/util/thread.h>

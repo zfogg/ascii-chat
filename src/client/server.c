@@ -57,6 +57,7 @@
 
 #include "server.h"
 #include "main.h"
+#include "../main.h" // Global exit API
 #include "crypto.h"
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/crypto/handshake/common.h>

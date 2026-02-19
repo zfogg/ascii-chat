@@ -9,6 +9,11 @@
 #include <ascii-chat/platform/thread.h>
 #include <string.h>
 
+#ifndef _WIN32
+#include <signal.h>
+#include <pthread.h>
+#endif
+
 thread_pool_t *thread_pool_create(const char *pool_name) {
   thread_pool_t *pool = SAFE_MALLOC(sizeof(thread_pool_t), thread_pool_t *);
   if (!pool) {
@@ -180,4 +185,55 @@ size_t thread_pool_get_count(const thread_pool_t *pool) {
 
 bool thread_pool_has_threads(const thread_pool_t *pool) {
   return thread_pool_get_count(pool) > 0;
+}
+
+asciichat_error_t thread_pool_interrupt_all(thread_pool_t *pool, int sig) {
+  if (!pool) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "pool is NULL");
+  }
+
+#ifndef _WIN32
+  // Only available on POSIX systems (Unix/Linux/macOS)
+  mutex_lock(&pool->threads_mutex);
+
+  if (pool->thread_count == 0) {
+    mutex_unlock(&pool->threads_mutex);
+    log_debug("Thread pool '%s' has no threads to interrupt", pool->name);
+    return ASCIICHAT_OK;
+  }
+
+  log_debug("Sending signal %d to %zu threads in pool '%s'", sig, pool->thread_count, pool->name);
+
+  // Iterate through all threads and send signal
+  thread_pool_entry_t *entry = pool->threads;
+  int sent_count = 0;
+  int failed_count = 0;
+
+  while (entry) {
+    // pthread_kill returns 0 on success, non-zero error code on failure
+    if (pthread_kill(entry->thread, sig) != 0) {
+      log_warn("Failed to send signal %d to thread '%s' in pool '%s'", sig, entry->name, pool->name);
+      failed_count++;
+    } else {
+      sent_count++;
+    }
+    entry = entry->next;
+  }
+
+  mutex_unlock(&pool->threads_mutex);
+
+  log_debug("Sent signal %d to %d/%zu threads in pool '%s' (%d failures)", sig, sent_count, pool->thread_count,
+            pool->name, failed_count);
+
+  if (failed_count > 0 && sent_count == 0) {
+    return SET_ERRNO(ERROR_THREAD, "Failed to send signal to any threads in pool '%s'", pool->name);
+  }
+
+  return ASCIICHAT_OK;
+#else
+  // Windows: no pthread_kill equivalent needed - socket_shutdown() is sufficient
+  (void)sig; // Unused on Windows
+  log_debug("thread_pool_interrupt_all: no-op on Windows (socket shutdown is sufficient)");
+  return ASCIICHAT_OK;
+#endif
 }

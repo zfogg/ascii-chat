@@ -32,6 +32,7 @@
  */
 
 #include "main.h"
+#include "../main.h" // Global exit API
 #include "session.h"
 #include <ascii-chat/session/capture.h>
 #include <ascii-chat/session/display.h>
@@ -39,9 +40,7 @@
 #include <ascii-chat/session/render.h>
 #include <ascii-chat/session/keyboard_handler.h>
 
-#include <stdatomic.h>
 #include <stdio.h>
-#include <signal.h>
 
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/options/options.h>
@@ -50,81 +49,8 @@
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/keyboard.h>
 
-/* ============================================================================
- * Global State
- * ============================================================================ */
-
-/**
- * @brief Atomic flag indicating discovery mode should exit
- *
- * Set by signal handlers or error conditions to trigger graceful shutdown.
- */
-static atomic_bool g_discovery_should_exit = false;
-
-/* ============================================================================
- * Signal Handler
- * ============================================================================ */
-
-/**
- * @brief Console control handler for Ctrl+C and related events
- *
- * @param event The control event that occurred
- * @return true if the event was handled
- */
-static bool discovery_console_ctrl_handler(console_ctrl_event_t event) {
-  if (event != CONSOLE_CTRL_C && event != CONSOLE_CTRL_BREAK) {
-    return false;
-  }
-
-  // Use atomic instead of volatile for signal handler
-  static _Atomic int ctrl_c_count = 0;
-  int count = atomic_fetch_add(&ctrl_c_count, 1) + 1;
-
-  if (count > 1) {
-    platform_force_exit(1);
-  }
-
-  discovery_signal_exit();
-  return true;
-}
-
-/**
- * Unix signal handler for graceful shutdown on SIGTERM
- *
- * @param sig The signal number (unused)
- */
-#ifndef _WIN32
-static void discovery_handle_sigterm(int sig) {
-  (void)sig; // Unused
-  // Log to console only (text or JSON depending on --json flag)
-  log_console(LOG_INFO, "SIGTERM received - shutting down discovery...");
-  discovery_signal_exit();
-}
-#else
-// Windows-compatible signal handler (no-op implementation)
-static void discovery_handle_sigterm(int sig) {
-  (void)sig;
-  // SIGTERM handled via console_ctrl_handler on Windows
-}
-#endif
-
-/* ============================================================================
- * Public Interface Functions
- * ============================================================================ */
-
-/**
- * @brief Check if discovery mode should exit
- */
-bool discovery_should_exit(void) {
-  return atomic_load(&g_discovery_should_exit);
-}
-
-/**
- * @brief Signal discovery mode to exit
- */
-void discovery_signal_exit(void) {
-  atomic_store(&g_discovery_should_exit, true);
-}
+// Global exit API from src/main.c
+extern bool should_exit(void);
 
 /* ============================================================================
  * State Change Callback
@@ -173,7 +99,7 @@ static void on_discovery_error(asciichat_error_t error, const char *message, voi
   (void)user_data; // Unused
 
   log_error("Discovery error (%d): %s", error, message ? message : "Unknown");
-  discovery_signal_exit();
+  signal_exit();
 }
 
 /**
@@ -189,7 +115,7 @@ static bool discovery_participant_render_should_exit(void *user_data) {
   discovery_session_t *discovery = (discovery_session_t *)user_data;
 
   // Check global exit flag first
-  if (discovery_should_exit()) {
+  if (should_exit()) {
     return true;
   }
 
@@ -198,7 +124,7 @@ static bool discovery_participant_render_should_exit(void *user_data) {
   asciichat_error_t result = discovery_session_process(discovery, 50 * NS_PER_MS_INT);
   if (result != ASCIICHAT_OK && result != ERROR_NETWORK_TIMEOUT) {
     log_error("Discovery session process failed: %d", result);
-    discovery_signal_exit();
+    signal_exit();
     return true;
   }
 
@@ -220,7 +146,7 @@ static bool discovery_participant_render_should_exit(void *user_data) {
  */
 static bool discovery_capture_should_exit_adapter(void *user_data) {
   (void)user_data; // Unused parameter
-  return discovery_should_exit();
+  return should_exit();
 }
 
 /**
@@ -232,7 +158,7 @@ static bool discovery_capture_should_exit_adapter(void *user_data) {
  */
 static bool discovery_display_should_exit_adapter(void *user_data) {
   (void)user_data; // Unused parameter
-  return discovery_should_exit();
+  return should_exit();
 }
 
 /**
@@ -276,16 +202,6 @@ int discovery_main(void) {
   if (!GET_OPTION(disable_keepawake)) {
     (void)platform_enable_keepawake();
   }
-
-  // Install console control-c handler
-  platform_set_console_ctrl_handler(discovery_console_ctrl_handler);
-
-  // Register signal handlers for graceful shutdown and error handling
-  platform_signal_handler_t signal_handlers[] = {
-      {SIGTERM, discovery_handle_sigterm}, // SIGTERM for timeout(1) support
-      {SIGPIPE, SIG_IGN},                  // Ignore broken pipe errors
-  };
-  platform_register_signal_handlers(signal_handlers, 2);
 
   // Get session string from options (command-line argument)
   const char *session_string = GET_OPTION(session_string);
@@ -392,7 +308,7 @@ int discovery_main(void) {
   // Keep logs visible until discovery status screen implemented (similar to server mode)
 
   // Main loop: wait for session to become active, then handle media based on role
-  while (!discovery_should_exit()) {
+  while (!should_exit()) {
     // Process discovery session events (state transitions, negotiations, etc)
     result = discovery_session_process(discovery, 50 * NS_PER_MS_INT); // 50ms timeout for responsiveness
     if (result != ASCIICHAT_OK && result != ERROR_NETWORK_TIMEOUT) {
@@ -461,7 +377,7 @@ int discovery_main(void) {
       log_info("Host participating with ID %u", host_participant_id);
 
       // Main loop: capture own media and keep discovery responsive
-      while (!discovery_should_exit() && discovery_session_is_active(discovery)) {
+      while (!should_exit() && discovery_session_is_active(discovery)) {
         // Capture frame from webcam (reuse existing capture context)
         image_t *frame = session_capture_read_frame(capture);
         if (frame) {
