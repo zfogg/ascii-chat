@@ -660,17 +660,12 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
     end = start + max_frames;
   }
 
-  // Build entire backtrace output in buffer for single logging statement
-  char buffer[8192] = {0};
-  int offset = 0;
+  // Log header
+  log_warn("%s", label);
 
-  // Add header with color
-  offset +=
-      safe_snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "%s\n", colored_string(LOG_COLOR_WARN, label));
-
-  // Build backtrace frames with colored frame numbers and symbols
+  // Log backtrace frames - output each frame separately so logging system can color it
   int frame_num = 0;
-  for (int i = start; i < end && offset < (int)sizeof(buffer) - 256; i++) {
+  for (int i = start; i < end; i++) {
     const char *symbol = symbols[i] ? symbols[i] : "???";
 
     // Skip frame if filter says to
@@ -678,27 +673,11 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
       continue;
     }
 
-    // Build frame with colors
-    char temp_frame[512];
-    char frame_num_str[16];
-    safe_snprintf(frame_num_str, sizeof(frame_num_str), "%d", frame_num);
-
-    // Format: "  [colored_num] colored_sym\n"
-    safe_snprintf(temp_frame, sizeof(temp_frame), "  [%s] %s\n", colored_string(LOG_COLOR_INFO, frame_num_str),
-                  colored_string(LOG_COLOR_DEBUG, symbol));
-
-    // Copy the colored frame to the main buffer
-    int frame_len = strlen(temp_frame);
-    if (offset + frame_len < (int)sizeof(buffer)) {
-      memcpy(buffer + offset, temp_frame, frame_len);
-      offset += frame_len;
-    }
+    // Log each frame as a separate statement for proper coloring through logging system
+    // Format: "  [frame_num] symbol"
+    log_warn("  [%d] %s", frame_num, symbol);
     frame_num++;
   }
-
-  // Log entire backtrace in single statement using logging system
-  // Using log_warn adds [WARN] header, making backtrace identifiable with --grep WARN
-  log_warn("%s", buffer);
 }
 
 /**
