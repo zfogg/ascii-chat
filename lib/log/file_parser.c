@@ -250,70 +250,56 @@ size_t log_file_parser_merge_and_dedupe(const session_log_entry_t *buffer_entrie
   for (size_t i = 0; i < file_count; i++) {
     char colored[SESSION_LOG_LINE_MAX];
     char final_line[SESSION_LOG_LINE_MAX];
-    char fallback_line[SESSION_LOG_LINE_MAX];
-
     size_t colored_len = log_recolor_plain_entry(file_entries[i].message, colored, sizeof(colored));
 
-    // Determine base text: colored version if recoloring succeeded, otherwise plain
+    // Recoloring should always produce colored output with headers colored.
+    // If it fails, fall back to plain text (which will then be further colorized for message body).
     const char *base_text = (colored_len > 0) ? colored : file_entries[i].message;
-    const char *final_content = base_text; // Default fallback
+    const char *final_content = base_text;  // Default to colored/plain base
 
-    // Try to apply message syntax highlighting
+    // Try to apply message syntax highlighting to the message body.
+    // Find the message marker "(): " in the PLAIN text to get the plain message for colorization.
     const char *plain_msg = file_entries[i].message;
-    const char *msg_marker = strstr(plain_msg, "(): ");
-
-    if (msg_marker) {
-      const char *plain_message = msg_marker + 4;
+    const char *plain_msg_marker = strstr(plain_msg, "(): ");
+    if (plain_msg_marker) {
+      const char *plain_message = plain_msg_marker + 4;
       const char *highlighted_msg = colorize_log_message(plain_message);
 
       if (highlighted_msg && *highlighted_msg) {
-        // Reconstruct header + highlighted message
-        size_t final_len = 0;
-        const char *p = base_text;
-        while (*p && final_len < SESSION_LOG_LINE_MAX - 1) {
-          final_line[final_len++] = *p;
-          // Stop after "(): "
-          if (*p == '(' && *(p + 1) == ')' && *(p + 2) == ':' && *(p + 3) == ' ') {
-            final_line[final_len++] = *(++p); // ')'
-            final_line[final_len++] = *(++p); // ':'
-            final_line[final_len++] = *(++p); // ' '
-            p++;
-            break;
-          }
-          p++;
-        }
-        // Append highlighted message
-        const char *msg_ptr = highlighted_msg;
-        while (*msg_ptr && final_len < SESSION_LOG_LINE_MAX - 1) {
-          final_line[final_len++] = *msg_ptr++;
-        }
-        final_line[final_len] = '\0';
-        final_content = final_line;
-      }
-    } else if (colored_len == 0) {
-      // No message marker and recoloring failed - try message colorization fallback
-      // Search for "(): " (function delimiter) to find where message starts
-      const char *msg_delimiter = strstr(plain_msg, "(): ");
-      const char *msg_start = msg_delimiter ? (msg_delimiter + 4) : plain_msg;
+        // Reconstruct the full line combining colored header + highlighted message.
+        // Find the marker in base_text (colored) to get the correct position in the colored version.
+        const char *base_msg_marker = strstr(base_text, "(): ");
+        if (base_msg_marker) {
+          size_t final_len = 0;
 
-      const char *colored_msg = colorize_log_message(msg_start);
-      if (colored_msg && *colored_msg) {
-        // Combine plain header with colored message
-        size_t header_len = msg_start - plain_msg;
-        if (header_len < sizeof(fallback_line) - 1) {
-          memcpy(fallback_line, plain_msg, header_len);
-          size_t pos = header_len;
-          const char *src = colored_msg;
-          while (*src && pos < sizeof(fallback_line) - 1) {
-            fallback_line[pos++] = *src++;
+          // Copy from base_text up to and including "(): "
+          const char *p = base_text;
+          while (*p && final_len < SESSION_LOG_LINE_MAX - 1) {
+            final_line[final_len++] = *p;
+
+            // Stop after we've copied "(): " marker
+            if (*p == '(' && *(p + 1) == ')' && *(p + 2) == ':' && *(p + 3) == ' ') {
+              final_line[final_len++] = *(++p); // ')'
+              final_line[final_len++] = *(++p); // ':'
+              final_line[final_len++] = *(++p); // ' '
+              p++;                              // Move past the space
+              break;
+            }
+            p++;
           }
-          fallback_line[pos] = '\0';
-          final_content = fallback_line;
+
+          // Append the colorized message body
+          const char *msg_ptr = highlighted_msg;
+          while (*msg_ptr && final_len < SESSION_LOG_LINE_MAX - 1) {
+            final_line[final_len++] = *msg_ptr++;
+          }
+          final_line[final_len] = '\0';
+          final_content = final_line;
         }
       }
     }
 
-    // Single strncpy at the end
+    // Single point for copying the final result
     SAFE_STRNCPY(merged[buffer_count + i].message, final_content, SESSION_LOG_LINE_MAX - 1);
     merged[buffer_count + i].message[SESSION_LOG_LINE_MAX - 1] = '\0';
     merged[buffer_count + i].sequence = file_entries[i].sequence;
