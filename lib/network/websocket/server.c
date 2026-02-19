@@ -544,8 +544,11 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
     bool is_first = lws_is_first_fragment(wsi);
     bool is_final = lws_is_final_fragment(wsi);
+    log_debug("[WS_TIMING] is_first=%d is_final=%d, about to increment callback count", is_first, is_final);
+    log_info("[WS_FRAG_DEBUG] === RECEIVE CALLBACK: is_first=%d is_final=%d len=%zu ===", is_first, is_final, len);
 
     atomic_fetch_add(&g_receive_callback_count, 1);
+    log_debug("[WS_TIMING] incremented callback count");
 
     // Re-enable TCP_QUICKACK on EVERY fragment delivery (Linux only).
     // Linux resets TCP_QUICKACK after each ACK, reverting to delayed ACK mode (~40ms).
@@ -655,6 +658,9 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     // Signal LWS to call WRITEABLE callback (matches lws example pattern)
     // This keeps the event loop active and allows server to send responses
     lws_callback_on_writable(wsi);
+
+    log_info("[WS_FRAG] Queued fragment: %zu bytes (first=%d final=%d, total_fragments=%llu)", len, is_first, is_final,
+             (unsigned long long)atomic_load(&g_receive_callback_count));
 
     break;
   }
