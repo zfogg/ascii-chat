@@ -308,14 +308,10 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     msg.first = 1;
     msg.final = 1;
 
-    log_info("websocket_send: About to lock send_mutex to queue frame");
     mutex_lock(&ws_data->send_mutex);
-    log_info("websocket_send: Acquired send_mutex, attempting ringbuffer_write");
     bool success = ringbuffer_write(ws_data->send_queue, &msg);
-    log_info("websocket_send: ringbuffer_write returned %d", success);
 
     if (!success) {
-      log_error("websocket_send: Queue is FULL, releasing mutex and returning error");
       mutex_unlock(&ws_data->send_mutex);
       log_error("WebSocket server send queue FULL - cannot queue %zu byte message for wsi=%p", send_len,
                 (void *)ws_data->wsi);

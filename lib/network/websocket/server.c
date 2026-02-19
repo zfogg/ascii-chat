@@ -662,6 +662,19 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     log_info("[WS_FRAG] Queued fragment: %zu bytes (first=%d final=%d, total_fragments=%llu)", len, is_first, is_final,
              (unsigned long long)atomic_load(&g_receive_callback_count));
 
+    // Log callback duration
+    {
+      uint64_t callback_exit_ns = time_get_ns();
+      double callback_dur_us = (double)(callback_exit_ns - callback_enter_ns) / 1e3;
+      if (callback_dur_us > 200) {
+        log_warn("[WS_CALLBACK_DURATION] RECEIVE callback took %.1f µs (> 200µs threshold)", callback_dur_us);
+      }
+      log_debug("[WS_CALLBACK_DURATION] RECEIVE callback completed in %.1f µs (fragment: first=%d final=%d len=%zu)",
+                callback_dur_us, is_first, is_final, len);
+    }
+    log_debug("[WS_RECEIVE] ===== RECEIVE CALLBACK COMPLETE, returning 0 to continue =====");
+    log_info("[WS_RECEIVE_RETURN] Returning 0 from RECEIVE callback (success). fragmented=%d (first=%d final=%d)",
+             (!is_final ? 1 : 0), is_first, is_final);
     break;
   }
 
