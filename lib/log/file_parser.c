@@ -292,13 +292,9 @@ size_t log_file_parser_merge_and_dedupe(const session_log_entry_t *buffer_entrie
       }
     } else if (colored_len == 0) {
       // No message marker and recoloring failed - try message colorization fallback
-      const char *msg_start = plain_msg;
-      for (const char *p = plain_msg; *p; p++) {
-        if (*p == ':' && *(p + 1) == ' ' && *(p + 2) != '\0') {
-          msg_start = p + 2;
-          break;
-        }
-      }
+      // Search for "(): " (function delimiter) to find where message starts
+      const char *msg_delimiter = strstr(plain_msg, "(): ");
+      const char *msg_start = msg_delimiter ? (msg_delimiter + 4) : plain_msg;
 
       const char *colored_msg = colorize_log_message(msg_start);
       if (colored_msg && *colored_msg) {
