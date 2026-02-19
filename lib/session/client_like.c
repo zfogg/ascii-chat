@@ -89,8 +89,6 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // Store the render should_exit adapter globally so mode-specific run_fn can access it
   g_render_should_exit = display_should_exit_adapter;
 
-  log_debug("session_client_like_run() starting");
-
   asciichat_error_t result = ASCIICHAT_OK;
 
   // Keep track of what's been initialized for cleanup
