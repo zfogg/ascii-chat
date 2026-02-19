@@ -51,15 +51,15 @@ static log_template_t *parse_format_string(const char *format_str, bool console_
   }
 
   log_template_t *result = SAFE_CALLOC(1, sizeof(log_template_t), log_template_t *);
-  result->original = SAFE_MALLOC(strlen(format_str) + 1, char *);
+  result->original = (char *)malloc(strlen(format_str) + 1);
   strcpy(result->original, format_str);
   result->console_only = console_only;
 
   /* Pre-allocate spec array (worst case: every char is a specifier) */
   result->specs = SAFE_CALLOC(strlen(format_str) + 1, sizeof(log_format_spec_t), log_format_spec_t *);
   if (!result->specs) {
-    SAFE_FREE(result->original);
-    SAFE_FREE(result);
+    UNTRACKED_FREE(result->original);
+    UNTRACKED_FREE(result);
     return NULL;
   }
 
@@ -79,7 +79,7 @@ static log_template_t *parse_format_string(const char *format_str, bool console_
       } else if (next == '\\') {
         /* \\ - escaped backslash (output single \) */
         result->specs[spec_idx].type = LOG_FORMAT_LITERAL;
-        result->specs[spec_idx].literal = SAFE_MALLOC(2, char *);
+        result->specs[spec_idx].literal = ((char *)malloc(2));
         if (!result->specs[spec_idx].literal) {
           goto cleanup;
         }
@@ -91,7 +91,7 @@ static log_template_t *parse_format_string(const char *format_str, bool console_
       } else {
         /* Invalid escape sequence - treat backslash as literal */
         result->specs[spec_idx].type = LOG_FORMAT_LITERAL;
-        result->specs[spec_idx].literal = SAFE_MALLOC(2, char *);
+        result->specs[spec_idx].literal = ((char *)malloc(2));
         if (!result->specs[spec_idx].literal) {
           goto cleanup;
         }
@@ -105,7 +105,7 @@ static log_template_t *parse_format_string(const char *format_str, bool console_
       if (*(p + 1) == '%') {
         /* %% - escaped percent (output single %) */
         result->specs[spec_idx].type = LOG_FORMAT_LITERAL;
-        result->specs[spec_idx].literal = SAFE_MALLOC(2, char *);
+        result->specs[spec_idx].literal = ((char *)malloc(2));
         if (!result->specs[spec_idx].literal) {
           goto cleanup;
         }
@@ -131,7 +131,7 @@ static log_template_t *parse_format_string(const char *format_str, bool console_
 
           result->specs[spec_idx].type = LOG_FORMAT_TIME;
           size_t fmt_len = fmt_end - fmt_start;
-          result->specs[spec_idx].literal = SAFE_MALLOC(fmt_len + 1, char *);
+          result->specs[spec_idx].literal = ((char *)malloc(fmt_len + 1));
           if (!result->specs[spec_idx].literal) {
             goto cleanup;
           }
@@ -215,7 +215,7 @@ static log_template_t *parse_format_string(const char *format_str, bool console_
 
           /* Store as "LEVEL|content" for later parsing */
           result->specs[spec_idx].type = LOG_FORMAT_COLOR;
-          result->specs[spec_idx].literal = SAFE_MALLOC(color_arg_len + 1, char *);
+          result->specs[spec_idx].literal = ((char *)malloc(color_arg_len + 1));
           if (!result->specs[spec_idx].literal) {
             goto cleanup;
           }
@@ -244,7 +244,7 @@ static log_template_t *parse_format_string(const char *format_str, bool console_
           }
 
           result->specs[spec_idx].type = LOG_FORMAT_STRFTIME_CODE;
-          result->specs[spec_idx].literal = SAFE_MALLOC(fmt_len + 1, char *);
+          result->specs[spec_idx].literal = ((char *)malloc(fmt_len + 1));
           if (!result->specs[spec_idx].literal) {
             goto cleanup;
           }
@@ -265,7 +265,7 @@ static log_template_t *parse_format_string(const char *format_str, bool console_
 
       result->specs[spec_idx].type = LOG_FORMAT_LITERAL;
       size_t text_len = p - text_start;
-      result->specs[spec_idx].literal = SAFE_MALLOC(text_len + 1, char *);
+      result->specs[spec_idx].literal = ((char *)malloc(text_len + 1));
       if (!result->specs[spec_idx].literal) {
         goto cleanup;
       }
@@ -299,17 +299,17 @@ void log_template_free(log_template_t *format) {
   if (format->specs) {
     for (size_t i = 0; i < format->spec_count; i++) {
       if (format->specs[i].literal) {
-        SAFE_FREE(format->specs[i].literal);
+        UNTRACKED_FREE(format->specs[i].literal);
       }
     }
-    SAFE_FREE(format->specs);
+    UNTRACKED_FREE(format->specs);
   }
 
   if (format->original) {
-    SAFE_FREE(format->original);
+    UNTRACKED_FREE(format->original);
   }
 
-  SAFE_FREE(format);
+  UNTRACKED_FREE(format);
 }
 
 /* ============================================================================
@@ -553,7 +553,7 @@ int log_template_apply(const log_template_t *format, char *buf, size_t buf_size,
       if (spec->literal) {
         /* Construct format string with % prefix */
         size_t fmt_len = spec->literal_len + 1;
-        char *format_str = SAFE_MALLOC(fmt_len + 1, char *);
+        char *format_str = ((char *)malloc(fmt_len + 1));
         if (format_str) {
           format_str[0] = '%';
           memcpy(format_str + 1, spec->literal, spec->literal_len);
@@ -563,7 +563,7 @@ int log_template_apply(const log_template_t *format, char *buf, size_t buf_size,
             log_debug("time_format_now failed for format code: %s", format_str);
             written = 0;
           }
-          SAFE_FREE(format_str);
+          UNTRACKED_FREE(format_str);
         }
       }
       break;

@@ -238,10 +238,10 @@ char *format_message(const char *format, va_list args) {
   }
 
   // Allocate and format the message
-  char *message = SAFE_MALLOC(size + 1, char *);
+  char *message = UNTRACKED_MALLOC(size + 1, char *);
   int result = safe_vsnprintf(message, (size_t)size + 1, format, args);
   if (result < 0) {
-    SAFE_FREE(message);
+    UNTRACKED_FREE(message);
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format context message");
     return NULL;
   }
@@ -767,7 +767,7 @@ static void write_to_log_file_atomic(const char *buffer, int length) {
   }
 
   if (stripped) {
-    SAFE_FREE(stripped);
+    UNTRACKED_FREE(stripped);
   }
 }
 
@@ -866,7 +866,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   if (!is_enabled) {
     // Terminal output disabled - cleanup and return (status screen already captured)
     if (stripped_msg) {
-      SAFE_FREE(stripped_msg);
+      UNTRACKED_FREE(stripped_msg);
     }
     return;
   }
@@ -877,7 +877,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
     if (owner != (uint64_t)asciichat_thread_self()) {
       // Terminal locked by another thread - cleanup and return
       if (stripped_msg) {
-        SAFE_FREE(stripped_msg);
+        UNTRACKED_FREE(stripped_msg);
       }
       return;
     }
@@ -890,7 +890,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
     safe_fprintf(output_stream, "\n");
     (void)fflush(output_stream);
     if (stripped_msg) {
-      SAFE_FREE(stripped_msg);
+      UNTRACKED_FREE(stripped_msg);
     }
     return;
   }
@@ -902,7 +902,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
     safe_fprintf(output_stream, "%s\n", clean_msg);
     (void)fflush(output_stream);
     if (stripped_msg) {
-      SAFE_FREE(stripped_msg);
+      UNTRACKED_FREE(stripped_msg);
     }
     return;
   }
@@ -912,7 +912,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   size_t match_start = 0, match_len = 0;
   if (!grep_should_output(plain_log_line, &match_start, &match_len)) {
     if (stripped_msg) {
-      SAFE_FREE(stripped_msg);
+      UNTRACKED_FREE(stripped_msg);
     }
     return; // No match - suppress terminal output
   }
@@ -937,7 +937,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
 
   // Clean up stripped message
   if (stripped_msg) {
-    SAFE_FREE(stripped_msg);
+    UNTRACKED_FREE(stripped_msg);
   }
 
   (void)fflush(output_stream);
@@ -1392,7 +1392,7 @@ static asciichat_error_t log_network_message_internal(socket_t sockfd, const str
   const char *direction_label = log_network_direction_label(direction);
   log_msg(level, file, line, func, "[NET %s] %s", direction_label, formatted);
 
-  SAFE_FREE(formatted);
+  UNTRACKED_FREE(formatted);
   return send_result;
 }
 
