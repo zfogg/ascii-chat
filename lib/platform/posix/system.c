@@ -948,8 +948,8 @@ void platform_print_backtrace(int skip_frames) {
   if (size > 0) {
     char **symbols = platform_backtrace_symbols(buffer, size);
 
-    // Skip platform_print_backtrace itself (1 frame) + any additional frames requested
-    platform_print_backtrace_symbols("Backtrace", symbols, size, 1 + skip_frames, 0, NULL);
+    // Skip internal frames (platform_backtrace + unresolvable return address) + any additional frames requested
+    platform_print_backtrace_symbols("Backtrace", symbols, size, 2 + skip_frames, 0, NULL);
 
     platform_backtrace_symbols_destroy(symbols);
   }
