@@ -1945,8 +1945,9 @@ void *client_send_thread_func(void *arg) {
         if (!atomic_load(&g_server_should_exit)) {
           log_error("Failed to send audio to client %u: %s", client->client_id, asciichat_error_string(result));
         }
-        log_warn("BREAK_AUDIO_ERROR: client_id=%u result=%d", atomic_load(&client->client_id), result);
-        break; // Socket error, exit thread
+        log_warn("SKIP_AUDIO_ERROR: client_id=%u result=%d (continuing to send video)", atomic_load(&client->client_id),
+                 result);
+        // Continue sending video even if audio fails - audio is optional for browser clients
       }
 
       sent_something = true;
