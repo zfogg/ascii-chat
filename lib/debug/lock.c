@@ -93,7 +93,7 @@ atomic_bool g_initializing = false; // Flag to prevent tracking during initializ
  */
 static lock_record_t *create_lock_record(void *lock_address, lock_type_t lock_type, const char *file_name,
                                          int line_number, const char *function_name) {
-  lock_record_t *record = (lock_record_t *)calloc(1, sizeof(lock_record_t));
+  lock_record_t *record = SAFE_CALLOC(1, sizeof(lock_record_t), lock_record_t *);
 
   // Fill in basic information
   record->key = lock_record_key(lock_address, lock_type);
@@ -962,7 +962,7 @@ static void debug_process_untracked_unlock(void *lock_ptr, uint32_t key, const c
 #endif
 
   // Create an orphaned release record to track this problematic unlock
-  lock_record_t *orphan_record = (lock_record_t *)calloc(1, sizeof(lock_record_t));
+  lock_record_t *orphan_record = SAFE_CALLOC(1, sizeof(lock_record_t), lock_record_t *);
   if (orphan_record) {
     orphan_record->key = key;
     orphan_record->lock_address = lock_ptr;
