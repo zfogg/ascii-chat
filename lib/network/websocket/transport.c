@@ -396,35 +396,55 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
     return SET_ERRNO(ERROR_NETWORK, "Connection not established");
   }
 
-  mutex_lock(&ws_data->queue_mutex);
+  mutex_lock(&ws_data->recv_mutex);
 
-  // Reassemble fragmented WebSocket messages - NON-BLOCKING
+  // Reassemble fragmented WebSocket messages with SHORT timeout (100ms)
   // We queue each fragment from the LWS callback with first/final flags.
-  // Here we check for complete messages without blocking. If no complete
-  // message is ready, return immediately so the receive thread can retry.
+  // Unlike long blocking waits, 100ms is short enough that polling retry
+  // is acceptable. The dispatch thread handles retries.
 
   uint8_t *assembled_buffer = NULL;
   size_t assembled_size = 0;
   size_t assembled_capacity = 0;
+  uint64_t assembly_start_ns = time_get_ns();
   int fragment_count = 0;
+  const uint64_t MAX_REASSEMBLY_TIME_NS = 100 * 1000000ULL; // 100ms - short timeout for polling-based retry
 
   while (true) {
-    // If queue is empty, return error immediately (non-blocking)
-    // The receive thread will retry after a short sleep
-    if (ringbuffer_is_empty(ws_data->recv_queue)) {
-      if (assembled_size > 0) {
-        // We have partial fragments but queue is empty - incomplete message
-        log_dev_every(4500000, "🔄 WEBSOCKET_RECV: Incomplete frame (have %zu bytes), waiting for more fragments",
-                      assembled_size);
-        buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
-        mutex_unlock(&ws_data->queue_mutex);
-        return SET_ERRNO(ERROR_NETWORK, "Incomplete WebSocket frame (waiting for more fragments)");
-      } else {
-        // Queue is empty and no fragments accumulated yet
-        log_dev_every(4500000, "🔄 WEBSOCKET_RECV: Queue empty, no packets ready");
-        mutex_unlock(&ws_data->queue_mutex);
-        return SET_ERRNO(ERROR_NETWORK, "No WebSocket packets available");
+    // Wait for fragment if queue is empty (with short timeout)
+    while (ringbuffer_is_empty(ws_data->recv_queue)) {
+      uint64_t elapsed_ns = time_get_ns() - assembly_start_ns;
+      if (elapsed_ns > MAX_REASSEMBLY_TIME_NS) {
+        // Timeout - return error instead of partial fragments
+        // Dispatch thread will retry, avoiding fragment loss issue
+        if (assembled_buffer) {
+          buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
+        }
+        mutex_unlock(&ws_data->recv_mutex);
+
+        if (assembled_size > 0) {
+          log_dev_every(4500000,
+              "🔄 WEBSOCKET_RECV: Reassembly timeout after %llums (have %zu bytes, expecting final fragment)",
+              (unsigned long long)(elapsed_ns / 1000000ULL), assembled_size);
+        }
+        return SET_ERRNO(ERROR_NETWORK, "Fragment reassembly timeout - no data from network");
       }
+
+      // Check connection state
+      mutex_lock(&ws_data->state_mutex);
+      bool still_connected = ws_data->is_connected;
+      mutex_unlock(&ws_data->state_mutex);
+
+      if (!still_connected) {
+        if (assembled_buffer) {
+          buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
+        }
+        mutex_unlock(&ws_data->recv_mutex);
+        return SET_ERRNO(ERROR_NETWORK, "Connection closed while reassembling fragments");
+      }
+
+      // Wait for next fragment with 1ms timeout
+      cond_timedwait(&ws_data->recv_cond, &ws_data->recv_mutex, 1 * 1000000ULL);
     }
 
     // Read next fragment from queue
@@ -434,6 +454,78 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
       if (assembled_buffer) {
         buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
       }
+      mutex_unlock(&ws_data->recv_mutex);
+      return SET_ERRNO(ERROR_NETWORK, "Failed to read fragment from queue");
+    }
+
+    fragment_count++;
+    log_warn("[WS_REASSEMBLE] Fragment #%d: %zu bytes, first=%d, final=%d, assembled_so_far=%zu", fragment_count,
+             frag.len, frag.first, frag.final, assembled_size);
+
+    // Sanity check: first fragment must have first=1, continuations must have first=0
+    if (assembled_size == 0 && !frag.first) {
+      log_error("[WS_REASSEMBLE] ERROR: Expected first=1 for first fragment, got first=%d", frag.first);
+      buffer_pool_free(NULL, frag.data, frag.len);
+      if (assembled_buffer) {
+        buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
+      }
+      mutex_unlock(&ws_data->recv_mutex);
+      return SET_ERRNO(ERROR_NETWORK, "Protocol error: continuation fragment without first fragment");
+    }
+
+    // Grow assembled buffer if needed
+    size_t required_size = assembled_size + frag.len;
+    if (required_size > assembled_capacity) {
+      size_t new_capacity = (assembled_capacity == 0) ? 8192 : (assembled_capacity * 3 / 2);
+      if (new_capacity < required_size) {
+        new_capacity = required_size;
+      }
+
+      uint8_t *new_buffer = buffer_pool_alloc(NULL, new_capacity);
+      if (!new_buffer) {
+        log_error("[WS_REASSEMBLE] Failed to allocate reassembly buffer (%zu bytes)", new_capacity);
+        buffer_pool_free(NULL, frag.data, frag.len);
+        if (assembled_buffer) {
+          buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
+        }
+        mutex_unlock(&ws_data->recv_mutex);
+        return SET_ERRNO(ERROR_MEMORY, "Failed to allocate fragment reassembly buffer");
+      }
+
+      // Copy existing data to new buffer
+      if (assembled_size > 0) {
+        memcpy(new_buffer, assembled_buffer, assembled_size);
+      }
+
+      // Free old buffer
+      if (assembled_buffer) {
+        buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
+      }
+
+      assembled_buffer = new_buffer;
+      assembled_capacity = new_capacity;
+    }
+
+    // Append fragment data
+    memcpy(assembled_buffer + assembled_size, frag.data, frag.len);
+    assembled_size += frag.len;
+
+    // Free fragment data (we've copied it)
+    buffer_pool_free(NULL, frag.data, frag.len);
+
+    // Check if we have the final fragment
+    if (frag.final) {
+      // Complete message assembled
+      log_info("[WS_REASSEMBLE] Complete message: %zu bytes in %d fragments", assembled_size, fragment_count);
+      *buffer = assembled_buffer;
+      *out_len = assembled_size;
+      *out_allocated_buffer = assembled_buffer;
+      mutex_unlock(&ws_data->recv_mutex);
+      return ASCIICHAT_OK;
+    }
+
+    // More fragments coming, continue reassembling
+  }
       mutex_unlock(&ws_data->queue_mutex);
       return SET_ERRNO(ERROR_NETWORK, "Failed to read fragment from queue");
     }
