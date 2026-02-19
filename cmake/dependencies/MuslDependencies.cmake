@@ -1062,6 +1062,16 @@ set(LIBWEBSOCKETS_INCLUDE_DIRS "${LWS_PREFIX}/include")
 set(LIBWEBSOCKETS_BUILD_TARGET libwebsockets-musl)
 add_compile_definitions(HAVE_LIBWEBSOCKETS=1)
 
+# Create imported target for libwebsockets (musl build) to match Libwebsockets.cmake behavior
+if(NOT TARGET websockets)
+    add_library(websockets STATIC IMPORTED GLOBAL)
+    set_target_properties(websockets PROPERTIES
+        IMPORTED_LOCATION "${LIBWEBSOCKETS_LIBRARIES}"
+        INTERFACE_INCLUDE_DIRECTORIES "${LIBWEBSOCKETS_INCLUDE_DIRS}"
+    )
+    add_dependencies(websockets libwebsockets-musl)
+endif()
+
 # =============================================================================
 # Abseil-cpp - Google's C++ library for WebRTC dependencies
 # =============================================================================
