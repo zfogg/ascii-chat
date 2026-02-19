@@ -38,6 +38,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/version.h>
 #include <ascii-chat/options/options.h>
+#include <ascii-chat/platform/system.h>
 #include <ascii-chat/options/common.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/options/builder.h>
@@ -390,6 +391,20 @@ int main(int argc, char *argv[]) {
   // Register cleanup of shared subsystems to run on normal exit
   // Library code doesn't call atexit() - the application is responsible
   (void)atexit(asciichat_shared_destroy);
+
+  // SECRET: Check for --backtrace (debug builds only) BEFORE options_init()
+  // Prints a backtrace and exits immediately - useful for debugging hangs
+#ifndef NDEBUG
+  for (int i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "--backtrace") == 0) {
+      log_info("=== Backtrace at startup ===");
+      platform_print_backtrace(0);
+      log_info("=== End Backtrace ===");
+      asciichat_shared_destroy();
+      return 0;
+    }
+  }
+#endif
 
   // NOW parse all options - can use logging with colors!
   asciichat_error_t options_result = options_init(argc, argv);

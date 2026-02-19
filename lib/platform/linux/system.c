@@ -29,7 +29,6 @@ int get_binary_file_address_offsets(const void *addr, platform_binary_match_t *m
 
   FILE *maps = fopen("/proc/self/maps", "r");
   if (!maps) {
-    log_debug("Failed to open /proc/self/maps");
     return 0;
   }
 
@@ -38,7 +37,6 @@ int get_binary_file_address_offsets(const void *addr, platform_binary_match_t *m
     uintptr_t start, end, offset;
     char perms[5], device[10], path[PLATFORM_MAX_PATH_LENGTH];
     unsigned long inode;
-    int path_start;
 
     // Parse: start-end perms offset device inode path
     // Example: 7f3a2b1c0000-7f3a2b1c1000 r-xp 00000000 08:02 12345678   /usr/lib/libsodium.so.23
@@ -53,47 +51,51 @@ int get_binary_file_address_offsets(const void *addr, platform_binary_match_t *m
       continue;
     }
 
-    // Extract path (everything after inode, skip whitespace)
-    path_start = 0;
-    for (int i = 0; i < (int)strlen(line); i++) {
-      if (line[i] != ' ' && line[i] != '\t')
-        continue;
-      int space_count = 0;
-      int j = i;
-      while (j < (int)strlen(line) && (line[j] == ' ' || line[j] == '\t')) {
-        space_count++;
-        j++;
-      }
-      if (space_count >= 2 && j < (int)strlen(line)) { // Found field separator with multiple spaces
-        if (j > 50) {                                  // Likely past inode field
-          path_start = j;
-          break;
+    // Extract path more robustly by searching for the last whitespace-separated token
+    // /proc/self/maps format: start-end perms offset device inode [path]
+    // The path is optional and starts after the inode field
+    path[0] = '\0';
+
+    // Find the last whitespace and take everything after it as the path
+    // This is more robust than trying to count fields
+    int line_len = strlen(line);
+    int path_start = -1;
+
+    // Scan from the end backwards to find the last non-whitespace character
+    for (int i = line_len - 1; i >= 0; i--) {
+      if (line[i] != ' ' && line[i] != '\t' && line[i] != '\n' && line[i] != '\r') {
+        // Found a non-whitespace char, now find the start of this token
+        path_start = i;
+        while (path_start > 0 && line[path_start - 1] != ' ' && line[path_start - 1] != '\t') {
+          path_start--;
         }
+        break;
       }
     }
 
-    if (path_start == 0 || path_start >= (int)strlen(line)) {
-      continue; // No path found
-    }
-
-    // Extract path and remove newline
-    strncpy(path, &line[path_start], PLATFORM_MAX_PATH_LENGTH - 1);
-    path[PLATFORM_MAX_PATH_LENGTH - 1] = '\0';
-    size_t path_len = strlen(path);
-    if (path_len > 0 && path[path_len - 1] == '\n') {
-      path[path_len - 1] = '\0';
+    if (path_start > 0 && line[path_start - 1] != '\0') {
+      // Extract the path starting from path_start
+      strncpy(path, &line[path_start], PLATFORM_MAX_PATH_LENGTH - 1);
+      path[PLATFORM_MAX_PATH_LENGTH - 1] = '\0';
+      // Remove trailing whitespace
+      int path_len = strlen(path);
+      while (path_len > 0 && (path[path_len - 1] == '\n' || path[path_len - 1] == '\r')) {
+        path[--path_len] = '\0';
+      }
     }
 
     // Check if address falls within this segment
-    if (addr_int >= start && addr_int < end) {
-      strncpy(matches[count].path, path, PLATFORM_MAX_PATH_LENGTH - 1);
-      matches[count].path[PLATFORM_MAX_PATH_LENGTH - 1] = '\0';
-      matches[count].file_offset = (addr_int - start) + offset;
+    if (perms[2] == 'x' && path[0] == '/') {
+      if (addr_int >= start && addr_int < end) {
+        strncpy(matches[count].path, path, PLATFORM_MAX_PATH_LENGTH - 1);
+        matches[count].path[PLATFORM_MAX_PATH_LENGTH - 1] = '\0';
+        matches[count].file_offset = (addr_int - start) + offset;
 
 #ifndef NDEBUG
-      log_debug("[Linux /proc/self/maps] addr=%p matches %s (offset=%lx)", addr, path, matches[count].file_offset);
+        log_debug("[Linux /proc/self/maps] addr=%p matches %s (offset=%lx)", addr, path, matches[count].file_offset);
 #endif
-      count++;
+        count++;
+      }
     }
   }
 
