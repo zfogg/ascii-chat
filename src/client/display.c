@@ -145,6 +145,25 @@ static session_capture_ctx_t *g_display_capture_ctx = NULL;
 /* Frame rendering now handled by session display library */
 
 /* ============================================================================
+ * Internal Setter Functions (for framework integration)
+ * ============================================================================ */
+
+/**
+ * @brief Set the display context created by session_client_like framework
+ *
+ * Client mode doesn't create its own display context anymore. Instead,
+ * session_client_like_run() creates it and passes it to client_run().
+ * This setter allows client_run() to make the framework-created context
+ * available to protocol threads that need to render frames.
+ *
+ * @param display_ctx Display context created by framework (may be NULL)
+ * @ingroup client_display
+ */
+void display_set_context(session_display_ctx_t *display_ctx) {
+  g_display_ctx = display_ctx;
+}
+
+/* ============================================================================
  * Public Interface Functions
  * ============================================================================ */
 
@@ -353,8 +372,7 @@ void display_cleanup() {
     g_display_capture_ctx = NULL;
   }
 
-  if (g_display_ctx) {
-    session_display_destroy(g_display_ctx);
-    g_display_ctx = NULL;
-  }
+  // Display context is now managed by session_client_like framework
+  // Do not destroy it here - the framework will handle cleanup
+  g_display_ctx = NULL;
 }

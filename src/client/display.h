@@ -15,6 +15,21 @@
 #include <stdbool.h>
 #include <ascii-chat/platform/terminal.h>
 
+/* Forward declarations */
+typedef struct session_display_ctx session_display_ctx_t;
+
+/**
+ * @brief Set the display context (framework integration)
+ *
+ * Called by client_run() to pass the display context created by
+ * session_client_like_run() to the display module so protocol threads
+ * can render frames.
+ *
+ * @param display_ctx Display context from framework (may be NULL)
+ * @ingroup client_display
+ */
+void display_set_context(session_display_ctx_t *display_ctx);
+
 /**
  * @brief Initialize display subsystem
  * @return 0 on success, negative on error

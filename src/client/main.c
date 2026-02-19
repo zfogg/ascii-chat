@@ -351,11 +351,8 @@ static int initialize_client_systems(void) {
   }
   log_truncate_if_large();
 
-  // Initialize display subsystem
-  if (display_init() != 0) {
-    log_fatal("Failed to initialize display subsystem");
-    return ERROR_DISPLAY;
-  }
+  // Display subsystem is now initialized by session_client_like_run()
+  // No need to call display_init() here
 
   // Initialize application client context
   if (!g_client) {
@@ -465,8 +462,10 @@ static bool client_should_reconnect(asciichat_error_t last_error, int attempt_nu
  */
 static asciichat_error_t client_run(session_capture_ctx_t *capture, session_display_ctx_t *display, void *user_data) {
   (void)capture;   // Provided by session_client_like, used by protocol threads
-  (void)display;   // Provided by session_client_like, used by display threads
   (void)user_data; // Unused
+
+  // Make the framework-created display context available to protocol threads
+  display_set_context(display);
 
   // Get the render loop's should_exit callback for monitoring
   bool (*render_should_exit)(void *) = session_client_like_get_render_should_exit();
