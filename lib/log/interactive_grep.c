@@ -542,6 +542,24 @@ asciichat_error_t interactive_grep_gather_and_filter_logs(session_log_entry_t **
 
   size_t buffer_count = session_log_buffer_get_recent(buffer_entries, SESSION_LOG_BUFFER_SIZE);
 
+  // Check if filtering is active (either regex patterns or fixed string)
+  // This must be checked BEFORE loading file logs, so we can decide whether to include them
+  mutex_lock(&g_grep_state.mutex);
+  bool has_regex_patterns = (g_grep_state.active_pattern_count > 0);
+  bool has_fixed_string = (g_grep_state.fixed_string && g_grep_state.len > 0);
+  bool filtering_active = has_regex_patterns || has_fixed_string;
+  mutex_unlock(&g_grep_state.mutex);
+
+  // File logs should only be included when there's an active search pattern
+  // If grep mode is entered but no pattern typed yet, show only memory logs
+  if (!filtering_active) {
+    // No search pattern - return only memory logs
+    *out_entries = buffer_entries;
+    *out_count = buffer_count;
+    return ASCIICHAT_OK;
+  }
+
+  // Filtering is active - include file logs in the search
   // Try to tail log file if specified
   session_log_entry_t *file_entries = NULL;
   size_t file_count = 0;
@@ -577,19 +595,8 @@ asciichat_error_t interactive_grep_gather_and_filter_logs(session_log_entry_t **
     buffer_count = merged_count;
   }
 
-  // Check if filtering is active (either regex patterns or fixed string)
+  // Re-acquire mutex for filtering
   mutex_lock(&g_grep_state.mutex);
-  bool has_regex_patterns = (g_grep_state.active_pattern_count > 0);
-  bool has_fixed_string = (g_grep_state.fixed_string && g_grep_state.len > 0);
-  bool filtering_active = has_regex_patterns || has_fixed_string;
-
-  if (!filtering_active) {
-    // No filtering active - return all entries
-    mutex_unlock(&g_grep_state.mutex);
-    *out_entries = buffer_entries;
-    *out_count = buffer_count;
-    return ASCIICHAT_OK;
-  }
 
   // Filter entries with PCRE2
   session_log_entry_t *filtered =
