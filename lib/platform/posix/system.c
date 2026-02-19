@@ -660,12 +660,17 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
     end = start + max_frames;
   }
 
-  // Log header
-  log_warn("%s", label);
+  // Build entire backtrace in single buffer with colored output
+  char buffer[16384] = {0};
+  int offset = 0;
 
-  // Log backtrace frames - output each frame separately so logging system can color it
+  // Add header with color
+  offset +=
+      safe_snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "%s\n", colored_string(LOG_COLOR_WARN, label));
+
+  // Build backtrace frames with colored frame numbers and symbols
   int frame_num = 0;
-  for (int i = start; i < end; i++) {
+  for (int i = start; i < end && offset < (int)sizeof(buffer) - 512; i++) {
     const char *symbol = symbols[i] ? symbols[i] : "???";
 
     // Skip frame if filter says to
@@ -673,11 +678,30 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
       continue;
     }
 
-    // Log each frame as a separate statement for proper coloring through logging system
-    // Format: "  [frame_num] symbol"
-    log_warn("  [%d] %s", frame_num, symbol);
+    // Build frame number string
+    char frame_num_str[16];
+    safe_snprintf(frame_num_str, sizeof(frame_num_str), "%d", frame_num);
+
+    // Get colored versions - copy to temp buffers to avoid rotating buffer issues
+    const char *colored_num_ptr = colored_string(LOG_COLOR_INFO, frame_num_str);
+    char colored_num_buf[256];
+    strncpy(colored_num_buf, colored_num_ptr, sizeof(colored_num_buf) - 1);
+    colored_num_buf[sizeof(colored_num_buf) - 1] = '\0';
+
+    const char *colored_sym_ptr = colored_string(LOG_COLOR_DEBUG, symbol);
+    char colored_sym_buf[1024];
+    strncpy(colored_sym_buf, colored_sym_ptr, sizeof(colored_sym_buf) - 1);
+    colored_sym_buf[sizeof(colored_sym_buf) - 1] = '\0';
+
+    // Format into buffer: "  [colored_num] colored_sym\n"
+    offset += safe_snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "  [%s] %s\n", colored_num_buf,
+                            colored_sym_buf);
     frame_num++;
   }
+
+  // Write directly to stderr to preserve embedded ANSI escape codes
+  // (log_warn() processes the message and strips out embedded codes)
+  fprintf(stderr, "%s", buffer);
 }
 
 /**
