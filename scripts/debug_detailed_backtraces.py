@@ -19,7 +19,10 @@ thread backtrace all
 quit
 """)
 
-    result = subprocess.run(['lldb', '--source', cmd_file], capture_output=True, text=True, timeout=10)
+    result = subprocess.run(['sudo', 'lldb', '--source', cmd_file], capture_output=True, text=True, timeout=60)
+    if result.returncode != 0:
+        print(f"DEBUG: lldb return code: {result.returncode}", file=sys.stderr)
+        print(f"DEBUG: lldb stderr: {result.stderr[:500]}", file=sys.stderr)
     return result.stdout
 
 def main():
