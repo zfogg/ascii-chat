@@ -342,45 +342,19 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     return ASCIICHAT_OK;
   }
 
-  // Client-side: send in fragments using LWS_WRITE_BUFLIST
-  // libwebsockets will buffer and send when socket is writable
-  const size_t FRAGMENT_SIZE = 4096;
-  size_t offset = 0;
+  // Client-side: send data via lws_write with BUFLIST mode
+  // libwebsockets handles buffering and sending with writable callbacks
+  int written = lws_write(ws_data->wsi, send_buffer + LWS_PRE, send_len,
+                          (enum lws_write_protocol)(LWS_WRITE_BINARY | LWS_WRITE_BUFLIST));
 
-  while (offset < send_len) {
-    size_t chunk_size = (send_len - offset > FRAGMENT_SIZE) ? FRAGMENT_SIZE : (send_len - offset);
-    int is_start = (offset == 0);
-    int is_end = (offset + chunk_size >= send_len);
-
-    // Get appropriate flags for this fragment
-    enum lws_write_protocol flags = lws_write_ws_flags(LWS_WRITE_BINARY, is_start, is_end);
-
-    // Use BUFLIST to let libwebsockets handle buffering and writable callbacks
-    flags = (enum lws_write_protocol)((int)flags | LWS_WRITE_BUFLIST);
-
-    // Send this fragment
-    int written = lws_write(ws_data->wsi, send_buffer + LWS_PRE + offset, chunk_size, flags);
-
-    if (written < 0) {
-      SAFE_FREE(send_buffer);
-      if (encrypted_packet)
-        buffer_pool_free(NULL, encrypted_packet, send_len);
-      return SET_ERRNO(ERROR_NETWORK, "WebSocket write failed on fragment at offset %zu", offset);
-    }
-
-    if ((size_t)written != chunk_size) {
-      SAFE_FREE(send_buffer);
-      if (encrypted_packet)
-        buffer_pool_free(NULL, encrypted_packet, send_len);
-      return SET_ERRNO(ERROR_NETWORK, "WebSocket partial write: %d/%zu bytes at offset %zu", written, chunk_size,
-                       offset);
-    }
-
-    offset += chunk_size;
-    log_dev_every(NS_PER_MS_INT, "WebSocket sent fragment %zu bytes (offset %zu/%zu)", chunk_size, offset, send_len);
+  if (written < 0) {
+    SAFE_FREE(send_buffer);
+    if (encrypted_packet)
+      buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
+    return SET_ERRNO(ERROR_NETWORK, "WebSocket write failed");
   }
 
-  log_dev_every(NS_PER_MS_INT, "WebSocket sent complete message: %zu bytes in fragments", send_len);
+  log_dev_every(NS_PER_MS_INT, "WebSocket sent message: %zu bytes via lws_write BUFLIST", send_len);
   SAFE_FREE(send_buffer);
   if (encrypted_packet)
     buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);

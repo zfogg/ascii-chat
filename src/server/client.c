@@ -1485,7 +1485,7 @@ void *client_dispatch_thread(void *arg) {
 
       // Handle PACKET_TYPE_ENCRYPTED from WebSocket clients that encrypt at application layer
       // This mirrors the decryption logic in acip_server_receive_and_dispatch()
-      if (packet_type == PACKET_TYPE_ENCRYPTED && client->transport->crypto_ctx) {
+      if (packet_type == PACKET_TYPE_ENCRYPTED && client->transport && client->transport->crypto_ctx) {
         log_info("DISPATCH_THREAD: Decrypting PACKET_TYPE_ENCRYPTED for client %u", client_id);
 
         uint8_t *ciphertext = payload;
@@ -1527,24 +1527,32 @@ void *client_dispatch_thread(void *arg) {
         log_info("DISPATCH_THREAD: Decrypted inner packet type=%d, payload_len=%u", packet_type, payload_len);
 
         // Dispatch the decrypted packet
-        asciichat_error_t dispatch_result = acip_handle_server_packet(client->transport, packet_type, payload,
-                                                                      payload_len, client, &g_acip_server_callbacks);
+        if (client->transport) {
+          asciichat_error_t dispatch_result = acip_handle_server_packet(client->transport, packet_type, payload,
+                                                                        payload_len, client, &g_acip_server_callbacks);
 
-        if (dispatch_result != ASCIICHAT_OK) {
-          log_error("DISPATCH_THREAD: Handler failed for decrypted packet type=%d: %s", packet_type,
-                    asciichat_error_string(dispatch_result));
+          if (dispatch_result != ASCIICHAT_OK) {
+            log_error("DISPATCH_THREAD: Handler failed for decrypted packet type=%d: %s", packet_type,
+                      asciichat_error_string(dispatch_result));
+          }
+        } else {
+          log_error("DISPATCH_THREAD: Cannot dispatch decrypted packet - transport is NULL for client %u", client_id);
         }
 
         // Free the decrypted buffer
         SAFE_FREE(plaintext);
       } else {
         // Not encrypted or no crypto context - dispatch as-is
-        asciichat_error_t dispatch_result = acip_handle_server_packet(client->transport, packet_type, payload,
-                                                                      payload_len, client, &g_acip_server_callbacks);
+        if (client->transport) {
+          asciichat_error_t dispatch_result = acip_handle_server_packet(client->transport, packet_type, payload,
+                                                                        payload_len, client, &g_acip_server_callbacks);
 
-        if (dispatch_result != ASCIICHAT_OK) {
-          log_error("DISPATCH_THREAD: Handler failed for packet type=%d: %s", packet_type,
-                    asciichat_error_string(dispatch_result));
+          if (dispatch_result != ASCIICHAT_OK) {
+            log_error("DISPATCH_THREAD: Handler failed for packet type=%d: %s", packet_type,
+                      asciichat_error_string(dispatch_result));
+          }
+        } else {
+          log_error("DISPATCH_THREAD: Cannot dispatch packet - transport is NULL for client %u", client_id);
         }
       }
     }
@@ -2109,6 +2117,20 @@ void *client_send_thread_func(void *arg) {
       log_dev_every(4500 * US_PER_MS_INT,
                     "Send thread: About to send frame to client %u (width=%u, height=%u, size=%zu, data=%p)",
                     client->client_id, width, height, frame_size, (void *)frame_data);
+
+      // Log first 32 bytes of frame data to verify we can access it
+      if (frame_data && frame_size > 0) {
+        log_info_every(5000 * US_PER_MS_INT,
+                       "FRAME_DATA_HEX: client=%u first_bytes=[%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x "
+                       "%02x %02x %02x %02x %02x]",
+                       atomic_load(&client->client_id), ((uint8_t *)frame_data)[0], ((uint8_t *)frame_data)[1],
+                       ((uint8_t *)frame_data)[2], ((uint8_t *)frame_data)[3], ((uint8_t *)frame_data)[4],
+                       ((uint8_t *)frame_data)[5], ((uint8_t *)frame_data)[6], ((uint8_t *)frame_data)[7],
+                       ((uint8_t *)frame_data)[8], ((uint8_t *)frame_data)[9], ((uint8_t *)frame_data)[10],
+                       ((uint8_t *)frame_data)[11], ((uint8_t *)frame_data)[12], ((uint8_t *)frame_data)[13],
+                       ((uint8_t *)frame_data)[14], ((uint8_t *)frame_data)[15]);
+      }
+
       mutex_lock(&client->send_mutex);
       if (atomic_load(&client->shutting_down) || !client->transport) {
         mutex_unlock(&client->send_mutex);
