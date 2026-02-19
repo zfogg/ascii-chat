@@ -626,14 +626,33 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
       continue;
     }
 
+    // Extract binary name (basename) for display
+    const char *binary_name = strrchr(groups[g].binary_path, '/');
+    if (!binary_name) {
+      binary_name = strrchr(groups[g].binary_path, '\\');
+    }
+    binary_name = binary_name ? binary_name + 1 : groups[g].binary_path;
+
     // Parse results in order
     for (int j = 0; j < groups[g].count; j++) {
       int orig_idx = groups[g].original_indices[j];
-      result[orig_idx] = parse_llvm_symbolizer_result(fp, buffer[orig_idx]);
-      if (!result[orig_idx]) {
-        result[orig_idx] = SAFE_MALLOC(32, char *);
+      char *parsed = parse_llvm_symbolizer_result(fp, buffer[orig_idx]);
+
+      if (parsed) {
+        // Prepend binary name in brackets
+        char *with_binary = SAFE_MALLOC(1024, char *);
+        if (with_binary) {
+          SAFE_SNPRINTF(with_binary, 1024, "[%s] %s", binary_name, parsed);
+          SAFE_FREE(parsed);
+          result[orig_idx] = with_binary;
+        } else {
+          result[orig_idx] = parsed;
+        }
+      } else {
+        // Fallback: show raw address with binary name
+        result[orig_idx] = SAFE_MALLOC(256, char *);
         if (result[orig_idx]) {
-          SAFE_SNPRINTF(result[orig_idx], 32, "%p", buffer[orig_idx]);
+          SAFE_SNPRINTF(result[orig_idx], 256, "[%s] %p", binary_name, buffer[orig_idx]);
         }
       }
     }

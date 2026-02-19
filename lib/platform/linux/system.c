@@ -90,10 +90,6 @@ int get_binary_file_address_offsets(const void *addr, platform_binary_match_t *m
         strncpy(matches[count].path, path, PLATFORM_MAX_PATH_LENGTH - 1);
         matches[count].path[PLATFORM_MAX_PATH_LENGTH - 1] = '\0';
         matches[count].file_offset = (addr_int - start) + offset;
-
-#ifndef NDEBUG
-        log_debug("[Linux /proc/self/maps] addr=%p matches %s (offset=%lx)", addr, path, matches[count].file_offset);
-#endif
         count++;
       }
     }

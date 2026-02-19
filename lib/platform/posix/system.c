@@ -664,10 +664,11 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
   char buffer[8192] = {0};
   int offset = 0;
 
-  // Add header
-  offset += safe_snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "%s\n", label);
+  // Add header with color
+  offset +=
+      safe_snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "%s\n", colored_string(LOG_COLOR_WARN, label));
 
-  // Build backtrace frames with colored frame numbers
+  // Build backtrace frames with colored frame numbers and symbols
   int frame_num = 0;
   for (int i = start; i < end && offset < (int)sizeof(buffer) - 256; i++) {
     const char *symbol = symbols[i] ? symbols[i] : "???";
@@ -677,8 +678,21 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
       continue;
     }
 
-    // Append frame number and symbol
-    offset += safe_snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "  [%d] %s\n", frame_num, symbol);
+    // Build frame with colors
+    char temp_frame[512];
+    char frame_num_str[16];
+    safe_snprintf(frame_num_str, sizeof(frame_num_str), "%d", frame_num);
+
+    // Format: "  [colored_num] colored_sym\n"
+    safe_snprintf(temp_frame, sizeof(temp_frame), "  [%s] %s\n", colored_string(LOG_COLOR_INFO, frame_num_str),
+                  colored_string(LOG_COLOR_DEBUG, symbol));
+
+    // Copy the colored frame to the main buffer
+    int frame_len = strlen(temp_frame);
+    if (offset + frame_len < (int)sizeof(buffer)) {
+      memcpy(buffer + offset, temp_frame, frame_len);
+      offset += frame_len;
+    }
     frame_num++;
   }
 
