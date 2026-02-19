@@ -427,7 +427,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
               "🔄 WEBSOCKET_RECV: Reassembly timeout after %llums (have %zu bytes, expecting final fragment)",
               (unsigned long long)(elapsed_ns / 1000000ULL), assembled_size);
         }
-        return SET_ERRNO(ERROR_NETWORK, "Fragment reassembly timeout - no data from network");
+        return SET_ERRNO(ERROR_NETWORK_TIMEOUT, "Fragment reassembly timeout - no data from network");
       }
 
       // Check connection state
@@ -526,81 +526,6 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
 
     // More fragments coming, continue reassembling
   }
-      mutex_unlock(&ws_data->queue_mutex);
-      return SET_ERRNO(ERROR_NETWORK, "Failed to read fragment from queue");
-    }
-
-    fragment_count++;
-    log_warn("[WS_REASSEMBLE] Fragment #%d: %zu bytes, first=%d, final=%d, assembled_so_far=%zu", fragment_count,
-             frag.len, frag.first, frag.final, assembled_size);
-
-    // Sanity check: first fragment must have first=1, continuations must have first=0
-    if (assembled_size == 0 && !frag.first) {
-      log_error("[WS_REASSEMBLE] ERROR: Expected first=1 for first fragment, got first=%d", frag.first);
-      buffer_pool_free(NULL, frag.data, frag.len);
-      if (assembled_buffer) {
-        buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
-      }
-      mutex_unlock(&ws_data->queue_mutex);
-      return SET_ERRNO(ERROR_NETWORK, "Protocol error: continuation fragment without first fragment");
-    }
-
-    // Grow assembled buffer if needed
-    size_t required_size = assembled_size + frag.len;
-    if (required_size > assembled_capacity) {
-      size_t new_capacity = (assembled_capacity == 0) ? 8192 : (assembled_capacity * 3 / 2);
-      if (new_capacity < required_size) {
-        new_capacity = required_size;
-      }
-
-      uint8_t *new_buffer = buffer_pool_alloc(NULL, new_capacity);
-      if (!new_buffer) {
-        log_error("[WS_REASSEMBLE] Failed to allocate reassembly buffer (%zu bytes)", new_capacity);
-        buffer_pool_free(NULL, frag.data, frag.len);
-        if (assembled_buffer) {
-          buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
-        }
-        mutex_unlock(&ws_data->queue_mutex);
-        return SET_ERRNO(ERROR_MEMORY, "Failed to allocate fragment reassembly buffer");
-      }
-
-      // Copy existing data to new buffer
-      if (assembled_buffer) {
-        memcpy(new_buffer, assembled_buffer, assembled_size);
-        buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
-      }
-
-      assembled_buffer = new_buffer;
-      assembled_capacity = new_capacity;
-    }
-
-    // Append this fragment
-    memcpy(assembled_buffer + assembled_size, frag.data, frag.len);
-    assembled_size += frag.len;
-    buffer_pool_free(NULL, frag.data, frag.len);
-
-    // If this is the final fragment, we're done
-    if (frag.final) {
-      uint64_t assembly_end_ns = time_get_ns();
-      char assembly_duration_str[32];
-      format_duration_ns((double)(assembly_end_ns - assembly_start_ns), assembly_duration_str,
-                         sizeof(assembly_duration_str));
-      log_info("[WS_REASSEMBLE] Complete message assembled: %zu bytes from %d fragments in %s", assembled_size,
-               fragment_count, assembly_duration_str);
-      break;
-    }
-  }
-
-  mutex_unlock(&ws_data->queue_mutex);
-
-  // Return reassembled message to caller
-  *buffer = assembled_buffer;
-  *out_len = assembled_size;
-  *out_allocated_buffer = assembled_buffer;
-
-  log_info_every(LOG_RATE_DEFAULT, "[WS_TIMING] websocket_recv dequeued %zu bytes (from %d fragments) at t=%llu",
-                 assembled_size, fragment_count, (unsigned long long)time_get_ns());
-  return ASCIICHAT_OK;
 }
 
 static asciichat_error_t websocket_close(acip_transport_t *transport) {

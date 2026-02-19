@@ -1682,8 +1682,7 @@ void *client_receive_thread(void *arg) {
         if (HAS_ERRNO(&err_ctx)) {
           // Check for reassembly timeout (fragments arriving slowly)
           // This is NOT a connection failure - safe to retry
-          if ((err_ctx.code == ERROR_NETWORK) && err_ctx.context_message &&
-              strstr(err_ctx.context_message, "reassembly timeout")) {
+          if (err_ctx.code == ERROR_NETWORK_TIMEOUT) {
             // Fragments are arriving slowly - this is normal, retry without disconnecting
             log_dev_every(100000, "Client %u: fragment reassembly timeout, retrying in 10ms", client->client_id);
             platform_sleep_ms(10); // Sleep 10ms to allow fragments to arrive
