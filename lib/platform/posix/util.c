@@ -32,7 +32,7 @@ char *platform_strdup(const char *s) {
   if (!s)
     return NULL;
   size_t len = strlen(s) + 1;
-  char *dup = SAFE_MALLOC(len, char *);
+  char *dup = (char *)malloc(len);
   if (dup)
     strcpy(dup, s);
   return dup;
@@ -44,7 +44,7 @@ char *platform_strndup(const char *s, size_t n) {
   size_t len = strlen(s);
   if (len > n)
     len = n;
-  char *dup = SAFE_MALLOC(len + 1, char *);
+  char *dup = (char *)malloc(len + 1);
   if (dup) {
     strncpy(dup, s, len);
     dup[len] = '\0';

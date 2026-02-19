@@ -1072,7 +1072,7 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
 
   // Allocate result array (size + 1 for NULL terminator)
   // CALLOC zeros the memory, so result[size] is already NULL
-  char **result = SAFE_CALLOC((size_t)(size + 1), sizeof(char *), char **);
+  char **result = (char **)calloc((size_t)(size + 1), sizeof(char *));
   if (!result) {
     return NULL;
   }
