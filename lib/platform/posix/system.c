@@ -660,17 +660,21 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
     end = start + max_frames;
   }
 
-  // Build entire backtrace in single buffer with colored output
-  char buffer[16384] = {0};
-  int offset = 0;
+  // Build backtrace in two versions: colored for terminal, plain for log file
+  char colored_buffer[16384] = {0};
+  char plain_buffer[16384] = {0};
+  int colored_offset = 0;
+  int plain_offset = 0;
 
-  // Add header with color
-  offset +=
-      safe_snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "%s\n", colored_string(LOG_COLOR_WARN, label));
+  // Add headers
+  colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
+                                  "%s\n", colored_string(LOG_COLOR_WARN, label));
+  plain_offset +=
+      safe_snprintf(plain_buffer + plain_offset, sizeof(plain_buffer) - (size_t)plain_offset, "%s\n", label);
 
-  // Build backtrace frames with colored frame numbers and symbols
+  // Build backtrace frames with colored output for terminal, plain for log
   int frame_num = 0;
-  for (int i = start; i < end && offset < (int)sizeof(buffer) - 512; i++) {
+  for (int i = start; i < end && colored_offset < (int)sizeof(colored_buffer) - 512; i++) {
     const char *symbol = symbols[i] ? symbols[i] : "???";
 
     // Skip frame if filter says to
@@ -693,15 +697,21 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
     strncpy(colored_sym_buf, colored_sym_ptr, sizeof(colored_sym_buf) - 1);
     colored_sym_buf[sizeof(colored_sym_buf) - 1] = '\0';
 
-    // Format into buffer: "  [colored_num] colored_sym\n"
-    offset += safe_snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "  [%s] %s\n", colored_num_buf,
-                            colored_sym_buf);
+    // Format colored buffer: "  [colored_num] colored_sym\n"
+    colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
+                                    "  [%s] %s\n", colored_num_buf, colored_sym_buf);
+
+    // Format plain buffer: "  [num] symbol\n"
+    plain_offset += safe_snprintf(plain_buffer + plain_offset, sizeof(plain_buffer) - (size_t)plain_offset,
+                                  "  [%d] %s\n", frame_num, symbol);
     frame_num++;
   }
 
-  // Write directly to stderr to preserve embedded ANSI escape codes
-  // (log_warn() processes the message and strips out embedded codes)
-  fprintf(stderr, "%s", buffer);
+  // Write colored version directly to stderr to preserve ANSI escape codes
+  fprintf(stderr, "%s", colored_buffer);
+
+  // Write plain version to log file only (skip stderr since we already printed colored version)
+  log_file_msg("%s", plain_buffer);
 }
 
 /**
