@@ -50,13 +50,13 @@ static log_template_t *parse_format_string(const char *format_str, bool console_
     return NULL;
   }
 
-  log_template_t *result = SAFE_CALLOC(1, sizeof(log_template_t), log_template_t *);
+  log_template_t *result = (log_template_t *)calloc(1, sizeof(log_template_t));
   result->original = (char *)malloc(strlen(format_str) + 1);
   strcpy(result->original, format_str);
   result->console_only = console_only;
 
   /* Pre-allocate spec array (worst case: every char is a specifier) */
-  result->specs = SAFE_CALLOC(strlen(format_str) + 1, sizeof(log_format_spec_t), log_format_spec_t *);
+  result->specs = (log_format_spec_t *)calloc(strlen(format_str) + 1, sizeof(log_format_spec_t));
   if (!result->specs) {
     UNTRACKED_FREE(result->original);
     UNTRACKED_FREE(result);
