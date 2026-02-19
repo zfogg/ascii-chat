@@ -26,11 +26,17 @@
 #   - LIBWEBSOCKETS_FOUND: Whether libwebsockets was found
 # =============================================================================
 
-# Skip for musl builds - libwebsockets is built from source in MuslDependencies.cmake
-if(USE_MUSL)
-    if(LIBWEBSOCKETS_FOUND)
+# Skip if already configured (by MuslDependencies.cmake or other means)
+# Check LIBWEBSOCKETS_FOUND first in case MuslDependencies.cmake already ran
+if(LIBWEBSOCKETS_FOUND)
+    if(TARGET websockets)
         message(STATUS "${BoldGreen}✓${ColorReset} libwebsockets (musl): using musl-built static library")
     endif()
+    return()
+endif()
+
+# Skip for musl builds - libwebsockets is built from source in MuslDependencies.cmake
+if(USE_MUSL)
     return()
 endif()
 
@@ -121,11 +127,14 @@ set(LIBWEBSOCKETS_BUILD_TARGET libwebsockets-native)
 add_compile_definitions(HAVE_LIBWEBSOCKETS=1)
 
 # Create an imported target for consistency with find_package() targets
-add_library(websockets STATIC IMPORTED)
-set_target_properties(websockets PROPERTIES
-    IMPORTED_LOCATION "${LIBWEBSOCKETS_LIBRARIES}"
-    INTERFACE_INCLUDE_DIRECTORIES "${LIBWEBSOCKETS_INCLUDE_DIRS}"
-)
-add_dependencies(websockets libwebsockets-native)
+# Only create if not already created (by MuslDependencies.cmake or other means)
+if(NOT TARGET websockets)
+    add_library(websockets STATIC IMPORTED)
+    set_target_properties(websockets PROPERTIES
+        IMPORTED_LOCATION "${LIBWEBSOCKETS_LIBRARIES}"
+        INTERFACE_INCLUDE_DIRECTORIES "${LIBWEBSOCKETS_INCLUDE_DIRS}"
+    )
+    add_dependencies(websockets libwebsockets-native)
+endif()
 
 message(STATUS "${BoldGreen}✓${ColorReset} libwebsockets (native, extensions enabled): ${LIBWEBSOCKETS_LIBRARIES}")

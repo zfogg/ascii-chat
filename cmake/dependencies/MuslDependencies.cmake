@@ -1062,6 +1062,16 @@ set(LIBWEBSOCKETS_INCLUDE_DIRS "${LWS_PREFIX}/include")
 set(LIBWEBSOCKETS_BUILD_TARGET libwebsockets-musl)
 add_compile_definitions(HAVE_LIBWEBSOCKETS=1)
 
+# Create imported target for libwebsockets (musl build) to match Libwebsockets.cmake behavior
+if(NOT TARGET websockets)
+    add_library(websockets STATIC IMPORTED GLOBAL)
+    set_target_properties(websockets PROPERTIES
+        IMPORTED_LOCATION "${LIBWEBSOCKETS_LIBRARIES}"
+        INTERFACE_INCLUDE_DIRECTORIES "${LIBWEBSOCKETS_INCLUDE_DIRS}"
+    )
+    add_dependencies(websockets libwebsockets-musl)
+endif()
+
 # =============================================================================
 # Abseil-cpp - Google's C++ library for WebRTC dependencies
 # =============================================================================
@@ -1127,6 +1137,7 @@ if(NOT EXISTS "${YYJSON_PREFIX}/lib/libyyjson.a")
         URL https://github.com/ibireme/yyjson/archive/refs/tags/0.12.0.tar.gz
         URL_HASH SHA256=f75c26cb1e5d6f0e20b8f3a89b9f7e26c47bb4cdc6f3bc3abc8a3da4d006c5df
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        TLS_VERIFY FALSE
         PREFIX ${YYJSON_BUILD_DIR}
         STAMP_DIR ${YYJSON_BUILD_DIR}/stamps
         UPDATE_DISCONNECTED 1
