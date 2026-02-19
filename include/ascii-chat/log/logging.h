@@ -932,6 +932,22 @@ const char *get_level_string_padded(log_level_t level);
 void log_console_impl(log_level_t level, const char *file, int line, const char *func, const char *message);
 #define log_console(level, message) log_console_impl((level), __FILE__, __LINE__, __func__, (message))
 
+/**
+ * @brief Get the current log format template (opaque pointer)
+ * @return Opaque pointer to the current log format template (may be NULL if not set)
+ *         Cast to log_template_t* after including log/format.h
+ * @ingroup logging
+ *
+ * Returns the compiled log format template used by the logging system.
+ * This is useful for code that needs to format log entries using the same
+ * template as the rest of the logging system (e.g., platform code).
+ *
+ * @note The returned pointer is valid only for the lifetime of the logging system
+ * @note It's safe to call before log_init() (will return NULL)
+ * @note Return type is void* (opaque) to avoid circular dependency with format.h
+ */
+void *log_get_template(void);
+
 /* Include crypto.h at the end to avoid circular dependency with time.h */
 #include "../crypto/crypto.h"
 

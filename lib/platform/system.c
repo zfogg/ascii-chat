@@ -14,7 +14,9 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/uthash/uthash.h> // UBSan-safe uthash wrapper
 #include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/format.h>
 #include <ascii-chat/util/string.h>
+#include <time.h>
 
 // Platform-specific binary suffix
 #ifdef _WIN32
@@ -550,9 +552,52 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
   int colored_offset = 0;
   int plain_offset = 0;
 
-  // Add headers
-  colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
-                                  "%s\n", colored_string(LOG_COLOR_WARN, label));
+  // Format log header using logging system's template
+  char log_header_buf[512] = {0};
+  time_t now = time(NULL);
+  struct tm *tm_info = localtime(&now);
+  char timestamp[32];
+  strftime(timestamp, sizeof(timestamp), "%H:%M:%S", tm_info);
+
+  thread_id_t tid = asciichat_thread_self();
+  uint64_t tid_val = (uintptr_t)tid;
+
+  // Get current time in nanoseconds for template formatting
+  uint64_t time_ns = platform_get_monotonic_time_us() * 1000ULL;
+
+  // Try to format header using the logging system's template with color
+  log_template_t *format = log_get_template();
+  if (format) {
+    int len = log_template_apply(format, log_header_buf, sizeof(log_header_buf), LOG_WARN, timestamp, __FILE__,
+                                 __LINE__, __func__, tid_val, label, true, time_ns);
+    if (len > 0) {
+      // Successfully formatted with logging template
+      colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
+                                      "%s\n", log_header_buf);
+    } else {
+      // Fallback: manual formatting if template fails
+      safe_snprintf(log_header_buf, sizeof(log_header_buf), "[%s] [WARN] [tid:%llu] %s: %s", timestamp, tid_val,
+                    __func__, label);
+      const char *colored_header_ptr = colored_string(LOG_COLOR_WARN, log_header_buf);
+      char colored_header_buf[512];
+      strncpy(colored_header_buf, colored_header_ptr, sizeof(colored_header_buf) - 1);
+      colored_header_buf[sizeof(colored_header_buf) - 1] = '\0';
+      colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
+                                      "%s\n", colored_header_buf);
+    }
+  } else {
+    // Fallback: manual formatting if no template available
+    safe_snprintf(log_header_buf, sizeof(log_header_buf), "[%s] [WARN] [tid:%llu] %s: %s", timestamp, tid_val, __func__,
+                  label);
+    const char *colored_header_ptr = colored_string(LOG_COLOR_WARN, log_header_buf);
+    char colored_header_buf[512];
+    strncpy(colored_header_buf, colored_header_ptr, sizeof(colored_header_buf) - 1);
+    colored_header_buf[sizeof(colored_header_buf) - 1] = '\0';
+    colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
+                                    "%s\n", colored_header_buf);
+  }
+
+  // Add plain label header for log file
   plain_offset +=
       safe_snprintf(plain_buffer + plain_offset, sizeof(plain_buffer) - (size_t)plain_offset, "%s\n", label);
 
@@ -747,7 +792,9 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
     frame_num++;
   }
 
-  // Write colored version directly to stderr to preserve ANSI escape codes
+  // TODO: Investigate why log_warn() can't be used here. Currently we bypass the logging
+  // system to preserve ANSI color codes, but this means we lose the normal log formatting
+  // (timestamps, log level, etc). Ideally log_warn() should accept a flag to preserve codes.
   fprintf(stderr, "%s", colored_buffer);
 
   // Write plain version to log file only (skip stderr since we already printed colored version)

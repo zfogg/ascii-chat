@@ -1957,3 +1957,16 @@ void log_console_impl(log_level_t level, const char *file, int line, const char 
     }
   }
 }
+
+/**
+ * @brief Get the current log format template
+ * @return Opaque pointer to the current log format template (may be NULL if not set)
+ *
+ * Returns the compiled log format template used by the logging system.
+ * This is used by platform code (e.g., backtrace formatting) to format
+ * log entries using the same template as the rest of the logging system.
+ * Returns void* (opaque) to avoid circular dependency with format.h.
+ */
+void *log_get_template(void) {
+  return (void *)g_log.format;
+}
