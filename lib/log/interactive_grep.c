@@ -284,7 +284,7 @@ void interactive_grep_exit_mode(bool accept) {
   }
 
   if (!accept) {
-    // Cancel - restore previous patterns
+    // Cancel - restore previous patterns and reset CLI pattern flag so user can re-populate
     asciichat_error_t result = grep_restore_patterns();
     if (result != ASCIICHAT_OK) {
       log_warn("Failed to restore filter patterns");
@@ -295,6 +295,9 @@ void interactive_grep_exit_mode(bool accept) {
       g_grep_state.active_patterns[i] = NULL;
     }
     g_grep_state.active_pattern_count = 0;
+
+    // Reset the CLI pattern auto-populated flag so user can re-enter grep mode with the pattern again
+    g_grep_state.cli_pattern_auto_populated = false;
 
     g_grep_state.mode = GREP_MODE_INACTIVE;
     atomic_store(&g_grep_state.mode_atomic, GREP_MODE_INACTIVE);
@@ -758,8 +761,16 @@ bool interactive_grep_get_match_info(const char *message, size_t *out_match_star
   pcre2_singleton_t *patterns_copy[MAX_GREP_PATTERNS];
 
   if (has_fixed_string) {
-    SAFE_STRNCPY(pattern_copy, g_grep_state.input_buffer, sizeof(pattern_copy) - 1);
-    pattern_copy[sizeof(pattern_copy) - 1] = '\0';
+    // Parse the input buffer to extract just the pattern part (without flags)
+    grep_parse_result_t parsed = grep_parse_pattern(g_grep_state.input_buffer);
+    if (parsed.valid) {
+      SAFE_STRNCPY(pattern_copy, parsed.pattern, sizeof(pattern_copy) - 1);
+      pattern_copy[sizeof(pattern_copy) - 1] = '\0';
+    } else {
+      // If parsing fails, fall back to using the whole input buffer (but this shouldn't happen)
+      SAFE_STRNCPY(pattern_copy, g_grep_state.input_buffer, sizeof(pattern_copy) - 1);
+      pattern_copy[sizeof(pattern_copy) - 1] = '\0';
+    }
   }
 
   for (int i = 0; i < pattern_count && i < MAX_GREP_PATTERNS; i++) {

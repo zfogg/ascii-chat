@@ -251,8 +251,13 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
         lines_for_this = (msg_display_width + g_cached_term_size.cols - 1) / g_cached_term_size.cols;
       }
 
-      // Check if this log line is the same as what we rendered last frame
-      bool same_as_before = (log_idx < g_prev_log_count && g_prev_log_ptrs[log_idx] == original_msg);
+      // When logs are filtered (grep active), they're in a different order than before.
+      // Only use cached pointers when NOT filtering to avoid cache misses on every frame.
+      // This prevents the "spam" effect where all logs redraw constantly during grep searches.
+      bool same_as_before = false;
+      if (!interactive_grep_is_active()) {
+        same_as_before = (log_idx < g_prev_log_count && g_prev_log_ptrs[log_idx] == original_msg);
+      }
 
       if (same_as_before) {
         // Content unchanged - skip past it without rewriting.

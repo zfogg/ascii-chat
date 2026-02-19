@@ -298,8 +298,48 @@ size_t log_file_parser_merge_and_dedupe(const session_log_entry_t *buffer_entrie
         merged[buffer_count + i].message[SESSION_LOG_LINE_MAX - 1] = '\0';
       }
     } else {
-      // No message marker found, use base text as-is
-      SAFE_STRNCPY(merged[buffer_count + i].message, base_text, SESSION_LOG_LINE_MAX - 1);
+      // No message marker found - try basic recoloring fallback
+      // If base_text is colored (recoloring succeeded), use it
+      // If base_text is plain (recoloring failed), at least apply message colorization to it
+      if (colored_len > 0) {
+        // Recoloring succeeded, use the colored version as-is
+        SAFE_STRNCPY(merged[buffer_count + i].message, base_text, SESSION_LOG_LINE_MAX - 1);
+      } else {
+        // Recoloring failed - try to at least colorize the message part
+        // This handles format variations where the header couldn't be parsed
+        // but we can still colorize the message content
+        char fallback_line[SESSION_LOG_LINE_MAX];
+
+        // Find where the message likely starts (after ": ")
+        const char *msg_start = plain_msg;
+        for (const char *p = plain_msg; *p; p++) {
+          if (*p == ':' && *(p + 1) == ' ' && *(p + 2) != '\0') {
+            msg_start = p + 2;
+            break;
+          }
+        }
+
+        const char *colored_msg = colorize_log_message(msg_start);
+        if (colored_msg && *colored_msg) {
+          // Successfully colored the message - combine with header
+          size_t header_len = msg_start - plain_msg;
+          if (header_len < sizeof(fallback_line) - 1) {
+            memcpy(fallback_line, plain_msg, header_len);
+            size_t pos = header_len;
+            const char *src = colored_msg;
+            while (*src && pos < sizeof(fallback_line) - 1) {
+              fallback_line[pos++] = *src++;
+            }
+            fallback_line[pos] = '\0';
+            SAFE_STRNCPY(merged[buffer_count + i].message, fallback_line, SESSION_LOG_LINE_MAX - 1);
+          } else {
+            SAFE_STRNCPY(merged[buffer_count + i].message, base_text, SESSION_LOG_LINE_MAX - 1);
+          }
+        } else {
+          // Couldn't colorize either - use plain text
+          SAFE_STRNCPY(merged[buffer_count + i].message, base_text, SESSION_LOG_LINE_MAX - 1);
+        }
+      }
       merged[buffer_count + i].message[SESSION_LOG_LINE_MAX - 1] = '\0';
     }
     merged[buffer_count + i].sequence = file_entries[i].sequence;
