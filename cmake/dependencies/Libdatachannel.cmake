@@ -38,10 +38,33 @@ macro(_libdatachannel_link_platform_libs)
 endmacro()
 
 # =============================================================================
-# Try vcpkg first if enabled
+# Try system CMake config first (skip for musl builds)
 # =============================================================================
 set(LIBDATACHANNEL_FOUND FALSE)
 
+if(NOT USE_MUSL)
+    message(STATUS "${BoldCyan}libdatachannel${ColorReset}: Checking system CMake config...")
+    find_package(LibDataChannel QUIET)
+
+    if(LibDataChannel_FOUND)
+        set(LIBDATACHANNEL_FOUND TRUE)
+        message(STATUS "${BoldGreen}✓${ColorReset} libdatachannel found via system CMake config")
+
+        # Create INTERFACE library wrapper for consistency
+        if(NOT TARGET libdatachannel)
+            add_library(libdatachannel INTERFACE)
+            target_link_libraries(libdatachannel INTERFACE LibDataChannel::LibDataChannel)
+        endif()
+
+        # Skip the rest if found
+        message(STATUS "${BoldGreen}libdatachannel WebRTC ready${ColorReset}")
+        return()
+    endif()
+endif()
+
+# =============================================================================
+# Try vcpkg if enabled and not found via CMake config
+# =============================================================================
 if(USE_VCPKG AND VCPKG_ROOT)
     message(STATUS "${BoldCyan}libdatachannel${ColorReset}: Checking vcpkg...")
 
@@ -117,31 +140,6 @@ if(USE_VCPKG AND VCPKG_ROOT)
     endif()
 endif()
 
-# =============================================================================
-# Try system package if not found in vcpkg (skip for musl builds)
-# =============================================================================
-if(NOT LIBDATACHANNEL_FOUND AND NOT USE_MUSL)
-    message(STATUS "${BoldCyan}libdatachannel${ColorReset}: Checking system packages...")
-
-    # Try find_package for system installation (e.g., Arch extra repo)
-    find_package(LibDataChannel QUIET)
-
-    if(LibDataChannel_FOUND)
-        set(LIBDATACHANNEL_FOUND TRUE)
-        message(STATUS "${BoldGreen}libdatachannel${ColorReset} found via system package manager")
-
-        # Create INTERFACE library that wraps the found package
-        # LibDataChannel::LibDataChannel is the imported target from find_package
-        if(NOT TARGET libdatachannel)
-            add_library(libdatachannel INTERFACE)
-            target_link_libraries(libdatachannel INTERFACE LibDataChannel::LibDataChannel)
-        endif()
-    else()
-        message(STATUS "${BoldYellow}libdatachannel${ColorReset} not found in system packages")
-    endif()
-elseif(USE_MUSL)
-    message(STATUS "${BoldCyan}libdatachannel${ColorReset}: Skipping system packages (USE_MUSL=ON, will build from source)")
-endif()
 
 # =============================================================================
 # Build from source if not found anywhere
