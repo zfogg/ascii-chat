@@ -84,9 +84,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
   const char *proto_name = lws_get_protocol(wsi) ? lws_get_protocol(wsi)->name : "NULL";
 
   // LOG EVERY SINGLE CALLBACK WITH PROTOCOL NAME
-  if (reason == 9 || reason == 12 || reason == 6 || reason == 8 || reason == 11) {
-    log_info("🔴 CALLBACK: reason=%d, proto=%s, wsi=%p, len=%zu", reason, proto_name, (void *)wsi, len);
-  }
+  log_dev("🔴 CALLBACK: reason=%d, proto=%s, wsi=%p, len=%zu", reason, proto_name, (void *)wsi, len);
 
   switch (reason) {
   case LWS_CALLBACK_ESTABLISHED: {
@@ -427,7 +425,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
           SAFE_FREE(ws_data->send_buffer);
           ws_data->send_buffer = SAFE_MALLOC(required_size, uint8_t *);
           if (!ws_data->send_buffer) {
-            log_error("WRITEABLE: FAILED TO ALLOCATE SEND BUFFER - required_size=%zu", required_size);
+            log_error("Failed to allocate send buffer");
             SAFE_FREE(msg.data);
             conn_data->has_pending_send = false;
             break;
