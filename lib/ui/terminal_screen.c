@@ -124,8 +124,8 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
   last_grep_state = grep_entering;
 
   if (!grep_entering) {
-    // Normal mode: move cursor to top to overwrite previous content
-    // Don't clear - just print new content on top of old
+    // Normal mode: clear and redraw (no flicker concern without grep)
+    terminal_clear_screen();
     terminal_cursor_home(STDOUT_FILENO);
   } else {
     // Grep mode: overwrite in place, never clear whole screen

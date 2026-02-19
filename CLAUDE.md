@@ -262,9 +262,9 @@ The media source resolver (`lib/media/source.c`) uses this strategy:
 # Custom yt-dlp options
 ./build/bin/ascii-chat mirror --url "https://www.youtube.com/..." --yt-dlp-options "--no-warnings --restrict-filenames"
 
-# Client/discovery modes can also stream media
-./build/bin/ascii-chat client --file video.mp4
-./build/bin/ascii-chat client --url "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+# Server streaming media to clients
+./build/bin/ascii-chat server --file video.mp4
+./build/bin/ascii-chat server --url "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 ```
 
 ### Caching

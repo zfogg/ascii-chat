@@ -203,9 +203,6 @@ void *debug_malloc(size_t size, const char *file, int line) {
 
   bool have_mutex = ensure_mutex_initialized();
   if (have_mutex) {
-    // Debug: print held locks before acquiring memory mutex
-    extern void lock_debug_print_state(void);
-    lock_debug_print_state();
     mutex_lock(&g_mem.mutex);
 
     mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
@@ -255,9 +252,6 @@ void debug_track_aligned(void *ptr, size_t size, const char *file, int line) {
 
   bool have_mutex = ensure_mutex_initialized();
   if (have_mutex) {
-    // Debug: print held locks before acquiring memory mutex
-    extern void lock_debug_print_state(void);
-    lock_debug_print_state();
     mutex_lock(&g_mem.mutex);
 
     mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
@@ -305,9 +299,6 @@ void debug_free(void *ptr, const char *file, int line) {
 
   bool have_mutex = ensure_mutex_initialized();
   if (have_mutex) {
-    // Debug: print held locks before acquiring memory mutex
-    extern void lock_debug_print_state(void);
-    lock_debug_print_state();
     mutex_lock(&g_mem.mutex);
 
     mem_block_t *prev = NULL;
@@ -385,9 +376,6 @@ void *debug_calloc(size_t count, size_t size, const char *file, int line) {
 
   bool have_mutex = ensure_mutex_initialized();
   if (have_mutex) {
-    // Debug: print held locks before acquiring memory mutex
-    extern void lock_debug_print_state(void);
-    lock_debug_print_state();
     mutex_lock(&g_mem.mutex);
 
     mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));

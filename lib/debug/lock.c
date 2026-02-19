@@ -1006,8 +1006,6 @@ static void debug_process_untracked_unlock(void *lock_ptr, uint32_t key, const c
 int debug_mutex_lock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name) {
   LOCK_OP_TRACE("LOCK", "MUTEX", file_name, line_number, function_name);
   if (debug_should_skip_lock_tracking(mutex, file_name, function_name)) {
-    // About to acquire mutex - print held locks for debugging
-    lock_debug_print_state();
     return mutex_lock_impl(mutex);
   }
 
