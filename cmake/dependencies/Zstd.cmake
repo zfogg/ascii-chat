@@ -14,4 +14,7 @@ endif()
 
 find_package(zstd REQUIRED)
 
+# Set uppercase variable for consistency with build system
+set(ZSTD_FOUND TRUE)
+
 message(STATUS "${BoldGreen}✓${ColorReset} zstd found: ${zstd_DIR}")
