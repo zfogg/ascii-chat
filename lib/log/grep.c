@@ -1112,7 +1112,8 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
     }
   }
 
-  // Reset background only
+  // Reset only the background color to preserve foreground colors from headers
+  // Using \x1b[49m (reset background only) instead of \x1b[0m (reset all)
   memcpy(dst, "\x1b[49m", 5);
   dst += 5;
 
