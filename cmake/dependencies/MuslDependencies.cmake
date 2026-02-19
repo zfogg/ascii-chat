@@ -1137,6 +1137,7 @@ if(NOT EXISTS "${YYJSON_PREFIX}/lib/libyyjson.a")
         URL https://github.com/ibireme/yyjson/archive/refs/tags/0.12.0.tar.gz
         URL_HASH SHA256=f75c26cb1e5d6f0e20b8f3a89b9f7e26c47bb4cdc6f3bc3abc8a3da4d006c5df
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        TLS_VERIFY FALSE
         PREFIX ${YYJSON_BUILD_DIR}
         STAMP_DIR ${YYJSON_BUILD_DIR}/stamps
         UPDATE_DISCONNECTED 1
