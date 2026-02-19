@@ -43,13 +43,13 @@ if(WIN32)
 endif()
 
 # =============================================================================
-# macOS Release: Build FFmpeg from source when ASCIICHAT_SHARED_DEPS is OFF
+# Release builds: Build FFmpeg from source when ASCIICHAT_SHARED_DEPS is OFF
 # =============================================================================
-# Homebrew's FFmpeg links against codec libraries (svt-av1, dav1d) that don't
-# have static versions available. To create a truly portable binary, we build
-# FFmpeg from source with only built-in codecs (no external codec dependencies).
+# For portable Release builds (non-musl), compile FFmpeg from source with only
+# built-in codecs (no external codec dependencies like svt-av1, dav1d, x264, x265, etc.)
+# Musl builds always compile everything from source via MuslDependencies.cmake
 # =============================================================================
-if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
     include(ProcessorCount)
     ProcessorCount(NPROC)
     if(NPROC EQUAL 0)
@@ -213,7 +213,7 @@ if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
     # Set FFMPEG_LINK_LIBRARIES for target_link_libraries
     set(FFMPEG_LINK_LIBRARIES ${FFMPEG_LIBRARIES})
 
-    message(STATUS "${BoldGreen}✓${ColorReset} FFmpeg configured (macOS static from source):")
+    message(STATUS "${BoldGreen}✓${ColorReset} FFmpeg configured (static from source):")
     message(STATUS "  - libavformat: ${FFMPEG_PREFIX}/lib/libavformat.a")
     message(STATUS "  - libavcodec: ${FFMPEG_PREFIX}/lib/libavcodec.a")
     message(STATUS "  - libavutil: ${FFMPEG_PREFIX}/lib/libavutil.a")
