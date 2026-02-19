@@ -904,9 +904,6 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
             (plain_match_start == 0) ? 0 : map_plain_to_colored_pos(colored_text, plain_match_start - 1);
         size_t colored_match_end = map_plain_to_colored_pos(colored_text, plain_match_end);
 
-        fprintf(stderr, "GLOBAL_MATCH_PATH: colored_match_start=%zu, colored_match_end=%zu\n", colored_match_start,
-                colored_match_end);
-
         // Copy text before match
         if (colored_match_start > colored_pos) {
           memcpy(dst, colored_text + colored_pos, colored_match_start - colored_pos);
@@ -1050,33 +1047,28 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
     return highlight_buffer;
   }
 
-  // Single match highlighting (original behavior without /g)
+  // Single match highlighting (same logic as global path)
   // map_plain_to_colored_pos(N) returns byte position after counting N characters
-  // For match positions, use the same logic as the global path
   size_t colored_start = map_plain_to_colored_pos(colored_text, match_start);
   size_t colored_end = map_plain_to_colored_pos(colored_text, match_start + match_len);
-
-  // Preserve any ANSI codes at the start of the match (typically header codes)
-  // by skipping past them before inserting the grep background highlight
-  size_t codes_end = skip_ansi_codes(colored_text, colored_start);
 
   size_t colored_len = strlen(colored_text);
   char *dst = highlight_buffer;
 
-  // Copy everything before the match, including any header ANSI codes
-  if (codes_end > 0) {
-    memcpy(dst, colored_text, codes_end);
-    dst += codes_end;
+  // Copy everything before the match
+  if (colored_start > 0) {
+    memcpy(dst, colored_text, colored_start);
+    dst += colored_start;
   }
 
-  // Add highlight background after header codes
+  // Add highlight background
   uint8_t r, g, b;
   get_highlight_color(&r, &g, &b);
   dst = append_truecolor_bg(dst, r, g, b);
 
-  // Copy matched text starting from after the header codes, re-applying background after any [0m or [00m reset codes
-  size_t match_byte_len = colored_end - codes_end;
-  const char *match_src = colored_text + codes_end;
+  // Copy matched text, re-applying background after any [0m or [00m reset codes
+  size_t match_byte_len = colored_end - colored_start;
+  const char *match_src = colored_text + colored_start;
   char *dst_end = highlight_buffer + sizeof(highlight_buffer) - 1; // Absolute buffer end
   size_t i = 0;
 
@@ -1084,7 +1076,7 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
     // Check for [0m or [00m reset codes
     if (i + 4 <= match_byte_len && match_src[i] == '\x1b' && match_src[i + 1] == '[' && match_src[i + 2] == '0' &&
         match_src[i + 3] == 'm') {
-      // Found [0m - copy it and re-apply background (only if room)
+      // Found [0m - copy it and re-apply background (if room)
       if (dst + 4 >= dst_end)
         break;                 // Not enough space for even the reset code
       *dst++ = match_src[i++]; // ESC
@@ -1099,7 +1091,7 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
       }
     } else if (i + 5 <= match_byte_len && match_src[i] == '\x1b' && match_src[i + 1] == '[' &&
                match_src[i + 2] == '0' && match_src[i + 3] == '0' && match_src[i + 4] == 'm') {
-      // Found [00m - copy it and re-apply background (only if room)
+      // Found [00m - copy it and re-apply background (if room)
       if (dst + 5 >= dst_end)
         break;                 // Not enough space for even the reset code
       *dst++ = match_src[i++]; // ESC
@@ -1122,9 +1114,9 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
     }
   }
 
-  // Reset background and foreground to prevent color bleeding to next output
-  memcpy(dst, "\x1b[0m", 4);
-  dst += 4;
+  // Reset background only
+  memcpy(dst, "\x1b[49m", 5);
+  dst += 5;
 
   // Copy remaining text
   size_t remaining = colored_len - colored_end;
