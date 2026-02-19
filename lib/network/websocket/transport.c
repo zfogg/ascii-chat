@@ -146,20 +146,20 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
     msg.first = is_first;
     msg.final = is_final;
 
-    mutex_lock(&ws_data->queue_mutex);
+    mutex_lock(&ws_data->recv_mutex);
     bool success = ringbuffer_write(ws_data->recv_queue, &msg);
     if (!success) {
       // Queue is full - drop the fragment and log warning
       log_warn("WebSocket receive queue full - dropping fragment (len=%zu, first=%d, final=%d)", len, is_first,
                is_final);
       buffer_pool_free(NULL, msg.data, msg.len);
-      mutex_unlock(&ws_data->queue_mutex);
+      mutex_unlock(&ws_data->recv_mutex);
       break;
     }
 
     // Signal waiting recv() call that a fragment is available
-    cond_signal(&ws_data->queue_cond);
-    mutex_unlock(&ws_data->queue_mutex);
+    cond_signal(&ws_data->recv_cond);
+    mutex_unlock(&ws_data->recv_mutex);
     break;
   }
 
@@ -172,7 +172,7 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
       mutex_unlock(&ws_data->state_mutex);
 
       // Wake any blocking recv() calls
-      cond_broadcast(&ws_data->queue_cond);
+      cond_broadcast(&ws_data->recv_cond);
     }
     break;
 
@@ -184,7 +184,7 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
       mutex_unlock(&ws_data->state_mutex);
 
       // Wake any blocking recv() calls
-      cond_broadcast(&ws_data->queue_cond);
+      cond_broadcast(&ws_data->recv_cond);
     }
     break;
 
@@ -304,11 +304,11 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     msg.first = 1;
     msg.final = 1;
 
-    mutex_lock(&ws_data->queue_mutex);
+    mutex_lock(&ws_data->send_mutex);
     bool success = ringbuffer_write(ws_data->send_queue, &msg);
 
     if (!success) {
-      mutex_unlock(&ws_data->queue_mutex);
+      mutex_unlock(&ws_data->send_mutex);
       log_error("WebSocket server send queue FULL - cannot queue %zu byte message for wsi=%p", send_len,
                 (void *)ws_data->wsi);
       SAFE_FREE(msg.data);
@@ -317,7 +317,7 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
         buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
       return SET_ERRNO(ERROR_NETWORK, "Send queue full (cannot queue %zu bytes)", send_len);
     }
-    mutex_unlock(&ws_data->queue_mutex);
+    mutex_unlock(&ws_data->send_mutex);
 
     // Wake the LWS event loop from this non-service thread.
     // Only lws_cancel_service() is thread-safe from non-service threads.
@@ -424,8 +424,8 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
 
         if (assembled_size > 0) {
           log_dev_every(4500000,
-              "🔄 WEBSOCKET_RECV: Reassembly timeout after %llums (have %zu bytes, expecting final fragment)",
-              (unsigned long long)(elapsed_ns / 1000000ULL), assembled_size);
+                        "🔄 WEBSOCKET_RECV: Reassembly timeout after %llums (have %zu bytes, expecting final fragment)",
+                        (unsigned long long)(elapsed_ns / 1000000ULL), assembled_size);
         }
         return SET_ERRNO(ERROR_NETWORK, "Fragment reassembly timeout - no data from network");
       }
@@ -526,72 +526,8 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
 
     // More fragments coming, continue reassembling
   }
-      mutex_unlock(&ws_data->queue_mutex);
-      return SET_ERRNO(ERROR_NETWORK, "Failed to read fragment from queue");
-    }
 
-    fragment_count++;
-    log_warn("[WS_REASSEMBLE] Fragment #%d: %zu bytes, first=%d, final=%d, assembled_so_far=%zu", fragment_count,
-             frag.len, frag.first, frag.final, assembled_size);
-
-    // Sanity check: first fragment must have first=1, continuations must have first=0
-    if (assembled_size == 0 && !frag.first) {
-      log_error("[WS_REASSEMBLE] ERROR: Expected first=1 for first fragment, got first=%d", frag.first);
-      buffer_pool_free(NULL, frag.data, frag.len);
-      if (assembled_buffer) {
-        buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
-      }
-      mutex_unlock(&ws_data->queue_mutex);
-      return SET_ERRNO(ERROR_NETWORK, "Protocol error: continuation fragment without first fragment");
-    }
-
-    // Grow assembled buffer if needed
-    size_t required_size = assembled_size + frag.len;
-    if (required_size > assembled_capacity) {
-      size_t new_capacity = (assembled_capacity == 0) ? 8192 : (assembled_capacity * 3 / 2);
-      if (new_capacity < required_size) {
-        new_capacity = required_size;
-      }
-
-      uint8_t *new_buffer = buffer_pool_alloc(NULL, new_capacity);
-      if (!new_buffer) {
-        log_error("[WS_REASSEMBLE] Failed to allocate reassembly buffer (%zu bytes)", new_capacity);
-        buffer_pool_free(NULL, frag.data, frag.len);
-        if (assembled_buffer) {
-          buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
-        }
-        mutex_unlock(&ws_data->queue_mutex);
-        return SET_ERRNO(ERROR_MEMORY, "Failed to allocate fragment reassembly buffer");
-      }
-
-      // Copy existing data to new buffer
-      if (assembled_buffer) {
-        memcpy(new_buffer, assembled_buffer, assembled_size);
-        buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
-      }
-
-      assembled_buffer = new_buffer;
-      assembled_capacity = new_capacity;
-    }
-
-    // Append this fragment
-    memcpy(assembled_buffer + assembled_size, frag.data, frag.len);
-    assembled_size += frag.len;
-    buffer_pool_free(NULL, frag.data, frag.len);
-
-    // If this is the final fragment, we're done
-    if (frag.final) {
-      uint64_t assembly_end_ns = time_get_ns();
-      char assembly_duration_str[32];
-      format_duration_ns((double)(assembly_end_ns - assembly_start_ns), assembly_duration_str,
-                         sizeof(assembly_duration_str));
-      log_info("[WS_REASSEMBLE] Complete message assembled: %zu bytes from %d fragments in %s", assembled_size,
-               fragment_count, assembly_duration_str);
-      break;
-    }
-  }
-
-  mutex_unlock(&ws_data->queue_mutex);
+  mutex_unlock(&ws_data->recv_mutex);
 
   // Return reassembled message to caller
   *buffer = assembled_buffer;
@@ -625,7 +561,7 @@ static asciichat_error_t websocket_close(acip_transport_t *transport) {
   }
 
   // Wake any blocking recv() calls
-  cond_broadcast(&ws_data->queue_cond);
+  cond_broadcast(&ws_data->recv_cond);
 
   log_debug("WebSocket transport closed");
   return ASCIICHAT_OK;
@@ -691,7 +627,7 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
 
   // Clear receive queue and free buffered messages
   if (ws_data->recv_queue) {
-    mutex_lock(&ws_data->queue_mutex);
+    mutex_lock(&ws_data->recv_mutex);
 
     websocket_recv_msg_t msg;
     while (ringbuffer_read(ws_data->recv_queue, &msg)) {
@@ -700,7 +636,7 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
       }
     }
 
-    mutex_unlock(&ws_data->queue_mutex);
+    mutex_unlock(&ws_data->recv_mutex);
     ringbuffer_destroy(ws_data->recv_queue);
     ws_data->recv_queue = NULL;
 
@@ -725,8 +661,9 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
 
   // Destroy synchronization primitives
   mutex_destroy(&ws_data->state_mutex);
-  cond_destroy(&ws_data->queue_cond);
-  mutex_destroy(&ws_data->queue_mutex);
+  cond_destroy(&ws_data->recv_cond);
+  mutex_destroy(&ws_data->recv_mutex);
+  mutex_destroy(&ws_data->send_mutex);
 
   // Clear impl_data pointer BEFORE freeing to prevent use-after-free in callbacks
   transport->impl_data = NULL;
@@ -848,26 +785,26 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
   }
 
   // Initialize synchronization primitives
-  if (mutex_init(&ws_data->queue_mutex) != 0) {
+  if (mutex_init(&ws_data->recv_mutex) != 0) {
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
-    SET_ERRNO(ERROR_INTERNAL, "Failed to initialize queue mutex");
+    SET_ERRNO(ERROR_INTERNAL, "Failed to initialize recv mutex");
     return NULL;
   }
 
-  if (cond_init(&ws_data->queue_cond) != 0) {
-    mutex_destroy(&ws_data->queue_mutex);
+  if (cond_init(&ws_data->recv_cond) != 0) {
+    mutex_destroy(&ws_data->recv_mutex);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
-    SET_ERRNO(ERROR_INTERNAL, "Failed to initialize queue condition variable");
+    SET_ERRNO(ERROR_INTERNAL, "Failed to initialize recv condition variable");
     return NULL;
   }
 
   if (mutex_init(&ws_data->state_mutex) != 0) {
-    cond_destroy(&ws_data->queue_cond);
-    mutex_destroy(&ws_data->queue_mutex);
+    cond_destroy(&ws_data->recv_cond);
+    mutex_destroy(&ws_data->recv_mutex);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
@@ -880,8 +817,8 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
   ws_data->send_buffer = SAFE_MALLOC(ws_data->send_buffer_capacity, uint8_t *);
   if (!ws_data->send_buffer) {
     mutex_destroy(&ws_data->state_mutex);
-    cond_destroy(&ws_data->queue_cond);
-    mutex_destroy(&ws_data->queue_mutex);
+    cond_destroy(&ws_data->recv_cond);
+    mutex_destroy(&ws_data->recv_mutex);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
@@ -907,8 +844,8 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
   if (!ws_data->context) {
     SAFE_FREE(ws_data->send_buffer);
     mutex_destroy(&ws_data->state_mutex);
-    cond_destroy(&ws_data->queue_cond);
-    mutex_destroy(&ws_data->queue_mutex);
+    cond_destroy(&ws_data->recv_cond);
+    mutex_destroy(&ws_data->recv_mutex);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
@@ -937,8 +874,8 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
     lws_context_destroy(ws_data->context);
     SAFE_FREE(ws_data->send_buffer);
     mutex_destroy(&ws_data->state_mutex);
-    cond_destroy(&ws_data->queue_cond);
-    mutex_destroy(&ws_data->queue_mutex);
+    cond_destroy(&ws_data->recv_cond);
+    mutex_destroy(&ws_data->recv_mutex);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
@@ -967,8 +904,8 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
       lws_context_destroy(ws_data->context);
       SAFE_FREE(ws_data->send_buffer);
       mutex_destroy(&ws_data->state_mutex);
-      cond_destroy(&ws_data->queue_cond);
-      mutex_destroy(&ws_data->queue_mutex);
+      cond_destroy(&ws_data->recv_cond);
+      mutex_destroy(&ws_data->recv_mutex);
       ringbuffer_destroy(ws_data->recv_queue);
       SAFE_FREE(ws_data);
       SAFE_FREE(transport);
@@ -983,8 +920,8 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
     lws_context_destroy(ws_data->context);
     SAFE_FREE(ws_data->send_buffer);
     mutex_destroy(&ws_data->state_mutex);
-    cond_destroy(&ws_data->queue_cond);
-    mutex_destroy(&ws_data->queue_mutex);
+    cond_destroy(&ws_data->recv_cond);
+    mutex_destroy(&ws_data->recv_mutex);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
@@ -1002,8 +939,8 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
     lws_context_destroy(ws_data->context);
     SAFE_FREE(ws_data->send_buffer);
     mutex_destroy(&ws_data->state_mutex);
-    cond_destroy(&ws_data->queue_cond);
-    mutex_destroy(&ws_data->queue_mutex);
+    cond_destroy(&ws_data->recv_cond);
+    mutex_destroy(&ws_data->recv_mutex);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
@@ -1068,27 +1005,42 @@ acip_transport_t *acip_websocket_server_transport_create(struct lws *wsi, crypto
   }
 
   // Initialize synchronization primitives
-  if (mutex_init(&ws_data->queue_mutex) != 0) {
+  if (mutex_init(&ws_data->recv_mutex) != 0) {
     ringbuffer_destroy(ws_data->recv_queue);
+    ringbuffer_destroy(ws_data->send_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
-    SET_ERRNO(ERROR_NETWORK, "Failed to initialize queue mutex");
+    SET_ERRNO(ERROR_NETWORK, "Failed to initialize recv mutex");
     return NULL;
   }
 
-  if (cond_init(&ws_data->queue_cond) != 0) {
-    mutex_destroy(&ws_data->queue_mutex);
+  if (cond_init(&ws_data->recv_cond) != 0) {
+    mutex_destroy(&ws_data->recv_mutex);
     ringbuffer_destroy(ws_data->recv_queue);
+    ringbuffer_destroy(ws_data->send_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
-    SET_ERRNO(ERROR_NETWORK, "Failed to initialize queue condition variable");
+    SET_ERRNO(ERROR_NETWORK, "Failed to initialize recv condition variable");
+    return NULL;
+  }
+
+  if (mutex_init(&ws_data->send_mutex) != 0) {
+    cond_destroy(&ws_data->recv_cond);
+    mutex_destroy(&ws_data->recv_mutex);
+    ringbuffer_destroy(ws_data->recv_queue);
+    ringbuffer_destroy(ws_data->send_queue);
+    SAFE_FREE(ws_data);
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_NETWORK, "Failed to initialize send mutex");
     return NULL;
   }
 
   if (mutex_init(&ws_data->state_mutex) != 0) {
-    cond_destroy(&ws_data->queue_cond);
-    mutex_destroy(&ws_data->queue_mutex);
+    mutex_destroy(&ws_data->send_mutex);
+    cond_destroy(&ws_data->recv_cond);
+    mutex_destroy(&ws_data->recv_mutex);
     ringbuffer_destroy(ws_data->recv_queue);
+    ringbuffer_destroy(ws_data->send_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
     SET_ERRNO(ERROR_NETWORK, "Failed to initialize state mutex");
@@ -1100,9 +1052,11 @@ acip_transport_t *acip_websocket_server_transport_create(struct lws *wsi, crypto
   ws_data->send_buffer = SAFE_MALLOC(initial_capacity, uint8_t *);
   if (!ws_data->send_buffer) {
     mutex_destroy(&ws_data->state_mutex);
-    cond_destroy(&ws_data->queue_cond);
-    mutex_destroy(&ws_data->queue_mutex);
+    mutex_destroy(&ws_data->send_mutex);
+    cond_destroy(&ws_data->recv_cond);
+    mutex_destroy(&ws_data->recv_mutex);
     ringbuffer_destroy(ws_data->recv_queue);
+    ringbuffer_destroy(ws_data->send_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate send buffer");
