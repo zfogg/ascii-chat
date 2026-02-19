@@ -763,14 +763,9 @@ bool interactive_grep_get_match_info(const char *message, size_t *out_match_star
   if (has_fixed_string) {
     // Parse the input buffer to extract just the pattern part (without flags)
     grep_parse_result_t parsed = grep_parse_pattern(g_grep_state.input_buffer);
-    if (parsed.valid) {
-      SAFE_STRNCPY(pattern_copy, parsed.pattern, sizeof(pattern_copy) - 1);
-      pattern_copy[sizeof(pattern_copy) - 1] = '\0';
-    } else {
-      // If parsing fails, fall back to using the whole input buffer (but this shouldn't happen)
-      SAFE_STRNCPY(pattern_copy, g_grep_state.input_buffer, sizeof(pattern_copy) - 1);
-      pattern_copy[sizeof(pattern_copy) - 1] = '\0';
-    }
+    const char *src = parsed.valid ? parsed.pattern : g_grep_state.input_buffer;
+    SAFE_STRNCPY(pattern_copy, src, sizeof(pattern_copy) - 1);
+    pattern_copy[sizeof(pattern_copy) - 1] = '\0';
   }
 
   for (int i = 0; i < pattern_count && i < MAX_GREP_PATTERNS; i++) {
