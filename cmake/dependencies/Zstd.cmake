@@ -1,23 +1,10 @@
 # =============================================================================
 # zstd Compression Library Configuration
 # =============================================================================
-# Finds and configures zstd compression library
+# Finds and configures zstd compression library using CMake's find_package()
 #
-# Platform-specific dependency management:
-#   - Windows: Uses vcpkg
-#   - Linux/macOS (non-musl): Uses pkg-config for system packages
-#   - Linux (musl): Dependencies built from source (see MuslDependencies.cmake)
-#
-# Prerequisites (must be set before including this file):
-#   - WIN32, UNIX, APPLE: Platform detection variables
-#   - USE_MUSL: Whether using musl libc
-#   - CMAKE_BUILD_TYPE: Build type
-#   - VCPKG_ROOT, VCPKG_TARGET_TRIPLET: (Windows only) vcpkg configuration
-#
-# Outputs (variables set by this file):
-#   - ZSTD_LIBRARIES: Libraries to link against
-#   - ZSTD_INCLUDE_DIRS: Include directories
-#   - ZSTD_FOUND: Whether zstd was found
+# Outputs:
+#   - zstd::zstd - Imported target for linking
 # =============================================================================
 
 # Skip for musl builds - zstd is configured in MuslDependencies.cmake
@@ -25,22 +12,6 @@ if(USE_MUSL)
     return()
 endif()
 
-include(${CMAKE_SOURCE_DIR}/cmake/utils/FindDependency.cmake)
+find_package(zstd REQUIRED)
 
-# On macOS, prefer Homebrew zstd over system zstd for consistency
-if(APPLE AND NOT USE_MUSL AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
-    if(HOMEBREW_PREFIX AND EXISTS "${HOMEBREW_PREFIX}/opt/zstd/lib/pkgconfig/libzstd.pc")
-        set(ENV{PKG_CONFIG_PATH} "${HOMEBREW_PREFIX}/opt/zstd/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
-    endif()
-endif()
-
-find_dependency_library(
-    NAME ZSTD
-    VCPKG_NAMES zstd zstd_static
-    HEADER zstd.h
-    PKG_CONFIG libzstd
-    HOMEBREW_PKG zstd
-    STATIC_LIB_NAME libzstd.a
-    STATIC_DEFINE ZSTD_STATIC
-    REQUIRED
-)
+message(STATUS "${BoldGreen}✓${ColorReset} zstd found: ${zstd_DIR}")

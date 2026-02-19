@@ -675,7 +675,7 @@ if(NOT BUILDING_OBJECT_LIBS)
         ascii-chat-crypto
         ascii-chat-core
         ${PCRE2_LIBRARIES}
-        ${ZSTD_LIBRARIES}
+        zstd::libzstd
         ${SQLITE3_LIBRARIES}  # Rate limiting SQLite backend
         libdatachannel  # WebRTC DataChannels for P2P transport
         OpenSSL::Crypto  # Required by libdatachannel for TLS/DTLS
@@ -697,7 +697,7 @@ if(NOT BUILDING_OBJECT_LIBS)
     endif()
 else()
     # For OBJECT libs, link external deps only (OpenSSL needed by libdatachannel for TLS/DTLS)
-    target_link_libraries(ascii-chat-network ${PCRE2_LIBRARIES} ${ZSTD_LIBRARIES} ${SQLITE3_LIBRARIES} libdatachannel OpenSSL::Crypto)
+    target_link_libraries(ascii-chat-network ${PCRE2_LIBRARIES} zstd::libzstd ${SQLITE3_LIBRARIES} libdatachannel OpenSSL::Crypto)
     # Link libwebsockets
     if(TARGET PkgConfig::LIBWEBSOCKETS)
         target_link_libraries(ascii-chat-network PkgConfig::LIBWEBSOCKETS)
@@ -904,7 +904,7 @@ add_library(ascii-chat-shared SHARED
     # which don't automatically bring in their module dependencies
     target_link_libraries(ascii-chat-shared PRIVATE
         ${LIBSODIUM_LIBRARIES}
-        ${ZSTD_LIBRARIES}
+        zstd::libzstd
         ${OPUS_LIBRARIES}
         ${SQLITE3_LIBRARIES}
         ${PCRE2_LIBRARIES}
@@ -1361,7 +1361,7 @@ endif()
 target_link_libraries(ascii-chat-static-lib-deps INTERFACE
     ${PCRE2_LIBRARIES}
     ${LIBSODIUM_LIBRARIES}
-    ${ZSTD_LIBRARIES}
+    zstd::libzstd
     ${PORTAUDIO_LIBRARIES}
     ${OPUS_LIBRARIES}
     ${SQLITE3_LIBRARIES}
