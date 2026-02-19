@@ -853,14 +853,9 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
         size_t plain_match_start = (size_t)(found - plain_text);
         size_t plain_match_end = plain_match_start + strlen(fixed_string_pattern);
 
-        // Map to colored text positions
-        // Apply the same fix as in single-match path: get position AT the start, not after it
-        size_t colored_match_start =
-            (plain_match_start == 0) ? 0 : map_plain_to_colored_pos(colored_text, plain_match_start - 1);
+        // Map to colored text positions (same as single-match path)
+        size_t colored_match_start = map_plain_to_colored_pos(colored_text, plain_match_start);
         size_t colored_match_end = map_plain_to_colored_pos(colored_text, plain_match_end);
-
-        fprintf(stderr, "GLOBAL_MATCH_PATH: colored_match_start=%zu, colored_match_end=%zu\n", colored_match_start,
-                colored_match_end);
 
         // Copy text before match
         if (colored_match_start > colored_pos) {
