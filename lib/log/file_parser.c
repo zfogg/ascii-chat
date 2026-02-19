@@ -262,36 +262,20 @@ size_t log_file_parser_merge_and_dedupe(const session_log_entry_t *buffer_entrie
       const char *highlighted_msg = colorize_log_message(plain_message);
 
       if (highlighted_msg && *highlighted_msg) {
-        // Reconstruct the full line combining base (colored or plain) + highlighted message
-        char final_line[SESSION_LOG_LINE_MAX];
-        size_t final_len = 0;
-
-        // Copy base text up to and including "(): "
-        const char *p = base_text;
-        while (*p && final_len < SESSION_LOG_LINE_MAX - 1) {
-          final_line[final_len++] = *p;
-
-          // Track when we see "(): "
-          if (*p == '(' && *(p + 1) == ')' && *(p + 2) == ':' && *(p + 3) == ' ') {
-            // Copy the ": " part
-            final_line[final_len++] = *(++p); // ')'
-            final_line[final_len++] = *(++p); // ':'
-            final_line[final_len++] = *(++p); // ' '
-            p++;                              // Move past the space
-            break;                            // Stop here, append highlighted message
-          }
-          p++;
+        // Find the message marker in the base text and split there
+        const char *base_msg_marker = strstr(base_text, "(): ");
+        if (base_msg_marker) {
+          // Calculate header length (up to and including "(): ")
+          size_t header_len = (base_msg_marker - base_text) + 4; // +4 for "(): "
+          char final_line[SESSION_LOG_LINE_MAX];
+          safe_snprintf(final_line, sizeof(final_line), "%.*s%s", (int)header_len, base_text, highlighted_msg);
+          SAFE_STRNCPY(merged[buffer_count + i].message, final_line, SESSION_LOG_LINE_MAX - 1);
+          merged[buffer_count + i].message[SESSION_LOG_LINE_MAX - 1] = '\0';
+        } else {
+          // Fallback: use base text as-is
+          SAFE_STRNCPY(merged[buffer_count + i].message, base_text, SESSION_LOG_LINE_MAX - 1);
+          merged[buffer_count + i].message[SESSION_LOG_LINE_MAX - 1] = '\0';
         }
-
-        // Append the highlighted message
-        const char *msg_ptr = highlighted_msg;
-        while (*msg_ptr && final_len < SESSION_LOG_LINE_MAX - 1) {
-          final_line[final_len++] = *msg_ptr++;
-        }
-        final_line[final_len] = '\0';
-
-        SAFE_STRNCPY(merged[buffer_count + i].message, final_line, SESSION_LOG_LINE_MAX - 1);
-        merged[buffer_count + i].message[SESSION_LOG_LINE_MAX - 1] = '\0';
       } else {
         // Highlighting failed, use base text as-is
         SAFE_STRNCPY(merged[buffer_count + i].message, base_text, SESSION_LOG_LINE_MAX - 1);

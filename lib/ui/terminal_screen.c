@@ -252,7 +252,8 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
       }
 
       // Check if this log line is the same as what we rendered last frame
-      bool same_as_before = (log_idx < g_prev_log_count && g_prev_log_ptrs[log_idx] == original_msg);
+      bool same_as_before = (log_idx < g_prev_log_count && g_prev_log_ptrs[log_idx] != NULL &&
+                             strcmp(g_prev_log_ptrs[log_idx], original_msg) == 0);
 
       if (same_as_before) {
         // Content unchanged - skip past it without rewriting.
