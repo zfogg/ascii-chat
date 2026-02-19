@@ -2198,7 +2198,7 @@ void *client_send_thread_func(void *arg) {
 
     // If we didn't send anything, sleep briefly to prevent busy waiting
     if (!sent_something) {
-      log_info("[SEND_LOOP_%d] IDLE_SLEEP: nothing sent", loop_iteration_count);
+      log_info_every(5000 * US_PER_MS_INT, "[SEND_LOOP_%d] IDLE_SLEEP: nothing sent", loop_iteration_count);
       platform_sleep_us(1 * US_PER_MS_INT); // 1ms sleep
     }
     uint64_t loop_end_ns = time_get_ns();

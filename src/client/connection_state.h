@@ -161,6 +161,7 @@ void connection_context_cleanup(connection_attempt_context_t *ctx);
  * @param ctx Connection context (initialized via connection_context_init)
  * @param server_address Server hostname or IP address
  * @param server_port Server port number
+ * @param pre_created_tcp_client Optional pre-created TCP client (from framework). If NULL, creates one.
  * @return ASCIICHAT_OK on successful connection
  * @return ERROR_* code on failure
  *
@@ -168,7 +169,7 @@ void connection_context_cleanup(connection_attempt_context_t *ctx);
  * @note ctx.current_state will be set to CONN_STATE_CONNECTED on success
  */
 asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, const char *server_address,
-                                         uint16_t server_port);
+                                         uint16_t server_port, struct tcp_client *pre_created_tcp_client);
 
 /**
  * @brief Attempt WebSocket connection
