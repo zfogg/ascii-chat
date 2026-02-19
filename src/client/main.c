@@ -74,6 +74,7 @@
 #include <ascii-chat/ui/splash.h>
 #include <ascii-chat/log/interactive_grep.h>
 #include <ascii-chat/session/session_log_buffer.h>
+#include <ascii-chat/session/client_like.h>
 #include <ascii-chat/audio/analysis.h>
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/network/mdns/discovery_tui.h>
@@ -156,6 +157,27 @@ app_client_t *g_client = NULL;
  * Always NULL in client mode.
  */
 struct webrtc_peer_manager *g_peer_manager = NULL;
+
+/**
+ * @brief Client connection session state for session_client_like integration
+ *
+ * Holds per-session state needed across reconnections:
+ * - Connection fallback context for multi-stage attempts
+ * - Discovered server address (from LAN discovery or session string)
+ * - Reconnection attempt counter
+ * - Flag tracking if any successful connection has occurred
+ *
+ * Used by client_run() callback to manage the connection/reconnection loop.
+ */
+typedef struct {
+  connection_attempt_context_t connection_ctx; // Fallback connection context (embedded)
+  const char *discovered_address;              // From LAN/session discovery
+  int discovered_port;                         // From LAN/session discovery
+  int reconnect_attempt;                       // Current reconnection attempt number
+  bool has_ever_connected;                     // Track if connection ever succeeded
+} client_session_state_t;
+
+static client_session_state_t g_client_session = {0};
 
 /* Signal handling is now centralized in src/main.c via setup_signal_handlers()
  * Client mode uses set_interrupt_callback(server_connection_shutdown) to register
@@ -387,9 +409,173 @@ static int initialize_client_systems(void) {
  *
  * @return 0 on success, error code on failure
  */
+/* ============================================================================
+ * Client Connection/Reconnection Loop (run_fn for session_client_like)
+ * ============================================================================
+ *
+ * This callback is executed after shared initialization (media/audio/display)
+ * is complete. It manages the entire client connection lifecycle:
+ * 1. Connect to server (with fallback stages: TCP, WebRTC+STUN, WebRTC+TURN)
+ * 2. Exchange media/audio with server
+ * 3. On disconnection, attempt reconnection based on policy
+ * 4. Exit on user request or max reconnection limit
+ */
+
+static asciichat_error_t client_run(session_capture_ctx_t *capture, session_display_ctx_t *display, void *user_data) {
+  (void)capture;   // Provided by session_client_like, used by protocol threads
+  (void)display;   // Provided by session_client_like, used by display threads
+  (void)user_data; // Unused
+
+  // Get the render loop's should_exit callback for monitoring
+  bool (*render_should_exit)(void *) = session_client_like_get_render_should_exit();
+  if (!render_should_exit) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "Render should_exit callback not initialized");
+  }
+
+  // Main connection/reconnection loop
+  while (!should_exit()) {
+    // Attempt connection with fallback stages
+    asciichat_error_t connection_result = connection_attempt_tcp(
+        &g_client_session.connection_ctx,
+        g_client_session.discovered_address != NULL ? g_client_session.discovered_address : "",
+        (uint16_t)(g_client_session.discovered_port > 0 ? g_client_session.discovered_port : 27224));
+
+    // Check if shutdown was requested during connection attempt
+    if (should_exit()) {
+      log_info("Shutdown requested during connection attempt");
+      break;
+    }
+
+    int connection_success = (connection_result == ASCIICHAT_OK) ? 0 : -1;
+
+    if (connection_success != 0) {
+      // In snapshot mode, exit immediately on connection failure
+      if (GET_OPTION(snapshot_mode)) {
+        log_error("Connection failed in snapshot mode - exiting without retry");
+        return ERROR_NETWORK;
+      }
+
+      // Connection failed - check if we should retry
+      g_client_session.reconnect_attempt++;
+
+      int reconnect_attempts = GET_OPTION(reconnect_attempts);
+      if (reconnect_attempts == 0 ||
+          (reconnect_attempts > 0 && g_client_session.reconnect_attempt > reconnect_attempts)) {
+        log_error("Connection failed after %d attempts", g_client_session.reconnect_attempt - 1);
+        return ERROR_NETWORK;
+      }
+
+      // Log reconnection attempt and continue
+      if (g_client_session.has_ever_connected) {
+        display_full_reset();
+        if (!GET_OPTION(quiet)) {
+          log_set_terminal_output(true);
+        }
+      }
+
+      if (reconnect_attempts == -1) {
+        log_info("Connecting (attempt %d)...", g_client_session.reconnect_attempt);
+      } else {
+        log_info("Connecting (attempt %d/%d)...", g_client_session.reconnect_attempt, reconnect_attempts);
+      }
+
+      continue; // Retry connection
+    }
+
+    // Connection successful
+    g_client_session.reconnect_attempt = 0;
+
+    // Integrate transport into server connection layer
+    if (g_client_session.connection_ctx.active_transport) {
+      server_connection_set_transport(g_client_session.connection_ctx.active_transport);
+      g_client_session.connection_ctx.active_transport = NULL;
+    } else {
+      log_error("Connection succeeded but no active transport");
+      continue;
+    }
+
+    // Log connection status
+    if (!g_client_session.has_ever_connected) {
+      log_info("Connected");
+      g_client_session.has_ever_connected = true;
+    } else {
+      log_info("Reconnected");
+    }
+
+    // Start protocol worker threads
+    if (protocol_start_connection() != 0) {
+      log_error("Failed to start connection protocols");
+      protocol_stop_connection();
+      server_connection_close();
+
+      if (GET_OPTION(snapshot_mode)) {
+        log_error("Protocol startup failed in snapshot mode");
+        return ERROR_NETWORK;
+      }
+
+      continue;
+    }
+
+    // Connection monitoring loop
+    while (!should_exit() && server_connection_is_active()) {
+      if (protocol_connection_lost()) {
+        log_debug("Connection lost detected");
+        break;
+      }
+      platform_sleep_us(100 * US_PER_MS_INT);
+    }
+
+    if (should_exit()) {
+      log_debug("Shutdown requested, exiting main loop");
+      break;
+    }
+
+    // Connection lost - cleanup for reconnection
+    log_debug("Connection lost, cleaning up for reconnection");
+    protocol_stop_connection();
+    server_connection_close();
+
+    // Recreate thread pool for clean reconnection
+    if (g_client_worker_pool) {
+      thread_pool_destroy(g_client_worker_pool);
+      g_client_worker_pool = NULL;
+    }
+    g_client_worker_pool = thread_pool_create("client_reconnect");
+    if (!g_client_worker_pool) {
+      log_error("Failed to recreate worker thread pool");
+      return ERROR_THREAD;
+    }
+
+    // Reset connection context for reconnection
+    connection_context_cleanup(&g_client_session.connection_ctx);
+    memset(&g_client_session.connection_ctx, 0, sizeof(g_client_session.connection_ctx));
+    if (connection_context_init(&g_client_session.connection_ctx) != ASCIICHAT_OK) {
+      log_error("Failed to re-initialize connection context");
+      return ERROR_NETWORK;
+    }
+
+    // Restart splash for reconnection
+    if (g_client_session.has_ever_connected && !GET_OPTION(quiet)) {
+      splash_intro_start(NULL);
+    }
+
+    if (GET_OPTION(snapshot_mode)) {
+      log_error("Connection lost in snapshot mode");
+      return ERROR_NETWORK;
+    }
+
+    // Brief delay before reconnection
+    if (g_client_session.has_ever_connected) {
+      platform_sleep_us(US_PER_SEC_INT);
+    }
+  }
+
+  return ASCIICHAT_OK;
+}
+
 int client_main(void) {
 
-  // Initialize all client subsystems (shared init already completed in src/main.c)
+  // Initialize client-specific systems not handled by session_client_like
   int init_result = initialize_client_systems();
   if (init_result != 0) {
 #ifndef NDEBUG

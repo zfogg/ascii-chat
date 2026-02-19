@@ -102,3 +102,17 @@ WebSocket client frames are arriving but not being decoded/dispatched to the IMA
 
 - `lib/network/websocket/server.c` - Fixed lws_service() timeout parameter from -1 to 50ms
 - `lib/network/websocket/transport.c` - Reduced recv_mutex lock contention (2026-02-17)
+
+
+UPDATE:
+i can get about 0.5fps now. i connected a terminal client and it renders smoothly but renders the web client frozen, so
+the server is not processing the image frames sent over websocket back over raw tcp to the tcp terminal client either.
+so neither the raw tcp nor the websocket client get sent back frames from the browser faster than 0.5fps. this is
+definitely a bug in our websocket code, probably to do with mutexes or blocking code with timeouts becuse the code
+processes data and sends it to both the terminal app and the web ui at a very low fps, but it actually does it. this is
+noticeably different from the 1fps every 45 seconds bug. i'm not sure how to proceed but let's find out what's hanging
+with lldb.
+
+here's a hint: the browser renders at 0.5fps while the terminal client renders the browser's webcam feed at 0fps (shows
+one frame then stops animating that grid cell). why? good question. because 0.5fps in the browser is progres, but the
+terminal app is showing the same data from the same server at 0fps, so back to the old bug in that regard..
