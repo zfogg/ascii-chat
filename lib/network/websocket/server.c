@@ -83,8 +83,10 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
   websocket_connection_data_t *conn_data = (websocket_connection_data_t *)user;
   const char *proto_name = lws_get_protocol(wsi) ? lws_get_protocol(wsi)->name : "NULL";
 
-  // Removed high-frequency logging from callback entry point
-  // (was causing mutex contention when logging thousands of times per second)
+  // LOG EVERY SINGLE CALLBACK WITH PROTOCOL NAME
+  if (reason == 9 || reason == 12 || reason == 6 || reason == 8 || reason == 11) {
+    log_info("🔴 CALLBACK: reason=%d, proto=%s, wsi=%p, len=%zu", reason, proto_name, (void *)wsi, len);
+  }
 
   switch (reason) {
   case LWS_CALLBACK_ESTABLISHED: {
@@ -282,25 +284,31 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
   case LWS_CALLBACK_SERVER_WRITEABLE: {
     uint64_t writeable_callback_start_ns = time_get_ns();
     atomic_fetch_add(&g_writeable_callback_count, 1);
+    log_dev_every(4500 * US_PER_MS_INT, "=== LWS_CALLBACK_SERVER_WRITEABLE FIRED === wsi=%p, timestamp=%llu",
+                  (void *)wsi, (unsigned long long)writeable_callback_start_ns);
 
     // Dequeue and send pending data
     if (!conn_data) {
+      log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: No conn_data");
       break;
     }
 
     // Check if cleanup is in progress to avoid race condition with remove_client
     if (conn_data->cleaning_up) {
+      log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: Cleanup in progress, skipping");
       break;
     }
 
     // Snapshot the transport pointer to avoid race condition with cleanup thread
     acip_transport_t *transport_snapshot = conn_data->transport;
     if (!transport_snapshot) {
+      log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: No transport");
       break;
     }
 
     websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport_snapshot->impl_data;
     if (!ws_data || !ws_data->send_queue) {
+      log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: No ws_data or send_queue");
       break;
     }
 
@@ -341,9 +349,17 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
       memcpy(ws_data->send_buffer + LWS_PRE, conn_data->pending_send_data + conn_data->pending_send_offset, chunk_size);
 
+      uint64_t write_start_ns = time_get_ns();
       int written = lws_write(wsi, ws_data->send_buffer + LWS_PRE, chunk_size, flags);
+      uint64_t write_end_ns = time_get_ns();
+      char write_duration_str[32];
+      format_duration_ns((double)(write_end_ns - write_start_ns), write_duration_str, sizeof(write_duration_str));
+      log_dev_every(4500 * US_PER_MS_INT, "lws_write returned %d bytes in %s (chunk_size=%zu)", written,
+                    write_duration_str, chunk_size);
 
       if (written < 0) {
+        log_error("Server WebSocket write error: %d at offset %zu/%zu", written, conn_data->pending_send_offset,
+                  conn_data->pending_send_len);
         SAFE_FREE(conn_data->pending_send_data);
         conn_data->pending_send_data = NULL;
         conn_data->has_pending_send = false;
@@ -351,6 +367,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       }
 
       if ((size_t)written != chunk_size) {
+        log_warn("Server WebSocket partial write: %d/%zu bytes at offset %zu/%zu", written, chunk_size,
+                 conn_data->pending_send_offset, conn_data->pending_send_len);
         // Don't fail on partial write - request another callback to continue
         conn_data->pending_send_offset += written;
         lws_callback_on_writable(wsi);
@@ -361,11 +379,16 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
       if (is_end) {
         // Message fully sent
+        log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: Message fully sent (%zu bytes)",
+                      conn_data->pending_send_len);
         SAFE_FREE(conn_data->pending_send_data);
         conn_data->pending_send_data = NULL;
         conn_data->has_pending_send = false;
       } else {
         // More fragments to send
+        log_dev_every(4500 * US_PER_MS_INT,
+                      "SERVER_WRITEABLE: Sent fragment %zu/%zu bytes, requesting another callback",
+                      conn_data->pending_send_offset, conn_data->pending_send_len);
         lws_callback_on_writable(wsi);
         break;
       }
@@ -389,6 +412,9 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
         conn_data->pending_send_offset = 0;
         conn_data->has_pending_send = true;
 
+        log_dev_every(4500 * US_PER_MS_INT, ">>> SERVER_WRITEABLE: Dequeued message %zu bytes, sending first fragment",
+                      msg.len);
+
         // Send first fragment
         size_t chunk_size = (msg.len > FRAGMENT_SIZE) ? FRAGMENT_SIZE : msg.len;
         int is_start = 1;
@@ -401,8 +427,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
           SAFE_FREE(ws_data->send_buffer);
           ws_data->send_buffer = SAFE_MALLOC(required_size, uint8_t *);
           if (!ws_data->send_buffer) {
-            log_error_every(5000 * US_PER_MS_INT, "WRITEABLE: FAILED TO ALLOCATE SEND BUFFER - required_size=%zu",
-                            required_size);
+            log_error("WRITEABLE: FAILED TO ALLOCATE SEND BUFFER - required_size=%zu", required_size);
             SAFE_FREE(msg.data);
             conn_data->has_pending_send = false;
             break;
@@ -414,23 +439,26 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
         int written = lws_write(wsi, ws_data->send_buffer + LWS_PRE, chunk_size, flags);
         if (written < 0) {
-          log_error_every(5000 * US_PER_MS_INT, "Server WebSocket write error on first fragment: %d", written);
+          log_error("Server WebSocket write error on first fragment: %d", written);
           SAFE_FREE(msg.data);
           conn_data->has_pending_send = false;
           break;
         }
 
         if ((size_t)written != chunk_size) {
-          log_warn_every(5000 * US_PER_MS_INT, "Server WebSocket partial write on first fragment: %d/%zu", written,
-                         chunk_size);
+          log_warn("Server WebSocket partial write on first fragment: %d/%zu", written, chunk_size);
           conn_data->pending_send_offset = written;
         } else {
           conn_data->pending_send_offset = chunk_size;
         }
 
         if (!is_end) {
+          log_dev_every(4500 * US_PER_MS_INT,
+                        ">>> SERVER_WRITEABLE: First fragment sent, requesting callback for next fragment");
           lws_callback_on_writable(wsi);
         } else {
+          log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: Message fully sent in first fragment (%zu bytes)",
+                        chunk_size);
           SAFE_FREE(msg.data);
           conn_data->has_pending_send = false;
 
@@ -449,18 +477,24 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
   case LWS_CALLBACK_RECEIVE: {
     // Received data from client - may be fragmented for large messages
+    log_dev_every(4500 * US_PER_MS_INT, "LWS_CALLBACK_RECEIVE: conn_data=%p, transport=%p, len=%zu", (void *)conn_data,
+                  conn_data ? (void *)conn_data->transport : NULL, len);
+
     if (!conn_data) {
-      log_error_every(5000 * US_PER_MS_INT, "LWS_CALLBACK_RECEIVE: conn_data is NULL");
+      log_error("LWS_CALLBACK_RECEIVE: conn_data is NULL! Need to initialize from ESTABLISHED or handle here");
       break;
     }
 
     // Check if cleanup is in progress to avoid race condition with remove_client
     if (conn_data->cleaning_up) {
+      log_debug("LWS_CALLBACK_RECEIVE: Cleanup in progress, discarding received data");
       break;
     }
 
     // Snapshot the transport pointer to avoid race condition with cleanup thread
     acip_transport_t *transport_snapshot = conn_data->transport;
+    log_info("🔴 [WS_RECEIVE] conn_data=%p transport_snapshot=%p handler_started=%d", (void *)conn_data,
+             (void *)transport_snapshot, conn_data ? conn_data->handler_started : -1);
     if (!transport_snapshot) {
       log_error("LWS_CALLBACK_RECEIVE: transport is NULL! ESTABLISHED never called?");
       // Try to initialize the transport here as a fallback
