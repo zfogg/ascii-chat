@@ -37,22 +37,17 @@ endif()
 include(${CMAKE_SOURCE_DIR}/cmake/utils/FindDependency.cmake)
 
 # =============================================================================
-# Windows: use vcpkg
+# Windows: use vcpkg via find_package
 # =============================================================================
 if(WIN32)
-    find_dependency_library(
-        NAME LIBWEBSOCKETS
-        VCPKG_NAMES libwebsockets websockets
-        HEADER libwebsockets.h
-        PKG_CONFIG libwebsockets
-        STATIC_LIB_NAME libwebsockets.a
-        REQUIRED
-    )
-    if(LIBWEBSOCKETS_FOUND)
-        message(STATUS "libwebsockets (vcpkg): ${LIBWEBSOCKETS_LIBRARIES}")
-        add_compile_definitions(HAVE_LIBWEBSOCKETS=1)
-    else()
-        message(FATAL_ERROR "libwebsockets not found via vcpkg. Run: vcpkg install libwebsockets")
+    find_package(libwebsockets REQUIRED)
+    message(STATUS "${BoldGreen}✓${ColorReset} libwebsockets found (Windows vcpkg)")
+    add_compile_definitions(HAVE_LIBWEBSOCKETS=1)
+
+    # Create compatibility variables for the rest of the build
+    get_target_property(LIBWEBSOCKETS_LIBRARIES websockets IMPORTED_LOCATION)
+    if(NOT LIBWEBSOCKETS_LIBRARIES)
+        set(LIBWEBSOCKETS_LIBRARIES websockets)
     endif()
     return()
 endif()
@@ -124,5 +119,13 @@ set(LIBWEBSOCKETS_LIBRARIES "${LWS_NATIVE_PREFIX}/lib/libwebsockets.a")
 set(LIBWEBSOCKETS_INCLUDE_DIRS "${LWS_NATIVE_PREFIX}/include")
 set(LIBWEBSOCKETS_BUILD_TARGET libwebsockets-native)
 add_compile_definitions(HAVE_LIBWEBSOCKETS=1)
+
+# Create an imported target for consistency with find_package() targets
+add_library(websockets STATIC IMPORTED)
+set_target_properties(websockets PROPERTIES
+    IMPORTED_LOCATION "${LIBWEBSOCKETS_LIBRARIES}"
+    INTERFACE_INCLUDE_DIRECTORIES "${LIBWEBSOCKETS_INCLUDE_DIRS}"
+)
+add_dependencies(websockets libwebsockets-native)
 
 message(STATUS "${BoldGreen}✓${ColorReset} libwebsockets (native, extensions enabled): ${LIBWEBSOCKETS_LIBRARIES}")
