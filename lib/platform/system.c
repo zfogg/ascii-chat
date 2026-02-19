@@ -565,42 +565,44 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
   // Get current time in nanoseconds for template formatting
   uint64_t time_ns = platform_get_monotonic_time_us() * 1000ULL;
 
-  // Try to format header using the logging system's template with color
+  // Format header (without message), then append colored label separately
   log_template_t *format = log_get_template();
   if (format) {
-    // Color the label with WARN color for terminal output
+    // Pass empty message to template so it formats only the header part
+    int len = log_template_apply(format, log_header_buf, sizeof(log_header_buf), LOG_WARN, timestamp, file, line, func,
+                                 tid_val, "", true, time_ns);
+    if (len > 0) {
+      // Remove trailing newline from template output
+      if (log_header_buf[len - 1] == '\n') {
+        log_header_buf[len - 1] = '\0';
+      }
+      // Append colored label (template already has colon and space)
+      const char *colored_label_ptr = colored_string(LOG_COLOR_WARN, label);
+      char colored_label_buf[256];
+      strncpy(colored_label_buf, colored_label_ptr, sizeof(colored_label_buf) - 1);
+      colored_label_buf[sizeof(colored_label_buf) - 1] = '\0';
+      colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
+                                      "%s%s\n", log_header_buf, colored_label_buf);
+    } else {
+      // Fallback: manual formatting if template fails
+      safe_snprintf(log_header_buf, sizeof(log_header_buf), "[%s] [WARN] [tid:%llu] %s: ", timestamp, tid_val,
+                    __func__);
+      const char *colored_label_ptr = colored_string(LOG_COLOR_WARN, label);
+      char colored_label_buf[256];
+      strncpy(colored_label_buf, colored_label_ptr, sizeof(colored_label_buf) - 1);
+      colored_label_buf[sizeof(colored_label_buf) - 1] = '\0';
+      colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
+                                      "%s%s\n", log_header_buf, colored_label_buf);
+    }
+  } else {
+    // Fallback: manual formatting if no template available
+    safe_snprintf(log_header_buf, sizeof(log_header_buf), "[%s] [WARN] [tid:%llu] %s: ", timestamp, tid_val, __func__);
     const char *colored_label_ptr = colored_string(LOG_COLOR_WARN, label);
     char colored_label_buf[256];
     strncpy(colored_label_buf, colored_label_ptr, sizeof(colored_label_buf) - 1);
     colored_label_buf[sizeof(colored_label_buf) - 1] = '\0';
-
-    int len = log_template_apply(format, log_header_buf, sizeof(log_header_buf), LOG_WARN, timestamp, file, line, func,
-                                 tid_val, colored_label_buf, true, time_ns);
-    if (len > 0) {
-      // Successfully formatted with logging template
-      colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
-                                      "%s\n", log_header_buf);
-    } else {
-      // Fallback: manual formatting if template fails
-      safe_snprintf(log_header_buf, sizeof(log_header_buf), "[%s] [WARN] [tid:%llu] %s: %s", timestamp, tid_val,
-                    __func__, label);
-      const char *colored_header_ptr = colored_string(LOG_COLOR_WARN, log_header_buf);
-      char colored_header_buf[512];
-      strncpy(colored_header_buf, colored_header_ptr, sizeof(colored_header_buf) - 1);
-      colored_header_buf[sizeof(colored_header_buf) - 1] = '\0';
-      colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
-                                      "%s\n", colored_header_buf);
-    }
-  } else {
-    // Fallback: manual formatting if no template available
-    safe_snprintf(log_header_buf, sizeof(log_header_buf), "[%s] [WARN] [tid:%llu] %s: %s", timestamp, tid_val, __func__,
-                  label);
-    const char *colored_header_ptr = colored_string(LOG_COLOR_WARN, log_header_buf);
-    char colored_header_buf[512];
-    strncpy(colored_header_buf, colored_header_ptr, sizeof(colored_header_buf) - 1);
-    colored_header_buf[sizeof(colored_header_buf) - 1] = '\0';
     colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
-                                    "%s\n", colored_header_buf);
+                                    "%s%s\n", log_header_buf, colored_label_buf);
   }
 
   // Add plain label header for log file
