@@ -117,7 +117,6 @@ typedef struct {
 static symbol_entry_t *g_symbol_cache = NULL; // uthash uses structure pointer as head
 static rwlock_t g_symbol_cache_lock = {0};    // External locking for thread safety
 static atomic_bool g_symbol_cache_initialized = false;
-static _Thread_local bool g_resolving_symbols = false; // Reentrancy guard
 
 // Statistics
 static atomic_uint_fast64_t g_cache_hits = 0;
@@ -825,23 +824,6 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
     return NULL;
   }
 
-  // Reentrancy guard: set flag immediately to prevent nested symbol resolution
-  // from attempting cache insertion, which could cause double-free errors.
-  bool was_resolving = g_resolving_symbols;
-  g_resolving_symbols = true;
-
-  // Reentrancy guard: if we're already resolving symbols (e.g., from lock debug code
-  // triggered by backtrace inside symbol cache insertion), skip caching to avoid
-  // circular dependencies and double-free errors.
-  if (was_resolving) {
-    char **result = run_llvm_symbolizer_batch(buffer, size);
-    if (!result) {
-      result = run_addr2line_batch(buffer, size);
-    }
-    g_resolving_symbols = was_resolving; // Restore previous state
-    return result;
-  }
-
   // DO NOT auto-initialize here - causes circular dependency during lock_debug_init()
   // The cache must be initialized explicitly by platform_init() before use
   if (!atomic_load(&g_symbol_cache_initialized)) {
@@ -851,7 +833,6 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
     if (!result) {
       result = run_addr2line_batch(buffer, size);
     }
-    g_resolving_symbols = was_resolving; // Restore previous state
     return result;
   }
 
@@ -950,9 +931,6 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
       }
     }
   }
-
-  // Restore reentrancy flag before returning
-  g_resolving_symbols = was_resolving;
 
   return result;
 }
