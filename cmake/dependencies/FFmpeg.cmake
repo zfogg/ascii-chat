@@ -116,6 +116,13 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED
             message(STATUS "  Architecture: ${CMAKE_SYSTEM_PROCESSOR}")
         endif()
 
+        # Platform-specific hardware acceleration flags
+        if(APPLE)
+            set(FFMPEG_HWACCEL_FLAGS --enable-videotoolbox --enable-audiotoolbox)
+        else()
+            set(FFMPEG_HWACCEL_FLAGS --disable-videotoolbox --disable-audiotoolbox)
+        endif()
+
         # Pass through optimization flags for FFmpeg
         # Note: FFmpeg has issues with ThinLTO on macOS (stack probing conflicts),
         # so we use standard optimizations instead. The main binary still uses LTO.
@@ -136,8 +143,7 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED
                 --disable-txtpages
                 --disable-debug
                 --disable-autodetect
-                --enable-videotoolbox
-                --enable-audiotoolbox
+                ${FFMPEG_HWACCEL_FLAGS}
                 --enable-protocol=file
                 --enable-demuxer=mov,matroska,avi,gif,image2,mp3,wav,flac,ogg
                 --enable-decoder=h264,hevc,vp8,vp9,av1,mpeg4,png,gif,mjpeg,mp3,aac,flac,vorbis,opus,pcm_s16le

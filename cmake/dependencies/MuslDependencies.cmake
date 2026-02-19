@@ -180,6 +180,15 @@ set(ZSTD_FOUND TRUE)
 set(ZSTD_LIBRARIES "${ZSTD_PREFIX}/lib/libzstd.a")
 set(ZSTD_INCLUDE_DIRS "${ZSTD_PREFIX}/include")
 
+# Create imported target for zstd to match system find_package behavior
+if(NOT TARGET zstd::libzstd)
+    add_library(zstd::libzstd STATIC IMPORTED GLOBAL)
+    set_target_properties(zstd::libzstd PROPERTIES
+        IMPORTED_LOCATION "${ZSTD_PREFIX}/lib/libzstd.a"
+        INTERFACE_INCLUDE_DIRECTORIES "${ZSTD_PREFIX}/include"
+    )
+endif()
+
 # =============================================================================
 # zlib - Compression library (required by libwebsockets)
 # =============================================================================
