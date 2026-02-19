@@ -16,9 +16,13 @@ char *ansi_strip_escapes(const char *input, size_t input_len) {
   }
 
   // Output will be at most input_len (stripping only removes chars)
-  outbuf_t ob = {0};
-  ob_reserve(&ob, input_len);
+  // Use UNTRACKED_MALLOC to avoid blocking on memory debug mutex
+  char *output = UNTRACKED_MALLOC(input_len + 1, char *);
+  if (!output) {
+    return NULL;
+  }
 
+  size_t out_pos = 0;
   size_t i = 0;
   while (i < input_len) {
     // Check for ESC character (start of ANSI sequence)
@@ -47,13 +51,13 @@ char *ansi_strip_escapes(const char *input, size_t input_len) {
       }
     } else {
       // Regular character - copy to output
-      ob_putc(&ob, input[i]);
+      output[out_pos++] = input[i];
       i++;
     }
   }
 
-  ob_term(&ob);
-  return ob.buf;
+  output[out_pos] = '\0';
+  return output;
 }
 
 bool ansi_is_already_colorized(const char *message, size_t pos) {
