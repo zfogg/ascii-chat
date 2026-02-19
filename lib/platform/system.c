@@ -568,8 +568,14 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
   // Try to format header using the logging system's template with color
   log_template_t *format = log_get_template();
   if (format) {
+    // Color the label with WARN color for terminal output
+    const char *colored_label_ptr = colored_string(LOG_COLOR_WARN, label);
+    char colored_label_buf[256];
+    strncpy(colored_label_buf, colored_label_ptr, sizeof(colored_label_buf) - 1);
+    colored_label_buf[sizeof(colored_label_buf) - 1] = '\0';
+
     int len = log_template_apply(format, log_header_buf, sizeof(log_header_buf), LOG_WARN, timestamp, __FILE__,
-                                 __LINE__, __func__, tid_val, label, true, time_ns);
+                                 __LINE__, __func__, tid_val, colored_label_buf, true, time_ns);
     if (len > 0) {
       // Successfully formatted with logging template
       colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
