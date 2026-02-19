@@ -39,11 +39,8 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
   // No-op - backtrace not supported in WASM
 }
 
-void platform_print_backtrace_impl(int skip_frames, const char *file, int line, const char *func) {
+void platform_print_backtrace(int skip_frames) {
   (void)skip_frames;
-  (void)file;
-  (void)line;
-  (void)func;
   // No-op - backtrace not supported in WASM
 }
 

@@ -345,8 +345,7 @@ void print_orphaned_release_callback(lock_record_t *record, void *user_data) {
   // Print backtrace for the orphaned release
   if (record->backtrace_size > 0) {
     char **symbols = platform_backtrace_symbols(record->backtrace_buffer, record->backtrace_size);
-    platform_print_backtrace_symbols("  Release call stack", symbols, record->backtrace_size, 0, 0, NULL, NULL, 0,
-                                     NULL);
+    platform_print_backtrace_symbols("  Release call stack", symbols, record->backtrace_size, 0, 0, NULL);
     if (symbols) {
       platform_backtrace_symbols_destroy(symbols);
     }
@@ -917,7 +916,7 @@ static bool debug_process_tracked_unlock(void *lock_ptr, uint32_t key, const cha
       // Print backtrace from when lock was acquired
       if (deferred_backtrace_size > 0 && deferred_backtrace_symbols) {
         platform_print_backtrace_symbols("Backtrace from lock acquisition", deferred_backtrace_symbols,
-                                         deferred_backtrace_size, 0, 10, NULL, NULL, 0, NULL);
+                                         deferred_backtrace_size, 0, 10, NULL);
         free(deferred_backtrace_symbols); // Free the transferred ownership
       } else {
         // No backtrace available, print current backtrace
@@ -1013,14 +1012,10 @@ int debug_mutex_lock(mutex_t *mutex, const char *file_name, int line_number, con
   }
 
   // Acquire the actual lock first (call implementation to avoid recursion)
-  log_info(">>> MUTEX_LOCK %p at %s:%d in %s()", mutex, file_name, line_number, function_name);
-  // platform_print_backtrace(2);
   int result = mutex_lock_impl(mutex);
   if (result != 0) {
-    log_error("!!! MUTEX_LOCK FAILED %p (errno=%d)", mutex, result);
     return result;
   }
-  log_info("<<< MUTEX_LOCK ACQUIRED %p", mutex);
 
   // Create and add lock record
   debug_create_and_insert_lock_record(mutex, LOCK_TYPE_MUTEX, file_name, line_number, function_name);
@@ -1049,25 +1044,19 @@ int debug_mutex_trylock(mutex_t *mutex, const char *file_name, int line_number, 
 
 int debug_mutex_unlock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name) {
   LOCK_OP_TRACE("UNLOCK", "MUTEX", file_name, line_number, function_name);
-  log_info(">>> MUTEX_UNLOCK %p at %s:%d in %s()", mutex, file_name, line_number, function_name);
   if (debug_should_skip_lock_tracking(mutex, file_name, function_name)) {
-    int result = mutex_unlock_impl(mutex);
-    log_info("<<< MUTEX_UNLOCK (skipped tracking) %p", mutex);
-    return result;
+    return mutex_unlock_impl(mutex);
   }
 
   // Look for mutex lock record specifically
   uint32_t key = lock_record_key(mutex, LOCK_TYPE_MUTEX);
   if (!debug_process_tracked_unlock(mutex, key, "MUTEX", file_name, line_number, function_name)) {
     // No record found - this is a genuine tracking error
-    log_warn("!!! MUTEX_UNLOCK without matching lock: %p", mutex);
     debug_process_untracked_unlock(mutex, key, "MUTEX", file_name, line_number, function_name);
   }
 
   // Unlock the actual mutex (call implementation to avoid recursion)
-  int result = mutex_unlock_impl(mutex);
-  log_info("<<< MUTEX_UNLOCK RELEASED %p", mutex);
-  return result;
+  return mutex_unlock_impl(mutex);
 }
 
 int debug_rwlock_rdlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name) {
