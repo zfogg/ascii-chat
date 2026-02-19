@@ -70,9 +70,15 @@ static void mirror_keyboard_handler(session_capture_ctx_t *capture, int key, voi
 static asciichat_error_t mirror_run(session_capture_ctx_t *capture, session_display_ctx_t *display, void *user_data) {
   (void)user_data; // Unused
 
+  // Get the render loop's should_exit callback from session_client_like
+  bool (*render_should_exit)(void *) = session_client_like_get_render_should_exit();
+  if (!render_should_exit) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "Render should_exit callback not initialized");
+  }
+
   // Run the unified render loop with keyboard support
   return session_render_loop(capture, display,
-                             NULL,                    // No custom exit check (use global should_exit)
+                             render_should_exit,      // Exit check (checks global + custom)
                              NULL,                    // No custom capture callback
                              NULL,                    // No custom sleep callback
                              mirror_keyboard_handler, // Keyboard handler

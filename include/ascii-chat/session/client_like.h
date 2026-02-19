@@ -190,6 +190,17 @@ typedef struct session_client_like_config {
 /* ============================================================================
  * Entry Point
  * ============================================================================ */
+/**
+ * Get the render loop should_exit callback set by session_client_like_run().
+ *
+ * This is used by mode-specific run_fn callbacks to obtain the proper should_exit
+ * callback for passing to session_render_loop(). The callback checks both the
+ * global should_exit() flag and any mode-specific custom_should_exit condition.
+ *
+ * @return Function pointer to the render should_exit callback, or NULL if
+ *         session_client_like_run() has not been called yet.
+ */
+bool (*session_client_like_get_render_should_exit(void))(void *);
 
 /**
  * Run a client-like mode with fully shared initialization and teardown

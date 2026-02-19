@@ -30,8 +30,19 @@ static bool display_should_exit_adapter(void *user_data);
 // Module-level config for adapter callbacks
 static const session_client_like_config_t *g_current_config = NULL;
 
+// Module-level adapter functions for render loop access
+static bool (*g_render_should_exit)(void *) = NULL;
+
 // External exit function from src/main.c
 extern bool should_exit(void);
+
+/* ============================================================================
+ * Public Accessor
+ * ============================================================================ */
+
+bool (*session_client_like_get_render_should_exit(void))(void *) {
+  return g_render_should_exit;
+}
 
 /* ============================================================================
  * Exit Condition Adapters
@@ -75,6 +86,11 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // Store config globally for adapter callbacks
   g_current_config = config;
 
+  // Store the render should_exit adapter globally so mode-specific run_fn can access it
+  g_render_should_exit = display_should_exit_adapter;
+
+  log_debug("session_client_like_run() starting");
+
   asciichat_error_t result = ASCIICHAT_OK;
 
   // Keep track of what's been initialized for cleanup
@@ -89,30 +105,48 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // SETUP: Terminal and Logging
   // ============================================================================
 
+  log_debug("session_client_like_run(): Setting up terminal and logging");
+
   // Force stderr when stdout is piped (prevents ASCII corruption in output stream)
-  if (terminal_should_force_stderr()) {
+  bool should_force_stderr = terminal_should_force_stderr();
+  log_debug("terminal_should_force_stderr()=%d", should_force_stderr);
+
+  if (should_force_stderr) {
+    // Redirect logs to stderr to prevent corruption of stdout (for pipes)
+    // But keep terminal output enabled so we can see initialization errors
     log_set_force_stderr(true);
-    log_set_terminal_output(false);
   }
 
   // ============================================================================
   // SETUP: Keepawake System
   // ============================================================================
 
+  log_debug("session_client_like_run(): Validating keepawake options");
+
   // Validate mutual exclusivity
-  if (GET_OPTION(enable_keepawake) && GET_OPTION(disable_keepawake)) {
+  bool enable_ka = GET_OPTION(enable_keepawake);
+  bool disable_ka = GET_OPTION(disable_keepawake);
+  log_debug("enable_keepawake=%d, disable_keepawake=%d", enable_ka, disable_ka);
+
+  if (enable_ka && disable_ka) {
     result = SET_ERRNO(ERROR_INVALID_PARAM, "--keepawake and --no-keepawake are mutually exclusive");
     goto cleanup;
   }
 
+  log_debug("session_client_like_run(): Enabling keepawake if needed");
+
   // Enable keepawake unless explicitly disabled
-  if (!GET_OPTION(disable_keepawake)) {
+  if (!disable_ka) {
     (void)platform_enable_keepawake();
   }
+
+  log_debug("session_client_like_run(): Keepawake setup complete");
 
   // ============================================================================
   // SETUP: Splash Screen (before media initialization)
   // ============================================================================
+
+  log_debug("session_client_like_run(): Creating temporary display for splash");
 
   temp_display = session_display_create(NULL);
   if (temp_display) {
@@ -332,7 +366,9 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // SETUP: End Splash Screen
   // ============================================================================
 
+  log_debug("About to call splash_intro_done()");
   splash_intro_done();
+  log_debug("splash_intro_done() returned");
 
   if (temp_display) {
     session_display_destroy(temp_display);
@@ -343,6 +379,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // SETUP: Start Audio Playback
   // ============================================================================
 
+  log_debug("About to check audio context for duplex");
   if (audio_ctx && audio_available) {
     if (audio_start_duplex(audio_ctx) == ASCIICHAT_OK) {
       log_info("Audio playback started");
@@ -359,7 +396,9 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // RUN: Mode-Specific Main Loop
   // ============================================================================
 
+  log_debug("About to call config->run_fn()");
   result = config->run_fn(capture, display, config->run_user_data);
+  log_debug("config->run_fn() returned with result=%d", result);
 
   // ============================================================================
   // CLEANUP (always runs, even on error)
