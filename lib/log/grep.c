@@ -193,6 +193,51 @@ static void get_highlight_color(uint8_t *r, uint8_t *g, uint8_t *b) {
 }
 
 /**
+ * @brief Skip past any leading ANSI escape codes at a given byte position
+ *
+ * @param colored_text Text with ANSI codes
+ * @param byte_pos Starting byte position
+ * @return Byte position after skipping all leading ANSI codes
+ */
+static size_t skip_ansi_codes(const char *colored_text, size_t byte_pos) {
+  while (colored_text[byte_pos] != '\0' && colored_text[byte_pos] == '\x1b') {
+    byte_pos++;
+    // Check if there's a next byte before reading it
+    if (colored_text[byte_pos] == '\0') {
+      break;
+    }
+    unsigned char next = (unsigned char)colored_text[byte_pos];
+    if (next == '[') {
+      // CSI sequence: \x1b[...final_byte (where final byte is 0x40-0x7E)
+      byte_pos++;
+      while (colored_text[byte_pos] != '\0') {
+        unsigned char c = (unsigned char)colored_text[byte_pos];
+        byte_pos++;
+        // Final byte ends the sequence (0x40-0x7E)
+        if (c >= 0x40 && c <= 0x7E) {
+          break;
+        }
+      }
+    } else if (next >= 0x40 && next <= 0x7E) {
+      // 2-byte Fe sequence: \x1b + final_byte (e.g., \x1b7, \x1b8)
+      byte_pos++;
+    } else if (next == '(' || next == ')' || next == '*' || next == '+') {
+      // Designate character set sequences: \x1b( + charset (3 bytes total)
+      byte_pos++; // skip designator
+      if (colored_text[byte_pos] != '\0') {
+        byte_pos++; // skip charset ID
+      }
+    } else {
+      // Unknown escape sequence type, try to skip conservatively
+      if (colored_text[byte_pos] != '\0') {
+        byte_pos++;
+      }
+    }
+  }
+  return byte_pos;
+}
+
+/**
  * @brief Map character position in plain text to byte position in colored text
  *
  * @param colored_text Original text with ANSI escape codes
@@ -1011,23 +1056,27 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
   size_t colored_start = map_plain_to_colored_pos(colored_text, match_start);
   size_t colored_end = map_plain_to_colored_pos(colored_text, match_start + match_len);
 
+  // Preserve any ANSI codes at the start of the match (typically header codes)
+  // by skipping past them before inserting the grep background highlight
+  size_t codes_end = skip_ansi_codes(colored_text, colored_start);
+
   size_t colored_len = strlen(colored_text);
   char *dst = highlight_buffer;
 
-  // Copy text before match
-  if (colored_start > 0) {
-    memcpy(dst, colored_text, colored_start);
-    dst += colored_start;
+  // Copy everything before the match, including any header ANSI codes
+  if (codes_end > 0) {
+    memcpy(dst, colored_text, codes_end);
+    dst += codes_end;
   }
 
-  // Add highlight background
+  // Add highlight background after header codes
   uint8_t r, g, b;
   get_highlight_color(&r, &g, &b);
   dst = append_truecolor_bg(dst, r, g, b);
 
-  // Copy matched text, re-applying background after any [0m or [00m reset codes
-  size_t match_byte_len = colored_end - colored_start;
-  const char *match_src = colored_text + colored_start;
+  // Copy matched text starting from after the header codes, re-applying background after any [0m or [00m reset codes
+  size_t match_byte_len = colored_end - codes_end;
+  const char *match_src = colored_text + codes_end;
   char *dst_end = highlight_buffer + sizeof(highlight_buffer) - 1; // Absolute buffer end
   size_t i = 0;
 
