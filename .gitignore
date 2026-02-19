@@ -8,6 +8,11 @@
 compile_commands.json
 .env
 *.log
+client.json
+server.json
+mirror.json
+acds.json
+discovery.json
 *.txt
 !CMakeLists.txt
 *.old

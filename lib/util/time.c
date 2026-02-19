@@ -4,9 +4,9 @@
  * @brief ⏱️ High-precision timing utilities implementation
  */
 
+#include "ascii-chat/common/error_codes.h"
 #include <ascii-chat/util/time.h>
 
-// Force re-inclusion of sokol_time with implementation
 #undef SOKOL_TIME_INCLUDED
 #define SOKOL_TIME_IMPL
 #include <ascii-chat-deps/sokol/sokol_time.h>
@@ -14,12 +14,9 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/platform/rwlock.h>
 #include <ascii-chat/platform/abstraction.h>
-// uthash wrapper is already included via time.h -> upstream uthash
-// The wrapper macros are applied when .c files include uthash/uthash.h
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <math.h>
 #include <time.h>
 #include <ctype.h>
 
@@ -98,6 +95,27 @@ uint64_t time_elapsed_ns(uint64_t start_ns, uint64_t end_ns) {
   }
   // Wraparound case (extremely unlikely)
   return (UINT64_MAX - start_ns) + end_ns + 1;
+}
+
+// ============================================================================
+// Conversion Functions (moved from inline in header to avoid circular deps)
+// ============================================================================
+
+uint64_t time_timespec_to_ns(const struct timespec *ts) {
+  if (!ts) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "null ts");
+    return 0;
+  }
+  return (uint64_t)ts->tv_sec * NS_PER_SEC_INT + (uint64_t)ts->tv_nsec;
+}
+
+void time_ns_to_timespec(uint64_t ns, struct timespec *ts) {
+  if (!ts) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "null ts");
+    return;
+  }
+  ts->tv_sec = (time_t)(ns / NS_PER_SEC_INT);
+  ts->tv_nsec = (long)(ns % NS_PER_SEC_INT);
 }
 
 // ============================================================================
@@ -539,6 +557,8 @@ bool time_format_is_valid_strftime(const char *format_str) {
 
 int time_format_now(const char *format_str, char *buf, size_t buf_size) {
   if (!format_str || !buf || buf_size < 2) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "time_format_now: invalid arguments - format_str=%p, buf=%p, buf_size=%zu",
+              format_str, buf, buf_size);
     return 0;
   }
 
@@ -567,24 +587,6 @@ int time_format_now(const char *format_str, char *buf, size_t buf_size) {
     /* Buffer would overflow - strftime filled entire buffer or hit exact size */
     log_error("time_format_now: buffer too small (need %zu, have %zu)", len + 1, buf_size);
     return 0;
-  }
-
-  /* If format contains %S and we have room in buffer, append microseconds */
-  if (strchr(format_str, 'S') && len + 7 < buf_size) {
-    long microseconds = nanoseconds / 1000;
-
-    /* Clamp microseconds to valid range [0, 999999] */
-    if (microseconds < 0) {
-      microseconds = 0;
-    }
-    if (microseconds > 999999) {
-      microseconds = 999999;
-    }
-
-    int result = safe_snprintf(buf + len, buf_size - len, ".%06ld", microseconds);
-    if (result > 0 && (size_t)result < buf_size - len) {
-      len += (size_t)result;
-    }
   }
 
   return (int)len;

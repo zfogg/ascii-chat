@@ -853,7 +853,7 @@ void database_session_cleanup_expired(sqlite3 *db) {
 
   uint64_t now = database_get_current_time_ms();
   // 3 hours in milliseconds
-  uint64_t inactivity_threshold = 3ULL * 60 * 60 * 1000;
+  uint64_t inactivity_threshold = 3ULL * SEC_PER_HOUR * MS_PER_SEC_INT;
   uint64_t cutoff_time = now - inactivity_threshold;
 
   // Log sessions about to be deleted
@@ -865,7 +865,7 @@ void database_session_cleanup_expired(sqlite3 *db) {
       const char *session_string = (const char *)sqlite3_column_text(stmt, 0);
       uint64_t last_activity = (uint64_t)sqlite3_column_int64(stmt, 1);
       uint64_t inactive_ms = now - last_activity;
-      uint64_t inactive_hours = inactive_ms / (60 * 60 * 1000);
+      uint64_t inactive_hours = inactive_ms / (SEC_PER_HOUR * MS_PER_SEC_INT);
       log_info("Session %s inactive for %lu hours, deleting", session_string ? session_string : "<unknown>",
                inactive_hours);
     }

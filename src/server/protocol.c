@@ -389,7 +389,7 @@ void handle_protocol_version_packet(client_info_t *client, const void *data, siz
   }
 
   // Log supported features
-  if (version->supports_encryption) {
+  if (ACIP_CRYPTO_HAS_ENCRYPT(version->supports_encryption)) {
     log_debug("Client %u supports encryption", atomic_load(&client->client_id));
   }
   if (version->compression_algorithms != 0) {

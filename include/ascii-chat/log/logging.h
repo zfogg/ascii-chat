@@ -54,21 +54,8 @@ struct crypto_context_t;
 struct color_scheme_t; /* Opaque - full definition in ui/colors.h, only included in logging.c */
 typedef struct color_scheme_t color_scheme_t;
 
-/**
- * @brief Logging levels enumeration
- * @ingroup logging
- *
- * @note This typedef MUST be defined before #include "network/logging.h"
- *       to avoid circular dependency issues with packet.h
- */
-typedef enum {
-  LOG_DEV = 0, /**< Development messages (most verbose) */
-  LOG_DEBUG,   /**< Debug messages */
-  LOG_INFO,    /**< Informational messages */
-  LOG_WARN,    /**< Warning messages */
-  LOG_ERROR,   /**< Error messages */
-  LOG_FATAL    /**< Fatal error messages (most severe) */
-} log_level_t;
+/* Include log types (must be before network/logging.h to avoid circular dependency) */
+#include "types.h"
 
 #include "../network/logging.h"
 
@@ -233,6 +220,15 @@ void log_set_force_stderr(bool enabled);
  * @ingroup logging
  */
 bool log_get_force_stderr(void);
+
+/**
+ * @brief Disable file output and use stderr instead
+ *
+ * Closes the current log file and redirects file output to stderr.
+ * Used when switching to JSON-only logging or when disabling text file output.
+ * @ingroup logging
+ */
+void log_disable_file_output(void);
 
 /**
  * @brief Manually truncate large log files
@@ -429,8 +425,6 @@ char *format_message(const char *format, va_list args);
  */
 size_t get_current_time_formatted(char *time_buf);
 
-#include "../crypto/crypto.h"
-
 /**
  * @brief Send a formatted log message over the network.
  * @param sockfd Destination socket
@@ -578,68 +572,6 @@ asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t
  * These macros log to terminal only, skipping file/mmap output.
  * WARN/ERROR/FATAL go to stderr, other levels go to stdout.
  */
-
-/** @brief Log DEV message to terminal only (no file) */
-#if LOG_COMPILE_LEVEL <= LOG_DEV
-#ifdef NDEBUG
-#define log_dev_nofile(...) log_terminal_msg(LOG_DEV, NULL, 0, NULL, __VA_ARGS__)
-#else
-#define log_dev_nofile(...) log_terminal_msg(LOG_DEV, __FILE__, __LINE__, __func__, __VA_ARGS__)
-#endif
-#else
-#define log_dev_nofile(...) ((void)0)
-#endif
-
-/** @brief Log DEBUG message to terminal only (no file) */
-#if LOG_COMPILE_LEVEL <= LOG_DEBUG
-#ifdef NDEBUG
-#define log_debug_nofile(...) log_terminal_msg(LOG_DEBUG, NULL, 0, NULL, __VA_ARGS__)
-#else
-#define log_debug_nofile(...) log_terminal_msg(LOG_DEBUG, __FILE__, __LINE__, __func__, __VA_ARGS__)
-#endif
-#else
-#define log_debug_nofile(...) ((void)0)
-#endif
-
-/** @brief Log INFO message to terminal only (no file) */
-#if LOG_COMPILE_LEVEL <= LOG_INFO
-#ifdef NDEBUG
-#define log_info_nofile(...) log_terminal_msg(LOG_INFO, NULL, 0, NULL, __VA_ARGS__)
-#else
-#define log_info_nofile(...) log_terminal_msg(LOG_INFO, __FILE__, __LINE__, __func__, __VA_ARGS__)
-#endif
-#else
-#define log_info_nofile(...) ((void)0)
-#endif
-
-/** @brief Log WARN message to terminal only (no file), outputs to stderr */
-#if LOG_COMPILE_LEVEL <= LOG_WARN
-#ifdef NDEBUG
-#define log_warn_nofile(...) log_terminal_msg(LOG_WARN, NULL, 0, NULL, __VA_ARGS__)
-#else
-#define log_warn_nofile(...) log_terminal_msg(LOG_WARN, __FILE__, __LINE__, __func__, __VA_ARGS__)
-#endif
-#else
-#define log_warn_nofile(...) ((void)0)
-#endif
-
-/** @brief Log ERROR message to terminal only (no file), outputs to stderr */
-#if LOG_COMPILE_LEVEL <= LOG_ERROR
-#ifdef NDEBUG
-#define log_error_nofile(...) log_terminal_msg(LOG_ERROR, NULL, 0, NULL, __VA_ARGS__)
-#else
-#define log_error_nofile(...) log_terminal_msg(LOG_ERROR, __FILE__, __LINE__, __func__, __VA_ARGS__)
-#endif
-#else
-#define log_error_nofile(...) ((void)0)
-#endif
-
-/** @brief Log FATAL message to terminal only (no file), outputs to stderr */
-#ifdef NDEBUG
-#define log_fatal_nofile(...) log_terminal_msg(LOG_FATAL, NULL, 0, NULL, __VA_ARGS__)
-#else
-#define log_fatal_nofile(...) log_terminal_msg(LOG_FATAL, __FILE__, __LINE__, __func__, __VA_ARGS__)
-#endif
 
 /** @} */
 
@@ -992,6 +924,32 @@ size_t log_recolor_plain_entry(const char *plain_line, char *colored_buf, size_t
  * @note Internal function - do not use directly in application code
  */
 const char *get_level_string_padded(log_level_t level);
+
+// Console-only logging helper (text or JSON, no file output)
+// For signal handlers and initialization paths where file logging is not safe
+// Automatically chooses between text and JSON based on --json flag
+// Captures call site (file, line, function) for better debugging
+void log_console_impl(log_level_t level, const char *file, int line, const char *func, const char *message);
+#define log_console(level, message) log_console_impl((level), __FILE__, __LINE__, __func__, (message))
+
+/**
+ * @brief Get the current log format template (opaque pointer)
+ * @return Opaque pointer to the current log format template (may be NULL if not set)
+ *         Cast to log_template_t* after including log/format.h
+ * @ingroup logging
+ *
+ * Returns the compiled log format template used by the logging system.
+ * This is useful for code that needs to format log entries using the same
+ * template as the rest of the logging system (e.g., platform code).
+ *
+ * @note The returned pointer is valid only for the lifetime of the logging system
+ * @note It's safe to call before log_init() (will return NULL)
+ * @note Return type is void* (opaque) to avoid circular dependency with format.h
+ */
+void *log_get_template(void);
+
+/* Include crypto.h at the end to avoid circular dependency with time.h */
+#include "../crypto/crypto.h"
 
 #ifdef __cplusplus
 }

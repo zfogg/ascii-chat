@@ -2,8 +2,8 @@
 
 **Date:** 2026-02-17
 **Severity:** CRITICAL
-**Status:** ACTIVE
-**Component:** WebSocket server, async message handling
+**Status:** FIXED
+**Component:** WebSocket server event loop
 
 ## User-Observed Behavior
 
@@ -11,93 +11,108 @@
 2. **ONE frame renders**
 3. Several more frames render over the next few seconds
 4. **Frame rendering STOPS completely (0 FPS)**
-5. After **1-2 minutes**, the browser suddenly renders many frames at once (catching up to real-time), then **STOPS again (0 FPS)**
-6. Pattern repeats: ~45-second cycle of ~1-3 FPS rendering followed by 45+ seconds of 0 FPS stall
+5. After **~45 seconds**, the browser suddenly renders many frames at once (catching up to real-time)
+6. **STOPS again (0 FPS)**
+7. Pattern repeats: 45-second cycle of ~1-3 FPS followed by 0 FPS stalls
 
-## The Bug
+## Root Cause Found
 
-WebSocket data arrives from the browser and is received by libwebsockets. All fragments are queued to memory in `recv_queue`. We have the complete data buffered and available to process.
-
-But processing doesn't happen continuously. Instead, data sits in the queue and is processed intermittently in 45-second bursts at approximately 0-3 FPS, followed by long stalls at 0 FPS.
-
-## Root Issue: Architecture Mismatch With LWS
-
-Our implementation deviates significantly from LWS design patterns, creating a bottleneck in the message pipeline:
-
-### How LWS Examples Work (minimal-ws-server-echo)
+**Location:** `lib/network/websocket/server.c:785`
 
 ```c
-LWS_CALLBACK_RECEIVE:
-  ├─ Receive fragment from browser
-  ├─ Process immediately (memcpy, echo)
-  └─ Send response back immediately
+int result = lws_service(server->context, -1);  // BUG: -1 causes blocking
 ```
 
-Simple, synchronous, no queueing.
+### The Problem
 
-### How Our Implementation Works
+Passing `-1` to `lws_service()` was supposed to force non-blocking mode, but this is incorrect. The parameter `-1` actually causes `lws_service()` to:
+- Use a very long internal timeout
+- Block the service thread indefinitely or for extended periods
+- Prevent RECEIVE callbacks from firing while blocked
+- Prevent WRITEABLE callbacks from firing
+
+### The Cascade
+
+1. Service thread calls `lws_service(-1)` and blocks
+2. No RECEIVE callbacks fire → fragments don't queue to recv_queue
+3. No WRITEABLE callbacks fire → responses can't be sent
+4. Handler thread blocks waiting for fragments in websocket_recv()
+5. Queue remains empty
+6. After ~45 seconds, an OS-level timeout (TCP or internal) wakes the service thread
+7. Queued fragments suddenly process as a burst
+8. Back to blocking state → cycle repeats
+
+This explains the exact 45-second burst/stall pattern observed.
+
+## The Fix
+
+Changed line 785:
 
 ```c
-LWS_CALLBACK_RECEIVE (LWS service thread):
-  ├─ Receive fragment from browser
-  ├─ Allocate buffer
-  ├─ Copy to ringbuffer queue
-  └─ Signal condition variable
+// BEFORE (BLOCKING):
+int result = lws_service(server->context, -1);
 
-Handler Thread (separate):
-  ├─ Wait for queue_cond signal
-  ├─ Call websocket_recv() to reassemble fragments into complete message
-  ├─ Wait for missing fragments (50ms timeout × N times)
-  ├─ Call handler to process complete message
-  └─ Generate ASCII art response
-
-Response path:
-  ├─ Queue response for sending
-  └─ Wait for LWS_CALLBACK_SERVER_WRITEABLE
+// AFTER (NON-BLOCKING):
+int result = lws_service(server->context, 50); // 50ms timeout
 ```
 
-### Where It Breaks Down
+Use a **50ms timeout** instead of -1. This keeps the event loop responsive:
+- Poll every 50ms for new socket activity
+- RECEIVE callbacks fire continuously as fragments arrive
+- WRITEABLE callbacks fire to send responses
+- No more 45-second stalls
 
-1. **Queuing Overhead**: LWS callbacks immediately queue fragments. The dispatch thread then waits for complete messages.
+This matches the correct pattern already used in `transport.c:87` for the client-side WebSocket service thread.
 
-2. **Reassembly Bottleneck**: `websocket_recv()` waits for each fragment with a 10ms+ timeout loop. With 18 fragments per 921KB message, reassembly takes 100-200ms per message, even before TCP batching delays.
+## Current Bug: WebSocket Frames Not Sent Back to Client (2026-02-17 23:10)
 
-3. **Async Complexity**: Data arrives → queues → waits for handler → handler processes → queues response → waits for WRITEABLE callback. Each stage can have latency.
+**Observed Behavior:**
+1. Browser connects to server via WebSocket ✓
+2. Frames arrive continuously (RECEIVE callbacks firing) ✓
+3. Send thread loops and gets video frames ✓
+4. Frame->data pointer is valid ✓
+5. **Frame->size is 0** - frame skipped
+6. No ASCII art sent back to browser ✗
 
-4. **No Continuous Draining**: Unlike the echo example which processes in-callback, our handler thread processes intermittently. When it's blocked waiting for fragments, the queue fills. When it catches up, a burst of processing happens.
+**Root Cause Chain:**
+1. **WebSocket frames aren't being processed into incoming_video_buffer**
+   - No RECV_FRAME logs appear (incoming frames should be logged)
+   - TCP clients show RECV_FRAME logs immediately upon connection
+   - WebSocket client never shows ANY RECV_FRAME logs
 
-5. **Threading Contention**: Multiple threads (LWS service thread, handler thread, status screen thread) compete for the queue_mutex. The dispatch thread can get starved.
+2. **incoming_video_buffer stays empty → sources_with_video = 0**
+   - Render thread: sources=0 (no active video sources)
+   - create_mixed_ascii_frame_for_client returns NULL when sources=0
+   - Frame size set to 0
 
-## What Needs To Happen
+3. **Send thread skips zero-size frames**
+   - Logs show: FRAME_DATA_OK but SKIP_ZERO_SIZE
+   - Nothing sent back to client
 
-The system needs to continuously process queued WebSocket data and send ASCII frames back at steady 30+ FPS, not in intermittent bursts.
+**Why TCP Works, WebSocket Doesn't:**
+- Same code path for storing incoming frames
+- Same send thread implementation
+- TCP clients' incoming frames ARE being stored (RECV_FRAME logs appear)
+- WebSocket clients' incoming frames are NOT being stored (no logs)
 
-Options:
-1. Make the handler process frames continuously instead of waiting for complete messages
-2. Make reassembly faster or non-blocking
-3. Increase queue capacity to buffer more frames during processing stalls
-4. Process multiple frames in parallel instead of one at a time
-5. Simplify the architecture to match LWS examples more closely (less queueing, more direct processing)
+**Missing Link:**
+WebSocket client frames are arriving but not being decoded/dispatched to the IMAGE_FRAME handler. The receive thread isn't processing WebSocket packets correctly or isn't dispatching them to protocol handlers.
 
-## Configuration
+## Files Modified
 
-`cond_timedwait()` timeout in `websocket_recv()`: 1ms
+- `lib/network/websocket/server.c` - Fixed lws_service() timeout parameter from -1 to 50ms
+- `lib/network/websocket/transport.c` - Reduced recv_mutex lock contention (2026-02-17)
 
-This is the timeout when waiting for the next fragment to arrive in the queue. This is unrelated to the 45-second stall pattern (10ms timeouts cannot cause 45-second stalls).
 
-## Evidence
+UPDATE:
+i can get about 0.5fps now. i connected a terminal client and it renders smoothly but renders the web client frozen, so
+the server is not processing the image frames sent over websocket back over raw tcp to the tcp terminal client either.
+so neither the raw tcp nor the websocket client get sent back frames from the browser faster than 0.5fps. this is
+definitely a bug in our websocket code, probably to do with mutexes or blocking code with timeouts becuse the code
+processes data and sends it to both the terminal app and the web ui at a very low fps, but it actually does it. this is
+noticeably different from the 1fps every 45 seconds bug. i'm not sure how to proceed but let's find out what's hanging
+with lldb.
 
-- Browser sends frames continuously (confirmed in RECEIVE callback logs)
-- Fragments arrive and queue successfully (queue full after ~30-50 fragments)
-- Handler thread exists and processes some messages (stall happens every 45 seconds)
-- No errors in fragment reception or queueing
-- The pattern is consistent: process, stall, burst catch-up, repeat
-
-## What Was Investigated (Dead Ends)
-
-- Flow control pause/resume - removing it didn't help
-- recv_queue timeout duration - changing it didn't help
-- Dispatch thread blocking - not the issue
-- TCP window management - not the issue
-- Fragment completion (final flag) - fragments do complete
-- 10ms cond_timedwait blocking - removing it to enable non-blocking recv
+here's a hint: the browser renders at 0.5fps while the terminal client renders the browser's webcam feed at 0fps (shows
+one frame then stops animating that grid cell). why? good question. because 0.5fps in the browser is progres, but the
+terminal app is showing the same data from the same server at 0fps, so back to the old bug in that regard..

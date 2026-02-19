@@ -376,6 +376,8 @@ typedef struct {
   int line_number;
   char function_name[128];
   uint64_t thread_id;
+  void *backtrace_buffer[MAX_BACKTRACE_FRAMES]; // copied acquisition backtrace
+  int backtrace_size;
 } long_held_lock_info_t;
 
 #define MAX_LONG_HELD_LOCKS 32
@@ -439,6 +441,12 @@ static void check_long_held_locks(void) {
       info->function_name[sizeof(info->function_name) - 1] = '\0';
       info->thread_id = entry->thread_id;
 
+      // Copy acquisition backtrace for logging later
+      info->backtrace_size = entry->backtrace_size;
+      if (entry->backtrace_size > 0) {
+        memcpy(info->backtrace_buffer, entry->backtrace_buffer, (size_t)entry->backtrace_size * sizeof(void *));
+      }
+
       num_long_held++;
     }
   }
@@ -459,9 +467,16 @@ static void check_long_held_locks(void) {
                    (unsigned long long)info->thread_id);
   }
 
-  // Print backtrace only once if any long-held locks were found
-  if (num_long_held > 0) {
-    platform_print_backtrace(1);
+  // Print per-lock acquisition backtraces for each long-held lock
+  for (int i = 0; i < num_long_held; i++) {
+    long_held_lock_info_t *info = &long_held_locks[i];
+    if (info->backtrace_size > 0) {
+      char **symbols = platform_backtrace_symbols(info->backtrace_buffer, info->backtrace_size);
+      if (symbols) {
+        platform_print_backtrace_symbols("Lock acquisition call stack", symbols, info->backtrace_size, 1, 0, NULL);
+        platform_backtrace_symbols_destroy(symbols);
+      }
+    }
   }
 }
 

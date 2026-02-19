@@ -11,6 +11,7 @@
  */
 
 #include <ascii-chat/tooling/query/query.h>
+#include <ascii-chat/util/time.h>
 #include <ascii-chat/common.h>
 
 #include <stdbool.h>
@@ -349,7 +350,7 @@ void query_destroy(void) {
       if (result < 0) {
         break;
       }
-      usleep(100000); // 100ms
+      usleep(100 * US_PER_MS_INT); // 100ms
       wait_count++;
     }
 

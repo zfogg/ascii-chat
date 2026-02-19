@@ -646,23 +646,29 @@ typedef enum {
 #define OPT_STATUS_SCREEN_DEFAULT true
 
 /** @brief Default log format string - release mode (simple format with timestamp, level, and message) */
-#define OPT_LOG_FORMAT_DEFAULT_RELEASE "%color(*, [%time(%H:%M:%S)]) %color(*, [%level_aligned]) %colored_message"
+#define OPT_LOG_TEMPLATE_DEFAULT_RELEASE                                                                               \
+  "[%color(*, %H):%color(*, %M):%color(*, %S).%color(*, %ms)] [%color(*, %level_aligned)] "                            \
+  "%colored_message"
 
 /** @brief Default log format string - debug mode (verbose with thread ID, file relative path, line, and function) */
-#define OPT_LOG_FORMAT_DEFAULT_DEBUG                                                                                   \
-  "%color(*, [%time(%H:%M:%S)]) %color(*, [%level_aligned]) [tid:%color(GREY, %tid)] %color(DEBUG, "                   \
-  "%file_relative):%color(GREY, %line) in %color(DEV, %func)(): %colored_message"
+#define OPT_LOG_TEMPLATE_DEFAULT_DEBUG                                                                                 \
+  "[%color(*, %H):%color(*, %M):%color(*, %S).%color(*, %ms)] [%color(*, %level_aligned)] "                            \
+  "[tid:%color(GREY, %tid)] %color(DEBUG, %file_relative):%color(GREY, %line)@%color(DEV, %func)(): "                  \
+  "%colored_message"
 
-/** @brief Default log format string (selected based on build mode)
+/** @brief Default log template string (selected based on build mode)
  *
  * Release builds use simple format. Debug builds use verbose format with thread ID, file path, line, and function.
- * The get_default_log_format() function returns this value via the options system.
+ * The get_default_log_template() function returns this value via the options system.
  */
 #ifdef NDEBUG
-#define OPT_LOG_FORMAT_DEFAULT OPT_LOG_FORMAT_DEFAULT_RELEASE
+#define OPT_LOG_TEMPLATE_DEFAULT OPT_LOG_TEMPLATE_DEFAULT_RELEASE
 #else
-#define OPT_LOG_FORMAT_DEFAULT OPT_LOG_FORMAT_DEFAULT_DEBUG
+#define OPT_LOG_TEMPLATE_DEFAULT OPT_LOG_TEMPLATE_DEFAULT_DEBUG
 #endif
+
+/** @brief Default log format output type (TEXT = human-readable, JSON = structured) */
+#define OPT_LOG_FORMAT_OUTPUT_DEFAULT LOG_OUTPUT_TEXT
 
 /** @brief Default log format console only flag (false = use default format everywhere) */
 #define OPT_LOG_FORMAT_CONSOLE_DEFAULT false
@@ -675,6 +681,7 @@ typedef enum {
 
 static const int default_log_level_value = DEFAULT_LOG_LEVEL;
 static const bool default_quiet_value = false;
+static const bool default_json_value = false;
 static const bool default_enable_keepawake_value = false;
 static const bool default_disable_keepawake_value = false;
 static const int default_width_value = OPT_WIDTH_DEFAULT;
@@ -957,7 +964,8 @@ typedef struct options_state {
   char log_file[OPTIONS_BUFF_SIZE];     ///< Log file path
   log_level_t log_level;                ///< Log level threshold
   char grep_pattern[OPTIONS_BUFF_SIZE]; ///< PCRE2 regex for log filtering
-  char log_format[OPTIONS_BUFF_SIZE];   ///< Custom log format string
+  bool json;                            ///< Enable JSON logging (--json flag)
+  char log_template[OPTIONS_BUFF_SIZE]; ///< Custom log format string (formerly --log-format)
   bool log_format_console_only;         ///< Apply log format only to console output
   unsigned short int enable_keepawake;  ///< Explicitly enable system sleep prevention
   unsigned short int disable_keepawake; ///< Explicitly disable system sleep prevention (allow OS to sleep)

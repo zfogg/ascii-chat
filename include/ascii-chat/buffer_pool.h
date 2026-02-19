@@ -80,12 +80,12 @@ using std::atomic_size_t;
  * @ingroup buffer_pool
  */
 typedef struct buffer_node {
-  uint32_t magic;                     ///< Magic to identify pooled buffers
-  uint32_t _pad;                      ///< Padding for alignment
-  size_t size;                        ///< Size of user data portion
+  uint32_t magic;                         ///< Magic to identify pooled buffers
+  uint32_t _pad;                          ///< Padding for alignment
+  size_t size;                            ///< Size of user data portion
   ATOMIC_TYPE(struct buffer_node *) next; ///< Next in free list (atomic for lock-free)
   ATOMIC_TYPE(uint64_t) returned_at_ns;   ///< Timestamp when returned to free list (nanoseconds)
-  struct buffer_pool *pool;           ///< Owning pool (for free)
+  struct buffer_pool *pool;               ///< Owning pool (for free)
 } buffer_node_t;
 
 /**
@@ -95,7 +95,7 @@ typedef struct buffer_node {
  */
 typedef struct buffer_pool {
   ATOMIC_TYPE(buffer_node_t *) free_list; ///< Lock-free stack of available buffers
-  mutex_t shrink_mutex;               ///< Only used for shrinking
+  mutex_t shrink_mutex;                   ///< Only used for shrinking
 
   size_t max_bytes;         ///< Maximum total bytes allowed
   uint64_t shrink_delay_ns; ///< Time before unused buffers freed (nanoseconds)

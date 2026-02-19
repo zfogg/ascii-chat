@@ -32,16 +32,16 @@
  */
 
 #include "main.h"
+#include "../main.h" // Global exit API
 #include "session.h"
 #include <ascii-chat/session/capture.h>
 #include <ascii-chat/session/display.h>
 #include <ascii-chat/session/host.h>
 #include <ascii-chat/session/render.h>
 #include <ascii-chat/session/keyboard_handler.h>
+#include <ascii-chat/session/client_like.h>
 
-#include <stdatomic.h>
 #include <stdio.h>
-#include <signal.h>
 
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/options/options.h>
@@ -50,80 +50,15 @@
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/keyboard.h>
 
-/* ============================================================================
- * Global State
- * ============================================================================ */
-
-/**
- * @brief Atomic flag indicating discovery mode should exit
- *
- * Set by signal handlers or error conditions to trigger graceful shutdown.
- */
-static atomic_bool g_discovery_should_exit = false;
+// Global exit API from src/main.c
+extern bool should_exit(void);
 
 /* ============================================================================
- * Signal Handler
+ * Global Discovery Session
  * ============================================================================ */
 
-/**
- * @brief Console control handler for Ctrl+C and related events
- *
- * @param event The control event that occurred
- * @return true if the event was handled
- */
-static bool discovery_console_ctrl_handler(console_ctrl_event_t event) {
-  if (event != CONSOLE_CTRL_C && event != CONSOLE_CTRL_BREAK) {
-    return false;
-  }
-
-  // Use atomic instead of volatile for signal handler
-  static _Atomic int ctrl_c_count = 0;
-  int count = atomic_fetch_add(&ctrl_c_count, 1) + 1;
-
-  if (count > 1) {
-    platform_force_exit(1);
-  }
-
-  discovery_signal_exit();
-  return true;
-}
-
-/**
- * Unix signal handler for graceful shutdown on SIGTERM
- *
- * @param sig The signal number (unused)
- */
-#ifndef _WIN32
-static void discovery_handle_sigterm(int sig) {
-  (void)sig; // Unused
-  log_info_nofile("SIGTERM received - shutting down discovery...");
-  discovery_signal_exit();
-}
-#else
-// Windows-compatible signal handler (no-op implementation)
-static void discovery_handle_sigterm(int sig) {
-  (void)sig;
-  // SIGTERM handled via console_ctrl_handler on Windows
-}
-#endif
-
-/* ============================================================================
- * Public Interface Functions
- * ============================================================================ */
-
-/**
- * @brief Check if discovery mode should exit
- */
-bool discovery_should_exit(void) {
-  return atomic_load(&g_discovery_should_exit);
-}
-
-/**
- * @brief Signal discovery mode to exit
- */
-void discovery_signal_exit(void) {
-  atomic_store(&g_discovery_should_exit, true);
-}
+/** Global discovery session created in discovery_main() and used by discovery_run() */
+static discovery_session_t *g_discovery = NULL;
 
 /* ============================================================================
  * State Change Callback
@@ -172,7 +107,7 @@ static void on_discovery_error(asciichat_error_t error, const char *message, voi
   (void)user_data; // Unused
 
   log_error("Discovery error (%d): %s", error, message ? message : "Unknown");
-  discovery_signal_exit();
+  signal_exit();
 }
 
 /**
@@ -188,7 +123,7 @@ static bool discovery_participant_render_should_exit(void *user_data) {
   discovery_session_t *discovery = (discovery_session_t *)user_data;
 
   // Check global exit flag first
-  if (discovery_should_exit()) {
+  if (should_exit()) {
     return true;
   }
 
@@ -197,7 +132,7 @@ static bool discovery_participant_render_should_exit(void *user_data) {
   asciichat_error_t result = discovery_session_process(discovery, 50 * NS_PER_MS_INT);
   if (result != ASCIICHAT_OK && result != ERROR_NETWORK_TIMEOUT) {
     log_error("Discovery session process failed: %d", result);
-    discovery_signal_exit();
+    signal_exit();
     return true;
   }
 
@@ -219,7 +154,7 @@ static bool discovery_participant_render_should_exit(void *user_data) {
  */
 static bool discovery_capture_should_exit_adapter(void *user_data) {
   (void)user_data; // Unused parameter
-  return discovery_should_exit();
+  return should_exit();
 }
 
 /**
@@ -231,7 +166,7 @@ static bool discovery_capture_should_exit_adapter(void *user_data) {
  */
 static bool discovery_display_should_exit_adapter(void *user_data) {
   (void)user_data; // Unused parameter
-  return discovery_should_exit();
+  return should_exit();
 }
 
 /**
@@ -252,6 +187,144 @@ static void discovery_keyboard_handler(session_capture_ctx_t *capture, int key, 
 }
 
 /* ============================================================================
+ * Discovery Run Callback (for session_client_like)
+ * ============================================================================ */
+
+/**
+ * Discovery mode main loop callback for session_client_like framework
+ *
+ * Handles role negotiation (host/participant) and media flow based on role.
+ * The framework calls this after shared initialization (capture/display/audio).
+ *
+ * @param capture   Initialized capture context (provided by session_client_like)
+ * @param display   Initialized display context (provided by session_client_like)
+ * @param user_data Unused (NULL)
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_display_ctx_t *display,
+                                       void *user_data) {
+  (void)user_data; // Unused
+
+  asciichat_error_t result = ASCIICHAT_OK;
+
+  // Wait for session to become active (host negotiation complete)
+  // This processes ACDS events until we have a determined role
+  while (!should_exit()) {
+    result = discovery_session_process(g_discovery, 50 * NS_PER_MS_INT);
+    if (result != ASCIICHAT_OK && result != ERROR_NETWORK_TIMEOUT) {
+      log_error("Discovery session process failed: %d", result);
+      return result;
+    }
+
+    if (discovery_session_is_active(g_discovery)) {
+      break; // Session is active, role is determined
+    }
+  }
+
+  if (should_exit()) {
+    log_info("Shutdown requested during discovery negotiation");
+    return ASCIICHAT_OK;
+  }
+
+  // Session is active - run based on our role
+  bool we_are_host = discovery_session_is_host(g_discovery);
+
+  if (we_are_host) {
+    // HOST ROLE: Capture own media, manage participants, mix and broadcast
+    log_info("Hosting session - capturing and broadcasting");
+
+    // Create session host for managing participants
+    session_host_config_t host_config = {
+        .port = (int)GET_OPTION(port),
+        .ipv4_address = NULL, // Bind to any
+        .ipv6_address = NULL,
+        .max_clients = 32,
+        .encryption_enabled = false, // TODO: Add crypto support
+        .key_path = NULL,
+        .password = NULL,
+        .callbacks = {0},
+        .user_data = NULL,
+    };
+
+    session_host_t *host = session_host_create(&host_config);
+    if (!host) {
+      log_fatal("Failed to create session host");
+      return ERROR_MEMORY;
+    }
+
+    // Start host (accept connections, render threads)
+    result = session_host_start(host);
+    if (result != ASCIICHAT_OK) {
+      log_error("Failed to start session host: %d", result);
+      session_host_destroy(host);
+      return result;
+    }
+
+    // Add memory participant for host's own media
+    uint32_t host_participant_id = session_host_add_memory_participant(host);
+    if (host_participant_id == 0) {
+      log_error("Failed to add memory participant for host");
+      session_host_stop(host);
+      session_host_destroy(host);
+      return ERROR_INVALID_STATE;
+    }
+
+    log_info("Host participating with ID %u", host_participant_id);
+
+    // Main loop: capture own media and keep discovery responsive
+    while (!should_exit() && discovery_session_is_active(g_discovery)) {
+      // Capture frame from webcam (reuse existing capture context)
+      image_t *frame = session_capture_read_frame(capture);
+      if (frame) {
+        // Inject host's frame into mixer
+        session_host_inject_frame(host, host_participant_id, frame);
+      }
+
+      // Keep discovery session responsive (NAT negotiations, migrations)
+      result = discovery_session_process(g_discovery, 10 * NS_PER_MS_INT);
+      if (result != ASCIICHAT_OK && result != ERROR_NETWORK_TIMEOUT) {
+        log_error("Discovery session process failed: %d", result);
+        break;
+      }
+
+      // Frame rate limiting (60 FPS)
+      session_capture_sleep_for_fps(capture);
+    }
+
+    // Cleanup
+    session_host_stop(host);
+    session_host_destroy(host);
+
+    if (should_exit()) {
+      return ASCIICHAT_OK;
+    }
+
+    // If we reach here, discovery session is no longer active (role change)
+    // Return error to trigger potential reconnection retry
+    if (!discovery_session_is_active(g_discovery)) {
+      log_info("Session ended or role changed");
+      return ASCIICHAT_OK;
+    }
+  } else {
+    // PARTICIPANT ROLE: Capture local media and display host's frames
+    log_info("Participant in session - displaying host's frames");
+
+    // Use the unified render loop that handles capture, ASCII conversion, and display
+    result = session_render_loop(capture, display, discovery_participant_render_should_exit,
+                                 NULL,                       // No custom capture callback
+                                 NULL,                       // No custom sleep callback
+                                 discovery_keyboard_handler, // Keyboard handler for interactive controls
+                                 g_discovery);               // Pass discovery session as user_data
+
+    if (result != ASCIICHAT_OK) {
+      log_error("Render loop failed with error code: %d", result);
+    }
+  }
+
+  return result;
+}
+
+/* ============================================================================
  * Main Discovery Mode Loop
  * ============================================================================ */
 
@@ -263,28 +336,11 @@ static void discovery_keyboard_handler(session_capture_ctx_t *capture, int key, 
  * @return 0 on success, non-zero error code on failure
  */
 int discovery_main(void) {
-  log_debug("discovery_main() ENTRY");
-  log_info("Starting discovery mode");
-  log_debug("After 'Starting discovery mode' log");
+  log_debug("discovery_main() starting");
 
-  // Handle keepawake: check for mutual exclusivity and apply mode default
-  // Discovery default: keepawake ENABLED (use --no-keepawake to disable)
-  if (GET_OPTION(enable_keepawake) && GET_OPTION(disable_keepawake)) {
-    FATAL(ERROR_INVALID_PARAM, "--keepawake and --no-keepawake are mutually exclusive");
-  }
-  if (!GET_OPTION(disable_keepawake)) {
-    (void)platform_enable_keepawake();
-  }
-
-  // Install console control-c handler
-  platform_set_console_ctrl_handler(discovery_console_ctrl_handler);
-
-  // Register signal handlers for graceful shutdown and error handling
-  platform_signal_handler_t signal_handlers[] = {
-      {SIGTERM, discovery_handle_sigterm}, // SIGTERM for timeout(1) support
-      {SIGPIPE, SIG_IGN},                  // Ignore broken pipe errors
-  };
-  platform_register_signal_handlers(signal_handlers, 2);
+  // Discovery-specific setup: initialize ACDS connection and session negotiation
+  // Note: Shared setup (keepawake, splash, terminal, capture, display, audio)
+  // is handled by session_client_like_run()
 
   // Get session string from options (command-line argument)
   const char *session_string = GET_OPTION(session_string);
@@ -292,7 +348,9 @@ int discovery_main(void) {
 
   int port_int = GET_OPTION(port);
 
-  // Create discovery session configuration with exit callback for graceful shutdown
+  log_debug("Discovery: is_initiator=%d, port=%d", is_initiator, port_int);
+
+  // Create discovery session configuration
   discovery_config_t discovery_config = {
       .acds_address = GET_OPTION(discovery_server),
       .acds_port = (uint16_t)GET_OPTION(discovery_port),
@@ -306,220 +364,72 @@ int discovery_main(void) {
       .exit_callback_data = NULL,
   };
 
-  // Create discovery session
-  discovery_session_t *discovery = discovery_session_create(&discovery_config);
-  if (!discovery) {
+  // Create discovery session (stored in global for discovery_run() to access)
+  g_discovery = discovery_session_create(&discovery_config);
+  if (!g_discovery) {
     log_fatal("Failed to create discovery session");
     return ERROR_MEMORY;
   }
 
-  // Start discovery session (connects to ACDS, creates/joins, negotiates)
-  log_info("discovery_main: BEFORE discovery_session_start() - discovery=%p, is_initiator=%d", discovery,
-           !is_initiator);
-  asciichat_error_t result = discovery_session_start(discovery);
-  log_info("discovery_main: AFTER discovery_session_start() - result=%d", result);
+  // Start discovery session (connects to ACDS, creates/joins, initiates NAT negotiation)
+  log_debug("Discovery: starting discovery session");
+  asciichat_error_t result = discovery_session_start(g_discovery);
   if (result != ASCIICHAT_OK) {
     log_fatal("Failed to start discovery session: %d", result);
-    discovery_session_destroy(discovery);
+    discovery_session_destroy(g_discovery);
+    g_discovery = NULL;
     return result;
   }
 
-  // Create capture and display contexts with exit callback for graceful shutdown
-  // This allows the capture/display initialization to be cancelled if SIGTERM arrives
-  session_capture_config_t capture_config = {0};
-  capture_config.target_fps = 60;
-  capture_config.resize_for_network = false;
-  capture_config.should_exit_callback = discovery_capture_should_exit_adapter;
-  capture_config.callback_data = NULL;
+  // No network interrupt callback needed - discovery session handles its own shutdown
+  set_interrupt_callback(NULL);
 
-  // Check if media files/URLs should be used instead of webcam
-  const char *media_url = GET_OPTION(media_url);
-  const char *media_file = GET_OPTION(media_file);
-  bool media_from_stdin = GET_OPTION(media_from_stdin);
+  /* ========================================================================
+   * Configure and Run Shared Client-Like Session Framework
+   * ========================================================================
+   * session_client_like_run() handles all shared initialization:
+   * - Terminal output management
+   * - Keepawake system
+   * - Splash screen lifecycle
+   * - Media source selection
+   * - FPS probing
+   * - Audio initialization
+   * - Display context creation
+   * - Proper cleanup ordering
+   *
+   * Discovery mode provides:
+   * - discovery_run() callback: NAT negotiation, role determination, media handling
+   * - discovery_keyboard_handler: interactive controls for participant role
+   */
 
-  if (media_url && media_url[0] != '\0') {
-    // Network URL streaming (takes priority over --file)
-    // Don't open webcam when streaming from URL
-    capture_config.type = MEDIA_SOURCE_FILE;
-    capture_config.path = media_url;
-    capture_config.loop = false; // Network URLs cannot be looped
-    log_debug("Using network URL: %s (webcam disabled)", media_url);
-  } else if (media_file && media_file[0] != '\0') {
-    // File or stdin streaming - don't open webcam
-    capture_config.type = media_from_stdin ? MEDIA_SOURCE_STDIN : MEDIA_SOURCE_FILE;
-    capture_config.path = media_file;
-    capture_config.loop = GET_OPTION(media_loop) && !media_from_stdin;
-    log_debug("Using media %s: %s (webcam disabled)", media_from_stdin ? "stdin" : "file", media_file);
-  } else if (GET_OPTION(test_pattern)) {
-    // Test pattern mode - don't open real webcam
-    capture_config.type = MEDIA_SOURCE_TEST;
-    capture_config.path = NULL;
-    log_debug("Using test pattern mode");
-  } else {
-    // Webcam mode (default)
-    static char webcam_index_str[32];
-    safe_snprintf(webcam_index_str, sizeof(webcam_index_str), "%u", GET_OPTION(webcam_index));
-    capture_config.type = MEDIA_SOURCE_WEBCAM;
-    capture_config.path = webcam_index_str;
-    log_debug("Using webcam device %u", GET_OPTION(webcam_index));
+  session_client_like_config_t config = {
+      .run_fn = discovery_run,
+      .run_user_data = NULL,
+      .tcp_client = NULL,
+      .websocket_client = NULL,
+      .discovery = (void *)g_discovery, // Opaque pointer to discovery session
+      .custom_should_exit = NULL,
+      .exit_user_data = NULL,
+      .keyboard_handler = discovery_keyboard_handler,
+      .max_reconnect_attempts = 0, // Discovery doesn't retry - role is determined once
+      .should_reconnect_callback = NULL,
+      .reconnect_user_data = NULL,
+      .reconnect_delay_ms = 0,
+      .print_newline_on_tty_exit = false, // Server/participant manages cursor
+  };
+
+  log_debug("Discovery: calling session_client_like_run()");
+  asciichat_error_t session_result = session_client_like_run(&config);
+  log_debug("Discovery: session_client_like_run() returned %d", session_result);
+
+  // Cleanup discovery session
+  log_debug("Discovery: cleaning up");
+
+  if (g_discovery) {
+    discovery_session_stop(g_discovery);
+    discovery_session_destroy(g_discovery);
+    g_discovery = NULL;
   }
 
-  session_capture_ctx_t *capture = session_capture_create(&capture_config);
-  if (!capture) {
-    log_fatal("Failed to initialize capture source");
-    discovery_session_destroy(discovery);
-    return ERROR_MEDIA_INIT;
-  }
-
-  session_display_config_t display_config = {0};
-  display_config.snapshot_mode = GET_OPTION(snapshot_mode);
-  display_config.palette_type = GET_OPTION(palette_type);
-  display_config.custom_palette = GET_OPTION(palette_custom_set) ? GET_OPTION(palette_custom) : NULL;
-  display_config.color_mode = TERM_COLOR_AUTO;
-  display_config.should_exit_callback = discovery_display_should_exit_adapter;
-  display_config.callback_data = NULL;
-
-  session_display_ctx_t *display = session_display_create(&display_config);
-  if (!display) {
-    log_fatal("Failed to initialize display");
-    session_capture_destroy(capture);
-    discovery_session_destroy(discovery);
-    return ERROR_DISPLAY;
-  }
-
-  log_info("Discovery mode running - press Ctrl+C to exit");
-  // Keep logs visible until discovery status screen implemented (similar to server mode)
-
-  // Main loop: wait for session to become active, then handle media based on role
-  while (!discovery_should_exit()) {
-    // Process discovery session events (state transitions, negotiations, etc)
-    result = discovery_session_process(discovery, 50 * NS_PER_MS_INT); // 50ms timeout for responsiveness
-    if (result != ASCIICHAT_OK && result != ERROR_NETWORK_TIMEOUT) {
-      log_error("Discovery session process failed: %d", result);
-      break;
-    }
-
-    // Check if session is active (host negotiation complete)
-    if (!discovery_session_is_active(discovery)) {
-      continue; // Still negotiating, keep processing events
-    }
-
-    // ★ Insight ─────────────────────────────────────
-    // Once session is active, we know our role (host or participant).
-    // We use the unified render loop from lib/session for media handling,
-    // passing discovery session processing as part of the exit callback.
-    // This keeps all render loop logic in one place while staying responsive
-    // to discovery session events.
-    // ─────────────────────────────────────────────────
-
-    // Session is active - determine our role and handle media
-    bool we_are_host = discovery_session_is_host(discovery);
-
-    if (we_are_host) {
-      // HOST ROLE: Capture own media, manage participants, mix and broadcast
-      log_info("Hosting session - capturing and broadcasting");
-
-      // Create session host for managing participants
-      session_host_config_t host_config = {
-          .port = (int)GET_OPTION(port),
-          .ipv4_address = NULL, // Bind to any
-          .ipv6_address = NULL,
-          .max_clients = 32,
-          .encryption_enabled = false, // TODO: Add crypto support
-          .key_path = NULL,
-          .password = NULL,
-          .callbacks = {0},
-          .user_data = NULL,
-      };
-
-      session_host_t *host = session_host_create(&host_config);
-      if (!host) {
-        log_fatal("Failed to create session host");
-        result = ERROR_MEMORY;
-        break;
-      }
-
-      // Start host (accept connections, render threads)
-      result = session_host_start(host);
-      if (result != ASCIICHAT_OK) {
-        log_error("Failed to start session host: %d", result);
-        session_host_destroy(host);
-        break;
-      }
-
-      // Add memory participant for host's own media
-      uint32_t host_participant_id = session_host_add_memory_participant(host);
-      if (host_participant_id == 0) {
-        log_error("Failed to add memory participant for host");
-        session_host_stop(host);
-        session_host_destroy(host);
-        result = ERROR_INVALID_STATE;
-        break;
-      }
-
-      log_info("Host participating with ID %u", host_participant_id);
-
-      // Main loop: capture own media and keep discovery responsive
-      while (!discovery_should_exit() && discovery_session_is_active(discovery)) {
-        // Capture frame from webcam (reuse existing capture context)
-        image_t *frame = session_capture_read_frame(capture);
-        if (frame) {
-          // Inject host's frame into mixer
-          session_host_inject_frame(host, host_participant_id, frame);
-        }
-
-        // Keep discovery session responsive (NAT negotiations, migrations)
-        result = discovery_session_process(discovery, 10 * NS_PER_MS_INT);
-        if (result != ASCIICHAT_OK && result != ERROR_NETWORK_TIMEOUT) {
-          log_error("Discovery session process failed: %d", result);
-          break;
-        }
-
-        // Frame rate limiting (60 FPS)
-        session_capture_sleep_for_fps(capture);
-      }
-
-      // Cleanup
-      session_host_stop(host);
-      session_host_destroy(host);
-    } else {
-      // PARTICIPANT ROLE: Capture local media and display host's frames
-      // Use the unified render loop that handles capture, ASCII conversion, and display
-      log_info("Participant in session - displaying host's frames");
-
-      // Run the unified render loop with discovery session event processing
-      // Synchronous mode: pass capture context, discovery as user_data
-      // The exit callback integrates discovery processing to keep it responsive
-      // Keyboard handler enables interactive media controls (seek, pause, volume, etc.)
-      result = session_render_loop(capture, display, discovery_participant_render_should_exit,
-                                   NULL,                       // No custom capture callback
-                                   NULL,                       // No custom sleep callback
-                                   discovery_keyboard_handler, // Keyboard handler for interactive controls
-                                   discovery);                 // Pass discovery session as user_data
-
-      if (result != ASCIICHAT_OK) {
-        log_error("Render loop failed with error code: %d", result);
-      }
-    }
-
-    // Session handling complete
-    break;
-  }
-
-  // Cleanup
-  // Disable keepawake before exit
-  platform_disable_keepawake();
-
-  // Re-enable terminal output for shutdown message if --quiet wasn't passed
-  if (!GET_OPTION(quiet)) {
-    log_set_terminal_output(true);
-    log_info("Discovery mode shutting down");
-  }
-
-  session_display_destroy(display);
-  session_capture_destroy(capture);
-  discovery_session_stop(discovery);
-  discovery_session_destroy(discovery);
-
-  return 0;
+  return (session_result == ASCIICHAT_OK) ? 0 : (int)session_result;
 }

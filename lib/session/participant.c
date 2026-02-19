@@ -521,7 +521,7 @@ static void *participant_video_capture_thread(void *arg) {
       asciichat_error_t err = send_image_frame_packet(p->socket, (const void *)processed->pixels,
                                                       (uint16_t)processed->w, (uint16_t)processed->h, 0);
       if (err != ASCIICHAT_OK) {
-        log_warn_every(5000000, "Failed to send video frame: %d", err);
+        log_warn_every(5 * US_PER_SEC_INT, "Failed to send video frame: %d", err);
       }
       image_destroy(processed);
     }
@@ -570,7 +570,7 @@ static void *participant_audio_capture_thread(void *arg) {
       asciichat_error_t err =
           av_send_audio_opus_batch(p->socket, opus_buffer, opus_len, frame_sizes, 48000, 20, 1, NULL);
       if (err != ASCIICHAT_OK) {
-        log_warn_every(5000000, "Failed to send audio packet: %d", err);
+        log_warn_every(5 * US_PER_SEC_INT, "Failed to send audio packet: %d", err);
       }
     }
   }

@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdatomic.h>
 
 // Mode-specific entry points
 #include "server/main.h"
@@ -28,6 +29,9 @@
 #include "discovery-service/main.h"
 #include "discovery/main.h"
 #include <ascii-chat/discovery/session.h>
+
+// Global exit API (exported in main.h)
+#include "main.h"
 
 // Utilities
 #include <ascii-chat/util/utf8.h>
@@ -38,12 +42,14 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/version.h>
 #include <ascii-chat/options/options.h>
+#include <ascii-chat/platform/system.h>
 #include <ascii-chat/options/common.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/options/builder.h>
 #include <ascii-chat/options/actions.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/json.h>
 #include <ascii-chat/log/grep.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/util/path.h>
@@ -56,12 +62,119 @@
 #include <ascii-chat/debug/lock.h>
 #endif
 
+#ifndef _WIN32
+#include <signal.h>
+#endif
+
 /* ============================================================================
  * Constants and Configuration
  * ============================================================================ */
 
 #define APP_NAME "ascii-chat"
 #define VERSION ASCII_CHAT_VERSION_FULL
+
+/* ============================================================================
+ * Global Application Exit State (Centralized Signal Handling)
+ * ============================================================================ */
+
+/** Global flag indicating application should exit */
+static atomic_bool g_app_should_exit = false;
+
+/** Mode-specific interrupt callback (called from signal handlers) */
+static void (*g_interrupt_callback)(void) = NULL;
+
+/* ============================================================================
+ * Global Exit API Implementation (from main.h)
+ * ============================================================================ */
+
+bool should_exit(void) {
+  return atomic_load(&g_app_should_exit);
+}
+
+void signal_exit(void) {
+  atomic_store(&g_app_should_exit, true);
+  void (*cb)(void) = g_interrupt_callback;
+  if (cb) {
+    cb();
+  }
+}
+
+void set_interrupt_callback(void (*cb)(void)) {
+  g_interrupt_callback = cb;
+}
+
+/* ============================================================================
+ * Signal Handlers
+ * ============================================================================ */
+
+#ifndef _WIN32
+/**
+ * SIGTERM handler for graceful shutdown
+ * Called when process receives SIGTERM (e.g., from timeout(1) or systemd)
+ */
+static void handle_sigterm(int sig) {
+  (void)sig;
+  // Use log_console for SIGTERM - it's async-signal-safe
+  log_console(LOG_INFO, "SIGTERM received - shutting down");
+  signal_exit();
+}
+#endif
+
+/**
+ * Console Ctrl+C handler (called from signal dispatcher on all platforms)
+ * Counts consecutive Ctrl+C presses - double press forces immediate exit
+ */
+static bool console_ctrl_handler(console_ctrl_event_t event) {
+  if (event != CONSOLE_CTRL_C && event != CONSOLE_CTRL_BREAK && event != CONSOLE_CLOSE) {
+    return false;
+  }
+
+  // Double Ctrl+C forces immediate exit
+  static _Atomic int ctrl_c_count = 0;
+  if (atomic_fetch_add(&ctrl_c_count, 1) + 1 > 1) {
+    platform_force_exit(1);
+  }
+
+  // Note: Don't use log_console() here - on Unix, this is called from SIGINT context
+  // where SAFE_MALLOC may be holding its mutex, causing deadlock. Windows runs this
+  // in a separate thread so it would be safe there, but we keep both paths identical
+  // for simplicity. The shutdown message will appear from normal thread context.
+  signal_exit();
+  return true;
+}
+
+/* ============================================================================
+ * Debug Signal Handlers (all modes)
+ * ============================================================================ */
+
+#ifndef NDEBUG
+#ifndef _WIN32
+/**
+ * @brief Common SIGUSR1 handler - triggers lock debugging output in all modes
+ * @param sig The signal number (unused, required by signal handler signature)
+ */
+static void common_handle_sigusr1(int sig) {
+  (void)sig;
+  lock_debug_trigger_print();
+}
+#endif
+#endif
+
+/**
+ * Set up global signal handlers
+ * Called once at startup before mode dispatch
+ */
+void setup_signal_handlers(void) {
+  platform_set_console_ctrl_handler(console_ctrl_handler);
+
+#ifndef _WIN32
+  platform_signal_handler_t handlers[] = {
+      {SIGTERM, handle_sigterm},
+      {SIGPIPE, SIG_IGN},
+  };
+  platform_register_signal_handlers(handlers, 2);
+#endif
+}
 
 /* ============================================================================
  * Mode Registration Table
@@ -257,28 +370,104 @@ int main(int argc, char *argv[]) {
   // Initialize logging colors so they're ready for help output
   log_init_colors();
 
+  // EARLY PARSE: Find the mode position (first positional argument)
+  // Binary-level options must appear BEFORE the mode
+  int mode_position = -1;
+  for (int i = 1; i < argc; i++) {
+    if (argv[i][0] != '-') {
+      // Found a positional argument - this is the mode or session string
+      mode_position = i;
+      break;
+    }
+
+    // Skip option and its argument if needed
+    // Check if this is an option that takes a required argument
+    const char *arg = argv[i];
+    const char *opt_name = arg;
+    if (arg[0] == '-') {
+      opt_name = arg + (arg[1] == '-' ? 2 : 1);
+    }
+
+    // Handle --option=value format
+    if (strchr(opt_name, '=')) {
+      continue; // Value is part of this arg, no need to skip next
+    }
+
+    // Options that take required arguments
+    if (strcmp(arg, "--log-file") == 0 || strcmp(arg, "-L") == 0 || strcmp(arg, "--log-level") == 0 ||
+        strcmp(arg, "--config") == 0 || strcmp(arg, "--color-scheme") == 0 || strcmp(arg, "--log-template") == 0) {
+      if (i + 1 < argc) {
+        i++; // Skip the argument value
+      }
+    }
+  }
+
   // EARLY PARSE: Determine mode from argv to know if this is client-like mode
   // The first positional argument (after options) is the mode: client, server, mirror, discovery, acds
   bool is_client_like_mode = false;
-  if (argc > 1) {
-    const char *first_arg = argv[1];
+  if (mode_position > 0) {
+    const char *first_arg = argv[mode_position];
     if (strcmp(first_arg, "client") == 0 || strcmp(first_arg, "mirror") == 0 || strcmp(first_arg, "discovery") == 0) {
       is_client_like_mode = true;
     }
   }
 
   // EARLY PARSE: Extract log file from argv (--log-file or -L)
+  // Must appear BEFORE the mode
   const char *log_file = "ascii-chat.log"; // default
-  for (int i = 1; i < argc - 1; i++) {
+  int max_search = (mode_position > 0) ? mode_position : argc;
+  for (int i = 1; i < max_search - 1; i++) {
     if ((strcmp(argv[i], "--log-file") == 0 || strcmp(argv[i], "-L") == 0)) {
       log_file = argv[i + 1];
       break;
     }
   }
 
+  // EARLY PARSE: Check for --json (JSON logging format)
+  // If JSON format is enabled, we'll use the JSON filename during early init
+  // --json MUST appear BEFORE the mode
+  bool early_json_format = false;
+  if (mode_position > 0) {
+    for (int i = 1; i < mode_position; i++) {
+      if (strcmp(argv[i], "--json") == 0) {
+        early_json_format = true;
+        break;
+      }
+    }
+  } else {
+    // If no mode found, search entire argv
+    for (int i = 1; i < argc; i++) {
+      if (strcmp(argv[i], "--json") == 0) {
+        early_json_format = true;
+        break;
+      }
+    }
+  }
+
+  // EARLY PARSE: Extract log template from argv (--log-template)
+  // Note: This is for format templates, different from --log-format which is the output format
+  // Binary-level options must appear BEFORE the mode
+  const char *early_log_template = NULL;
+  bool early_log_template_console_only = false;
+  for (int i = 1; i < max_search - 1; i++) {
+    if (strcmp(argv[i], "--log-template") == 0) {
+      early_log_template = argv[i + 1];
+      break;
+    }
+  }
+  for (int i = 1; i < max_search; i++) {
+    if (strcmp(argv[i], "--log-format-console-only") == 0) {
+      early_log_template_console_only = true;
+      break;
+    }
+  }
+
   // Initialize shared subsystems BEFORE options_init()
   // This ensures options parsing can use properly configured logging with colors
-  asciichat_error_t init_result = asciichat_shared_init(log_file, is_client_like_mode);
+  // If JSON format is requested, don't write text logs to file
+  // All logs will be JSON formatted later once options_init() runs
+  const char *early_log_file = early_json_format ? NULL : log_file;
+  asciichat_error_t init_result = asciichat_shared_init(early_log_file, is_client_like_mode);
   if (init_result != ASCIICHAT_OK) {
     return init_result;
   }
@@ -292,6 +481,20 @@ int main(int argc, char *argv[]) {
   // Register cleanup of shared subsystems to run on normal exit
   // Library code doesn't call atexit() - the application is responsible
   (void)atexit(asciichat_shared_destroy);
+
+  // SECRET: Check for --backtrace (debug builds only) BEFORE options_init()
+  // Prints a backtrace and exits immediately - useful for debugging hangs
+#ifndef NDEBUG
+  for (int i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "--backtrace") == 0) {
+      log_info("=== Backtrace at startup ===");
+      platform_print_backtrace(0);
+      log_info("=== End Backtrace ===");
+      asciichat_shared_destroy();
+      return 0;
+    }
+  }
+#endif
 
   // NOW parse all options - can use logging with colors!
   asciichat_error_t options_result = options_init(argc, argv);
@@ -318,15 +521,73 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  // Reconfigure logging with parsed log level
-  log_init(log_file, GET_OPTION(log_level), false, false);
+  // Determine final log file path (use mode-specific default from options if available)
+  // Determine output format early to decide on filename and logging strategy
+  bool use_json_logging = GET_OPTION(json);
 
-  // Apply custom log format if specified
-  const char *custom_format = GET_OPTION(log_format);
-  if (custom_format && custom_format[0] != '\0') {
-    asciichat_error_t fmt_result = log_set_format(custom_format, GET_OPTION(log_format_console_only));
+  // Determine the log filename
+  // Check if user explicitly passed --log-file (not just the mode-specific default from options_init)
+  bool user_specified_log_file = false;
+  for (int i = 1; i < argc - 1; i++) {
+    if (strcmp(argv[i], "--log-file") == 0 || strcmp(argv[i], "-L") == 0) {
+      user_specified_log_file = true;
+      break;
+    }
+  }
+
+  const char *final_log_file = opts->log_file;
+  char json_filename_buf[256];
+
+  if (use_json_logging) {
+    // When JSON logging is enabled, determine JSON output filename
+    if (user_specified_log_file) {
+      // User explicitly specified a log file - use it exactly for JSON output
+      SAFE_STRNCPY(json_filename_buf, final_log_file, sizeof(json_filename_buf) - 1);
+    } else {
+      // Using default: replace .log with .json in the mode-specific default
+      // e.g., server.log -> server.json, mirror.log -> mirror.json, etc.
+      size_t len = strlen(final_log_file);
+      if (len > 4 && strcmp(&final_log_file[len - 4], ".log") == 0) {
+        // File ends with .log - replace with .json
+        SAFE_STRNCPY(json_filename_buf, final_log_file, sizeof(json_filename_buf) - 1);
+        // Replace .log with .json
+        strcpy(&json_filename_buf[len - 4], ".json");
+      } else {
+        // File doesn't end with .log - just append .json
+        SAFE_STRNCPY(json_filename_buf, final_log_file, sizeof(json_filename_buf) - 1);
+        strncat(json_filename_buf, ".json", sizeof(json_filename_buf) - strlen(json_filename_buf) - 1);
+      }
+    }
+    final_log_file = json_filename_buf;
+    // For JSON mode: Initialize logging without file (text will be disabled)
+    // We'll set up JSON output separately below
+    log_init(NULL, GET_OPTION(log_level), false, false);
+  } else {
+    // Text logging mode: use the file from options (which is mode-specific default or user-specified)
+    log_init(final_log_file, GET_OPTION(log_level), false, false);
+  }
+
+  // Apply custom log template if specified (use early parsed value if available, otherwise use options)
+  const char *final_format = early_log_template ? early_log_template : GET_OPTION(log_template);
+  bool final_format_console_only =
+      early_log_template ? early_log_template_console_only : GET_OPTION(log_format_console_only);
+  if (final_format && final_format[0] != '\0') {
+    asciichat_error_t fmt_result = log_set_format(final_format, final_format_console_only);
     if (fmt_result != ASCIICHAT_OK) {
       log_error("Failed to apply custom log format");
+    }
+  }
+
+  // Configure JSON output if requested
+  if (use_json_logging) {
+    // Open the JSON file for output
+    int json_fd = platform_open(final_log_file, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
+    if (json_fd >= 0) {
+      log_set_json_output(json_fd);
+    } else {
+      // Failed to open JSON file - report error and exit
+      SET_ERRNO(ERROR_CONFIG, "Failed to open JSON output file: %s", final_log_file);
+      return ERROR_CONFIG;
     }
   }
 
@@ -377,7 +638,6 @@ int main(int argc, char *argv[]) {
     log_set_terminal_output(false);
   }
 
-  const char *final_log_file = (opts->log_file[0] != '\0') ? opts->log_file : "ascii-chat.log";
   log_dev("Logging initialized to %s", final_log_file);
 
   // Note: We do NOT auto-disable colors when stdout appears to be piped, because:
@@ -395,6 +655,18 @@ int main(int argc, char *argv[]) {
     FATAL(ERROR_PLATFORM_INIT, "Lock debug system initialization failed");
   }
   log_debug("Lock debug system initialized successfully");
+
+  // Start lock debug thread in all modes (not just server)
+  if (lock_debug_start_thread() != 0) {
+    LOG_ERRNO_IF_SET("Lock debug thread startup failed");
+    FATAL(ERROR_THREAD, "Lock debug thread startup failed");
+  }
+  log_debug("Lock debug thread started");
+
+#ifndef _WIN32
+  // Register SIGUSR1 to trigger lock state printing in all modes
+  platform_signal(SIGUSR1, common_handle_sigusr1);
+#endif
 #endif
 
   if (opts->fps > 0) {
@@ -418,6 +690,17 @@ int main(int argc, char *argv[]) {
       splash_set_update_notification(notification);
     }
   }
+
+  // Set up global signal handlers BEFORE mode dispatch
+  // All modes use the same centralized exit mechanism
+  setup_signal_handlers();
+
+  // Register SIGUSR1 for lock debugging in debug builds (uses shared handler)
+#ifndef NDEBUG
+#ifndef _WIN32
+  platform_signal(SIGUSR1, common_handle_sigusr1);
+#endif
+#endif
 
   // Find and dispatch to mode entry point
   const mode_descriptor_t *mode = find_mode(opts->detected_mode);

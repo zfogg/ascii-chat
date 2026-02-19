@@ -144,7 +144,7 @@ static void get_highlight_color(uint8_t *r, uint8_t *g, uint8_t *b) {
   uint64_t cache_age_us = now_us - g_filter_state.last_color_query_us;
 
   // Use cached color if recent (refresh every 2 seconds)
-  if (cache_age_us < 2000000ULL) {
+  if (cache_age_us < 2 * US_PER_SEC_INT) {
     *r = g_filter_state.cached_highlight_r;
     *g = g_filter_state.cached_highlight_g;
     *b = g_filter_state.cached_highlight_b;

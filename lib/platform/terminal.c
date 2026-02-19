@@ -9,6 +9,7 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
 #ifndef _WIN32
 #include <unistd.h>
 #endif
@@ -184,4 +185,22 @@ bool terminal_can_prompt_user(void) {
 
   // All checks passed, interactive prompts are appropriate
   return true;
+}
+
+int terminal_choose_log_fd(log_level_t level) {
+  // When force_stderr is enabled (client mode), send ALL logs to stderr
+  // When terminal is NOT interactive (piped/redirected), send ALL logs to stderr
+  // to keep stdout clean for piped data (JSON, frames, etc.)
+  if (log_get_force_stderr() || !terminal_is_interactive()) {
+    return STDERR_FILENO;
+  }
+
+  // In interactive mode, route based on level:
+  // WARN and above (ERROR, FATAL) go to stderr
+  // Others (DEV, DEBUG, INFO) go to stdout
+  if (level >= LOG_WARN) {
+    return STDERR_FILENO;
+  }
+
+  return STDOUT_FILENO;
 }

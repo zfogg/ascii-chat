@@ -75,6 +75,7 @@
 
 #include "protocol.h"
 #include "main.h"
+#include "../main.h" // Global exit API
 #include "server.h"
 #include "display.h"
 #include "capture.h"
@@ -469,7 +470,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     // Get the client's desired FPS (what we told the server we can display)
     int fps = GET_OPTION(fps);
     int client_display_fps = fps > 0 ? fps : DEFAULT_MAX_FPS;
-    uint64_t render_interval_us = (1000000) / (uint64_t)client_display_fps;
+    uint64_t render_interval_us = US_PER_SEC_INT / (uint64_t)client_display_fps;
 
     uint64_t render_time_ns = time_get_ns();
     uint64_t render_elapsed_us = 0;
@@ -530,7 +531,7 @@ static void handle_audio_packet(const void *data, size_t len) {
   }
 
   if (!GET_OPTION(audio_enabled)) {
-    log_warn_every(1000000, "Received audio packet but audio is disabled");
+    log_warn_every(NS_PER_MS_INT, "Received audio packet but audio is disabled");
     return;
   }
 
@@ -573,7 +574,7 @@ static void handle_audio_opus_packet(const void *data, size_t len) {
   }
 
   if (!GET_OPTION(audio_enabled)) {
-    log_warn_every(1000000, "Received opus audio packet but audio is disabled");
+    log_warn_every(NS_PER_MS_INT, "Received opus audio packet but audio is disabled");
     return;
   }
 
@@ -641,7 +642,7 @@ static void handle_audio_opus_batch_packet(const void *data, size_t len) {
   }
 
   if (!GET_OPTION(audio_enabled)) {
-    log_warn_every(1000000, "Received opus batch packet but audio is disabled");
+    log_warn_every(NS_PER_MS_INT, "Received opus batch packet but audio is disabled");
     return;
   }
 
@@ -1082,7 +1083,7 @@ void protocol_stop_connection() {
   // Wait for data reception thread to exit gracefully
   int wait_count = 0;
   while (wait_count < 20 && !atomic_load(&g_data_thread_exited)) {
-    platform_sleep_us(100000); // 100ms
+    platform_sleep_us(100 * US_PER_MS_INT); // 100ms
     wait_count++;
   }
 

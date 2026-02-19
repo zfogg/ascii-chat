@@ -523,8 +523,8 @@ static void *receive_loop_thread(void *arg) {
                 size_t expected_size = (size_t)frame_hdr->width * frame_hdr->height * 3;
                 if (pixel_data_size >= expected_size) {
                   memcpy(img->pixels, pixel_data, expected_size);
-                  log_debug_every(500000, "Frame received from client %u (%ux%u)", client_id, frame_hdr->width,
-                                  frame_hdr->height);
+                  log_debug_every(500 * US_PER_MS_INT, "Frame received from client %u (%ux%u)", client_id,
+                                  frame_hdr->width, frame_hdr->height);
                 }
               }
               break;
@@ -568,7 +568,7 @@ static void *receive_loop_thread(void *arg) {
                   }
                   current_frame += frame_size;
                 }
-                log_debug_every(1000000, "Audio batch received from client %u (%u frames)", client_id,
+                log_debug_every(NS_PER_MS_INT, "Audio batch received from client %u (%u frames)", client_id,
                                 batch_frame_count);
                 break;
               }
@@ -604,7 +604,7 @@ static void *receive_loop_thread(void *arg) {
 
       case PACKET_TYPE_PING:
         // Respond with PONG
-        log_debug_every(1000000, "PING from client %u", client_id);
+        log_debug_every(NS_PER_MS_INT, "PING from client %u", client_id);
         packet_send(client_socket, PACKET_TYPE_PONG, NULL, 0);
         break;
 
@@ -725,7 +725,7 @@ static void *host_render_thread(void *arg) {
       }
 
       mutex_unlock(&host->clients_mutex);
-      log_debug_every(1000000, "Video render cycle (%d active)", active_video_count);
+      log_debug_every(NS_PER_MS_INT, "Video render cycle (%d active)", active_video_count);
       last_video_render_ns = now_ns;
     }
 
@@ -782,7 +782,7 @@ static void *host_render_thread(void *arg) {
         }
       }
 
-      log_debug_every(1000000, "Audio render cycle");
+      log_debug_every(NS_PER_MS_INT, "Audio render cycle");
       last_audio_render_ns = now_ns;
     }
 
@@ -1143,7 +1143,7 @@ asciichat_error_t session_host_inject_audio(session_host_t *host, uint32_t parti
       }
 
       if (written < count) {
-        log_warn_every(1000000, "Audio ringbuffer full, dropped %zu samples", count - written);
+        log_warn_every(NS_PER_MS_INT, "Audio ringbuffer full, dropped %zu samples", count - written);
       }
 
       host->clients[i].audio_active = true;

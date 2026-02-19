@@ -17,6 +17,7 @@
 #include "ascii-chat/log/interactive_grep.h"
 #include "ascii-chat/session/session_log_buffer.h"
 #include "ascii-chat/util/display.h"
+#include "ascii-chat/util/time.h"
 #include "ascii-chat/platform/system.h"
 #include "ascii-chat/platform/abstraction.h"
 #include "ascii-chat/platform/mutex.h"
@@ -75,7 +76,7 @@ static void strip_ansi_codes(const char *src, char *dst, size_t dst_size) {
 // Cached terminal size (to avoid flooding logs with terminal_get_size errors)
 static terminal_size_t g_cached_term_size = {.rows = 24, .cols = 80};
 static uint64_t g_last_term_size_check_us = 0;
-#define TERM_SIZE_CHECK_INTERVAL_US 1000000ULL // Check terminal size max once per second
+#define TERM_SIZE_CHECK_INTERVAL_US US_PER_SEC_INT // Check terminal size max once per second
 
 // Cache of previously rendered log lines for diff-based rendering.
 // Only rewrite lines whose content actually changed.

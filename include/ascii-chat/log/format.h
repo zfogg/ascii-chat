@@ -36,8 +36,11 @@ typedef enum {
   LOG_FORMAT_COLORLOG_LEVEL,  /* %colorlog_level_string_to_color - color code */
   LOG_FORMAT_COLOR,           /* %color(LEVEL, content) - colorize content using LEVEL's color */
   LOG_FORMAT_COLORED_MESSAGE, /* %colored_message - message with things like filenames and 0x numbers colored */
+  LOG_FORMAT_MICROSECONDS,    /* %ms - microseconds component of current time (000000-999999) */
+  LOG_FORMAT_NANOSECONDS,     /* %ns - nanoseconds component of current time (000000000-999999999) */
+  LOG_FORMAT_STRFTIME_CODE,   /* %H, %M, %S, %A, %B, etc. - strftime format codes */
   LOG_FORMAT_NEWLINE,         /* Platform-aware newline (\n) */
-} log_format_type_t;
+} log_template_type_t;
 
 /* ============================================================================
  * Parsed Format Specifier
@@ -47,9 +50,9 @@ typedef enum {
  * @brief A single parsed format specifier
  */
 typedef struct {
-  log_format_type_t type; /* Type of specifier */
-  char *literal;          /* For LOG_FORMAT_LITERAL, the text; for LOG_FORMAT_TIME, the format string */
-  size_t literal_len;     /* Length of literal text */
+  log_template_type_t type; /* Type of specifier */
+  char *literal;            /* For LOG_FORMAT_LITERAL, the text; for LOG_FORMAT_TIME, the format string */
+  size_t literal_len;       /* Length of literal text */
 } log_format_spec_t;
 
 /* ============================================================================
@@ -57,14 +60,14 @@ typedef struct {
  * ============================================================================ */
 
 /**
- * @brief Compiled log format ready for use in log_format_apply()
+ * @brief Compiled log format ready for use in log_template_apply()
  */
 typedef struct {
   log_format_spec_t *specs; /* Array of parsed specifiers */
   size_t spec_count;        /* Number of specifiers */
   char *original;           /* Original format string (for debugging) */
   bool console_only;        /* If true, apply only to console (not file) */
-} log_format_t;
+} log_template_t;
 
 /* ============================================================================
  * Public API
@@ -90,18 +93,18 @@ extern "C" {
  * @note Errors are logged with details about what failed
  * @ingroup logging
  */
-log_format_t *log_format_parse(const char *format_str, bool console_only);
+log_template_t *log_template_parse(const char *format_str, bool console_only);
 
 /**
  * @brief Free compiled format structure
  * @param format Pointer to format to free (safe to call with NULL)
  * @ingroup logging
  */
-void log_format_free(log_format_t *format);
+void log_template_free(log_template_t *format);
 
 /**
  * @brief Apply format to a log entry and write result to buffer
- * @param format Compiled format (from log_format_parse)
+ * @param format Compiled format (from log_template_parse)
  * @param buf Output buffer
  * @param buf_size Output buffer size
  * @param level Log level
@@ -112,6 +115,7 @@ void log_format_free(log_format_t *format);
  * @param tid Thread ID
  * @param message Log message text
  * @param use_colors If true, apply ANSI color codes
+ * @param time_nanoseconds Raw wall-clock time in nanoseconds (for %microseconds and %nanoseconds)
  * @return Number of characters written (excluding null terminator), or -1 on error
  *
  * Renders the compiled format using provided log entry values. Evaluates each
@@ -119,17 +123,19 @@ void log_format_free(log_format_t *format);
  *
  * **Example:**
  * ```c
- * log_format_t *fmt = log_format_parse("[%time(%H:%M:%S)] [%level] %message", false);
+ * log_template_t *fmt = log_template_parse("[%time(%H:%M:%S)] [%level] %microseconds %message", false);
  * char output[512];
- * int len = log_format_apply(fmt, output, sizeof(output),
- *                            LOG_INFO, "14:30:45.123456", "test.c", 42, "main",
- *                            1234, "Test message", false);
+ * uint64_t now = time_get_realtime_ns();
+ * int len = log_template_apply(fmt, output, sizeof(output),
+ *                            LOG_INFO, "14:30:45", "test.c", 42, "main",
+ *                            1234, "Test message", false, now);
  * ```
  *
  * @ingroup logging
  */
-int log_format_apply(const log_format_t *format, char *buf, size_t buf_size, log_level_t level, const char *timestamp,
-                     const char *file, int line, const char *func, uint64_t tid, const char *message, bool use_colors);
+int log_template_apply(const log_template_t *format, char *buf, size_t buf_size, log_level_t level,
+                       const char *timestamp, const char *file, int line, const char *func, uint64_t tid,
+                       const char *message, bool use_colors, uint64_t time_nanoseconds);
 
 #ifdef __cplusplus
 }

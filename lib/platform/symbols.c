@@ -238,133 +238,6 @@ static const char *get_addr2line_command(void) {
   return ADDR2LINE_BIN;
 }
 
-#ifdef __APPLE__
-#include <mach-o/dyld.h>
-
-/**
- * @brief Get ASLR slide and binary path for a given address (macOS only)
- * @param addr Runtime address to look up
- * @param out_path Buffer to store the binary path
- * @param path_size Size of the path buffer
- * @param out_file_offset Output for the file offset (addr - slide)
- * @return true if the address was found in a loaded image, false otherwise
- *
- * On macOS, ASLR adds a random "slide" to addresses at runtime.
- * llvm-symbolizer needs file offsets, not runtime addresses.
- * This function finds which binary an address belongs to and calculates
- * the file offset by subtracting the slide.
- */
-static bool get_macos_file_offset(const void *addr, char *out_path, size_t path_size, uintptr_t *out_file_offset) {
-  if (!addr || !out_path || !out_file_offset) {
-    return false;
-  }
-
-  uintptr_t target_addr = (uintptr_t)addr;
-  uint32_t image_count = _dyld_image_count();
-
-  for (uint32_t i = 0; i < image_count; i++) {
-    const struct mach_header *header = _dyld_get_image_header(i);
-    if (!header) {
-      continue;
-    }
-
-    intptr_t slide = _dyld_get_image_vmaddr_slide(i);
-    const char *image_name = _dyld_get_image_name(i);
-    if (!image_name) {
-      continue;
-    }
-
-    // For 64-bit binaries, iterate through load commands to find the segment
-    if (header->magic == MH_MAGIC_64) {
-      const struct mach_header_64 *header64 = (const struct mach_header_64 *)header;
-      const uint8_t *ptr = (const uint8_t *)(header64 + 1);
-
-      for (uint32_t j = 0; j < header64->ncmds; j++) {
-        const struct load_command *cmd = (const struct load_command *)ptr;
-
-        if (cmd->cmd == LC_SEGMENT_64) {
-          const struct segment_command_64 *seg = (const struct segment_command_64 *)ptr;
-          uintptr_t seg_start = seg->vmaddr + (uintptr_t)slide;
-          uintptr_t seg_end = seg_start + seg->vmsize;
-
-          if (target_addr >= seg_start && target_addr < seg_end) {
-            // Found the segment containing our address
-            SAFE_STRNCPY(out_path, image_name, path_size);
-            *out_file_offset = target_addr - (uintptr_t)slide;
-            return true;
-          }
-        }
-
-        ptr += cmd->cmdsize;
-      }
-    }
-  }
-
-  return false;
-}
-#elif defined(__linux__)
-/**
- * @brief Get ASLR offset and binary path for a given address (Linux only)
- * @param addr Runtime address to look up
- * @param out_path Buffer to store the binary path
- * @param path_size Size of the path buffer
- * @param out_file_offset Output for the file offset (addr - base)
- * @return true if the address was found in /proc/self/maps, false otherwise
- *
- * On Linux, ASLR adds a random offset to addresses at runtime.
- * llvm-symbolizer needs file offsets, not runtime addresses.
- * This function reads /proc/self/maps to find the base address and calculates
- * the file offset by subtracting the base from the runtime address.
- */
-static bool get_linux_file_offset(const void *addr, char *out_path, size_t path_size, uintptr_t *out_file_offset) {
-  if (!addr || !out_path || !out_file_offset) {
-    return false;
-  }
-
-  uintptr_t target_addr = (uintptr_t)addr;
-
-  // Read /proc/self/maps to find the base address
-  FILE *maps = fopen("/proc/self/maps", "r");
-  if (!maps) {
-    return false;
-  }
-
-  char line[1024];
-  bool found = false;
-
-  while (fgets(line, sizeof(line), maps)) {
-    // Parse: 5599372f4000-559937519000 r-xp 00178000 00:1b 10003268 /path/to/binary
-    uintptr_t start_addr, end_addr, file_offset;
-    char perms[5];
-    char path[512];
-
-    // Parse the line (now capturing file_offset from 4th column)
-    int matched = sscanf(line, "%lx-%lx %4s %lx %*x:%*x %*d %511s", &start_addr, &end_addr, perms, &file_offset, path);
-
-    if (matched >= 5) {
-      // Check if this is an executable segment (r-xp) containing our address
-      if (perms[2] == 'x' && target_addr >= start_addr && target_addr < end_addr) {
-        // Check if this is the main executable (not a shared library)
-        if (strstr(path, "ascii-chat") != NULL && strstr(path, ".so") == NULL) {
-          // Found it! Calculate file offset: (addr - segment_base) + segment_file_offset
-          *out_file_offset = (target_addr - start_addr) + file_offset;
-          SAFE_STRNCPY(out_path, path, path_size);
-          found = true;
-#ifndef NDEBUG
-          log_debug("ASLR: addr=%p -> file_offset=0x%lx (segment_base=0x%lx, segment_file_offset=0x%lx, path=%s)", addr,
-                    *out_file_offset, start_addr, file_offset, path);
-#endif
-          break;
-        }
-      }
-    }
-  }
-
-  fclose(maps);
-  return found;
-}
-#endif
-
 static symbolizer_type_t detect_symbolizer(void) {
   // Prefer llvm-symbolizer on all platforms (including macOS)
   // We handle ASLR ourselves using dyld APIs on macOS
@@ -437,11 +310,9 @@ void symbol_cache_destroy(void) {
     if (entry) {
       HASH_DEL(g_symbol_cache, entry);
       if (entry->symbol) {
-        // Use SAFE_FREE() because entry->symbol was allocated with platform_strdup()
-        // which uses SAFE_MALLOC(), so it's tracked by debug memory system
-        SAFE_FREE(entry->symbol);
+        free(entry->symbol);
       }
-      SAFE_FREE(entry);
+      free(entry);
       freed_count++;
     }
   }
@@ -503,7 +374,7 @@ bool symbol_cache_insert(void *addr, const char *symbol) {
     // Entry exists - update symbol if different
     if (existing->symbol && strcmp(existing->symbol, symbol) != 0) {
       // Free old symbol and allocate new one
-      SAFE_FREE(existing->symbol);
+      free(existing->symbol);
       existing->symbol = platform_strdup(symbol);
       if (!existing->symbol) {
         rwlock_wrunlock(&g_symbol_cache_lock);
@@ -515,7 +386,7 @@ bool symbol_cache_insert(void *addr, const char *symbol) {
   }
 
   // Create new entry
-  symbol_entry_t *entry = SAFE_MALLOC(sizeof(symbol_entry_t), symbol_entry_t *);
+  symbol_entry_t *entry = (symbol_entry_t *)malloc(sizeof(symbol_entry_t));
   if (!entry) {
     rwlock_wrunlock(&g_symbol_cache_lock);
     return false;
@@ -524,7 +395,7 @@ bool symbol_cache_insert(void *addr, const char *symbol) {
   entry->addr = addr;
   entry->symbol = platform_strdup(symbol);
   if (!entry->symbol) {
-    SAFE_FREE(entry);
+    free(entry);
     rwlock_wrunlock(&g_symbol_cache_lock);
     return false;
   }
@@ -671,11 +542,12 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
     return NULL;
   }
 
-#ifdef __APPLE__
-  // macOS: Group addresses by binary, calculate file offsets, batch per binary
-  // We'll collect addresses for each unique binary path
+  // ============================================================================
+  // Unified platform-agnostic implementation using get_binary_file_address_offsets()
+  // ============================================================================
 
-  // First pass: determine binary for each address and calculate file offsets
+  // Group addresses by binary using platform-independent interface
+  // Works identically on Linux, macOS, and Windows
   typedef struct {
     char binary_path[PLATFORM_MAX_PATH_LENGTH];
     uintptr_t file_offsets[64]; // Max addresses per binary
@@ -686,12 +558,12 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
   binary_group_t groups[8]; // Support up to 8 different binaries
   int num_groups = 0;
 
+  // First pass: Call get_binary_file_address_offsets() for each address
+  // (same function works on all platforms - zero #ifdefs needed!)
   for (int i = 0; i < size; i++) {
-    char binary_path[PLATFORM_MAX_PATH_LENGTH];
-    uintptr_t file_offset = 0;
-
-    if (!get_macos_file_offset(buffer[i], binary_path, sizeof(binary_path), &file_offset)) {
-      // Could not find binary - use raw address
+    platform_binary_match_t match;
+    if (get_binary_file_address_offsets(buffer[i], &match, 1) == 0) {
+      // Could not find binary - use raw address as fallback
       result[i] = SAFE_MALLOC(32, char *);
       if (result[i]) {
         SAFE_SNPRINTF(result[i], 32, "%p", buffer[i]);
@@ -702,7 +574,7 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
     // Find or create group for this binary
     int group_idx = -1;
     for (int g = 0; g < num_groups; g++) {
-      if (strcmp(groups[g].binary_path, binary_path) == 0) {
+      if (strcmp(groups[g].binary_path, match.path) == 0) {
         group_idx = g;
         break;
       }
@@ -710,103 +582,13 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
 
     if (group_idx < 0 && num_groups < 8) {
       group_idx = num_groups++;
-      SAFE_STRNCPY(groups[group_idx].binary_path, binary_path, sizeof(groups[group_idx].binary_path));
+      SAFE_STRNCPY(groups[group_idx].binary_path, match.path, sizeof(groups[group_idx].binary_path));
       groups[group_idx].count = 0;
     }
 
     if (group_idx >= 0 && groups[group_idx].count < 64) {
       int idx = groups[group_idx].count++;
-      groups[group_idx].file_offsets[idx] = file_offset;
-      groups[group_idx].original_indices[idx] = i;
-    }
-  }
-
-  // Second pass: batch symbolize each group
-  for (int g = 0; g < num_groups; g++) {
-    if (groups[g].count == 0) {
-      continue;
-    }
-
-    // Build command with all addresses for this binary
-    char cmd[8192];
-    int offset = safe_snprintf(cmd, sizeof(cmd), "%s --demangle --output-style=LLVM --relativenames -e '%s' ",
-                               symbolizer_cmd, groups[g].binary_path);
-
-    for (int j = 0; j < groups[g].count && offset < (int)sizeof(cmd) - 32; j++) {
-      int n =
-          safe_snprintf(cmd + offset, sizeof(cmd) - (size_t)offset, "0x%lx ", (unsigned long)groups[g].file_offsets[j]);
-      if (n > 0) {
-        offset += n;
-      }
-    }
-
-    // Suppress stderr
-    strncat(cmd, "2>/dev/null", sizeof(cmd) - strlen(cmd) - 1);
-
-    FILE *fp = popen(cmd, "r");
-    if (!fp) {
-      continue;
-    }
-
-    // Parse results in order
-    for (int j = 0; j < groups[g].count; j++) {
-      int orig_idx = groups[g].original_indices[j];
-      result[orig_idx] = parse_llvm_symbolizer_result(fp, buffer[orig_idx]);
-      if (!result[orig_idx]) {
-        result[orig_idx] = SAFE_MALLOC(32, char *);
-        if (result[orig_idx]) {
-          SAFE_SNPRINTF(result[orig_idx], 32, "%p", buffer[orig_idx]);
-        }
-      }
-    }
-
-    pclose(fp);
-  }
-
-#elif defined(__linux__)
-  // Linux: Use file offsets like macOS (ASLR handling)
-  // Group addresses by binary path and calculate file offsets
-  typedef struct {
-    char binary_path[PLATFORM_MAX_PATH_LENGTH];
-    uintptr_t file_offsets[64]; // Max addresses per binary
-    int original_indices[64];
-    int count;
-  } binary_group_t;
-
-  binary_group_t groups[8]; // Support up to 8 different binaries
-  int num_groups = 0;
-
-  for (int i = 0; i < size; i++) {
-    char binary_path[PLATFORM_MAX_PATH_LENGTH];
-    uintptr_t file_offset = 0;
-
-    if (!get_linux_file_offset(buffer[i], binary_path, sizeof(binary_path), &file_offset)) {
-      // Could not find binary - use raw address
-      result[i] = SAFE_MALLOC(32, char *);
-      if (result[i]) {
-        SAFE_SNPRINTF(result[i], 32, "%p", buffer[i]);
-      }
-      continue;
-    }
-
-    // Find or create group for this binary
-    int group_idx = -1;
-    for (int g = 0; g < num_groups; g++) {
-      if (strcmp(groups[g].binary_path, binary_path) == 0) {
-        group_idx = g;
-        break;
-      }
-    }
-
-    if (group_idx < 0 && num_groups < 8) {
-      group_idx = num_groups++;
-      SAFE_STRNCPY(groups[group_idx].binary_path, binary_path, sizeof(groups[group_idx].binary_path));
-      groups[group_idx].count = 0;
-    }
-
-    if (group_idx >= 0 && groups[group_idx].count < 64) {
-      int idx = groups[group_idx].count++;
-      groups[group_idx].file_offsets[idx] = file_offset;
+      groups[group_idx].file_offsets[idx] = match.file_offset;
       groups[group_idx].original_indices[idx] = i;
     }
   }
@@ -844,72 +626,39 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
       continue;
     }
 
+    // Extract binary name (basename) for display
+    const char *binary_name = strrchr(groups[g].binary_path, '/');
+    if (!binary_name) {
+      binary_name = strrchr(groups[g].binary_path, '\\');
+    }
+    binary_name = binary_name ? binary_name + 1 : groups[g].binary_path;
+
     // Parse results in order
     for (int j = 0; j < groups[g].count; j++) {
       int orig_idx = groups[g].original_indices[j];
-      result[orig_idx] = parse_llvm_symbolizer_result(fp, buffer[orig_idx]);
-      if (!result[orig_idx]) {
-        result[orig_idx] = SAFE_MALLOC(32, char *);
+      char *parsed = parse_llvm_symbolizer_result(fp, buffer[orig_idx]);
+
+      if (parsed) {
+        // Prepend binary name in brackets
+        char *with_binary = SAFE_MALLOC(1024, char *);
+        if (with_binary) {
+          SAFE_SNPRINTF(with_binary, 1024, "[%s] %s", binary_name, parsed);
+          SAFE_FREE(parsed);
+          result[orig_idx] = with_binary;
+        } else {
+          result[orig_idx] = parsed;
+        }
+      } else {
+        // Fallback: show raw address with binary name
+        result[orig_idx] = SAFE_MALLOC(256, char *);
         if (result[orig_idx]) {
-          SAFE_SNPRINTF(result[orig_idx], 32, "%p", buffer[orig_idx]);
+          SAFE_SNPRINTF(result[orig_idx], 256, "[%s] %p", binary_name, buffer[orig_idx]);
         }
       }
     }
 
     pclose(fp);
   }
-
-#else
-  // Windows: Use runtime addresses directly (TODO: implement Windows ASLR handling)
-  char exe_path[PLATFORM_MAX_PATH_LENGTH];
-  if (!platform_get_executable_path(exe_path, sizeof(exe_path))) {
-    SAFE_FREE(result);
-    return NULL;
-  }
-
-  // Escape paths for shell
-  char escaped_exe_path[PLATFORM_MAX_PATH_LENGTH * 2];
-  if (!escape_path_for_shell(exe_path, escaped_exe_path, sizeof(escaped_exe_path))) {
-    SAFE_FREE(result);
-    return NULL;
-  }
-
-  char escaped_symbolizer[PLATFORM_MAX_PATH_LENGTH * 2];
-  if (!escape_path_for_shell(symbolizer_cmd, escaped_symbolizer, sizeof(escaped_symbolizer))) {
-    SAFE_FREE(result);
-    return NULL;
-  }
-
-  // Build command
-  char cmd[8192];
-  int offset = safe_snprintf(cmd, sizeof(cmd), "%s --demangle --output-style=LLVM --relativenames -e %s ",
-                             escaped_symbolizer, escaped_exe_path);
-
-  for (int i = 0; i < size && offset < (int)sizeof(cmd) - 32; i++) {
-    int n = safe_snprintf(cmd + offset, sizeof(cmd) - (size_t)offset, "0x%llx ", (unsigned long long)buffer[i]);
-    if (n > 0) {
-      offset += n;
-    }
-  }
-
-  FILE *fp = popen(cmd, "r");
-  if (!fp) {
-    SAFE_FREE(result);
-    return NULL;
-  }
-
-  for (int i = 0; i < size; i++) {
-    result[i] = parse_llvm_symbolizer_result(fp, buffer[i]);
-    if (!result[i]) {
-      result[i] = SAFE_MALLOC(32, char *);
-      if (result[i]) {
-        SAFE_SNPRINTF(result[i], 32, "%p", buffer[i]);
-      }
-    }
-  }
-
-  pclose(fp);
-#endif
 
   return result;
 }

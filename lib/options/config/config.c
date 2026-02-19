@@ -767,7 +767,8 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
   size_t flags_count = metadata_count > 0 ? metadata_count : 1;
   bool *option_set_flags = SAFE_CALLOC(flags_count, sizeof(bool), bool *);
   if (!option_set_flags) {
-    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate config option flags");
+    asciichat_error_t err = SET_ERRNO(ERROR_MEMORY, "Failed to allocate config option flags");
+    return err;
   }
   defer(SAFE_FREE(option_set_flags));
 
@@ -787,6 +788,7 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
       if (!applies_to_mode) {
         log_debug("Config: Option '%s' is not supported for this mode (skipping)", meta->toml_key);
         if (strict) {
+          SAFE_FREE(option_set_flags);
           return SET_ERRNO(ERROR_CONFIG, "Option '%s' is not supported for this mode", meta->toml_key);
         }
         continue;
@@ -848,6 +850,7 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
           CONFIG_WARN("Invalid palette.chars: too long (%zu chars, max %zu, skipping)", strlen(chars_str),
                       sizeof(opts->palette_custom) - 1);
           if (strict) {
+            SAFE_FREE(option_set_flags);
             return SET_ERRNO(ERROR_CONFIG, "palette.chars too long");
           }
         }
@@ -866,6 +869,7 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
       } else {
         CONFIG_WARN("Invalid no_encrypt value '%s' (expected true/false), skipping", value_str);
         if (strict) {
+          SAFE_FREE(option_set_flags);
           return SET_ERRNO(ERROR_CONFIG, "Invalid no_encrypt value");
         }
         continue;
@@ -1001,6 +1005,7 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
     }
   }
 
+  SAFE_FREE(option_set_flags);
   return first_error;
 }
 
@@ -1078,6 +1083,8 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
   asciichat_error_t validate_result =
       path_validate_user_path(config_path_expanded, PATH_ROLE_CONFIG_FILE, &validated_config_path);
   if (validate_result != ASCIICHAT_OK) {
+    SAFE_FREE(validated_config_path);
+    SAFE_FREE(config_path_expanded);
     return validate_result;
   }
   // Free the old path before reassigning (defer will free the new one)
@@ -1458,6 +1465,8 @@ asciichat_error_t config_create_default(const char *config_path) {
     asciichat_error_t validate_result =
         path_validate_user_path(config_path_expanded, PATH_ROLE_CONFIG_FILE, &validated_config_path);
     if (validate_result != ASCIICHAT_OK) {
+      SAFE_FREE(validated_config_path);
+      SAFE_FREE(config_path_expanded);
       return validate_result;
     }
     // Free the old path before reassigning (defer will free the new one)
@@ -1531,6 +1540,7 @@ asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, bo
 
   if (search_result != ASCIICHAT_OK) {
     CONFIG_DEBUG("Failed to search for config files: %d", search_result);
+    config_file_list_destroy(&config_files);
     return search_result;
   }
 
@@ -1566,5 +1576,6 @@ asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, bo
     }
   }
 
+  config_file_list_destroy(&config_files);
   return result;
 }

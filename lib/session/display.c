@@ -598,8 +598,9 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     // Send frame data (overwrites previous frame from cursor position)
     (void)platform_write_all(STDOUT_FILENO, frame_data, frame_len);
     (void)terminal_flush(STDOUT_FILENO);
-  } else {
-    // Piped mode: combine frame and newline into single write call
+  } else if (terminal_is_interactive()) {
+    // Piped to an interactive terminal: output ASCII frames
+    // Combine frame and newline into single write call
     // Allocate temporary buffer for frame + newline to minimize syscalls
     char *write_buf = SAFE_MALLOC(frame_len + 1, char *);
     if (write_buf) {

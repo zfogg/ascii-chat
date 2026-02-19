@@ -315,19 +315,24 @@ int server_crypto_handshake(client_info_t *client) {
   uint16_t client_proto_version = NET_TO_HOST_U16(client_version.protocol_version);
   uint16_t client_proto_revision = NET_TO_HOST_U16(client_version.protocol_revision);
 
-  log_info("Client %u protocol version: %u.%u (encryption: %s)", atomic_load(&client->client_id), client_proto_version,
-           client_proto_revision, client_version.supports_encryption ? "yes" : "no");
+  uint8_t client_mode = client_version.supports_encryption;
+  log_info("Client %u protocol version: %u.%u (crypto mode: 0x%02x)", atomic_load(&client->client_id),
+           client_proto_version, client_proto_revision, client_mode);
 
   log_debug("SERVER_CRYPTO_HANDSHAKE: About to check encryption support for client %u",
             atomic_load(&client->client_id));
 
-  if (!client_version.supports_encryption) {
-    log_error("Client %u does not support encryption", atomic_load(&client->client_id));
-    log_info("Client %u disconnected - encryption not supported", atomic_load(&client->client_id));
+  // Reject ACIP_CRYPTO_NONE (plaintext only) - at minimum, ACIP handshake must run
+  if (client_mode == ACIP_CRYPTO_NONE) {
+    log_error("Client %u does not support any crypto protocol", atomic_load(&client->client_id));
+    log_info("Client %u disconnected - crypto protocol required", atomic_load(&client->client_id));
     client->crypto_initialized = false;
     STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
     return -1; // Return error but don't crash the server
   }
+
+  // Store encryption mode for setting encrypt_data flag later
+  client->encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(client_mode);
 
   // Step 0b: Send our protocol version to client
   log_debug("SERVER_CRYPTO_HANDSHAKE: About to prepare server protocol version for client %u",
@@ -337,7 +342,7 @@ int server_crypto_handshake(client_info_t *client) {
             atomic_load(&client->client_id));
   server_version.protocol_version = HOST_TO_NET_U16(1);  // Protocol version 1
   server_version.protocol_revision = HOST_TO_NET_U16(0); // Revision 0
-  server_version.supports_encryption = 1;                // We support encryption
+  server_version.supports_encryption = client_mode;      // Echo client's mode
   server_version.compression_algorithms = 0;             // No compression for now
   server_version.compression_threshold = 0;
   server_version.feature_flags = 0;
@@ -430,7 +435,8 @@ int server_crypto_handshake(client_info_t *client) {
 
   // Select algorithms (for now, we only support X25519 + Ed25519 + XSalsa20-Poly1305)
   server_params.selected_kex = KEX_ALGO_X25519;
-  server_params.selected_cipher = CIPHER_ALGO_XSALSA20_POLY1305;
+  server_params.selected_cipher =
+      ACIP_CRYPTO_HAS_ENCRYPT(client_mode) ? CIPHER_ALGO_XSALSA20_POLY1305 : CIPHER_ALGO_NONE;
 
   // Select authentication algorithm based on server configuration
   // Note: Password authentication is not a separate algorithm - it's a mode of operation
@@ -607,6 +613,8 @@ int server_crypto_handshake(client_info_t *client) {
   if (client->crypto_handshake_ctx.state == CRYPTO_HANDSHAKE_READY) {
     uint32_t cid = atomic_load(&client->client_id);
     client->crypto_initialized = true;
+    // Propagate encryption flag to crypto context
+    client->crypto_handshake_ctx.crypto_ctx.encrypt_data = client->encrypt_data;
     STOP_TIMER_AND_LOG(debug, 100 * NS_PER_MS_INT, "server_crypto_handshake_client_%u",
                        "Crypto handshake completed successfully for client %u (no authentication)", cid);
     return 0;
@@ -636,6 +644,8 @@ int server_crypto_handshake(client_info_t *client) {
 
   uint32_t cid = atomic_load(&client->client_id);
   client->crypto_initialized = true;
+  // Propagate encryption flag to crypto context
+  client->crypto_handshake_ctx.crypto_ctx.encrypt_data = client->encrypt_data;
   STOP_TIMER_AND_LOG(debug, 100 * NS_PER_MS_INT, "server_crypto_handshake_client_%u",
                      "Crypto handshake completed successfully for client %u", cid);
 

@@ -19,59 +19,20 @@
 // Mode-Aware Default: log-file
 // ============================================================================
 
-static char g_log_file_server[OPTIONS_BUFF_SIZE] = {0};
-static char g_log_file_client[OPTIONS_BUFF_SIZE] = {0};
-static char g_log_file_mirror[OPTIONS_BUFF_SIZE] = {0};
-static char g_log_file_discovery_service[OPTIONS_BUFF_SIZE] = {0};
-static char g_log_file_discovery[OPTIONS_BUFF_SIZE] = {0};
-static bool g_log_file_defaults_initialized = false;
-
-/**
- * @brief Initialize log file default paths using temp directory
- */
-static void init_log_file_defaults(void) {
-  if (g_log_file_defaults_initialized) {
-    return;
-  }
-
-  char temp_dir[PLATFORM_MAX_PATH_LENGTH];
-  if (!platform_get_temp_dir(temp_dir, sizeof(temp_dir))) {
-    // Fallback for POSIX systems
-    snprintf(temp_dir, sizeof(temp_dir), "/tmp");
-  }
-
-  snprintf(g_log_file_server, sizeof(g_log_file_server), "%s/ascii-chat-server.log", temp_dir);
-  snprintf(g_log_file_client, sizeof(g_log_file_client), "%s/ascii-chat-client.log", temp_dir);
-  snprintf(g_log_file_mirror, sizeof(g_log_file_mirror), "%s/ascii-chat-mirror.log", temp_dir);
-  snprintf(g_log_file_discovery_service, sizeof(g_log_file_discovery_service), "%s/ascii-chat-discovery-service.log",
-           temp_dir);
-  snprintf(g_log_file_discovery, sizeof(g_log_file_discovery), "%s/ascii-chat.log", temp_dir);
-
-  g_log_file_defaults_initialized = true;
-}
-
 /**
  * @brief Get mode-specific default value for --log-file
+ *
+ * Returns empty string - the actual log file path is determined by
+ * options_get_log_filepath() which properly handles debug vs release
+ * builds and platform-specific temp directories.
+ *
+ * Debug builds: Uses current working directory (server.log, client.log, etc.)
+ * Release builds: Uses $TMPDIR/ascii-chat/server.log, etc.
  */
 const void *get_default_log_file(asciichat_mode_t mode) {
-  init_log_file_defaults();
-
-  switch (mode) {
-  case MODE_SERVER:
-    return g_log_file_server;
-  case MODE_CLIENT:
-    return g_log_file_client;
-  case MODE_MIRROR:
-    return g_log_file_mirror;
-  case MODE_DISCOVERY_SERVICE:
-    return g_log_file_discovery_service;
-  case MODE_DISCOVERY:
-    return g_log_file_discovery;
-  case MODE_INVALID:
-  default:
-    // Fallback for binary-level (before mode detection)
-    return "";
-  }
+  (void)mode; // Unused
+  // Return empty string - let options_get_log_filepath() handle the defaults
+  return "";
 }
 
 // ============================================================================

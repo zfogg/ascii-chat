@@ -143,6 +143,57 @@ static void calculate_optimal_dimensions(ssize_t original_width, ssize_t origina
  * Session Capture Lifecycle Functions
  * ============================================================================ */
 
+session_capture_ctx_t *session_mirror_capture_create(const session_capture_config_t *config) {
+  // Mirror capture requires a config with media source info
+  if (!config) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Mirror capture requires explicit config"), NULL;
+  }
+
+  // Delegate to the main implementation
+  return session_capture_create(config);
+}
+
+session_capture_ctx_t *session_network_capture_create(uint32_t target_fps) {
+  // Network modes don't capture media - create minimal context for keyboard/audio only
+  session_capture_ctx_t *ctx = SAFE_CALLOC(1, sizeof(session_capture_ctx_t), session_capture_ctx_t *);
+  if (!ctx) {
+    return NULL;
+  }
+
+  // Set FPS (use provided value or default to 60)
+  ctx->target_fps = target_fps > 0 ? target_fps : 60;
+  ctx->resize_for_network = false;
+
+  // Audio and keyboard will be set up separately by callers
+  ctx->audio_enabled = false;
+  ctx->source = NULL;
+  ctx->source_owned = false;
+
+  // Initialize adaptive sleep for consistency
+  uint64_t baseline_sleep_ns = NS_PER_SEC_INT / ctx->target_fps;
+  adaptive_sleep_config_t sleep_config = {.baseline_sleep_ns = baseline_sleep_ns,
+                                          .min_speed_multiplier = 0.5,
+                                          .max_speed_multiplier = 2.0,
+                                          .speedup_rate = 0.1,
+                                          .slowdown_rate = 0.1};
+  adaptive_sleep_init(&ctx->sleep_state, &sleep_config);
+
+  // Initialize minimal FPS tracker (won't be used but keep structure consistent)
+  char *tracker_name = SAFE_MALLOC(32, char *);
+  if (!tracker_name) {
+    SAFE_FREE(ctx);
+    return NULL;
+  }
+  safe_snprintf(tracker_name, 32, "NETWORK_CAPTURE");
+  fps_init(&ctx->fps_tracker, 60, tracker_name);
+
+  ctx->start_time_ns = time_get_ns();
+  ctx->initialized = true;
+
+  log_debug("Created network capture context (no local media source)");
+  return ctx;
+}
+
 session_capture_ctx_t *session_capture_create(const session_capture_config_t *config) {
   // Auto-create config from command-line options if NULL
   session_capture_config_t auto_config = {0};
@@ -269,7 +320,7 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
         // Local files are faster - 100-200ms is usually sufficient
         // Use 1 second as a safe default to handle both cases
         log_debug("Waiting for prefetch thread after seek (snapshot_delay=0, HTTP streams need ~1 second)");
-        platform_sleep_us(1000000); // 1 second - ensures prefetch thread has delivered seeked frame
+        platform_sleep_us(US_PER_SEC_INT); // 1 second - ensures prefetch thread has delivered seeked frame
       }
     }
   }
@@ -350,12 +401,12 @@ image_t *session_capture_read_frame(session_capture_ctx_t *ctx) {
     if (last_frame_time_ns > 0) {
       uint64_t time_since_last_frame_ns = time_elapsed_ns(last_frame_time_ns, frame_request_time_ns);
       uint64_t time_to_get_frame_ns = time_elapsed_ns(frame_request_time_ns, frame_available_time_ns);
-      double since_last_ms = (double)time_since_last_frame_ns / 1000000.0;
-      double to_get_ms = (double)time_to_get_frame_ns / 1000000.0;
+      double since_last_ms = (double)time_since_last_frame_ns / NS_PER_MS;
+      double to_get_ms = (double)time_to_get_frame_ns / NS_PER_MS;
 
       if (ctx->frame_count % 30 == 0) {
-        log_dev_every(3000000, "FRAME_TIMING[%lu]: since_last=%.1f ms, to_get=%.1f ms", ctx->frame_count, since_last_ms,
-                      to_get_ms);
+        log_dev_every(3 * US_PER_SEC_INT, "FRAME_TIMING[%lu]: since_last=%.1f ms, to_get=%.1f ms", ctx->frame_count,
+                      since_last_ms, to_get_ms);
       }
     }
     last_frame_time_ns = frame_available_time_ns;

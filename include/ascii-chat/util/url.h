@@ -8,12 +8,13 @@
  * @{
  *
  * This header provides robust URL validation and parsing using PCRE2 regular expressions.
- * Based on the production-grade HTTP(S) URL regex by Diego Perini (MIT License).
+ * Based on the production-grade HTTP(S) URL regex by Diego Perini (MIT License), extended for WebSocket.
  *
  * CORE FEATURES:
  * ==============
- * - Production-grade HTTP(S) URL validation via PCRE2
+ * - Production-grade HTTP(S) and WebSocket URL validation via PCRE2
  * - Comprehensive URL parsing (extract scheme, host, port, path)
+ * - Scheme support: http, https, ws, wss (case-insensitive)
  * - IPv4, IPv6, and hostname support (localhost, bare hosts, FQDNs)
  * - Private IP filtering (10.x, 172.16-31.x, 192.168.x, 127.x, 169.254.x)
  * - JIT-compiled regex for 10-100x performance boost
@@ -63,7 +64,7 @@ typedef struct {
 } url_parts_t;
 
 /**
- * @brief Fast URL validation using production-grade HTTP(S) regex
+ * @brief Fast URL validation using production-grade regex (HTTP/HTTPS/WebSocket)
  * @param url Input URL string to validate
  * @return True if URL is valid, false otherwise
  *
@@ -71,7 +72,7 @@ typedef struct {
  * compilation for 10-100x performance over manual parsing.
  *
  * URL ACCEPTANCE CRITERIA:
- * - Scheme: http or https (case-insensitive)
+ * - Scheme: http, https, ws, or wss (case-insensitive)
  * - Host: Public IPv4, IPv6, localhost, FQDN, or bare hostname
  * - Rejects: Private IPs (10.x, 172.16-31.x, 192.168.x, 127.x, 169.254.x)
  * - Port: Optional, must be 1-65535 if present
@@ -89,23 +90,23 @@ typedef struct {
 bool url_is_valid(const char *url);
 
 /**
- * @brief Parse HTTP(S) URL into components
+ * @brief Parse HTTP(S) and WebSocket URL into components
  * @param url Input URL string to parse
  * @param parts_out Output structure for parsed components (must not be NULL)
  * @return ASCIICHAT_OK on success, error code on failure
  *
- * Validates and parses an HTTP(S) URL into its component parts using
+ * Validates and parses an HTTP(S) or WebSocket URL into its component parts using
  * production-grade PCRE2 regex with JIT compilation.
  *
  * URL ACCEPTANCE CRITERIA:
- * - Scheme: http or https (case-insensitive)
+ * - Scheme: http, https, ws, or wss (case-insensitive)
  * - Host: Public IPv4, IPv6, localhost, FQDN, or bare hostname
  * - Rejects: Private IPs (10.x, 172.16-31.x, 192.168.x, 127.x, 169.254.x)
  * - Port: Optional, 1-65535
  * - Path/Query/Fragment: Optional
  *
  * EXTRACTED COMPONENTS:
- * - scheme: "http" or "https" (always present)
+ * - scheme: "http", "https", "ws", or "wss" (always present)
  * - host: Hostname, IPv4, or IPv6 (always present)
  * - port: Port number (0 if not specified)
  * - userinfo: user:pass@ prefix (NULL if not present)
@@ -151,5 +152,70 @@ asciichat_error_t url_parse(const char *url, url_parts_t *parts_out);
  * @ingroup util
  */
 void url_parts_destroy(url_parts_t *parts);
+
+/**
+ * @brief Check if URL scheme is WebSocket (ws or wss)
+ * @param scheme Scheme string to check (case-insensitive)
+ * @return True if scheme is "ws" or "wss", false otherwise
+ *
+ * Utility function to determine if a parsed URL is a WebSocket URL.
+ *
+ * @par Example
+ * @code
+ * url_parts_t parts = {0};
+ * if (url_parse("wss://example.com:443", &parts) == ASCIICHAT_OK) {
+ *     if (url_is_websocket_scheme(parts.scheme)) {
+ *         // Handle WebSocket connection
+ *     }
+ *     url_parts_destroy(&parts);
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+bool url_is_websocket_scheme(const char *scheme);
+
+/**
+ * @brief Check if a URL string is a valid WebSocket URL
+ * @param url URL string to validate
+ * @return True if URL is valid and has WebSocket scheme (ws or wss), false otherwise
+ *
+ * Parses a URL and checks if it has a WebSocket scheme. This is the primary
+ * function for WebSocket URL validation - use this instead of manually calling
+ * url_parse() and url_is_websocket_scheme().
+ *
+ * @par Example
+ * @code
+ * if (url_is_websocket("wss://example.com:443")) {
+ *     // Safe to use as WebSocket URL
+ *     connection_attempt_websocket(&ctx, "wss://example.com:443");
+ * } else if (url_is_valid(address)) {
+ *     // Use regular HTTP(S) transport
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+bool url_is_websocket(const char *url);
+
+/**
+ * @brief Quick check if a string is a WebSocket URL
+ * @param url String to check
+ * @return True if string starts with ws:// or wss://, false otherwise
+ *
+ * Fast check without full URL parsing. Useful for determining transport type.
+ *
+ * @par Example
+ * @code
+ * if (url_looks_like_websocket("wss://example.com:443")) {
+ *     // Use WebSocket transport
+ * } else if (url_is_valid(address)) {
+ *     // Use regular HTTP(S) transport
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+bool url_looks_like_websocket(const char *url);
 
 /** @} */

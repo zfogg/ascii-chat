@@ -72,6 +72,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/ip.h>
+#include <ascii-chat/util/time.h>
 #include <ascii-chat/uthash/uthash.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/socket.h>
@@ -118,7 +119,9 @@
 #include <ascii-chat/network/acip/client.h>
 #include <ascii-chat/ui/server_status.h>
 #include <ascii-chat/log/interactive_grep.h>
+#include <ascii-chat/log/json.h>
 #include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/debug/memory.h>
 
 /* ============================================================================
  * Global State
@@ -223,6 +226,7 @@ static websocket_server_t g_websocket_server;
  * Dedicated thread for WebSocket event loop, runs independently of TCP accept loop.
  */
 static asciichat_thread_t g_websocket_server_thread;
+static bool g_websocket_server_thread_started = false;
 
 /**
  * @brief Server start time for uptime calculation and status display
@@ -589,10 +593,18 @@ static void server_handle_sigint(int sigint) {
   atomic_store(&g_tcp_server.running, false);
   if (g_tcp_server.listen_socket != INVALID_SOCKET_VALUE) {
     socket_close(g_tcp_server.listen_socket);
+    g_tcp_server.listen_socket = INVALID_SOCKET_VALUE;
   }
   if (g_tcp_server.listen_socket6 != INVALID_SOCKET_VALUE) {
     socket_close(g_tcp_server.listen_socket6);
+    g_tcp_server.listen_socket6 = INVALID_SOCKET_VALUE;
   }
+
+  // STEP 3b: Signal WebSocket server to stop
+  // Without this, lws_service() could block for up to 50ms before checking the running flag.
+  // websocket_server_cancel_service() is async-signal-safe (uses only atomic operations).
+  atomic_store(&g_websocket_server.running, false);
+  websocket_server_cancel_service(&g_websocket_server);
 
   // STEP 4: DO NOT access client data structures in signal handler
   // Signal handlers CANNOT safely use mutexes, rwlocks, or access complex data structures
@@ -1121,36 +1133,26 @@ static void server_handle_sigterm(int sigterm) {
   (void)(sigterm);
   atomic_store(&g_server_should_exit, true);
 
-  // Log without file I/O (no mutex, avoids deadlocks in signal handlers)
-  log_info_nofile("SIGTERM received - shutting down server...");
+  // Log to console only (text or JSON depending on --json flag)
+  // Using log_console() which is signal-safe and handles both formats
+  log_console(LOG_INFO, "SIGTERM received - shutting down server...");
 
   // Stop the TCP server accept loop immediately.
   // Without this, the select() call with ACCEPT_TIMEOUT could delay shutdown.
   atomic_store(&g_tcp_server.running, false);
   if (g_tcp_server.listen_socket != INVALID_SOCKET_VALUE) {
     socket_close(g_tcp_server.listen_socket);
+    g_tcp_server.listen_socket = INVALID_SOCKET_VALUE;
   }
   if (g_tcp_server.listen_socket6 != INVALID_SOCKET_VALUE) {
     socket_close(g_tcp_server.listen_socket6);
+    g_tcp_server.listen_socket6 = INVALID_SOCKET_VALUE;
   }
-}
 
-/**
- * @brief Handler for SIGUSR1 - triggers lock debugging output
- *
- * This signal handler allows external triggering of lock debugging output
- * by sending SIGUSR1 to the server process. This is useful for debugging
- * deadlocks without modifying the running server.
- *
- * @param sigusr1 The signal number (unused, required by signal handler signature)
- */
-static void server_handle_sigusr1(int sigusr1) {
-  (void)(sigusr1);
-
-#ifndef NDEBUG
-  // Trigger lock debugging output (signal-safe)
-  lock_debug_trigger_print();
-#endif
+  // Stop the WebSocket server event loop immediately.
+  // Without this, lws_service() could block for up to 50ms before checking the running flag.
+  atomic_store(&g_websocket_server.running, false);
+  websocket_server_cancel_service(&g_websocket_server);
 }
 
 /* ============================================================================
@@ -1194,7 +1196,7 @@ static void *status_screen_thread(void *arg) {
   if (fps == 0) {
     fps = 60; // Default
   }
-  uint64_t frame_interval_us = 1000000ULL / fps;
+  uint64_t frame_interval_us = US_PER_SEC_INT / fps;
 
   log_debug("Status screen thread started (target %u FPS)", fps);
 
@@ -1528,29 +1530,16 @@ static void *websocket_client_handler(void *arg) {
   }
   log_info("[WS_HANDLER] Client threads started successfully for client %d", client_id);
 
-  // CRITICAL: Block until client disconnects (matches TCP handler behavior)
-  // The receive thread sets active=false when the client disconnects.
-  // We MUST wait here - if we return immediately, the handler thread exits and
-  // the LWS event loop may interpret this as the connection being done and close it.
-  // See ascii_chat_client_handler() for TCP comparison - it also blocks here.
-  log_debug("[WS_HANDLER] STEP 5: Blocking until client disconnects (client_id=%d)...", client_id);
-  client_info_t *client_check = find_client_by_id((uint32_t)client_id);
-  if (!client_check) {
-    log_error("[WS_HANDLER] CRITICAL: Client %d not found after successful setup!", client_id);
-    SAFE_FREE(ctx);
-    return NULL;
-  }
-
-  int wait_count = 0;
-  while (atomic_load(&client_check->active) && !atomic_load(server_ctx->server_should_exit)) {
-    wait_count++;
-    if (wait_count % 10 == 0) {
-      log_debug("[WS_HANDLER] Client %d still active (waited %d seconds)", client_id, wait_count / 10);
-    }
-    platform_sleep_ms(100);
-  }
-  log_info("[WS_HANDLER] Client %d disconnected (waited %d seconds, active=%d, server_should_exit=%d)", client_id,
-           wait_count / 10, atomic_load(&client_check->active), atomic_load(server_ctx->server_should_exit));
+  // Handler thread exit - cleanup happens in the receive thread
+  // The receive thread is responsible for calling remove_client() when it detects connection closure.
+  // We exit immediately instead of blocking - this prevents the LWS service thread from being blocked
+  // in thread_join() during LWS_CALLBACK_CLOSED, which would freeze the event loop.
+  // The removal logic is now handled by the receive thread, which:
+  // 1. Detects transport closure (recv fails or returns error)
+  // 2. Sets active=false and signals other threads to stop
+  // 3. Calls remove_client() with proper self-join detection to avoid deadlock
+  log_debug("[WS_HANDLER] STEP 5: Handler thread exiting (client_id=%d, cleanup will happen in receive thread)",
+            client_id);
 
   SAFE_FREE(ctx);
   return NULL;
@@ -1792,22 +1781,14 @@ int server_main(void) {
   platform_signal(SIGINT, server_handle_sigint);
   // Handle termination signal (SIGTERM is defined with limited support on Windows)
   platform_signal(SIGTERM, server_handle_sigterm);
-  // Handle lock debugging trigger signal
-#ifndef _WIN32
-  platform_signal(SIGUSR1, server_handle_sigusr1);
-#else
-  UNUSED(server_handle_sigusr1);
-#endif
 #ifndef _WIN32
   // SIGPIPE not supported on Windows
   platform_signal(SIGPIPE, SIG_IGN);
+  // Note: SIGUSR1 is registered in src/main.c for all modes
 #endif
 
 #ifndef NDEBUG
-  // Start the lock debug thread (system already initialized earlier)
-  if (lock_debug_start_thread() != 0) {
-    FATAL(ERROR_THREAD, "Failed to start lock debug thread");
-  }
+  // Lock debug thread is now started in src/main.c (all modes)
   // Initialize statistics system
   if (stats_init() != 0) {
     FATAL(ERROR_THREAD, "Statistics system initialization failed");
@@ -1949,13 +1930,15 @@ int server_main(void) {
     if (upnp_result == ASCIICHAT_OK && g_upnp_ctx) {
       char public_addr[22];
       if (nat_upnp_get_address(g_upnp_ctx, public_addr, sizeof(public_addr)) == ASCIICHAT_OK) {
-        printf("🌐 Public endpoint: %s (direct TCP)\\n", public_addr);
+        char msg[256];
+        safe_snprintf(msg, sizeof(msg), "🌐 Public endpoint: %s (direct TCP)", public_addr);
+        log_console(LOG_INFO, msg);
         log_info("UPnP: Port mapping successful, public endpoint: %s", public_addr);
         upnp_succeeded = true;
       }
     } else {
       log_info("UPnP: Port mapping unavailable or failed - will use WebRTC fallback");
-      printf("📡 Clients behind strict NATs will use WebRTC fallback\\n");
+      log_console(LOG_INFO, "📡 Clients behind strict NATs will use WebRTC fallback");
     }
   } else {
     log_debug("UPnP: Disabled (use --upnp to enable automatic port mapping)");
@@ -2146,7 +2129,7 @@ int server_main(void) {
     acds_client_config_init_defaults(&acds_config);
     SAFE_STRNCPY(acds_config.server_address, acds_server, sizeof(acds_config.server_address));
     acds_config.server_port = acds_port;
-    acds_config.timeout_ms = 5000;
+    acds_config.timeout_ms = 5 * MS_PER_SEC_INT;
 
     // Allocate ACDS client on heap for server lifecycle
     g_acds_client = SAFE_MALLOC(sizeof(acds_client_t), acds_client_t *);
@@ -2425,18 +2408,16 @@ skip_acds_session:
   // wiping it away
   // ====================================================================
   if (session_string[0] != '\0') {
-    log_plain("");
-    log_plain("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     if (session_is_mdns_only) {
-      log_plain("📋 Session String: %s (LAN only via mDNS)", session_string);
-      log_plain("🔗 Share with others on your LAN to join:");
+      log_plain("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📋 Session String: %s (LAN only via "
+                "mDNS)\n🔗 Share with others on your LAN to join:\n   ascii-chat "
+                "%s\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+                session_string, session_string);
     } else {
-      log_plain("📋 Session String: %s", session_string);
-      log_plain("🔗 Share this globally to join:");
+      log_plain("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📋 Session String: %s\n🔗 Share this "
+                "globally to join:\n   ascii-chat %s\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+                session_string, session_string);
     }
-    log_plain("   ascii-chat %s", session_string);
-    log_plain("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    log_plain("");
   }
 
   // Copy session info to globals for status screen display
@@ -2472,6 +2453,7 @@ skip_acds_session:
         0) {
       log_error("Failed to create WebSocket server thread");
     } else {
+      g_websocket_server_thread_started = true;
       log_info("WebSocket server thread started");
     }
   }
@@ -2496,8 +2478,12 @@ cleanup:
   // Wait for status screen thread to finish if it was started
   if (GET_OPTION(status_screen)) {
     log_debug("Waiting for status screen thread to exit...");
-    asciichat_thread_join(&g_status_screen_thread, NULL);
-    log_debug("Status screen thread exited");
+    int join_result = asciichat_thread_join_timeout(&g_status_screen_thread, NULL, NS_PER_SEC_INT); // 1 second
+    if (join_result != 0) {
+      log_warn("Status screen thread did not exit cleanly (timeout)");
+    } else {
+      log_debug("Status screen thread exited");
+    }
   }
 
   // Cleanup status screen log capture
@@ -2561,9 +2547,22 @@ cleanup:
     // destroy the context until after it exits its loop (which requires
     // seeing running=false, which we just set).
     websocket_server_cancel_service(&g_websocket_server);
-    asciichat_thread_join(&g_websocket_server_thread, NULL);
+
+    // Join with 2-second timeout only if thread was successfully created.
+    // lws_context_destroy() can take 5+ seconds if called from a different thread
+    // (waiting for close handshake), but we're destroying from the event loop thread
+    // so it's fast. 2s accounts for any slow lws_service() calls or LWS cleanup.
+    if (g_websocket_server_thread_started) {
+      int join_result =
+          asciichat_thread_join_timeout(&g_websocket_server_thread, NULL, 2 * NS_PER_SEC_INT); // 2 seconds in ns
+      if (join_result != 0) {
+        log_warn("WebSocket thread did not exit cleanly (timeout), forcing cleanup");
+      }
+      g_websocket_server_thread_started = false;
+    }
+
     // Context is destroyed by websocket_server_run from the event loop thread.
-    // websocket_server_destroy handles the case where it's already NULL.
+    // websocket_server_destroy handles the case where it's already NULL or context already destroyed.
     websocket_server_destroy(&g_websocket_server);
     log_debug("WebSocket server shut down");
   }
@@ -2739,7 +2738,6 @@ cleanup:
   log_info("Server shutdown complete");
 
   asciichat_error_stats_print();
-
   log_destroy();
 
   // Use exit() to allow atexit() handlers to run

@@ -19,6 +19,7 @@
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/memory.h>
+#include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/util/format.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/string.h>
@@ -58,14 +59,10 @@ typedef struct {
 } ignore_entry_t;
 
 static const ignore_entry_t g_ignore_list[] = {
-    {"lib/util/pcre2.c", 53, 50},          // PCRE2 singleton allocations (16+ total, cleaned after report)
-    {"lib/options/colorscheme.c", 578, 8}, // 8 16-color ANSI strings (cleaned after report)
-    {"lib/options/colorscheme.c", 595, 8}, // 8 256-color ANSI strings (cleaned after report)
-    {"lib/options/colorscheme.c", 612, 8}, // 8 truecolor ANSI strings (cleaned after report)
-    {"lib/session/display.c", 131, 1},     // Session display context (cleaned after report)
-    {"lib/platform/posix/util.c", 35, 15}, // Symbol cache strings (backtrace during memory report)
-    {"lib/platform/symbols.c", 1074, 2},   // Symbol array allocations (backtrace during memory report)
-    {"lib/asciichat_errno.c", 149, 2},     // Error context message (backtrace during memory report)
+    {"lib/options/colorscheme.c", 579, 8}, // 8 16-color ANSI strings (cleaned after report)
+    {"lib/options/colorscheme.c", 596, 8}, // 8 256-color ANSI strings (cleaned after report)
+    {"lib/options/colorscheme.c", 613, 8}, // 8 truecolor ANSI strings (cleaned after report)
+    {"lib/util/path.c", 1203, 1},          // Normalized path allocation (caller responsibility to free)
     {NULL, 0, 0}                           // Sentinel
 };
 
@@ -85,11 +82,31 @@ static void reset_ignore_counters(void) {
  * Tracks how many allocations from each ignore location have been seen.
  * Only ignores up to the expected_count for each location.
  */
+// Helper function to acquire mutex with polling instead of blocking.
+// mutex_lock() can be unsafe during shutdown when signals may arrive.
+// Use trylock polling instead to avoid hanging indefinitely.
+static bool acquire_mutex_with_polling(mutex_t *mutex, int timeout_ms) {
+  int max_retries = (timeout_ms + 9) / 10; // 10ms per retry
+  for (int retry = 0; retry < max_retries; retry++) {
+    int lock_result = mutex_trylock(mutex);
+    if (lock_result == 0) {
+      return true;
+    }
+    if (lock_result != EBUSY) {
+      return false; // Unexpected error
+    }
+    platform_sleep_ms(10); // Sleep 10ms before retry
+  }
+  return false; // Timeout
+}
+
 static bool should_ignore_allocation(const char *file, int line) {
-  const char *relative_path = extract_project_relative_path(file);
+  // file is already the normalized relative path from curr->file
+  // (set during debug_malloc/debug_calloc using extract_project_relative_path)
+  // Do NOT call extract_project_relative_path again - it won't work on already-relative paths
 
   for (size_t i = 0; g_ignore_list[i].file != NULL; i++) {
-    if (line == g_ignore_list[i].line && strcmp(relative_path, g_ignore_list[i].file) == 0) {
+    if (line == g_ignore_list[i].line && strcmp(file, g_ignore_list[i].file) == 0) {
       // Found matching ignore entry - check if we've exceeded expected count
       if (g_ignore_counts[i] < g_ignore_list[i].expected_count) {
         g_ignore_counts[i]++;
@@ -554,15 +571,18 @@ void debug_memory_set_quiet_mode(bool quiet) {
   g_mem.quiet_mode = quiet;
 }
 
-static const char *strip_project_path(const char *full_path) {
-  return extract_project_relative_path(full_path);
-}
-
 void debug_memory_report(void) {
+  // Guard against multiple calls during shutdown
+  static bool report_done = false;
+  if (report_done) {
+    return;
+  }
+
   // Check for usage error BEFORE cleanup clears it
   asciichat_error_t error = GET_ERRNO();
 
   asciichat_errno_destroy();
+  report_done = true;
 
   // Skip memory report if an action flag was passed (for clean action output)
   // unless explicitly forced via ASCII_CHAT_MEMORY_DEBUG environment variable
@@ -580,7 +600,7 @@ void debug_memory_report(void) {
   // Reset ignore counters at start of report
   reset_ignore_counters();
 
-  if (!quiet) {
+  if (!quiet && terminal_is_interactive()) {
     SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "\n%s\n", colored_string(LOG_COLOR_DEV, "=== Memory Report ===")));
 
     size_t total_allocated = atomic_load(&g_mem.total_allocated);
@@ -596,7 +616,12 @@ void debug_memory_report(void) {
     size_t suppressed_count = 0;
     if (g_mem.head) {
       if (ensure_mutex_initialized()) {
-        mutex_lock(&g_mem.mutex);
+        // Use polling instead of blocking mutex_lock to avoid hangs during shutdown.
+        if (!acquire_mutex_with_polling(&g_mem.mutex, 100)) {
+          goto skip_memory_iter;
+        }
+
+        // Now we have the lock - iterate memory blocks
         mem_block_t *curr = g_mem.head;
         while (curr) {
           if (should_ignore_allocation(curr->file, curr->line)) {
@@ -609,6 +634,8 @@ void debug_memory_report(void) {
       }
     }
 
+  skip_memory_iter:
+
     // Adjust current usage to exclude suppressed allocations
     size_t adjusted_current_usage = (current_usage >= suppressed_bytes) ? (current_usage - suppressed_bytes) : 0;
 
@@ -618,6 +645,36 @@ void debug_memory_report(void) {
 
     // Reset ignore counters after counting suppressed bytes
     reset_ignore_counters();
+
+    // Count actual unfreed allocations early so we can use it to filter suppression warnings
+    size_t unfreed_count = 0;
+    if (g_mem.head) {
+      if (ensure_mutex_initialized()) {
+        if (acquire_mutex_with_polling(&g_mem.mutex, 100)) {
+          mem_block_t *curr = g_mem.head;
+          while (curr) {
+            if (!should_ignore_allocation(curr->file, curr->line)) {
+              unfreed_count++;
+            }
+            curr = curr->next;
+          }
+          mutex_unlock(&g_mem.mutex);
+        }
+      }
+    }
+
+    // Only warn about suppression mismatches if there are outstanding allocations
+    if (unfreed_count > 0) {
+      for (size_t i = 0; g_ignore_list[i].file != NULL; i++) {
+        if (g_ignore_counts[i] != g_ignore_list[i].expected_count) {
+          SAFE_IGNORE_PRINTF_RESULT(
+              safe_fprintf(stderr, "%s\n", colored_string(LOG_COLOR_ERROR, "WARNING: Suppression mismatch detected")));
+          SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "  %s:%d - expected %d, found %d\n", g_ignore_list[i].file,
+                                                 g_ignore_list[i].line, g_ignore_list[i].expected_count,
+                                                 g_ignore_counts[i]));
+        }
+      }
+    }
 
     char pretty_total[64];
     char pretty_freed[64];
@@ -687,22 +744,7 @@ void debug_memory_report(void) {
     }
     PRINT_MEM_LINE_COLORED(label_peak, pretty_peak, peak_color);
 
-    // diff - count actual unfreed allocations in the linked list (excluding ignored)
-    // (Calculate early so we can use it for colorization)
-    size_t unfreed_count = 0;
-    if (g_mem.head) {
-      if (ensure_mutex_initialized()) {
-        mutex_lock(&g_mem.mutex);
-        mem_block_t *curr = g_mem.head;
-        while (curr) {
-          if (!should_ignore_allocation(curr->file, curr->line)) {
-            unfreed_count++;
-          }
-          curr = curr->next;
-        }
-        mutex_unlock(&g_mem.mutex);
-      }
-    }
+    // unfreed_count already calculated earlier for suppression warning filtering
 
     // Colorize malloc/calloc/free calls: green if unfreed == 0, red if unfreed != 0
     log_color_t calls_color = (unfreed_count == 0) ? LOG_COLOR_INFO : LOG_COLOR_ERROR;
@@ -755,7 +797,9 @@ void debug_memory_report(void) {
 
     if (g_mem.head && unfreed_count > 0) {
       if (ensure_mutex_initialized()) {
-        mutex_lock(&g_mem.mutex);
+        if (!acquire_mutex_with_polling(&g_mem.mutex, 100)) {
+          goto skip_allocations_list;
+        }
 
         // Check if we should print backtraces
         const char *print_backtrace = SAFE_GETENV("ASCII_CHAT_MEMORY_REPORT_BACKTRACE");
@@ -772,7 +816,7 @@ void debug_memory_report(void) {
 
           char pretty_size[64];
           format_bytes_pretty(curr->size, pretty_size, sizeof(pretty_size));
-          const char *file_location = strip_project_path(curr->file);
+          const char *file_location = curr->file; // Already normalized relative path
 
           // Determine color based on unit (1 MB and over=red, KB=yellow, B=light blue)
           log_color_t size_color = LOG_COLOR_DEBUG; // Default to light blue for bytes
@@ -808,8 +852,10 @@ void debug_memory_report(void) {
               platform_backtrace_symbols_destroy(symbols);
             }
 
-            // Re-acquire mutex for next iteration
-            mutex_lock(&g_mem.mutex);
+            // Re-acquire mutex for next iteration (with polling, not blocking)
+            if (!acquire_mutex_with_polling(&g_mem.mutex, 100)) {
+              break; // Exit loop if we can't re-acquire the lock
+            }
           }
 
           curr = curr->next;
@@ -823,6 +869,8 @@ void debug_memory_report(void) {
                                         "Current allocations unavailable: failed to initialize debug memory mutex")));
       }
     }
+
+  skip_allocations_list:
   }
 }
 

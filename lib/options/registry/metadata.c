@@ -128,6 +128,10 @@ const char *g_audio_source_descs[] = {"Smart selection (media-only when playing 
                                       "Both microphone and media audio simultaneously", NULL};
 
 // ============================================================================
+// Log Format Output Type Metadata (--log-format flag values)
+// ============================================================================
+
+// ============================================================================
 // Example Arrays (null-terminated)
 // ============================================================================
 

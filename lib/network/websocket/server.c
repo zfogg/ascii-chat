@@ -55,6 +55,25 @@ static _Atomic uint64_t g_receive_callback_count = 0;
 static _Atomic uint64_t g_writeable_callback_count = 0;
 
 /**
+ * @brief Custom logging callback for libwebsockets
+ * This captures LWS internal logging so we can see what's happening
+ */
+static void websocket_lws_log_callback(int level, const char *line) {
+  // Convert LWS log level to our log level
+  if (level & LLL_ERR) {
+    log_error("[LWS] %s", line);
+  } else if (level & LLL_WARN) {
+    log_warn("[LWS] %s", line);
+  } else if (level & LLL_NOTICE) {
+    log_info("[LWS] %s", line);
+  } else if (level & LLL_INFO) {
+    log_info("[LWS] %s", line);
+  } else if (level & LLL_DEBUG) {
+    log_debug("[LWS] %s", line);
+  }
+}
+
+/**
  * @brief libwebsockets callback for ACIP protocol
  *
  * Handles connection lifecycle events for WebSocket clients.
@@ -62,11 +81,16 @@ static _Atomic uint64_t g_writeable_callback_count = 0;
 static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in,
                                      size_t len) {
   websocket_connection_data_t *conn_data = (websocket_connection_data_t *)user;
+  const char *proto_name = lws_get_protocol(wsi) ? lws_get_protocol(wsi)->name : "NULL";
+
+  // LOG EVERY SINGLE CALLBACK WITH PROTOCOL NAME
+  log_dev("🔴 CALLBACK: reason=%d, proto=%s, wsi=%p, len=%zu", reason, proto_name, (void *)wsi, len);
 
   switch (reason) {
   case LWS_CALLBACK_ESTABLISHED: {
     // New WebSocket connection established
     uint64_t established_ns = time_get_ns();
+    log_info("🔴🔴🔴 LWS_CALLBACK_ESTABLISHED FIRED! wsi=%p", (void *)wsi);
     log_info("[LWS_CALLBACK_ESTABLISHED] WebSocket client connection established at timestamp=%llu",
              (unsigned long long)established_ns);
     log_info("WebSocket client connected");
@@ -103,9 +127,9 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     // Optimize TCP for high-throughput large message transfer.
     // TCP delayed ACK (default ~40ms) causes the sender to stall waiting for ACKs,
     // creating ~30ms gaps between 128KB chunk deliveries for large messages.
-    // TCP_QUICKACK forces immediate ACKs so the sender can push data continuously.
+    // TCP_QUICKACK forces immediate ACKs so the sender can push data continuously (Linux only).
     // TCP_NODELAY disables Nagle's algorithm for the send path.
-#ifndef _WIN32
+#ifdef __linux__
     {
       int fd = lws_get_socket_fd(wsi);
       if (fd >= 0) {
@@ -158,9 +182,12 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     client_ctx->user_data = server->user_data;
 
     // Spawn handler thread - this calls websocket_client_handler which creates client_info_t
+    log_info("🔴 ABOUT TO SPAWN HANDLER THREAD: handler=%p, ctx=%p", (void *)server->handler, (void *)client_ctx);
     log_debug("[LWS_CALLBACK_ESTABLISHED] Spawning handler thread (handler=%p, ctx=%p)...", (void *)server->handler,
               (void *)client_ctx);
-    if (asciichat_thread_create(&conn_data->handler_thread, server->handler, client_ctx) != 0) {
+    int handler_create_result = asciichat_thread_create(&conn_data->handler_thread, server->handler, client_ctx);
+    log_info("🔴 asciichat_thread_create returned: %d", handler_create_result);
+    if (handler_create_result != 0) {
       log_error("[LWS_CALLBACK_ESTABLISHED] FAILED: asciichat_thread_create returned error");
       SAFE_FREE(client_ctx);
       acip_transport_destroy(conn_data->transport);
@@ -170,7 +197,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
     conn_data->handler_started = true;
     log_debug("[LWS_CALLBACK_ESTABLISHED] Handler thread spawned successfully");
-    log_info("★★★ ESTABLISHED CALLBACK SUCCESS - returning 0 from callback ★★★");
+    log_info("★★★ ESTABLISHED CALLBACK SUCCESS - handler thread spawned! ★★★");
     break;
   }
 
@@ -209,8 +236,9 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     // Close the transport to mark it as disconnected.
     // This signals the receive thread to exit, allowing clean shutdown.
     // Guard against use-after-free: check both conn_data and transport are valid
+    acip_transport_t *transport_snapshot = NULL;
     if (conn_data && conn_data->transport) {
-      acip_transport_t *transport_snapshot = conn_data->transport;
+      transport_snapshot = conn_data->transport;
       conn_data->transport = NULL; // NULL out immediately to prevent race condition
 
       log_debug("[LWS_CALLBACK_CLOSED] Closing transport=%p for wsi=%p", (void *)transport_snapshot, (void *)wsi);
@@ -232,6 +260,12 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       log_info("[LWS_CALLBACK_CLOSED] Handler thread completed (join took %s)", join_duration_str);
     }
 
+    // Destroy the transport and free all its resources (send_queue, recv_queue, etc)
+    if (transport_snapshot) {
+      log_debug("[LWS_CALLBACK_CLOSED] Destroying transport=%p", (void *)transport_snapshot);
+      acip_transport_destroy(transport_snapshot);
+    }
+
     // Ensure transport pointer is NULL
     if (conn_data) {
       conn_data->transport = NULL;
@@ -248,31 +282,31 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
   case LWS_CALLBACK_SERVER_WRITEABLE: {
     uint64_t writeable_callback_start_ns = time_get_ns();
     atomic_fetch_add(&g_writeable_callback_count, 1);
-    log_dev_every(4500000, "=== LWS_CALLBACK_SERVER_WRITEABLE FIRED === wsi=%p, timestamp=%llu", (void *)wsi,
-                  (unsigned long long)writeable_callback_start_ns);
+    log_dev_every(4500 * US_PER_MS_INT, "=== LWS_CALLBACK_SERVER_WRITEABLE FIRED === wsi=%p, timestamp=%llu",
+                  (void *)wsi, (unsigned long long)writeable_callback_start_ns);
 
     // Dequeue and send pending data
     if (!conn_data) {
-      log_dev_every(4500000, "SERVER_WRITEABLE: No conn_data");
+      log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: No conn_data");
       break;
     }
 
     // Check if cleanup is in progress to avoid race condition with remove_client
     if (conn_data->cleaning_up) {
-      log_dev_every(4500000, "SERVER_WRITEABLE: Cleanup in progress, skipping");
+      log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: Cleanup in progress, skipping");
       break;
     }
 
     // Snapshot the transport pointer to avoid race condition with cleanup thread
     acip_transport_t *transport_snapshot = conn_data->transport;
     if (!transport_snapshot) {
-      log_dev_every(4500000, "SERVER_WRITEABLE: No transport");
+      log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: No transport");
       break;
     }
 
     websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport_snapshot->impl_data;
     if (!ws_data || !ws_data->send_queue) {
-      log_dev_every(4500000, "SERVER_WRITEABLE: No ws_data or send_queue");
+      log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: No ws_data or send_queue");
       break;
     }
 
@@ -318,8 +352,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       uint64_t write_end_ns = time_get_ns();
       char write_duration_str[32];
       format_duration_ns((double)(write_end_ns - write_start_ns), write_duration_str, sizeof(write_duration_str));
-      log_dev_every(4500000, "lws_write returned %d bytes in %s (chunk_size=%zu)", written, write_duration_str,
-                    chunk_size);
+      log_dev_every(4500 * US_PER_MS_INT, "lws_write returned %d bytes in %s (chunk_size=%zu)", written,
+                    write_duration_str, chunk_size);
 
       if (written < 0) {
         log_error("Server WebSocket write error: %d at offset %zu/%zu", written, conn_data->pending_send_offset,
@@ -343,13 +377,15 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
       if (is_end) {
         // Message fully sent
-        log_dev_every(4500000, "SERVER_WRITEABLE: Message fully sent (%zu bytes)", conn_data->pending_send_len);
+        log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: Message fully sent (%zu bytes)",
+                      conn_data->pending_send_len);
         SAFE_FREE(conn_data->pending_send_data);
         conn_data->pending_send_data = NULL;
         conn_data->has_pending_send = false;
       } else {
         // More fragments to send
-        log_dev_every(4500000, "SERVER_WRITEABLE: Sent fragment %zu/%zu bytes, requesting another callback",
+        log_dev_every(4500 * US_PER_MS_INT,
+                      "SERVER_WRITEABLE: Sent fragment %zu/%zu bytes, requesting another callback",
                       conn_data->pending_send_offset, conn_data->pending_send_len);
         lws_callback_on_writable(wsi);
         break;
@@ -357,15 +393,15 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     }
 
     // Try to dequeue next message if current one is done
-    mutex_lock(&ws_data->queue_mutex);
+    mutex_lock(&ws_data->send_mutex);
     bool has_messages = !ringbuffer_is_empty(ws_data->send_queue);
-    mutex_unlock(&ws_data->queue_mutex);
+    mutex_unlock(&ws_data->send_mutex);
 
     if (has_messages) {
-      mutex_lock(&ws_data->queue_mutex);
+      mutex_lock(&ws_data->send_mutex);
       websocket_recv_msg_t msg;
       bool success = ringbuffer_read(ws_data->send_queue, &msg);
-      mutex_unlock(&ws_data->queue_mutex);
+      mutex_unlock(&ws_data->send_mutex);
 
       if (success && msg.data) {
         // Start sending this message
@@ -374,7 +410,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
         conn_data->pending_send_offset = 0;
         conn_data->has_pending_send = true;
 
-        log_dev_every(4500000, ">>> SERVER_WRITEABLE: Dequeued message %zu bytes, sending first fragment", msg.len);
+        log_dev_every(4500 * US_PER_MS_INT, ">>> SERVER_WRITEABLE: Dequeued message %zu bytes, sending first fragment",
+                      msg.len);
 
         // Send first fragment
         size_t chunk_size = (msg.len > FRAGMENT_SIZE) ? FRAGMENT_SIZE : msg.len;
@@ -414,19 +451,21 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
         }
 
         if (!is_end) {
-          log_dev_every(4500000, ">>> SERVER_WRITEABLE: First fragment sent, requesting callback for next fragment");
+          log_dev_every(4500 * US_PER_MS_INT,
+                        ">>> SERVER_WRITEABLE: First fragment sent, requesting callback for next fragment");
           lws_callback_on_writable(wsi);
         } else {
-          log_dev_every(4500000, "SERVER_WRITEABLE: Message fully sent in first fragment (%zu bytes)", chunk_size);
+          log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: Message fully sent in first fragment (%zu bytes)",
+                        chunk_size);
           SAFE_FREE(msg.data);
           conn_data->has_pending_send = false;
 
           // Check if there are more messages
-          mutex_lock(&ws_data->queue_mutex);
+          mutex_lock(&ws_data->send_mutex);
           if (!ringbuffer_is_empty(ws_data->send_queue)) {
             lws_callback_on_writable(wsi);
           }
-          mutex_unlock(&ws_data->queue_mutex);
+          mutex_unlock(&ws_data->send_mutex);
         }
       }
     }
@@ -436,7 +475,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
   case LWS_CALLBACK_RECEIVE: {
     // Received data from client - may be fragmented for large messages
-    log_dev_every(4500000, "LWS_CALLBACK_RECEIVE: conn_data=%p, transport=%p, len=%zu", (void *)conn_data,
+    log_dev_every(4500 * US_PER_MS_INT, "LWS_CALLBACK_RECEIVE: conn_data=%p, transport=%p, len=%zu", (void *)conn_data,
                   conn_data ? (void *)conn_data->transport : NULL, len);
 
     if (!conn_data) {
@@ -452,6 +491,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
     // Snapshot the transport pointer to avoid race condition with cleanup thread
     acip_transport_t *transport_snapshot = conn_data->transport;
+    log_info("🔴 [WS_RECEIVE] conn_data=%p transport_snapshot=%p handler_started=%d", (void *)conn_data,
+             (void *)transport_snapshot, conn_data ? conn_data->handler_started : -1);
     if (!transport_snapshot) {
       log_error("LWS_CALLBACK_RECEIVE: transport is NULL! ESTABLISHED never called?");
       // Try to initialize the transport here as a fallback
@@ -469,6 +510,10 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       conn_data->server = server;
       conn_data->transport = acip_websocket_server_transport_create(wsi, NULL);
       conn_data->handler_started = false;
+      conn_data->pending_send_data = NULL;
+      conn_data->pending_send_len = 0;
+      conn_data->pending_send_offset = 0;
+      conn_data->has_pending_send = false;
 
       if (!conn_data->transport) {
         log_error("LWS_CALLBACK_RECEIVE: Failed to create transport in fallback");
@@ -509,13 +554,20 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       break;
     }
 
+    // Check if cleanup is already in progress to avoid race condition with LWS_CALLBACK_CLOSED
+    if (conn_data && conn_data->cleaning_up) {
+      log_debug("RECEIVE: Cleanup in progress, ignoring fragment");
+      break;
+    }
+
     // Handler thread was spawned in LWS_CALLBACK_ESTABLISHED (or RECEIVE fallback)
     // (It fires for server-side connections and properly initializes client_info_t)
 
     // Get transport data using snapshotted pointer
     websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport_snapshot->impl_data;
-    if (!ws_data) {
-      log_error("WebSocket transport has no implementation data");
+    if (!ws_data || !ws_data->recv_queue) {
+      log_error("WebSocket transport has no implementation data or recv_queue (ws_data=%p, recv_queue=%p)",
+                (void *)ws_data, ws_data ? (void *)ws_data->recv_queue : NULL);
       break;
     }
 
@@ -530,11 +582,11 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     atomic_fetch_add(&g_receive_callback_count, 1);
     log_debug("[WS_TIMING] incremented callback count");
 
-    // Re-enable TCP_QUICKACK on EVERY fragment delivery.
+    // Re-enable TCP_QUICKACK on EVERY fragment delivery (Linux only).
     // Linux resets TCP_QUICKACK after each ACK, reverting to delayed ACK mode (~40ms).
     // Without this, only the first fragment batch benefits from quick ACKs, and subsequent
     // batches see ~30ms gaps as the sender waits for delayed ACKs before sending more data.
-#ifndef _WIN32
+#ifdef __linux__
     {
       int fd = lws_get_socket_fd(wsi);
       if (fd >= 0) {
@@ -560,7 +612,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     }
 
     // Debug: Log raw bytes of incoming fragment
-    log_dev_every(4500000, "WebSocket fragment: %zu bytes (first=%d, final=%d)", len, is_first, is_final);
+    log_dev_every(4500 * US_PER_MS_INT, "WebSocket fragment: %zu bytes (first=%d, final=%d)", len, is_first, is_final);
     if (len > 0 && len <= 256) {
       const uint8_t *bytes = (const uint8_t *)in;
       char hex_buf[1024];
@@ -568,7 +620,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       for (size_t i = 0; i < len && hex_pos < sizeof(hex_buf) - 4; i++) {
         hex_pos += snprintf(hex_buf + hex_pos, sizeof(hex_buf) - hex_pos, "%02x ", bytes[i]);
       }
-      log_dev_every(4500000, "   Raw bytes: %s", hex_buf);
+      log_dev_every(4500 * US_PER_MS_INT, "   Raw bytes: %s", hex_buf);
     }
 
     // If this is a single-fragment message (first and final), log the packet type for debugging
@@ -577,8 +629,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       // ACIP packet header: magic(8) + type(2) + length(4) + crc(4) + client_id(2)
       uint16_t pkt_type = (data[8] << 8) | data[9];
       uint32_t pkt_len = (data[10] << 24) | (data[11] << 16) | (data[12] << 8) | data[13];
-      log_dev_every(4500000, "Single-fragment ACIP packet: type=%d (0x%x) len=%u total_size=%zu", pkt_type, pkt_type,
-                    pkt_len, len);
+      log_dev_every(4500 * US_PER_MS_INT, "Single-fragment ACIP packet: type=%d (0x%x) len=%u total_size=%zu", pkt_type,
+                    pkt_type, pkt_len, len);
     }
 
     // Queue this fragment immediately with first/final flags.
@@ -599,13 +651,23 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     msg.first = is_first;
     msg.final = is_final;
 
-    mutex_lock(&ws_data->queue_mutex);
+    mutex_lock(&ws_data->recv_mutex);
 
-    // Check available space BEFORE writing to decide on flow control
+    // Re-check recv_queue is still valid after acquiring lock
+    // (LWS_CALLBACK_CLOSED may have cleared it while we were waiting for the lock)
+    if (!ws_data->recv_queue) {
+      log_warn("recv_queue was cleared during lock wait, dropping fragment");
+      mutex_unlock(&ws_data->recv_mutex);
+      buffer_pool_free(NULL, msg.data, msg.len);
+      break;
+    }
+
+    // Snapshot queue status for logging (safe now that we hold the lock)
     size_t queue_current_size = ringbuffer_size(ws_data->recv_queue);
     size_t queue_capacity = ws_data->recv_queue->capacity;
     size_t queue_free = queue_capacity - queue_current_size;
-    log_dev_every(4500000, "[WS_FLOW] Queue: free=%zu/%zu (used=%zu)", queue_free, queue_capacity, queue_current_size);
+    log_dev_every(4500 * US_PER_MS_INT, "[WS_FLOW] Queue: free=%zu/%zu (used=%zu)", queue_free, queue_capacity,
+                  queue_current_size);
 
     bool success = ringbuffer_write(ws_data->recv_queue, &msg);
     if (!success) {
@@ -614,13 +676,16 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
                is_final);
       buffer_pool_free(NULL, msg.data, msg.len);
 
-      mutex_unlock(&ws_data->queue_mutex);
+      mutex_unlock(&ws_data->recv_mutex);
       break;
     }
 
     // Signal waiting recv() call that a fragment is available
-    cond_signal(&ws_data->queue_cond);
-    mutex_unlock(&ws_data->queue_mutex);
+    log_dev("[WS_DEBUG] RECEIVE: About to signal recv_cond (queue size=%zu)", ringbuffer_size(ws_data->recv_queue));
+    cond_signal(&ws_data->recv_cond);
+    log_dev("[WS_DEBUG] RECEIVE: Signaled recv_cond");
+    mutex_unlock(&ws_data->recv_mutex);
+    log_dev("[WS_DEBUG] RECEIVE: Unlocked recv_mutex");
 
     // Signal LWS to call WRITEABLE callback (matches lws example pattern)
     // This keeps the event loop active and allows server to send responses
@@ -645,14 +710,26 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     break;
   }
 
+  case LWS_CALLBACK_FILTER_HTTP_CONNECTION: {
+    // WebSocket upgrade handshake - allow all connections
+    log_info("[FILTER_HTTP_CONNECTION] WebSocket upgrade request (allow protocol upgrade)");
+    return 0; // Allow the connection
+  }
+
+  case LWS_CALLBACK_PROTOCOL_INIT: {
+    // Protocol initialization
+    log_info("[PROTOCOL_INIT] Protocol initialized, proto=%s", proto_name);
+    break;
+  }
+
   case LWS_CALLBACK_EVENT_WAIT_CANCELLED: {
     // Fired on the service thread when lws_cancel_service() is called from another thread.
     // This is how we safely convert cross-thread send requests into writable callbacks.
     // lws_callback_on_writable() is only safe from the service thread context.
-    log_dev_every(4500000, "LWS_CALLBACK_EVENT_WAIT_CANCELLED triggered - requesting writable callbacks");
+    log_dev_every(4500 * US_PER_MS_INT, "LWS_CALLBACK_EVENT_WAIT_CANCELLED triggered - requesting writable callbacks");
     const struct lws_protocols *protocol = lws_get_protocol(wsi);
     if (protocol) {
-      log_dev_every(4500000, "EVENT_WAIT_CANCELLED: Calling lws_callback_on_writable_all_protocol");
+      log_dev_every(4500 * US_PER_MS_INT, "EVENT_WAIT_CANCELLED: Calling lws_callback_on_writable_all_protocol");
       lws_callback_on_writable_all_protocol(lws_get_context(wsi), protocol);
     } else {
       log_error("EVENT_WAIT_CANCELLED: No protocol found on wsi");
@@ -672,7 +749,16 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
  */
 static struct lws_protocols websocket_protocols[] = {
     {
-        "acip",                              // Protocol name
+        "http",                              // Default HTTP protocol (required for WebSocket upgrade)
+        websocket_server_callback,           // Use same callback for all protocols
+        sizeof(websocket_connection_data_t), // Per-session data size
+        524288,                              // RX buffer size (512KB for video frames)
+        0,                                   // ID (auto-assigned)
+        NULL,                                // User pointer (set to server instance)
+        524288                               // TX packet size (512KB for video frames)
+    },
+    {
+        "acip",                              // ACIP WebSocket subprotocol
         websocket_server_callback,           // Callback function
         sizeof(websocket_connection_data_t), // Per-session data size
         524288,                              // RX buffer size (512KB for video frames)
@@ -684,43 +770,23 @@ static struct lws_protocols websocket_protocols[] = {
 };
 
 /**
- * @brief WebSocket extensions for the server
+ * @brief WebSocket extensions - permessage-deflate compression (RFC 7692)
  *
- * permessage-deflate (RFC 7692) compresses WebSocket messages at the protocol
- * level. Browsers negotiate this automatically during the handshake. For raw
- * RGB video frames (~921KB), deflate typically achieves 10:1+ compression,
- * reducing data to ~50-100KB which fits within a single TCP window and
- * eliminates the multi-round-trip receive stalls seen with uncompressed data.
+ * Enables permessage-deflate compression for WebSocket messages.
+ * Browsers negotiate this automatically during handshake.
+ *
+ * Performance benefits:
+ * - Compresses raw RGB video frames (~921KB) to ~50-100KB (10:1+ ratio)
+ * - Reduces multi-fragment receive stalls
+ * - Improves throughput by reducing TCP round-trips
  */
-/**
- * @brief WebSocket extensions for the server
- *
- * NOTE: permessage-deflate (RFC 7692) is DISABLED - see below for details
- *
- * With permessage-deflate enabled:
- * - Should compress 921KB frames to ~50-100KB (10:1 compression)
- * - Should prevent recv_queue overflow causing TCP flow control stalls
- * - Should eliminate ~30ms gaps between frame deliveries
- *
- * BUG: When permessage-deflate is negotiated, WebSocket connections close
- * abnormally (code 1006) immediately upon receiving multi-fragment messages:
- * 1. Browser sends compressed frame with first=1, final=0
- * 2. Server LWS_CALLBACK_RECEIVE queues the fragment
- * 3. Immediately after returning 0, LWS_CALLBACK_CLOSED fires
- * 4. Continuation fragments never arrive
- *
- * ROOT CAUSE (in bug_report): The recv_queue fills up → we call
- * lws_rx_flow_control(wsi, 0) → LWS buffers in rxflow → browser's TCP window
- * empties → Chrome's networking thread waits ~30ms → sends next batch.
- *
- * SOLUTION: When permessage-deflate is enabled, compressed frames should fit
- * in single TCP window, preventing queue overflow and flow control trigger.
- *
- * BLOCKER: Multi-fragment handling is broken when compression negotiated.
- * Need to debug: fragment reassembly with compression, lws_rx_flow_control
- * interaction with permessage-deflate extension negotiation.
- */
-static const struct lws_extension websocket_extensions[] = {{NULL, NULL, NULL}};
+// RX BUFFER UNDERFLOW FIX: Configure permessage-deflate with smaller window bits
+// LWS 4.5.2 underflows when decompressing large fragmented messages with max window (15 bits).
+// Using server_max_window_bits=11 (2KB window) reduces decompression buffer needs and
+// prevents the "rx buffer underflow" error while maintaining reasonable compression.
+static const struct lws_extension websocket_extensions[] = {
+    {"permessage-deflate", lws_extension_callback_pm_deflate, "permessage-deflate; server_max_window_bits=8"},
+    {NULL, NULL, NULL}};
 
 asciichat_error_t websocket_server_init(websocket_server_t *server, const websocket_server_config_t *config) {
   if (!server || !config || !config->client_handler) {
@@ -734,20 +800,24 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   atomic_store(&server->running, true);
 
   // Store server pointer in protocol user data so callbacks can access it
-  websocket_protocols[0].user = server;
+  // Both the HTTP and ACIP protocols need access to the server
+  websocket_protocols[0].user = server; // http protocol
+  websocket_protocols[1].user = server; // acip protocol
 
-  // Enable libwebsockets debug logging
-  lws_set_log_level(LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_INFO | LLL_DEBUG, NULL);
+  // Enable libwebsockets debug logging with custom callback
+  lws_set_log_level(LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_INFO | LLL_DEBUG, websocket_lws_log_callback);
 
   // Configure libwebsockets context
   struct lws_context_creation_info info = {0};
   info.port = config->port;
   info.protocols = websocket_protocols;
-  info.gid = (gid_t)-1; // Cast to avoid undefined behavior with unsigned type
-  info.uid = (uid_t)-1; // Cast to avoid undefined behavior with unsigned type
-  info.options = 0;     // Don't validate UTF8 - we send binary frames (ACIP packets)
-  info.extensions = websocket_extensions;
-  info.pt_serv_buf_size = 524288; // 512KB per-thread server buffer for large video frames
+  info.gid = (gid_t)-1;   // Cast to avoid undefined behavior with unsigned type
+  info.uid = (uid_t)-1;   // Cast to avoid undefined behavior with unsigned type
+  info.options = 0;       // Don't validate UTF8 - we send binary ACIP packets
+  info.extensions = NULL; // Disable permessage-deflate - causes rx buffer underflow in LWS 4.5.2
+  // TODO: Re-enable compression with proper LWS configuration if needed for bandwidth optimization
+  // Current issue: Even with server_max_window_bits=11, large fragmented messages still trigger
+  // "lws_extension_callback_pm_deflate: rx buffer underflow" errors in LWS 4.5.2
 
   // Create libwebsockets context
   server->context = lws_create_context(&info);
@@ -755,7 +825,7 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
     return SET_ERRNO(ERROR_NETWORK_BIND, "Failed to create libwebsockets context");
   }
 
-  log_info("WebSocket server initialized on port %d", config->port);
+  log_info("WebSocket server initialized on port %d with static file serving", config->port);
   return ASCIICHAT_OK;
 }
 
@@ -768,21 +838,23 @@ asciichat_error_t websocket_server_run(websocket_server_t *server) {
 
   // Run libwebsockets event loop
   uint64_t last_service_ns = 0;
+  int service_call_count = 0;
   while (atomic_load(&server->running)) {
-    // Negative timeout means non-blocking: poll(timeout=0).
-    // LWS quirk: passing 0 to lws_service() does NOT mean zero timeout.
-    // Internally, non-negative values get replaced with LWS_POLL_WAIT_LIMIT (~23 days),
-    // and the actual timeout is determined by LWS's internal SUL timer system.
-    // Passing -1 forces timeout_ms=0 in the code path: `if (timeout_ms < 0) timeout_ms = 0;`
-    // This eliminates ~30ms gaps between fragment deliveries that were caused by poll()
-    // blocking on internal LWS timers between socket reads.
+    // Service libwebsockets with 50ms timeout.
+    // This provides frequent event processing (~20 callback invocations per second) for all
+    // connected WebSocket clients while avoiding excessive CPU usage from polling.
+    // All client connections share this single server context, so a single lws_service() call
+    // services fragments and events for all clients simultaneously.
     uint64_t service_start_ns = time_get_ns();
-    if (last_service_ns && service_start_ns - last_service_ns > 30000000) {
+    if (last_service_ns && service_start_ns - last_service_ns > 30 * US_PER_MS_INT) {
       // > 30ms gap between service calls
       double gap_ms = (double)(service_start_ns - last_service_ns) / 1e6;
-      log_info_every(1000, "[LWS_SERVICE_GAP] %.1fms gap between lws_service calls", gap_ms);
+      log_info_every(1 * US_PER_MS_INT, "[LWS_SERVICE_GAP] %.1fms gap between lws_service calls", gap_ms);
     }
-    int result = lws_service(server->context, -1);
+    service_call_count++;
+    log_debug_every(500 * US_PER_MS_INT, "[LWS_SERVICE] Call #%d, context=%p", service_call_count,
+                    (void *)server->context);
+    int result = lws_service(server->context, 50);
     if (result < 0) {
       log_error("libwebsockets service error: %d", result);
       break;

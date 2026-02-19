@@ -18,6 +18,7 @@
 #include <ascii-chat/util/parsing.h>       // For parse_port() validation
 #include <ascii-chat/util/path.h>          // For path_validate_user_path()
 #include <ascii-chat/util/pcre2.h>         // For centralized PCRE2 singleton
+#include <ascii-chat/util/time.h>          // For SEC_PER_HOUR, SEC_PER_MIN
 #include <ascii-chat/video/color_filter.h> // For color_filter_from_cli_name()
 #include <pcre2.h>
 
@@ -643,6 +644,25 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
 
   log_debug("parse_client_address: Processing argument: '%s'", arg);
 
+  // Access address and port fields from options_state struct
+  char *address = (char *)config + offsetof(struct options_state, address);
+  int *port = (int *)((char *)config + offsetof(struct options_state, port));
+
+  // Check for WebSocket URL (ws:// or wss://) FIRST before session string validation
+  // WebSocket URLs are passed through without validation or port extraction
+  if (strncmp(arg, "ws://", 5) == 0 || strncmp(arg, "wss://", 6) == 0) {
+    log_debug("Detected WebSocket URL: %s", arg);
+    SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, "%s", arg);
+    // For wss://, default to no ACIP-level encryption (TLS handles it)
+    if (strncmp(arg, "wss://", 6) == 0) {
+      bool *no_encrypt = (bool *)config + offsetof(struct options_state, no_encrypt);
+      *no_encrypt = true;
+      log_debug("Auto-detected wss:// - setting no_encrypt=true (TLS handles encryption)");
+    }
+    // Don't set port - WebSocket transport handles URL parsing internally
+    return 1; // Consumed 1 argument
+  }
+
   // Check if this is a session string (format: adjective-noun-noun)
   // Session strings have exactly 2 hyphens, only lowercase letters, length 5-47
   bool is_session = is_session_string(arg);
@@ -657,19 +677,7 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
   }
 
   // Not a session string, parse as server address
-  // Access address and port fields from options_state struct
-  char *address = (char *)config + offsetof(struct options_state, address);
-  int *port = (int *)((char *)config + offsetof(struct options_state, port));
   log_debug("parse_client_address: Parsing as server address (not a session string)");
-
-  // Check for WebSocket URL (ws:// or wss://)
-  // WebSocket URLs are passed through without validation or port extraction
-  if (strncmp(arg, "ws://", 5) == 0 || strncmp(arg, "wss://", 6) == 0) {
-    log_debug("Detected WebSocket URL: %s", arg);
-    SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, "%s", arg);
-    // Don't set port - WebSocket transport handles URL parsing internally
-    return 1; // Consumed 1 argument
-  }
 
   // Check for port in address (format: address:port or [ipv6]:port)
   const char *colon = strrchr(arg, ':');
@@ -954,7 +962,7 @@ bool parse_timestamp(const char *arg, void *dest, char **error_msg) {
       }
       return false;
     }
-    *timestamp = hours * 3600.0 + minutes * 60.0 + seconds;
+    *timestamp = hours * (double)SEC_PER_HOUR + minutes * (double)SEC_PER_MIN + seconds;
     return true;
   } else {
     if (error_msg) {

@@ -13,7 +13,7 @@
  * @brief Format and log FPS report in a single line
  */
 static void log_fps_report(const char *tracker_name, double actual_fps, uint64_t frame_count, double elapsed_seconds) {
-  log_dev_every(4500000, "[%s] %.1f fps (%llu frames in %.1fs)", tracker_name, actual_fps,
+  log_dev_every(4500 * US_PER_MS_INT, "[%s] %.1f fps (%llu frames in %.1fs)", tracker_name, actual_fps,
                 (unsigned long long)frame_count, elapsed_seconds);
 }
 
@@ -25,8 +25,8 @@ static void log_fps_report(const char *tracker_name, double actual_fps, uint64_t
 static void log_lag_event(const char *tracker_name, const char *context, double late_ms, double expected_ms,
                           double actual_ms, double actual_fps) {
   // Rate limit to once per second to avoid log spam
-  log_warn_every(1000000, "[%s] LAG: %s late by %.1fms (expected %.1fms, got %.1fms, %.2f fps)", tracker_name, context,
-                 late_ms, expected_ms, actual_ms, actual_fps);
+  log_warn_every(NS_PER_MS_INT, "[%s] LAG: %s late by %.1fms (expected %.1fms, got %.1fms, %.2f fps)", tracker_name,
+                 context, late_ms, expected_ms, actual_ms, actual_fps);
 }
 
 void fps_init(fps_t *tracker, int expected_fps, const char *name) {

@@ -185,8 +185,7 @@ static bool is_binary_level_option_with_args(const char *arg, bool *out_takes_ar
   if (opt_len >= sizeof(opt_buffer)) {
     opt_len = sizeof(opt_buffer) - 1;
   }
-  SAFE_STRNCPY(opt_buffer, opt_name, opt_len);
-  opt_buffer[opt_len] = '\0';
+  SAFE_STRNCPY(opt_buffer, opt_name, opt_len + 1);
   opt_name = opt_buffer;
 
   // Check option against binary-level options
@@ -235,6 +234,12 @@ static bool is_binary_level_option_with_args(const char *arg, bool *out_takes_ar
     return true;
   }
   if (strcmp(opt_name, "no-check-update") == 0) {
+    return true;
+  }
+  if (strcmp(opt_name, "json") == 0) {
+    return true;
+  }
+  if (strcmp(opt_name, "log-format-console") == 0) {
     return true;
   }
 
@@ -474,7 +479,9 @@ typedef struct {
   bool version;
   char config_file[OPTIONS_BUFF_SIZE];
   asciichat_mode_t detected_mode;
-  int color; // Color setting (COLOR_SETTING_AUTO/TRUE/FALSE) - binary-level option parsed early
+  int color;                    // Color setting (COLOR_SETTING_AUTO/TRUE/FALSE) - binary-level option parsed early
+  bool json;                    // JSON logging format - binary-level option
+  bool log_format_console_only; // Apply log template only to console - binary-level option
 } binary_level_opts_t;
 
 static inline binary_level_opts_t extract_binary_level(const options_t *opts) {
@@ -489,7 +496,9 @@ static inline binary_level_opts_t extract_binary_level(const options_t *opts) {
   binary.version = opts->version;
   SAFE_STRNCPY(binary.config_file, opts->config_file, sizeof(binary.config_file));
   binary.detected_mode = opts->detected_mode;
-  binary.color = opts->color; // Save color setting (parsed in STAGE 1A)
+  binary.color = opts->color;                                     // Save color setting (parsed in STAGE 1A)
+  binary.json = opts->json;                                       // Save JSON logging flag (binary-level option)
+  binary.log_format_console_only = opts->log_format_console_only; // Save log format console setting
   return binary;
 }
 
@@ -504,7 +513,9 @@ static inline void restore_binary_level(options_t *opts, const binary_level_opts
   opts->version = binary->version;
   SAFE_STRNCPY(opts->config_file, binary->config_file, sizeof(opts->config_file));
   opts->detected_mode = binary->detected_mode;
-  opts->color = binary->color; // Restore color setting (parsed in STAGE 1A)
+  opts->color = binary->color;                                     // Restore color setting (parsed in STAGE 1A)
+  opts->json = binary->json;                                       // Restore JSON logging flag (binary-level option)
+  opts->log_format_console_only = binary->log_format_console_only; // Restore log format console setting
 }
 
 options_t options_t_new(void) {
@@ -732,7 +743,9 @@ static char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t 
       SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", default_log_path_buf);
     }
 
-    SAFE_FREE(log_dir);
+    // log_dir comes from find_project_root() which uses malloc() to avoid debug_malloc recursion
+    // So it must be freed with free(), not SAFE_FREE()
+    free(log_dir);
 
     // Copy to static result buffer
     SAFE_STRNCPY(result_buf, default_log_path_buf, sizeof(result_buf) - 1);
@@ -754,6 +767,58 @@ static char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t 
       return result_buf;
     }
   }
+}
+
+// ============================================================================
+// Binary-Level Boolean Option Parser
+// ============================================================================
+
+// Parses binary-level boolean options with support for multiple formats:
+// - --long-name → sets field to true
+// - --long-name=true/false/yes/no/1/0/on/off → parses value
+// - -X (short form) → sets field to true
+// - -X=value (short form with value) → parses value
+static bool parse_binary_bool_arg(const char *arg, bool *field, const char *long_name, char short_name) {
+  if (!arg || !field || !long_name)
+    return false;
+
+  // Check long form: --long-name
+  char long_form[256];
+  snprintf(long_form, sizeof(long_form), "--%s", long_name);
+  if (strcmp(arg, long_form) == 0) {
+    *field = true;
+    return true;
+  }
+
+  // Check long form with =value: --long-name=...
+  char long_form_eq[256];
+  snprintf(long_form_eq, sizeof(long_form_eq), "--%s=", long_name);
+  if (strncmp(arg, long_form_eq, strlen(long_form_eq)) == 0) {
+    const char *value = arg + strlen(long_form_eq);
+    if (strcasecmp(value, "true") == 0 || strcasecmp(value, "yes") == 0 || strcasecmp(value, "1") == 0 ||
+        strcasecmp(value, "on") == 0) {
+      *field = true;
+      return true;
+    } else if (strcasecmp(value, "false") == 0 || strcasecmp(value, "no") == 0 || strcasecmp(value, "0") == 0 ||
+               strcasecmp(value, "off") == 0) {
+      *field = false;
+      return true;
+    }
+    // If invalid value, still consume it (builder will validate later)
+    return true;
+  }
+
+  // Check short form: -X (if defined)
+  if (short_name != '\0') {
+    char short_form[3];
+    snprintf(short_form, sizeof(short_form), "-%c", short_name);
+    if (strcmp(arg, short_form) == 0) {
+      *field = true;
+      return true;
+    }
+  }
+
+  return false;
 }
 
 // ============================================================================
@@ -849,8 +914,12 @@ asciichat_error_t options_init(int argc, char **argv) {
       }
     }
     if (argv[i][0] == '-') {
-      if (strcmp(argv[i], "--quiet") == 0 || strcmp(argv[i], "-q") == 0) {
-        user_quiet = true;
+      // Handle --quiet, -q, --quiet=value formats
+      bool temp_quiet = false;
+      if (parse_binary_bool_arg(argv[i], &temp_quiet, "quiet", 'q')) {
+        if (temp_quiet) {
+          user_quiet = true;
+        }
       }
       // Validate --log-level and --log-file require arguments
       if (strcmp(argv[i], "--log-level") == 0) {
@@ -1020,6 +1089,22 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (mode_detect_result != ASCIICHAT_OK) {
     return mode_detect_result;
   }
+
+  // VALIDATE: Binary-level options must appear BEFORE the mode
+  // Check if any binary-level options appear after the mode position
+  if (mode_index > 0) {
+    for (int i = mode_index + 1; i < argc; i++) {
+      if (argv[i][0] == '-') {
+        bool takes_arg = false;
+        bool takes_optional_arg = false;
+
+        if (is_binary_level_option_with_args(argv[i], &takes_arg, &takes_optional_arg)) {
+          return SET_ERRNO(ERROR_USAGE, "Binary-level option '%s' must appear before the mode '%s', not after it",
+                           argv[i], argv[mode_index]);
+        }
+      }
+    }
+  }
   // ========================================================================
   // STAGE 1C: Initialize logging EARLY (before any log_dev calls)
   // ========================================================================
@@ -1103,9 +1188,16 @@ asciichat_error_t options_init(int argc, char **argv) {
         // No valid number, just increment
         opts.verbose_level++;
       }
-      // Handle -q and --quiet (disable console logging)
-      if (strcmp(argv[i], "-q") == 0 || strcmp(argv[i], "--quiet") == 0) {
-        opts.quiet = true;
+      // Handle binary-level boolean options using the abstraction function
+      // -q/--quiet, --json, --log-format-console all use the same parser
+      if (parse_binary_bool_arg(argv[i], &opts.quiet, "quiet", 'q')) {
+        continue;
+      }
+      if (parse_binary_bool_arg(argv[i], &opts.json, "json", '\0')) {
+        continue;
+      }
+      if (parse_binary_bool_arg(argv[i], &opts.log_format_console_only, "log-format-console", '\0')) {
+        continue;
       }
       // Handle --log-level LEVEL (set log threshold)
       if (strcmp(argv[i], "--log-level") == 0) {
@@ -1315,11 +1407,27 @@ asciichat_error_t options_init(int argc, char **argv) {
       // Not a binary option, copy to mode_argv
       new_mode_argv[new_argv_idx++] = argv[i];
     }
-    for (int i = 0; i < args_after_mode; i++) {
-      new_mode_argv[new_argv_idx + i] = argv[mode_index + 1 + i];
+    // Copy args after mode, filtering out any binary-level options (they shouldn't appear here)
+    int args_after_mode_idx = 0;
+    for (int i = mode_index + 1; i < argc; i++) {
+      bool takes_arg = false;
+      bool takes_optional_arg = false;
+
+      // Check if this is a binary-level option (shouldn't appear after mode)
+      if (is_binary_level_option_with_args(argv[i], &takes_arg, &takes_optional_arg)) {
+        // Skip binary-level option and its argument if needed
+        if (takes_arg && i + 1 < argc) {
+          i++; // Skip required argument
+        } else if (takes_optional_arg && i + 1 < argc && argv[i + 1][0] != '-') {
+          i++; // Skip optional argument
+        }
+        continue; // Skip this option
+      }
+      // Not a binary option, copy to mode_argv
+      new_mode_argv[new_argv_idx + args_after_mode_idx++] = argv[i];
     }
-    // Calculate actual argc (program + filtered args before + args after)
-    mode_argc = new_argv_idx + args_after_mode;
+    // Calculate actual argc (program + filtered args before + filtered args after)
+    mode_argc = new_argv_idx + args_after_mode_idx;
     new_mode_argv[mode_argc] = NULL;
 
     mode_argv = new_mode_argv;
@@ -1451,13 +1559,15 @@ asciichat_error_t options_init(int argc, char **argv) {
   // Save flip_x and flip_y before parsing - they should not be reset by the parser
   bool saved_flip_x_for_parse = opts.flip_x;
   bool saved_flip_y_for_parse = opts.flip_y;
+  // Note: json is already saved via extract_binary_level/restore_binary_level mechanism
   // Parse mode-specific arguments
   option_mode_bitmask_t mode_bitmask = (1 << mode_saved_for_parsing);
   asciichat_error_t result =
       options_config_parse(config, mode_argc, mode_argv, &opts, mode_bitmask, &remaining_argc, &remaining_argv);
-  // Restore flip_x and flip_y - they should keep the default values unless explicitly overridden
+  // Restore flip_x and flip_y - they should keep their values unless explicitly overridden
   opts.flip_x = saved_flip_x_for_parse;
   opts.flip_y = saved_flip_y_for_parse;
+  // json is already restored via the call to options_state_set which calls restore_binary_level
   if (result != ASCIICHAT_OK) {
     options_config_destroy(config);
     SAFE_FREE(allocated_mode_argv);

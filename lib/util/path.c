@@ -17,6 +17,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <sys/stat.h>
 #include <pcre2.h>
 
 /**
@@ -286,6 +287,126 @@ build_normalized:;
   return normalized;
 }
 
+/**
+ * @brief Find the project root directory by searching for .git or CMakeLists.txt
+ *
+ * Walks up the directory tree from the current working directory looking for
+ * either a .git directory or a CMakeLists.txt file, which indicate the project root.
+ * Searches up to 128 directories deep.
+ *
+ * Results are cached to avoid repeated stat() calls which can hang during shutdown.
+ * Uses malloc/free instead of SAFE_MALLOC/SAFE_FREE to avoid deadlock when called
+ * during memory report (which holds g_mem.mutex) - debug_malloc would try to acquire
+ * that same mutex to record the allocation, causing a deadlock.
+ *
+ * @return Allocated string containing project root path, or NULL if not found.
+ *         Caller must free() the result (not SAFE_FREE).
+ */
+static char *find_project_root(void) {
+  // Cache the result so we don't repeatedly call stat() which can hang during shutdown
+  static char cached_root[PLATFORM_MAX_PATH_LENGTH] = {0};
+  static bool search_done = false;
+
+  if (search_done) {
+    if (cached_root[0] != '\0') {
+      // Return a new allocation using malloc (not SAFE_MALLOC) to avoid debug_malloc
+      // recursion when called during memory report while holding g_mem.mutex
+      char *copy = malloc(strlen(cached_root) + 1);
+      if (copy) {
+        strcpy(copy, cached_root);
+      }
+      return copy;
+    }
+    return NULL; // Not found
+  }
+
+  char cwd_buf[PLATFORM_MAX_PATH_LENGTH];
+  if (!platform_get_cwd(cwd_buf, sizeof(cwd_buf))) {
+    search_done = true;
+    return NULL;
+  }
+
+  char search_path[PLATFORM_MAX_PATH_LENGTH];
+  SAFE_STRNCPY(search_path, cwd_buf, sizeof(search_path));
+
+  // Search up to 128 levels deep for repository root
+  for (int i = 0; i < 128; i++) {
+    // Check for .git directory
+    char git_check[PLATFORM_MAX_PATH_LENGTH];
+    safe_snprintf(git_check, sizeof(git_check), "%s%s.git", search_path, PATH_SEPARATOR_STR);
+    struct stat git_stat;
+    bool git_found = stat(git_check, &git_stat) == 0 && S_ISDIR(git_stat.st_mode);
+    if (git_found) {
+      // Found .git directory - this is the repo root
+      safe_snprintf(cached_root, sizeof(cached_root), "%s", search_path);
+      search_done = true;
+      // Return a new allocation using malloc (not SAFE_MALLOC) to avoid debug_malloc
+      // recursion when called during memory report while holding g_mem.mutex
+      char *result = malloc(strlen(search_path) + 1);
+      if (result) {
+        strcpy(result, search_path);
+      }
+      return result;
+    }
+
+    // We might be built from a tarball and not a git repo. But I still want this to work.
+    // So check for LICENSE.txt and CMakeLists.txt (ascii-chat's license is in the repo root with the main
+    // CMakeLists.txt).
+    char license_check[PLATFORM_MAX_PATH_LENGTH];
+    safe_snprintf(license_check, sizeof(license_check), "%s%sLICENSE.txt", search_path, PATH_SEPARATOR_STR);
+    char cmake_check[PLATFORM_MAX_PATH_LENGTH];
+    safe_snprintf(cmake_check, sizeof(cmake_check), "%s%sCMakeLists.txt", search_path, PATH_SEPARATOR_STR);
+    struct stat license_stat;
+    bool license_found = stat(license_check, &license_stat) == 0 && S_ISREG(license_stat.st_mode);
+    struct stat cmake_stat;
+    bool cmake_found = stat(cmake_check, &cmake_stat) == 0 && S_ISREG(cmake_stat.st_mode);
+    if (license_found && cmake_found) {
+      // Found LICENSE.txt
+      safe_snprintf(cached_root, sizeof(cached_root), "%s", search_path);
+      search_done = true;
+      // Return a new allocation using malloc (not SAFE_MALLOC) to avoid debug_malloc
+      // recursion when called during memory report while holding g_mem.mutex
+      char *result = malloc(strlen(search_path) + 1);
+      if (result) {
+        strcpy(result, search_path);
+      }
+      return result;
+    }
+
+    // Go up one directory
+    size_t len = strlen(search_path);
+    if (len == 0 || (len == 1 && search_path[0] == '/')) {
+      // Hit root directory without finding .git or CMakeLists.txt
+      break;
+    }
+
+    // Remove trailing separator if present
+    if (search_path[len - 1] == '/' || search_path[len - 1] == '\\') {
+      search_path[len - 1] = '\0';
+      len--;
+    }
+
+    // Find last separator
+    int last_sep = -1;
+    for (int j = (int)len - 1; j >= 0; j--) {
+      if (search_path[j] == '/' || search_path[j] == '\\') {
+        last_sep = j;
+        break;
+      }
+    }
+
+    if (last_sep <= 0) {
+      // Can't go up further
+      break;
+    }
+
+    search_path[last_sep] = '\0';
+  }
+
+  search_done = true;
+  return NULL;
+}
+
 const char *extract_project_relative_path(const char *file) {
   if (!file) {
     SET_ERRNO(ERROR_INVALID_PARAM, "file is null");
@@ -308,52 +429,42 @@ const char *extract_project_relative_path(const char *file) {
   /* First normalize the path to resolve .. and . components */
   const char *normalized = normalize_path(file);
 
-  /* Extract relative path by looking for common project directories */
-  /* Look for lib/, src/, tests/, include/ in the path - make it relative from there */
-  /* This avoids embedding absolute paths in the binary */
-  /* We need to find the LAST occurrence to avoid matching parent directories */
-  /* For example: C:\Users\user\src\ascii-chat\src\client\crypto.c */
-  /* We want to match the LAST src\, not the first one */
-  const char *dirs[] = {"lib/", "src/", "tests/", "include/", "lib\\", "src\\", "tests\\", "include\\"};
-  const char *best_match = NULL;
-  size_t best_match_pos = 0;
+  /* Try to find and strip the project root from the absolute path */
+  char *project_root = find_project_root();
+  if (project_root) {
+    size_t root_len = strlen(project_root);
+    size_t norm_len = strlen(normalized);
 
-  for (size_t i = 0; i < sizeof(dirs) / sizeof(dirs[0]); i++) {
-    const char *dir = dirs[i];
-    const char *search_start = normalized;
-    const char *last_found = NULL;
+    /* Check if normalized path starts with project root */
+    if (norm_len > root_len && strncmp(normalized, project_root, root_len) == 0) {
+      const char *remainder = normalized + root_len;
 
-    /* Find the last occurrence of this directory */
-    const char *found;
-    while ((found = strstr(search_start, dir)) != NULL) {
-      last_found = found;
-      search_start = found + 1; /* Move past this match to find next one */
-    }
-
-    if (last_found) {
-      size_t pos = (size_t)(last_found - normalized);
-      /* Use the match that's closest to the end (most specific project directory) */
-      /* Higher position = further into the path = more specific */
-      if (best_match == NULL || pos > best_match_pos) {
-        best_match = last_found;
-        best_match_pos = pos;
+      /* Skip the separator if present */
+      if (*remainder == PATH_DELIM || *remainder == '/' || *remainder == '\\') {
+        remainder++;
       }
+
+      free(project_root);
+      return remainder;
     }
+    free(project_root);
   }
 
-  if (best_match) {
-    /* Found a project directory - return everything from here */
-    return best_match;
-  }
-
-  /* If no common project directory found, try to find just the filename */
+  /* Fallback: Extract relative path by looking for common separators */
   const char *last_sep = strrchr(normalized, PATH_DELIM);
+  if (!last_sep) {
+    last_sep = strrchr(normalized, '/');
+  }
+  if (!last_sep) {
+    last_sep = strrchr(normalized, '\\');
+  }
 
+  /* If we found a separator, return the part after it */
   if (last_sep) {
     return last_sep + 1;
   }
 
-  /* Last resort: return the normalized path */
+  /* Last resort: return just the filename (don't return absolute path) */
   return normalized;
 }
 
@@ -449,14 +560,19 @@ char *get_log_dir(void) {
 
   return log_dir;
 #else
-  // Debug builds: Use current working directory
+  // Debug builds: Use repository root for logs
+  char *repo_root = find_project_root();
+  if (repo_root) {
+    return repo_root;
+  }
+
+  // Fallback to current working directory if repo root not found
   char cwd_buf[PLATFORM_MAX_PATH_LENGTH];
   if (!platform_get_cwd(cwd_buf, sizeof(cwd_buf))) {
     return NULL;
   }
 
   char *result = SAFE_MALLOC(strlen(cwd_buf) + 1, char *);
-
   safe_snprintf(result, strlen(cwd_buf) + 1, "%s", cwd_buf);
   return result;
 #endif

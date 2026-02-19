@@ -11,6 +11,7 @@
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/util/ip.h>
@@ -152,8 +153,8 @@ static void render_server_status_header(terminal_size_t term_size, void *user_da
   // Calculate uptime
   time_t now = time(NULL);
   time_t uptime_secs = now - status->start_time;
-  int uptime_hours = uptime_secs / 3600;
-  int uptime_mins = (uptime_secs % 3600) / 60;
+  int uptime_hours = uptime_secs / SEC_PER_HOUR;
+  int uptime_mins = (uptime_secs % SEC_PER_HOUR) / SEC_PER_MIN;
   int uptime_secs_rem = uptime_secs % 60;
 
   // Line 1: Top border
@@ -263,6 +264,67 @@ void server_status_display(const server_status_t *status) {
   terminal_screen_render(&config);
 }
 
+/**
+ * @brief Display status screen with keyboard input support
+ * Returns true if status screen should continue, false if Escape was pressed to exit
+ */
+bool server_status_display_interactive(const server_status_t *status) {
+  if (!status) {
+    return true;
+  }
+
+  // Only render the status screen in interactive mode
+  if (!terminal_is_interactive()) {
+    return true;
+  }
+
+  // If --grep pattern was provided, enter interactive grep mode with it pre-populated
+  static bool grep_mode_entered = false;
+  if (!grep_mode_entered && grep_get_last_pattern() && grep_get_last_pattern()[0] != '\0') {
+    interactive_grep_enter_mode();
+    grep_mode_entered = true;
+  }
+
+  // Initialize keyboard for interactive grep
+  bool keyboard_enabled = false;
+  if (keyboard_init() == ASCIICHAT_OK) {
+    keyboard_enabled = true;
+  }
+
+  // Use terminal_screen abstraction for rendering
+  terminal_screen_config_t config = {
+      .fixed_header_lines = 4,
+      .render_header = render_server_status_header,
+      .user_data = (void *)status,
+      .show_logs = true,
+  };
+
+  terminal_screen_render(&config);
+
+  // Poll keyboard for Escape to exit or for interactive grep
+  bool should_exit_status = false;
+  if (keyboard_enabled) {
+    keyboard_key_t key = keyboard_read_nonblocking();
+    if (key == KEY_ESCAPE) {
+      // Escape key: cancel grep if active, otherwise exit status screen
+      if (interactive_grep_is_active()) {
+        interactive_grep_exit_mode(false); // Cancel grep without applying
+      } else {
+        should_exit_status = true; // Exit status screen
+      }
+    } else if (key != KEY_NONE && interactive_grep_should_handle(key)) {
+      interactive_grep_handle_key(key);
+    }
+  }
+
+  // Cleanup keyboard
+  if (keyboard_enabled) {
+    keyboard_destroy();
+  }
+
+  return !should_exit_status; // Return false if user wants to exit
+}
+
 void server_status_update(tcp_server_t *server, const char *session_string, const char *ipv4_address,
                           const char *ipv6_address, uint16_t port, time_t start_time, const char *mode_name,
                           bool session_is_mdns_only, uint64_t *last_update_ns) {
@@ -277,7 +339,7 @@ void server_status_update(tcp_server_t *server, const char *session_string, cons
   }
 
   // Calculate frame interval in microseconds
-  uint64_t frame_interval_us = 1000000ULL / fps;
+  uint64_t frame_interval_us = US_PER_SEC_INT / fps;
 
   // Get current time in microseconds using platform abstraction
   uint64_t now_us = platform_get_monotonic_time_us();

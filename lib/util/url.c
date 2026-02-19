@@ -8,6 +8,7 @@
  * for high performance.
  */
 
+#include "ascii-chat/common/error_codes.h"
 #include <ascii-chat/util/url.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/pcre2.h>
@@ -17,15 +18,15 @@
 #include <stdio.h>
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * PRODUCTION-GRADE URL REGEX (Diego Perini, MIT License)
+ * PRODUCTION-GRADE URL REGEX (Diego Perini, MIT License, extended for WebSocket)
  *
- * Supports: http/https, public IPv4, IPv6 with zone IDs, hostnames, localhost
- * Rejects: Private IPs, schemeless URLs, non-http(s) schemes
+ * Supports: http/https/ws/wss, public IPv4, IPv6 with zone IDs, hostnames, localhost
+ * Rejects: Private IPs, schemeless URLs, non-http(s)/ws(s) schemes
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 static const char *URL_REGEX_PATTERN =
-    // SCHEME: http or https (case-insensitive)
-    "^(?<scheme>https?)://(?:(?<userinfo>\\S+(?::\\S*)?)@)?"
+    // SCHEME: http, https, ws, or wss (case-insensitive)
+    "^(?<scheme>https?|wss?)://(?:(?<userinfo>\\S+(?::\\S*)?)@)?"
     // HOST: one of three alternatives below
     "(?<host>"
     "(?:"
@@ -180,7 +181,9 @@ asciichat_error_t url_parse(const char *url, url_parts_t *parts_out) {
   }
 
   /* Check if URL needs http:// prefix (bare hostname or IP) */
-  char url_with_scheme[2048];
+  // allocate twice the "safe limit" of 2048 for website URLs, even though modern browsers can handle up
+  // to 80k character URLs in some cases.
+  char url_with_scheme[4096];
   const char *url_to_match = url;
   const char *original_url = url;
 
@@ -195,11 +198,6 @@ asciichat_error_t url_parse(const char *url, url_parts_t *parts_out) {
     /* Reject URLs that look like malformed schemes (http/ instead of http://) */
     if (strncmp(url, "http/", 5) == 0 || strncmp(url, "https/", 6) == 0) {
       return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid URL format (looks like malformed scheme): %s", url);
-    }
-
-    /* Reject if it contains @ (email-like) */
-    if (strchr(url, '@')) {
-      return SET_ERRNO(ERROR_INVALID_PARAM, "Ambiguous format looks like email address, not URL: %s", url);
     }
 
     /* Reject pure hex strings (raw keys, not hostnames) */
@@ -294,4 +292,39 @@ void url_parts_destroy(url_parts_t *parts) {
   parts->port = 0;
 
   memset(parts, 0, sizeof(*parts));
+}
+
+bool url_is_websocket_scheme(const char *scheme) {
+  if (!scheme || !*scheme) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "scheme is NULL or empty");
+    return false;
+  }
+
+  /* Case-insensitive comparison for "ws" or "wss" */
+  return (strcasecmp(scheme, "ws") == 0 || strcasecmp(scheme, "wss") == 0);
+}
+
+bool url_is_websocket(const char *url) {
+  if (!url || !*url) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "url is NULL or empty");
+    return false;
+  }
+
+  /* Parse URL to validate and check scheme */
+  url_parts_t parts = {0};
+  asciichat_error_t result = url_parse(url, &parts);
+  bool is_ws = (result == ASCIICHAT_OK && url_is_websocket_scheme(parts.scheme));
+  url_parts_destroy(&parts);
+
+  return is_ws;
+}
+
+bool url_looks_like_websocket(const char *url) {
+  if (!url || !*url) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "url is NULL or empty");
+    return false;
+  }
+
+  /* Quick check for ws:// or wss:// prefix (case-insensitive) */
+  return (strncasecmp(url, "ws://", 5) == 0 || strncasecmp(url, "wss://", 6) == 0);
 }

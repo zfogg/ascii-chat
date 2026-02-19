@@ -464,10 +464,10 @@ image_t *media_source_read_video(media_source_t *source) {
 
       // Log statistics every 30 successful frames
       if (successful_frames % 30 == 0) {
-        double avg_read_ms = (double)total_read_time_ns / (double)successful_frames / 1000000.0;
-        double max_read_ms = (double)max_read_time_ns / 1000000.0;
+        double avg_read_ms = (double)total_read_time_ns / (double)successful_frames / NS_PER_MS;
+        double max_read_ms = (double)max_read_time_ns / NS_PER_MS;
         double null_rate = (double)null_frame_count * 100.0 / (double)total_attempts;
-        log_info_every(3000000,
+        log_info_every(3 * US_PER_SEC_INT,
                        "FRAME_STATS[%lu]: avg_read=%.2f ms, max_read=%.2f ms, null_rate=%.1f%% "
                        "(%lu null/%lu attempts)",
                        successful_frames, avg_read_ms, max_read_ms, null_rate, null_frame_count, total_attempts);
@@ -578,7 +578,7 @@ size_t media_source_read_audio(media_source_t *source, float *buffer, size_t num
       last_audio_pos = audio_pos_after_read;
     }
 
-    log_info_every(100000, "Audio: read %zu samples, pos %.2f → %.2f", samples_read, audio_pos_before_read,
+    log_info_every(100 * US_PER_MS_INT, "Audio: read %zu samples, pos %.2f → %.2f", samples_read, audio_pos_before_read,
                    audio_pos_after_read);
 
     // Handle EOF with loop
@@ -798,11 +798,11 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
     uint64_t video_seek_ns = time_elapsed_ns(seek_start_ns, time_get_ns());
     if (video_err != ASCIICHAT_OK) {
       log_warn("Video seek to %.2f failed: error code %d (took %.1fms)", timestamp_sec, video_err,
-               (double)video_seek_ns / 1000000.0);
+               (double)video_seek_ns / NS_PER_MS);
       result = video_err;
     } else {
       log_info("Video SEEK: %.2f → %.2f sec (target %.2f, took %.1fms)", video_pos_before, video_pos_after,
-               timestamp_sec, (double)video_seek_ns / 1000000.0);
+               timestamp_sec, (double)video_seek_ns / NS_PER_MS);
     }
   }
 
@@ -818,11 +818,11 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
     log_info("Audio position after seek: %.2f", audio_pos_after);
     if (audio_err != ASCIICHAT_OK) {
       log_warn("Audio seek to %.2f failed: error code %d (took %.1fms)", timestamp_sec, audio_err,
-               (double)audio_seek_ns / 1000000.0);
+               (double)audio_seek_ns / NS_PER_MS);
       result = audio_err;
     } else {
       log_info("Audio SEEK COMPLETE: %.2f → %.2f sec (target %.2f, took %.1fms)", audio_pos_before, audio_pos_after,
-               timestamp_sec, (double)audio_seek_ns / 1000000.0);
+               timestamp_sec, (double)audio_seek_ns / NS_PER_MS);
     }
   }
 

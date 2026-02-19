@@ -198,3 +198,26 @@ size_t thread_pool_get_count(const thread_pool_t *pool);
  * @return true if pool has threads, false if empty or NULL
  */
 bool thread_pool_has_threads(const thread_pool_t *pool);
+
+/**
+ * @brief Send a signal to all threads in the pool
+ *
+ * Sends the specified signal to every thread in the pool. This is used to
+ * interrupt threads that are blocked in system calls (e.g., recv(), connect())
+ * so they unblock and can check the global exit flag.
+ *
+ * Thread-safe: acquires threads_mutex to iterate the thread list.
+ * Not async-signal-safe: cannot be called from signal handlers.
+ *
+ * On POSIX systems, uses pthread_kill() to send the signal.
+ * On Windows, this is a no-op (pthread_kill is not available, but
+ * socket_shutdown() is sufficient for Windows socket unblocking).
+ *
+ * Typically used with SIGUSR1 (which should have a registered no-op handler)
+ * or another signal that the threads are prepared to handle gracefully.
+ *
+ * @param pool Thread pool to interrupt
+ * @param sig Signal number to send (e.g., SIGUSR1)
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+asciichat_error_t thread_pool_interrupt_all(thread_pool_t *pool, int sig);

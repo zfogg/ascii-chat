@@ -153,7 +153,7 @@ uint64_t platform_get_monotonic_time_us(void) {
   QueryPerformanceCounter(&counter);
 
   // Convert to microseconds: (counter * 1,000,000) / freq
-  return (uint64_t)((counter.QuadPart * 1000000ULL) / freq.QuadPart);
+  return (uint64_t)((counter.QuadPart * US_PER_SEC_INT) / freq.QuadPart);
 }
 
 /**
@@ -927,59 +927,6 @@ void platform_backtrace_symbols_destroy(char **strings) {
  * @param max_frames Maximum frames to print (0 = unlimited)
  * @param filter Optional filter callback to skip specific frames (NULL = no filtering)
  */
-void platform_print_backtrace_symbols(const char *label, char **symbols, int count, int skip_frames, int max_frames,
-                                      backtrace_frame_filter_t filter) {
-  if (!symbols || count <= 0) {
-    return;
-  }
-
-  // Calculate frame limits
-  int start = skip_frames;
-  int end = count;
-  if (max_frames > 0 && (start + max_frames) < end) {
-    end = start + max_frames;
-  }
-
-  // Build entire backtrace output in buffer for single logging statement
-  char buffer[8192] = {0};
-  int offset = 0;
-
-  // Add header
-  offset += safe_snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "%s\n", label);
-
-  // Build backtrace frames with colored frame numbers
-  int frame_num = 0;
-  for (int i = start; i < end && offset < (int)sizeof(buffer) - 256; i++) {
-    const char *symbol = symbols[i] ? symbols[i] : "???";
-
-    // Skip frame if filter says to
-    if (filter && filter(symbol)) {
-      continue;
-    }
-
-    // Build colored frame number string and manually embed it in buffer
-    char frame_str[16];
-    safe_snprintf(frame_str, sizeof(frame_str), "%d", frame_num);
-    const char *colored_frame = colored_string(LOG_COLOR_FATAL, frame_str);
-    size_t colored_len = strlen(colored_frame);
-
-    // Append "  ["
-    offset += safe_snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "  [");
-
-    // Append colored frame number
-    if (offset + colored_len < sizeof(buffer)) {
-      memcpy(buffer + offset, colored_frame, colored_len);
-      offset += (int)colored_len;
-    }
-
-    // Append "] symbol\n"
-    offset += safe_snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "] %s\n", symbol);
-    frame_num++;
-  }
-
-  // Log entire backtrace in single statement using logging system
-  log_plain_stderr("%s", buffer);
-}
 
 /**
  * @brief Format pre-resolved backtrace symbols to a buffer
@@ -1060,7 +1007,7 @@ void platform_print_backtrace(int skip_frames) {
     char **symbols = platform_backtrace_symbols(buffer, size);
 
     // Skip platform_print_backtrace itself (1 frame) + any additional frames requested
-    platform_print_backtrace_symbols("\nBacktrace", symbols, size, 1 + skip_frames, 0, NULL);
+    platform_print_backtrace_symbols("Backtrace", symbols, size, 1 + skip_frames, 0, NULL);
 
     platform_backtrace_symbols_destroy(symbols);
   }
@@ -1793,6 +1740,67 @@ asciichat_error_t platform_restore_timer_resolution(void) {
     return SET_ERRNO(ERROR_GENERAL, "timeEndPeriod() failed with error %u", result);
   }
   return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Get binary that contains address on Windows via EnumProcessModules
+ *
+ * Enumerates all loaded DLLs in the current process to find which one contains
+ * the given runtime address. Returns the file offset within that module,
+ * which is passed to llvm-symbolizer for symbol resolution.
+ *
+ * @param addr Runtime address from backtrace
+ * @param matches Output array for matches (path, offset)
+ * @param max_matches Maximum number of matches to store
+ * @return Number of matches found (0 or 1)
+ */
+int get_binary_file_address_offsets(const void *addr, platform_binary_match_t *matches, int max_matches) {
+  HANDLE proc = GetCurrentProcess();
+  HMODULE modules[512];
+  DWORD needed = 0;
+  int count = 0;
+  uintptr_t addr_int = (uintptr_t)addr;
+
+  if (!EnumProcessModules(proc, modules, sizeof(modules), &needed)) {
+    log_debug("EnumProcessModules failed");
+    return 0;
+  }
+
+  DWORD module_count = needed / sizeof(HMODULE);
+  if (module_count > 512) {
+    module_count = 512; // Cap at our array size
+  }
+
+  for (DWORD i = 0; i < module_count && count < max_matches; i++) {
+    MODULEINFO mod_info;
+    char mod_path[PLATFORM_MAX_PATH_LENGTH];
+
+    if (!GetModuleInformation(proc, modules[i], &mod_info, sizeof(mod_info))) {
+      continue;
+    }
+
+    if (!GetModuleFileNameA(modules[i], mod_path, sizeof(mod_path))) {
+      continue;
+    }
+
+    // Check if address falls within this module
+    uintptr_t base = (uintptr_t)mod_info.lpBaseOfDll;
+    uintptr_t end = base + mod_info.SizeOfImage;
+
+    if (addr_int >= base && addr_int < end) {
+      strncpy_s(matches[count].path, PLATFORM_MAX_PATH_LENGTH, mod_path, PLATFORM_MAX_PATH_LENGTH - 1);
+      matches[count].path[PLATFORM_MAX_PATH_LENGTH - 1] = '\0';
+      matches[count].file_offset = addr_int - base;
+
+#ifndef NDEBUG
+      log_debug("[Windows EnumProcessModules] addr=%p matches %s (offset=%lx, base=%p)", addr, mod_path,
+                matches[count].file_offset, (void *)base);
+#endif
+      count++;
+    }
+  }
+
+  return count;
 }
 
 // Include cross-platform system utilities (binary PATH detection)

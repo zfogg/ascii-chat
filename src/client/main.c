@@ -64,6 +64,7 @@
  */
 
 #include "main.h"
+#include "../main.h" // Global exit API
 #include "server.h"
 #include "protocol.h"
 #include "crypto.h"
@@ -73,6 +74,7 @@
 #include <ascii-chat/ui/splash.h>
 #include <ascii-chat/log/interactive_grep.h>
 #include <ascii-chat/session/session_log_buffer.h>
+#include <ascii-chat/session/client_like.h>
 #include <ascii-chat/audio/analysis.h>
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/network/mdns/discovery_tui.h>
@@ -86,12 +88,16 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/json.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h> // For RCU-based options access
+#include <ascii-chat/util/time.h>   // For time macros
+#include <ascii-chat/util/url.h>    // For URL parsing and WebSocket detection
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/video/palette.h>
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/network/tcp/client.h>
+#include <ascii-chat/network/client.h>
 #include <ascii-chat/network/acip/acds_client.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/network/acip/acds.h>
@@ -109,6 +115,7 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <stdatomic.h>
 #ifndef _WIN32
 #include <unistd.h>
@@ -118,9 +125,6 @@
 /* ============================================================================
  * Global State Variables
  * ============================================================================ */
-
-/** Global flag indicating shutdown has been requested */
-atomic_bool g_should_exit = false;
 
 /**
  * Global client worker thread pool
@@ -135,16 +139,16 @@ atomic_bool g_should_exit = false;
 thread_pool_t *g_client_worker_pool = NULL;
 
 /**
- * Global TCP client instance
+ * Global application client context
  *
- * Central connection and state management structure for the client.
- * Replaces scattered global variables from server.c, protocol.c, audio.c, etc.
- * Follows the same pattern as tcp_server_t used by the server.
+ * Central connection and application state for the client.
+ * Contains transport-agnostic state: audio, threads, display, crypto.
+ * Network-specific state (socket, connection flags) is in the active transport client.
  *
- * Initialized by tcp_client_create() in client_main().
- * Destroyed by tcp_client_destroy() at cleanup.
+ * Initialized by app_client_create() in client_main().
+ * Destroyed by app_client_destroy() at cleanup.
  */
-tcp_client_t *g_client = NULL;
+app_client_t *g_client = NULL;
 
 /**
  * @brief Global WebRTC peer manager (legacy compatibility)
@@ -155,79 +159,30 @@ tcp_client_t *g_client = NULL;
 struct webrtc_peer_manager *g_peer_manager = NULL;
 
 /**
- * Check if shutdown has been requested
+ * @brief Client connection session state for session_client_like integration
  *
- * @return true if shutdown requested, false otherwise
+ * Holds per-session state needed across reconnections:
+ * - Connection fallback context for multi-stage attempts
+ * - Discovered server address (from LAN discovery or session string)
+ * - Reconnection attempt counter
+ * - Flag tracking if any successful connection has occurred
+ *
+ * Used by client_run() callback to manage the connection/reconnection loop.
  */
-bool should_exit() {
-  return atomic_load(&g_should_exit);
-}
+typedef struct {
+  connection_attempt_context_t connection_ctx; // Fallback connection context (embedded)
+  const char *discovered_address;              // From LAN/session discovery
+  int discovered_port;                         // From LAN/session discovery
+  int reconnect_attempt;                       // Current reconnection attempt number
+  bool has_ever_connected;                     // Track if connection ever succeeded
+} client_session_state_t;
 
-/**
- * Signal that shutdown should be requested
+static client_session_state_t g_client_session = {0};
+
+/* Signal handling is now centralized in src/main.c via setup_signal_handlers()
+ * Client mode uses set_interrupt_callback(server_connection_shutdown) to register
+ * its network shutdown as the interrupt handler. SIGWINCH is still client-specific.
  */
-void signal_exit() {
-  atomic_store(&g_should_exit, true);
-}
-
-/**
- * Console control handler for Ctrl+C and related events
- *
- * Implements double-tap behavior: first Ctrl+C requests graceful shutdown,
- * second Ctrl+C within the same session forces immediate exit.
- *
- * @note On Windows, this runs in a separate thread (via SetConsoleCtrlHandler)
- *       and can safely use standard library functions.
- * @note On Unix, this runs in signal context - use only async-signal-safe functions.
- *
- * @param event The control event that occurred
- * @return true if the event was handled
- */
-static bool console_ctrl_handler(console_ctrl_event_t event) {
-  // Handle Ctrl+C, Ctrl+Break, and SIGTERM (CONSOLE_CLOSE)
-  if (event != CONSOLE_CTRL_C && event != CONSOLE_CTRL_BREAK && event != CONSOLE_CLOSE) {
-    return false;
-  }
-
-  // If this is the second Ctrl-C, force exit
-  static _Atomic int ctrl_c_count = 0;
-  int count = atomic_fetch_add(&ctrl_c_count, 1) + 1;
-
-  if (count > 1) {
-    platform_force_exit(1);
-  }
-
-  // Signal all subsystems to shutdown (async-signal-safe operations only)
-  atomic_store(&g_should_exit, true);
-  server_connection_shutdown(); // Only uses atomics and socket_shutdown
-
-  // Let the main thread handle cleanup via atexit handlers.
-  // The webcam_flush() call in capture_stop_thread() will interrupt
-  // any blocking ReadSample() calls, allowing clean shutdown.
-
-  return true; // Event handled
-}
-
-/**
- * Unix signal handler for graceful shutdown on SIGTERM
- *
- * @param sig The signal number (unused)
- */
-#ifndef _WIN32
-static void client_handle_sigterm(int sig) {
-  (void)sig; // Unused
-  log_info_nofile("SIGTERM received - shutting down client...");
-  // Signal all subsystems to shutdown (async-signal-safe operations only)
-  atomic_store(&g_should_exit, true);
-  server_connection_shutdown(); // Only uses atomics and socket_shutdown
-}
-#else
-// Windows-compatible signal handler (no-op implementation)
-static void client_handle_sigterm(int sig) {
-  (void)sig;
-  // SIGTERM handled via console_ctrl_handler on Windows
-}
-#endif
 
 /**
  * Platform-compatible SIGWINCH handler for terminal resize events
@@ -267,7 +222,7 @@ static void client_handle_sigwinch(int sigwinch) {
 // Windows-compatible signal handler (no-op implementation)
 static void client_handle_sigwinch(int sigwinch) {
   (void)(sigwinch);
-  log_debug_nofile("SIGWINCH received (Windows no-op implementation)");
+  log_console(LOG_DEBUG, "SIGWINCH received (Windows no-op implementation)");
 }
 #endif
 
@@ -289,7 +244,7 @@ static void shutdown_client() {
   shutdown_done = true;
 
   // Set global shutdown flag to stop all threads
-  atomic_store(&g_should_exit, true);
+  signal_exit();
 
   // IMPORTANT: Stop all protocol threads BEFORE cleaning up resources
   // protocol_stop_connection() shuts down the socket to interrupt blocking recv(),
@@ -303,10 +258,10 @@ static void shutdown_client() {
     g_client_worker_pool = NULL;
   }
 
-  // Destroy TCP client instance (replaces scattered server.c cleanup)
+  // Destroy application client context
   if (g_client) {
-    tcp_client_destroy(&g_client);
-    log_debug("TCP client instance destroyed successfully");
+    app_client_destroy(&g_client);
+    log_debug("Application client context destroyed successfully");
   }
 
   // Now safe to cleanup server connection (socket already closed by protocol_stop_connection)
@@ -396,20 +351,17 @@ static int initialize_client_systems(void) {
   }
   log_truncate_if_large();
 
-  // Initialize display subsystem
-  if (display_init() != 0) {
-    log_fatal("Failed to initialize display subsystem");
-    return ERROR_DISPLAY;
-  }
+  // Display subsystem is now initialized by session_client_like_run()
+  // No need to call display_init() here
 
-  // Initialize TCP client instance (replaces scattered server.c globals)
+  // Initialize application client context
   if (!g_client) {
-    g_client = tcp_client_create();
+    g_client = app_client_create();
     if (!g_client) {
-      log_fatal("Failed to create TCP client instance");
+      log_fatal("Failed to create application client context");
       return ERROR_NETWORK;
     }
-    log_debug("TCP client instance created successfully");
+    log_debug("Application client context created successfully");
   }
 
   // Initialize server connection management (legacy - will be migrated to tcp_client)
@@ -454,9 +406,171 @@ static int initialize_client_systems(void) {
  *
  * @return 0 on success, error code on failure
  */
-int client_main(void) {
+/* ============================================================================
+ * Client Connection/Reconnection Loop (run_fn for session_client_like)
+ * ============================================================================
+ *
+ * This callback is executed after shared initialization (media/audio/display)
+ * is complete. It manages the entire client connection lifecycle:
+ * 1. Connect to server (with fallback stages: TCP, WebRTC+STUN, WebRTC+TURN)
+ * 2. Exchange media/audio with server
+ * 3. On disconnection, attempt reconnection based on policy
+ * 4. Exit on user request or max reconnection limit
+ */
 
-  // Initialize all client subsystems (shared init already completed in src/main.c)
+/**
+ * Reconnection policy callback for client mode
+ *
+ * Determines whether to attempt reconnection after a connection failure.
+ * Client mode generally wants to keep retrying unless snapshot mode or shutdown is requested.
+ *
+ * @param last_error      Error code from the failed connection attempt
+ * @param attempt_number  Current reconnection attempt number (1-based)
+ * @param user_data       Unused (NULL)
+ * @return true to attempt reconnection, false to exit
+ */
+static bool client_should_reconnect(asciichat_error_t last_error, int attempt_number, void *user_data) {
+  (void)last_error;
+  (void)attempt_number;
+  (void)user_data;
+
+  // In snapshot mode, don't reconnect - exit after first failure
+  if (GET_OPTION(snapshot_mode)) {
+    log_error("Connection lost in snapshot mode - not retrying");
+    return false;
+  }
+
+  // Otherwise, allow reconnection (framework handles max_reconnect_attempts limit)
+  return true;
+}
+
+/**
+ * Single connection attempt callback for session_client_like framework
+ *
+ * Handles one complete connection cycle: attempt, protocol startup, monitoring, cleanup.
+ * The framework wraps this in a retry loop based on max_reconnect_attempts and
+ * should_reconnect_callback configuration.
+ *
+ * On connection success: runs protocol until disconnection, then returns error
+ * On connection failure: returns error immediately
+ * On user request (Ctrl+C): returns with current status
+ *
+ * @param capture   Initialized capture context (provided by session_client_like)
+ * @param display   Initialized display context (provided by session_client_like)
+ * @param user_data Unused (NULL)
+ * @return ASCIICHAT_OK if successful, error code if connection failed
+ */
+static asciichat_error_t client_run(session_capture_ctx_t *capture, session_display_ctx_t *display, void *user_data) {
+  (void)capture;   // Provided by session_client_like, used by protocol threads
+  (void)user_data; // Unused
+
+  // Make the framework-created display context available to protocol threads
+  display_set_context(display);
+
+  // Get the render loop's should_exit callback for monitoring
+  bool (*render_should_exit)(void *) = session_client_like_get_render_should_exit();
+  if (!render_should_exit) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "Render should_exit callback not initialized");
+  }
+
+  // Attempt connection with fallback stages (TCP, WebRTC+STUN, WebRTC+TURN)
+  // Get pre-created TCP client from framework if available
+  tcp_client_t *framework_tcp_client = session_client_like_get_tcp_client();
+  asciichat_error_t connection_result = connection_attempt_tcp(
+      &g_client_session.connection_ctx,
+      g_client_session.discovered_address != NULL ? g_client_session.discovered_address : "",
+      (uint16_t)(g_client_session.discovered_port > 0 ? g_client_session.discovered_port : 27224),
+      framework_tcp_client);
+
+  // Check if shutdown was requested during connection attempt
+  if (should_exit()) {
+    log_info("Shutdown requested during connection attempt");
+    return ERROR_NETWORK;
+  }
+
+  if (connection_result != ASCIICHAT_OK) {
+    // Connection failed - framework will handle retry based on config
+    log_error("Connection attempt failed");
+    return connection_result;
+  }
+
+  // Connection successful - integrate transport into server layer
+  if (g_client_session.connection_ctx.active_transport) {
+    server_connection_set_transport(g_client_session.connection_ctx.active_transport);
+    g_client_session.connection_ctx.active_transport = NULL;
+  } else {
+    log_error("Connection succeeded but no active transport");
+    return ERROR_NETWORK;
+  }
+
+  // Log connection status
+  if (!g_client_session.has_ever_connected) {
+    log_info("Connected");
+    g_client_session.has_ever_connected = true;
+  } else {
+    log_info("Reconnected");
+  }
+
+  // Start protocol worker threads for this connection
+  if (protocol_start_connection() != 0) {
+    log_error("Failed to start connection protocols");
+    protocol_stop_connection();
+    server_connection_close();
+    return ERROR_NETWORK;
+  }
+
+  // Monitor connection until it breaks or shutdown is requested
+  while (!should_exit() && server_connection_is_active()) {
+    if (protocol_connection_lost()) {
+      log_debug("Connection lost detected");
+      break;
+    }
+    platform_sleep_us(100 * US_PER_MS_INT);
+  }
+
+  if (should_exit()) {
+    log_debug("Shutdown requested, cleaning up connection");
+  } else {
+    log_debug("Connection lost, preparing for reconnection attempt");
+  }
+
+  // Clean up this connection for potential reconnection
+  protocol_stop_connection();
+  server_connection_close();
+
+  // Recreate thread pool for clean reconnection
+  if (g_client_worker_pool) {
+    thread_pool_destroy(g_client_worker_pool);
+    g_client_worker_pool = NULL;
+  }
+  g_client_worker_pool = thread_pool_create("client_reconnect");
+  if (!g_client_worker_pool) {
+    log_error("Failed to recreate worker thread pool");
+    return ERROR_THREAD;
+  }
+
+  // Reset connection context for next attempt
+  connection_context_cleanup(&g_client_session.connection_ctx);
+  memset(&g_client_session.connection_ctx, 0, sizeof(g_client_session.connection_ctx));
+  if (connection_context_init(&g_client_session.connection_ctx) != ASCIICHAT_OK) {
+    log_error("Failed to re-initialize connection context");
+    return ERROR_NETWORK;
+  }
+
+  // Signal reconnection attempt to the user (splash screen will show logs)
+  if (g_client_session.has_ever_connected && !GET_OPTION(quiet)) {
+    splash_intro_start(NULL);
+  }
+
+  // Return error to signal reconnection needed (framework handles the retry)
+  return ERROR_NETWORK;
+}
+
+int client_main(void) {
+  log_debug("client_main() starting");
+
+  // Initialize client-specific systems (NOT shared with session_client_like)
+  // This includes: thread pool, display layer, app client context, server connection
   int init_result = initialize_client_systems();
   if (init_result != 0) {
 #ifndef NDEBUG
@@ -498,57 +612,23 @@ int client_main(void) {
   // Register cleanup function for graceful shutdown
   (void)atexit(shutdown_client);
 
-  // Handle keepawake: check for mutual exclusivity and apply mode default
-  // Client default: keepawake ENABLED (use --no-keepawake to disable)
-  if (GET_OPTION(enable_keepawake) && GET_OPTION(disable_keepawake)) {
-    FATAL(ERROR_INVALID_PARAM, "--keepawake and --no-keepawake are mutually exclusive");
-  }
-  if (!GET_OPTION(disable_keepawake)) {
-    (void)platform_enable_keepawake();
-  }
+  // Register client interrupt callback (socket shutdown on SIGTERM/Ctrl+C)
+  // Global signal handlers (SIGTERM, SIGPIPE, Ctrl+C) are set up in setup_signal_handlers() in src/main.c
+  set_interrupt_callback(server_connection_shutdown);
 
-  // Install console control handler for graceful Ctrl+C handling
-  // Uses SetConsoleCtrlHandler on Windows, sigaction on Unix - more reliable than CRT signal()
-  platform_set_console_ctrl_handler(console_ctrl_handler);
-
-  // Register signal handlers for graceful shutdown, terminal resize, and error handling
-  platform_signal_handler_t signal_handlers[] = {
-      {SIGWINCH, client_handle_sigwinch}, // Terminal resize (Unix only)
-      {SIGTERM, client_handle_sigterm},   // SIGTERM for timeout(1) support
-      {SIGPIPE, SIG_IGN},                 // Ignore broken pipe (we handle write errors ourselves)
-  };
-  platform_register_signal_handlers(signal_handlers, 3);
-
-  // Keep terminal logging enabled so user can see connection attempts
-  // It will be disabled after first successful connection
-  // Note: No initial terminal reset - display will only be cleared when first frame arrives
-
-  // Start the intro splash screen (non-blocking) - it will display while we initialize
-  // The splash will continue until splash_intro_done() is called when first frame is ready
-  log_info("=== ABOUT TO START SPLASH SCREEN ===");
-  splash_intro_start(NULL);
-  log_info("=== SPLASH SCREEN STARTED ===");
-
-  // Initialize interactive grep
-  interactive_grep_init();
-
-  // Disable terminal logging AFTER splash starts so splash can display cleanly
-  // This prevents logs from connection attempts from interfering with splash animation
-  // Logs are still written to file and captured by splash screen's log buffer
-  log_set_terminal_output(false);
-  log_info("=== TERMINAL LOGGING DISABLED ===");
-
-  // Track if we've ever successfully connected during this session
-  static bool has_ever_connected = false;
-
-  // Startup message only logged to file (terminal output is disabled by default)
+#ifndef _WIN32
+  // Register SIGWINCH for terminal resize handling (client-specific, not in framework)
+  platform_signal(SIGWINCH, client_handle_sigwinch);
+#endif
 
   /* ========================================================================
-   * Main Connection Loop
+   * Client-Specific: LAN/Session Discovery
    * ========================================================================
+   * This phase discovers the server to connect to via:
+   * - LAN discovery (mDNS)
+   * - Session string lookup (ACDS)
+   * - Direct address/port
    */
-
-  int reconnect_attempt = 0;
 
   // LAN Discovery: If --scan flag is set, discover servers on local network
   const options_t *opts = options_get();
@@ -558,9 +638,9 @@ int client_main(void) {
 
     discovery_tui_config_t lan_config;
     memset(&lan_config, 0, sizeof(lan_config));
-    lan_config.timeout_ms = 2000; // Wait up to 2 seconds for responses
-    lan_config.max_servers = 20;  // Support up to 20 servers on LAN
-    lan_config.quiet = true;      // Quiet during discovery, TUI will show status
+    lan_config.timeout_ms = 2 * MS_PER_SEC_INT; // Wait up to 2 seconds for responses
+    lan_config.max_servers = 20;                // Support up to 20 servers on LAN
+    lan_config.quiet = true;                    // Quiet during discovery, TUI will show status
 
     int discovered_count = 0;
     discovery_tui_server_t *discovered_servers = discovery_tui_query(&lan_config, &discovered_count);
@@ -571,26 +651,17 @@ int client_main(void) {
     if (selected_index < 0) {
       // User cancelled or no servers found
       if (discovered_count == 0) {
-        // No servers found - print message and prevent any further output
-        // Lock the terminal so other threads can't write
+        // No servers found - log message and prevent any further output
+        // Lock the terminal so other threads can't write and our error
+        // will be the last message
         log_lock_terminal();
 
-        fprintf(stderr, "\n");
-        fprintf(stderr, "No ascii-chat servers found on the local network.\n");
-        fprintf(stderr, "Use 'ascii-chat client <address>' to connect manually.\n");
-        fflush(stderr);
+        // Log single message with embedded newlines to prevent multiple log entries
+        log_error("No ascii-chat servers found on the local network.\nUse 'ascii-chat client <address>' to connect "
+                  "manually.");
 
-        // Log to file for debugging
-        log_file_msg("\n");
-        log_file_msg("No ascii-chat servers found on the local network.\n");
-        log_file_msg("Use 'ascii-chat client <address>' to connect manually.\n");
-
-        // Redirect stderr and stdout to /dev/null so cleanup handlers can't write to console
-        // This is safe because we've already printed our final message
-        platform_stdio_redirect_to_null_permanent();
-
-        // Exit - cleanup handlers will try to write to /dev/null instead of console
-        exit(1);
+        // Exit without cleanup
+        platform_force_exit(1);
       }
       // User cancelled (had servers to choose from but pressed cancel)
       log_debug("LAN discovery: User cancelled server selection");
@@ -624,341 +695,105 @@ int client_main(void) {
   }
 
   // =========================================================================
-  // Connection Fallback Context Setup
+  // Client-Specific: Server Address Resolution
   // =========================================================================
+  // Client mode supports:
+  // 1. Direct address/port (--address HOST --port PORT) - handled by options
+  // 2. LAN discovery (--scan) - handled above
+  // 3. WebSocket URL (direct ws:// or wss:// connection string)
   //
-  // Initialize connection fallback context for 3-stage connection attempts:
-  // 1. Direct TCP (3s timeout)
-  // 2. WebRTC + STUN (8s timeout)
-  // 3. WebRTC + TURN (15s timeout)
-  //
-  connection_attempt_context_t connection_ctx = {0};
-  asciichat_error_t ctx_init_result = connection_context_init(&connection_ctx);
+  // Note: Session string discovery via ACDS is handled by discovery mode only.
+  //       Client mode does NOT use ACDS or session strings.
 
+  const char *discovered_address = NULL;
+  int discovered_port = 0;
+
+  // Check if user provided a WebSocket URL as the server address
+  const options_t *opts_websocket = options_get();
+  const char *provided_address = opts_websocket && opts_websocket->address[0] != '\0' ? opts_websocket->address : NULL;
+
+  if (provided_address && url_is_websocket(provided_address)) {
+    // Direct WebSocket connection
+    log_debug("Client: Direct WebSocket URL: %s", provided_address);
+    discovered_address = provided_address;
+    discovered_port = 0; // Port is embedded in the URL
+  }
+
+  log_debug("Client: discovered_address=%s, discovered_port=%d", discovered_address ? discovered_address : "NULL",
+            discovered_port);
+
+  // Store discovered address/port in session state for client_run() callback
+  static char address_storage[BUFFER_SIZE_SMALL];
+  if (discovered_address) {
+    SAFE_STRNCPY(address_storage, discovered_address, sizeof(address_storage));
+    g_client_session.discovered_address = address_storage;
+    g_client_session.discovered_port = discovered_port;
+  } else {
+    const options_t *opts_fallback = options_get();
+    if (opts_fallback && opts_fallback->address[0] != '\0') {
+      SAFE_STRNCPY(address_storage, opts_fallback->address, sizeof(address_storage));
+      g_client_session.discovered_address = address_storage;
+      g_client_session.discovered_port = opts_fallback->port;
+    } else {
+      g_client_session.discovered_address = "localhost";
+      g_client_session.discovered_port = 27224;
+    }
+  }
+
+  // Initialize connection context for first attempt
+  asciichat_error_t ctx_init_result = connection_context_init(&g_client_session.connection_ctx);
   if (ctx_init_result != ASCIICHAT_OK) {
     log_error("Failed to initialize connection context");
     return 1;
   }
 
-  // =========================================================================
-  // PHASE 1: Parallel mDNS + ACDS Session Discovery
-  // =========================================================================
-  //
-  // When a session string is detected (e.g., "swift-river-mountain"),
-  // we perform parallel discovery on both mDNS (local LAN) and ACDS (internet):
-  //
-  // 1. **mDNS Discovery**: Query _ascii-chat._tcp.local for servers with
-  //    matching session_string in TXT records (2s timeout)
-  // 2. **ACDS Discovery**: Lookup session on ACDS server (5s timeout)
-  // 3. **Race to Success**: Return first successful result, cancel the other
-  // 4. **Verification**: Check host_pubkey against --server-key or --acds-insecure
-  //
-  // Usage modes:
-  // - `ascii-chat swift-river-mountain` → mDNS-only (local LAN, no verification)
-  // - `ascii-chat --server-key PUBKEY swift-river-mountain` → verified
-  // - `ascii-chat --acds-insecure swift-river-mountain` → parallel without verification
-  //
-  const char *discovered_address = NULL;
-  int discovered_port = 0;
+  /* ========================================================================
+   * Configure and Run Shared Client-Like Session Framework
+   * ========================================================================
+   * session_client_like_run() handles all shared initialization:
+   * - Terminal output management (force stderr if piped)
+   * - Keepawake system (platform sleep prevention)
+   * - Splash screen lifecycle
+   * - Media source selection (webcam, file, URL, test pattern)
+   * - FPS probing for media files
+   * - Audio initialization and lifecycle
+   * - Display context creation
+   * - Proper cleanup ordering (critical for PortAudio)
+   *
+   * Client mode provides:
+   * - client_run() callback: connection loop, protocol startup, monitoring
+   * - client_should_reconnect() callback: reconnection policy
+   * - Reconnection configuration: attempts, delay, callbacks
+   */
 
-  const options_t *opts_discovery = options_get();
-  const char *session_string =
-      opts_discovery && opts_discovery->session_string[0] != '\0' ? opts_discovery->session_string : "";
+  // Get reconnect attempts setting (-1 = unlimited, 0 = no retry, >0 = retry N times)
+  int reconnect_attempts = GET_OPTION(reconnect_attempts);
 
-  log_info("=== BEFORE SESSION DISCOVERY CHECK: session_string='%s' ===", session_string);
+  // Configure session_client_like with client-specific settings
+  session_client_like_config_t config = {
+      .run_fn = client_run,
+      .run_user_data = NULL,
+      .tcp_client = NULL,
+      .websocket_client = NULL,
+      .discovery = NULL,
+      .custom_should_exit = NULL,
+      .exit_user_data = NULL,
+      .keyboard_handler = NULL, // Client mode: server drives display
+      .max_reconnect_attempts = reconnect_attempts,
+      .should_reconnect_callback = client_should_reconnect,
+      .reconnect_user_data = NULL,
+      .reconnect_delay_ms = 1000,         // 1 second delay between reconnection attempts
+      .print_newline_on_tty_exit = false, // Server/client manages cursor
+  };
 
-  if (session_string[0] != '\0') {
-    log_debug("Session string detected: '%s' - performing parallel discovery (mDNS + ACDS)", session_string);
+  log_debug("Client: calling session_client_like_run() with %d max reconnection attempts", reconnect_attempts);
+  asciichat_error_t session_result = session_client_like_run(&config);
+  log_debug("Client: session_client_like_run() returned %d", session_result);
 
-    // Configure discovery coordinator
-    discovery_config_t discovery_cfg;
-    discovery_config_init_defaults(&discovery_cfg);
+  // Cleanup connection context
+  connection_context_cleanup(&g_client_session.connection_ctx);
 
-    // Parse expected server key if provided
-    uint8_t expected_pubkey[32];
-    memset(expected_pubkey, 0, 32);
-    if (opts_discovery && opts_discovery->server_key[0] != '\0') {
-      asciichat_error_t parse_err = hex_to_pubkey(opts_discovery->server_key, expected_pubkey);
-      if (parse_err == ASCIICHAT_OK) {
-        discovery_cfg.expected_pubkey = expected_pubkey;
-        log_debug("Server key verification enabled");
-      } else {
-        log_warn("Failed to parse server key - skipping verification");
-      }
-    }
-
-    // Enable insecure mode if requested
-    if (opts_discovery && opts_discovery->discovery_insecure) {
-      discovery_cfg.insecure_mode = true;
-      log_warn("ACDS insecure mode enabled - no server key verification");
-    }
-
-    // Configure ACDS connection details
-    if (opts_discovery && opts_discovery->discovery_server[0] != '\0') {
-      SAFE_STRNCPY(discovery_cfg.acds_server, opts_discovery->discovery_server, sizeof(discovery_cfg.acds_server));
-    }
-    if (opts_discovery && opts_discovery->discovery_port > 0) {
-      discovery_cfg.acds_port = (uint16_t)opts_discovery->discovery_port;
-    }
-
-    // Set password for session join (use pointer since it persists through discovery)
-    if (opts_discovery && opts_discovery->password[0] != '\0') {
-      discovery_cfg.password = opts_discovery->password; // Safe: opts_discovery from options_get() persists
-      log_debug("Password configured for session join");
-    }
-
-    // Perform parallel discovery
-    discovery_result_t discovery_result;
-    memset(&discovery_result, 0, sizeof(discovery_result));
-    asciichat_error_t discovery_err = discover_session_parallel(session_string, &discovery_cfg, &discovery_result);
-
-    if (discovery_err != ASCIICHAT_OK || !discovery_result.success) {
-      fprintf(stderr, "Error: Failed to discover session '%s'\n", session_string);
-      fprintf(stderr, "  - Not found via mDNS (local network)\n");
-      fprintf(stderr, "  - Not found via ACDS (discovery server)\n");
-      fprintf(stderr, "\nDid you mean to:\n");
-      fprintf(stderr, "  ascii-chat server           # Start a new server\n");
-      fprintf(stderr, "  ascii-chat client HOST      # Connect to specific host\n");
-      return 1;
-    }
-
-    // Log discovery result
-    const char *source_name = discovery_result.source == DISCOVERY_SOURCE_MDNS ? "mDNS (LAN)" : "ACDS (internet)";
-    log_debug("Session discovered via %s: %s:%d", source_name, discovery_result.server_address,
-              discovery_result.server_port);
-
-    // Set discovered address/port for connection
-    // Copy to static buffers since discovery_result goes out of scope after this block
-    static char address_buffer[BUFFER_SIZE_SMALL];
-    SAFE_STRNCPY(address_buffer, discovery_result.server_address, sizeof(address_buffer));
-    discovered_address = address_buffer;
-    discovered_port = discovery_result.server_port;
-
-    log_info("Connecting to %s:%d", discovered_address, discovery_result.server_port);
-  }
-
-  log_info("=== AFTER SESSION DISCOVERY, BEFORE CONNECTION LOOP ===");
-
-  const options_t *opts_conn = options_get();
-  log_info("=== ENTERING MAIN CONNECTION LOOP ===");
-  while (!should_exit()) {
-    // Handle connection establishment or reconnection
-    const char *address = discovered_address
-                              ? discovered_address
-                              : (opts_conn && opts_conn->address[0] != '\0' ? opts_conn->address : "localhost");
-    int port = discovered_port > 0 ? discovered_port : (opts_conn ? opts_conn->port : OPT_PORT_INT_DEFAULT);
-
-    // Update connection context with current attempt number and reconnection status
-    connection_ctx.reconnect_attempt = reconnect_attempt;
-    connection_ctx.is_reconnection = has_ever_connected; // Track if this is a reconnection (not first connect)
-
-    log_info("=== ABOUT TO CALL connection_attempt_tcp: address='%s', port=%d ===", address, port);
-
-    // Attempt TCP connection
-    asciichat_error_t connection_result = connection_attempt_tcp(&connection_ctx, address, (uint16_t)port);
-
-    // Check if shutdown was requested during connection attempt
-    if (should_exit()) {
-      log_info("Shutdown requested during connection attempt");
-      return 0;
-    }
-
-    // Check if connection attempt succeeded
-    // Handle the error result appropriately
-    int connection_success = (connection_result == ASCIICHAT_OK) ? 0 : -1;
-
-    if (connection_success != 0) {
-      // TODO Part 5: Handle specific error codes from connection_result
-      // For now, treat all non-OK results as connection failure
-      // Authentication errors would be returned as ERROR_CRYPTO_HANDSHAKE
-
-      // In snapshot mode, exit immediately on connection failure - no retries
-      // Snapshot mode is for quick single-frame captures, not persistent connections
-      if (GET_OPTION(snapshot_mode)) {
-        log_error("Connection failed in snapshot mode - exiting without retry");
-        return 1;
-      }
-
-      // Connection failed - check if we should retry based on --reconnect setting
-      reconnect_attempt++;
-
-      // Get reconnect attempts setting (-1 = unlimited, 0 = no retry, >0 = retry N times)
-      int reconnect_attempts = GET_OPTION(reconnect_attempts);
-
-      // Check reconnection policy
-      if (reconnect_attempts == 0) {
-        // --reconnect off: Exit immediately on first failure
-        log_error("Connection failed (reconnection disabled via --reconnect off)");
-        return 1;
-      } else if (reconnect_attempts > 0 && reconnect_attempt > reconnect_attempts) {
-        // --reconnect N: Exceeded max retry attempts
-        log_error("Connection failed after %d attempts (limit set by --reconnect %d)", reconnect_attempt - 1,
-                  reconnect_attempts);
-        return 1;
-      }
-      // else: reconnect_attempts == -1 (auto) means retry forever
-
-      if (has_ever_connected) {
-        display_full_reset();
-        if (!GET_OPTION(quiet)) {
-          log_set_terminal_output(true);
-        }
-      } else {
-        // Add newline to separate from ASCII art display for first-time connection failures
-        printf("\n");
-      }
-
-      if (has_ever_connected) {
-        if (reconnect_attempts == -1) {
-          log_info("Reconnecting (attempt %d)...", reconnect_attempt);
-        } else {
-          log_info("Reconnecting (attempt %d/%d)...", reconnect_attempt, reconnect_attempts);
-        }
-      } else {
-        if (reconnect_attempts == -1) {
-          log_info("Connecting (attempt %d)...", reconnect_attempt);
-        } else {
-          log_info("Connecting (attempt %d/%d)...", reconnect_attempt, reconnect_attempts);
-        }
-      }
-
-      // Continue retrying based on reconnection policy
-      continue;
-    }
-
-    // Connection successful - reset counters and flags
-    reconnect_attempt = 0;
-
-    // Integrate the active transport from connection fallback into server connection layer
-    // (Transport is TCP for Stage 1, WebRTC DataChannel for Stages 2/3)
-    if (connection_ctx.active_transport) {
-      server_connection_set_transport(connection_ctx.active_transport);
-      log_debug("Active transport integrated into server connection layer");
-
-      // Transfer ownership - NULL out context's pointers to prevent double-free.
-      // server_connection_set_transport() now owns the transport, so context must not destroy it.
-      connection_ctx.tcp_transport = NULL;
-      connection_ctx.active_transport = NULL;
-    } else {
-      log_error("Connection succeeded but no active transport - this should never happen");
-      continue; // Retry connection
-    }
-
-    // Show appropriate connection message based on whether this is first connection or reconnection
-    if (!has_ever_connected) {
-      log_info("Connected");
-      has_ever_connected = true;
-    } else {
-      log_info("Reconnected");
-    }
-
-    // Start all worker threads for this connection
-    if (protocol_start_connection() != 0) {
-      log_error("Failed to start connection protocols");
-
-      // Stop any threads that were started before the failure.
-      // protocol_start_connection() may fail partway through after spawning some threads
-      // (e.g., data reception thread spawned, but webcam capture failed)
-      // We MUST stop these threads before closing the connection to prevent them from
-      // interfering with the next connection attempt
-      protocol_stop_connection();
-      server_connection_close();
-
-      // In snapshot mode, exit immediately on protocol failure - no retries
-      if (GET_OPTION(snapshot_mode)) {
-        log_error("Protocol startup failed in snapshot mode - exiting without retry");
-        return 1;
-      }
-
-      continue;
-    }
-
-    // Terminal logging is now disabled - ASCII display can begin cleanly
-    // Don't clear terminal here - let the first frame handler clear it
-    // This prevents clearing the terminal before we're ready to display content
-
-    /* ====================================================================
-     * Connection Monitoring Loop
-     * ====================================================================
-     */
-
-    // Monitor connection health until it breaks or shutdown is requested
-    while (!should_exit() && server_connection_is_active()) {
-      // Check if any critical threads have exited (indicates connection lost)
-      if (protocol_connection_lost()) {
-        log_debug("Connection lost detected by protocol threads");
-        break;
-      }
-
-      platform_sleep_us(100 * 1000); // 0.1 second monitoring interval
-    }
-
-    if (should_exit()) {
-      log_debug("Shutdown requested, exiting main loop");
-      break;
-    }
-
-    // Connection broken - clean up this connection and prepare for reconnect
-    log_debug("Connection lost, cleaning up for reconnection");
-
-    protocol_stop_connection();
-    server_connection_close();
-
-    // Destroy and recreate thread pool to ensure clean thread state for reconnection
-    // The old thread pool may have stale thread references that interfere with new connections
-    if (g_client_worker_pool) {
-      thread_pool_destroy(g_client_worker_pool);
-      g_client_worker_pool = NULL;
-      log_debug("Destroyed client worker thread pool for reconnection");
-    }
-
-    // Recreate thread pool for next connection
-    g_client_worker_pool = thread_pool_create("client_reconnect");
-    if (!g_client_worker_pool) {
-      log_error("Failed to recreate client worker thread pool for reconnection");
-      return 1;
-    }
-    log_debug("Recreated client worker thread pool for reconnection");
-
-    // Cleanup connection context to release old transports/sockets before reconnecting
-    // This prevents socket conflicts and "Bad file descriptor" errors on reconnection
-    connection_context_cleanup(&connection_ctx);
-
-    // Re-initialize connection context for next reconnection attempt
-    memset(&connection_ctx, 0, sizeof(connection_ctx));
-    asciichat_error_t reinit_result = connection_context_init(&connection_ctx);
-    if (reinit_result != ASCIICHAT_OK) {
-      log_error("Failed to re-initialize connection context for reconnection");
-      return 1;
-    }
-
-    // Restart splash screen to show reconnection status
-    // Logs (reconnection attempts) will display below splash
-    // Keep terminal logging disabled - splash will display the logs
-    if (has_ever_connected && !GET_OPTION(quiet)) {
-      splash_intro_start(NULL);
-    }
-
-    // In snapshot mode, exit immediately on connection loss - no reconnection
-    // Snapshot mode is for quick single-frame captures, not persistent connections
-    if (GET_OPTION(snapshot_mode)) {
-      log_error("Connection lost in snapshot mode - exiting without reconnection");
-      return 1;
-    }
-
-    // Add a brief delay before attempting reconnection to prevent excessive reconnection loops
-    if (has_ever_connected) {
-      log_debug("Waiting 1 second before attempting reconnection...");
-      platform_sleep_us(1000000); // 1 second delay
-    }
-
-    log_debug("Cleanup complete, will attempt reconnection");
-  }
-
-  // Cleanup connection context (closes any active transports)
-  connection_context_cleanup(&connection_ctx);
-
-  // Cleanup session log buffer (used by splash screen)
+  // Cleanup session log buffer (used by splash screen in session_client_like)
   session_log_buffer_destroy();
 
   log_debug("ascii-chat client shutting down");
@@ -972,5 +807,5 @@ int client_main(void) {
   // but won't run if interrupted by signals (SIGTERM from timeout/killall)
   asciichat_shared_destroy();
 
-  return 0;
+  return (session_result == ASCIICHAT_OK) ? 0 : 1;
 }

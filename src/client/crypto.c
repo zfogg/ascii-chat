@@ -184,6 +184,19 @@
  */
 static bool g_crypto_initialized = false;
 static static_mutex_t g_crypto_init_mutex = STATIC_MUTEX_INIT;
+static uint8_t g_crypto_mode = ACIP_CRYPTO_ENCRYPT; // Default: encrypt only, no authentication
+
+/**
+ * Set crypto mode for handshake (encryption + authentication)
+ *
+ * @param mode Crypto mode bitmask (ACIP_CRYPTO_*)
+ *
+ * @ingroup client_crypto
+ */
+void client_crypto_set_mode(uint8_t mode) {
+  log_debug("CLIENT_CRYPTO: Setting crypto mode to 0x%02x", mode);
+  g_crypto_mode = mode;
+}
 
 /**
  * Initialize client crypto handshake
@@ -355,7 +368,7 @@ int client_crypto_init(void) {
     acds_client_config_init_defaults(&acds_config);
     SAFE_STRNCPY(acds_config.server_address, GET_OPTION(discovery_server), sizeof(acds_config.server_address));
     acds_config.server_port = GET_OPTION(discovery_port);
-    acds_config.timeout_ms = 5000;
+    acds_config.timeout_ms = 5 * MS_PER_SEC_INT;
 
     // ACDS key verification (optional in debug builds, only if --discovery-service-key is provided)
     if (strlen(GET_OPTION(discovery_service_key)) > 0) {
@@ -452,7 +465,7 @@ int client_crypto_handshake(socket_t socket) {
   protocol_version_packet_t client_version = {0};
   client_version.protocol_version = HOST_TO_NET_U16(1);  // Protocol version 1
   client_version.protocol_revision = HOST_TO_NET_U16(0); // Revision 0
-  client_version.supports_encryption = 1;                // We support encryption
+  client_version.supports_encryption = g_crypto_mode;    // Send crypto mode bitmask
   client_version.compression_algorithms = 0;             // No compression for now
   client_version.compression_threshold = 0;
   client_version.feature_flags = 0;
@@ -500,12 +513,14 @@ int client_crypto_handshake(socket_t socket) {
   // Convert from network byte order
   uint16_t server_proto_version = NET_TO_HOST_U16(server_version.protocol_version);
   uint16_t server_proto_revision = NET_TO_HOST_U16(server_version.protocol_revision);
+  uint8_t server_mode = server_version.supports_encryption;
 
-  log_info("Server protocol version: %u.%u (encryption: %s)", server_proto_version, server_proto_revision,
-           server_version.supports_encryption ? "yes" : "no");
+  log_info("Server protocol version: %u.%u (crypto mode: 0x%02x)", server_proto_version, server_proto_revision,
+           server_mode);
 
-  if (!server_version.supports_encryption) {
-    log_error("Server does not support encryption");
+  // Verify server echoed our mode
+  if (server_mode != g_crypto_mode) {
+    log_error("Server mode mismatch: got 0x%02x, expected 0x%02x", server_mode, g_crypto_mode);
     STOP_TIMER("client_crypto_handshake");
     return CONNECTION_ERROR_AUTH_FAILED;
   }
@@ -515,11 +530,12 @@ int client_crypto_handshake(socket_t socket) {
   crypto_capabilities_packet_t client_caps = {0};
   client_caps.supported_kex_algorithms = HOST_TO_NET_U16(KEX_ALGO_X25519);
   client_caps.supported_auth_algorithms = HOST_TO_NET_U16(AUTH_ALGO_ED25519 | AUTH_ALGO_NONE);
-  client_caps.supported_cipher_algorithms = HOST_TO_NET_U16(CIPHER_ALGO_XSALSA20_POLY1305);
+  client_caps.supported_cipher_algorithms = HOST_TO_NET_U16(CIPHER_ALGO_XSALSA20_POLY1305 | CIPHER_ALGO_NONE);
   client_caps.requires_verification = 0; // Client doesn't require server verification (uses known_hosts)
   client_caps.preferred_kex = KEX_ALGO_X25519;
-  client_caps.preferred_auth = AUTH_ALGO_ED25519;
-  client_caps.preferred_cipher = CIPHER_ALGO_XSALSA20_POLY1305;
+  client_caps.preferred_auth = ACIP_CRYPTO_HAS_AUTH(g_crypto_mode) ? AUTH_ALGO_ED25519 : AUTH_ALGO_NONE;
+  client_caps.preferred_cipher =
+      ACIP_CRYPTO_HAS_ENCRYPT(g_crypto_mode) ? CIPHER_ALGO_XSALSA20_POLY1305 : CIPHER_ALGO_NONE;
 
   result = send_crypto_capabilities_packet(socket, &client_caps);
   if (result != 0) {
@@ -589,8 +605,15 @@ int client_crypto_handshake(socket_t socket) {
     return CONNECTION_ERROR_AUTH_FAILED;
   }
 
-  if (server_params.selected_cipher != CIPHER_ALGO_XSALSA20_POLY1305) {
+  // Validate cipher selection based on negotiated mode
+  bool expect_cipher = ACIP_CRYPTO_HAS_ENCRYPT(g_crypto_mode);
+  if (expect_cipher && server_params.selected_cipher != CIPHER_ALGO_XSALSA20_POLY1305) {
     log_error("Server selected unsupported cipher algorithm: %u", server_params.selected_cipher);
+    STOP_TIMER("client_crypto_handshake");
+    return CONNECTION_ERROR_AUTH_FAILED;
+  }
+  if (!expect_cipher && server_params.selected_cipher != CIPHER_ALGO_NONE) {
+    log_error("Server chose cipher %u but client requested no encryption", server_params.selected_cipher);
     STOP_TIMER("client_crypto_handshake");
     return CONNECTION_ERROR_AUTH_FAILED;
   }
@@ -700,6 +723,8 @@ int client_crypto_handshake(socket_t socket) {
 
   // Check if handshake completed during auth response (no authentication needed)
   if (g_crypto_ctx.state == CRYPTO_HANDSHAKE_READY) {
+    // Propagate encryption flag to crypto context
+    g_crypto_ctx.crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(g_crypto_mode);
     STOP_TIMER_AND_LOG(debug, 100 * NS_PER_MS_INT, "client_crypto_handshake",
                        "Crypto handshake completed successfully (no authentication)");
     return 0;
@@ -711,6 +736,9 @@ int client_crypto_handshake(socket_t socket) {
   if (result != ASCIICHAT_OK) {
     FATAL(result, "Crypto handshake completion failed");
   }
+
+  // Propagate encryption flag to crypto context
+  g_crypto_ctx.crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(g_crypto_mode);
 
   STOP_TIMER_AND_LOG(debug, 100 * NS_PER_MS_INT, "client_crypto_handshake", "Crypto handshake completed successfully");
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Handshake completed successfully, state=%d", g_crypto_ctx.state);

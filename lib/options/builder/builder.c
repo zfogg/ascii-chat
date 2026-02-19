@@ -1664,8 +1664,14 @@ static asciichat_error_t options_config_parse_unified(const options_config_t *co
     }
 
     // If we've seen `--` or arg doesn't look like a flag, treat as positional
-    if (end_of_options || !is_flag_argument(arg)) {
+    // EXCEPT: skip mode keywords since mode has already been detected
+    if (end_of_options || (!is_flag_argument(arg) && !is_mode_keyword(arg))) {
       positional_args[positional_count++] = argv[i];
+      continue;
+    }
+
+    // Skip mode keywords - they're not options to parse
+    if (is_mode_keyword(arg)) {
       continue;
     }
 

@@ -42,7 +42,7 @@
 
 #include <stdbool.h>
 #include <ascii-chat/thread_pool.h>
-#include <ascii-chat/network/tcp/client.h>
+#include <ascii-chat/network/client.h>
 #include <ascii-chat/crypto/handshake/common.h>
 
 /**
@@ -70,26 +70,26 @@ extern crypto_handshake_context_t g_crypto_ctx;
 extern thread_pool_t *g_client_worker_pool;
 
 /**
- * @brief Global TCP client instance
+ * @brief Global client application context
  *
- * Central connection and state management structure for the client.
- * Replaces scattered global variables from server.c, protocol.c, audio.c, etc.
- * Follows the same pattern as tcp_server_t used by the server.
+ * Central state management structure for the client, containing both
+ * network and application-layer state.
  *
  * This instance provides:
- * - Connection state management (socket, server address, client ID)
- * - Thread-safe packet transmission with mutex protection
+ * - Connection state management via active_transport (TCP or WebSocket)
  * - Audio queue management for async audio streaming
+ * - Thread handles for worker threads (data reception, capture, ping, audio)
+ * - Display state and terminal capability tracking
  * - Crypto handshake context for encrypted connections
- * - Terminal capability tracking for rendering
+ * - Protocol state (client ID, server initialization status)
  *
- * Initialized by tcp_client_create() in client_main().
- * Destroyed by tcp_client_destroy() at cleanup.
+ * Initialized by app_client_create() in client_main().
+ * Destroyed by app_client_destroy() at cleanup.
  *
- * All client modules (server.c, protocol.c, audio.c, capture.c, display.c)
+ * All client modules (protocol.c, audio.c, capture.c, display.c)
  * should use this instance instead of accessing global connection state.
  */
-extern tcp_client_t *g_client;
+extern app_client_t *g_client;
 
 /**
  * @brief Global WebRTC peer manager for P2P connections
@@ -124,21 +124,3 @@ extern struct webrtc_peer_manager *g_peer_manager;
  * @endcode
  */
 int client_main(void);
-
-/**
- * @brief Check if client should exit
- *
- * Thread-safe check of the global exit flag. Used by all client threads
- * to coordinate graceful shutdown.
- *
- * @return true if exit signal received, false otherwise
- */
-bool should_exit(void);
-
-/**
- * @brief Signal client to exit
- *
- * Sets the global exit flag to trigger graceful shutdown of all client
- * threads. Thread-safe and can be called from signal handlers.
- */
-void signal_exit(void);

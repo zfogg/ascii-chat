@@ -43,13 +43,13 @@ if(WIN32)
 endif()
 
 # =============================================================================
-# macOS Release: Build FFmpeg from source when ASCIICHAT_SHARED_DEPS is OFF
+# Release builds: Build FFmpeg from source when ASCIICHAT_SHARED_DEPS is OFF
 # =============================================================================
-# Homebrew's FFmpeg links against codec libraries (svt-av1, dav1d) that don't
-# have static versions available. To create a truly portable binary, we build
-# FFmpeg from source with only built-in codecs (no external codec dependencies).
+# For portable Release builds (non-musl), compile FFmpeg from source with only
+# built-in codecs (no external codec dependencies like svt-av1, dav1d, x264, x265, etc.)
+# Musl builds always compile everything from source via MuslDependencies.cmake
 # =============================================================================
-if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
     include(ProcessorCount)
     ProcessorCount(NPROC)
     if(NPROC EQUAL 0)
@@ -116,6 +116,13 @@ if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
             message(STATUS "  Architecture: ${CMAKE_SYSTEM_PROCESSOR}")
         endif()
 
+        # Platform-specific hardware acceleration flags
+        if(APPLE)
+            set(FFMPEG_HWACCEL_FLAGS --enable-videotoolbox --enable-audiotoolbox)
+        else()
+            set(FFMPEG_HWACCEL_FLAGS --disable-videotoolbox --disable-audiotoolbox)
+        endif()
+
         # Pass through optimization flags for FFmpeg
         # Note: FFmpeg has issues with ThinLTO on macOS (stack probing conflicts),
         # so we use standard optimizations instead. The main binary still uses LTO.
@@ -136,8 +143,7 @@ if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
                 --disable-txtpages
                 --disable-debug
                 --disable-autodetect
-                --enable-videotoolbox
-                --enable-audiotoolbox
+                ${FFMPEG_HWACCEL_FLAGS}
                 --enable-protocol=file
                 --enable-demuxer=mov,matroska,avi,gif,image2,mp3,wav,flac,ogg
                 --enable-decoder=h264,hevc,vp8,vp9,av1,mpeg4,png,gif,mjpeg,mp3,aac,flac,vorbis,opus,pcm_s16le
@@ -213,7 +219,7 @@ if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
     # Set FFMPEG_LINK_LIBRARIES for target_link_libraries
     set(FFMPEG_LINK_LIBRARIES ${FFMPEG_LIBRARIES})
 
-    message(STATUS "${BoldGreen}✓${ColorReset} FFmpeg configured (macOS static from source):")
+    message(STATUS "${BoldGreen}✓${ColorReset} FFmpeg configured (static from source):")
     message(STATUS "  - libavformat: ${FFMPEG_PREFIX}/lib/libavformat.a")
     message(STATUS "  - libavcodec: ${FFMPEG_PREFIX}/lib/libavcodec.a")
     message(STATUS "  - libavutil: ${FFMPEG_PREFIX}/lib/libavutil.a")

@@ -23,6 +23,7 @@
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/thread_pool.h>
 #include <ascii-chat/util/ip.h>
+#include <ascii-chat/util/time.h>
 
 /**
  * @brief Bind and listen on a TCP socket
@@ -187,7 +188,7 @@ asciichat_error_t tcp_server_run(tcp_server_t *server) {
     // Convert double seconds to tv_sec and tv_usec
     double timeout_sec_double = server->config.accept_timeout_sec > 0 ? server->config.accept_timeout_sec : 1.0;
     time_t timeout_sec = (time_t)timeout_sec_double;
-    long timeout_usec = (long)((timeout_sec_double - timeout_sec) * 1000000);
+    long timeout_usec = (long)((timeout_sec_double - timeout_sec) * (double)US_PER_SEC_INT);
     struct timeval timeout = {.tv_sec = timeout_sec, .tv_usec = timeout_usec};
 
     int select_result = socket_select((int)(max_fd + 1), &read_fds, NULL, NULL, &timeout);

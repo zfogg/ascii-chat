@@ -57,6 +57,7 @@
 
 #include "server.h"
 #include "main.h"
+#include "../main.h" // Global exit API
 #include "crypto.h"
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/crypto/handshake/common.h>
@@ -70,6 +71,8 @@
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/ip.h>
+#include <ascii-chat/util/time.h>
+#include <ascii-chat/util/url.h> // For WebSocket URL detection
 #include <ascii-chat/common.h>
 #include "display.h"
 #include <ascii-chat/options/options.h>
@@ -225,7 +228,7 @@ static unsigned int get_reconnect_delay(unsigned int reconnect_attempt) {
   // Use integer arithmetic for microsecond calculations
   // Initial delay: 100,000 us (0.1 seconds)
   // Additional delay per attempt: 200,000 us (0.2 seconds)
-  unsigned int delay_us = 100000 + (reconnect_attempt - 1) * 200000;
+  unsigned int delay_us = 100 * US_PER_MS_INT + (reconnect_attempt - 1) * 200 * US_PER_MS_INT;
   if (delay_us > MAX_RECONNECT_DELAY)
     delay_us = MAX_RECONNECT_DELAY;
   return delay_us;
@@ -257,7 +260,7 @@ static int close_socket(socket_t socketfd) {
 
     // Small delay to ensure socket resources are fully released
     // This prevents WSA error 10038 on subsequent connections
-    platform_sleep_us(50000); // 50ms delay
+    platform_sleep_us(50 * US_PER_MS_INT); // 50ms delay
 
     return 0;
   }
@@ -344,18 +347,26 @@ int server_connection_establish(const char *address, int port, int reconnect_att
   }
 
   // Check for WebSocket URL - handle separately from TCP
-  bool is_websocket = (strncmp(address, "ws://", 5) == 0 || strncmp(address, "wss://", 6) == 0);
-  if (is_websocket) {
+  if (url_is_websocket(address)) {
     // WebSocket connection - bypass TCP socket creation
-    char ws_url[512];
-    snprintf(ws_url, sizeof(ws_url), "%s:%d", address, port);
-    log_info("Connecting via WebSocket: %s", ws_url);
+    // Use the original address (URL already contains port if specified)
+    const char *ws_url = address;
+
+    // Parse for debug logging
+    url_parts_t url_parts = {0};
+    if (url_parse(address, &url_parts) == ASCIICHAT_OK) {
+      log_info("Connecting via WebSocket: %s (scheme=%s, host=%s, port=%d)", ws_url, url_parts.scheme, url_parts.host,
+               url_parts.port);
+    } else {
+      log_info("Connecting via WebSocket: %s", ws_url);
+    }
 
     // Initialize crypto if encryption is enabled
     log_debug("CLIENT_CONNECT: Calling client_crypto_init()");
     if (client_crypto_init() != 0) {
       log_error("Failed to initialize crypto (password required or incorrect)");
       log_debug("CLIENT_CONNECT: client_crypto_init() failed");
+      url_parts_destroy(&url_parts);
       return CONNECTION_ERROR_AUTH_FAILED;
     }
 
@@ -366,6 +377,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     g_client_transport = acip_websocket_client_transport_create(ws_url, (crypto_context_t *)crypto_ctx);
     if (!g_client_transport) {
       log_error("Failed to create WebSocket ACIP transport");
+      url_parts_destroy(&url_parts);
       return -1;
     }
     log_debug("CLIENT_CONNECT: Created WebSocket ACIP transport with crypto context");
@@ -380,6 +392,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
       log_error("Failed to send initial capabilities to server: %s", network_error_string());
       acip_transport_destroy(g_client_transport);
       g_client_transport = NULL;
+      url_parts_destroy(&url_parts);
       return -1;
     }
 
@@ -411,10 +424,12 @@ int server_connection_establish(const char *address, int port, int reconnect_att
       log_error("Failed to send client join packet: %s", network_error_string());
       acip_transport_destroy(g_client_transport);
       g_client_transport = NULL;
+      url_parts_destroy(&url_parts);
       return -1;
     }
 
     log_info("WebSocket connection established successfully");
+    url_parts_destroy(&url_parts);
     return 0;
   }
 

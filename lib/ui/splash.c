@@ -410,10 +410,17 @@ static void *splash_animation_thread(void *arg) {
   const int anim_speed = 100; // milliseconds per frame
 
   while (!atomic_load(&g_splash_state.should_stop) && !shutdown_is_requested()) {
-    // Poll keyboard for interactive grep
+    // Poll keyboard for interactive grep and Escape to cancel
     if (keyboard_enabled) {
       keyboard_key_t key = keyboard_read_nonblocking();
-      if (key != KEY_NONE && interactive_grep_should_handle(key)) {
+      if (key == KEY_ESCAPE) {
+        // Escape key: cancel grep if active, otherwise cancel splash
+        if (interactive_grep_is_active()) {
+          interactive_grep_exit_mode(false); // Cancel grep without applying
+        } else {
+          atomic_store(&g_splash_state.should_stop, true); // Exit splash screen
+        }
+      } else if (key != KEY_NONE && interactive_grep_should_handle(key)) {
         interactive_grep_handle_key(key);
         // Continue to render immediately with grep active
       }

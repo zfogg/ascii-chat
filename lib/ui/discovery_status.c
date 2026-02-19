@@ -66,8 +66,8 @@ void discovery_status_display(const discovery_status_t *status) {
   // Calculate uptime
   time_t now = time(NULL);
   time_t uptime_secs = now - status->start_time;
-  int uptime_hours = uptime_secs / 3600;
-  int uptime_mins = (uptime_secs % 3600) / 60;
+  int uptime_hours = uptime_secs / SEC_PER_HOUR;
+  int uptime_mins = (uptime_secs % SEC_PER_HOUR) / SEC_PER_MIN;
   int uptime_secs_rem = uptime_secs % 60;
 
   // Clear screen and move to home position

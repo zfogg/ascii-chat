@@ -88,7 +88,7 @@ static asciichat_error_t tcp_send(acip_transport_t *transport, const void *data,
 
   // Check if encryption is needed
   bool should_encrypt = false;
-  if (transport->crypto_ctx && crypto_is_ready(transport->crypto_ctx)) {
+  if (transport->crypto_ctx && transport->crypto_ctx->encrypt_data && crypto_is_ready(transport->crypto_ctx)) {
     // Handshake packets are ALWAYS sent unencrypted
     if (!packet_is_handshake_type((packet_type_t)packet_type)) {
       should_encrypt = true;
@@ -146,7 +146,7 @@ static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, si
 
   // Use secure packet receive with envelope
   packet_envelope_t envelope;
-  bool enforce_encryption = (transport->crypto_ctx != NULL);
+  bool enforce_encryption = (transport->crypto_ctx != NULL && transport->crypto_ctx->encrypt_data);
   packet_recv_result_t result =
       receive_packet_secure(tcp->sockfd, transport->crypto_ctx, enforce_encryption, &envelope);
 

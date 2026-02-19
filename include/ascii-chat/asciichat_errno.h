@@ -10,8 +10,6 @@
 
 // Platform-specific includes - must be first
 #include "common.h"
-// Include logging.h for log_error macro used in SET_ERRNO
-#include "log/logging.h"
 
 /**
  * @file asciichat_errno.h
@@ -141,6 +139,9 @@ typedef struct {
  *
  * @ingroup errno
  */
+
+/* Include logging early before extern "C" to avoid C++ headers inside extern "C" */
+#include "log/logging.h"
 
 #ifdef __cplusplus
 extern "C" {

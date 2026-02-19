@@ -340,10 +340,39 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   build_help_line(line_buf, sizeof(line_buf), "r       Cycle render mode");
   APPEND("%s", line_buf);
 
+#ifndef NDEBUG
+  APPEND("\033[%d;%dH", start_row + 14, start_col + 1);
+  build_help_line(line_buf, sizeof(line_buf), "Ctrl+L  Print held lock state");
+  APPEND("%s", line_buf);
+
+  // Blank line before settings section
+  APPEND("\033[%d;%dH", start_row + 15, start_col + 1);
+  build_help_line(line_buf, sizeof(line_buf), "");
+  APPEND("%s", line_buf);
+
+  // Current settings section (adjusted row numbers for Ctrl+L line)
+  APPEND("\033[%d;%dH", start_row + 16, start_col + 1);
+  build_help_line(line_buf, sizeof(line_buf), "Current Settings:");
+  APPEND("%s", line_buf);
+
+  APPEND("\033[%d;%dH", start_row + 17, start_col + 1);
+  build_help_line(line_buf, sizeof(line_buf), "───────────────");
+  APPEND("%s", line_buf);
+#else
   // Blank line before settings section
   APPEND("\033[%d;%dH", start_row + 14, start_col + 1);
   build_help_line(line_buf, sizeof(line_buf), "");
   APPEND("%s", line_buf);
+
+  // Current settings section
+  APPEND("\033[%d;%dH", start_row + 15, start_col + 1);
+  build_help_line(line_buf, sizeof(line_buf), "Current Settings:");
+  APPEND("%s", line_buf);
+
+  APPEND("\033[%d;%dH", start_row + 16, start_col + 1);
+  build_help_line(line_buf, sizeof(line_buf), "───────────────");
+  APPEND("%s", line_buf);
+#endif
 
   // Current settings section
   APPEND("\033[%d;%dH", start_row + 15, start_col + 1);
@@ -387,6 +416,41 @@ void session_display_render_help(session_display_ctx_t *ctx) {
       current_audio ? colored_string(ENABLED_COLOR, "Enabled") : colored_string(DISABLED_COLOR, "Disabled");
 
   // Build settings lines with UTF-8 width-aware padding (ordered to match keybinds: m, ↑/↓, c, r, f)
+#ifndef NDEBUG
+  APPEND("\033[%d;%dH", start_row + 18, start_col + 1);
+  build_settings_line(line_buf, sizeof(line_buf), "Audio", audio_text);
+  APPEND("%s", line_buf);
+
+  APPEND("\033[%d;%dH", start_row + 19, start_col + 1);
+  build_settings_line(line_buf, sizeof(line_buf), "Volume", volume_bar);
+  APPEND("%s", line_buf);
+
+  APPEND("\033[%d;%dH", start_row + 20, start_col + 1);
+  build_settings_line(line_buf, sizeof(line_buf), "Color", color_str);
+  APPEND("%s", line_buf);
+
+  APPEND("\033[%d;%dH", start_row + 21, start_col + 1);
+  build_settings_line(line_buf, sizeof(line_buf), "Render", render_str);
+  APPEND("%s", line_buf);
+
+  APPEND("\033[%d;%dH", start_row + 22, start_col + 1);
+  build_settings_line(line_buf, sizeof(line_buf), "Flip", flip_text);
+  APPEND("%s", line_buf);
+
+  // Blank line before footer
+  APPEND("\033[%d;%dH", start_row + 23, start_col + 1);
+  build_help_line(line_buf, sizeof(line_buf), "");
+  APPEND("%s", line_buf);
+
+  // Footer
+  APPEND("\033[%d;%dH", start_row + 24, start_col + 1);
+  build_help_line(line_buf, sizeof(line_buf), "Press ? to close");
+  APPEND("%s", line_buf);
+
+  // Bottom border
+  APPEND("\033[%d;%dH", start_row + 25, start_col + 1);
+  APPEND("╚══════════════════════════════════════════════╝");
+#else
   APPEND("\033[%d;%dH", start_row + 17, start_col + 1);
   build_settings_line(line_buf, sizeof(line_buf), "Audio", audio_text);
   APPEND("%s", line_buf);
@@ -420,9 +484,14 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   // Bottom border
   APPEND("\033[%d;%dH", start_row + 24, start_col + 1);
   APPEND("╚══════════════════════════════════════════════╝");
+#endif
 
   // Cursor positioning after rendering
+#ifndef NDEBUG
+  APPEND("\033[%d;%dH", start_row + 26, start_col + 1);
+#else
   APPEND("\033[%d;%dH", start_row + 25, start_col + 1);
+#endif
 
 #undef APPEND
 

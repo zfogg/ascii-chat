@@ -39,32 +39,23 @@
  * @param console_only Applied-to-console-only flag
  * @return Compiled format, or NULL on error
  */
-static log_format_t *parse_format_string(const char *format_str, bool console_only) {
+static log_template_t *parse_format_string(const char *format_str, bool console_only) {
   if (!format_str) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid format string: %s", format_str);
     return NULL;
   }
 
-  /* Validate UTF-8 in format string */
   if (!utf8_is_valid(format_str)) {
-    log_error("Invalid UTF-8 in log format string");
+    SET_ERRNO(ERROR_INVALID_STATE, "Invalid UTF-8 in log format string");
     return NULL;
   }
 
-  log_format_t *result = SAFE_CALLOC(1, sizeof(log_format_t), log_format_t *);
-  if (!result) {
-    return NULL;
-  }
-
+  log_template_t *result = SAFE_CALLOC(1, sizeof(log_template_t), log_template_t *);
   result->original = SAFE_MALLOC(strlen(format_str) + 1, char *);
-  if (!result->original) {
-    SAFE_FREE(result);
-    return NULL;
-  }
   strcpy(result->original, format_str);
   result->console_only = console_only;
 
-  /* Pre-allocate spec array (worst case: every char is a specifier)
-   * Use CALLOC to zero-initialize to ensure all fields are NULL/0 */
+  /* Pre-allocate spec array (worst case: every char is a specifier) */
   result->specs = SAFE_CALLOC(strlen(format_str) + 1, sizeof(log_format_spec_t), log_format_spec_t *);
   if (!result->specs) {
     SAFE_FREE(result->original);
@@ -182,6 +173,14 @@ static log_format_t *parse_format_string(const char *format_str, bool console_on
           result->specs[spec_idx].type = LOG_FORMAT_COLORED_MESSAGE;
           spec_idx++;
           p += 15;
+        } else if (strncmp(p, "ms", 2) == 0) {
+          result->specs[spec_idx].type = LOG_FORMAT_MICROSECONDS;
+          spec_idx++;
+          p += 2;
+        } else if (strncmp(p, "ns", 2) == 0) {
+          result->specs[spec_idx].type = LOG_FORMAT_NANOSECONDS;
+          spec_idx++;
+          p += 2;
         } else if (strncmp(p, "message", 7) == 0) {
           result->specs[spec_idx].type = LOG_FORMAT_MESSAGE;
           spec_idx++;
@@ -227,9 +226,34 @@ static log_format_t *parse_format_string(const char *format_str, bool console_on
           spec_idx++;
           p++; /* Skip closing paren */
         } else {
-          /* Unknown specifier */
-          log_error("Unknown format specifier: %%%s", p);
-          goto cleanup;
+          /* Unknown ascii-chat specifier - treat as strftime format code and pass to strftime
+           * This allows strftime formats like %H, %M, %S, %A, %B, etc. to work
+           * without needing custom parsing for each one. strftime will handle validation. */
+          const char *fmt_start = p;
+          size_t fmt_len = 0;
+
+          /* Collect the format code (usually 1-2 chars, but allow flexibility) */
+          while (*p && *p != '%' && *p != '\\' && fmt_len < 8) {
+            p++;
+            fmt_len++;
+          }
+
+          if (fmt_len == 0) {
+            log_error("Empty format specifier: %%");
+            goto cleanup;
+          }
+
+          result->specs[spec_idx].type = LOG_FORMAT_STRFTIME_CODE;
+          result->specs[spec_idx].literal = SAFE_MALLOC(fmt_len + 1, char *);
+          if (!result->specs[spec_idx].literal) {
+            goto cleanup;
+          }
+          memcpy(result->specs[spec_idx].literal, fmt_start, fmt_len);
+          result->specs[spec_idx].literal[fmt_len] = '\0';
+          result->specs[spec_idx].literal_len = fmt_len;
+
+          spec_idx++;
+          /* p already advanced in the while loop above */
         }
       }
     } else {
@@ -258,16 +282,17 @@ static log_format_t *parse_format_string(const char *format_str, bool console_on
   return result;
 
 cleanup:
-  log_format_free(result);
+  log_template_free(result);
   return NULL;
 }
 
-log_format_t *log_format_parse(const char *format_str, bool console_only) {
+log_template_t *log_template_parse(const char *format_str, bool console_only) {
   return parse_format_string(format_str, console_only);
 }
 
-void log_format_free(log_format_t *format) {
+void log_template_free(log_template_t *format) {
   if (!format) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "null format");
     return;
   }
 
@@ -403,30 +428,33 @@ static log_color_t parse_color_level(const char *level_name, log_level_t current
  * @param tid Thread ID
  * @param message Log message text
  * @param use_colors If true, apply ANSI color codes
+ * @param time_nanoseconds Raw wall-clock time in nanoseconds
  * @return Number of characters written (excluding null terminator), or -1 on error
  */
 static int render_format_content(const char *content, char *buf, size_t buf_size, log_level_t level,
                                  const char *timestamp, const char *file, int line, const char *func, uint64_t tid,
-                                 const char *message, bool use_colors) {
+                                 const char *message, bool use_colors, uint64_t time_nanoseconds) {
   if (!content || !buf || buf_size == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments: content=%p, buf=%p, buf_size=%zu", content, buf, buf_size);
     return -1;
   }
 
   /* Parse content as a format string and apply it */
-  log_format_t *content_format = log_format_parse(content, false);
+  log_template_t *content_format = log_template_parse(content, false);
   if (!content_format) {
     return -1;
   }
 
-  int written =
-      log_format_apply(content_format, buf, buf_size, level, timestamp, file, line, func, tid, message, use_colors);
-  log_format_free(content_format);
+  int written = log_template_apply(content_format, buf, buf_size, level, timestamp, file, line, func, tid, message,
+                                   use_colors, time_nanoseconds);
+  log_template_free(content_format);
 
   return written;
 }
 
-int log_format_apply(const log_format_t *format, char *buf, size_t buf_size, log_level_t level, const char *timestamp,
-                     const char *file, int line, const char *func, uint64_t tid, const char *message, bool use_colors) {
+int log_template_apply(const log_template_t *format, char *buf, size_t buf_size, log_level_t level,
+                       const char *timestamp, const char *file, int line, const char *func, uint64_t tid,
+                       const char *message, bool use_colors, uint64_t time_nanoseconds) {
   if (!format || !buf || buf_size == 0) {
     return -1;
   }
@@ -496,6 +524,51 @@ int log_format_apply(const log_format_t *format, char *buf, size_t buf_size, log
       written = safe_snprintf(p, remaining + 1, "%llu", (unsigned long long)tid);
       break;
 
+    case LOG_FORMAT_MICROSECONDS: {
+      /* Extract microseconds from nanoseconds (ns_value % 1_000_000_000 / 1000) */
+      long nanoseconds = (long)(time_nanoseconds % NS_PER_SEC_INT);
+      long microseconds = nanoseconds / 1000;
+      if (microseconds < 0)
+        microseconds = 0;
+      if (microseconds > 999999)
+        microseconds = 999999;
+      written = safe_snprintf(p, remaining + 1, "%06ld", microseconds);
+      break;
+    }
+
+    case LOG_FORMAT_NANOSECONDS: {
+      /* Extract nanoseconds component (ns_value % 1_000_000_000) */
+      long nanoseconds = (long)(time_nanoseconds % NS_PER_SEC_INT);
+      if (nanoseconds < 0)
+        nanoseconds = 0;
+      if (nanoseconds > 999999999)
+        nanoseconds = 999999999;
+      written = safe_snprintf(p, remaining + 1, "%09ld", nanoseconds);
+      break;
+    }
+
+    case LOG_FORMAT_STRFTIME_CODE: {
+      /* strftime format code (like %H, %M, %S, %A, %B, etc.)
+       * Let strftime handle all the parsing and validation */
+      if (spec->literal) {
+        /* Construct format string with % prefix */
+        size_t fmt_len = spec->literal_len + 1;
+        char *format_str = SAFE_MALLOC(fmt_len + 1, char *);
+        if (format_str) {
+          format_str[0] = '%';
+          memcpy(format_str + 1, spec->literal, spec->literal_len);
+          format_str[fmt_len] = '\0';
+          written = time_format_now(format_str, p, remaining + 1);
+          if (written <= 0) {
+            log_debug("time_format_now failed for format code: %s", format_str);
+            written = 0;
+          }
+          SAFE_FREE(format_str);
+        }
+      }
+      break;
+    }
+
     case LOG_FORMAT_MESSAGE:
       if (message) {
         written = safe_snprintf(p, remaining + 1, "%s", message);
@@ -530,7 +603,7 @@ int log_format_apply(const log_format_t *format, char *buf, size_t buf_size, log
       const char *comma_pos = strchr(spec->literal, ',');
       if (!comma_pos) {
         /* Invalid format - no comma found */
-        log_debug("log_format_apply: %%color format missing comma in: %s", spec->literal);
+        log_debug("log_template_apply: %%color format missing comma in: %s", spec->literal);
         written = 0;
         break;
       }
@@ -558,7 +631,7 @@ int log_format_apply(const log_format_t *format, char *buf, size_t buf_size, log
       /* Render content recursively */
       char content_buf[512];
       int content_len = render_format_content(content_start, content_buf, sizeof(content_buf), level, timestamp, file,
-                                              line, func, tid, message, use_colors);
+                                              line, func, tid, message, use_colors, time_nanoseconds);
 
       if (content_len < 0 || content_len >= (int)sizeof(content_buf)) {
         written = 0;
@@ -593,7 +666,7 @@ int log_format_apply(const log_format_t *format, char *buf, size_t buf_size, log
 
     if ((size_t)written > remaining) {
       /* Buffer overflow prevention */
-      log_debug("log_format_apply: buffer overflow prevented");
+      log_debug("log_template_apply: buffer overflow prevented");
       return -1;
     }
 

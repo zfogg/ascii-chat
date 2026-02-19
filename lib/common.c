@@ -224,19 +224,26 @@ void asciichat_shared_destroy(void) {
   // 11. Error context cleanup
   asciichat_errno_destroy();
 
-  // 12. Memory stats (debug builds only) - runs with colors still available
+  // 12. Logging cleanup - free log format buffers before memory report
+  log_destroy();
+
+  // 13. Memory stats (debug builds only) - runs with colors still available
   //     Note: PCRE2 singletons are ignored in the report (expected system allocations)
+  //     Note: debug_memory_report() is also called manually during shutdown in server_main()
+  //     The function is safe to call multiple times with polling-based locking
 #if defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
   print_mimalloc_stats();
-#elif defined(DEBUG_MEMORY) && !defined(NDEBUG)
+#endif
+
+#if defined(DEBUG_MEMORY) && !defined(NDEBUG)
   debug_memory_report();
 #endif
 
-  // 13. Color cleanup - free compiled ANSI strings (AFTER memory report)
+  // 14. Color cleanup - free compiled ANSI strings (AFTER memory report)
   log_cleanup_colors();
   colorscheme_destroy();
 
-  // 14. PCRE2 - cleanup all regex singletons together
+  // 15. PCRE2 - cleanup all regex singletons together
   asciichat_pcre2_cleanup_all();
 }
 

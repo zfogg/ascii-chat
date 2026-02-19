@@ -945,7 +945,7 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
   }
 
   uint64_t loop_end_ns = time_get_ns();
-  uint64_t loop_time_ms = (loop_end_ns - loop_start_ns) / 1000000;
+  uint64_t loop_time_ms = (loop_end_ns - loop_start_ns) / NS_PER_MS_INT;
   log_dev("NEON_MAIN_LOOP_ACTUAL: %llu ms for %d rows, %d width", loop_time_ms, height, width);
 
   // Log chunks per mode

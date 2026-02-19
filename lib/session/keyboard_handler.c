@@ -13,6 +13,11 @@
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/audio/audio.h>
 #include <string.h>
+#include <signal.h>
+
+#ifndef NDEBUG
+#include <ascii-chat/debug/lock.h>
+#endif
 
 /* ============================================================================
  * Internal Helpers
@@ -71,6 +76,19 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
       session_display_toggle_help(display);
       // Render help screen immediately so user sees it
       session_display_render_help(display);
+    }
+    break;
+  }
+
+  // ===== HELP SCREEN CLOSE / QUIT =====
+  case KEY_ESCAPE: {
+    if (display && session_display_is_help_active(display)) {
+      // Close help screen if it's active
+      session_display_toggle_help(display);
+    } else {
+      // If help screen is not active, quit the app (like Ctrl-C)
+      // The signal handler will gracefully shutdown all modes (client, server, mirror, etc.)
+      raise(SIGINT);
     }
     break;
   }
@@ -205,6 +223,15 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
     log_info("Horizontal flip: %s", !current_flip_x ? "enabled" : "disabled");
     break;
   }
+
+  // ===== LOCK DEBUG (debug builds only) =====
+#ifndef NDEBUG
+  case KEY_CTRL_L: {
+    lock_debug_trigger_print();
+    log_debug("Lock state dump triggered via Ctrl+L");
+    break;
+  }
+#endif
 
   default:
     // Unknown key - silently ignore

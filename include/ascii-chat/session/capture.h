@@ -149,6 +149,51 @@ typedef struct session_capture_ctx session_capture_ctx_t;
  *
  * @ingroup session
  */
+/**
+ * @brief Create mirror mode capture context with local media source
+ *
+ * Creates a capture context for local media (webcam, file, URL, test pattern).
+ * Used by mirror mode and snapshot operations that need to capture video locally.
+ *
+ * @param config Capture configuration (type, path, FPS, etc.)
+ * @return Capture context with media source, or NULL on error
+ *
+ * @note Call session_capture_destroy() to free resources when done.
+ * @note On failure, sets asciichat_errno with error details.
+ *
+ * @ingroup session
+ */
+session_capture_ctx_t *session_mirror_capture_create(const session_capture_config_t *config);
+
+/**
+ * @brief Create network mode capture context without media source
+ *
+ * Creates a minimal capture context for network modes (client, discovery)
+ * that receive video frames from the network instead of capturing locally.
+ * Only initializes keyboard and audio support; no media source is created.
+ *
+ * @param target_fps Target FPS (0 = default 60 FPS)
+ * @return Capture context without media source, or NULL on error
+ *
+ * @note Call session_capture_destroy() to free resources when done.
+ * @note On failure, sets asciichat_errno with error details.
+ *
+ * @ingroup session
+ */
+session_capture_ctx_t *session_network_capture_create(uint32_t target_fps);
+
+/**
+ * @brief Legacy function - creates either mirror or network capture based on options
+ *
+ * Maintained for backwards compatibility. New code should use
+ * session_mirror_capture_create() or session_network_capture_create() directly.
+ *
+ * @param config Capture configuration
+ * @return Capture context, or NULL on error
+ *
+ * @deprecated Use session_mirror_capture_create() or session_network_capture_create()
+ * @ingroup session
+ */
 session_capture_ctx_t *session_capture_create(const session_capture_config_t *config);
 
 /**

@@ -16,6 +16,7 @@ set(CORE_SRCS
     ${LIB_DIR}/log/grep.c
     ${LIB_DIR}/log/interactive_grep.c
     ${LIB_DIR}/log/file_parser.c
+    ${LIB_DIR}/log/json.c
     # platform/terminal.c - unified color detection
     ${LIB_DIR}/platform/terminal.c
     # ui/
@@ -108,6 +109,7 @@ endif()
 
 # Session library
 set(SESSION_SRCS
+    ${LIB_DIR}/session/client_like.c
     ${LIB_DIR}/session/consensus.c
     ${LIB_DIR}/session/consensus_integration.c
     ${LIB_DIR}/session/capture.c
@@ -319,6 +321,7 @@ if(WIN32)
         ${MFUUID_LIB}
         ${OLE32_LIB}
         crypt32  # For Windows crypto certificate functions
+        psapi    # For EnumProcessModules (backtrace symbol resolution)
     )
 else()
     if(PLATFORM_DARWIN)
@@ -601,6 +604,30 @@ if(USE_MIMALLOC)
     endif()
 endif()
 
+# yyjson - Fast JSON library for structured logging
+# Prevents reader API from being declared in our translation units (only writer needed)
+target_compile_definitions(ascii-chat-core PRIVATE YYJSON_DISABLE_READER=1)
+
+# Add yyjson include directory
+if(YYJSON_INCLUDE_DIRS)
+    target_include_directories(ascii-chat-core PRIVATE ${YYJSON_INCLUDE_DIRS})
+endif()
+
+# Link yyjson library
+if(USE_MUSL)
+    if(DEFINED YYJSON_BUILD_TARGET)
+        add_dependencies(ascii-chat-core ${YYJSON_BUILD_TARGET})
+    endif()
+endif()
+
+# Link yyjson - use YYJSON_LIBRARIES which is set by Yyjson.cmake
+if(YYJSON_LIBRARIES)
+    target_link_libraries(ascii-chat-core ${YYJSON_LIBRARIES})
+else()
+    # Fallback: try to link against system yyjson
+    target_link_libraries(ascii-chat-core yyjson)
+endif()
+
 # -----------------------------------------------------------------------------
 # Module 9: Panic Instrumentation Runtime (depends on: util, platform, core)
 # -----------------------------------------------------------------------------
@@ -635,11 +662,14 @@ target_compile_definitions(ascii-chat-network PRIVATE MDNS_NO_MAIN)
 if(PCRE2_INCLUDE_DIRS)
     target_include_directories(ascii-chat-network PRIVATE ${PCRE2_INCLUDE_DIRS})
 endif()
-if(LIBWEBSOCKETS_INCLUDE_DIRS)
+if(TARGET websockets)
+    target_link_libraries(ascii-chat-network websockets)
+    if(LIBWEBSOCKETS_BUILD_TARGET)
+        add_dependencies(ascii-chat-network ${LIBWEBSOCKETS_BUILD_TARGET})
+    endif()
+elseif(LIBWEBSOCKETS_INCLUDE_DIRS)
     target_include_directories(ascii-chat-network PRIVATE ${LIBWEBSOCKETS_INCLUDE_DIRS})
-endif()
-if(LIBWEBSOCKETS_BUILD_TARGET)
-    add_dependencies(ascii-chat-network ${LIBWEBSOCKETS_BUILD_TARGET})
+    target_link_libraries(ascii-chat-network ${LIBWEBSOCKETS_LIBRARIES})
 endif()
 target_compile_definitions(ascii-chat-network PRIVATE PCRE2_CODE_UNIT_WIDTH=8)
 if(NOT BUILDING_OBJECT_LIBS)
@@ -649,15 +679,15 @@ if(NOT BUILDING_OBJECT_LIBS)
         ascii-chat-crypto
         ascii-chat-core
         ${PCRE2_LIBRARIES}
-        ${ZSTD_LIBRARIES}
+        zstd::libzstd
         ${SQLITE3_LIBRARIES}  # Rate limiting SQLite backend
         libdatachannel  # WebRTC DataChannels for P2P transport
         OpenSSL::Crypto  # Required by libdatachannel for TLS/DTLS
     )
     # Link libwebsockets
-    if(TARGET PkgConfig::LIBWEBSOCKETS)
-        target_link_libraries(ascii-chat-network PkgConfig::LIBWEBSOCKETS)
-    else()
+    if(TARGET websockets)
+        target_link_libraries(ascii-chat-network websockets)
+    elseif(LIBWEBSOCKETS_LIBRARIES)
         target_link_libraries(ascii-chat-network ${LIBWEBSOCKETS_LIBRARIES})
     endif()
     # Link miniupnpc if available (optional UPnP/NAT-PMP support)
@@ -671,11 +701,11 @@ if(NOT BUILDING_OBJECT_LIBS)
     endif()
 else()
     # For OBJECT libs, link external deps only (OpenSSL needed by libdatachannel for TLS/DTLS)
-    target_link_libraries(ascii-chat-network ${PCRE2_LIBRARIES} ${ZSTD_LIBRARIES} ${SQLITE3_LIBRARIES} libdatachannel OpenSSL::Crypto)
+    target_link_libraries(ascii-chat-network ${PCRE2_LIBRARIES} zstd::libzstd ${SQLITE3_LIBRARIES} libdatachannel OpenSSL::Crypto)
     # Link libwebsockets
-    if(TARGET PkgConfig::LIBWEBSOCKETS)
-        target_link_libraries(ascii-chat-network PkgConfig::LIBWEBSOCKETS)
-    else()
+    if(TARGET websockets)
+        target_link_libraries(ascii-chat-network websockets)
+    elseif(LIBWEBSOCKETS_LIBRARIES)
         target_link_libraries(ascii-chat-network ${LIBWEBSOCKETS_LIBRARIES})
     endif()
     if(MINIUPNPC_FOUND)
@@ -821,6 +851,11 @@ add_library(ascii-chat-shared SHARED
         target_include_directories(ascii-chat-shared PRIVATE $<BUILD_INTERFACE:${MIMALLOC_INCLUDE_DIRS}>)
     endif()
 
+    # Add yyjson include directory
+    if(YYJSON_INCLUDE_DIRS)
+        target_include_directories(ascii-chat-shared PRIVATE ${YYJSON_INCLUDE_DIRS})
+    endif()
+
     # Add PCRE2 include directory and library directory for the shared library
     # PUBLIC because public header include/ascii-chat/util/pcre2.h includes pcre2.h
     if(PCRE2_INCLUDE_DIRS)
@@ -873,10 +908,11 @@ add_library(ascii-chat-shared SHARED
     # which don't automatically bring in their module dependencies
     target_link_libraries(ascii-chat-shared PRIVATE
         ${LIBSODIUM_LIBRARIES}
-        ${ZSTD_LIBRARIES}
+        zstd::libzstd
         ${OPUS_LIBRARIES}
         ${SQLITE3_LIBRARIES}
         ${PCRE2_LIBRARIES}
+        ${YYJSON_LIBRARIES}
     )
 
     # Link PortAudio with platform-specific dependencies
@@ -1329,7 +1365,7 @@ endif()
 target_link_libraries(ascii-chat-static-lib-deps INTERFACE
     ${PCRE2_LIBRARIES}
     ${LIBSODIUM_LIBRARIES}
-    ${ZSTD_LIBRARIES}
+    zstd::libzstd
     ${PORTAUDIO_LIBRARIES}
     ${OPUS_LIBRARIES}
     ${SQLITE3_LIBRARIES}

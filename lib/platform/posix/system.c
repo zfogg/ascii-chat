@@ -646,45 +646,6 @@ void platform_backtrace_symbols_destroy(char **strings) {
  * @param max_frames Maximum frames to print (0 = unlimited)
  * @param filter Optional filter callback to skip specific frames (NULL = no filtering)
  */
-void platform_print_backtrace_symbols(const char *label, char **symbols, int count, int skip_frames, int max_frames,
-                                      backtrace_frame_filter_t filter) {
-  if (!symbols || count <= 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: symbols=%p, count=%d", symbols, count);
-    return;
-  }
-
-  // Calculate frame limits
-  int start = skip_frames;
-  int end = count;
-  if (max_frames > 0 && (start + max_frames) < end) {
-    end = start + max_frames;
-  }
-
-  // Build entire backtrace output in buffer for single logging statement
-  char buffer[8192] = {0};
-  int offset = 0;
-
-  // Add header
-  offset += safe_snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "%s\n", label);
-
-  // Build backtrace frames with colored frame numbers
-  int frame_num = 0;
-  for (int i = start; i < end && offset < (int)sizeof(buffer) - 256; i++) {
-    const char *symbol = symbols[i] ? symbols[i] : "???";
-
-    // Skip frame if filter says to
-    if (filter && filter(symbol)) {
-      continue;
-    }
-
-    // Append frame number and symbol
-    offset += safe_snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "  [%d] %s\n", frame_num, symbol);
-    frame_num++;
-  }
-
-  // Log entire backtrace in single statement using logging system
-  log_plain_stderr("%s", buffer);
-}
 
 /**
  * @brief Format pre-resolved backtrace symbols to a buffer
@@ -764,8 +725,10 @@ void platform_print_backtrace(int skip_frames) {
   if (size > 0) {
     char **symbols = platform_backtrace_symbols(buffer, size);
 
-    // Skip platform_print_backtrace itself (1 frame) + any additional frames requested
-    platform_print_backtrace_symbols("\nBacktrace", symbols, size, 1 + skip_frames, 0, NULL);
+    // Skip internal frames (platform_backtrace + unresolvable return address) + any additional frames requested
+    // TODO: Verify if skipping 2 frames is correct across all platforms and compiler optimizations.
+    // This value may need adjustment on macOS, Windows, or with different optimization levels.
+    platform_print_backtrace_symbols("Backtrace", symbols, size, 2 + skip_frames, 0, NULL);
 
     platform_backtrace_symbols_destroy(symbols);
   }

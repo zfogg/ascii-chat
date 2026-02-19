@@ -817,7 +817,7 @@ typedef struct {
   uint16_t protocol_version;
   /** @brief Minor protocol revision (server can be newer) */
   uint16_t protocol_revision;
-  /** @brief Encryption support flag (1=support encryption, 0=plaintext only) */
+  /** @brief Encryption & authentication mode bitmask (ACIP_CRYPTO_* constants: NONE, ENCRYPT, AUTH, or FULL) */
   uint8_t supports_encryption;
   /** @brief Supported compression algorithms bitmask (COMPRESS_ALGO_*) */
   uint8_t compression_algorithms;
@@ -1057,6 +1057,40 @@ PACKED_ATTR /** @endcond */ terminal_capabilities_packet_t;
 #define AUTH_ALGO_ED25519 0x01             /**< @brief Ed25519 authentication (Edwards-curve signatures) */
 #define AUTH_ALGO_NONE 0x00                /**< @brief No authentication (plaintext mode) */
 #define CIPHER_ALGO_XSALSA20_POLY1305 0x01 /**< @brief XSalsa20-Poly1305 authenticated encryption */
+#define CIPHER_ALGO_NONE 0x00              /**< @brief No encryption (plaintext mode) */
+
+/**
+ * @name Crypto Mode Bitmasks
+ * @{
+ * @brief 2-bit bitmask for encryption and authentication modes
+ *
+ * These constants define all valid combinations of encryption and authentication
+ * in the crypto protocol. The `supports_encryption` field in protocol_version_packet_t
+ * uses these values to negotiate capabilities:
+ *
+ * - Bit 0 (0x01): ACIP_CRYPTO_ENCRYPT - payload encryption enabled
+ * - Bit 1 (0x02): ACIP_CRYPTO_AUTH - identity authentication enabled
+ */
+#define ACIP_CRYPTO_NONE 0x00    /**< @brief No encryption, no authentication (plaintext only) */
+#define ACIP_CRYPTO_ENCRYPT 0x01 /**< @brief Encryption only (no identity verification) */
+#define ACIP_CRYPTO_AUTH 0x02    /**< @brief Authentication only (no payload encryption) */
+#define ACIP_CRYPTO_FULL 0x03    /**< @brief Full crypto: encryption + authentication */
+
+/**
+ * @brief Check if crypto mode includes payload encryption
+ * @param mode Crypto mode bitmask (ACIP_CRYPTO_*)
+ * @return true if payload encryption is enabled, false otherwise
+ */
+#define ACIP_CRYPTO_HAS_ENCRYPT(mode) (((mode) & ACIP_CRYPTO_ENCRYPT) != 0)
+
+/**
+ * @brief Check if crypto mode includes authentication
+ * @param mode Crypto mode bitmask (ACIP_CRYPTO_*)
+ * @return true if authentication is enabled, false otherwise
+ */
+#define ACIP_CRYPTO_HAS_AUTH(mode) (((mode) & ACIP_CRYPTO_AUTH) != 0)
+
+/** @} */
 
 /** @} */
 

@@ -85,11 +85,12 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   bool is_paused = false;
 
   // Keyboard input initialization (if keyboard handler is provided)
-  // Allow keyboard in snapshot mode too (for help screen toggle debugging)
-  // Only enable keyboard if BOTH stdin AND stdout are TTYs to avoid buffering issues
-  // when tcsetattr() modifies the tty line discipline
+  // Disable keyboard in snapshot mode and non-interactive terminals
+  // Only enable keyboard if BOTH:
+  // 1. Terminal is interactive (stdin/stdout are TTYs)
+  // 2. NOT in snapshot mode
   bool keyboard_enabled = false;
-  if (keyboard_handler && terminal_is_interactive()) {
+  if (keyboard_handler && terminal_is_interactive() && !snapshot_mode) {
     // Try to initialize keyboard if both stdin and stdout are TTYs in interactive mode
     asciichat_error_t kb_result = keyboard_init();
     if (kb_result == ASCIICHAT_OK) {
@@ -150,7 +151,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       // If paused and already rendered initial frame, skip frame capture and poll for resume
       if (is_paused && initial_paused_frame_rendered) {
         // Sleep briefly to avoid busy-waiting while paused
-        uint64_t idle_sleep_ns = (uint64_t)(1000000000 / GET_OPTION(fps)); // Frame period in nanoseconds
+        uint64_t idle_sleep_ns = (uint64_t)(NS_PER_SEC_INT / GET_OPTION(fps)); // Frame period in nanoseconds
         platform_sleep_ns(idle_sleep_ns);
 
         // Keep polling keyboard to allow unpausing (even if keyboard wasn't formally initialized)
@@ -181,9 +182,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
           break;
         }
 
-        log_debug_every(3000000, "RENDER[%lu]: Starting frame read", frame_count);
+        log_debug_every(3 * US_PER_SEC_INT, "RENDER[%lu]: Starting frame read", frame_count);
         image = session_capture_read_frame(capture);
-        log_debug_every(3000000, "RENDER[%lu]: Frame read done, image=%p", frame_count, (void *)image);
+        log_debug_every(3 * US_PER_SEC_INT, "RENDER[%lu]: Frame read done, image=%p", frame_count, (void *)image);
         capture_elapsed_ns = time_elapsed_ns(capture_start_ns, time_get_ns());
 
         if (!image) {
@@ -203,8 +204,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
           // Brief delay before retry on temporary frame unavailability
           if (loop_retry_count <= 1 || frame_count % 100 == 0) {
             if (loop_retry_count == 1 && frame_count > 0) {
-              log_debug_every(500000, "FRAME_WAIT: retry at frame %lu (waited %.1f ms so far)", frame_count,
-                              (double)capture_elapsed_ns / 1000000.0);
+              log_debug_every(500 * US_PER_MS_INT, "FRAME_WAIT: retry at frame %lu (waited %.1f ms so far)",
+                              frame_count, (double)capture_elapsed_ns / NS_PER_MS);
             }
           }
 
@@ -213,14 +214,15 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
             max_retries = loop_retry_count;
           }
 
-          platform_sleep_us(10000); // 10ms
+          platform_sleep_us(10 * US_PER_MS_INT); // 10ms
           continue;
         }
 
         // Frame obtained successfully
         if (loop_retry_count > 0) {
-          double wait_ms = (double)capture_elapsed_ns / 1000000.0;
-          log_debug_every(1000000, "FRAME_OBTAINED: after %lu retries, waited %.1f ms", loop_retry_count, wait_ms);
+          double wait_ms = (double)capture_elapsed_ns / NS_PER_MS;
+          log_debug_every(US_PER_SEC_INT, "FRAME_OBTAINED: after %lu retries, waited %.1f ms", loop_retry_count,
+                          wait_ms);
         }
         break; // Exit retry loop
       } while (true);
@@ -238,8 +240,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
       // Log capture time every 30 frames
       if (frame_count % 30 == 0) {
-        double capture_ms = (double)capture_elapsed_ns / 1000000.0;
-        log_dev_every(5000000, "PROFILE[%lu]: CAPTURE=%.2f ms", frame_count, capture_ms);
+        double capture_ms = (double)capture_elapsed_ns / NS_PER_MS;
+        log_dev_every(5 * US_PER_SEC_INT, "PROFILE[%lu]: CAPTURE=%.2f ms", frame_count, capture_ms);
       }
 
       // Pause after first frame if requested via --pause flag
@@ -290,7 +292,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         START_TIMER("render_frame");
 
         // Check if help screen is active - if so, render help instead of frame
-        if (display && session_display_is_help_active(display)) {
+        // Help screen is disabled in snapshot mode and non-interactive terminals (keyboard disabled)
+        if (display && session_display_is_help_active(display) && terminal_is_interactive() && !snapshot_mode) {
           session_display_render_help(display);
         } else {
           session_display_render_frame(display, ascii_frame);
@@ -302,16 +305,16 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         // Calculate total time from frame START (frame_start_ns) to render COMPLETE
         frame_to_render_ns = time_elapsed_ns(frame_start_ns, post_render_ns);
         if (frame_count % 30 == 0) {
-          double total_frame_time_ms = (double)frame_to_render_ns / 1000000.0;
+          double total_frame_time_ms = (double)frame_to_render_ns / NS_PER_MS;
           log_dev("ACTUAL_TIME[%lu]: Total frame time from start to render complete: %.1f ms", frame_count,
                   total_frame_time_ms);
         }
 
         // Log render time every 30 frames
         if (frame_count % 150 == 0) {
-          double conversion_ms = (double)conversion_elapsed_ns / 1000000.0;
-          double render_ms = (double)render_elapsed_ns / 1000000.0;
-          log_dev_every(5000000, "PROFILE[%lu]: CONVERT=%.2f ms, RENDER=%.2f ms", frame_count, conversion_ms,
+          double conversion_ms = (double)conversion_elapsed_ns / NS_PER_MS;
+          double render_ms = (double)render_elapsed_ns / NS_PER_MS;
+          log_dev_every(5 * US_PER_SEC_INT, "PROFILE[%lu]: CONVERT=%.2f ms, RENDER=%.2f ms", frame_count, conversion_ms,
                         render_ms);
         }
       }
@@ -354,7 +357,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         double elapsed_sec = time_ns_to_s(time_elapsed_ns(snapshot_start_time_ns, current_time_ns));
         double snapshot_delay = GET_OPTION(snapshot_delay);
 
-        log_debug_every(1000000, "SNAPSHOT_DELAY_CHECK: elapsed=%.2f delay=%.2f", elapsed_sec, snapshot_delay);
+        log_debug_every(US_PER_SEC_INT, "SNAPSHOT_DELAY_CHECK: elapsed=%.2f delay=%.2f", elapsed_sec, snapshot_delay);
 
         // snapshot_delay=0 means exit immediately after rendering first frame
         // snapshot_delay>0 means wait that many seconds after first frame
@@ -383,12 +386,15 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       uint64_t frame_end_render_ns = time_get_ns();
 
       // Calculate each phase duration
-      uint64_t prestart_ms = (capture_start_ns > frame_start_ns) ? (capture_start_ns - frame_start_ns) / 1000000 : 0;
-      uint64_t capture_ms = (capture_end_ns > capture_start_ns) ? (capture_end_ns - capture_start_ns) / 1000000 : 0;
-      uint64_t convert_ms = conversion_elapsed_ns / 1000000;
+      uint64_t prestart_ms =
+          (capture_start_ns > frame_start_ns) ? (capture_start_ns - frame_start_ns) / NS_PER_MS_INT : 0;
+      uint64_t capture_ms =
+          (capture_end_ns > capture_start_ns) ? (capture_end_ns - capture_start_ns) / NS_PER_MS_INT : 0;
+      uint64_t convert_ms = conversion_elapsed_ns / NS_PER_MS_INT;
       uint64_t render_ms =
-          (post_render_ns > pre_render_ns && post_render_ns > 0) ? (post_render_ns - pre_render_ns) / 1000000 : 0;
-      uint64_t total_ms = (frame_end_render_ns > frame_start_ns) ? (frame_end_render_ns - frame_start_ns) / 1000000 : 0;
+          (post_render_ns > pre_render_ns && post_render_ns > 0) ? (post_render_ns - pre_render_ns) / NS_PER_MS_INT : 0;
+      uint64_t total_ms =
+          (frame_end_render_ns > frame_start_ns) ? (frame_end_render_ns - frame_start_ns) / NS_PER_MS_INT : 0;
 
       // Log phase breakdown every 5 frames
       if (frame_count % 5 == 0) {
@@ -424,15 +430,15 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         uint64_t frame_target_ns = NS_PER_SEC_INT / target_fps;
 
         log_dev("RENDER[%lu] TIMING_TOTAL: frame_time_ms=%.2f target_ms=%.2f", frame_count,
-                (double)frame_elapsed_ns / 1000000.0, (double)frame_target_ns / 1000000.0);
+                (double)frame_elapsed_ns / NS_PER_MS, (double)frame_target_ns / NS_PER_MS);
 
         // Only sleep if we have time budget remaining
         // If already behind, skip sleep to catch up
         if (frame_elapsed_ns < frame_target_ns) {
           uint64_t sleep_ns = frame_target_ns - frame_elapsed_ns;
           // Sleep with 500us overhead reserved for recovery
-          if (sleep_ns > 500000) {
-            platform_sleep_ns(sleep_ns - 500000);
+          if (sleep_ns > 500 * US_PER_MS_INT) {
+            platform_sleep_ns((sleep_ns - 500 * US_PER_MS_INT));
           }
         }
       }
