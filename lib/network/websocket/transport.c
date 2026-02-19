@@ -146,20 +146,20 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
     msg.first = is_first;
     msg.final = is_final;
 
-    mutex_lock(&ws_data->queue_mutex);
+    mutex_lock(&ws_data->recv_mutex);
     bool success = ringbuffer_write(ws_data->recv_queue, &msg);
     if (!success) {
       // Queue is full - drop the fragment and log warning
       log_warn("WebSocket receive queue full - dropping fragment (len=%zu, first=%d, final=%d)", len, is_first,
                is_final);
       buffer_pool_free(NULL, msg.data, msg.len);
-      mutex_unlock(&ws_data->queue_mutex);
+      mutex_unlock(&ws_data->recv_mutex);
       break;
     }
 
     // Signal waiting recv() call that a fragment is available
-    cond_signal(&ws_data->queue_cond);
-    mutex_unlock(&ws_data->queue_mutex);
+    cond_signal(&ws_data->recv_cond);
+    mutex_unlock(&ws_data->recv_mutex);
     break;
   }
 
@@ -172,7 +172,7 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
       mutex_unlock(&ws_data->state_mutex);
 
       // Wake any blocking recv() calls
-      cond_broadcast(&ws_data->queue_cond);
+      cond_broadcast(&ws_data->recv_cond);
     }
     break;
 
@@ -184,7 +184,7 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
       mutex_unlock(&ws_data->state_mutex);
 
       // Wake any blocking recv() calls
-      cond_broadcast(&ws_data->queue_cond);
+      cond_broadcast(&ws_data->recv_cond);
     }
     break;
 
@@ -304,11 +304,11 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     msg.first = 1;
     msg.final = 1;
 
-    mutex_lock(&ws_data->queue_mutex);
+    mutex_lock(&ws_data->recv_mutex);
     bool success = ringbuffer_write(ws_data->send_queue, &msg);
 
     if (!success) {
-      mutex_unlock(&ws_data->queue_mutex);
+      mutex_unlock(&ws_data->recv_mutex);
       log_error("WebSocket server send queue FULL - cannot queue %zu byte message for wsi=%p", send_len,
                 (void *)ws_data->wsi);
       SAFE_FREE(msg.data);
@@ -317,7 +317,7 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
         buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
       return SET_ERRNO(ERROR_NETWORK, "Send queue full (cannot queue %zu bytes)", send_len);
     }
-    mutex_unlock(&ws_data->queue_mutex);
+    mutex_unlock(&ws_data->recv_mutex);
 
     // Wake the LWS event loop from this non-service thread.
     // Only lws_cancel_service() is thread-safe from non-service threads.
@@ -396,35 +396,44 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
     return SET_ERRNO(ERROR_NETWORK, "Connection not established");
   }
 
-  mutex_lock(&ws_data->queue_mutex);
+  mutex_lock(&ws_data->recv_mutex);
 
   // Reassemble fragmented WebSocket messages - NON-BLOCKING
   // We queue each fragment from the LWS callback with first/final flags.
   // Here we check for complete messages without blocking. If no complete
   // message is ready, return immediately so the receive thread can retry.
+  //
+  // Partial assembly state is stored in ws_data so mid-assembly fragments
+  // are not lost when we return ERROR_WOULD_BLOCK between retries.
 
-  uint8_t *assembled_buffer = NULL;
-  size_t assembled_size = 0;
-  size_t assembled_capacity = 0;
-  int fragment_count = 0;
+  uint8_t *assembled_buffer = ws_data->partial_buffer;
+  size_t assembled_size = ws_data->partial_size;
+  size_t assembled_capacity = ws_data->partial_capacity;
+  int fragment_count = ws_data->partial_fragment_count;
+
+  // Clear partial state (we will restore it below if we must yield again)
+  ws_data->partial_buffer = NULL;
+  ws_data->partial_size = 0;
+  ws_data->partial_capacity = 0;
+  ws_data->partial_fragment_count = 0;
 
   while (true) {
-    // If queue is empty, return error immediately (non-blocking)
+    // If queue is empty, return immediately (non-blocking)
     // The receive thread will retry after a short sleep
     if (ringbuffer_is_empty(ws_data->recv_queue)) {
       if (assembled_size > 0) {
-        // We have partial fragments but queue is empty - incomplete message
-        log_dev_every(4500000, "🔄 WEBSOCKET_RECV: Incomplete frame (have %zu bytes), waiting for more fragments",
-                      assembled_size);
-        buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
-        mutex_unlock(&ws_data->queue_mutex);
-        return SET_ERRNO(ERROR_NETWORK, "Incomplete WebSocket frame (waiting for more fragments)");
+        // Preserve partial assembly state for the next call
+        ws_data->partial_buffer = assembled_buffer;
+        ws_data->partial_size = assembled_size;
+        ws_data->partial_capacity = assembled_capacity;
+        ws_data->partial_fragment_count = fragment_count;
+        log_dev_every(4500000, "[WS_REASSEMBLE] Partial frame (%zu bytes, %d fragments), waiting for more",
+                      assembled_size, fragment_count);
       } else {
-        // Queue is empty and no fragments accumulated yet
-        log_dev_every(4500000, "🔄 WEBSOCKET_RECV: Queue empty, no packets ready");
-        mutex_unlock(&ws_data->queue_mutex);
-        return SET_ERRNO(ERROR_NETWORK, "No WebSocket packets available");
+        log_dev_every(4500000, "[WS_REASSEMBLE] Queue empty, no packets ready");
       }
+      mutex_unlock(&ws_data->recv_mutex);
+      return SET_ERRNO(ERROR_WOULD_BLOCK, "No WebSocket packets available");
     }
 
     // Read next fragment from queue
@@ -434,7 +443,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
       if (assembled_buffer) {
         buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
       }
-      mutex_unlock(&ws_data->queue_mutex);
+      mutex_unlock(&ws_data->recv_mutex);
       return SET_ERRNO(ERROR_NETWORK, "Failed to read fragment from queue");
     }
 
@@ -449,7 +458,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
       if (assembled_buffer) {
         buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
       }
-      mutex_unlock(&ws_data->queue_mutex);
+      mutex_unlock(&ws_data->recv_mutex);
       return SET_ERRNO(ERROR_NETWORK, "Protocol error: continuation fragment without first fragment");
     }
 
@@ -468,7 +477,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
         if (assembled_buffer) {
           buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
         }
-        mutex_unlock(&ws_data->queue_mutex);
+        mutex_unlock(&ws_data->recv_mutex);
         return SET_ERRNO(ERROR_MEMORY, "Failed to allocate fragment reassembly buffer");
       }
 
@@ -489,25 +498,21 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
 
     // If this is the final fragment, we're done
     if (frag.final) {
-      uint64_t assembly_end_ns = time_get_ns();
-      char assembly_duration_str[32];
-      format_duration_ns((double)(assembly_end_ns - assembly_start_ns), assembly_duration_str,
-                         sizeof(assembly_duration_str));
-      log_info("[WS_REASSEMBLE] Complete message assembled: %zu bytes from %d fragments in %s", assembled_size,
-               fragment_count, assembly_duration_str);
+      log_info("[WS_REASSEMBLE] Complete message assembled: %zu bytes from %d fragments", assembled_size,
+               fragment_count);
       break;
     }
   }
 
-  mutex_unlock(&ws_data->queue_mutex);
+  mutex_unlock(&ws_data->recv_mutex);
 
   // Return reassembled message to caller
   *buffer = assembled_buffer;
   *out_len = assembled_size;
   *out_allocated_buffer = assembled_buffer;
 
-  log_info_every(LOG_RATE_DEFAULT, "[WS_TIMING] websocket_recv dequeued %zu bytes (from %d fragments) at t=%llu",
-                 assembled_size, fragment_count, (unsigned long long)time_get_ns());
+  log_info_every(LOG_RATE_DEFAULT, "[WS_TIMING] websocket_recv dequeued %zu bytes (from %d fragments)",
+                 assembled_size, fragment_count);
   return ASCIICHAT_OK;
 }
 
@@ -533,7 +538,7 @@ static asciichat_error_t websocket_close(acip_transport_t *transport) {
   }
 
   // Wake any blocking recv() calls
-  cond_broadcast(&ws_data->queue_cond);
+  cond_broadcast(&ws_data->recv_cond);
 
   log_debug("WebSocket transport closed");
   return ASCIICHAT_OK;
@@ -598,8 +603,10 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
   }
 
   // Clear receive queue and free buffered messages
+  bool had_send_queue = (ws_data->send_queue != NULL);
+
   if (ws_data->recv_queue) {
-    mutex_lock(&ws_data->queue_mutex);
+    mutex_lock(&ws_data->recv_mutex);
 
     websocket_recv_msg_t msg;
     while (ringbuffer_read(ws_data->recv_queue, &msg)) {
@@ -608,7 +615,7 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
       }
     }
 
-    mutex_unlock(&ws_data->queue_mutex);
+    mutex_unlock(&ws_data->recv_mutex);
     ringbuffer_destroy(ws_data->recv_queue);
     ws_data->recv_queue = NULL;
 
@@ -631,10 +638,21 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
     ws_data->send_buffer = NULL;
   }
 
+  // Free any in-progress partial assembly buffer
+  if (ws_data->partial_buffer) {
+    buffer_pool_free(NULL, ws_data->partial_buffer, ws_data->partial_capacity);
+    ws_data->partial_buffer = NULL;
+    ws_data->partial_size = 0;
+    ws_data->partial_capacity = 0;
+  }
+
   // Destroy synchronization primitives
   mutex_destroy(&ws_data->state_mutex);
-  cond_destroy(&ws_data->queue_cond);
-  mutex_destroy(&ws_data->queue_mutex);
+  if (had_send_queue) {
+    mutex_destroy(&ws_data->send_mutex);
+  }
+  cond_destroy(&ws_data->recv_cond);
+  mutex_destroy(&ws_data->recv_mutex);
 
   // Clear impl_data pointer BEFORE freeing to prevent use-after-free in callbacks
   transport->impl_data = NULL;
@@ -756,7 +774,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
   }
 
   // Initialize synchronization primitives
-  if (mutex_init(&ws_data->queue_mutex) != 0) {
+  if (mutex_init(&ws_data->recv_mutex) != 0) {
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
@@ -764,8 +782,8 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
     return NULL;
   }
 
-  if (cond_init(&ws_data->queue_cond) != 0) {
-    mutex_destroy(&ws_data->queue_mutex);
+  if (cond_init(&ws_data->recv_cond) != 0) {
+    mutex_destroy(&ws_data->recv_mutex);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
@@ -774,8 +792,8 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
   }
 
   if (mutex_init(&ws_data->state_mutex) != 0) {
-    cond_destroy(&ws_data->queue_cond);
-    mutex_destroy(&ws_data->queue_mutex);
+    cond_destroy(&ws_data->recv_cond);
+    mutex_destroy(&ws_data->recv_mutex);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
@@ -788,8 +806,8 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
   ws_data->send_buffer = SAFE_MALLOC(ws_data->send_buffer_capacity, uint8_t *);
   if (!ws_data->send_buffer) {
     mutex_destroy(&ws_data->state_mutex);
-    cond_destroy(&ws_data->queue_cond);
-    mutex_destroy(&ws_data->queue_mutex);
+    cond_destroy(&ws_data->recv_cond);
+    mutex_destroy(&ws_data->recv_mutex);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
@@ -815,8 +833,8 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
   if (!ws_data->context) {
     SAFE_FREE(ws_data->send_buffer);
     mutex_destroy(&ws_data->state_mutex);
-    cond_destroy(&ws_data->queue_cond);
-    mutex_destroy(&ws_data->queue_mutex);
+    cond_destroy(&ws_data->recv_cond);
+    mutex_destroy(&ws_data->recv_mutex);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
@@ -845,8 +863,8 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
     lws_context_destroy(ws_data->context);
     SAFE_FREE(ws_data->send_buffer);
     mutex_destroy(&ws_data->state_mutex);
-    cond_destroy(&ws_data->queue_cond);
-    mutex_destroy(&ws_data->queue_mutex);
+    cond_destroy(&ws_data->recv_cond);
+    mutex_destroy(&ws_data->recv_mutex);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
@@ -875,8 +893,8 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
       lws_context_destroy(ws_data->context);
       SAFE_FREE(ws_data->send_buffer);
       mutex_destroy(&ws_data->state_mutex);
-      cond_destroy(&ws_data->queue_cond);
-      mutex_destroy(&ws_data->queue_mutex);
+      cond_destroy(&ws_data->recv_cond);
+      mutex_destroy(&ws_data->recv_mutex);
       ringbuffer_destroy(ws_data->recv_queue);
       SAFE_FREE(ws_data);
       SAFE_FREE(transport);
@@ -891,8 +909,8 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
     lws_context_destroy(ws_data->context);
     SAFE_FREE(ws_data->send_buffer);
     mutex_destroy(&ws_data->state_mutex);
-    cond_destroy(&ws_data->queue_cond);
-    mutex_destroy(&ws_data->queue_mutex);
+    cond_destroy(&ws_data->recv_cond);
+    mutex_destroy(&ws_data->recv_mutex);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
@@ -910,8 +928,8 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
     lws_context_destroy(ws_data->context);
     SAFE_FREE(ws_data->send_buffer);
     mutex_destroy(&ws_data->state_mutex);
-    cond_destroy(&ws_data->queue_cond);
-    mutex_destroy(&ws_data->queue_mutex);
+    cond_destroy(&ws_data->recv_cond);
+    mutex_destroy(&ws_data->recv_mutex);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
@@ -976,7 +994,7 @@ acip_transport_t *acip_websocket_server_transport_create(struct lws *wsi, crypto
   }
 
   // Initialize synchronization primitives
-  if (mutex_init(&ws_data->queue_mutex) != 0) {
+  if (mutex_init(&ws_data->recv_mutex) != 0) {
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
@@ -984,8 +1002,8 @@ acip_transport_t *acip_websocket_server_transport_create(struct lws *wsi, crypto
     return NULL;
   }
 
-  if (cond_init(&ws_data->queue_cond) != 0) {
-    mutex_destroy(&ws_data->queue_mutex);
+  if (cond_init(&ws_data->recv_cond) != 0) {
+    mutex_destroy(&ws_data->recv_mutex);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
@@ -994,8 +1012,8 @@ acip_transport_t *acip_websocket_server_transport_create(struct lws *wsi, crypto
   }
 
   if (mutex_init(&ws_data->state_mutex) != 0) {
-    cond_destroy(&ws_data->queue_cond);
-    mutex_destroy(&ws_data->queue_mutex);
+    cond_destroy(&ws_data->recv_cond);
+    mutex_destroy(&ws_data->recv_mutex);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
@@ -1003,13 +1021,25 @@ acip_transport_t *acip_websocket_server_transport_create(struct lws *wsi, crypto
     return NULL;
   }
 
+  if (mutex_init(&ws_data->send_mutex) != 0) {
+    mutex_destroy(&ws_data->state_mutex);
+    cond_destroy(&ws_data->recv_cond);
+    mutex_destroy(&ws_data->recv_mutex);
+    ringbuffer_destroy(ws_data->recv_queue);
+    SAFE_FREE(ws_data);
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_NETWORK, "Failed to initialize send mutex");
+    return NULL;
+  }
+
   // Allocate send buffer with LWS_PRE padding
   size_t initial_capacity = 4096 + LWS_PRE;
   ws_data->send_buffer = SAFE_MALLOC(initial_capacity, uint8_t *);
   if (!ws_data->send_buffer) {
+    mutex_destroy(&ws_data->send_mutex);
     mutex_destroy(&ws_data->state_mutex);
-    cond_destroy(&ws_data->queue_cond);
-    mutex_destroy(&ws_data->queue_mutex);
+    cond_destroy(&ws_data->recv_cond);
+    mutex_destroy(&ws_data->recv_mutex);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);

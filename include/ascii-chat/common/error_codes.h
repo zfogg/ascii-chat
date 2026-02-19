@@ -91,6 +91,7 @@ typedef enum {
   ERROR_ACDS_STRING_INVALID = 52, /**< Invalid session string format (ACDS) */
   ERROR_INTERNAL = 53,            /**< Internal server error */
   ERROR_UNKNOWN_PACKET = 54,      /**< Unknown packet type received */
+  ERROR_WOULD_BLOCK = 55,         /**< Operation would block; no data available (non-blocking mode) */
 
   /* Security/Crypto errors (60-79) */
   ERROR_CRYPTO = 60,              /**< Cryptographic operation failed */
@@ -219,6 +220,8 @@ static inline const char *asciichat_error_string(asciichat_error_t code) {
     return "Internal server error";
   case ERROR_UNKNOWN_PACKET:
     return "Unknown packet type";
+  case ERROR_WOULD_BLOCK:
+    return "Operation would block";
   case ERROR_CRYPTO:
     return "Cryptographic error";
   case ERROR_CRYPTO_KEY:

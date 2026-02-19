@@ -48,6 +48,12 @@ typedef struct {
   asciichat_thread_t service_thread; ///< Thread that services libwebsockets context
   volatile bool service_running;     ///< Service thread running flag
 
+  // Partial fragment reassembly state (persisted across non-blocking recv calls)
+  uint8_t *partial_buffer;   ///< Buffer holding partially assembled message data
+  size_t partial_size;       ///< Bytes assembled so far
+  size_t partial_capacity;   ///< Capacity of partial_buffer
+  int partial_fragment_count; ///< Number of fragments consumed so far
+
 } websocket_transport_data_t;
 
 #endif // ASCIICHAT_NETWORK_WEBSOCKET_INTERNAL_H
