@@ -1054,27 +1054,33 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
   size_t colored_start = map_plain_to_colored_pos(colored_text, match_start);
   size_t colored_end = map_plain_to_colored_pos(colored_text, match_start + match_len);
 
-  // Preserve any ANSI codes at the start of the match (typically header codes)
-  // by skipping past them before inserting the grep background highlight
-  size_t codes_end = skip_ansi_codes(colored_text, colored_start);
+  // Preserve any ANSI codes at the start of the line (header codes), not at match start
+  // Header codes appear at the beginning of the log line before visible content
+  size_t header_codes_end = skip_ansi_codes(colored_text, 0);
 
   size_t colored_len = strlen(colored_text);
   char *dst = highlight_buffer;
 
-  // Copy everything before the match, including any header ANSI codes
-  if (codes_end > 0) {
-    memcpy(dst, colored_text, codes_end);
-    dst += codes_end;
+  // Copy header ANSI codes from start of line
+  if (header_codes_end > 0) {
+    memcpy(dst, colored_text, header_codes_end);
+    dst += header_codes_end;
   }
 
-  // Add highlight background after header codes
+  // Copy text before the match (after header codes)
+  if (colored_start > header_codes_end) {
+    memcpy(dst, colored_text + header_codes_end, colored_start - header_codes_end);
+    dst += (colored_start - header_codes_end);
+  }
+
+  // Add highlight background
   uint8_t r, g, b;
   get_highlight_color(&r, &g, &b);
   dst = append_truecolor_bg(dst, r, g, b);
 
-  // Copy matched text starting from after the header codes, re-applying background after any [0m or [00m reset codes
-  size_t match_byte_len = colored_end - codes_end;
-  const char *match_src = colored_text + codes_end;
+  // Copy matched text, re-applying background after any [0m or [00m reset codes
+  size_t match_byte_len = colored_end - colored_start;
+  const char *match_src = colored_text + colored_start;
   char *dst_end = highlight_buffer + sizeof(highlight_buffer) - 1; // Absolute buffer end
   size_t i = 0;
 
