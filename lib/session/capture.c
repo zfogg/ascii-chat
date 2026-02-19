@@ -143,6 +143,57 @@ static void calculate_optimal_dimensions(ssize_t original_width, ssize_t origina
  * Session Capture Lifecycle Functions
  * ============================================================================ */
 
+session_capture_ctx_t *session_mirror_capture_create(const session_capture_config_t *config) {
+  // Mirror capture requires a config with media source info
+  if (!config) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Mirror capture requires explicit config"), NULL;
+  }
+
+  // Delegate to the main implementation
+  return session_capture_create(config);
+}
+
+session_capture_ctx_t *session_network_capture_create(uint32_t target_fps) {
+  // Network modes don't capture media - create minimal context for keyboard/audio only
+  session_capture_ctx_t *ctx = SAFE_CALLOC(1, sizeof(session_capture_ctx_t), session_capture_ctx_t *);
+  if (!ctx) {
+    return NULL;
+  }
+
+  // Set FPS (use provided value or default to 60)
+  ctx->target_fps = target_fps > 0 ? target_fps : 60;
+  ctx->resize_for_network = false;
+
+  // Audio and keyboard will be set up separately by callers
+  ctx->audio_enabled = false;
+  ctx->source = NULL;
+  ctx->source_owned = false;
+
+  // Initialize adaptive sleep for consistency
+  uint64_t baseline_sleep_ns = NS_PER_SEC_INT / ctx->target_fps;
+  adaptive_sleep_config_t sleep_config = {.baseline_sleep_ns = baseline_sleep_ns,
+                                          .min_speed_multiplier = 0.5,
+                                          .max_speed_multiplier = 2.0,
+                                          .speedup_rate = 0.1,
+                                          .slowdown_rate = 0.1};
+  adaptive_sleep_init(&ctx->sleep_state, &sleep_config);
+
+  // Initialize minimal FPS tracker (won't be used but keep structure consistent)
+  char *tracker_name = SAFE_MALLOC(32, char *);
+  if (!tracker_name) {
+    SAFE_FREE(ctx);
+    return NULL;
+  }
+  safe_snprintf(tracker_name, 32, "NETWORK_CAPTURE");
+  fps_init(&ctx->fps_tracker, 60, tracker_name);
+
+  ctx->start_time_ns = time_get_ns();
+  ctx->initialized = true;
+
+  log_debug("Created network capture context (no local media source)");
+  return ctx;
+}
+
 session_capture_ctx_t *session_capture_create(const session_capture_config_t *config) {
   // Auto-create config from command-line options if NULL
   session_capture_config_t auto_config = {0};

@@ -292,11 +292,33 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // SETUP: Capture Context
   // ============================================================================
 
-  capture = session_capture_create(&capture_config);
-  if (!capture) {
-    log_fatal("Failed to initialize capture source");
-    result = ERROR_MEDIA_INIT;
-    goto cleanup;
+  // Choose capture type based on mode:
+  // - Mirror mode: needs to capture local media (webcam, file, test pattern)
+  // - Network modes (client/discovery): receive frames from network, no local capture
+  bool is_network_mode = (config->tcp_client != NULL || config->websocket_client != NULL);
+
+  if (is_network_mode) {
+    // Network mode: create minimal capture context without media source
+    log_debug("Network mode detected - using network capture (no local media source)");
+    int fps = GET_OPTION(fps);
+    capture = session_network_capture_create((uint32_t)(fps > 0 ? fps : 60));
+    if (!capture) {
+      log_fatal("Failed to initialize network capture context");
+      result = ERROR_MEDIA_INIT;
+      goto cleanup;
+    }
+    if (fps > 0) {
+      log_debug("Network capture FPS set to %d from options", fps);
+    }
+  } else {
+    // Mirror mode: create capture context with local media source
+    log_debug("Mirror mode detected - using mirror capture with local media source");
+    capture = session_mirror_capture_create(&capture_config);
+    if (!capture) {
+      log_fatal("Failed to initialize mirror capture source");
+      result = ERROR_MEDIA_INIT;
+      goto cleanup;
+    }
   }
 
   // ============================================================================
