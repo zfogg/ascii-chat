@@ -61,9 +61,6 @@ static atomic_bool g_addr2line_checked = false;
 static atomic_bool g_addr2line_available = false;
 static char g_addr2line_cmd[PLATFORM_MAX_PATH_LENGTH];
 static static_mutex_t g_symbolizer_detection_mutex = STATIC_MUTEX_INIT;
-// Thread-local flags to prevent recursive calls during initialization
-static _Thread_local bool g_llvm_symbolizer_in_progress = false;
-static _Thread_local bool g_addr2line_in_progress = false;
 
 // ============================================================================
 // Cache State
@@ -158,13 +155,7 @@ static bool symbolizer_path_is_executable(const char *path) {
 }
 
 static const char *get_llvm_symbolizer_command(void) {
-  // Prevent recursive calls - if we're already getting the symbolizer, return early
-  if (g_llvm_symbolizer_in_progress) {
-    return NULL;
-  }
-
   if (!atomic_load(&g_llvm_symbolizer_checked)) {
-    g_llvm_symbolizer_in_progress = true;
     static_mutex_lock(&g_symbolizer_detection_mutex);
     if (!atomic_load(&g_llvm_symbolizer_checked)) {
       const char *env_path = SAFE_GETENV("LLVM_SYMBOLIZER_PATH");
@@ -192,7 +183,6 @@ static const char *get_llvm_symbolizer_command(void) {
       atomic_store(&g_llvm_symbolizer_checked, true);
     }
     static_mutex_unlock(&g_symbolizer_detection_mutex);
-    g_llvm_symbolizer_in_progress = false;
   }
 
   if (!atomic_load(&g_llvm_symbolizer_available)) {
@@ -207,13 +197,7 @@ static const char *get_llvm_symbolizer_command(void) {
 }
 
 static const char *get_addr2line_command(void) {
-  // Prevent recursive calls - if we're already getting addr2line, return early
-  if (g_addr2line_in_progress) {
-    return NULL;
-  }
-
   if (!atomic_load(&g_addr2line_checked)) {
-    g_addr2line_in_progress = true;
     static_mutex_lock(&g_symbolizer_detection_mutex);
     if (!atomic_load(&g_addr2line_checked)) {
       const char *env_path = SAFE_GETENV("ADDR2LINE_PATH");
@@ -241,7 +225,6 @@ static const char *get_addr2line_command(void) {
       atomic_store(&g_addr2line_checked, true);
     }
     static_mutex_unlock(&g_symbolizer_detection_mutex);
-    g_addr2line_in_progress = false;
   }
 
   if (!atomic_load(&g_addr2line_available)) {
