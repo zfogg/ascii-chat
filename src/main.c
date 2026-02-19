@@ -397,9 +397,7 @@ int main(int argc, char *argv[]) {
 #ifndef NDEBUG
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "--backtrace") == 0) {
-      log_info("=== Backtrace at startup ===");
       platform_print_backtrace(0);
-      log_info("=== End Backtrace ===");
       asciichat_shared_destroy();
       return 0;
     }
