@@ -148,19 +148,40 @@ asciichat_error_t interactive_grep_init(void) {
 
   // Check if there are CLI --grep patterns to use
   const char *cli_pattern = grep_get_last_pattern();
-  const char *initial_pattern = cli_pattern ? cli_pattern : "DEBUG";
 
-  // Start in INACTIVE mode. If a CLI pattern was provided, store it for later activation.
-  // Don't activate filtering immediately at startup - let logs display normally until user
-  // explicitly presses '/' to search or until enter_mode() is called to apply CLI pattern.
-  g_grep_state.mode = GREP_MODE_INACTIVE;
-  atomic_store(&g_grep_state.mode_atomic, GREP_MODE_INACTIVE);
+  // Start in INACTIVE mode if no CLI pattern is provided.
+  // Only use patterns from CLI --grep arguments, not default patterns.
+  // This ensures logs are visible by default and only filtered if explicitly requested.
+  if (!cli_pattern || cli_pattern[0] == '\0') {
+    // No CLI pattern - start inactive
+    g_grep_state.mode = GREP_MODE_INACTIVE;
+    atomic_store(&g_grep_state.mode_atomic, GREP_MODE_INACTIVE);
+    g_grep_state.initialized = true;
+    mutex_unlock(&g_grep_state.mutex);
+    return ASCIICHAT_OK;
+  }
 
-  // If there's a CLI pattern, save it in the input buffer for when user enters grep mode
-  if (cli_pattern && cli_pattern[0] != '\0') {
-    SAFE_STRNCPY(g_grep_state.input_buffer, cli_pattern, GREP_INPUT_BUFFER_SIZE - 1);
-    g_grep_state.len = strlen(cli_pattern);
-    g_grep_state.cursor = g_grep_state.len;
+  // Load CLI pattern into input buffer
+  SAFE_STRNCPY(g_grep_state.input_buffer, cli_pattern, GREP_INPUT_BUFFER_SIZE - 1);
+  g_grep_state.len = strlen(cli_pattern);
+  g_grep_state.cursor = g_grep_state.len;
+  g_grep_state.mode = GREP_MODE_ACTIVE;
+  atomic_store(&g_grep_state.mode_atomic, GREP_MODE_ACTIVE);
+
+  // Compile the initial pattern
+  grep_parse_result_t parsed = grep_parse_pattern(cli_pattern);
+  if (parsed.valid) {
+    pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile(parsed.pattern, parsed.pcre2_options);
+    if (singleton) {
+      g_grep_state.active_patterns[0] = singleton;
+      g_grep_state.active_pattern_count = 1;
+    }
+    g_grep_state.case_insensitive = parsed.case_insensitive;
+    g_grep_state.fixed_string = parsed.is_fixed_string;
+    g_grep_state.global_highlight = parsed.global_flag;
+    g_grep_state.invert_match = parsed.invert;
+    g_grep_state.context_before = parsed.context_before;
+    g_grep_state.context_after = parsed.context_after;
   }
 
   atomic_store(&g_grep_state.needs_rerender, true);

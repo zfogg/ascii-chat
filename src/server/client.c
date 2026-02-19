@@ -1680,6 +1680,16 @@ void *client_receive_thread(void *arg) {
       if (recv_result != ASCIICHAT_OK) {
         asciichat_error_context_t err_ctx;
         if (HAS_ERRNO(&err_ctx)) {
+          // Check for reassembly timeout (fragments arriving slowly)
+          // This is NOT a connection failure - safe to retry
+          if ((err_ctx.code == ERROR_NETWORK) && err_ctx.context_message &&
+              strstr(err_ctx.context_message, "reassembly timeout")) {
+            // Fragments are arriving slowly - this is normal, retry without disconnecting
+            log_dev_every(100000, "Client %u: fragment reassembly timeout, retrying in 10ms", client->client_id);
+            platform_sleep_ms(10); // Sleep 10ms to allow fragments to arrive
+            continue;             // Retry without disconnecting
+          }
+
           if (err_ctx.code == ERROR_NETWORK) {
             log_debug("Client %u disconnected (network error): %s", client->client_id, err_ctx.context_message);
             break;
