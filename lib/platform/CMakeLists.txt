@@ -33,6 +33,8 @@ if(WIN32)
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/agent.c
         ${CMAKE_SOURCE_DIR}/lib/video/webcam/windows/webcam_mediafoundation.c
     )
+    # Link psapi for EnumProcessModules (used in backtrace symbol resolution)
+    set(PLATFORM_LIBS psapi)
 elseif(PLATFORM_POSIX)
     set(PLATFORM_SRCS
         ${PLATFORM_SRCS_COMMON}
@@ -42,7 +44,6 @@ elseif(PLATFORM_POSIX)
         ${CMAKE_CURRENT_SOURCE_DIR}/posix/cond.c
         ${CMAKE_CURRENT_SOURCE_DIR}/posix/terminal.c
         ${CMAKE_CURRENT_SOURCE_DIR}/posix/keyboard.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/posix/system.c
         ${CMAKE_CURRENT_SOURCE_DIR}/posix/socket.c
         ${CMAKE_CURRENT_SOURCE_DIR}/posix/string.c
         ${CMAKE_CURRENT_SOURCE_DIR}/posix/util.c
@@ -55,15 +56,18 @@ elseif(PLATFORM_POSIX)
         ${CMAKE_CURRENT_SOURCE_DIR}/posix/filesystem.c
         ${CMAKE_CURRENT_SOURCE_DIR}/posix/errno.c
         ${CMAKE_CURRENT_SOURCE_DIR}/posix/agent.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/posix/system.c
     )
 
     if(PLATFORM_DARWIN)
         list(APPEND PLATFORM_SRCS
+            ${CMAKE_CURRENT_SOURCE_DIR}/macos/system.c
             ${CMAKE_CURRENT_SOURCE_DIR}/macos/keepawake.c
             ${CMAKE_SOURCE_DIR}/lib/video/webcam/macos/webcam_avfoundation.m
         )
     elseif(PLATFORM_LINUX)
         list(APPEND PLATFORM_SRCS
+            ${CMAKE_CURRENT_SOURCE_DIR}/linux/system.c
             ${CMAKE_CURRENT_SOURCE_DIR}/linux/keepawake.c
             ${CMAKE_SOURCE_DIR}/lib/video/webcam/linux/webcam_v4l2.c
         )

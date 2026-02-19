@@ -320,6 +320,7 @@ if(WIN32)
         ${MFUUID_LIB}
         ${OLE32_LIB}
         crypt32  # For Windows crypto certificate functions
+        psapi    # For EnumProcessModules (backtrace symbol resolution)
     )
 else()
     if(PLATFORM_DARWIN)
