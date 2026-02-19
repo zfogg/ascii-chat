@@ -359,12 +359,7 @@ const char *symbol_cache_lookup(void *addr) {
   const char *result = NULL;
   if (entry) {
     // Copy string while holding lock to prevent use-after-free
-    size_t len = strlen(entry->symbol) + 1;
-    char *dup = SAFE_MALLOC(len, char *);
-    if (dup) {
-      platform_strlcpy(dup, entry->symbol, len);
-      result = dup;
-    }
+    result = platform_strdup(entry->symbol);
     atomic_fetch_add(&g_cache_hits, 1);
   } else {
     atomic_fetch_add(&g_cache_misses, 1);
@@ -862,7 +857,7 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
 
   // Allocate result array (size + 1 for NULL terminator)
   // CALLOC zeros the memory, so result[size] is already NULL
-  char **result = SAFE_CALLOC((size_t)(size + 1), sizeof(char *), char **);
+  char **result = (char **)calloc((size_t)(size + 1), sizeof(char *));
   if (!result) {
     return NULL;
   }
@@ -911,21 +906,13 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
       for (int i = 0; i < uncached_count; i++) {
         int orig_idx = uncached_indices[i];
         if (resolved[i]) {
-          // Allocate and copy resolved string with tracked memory
-          size_t len = strlen(resolved[i]) + 1;
-          result[orig_idx] = SAFE_MALLOC(len, char *);
-          if (result[orig_idx]) {
-            platform_strlcpy(result[orig_idx], resolved[i], len);
-          } else {
-            log_error("Failed to allocate memory for result[%d]", orig_idx);
-            // Fallback to sentinel string
-            char *sentinel = SAFE_MALLOC(32, char *);
-            if (sentinel) {
-              SAFE_SNPRINTF(sentinel, 32, "%s", NULL_SENTINEL);
-              result[orig_idx] = sentinel;
-            }
+          result[orig_idx] = platform_strdup(resolved[i]);
+          // If strdup failed, use sentinel string instead of NULL
+          if (!result[orig_idx]) {
+            log_error("Failed to duplicate string for result[%d]", orig_idx);
+            result[orig_idx] = platform_strdup(NULL_SENTINEL);
           }
-          // Only insert into cache if allocation succeeded (and it's not the sentinel)
+          // Only insert into cache if strdup succeeded (and it's not the sentinel)
           if (result[orig_idx] && strcmp(result[orig_idx], NULL_SENTINEL) != 0) {
             if (!symbol_cache_insert(uncached_addrs[i], resolved[i])) {
               log_error("Failed to insert symbol into cache for result[%d]", orig_idx);
@@ -935,11 +922,7 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
         } else {
           // resolved[i] is NULL - use sentinel string
           if (!result[orig_idx]) {
-            char *sentinel = SAFE_MALLOC(32, char *);
-            if (sentinel) {
-              SAFE_SNPRINTF(sentinel, 32, "%s", NULL_SENTINEL);
-              result[orig_idx] = sentinel;
-            }
+            result[orig_idx] = platform_strdup(NULL_SENTINEL);
           }
         }
         if (!result[orig_idx]) {
@@ -958,11 +941,7 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
           if (result[orig_idx]) {
             SAFE_SNPRINTF(result[orig_idx], 32, "%p", uncached_addrs[i]);
           } else {
-            char *sentinel = SAFE_MALLOC(32, char *);
-            if (sentinel) {
-              SAFE_SNPRINTF(sentinel, 32, "%s", NULL_SENTINEL);
-              result[orig_idx] = sentinel;
-            }
+            result[orig_idx] = platform_strdup(NULL_SENTINEL);
           }
         }
         if (!result[orig_idx]) {
