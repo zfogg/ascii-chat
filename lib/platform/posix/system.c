@@ -949,6 +949,8 @@ void platform_print_backtrace(int skip_frames) {
     char **symbols = platform_backtrace_symbols(buffer, size);
 
     // Skip internal frames (platform_backtrace + unresolvable return address) + any additional frames requested
+    // TODO: Verify if skipping 2 frames is correct across all platforms and compiler optimizations.
+    // This value may need adjustment on macOS, Windows, or with different optimization levels.
     platform_print_backtrace_symbols("Backtrace", symbols, size, 2 + skip_frames, 0, NULL);
 
     platform_backtrace_symbols_destroy(symbols);
