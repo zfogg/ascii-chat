@@ -766,6 +766,7 @@ bool interactive_grep_get_match_info(const char *message, size_t *out_match_star
     const char *src = parsed.valid ? parsed.pattern : g_grep_state.input_buffer;
     SAFE_STRNCPY(pattern_copy, src, sizeof(pattern_copy) - 1);
     pattern_copy[sizeof(pattern_copy) - 1] = '\0';
+    pattern_len = strlen(pattern_copy);  // Update pattern_len for the actual parsed pattern
   }
 
   for (int i = 0; i < pattern_count && i < MAX_GREP_PATTERNS; i++) {
