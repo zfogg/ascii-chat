@@ -59,7 +59,8 @@
 /* Forward declarations - callers include full headers themselves */
 typedef struct tcp_client tcp_client_t;
 typedef struct websocket_client websocket_client_t;
-typedef struct discovery_session discovery_session_t;
+/* discovery_session is defined in src/discovery/session.h as an opaque type
+   Discovery mode should include that header and cast to/from void * */
 
 /* ============================================================================
  * Callback Types
@@ -134,12 +135,13 @@ typedef struct session_client_like_config {
   websocket_client_t *websocket_client;
 
   /**
-   * Active discovery session for this connection. When non-NULL, events
-   * will be processed periodically inside the shared exit check, and the
-   * session will be stopped during teardown.
+   * Active discovery session for this connection (opaque void *).
+   * When non-NULL, events will be processed periodically inside the shared exit check,
+   * and the session will be stopped during teardown.
    * NULL for mirror mode and TCP client mode.
+   * Cast from discovery_session_t * when used (include src/discovery/session.h).
    */
-  discovery_session_t *discovery;
+  void *discovery;
 
   /* ================================================================ */
   /* Exit Condition                                                     */
@@ -159,6 +161,53 @@ typedef struct session_client_like_config {
 
   /** User data for custom_should_exit callback */
   void *exit_user_data;
+
+  /* ================================================================ */
+  /* Reconnection Logic (for client/discovery retry loops)             */
+  /* ================================================================ */
+
+  /**
+   * Maximum reconnection attempts. Controls retry behavior:
+   *   -1 = unlimited retries (keep trying forever)
+   *    0 = no retries (single attempt only, exit on failure)
+   *   >0 = retry up to N times
+   *
+   * Default: 0 (no retries). Client mode typically sets to -1.
+   * Discovery mode may set custom value based on role.
+   *
+   * When run_fn returns non-OK, session_client_like_run() checks this
+   * to decide whether to retry or exit.
+   */
+  int max_reconnect_attempts;
+
+  /**
+   * Optional callback to determine if should attempt reconnection.
+   *
+   * Called when run_fn returns with error code. Can implement custom
+   * reconnection logic:
+   *   - discovery: return false when role changes to prevent retry
+   *   - client: always return true (handled by max_reconnect_attempts)
+   *
+   * Should return:
+   *   true  = attempt reconnection
+   *   false = exit immediately
+   *
+   * NULL = always attempt reconnection (unless max_reconnect_attempts reached).
+   */
+  bool (*should_reconnect_callback)(asciichat_error_t last_error, int attempt_number, void *user_data);
+
+  /** User data for should_reconnect_callback */
+  void *reconnect_user_data;
+
+  /**
+   * Delay in milliseconds before attempting reconnection.
+   * Applied after each failed attempt. 0 = no delay.
+   *
+   * Can be a fixed value (e.g., 1000 for 1 second) or exponential
+   * backoff. Modes with backoff can use should_reconnect_callback
+   * to calculate delay based on attempt number.
+   */
+  unsigned int reconnect_delay_ms;
 
   /* ================================================================ */
   /* Keyboard Handler                                                   */
@@ -201,6 +250,28 @@ typedef struct session_client_like_config {
  *         session_client_like_run() has not been called yet.
  */
 bool (*session_client_like_get_render_should_exit(void))(void *);
+
+/**
+ * Get the TCP client created by session_client_like_run() (if applicable).
+ *
+ * Returns the TCP client created for direct TCP connections (non-WebSocket).
+ * Only valid after session_client_like_run() is called and during run_fn execution.
+ * May be NULL if WebSocket is being used instead.
+ *
+ * @return Pointer to tcp_client_t, or NULL if not created or using WebSocket
+ */
+tcp_client_t *session_client_like_get_tcp_client(void);
+
+/**
+ * Get the WebSocket client created by session_client_like_run() (if applicable).
+ *
+ * Returns the WebSocket client created for WebSocket connections.
+ * Only valid after session_client_like_run() is called and during run_fn execution.
+ * May be NULL if TCP is being used instead.
+ *
+ * @return Pointer to websocket_client_t, or NULL if not created or using TCP
+ */
+websocket_client_t *session_client_like_get_websocket_client(void);
 
 /**
  * Run a client-like mode with fully shared initialization and teardown

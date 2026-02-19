@@ -19,6 +19,9 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/network/tcp/client.h>
+#include <ascii-chat/network/websocket/client.h>
+#include <ascii-chat/util/url.h>
 
 #include <string.h>
 #include <stdatomic.h>
@@ -33,15 +36,27 @@ static const session_client_like_config_t *g_current_config = NULL;
 // Module-level adapter functions for render loop access
 static bool (*g_render_should_exit)(void *) = NULL;
 
+// Module-level network clients (created by framework, accessed by run_fn)
+static tcp_client_t *g_tcp_client = NULL;
+static websocket_client_t *g_websocket_client = NULL;
+
 // External exit function from src/main.c
 extern bool should_exit(void);
 
 /* ============================================================================
- * Public Accessor
+ * Public Accessors
  * ============================================================================ */
 
 bool (*session_client_like_get_render_should_exit(void))(void *) {
   return g_render_should_exit;
+}
+
+tcp_client_t *session_client_like_get_tcp_client(void) {
+  return g_tcp_client;
+}
+
+websocket_client_t *session_client_like_get_websocket_client(void) {
+  return g_websocket_client;
 }
 
 /* ============================================================================
@@ -391,12 +406,90 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   }
 
   // ============================================================================
-  // RUN: Mode-Specific Main Loop
+  // SETUP: Network Transports (TCP/WebSocket)
   // ============================================================================
 
-  log_debug("About to call config->run_fn()");
-  result = config->run_fn(capture, display, config->run_user_data);
-  log_debug("config->run_fn() returned with result=%d", result);
+  log_debug("session_client_like_run(): Setting up network transports");
+
+  // Parse server address to determine TCP vs WebSocket
+  const char *server_address = GET_OPTION(address);
+  bool is_websocket = server_address && url_is_websocket(server_address);
+
+  if (is_websocket) {
+    log_debug("WebSocket URL detected: %s", server_address);
+    g_websocket_client = websocket_client_create();
+    if (!g_websocket_client) {
+      log_error("Failed to create WebSocket client");
+      result = ERROR_NETWORK;
+      goto cleanup;
+    }
+  } else {
+    log_debug("Using TCP client for server: %s:%d", server_address ? server_address : "localhost", GET_OPTION(port));
+    g_tcp_client = tcp_client_create();
+    if (!g_tcp_client) {
+      log_error("Failed to create TCP client");
+      result = ERROR_NETWORK;
+      goto cleanup;
+    }
+  }
+
+  // ============================================================================
+  // RUN: Mode-Specific Main Loop with Reconnection
+  // ============================================================================
+
+  // Connection/attempt loop - wraps run_fn with reconnection logic
+  int attempt = 0;
+  int max_attempts = config->max_reconnect_attempts;
+
+  while (true) {
+    attempt++;
+
+    log_debug("About to call config->run_fn() (attempt %d)", attempt);
+    result = config->run_fn(capture, display, config->run_user_data);
+    log_debug("config->run_fn() returned with result=%d", result);
+
+    // Exit immediately if run_fn succeeded
+    if (result == ASCIICHAT_OK) {
+      break;
+    }
+
+    // Check if we should attempt reconnection
+    bool should_retry = false;
+
+    if (max_attempts != 0) { // max_attempts == 0 means no retries
+      // Check custom reconnect logic if provided
+      if (config->should_reconnect_callback) {
+        should_retry = config->should_reconnect_callback(result, attempt, config->reconnect_user_data);
+      } else {
+        should_retry = true; // Default: always retry
+      }
+
+      // Check retry limits if still planning to retry
+      if (should_retry && max_attempts > 0 && attempt >= max_attempts) {
+        log_debug("Reached maximum reconnection attempts (%d), giving up", max_attempts);
+        should_retry = false;
+      }
+    }
+
+    // If not retrying or shutdown requested, exit loop
+    if (!should_retry || should_exit()) {
+      break;
+    }
+
+    // Log reconnection message
+    if (max_attempts == -1) {
+      log_info("Connection failed, retrying...");
+    } else if (max_attempts > 0) {
+      log_info("Connection failed, retrying (attempt %d/%d)...", attempt + 1, max_attempts);
+    }
+
+    // Apply reconnection delay if configured
+    if (config->reconnect_delay_ms > 0) {
+      platform_sleep_ms(config->reconnect_delay_ms);
+    }
+
+    // Continue loop to retry
+  }
 
   // ============================================================================
   // CLEANUP (always runs, even on error)
@@ -405,6 +498,16 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
 cleanup:
   // Re-enable terminal output for shutdown logs
   log_set_terminal_output(true);
+
+  // Cleanup network transports (TCP/WebSocket clients)
+  if (g_websocket_client) {
+    log_debug("Destroying WebSocket client");
+    websocket_client_destroy(&g_websocket_client);
+  }
+  if (g_tcp_client) {
+    log_debug("Destroying TCP client");
+    tcp_client_destroy(&g_tcp_client);
+  }
 
   // CRITICAL: Terminate PortAudio device resources FIRST
   log_debug("Terminating PortAudio device resources");
