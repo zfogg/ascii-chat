@@ -16,7 +16,6 @@
 #include "ascii-chat/ui/terminal_screen.h"
 #include "ascii-chat/log/interactive_grep.h"
 #include "ascii-chat/session/session_log_buffer.h"
-#include "ascii-chat/log/file_parser.h"
 #include "ascii-chat/util/display.h"
 #include "ascii-chat/util/time.h"
 #include "ascii-chat/platform/system.h"
@@ -178,39 +177,8 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
         SAFE_MALLOC(SESSION_LOG_BUFFER_SIZE * sizeof(session_log_entry_t), session_log_entry_t *);
     if (buffer_entries) {
       size_t buffer_count = session_log_buffer_get_recent(buffer_entries, SESSION_LOG_BUFFER_SIZE);
-
-      // Try to tail log file if specified to merge with memory buffer
-      session_log_entry_t *file_entries = NULL;
-      size_t file_count = 0;
-      const char *log_file = GET_OPTION(log_file);
-      if (log_file && log_file[0] != '\0') {
-        // Tail last 100KB of log file
-        file_count = log_file_parser_tail(log_file, 100 * 1024, &file_entries, SESSION_LOG_BUFFER_SIZE / 2);
-      }
-
-      // Merge and deduplicate if we have file entries
-      if (file_count > 0) {
-        // Ensure colors are initialized before recoloring file logs
-        log_init_colors();
-
-        session_log_entry_t *merged_entries = NULL;
-        size_t merged_count =
-            log_file_parser_merge_and_dedupe(buffer_entries, buffer_count, file_entries, file_count, &merged_entries);
-        SAFE_FREE(buffer_entries);
-        SAFE_FREE(file_entries);
-
-        // Cap merged entries at SESSION_LOG_BUFFER_SIZE to prevent buffer overflow
-        if (merged_count > SESSION_LOG_BUFFER_SIZE) {
-          merged_count = SESSION_LOG_BUFFER_SIZE;
-        }
-
-        log_entries = merged_entries;
-        log_count = merged_count;
-      } else {
-        SAFE_FREE(file_entries);
-        log_entries = buffer_entries;
-        log_count = buffer_count;
-      }
+      log_entries = buffer_entries;
+      log_count = buffer_count;
     }
   }
 
