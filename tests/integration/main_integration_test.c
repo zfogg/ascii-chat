@@ -200,7 +200,7 @@ Test(main_integration, server_main_starts_and_stops) {
   char port_str[16];
   safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
-  char *argv[] = {"ascii-chat", "server", "--port", port_str, "--log-file", "/tmp/test_server_main.log", NULL};
+  char *argv[] = {"ascii-chat", "--log-file", "/tmp/test_server_main.log", "server", "--port", port_str, NULL};
 
   pid_t server_pid = spawn_process(get_binary_path(), argv, "server");
   cr_assert_gt(server_pid, 0, "Server should spawn successfully");
@@ -265,7 +265,7 @@ Test(main_integration, client_main_no_server) {
   char port_str[16];
   safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
-  char *argv[] = {"ascii-chat", "client", "--port", port_str, "--address", "127.0.0.1", "--test-pattern", NULL};
+  char *argv[] = {"ascii-chat", "client", "127.0.0.1", "--port", port_str, "--test-pattern", NULL};
 
   pid_t client_pid = spawn_process(get_binary_path(), argv, "client_no_server");
   cr_assert_gt(client_pid, 0, "Client should spawn");
@@ -293,7 +293,7 @@ Test(main_integration, server_client_basic_connection) {
 
   // Start server (no encryption for speed)
   char *server_argv[] = {
-      "ascii-chat", "server", "--port", port_str, "--no-encrypt", "--log-file", "/tmp/test_server_client.log", NULL};
+      "ascii-chat", "--log-file", "/tmp/test_server_client.log", "server", "--port", port_str, "--no-encrypt", NULL};
 
   pid_t server_pid = spawn_process(get_binary_path(), server_argv, "server");
   cr_assert_gt(server_pid, 0, "Server should spawn");
@@ -304,18 +304,17 @@ Test(main_integration, server_client_basic_connection) {
 
   // Start client with test pattern (no webcam needed in Docker)
   char *client_argv[] = {"ascii-chat",
+                         "--log-file",
+                         "/tmp/test_client.log",
                          "client",
+                         "127.0.0.1",
                          "--port",
                          port_str,
-                         "--address",
-                         "127.0.0.1",
                          "--no-encrypt",   // Skip crypto handshake for speed
                          "--test-pattern", // Use test pattern instead of webcam
                          "--snapshot",     // Take single snapshot and exit immediately
                          "--snapshot-delay",
                          "0",
-                         "--log-file",
-                         "/tmp/test_client.log",
                          NULL};
 
   pid_t client_pid = spawn_process(get_binary_path(), client_argv, "client");
@@ -338,7 +337,7 @@ Test(main_integration, server_multiple_clients_sequential) {
 
   // Start server (no encryption for speed)
   char *server_argv[] = {
-      "ascii-chat", "server", "--port", port_str, "--no-encrypt", "--log-file", "/tmp/test_multi_seq.log", NULL};
+      "ascii-chat", "--log-file", "/tmp/test_multi_seq.log", "server", "--port", port_str, "--no-encrypt", NULL};
 
   pid_t server_pid = spawn_process(get_binary_path(), server_argv, "server");
   cr_assert_gt(server_pid, 0, "Server should spawn");
@@ -352,18 +351,17 @@ Test(main_integration, server_multiple_clients_sequential) {
     safe_snprintf(client_name, sizeof(client_name), "client_%d", i);
 
     char *client_argv[] = {"ascii-chat",
+                           "--log-file",
+                           "/tmp/test_client_seq.log",
                            "client",
+                           "127.0.0.1",
                            "--port",
                            port_str,
-                           "--address",
-                           "127.0.0.1",
                            "--no-encrypt",
                            "--test-pattern",
                            "--snapshot",
                            "--snapshot-delay",
                            "0",
-                           "--log-file",
-                           "/tmp/test_client_seq.log",
                            NULL};
 
     pid_t client_pid = spawn_process(get_binary_path(), client_argv, client_name);
@@ -385,7 +383,7 @@ Test(main_integration, server_multiple_clients_concurrent) {
 
   // Start server (no encryption for speed)
   char *server_argv[] = {
-      "ascii-chat", "server", "--port", port_str, "--no-encrypt", "--log-file", "/tmp/test_multi_concurrent.log", NULL};
+      "ascii-chat", "--log-file", "/tmp/test_multi_concurrent.log", "server", "--port", port_str, "--no-encrypt", NULL};
 
   pid_t server_pid = spawn_process(get_binary_path(), server_argv, "server");
   cr_assert_gt(server_pid, 0, "Server should spawn");
@@ -400,18 +398,17 @@ Test(main_integration, server_multiple_clients_concurrent) {
     safe_snprintf(client_name, sizeof(client_name), "client_%d", i);
 
     char *client_argv[] = {"ascii-chat",
+                           "--log-file",
+                           "/tmp/test_client_concurrent.log",
                            "client",
+                           "127.0.0.1",
                            "--port",
                            port_str,
-                           "--address",
-                           "127.0.0.1",
                            "--no-encrypt",   // Skip crypto handshake for speed
                            "--test-pattern", // Use test pattern instead of webcam
                            "--snapshot",     // Take single snapshot and exit
                            "--snapshot-delay",
                            "0",
-                           "--log-file",
-                           "/tmp/test_client_concurrent.log",
                            NULL};
 
     client_pids[i] = spawn_process(get_binary_path(), client_argv, client_name);
@@ -437,7 +434,7 @@ Test(main_integration, server_client_with_options) {
 
   // Start server with standard options (no encryption for speed)
   char *server_argv[] = {
-      "ascii-chat", "server", "--port", port_str, "--no-encrypt", "--log-file", "/tmp/test_server_options.log", NULL};
+      "ascii-chat", "--log-file", "/tmp/test_server_options.log", "server", "--port", port_str, "--no-encrypt", NULL};
 
   pid_t server_pid = spawn_process(get_binary_path(), server_argv, "server");
   cr_assert_gt(server_pid, 0, "Server should spawn with options");
@@ -448,11 +445,12 @@ Test(main_integration, server_client_with_options) {
   // Start client with options (test pattern for no webcam)
   // Note: --color-mode is the correct option, not --color
   char *client_argv[] = {"ascii-chat",
+                         "--log-file",
+                         "/tmp/test_client_options.log",
                          "client",
+                         "127.0.0.1",
                          "--port",
                          port_str,
-                         "--address",
-                         "127.0.0.1",
                          "--no-encrypt",   // Skip crypto handshake for speed
                          "--test-pattern", // Use test pattern instead of webcam
                          "--color-mode",
@@ -464,8 +462,6 @@ Test(main_integration, server_client_with_options) {
                          "--snapshot", // Take single snapshot and exit
                          "--snapshot-delay",
                          "0",
-                         "--log-file",
-                         "/tmp/test_client_options.log",
                          NULL};
 
   pid_t client_pid = spawn_process(get_binary_path(), client_argv, "client");
@@ -486,7 +482,7 @@ Test(main_integration, server_survives_client_crash) {
 
   // Start server (no encryption for speed)
   char *server_argv[] = {
-      "ascii-chat", "server", "--port", port_str, "--no-encrypt", "--log-file", "/tmp/test_server_survives.log", NULL};
+      "ascii-chat", "--log-file", "/tmp/test_server_survives.log", "server", "--port", port_str, "--no-encrypt", NULL};
 
   pid_t server_pid = spawn_process(get_binary_path(), server_argv, "server");
   cr_assert_gt(server_pid, 0, "Server should spawn");
@@ -496,15 +492,14 @@ Test(main_integration, server_survives_client_crash) {
 
   // Start client with test pattern (no webcam needed)
   char *client_argv[] = {"ascii-chat",
-                         "client",
-                         "--port",
-                         port_str,
-                         "--address",
-                         "127.0.0.1",
-                         "--no-encrypt", // Skip crypto handshake for speed
-                         "--test-pattern",
                          "--log-file",
                          "/tmp/test_client_crash.log",
+                         "client",
+                         "127.0.0.1",
+                         "--port",
+                         port_str,
+                         "--no-encrypt", // Skip crypto handshake for speed
+                         "--test-pattern",
                          NULL};
 
   pid_t client_pid = spawn_process(get_binary_path(), client_argv, "client");
@@ -523,18 +518,17 @@ Test(main_integration, server_survives_client_crash) {
 
   // Try connecting another client to verify server is still functional
   char *client2_argv[] = {"ascii-chat",
+                          "--log-file",
+                          "/tmp/test_client_after_crash.log",
                           "client",
+                          "127.0.0.1",
                           "--port",
                           port_str,
-                          "--address",
-                          "127.0.0.1",
                           "--no-encrypt", // Skip crypto handshake for speed
                           "--test-pattern",
                           "--snapshot",
                           "--snapshot-delay",
                           "0",
-                          "--log-file",
-                          "/tmp/test_client_after_crash.log",
                           NULL};
 
   pid_t client2_pid = spawn_process(get_binary_path(), client2_argv, "client2");
