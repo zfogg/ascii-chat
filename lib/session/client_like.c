@@ -505,27 +505,9 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
       log_info("Connection failed, retrying (attempt %d/%d)...", attempt + 1, max_attempts);
     }
 
-    // Apply exponential backoff for reconnection delay
-    // Formula: min(base_delay * 2^(attempt-1), max_delay)
-    // This prevents tight reconnection loops while maintaining responsiveness for early retries
+    // Apply reconnection delay if configured
     if (config->reconnect_delay_ms > 0) {
-      uint32_t base_delay_ms = config->reconnect_delay_ms;
-      uint32_t max_delay_ms = 60000; // 60 second maximum delay cap
-
-      // Calculate exponential delay: base_delay * 2^(attempt-1)
-      // Start with base_delay for attempt 1, then double for each subsequent attempt
-      uint32_t delay_ms = base_delay_ms;
-      for (int i = 1; i < attempt && delay_ms < max_delay_ms; i++) {
-        delay_ms = (delay_ms > max_delay_ms / 2) ? max_delay_ms : (delay_ms * 2);
-      }
-
-      // Cap at maximum
-      if (delay_ms > max_delay_ms) {
-        delay_ms = max_delay_ms;
-      }
-
-      log_info("Waiting %u ms before reconnection attempt (exponential backoff, attempt %d)", delay_ms, attempt);
-      platform_sleep_ms(delay_ms);
+      platform_sleep_ms(config->reconnect_delay_ms);
     }
 
     // Continue loop to retry
