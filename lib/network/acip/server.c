@@ -157,6 +157,7 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
   // Dispatch packet to appropriate ACIP handler
   // Server receives packets FROM clients, so use server packet handler
   log_info("ACIP_DISPATCH_PKT: type=%d, len=%zu, client_ctx=%p", envelope.type, envelope.len, client_ctx);
+  log_info("📤 [FRAME_DISPATCH] Starting handler dispatch for packet type=%d (0x%04x), payload=%zu bytes", envelope.type, envelope.type, envelope.len);
   uint64_t dispatch_handler_start_ns = time_get_ns();
   asciichat_error_t dispatch_result =
       acip_handle_server_packet(transport, envelope.type, envelope.data, envelope.len, client_ctx, callbacks);
@@ -165,6 +166,12 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
   format_duration_ns((double)(dispatch_handler_end_ns - dispatch_handler_start_ns), handler_duration_str,
                      sizeof(handler_duration_str));
   log_info("[WS_TIMING] Handler for type=%d took %s (result=%d)", envelope.type, handler_duration_str, dispatch_result);
+
+  if (dispatch_result != ASCIICHAT_OK) {
+    log_error("❌ [FRAME_DISPATCH_FAILED] Handler returned error for type=%d: %d", envelope.type, dispatch_result);
+  } else {
+    log_info("✅ [FRAME_DISPATCH_SUCCESS] Handler completed successfully for type=%d", envelope.type);
+  }
 
   // Always free the allocated buffer (even if handler failed)
   if (envelope.allocated_buffer) {

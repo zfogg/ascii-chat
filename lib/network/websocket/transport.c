@@ -563,6 +563,15 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
       *out_allocated_buffer = assembled_buffer;
       mutex_unlock(&ws_data->recv_mutex);
 
+      // Frame dispatch completion logging: verify frame is leaving transport
+      if (assembled_size >= sizeof(packet_header_t)) {
+        const packet_header_t *pkt_hdr = (const packet_header_t *)assembled_buffer;
+        uint16_t pkt_type = NET_TO_HOST_U16(pkt_hdr->type);
+        log_info("✅ [WEBSOCKET_FRAME_COMPLETE] Frame dispatch starting: type=%d (0x%04x), size=%zu bytes", pkt_type, pkt_type, assembled_size);
+      } else {
+        log_warn("⚠️  [WEBSOCKET_FRAME_COMPLETE] Returned frame too small (%zu bytes), cannot parse header", assembled_size);
+      }
+
       log_debug("🔍 WEBSOCKET_RECV: Returning complete packet: %zu bytes", assembled_size);
       return ASCIICHAT_OK;
     }
