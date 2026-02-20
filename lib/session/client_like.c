@@ -289,12 +289,18 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   }
 
   // ============================================================================
-  // SETUP: Network Transports (TCP/WebSocket) - BEFORE capture context decision
+  // STEP 1: SETUP: Network Transports (TCP/WebSocket) - BEFORE capture context
   // ============================================================================
   // CRITICAL: Create network clients FIRST, before is_network_mode check.
   // This ensures capture context is initialized correctly based on actual
   // clients created (not config parameters which are NULL for client mode).
+  //
+  // EXECUTION SEQUENCE:
+  // 1. Create network clients (this block) ← YOU ARE HERE
+  // 2. Check is_network_mode based on created clients
+  // 3. Create appropriate capture context (network vs mirror)
 
+  log_info("[STEP 1] === BEGIN: Network Transports Setup ===");
   log_debug("session_client_like_run(): Setting up network transports");
   log_debug("Checking server address and determining transport type");
 
@@ -302,71 +308,86 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   const char *server_address = GET_OPTION(address);
   bool is_websocket = server_address && url_is_websocket(server_address);
 
-  log_debug("Network transport decision: is_websocket=%d, server_address=%s",
+  log_debug("[STEP 1] Network transport decision: is_websocket=%d, server_address=%s",
             is_websocket, server_address ? server_address : "(null)");
 
   if (is_websocket) {
-    log_debug("WebSocket URL detected: %s", server_address);
+    log_debug("[STEP 1] WebSocket URL detected: %s", server_address);
+    log_debug("[STEP 1] Creating WebSocket client...");
     g_websocket_client = websocket_client_create();
     if (!g_websocket_client) {
-      log_error("Failed to create WebSocket client");
+      log_error("[STEP 1] Failed to create WebSocket client");
       result = ERROR_NETWORK;
       goto cleanup;
     }
-    log_debug("WebSocket client created successfully (g_websocket_client=%p)", (void *)g_websocket_client);
+    log_info("[STEP 1] ✓ WebSocket client created (g_websocket_client=%p)", (void *)g_websocket_client);
   } else if (server_address && strlen(server_address) > 0) {
-    log_debug("Using TCP client for server: %s:%d", server_address, GET_OPTION(port));
+    log_debug("[STEP 1] TCP client will be created for server: %s:%d", server_address, GET_OPTION(port));
+    log_debug("[STEP 1] Creating TCP client...");
     g_tcp_client = tcp_client_create();
     if (!g_tcp_client) {
-      log_error("Failed to create TCP client");
+      log_error("[STEP 1] Failed to create TCP client");
       result = ERROR_NETWORK;
       goto cleanup;
     }
-    log_debug("TCP client created successfully (g_tcp_client=%p)", (void *)g_tcp_client);
+    log_info("[STEP 1] ✓ TCP client created (g_tcp_client=%p)", (void *)g_tcp_client);
   }
 
+  log_info("[STEP 1] === END: Network Transports Setup === (clients ready)");
+
   // ============================================================================
-  // SETUP: Capture Context
+  // STEP 2: SETUP: Capture Context (based on network clients created in STEP 1)
   // ============================================================================
+  // EXECUTION SEQUENCE:
+  // 1. ✓ DONE: Create network clients (see STEP 1 above)
+  // 2. Check is_network_mode based on created clients ← YOU ARE HERE
+  // 3. Create appropriate capture context (network vs mirror)
+  //
+  // CRITICAL: Check ACTUAL global clients created above, not config parameters
+  // (config->tcp_client/websocket_client are always NULL for client mode)
+
+  log_info("[STEP 2] === BEGIN: Capture Context Setup ===");
 
   // Choose capture type based on mode:
   // - Mirror mode: needs to capture local media (webcam, file, test pattern)
   // - Network modes (client/discovery): receive frames from network, no local capture
-  //
-  // CRITICAL: Check ACTUAL global clients created above, not config parameters
-  // (config->tcp_client/websocket_client are always NULL for client mode)
   bool is_network_mode = (g_tcp_client != NULL || g_websocket_client != NULL);
 
-  log_debug("VALIDATION POINT 1: After network client creation");
-  log_debug("  g_tcp_client=%p", (void *)g_tcp_client);
-  log_debug("  g_websocket_client=%p", (void *)g_websocket_client);
-  log_debug("  is_network_mode=%d (based on actual globals, not config)", is_network_mode);
+  log_info("[STEP 2] *** VALIDATION POINT 1: After network client creation ***");
+  log_info("[STEP 2] Checking actual global network clients:");
+  log_info("[STEP 2]   g_tcp_client=%p (from STEP 1 creation)", (void *)g_tcp_client);
+  log_info("[STEP 2]   g_websocket_client=%p (from STEP 1 creation)", (void *)g_websocket_client);
+  log_info("[STEP 2]   is_network_mode=%d (based on ACTUAL globals, NOT config)", is_network_mode);
 
   if (is_network_mode) {
     // Network mode: create minimal capture context without media source
-    log_debug("Network mode detected - using network capture (no local media source)");
+    log_info("[STEP 2] ✓ RESULT: is_network_mode=TRUE → Using NETWORK capture");
+    log_debug("[STEP 2] Network mode detected - using network capture (no local media source)");
     int fps = GET_OPTION(fps);
     capture = session_network_capture_create((uint32_t)(fps > 0 ? fps : 60));
     if (!capture) {
-      log_fatal("Failed to initialize network capture context");
+      log_fatal("[STEP 2] Failed to initialize network capture context");
       result = ERROR_MEDIA_INIT;
       goto cleanup;
     }
-    log_debug("Network capture context created successfully");
+    log_debug("[STEP 2] Network capture context created successfully");
     if (fps > 0) {
-      log_debug("Network capture FPS set to %d from options", fps);
+      log_debug("[STEP 2] Network capture FPS set to %d from options", fps);
     }
   } else {
     // Mirror mode: create capture context with local media source
-    log_debug("Mirror mode detected - using mirror capture with local media source");
+    log_info("[STEP 2] ✓ RESULT: is_network_mode=FALSE → Using MIRROR capture");
+    log_debug("[STEP 2] Mirror mode detected - using mirror capture with local media source");
     capture = session_mirror_capture_create(&capture_config);
     if (!capture) {
-      log_fatal("Failed to initialize mirror capture source");
+      log_fatal("[STEP 2] Failed to initialize mirror capture source");
       result = ERROR_MEDIA_INIT;
       goto cleanup;
     }
-    log_debug("Mirror capture context created successfully");
+    log_debug("[STEP 2] Mirror capture context created successfully");
   }
+
+  log_info("[STEP 2] === END: Capture Context Setup === (correct type created)");
 
   // ============================================================================
   // SETUP: Audio Context
