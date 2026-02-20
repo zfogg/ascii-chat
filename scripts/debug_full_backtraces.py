@@ -11,10 +11,41 @@ import time
 import os
 import socket
 import threading
+import atexit
+
+PID_FILE = 'ascii-chat-debug.pid'
+
+def cleanup_pid_file():
+    """Kill process in PID file on exit"""
+    try:
+        if os.path.exists(PID_FILE):
+            with open(PID_FILE, 'r') as f:
+                pid = f.read().strip()
+            if pid:
+                print(f"\n[Cleanup] Killing process {pid} (kill -9)...")
+                subprocess.run(['kill', '-9', pid], timeout=2)
+                time.sleep(0.5)
+    except Exception as e:
+        pass
 
 def kill_existing_processes():
-    """Kill any existing ascii-chat servers (exact match only)"""
-    print("Killing existing ascii-chat servers...")
+    """Kill any existing ascii-chat servers from previous runs"""
+    print("Cleaning up any existing debug processes...")
+
+    # Kill from PID file if it exists
+    if os.path.exists(PID_FILE):
+        try:
+            with open(PID_FILE, 'r') as f:
+                old_pid = f.read().strip()
+            if old_pid:
+                print(f"  Killing previous process {old_pid} (kill -9)...")
+                subprocess.run(['kill', '-9', old_pid], timeout=2)
+                time.sleep(0.5)
+        except Exception as e:
+            pass
+
+    # Also kill any matching processes
+    print("  Killing any other ascii-chat server processes...")
     try:
         subprocess.run(['pkill', '-x', '-9', 'ascii-chat'], timeout=2)
     except Exception as e:
@@ -27,15 +58,27 @@ def start_server():
     proc = subprocess.Popen(['./build/bin/ascii-chat', 'server'],
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     print(f"Server started with PID {proc.pid}")
+
+    # Save PID to file for cleanup on next run
+    try:
+        with open(PID_FILE, 'w') as f:
+            f.write(str(proc.pid))
+        print(f"Saved PID to: {PID_FILE}")
+    except Exception as e:
+        print(f"Warning: Could not save PID file: {e}")
+
     time.sleep(2)  # Wait for server to start
 
-    # Verify server is running
-    pid = get_server_pid()
-    if not pid:
+    # Verify server is running by checking if the process still exists
+    try:
+        os.kill(proc.pid, 0)  # Signal 0 checks if process exists without killing it
+        print(f"Server confirmed running with PID {proc.pid}")
+    except (OSError, ProcessLookupError):
         print("ERROR: Server failed to start!")
         sys.exit(1)
-    print(f"Server confirmed running with PID {pid}")
+
     time.sleep(3)  # Wait for server to send first frame before capturing backtraces
+    return proc.pid
 
 
 def get_server_pid():
@@ -54,12 +97,14 @@ quit
     return result.stdout
 
 def main():
+    # Register cleanup to run on exit
+    atexit.register(cleanup_pid_file)
+
     pid = sys.argv[1] if len(sys.argv) > 1 else None
 
     if not pid:
         kill_existing_processes()
-        start_server()
-        pid = get_server_pid()
+        pid = start_server()
 
     if not pid:
         print("Error: No ascii-chat server found")
