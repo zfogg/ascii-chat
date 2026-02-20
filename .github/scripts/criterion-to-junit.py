@@ -53,9 +53,10 @@ def main():
     xml_files = list(input_dir.glob('*.xml'))
     if not xml_files:
         print(f"No XML files found in {input_dir}")
-        sys.exit(1)
+        sys.exit(0)  # Return success for empty directory (no files to convert)
 
     converted = 0
+    failed = 0
     for xml_file in xml_files:
         try:
             output_file = output_dir / xml_file.name
@@ -63,11 +64,14 @@ def main():
             print(f"✓ Converted {xml_file.name}")
             converted += 1
         except Exception as e:
-            print(f"✗ Error converting {xml_file.name}: {e}")
+            print(f"✗ Error converting {xml_file.name}: {e}", file=sys.stderr)
+            failed += 1
 
-    print(f"\nConverted {converted} XML files to JUnit format")
-    if converted == 0:
+    print(f"\n✓ Successfully converted {converted} XML files to JUnit format")
+    if failed > 0:
+        print(f"⚠ Failed to convert {failed} files", file=sys.stderr)
         sys.exit(1)
+    sys.exit(0)
 
 if __name__ == '__main__':
     main()
