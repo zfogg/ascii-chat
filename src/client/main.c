@@ -675,21 +675,11 @@ int client_main(void) {
     discovery_tui_server_t *selected = &discovered_servers[selected_index];
     const char *selected_address = discovery_tui_get_best_address(selected);
 
-    // We need to modify options, but they're immutable via RCU
-    // Create a new options copy with updated address/port
-    options_t *opts_new = SAFE_MALLOC(sizeof(options_t), options_t *);
-    if (opts_new) {
-      memcpy(opts_new, opts, sizeof(options_t));
-      SAFE_STRNCPY(opts_new->address, selected_address, sizeof(opts_new->address));
+    log_debug("LAN discovery: Selected server '%s' at %s:%d", selected->name, selected_address, (int)selected->port);
 
-      opts_new->port = (int)selected->port;
-
-      log_debug("LAN discovery: Selected server '%s' at %s:%d", selected->name, opts_new->address, opts_new->port);
-
-      // Note: In a real scenario, we'd update the global options via RCU
-      // For now, we'll use the updated values directly for connection
-      // This is a known limitation - proper RCU update requires more infrastructure
-    }
+    // Sync discovered address and port into global options so framework reads them
+    options_set_string("address", selected_address);
+    options_set_int("port", (int)selected->port);
 
     discovery_tui_free_results(discovered_servers);
   }
@@ -723,20 +713,30 @@ int client_main(void) {
             discovered_port);
 
   // Store discovered address/port in session state for client_run() callback
+  // AND sync into global options so framework reads them
   static char address_storage[BUFFER_SIZE_SMALL];
   if (discovered_address) {
     SAFE_STRNCPY(address_storage, discovered_address, sizeof(address_storage));
     g_client_session.discovered_address = address_storage;
     g_client_session.discovered_port = discovered_port;
+    // Sync into global options
+    options_set_string("address", discovered_address);
+    if (discovered_port > 0) {
+      options_set_int("port", discovered_port);
+    }
   } else {
     const options_t *opts_fallback = options_get();
     if (opts_fallback && opts_fallback->address[0] != '\0') {
       SAFE_STRNCPY(address_storage, opts_fallback->address, sizeof(address_storage));
       g_client_session.discovered_address = address_storage;
       g_client_session.discovered_port = opts_fallback->port;
+      // Already in global options (from command-line or defaults), no need to sync
     } else {
       g_client_session.discovered_address = "localhost";
       g_client_session.discovered_port = 27224;
+      // Sync fallback into global options
+      options_set_string("address", "localhost");
+      options_set_int("port", 27224);
     }
   }
 
