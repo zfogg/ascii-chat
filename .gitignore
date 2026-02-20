@@ -75,3 +75,4 @@ vcpkg_installed/
 .runtime/
 .claude/commands/
 .logs/
+/.beads/
