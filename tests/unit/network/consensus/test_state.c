@@ -45,7 +45,7 @@ static consensus_topology_t *make_test_topology(int my_idx, int num_participants
  * Basic Lifecycle Tests
  * ============================================================================ */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(state, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(state);
 
 Test(state, create_and_destroy) {
   consensus_topology_t *topo = make_test_topology(1, 3);

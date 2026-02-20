@@ -14,7 +14,7 @@ static void make_uuid(uint8_t id[16], int value) {
   id[0] = value & 0xFF;
 }
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(topology, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(topology);
 
 Test(topology, create_and_destroy) {
   uint8_t participants[4][16] = {

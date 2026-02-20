@@ -18,7 +18,7 @@ static void set_id(participant_metrics_t *m, int id) {
   m->participant_id[0] = id & 0xFF;
 }
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(election, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(election);
 
 Test(election, score_computation) {
   // LAN, 100Mbps, 20ms RTT, 98% success

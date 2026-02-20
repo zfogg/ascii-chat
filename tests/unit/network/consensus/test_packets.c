@@ -3,7 +3,7 @@
 #include <ascii-chat/tests/logging.h>
 #include <string.h>
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(consensus_packets, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(consensus_packets);
 
 Test(consensus_packets, ring_members_size) {
   // Verify struct is properly packed
