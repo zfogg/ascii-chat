@@ -23,7 +23,7 @@
 // Use shared binary path detection from tests/common.h
 #define get_binary_path test_get_binary_path
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(client_main, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(client_main);
 
 Test(client_main, test_client_help) {
 #ifdef _WIN32

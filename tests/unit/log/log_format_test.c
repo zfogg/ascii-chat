@@ -22,12 +22,10 @@ void setup_test_logging(void) {
   log_init(NULL, LOG_FATAL, false, false);
   log_set_terminal_output(false);
   log_set_level(LOG_FATAL);
-  test_logging_disable(true, true);
 }
 
 void teardown_test_logging(void) {
   log_set_terminal_output(true);
-  test_logging_restore();
   log_set_level(LOG_DEBUG);
 }
 
@@ -36,8 +34,6 @@ TestSuite(log_format, .init = setup_test_logging, .fini = teardown_test_logging)
 /* ============================================================================
  * Time Format Validation Tests
  * ============================================================================ */
-// Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(log_format, LOG_DEBUG, LOG_DEBUG, false, false);
 
 Test(log_format, time_format_valid_basic) {
   cr_assert(time_format_is_valid_strftime("%H:%M:%S"));

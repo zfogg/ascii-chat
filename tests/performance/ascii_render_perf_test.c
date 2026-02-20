@@ -7,12 +7,9 @@
 
 static void ascii_perf_init(void) {
   log_set_level(LOG_WARN);
-  test_logging_disable(true, true);
 }
 
-static void ascii_perf_fini(void) {
-  test_logging_restore();
-}
+static void ascii_perf_fini(void) {}
 
 TestSuite(performance_ascii_render, .init = ascii_perf_init, .fini = ascii_perf_fini);
 
@@ -54,7 +51,7 @@ static void run_ascii_conversion_batch(image_t *image, const ssize_t width, cons
   cr_assert_gt(total_output, 0, "ascii_convert produced empty output across iterations");
 }
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(performance_ascii_render, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(performance_ascii_render);
 
 Test(performance_ascii_render, convert_full_hd_mono_batch) {
   const int width = 320;

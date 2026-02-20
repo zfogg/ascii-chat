@@ -13,15 +13,12 @@
 #include <ascii-chat/util/time.h>
 
 // Custom init function
-void mixer_test_init(void) {
-  test_logging_disable(false, false);
-}
+void mixer_test_init(void) {}
 
 // Custom fini function to cleanup asciichat_errno for all mixer test suites
 void mixer_test_fini(void) {
   // Clear any error state left by tests
   asciichat_clear_errno();
-  test_logging_restore();
 }
 
 // Use TestSuite directly with custom init and fini to cleanup error state
@@ -67,7 +64,7 @@ static audio_ring_buffer_t *create_test_buffer_with_data(const float *data, int 
  * Basic Mixer Functionality Tests
  * ============================================================================ */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(mixer, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(mixer);
 
 Test(mixer, create_and_destroy) {
   mixer_t *mixer = mixer_create(4, 44100);

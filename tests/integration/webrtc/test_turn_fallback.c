@@ -30,7 +30,7 @@
  * Expected: Connection established using relay candidates only
  */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(webrtc_turn_fallback, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(webrtc_turn_fallback);
 
 Test(webrtc_turn_fallback, force_turn_relay, .timeout = 60.0, .disabled = true) {
   cr_log_info("=== Testing TURN Relay Fallback (Symmetric NAT Simulation) ===");

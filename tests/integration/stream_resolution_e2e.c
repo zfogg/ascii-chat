@@ -47,7 +47,7 @@ __attribute__((unused)) static bool can_reach_url(const char *url) {
  * Direct Stream Detection Tests
  * ============================================================================ */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(stream_resolution_e2e, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(stream_resolution_e2e);
 
 Test(stream_resolution_e2e, detect_mp4_direct_stream) {
   // MP4 files should be detected as direct streams

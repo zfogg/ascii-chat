@@ -19,7 +19,6 @@
 void setup_crypto_known_hosts_tests(void) {
   log_init(NULL, LOG_INFO, false, false);
   log_set_level(LOG_INFO);
-  test_logging_disable(false, false);
 
   // Make each test process use a unique known_hosts file to avoid concurrency issues
   // Criterion runs tests in separate processes, so they would all write to the same file
@@ -63,7 +62,6 @@ void teardown_crypto_known_hosts_tests(void) {
 
   log_destroy();
   log_set_level(LOG_DEBUG);
-  test_logging_restore();
 }
 
 // Declare test suite with custom init/fini functions
@@ -72,8 +70,6 @@ TestSuite(crypto_known_hosts, .init = setup_crypto_known_hosts_tests, .fini = te
 // =============================================================================
 // Known Hosts Path Tests
 // =============================================================================
-// Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(crypto_known_hosts, LOG_DEBUG, LOG_DEBUG, false, false);
 
 Test(crypto_known_hosts, get_known_hosts_path) {
   const char *path = get_known_hosts_path();

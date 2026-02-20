@@ -14,15 +14,12 @@
 #include <ascii-chat/asciichat_errno.h>
 
 // Custom init function
-void image_test_init(void) {
-  test_logging_disable(false, false);
-}
+void image_test_init(void) {}
 
 // Custom fini function to cleanup asciichat_errno
 void image_test_fini(void) {
   // Clear any error state left by tests
   asciichat_clear_errno();
-  test_logging_restore();
 }
 
 // Use TestSuite with custom init and fini
@@ -68,7 +65,7 @@ ParameterizedTest(image_new_test_case_t *tc, image, image_new_dimensions) {
   }
 }
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(image, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(image);
 
 Test(image, image_destroy_null) {
   // Should not crash when destroying NULL image

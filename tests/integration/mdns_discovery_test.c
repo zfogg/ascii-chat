@@ -43,7 +43,7 @@ static void invalid_type_test_callback(const asciichat_mdns_discovery_t *discove
  * @brief Test basic mDNS initialization and cleanup cycle
  */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(mdns_integration, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(mdns_integration);
 
 Test(mdns_integration, initialization_cleanup_cycle) {
   // Create and destroy multiple times to verify no resource leaks

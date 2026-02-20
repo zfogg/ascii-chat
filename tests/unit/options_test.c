@@ -19,13 +19,8 @@
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/tests/logging.h>
 
-// Use the enhanced macro to create complete test suites with custom log levels
-// TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVEL(options, LOG_INFO, LOG_DEBUG);
-// TEST_LOGGING_SETUP_AND_TEARDOWN_WITH_LOG_LEVELS(LOG_FATAL, LOG_DEBUG, false, false);
-// TestSuite(options, .init = setup_quiet_test_logging, .fini = restore_test_logging);
-
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(options, LOG_DEBUG, LOG_DEBUG, false, false);
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(options_errors, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(options);
+TestSuite(options_errors);
 
 // Macro helpers for argv construction without brace-literals at call sites
 #define ARGV_LIST(...) ((char *[]){"program", __VA_ARGS__, NULL})

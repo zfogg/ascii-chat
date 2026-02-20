@@ -277,7 +277,7 @@ static void setup_test(void) {
  * @brief Test full WebRTC connection via discovery service with frame capture
  */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(webrtc_discovery, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(webrtc_discovery);
 
 Test(webrtc_discovery, frame_capture_via_webrtc, .init = setup_test, .fini = cleanup_processes) {
   // Determine binary path based on working directory

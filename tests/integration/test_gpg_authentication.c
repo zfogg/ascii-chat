@@ -22,7 +22,7 @@ static const char *get_test_gpg_key_id(void) {
   return key_id;
 }
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(gpg_authentication, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(gpg_authentication);
 
 Test(gpg_authentication, sign_message_with_gpg_key) {
   const char *test_key_id = get_test_gpg_key_id();

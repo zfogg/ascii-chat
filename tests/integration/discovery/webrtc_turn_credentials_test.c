@@ -42,7 +42,7 @@ static void cleanup_test_db(const char *path) {
  * @brief Test WebRTC session creation and TURN credential generation on join
  */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(acds_webrtc_turn, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(acds_webrtc_turn);
 
 Test(acds_webrtc_turn, join_generates_turn_credentials) {
   char db_path[256];

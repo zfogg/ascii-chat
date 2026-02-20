@@ -17,14 +17,12 @@ void ascii_custom_init(void) {
 // Chain custom init with logging setup
 void ascii_test_init(void) {
   log_set_level(LOG_DEBUG);
-  test_logging_disable(false, false);
   ascii_custom_init();
 }
 
 // Chain custom fini with logging teardown
 void ascii_test_fini(void) {
   log_set_level(LOG_DEBUG);
-  test_logging_restore();
 }
 
 // Use TestSuite directly with our chained init/fini functions
@@ -68,7 +66,7 @@ Theory((int width, int height), ascii, image_size_property) {
   image_destroy(img);
 }
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(ascii, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(ascii);
 
 Test(ascii, ascii_convert_basic) {
   image_t *img = image_new(4, 4);

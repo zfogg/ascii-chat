@@ -14,13 +14,10 @@
 void setup_quiet_test_logging_ansi_fast(void) {
   // Initialize ansi_fast (which initializes dec3 cache) before logging setup
   ansi_fast_init();
-  test_logging_disable(true, true);
 }
 
 // Custom fini function
-void restore_test_logging_ansi_fast(void) {
-  test_logging_restore();
-}
+void restore_test_logging_ansi_fast(void) {}
 
 // Use TestSuite with custom init to ensure ansi_fast is initialized
 TestSuite(ansi_fast, .init = setup_quiet_test_logging_ansi_fast, .fini = restore_test_logging_ansi_fast);
@@ -28,8 +25,6 @@ TestSuite(ansi_fast, .init = setup_quiet_test_logging_ansi_fast, .fini = restore
 /* ============================================================================
  * Initialization Tests
  * ============================================================================ */
-// Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(ansi_fast, LOG_DEBUG, LOG_DEBUG, false, false);
 
 Test(ansi_fast, initialization) {
   // Test that initialization functions work without crashing

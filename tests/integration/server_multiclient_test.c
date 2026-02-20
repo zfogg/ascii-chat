@@ -226,7 +226,7 @@ static void cleanup_server(pid_t server_pid) {
 // Basic Connection Tests
 // =============================================================================
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(server_multiclient, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(server_multiclient);
 
 Test(server_multiclient, single_client_connect) {
   const int test_port = 9001;

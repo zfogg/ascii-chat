@@ -13,7 +13,6 @@
 // Suite setup: enable test pattern mode for all tests
 void webcam_suite_setup(void) {
   log_set_level(LOG_FATAL);
-  test_logging_disable(true, true);
   test_set_test_pattern(true);
 }
 
@@ -21,7 +20,6 @@ void webcam_suite_setup(void) {
 void webcam_suite_teardown(void) {
   test_set_test_pattern(false);
   log_set_level(LOG_DEBUG);
-  test_logging_restore();
 }
 
 // Use custom suite with test pattern mode enabled
@@ -30,8 +28,6 @@ TestSuite(webcam, .init = webcam_suite_setup, .fini = webcam_suite_teardown);
 /* ============================================================================
  * Webcam Initialization Tests
  * ============================================================================ */
-// Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(webcam, LOG_DEBUG, LOG_DEBUG, false, false);
 
 Test(webcam, init_success) {
   // Test pattern mode is enabled in suite setup
