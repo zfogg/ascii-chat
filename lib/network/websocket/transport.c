@@ -42,6 +42,11 @@
 #include <libwebsockets.h>
 #include <string.h>
 #include <unistd.h>
+#ifndef _WIN32
+#include <sys/socket.h>
+#include <netinet/tcp.h>
+#include <netinet/in.h>
+#endif
 
 /**
  * @brief Maximum receive queue size (messages buffered before recv())
@@ -126,6 +131,20 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
 
     bool is_first = lws_is_first_fragment(wsi);
     bool is_final = lws_is_final_fragment(wsi);
+
+    // Re-enable TCP_QUICKACK on EVERY fragment delivery (Linux only).
+    // Linux resets TCP_QUICKACK after each ACK, reverting to delayed ACK mode (~40ms).
+    // Without this, only the first fragment batch benefits from quick ACKs, and subsequent
+    // batches see ~30ms gaps as the sender waits for delayed ACKs before sending more data.
+#ifdef __linux__
+    {
+      int fd = lws_get_socket_fd(wsi);
+      if (fd >= 0) {
+        int quickack = 1;
+        setsockopt(fd, IPPROTO_TCP, TCP_QUICKACK, &quickack, sizeof(quickack));
+      }
+    }
+#endif
 
     log_dev_every(4500000, "WebSocket fragment: %zu bytes (first=%d, final=%d)", len, is_first, is_final);
 
