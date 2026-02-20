@@ -429,9 +429,10 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
         mutex_unlock(&ws_data->recv_mutex);
 
         if (assembled_size > 0) {
-          log_dev_every(4500000,
-                        "🔄 WEBSOCKET_RECV: Reassembly timeout after %llums (have %zu bytes in %d fragments, expecting final)",
-                        (unsigned long long)(elapsed_ns / 1000000ULL), assembled_size, fragment_count);
+          log_dev_every(
+              4500000,
+              "🔄 WEBSOCKET_RECV: Reassembly timeout after %llums (have %zu bytes in %d fragments, expecting final)",
+              (unsigned long long)(elapsed_ns / 1000000ULL), assembled_size, fragment_count);
         }
         return SET_ERRNO(ERROR_NETWORK, "Fragment reassembly timeout - no data from network");
       }
@@ -584,6 +585,8 @@ static asciichat_error_t websocket_close(acip_transport_t *transport) {
     ws_data->partial_capacity = 0;
   }
   ws_data->reassembling = false;
+  ws_data->fragment_count = 0;
+  ws_data->reassembly_start_ns = 0;
   mutex_unlock(&ws_data->recv_mutex);
 
   // Close WebSocket connection
@@ -668,6 +671,9 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
       ws_data->partial_size = 0;
       ws_data->partial_capacity = 0;
     }
+    ws_data->reassembling = false;
+    ws_data->fragment_count = 0;
+    ws_data->reassembly_start_ns = 0;
 
     websocket_recv_msg_t msg;
     while (ringbuffer_read(ws_data->recv_queue, &msg)) {
