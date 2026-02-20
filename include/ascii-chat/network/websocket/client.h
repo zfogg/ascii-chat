@@ -80,9 +80,15 @@ struct crypto_context_t;
  * Encapsulates WebSocket-specific connection state, including:
  * - Connection URL and state flags
  * - Active transport (owned by websocket_client)
+ * - Reconnection logic and encryption state tracking
  *
  * This is a slim structure - application state (audio, threads, crypto)
  * lives in client_context_t instead.
+ *
+ * ## Thread Safety
+ *
+ * - Atomic fields: Safe for concurrent read/write without locks
+ * - Immutable after init: url is set once, then read-only
  */
 typedef struct websocket_client {
   /** WebSocket server URL (e.g., "ws://localhost:27226") */
@@ -94,8 +100,14 @@ typedef struct websocket_client {
   /** Connection was lost (triggers reconnection logic) */
   atomic_bool connection_lost;
 
+  /** Reconnection should be attempted */
+  atomic_bool should_reconnect;
+
   /** Transport instance (owned by websocket_client) - NULL until connected */
   acip_transport_t *transport;
+
+  /** Encryption is enabled for this connection */
+  bool encryption_enabled;
 
 } websocket_client_t;
 
@@ -141,11 +153,55 @@ bool websocket_client_is_active(const websocket_client_t *client);
 bool websocket_client_is_lost(const websocket_client_t *client);
 
 /**
+ * @brief Check if reconnection should be attempted
+ *
+ * @param client WebSocket client instance
+ * @return true if reconnection is needed, false otherwise
+ */
+bool websocket_client_should_reconnect(const websocket_client_t *client);
+
+/**
  * @brief Signal that connection was lost (triggers reconnection)
  *
  * @param client WebSocket client instance
  */
 void websocket_client_signal_lost(websocket_client_t *client);
+
+/**
+ * @brief Signal that reconnection should be attempted
+ *
+ * @param client WebSocket client instance
+ */
+void websocket_client_signal_reconnect(websocket_client_t *client);
+
+/**
+ * @brief Clear reconnection flag (called after successful reconnect)
+ *
+ * @param client WebSocket client instance
+ */
+void websocket_client_clear_reconnect_flag(websocket_client_t *client);
+
+/**
+ * @brief Check if encryption is enabled
+ *
+ * @param client WebSocket client instance
+ * @return true if encryption is enabled, false otherwise
+ */
+bool websocket_client_is_encryption_enabled(const websocket_client_t *client);
+
+/**
+ * @brief Enable encryption for this connection
+ *
+ * @param client WebSocket client instance
+ */
+void websocket_client_enable_encryption(websocket_client_t *client);
+
+/**
+ * @brief Disable encryption for this connection
+ *
+ * @param client WebSocket client instance
+ */
+void websocket_client_disable_encryption(websocket_client_t *client);
 
 /**
  * @brief Close connection gracefully

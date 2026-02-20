@@ -34,7 +34,9 @@ websocket_client_t *websocket_client_create(void) {
   // Initialize connection state
   atomic_store(&client->connection_active, false);
   atomic_store(&client->connection_lost, false);
+  atomic_store(&client->should_reconnect, false);
   client->transport = NULL;
+  client->encryption_enabled = false;
 
   log_debug("WebSocket client created");
 
@@ -83,6 +85,38 @@ bool websocket_client_is_lost(const websocket_client_t *client) {
 }
 
 /**
+ * @brief Check if reconnection should be attempted
+ */
+bool websocket_client_should_reconnect(const websocket_client_t *client) {
+  if (!client) {
+    return false;
+  }
+  return atomic_load(&client->should_reconnect);
+}
+
+/**
+ * @brief Signal that reconnection should be attempted
+ */
+void websocket_client_signal_reconnect(websocket_client_t *client) {
+  if (!client) {
+    return;
+  }
+  atomic_store(&client->should_reconnect, true);
+  atomic_store(&client->connection_active, false);
+  log_debug("WebSocket reconnection signaled");
+}
+
+/**
+ * @brief Clear reconnection flag
+ */
+void websocket_client_clear_reconnect_flag(websocket_client_t *client) {
+  if (!client) {
+    return;
+  }
+  atomic_store(&client->should_reconnect, false);
+}
+
+/**
  * @brief Signal that connection was lost
  */
 void websocket_client_signal_lost(websocket_client_t *client) {
@@ -92,6 +126,38 @@ void websocket_client_signal_lost(websocket_client_t *client) {
   atomic_store(&client->connection_lost, true);
   atomic_store(&client->connection_active, false);
   log_debug("WebSocket connection marked as lost");
+}
+
+/**
+ * @brief Check if encryption is enabled
+ */
+bool websocket_client_is_encryption_enabled(const websocket_client_t *client) {
+  if (!client) {
+    return false;
+  }
+  return client->encryption_enabled;
+}
+
+/**
+ * @brief Enable encryption for this connection
+ */
+void websocket_client_enable_encryption(websocket_client_t *client) {
+  if (!client) {
+    return;
+  }
+  client->encryption_enabled = true;
+  log_debug("WebSocket encryption enabled");
+}
+
+/**
+ * @brief Disable encryption for this connection
+ */
+void websocket_client_disable_encryption(websocket_client_t *client) {
+  if (!client) {
+    return;
+  }
+  client->encryption_enabled = false;
+  log_debug("WebSocket encryption disabled");
 }
 
 /**
@@ -109,6 +175,7 @@ void websocket_client_close(websocket_client_t *client) {
   }
 
   atomic_store(&client->connection_active, false);
+  atomic_store(&client->should_reconnect, false);
 }
 
 /**
@@ -128,6 +195,7 @@ void websocket_client_shutdown(websocket_client_t *client) {
 
   atomic_store(&client->connection_active, false);
   atomic_store(&client->connection_lost, true);
+  atomic_store(&client->should_reconnect, false);
 }
 
 /**
