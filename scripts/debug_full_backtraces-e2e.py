@@ -99,8 +99,9 @@ def kill_existing_processes():
 
 def start_server(port):
     """Start the ascii-chat server on specified WebSocket port"""
-    print(f"Starting ascii-chat server on WebSocket port {port}...")
-    proc = subprocess.Popen(['./build/bin/ascii-chat', 'server', '--websocket-port', str(port)],
+    print(f"Starting ascii-chat server on WebSocket port {port} with DEBUG logging...")
+    proc = subprocess.Popen(['./build/bin/ascii-chat', '--log-level', 'debug', '--log-file', f'/tmp/server-debug.{os.getpid()}.log',
+                     'server', '--websocket-port', str(port), '--no-status-screen'],
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     print(f"Server started with PID {proc.pid}")
 
@@ -160,7 +161,7 @@ def start_e2e_test(port):
     env = os.environ.copy()
     env['PORT'] = str(port)
 
-    proc = subprocess.Popen(['bun', 'run', 'test:e2e', '--reporter=list'],
+    proc = subprocess.Popen(['bun', 'run', 'test:e2e', 'websocket-frames', '--reporter=list'],
                      cwd='web/web.ascii-chat.com',
                      env=env,
                      stdout=subprocess.PIPE,
@@ -178,16 +179,24 @@ def start_e2e_test(port):
     # Shared state for connection detection
     connection_event = threading.Event()
 
-    # Thread to read and display test output, watch for connection completion
+    # Thread to read and display test output, watch for frames being sent
     def read_test_output():
         try:
+            frames_seen = 0
             for line in iter(proc.stdout.readline, ''):
                 if line:
                     line_stripped = line.rstrip()
                     print(f"[TEST] {line_stripped}")
-                    # Only set event when we see "Connected" (completion), not "handshake" (in-progress)
-                    # Handshake happens in states 0-2, Connected is the final state
-                    if 'Connected' in line_stripped:
+                    # Look for frame checksums - indicates frames are being captured and sent from webcam
+                    if '[FRAME #' in line_stripped:
+                        frames_seen += 1
+                        print(f"[TEST] ✓ Frame received from server ({frames_seen} frames so far)")
+                        # Once we've received a few frames, we know it's fully connected and transmitting
+                        if frames_seen >= 2:
+                            print(f"[TEST] ✓ Frames STREAMING - detected {frames_seen}+ frames from client")
+                            connection_event.set()
+                    # Fallback: if Connected is logged and no frames yet, still proceed
+                    elif 'Connected' in line_stripped and frames_seen == 0:
                         print(f"[TEST] ✓ Handshake COMPLETE - detected 'Connected' state")
                         connection_event.set()
         except:
@@ -217,7 +226,7 @@ def main():
     test_proc, connection_event = start_e2e_test(port)
 
     # Wait for the test to connect and establish connection
-    wait_for_test_connection(test_proc, connection_event, timeout_seconds=30)
+    wait_for_test_connection(test_proc, connection_event, timeout_seconds=10)
 
     # Wait 1s after handshake completes for threads to settle into steady state
     print("\n[Waiting 1s for threads to settle after handshake completion...]")
