@@ -52,8 +52,8 @@ if(IS_COVERAGE_BUILD)
     set(CRITERION_JOBS 1)          # Disable internal parallelism for coverage accuracy
     set(CTEST_PARALLEL_JOBS 2)     # Limit parallel tests to prevent resource exhaustion during coverage
 else()
-    set(CRITERION_TIMEOUT 25)      # Default timeout
-    set(CTEST_TEST_TIMEOUT 30)     # Tests must complete in 30 seconds or less
+    set(CRITERION_TIMEOUT 60)      # Default timeout
+    set(CTEST_TEST_TIMEOUT 90)     # Sanitizer overhead requires longer timeout (especially for crypto tests)
     # Use all CPU cores minus 1 to prevent system saturation
     math(EXPR CRITERION_JOBS "${CPU_CORES} - 1")
     set(CTEST_PARALLEL_JOBS "${CPU_CORES} - 1")
