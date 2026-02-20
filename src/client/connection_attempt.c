@@ -479,6 +479,20 @@ asciichat_error_t connection_attempt_websocket(connection_attempt_context_t *ctx
   log_debug("Transport created - crypto_ctx=%p, transport is_connected=%d", (void *)crypto_ctx,
             transport ? 1 : 0);
 
+  // Perform crypto handshake initial phase on WebSocket transport if crypto is enabled
+  if (!GET_OPTION(no_encrypt) && crypto_ctx) {
+    log_info("Performing crypto handshake initial phase on WebSocket transport");
+    if (client_crypto_handshake_initial_phase_with_transport(transport) != 0) {
+      log_error("WebSocket crypto handshake initial phase failed");
+      websocket_client_destroy(&ws_client);
+      acip_transport_close(transport);
+      acip_transport_destroy(transport);
+      connection_state_transition(ctx, CONN_STATE_FAILED);
+      return SET_ERRNO(ERROR_CRYPTO, "WebSocket crypto handshake failed");
+    }
+    log_info("WebSocket crypto handshake initial phase completed successfully");
+  }
+
   connection_state_transition(ctx, CONN_STATE_CONNECTED);
   ctx->active_transport = transport;
   ctx->ws_client_instance = ws_client;

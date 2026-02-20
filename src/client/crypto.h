@@ -18,6 +18,7 @@
 
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/platform/socket.h>
+#include <ascii-chat/network/acip/transport.h>
 
 /**
  * @brief Set crypto mode for handshake (encryption + authentication)
@@ -55,6 +56,23 @@ int client_crypto_init(void);
  * @ingroup client_crypto
  */
 int client_crypto_handshake(socket_t socket);
+
+/**
+ * @brief Perform initial crypto handshake phase on transport
+ *
+ * Performs the protocol negotiation phase (protocol version + crypto capabilities)
+ * on a WebSocket or other transport-based connection. This establishes the baseline
+ * for encrypted communication on non-socket transports.
+ *
+ * After this completes, the remaining handshake phases will proceed through the
+ * normal protocol packet handling layer.
+ *
+ * @param transport ACIP transport (e.g., WebSocket) for handshake
+ * @return 0 on success, -1 on failure
+ *
+ * @ingroup client_crypto
+ */
+int client_crypto_handshake_initial_phase_with_transport(acip_transport_t *transport);
 
 /**
  * @brief Check if crypto handshake is ready
