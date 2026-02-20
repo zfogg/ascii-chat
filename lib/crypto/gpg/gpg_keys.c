@@ -245,7 +245,7 @@ asciichat_error_t check_gpg_key_expiry(const char *gpg_key_text, bool *is_expire
         long expiry_timestamp = strtol(fields[6], NULL, 10);
         time_t now = time(NULL);
 
-        if (expiry_timestamp > 0 && expiry_timestamp < now) {
+        if (expiry_timestamp > 0 && expiry_timestamp <= now) {
           *is_expired = true;
           log_warn("GPG key %s has expired (expiry: %ld, now: %ld)", key_id, expiry_timestamp, (long)now);
         } else if (expiry_timestamp > 0) {
