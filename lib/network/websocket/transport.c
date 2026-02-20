@@ -673,7 +673,11 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
                         "🔄 WEBSOCKET_RECV: Reassembly timeout after %llums (have %zu bytes, expecting final fragment)",
                         (unsigned long long)(elapsed_ns / 1000000ULL), assembled_size);
         }
-        return SET_ERRNO(ERROR_NETWORK, "Fragment reassembly timeout - no data from network");
+        // Use log_error instead of SET_ERRNO to avoid backtrace capture overhead
+        // Fragment timeout is transient and expected - doesn't require full error context
+        log_error("Fragment reassembly timeout - no data from network");
+        asciichat_set_errno(ERROR_NETWORK, NULL, 0, NULL, "Fragment reassembly timeout - no data from network");
+        return ERROR_NETWORK;
       }
 
       // Check connection state - but don't fail immediately if connection closes
