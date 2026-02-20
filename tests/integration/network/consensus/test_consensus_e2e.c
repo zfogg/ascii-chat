@@ -240,8 +240,8 @@ static void start_server(void) {
   // Parent process
   cr_assert(server_proc.pid > 0, "Failed to fork server process");
 
-  // Wait for server to start listening
-  sleep(2);
+  // Wait for server to start listening (longer timeout for sanitizers)
+  sleep(3);
 
   // Check if server is still running
   int status;
@@ -250,7 +250,9 @@ static void start_server(void) {
   if (ret != 0) {
     // Server exited, read its error output
     read_from_pipe(server_proc.stderr_pipe[0], server_proc.stderr_buf, &server_proc.stderr_len, LOG_BUFFER_SIZE);
+    read_from_pipe(server_proc.stdout_pipe[0], server_proc.stdout_buf, &server_proc.stdout_len, LOG_BUFFER_SIZE);
     cr_log_info("Server stderr: %s", server_proc.stderr_buf);
+    cr_log_info("Server stdout: %s", server_proc.stdout_buf);
     cr_assert(ret == 0, "Server process exited immediately");
   }
 }
