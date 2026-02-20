@@ -291,12 +291,19 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // ============================================================================
   // SETUP: Network Transports (TCP/WebSocket) - BEFORE capture context decision
   // ============================================================================
+  // CRITICAL: Create network clients FIRST, before is_network_mode check.
+  // This ensures capture context is initialized correctly based on actual
+  // clients created (not config parameters which are NULL for client mode).
 
   log_debug("session_client_like_run(): Setting up network transports");
+  log_debug("Checking server address and determining transport type");
 
   // Parse server address to determine TCP vs WebSocket
   const char *server_address = GET_OPTION(address);
   bool is_websocket = server_address && url_is_websocket(server_address);
+
+  log_debug("Network transport decision: is_websocket=%d, server_address=%s",
+            is_websocket, server_address ? server_address : "(null)");
 
   if (is_websocket) {
     log_debug("WebSocket URL detected: %s", server_address);
@@ -306,6 +313,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
       result = ERROR_NETWORK;
       goto cleanup;
     }
+    log_debug("WebSocket client created successfully (g_websocket_client=%p)", (void *)g_websocket_client);
   } else if (server_address && strlen(server_address) > 0) {
     log_debug("Using TCP client for server: %s:%d", server_address, GET_OPTION(port));
     g_tcp_client = tcp_client_create();
@@ -314,6 +322,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
       result = ERROR_NETWORK;
       goto cleanup;
     }
+    log_debug("TCP client created successfully (g_tcp_client=%p)", (void *)g_tcp_client);
   }
 
   // ============================================================================
@@ -323,7 +332,15 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // Choose capture type based on mode:
   // - Mirror mode: needs to capture local media (webcam, file, test pattern)
   // - Network modes (client/discovery): receive frames from network, no local capture
+  //
+  // CRITICAL: Check ACTUAL global clients created above, not config parameters
+  // (config->tcp_client/websocket_client are always NULL for client mode)
   bool is_network_mode = (g_tcp_client != NULL || g_websocket_client != NULL);
+
+  log_debug("VALIDATION POINT 1: After network client creation");
+  log_debug("  g_tcp_client=%p", (void *)g_tcp_client);
+  log_debug("  g_websocket_client=%p", (void *)g_websocket_client);
+  log_debug("  is_network_mode=%d (based on actual globals, not config)", is_network_mode);
 
   if (is_network_mode) {
     // Network mode: create minimal capture context without media source
@@ -335,6 +352,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
       result = ERROR_MEDIA_INIT;
       goto cleanup;
     }
+    log_debug("Network capture context created successfully");
     if (fps > 0) {
       log_debug("Network capture FPS set to %d from options", fps);
     }
@@ -347,6 +365,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
       result = ERROR_MEDIA_INIT;
       goto cleanup;
     }
+    log_debug("Mirror capture context created successfully");
   }
 
   // ============================================================================
