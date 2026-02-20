@@ -70,3 +70,8 @@ test-screenshot.png
 # vcpkg build artifacts
 vcpkg-triplets/
 vcpkg_installed/
+
+# Gas Town (added by gt)
+.runtime/
+.claude/commands/
+.logs/
