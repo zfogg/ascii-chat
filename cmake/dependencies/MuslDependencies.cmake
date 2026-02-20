@@ -161,7 +161,7 @@ if(NOT EXISTS "${ZSTD_PREFIX}/lib/libzstd.a")
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
         CONFIGURE_COMMAND ""
-        BUILD_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC make -C <SOURCE_DIR> lib-release PREFIX=${ZSTD_PREFIX}
+        BUILD_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC make -j -C <SOURCE_DIR> lib-release PREFIX=${ZSTD_PREFIX}
         INSTALL_COMMAND make -C <SOURCE_DIR> install PREFIX=${ZSTD_PREFIX}
         BUILD_IN_SOURCE 1
         BUILD_BYPRODUCTS ${ZSTD_PREFIX}/lib/libzstd.a
@@ -260,7 +260,7 @@ if(NOT EXISTS "${ZLIB_LIBRARY}")
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
         CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} <SOURCE_DIR>/configure --prefix=${ZLIB_PREFIX} --static
-        BUILD_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC make
+        BUILD_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC make -j
         INSTALL_COMMAND make install
         BUILD_BYPRODUCTS ${ZLIB_LIBRARY}
         LOG_CONFIGURE TRUE
@@ -294,7 +294,7 @@ ExternalProject_Add(libsodium-musl
     # For shared library support, ALL object files must be compiled with -fPIC.
     # Use --with-pic to force position-independent code generation.
     CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} <SOURCE_DIR>/configure --prefix=${LIBSODIUM_PREFIX} --enable-static --disable-shared --with-pic
-    BUILD_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} make
+    BUILD_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} make -j
     INSTALL_COMMAND make install
     DEPENDS zstd-musl
     BUILD_BYPRODUCTS ${LIBSODIUM_PREFIX}/lib/libsodium.a
@@ -397,10 +397,9 @@ if(NOT EXISTS "${OPENSSL_PREFIX}/lib64/libssl.a" OR NOT EXISTS "${OPENSSL_PREFIX
         message(FATAL_ERROR "Failed to configure OpenSSL:\n${CONFIG_ERROR}")
     endif()
 
-    # Build OpenSSL (use -j1 to avoid race conditions in OpenSSL's build)
     message(STATUS "  Building OpenSSL (this takes a few minutes)...")
     execute_process(
-        COMMAND ${CMAKE_COMMAND} -E env REALGCC=${REAL_GCC} make -j1
+        COMMAND ${CMAKE_COMMAND} -E env REALGCC=${REAL_GCC} make -j
         WORKING_DIRECTORY "${OPENSSL_SOURCE_DIR}"
         RESULT_VARIABLE BUILD_RESULT
         OUTPUT_VARIABLE BUILD_OUTPUT
@@ -733,7 +732,7 @@ if(NOT EXISTS "${ALSA_PREFIX}/lib/libasound.a")
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
         CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=${MUSL_KERNEL_CFLAGS} <SOURCE_DIR>/configure --host=x86_64-linux-gnu --prefix=${ALSA_PREFIX} --enable-static --disable-shared --disable-maintainer-mode
-        BUILD_COMMAND env REALGCC=${REAL_GCC} CFLAGS=-fPIC make
+        BUILD_COMMAND env REALGCC=${REAL_GCC} CFLAGS=-fPIC make -j
         INSTALL_COMMAND make install
         BUILD_BYPRODUCTS ${ALSA_PREFIX}/lib/libasound.a
         LOG_DOWNLOAD TRUE
@@ -774,7 +773,7 @@ if(NOT EXISTS "${PORTAUDIO_PREFIX}/lib/libportaudio.a")
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
         CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC PKG_CONFIG_PATH=${ALSA_PREFIX}/lib/pkgconfig <SOURCE_DIR>/configure --prefix=${PORTAUDIO_PREFIX} --enable-static --disable-shared --with-alsa --without-jack --without-oss
-        BUILD_COMMAND env REALGCC=${REAL_GCC} CFLAGS=-fPIC make
+        BUILD_COMMAND env REALGCC=${REAL_GCC} CFLAGS=-fPIC make -j
         INSTALL_COMMAND make install
         BUILD_BYPRODUCTS ${PORTAUDIO_PREFIX}/lib/libportaudio.a
         DEPENDS alsa-lib-musl
@@ -814,7 +813,7 @@ if(NOT EXISTS "${OPUS_PREFIX}/lib/libopus.a")
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
         CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${OPUS_PREFIX} --enable-static --disable-shared --disable-doc --disable-extra-programs
-        BUILD_COMMAND env REALGCC=${REAL_GCC} CFLAGS=-fPIC make
+        BUILD_COMMAND env REALGCC=${REAL_GCC} CFLAGS=-fPIC make -j
         INSTALL_COMMAND make install
         BUILD_BYPRODUCTS ${OPUS_PREFIX}/lib/libopus.a
         LOG_DOWNLOAD TRUE
@@ -852,7 +851,7 @@ if(NOT EXISTS "${LIBEXECINFO_PREFIX}/lib/libexecinfo.a")
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
         CONFIGURE_COMMAND ""
-        BUILD_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC make -C <SOURCE_DIR>
+        BUILD_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC make -j -C <SOURCE_DIR>
         INSTALL_COMMAND env CC=${MUSL_GCC} make -C <SOURCE_DIR> install PREFIX=${LIBEXECINFO_PREFIX}
         BUILD_IN_SOURCE 1
         BUILD_BYPRODUCTS ${LIBEXECINFO_PREFIX}/lib/libexecinfo.a
@@ -898,7 +897,7 @@ if(EXISTS "${BEARSSL_SOURCE_DIR}")
         # For musl: disable getentropy() (not in musl), force /dev/urandom, disable fortification
         # Output is captured and only shown on failure
         execute_process(
-            COMMAND make -j1 lib CC=${MUSL_GCC} AR=${CMAKE_AR} CFLAGS=-DBR_USE_GETENTROPY=0\ -DBR_USE_URANDOM=1\ -U_FORTIFY_SOURCE\ -D_FORTIFY_SOURCE=0\ -fno-stack-protector\ -fPIC
+            COMMAND make -j lib CC=${MUSL_GCC} AR=${CMAKE_AR} CFLAGS=-DBR_USE_GETENTROPY=0\ -DBR_USE_URANDOM=1\ -U_FORTIFY_SOURCE\ -D_FORTIFY_SOURCE=0\ -fno-stack-protector\ -fPIC
             WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
             RESULT_VARIABLE BEARSSL_MAKE_RESULT
             OUTPUT_VARIABLE BEARSSL_MAKE_OUTPUT
@@ -957,7 +956,7 @@ if(NOT EXISTS "${PCRE2_PREFIX}/lib/libpcre2-8.a")
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
         CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC <SOURCE_DIR>/configure --host=x86_64-linux-gnu --prefix=${PCRE2_PREFIX} --enable-static --disable-shared --enable-pcre2-8 --disable-pcre2-16 --disable-pcre2-32 --disable-maintainer-mode
-        BUILD_COMMAND env REALGCC=${REAL_GCC} CFLAGS=-fPIC make
+        BUILD_COMMAND env REALGCC=${REAL_GCC} CFLAGS=-fPIC make -j
         INSTALL_COMMAND make install
         BUILD_BYPRODUCTS ${PCRE2_PREFIX}/lib/libpcre2-8.a
         LOG_DOWNLOAD TRUE
