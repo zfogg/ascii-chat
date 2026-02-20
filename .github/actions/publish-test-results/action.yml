@@ -156,6 +156,20 @@ runs:
         test_changes_limit: 10
         fail_on: 'nothing'  # Don't fail the workflow based on test results
 
+    # Convert Criterion XML to JUnit XML for Codecov compatibility
+    - name: Convert Criterion XML to JUnit Format
+      if: always()
+      shell: bash
+      run: |
+        xml_dir="${{ inputs.criterion-xml-dir }}"
+        if [ -d "$xml_dir" ] && [ "$(find "$xml_dir" -name "*.xml" -type f | wc -l)" -gt 0 ]; then
+          echo "Converting Criterion XML to JUnit format..."
+          python3 .github/scripts/criterion-to-junit.py "$xml_dir" "$xml_dir"
+          echo "Conversion complete"
+        else
+          echo "No XML files found to convert"
+        fi
+
     # Upload test results to Codecov
     - name: Upload Test Results to Codecov
       if: always()
