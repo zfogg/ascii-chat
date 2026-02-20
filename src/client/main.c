@@ -722,8 +722,12 @@ int client_main(void) {
     discovered_port = 0; // Port is embedded in the URL
   }
 
-  log_debug("Client: discovered_address=%s, discovered_port=%d", discovered_address ? discovered_address : "NULL",
-            discovered_port);
+  if (discovered_port > 0) {
+    log_debug("Client: discovered_address=%s, discovered_port=%d", discovered_address ? discovered_address : "NULL",
+              discovered_port);
+  } else {
+    log_debug("Client: discovered_address=%s", discovered_address ? discovered_address : "NULL");
+  }
 
   // Store discovered address/port in session state for client_run() callback
   static char address_storage[BUFFER_SIZE_SMALL];
