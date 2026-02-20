@@ -59,6 +59,8 @@ static _Atomic uint64_t g_writeable_callback_count = 0;
  * This captures LWS internal logging so we can see what's happening
  */
 static void websocket_lws_log_callback(int level, const char *line) {
+  UNUSED(level);
+  UNUSED(line);
   // INFO: Logging disabled to reduce noise. Uncomment below for debugging.
   // if (level & LLL_ERR) {
   //   log_error("[LWS] %s", line);
