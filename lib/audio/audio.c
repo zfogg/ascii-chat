@@ -306,6 +306,10 @@ static void *audio_worker_thread(void *arg) {
               log_info("AEC3 performance: avg=%.2fms, max=%.2fms, latest=%.2fms (samples=%zu, %d calls)",
                        avg_ns / NS_PER_MS, aec3_max_ns / NS_PER_MS, aec3_ns / NS_PER_MS, capture_read, aec3_count);
             }
+          } else {
+            // Expected render data but got 0 - another thread consumed it between check and read (TOCTOU)
+            log_debug_every("Audio TOCTOU: expected render=%zu samples but read returned 0 (concurrent consumption)",
+                            capture_read);
           }
         }
 
