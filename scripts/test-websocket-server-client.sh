@@ -40,6 +40,8 @@ CLIENT_STDOUT="/tmp/ascii-chat-client-stdout-$WS_PORT.txt"
 ./build/bin/ascii-chat \
   --log-file "$CLIENT_LOG" \
   --log-level debug \
+  --color true \
+  --color-mode truecolor \
   client \
   "ws://localhost:$WS_PORT" \
   -S -D 1 \
