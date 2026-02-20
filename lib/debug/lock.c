@@ -25,6 +25,9 @@
 #include <stdatomic.h>
 #include <string.h>
 
+// Platform abstraction must be included for THREAD_LOCAL macro
+#include <ascii-chat/platform/api.h>
+
 // Enable lock debug tracing to stderr (bypasses logging system)
 // Set to 1 to trace all lock operations for debugging deadlocks
 #define TRACE_LOCK_DEBUG 0
@@ -80,6 +83,14 @@
 lock_debug_manager_t g_lock_debug_manager = {0};
 atomic_bool g_initializing = false; // Flag to prevent tracking during initialization
 
+// Thread-local recursion guard for lock debug functions.
+// Prevents infinite recursion when:
+// - Memory tracking tries to print backtraces during allocations
+// - Lock tracking tries to allocate memory for lock records
+// - Backtrace symbol resolution allocates memory
+// Set to true when entering lock debug code, false when exiting.
+THREAD_LOCAL bool g_in_debug_lock = false;
+
 // Terminal state no longer needed - lock debug thread no longer reads stdin
 
 /**
@@ -90,10 +101,22 @@ atomic_bool g_initializing = false; // Flag to prevent tracking during initializ
  * @param line_number Source line number
  * @param function_name Function name
  * @return Pointer to new lock record or NULL on failure
+ *
+ * RECURSION GUARD: Uses g_in_debug_lock to prevent infinite recursion when:
+ * - Memory tracking tries to print backtraces during allocations
+ * - Backtrace symbol resolution allocates memory
+ * - Lock code allocates for tracking structures
  */
 static lock_record_t *create_lock_record(void *lock_address, lock_type_t lock_type, const char *file_name,
                                          int line_number, const char *function_name) {
-  lock_record_t *record = SAFE_CALLOC(1, sizeof(lock_record_t), lock_record_t *);
+  // Prevent recursion: if we're already in lock debug code, don't allocate or backtrace
+  if (g_in_debug_lock) {
+    return NULL;
+  }
+
+  g_in_debug_lock = true;
+
+  lock_record_t *record = (lock_record_t *)calloc(1, sizeof(lock_record_t));
 
   // Fill in basic information
   record->key = lock_record_key(lock_address, lock_type);
@@ -131,12 +154,16 @@ static lock_record_t *create_lock_record(void *lock_address, lock_type_t lock_ty
     }
   }
 
+  g_in_debug_lock = false;
   return record;
 }
 
 /**
  * @brief Free a lock record and its associated memory
  * @param record Lock record to free
+ *
+ * RECURSION GUARD: Uses g_in_debug_lock to prevent re-entrance from backtrace
+ * symbol destruction which may allocate memory.
  */
 static void free_lock_record(lock_record_t *record) {
   if (!record) {
@@ -144,12 +171,21 @@ static void free_lock_record(lock_record_t *record) {
     return;
   }
 
+  // Prevent recursion during cleanup
+  if (g_in_debug_lock) {
+    // Just leak this record to avoid re-entrancy - it will be cleaned up at shutdown
+    return;
+  }
+
+  g_in_debug_lock = true;
+
   // Free symbolized backtrace
   if (record->backtrace_symbols) {
     platform_backtrace_symbols_destroy(record->backtrace_symbols);
   }
 
-  SAFE_FREE(record);
+  free(record);
+  g_in_debug_lock = false;
 }
 
 // ============================================================================
@@ -305,7 +341,7 @@ static void print_usage_stats_callback(lock_usage_stats_t *stats, void *user_dat
  */
 static void cleanup_usage_stats_callback(lock_usage_stats_t *stats, void *user_data) {
   UNUSED(user_data);
-  SAFE_FREE(stats);
+  free(stats);
 }
 
 /**
@@ -942,40 +978,47 @@ static void debug_process_untracked_unlock(void *lock_ptr, uint32_t key, const c
 #endif
 
   // Create an orphaned release record to track this problematic unlock
-  lock_record_t *orphan_record = SAFE_CALLOC(1, sizeof(lock_record_t), lock_record_t *);
-  if (orphan_record) {
-    orphan_record->key = key;
-    orphan_record->lock_address = lock_ptr;
-    if (strcmp(lock_type_str, "MUTEX") == 0) {
-      orphan_record->lock_type = LOCK_TYPE_MUTEX;
-    } else if (strcmp(lock_type_str, "READ") == 0) {
-      orphan_record->lock_type = LOCK_TYPE_RWLOCK_READ;
-    } else if (strcmp(lock_type_str, "WRITE") == 0) {
-      orphan_record->lock_type = LOCK_TYPE_RWLOCK_WRITE;
-    }
-    orphan_record->thread_id = asciichat_thread_current_id();
-    orphan_record->file_name = file_name;
-    orphan_record->line_number = line_number;
-    orphan_record->function_name = function_name;
-    orphan_record->acquisition_time_ns = time_get_ns(); // Use release time
+  // Protect against recursion: skip if we're already in lock debug code
+  if (!g_in_debug_lock) {
+    g_in_debug_lock = true;
 
-    // Capture backtrace for this orphaned release
+    lock_record_t *orphan_record = (lock_record_t *)calloc(1, sizeof(lock_record_t));
+    if (orphan_record) {
+      orphan_record->key = key;
+      orphan_record->lock_address = lock_ptr;
+      if (strcmp(lock_type_str, "MUTEX") == 0) {
+        orphan_record->lock_type = LOCK_TYPE_MUTEX;
+      } else if (strcmp(lock_type_str, "READ") == 0) {
+        orphan_record->lock_type = LOCK_TYPE_RWLOCK_READ;
+      } else if (strcmp(lock_type_str, "WRITE") == 0) {
+        orphan_record->lock_type = LOCK_TYPE_RWLOCK_WRITE;
+      }
+      orphan_record->thread_id = asciichat_thread_current_id();
+      orphan_record->file_name = file_name;
+      orphan_record->line_number = line_number;
+      orphan_record->function_name = function_name;
+      orphan_record->acquisition_time_ns = time_get_ns(); // Use release time
+
+      // Capture backtrace for this orphaned release
 #ifdef _WIN32
-    orphan_record->backtrace_size =
-        CaptureStackBackTrace(1, MAX_BACKTRACE_FRAMES, orphan_record->backtrace_buffer, NULL);
+      orphan_record->backtrace_size =
+          CaptureStackBackTrace(1, MAX_BACKTRACE_FRAMES, orphan_record->backtrace_buffer, NULL);
 #else
-    orphan_record->backtrace_size = platform_backtrace(orphan_record->backtrace_buffer, MAX_BACKTRACE_FRAMES);
+      orphan_record->backtrace_size = platform_backtrace(orphan_record->backtrace_buffer, MAX_BACKTRACE_FRAMES);
 #endif
 
-    if (orphan_record->backtrace_size > 0) {
-      orphan_record->backtrace_symbols =
-          platform_backtrace_symbols(orphan_record->backtrace_buffer, orphan_record->backtrace_size);
+      if (orphan_record->backtrace_size > 0) {
+        orphan_record->backtrace_symbols =
+            platform_backtrace_symbols(orphan_record->backtrace_buffer, orphan_record->backtrace_size);
+      }
+
+      // Store in orphaned releases hash table for later analysis
+      rwlock_wrlock_impl(&g_lock_debug_manager.orphaned_releases_lock);
+      HASH_ADD(hash_handle, g_lock_debug_manager.orphaned_releases, key, sizeof(orphan_record->key), orphan_record);
+      rwlock_wrunlock_impl(&g_lock_debug_manager.orphaned_releases_lock);
     }
 
-    // Store in orphaned releases hash table for later analysis
-    rwlock_wrlock_impl(&g_lock_debug_manager.orphaned_releases_lock);
-    HASH_ADD(hash_handle, g_lock_debug_manager.orphaned_releases, key, sizeof(orphan_record->key), orphan_record);
-    rwlock_wrunlock_impl(&g_lock_debug_manager.orphaned_releases_lock);
+    g_in_debug_lock = false;
   }
 }
 
