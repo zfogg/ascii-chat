@@ -12,7 +12,7 @@
 #include <ascii-chat/util/endian.h>   // For HOST_TO_NET_U64
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
-TEST_SUITE_WITH_QUIET_LOGGING(packet_queue);
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(packet_queue, LOG_DEBUG, LOG_DEBUG, false, false);
 
 // =============================================================================
 // Node Pool Tests

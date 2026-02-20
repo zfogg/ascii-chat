@@ -11,7 +11,7 @@
 #include <ascii-chat/tests/logging.h>
 
 // Use quiet logging for tests
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(ip_utils, LOG_FATAL, LOG_DEBUG, false, false);
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(ip_utils, LOG_DEBUG, LOG_DEBUG, false, false);
 
 // =============================================================================
 // IPv4 Validation Tests - Parameterized

@@ -18,7 +18,7 @@
 #include <ascii-chat/network/packet.h>
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
-TEST_SUITE_WITH_QUIET_LOGGING(compression);
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(compression, LOG_DEBUG, LOG_DEBUG, false, false);
 
 // Forward declare mock function
 static int mock_send_packet(int sockfd, packet_type_t type, const void *data, size_t size);

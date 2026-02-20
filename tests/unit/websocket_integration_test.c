@@ -37,7 +37,7 @@
 #include <ctype.h>
 
 // Test suite with debug logging enabled (show frame details)
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(websocket_integration, LOG_DEBUG, LOG_DEBUG, true, true);
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(websocket_integration, LOG_DEBUG, LOG_DEBUG, false, false);
 
 /* ============================================================================
  * Test Fixtures and Helpers

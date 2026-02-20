@@ -27,7 +27,7 @@
 #include <ascii-chat/tests/logging.h>
 
 // Use verbose logging for debugging
-TEST_SUITE_WITH_DEBUG_LOGGING(gpg_handshake);
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(gpg_handshake, LOG_DEBUG, LOG_DEBUG, false, false);
 
 // Test GPG key ID - obtained from environment variable set by setup script
 // If not set, tests will be skipped

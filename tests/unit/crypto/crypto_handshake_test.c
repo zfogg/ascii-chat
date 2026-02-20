@@ -25,8 +25,8 @@
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/platform/thread.h>
 
-// Use quiet logging for normal test runs
-TEST_SUITE_WITH_QUIET_LOGGING(crypto_handshake);
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(crypto_handshake, LOG_DEBUG, LOG_DEBUG, false, false);
 
 // Real socket pairs for testing
 static socket_t g_server_socket = INVALID_SOCKET_VALUE;
