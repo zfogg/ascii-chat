@@ -70,6 +70,8 @@
 #include "../../common.h"
 #include "../../asciichat_errno.h"
 #include "../acip/transport.h"
+#include "../packet.h"
+#include "../../platform/mutex.h"
 
 /* Forward declarations */
 struct crypto_context_t;
@@ -80,9 +82,9 @@ struct crypto_context_t;
  * Encapsulates WebSocket-specific connection state, including:
  * - Connection URL and state flags
  * - Active transport (owned by websocket_client)
+ * - Client ID assignment and thread-safe packet transmission
  *
- * This is a slim structure - application state (audio, threads, crypto)
- * lives in client_context_t instead.
+ * Mirrors tcp_client_t structure for consistency and compatibility.
  */
 typedef struct websocket_client {
   /** WebSocket server URL (e.g., "ws://localhost:27226") */
@@ -96,6 +98,15 @@ typedef struct websocket_client {
 
   /** Transport instance (owned by websocket_client) - NULL until connected */
   acip_transport_t *transport;
+
+  /** Client ID assigned by server or generated locally */
+  uint32_t my_client_id;
+
+  /** Mutex protecting send operations (thread-safe packet transmission) */
+  mutex_t send_mutex;
+
+  /** Encryption enabled flag */
+  bool encryption_enabled;
 
 } websocket_client_t;
 
@@ -185,5 +196,43 @@ acip_transport_t *websocket_client_connect(websocket_client_t *client, const cha
  * @return acip_transport_t pointer or NULL if not connected
  */
 acip_transport_t *websocket_client_get_transport(const websocket_client_t *client);
+
+/**
+ * @brief Get client ID assigned by server or generated locally
+ *
+ * @param client WebSocket client instance
+ * @return Client ID (0 if not connected)
+ */
+uint32_t websocket_client_get_id(const websocket_client_t *client);
+
+/**
+ * @brief Send packet with thread-safe mutex protection
+ *
+ * All packet transmission goes through this function to ensure
+ * packets aren't interleaved on the wire.
+ *
+ * @param client WebSocket client instance
+ * @param type Packet type (PACKET_TYPE_*)
+ * @param data Packet payload data
+ * @param len Payload length in bytes
+ * @return 0 on success, negative on error
+ */
+int websocket_client_send_packet(websocket_client_t *client, packet_type_t type, const void *data, size_t len);
+
+/**
+ * @brief Send ping packet for keep-alive
+ *
+ * @param client WebSocket client instance
+ * @return 0 on success, negative on error
+ */
+int websocket_client_send_ping(websocket_client_t *client);
+
+/**
+ * @brief Send pong packet in response to ping
+ *
+ * @param client WebSocket client instance
+ * @return 0 on success, negative on error
+ */
+int websocket_client_send_pong(websocket_client_t *client);
 
 #endif /* NETWORK_WEBSOCKET_CLIENT_H */
