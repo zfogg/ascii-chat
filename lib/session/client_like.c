@@ -289,13 +289,41 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   }
 
   // ============================================================================
+  // SETUP: Network Transports (TCP/WebSocket) - BEFORE capture context decision
+  // ============================================================================
+
+  log_debug("session_client_like_run(): Setting up network transports");
+
+  // Parse server address to determine TCP vs WebSocket
+  const char *server_address = GET_OPTION(address);
+  bool is_websocket = server_address && url_is_websocket(server_address);
+
+  if (is_websocket) {
+    log_debug("WebSocket URL detected: %s", server_address);
+    g_websocket_client = websocket_client_create();
+    if (!g_websocket_client) {
+      log_error("Failed to create WebSocket client");
+      result = ERROR_NETWORK;
+      goto cleanup;
+    }
+  } else if (server_address && strlen(server_address) > 0) {
+    log_debug("Using TCP client for server: %s:%d", server_address, GET_OPTION(port));
+    g_tcp_client = tcp_client_create();
+    if (!g_tcp_client) {
+      log_error("Failed to create TCP client");
+      result = ERROR_NETWORK;
+      goto cleanup;
+    }
+  }
+
+  // ============================================================================
   // SETUP: Capture Context
   // ============================================================================
 
   // Choose capture type based on mode:
   // - Mirror mode: needs to capture local media (webcam, file, test pattern)
   // - Network modes (client/discovery): receive frames from network, no local capture
-  bool is_network_mode = (config->tcp_client != NULL || config->websocket_client != NULL);
+  bool is_network_mode = (g_tcp_client != NULL || g_websocket_client != NULL);
 
   if (is_network_mode) {
     // Network mode: create minimal capture context without media source
@@ -424,34 +452,6 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
       SAFE_FREE(audio_ctx);
       audio_ctx = NULL;
       audio_available = false;
-    }
-  }
-
-  // ============================================================================
-  // SETUP: Network Transports (TCP/WebSocket)
-  // ============================================================================
-
-  log_debug("session_client_like_run(): Setting up network transports");
-
-  // Parse server address to determine TCP vs WebSocket
-  const char *server_address = GET_OPTION(address);
-  bool is_websocket = server_address && url_is_websocket(server_address);
-
-  if (is_websocket) {
-    log_debug("WebSocket URL detected: %s", server_address);
-    g_websocket_client = websocket_client_create();
-    if (!g_websocket_client) {
-      log_error("Failed to create WebSocket client");
-      result = ERROR_NETWORK;
-      goto cleanup;
-    }
-  } else {
-    log_debug("Using TCP client for server: %s:%d", server_address ? server_address : "localhost", GET_OPTION(port));
-    g_tcp_client = tcp_client_create();
-    if (!g_tcp_client) {
-      log_error("Failed to create TCP client");
-      result = ERROR_NETWORK;
-      goto cleanup;
     }
   }
 
