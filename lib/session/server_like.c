@@ -36,6 +36,9 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
     log_set_force_stderr(true);
   }
 
+  /* Disable terminal logging during status screen rendering (mode will re-enable as needed) */
+  log_set_terminal_output(false);
+
   /* ============================================================================
    * SETUP: Keepawake System
    * ============================================================================ */
