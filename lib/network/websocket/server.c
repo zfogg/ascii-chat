@@ -734,13 +734,28 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     // Fired on the service thread when lws_cancel_service() is called from another thread.
     // This is how we safely convert cross-thread send requests into writable callbacks.
     // lws_callback_on_writable() is only safe from the service thread context.
-    log_info("[LWS_CALLBACK_EVENT_WAIT_CANCELLED] FIRED: wsi=%p, proto_name=%s", (void *)wsi, proto_name);
-    const struct lws_protocols *protocol = lws_get_protocol(wsi);
-    if (protocol) {
-      log_info("[LWS_CALLBACK_EVENT_WAIT_CANCELLED] SUCCESS: Calling lws_callback_on_writable_all_protocol (protocol=%s)", protocol->name);
-      lws_callback_on_writable_all_protocol(lws_get_context(wsi), protocol);
+    log_info("[LWS_CALLBACK_EVENT_WAIT_CANCELLED] FIRED: wsi=%p, user=%p", (void *)wsi, user);
+
+    const struct lws_protocols *protocol = NULL;
+    struct lws_context *context = NULL;
+
+    if (wsi) {
+      // Normal case: wsi is available
+      protocol = lws_get_protocol(wsi);
+      context = lws_get_context(wsi);
     } else {
-      log_error("[LWS_CALLBACK_EVENT_WAIT_CANCELLED] FAIL: No protocol found on wsi=%p", (void *)wsi);
+      // Context-level callback case: wsi is NULL, context in user data
+      context = (struct lws_context *)user;
+      log_info("[LWS_CALLBACK_EVENT_WAIT_CANCELLED] Context-level callback detected (wsi=NULL), using context from user=%p", (void *)context);
+    }
+
+    if (protocol && context) {
+      log_info("[LWS_CALLBACK_EVENT_WAIT_CANCELLED] SUCCESS: Calling lws_callback_on_writable_all_protocol (protocol=%s)", protocol->name);
+      lws_callback_on_writable_all_protocol(context, protocol);
+    } else if (context) {
+      log_error("[LWS_CALLBACK_EVENT_WAIT_CANCELLED] WARNING: No protocol found, context=%p", (void *)context);
+    } else {
+      log_error("[LWS_CALLBACK_EVENT_WAIT_CANCELLED] FAIL: Cannot determine context (wsi=%p, user=%p)", (void *)wsi, user);
     }
     break;
   }
