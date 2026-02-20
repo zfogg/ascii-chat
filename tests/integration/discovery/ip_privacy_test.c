@@ -7,6 +7,8 @@
  * - Explicit opt-in via expose_ip_publicly flag
  * - IP withheld for sessions without either mechanism
  *
+ * Trigger: Testing Criterion to JUnit XML conversion for codecov test result metadata.
+ *
  * This prevents IP address leakage to unauthenticated clients who only know
  * the session string.
  */
