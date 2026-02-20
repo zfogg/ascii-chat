@@ -853,7 +853,6 @@ static bool debug_process_tracked_unlock(void *lock_ptr, uint32_t key, const cha
   void *deferred_lock_ptr = NULL;
   const char *deferred_lock_type_str = NULL;
   char **deferred_backtrace_symbols = NULL;
-  int deferred_backtrace_size = 0;
 
   // Acquire write lock for removal
   LOCK_TRACE("acquiring lock_records_lock (write) for unlock %s %s:%d", lock_type_str, file_name, line_number);
@@ -880,7 +879,6 @@ static bool debug_process_tracked_unlock(void *lock_ptr, uint32_t key, const cha
 
       // Copy backtrace symbols if available (we need to copy, not just reference)
       if (record->backtrace_size > 0 && record->backtrace_symbols) {
-        deferred_backtrace_size = record->backtrace_size;
         deferred_backtrace_symbols = record->backtrace_symbols;
         record->backtrace_symbols = NULL; // Transfer ownership to avoid double-free
       }
