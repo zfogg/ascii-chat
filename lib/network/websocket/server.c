@@ -592,12 +592,11 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     atomic_fetch_add(&g_receive_callback_count, 1);
     log_debug("[WS_TIMING] incremented callback count");
 
-    // Re-enable TCP_QUICKACK on EVERY fragment delivery (Linux only).
-    // Linux resets TCP_QUICKACK after each ACK, reverting to delayed ACK mode (~40ms).
-    // Without this, only the first fragment batch benefits from quick ACKs, and subsequent
-    // batches see ~30ms gaps as the sender waits for delayed ACKs before sending more data.
+    // OPTIMIZATION: Only enable TCP_QUICKACK on first fragment of each message.
+    // Re-enabling on EVERY fragment is too expensive (syscall overhead).
+    // Linux resets TCP_QUICKACK after each ACK, but we only need it for the first chunk.
 #ifdef __linux__
-    {
+    if (is_first) {
       int fd = lws_get_socket_fd(wsi);
       if (fd >= 0) {
         int quickack = 1;
@@ -622,6 +621,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     }
 
     // Debug: Log raw bytes of incoming fragment
+    // OPTIMIZATION: Only log hex dumps if explicitly enabled to reduce callback overhead
+#ifdef WS_DEBUG_VERBOSE_FRAGMENTS
     log_dev_every(4500 * US_PER_MS_INT, "WebSocket fragment: %zu bytes (first=%d, final=%d)", len, is_first, is_final);
     if (len > 0 && len <= 256) {
       const uint8_t *bytes = (const uint8_t *)in;
@@ -642,6 +643,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       log_dev_every(4500 * US_PER_MS_INT, "Single-fragment ACIP packet: type=%d (0x%x) len=%u total_size=%zu", pkt_type,
                     pkt_type, pkt_len, len);
     }
+#endif
 
     // Queue this fragment immediately with first/final flags.
     // Per LWS design, each fragment is processed individually by the callback.
@@ -649,19 +651,23 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     // Instead, queue each fragment with metadata, and let the receiver decide on reassembly.
     // This follows the pattern in lws examples (minimal-ws-server-echo, etc).
 
+    uint64_t alloc_start_ns = time_get_ns();
     websocket_recv_msg_t msg;
     msg.data = buffer_pool_alloc(NULL, len);
     if (!msg.data) {
       log_error("Failed to allocate buffer for fragment (%zu bytes)", len);
       break;
     }
+    uint64_t alloc_end_ns = time_get_ns();
 
     memcpy(msg.data, in, len);
     msg.len = len;
     msg.first = is_first;
     msg.final = is_final;
 
+    uint64_t lock_start_ns = time_get_ns();
     mutex_lock(&ws_data->recv_mutex);
+    uint64_t lock_end_ns = time_get_ns();
 
     // Re-check recv_queue is still valid after acquiring lock
     // (LWS_CALLBACK_CLOSED may have cleared it while we were waiting for the lock)
@@ -672,12 +678,14 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       break;
     }
 
-    // Snapshot queue status for logging (safe now that we hold the lock)
-    size_t queue_current_size = ringbuffer_size(ws_data->recv_queue);
-    size_t queue_capacity = ws_data->recv_queue->capacity;
-    size_t queue_free = queue_capacity - queue_current_size;
-    log_dev_every(4500 * US_PER_MS_INT, "[WS_FLOW] Queue: free=%zu/%zu (used=%zu)", queue_free, queue_capacity,
-                  queue_current_size);
+    // OPTIMIZATION: Only log queue status on first fragments to reduce callback overhead
+    if (is_first) {
+      size_t queue_current_size = ringbuffer_size(ws_data->recv_queue);
+      size_t queue_capacity = ws_data->recv_queue->capacity;
+      size_t queue_free = queue_capacity - queue_current_size;
+      log_dev_every(4500 * US_PER_MS_INT, "[WS_FLOW] Queue: free=%zu/%zu (used=%zu)", queue_free, queue_capacity,
+                    queue_current_size);
+    }
 
     bool success = ringbuffer_write(ws_data->recv_queue, &msg);
     if (!success) {
@@ -704,15 +712,20 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     log_info("[WS_FRAG] Queued fragment: %zu bytes (first=%d final=%d, total_fragments=%llu)", len, is_first, is_final,
              (unsigned long long)atomic_load(&g_receive_callback_count));
 
-    // Log callback duration
+    // Log callback duration with breakdown
     {
       uint64_t callback_exit_ns = time_get_ns();
       double callback_dur_us = (double)(callback_exit_ns - callback_enter_ns) / 1e3;
-      if (callback_dur_us > 200) {
-        log_warn("[WS_CALLBACK_DURATION] RECEIVE callback took %.1f µs (> 200µs threshold)", callback_dur_us);
+      double alloc_dur_us = (double)(alloc_end_ns - alloc_start_ns) / 1e3;
+      double lock_wait_dur_us = (double)(lock_end_ns - lock_start_ns) / 1e3;
+
+      if (callback_dur_us > 500) {
+        log_warn("[WS_CALLBACK_DURATION] RECEIVE callback took %.1f µs (alloc=%.1f µs, lock_wait=%.1f µs)",
+                 callback_dur_us, alloc_dur_us, lock_wait_dur_us);
       }
-      log_debug("[WS_CALLBACK_DURATION] RECEIVE callback completed in %.1f µs (fragment: first=%d final=%d len=%zu)",
-                callback_dur_us, is_first, is_final, len);
+      log_debug("[WS_CALLBACK_TIMING] total=%.1f µs (alloc=%.1f µs, lock_wait=%.1f µs, other=%.1f µs)",
+                callback_dur_us, alloc_dur_us, lock_wait_dur_us,
+                callback_dur_us - alloc_dur_us - lock_wait_dur_us);
     }
     log_debug("[WS_RECEIVE] ===== RECEIVE CALLBACK COMPLETE, returning 0 to continue =====");
     log_info("[WS_RECEIVE_RETURN] Returning 0 from RECEIVE callback (success). fragmented=%d (first=%d final=%d)",
