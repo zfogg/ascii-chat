@@ -434,15 +434,6 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
     }
   }
 
-  // Not a known mode - check if it's a WebSocket URL (ws:// or wss://)
-  if (url_is_websocket(positional)) {
-    // WebSocket URL detected - this is a client connection
-    log_dev("WebSocket URL detected in mode detection: %s", positional);
-    *out_mode = MODE_CLIENT;
-    *out_mode_index = first_positional_idx;
-    return ASCIICHAT_OK;
-  }
-
   // Not a known mode - check if it's a session string (word-word-word pattern)
   if (is_session_string(positional)) {
     *out_mode = MODE_DISCOVERY;
@@ -1407,9 +1398,8 @@ asciichat_error_t options_init(int argc, char **argv) {
         // Skip argument if needed
         if (takes_arg && i + 1 < mode_index) {
           i++; // Skip required argument
-        } else if (takes_optional_arg && i + 1 < mode_index && argv[i + 1][0] != '-' &&
-                   isdigit((unsigned char)argv[i + 1][0])) {
-          i++; // Skip optional numeric argument
+        } else if (takes_optional_arg && i + 1 < mode_index && argv[i + 1][0] != '-') {
+          i++; // Skip optional argument
         }
         continue;
       }
@@ -1428,7 +1418,7 @@ asciichat_error_t options_init(int argc, char **argv) {
         if (takes_arg && i + 1 < argc) {
           i++; // Skip required argument
         } else if (takes_optional_arg && i + 1 < argc && argv[i + 1][0] != '-') {
-          i++; // Skip optional argument
+          i++; // Skip optional argument (note: removed isdigit check for consistency)
         }
         continue; // Skip this option
       }
