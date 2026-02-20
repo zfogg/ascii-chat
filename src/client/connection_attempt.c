@@ -468,7 +468,6 @@ asciichat_error_t connection_attempt_websocket(connection_attempt_context_t *ctx
   }
 
   // Connect via WebSocket
-  log_info("Calling websocket_client_connect() to establish transport");
   acip_transport_t *transport = websocket_client_connect(ws_client, ws_url, (crypto_context_t *)crypto_ctx);
   if (!transport) {
     log_error("Failed to create WebSocket ACIP transport");
@@ -477,14 +476,11 @@ asciichat_error_t connection_attempt_websocket(connection_attempt_context_t *ctx
     return SET_ERRNO(ERROR_NETWORK, "WebSocket connection failed");
   }
 
-  log_info("WebSocket connection established to %s (transport=%p)", ws_url, (void *)transport);
-  log_debug("Transport created - crypto_ctx=%p, transport is_connected=%d", (void *)crypto_ctx, transport ? 1 : 0);
-
+  log_info("WebSocket connection established to %s", ws_url);
   connection_state_transition(ctx, CONN_STATE_CONNECTED);
   ctx->active_transport = transport;
   ctx->ws_client_instance = ws_client;
-  log_debug("WebSocket client instance stored in connection context for lifecycle management");
+  log_debug("WebSocket client instance stored in connection context");
 
-  log_info("WebSocket connection initialization complete - ready for protocol handshake");
   return ASCIICHAT_OK;
 }
