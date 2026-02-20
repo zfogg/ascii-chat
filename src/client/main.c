@@ -630,6 +630,11 @@ int client_main(void) {
    * - Direct address/port
    */
 
+  // Declare address variables early so LAN discovery can populate them
+  const char *discovered_address = NULL;
+  int discovered_port = 0;
+  static char address_storage[BUFFER_SIZE_SMALL];
+
   // LAN Discovery: If --scan flag is set, discover servers on local network
   const options_t *opts = options_get();
   if (opts && opts->lan_discovery &&
@@ -671,25 +676,17 @@ int client_main(void) {
       return 1; // User cancelled
     }
 
-    // Update options with discovered server's address and port
+    // Use discovered server's address and port for connection
     discovery_tui_server_t *selected = &discovered_servers[selected_index];
     const char *selected_address = discovery_tui_get_best_address(selected);
 
-    // We need to modify options, but they're immutable via RCU
-    // Create a new options copy with updated address/port
-    options_t *opts_new = SAFE_MALLOC(sizeof(options_t), options_t *);
-    if (opts_new) {
-      memcpy(opts_new, opts, sizeof(options_t));
-      SAFE_STRNCPY(opts_new->address, selected_address, sizeof(opts_new->address));
+    // Store the discovered address and port for use in connection
+    SAFE_STRNCPY(address_storage, selected_address, sizeof(address_storage));
+    discovered_address = address_storage;
+    discovered_port = (int)selected->port;
 
-      opts_new->port = (int)selected->port;
-
-      log_debug("LAN discovery: Selected server '%s' at %s:%d", selected->name, opts_new->address, opts_new->port);
-
-      // Note: In a real scenario, we'd update the global options via RCU
-      // For now, we'll use the updated values directly for connection
-      // This is a known limitation - proper RCU update requires more infrastructure
-    }
+    log_debug("LAN discovery: Selected server '%s' at %s:%d - will use for connection",
+              selected->name, discovered_address, discovered_port);
 
     discovery_tui_free_results(discovered_servers);
   }
@@ -704,9 +701,6 @@ int client_main(void) {
   //
   // Note: Session string discovery via ACDS is handled by discovery mode only.
   //       Client mode does NOT use ACDS or session strings.
-
-  const char *discovered_address = NULL;
-  int discovered_port = 0;
 
   // Check if user provided a WebSocket URL as the server address
   const options_t *opts_websocket = options_get();
@@ -723,7 +717,6 @@ int client_main(void) {
             discovered_port);
 
   // Store discovered address/port in session state for client_run() callback
-  static char address_storage[BUFFER_SIZE_SMALL];
   if (discovered_address) {
     SAFE_STRNCPY(address_storage, discovered_address, sizeof(address_storage));
     g_client_session.discovered_address = address_storage;
