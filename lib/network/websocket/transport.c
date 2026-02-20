@@ -452,10 +452,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
         return SET_ERRNO(ERROR_NETWORK, "Fragment reassembly timeout - no data from network");
       }
 
-      // Check connection state (without holding recv_mutex to avoid lock order inversion)
-      // Release recv_mutex temporarily to check state_mutex
-      mutex_unlock(&ws_data->recv_mutex);
-
+      // Check connection state
       mutex_lock(&ws_data->state_mutex);
       bool still_connected = ws_data->is_connected;
       mutex_unlock(&ws_data->state_mutex);
@@ -470,11 +467,9 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
         ws_data->partial_capacity = 0;
         ws_data->fragment_count = 0;
         ws_data->reassembling = false;
+        mutex_unlock(&ws_data->recv_mutex);
         return SET_ERRNO(ERROR_NETWORK, "Connection closed while reassembling fragments");
       }
-
-      // Re-acquire recv_mutex for condition variable wait
-      mutex_lock(&ws_data->recv_mutex);
 
       // Wait for next fragment with 1ms timeout
       cond_timedwait(&ws_data->recv_cond, &ws_data->recv_mutex, 1 * 1000000ULL);
