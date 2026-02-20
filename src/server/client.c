@@ -1478,9 +1478,8 @@ void *client_dispatch_thread(void *arg) {
     }
 
     // Frame received! Log it immediately
-    log_info("🚀 DISPATCH_LOOP[%llu]: 📦 DEQUEUED %zu byte packet (dequeue took %.1fμs) for client %u",
-             (unsigned long long)dispatch_loop_count, queued_pkt->data_len, (dequeue_end - dequeue_start) / 1000.0,
-             client_id);
+    log_info("✅ DISPATCH_THREAD[%u] DEQUEUED packet: %zu bytes (dequeue took %.1fμs)", client_id, queued_pkt->data_len,
+             (dequeue_end - dequeue_start) / 1000.0);
 
     // Process the dequeued packet
     // The queued packet contains the complete ACIP packet (header + payload) from websocket_recv()
@@ -1489,18 +1488,27 @@ void *client_dispatch_thread(void *arg) {
     uint8_t *payload = (uint8_t *)header + sizeof(packet_header_t);
     size_t payload_len = 0;
 
-    log_info("DISPATCH_THREAD: Processing %zu byte packet for client %u", total_len, client_id);
+    log_info("🔍 DISPATCH_THREAD[%u]: Processing %zu byte packet (header size=%zu)", client_id, total_len,
+             sizeof(packet_header_t));
 
-    if (total_len >= sizeof(packet_header_t)) {
+    if (total_len < sizeof(packet_header_t)) {
+      log_error("🔴 DISPATCH_THREAD[%u]: Packet too small (%zu < %zu), DROPPING", client_id, total_len,
+                sizeof(packet_header_t));
+      packet_queue_free_packet(queued_pkt);
+      continue;
+    }
+
+    {
       packet_type_t packet_type = (packet_type_t)NET_TO_HOST_U16(header->type);
       payload_len = NET_TO_HOST_U32(header->length);
 
-      log_info("🎯 DISPATCH_THREAD: Packet type=%d, payload_len=%u (will dispatch now)", packet_type, payload_len);
+      log_info("🎯 DISPATCH_THREAD[%u]: Packet type=%d, payload_len=%u, total_len=%zu", client_id, packet_type,
+               payload_len, total_len);
 
       // Handle PACKET_TYPE_ENCRYPTED from WebSocket clients that encrypt at application layer
       // This mirrors the decryption logic in acip_server_receive_and_dispatch()
       if (packet_type == PACKET_TYPE_ENCRYPTED && client->transport && client->transport->crypto_ctx) {
-        log_info("DISPATCH_THREAD: Decrypting PACKET_TYPE_ENCRYPTED for client %u", client_id);
+        log_info("🔐 DISPATCH_THREAD[%u]: Decrypting PACKET_TYPE_ENCRYPTED", client_id);
 
         uint8_t *ciphertext = payload;
         size_t ciphertext_len = payload_len;
@@ -1509,7 +1517,7 @@ void *client_dispatch_thread(void *arg) {
         size_t plaintext_size = ciphertext_len + 1024;
         uint8_t *plaintext = SAFE_MALLOC(plaintext_size, uint8_t *);
         if (!plaintext) {
-          log_error("DISPATCH_THREAD: Failed to allocate plaintext buffer for decryption");
+          log_error("🔴 DISPATCH_THREAD[%u]: Failed to allocate plaintext buffer for decryption", client_id);
           packet_queue_free_packet(queued_pkt);
           continue;
         }
@@ -1519,14 +1527,16 @@ void *client_dispatch_thread(void *arg) {
                                                        plaintext, plaintext_size, &plaintext_len);
 
         if (crypto_result != CRYPTO_OK) {
-          log_error("DISPATCH_THREAD: Failed to decrypt packet: %s", crypto_result_to_string(crypto_result));
+          log_error("🔴 DISPATCH_THREAD[%u]: Failed to decrypt packet: %s", client_id,
+                    crypto_result_to_string(crypto_result));
           SAFE_FREE(plaintext);
           packet_queue_free_packet(queued_pkt);
           continue;
         }
 
         if (plaintext_len < sizeof(packet_header_t)) {
-          log_error("DISPATCH_THREAD: Decrypted packet too small: %zu < %zu", plaintext_len, sizeof(packet_header_t));
+          log_error("🔴 DISPATCH_THREAD[%u]: Decrypted packet too small: %zu < %zu", client_id, plaintext_len,
+                    sizeof(packet_header_t));
           SAFE_FREE(plaintext);
           packet_queue_free_packet(queued_pkt);
           continue;
@@ -1538,19 +1548,24 @@ void *client_dispatch_thread(void *arg) {
         payload_len = NET_TO_HOST_U32(inner_header->length);
         payload = plaintext + sizeof(packet_header_t);
 
-        log_info("DISPATCH_THREAD: Decrypted inner packet type=%d, payload_len=%u", packet_type, payload_len);
+        log_info("🔐 DISPATCH_THREAD[%u]: Decrypted inner packet type=%d, payload_len=%u", client_id, packet_type,
+                 payload_len);
 
         // Dispatch the decrypted packet
         if (client->transport) {
+          log_info("🎯 DISPATCH_THREAD[%u]: Calling acip_handle_server_packet(type=%d, payload_len=%u)", client_id,
+                   packet_type, payload_len);
           asciichat_error_t dispatch_result = acip_handle_server_packet(client->transport, packet_type, payload,
                                                                         payload_len, client, &g_acip_server_callbacks);
 
           if (dispatch_result != ASCIICHAT_OK) {
-            log_error("DISPATCH_THREAD: Handler failed for decrypted packet type=%d: %s", packet_type,
+            log_error("🔴 DISPATCH_THREAD[%u]: Handler failed for decrypted packet type=%d: %s", client_id, packet_type,
                       asciichat_error_string(dispatch_result));
+          } else {
+            log_info("✅ DISPATCH_THREAD[%u]: Successfully dispatched decrypted packet type=%d", client_id, packet_type);
           }
         } else {
-          log_error("DISPATCH_THREAD: Cannot dispatch decrypted packet - transport is NULL for client %u", client_id);
+          log_error("🔴 DISPATCH_THREAD[%u]: Cannot dispatch decrypted packet - transport is NULL", client_id);
         }
 
         // Free the decrypted buffer
@@ -1558,15 +1573,19 @@ void *client_dispatch_thread(void *arg) {
       } else {
         // Not encrypted or no crypto context - dispatch as-is
         if (client->transport) {
+          log_info("🎯 DISPATCH_THREAD[%u]: Calling acip_handle_server_packet(type=%d, payload_len=%u)", client_id,
+                   packet_type, payload_len);
           asciichat_error_t dispatch_result = acip_handle_server_packet(client->transport, packet_type, payload,
                                                                         payload_len, client, &g_acip_server_callbacks);
 
           if (dispatch_result != ASCIICHAT_OK) {
-            log_error("DISPATCH_THREAD: Handler failed for packet type=%d: %s", packet_type,
+            log_error("🔴 DISPATCH_THREAD[%u]: Handler failed for packet type=%d: %s", client_id, packet_type,
                       asciichat_error_string(dispatch_result));
+          } else {
+            log_info("✅ DISPATCH_THREAD[%u]: Successfully dispatched packet type=%d", client_id, packet_type);
           }
         } else {
-          log_error("DISPATCH_THREAD: Cannot dispatch packet - transport is NULL for client %u", client_id);
+          log_error("🔴 DISPATCH_THREAD[%u]: Cannot dispatch packet - transport is NULL", client_id);
         }
       }
     }
@@ -1688,8 +1707,14 @@ void *client_receive_thread(void *arg) {
       void *allocated_buffer = NULL;
       size_t packet_len = 0;
 
+      log_debug("🔍 RECV_THREAD[%u]: About to call transport->recv() (transport=%p)", client->client_id,
+                (void *)client->transport);
+
       asciichat_error_t recv_result =
           client->transport->methods->recv(client->transport, &packet_data, &packet_len, &allocated_buffer);
+
+      log_info("🔍 RECV_THREAD[%u]: transport->recv() returned result=%d, packet_len=%zu, allocated_buffer=%p",
+               client->client_id, recv_result, packet_len, allocated_buffer);
 
       if (recv_result != ASCIICHAT_OK) {
         asciichat_error_context_t err_ctx;
@@ -1714,16 +1739,27 @@ void *client_receive_thread(void *arg) {
         break;
       }
 
+      // Validate received packet before queueing
+      if (packet_len < sizeof(packet_header_t)) {
+        log_warn("RECV_THREAD[%u]: Received packet too small (%zu < %zu), dropping", client->client_id, packet_len,
+                 sizeof(packet_header_t));
+        if (allocated_buffer) {
+          buffer_pool_free(NULL, allocated_buffer, packet_len);
+        }
+        continue;
+      }
+
       // Queue the received packet for async dispatch
       // This prevents the receive thread from blocking on dispatch
-      log_info("RECV_THREAD: Queuing %zu byte packet for async dispatch (client %u)", packet_len, client->client_id);
+      log_info("✅ RECV_THREAD[%u]: Queuing %zu byte packet for async dispatch", client->client_id, packet_len);
 
       // Extract packet type from the header to preserve it when queueing
-      packet_type_t pkt_type = PACKET_TYPE_PROTOCOL_VERSION;
-      if (packet_len >= sizeof(packet_header_t)) {
-        const packet_header_t *pkt_header = (const packet_header_t *)allocated_buffer;
-        pkt_type = (packet_type_t)NET_TO_HOST_U16(pkt_header->type);
-      }
+      const packet_header_t *pkt_header = (const packet_header_t *)allocated_buffer;
+      packet_type_t pkt_type = (packet_type_t)NET_TO_HOST_U16(pkt_header->type);
+      uint32_t payload_len = NET_TO_HOST_U32(pkt_header->length);
+
+      log_info("🔍 RECV_THREAD[%u]: Packet header: type=%d, payload_len=%u, total_len=%zu", client->client_id, pkt_type,
+               payload_len, packet_len);
 
       // Build a complete packet to queue (header + payload)
       // The entire buffer (allocated_buffer) contains the full packet
@@ -1732,10 +1768,13 @@ void *client_receive_thread(void *arg) {
                                                 atomic_load(&client->client_id), false);
 
       if (enqueue_result < 0) {
-        log_warn("Failed to queue received packet for client %u (queue full?) - packet dropped", client->client_id);
+        log_error("🔴 RECV_THREAD[%u]: Failed to queue received packet (queue full?) - DROPPING FRAME", client->client_id);
         if (allocated_buffer) {
           buffer_pool_free(NULL, allocated_buffer, packet_len);
         }
+      } else {
+        log_info("✅ RECV_THREAD[%u]: Successfully queued packet (type=%d, len=%zu)", client->client_id, pkt_type,
+                 packet_len);
       }
     }
   }
