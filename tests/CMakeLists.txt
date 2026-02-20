@@ -50,11 +50,13 @@ if(IS_COVERAGE_BUILD)
     set(CRITERION_TIMEOUT 60)      # Criterion's internal timeout per test case
     set(CTEST_TEST_TIMEOUT 120)    # CTest's overall timeout per test executable
     set(CRITERION_JOBS 1)          # Disable internal parallelism for coverage accuracy
+    set(CTEST_PARALLEL_JOBS 2)     # Limit parallel tests to prevent resource exhaustion during coverage
 else()
     set(CRITERION_TIMEOUT 25)      # Default timeout
     set(CTEST_TEST_TIMEOUT 30)     # Tests must complete in 30 seconds or less
     # Use all CPU cores minus 1 to prevent system saturation
     math(EXPR CRITERION_JOBS "${CPU_CORES} - 1")
+    set(CTEST_PARALLEL_JOBS "${CPU_CORES} - 1")
 endif()
 
 # XML output directory for Criterion test results
@@ -512,24 +514,24 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     endif()
 
     # Custom targets for different test modes (matches Makefile)
-    # Use CPU_CORES from Init.cmake for automatic parallel job count
+    # Use CTEST_PARALLEL_JOBS which is limited to prevent resource exhaustion
     add_custom_target(test_debug
         DEPENDS tests
-        COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure --parallel ${CPU_CORES}
-        COMMENT "Running tests in debug mode (${CPU_CORES} parallel jobs)"
+        COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure --parallel ${CTEST_PARALLEL_JOBS}
+        COMMENT "Running tests in debug mode (${CTEST_PARALLEL_JOBS} parallel jobs)"
     )
 
     add_custom_target(test_release
         DEPENDS tests
-        COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -C Release --parallel ${CPU_CORES}
-        COMMENT "Running tests in release mode (${CPU_CORES} parallel jobs)"
+        COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -C Release --parallel ${CTEST_PARALLEL_JOBS}
+        COMMENT "Running tests in release mode (${CTEST_PARALLEL_JOBS} parallel jobs)"
     )
 
     # Overall test target
     add_custom_target(test_all
         DEPENDS tests
-        COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure --parallel ${CPU_CORES}
-        COMMENT "Running all tests (${CPU_CORES} parallel jobs)"
+        COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure --parallel ${CTEST_PARALLEL_JOBS}
+        COMMENT "Running all tests (${CTEST_PARALLEL_JOBS} parallel jobs)"
     )
 
     # Add library test targets to test_all so they're built when running ctest
