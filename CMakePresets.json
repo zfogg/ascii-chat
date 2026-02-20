@@ -61,7 +61,8 @@
       "description": "Default configuration - Debug build with system libc, clang, and all compatible sanitizers (ASan+UBSan+LSan+Integer+Nullability)",
       "inherits": "base-debug",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BUILD_TESTS": "OFF"
       }
     },
     {
@@ -71,7 +72,8 @@
       "inherits": "base-debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "ASCIICHAT_ENABLE_ANALYZERS": "ON"
+        "ASCIICHAT_ENABLE_ANALYZERS": "ON",
+        "BUILD_TESTS": "OFF"
       }
     },
     {
@@ -82,7 +84,8 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "ASCIICHAT_ENABLE_ANALYZERS": "ON",
-        "USE_MUSL": "ON"
+        "USE_MUSL": "ON",
+        "BUILD_TESTS": "OFF"
       }
     },
     {
