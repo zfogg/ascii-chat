@@ -6,6 +6,7 @@
 
 #include <criterion/criterion.h>
 #include <ascii-chat/session/consensus.h>
+#include <ascii-chat/tests/logging.h>
 #include <ascii-chat/common.h>
 #include <string.h>
 #include <time.h>
@@ -89,6 +90,8 @@ static asciichat_error_t mock_get_metrics(void *context, const uint8_t my_id[16]
 
   return ASCIICHAT_OK;
 }
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(consensus, LOG_DEBUG, LOG_DEBUG, false, false);
 
 Test(consensus, lifecycle) {
   // Create mock context

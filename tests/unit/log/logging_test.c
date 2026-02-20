@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <ascii-chat/tests/common.h>
+#include <ascii-chat/tests/logging.h>
 
 // Global setup to reduce verbose output during tests
 void setup_quiet_logging(void);
@@ -128,6 +129,8 @@ ParameterizedTest(log_special_char_test_case_t *tc, logging, log_special_charact
 
   cr_assert(true, "%s should work", tc->description);
 }
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(logging, LOG_DEBUG, LOG_DEBUG, false, false);
 
 Test(logging, log_null_safety) {
   // Test logging with NULL string (should be handled gracefully)

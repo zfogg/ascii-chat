@@ -8,10 +8,14 @@
 #include <stdint.h>
 #include <string.h>
 #include <ascii-chat/video/color_filter.h>
+#include <ascii-chat/tests/logging.h>
 
 /**
  * @brief Test grayscale conversion accuracy
  */
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(color_filter, LOG_DEBUG, LOG_DEBUG, false, false);
+
 Test(color_filter, rgb_to_grayscale_primary_colors) {
   // Pure red: should be ~77
   uint8_t red_gray = rgb_to_grayscale(255, 0, 0);

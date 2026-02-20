@@ -5,6 +5,7 @@
 
 #include <criterion/criterion.h>
 #include <ascii-chat/network/consensus/coordinator.h>
+#include <ascii-chat/tests/logging.h>
 #include <ascii-chat/network/consensus/election.h>
 #include <ascii-chat/util/time.h>
 #include <string.h>
@@ -55,6 +56,8 @@ static asciichat_error_t mock_election_func(void *context, consensus_state_t *st
 /* ============================================================================
  * Basic Lifecycle Tests
  * ============================================================================ */
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(coordinator, LOG_DEBUG, LOG_DEBUG, false, false);
 
 Test(coordinator, create_and_destroy) {
   consensus_topology_t *topo = make_test_topology(1, 3);

@@ -13,6 +13,7 @@
 
 #include <criterion/criterion.h>
 #include <ascii-chat/media/source.h>
+#include <ascii-chat/tests/logging.h>
 #include <ascii-chat/media/yt_dlp.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/options/options.h>
@@ -45,6 +46,8 @@ __attribute__((unused)) static bool can_reach_url(const char *url) {
 /* ============================================================================
  * Direct Stream Detection Tests
  * ============================================================================ */
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(stream_resolution_e2e, LOG_DEBUG, LOG_DEBUG, false, false);
 
 Test(stream_resolution_e2e, detect_mp4_direct_stream) {
   // MP4 files should be detected as direct streams

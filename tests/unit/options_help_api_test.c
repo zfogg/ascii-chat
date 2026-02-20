@@ -9,10 +9,13 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
 #include <ascii-chat/options/options.h>
+#include <ascii-chat/tests/logging.h>
 #include <string.h>
 
 // Test suite setup
 TestSuite(options_help_api);
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(options_help_api, LOG_DEBUG, LOG_DEBUG, false, false);
 
 Test(options_help_api, returns_help_text_for_valid_option_client_mode) {
   // Get help text for a known option in client mode

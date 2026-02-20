@@ -2,6 +2,7 @@
 #include <criterion/parameterized.h>
 #include <criterion/theories.h>
 #include <ascii-chat/tests/common.h>
+#include <ascii-chat/tests/logging.h>
 #include <ascii-chat/video/ascii.h>
 #include <ascii-chat/video/image.h>
 #include <ascii-chat/platform/terminal.h>
@@ -66,6 +67,8 @@ Theory((int width, int height), ascii, image_size_property) {
   SAFE_FREE(result);
   image_destroy(img);
 }
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(ascii, LOG_DEBUG, LOG_DEBUG, false, false);
 
 Test(ascii, ascii_convert_basic) {
   image_t *img = image_new(4, 4);

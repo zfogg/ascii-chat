@@ -23,6 +23,7 @@
 #include <criterion/criterion.h>
 #include <criterion/parameterized.h>
 #include <ascii-chat/util/url.h>
+#include <ascii-chat/tests/logging.h>
 #include <ascii-chat/util/pcre2.h>
 #include <string.h>
 
@@ -812,6 +813,8 @@ ParameterizedTest(url_test_case_t *test, url_validator, integration, .fini = cle
 /* ============================================================================
  * Test Suite: Edge Cases
  * ============================================================================ */
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(url_validator, LOG_DEBUG, LOG_DEBUG, false, false);
 
 Test(url_validator, edge_cases_very_long_url) {
   // Construct a very long but valid URL

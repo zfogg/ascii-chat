@@ -5,6 +5,7 @@
 
 #include <criterion/criterion.h>
 #include <ascii-chat/network/consensus/topology.h>
+#include <ascii-chat/tests/logging.h>
 #include <string.h>
 
 // Test helper: create UUID for testing
@@ -12,6 +13,8 @@ static void make_uuid(uint8_t id[16], int value) {
   memset(id, 0, 16);
   id[0] = value & 0xFF;
 }
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(topology, LOG_DEBUG, LOG_DEBUG, false, false);
 
 Test(topology, create_and_destroy) {
   uint8_t participants[4][16] = {

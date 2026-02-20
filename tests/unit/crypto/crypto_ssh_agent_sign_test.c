@@ -15,6 +15,7 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
 #include <ascii-chat/crypto/ssh/ssh_agent.h>
+#include <ascii-chat/tests/logging.h>
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/common.h>
 #include <sodium.h>
@@ -25,6 +26,8 @@ TestSuite(crypto_ssh_agent_sign, .description = "SSH agent signing edge cases");
 // =============================================================================
 // Parameter Validation Tests
 // =============================================================================
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(crypto_ssh_agent_sign, LOG_DEBUG, LOG_DEBUG, false, false);
 
 Test(crypto_ssh_agent_sign, null_public_key) {
   uint8_t message[32] = {0};

@@ -7,6 +7,7 @@
 #include <criterion/new/assert.h>
 #include <criterion/redirect.h>
 #include <ascii-chat/crypto/pem_utils.h>
+#include <ascii-chat/tests/logging.h>
 #include <ascii-chat/common.h>
 #include <string.h>
 
@@ -74,6 +75,8 @@ TestSuite(crypto_pem_utils, .description = "PEM utility functions");
 // =============================================================================
 // Basic PEM Parsing Tests
 // =============================================================================
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(crypto_pem_utils, LOG_DEBUG, LOG_DEBUG, false, false);
 
 Test(crypto_pem_utils, parse_pem_certificate) {
   anchor_list anchors = ANCHOR_LIST_INIT;

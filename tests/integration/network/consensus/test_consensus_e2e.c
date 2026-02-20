@@ -321,6 +321,9 @@ __attribute__((unused)) static int parse_election_host(const char *buf, uint8_t 
 /**
  * Test: Server can be started
  */
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(consensus_e2e, LOG_DEBUG, LOG_DEBUG, false, false);
+
 Test(consensus_e2e, server_startup, .disabled = true) {
   // Disabled: Server requires TTY for display
   // Enable when TTY-less server mode is added
