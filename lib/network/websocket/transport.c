@@ -50,7 +50,7 @@
  * Increased from 512 to buffer multiple large frames and reduce queue pressure.
  * Each slot holds one message (up to 921KB). With 4096 slots, can buffer ~3.7GB.
  */
-#define WEBSOCKET_RECV_QUEUE_SIZE 4096
+#define WEBSOCKET_RECV_QUEUE_SIZE 65536
 
 /**
  * @brief Maximum send queue size (messages buffered for server-side sending)
@@ -59,6 +59,20 @@
  * Must be large enough to buffer frames while event loop processes them.
  */
 #define WEBSOCKET_SEND_QUEUE_SIZE 256
+
+/**
+ * @brief Maximum size for a reassembled WebSocket message
+ *
+ * Prevents DoS attacks via memory exhaustion. Messages larger than this
+ * are rejected during reassembly with ERROR_NETWORK.
+ *
+ * 16MB is reasonable for video frames:
+ * - HD video frame (1920x1080): ~2.6MB compressed
+ * - 4K frame: ~6MB compressed
+ * - ASCII grid: ~1MB
+ * - Provides 2-3x safety margin
+ */
+#define WEBSOCKET_MAX_MESSAGE_SIZE (16 * 1024 * 1024)
 
 // Shared internal types (websocket_recv_msg_t, websocket_transport_data_t)
 #include <ascii-chat/network/websocket/internal.h>
@@ -473,10 +487,36 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
       return SET_ERRNO(ERROR_NETWORK, "Protocol error: continuation fragment without first fragment");
     }
 
-    // Grow assembled buffer if needed
+    // Validate continuation fragments: must have first=0
+    if (assembled_size > 0 && frag.first) {
+      log_error("[WS_REASSEMBLE] Protocol error: first=1 for continuation fragment (fragment #%d)", fragment_count);
+      buffer_pool_free(NULL, frag.data, frag.len);
+      if (assembled_buffer) {
+        buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
+      }
+      mutex_unlock(&ws_data->recv_mutex);
+      return SET_ERRNO(ERROR_NETWORK, "Protocol error: first flag on continuation fragment");
+    }
+
+    // Check message size limit before allocating (prevent DoS)
     size_t required_size = assembled_size + frag.len;
+    if (required_size > WEBSOCKET_MAX_MESSAGE_SIZE) {
+      log_error("[WS_REASSEMBLE] Message exceeds maximum size: %zu > %zu bytes", required_size,
+                WEBSOCKET_MAX_MESSAGE_SIZE);
+      buffer_pool_free(NULL, frag.data, frag.len);
+      if (assembled_buffer) {
+        buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
+      }
+      mutex_unlock(&ws_data->recv_mutex);
+      return SET_ERRNO(ERROR_NETWORK, "Message exceeds maximum size (%zu bytes)", WEBSOCKET_MAX_MESSAGE_SIZE);
+    }
+
+    // Grow assembled buffer if needed
     if (required_size > assembled_capacity) {
-      size_t new_capacity = (assembled_capacity == 0) ? 8192 : (assembled_capacity * 3 / 2);
+      // Use 2x growth factor instead of 3/2 to reduce allocation count and memory copies
+      // For 921KB video frame: 8K→16K→32K→64K→128K→256K→512K→1M (7 allocs, ~3.2MB copies)
+      // vs 3/2 growth: 10 allocations and ~4.7MB copies
+      size_t new_capacity = (assembled_capacity == 0) ? 16384 : (assembled_capacity * 2);
       if (new_capacity < required_size) {
         new_capacity = required_size;
       }
