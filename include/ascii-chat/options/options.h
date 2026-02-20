@@ -906,9 +906,9 @@ typedef struct options_state {
   // ============================================================================
   // Webcam Options
   // ============================================================================
-  unsigned short int webcam_index; ///< Webcam device index (0 = first)
-  bool test_pattern;               ///< Use test pattern instead of webcam
-  bool no_audio_mixer;             ///< Disable audio mixer (debug)
+  int webcam_index;    ///< Webcam device index (0 = first)
+  bool test_pattern;   ///< Use test pattern instead of webcam
+  bool no_audio_mixer; ///< Disable audio mixer (debug)
 
   // ============================================================================
   // Media File Streaming Options
@@ -924,16 +924,16 @@ typedef struct options_state {
   // ============================================================================
   // Display Options
   // ============================================================================
-  int color;                            ///< Color setting (COLOR_SETTING_AUTO/TRUE/FALSE)
-  terminal_color_mode_t color_mode;     ///< Color mode (auto/none/16/256/truecolor)
-  color_filter_t color_filter;          ///< Monochromatic color filter (none/black/white/green/etc)
-  char color_scheme_name[64];           ///< Color scheme name (e.g., "pastel", "nord")
-  render_mode_t render_mode;            ///< Render mode (foreground/background/half-block)
-  unsigned short int show_capabilities; ///< Show terminal capabilities and exit
-  int force_utf8;                       ///< UTF-8 support setting (auto/true/false)
-  int fps;                              ///< Target framerate (1-144, default: 60)
-  bool flip_x;                          ///< Flip video horizontally (X-axis). Ignored for webcam on macOS
-  bool flip_y;                          ///< Flip video vertically (Y-axis)
+  int color;                        ///< Color setting (COLOR_SETTING_AUTO/TRUE/FALSE)
+  terminal_color_mode_t color_mode; ///< Color mode (auto/none/16/256/truecolor)
+  color_filter_t color_filter;      ///< Monochromatic color filter (none/black/white/green/etc)
+  char color_scheme_name[64];       ///< Color scheme name (e.g., "pastel", "nord")
+  render_mode_t render_mode;        ///< Render mode (foreground/background/half-block)
+  bool show_capabilities;           ///< Show terminal capabilities and exit
+  int force_utf8;                   ///< UTF-8 support setting (auto/true/false)
+  int fps;                          ///< Target framerate (1-144, default: 60)
+  bool flip_x;                      ///< Flip video horizontally (X-axis). Ignored for webcam on macOS
+  bool flip_y;                      ///< Flip video vertically (Y-axis)
 
   // ============================================================================
   // Audio Configuration

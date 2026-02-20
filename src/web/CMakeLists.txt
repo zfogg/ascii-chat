@@ -218,8 +218,8 @@ set(LIB_SOURCES_MIRROR
     ${LIB_ROOT}/discovery/adjectives.c
     ${LIB_ROOT}/discovery/nouns.c
 
-    # Platform system functions
-    ${LIB_ROOT}/platform/system.c
+    # Note: platform/system.c is NOT included here - it's included by the WASM-specific
+    # wasm/system.c file, which follows the same pattern as posix/system.c and windows/system.c
 
     # Logging
     ${LIB_ROOT}/log/logging.c

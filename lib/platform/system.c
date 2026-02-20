@@ -532,8 +532,10 @@ int safe_vsnprintf(char *buffer, size_t buffer_size, const char *format, va_list
  * @param max_frames Maximum frames to print (0 = unlimited)
  * @param filter Optional filter callback to skip specific frames (NULL = no filtering)
  */
-void platform_print_backtrace_symbols(const char *label, char **symbols, int count, int skip_frames, int max_frames,
-                                      backtrace_frame_filter_t filter) {
+// Note: This function is declared weak so platform-specific stubs (like WASM) can override it
+__attribute__((weak)) void platform_print_backtrace_symbols(const char *label, char **symbols, int count,
+                                                            int skip_frames, int max_frames,
+                                                            backtrace_frame_filter_t filter) {
   if (!symbols || count <= 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: symbols=%p, count=%d", symbols, count);
     return;

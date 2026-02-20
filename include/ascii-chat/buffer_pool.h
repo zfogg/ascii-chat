@@ -147,7 +147,7 @@ void *buffer_pool_alloc(buffer_pool_t *pool, size_t size);
  * @param data Buffer to free
  * @param size Size of buffer (used for fallback, can be 0 if pooled)
  */
-void buffer_pool_free(buffer_pool_t *pool, void *data, size_t size);
+void buffer_pool_free(buffer_pool_t *pool, const void *data, size_t size);
 
 /**
  * @brief Force shrink the pool (free old unused buffers)

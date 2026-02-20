@@ -201,14 +201,15 @@ void *buffer_pool_alloc(buffer_pool_t *pool, size_t size) {
   return data_from_node(node);
 }
 
-void buffer_pool_free(buffer_pool_t *pool, void *data, size_t size) {
+void buffer_pool_free(buffer_pool_t *pool, const void *data, size_t size) {
   (void)size; // Size parameter not needed with header-based detection
 
   if (!data)
     return;
 
   // All buffer_pool allocations have headers, safe to check magic
-  buffer_node_t *node = node_from_data(data);
+  // Cast away const since we're just reading the header, not modifying data
+  buffer_node_t *node = node_from_data((void *)data);
 
   // If it's a malloc fallback (has fallback magic), free the node directly
   if (IS_MAGIC_VALID(node->magic, MAGIC_BUFFER_POOL_FALLBACK)) {
@@ -218,7 +219,8 @@ void buffer_pool_free(buffer_pool_t *pool, void *data, size_t size) {
 
   // If it's not a pooled buffer (no valid magic), it's external - use platform free
   if (!IS_MAGIC_VALID(node->magic, MAGIC_BUFFER_POOL_VALID)) {
-    free(data); // Unknown allocation, just free the data pointer
+    // Cast away const for free() which expects non-const void *
+    free((void *)data); // Unknown allocation, just free the data pointer
     return;
   }
 
