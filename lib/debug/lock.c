@@ -466,18 +466,6 @@ static void check_long_held_locks(void) {
                    extract_project_relative_path(info->file_name), info->line_number, info->function_name,
                    (unsigned long long)info->thread_id);
   }
-
-  // Print per-lock acquisition backtraces for each long-held lock
-  for (int i = 0; i < num_long_held; i++) {
-    long_held_lock_info_t *info = &long_held_locks[i];
-    if (info->backtrace_size > 0) {
-      char **symbols = platform_backtrace_symbols(info->backtrace_buffer, info->backtrace_size);
-      if (symbols) {
-        platform_print_backtrace_symbols("Lock acquisition call stack", symbols, info->backtrace_size, 1, 0, NULL);
-        platform_backtrace_symbols_destroy(symbols);
-      }
-    }
-  }
 }
 
 /**
@@ -913,15 +901,9 @@ static bool debug_process_tracked_unlock(void *lock_ptr, uint32_t key, const cha
                deferred_duration_str, LOCK_HOLD_TIME_WARNING_MS, extract_project_relative_path(deferred_file_name),
                deferred_line_number, deferred_function_name, deferred_lock_type_str, deferred_lock_ptr);
 
-      // Print backtrace from when lock was acquired
-      if (deferred_backtrace_size > 0 && deferred_backtrace_symbols) {
-        platform_print_backtrace_symbols("Backtrace from lock acquisition", deferred_backtrace_symbols,
-                                         deferred_backtrace_size, 0, 10, NULL);
+      // Free backtrace if available (backtrace printing disabled)
+      if (deferred_backtrace_symbols) {
         free(deferred_backtrace_symbols); // Free the transferred ownership
-      } else {
-        // No backtrace available, print current backtrace
-        log_warn("No backtrace available. Current backtrace:");
-        platform_print_backtrace(2); // Skip 2 frames (this function and debug_process_tracked_unlock)
       }
     }
 
