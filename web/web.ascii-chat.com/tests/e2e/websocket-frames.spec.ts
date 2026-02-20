@@ -1,15 +1,22 @@
-import { test, expect } from "@playwright/test";
-import { ServerFixture, getRandomPort } from "./server-fixture";
+import { expect, test } from "@playwright/test";
+import { getRandomPort, ServerFixture } from "./server-fixture";
 
 let server: ServerFixture | null = null;
 let serverUrl: string = "";
 
 test.beforeAll(async () => {
-  const port = getRandomPort();
-  server = new ServerFixture(port);
-  await server.start();
-  serverUrl = server.getUrl();
-  console.log(`✓ Server started on ${serverUrl}`);
+  const env_port = process.env.PORT;
+  if (env_port) {
+    const port = parseInt(env_port);
+    serverUrl = `ws://localhost:${port}`;
+    console.log(`✓ Using external server on ${serverUrl}`);
+  } else {
+    const port = getRandomPort();
+    server = new ServerFixture(port);
+    await server.start();
+    serverUrl = server.getUrl();
+    console.log(`✓ Server started on ${serverUrl}`);
+  }
 });
 
 test.afterAll(async () => {
@@ -82,7 +89,9 @@ test("Browser receives multiple ENCRYPTED packets from server", async ({
   });
 
   console.log("Starting browser client...");
-  const clientUrl = `http://localhost:3000/client?testServerUrl=${encodeURIComponent(serverUrl)}`;
+  const clientUrl = `http://localhost:3000/client?testServerUrl=${encodeURIComponent(
+    serverUrl,
+  )}`;
   await page.goto(clientUrl, { waitUntil: "networkidle" });
 
   console.log("Waiting 3 seconds for frames to arrive...");

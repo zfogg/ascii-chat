@@ -12,11 +12,11 @@ import time
 import os
 import socket
 import atexit
-import random
 import threading
 
 PID_FILE = 'ascii-chat-debug-e2e.pid'
 TEST_PID_FILE = 'ascii-chat-e2e-test.pid'
+
 
 def get_random_port():
     """Get a random available port"""
@@ -25,6 +25,7 @@ def get_random_port():
         s.listen(1)
         port = s.getsockname()[1]
     return port
+
 
 def cleanup_pid_file():
     """Kill process in PID file on exit"""
@@ -35,9 +36,10 @@ def cleanup_pid_file():
             if pid:
                 print(f"\n[Cleanup] Killing server process {pid} (kill -9)...")
                 subprocess.run(['kill', '-9', pid], timeout=2)
-                time.sleep(0.5)
+                time.sleep(0.25)
     except Exception as e:
         pass
+
 
 def cleanup_test_pid_file():
     """Kill E2E test process"""
@@ -52,6 +54,7 @@ def cleanup_test_pid_file():
     except Exception as e:
         pass
 
+
 def kill_existing_processes():
     """Kill any existing ascii-chat servers from previous runs"""
     print("Cleaning up any existing debug processes...")
@@ -62,11 +65,12 @@ def kill_existing_processes():
             with open(PID_FILE, 'r') as f:
                 old_pid = f.read().strip()
             if old_pid:
-                print(f"  Killing previous server process {old_pid} (kill -9)...")
+                print(f"  Killing previous server process {
+                      old_pid} (kill -9)...")
                 try:
                     subprocess.run(['kill', '-9', old_pid], timeout=2,
-                                 stdout=subprocess.DEVNULL,
-                                 stderr=subprocess.DEVNULL)
+                                   stdout=subprocess.DEVNULL,
+                                   stderr=subprocess.DEVNULL)
                 except Exception as e:
                     pass
                 time.sleep(0.5)
@@ -78,31 +82,26 @@ def kill_existing_processes():
             with open(TEST_PID_FILE, 'r') as f:
                 old_pid = f.read().strip()
             if old_pid:
-                print(f"  Killing previous test process {old_pid} (kill -9)...")
+                print(f"  Killing previous test process {
+                      old_pid} (kill -9)...")
                 try:
                     subprocess.run(['kill', '-9', old_pid], timeout=2,
-                                 stdout=subprocess.DEVNULL,
-                                 stderr=subprocess.DEVNULL)
+                                   stdout=subprocess.DEVNULL,
+                                   stderr=subprocess.DEVNULL)
                 except Exception as e:
                     pass
-                time.sleep(0.5)
+                time.sleep(0.2)
         except Exception as e:
             pass
 
-    # Also kill any matching processes
-    print("  Killing any other ascii-chat server processes...")
-    try:
-        subprocess.run(['pkill', '-x', '-9', 'ascii-chat'], timeout=2)
-    except Exception as e:
-        pass
-    time.sleep(1)
 
 def start_server(port):
     """Start the ascii-chat server on specified WebSocket port"""
-    print(f"Starting ascii-chat server on WebSocket port {port} with DEBUG logging...")
+    print(
+        f"Starting ascii-chat server on WebSocket port {port} with DEBUG logging...")
     proc = subprocess.Popen(['./build/bin/ascii-chat', '--log-level', 'debug', '--log-file', f'/tmp/server-debug.{os.getpid()}.log',
-                     'server', '--websocket-port', str(port), '--no-status-screen'],
-                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                             'server', '--websocket-port', str(port), '--no-status-screen'],
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     print(f"Server started with PID {proc.pid}")
 
     # Save PID to file for cleanup on next run
@@ -113,22 +112,25 @@ def start_server(port):
     except Exception as e:
         print(f"Warning: Could not save PID file: {e}")
 
-    time.sleep(2)  # Wait for server to start
+    time.sleep(0.5)  # Wait for server to start
 
     # Verify server is running by checking if the process still exists
     try:
-        os.kill(proc.pid, 0)  # Signal 0 checks if process exists without killing it
+        # Signal 0 checks if process exists without killing it
+        os.kill(proc.pid, 0)
         print(f"Server confirmed running with PID {proc.pid}")
     except (OSError, ProcessLookupError):
         print("ERROR: Server failed to start!")
         sys.exit(1)
 
-    time.sleep(2)  # Wait for server to be ready
+    time.sleep(1)  # Wait for server to be ready
     return proc.pid
+
 
 def wait_for_test_connection(test_proc, connection_event, timeout_seconds=30):
     """Wait for E2E test to log that it connected to the server"""
-    print(f"\nWaiting for client to connect and complete handshake (max {timeout_seconds}s)...")
+    print(f"\nWaiting for client to connect and complete handshake (max {
+          timeout_seconds}s)...")
 
     # Wait for connection event or timeout
     if connection_event.wait(timeout=timeout_seconds):
@@ -140,20 +142,26 @@ def wait_for_test_connection(test_proc, connection_event, timeout_seconds=30):
             print("✗ E2E test process ended before connecting!")
             return False
 
-        print(f"⚠ Timeout waiting for connection confirmation (waited {timeout_seconds}s)")
+        print(
+            f"⚠ Timeout waiting for connection confirmation (waited {timeout_seconds}s)")
         print("⚠ Taking backtraces anyway (may not be mid-connection)...")
         return True
+
 
 def get_backtraces(pid):
     """Get backtraces from the process using lldb"""
     cmd_file = '/tmp/lldb_bt_e2e.txt'
     with open(cmd_file, 'w') as f:
+        print("running lldb")
         f.write(f"""process attach --pid {pid}
 thread backtrace all
 quit
 """)
-    result = subprocess.run(['lldb', '--source', cmd_file], capture_output=True, text=True, timeout=20)
+    result = subprocess.run(['lldb', '--source', cmd_file],
+                            capture_output=True, text=True, timeout=20)
+    print("ran lldb")
     return result.stdout
+
 
 def start_e2e_test(port):
     """Start the E2E test and monitor for connection"""
@@ -161,13 +169,14 @@ def start_e2e_test(port):
     env = os.environ.copy()
     env['PORT'] = str(port)
 
+    print(env['PORT'])
     proc = subprocess.Popen(['bun', 'run', 'test:e2e', 'websocket-frames', '--reporter=list'],
-                     cwd='web/web.ascii-chat.com',
-                     env=env,
-                     stdout=subprocess.PIPE,
-                     stderr=subprocess.STDOUT,
-                     text=True,
-                     bufsize=1)
+                            cwd='web/web.ascii-chat.com',
+                            env=env,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT,
+                            text=True,
+                            bufsize=1)
 
     try:
         with open(TEST_PID_FILE, 'w') as f:
@@ -190,14 +199,17 @@ def start_e2e_test(port):
                     # Look for frame checksums - indicates frames are being captured and sent from webcam
                     if '[FRAME #' in line_stripped:
                         frames_seen += 1
-                        print(f"[TEST] ✓ Frame received from server ({frames_seen} frames so far)")
+                        print(f"[TEST] ✓ Frame received from server ({
+                              frames_seen} frames so far)")
                         # Once we've received a few frames, we know it's fully connected and transmitting
                         if frames_seen >= 2:
-                            print(f"[TEST] ✓ Frames STREAMING - detected {frames_seen}+ frames from client")
+                            print(
+                                f"[TEST] ✓ Frames STREAMING - detected {frames_seen}+ frames from client")
                             connection_event.set()
                     # Fallback: if Connected is logged and no frames yet, still proceed
                     elif 'Connected' in line_stripped and frames_seen == 0:
-                        print(f"[TEST] ✓ Handshake COMPLETE - detected 'Connected' state")
+                        print(
+                            f"[TEST] ✓ Handshake COMPLETE - detected 'Connected' state")
                         connection_event.set()
         except:
             pass
@@ -206,6 +218,7 @@ def start_e2e_test(port):
     output_thread.start()
 
     return proc, connection_event
+
 
 def main():
     # Register cleanup to run on exit
@@ -230,11 +243,12 @@ def main():
 
     # Wait 1s after handshake completes for threads to settle into steady state
     print("\n[Waiting 1s for threads to settle after handshake completion...]")
-    time.sleep(1)
+    time.sleep(0.5)
 
     # Now take backtraces while test is running
     print(f"\n{'=' * 100}")
-    print(f"FULL THREAD BACKTRACES - SERVER PID {server_pid} (E2E Test Running)")
+    print(
+        f"FULL THREAD BACKTRACES - SERVER PID {server_pid} (E2E Test Running)")
     print(f"{'=' * 100}")
     print()
 
@@ -276,8 +290,6 @@ def main():
     print("Backtraces captured. Cleaning up...")
     print(f"{'=' * 100}")
 
-    time.sleep(1)
-
     # Kill test process
     try:
         test_proc.terminate()
@@ -287,6 +299,7 @@ def main():
         test_proc.wait()
     except Exception as e:
         pass
+
 
 if __name__ == '__main__':
     main()
