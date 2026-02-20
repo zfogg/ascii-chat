@@ -36,8 +36,8 @@
 #endif
 
 #define rol(value, bits)                                                                                                   \
-  (uint32_t)((((uint32_t)(value) << (((bits) & 31))) |                                                                      \
-              (((uint32_t)(value)) >> ((32 - ((bits) & 31)) & 31))))
+  (uint32_t)(                                                                                                                \
+      (((uint64_t)(uint32_t)(value) << (((bits) & 31)) | ((uint64_t)(uint32_t)(value) >> (32 - ((bits) & 31))))) & 0xFFFFFFFFULL)
 
 /* blk0() and blk() perform the initial expand. */
 /* I got the idea of expanding during the round function from SSLeay */
