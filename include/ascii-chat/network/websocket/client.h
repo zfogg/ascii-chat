@@ -70,6 +70,8 @@
 #include "../../common.h"
 #include "../../asciichat_errno.h"
 #include "../acip/transport.h"
+#include "../packet.h"
+#include "../../platform/abstraction.h"
 
 /* Forward declarations */
 struct crypto_context_t;
@@ -79,16 +81,18 @@ struct crypto_context_t;
  *
  * Encapsulates WebSocket-specific connection state, including:
  * - Connection URL and state flags
+ * - Client ID and encryption state
  * - Active transport (owned by websocket_client)
- * - Reconnection logic and encryption state tracking
+ * - Thread-safe packet transmission mutex
  *
- * This is a slim structure - application state (audio, threads, crypto)
- * lives in client_context_t instead.
+ * This structure mirrors tcp_client_t for API compatibility.
+ * Application state (audio, threads, crypto) lives in client_context_t instead.
  *
  * ## Thread Safety
  *
  * - Atomic fields: Safe for concurrent read/write without locks
  * - Immutable after init: url is set once, then read-only
+ * - Mutex: Protects concurrent packet transmission
  */
 typedef struct websocket_client {
   /** WebSocket server URL (e.g., "ws://localhost:27226") */
@@ -103,13 +107,17 @@ typedef struct websocket_client {
   /** Reconnection should be attempted */
   atomic_bool should_reconnect;
 
+  /** This client's unique ID (derived from URL hash or transport-provided) */
+  uint32_t my_client_id;
+
+  /** Whether encryption is enabled for this connection */
+  bool encryption_enabled;
+
+  /** Mutex protecting concurrent packet transmission */
+  mutex_t send_mutex;
+
   /** Transport instance (owned by websocket_client) - NULL until connected */
   acip_transport_t *transport;
-
-  /** Client ID assigned by server (derived from local port) */
-  uint32_t my_client_id;
-  /** Encryption is enabled for this connection */
-  bool encryption_enabled;
 
 } websocket_client_t;
 
@@ -245,47 +253,63 @@ acip_transport_t *websocket_client_connect(websocket_client_t *client, const cha
 acip_transport_t *websocket_client_get_transport(const websocket_client_t *client);
 
 /**
- * @brief Get client ID assigned by server
+ * @brief Send a packet through WebSocket connection (thread-safe)
+ *
+ * Acquires send_mutex, transmits packet, releases mutex.
+ * Checks connection state before sending.
  *
  * @param client WebSocket client instance
- * @return Client ID (derived from local port), or 0 if not connected
+ * @param type Packet type to send
+ * @param data Packet payload (NULL for empty packets)
+ * @param len Payload length in bytes
+ * @return 0 on success, -1 on failure
+ *
+ * @note Equivalent to tcp_client_send_packet() for API compatibility
+ * @note Thread-safe: multiple threads can call concurrently
  */
-uint32_t websocket_client_get_id(const websocket_client_t *client);
+int websocket_client_send_packet(websocket_client_t *client, packet_type_t type,
+                                  const void *data, size_t len);
 
 /**
- * @brief Send ping packet to keep connection alive
+ * @brief Send ping frame (keepalive heartbeat)
  *
- * Sends a PACKET_TYPE_PING through the transport. The server/client
- * should respond with a PACKET_TYPE_PONG.
+ * Routes through websocket_client_send_packet() with PACKET_TYPE_PING.
  *
  * @param client WebSocket client instance
- * @return 0 on success, -1 on error
+ * @return 0 on success, -1 on failure
+ *
+ * @note Equivalent to tcp_client_send_ping() for API compatibility
  */
 int websocket_client_send_ping(websocket_client_t *client);
 
 /**
- * @brief Send pong packet in response to ping
+ * @brief Send pong frame (keepalive response)
  *
- * Sends a PACKET_TYPE_PONG through the transport in response to
- * a received PACKET_TYPE_PING.
+ * Routes through websocket_client_send_packet() with PACKET_TYPE_PONG.
  *
  * @param client WebSocket client instance
- * @return 0 on success, -1 on error
+ * @return 0 on success, -1 on failure
+ *
+ * @note Equivalent to tcp_client_send_pong() for API compatibility
  */
 int websocket_client_send_pong(websocket_client_t *client);
 
 /**
- * @brief Configure WebSocket socket options (keepalive, buffers)
- *
- * Configures the underlying TCP socket with optimal settings:
- * - Enables TCP keepalive to detect stale connections
- * - Optimizes send/receive buffer sizes for media streaming
- *
- * Should be called after successful connection establishment.
+ * @brief Get the client's unique ID
  *
  * @param client WebSocket client instance
- * @return 0 on success, -1 on error or if transport not available
+ * @return Client ID, or 0 if not set
+ *
+ * @note Equivalent to tcp_client_get_id() for API compatibility
  */
-int websocket_client_configure_socket(websocket_client_t *client);
+uint32_t websocket_client_get_id(const websocket_client_t *client);
+
+/**
+ * @brief Check if encryption is enabled for this connection
+ *
+ * @param client WebSocket client instance
+ * @return true if encryption is enabled, false otherwise
+ */
+bool websocket_client_is_encrypted(const websocket_client_t *client);
 
 #endif /* NETWORK_WEBSOCKET_CLIENT_H */
