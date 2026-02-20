@@ -1562,7 +1562,8 @@ void *client_dispatch_thread(void *arg) {
             log_error("🔴 DISPATCH_THREAD[%u]: Handler failed for decrypted packet type=%d: %s", client_id, packet_type,
                       asciichat_error_string(dispatch_result));
           } else {
-            log_info("✅ DISPATCH_THREAD[%u]: Successfully dispatched decrypted packet type=%d", client_id, packet_type);
+            log_info("✅ DISPATCH_THREAD[%u]: Successfully dispatched decrypted packet type=%d", client_id,
+                     packet_type);
           }
         } else {
           log_error("🔴 DISPATCH_THREAD[%u]: Cannot dispatch decrypted packet - transport is NULL", client_id);
@@ -1768,7 +1769,8 @@ void *client_receive_thread(void *arg) {
                                                 atomic_load(&client->client_id), false);
 
       if (enqueue_result < 0) {
-        log_error("🔴 RECV_THREAD[%u]: Failed to queue received packet (queue full?) - DROPPING FRAME", client->client_id);
+        log_error("🔴 RECV_THREAD[%u]: Failed to queue received packet (queue full?) - DROPPING FRAME",
+                  client->client_id);
         if (allocated_buffer) {
           buffer_pool_free(NULL, allocated_buffer, packet_len);
         }

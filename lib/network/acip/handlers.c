@@ -635,26 +635,46 @@ static const acip_server_handler_func_t g_server_handlers[SERVER_HANDLER_COUNT] 
 // Packet type names for debugging (matches handler table order)
 static const char *g_packet_type_name(packet_type_t type) {
   switch (type) {
-    case PACKET_TYPE_PROTOCOL_VERSION: return "PROTOCOL_VERSION";
-    case PACKET_TYPE_IMAGE_FRAME: return "IMAGE_FRAME";
-    case PACKET_TYPE_AUDIO_BATCH: return "AUDIO_BATCH";
-    case PACKET_TYPE_AUDIO_OPUS_BATCH: return "AUDIO_OPUS_BATCH";
-    case PACKET_TYPE_CLIENT_CAPABILITIES: return "CLIENT_CAPABILITIES";
-    case PACKET_TYPE_PING: return "PING";
-    case PACKET_TYPE_PONG: return "PONG";
-    case PACKET_TYPE_CLIENT_JOIN: return "CLIENT_JOIN";
-    case PACKET_TYPE_CLIENT_LEAVE: return "CLIENT_LEAVE";
-    case PACKET_TYPE_STREAM_START: return "STREAM_START";
-    case PACKET_TYPE_STREAM_STOP: return "STREAM_STOP";
-    case PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP: return "CRYPTO_KEY_EXCHANGE_RESP";
-    case PACKET_TYPE_CRYPTO_REKEY_REQUEST: return "CRYPTO_REKEY_REQUEST";
-    case PACKET_TYPE_CRYPTO_REKEY_RESPONSE: return "CRYPTO_REKEY_RESPONSE";
-    case PACKET_TYPE_ERROR_MESSAGE: return "ERROR_MESSAGE";
-    case PACKET_TYPE_REMOTE_LOG: return "REMOTE_LOG";
-    case PACKET_TYPE_CRYPTO_REKEY_COMPLETE: return "CRYPTO_REKEY_COMPLETE";
-    case PACKET_TYPE_CRYPTO_AUTH_RESPONSE: return "CRYPTO_AUTH_RESPONSE";
-    case PACKET_TYPE_CRYPTO_NO_ENCRYPTION: return "CRYPTO_NO_ENCRYPTION";
-    default: return "UNKNOWN";
+  case PACKET_TYPE_PROTOCOL_VERSION:
+    return "PROTOCOL_VERSION";
+  case PACKET_TYPE_IMAGE_FRAME:
+    return "IMAGE_FRAME";
+  case PACKET_TYPE_AUDIO_BATCH:
+    return "AUDIO_BATCH";
+  case PACKET_TYPE_AUDIO_OPUS_BATCH:
+    return "AUDIO_OPUS_BATCH";
+  case PACKET_TYPE_CLIENT_CAPABILITIES:
+    return "CLIENT_CAPABILITIES";
+  case PACKET_TYPE_PING:
+    return "PING";
+  case PACKET_TYPE_PONG:
+    return "PONG";
+  case PACKET_TYPE_CLIENT_JOIN:
+    return "CLIENT_JOIN";
+  case PACKET_TYPE_CLIENT_LEAVE:
+    return "CLIENT_LEAVE";
+  case PACKET_TYPE_STREAM_START:
+    return "STREAM_START";
+  case PACKET_TYPE_STREAM_STOP:
+    return "STREAM_STOP";
+  case PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP:
+    return "CRYPTO_KEY_EXCHANGE_RESP";
+  case PACKET_TYPE_CRYPTO_REKEY_REQUEST:
+    return "CRYPTO_REKEY_REQUEST";
+  case PACKET_TYPE_CRYPTO_REKEY_RESPONSE:
+    return "CRYPTO_REKEY_RESPONSE";
+  case PACKET_TYPE_ERROR_MESSAGE:
+    return "ERROR_MESSAGE";
+  case PACKET_TYPE_REMOTE_LOG:
+    return "REMOTE_LOG";
+  case PACKET_TYPE_CRYPTO_REKEY_COMPLETE:
+    return "CRYPTO_REKEY_COMPLETE";
+  case PACKET_TYPE_CRYPTO_AUTH_RESPONSE:
+    return "CRYPTO_AUTH_RESPONSE";
+  case PACKET_TYPE_CRYPTO_NO_ENCRYPTION:
+    return "CRYPTO_NO_ENCRYPTION";
+  default:
+    return "UNKNOWN";
   }
 }
 
@@ -672,7 +692,8 @@ asciichat_error_t acip_handle_server_packet(acip_transport_t *transport, packet_
   // O(1) dispatch via hash table lookup
   int idx = handler_hash_lookup(g_server_handler_hash, type);
   if (idx < 0) {
-    log_error("ACIP_HANDLER_NOT_FOUND: No handler for packet type=%d (0x%04x, name=%s)", type, type, g_packet_type_name(type));
+    log_error("ACIP_HANDLER_NOT_FOUND: No handler for packet type=%d (0x%04x, name=%s)", type, type,
+              g_packet_type_name(type));
     return SET_ERRNO(ERROR_INVALID_PARAM, "Unhandled server packet type: %d", type);
   }
 
@@ -683,8 +704,8 @@ asciichat_error_t acip_handle_server_packet(acip_transport_t *transport, packet_
   if (result != ASCIICHAT_OK) {
     log_error("❌ [HANDLER_ERROR] Handler failed: type=%d (%s), result=%d", type, g_packet_type_name(type), result);
   } else {
-    log_info("✅ [HANDLER_COMPLETE] Handler succeeded: type=%d (%s), payload=%zu bytes processed",
-             type, g_packet_type_name(type), payload_len);
+    log_info("✅ [HANDLER_COMPLETE] Handler succeeded: type=%d (%s), payload=%zu bytes processed", type,
+             g_packet_type_name(type), payload_len);
   }
 
   return result;
@@ -772,8 +793,9 @@ static asciichat_error_t handle_server_image_frame(const void *payload, size_t p
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid pixel format: %u (expected: 1-4)", header.pixel_format);
   }
 
-  log_info("📹 [IMAGE_FRAME_CALLBACK] Invoking on_image_frame callback: %ux%u pixels, format=%u, %zu bytes, client_ctx=%p",
-           header.width, header.height, header.pixel_format, pixel_data_len, client_ctx);
+  log_info(
+      "📹 [IMAGE_FRAME_CALLBACK] Invoking on_image_frame callback: %ux%u pixels, format=%u, %zu bytes, client_ctx=%p",
+      header.width, header.height, header.pixel_format, pixel_data_len, client_ctx);
 
   callbacks->on_image_frame(&header, pixel_data, pixel_data_len, client_ctx, callbacks->app_ctx);
 

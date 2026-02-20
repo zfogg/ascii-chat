@@ -157,7 +157,8 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
   // Dispatch packet to appropriate ACIP handler
   // Server receives packets FROM clients, so use server packet handler
   log_info("ACIP_DISPATCH_PKT: type=%d, len=%zu, client_ctx=%p", envelope.type, envelope.len, client_ctx);
-  log_info("📤 [FRAME_DISPATCH] Starting handler dispatch for packet type=%d (0x%04x), payload=%zu bytes", envelope.type, envelope.type, envelope.len);
+  log_info("📤 [FRAME_DISPATCH] Starting handler dispatch for packet type=%d (0x%04x), payload=%zu bytes",
+           envelope.type, envelope.type, envelope.len);
   uint64_t dispatch_handler_start_ns = time_get_ns();
   asciichat_error_t dispatch_result =
       acip_handle_server_packet(transport, envelope.type, envelope.data, envelope.len, client_ctx, callbacks);

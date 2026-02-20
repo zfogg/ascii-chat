@@ -567,9 +567,11 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
       if (assembled_size >= sizeof(packet_header_t)) {
         const packet_header_t *pkt_hdr = (const packet_header_t *)assembled_buffer;
         uint16_t pkt_type = NET_TO_HOST_U16(pkt_hdr->type);
-        log_info("✅ [WEBSOCKET_FRAME_COMPLETE] Frame dispatch starting: type=%d (0x%04x), size=%zu bytes", pkt_type, pkt_type, assembled_size);
+        log_info("✅ [WEBSOCKET_FRAME_COMPLETE] Frame dispatch starting: type=%d (0x%04x), size=%zu bytes", pkt_type,
+                 pkt_type, assembled_size);
       } else {
-        log_warn("⚠️  [WEBSOCKET_FRAME_COMPLETE] Returned frame too small (%zu bytes), cannot parse header", assembled_size);
+        log_warn("⚠️  [WEBSOCKET_FRAME_COMPLETE] Returned frame too small (%zu bytes), cannot parse header",
+                 assembled_size);
       }
 
       log_debug("🔍 WEBSOCKET_RECV: Returning complete packet: %zu bytes", assembled_size);
@@ -670,7 +672,8 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
     ws_data->service_running = false;
 
     // Join with timeout to prevent indefinite blocking if thread is stuck
-    int join_result = asciichat_thread_join_timeout(&ws_data->service_thread, NULL, 2000000000); // 2 second timeout in nanoseconds
+    int join_result =
+        asciichat_thread_join_timeout(&ws_data->service_thread, NULL, 2000000000); // 2 second timeout in nanoseconds
     if (join_result != 0) {
       log_warn("WebSocket service thread join failed or timed out (result=%d)", join_result);
     } else {
@@ -1000,7 +1003,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
 
   if (!ws_data->is_connected) {
     log_error("WebSocket connection timeout after %d ms", elapsed_ms);
-    ws_data->service_running = false; // Signal thread to stop
+    ws_data->service_running = false;                                          // Signal thread to stop
     asciichat_thread_join_timeout(&ws_data->service_thread, NULL, 2000000000); // 2 second join timeout
     lws_context_destroy(ws_data->context);
     SAFE_FREE(ws_data->send_buffer);
@@ -1014,7 +1017,8 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
     return NULL;
   }
 
-  log_info("WebSocket connection established (crypto: %s) - service thread active", crypto_ctx ? "enabled" : "disabled");
+  log_info("WebSocket connection established (crypto: %s) - service thread active",
+           crypto_ctx ? "enabled" : "disabled");
 
   log_debug("WebSocket service thread started for client transport");
 
