@@ -28,8 +28,7 @@ TEST_SUITE_WITH_QUIET_LOGGING(permessage_deflate);
  * Helper to compress data with DEFLATE (RFC 7692 format)
  * Uses standard zlib deflate compression
  */
-static int deflate_compress(const uint8_t *input, size_t input_len,
-                           uint8_t **output, size_t *output_len) {
+static int deflate_compress(const uint8_t *input, size_t input_len, uint8_t **output, size_t *output_len) {
   if (!input || input_len == 0 || !output || !output_len) {
     return -1;
   }
@@ -41,8 +40,8 @@ static int deflate_compress(const uint8_t *input, size_t input_len,
 
   // Use raw DEFLATE (no zlib header) per RFC 7692
   int ret = deflateInit2(&stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED,
-                        -15, // Negative window bits for raw DEFLATE
-                        8, Z_DEFAULT_STRATEGY);
+                         -15, // Negative window bits for raw DEFLATE
+                         8, Z_DEFAULT_STRATEGY);
   if (ret != Z_OK) {
     return -1;
   }
@@ -77,8 +76,7 @@ static int deflate_compress(const uint8_t *input, size_t input_len,
  * Helper to decompress data with DEFLATE (RFC 7692 format)
  * Simulates what libwebsockets does internally
  */
-static int deflate_decompress(const uint8_t *input, size_t input_len,
-                              uint8_t *output, size_t output_len,
+static int deflate_decompress(const uint8_t *input, size_t input_len, uint8_t *output, size_t output_len,
                               size_t *decompressed_len) {
   if (!input || input_len == 0 || !output || output_len == 0) {
     return -1;
@@ -117,29 +115,31 @@ static int deflate_decompress(const uint8_t *input, size_t input_len,
  */
 static void generate_test_data(uint8_t *data, size_t size, int pattern) {
   switch (pattern) {
-    case 0: // Repeating 'A' (highly compressible)
-      memset(data, 'A', size);
-      break;
-    case 1: // Repeating pattern "RGB" (video-like)
-      for (size_t i = 0; i < size; i += 3) {
-        data[i % size] = 'R';
-        if (i + 1 < size) data[(i + 1) % size] = 'G';
-        if (i + 2 < size) data[(i + 2) % size] = 'B';
-      }
-      break;
-    case 2: // Pseudo-random (poorly compressible)
-      for (size_t i = 0; i < size; i++) {
-        data[i] = (uint8_t)((i * 73 + 17) ^ (i >> 5));
-      }
-      break;
-    case 3: // Mixed ASCII text
-      for (size_t i = 0; i < size; i++) {
-        data[i] = 32 + (i % 95); // Printable ASCII range
-      }
-      break;
-    default:
-      memset(data, pattern & 0xFF, size);
-      break;
+  case 0: // Repeating 'A' (highly compressible)
+    memset(data, 'A', size);
+    break;
+  case 1: // Repeating pattern "RGB" (video-like)
+    for (size_t i = 0; i < size; i += 3) {
+      data[i % size] = 'R';
+      if (i + 1 < size)
+        data[(i + 1) % size] = 'G';
+      if (i + 2 < size)
+        data[(i + 2) % size] = 'B';
+    }
+    break;
+  case 2: // Pseudo-random (poorly compressible)
+    for (size_t i = 0; i < size; i++) {
+      data[i] = (uint8_t)((i * 73 + 17) ^ (i >> 5));
+    }
+    break;
+  case 3: // Mixed ASCII text
+    for (size_t i = 0; i < size; i++) {
+      data[i] = 32 + (i % 95); // Printable ASCII range
+    }
+    break;
+  default:
+    memset(data, pattern & 0xFF, size);
+    break;
   }
 }
 
@@ -174,8 +174,8 @@ Theory((size_t msg_size), permessage_deflate, small_messages) {
   cr_assert_eq(decompressed_len, msg_size, "Decompressed size must match original for size %zu", msg_size);
 
   // Verify data integrity
-  cr_assert_eq(memcmp(original, decompressed, msg_size), 0,
-               "Decompressed data must match original for size %zu", msg_size);
+  cr_assert_eq(memcmp(original, decompressed, msg_size), 0, "Decompressed data must match original for size %zu",
+               msg_size);
 
   SAFE_FREE(original);
   SAFE_FREE(compressed);
@@ -295,7 +295,7 @@ Test(permessage_deflate, buffer_overflow_protection) {
  * Simulate receiving a message in multiple fragments
  */
 Test(permessage_deflate, fragmented_decompression) {
-  size_t total_size = 128 * 1024; // 128KB total message
+  size_t total_size = 128 * 1024;   // 128KB total message
   size_t fragment_size = 16 * 1024; // 16KB fragments
   size_t num_fragments = total_size / fragment_size;
 
@@ -325,16 +325,14 @@ Test(permessage_deflate, fragmented_decompression) {
 
   size_t offset = 0;
   for (size_t i = 0; i < num_fragments; i++) {
-    size_t chunk_size = (i < num_fragments - 1) ? fragment_size
-                                                 : (compressed_len - offset);
+    size_t chunk_size = (i < num_fragments - 1) ? fragment_size : (compressed_len - offset);
     cr_assert_gt(chunk_size, 0, "Fragment %zu should have data", i);
 
     stream.avail_in = chunk_size;
     stream.next_in = compressed + offset;
 
     z_ret = inflate(&stream, i == num_fragments - 1 ? Z_FINISH : Z_NO_FLUSH);
-    cr_assert(z_ret == Z_OK || z_ret == Z_STREAM_END,
-              "inflate should succeed for fragment %zu (got %d)", i, z_ret);
+    cr_assert(z_ret == Z_OK || z_ret == Z_STREAM_END, "inflate should succeed for fragment %zu (got %d)", i, z_ret);
 
     offset += chunk_size;
   }
@@ -417,9 +415,11 @@ Test(permessage_deflate, large_video_frame) {
 
   // Fill with video-like pattern (RGB pixels)
   for (size_t i = 0; i < msg_size; i += 3) {
-    original[i] = (uint8_t)(i & 0xFF);       // R
-    if (i + 1 < msg_size) original[i + 1] = (uint8_t)((i >> 8) & 0xFF); // G
-    if (i + 2 < msg_size) original[i + 2] = (uint8_t)((i >> 16) & 0xFF); // B
+    original[i] = (uint8_t)(i & 0xFF); // R
+    if (i + 1 < msg_size)
+      original[i + 1] = (uint8_t)((i >> 8) & 0xFF); // G
+    if (i + 2 < msg_size)
+      original[i + 2] = (uint8_t)((i >> 16) & 0xFF); // B
   }
 
   uint8_t *compressed = NULL;
@@ -440,8 +440,7 @@ Test(permessage_deflate, large_video_frame) {
   cr_assert_eq(decompressed_len, msg_size);
   cr_assert_eq(memcmp(original, decompressed, msg_size), 0);
 
-  log_info("Video frame compression: %zu bytes -> %zu bytes (ratio=%.2f%%)",
-           msg_size, compressed_len, ratio * 100.0f);
+  log_info("Video frame compression: %zu bytes -> %zu bytes (ratio=%.2f%%)", msg_size, compressed_len, ratio * 100.0f);
 
   SAFE_FREE(original);
   SAFE_FREE(compressed);
@@ -472,8 +471,7 @@ Test(permessage_deflate, sequential_messages) {
 
     ret = deflate_decompress(compressed, compressed_len, decompressed, msg_size, &decompressed_len);
     cr_assert_eq(ret, 0, "Decompression should succeed for message %d", i);
-    cr_assert_eq(memcmp(original, decompressed, msg_size), 0,
-                 "Data must match for message %d", i);
+    cr_assert_eq(memcmp(original, decompressed, msg_size), 0, "Data must match for message %d", i);
 
     SAFE_FREE(original);
     SAFE_FREE(compressed);
