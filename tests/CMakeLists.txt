@@ -474,29 +474,40 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
 
     # Target to build all tests without running them (excluded from default build)
     # This is the main public target that includes timing
-    add_custom_target(tests
-        COMMENT "Building all test executables"
-    )
-
-    # Timer end target runs after all tests are built
-    if(TARGET tests-timer-start)
-        add_custom_target(tests-timer-end
-            COMMAND ${CMAKE_COMMAND}
-            -DACTION=end
-            -DTARGET_NAME=tests
-            -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
-            -DCMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
-            -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-            COMMENT "Finishing test build timing"
-            VERBATIM
+    # NOTE: Only available with --preset github (CI environment)
+    # For local development, use individual test targets (test_debug, test_release, etc.)
+    # Claude should NOT run the 'tests' target directly - run individual tests instead
+    if(DEFINED ENV{GITHUB_CMAKE_BINARY_DIR})
+        add_custom_target(tests
+            COMMENT "Building all test executables"
         )
-        # Timer end depends on timer start and the actual test build
-        add_dependencies(tests-timer-end tests-timer-start tests-criterion-build)
-        # Main tests target depends on timer end (so timing is shown)
-        add_dependencies(tests tests-timer-end)
+
+        # Timer end target runs after all tests are built
+        if(TARGET tests-timer-start)
+            add_custom_target(tests-timer-end
+                COMMAND ${CMAKE_COMMAND}
+                -DACTION=end
+                -DTARGET_NAME=tests
+                -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+                -DCMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
+                -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
+                COMMENT "Finishing test build timing"
+                VERBATIM
+            )
+            # Timer end depends on timer start and the actual test build
+            add_dependencies(tests-timer-end tests-timer-start tests-criterion-build)
+            # Main tests target depends on timer end (so timing is shown)
+            add_dependencies(tests tests-timer-end)
+        else()
+            # No timer, just depend on the build target directly
+            add_dependencies(tests tests-criterion-build)
+        endif()
     else()
-        # No timer, just depend on the build target directly
-        add_dependencies(tests tests-criterion-build)
+        # For non-GitHub presets, print a helpful message
+        message(STATUS "Note: The 'tests' target is only available with --preset github")
+        message(STATUS "For local development, use individual test targets like:")
+        message(STATUS "  cmake --build build --target test_debug")
+        message(STATUS "  cmake --build build --target test_release")
     endif()
 
     # Custom targets for different test modes (matches Makefile)
