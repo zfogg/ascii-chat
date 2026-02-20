@@ -82,7 +82,7 @@ if(NOT EXISTS "${LWS_NATIVE_PREFIX}/lib/libwebsockets.a")
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
         CMAKE_ARGS
-            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
             -DCMAKE_INSTALL_PREFIX=${LWS_NATIVE_PREFIX}
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON
             -DLWS_WITH_SHARED=OFF
@@ -130,10 +130,12 @@ add_compile_definitions(HAVE_LIBWEBSOCKETS=1)
 # Only create if not already created (by MuslDependencies.cmake or other means)
 if(NOT TARGET websockets)
     add_library(websockets STATIC IMPORTED)
-    set_target_properties(websockets PROPERTIES
-        IMPORTED_LOCATION "${LIBWEBSOCKETS_LIBRARIES}"
-        INTERFACE_INCLUDE_DIRECTORIES "${LIBWEBSOCKETS_INCLUDE_DIRS}"
-    )
+    # IMPORTED_LOCATION must be set (CMake requires it), but validation is deferred to link time
+    set_property(TARGET websockets PROPERTY IMPORTED_LOCATION "${LIBWEBSOCKETS_LIBRARIES}")
+    # Include directories - only add if they exist to avoid validation errors
+    if(EXISTS "${LIBWEBSOCKETS_INCLUDE_DIRS}")
+        target_include_directories(websockets INTERFACE "${LIBWEBSOCKETS_INCLUDE_DIRS}")
+    endif()
     add_dependencies(websockets libwebsockets-native)
 endif()
 

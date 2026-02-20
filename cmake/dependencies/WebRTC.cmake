@@ -328,6 +328,12 @@ if(NOT webrtc_aec3_POPULATED)
         if(WIN32 AND WEBRTC_LIB_ENV)
             set(ENV{LIB} "${WEBRTC_LIB_ENV}")
         endif()
+
+        # Explicitly set generator to match parent build (for non-Windows, prepend to args)
+        if(NOT WIN32)
+            list(PREPEND WEBRTC_CMAKE_ARGS "-G${CMAKE_GENERATOR}")
+        endif()
+
         execute_process(
             COMMAND ${CMAKE_COMMAND}
                 ${WEBRTC_CMAKE_ARGS}
