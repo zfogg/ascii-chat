@@ -451,7 +451,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
 
         # Set test properties
         set_tests_properties(${test_exe_name} PROPERTIES
-            ENVIRONMENT "TESTING=1;CRITERION_TEST=1;LSAN_OPTIONS=suppressions=${CMAKE_CURRENT_SOURCE_DIR}/lsan_suppressions.txt"
+            ENVIRONMENT "TESTING=1;CRITERION_TEST=1"
             TIMEOUT ${CTEST_TEST_TIMEOUT}
             LABELS "${test_category}"
         )

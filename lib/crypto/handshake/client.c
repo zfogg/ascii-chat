@@ -964,6 +964,10 @@ asciichat_error_t crypto_handshake_client_complete(crypto_handshake_context_t *c
  * @brief Legacy wrapper: Key exchange using socket (TCP clients only)
  */
 asciichat_error_t crypto_handshake_client_key_exchange_socket(crypto_handshake_context_t *ctx, socket_t client_socket) {
+  if (!ctx) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "Context cannot be NULL");
+  }
+
   // Receive packet using old method
   packet_type_t packet_type;
   uint8_t *payload = NULL;

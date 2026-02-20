@@ -598,6 +598,10 @@ asciichat_error_t crypto_handshake_server_complete(crypto_handshake_context_t *c
  * @brief Legacy wrapper: Start handshake using socket (TCP clients only)
  */
 asciichat_error_t crypto_handshake_server_start_socket(crypto_handshake_context_t *ctx, socket_t client_socket) {
+  if (!ctx) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "Context cannot be NULL");
+  }
+
   // Create temporary TCP transport for handshake
   acip_transport_t *temp_transport = acip_tcp_transport_create(client_socket, NULL);
   if (!temp_transport) {
