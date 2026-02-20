@@ -495,59 +495,72 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
              (void *)transport_snapshot, conn_data ? conn_data->handler_started : -1);
     if (!transport_snapshot) {
       log_error("LWS_CALLBACK_RECEIVE: transport is NULL! ESTABLISHED never called?");
-      // Try to initialize the transport here as a fallback
-      const struct lws_protocols *protocol = lws_get_protocol(wsi);
-      if (!protocol || !protocol->user) {
-        log_error("LWS_CALLBACK_RECEIVE: Cannot get protocol or user data for fallback initialization");
-        break;
+      // Try to initialize the transport here as a fallback, but ONLY if handler hasn't started yet
+      // (to avoid creating duplicate handler threads if RECEIVE fires during ESTABLISHED processing)
+      if (conn_data->handler_started) {
+        log_warn("LWS_CALLBACK_RECEIVE: Handler already started, transport will be initialized soon. Waiting...");
+        // Wait a bit for ESTABLISHED to complete
+        usleep(10000); // 10ms
+        transport_snapshot = conn_data->transport;
+        if (!transport_snapshot) {
+          log_error("LWS_CALLBACK_RECEIVE: Transport still NULL after waiting. Discarding data.");
+          break;
+        }
+      } else {
+        // Safe to initialize as fallback since handler hasn't been spawned yet
+        const struct lws_protocols *protocol = lws_get_protocol(wsi);
+        if (!protocol || !protocol->user) {
+          log_error("LWS_CALLBACK_RECEIVE: Cannot get protocol or user data for fallback initialization");
+          break;
+        }
+
+        websocket_server_t *server = (websocket_server_t *)protocol->user;
+        char client_ip[64];
+        lws_get_peer_addresses(wsi, lws_get_socket_fd(wsi), NULL, 0, client_ip, sizeof(client_ip));
+
+        log_info("LWS_CALLBACK_RECEIVE: Initializing transport as fallback (client_ip=%s)", client_ip);
+        conn_data->server = server;
+        conn_data->transport = acip_websocket_server_transport_create(wsi, NULL);
+        conn_data->handler_started = false;
+        conn_data->pending_send_data = NULL;
+        conn_data->pending_send_len = 0;
+        conn_data->pending_send_offset = 0;
+        conn_data->has_pending_send = false;
+
+        if (!conn_data->transport) {
+          log_error("LWS_CALLBACK_RECEIVE: Failed to create transport in fallback");
+          break;
+        }
+
+        log_debug("LWS_CALLBACK_RECEIVE: Spawning handler thread in fallback");
+        websocket_client_context_t *client_ctx =
+            SAFE_CALLOC(1, sizeof(websocket_client_context_t), websocket_client_context_t *);
+        if (!client_ctx) {
+          log_error("Failed to allocate client context");
+          acip_transport_destroy(conn_data->transport);
+          conn_data->transport = NULL;
+          break;
+        }
+
+        client_ctx->transport = conn_data->transport;
+        SAFE_STRNCPY(client_ctx->client_ip, client_ip, sizeof(client_ctx->client_ip));
+        client_ctx->client_port = 0;
+        client_ctx->user_data = server->user_data;
+
+        if (asciichat_thread_create(&conn_data->handler_thread, server->handler, client_ctx) != 0) {
+          log_error("LWS_CALLBACK_RECEIVE: Failed to spawn handler thread");
+          SAFE_FREE(client_ctx);
+          acip_transport_destroy(conn_data->transport);
+          conn_data->transport = NULL;
+          break;
+        }
+
+        conn_data->handler_started = true;
+        log_info("LWS_CALLBACK_RECEIVE: Handler thread spawned in fallback");
+
+        // Update snapshot after creating transport
+        transport_snapshot = conn_data->transport;
       }
-
-      websocket_server_t *server = (websocket_server_t *)protocol->user;
-      char client_ip[64];
-      lws_get_peer_addresses(wsi, lws_get_socket_fd(wsi), NULL, 0, client_ip, sizeof(client_ip));
-
-      log_info("LWS_CALLBACK_RECEIVE: Initializing transport as fallback (client_ip=%s)", client_ip);
-      conn_data->server = server;
-      conn_data->transport = acip_websocket_server_transport_create(wsi, NULL);
-      conn_data->handler_started = false;
-      conn_data->pending_send_data = NULL;
-      conn_data->pending_send_len = 0;
-      conn_data->pending_send_offset = 0;
-      conn_data->has_pending_send = false;
-
-      if (!conn_data->transport) {
-        log_error("LWS_CALLBACK_RECEIVE: Failed to create transport in fallback");
-        break;
-      }
-
-      log_debug("LWS_CALLBACK_RECEIVE: Spawning handler thread in fallback");
-      websocket_client_context_t *client_ctx =
-          SAFE_CALLOC(1, sizeof(websocket_client_context_t), websocket_client_context_t *);
-      if (!client_ctx) {
-        log_error("Failed to allocate client context");
-        acip_transport_destroy(conn_data->transport);
-        conn_data->transport = NULL;
-        break;
-      }
-
-      client_ctx->transport = conn_data->transport;
-      SAFE_STRNCPY(client_ctx->client_ip, client_ip, sizeof(client_ctx->client_ip));
-      client_ctx->client_port = 0;
-      client_ctx->user_data = server->user_data;
-
-      if (asciichat_thread_create(&conn_data->handler_thread, server->handler, client_ctx) != 0) {
-        log_error("LWS_CALLBACK_RECEIVE: Failed to spawn handler thread");
-        SAFE_FREE(client_ctx);
-        acip_transport_destroy(conn_data->transport);
-        conn_data->transport = NULL;
-        break;
-      }
-
-      conn_data->handler_started = true;
-      log_info("LWS_CALLBACK_RECEIVE: Handler thread spawned in fallback");
-
-      // Update snapshot after creating transport
-      transport_snapshot = conn_data->transport;
     }
 
     if (!in || len == 0) {
