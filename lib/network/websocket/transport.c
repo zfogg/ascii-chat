@@ -365,13 +365,11 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
   while (offset < send_len) {
     size_t chunk_size = (send_len - offset > FRAGMENT_SIZE) ? FRAGMENT_SIZE : (send_len - offset);
     int is_start = (offset == 0);
-    int is_end = (offset + chunk_size >= send_len);
 
-    // Get appropriate flags for this fragment
-    enum lws_write_protocol flags = lws_write_ws_flags(LWS_WRITE_BINARY, is_start, is_end);
-
-    // Use BUFLIST to let libwebsockets handle buffering and writable callbacks
-    flags = (enum lws_write_protocol)((int)flags | LWS_WRITE_BUFLIST);
+    // Compute appropriate WebSocket frame flags for libwebsockets
+    // First frame: LWS_WRITE_BINARY (starts new message)
+    // Subsequent frames: LWS_WRITE_CONTINUATION (libwebsockets auto-sets FIN bit on last frame)
+    enum lws_write_protocol flags = is_start ? LWS_WRITE_BINARY : LWS_WRITE_CONTINUATION;
 
     // Send this fragment
     int written = lws_write(ws_data->wsi, send_buffer + LWS_PRE + offset, chunk_size, flags);

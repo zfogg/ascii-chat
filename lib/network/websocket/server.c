@@ -330,7 +330,10 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       int is_start = (conn_data->pending_send_offset == 0);
       int is_end = (conn_data->pending_send_offset + chunk_size >= conn_data->pending_send_len);
 
-      enum lws_write_protocol flags = lws_write_ws_flags(LWS_WRITE_BINARY, is_start, is_end);
+      // Compute appropriate WebSocket frame flags for libwebsockets
+      // First frame: LWS_WRITE_BINARY (starts new message)
+      // Subsequent frames: LWS_WRITE_CONTINUATION (libwebsockets auto-sets FIN bit on last frame)
+      enum lws_write_protocol flags = is_start ? LWS_WRITE_BINARY : LWS_WRITE_CONTINUATION;
 
       // Ensure send buffer is large enough
       size_t required_size = LWS_PRE + chunk_size;
@@ -424,7 +427,10 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       int is_start = 1;
       int is_end = (chunk_size >= msg.len);
 
-      enum lws_write_protocol flags = lws_write_ws_flags(LWS_WRITE_BINARY, is_start, is_end);
+      // Compute appropriate WebSocket frame flags for libwebsockets
+      // First frame: LWS_WRITE_BINARY (starts new message)
+      // Subsequent frames: LWS_WRITE_CONTINUATION (libwebsockets auto-sets FIN bit on last frame)
+      enum lws_write_protocol flags = is_start ? LWS_WRITE_BINARY : LWS_WRITE_CONTINUATION;
 
       size_t required_size = LWS_PRE + chunk_size;
       if (ws_data->send_buffer_capacity < required_size) {
