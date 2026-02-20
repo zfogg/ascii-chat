@@ -14,6 +14,7 @@
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/acip/send.h>
 
 #include <string.h>
 #include <stdatomic.h>
@@ -35,6 +36,16 @@ websocket_client_t *websocket_client_create(void) {
   atomic_store(&client->connection_active, false);
   atomic_store(&client->connection_lost, false);
   client->transport = NULL;
+  client->my_client_id = 0;
+  client->encryption_enabled = false;
+  client->should_reconnect = false;
+
+  // Initialize thread-safe mutex for packet transmission
+  if (mutex_init(&client->send_mutex) != 0) {
+    log_error("Failed to initialize send_mutex");
+    SAFE_FREE(client);
+    return NULL;
+  }
 
   log_debug("WebSocket client created");
 
@@ -58,6 +69,9 @@ void websocket_client_destroy(websocket_client_t **client_ptr) {
     acip_transport_destroy(client->transport);
     client->transport = NULL;
   }
+
+  // Destroy mutex
+  mutex_destroy(&client->send_mutex);
 
   SAFE_FREE(*client_ptr);
 }
@@ -159,12 +173,23 @@ acip_transport_t *websocket_client_connect(websocket_client_t *client, const cha
     return NULL;
   }
 
+  // Derive client ID from URL hash (simple CRC32 of URL)
+  // This provides a stable, unique ID per connection URL
+  uint32_t client_id = 0;
+  for (size_t i = 0; url[i] != '\0'; i++) {
+    client_id = ((client_id << 5) + client_id) ^ url[i];  // Simple hash
+  }
+  client->my_client_id = client_id;
+
+  // Mark encryption as enabled if crypto context provided
+  client->encryption_enabled = (crypto_ctx != NULL);
+
   // Store transport and mark as active
   client->transport = transport;
   atomic_store(&client->connection_active, true);
   atomic_store(&client->connection_lost, false);
 
-  log_info("WebSocket client connected to %s", url);
+  log_info("WebSocket client connected to %s (ID: %u)", url, client->my_client_id);
 
   return transport;
 }
@@ -177,4 +202,81 @@ acip_transport_t *websocket_client_get_transport(const websocket_client_t *clien
     return NULL;
   }
   return client->transport;
+}
+
+/**
+ * @brief Send a packet through WebSocket connection (thread-safe)
+ *
+ * Acquires send_mutex, transmits packet via transport, releases mutex.
+ * Checks connection state before sending.
+ */
+int websocket_client_send_packet(websocket_client_t *client, packet_type_t type,
+                                  const void *data, size_t len) {
+  if (!client) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL client");
+  }
+
+  if (!atomic_load(&client->connection_active)) {
+    return SET_ERRNO(ERROR_NETWORK, "Connection not active");
+  }
+
+  if (!client->transport) {
+    return SET_ERRNO(ERROR_NETWORK, "No active transport");
+  }
+
+  // Acquire send mutex for thread-safe transmission
+  mutex_lock(&client->send_mutex);
+
+  // Send packet through transport with client ID
+  asciichat_error_t result = packet_send_via_transport(
+      client->transport, type, data, len, client->my_client_id
+  );
+
+  mutex_unlock(&client->send_mutex);
+
+  if (result != ASCIICHAT_OK) {
+    log_debug("Failed to send packet type %d: %s", type,
+              asciichat_error_string(result));
+    return -1;
+  }
+
+  return 0;
+}
+
+/**
+ * @brief Send ping frame (keepalive heartbeat)
+ *
+ * Routes through websocket_client_send_packet() with PACKET_TYPE_PING.
+ */
+int websocket_client_send_ping(websocket_client_t *client) {
+  if (!client)
+    return -1;
+  return websocket_client_send_packet(client, PACKET_TYPE_PING, NULL, 0);
+}
+
+/**
+ * @brief Send pong frame (keepalive response)
+ *
+ * Routes through websocket_client_send_packet() with PACKET_TYPE_PONG.
+ */
+int websocket_client_send_pong(websocket_client_t *client) {
+  if (!client)
+    return -1;
+  return websocket_client_send_packet(client, PACKET_TYPE_PONG, NULL, 0);
+}
+
+/**
+ * @brief Get the client's unique ID
+ */
+uint32_t websocket_client_get_id(const websocket_client_t *client) {
+  return client ? client->my_client_id : 0;
+}
+
+/**
+ * @brief Check if encryption is enabled for this connection
+ */
+bool websocket_client_is_encrypted(const websocket_client_t *client) {
+  if (!client)
+    return false;
+  return client->encryption_enabled;
 }

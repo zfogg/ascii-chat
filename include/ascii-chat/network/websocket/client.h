@@ -70,6 +70,8 @@
 #include "../../common.h"
 #include "../../asciichat_errno.h"
 #include "../acip/transport.h"
+#include "../packet.h"
+#include "../../platform/abstraction.h"
 
 /* Forward declarations */
 struct crypto_context_t;
@@ -79,10 +81,12 @@ struct crypto_context_t;
  *
  * Encapsulates WebSocket-specific connection state, including:
  * - Connection URL and state flags
+ * - Client ID and encryption state
  * - Active transport (owned by websocket_client)
+ * - Thread-safe packet transmission mutex
  *
- * This is a slim structure - application state (audio, threads, crypto)
- * lives in client_context_t instead.
+ * This structure mirrors tcp_client_t for API compatibility.
+ * Application state (audio, threads, crypto) lives in client_context_t instead.
  */
 typedef struct websocket_client {
   /** WebSocket server URL (e.g., "ws://localhost:27226") */
@@ -93,6 +97,18 @@ typedef struct websocket_client {
 
   /** Connection was lost (triggers reconnection logic) */
   atomic_bool connection_lost;
+
+  /** This client's unique ID (derived from URL hash or transport-provided) */
+  uint32_t my_client_id;
+
+  /** Whether encryption is enabled for this connection */
+  bool encryption_enabled;
+
+  /** Signaling flag for reconnection (exponential backoff managed by caller) */
+  bool should_reconnect;
+
+  /** Mutex protecting concurrent packet transmission */
+  mutex_t send_mutex;
 
   /** Transport instance (owned by websocket_client) - NULL until connected */
   acip_transport_t *transport;
@@ -185,5 +201,65 @@ acip_transport_t *websocket_client_connect(websocket_client_t *client, const cha
  * @return acip_transport_t pointer or NULL if not connected
  */
 acip_transport_t *websocket_client_get_transport(const websocket_client_t *client);
+
+/**
+ * @brief Send a packet through WebSocket connection (thread-safe)
+ *
+ * Acquires send_mutex, transmits packet, releases mutex.
+ * Checks connection state before sending.
+ *
+ * @param client WebSocket client instance
+ * @param type Packet type to send
+ * @param data Packet payload (NULL for empty packets)
+ * @param len Payload length in bytes
+ * @return 0 on success, -1 on failure
+ *
+ * @note Equivalent to tcp_client_send_packet() for API compatibility
+ * @note Thread-safe: multiple threads can call concurrently
+ */
+int websocket_client_send_packet(websocket_client_t *client, packet_type_t type,
+                                  const void *data, size_t len);
+
+/**
+ * @brief Send ping frame (keepalive heartbeat)
+ *
+ * Routes through websocket_client_send_packet() with PACKET_TYPE_PING.
+ *
+ * @param client WebSocket client instance
+ * @return 0 on success, -1 on failure
+ *
+ * @note Equivalent to tcp_client_send_ping() for API compatibility
+ */
+int websocket_client_send_ping(websocket_client_t *client);
+
+/**
+ * @brief Send pong frame (keepalive response)
+ *
+ * Routes through websocket_client_send_packet() with PACKET_TYPE_PONG.
+ *
+ * @param client WebSocket client instance
+ * @return 0 on success, -1 on failure
+ *
+ * @note Equivalent to tcp_client_send_pong() for API compatibility
+ */
+int websocket_client_send_pong(websocket_client_t *client);
+
+/**
+ * @brief Get the client's unique ID
+ *
+ * @param client WebSocket client instance
+ * @return Client ID, or 0 if not set
+ *
+ * @note Equivalent to tcp_client_get_id() for API compatibility
+ */
+uint32_t websocket_client_get_id(const websocket_client_t *client);
+
+/**
+ * @brief Check if encryption is enabled for this connection
+ *
+ * @param client WebSocket client instance
+ * @return true if encryption is enabled, false otherwise
+ */
+bool websocket_client_is_encrypted(const websocket_client_t *client);
 
 #endif /* NETWORK_WEBSOCKET_CLIENT_H */
