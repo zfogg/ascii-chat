@@ -439,18 +439,16 @@ Test(packet_queue, shutdown_behavior) {
   packet_queue_enqueue(queue, PACKET_TYPE_AUDIO_BATCH, data, sizeof(data), 123, true);
   cr_assert_eq(packet_queue_size(queue), 1, "Queue should have 1 packet");
 
-  // Shutdown the queue
-  packet_queue_destroy(queue);
-  cr_assert(queue->shutdown, "Queue should be marked as shutdown");
+  // Shutdown the queue (without freeing it yet)
+  packet_queue_stop(queue);
+  bool is_shutdown = atomic_load(&queue->shutdown);
+  cr_assert(is_shutdown, "Queue should be marked as shutdown");
 
   // Try to dequeue (should return NULL due to shutdown)
   queued_packet_t *packet = packet_queue_try_dequeue(queue);
-  // Note: behavior may vary - some implementations might still return queued packets
-  // Just ensure it doesn't crash
-  if (packet != NULL) {
-    packet_queue_free_packet(packet);
-  }
+  cr_assert_null(packet, "Dequeue after shutdown should return NULL");
 
+  // Now destroy the queue
   packet_queue_destroy(queue);
 }
 
