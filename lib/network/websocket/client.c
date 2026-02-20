@@ -290,7 +290,12 @@ acip_transport_t *websocket_client_get_transport(const websocket_client_t *clien
 }
 
 /**
- * @brief Get client ID assigned from local port
+ * @brief Get client ID for this WebSocket client
+ *
+ * Note: WebSocket transports in this library do not expose a raw socket
+ * (websocket_get_socket() returns INVALID_SOCKET_VALUE), so unlike TCP
+ * transports they do not derive a client ID from the local port. As a
+ * result, WebSocket clients will typically have client_id == 0.
  */
 uint32_t websocket_client_get_id(const websocket_client_t *client) {
   return client ? client->my_client_id : 0;
