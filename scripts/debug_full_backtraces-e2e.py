@@ -170,7 +170,7 @@ def start_e2e_test(port):
     env['PORT'] = str(port)
 
     print(env['PORT'])
-    proc = subprocess.Popen(['bun', 'run', 'test:e2e', 'websocket-frames', '--reporter=list'],
+    proc = subprocess.Popen(['bun', 'run', 'test:e2e', 'client-connection', '--reporter=list'],
                             cwd='web/web.ascii-chat.com',
                             env=env,
                             stdout=subprocess.PIPE,
