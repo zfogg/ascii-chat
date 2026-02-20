@@ -212,7 +212,8 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
   bool connected = ws_data->is_connected;
   mutex_unlock(&ws_data->state_mutex);
 
-  log_dev_every(1000000, "websocket_send: is_connected=%d, wsi=%p, send_len=%zu", connected, (void *)ws_data->wsi, len);
+  log_info("🚀 websocket_send: connected=%d, wsi=%p, len=%zu, is_server=%d", connected, (void *)ws_data->wsi, len,
+           !ws_data->owns_context);
 
   if (!connected) {
     log_error("WebSocket send called but transport NOT connected! wsi=%p, len=%zu", (void *)ws_data->wsi, len);
