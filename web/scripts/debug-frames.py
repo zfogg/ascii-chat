@@ -37,11 +37,13 @@ class FrameMetrics:
     frame_hashes: Dict[str, int] = None
 
 
-def run_browser_use_cmd(cmd_args: List[str]) -> str:
+def run_browser_use_cmd(cmd_args: List[str], global_opts: List[str] = None) -> str:
     """Execute a browser-use command and return output"""
+    if global_opts is None:
+        global_opts = []
     try:
         result = subprocess.run(
-            ["browser-use"] + cmd_args,
+            ["browser-use"] + global_opts + cmd_args,
             capture_output=True,
             text=True,
             timeout=10
@@ -54,13 +56,13 @@ def run_browser_use_cmd(cmd_args: List[str]) -> str:
         return ""
 
 
-def extract_metrics_from_page() -> Optional[FrameMetrics]:
+def extract_metrics_from_page(global_opts: List[str] = None) -> Optional[FrameMetrics]:
     """Extract frame metrics from the web page using JavaScript eval"""
     # Use browser-use eval with proper escaping
     output = run_browser_use_cmd([
         "eval",
         "JSON.stringify(window.__clientFrameMetrics || {})"
-    ])
+    ], global_opts)
 
     try:
         # Parse JSON from output - browser-use returns: result: JSON_STRING
@@ -89,9 +91,9 @@ def extract_metrics_from_page() -> Optional[FrameMetrics]:
     return None
 
 
-def take_screenshot(filename: str = "client-screenshot.png"):
+def take_screenshot(filename: str = "client-screenshot.png", global_opts: List[str] = None):
     """Take a screenshot of the current browser state"""
-    return run_browser_use_cmd(["screenshot", filename])
+    return run_browser_use_cmd(["screenshot", filename], global_opts)
 
 
 def debug_ascii_frames(
@@ -114,12 +116,13 @@ def debug_ascii_frames(
     print(f"🔗 Target Server: {server_url}")
     print()
 
-    # Build initial navigation command
-    browser_args = ["--headed"] if headed else []
+    # Build initial navigation command with global options
+    # Use both --headed and --browser chromium for visible window
+    global_opts = ["--headed", "--browser", "chromium"] if headed else []
     print("🌐 Opening browser and navigating to http://localhost:3000/client...")
 
-    nav_cmd = ["open", "http://localhost:3000/client"] + browser_args
-    nav_output = run_browser_use_cmd(nav_cmd)
+    nav_cmd = ["open", "http://localhost:3000/client"]
+    nav_output = run_browser_use_cmd(nav_cmd, global_opts)
 
     if "TIMEOUT" in nav_output or not nav_output:
         print("❌ Failed to open browser. Make sure:")
@@ -132,6 +135,91 @@ def debug_ascii_frames(
     print("⏳ Waiting for client to load and connect...")
     time.sleep(3)
 
+    # Inject fake webcam to generate test frames
+    print("🎬 Injecting fake webcam with animated test pattern...")
+    fake_webcam_code = """
+    // Create a fake MediaStream with animated canvas
+    const canvas = document.createElement('canvas');
+    canvas.width = 640;
+    canvas.height = 480;
+    const ctx = canvas.getContext('2d');
+
+    let frameCount = 0;
+    setInterval(() => {
+        frameCount++;
+        // Create animated test pattern
+        const hue = (frameCount % 360);
+        ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Add some moving geometry
+        ctx.fillStyle = 'white';
+        const x = (frameCount * 2) % canvas.width;
+        ctx.fillRect(x, 200, 50, 50);
+
+        // Add text
+        ctx.fillStyle = 'black';
+        ctx.font = '20px Arial';
+        ctx.fillText(`Frame ${frameCount}`, 10, 30);
+    }, 1000/30);
+
+    // Override getUserMedia to return canvas as fake webcam
+    const originalGetUserMedia = navigator.mediaDevices.getUserMedia;
+    navigator.mediaDevices.getUserMedia = async function(constraints) {
+        const stream = canvas.captureStream(30);
+        console.log('[FakeWebcam] Stream created with 30 FPS');
+        return stream;
+    };
+    console.log('[FakeWebcam] Injected - getUserMedia overridden');
+    """
+
+    inject_result = run_browser_use_cmd(["eval", fake_webcam_code], global_opts)
+    if "FakeWebcam" in inject_result or "error" not in inject_result.lower():
+        print("✅ Fake webcam injected successfully")
+    else:
+        print("⚠️  Fake webcam injection returned:", inject_result[:100])
+
+    # Wait a moment for injection to take effect
+    time.sleep(1)
+
+    # Wait for permission dialog and try to click Allow
+    print("🎥 Waiting for permission dialog...")
+    time.sleep(1)
+
+    # Try to click "Allow" on permission dialog
+    allow_perms_code = """
+    // Look for Allow button in permission dialog
+    const buttons = Array.from(document.querySelectorAll('button')).filter(b =>
+        b.textContent.toLowerCase().includes('allow') ||
+        b.textContent.toLowerCase().includes('yes')
+    );
+    if (buttons.length > 0) {
+        buttons[0].click();
+        console.log('[Permissions] Clicked Allow button');
+    } else {
+        console.log('[Permissions] No Allow button found - might be browser native dialog');
+    }
+    """
+    run_browser_use_cmd(["eval", allow_perms_code], global_opts)
+    time.sleep(2)
+
+    # Try to auto-click the "Start Webcam" button
+    print("🎥 Attempting to start webcam...")
+    auto_start_code = """
+    const buttons = Array.from(document.querySelectorAll('button')).filter(b =>
+        b.textContent.toLowerCase().includes('webcam') ||
+        b.textContent.toLowerCase().includes('start')
+    );
+    if (buttons.length > 0) {
+        buttons[0].click();
+        console.log('[AutoStart] Clicked webcam button');
+    } else {
+        console.log('[AutoStart] No webcam button found');
+    }
+    """
+    run_browser_use_cmd(["eval", auto_start_code], global_opts)
+    time.sleep(2)  # Wait for webcam to start
+
     # Start monitoring loop
     stats: List[Dict] = []
     start_time = time.time()
@@ -143,7 +231,7 @@ def debug_ascii_frames(
 
     while time.time() - start_time < duration:
         try:
-            metrics = extract_metrics_from_page()
+            metrics = extract_metrics_from_page(global_opts)
 
             if metrics:
                 # Track changes
@@ -299,7 +387,7 @@ def debug_ascii_frames(
 
     # Take final screenshot
     print("📸 Taking final screenshot...")
-    screenshot_output = take_screenshot("client-debug-final.png")
+    screenshot_output = take_screenshot("client-debug-final.png", global_opts)
     print("Screenshot saved to: client-debug-final.png\n")
 
     return stats
