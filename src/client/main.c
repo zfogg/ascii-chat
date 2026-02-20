@@ -246,6 +246,9 @@ static void shutdown_client() {
   // Set global shutdown flag to stop all threads
   signal_exit();
 
+  // Stop splash animation thread before any resource cleanup
+  splash_intro_done();
+
   // IMPORTANT: Stop all protocol threads BEFORE cleaning up resources
   // protocol_stop_connection() shuts down the socket to interrupt blocking recv(),
   // then waits for the data reception thread and capture thread to exit.

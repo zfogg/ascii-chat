@@ -59,23 +59,18 @@ static _Atomic uint64_t g_writeable_callback_count = 0;
  * This captures LWS internal logging so we can see what's happening
  */
 static void websocket_lws_log_callback(int level, const char *line) {
-  // Filter out noisy netlink logs from libwebsockets
-  if (strstr(line, "rops_handle_POLLIN_netlink") || strstr(line, "NEWLINK") || strstr(line, "RTM")) {
-    return;
-  }
-
-  // Convert LWS log level to our log level
-  if (level & LLL_ERR) {
-    log_error("[LWS] %s", line);
-  } else if (level & LLL_WARN) {
-    log_warn("[LWS] %s", line);
-  } else if (level & LLL_NOTICE) {
-    log_info("[LWS] %s", line);
-  } else if (level & LLL_INFO) {
-    log_info("[LWS] %s", line);
-  } else if (level & LLL_DEBUG) {
-    log_debug("[LWS] %s", line);
-  }
+  // INFO: Logging disabled to reduce noise. Uncomment below for debugging.
+  // if (level & LLL_ERR) {
+  //   log_error("[LWS] %s", line);
+  // } else if (level & LLL_WARN) {
+  //   log_warn("[LWS] %s", line);
+  // } else if (level & LLL_NOTICE) {
+  //   log_info("[LWS] %s", line);
+  // } else if (level & LLL_INFO) {
+  //   log_info("[LWS] %s", line);
+  // } else if (level & LLL_DEBUG) {
+  //   log_debug("[LWS] %s", line);
+  // }
 }
 
 /**
