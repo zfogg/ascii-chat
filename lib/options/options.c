@@ -434,6 +434,15 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
     }
   }
 
+  // Not a known mode - check if it's a WebSocket URL (ws:// or wss://)
+  if (url_is_websocket(positional)) {
+    // WebSocket URL detected - this is a client connection
+    log_dev("WebSocket URL detected in mode detection: %s", positional);
+    *out_mode = MODE_CLIENT;
+    *out_mode_index = first_positional_idx;
+    return ASCIICHAT_OK;
+  }
+
   // Not a known mode - check if it's a session string (word-word-word pattern)
   if (is_session_string(positional)) {
     *out_mode = MODE_DISCOVERY;
