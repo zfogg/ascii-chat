@@ -597,9 +597,7 @@ bool is_remote_key_path(const char *key_path) {
   if (!key_path || key_path[0] == '\0') {
     return false;
   }
-  return (strncmp(key_path, "github:", 7) == 0 ||
-          strncmp(key_path, "gitlab:", 7) == 0 ||
-          strncmp(key_path, "gpg:", 4) == 0 ||
-          strncmp(key_path, "http://", 7) == 0 ||
+  return (strncmp(key_path, "github:", 7) == 0 || strncmp(key_path, "gitlab:", 7) == 0 ||
+          strncmp(key_path, "gpg:", 4) == 0 || strncmp(key_path, "http://", 7) == 0 ||
           strncmp(key_path, "https://", 8) == 0);
 }

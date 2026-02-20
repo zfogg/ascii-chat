@@ -813,9 +813,9 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   struct lws_context_creation_info info = {0};
   info.port = config->port;
   info.protocols = websocket_protocols;
-  info.gid = (gid_t)-1;   // Cast to avoid undefined behavior with unsigned type
-  info.uid = (uid_t)-1;   // Cast to avoid undefined behavior with unsigned type
-  info.options = 0;       // Don't validate UTF8 - we send binary ACIP packets
+  info.gid = (gid_t)-1;                   // Cast to avoid undefined behavior with unsigned type
+  info.uid = (uid_t)-1;                   // Cast to avoid undefined behavior with unsigned type
+  info.options = 0;                       // Don't validate UTF8 - we send binary ACIP packets
   info.extensions = websocket_extensions; // Enable permessage-deflate with small window bits
   // Permessage-deflate configuration (RFC 7692):
   // - server_max_window_bits=8: Use 256-byte (2^8) sliding window instead of 32KB (2^15)

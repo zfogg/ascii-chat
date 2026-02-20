@@ -15,11 +15,20 @@
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/network.h>
+#include <ascii-chat/util/endian.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/network.h>
 
 #include <string.h>
 #include <stdatomic.h>
+
+#ifndef _WIN32
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#else
+#include <winsock2.h>
+#endif
 
 /**
  * @brief Create and initialize WebSocket client
@@ -39,6 +48,7 @@ websocket_client_t *websocket_client_create(void) {
   atomic_store(&client->connection_lost, false);
   atomic_store(&client->should_reconnect, false);
   client->transport = NULL;
+  client->my_client_id = 0;
   client->encryption_enabled = false;
 
   log_debug("WebSocket client created");
@@ -178,6 +188,7 @@ void websocket_client_close(websocket_client_t *client) {
   }
 
   atomic_store(&client->connection_active, false);
+  client->my_client_id = 0;
   atomic_store(&client->should_reconnect, false);
 }
 
@@ -235,7 +246,35 @@ acip_transport_t *websocket_client_connect(websocket_client_t *client, const cha
   atomic_store(&client->connection_active, true);
   atomic_store(&client->connection_lost, false);
 
-  log_info("WebSocket client connected to %s", url);
+  // Extract client ID from local socket port (matching TCP client behavior)
+  // Get the underlying socket FD from the transport
+  socket_t sockfd = acip_transport_get_socket(transport);
+  if (sockfd == INVALID_SOCKET_VALUE) {
+    // WebSocket transports may not expose the underlying socket directly
+    // Assign a fallback client ID (0 indicates assignment pending from server)
+    log_debug("WebSocket transport does not expose raw socket, client_id assignment pending from server");
+    client->my_client_id = 0;
+  } else {
+    // Extract local port for client ID
+    struct sockaddr_storage local_addr = {0};
+    socklen_t addr_len = sizeof(local_addr);
+    if (getsockname(sockfd, (struct sockaddr *)&local_addr, &addr_len) == -1) {
+      log_warn("Failed to get local socket address: %s", network_error_string());
+      client->my_client_id = 0;
+    } else {
+      // Extract port from either IPv4 or IPv6 address
+      int local_port = 0;
+      if (((struct sockaddr *)&local_addr)->sa_family == AF_INET) {
+        local_port = NET_TO_HOST_U16(((struct sockaddr_in *)&local_addr)->sin_port);
+      } else if (((struct sockaddr *)&local_addr)->sa_family == AF_INET6) {
+        local_port = NET_TO_HOST_U16(((struct sockaddr_in6 *)&local_addr)->sin6_port);
+      }
+      client->my_client_id = (uint32_t)local_port;
+      log_debug("WebSocket client assigned ID from local port: %u", client->my_client_id);
+    }
+  }
+
+  log_info("WebSocket client connected to %s (client_id=%u)", url, client->my_client_id);
 
   return transport;
 }
@@ -248,6 +287,18 @@ acip_transport_t *websocket_client_get_transport(const websocket_client_t *clien
     return NULL;
   }
   return client->transport;
+}
+
+/**
+ * @brief Get client ID for this WebSocket client
+ *
+ * Note: WebSocket transports in this library do not expose a raw socket
+ * (websocket_get_socket() returns INVALID_SOCKET_VALUE), so unlike TCP
+ * transports they do not derive a client ID from the local port. As a
+ * result, WebSocket clients will typically have client_id == 0.
+ */
+uint32_t websocket_client_get_id(const websocket_client_t *client) {
+  return client ? client->my_client_id : 0;
 }
 
 /**
