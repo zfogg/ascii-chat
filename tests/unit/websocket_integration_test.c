@@ -127,7 +127,6 @@ static void stop_test_server(websocket_test_ctx_t *ctx) {
   // Wait for graceful shutdown (max 2 seconds)
   int status;
   int attempts = 0;
-  int max_wait_ms = 2000; // 2 seconds total
   while (waitpid(ctx->server_pid, &status, WNOHANG) == 0 && attempts < 20) {
     usleep(100000); // 100ms
     attempts++;
@@ -352,7 +351,7 @@ Test(websocket_integration, multiple_frames_at_15fps, .timeout = 20) {
       }
 
       // Check if frame has sufficient ASCII art content (>50% printable chars)
-      if (ascii_char_count > frame_data_len / 2) {
+      if ((size_t)ascii_char_count > frame_data_len / 2) {
         frames_with_content++;
 
         // Calculate frame hash
