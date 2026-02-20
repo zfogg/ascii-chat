@@ -114,10 +114,12 @@ void connection_context_cleanup(connection_attempt_context_t *ctx) {
   if (ctx->ws_client_instance) {
     websocket_client_destroy(&ctx->ws_client_instance);
     ctx->ws_client_instance = NULL;
+    // WebSocket client owns and destroys the transport, so clear the reference
+    ctx->active_transport = NULL;
     log_debug("WebSocket client instance destroyed");
   }
 
-  // Close active transport if still open
+  // Close active transport if still open (only if not already destroyed by WebSocket client)
   if (ctx->active_transport) {
     acip_transport_close(ctx->active_transport);
     acip_transport_destroy(ctx->active_transport);
@@ -476,8 +478,7 @@ asciichat_error_t connection_attempt_websocket(connection_attempt_context_t *ctx
   }
 
   log_info("WebSocket connection established to %s (transport=%p)", ws_url, (void *)transport);
-  log_debug("Transport created - crypto_ctx=%p, transport is_connected=%d", (void *)crypto_ctx,
-            transport ? 1 : 0);
+  log_debug("Transport created - crypto_ctx=%p, transport is_connected=%d", (void *)crypto_ctx, transport ? 1 : 0);
 
   // Perform crypto handshake initial phase on WebSocket transport if crypto is enabled
   if (!GET_OPTION(no_encrypt) && crypto_ctx) {
