@@ -597,7 +597,26 @@ bool is_remote_key_path(const char *key_path) {
   if (!key_path || key_path[0] == '\0') {
     return false;
   }
-  return (strncmp(key_path, "github:", 7) == 0 || strncmp(key_path, "gitlab:", 7) == 0 ||
-          strncmp(key_path, "gpg:", 4) == 0 || strncmp(key_path, "http://", 7) == 0 ||
-          strncmp(key_path, "https://", 8) == 0);
+
+  // Check for explicit remote/virtual key formats
+  if (strncmp(key_path, "github:", 7) == 0 || strncmp(key_path, "gitlab:", 7) == 0 ||
+      strncmp(key_path, "gpg:", 4) == 0 || strncmp(key_path, "http://", 7) == 0 ||
+      strncmp(key_path, "https://", 8) == 0) {
+    return true;
+  }
+
+  // SSH key format (ssh-ed25519, ssh-rsa, ssh-dss, etc.)
+  if (strncmp(key_path, "ssh-", 4) == 0) {
+    return true;
+  }
+
+  // Check if it looks like a local file path (not raw key data)
+  // If it contains '/', starts with '.', starts with '~', it's likely a file path
+  if (strchr(key_path, '/') != NULL || key_path[0] == '.' || key_path[0] == '~') {
+    return false; // It's a file path, not raw key data
+  }
+
+  // Everything else is considered raw key data (password, hex key, etc.)
+  // and should NOT be treated as a file path
+  return true;
 }

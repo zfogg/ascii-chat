@@ -1636,6 +1636,14 @@ asciichat_error_t options_init(int argc, char **argv) {
 
   // Auto-enable encryption if key was provided
   if (opts.encrypt_key[0] != '\0') {
+    // Conflict check: --key and --no-encrypt are mutually exclusive
+    if (opts.no_encrypt) {
+      log_error("Error: --key cannot be used with --no-encrypt");
+      options_config_destroy(config);
+      SAFE_FREE(allocated_mode_argv);
+      return option_error_invalid();
+    }
+
     // Validate key file exists (skip for remote/virtual keys)
     if (!is_remote_key_path(opts.encrypt_key)) {
       struct stat st;
