@@ -154,27 +154,26 @@ struct packet_node {
 /**
  * @brief Memory pool for packet nodes to reduce malloc/free overhead
  *
- * Pre-allocates a fixed-size array of packet nodes and maintains a free list.
- * This eliminates per-packet malloc/free calls, significantly improving
- * performance for high-frequency packet queue operations.
+ * Pre-allocates a fixed-size array of packet nodes and maintains a lock-free
+ * free list using atomic CAS operations. This eliminates per-packet malloc/free
+ * calls while avoiding mutex contention, significantly improving performance
+ * for high-frequency packet queue operations.
  *
- * @note Pool operations are thread-safe via pool_mutex.
+ * @note Pool operations are thread-safe via lock-free atomic operations.
  *
  * @note If pool is exhausted, operations fall back to malloc/free.
  *
  * @ingroup packet_queue
  */
 typedef struct node_pool {
-  /** @brief Stack of free nodes (LIFO for cache locality) */
-  packet_node_t *free_list;
+  /** @brief Stack of free nodes (LIFO for cache locality) - atomic for lock-free access */
+  ATOMIC_TYPE(packet_node_t *) free_list;
   /** @brief Pre-allocated array of all nodes */
   packet_node_t *nodes;
   /** @brief Total number of nodes in pool */
   size_t pool_size;
-  /** @brief Number of nodes currently in use */
-  size_t used_count;
-  /** @brief Mutex protecting free list access */
-  mutex_t pool_mutex;
+  /** @brief Number of nodes currently in use - atomic for lock-free access */
+  ATOMIC_TYPE(size_t) used_count;
 } node_pool_t;
 
 /**

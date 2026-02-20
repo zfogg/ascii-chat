@@ -39,15 +39,9 @@ node_pool_t *node_pool_create(size_t pool_size) {
   }
   atomic_store_explicit(&pool->nodes[pool_size - 1].next, (packet_node_t *)NULL, memory_order_relaxed);
 
-  pool->free_list = &pool->nodes[0];
+  atomic_store_explicit(&pool->free_list, &pool->nodes[0], memory_order_relaxed);
   pool->pool_size = pool_size;
-  pool->used_count = 0;
-
-  if (mutex_init(&pool->pool_mutex) != 0) {
-    SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to initialize mutex for node pool");
-    node_pool_destroy(pool);
-    return NULL;
-  }
+  atomic_store_explicit(&pool->used_count, 0, memory_order_relaxed);
 
   return pool;
 }
@@ -57,7 +51,6 @@ void node_pool_destroy(node_pool_t *pool) {
     return;
   }
 
-  mutex_destroy(&pool->pool_mutex);
   SAFE_FREE(pool->nodes);
   SAFE_FREE(pool);
 }
@@ -70,23 +63,25 @@ packet_node_t *node_pool_get(node_pool_t *pool) {
     return node;
   }
 
-  mutex_lock(&pool->pool_mutex);
-
-  packet_node_t *node = pool->free_list;
-  if (node) {
-    pool->free_list = atomic_load_explicit(&node->next, memory_order_relaxed);
-    pool->used_count++;
-    atomic_store_explicit(&node->next, (packet_node_t *)NULL, memory_order_relaxed); // Clear next pointer
+  // Try to pop from lock-free stack (LIFO) using atomic CAS
+  packet_node_t *node = atomic_load_explicit(&pool->free_list, memory_order_acquire);
+  while (node) {
+    packet_node_t *next = atomic_load_explicit(&node->next, memory_order_relaxed);
+    if (atomic_compare_exchange_weak_explicit(&pool->free_list, &node, next, memory_order_release,
+                                              memory_order_acquire)) {
+      // Successfully popped - clear next pointer and update stats
+      atomic_store_explicit(&node->next, (packet_node_t *)NULL, memory_order_relaxed);
+      atomic_fetch_add_explicit(&pool->used_count, 1, memory_order_relaxed);
+      return node;
+    }
+    // CAS failed - reload and retry
+    node = atomic_load_explicit(&pool->free_list, memory_order_acquire);
   }
 
-  mutex_unlock(&pool->pool_mutex);
-
-  if (!node) {
-    // Pool exhausted, fallback to malloc
-    node = SAFE_MALLOC(sizeof(packet_node_t), packet_node_t *);
-    // Remove extra text from format string that had no matching argument
-    log_debug("Memory pool exhausted, falling back to SAFE_MALLOC (used: %zu/%zu)", pool->used_count, pool->pool_size);
-  }
+  // Pool exhausted, fallback to malloc
+  node = SAFE_MALLOC(sizeof(packet_node_t), packet_node_t *);
+  size_t used = atomic_load_explicit(&pool->used_count, memory_order_relaxed);
+  log_debug_every("Memory pool exhausted, falling back to SAFE_MALLOC (used: %zu/%zu)", used, pool->pool_size);
 
   return node;
 }
@@ -106,14 +101,13 @@ void node_pool_put(node_pool_t *pool, packet_node_t *node) {
   bool is_pool_node = (node >= pool->nodes && node < pool->nodes + pool->pool_size);
 
   if (is_pool_node) {
-    mutex_lock(&pool->pool_mutex);
-
-    // Return to free list
-    atomic_store_explicit(&node->next, pool->free_list, memory_order_relaxed);
-    pool->free_list = node;
-    pool->used_count--;
-
-    mutex_unlock(&pool->pool_mutex);
+    // Push to lock-free stack using atomic CAS
+    packet_node_t *head = atomic_load_explicit(&pool->free_list, memory_order_relaxed);
+    do {
+      atomic_store_explicit(&node->next, head, memory_order_relaxed);
+    } while (!atomic_compare_exchange_weak_explicit(&pool->free_list, &head, node, memory_order_release,
+                                                    memory_order_relaxed));
+    atomic_fetch_sub_explicit(&pool->used_count, 1, memory_order_relaxed);
   } else {
     // This was malloc'd, so free it
     SAFE_FREE(node);
