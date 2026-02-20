@@ -1457,16 +1457,30 @@ void *client_dispatch_thread(void *arg) {
   uint32_t client_id = atomic_load(&client->client_id);
   log_info("DISPATCH_THREAD: Started for client %u", client_id);
 
+  uint64_t dispatch_loop_count = 0;
+  uint64_t last_dequeue_attempt = time_get_ns();
+
   while (!atomic_load(&g_server_should_exit) && atomic_load(&client->dispatch_thread_running)) {
+    dispatch_loop_count++;
     // Try to dequeue next packet (non-blocking)
     // Use try_dequeue to avoid blocking - allows checking exit flag frequently
+    uint64_t dequeue_start = time_get_ns();
     queued_packet_t *queued_pkt = packet_queue_try_dequeue(client->received_packet_queue);
+    uint64_t dequeue_end = time_get_ns();
 
     if (!queued_pkt) {
       // Queue was empty, sleep briefly to avoid busy-waiting
+      log_dev_every(5 * US_PER_MS_INT, "🔄 DISPATCH_LOOP[%llu]: Queue empty after %.1fμs, sleeping 10ms",
+                    (unsigned long long)dispatch_loop_count, (dequeue_end - dequeue_start) / 1000.0);
       usleep(10 * US_PER_MS_INT); // 10ms sleep
+      last_dequeue_attempt = dequeue_end;
       continue;
     }
+
+    // Frame received! Log it immediately
+    log_info("🚀 DISPATCH_LOOP[%llu]: 📦 DEQUEUED %zu byte packet (dequeue took %.1fμs) for client %u",
+             (unsigned long long)dispatch_loop_count, queued_pkt->data_len,
+             (dequeue_end - dequeue_start) / 1000.0, client_id);
 
     // Process the dequeued packet
     // The queued packet contains the complete ACIP packet (header + payload) from websocket_recv()
@@ -1481,7 +1495,7 @@ void *client_dispatch_thread(void *arg) {
       packet_type_t packet_type = (packet_type_t)NET_TO_HOST_U16(header->type);
       payload_len = NET_TO_HOST_U32(header->length);
 
-      log_info("DISPATCH_THREAD: Packet type=%d, payload_len=%u", packet_type, payload_len);
+      log_info("🎯 DISPATCH_THREAD: Packet type=%d, payload_len=%u (will dispatch now)", packet_type, payload_len);
 
       // Handle PACKET_TYPE_ENCRYPTED from WebSocket clients that encrypt at application layer
       // This mirrors the decryption logic in acip_server_receive_and_dispatch()
