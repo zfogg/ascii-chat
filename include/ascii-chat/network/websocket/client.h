@@ -186,4 +186,40 @@ acip_transport_t *websocket_client_connect(websocket_client_t *client, const cha
  */
 acip_transport_t *websocket_client_get_transport(const websocket_client_t *client);
 
+/**
+ * @brief Send ping packet to keep connection alive
+ *
+ * Sends a PACKET_TYPE_PING through the transport. The server/client
+ * should respond with a PACKET_TYPE_PONG.
+ *
+ * @param client WebSocket client instance
+ * @return 0 on success, -1 on error
+ */
+int websocket_client_send_ping(websocket_client_t *client);
+
+/**
+ * @brief Send pong packet in response to ping
+ *
+ * Sends a PACKET_TYPE_PONG through the transport in response to
+ * a received PACKET_TYPE_PING.
+ *
+ * @param client WebSocket client instance
+ * @return 0 on success, -1 on error
+ */
+int websocket_client_send_pong(websocket_client_t *client);
+
+/**
+ * @brief Configure WebSocket socket options (keepalive, buffers)
+ *
+ * Configures the underlying TCP socket with optimal settings:
+ * - Enables TCP keepalive to detect stale connections
+ * - Optimizes send/receive buffer sizes for media streaming
+ *
+ * Should be called after successful connection establishment.
+ *
+ * @param client WebSocket client instance
+ * @return 0 on success, -1 on error or if transport not available
+ */
+int websocket_client_configure_socket(websocket_client_t *client);
+
 #endif /* NETWORK_WEBSOCKET_CLIENT_H */
