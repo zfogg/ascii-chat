@@ -387,12 +387,16 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
                                         void **out_allocated_buffer) {
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
 
+  log_debug("🔍 WEBSOCKET_RECV: Entry - reassembling=%d, partial_size=%zu, fragment_count=%d", ws_data->reassembling,
+            ws_data->partial_size, ws_data->fragment_count);
+
   // Check connection first without holding queue lock
   mutex_lock(&ws_data->state_mutex);
   bool connected = ws_data->is_connected;
   mutex_unlock(&ws_data->state_mutex);
 
   if (!connected) {
+    log_debug("🔴 WEBSOCKET_RECV: Not connected, returning error");
     return SET_ERRNO(ERROR_NETWORK, "Connection not established");
   }
 
@@ -546,7 +550,8 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
     // Check if we have the final fragment
     if (frag.final) {
       // Complete message assembled - clear persistent state
-      log_info("[WS_REASSEMBLE] Complete message: %zu bytes in %d fragments", assembled_size, fragment_count);
+      log_info("✅ [WS_REASSEMBLE] COMPLETE: %zu bytes in %d fragments, returning to caller", assembled_size,
+               fragment_count);
       ws_data->partial_buffer = NULL;
       ws_data->partial_size = 0;
       ws_data->partial_capacity = 0;
@@ -557,6 +562,8 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
       *out_len = assembled_size;
       *out_allocated_buffer = assembled_buffer;
       mutex_unlock(&ws_data->recv_mutex);
+
+      log_debug("🔍 WEBSOCKET_RECV: Returning complete packet: %zu bytes", assembled_size);
       return ASCIICHAT_OK;
     }
 
