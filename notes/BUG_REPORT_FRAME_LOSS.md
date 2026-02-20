@@ -116,3 +116,9 @@ with lldb.
 here's a hint: the browser renders at 0.5fps while the terminal client renders the browser's webcam feed at 0fps (shows
 one frame then stops animating that grid cell). why? good question. because 0.5fps in the browser is progres, but the
 terminal app is showing the same data from the same server at 0fps, so back to the old bug in that regard..
+
+
+UPDATE NEW:
+back to 0 frames whatsoever in the browser. this is due to recent commits. maybe the goal should be fixing it completely
+rather than getting it back to 1 frame sent per connection or 0.5fps. but look into why. it's important. the browser
+displays a black screen.
