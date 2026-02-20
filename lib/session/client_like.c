@@ -289,7 +289,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   }
 
   // ============================================================================
-  // SETUP: Network Transports (TCP/WebSocket) - BEFORE capture context decision
+  // SETUP: Network Transports (TCP/WebSocket)
   // ============================================================================
 
   log_debug("session_client_like_run(): Setting up network transports");
@@ -306,8 +306,8 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
       result = ERROR_NETWORK;
       goto cleanup;
     }
-  } else if (server_address && strlen(server_address) > 0) {
-    log_debug("Using TCP client for server: %s:%d", server_address, GET_OPTION(port));
+  } else {
+    log_debug("Using TCP client for server: %s:%d", server_address ? server_address : "localhost", GET_OPTION(port));
     g_tcp_client = tcp_client_create();
     if (!g_tcp_client) {
       log_error("Failed to create TCP client");
