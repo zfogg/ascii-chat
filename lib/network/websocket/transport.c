@@ -425,11 +425,14 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
       uint64_t elapsed_ns = time_get_ns() - assembly_start_ns;
       if (elapsed_ns > MAX_REASSEMBLY_TIME_NS) {
         // Timeout - return error but PRESERVE partial buffer state in ws_data
-        // This allows retry on next recv() call to continue where we left off
+        // This allows retry on next recv() call to continue where we left off.
+        // CRITICAL: Clear reassembling flag so next recv() gets a FRESH timeout window
+        // (old timeout calculation was stale, would cause immediate re-timeout)
         ws_data->partial_buffer = assembled_buffer;
         ws_data->partial_size = assembled_size;
         ws_data->partial_capacity = assembled_capacity;
         ws_data->fragment_count = fragment_count;
+        ws_data->reassembling = false; // Clear for fresh timer on next recv()
         mutex_unlock(&ws_data->recv_mutex);
 
         if (assembled_size > 0) {
