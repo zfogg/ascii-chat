@@ -48,6 +48,16 @@ typedef struct {
   asciichat_thread_t service_thread; ///< Thread that services libwebsockets context
   volatile bool service_running;     ///< Service thread running flag
 
+  // Partial message reassembly state (preserved across recv() calls)
+  // Fixes issue where slow fragment delivery caused reassembly timeouts
+  // and orphaned fragments in the queue
+  uint8_t *partial_buffer;           ///< Partial message buffer being assembled
+  size_t partial_size;               ///< Current size of partial buffer
+  size_t partial_capacity;           ///< Capacity of partial buffer
+  uint64_t reassembly_start_ns;      ///< Start time of current reassembly (for timeout detection)
+  int fragment_count;                ///< Fragment count for current reassembly
+  bool reassembling;                 ///< True if currently assembling a message
+
 } websocket_transport_data_t;
 
 #endif // ASCIICHAT_NETWORK_WEBSOCKET_INTERNAL_H

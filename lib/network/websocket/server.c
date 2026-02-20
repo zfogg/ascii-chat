@@ -393,17 +393,21 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     }
 
     // Try to dequeue next message if current one is done
+    // Fix: Combine into single lock section to eliminate TOCTOU race condition
+    websocket_recv_msg_t msg = {0};
+    bool success = false;
+    bool more_messages = false;
+
     mutex_lock(&ws_data->send_mutex);
-    bool has_messages = !ringbuffer_is_empty(ws_data->send_queue);
+    // Check and dequeue in one atomic operation to avoid race conditions
+    if (!ringbuffer_is_empty(ws_data->send_queue)) {
+      success = ringbuffer_read(ws_data->send_queue, &msg);
+      // Check if there are more messages for the next callback
+      more_messages = !ringbuffer_is_empty(ws_data->send_queue);
+    }
     mutex_unlock(&ws_data->send_mutex);
 
-    if (has_messages) {
-      mutex_lock(&ws_data->send_mutex);
-      websocket_recv_msg_t msg;
-      bool success = ringbuffer_read(ws_data->send_queue, &msg);
-      mutex_unlock(&ws_data->send_mutex);
-
-      if (success && msg.data) {
+    if (success && msg.data) {
         // Start sending this message
         conn_data->pending_send_data = msg.data;
         conn_data->pending_send_len = msg.len;
@@ -460,15 +464,13 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
           SAFE_FREE(msg.data);
           conn_data->has_pending_send = false;
 
-          // Check if there are more messages
-          mutex_lock(&ws_data->send_mutex);
-          if (!ringbuffer_is_empty(ws_data->send_queue)) {
+          // Request callback if more messages are queued (info from earlier dequeue with lock held)
+          if (more_messages) {
+            log_dev_every(4500 * US_PER_MS_INT, ">>> SERVER_WRITEABLE: More messages queued, requesting callback");
             lws_callback_on_writable(wsi);
           }
-          mutex_unlock(&ws_data->send_mutex);
         }
       }
-    }
 
     break;
   }

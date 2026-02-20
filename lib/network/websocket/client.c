@@ -13,9 +13,12 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/socket.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/util/endian.h>
+#include <ascii-chat/network/acip/send.h>
+#include <ascii-chat/network/network.h>
 
 #include <string.h>
 #include <stdatomic.h>
@@ -43,8 +46,10 @@ websocket_client_t *websocket_client_create(void) {
   // Initialize connection state
   atomic_store(&client->connection_active, false);
   atomic_store(&client->connection_lost, false);
+  atomic_store(&client->should_reconnect, false);
   client->transport = NULL;
   client->my_client_id = 0;
+  client->encryption_enabled = false;
 
   log_debug("WebSocket client created");
 
@@ -93,6 +98,38 @@ bool websocket_client_is_lost(const websocket_client_t *client) {
 }
 
 /**
+ * @brief Check if reconnection should be attempted
+ */
+bool websocket_client_should_reconnect(const websocket_client_t *client) {
+  if (!client) {
+    return false;
+  }
+  return atomic_load(&client->should_reconnect);
+}
+
+/**
+ * @brief Signal that reconnection should be attempted
+ */
+void websocket_client_signal_reconnect(websocket_client_t *client) {
+  if (!client) {
+    return;
+  }
+  atomic_store(&client->should_reconnect, true);
+  atomic_store(&client->connection_active, false);
+  log_debug("WebSocket reconnection signaled");
+}
+
+/**
+ * @brief Clear reconnection flag
+ */
+void websocket_client_clear_reconnect_flag(websocket_client_t *client) {
+  if (!client) {
+    return;
+  }
+  atomic_store(&client->should_reconnect, false);
+}
+
+/**
  * @brief Signal that connection was lost
  */
 void websocket_client_signal_lost(websocket_client_t *client) {
@@ -102,6 +139,38 @@ void websocket_client_signal_lost(websocket_client_t *client) {
   atomic_store(&client->connection_lost, true);
   atomic_store(&client->connection_active, false);
   log_debug("WebSocket connection marked as lost");
+}
+
+/**
+ * @brief Check if encryption is enabled
+ */
+bool websocket_client_is_encryption_enabled(const websocket_client_t *client) {
+  if (!client) {
+    return false;
+  }
+  return client->encryption_enabled;
+}
+
+/**
+ * @brief Enable encryption for this connection
+ */
+void websocket_client_enable_encryption(websocket_client_t *client) {
+  if (!client) {
+    return;
+  }
+  client->encryption_enabled = true;
+  log_debug("WebSocket encryption enabled");
+}
+
+/**
+ * @brief Disable encryption for this connection
+ */
+void websocket_client_disable_encryption(websocket_client_t *client) {
+  if (!client) {
+    return;
+  }
+  client->encryption_enabled = false;
+  log_debug("WebSocket encryption disabled");
 }
 
 /**
@@ -120,6 +189,7 @@ void websocket_client_close(websocket_client_t *client) {
 
   atomic_store(&client->connection_active, false);
   client->my_client_id = 0;
+  atomic_store(&client->should_reconnect, false);
 }
 
 /**
@@ -139,6 +209,7 @@ void websocket_client_shutdown(websocket_client_t *client) {
 
   atomic_store(&client->connection_active, false);
   atomic_store(&client->connection_lost, true);
+  atomic_store(&client->should_reconnect, false);
 }
 
 /**
@@ -223,4 +294,110 @@ acip_transport_t *websocket_client_get_transport(const websocket_client_t *clien
  */
 uint32_t websocket_client_get_id(const websocket_client_t *client) {
   return client ? client->my_client_id : 0;
+}
+
+/**
+ * @brief Send ping packet to keep connection alive
+ */
+int websocket_client_send_ping(websocket_client_t *client) {
+  if (!client) {
+    log_error("Invalid WebSocket client for ping");
+    return -1;
+  }
+
+  if (!websocket_client_is_active(client)) {
+    log_error("WebSocket client is not connected");
+    return -1;
+  }
+
+  if (!client->transport) {
+    log_error("WebSocket transport is NULL");
+    return -1;
+  }
+
+  asciichat_error_t result = acip_send_ping(client->transport);
+  if (result != ASCIICHAT_OK) {
+    log_debug("Failed to send WebSocket ping: %s", asciichat_error_string(result));
+    return -1;
+  }
+
+  return 0;
+}
+
+/**
+ * @brief Send pong packet in response to ping
+ */
+int websocket_client_send_pong(websocket_client_t *client) {
+  if (!client) {
+    log_error("Invalid WebSocket client for pong");
+    return -1;
+  }
+
+  if (!websocket_client_is_active(client)) {
+    log_error("WebSocket client is not connected");
+    return -1;
+  }
+
+  if (!client->transport) {
+    log_error("WebSocket transport is NULL");
+    return -1;
+  }
+
+  asciichat_error_t result = acip_send_pong(client->transport);
+  if (result != ASCIICHAT_OK) {
+    log_debug("Failed to send WebSocket pong: %s", asciichat_error_string(result));
+    return -1;
+  }
+
+  return 0;
+}
+
+/**
+ * @brief Configure WebSocket socket options (keepalive, buffers)
+ *
+ * Configures the underlying TCP socket created by libwebsockets with:
+ * - TCP keepalive for connection monitoring
+ * - Optimized send/receive buffers for media streaming
+ */
+int websocket_client_configure_socket(websocket_client_t *client) {
+  if (!client) {
+    log_error("Invalid WebSocket client for socket configuration");
+    return -1;
+  }
+
+  if (!websocket_client_is_active(client)) {
+    log_warn("WebSocket client is not connected, cannot configure socket");
+    return -1;
+  }
+
+  if (!client->transport) {
+    log_warn("WebSocket transport is NULL, cannot configure socket");
+    return -1;
+  }
+
+  // Try to get the underlying socket from the transport
+  socket_t sock = client->transport->methods->get_socket(client->transport);
+
+  if (sock == INVALID_SOCKET_VALUE) {
+    log_debug("Unable to get socket from WebSocket transport (expected for libwebsockets)");
+    // This is expected - libwebsockets manages the socket internally
+    // Configuration would need to be done at the transport level
+    return 0; // Not an error, just unavailable
+  }
+
+  // Configure socket keepalive
+  if (socket_set_keepalive(sock, true) < 0) {
+    log_warn("Failed to set WebSocket socket keepalive: %s", network_error_string());
+    // Continue - this is not fatal
+  }
+
+  // Configure socket buffers
+  asciichat_error_t sock_config_result = socket_configure_buffers(sock);
+  if (sock_config_result != ASCIICHAT_OK) {
+    log_warn("Failed to configure WebSocket socket buffers: %s", network_error_string());
+    // Continue - this is not fatal
+  }
+
+  log_debug("WebSocket socket configured successfully");
+  return 0;
 }

@@ -398,34 +398,41 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
 
   mutex_lock(&ws_data->recv_mutex);
 
-  // Reassemble fragmented WebSocket messages with SHORT timeout (100ms)
-  // We queue each fragment from the LWS callback with first/final flags.
-  // Unlike long blocking waits, 100ms is short enough that polling retry
-  // is acceptable. The dispatch thread handles retries.
+  // CRITICAL FIX: Preserve partial reassembly state across recv() calls
+  // Previous bug: When timeouts occurred, partial buffers were freed and fragments
+  // were orphaned in the queue. Next recv() call would find orphaned fragments
+  // without first fragment and error out. Now we preserve state in ws_data.
 
-  uint8_t *assembled_buffer = NULL;
-  size_t assembled_size = 0;
-  size_t assembled_capacity = 0;
-  uint64_t assembly_start_ns = time_get_ns();
-  int fragment_count = 0;
+  // Initialize or restore reassembly state from ws_data (if resuming from partial)
+  uint8_t *assembled_buffer = ws_data->partial_buffer;
+  size_t assembled_size = ws_data->partial_size;
+  size_t assembled_capacity = ws_data->partial_capacity;
+  uint64_t assembly_start_ns = ws_data->reassembling ? ws_data->reassembly_start_ns : time_get_ns();
+  int fragment_count = ws_data->fragment_count;
   const uint64_t MAX_REASSEMBLY_TIME_NS = 100 * 1000000ULL; // 100ms - short timeout for polling-based retry
+
+  // Mark that we're actively reassembling
+  ws_data->reassembling = true;
+  ws_data->reassembly_start_ns = assembly_start_ns;
 
   while (true) {
     // Wait for fragment if queue is empty (with short timeout)
     while (ringbuffer_is_empty(ws_data->recv_queue)) {
       uint64_t elapsed_ns = time_get_ns() - assembly_start_ns;
       if (elapsed_ns > MAX_REASSEMBLY_TIME_NS) {
-        // Timeout - return error instead of partial fragments
-        // Dispatch thread will retry, avoiding fragment loss issue
-        if (assembled_buffer) {
-          buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
-        }
+        // Timeout - return error but PRESERVE partial buffer state in ws_data
+        // This allows retry on next recv() call to continue where we left off
+        ws_data->partial_buffer = assembled_buffer;
+        ws_data->partial_size = assembled_size;
+        ws_data->partial_capacity = assembled_capacity;
+        ws_data->fragment_count = fragment_count;
         mutex_unlock(&ws_data->recv_mutex);
 
         if (assembled_size > 0) {
-          log_dev_every(4500000,
-                        "🔄 WEBSOCKET_RECV: Reassembly timeout after %llums (have %zu bytes, expecting final fragment)",
-                        (unsigned long long)(elapsed_ns / 1000000ULL), assembled_size);
+          log_dev_every(
+              4500000,
+              "🔄 WEBSOCKET_RECV: Reassembly timeout after %llums (have %zu bytes in %d fragments, expecting final)",
+              (unsigned long long)(elapsed_ns / 1000000ULL), assembled_size, fragment_count);
         }
         return SET_ERRNO(ERROR_NETWORK, "Fragment reassembly timeout - no data from network");
       }
@@ -436,9 +443,15 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
       mutex_unlock(&ws_data->state_mutex);
 
       if (!still_connected) {
+        // Connection closed - discard partial state
         if (assembled_buffer) {
           buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
         }
+        ws_data->partial_buffer = NULL;
+        ws_data->partial_size = 0;
+        ws_data->partial_capacity = 0;
+        ws_data->fragment_count = 0;
+        ws_data->reassembling = false;
         mutex_unlock(&ws_data->recv_mutex);
         return SET_ERRNO(ERROR_NETWORK, "Connection closed while reassembling fragments");
       }
@@ -451,9 +464,11 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
     websocket_recv_msg_t frag;
     bool success = ringbuffer_read(ws_data->recv_queue, &frag);
     if (!success) {
-      if (assembled_buffer) {
-        buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
-      }
+      // Queue read failed - preserve state and return error
+      ws_data->partial_buffer = assembled_buffer;
+      ws_data->partial_size = assembled_size;
+      ws_data->partial_capacity = assembled_capacity;
+      ws_data->fragment_count = fragment_count;
       mutex_unlock(&ws_data->recv_mutex);
       return SET_ERRNO(ERROR_NETWORK, "Failed to read fragment from queue");
     }
@@ -466,9 +481,15 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
     if (assembled_size == 0 && !frag.first) {
       log_error("[WS_REASSEMBLE] ERROR: Expected first=1 for first fragment, got first=%d", frag.first);
       buffer_pool_free(NULL, frag.data, frag.len);
+      // Discard partial state on protocol error
       if (assembled_buffer) {
         buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
       }
+      ws_data->partial_buffer = NULL;
+      ws_data->partial_size = 0;
+      ws_data->partial_capacity = 0;
+      ws_data->fragment_count = 0;
+      ws_data->reassembling = false;
       mutex_unlock(&ws_data->recv_mutex);
       return SET_ERRNO(ERROR_NETWORK, "Protocol error: continuation fragment without first fragment");
     }
@@ -485,9 +506,11 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
       if (!new_buffer) {
         log_error("[WS_REASSEMBLE] Failed to allocate reassembly buffer (%zu bytes)", new_capacity);
         buffer_pool_free(NULL, frag.data, frag.len);
-        if (assembled_buffer) {
-          buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
-        }
+        // Preserve partial state on allocation failure
+        ws_data->partial_buffer = assembled_buffer;
+        ws_data->partial_size = assembled_size;
+        ws_data->partial_capacity = assembled_capacity;
+        ws_data->fragment_count = fragment_count;
         mutex_unlock(&ws_data->recv_mutex);
         return SET_ERRNO(ERROR_MEMORY, "Failed to allocate fragment reassembly buffer");
       }
@@ -515,8 +538,14 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
 
     // Check if we have the final fragment
     if (frag.final) {
-      // Complete message assembled
+      // Complete message assembled - clear persistent state
       log_info("[WS_REASSEMBLE] Complete message: %zu bytes in %d fragments", assembled_size, fragment_count);
+      ws_data->partial_buffer = NULL;
+      ws_data->partial_size = 0;
+      ws_data->partial_capacity = 0;
+      ws_data->fragment_count = 0;
+      ws_data->reassembling = false;
+
       *buffer = assembled_buffer;
       *out_len = assembled_size;
       *out_allocated_buffer = assembled_buffer;
@@ -524,19 +553,12 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
       return ASCIICHAT_OK;
     }
 
-    // More fragments coming, continue reassembling
+    // More fragments coming - update persistent state and continue reassembling
+    ws_data->partial_buffer = assembled_buffer;
+    ws_data->partial_size = assembled_size;
+    ws_data->partial_capacity = assembled_capacity;
+    ws_data->fragment_count = fragment_count;
   }
-
-  mutex_unlock(&ws_data->recv_mutex);
-
-  // Return reassembled message to caller
-  *buffer = assembled_buffer;
-  *out_len = assembled_size;
-  *out_allocated_buffer = assembled_buffer;
-
-  log_info_every(LOG_RATE_DEFAULT, "[WS_TIMING] websocket_recv dequeued %zu bytes (from %d fragments) at t=%llu",
-                 assembled_size, fragment_count, (unsigned long long)time_get_ns());
-  return ASCIICHAT_OK;
 }
 
 static asciichat_error_t websocket_close(acip_transport_t *transport) {
@@ -553,6 +575,19 @@ static asciichat_error_t websocket_close(acip_transport_t *transport) {
   log_info("websocket_close: Setting is_connected=false, wsi=%p", (void *)ws_data->wsi);
   ws_data->is_connected = false;
   mutex_unlock(&ws_data->state_mutex);
+
+  // Clean up any partial reassembly state
+  mutex_lock(&ws_data->recv_mutex);
+  if (ws_data->partial_buffer) {
+    buffer_pool_free(NULL, ws_data->partial_buffer, ws_data->partial_capacity);
+    ws_data->partial_buffer = NULL;
+    ws_data->partial_size = 0;
+    ws_data->partial_capacity = 0;
+  }
+  ws_data->reassembling = false;
+  ws_data->fragment_count = 0;
+  ws_data->reassembly_start_ns = 0;
+  mutex_unlock(&ws_data->recv_mutex);
 
   // Close WebSocket connection
   if (ws_data->wsi) {
@@ -628,6 +663,17 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
   // Clear receive queue and free buffered messages
   if (ws_data->recv_queue) {
     mutex_lock(&ws_data->recv_mutex);
+
+    // Free any partial reassembly state
+    if (ws_data->partial_buffer) {
+      buffer_pool_free(NULL, ws_data->partial_buffer, ws_data->partial_capacity);
+      ws_data->partial_buffer = NULL;
+      ws_data->partial_size = 0;
+      ws_data->partial_capacity = 0;
+    }
+    ws_data->reassembling = false;
+    ws_data->fragment_count = 0;
+    ws_data->reassembly_start_ns = 0;
 
     websocket_recv_msg_t msg;
     while (ringbuffer_read(ws_data->recv_queue, &msg)) {
