@@ -127,7 +127,7 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
     bool is_first = lws_is_first_fragment(wsi);
     bool is_final = lws_is_final_fragment(wsi);
 
-    log_dev_every(4500000, "WebSocket fragment: %zu bytes (first=%d, final=%d)", len, is_first, is_final);
+    log_warn("[WS_FRAGMENT] Received: %zu bytes (first=%d, final=%d)", len, is_first, is_final);
 
     // Queue this fragment immediately with first/final flags.
     // Per LWS design, each fragment is processed individually by the callback.
@@ -413,7 +413,11 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   size_t assembled_capacity = ws_data->partial_capacity;
   uint64_t assembly_start_ns = ws_data->reassembling ? ws_data->reassembly_start_ns : time_get_ns();
   int fragment_count = ws_data->fragment_count;
-  const uint64_t MAX_REASSEMBLY_TIME_NS = 100 * 1000000ULL; // 100ms - short timeout for polling-based retry
+  // Different timeouts for first vs continuation fragments
+  const uint64_t FIRST_FRAGMENT_TIMEOUT_NS = 5000 * 1000000ULL;     // 5 seconds - browser needs time to prepare
+  const uint64_t CONTINUATION_FRAGMENT_TIMEOUT_NS = 500 * 1000000ULL; // 500ms - continuation fragments should arrive quickly
+  // Use longer timeout if waiting for first fragment, shorter for continuations
+  uint64_t MAX_REASSEMBLY_TIME_NS = (assembled_size == 0) ? FIRST_FRAGMENT_TIMEOUT_NS : CONTINUATION_FRAGMENT_TIMEOUT_NS;
 
   // Mark that we're actively reassembling
   ws_data->reassembling = true;
@@ -436,9 +440,8 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
         mutex_unlock(&ws_data->recv_mutex);
 
         if (assembled_size > 0) {
-          log_dev_every(
-              4500000,
-              "🔄 WEBSOCKET_RECV: Reassembly timeout after %llums (have %zu bytes in %d fragments, expecting final)",
+          log_warn(
+              "[WS_TIMEOUT] Reassembly timeout after %llums (have %zu bytes in %d fragments, expecting final)",
               (unsigned long long)(elapsed_ns / 1000000ULL), assembled_size, fragment_count);
         }
         return SET_ERRNO(ERROR_NETWORK, "Fragment reassembly timeout - no data from network");
@@ -485,9 +488,9 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
              frag.len, frag.first, frag.final, assembled_size);
 
     // Reset timeout window when a fragment arrives (timeout is relative to most recent fragment)
-    // This allows slow fragment delivery (fragments >100ms apart) to work correctly.
+    // This allows slow fragment delivery (fragments >timeout apart) to work correctly.
     // The timeout protects against fragments that arrive but then stop coming, not against
-    // slow delivery where each fragment eventually arrives within 100ms of the previous one.
+    // slow delivery where each fragment eventually arrives within the timeout of the previous one.
     assembly_start_ns = time_get_ns();
     ws_data->reassembly_start_ns = assembly_start_ns;
 
@@ -549,6 +552,11 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
 
     // Free fragment data (we've copied it)
     buffer_pool_free(NULL, frag.data, frag.len);
+
+    // After first fragment arrives, switch to continuation timeout for remaining fragments
+    if (fragment_count == 1) {
+      MAX_REASSEMBLY_TIME_NS = CONTINUATION_FRAGMENT_TIMEOUT_NS;
+    }
 
     // Check if we have the final fragment
     if (frag.final) {
