@@ -477,6 +477,13 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
     log_warn("[WS_REASSEMBLE] Fragment #%d: %zu bytes, first=%d, final=%d, assembled_so_far=%zu", fragment_count,
              frag.len, frag.first, frag.final, assembled_size);
 
+    // Reset timeout window when a fragment arrives (timeout is relative to most recent fragment)
+    // This allows slow fragment delivery (fragments >100ms apart) to work correctly.
+    // The timeout protects against fragments that arrive but then stop coming, not against
+    // slow delivery where each fragment eventually arrives within 100ms of the previous one.
+    assembly_start_ns = time_get_ns();
+    ws_data->reassembly_start_ns = assembly_start_ns;
+
     // Sanity check: first fragment must have first=1, continuations must have first=0
     if (assembled_size == 0 && !frag.first) {
       log_error("[WS_REASSEMBLE] ERROR: Expected first=1 for first fragment, got first=%d", frag.first);
