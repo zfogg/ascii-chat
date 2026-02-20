@@ -1020,56 +1020,14 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     }
   }
 
-  // No active video sources - generate a simple ASCII placeholder
+  // No active video sources - don't generate placeholder frames
   image_t *composite = NULL;
 
   if (sources_with_video == 0) {
-    // Generate a simple waiting message placeholder for clients with no video sources
-    const char *waiting_msg = "═══════════════════════════════════\n"
-                              "    Waiting for participants...\n"
-                              "═══════════════════════════════════\n\n"
-                              "👥 No one is broadcasting video yet.\n"
-                              "   Check back soon!\n";
-
-    size_t msg_len = strlen(waiting_msg);
-    size_t frame_len = height * (width + 2) + msg_len + 100; // Allocate enough for padding
-    char *placeholder_frame = SAFE_MALLOC(frame_len, char *);
-    if (!placeholder_frame) {
-      *out_size = 0;
-      return NULL;
-    }
-
-    // Create a frame filled with spaces/lines as background
-    char *pos = placeholder_frame;
-    for (unsigned short y = 0; y < height; y++) {
-      // Add centered waiting message in middle of screen
-      if (y == height / 2 || y == height / 2 + 1 || y == height / 2 + 2) {
-        // Center the message text
-        unsigned short msg_line_num = y - (height / 2 - 1);
-        const char *lines[3] = {"═══════════════════════════════════",
-                                "    Waiting for participants...",
-                                "═══════════════════════════════════"};
-        if (msg_line_num < 3) {
-          const char *line = lines[msg_line_num];
-          size_t line_len = strlen(line);
-          int padding = (width > (int)line_len) ? (width - (int)line_len) / 2 : 0;
-          pos += sprintf(pos, "%*s%-*s\n", padding, "", width - padding, line);
-        }
-      } else if (y == height / 2 + 4) {
-        pos += sprintf(pos, "  👥 No one is broadcasting video yet.\n");
-      } else if (y == height / 2 + 5) {
-        pos += sprintf(pos, "     Check back soon!\n");
-      } else {
-        // Fill with spaces
-        for (unsigned short x = 0; x < width; x++) {
-          *pos++ = ' ';
-        }
-        *pos++ = '\n';
-      }
-    }
-
-    *out_size = pos - placeholder_frame;
-    return placeholder_frame;
+    *out_size = 0;
+    // No active video sources for client - this isn't an error.
+    // Return NULL to indicate no frame should be sent
+    return NULL;
   }
 
   if (sources_with_video == 1) {
