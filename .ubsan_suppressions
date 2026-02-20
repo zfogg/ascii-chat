@@ -4,3 +4,9 @@
 # tomlc17: implicit conversion in line 128
 # This is a third-party TOML parser, not critical path code
 implicit-conversion:tomlc17.c:128:*
+
+# sha1.c: unsigned integer overflow in SHA1Transform
+# OpenBSD public domain SHA1 implementation - unsigned overflow is intentional
+# The algorithm is correct despite the wrapping behavior
+implicit-unsigned-integer-truncation:sha1.c:*
+unsigned-integer-overflow:sha1.c:*
