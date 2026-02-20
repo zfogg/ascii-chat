@@ -641,11 +641,18 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
 
   // Stop service thread (client-side only)
+  // Use atomic exchange to ensure we only join once, preventing double-join race condition
   if (ws_data->service_running) {
     log_debug("Stopping WebSocket service thread");
     ws_data->service_running = false;
-    asciichat_thread_join(&ws_data->service_thread, NULL);
-    log_debug("WebSocket service thread stopped");
+
+    // Join with timeout to prevent indefinite blocking if thread is stuck
+    int join_result = asciichat_thread_join_timeout(&ws_data->service_thread, NULL, 2000000000); // 2 second timeout in nanoseconds
+    if (join_result != 0) {
+      log_warn("WebSocket service thread join failed or timed out (result=%d)", join_result);
+    } else {
+      log_debug("WebSocket service thread stopped successfully");
+    }
   }
 
   // Destroy WebSocket instance (if not already destroyed)
@@ -937,47 +944,10 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
   transport->crypto_ctx = crypto_ctx;
   transport->impl_data = ws_data;
 
-  // Wait for connection to establish (synchronous connection)
-  // Service the libwebsockets event loop until connected or timeout
-  log_debug("Waiting for WebSocket connection to establish...");
-  int timeout_ms = 5000; // 5 second timeout
-  int elapsed_ms = 0;
-  while (!ws_data->is_connected && elapsed_ms < timeout_ms) {
-    // Service libwebsockets (processes network events, triggers callbacks)
-    int result = lws_service(ws_data->context, 50); // 50ms timeout per iteration
-    if (result < 0) {
-      log_error("lws_service error during connection: %d", result);
-      lws_context_destroy(ws_data->context);
-      SAFE_FREE(ws_data->send_buffer);
-      mutex_destroy(&ws_data->state_mutex);
-      cond_destroy(&ws_data->recv_cond);
-      mutex_destroy(&ws_data->recv_mutex);
-      ringbuffer_destroy(ws_data->recv_queue);
-      SAFE_FREE(ws_data);
-      SAFE_FREE(transport);
-      SET_ERRNO(ERROR_NETWORK, "WebSocket connection failed");
-      return NULL;
-    }
-    elapsed_ms += 50;
-  }
-
-  if (!ws_data->is_connected) {
-    log_error("WebSocket connection timeout after %d ms", elapsed_ms);
-    lws_context_destroy(ws_data->context);
-    SAFE_FREE(ws_data->send_buffer);
-    mutex_destroy(&ws_data->state_mutex);
-    cond_destroy(&ws_data->recv_cond);
-    mutex_destroy(&ws_data->recv_mutex);
-    ringbuffer_destroy(ws_data->recv_queue);
-    SAFE_FREE(ws_data);
-    SAFE_FREE(transport);
-    SET_ERRNO(ERROR_NETWORK, "WebSocket connection timeout");
-    return NULL;
-  }
-
-  log_info("WebSocket connection established (crypto: %s)", crypto_ctx ? "enabled" : "disabled");
-
-  // Start service thread to process incoming messages
+  // Start service thread FIRST to process all incoming messages
+  // This avoids race condition with lws_service() being called from two threads
+  // libwebsockets is not thread-safe, so we must let the service thread own the event loop
+  log_debug("Creating WebSocket service thread before connection establishment");
   ws_data->service_running = true;
   if (asciichat_thread_create(&ws_data->service_thread, websocket_service_thread, ws_data) != 0) {
     log_error("Failed to create WebSocket service thread");
@@ -993,6 +963,35 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
     SET_ERRNO(ERROR_INTERNAL, "Failed to create service thread");
     return NULL;
   }
+
+  log_debug("Service thread created, waiting for connection to establish...");
+
+  // Wait for connection to establish (service thread now handles the event loop)
+  log_debug("Waiting for WebSocket connection to establish...");
+  int timeout_ms = 5000; // 5 second timeout
+  int elapsed_ms = 0;
+  while (!ws_data->is_connected && elapsed_ms < timeout_ms) {
+    usleep(50000); // 50ms polling interval - let service thread handle lws_service()
+    elapsed_ms += 50;
+  }
+
+  if (!ws_data->is_connected) {
+    log_error("WebSocket connection timeout after %d ms", elapsed_ms);
+    ws_data->service_running = false; // Signal thread to stop
+    asciichat_thread_join_timeout(&ws_data->service_thread, NULL, 2000000000); // 2 second join timeout
+    lws_context_destroy(ws_data->context);
+    SAFE_FREE(ws_data->send_buffer);
+    mutex_destroy(&ws_data->state_mutex);
+    cond_destroy(&ws_data->recv_cond);
+    mutex_destroy(&ws_data->recv_mutex);
+    ringbuffer_destroy(ws_data->recv_queue);
+    SAFE_FREE(ws_data);
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_NETWORK, "WebSocket connection timeout");
+    return NULL;
+  }
+
+  log_info("WebSocket connection established (crypto: %s) - service thread active", crypto_ctx ? "enabled" : "disabled");
 
   log_debug("WebSocket service thread started for client transport");
 
