@@ -1041,7 +1041,8 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
 
     // Create a frame filled with spaces/lines as background
     char *pos = placeholder_frame;
-    for (unsigned short y = 0; y < height; y++) {
+    size_t remaining = frame_len;
+    for (unsigned short y = 0; y < height && remaining > 10; y++) {
       // Add centered waiting message in middle of screen
       if (y == height / 2 || y == height / 2 + 1 || y == height / 2 + 2) {
         // Center the message text
@@ -1053,18 +1054,35 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
           const char *line = lines[msg_line_num];
           size_t line_len = strlen(line);
           int padding = (width > (int)line_len) ? (width - (int)line_len) / 2 : 0;
-          pos += sprintf(pos, "%*s%-*s\n", padding, "", width - padding, line);
+          int written =
+              snprintf(pos, remaining, "%*s%-*s\n", padding, "", width - padding, line);
+          if (written > 0) {
+            pos += written;
+            remaining -= written;
+          }
         }
       } else if (y == height / 2 + 4) {
-        pos += sprintf(pos, "  👥 No one is broadcasting video yet.\n");
+        int written = snprintf(pos, remaining, "  No one is broadcasting video yet.\n");
+        if (written > 0) {
+          pos += written;
+          remaining -= written;
+        }
       } else if (y == height / 2 + 5) {
-        pos += sprintf(pos, "     Check back soon!\n");
+        int written = snprintf(pos, remaining, "     Check back soon!\n");
+        if (written > 0) {
+          pos += written;
+          remaining -= written;
+        }
       } else {
         // Fill with spaces
-        for (unsigned short x = 0; x < width; x++) {
+        for (unsigned short x = 0; x < width && remaining > 2; x++) {
           *pos++ = ' ';
+          remaining--;
         }
-        *pos++ = '\n';
+        if (remaining > 1) {
+          *pos++ = '\n';
+          remaining--;
+        }
       }
     }
 
