@@ -24,7 +24,7 @@ def kill_existing_processes():
 def start_server():
     """Start the ascii-chat server (uses webcam by default)"""
     print("Starting ascii-chat server...")
-    proc = subprocess.Popen(['/home/linuxbrew/.linuxbrew/bin/ascii-chat', 'server'],
+    proc = subprocess.Popen(['./build/bin/ascii-chat', 'server'],
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     print(f"Server started with PID {proc.pid}")
     time.sleep(2)  # Wait for server to start
