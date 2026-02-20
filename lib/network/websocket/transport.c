@@ -839,8 +839,19 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
     return NULL;
   }
 
+  // Create send queue (for consistency with server transports, even though client sends directly)
+  ws_data->send_queue = ringbuffer_create(sizeof(websocket_recv_msg_t), WEBSOCKET_SEND_QUEUE_SIZE);
+  if (!ws_data->send_queue) {
+    ringbuffer_destroy(ws_data->recv_queue);
+    SAFE_FREE(ws_data);
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_MEMORY, "Failed to create send queue");
+    return NULL;
+  }
+
   // Initialize synchronization primitives
   if (mutex_init(&ws_data->recv_mutex) != 0) {
+    ringbuffer_destroy(ws_data->send_queue);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
@@ -850,6 +861,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
 
   if (cond_init(&ws_data->recv_cond) != 0) {
     mutex_destroy(&ws_data->recv_mutex);
+    ringbuffer_destroy(ws_data->send_queue);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
@@ -857,9 +869,22 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
     return NULL;
   }
 
-  if (mutex_init(&ws_data->state_mutex) != 0) {
+  if (mutex_init(&ws_data->send_mutex) != 0) {
     cond_destroy(&ws_data->recv_cond);
     mutex_destroy(&ws_data->recv_mutex);
+    ringbuffer_destroy(ws_data->send_queue);
+    ringbuffer_destroy(ws_data->recv_queue);
+    SAFE_FREE(ws_data);
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_INTERNAL, "Failed to initialize send mutex");
+    return NULL;
+  }
+
+  if (mutex_init(&ws_data->state_mutex) != 0) {
+    mutex_destroy(&ws_data->send_mutex);
+    cond_destroy(&ws_data->recv_cond);
+    mutex_destroy(&ws_data->recv_mutex);
+    ringbuffer_destroy(ws_data->send_queue);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
@@ -872,8 +897,10 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
   ws_data->send_buffer = SAFE_MALLOC(ws_data->send_buffer_capacity, uint8_t *);
   if (!ws_data->send_buffer) {
     mutex_destroy(&ws_data->state_mutex);
+    mutex_destroy(&ws_data->send_mutex);
     cond_destroy(&ws_data->recv_cond);
     mutex_destroy(&ws_data->recv_mutex);
+    ringbuffer_destroy(ws_data->send_queue);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
@@ -899,8 +926,10 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
   if (!ws_data->context) {
     SAFE_FREE(ws_data->send_buffer);
     mutex_destroy(&ws_data->state_mutex);
+    mutex_destroy(&ws_data->send_mutex);
     cond_destroy(&ws_data->recv_cond);
     mutex_destroy(&ws_data->recv_mutex);
+    ringbuffer_destroy(ws_data->send_queue);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
@@ -929,8 +958,10 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
     lws_context_destroy(ws_data->context);
     SAFE_FREE(ws_data->send_buffer);
     mutex_destroy(&ws_data->state_mutex);
+    mutex_destroy(&ws_data->send_mutex);
     cond_destroy(&ws_data->recv_cond);
     mutex_destroy(&ws_data->recv_mutex);
+    ringbuffer_destroy(ws_data->send_queue);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
@@ -959,8 +990,10 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
       lws_context_destroy(ws_data->context);
       SAFE_FREE(ws_data->send_buffer);
       mutex_destroy(&ws_data->state_mutex);
+      mutex_destroy(&ws_data->send_mutex);
       cond_destroy(&ws_data->recv_cond);
       mutex_destroy(&ws_data->recv_mutex);
+      ringbuffer_destroy(ws_data->send_queue);
       ringbuffer_destroy(ws_data->recv_queue);
       SAFE_FREE(ws_data);
       SAFE_FREE(transport);
@@ -975,8 +1008,10 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
     lws_context_destroy(ws_data->context);
     SAFE_FREE(ws_data->send_buffer);
     mutex_destroy(&ws_data->state_mutex);
+    mutex_destroy(&ws_data->send_mutex);
     cond_destroy(&ws_data->recv_cond);
     mutex_destroy(&ws_data->recv_mutex);
+    ringbuffer_destroy(ws_data->send_queue);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
@@ -994,8 +1029,10 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
     lws_context_destroy(ws_data->context);
     SAFE_FREE(ws_data->send_buffer);
     mutex_destroy(&ws_data->state_mutex);
+    mutex_destroy(&ws_data->send_mutex);
     cond_destroy(&ws_data->recv_cond);
     mutex_destroy(&ws_data->recv_mutex);
+    ringbuffer_destroy(ws_data->send_queue);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
