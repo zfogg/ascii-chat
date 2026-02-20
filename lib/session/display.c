@@ -592,11 +592,34 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
 
   START_TIMER("frame_write");
   if (use_tty_control) {
-    // TTY mode: just reset cursor to home and redraw frame without clearing
-    // This avoids flashing at high framerates and is more efficient than clearing
-    (void)terminal_cursor_home(STDOUT_FILENO);
-    // Send frame data (overwrites previous frame from cursor position)
-    (void)platform_write_all(STDOUT_FILENO, frame_data, frame_len);
+    // TTY mode: Buffer cursor control + frame data together for atomic frame display
+    // This ensures complete frames are displayed without fragmentation from partial writes
+    const char *cursor_home_sequence = "\033[H"; // ESC [ H - cursor home
+    size_t cursor_seq_len = 3;
+
+    // Calculate total buffer size needed for cursor control + frame data
+    size_t total_size = cursor_seq_len + frame_len;
+
+    // Allocate buffer to combine cursor positioning and frame into single write
+    char *frame_buffer = SAFE_MALLOC(total_size, char *);
+    if (frame_buffer) {
+      // Copy cursor home sequence first
+      memcpy(frame_buffer, cursor_home_sequence, cursor_seq_len);
+      // Copy frame data immediately after cursor sequence
+      memcpy(frame_buffer + cursor_seq_len, frame_data, frame_len);
+
+      // Write combined cursor control + frame as atomic operation
+      // This prevents partial frames from being displayed if output is interrupted
+      (void)platform_write_all(STDOUT_FILENO, frame_buffer, total_size);
+
+      SAFE_FREE(frame_buffer);
+    } else {
+      // Fallback if allocation fails: write cursor then frame (not ideal but prevents crash)
+      (void)terminal_cursor_home(STDOUT_FILENO);
+      (void)platform_write_all(STDOUT_FILENO, frame_data, frame_len);
+    }
+
+    // Flush terminal to ensure all data reaches the display
     (void)terminal_flush(STDOUT_FILENO);
   } else if (terminal_is_interactive()) {
     // Piped to an interactive terminal: output ASCII frames
