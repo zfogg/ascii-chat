@@ -447,7 +447,7 @@ GENERATE_OPTIONS_TEST(
     { cr_fail("Should not reach this point - invalid webcam index should cause exit"); },
     { cr_assert_eq(exit_code, 1); })
 
-GENERATE_OPTIONS_TEST(valid_webcam_flip, ARGV_LIST("client", "-g"), true, {/* flip flag only */},
+GENERATE_OPTIONS_TEST(valid_webcam_flip, ARGV_LIST("client", "--flip-x"), true, {/* flip flag only */},
                       { cr_assert_eq(exit_code, 0, "Webcam flip flag should not cause exit"); })
 
 /* ============================================================================
@@ -739,7 +739,7 @@ Test(options, complex_client_combination) {
                   "--width=120",
                   "--height=60",
                   "--webcam-index=1",
-                  "--webcam-flip",
+                  "--flip-x",
                   "--color-mode=256",
                   "--render-mode=background",
                   "--palette=blocks",
@@ -1003,7 +1003,7 @@ GENERATE_OPTIONS_TEST(
 GENERATE_OPTIONS_TEST(
     test_flag_values,
     // NOTE: --quiet is now a global option, removed from this test
-    ARGV_LIST("client", "--audio", "--stretch", "--snapshot", "--encrypt", "--utf8", "--show-capabilities", "-g"), true,
+    ARGV_LIST("client", "--audio", "--stretch", "--snapshot", "--encrypt", "--utf8", "--show-capabilities", "--flip-x"), true,
     {
       // Test all flags were set
       cr_assert_eq(opts->audio_enabled, 1);
@@ -1031,7 +1031,7 @@ GENERATE_OPTIONS_TEST(
     { cr_assert_eq(exit_code, 0, "snapshot delay should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    test_webcam_values, ARGV_LIST("client", "-c", "3", "-g"), true,
+    test_webcam_values, ARGV_LIST("client", "-c", "3", "--flip-x"), true,
     {
       cr_assert_eq(opts->webcam_index, 3);
       cr_assert_eq(opts->flip_x, false);
@@ -1041,7 +1041,7 @@ GENERATE_OPTIONS_TEST(
 GENERATE_OPTIONS_TEST(
     test_comprehensive_client_values,
     // NOTE: --quiet and --log-file are now global options, removed from this test
-    ARGV_LIST("client", "10.0.0.1:9999", "--width=200", "--height=100", "--webcam-index=2", "--webcam-flip",
+    ARGV_LIST("client", "10.0.0.1:9999", "--width=200", "--height=100", "--webcam-index=2", "--flip-x",
               "--color-mode=256", "--render-mode=background", "--palette=digital", "--audio", "--stretch", "--snapshot",
               "--snapshot-delay=5.0", "--encrypt", "--key=testkey123"),
     true,
@@ -1184,7 +1184,7 @@ GENERATE_OPTIONS_TEST(
     { cr_assert_eq(exit_code, 0, "webcam index should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    test_webcam_flip_only, ARGV_LIST("client", "-g"), true,
+    test_webcam_flip_only, ARGV_LIST("client", "--flip-x"), true,
     {
       cr_assert_eq(opts->webcam_index, 0); // Should remain default
       cr_assert_eq(opts->flip_x, false);
