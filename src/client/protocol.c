@@ -507,6 +507,10 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
               header.height);
   }
 
+  // Render ASCII art frame to stdout for logging/capture
+  printf("%s", frame_data);
+  fflush(stdout);
+
   display_render_frame(frame_data);
 
   SAFE_FREE(frame_data);
