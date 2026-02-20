@@ -11,22 +11,35 @@ import { ServerFixture, getRandomPort } from "./server-fixture";
 const WEB_CLIENT_URL = "http://localhost:3000/client";
 const TEST_TIMEOUT = 20000; // 20 second timeout for all tests
 
+// Get server port from environment variable or use default (27226 is the WebSocket default)
+const SERVER_PORT = process.env.PORT ? parseInt(process.env.PORT) : 27226;
+const USE_EXTERNAL_SERVER = process.env.PORT !== undefined;
+
 // Create server fixture for this test file
 let server: ServerFixture | null = null;
 let serverUrl: string = "";
 
 test.beforeAll(async () => {
-  const port = getRandomPort();
-  server = new ServerFixture(port);
-  await server.start();
-  serverUrl = server.getUrl();
-  console.log(`✓ Server started on ${serverUrl}`);
+  if (USE_EXTERNAL_SERVER) {
+    // Use external server on specified port (e.g., from debug script)
+    serverUrl = `ws://127.0.0.1:${SERVER_PORT}`;
+    console.log(`✓ Using external server on ${serverUrl}`);
+  } else {
+    // Start our own server for this test file
+    const port = getRandomPort();
+    server = new ServerFixture(port);
+    await server.start();
+    serverUrl = server.getUrl();
+    console.log(`✓ Server started on ${serverUrl}`);
+  }
 });
 
 test.afterAll(async () => {
-  if (server) {
+  if (server && !USE_EXTERNAL_SERVER) {
     await server.stop();
     console.log(`✓ Server stopped`);
+  } else if (USE_EXTERNAL_SERVER) {
+    console.log(`✓ External server (port ${SERVER_PORT}) left running for debug script`);
   }
 });
 
