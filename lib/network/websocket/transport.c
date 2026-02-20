@@ -211,10 +211,10 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
   bool connected = ws_data->is_connected;
   mutex_unlock(&ws_data->state_mutex);
 
-  log_dev_every(1000000, "websocket_send: is_connected=%d, wsi=%p, send_len=%zu", connected, (void *)ws_data->wsi, len);
+  log_info("[WEBSOCKET_SEND] CALLED: is_connected=%d, wsi=%p, send_len=%zu, owns_context=%d", connected, (void *)ws_data->wsi, len, ws_data->owns_context);
 
   if (!connected) {
-    log_error("WebSocket send called but transport NOT connected! wsi=%p, len=%zu", (void *)ws_data->wsi, len);
+    log_error("[WEBSOCKET_SEND] FAIL: transport NOT connected! wsi=%p, len=%zu", (void *)ws_data->wsi, len);
     return SET_ERRNO(ERROR_NETWORK, "WebSocket transport not connected (wsi=%p)", (void *)ws_data->wsi);
   }
 
@@ -305,18 +305,20 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     msg.final = 1;
 
     mutex_lock(&ws_data->send_mutex);
+    size_t queue_size_before = ringbuffer_size(ws_data->send_queue);
     bool success = ringbuffer_write(ws_data->send_queue, &msg);
 
     if (!success) {
       mutex_unlock(&ws_data->send_mutex);
-      log_error("WebSocket server send queue FULL - cannot queue %zu byte message for wsi=%p", send_len,
-                (void *)ws_data->wsi);
+      log_error("[WEBSOCKET_SEND_QUEUE] FAIL: Queue FULL - cannot queue %zu bytes for wsi=%p (queue_size=%zu/%u)", send_len,
+                (void *)ws_data->wsi, queue_size_before, ws_data->send_queue->capacity);
       SAFE_FREE(msg.data);
       SAFE_FREE(send_buffer);
       if (encrypted_packet)
         buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
       return SET_ERRNO(ERROR_NETWORK, "Send queue full (cannot queue %zu bytes)", send_len);
     }
+    size_t queue_size_after = ringbuffer_size(ws_data->send_queue);
     mutex_unlock(&ws_data->send_mutex);
 
     // Wake the LWS event loop from this non-service thread.
@@ -324,13 +326,14 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     // lws_callback_on_writable() must NOT be called here — it's only safe
     // from the service thread. LWS_CALLBACK_EVENT_WAIT_CANCELLED (in server.c)
     // handles calling lws_callback_on_writable_all_protocol() on the service thread.
-    log_dev_every(1000000, ">>> FRAME QUEUED: %zu bytes for wsi=%p (send_len=%zu)", send_len, (void *)ws_data->wsi,
-                  send_len);
+    log_info("[WEBSOCKET_SEND_QUEUE] SUCCESS: Queued %zu bytes for wsi=%p (queue: %zu → %zu / %u)", send_len, (void *)ws_data->wsi,
+                  queue_size_before, queue_size_after, ws_data->send_queue->capacity);
 
     struct lws_context *ctx = lws_get_context(ws_data->wsi);
+    log_info("[WEBSOCKET_SEND_CANCEL_SERVICE] Calling lws_cancel_service(ctx=%p) to wake event loop", (void *)ctx);
     lws_cancel_service(ctx);
 
-    log_dev_every(1000000, "Server-side WebSocket: queued %zu bytes, cancel_service sent for wsi=%p", send_len,
+    log_info("[WEBSOCKET_SEND_SUCCESS] Frame %zu bytes queued and cancel_service sent for wsi=%p", send_len,
                   (void *)ws_data->wsi);
     SAFE_FREE(send_buffer);
     if (encrypted_packet)

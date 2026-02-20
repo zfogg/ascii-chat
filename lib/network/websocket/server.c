@@ -284,31 +284,31 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
   case LWS_CALLBACK_SERVER_WRITEABLE: {
     uint64_t writeable_callback_start_ns = time_get_ns();
     atomic_fetch_add(&g_writeable_callback_count, 1);
-    log_dev_every(4500 * US_PER_MS_INT, "=== LWS_CALLBACK_SERVER_WRITEABLE FIRED === wsi=%p, timestamp=%llu",
-                  (void *)wsi, (unsigned long long)writeable_callback_start_ns);
+    log_info("[LWS_CALLBACK_SERVER_WRITEABLE] FIRED: wsi=%p, callback_count=%lu",
+                  (void *)wsi, atomic_load(&g_writeable_callback_count));
 
     // Dequeue and send pending data
     if (!conn_data) {
-      log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: No conn_data");
+      log_error("[LWS_CALLBACK_SERVER_WRITEABLE] FAIL: No conn_data");
       break;
     }
 
     // Check if cleanup is in progress to avoid race condition with remove_client
     if (conn_data->cleaning_up) {
-      log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: Cleanup in progress, skipping");
+      log_info("[LWS_CALLBACK_SERVER_WRITEABLE] Cleanup in progress, skipping");
       break;
     }
 
     // Snapshot the transport pointer to avoid race condition with cleanup thread
     acip_transport_t *transport_snapshot = conn_data->transport;
     if (!transport_snapshot) {
-      log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: No transport");
+      log_error("[LWS_CALLBACK_SERVER_WRITEABLE] FAIL: No transport");
       break;
     }
 
     websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport_snapshot->impl_data;
     if (!ws_data || !ws_data->send_queue) {
-      log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: No ws_data or send_queue");
+      log_error("[LWS_CALLBACK_SERVER_WRITEABLE] FAIL: No ws_data (%p) or send_queue (%p)", (void *)ws_data, ws_data ? (void *)ws_data->send_queue : NULL);
       break;
     }
 
@@ -416,7 +416,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       conn_data->pending_send_offset = 0;
       conn_data->has_pending_send = true;
 
-      log_dev_every(4500 * US_PER_MS_INT, ">>> SERVER_WRITEABLE: Dequeued message %zu bytes, sending first fragment",
+      log_info("[LWS_CALLBACK_SERVER_WRITEABLE_DEQUEUE] SUCCESS: Dequeued %zu bytes, starting fragment send",
                     msg.len);
 
       // Send first fragment
@@ -431,7 +431,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
         SAFE_FREE(ws_data->send_buffer);
         ws_data->send_buffer = SAFE_MALLOC(required_size, uint8_t *);
         if (!ws_data->send_buffer) {
-          log_error("Failed to allocate send buffer");
+          log_error("[LWS_CALLBACK_SERVER_WRITEABLE] FAIL: Failed to allocate send buffer %zu bytes", required_size);
           SAFE_FREE(msg.data);
           conn_data->has_pending_send = false;
           break;
@@ -441,9 +441,13 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
       memcpy(ws_data->send_buffer + LWS_PRE, msg.data, chunk_size);
 
+      log_info("[LWS_WRITE_CALL] About to call lws_write: wsi=%p, chunk_size=%zu, is_start=%d, is_end=%d, flags=0x%02x",
+               (void *)wsi, chunk_size, is_start, is_end, flags);
       int written = lws_write(wsi, ws_data->send_buffer + LWS_PRE, chunk_size, flags);
+      log_info("[LWS_WRITE_RETURN] lws_write returned: %d (requested %zu)", written, chunk_size);
+
       if (written < 0) {
-        log_error("Server WebSocket write error on first fragment: %d", written);
+        log_error("[LWS_WRITE_ERROR] Server WebSocket write error on first fragment: %d (errno=%d)", written, errno);
         SAFE_FREE(msg.data);
         conn_data->has_pending_send = false;
         break;
@@ -730,13 +734,13 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     // Fired on the service thread when lws_cancel_service() is called from another thread.
     // This is how we safely convert cross-thread send requests into writable callbacks.
     // lws_callback_on_writable() is only safe from the service thread context.
-    log_dev_every(4500 * US_PER_MS_INT, "LWS_CALLBACK_EVENT_WAIT_CANCELLED triggered - requesting writable callbacks");
+    log_info("[LWS_CALLBACK_EVENT_WAIT_CANCELLED] FIRED: wsi=%p, proto_name=%s", (void *)wsi, proto_name);
     const struct lws_protocols *protocol = lws_get_protocol(wsi);
     if (protocol) {
-      log_dev_every(4500 * US_PER_MS_INT, "EVENT_WAIT_CANCELLED: Calling lws_callback_on_writable_all_protocol");
+      log_info("[LWS_CALLBACK_EVENT_WAIT_CANCELLED] SUCCESS: Calling lws_callback_on_writable_all_protocol (protocol=%s)", protocol->name);
       lws_callback_on_writable_all_protocol(lws_get_context(wsi), protocol);
     } else {
-      log_error("EVENT_WAIT_CANCELLED: No protocol found on wsi");
+      log_error("[LWS_CALLBACK_EVENT_WAIT_CANCELLED] FAIL: No protocol found on wsi=%p", (void *)wsi);
     }
     break;
   }
