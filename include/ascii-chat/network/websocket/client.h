@@ -97,6 +97,9 @@ typedef struct websocket_client {
   /** Transport instance (owned by websocket_client) - NULL until connected */
   acip_transport_t *transport;
 
+  /** Client ID assigned by server (derived from local port) */
+  uint32_t my_client_id;
+
 } websocket_client_t;
 
 /**
@@ -185,5 +188,13 @@ acip_transport_t *websocket_client_connect(websocket_client_t *client, const cha
  * @return acip_transport_t pointer or NULL if not connected
  */
 acip_transport_t *websocket_client_get_transport(const websocket_client_t *client);
+
+/**
+ * @brief Get client ID assigned by server
+ *
+ * @param client WebSocket client instance
+ * @return Client ID (derived from local port), or 0 if not connected
+ */
+uint32_t websocket_client_get_id(const websocket_client_t *client);
 
 #endif /* NETWORK_WEBSOCKET_CLIENT_H */
