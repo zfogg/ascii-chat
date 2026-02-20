@@ -24,6 +24,9 @@
 #include <time.h>
 #include <errno.h>
 #include <stdint.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #define SERVER_PORT 29998
 #define MAX_CLIENTS 3
@@ -42,6 +45,55 @@ typedef struct {
 
 static process_t server_proc = {0};
 static process_t client_procs[MAX_CLIENTS] = {0};
+
+/**
+ * Check if a port is in use and attempt to clean up
+ * Returns 0 if port is available, -1 if still in use after cleanup
+ */
+static int ensure_port_available(int port) {
+  // Try to bind to the port to see if it's available
+  int sock = socket(AF_INET, SOCK_STREAM, 0);
+  if (sock < 0) {
+    return -1;
+  }
+
+  // Set socket to reuse address to avoid TIME_WAIT issues
+  int reuse = 1;
+  setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
+
+  struct sockaddr_in addr = {0};
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(port);
+  addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+  int result = bind(sock, (struct sockaddr *)&addr, sizeof(addr));
+  close(sock);
+
+  if (result == 0) {
+    // Port is available
+    return 0;
+  }
+
+  // Port is in use - try to kill any processes using it
+  // Use lsof if available to find and kill the process
+  char cmd[256];
+  snprintf(cmd, sizeof(cmd), "lsof -ti :%d | xargs -r kill -9 2>/dev/null", port);
+  system(cmd);
+
+  // Wait a moment for the port to be released
+  usleep(500000); // 500ms
+
+  // Check again
+  sock = socket(AF_INET, SOCK_STREAM, 0);
+  if (sock < 0) {
+    return -1;
+  }
+  setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
+  result = bind(sock, (struct sockaddr *)&addr, sizeof(addr));
+  close(sock);
+
+  return result == 0 ? 0 : -1;
+}
 
 /**
  * Read from a pipe without blocking, appending to buffer
@@ -110,6 +162,9 @@ __attribute__((unused)) static int wait_for_pattern(process_t *proc, const char 
  * Start server process
  */
 static void start_server(void) {
+  // Ensure the port is available (kill any lingering processes)
+  ensure_port_available(SERVER_PORT);
+
   // Create pipes for stdout and stderr
   pipe(server_proc.stdout_pipe);
   pipe(server_proc.stderr_pipe);
@@ -141,11 +196,15 @@ static void start_server(void) {
 
     char binary_path[1024];
 
-    // Try relative path first (when running from build directory)
+    // Try multiple paths to find ascii-chat binary
+    // 1. ./bin/ascii-chat (when cwd is build dir)
+    // 2. ../bin/ascii-chat (when cwd is build/tests dir - ctest runs from there)
+    // 3. $cwd/build/bin/ascii-chat (when cwd is repo root)
     if (access("./bin/ascii-chat", X_OK) == 0) {
       snprintf(binary_path, sizeof(binary_path), "%s/bin/ascii-chat", cwd);
+    } else if (access("../bin/ascii-chat", X_OK) == 0) {
+      snprintf(binary_path, sizeof(binary_path), "%s/../bin/ascii-chat", cwd);
     } else {
-      // Try absolute path (when running from repo root)
       snprintf(binary_path, sizeof(binary_path), "%s/build/bin/ascii-chat", cwd);
     }
 
