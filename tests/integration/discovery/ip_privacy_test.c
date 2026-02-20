@@ -14,6 +14,7 @@
  */
 
 #include <ascii-chat/discovery/database.h>
+#include <ascii-chat/tests/logging.h>
 #include <ascii-chat/discovery/session.h>
 #include "discovery-service/main.h"
 #include <ascii-chat/asciichat_errno.h>
@@ -45,6 +46,9 @@ static void cleanup_test_db(const char *path) {
 /**
  * @brief Test that IP is revealed for password-protected session with correct password
  */
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(acds_ip_privacy, LOG_DEBUG, LOG_DEBUG, false, false);
+
 Test(acds_ip_privacy, password_protected_reveals_ip) {
   char db_path[256];
   get_temp_db_path(db_path, sizeof(db_path), "passwd_reveal");

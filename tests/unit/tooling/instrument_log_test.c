@@ -1,4 +1,5 @@
 #include <ascii-chat/tests/common.h>
+#include <ascii-chat/tests/logging.h>
 #include <ascii-chat/tooling/panic/instrument_log.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/thread.h>
@@ -251,6 +252,8 @@ static void write_sample_record(const char *file_path) {
   asciichat_instr_log_line(file_path, 42, "test_function", "value = 42;", 0);
   asciichat_instr_runtime_global_destroy();
 }
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(instrument_log, LOG_DEBUG, LOG_DEBUG, false, false);
 
 Test(instrument_log, writes_log_with_defaults) {
   char temp_dir[PATH_MAX];

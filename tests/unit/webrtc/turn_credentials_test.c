@@ -4,6 +4,7 @@
  */
 
 #include <ascii-chat/network/webrtc/turn_credentials.h>
+#include <ascii-chat/tests/logging.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <criterion/criterion.h>
 #include <string.h>
@@ -15,6 +16,9 @@ TestSuite(turn_credentials, .timeout = 5.0);
 /**
  * @brief Test basic TURN credential generation
  */
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(turn_credentials, LOG_DEBUG, LOG_DEBUG, false, false);
+
 Test(turn_credentials, basic_generation) {
   turn_credentials_t creds;
   asciichat_error_t result = turn_generate_credentials("swift-river-mountain", "my-secret-key", 86400, &creds);

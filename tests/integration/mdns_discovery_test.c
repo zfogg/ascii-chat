@@ -18,6 +18,7 @@
 #include <unistd.h>
 
 #include <ascii-chat/network/mdns/mdns.h>
+#include <ascii-chat/tests/logging.h>
 #include <ascii-chat/common.h>
 
 // Static callbacks for integration tests (must be at file scope, not inside Test())
@@ -41,6 +42,9 @@ static void invalid_type_test_callback(const asciichat_mdns_discovery_t *discove
 /**
  * @brief Test basic mDNS initialization and cleanup cycle
  */
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(mdns_integration, LOG_DEBUG, LOG_DEBUG, false, false);
+
 Test(mdns_integration, initialization_cleanup_cycle) {
   // Create and destroy multiple times to verify no resource leaks
   for (int i = 0; i < 3; i++) {

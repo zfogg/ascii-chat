@@ -13,11 +13,14 @@
 #include <errno.h>
 
 #include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/tests/logging.h>
 #include <ascii-chat/common.h>
 
 // ============================================================================
 // Data Structure Tests (safe - don't trigger error logging)
 // ============================================================================
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(platform_config_search, LOG_DEBUG, LOG_DEBUG, false, false);
 
 Test(platform_config_search, list_cleanup_null_safe) {
   // Test that config_file_list_destroy is safe with NULL

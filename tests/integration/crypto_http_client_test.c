@@ -9,6 +9,7 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
 #include <ascii-chat/network/http_client.h>
+#include <ascii-chat/tests/logging.h>
 #include <ascii-chat/crypto/https_keys.h>
 #include <ascii-chat/common.h>
 #include <string.h>
@@ -32,6 +33,8 @@ static bool is_network_available(void) {
 // =============================================================================
 // Basic HTTPS GET Tests
 // =============================================================================
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(crypto_http_client, LOG_DEBUG, LOG_DEBUG, false, false);
 
 Test(crypto_http_client, https_get_github_zen) {
   if (!is_network_available()) {

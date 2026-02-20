@@ -11,6 +11,7 @@
 #include <string.h>
 
 #include <ascii-chat/crypto/gpg/openpgp.h>
+#include <ascii-chat/tests/logging.h>
 #include <ascii-chat/common.h>
 
 // =============================================================================
@@ -77,6 +78,8 @@ static const uint8_t EXPECTED_NEW_FORMAT_KEY[32] = {0xDE, 0xAD, 0xBE, 0xEF, 0x00
 // =============================================================================
 // Packet Header Parsing Tests
 // =============================================================================
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(openpgp, LOG_DEBUG, LOG_DEBUG, false, false);
 
 Test(openpgp, parse_old_format_packet_header) {
   openpgp_packet_header_t header;

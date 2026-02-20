@@ -30,6 +30,7 @@
 #include <time.h>
 
 #include <ascii-chat/tests/common.h>
+#include <ascii-chat/tests/logging.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/common.h>
 
@@ -316,6 +317,9 @@ static bool extract_session_string(const char *log_line, char *session_string, s
  * 5. Both parties can exchange data
  * 6. Clean shutdown preserves logs
  */
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(webrtc_discovery_e2e, LOG_DEBUG, LOG_DEBUG, false, false);
+
 Test(webrtc_discovery_e2e, full_connection_flow) {
   const char *binary_path = test_get_binary_path();
   int acds_port = get_unique_test_port();

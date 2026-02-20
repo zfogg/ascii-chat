@@ -12,6 +12,7 @@
 
 #include <criterion/criterion.h>
 #include <ascii-chat/network/consensus/coordinator.h>
+#include <ascii-chat/tests/logging.h>
 #include <ascii-chat/network/consensus/topology.h>
 #include <ascii-chat/network/consensus/election.h>
 #include <ascii-chat/network/consensus/state.h>
@@ -133,6 +134,9 @@ static void destroy_participant(participant_t *p) {
 /**
  * Test basic topology formation with 4 participants
  */
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(consensus_integration, LOG_DEBUG, LOG_DEBUG, false, false);
+
 Test(consensus_integration, topology_formation) {
   // Create 4 participants
   uint8_t participants[4][16];

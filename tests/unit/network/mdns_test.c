@@ -15,6 +15,7 @@
 #include <string.h>
 
 #include <ascii-chat/network/mdns/mdns.h>
+#include <ascii-chat/tests/logging.h>
 #include <ascii-chat/common.h>
 
 // Static callback for query tests (must be at file scope, not inside Test())
@@ -26,6 +27,9 @@ static void dummy_callback(const asciichat_mdns_discovery_t *discovery, void *us
 /**
  * @brief Test mDNS context initialization
  */
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(mdns, LOG_DEBUG, LOG_DEBUG, false, false);
+
 Test(mdns, init_creates_valid_context) {
   asciichat_mdns_t *mdns = asciichat_mdns_init();
   cr_assert_not_null(mdns, "mDNS context should be initialized");

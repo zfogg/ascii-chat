@@ -5,12 +5,15 @@
 
 #include <criterion/criterion.h>
 #include <ascii-chat/media/yt_dlp.h>
+#include <ascii-chat/tests/logging.h>
 #include <ascii-chat/log/logging.h>
 #include <string.h>
 
 /* ============================================================================
  * Basic API Tests
  * ============================================================================ */
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(yt_dlp, LOG_DEBUG, LOG_DEBUG, false, false);
 
 Test(yt_dlp, is_available_returns_bool) {
   // Test that yt_dlp_is_available returns a boolean value

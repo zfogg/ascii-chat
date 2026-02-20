@@ -5,6 +5,7 @@
 
 #include <criterion/criterion.h>
 #include <ascii-chat/network/consensus/metrics.h>
+#include <ascii-chat/tests/logging.h>
 #include <ascii-chat/util/endian.h>
 #include <string.h>
 
@@ -22,6 +23,9 @@ static void make_uuid(uint8_t id[16], int value) {
 /**
  * Test: Basic measurement returns valid structure
  */
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(consensus_metrics, LOG_DEBUG, LOG_DEBUG, false, false);
+
 Test(consensus_metrics, measure_basic) {
   uint8_t my_id[16];
   make_uuid(my_id, 42);

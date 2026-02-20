@@ -9,6 +9,7 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include <ascii-chat/tests/common.h>
+#include <ascii-chat/tests/logging.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/log/format.h>
 #include <ascii-chat/util/time.h>
@@ -35,6 +36,8 @@ TestSuite(log_format, .init = setup_test_logging, .fini = teardown_test_logging)
 /* ============================================================================
  * Time Format Validation Tests
  * ============================================================================ */
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(log_format, LOG_DEBUG, LOG_DEBUG, false, false);
 
 Test(log_format, time_format_valid_basic) {
   cr_assert(time_format_is_valid_strftime("%H:%M:%S"));

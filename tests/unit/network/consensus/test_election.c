@@ -1,5 +1,6 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/network/consensus/election.h>
+#include <ascii-chat/tests/logging.h>
 #include <string.h>
 
 // Helper: create metrics
@@ -16,6 +17,8 @@ static void set_id(participant_metrics_t *m, int id) {
   memset(m->participant_id, 0, 16);
   m->participant_id[0] = id & 0xFF;
 }
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(election, LOG_DEBUG, LOG_DEBUG, false, false);
 
 Test(election, score_computation) {
   // LAN, 100Mbps, 20ms RTT, 98% success

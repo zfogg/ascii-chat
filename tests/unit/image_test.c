@@ -67,6 +67,8 @@ ParameterizedTest(image_new_test_case_t *tc, image, image_new_dimensions) {
     cr_assert_null(img, "%s: image should be NULL", tc->description);
   }
 }
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(image, LOG_DEBUG, LOG_DEBUG, false, false);
 
 Test(image, image_destroy_null) {
   // Should not crash when destroying NULL image

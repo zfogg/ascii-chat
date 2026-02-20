@@ -20,6 +20,7 @@
 #include <criterion/criterion.h>
 #include <criterion/redirect.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/tests/logging.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/video/ansi.h>
@@ -275,6 +276,9 @@ static void setup_test(void) {
 /**
  * @brief Test full WebRTC connection via discovery service with frame capture
  */
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(webrtc_discovery, LOG_DEBUG, LOG_DEBUG, false, false);
+
 Test(webrtc_discovery, frame_capture_via_webrtc, .init = setup_test, .fini = cleanup_processes) {
   // Determine binary path based on working directory
   const char *binary_path = access("./bin/ascii-chat", X_OK) == 0 ? "./bin/ascii-chat" : "./build/bin/ascii-chat";

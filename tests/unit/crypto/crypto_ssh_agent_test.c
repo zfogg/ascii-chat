@@ -6,6 +6,7 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
 #include <ascii-chat/crypto/ssh/ssh_agent.h>
+#include <ascii-chat/tests/logging.h>
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/common.h>
 #include <sodium.h>
@@ -16,6 +17,8 @@ TestSuite(crypto_ssh_agent, .description = "SSH agent integration");
 // =============================================================================
 // SSH Agent Availability Tests
 // =============================================================================
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(crypto_ssh_agent, LOG_DEBUG, LOG_DEBUG, false, false);
 
 Test(crypto_ssh_agent, check_availability) {
   // Test that function doesn't crash

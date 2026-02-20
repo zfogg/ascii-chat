@@ -31,6 +31,8 @@ void client_test_teardown(void) {
 }
 
 TestSuite(client_test_pattern, .init = client_test_setup, .fini = client_test_teardown);
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(client_test_pattern, LOG_DEBUG, LOG_DEBUG, false, false);
 
 Test(client_test_pattern, test_video_capture_with_test_pattern) {
   // Initialize with test pattern

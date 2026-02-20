@@ -15,11 +15,15 @@
 #include <string.h>
 
 #include <ascii-chat/network/mdns/discovery_tui.h>
+#include <ascii-chat/tests/logging.h>
 #include <ascii-chat/common.h>
 
 /**
  * @brief Test LAN discovery with default configuration
  */
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(lan_discovery, LOG_DEBUG, LOG_DEBUG, false, false);
+
 Test(lan_discovery, query_with_default_config) {
   int count = 0;
   discovery_tui_server_t *servers = discovery_tui_query(NULL, &count);

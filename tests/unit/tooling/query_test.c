@@ -17,10 +17,13 @@
 #include <stdlib.h>
 
 #include <ascii-chat/tooling/query/query.h>
+#include <ascii-chat/tests/logging.h>
 
 // ============================================================================
 // Basic API Tests
 // ============================================================================
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(query_api, LOG_DEBUG, LOG_DEBUG, false, false);
 
 Test(query_api, macros_compile_in_debug) {
   // Verify macros are defined and callable

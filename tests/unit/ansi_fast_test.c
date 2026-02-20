@@ -28,6 +28,8 @@ TestSuite(ansi_fast, .init = setup_quiet_test_logging_ansi_fast, .fini = restore
 /* ============================================================================
  * Initialization Tests
  * ============================================================================ */
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(ansi_fast, LOG_DEBUG, LOG_DEBUG, false, false);
 
 Test(ansi_fast, initialization) {
   // Test that initialization functions work without crashing

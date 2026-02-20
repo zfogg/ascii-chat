@@ -1,6 +1,7 @@
 #include <criterion/criterion.h>
 #include <string.h>
 #include <ascii-chat/tests/common.h>
+#include <ascii-chat/tests/logging.h>
 #include <ascii-chat/video/ascii.h>
 #include <ascii-chat/video/image.h>
 
@@ -52,6 +53,8 @@ static void run_ascii_conversion_batch(image_t *image, const ssize_t width, cons
 
   cr_assert_gt(total_output, 0, "ascii_convert produced empty output across iterations");
 }
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(performance_ascii_render, LOG_DEBUG, LOG_DEBUG, false, false);
 
 Test(performance_ascii_render, convert_full_hd_mono_batch) {
   const int width = 320;

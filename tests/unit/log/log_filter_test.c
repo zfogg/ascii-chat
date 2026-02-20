@@ -12,6 +12,7 @@
 #include <stdbool.h>
 
 #include <ascii-chat/log/grep.h>
+#include <ascii-chat/tests/logging.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/tests/common.h>
 
@@ -70,6 +71,8 @@ static bool line_matches_pos(const char *line, size_t *match_start, size_t *matc
 /* ============================================================================
  * Basic Pattern Format Tests
  * ============================================================================ */
+// Use verbose logging with debug level enabled and stdout/stderr not disabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(log_filter, LOG_DEBUG, LOG_DEBUG, false, false);
 
 Test(log_filter, pattern_format_valid) {
   // Valid formats
