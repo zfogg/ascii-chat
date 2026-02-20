@@ -41,6 +41,7 @@ typedef struct {
   mutex_t send_mutex;          ///< Protect send_queue operations only
   bool is_connected;           ///< Connection state
   mutex_t state_mutex;         ///< Protect state changes
+  cond_t state_cond;           ///< Signal when is_connected changes (for connection wait)
   uint8_t *send_buffer;        ///< Send buffer with LWS_PRE padding
   size_t send_buffer_capacity; ///< Current send buffer capacity
 

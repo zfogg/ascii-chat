@@ -114,6 +114,7 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
     if (ws_data) {
       mutex_lock(&ws_data->state_mutex);
       ws_data->is_connected = true;
+      cond_signal(&ws_data->state_cond);
       mutex_unlock(&ws_data->state_mutex);
     }
     break;
@@ -660,6 +661,7 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
   }
 
   // Destroy synchronization primitives
+  cond_destroy(&ws_data->state_cond);
   mutex_destroy(&ws_data->state_mutex);
   cond_destroy(&ws_data->recv_cond);
   mutex_destroy(&ws_data->recv_mutex);
@@ -812,6 +814,17 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
     return NULL;
   }
 
+  if (cond_init(&ws_data->state_cond) != 0) {
+    mutex_destroy(&ws_data->state_mutex);
+    cond_destroy(&ws_data->recv_cond);
+    mutex_destroy(&ws_data->recv_mutex);
+    ringbuffer_destroy(ws_data->recv_queue);
+    SAFE_FREE(ws_data);
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_INTERNAL, "Failed to initialize state condition variable");
+    return NULL;
+  }
+
   // Allocate initial send buffer
   ws_data->send_buffer_capacity = LWS_PRE + 8192; // Initial 8KB buffer
   ws_data->send_buffer = SAFE_MALLOC(ws_data->send_buffer_capacity, uint8_t *);
@@ -843,6 +856,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
   ws_data->context = lws_create_context(&info);
   if (!ws_data->context) {
     SAFE_FREE(ws_data->send_buffer);
+    cond_destroy(&ws_data->state_cond);
     mutex_destroy(&ws_data->state_mutex);
     cond_destroy(&ws_data->recv_cond);
     mutex_destroy(&ws_data->recv_mutex);
@@ -873,6 +887,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
   if (!ws_data->wsi) {
     lws_context_destroy(ws_data->context);
     SAFE_FREE(ws_data->send_buffer);
+    cond_destroy(&ws_data->state_cond);
     mutex_destroy(&ws_data->state_mutex);
     cond_destroy(&ws_data->recv_cond);
     mutex_destroy(&ws_data->recv_mutex);
@@ -891,34 +906,53 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
   transport->crypto_ctx = crypto_ctx;
   transport->impl_data = ws_data;
 
+  // Start service thread BEFORE connection wait to avoid race condition
+  // Only the service thread should call lws_service() on this context
+  log_debug("Starting WebSocket service thread...");
+  ws_data->service_running = true;
+  if (asciichat_thread_create(&ws_data->service_thread, websocket_service_thread, ws_data) != 0) {
+    log_error("Failed to create WebSocket service thread");
+    ws_data->service_running = false;
+    lws_context_destroy(ws_data->context);
+    SAFE_FREE(ws_data->send_buffer);
+    cond_destroy(&ws_data->state_cond);
+    mutex_destroy(&ws_data->state_mutex);
+    cond_destroy(&ws_data->recv_cond);
+    mutex_destroy(&ws_data->recv_mutex);
+    ringbuffer_destroy(ws_data->recv_queue);
+    SAFE_FREE(ws_data);
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_INTERNAL, "Failed to create service thread");
+    return NULL;
+  }
+  log_debug("WebSocket service thread started");
+
   // Wait for connection to establish (synchronous connection)
-  // Service the libwebsockets event loop until connected or timeout
+  // Service thread handles lws_service() calls - we just wait for is_connected flag
   log_debug("Waiting for WebSocket connection to establish...");
   int timeout_ms = 5000; // 5 second timeout
   int elapsed_ms = 0;
+  const int POLL_INTERVAL_MS = 50;
+
+  // Use condition variable to wait for connection instead of calling lws_service
+  mutex_lock(&ws_data->state_mutex);
   while (!ws_data->is_connected && elapsed_ms < timeout_ms) {
-    // Service libwebsockets (processes network events, triggers callbacks)
-    int result = lws_service(ws_data->context, 50); // 50ms timeout per iteration
-    if (result < 0) {
-      log_error("lws_service error during connection: %d", result);
-      lws_context_destroy(ws_data->context);
-      SAFE_FREE(ws_data->send_buffer);
-      mutex_destroy(&ws_data->state_mutex);
-      cond_destroy(&ws_data->recv_cond);
-      mutex_destroy(&ws_data->recv_mutex);
-      ringbuffer_destroy(ws_data->recv_queue);
-      SAFE_FREE(ws_data);
-      SAFE_FREE(transport);
-      SET_ERRNO(ERROR_NETWORK, "WebSocket connection failed");
-      return NULL;
-    }
-    elapsed_ms += 50;
+    // Wait on condition variable with timeout
+    cond_timedwait(&ws_data->state_cond, &ws_data->state_mutex, POLL_INTERVAL_MS * 1000000ULL);
+    elapsed_ms += POLL_INTERVAL_MS;
+
+    // Log connection lifecycle for debugging
+    log_dev_every(1000000, "Waiting for connection: elapsed=%dms, is_connected=%d", elapsed_ms, ws_data->is_connected);
   }
+  mutex_unlock(&ws_data->state_mutex);
 
   if (!ws_data->is_connected) {
     log_error("WebSocket connection timeout after %d ms", elapsed_ms);
+    ws_data->service_running = false;
+    asciichat_thread_join(&ws_data->service_thread, NULL);
     lws_context_destroy(ws_data->context);
     SAFE_FREE(ws_data->send_buffer);
+    cond_destroy(&ws_data->state_cond);
     mutex_destroy(&ws_data->state_mutex);
     cond_destroy(&ws_data->recv_cond);
     mutex_destroy(&ws_data->recv_mutex);
@@ -930,25 +964,6 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
   }
 
   log_info("WebSocket connection established (crypto: %s)", crypto_ctx ? "enabled" : "disabled");
-
-  // Start service thread to process incoming messages
-  ws_data->service_running = true;
-  if (asciichat_thread_create(&ws_data->service_thread, websocket_service_thread, ws_data) != 0) {
-    log_error("Failed to create WebSocket service thread");
-    ws_data->service_running = false;
-    lws_context_destroy(ws_data->context);
-    SAFE_FREE(ws_data->send_buffer);
-    mutex_destroy(&ws_data->state_mutex);
-    cond_destroy(&ws_data->recv_cond);
-    mutex_destroy(&ws_data->recv_mutex);
-    ringbuffer_destroy(ws_data->recv_queue);
-    SAFE_FREE(ws_data);
-    SAFE_FREE(transport);
-    SET_ERRNO(ERROR_INTERNAL, "Failed to create service thread");
-    return NULL;
-  }
-
-  log_debug("WebSocket service thread started for client transport");
 
   return transport;
 }
@@ -1044,6 +1059,19 @@ acip_transport_t *acip_websocket_server_transport_create(struct lws *wsi, crypto
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
     SET_ERRNO(ERROR_NETWORK, "Failed to initialize state mutex");
+    return NULL;
+  }
+
+  if (cond_init(&ws_data->state_cond) != 0) {
+    mutex_destroy(&ws_data->state_mutex);
+    mutex_destroy(&ws_data->send_mutex);
+    cond_destroy(&ws_data->recv_cond);
+    mutex_destroy(&ws_data->recv_mutex);
+    ringbuffer_destroy(ws_data->recv_queue);
+    ringbuffer_destroy(ws_data->send_queue);
+    SAFE_FREE(ws_data);
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_NETWORK, "Failed to initialize state condition variable");
     return NULL;
   }
 
