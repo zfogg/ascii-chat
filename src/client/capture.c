@@ -256,6 +256,12 @@ static void *webcam_capture_thread_func(void *arg) {
 
     // Send frame packet to server using proper packet format
     acip_transport_t *transport = server_connection_get_transport();
+    if (!transport) {
+      log_warn("Transport became unavailable during capture, stopping transmission");
+      image_destroy(processed_image);
+      break;
+    }
+
     log_debug_every(LOG_RATE_SLOW, "Capture thread: sending IMAGE_FRAME %ux%u via transport %p", processed_image->w,
                     processed_image->h, (void *)transport);
     asciichat_error_t send_result = acip_send_image_frame(transport, (const void *)processed_image->pixels,

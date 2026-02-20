@@ -430,7 +430,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   size_t assembled_capacity = ws_data->partial_capacity;
   uint64_t assembly_start_ns = ws_data->reassembling ? ws_data->reassembly_start_ns : time_get_ns();
   int fragment_count = ws_data->fragment_count;
-  const uint64_t MAX_REASSEMBLY_TIME_NS = 100 * 1000000ULL; // 100ms - short timeout for polling-based retry
+  const uint64_t MAX_REASSEMBLY_TIME_NS = 2000 * 1000000ULL; // 2s - accommodate large frame fragmentation (230KB RGB frames fragment into 20+ pieces)
 
   // Mark that we're actively reassembling
   ws_data->reassembling = true;
