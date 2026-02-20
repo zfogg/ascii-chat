@@ -746,6 +746,112 @@ int client_crypto_handshake(socket_t socket) {
 }
 
 /**
+ * @brief Perform initial crypto handshake phase on WebSocket transport
+ *
+ * This function performs the protocol negotiation phase (protocol version + crypto capabilities)
+ * on a WebSocket transport. It sends the client's protocol version and capabilities, and waits
+ * for the server's response. This establishes the baseline for encrypted communication.
+ *
+ * After this completes, the remaining handshake phases (key exchange, authentication) will
+ * proceed through the normal protocol packet handling layer.
+ *
+ * @param transport ACIP transport (WebSocket) to perform handshake on
+ * @return 0 on success, -1 on failure
+ */
+int client_crypto_handshake_initial_phase_with_transport(acip_transport_t *transport) {
+  if (!transport) {
+    log_error("Transport is NULL for crypto handshake initial phase");
+    return -1;
+  }
+
+  // If client has --no-encrypt, skip handshake entirely
+  if (GET_OPTION(no_encrypt)) {
+    log_debug("Client has --no-encrypt, skipping crypto handshake initial phase");
+    return 0;
+  }
+
+  // Verify crypto is initialized
+  static_mutex_lock(&g_crypto_init_mutex);
+  bool is_initialized = g_crypto_initialized;
+  static_mutex_unlock(&g_crypto_init_mutex);
+
+  if (!is_initialized) {
+    log_error("Crypto not initialized but server requires encryption for WebSocket");
+    log_error("Use --key to specify a client key or --password for password authentication");
+    return CONNECTION_ERROR_AUTH_FAILED;
+  }
+
+  log_debug("Starting crypto handshake initial phase on WebSocket transport");
+  START_TIMER("client_crypto_handshake_initial_phase_transport");
+
+  // Step 0a: Send protocol version to server via transport
+  log_debug("Sending protocol version packet via WebSocket transport");
+  protocol_version_packet_t client_version = {0};
+  client_version.protocol_version = HOST_TO_NET_U16(1);
+  client_version.protocol_revision = HOST_TO_NET_U16(0);
+  client_version.supports_encryption = g_crypto_mode;
+  client_version.compression_algorithms = 0;
+  client_version.compression_threshold = 0;
+  client_version.feature_flags = 0;
+
+  asciichat_error_t result = acip_transport_send(transport, &client_version, sizeof(protocol_version_packet_t));
+  if (result != ASCIICHAT_OK) {
+    log_error("Failed to send protocol version packet on WebSocket transport: %s", asciichat_error_string(result));
+    STOP_TIMER("client_crypto_handshake_initial_phase_transport");
+    return -1;
+  }
+  log_debug("Protocol version packet sent successfully via WebSocket");
+
+  // Step 0b: Receive server's protocol version via transport
+  log_debug("Waiting for server protocol version packet on WebSocket transport");
+  void *payload = NULL;
+  size_t payload_len = 0;
+  void *allocated_buffer = NULL;
+  result = acip_transport_recv(transport, &payload, &payload_len, &allocated_buffer);
+  if (result != ASCIICHAT_OK) {
+    log_error("Failed to receive protocol version from server on WebSocket: %s", asciichat_error_string(result));
+    if (allocated_buffer) {
+      buffer_pool_free(NULL, allocated_buffer, payload_len);
+    }
+    STOP_TIMER("client_crypto_handshake_initial_phase_transport");
+    return -1;
+  }
+
+  if (payload_len != sizeof(protocol_version_packet_t)) {
+    log_error("Invalid protocol version packet size: %zu, expected %zu", payload_len, sizeof(protocol_version_packet_t));
+    if (allocated_buffer) {
+      buffer_pool_free(NULL, allocated_buffer, payload_len);
+    }
+    STOP_TIMER("client_crypto_handshake_initial_phase_transport");
+    return -1;
+  }
+
+  protocol_version_packet_t server_version;
+  memcpy(&server_version, payload, sizeof(protocol_version_packet_t));
+  if (allocated_buffer) {
+    buffer_pool_free(NULL, allocated_buffer, payload_len);
+  }
+
+  uint16_t server_proto_version = NET_TO_HOST_U16(server_version.protocol_version);
+  uint16_t server_proto_revision = NET_TO_HOST_U16(server_version.protocol_revision);
+  uint8_t server_mode = server_version.supports_encryption;
+
+  log_info("Server protocol version received on WebSocket: %u.%u (crypto mode: 0x%02x)", server_proto_version,
+           server_proto_revision, server_mode);
+
+  // Verify server echoed our mode
+  if (server_mode != g_crypto_mode) {
+    log_error("Server crypto mode mismatch: got 0x%02x, expected 0x%02x", server_mode, g_crypto_mode);
+    STOP_TIMER("client_crypto_handshake_initial_phase_transport");
+    return CONNECTION_ERROR_AUTH_FAILED;
+  }
+
+  log_debug("WebSocket crypto handshake initial phase completed successfully");
+  STOP_TIMER("client_crypto_handshake_initial_phase_transport");
+  return 0;
+}
+
+/**
  * Check if crypto handshake is ready
  *
  * @return true if encryption is ready, false otherwise
