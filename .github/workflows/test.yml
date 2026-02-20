@@ -206,6 +206,17 @@ jobs:
           find . -name "*.gcov" -type f -exec ls -la {} \;
           echo "DEBUG: Count of .gcov files: $(find . -name "*.gcov" -type f | wc -l)"
 
+          # Convert absolute paths in .gcov files to relative paths for codecov
+          echo "Normalizing .gcov file paths for codecov..."
+          find . -name "*.gcov" -type f | while read gcov_file; do
+            # Extract the relative path from the absolute path in the file
+            # Replace absolute path with repo-relative path
+            sed -i "s|Source:.*/ascii-chat/|Source:|g" "$gcov_file"
+            sed -i "s|Graph:.*/ascii-chat/build/|Graph:build/|g" "$gcov_file"
+            sed -i "s|Data:.*/ascii-chat/build/|Data:build/|g" "$gcov_file"
+          done
+          echo "Paths normalized"
+
           # Move all .gcov files to repo root for consistent behavior across platforms
           echo "Moving .gcov files to repo root..."
           echo "DEBUG: Before move - .gcov files in root: $(ls -la *.gcov 2>/dev/null | wc -l || echo 0)"
@@ -216,7 +227,10 @@ jobs:
           echo "Generated coverage files:"
           echo "DEBUG: After move - .gcov files in root: $(ls -la *.gcov 2>/dev/null | wc -l || echo 0)"
           find . -name "*.gcov" -type f | head -20
-          ls -la *.gcov 2>/dev/null
+
+          # Verify paths were normalized
+          echo "Verifying normalized paths:"
+          head -1 *.gcov 2>/dev/null | head -5
         else
           echo "No .gcda files found (this is expected for non-coverage builds)"
         fi
