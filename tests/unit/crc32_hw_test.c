@@ -5,7 +5,7 @@
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/network/crc32.h>
 
-TEST_SUITE_WITH_DEBUG_LOGGING(crc32_hw);
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(crc32_hw, LOG_DEBUG, LOG_DEBUG, false, false);
 
 /* ============================================================================
  * Basic CRC32 Computation Tests

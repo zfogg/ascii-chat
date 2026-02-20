@@ -9,7 +9,7 @@
 #include <ascii-chat/tests/logging.h>
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
-TEST_SUITE_WITH_QUIET_LOGGING(common);
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(common, LOG_DEBUG, LOG_DEBUG, false, false);
 
 // =============================================================================
 // SAFE_MALLOC Tests

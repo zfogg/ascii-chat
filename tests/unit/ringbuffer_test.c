@@ -14,9 +14,9 @@
 #include <ascii-chat/buffer_pool.h>
 
 // Use the enhanced macro to create complete test suites with custom log levels
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(ringbuffer, LOG_FATAL, LOG_DEBUG, true, true);
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(framebuffer, LOG_FATAL, LOG_DEBUG, true, true);
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(audio_ring_buffer, LOG_FATAL, LOG_DEBUG, true, true);
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(ringbuffer, LOG_DEBUG, LOG_DEBUG, false, false);
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(framebuffer, LOG_DEBUG, LOG_DEBUG, false, false);
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(audio_ring_buffer, LOG_DEBUG, LOG_DEBUG, false, false);
 
 /* ============================================================================
  * Ring Buffer Tests

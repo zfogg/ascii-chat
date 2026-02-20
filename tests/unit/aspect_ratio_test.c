@@ -7,7 +7,7 @@
 #include <ascii-chat/util/aspect_ratio.h>
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
-TEST_SUITE_WITH_QUIET_LOGGING(aspect_ratio);
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(aspect_ratio, LOG_DEBUG, LOG_DEBUG, false, false);
 
 /* ============================================================================
  * Basic Aspect Ratio Function Tests

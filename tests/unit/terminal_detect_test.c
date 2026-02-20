@@ -11,7 +11,7 @@
 
 // Use the enhanced macro with stdout/stderr enabled for debugging
 // Note: We don't disable stdout/stderr because terminal detection needs them
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(terminal_detect, LOG_FATAL, LOG_DEBUG, false, false);
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(terminal_detect, LOG_DEBUG, LOG_DEBUG, false, false);
 
 /* ============================================================================
  * Terminal Size Detection Tests

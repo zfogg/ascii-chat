@@ -13,7 +13,7 @@
 #include <ascii-chat/video/palette.h>
 
 // Use quiet logging for normal test runs
-TEST_SUITE_WITH_QUIET_LOGGING(ascii_simd_integration);
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(ascii_simd_integration, LOG_DEBUG, LOG_DEBUG, false, false);
 
 // Helper function to generate test images that guarantee full palette coverage
 static void generate_full_palette_test_image(image_t *test_image, const char *palette) {

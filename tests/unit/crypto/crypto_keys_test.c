@@ -16,7 +16,7 @@
 #include <ascii-chat/tests/logging.h>
 
 // Use the enhanced macro to create complete test suite with debug logging
-TEST_SUITE_WITH_DEBUG_LOGGING(crypto_keys);
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(crypto_keys, LOG_DEBUG, LOG_DEBUG, false, false);
 
 #ifdef _WIN32
 #define strdup _strdup

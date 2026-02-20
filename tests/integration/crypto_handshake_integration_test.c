@@ -27,7 +27,7 @@
 #include <ascii-chat/tests/logging.h>
 
 // Use verbose logging to debug test failures
-TEST_SUITE_WITH_QUIET_LOGGING(crypto_handshake_integration);
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(crypto_handshake_integration, LOG_DEBUG, LOG_DEBUG, false, false);
 
 // Network state for integration testing
 typedef struct {

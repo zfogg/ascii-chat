@@ -8,7 +8,7 @@
 #include <ascii-chat/tests/logging.h>
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
-TEST_SUITE_WITH_QUIET_LOGGING(simd_scalar_comparison);
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(simd_scalar_comparison, LOG_DEBUG, LOG_DEBUG, false, false);
 
 // Helper function to extract ASCII characters from output (skip ANSI sequences)
 static char *extract_ascii_chars(const char *output, size_t max_chars) {
