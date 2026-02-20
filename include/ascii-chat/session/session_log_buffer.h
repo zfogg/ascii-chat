@@ -21,8 +21,8 @@
 #include <stdbool.h>
 
 // Configuration
-#define SESSION_LOG_BUFFER_SIZE 100
-#define SESSION_LOG_LINE_MAX 512
+#define SESSION_LOG_BUFFER_SIZE 8192
+#define SESSION_LOG_LINE_MAX 1024
 
 /**
  * @brief Single log entry with sequence number for ordering
