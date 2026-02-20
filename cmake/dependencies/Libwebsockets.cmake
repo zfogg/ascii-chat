@@ -46,7 +46,17 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/FindDependency.cmake)
 # Windows: use vcpkg via find_package
 # =============================================================================
 if(WIN32)
-    find_package(libwebsockets REQUIRED)
+    # Try CMake config first, then fall back to pkg-config
+    find_package(libwebsockets QUIET CONFIG)
+    if(NOT libwebsockets_FOUND)
+        include(FindPkgConfig)
+        pkg_check_modules(libwebsockets REQUIRED libwebsockets)
+        if(NOT TARGET libwebsockets::libwebsockets)
+            add_library(libwebsockets::libwebsockets INTERFACE IMPORTED)
+            target_include_directories(libwebsockets::libwebsockets INTERFACE ${libwebsockets_INCLUDE_DIRS})
+            target_link_libraries(libwebsockets::libwebsockets INTERFACE ${libwebsockets_LIBRARIES})
+        endif()
+    endif()
     message(STATUS "${BoldGreen}✓${ColorReset} libwebsockets found (Windows vcpkg)")
     add_compile_definitions(HAVE_LIBWEBSOCKETS=1)
 
