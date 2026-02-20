@@ -950,25 +950,25 @@ typedef struct options_state {
   // ============================================================================
   // Image Options
   // ============================================================================
-  unsigned short int stretch; ///< Allow aspect ratio distortion
+  bool stretch; ///< Allow aspect ratio distortion
 
   // ============================================================================
   // Output Options
   // ============================================================================
-  unsigned short int quiet;             ///< Quiet mode (suppress logs)
+  bool quiet;                           ///< Quiet mode (suppress logs)
   unsigned short int verbose_level;     ///< Verbosity level (stackable -V)
-  unsigned short int snapshot_mode;     ///< Snapshot mode (one frame and exit)
+  bool snapshot_mode;                   ///< Snapshot mode (one frame and exit)
   double snapshot_delay;                ///< Snapshot delay in seconds
-  unsigned short int matrix_rain;       ///< Matrix digital rain effect (false = disabled)
-  unsigned short int strip_ansi;        ///< Strip ANSI escape sequences
+  bool matrix_rain;                     ///< Matrix digital rain effect (false = disabled)
+  bool strip_ansi;                      ///< Strip ANSI escape sequences
   char log_file[OPTIONS_BUFF_SIZE];     ///< Log file path
   log_level_t log_level;                ///< Log level threshold
   char grep_pattern[OPTIONS_BUFF_SIZE]; ///< PCRE2 regex for log filtering
   bool json;                            ///< Enable JSON logging (--json flag)
   char log_template[OPTIONS_BUFF_SIZE]; ///< Custom log format string (formerly --log-format)
   bool log_format_console_only;         ///< Apply log format only to console output
-  unsigned short int enable_keepawake;  ///< Explicitly enable system sleep prevention
-  unsigned short int disable_keepawake; ///< Explicitly disable system sleep prevention (allow OS to sleep)
+  bool enable_keepawake;                ///< Explicitly enable system sleep prevention
+  bool disable_keepawake;               ///< Explicitly disable system sleep prevention (allow OS to sleep)
 
   // ============================================================================
   // Encryption Options
