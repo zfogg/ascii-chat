@@ -85,6 +85,12 @@ static void *websocket_service_thread(void *arg) {
     // Service libwebsockets (processes network events, triggers callbacks)
     // 50ms timeout allows checking service_running flag regularly
     int result = lws_service(ws_data->context, 50);
+
+    // Signal that service thread has become active (called lws_service at least once)
+    // This allows the main thread to return from websocket_client_connect() knowing
+    // that servicing has begun
+    ws_data->service_started = true;
+
     if (result < 0) {
       log_error("lws_service error: %d", result);
       break;
@@ -933,6 +939,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
 
   // Start service thread to process incoming messages
   ws_data->service_running = true;
+  ws_data->service_started = false; // Initialize service_started flag
   if (asciichat_thread_create(&ws_data->service_thread, websocket_service_thread, ws_data) != 0) {
     log_error("Failed to create WebSocket service thread");
     ws_data->service_running = false;
@@ -949,6 +956,24 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
   }
 
   log_debug("WebSocket service thread started for client transport");
+
+  // Wait briefly for service thread to become active. The service thread won't start
+  // until the OS scheduler runs it, which might happen after this function returns.
+  // By waiting briefly (50ms) for service_started to be set, we ensure the first
+  // lws_service() call has happened before returning the transport. This prevents
+  // the connection from being closed during the service thread startup gap.
+  int wait_ms = 0;
+  const int MAX_WAIT_MS = 50;
+  while (!ws_data->service_started && wait_ms < MAX_WAIT_MS) {
+    usleep(1000); // 1ms sleep per iteration
+    wait_ms += 1;
+  }
+
+  if (!ws_data->service_started) {
+    log_warn("Service thread did not start within %dms, proceeding anyway (may cause connection issues)", MAX_WAIT_MS);
+  } else {
+    log_debug("Service thread became active after %dms", wait_ms);
+  }
 
   return transport;
 }

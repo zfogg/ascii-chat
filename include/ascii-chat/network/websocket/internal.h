@@ -47,6 +47,7 @@ typedef struct {
   // Service thread for client-side transports
   asciichat_thread_t service_thread; ///< Thread that services libwebsockets context
   volatile bool service_running;     ///< Service thread running flag
+  volatile bool service_started;     ///< Service thread has called lws_service() at least once
 
 } websocket_transport_data_t;
 
