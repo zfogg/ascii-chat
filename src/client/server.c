@@ -180,6 +180,19 @@ static char g_server_ip[256] = {0};
  */
 static mutex_t g_send_mutex = {0};
 
+/**
+ * @brief Mutex protecting ACIP transport pointer
+ *
+ * Protects g_client_transport from concurrent access. All access to the
+ * transport pointer (read or write) must acquire this mutex to prevent
+ * use-after-free and race conditions when connection is being torn down.
+ *
+ * Lock Ordering: acquire g_transport_mutex BEFORE any recv/send operations
+ *
+ * @ingroup client_connection
+ */
+static mutex_t g_transport_mutex = {0};
+
 /* ============================================================================
  * Crypto State
  * ============================================================================ */
@@ -286,6 +299,13 @@ int server_connection_init() {
   // Initialize mutex for thread-safe packet sending
   if (mutex_init(&g_send_mutex) != 0) {
     log_error("Failed to initialize send mutex");
+    return -1;
+  }
+
+  // Initialize mutex for thread-safe transport access
+  if (mutex_init(&g_transport_mutex) != 0) {
+    log_error("Failed to initialize transport mutex");
+    mutex_destroy(&g_send_mutex);
     return -1;
   }
 
@@ -732,7 +752,15 @@ connection_success:
 bool server_connection_is_active() {
   // For TCP: check socket validity
   // For WebRTC: socket is INVALID_SOCKET_VALUE but transport exists
-  return atomic_load(&g_connection_active) && (g_sockfd != INVALID_SOCKET_VALUE || g_client_transport != NULL);
+  if (!atomic_load(&g_connection_active)) {
+    return false;
+  }
+
+  mutex_lock(&g_transport_mutex);
+  bool has_transport = g_client_transport != NULL;
+  mutex_unlock(&g_transport_mutex);
+
+  return g_sockfd != INVALID_SOCKET_VALUE || has_transport;
 }
 
 /**
@@ -754,7 +782,10 @@ socket_t server_connection_get_socket() {
  * @ingroup client_connection
  */
 acip_transport_t *server_connection_get_transport(void) {
-  return g_client_transport;
+  mutex_lock(&g_transport_mutex);
+  acip_transport_t *transport = g_client_transport;
+  mutex_unlock(&g_transport_mutex);
+  return transport;
 }
 
 /**
@@ -769,6 +800,8 @@ acip_transport_t *server_connection_get_transport(void) {
  */
 void server_connection_set_transport(acip_transport_t *transport) {
   log_debug("server_connection_set_transport() called with transport=%p", (void *)transport);
+
+  mutex_lock(&g_transport_mutex);
 
   // Clean up any existing transport
   if (g_client_transport) {
@@ -794,6 +827,8 @@ void server_connection_set_transport(acip_transport_t *transport) {
     atomic_store(&g_connection_active, false);
     log_debug("Server connection transport cleared and marked inactive");
   }
+
+  mutex_unlock(&g_transport_mutex);
 
   log_debug("server_connection_set_transport() completed");
 }
@@ -854,11 +889,15 @@ void server_connection_set_ip(const char *ip) {
 void server_connection_close() {
   atomic_store(&g_connection_active, false);
 
+  mutex_lock(&g_transport_mutex);
+
   // Destroy ACIP transport before closing socket
   if (g_client_transport) {
     acip_transport_destroy(g_client_transport);
     g_client_transport = NULL;
   }
+
+  mutex_unlock(&g_transport_mutex);
 
   if (g_sockfd != INVALID_SOCKET_VALUE) {
     close_socket(g_sockfd);
@@ -952,6 +991,7 @@ void server_connection_cleanup() {
   }
   server_connection_close();
   mutex_destroy(&g_send_mutex);
+  mutex_destroy(&g_transport_mutex);
 }
 
 /* ============================================================================
