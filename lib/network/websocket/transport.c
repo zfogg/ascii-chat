@@ -110,11 +110,12 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
 
   switch (reason) {
   case LWS_CALLBACK_CLIENT_ESTABLISHED:
-    log_info("WebSocket connection established");
+    log_info("WebSocket ESTABLISHED callback fired - marking connection as active");
     if (ws_data) {
       mutex_lock(&ws_data->state_mutex);
       ws_data->is_connected = true;
       mutex_unlock(&ws_data->state_mutex);
+      log_debug("WebSocket connection state set to is_connected=true");
     }
     break;
 
@@ -214,9 +215,13 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
   log_dev_every(1000000, "websocket_send: is_connected=%d, wsi=%p, send_len=%zu", connected, (void *)ws_data->wsi, len);
 
   if (!connected) {
-    log_error("WebSocket send called but transport NOT connected! wsi=%p, len=%zu", (void *)ws_data->wsi, len);
+    log_error("WebSocket send called but transport NOT connected! wsi=%p, len=%zu, is_connected=%d",
+              (void *)ws_data->wsi, len, connected);
+    log_error("This indicates connection was lost or never properly established");
     return SET_ERRNO(ERROR_NETWORK, "WebSocket transport not connected (wsi=%p)", (void *)ws_data->wsi);
   }
+
+  log_debug("WebSocket send starting: transport connected, len=%zu bytes", len);
 
   // Check if encryption is needed (matching tcp_send logic)
   const void *send_data = data;
