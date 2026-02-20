@@ -52,11 +52,16 @@ if(IS_COVERAGE_BUILD)
     set(CRITERION_JOBS 1)          # Disable internal parallelism for coverage accuracy
     set(CTEST_PARALLEL_JOBS 2)     # Limit parallel tests to prevent resource exhaustion during coverage
 else()
-    set(CRITERION_TIMEOUT 25)      # Default timeout
-    set(CTEST_TEST_TIMEOUT 30)     # Tests must complete in 30 seconds or less
-    # Use all CPU cores minus 1 to prevent system saturation
-    math(EXPR CRITERION_JOBS "${CPU_CORES} - 1")
-    set(CTEST_PARALLEL_JOBS "${CPU_CORES} - 1")
+    set(CRITERION_TIMEOUT 45)      # Default timeout
+    set(CTEST_TEST_TIMEOUT 50)     # Tests must complete in 50 seconds or less
+    # Limit parallelism to prevent resource exhaustion and timeouts
+    # Even with 16 cores, running too many criterion tests in parallel causes hangs
+    math(EXPR CRITERION_JOBS "${CPU_CORES} / 2")
+    math(EXPR CTEST_PARALLEL_JOBS "${CPU_CORES} / 4")
+    # Ensure at least 1 parallel job
+    if(CTEST_PARALLEL_JOBS LESS 1)
+        set(CTEST_PARALLEL_JOBS 1)
+    endif()
 endif()
 
 # XML output directory for Criterion test results
