@@ -245,7 +245,7 @@ ParameterizedTest(crypto_options_test_case_t *tc, crypto_options, crypto_options
 // Validation Tests
 // =============================================================================
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(crypto_options, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(crypto_options);
 
 Test(crypto_options, client_only_options) {
   const char *argv[] = {"program", "client", "--server-key", "/path/to/server/key"};

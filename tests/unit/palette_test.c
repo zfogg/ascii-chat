@@ -9,7 +9,7 @@
 #include <ascii-chat/tests/logging.h>
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(palette_tests, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(palette_tests);
 
 // Test case structure for builtin palette tests
 // NOTE: Use fixed-size char arrays instead of pointers to avoid issues with Criterion's fork-based test runner

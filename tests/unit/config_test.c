@@ -34,10 +34,10 @@
 #include <ascii-chat/tests/logging.h>
 
 // Test suite setup with quiet logging
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(config, LOG_DEBUG, LOG_DEBUG, false, false);
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(config_strict, LOG_DEBUG, LOG_DEBUG, false, false);
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(config_sections, LOG_DEBUG, LOG_DEBUG, false, false);
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(config_create, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(config);
+TestSuite(config_strict);
+TestSuite(config_sections);
+TestSuite(config_create);
 
 // =============================================================================
 // Helper Functions

@@ -31,7 +31,7 @@ TestSuite(crypto, .init = setup_crypto_context, .fini = teardown_crypto_context)
 // Basic Initialization Tests
 // =============================================================================
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(crypto, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(crypto);
 
 Test(crypto, init_basic) {
   crypto_result_t result = crypto_init(&ctx1);

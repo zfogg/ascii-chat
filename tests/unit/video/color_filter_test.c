@@ -14,7 +14,7 @@
  * @brief Test grayscale conversion accuracy
  */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(color_filter, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(color_filter);
 
 Test(color_filter, rgb_to_grayscale_primary_colors) {
   // Pure red: should be ~77

@@ -25,7 +25,7 @@ TestSuite(acds_signatures, .init = acds_signatures_init);
 // SESSION_CREATE Signature Tests
 // =============================================================================
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(acds_signatures, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(acds_signatures);
 
 Test(acds_signatures, session_create_sign_and_verify) {
   // Generate test keypair

@@ -27,7 +27,7 @@ TestSuite(crypto_ssh_agent_sign, .description = "SSH agent signing edge cases");
 // Parameter Validation Tests
 // =============================================================================
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(crypto_ssh_agent_sign, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(crypto_ssh_agent_sign);
 
 Test(crypto_ssh_agent_sign, null_public_key) {
   uint8_t message[32] = {0};

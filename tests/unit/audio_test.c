@@ -12,7 +12,7 @@
 #include <ascii-chat/tests/logging.h>
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(audio, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(audio);
 
 // =============================================================================
 // Audio Initialization Tests

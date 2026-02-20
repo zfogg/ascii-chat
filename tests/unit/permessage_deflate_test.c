@@ -22,7 +22,7 @@
 #include <ascii-chat/common.h>
 
 // Test suite with quiet logging
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(permessage_deflate, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(permessage_deflate);
 
 /**
  * Helper to compress data with DEFLATE (RFC 7692 format)

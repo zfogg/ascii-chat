@@ -91,7 +91,7 @@ static asciichat_error_t mock_get_metrics(void *context, const uint8_t my_id[16]
   return ASCIICHAT_OK;
 }
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(consensus, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(consensus);
 
 Test(consensus, lifecycle) {
   // Create mock context

@@ -13,7 +13,7 @@
  * Basic API Tests
  * ============================================================================ */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(yt_dlp, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(yt_dlp);
 
 Test(yt_dlp, is_available_returns_bool) {
   // Test that yt_dlp_is_available returns a boolean value

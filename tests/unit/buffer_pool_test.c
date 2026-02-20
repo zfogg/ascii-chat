@@ -4,7 +4,7 @@
 #include <ascii-chat/buffer_pool.h>
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(buffer_pool, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(buffer_pool);
 
 // =============================================================================
 // Buffer Pool Creation and Destruction Tests

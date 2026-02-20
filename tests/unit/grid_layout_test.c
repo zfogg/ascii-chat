@@ -118,7 +118,7 @@ static void calculate_optimal_grid(int terminal_width, int terminal_height, int 
   *out_cell_height = terminal_height / best_rows;
 }
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(grid_layout, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(grid_layout);
 
 Test(grid_layout, single_client_full_terminal) {
   int cols, rows, cell_width, cell_height;

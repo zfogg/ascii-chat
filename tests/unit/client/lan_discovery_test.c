@@ -22,7 +22,7 @@
  * @brief Test LAN discovery with default configuration
  */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(lan_discovery, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(lan_discovery);
 
 Test(lan_discovery, query_with_default_config) {
   int count = 0;

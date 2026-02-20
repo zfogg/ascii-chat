@@ -17,7 +17,7 @@
 #include <ascii-chat/util/parsing.h>
 
 // Use the enhanced macro to create complete test suite with debug logging and stdout/stderr enabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(network, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(network);
 
 // Stub implementations for client-specific functions
 int send_audio_data(int sockfd, const float *samples, int num_samples) {

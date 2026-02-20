@@ -814,7 +814,7 @@ ParameterizedTest(url_test_case_t *test, url_validator, integration, .fini = cle
  * Test Suite: Edge Cases
  * ============================================================================ */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(url_validator, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(url_validator);
 
 Test(url_validator, edge_cases_very_long_url) {
   // Construct a very long but valid URL

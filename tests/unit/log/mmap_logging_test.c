@@ -21,7 +21,7 @@ static void cleanup_files(const char *log_path) {
 
 // Test initialization and destruction
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(mmap_logging, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(mmap_logging);
 
 Test(mmap_logging, init_destroy) {
   const char *log_path = "/tmp/mmap_test_init_destroy.log";

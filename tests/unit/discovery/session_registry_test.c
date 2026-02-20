@@ -41,7 +41,7 @@ static void cleanup_test_db(const char *path) {
 // Test Fixtures
 // ============================================================================
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(session_database, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(session_database);
 
 Test(session_database, database_initialization, .timeout = 5) {
   char db_path[256];

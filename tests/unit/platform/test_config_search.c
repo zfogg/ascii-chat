@@ -20,7 +20,7 @@
 // Data Structure Tests (safe - don't trigger error logging)
 // ============================================================================
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(platform_config_search, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(platform_config_search);
 
 Test(platform_config_search, list_cleanup_null_safe) {
   // Test that config_file_list_destroy is safe with NULL

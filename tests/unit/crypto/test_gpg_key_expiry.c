@@ -92,7 +92,7 @@ static void teardown_expired_key(void) {
 
 TestSuite(gpg_key_expiry, .timeout = 10.0);
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(gpg_key_expiry, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(gpg_key_expiry);
 
 Test(gpg_key_expiry, check_valid_key_not_expired) {
   bool is_expired = true; // Start with true to ensure it gets set

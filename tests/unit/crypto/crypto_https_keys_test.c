@@ -18,7 +18,7 @@ TestSuite(crypto_multi_keys, .description = "Multi-key parsing for GitHub/GitLab
 // URL Construction Tests - GitHub SSH
 // =============================================================================
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(crypto_https_keys, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(crypto_https_keys);
 
 Test(crypto_https_keys, build_github_ssh_url_valid) {
   char url[256];

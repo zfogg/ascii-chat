@@ -17,7 +17,7 @@ TestSuite(turn_credentials, .timeout = 5.0);
  * @brief Test basic TURN credential generation
  */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(turn_credentials, LOG_DEBUG, LOG_DEBUG, false, false);
+TestSuite(turn_credentials);
 
 Test(turn_credentials, basic_generation) {
   turn_credentials_t creds;
