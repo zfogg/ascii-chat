@@ -52,39 +52,17 @@
  * Connection Lifecycle Management
  * ============================================================================ */
 
-/** Base delay for exponential backoff (nanoseconds) */
-#define BASE_RECONNECT_DELAY (1LL * NS_PER_SEC_INT)  // 1 second base
-
 /** Maximum delay between reconnection attempts (nanoseconds) */
-#define MAX_RECONNECT_DELAY (60LL * NS_PER_SEC_INT)  // 60 seconds max
+#define MAX_RECONNECT_DELAY (5LL * NS_PER_SEC_INT)
 
 /**
  * @brief Calculate reconnection delay with exponential backoff
  *
- * Formula: min(base_delay * 2^(attempt-1), max_delay)
- * Delays: 1s, 2s, 4s, 8s, 16s, 32s, 60s (capped)
- * This prevents infinite reconnect loops while maintaining responsiveness
- * for early retries and allowing longer waits as failures accumulate.
+ * Initial delay: 100ms, increases by 200ms per attempt, max 5 seconds (in nanoseconds)
  */
 static uint64_t get_reconnect_delay(unsigned int attempt) {
-  // Prevent overflow: if attempt is large, directly return max delay
-  if (attempt > 60) {
-    return MAX_RECONNECT_DELAY;
-  }
-
-  // Calculate 2^(attempt-1)
-  uint64_t multiplier = 1ULL << (attempt - 1);  // Left shift for 2^n
-
-  // Multiply base delay by 2^(attempt-1)
-  uint64_t delay_ns = BASE_RECONNECT_DELAY * multiplier;
-
-  // Cap at maximum delay
-  if (delay_ns > MAX_RECONNECT_DELAY) {
-    delay_ns = MAX_RECONNECT_DELAY;
-  }
-
-  log_debug("Reconnect delay for attempt %u: %llu ms", attempt, delay_ns / NS_PER_MS_INT);
-  return delay_ns;
+  uint64_t delay_ns = (100LL * NS_PER_MS_INT) + ((uint64_t)(attempt - 1) * 200LL * NS_PER_MS_INT);
+  return (delay_ns > MAX_RECONNECT_DELAY) ? MAX_RECONNECT_DELAY : delay_ns;
 }
 
 /**
