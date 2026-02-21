@@ -72,13 +72,13 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
     log_debug("★ PACKET_SEND: No payload, CRC32=0");
   }
 
-  log_debug("★ PACKET_SEND: magic=0x%016llx, type=%d, length=%u bytes, client_id=%u", header.magic, type,
-            header.length, header.client_id);
+  log_debug("★ PACKET_SEND: magic=0x%016llx, type=%d, length=%u bytes, client_id=%u", header.magic, type, header.length,
+            header.client_id);
 
   // Calculate total packet size
   size_t total_size = sizeof(header) + payload_len;
   log_debug("★ PACKET_SEND: Header=%zu bytes + Payload=%zu bytes = Total=%zu bytes", sizeof(header), payload_len,
-           total_size);
+            total_size);
 
   // Allocate buffer for complete packet
   // Use SAFE_MALLOC (not buffer pool - payload may also be from pool and causes overlap)
@@ -102,12 +102,12 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
   asciichat_error_t result = acip_transport_send(transport, packet, total_size);
 
   if (result == ASCIICHAT_OK) {
-    log_info("★ PACKET_SEND_VIA_TRANSPORT COMPLETE: SUCCESS - sent %zu bytes (type=%d, client_id=%u)", total_size,
-             type, client_id);
+    log_info("★ PACKET_SEND_VIA_TRANSPORT COMPLETE: SUCCESS - sent %zu bytes (type=%d, client_id=%u)", total_size, type,
+             client_id);
   } else {
     log_error("★ PACKET_SEND_VIA_TRANSPORT FAILED: acip_transport_send returned error %d (%s) when sending %zu bytes "
-             "type=%d to client_id=%u",
-             result, asciichat_error_string(result), total_size, type, client_id);
+              "type=%d to client_id=%u",
+              result, asciichat_error_string(result), total_size, type, client_id);
   }
 
   SAFE_FREE(packet);

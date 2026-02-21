@@ -177,7 +177,7 @@ acip_transport_t *websocket_client_connect(websocket_client_t *client, const cha
   // This provides a stable, unique ID per connection URL
   uint32_t client_id = 0;
   for (size_t i = 0; url[i] != '\0'; i++) {
-    client_id = ((client_id << 5) + client_id) ^ url[i];  // Simple hash
+    client_id = ((client_id << 5) + client_id) ^ url[i]; // Simple hash
   }
   client->my_client_id = client_id;
 
@@ -210,8 +210,7 @@ acip_transport_t *websocket_client_get_transport(const websocket_client_t *clien
  * Acquires send_mutex, transmits packet via transport, releases mutex.
  * Checks connection state before sending.
  */
-int websocket_client_send_packet(websocket_client_t *client, packet_type_t type,
-                                  const void *data, size_t len) {
+int websocket_client_send_packet(websocket_client_t *client, packet_type_t type, const void *data, size_t len) {
   if (!client) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL client");
   }
@@ -228,15 +227,12 @@ int websocket_client_send_packet(websocket_client_t *client, packet_type_t type,
   mutex_lock(&client->send_mutex);
 
   // Send packet through transport with client ID
-  asciichat_error_t result = packet_send_via_transport(
-      client->transport, type, data, len, client->my_client_id
-  );
+  asciichat_error_t result = packet_send_via_transport(client->transport, type, data, len, client->my_client_id);
 
   mutex_unlock(&client->send_mutex);
 
   if (result != ASCIICHAT_OK) {
-    log_debug("Failed to send packet type %d: %s", type,
-              asciichat_error_string(result));
+    log_debug("Failed to send packet type %d: %s", type, asciichat_error_string(result));
     return -1;
   }
 

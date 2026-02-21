@@ -494,7 +494,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
     // Record timing for this callback
     uint64_t writeable_callback_end_ns = websocket_callback_timing_start();
-    websocket_callback_timing_record(&g_ws_callback_timing.server_writeable, writeable_callback_start_ns, writeable_callback_end_ns);
+    websocket_callback_timing_record(&g_ws_callback_timing.server_writeable, writeable_callback_start_ns,
+                                     writeable_callback_end_ns);
     break;
   }
 
@@ -738,16 +739,16 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
         log_warn("[WS_CALLBACK_DURATION] RECEIVE callback took %.1f µs (alloc=%.1f µs, lock_wait=%.1f µs)",
                  callback_dur_us, alloc_dur_us, lock_wait_dur_us);
       }
-      log_debug("[WS_CALLBACK_TIMING] total=%.1f µs (alloc=%.1f µs, lock_wait=%.1f µs, other=%.1f µs)",
-                callback_dur_us, alloc_dur_us, lock_wait_dur_us,
-                callback_dur_us - alloc_dur_us - lock_wait_dur_us);
+      log_debug("[WS_CALLBACK_TIMING] total=%.1f µs (alloc=%.1f µs, lock_wait=%.1f µs, other=%.1f µs)", callback_dur_us,
+                alloc_dur_us, lock_wait_dur_us, callback_dur_us - alloc_dur_us - lock_wait_dur_us);
     }
     log_debug("[WS_RECEIVE] ===== RECEIVE CALLBACK COMPLETE, returning 0 to continue =====");
     log_info("[WS_RECEIVE_RETURN] Returning 0 from RECEIVE callback (success). fragmented=%d (first=%d final=%d)",
              (!is_final ? 1 : 0), is_first, is_final);
 
     // Record timing for this callback
-    websocket_callback_timing_record(&g_ws_callback_timing.receive, callback_enter_ns, websocket_callback_timing_start());
+    websocket_callback_timing_record(&g_ws_callback_timing.receive, callback_enter_ns,
+                                     websocket_callback_timing_start());
     break;
   }
 
@@ -881,10 +882,10 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   struct lws_context_creation_info info = {0};
   info.port = config->port;
   info.protocols = websocket_protocols;
-  info.gid = (gid_t)-1;                   // Cast to avoid undefined behavior with unsigned type
-  info.uid = (uid_t)-1;                   // Cast to avoid undefined behavior with unsigned type
+  info.gid = (gid_t)-1;                                // Cast to avoid undefined behavior with unsigned type
+  info.uid = (uid_t)-1;                                // Cast to avoid undefined behavior with unsigned type
   info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT; // Initialize SSL/TLS support (required for server binding)
-  info.extensions = websocket_extensions; // Enable permessage-deflate with small window bits
+  info.extensions = websocket_extensions;              // Enable permessage-deflate with small window bits
   // Permessage-deflate configuration (RFC 7692):
   // - server_max_window_bits=8: Use 256-byte (2^8) sliding window instead of 32KB (2^15)
   // - Reduces decompression buffer size to prevent "rx buffer underflow" in LWS 4.5.2
