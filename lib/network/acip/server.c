@@ -197,8 +197,11 @@ asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, const char 
     return SET_ERRNO(ERROR_INVALID_PARAM, "Empty frame data");
   }
 
+  log_debug("[FRAME_SEND_START] Frame %ux%u, size=%zu bytes, client_id=%u", width, height, frame_size, client_id);
+
   // Calculate CRC32 checksum of frame data for integrity verification
   uint32_t checksum_value = asciichat_crc32(frame_data, frame_size);
+  log_dev_every(1000000, "[FRAME_CRC32] crc=0x%08x for %zu bytes", checksum_value, frame_size);
 
   // Create ASCII frame packet header
   ascii_frame_packet_t header;
@@ -218,6 +221,7 @@ asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, const char 
   // Allocate buffer
   uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
   if (!buffer) {
+    log_error("[FRAME_SEND_ERROR] Allocation failed for %zu bytes", total_size);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer: %zu bytes", total_size);
   }
 
@@ -225,9 +229,18 @@ asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, const char 
   memcpy(buffer, &header, sizeof(header));
   memcpy(buffer + sizeof(header), frame_data, frame_size);
 
+  log_debug("[FRAME_TO_TRANSPORT] Sending %zu bytes (header=%zu + data=%zu) for client %u", total_size,
+            sizeof(header), frame_size, client_id);
+
   // Send via transport with client_id
   asciichat_error_t result =
       packet_send_via_transport(transport, PACKET_TYPE_ASCII_FRAME, buffer, total_size, client_id);
+
+  if (result == ASCIICHAT_OK) {
+    log_debug("[FRAME_SEND_SUCCESS] Sent frame %ux%u to client %u (%zu bytes)", width, height, client_id, total_size);
+  } else {
+    log_error("[FRAME_SEND_FAILED] Failed to send frame for client %u: error %d", client_id, result);
+  }
 
   buffer_pool_free(NULL, buffer, total_size);
   return result;

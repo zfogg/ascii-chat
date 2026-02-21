@@ -65,14 +65,16 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
   header.client_id = client_id;
 
   // Calculate CRC32 if we have payload
+  uint32_t payload_crc32 = 0;
   if (payload && payload_len > 0) {
-    header.crc32 = HOST_TO_NET_U32(asciichat_crc32((const uint8_t *)payload, payload_len));
+    payload_crc32 = asciichat_crc32((const uint8_t *)payload, payload_len);
+    header.crc32 = HOST_TO_NET_U32(payload_crc32);
   } else {
     header.crc32 = 0;
   }
 
-  log_dev_every(4500 * US_PER_MS_INT, "★ PKT_SEND: type=%d, magic=0x%016llx, length=%u, crc32=0x%08x", type,
-                header.magic, header.length, header.crc32);
+  log_debug("[SEND|PKT_HEADER] type=%d (0x%04x), len=%u, client_id=%u, crc32=0x%08x", type, type,
+            (uint32_t)payload_len, client_id, payload_crc32);
 
   // Calculate total packet size
   size_t total_size = sizeof(header) + payload_len;
@@ -81,6 +83,7 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
   // Use SAFE_MALLOC (not buffer pool - payload may also be from pool and causes overlap)
   uint8_t *packet = SAFE_MALLOC(total_size, uint8_t *);
   if (!packet) {
+    log_error("[SEND|PKT_ALLOC_FAIL] Cannot allocate %zu bytes for packet", total_size);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate packet buffer");
   }
 
@@ -90,14 +93,15 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
     memcpy(packet + sizeof(header), payload, payload_len);
   }
 
-  log_dev_every(4500 * US_PER_MS_INT, "★ PACKET_SEND: total_size=%zu, calling acip_transport_send...", total_size);
+  log_dev_every(1000000, "[SEND|PKT_READY] total_size=%zu bytes, calling acip_transport_send...", total_size);
   // Send via transport (transport handles encryption if crypto_ctx present)
   asciichat_error_t result = acip_transport_send(transport, packet, total_size);
 
   if (result == ASCIICHAT_OK) {
-    log_dev_every(4500 * US_PER_MS_INT, "★ PACKET_SEND: SUCCESS - sent %zu bytes (type=%d)", total_size, type);
+    log_debug("[SEND|PKT_SUCCESS] Sent %zu bytes (type=%d, client_id=%u)", total_size, type, client_id);
   } else {
-    log_error("★ PACKET_SEND: FAILED - acip_transport_send returned %d (%s)", result, asciichat_error_string(result));
+    log_error("[SEND|PKT_FAILED] acip_transport_send returned %d for %zu bytes (type=%d, client_id=%u)", result,
+              total_size, type, client_id);
   }
 
   SAFE_FREE(packet);
