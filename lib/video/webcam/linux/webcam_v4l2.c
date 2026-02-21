@@ -1,7 +1,10 @@
 /**
  * @file video/webcam/linux/webcam_v4l2.c
  * @ingroup webcam
- * @brief 📷 Linux V4L2 webcam capture implementation with MJPEG/YUY2 format support
+ * @brief 📷 Linux V4L2 webcam capture with multi-format support
+ *
+ * Supports RGB24 (native), NV12, I420, YUYV, and UYVY formats.
+ * Uses libswscale for efficient format conversion to RGB24.
  */
 
 #ifdef __linux__
@@ -15,6 +18,9 @@
 #include <sys/mman.h>
 #include <sys/ioctl.h>
 #include <linux/videodev2.h>
+
+#include <libswscale/swscale.h>
+#include <libavutil/pixfmt.h>
 
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/common.h>
@@ -40,68 +46,55 @@ struct webcam_context_t {
   int fd;
   int width;
   int height;
-  uint32_t pixelformat; // Actual pixel format from driver (RGB24 or YUYV)
+  uint32_t pixelformat; // Actual pixel format from driver (RGB24, YUYV, NV12, I420, UYVY)
   webcam_buffer_t *buffers;
   int buffer_count;
   image_t *cached_frame; // Reusable frame buffer (allocated once, reused for each read)
+  struct SwsContext *sws_ctx; // libswscale context for format conversion (if needed)
+  enum AVPixelFormat av_pixel_format; // FFmpeg pixel format for swscale
 };
 
 /**
- * @brief Convert YUYV (YUV 4:2:2) to RGB24
+ * @brief Initialize swscale context for format conversion
  *
- * YUYV packs 2 pixels into 4 bytes: Y0 U Y1 V
- * Each Y gets its own pixel, U and V are shared between adjacent pixels.
- *
- * @param yuyv Source YUYV buffer
- * @param rgb Destination RGB24 buffer
- * @param width Frame width
- * @param height Frame height
+ * Creates a libswscale context to convert from the source format to RGB24.
+ * Returns 0 on success, -1 on failure.
  */
-static void yuyv_to_rgb24(const uint8_t *yuyv, uint8_t *rgb, int width, int height) {
-  const int num_pixels = width * height;
-  for (int i = 0; i < num_pixels; i += 2) {
-    // Each 4 bytes of YUYV contains 2 pixels
-    const int yuyv_idx = i * 2;
-    const int y0 = yuyv[yuyv_idx + 0];
-    const int u = yuyv[yuyv_idx + 1];
-    const int y1 = yuyv[yuyv_idx + 2];
-    const int v = yuyv[yuyv_idx + 3];
-
-    // Convert YUV to RGB using standard formula
-    // R = Y + 1.402 * (V - 128)
-    // G = Y - 0.344 * (U - 128) - 0.714 * (V - 128)
-    // B = Y + 1.772 * (U - 128)
-    const int c0 = y0 - 16;
-    const int c1 = y1 - 16;
-    const int d = u - 128;
-    const int e = v - 128;
-
-    // First pixel
-    int r = (298 * c0 + 409 * e + 128) >> 8;
-    int g = (298 * c0 - 100 * d - 208 * e + 128) >> 8;
-    int b = (298 * c0 + 516 * d + 128) >> 8;
-
-    const int rgb_idx0 = i * 3;
-    rgb[rgb_idx0 + 0] = (uint8_t)(r < 0 ? 0 : (r > 255 ? 255 : r));
-    rgb[rgb_idx0 + 1] = (uint8_t)(g < 0 ? 0 : (g > 255 ? 255 : g));
-    rgb[rgb_idx0 + 2] = (uint8_t)(b < 0 ? 0 : (b > 255 ? 255 : b));
-
-    // Second pixel
-    r = (298 * c1 + 409 * e + 128) >> 8;
-    g = (298 * c1 - 100 * d - 208 * e + 128) >> 8;
-    b = (298 * c1 + 516 * d + 128) >> 8;
-
-    const int rgb_idx1 = (i + 1) * 3;
-    rgb[rgb_idx1 + 0] = (uint8_t)(r < 0 ? 0 : (r > 255 ? 255 : r));
-    rgb[rgb_idx1 + 1] = (uint8_t)(g < 0 ? 0 : (g > 255 ? 255 : g));
-    rgb[rgb_idx1 + 2] = (uint8_t)(b < 0 ? 0 : (b > 255 ? 255 : b));
+static int webcam_v4l2_init_swscale(webcam_context_t *ctx, enum AVPixelFormat src_fmt) {
+  if (src_fmt == AV_PIX_FMT_NONE) {
+    log_error("Invalid pixel format for swscale");
+    return -1;
   }
+
+  // Free existing context if present
+  if (ctx->sws_ctx) {
+    sws_freeContext(ctx->sws_ctx);
+    ctx->sws_ctx = NULL;
+  }
+
+  // Create new swscale context for conversion to RGB24
+  ctx->sws_ctx = sws_getContext(ctx->width, ctx->height, src_fmt, ctx->width, ctx->height, AV_PIX_FMT_RGB24,
+                                SWS_BILINEAR, NULL, NULL, NULL);
+
+  if (!ctx->sws_ctx) {
+    log_error("Failed to create swscale context for format conversion");
+    return -1;
+  }
+
+  ctx->av_pixel_format = src_fmt;
+  return 0;
 }
 
 /**
  * @brief Set the format of the webcam
  *
- * Tries RGB24 first (native), then falls back to YUYV (most common).
+ * Tries formats in this order:
+ * 1. RGB24 (native, no conversion)
+ * 2. NV12 (libswscale - Raspberry Pi, modern USB cameras)
+ * 3. I420 (libswscale - planar YUV)
+ * 4. YUYV (libswscale - YUV 4:2:2)
+ * 5. UYVY (libswscale - YUV 4:2:2 variant)
+ *
  * V4L2 drivers may change the requested format, so we check what was actually set.
  *
  * @param ctx The webcam context
@@ -122,18 +115,57 @@ static int webcam_v4l2_set_format(webcam_context_t *ctx, int width, int height) 
     ctx->pixelformat = V4L2_PIX_FMT_RGB24;
     ctx->width = fmt.fmt.pix.width;
     ctx->height = fmt.fmt.pix.height;
+    ctx->sws_ctx = NULL;
     log_debug("V4L2 format set to RGB24 %dx%d", ctx->width, ctx->height);
     return 0;
   }
 
-  // Fall back to YUYV (most webcams support this natively)
+  // Try NV12 (Raspberry Pi cameras, modern USB cameras)
+  fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_NV12;
+  if (ioctl(ctx->fd, VIDIOC_S_FMT, &fmt) == 0 && fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_NV12) {
+    ctx->pixelformat = V4L2_PIX_FMT_NV12;
+    ctx->width = fmt.fmt.pix.width;
+    ctx->height = fmt.fmt.pix.height;
+    if (webcam_v4l2_init_swscale(ctx, AV_PIX_FMT_NV12) == 0) {
+      log_debug("V4L2 format set to NV12 %dx%d (will convert to RGB with swscale)", ctx->width, ctx->height);
+      return 0;
+    }
+  }
+
+  // Try I420 (planar YUV)
+  fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUV420;
+  if (ioctl(ctx->fd, VIDIOC_S_FMT, &fmt) == 0 && fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_YUV420) {
+    ctx->pixelformat = V4L2_PIX_FMT_YUV420;
+    ctx->width = fmt.fmt.pix.width;
+    ctx->height = fmt.fmt.pix.height;
+    if (webcam_v4l2_init_swscale(ctx, AV_PIX_FMT_YUV420P) == 0) {
+      log_debug("V4L2 format set to I420 %dx%d (will convert to RGB with swscale)", ctx->width, ctx->height);
+      return 0;
+    }
+  }
+
+  // Try YUYV (YUV 4:2:2 - most webcams support this)
   fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
   if (ioctl(ctx->fd, VIDIOC_S_FMT, &fmt) == 0 && fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV) {
     ctx->pixelformat = V4L2_PIX_FMT_YUYV;
     ctx->width = fmt.fmt.pix.width;
     ctx->height = fmt.fmt.pix.height;
-    log_debug("V4L2 format set to YUYV %dx%d (will convert to RGB)", ctx->width, ctx->height);
-    return 0;
+    if (webcam_v4l2_init_swscale(ctx, AV_PIX_FMT_YUYV422) == 0) {
+      log_debug("V4L2 format set to YUYV %dx%d (will convert to RGB with swscale)", ctx->width, ctx->height);
+      return 0;
+    }
+  }
+
+  // Try UYVY (YUV 4:2:2 variant)
+  fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_UYVY;
+  if (ioctl(ctx->fd, VIDIOC_S_FMT, &fmt) == 0 && fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_UYVY) {
+    ctx->pixelformat = V4L2_PIX_FMT_UYVY;
+    ctx->width = fmt.fmt.pix.width;
+    ctx->height = fmt.fmt.pix.height;
+    if (webcam_v4l2_init_swscale(ctx, AV_PIX_FMT_UYVY422) == 0) {
+      log_debug("V4L2 format set to UYVY %dx%d (will convert to RGB with swscale)", ctx->width, ctx->height);
+      return 0;
+    }
   }
 
   // Save errno before log_error() clears it
@@ -142,13 +174,13 @@ static int webcam_v4l2_set_format(webcam_context_t *ctx, int width, int height) 
   // Check if format setting failed because device is busy
   if (saved_errno == EBUSY) {
     log_error("Failed to set V4L2 format: device is busy (another application is using it)");
-    errno = saved_errno; // Restore errno for caller to check
+    errno = saved_errno;
     return -1;
   }
 
-  log_error("Failed to set V4L2 format: device supports neither RGB24 nor YUYV (errno=%d: %s)", saved_errno,
-            SAFE_STRERROR(saved_errno));
-  errno = saved_errno; // Restore errno for caller
+  log_error("Failed to set V4L2 format: device supports none of (RGB24, NV12, I420, YUYV, UYVY) (errno=%d: %s)",
+            saved_errno, SAFE_STRERROR(saved_errno));
+  errno = saved_errno;
   return -1;
 }
 
@@ -349,6 +381,12 @@ void webcam_cleanup_context(webcam_context_t *ctx) {
   if (!ctx)
     return;
 
+  // Free swscale context if it was allocated
+  if (ctx->sws_ctx) {
+    sws_freeContext(ctx->sws_ctx);
+    ctx->sws_ctx = NULL;
+  }
+
   // Free cached frame if it was allocated
   if (v4l2_cached_frame) {
     image_destroy(v4l2_cached_frame);
@@ -434,9 +472,31 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   image_t *img = v4l2_cached_frame;
 
   // Copy and convert frame data based on pixel format
-  if (ctx->pixelformat == V4L2_PIX_FMT_YUYV) {
-    // Convert YUYV to RGB24
-    yuyv_to_rgb24(ctx->buffers[buf.index].start, (uint8_t *)img->pixels, ctx->width, ctx->height);
+  if (ctx->sws_ctx) {
+    // Use libswscale for format conversion (NV12, I420, YUYV, UYVY)
+    const uint8_t *src_data[1] = {(const uint8_t *)ctx->buffers[buf.index].start};
+    int src_linesize[1] = {0};
+
+    // Calculate source linesize based on format
+    switch (ctx->pixelformat) {
+      case V4L2_PIX_FMT_NV12:
+      case V4L2_PIX_FMT_YUV420:
+        // For planar formats, linesize equals width
+        src_linesize[0] = ctx->width;
+        break;
+      case V4L2_PIX_FMT_YUYV:
+      case V4L2_PIX_FMT_UYVY:
+        // For packed YUV 4:2:2, each pixel is 2 bytes
+        src_linesize[0] = ctx->width * 2;
+        break;
+      default:
+        src_linesize[0] = ctx->width;
+    }
+
+    uint8_t *dst_data[1] = {(uint8_t *)img->pixels};
+    int dst_linesize[1] = {ctx->width * 3};
+
+    sws_scale(ctx->sws_ctx, src_data, src_linesize, 0, ctx->height, dst_data, dst_linesize);
   } else {
     // RGB24 - direct copy with overflow checking
     size_t frame_size;
