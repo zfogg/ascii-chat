@@ -1,14 +1,7 @@
 # WebAssembly Build Configuration (Mirror and Client Modes)
-# Integrated as a subdirectory of the main ascii-chat project
-# Uses the Emscripten toolchain passed from parent project
+# Built as a separate project via execute_process with Emscripten toolchain
 
 cmake_minimum_required(VERSION 3.18)
-
-# Set Emscripten toolchain if passed from parent project
-if(DEFINED EMSCRIPTEN_TOOLCHAIN_FILE AND EMSCRIPTEN_TOOLCHAIN_FILE)
-    set(CMAKE_TOOLCHAIN_FILE "${EMSCRIPTEN_TOOLCHAIN_FILE}" CACHE FILEPATH "Emscripten toolchain" FORCE)
-endif()
-
 project(ascii-chat-wasm)
 
 # Export compile commands for IDE integration
