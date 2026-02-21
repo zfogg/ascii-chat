@@ -541,7 +541,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   size_t assembled_capacity = 0;
   uint64_t assembly_start_ns = time_get_ns();
   int fragment_count = 0;
-  const uint64_t MAX_REASSEMBLY_TIME_NS = 100 * 1000000ULL; // 100ms - short timeout for polling-based retry
+  const uint64_t MAX_REASSEMBLY_TIME_NS = 5000 * 1000000ULL; // 5 second timeout - allows large frames like 230KB video to arrive in fragments
 
   while (true) {
     // Wait for fragment if queue is empty (with short timeout)
