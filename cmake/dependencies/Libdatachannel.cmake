@@ -240,6 +240,7 @@ if(NOT libdatachannel_POPULATED)
         # Prepare CMake args for libdatachannel build
         set(LIBDATACHANNEL_CMAKE_ARGS
             -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+            -DCMAKE_GENERATOR=${CMAKE_GENERATOR}
             -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
             -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
             -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=${LIBDATACHANNEL_BUILD_DIR}/lib
