@@ -81,14 +81,15 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg,
 
     FT_Load_Char(r->ft_face, 'M', FT_LOAD_RENDER);
     r->cell_w  = (int)(r->ft_face->glyph->advance.x >> 6);
-    // Cell height = full em-size (ascender to descender). FreeType size->metrics.height
-    // includes line_gap which adds extra vertical spacing. Instead, use the actual
-    // glyph bounds scaled proportionally: cell_h/cell_w should match font aspect ratio.
-    // Use em-size as basis: em-size is width of 'M' for the font.
-    int em_size = (int)(r->ft_face->size->metrics.x_ppem);  // pixels-per-em for current size
-    // For proper aspect: height should be approximately equal to em-size (which is typically
-    // narrower than full ascender-descender for well-designed fonts)
-    r->cell_h = em_size;
+    // Cell height uses the actual rendered glyph height. This ensures glyphs naturally
+    // fit their cells at the chosen font size. The bitmap height directly reflects what
+    // will be rendered, so using it gives proper scaling across different font sizes.
+    // For a 12pt font: ~16px, 24pt: ~32px, etc. This makes larger fonts render larger.
+    r->cell_h  = (int)(r->ft_face->glyph->bitmap.rows);
+    if (r->cell_h == 0) {
+        // Fallback for fonts where 'M' might not render (shouldn't happen)
+        r->cell_h = (int)(r->ft_face->size->metrics.height >> 6);
+    }
     r->baseline = (int)(r->ft_face->size->metrics.ascender >> 6);
 
     r->width_px = r->cols * r->cell_w;
