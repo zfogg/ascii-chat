@@ -82,22 +82,51 @@ static void *websocket_service_thread(void *arg) {
   log_debug("WebSocket service thread started (owns_context=%d, wsi=%p)", ws_data->owns_context,
             (void *)ws_data->wsi);
 
+  static int loop_count = 0;
   while (ws_data->service_running) {
+    loop_count++;
     // Check if THIS transport (client or server) has data queued to send
     // Note: we only check for CLIENT transports here (owns_context=true)
     // because SERVER transports are already handled by the SERVER_WRITEABLE callback.
     // Clients need explicit triggering via lws_callback_on_writable().
     if (ws_data->owns_context && ws_data->wsi) {
-      // This is a CLIENT transport - check send queue
+      // This is a CLIENT transport - actively drain send queue instead of relying on callbacks
+      // The WRITEABLE callback mechanism doesn't reliably trigger for browser clients,
+      // so we drain the queue directly in the service thread.
+      websocket_recv_msg_t msg;
+      int messages_sent = 0;
+
       mutex_lock(&ws_data->send_mutex);
-      bool has_queued_data = !ringbuffer_is_empty(ws_data->send_queue);
+      bool has_data = !ringbuffer_is_empty(ws_data->send_queue);
+      if (has_data) {
+        log_debug("Service thread: CLIENT queue has data, draining...");
+      }
+      while (ringbuffer_read(ws_data->send_queue, &msg)) {
+        mutex_unlock(&ws_data->send_mutex);
+
+        // Send message directly with lws_write()
+        log_debug("Service thread: sending queued %zu bytes to wsi=%p", msg.len, (void *)ws_data->wsi);
+        int written = lws_write(ws_data->wsi, msg.data, msg.len, LWS_WRITE_BINARY);
+
+        if (written < 0) {
+          log_error("Service thread lws_write() failed: %d", written);
+          SAFE_FREE(msg.data);
+          mutex_lock(&ws_data->send_mutex);
+          break;
+        }
+
+        if ((size_t)written != msg.len) {
+          log_warn("Service thread partial write: %d/%zu bytes sent", written, msg.len);
+        }
+
+        SAFE_FREE(msg.data);
+        messages_sent++;
+        mutex_lock(&ws_data->send_mutex);
+      }
       mutex_unlock(&ws_data->send_mutex);
 
-      if (has_queued_data) {
-        // Request writeable callback to process queued messages
-        log_debug("Service thread: found queued data, requesting WRITEABLE callback for wsi=%p",
-                  (void *)ws_data->wsi);
-        lws_callback_on_writable(ws_data->wsi);
+      if (messages_sent > 0) {
+        log_debug("Service thread: sent %d queued messages", messages_sent);
       }
     }
 
