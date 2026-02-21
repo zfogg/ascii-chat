@@ -647,6 +647,28 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
 
     // Flush kernel write buffer so piped data appears immediately to readers
     (void)terminal_flush(STDOUT_FILENO);
+  } else {
+    // Piped to non-interactive output (e.g., file or pipe): output ASCII frames without cursor control
+    // This handles snapshot mode being piped to a file: ./ascii-chat mirror --snapshot > output.txt
+    // Combine frame and newline into single write call to minimize syscalls
+    char *write_buf = SAFE_MALLOC(frame_len + 1, char *);
+    if (write_buf) {
+      memcpy(write_buf, frame_data, frame_len);
+      write_buf[frame_len] = '\n';
+
+      // Write frame + newline as atomic operation
+      (void)platform_write_all(STDOUT_FILENO, write_buf, frame_len + 1);
+
+      SAFE_FREE(write_buf);
+    } else {
+      // Fallback: two writes if allocation fails
+      (void)platform_write_all(STDOUT_FILENO, frame_data, frame_len);
+      const char newline = '\n';
+      (void)platform_write_all(STDOUT_FILENO, &newline, 1);
+    }
+
+    // Flush kernel write buffer so piped data appears immediately to readers
+    (void)terminal_flush(STDOUT_FILENO);
   }
   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "frame_write",
                            "FRAME_WRITE: Write and flush complete (%.2f ms)");
