@@ -1,3 +1,0 @@
-# AddressSanitizer suppressions for ascii-chat
-# ASAN-specific suppressions (for memory errors, not leaks)
-# Leak suppressions go in .lsan-suppressions instead
