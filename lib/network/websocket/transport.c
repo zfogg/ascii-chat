@@ -652,45 +652,41 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
     // Free fragment data (we've copied it)
     buffer_pool_free(NULL, frag.data, frag.len);
 
-    // Check if we have a complete ACIP message using protocol structure
-    // ACIP header: magic(8) + type(2) + length(4) + crc(4) + client_id(2) = 20 bytes
-    // The length field tells us the total message size
-    if (assembled_size >= 20) {
+    // Try to detect packet boundary using protocol structure
+    // ACIP packet header: magic(8) + type(2) + length(4) + crc(4) + client_id(4) = 22 bytes
+    // The length field (bytes 10-13) tells us the payload size
+    if (assembled_size >= 14) {  // Need at least 14 bytes to read length field at offset 10
       const uint8_t *data = assembled_buffer;
 
-      // Parse ACIP packet header
-      uint64_t magic = (uint64_t)data[0] << 56 | (uint64_t)data[1] << 48 | (uint64_t)data[2] << 40 |
-                      (uint64_t)data[3] << 32 | (uint64_t)data[4] << 24 | (uint64_t)data[5] << 16 |
-                      (uint64_t)data[6] << 8 | (uint64_t)data[7];
-      uint16_t type = (data[8] << 8) | data[9];
-      uint32_t msg_len = (data[10] << 24) | (data[11] << 16) | (data[12] << 8) | data[13];
+      // Parse length field at offset 10 (4 bytes, big-endian)
+      uint32_t msg_payload_len = (data[10] << 24) | (data[11] << 16) | (data[12] << 8) | data[13];
 
-      // ACIP magic should be 0xa1c4115c0a000000 (ASCIICCHAT in hex)
-      const uint64_t ACIP_MAGIC = 0xa1c4115c0a000000ULL;
-
-      if (magic == ACIP_MAGIC) {
-        // We have a valid ACIP header
-        // Total packet size = header(20) + payload(msg_len)
-        size_t expected_size = 20 + msg_len;
+      // Sanity check: payload length should be reasonable (< 5MB)
+      if (msg_payload_len > 0 && msg_payload_len <= 5 * 1024 * 1024) {
+        // Total packet size = header(14 bytes up to and including length field) + payload
+        // Actually full header is 22 bytes but we can work with just the length field
+        const size_t HEADER_SIZE = 22;
+        size_t expected_size = HEADER_SIZE + msg_payload_len;
 
         if (assembled_size >= expected_size) {
-          // Complete ACIP message assembled
-          log_info("[WS_REASSEMBLE] Complete ACIP message: %zu bytes in %d fragments (type=%u, payload=%u)",
-                   expected_size, fragment_count, type, msg_len);
+          // Complete packet assembled based on header length field
+          log_info("[WS_REASSEMBLE] Complete message by length field: %zu bytes in %d fragments (payload=%u)",
+                   expected_size, fragment_count, msg_payload_len);
           *buffer = assembled_buffer;
           *out_len = expected_size;
           *out_allocated_buffer = assembled_buffer;
           mutex_unlock(&ws_data->recv_mutex);
           return ASCIICHAT_OK;
         }
-        // Need more fragments to complete this ACIP message
+        // Need more fragments to complete this message
       }
     }
 
-    // Check if we have the final WebSocket fragment (fallback for malformed packets)
+    // Fallback: check if we have the final WebSocket fragment
+    // With permessage-deflate, is_final is unreliable, but use as last resort
     if (frag.final) {
-      // Complete WebSocket message assembled
-      log_info("[WS_REASSEMBLE] WebSocket final fragment: %zu bytes in %d fragments (no valid ACIP header)",
+      // Complete WebSocket message assembled (or timeout reached, return what we have)
+      log_info("[WS_REASSEMBLE] WebSocket final fragment reached: %zu bytes in %d fragments",
                assembled_size, fragment_count);
       *buffer = assembled_buffer;
       *out_len = assembled_size;
@@ -702,16 +698,9 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
     // More fragments coming, continue reassembling
   }
 
+  // Unreachable unless while loop breaks without returning
   mutex_unlock(&ws_data->recv_mutex);
-
-  // Return reassembled message to caller
-  *buffer = assembled_buffer;
-  *out_len = assembled_size;
-  *out_allocated_buffer = assembled_buffer;
-
-  log_info_every(LOG_RATE_DEFAULT, "[WS_TIMING] websocket_recv dequeued %zu bytes (from %d fragments) at t=%llu",
-                 assembled_size, fragment_count, (unsigned long long)time_get_ns());
-  return ASCIICHAT_OK;
+  return SET_ERRNO(ERROR_NETWORK, "Unexpected exit from fragment reassembly loop");
 }
 
 static asciichat_error_t websocket_close(acip_transport_t *transport) {
