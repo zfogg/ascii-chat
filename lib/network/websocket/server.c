@@ -368,12 +368,15 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       memcpy(ws_data->send_buffer + LWS_PRE, conn_data->pending_send_data + conn_data->pending_send_offset, chunk_size);
 
       uint64_t write_start_ns = time_get_ns();
+      log_debug("SERVER_WRITEABLE: lws_write - buffer_cap=%zu, offset=%zu/%zu, chunk=%zu",
+               ws_data->send_buffer_capacity, conn_data->pending_send_offset, conn_data->pending_send_len, chunk_size);
       int written = lws_write(wsi, ws_data->send_buffer + LWS_PRE, chunk_size, flags);
       uint64_t write_end_ns = time_get_ns();
       char write_duration_str[32];
       format_duration_ns((double)(write_end_ns - write_start_ns), write_duration_str, sizeof(write_duration_str));
-      log_dev_every(4500 * US_PER_MS_INT, "lws_write returned %d bytes in %s (chunk_size=%zu)", written,
-                    write_duration_str, chunk_size);
+      log_dev_every(4500 * US_PER_MS_INT, "[WRITE_BUFFER] lws_write returned %d bytes in %s (chunk=%zu, capacity=%zu, progress=%zu/%zu)",
+                    written, write_duration_str, chunk_size, ws_data->send_buffer_capacity,
+                    conn_data->pending_send_offset + ((written > 0) ? written : 0), conn_data->pending_send_len);
 
       if (written < 0) {
         log_error("Server WebSocket write error: %d at offset %zu/%zu", written, conn_data->pending_send_offset,
@@ -463,7 +466,15 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
       memcpy(ws_data->send_buffer + LWS_PRE, msg.data, chunk_size);
 
+      uint64_t write_start_ns = time_get_ns();
+      log_debug("SERVER_WRITEABLE: First fragment - lws_write with buffer_cap=%zu, msg_size=%zu, chunk=%zu",
+               ws_data->send_buffer_capacity, msg.len, chunk_size);
       int written = lws_write(wsi, ws_data->send_buffer + LWS_PRE, chunk_size, flags);
+      uint64_t write_end_ns = time_get_ns();
+      char write_duration_str[32];
+      format_duration_ns((double)(write_end_ns - write_start_ns), write_duration_str, sizeof(write_duration_str));
+      log_dev_every(4500 * US_PER_MS_INT, "[WRITE_BUFFER] First fragment: written=%d bytes in %s (chunk=%zu, msg_size=%zu)",
+                    written, write_duration_str, chunk_size, msg.len);
       if (written < 0) {
         log_error("Server WebSocket write error on first fragment: %d", written);
         SAFE_FREE(msg.data);

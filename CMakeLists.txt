@@ -366,8 +366,34 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE AND NOT WASM_CONFIGURED)
     set(WASM_CONFIGURED TRUE CACHE BOOL "WASM project has been configured" FORCE)
 endif()
 
-# WASM targets are defined in src/CMakeLists.txt to avoid CMP0002 duplicate target violations
-# The src/CMakeLists.txt file handles WASM target creation for both WASM and native builds
+# Create custom targets to build WASM from main project
+# Only define if src/CMakeLists hasn't already defined them
+if(EMSCRIPTEN_TOOLCHAIN_FILE AND NOT WASM_TARGETS_DEFINED)
+    set(WASM_BUILD_DIR "${CMAKE_BINARY_DIR}/web")
+
+    add_custom_target(mirror-web
+        COMMAND cd "${WASM_BUILD_DIR}" && ${CMAKE_COMMAND} --build . --target mirror-web
+        COMMENT "Building mirror-web WASM module"
+        VERBATIM
+    )
+
+    add_custom_target(client-web
+        COMMAND cd "${WASM_BUILD_DIR}" && ${CMAKE_COMMAND} --build . --target client-web
+        COMMENT "Building client-web WASM module"
+        VERBATIM
+    )
+
+    add_custom_target(web
+        COMMAND cd "${WASM_BUILD_DIR}" && ${CMAKE_COMMAND} --build . --target web
+        COMMENT "Building all WASM modules"
+        VERBATIM
+    )
+
+    message(STATUS "WASM targets configured:")
+    message(STATUS "  mirror-web - Build mirror mode WASM only")
+    message(STATUS "  client-web - Build client mode WASM only")
+    message(STATUS "  web        - Build all WASM modules")
+endif()
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/tests ${CMAKE_BINARY_DIR}/tests)
 # Optional CTest dashboard integration
