@@ -301,8 +301,8 @@ if(NOT BUILDING_OBJECT_LIBS)
 endif()
 
 # Link render-file dependencies to platform module (for terminal renderers)
-target_include_directories(ascii-chat-platform PRIVATE ${PLATFORM_INCLUDES})
-target_link_libraries(ascii-chat-platform ${PLATFORM_LIBS})
+target_include_directories(ascii-chat-platform PRIVATE ${PLATFORM_INCLUDES} ${GHOSTTY_INCLUDES})
+target_link_libraries(ascii-chat-platform ${PLATFORM_LIBS} ${GHOSTTY_LIBS})
 
 # Add kernel headers for musl builds (needed for V4L2)
 if(USE_MUSL AND DEFINED MUSL_DEPS_DIR AND EXISTS "${MUSL_DEPS_DIR}/musl-deps/kernel-headers")
@@ -470,8 +470,8 @@ if(NOT BUILDING_OBJECT_LIBS)
         target_link_libraries(ascii-chat-video ${FFMPEG_LINK_LIBRARIES})
     endif()
     # Link render-file dependencies
-    target_include_directories(ascii-chat-video PRIVATE ${RENDER_FILE_INCLUDES})
-    target_link_libraries(ascii-chat-video ${RENDER_FILE_LIBS})
+    target_include_directories(ascii-chat-video PRIVATE ${GHOSTTY_INCLUDES})
+    target_link_libraries(ascii-chat-video ${GHOSTTY_LIBS})
 endif()
 
 # Mark generated font file as generated (for OBJECT libraries, must be before module creation)
@@ -1178,7 +1178,7 @@ endif()
 
 # Link render-file dependencies
 if(NOT WIN32)
-    target_link_libraries(ascii-chat-shared PRIVATE ${RENDER_FILE_LIBS})
+    target_link_libraries(ascii-chat-shared PRIVATE ${GHOSTTY_LIBS})
 endif()
 
 # Suppress linker warnings about duplicate debug symbols in libdatachannel
