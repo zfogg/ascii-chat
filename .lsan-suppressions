@@ -1,0 +1,41 @@
+# LeakSanitizer suppressions for ascii-chat
+# These are external library allocations that are freed on process exit
+# See: https://github.com/google/sanitizers/wiki/SanitizerCommonFlags#suppression-format
+
+# libpulse device context initialization
+# These allocations happen during Pa_Initialize() when probing audio devices
+# They are freed by the OS on process exit
+leak:pa_stream_get_format_info
+leak:pa_sample_format_is_le
+leak:pa_context_get_server_info
+leak:pa_context_set_sink_mute_by_name
+
+# libasyncns DNS async resolution
+# Used by PulseAudio for non-blocking DNS lookups
+leak:asyncns_getaddrinfo
+
+# libpipewire context initialization
+# PipeWire is the audio backend used by modern Linux systems
+# Device context is allocated on first use and freed on process exit
+leak:pw_context_load_module
+leak:pw_context_new
+leak:pw_conf_section_for_each
+leak:pw_context_parse_conf_section
+
+# ALSA device initialization
+# Low-level audio driver allocations
+leak:snd_pcm_open
+leak:snd_pcm_pipewire_open
+
+# PortAudio ALSA backend
+# Device enumeration and PCM initialization
+leak:PaAlsa_Initialize
+leak:Pa_Initialize
+
+# fontconfig initialization and configuration
+# Allocations from font configuration loading (used for font resolution in render-file)
+# These are global font database caches that persist for the lifetime of the process
+leak:FcConfigGetDefaultLangs
+leak:FcInitLoadConfigAndFonts
+leak:FcPatternMatch
+leak:FcConfigSubstitute
