@@ -918,10 +918,13 @@ const acip_client_callbacks_t *protocol_get_acip_callbacks() {
 static void *data_reception_thread_func(void *arg) {
   (void)arg;
 
+  log_warn("[FRAME_RECV_LOOP] 🔄 THREAD_STARTED: Data reception thread active, callbacks initialized");
+
 #ifdef DEBUG_THREADS
-  log_debug("Data reception thread started");
+  log_debug("[FRAME_RECV_LOOP] Thread lifecycle tracking enabled");
 #endif
 
+  int packet_count = 0;
   while (!should_exit() && server_connection_is_active()) {
     // Main loop: receive and process packets while connection is active
     // When connection becomes inactive or shutdown is requested, thread exits cleanly
@@ -930,38 +933,47 @@ static void *data_reception_thread_func(void *arg) {
     // This combines packet reception, decryption, parsing, handler dispatch, and cleanup
     acip_transport_t *transport = server_connection_get_transport();
     if (!transport) {
-      log_error("Transport not available, connection lost");
+      log_error("[FRAME_RECV_LOOP] ❌ NO_TRANSPORT: connection lost, transport not available");
       server_connection_lost();
       break;
     }
 
+    log_debug("[FRAME_RECV_LOOP] 📥 RECV_WAITING: awaiting packet #%d from server (transport ready)", packet_count + 1);
+
     asciichat_error_t acip_result = acip_client_receive_and_dispatch(transport, &g_acip_client_callbacks);
 
-    // Handle receive/dispatch errors
-    if (acip_result != ASCIICHAT_OK) {
-      // Check error type to determine action
+    if (acip_result == ASCIICHAT_OK) {
+      packet_count++;
+      log_debug("[FRAME_RECV_LOOP] ✅ PACKET_%d_DISPATCHED: callbacks processed successfully", packet_count);
+    } else {
+      // Handle receive/dispatch errors
       asciichat_error_context_t err_ctx;
       if (HAS_ERRNO(&err_ctx)) {
         if (err_ctx.code == ERROR_NETWORK) {
           // Network error or EOF - server disconnected
-          log_debug("Server disconnected (network error): %s", err_ctx.context_message);
+          log_warn("[FRAME_RECV_LOOP] ⚠️  NETWORK_ERROR: Server disconnected after %d packets: %s", packet_count,
+                   err_ctx.context_message);
           server_connection_lost();
           break;
         } else if (err_ctx.code == ERROR_CRYPTO) {
           // Security violation - exit immediately
-          log_error("SECURITY: Server violated encryption policy");
+          log_error("[FRAME_RECV_LOOP] ❌ SECURITY_VIOLATION: Server crypto policy violated - EXITING");
           log_error("SECURITY: This is a critical security violation - exiting immediately");
           exit(1);
         }
       }
 
       // Other errors - log warning but continue
-      log_warn("ACIP receive/dispatch failed: %s", asciichat_error_string(acip_result));
+      log_warn("[FRAME_RECV_LOOP] ⚠️  DISPATCH_ERROR: packet #%d failed: %s (continuing loop)", packet_count + 1,
+               asciichat_error_string(acip_result));
     }
   }
 
+  log_warn("[FRAME_RECV_LOOP] 🔴 THREAD_EXITING: received %d packets total, connection inactive or shutdown requested",
+           packet_count);
+
 #ifdef DEBUG_THREADS
-  log_debug("Data reception thread stopped");
+  log_debug("[FRAME_RECV_LOOP] Thread lifecycle tracking - exit");
 #endif
 
   atomic_store(&g_data_thread_exited, true);
@@ -969,6 +981,7 @@ static void *data_reception_thread_func(void *arg) {
   // Clean up thread-local error context before exit
   asciichat_errno_destroy();
 
+  log_warn("[FRAME_RECV_LOOP] ✅ THREAD_CLEANUP: error context destroyed, thread terminating");
   return NULL;
 }
 
@@ -987,23 +1000,27 @@ static void *data_reception_thread_func(void *arg) {
  * @ingroup client_protocol
  */
 int protocol_start_connection() {
+  log_warn("[FRAME_RECV_INIT] 🟢 PROTOCOL_START: Starting client protocol initialization");
+
   // Reset protocol state for new connection
   g_server_state_initialized = false;
   g_last_active_count = 0;
   g_should_clear_before_next_frame = false;
+
+  log_info("[FRAME_RECV_INIT] ✅ STATE_RESET: server_initialized=false, active_count=0, clear_flag=false");
 
   // Reset display state for new connection
   display_reset_for_new_connection();
 
   // Send CLIENT_CAPABILITIES packet FIRST before starting any threads
   // Server expects this as the first packet after crypto handshake
-  log_debug("Sending client capabilities to server...");
+  log_debug("[FRAME_RECV_INIT] 📤 SENDING_CAPABILITIES: terminal_size negotiation");
   asciichat_error_t cap_result = threaded_send_terminal_size_with_auto_detect(GET_OPTION(width), GET_OPTION(height));
   if (cap_result != ASCIICHAT_OK) {
-    log_error("Failed to send client capabilities to server");
+    log_error("[FRAME_RECV_INIT] ❌ CAPABILITIES_FAILED: cannot send terminal size");
     return -1;
   }
-  log_debug("Client capabilities sent successfully");
+  log_debug("[FRAME_RECV_INIT] ✅ CAPABILITIES_SENT: terminal_size sent successfully");
 
   // Send STREAM_START packet with combined stream types BEFORE starting worker threads
   // This tells the server what streams to expect before any data arrives
@@ -1011,22 +1028,24 @@ int protocol_start_connection() {
   if (GET_OPTION(audio_enabled)) {
     stream_types |= STREAM_TYPE_AUDIO; // Add audio if enabled
   }
-  log_debug("Sending STREAM_START packet (types=0x%x: %s%s)...", stream_types, "video",
-            (stream_types & STREAM_TYPE_AUDIO) ? "+audio" : "");
+  log_info("[FRAME_RECV_INIT] 📤 SENDING_STREAM_START: types=0x%x (video%s)", stream_types,
+           (stream_types & STREAM_TYPE_AUDIO) ? "+audio" : "");
   asciichat_error_t stream_result = threaded_send_stream_start_packet(stream_types);
   if (stream_result != ASCIICHAT_OK) {
-    log_error("Failed to send STREAM_START packet");
+    log_error("[FRAME_RECV_INIT] ❌ STREAM_START_FAILED: cannot send stream types");
     return -1;
   }
-  log_debug("STREAM_START packet sent successfully");
+  log_info("[FRAME_RECV_INIT] ✅ STREAM_START_SENT: stream_types=0x%x, server will send frames", stream_types);
 
   // Start data reception thread
+  log_warn("[FRAME_RECV_INIT] 🔄 STARTING_DATA_THREAD: callbacks registered, about to spawn thread");
   atomic_store(&g_data_thread_exited, false);
   if (thread_pool_spawn(g_client_worker_pool, data_reception_thread_func, NULL, 1, "data_reception") != ASCIICHAT_OK) {
-    log_error("Failed to spawn data reception thread in worker pool");
+    log_error("[FRAME_RECV_INIT] ❌ DATA_THREAD_SPAWN_FAILED: cannot start frame receive thread");
     LOG_ERRNO_IF_SET("Data reception thread creation failed");
     return -1;
   }
+  log_warn("[FRAME_RECV_INIT] ✅ DATA_THREAD_SPAWNED: frame receive thread is now running, waiting for frames...");
 
   // Start webcam capture thread
   log_debug("Starting webcam capture thread...");
@@ -1136,16 +1155,24 @@ static void acip_on_ascii_frame(const ascii_frame_packet_t *header, const void *
                                 void *ctx) {
   (void)ctx;
 
+  log_info("[FRAME_RECV_CALLBACK] 🎬 FRAME_RECEIVED: width=%u, height=%u, data_len=%zu bytes, flags=0x%x",
+           header->width, header->height, data_len, header->flags);
+
   // Reconstruct full packet for existing handler (header + data)
   // IMPORTANT: header is already in HOST byte order from ACIP layer,
   // but handle_ascii_frame_packet() expects NETWORK byte order and does conversion.
   // So we need to convert back to network order before passing.
   size_t total_len = sizeof(*header) + data_len;
+  log_debug("[FRAME_RECV_CALLBACK] 📦 FRAME_SIZE: header=%zu + data=%zu = total=%zu", sizeof(*header), data_len,
+            total_len);
+
   uint8_t *packet = SAFE_MALLOC(total_len, uint8_t *);
   if (!packet) {
-    log_error("Failed to allocate buffer for ASCII frame callback");
+    log_error("[FRAME_RECV_CALLBACK] ❌ ALLOC_FAILED: cannot allocate %zu bytes for frame", total_len);
     return;
   }
+
+  log_debug("[FRAME_RECV_CALLBACK] ✅ BUFFER_ALLOCATED: packet=%p, capacity=%zu", (void *)packet, total_len);
 
   // Convert header fields back to network byte order for handle_ascii_frame_packet()
   ascii_frame_packet_t net_header = *header;
@@ -1156,11 +1183,17 @@ static void acip_on_ascii_frame(const ascii_frame_packet_t *header, const void *
   net_header.checksum = HOST_TO_NET_U32(header->checksum);
   net_header.flags = HOST_TO_NET_U32(header->flags);
 
+  log_debug("[FRAME_RECV_CALLBACK] 🔄 BYTE_ORDER_CONVERSION: converting header to network byte order");
+
   memcpy(packet, &net_header, sizeof(net_header));
   memcpy(packet + sizeof(net_header), frame_data, data_len);
 
+  log_info("[FRAME_RECV_CALLBACK] 📥 FRAME_DISPATCH: calling handle_ascii_frame_packet() with %zu bytes", total_len);
   handle_ascii_frame_packet(packet, total_len);
+  log_info("[FRAME_RECV_CALLBACK] ✅ FRAME_DISPATCH_COMPLETE: frame processing finished");
+
   SAFE_FREE(packet);
+  log_debug("[FRAME_RECV_CALLBACK] 🗑️  BUFFER_FREED: frame callback cleanup complete");
 }
 
 /**
