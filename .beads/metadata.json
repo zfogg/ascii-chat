@@ -1,0 +1,7 @@
+{
+  "backend": "dolt",
+  "database": "dolt",
+  "dolt_database": "asciichat",
+  "dolt_mode": "server",
+  "jsonl_export": "issues.jsonl"
+}
