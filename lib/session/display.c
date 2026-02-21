@@ -543,7 +543,6 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
  * ============================================================================ */
 
 void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_data) {
-  log_debug("session_display_render_frame called");
   if (!ctx || !ctx->initialized) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Display context is NULL or uninitialized");
     return;

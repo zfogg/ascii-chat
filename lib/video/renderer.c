@@ -77,10 +77,15 @@ asciichat_error_t render_file_create(const char *output_path,
 
 asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx,
                                           const char *ansi_frame) {
-    if (!ctx || !ansi_frame) return ASCIICHAT_OK;
+    if (!ctx) return ASCIICHAT_OK;
+    if (!ansi_frame) {
+        log_warn("render_file_write_frame: ansi_frame is NULL");
+        return ASCIICHAT_OK;
+    }
 
     size_t frame_len = strlen(ansi_frame);
-    log_debug("render_file_write_frame: processing frame (len=%zu)", frame_len);
+    log_info("render_file_write_frame: processing frame (len=%zu, first 100 chars: %.100s)",
+             frame_len, ansi_frame);
 
     asciichat_error_t err = term_renderer_feed(ctx->renderer,
                                                ansi_frame, frame_len);
