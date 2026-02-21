@@ -211,11 +211,7 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   options_builder_add_usage(b, "mirror", NULL, true, "View local webcam or media file as ASCII art");
   options_builder_add_usage(b, "discovery-service", "[bind-address] [bind-address]", true,
                             "Start discovery service (can specify 0-2 bind addresses, one IPv4 and the other IPv6)");
-  options_builder_add_usage(b, NULL, "[mode] --help", false, "Show options for a specific mode");
-  options_builder_add_usage(b, "server", "--help", false, "Show options for server mode");
-  options_builder_add_usage(b, "client", "--help", false, "Show options for client mode");
-  options_builder_add_usage(b, "mirror", "--help", false, "Show options for mirror mode");
-  options_builder_add_usage(b, "discovery-service", "--help", false, "Show options for discovery-service mode");
+  options_builder_add_usage(b, NULL, "[mode] --help", false, "Show help for a specific mode");
 
   // Add examples for binary-level help and discovery mode
   options_builder_add_example(b, OPTION_MODE_BINARY, NULL, "Start new session (share the session string)", false);
@@ -294,7 +290,7 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   // Add mode descriptions
   options_builder_add_mode(b, "server", "Run as multi-client video chat server");
   options_builder_add_mode(b, "client", "Run as video chat client (connect to server)");
-  options_builder_add_mode(b, "mirror", "View local webcam as ASCII art (no server)");
+  options_builder_add_mode(b, "mirror", "View local media as ASCII art (no server)");
   options_builder_add_mode(b, "discovery-service", "Secure P2P session signalling");
 
   // Add custom help sections for interactive modes (client, mirror, and discovery)

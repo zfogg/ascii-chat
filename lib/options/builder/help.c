@@ -1180,9 +1180,11 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
 
       // Filter usage lines by mode
       if (!for_binary_help) {
-        // For mode-specific help, show ONLY the current mode's usage line
-        // Don't show generic binary-level or placeholder lines
-        if (!usage->mode || !mode_name || strcmp(usage->mode, mode_name) != 0) {
+        // For mode-specific help, show the current mode's usage line and the generic [mode] --help line
+        bool is_current_mode = (usage->mode && mode_name && strcmp(usage->mode, mode_name) == 0);
+        bool is_generic_help_line = (!usage->mode && usage->positional && strcmp(usage->positional, "[mode] --help") == 0);
+
+        if (!is_current_mode && !is_generic_help_line) {
           continue;
         }
       }
@@ -1192,9 +1194,17 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
 
       len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, "ascii-chat");
 
+      // For mode-specific help, use [mode] placeholder when showing --help usage
       if (usage->mode) {
-        len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s",
-                             colored_string(LOG_COLOR_FATAL, usage->mode));
+        if (!for_binary_help && usage->positional && strcmp(usage->positional, "--help") == 0) {
+          // Mode-specific help: show [mode] --help as generic placeholder
+          len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s",
+                               colored_string(LOG_COLOR_FATAL, "[mode]"));
+        } else {
+          // Binary help or non-help usage: show actual mode name
+          len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s",
+                               colored_string(LOG_COLOR_FATAL, usage->mode));
+        }
       }
 
       if (usage->positional) {
@@ -1213,6 +1223,12 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
     }
   }
   fprintf(desc, "\n");
+
+  // Print MODES section (only for binary-level help)
+  if (for_binary_help && config->num_modes > 0) {
+    int modes_max_col_width = calculate_section_max_col_width(config, "modes", mode, for_binary_help);
+    print_modes_section(config, desc, term_width, modes_max_col_width);
+  }
 
   // Print positional argument examples (with mode filtering and section-specific column width)
   if (config->num_positional_args > 0) {
