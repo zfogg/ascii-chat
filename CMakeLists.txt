@@ -344,6 +344,14 @@ ascii_panic_finalize()
 ascii_defer_finalize()
 ascii_query_finalize()
 
+# WASM build configuration (integrated as subdirectory with Emscripten toolchain)
+if(EMSCRIPTEN_TOOLCHAIN_FILE)
+    message(STATUS "Emscripten found - WASM targets enabled")
+    add_subdirectory(${CMAKE_SOURCE_DIR}/src/web ${CMAKE_BINARY_DIR}/web)
+else()
+    message(STATUS "Emscripten not found - WASM targets disabled")
+endif()
+
 add_subdirectory(${CMAKE_SOURCE_DIR}/tests ${CMAKE_BINARY_DIR}/tests)
 # Optional CTest dashboard integration
 if(ASCIICHAT_ENABLE_CTEST_DASHBOARD)

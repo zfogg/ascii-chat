@@ -1,8 +1,15 @@
-# WebAssembly Mirror Mode Build
-# Full library integration for ASCII rendering in browser
+# WebAssembly Build Configuration (Mirror and Client Modes)
+# Integrated as a subdirectory of the main ascii-chat project
+# Uses the Emscripten toolchain passed from parent project
 
 cmake_minimum_required(VERSION 3.18)
-project(ascii-chat-mirror-wasm)
+
+# Set Emscripten toolchain if passed from parent project
+if(DEFINED EMSCRIPTEN_TOOLCHAIN_FILE AND EMSCRIPTEN_TOOLCHAIN_FILE)
+    set(CMAKE_TOOLCHAIN_FILE "${EMSCRIPTEN_TOOLCHAIN_FILE}" CACHE FILEPATH "Emscripten toolchain" FORCE)
+endif()
+
+project(ascii-chat-wasm)
 
 # Export compile commands for IDE integration
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -16,10 +23,8 @@ add_definitions(
     -DEMSCRIPTEN_BUILD=1
 )
 
-# Add compiler flags for WASM SIMD
-# -mavx2 enables AVX2 intrinsics emulation on top of WASM SIMD128
-# Note: pthreads disabled for mirror mode (no threading needed, causes malloc hangs)
-add_compile_options(-msimd128 -mavx2)
+# WASM compiler flags will be applied per-target below
+# (not globally, to avoid breaking native builds)
 
 # Cache WASM dependencies outside build/ to persist across rebuilds
 if(ASCIICHAT_WEB_DEPS_DIR)
@@ -75,9 +80,9 @@ FetchContent_MakeAvailable(zstd)
 # No FetchContent needed - using vendored tomlc17
 
 # Path to main ascii-chat library
-set(LIB_ROOT ${CMAKE_SOURCE_DIR}/../../lib)
-set(INCLUDE_ROOT ${CMAKE_SOURCE_DIR}/../../include)
-set(DEPS_ROOT ${CMAKE_SOURCE_DIR}/../../deps)
+set(LIB_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../lib)
+set(INCLUDE_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+set(DEPS_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../deps)
 
 # Include directories for library headers
 # IMPORTANT: WASM stubs must come FIRST to override native headers
@@ -92,7 +97,7 @@ include_directories(
 
 # Source files for WASM mirror entry point
 set(WEB_SRC_MIRROR
-    ${CMAKE_SOURCE_DIR}/mirror.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/mirror.c
 )
 
 # Platform abstraction layer for WASM
@@ -258,8 +263,8 @@ set(LIB_SRC_CLIENT_NETWORK
 
 # Common WASM abstraction layer (shared between mirror and client)
 set(COMMON_WEB_SRC
-    ${CMAKE_SOURCE_DIR}/common/options.c
-    ${CMAKE_SOURCE_DIR}/common/init.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/options.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/init.c
 )
 
 # Compile shared lib sources once for both WASM targets (OBJECT library)
@@ -270,6 +275,11 @@ add_library(wasm-common OBJECT
     ${TOML_SRC}
     ${UTF8PROC_SRC}
 )
+
+# Apply WASM-specific compiler flags only to this target
+# -msimd128 enables WASM SIMD128 support
+# -mavx2 enables AVX2 intrinsics emulation on top of WASM SIMD128
+target_compile_options(wasm-common PRIVATE -msimd128 -mavx2)
 
 # Link dependencies for shared library
 target_link_libraries(wasm-common PRIVATE
@@ -284,6 +294,9 @@ add_executable(mirror-web
     $<TARGET_OBJECTS:wasm-common>
 )
 
+# Apply WASM-specific compiler flags
+target_compile_options(mirror-web PRIVATE -msimd128 -mavx2)
+
 # Link dependencies (built for WASM via FetchContent)
 target_link_libraries(mirror-web PRIVATE
     sodium
@@ -292,7 +305,7 @@ target_link_libraries(mirror-web PRIVATE
 
 # Source files for WASM client entry point
 set(WEB_SRC_CLIENT
-    ${CMAKE_SOURCE_DIR}/client.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/client.c
 )
 
 # Create WASM client module
@@ -302,6 +315,9 @@ add_executable(client-web
     ${LIB_SRC_CLIENT_NETWORK}
     $<TARGET_OBJECTS:wasm-common>
 )
+
+# Apply WASM-specific compiler flags
+target_compile_options(client-web PRIVATE -msimd128 -mavx2)
 
 # Link dependencies for client mode
 target_link_libraries(client-web PRIVATE
@@ -443,8 +459,8 @@ set_target_properties(client-web PROPERTIES OUTPUT_NAME "client")
 add_custom_command(TARGET mirror-web POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/../../../web/web.ascii-chat.com/src/wasm/dist
     COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_BINARY_DIR}/mirror.js
-        ${CMAKE_BINARY_DIR}/mirror.wasm
+        ${CMAKE_CURRENT_BINARY_DIR}/mirror.js
+        ${CMAKE_CURRENT_BINARY_DIR}/mirror.wasm
         ${CMAKE_SOURCE_DIR}/../../../web/web.ascii-chat.com/src/wasm/dist/
     COMMENT "Copying mirror WASM files to web/src/wasm/dist/"
 )
@@ -452,8 +468,23 @@ add_custom_command(TARGET mirror-web POST_BUILD
 add_custom_command(TARGET client-web POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/../../../web/web.ascii-chat.com/src/wasm/dist
     COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_BINARY_DIR}/client.js
-        ${CMAKE_BINARY_DIR}/client.wasm
+        ${CMAKE_CURRENT_BINARY_DIR}/client.js
+        ${CMAKE_CURRENT_BINARY_DIR}/client.wasm
         ${CMAKE_SOURCE_DIR}/../../../web/web.ascii-chat.com/src/wasm/dist/
     COMMENT "Copying client WASM files to web/src/wasm/dist/"
 )
+
+# Combined WASM target (builds both mirror and client)
+add_custom_target(web
+    COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}" --target mirror-web
+    COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}" --target client-web
+    COMMENT "Building all WASM modules"
+    VERBATIM
+)
+
+message(STATUS "WASM targets configured:")
+message(STATUS "  mirror-web - Build mirror mode WASM only")
+message(STATUS "  client-web - Build client mode WASM only")
+message(STATUS "  web        - Build all WASM modules")
+
+
