@@ -130,8 +130,11 @@ static void *websocket_service_thread(void *arg) {
         mutex_unlock(&ws_data->send_mutex);
 
         // Send message directly with lws_write()
+        // IMPORTANT: msg.data already points to start of buffer (with LWS_PRE padding)
+        // lws_write() will write the frame header backwards into LWS_PRE region
+        // then write the data. We need to pass pointer to start of LWS_PRE region.
         log_info(">>> SENDING: %zu bytes via lws_write() for wsi=%p", msg.len, (void *)ws_data->wsi);
-        int written = lws_write(ws_data->wsi, msg.data, msg.len, LWS_WRITE_BINARY);
+        int written = lws_write(ws_data->wsi, msg.data + LWS_PRE, msg.len, LWS_WRITE_BINARY);
 
         if (written < 0) {
           log_error(">>> LWS_WRITE_FAILED: error code %d for %zu bytes", written, msg.len);
@@ -409,15 +412,19 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
   // They must queue data and send from LWS_CALLBACK_SERVER_WRITEABLE
   if (!ws_data->owns_context) {
     // Queue the data for server-side sending
+    // IMPORTANT: Allocate with LWS_PRE padding because lws_write() needs to write
+    // the WebSocket frame header backwards into the LWS_PRE region
     websocket_recv_msg_t msg;
-    msg.data = SAFE_MALLOC(send_len, uint8_t *);
+    size_t buffer_size = LWS_PRE + send_len;
+    msg.data = SAFE_MALLOC(buffer_size, uint8_t *);
     if (!msg.data) {
       SAFE_FREE(send_buffer);
       if (encrypted_packet)
         buffer_pool_free(NULL, encrypted_packet, send_len);
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate send queue buffer");
     }
-    memcpy(msg.data, send_data, send_len);
+    // Copy data AFTER the LWS_PRE region
+    memcpy(msg.data + LWS_PRE, send_data, send_len);
     msg.len = send_len;
     msg.first = 1;
     msg.final = 1;
@@ -459,15 +466,19 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
   // Client-side: queue entire message for service thread to send
   // Avoid fragmentation race conditions by sending atomic messages from service thread
   // libwebsockets handles automatic fragmentation internally when needed
+  // IMPORTANT: Allocate with LWS_PRE padding because lws_write() needs to write
+  // the WebSocket frame header backwards into the LWS_PRE region
   websocket_recv_msg_t msg;
-  msg.data = SAFE_MALLOC(send_len, uint8_t *);
+  size_t buffer_size = LWS_PRE + send_len;
+  msg.data = SAFE_MALLOC(buffer_size, uint8_t *);
   if (!msg.data) {
     SAFE_FREE(send_buffer);
     if (encrypted_packet)
       buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate client send queue buffer");
   }
-  memcpy(msg.data, send_data, send_len);
+  // Copy data AFTER the LWS_PRE region
+  memcpy(msg.data + LWS_PRE, send_data, send_len);
   msg.len = send_len;
   msg.first = 1;
   msg.final = 1;
