@@ -28,6 +28,7 @@ set(NETWORK_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/websocket/transport.c
     ${CMAKE_CURRENT_SOURCE_DIR}/websocket/server.c
     ${CMAKE_CURRENT_SOURCE_DIR}/websocket/client.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/websocket/callback_timing.c
     # webrtc/
     ${CMAKE_CURRENT_SOURCE_DIR}/webrtc/webrtc.c
     ${CMAKE_CURRENT_SOURCE_DIR}/webrtc/transport.c
