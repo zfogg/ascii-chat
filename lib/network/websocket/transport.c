@@ -82,6 +82,19 @@ static void *websocket_service_thread(void *arg) {
   log_debug("WebSocket service thread started");
 
   while (ws_data->service_running) {
+    // Check if client has data queued to send
+    if (!ws_data->owns_context && ws_data->wsi) {
+      // This is a client transport - check send queue
+      mutex_lock(&ws_data->send_mutex);
+      bool has_queued_data = !ringbuffer_is_empty(ws_data->send_queue);
+      mutex_unlock(&ws_data->send_mutex);
+
+      if (has_queued_data) {
+        // Request writeable callback to process queued messages
+        lws_callback_on_writable(ws_data->wsi);
+      }
+    }
+
     // Service libwebsockets (processes network events, triggers callbacks)
     // 50ms timeout allows checking service_running flag regularly
     int result = lws_service(ws_data->context, 50);
@@ -189,10 +202,45 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
     }
     break;
 
-  case LWS_CALLBACK_CLIENT_WRITEABLE:
-    // Socket is writable - we don't need to do anything here
-    // as we handle writes synchronously in websocket_send()
+  case LWS_CALLBACK_CLIENT_WRITEABLE: {
+    // Socket is writable - process queued messages for sending
+    if (!ws_data) break;
+
+    websocket_recv_msg_t msg;
+    int message_count = 0;
+
+    mutex_lock(&ws_data->send_mutex);
+    while (ringbuffer_read(ws_data->send_queue, &msg)) {
+      mutex_unlock(&ws_data->send_mutex);
+
+      log_dev_every(1000000, "WebSocket CLIENT_WRITEABLE: sending queued %zu bytes", msg.len);
+
+      // Send the complete message with automatic fragmentation
+      int written = lws_write(ws_data->wsi, msg.data, msg.len, LWS_WRITE_BINARY);
+
+      if (written < 0) {
+        log_error("WebSocket write failed for %zu bytes", msg.len);
+        SAFE_FREE(msg.data);
+        mutex_lock(&ws_data->send_mutex);
+        break;
+      }
+
+      if ((size_t)written != msg.len) {
+        log_warn("WebSocket partial write: %d/%zu bytes", written, msg.len);
+      }
+
+      SAFE_FREE(msg.data);
+      message_count++;
+      mutex_lock(&ws_data->send_mutex);
+    }
+    mutex_unlock(&ws_data->send_mutex);
+
+    // Request another callback if we sent messages (more may have been queued)
+    if (message_count > 0) {
+      lws_callback_on_writable(ws_data->wsi);
+    }
     break;
+  }
 
   default:
     break;
@@ -339,45 +387,38 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     return ASCIICHAT_OK;
   }
 
-  // Client-side: send in fragments using LWS_WRITE_BUFLIST
-  // libwebsockets will buffer and send when socket is writable
-  const size_t FRAGMENT_SIZE = 4096;
-  size_t offset = 0;
-
-  while (offset < send_len) {
-    size_t chunk_size = (send_len - offset > FRAGMENT_SIZE) ? FRAGMENT_SIZE : (send_len - offset);
-    int is_start = (offset == 0);
-    int is_end = (offset + chunk_size >= send_len);
-
-    // Get appropriate flags for this fragment
-    enum lws_write_protocol flags = lws_write_ws_flags(LWS_WRITE_BINARY, is_start, is_end);
-
-    // Use BUFLIST to let libwebsockets handle buffering and writable callbacks
-    flags = (enum lws_write_protocol)((int)flags | LWS_WRITE_BUFLIST);
-
-    // Send this fragment
-    int written = lws_write(ws_data->wsi, send_buffer + LWS_PRE + offset, chunk_size, flags);
-
-    if (written < 0) {
-      SAFE_FREE(send_buffer);
-      if (encrypted_packet)
-        buffer_pool_free(NULL, encrypted_packet, send_len);
-      return SET_ERRNO(ERROR_NETWORK, "WebSocket write failed on fragment at offset %zu", offset);
-    }
-
-    if ((size_t)written != chunk_size) {
-      SAFE_FREE(send_buffer);
-      if (encrypted_packet)
-        buffer_pool_free(NULL, encrypted_packet, send_len);
-      return SET_ERRNO(ERROR_NETWORK, "WebSocket partial write: %d/%zu bytes at offset %zu", written, chunk_size,
-                       offset);
-    }
-
-    offset += chunk_size;
-    log_dev_every(1000000, "WebSocket sent fragment %zu bytes (offset %zu/%zu)", chunk_size, offset, send_len);
+  // Client-side: queue entire message for service thread to send
+  // Avoid fragmentation race conditions by sending atomic messages from service thread
+  // libwebsockets handles automatic fragmentation internally when needed
+  websocket_recv_msg_t msg;
+  msg.data = SAFE_MALLOC(send_len, uint8_t *);
+  if (!msg.data) {
+    SAFE_FREE(send_buffer);
+    if (encrypted_packet)
+      buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate client send queue buffer");
   }
+  memcpy(msg.data, send_data, send_len);
+  msg.len = send_len;
+  msg.first = 1;
+  msg.final = 1;
 
-  log_dev_every(1000000, "WebSocket sent complete message: %zu bytes in fragments", send_len);
+  mutex_lock(&ws_data->send_mutex);
+  bool success = ringbuffer_write(ws_data->send_queue, &msg);
+
+  if (!success) {
+    mutex_unlock(&ws_data->send_mutex);
+    log_error("WebSocket client send queue FULL - cannot queue %zu byte message for wsi=%p", send_len,
+              (void *)ws_data->wsi);
+    SAFE_FREE(msg.data);
+    SAFE_FREE(send_buffer);
+    if (encrypted_packet)
+      buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
+    return SET_ERRNO(ERROR_NETWORK, "Client send queue full (cannot queue %zu bytes)", send_len);
+  }
+  mutex_unlock(&ws_data->send_mutex);
+
+  log_dev_every(1000000, "WebSocket client: queued %zu bytes for service thread to send", send_len);
   SAFE_FREE(send_buffer);
   if (encrypted_packet)
     buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
