@@ -47,15 +47,14 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
 // Sanity check: catch suspiciously large packets (likely a bug)
 #define MAX_REASONABLE_PACKET_SIZE (25 * 1024 * 1024) // 25 MB
   if (payload_len > MAX_REASONABLE_PACKET_SIZE) {
-    log_error("PACKET SIZE VALIDATION FAILURE: Attempting to send %zu bytes (%zu MB) with type=%d (0x%04x), exceeds "
+    log_error("★ PACKET_SIZE_VALIDATION_FAILURE: Attempting to send %zu bytes (%zu MB) with type=%d (0x%04x), exceeds "
               "max %d bytes (25 MB) - likely a bug in caller's length calculation",
               payload_len, payload_len / (1024 * 1024), type, type, MAX_REASONABLE_PACKET_SIZE);
     return SET_ERRNO(ERROR_INVALID_PARAM, "Packet payload too large: %zu bytes (max 25MB)", payload_len);
   }
 
-  log_dev_every(4500 * US_PER_MS_INT,
-                "★ PACKET_SEND_VIA_TRANSPORT: type=%d, payload_len=%zu, client_id=%u, transport=%p", type, payload_len,
-                client_id, (void *)transport);
+  log_info("★ PACKET_SEND_VIA_TRANSPORT START: type=%d (0x%04x), payload_len=%zu bytes, client_id=%u, transport=%p",
+           type, type, payload_len, client_id, (void *)transport);
 
   // Build packet header
   packet_header_t header;
@@ -67,37 +66,48 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
   // Calculate CRC32 if we have payload
   if (payload && payload_len > 0) {
     header.crc32 = HOST_TO_NET_U32(asciichat_crc32((const uint8_t *)payload, payload_len));
+    log_debug("★ PACKET_SEND: CRC32=0x%08x calculated for %zu byte payload", header.crc32, payload_len);
   } else {
     header.crc32 = 0;
+    log_debug("★ PACKET_SEND: No payload, CRC32=0");
   }
 
-  log_dev_every(4500 * US_PER_MS_INT, "★ PKT_SEND: type=%d, magic=0x%016llx, length=%u, crc32=0x%08x", type,
-                header.magic, header.length, header.crc32);
+  log_debug("★ PACKET_SEND: magic=0x%016llx, type=%d, length=%u bytes, client_id=%u", header.magic, type,
+            header.length, header.client_id);
 
   // Calculate total packet size
   size_t total_size = sizeof(header) + payload_len;
+  log_debug("★ PACKET_SEND: Header=%zu bytes + Payload=%zu bytes = Total=%zu bytes", sizeof(header), payload_len,
+           total_size);
 
   // Allocate buffer for complete packet
   // Use SAFE_MALLOC (not buffer pool - payload may also be from pool and causes overlap)
   uint8_t *packet = SAFE_MALLOC(total_size, uint8_t *);
   if (!packet) {
+    log_error("★ PACKET_SEND: Memory allocation FAILED for %zu byte packet buffer", total_size);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate packet buffer");
   }
+
+  log_debug("★ PACKET_SEND: Packet buffer allocated at %p", (void *)packet);
 
   // Build complete packet: header + payload
   memcpy(packet, &header, sizeof(header));
   if (payload && payload_len > 0) {
     memcpy(packet + sizeof(header), payload, payload_len);
+    log_debug("★ PACKET_SEND: Payload copied to buffer offset %zu", sizeof(header));
   }
 
-  log_dev_every(4500 * US_PER_MS_INT, "★ PACKET_SEND: total_size=%zu, calling acip_transport_send...", total_size);
   // Send via transport (transport handles encryption if crypto_ctx present)
+  log_info("★ PACKET_SEND: Calling acip_transport_send with %zu total bytes", total_size);
   asciichat_error_t result = acip_transport_send(transport, packet, total_size);
 
   if (result == ASCIICHAT_OK) {
-    log_dev_every(4500 * US_PER_MS_INT, "★ PACKET_SEND: SUCCESS - sent %zu bytes (type=%d)", total_size, type);
+    log_info("★ PACKET_SEND_VIA_TRANSPORT COMPLETE: SUCCESS - sent %zu bytes (type=%d, client_id=%u)", total_size,
+             type, client_id);
   } else {
-    log_error("★ PACKET_SEND: FAILED - acip_transport_send returned %d (%s)", result, asciichat_error_string(result));
+    log_error("★ PACKET_SEND_VIA_TRANSPORT FAILED: acip_transport_send returned error %d (%s) when sending %zu bytes "
+             "type=%d to client_id=%u",
+             result, asciichat_error_string(result), total_size, type, client_id);
   }
 
   SAFE_FREE(packet);
