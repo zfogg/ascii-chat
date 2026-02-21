@@ -211,6 +211,11 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   options_builder_add_usage(b, "mirror", NULL, true, "View local webcam or media file as ASCII art");
   options_builder_add_usage(b, "discovery-service", "[bind-address] [bind-address]", true,
                             "Start discovery service (can specify 0-2 bind addresses, one IPv4 and the other IPv6)");
+  options_builder_add_usage(b, NULL, "[mode] --help", false, "Show options for a specific mode");
+  options_builder_add_usage(b, "server", "--help", false, "Show options for server mode");
+  options_builder_add_usage(b, "client", "--help", false, "Show options for client mode");
+  options_builder_add_usage(b, "mirror", "--help", false, "Show options for mirror mode");
+  options_builder_add_usage(b, "discovery-service", "--help", false, "Show options for discovery-service mode");
 
   // Add examples for binary-level help and discovery mode
   options_builder_add_example(b, OPTION_MODE_BINARY, NULL, "Start new session (share the session string)", false);
