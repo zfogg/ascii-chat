@@ -31,3 +31,11 @@ leak:snd_pcm_pipewire_open
 # Device enumeration and PCM initialization
 leak:PaAlsa_Initialize
 leak:Pa_Initialize
+
+# fontconfig initialization and configuration
+# Allocations from font configuration loading (used for font resolution in render-file)
+# These are global font database caches that persist for the lifetime of the process
+leak:FcConfigGetDefaultLangs
+leak:FcInitLoadConfigAndFonts
+leak:FcPatternMatch
+leak:FcConfigSubstitute
