@@ -71,12 +71,32 @@ CALLBACK_TIMES=()
 
         PASSED_RUNS=$((PASSED_RUNS + 1))
 
-        # Count frames sent
+        # Count frames sent by client
+        FRAMES_SENT=0
         if [ -f "$CLIENT_LOG" ]; then
-            FRAME_COUNT=$(grep -c "ACIP_SEND_IMAGE_FRAME:" "$CLIENT_LOG" 2>/dev/null || echo "0")
-            FRAME_COUNT=$(printf "%d" "$FRAME_COUNT" 2>/dev/null || echo "0")
-            echo "   ✅ Frames sent: $FRAME_COUNT"
-            FRAME_COUNTS+=("$FRAME_COUNT")
+            FRAMES_SENT=$(grep -c "ACIP_SEND_IMAGE_FRAME:" "$CLIENT_LOG" 2>/dev/null || echo "0")
+            FRAMES_SENT=$(printf "%d" "$FRAMES_SENT" 2>/dev/null || echo "0")
+            echo "   📤 Frames SENT: $FRAMES_SENT"
+            FRAME_COUNTS+=("$FRAMES_SENT")
+        fi
+
+        # Count frames received by server
+        FRAMES_RECEIVED=0
+        if [ -f "$SERVER_LOG" ]; then
+            FRAMES_RECEIVED=$(grep -c "IMAGE_FRAME\|Frame received\|acip_handle_image_frame" "$SERVER_LOG" 2>/dev/null || echo "0")
+            FRAMES_RECEIVED=$(printf "%d" "$FRAMES_RECEIVED" 2>/dev/null || echo "0")
+            echo "   📥 Frames RECEIVED: $FRAMES_RECEIVED"
+
+            if [ "$FRAMES_SENT" -gt 0 ] && [ "$FRAMES_RECEIVED" -eq 0 ]; then
+                echo "   ⚠️  MISMATCH: Sent $FRAMES_SENT but received 0!"
+            elif [ "$FRAMES_SENT" -gt 0 ] && [ "$FRAMES_RECEIVED" -gt 0 ]; then
+                LOSS_PCT=$((100 - (FRAMES_RECEIVED * 100 / FRAMES_SENT)))
+                if [ "$LOSS_PCT" -eq 0 ]; then
+                    echo "   ✅ All frames received"
+                else
+                    echo "   ⚠️  Frame loss: $LOSS_PCT% ($FRAMES_RECEIVED/$FRAMES_SENT)"
+                fi
+            fi
         fi
 
         # Check for data loss indicators
