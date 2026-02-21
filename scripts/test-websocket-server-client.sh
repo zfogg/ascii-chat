@@ -59,7 +59,13 @@ kill -9 "$SERVER_PID" "$CLIENT_PID" 2>/dev/null || true
 
 sleep 0.2
 
+echo ""
 echo "✅ Done"
+echo ""
+
+echo "tail - Last 20 of client stdout:"
+tail -20 "$CLIENT_STDOUT"
+
 echo ""
 echo "📋 Logs:"
 echo "   Server: $SERVER_LOG"
