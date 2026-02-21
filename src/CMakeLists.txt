@@ -556,9 +556,20 @@ set(WASM_CMAKE_ARGS
     -DASCIICHAT_WEB_DEPS_DIR=${WASM_DEPS_DIR}
 )
 
+# Configure WASM build directory during CMake configuration (not during build)
+if(EMSCRIPTEN_TOOLCHAIN_FILE)
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} ${WASM_CMAKE_ARGS}
+        WORKING_DIRECTORY "${WASM_SOURCE_DIR}"
+        RESULT_VARIABLE WASM_CONFIG_RESULT
+    )
+    if(NOT WASM_CONFIG_RESULT EQUAL 0)
+        message(WARNING "WASM configuration failed: ${WASM_CONFIG_RESULT}")
+    endif()
+endif()
+
 # Mirror mode WASM target
 add_custom_target(mirror-web
-    COMMAND ${CMAKE_COMMAND} ${WASM_CMAKE_ARGS}
     COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target mirror-web
     WORKING_DIRECTORY "${WASM_SOURCE_DIR}"
     COMMENT "Building WASM mirror module"
@@ -567,7 +578,6 @@ add_custom_target(mirror-web
 
 # Client mode WASM target
 add_custom_target(client-web
-    COMMAND ${CMAKE_COMMAND} ${WASM_CMAKE_ARGS}
     COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target client-web
     WORKING_DIRECTORY "${WASM_SOURCE_DIR}"
     COMMENT "Building WASM client module"
@@ -576,7 +586,6 @@ add_custom_target(client-web
 
 # Combined WASM target (builds both mirror and client)
 add_custom_target(web
-    COMMAND ${CMAKE_COMMAND} ${WASM_CMAKE_ARGS}
     COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target mirror-web
     COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target client-web
     WORKING_DIRECTORY "${WASM_SOURCE_DIR}"
