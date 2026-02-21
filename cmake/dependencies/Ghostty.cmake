@@ -123,13 +123,88 @@ if(APPLE)
         message(STATUS "${BoldGreen}ghostty${ColorReset} configured: ${GHOSTTY_LIB}")
 
     else()
-        message(STATUS "${BoldYellow}ghostty submodule not found${ColorReset} - render-file macOS support will be limited")
+        message(STATUS "${BoldYellow}ghostty submodule not found${ColorReset} - Ghostty macOS support will be limited")
+        set(GHOSTTY_FOUND FALSE)
+        set(GHOSTTY_LIBRARIES "")
+        set(GHOSTTY_INCLUDE_DIRS "")
+    endif()
+elseif(UNIX AND NOT APPLE)
+    # Linux/BSD: Build ghostty for pixel rendering (similar to macOS)
+    if(EXISTS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/ghostty")
+        set(GHOSTTY_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/ghostty")
+        set(GHOSTTY_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/ghostty")
+        set(GHOSTTY_LIB "${GHOSTTY_BUILD_DIR}/libghostty.a")
+
+        file(MAKE_DIRECTORY "${GHOSTTY_BUILD_DIR}")
+
+        # Only build if library doesn't exist in cache
+        if(NOT EXISTS "${GHOSTTY_LIB}")
+            message(STATUS "${BoldYellow}ghostty${ColorReset} library not found in cache, building from source...")
+
+            # Check for zig compiler (required to build ghostty)
+            find_program(ZIG_EXECUTABLE NAMES zig)
+            if(NOT ZIG_EXECUTABLE)
+                message(FATAL_ERROR "${BoldRed}zig compiler not found${ColorReset}. ghostty requires Zig to build.\n"
+                                  "Install from: https://ziglang.org/download/")
+            endif()
+
+            # Build ghostty using zig build
+            set(GHOSTTY_LOG_FILE "${GHOSTTY_BUILD_DIR}/ghostty-build.log")
+            execute_process(
+                COMMAND "${ZIG_EXECUTABLE}" build -Doptimize=ReleaseFast
+                WORKING_DIRECTORY "${GHOSTTY_SOURCE_DIR}"
+                RESULT_VARIABLE GHOSTTY_BUILD_RESULT
+                OUTPUT_FILE "${GHOSTTY_LOG_FILE}"
+                ERROR_FILE "${GHOSTTY_LOG_FILE}"
+            )
+
+            if(NOT GHOSTTY_BUILD_RESULT EQUAL 0)
+                message(FATAL_ERROR "${BoldRed}ghostty build failed${ColorReset}. Check log: ${GHOSTTY_LOG_FILE}")
+            endif()
+
+            # Copy built library to cache
+            find_file(GHOSTTY_BUILT_LIB NAMES "libghostty.a"
+                      PATHS "${GHOSTTY_SOURCE_DIR}/zig-cache"
+                      HINTS "${GHOSTTY_SOURCE_DIR}/zig-out/lib"
+                      NO_DEFAULT_PATH)
+
+            if(GHOSTTY_BUILT_LIB)
+                file(COPY_FILE "${GHOSTTY_BUILT_LIB}" "${GHOSTTY_LIB}")
+                message(STATUS "  ${BoldGreen}ghostty${ColorReset} library built and cached successfully")
+            else()
+                message(FATAL_ERROR "${BoldRed}ghostty library not found${ColorReset} in build output")
+            endif()
+
+            add_custom_target(ghostty_build)
+        else()
+            message(STATUS "${BoldGreen}ghostty${ColorReset} library found in cache: ${BoldCyan}${GHOSTTY_LIB}${ColorReset}")
+            add_custom_target(ghostty_build)
+        endif()
+
+        # Create an imported library that links to the built library
+        add_library(ghostty_lib STATIC IMPORTED GLOBAL)
+        set_target_properties(ghostty_lib PROPERTIES
+            IMPORTED_LOCATION "${GHOSTTY_LIB}"
+        )
+        target_include_directories(ghostty_lib INTERFACE
+            "${GHOSTTY_SOURCE_DIR}/zig-out/include"
+        )
+        add_dependencies(ghostty_lib ghostty_build)
+
+        set(GHOSTTY_LIBRARIES ghostty_lib)
+        set(GHOSTTY_INCLUDE_DIRS "${GHOSTTY_SOURCE_DIR}/zig-out/include")
+        set(GHOSTTY_FOUND TRUE)
+
+        message(STATUS "${BoldGreen}ghostty${ColorReset} configured: ${GHOSTTY_LIB}")
+
+    else()
+        message(STATUS "${BoldYellow}ghostty submodule not found${ColorReset} - Ghostty Linux support will be limited")
         set(GHOSTTY_FOUND FALSE)
         set(GHOSTTY_LIBRARIES "")
         set(GHOSTTY_INCLUDE_DIRS "")
     endif()
 else()
-    # Non-macOS: ghostty not used for rendering
+    # Windows: ghostty not used for rendering
     set(GHOSTTY_FOUND FALSE)
     set(GHOSTTY_LIBRARIES "")
     set(GHOSTTY_INCLUDE_DIRS "")
@@ -173,27 +248,35 @@ endif()
 # =============================================================================
 
 if(WIN32)
-    message(STATUS "Render-file: stubs only (Windows)")
+    message(STATUS "Ghostty: stubs only (Windows)")
     set(GHOSTTY_LIBS "")
     set(GHOSTTY_INCLUDES "")
 elseif(APPLE)
     if(GHOSTTY_FOUND)
         set(GHOSTTY_LIBS ${GHOSTTY_LIBRARIES} "-framework Metal" "-framework Cocoa" "-framework CoreGraphics")
         set(GHOSTTY_INCLUDES ${GHOSTTY_INCLUDE_DIRS})
-        message(STATUS "${BoldGreen}✓${ColorReset} Render-file (macOS): ghostty + Metal")
+        message(STATUS "${BoldGreen}✓${ColorReset} Ghostty (macOS): ghostty + Metal")
     else()
-        message(WARNING "Render-file: ghostty not found - macOS renderer will fail at runtime")
+        message(WARNING "Ghostty: ghostty not found - macOS renderer will fail at runtime")
+        set(GHOSTTY_LIBS "")
+        set(GHOSTTY_INCLUDES "")
+    endif()
+elseif(UNIX AND NOT APPLE)
+    # Linux: ghostty with GTK backend for rendering
+    if(GHOSTTY_FOUND)
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(GTK gtk+-3.0 REQUIRED)
+
+        set(GHOSTTY_LIBS ${GHOSTTY_LIBRARIES} ${GTK_LDFLAGS})
+        set(GHOSTTY_INCLUDES ${GHOSTTY_INCLUDE_DIRS} ${GTK_INCLUDE_DIRS})
+        message(STATUS "${BoldGreen}✓${ColorReset} Ghostty (Linux): ghostty + GTK")
+    else()
+        message(WARNING "Ghostty: ghostty not found - Linux renderer will not be available")
         set(GHOSTTY_LIBS "")
         set(GHOSTTY_INCLUDES "")
     endif()
 else()
-    # Linux: libvterm + FreeType2 + fontconfig (REQUIRED)
-    find_package(Freetype REQUIRED)
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(VTERM vterm REQUIRED)
-    pkg_check_modules(FONTCONFIG fontconfig REQUIRED)
-
-    set(GHOSTTY_LIBS ${FREETYPE_LIBRARIES} ${VTERM_LDFLAGS} ${FONTCONFIG_LDFLAGS})
-    set(GHOSTTY_INCLUDES ${FREETYPE_INCLUDE_DIRS} ${VTERM_INCLUDE_DIRS} ${FONTCONFIG_INCLUDE_DIRS})
-    message(STATUS "${BoldGreen}✓${ColorReset} Render-file (Linux): libvterm + FreeType2 + fontconfig")
+    # Windows: stubs only
+    set(GHOSTTY_LIBS "")
+    set(GHOSTTY_INCLUDES "")
 endif()
