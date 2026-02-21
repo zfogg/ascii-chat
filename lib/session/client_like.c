@@ -294,26 +294,18 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
 
   log_debug("session_client_like_run(): Setting up network transports");
 
-  // Parse server address to determine TCP vs WebSocket
-  const char *server_address = GET_OPTION(address);
-  bool is_websocket = server_address && url_is_websocket(server_address);
+  // Use network clients from config if provided (client mode), or skip for mirror mode
+  // Mirror mode passes NULL for both tcp_client and websocket_client
+  g_tcp_client = config->tcp_client;
+  g_websocket_client = config->websocket_client;
 
-  if (is_websocket) {
-    log_debug("WebSocket URL detected: %s", server_address);
-    g_websocket_client = websocket_client_create();
-    if (!g_websocket_client) {
-      log_error("Failed to create WebSocket client");
-      result = ERROR_NETWORK;
-      goto cleanup;
-    }
-  } else {
-    log_debug("Using TCP client for server: %s:%d", server_address ? server_address : "localhost", GET_OPTION(port));
-    g_tcp_client = tcp_client_create();
-    if (!g_tcp_client) {
-      log_error("Failed to create TCP client");
-      result = ERROR_NETWORK;
-      goto cleanup;
-    }
+  // Only create network clients if not already provided in config
+  // Mirror mode doesn't need them (both are NULL in config)
+  // Client mode should have created them before calling this function
+  if (!g_tcp_client && !g_websocket_client && !config->discovery) {
+    log_debug("No network clients in config - mirror mode detected, using local capture only");
+  } else if (!g_tcp_client && !g_websocket_client && config->discovery) {
+    log_debug("Discovery mode detected - discovery session will manage networking");
   }
 
   // ============================================================================

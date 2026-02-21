@@ -647,6 +647,24 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
 
     // Flush kernel write buffer so piped data appears immediately to readers
     (void)terminal_flush(STDOUT_FILENO);
+  } else {
+    // Non-interactive piped/redirected output (e.g., snapshot mode with redirected stdout)
+    // Write frame data with newline and flush
+    char *write_buf = SAFE_MALLOC(frame_len + 1, char *);
+    if (write_buf) {
+      memcpy(write_buf, frame_data, frame_len);
+      write_buf[frame_len] = '\n';
+      (void)platform_write_all(STDOUT_FILENO, write_buf, frame_len + 1);
+      SAFE_FREE(write_buf);
+    } else {
+      // Fallback: two writes if allocation fails
+      (void)platform_write_all(STDOUT_FILENO, frame_data, frame_len);
+      const char newline = '\n';
+      (void)platform_write_all(STDOUT_FILENO, &newline, 1);
+    }
+
+    // Flush output to ensure frame reaches destination in snapshot mode
+    (void)terminal_flush(STDOUT_FILENO);
   }
   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "frame_write",
                            "FRAME_WRITE: Write and flush complete (%.2f ms)");
