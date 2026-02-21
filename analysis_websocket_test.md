@@ -88,3 +88,66 @@ Investigate why libwebsockets context creation fails on certain ports:
 2. Verify SO_REUSEADDR is set for WebSocket listening socket
 3. Check system file descriptor limits
 4. Consider adding server-side port availability retry logic
+
+---
+
+## Extended Analysis (Third Test Run - Port 32297)
+
+### Unexpected Finding
+
+Even when WebSocket server reports successful initialization:
+```
+[19:33:49.478307] [INFO] WebSocket server initialized on port 32297 with static file serving
+[19:33:49.637774] [INFO] WebSocket server starting event loop on port 32297
+[19:33:49.651944] [DEBUG] [LWS_SERVICE] Call #1
+```
+
+The client STILL gets ECONNREFUSED:
+```
+[19:34:06.569388] [ERROR] lib/network/websocket/transport.c:199@websocket_callback(): 
+WebSocket connection error: conn fail: ECONNREFUSED
+```
+
+Timeline:
+- Server reports listening: 19:33:49
+- Client attempts connection: 19:34:06 (17 seconds later)
+- Client gets ECONNREFUSED
+
+### Diagnostic Insights
+
+1. **TCP Binding Issues** (third run):
+   ```
+   [19:33:49.398495] [ERROR] Failed to bind 0.0.0.0:34168
+   [19:33:49.399294] [WARN] Failed to bind IPv4 socket
+   [19:33:49.400048] [INFO] Listening on [::]:34168 (IPv6)
+   ```
+   - IPv4 TCP fails, IPv6 succeeds
+   - Both happen BEFORE WebSocket initialization
+   - Suggests IPv4 port binding issue systemic
+
+2. **Libwebsockets Context Creation**:
+   - `lws_create_context()` returns non-null
+   - Event loop starts with lws_service() calls
+   - Protocol initialization succeeds
+   - BUT: No incoming connections accepted from client
+
+3. **Hypothesis**:
+   - libwebsockets context created but not bound to loopback/0.0.0.0
+   - Only listening on internal pipe, not network interface
+   - Needs investigation of `info.options` flags
+
+### Next Steps for Debugging
+
+1. Check if server is actually listening:
+   ```bash
+   netstat -tlnp | grep 32297
+   lsof -i :32297
+   ```
+
+2. Verify libwebsockets binding:
+   - Check `info.options` flags in websocket_server_init()
+   - May need `LWS_SERVER_OPTION_*` flags to enable network listening
+
+3. Try explicit loopback binding:
+   - Instead of port only, specify 127.0.0.1:port
+   - Check if IPv4 binding is required
