@@ -226,9 +226,9 @@ bool is_session_string(const char *str) {
 
   size_t len = strlen(str);
 
-  // Check length bounds
-  if (len < 5 || len > 47) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Session string length %zu outside valid range 5-47", len);
+  // Check length bounds (min 4, max defined by SESSION_STRING_MAX_LEN)
+  if (len < 4 || len > SESSION_STRING_MAX_LEN) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Session string length %zu outside valid range 4-%d", len, SESSION_STRING_MAX_LEN);
     return false;
   }
 
