@@ -367,7 +367,9 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
 
   // Client-side: send in fragments using LWS_WRITE_BUFLIST
   // libwebsockets will buffer and send when socket is writable
-  const size_t FRAGMENT_SIZE = 4096;
+  // Optimized: Use 64KB fragments instead of 4KB to reduce callback overhead
+  // and improve throughput. libwebsockets handles large buffers efficiently.
+  const size_t FRAGMENT_SIZE = 65536;  // 64KB - reduces callbacks by 16x vs 4KB
   size_t offset = 0;
 
   log_info("★ WEBSOCKET_SEND: Client-side path - fragmenting %zu bytes into %zu-byte chunks for wsi=%p", send_len,
@@ -392,7 +394,10 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     }
 
     fragment_num++;
-    log_info("★ WEBSOCKET_SEND: Fragment %d - offset=%zu, chunk=%zu bytes, flags=%s (start=%d, final=%d)",
+    // Log every Nth fragment to reduce logging overhead for large frames
+    // With 64KB fragments, typical frame is 3-4 fragments; log each for visibility
+    // With higher throughput, reduce frequency to avoid log bottleneck
+    log_dev_every(100000, "★ WEBSOCKET_SEND: Fragment %d - offset=%zu, chunk=%zu bytes, flags=%s (start=%d, final=%d)",
              fragment_num, offset, chunk_size,
              (flags & LWS_WRITE_NO_FIN) ?
                (is_start ? "LWS_WRITE_BINARY|NO_FIN" : "LWS_WRITE_CONTINUATION|NO_FIN") :
@@ -400,10 +405,7 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
              is_start, is_final);
 
     // Send this fragment
-    log_debug("★ WEBSOCKET_SEND: Calling lws_write for fragment %d at buffer offset %zu (ptr=%p)", fragment_num,
-             LWS_PRE + offset, (void *)(send_buffer + LWS_PRE + offset));
     int written = lws_write(ws_data->wsi, send_buffer + LWS_PRE + offset, chunk_size, flags);
-    log_debug("★ WEBSOCKET_SEND: lws_write returned %d (requested %zu bytes)", written, chunk_size);
 
     if (written < 0) {
       log_error("★ WEBSOCKET_SEND: lws_write ERROR on fragment %d at offset %zu - returned %d", fragment_num, offset,
