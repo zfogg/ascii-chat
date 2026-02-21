@@ -165,6 +165,7 @@
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/network/packet_queue.h>
+#include <ascii-chat/network/acip/server.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/audio/mixer.h>
 #include <ascii-chat/audio/audio.h>
@@ -561,6 +562,29 @@ void *client_video_render_thread(void *arg) {
 
                 log_info("[FRAME_COMMIT_TIMING] Client %u frame commit took %s (hash=0x%08x)", thread_client_id,
                          commit_duration_str, current_frame_hash);
+
+                // Phase 3 IMPLEMENTED: Transmit the rendered frame to client via WebSocket
+                // This completes the pipeline: Render → Buffer → Transmit → Client receive → Display
+                if (client->transport) {
+                  asciichat_error_t send_result = acip_send_ascii_frame(
+                      client->transport,
+                      ascii_frame,
+                      frame_size,
+                      width_snapshot,
+                      height_snapshot,
+                      client_id_snapshot
+                  );
+                  if (send_result != ASCIICHAT_OK) {
+                    log_warn("[FRAME_SEND_ERROR] Client %u frame transmission failed: error=%d",
+                             thread_client_id, send_result);
+                  } else {
+                    log_dev_every(5 * NS_PER_MS_INT,
+                                  "[FRAME_SEND_OK] Client %u transmitted frame size=%zu (%.1f KB)",
+                                  thread_client_id, frame_size, frame_size / 1024.0);
+                  }
+                } else {
+                  log_warn("[FRAME_SEND_ERROR] Client %u has no transport (frame not sent)", thread_client_id);
+                }
               } else {
                 // Discard duplicate frame by not committing (back buffer is safe to reuse)
                 log_dev_every(25000, "Skipping commit for duplicate frame for client %u (hash=0x%08x)",
