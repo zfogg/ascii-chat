@@ -836,7 +836,7 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   info.protocols = websocket_protocols;
   info.gid = (gid_t)-1;                   // Cast to avoid undefined behavior with unsigned type
   info.uid = (uid_t)-1;                   // Cast to avoid undefined behavior with unsigned type
-  info.options = 0;                       // Don't validate UTF8 - we send binary ACIP packets
+  info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT; // Initialize SSL/TLS support (required for server binding)
   info.extensions = websocket_extensions; // Enable permessage-deflate with small window bits
   // Permessage-deflate configuration (RFC 7692):
   // - server_max_window_bits=8: Use 256-byte (2^8) sliding window instead of 32KB (2^15)
