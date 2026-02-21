@@ -680,15 +680,18 @@ static bool websocket_is_connected(acip_transport_t *transport) {
  */
 static void websocket_destroy_impl(acip_transport_t *transport) {
   if (!transport || !transport->impl_data) {
+    log_debug("[TRANSPORT_LIFECYCLE] websocket_destroy_impl() called with invalid args");
     return;
   }
 
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
+  log_debug("[TRANSPORT_LIFECYCLE] websocket_destroy_impl() called: transport=%p, wsi=%p, service_running=%s",
+            (void *)transport, (void *)ws_data->wsi, ws_data->service_running ? "true" : "false");
 
   // Stop service thread (client-side only)
   // Use atomic exchange to ensure we only join once, preventing double-join race condition
   if (ws_data->service_running) {
-    log_debug("Stopping WebSocket service thread");
+    log_debug("[TRANSPORT_LIFECYCLE] Stopping WebSocket service thread");
     ws_data->service_running = false;
 
     // Join with timeout to prevent indefinite blocking if thread is stuck
