@@ -288,7 +288,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
   case LWS_CALLBACK_SERVER_WRITEABLE: {
     uint64_t writeable_callback_start_ns = time_get_ns();
     atomic_fetch_add(&g_writeable_callback_count, 1);
-    log_dev_every(4500 * US_PER_MS_INT, "=== LWS_CALLBACK_SERVER_WRITEABLE FIRED === wsi=%p, timestamp=%llu",
+    log_debug("=== LWS_CALLBACK_SERVER_WRITEABLE FIRED === wsi=%p, timestamp=%llu",
                   (void *)wsi, (unsigned long long)writeable_callback_start_ns);
 
     // Dequeue and send pending data
@@ -364,11 +364,12 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       memcpy(ws_data->send_buffer + LWS_PRE, conn_data->pending_send_data + conn_data->pending_send_offset, chunk_size);
 
       uint64_t write_start_ns = time_get_ns();
+      log_debug(">>> lws_write() sending %zu byte continuation fragment (flags=0x%x) for wsi=%p", chunk_size, flags, (void *)wsi);
       int written = lws_write(wsi, ws_data->send_buffer + LWS_PRE, chunk_size, flags);
       uint64_t write_end_ns = time_get_ns();
       char write_duration_str[32];
       format_duration_ns((double)(write_end_ns - write_start_ns), write_duration_str, sizeof(write_duration_str));
-      log_dev_every(4500 * US_PER_MS_INT, "lws_write returned %d bytes in %s (chunk_size=%zu)", written,
+      log_debug(">>> lws_write() returned %d bytes in %s (chunk_size=%zu)", written,
                     write_duration_str, chunk_size);
 
       if (written < 0) {
@@ -420,6 +421,9 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       success = ringbuffer_read(ws_data->send_queue, &msg);
       // Check if there are more messages for the next callback
       more_messages = !ringbuffer_is_empty(ws_data->send_queue);
+      log_debug(">>> Dequeued from send_queue: success=%d, msg.len=%zu, more_messages=%d", success, msg.len, more_messages);
+    } else {
+      log_debug(">>> send_queue is EMPTY (nothing to dequeue)");
     }
     mutex_unlock(&ws_data->send_mutex);
 
@@ -430,7 +434,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       conn_data->pending_send_offset = 0;
       conn_data->has_pending_send = true;
 
-      log_dev_every(4500 * US_PER_MS_INT, ">>> SERVER_WRITEABLE: Dequeued message %zu bytes, sending first fragment",
+      log_debug(">>> SERVER_WRITEABLE: Dequeued message %zu bytes, sending first fragment",
                     msg.len);
 
       // Send first fragment
@@ -459,7 +463,9 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
       memcpy(ws_data->send_buffer + LWS_PRE, msg.data, chunk_size);
 
+      log_debug(">>> lws_write() sending %zu bytes (flags=0x%x) for wsi=%p", chunk_size, flags, (void *)wsi);
       int written = lws_write(wsi, ws_data->send_buffer + LWS_PRE, chunk_size, flags);
+      log_debug(">>> lws_write() returned %d bytes", written);
       if (written < 0) {
         log_error("Server WebSocket write error on first fragment: %d", written);
         SAFE_FREE(msg.data);
@@ -475,11 +481,11 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       }
 
       if (!is_end) {
-        log_dev_every(4500 * US_PER_MS_INT,
+        log_debug(
                       ">>> SERVER_WRITEABLE: First fragment sent, requesting callback for next fragment");
         lws_callback_on_writable(wsi);
       } else {
-        log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: Message fully sent in first fragment (%zu bytes)",
+        log_debug("SERVER_WRITEABLE: Message fully sent in first fragment (%zu bytes)",
                       chunk_size);
         SAFE_FREE(msg.data);
         conn_data->has_pending_send = false;
@@ -788,8 +794,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     // - "http" protocol (browser connects here for initial HTTP upgrade to WebSocket)
     // - "acip" protocol (for ACIP over WebSocket connections)
     // Both protocols use the same callback and handle frame transmission.
-    log_dev_every(4500 * US_PER_MS_INT,
-                  "LWS_CALLBACK_EVENT_WAIT_CANCELLED triggered - requesting writable callbacks for all protocols");
+    log_debug(
+                  ">>> LWS_CALLBACK_EVENT_WAIT_CANCELLED triggered - requesting writable callbacks for all protocols");
 
     struct lws_context *ctx = lws_get_context(wsi);
     if (!ctx) {
@@ -800,8 +806,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     // Trigger WRITEABLE on both protocols
     // Browser clients connect with "http" protocol, so they MUST have WRITEABLE triggered
     for (int i = 0; i < 2; i++) {
-      log_dev_every(4500 * US_PER_MS_INT,
-                    "EVENT_WAIT_CANCELLED: Calling lws_callback_on_writable_all_protocol for protocol '%s'",
+      log_debug(
+                    ">>> EVENT_WAIT_CANCELLED: Calling lws_callback_on_writable_all_protocol for protocol '%s'",
                     websocket_protocols[i].name);
       lws_callback_on_writable_all_protocol(ctx, &websocket_protocols[i]);
     }

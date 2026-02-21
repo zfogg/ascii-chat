@@ -449,13 +449,12 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     // lws_callback_on_writable() must NOT be called here — it's only safe
     // from the service thread. LWS_CALLBACK_EVENT_WAIT_CANCELLED (in server.c)
     // handles calling lws_callback_on_writable_all_protocol() on the service thread.
-    log_dev_every(1000000, ">>> FRAME QUEUED: %zu bytes for wsi=%p (send_len=%zu)", send_len, (void *)ws_data->wsi,
-                  send_len);
+    log_debug(">>> SERVER FRAME QUEUED: %zu bytes for wsi=%p", send_len, (void *)ws_data->wsi);
 
     struct lws_context *ctx = lws_get_context(ws_data->wsi);
     lws_cancel_service(ctx);
 
-    log_dev_every(1000000, "Server-side WebSocket: queued %zu bytes, cancel_service sent for wsi=%p", send_len,
+    log_debug(">>> Server-side WebSocket: queued %zu bytes, cancel_service sent for wsi=%p", send_len,
                   (void *)ws_data->wsi);
     SAFE_FREE(send_buffer);
     if (encrypted_packet)
@@ -541,7 +540,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   size_t assembled_capacity = 0;
   uint64_t assembly_start_ns = time_get_ns();
   int fragment_count = 0;
-  const uint64_t MAX_REASSEMBLY_TIME_NS = 5000 * 1000000ULL; // 5 second timeout - allows large frames like 230KB video to arrive in fragments
+  const uint64_t MAX_REASSEMBLY_TIME_NS = 1000 * 1000000ULL; // 1 second timeout - enough for localhost transmission of fragmented messages
 
   while (true) {
     // Wait for fragment if queue is empty (with short timeout)
@@ -592,8 +591,12 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
     }
 
     fragment_count++;
-    log_warn("[WS_REASSEMBLE] Fragment #%d: %zu bytes, first=%d, final=%d, assembled_so_far=%zu", fragment_count,
-             frag.len, frag.first, frag.final, assembled_size);
+    if (frag.len > 100 || fragment_count == 1) {
+      log_info("[WS_REASSEMBLE] Fragment #%d: %zu bytes, first=%d, final=%d, assembled_so_far=%zu", fragment_count,
+               frag.len, frag.first, frag.final, assembled_size);
+    } else {
+      log_debug("[WS_REASSEMBLE] Fragment #%d: %zu bytes, first=%d, final=%d", fragment_count, frag.len, frag.first, frag.final);
+    }
 
     // Sanity check: first fragment must have first=1, continuations must have first=0
     if (assembled_size == 0 && !frag.first) {
