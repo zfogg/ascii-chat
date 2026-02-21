@@ -14,6 +14,24 @@
 #include <ascii-chat/options/registry/metadata.h>
 
 #include <ascii-chat/options/parsers.h>
+#include <ascii-chat/platform/memory.h>
+
+// ============================================================================
+// Validators
+// ============================================================================
+
+#ifndef _WIN32
+static bool validate_render_font_size(const void *opts_struct, char **error_msg) {
+  (void)opts_struct;
+  const options_t *opts = (const options_t *)opts_struct;
+  if (opts->render_font_size <= 0.0) {
+    if (error_msg)
+      *error_msg = platform_strdup("--render-font-size must be > 0");
+    return false;
+  }
+  return true;
+}
+#endif
 
 // ============================================================================
 // MEDIA CATEGORY - Media file and stream options
@@ -132,5 +150,93 @@ const registry_entry_t g_media_entries[] = {
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
      {0},
      NULL},
+
+#ifndef _WIN32
+#define RENDER_FILE_MODES (OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY)
+
+    {"render-file",
+     '\0',
+     OPTION_TYPE_STRING,
+     offsetof(options_t, render_file),
+     "",
+     sizeof(((options_t *)0)->render_file),
+     "Render ASCII frames to a video or image file. Extension determines format: "
+     ".mp4, .mov, .webm, .avi, .gif, .png, .jpg  (macOS and Linux only)",
+     "MEDIA",
+     "PATH",
+     false,
+     "ASCII_CHAT_RENDER_FILE",
+     NULL,
+     NULL,
+     false,
+     false,
+     RENDER_FILE_MODES,
+     {0},
+     NULL},
+
+    {"render-theme",
+     '\0',
+     OPTION_TYPE_CALLBACK,
+     offsetof(options_t, render_theme),
+     &default_render_theme_value,
+     sizeof(int),
+     "Terminal color scheme for rendered output: dark, light, auto.  (macOS and Linux only)",
+     "MEDIA",
+     "THEME",
+     false,
+     "ASCII_CHAT_RENDER_THEME",
+     NULL,
+     parse_render_theme,
+     false,
+     false,
+     RENDER_FILE_MODES,
+     {.enum_values = g_render_theme_values,
+      .enum_descriptions = g_render_theme_descs,
+      .input_type = OPTION_INPUT_ENUM},
+     NULL},
+
+    {"render-font",
+     '\0',
+     OPTION_TYPE_STRING,
+     offsetof(options_t, render_font),
+     "",
+     sizeof(((options_t *)0)->render_font),
+     "Font family name or .ttf/.otf path for render-file output. "
+     "Defaults to SF Mono (macOS) or the system monospace font via fontconfig (Linux). "
+     "Examples: \"JetBrains Mono\", \"Nerd Font Mono\", \"/path/to/font.[ttf|otf]\"  "
+     "(macOS and Linux only)",
+     "MEDIA",
+     "FONT",
+     false,
+     "ASCII_CHAT_RENDER_FONT",
+     NULL,
+     NULL,
+     false,
+     false,
+     RENDER_FILE_MODES,
+     {0},
+     NULL},
+
+    {"render-font-size",
+     '\0',
+     OPTION_TYPE_DOUBLE,
+     offsetof(options_t, render_font_size),
+     &default_render_font_size_value,
+     sizeof(double),
+     "Font size in points for render-file output (default: 12.0, must be > 0, fractional sizes supported e.g. 10.5).  "
+     "(macOS and Linux only)",
+     "MEDIA",
+     "SIZE",
+     false,
+     "ASCII_CHAT_RENDER_FONT_SIZE",
+     validate_render_font_size,
+     NULL,
+     false,
+     false,
+     RENDER_FILE_MODES,
+     {.input_type = OPTION_INPUT_NUMERIC},
+     NULL},
+
+#endif  // !_WIN32
 
     REGISTRY_TERMINATOR()};

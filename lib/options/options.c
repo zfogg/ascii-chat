@@ -639,6 +639,14 @@ options_t options_t_new(void) {
   opts.media_seek_timestamp = OPT_MEDIA_SEEK_TIMESTAMP_DEFAULT;
   // yt_dlp_options is already zeroed by memset
 
+  // Render-to-file options (Unix only)
+#ifndef _WIN32
+  // render_file is already zeroed by memset
+  opts.render_theme = OPT_RENDER_THEME_DEFAULT;
+  // render_font is already zeroed by memset
+  opts.render_font_size = OPT_RENDER_FONT_SIZE_DEFAULT;
+#endif
+
   // ============================================================================
   // AUDIO
   // ============================================================================

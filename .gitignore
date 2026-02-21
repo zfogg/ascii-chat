@@ -80,3 +80,6 @@ vcpkg_installed/
 
 # gastown
 /state.json
+
+# Build directory fonts (downloaded at build time)
+/build/fonts/

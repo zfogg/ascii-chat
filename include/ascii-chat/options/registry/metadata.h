@@ -44,6 +44,11 @@ extern const char *g_render_values[];
 extern const int g_render_integers[];
 extern const char *g_render_descs[];
 
+// Render-file theme metadata (macOS and Linux only)
+extern const char *g_render_theme_values[];
+extern const int g_render_theme_integers[];
+extern const char *g_render_theme_descs[];
+
 // Audio source metadata
 extern const char *g_audio_source_values[];
 extern const int g_audio_source_integers[];

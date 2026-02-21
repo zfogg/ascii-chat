@@ -300,6 +300,10 @@ if(NOT BUILDING_OBJECT_LIBS)
     )
 endif()
 
+# Link render-file dependencies to platform module (for terminal renderers)
+target_include_directories(ascii-chat-platform PRIVATE ${PLATFORM_INCLUDES})
+target_link_libraries(ascii-chat-platform ${PLATFORM_LIBS})
+
 # Add kernel headers for musl builds (needed for V4L2)
 if(USE_MUSL AND DEFINED MUSL_DEPS_DIR AND EXISTS "${MUSL_DEPS_DIR}/musl-deps/kernel-headers")
     target_include_directories(ascii-chat-platform PRIVATE
@@ -453,6 +457,7 @@ if(FFMPEG_FOUND)
 endif()
 
 create_ascii_chat_module(ascii-chat-video "${VIDEO_SRCS}")
+
 if(NOT BUILDING_OBJECT_LIBS)
     target_link_libraries(ascii-chat-video
         ascii-chat-util
@@ -464,7 +469,16 @@ if(NOT BUILDING_OBJECT_LIBS)
     if(FFMPEG_FOUND)
         target_link_libraries(ascii-chat-video ${FFMPEG_LINK_LIBRARIES})
     endif()
+    # Link render-file dependencies
+    target_include_directories(ascii-chat-video PRIVATE ${RENDER_FILE_INCLUDES})
+    target_link_libraries(ascii-chat-video ${RENDER_FILE_LIBS})
 endif()
+
+# Mark generated font file as generated (for OBJECT libraries, must be before module creation)
+set_source_files_properties(
+    "${CMAKE_BINARY_DIR}/generated/matrix_resurrected_font.c"
+    PROPERTIES LANGUAGE C GENERATED TRUE
+)
 
 # PCRE2: Configure for media module (for YouTube video ID extraction)
 # Define PCRE2_CODE_UNIT_WIDTH=8 for 8-bit API (UTF-8 support)
@@ -1160,6 +1174,11 @@ endif()
 # Link FFmpeg for media file streaming
 if(FFMPEG_FOUND)
     target_link_libraries(ascii-chat-shared PRIVATE ${FFMPEG_LINK_LIBRARIES})
+endif()
+
+# Link render-file dependencies
+if(NOT WIN32)
+    target_link_libraries(ascii-chat-shared PRIVATE ${RENDER_FILE_LIBS})
 endif()
 
 # Suppress linker warnings about duplicate debug symbols in libdatachannel

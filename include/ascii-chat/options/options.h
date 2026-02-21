@@ -674,6 +674,16 @@ typedef enum {
 #define OPT_LOG_FORMAT_CONSOLE_DEFAULT false
 
 // ============================================================================
+// Render-to-file Options (macOS and Linux only)
+// ============================================================================
+#ifndef _WIN32
+#define OPT_RENDER_FILE_DEFAULT ""
+#define OPT_RENDER_THEME_DEFAULT 0  // 0=dark, 1=light, 2=auto
+#define OPT_RENDER_FONT_DEFAULT ""
+#define OPT_RENDER_FONT_SIZE_DEFAULT 12.0
+#endif
+
+// ============================================================================
 // Static Default Value Variables
 // ============================================================================
 // These are referenced from the registry and provide const void * pointers
@@ -747,6 +757,11 @@ static const bool default_splash_value = OPT_SPLASH_DEFAULT;
 static const bool default_status_screen_value = OPT_STATUS_SCREEN_DEFAULT;
 static const bool default_no_check_update_value = false;
 static const bool default_log_format_console_only_value = OPT_LOG_FORMAT_CONSOLE_DEFAULT;
+
+#ifndef _WIN32
+static const int    default_render_theme_value     = OPT_RENDER_THEME_DEFAULT;
+static const double default_render_font_size_value = OPT_RENDER_FONT_SIZE_DEFAULT;
+#endif
 
 /** @{ @} */
 
@@ -1033,6 +1048,16 @@ typedef struct options_state {
   bool status_screen;                ///< Show status screen (default: true = show, use --no-status-screen to hide)
   bool status_screen_explicitly_set; ///< True if status_screen was explicitly set by user
   bool no_check_update;              ///< Disable automatic update checks (default: false = checks enabled)
+
+  // ============================================================================
+  // Render-to-file Options (macOS and Linux only)
+  // ============================================================================
+#ifndef _WIN32
+  char render_file[OPTIONS_BUFF_SIZE]; ///< Output file path (e.g. output.mp4)
+  int  render_theme;                   ///< 0=dark 1=light 2=auto
+  char render_font[OPTIONS_BUFF_SIZE]; ///< Font family name or .ttf path (empty = platform default)
+  double render_font_size;             ///< Font size in points (default 12.0, supports e.g. 10.5)
+#endif
 
   // Note: Luminance weights (weight_red, weight_green, weight_blue) and
   // lookup tables (RED[], GREEN[], BLUE[], GRAY[]) are kept as globals

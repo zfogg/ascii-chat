@@ -23,6 +23,9 @@
 #include <ascii-chat/video/color_filter.h>
 #include <ascii-chat/video/digital_rain.h>
 #include <ascii-chat/video/image.h>
+#ifndef _WIN32
+#include <ascii-chat/video/renderer.h>
+#endif
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/video/simd/neon.h>
@@ -87,6 +90,11 @@ typedef struct session_display_ctx {
 
   /** @brief Last frame timestamp for digital rain delta time calculation */
   uint64_t last_frame_time_ns;
+
+#ifndef _WIN32
+  /** @brief Render-to-file context (NULL if disabled) */
+  render_file_ctx_t *render_file;
+#endif
 } session_display_ctx_t;
 
 /* ============================================================================
@@ -245,6 +253,24 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
     ctx->last_frame_time_ns = time_get_ns();
   }
 
+#ifndef _WIN32
+  // Initialize render-file if enabled
+  if (strlen(GET_OPTION(render_file)) > 0) {
+    unsigned short cols = 0, rows = 0;
+    get_terminal_size(&cols, &rows);
+    asciichat_error_t rf_err = render_file_create(
+        GET_OPTION(render_file),
+        (int)cols, (int)rows,
+        GET_OPTION(fps),
+        GET_OPTION(render_theme),
+        &ctx->render_file);
+    if (rf_err != ASCIICHAT_OK)
+      log_warn("render-file: init failed — file output disabled");
+    else
+      log_info("render-file: initialized for %s", GET_OPTION(render_file));
+  }
+#endif
+
   ctx->initialized = true;
   return ctx;
 }
@@ -273,6 +299,14 @@ void session_display_destroy(session_display_ctx_t *ctx) {
     digital_rain_destroy(ctx->digital_rain);
     ctx->digital_rain = NULL;
   }
+
+#ifndef _WIN32
+  // Cleanup render-file if active
+  if (ctx->render_file) {
+    render_file_destroy(ctx->render_file);
+    ctx->render_file = NULL;
+  }
+#endif
 
   ctx->initialized = false;
   SAFE_FREE(ctx);
@@ -666,6 +700,17 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     // Flush output to ensure frame reaches destination in snapshot mode
     (void)terminal_flush(STDOUT_FILENO);
   }
+
+#ifndef _WIN32
+  // Write frame to render-file if enabled
+  if (ctx->render_file) {
+    asciichat_error_t fe = render_file_write_frame(ctx->render_file, frame_data);
+    if (fe != ASCIICHAT_OK)
+      log_warn_every(5 * NS_PER_SEC_INT, "render-file: encode failed (%s)",
+                    asciichat_error_string(fe));
+  }
+#endif
+
   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "frame_write",
                            "FRAME_WRITE: Write and flush complete (%.2f ms)");
 }

@@ -95,6 +95,20 @@ bool parse_color_filter(const char *arg, void *dest, char **error_msg);
 bool parse_render_mode(const char *arg, void *dest, char **error_msg);
 
 /**
+ * @brief Parse render theme option (macOS and Linux only)
+ * @param arg String argument (e.g., "dark", "light", "auto")
+ * @param dest Destination pointer (int*)
+ * @param error_msg Optional error message output (set on failure)
+ * @return true on success, false on error
+ *
+ * Valid values:
+ * - "dark", "0" - Dark background (TERM_RENDERER_THEME_DARK)
+ * - "light", "1" - Light background (TERM_RENDERER_THEME_LIGHT)
+ * - "auto", "2" - Auto-detect theme (TERM_RENDERER_THEME_AUTO)
+ */
+bool parse_render_theme(const char *arg, void *dest, char **error_msg);
+
+/**
  * @brief Parse palette type option
  * @param arg String argument (e.g., "standard", "blocks", "custom")
  * @param dest Destination pointer (palette_type_t*)

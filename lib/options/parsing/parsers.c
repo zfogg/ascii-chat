@@ -342,6 +342,45 @@ bool parse_render_mode(const char *arg, void *dest, char **error_msg) {
   return false;
 }
 
+bool parse_render_theme(const char *arg, void *dest, char **error_msg) {
+  if (!arg || !dest) {
+    if (error_msg) {
+      *error_msg = platform_strdup("Internal error: NULL argument or destination");
+    }
+    return false;
+  }
+
+  int *theme = (int *)dest;
+  char lower[32];
+  to_lower(arg, lower, sizeof(lower));
+
+  // Dark theme
+  if (strcmp(lower, "dark") == 0 || strcmp(lower, "0") == 0) {
+    *theme = 0;  // TERM_RENDERER_THEME_DARK
+    return true;
+  }
+
+  // Light theme
+  if (strcmp(lower, "light") == 0 || strcmp(lower, "1") == 0) {
+    *theme = 1;  // TERM_RENDERER_THEME_LIGHT
+    return true;
+  }
+
+  // Auto theme
+  if (strcmp(lower, "auto") == 0 || strcmp(lower, "2") == 0) {
+    *theme = 2;  // TERM_RENDERER_THEME_AUTO
+    return true;
+  }
+
+  // Invalid value
+  if (error_msg) {
+    char msg[256];
+    safe_snprintf(msg, sizeof(msg), "Invalid render theme '%s'. Valid values: dark, light, auto", arg);
+    *error_msg = platform_strdup(msg);
+  }
+  return false;
+}
+
 bool parse_palette_type(const char *arg, void *dest, char **error_msg) {
   if (!arg || !dest) {
     if (error_msg) {

@@ -31,6 +31,8 @@ if(WIN32)
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/filesystem.c
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/errno.c
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/agent.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/windows/font.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/windows/renderer.c
         ${CMAKE_SOURCE_DIR}/lib/video/webcam/windows/webcam_mediafoundation.c
     )
     # Link psapi for EnumProcessModules (used in backtrace symbol resolution)
@@ -63,12 +65,16 @@ elseif(PLATFORM_POSIX)
         list(APPEND PLATFORM_SRCS
             ${CMAKE_CURRENT_SOURCE_DIR}/macos/system.c
             ${CMAKE_CURRENT_SOURCE_DIR}/macos/keepawake.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/macos/font.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/macos/terminal.m
             ${CMAKE_SOURCE_DIR}/lib/video/webcam/macos/webcam_avfoundation.m
         )
     elseif(PLATFORM_LINUX)
         list(APPEND PLATFORM_SRCS
             ${CMAKE_CURRENT_SOURCE_DIR}/linux/system.c
             ${CMAKE_CURRENT_SOURCE_DIR}/linux/keepawake.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/linux/font.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/linux/terminal.c
             ${CMAKE_SOURCE_DIR}/lib/video/webcam/linux/webcam_v4l2.c
         )
     else()
@@ -77,3 +83,5 @@ elseif(PLATFORM_POSIX)
 endif()
 
 set(PLATFORM_SRCS ${PLATFORM_SRCS} PARENT_SCOPE)
+set(PLATFORM_INCLUDES ${RENDER_FILE_INCLUDES} PARENT_SCOPE)
+set(PLATFORM_LIBS ${RENDER_FILE_LIBS} PARENT_SCOPE)
