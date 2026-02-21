@@ -20,11 +20,12 @@ echo "🚀 Starting websocket server on port $WS_PORT"
 echo "   Server log: $SERVER_LOG"
 echo "   Client log: $CLIENT_LOG"
 
-# Start server with websocket port
+# Start server with websocket port (--no-encrypt to bypass crypto handshake for testing)
 ./build/bin/ascii-chat \
   --log-file "$SERVER_LOG" \
-  --log-level debug \
+  --log-level dev \
   server 0.0.0.0 "::" \
+  --no-encrypt \
   --websocket-port "$WS_PORT" \
   --no-status-screen \
   --port "$PORT" \
@@ -36,6 +37,7 @@ echo "   Server PID: $SERVER_PID"
 sleep 0.5
 
 # Start client connecting to server's websocket with snapshot mode, tee stdout to file
+# (--no-encrypt to bypass crypto handshake for testing)
 CLIENT_STDOUT="/tmp/ascii-chat-client-stdout-$WS_PORT.txt"
 ./build/bin/ascii-chat \
   --log-file "$CLIENT_LOG" \
@@ -44,6 +46,7 @@ CLIENT_STDOUT="/tmp/ascii-chat-client-stdout-$WS_PORT.txt"
   --color-mode truecolor \
   client \
   "ws://localhost:$WS_PORT" \
+  --no-encrypt \
   --test-pattern \
   -S -D 1 \
   2>&1 > "$CLIENT_STDOUT" \
