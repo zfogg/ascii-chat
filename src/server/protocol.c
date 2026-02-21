@@ -1473,36 +1473,59 @@ void handle_audio_opus_packet(client_info_t *client, const void *data, size_t le
  * @see terminal_color_level_name() For color level descriptions
  */
 void handle_client_capabilities_packet(client_info_t *client, const void *data, size_t len) {
-  log_debug("CLIENT_CAPABILITIES: client_id=%u, data=%p, len=%zu", atomic_load(&client->client_id), data, len);
+  uint32_t client_id = atomic_load(&client->client_id);
+  log_warn("[CAPS_HANDLER] 🟢 CAPS_RECEIVED: client_id=%u, data_ptr=%p, len=%zu bytes", client_id, data, len);
 
+  log_debug("[CAPS_HANDLER] Step 1: Validating packet size (expected=%zu, actual=%zu)",
+            sizeof(terminal_capabilities_packet_t), len);
   VALIDATE_PACKET_SIZE(client, data, len, sizeof(terminal_capabilities_packet_t), "CLIENT_CAPABILITIES");
+  log_debug("[CAPS_HANDLER] ✅ Size validation passed");
 
   const terminal_capabilities_packet_t *caps = (const terminal_capabilities_packet_t *)data;
 
   // Extract and validate dimensions
   uint16_t width = NET_TO_HOST_U16(caps->width);
   uint16_t height = NET_TO_HOST_U16(caps->height);
-  log_error("CLIENT_CAPABILITIES: dimensions=%ux%u", width, height);
+  log_warn("[CAPS_HANDLER] 📐 DIMENSIONS: width=%u, height=%u", width, height);
 
+  log_debug("[CAPS_HANDLER] Step 2: Validating width (value=%u, must be nonzero)", width);
   VALIDATE_NONZERO(client, width, "width", "CLIENT_CAPABILITIES");
+  log_debug("[CAPS_HANDLER] ✅ Width nonzero check passed");
+
+  log_debug("[CAPS_HANDLER] Step 3: Validating height (value=%u, must be nonzero)", height);
   VALIDATE_NONZERO(client, height, "height", "CLIENT_CAPABILITIES");
+  log_debug("[CAPS_HANDLER] ✅ Height nonzero check passed");
+
+  log_debug("[CAPS_HANDLER] Step 4: Validating width range (value=%u, range=1-4096)", width);
   VALIDATE_RANGE(client, width, 1, 4096, "width", "CLIENT_CAPABILITIES");
+  log_debug("[CAPS_HANDLER] ✅ Width range check passed");
+
+  log_debug("[CAPS_HANDLER] Step 5: Validating height range (value=%u, range=1-4096)", height);
   VALIDATE_RANGE(client, height, 1, 4096, "height", "CLIENT_CAPABILITIES");
+  log_debug("[CAPS_HANDLER] ✅ Height range check passed");
 
   // Extract and validate color level (0=none, 1=16, 2=256, 3=truecolor)
   uint32_t color_level = NET_TO_HOST_U32(caps->color_level);
+  log_debug("[CAPS_HANDLER] Step 6: Validating color_level (value=%u, range=0-3)", color_level);
   VALIDATE_RANGE(client, color_level, 0, 3, "color_level", "CLIENT_CAPABILITIES");
+  log_debug("[CAPS_HANDLER] ✅ Color level check passed");
 
   // Extract and validate render mode (0=foreground, 1=background, 2=half-block)
   uint32_t render_mode = NET_TO_HOST_U32(caps->render_mode);
+  log_debug("[CAPS_HANDLER] Step 7: Validating render_mode (value=%u, range=0-2)", render_mode);
   VALIDATE_RANGE(client, render_mode, 0, 2, "render_mode", "CLIENT_CAPABILITIES");
+  log_debug("[CAPS_HANDLER] ✅ Render mode check passed");
 
   // Extract and validate palette type (0-5 are valid, 5=PALETTE_CUSTOM)
   uint32_t palette_type = NET_TO_HOST_U32(caps->palette_type);
+  log_debug("[CAPS_HANDLER] Step 8: Validating palette_type (value=%u, range=0-5)", palette_type);
   VALIDATE_RANGE(client, palette_type, 0, 5, "palette_type", "CLIENT_CAPABILITIES");
+  log_debug("[CAPS_HANDLER] ✅ Palette type check passed");
 
   // Validate desired FPS (1-144)
+  log_debug("[CAPS_HANDLER] Step 9: Validating desired_fps (value=%u, range=1-144)", caps->desired_fps);
   VALIDATE_RANGE(client, caps->desired_fps, 1, 144, "desired_fps", "CLIENT_CAPABILITIES");
+  log_debug("[CAPS_HANDLER] ✅ FPS check passed");
 
   mutex_lock(&client->client_state_mutex);
 
@@ -1573,6 +1596,9 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
   }
 
   mutex_unlock(&client->client_state_mutex);
+
+  log_warn("[CAPS_HANDLER] ✅ CAPS_COMPLETE: client_id=%u - all validations passed, capabilities stored",
+           atomic_load(&client->client_id));
 }
 
 /**
