@@ -543,7 +543,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   size_t assembled_capacity = 0;
   uint64_t assembly_start_ns = time_get_ns();
   int fragment_count = 0;
-  const uint64_t MAX_REASSEMBLY_TIME_NS = 1000 * 1000000ULL; // 1 second timeout - enough for localhost transmission of fragmented messages
+  const uint64_t MAX_REASSEMBLY_TIME_NS = 10000 * 1000000ULL; // 10 second timeout - handle slow fragment delivery over WebSocket
 
   while (true) {
     // Wait for fragment if queue is empty (with short timeout)
