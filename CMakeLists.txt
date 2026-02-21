@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.28)
 
 # =============================================================================
+# Git Submodule Initialization (must come FIRST, before any dependencies are accessed)
+# =============================================================================
+include(${CMAKE_SOURCE_DIR}/cmake/init/SubmoduleCheck.cmake)
+
+# =============================================================================
 # CMake Build Types
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/init/BuildTypes.cmake)
