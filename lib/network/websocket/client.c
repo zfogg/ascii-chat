@@ -13,22 +13,11 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/socket.h>
 #include <ascii-chat/network/acip/transport.h>
-#include <ascii-chat/network/network.h>
-#include <ascii-chat/util/endian.h>
 #include <ascii-chat/network/acip/send.h>
-#include <ascii-chat/network/network.h>
 
 #include <string.h>
 #include <stdatomic.h>
-
-#ifndef _WIN32
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#else
-#include <winsock2.h>
-#endif
 
 /**
  * @brief Create and initialize WebSocket client
@@ -46,10 +35,17 @@ websocket_client_t *websocket_client_create(void) {
   // Initialize connection state
   atomic_store(&client->connection_active, false);
   atomic_store(&client->connection_lost, false);
-  atomic_store(&client->should_reconnect, false);
   client->transport = NULL;
   client->my_client_id = 0;
   client->encryption_enabled = false;
+  client->should_reconnect = false;
+
+  // Initialize thread-safe mutex for packet transmission
+  if (mutex_init(&client->send_mutex) != 0) {
+    log_error("Failed to initialize send_mutex");
+    SAFE_FREE(client);
+    return NULL;
+  }
 
   log_debug("WebSocket client created");
 
@@ -73,6 +69,9 @@ void websocket_client_destroy(websocket_client_t **client_ptr) {
     acip_transport_destroy(client->transport);
     client->transport = NULL;
   }
+
+  // Destroy mutex
+  mutex_destroy(&client->send_mutex);
 
   SAFE_FREE(*client_ptr);
 }
@@ -98,38 +97,6 @@ bool websocket_client_is_lost(const websocket_client_t *client) {
 }
 
 /**
- * @brief Check if reconnection should be attempted
- */
-bool websocket_client_should_reconnect(const websocket_client_t *client) {
-  if (!client) {
-    return false;
-  }
-  return atomic_load(&client->should_reconnect);
-}
-
-/**
- * @brief Signal that reconnection should be attempted
- */
-void websocket_client_signal_reconnect(websocket_client_t *client) {
-  if (!client) {
-    return;
-  }
-  atomic_store(&client->should_reconnect, true);
-  atomic_store(&client->connection_active, false);
-  log_debug("WebSocket reconnection signaled");
-}
-
-/**
- * @brief Clear reconnection flag
- */
-void websocket_client_clear_reconnect_flag(websocket_client_t *client) {
-  if (!client) {
-    return;
-  }
-  atomic_store(&client->should_reconnect, false);
-}
-
-/**
  * @brief Signal that connection was lost
  */
 void websocket_client_signal_lost(websocket_client_t *client) {
@@ -139,38 +106,6 @@ void websocket_client_signal_lost(websocket_client_t *client) {
   atomic_store(&client->connection_lost, true);
   atomic_store(&client->connection_active, false);
   log_debug("WebSocket connection marked as lost");
-}
-
-/**
- * @brief Check if encryption is enabled
- */
-bool websocket_client_is_encryption_enabled(const websocket_client_t *client) {
-  if (!client) {
-    return false;
-  }
-  return client->encryption_enabled;
-}
-
-/**
- * @brief Enable encryption for this connection
- */
-void websocket_client_enable_encryption(websocket_client_t *client) {
-  if (!client) {
-    return;
-  }
-  client->encryption_enabled = true;
-  log_debug("WebSocket encryption enabled");
-}
-
-/**
- * @brief Disable encryption for this connection
- */
-void websocket_client_disable_encryption(websocket_client_t *client) {
-  if (!client) {
-    return;
-  }
-  client->encryption_enabled = false;
-  log_debug("WebSocket encryption disabled");
 }
 
 /**
@@ -188,8 +123,6 @@ void websocket_client_close(websocket_client_t *client) {
   }
 
   atomic_store(&client->connection_active, false);
-  client->my_client_id = 0;
-  atomic_store(&client->should_reconnect, false);
 }
 
 /**
@@ -209,7 +142,6 @@ void websocket_client_shutdown(websocket_client_t *client) {
 
   atomic_store(&client->connection_active, false);
   atomic_store(&client->connection_lost, true);
-  atomic_store(&client->should_reconnect, false);
 }
 
 /**
@@ -241,40 +173,23 @@ acip_transport_t *websocket_client_connect(websocket_client_t *client, const cha
     return NULL;
   }
 
+  // Derive client ID from URL hash (simple CRC32 of URL)
+  // This provides a stable, unique ID per connection URL
+  uint32_t client_id = 0;
+  for (size_t i = 0; url[i] != '\0'; i++) {
+    client_id = ((client_id << 5) + client_id) ^ url[i];  // Simple hash
+  }
+  client->my_client_id = client_id;
+
+  // Mark encryption as enabled if crypto context provided
+  client->encryption_enabled = (crypto_ctx != NULL);
+
   // Store transport and mark as active
   client->transport = transport;
   atomic_store(&client->connection_active, true);
   atomic_store(&client->connection_lost, false);
 
-  // Extract client ID from local socket port (matching TCP client behavior)
-  // Get the underlying socket FD from the transport
-  socket_t sockfd = acip_transport_get_socket(transport);
-  if (sockfd == INVALID_SOCKET_VALUE) {
-    // WebSocket transports may not expose the underlying socket directly
-    // Assign a fallback client ID (0 indicates assignment pending from server)
-    log_debug("WebSocket transport does not expose raw socket, client_id assignment pending from server");
-    client->my_client_id = 0;
-  } else {
-    // Extract local port for client ID
-    struct sockaddr_storage local_addr = {0};
-    socklen_t addr_len = sizeof(local_addr);
-    if (getsockname(sockfd, (struct sockaddr *)&local_addr, &addr_len) == -1) {
-      log_warn("Failed to get local socket address: %s", network_error_string());
-      client->my_client_id = 0;
-    } else {
-      // Extract port from either IPv4 or IPv6 address
-      int local_port = 0;
-      if (((struct sockaddr *)&local_addr)->sa_family == AF_INET) {
-        local_port = NET_TO_HOST_U16(((struct sockaddr_in *)&local_addr)->sin_port);
-      } else if (((struct sockaddr *)&local_addr)->sa_family == AF_INET6) {
-        local_port = NET_TO_HOST_U16(((struct sockaddr_in6 *)&local_addr)->sin6_port);
-      }
-      client->my_client_id = (uint32_t)local_port;
-      log_debug("WebSocket client assigned ID from local port: %u", client->my_client_id);
-    }
-  }
-
-  log_info("WebSocket client connected to %s (client_id=%u)", url, client->my_client_id);
+  log_info("WebSocket client connected to %s (ID: %u)", url, client->my_client_id);
 
   return transport;
 }
@@ -290,119 +205,78 @@ acip_transport_t *websocket_client_get_transport(const websocket_client_t *clien
 }
 
 /**
- * @brief Get client ID for this WebSocket client
+ * @brief Send a packet through WebSocket connection (thread-safe)
  *
- * Note: WebSocket transports in this library do not expose a raw socket
- * (websocket_get_socket() returns INVALID_SOCKET_VALUE), so unlike TCP
- * transports they do not derive a client ID from the local port. As a
- * result, WebSocket clients will typically have client_id == 0.
+ * Acquires send_mutex, transmits packet via transport, releases mutex.
+ * Checks connection state before sending.
+ */
+int websocket_client_send_packet(websocket_client_t *client, packet_type_t type,
+                                  const void *data, size_t len) {
+  if (!client) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL client");
+  }
+
+  if (!atomic_load(&client->connection_active)) {
+    return SET_ERRNO(ERROR_NETWORK, "Connection not active");
+  }
+
+  if (!client->transport) {
+    return SET_ERRNO(ERROR_NETWORK, "No active transport");
+  }
+
+  // Acquire send mutex for thread-safe transmission
+  mutex_lock(&client->send_mutex);
+
+  // Send packet through transport with client ID
+  asciichat_error_t result = packet_send_via_transport(
+      client->transport, type, data, len, client->my_client_id
+  );
+
+  mutex_unlock(&client->send_mutex);
+
+  if (result != ASCIICHAT_OK) {
+    log_debug("Failed to send packet type %d: %s", type,
+              asciichat_error_string(result));
+    return -1;
+  }
+
+  return 0;
+}
+
+/**
+ * @brief Send ping frame (keepalive heartbeat)
+ *
+ * Routes through websocket_client_send_packet() with PACKET_TYPE_PING.
+ */
+int websocket_client_send_ping(websocket_client_t *client) {
+  if (!client)
+    return -1;
+  return websocket_client_send_packet(client, PACKET_TYPE_PING, NULL, 0);
+}
+
+/**
+ * @brief Send pong frame (keepalive response)
+ *
+ * Routes through websocket_client_send_packet() with PACKET_TYPE_PONG.
+ */
+int websocket_client_send_pong(websocket_client_t *client) {
+  if (!client)
+    return -1;
+  return websocket_client_send_packet(client, PACKET_TYPE_PONG, NULL, 0);
+}
+
+/**
+ * @brief Get the client's unique ID
  */
 uint32_t websocket_client_get_id(const websocket_client_t *client) {
   return client ? client->my_client_id : 0;
 }
 
 /**
- * @brief Send ping packet to keep connection alive
+ * @brief Check if encryption is enabled for this connection
  */
-int websocket_client_send_ping(websocket_client_t *client) {
-  if (!client) {
-    log_error("Invalid WebSocket client for ping");
-    return -1;
-  }
-
-  if (!websocket_client_is_active(client)) {
-    log_error("WebSocket client is not connected");
-    return -1;
-  }
-
-  if (!client->transport) {
-    log_error("WebSocket transport is NULL");
-    return -1;
-  }
-
-  asciichat_error_t result = acip_send_ping(client->transport);
-  if (result != ASCIICHAT_OK) {
-    log_debug("Failed to send WebSocket ping: %s", asciichat_error_string(result));
-    return -1;
-  }
-
-  return 0;
-}
-
-/**
- * @brief Send pong packet in response to ping
- */
-int websocket_client_send_pong(websocket_client_t *client) {
-  if (!client) {
-    log_error("Invalid WebSocket client for pong");
-    return -1;
-  }
-
-  if (!websocket_client_is_active(client)) {
-    log_error("WebSocket client is not connected");
-    return -1;
-  }
-
-  if (!client->transport) {
-    log_error("WebSocket transport is NULL");
-    return -1;
-  }
-
-  asciichat_error_t result = acip_send_pong(client->transport);
-  if (result != ASCIICHAT_OK) {
-    log_debug("Failed to send WebSocket pong: %s", asciichat_error_string(result));
-    return -1;
-  }
-
-  return 0;
-}
-
-/**
- * @brief Configure WebSocket socket options (keepalive, buffers)
- *
- * Configures the underlying TCP socket created by libwebsockets with:
- * - TCP keepalive for connection monitoring
- * - Optimized send/receive buffers for media streaming
- */
-int websocket_client_configure_socket(websocket_client_t *client) {
-  if (!client) {
-    log_error("Invalid WebSocket client for socket configuration");
-    return -1;
-  }
-
-  if (!websocket_client_is_active(client)) {
-    log_warn("WebSocket client is not connected, cannot configure socket");
-    return -1;
-  }
-
-  if (!client->transport) {
-    log_warn("WebSocket transport is NULL, cannot configure socket");
-    return -1;
-  }
-
-  // Try to get the underlying socket from the transport
-  socket_t sock = client->transport->methods->get_socket(client->transport);
-
-  if (sock == INVALID_SOCKET_VALUE) {
-    log_debug("Unable to get socket from WebSocket transport (expected for libwebsockets)");
-    // This is expected - libwebsockets manages the socket internally
-    // Configuration would need to be done at the transport level
-    return 0; // Not an error, just unavailable
-  }
-
-  // Configure socket keepalive
-  if (socket_set_keepalive(sock, true) < 0) {
-    log_warn("Failed to set WebSocket socket keepalive: %s", network_error_string());
-    // Continue - this is not fatal
-  }
-
-  // Configure socket buffers
-  asciichat_error_t sock_config_result = socket_configure_buffers(sock);
-  if (sock_config_result != ASCIICHAT_OK) {
-    log_warn("Failed to configure WebSocket socket buffers: %s", network_error_string());
-    // Continue - this is not fatal
-  }
-
-  log_debug("WebSocket socket configured successfully");
-  return 0;
+bool websocket_client_is_encrypted(const websocket_client_t *client) {
+  if (!client)
+    return false;
+  return client->encryption_enabled;
 }
