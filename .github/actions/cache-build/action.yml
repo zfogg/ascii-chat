@@ -36,6 +36,12 @@ inputs:
     default: v3
 
 outputs:
+  configure-cache-key:
+    description: 'Fully qualified cache key for the configure directory (CMakeCache.txt, CMakeFiles).'
+    value: ${{ format('{0}-configure-{1}-{2}-{3}-{4}-{5}', inputs.cache-version, runner.os, runner.arch, github.workflow, github.job, steps.cache-config.outputs.build_suffix) }}
+  configure-cache-hit:
+    description: 'Whether the configure directory cache was restored.'
+    value: ${{ steps.cache-configure-dir.outputs.cache-hit }}
   build-cache-key:
     description: 'Fully qualified cache key for the build directory.'
     value: ${{ format('{0}-build-{1}-{2}-{3}-{4}-{5}', inputs.cache-version, runner.os, runner.arch, github.workflow, github.job, steps.cache-config.outputs.build_suffix) }}
@@ -106,6 +112,17 @@ runs:
           mkdir -p "${{ inputs.ccache-directory }}"
           echo "CCACHE_DIR=${{ inputs.ccache-directory }}" >> "${GITHUB_ENV}"
         fi
+
+    - name: Restore configure directory cache
+      id: cache-configure-dir
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ inputs.build-directory }}
+        key: ${{ format('{0}-configure-{1}-{2}-{3}-{4}-{5}', inputs.cache-version, runner.os, runner.arch, github.workflow, github.job, steps.cache-config.outputs.build_suffix) }}
+        restore-keys: |
+          ${{ format('{0}-configure-{1}-{2}-{3}-{4}-', inputs.cache-version, runner.os, runner.arch, github.workflow, github.job) }}
+          ${{ format('{0}-configure-{1}-{2}-{3}-', inputs.cache-version, runner.os, runner.arch, github.workflow) }}
+          ${{ format('{0}-configure-{1}-{2}-', inputs.cache-version, runner.os, runner.arch) }}
 
     - name: Restore build directory cache
       id: cache-build-dir

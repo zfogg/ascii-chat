@@ -5,6 +5,14 @@ inputs:
   build-directory:
     description: 'Absolute or relative path to the configured CMake build directory.'
     required: true
+  configure-cache-key:
+    description: 'Fully qualified cache key for the configure directory (CMakeCache.txt, CMakeFiles).'
+    required: false
+    default: ''
+  configure-cache-hit:
+    description: 'Whether the configure directory cache was restored.'
+    required: false
+    default: ''
   build-cache-key:
     description: 'Fully qualified cache key for the build directory.'
     required: true
@@ -69,6 +77,13 @@ runs:
       shell: bash
       run: |
         mkdir -p "${{ inputs.ccache-directory }}"
+
+    - name: Save configure directory cache
+      if: always() && inputs.configure-cache-key != '' && inputs.configure-cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ inputs.build-directory }}
+        key: ${{ inputs.configure-cache-key }}
 
     - name: Save build directory cache
       if: always() && inputs.build-cache-key != '' && inputs.build-cache-hit != 'true'

@@ -124,6 +124,12 @@ jobs:
           windows-libs-mode: static
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Restore configure and build caches
+        id: cache-build
+        uses: ./.github/actions/cache-build
+        with:
+          cache-version: v7
+
       - name: Configure (Unix)
         if: matrix.os != 'Windows'
         run: |
@@ -156,6 +162,24 @@ jobs:
             Write-Host "No pre-built defer tool available - CMake will build from source"
           }
           cmake @cmakeArgs
+
+      - name: Save configure cache
+        if: always()
+        uses: ./.github/actions/cache-build-save
+        with:
+          build-directory: build_release
+          configure-cache-key: ${{ steps.cache-build.outputs.configure-cache-key }}
+          configure-cache-hit: ${{ steps.cache-build.outputs.configure-cache-hit }}
+          build-cache-key: ${{ steps.cache-build.outputs.build-cache-key }}
+          build-cache-hit: ${{ steps.cache-build.outputs.build-cache-hit }}
+          cache-deps-enabled: ${{ steps.cache-build.outputs.cache-deps-enabled }}
+          deps-cache-directory: ${{ steps.cache-build.outputs.deps-cache-path }}
+          deps-cache-key: ${{ steps.cache-build.outputs.deps-cache-key }}
+          deps-cache-hit: ${{ steps.cache-build.outputs.deps-cache-hit }}
+          cache-ccache-enabled: ${{ steps.cache-build.outputs.cache-ccache-enabled }}
+          ccache-directory: ${{ steps.cache-build.outputs.ccache-directory-path }}
+          ccache-cache-key: ${{ steps.cache-build.outputs.ccache-cache-key }}
+          ccache-cache-hit: ${{ steps.cache-build.outputs.ccache-cache-hit }}
 
       - name: Build
         run: |
@@ -195,11 +219,31 @@ jobs:
         shell: bash
         run: ccache --show-stats || true
 
+      # Save build cache after successful build
+      # Save even on failure to preserve partial build state and deps that were built
+      - name: Save build cache
+        if: always()
+        uses: ./.github/actions/cache-build-save
+        with:
+          build-directory: build_release
+          configure-cache-key: ${{ steps.cache-build.outputs.configure-cache-key }}
+          configure-cache-hit: ${{ steps.cache-build.outputs.configure-cache-hit }}
+          build-cache-key: ${{ steps.cache-build.outputs.build-cache-key }}
+          build-cache-hit: ${{ steps.cache-build.outputs.build-cache-hit }}
+          cache-deps-enabled: ${{ steps.cache-build.outputs.cache-deps-enabled }}
+          deps-cache-directory: ${{ steps.cache-build.outputs.deps-cache-path }}
+          deps-cache-key: ${{ steps.cache-build.outputs.deps-cache-key }}
+          deps-cache-hit: ${{ steps.cache-build.outputs.deps-cache-hit }}
+          cache-ccache-enabled: ${{ steps.cache-build.outputs.cache-ccache-enabled }}
+          ccache-directory: ${{ steps.cache-build.outputs.ccache-directory-path }}
+          ccache-cache-key: ${{ steps.cache-build.outputs.ccache-cache-key }}
+          ccache-cache-hit: ${{ steps.cache-build.outputs.ccache-cache-hit }}
+
       # Save CMake deps cache AFTER build so BearSSL, defer tool, and other deps
       # built during cmake configure/build are included
-      # IMPORTANT: Only save on success to avoid caching corrupted state
+      # Save even on failure to preserve partial dependencies that were built
       - name: Save CMake dependency cache
-        if: success() && steps.install-deps.outputs.cmake-cache-hit != 'true'
+        if: always() && steps.install-deps.outputs.cmake-cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: |
@@ -215,15 +259,6 @@ jobs:
         with:
           path: .ccache
           key: ${{ steps.install-deps.outputs.ccache-key }}
-
-      # Save build directory for incremental builds - Ninja will only rebuild changed files
-      # IMPORTANT: Only save on success to avoid caching corrupted ExternalProject stamps
-      - name: Save build directory
-        if: success()
-        uses: actions/cache/save@v4
-        with:
-          path: build_release
-          key: ${{ steps.install-deps.outputs.build-cache-key }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
