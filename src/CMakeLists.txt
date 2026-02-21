@@ -569,29 +569,38 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE)
 endif()
 
 # Mirror mode WASM target
-add_custom_target(mirror-web
-    COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target mirror-web
-    WORKING_DIRECTORY "${WASM_SOURCE_DIR}"
-    COMMENT "Building WASM mirror module"
-    VERBATIM
-)
+if(NOT TARGET mirror-web)
+    add_custom_target(mirror-web
+        COMMAND ${CMAKE_COMMAND} ${WASM_CMAKE_ARGS}
+        COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target mirror-web
+        WORKING_DIRECTORY "${WASM_SOURCE_DIR}"
+        COMMENT "Building WASM mirror module"
+        VERBATIM
+    )
+endif()
 
 # Client mode WASM target
-add_custom_target(client-web
-    COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target client-web
-    WORKING_DIRECTORY "${WASM_SOURCE_DIR}"
-    COMMENT "Building WASM client module"
-    VERBATIM
-)
+if(NOT TARGET client-web)
+    add_custom_target(client-web
+        COMMAND ${CMAKE_COMMAND} ${WASM_CMAKE_ARGS}
+        COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target client-web
+        WORKING_DIRECTORY "${WASM_SOURCE_DIR}"
+        COMMENT "Building WASM client module"
+        VERBATIM
+    )
+endif()
 
 # Combined WASM target (builds both mirror and client)
-add_custom_target(web
-    COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target mirror-web
-    COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target client-web
-    WORKING_DIRECTORY "${WASM_SOURCE_DIR}"
-    COMMENT "Building all WASM modules"
-    VERBATIM
-)
+if(NOT TARGET web)
+    add_custom_target(web
+        COMMAND ${CMAKE_COMMAND} ${WASM_CMAKE_ARGS}
+        COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target mirror-web
+        COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target client-web
+        WORKING_DIRECTORY "${WASM_SOURCE_DIR}"
+        COMMENT "Building all WASM modules"
+        VERBATIM
+    )
+endif()
 
 message(STATUS "WASM targets configured:")
 message(STATUS "  mirror-web - Build mirror mode WASM only")
