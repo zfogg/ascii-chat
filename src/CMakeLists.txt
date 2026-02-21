@@ -568,30 +568,8 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE)
     endif()
 endif()
 
-# Mirror mode WASM target
-add_custom_target(mirror-web
-    COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target mirror-web
-    WORKING_DIRECTORY "${WASM_SOURCE_DIR}"
-    COMMENT "Building WASM mirror module"
-    VERBATIM
-)
-
-# Client mode WASM target
-add_custom_target(client-web
-    COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target client-web
-    WORKING_DIRECTORY "${WASM_SOURCE_DIR}"
-    COMMENT "Building WASM client module"
-    VERBATIM
-)
-
-# Combined WASM target (builds both mirror and client)
-add_custom_target(web
-    COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target mirror-web
-    COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target client-web
-    WORKING_DIRECTORY "${WASM_SOURCE_DIR}"
-    COMMENT "Building all WASM modules"
-    VERBATIM
-)
+# Note: WASM targets (mirror-web, client-web, web) are defined in CMakeLists.txt
+# to avoid duplication with the already-defined targets in the main project
 
 message(STATUS "WASM targets configured:")
 message(STATUS "  mirror-web - Build mirror mode WASM only")
