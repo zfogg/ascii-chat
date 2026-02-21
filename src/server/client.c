@@ -980,6 +980,12 @@ int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
 
   safe_snprintf(client->display_name, sizeof(client->display_name), "WebRTC%u", atomic_load(&client->client_id));
 
+  // CRITICAL: Release write lock BEFORE expensive buffer allocations
+  // This allows libwebsockets event loop to continue servicing other clients
+  // while this new client is being initialized. Lock is re-acquired only
+  // when adding to uthash table (shared with recv/send threads).
+  rwlock_wrunlock(&g_client_manager_rwlock);
+
   // Create individual video buffer for this client using modern double-buffering
   client->incoming_video_buffer = video_frame_buffer_create(atomic_load(&client->client_id));
   if (!client->incoming_video_buffer) {
@@ -1026,9 +1032,25 @@ int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
     goto error_cleanup_webrtc;
   }
 
+  // Initialize mutexes BEFORE creating any threads to prevent race conditions
+  // (These mutexes protect per-client state, not global state - no need for global write lock)
+  if (mutex_init(&client->client_state_mutex) != 0) {
+    log_error("Failed to initialize client state mutex for WebRTC client %u", atomic_load(&client->client_id));
+    goto error_cleanup_webrtc;
+  }
+
+  // Initialize send mutex to protect concurrent socket writes
+  if (mutex_init(&client->send_mutex) != 0) {
+    log_error("Failed to initialize send mutex for WebRTC client %u", atomic_load(&client->client_id));
+    goto error_cleanup_webrtc;
+  }
+
   g_client_manager.client_count = existing_count + 1; // We just added a client
   log_debug("Client count updated: now %d clients (added WebRTC client_id=%u to slot %d)",
             g_client_manager.client_count, atomic_load(&client->client_id), slot);
+
+  // RE-ACQUIRE write lock ONLY for uthash table modification (brief window)
+  rwlock_wrlock(&g_client_manager_rwlock);
 
   // Add client to uthash table for O(1) lookup
   uint32_t cid = atomic_load(&client->client_id);
@@ -1046,24 +1068,7 @@ int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
     }
   }
 
-  // Initialize mutexes BEFORE creating any threads to prevent race conditions
-  if (mutex_init(&client->client_state_mutex) != 0) {
-    log_error("Failed to initialize client state mutex for WebRTC client %u", atomic_load(&client->client_id));
-    // Client is already in hash table - use remove_client for proper cleanup
-    rwlock_wrunlock(&g_client_manager_rwlock);
-    remove_client(server_ctx, atomic_load(&client->client_id));
-    return -1;
-  }
-
-  // Initialize send mutex to protect concurrent socket writes
-  if (mutex_init(&client->send_mutex) != 0) {
-    log_error("Failed to initialize send mutex for WebRTC client %u", atomic_load(&client->client_id));
-    // Client is already in hash table - use remove_client for proper cleanup
-    rwlock_wrunlock(&g_client_manager_rwlock);
-    remove_client(server_ctx, atomic_load(&client->client_id));
-    return -1;
-  }
-
+  // Unlock after uthash table update completes
   rwlock_wrunlock(&g_client_manager_rwlock);
 
   // For WebRTC clients, the capabilities packet will be received by the receive thread
