@@ -728,9 +728,11 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     mutex_unlock(&ws_data->recv_mutex);
     log_dev("[WS_DEBUG] RECEIVE: Unlocked recv_mutex");
 
-    // Signal LWS to call WRITEABLE callback (matches lws example pattern)
-    // This keeps the event loop active and allows server to send responses
-    lws_callback_on_writable(wsi);
+    // Signal LWS to call WRITEABLE callback ONLY for complete (non-fragmented) messages
+    // Calling this during fragmented message reception can cause protocol violations in libwebsockets
+    if (is_final) {
+      lws_callback_on_writable(wsi);
+    }
 
     log_info("[WS_FRAG] Queued fragment: %zu bytes (first=%d final=%d, total_fragments=%llu)", len, is_first, is_final,
              (unsigned long long)atomic_load(&g_receive_callback_count));
