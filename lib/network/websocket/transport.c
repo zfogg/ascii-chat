@@ -652,10 +652,46 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
     // Free fragment data (we've copied it)
     buffer_pool_free(NULL, frag.data, frag.len);
 
-    // Check if we have the final fragment
+    // Check if we have a complete ACIP message using protocol structure
+    // ACIP header: magic(8) + type(2) + length(4) + crc(4) + client_id(2) = 20 bytes
+    // The length field tells us the total message size
+    if (assembled_size >= 20) {
+      const uint8_t *data = assembled_buffer;
+
+      // Parse ACIP packet header
+      uint64_t magic = (uint64_t)data[0] << 56 | (uint64_t)data[1] << 48 | (uint64_t)data[2] << 40 |
+                      (uint64_t)data[3] << 32 | (uint64_t)data[4] << 24 | (uint64_t)data[5] << 16 |
+                      (uint64_t)data[6] << 8 | (uint64_t)data[7];
+      uint16_t type = (data[8] << 8) | data[9];
+      uint32_t msg_len = (data[10] << 24) | (data[11] << 16) | (data[12] << 8) | data[13];
+
+      // ACIP magic should be 0xa1c4115c0a000000 (ASCIICCHAT in hex)
+      const uint64_t ACIP_MAGIC = 0xa1c4115c0a000000ULL;
+
+      if (magic == ACIP_MAGIC) {
+        // We have a valid ACIP header
+        // Total packet size = header(20) + payload(msg_len)
+        size_t expected_size = 20 + msg_len;
+
+        if (assembled_size >= expected_size) {
+          // Complete ACIP message assembled
+          log_info("[WS_REASSEMBLE] Complete ACIP message: %zu bytes in %d fragments (type=%u, payload=%u)",
+                   expected_size, fragment_count, type, msg_len);
+          *buffer = assembled_buffer;
+          *out_len = expected_size;
+          *out_allocated_buffer = assembled_buffer;
+          mutex_unlock(&ws_data->recv_mutex);
+          return ASCIICHAT_OK;
+        }
+        // Need more fragments to complete this ACIP message
+      }
+    }
+
+    // Check if we have the final WebSocket fragment (fallback for malformed packets)
     if (frag.final) {
-      // Complete message assembled
-      log_info("[WS_REASSEMBLE] Complete message: %zu bytes in %d fragments", assembled_size, fragment_count);
+      // Complete WebSocket message assembled
+      log_info("[WS_REASSEMBLE] WebSocket final fragment: %zu bytes in %d fragments (no valid ACIP header)",
+               assembled_size, fragment_count);
       *buffer = assembled_buffer;
       *out_len = assembled_size;
       *out_allocated_buffer = assembled_buffer;
