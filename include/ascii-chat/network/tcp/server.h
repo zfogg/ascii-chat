@@ -173,9 +173,9 @@ struct tcp_server {
   atomic_bool running;        ///< Server running flag (set false to shutdown)
   tcp_server_config_t config; ///< Server configuration
 
-  // Client registry (thread-safe)
+  // Client registry (thread-safe with read-write lock)
   tcp_client_entry_t *clients;      ///< Hash table of connected clients
-  mutex_t clients_mutex;            ///< Mutex protecting client registry
+  rwlock_t clients_rwlock;          ///< Read-write lock (allows concurrent readers, exclusive writers)
   tcp_client_cleanup_fn cleanup_fn; ///< Callback for cleaning up client data
 };
 

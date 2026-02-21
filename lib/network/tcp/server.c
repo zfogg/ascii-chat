@@ -118,8 +118,8 @@ asciichat_error_t tcp_server_init(tcp_server_t *server, const tcp_server_config_
   // Initialize client registry
   server->clients = NULL; // uthash starts with NULL
   server->cleanup_fn = NULL;
-  if (mutex_init(&server->clients_mutex) != 0) {
-    return SET_ERRNO(ERROR_THREAD, "Failed to initialize clients mutex");
+  if (rwlock_init(&server->clients_rwlock) != 0) {
+    return SET_ERRNO(ERROR_THREAD, "Failed to initialize clients read-write lock");
   }
 
   // Determine which IP versions to bind
@@ -307,7 +307,7 @@ void tcp_server_destroy(tcp_server_t *server) {
   }
 
   // Clean up client registry
-  mutex_lock(&server->clients_mutex);
+  rwlock_wrlock(&server->clients_rwlock);
 
   tcp_client_entry_t *entry = NULL, *tmp = NULL;
   HASH_ITER(hh, server->clients, entry, tmp) {
@@ -327,8 +327,8 @@ void tcp_server_destroy(tcp_server_t *server) {
   }
   server->clients = NULL;
 
-  mutex_unlock(&server->clients_mutex);
-  mutex_destroy(&server->clients_mutex);
+  rwlock_wrunlock(&server->clients_rwlock);
+  rwlock_destroy(&server->clients_rwlock);
 
   // Note: This function does NOT wait for client threads to exit
   // Caller is responsible for thread lifecycle management
@@ -374,10 +374,10 @@ asciichat_error_t tcp_server_add_client(tcp_server_t *server, socket_t socket, v
     return SET_ERRNO(ERROR_MEMORY, "Failed to create thread pool for client");
   }
 
-  // Add to hash table (thread-safe)
-  mutex_lock(&server->clients_mutex);
+  // Add to hash table (thread-safe with write lock)
+  rwlock_wrlock(&server->clients_rwlock);
   HASH_ADD(hh, server->clients, socket, sizeof(socket_t), entry);
-  mutex_unlock(&server->clients_mutex);
+  rwlock_wrunlock(&server->clients_rwlock);
 
   log_debug("Added client socket=%d to registry", socket);
   return ASCIICHAT_OK;
@@ -388,13 +388,13 @@ asciichat_error_t tcp_server_remove_client(tcp_server_t *server, socket_t socket
     return SET_ERRNO(ERROR_INVALID_PARAM, "server is NULL");
   }
 
-  mutex_lock(&server->clients_mutex);
+  rwlock_wrlock(&server->clients_rwlock);
 
   tcp_client_entry_t *entry = NULL;
   HASH_FIND(hh, server->clients, &socket, sizeof(socket_t), entry);
 
   if (!entry) {
-    mutex_unlock(&server->clients_mutex);
+    rwlock_wrunlock(&server->clients_rwlock);
     // Already removed (e.g., during shutdown) - this is fine
     log_debug("Client socket=%d already removed from registry", socket);
     return ASCIICHAT_OK;
@@ -414,7 +414,7 @@ asciichat_error_t tcp_server_remove_client(tcp_server_t *server, socket_t socket
   HASH_DEL(server->clients, entry);
   SAFE_FREE(entry);
 
-  mutex_unlock(&server->clients_mutex);
+  rwlock_wrunlock(&server->clients_rwlock);
 
   log_debug("Removed client socket=%d from registry", socket);
   return ASCIICHAT_OK;
@@ -425,19 +425,19 @@ asciichat_error_t tcp_server_get_client(tcp_server_t *server, socket_t socket, v
     return SET_ERRNO(ERROR_INVALID_PARAM, "server or out_data is NULL");
   }
 
-  mutex_lock(&server->clients_mutex);
+  rwlock_rdlock(&server->clients_rwlock);
 
   tcp_client_entry_t *entry = NULL;
   HASH_FIND(hh, server->clients, &socket, sizeof(socket_t), entry);
 
   if (!entry) {
     *out_data = NULL;
-    mutex_unlock(&server->clients_mutex);
+    rwlock_rdunlock(&server->clients_rwlock);
     return SET_ERRNO(ERROR_INVALID_STATE, "Client socket=%d not in registry", socket);
   }
 
   *out_data = entry->client_data;
-  mutex_unlock(&server->clients_mutex);
+  rwlock_rdunlock(&server->clients_rwlock);
 
   return ASCIICHAT_OK;
 }
@@ -447,14 +447,14 @@ void tcp_server_foreach_client(tcp_server_t *server, tcp_client_foreach_fn callb
     return;
   }
 
-  mutex_lock(&server->clients_mutex);
+  rwlock_rdlock(&server->clients_rwlock);
 
   tcp_client_entry_t *entry, *tmp;
   HASH_ITER(hh, server->clients, entry, tmp) {
     callback(entry->socket, entry->client_data, user_arg);
   }
 
-  mutex_unlock(&server->clients_mutex);
+  rwlock_rdunlock(&server->clients_rwlock);
 }
 
 size_t tcp_server_get_client_count(tcp_server_t *server) {
@@ -462,9 +462,9 @@ size_t tcp_server_get_client_count(tcp_server_t *server) {
     return 0;
   }
 
-  mutex_lock(&server->clients_mutex);
+  rwlock_rdlock(&server->clients_rwlock);
   size_t count = HASH_COUNT(server->clients);
-  mutex_unlock(&server->clients_mutex);
+  rwlock_rdunlock(&server->clients_rwlock);
 
   return count;
 }
@@ -562,19 +562,19 @@ asciichat_error_t tcp_server_spawn_thread(tcp_server_t *server, socket_t client_
   }
 
   // Find client entry
-  mutex_lock(&server->clients_mutex);
+  rwlock_rdlock(&server->clients_rwlock);
   tcp_client_entry_t *entry = NULL;
   HASH_FIND(hh, server->clients, &client_socket, sizeof(socket_t), entry);
 
   if (!entry) {
-    mutex_unlock(&server->clients_mutex);
+    rwlock_rdunlock(&server->clients_rwlock);
     return SET_ERRNO(ERROR_NOT_FOUND, "Client socket=%d not in registry", client_socket);
   }
 
   // Spawn thread in client's thread pool
   asciichat_error_t result = thread_pool_spawn(entry->threads, thread_func, thread_arg, stop_id, thread_name);
 
-  mutex_unlock(&server->clients_mutex);
+  rwlock_rdunlock(&server->clients_rwlock);
 
   if (result != ASCIICHAT_OK) {
     return result;
@@ -597,12 +597,12 @@ asciichat_error_t tcp_server_stop_client_threads(tcp_server_t *server, socket_t 
   }
 
   // Find client entry
-  mutex_lock(&server->clients_mutex);
+  rwlock_rdlock(&server->clients_rwlock);
   tcp_client_entry_t *entry = NULL;
   HASH_FIND(hh, server->clients, &client_socket, sizeof(socket_t), entry);
 
   if (!entry) {
-    mutex_unlock(&server->clients_mutex);
+    rwlock_rdunlock(&server->clients_rwlock);
     return SET_ERRNO(ERROR_NOT_FOUND, "Client socket=%d not in registry", client_socket);
   }
 
@@ -612,7 +612,7 @@ asciichat_error_t tcp_server_stop_client_threads(tcp_server_t *server, socket_t 
     result = thread_pool_stop_all(entry->threads);
   }
 
-  mutex_unlock(&server->clients_mutex);
+  rwlock_rdunlock(&server->clients_rwlock);
 
   log_debug("All threads stopped for client socket=%d", client_socket);
   return result;
@@ -630,12 +630,12 @@ asciichat_error_t tcp_server_get_thread_count(tcp_server_t *server, socket_t cli
   *count = 0;
 
   // Find client entry
-  mutex_lock(&server->clients_mutex);
+  rwlock_rdlock(&server->clients_rwlock);
   tcp_client_entry_t *entry = NULL;
   HASH_FIND(hh, server->clients, &client_socket, sizeof(socket_t), entry);
 
   if (!entry) {
-    mutex_unlock(&server->clients_mutex);
+    rwlock_rdunlock(&server->clients_rwlock);
     return SET_ERRNO(ERROR_NOT_FOUND, "Client socket=%d not in registry", client_socket);
   }
 
@@ -644,7 +644,7 @@ asciichat_error_t tcp_server_get_thread_count(tcp_server_t *server, socket_t cli
     *count = thread_pool_get_count(entry->threads);
   }
 
-  mutex_unlock(&server->clients_mutex);
+  rwlock_rdunlock(&server->clients_rwlock);
 
   return ASCIICHAT_OK;
 }
