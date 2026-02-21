@@ -197,8 +197,12 @@ asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, const char 
     return SET_ERRNO(ERROR_INVALID_PARAM, "Empty frame data");
   }
 
+  log_info("★ SEND_ASCII_FRAME START: client_id=%u, width=%u, height=%u, frame_size=%zu bytes", client_id, width,
+           height, frame_size);
+
   // Calculate CRC32 checksum of frame data for integrity verification
   uint32_t checksum_value = asciichat_crc32(frame_data, frame_size);
+  log_debug("★ SEND_ASCII_FRAME: CRC32 checksum calculated: 0x%08x for %zu bytes", checksum_value, frame_size);
 
   // Create ASCII frame packet header
   ascii_frame_packet_t header;
@@ -212,22 +216,38 @@ asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, const char 
   // Calculate total packet size
   size_t total_size;
   if (checked_size_add(sizeof(header), frame_size, &total_size) != ASCIICHAT_OK) {
+    log_error("★ SEND_ASCII_FRAME: Packet size overflow when adding header (%zu) + frame (%zu)", sizeof(header),
+             frame_size);
     return SET_ERRNO(ERROR_INVALID_PARAM, "Packet size overflow");
   }
+
+  log_debug("★ SEND_ASCII_FRAME: Building packet - header=%zu bytes, frame=%zu bytes, total=%zu bytes", sizeof(header),
+           frame_size, total_size);
 
   // Allocate buffer
   uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
   if (!buffer) {
+    log_error("★ SEND_ASCII_FRAME: Memory allocation FAILED for %zu bytes", total_size);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer: %zu bytes", total_size);
   }
+
+  log_debug("★ SEND_ASCII_FRAME: Buffer allocated at %p", (void *)buffer);
 
   // Build packet: header + data
   memcpy(buffer, &header, sizeof(header));
   memcpy(buffer + sizeof(header), frame_data, frame_size);
 
   // Send via transport with client_id
+  log_info("★ SEND_ASCII_FRAME: Calling packet_send_via_transport with PACKET_TYPE_ASCII_FRAME");
   asciichat_error_t result =
       packet_send_via_transport(transport, PACKET_TYPE_ASCII_FRAME, buffer, total_size, client_id);
+
+  if (result == ASCIICHAT_OK) {
+    log_info("★ SEND_ASCII_FRAME COMPLETE: SUCCESS for client_id=%u, sent %zu bytes total", client_id, total_size);
+  } else {
+    log_error("★ SEND_ASCII_FRAME FAILED: Error code %d (%s) for client_id=%u", result, asciichat_error_string(result),
+             client_id);
+  }
 
   buffer_pool_free(NULL, buffer, total_size);
   return result;
