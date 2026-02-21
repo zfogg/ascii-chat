@@ -91,12 +91,13 @@ static asciichat_error_t tcp_send(acip_transport_t *transport, const void *data,
   // Extract packet type from header
   const packet_header_t *header = (const packet_header_t *)data;
   uint16_t packet_type = NET_TO_HOST_U16(header->type);
-  log_info("[TCP_SEND_STATE] 📦 PACKET_TYPE: type=%d (0x%04x), len=%zu, magic_check=%p", packet_type, packet_type,
-           len, (void *)header);
+  log_info("[TCP_SEND_STATE] 📦 PACKET_TYPE: type=%d (0x%04x), len=%zu, magic_check=%p", packet_type, packet_type, len,
+           (void *)header);
 
   // Check if encryption is needed
   bool should_encrypt = false;
-  bool crypto_ready = (transport->crypto_ctx && transport->crypto_ctx->encrypt_data && crypto_is_ready(transport->crypto_ctx));
+  bool crypto_ready =
+      (transport->crypto_ctx && transport->crypto_ctx->encrypt_data && crypto_is_ready(transport->crypto_ctx));
   bool is_handshake = packet_is_handshake_type((packet_type_t)packet_type);
 
   if (crypto_ready) {
@@ -361,8 +362,7 @@ void acip_transport_destroy(acip_transport_t *transport) {
     return;
   }
 
-  log_warn("[TRANSPORT_DESTROY] 🔴 DESTROY_START: transport=%p, impl_data=%p", (void *)transport,
-           transport->impl_data);
+  log_warn("[TRANSPORT_DESTROY] 🔴 DESTROY_START: transport=%p, impl_data=%p", (void *)transport, transport->impl_data);
 
   // Get type before we destroy for logging
   acip_transport_type_t type = 0;

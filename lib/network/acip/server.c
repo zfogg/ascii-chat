@@ -217,12 +217,12 @@ asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, const char 
   size_t total_size;
   if (checked_size_add(sizeof(header), frame_size, &total_size) != ASCIICHAT_OK) {
     log_error("★ SEND_ASCII_FRAME: Packet size overflow when adding header (%zu) + frame (%zu)", sizeof(header),
-             frame_size);
+              frame_size);
     return SET_ERRNO(ERROR_INVALID_PARAM, "Packet size overflow");
   }
 
   log_debug("★ SEND_ASCII_FRAME: Building packet - header=%zu bytes, frame=%zu bytes, total=%zu bytes", sizeof(header),
-           frame_size, total_size);
+            frame_size, total_size);
 
   // Allocate buffer
   uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
@@ -246,7 +246,7 @@ asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, const char 
     log_info("★ SEND_ASCII_FRAME COMPLETE: SUCCESS for client_id=%u, sent %zu bytes total", client_id, total_size);
   } else {
     log_error("★ SEND_ASCII_FRAME FAILED: Error code %d (%s) for client_id=%u", result, asciichat_error_string(result),
-             client_id);
+              client_id);
   }
 
   buffer_pool_free(NULL, buffer, total_size);

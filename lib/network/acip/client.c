@@ -140,7 +140,8 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
     buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
   }
 
-  log_debug("[ACIP_RECV] ✅ RECV_COMPLETE: type=%u, result=%d", envelope.type, dispatch_result != ASCIICHAT_OK ? -1 : 0);
+  log_debug("[ACIP_RECV] ✅ RECV_COMPLETE: type=%u, result=%d", envelope.type,
+            dispatch_result != ASCIICHAT_OK ? -1 : 0);
 
   // Return handler result
   return dispatch_result;
