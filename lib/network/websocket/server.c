@@ -729,7 +729,13 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     log_dev("[WS_DEBUG] RECEIVE: Unlocked recv_mutex");
 
     // Signal LWS to call WRITEABLE callback ONLY for complete (non-fragmented) messages
-    // Calling this during fragmented message reception can cause protocol violations in libwebsockets
+    // Note: With permessage-deflate enabled, RFC 7692 specifies that:
+    // - RSV1 (compression indicator) appears ONLY on first fragment
+    // - Subsequent fragments don't have compression headers
+    // - The receiving endpoint must reassemble fragments BEFORE decompressing
+    // So when is_final=1, we have a complete WebSocket message (all fragments reassembled+decompressed)
+    // and can signal the handler. However, libwebsockets may chunk decompressed data at 1024 bytes.
+    // This is normal and expected - we just need to wait for the actual final fragment.
     if (is_final) {
       lws_callback_on_writable(wsi);
     }
