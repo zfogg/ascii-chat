@@ -455,12 +455,14 @@ void *client_video_render_thread(void *arg) {
                     "Video render iteration for client %u: has_video_sources=%d, width=%u, height=%u", thread_client_id,
                     has_video_sources, width_snapshot, height_snapshot);
 
-    // Skip frame generation if client dimensions are not yet received (width=0 or height=0)
+    // Use default dimensions if client dimensions not received
     if (width_snapshot == 0 || height_snapshot == 0) {
       log_dev_every(5 * NS_PER_MS_INT,
-                    "Skipping frame generation for client %u: dimensions not yet received (width=%u, height=%u)",
+                    "Using default dimensions for client %u (client reported: width=%u, height=%u)",
                     thread_client_id, width_snapshot, height_snapshot);
-      continue;
+      // Use 80x25 as standard terminal size fallback for snapshot/test clients
+      width_snapshot = 80;
+      height_snapshot = 25;
     }
 
     // Generate frames for all clients with valid dimensions, regardless of whether other clients are sending video.
