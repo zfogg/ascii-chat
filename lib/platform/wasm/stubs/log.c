@@ -5,6 +5,7 @@
  */
 
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/log/logging.h>
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -44,4 +45,23 @@ void log_mmap_rotate(void) {
 void server_status_log_append(const char *message) {
   (void)message;
   // No-op - server status screen not used in WASM mirror mode
+}
+
+// JSON logging stub
+void log_json_write(int fd, int level, uint64_t time_ns, const char *file, int line, const char *func,
+                    const char *json_msg) {
+  (void)fd;
+  (void)level;
+  (void)time_ns;
+  (void)file;
+  (void)line;
+  (void)func;
+  (void)json_msg;
+  // No-op - JSON logging in WASM uses console output instead
+}
+
+// Terminal logging fd selection stub
+int terminal_choose_log_fd(log_level_t level) {
+  (void)level;
+  return 2; // Stub: return stderr-like fd
 }

@@ -7,10 +7,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Logging macros for debug
-#define WASM_LOG(msg) EM_ASM({ console.log('[C] ' + UTF8ToString($0)); }, msg)
-#define WASM_LOG_INT(msg, val) EM_ASM({ console.log('[C] ' + UTF8ToString($0) + ': ' + $1); }, msg, val)
-#define WASM_ERROR(msg) EM_ASM({ console.error('[C] ' + UTF8ToString($0)); }, msg)
+// Include shared logging macros (uses console.log by default)
+#include "common/wasm_log.h"
+#include "common/init.h"
+
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/platform/init.h>
@@ -61,35 +61,20 @@ int mirror_init_with_args(const char *args_json) {
   log_init(NULL, LOG_DEBUG, true, false);
   WASM_LOG("log_init OK");
 
-  // Parse JSON array into argc/argv
-  // For simplicity, we'll accept a space-separated string instead
-  // JS can pass: "mirror --width 80 --height 40 --color-filter grayscale"
+  // Parse space-separated arguments
   WASM_LOG("Parsing arguments...");
-  WASM_LOG("mirror_init_with_args: About to strdup");
-  char *args_copy = strdup(args_json);
-  WASM_LOG("mirror_init_with_args: strdup completed");
-  if (!args_copy) {
+  char *args_copy = NULL;
+  char *argv[64] = {NULL};
+  int argc = wasm_parse_args(args_json, argv, 64, &args_copy);
+  if (argc < 0) {
     WASM_ERROR("strdup FAILED");
     return -1;
   }
-
-  WASM_LOG("mirror_init_with_args: Starting tokenization");
-  // Count arguments
-  int argc = 0;
-  char *argv[64] = {NULL}; // Max 64 arguments
-  char *token = strtok(args_copy, " ");
-  while (token != NULL && argc < 63) {
-    argv[argc++] = token;
-    token = strtok(NULL, " ");
-  }
-  argv[argc] = NULL;
   WASM_LOG_INT("Parsed arguments, argc", argc);
 
   // Initialize options (sets up RCU, defaults, etc.)
   WASM_LOG("Calling options_init...");
-  WASM_LOG("mirror_init_with_args: About to call options_init");
   err = options_init(argc, argv);
-  WASM_LOG("mirror_init_with_args: options_init returned");
   free(args_copy);
 
   if (err != ASCIICHAT_OK) {
@@ -308,24 +293,4 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
 EMSCRIPTEN_KEEPALIVE
 void mirror_free_string(char *ptr) {
   SAFE_FREE(ptr);
-}
-
-// ============================================================================
-// Help Text API
-// ============================================================================
-
-/**
- * Get help text for a CLI option in a specific mode
- * Exported to WASM for JavaScript access via FFI
- *
- * @param mode The mode (asciichat_mode_t as int)
- * @param option_name The long name of the option
- * @return Help text string or NULL if not applicable
- */
-EMSCRIPTEN_KEEPALIVE
-const char *get_help_text(int mode, const char *option_name) {
-  if (!option_name || !option_name[0])
-    return NULL;
-  asciichat_mode_t mode_enum = (asciichat_mode_t)mode;
-  return options_get_help_text(mode_enum, option_name);
 }

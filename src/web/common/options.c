@@ -178,3 +178,23 @@ EMSCRIPTEN_KEEPALIVE
 int get_target_fps(void) {
   return GET_OPTION(fps);
 }
+
+// ============================================================================
+// Help Text API
+// ============================================================================
+
+/**
+ * Get help text for a CLI option in a specific mode
+ * Exported to WASM for JavaScript access via FFI
+ *
+ * @param mode The mode (asciichat_mode_t as int)
+ * @param option_name The long name of the option
+ * @return Help text string or NULL if not applicable
+ */
+EMSCRIPTEN_KEEPALIVE
+const char *get_help_text(int mode, const char *option_name) {
+  if (!option_name || !option_name[0])
+    return NULL;
+  asciichat_mode_t mode_enum = (asciichat_mode_t)mode;
+  return options_get_help_text(mode_enum, option_name);
+}

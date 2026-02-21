@@ -7,8 +7,7 @@
  * Implementations in options.c are compiled into both mirror.wasm and client.wasm.
  */
 
-#ifndef ASCII_CHAT_WEB_COMMON_OPTIONS_H
-#define ASCII_CHAT_WEB_COMMON_OPTIONS_H
+#pragma once
 
 #include <emscripten.h>
 
@@ -46,4 +45,5 @@ int get_flip_x(void);
 int set_target_fps(int fps);
 int get_target_fps(void);
 
-#endif // ASCII_CHAT_WEB_COMMON_OPTIONS_H
+// Help text API
+const char *get_help_text(int mode, const char *option_name);

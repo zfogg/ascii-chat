@@ -8,10 +8,10 @@
 #include <string.h>
 #include <stdint.h>
 
-// Logging macros for debug - use console.error so playwright-cli captures it
-#define WASM_LOG(msg) EM_ASM({ console.error('[C] ' + UTF8ToString($0)); }, msg)
-#define WASM_LOG_INT(msg, val) EM_ASM({ console.error('[C] ' + UTF8ToString($0) + ': ' + $1); }, msg, val)
-#define WASM_ERROR(msg) EM_ASM({ console.error('[C] ERROR: ' + UTF8ToString($0)); }, msg)
+// Use console.error for client logging (playwright captures stderr)
+#define WASM_LOG_USE_ERROR
+#include "common/wasm_log.h"
+#include "common/init.h"
 
 // JavaScript callback for sending complete ACIP packets from WASM to WebSocket
 // This will be called by the WASM transport to send complete packets (header + payload)
@@ -139,30 +139,23 @@ static connection_state_t g_connection_state = CONNECTION_STATE_DISCONNECTED;
  */
 EMSCRIPTEN_KEEPALIVE
 int client_init_with_args(const char *args_json) {
-  // Parse arguments
+  WASM_LOG("client_init_with_args: START");
+
+  // Parse space-separated arguments
   WASM_LOG("Parsing arguments...");
-  char *args_copy = strdup(args_json);
-  if (!args_copy) {
+  char *args_copy = NULL;
+  char *argv[64] = {NULL};
+  int argc = wasm_parse_args(args_json, argv, 64, &args_copy);
+  if (argc < 0) {
     WASM_ERROR("strdup FAILED");
     return -1;
   }
-
-  // Count arguments
-  int argc = 0;
-  char *argv[64] = {NULL}; // Max 64 arguments
-  char *token = strtok(args_copy, " ");
-  while (token != NULL && argc < 63) {
-    argv[argc++] = token;
-    token = strtok(NULL, " ");
-  }
-  argv[argc] = NULL;
   WASM_LOG_INT("Parsed arguments, argc", argc);
 
   // Initialize options (sets up RCU, defaults, etc.)
   WASM_LOG("Calling options_init...");
   asciichat_error_t err = options_init(argc, argv);
   free(args_copy);
-  WASM_LOG("client_init_with_args: START");
 
   if (g_initialized) {
     WASM_ERROR("Client already initialized");
@@ -853,24 +846,4 @@ void client_opus_decoder_cleanup(void) {
     g_opus_decoder = NULL;
     WASM_LOG("Opus decoder cleaned up");
   }
-}
-
-/**
- * Get help text for an option in a specific mode
- * Exported for web client to retrieve tooltips for settings
- * @param mode The mode (0=server, 1=client, 2=mirror, etc.)
- * @param option_name The long name of the option (e.g., "color-mode", "fps")
- * @return Help text string, or NULL if option doesn't apply to mode
- */
-EMSCRIPTEN_KEEPALIVE
-const char *get_help_text(int mode, const char *option_name) {
-  if (!option_name || !option_name[0]) {
-    return NULL;
-  }
-
-  // Convert int mode to asciichat_mode_t
-  asciichat_mode_t mode_enum = (asciichat_mode_t)mode;
-
-  // Call the C API function
-  return options_get_help_text(mode_enum, option_name);
 }

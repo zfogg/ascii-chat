@@ -124,8 +124,8 @@ set(UTF8PROC_SOURCES
     ${DEPS_ROOT}/ascii-chat-deps/utf8proc/utf8proc.c
 )
 
-# Library source files (mirror mode)
-set(LIB_SOURCES_MIRROR
+# Library source files common to both mirror and client modes
+set(LIB_SOURCES_COMMON
     # Core
     ${LIB_ROOT}/common.c
     ${LIB_ROOT}/asciichat_errno.c
@@ -183,17 +183,14 @@ set(LIB_SOURCES_MIRROR
     # Crypto (needed for logging headers)
     ${LIB_ROOT}/crypto/crypto.c
 
-    # Video processing
+    # Video processing (shared subset - not mirror-only files)
     ${LIB_ROOT}/video/ascii.c
     ${LIB_ROOT}/video/ansi.c
     ${LIB_ROOT}/video/ansi_fast.c
     ${LIB_ROOT}/video/color_filter.c
     ${LIB_ROOT}/video/video_frame.c
     ${LIB_ROOT}/video/palette.c
-    ${LIB_ROOT}/video/image.c
     ${LIB_ROOT}/video/output_buffer.c
-    ${LIB_ROOT}/video/rle.c
-    ${LIB_ROOT}/video/digital_rain.c
     ${LIB_ROOT}/video/simd/common.c
     ${LIB_ROOT}/video/simd/ascii_simd.c
     ${LIB_ROOT}/video/simd/ascii_simd_color.c
@@ -211,7 +208,6 @@ set(LIB_SOURCES_MIRROR
     ${LIB_ROOT}/util/url.c
     ${LIB_ROOT}/util/ip.c
     ${LIB_ROOT}/util/parsing.c
-    ${LIB_ROOT}/util/aspect_ratio.c
 
     # Discovery (for session string validation)
     ${LIB_ROOT}/discovery/strings.c
@@ -236,6 +232,14 @@ set(LIB_SOURCES_MIRROR
     # ${LIB_ROOT}/platform/terminal.c - EXCLUDED: using wasm/terminal.c instead
 )
 
+# Mirror-specific sources (not needed by client mode)
+set(LIB_SOURCES_MIRROR_ONLY
+    ${LIB_ROOT}/video/image.c          # Image file I/O (JPEG/PNG) - mirror only
+    ${LIB_ROOT}/video/rle.c            # RLE codec for server ASCII frames - mirror only
+    ${LIB_ROOT}/video/digital_rain.c   # Matrix rain effect - mirror only
+    ${LIB_ROOT}/util/aspect_ratio.c    # Video scaling - mirror only
+)
+
 # Additional sources for client mode (crypto + network)
 # Note: Only minimal crypto handshake for web client (no SSH keys, known_hosts, etc.)
 set(CRYPTO_SOURCES
@@ -255,16 +259,29 @@ set(NETWORK_SOURCES
 # Common WASM abstraction layer (shared between mirror and client)
 set(COMMON_WEB_SOURCES
     ${CMAKE_SOURCE_DIR}/common/options.c
+    ${CMAKE_SOURCE_DIR}/common/init.c
+)
+
+# Compile shared lib sources once for both WASM targets (OBJECT library)
+add_library(wasm-common OBJECT
+    ${COMMON_WEB_SOURCES}
+    ${PLATFORM_SOURCES}
+    ${LIB_SOURCES_COMMON}
+    ${TOML_SOURCES}
+    ${UTF8PROC_SOURCES}
+)
+
+# Link dependencies for shared library
+target_link_libraries(wasm-common PRIVATE
+    sodium
+    pcre2-8
 )
 
 # Create WASM mirror module
 add_executable(mirror-web
     ${MIRROR_SOURCES}
-    ${COMMON_WEB_SOURCES}
-    ${PLATFORM_SOURCES}
-    ${LIB_SOURCES_MIRROR}
-    ${TOML_SOURCES}
-    ${UTF8PROC_SOURCES}
+    ${LIB_SOURCES_MIRROR_ONLY}
+    $<TARGET_OBJECTS:wasm-common>
 )
 
 # Link dependencies (built for WASM via FetchContent)
@@ -281,13 +298,9 @@ set(CLIENT_SOURCES
 # Create WASM client module
 add_executable(client-web
     ${CLIENT_SOURCES}
-    ${COMMON_WEB_SOURCES}
-    ${PLATFORM_SOURCES}
-    ${LIB_SOURCES_MIRROR}
     ${CRYPTO_SOURCES}
     ${NETWORK_SOURCES}
-    ${TOML_SOURCES}
-    ${UTF8PROC_SOURCES}
+    $<TARGET_OBJECTS:wasm-common>
 )
 
 # Link dependencies for client mode
