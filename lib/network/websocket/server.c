@@ -361,7 +361,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
         ws_data->send_buffer_capacity = required_size;
       }
 
-      memcpy(ws_data->send_buffer + LWS_PRE, conn_data->pending_send_data + conn_data->pending_send_offset, chunk_size);
+      // Copy from payload portion (after LWS_PRE) of queued message, not from the LWS_PRE padding itself
+      memcpy(ws_data->send_buffer + LWS_PRE, conn_data->pending_send_data + LWS_PRE + conn_data->pending_send_offset, chunk_size);
 
       uint64_t write_start_ns = time_get_ns();
       log_debug(">>> lws_write() sending %zu byte continuation fragment (flags=0x%x) for wsi=%p", chunk_size, flags, (void *)wsi);
@@ -461,7 +462,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
         ws_data->send_buffer_capacity = required_size;
       }
 
-      memcpy(ws_data->send_buffer + LWS_PRE, msg.data, chunk_size);
+      memcpy(ws_data->send_buffer + LWS_PRE, msg.data + LWS_PRE, chunk_size);
 
       log_debug(">>> lws_write() sending %zu bytes (flags=0x%x) for wsi=%p", chunk_size, flags, (void *)wsi);
       int written = lws_write(wsi, ws_data->send_buffer + LWS_PRE, chunk_size, flags);
