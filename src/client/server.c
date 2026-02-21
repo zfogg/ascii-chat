@@ -768,34 +768,39 @@ acip_transport_t *server_connection_get_transport(void) {
  * @ingroup client_connection
  */
 void server_connection_set_transport(acip_transport_t *transport) {
-  log_debug("server_connection_set_transport() called with transport=%p", (void *)transport);
+  log_debug("[TRANSPORT_LIFECYCLE] server_connection_set_transport() called with transport=%p", (void *)transport);
 
   // Clean up any existing transport
   if (g_client_transport) {
-    log_warn("Replacing existing transport with new fallback transport");
+    log_warn("[TRANSPORT_LIFECYCLE] Replacing existing transport=%p with new transport=%p (potential premature destruction?)",
+             (void *)g_client_transport, (void *)transport);
+    log_debug("[TRANSPORT_LIFECYCLE] OLD transport is_connected=%s before destruction",
+              acip_transport_is_connected(g_client_transport) ? "true" : "false");
     acip_transport_destroy(g_client_transport);
+    log_debug("[TRANSPORT_LIFECYCLE] OLD transport destroyed");
   }
 
-  log_debug("Setting g_client_transport to %p", (void *)transport);
+  log_debug("[TRANSPORT_LIFECYCLE] Setting g_client_transport to %p", (void *)transport);
   g_client_transport = transport;
 
   // Mark connection as active when transport is set
   if (transport) {
-    log_debug("Transport is non-NULL, extracting socket...");
+    log_debug("[TRANSPORT_LIFECYCLE] Transport is non-NULL, extracting socket...");
     // Extract socket from transport for backward compatibility with socket-based checks
     g_sockfd = acip_transport_get_socket(transport);
-    log_debug("Socket extracted: %d", (int)g_sockfd);
+    log_debug("[TRANSPORT_LIFECYCLE] Socket extracted: %d from transport=%p", (int)g_sockfd, (void *)transport);
 
     atomic_store(&g_connection_active, true);
     atomic_store(&g_connection_lost, false); // Reset lost flag for new connection
-    log_debug("Server connection transport set and marked active (sockfd=%d)", (int)g_sockfd);
+    log_debug("[TRANSPORT_LIFECYCLE] Server connection transport set and marked active (transport=%p, sockfd=%d, is_connected=%s)",
+              (void *)transport, (int)g_sockfd, acip_transport_is_connected(transport) ? "true" : "false");
   } else {
     g_sockfd = INVALID_SOCKET_VALUE;
     atomic_store(&g_connection_active, false);
-    log_debug("Server connection transport cleared and marked inactive");
+    log_debug("[TRANSPORT_LIFECYCLE] Server connection transport cleared and marked inactive");
   }
 
-  log_debug("server_connection_set_transport() completed");
+  log_debug("[TRANSPORT_LIFECYCLE] server_connection_set_transport() completed");
 }
 
 /**
@@ -852,23 +857,30 @@ void server_connection_set_ip(const char *ip) {
  * @ingroup client_connection
  */
 void server_connection_close() {
+  log_debug("[TRANSPORT_LIFECYCLE] server_connection_close() called");
   atomic_store(&g_connection_active, false);
 
   // Destroy ACIP transport before closing socket
   if (g_client_transport) {
+    log_debug("[TRANSPORT_LIFECYCLE] Destroying transport=%p (is_connected=%s) before closing socket",
+              (void *)g_client_transport, acip_transport_is_connected(g_client_transport) ? "true" : "false");
     acip_transport_destroy(g_client_transport);
     g_client_transport = NULL;
+    log_debug("[TRANSPORT_LIFECYCLE] Transport destroyed, g_client_transport set to NULL");
   }
 
   if (g_sockfd != INVALID_SOCKET_VALUE) {
+    log_debug("[TRANSPORT_LIFECYCLE] Closing socket: %d", (int)g_sockfd);
     close_socket(g_sockfd);
     g_sockfd = INVALID_SOCKET_VALUE;
+    log_debug("[TRANSPORT_LIFECYCLE] Socket closed");
   }
 
   g_my_client_id = 0;
 
   // Cleanup crypto context if encryption was enabled
   if (g_encryption_enabled) {
+    log_debug("[TRANSPORT_LIFECYCLE] Cleaning up crypto context");
     crypto_handshake_destroy(&g_crypto_ctx);
     g_encryption_enabled = false;
   }
@@ -877,6 +889,7 @@ void server_connection_close() {
   if (!GET_OPTION(quiet)) {
     log_set_terminal_output(true);
   }
+  log_debug("[TRANSPORT_LIFECYCLE] server_connection_close() completed");
 }
 
 /**
@@ -981,12 +994,16 @@ asciichat_error_t threaded_send_packet(packet_type_t type, const void *data, siz
 
   // Check connection status and get transport reference
   if (!atomic_load(&g_connection_active) || !g_client_transport) {
+    log_debug("[TRANSPORT_LIFECYCLE] threaded_send_packet() check failed: active=%s, transport=%p",
+              atomic_load(&g_connection_active) ? "true" : "false", (void *)g_client_transport);
     mutex_unlock(&g_send_mutex);
     return SET_ERRNO(ERROR_NETWORK, "Connection not active or transport unavailable");
   }
 
   // Get transport reference - transport has its own internal synchronization
   acip_transport_t *transport = g_client_transport;
+  log_debug_every(LOG_RATE_SLOW, "[TRANSPORT_LIFECYCLE] threaded_send_packet() using transport=%p, is_connected=%s",
+                  (void *)transport, acip_transport_is_connected(transport) ? "true" : "false");
   mutex_unlock(&g_send_mutex);
 
   // Network I/O happens OUTSIDE the mutex to prevent deadlock on TCP buffer full
@@ -994,6 +1011,7 @@ asciichat_error_t threaded_send_packet(packet_type_t type, const void *data, siz
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {
+    log_debug("[TRANSPORT_LIFECYCLE] threaded_send_packet() send failed, calling server_connection_lost()");
     server_connection_lost();
     return result;
   }
