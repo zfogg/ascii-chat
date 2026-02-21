@@ -28,7 +28,7 @@
 
 // Shared internal types (websocket_recv_msg_t, websocket_transport_data_t)
 #include <ascii-chat/network/websocket/internal.h>
-#include <ascii-chat/network/websocket/callback_profiler.h>
+#include <ascii-chat/network/websocket/callback_timing.h>
 
 /**
  * @brief Per-connection user data
@@ -54,6 +54,9 @@ typedef struct {
 // TODO: Make these per-connection instead of global for proper multi-client support
 static _Atomic uint64_t g_receive_callback_count = 0;
 static _Atomic uint64_t g_writeable_callback_count = 0;
+
+// Forward declaration for websocket_protocols (defined later in file)
+static struct lws_protocols websocket_protocols[];
 
 /**
  * @brief Custom logging callback for libwebsockets
@@ -86,9 +89,6 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
   websocket_connection_data_t *conn_data = (websocket_connection_data_t *)user;
   const char *proto_name = lws_get_protocol(wsi) ? lws_get_protocol(wsi)->name : "NULL";
 
-  // Start profiling this callback invocation
-  uint64_t prof_handle = lws_profiler_start((int)reason, 0);
-
   // LOG EVERY SINGLE CALLBACK WITH PROTOCOL NAME
   log_dev("🔴 CALLBACK: reason=%d, proto=%s, wsi=%p, len=%zu", reason, proto_name, (void *)wsi, len);
 
@@ -107,7 +107,6 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     if (!protocol || !protocol->user) {
       log_error("[LWS_CALLBACK_ESTABLISHED] FAILED: Missing protocol user data (protocol=%p, user=%p)",
                 (void *)protocol, protocol ? protocol->user : NULL);
-      lws_profiler_stop(prof_handle, 0);
       return -1;
     }
     websocket_server_t *server = (websocket_server_t *)protocol->user;
@@ -169,7 +168,6 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     conn_data->transport = acip_websocket_server_transport_create(wsi, NULL);
     if (!conn_data->transport) {
       log_error("[LWS_CALLBACK_ESTABLISHED] FAILED: acip_websocket_server_transport_create returned NULL");
-      lws_profiler_stop(prof_handle, 0);
       return -1;
     }
     log_debug("[LWS_CALLBACK_ESTABLISHED] Transport created: %p", (void *)conn_data->transport);
@@ -181,7 +179,6 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       log_error("Failed to allocate client context");
       acip_transport_destroy(conn_data->transport);
       conn_data->transport = NULL;
-      lws_profiler_stop(prof_handle, 0);
       return -1;
     }
 
@@ -201,7 +198,6 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       SAFE_FREE(client_ctx);
       acip_transport_destroy(conn_data->transport);
       conn_data->transport = NULL;
-      lws_profiler_stop(prof_handle, 0);
       return -1;
     }
 
@@ -368,15 +364,12 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       memcpy(ws_data->send_buffer + LWS_PRE, conn_data->pending_send_data + conn_data->pending_send_offset, chunk_size);
 
       uint64_t write_start_ns = time_get_ns();
-      log_debug("SERVER_WRITEABLE: lws_write - buffer_cap=%zu, offset=%zu/%zu, chunk=%zu",
-               ws_data->send_buffer_capacity, conn_data->pending_send_offset, conn_data->pending_send_len, chunk_size);
       int written = lws_write(wsi, ws_data->send_buffer + LWS_PRE, chunk_size, flags);
       uint64_t write_end_ns = time_get_ns();
       char write_duration_str[32];
       format_duration_ns((double)(write_end_ns - write_start_ns), write_duration_str, sizeof(write_duration_str));
-      log_dev_every(4500 * US_PER_MS_INT, "[WRITE_BUFFER] lws_write returned %d bytes in %s (chunk=%zu, capacity=%zu, progress=%zu/%zu)",
-                    written, write_duration_str, chunk_size, ws_data->send_buffer_capacity,
-                    conn_data->pending_send_offset + ((written > 0) ? written : 0), conn_data->pending_send_len);
+      log_dev_every(4500 * US_PER_MS_INT, "lws_write returned %d bytes in %s (chunk_size=%zu)", written,
+                    write_duration_str, chunk_size);
 
       if (written < 0) {
         log_error("Server WebSocket write error: %d at offset %zu/%zu", written, conn_data->pending_send_offset,
@@ -466,15 +459,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
       memcpy(ws_data->send_buffer + LWS_PRE, msg.data, chunk_size);
 
-      uint64_t write_start_ns = time_get_ns();
-      log_debug("SERVER_WRITEABLE: First fragment - lws_write with buffer_cap=%zu, msg_size=%zu, chunk=%zu",
-               ws_data->send_buffer_capacity, msg.len, chunk_size);
       int written = lws_write(wsi, ws_data->send_buffer + LWS_PRE, chunk_size, flags);
-      uint64_t write_end_ns = time_get_ns();
-      char write_duration_str[32];
-      format_duration_ns((double)(write_end_ns - write_start_ns), write_duration_str, sizeof(write_duration_str));
-      log_dev_every(4500 * US_PER_MS_INT, "[WRITE_BUFFER] First fragment: written=%d bytes in %s (chunk=%zu, msg_size=%zu)",
-                    written, write_duration_str, chunk_size, msg.len);
       if (written < 0) {
         log_error("Server WebSocket write error on first fragment: %d", written);
         SAFE_FREE(msg.data);
@@ -507,6 +492,10 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       }
     }
 
+    // Record timing for this callback
+    uint64_t writeable_callback_end_ns = websocket_callback_timing_start();
+    websocket_callback_timing_record(&g_ws_callback_timing.server_writeable, writeable_callback_start_ns,
+                                     writeable_callback_end_ns);
     break;
   }
 
@@ -750,26 +739,40 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
         log_warn("[WS_CALLBACK_DURATION] RECEIVE callback took %.1f µs (alloc=%.1f µs, lock_wait=%.1f µs)",
                  callback_dur_us, alloc_dur_us, lock_wait_dur_us);
       }
-      log_debug("[WS_CALLBACK_TIMING] total=%.1f µs (alloc=%.1f µs, lock_wait=%.1f µs, other=%.1f µs)",
-                callback_dur_us, alloc_dur_us, lock_wait_dur_us,
-                callback_dur_us - alloc_dur_us - lock_wait_dur_us);
+      log_debug("[WS_CALLBACK_TIMING] total=%.1f µs (alloc=%.1f µs, lock_wait=%.1f µs, other=%.1f µs)", callback_dur_us,
+                alloc_dur_us, lock_wait_dur_us, callback_dur_us - alloc_dur_us - lock_wait_dur_us);
     }
     log_debug("[WS_RECEIVE] ===== RECEIVE CALLBACK COMPLETE, returning 0 to continue =====");
     log_info("[WS_RECEIVE_RETURN] Returning 0 from RECEIVE callback (success). fragmented=%d (first=%d final=%d)",
              (!is_final ? 1 : 0), is_first, is_final);
+
+    // Record timing for this callback
+    websocket_callback_timing_record(&g_ws_callback_timing.receive, callback_enter_ns,
+                                     websocket_callback_timing_start());
     break;
   }
 
   case LWS_CALLBACK_FILTER_HTTP_CONNECTION: {
     // WebSocket upgrade handshake - allow all connections
     log_info("[FILTER_HTTP_CONNECTION] WebSocket upgrade request (allow protocol upgrade)");
-    lws_profiler_stop(prof_handle, 0);
     return 0; // Allow the connection
   }
 
   case LWS_CALLBACK_PROTOCOL_INIT: {
-    // Protocol initialization
+    // Protocol initialization with timing instrumentation
+    uint64_t callback_start_ns = websocket_callback_timing_start();
     log_info("[PROTOCOL_INIT] Protocol initialized, proto=%s", proto_name);
+    uint64_t callback_end_ns = websocket_callback_timing_start();
+    websocket_callback_timing_record(&g_ws_callback_timing.protocol_init, callback_start_ns, callback_end_ns);
+    break;
+  }
+
+  case LWS_CALLBACK_PROTOCOL_DESTROY: {
+    // Protocol destruction with timing instrumentation
+    uint64_t callback_start_ns = websocket_callback_timing_start();
+    log_info("[PROTOCOL_DESTROY] Protocol destroyed, proto=%s", proto_name);
+    uint64_t callback_end_ns = websocket_callback_timing_start();
+    websocket_callback_timing_record(&g_ws_callback_timing.protocol_destroy, callback_start_ns, callback_end_ns);
     break;
   }
 
@@ -777,13 +780,30 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     // Fired on the service thread when lws_cancel_service() is called from another thread.
     // This is how we safely convert cross-thread send requests into writable callbacks.
     // lws_callback_on_writable() is only safe from the service thread context.
-    log_dev_every(4500 * US_PER_MS_INT, "LWS_CALLBACK_EVENT_WAIT_CANCELLED triggered - requesting writable callbacks");
-    const struct lws_protocols *protocol = lws_get_protocol(wsi);
-    if (protocol) {
-      log_dev_every(4500 * US_PER_MS_INT, "EVENT_WAIT_CANCELLED: Calling lws_callback_on_writable_all_protocol");
-      lws_callback_on_writable_all_protocol(lws_get_context(wsi), protocol);
-    } else {
-      log_error("EVENT_WAIT_CANCELLED: No protocol found on wsi");
+    //
+    // CRITICAL FIX: lws_cancel_service() wakes the event loop, which fires this callback.
+    // The `wsi` parameter may be the listening socket or any random connection, so we
+    // CANNOT rely on lws_get_protocol(wsi) to get the correct protocol.
+    // Instead, we MUST trigger WRITEABLE on ALL protocols that handle WebSocket frames:
+    // - "http" protocol (browser connects here for initial HTTP upgrade to WebSocket)
+    // - "acip" protocol (for ACIP over WebSocket connections)
+    // Both protocols use the same callback and handle frame transmission.
+    log_dev_every(4500 * US_PER_MS_INT,
+                  "LWS_CALLBACK_EVENT_WAIT_CANCELLED triggered - requesting writable callbacks for all protocols");
+
+    struct lws_context *ctx = lws_get_context(wsi);
+    if (!ctx) {
+      log_error("EVENT_WAIT_CANCELLED: Could not get context from wsi");
+      break;
+    }
+
+    // Trigger WRITEABLE on both protocols
+    // Browser clients connect with "http" protocol, so they MUST have WRITEABLE triggered
+    for (int i = 0; i < 2; i++) {
+      log_dev_every(4500 * US_PER_MS_INT,
+                    "EVENT_WAIT_CANCELLED: Calling lws_callback_on_writable_all_protocol for protocol '%s'",
+                    websocket_protocols[i].name);
+      lws_callback_on_writable_all_protocol(ctx, &websocket_protocols[i]);
     }
     break;
   }
@@ -791,9 +811,6 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
   default:
     break;
   }
-
-  // Stop profiling the callback (record timing and bytes processed)
-  lws_profiler_stop(prof_handle, len);
 
   return 0;
 }
@@ -865,10 +882,10 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   struct lws_context_creation_info info = {0};
   info.port = config->port;
   info.protocols = websocket_protocols;
-  info.gid = (gid_t)-1;                   // Cast to avoid undefined behavior with unsigned type
-  info.uid = (uid_t)-1;                   // Cast to avoid undefined behavior with unsigned type
+  info.gid = (gid_t)-1;                                // Cast to avoid undefined behavior with unsigned type
+  info.uid = (uid_t)-1;                                // Cast to avoid undefined behavior with unsigned type
   info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT; // Initialize SSL/TLS support (required for server binding)
-  info.extensions = websocket_extensions; // Enable permessage-deflate with small window bits
+  info.extensions = websocket_extensions;              // Enable permessage-deflate with small window bits
   // Permessage-deflate configuration (RFC 7692):
   // - server_max_window_bits=8: Use 256-byte (2^8) sliding window instead of 32KB (2^15)
   // - Reduces decompression buffer size to prevent "rx buffer underflow" in LWS 4.5.2

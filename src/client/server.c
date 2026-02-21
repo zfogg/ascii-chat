@@ -772,7 +772,8 @@ void server_connection_set_transport(acip_transport_t *transport) {
 
   // Clean up any existing transport
   if (g_client_transport) {
-    log_warn("[TRANSPORT_LIFECYCLE] Replacing existing transport=%p with new transport=%p (potential premature destruction?)",
+    log_warn("[TRANSPORT_LIFECYCLE] Replacing existing transport=%p with new transport=%p (potential premature "
+             "destruction?)",
              (void *)g_client_transport, (void *)transport);
     log_debug("[TRANSPORT_LIFECYCLE] OLD transport is_connected=%s before destruction",
               acip_transport_is_connected(g_client_transport) ? "true" : "false");
@@ -792,7 +793,8 @@ void server_connection_set_transport(acip_transport_t *transport) {
 
     atomic_store(&g_connection_active, true);
     atomic_store(&g_connection_lost, false); // Reset lost flag for new connection
-    log_debug("[TRANSPORT_LIFECYCLE] Server connection transport set and marked active (transport=%p, sockfd=%d, is_connected=%s)",
+    log_debug("[TRANSPORT_LIFECYCLE] Server connection transport set and marked active (transport=%p, sockfd=%d, "
+              "is_connected=%s)",
               (void *)transport, (int)g_sockfd, acip_transport_is_connected(transport) ? "true" : "false");
   } else {
     g_sockfd = INVALID_SOCKET_VALUE;
