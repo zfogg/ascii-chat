@@ -28,7 +28,7 @@
 
 // Shared internal types (websocket_recv_msg_t, websocket_transport_data_t)
 #include <ascii-chat/network/websocket/internal.h>
-#include <ascii-chat/network/websocket/callback_timing.h>
+#include <ascii-chat/network/websocket/callback_profiler.h>
 
 /**
  * @brief Per-connection user data
@@ -86,6 +86,9 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
   websocket_connection_data_t *conn_data = (websocket_connection_data_t *)user;
   const char *proto_name = lws_get_protocol(wsi) ? lws_get_protocol(wsi)->name : "NULL";
 
+  // Start profiling this callback invocation
+  uint64_t prof_handle = lws_profiler_start((int)reason, 0);
+
   // LOG EVERY SINGLE CALLBACK WITH PROTOCOL NAME
   log_dev("🔴 CALLBACK: reason=%d, proto=%s, wsi=%p, len=%zu", reason, proto_name, (void *)wsi, len);
 
@@ -104,6 +107,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     if (!protocol || !protocol->user) {
       log_error("[LWS_CALLBACK_ESTABLISHED] FAILED: Missing protocol user data (protocol=%p, user=%p)",
                 (void *)protocol, protocol ? protocol->user : NULL);
+      lws_profiler_stop(prof_handle, 0);
       return -1;
     }
     websocket_server_t *server = (websocket_server_t *)protocol->user;
@@ -165,6 +169,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     conn_data->transport = acip_websocket_server_transport_create(wsi, NULL);
     if (!conn_data->transport) {
       log_error("[LWS_CALLBACK_ESTABLISHED] FAILED: acip_websocket_server_transport_create returned NULL");
+      lws_profiler_stop(prof_handle, 0);
       return -1;
     }
     log_debug("[LWS_CALLBACK_ESTABLISHED] Transport created: %p", (void *)conn_data->transport);
@@ -176,6 +181,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       log_error("Failed to allocate client context");
       acip_transport_destroy(conn_data->transport);
       conn_data->transport = NULL;
+      lws_profiler_stop(prof_handle, 0);
       return -1;
     }
 
@@ -195,6 +201,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       SAFE_FREE(client_ctx);
       acip_transport_destroy(conn_data->transport);
       conn_data->transport = NULL;
+      lws_profiler_stop(prof_handle, 0);
       return -1;
     }
 
@@ -489,9 +496,6 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       }
     }
 
-    // Record timing for this callback
-    uint64_t writeable_callback_end_ns = websocket_callback_timing_start();
-    websocket_callback_timing_record(&g_ws_callback_timing.server_writeable, writeable_callback_start_ns, writeable_callback_end_ns);
     break;
   }
 
@@ -742,33 +746,19 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     log_debug("[WS_RECEIVE] ===== RECEIVE CALLBACK COMPLETE, returning 0 to continue =====");
     log_info("[WS_RECEIVE_RETURN] Returning 0 from RECEIVE callback (success). fragmented=%d (first=%d final=%d)",
              (!is_final ? 1 : 0), is_first, is_final);
-
-    // Record timing for this callback
-    websocket_callback_timing_record(&g_ws_callback_timing.receive, callback_enter_ns, websocket_callback_timing_start());
     break;
   }
 
   case LWS_CALLBACK_FILTER_HTTP_CONNECTION: {
     // WebSocket upgrade handshake - allow all connections
     log_info("[FILTER_HTTP_CONNECTION] WebSocket upgrade request (allow protocol upgrade)");
+    lws_profiler_stop(prof_handle, 0);
     return 0; // Allow the connection
   }
 
   case LWS_CALLBACK_PROTOCOL_INIT: {
-    // Protocol initialization with timing instrumentation
-    uint64_t callback_start_ns = websocket_callback_timing_start();
+    // Protocol initialization
     log_info("[PROTOCOL_INIT] Protocol initialized, proto=%s", proto_name);
-    uint64_t callback_end_ns = websocket_callback_timing_start();
-    websocket_callback_timing_record(&g_ws_callback_timing.protocol_init, callback_start_ns, callback_end_ns);
-    break;
-  }
-
-  case LWS_CALLBACK_PROTOCOL_DESTROY: {
-    // Protocol destruction with timing instrumentation
-    uint64_t callback_start_ns = websocket_callback_timing_start();
-    log_info("[PROTOCOL_DESTROY] Protocol destroyed, proto=%s", proto_name);
-    uint64_t callback_end_ns = websocket_callback_timing_start();
-    websocket_callback_timing_record(&g_ws_callback_timing.protocol_destroy, callback_start_ns, callback_end_ns);
     break;
   }
 
@@ -790,6 +780,9 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
   default:
     break;
   }
+
+  // Stop profiling the callback (record timing and bytes processed)
+  lws_profiler_stop(prof_handle, len);
 
   return 0;
 }
