@@ -515,9 +515,10 @@ void log_init(const char *filename, log_level_t level, bool force_stderr, bool u
   atomic_store(&g_log.force_stderr, force_stderr);
   bool preserve_terminal_output = atomic_load(&g_log.terminal_output_enabled);
 
-  // Disable terminal output if stderr is not a TTY (output is being redirected/piped)
-  // This prevents logs from contaminating redirected output in snapshot/batch modes
-  if (preserve_terminal_output && !platform_isatty(STDERR_FILENO)) {
+  // Disable terminal output if stdout is piped/redirected
+  // This prevents logs from contaminating piped/redirected output in snapshot/batch modes
+  // Per terminal.h: "force stderr when piped to prevent data corruption"
+  if (preserve_terminal_output && terminal_is_piped_output()) {
     preserve_terminal_output = false;
   }
 
