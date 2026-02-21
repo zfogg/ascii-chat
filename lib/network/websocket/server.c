@@ -757,30 +757,13 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     // Fired on the service thread when lws_cancel_service() is called from another thread.
     // This is how we safely convert cross-thread send requests into writable callbacks.
     // lws_callback_on_writable() is only safe from the service thread context.
-    //
-    // CRITICAL FIX: lws_cancel_service() wakes the event loop, which fires this callback.
-    // The `wsi` parameter may be the listening socket or any random connection, so we
-    // CANNOT rely on lws_get_protocol(wsi) to get the correct protocol.
-    // Instead, we MUST trigger WRITEABLE on ALL protocols that handle WebSocket frames:
-    // - "http" protocol (browser connects here for initial HTTP upgrade to WebSocket)
-    // - "acip" protocol (for ACIP over WebSocket connections)
-    // Both protocols use the same callback and handle frame transmission.
-    log_dev_every(4500 * US_PER_MS_INT,
-                  "LWS_CALLBACK_EVENT_WAIT_CANCELLED triggered - requesting writable callbacks for all protocols");
-
-    struct lws_context *ctx = lws_get_context(wsi);
-    if (!ctx) {
-      log_error("EVENT_WAIT_CANCELLED: Could not get context from wsi");
-      break;
-    }
-
-    // Trigger WRITEABLE on both protocols
-    // Browser clients connect with "http" protocol, so they MUST have WRITEABLE triggered
-    for (int i = 0; i < 2; i++) {
-      log_dev_every(4500 * US_PER_MS_INT,
-                    "EVENT_WAIT_CANCELLED: Calling lws_callback_on_writable_all_protocol for protocol '%s'",
-                    websocket_protocols[i].name);
-      lws_callback_on_writable_all_protocol(ctx, &websocket_protocols[i]);
+    log_dev_every(4500 * US_PER_MS_INT, "LWS_CALLBACK_EVENT_WAIT_CANCELLED triggered - requesting writable callbacks");
+    const struct lws_protocols *protocol = lws_get_protocol(wsi);
+    if (protocol) {
+      log_dev_every(4500 * US_PER_MS_INT, "EVENT_WAIT_CANCELLED: Calling lws_callback_on_writable_all_protocol");
+      lws_callback_on_writable_all_protocol(lws_get_context(wsi), protocol);
+    } else {
+      log_error("EVENT_WAIT_CANCELLED: No protocol found on wsi");
     }
     break;
   }
