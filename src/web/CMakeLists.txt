@@ -23,8 +23,8 @@ add_definitions(
     -DEMSCRIPTEN_BUILD=1
 )
 
-# WASM compiler flags will be applied per-target below
-# (not globally, to avoid breaking native builds)
+# Note: SIMD flags (-msimd128 -mavx2) only applied to mirror mode
+# (needs SIMD for video processing, client mode doesn't need it)
 
 # Cache WASM dependencies outside build/ to persist across rebuilds
 if(ASCIICHAT_WEB_DEPS_DIR)
@@ -276,11 +276,6 @@ add_library(wasm-common OBJECT
     ${UTF8PROC_SRC}
 )
 
-# Apply WASM-specific compiler flags only to this target
-# -msimd128 enables WASM SIMD128 support
-# -mavx2 enables AVX2 intrinsics emulation on top of WASM SIMD128
-target_compile_options(wasm-common PRIVATE -msimd128 -mavx2)
-
 # Link dependencies for shared library
 target_link_libraries(wasm-common PRIVATE
     sodium
@@ -294,7 +289,7 @@ add_executable(mirror-web
     $<TARGET_OBJECTS:wasm-common>
 )
 
-# Apply WASM-specific compiler flags
+# Mirror mode uses SIMD for video processing
 target_compile_options(mirror-web PRIVATE -msimd128 -mavx2)
 
 # Link dependencies (built for WASM via FetchContent)
@@ -315,9 +310,6 @@ add_executable(client-web
     ${LIB_SRC_CLIENT_NETWORK}
     $<TARGET_OBJECTS:wasm-common>
 )
-
-# Apply WASM-specific compiler flags
-target_compile_options(client-web PRIVATE -msimd128 -mavx2)
 
 # Link dependencies for client mode
 target_link_libraries(client-web PRIVATE
