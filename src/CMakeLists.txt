@@ -600,6 +600,8 @@ if(NOT TARGET web)
         COMMENT "Building all WASM modules"
         VERBATIM
     )
+
+    set(WASM_TARGETS_DEFINED TRUE CACHE BOOL "WASM targets have been defined" FORCE)
 endif()
 
 message(STATUS "WASM targets configured:")

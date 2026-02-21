@@ -367,7 +367,8 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE AND NOT WASM_CONFIGURED)
 endif()
 
 # Create custom targets to build WASM from main project
-if(EMSCRIPTEN_TOOLCHAIN_FILE)
+# Only define if src/CMakeLists hasn't already defined them
+if(EMSCRIPTEN_TOOLCHAIN_FILE AND NOT WASM_TARGETS_DEFINED)
     set(WASM_BUILD_DIR "${CMAKE_BINARY_DIR}/web")
 
     add_custom_target(mirror-web

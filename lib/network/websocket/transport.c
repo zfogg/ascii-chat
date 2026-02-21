@@ -65,6 +65,21 @@
  */
 #define WEBSOCKET_SEND_QUEUE_SIZE 256
 
+/**
+ * @brief Statistics for WebSocket write buffer analysis
+ *
+ * Tracks buffer usage patterns, write frequencies, and fragmentation
+ */
+static struct {
+  uint64_t total_writes;
+  uint64_t total_bytes_written;
+  uint64_t max_write_size;
+  uint64_t min_write_size;
+  uint64_t total_fragments;
+  uint64_t total_messages;
+  uint64_t last_write_ns;
+} ws_write_stats = {0};
+
 // Shared internal types (websocket_recv_msg_t, websocket_transport_data_t)
 #include <ascii-chat/network/websocket/internal.h>
 
@@ -166,15 +181,19 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
     msg.final = is_final;
 
     mutex_lock(&ws_data->recv_mutex);
+    size_t queue_used = ringbuffer_size(ws_data->recv_queue);
     bool success = ringbuffer_write(ws_data->recv_queue, &msg);
     if (!success) {
       // Queue is full - drop the fragment and log warning
-      log_warn("WebSocket receive queue full - dropping fragment (len=%zu, first=%d, final=%d)", len, is_first,
-               is_final);
+      log_warn("[BUFFER] WebSocket receive queue FULL - dropping fragment (len=%zu, first=%d, final=%d, queue_used=%zu/%d)",
+               len, is_first, is_final, queue_used, WEBSOCKET_RECV_QUEUE_SIZE);
       buffer_pool_free(NULL, msg.data, msg.len);
       mutex_unlock(&ws_data->recv_mutex);
       break;
     }
+
+    log_dev_every(4500000, "[BUFFER] Enqueued fragment: len=%zu, first=%d, final=%d, queue_usage=%zu/%d",
+                 len, is_first, is_final, queue_used + 1, WEBSOCKET_RECV_QUEUE_SIZE);
 
     // Signal waiting recv() call that a fragment is available
     cond_signal(&ws_data->recv_cond);
@@ -374,6 +393,7 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
            FRAGMENT_SIZE, (void *)ws_data->wsi);
 
   int fragment_num = 0;
+
   while (offset < send_len) {
     size_t chunk_size = (send_len - offset > FRAGMENT_SIZE) ? FRAGMENT_SIZE : (send_len - offset);
     int is_start = (offset == 0);
@@ -399,11 +419,32 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
                (is_start ? "LWS_WRITE_BINARY" : "LWS_WRITE_CONTINUATION"),
              is_start, is_final);
 
-    // Send this fragment
-    log_debug("★ WEBSOCKET_SEND: Calling lws_write for fragment %d at buffer offset %zu (ptr=%p)", fragment_num,
-             LWS_PRE + offset, (void *)(send_buffer + LWS_PRE + offset));
+    // Send this fragment - track timing and buffer state
+    uint64_t write_start_ns = time_get_ns();
+    log_debug("★ WEBSOCKET_SEND: Calling lws_write for fragment %d at buffer offset %zu (ptr=%p, cap=%zu)",
+             fragment_num, LWS_PRE + offset, (void *)(send_buffer + LWS_PRE + offset),
+             ws_data->send_buffer_capacity);
     int written = lws_write(ws_data->wsi, send_buffer + LWS_PRE + offset, chunk_size, flags);
-    log_debug("★ WEBSOCKET_SEND: lws_write returned %d (requested %zu bytes)", written, chunk_size);
+    uint64_t write_end_ns = time_get_ns();
+
+    // Update write statistics
+    ws_write_stats.total_writes++;
+    ws_write_stats.total_bytes_written += (written > 0) ? written : 0;
+    if (written > 0) {
+      if (ws_write_stats.max_write_size == 0 || (size_t)written > ws_write_stats.max_write_size) {
+        ws_write_stats.max_write_size = written;
+      }
+      if (ws_write_stats.min_write_size == 0 || (size_t)written < ws_write_stats.min_write_size) {
+        ws_write_stats.min_write_size = written;
+      }
+    }
+    ws_write_stats.total_fragments++;
+    ws_write_stats.last_write_ns = write_end_ns;
+
+    char write_duration_str[32];
+    format_duration_ns((double)(write_end_ns - write_start_ns), write_duration_str, sizeof(write_duration_str));
+    log_debug("★ WEBSOCKET_SEND: lws_write returned %d (requested %zu bytes, took %s)",
+             written, chunk_size, write_duration_str);
 
     if (written < 0) {
       log_error("★ WEBSOCKET_SEND: lws_write ERROR on fragment %d at offset %zu - returned %d", fragment_num, offset,
