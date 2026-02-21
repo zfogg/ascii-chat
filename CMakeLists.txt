@@ -352,6 +352,7 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE AND NOT WASM_CONFIGURED)
     set(WASM_SOURCE_DIR "${CMAKE_SOURCE_DIR}/src/web")
     set(WASM_BUILD_DIR "${CMAKE_BINARY_DIR}/web")
     set(WASM_CMAKE_ARGS
+        -G "${CMAKE_GENERATOR}"
         -B "${WASM_BUILD_DIR}"
         "${WASM_SOURCE_DIR}"
         -DCMAKE_TOOLCHAIN_FILE=${EMSCRIPTEN_TOOLCHAIN_FILE}
@@ -363,6 +364,34 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE AND NOT WASM_CONFIGURED)
     )
     # Mark WASM as configured so we don't run this again
     set(WASM_CONFIGURED TRUE CACHE BOOL "WASM project has been configured" FORCE)
+endif()
+
+# Create custom targets to build WASM from main project
+if(EMSCRIPTEN_TOOLCHAIN_FILE)
+    set(WASM_BUILD_DIR "${CMAKE_BINARY_DIR}/web")
+
+    add_custom_target(mirror-web
+        COMMAND cd "${WASM_BUILD_DIR}" && ${CMAKE_COMMAND} --build . --target mirror-web
+        COMMENT "Building mirror-web WASM module"
+        VERBATIM
+    )
+
+    add_custom_target(client-web
+        COMMAND cd "${WASM_BUILD_DIR}" && ${CMAKE_COMMAND} --build . --target client-web
+        COMMENT "Building client-web WASM module"
+        VERBATIM
+    )
+
+    add_custom_target(web
+        COMMAND cd "${WASM_BUILD_DIR}" && ${CMAKE_COMMAND} --build . --target web
+        COMMENT "Building all WASM modules"
+        VERBATIM
+    )
+
+    message(STATUS "WASM targets configured:")
+    message(STATUS "  mirror-web - Build mirror mode WASM only")
+    message(STATUS "  client-web - Build client mode WASM only")
+    message(STATUS "  web        - Build all WASM modules")
 endif()
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/tests ${CMAKE_BINARY_DIR}/tests)

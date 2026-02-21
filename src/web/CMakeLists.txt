@@ -458,15 +458,7 @@ add_custom_command(TARGET client-web POST_BUILD
 
 # Combined WASM target (builds both mirror and client)
 add_custom_target(web
-    COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}" --target mirror-web
-    COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}" --target client-web
-    COMMENT "Building all WASM modules"
-    VERBATIM
+    DEPENDS mirror-web client-web
+    COMMENT "All WASM modules built"
 )
-
-message(STATUS "WASM targets configured:")
-message(STATUS "  mirror-web - Build mirror mode WASM only")
-message(STATUS "  client-web - Build client mode WASM only")
-message(STATUS "  web        - Build all WASM modules")
-
 
