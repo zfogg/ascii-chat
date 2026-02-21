@@ -462,56 +462,58 @@ void *client_video_render_thread(void *arg) {
       continue;
     }
 
-    if (has_video_sources) {
-      int sources_count = 0; // Track number of video sources in this frame
+    // Generate frames for all clients with valid dimensions, regardless of whether other clients are sending video.
+    // This ensures WebSocket snapshot clients (receive-only mode) receive frames even when no other clients are
+    // sending video.
+    int sources_count = 0; // Track number of video sources in this frame
 
-      // DIAGNOSTIC: Track every frame generation attempt
-      // Use per-client static variables to track frequency independently
-      static uint32_t frame_gen_count = 0;
-      static uint64_t frame_gen_start_time = 0;
+    // DIAGNOSTIC: Track every frame generation attempt
+    // Use per-client static variables to track frequency independently
+    static uint32_t frame_gen_count = 0;
+    static uint64_t frame_gen_start_time = 0;
 
-      frame_gen_count++;
-      if (frame_gen_count == 1) {
-        frame_gen_start_time = current_time_ns;
+    frame_gen_count++;
+    if (frame_gen_count == 1) {
+      frame_gen_start_time = current_time_ns;
+    }
+
+    // Log every 120 attempts (should be ~2 seconds at 60 Hz)
+    if (frame_gen_count % 120 == 0) {
+      uint64_t elapsed_ns = current_time_ns - frame_gen_start_time;
+      double gen_fps = (120.0 / (elapsed_ns / (double)NS_PER_SEC_INT));
+      log_warn("DIAGNOSTIC: Client %u LOOP running at %.1f FPS (120 iterations in %.2fs)", thread_client_id, gen_fps,
+               elapsed_ns / (double)NS_PER_SEC_INT);
+    }
+
+    log_dev_every(5 * NS_PER_MS_INT,
+                  "About to call create_mixed_ascii_frame_for_client for client %u with dims %ux%u", thread_client_id,
+                  width_snapshot, height_snapshot);
+    char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot,
+                                                            false, &frame_size, NULL, &sources_count);
+
+    // DEBUG: Log frame generation details
+    static uint32_t last_frame_hash = -1; // Initialize to -1 so first frame is always new
+    uint32_t current_frame_hash = 0;
+    bool frame_is_new = false;
+    if (ascii_frame && frame_size > 0) {
+      for (size_t i = 0; i < frame_size && i < 1000; i++) {
+        current_frame_hash = (uint32_t)((uint64_t)current_frame_hash * 31 + ((unsigned char *)ascii_frame)[i]);
       }
-
-      // Log every 120 attempts (should be ~2 seconds at 60 Hz)
-      if (frame_gen_count % 120 == 0) {
-        uint64_t elapsed_ns = current_time_ns - frame_gen_start_time;
-        double gen_fps = (120.0 / (elapsed_ns / (double)NS_PER_SEC_INT));
-        log_warn("DIAGNOSTIC: Client %u LOOP running at %.1f FPS (120 iterations in %.2fs)", thread_client_id, gen_fps,
-                 elapsed_ns / (double)NS_PER_SEC_INT);
+      if (current_frame_hash != last_frame_hash) {
+        log_info("RENDER_FRAME CHANGE: Client %u frame #%zu sources=%d hash=0x%08x (prev=0x%08x)", thread_client_id,
+                 frame_size, sources_count, current_frame_hash, last_frame_hash);
+        last_frame_hash = current_frame_hash;
+        frame_is_new = true;
+      } else {
+        log_dev_every(25000, "RENDER_FRAME DUPLICATE: Client %u frame #%zu sources=%d hash=0x%08x (no change)",
+                      thread_client_id, frame_size, sources_count, current_frame_hash);
+        frame_is_new = false;
       }
+    }
 
-      log_dev_every(5 * NS_PER_MS_INT,
-                    "About to call create_mixed_ascii_frame_for_client for client %u with dims %ux%u", thread_client_id,
-                    width_snapshot, height_snapshot);
-      char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot,
-                                                              false, &frame_size, NULL, &sources_count);
-
-      // DEBUG: Log frame generation details
-      static uint32_t last_frame_hash = -1; // Initialize to -1 so first frame is always new
-      uint32_t current_frame_hash = 0;
-      bool frame_is_new = false;
-      if (ascii_frame && frame_size > 0) {
-        for (size_t i = 0; i < frame_size && i < 1000; i++) {
-          current_frame_hash = (uint32_t)((uint64_t)current_frame_hash * 31 + ((unsigned char *)ascii_frame)[i]);
-        }
-        if (current_frame_hash != last_frame_hash) {
-          log_info("RENDER_FRAME CHANGE: Client %u frame #%zu sources=%d hash=0x%08x (prev=0x%08x)", thread_client_id,
-                   frame_size, sources_count, current_frame_hash, last_frame_hash);
-          last_frame_hash = current_frame_hash;
-          frame_is_new = true;
-        } else {
-          log_dev_every(25000, "RENDER_FRAME DUPLICATE: Client %u frame #%zu sources=%d hash=0x%08x (no change)",
-                        thread_client_id, frame_size, sources_count, current_frame_hash);
-          frame_is_new = false;
-        }
-      }
-
-      log_dev_every(5 * NS_PER_MS_INT,
-                    "create_mixed_ascii_frame_for_client returned: ascii_frame=%p, frame_size=%zu, sources_count=%d",
-                    (void *)ascii_frame, frame_size, sources_count);
+    log_dev_every(5 * NS_PER_MS_INT,
+                  "create_mixed_ascii_frame_for_client returned: ascii_frame=%p, frame_size=%zu, sources_count=%d",
+                  (void *)ascii_frame, frame_size, sources_count);
 
       // Phase 2 IMPLEMENTED: Write frame to double buffer (never drops!)
       if (ascii_frame && frame_size > 0) {
@@ -592,11 +594,6 @@ void *client_video_render_thread(void *arg) {
         log_dev_every(10 * NS_PER_MS_INT, "Per-client render: No video sources available for client %u",
                       client_id_snapshot);
       }
-    } else {
-      // No video sources - skip frame generation but DON'T update last_render_time
-      // This ensures the next iteration still maintains proper frame timing
-      log_debug("Skipping frame generation for client %u (no video sources)", thread_client_id);
-    }
   }
 
 #ifdef DEBUG_THREADS
