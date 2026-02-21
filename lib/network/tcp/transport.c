@@ -72,45 +72,77 @@ static asciichat_error_t tcp_send_all(socket_t sockfd, const void *data, size_t 
 static asciichat_error_t tcp_send(acip_transport_t *transport, const void *data, size_t len) {
   tcp_transport_data_t *tcp = (tcp_transport_data_t *)transport->impl_data;
 
+  log_info("[TCP_SEND_STATE] Entry: transport=%p, sockfd=%d, len=%zu, is_connected=%s, data=%p", (void *)transport,
+           tcp->sockfd, len, tcp->is_connected ? "true" : "false", data);
+
   if (!tcp->is_connected) {
+    log_error("[TCP_SEND_STATE] ❌ DISCONNECTED: Cannot send - transport marked disconnected! sockfd=%d, len=%zu",
+              tcp->sockfd, len);
     return SET_ERRNO(ERROR_NETWORK, "TCP transport not connected");
   }
 
   // Data already has packet header from send.c, so we need to extract the type
   // to determine if this is a handshake packet (which should NOT be encrypted)
   if (len < sizeof(packet_header_t)) {
+    log_error("[TCP_SEND_STATE] ❌ PACKET_TOO_SMALL: len=%zu < header_size=%zu", len, sizeof(packet_header_t));
     return SET_ERRNO(ERROR_NETWORK, "Packet too small: %zu < %zu", len, sizeof(packet_header_t));
   }
 
   // Extract packet type from header
   const packet_header_t *header = (const packet_header_t *)data;
   uint16_t packet_type = NET_TO_HOST_U16(header->type);
+  log_info("[TCP_SEND_STATE] 📦 PACKET_TYPE: type=%d (0x%04x), len=%zu, magic_check=%p", packet_type, packet_type,
+           len, (void *)header);
 
   // Check if encryption is needed
   bool should_encrypt = false;
-  if (transport->crypto_ctx && transport->crypto_ctx->encrypt_data && crypto_is_ready(transport->crypto_ctx)) {
+  bool crypto_ready = (transport->crypto_ctx && transport->crypto_ctx->encrypt_data && crypto_is_ready(transport->crypto_ctx));
+  bool is_handshake = packet_is_handshake_type((packet_type_t)packet_type);
+
+  if (crypto_ready) {
     // Handshake packets are ALWAYS sent unencrypted
-    if (!packet_is_handshake_type((packet_type_t)packet_type)) {
+    if (!is_handshake) {
       should_encrypt = true;
     }
   }
 
+  log_info("[TCP_SEND_STATE] 🔐 CRYPTO_CHECK: crypto_ready=%s, is_handshake=%s, will_encrypt=%s",
+           crypto_ready ? "yes" : "no", is_handshake ? "yes" : "no", should_encrypt ? "yes" : "no");
+
   // If no encryption needed, send raw data
   if (!should_encrypt) {
-    return tcp_send_all(tcp->sockfd, data, len);
+    log_info("[TCP_SEND_STATE] 📤 PLAINTEXT_SEND: sockfd=%d, len=%zu bytes (packet_type=%d)", tcp->sockfd, len,
+             packet_type);
+    asciichat_error_t result = tcp_send_all(tcp->sockfd, data, len);
+    if (result == ASCIICHAT_OK) {
+      log_info("[TCP_SEND_STATE] ✅ PLAINTEXT_SEND_OK: sockfd=%d, %zu bytes sent successfully", tcp->sockfd, len);
+    } else {
+      log_error("[TCP_SEND_STATE] ❌ PLAINTEXT_SEND_FAILED: sockfd=%d, len=%zu - error code set", tcp->sockfd, len);
+    }
+    return result;
   }
 
   // Encrypt the entire packet (header + payload)
   size_t ciphertext_size = len + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
+  log_info("[TCP_SEND_STATE] 🔐 ENCRYPT_START: original_len=%zu, with_nonce=%zu, will_allocate=%zu", len,
+           CRYPTO_NONCE_SIZE, ciphertext_size);
+
   uint8_t *ciphertext = buffer_pool_alloc(NULL, ciphertext_size);
   if (!ciphertext) {
+    log_error("[TCP_SEND_STATE] ❌ ENCRYPT_ALLOC_FAILED: needed %zu bytes", ciphertext_size);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate ciphertext buffer");
   }
+
+  log_debug("[TCP_SEND_STATE] 🔐 ENCRYPT_BUFFER_ALLOCATED: ciphertext=%p, capacity=%zu", (void *)ciphertext,
+            ciphertext_size);
 
   size_t ciphertext_len;
   crypto_result_t result =
       crypto_encrypt(transport->crypto_ctx, data, len, ciphertext, ciphertext_size, &ciphertext_len);
+  log_info("[TCP_SEND_STATE] 🔐 ENCRYPT_RESULT: code=%d, input=%zu, output=%zu", result, len, ciphertext_len);
+
   if (result != CRYPTO_OK) {
+    log_error("[TCP_SEND_STATE] ❌ ENCRYPT_FAILED: %s (code=%d)", crypto_result_to_string(result), result);
     buffer_pool_free(NULL, ciphertext, ciphertext_size);
     return SET_ERRNO(ERROR_CRYPTO, "Failed to encrypt packet: %s", crypto_result_to_string(result));
   }
@@ -123,11 +155,28 @@ static asciichat_error_t tcp_send(acip_transport_t *transport, const void *data,
   encrypted_header.crc32 = HOST_TO_NET_U32(asciichat_crc32(ciphertext, ciphertext_len));
   encrypted_header.client_id = 0;
 
+  log_info("[TCP_SEND_STATE] 🔐 ENCRYPTED_HEADER_BUILT: magic=0x%llx, type=%d, len=%zu, crc=0x%x",
+           (unsigned long long)HOST_TO_NET_U64(PACKET_MAGIC), PACKET_TYPE_ENCRYPTED, ciphertext_len,
+           encrypted_header.crc32);
+
   // Send encrypted packet: header + ciphertext
   asciichat_error_t send_result = ASCIICHAT_OK;
+  log_info("[TCP_SEND_STATE] 📤 ENCRYPTED_SEND_HEADER: sockfd=%d, header_size=%zu", tcp->sockfd,
+           sizeof(encrypted_header));
   send_result = tcp_send_all(tcp->sockfd, &encrypted_header, sizeof(encrypted_header));
   if (send_result == ASCIICHAT_OK) {
+    log_info("[TCP_SEND_STATE] 📤 ENCRYPTED_SEND_PAYLOAD: sockfd=%d, payload_size=%zu", tcp->sockfd, ciphertext_len);
     send_result = tcp_send_all(tcp->sockfd, ciphertext, ciphertext_len);
+    if (send_result == ASCIICHAT_OK) {
+      log_info("[TCP_SEND_STATE] ✅ ENCRYPTED_SEND_OK: sockfd=%d, total=%zu (header=%zu + payload=%zu)", tcp->sockfd,
+               sizeof(encrypted_header) + ciphertext_len, sizeof(encrypted_header), ciphertext_len);
+    } else {
+      log_error("[TCP_SEND_STATE] ❌ ENCRYPTED_SEND_PAYLOAD_FAILED: sockfd=%d, tried %zu bytes", tcp->sockfd,
+                ciphertext_len);
+    }
+  } else {
+    log_error("[TCP_SEND_STATE] ❌ ENCRYPTED_SEND_HEADER_FAILED: sockfd=%d, header_size=%zu", tcp->sockfd,
+              sizeof(encrypted_header));
   }
 
   buffer_pool_free(NULL, ciphertext, ciphertext_size);
@@ -140,22 +189,34 @@ static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, si
                                   void **out_allocated_buffer) {
   tcp_transport_data_t *tcp = (tcp_transport_data_t *)transport->impl_data;
 
+  log_info("[TCP_RECV_STATE] Entry: transport=%p, sockfd=%d, is_connected=%s", (void *)transport, tcp->sockfd,
+           tcp->is_connected ? "true" : "false");
+
   if (!tcp->is_connected) {
+    log_error("[TCP_RECV_STATE] ❌ DISCONNECTED: Cannot recv - transport marked disconnected! sockfd=%d", tcp->sockfd);
     return SET_ERRNO(ERROR_NETWORK, "TCP transport not connected");
   }
 
   // Use secure packet receive with envelope
   packet_envelope_t envelope;
   bool enforce_encryption = (transport->crypto_ctx != NULL && transport->crypto_ctx->encrypt_data);
+  log_info("[TCP_RECV_STATE] 📥 RECV_WAITING: sockfd=%d, enforce_encryption=%s", tcp->sockfd,
+           enforce_encryption ? "yes" : "no");
+
   packet_recv_result_t result =
       receive_packet_secure(tcp->sockfd, transport->crypto_ctx, enforce_encryption, &envelope);
+  log_info("[TCP_RECV_STATE] 📥 RECV_RESULT: code=%d (0=success, 1=eof, 2=crypto_error, 3=other), data_size=%zu",
+           result, result == PACKET_RECV_SUCCESS ? envelope.len : 0);
 
   if (result != PACKET_RECV_SUCCESS) {
     if (result == PACKET_RECV_EOF) {
+      log_warn("[TCP_RECV_STATE] ⚠️  RECV_EOF: Connection closed by remote (sockfd=%d)", tcp->sockfd);
       return SET_ERRNO(ERROR_NETWORK, "Connection closed");
     } else if (result == PACKET_RECV_SECURITY_VIOLATION) {
+      log_error("[TCP_RECV_STATE] ❌ RECV_SECURITY_VIOLATION: Crypto error on sockfd=%d", tcp->sockfd);
       return SET_ERRNO(ERROR_CRYPTO, "Security violation");
     } else {
+      log_error("[TCP_RECV_STATE] ❌ RECV_FAILED: result=%d on sockfd=%d", result, tcp->sockfd);
       return SET_ERRNO(ERROR_NETWORK, "Failed to receive packet");
     }
   }
@@ -164,26 +225,37 @@ static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, si
   *out_len = envelope.len;
   *out_allocated_buffer = envelope.allocated_buffer;
 
+  if (envelope.len >= sizeof(packet_header_t)) {
+    const packet_header_t *hdr = (const packet_header_t *)envelope.data;
+    uint16_t pkt_type = NET_TO_HOST_U16(hdr->type);
+    log_info("[TCP_RECV_STATE] ✅ RECV_OK: sockfd=%d, packet_type=%d (0x%04x), len=%zu", tcp->sockfd, pkt_type,
+             pkt_type, envelope.len);
+  } else {
+    log_warn("[TCP_RECV_STATE] ⚠️  RECV_OK_SMALL_PACKET: sockfd=%d, len=%zu (< header)", tcp->sockfd, envelope.len);
+  }
+
   return ASCIICHAT_OK;
 }
 
 static asciichat_error_t tcp_close(acip_transport_t *transport) {
   tcp_transport_data_t *tcp = (tcp_transport_data_t *)transport->impl_data;
 
-  log_debug("[TRANSPORT_LIFECYCLE] tcp_close() called: transport=%p, sockfd=%d, is_connected=%s",
-            (void *)transport, tcp->sockfd, tcp->is_connected ? "true" : "false");
+  log_warn("[TCP_CLOSE_STATE] 🔴 CLOSE_REQUESTED: transport=%p, sockfd=%d, was_connected=%s", (void *)transport,
+           tcp->sockfd, tcp->is_connected ? "yes" : "no");
 
   if (!tcp->is_connected) {
-    log_debug("[TRANSPORT_LIFECYCLE] tcp_close() early return: already disconnected");
+    log_debug("[TCP_CLOSE_STATE] ✅ CLOSE_IDEMPOTENT: transport already disconnected (sockfd=%d)", tcp->sockfd);
     return ASCIICHAT_OK; // Already closed
   }
 
   // Note: We do NOT close the socket - caller owns it
   // We just mark ourselves as disconnected
+  log_warn("[TCP_CLOSE_STATE] 🔴 MARKING_DISCONNECTED: transport=%p, sockfd=%d (socket NOT closed - caller owns it)",
+           (void *)transport, tcp->sockfd);
   tcp->is_connected = false;
 
-  log_debug("[TRANSPORT_LIFECYCLE] TCP transport marked as disconnected (socket not closed). transport=%p, sockfd=%d",
-            (void *)transport, tcp->sockfd);
+  log_warn("[TCP_CLOSE_STATE] ✅ CLOSE_COMPLETE: TCP transport marked as disconnected. transport=%p, sockfd=%d",
+           (void *)transport, tcp->sockfd);
   return ASCIICHAT_OK;
 }
 
@@ -200,7 +272,7 @@ static socket_t tcp_get_socket(acip_transport_t *transport) {
 static bool tcp_is_connected(acip_transport_t *transport) {
   tcp_transport_data_t *tcp = (tcp_transport_data_t *)transport->impl_data;
   bool result = tcp->is_connected;
-  log_debug_every(LOG_RATE_FAST, "[TRANSPORT_LIFECYCLE] tcp_is_connected() called: transport=%p, sockfd=%d, result=%s",
+  log_debug_every(LOG_RATE_FAST, "[TCP_STATE_CHECK] tcp_is_connected(): transport=%p, sockfd=%d, result=%s",
                   (void *)transport, tcp->sockfd, result ? "true" : "false");
   return result;
 }
@@ -225,35 +297,47 @@ static const acip_transport_methods_t tcp_methods = {
 
 acip_transport_t *acip_tcp_transport_create(socket_t sockfd, crypto_context_t *crypto_ctx) {
   if (sockfd == INVALID_SOCKET_VALUE) {
+    log_error("[TCP_CREATE_STATE] ❌ INVALID_SOCKET: sockfd=%d", sockfd);
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid socket descriptor");
     return NULL;
   }
 
+  log_info("[TCP_CREATE_STATE] 🟢 CREATE_START: sockfd=%d, crypto=%s", sockfd, crypto_ctx ? "yes" : "no");
+
   // Allocate transport structure
   acip_transport_t *transport = SAFE_MALLOC(sizeof(acip_transport_t), acip_transport_t *);
   if (!transport) {
+    log_error("[TCP_CREATE_STATE] ❌ ALLOC_TRANSPORT_FAILED: size=%zu", sizeof(acip_transport_t));
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate TCP transport");
     return NULL;
   }
 
+  log_debug("[TCP_CREATE_STATE] 🟢 TRANSPORT_ALLOCATED: transport=%p", (void *)transport);
+
   // Allocate TCP-specific data
   tcp_transport_data_t *tcp_data = SAFE_MALLOC(sizeof(tcp_transport_data_t), tcp_transport_data_t *);
   if (!tcp_data) {
+    log_error("[TCP_CREATE_STATE] ❌ ALLOC_TCP_DATA_FAILED: size=%zu", sizeof(tcp_transport_data_t));
     SAFE_FREE(transport);
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate TCP transport data");
     return NULL;
   }
 
+  log_debug("[TCP_CREATE_STATE] 🟢 TCP_DATA_ALLOCATED: tcp_data=%p", (void *)tcp_data);
+
   // Initialize TCP data
   tcp_data->sockfd = sockfd;
   tcp_data->is_connected = true;
+  log_info("[TCP_CREATE_STATE] 🟢 TCP_DATA_INITIALIZED: sockfd=%d, is_connected=true", sockfd);
 
   // Enable TCP_NODELAY to disable Nagle's algorithm
   // This ensures small packets are sent immediately instead of being buffered
   int nodelay = 1;
   if (setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, (const char *)&nodelay, sizeof(nodelay)) < 0) {
-    log_warn("Failed to set TCP_NODELAY on socket %d: %s", sockfd, SAFE_STRERROR(errno));
+    log_warn("[TCP_CREATE_STATE] ⚠️  TCP_NODELAY_FAILED: sockfd=%d, %s", sockfd, SAFE_STRERROR(errno));
     // Continue anyway - this is not fatal
+  } else {
+    log_debug("[TCP_CREATE_STATE] 🟢 TCP_NODELAY_SET: sockfd=%d", sockfd);
   }
 
   // Initialize transport
@@ -261,8 +345,8 @@ acip_transport_t *acip_tcp_transport_create(socket_t sockfd, crypto_context_t *c
   transport->crypto_ctx = crypto_ctx;
   transport->impl_data = tcp_data;
 
-  log_debug("[TRANSPORT_LIFECYCLE] Created TCP transport: transport=%p, sockfd=%d, is_connected=true, crypto=%s",
-            (void *)transport, sockfd, crypto_ctx ? "enabled" : "disabled");
+  log_info("[TCP_CREATE_STATE] ✅ CREATE_COMPLETE: transport=%p, sockfd=%d, is_connected=true, crypto=%s",
+           (void *)transport, sockfd, crypto_ctx ? "enabled" : "disabled");
 
   return transport;
 }
@@ -273,41 +357,49 @@ acip_transport_t *acip_tcp_transport_create(socket_t sockfd, crypto_context_t *c
 
 void acip_transport_destroy(acip_transport_t *transport) {
   if (!transport) {
-    log_debug("[TRANSPORT_LIFECYCLE] acip_transport_destroy() called with NULL transport");
+    log_debug("[TRANSPORT_DESTROY] ⚠️  NULL_TRANSPORT: nothing to destroy");
     return;
   }
 
-  log_debug("[TRANSPORT_LIFECYCLE] acip_transport_destroy() called: transport=%p, impl_data=%p",
-            (void *)transport, transport->impl_data);
+  log_warn("[TRANSPORT_DESTROY] 🔴 DESTROY_START: transport=%p, impl_data=%p", (void *)transport,
+           transport->impl_data);
 
   // Get type before we destroy for logging
   acip_transport_type_t type = 0;
   if (transport->methods && transport->methods->get_type) {
     type = transport->methods->get_type(transport);
+    log_info("[TRANSPORT_DESTROY] 📋 TRANSPORT_TYPE: type=%d (1=TCP, 2=WebSocket, 3=WebRTC, ...)", type);
   }
 
   // Close if still connected
   if (transport->methods && transport->methods->close && transport->methods->is_connected &&
       transport->methods->is_connected(transport)) {
-    log_debug("[TRANSPORT_LIFECYCLE] Transport still connected, calling close() method");
-    transport->methods->close(transport);
+    log_warn("[TRANSPORT_DESTROY] 🔴 STILL_CONNECTED: calling close() first (type=%d)", type);
+    asciichat_error_t close_result = transport->methods->close(transport);
+    log_info("[TRANSPORT_DESTROY] 🔴 CLOSE_CALLED: result=%d", close_result != ASCIICHAT_OK ? -1 : 0);
+  } else {
+    log_debug("[TRANSPORT_DESTROY] ✅ ALREADY_CLOSED: skipping close (type=%d)", type);
   }
 
   // Call custom destroy implementation if provided
   if (transport->methods && transport->methods->destroy_impl) {
-    log_debug("[TRANSPORT_LIFECYCLE] Calling custom destroy_impl() for transport type %d", type);
+    log_info("[TRANSPORT_DESTROY] 🔧 CALLING_DESTROY_IMPL: type=%d", type);
     transport->methods->destroy_impl(transport);
+    log_info("[TRANSPORT_DESTROY] ✅ DESTROY_IMPL_COMPLETE: type=%d", type);
+  } else {
+    log_debug("[TRANSPORT_DESTROY] ⏭️  NO_CUSTOM_DESTROY: type=%d (using generic cleanup)", type);
   }
 
   // Free implementation data
   if (transport->impl_data) {
-    log_debug("[TRANSPORT_LIFECYCLE] Freeing transport impl_data: %p", transport->impl_data);
+    log_debug("[TRANSPORT_DESTROY] 🗑️  FREEING_IMPL_DATA: %p", transport->impl_data);
     SAFE_FREE(transport->impl_data);
+    log_debug("[TRANSPORT_DESTROY] ✅ IMPL_DATA_FREED");
   }
 
   // Free transport structure
-  log_debug("[TRANSPORT_LIFECYCLE] Freeing transport structure: %p", (void *)transport);
+  log_debug("[TRANSPORT_DESTROY] 🗑️  FREEING_TRANSPORT: %p", (void *)transport);
   SAFE_FREE(transport);
 
-  log_debug("[TRANSPORT_LIFECYCLE] Destroyed ACIP transport (type=%d)", type);
+  log_warn("[TRANSPORT_DESTROY] ✅ DESTROY_COMPLETE: type=%d", type);
 }
