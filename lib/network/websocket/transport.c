@@ -288,7 +288,10 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
       log_debug("WebSocket CLIENT_WRITEABLE: sending queued %zu bytes (msg %d)", msg.len, message_count + 1);
 
       // Send the complete message with automatic fragmentation
-      int written = lws_write(ws_data->wsi, msg.data, msg.len, LWS_WRITE_BINARY);
+      // IMPORTANT: msg.data already points to start of buffer (with LWS_PRE padding)
+      // lws_write() will write the frame header backwards into LWS_PRE region
+      // then write the data. We need to pass pointer to start of LWS_PRE region.
+      int written = lws_write(ws_data->wsi, msg.data + LWS_PRE, msg.len, LWS_WRITE_BINARY);
 
       if (written < 0) {
         log_error("WebSocket write failed for %zu bytes", msg.len);
