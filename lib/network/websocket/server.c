@@ -28,6 +28,7 @@
 
 // Shared internal types (websocket_recv_msg_t, websocket_transport_data_t)
 #include <ascii-chat/network/websocket/internal.h>
+#include <ascii-chat/network/websocket/callback_timing.h>
 
 /**
  * @brief Per-connection user data
@@ -488,6 +489,9 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       }
     }
 
+    // Record timing for this callback
+    uint64_t writeable_callback_end_ns = websocket_callback_timing_start();
+    websocket_callback_timing_record(&g_ws_callback_timing.server_writeable, writeable_callback_start_ns, writeable_callback_end_ns);
     break;
   }
 
@@ -738,6 +742,9 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     log_debug("[WS_RECEIVE] ===== RECEIVE CALLBACK COMPLETE, returning 0 to continue =====");
     log_info("[WS_RECEIVE_RETURN] Returning 0 from RECEIVE callback (success). fragmented=%d (first=%d final=%d)",
              (!is_final ? 1 : 0), is_first, is_final);
+
+    // Record timing for this callback
+    websocket_callback_timing_record(&g_ws_callback_timing.receive, callback_enter_ns, websocket_callback_timing_start());
     break;
   }
 
@@ -748,8 +755,20 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
   }
 
   case LWS_CALLBACK_PROTOCOL_INIT: {
-    // Protocol initialization
+    // Protocol initialization with timing instrumentation
+    uint64_t callback_start_ns = websocket_callback_timing_start();
     log_info("[PROTOCOL_INIT] Protocol initialized, proto=%s", proto_name);
+    uint64_t callback_end_ns = websocket_callback_timing_start();
+    websocket_callback_timing_record(&g_ws_callback_timing.protocol_init, callback_start_ns, callback_end_ns);
+    break;
+  }
+
+  case LWS_CALLBACK_PROTOCOL_DESTROY: {
+    // Protocol destruction with timing instrumentation
+    uint64_t callback_start_ns = websocket_callback_timing_start();
+    log_info("[PROTOCOL_DESTROY] Protocol destroyed, proto=%s", proto_name);
+    uint64_t callback_end_ns = websocket_callback_timing_start();
+    websocket_callback_timing_record(&g_ws_callback_timing.protocol_destroy, callback_start_ns, callback_end_ns);
     break;
   }
 
