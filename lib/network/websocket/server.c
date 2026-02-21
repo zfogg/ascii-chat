@@ -331,9 +331,16 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       int is_end = (conn_data->pending_send_offset + chunk_size >= conn_data->pending_send_len);
 
       // Compute appropriate WebSocket frame flags for libwebsockets
-      // First frame: LWS_WRITE_BINARY (starts new message)
-      // Subsequent frames: LWS_WRITE_CONTINUATION (libwebsockets auto-sets FIN bit on last frame)
-      enum lws_write_protocol flags = is_start ? LWS_WRITE_BINARY : LWS_WRITE_CONTINUATION;
+      // First frame: LWS_WRITE_BINARY | LWS_WRITE_NO_FIN (starts new message, don't finish yet)
+      // Middle frames: LWS_WRITE_CONTINUATION | LWS_WRITE_NO_FIN (continue, don't finish yet)
+      // Final frame: LWS_WRITE_CONTINUATION (continue and finish)
+      // CRITICAL: Without NO_FIN, fragment 1 completes the message, causing fragment 2+ to crash
+      enum lws_write_protocol flags;
+      if (is_start) {
+        flags = is_end ? LWS_WRITE_BINARY : (LWS_WRITE_BINARY | LWS_WRITE_NO_FIN);
+      } else {
+        flags = is_end ? LWS_WRITE_CONTINUATION : (LWS_WRITE_CONTINUATION | LWS_WRITE_NO_FIN);
+      }
 
       // Ensure send buffer is large enough
       size_t required_size = LWS_PRE + chunk_size;
@@ -424,13 +431,14 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
       // Send first fragment
       size_t chunk_size = (msg.len > FRAGMENT_SIZE) ? FRAGMENT_SIZE : msg.len;
-      int is_start = 1;
       int is_end = (chunk_size >= msg.len);
 
       // Compute appropriate WebSocket frame flags for libwebsockets
-      // First frame: LWS_WRITE_BINARY (starts new message)
-      // Subsequent frames: LWS_WRITE_CONTINUATION (libwebsockets auto-sets FIN bit on last frame)
-      enum lws_write_protocol flags = is_start ? LWS_WRITE_BINARY : LWS_WRITE_CONTINUATION;
+      // First frame: LWS_WRITE_BINARY | LWS_WRITE_NO_FIN (starts new message, don't finish yet)
+      // Middle frames: LWS_WRITE_CONTINUATION | LWS_WRITE_NO_FIN (continue, don't finish yet)
+      // Final frame: LWS_WRITE_CONTINUATION (continue and finish)
+      // CRITICAL: Without NO_FIN, fragment 1 completes the message, causing fragment 2+ to crash
+      enum lws_write_protocol flags = is_end ? LWS_WRITE_BINARY : (LWS_WRITE_BINARY | LWS_WRITE_NO_FIN);
 
       size_t required_size = LWS_PRE + chunk_size;
       if (ws_data->send_buffer_capacity < required_size) {

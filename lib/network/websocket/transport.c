@@ -380,14 +380,24 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     int is_final = (offset + chunk_size >= send_len);
 
     // Compute appropriate WebSocket frame flags for libwebsockets
-    // First frame: LWS_WRITE_BINARY (starts new message)
-    // Subsequent frames: LWS_WRITE_CONTINUATION (libwebsockets auto-sets FIN bit on last frame)
-    enum lws_write_protocol flags = is_start ? LWS_WRITE_BINARY : LWS_WRITE_CONTINUATION;
+    // First frame: LWS_WRITE_BINARY | LWS_WRITE_NO_FIN (starts new message, don't finish yet)
+    // Middle frames: LWS_WRITE_CONTINUATION | LWS_WRITE_NO_FIN (continue, don't finish yet)
+    // Final frame: LWS_WRITE_CONTINUATION (continue and finish)
+    // CRITICAL: Without NO_FIN, fragment 1 completes the message, causing fragment 2+ to crash
+    enum lws_write_protocol flags;
+    if (is_start) {
+      flags = is_final ? LWS_WRITE_BINARY : (LWS_WRITE_BINARY | LWS_WRITE_NO_FIN);
+    } else {
+      flags = is_final ? LWS_WRITE_CONTINUATION : (LWS_WRITE_CONTINUATION | LWS_WRITE_NO_FIN);
+    }
 
     fragment_num++;
     log_info("★ WEBSOCKET_SEND: Fragment %d - offset=%zu, chunk=%zu bytes, flags=%s (start=%d, final=%d)",
-             fragment_num, offset, chunk_size, is_start ? "LWS_WRITE_BINARY" : "LWS_WRITE_CONTINUATION", is_start,
-             is_final);
+             fragment_num, offset, chunk_size,
+             (flags & LWS_WRITE_NO_FIN) ?
+               (is_start ? "LWS_WRITE_BINARY|NO_FIN" : "LWS_WRITE_CONTINUATION|NO_FIN") :
+               (is_start ? "LWS_WRITE_BINARY" : "LWS_WRITE_CONTINUATION"),
+             is_start, is_final);
 
     // Send this fragment
     log_debug("★ WEBSOCKET_SEND: Calling lws_write for fragment %d at buffer offset %zu (ptr=%p)", fragment_num,
