@@ -72,10 +72,10 @@ if(APPLE)
                                   "Install from: https://ziglang.org/download/")
             endif()
 
-            # Build ghostty using zig build
+            # Build ghostty using zig build (full app with Metal backend)
             set(GHOSTTY_LOG_FILE "${GHOSTTY_BUILD_DIR}/ghostty-build.log")
             execute_process(
-                COMMAND "${ZIG_EXECUTABLE}" build -Doptimize=ReleaseFast
+                COMMAND "${ZIG_EXECUTABLE}" build -Doptimize=ReleaseFast --prefix "${GHOSTTY_BUILD_DIR}"
                 WORKING_DIRECTORY "${GHOSTTY_SOURCE_DIR}"
                 RESULT_VARIABLE GHOSTTY_BUILD_RESULT
                 OUTPUT_FILE "${GHOSTTY_LOG_FILE}"
@@ -86,9 +86,9 @@ if(APPLE)
                 message(FATAL_ERROR "${BoldRed}ghostty build failed${ColorReset}. Check log: ${GHOSTTY_LOG_FILE}")
             endif()
 
-            # Copy built library to cache (zig-cache/o/[hash]/libghostty.a -> cache)
+            # Copy built library to cache
             find_file(GHOSTTY_BUILT_LIB NAMES "libghostty.a"
-                      PATHS "${GHOSTTY_SOURCE_DIR}/zig-cache"
+                      PATHS "${GHOSTTY_BUILD_DIR}/lib"
                       HINTS "${GHOSTTY_SOURCE_DIR}/zig-out/lib"
                       NO_DEFAULT_PATH)
 
@@ -148,33 +148,68 @@ elseif(UNIX AND NOT APPLE)
                                   "Install from: https://ziglang.org/download/")
             endif()
 
-            # Build ghostty using zig build
+            # Build full ghostty library using zig build
+            # Use pkg-config to get proper include paths for GTK/glib dependencies
             set(GHOSTTY_LOG_FILE "${GHOSTTY_BUILD_DIR}/ghostty-build.log")
+
+            # Get GTK4 and libadwaita include paths using pkg-config
+            find_package(PkgConfig REQUIRED)
+            pkg_check_modules(GTK4 gtk4)
+            pkg_check_modules(LIBADWAITA libadwaita-1)
+
+            # Build CFLAGS from pkg-config results
+            set(GHOSTTY_CFLAGS "")
+            if(GTK4_FOUND)
+                foreach(include_dir ${GTK4_INCLUDE_DIRS})
+                    string(APPEND GHOSTTY_CFLAGS " -isystem ${include_dir}")
+                endforeach()
+            endif()
+            if(LIBADWAITA_FOUND)
+                foreach(include_dir ${LIBADWAITA_INCLUDE_DIRS})
+                    string(APPEND GHOSTTY_CFLAGS " -isystem ${include_dir}")
+                endforeach()
+            endif()
+
+            message(STATUS "Building ghostty library with CFLAGS:${GHOSTTY_CFLAGS}")
+            message(STATUS "Working directory: ${GHOSTTY_SOURCE_DIR}")
             execute_process(
-                COMMAND "${ZIG_EXECUTABLE}" build -Doptimize=ReleaseFast
+                COMMAND env CFLAGS="${GHOSTTY_CFLAGS}" "${ZIG_EXECUTABLE}" build install -Dapp-runtime=none -Doptimize=ReleaseFast --prefix "${GHOSTTY_BUILD_DIR}"
                 WORKING_DIRECTORY "${GHOSTTY_SOURCE_DIR}"
                 RESULT_VARIABLE GHOSTTY_BUILD_RESULT
                 OUTPUT_FILE "${GHOSTTY_LOG_FILE}"
                 ERROR_FILE "${GHOSTTY_LOG_FILE}"
             )
+            message(STATUS "Build result code: ${GHOSTTY_BUILD_RESULT}")
+
+            if(GHOSTTY_BUILD_RESULT EQUAL 0)
+                # Ghostty build succeeded, find and copy library to cache location
+                # Look for libghostty (the full library)
+                find_file(GHOSTTY_FULL_LIB NAMES "libghostty.a" "libghostty.so" "libghostty.so.0"
+                          PATHS "${GHOSTTY_BUILD_DIR}/lib"
+                          NO_DEFAULT_PATH)
+                if(GHOSTTY_FULL_LIB)
+                    file(COPY_FILE "${GHOSTTY_FULL_LIB}" "${GHOSTTY_LIB}")
+                    message(STATUS "Copied ${GHOSTTY_FULL_LIB} to ${GHOSTTY_LIB}")
+                else()
+                    message(STATUS "Warning: libghostty not found in ${GHOSTTY_BUILD_DIR}/lib")
+                    # Try to find lib-vt as fallback
+                    find_file(GHOSTTY_VT_LIB NAMES "libghostty-vt.a" "libghostty-vt.so.0" "libghostty-vt.so"
+                              PATHS "${GHOSTTY_BUILD_DIR}/lib"
+                              NO_DEFAULT_PATH)
+                    if(GHOSTTY_VT_LIB)
+                        file(COPY_FILE "${GHOSTTY_VT_LIB}" "${GHOSTTY_LIB}")
+                        message(STATUS "Fallback: Copied ${GHOSTTY_VT_LIB} to ${GHOSTTY_LIB}")
+                    else()
+                        set(GHOSTTY_BUILD_RESULT 1)
+                    endif()
+                endif()
+            endif()
 
             if(NOT GHOSTTY_BUILD_RESULT EQUAL 0)
-                message(FATAL_ERROR "${BoldRed}ghostty build failed${ColorReset}. Check log: ${GHOSTTY_LOG_FILE}")
+                message(FATAL_ERROR "${BoldRed}ghostty lib-vt build failed${ColorReset}. Check log: ${GHOSTTY_LOG_FILE}")
             endif()
 
-            # Copy built library to cache
-            find_file(GHOSTTY_BUILT_LIB NAMES "libghostty.a"
-                      PATHS "${GHOSTTY_SOURCE_DIR}/zig-cache"
-                      HINTS "${GHOSTTY_SOURCE_DIR}/zig-out/lib"
-                      NO_DEFAULT_PATH)
-
-            if(GHOSTTY_BUILT_LIB)
-                file(COPY_FILE "${GHOSTTY_BUILT_LIB}" "${GHOSTTY_LIB}")
-                message(STATUS "  ${BoldGreen}ghostty${ColorReset} library built and cached successfully")
-            else()
-                message(FATAL_ERROR "${BoldRed}ghostty library not found${ColorReset} in build output")
-            endif()
-
+            message(STATUS "  ${BoldGreen}ghostty lib-vt${ColorReset} library built and cached successfully")
             add_custom_target(ghostty_build)
         else()
             message(STATUS "${BoldGreen}ghostty${ColorReset} library found in cache: ${BoldCyan}${GHOSTTY_LIB}${ColorReset}")
@@ -187,12 +222,28 @@ elseif(UNIX AND NOT APPLE)
             IMPORTED_LOCATION "${GHOSTTY_LIB}"
         )
         target_include_directories(ghostty_lib INTERFACE
-            "${GHOSTTY_SOURCE_DIR}/zig-out/include"
+            "${GHOSTTY_BUILD_DIR}/include"
         )
         add_dependencies(ghostty_lib ghostty_build)
 
+        # Link ghostty's dependencies
+        # libghostty built as static archive contains symbols from its dependencies
+        # These must be available when linking the final executable
+        find_package(PkgConfig QUIET)
+        if(PkgConfig_FOUND)
+            pkg_check_modules(ONIGURUMA QUIET oniguruma)
+            if(ONIGURUMA_FOUND)
+                target_link_libraries(ghostty_lib INTERFACE ${ONIGURUMA_LIBRARIES})
+            else()
+                # Fallback if pkg-config doesn't find oniguruma
+                target_link_libraries(ghostty_lib INTERFACE onig)
+            endif()
+        else()
+            target_link_libraries(ghostty_lib INTERFACE onig)
+        endif()
+
         set(GHOSTTY_LIBRARIES ghostty_lib)
-        set(GHOSTTY_INCLUDE_DIRS "${GHOSTTY_SOURCE_DIR}/zig-out/include")
+        set(GHOSTTY_INCLUDE_DIRS "${GHOSTTY_BUILD_DIR}/include")
         set(GHOSTTY_FOUND TRUE)
 
         message(STATUS "${BoldGreen}ghostty${ColorReset} configured: ${GHOSTTY_LIB}")
