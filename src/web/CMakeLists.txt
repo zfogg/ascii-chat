@@ -90,8 +90,8 @@ include_directories(
     ${DEPS_ROOT}/ascii-chat-deps/utf8proc
 )
 
-# Source files for WASM entry point
-set(MIRROR_SOURCES
+# Source files for WASM mirror entry point
+set(WEB_SRC_MIRROR
     ${CMAKE_SOURCE_DIR}/mirror.c
 )
 
@@ -183,7 +183,7 @@ set(LIB_SOURCES_COMMON
     # Crypto (needed for logging headers)
     ${LIB_ROOT}/crypto/crypto.c
 
-    # Video processing (shared subset - not mirror-only files)
+    # Video processing (needed by logging and config systems)
     ${LIB_ROOT}/video/ascii.c
     ${LIB_ROOT}/video/ansi.c
     ${LIB_ROOT}/video/ansi_fast.c
@@ -196,7 +196,7 @@ set(LIB_SOURCES_COMMON
     ${LIB_ROOT}/video/simd/ascii_simd_color.c
     ${LIB_ROOT}/video/simd/avx2.c
 
-    # Utilities (minimal set needed by video/options)
+    # Utilities (minimal set needed by options)
     ${LIB_ROOT}/util/format.c
     ${LIB_ROOT}/util/string.c
     ${LIB_ROOT}/util/utf8.c
@@ -240,14 +240,14 @@ set(LIB_SOURCES_MIRROR_ONLY
     ${LIB_ROOT}/util/aspect_ratio.c    # Video scaling - mirror only
 )
 
-# Additional sources for client mode (crypto + network)
+# Client-specific sources (crypto + network)
 # Note: Only minimal crypto handshake for web client (no SSH keys, known_hosts, etc.)
-set(CRYPTO_SOURCES
+set(LIB_SOURCES_CLIENT_CRYPTO
     ${LIB_ROOT}/crypto/handshake/common.c
     ${LIB_ROOT}/crypto/handshake/client.c
 )
 
-set(NETWORK_SOURCES
+set(LIB_SOURCES_CLIENT_NETWORK
     ${LIB_ROOT}/network/packet_parsing.c
     ${LIB_ROOT}/network/crc32.c
     ${LIB_ROOT}/network/compression.c
@@ -279,7 +279,7 @@ target_link_libraries(wasm-common PRIVATE
 
 # Create WASM mirror module
 add_executable(mirror-web
-    ${MIRROR_SOURCES}
+    ${WEB_SRC_MIRROR}
     ${LIB_SOURCES_MIRROR_ONLY}
     $<TARGET_OBJECTS:wasm-common>
 )
@@ -290,16 +290,16 @@ target_link_libraries(mirror-web PRIVATE
     pcre2-8
 )
 
-# Source files for client mode WASM entry point
-set(CLIENT_SOURCES
+# Source files for WASM client entry point
+set(WEB_SRC_CLIENT
     ${CMAKE_SOURCE_DIR}/client.c
 )
 
 # Create WASM client module
 add_executable(client-web
-    ${CLIENT_SOURCES}
-    ${CRYPTO_SOURCES}
-    ${NETWORK_SOURCES}
+    ${WEB_SRC_CLIENT}
+    ${LIB_SOURCES_CLIENT_CRYPTO}
+    ${LIB_SOURCES_CLIENT_NETWORK}
     $<TARGET_OBJECTS:wasm-common>
 )
 
