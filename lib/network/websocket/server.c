@@ -55,6 +55,9 @@ typedef struct {
 static _Atomic uint64_t g_receive_callback_count = 0;
 static _Atomic uint64_t g_writeable_callback_count = 0;
 
+// Forward declaration for websocket_protocols (defined later in file)
+static struct lws_protocols websocket_protocols[];
+
 /**
  * @brief Custom logging callback for libwebsockets
  * This captures LWS internal logging so we can see what's happening
