@@ -77,3 +77,6 @@ vcpkg_installed/
 .logs/
 
 *.pid
+
+# gastown
+/state.json
