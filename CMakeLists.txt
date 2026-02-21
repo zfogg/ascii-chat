@@ -370,29 +370,23 @@ endif()
 if(EMSCRIPTEN_TOOLCHAIN_FILE)
     set(WASM_BUILD_DIR "${CMAKE_BINARY_DIR}/web")
 
-    if(NOT TARGET mirror-web)
-        add_custom_target(mirror-web
-            COMMAND cd "${WASM_BUILD_DIR}" && ${CMAKE_COMMAND} --build . --target mirror-web
-            COMMENT "Building mirror-web WASM module"
-            VERBATIM
-        )
-    endif()
+    add_custom_target(mirror-web
+        COMMAND cd "${WASM_BUILD_DIR}" && ${CMAKE_COMMAND} --build . --target mirror-web
+        COMMENT "Building mirror-web WASM module"
+        VERBATIM
+    )
 
-    if(NOT TARGET client-web)
-        add_custom_target(client-web
-            COMMAND cd "${WASM_BUILD_DIR}" && ${CMAKE_COMMAND} --build . --target client-web
-            COMMENT "Building client-web WASM module"
-            VERBATIM
-        )
-    endif()
+    add_custom_target(client-web
+        COMMAND cd "${WASM_BUILD_DIR}" && ${CMAKE_COMMAND} --build . --target client-web
+        COMMENT "Building client-web WASM module"
+        VERBATIM
+    )
 
-    if(NOT TARGET web)
-        add_custom_target(web
-            COMMAND cd "${WASM_BUILD_DIR}" && ${CMAKE_COMMAND} --build . --target web
-            COMMENT "Building all WASM modules"
-            VERBATIM
-        )
-    endif()
+    add_custom_target(web
+        COMMAND cd "${WASM_BUILD_DIR}" && ${CMAKE_COMMAND} --build . --target web
+        COMMENT "Building all WASM modules"
+        VERBATIM
+    )
 
     message(STATUS "WASM targets configured:")
     message(STATUS "  mirror-web - Build mirror mode WASM only")
