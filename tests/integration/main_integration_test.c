@@ -196,7 +196,6 @@ static bool wait_for_tcp_port(int port, int timeout_ms) {
 // Server Main Function Tests
 // =============================================================================
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TestSuite(main_integration);
 
 Test(main_integration, server_main_starts_and_stops) {
   int port = get_unique_test_port();
