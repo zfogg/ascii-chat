@@ -24,3 +24,6 @@
 [submodule "deps/ascii-chat-deps/utf8proc"]
 	path = deps/ascii-chat-deps/utf8proc
 	url = https://github.com/JuliaStrings/utf8proc.git
+[submodule "deps/ascii-chat-deps/ghostty"]
+	path = deps/ascii-chat-deps/ghostty
+	url = https://github.com/ghostty-org/ghostty

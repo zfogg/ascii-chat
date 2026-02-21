@@ -81,8 +81,7 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg,
 
     FT_Load_Char(r->ft_face, 'M', FT_LOAD_RENDER);
     r->cell_w  = (int)(r->ft_face->glyph->advance.x >> 6);
-    r->cell_h  = (int)((r->ft_face->size->metrics.ascender
-                       - r->ft_face->size->metrics.descender) >> 6);
+    r->cell_h  = r->cell_w;
     r->baseline = (int)(r->ft_face->size->metrics.ascender >> 6);
 
     r->width_px = r->cols * r->cell_w;
