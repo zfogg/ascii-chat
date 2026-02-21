@@ -79,12 +79,16 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
 static void *websocket_service_thread(void *arg) {
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)arg;
 
-  log_debug("WebSocket service thread started");
+  log_debug("WebSocket service thread started (owns_context=%d, wsi=%p)", ws_data->owns_context,
+            (void *)ws_data->wsi);
 
   while (ws_data->service_running) {
-    // Check if client has data queued to send
-    if (!ws_data->owns_context && ws_data->wsi) {
-      // This is a client transport - check send queue
+    // Check if THIS transport (client or server) has data queued to send
+    // Note: we only check for CLIENT transports here (owns_context=true)
+    // because SERVER transports are already handled by the SERVER_WRITEABLE callback.
+    // Clients need explicit triggering via lws_callback_on_writable().
+    if (ws_data->owns_context && ws_data->wsi) {
+      // This is a CLIENT transport - check send queue
       mutex_lock(&ws_data->send_mutex);
       bool has_queued_data = !ringbuffer_is_empty(ws_data->send_queue);
       mutex_unlock(&ws_data->send_mutex);
