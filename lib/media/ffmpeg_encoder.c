@@ -57,7 +57,7 @@ static void get_codec_from_extension(const char *path, const char **codec, const
     } else if (strcmp(ext, "gif") == 0) {
         *codec = "gif";
         *format = "gif";
-        *pix_fmt = AV_PIX_FMT_PAL8;  // GIF uses palette
+        *pix_fmt = AV_PIX_FMT_RGB24;  // GIF from RGB24 (FFmpeg handles palette conversion)
     } else if (strcmp(ext, "png") == 0) {
         *codec = "png";
         *format = "image2";
