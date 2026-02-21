@@ -14,18 +14,21 @@
 #include <stddef.h>
 
 /**
- * @brief Receive queue element (individual WebSocket frame or fragment)
+ * @brief WebSocket message element (individual frame or fragment)
  *
- * Each RECEIVE callback queues a frame, which may be a complete message or
- * a fragment of a larger fragmented message. The receiver checks first/final
- * flags to reassemble if needed.
+ * Used for both send and receive queues. Each frame may be a complete message
+ * or a fragment of a larger fragmented message. The receiver checks first/final
+ * flags to reassemble if needed. Used in both send_queue and recv_queue.
  */
 typedef struct {
   uint8_t *data; ///< Frame data (allocated, caller must free)
   size_t len;    ///< Frame length in bytes
   uint8_t first; ///< 1 if first frame of message (or complete message)
   uint8_t final; ///< 1 if final frame of message (or complete message)
-} websocket_recv_msg_t;
+} websocket_msg_t;
+
+// Alias for backward compatibility
+typedef websocket_msg_t websocket_recv_msg_t;
 
 /**
  * @brief WebSocket transport implementation data

@@ -44,21 +44,26 @@
 #include <unistd.h>
 
 /**
- * @brief Maximum receive queue size (messages buffered before recv())
+ * @brief Maximum incoming message queue size (frames received from peer)
  *
  * Power of 2 for ringbuffer optimization.
- * Increased from 512 to buffer multiple large frames and reduce queue pressure.
+ * Used for both client (recv from server) and server (recv from client).
  * Each slot holds one message (up to 921KB). With 4096 slots, can buffer ~3.7GB.
  */
-#define WEBSOCKET_RECV_QUEUE_SIZE 4096
+#define WEBSOCKET_MESSAGE_QUEUE_SIZE_INCOMING 4096
 
 /**
- * @brief Maximum send queue size (messages buffered for server-side sending)
+ * @brief Maximum outgoing message queue size (frames to send to peer)
  *
- * Larger than receive queue because video frames are continuously sent.
- * Must be large enough to buffer frames while event loop processes them.
+ * Smaller than incoming queue for temporary buffering during event processing.
+ * Used for both client (send to server) and server (send to client).
+ * Size must accommodate worst-case burst while service thread drains queue.
  */
-#define WEBSOCKET_SEND_QUEUE_SIZE 256
+#define WEBSOCKET_MESSAGE_QUEUE_SIZE_OUTGOING 256
+
+// Legacy names for backward compatibility
+#define WEBSOCKET_RECV_QUEUE_SIZE WEBSOCKET_MESSAGE_QUEUE_SIZE_INCOMING
+#define WEBSOCKET_SEND_QUEUE_SIZE WEBSOCKET_MESSAGE_QUEUE_SIZE_OUTGOING
 
 // Shared internal types (websocket_recv_msg_t, websocket_transport_data_t)
 #include <ascii-chat/network/websocket/internal.h>
@@ -79,17 +84,31 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
 static void *websocket_service_thread(void *arg) {
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)arg;
 
-  log_debug("WebSocket service thread started (owns_context=%d, wsi=%p)", ws_data->owns_context,
-            (void *)ws_data->wsi);
+  log_info(">>> SERVICE_THREAD_START: owns_context=%d, wsi=%p, context=%p, send_queue=%p",
+           ws_data->owns_context, (void *)ws_data->wsi, (void *)ws_data->context,
+           (void *)ws_data->send_queue);
 
-  static int loop_count = 0;
+  int loop_count = 0;
+  int total_messages_sent = 0;
+
   while (ws_data->service_running) {
     loop_count++;
+
+    // ALWAYS log first 10 loops to debug why queue checks aren't working
+    if (loop_count <= 10) {
+      log_info("[LOOP %d] owns_context=%d, wsi=%p, service_running=%d", loop_count,
+               ws_data->owns_context, (void *)ws_data->wsi, ws_data->service_running);
+    }
+
     // Check if THIS transport (client or server) has data queued to send
     // Note: we only check for CLIENT transports here (owns_context=true)
     // because SERVER transports are already handled by the SERVER_WRITEABLE callback.
     // Clients need explicit triggering via lws_callback_on_writable().
     if (ws_data->owns_context && ws_data->wsi) {
+      if (loop_count <= 10) {
+        log_info("[LOOP %d] CLIENT condition TRUE - checking queue", loop_count);
+      }
+
       // This is a CLIENT transport - actively drain send queue instead of relying on callbacks
       // The WRITEABLE callback mechanism doesn't reliably trigger for browser clients,
       // so we drain the queue directly in the service thread.
@@ -98,35 +117,49 @@ static void *websocket_service_thread(void *arg) {
 
       mutex_lock(&ws_data->send_mutex);
       bool has_data = !ringbuffer_is_empty(ws_data->send_queue);
-      if (has_data) {
-        log_debug("Service thread: CLIENT queue has data, draining...");
+
+      if (loop_count <= 10) {
+        log_info("[LOOP %d] Queue check: has_data=%d", loop_count, has_data);
       }
+
+      if (has_data) {
+        log_info(">>> SERVICE_THREAD: CLIENT queue has data, draining...");
+      }
+
       while (ringbuffer_read(ws_data->send_queue, &msg)) {
         mutex_unlock(&ws_data->send_mutex);
 
         // Send message directly with lws_write()
-        log_debug("Service thread: sending queued %zu bytes to wsi=%p", msg.len, (void *)ws_data->wsi);
+        log_info(">>> SENDING: %zu bytes via lws_write() for wsi=%p", msg.len, (void *)ws_data->wsi);
         int written = lws_write(ws_data->wsi, msg.data, msg.len, LWS_WRITE_BINARY);
 
         if (written < 0) {
-          log_error("Service thread lws_write() failed: %d", written);
+          log_error(">>> LWS_WRITE_FAILED: error code %d for %zu bytes", written, msg.len);
           SAFE_FREE(msg.data);
           mutex_lock(&ws_data->send_mutex);
           break;
         }
 
         if ((size_t)written != msg.len) {
-          log_warn("Service thread partial write: %d/%zu bytes sent", written, msg.len);
+          log_warn(">>> PARTIAL_WRITE: sent %d/%zu bytes", written, msg.len);
+        } else {
+          log_info(">>> WRITE_SUCCESS: sent %d bytes", written);
         }
 
         SAFE_FREE(msg.data);
         messages_sent++;
+        total_messages_sent++;
         mutex_lock(&ws_data->send_mutex);
       }
       mutex_unlock(&ws_data->send_mutex);
 
       if (messages_sent > 0) {
-        log_debug("Service thread: sent %d queued messages", messages_sent);
+        log_info(">>> SERVICE_BATCH: sent %d messages (total: %d)", messages_sent, total_messages_sent);
+      }
+    } else {
+      if (loop_count <= 10) {
+        log_info("[LOOP %d] CLIENT condition FALSE (owns_context=%d, wsi=%p)", loop_count,
+                 ws_data->owns_context, (void *)ws_data->wsi);
       }
     }
 
@@ -874,8 +907,19 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
     return NULL;
   }
 
+  // Create send queue for client transport to buffer outgoing messages
+  ws_data->send_queue = ringbuffer_create(sizeof(websocket_msg_t), WEBSOCKET_SEND_QUEUE_SIZE);
+  if (!ws_data->send_queue) {
+    ringbuffer_destroy(ws_data->recv_queue);
+    SAFE_FREE(ws_data);
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_MEMORY, "Failed to create send queue");
+    return NULL;
+  }
+
   // Initialize synchronization primitives
   if (mutex_init(&ws_data->recv_mutex) != 0) {
+    ringbuffer_destroy(ws_data->send_queue);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
@@ -885,6 +929,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
 
   if (cond_init(&ws_data->recv_cond) != 0) {
     mutex_destroy(&ws_data->recv_mutex);
+    ringbuffer_destroy(ws_data->send_queue);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
@@ -895,6 +940,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
   if (mutex_init(&ws_data->state_mutex) != 0) {
     cond_destroy(&ws_data->recv_cond);
     mutex_destroy(&ws_data->recv_mutex);
+    ringbuffer_destroy(ws_data->send_queue);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
@@ -906,6 +952,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
     mutex_destroy(&ws_data->state_mutex);
     cond_destroy(&ws_data->recv_cond);
     mutex_destroy(&ws_data->recv_mutex);
+    ringbuffer_destroy(ws_data->send_queue);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
@@ -920,6 +967,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
     mutex_destroy(&ws_data->state_mutex);
     cond_destroy(&ws_data->recv_cond);
     mutex_destroy(&ws_data->recv_mutex);
+    ringbuffer_destroy(ws_data->send_queue);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
@@ -948,6 +996,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
     mutex_destroy(&ws_data->state_mutex);
     cond_destroy(&ws_data->recv_cond);
     mutex_destroy(&ws_data->recv_mutex);
+    ringbuffer_destroy(ws_data->send_queue);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
@@ -979,6 +1028,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
     mutex_destroy(&ws_data->state_mutex);
     cond_destroy(&ws_data->recv_cond);
     mutex_destroy(&ws_data->recv_mutex);
+    ringbuffer_destroy(ws_data->send_queue);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
@@ -1007,6 +1057,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
     mutex_destroy(&ws_data->state_mutex);
     cond_destroy(&ws_data->recv_cond);
     mutex_destroy(&ws_data->recv_mutex);
+    ringbuffer_destroy(ws_data->send_queue);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
