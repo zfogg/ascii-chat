@@ -1,0 +1,83 @@
+name: WebSocket FPS Regression Test
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - 'src/client/**'
+      - 'src/server/**'
+      - 'lib/network/**'
+      - 'lib/util/fps.c'
+      - 'lib/util/fps.h'
+      - 'scripts/test-websocket-*.sh'
+      - '.github/workflows/websocket-fps-regression.yml'
+  pull_request:
+    branches: [master, main]
+    paths:
+      - 'src/client/**'
+      - 'src/server/**'
+      - 'lib/network/**'
+      - 'lib/util/fps.c'
+      - 'lib/util/fps.h'
+      - 'scripts/test-websocket-*.sh'
+      - '.github/workflows/websocket-fps-regression.yml'
+  schedule:
+    # Run daily to catch performance regressions
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+env:
+  CC: clang
+  CXX: clang++
+
+jobs:
+  websocket-fps-regression:
+    name: WebSocket FPS Regression Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: true
+
+      - name: Install dependencies
+        id: install-deps
+        uses: ./.github/actions/install-deps
+        with:
+          os: ubuntu
+          vcpkg-packages: ""
+          vcpkg-triplet: ""
+          vcpkg-static-packages: ""
+          vcpkg-static-triplet: ""
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure build
+        run: cmake --preset default
+
+      - name: Build ascii-chat
+        run: cmake --build build
+
+      - name: Run WebSocket FPS regression test
+        run: |
+          echo "🎬 Running WebSocket FPS regression test..."
+          bash scripts/test-websocket-fps-regression.sh
+          TEST_RESULT=$?
+          if [ $TEST_RESULT -eq 0 ]; then
+            echo "✅ WebSocket FPS regression test PASSED"
+          else
+            echo "❌ WebSocket FPS regression test FAILED"
+            exit $TEST_RESULT
+          fi
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: websocket-fps-test-logs
+          path: |
+            /tmp/ascii-chat-*.log
+            /tmp/websocket-test-output.txt
+          retention-days: 7
