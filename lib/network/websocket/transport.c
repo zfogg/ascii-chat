@@ -999,8 +999,9 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
   };
 
   // Enable permessage-deflate compression on client to match server
+  // Use client_max_window_bits=15 for proper decompression of large fragmented messages
   static const struct lws_extension client_extensions[] = {
-      {"permessage-deflate", lws_extension_callback_pm_deflate, "permessage-deflate; client_max_window_bits=8"},
+      {"permessage-deflate", lws_extension_callback_pm_deflate, "permessage-deflate; client_max_window_bits=15"},
       {NULL, NULL, NULL}};
 
   struct lws_context_creation_info info;
