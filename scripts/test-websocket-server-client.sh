@@ -44,6 +44,7 @@ CLIENT_STDOUT="/tmp/ascii-chat-client-stdout-$WS_PORT.txt"
   --color-mode truecolor \
   client \
   "ws://localhost:$WS_PORT" \
+  --test-pattern \
   -S -D 1 \
   2>&1 > "$CLIENT_STDOUT" \
   &
