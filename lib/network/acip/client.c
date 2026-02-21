@@ -28,47 +28,69 @@
 asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
                                                    const acip_client_callbacks_t *callbacks) {
   if (!transport || !callbacks) {
+    log_error("[ACIP_RECV] ❌ INVALID_PARAMS: transport=%p, callbacks=%p", (void *)transport, (void *)callbacks);
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport or callbacks");
   }
 
+  log_debug("[ACIP_RECV] 📥 RECV_START: transport=%p, checking connection state", (void *)transport);
+
   // Check if transport is connected
   if (!transport->methods->is_connected(transport)) {
+    log_error("[ACIP_RECV] ❌ NOT_CONNECTED: transport not ready for receive");
     return SET_ERRNO(ERROR_NETWORK, "Transport not connected");
   }
 
+  log_debug("[ACIP_RECV] ✅ CONNECTED: transport ready, checking transport type");
+
   packet_envelope_t envelope;
   bool enforce_encryption = (transport->crypto_ctx != NULL);
+  log_debug("[ACIP_RECV] 🔐 CRYPTO_MODE: enforce_encryption=%s", enforce_encryption ? "yes" : "no");
 
   // Try to get socket from transport
   socket_t sock = transport->methods->get_socket(transport);
+  log_debug("[ACIP_RECV] 🔌 TRANSPORT_TYPE: socket=%d (socket=TCP, INVALID=WebRTC/other)", sock);
 
   if (sock != INVALID_SOCKET_VALUE) {
     // Socket-based transport (TCP): use receive_packet_secure() for socket I/O + parsing
+    log_info("[ACIP_RECV] 🔌 TCP_PATH: using receive_packet_secure(), sockfd=%d", sock);
     packet_recv_result_t result = receive_packet_secure(sock, transport->crypto_ctx, enforce_encryption, &envelope);
+
+    log_info("[ACIP_RECV] 📥 TCP_RECV_RESULT: code=%d (0=success, 1=eof, 2=crypto_error, 3=other)", result);
 
     // Handle receive errors
     if (result != PACKET_RECV_SUCCESS) {
       if (result == PACKET_RECV_EOF) {
+        log_warn("[ACIP_RECV] ⚠️  EOF: Server closed connection");
         return SET_ERRNO(ERROR_NETWORK, "Connection closed (EOF)");
       } else if (result == PACKET_RECV_SECURITY_VIOLATION) {
+        log_error("[ACIP_RECV] ❌ SECURITY_VIOLATION: Encryption policy violated");
         return SET_ERRNO(ERROR_CRYPTO, "Security violation: unencrypted packet when encryption required");
       } else {
+        log_error("[ACIP_RECV] ❌ TCP_RECV_FAILED: receive_packet_secure returned %d", result);
         return SET_ERRNO(ERROR_NETWORK, "Failed to receive packet");
       }
     }
   } else {
     // Non-socket transport (WebRTC): use transport's recv() method to get complete packet
+    log_info("[ACIP_RECV] 🌐 WEBRTC_PATH: using transport->methods->recv()");
     void *packet_data = NULL;
     void *allocated_buffer = NULL;
     size_t packet_len = 0;
 
+    log_debug("[ACIP_RECV] 🌐 WEBRTC_RECV: calling recv() method");
     asciichat_error_t recv_result = transport->methods->recv(transport, &packet_data, &packet_len, &allocated_buffer);
+    log_info("[ACIP_RECV] 🌐 WEBRTC_RECV_RESULT: error=%d, packet_len=%zu, data=%p, alloc=%p", recv_result, packet_len,
+             packet_data, allocated_buffer);
+
     if (recv_result != ASCIICHAT_OK) {
+      log_error("[ACIP_RECV] ❌ WEBRTC_RECV_FAILED: error code %d", recv_result);
       return SET_ERRNO(ERROR_NETWORK, "Transport recv() failed");
     }
 
     // Parse packet header
+    log_debug("[ACIP_RECV] 🌐 HEADER_CHECK: packet_len=%zu, header_size=%zu", packet_len, sizeof(packet_header_t));
     if (packet_len < sizeof(packet_header_t)) {
+      log_error("[ACIP_RECV] ❌ HEADER_TOO_SMALL: %zu < %zu", packet_len, sizeof(packet_header_t));
       buffer_pool_free(NULL, allocated_buffer, packet_len);
       return SET_ERRNO(ERROR_NETWORK, "Packet too small: %zu < %zu", packet_len, sizeof(packet_header_t));
     }
@@ -81,11 +103,18 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
     envelope.allocated_size = packet_len;
     envelope.was_encrypted = false; // WebRTC currently doesn't support encryption in this path
 
+    log_info("[ACIP_RECV] 🌐 HEADER_PARSED: type=%u (0x%04x), len=%u, total_size=%zu", envelope.type, envelope.type,
+             envelope.len, packet_len);
+
     log_dev_every(4500 * US_PER_MS_INT, "WebRTC received packet: type=%u, len=%u, total_size=%zu", envelope.type,
                   envelope.len, packet_len);
 
     // Validate packet length
+    log_debug("[ACIP_RECV] 🌐 LENGTH_VALIDATION: payload_size=%u vs actual=%zu", envelope.len,
+              packet_len - sizeof(packet_header_t));
     if (envelope.len != packet_len - sizeof(packet_header_t)) {
+      log_error("[ACIP_RECV] ❌ LENGTH_MISMATCH: header=%u, actual=%zu", envelope.len,
+                packet_len - sizeof(packet_header_t));
       buffer_pool_free(NULL, allocated_buffer, packet_len);
       return SET_ERRNO(ERROR_NETWORK, "Packet length mismatch: header says %u, actual %zu", envelope.len,
                        packet_len - sizeof(packet_header_t));
@@ -93,19 +122,25 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
   }
 
   // Dispatch packet to appropriate ACIP handler
+  log_info("[ACIP_RECV] 🎯 DISPATCH_START: type=%u (0x%04x), data_len=%u, callbacks=%p", envelope.type, envelope.type,
+           envelope.len, (void *)callbacks);
   asciichat_error_t dispatch_result =
       acip_handle_client_packet(transport, envelope.type, envelope.data, envelope.len, callbacks);
 
   if (dispatch_result != ASCIICHAT_OK) {
-    log_error("Packet dispatch failed for type %u: error %d", envelope.type, dispatch_result);
+    log_error("[ACIP_RECV] ❌ DISPATCH_FAILED: type=%u, error=%d", envelope.type, dispatch_result);
   } else {
-    log_debug("Packet type %u dispatched successfully", envelope.type);
+    log_info("[ACIP_RECV] ✅ DISPATCH_OK: type=%u (0x%04x) handled by callbacks", envelope.type, envelope.type);
   }
 
   // Always free the allocated buffer (even if handler failed)
+  log_debug("[ACIP_RECV] 🗑️  CLEANUP: freeing buffer %p (size=%zu)", envelope.allocated_buffer,
+            envelope.allocated_size);
   if (envelope.allocated_buffer) {
     buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
   }
+
+  log_debug("[ACIP_RECV] ✅ RECV_COMPLETE: type=%u, result=%d", envelope.type, dispatch_result != ASCIICHAT_OK ? -1 : 0);
 
   // Return handler result
   return dispatch_result;
