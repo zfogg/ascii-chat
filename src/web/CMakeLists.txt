@@ -23,9 +23,6 @@ add_definitions(
     -DEMSCRIPTEN_BUILD=1
 )
 
-# Note: SIMD flags (-msimd128 -mavx2) only applied to mirror mode
-# (needs SIMD for video processing, client mode doesn't need it)
-
 # Cache WASM dependencies outside build/ to persist across rebuilds
 if(ASCIICHAT_WEB_DEPS_DIR)
     set(FETCHCONTENT_BASE_DIR "${ASCIICHAT_WEB_DEPS_DIR}" CACHE PATH "FetchContent cache for web deps")
