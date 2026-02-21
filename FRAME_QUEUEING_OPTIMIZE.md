@@ -25,10 +25,12 @@ Device         Buffer       ACIP Packet        WebSocket
 ### 1. **WebSocket Transmission Latency** (PRIMARY)
 ```
 on_image_frame callback took 212ms (data_len=291600)
+VIDEO_GET_FRAME: took 142.293ms
 ```
-- **Issue**: Single 291.6KB frame takes 212ms to process on WebSocket
+- **Issue**: Single 291.6KB frame takes 142-212ms to process on WebSocket
 - **Impact**: At 60 FPS target (16.7ms per frame), this blocks frame transmission
 - **Current Behavior**: Serial transmission - frames must complete before next can start
+- **Test Runs**: Multiple measurements confirm 140-210ms range
 
 ### 2. **Packet Dequeueing Latency** (SECONDARY)
 ```
@@ -48,11 +50,13 @@ FRAME_GEN_START: target_client=1 sources=0 collect=28.8ms
 
 ### 4. **Resulting FPS Degradation**
 ```
-LAG: frame captured late by 370.1ms (expected 6.9ms, got 377.1ms, 2.65 fps)
+Test Run 1: LAG: frame captured late by 370.1ms (expected 6.9ms, got 377.1ms, 2.65 fps)
+Test Run 2: LAG: frame captured late by 506.9ms (expected 6.9ms, got 513.8ms, 1.95 fps)
 ```
 - **Expected**: 60 FPS (6.9ms per frame at 1 client)
-- **Actual**: 2.65 FPS (377.1ms per frame)
-- **Overhead**: 55x slower than target
+- **Actual**: 1.95-2.65 FPS (377-514ms per frame)
+- **Overhead**: 55-75x slower than target
+- **Variability**: High variance in results suggests queuing jitter
 
 ## Root Causes
 
