@@ -256,11 +256,11 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
 #ifndef _WIN32
   // Initialize render-file if enabled
   if (strlen(GET_OPTION(render_file)) > 0) {
-    unsigned short cols = 0, rows = 0;
-    get_terminal_size(&cols, &rows);
+    int width = GET_OPTION(width);
+    int height = GET_OPTION(height);
     asciichat_error_t rf_err = render_file_create(
         GET_OPTION(render_file),
-        (int)cols, (int)rows,
+        width, height,
         GET_OPTION(fps),
         GET_OPTION(render_theme),
         &ctx->render_file);
