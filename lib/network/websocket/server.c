@@ -897,7 +897,6 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   // - server_max_window_bits=8: Use 256-byte (2^8) sliding window instead of 32KB (2^15)
   // - Reduces decompression buffer size to prevent "rx buffer underflow" in LWS 4.5.2
   // - Still achieves good compression for video frames (10:1 ratio typical for 921KB frames)
-  // - Validated with comprehensive test suite (permessage_deflate_test.c)
 
   // Create libwebsockets context
   server->context = lws_create_context(&info);

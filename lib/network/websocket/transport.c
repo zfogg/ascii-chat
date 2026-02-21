@@ -998,6 +998,11 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
       {"acip", websocket_callback, 0, 4096, 0, NULL, 0}, {NULL, NULL, 0, 0, 0, NULL, 0} // Terminator
   };
 
+  // Enable permessage-deflate compression on client to match server
+  static const struct lws_extension client_extensions[] = {
+      {"permessage-deflate", lws_extension_callback_pm_deflate, "permessage-deflate; client_max_window_bits=8"},
+      {NULL, NULL, NULL}};
+
   struct lws_context_creation_info info;
   memset(&info, 0, sizeof(info));
   info.port = CONTEXT_PORT_NO_LISTEN; // Client mode - no listening
@@ -1005,6 +1010,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
   info.gid = (gid_t)-1; // Cast to avoid undefined behavior with unsigned type
   info.uid = (uid_t)-1; // Cast to avoid undefined behavior with unsigned type
   info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
+  info.extensions = client_extensions; // Enable permessage-deflate compression
 
   ws_data->context = lws_create_context(&info);
   if (!ws_data->context) {
