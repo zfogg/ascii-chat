@@ -352,22 +352,30 @@ int tcp_client_connect(tcp_client_t *client, const char *address, int port, int 
 
     int ipv6_result = getaddrinfo("::1", port_str, &hints, &res);
     if (ipv6_result == 0 && res != NULL) {
+      log_debug("IPv6 localhost resolved successfully");
       // Try IPv6 loopback connection
+      log_debug("Creating IPv6 socket (family=AF_INET6, socktype=SOCK_STREAM, protocol=%d)", res->ai_protocol);
       client->sockfd = socket_create(res->ai_family, res->ai_socktype, res->ai_protocol);
       if (client->sockfd != INVALID_SOCKET_VALUE) {
-        log_debug("Trying IPv6 loopback connection to [::1]:%s...", port_str);
+        log_info("IPv6 socket created successfully: fd=%d", client->sockfd);
+        log_debug("Attempting connect on fd=%d to [::1]:%s with %dms timeout...", client->sockfd, port_str, CONNECT_TIMEOUT);
         if (connect_with_timeout(client->sockfd, res->ai_addr, res->ai_addrlen, CONNECT_TIMEOUT)) {
-          log_debug("Connection successful using IPv6 loopback");
+          log_info("Connection successful using IPv6 loopback (fd=%d)", client->sockfd);
           SAFE_STRNCPY(client->server_ip, "::1", sizeof(client->server_ip));
           freeaddrinfo(res);
           res = NULL; // Prevent double-free at connection_success label
           goto connection_success;
         }
+        log_debug("IPv6 connection attempt failed, closing socket fd=%d", client->sockfd);
         close_socket_safe(client->sockfd);
         client->sockfd = INVALID_SOCKET_VALUE;
+      } else {
+        log_error("Failed to create IPv6 socket: %s", network_error_string());
       }
       freeaddrinfo(res);
       res = NULL;
+    } else {
+      log_debug("IPv6 localhost resolution failed: %s", gai_strerror(ipv6_result));
     }
 
     // IPv6 failed, try IPv4 loopback (127.0.0.1)
@@ -376,25 +384,33 @@ int tcp_client_connect(tcp_client_t *client, const char *address, int port, int 
 
     int ipv4_result = getaddrinfo("127.0.0.1", port_str, &hints, &res);
     if (ipv4_result == 0 && res != NULL) {
+      log_debug("IPv4 localhost resolved successfully");
+      log_debug("Creating IPv4 socket (family=AF_INET, socktype=SOCK_STREAM, protocol=%d)", res->ai_protocol);
       client->sockfd = socket_create(res->ai_family, res->ai_socktype, res->ai_protocol);
       if (client->sockfd != INVALID_SOCKET_VALUE) {
-        log_debug("Trying IPv4 loopback connection to 127.0.0.1:%s...", port_str);
+        log_info("IPv4 socket created successfully: fd=%d", client->sockfd);
+        log_debug("Attempting connect on fd=%d to 127.0.0.1:%s with %dms timeout...", client->sockfd, port_str, CONNECT_TIMEOUT);
         if (connect_with_timeout(client->sockfd, res->ai_addr, res->ai_addrlen, CONNECT_TIMEOUT)) {
-          log_debug("Connection successful using IPv4 loopback");
+          log_info("Connection successful using IPv4 loopback (fd=%d)", client->sockfd);
           SAFE_STRNCPY(client->server_ip, "127.0.0.1", sizeof(client->server_ip));
           freeaddrinfo(res);
           res = NULL;
           goto connection_success;
         }
+        log_debug("IPv4 connection attempt failed, closing socket fd=%d", client->sockfd);
         close_socket_safe(client->sockfd);
         client->sockfd = INVALID_SOCKET_VALUE;
+      } else {
+        log_error("Failed to create IPv4 socket: %s", network_error_string());
       }
       freeaddrinfo(res);
       res = NULL;
+    } else {
+      log_debug("IPv4 localhost resolution failed: %s", gai_strerror(ipv4_result));
     }
 
     // Both IPv6 and IPv4 loopback failed for localhost
-    log_warn("Could not connect to localhost using either IPv6 or IPv4 loopback");
+    log_error("Could not connect to localhost using either IPv6 loopback [::1]:%s or IPv4 loopback 127.0.0.1:%s", port_str, port_str);
     return -1;
   }
 
@@ -415,26 +431,24 @@ int tcp_client_connect(tcp_client_t *client, const char *address, int port, int 
         continue;
       }
 
+      const char *family_name = (addr_iter->ai_family == AF_INET) ? "IPv4" : (addr_iter->ai_family == AF_INET6) ? "IPv6" : "unknown";
+      log_debug("Creating %s socket (family=%d, socktype=%d, protocol=%d)", family_name, addr_iter->ai_family, addr_iter->ai_socktype, addr_iter->ai_protocol);
       client->sockfd = socket_create(addr_iter->ai_family, addr_iter->ai_socktype, addr_iter->ai_protocol);
       if (client->sockfd == INVALID_SOCKET_VALUE) {
+        log_warn("Failed to create %s socket: %s", family_name, network_error_string());
         continue;
       }
 
-      if (addr_iter->ai_family == AF_INET) {
-        log_debug("Trying IPv4 connection...");
-      } else if (addr_iter->ai_family == AF_INET6) {
-        log_debug("Trying IPv6 connection...");
-      }
+      log_info("%s socket created successfully: fd=%d", family_name, client->sockfd);
+      log_debug("Attempting %s connection on fd=%d with %dms timeout...", family_name, client->sockfd, CONNECT_TIMEOUT);
 
       if (connect_with_timeout(client->sockfd, addr_iter->ai_addr, addr_iter->ai_addrlen, CONNECT_TIMEOUT)) {
-        log_debug("Connection successful using %s", addr_iter->ai_family == AF_INET    ? "IPv4"
-                                                    : addr_iter->ai_family == AF_INET6 ? "IPv6"
-                                                                                       : "unknown protocol");
+        log_info("Connection successful using %s (fd=%d)", family_name, client->sockfd);
 
         // Extract server IP address for known_hosts
         if (format_ip_address(addr_iter->ai_family, addr_iter->ai_addr, client->server_ip, sizeof(client->server_ip)) ==
             ASCIICHAT_OK) {
-          log_debug("Resolved server IP: %s", client->server_ip);
+          log_info("Resolved server IP: %s", client->server_ip);
         } else {
           log_warn("Failed to format server IP address");
         }
@@ -442,6 +456,7 @@ int tcp_client_connect(tcp_client_t *client, const char *address, int port, int 
         goto connection_success;
       }
 
+      log_debug("%s connection attempt failed on fd=%d, closing socket...", family_name, client->sockfd);
       close_socket_safe(client->sockfd);
       client->sockfd = INVALID_SOCKET_VALUE;
     }
@@ -455,13 +470,14 @@ connection_success:
 
   // If we exhausted all addresses without success, fail
   if (client->sockfd == INVALID_SOCKET_VALUE) {
-    log_warn("Could not connect to server %s:%d (tried all addresses)", address, port);
+    log_error("Could not connect to server %s:%d (tried all addresses returned by DNS)", address, port);
     return -1;
   }
 
   // Extract local port for client ID
   struct sockaddr_storage local_addr = {0};
   socklen_t addr_len = sizeof(local_addr);
+  log_debug("Extracting local socket address from fd=%d...", client->sockfd);
   if (getsockname(client->sockfd, (struct sockaddr *)&local_addr, &addr_len) == -1) {
     log_error("Failed to get local socket address: %s", network_error_string());
     close_socket_safe(client->sockfd);
@@ -473,29 +489,40 @@ connection_success:
   int local_port = 0;
   if (((struct sockaddr *)&local_addr)->sa_family == AF_INET) {
     local_port = NET_TO_HOST_U16(((struct sockaddr_in *)&local_addr)->sin_port);
+    log_debug("Local socket is IPv4, extracted port: %d", local_port);
   } else if (((struct sockaddr *)&local_addr)->sa_family == AF_INET6) {
     local_port = NET_TO_HOST_U16(((struct sockaddr_in6 *)&local_addr)->sin6_port);
+    log_debug("Local socket is IPv6, extracted port: %d", local_port);
+  } else {
+    log_warn("Local socket has unknown address family: %d", ((struct sockaddr *)&local_addr)->sa_family);
   }
   client->my_client_id = (uint32_t)local_port;
+  log_info("Client ID assigned from local port: %u", client->my_client_id);
 
   // Mark connection as active
   atomic_store(&client->connection_active, true);
   atomic_store(&client->connection_lost, false);
   atomic_store(&client->should_reconnect, false);
+  log_debug("Connection state marked as ACTIVE");
 
   // Initialize crypto (application must set crypto_initialized flag)
   // This is done outside this function by calling client_crypto_init()
 
   // Configure socket options
+  log_debug("Configuring socket options on fd=%d...", client->sockfd);
   if (socket_set_keepalive(client->sockfd, true) < 0) {
-    log_warn("Failed to set socket keepalive: %s", network_error_string());
+    log_warn("Failed to set socket keepalive on fd=%d: %s", client->sockfd, network_error_string());
+  } else {
+    log_debug("Socket keepalive enabled on fd=%d", client->sockfd);
   }
 
   asciichat_error_t sock_config_result = socket_configure_buffers(client->sockfd);
   if (sock_config_result != ASCIICHAT_OK) {
-    log_warn("Failed to configure socket: %s", network_error_string());
+    log_warn("Failed to configure socket buffers on fd=%d: %s", client->sockfd, network_error_string());
+  } else {
+    log_debug("Socket buffers configured successfully on fd=%d", client->sockfd);
   }
 
-  log_debug("Connection established successfully to %s:%d (client_id=%u)", address, port, client->my_client_id);
+  log_info("TCP connection fully established: %s:%d (fd=%d, client_id=%u, server_ip=%s)", address, port, client->sockfd, client->my_client_id, client->server_ip);
   return 0;
 }
