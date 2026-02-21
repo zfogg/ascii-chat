@@ -49,19 +49,26 @@ asciichat_error_t render_file_create(const char *output_path,
 
     asciichat_error_t err = term_renderer_create(&tr_cfg, &ctx->renderer);
     if (err != ASCIICHAT_OK) {
+        log_error("render_file_create: term_renderer_create failed: %s",
+                  asciichat_error_string(err));
         SAFE_FREE(ctx);
         return err;
     }
+    log_debug("render_file_create: term_renderer created successfully (%dx%d px)",
+              term_renderer_width_px(ctx->renderer), term_renderer_height_px(ctx->renderer));
 
     err = ffmpeg_encoder_create(output_path,
                                 term_renderer_width_px(ctx->renderer),
                                 term_renderer_height_px(ctx->renderer),
                                 fps, &ctx->encoder);
     if (err != ASCIICHAT_OK) {
+        log_error("render_file_create: ffmpeg_encoder_create failed: %s",
+                  asciichat_error_string(err));
         term_renderer_destroy(ctx->renderer);
         SAFE_FREE(ctx);
         return err;
     }
+    log_debug("render_file_create: ffmpeg_encoder created successfully");
 
     log_info("render-file: initialized encoder for %s", output_path);
     *out = ctx;
@@ -72,13 +79,25 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx,
                                           const char *ansi_frame) {
     if (!ctx || !ansi_frame) return ASCIICHAT_OK;
 
-    asciichat_error_t err = term_renderer_feed(ctx->renderer,
-                                               ansi_frame, strlen(ansi_frame));
-    if (err != ASCIICHAT_OK) return err;
+    size_t frame_len = strlen(ansi_frame);
+    log_debug("render_file_write_frame: processing frame (len=%zu)", frame_len);
 
-    return ffmpeg_encoder_write_frame(ctx->encoder,
+    asciichat_error_t err = term_renderer_feed(ctx->renderer,
+                                               ansi_frame, frame_len);
+    if (err != ASCIICHAT_OK) {
+        log_warn("render_file_write_frame: term_renderer_feed failed: %s",
+                 asciichat_error_string(err));
+        return err;
+    }
+
+    err = ffmpeg_encoder_write_frame(ctx->encoder,
                                      term_renderer_pixels(ctx->renderer),
                                      term_renderer_pitch(ctx->renderer));
+    if (err != ASCIICHAT_OK) {
+        log_warn("render_file_write_frame: ffmpeg_encoder_write_frame failed: %s",
+                 asciichat_error_string(err));
+    }
+    return err;
 }
 
 asciichat_error_t render_file_destroy(render_file_ctx_t *ctx) {

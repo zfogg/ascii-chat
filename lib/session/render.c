@@ -116,7 +116,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   log_set_terminal_output(false);
 
   // Main render loop - works for both synchronous and event-driven modes
+  log_debug("session_render_loop: entering main loop");
   while (!should_exit(user_data)) {
+    log_debug_every(US_PER_SEC_INT, "session_render_loop: frame %lu", frame_count);
     // Frame timing - measure total time to maintain target FPS
     frame_start_ns = time_get_ns();
 
