@@ -1708,11 +1708,24 @@ void *client_receive_thread(void *arg) {
       void *allocated_buffer = NULL;
       size_t packet_len = 0;
 
+      // Snapshot transport pointer to prevent use-after-free
+      // Transport can be destroyed by WebSocket callback while we're receiving
+      acip_transport_t *transport_snapshot = NULL;
+      mutex_lock(&client->send_mutex);
+      if (!client->transport || atomic_load(&client->shutting_down)) {
+        mutex_unlock(&client->send_mutex);
+        log_debug("RECV_THREAD[%u]: Transport destroyed or client shutting down, exiting receive loop",
+                  client->client_id);
+        break;
+      }
+      transport_snapshot = client->transport;
+      mutex_unlock(&client->send_mutex);
+
       log_debug("🔍 RECV_THREAD[%u]: About to call transport->recv() (transport=%p)", client->client_id,
-                (void *)client->transport);
+                (void *)transport_snapshot);
 
       asciichat_error_t recv_result =
-          client->transport->methods->recv(client->transport, &packet_data, &packet_len, &allocated_buffer);
+          transport_snapshot->methods->recv(transport_snapshot, &packet_data, &packet_len, &allocated_buffer);
 
       log_info("🔍 RECV_THREAD[%u]: transport->recv() returned result=%d, packet_len=%zu, allocated_buffer=%p",
                client->client_id, recv_result, packet_len, allocated_buffer);
