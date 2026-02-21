@@ -515,6 +515,14 @@ void log_init(const char *filename, log_level_t level, bool force_stderr, bool u
   atomic_store(&g_log.force_stderr, force_stderr);
   bool preserve_terminal_output = atomic_load(&g_log.terminal_output_enabled);
 
+  // Disable terminal output if stderr is not a TTY (output is being redirected/piped)
+  // This prevents logs from contaminating redirected output in snapshot/batch modes
+#ifndef _WIN32
+  if (preserve_terminal_output && !isatty(STDERR_FILENO)) {
+    preserve_terminal_output = false;
+  }
+#endif
+
   // Close any existing file (atomic load/store)
   int old_file = atomic_load(&g_log.file);
   if (atomic_load(&g_log.initialized) && old_file >= 0 && old_file != STDERR_FILENO) {
