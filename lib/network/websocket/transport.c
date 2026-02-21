@@ -67,6 +67,7 @@
 
 // Shared internal types (websocket_recv_msg_t, websocket_transport_data_t)
 #include <ascii-chat/network/websocket/internal.h>
+#include <ascii-chat/network/websocket/callback_profiler.h>
 
 // Forward declaration for libwebsockets callback
 static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
@@ -113,6 +114,9 @@ static void *websocket_service_thread(void *arg) {
 static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len) {
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)user;
 
+  // Start profiling this callback invocation
+  uint64_t prof_handle = lws_profiler_start((int)reason, 0);
+
   switch (reason) {
   case LWS_CALLBACK_CLIENT_ESTABLISHED:
     log_info("WebSocket connection established");
@@ -121,6 +125,7 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
       ws_data->is_connected = true;
       mutex_unlock(&ws_data->state_mutex);
     }
+    lws_profiler_stop(prof_handle, 0);
     break;
 
   case LWS_CALLBACK_CLIENT_RECEIVE: {
@@ -179,6 +184,8 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
     // Signal waiting recv() call that a fragment is available
     cond_signal(&ws_data->recv_cond);
     mutex_unlock(&ws_data->recv_mutex);
+    // Profiler tracks bytes processed for receive operations
+    lws_profiler_stop(prof_handle, len);
     break;
   }
 
@@ -193,6 +200,7 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
       // Wake any blocking recv() calls
       cond_broadcast(&ws_data->recv_cond);
     }
+    lws_profiler_stop(prof_handle, 0);
     break;
 
   case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
@@ -205,14 +213,17 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
       // Wake any blocking recv() calls
       cond_broadcast(&ws_data->recv_cond);
     }
+    lws_profiler_stop(prof_handle, 0);
     break;
 
   case LWS_CALLBACK_CLIENT_WRITEABLE:
     // Socket is writable - we don't need to do anything here
     // as we handle writes synchronously in websocket_send()
+    lws_profiler_stop(prof_handle, 0);
     break;
 
   default:
+    lws_profiler_stop(prof_handle, 0);
     break;
   }
 
