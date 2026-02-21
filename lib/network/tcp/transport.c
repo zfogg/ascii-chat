@@ -170,7 +170,11 @@ static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, si
 static asciichat_error_t tcp_close(acip_transport_t *transport) {
   tcp_transport_data_t *tcp = (tcp_transport_data_t *)transport->impl_data;
 
+  log_debug("[TRANSPORT_LIFECYCLE] tcp_close() called: transport=%p, sockfd=%d, is_connected=%s",
+            (void *)transport, tcp->sockfd, tcp->is_connected ? "true" : "false");
+
   if (!tcp->is_connected) {
+    log_debug("[TRANSPORT_LIFECYCLE] tcp_close() early return: already disconnected");
     return ASCIICHAT_OK; // Already closed
   }
 
@@ -178,7 +182,8 @@ static asciichat_error_t tcp_close(acip_transport_t *transport) {
   // We just mark ourselves as disconnected
   tcp->is_connected = false;
 
-  log_debug("TCP transport marked as disconnected (socket not closed)");
+  log_debug("[TRANSPORT_LIFECYCLE] TCP transport marked as disconnected (socket not closed). transport=%p, sockfd=%d",
+            (void *)transport, tcp->sockfd);
   return ASCIICHAT_OK;
 }
 
@@ -194,7 +199,10 @@ static socket_t tcp_get_socket(acip_transport_t *transport) {
 
 static bool tcp_is_connected(acip_transport_t *transport) {
   tcp_transport_data_t *tcp = (tcp_transport_data_t *)transport->impl_data;
-  return tcp->is_connected;
+  bool result = tcp->is_connected;
+  log_debug_every(LOG_RATE_FAST, "[TRANSPORT_LIFECYCLE] tcp_is_connected() called: transport=%p, sockfd=%d, result=%s",
+                  (void *)transport, tcp->sockfd, result ? "true" : "false");
+  return result;
 }
 
 // =============================================================================
@@ -253,7 +261,8 @@ acip_transport_t *acip_tcp_transport_create(socket_t sockfd, crypto_context_t *c
   transport->crypto_ctx = crypto_ctx;
   transport->impl_data = tcp_data;
 
-  log_debug("Created TCP transport for socket %d (crypto: %s)", sockfd, crypto_ctx ? "enabled" : "disabled");
+  log_debug("[TRANSPORT_LIFECYCLE] Created TCP transport: transport=%p, sockfd=%d, is_connected=true, crypto=%s",
+            (void *)transport, sockfd, crypto_ctx ? "enabled" : "disabled");
 
   return transport;
 }
@@ -264,27 +273,41 @@ acip_transport_t *acip_tcp_transport_create(socket_t sockfd, crypto_context_t *c
 
 void acip_transport_destroy(acip_transport_t *transport) {
   if (!transport) {
+    log_debug("[TRANSPORT_LIFECYCLE] acip_transport_destroy() called with NULL transport");
     return;
+  }
+
+  log_debug("[TRANSPORT_LIFECYCLE] acip_transport_destroy() called: transport=%p, impl_data=%p",
+            (void *)transport, transport->impl_data);
+
+  // Get type before we destroy for logging
+  acip_transport_type_t type = 0;
+  if (transport->methods && transport->methods->get_type) {
+    type = transport->methods->get_type(transport);
   }
 
   // Close if still connected
   if (transport->methods && transport->methods->close && transport->methods->is_connected &&
       transport->methods->is_connected(transport)) {
+    log_debug("[TRANSPORT_LIFECYCLE] Transport still connected, calling close() method");
     transport->methods->close(transport);
   }
 
   // Call custom destroy implementation if provided
   if (transport->methods && transport->methods->destroy_impl) {
+    log_debug("[TRANSPORT_LIFECYCLE] Calling custom destroy_impl() for transport type %d", type);
     transport->methods->destroy_impl(transport);
   }
 
   // Free implementation data
   if (transport->impl_data) {
+    log_debug("[TRANSPORT_LIFECYCLE] Freeing transport impl_data: %p", transport->impl_data);
     SAFE_FREE(transport->impl_data);
   }
 
   // Free transport structure
+  log_debug("[TRANSPORT_LIFECYCLE] Freeing transport structure: %p", (void *)transport);
   SAFE_FREE(transport);
 
-  log_debug("Destroyed ACIP transport");
+  log_debug("[TRANSPORT_LIFECYCLE] Destroyed ACIP transport (type=%d)", type);
 }
