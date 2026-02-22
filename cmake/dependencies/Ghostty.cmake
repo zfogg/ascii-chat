@@ -417,7 +417,6 @@ elseif(UNIX AND NOT APPLE)
     set(GHOSTTY_LIBS ${GHOSTTY_LIBRARIES} ${GTK_LDFLAGS})
     set(GHOSTTY_INCLUDES ${GHOSTTY_INCLUDE_DIRS} ${GTK_INCLUDE_DIRS})
     message(STATUS "${BoldGreen}✓${ColorReset} Ghostty (Linux): ghostty + GTK")
-    endif()
 else()
     # Windows: stubs only
     set(GHOSTTY_LIBS "")
