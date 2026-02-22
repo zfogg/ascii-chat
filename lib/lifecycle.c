@@ -119,23 +119,13 @@ bool lifecycle_shutdown_forever(lifecycle_t *lc) {
 }
 
 bool lifecycle_is_initialized(const lifecycle_t *lc) {
-    if (lc == NULL) {
-        log_debug("[lifecycle] is_initialized: NULL lifecycle pointer");
-        return false;
-    }
-    bool result = atomic_load(&lc->state) == LIFECYCLE_INITIALIZED;
-    log_debug_every(1000, "[lifecycle] is_initialized: %s", result ? "yes" : "no");
-    return result;
+    if (lc == NULL) return false;
+    return atomic_load(&lc->state) == LIFECYCLE_INITIALIZED;
 }
 
 bool lifecycle_is_dead(const lifecycle_t *lc) {
-    if (lc == NULL) {
-        log_debug("[lifecycle] is_dead: NULL lifecycle pointer");
-        return false;
-    }
-    bool result = atomic_load(&lc->state) == LIFECYCLE_DEAD;
-    log_debug_every(1000, "[lifecycle] is_dead: %s", result ? "yes" : "no");
-    return result;
+    if (lc == NULL) return false;
+    return atomic_load(&lc->state) == LIFECYCLE_DEAD;
 }
 
 bool lifecycle_reset(lifecycle_t *lc) {
