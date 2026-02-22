@@ -65,8 +65,6 @@ Theory((int width, int height), ascii, image_size_property) {
   SAFE_FREE(result);
   image_destroy(img);
 }
-// Use verbose logging with debug level enabled and stdout/stderr not disabled
-TestSuite(ascii);
 
 Test(ascii, ascii_convert_basic) {
   image_t *img = image_new(4, 4);
