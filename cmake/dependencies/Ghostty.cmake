@@ -72,10 +72,10 @@ if(APPLE)
                                   "Install from: https://ziglang.org/download/")
             endif()
 
-            # Build ghostty using zig build (full app with Metal backend)
+            # Build ghostty using zig build (full app with Metal backend, embedded runtime for C API)
             set(GHOSTTY_LOG_FILE "${GHOSTTY_BUILD_DIR}/ghostty-build.log")
             execute_process(
-                COMMAND "${ZIG_EXECUTABLE}" build -Doptimize=ReleaseFast --prefix "${GHOSTTY_BUILD_DIR}"
+                COMMAND "${ZIG_EXECUTABLE}" build -Dapp-runtime=embedded -Doptimize=ReleaseFast --prefix "${GHOSTTY_BUILD_DIR}"
                 WORKING_DIRECTORY "${GHOSTTY_SOURCE_DIR}"
                 RESULT_VARIABLE GHOSTTY_BUILD_RESULT
                 OUTPUT_FILE "${GHOSTTY_LOG_FILE}"
@@ -173,7 +173,7 @@ elseif(UNIX AND NOT APPLE)
             message(STATUS "Building ghostty library with CFLAGS:${GHOSTTY_CFLAGS}")
             message(STATUS "Working directory: ${GHOSTTY_SOURCE_DIR}")
             execute_process(
-                COMMAND env CFLAGS="${GHOSTTY_CFLAGS}" "${ZIG_EXECUTABLE}" build install -Dapp-runtime=none -Doptimize=ReleaseFast --prefix "${GHOSTTY_BUILD_DIR}"
+                COMMAND env CFLAGS="${GHOSTTY_CFLAGS}" "${ZIG_EXECUTABLE}" build install -Dapp-runtime=gtk -Doptimize=ReleaseFast --prefix "${GHOSTTY_BUILD_DIR}"
                 WORKING_DIRECTORY "${GHOSTTY_SOURCE_DIR}"
                 RESULT_VARIABLE GHOSTTY_BUILD_RESULT
                 OUTPUT_FILE "${GHOSTTY_LOG_FILE}"
