@@ -1,5 +1,4 @@
-#ifndef ASCIICHAT_UTIL_LIFECYCLE_H
-#define ASCIICHAT_UTIL_LIFECYCLE_H
+#pragma once
 
 #include <stdatomic.h>
 #include <stdbool.h>
@@ -7,7 +6,6 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif
 
 /**
  * @file lifecycle.h
@@ -38,16 +36,16 @@ extern "C" {
  */
 
 typedef enum {
-    LIFECYCLE_UNINITIALIZED = 0,   ///< Not yet initialized (zero = default)
-    LIFECYCLE_INITIALIZING  = 1,   ///< init_once winner in progress; losers spin
-    LIFECYCLE_INITIALIZED   = 2,   ///< Ready to use
-    LIFECYCLE_DEAD          = 3,   ///< Permanently shut down; no re-init
+  LIFECYCLE_UNINITIALIZED = 0, ///< Not yet initialized (zero = default)
+  LIFECYCLE_INITIALIZING = 1,  ///< init_once winner in progress; losers spin
+  LIFECYCLE_INITIALIZED = 2,   ///< Ready to use
+  LIFECYCLE_DEAD = 3,          ///< Permanently shut down; no re-init
 } lifecycle_state_t;
 
 typedef enum {
-    LIFECYCLE_SYNC_NONE   = 0,   ///< No sync primitive
-    LIFECYCLE_SYNC_MUTEX  = 1,   ///< Contains mutex_t pointer
-    LIFECYCLE_SYNC_RWLOCK = 2,   ///< Contains rwlock_t pointer
+  LIFECYCLE_SYNC_NONE = 0,   ///< No sync primitive
+  LIFECYCLE_SYNC_MUTEX = 1,  ///< Contains mutex_t pointer
+  LIFECYCLE_SYNC_RWLOCK = 2, ///< Contains rwlock_t pointer
 } lifecycle_sync_type_t;
 
 /**
@@ -55,22 +53,28 @@ typedef enum {
  * Combines init/shutdown state with mutex or rwlock initialization.
  */
 typedef struct {
-    _Atomic int state;              ///< lifecycle_state_t enum value
-    lifecycle_sync_type_t sync_type; ///< Type of sync primitive (if any)
-    union {
-        struct mutex_t *mutex;      ///< Pointer to mutex (if sync_type == LIFECYCLE_SYNC_MUTEX)
-        struct rwlock_t *rwlock;    ///< Pointer to rwlock (if sync_type == LIFECYCLE_SYNC_RWLOCK)
-    } sync;
+  _Atomic int state;               ///< lifecycle_state_t enum value
+  lifecycle_sync_type_t sync_type; ///< Type of sync primitive (if any)
+  union {
+    struct mutex_t *mutex;   ///< Pointer to mutex (if sync_type == LIFECYCLE_SYNC_MUTEX)
+    struct rwlock_t *rwlock; ///< Pointer to rwlock (if sync_type == LIFECYCLE_SYNC_RWLOCK)
+  } sync;
 } lifecycle_t;
 
 /// Static initializer for module-global lifecycle variables (no sync primitive)
-#define LIFECYCLE_INIT { .state = LIFECYCLE_UNINITIALIZED, .sync_type = LIFECYCLE_SYNC_NONE, .sync = {0} }
+#define LIFECYCLE_INIT {.state = LIFECYCLE_UNINITIALIZED, .sync_type = LIFECYCLE_SYNC_NONE, .sync = {0}}
 
 /// Static initializer for lifecycle with mutex
-#define LIFECYCLE_INIT_MUTEX(m) { .state = LIFECYCLE_UNINITIALIZED, .sync_type = LIFECYCLE_SYNC_MUTEX, .sync = {.mutex = (m)} }
+#define LIFECYCLE_INIT_MUTEX(m)                                                                                        \
+  {                                                                                                                    \
+    .state = LIFECYCLE_UNINITIALIZED, .sync_type = LIFECYCLE_SYNC_MUTEX, .sync = {.mutex = (m) }                       \
+  }
 
 /// Static initializer for lifecycle with rwlock
-#define LIFECYCLE_INIT_RWLOCK(r) { .state = LIFECYCLE_UNINITIALIZED, .sync_type = LIFECYCLE_SYNC_RWLOCK, .sync = {.rwlock = (r)} }
+#define LIFECYCLE_INIT_RWLOCK(r)                                                                                       \
+  {                                                                                                                    \
+    .state = LIFECYCLE_UNINITIALIZED, .sync_type = LIFECYCLE_SYNC_RWLOCK, .sync = {.rwlock = (r) }                     \
+  }
 
 /**
  * CAS-based initialization: UNINIT → INITIALIZED.
@@ -229,4 +233,4 @@ bool lifecycle_shutdown(lifecycle_t *lc);
 }
 #endif
 
-#endif /* ASCIICHAT_UTIL_LIFECYCLE_H */
+#endif
