@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <ctype.h>
+#include <stdatomic.h>
 
 // ============================================================================
 // Global State
@@ -28,9 +29,9 @@
  * @brief Global timer manager
  */
 static struct {
-  timer_record_t *timers; ///< Hash table of active timers (uthash head pointer)
-  rwlock_t rwlock;        ///< Read-write lock for thread-safe access (uthash requires external locking)
-  bool initialized;       ///< Initialization state
+  timer_record_t *timers;           ///< Hash table of active timers (uthash head pointer)
+  rwlock_t rwlock;                  ///< Read-write lock for thread-safe access (uthash requires external locking)
+  _Atomic(bool) initialized;        ///< Atomic initialization state (thread-safe reads in init/destroy)
 } g_timer_manager = {
     .timers = NULL,
     .initialized = false,
@@ -123,7 +124,7 @@ void time_ns_to_timespec(uint64_t ns, struct timespec *ts) {
 // ============================================================================
 
 bool timer_system_init(void) {
-  if (g_timer_manager.initialized) {
+  if (atomic_load(&g_timer_manager.initialized)) {
     return true;
   }
 
@@ -137,14 +138,14 @@ bool timer_system_init(void) {
   }
 
   g_timer_manager.timers = NULL;
-  g_timer_manager.initialized = true;
+  atomic_store(&g_timer_manager.initialized, true);
 
   log_dev("Timer system initialized");
   return true;
 }
 
 void timer_system_destroy(void) {
-  if (!g_timer_manager.initialized) {
+  if (!atomic_load(&g_timer_manager.initialized)) {
     return;
   }
 
@@ -161,7 +162,7 @@ void timer_system_destroy(void) {
   }
 
   g_timer_manager.timers = NULL;
-  g_timer_manager.initialized = false;
+  atomic_store(&g_timer_manager.initialized, false);
 
   rwlock_wrunlock(&g_timer_manager.rwlock);
   rwlock_destroy(&g_timer_manager.rwlock);
@@ -170,7 +171,7 @@ void timer_system_destroy(void) {
 }
 
 bool timer_start(const char *name) {
-  if (!g_timer_manager.initialized) {
+  if (!atomic_load(&g_timer_manager.initialized)) {
     SET_ERRNO(ERROR_INVALID_STATE, "Timer system not initialized");
     return false;
   }
@@ -221,7 +222,7 @@ bool timer_start(const char *name) {
 }
 
 double timer_stop(const char *name) {
-  if (!g_timer_manager.initialized) {
+  if (!atomic_load(&g_timer_manager.initialized)) {
     SET_ERRNO(ERROR_INVALID_STATE, "Timer system not initialized");
     return -1.0;
   }
@@ -265,7 +266,7 @@ double timer_stop(const char *name) {
 }
 
 bool timer_is_initialized(void) {
-  return g_timer_manager.initialized;
+  return atomic_load(&g_timer_manager.initialized);
 }
 
 // ============================================================================
