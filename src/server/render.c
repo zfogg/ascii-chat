@@ -501,6 +501,16 @@ void *client_video_render_thread(void *arg) {
     char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot,
                                                             false, &frame_size, NULL, &sources_count);
 
+    // RACE CONDITION FIX: If no video sources are available yet, skip frame generation
+    // This prevents sending empty/NULL frames early and allows more time for video frames to arrive
+    if (sources_count == 0) {
+      log_dev_every(100 * NS_PER_MS_INT,
+                    "Video render waiting for sources on client %u (no video sources yet, skipping frame)",
+                    thread_client_id);
+      SAFE_FREE(ascii_frame);
+      continue; // Skip to next iteration (frame rate limited by adaptive_sleep_do above)
+    }
+
     // DEBUG: Log frame generation details
     static uint32_t last_frame_hash = -1; // Initialize to -1 so first frame is always new
     uint32_t current_frame_hash = 0;
