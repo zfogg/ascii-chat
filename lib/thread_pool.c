@@ -128,13 +128,13 @@ thread_pool_t *thread_pool_create_with_workers(const char *pool_name, size_t num
   pool->shutdown_requested = false;
 
   // Initialize mutexes
-  if (mutex_init(&pool->threads_mutex) != 0) {
+  if (mutex_init(&pool->threads_mutex, "worker_list") != 0) {
     SAFE_FREE(pool);
     SET_ERRNO(ERROR_THREAD, "Failed to initialize threads_mutex");
     return NULL;
   }
 
-  if (mutex_init(&pool->work_queue_mutex) != 0) {
+  if (mutex_init(&pool->work_queue_mutex, "pending_tasks") != 0) {
     mutex_destroy(&pool->threads_mutex);
     SAFE_FREE(pool);
     SET_ERRNO(ERROR_THREAD, "Failed to initialize work_queue_mutex");
@@ -142,7 +142,7 @@ thread_pool_t *thread_pool_create_with_workers(const char *pool_name, size_t num
   }
 
   // Initialize condition variable
-  if (cond_init(&pool->work_available) != 0) {
+  if (cond_init(&pool->work_available, "task_available") != 0) {
     mutex_destroy(&pool->work_queue_mutex);
     mutex_destroy(&pool->threads_mutex);
     SAFE_FREE(pool);
