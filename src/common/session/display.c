@@ -824,22 +824,6 @@ void session_display_cursor_home(session_display_ctx_t *ctx) {
   }
 }
 
-void session_display_set_cursor_visible(session_display_ctx_t *ctx, bool visible) {
-  if (!ctx || !ctx->initialized) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Session display context is NULL or uninitialized");
-    return;
-  }
-
-  // Only perform terminal operations when we have a valid TTY (not when piping)
-  if (ctx->has_tty && ctx->tty_info.fd >= 0) {
-    if (visible) {
-      (void)terminal_cursor_show();
-    } else {
-      (void)terminal_cursor_hide();
-    }
-  }
-}
-
 bool session_display_has_audio_playback(session_display_ctx_t *ctx) {
   if (!ctx || !ctx->initialized) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Session display context is NULL or uninitialized");

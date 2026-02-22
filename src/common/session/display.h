@@ -331,15 +331,6 @@ void session_display_clear(session_display_ctx_t *ctx);
  */
 void session_display_cursor_home(session_display_ctx_t *ctx);
 
-/**
- * @brief Show or hide the cursor
- * @param ctx Display context (must not be NULL)
- * @param visible true to show cursor, false to hide
- *
- * @ingroup session
- */
-void session_display_set_cursor_visible(session_display_ctx_t *ctx, bool visible);
-
 /** @} */
 
 /* ============================================================================
