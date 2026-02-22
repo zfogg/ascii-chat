@@ -185,11 +185,15 @@ static void *websocket_service_thread(void *arg) {
         // IMPORTANT: msg.data already points to start of buffer (with LWS_PRE padding)
         // lws_write() will write the frame header backwards into LWS_PRE region
         // then write the data. We need to pass pointer to start of LWS_PRE region.
-        log_info(">>> SENDING: %zu bytes via lws_write() for wsi=%p", msg.len, (void *)ws_data->wsi);
+        uint64_t write_start_ns = time_get_ns();
+        log_info(">>> SERVICE_THREAD_WRITE: %zu bytes via lws_write() for wsi=%p, is_connected=%d",
+                 msg.len, (void *)ws_data->wsi, ws_data->is_connected);
         int written = lws_write(ws_data->wsi, msg.data + LWS_PRE, msg.len, LWS_WRITE_BINARY);
+        uint64_t write_end_ns = time_get_ns();
 
         if (written < 0) {
-          log_error(">>> LWS_WRITE_FAILED: error code %d for %zu bytes", written, msg.len);
+          log_fatal("🔴 SERVICE_THREAD_WRITE_FAILED: error code %d for %zu bytes, duration %.3fms, is_connected=%d",
+                    written, msg.len, (double)(write_end_ns - write_start_ns) / 1000000.0, ws_data->is_connected);
           // Queue buffer for deferred free to allow compression layer to complete
           deferred_buffer_free(ws_data, msg.data, LWS_PRE + msg.len);
           mutex_lock(&ws_data->send_mutex);
@@ -197,9 +201,12 @@ static void *websocket_service_thread(void *arg) {
         }
 
         if ((size_t)written != msg.len) {
-          log_warn(">>> PARTIAL_WRITE: sent %d/%zu bytes", written, msg.len);
+          log_warn(">>> PARTIAL_WRITE: sent %d/%zu bytes (%.1f%%), duration %.3fms",
+                   written, msg.len, (100.0 * written) / msg.len,
+                   (double)(write_end_ns - write_start_ns) / 1000000.0);
         } else {
-          log_info(">>> WRITE_SUCCESS: sent %d bytes", written);
+          log_info(">>> WRITE_SUCCESS: sent %d bytes, duration %.3fms",
+                   written, (double)(write_end_ns - write_start_ns) / 1000000.0);
         }
 
         // Queue buffer for deferred free to allow compression layer to complete asynchronously.
@@ -223,10 +230,25 @@ static void *websocket_service_thread(void *arg) {
 
     // Service libwebsockets (processes network events, triggers callbacks)
     // 50ms timeout allows checking service_running flag regularly
+    uint64_t service_start_ns = time_get_ns();
     int result = lws_service(ws_data->context, 50);
+    uint64_t service_end_ns = time_get_ns();
+
+    if (loop_count <= 50) {
+      log_info("[LOOP %d] lws_service() returned %d, duration %.3fms", loop_count, result,
+               (double)(service_end_ns - service_start_ns) / 1000000.0);
+    }
+
     if (result < 0) {
-      log_error("lws_service error: %d", result);
+      log_fatal("🔴 lws_service error: %d at loop %d", result, loop_count);
       break;
+    }
+
+    // Check if connection is still alive
+    if (loop_count <= 50 && ws_data->is_connected) {
+      log_info("[LOOP %d] After lws_service: is_connected=true, wsi=%p", loop_count, (void *)ws_data->wsi);
+    } else if (loop_count <= 50) {
+      log_warn("[LOOP %d] After lws_service: is_connected=false, wsi=%p", loop_count, (void *)ws_data->wsi);
     }
   }
 
@@ -248,26 +270,34 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)user;
 
   switch (reason) {
-  case LWS_CALLBACK_CLIENT_ESTABLISHED:
-    log_info("WebSocket connection established");
+  case LWS_CALLBACK_CLIENT_ESTABLISHED: {
+    uint64_t now_ns = time_get_ns();
+    log_fatal("🟢🟢🟢 WebSocket CLIENT_ESTABLISHED! wsi=%p, ws_data=%p, timestamp=%llu",
+              (void *)wsi, (void *)ws_data, (unsigned long long)now_ns);
     if (ws_data) {
       mutex_lock(&ws_data->state_mutex);
+      log_fatal("    [ESTABLISHED] Setting is_connected=true (was %d)", ws_data->is_connected);
       ws_data->is_connected = true;
       cond_signal(&ws_data->state_cond);
       mutex_unlock(&ws_data->state_mutex);
+      log_fatal("    [ESTABLISHED] State updated, wsi=%p ready for send/recv", (void *)wsi);
     }
     break;
+  }
 
   case LWS_CALLBACK_CLIENT_RECEIVE: {
     // Received data from server - may be fragmented for large messages
+    uint64_t now_ns = time_get_ns();
     if (!ws_data || !in || len == 0) {
+      log_debug("CLIENT_RECEIVE: ws_data=%p, in=%p, len=%zu - skipping", (void *)ws_data, in, len);
       break;
     }
 
     bool is_first = lws_is_first_fragment(wsi);
     bool is_final = lws_is_final_fragment(wsi);
 
-    log_dev_every(4500000, "WebSocket fragment: %zu bytes (first=%d, final=%d)", len, is_first, is_final);
+    log_info("🟡 LWS_CALLBACK_CLIENT_RECEIVE: %zu bytes (first=%d, final=%d), wsi=%p, timestamp=%llu",
+             len, is_first, is_final, (void *)wsi, (unsigned long long)now_ns);
 
     // Queue this fragment immediately with first/final flags.
     // Per LWS design, each fragment is processed individually by the callback.
@@ -304,8 +334,28 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
   }
 
   case LWS_CALLBACK_CLIENT_CLOSED:
-  case LWS_CALLBACK_CLOSED:
-    log_info("WebSocket connection closed");
+  case LWS_CALLBACK_CLOSED: {
+    uint64_t now_ns = time_get_ns();
+    log_fatal("🔴🔴🔴 WebSocket connection CLOSED! reason=%d, wsi=%p, ws_data=%p, is_connected=%d, timestamp=%llu",
+              reason, (void *)wsi, (void *)ws_data, ws_data ? ws_data->is_connected : -1,
+              (unsigned long long)now_ns);
+    if (ws_data) {
+      mutex_lock(&ws_data->state_mutex);
+      log_fatal("    [CLOSE] Setting is_connected=false (was %d)", ws_data->is_connected);
+      ws_data->is_connected = false;
+      mutex_unlock(&ws_data->state_mutex);
+
+      // Wake any blocking recv() calls
+      cond_broadcast(&ws_data->recv_cond);
+    }
+    break;
+  }
+
+  case LWS_CALLBACK_CLIENT_CONNECTION_ERROR: {
+    uint64_t now_ns = time_get_ns();
+    log_fatal("🔴🔴🔴 WebSocket CONNECTION ERROR! reason=%d, error=%s, wsi=%p, ws_data=%p, timestamp=%llu",
+              reason, in ? (const char *)in : "unknown", (void *)wsi, (void *)ws_data,
+              (unsigned long long)now_ns);
     if (ws_data) {
       mutex_lock(&ws_data->state_mutex);
       ws_data->is_connected = false;
@@ -315,23 +365,17 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
       cond_broadcast(&ws_data->recv_cond);
     }
     break;
-
-  case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
-    log_error("WebSocket connection error: %s", in ? (const char *)in : "unknown");
-    if (ws_data) {
-      mutex_lock(&ws_data->state_mutex);
-      ws_data->is_connected = false;
-      mutex_unlock(&ws_data->state_mutex);
-
-      // Wake any blocking recv() calls
-      cond_broadcast(&ws_data->recv_cond);
-    }
-    break;
+  }
 
   case LWS_CALLBACK_CLIENT_WRITEABLE: {
     // Socket is writable - process queued messages for sending with flow control
-    log_debug("<<< LWS_CALLBACK_CLIENT_WRITEABLE FIRED for wsi=%p", (void *)wsi);
-    if (!ws_data) break;
+    uint64_t now_ns = time_get_ns();
+    log_info("🟡 LWS_CALLBACK_CLIENT_WRITEABLE FIRED for wsi=%p, ws_data=%p, is_connected=%d, timestamp=%llu",
+             (void *)wsi, (void *)ws_data, ws_data ? ws_data->is_connected : -1, (unsigned long long)now_ns);
+    if (!ws_data) {
+      log_warn("    [CLIENT_WRITEABLE] ws_data is NULL, breaking");
+      break;
+    }
 
     websocket_recv_msg_t msg;
     int message_count = 0;
@@ -610,6 +654,9 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
 
   if (!connected && !has_queued_data) {
     // Only fail if connection is closed AND no buffered data
+    uint64_t now_ns = time_get_ns();
+    log_fatal("🔴 WEBSOCKET_RECV: Connection not established! connected=%d, has_queued_data=%d, wsi=%p, timestamp=%llu",
+              connected, has_queued_data, (void *)ws_data->wsi, (unsigned long long)now_ns);
     mutex_unlock(&ws_data->recv_mutex);
     return SET_ERRNO(ERROR_NETWORK, "Connection not established");
   }
@@ -820,29 +867,33 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
 
 static asciichat_error_t websocket_close(acip_transport_t *transport) {
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
+  uint64_t now_ns = time_get_ns();
 
   mutex_lock(&ws_data->state_mutex);
 
   if (!ws_data->is_connected) {
     mutex_unlock(&ws_data->state_mutex);
-    log_debug("websocket_close: Already closed (is_connected=false), wsi=%p", (void *)ws_data->wsi);
+    log_info("websocket_close: Already closed (is_connected=false), wsi=%p, timestamp=%llu",
+             (void *)ws_data->wsi, (unsigned long long)now_ns);
     return ASCIICHAT_OK; // Already closed
   }
 
-  log_info("websocket_close: Setting is_connected=false, wsi=%p", (void *)ws_data->wsi);
+  log_fatal("🔴 websocket_close called! Setting is_connected=false, wsi=%p, timestamp=%llu",
+            (void *)ws_data->wsi, (unsigned long long)now_ns);
   ws_data->is_connected = false;
   mutex_unlock(&ws_data->state_mutex);
 
   // Close WebSocket connection
   if (ws_data->wsi) {
-    log_debug("websocket_close: Calling lws_close_reason for wsi=%p", (void *)ws_data->wsi);
+    log_fatal("    [websocket_close] Calling lws_close_reason for wsi=%p", (void *)ws_data->wsi);
     lws_close_reason(ws_data->wsi, LWS_CLOSE_STATUS_NORMAL, NULL, 0);
+    log_fatal("    [websocket_close] lws_close_reason returned");
   }
 
   // Wake any blocking recv() calls
   cond_broadcast(&ws_data->recv_cond);
 
-  log_debug("WebSocket transport closed");
+  log_info("WebSocket transport closed, wsi=%p", (void *)ws_data->wsi);
   return ASCIICHAT_OK;
 }
 
