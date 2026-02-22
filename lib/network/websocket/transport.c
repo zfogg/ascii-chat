@@ -524,6 +524,11 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
 
     log_debug(">>> SERVER FRAME QUEUED: %zu bytes for wsi=%p", send_len, (void *)ws_data->wsi);
 
+    // Notify libwebsockets that there's data to send - triggers LWS_CALLBACK_SERVER_WRITEABLE
+    // This is essential! Without this, the queued frames never get transmitted.
+    lws_callback_on_writable(ws_data->wsi);
+    log_debug(">>> REQUESTED SERVER_WRITEABLE CALLBACK for wsi=%p", (void *)ws_data->wsi);
+
     SAFE_FREE(send_buffer);
     if (encrypted_packet)
       buffer_pool_free(NULL, encrypted_packet, send_len);
