@@ -12,6 +12,7 @@
 #include <ascii-chat-deps/sokol/sokol_time.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/platform/rwlock.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <stdlib.h>
@@ -31,10 +32,10 @@
 static struct {
   timer_record_t *timers;           ///< Hash table of active timers (uthash head pointer)
   rwlock_t rwlock;                  ///< Read-write lock for thread-safe access (uthash requires external locking)
-  _Atomic(bool) initialized;        ///< Atomic initialization state (thread-safe reads in init/destroy)
+  lifecycle_t lifecycle;            ///< Lifecycle state machine for init/shutdown synchronization
 } g_timer_manager = {
     .timers = NULL,
-    .initialized = false,
+    .lifecycle = LIFECYCLE_INIT,
 };
 
 /**
@@ -124,28 +125,27 @@ void time_ns_to_timespec(uint64_t ns, struct timespec *ts) {
 // ============================================================================
 
 bool timer_system_init(void) {
-  if (atomic_load(&g_timer_manager.initialized)) {
+  if (lifecycle_is_initialized(&g_timer_manager.lifecycle)) {
     return true;
   }
 
   // Initialize sokol_time
   stm_setup();
 
-  // Initialize rwlock (uthash requires external locking for writes, rwlock allows concurrent reads)
-  if (rwlock_init(&g_timer_manager.rwlock, "timer_manager") != 0) {
-    SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to initialize timer rwlock");
-    return false;
+  // Initialize rwlock and lifecycle together
+  if (!lifecycle_init_with_rwlock(&g_timer_manager.lifecycle, &g_timer_manager.rwlock, "timer_manager")) {
+    SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to initialize timer system (already initialized by another thread)");
+    return true; // Another thread already initialized it
   }
 
   g_timer_manager.timers = NULL;
-  atomic_store(&g_timer_manager.initialized, true);
 
   log_dev("Timer system initialized");
   return true;
 }
 
 void timer_system_destroy(void) {
-  if (!atomic_load(&g_timer_manager.initialized)) {
+  if (!lifecycle_is_initialized(&g_timer_manager.lifecycle)) {
     return;
   }
 
@@ -162,16 +162,17 @@ void timer_system_destroy(void) {
   }
 
   g_timer_manager.timers = NULL;
-  atomic_store(&g_timer_manager.initialized, false);
 
   rwlock_wrunlock(&g_timer_manager.rwlock);
-  rwlock_destroy(&g_timer_manager.rwlock);
+
+  /* Shutdown lifecycle and destroy rwlock together */
+  lifecycle_shutdown_with_rwlock(&g_timer_manager.lifecycle, &g_timer_manager.rwlock);
 
   log_debug("Timer system cleaned up (freed %d timers)", timer_count);
 }
 
 bool timer_start(const char *name) {
-  if (!atomic_load(&g_timer_manager.initialized)) {
+  if (!lifecycle_is_initialized(&g_timer_manager.lifecycle)) {
     SET_ERRNO(ERROR_INVALID_STATE, "Timer system not initialized");
     return false;
   }
@@ -222,7 +223,7 @@ bool timer_start(const char *name) {
 }
 
 double timer_stop(const char *name) {
-  if (!atomic_load(&g_timer_manager.initialized)) {
+  if (!lifecycle_is_initialized(&g_timer_manager.lifecycle)) {
     SET_ERRNO(ERROR_INVALID_STATE, "Timer system not initialized");
     return -1.0;
   }
@@ -266,7 +267,7 @@ double timer_stop(const char *name) {
 }
 
 bool timer_is_initialized(void) {
-  return atomic_load(&g_timer_manager.initialized);
+  return lifecycle_is_initialized(&g_timer_manager.lifecycle);
 }
 
 // ============================================================================
