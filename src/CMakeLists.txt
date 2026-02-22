@@ -20,7 +20,6 @@ set(APP_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/client/audio.c
     ${CMAKE_CURRENT_SOURCE_DIR}/client/keepalive.c
     ${CMAKE_CURRENT_SOURCE_DIR}/client/webrtc.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/client/connection_attempt.c
     # Mirror mode
     ${CMAKE_CURRENT_SOURCE_DIR}/mirror/main.c
     # Discovery-service mode
