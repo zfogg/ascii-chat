@@ -95,16 +95,19 @@ bool parse_color_filter(const char *arg, void *dest, char **error_msg);
 bool parse_render_mode(const char *arg, void *dest, char **error_msg);
 
 /**
- * @brief Parse render theme option (macOS and Linux only)
+ * @brief Parse render theme option for pixel rendering (macOS and Linux only)
  * @param arg String argument (e.g., "dark", "light", "auto")
- * @param dest Destination pointer (int*)
+ * @param dest Destination pointer (int*, will store term_renderer_theme_t value)
  * @param error_msg Optional error message output (set on failure)
  * @return true on success, false on error
  *
+ * Controls the rendering theme when using pixel output (ghostty renderer).
+ * The theme determines color palette for ANSI text rendering.
+ *
  * Valid values:
- * - "dark", "0" - Dark background (TERM_RENDERER_THEME_DARK)
- * - "light", "1" - Light background (TERM_RENDERER_THEME_LIGHT)
- * - "auto", "2" - Auto-detect theme (TERM_RENDERER_THEME_AUTO)
+ * - "dark", "0" - Dark theme: dark background, light text (TERM_RENDERER_THEME_DARK)
+ * - "light", "1" - Light theme: light background, dark text (TERM_RENDERER_THEME_LIGHT)
+ * - "auto", "2" - Auto-detect theme from terminal (TERM_RENDERER_THEME_AUTO, default)
  */
 bool parse_render_theme(const char *arg, void *dest, char **error_msg);
 

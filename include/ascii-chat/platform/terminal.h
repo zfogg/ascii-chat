@@ -766,16 +766,23 @@ bool terminal_should_color_output(int fd);
 terminal_color_mode_t terminal_get_effective_color_mode(void);
 
 /**
- * @brief Detect if terminal has a dark background
- * @return true if terminal has dark background, false if light or unknown
+ * @brief Detect if terminal theme is dark
+ * @return true if terminal has a dark theme, false if light theme or unknown
  *
- * Attempts to detect terminal background color using:
- * 1. Common environment variables (COLORFGBG, TERM_PROGRAM)
- * 2. Terminal-specific hints (iTerm2, VS Code, etc.)
- * 3. Defaults to assuming dark background (most common for dev terminals)
+ * Attempts to detect terminal's color theme (dark or light background) using:
+ * 1. OSC 11 escape sequence query with luminance calculation (modern terminals)
+ * 2. Common environment variables (COLORFGBG, TERM_PROGRAM)
+ * 3. Terminal-specific hints (iTerm2, VS Code, Konsole, etc.)
+ * 4. Defaults to dark theme (most common for developer terminals)
+ *
+ * Used by the theme system to select appropriate colors throughout the UI:
+ * - Color schemes adapt based on detected theme
+ * - Highlight colors choose better contrast for the detected theme
+ * - Text colors are selected to work with the background theme
  *
  * @note This is a best-effort heuristic and may not be 100% accurate
- * @note Used for choosing appropriate highlight colors
+ * @note Result is cached for performance (theme doesn't change during session)
+ * @note User can override via TERM_BACKGROUND environment variable
  *
  * @ingroup platform
  */

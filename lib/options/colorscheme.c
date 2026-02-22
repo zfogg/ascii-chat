@@ -691,9 +691,21 @@ asciichat_error_t colorscheme_export_scheme(const char *scheme_name, const char 
 }
 
 /* ============================================================================
- * Terminal Background Detection
+ * Terminal Theme Detection
  * ============================================================================ */
 
+/**
+ * @brief Detect the user's terminal theme (dark or light background)
+ *
+ * Determines the terminal's color background theme to adapt color schemes accordingly.
+ * The detection uses a priority-based approach:
+ * 1. Environment variable override (TERM_BACKGROUND="light" or "dark")
+ * 2. Automatic detection via terminal_has_dark_background():
+ *    - OSC 11 escape query with luminance calculation (modern terminals)
+ *    - Environment variables and terminal type hints (fallback)
+ *
+ * @return The detected theme: TERM_BACKGROUND_LIGHT or TERM_BACKGROUND_DARK
+ */
 terminal_background_t detect_terminal_background(void) {
   /* Method 1: Check environment variable override (highest priority) */
   const char *term_bg = SAFE_GETENV("TERM_BACKGROUND");
@@ -706,9 +718,8 @@ terminal_background_t detect_terminal_background(void) {
     }
   }
 
-  /* Method 2: Use OSC 11 query with luminance calculation + environment fallbacks
-   * This automatically queries the terminal via OSC 11, calculates luminance,
-   * and falls back to $COLORFGBG, $TERM_PROGRAM, etc. if query fails */
+  /* Method 2: Use terminal_has_dark_background() for automatic theme detection
+   * This checks OSC 11 background color, environment variables, and terminal type */
   bool is_dark = terminal_has_dark_background();
   return is_dark ? TERM_BACKGROUND_DARK : TERM_BACKGROUND_LIGHT;
 }
