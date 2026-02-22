@@ -90,7 +90,7 @@ thread_pool_t *thread_pool_create(const char *pool_name) {
   pool->num_workers = 0;
 
   // Initialize mutex
-  if (mutex_init(&pool->threads_mutex) != 0) {
+  if (mutex_init(&pool->threads_mutex, "thread_pool") != 0) {
     SAFE_FREE(pool);
     SET_ERRNO(ERROR_THREAD, "Failed to initialize thread pool mutex");
     return NULL;

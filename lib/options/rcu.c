@@ -246,13 +246,13 @@ asciichat_error_t options_state_init(void) {
   }
 
   // Initialize write mutex
-  if (mutex_init(&g_options_write_mutex) != 0) {
+  if (mutex_init(&g_options_write_mutex, "options_write") != 0) {
     static_mutex_unlock(&g_options_init_mutex);
     return SET_ERRNO(ERROR_THREAD, "Failed to initialize options write mutex");
   }
 
   // Initialize deferred free mutex
-  if (mutex_init(&g_deferred_free_mutex) != 0) {
+  if (mutex_init(&g_deferred_free_mutex, "deferred_free") != 0) {
     mutex_destroy(&g_options_write_mutex);
     static_mutex_unlock(&g_options_init_mutex);
     return SET_ERRNO(ERROR_THREAD, "Failed to initialize deferred free mutex");

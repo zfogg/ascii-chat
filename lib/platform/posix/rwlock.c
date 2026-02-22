@@ -49,7 +49,11 @@ int rwlock_destroy(rwlock_t *lock) {
  * @return 0 on success, error code on failure
  */
 int rwlock_rdlock_impl(rwlock_t *lock) {
-  return pthread_rwlock_rdlock(&lock->impl);
+  int err = pthread_rwlock_rdlock(&lock->impl);
+  if (err == 0) {
+    rwlock_on_rdlock(lock);
+  }
+  return err;
 }
 
 /**
@@ -58,7 +62,11 @@ int rwlock_rdlock_impl(rwlock_t *lock) {
  * @return 0 on success, error code on failure
  */
 int rwlock_wrlock_impl(rwlock_t *lock) {
-  return pthread_rwlock_wrlock(&lock->impl);
+  int err = pthread_rwlock_wrlock(&lock->impl);
+  if (err == 0) {
+    rwlock_on_wrlock(lock);
+  }
+  return err;
 }
 
 /**
@@ -67,6 +75,7 @@ int rwlock_wrlock_impl(rwlock_t *lock) {
  * @return 0 on success, error code on failure
  */
 int rwlock_rdunlock_impl(rwlock_t *lock) {
+  rwlock_on_unlock(lock);
   return pthread_rwlock_unlock(&lock->impl);
 }
 
@@ -76,6 +85,7 @@ int rwlock_rdunlock_impl(rwlock_t *lock) {
  * @return 0 on success, error code on failure
  */
 int rwlock_wrunlock_impl(rwlock_t *lock) {
+  rwlock_on_unlock(lock);
   return pthread_rwlock_unlock(&lock->impl);
 }
 

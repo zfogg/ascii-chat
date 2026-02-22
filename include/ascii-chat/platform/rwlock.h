@@ -37,8 +37,11 @@
  * @ingroup platform
  */
 typedef struct {
-    SRWLOCK impl;           ///< Underlying Windows SRW lock
-    const char *name;       ///< Human-readable name for debugging
+    SRWLOCK impl;            ///< Underlying Windows SRW lock
+    const char *name;        ///< Human-readable name for debugging
+    uint64_t last_rdlock_time_ns;  ///< Timestamp of last read lock acquisition (nanoseconds)
+    uint64_t last_wrlock_time_ns;  ///< Timestamp of last write lock acquisition (nanoseconds)
+    uint64_t last_unlock_time_ns;  ///< Timestamp of last unlock (nanoseconds)
 } rwlock_t;
 #else
 #include <pthread.h>
@@ -47,8 +50,11 @@ typedef struct {
  * @ingroup platform
  */
 typedef struct {
-    pthread_rwlock_t impl;  ///< Underlying POSIX rwlock
-    const char *name;       ///< Human-readable name for debugging
+    pthread_rwlock_t impl;   ///< Underlying POSIX rwlock
+    const char *name;        ///< Human-readable name for debugging
+    uint64_t last_rdlock_time_ns;  ///< Timestamp of last read lock acquisition (nanoseconds)
+    uint64_t last_wrlock_time_ns;  ///< Timestamp of last write lock acquisition (nanoseconds)
+    uint64_t last_unlock_time_ns;  ///< Timestamp of last unlock (nanoseconds)
 } rwlock_t;
 #endif
 
@@ -104,6 +110,39 @@ int rwlock_init(rwlock_t *lock, const char *name);
  * @ingroup platform
  */
 int rwlock_destroy(rwlock_t *lock);
+
+/**
+ * @brief Hook called when a read lock is successfully acquired
+ * @param rwlock Pointer to the rwlock that was read-locked
+ *
+ * Called by platform-specific implementations after read lock acquisition.
+ * Records timing and other diagnostic data.
+ *
+ * @ingroup platform
+ */
+void rwlock_on_rdlock(rwlock_t *rwlock);
+
+/**
+ * @brief Hook called when a write lock is successfully acquired
+ * @param rwlock Pointer to the rwlock that was write-locked
+ *
+ * Called by platform-specific implementations after write lock acquisition.
+ * Records timing and other diagnostic data.
+ *
+ * @ingroup platform
+ */
+void rwlock_on_wrlock(rwlock_t *rwlock);
+
+/**
+ * @brief Hook called when an rwlock is unlocked (read or write)
+ * @param rwlock Pointer to the rwlock that was unlocked
+ *
+ * Called by platform-specific implementations before lock release.
+ * Records timing and other diagnostic data.
+ *
+ * @ingroup platform
+ */
+void rwlock_on_unlock(rwlock_t *rwlock);
 
 /**
  * @brief Initialize a read-write lock (implementation function)

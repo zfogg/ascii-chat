@@ -52,6 +52,7 @@ int rwlock_destroy(rwlock_t *lock) {
  */
 int rwlock_rdlock_impl(rwlock_t *lock) {
   AcquireSRWLockShared(&lock->impl);
+  rwlock_on_rdlock(lock);
   return 0;
 }
 
@@ -62,6 +63,7 @@ int rwlock_rdlock_impl(rwlock_t *lock) {
  */
 int rwlock_wrlock_impl(rwlock_t *lock) {
   AcquireSRWLockExclusive(&lock->impl);
+  rwlock_on_wrlock(lock);
   return 0;
 }
 
@@ -71,6 +73,7 @@ int rwlock_wrlock_impl(rwlock_t *lock) {
  * @return 0 on success, error code on failure
  */
 int rwlock_rdunlock_impl(rwlock_t *lock) {
+  rwlock_on_unlock(lock);
   ReleaseSRWLockShared(&lock->impl);
   return 0;
 }
@@ -81,6 +84,7 @@ int rwlock_rdunlock_impl(rwlock_t *lock) {
  * @return 0 on success, error code on failure
  */
 int rwlock_wrunlock_impl(rwlock_t *lock) {
+  rwlock_on_unlock(lock);
   ReleaseSRWLockExclusive(&lock->impl);
   return 0;
 }

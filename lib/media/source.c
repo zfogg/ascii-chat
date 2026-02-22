@@ -182,14 +182,14 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
   source->is_paused = false;
 
   // Initialize mutex for protecting shared decoder access (for YouTube URLs)
-  if (mutex_init(&source->decoder_mutex) != 0) {
+  if (mutex_init(&source->decoder_mutex, "media_decoder") != 0) {
     SET_ERRNO(ERROR_MEMORY, "Failed to initialize mutex");
     SAFE_FREE(source);
     return NULL;
   }
 
   // Initialize mutex for protecting pause state (accessed from keyboard and video threads)
-  if (mutex_init(&source->pause_mutex) != 0) {
+  if (mutex_init(&source->pause_mutex, "media_pause") != 0) {
     SET_ERRNO(ERROR_MEMORY, "Failed to initialize pause mutex");
     mutex_destroy(&source->decoder_mutex);
     SAFE_FREE(source);
@@ -197,7 +197,7 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
   }
 
   // Initialize mutex for protecting decoder access during seeks (prevents race conditions)
-  if (mutex_init(&source->seek_access_mutex) != 0) {
+  if (mutex_init(&source->seek_access_mutex, "media_seek") != 0) {
     SET_ERRNO(ERROR_MEMORY, "Failed to initialize seek access mutex");
     mutex_destroy(&source->decoder_mutex);
     mutex_destroy(&source->pause_mutex);

@@ -44,6 +44,7 @@ int cond_destroy(cond_t *cond) {
  * @note The mutex is automatically released while waiting and reacquired before returning
  */
 int cond_wait(cond_t *cond, mutex_t *mutex) {
+  cond_on_wait(cond);
   return pthread_cond_wait(&cond->impl, &mutex->impl);
 }
 
@@ -56,6 +57,7 @@ int cond_wait(cond_t *cond, mutex_t *mutex) {
  * @note The mutex is automatically released while waiting and reacquired before returning
  */
 int cond_timedwait(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns) {
+  cond_on_wait(cond);
   struct timespec ts;
   uint64_t now_ns = time_get_realtime_ns();
   uint64_t deadline_ns = now_ns + timeout_ns;
@@ -69,6 +71,7 @@ int cond_timedwait(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns) {
  * @return 0 on success, error code on failure
  */
 int cond_signal(cond_t *cond) {
+  cond_on_signal(cond);
   return pthread_cond_signal(&cond->impl);
 }
 
@@ -78,6 +81,7 @@ int cond_signal(cond_t *cond) {
  * @return 0 on success, error code on failure
  */
 int cond_broadcast(cond_t *cond) {
+  cond_on_broadcast(cond);
   return pthread_cond_broadcast(&cond->impl);
 }
 

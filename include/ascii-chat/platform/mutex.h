@@ -35,8 +35,10 @@
  * @ingroup platform
  */
 typedef struct {
-    CRITICAL_SECTION impl;  ///< Underlying Windows critical section
-    const char *name;       ///< Human-readable name for debugging
+    CRITICAL_SECTION impl;   ///< Underlying Windows critical section
+    const char *name;        ///< Human-readable name for debugging
+    uint64_t last_lock_time_ns;   ///< Timestamp of last lock acquisition (nanoseconds)
+    uint64_t last_unlock_time_ns; ///< Timestamp of last unlock (nanoseconds)
 } mutex_t;
 #else
 #include <pthread.h>
@@ -45,8 +47,10 @@ typedef struct {
  * @ingroup platform
  */
 typedef struct {
-    pthread_mutex_t impl;   ///< Underlying POSIX mutex
-    const char *name;       ///< Human-readable name for debugging
+    pthread_mutex_t impl;    ///< Underlying POSIX mutex
+    const char *name;        ///< Human-readable name for debugging
+    uint64_t last_lock_time_ns;   ///< Timestamp of last lock acquisition (nanoseconds)
+    uint64_t last_unlock_time_ns; ///< Timestamp of last unlock (nanoseconds)
 } mutex_t;
 #endif
 
@@ -92,6 +96,28 @@ int mutex_init(mutex_t *mutex, const char *name);
  * @ingroup platform
  */
 int mutex_destroy(mutex_t *mutex);
+
+/**
+ * @brief Hook called when a mutex is successfully locked
+ * @param mutex Pointer to the mutex that was locked
+ *
+ * Called by platform-specific implementations after lock acquisition.
+ * Records timing and other diagnostic data.
+ *
+ * @ingroup platform
+ */
+void mutex_on_lock(mutex_t *mutex);
+
+/**
+ * @brief Hook called when a mutex is unlocked
+ * @param mutex Pointer to the mutex that was unlocked
+ *
+ * Called by platform-specific implementations before lock release.
+ * Records timing and other diagnostic data.
+ *
+ * @ingroup platform
+ */
+void mutex_on_unlock(mutex_t *mutex);
 
 /**
  * @brief Lock a mutex (implementation function)

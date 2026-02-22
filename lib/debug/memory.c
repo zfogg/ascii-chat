@@ -162,7 +162,7 @@ static bool ensure_mutex_initialized(void) {
       int expected = 0;
       if (atomic_compare_exchange_strong_explicit(&g_mem.mutex_state, &expected, 1, memory_order_acq_rel,
                                                   memory_order_acquire)) {
-        if (mutex_init(&g_mem.mutex) == 0) {
+        if (mutex_init(&g_mem.mutex, "debug_memory") == 0) {
           atomic_store_explicit(&g_mem.mutex_state, 2, memory_order_release);
           return true;
         }

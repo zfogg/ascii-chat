@@ -65,7 +65,7 @@ video_frame_buffer_t *video_frame_buffer_create(uint32_t client_id) {
   }
 
   // Initialize synchronization
-  if (mutex_init(&vfb->swap_mutex) != 0) {
+  if (mutex_init(&vfb->swap_mutex, "video_frame_swap") != 0) {
     SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to initialize mutex for video frame buffer");
     video_frame_buffer_destroy(vfb);
     return NULL;

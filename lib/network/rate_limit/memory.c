@@ -245,7 +245,7 @@ void *memory_backend_create(void) {
 
   memset(backend, 0, sizeof(*backend));
 
-  if (mutex_init(&backend->lock) != 0) {
+  if (mutex_init(&backend->lock, "mutex")  != 0) {
     log_error("Failed to initialize mutex");
     SAFE_FREE(backend);
     return NULL;

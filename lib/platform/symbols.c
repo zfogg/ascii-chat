@@ -274,7 +274,7 @@ asciichat_error_t symbol_cache_init(void) {
   }
 
   // Initialize rwlock for thread safety (uthash requires external locking)
-  if (rwlock_init(&g_symbol_cache_lock) != 0) {
+  if (rwlock_init(&g_symbol_cache_lock, "symbol_cache") != 0) {
     atomic_store(&g_symbol_cache_initialized, false);
     return SET_ERRNO(ERROR_THREAD, "Failed to initialize symbol cache rwlock");
   }

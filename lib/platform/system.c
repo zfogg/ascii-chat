@@ -280,7 +280,7 @@ static void init_cache_once(void) {
   g_bin_path_cache = NULL;
 
   // Initialize rwlock for thread-safe access
-  if (rwlock_init(&g_cache_rwlock) != 0) {
+  if (rwlock_init(&g_cache_rwlock, "binary_cache") != 0) {
     log_error("Failed to initialize binary PATH cache rwlock");
     atomic_store(&g_cache_initialized, false);
   }

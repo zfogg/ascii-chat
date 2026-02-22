@@ -327,8 +327,8 @@ static void audio_sender_init(void) {
   }
 
   // Initialize queue structures under lock
-  mutex_init(&g_audio_send_queue_mutex);
-  cond_init(&g_audio_send_queue_cond);
+  mutex_init(&g_audio_send_queue_mutex, "mutex");
+  cond_init(&g_audio_send_queue_cond, "cond");
   g_audio_send_queue_head = 0;
   g_audio_send_queue_tail = 0;
   g_audio_send_queue_initialized = true;

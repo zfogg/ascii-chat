@@ -37,6 +37,9 @@
 typedef struct {
     CONDITION_VARIABLE impl; ///< Underlying Windows condition variable
     const char *name;        ///< Human-readable name for debugging
+    uint64_t last_signal_time_ns;  ///< Timestamp of last signal (nanoseconds)
+    uint64_t last_broadcast_time_ns; ///< Timestamp of last broadcast (nanoseconds)
+    uint64_t last_wait_time_ns;    ///< Timestamp of last wait (nanoseconds)
 } cond_t;
 #else
 #include <pthread.h>
@@ -47,6 +50,9 @@ typedef struct {
 typedef struct {
     pthread_cond_t impl;     ///< Underlying POSIX condition variable
     const char *name;        ///< Human-readable name for debugging
+    uint64_t last_signal_time_ns;  ///< Timestamp of last signal (nanoseconds)
+    uint64_t last_broadcast_time_ns; ///< Timestamp of last broadcast (nanoseconds)
+    uint64_t last_wait_time_ns;    ///< Timestamp of last wait (nanoseconds)
 } cond_t;
 #endif
 
@@ -139,6 +145,39 @@ int cond_signal(cond_t *cond);
  * @ingroup platform
  */
 int cond_broadcast(cond_t *cond);
+
+/**
+ * @brief Hook called when a thread waits on a condition variable
+ * @param cond Pointer to the condition variable being waited on
+ *
+ * Called by platform-specific implementations before blocking on wait.
+ * Records timing and other diagnostic data.
+ *
+ * @ingroup platform
+ */
+void cond_on_wait(cond_t *cond);
+
+/**
+ * @brief Hook called when a condition variable is signaled
+ * @param cond Pointer to the condition variable being signaled
+ *
+ * Called by platform-specific implementations after waking one thread.
+ * Records timing and other diagnostic data.
+ *
+ * @ingroup platform
+ */
+void cond_on_signal(cond_t *cond);
+
+/**
+ * @brief Hook called when a condition variable is broadcast
+ * @param cond Pointer to the condition variable being broadcast
+ *
+ * Called by platform-specific implementations after waking all threads.
+ * Records timing and other diagnostic data.
+ *
+ * @ingroup platform
+ */
+void cond_on_broadcast(cond_t *cond);
 
 #ifdef __cplusplus
 }

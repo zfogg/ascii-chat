@@ -434,7 +434,7 @@ static void *splash_animation_thread(void *arg) {
     // Copy update notification from global state (thread-safe)
     static bool mutex_initialized = false;
     if (!mutex_initialized) {
-      mutex_init(&g_update_notification_mutex);
+      mutex_init(&g_update_notification_mutex, "mutex");
       mutex_initialized = true;
     }
     mutex_lock(&g_update_notification_mutex);
@@ -591,7 +591,7 @@ int splash_display_status(int mode) {
   // Add update notification if available
   static bool mutex_initialized_for_status = false;
   if (!mutex_initialized_for_status) {
-    mutex_init(&g_update_notification_mutex);
+    mutex_init(&g_update_notification_mutex, "mutex");
     mutex_initialized_for_status = true;
   }
   mutex_lock(&g_update_notification_mutex);
@@ -612,7 +612,7 @@ int splash_display_status(int mode) {
 void splash_set_update_notification(const char *notification) {
   static bool mutex_initialized = false;
   if (!mutex_initialized) {
-    mutex_init(&g_update_notification_mutex);
+    mutex_init(&g_update_notification_mutex, "mutex");
     mutex_initialized = true;
   }
 

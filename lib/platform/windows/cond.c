@@ -45,6 +45,7 @@ int cond_destroy(cond_t *cond) {
  * @note The mutex is automatically released while waiting and reacquired before returning
  */
 int cond_wait(cond_t *cond, mutex_t *mutex) {
+  cond_on_wait(cond);
   return SleepConditionVariableCS(&cond->impl, &mutex->impl, INFINITE) ? 0 : -1;
 }
 
@@ -58,6 +59,7 @@ int cond_wait(cond_t *cond, mutex_t *mutex) {
  * @note Returns ETIMEDOUT on timeout for POSIX compatibility
  */
 int cond_timedwait(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns) {
+  cond_on_wait(cond);
   DWORD timeout_ms = (DWORD)time_ns_to_ms(timeout_ns);
   if (!SleepConditionVariableCS(&cond->impl, &mutex->impl, timeout_ms)) {
     DWORD err = GetLastError();
@@ -75,6 +77,7 @@ int cond_timedwait(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns) {
  * @return 0 on success, error code on failure
  */
 int cond_signal(cond_t *cond) {
+  cond_on_signal(cond);
   WakeConditionVariable(&cond->impl);
   return 0;
 }
@@ -85,6 +88,7 @@ int cond_signal(cond_t *cond) {
  * @return 0 on success, error code on failure
  */
 int cond_broadcast(cond_t *cond) {
+  cond_on_broadcast(cond);
   WakeAllConditionVariable(&cond->impl);
   return 0;
 }

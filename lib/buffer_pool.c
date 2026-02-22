@@ -52,7 +52,7 @@ buffer_pool_t *buffer_pool_create(size_t max_bytes, uint64_t shrink_delay_ns) {
     return NULL;
   }
 
-  if (mutex_init(&pool->shrink_mutex) != 0) {
+  if (mutex_init(&pool->shrink_mutex, "buffer_pool_shrink") != 0) {
     SET_ERRNO(ERROR_THREAD, "Failed to initialize shrink mutex");
     SAFE_FREE(pool);
     return NULL;

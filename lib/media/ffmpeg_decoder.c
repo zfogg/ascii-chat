@@ -601,13 +601,13 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
     decoder->prefetch_frame_ready = false;
 
     // Initialize prefetch mutex
-    if (mutex_init(&decoder->prefetch_mutex) != 0) {
+    if (mutex_init(&decoder->prefetch_mutex, "ffmpeg_prefetch") != 0) {
       SET_ERRNO(ERROR_MEMORY, "Failed to initialize prefetch mutex");
       ffmpeg_decoder_destroy(decoder);
       return NULL;
     }
 
-    if (cond_init(&decoder->prefetch_cond) != 0) {
+    if (cond_init(&decoder->prefetch_cond, "ffmpeg_prefetch") != 0) {
       SET_ERRNO(ERROR_MEMORY, "Failed to initialize prefetch condition variable");
       mutex_destroy(&decoder->prefetch_mutex);
       ffmpeg_decoder_destroy(decoder);

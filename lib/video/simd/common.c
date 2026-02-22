@@ -141,7 +141,7 @@ static void init_utf8_cache_system(void) {
   // Double-check after acquiring lock (another thread may have initialized while we waited)
   if (!atomic_load(&g_utf8_cache_initialized)) {
     // Initialize the cache rwlock
-    rwlock_init(&g_utf8_cache_rwlock);
+    rwlock_init(&g_utf8_cache_rwlock, "rwlock");
 
     // Initialize uthash head to NULL (required)
     g_utf8_cache_table = NULL;

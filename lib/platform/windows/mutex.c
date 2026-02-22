@@ -41,6 +41,7 @@ int mutex_destroy(mutex_t *mutex) {
  */
 int mutex_lock_impl(mutex_t *mutex) {
   EnterCriticalSection(&mutex->impl);
+  mutex_on_lock(mutex);
   return 0;
 }
 
@@ -59,6 +60,7 @@ int mutex_trylock_impl(mutex_t *mutex) {
  * @return 0 on success, error code on failure
  */
 int mutex_unlock_impl(mutex_t *mutex) {
+  mutex_on_unlock(mutex);
   LeaveCriticalSection(&mutex->impl);
   return 0;
 }

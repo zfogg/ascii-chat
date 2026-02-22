@@ -41,7 +41,11 @@ int mutex_destroy(mutex_t *mutex) {
  * @return 0 on success, error code on failure
  */
 int mutex_lock_impl(mutex_t *mutex) {
-  return pthread_mutex_lock(&mutex->impl);
+  int err = pthread_mutex_lock(&mutex->impl);
+  if (err == 0) {
+    mutex_on_lock(mutex);
+  }
+  return err;
 }
 
 /**
@@ -59,6 +63,7 @@ int mutex_trylock_impl(mutex_t *mutex) {
  * @return 0 on success, error code on failure
  */
 int mutex_unlock_impl(mutex_t *mutex) {
+  mutex_on_unlock(mutex);
   return pthread_mutex_unlock(&mutex->impl);
 }
 

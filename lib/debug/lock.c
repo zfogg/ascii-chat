@@ -560,20 +560,20 @@ int lock_debug_init(void) {
   g_lock_debug_manager.orphaned_releases = NULL;
 
   // Initialize rwlocks for thread safety (uthash requires external locking)
-  if (rwlock_init(&g_lock_debug_manager.lock_records_lock) != 0) {
+  if (rwlock_init(&g_lock_debug_manager.lock_records_lock, "lock_records") != 0) {
     atomic_store(&g_initializing, false);
     SET_ERRNO(ERROR_THREAD, "Failed to initialize lock_records rwlock");
     return -1;
   }
 
-  if (rwlock_init(&g_lock_debug_manager.usage_stats_lock) != 0) {
+  if (rwlock_init(&g_lock_debug_manager.usage_stats_lock, "usage_stats") != 0) {
     rwlock_destroy(&g_lock_debug_manager.lock_records_lock);
     atomic_store(&g_initializing, false);
     SET_ERRNO(ERROR_THREAD, "Failed to initialize usage_stats rwlock");
     return -1;
   }
 
-  if (rwlock_init(&g_lock_debug_manager.orphaned_releases_lock) != 0) {
+  if (rwlock_init(&g_lock_debug_manager.orphaned_releases_lock, "orphaned_releases") != 0) {
     rwlock_destroy(&g_lock_debug_manager.lock_records_lock);
     rwlock_destroy(&g_lock_debug_manager.usage_stats_lock);
     atomic_store(&g_initializing, false);

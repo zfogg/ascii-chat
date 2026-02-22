@@ -313,7 +313,7 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
   }
 
   // OPTIMIZATION 2: Initialize reader-writer lock
-  if (rwlock_init(&mixer->source_lock) != 0) {
+  if (rwlock_init(&mixer->source_lock, "audio_mixer_sources") != 0) {
     SET_ERRNO(ERROR_THREAD, "Failed to initialize mixer source lock");
     SAFE_FREE(mixer->source_buffers);
     SAFE_FREE(mixer->source_ids);

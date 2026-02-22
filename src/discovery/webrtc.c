@@ -71,7 +71,7 @@ static void ensure_mutex_initialized(void) {
 
   // Check again under lock to prevent race condition
   if (!g_webrtc_mutex_initialized) {
-    mutex_init(&g_webrtc_mutex);
+    mutex_init(&g_webrtc_mutex, "mutex");
     g_webrtc_mutex_initialized = true;
   }
 

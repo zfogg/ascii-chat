@@ -210,7 +210,7 @@ static inline void static_cond_wait(static_cond_t *c, static_mutex_t *m) {
     __atomic_store_n(&c->initialized, 1, __ATOMIC_RELEASE);
   }
   if (__atomic_load_n(&m->initialized, __ATOMIC_ACQUIRE) == 0) {
-    mutex_init(&m->mutex);
+    mutex_init(&m->mutex, "static_mutex");
     __atomic_store_n(&m->initialized, 1, __ATOMIC_RELEASE);
   }
 #endif
@@ -238,7 +238,7 @@ static inline void static_cond_timedwait(static_cond_t *c, static_mutex_t *m, in
     __atomic_store_n(&c->initialized, 1, __ATOMIC_RELEASE);
   }
   if (__atomic_load_n(&m->initialized, __ATOMIC_ACQUIRE) == 0) {
-    mutex_init(&m->mutex);
+    mutex_init(&m->mutex, "static_mutex");
     __atomic_store_n(&m->initialized, 1, __ATOMIC_RELEASE);
   }
 #endif

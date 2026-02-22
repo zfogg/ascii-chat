@@ -676,13 +676,13 @@ int add_client(server_context_t *server_ctx, socket_t socket, const char *client
   configure_client_socket(socket, new_client_id);
 
   // Initialize mutexes OUTSIDE lock
-  if (mutex_init(&client->client_state_mutex) != 0) {
+  if (mutex_init(&client->client_state_mutex, "mutex")  != 0) {
     log_error("Failed to initialize client state mutex for client %u", new_client_id);
     remove_client(server_ctx, new_client_id);
     return -1;
   }
 
-  if (mutex_init(&client->send_mutex) != 0) {
+  if (mutex_init(&client->send_mutex, "mutex")  != 0) {
     log_error("Failed to initialize send mutex for client %u", new_client_id);
     remove_client(server_ctx, new_client_id);
     return -1;
@@ -1051,7 +1051,7 @@ int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
   }
 
   // Initialize mutexes BEFORE creating any threads to prevent race conditions
-  if (mutex_init(&client->client_state_mutex) != 0) {
+  if (mutex_init(&client->client_state_mutex, "mutex")  != 0) {
     log_error("Failed to initialize client state mutex for WebRTC client %u", atomic_load(&client->client_id));
     // Client is already in hash table - use remove_client for proper cleanup
     remove_client(server_ctx, atomic_load(&client->client_id));
@@ -1059,7 +1059,7 @@ int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
   }
 
   // Initialize send mutex to protect concurrent socket writes
-  if (mutex_init(&client->send_mutex) != 0) {
+  if (mutex_init(&client->send_mutex, "mutex")  != 0) {
     log_error("Failed to initialize send mutex for WebRTC client %u", atomic_load(&client->client_id));
     // Client is already in hash table - use remove_client for proper cleanup
     remove_client(server_ctx, atomic_load(&client->client_id));

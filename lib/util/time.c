@@ -131,7 +131,7 @@ bool timer_system_init(void) {
   stm_setup();
 
   // Initialize rwlock (uthash requires external locking for writes, rwlock allows concurrent reads)
-  if (rwlock_init(&g_timer_manager.rwlock) != 0) {
+  if (rwlock_init(&g_timer_manager.rwlock, "timer_manager") != 0) {
     SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to initialize timer rwlock");
     return false;
   }

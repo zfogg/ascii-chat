@@ -86,7 +86,7 @@ static void ensure_mutex_initialized(void) {
 
   // Check again under lock to prevent race condition
   if (!g_signaling_mutex_initialized) {
-    mutex_init(&g_signaling_mutex);
+    mutex_init(&g_signaling_mutex, "mutex");
     g_signaling_mutex_initialized = true;
   }
 

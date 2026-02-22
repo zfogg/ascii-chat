@@ -208,7 +208,7 @@ session_host_t *session_host_create(const session_host_config_t *config) {
   host->next_client_id = 1;
 
   // Initialize mutex
-  if (mutex_init(&host->clients_mutex) != 0) {
+  if (mutex_init(&host->clients_mutex, "host_clients") != 0) {
     SET_ERRNO(ERROR_THREAD, "Failed to initialize clients mutex");
     SAFE_FREE(host->clients);
     SAFE_FREE(host);

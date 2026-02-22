@@ -27,6 +27,10 @@ include(FetchContent)
 # Suppress verbose configure output from all dependency builds
 set(CMAKE_MESSAGE_LOG_LEVEL_BACKUP "${CMAKE_MESSAGE_LOG_LEVEL}")
 set(CMAKE_MESSAGE_LOG_LEVEL "WARNING")
+set(FETCHCONTENT_QUIET ON)
+
+# Suppress CMake find_package output
+set(CMAKE_FIND_PACKAGE_PREFER_CONFIG ON)
 
 # libsodium
 FetchContent_Declare(Sodium
