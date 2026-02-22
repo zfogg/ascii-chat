@@ -535,8 +535,8 @@ asciichat_error_t discover_session_parallel(const char *session_string, const di
   discovery_thread_state_t state;
   memset(&state, 0, sizeof(state));
   state.result = result;
-  mutex_init(&state.lock, "mutex");
-  cond_init(&state.signal, "cond");
+  mutex_init(&state.lock, "mdns_resolve");
+  cond_init(&state.signal, "mdns_signal");
 
   // Determine which discovery methods to use
   bool use_mdns = true;

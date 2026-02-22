@@ -284,7 +284,7 @@ static int close_socket(socket_t socketfd) {
  */
 int server_connection_init() {
   // Initialize mutex for thread-safe packet sending
-  if (mutex_init(&g_send_mutex, "mutex")  != 0) {
+  if (mutex_init(&g_send_mutex, "send")  != 0) {
     log_error("Failed to initialize send mutex");
     return -1;
   }

@@ -1036,7 +1036,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
   }
 
   // Initialize synchronization primitives
-  if (mutex_init(&ws_data->recv_mutex, "mutex")  != 0) {
+  if (mutex_init(&ws_data->recv_mutex, "ws_recv")  != 0) {
     ringbuffer_destroy(ws_data->send_queue);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
@@ -1045,7 +1045,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
     return NULL;
   }
 
-  if (cond_init(&ws_data->recv_cond, "cond")  != 0) {
+  if (cond_init(&ws_data->recv_cond, "recv")  != 0) {
     mutex_destroy(&ws_data->recv_mutex);
     ringbuffer_destroy(ws_data->send_queue);
     ringbuffer_destroy(ws_data->recv_queue);
@@ -1055,7 +1055,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
     return NULL;
   }
 
-  if (mutex_init(&ws_data->state_mutex, "mutex")  != 0) {
+  if (mutex_init(&ws_data->state_mutex, "ws_state")  != 0) {
     cond_destroy(&ws_data->recv_cond);
     mutex_destroy(&ws_data->recv_mutex);
     ringbuffer_destroy(ws_data->send_queue);
@@ -1066,7 +1066,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
     return NULL;
   }
 
-  if (cond_init(&ws_data->state_cond, "cond")  != 0) {
+  if (cond_init(&ws_data->state_cond, "state")  != 0) {
     mutex_destroy(&ws_data->state_mutex);
     cond_destroy(&ws_data->recv_cond);
     mutex_destroy(&ws_data->recv_mutex);
@@ -1297,7 +1297,7 @@ acip_transport_t *acip_websocket_server_transport_create(struct lws *wsi, crypto
   }
 
   // Initialize synchronization primitives
-  if (mutex_init(&ws_data->recv_mutex, "mutex")  != 0) {
+  if (mutex_init(&ws_data->recv_mutex, "ws_recv")  != 0) {
     ringbuffer_destroy(ws_data->recv_queue);
     ringbuffer_destroy(ws_data->send_queue);
     SAFE_FREE(ws_data);
@@ -1306,7 +1306,7 @@ acip_transport_t *acip_websocket_server_transport_create(struct lws *wsi, crypto
     return NULL;
   }
 
-  if (cond_init(&ws_data->recv_cond, "cond")  != 0) {
+  if (cond_init(&ws_data->recv_cond, "recv")  != 0) {
     mutex_destroy(&ws_data->recv_mutex);
     ringbuffer_destroy(ws_data->recv_queue);
     ringbuffer_destroy(ws_data->send_queue);
@@ -1316,7 +1316,7 @@ acip_transport_t *acip_websocket_server_transport_create(struct lws *wsi, crypto
     return NULL;
   }
 
-  if (mutex_init(&ws_data->send_mutex, "mutex")  != 0) {
+  if (mutex_init(&ws_data->send_mutex, "ws_send")  != 0) {
     cond_destroy(&ws_data->recv_cond);
     mutex_destroy(&ws_data->recv_mutex);
     ringbuffer_destroy(ws_data->recv_queue);
@@ -1327,7 +1327,7 @@ acip_transport_t *acip_websocket_server_transport_create(struct lws *wsi, crypto
     return NULL;
   }
 
-  if (mutex_init(&ws_data->state_mutex, "mutex")  != 0) {
+  if (mutex_init(&ws_data->state_mutex, "ws_state")  != 0) {
     mutex_destroy(&ws_data->send_mutex);
     cond_destroy(&ws_data->recv_cond);
     mutex_destroy(&ws_data->recv_mutex);
@@ -1339,7 +1339,7 @@ acip_transport_t *acip_websocket_server_transport_create(struct lws *wsi, crypto
     return NULL;
   }
 
-  if (cond_init(&ws_data->state_cond, "cond")  != 0) {
+  if (cond_init(&ws_data->state_cond, "state")  != 0) {
     mutex_destroy(&ws_data->state_mutex);
     mutex_destroy(&ws_data->send_mutex);
     cond_destroy(&ws_data->recv_cond);
@@ -1352,7 +1352,7 @@ acip_transport_t *acip_websocket_server_transport_create(struct lws *wsi, crypto
     return NULL;
   }
 
-  if (mutex_init(&ws_data->pending_free_mutex, "mutex")  != 0) {
+  if (mutex_init(&ws_data->pending_free_mutex, "ws_pending_free")  != 0) {
     cond_destroy(&ws_data->state_cond);
     mutex_destroy(&ws_data->state_mutex);
     mutex_destroy(&ws_data->send_mutex);

@@ -187,7 +187,7 @@ static static_mutex_t g_stats_init_check_mutex = STATIC_MUTEX_INIT;
  * @return 0 on success, -1 on failure
  */
 int stats_init(void) {
-  int ret = mutex_init(&g_stats_mutex, "mutex");
+  int ret = mutex_init(&g_stats_mutex, "stats");
   if (ret == 0) {
     g_stats_mutex_initialized = true;
   }

@@ -173,7 +173,7 @@ asciichat_instr_runtime_t *asciichat_instr_runtime_get(void) {
   if (!g_runtime_initialized) {
     // Initialize mutex if needed
     if (!g_runtime_mutex_initialized) {
-      mutex_init(&g_runtime_mutex, "mutex");
+      mutex_init(&g_runtime_mutex, "runtime");
       g_runtime_mutex_initialized = true;
     }
 
@@ -439,7 +439,7 @@ bool asciichat_instr_coverage_enabled(void) {
   // Initialize runtime once using mutex-protected initialization
   if (!g_runtime_initialized) {
     if (!g_runtime_mutex_initialized) {
-      mutex_init(&g_runtime_mutex, "mutex");
+      mutex_init(&g_runtime_mutex, "runtime");
       g_runtime_mutex_initialized = true;
     }
 

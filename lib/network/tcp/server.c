@@ -118,7 +118,7 @@ asciichat_error_t tcp_server_init(tcp_server_t *server, const tcp_server_config_
   // Initialize client registry
   server->clients = NULL; // uthash starts with NULL
   server->cleanup_fn = NULL;
-  if (rwlock_init(&server->clients_rwlock, "rwlock")  != 0) {
+  if (rwlock_init(&server->clients_rwlock, "clients")  != 0) {
     return SET_ERRNO(ERROR_THREAD, "Failed to initialize clients read-write lock");
   }
 

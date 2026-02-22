@@ -220,8 +220,8 @@ asciichat_error_t parallel_connect(const parallel_connect_config_t *config, sock
   // Shared state
   mutex_t lock;
   cond_t signal;
-  mutex_init(&lock, "mutex");
-  cond_init(&signal, "cond");
+  mutex_init(&lock, "parallel_connect");
+  cond_init(&signal, "parallel_connect");
 
   volatile socket_t winner_socket = INVALID_SOCKET_VALUE;
   volatile bool winner_found = false;

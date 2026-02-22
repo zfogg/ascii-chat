@@ -1953,7 +1953,7 @@ int server_main(void) {
   }
 
   // Initialize synchronization primitives
-  if (rwlock_init(&g_client_manager_rwlock, "rwlock")  != 0) {
+  if (rwlock_init(&g_client_manager_rwlock, "clients")  != 0) {
     FATAL(ERROR_THREAD, "Failed to initialize client manager rwlock");
   }
 
@@ -1970,7 +1970,7 @@ int server_main(void) {
 
   // NOTE: g_client_manager is already zero-initialized in client.c with = {0}
   // We only need to initialize the mutex
-  mutex_init(&g_client_manager.mutex, "mutex");
+  mutex_init(&g_client_manager.mutex, "client_manager");
 
   // Initialize uthash head pointer for O(1) lookup (uthash requires NULL initialization)
   g_client_manager.clients_by_id = NULL;
