@@ -207,6 +207,7 @@
 #include "../platform/terminal.h"
 #include "../video/palette.h"
 #include "../discovery/strings.h"
+#include "explicit.h"
 
 /** @brief Backward compatibility aliases for color mode enum values */
 #define COLOR_MODE_AUTO TERM_COLOR_AUTO           ///< Auto-detect color support
@@ -762,6 +763,11 @@ static const bool default_status_screen_value = OPT_STATUS_SCREEN_DEFAULT;
 static const bool default_no_check_update_value = false;
 static const bool default_log_format_console_only_value = OPT_LOG_FORMAT_CONSOLE_DEFAULT;
 
+#ifndef NDEBUG
+static const double default_debug_state_time_value = 0.0;
+static const bool default_debug_state_time_explicit_value = false;
+#endif
+
 #ifndef _WIN32
 static const int    default_render_theme_value     = OPT_RENDER_THEME_DEFAULT;
 static const double default_render_font_size_value = OPT_RENDER_FONT_SIZE_DEFAULT;
@@ -1053,6 +1059,14 @@ typedef struct options_state {
   bool status_screen;                ///< Show status screen (default: true = show, use --no-status-screen to hide)
   bool status_screen_explicitly_set; ///< True if status_screen was explicitly set by user
   bool no_check_update;              ///< Disable automatic update checks (default: false = checks enabled)
+
+  // ============================================================================
+  // Debug Options (Debug builds only)
+  // ============================================================================
+#ifndef NDEBUG
+  double debug_state_time;           ///< Time parameter for --debug-state option (debug builds only)
+  bool debug_state_time_explicit;    ///< True if --debug-state was explicitly provided
+#endif
 
   // ============================================================================
   // Render-to-file Options (macOS and Linux only)

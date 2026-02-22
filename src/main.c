@@ -646,6 +646,24 @@ int main(int argc, char *argv[]) {
     // action_show_version() calls _Exit(), so we don't reach here
   }
 
+#ifndef NDEBUG
+  // Handle --debug-state (debug builds only)
+  if (IS_OPTION_EXPLICIT(debug_state_time, opts)) {
+    log_set_terminal_output(true);
+
+    if (opts->debug_state_time > 0.0) {
+      log_info("Sleeping for %f seconds before printing debug state...", opts->debug_state_time);
+      uint64_t sleep_ns = (uint64_t)(opts->debug_state_time * NS_PER_SEC_INT);
+      platform_sleep_ns(sleep_ns);
+    }
+
+    log_info("Printing synchronization state");
+    debug_sync_print_state();
+    log_info("Synchronization state printed successfully");
+    _Exit(0);
+  }
+#endif
+
   // For server mode with status screen: disable terminal output only if interactive
   // In non-interactive mode (piped output), logs go to stdout/stderr normally
   // The status screen (when shown) will capture and display logs in its buffer instead

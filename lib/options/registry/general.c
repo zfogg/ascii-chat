@@ -163,5 +163,25 @@ const registry_entry_t g_general_entries[] = {
      OPTION_MODE_ALL,
      {0},
      NULL},
+#ifndef NDEBUG
+    {"debug-state",
+     '\0',
+     OPTION_TYPE_DOUBLE,
+     offsetof(options_t, debug_state_time),
+     &default_debug_state_time_value,
+     sizeof(double),
+     "Print synchronization primitive state with optional time offset (debug builds only).",
+     "DEBUG",
+     "TIME",
+     true,  // This option takes an argument
+     NULL,
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_ALL,
+     {0},
+     NULL},
+#endif
 
     REGISTRY_TERMINATOR()};

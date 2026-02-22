@@ -1687,6 +1687,11 @@ asciichat_error_t options_init(int argc, char **argv) {
         (strcmp(mode_argv[i], "--no-status-screen") == 0 || strncmp(mode_argv[i], "--no-status-screen=", 19) == 0)) {
       opts.status_screen_explicitly_set = true;
     }
+#ifndef NDEBUG
+    if (mode_argv[i] && (strcmp(mode_argv[i], "--debug-state") == 0 || strncmp(mode_argv[i], "--debug-state=", 14) == 0)) {
+      opts.debug_state_time_explicit = true;
+    }
+#endif
   }
 
   // Auto-disable splash when grep is used (since it's one-time startup screen)
