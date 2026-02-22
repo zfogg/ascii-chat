@@ -186,7 +186,7 @@ elseif(UNIX AND NOT APPLE)
             endforeach()
 
             execute_process(
-                COMMAND env CFLAGS="${GHOSTTY_CFLAGS}" CXXFLAGS="${GHOSTTY_CFLAGS}" PKG_CONFIG_PATH="/usr/lib/pkgconfig:/usr/share/pkgconfig:/home/linuxbrew/.linuxbrew/lib/pkgconfig:/home/linuxbrew/.linuxbrew/share/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig" "${ZIG_EXECUTABLE}" build install -Dapp-runtime=embedded -Doptimize=ReleaseFast ${SEARCH_PREFIXES} --prefix "${GHOSTTY_BUILD_DIR}"
+                COMMAND env CFLAGS="${GHOSTTY_CFLAGS}" CXXFLAGS="${GHOSTTY_CFLAGS}" PKG_CONFIG_PATH="/usr/lib/pkgconfig:/usr/share/pkgconfig:/home/linuxbrew/.linuxbrew/lib/pkgconfig:/home/linuxbrew/.linuxbrew/share/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig" "${ZIG_EXECUTABLE}" build install -Dapp-runtime=gtk -Doptimize=ReleaseFast ${SEARCH_PREFIXES} --prefix "${GHOSTTY_BUILD_DIR}"
                 WORKING_DIRECTORY "${GHOSTTY_SOURCE_DIR}"
                 RESULT_VARIABLE GHOSTTY_BUILD_RESULT
                 OUTPUT_FILE "${GHOSTTY_LOG_FILE}"
@@ -290,6 +290,28 @@ elseif(UNIX AND NOT APPLE)
         set(GHOSTTY_FOUND FALSE)
         set(GHOSTTY_LIBRARIES "")
         set(GHOSTTY_INCLUDE_DIRS "")
+    endif()
+
+    # Custom target to build ghostty and cache headers (Linux)
+    if(UNIX AND NOT APPLE AND EXISTS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/ghostty")
+        set(GHOSTTY_EMBEDDED_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/ghostty")
+        set(GHOSTTY_EMBEDDED_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/ghostty")
+        set(GHOSTTY_EMBEDDED_HEADER_SRC "${GHOSTTY_EMBEDDED_SOURCE_DIR}/include/ghostty.h")
+        set(GHOSTTY_EMBEDDED_HEADER_DST "${GHOSTTY_EMBEDDED_BUILD_DIR}/include/ghostty.h")
+
+        find_program(ZIG_FOR_EMBEDDED NAMES zig)
+
+        add_custom_target(ghostty-embedded
+            COMMAND ${CMAKE_COMMAND} -E echo "Building ghostty with GTK runtime for caching..."
+            COMMAND mkdir -p "${GHOSTTY_EMBEDDED_BUILD_DIR}"
+            COMMAND "${ZIG_FOR_EMBEDDED}" build install -Dapp-runtime=gtk -Doptimize=ReleaseFast --prefix "${GHOSTTY_EMBEDDED_BUILD_DIR}"
+            COMMAND ${CMAKE_COMMAND} -E echo "Copying ghostty.h to cache..."
+            COMMAND mkdir -p "${GHOSTTY_EMBEDDED_BUILD_DIR}/include"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${GHOSTTY_EMBEDDED_HEADER_SRC}" "${GHOSTTY_EMBEDDED_HEADER_DST}"
+            COMMAND ${CMAKE_COMMAND} -E echo "✓ ghostty-embedded cache complete"
+            WORKING_DIRECTORY "${GHOSTTY_EMBEDDED_SOURCE_DIR}"
+            VERBATIM
+        )
     endif()
 else()
     # Windows: ghostty not used for rendering
