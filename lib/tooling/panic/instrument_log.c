@@ -5,6 +5,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/util.h>
 #include <ascii-chat/platform/mutex.h>
+#include <ascii-chat/platform/init.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/util/path.h>
@@ -125,9 +126,8 @@ typedef struct asciichat_instr_runtime {
 } asciichat_instr_runtime_t;
 
 static tls_key_t g_runtime_key;
-static mutex_t g_runtime_mutex;
+static static_mutex_t g_runtime_mutex = STATIC_MUTEX_INIT;
 static bool g_runtime_initialized = false;
-static bool g_runtime_mutex_initialized = false;
 static char g_output_dir[PATH_MAX];
 static bool g_output_dir_set = false;
 static bool g_disable_write = false;
@@ -171,17 +171,11 @@ asciichat_instr_runtime_t *asciichat_instr_runtime_get(void) {
 
   // Initialize runtime once using mutex-protected initialization
   if (!g_runtime_initialized) {
-    // Initialize mutex if needed
-    if (!g_runtime_mutex_initialized) {
-      mutex_init(&g_runtime_mutex, "runtime");
-      g_runtime_mutex_initialized = true;
-    }
-
-    mutex_lock(&g_runtime_mutex);
+    static_mutex_lock(&g_runtime_mutex);
     if (!g_runtime_initialized) {
       asciichat_instr_runtime_init_once();
     }
-    mutex_unlock(&g_runtime_mutex);
+    static_mutex_unlock(&g_runtime_mutex);
   }
 
   asciichat_instr_runtime_t *runtime = ascii_tls_get(g_runtime_key);
@@ -252,9 +246,7 @@ void asciichat_instr_runtime_destroy(asciichat_instr_runtime_t *runtime) {
 }
 
 void asciichat_instr_runtime_global_destroy(void) {
-  if (g_runtime_mutex_initialized) {
-    mutex_lock(&g_runtime_mutex);
-  }
+  static_mutex_lock(&g_runtime_mutex);
 
   if (g_runtime_initialized) {
     g_disable_write = true;
@@ -274,11 +266,7 @@ void asciichat_instr_runtime_global_destroy(void) {
   // Reset g_disable_write so instrumentation can be re-enabled in subsequent tests
   g_disable_write = false;
 
-  if (g_runtime_mutex_initialized) {
-    mutex_unlock(&g_runtime_mutex);
-    mutex_destroy(&g_runtime_mutex);
-    g_runtime_mutex_initialized = false;
-  }
+  static_mutex_unlock(&g_runtime_mutex);
 }
 
 void asciichat_instr_log_line(const char *file_path, uint32_t line_number, const char *function_name,
@@ -438,16 +426,11 @@ bool asciichat_instr_coverage_enabled(void) {
 
   // Initialize runtime once using mutex-protected initialization
   if (!g_runtime_initialized) {
-    if (!g_runtime_mutex_initialized) {
-      mutex_init(&g_runtime_mutex, "runtime");
-      g_runtime_mutex_initialized = true;
-    }
-
-    mutex_lock(&g_runtime_mutex);
+    static_mutex_lock(&g_runtime_mutex);
     if (!g_runtime_initialized) {
       asciichat_instr_runtime_init_once();
     }
-    mutex_unlock(&g_runtime_mutex);
+    static_mutex_unlock(&g_runtime_mutex);
   }
 
   return g_coverage_enabled;
