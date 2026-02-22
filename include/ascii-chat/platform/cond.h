@@ -26,6 +26,7 @@
  */
 
 #include <stdbool.h>
+#include <stdint.h>
 #include "mutex.h"
 
 #ifdef _WIN32

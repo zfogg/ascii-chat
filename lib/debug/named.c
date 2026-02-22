@@ -11,6 +11,7 @@
 #include "ascii-chat/platform/rwlock.h"
 #include "ascii-chat/uthash/uthash.h"
 #include "ascii-chat/log/logging.h"
+#include "ascii-chat/util/path.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,7 +26,7 @@
 // ============================================================================
 
 #define MAX_NAME_LEN 256
-#define DESCRIBE_BUFFER_SIZE 512
+#define DESCRIBE_BUFFER_SIZE 768  // Increased for file:line:func info
 
 // ============================================================================
 // Types
@@ -37,6 +38,9 @@
 typedef struct named_entry {
     uintptr_t key;                      // Registry lookup key
     char *name;                         // Allocated name string (e.g., "recv_mutex.7")
+    char *file;                         // Source file where registered (allocated)
+    int line;                           // Source line where registered
+    char *func;                         // Function where registered (allocated)
     UT_hash_handle hh;                  // uthash handle
 } named_entry_t;
 
@@ -100,7 +104,8 @@ void named_destroy(void) {
     atomic_store(&g_named_registry.initialized, false);
 }
 
-const char *named_register(uintptr_t key, const char *base_name) {
+const char *named_register(uintptr_t key, const char *base_name,
+                          const char *file, int line, const char *func) {
     if (!base_name) {
         return "?";
     }
@@ -118,6 +123,9 @@ const char *named_register(uintptr_t key, const char *base_name) {
         return base_name;
     }
 
+    // Make file path relative to project root
+    const char *relative_file = extract_project_relative_path(file ? file : "unknown");
+
     // Lock and insert/update in registry
     rwlock_wrlock_impl(&g_named_registry.entries_lock);
 
@@ -127,7 +135,12 @@ const char *named_register(uintptr_t key, const char *base_name) {
     if (entry) {
         // Update existing entry
         free(entry->name);
+        free(entry->file);
+        free(entry->func);
         entry->name = full_name;
+        entry->file = file ? strdup(relative_file) : NULL;
+        entry->line = line;
+        entry->func = func ? strdup(func) : NULL;
     } else {
         // Create new entry
         entry = malloc(sizeof(named_entry_t));
@@ -139,6 +152,9 @@ const char *named_register(uintptr_t key, const char *base_name) {
         }
         entry->key = key;
         entry->name = full_name;
+        entry->file = file ? strdup(relative_file) : NULL;
+        entry->line = line;
+        entry->func = func ? strdup(func) : NULL;
         HASH_ADD(hh, g_named_registry.entries, key, sizeof(key), entry);
     }
 
@@ -147,7 +163,9 @@ const char *named_register(uintptr_t key, const char *base_name) {
     return entry->name;
 }
 
-const char *named_register_fmt(uintptr_t key, const char *fmt, ...) {
+const char *named_register_fmt(uintptr_t key,
+                              const char *file, int line, const char *func,
+                              const char *fmt, ...) {
     if (!fmt) {
         return "?";
     }
@@ -168,6 +186,9 @@ const char *named_register_fmt(uintptr_t key, const char *fmt, ...) {
         return "?";
     }
 
+    // Make file path relative to project root
+    const char *relative_file = extract_project_relative_path(file ? file : "unknown");
+
     // Lock and insert/update in registry
     rwlock_wrlock_impl(&g_named_registry.entries_lock);
 
@@ -177,7 +198,12 @@ const char *named_register_fmt(uintptr_t key, const char *fmt, ...) {
     if (entry) {
         // Update existing entry
         free(entry->name);
+        free(entry->file);
+        free(entry->func);
         entry->name = full_name;
+        entry->file = file ? strdup(relative_file) : NULL;
+        entry->line = line;
+        entry->func = func ? strdup(func) : NULL;
     } else {
         // Create new entry
         entry = malloc(sizeof(named_entry_t));
@@ -189,6 +215,9 @@ const char *named_register_fmt(uintptr_t key, const char *fmt, ...) {
         }
         entry->key = key;
         entry->name = full_name;
+        entry->file = file ? strdup(relative_file) : NULL;
+        entry->line = line;
+        entry->func = func ? strdup(func) : NULL;
         HASH_ADD(hh, g_named_registry.entries, key, sizeof(key), entry);
     }
 
@@ -210,6 +239,8 @@ void named_unregister(uintptr_t key) {
     if (entry) {
         HASH_DEL(g_named_registry.entries, entry);
         free(entry->name);
+        free(entry->file);
+        free(entry->func);
         free(entry);
     }
 
@@ -251,8 +282,14 @@ const char *named_describe(uintptr_t key, const char *type_hint) {
     HASH_FIND(hh, g_named_registry.entries, &key, sizeof(key), entry);
 
     if (entry) {
-        snprintf(buffer, sizeof(buffer), "%s: %s (0x%tx)",
-                 type_hint, entry->name, (ptrdiff_t)key);
+        if (entry->file && entry->func) {
+            snprintf(buffer, sizeof(buffer), "%s: %s (0x%tx) @ %s:%d:%s()",
+                     type_hint, entry->name, (ptrdiff_t)key,
+                     entry->file, entry->line, entry->func);
+        } else {
+            snprintf(buffer, sizeof(buffer), "%s: %s (0x%tx)",
+                     type_hint, entry->name, (ptrdiff_t)key);
+        }
     } else {
         snprintf(buffer, sizeof(buffer), "%s (0x%tx)",
                  type_hint, (ptrdiff_t)key);
@@ -277,13 +314,22 @@ int named_init(void) {
 void named_destroy(void) {
 }
 
-const char *named_register(uintptr_t key, const char *base_name) {
+const char *named_register(uintptr_t key, const char *base_name,
+                          const char *file, int line, const char *func) {
     (void)key;
+    (void)file;
+    (void)line;
+    (void)func;
     return base_name ? base_name : "?";
 }
 
-const char *named_register_fmt(uintptr_t key, const char *fmt, ...) {
+const char *named_register_fmt(uintptr_t key,
+                              const char *file, int line, const char *func,
+                              const char *fmt, ...) {
     (void)key;
+    (void)file;
+    (void)line;
+    (void)func;
     return fmt ? fmt : "?";
 }
 

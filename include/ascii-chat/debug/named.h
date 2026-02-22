@@ -75,9 +75,12 @@ int named_init(void);
 void named_destroy(void);
 
 /**
- * @brief Register a resource with an auto-suffixed name
+ * @brief Register a resource with an auto-suffixed name and location info
  * @param key A uintptr_t representing the resource (pointer or integer handle)
  * @param base_name The base name (e.g., "recv_mutex"); suffix auto-generated
+ * @param file Source file where registration occurred (typically __FILE__)
+ * @param line Source line where registration occurred (typically __LINE__)
+ * @param func Function where registration occurred (typically __func__)
  * @return Pointer to the full registered name (e.g., "recv_mutex.7"), valid until unregister
  * @ingroup debug_named
  *
@@ -87,11 +90,15 @@ void named_destroy(void);
  * Multiple registrations of the same key will overwrite the previous entry.
  * In release builds (NDEBUG), this is a no-op and returns base_name.
  */
-const char *named_register(uintptr_t key, const char *base_name);
+const char *named_register(uintptr_t key, const char *base_name,
+                          const char *file, int line, const char *func);
 
 /**
- * @brief Register a resource with a formatted name (no auto-suffix)
+ * @brief Register a resource with a formatted name and location info (no auto-suffix)
  * @param key A uintptr_t representing the resource
+ * @param file Source file where registration occurred
+ * @param line Source line where registration occurred
+ * @param func Function where registration occurred
  * @param fmt Printf-style format string
  * @param ... Format arguments
  * @return Pointer to the full registered name
@@ -103,7 +110,9 @@ const char *named_register(uintptr_t key, const char *base_name);
  *
  * In release builds (NDEBUG), this is a no-op and returns "?".
  */
-const char *named_register_fmt(uintptr_t key, const char *fmt, ...);
+const char *named_register_fmt(uintptr_t key,
+                              const char *file, int line, const char *func,
+                              const char *fmt, ...);
 
 /**
  * @brief Unregister a resource by key
@@ -166,10 +175,13 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * @param ptr Object pointer (void* or typed pointer)
  * @param name Base name string
  * @ingroup debug_named
+ *
+ * In debug builds, automatically captures __FILE__, __LINE__, and __func__ for location info.
+ * In release builds (NDEBUG), this is a no-op.
  */
 #ifndef NDEBUG
 #define NAMED_REGISTER(ptr, name) \
-  named_register((uintptr_t)(const void *)(ptr), (name))
+  named_register((uintptr_t)(const void *)(ptr), (name), __FILE__, __LINE__, __func__)
 #else
 #define NAMED_REGISTER(ptr, name) ((void)0)
 #endif
@@ -180,10 +192,13 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * @param fmt Printf-style format string
  * @param ... Format arguments
  * @ingroup debug_named
+ *
+ * In debug builds, automatically captures __FILE__, __LINE__, and __func__ for location info.
+ * In release builds (NDEBUG), this is a no-op.
  */
 #ifndef NDEBUG
 #define NAMED_REGISTER_FMT(ptr, fmt, ...) \
-  named_register_fmt((uintptr_t)(const void *)(ptr), (fmt), __VA_ARGS__)
+  named_register_fmt((uintptr_t)(const void *)(ptr), __FILE__, __LINE__, __func__, (fmt), __VA_ARGS__)
 #else
 #define NAMED_REGISTER_FMT(ptr, fmt, ...) ((void)0)
 #endif
@@ -234,10 +249,13 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * @param id Integer handle (socket_t, int, etc.)
  * @param name Base name string
  * @ingroup debug_named
+ *
+ * In debug builds, automatically captures __FILE__, __LINE__, and __func__ for location info.
+ * In release builds (NDEBUG), this is a no-op.
  */
 #ifndef NDEBUG
 #define NAMED_REGISTER_ID(id, name) \
-  named_register((uintptr_t)(intptr_t)(id), (name))
+  named_register((uintptr_t)(intptr_t)(id), (name), __FILE__, __LINE__, __func__)
 #else
 #define NAMED_REGISTER_ID(id, name) ((void)0)
 #endif
