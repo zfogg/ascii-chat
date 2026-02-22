@@ -24,6 +24,10 @@ endif()
 # Fetch and build dependencies for WASM
 include(FetchContent)
 
+# Suppress verbose configure output from all dependency builds
+set(CMAKE_MESSAGE_LOG_LEVEL_BACKUP "${CMAKE_MESSAGE_LOG_LEVEL}")
+set(CMAKE_MESSAGE_LOG_LEVEL "WARNING")
+
 # libsodium
 FetchContent_Declare(Sodium
     GIT_REPOSITORY https://github.com/robinlinden/libsodium-cmake.git
@@ -39,12 +43,7 @@ FetchContent_Declare(pcre2
 )
 set(PCRE2_BUILD_TESTS OFF CACHE BOOL "Build PCRE2 tests")
 set(PCRE2_BUILD_PCRE2GREP OFF CACHE BOOL "Build pcre2grep")
-
-# Silence PCRE2 configure step output during fetch/build
-set(OLD_MESSAGE_LOG_LEVEL "${CMAKE_MESSAGE_LOG_LEVEL}")
-set(CMAKE_MESSAGE_LOG_LEVEL "WARNING")
 FetchContent_MakeAvailable(pcre2)
-set(CMAKE_MESSAGE_LOG_LEVEL "${OLD_MESSAGE_LOG_LEVEL}")
 
 # Opus codec (for client mode audio encoding/decoding)
 FetchContent_Declare(Opus
@@ -70,6 +69,9 @@ set(ZSTD_BUILD_SHARED OFF CACHE BOOL "Build shared library")
 set(ZSTD_BUILD_STATIC ON CACHE BOOL "Build static library")
 set(ZSTD_MULTITHREAD_SUPPORT OFF CACHE BOOL "Disable zstd threading for WASM")
 FetchContent_MakeAvailable(zstd)
+
+# Restore original message log level
+set(CMAKE_MESSAGE_LOG_LEVEL "${CMAKE_MESSAGE_LOG_LEVEL_BACKUP}")
 
 # TOML (using tomlc17 from deps)
 # No FetchContent needed - using vendored tomlc17
