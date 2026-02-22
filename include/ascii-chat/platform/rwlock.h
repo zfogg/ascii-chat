@@ -32,12 +32,24 @@
 
 #ifdef _WIN32
 #include "windows_compat.h"
-/** @brief Read-write lock type (Windows: SRWLOCK) */
-typedef SRWLOCK rwlock_t;
+/**
+ * @brief Read-write lock type (Windows: SRWLOCK with name)
+ * @ingroup platform
+ */
+typedef struct {
+    SRWLOCK impl;           ///< Underlying Windows SRW lock
+    const char *name;       ///< Human-readable name for debugging
+} rwlock_t;
 #else
 #include <pthread.h>
-/** @brief Read-write lock type (POSIX: pthread_rwlock_t) */
-typedef pthread_rwlock_t rwlock_t;
+/**
+ * @brief Read-write lock type (POSIX: pthread_rwlock_t with name)
+ * @ingroup platform
+ */
+typedef struct {
+    pthread_rwlock_t impl;  ///< Underlying POSIX rwlock
+    const char *name;       ///< Human-readable name for debugging
+} rwlock_t;
 #endif
 
 // Forward declarations for lock debugging
@@ -68,16 +80,18 @@ extern "C" {
 // ============================================================================
 
 /**
- * @brief Initialize a read-write lock
+ * @brief Initialize a read-write lock with a name
  * @param lock Pointer to read-write lock to initialize
+ * @param name Human-readable name for debugging (e.g., "client_list_lock")
  * @return 0 on success, non-zero on error
  *
  * Initializes the read-write lock for use. Must be called before any other
- * lock operations.
+ * lock operations. The name is stored for debugging and automatically suffixed
+ * with a unique counter.
  *
  * @ingroup platform
  */
-int rwlock_init(rwlock_t *lock);
+int rwlock_init(rwlock_t *lock, const char *name);
 
 /**
  * @brief Destroy a read-write lock

@@ -30,12 +30,24 @@
 
 #ifdef _WIN32
 #include "windows_compat.h"
-/** @brief Mutex type (Windows: CRITICAL_SECTION) */
-typedef CRITICAL_SECTION mutex_t;
+/**
+ * @brief Mutex type (Windows: CRITICAL_SECTION with name)
+ * @ingroup platform
+ */
+typedef struct {
+    CRITICAL_SECTION impl;  ///< Underlying Windows critical section
+    const char *name;       ///< Human-readable name for debugging
+} mutex_t;
 #else
 #include <pthread.h>
-/** @brief Mutex type (POSIX: pthread_mutex_t) */
-typedef pthread_mutex_t mutex_t;
+/**
+ * @brief Mutex type (POSIX: pthread_mutex_t with name)
+ * @ingroup platform
+ */
+typedef struct {
+    pthread_mutex_t impl;   ///< Underlying POSIX mutex
+    const char *name;       ///< Human-readable name for debugging
+} mutex_t;
 #endif
 
 // Forward declare debug_mutex functions (full declarations in debug/lock.h)
@@ -57,15 +69,17 @@ bool lock_debug_is_initialized(void);
 // ============================================================================
 
 /**
- * @brief Initialize a mutex
+ * @brief Initialize a mutex with a name
  * @param mutex Pointer to mutex to initialize
+ * @param name Human-readable name for debugging (e.g., "recv_mutex")
  * @return 0 on success, non-zero on error
  *
  * Initializes the mutex for use. Must be called before any other mutex operations.
+ * The name is stored for debugging and automatically suffixed with a unique counter.
  *
  * @ingroup platform
  */
-int mutex_init(mutex_t *mutex);
+int mutex_init(mutex_t *mutex, const char *name);
 
 /**
  * @brief Destroy a mutex

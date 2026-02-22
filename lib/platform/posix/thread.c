@@ -275,4 +275,8 @@ asciichat_error_t asciichat_thread_set_realtime_priority(void) {
 #endif
 }
 
+uintptr_t asciichat_thread_to_key(asciichat_thread_t thread) {
+  return (uintptr_t)thread;
+}
+
 #endif // !_WIN32

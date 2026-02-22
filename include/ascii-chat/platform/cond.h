@@ -30,12 +30,24 @@
 
 #ifdef _WIN32
 #include "windows_compat.h"
-/** @brief Condition variable type (Windows: CONDITION_VARIABLE) */
-typedef CONDITION_VARIABLE cond_t;
+/**
+ * @brief Condition variable type (Windows: CONDITION_VARIABLE with name)
+ * @ingroup platform
+ */
+typedef struct {
+    CONDITION_VARIABLE impl; ///< Underlying Windows condition variable
+    const char *name;        ///< Human-readable name for debugging
+} cond_t;
 #else
 #include <pthread.h>
-/** @brief Condition variable type (POSIX: pthread_cond_t) */
-typedef pthread_cond_t cond_t;
+/**
+ * @brief Condition variable type (POSIX: pthread_cond_t with name)
+ * @ingroup platform
+ */
+typedef struct {
+    pthread_cond_t impl;     ///< Underlying POSIX condition variable
+    const char *name;        ///< Human-readable name for debugging
+} cond_t;
 #endif
 
 #ifdef __cplusplus
@@ -47,16 +59,18 @@ extern "C" {
 // ============================================================================
 
 /**
- * @brief Initialize a condition variable
+ * @brief Initialize a condition variable with a name
  * @param cond Pointer to condition variable to initialize
+ * @param name Human-readable name for debugging (e.g., "audio_ready")
  * @return 0 on success, non-zero on error
  *
  * Initializes the condition variable for use. Must be called before any other
- * condition variable operations.
+ * condition variable operations. The name is stored for debugging and automatically
+ * suffixed with a unique counter.
  *
  * @ingroup platform
  */
-int cond_init(cond_t *cond);
+int cond_init(cond_t *cond, const char *name);
 
 /**
  * @brief Destroy a condition variable
