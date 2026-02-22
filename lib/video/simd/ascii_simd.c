@@ -9,10 +9,10 @@
 #include <string.h>
 #include <time.h>
 #include <stdarg.h>
-#include <threads.h>
 
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/init.h>
+#include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/video/simd/ascii_simd.h>
 #include <ascii-chat/video/palette.h>
@@ -34,9 +34,9 @@ size_t write_rgb_triplet(uint8_t value, char *dst) {
 
 // Default luminance palette for legacy functions
 char g_default_luminance_palette[256];
-static once_flag g_default_palette_once = ONCE_FLAG_INIT;
+static lifecycle_t g_default_palette_lc = LIFECYCLE_INIT;
 
-// Private initialization function (called exactly once via call_once)
+// Private initialization function (called exactly once via lifecycle)
 static void do_init_default_luminance_palette(void) {
   // Build default luminance mapping using standard palette
   const size_t len = DEFAULT_ASCII_PALETTE_LEN;
@@ -49,9 +49,12 @@ static void do_init_default_luminance_palette(void) {
   }
 }
 
-// Initialize default luminance palette (thread-safe with C11 call_once)
+// Initialize default luminance palette (thread-safe with lifecycle API)
 void init_default_luminance_palette(void) {
-  call_once(&g_default_palette_once, do_init_default_luminance_palette);
+  if (!lifecycle_init(&g_default_palette_lc, "default_palette")) {
+    return; // Already initialized
+  }
+  do_init_default_luminance_palette();
 }
 
 // Helper function for benchmarks and fallback cases

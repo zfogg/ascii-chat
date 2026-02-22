@@ -14,11 +14,11 @@
 #include <assert.h>
 #include <stdatomic.h>
 #include <math.h>
-#include <threads.h>
 
 #include <arm_neon.h>
 
 #include <ascii-chat/common.h>
+#include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/video/simd/neon.h>
 #include <ascii-chat/video/simd/ascii_simd.h>
 #include <ascii-chat/video/image.h>
@@ -206,12 +206,12 @@ static inline bool all_same_length_neon(uint8x16_t lengths, uint8_t *out_length)
 // NEON TBL lookup tables for decimal conversion (256 entries each)
 // Format: each entry has length byte + up to 3 decimal chars (4 bytes per entry)
 static uint8_t neon_decimal_table_data[256 * 4]; // 1024 bytes: [len][d1][d2][d3] per entry
-// One-time initialization flag using C11 threads.h call_once for thread-safe setup
-static once_flag g_neon_table_once = ONCE_FLAG_INIT;
+// Lifecycle for thread-safe one-time initialization (replaces C11 call_once)
+static lifecycle_t g_neon_table_lc = LIFECYCLE_INIT;
 
-// Private initialization function (called exactly once via call_once)
+// Private initialization function (called exactly once via lifecycle)
 static void do_init_neon_decimal_table(void) {
-  // Initialize g_dec3_cache first (also once_flag protected if needed)
+  // Initialize g_dec3_cache first
   if (!g_dec3_cache.dec3_initialized) {
     init_dec3();
   }
@@ -228,9 +228,12 @@ static void do_init_neon_decimal_table(void) {
 }
 
 // Initialize NEON TBL decimal lookup table (called once at startup)
-// Thread-safe with C11 call_once ensuring exactly-once execution
+// Thread-safe with lifecycle API ensuring exactly-once execution
 void init_neon_decimal_table(void) {
-  call_once(&g_neon_table_once, do_init_neon_decimal_table);
+  if (!lifecycle_init(&g_neon_table_lc, "neon_decimal")) {
+    return; // Already initialized
+  }
+  do_init_neon_decimal_table();
 }
 
 // TODO: Implement true NEON vectorized ANSI sequence generation using TBL + compaction

@@ -5,6 +5,7 @@
  */
 
 #include <ascii-chat/common.h>
+#include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/video/simd/ascii_simd.h>
 #include <ascii-chat/video/ansi_fast.h>
 #include <ascii-chat/util/math.h>
@@ -15,11 +16,10 @@
 #include <unistd.h>
 #endif
 #include <limits.h>
-#include <threads.h>
 
 // 256-color lookup table (optional)
 static char color256_strings[256][16]; // Pre-built SGR strings like "\033[38;5;123m"
-static once_flag g_color256_once = ONCE_FLAG_INIT;
+static lifecycle_t g_color256_lc = LIFECYCLE_INIT;
 
 // Fast foreground color: \033[38;2;R;G;Bm
 // Maximum output: 19 bytes (\033[38;2;255;255;255m)
@@ -201,16 +201,19 @@ void ansi_fast_init(void) {
 }
 
 // 256-color mode initialization (optional high-speed mode)
-// Private initialization function (called exactly once via call_once)
+// Private initialization function (called exactly once via lifecycle)
 static void do_init_256color(void) {
   for (int i = 0; i < 256; i++) {
     SAFE_SNPRINTF(color256_strings[i], sizeof(color256_strings[i]), "\033[38;5;%dm", i);
   }
 }
 
-// Public initialization wrapper - thread-safe using C11 call_once
+// Public initialization wrapper - thread-safe using lifecycle API
 void ansi_fast_init_256color(void) {
-  call_once(&g_color256_once, do_init_256color);
+  if (!lifecycle_init(&g_color256_lc, "ansi_256color")) {
+    return; // Already initialized
+  }
+  do_init_256color();
 }
 
 // Fast 256-color foreground
@@ -246,9 +249,9 @@ uint8_t rgb_to_256color(uint8_t r, uint8_t g, uint8_t b) {
 // 16-color mode support
 static char color16_fg_strings[16][16];
 static char color16_bg_strings[16][16];
-static once_flag g_color16_once = ONCE_FLAG_INIT;
+static lifecycle_t g_color16_lc = LIFECYCLE_INIT;
 
-// Private initialization function (called exactly once via call_once)
+// Private initialization function (called exactly once via lifecycle)
 static void do_init_16color(void) {
   // Standard ANSI color codes
   const char *fg_codes[] = {"30", "31", "32", "33", "34", "35", "36", "37",          // Normal colors (30-37)
@@ -262,9 +265,12 @@ static void do_init_16color(void) {
   }
 }
 
-// Public initialization wrapper - thread-safe using C11 call_once
+// Public initialization wrapper - thread-safe using lifecycle API
 void ansi_fast_init_16color(void) {
-  call_once(&g_color16_once, do_init_16color);
+  if (!lifecycle_init(&g_color16_lc, "ansi_16color")) {
+    return; // Already initialized
+  }
+  do_init_16color();
 }
 
 char *append_16color_fg(char *dst, uint8_t color_index) {
