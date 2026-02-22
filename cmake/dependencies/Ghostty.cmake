@@ -260,6 +260,20 @@ elseif(UNIX AND NOT APPLE)
             add_custom_target(ghostty_build)
         endif()
 
+        # Copy ghostty shared library to build lib directory for RPATH resolution
+        # This ensures the library is available where the executable can find it at runtime
+        if(UNIX AND NOT APPLE AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+            file(GLOB GHOSTTY_SHARED_LIBS "${GHOSTTY_BUILD_DIR}/lib/libghostty*.so*")
+            if(GHOSTTY_SHARED_LIBS)
+                add_custom_command(TARGET ghostty_build POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                        ${GHOSTTY_SHARED_LIBS}
+                        ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/
+                    COMMENT "Copying ghostty shared libraries to ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
+                )
+            endif()
+        endif()
+
         # Create an imported library that links to the built library
         add_library(ghostty_lib STATIC IMPORTED GLOBAL)
         set_target_properties(ghostty_lib PROPERTIES
