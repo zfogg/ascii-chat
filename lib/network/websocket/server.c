@@ -614,14 +614,9 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     mutex_unlock(&ws_data->recv_mutex);
     log_dev("[WS_DEBUG] RECEIVE: Unlocked recv_mutex");
 
-    // Signal handler to process queued fragments
-    // IMPORTANT: With permessage-deflate, lws_is_final_fragment() is unreliable (GitHub #1768)
-    // So we signal for EVERY fragment instead of waiting for is_final=1.
-    // The handler thread will detect complete ACIP messages using protocol structure:
-    // - ACIP header: magic(8) + type(2) + length(4) + crc(4) + client_id(2) = 20 bytes
-    // - Use length field to know when we have a complete packet
-    // This avoids relying on WebSocket fragmentation flags which are unreliable with compression
-    lws_callback_on_writable(wsi);
+    // Signal handler to process queued fragments via the condition variable
+    // (cond_signal already called above - do not call lws_callback_on_writable here as it
+    // interferes with fragmented frame processing in libwebsockets)
 
     log_info("[WS_FRAG] Queued fragment: %zu bytes (first=%d final=%d, total_fragments=%llu)", len, is_first, is_final,
              (unsigned long long)atomic_load(&g_receive_callback_count));
