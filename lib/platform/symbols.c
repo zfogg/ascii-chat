@@ -58,10 +58,11 @@ static atomic_bool g_symbolizer_detected = false;
 static atomic_bool g_llvm_symbolizer_checked = false;
 static atomic_bool g_llvm_symbolizer_available = false;
 static char g_llvm_symbolizer_cmd[PLATFORM_MAX_PATH_LENGTH];
-static atomic_bool g_addr2line_checked = false;
 static atomic_bool g_addr2line_available = false;
 static char g_addr2line_cmd[PLATFORM_MAX_PATH_LENGTH];
-static static_mutex_t g_symbolizer_detection_mutex = STATIC_MUTEX_INIT;
+// Lifecycle for symbolizer detection (replaces double-checked locking with mutex)
+static lifecycle_t g_llvm_symbolizer_lc = LIFECYCLE_INIT;
+static lifecycle_t g_addr2line_lc = LIFECYCLE_INIT;
 
 // ============================================================================
 // Cache State
@@ -156,35 +157,47 @@ static bool symbolizer_path_is_executable(const char *path) {
 }
 
 static const char *get_llvm_symbolizer_command(void) {
-  if (!atomic_load(&g_llvm_symbolizer_checked)) {
-    static_mutex_lock(&g_symbolizer_detection_mutex);
-    if (!atomic_load(&g_llvm_symbolizer_checked)) {
-      const char *env_path = SAFE_GETENV("LLVM_SYMBOLIZER_PATH");
-      bool available = false;
-
-      g_llvm_symbolizer_cmd[0] = '\0';
-
-      if (env_path && env_path[0] != '\0') {
-        if (symbolizer_path_is_executable(env_path)) {
-          SAFE_STRNCPY(g_llvm_symbolizer_cmd, env_path, sizeof(g_llvm_symbolizer_cmd));
-          available = true;
-          log_dev("Using llvm-symbolizer from LLVM_SYMBOLIZER_PATH: %s", env_path);
-        } else {
-          log_warn("LLVM_SYMBOLIZER_PATH is set but not executable: %s", env_path);
-        }
-      }
-
-      if (!available && platform_is_binary_in_path(LLVM_SYMBOLIZER_BIN)) {
-        available = true;
-        g_llvm_symbolizer_cmd[0] = '\0'; // Use binary name from PATH
-        log_dev("Found %s in PATH", LLVM_SYMBOLIZER_BIN);
-      }
-
-      atomic_store(&g_llvm_symbolizer_available, available);
-      atomic_store(&g_llvm_symbolizer_checked, true);
-    }
-    static_mutex_unlock(&g_symbolizer_detection_mutex);
+  // Check if already initialized
+  if (lifecycle_is_initialized(&g_llvm_symbolizer_lc)) {
+    goto check_available;
   }
+
+  // Try to win the initialization race
+  if (!lifecycle_init(&g_llvm_symbolizer_lc, "llvm_symbolizer")) {
+    // Lost race - wait for winner to complete
+    while (!lifecycle_is_initialized(&g_llvm_symbolizer_lc)) {
+      // Spin-wait
+    }
+    goto check_available;
+  }
+
+  // Winner: do the initialization
+  {
+    const char *env_path = SAFE_GETENV("LLVM_SYMBOLIZER_PATH");
+    bool available = false;
+
+    g_llvm_symbolizer_cmd[0] = '\0';
+
+    if (env_path && env_path[0] != '\0') {
+      if (symbolizer_path_is_executable(env_path)) {
+        SAFE_STRNCPY(g_llvm_symbolizer_cmd, env_path, sizeof(g_llvm_symbolizer_cmd));
+        available = true;
+        log_dev("Using llvm-symbolizer from LLVM_SYMBOLIZER_PATH: %s", env_path);
+      } else {
+        log_warn("LLVM_SYMBOLIZER_PATH is set but not executable: %s", env_path);
+      }
+    }
+
+    if (!available && platform_is_binary_in_path(LLVM_SYMBOLIZER_BIN)) {
+      available = true;
+      g_llvm_symbolizer_cmd[0] = '\0'; // Use binary name from PATH
+      log_dev("Found %s in PATH", LLVM_SYMBOLIZER_BIN);
+    }
+
+    atomic_store(&g_llvm_symbolizer_available, available);
+  }
+
+check_available:
 
   if (!atomic_load(&g_llvm_symbolizer_available)) {
     return NULL;
@@ -198,35 +211,47 @@ static const char *get_llvm_symbolizer_command(void) {
 }
 
 static const char *get_addr2line_command(void) {
-  if (!atomic_load(&g_addr2line_checked)) {
-    static_mutex_lock(&g_symbolizer_detection_mutex);
-    if (!atomic_load(&g_addr2line_checked)) {
-      const char *env_path = SAFE_GETENV("ADDR2LINE_PATH");
-      bool available = false;
-
-      g_addr2line_cmd[0] = '\0';
-
-      if (env_path && env_path[0] != '\0') {
-        if (symbolizer_path_is_executable(env_path)) {
-          SAFE_STRNCPY(g_addr2line_cmd, env_path, sizeof(g_addr2line_cmd));
-          available = true;
-          log_dev("Using addr2line from ADDR2LINE_PATH: %s", env_path);
-        } else {
-          log_warn("ADDR2LINE_PATH is set but not executable: %s", env_path);
-        }
-      }
-
-      if (!available && platform_is_binary_in_path(ADDR2LINE_BIN)) {
-        available = true;
-        g_addr2line_cmd[0] = '\0'; // Use binary name from PATH
-        log_dev("Found %s in PATH", ADDR2LINE_BIN);
-      }
-
-      atomic_store(&g_addr2line_available, available);
-      atomic_store(&g_addr2line_checked, true);
-    }
-    static_mutex_unlock(&g_symbolizer_detection_mutex);
+  // Check if already initialized
+  if (lifecycle_is_initialized(&g_addr2line_lc)) {
+    goto check_available;
   }
+
+  // Try to win the initialization race
+  if (!lifecycle_init(&g_addr2line_lc, "addr2line")) {
+    // Lost race - wait for winner to complete
+    while (!lifecycle_is_initialized(&g_addr2line_lc)) {
+      // Spin-wait
+    }
+    goto check_available;
+  }
+
+  // Winner: do the initialization
+  {
+    const char *env_path = SAFE_GETENV("ADDR2LINE_PATH");
+    bool available = false;
+
+    g_addr2line_cmd[0] = '\0';
+
+    if (env_path && env_path[0] != '\0') {
+      if (symbolizer_path_is_executable(env_path)) {
+        SAFE_STRNCPY(g_addr2line_cmd, env_path, sizeof(g_addr2line_cmd));
+        available = true;
+        log_dev("Using addr2line from ADDR2LINE_PATH: %s", env_path);
+      } else {
+        log_warn("ADDR2LINE_PATH is set but not executable: %s", env_path);
+      }
+    }
+
+    if (!available && platform_is_binary_in_path(ADDR2LINE_BIN)) {
+      available = true;
+      g_addr2line_cmd[0] = '\0'; // Use binary name from PATH
+      log_dev("Found %s in PATH", ADDR2LINE_BIN);
+    }
+
+    atomic_store(&g_addr2line_available, available);
+  }
+
+check_available:
 
   if (!atomic_load(&g_addr2line_available)) {
     return NULL;
