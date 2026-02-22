@@ -513,6 +513,9 @@ typedef enum {
 /** @brief Default no encrypt flag (false = allow encryption) */
 #define OPT_NO_ENCRYPT_DEFAULT false
 
+/** @brief Default no auth flag (false = allow authentication) */
+#define OPT_NO_AUTH_DEFAULT false
+
 /** @brief Default WebRTC mode flag (true = P2P WebRTC, false = direct TCP) */
 #define OPT_WEBRTC_DEFAULT true
 
@@ -720,6 +723,7 @@ static const int default_compression_level_value = OPT_COMPRESSION_LEVEL_DEFAULT
 static const bool default_no_compress_value = OPT_NO_COMPRESS_DEFAULT;
 static const bool default_encrypt_enabled_value = OPT_ENCRYPT_ENABLED_DEFAULT;
 static const bool default_no_encrypt_value = OPT_NO_ENCRYPT_DEFAULT;
+static const bool default_no_auth_value = OPT_NO_AUTH_DEFAULT;
 static const int default_max_clients_value = OPT_MAX_CLIENTS_DEFAULT;
 static const int default_reconnect_attempts_value = OPT_RECONNECT_ATTEMPTS_DEFAULT;
 static const int default_discovery_port_value = OPT_ACDS_PORT_INT_DEFAULT;
@@ -994,6 +998,7 @@ typedef struct options_state {
   char password[OPTIONS_BUFF_SIZE];        ///< Password string
   char encrypt_keyfile[OPTIONS_BUFF_SIZE]; ///< Alternative key file path
   bool no_encrypt;                         ///< Disable encryption (opt-out)
+  bool no_auth;                            ///< Disable authentication layer (--no-auth)
   char server_key[OPTIONS_BUFF_SIZE];      ///< Expected server public key (client)
   char client_keys[OPTIONS_BUFF_SIZE];     ///< Allowed client keys (server)
 

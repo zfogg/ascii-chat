@@ -333,17 +333,15 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   // Cannot use both --encrypt and --no-encrypt
   options_builder_add_dependency_conflicts(b, "no-encrypt", "encrypt", "Cannot use --no-encrypt with --encrypt");
 
-  // Cannot use --password with --key (different auth methods)
-  options_builder_add_dependency_conflicts(b, "password", "key",
-                                           "Cannot use --password with --key (mutually exclusive authentication methods)");
-
-  // Cannot use --password with --server-key (password auth incompatible with key verification)
-  options_builder_add_dependency_conflicts(b, "password", "server-key",
-                                           "Cannot use --password with --server-key (use one authentication method)");
-
-  // Cannot use --password with --client-keys (password auth incompatible with key verification)
-  options_builder_add_dependency_conflicts(b, "password", "client-keys",
-                                           "Cannot use --password with --client-keys (use one authentication method)");
+  // Cannot use --no-auth with authentication material (--key, --password, --client-keys, --server-key)
+  options_builder_add_dependency_conflicts(b, "no-auth", "key",
+                                           "Cannot use --no-auth with --key (key requires authentication)");
+  options_builder_add_dependency_conflicts(b, "no-auth", "password",
+                                           "Cannot use --no-auth with --password (password requires authentication)");
+  options_builder_add_dependency_conflicts(b, "no-auth", "client-keys",
+                                           "Cannot use --no-auth with --client-keys (key list requires authentication)");
+  options_builder_add_dependency_conflicts(b, "no-auth", "server-key",
+                                           "Cannot use --no-auth with --server-key (verification requires authentication)");
 
   // Cannot use --key with --server-key (both server-side key options)
   options_builder_add_dependency_conflicts(b, "key", "server-key",
