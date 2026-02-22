@@ -144,6 +144,7 @@
 #include <ascii-chat/network/packet_queue.h>
 #include <ascii-chat/debug/sync.h>
 #include <ascii-chat/platform/init.h>
+#include <ascii-chat/util/lifecycle.h>
 
 /**
  * @brief Global server statistics structure
@@ -171,44 +172,34 @@ server_stats_t g_stats = {0};
 mutex_t g_stats_mutex = {0};
 
 /**
- * @brief Flag tracking whether stats mutex has been initialized
+ * @brief Lifecycle gate for stats mutex initialization
  *
  * Used to prevent attempting to lock an uninitialized mutex in debug builds
  * where stats_init() may not be called (it's guarded by #ifdef NDEBUG).
  *
  * @ingroup server_stats
  */
-static bool g_stats_mutex_initialized = false;
-// Mutex to protect the initialization check (TOCTOU race prevention)
-static static_mutex_t g_stats_init_check_mutex = STATIC_MUTEX_INIT;
+static lifecycle_t g_stats_lc = LIFECYCLE_INIT_MUTEX(&g_stats_mutex);
 
 /**
  * @brief Initialize the stats mutex
  * @return 0 on success, -1 on failure
  */
 int stats_init(void) {
-  int ret = mutex_init(&g_stats_mutex, "stats");
-  if (ret == 0) {
-    g_stats_mutex_initialized = true;
+  if (!lifecycle_init(&g_stats_lc, "stats")) {
+    return 0; // Already initialized
   }
-  return ret;
+  return 0;
 }
 
 /**
  * @brief Cleanup the stats mutex
  *
- * Uses static_mutex to protect flag changes (TOCTOU race prevention).
+ * Uses lifecycle gate to safely destroy the stats mutex.
  * Ensures other threads don't attempt to use the mutex after it's destroyed.
  */
 void stats_cleanup(void) {
-  static_mutex_lock(&g_stats_init_check_mutex);
-  if (g_stats_mutex_initialized) {
-    g_stats_mutex_initialized = false; // Clear flag before destroying mutex
-    static_mutex_unlock(&g_stats_init_check_mutex);
-    mutex_destroy(&g_stats_mutex);
-  } else {
-    static_mutex_unlock(&g_stats_init_check_mutex);
-  }
+  lifecycle_shutdown(&g_stats_lc);
 }
 
 /* ============================================================================
@@ -561,17 +552,12 @@ void update_server_stats(void) {
  * @see update_server_stats() For statistics update implementation
  */
 void log_server_stats(void) {
-  // Use static_mutex to protect initialization check (TOCTOU race prevention)
-  // In debug builds, stats_init() may not be called (it's guarded by #ifdef NDEBUG)
-  // Use lock to prevent cleanup from destroying mutex while we're about to lock it
-  static_mutex_lock(&g_stats_init_check_mutex);
-  if (!g_stats_mutex_initialized) {
-    static_mutex_unlock(&g_stats_init_check_mutex);
+  // Check if stats mutex is initialized (safe in debug builds where stats_init() may not be called)
+  if (!lifecycle_is_initialized(&g_stats_lc)) {
     return; // Mutex not initialized, skip logging
   }
-  static_mutex_unlock(&g_stats_init_check_mutex);
 
-  // Now safe to use the mutex (it was initialized and not being cleaned up)
+  // Now safe to use the mutex
   mutex_lock(&g_stats_mutex);
   log_info("Server Statistics:\n"
            "  frames_captured=%llu\n"

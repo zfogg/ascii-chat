@@ -73,6 +73,7 @@
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/uthash/uthash.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/socket.h>
@@ -2299,12 +2300,10 @@ int server_main(void) {
 
             // Configure STUN servers for ICE gathering (static to persist for peer_manager lifetime)
             static stun_server_t stun_servers[4] = {0};
-            static unsigned int g_stun_init_refcount = 0;
-            static static_mutex_t g_stun_init_mutex = STATIC_MUTEX_INIT;
+            static lifecycle_t g_stun_lc = LIFECYCLE_INIT;
             static int stun_count = 0; // Store actual count separately
 
-            static_mutex_lock(&g_stun_init_mutex);
-            if (g_stun_init_refcount == 0) {
+            if (lifecycle_init(&g_stun_lc, "stun")) {
               log_debug("Parsing STUN servers from options: '%s'", GET_OPTION(stun_servers));
               int count =
                   stun_servers_parse(GET_OPTION(stun_servers), OPT_ENDPOINT_STUN_SERVERS_DEFAULT, stun_servers, 4);
@@ -2323,9 +2322,7 @@ int server_main(void) {
                   log_debug("  STUN[%d]: '%s' (len=%d)", i, stun_servers[i].host, stun_servers[i].host_len);
                 }
               }
-              g_stun_init_refcount = 1;
             }
-            static_mutex_unlock(&g_stun_init_mutex);
 
             // Configure peer_manager
             webrtc_peer_manager_config_t pm_config = {

@@ -69,8 +69,7 @@ static struct {
  * @brief Mutex protecting signaling state
  */
 static mutex_t g_signaling_mutex;
-static bool g_signaling_mutex_initialized = false;
-static static_mutex_t g_signaling_init_mutex = STATIC_MUTEX_INIT;
+static lifecycle_t g_signaling_lc = LIFECYCLE_INIT_MUTEX(&g_signaling_mutex);
 
 // =============================================================================
 // Internal Helpers
@@ -79,19 +78,12 @@ static static_mutex_t g_signaling_init_mutex = STATIC_MUTEX_INIT;
 /**
  * @brief Initialize signaling mutex (called once)
  *
- * Uses static mutex to prevent TOCTOU race condition where multiple threads
- * might attempt to initialize the main mutex simultaneously.
+ * Uses lifecycle gate to prevent TOCTOU race condition where multiple threads
+ * might attempt to initialize the main mutex simultaneously. Mutex initialization
+ * is handled automatically by lifecycle_init.
  */
 static void ensure_mutex_initialized(void) {
-  static_mutex_lock(&g_signaling_init_mutex);
-
-  // Check again under lock to prevent race condition
-  if (!g_signaling_mutex_initialized) {
-    mutex_init(&g_signaling_mutex, "signaling");
-    g_signaling_mutex_initialized = true;
-  }
-
-  static_mutex_unlock(&g_signaling_init_mutex);
+  if (!lifecycle_init(&g_signaling_lc, "signaling")) return;
 }
 
 // =============================================================================

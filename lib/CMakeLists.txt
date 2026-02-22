@@ -7,7 +7,7 @@ set(LIB_DIR ${CMAKE_SOURCE_DIR}/lib)
 set(CORE_SRCS
     ${LIB_DIR}/common.c
     ${LIB_DIR}/asciichat_errno.c
-    ${LIB_DIR}/init.c
+    ${LIB_DIR}/lifecycle.c
     ${LIB_DIR}/embedded_resources.c
     # log/
     ${LIB_DIR}/log/logging.c
