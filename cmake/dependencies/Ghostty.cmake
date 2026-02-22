@@ -61,33 +61,50 @@ if(APPLE)
 
         file(MAKE_DIRECTORY "${GHOSTTY_BUILD_DIR}")
 
-        # Check for zig compiler (required to build ghostty)
-        find_program(ZIG_EXECUTABLE NAMES zig)
-        if(NOT ZIG_EXECUTABLE)
-            message(FATAL_ERROR "${BoldRed}zig compiler not found${ColorReset}. ghostty requires Zig to build.\n"
-                              "Install from: https://ziglang.org/download/")
-        endif()
-
+        # Only build if library doesn't exist in cache
         if(NOT EXISTS "${GHOSTTY_LIB}")
-            message(STATUS "${BoldYellow}ghostty${ColorReset} library not found in cache, will build at build time...")
+            message(STATUS "${BoldYellow}ghostty${ColorReset} library not found in cache, building from source...")
+
+            # Check for zig compiler (required to build ghostty)
+            find_program(ZIG_EXECUTABLE NAMES zig)
+            if(NOT ZIG_EXECUTABLE)
+                message(FATAL_ERROR "${BoldRed}zig compiler not found${ColorReset}. ghostty requires Zig to build.\n"
+                                  "Install from: https://ziglang.org/download/")
+            endif()
+
+            # Build ghostty using zig build (full app with Metal backend, embedded runtime for C API)
+            set(GHOSTTY_LOG_FILE "${GHOSTTY_BUILD_DIR}/ghostty-build.log")
+            execute_process(
+                COMMAND "${ZIG_EXECUTABLE}" build -Dapp-runtime=embedded -Doptimize=ReleaseFast --prefix "${GHOSTTY_BUILD_DIR}"
+                WORKING_DIRECTORY "${GHOSTTY_SOURCE_DIR}"
+                RESULT_VARIABLE GHOSTTY_BUILD_RESULT
+                OUTPUT_FILE "${GHOSTTY_LOG_FILE}"
+                ERROR_FILE "${GHOSTTY_LOG_FILE}"
+            )
+
+            if(NOT GHOSTTY_BUILD_RESULT EQUAL 0)
+                message(FATAL_ERROR "${BoldRed}ghostty build failed${ColorReset}. Check log: ${GHOSTTY_LOG_FILE}")
+            endif()
+
+            # Copy built library to cache
+            find_file(GHOSTTY_BUILT_LIB NAMES "libghostty.a"
+                      PATHS "${GHOSTTY_BUILD_DIR}/lib"
+                      HINTS "${GHOSTTY_SOURCE_DIR}/zig-out/lib"
+                      NO_DEFAULT_PATH)
+
+            if(GHOSTTY_BUILT_LIB)
+                file(COPY_FILE "${GHOSTTY_BUILT_LIB}" "${GHOSTTY_LIB}")
+                message(STATUS "  ${BoldGreen}ghostty${ColorReset} library built and cached successfully")
+            else()
+                message(FATAL_ERROR "${BoldRed}ghostty library not found${ColorReset} in build output")
+            endif()
+
+            # Create a dummy target so dependencies work
+            add_custom_target(ghostty_build)
         else()
             message(STATUS "${BoldGreen}ghostty${ColorReset} library found in cache: ${BoldCyan}${GHOSTTY_LIB}${ColorReset}")
+            add_custom_target(ghostty_build)
         endif()
-
-        # Create custom command that runs at build time (not configure time)
-        # This ensures zig build only runs once when the library doesn't exist
-        set(GHOSTTY_LOG_FILE "${GHOSTTY_BUILD_DIR}/ghostty-build.log")
-        add_custom_command(
-            OUTPUT "${GHOSTTY_LIB}"
-            COMMAND "${ZIG_EXECUTABLE}" build -Dapp-runtime=embedded -Doptimize=ReleaseFast --prefix "${GHOSTTY_BUILD_DIR}"
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${GHOSTTY_BUILD_DIR}/lib/libghostty.a" "${GHOSTTY_LIB}"
-            WORKING_DIRECTORY "${GHOSTTY_SOURCE_DIR}"
-            COMMENT "Building ghostty library with Zig (macOS)"
-            VERBATIM
-        )
-
-        # Create target that depends on the output
-        add_custom_target(ghostty_build DEPENDS "${GHOSTTY_LIB}")
 
         # Create an imported library that links to the built library
         add_library(ghostty_lib STATIC IMPORTED GLOBAL)
@@ -120,92 +137,110 @@ elseif(UNIX AND NOT APPLE)
 
         file(MAKE_DIRECTORY "${GHOSTTY_BUILD_DIR}")
 
-        # Check for zig compiler (required to build ghostty)
-        find_program(ZIG_EXECUTABLE NAMES zig)
-        if(NOT ZIG_EXECUTABLE)
-            message(FATAL_ERROR "${BoldRed}zig compiler not found${ColorReset}. ghostty requires Zig to build.\n"
-                              "Install from: https://ziglang.org/download/")
-        endif()
-
-        # Get GTK4 and libadwaita include paths using pkg-config (at configure time)
-        find_package(PkgConfig REQUIRED)
-        pkg_check_modules(GTK4 gtk4)
-        pkg_check_modules(LIBADWAITA libadwaita-1)
-        pkg_check_modules(GRAPHENE graphene-gobject-1.0)
-
-        # Build CFLAGS from pkg-config results
-        set(GHOSTTY_CFLAGS "")
-        if(GTK4_FOUND)
-            foreach(include_dir ${GTK4_INCLUDE_DIRS})
-                string(APPEND GHOSTTY_CFLAGS " -isystem ${include_dir}")
-            endforeach()
-        endif()
-        if(LIBADWAITA_FOUND)
-            foreach(include_dir ${LIBADWAITA_INCLUDE_DIRS})
-                string(APPEND GHOSTTY_CFLAGS " -isystem ${include_dir}")
-            endforeach()
-        endif()
-        foreach(include_dir ${GRAPHENE_INCLUDE_DIRS})
-            string(APPEND GHOSTTY_CFLAGS " -isystem ${include_dir}")
-        endforeach()
-
-        # Build search-prefix list for existing directories
-        set(GHOSTTY_SEARCH_PREFIXES "")
-        foreach(PREFIX "/usr" "/usr/local" "/home/linuxbrew/.linuxbrew" "/opt/homebrew")
-            if(EXISTS "${PREFIX}")
-                list(APPEND GHOSTTY_SEARCH_PREFIXES "--search-prefix" "${PREFIX}")
-            endif()
-        endforeach()
-
+        # Only build if library doesn't exist in cache
         if(NOT EXISTS "${GHOSTTY_LIB}")
-            message(STATUS "${BoldYellow}ghostty${ColorReset} library not found in cache, will build at build time...")
+            message(STATUS "${BoldYellow}ghostty${ColorReset} library not found in cache, building from source...")
+
+            # Check for zig compiler (required to build ghostty)
+            find_program(ZIG_EXECUTABLE NAMES zig)
+            if(NOT ZIG_EXECUTABLE)
+                message(FATAL_ERROR "${BoldRed}zig compiler not found${ColorReset}. ghostty requires Zig to build.\n"
+                                  "Install from: https://ziglang.org/download/")
+            endif()
+
+            # Build full ghostty library using zig build
+            # Use pkg-config to get proper include paths for GTK/glib dependencies
+            set(GHOSTTY_LOG_FILE "${GHOSTTY_BUILD_DIR}/ghostty-build.log")
+
+            # Get GTK4 and libadwaita include paths using pkg-config
+            find_package(PkgConfig REQUIRED)
+            pkg_check_modules(GTK4 gtk4)
+            pkg_check_modules(LIBADWAITA libadwaita-1)
+            pkg_check_modules(GRAPHENE graphene-gobject-1.0)
+
+            # Build CFLAGS from pkg-config results
+            set(GHOSTTY_CFLAGS "")
+            if(GTK4_FOUND)
+                foreach(include_dir ${GTK4_INCLUDE_DIRS})
+                    string(APPEND GHOSTTY_CFLAGS " -isystem ${include_dir}")
+                endforeach()
+            endif()
+            if(LIBADWAITA_FOUND)
+                foreach(include_dir ${LIBADWAITA_INCLUDE_DIRS})
+                    string(APPEND GHOSTTY_CFLAGS " -isystem ${include_dir}")
+                endforeach()
+            endif()
+            foreach(include_dir ${GRAPHENE_INCLUDE_DIRS})
+                string(APPEND GHOSTTY_CFLAGS " -isystem ${include_dir}")
+            endforeach()
+
+            message(STATUS "Building ghostty library with CFLAGS:${GHOSTTY_CFLAGS}")
+            message(STATUS "Working directory: ${GHOSTTY_SOURCE_DIR}")
+
+            # Build search-prefix list for existing directories
+            set(SEARCH_PREFIXES "")
+            foreach(PREFIX "/usr" "/usr/local" "/home/linuxbrew/.linuxbrew" "/opt/homebrew")
+                if(EXISTS "${PREFIX}")
+                    list(APPEND SEARCH_PREFIXES "--search-prefix" "${PREFIX}")
+                endif()
+            endforeach()
+
+            execute_process(
+                COMMAND env CFLAGS="${GHOSTTY_CFLAGS}" CXXFLAGS="${GHOSTTY_CFLAGS}" PKG_CONFIG_PATH="/usr/lib/pkgconfig:/usr/share/pkgconfig:/home/linuxbrew/.linuxbrew/lib/pkgconfig:/home/linuxbrew/.linuxbrew/share/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig" "${ZIG_EXECUTABLE}" build install -Dapp-runtime=gtk -Doptimize=ReleaseFast ${SEARCH_PREFIXES} --prefix "${GHOSTTY_BUILD_DIR}"
+                WORKING_DIRECTORY "${GHOSTTY_SOURCE_DIR}"
+                RESULT_VARIABLE GHOSTTY_BUILD_RESULT
+                OUTPUT_FILE "${GHOSTTY_LOG_FILE}"
+                ERROR_FILE "${GHOSTTY_LOG_FILE}"
+            )
+            message(STATUS "Build result code: ${GHOSTTY_BUILD_RESULT}")
+
+            if(GHOSTTY_BUILD_RESULT EQUAL 0)
+                # Ghostty build succeeded, find and copy library to cache location
+                # Look for libghostty (the full library)
+                find_file(GHOSTTY_FULL_LIB NAMES "libghostty.a" "libghostty.so" "libghostty.so.0"
+                          PATHS "${GHOSTTY_BUILD_DIR}/lib"
+                          NO_DEFAULT_PATH)
+                if(GHOSTTY_FULL_LIB)
+                    file(COPY_FILE "${GHOSTTY_FULL_LIB}" "${GHOSTTY_LIB}")
+                    message(STATUS "Copied ${GHOSTTY_FULL_LIB} to ${GHOSTTY_LIB}")
+                else()
+                    message(STATUS "Warning: libghostty not found in ${GHOSTTY_BUILD_DIR}/lib")
+                    # Try to find lib-vt as fallback
+                    find_file(GHOSTTY_VT_LIB NAMES "libghostty-vt.a" "libghostty-vt.so.0" "libghostty-vt.so"
+                              PATHS "${GHOSTTY_BUILD_DIR}/lib"
+                              NO_DEFAULT_PATH)
+                    if(GHOSTTY_VT_LIB)
+                        file(COPY_FILE "${GHOSTTY_VT_LIB}" "${GHOSTTY_LIB}")
+                        message(STATUS "Fallback: Copied ${GHOSTTY_VT_LIB} to ${GHOSTTY_LIB}")
+                    else()
+                        set(GHOSTTY_BUILD_RESULT 1)
+                    endif()
+                endif()
+            endif()
+
+            if(NOT GHOSTTY_BUILD_RESULT EQUAL 0)
+                message(WARNING "${BoldYellow}ghostty lib-vt build failed${ColorReset}. Check log: ${GHOSTTY_LOG_FILE}")
+                message(STATUS "${BoldYellow}Continuing without ghostty...${ColorReset}")
+                set(GHOSTTY_FOUND FALSE)
+            endif()
+
+            message(STATUS "  ${BoldGreen}ghostty lib-vt${ColorReset} library built and cached successfully")
+            add_custom_target(ghostty_build)
         else()
             message(STATUS "${BoldGreen}ghostty${ColorReset} library found in cache: ${BoldCyan}${GHOSTTY_LIB}${ColorReset}")
+            add_custom_target(ghostty_build)
         endif()
 
-        # Create custom command that runs at build time (not configure time)
-        # This ensures zig build only runs once when the library doesn't exist
-        set(GHOSTTY_LOG_FILE "${GHOSTTY_BUILD_DIR}/ghostty-build.log")
-        set(GHOSTTY_PKG_CONFIG_PATH "/usr/lib/pkgconfig:/usr/share/pkgconfig:/home/linuxbrew/.linuxbrew/lib/pkgconfig:/home/linuxbrew/.linuxbrew/share/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig")
-
-        add_custom_command(
-            OUTPUT "${GHOSTTY_LIB}"
-            COMMAND env CFLAGS="${GHOSTTY_CFLAGS}" CXXFLAGS="${GHOSTTY_CFLAGS}" PKG_CONFIG_PATH="${GHOSTTY_PKG_CONFIG_PATH}" "${ZIG_EXECUTABLE}" build install -Dapp-runtime=gtk -Doptimize=ReleaseFast ${GHOSTTY_SEARCH_PREFIXES} --prefix "${GHOSTTY_BUILD_DIR}"
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${GHOSTTY_BUILD_DIR}/lib/libghostty-vt.a" "${GHOSTTY_LIB}"
-            WORKING_DIRECTORY "${GHOSTTY_SOURCE_DIR}"
-            COMMENT "Building ghostty library with Zig (Linux)"
-            VERBATIM
-        )
-
-        # Create target that depends on the output
-        add_custom_target(ghostty_build DEPENDS "${GHOSTTY_LIB}")
-
-        # Create an imported library that links to the built library (required, not optional)
-        add_library(ghostty_lib SHARED IMPORTED GLOBAL)
-        set_target_properties(ghostty_lib PROPERTIES
-            IMPORTED_LOCATION "${GHOSTTY_BUILD_DIR}/lib/libghostty-vt.so.0"
-        )
-        target_include_directories(ghostty_lib INTERFACE
-            "${GHOSTTY_BUILD_DIR}/include"
-        )
-        add_dependencies(ghostty_lib ghostty_build)
-
-            # Copy ghostty shared library to build/lib so RPATH can find it at runtime
-            # Look for the actual shared library in the build directory
-            find_file(GHOSTTY_SHARED_LIB
-                     NAMES "libghostty-vt.so.0.1.0" "libghostty-vt.so.0" "libghostty-vt.so"
-                     PATHS "${GHOSTTY_BUILD_DIR}/lib"
-                     NO_DEFAULT_PATH)
-            if(GHOSTTY_SHARED_LIB)
-                # Create a custom command to copy the shared library to build/lib after build
-                add_custom_command(TARGET ghostty_build POST_BUILD
-                    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
-                    COMMAND ${CMAKE_COMMAND} -E copy "${GHOSTTY_SHARED_LIB}" "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/"
-                    COMMAND ${CMAKE_COMMAND} -E create_symlink "libghostty-vt.so.0.1.0" "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libghostty-vt.so.0"
-                    COMMENT "Copying ghostty shared library to ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
-                    VERBATIM
-                )
-            endif()
+        # Create an imported library that links to the built library (only if build succeeded)
+        if(EXISTS "${GHOSTTY_LIB}")
+            add_library(ghostty_lib STATIC IMPORTED GLOBAL)
+            set_target_properties(ghostty_lib PROPERTIES
+                IMPORTED_LOCATION "${GHOSTTY_LIB}"
+            )
+            target_include_directories(ghostty_lib INTERFACE
+                "${GHOSTTY_BUILD_DIR}/include"
+            )
+            add_dependencies(ghostty_lib ghostty_build)
         else()
             # Create stub library if build failed
             set(GHOSTTY_FOUND FALSE)
@@ -258,12 +293,10 @@ endif()
 
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/fonts")
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/generated")
-file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/generated/data")
-file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/generated/data/fonts")
 
 set(MATRIX_FONT_URL "https://github.com/Rezmason/matrix/raw/master/assets/Matrix-Resurrected.ttf")
 set(MATRIX_FONT_SRC "${CMAKE_BINARY_DIR}/fonts/Matrix-Resurrected.ttf")
-set(MATRIX_FONT_GEN "${CMAKE_BINARY_DIR}/generated/data/fonts/matrix_resurrected.c")
+set(MATRIX_FONT_GEN "${CMAKE_BINARY_DIR}/generated/matrix_resurrected_font.c")
 
 # Download font at configure time
 if(NOT EXISTS "${MATRIX_FONT_SRC}")
@@ -292,7 +325,7 @@ endif()
 set(DEFAULT_FONT_TARBALL_URL "https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-fonts-ttf-2.37.tar.bz2")
 set(DEFAULT_FONT_TARBALL "${CMAKE_BINARY_DIR}/fonts/dejavu-fonts-ttf-2.37.tar.bz2")
 set(DEFAULT_FONT_SRC "${CMAKE_BINARY_DIR}/fonts/DejaVuSansMono.ttf")
-set(DEFAULT_FONT_GEN "${CMAKE_BINARY_DIR}/generated/data/fonts/default.c")
+set(DEFAULT_FONT_GEN "${CMAKE_BINARY_DIR}/generated/default_font.c")
 
 # Download and extract font tarball at configure time
 if(NOT EXISTS "${DEFAULT_FONT_SRC}")
@@ -348,18 +381,29 @@ if(WIN32)
     set(GHOSTTY_LIBS "")
     set(GHOSTTY_INCLUDES "")
 elseif(APPLE)
-    # Ghostty is required for macOS renderer
-    set(GHOSTTY_LIBS ${GHOSTTY_LIBRARIES} "-framework Metal" "-framework Cocoa" "-framework CoreGraphics")
-    set(GHOSTTY_INCLUDES ${GHOSTTY_INCLUDE_DIRS})
-    message(STATUS "${BoldGreen}✓${ColorReset} Ghostty (macOS): ghostty + Metal")
+    if(GHOSTTY_FOUND)
+        set(GHOSTTY_LIBS ${GHOSTTY_LIBRARIES} "-framework Metal" "-framework Cocoa" "-framework CoreGraphics")
+        set(GHOSTTY_INCLUDES ${GHOSTTY_INCLUDE_DIRS})
+        message(STATUS "${BoldGreen}✓${ColorReset} Ghostty (macOS): ghostty + Metal")
+    else()
+        message(WARNING "Ghostty: ghostty not found - macOS renderer will fail at runtime")
+        set(GHOSTTY_LIBS "")
+        set(GHOSTTY_INCLUDES "")
+    endif()
 elseif(UNIX AND NOT APPLE)
     # Linux: ghostty with GTK backend for rendering
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(GTK gtk+-3.0 REQUIRED)
+    if(GHOSTTY_FOUND)
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(GTK gtk+-3.0 REQUIRED)
 
-    set(GHOSTTY_LIBS ${GHOSTTY_LIBRARIES} ${GTK_LDFLAGS})
-    set(GHOSTTY_INCLUDES ${GHOSTTY_INCLUDE_DIRS} ${GTK_INCLUDE_DIRS})
-    message(STATUS "${BoldGreen}✓${ColorReset} Ghostty (Linux): ghostty + GTK")
+        set(GHOSTTY_LIBS ${GHOSTTY_LIBRARIES} ${GTK_LDFLAGS})
+        set(GHOSTTY_INCLUDES ${GHOSTTY_INCLUDE_DIRS} ${GTK_INCLUDE_DIRS})
+        message(STATUS "${BoldGreen}✓${ColorReset} Ghostty (Linux): ghostty + GTK")
+    else()
+        message(WARNING "Ghostty: ghostty not found - Linux renderer will not be available")
+        set(GHOSTTY_LIBS "")
+        set(GHOSTTY_INCLUDES "")
+    endif()
 else()
     # Windows: stubs only
     set(GHOSTTY_LIBS "")
