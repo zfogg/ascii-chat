@@ -540,7 +540,7 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
 
     SAFE_FREE(send_buffer);
     if (encrypted_packet)
-      buffer_pool_free(NULL, encrypted_packet, send_len);
+      buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
     return ASCIICHAT_OK;
   }
 
