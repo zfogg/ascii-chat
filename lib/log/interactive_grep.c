@@ -127,7 +127,7 @@ asciichat_error_t interactive_grep_init(void) {
   // Initialize mutex first (before any locking!)
   static bool mutex_inited = false;
   if (!mutex_inited) {
-    mutex_init(&g_grep_state.mutex, "mutex");
+    mutex_init(&g_grep_state.mutex, "grep_state");
     mutex_inited = true;
   }
 

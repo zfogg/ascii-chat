@@ -507,7 +507,7 @@ static void maybe_rotate_log(void) {
 void log_init(const char *filename, log_level_t level, bool force_stderr, bool use_mmap) {
   // Initialize rotation mutex (only operation that uses a mutex)
   if (!atomic_load(&g_log.rotation_mutex_initialized)) {
-    mutex_init(&g_log.rotation_mutex, "mutex");
+    mutex_init(&g_log.rotation_mutex, "log_rotation");
     atomic_store(&g_log.rotation_mutex_initialized, true);
   }
 

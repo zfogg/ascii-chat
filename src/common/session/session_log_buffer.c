@@ -34,7 +34,7 @@ bool session_log_buffer_init(void) {
 
   atomic_init(&g_log_buffer->write_pos, 0);
   atomic_init(&g_log_buffer->sequence, 0);
-  mutex_init(&g_log_buffer->mutex, "mutex");
+  mutex_init(&g_log_buffer->mutex, "log_buffer");
 
   return true;
 }

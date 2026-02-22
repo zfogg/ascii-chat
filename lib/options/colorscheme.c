@@ -291,7 +291,7 @@ asciichat_error_t colorscheme_init(void) {
 #ifdef __EMSCRIPTEN__
 #else
 #endif
-    mutex_init(&g_colorscheme_mutex, "mutex");
+    mutex_init(&g_colorscheme_mutex, "colorscheme");
     mutex_initialized = true;
   } else {
   }

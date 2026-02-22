@@ -109,7 +109,7 @@ tcp_client_t *tcp_client_create(void) {
   memset(client->server_ip, 0, sizeof(client->server_ip));
   client->encryption_enabled = false;
 
-  if (mutex_init(&client->send_mutex, "mutex")  != 0) {
+  if (mutex_init(&client->send_mutex, "client_send")  != 0) {
     log_error("Failed to initialize send mutex");
     SAFE_FREE(client);
     return NULL;

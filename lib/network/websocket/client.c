@@ -41,7 +41,7 @@ websocket_client_t *websocket_client_create(void) {
   client->should_reconnect = false;
 
   // Initialize thread-safe mutex for packet transmission
-  if (mutex_init(&client->send_mutex, "mutex")  != 0) {
+  if (mutex_init(&client->send_mutex, "client_send")  != 0) {
     log_error("Failed to initialize send_mutex");
     SAFE_FREE(client);
     return NULL;

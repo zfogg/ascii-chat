@@ -409,6 +409,18 @@ void lock_debug_get_stats(uint64_t *total_acquired, uint64_t *total_released, ui
 bool lock_debug_is_initialized(void);
 
 /**
+ * @brief Print timing information for a mutex or rwlock
+ * @param lock_ptr Pointer to the lock (mutex_t or rwlock_t)
+ * @param lock_name Name/description of the lock
+ * @ingroup lock_debug
+ *
+ * Prints the last lock/unlock timestamps for debugging lock contention.
+ * Works in both DEBUG_LOCKS and non-DEBUG_LOCKS builds since timing data
+ * is always collected by the platform hooks.
+ */
+void lock_debug_print_timing(const void *lock_ptr, const char *lock_name);
+
+/**
  * @brief Print current lock debug state for debugging
  * @ingroup lock_debug
  */
@@ -448,6 +460,7 @@ void lock_debug_cleanup_thread(void);
 void lock_debug_trigger_print(void);
 void lock_debug_get_stats(uint64_t *total_acquired, uint64_t *total_released, uint32_t *currently_held);
 bool lock_debug_is_initialized(void);
+void lock_debug_print_timing(const void *lock_ptr, const char *lock_name);
 void lock_debug_print_state(void);
 
 // Stub declarations for debug_* functions (pass through to _impl versions)

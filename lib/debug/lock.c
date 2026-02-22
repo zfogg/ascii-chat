@@ -193,6 +193,65 @@ static void free_lock_record(lock_record_t *record) {
 // ============================================================================
 
 /**
+ * @brief Format timing information for a lock or rwlock
+ * @param buffer Output buffer
+ * @param buffer_size Size of output buffer
+ * @param lock_ptr Pointer to the lock (mutex_t or rwlock_t)
+ * @param lock_name Name of the lock
+ * @return Number of characters written
+ *
+ * Prints the last lock/unlock timestamps from a lock struct.
+ */
+static int format_lock_timing_info(char *buffer, size_t buffer_size, const void *lock_ptr, const char *lock_name) {
+  int offset = 0;
+  const uint64_t *last_lock_time_ns = NULL;
+  const uint64_t *last_unlock_time_ns = NULL;
+
+  // Assume the lock struct has these fields at known offsets
+  // For mutex_t and rwlock_t, the name is second field, then timestamps
+  // Structure: impl (platform-dependent size), name (const char*), timestamps...
+
+  // We'll use a safer approach: cast to a structure that has the fields we care about
+  typedef struct {
+    void *unused;        // impl field (variable size, we skip it)
+    const char *name;
+    uint64_t last_lock_ns;
+    uint64_t last_unlock_ns;
+  } lock_timing_t;
+
+  const lock_timing_t *lock = (const lock_timing_t *)lock_ptr;
+  if (!lock) {
+    return 0;
+  }
+
+  uint64_t now_ns = time_get_ns();
+
+  if (lock->last_lock_ns > 0) {
+    char duration_str[32];
+    uint64_t elapsed = now_ns - lock->last_lock_ns;
+    format_duration_ns((double)elapsed, duration_str, sizeof(duration_str));
+    offset += safe_snprintf(buffer + offset, SAFE_BUFFER_SIZE(buffer_size, offset),
+                            "  Last lock acquired: %s ago\n", duration_str);
+  } else {
+    offset += safe_snprintf(buffer + offset, SAFE_BUFFER_SIZE(buffer_size, offset),
+                            "  Last lock acquired: Never\n");
+  }
+
+  if (lock->last_unlock_ns > 0) {
+    char duration_str[32];
+    uint64_t elapsed = now_ns - lock->last_unlock_ns;
+    format_duration_ns((double)elapsed, duration_str, sizeof(duration_str));
+    offset += safe_snprintf(buffer + offset, SAFE_BUFFER_SIZE(buffer_size, offset),
+                            "  Last unlocked: %s ago\n", duration_str);
+  } else {
+    offset += safe_snprintf(buffer + offset, SAFE_BUFFER_SIZE(buffer_size, offset),
+                            "  Last unlocked: Never\n");
+  }
+
+  return offset;
+}
+
+/**
  * @brief Callback function for collecting lock records into a buffer
  * @param record Lock record pointer
  * @param user_data Pointer to lock collector structure
@@ -240,6 +299,10 @@ static void collect_lock_record_callback(lock_record_t *record, void *user_data)
   char duration_str[32];
   format_duration_ns((double)held_ns, duration_str, sizeof(duration_str));
   *offset += safe_snprintf(buffer + *offset, SAFE_BUFFER_SIZE(buffer_size, *offset), "  Held for: %s\n", duration_str);
+
+  // Print timing information from the actual lock struct if available
+  *offset += format_lock_timing_info(buffer + *offset, SAFE_BUFFER_SIZE(buffer_size, *offset),
+                                     record->lock_address, "Lock struct");
 
   // Print backtrace using platform symbol resolution with colored format
   if (record->backtrace_size > 0) {
@@ -1151,6 +1214,36 @@ int debug_rwlock_wrunlock(rwlock_t *rwlock, const char *file_name, int line_numb
 // Use debug_rwlock_rdunlock or debug_rwlock_wrunlock instead
 
 // ============================================================================
+// Timing Information Functions
+// ============================================================================
+
+/**
+ * @brief Print timing information for a mutex or rwlock
+ * @param lock_ptr Pointer to the lock (mutex_t or rwlock_t)
+ * @param lock_name Name/description of the lock
+ *
+ * Prints the last lock/unlock timestamps for debugging lock contention.
+ * Works in both DEBUG_LOCKS and non-DEBUG_LOCKS builds.
+ */
+void lock_debug_print_timing(const void *lock_ptr, const char *lock_name) {
+  if (!lock_ptr || !lock_name) {
+    return;
+  }
+
+  char buffer[512];
+  int offset = 0;
+
+  offset += safe_snprintf(buffer + offset, SAFE_BUFFER_SIZE(sizeof(buffer), offset),
+                          "=== Lock Timing: %s at %p ===\n", lock_name, lock_ptr);
+  offset += format_lock_timing_info(buffer + offset, SAFE_BUFFER_SIZE(sizeof(buffer), offset),
+                                    lock_ptr, lock_name);
+  offset += safe_snprintf(buffer + offset, SAFE_BUFFER_SIZE(sizeof(buffer), offset),
+                          "=== End Lock Timing ===\n");
+
+  log_info("%s", buffer);
+}
+
+// ============================================================================
 // Statistics Functions
 // ============================================================================
 
@@ -1403,6 +1496,13 @@ void lock_debug_get_stats(uint64_t *total_acquired, uint64_t *total_released, ui
 bool lock_debug_is_initialized(void) {
   return false;
 }
+
+void lock_debug_print_timing(const void *lock_ptr, const char *lock_name) {
+  (void)lock_ptr;
+  (void)lock_name;
+  // No-op when DEBUG_LOCKS is not defined
+}
+
 void lock_debug_print_state(void) {}
 void lock_debug_trigger_print(void) {}
 
