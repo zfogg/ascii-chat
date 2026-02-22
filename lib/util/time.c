@@ -133,7 +133,9 @@ bool timer_system_init(void) {
   stm_setup();
 
   // Initialize rwlock and lifecycle together
-  if (!lifecycle_init_with_rwlock(&g_timer_manager.lifecycle, &g_timer_manager.rwlock, "timer_manager")) {
+  g_timer_manager.lifecycle.sync_type = LIFECYCLE_SYNC_RWLOCK;
+  g_timer_manager.lifecycle.sync.rwlock = &g_timer_manager.rwlock;
+  if (!lifecycle_init(&g_timer_manager.lifecycle, "timer_manager")) {
     SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to initialize timer system (already initialized by another thread)");
     return true; // Another thread already initialized it
   }
@@ -166,7 +168,7 @@ void timer_system_destroy(void) {
   rwlock_wrunlock(&g_timer_manager.rwlock);
 
   /* Shutdown lifecycle and destroy rwlock together */
-  lifecycle_shutdown_with_rwlock(&g_timer_manager.lifecycle, &g_timer_manager.rwlock);
+  lifecycle_shutdown(&g_timer_manager.lifecycle);
 
   log_debug("Timer system cleaned up (freed %d timers)", timer_count);
 }

@@ -72,7 +72,7 @@ static named_registry_t g_named_registry = {
 // ============================================================================
 
 int named_init(void) {
-    if (!lifecycle_init(&g_named_registry.lifecycle)) {
+    if (!lifecycle_init(&g_named_registry.lifecycle, NULL)) {
         return 0; // Already initialized
     }
 

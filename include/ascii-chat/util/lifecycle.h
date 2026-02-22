@@ -44,28 +44,46 @@ typedef enum {
     LIFECYCLE_DEAD          = 3,   ///< Permanently shut down; no re-init
 } lifecycle_state_t;
 
+typedef enum {
+    LIFECYCLE_SYNC_NONE   = 0,   ///< No sync primitive
+    LIFECYCLE_SYNC_MUTEX  = 1,   ///< Contains mutex_t pointer
+    LIFECYCLE_SYNC_RWLOCK = 2,   ///< Contains rwlock_t pointer
+} lifecycle_sync_type_t;
+
 /**
- * Lock-free module lifecycle state machine.
- * Single atomic int, zero-initializable.
+ * Lock-free module lifecycle state machine with optional sync primitive.
+ * Combines init/shutdown state with mutex or rwlock initialization.
  */
 typedef struct {
-    _Atomic int state;   ///< lifecycle_state_t enum value
+    _Atomic int state;              ///< lifecycle_state_t enum value
+    lifecycle_sync_type_t sync_type; ///< Type of sync primitive (if any)
+    union {
+        struct mutex_t *mutex;      ///< Pointer to mutex (if sync_type == LIFECYCLE_SYNC_MUTEX)
+        struct rwlock_t *rwlock;    ///< Pointer to rwlock (if sync_type == LIFECYCLE_SYNC_RWLOCK)
+    } sync;
 } lifecycle_t;
 
-/// Static initializer for module-global lifecycle variables
-#define LIFECYCLE_INIT { .state = LIFECYCLE_UNINITIALIZED }
+/// Static initializer for module-global lifecycle variables (no sync primitive)
+#define LIFECYCLE_INIT { .state = LIFECYCLE_UNINITIALIZED, .sync_type = LIFECYCLE_SYNC_NONE, .sync = {0} }
+
+/// Static initializer for lifecycle with mutex
+#define LIFECYCLE_INIT_MUTEX(m) { .state = LIFECYCLE_UNINITIALIZED, .sync_type = LIFECYCLE_SYNC_MUTEX, .sync = {.mutex = (m)} }
+
+/// Static initializer for lifecycle with rwlock
+#define LIFECYCLE_INIT_RWLOCK(r) { .state = LIFECYCLE_UNINITIALIZED, .sync_type = LIFECYCLE_SYNC_RWLOCK, .sync = {.rwlock = (r)} }
 
 /**
- * Non-locking CAS-based initialization: UNINIT → INITIALIZED.
+ * CAS-based initialization: UNINIT → INITIALIZED.
  *
- * @param lc lifecycle state
+ * @param lc lifecycle state (may include sync_type and sync pointer)
+ * @param name name tag for any sync primitive (for debugging), or NULL if no sync
  * @return true if THIS caller won the race and should do init work
  * @return false if already INITIALIZED, INITIALIZING, or DEAD
  *
  * Suitable for single-threaded startup or contexts where the caller
- * guarantees serialization. No spinning, no mutex.
+ * guarantees serialization. If lc->sync_type != SYNC_NONE, initializes the sync primitive.
  */
-bool lifecycle_init(lifecycle_t *lc);
+bool lifecycle_init(lifecycle_t *lc, const char *name);
 
 /**
  * Lock-free concurrent initialization: CAS UNINIT → INITIALIZING.
@@ -110,12 +128,12 @@ void lifecycle_init_abort(lifecycle_t *lc);
 /**
  * Regular shutdown: INITIALIZED → UNINITIALIZED.
  *
- * @param lc lifecycle state
+ * @param lc lifecycle state (may include sync_type and sync pointer)
  * @return true if THIS caller should do shutdown work
  * @return false if already UNINITIALIZED or DEAD
  *
  * Allows re-initialization after shutdown (unlike shutdown_forever).
- * Non-locking CAS operation.
+ * If lc->sync_type != SYNC_NONE, destroys the sync primitive.
  */
 bool lifecycle_shutdown(lifecycle_t *lc);
 
@@ -156,75 +174,52 @@ bool lifecycle_is_dead(const lifecycle_t *lc);
  * @defgroup lifecycle_sync Lifecycle with Sync Primitives
  * @brief Combined lifecycle + sync primitive initialization and shutdown.
  *
- * These functions handle both the lifecycle state machine AND the sync primitive
- * (mutex/rwlock) initialization/destruction in one atomic operation. This consolidates
- * init/shutdown logic into a single call.
+ * When lifecycle_t.sync_type is set (e.g., LIFECYCLE_SYNC_MUTEX), the lifecycle
+ * functions automatically initialize/destroy the associated sync primitive.
+ * No separate function calls needed - one if statement in one place handles all types.
  *
  * Example (mutex):
- *   static lifecycle_t g_lc = LIFECYCLE_INIT;
  *   static mutex_t g_mutex;
+ *   static lifecycle_t g_lc = LIFECYCLE_INIT_MUTEX(&g_mutex);
  *
- *   if (lifecycle_init_with_mutex(&g_lc, &g_mutex, "my_mutex")) {
- *       // do init work
+ *   if (lifecycle_init(&g_lc, "my_mutex")) {
+ *       // Mutex is initialized, do init work
  *   }
  *
- *   if (lifecycle_shutdown_with_mutex(&g_lc, &g_mutex)) {
- *       // do shutdown work
+ *   if (lifecycle_shutdown(&g_lc)) {
+ *       // Mutex is destroyed, do shutdown work
  *   }
  * @{
  */
 
 /**
- * CAS-based initialization: init lifecycle and mutex together.
+ * CAS-based initialization with optional sync primitive.
  *
- * @param lc lifecycle state
- * @param mutex sync primitive to initialize
- * @param name name tag for the mutex (for debugging)
- * @return true if THIS caller won and should do init work; mutex is initialized
- * @return false if already initialized or DEAD; mutex left untouched
+ * @param lc lifecycle state (may include sync_type and sync pointer)
+ * @param name name tag for any sync primitive (for debugging)
+ * @return true if THIS caller won and should do init work
+ * @return false if already initialized or DEAD
  *
  * Atomically:
  *   1. Check if lifecycle needs init (CAS UNINIT → INITIALIZED)
- *   2. If winner: call mutex_init(mutex, name)
+ *   2. If winner and sync_type != NONE: initialize the sync primitive
  *   3. Return true if init succeeded
  */
-bool lifecycle_init_with_mutex(lifecycle_t *lc, mutex_t *mutex, const char *name);
+bool lifecycle_init(lifecycle_t *lc, const char *name);
 
 /**
- * CAS-based shutdown: shutdown lifecycle and destroy mutex together.
+ * CAS-based shutdown with optional sync primitive destruction.
  *
- * @param lc lifecycle state
- * @param mutex sync primitive to destroy
- * @return true if THIS caller won and should do shutdown work; mutex is destroyed
- * @return false if already shutdown or DEAD; mutex left untouched
+ * @param lc lifecycle state (may include sync_type and sync pointer)
+ * @return true if THIS caller won and should do shutdown work
+ * @return false if already shutdown or DEAD
  *
  * Atomically:
  *   1. Check if lifecycle needs shutdown (CAS INITIALIZED → UNINITIALIZED)
- *   2. If winner: call mutex_destroy(mutex)
+ *   2. If winner and sync_type != NONE: destroy the sync primitive
  *   3. Return true if shutdown succeeded
  */
-bool lifecycle_shutdown_with_mutex(lifecycle_t *lc, mutex_t *mutex);
-
-/**
- * CAS-based initialization: init lifecycle and rwlock together.
- *
- * @param lc lifecycle state
- * @param rwlock sync primitive to initialize
- * @param name name tag for the rwlock (for debugging)
- * @return true if THIS caller won and should do init work; rwlock is initialized
- * @return false if already initialized or DEAD; rwlock left untouched
- */
-bool lifecycle_init_with_rwlock(lifecycle_t *lc, rwlock_t *rwlock, const char *name);
-
-/**
- * CAS-based shutdown: shutdown lifecycle and destroy rwlock together.
- *
- * @param lc lifecycle state
- * @param rwlock sync primitive to destroy
- * @return true if THIS caller won and should do shutdown work; rwlock is destroyed
- * @return false if already shutdown or DEAD; rwlock left untouched
- */
-bool lifecycle_shutdown_with_rwlock(lifecycle_t *lc, rwlock_t *rwlock);
+bool lifecycle_shutdown(lifecycle_t *lc);
 
 /**
  * @}

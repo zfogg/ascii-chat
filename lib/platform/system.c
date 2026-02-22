@@ -272,7 +272,7 @@ static bool check_binary_in_path_uncached(const char *bin_name) {
  * @brief Initialize the binary PATH cache
  */
 static void init_cache_once(void) {
-  if (!lifecycle_init(&g_cache_lc)) {
+  if (!lifecycle_init(&g_cache_lc, NULL)) {
     return; // Already initialized
   }
 

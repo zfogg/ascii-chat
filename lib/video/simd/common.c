@@ -129,7 +129,9 @@ static const size_t g_utf8_heap_capacity = 2048;  // Max heap size (matching uth
 // Initialize UTF-8 cache system with min-heap (thread-safe)
 static void init_utf8_cache_system(void) {
   // Lock-free init: lifecycle handles synchronization
-  if (!lifecycle_init_with_rwlock(&g_utf8_cache_lc, &g_utf8_cache_rwlock, "utf8_cache")) {
+  g_utf8_cache_lc.sync_type = LIFECYCLE_SYNC_RWLOCK;
+  g_utf8_cache_lc.sync.rwlock = &g_utf8_cache_rwlock;
+  if (!lifecycle_init(&g_utf8_cache_lc, "utf8_cache")) {
     return; // Already initialized by another thread
   }
 
@@ -517,7 +519,7 @@ void simd_caches_destroy_all(void) {
     }
     rwlock_wrunlock(&g_utf8_cache_rwlock);
     // Shutdown lifecycle and destroy rwlock together
-    lifecycle_shutdown_with_rwlock(&g_utf8_cache_lc, &g_utf8_cache_rwlock);
+    lifecycle_shutdown(&g_utf8_cache_lc);
   }
 
   // Call architecture-specific cache cleanup functions
