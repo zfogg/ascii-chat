@@ -490,6 +490,18 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate WebSocket send buffer");
   }
 
+  // Check connection state before attempting to send
+  mutex_lock(&ws_data->state_mutex);
+  bool still_connected = ws_data->is_connected;
+  mutex_unlock(&ws_data->state_mutex);
+
+  if (!still_connected) {
+    SAFE_FREE(send_buffer);
+    if (encrypted_packet)
+      buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
+    return SET_ERRNO(ERROR_NETWORK, "WebSocket connection is closed, cannot send %zu bytes", send_len);
+  }
+
   // Copy data after LWS_PRE offset
   memcpy(send_buffer + LWS_PRE, send_data, send_len);
 
