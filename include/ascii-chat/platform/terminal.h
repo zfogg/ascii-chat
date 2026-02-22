@@ -67,9 +67,9 @@
  * Used for text on light/white backgrounds. A subtle dark blue-grey that's
  * readable on light backgrounds and matches modern terminal color schemes.
  */
-#define TERMINAL_COLOR_THEME_LIGHT_FG_R 232
-#define TERMINAL_COLOR_THEME_LIGHT_FG_G 243
-#define TERMINAL_COLOR_THEME_LIGHT_FG_B 248
+#define TERMINAL_COLOR_THEME_LIGHT_FG_R 65
+#define TERMINAL_COLOR_THEME_LIGHT_FG_G 61
+#define TERMINAL_COLOR_THEME_LIGHT_FG_B 61
 
 /**
  * @brief Default text color for dark theme (RGB)
@@ -77,9 +77,9 @@
  * Used for text on dark/black backgrounds. A light neutral color that's
  * readable on dark backgrounds and provides good contrast.
  */
-#define TERMINAL_COLOR_THEME_DARK_FG_R 65
-#define TERMINAL_COLOR_THEME_DARK_FG_G 61
-#define TERMINAL_COLOR_THEME_DARK_FG_B 61
+#define TERMINAL_COLOR_THEME_DARK_FG_R 204
+#define TERMINAL_COLOR_THEME_DARK_FG_G 204
+#define TERMINAL_COLOR_THEME_DARK_FG_B 204
 
 /**
  * @brief Default background color for light theme (RGB)

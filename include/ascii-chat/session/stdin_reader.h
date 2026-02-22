@@ -22,12 +22,13 @@ typedef struct stdin_frame_reader_s stdin_frame_reader_t;
 /**
  * @brief Create a stdin frame reader
  *
- * @param frame_height Number of lines per frame
- * @param frame_width Expected characters per line (for validation)
+ * @param frame_height Number of lines per frame (required - used for frame boundaries)
  * @param out Pointer to store reader context
  * @return ASCIICHAT_OK on success
+ *
+ * Width is auto-detected from the first frame's line length.
  */
-asciichat_error_t stdin_frame_reader_create(int frame_height, int frame_width,
+asciichat_error_t stdin_frame_reader_create(int frame_height,
                                             stdin_frame_reader_t **out);
 
 /**

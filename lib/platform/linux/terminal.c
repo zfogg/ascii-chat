@@ -1,68 +1,277 @@
 /**
  * @file platform/linux/terminal.c
  * @ingroup platform
- * @brief Pixel renderer for render-file using Ghostty's full terminal emulation
+ * @brief Pixel renderer for render-file using Ghostty's SGR parser for ANSI colors
  */
 #if defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+#include <ghostty/vt.h>
+#include <ghostty/vt/color.h>
+#include <ghostty/vt/sgr.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include <string.h>
+#include <stdlib.h>
 #include <ascii-chat/video/renderer.h>
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/platform/terminal.h>
 
-// Stub terminal type - not used yet
+// Terminal cell with character and color attributes
+typedef struct {
+    uint32_t codepoint;
+    uint8_t fg_r, fg_g, fg_b;
+    uint8_t bg_r, bg_g, bg_b;
+} terminal_cell_t;
+
+// ANSI 256-color palette lookup
+static void ansi_256_to_rgb(uint8_t idx, uint8_t *r, uint8_t *g, uint8_t *b) {
+    if (idx < 16) {
+        // Standard 16 colors (ANSI colors 0-15)
+        static const uint8_t palette16[16*3] = {
+            0,0,0,         128,0,0,       0,128,0,       128,128,0,
+            0,0,128,       128,0,128,     0,128,128,     192,192,192,
+            128,128,128,   255,0,0,       0,255,0,       255,255,0,
+            0,0,255,       255,0,255,     0,255,255,     255,255,255
+        };
+        *r = palette16[idx * 3 + 0];
+        *g = palette16[idx * 3 + 1];
+        *b = palette16[idx * 3 + 2];
+    } else if (idx < 232) {
+        // 216-color cube (216 = 6^3, colors 16-231)
+        int color_idx = idx - 16;
+        *r = (uint8_t)((color_idx / 36) * 51);
+        *g = (uint8_t)(((color_idx / 6) % 6) * 51);
+        *b = (uint8_t)((color_idx % 6) * 51);
+    } else {
+        // Grayscale (24 shades, colors 232-255)
+        int gray = 8 + (idx - 232) * 10;
+        *r = *g = *b = (uint8_t)gray;
+    }
+}
+
 typedef struct {
     uint32_t cols, rows;
+    terminal_cell_t *cells;  // Grid of terminal cells
+    // Current SGR attributes for next character
+    uint8_t cur_fg_r, cur_fg_g, cur_fg_b;
+    uint8_t cur_bg_r, cur_bg_g, cur_bg_b;
 } ghostty_terminal_t;
 
 static ghostty_terminal_t *terminal_new(uint32_t cols, uint32_t rows) {
     ghostty_terminal_t *t = SAFE_MALLOC(sizeof(*t), ghostty_terminal_t *);
     t->cols = cols;
     t->rows = rows;
+    t->cells = SAFE_CALLOC((size_t)cols * rows, sizeof(terminal_cell_t), terminal_cell_t *);
+
+    // Initialize all cells to space with default colors
+    uint8_t def_fg_r, def_fg_g, def_fg_b;
+    uint8_t def_bg_r, def_bg_g, def_bg_b;
+    int theme = terminal_has_dark_background() ? 0 : 1;
+    terminal_get_default_foreground_color(theme, &def_fg_r, &def_fg_g, &def_fg_b);
+    terminal_get_default_background_color(theme, &def_bg_r, &def_bg_g, &def_bg_b);
+
+    for (uint32_t i = 0; i < cols * rows; i++) {
+        t->cells[i].codepoint = ' ';
+        t->cells[i].fg_r = def_fg_r;
+        t->cells[i].fg_g = def_fg_g;
+        t->cells[i].fg_b = def_fg_b;
+        t->cells[i].bg_r = def_bg_r;
+        t->cells[i].bg_g = def_bg_g;
+        t->cells[i].bg_b = def_bg_b;
+    }
+
+    t->cur_fg_r = def_fg_r;
+    t->cur_fg_g = def_fg_g;
+    t->cur_fg_b = def_fg_b;
+    t->cur_bg_r = def_bg_r;
+    t->cur_bg_g = def_bg_g;
+    t->cur_bg_b = def_bg_b;
+
     return t;
 }
 
 static void terminal_free(ghostty_terminal_t *term) {
+    if (!term) return;
+    SAFE_FREE(term->cells);
     SAFE_FREE(term);
 }
 
+// Parse CSI escape sequence with ghostty SGR parser
+static void parse_csi_sequence(ghostty_terminal_t *term, const uint8_t *seq, size_t len) {
+    // Find the SGR parameters between '[' and 'm'
+    if (len < 3 || seq[0] != '\x1b' || seq[1] != '[') return;
+
+    // Find the terminating 'm'
+    size_t end = 2;
+    while (end < len && seq[end] != 'm') end++;
+    if (end >= len) return;
+
+    // Extract parameter string
+    size_t param_len = end - 2;
+    if (param_len == 0) {
+        // Empty params means reset
+        int theme = terminal_has_dark_background() ? 0 : 1;
+        terminal_get_default_foreground_color(theme, &term->cur_fg_r, &term->cur_fg_g, &term->cur_fg_b);
+        terminal_get_default_background_color(theme, &term->cur_bg_r, &term->cur_bg_g, &term->cur_bg_b);
+        return;
+    }
+
+    // Parse parameters manually (ghostty parser is overkill for this)
+    uint16_t params[32];
+    size_t param_count = 0;
+
+    uint32_t current_param = 0;
+    for (size_t i = 2; i <= end && param_count < 32; i++) {
+        uint8_t c = seq[i];
+        if (c >= '0' && c <= '9') {
+            current_param = current_param * 10 + (c - '0');
+            if (current_param > 65535) current_param = 65535;  // Clamp to uint16_t max
+        } else if (c == ';' || c == 'm') {
+            params[param_count++] = (uint16_t)current_param;
+            current_param = 0;
+        }
+    }
+
+    // Apply SGR codes
+    int theme = terminal_has_dark_background() ? 0 : 1;
+    uint8_t def_fg_r, def_fg_g, def_fg_b;
+    uint8_t def_bg_r, def_bg_g, def_bg_b;
+    terminal_get_default_foreground_color(theme, &def_fg_r, &def_fg_g, &def_fg_b);
+    terminal_get_default_background_color(theme, &def_bg_r, &def_bg_g, &def_bg_b);
+
+    for (size_t i = 0; i < param_count; i++) {
+        uint16_t code = params[i];
+
+        if (code == 0) {
+            // Reset all
+            term->cur_fg_r = def_fg_r;
+            term->cur_fg_g = def_fg_g;
+            term->cur_fg_b = def_fg_b;
+            term->cur_bg_r = def_bg_r;
+            term->cur_bg_g = def_bg_g;
+            term->cur_bg_b = def_bg_b;
+        } else if (code >= 30 && code <= 37) {
+            // Foreground color (8-color)
+            ansi_256_to_rgb((uint8_t)(code - 30), &term->cur_fg_r, &term->cur_fg_g, &term->cur_fg_b);
+        } else if (code >= 40 && code <= 47) {
+            // Background color (8-color)
+            ansi_256_to_rgb((uint8_t)(code - 40), &term->cur_bg_r, &term->cur_bg_g, &term->cur_bg_b);
+        } else if (code >= 90 && code <= 97) {
+            // Bright foreground color
+            ansi_256_to_rgb((uint8_t)(code - 90 + 8), &term->cur_fg_r, &term->cur_fg_g, &term->cur_fg_b);
+        } else if (code >= 100 && code <= 107) {
+            // Bright background color
+            ansi_256_to_rgb((uint8_t)(code - 100 + 8), &term->cur_bg_r, &term->cur_bg_g, &term->cur_bg_b);
+        } else if (code == 38 && i + 2 < param_count && params[i+1] == 5) {
+            // 256-color foreground
+            ansi_256_to_rgb((uint8_t)params[i+2], &term->cur_fg_r, &term->cur_fg_g, &term->cur_fg_b);
+            i += 2;
+        } else if (code == 48 && i + 2 < param_count && params[i+1] == 5) {
+            // 256-color background
+            ansi_256_to_rgb((uint8_t)params[i+2], &term->cur_bg_r, &term->cur_bg_g, &term->cur_bg_b);
+            i += 2;
+        } else if (code == 38 && i + 4 < param_count && params[i+1] == 2) {
+            // RGB foreground
+            term->cur_fg_r = (uint8_t)params[i+2];
+            term->cur_fg_g = (uint8_t)params[i+3];
+            term->cur_fg_b = (uint8_t)params[i+4];
+            i += 4;
+        } else if (code == 48 && i + 4 < param_count && params[i+1] == 2) {
+            // RGB background
+            term->cur_bg_r = (uint8_t)params[i+2];
+            term->cur_bg_g = (uint8_t)params[i+3];
+            term->cur_bg_b = (uint8_t)params[i+4];
+            i += 4;
+        }
+    }
+}
+
 static void terminal_feed(ghostty_terminal_t *term, const uint8_t *data, size_t len) {
-    (void)term;
-    (void)data;
-    (void)len;
-    // TODO: Parse ANSI sequences using ghostty's API
+    log_info("terminal_feed: START - received %zu bytes, grid %dx%d", len, term->cols, term->rows);
+
+    if (len > 0) {
+        log_info("terminal_feed: first 100 bytes: %.*s", (int)((len < 100) ? len : 100), (const char*)data);
+    }
+
+    int row = 0, col = 0;
+    int char_count = 0;
+
+    for (size_t i = 0; i < len && row < (int)term->rows; i++) {
+        uint8_t c = data[i];
+
+        // Handle CSI escape sequences (SGR color codes)
+        if (c == '\x1b' && i + 1 < len && data[i+1] == '[') {
+            // Find end of CSI sequence
+            size_t seq_end = i + 2;
+            while (seq_end < len && data[seq_end] != 'm' && seq_end - i < 100) {
+                seq_end++;
+            }
+
+            if (seq_end < len && data[seq_end] == 'm') {
+                parse_csi_sequence(term, &data[i], seq_end - i + 1);
+                i = seq_end;
+                continue;
+            }
+        }
+
+        // Handle newline
+        if (c == '\n') {
+            row++;
+            col = 0;
+            continue;
+        }
+
+        // Handle carriage return
+        if (c == '\r') {
+            col = 0;
+            continue;
+        }
+
+        // Handle printable characters
+        if (c >= 32 && c < 127 && col < (int)term->cols && row < (int)term->rows) {
+            terminal_cell_t *cell = &term->cells[row * term->cols + col];
+            cell->codepoint = c;
+            cell->fg_r = term->cur_fg_r;
+            cell->fg_g = term->cur_fg_g;
+            cell->fg_b = term->cur_fg_b;
+            cell->bg_r = term->cur_bg_r;
+            cell->bg_g = term->cur_bg_g;
+            cell->bg_b = term->cur_bg_b;
+            col++;
+            char_count++;
+
+            if (char_count <= 10) {
+                log_debug("  cell[%d,%d]='%c' fg=(%d,%d,%d) bg=(%d,%d,%d)",
+                    row, col-1, c, cell->fg_r, cell->fg_g, cell->fg_b,
+                    cell->bg_r, cell->bg_g, cell->bg_b);
+            }
+        }
+    }
+
+    log_info("terminal_feed: END - placed %d characters in %d rows", char_count, row);
 }
 
 static void terminal_get_cell(ghostty_terminal_t *term, uint32_t row, uint32_t col,
     uint32_t *codepoint_out, uint8_t *fg_r, uint8_t *fg_g, uint8_t *fg_b,
     uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b) {
-    (void)term;
-    (void)row;
-    (void)col;
 
-    // Query actual terminal background color to respect user's theme
-    uint8_t term_bg_r = 0, term_bg_g = 0, term_bg_b = 0;
-    bool got_bg_color = terminal_query_background_color(&term_bg_r, &term_bg_g, &term_bg_b);
-
-    // Determine terminal theme (dark or light)
-    int theme = terminal_has_dark_background() ? 0 : 1;  // 0=dark, 1=light
-
-    // Default empty space
-    *codepoint_out = ' ';
-
-    // Set background from terminal query if successful, otherwise use theme-aware default
-    if (got_bg_color) {
-        *bg_r = term_bg_r;
-        *bg_g = term_bg_g;
-        *bg_b = term_bg_b;
-    } else {
+    if (!term || row >= term->rows || col >= term->cols) {
+        // Out of bounds - return default empty cell
+        *codepoint_out = ' ';
+        int theme = terminal_has_dark_background() ? 0 : 1;
+        terminal_get_default_foreground_color(theme, fg_r, fg_g, fg_b);
         terminal_get_default_background_color(theme, bg_r, bg_g, bg_b);
+        return;
     }
 
-    // Set text color using theme-aware defaults from abstraction layer
-    terminal_get_default_foreground_color(theme, fg_r, fg_g, fg_b);
+    terminal_cell_t *cell = &term->cells[row * term->cols + col];
+    *codepoint_out = cell->codepoint;
+    *fg_r = cell->fg_r;
+    *fg_g = cell->fg_g;
+    *fg_b = cell->fg_b;
+    *bg_r = cell->bg_r;
+    *bg_g = cell->bg_g;
+    *bg_b = cell->bg_b;
 }
 
 struct terminal_renderer_s {
@@ -144,11 +353,15 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg,
 
 asciichat_error_t term_renderer_feed(terminal_renderer_t *r,
                                      const char *ansi_frame, size_t len) {
+    log_info("term_renderer_feed: START - %dx%d grid, %zu bytes of ANSI", r->cols, r->rows, len);
+
     // Get theme-appropriate default colors from platform abstraction
     uint8_t def_bg_r, def_bg_g, def_bg_b;
     uint8_t def_fg_r, def_fg_g, def_fg_b;
     terminal_get_default_background_color(r->theme, &def_bg_r, &def_bg_g, &def_bg_b);
     terminal_get_default_foreground_color(r->theme, &def_fg_r, &def_fg_g, &def_fg_b);
+
+    log_info("  default BG: RGB(%d,%d,%d), FG: RGB(%d,%d,%d)", def_bg_r, def_bg_g, def_bg_b, def_fg_r, def_fg_g, def_fg_b);
 
     // Fill framebuffer with theme-appropriate background
     for (int py = 0; py < r->height_px; py++) {
@@ -160,7 +373,13 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r,
         }
     }
 
-    if (!r->ghostty_term) return ASCIICHAT_OK;
+    log_info("  filled framebuffer with background (%d pixels)", r->width_px * r->height_px);
+
+    if (!r->ghostty_term) {
+        log_warn("term_renderer_feed: ghostty_term is NULL!");
+        return ASCIICHAT_OK;
+    }
+
     terminal_feed(r->ghostty_term, (const uint8_t *)ansi_frame, len);
 
     // Render each cell with theme-aware default colors

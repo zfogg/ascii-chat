@@ -13,30 +13,31 @@
 
 typedef struct stdin_frame_reader_s {
   int frame_height;
-  int frame_width;
-  char *line_buffer;        // Temporary buffer for one line
+  int frame_width;            // Detected from first frame (0 = not yet detected)
+  char *line_buffer;          // Temporary buffer for one line
   size_t line_buffer_size;
   bool eof_reached;
+  bool first_frame_processed; // Track if we've processed first frame yet
 } stdin_frame_reader_t;
 
 #define LINE_BUFFER_SIZE 16384  // Max bytes per line
 
-asciichat_error_t stdin_frame_reader_create(int frame_height, int frame_width,
+asciichat_error_t stdin_frame_reader_create(int frame_height,
                                             stdin_frame_reader_t **out) {
-  if (frame_height <= 0 || frame_width <= 0) {
+  if (frame_height <= 0) {
     return SET_ERRNO(ERROR_INVALID_PARAM,
-                     "Invalid frame dimensions: height=%d width=%d",
-                     frame_height, frame_width);
+                     "Invalid frame height: %d", frame_height);
   }
 
   stdin_frame_reader_t *reader = SAFE_CALLOC(1, sizeof(*reader), stdin_frame_reader_t *);
   reader->frame_height = frame_height;
-  reader->frame_width = frame_width;
+  reader->frame_width = 0;  // Will be detected from first frame
   reader->line_buffer = SAFE_MALLOC(LINE_BUFFER_SIZE, char *);
   reader->line_buffer_size = LINE_BUFFER_SIZE;
   reader->eof_reached = false;
+  reader->first_frame_processed = false;
 
-  log_debug("stdin_reader: created with frame size %dx%d", frame_width, frame_height);
+  log_debug("stdin_reader: created with frame height %d (width auto-detect)", frame_height);
   *out = reader;
   return ASCIICHAT_OK;
 }
