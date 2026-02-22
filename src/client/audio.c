@@ -79,6 +79,7 @@
 #include <ascii-chat/util/fps.h>
 #include <ascii-chat/util/thread.h>
 #include <ascii-chat/util/time.h> // For timing instrumentation
+#include <ascii-chat/util/lifecycle.h>
 
 #include <ascii-chat/audio/audio.h>                 // lib/audio/audio.h for PortAudio wrapper
 #include <ascii-chat/audio/client_audio_pipeline.h> // Unified audio processing pipeline
@@ -197,8 +198,7 @@ static int g_audio_send_queue_head = 0; // Write position
 static int g_audio_send_queue_tail = 0; // Read position
 static mutex_t g_audio_send_queue_mutex;
 static cond_t g_audio_send_queue_cond;
-static bool g_audio_send_queue_initialized = false;
-static static_mutex_t g_audio_send_queue_init_mutex = STATIC_MUTEX_INIT;
+static lifecycle_t g_audio_send_queue_lc = LIFECYCLE_INIT;
 
 /** Audio sender thread */
 static bool g_audio_sender_thread_created = false;
@@ -217,7 +217,7 @@ static atomic_bool g_audio_sender_should_exit = false;
  */
 static int audio_queue_packet(const uint8_t *opus_data, size_t opus_size, const uint16_t *frame_sizes,
                               int frame_count) {
-  if (!g_audio_send_queue_initialized || !opus_data || opus_size == 0) {
+  if (!lifecycle_is_initialized(&g_audio_send_queue_lc) || !opus_data || opus_size == 0) {
     return -1;
   }
 
@@ -318,23 +318,16 @@ static void *audio_sender_thread_func(void *arg) {
  * threads might attempt initialization simultaneously.
  */
 static void audio_sender_init(void) {
-  static_mutex_lock(&g_audio_send_queue_init_mutex);
-
-  // Check again under lock to prevent race condition
-  if (g_audio_send_queue_initialized) {
-    static_mutex_unlock(&g_audio_send_queue_init_mutex);
-    return;
+  if (!lifecycle_init(&g_audio_send_queue_lc, "audio_queue")) {
+    return; // Already initialized
   }
 
-  // Initialize queue structures under lock
+  // Initialize queue structures
   mutex_init(&g_audio_send_queue_mutex, "audio_queue");
   cond_init(&g_audio_send_queue_cond, "audio_queue");
   g_audio_send_queue_head = 0;
   g_audio_send_queue_tail = 0;
-  g_audio_send_queue_initialized = true;
   atomic_store(&g_audio_sender_should_exit, false);
-
-  static_mutex_unlock(&g_audio_send_queue_init_mutex);
 
   // Start sender thread (after lock release to avoid blocking other threads)
   if (thread_pool_spawn(g_client_worker_pool, audio_sender_thread_func, NULL, 5, "audio_sender") == ASCIICHAT_OK) {
@@ -350,7 +343,8 @@ static void audio_sender_init(void) {
  * @brief Cleanup async audio sender
  */
 static void audio_sender_cleanup(void) {
-  if (!g_audio_send_queue_initialized) {
+  lifecycle_shutdown(&g_audio_send_queue_lc);
+  if (false) { // Old code removed, keep structure
     return;
   }
 
@@ -368,7 +362,7 @@ static void audio_sender_cleanup(void) {
 
   mutex_destroy(&g_audio_send_queue_mutex);
   cond_destroy(&g_audio_send_queue_cond);
-  g_audio_send_queue_initialized = false;
+  lifecycle_shutdown(&g_audio_send_queue_lc);
 }
 
 /* ============================================================================
@@ -1061,7 +1055,7 @@ void audio_stop_thread() {
   // This must happen before thread_pool_stop_all() is called, otherwise the sender
   // thread will be stuck in cond_wait() and thread_pool_stop_all() will hang forever.
   // The sender thread uses a condition variable to wait for packets - we must wake it up.
-  if (g_audio_send_queue_initialized) {
+  if (lifecycle_is_initialized(&g_audio_send_queue_lc)) {
     log_debug("Signaling audio sender thread to exit");
     atomic_store(&g_audio_sender_should_exit, true);
     mutex_lock(&g_audio_send_queue_mutex);
