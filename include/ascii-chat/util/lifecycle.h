@@ -177,6 +177,19 @@ bool lifecycle_is_initialized(const lifecycle_t *lc);
 bool lifecycle_is_dead(const lifecycle_t *lc);
 
 /**
+ * Reset initialized module: INITIALIZED → UNINITIALIZED.
+ *
+ * @param lc lifecycle state (may include sync_type and sync pointer)
+ * @return true if THIS caller should do reset work
+ * @return false if not INITIALIZED or in DEAD state
+ *
+ * Allows re-initialization after reset (like shutdown, but keeps sync primitives).
+ * If lc->sync_type != SYNC_NONE, destroys the sync primitive (will be recreated on next init).
+ * Used for modules that support reset/reinit cycles (e.g., client crypto reconnect).
+ */
+bool lifecycle_reset(lifecycle_t *lc);
+
+/**
  * @defgroup lifecycle_sync Lifecycle with Sync Primitives
  * @brief Combined lifecycle + sync primitive initialization and shutdown.
  *

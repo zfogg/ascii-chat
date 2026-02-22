@@ -87,3 +87,21 @@ bool lifecycle_is_dead(const lifecycle_t *lc) {
     return atomic_load(&lc->state) == LIFECYCLE_DEAD;
 }
 
+bool lifecycle_reset(lifecycle_t *lc) {
+    if (lc == NULL) return false;
+
+    int expected = LIFECYCLE_INITIALIZED;
+    if (!atomic_compare_exchange_strong(&lc->state, &expected, LIFECYCLE_UNINITIALIZED)) {
+        return false; // Not in INITIALIZED state
+    }
+
+    /* Winner: destroy sync primitive if configured (reset keeps same primitive) */
+    if (lc->sync_type == LIFECYCLE_SYNC_MUTEX && lc->sync.mutex != NULL) {
+        mutex_destroy(lc->sync.mutex);
+    } else if (lc->sync_type == LIFECYCLE_SYNC_RWLOCK && lc->sync.rwlock != NULL) {
+        rwlock_destroy(lc->sync.rwlock);
+    }
+
+    return true;
+}
+
