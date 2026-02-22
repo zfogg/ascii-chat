@@ -317,22 +317,67 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
 
   // Add common dependencies (these will be validated after parsing)
   // Note: Dependencies are validated at runtime, so we add them here for documentation
+
+  // ============================================================================
+  // Media Source Conflicts
+  // ============================================================================
   // URL conflicts: --url cannot be used with --file or --loop
   options_builder_add_dependency_conflicts(b, "url", "file",
                                            "Option --url cannot be used with --file (--url takes priority)");
   options_builder_add_dependency_conflicts(
       b, "url", "loop", "Option --url cannot be used with --loop (network streams cannot be looped)");
-  // Encryption conflicts
+
+  // ============================================================================
+  // Encryption & Authentication Conflicts
+  // ============================================================================
+  // Cannot use both --encrypt and --no-encrypt
   options_builder_add_dependency_conflicts(b, "no-encrypt", "encrypt", "Cannot use --no-encrypt with --encrypt");
-  // Compression conflicts
+
+  // Cannot use --password with --key (different auth methods)
+  options_builder_add_dependency_conflicts(b, "password", "key",
+                                           "Cannot use --password with --key (mutually exclusive authentication methods)");
+
+  // Cannot use --password with --server-key (password auth incompatible with key verification)
+  options_builder_add_dependency_conflicts(b, "password", "server-key",
+                                           "Cannot use --password with --server-key (use one authentication method)");
+
+  // Cannot use --password with --client-keys (password auth incompatible with key verification)
+  options_builder_add_dependency_conflicts(b, "password", "client-keys",
+                                           "Cannot use --password with --client-keys (use one authentication method)");
+
+  // Cannot use --key with --server-key (both server-side key options)
+  options_builder_add_dependency_conflicts(b, "key", "server-key",
+                                           "Cannot use --key with --server-key (--key is server identity, --server-key is client-side)");
+
+  // ============================================================================
+  // Compression Conflicts
+  // ============================================================================
+  // Cannot use --no-compress with --compression-level
   options_builder_add_dependency_conflicts(b, "no-compress", "compression-level",
                                            "Cannot use --no-compress with --compression-level");
-  // Audio encoding conflicts
+
+  // ============================================================================
+  // Audio Encoding Conflicts
+  // ============================================================================
+  // Cannot use both --encode-audio and --no-encode-audio
   options_builder_add_dependency_conflicts(b, "encode-audio", "no-encode-audio",
                                            "Cannot use both --encode-audio and --no-encode-audio");
-  // Requirements
+
+  // ============================================================================
+  // Display & Screen Conflicts
+  // ============================================================================
+  // Cannot use --no-splash-screen with options that depend on splash
+  options_builder_add_dependency_conflicts(b, "no-splash-screen", "splash-delay",
+                                           "Cannot use --no-splash-screen with --splash-delay (splash is disabled)");
+
+  // ============================================================================
+  // Requirements (dependencies that must be satisfied)
+  // ============================================================================
+  // --snapshot-delay requires --snapshot
   options_builder_add_dependency_requires(b, "snapshot-delay", "snapshot",
                                           "Option --snapshot-delay requires --snapshot");
+
+  // --loop requires --file (can't loop network streams)
   options_builder_add_dependency_requires(b, "loop", "file", "Option --loop requires --file");
 
   const options_config_t *config = options_builder_build(b);
