@@ -569,16 +569,8 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
   }
   mutex_unlock(&ws_data->send_mutex);
 
-  // Wake the LWS event loop from this non-service thread to process the queued message.
-  // Only lws_cancel_service() is thread-safe from non-service threads.
-  struct lws_context *ctx = lws_get_context(ws_data->wsi);
-  if (ctx) {
-    log_debug(">>> QUEUED CLIENT MESSAGE: %zu bytes queued at %p, waking service thread (wsi=%p, ctx=%p)",
-              send_len, (void *)ws_data->wsi, (void *)ws_data->wsi, (void *)ctx);
-    lws_cancel_service(ctx);
-  } else {
-    log_error("WebSocket client: could not get context to wake service thread");
-  }
+  log_debug(">>> QUEUED CLIENT MESSAGE: %zu bytes queued at %p for service thread (wsi=%p)",
+            send_len, (void *)ws_data->wsi, (void *)ws_data->wsi);
 
   log_dev_every(1000000, "WebSocket client: queued %zu bytes for service thread to send", send_len);
   SAFE_FREE(send_buffer);

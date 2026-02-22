@@ -345,7 +345,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
       if (written < 0) {
         log_error("Server WebSocket write error: %d (msg_len=%zu)", written, msg.len);
-        SAFE_FREE(msg.data);
+        buffer_pool_free(NULL, msg.data, LWS_PRE + msg.len);
         break;  // Connection error, stop sending
       }
 
@@ -354,7 +354,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       }
 
       log_debug(">>> lws_write() sent %d/%zu bytes, wsi=%p", written, msg.len, (void *)wsi);
-      SAFE_FREE(msg.data);
+      buffer_pool_free(NULL, msg.data, LWS_PRE + msg.len);
 
       // Continue sending while pipe is not choked and we have data
       // This matches lws_mirror.c line 396: } while (!lws_send_pipe_choked(wsi));
