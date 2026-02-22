@@ -16,7 +16,7 @@
 #include <signal.h>
 
 #ifndef NDEBUG
-#include <ascii-chat/debug/lock.h>
+#include <ascii-chat/debug/sync.h>
 #endif
 
 /* ============================================================================

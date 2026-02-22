@@ -59,7 +59,7 @@
 
 #ifndef NDEBUG
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/debug/lock.h>
+#include <ascii-chat/debug/sync.h>
 #endif
 
 #ifndef _WIN32

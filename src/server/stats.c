@@ -142,7 +142,7 @@
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/network/packet_queue.h>
-#include <ascii-chat/debug/lock.h>
+#include <ascii-chat/debug/sync.h>
 #include <ascii-chat/platform/init.h>
 
 /**

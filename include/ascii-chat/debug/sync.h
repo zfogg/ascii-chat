@@ -79,6 +79,52 @@ void debug_sync_print_cond_state(void);
  */
 void debug_sync_print_state(void);
 
+// ============================================================================
+// Legacy API - stubs for backward compatibility
+// ============================================================================
+
+/**
+ * @brief Initialize debug synchronization system (no-op in new implementation)
+ * @ingroup debug_sync
+ */
+int lock_debug_init(void);
+
+/**
+ * @brief Start debug thread (no-op in new implementation)
+ * @ingroup debug_sync
+ */
+int lock_debug_start_thread(void);
+
+/**
+ * @brief Stop debug system (no-op in new implementation)
+ * @ingroup debug_sync
+ */
+void lock_debug_destroy(void);
+
+/**
+ * @brief Clean up debug thread (no-op in new implementation)
+ * @ingroup debug_sync
+ */
+void lock_debug_cleanup_thread(void);
+
+/**
+ * @brief Trigger lock state print (calls debug_sync_print_state)
+ * @ingroup debug_sync
+ */
+void lock_debug_trigger_print(void);
+
+/**
+ * @brief Get lock statistics (no-op in new implementation)
+ * @ingroup debug_sync
+ */
+void lock_debug_get_stats(uint64_t *total_acquired, uint64_t *total_released, uint32_t *currently_held);
+
+/**
+ * @brief Print current lock state
+ * @ingroup debug_sync
+ */
+void lock_debug_print_state(void);
+
 #ifdef __cplusplus
 }
 #endif
