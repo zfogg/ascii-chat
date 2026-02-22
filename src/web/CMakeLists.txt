@@ -4,6 +4,9 @@
 cmake_minimum_required(VERSION 3.18)
 project(ascii-chat-wasm)
 
+# Suppress verbose build output from dependencies
+set(CMAKE_MESSAGE_LOG_LEVEL WARNING)
+
 # Export compile commands for IDE integration
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -23,6 +26,9 @@ endif()
 
 # Fetch and build dependencies for WASM
 include(FetchContent)
+
+# Set quiet build for all FetchContent projects
+set(FETCHCONTENT_QUIET ON)
 
 # libsodium
 FetchContent_Declare(Sodium
