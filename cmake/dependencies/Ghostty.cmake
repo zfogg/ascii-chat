@@ -242,6 +242,9 @@ elseif(UNIX AND NOT APPLE)
             add_custom_target(ghostty_build)
         endif()
 
+        # Always set include directories (needed even if library doesn't exist)
+        set(GHOSTTY_INCLUDE_DIRS "${GHOSTTY_BUILD_DIR}/include")
+
         # Create an imported library that links to the built library (only if build succeeded)
         if(EXISTS "${GHOSTTY_LIB}")
             add_library(ghostty_lib STATIC IMPORTED GLOBAL)
@@ -252,15 +255,10 @@ elseif(UNIX AND NOT APPLE)
                 "${GHOSTTY_BUILD_DIR}/include"
             )
             add_dependencies(ghostty_lib ghostty_build)
-        else()
-            # Create stub library if build failed
-            set(GHOSTTY_FOUND FALSE)
-        endif()
 
-        # Link ghostty's dependencies (only if library was created)
-        # libghostty built as static archive contains symbols from its dependencies
-        # These must be available when linking the final executable
-        if(TARGET ghostty_lib)
+            # Link ghostty's dependencies
+            # libghostty built as static archive contains symbols from its dependencies
+            # These must be available when linking the final executable
             find_package(PkgConfig QUIET)
             if(PkgConfig_FOUND)
                 pkg_check_modules(ONIGURUMA QUIET oniguruma)
@@ -275,11 +273,10 @@ elseif(UNIX AND NOT APPLE)
             endif()
 
             set(GHOSTTY_LIBRARIES ghostty_lib)
-            set(GHOSTTY_INCLUDE_DIRS "${GHOSTTY_BUILD_DIR}/include")
             set(GHOSTTY_FOUND TRUE)
         else()
+            # Header-only mode (ghostty-embedded generated headers but no library)
             set(GHOSTTY_LIBRARIES "")
-            set(GHOSTTY_INCLUDE_DIRS "")
             set(GHOSTTY_FOUND FALSE)
         endif()
 
