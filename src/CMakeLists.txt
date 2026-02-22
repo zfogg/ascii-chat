@@ -144,6 +144,8 @@ if((APPLE OR UNIX) AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     # This ensures ghostty library is found before any system conflicts
     # Use CMAKE_BUILD_RPATH but prepend our path to it
     set(_rpath_list "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+    # Add ghostty library path for runtime dependency resolution
+    list(APPEND _rpath_list "${ASCIICHAT_DEPS_CACHE_DIR}/ghostty/lib")
     if(CMAKE_BUILD_RPATH)
         list(APPEND _rpath_list ${CMAKE_BUILD_RPATH})
     endif()

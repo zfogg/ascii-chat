@@ -708,6 +708,8 @@ add_library(ascii-chat-shared SHARED
     # This ensures transitive dependencies (like libghostty-vt.so.0) are found
     if((APPLE OR UNIX) AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
         set(_shared_rpath_list "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+        # Add ghostty library path for transitive dependency resolution
+        list(APPEND _shared_rpath_list "${ASCIICHAT_DEPS_CACHE_DIR}/ghostty/lib")
         if(CMAKE_BUILD_RPATH)
             list(APPEND _shared_rpath_list ${CMAKE_BUILD_RPATH})
         endif()
