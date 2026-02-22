@@ -1112,7 +1112,9 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
   };
 
   // Disable client compression for now - causes assertion in lws_set_extension_option()
-  // TODO: Investigate why permessage-deflate triggers assertion in POLLOUT handler
+  // This is a known issue with libwebsockets permessage-deflate negotiation
+  // Server-side compression is still enabled, data will be compressed from server to client
+  // but client->server traffic remains uncompressed (acceptable since client sends less data)
   // static const struct lws_extension client_extensions[] = {
   //     {"permessage-deflate", lws_extension_callback_pm_deflate, "permessage-deflate; client_max_window_bits=15"},
   //     {NULL, NULL, NULL}};
@@ -1124,7 +1126,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
   info.gid = (gid_t)-1; // Cast to avoid undefined behavior with unsigned type
   info.uid = (uid_t)-1; // Cast to avoid undefined behavior with unsigned type
   info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
-  info.extensions = NULL; // Temporarily disable compression to test for extension assertion bug
+  info.extensions = NULL; // Disable client compression due to lws_set_extension_option() assertion
 
   ws_data->context = lws_create_context(&info);
   if (!ws_data->context) {

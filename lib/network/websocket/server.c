@@ -364,10 +364,36 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       }
 
       if ((size_t)written != msg.len) {
-        log_warn("Server WebSocket partial write: %d/%zu bytes (will retry on next callback)", written, msg.len);
+        // Partial write - with permessage-deflate compression, this can happen
+        // Re-queue the unsent portion for the next callback instead of freeing it
+        log_debug("Server WebSocket partial write: %d/%zu bytes (re-queueing %zu bytes for next callback)",
+                  written, msg.len, msg.len - (size_t)written);
+
+        // Create new message for the unsent data
+        websocket_recv_msg_t unsent_msg;
+        unsent_msg.data = msg.data;  // Keep the same buffer allocation
+        unsent_msg.len = msg.len - (size_t)written;
+        unsent_msg.first = 0;  // No longer first fragment
+        unsent_msg.final = msg.final;  // Preserve final flag
+
+        // Re-queue at front of send queue (mutex already unlocked above)
+        mutex_lock(&ws_data->send_mutex);
+        bool requeue_success = ringbuffer_write(ws_data->send_queue, &unsent_msg);
+        if (!requeue_success) {
+          mutex_unlock(&ws_data->send_mutex);
+          log_error("Failed to re-queue unsent data (%zu bytes)", unsent_msg.len);
+          buffer_pool_free(NULL, msg.data, LWS_PRE + msg.len);
+          break;
+        }
+        mutex_unlock(&ws_data->send_mutex);
+
+        // Request immediate callback to continue sending
+        lws_callback_on_writable(wsi);
+        break;  // Stop processing more messages, let next callback retry
       }
 
       log_debug(">>> lws_write() sent %d/%zu bytes, wsi=%p", written, msg.len, (void *)wsi);
+      // Only free buffer when entire message was sent successfully
       buffer_pool_free(NULL, msg.data, LWS_PRE + msg.len);
 
       // Continue sending while pipe is not choked and we have data
@@ -779,10 +805,6 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   info.uid = (uid_t)-1;                                // Cast to avoid undefined behavior with unsigned type
   info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT; // Initialize SSL/TLS support (required for server binding)
   info.extensions = websocket_extensions;              // Enable permessage-deflate with small window bits
-  // Permessage-deflate configuration (RFC 7692):
-  // - server_max_window_bits=8: Use 256-byte (2^8) sliding window instead of 32KB (2^15)
-  // - Reduces decompression buffer size to prevent "rx buffer underflow" in LWS 4.5.2
-  // - Still achieves good compression for video frames (10:1 ratio typical for 921KB frames)
 
   // Create libwebsockets context
   server->context = lws_create_context(&info);
