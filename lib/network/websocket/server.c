@@ -348,7 +348,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       if (!msg.data || msg.len == 0) {
         log_error("SERVER_WRITEABLE: Dequeued invalid message (data=%p, len=%zu)", (void *)msg.data, msg.len);
         if (msg.data) {
-          SAFE_FREE(msg.data);
+          buffer_pool_free(NULL, msg.data, LWS_PRE + msg.len);
         }
         continue;
       }

@@ -470,13 +470,13 @@ static int start_client_threads(server_context_t *server_ctx, client_info_t *cli
 
   // Step 2: Create render threads BEFORE send thread
   // This ensures the render threads generate the first frame before the send thread tries to read it
-  log_debug("Creating render threads for client %u", client_id);
+  log_info("★★★ CLIENT SETUP: About to create render threads for client %u", client_id);
   if (create_client_render_threads(server_ctx, client) != 0) {
     log_error("Failed to create render threads for client %u", client_id);
     remove_client(server_ctx, client_id);
     return -1;
   }
-  log_debug("Successfully created render threads for client %u", client_id);
+  log_info("★★★ CLIENT SETUP: Successfully created render threads for client %u", client_id);
 
   // Step 3: Create send thread AFTER render threads are running
   if (is_tcp) {

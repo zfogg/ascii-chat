@@ -352,6 +352,9 @@ void *client_video_render_thread(void *arg) {
 
   log_debug("Video render thread: client_id=%u, webrtc=%d", thread_client_id, is_webrtc);
 
+  log_info("[VIDEO_RENDER_THREAD_START] ★★★ LOCK STATE at thread entry for client %u", thread_client_id);
+  lock_debug_print_state();
+
   // Get client's desired FPS from capabilities or use default
   int client_fps = VIDEO_RENDER_FPS; // Default to 60 FPS
   // Use snapshot pattern to avoid mutex in render thread
@@ -491,6 +494,10 @@ void *client_video_render_thread(void *arg) {
     log_dev_every(5 * NS_PER_MS_INT,
                   "About to call create_mixed_ascii_frame_for_client for client %u with dims %ux%u", thread_client_id,
                   width_snapshot, height_snapshot);
+
+    log_info("[VIDEO_RENDER_LOOP] ★★★ LOCK STATE before create_mixed_ascii_frame_for_client for client %u", thread_client_id);
+    lock_debug_print_state();
+
     char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot,
                                                             false, &frame_size, NULL, &sources_count);
 
@@ -1145,6 +1152,8 @@ void *client_audio_render_thread(void *arg) {
  */
 
 int create_client_render_threads(server_context_t *server_ctx, client_info_t *client) {
+  log_info("★★★ create_client_render_threads() CALLED for client_id=%u", client ? atomic_load(&client->client_id) : 0);
+
   if (!server_ctx || !client) {
     log_error("Cannot create render threads: NULL %s", !server_ctx ? "server_ctx" : "client");
     return -1;
