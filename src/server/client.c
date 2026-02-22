@@ -1035,6 +1035,10 @@ int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
   HASH_ADD_INT(g_client_manager.clients_by_id, client_id, client);
   log_debug("Added WebRTC client %u to uthash table", cid);
 
+  // Release the write lock IMMEDIATELY after adding to hash table
+  // All subsequent operations (mutex init, mixer registration) don't need global client manager lock
+  rwlock_wrunlock(&g_client_manager_rwlock);
+
   // Register this client's audio buffer with the mixer
   if (g_audio_mixer && client->incoming_audio_buffer) {
     if (mixer_add_source(g_audio_mixer, atomic_load(&client->client_id), client->incoming_audio_buffer) < 0) {
@@ -1050,7 +1054,6 @@ int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
   if (mutex_init(&client->client_state_mutex) != 0) {
     log_error("Failed to initialize client state mutex for WebRTC client %u", atomic_load(&client->client_id));
     // Client is already in hash table - use remove_client for proper cleanup
-    rwlock_wrunlock(&g_client_manager_rwlock);
     remove_client(server_ctx, atomic_load(&client->client_id));
     return -1;
   }
@@ -1059,12 +1062,9 @@ int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
   if (mutex_init(&client->send_mutex) != 0) {
     log_error("Failed to initialize send mutex for WebRTC client %u", atomic_load(&client->client_id));
     // Client is already in hash table - use remove_client for proper cleanup
-    rwlock_wrunlock(&g_client_manager_rwlock);
     remove_client(server_ctx, atomic_load(&client->client_id));
     return -1;
   }
-
-  rwlock_wrunlock(&g_client_manager_rwlock);
 
   // For WebRTC clients, the capabilities packet will be received by the receive thread
   // when it starts. Unlike TCP clients where we handle it synchronously in add_client(),

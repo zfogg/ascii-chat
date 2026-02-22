@@ -1484,6 +1484,8 @@ static void *websocket_client_handler(void *arg) {
   // responds, the receive thread has a properly initialized context
   log_debug("[WS_HANDLER] Calling crypto_handshake_init()...");
   asciichat_error_t handshake_init_result = crypto_handshake_init(&client->crypto_handshake_ctx, true /* is_server */);
+  log_info("[WS_HANDLER] ★★★ DEBUG: Printing lock state after crypto_handshake_init");
+  lock_debug_print_state();
   if (handshake_init_result != ASCIICHAT_OK) {
     log_error("[WS_HANDLER] FAILED: crypto_handshake_init returned %d: %s", handshake_init_result,
               asciichat_error_string(handshake_init_result));
