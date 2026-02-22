@@ -300,7 +300,9 @@ elseif(UNIX AND NOT APPLE)
 
         find_program(ZIG_EXECUTABLE_HEADER NAMES zig)
 
-        add_custom_target(ghostty-embedded
+        add_custom_command(
+            OUTPUT "${GHOSTTY_EMBEDDED_HEADER_DST}"
+            COMMAND mkdir -p "${GHOSTTY_EMBEDDED_BUILD_DIR}"
             COMMAND "${ZIG_EXECUTABLE_HEADER}" build install
                 -Dapp-runtime=none
                 -Demit-exe=false
@@ -317,10 +319,12 @@ elseif(UNIX AND NOT APPLE)
                 -Demit-macos-app=false
                 -Doptimize=ReleaseFast
                 --prefix "${GHOSTTY_EMBEDDED_BUILD_DIR}"
-            COMMAND ${CMAKE_COMMAND} -E echo "✓ Generated and cached ghostty.h at ${GHOSTTY_EMBEDDED_HEADER_DST}"
             WORKING_DIRECTORY "${GHOSTTY_EMBEDDED_SOURCE_DIR}"
+            COMMENT "Generating ghostty.h header"
             VERBATIM
         )
+
+        add_custom_target(ghostty-embedded DEPENDS "${GHOSTTY_EMBEDDED_HEADER_DST}")
     endif()
 else()
     # Windows: ghostty not used for rendering
