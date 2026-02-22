@@ -107,9 +107,10 @@ if(APPLE)
         endif()
 
         # Create an imported library that links to the built library
-        add_library(ghostty_lib STATIC IMPORTED GLOBAL)
+        add_library(ghostty_lib SHARED IMPORTED GLOBAL)
         set_target_properties(ghostty_lib PROPERTIES
             IMPORTED_LOCATION "${GHOSTTY_LIB}"
+            IMPORTED_NO_SONAME ON
         )
         target_include_directories(ghostty_lib INTERFACE
             "${GHOSTTY_SOURCE_DIR}/zig-out/include"
@@ -201,8 +202,24 @@ elseif(UNIX AND NOT APPLE)
                 endif()
             endforeach()
 
+            # Build pkg-config path for all possible locations
+            set(PKG_CONFIG_DIRS "/usr/lib/pkgconfig:/usr/share/pkgconfig")
+            if(EXISTS "/home/linuxbrew/.linuxbrew")
+                string(APPEND PKG_CONFIG_DIRS ":/home/linuxbrew/.linuxbrew/lib/pkgconfig:/home/linuxbrew/.linuxbrew/share/pkgconfig")
+            endif()
+            if(EXISTS "/usr/local/lib/pkgconfig")
+                string(APPEND PKG_CONFIG_DIRS ":/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig")
+            endif()
+            if(EXISTS "/opt/homebrew")
+                string(APPEND PKG_CONFIG_DIRS ":/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig")
+            endif()
+
+            # Pass PKG_CONFIG_PATH explicitly so Zig can find system libraries
+            # Note: PKG_CONFIG_PATH is set by PkgConfigSetup.cmake earlier in CMakeLists.txt
+            set(PKG_CONFIG_PATH_VALUE "$ENV{PKG_CONFIG_PATH}")
+
             execute_process(
-                COMMAND env CFLAGS="${GHOSTTY_CFLAGS}" CXXFLAGS="${GHOSTTY_CFLAGS}" PKG_CONFIG_PATH="/usr/lib/pkgconfig:/usr/share/pkgconfig:/home/linuxbrew/.linuxbrew/lib/pkgconfig:/home/linuxbrew/.linuxbrew/share/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig" "${ZIG_EXECUTABLE}" build install -Dapp-runtime=gtk -Doptimize=ReleaseFast ${SEARCH_PREFIXES} --prefix "${GHOSTTY_BUILD_DIR}"
+                COMMAND env CFLAGS="${GHOSTTY_CFLAGS}" CXXFLAGS="${GHOSTTY_CFLAGS}" PKG_CONFIG_PATH="${PKG_CONFIG_PATH_VALUE}" "${ZIG_EXECUTABLE}" build install -Dapp-runtime=gtk -Doptimize=ReleaseFast ${SEARCH_PREFIXES} --prefix "${GHOSTTY_BUILD_DIR}"
                 WORKING_DIRECTORY "${GHOSTTY_SOURCE_DIR}"
                 RESULT_VARIABLE GHOSTTY_BUILD_RESULT
                 OUTPUT_FILE "${GHOSTTY_LOG_FILE}"
@@ -212,25 +229,24 @@ elseif(UNIX AND NOT APPLE)
 
             if(GHOSTTY_BUILD_RESULT EQUAL 0)
                 # Ghostty build succeeded, find and copy library to cache location
-                # Look for libghostty (the full library)
-                find_file(GHOSTTY_FULL_LIB NAMES "libghostty.a" "libghostty.so" "libghostty.so.0"
-                          PATHS "${GHOSTTY_BUILD_DIR}/lib"
-                          NO_DEFAULT_PATH)
-                if(GHOSTTY_FULL_LIB)
-                    file(COPY_FILE "${GHOSTTY_FULL_LIB}" "${GHOSTTY_LIB}")
-                    message(STATUS "Copied ${GHOSTTY_FULL_LIB} to ${GHOSTTY_LIB}")
-                else()
-                    message(STATUS "Warning: libghostty not found in ${GHOSTTY_BUILD_DIR}/lib")
-                    # Try to find lib-vt as fallback
-                    find_file(GHOSTTY_VT_LIB NAMES "libghostty-vt.a" "libghostty-vt.so.0" "libghostty-vt.so"
-                              PATHS "${GHOSTTY_BUILD_DIR}/lib"
-                              NO_DEFAULT_PATH)
-                    if(GHOSTTY_VT_LIB)
-                        file(COPY_FILE "${GHOSTTY_VT_LIB}" "${GHOSTTY_LIB}")
-                        message(STATUS "Fallback: Copied ${GHOSTTY_VT_LIB} to ${GHOSTTY_LIB}")
+                # Look for any ghostty library (including lib-vt versioned files)
+                file(GLOB GHOSTTY_BUILT_LIBS "${GHOSTTY_BUILD_DIR}/lib/libghostty*")
+
+                if(GHOSTTY_BUILT_LIBS)
+                    list(GET GHOSTTY_BUILT_LIBS 0 GHOSTTY_FOUND_LIB)
+                    message(STATUS "Found built library: ${GHOSTTY_FOUND_LIB}")
+
+                    # Check if source exists before copying
+                    if(EXISTS "${GHOSTTY_FOUND_LIB}")
+                        file(COPY_FILE "${GHOSTTY_FOUND_LIB}" "${GHOSTTY_LIB}")
+                        message(STATUS "Copied ${GHOSTTY_FOUND_LIB} to ${GHOSTTY_LIB}")
                     else()
+                        message(WARNING "Library file exists in glob but not found: ${GHOSTTY_FOUND_LIB}")
                         set(GHOSTTY_BUILD_RESULT 1)
                     endif()
+                else()
+                    message(STATUS "Warning: No ghostty libraries found in ${GHOSTTY_BUILD_DIR}/lib")
+                    set(GHOSTTY_BUILD_RESULT 1)
                 endif()
             endif()
 
@@ -246,9 +262,10 @@ elseif(UNIX AND NOT APPLE)
         endif()
 
         # Create an imported library that links to the built library
-        add_library(ghostty_lib STATIC IMPORTED GLOBAL)
+        add_library(ghostty_lib SHARED IMPORTED GLOBAL)
         set_target_properties(ghostty_lib PROPERTIES
             IMPORTED_LOCATION "${GHOSTTY_LIB}"
+            IMPORTED_NO_SONAME ON
         )
         target_include_directories(ghostty_lib INTERFACE
             "${GHOSTTY_BUILD_DIR}/include"
@@ -397,7 +414,7 @@ elseif(UNIX AND NOT APPLE)
     # Linux: ghostty with GTK backend for rendering
     if(GHOSTTY_FOUND)
         find_package(PkgConfig REQUIRED)
-        pkg_check_modules(GTK gtk+-3.0 REQUIRED)
+        pkg_check_modules(GTK gtk4 libadwaita-1 REQUIRED)
 
         set(GHOSTTY_LIBS ${GHOSTTY_LIBRARIES} ${GTK_LDFLAGS})
         set(GHOSTTY_INCLUDES ${GHOSTTY_INCLUDE_DIRS} ${GTK_INCLUDE_DIRS})

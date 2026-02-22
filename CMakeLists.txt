@@ -224,6 +224,13 @@ include(${CMAKE_SOURCE_DIR}/cmake/compiler/SIMD.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/CRC32.cmake)
 
 # =============================================================================
+# pkg-config Setup (must come before any pkg-config-dependent dependencies)
+# =============================================================================
+# This sets PKG_CONFIG and PKG_CONFIG_PATH globally so that nested processes
+# (like Zig builds) can find system libraries without requiring manual env vars
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/PkgConfigSetup.cmake)
+
+# =============================================================================
 # Dependencies
 # =============================================================================
 # When USE_MUSL=ON, build all dependencies from source FIRST
