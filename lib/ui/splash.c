@@ -381,7 +381,7 @@ bool splash_should_display(bool is_intro) {
     // Show splash if:
     // 1. Not in snapshot mode, OR
     // 2. In snapshot mode but loading from URL/file (needs splash during load)
-    return GET_OPTION(splash) && (!is_snapshot || has_media);
+    return GET_OPTION(splash_screen) && (!is_snapshot || has_media);
   } else {
     return GET_OPTION(status_screen);
   }

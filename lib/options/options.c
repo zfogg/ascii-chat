@@ -566,8 +566,8 @@ options_t options_t_new(void) {
   opts.fps = OPT_FPS_DEFAULT;
   opts.flip_x = OPT_FLIP_X_DEFAULT;
   opts.flip_y = OPT_FLIP_Y_DEFAULT;
-  opts.splash = OPT_SPLASH_DEFAULT;
-  opts.splash_explicitly_set = false;
+  opts.splash_screen = OPT_SPLASH_DEFAULT;
+  opts.splash_screen_explicitly_set = false;
   opts.status_screen = OPT_STATUS_SCREEN_DEFAULT;
   opts.status_screen_explicitly_set = false;
 
@@ -1679,8 +1679,8 @@ asciichat_error_t options_init(int argc, char **argv) {
 
   // Detect if splash or status_screen were explicitly set on command line
   for (int i = 0; i < mode_argc; i++) {
-    if (mode_argv[i] && (strcmp(mode_argv[i], "--no-splash") == 0 || strncmp(mode_argv[i], "--no-splash=", 12) == 0)) {
-      opts.splash_explicitly_set = true;
+    if (mode_argv[i] && (strcmp(mode_argv[i], "--no-splash-screen") == 0 || strncmp(mode_argv[i], "--no-splash-screen=", 19) == 0)) {
+      opts.splash_screen_explicitly_set = true;
     }
     if (mode_argv[i] &&
         (strcmp(mode_argv[i], "--no-status-screen") == 0 || strncmp(mode_argv[i], "--no-status-screen=", 19) == 0)) {
@@ -1700,9 +1700,26 @@ asciichat_error_t options_init(int argc, char **argv) {
   }
 
   if (grep_was_provided) {
-    if (!opts.splash_explicitly_set) {
-      opts.splash = false;
+    if (!opts.splash_screen_explicitly_set) {
+      opts.splash_screen = false;
       log_debug("Auto-disabled splash because --grep was provided");
+    }
+  }
+
+  // Auto-disable splash and status screens when terminal is non-interactive or CLAUDECODE is set
+  // This ensures clean output when running under LLM automation or non-interactive shells
+  bool is_terminal_interactive = terminal_is_interactive();
+  bool is_claudecode_set = platform_getenv("CLAUDECODE") != NULL;
+  bool should_auto_disable_screens = !is_terminal_interactive || is_claudecode_set;
+
+  if (should_auto_disable_screens) {
+    if (!opts.splash_screen_explicitly_set) {
+      opts.splash_screen = false;
+      log_debug("Auto-disabled splash (non-interactive terminal or CLAUDECODE set)");
+    }
+    if (!opts.status_screen_explicitly_set) {
+      opts.status_screen = false;
+      log_debug("Auto-disabled status screen (non-interactive terminal or CLAUDECODE set)");
     }
   }
 

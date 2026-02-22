@@ -551,8 +551,8 @@ static void bool_field_updater(options_t *opts, void *context) {
     opts->auto_width = ctx->value;
   else if (strcmp(ctx->field_name, "auto_height") == 0)
     opts->auto_height = ctx->value;
-  else if (strcmp(ctx->field_name, "splash") == 0)
-    opts->splash = ctx->value;
+  else if (strcmp(ctx->field_name, "splash_screen") == 0)
+    opts->splash_screen = ctx->value;
   else if (strcmp(ctx->field_name, "status_screen") == 0)
     opts->status_screen = ctx->value;
   else if (strcmp(ctx->field_name, "matrix_rain") == 0)
@@ -584,7 +584,7 @@ asciichat_error_t options_set_bool(const char *field_name, bool value) {
       strcmp(field_name, "require_server_verify") != 0 && strcmp(field_name, "require_client_verify") != 0 &&
       strcmp(field_name, "palette_custom_set") != 0 && strcmp(field_name, "media_loop") != 0 &&
       strcmp(field_name, "media_from_stdin") != 0 && strcmp(field_name, "auto_width") != 0 &&
-      strcmp(field_name, "auto_height") != 0 && strcmp(field_name, "splash") != 0 &&
+      strcmp(field_name, "auto_height") != 0 && strcmp(field_name, "splash_screen") != 0 &&
       strcmp(field_name, "status_screen") != 0 && strcmp(field_name, "matrix_rain") != 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Unknown boolean field: %s", field_name);
     return ERROR_INVALID_PARAM;
