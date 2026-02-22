@@ -216,6 +216,17 @@ elseif(UNIX AND NOT APPLE)
                         set(GHOSTTY_BUILD_RESULT 1)
                     endif()
                 endif()
+
+                # Copy ghostty.h from source to cache so it's available for compilation
+                if(GHOSTTY_BUILD_RESULT EQUAL 0)
+                    set(GHOSTTY_HEADER_SRC "${GHOSTTY_SOURCE_DIR}/include/ghostty.h")
+                    set(GHOSTTY_HEADER_DST "${GHOSTTY_BUILD_DIR}/include/ghostty.h")
+                    if(EXISTS "${GHOSTTY_HEADER_SRC}")
+                        file(MAKE_DIRECTORY "${GHOSTTY_BUILD_DIR}/include")
+                        file(COPY_FILE "${GHOSTTY_HEADER_SRC}" "${GHOSTTY_HEADER_DST}")
+                        message(STATUS "Cached ghostty.h header")
+                    endif()
+                endif()
             endif()
 
             if(NOT GHOSTTY_BUILD_RESULT EQUAL 0)
