@@ -97,16 +97,16 @@ typedef struct {
 #endif
 } static_cond_t;
 
-// Initialization macros
+// Initialization macros using designated initializers to avoid warnings
 // clang-format off
 #if PLATFORM_WINDOWS
-#define STATIC_MUTEX_INIT {{0}, 0}
-#define STATIC_RWLOCK_INIT {{0}, 0}
-#define STATIC_COND_INIT {{0}, 0}
+#define STATIC_MUTEX_INIT {.mutex = {0}, .initialized = 0}
+#define STATIC_RWLOCK_INIT {.lock = {0}, .initialized = 0}
+#define STATIC_COND_INIT {.cond = {0}, .initialized = 0}
 #else
-#define STATIC_MUTEX_INIT {{{PTHREAD_MUTEX_INITIALIZER, NULL, 0, 0}}, 1}
-#define STATIC_RWLOCK_INIT {{{PTHREAD_RWLOCK_INITIALIZER, NULL, 0, 0, 0}}, 1}
-#define STATIC_COND_INIT {{{PTHREAD_COND_INITIALIZER, NULL, 0, 0, 0}}, 1}
+#define STATIC_MUTEX_INIT {.mutex.impl = PTHREAD_MUTEX_INITIALIZER, .mutex.name = NULL, .initialized = 1}
+#define STATIC_RWLOCK_INIT {.lock.impl = PTHREAD_RWLOCK_INITIALIZER, .lock.name = NULL, .initialized = 1}
+#define STATIC_COND_INIT {.cond.impl = PTHREAD_COND_INITIALIZER, .cond.name = NULL, .initialized = 1}
 #endif
 // clang-format on
 
