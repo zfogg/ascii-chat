@@ -16,6 +16,7 @@
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/log/format.h>
 #include <ascii-chat/util/string.h>
+#include <ascii-chat/util/lifecycle.h>
 #include <time.h>
 
 // Platform-specific binary suffix
@@ -126,7 +127,7 @@ typedef struct {
 
 static bin_cache_entry_t *g_bin_path_cache = NULL; // uthash head pointer
 static rwlock_t g_cache_rwlock;
-static atomic_bool g_cache_initialized = false;
+static lifecycle_t g_cache_lc = LIFECYCLE_INIT;
 
 /**
  * @brief Check if a file exists and is executable
@@ -271,8 +272,7 @@ static bool check_binary_in_path_uncached(const char *bin_name) {
  * @brief Initialize the binary PATH cache
  */
 static void init_cache_once(void) {
-  bool expected = false;
-  if (!atomic_compare_exchange_strong(&g_cache_initialized, &expected, true)) {
+  if (!lifecycle_init(&g_cache_lc)) {
     return; // Already initialized
   }
 
@@ -282,7 +282,7 @@ static void init_cache_once(void) {
   // Initialize rwlock for thread-safe access
   if (rwlock_init(&g_cache_rwlock, "binary_cache") != 0) {
     log_error("Failed to initialize binary PATH cache rwlock");
-    atomic_store(&g_cache_initialized, false);
+    lifecycle_init_abort(&g_cache_lc);
   }
 }
 
@@ -302,7 +302,7 @@ static void free_cache_entry(bin_cache_entry_t *entry) {
  * @brief Cleanup the binary PATH cache
  */
 void platform_cleanup_binary_path_cache(void) {
-  if (!atomic_load(&g_cache_initialized)) {
+  if (!lifecycle_shutdown(&g_cache_lc)) {
     return;
   }
 
@@ -320,8 +320,6 @@ void platform_cleanup_binary_path_cache(void) {
     rwlock_destroy(&g_cache_rwlock);
     g_bin_path_cache = NULL;
   }
-
-  atomic_store(&g_cache_initialized, false);
 }
 
 // ============================================================================
@@ -335,7 +333,7 @@ bool platform_is_binary_in_path(const char *bin_name) {
 
   // Initialize cache if needed
   init_cache_once();
-  if (!atomic_load(&g_cache_initialized)) {
+  if (!lifecycle_is_initialized(&g_cache_lc)) {
     // Cache initialization failed, check directly (this should never happen)
     SET_ERRNO(ERROR_INVALID_STATE, "Binary PATH cache not initialized, checking directly (this should never happen)");
     return check_binary_in_path_uncached(bin_name);

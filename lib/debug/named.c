@@ -12,6 +12,7 @@
 #include "ascii-chat/uthash/uthash.h"
 #include "ascii-chat/log/logging.h"
 #include "ascii-chat/util/path.h"
+#include "ascii-chat/util/lifecycle.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -52,7 +53,7 @@ typedef struct {
     named_entry_t *entries;             // uthash hash table (NULL = empty)
     rwlock_t entries_lock;              // Thread-safe access to uthash
     _Atomic uint64_t name_counter;      // Auto-incrementing suffix for uniqueness
-    _Atomic bool initialized;           // Initialization flag
+    lifecycle_t lifecycle;              // Init/shutdown state machine
 } named_registry_t;
 
 // ============================================================================
@@ -61,8 +62,9 @@ typedef struct {
 
 static named_registry_t g_named_registry = {
     .entries = NULL,
+    .entries_lock = {0},
     .name_counter = 0,
-    .initialized = false,
+    .lifecycle = LIFECYCLE_INIT,
 };
 
 // ============================================================================
@@ -70,22 +72,23 @@ static named_registry_t g_named_registry = {
 // ============================================================================
 
 int named_init(void) {
-    if (atomic_load(&g_named_registry.initialized)) {
+    if (!lifecycle_init(&g_named_registry.lifecycle)) {
         return 0; // Already initialized
     }
 
     int err = rwlock_init_impl(&g_named_registry.entries_lock);
     if (err != 0) {
         log_error("named_init: rwlock_init_impl failed: %d", err);
+        lifecycle_init_abort(&g_named_registry.lifecycle);
         return err;
     }
 
-    atomic_store(&g_named_registry.initialized, true);
+    lifecycle_init_commit(&g_named_registry.lifecycle);
     return 0;
 }
 
 void named_destroy(void) {
-    if (!atomic_load(&g_named_registry.initialized)) {
+    if (!lifecycle_shutdown(&g_named_registry.lifecycle)) {
         return;
     }
 
@@ -104,8 +107,6 @@ void named_destroy(void) {
 
     rwlock_wrunlock_impl(&g_named_registry.entries_lock);
     rwlock_destroy_impl(&g_named_registry.entries_lock);
-
-    atomic_store(&g_named_registry.initialized, false);
 }
 
 const char *named_register(uintptr_t key, const char *base_name, const char *type,
@@ -114,7 +115,7 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
         return "?";
     }
 
-    if (!atomic_load(&g_named_registry.initialized)) {
+    if (!lifecycle_is_initialized(&g_named_registry.lifecycle)) {
         return base_name;
     }
 
@@ -177,7 +178,7 @@ const char *named_register_fmt(uintptr_t key, const char *type,
         return "?";
     }
 
-    if (!atomic_load(&g_named_registry.initialized)) {
+    if (!lifecycle_is_initialized(&g_named_registry.lifecycle)) {
         return fmt;
     }
 
@@ -237,7 +238,7 @@ const char *named_register_fmt(uintptr_t key, const char *type,
 }
 
 void named_unregister(uintptr_t key) {
-    if (!atomic_load(&g_named_registry.initialized)) {
+    if (!lifecycle_is_initialized(&g_named_registry.lifecycle)) {
         return;
     }
 
@@ -259,7 +260,7 @@ void named_unregister(uintptr_t key) {
 }
 
 const char *named_get(uintptr_t key) {
-    if (!atomic_load(&g_named_registry.initialized)) {
+    if (!lifecycle_is_initialized(&g_named_registry.lifecycle)) {
         return NULL;
     }
 
@@ -276,7 +277,7 @@ const char *named_get(uintptr_t key) {
 }
 
 const char *named_get_type(uintptr_t key) {
-    if (!atomic_load(&g_named_registry.initialized)) {
+    if (!lifecycle_is_initialized(&g_named_registry.lifecycle)) {
         return NULL;
     }
 
@@ -345,7 +346,7 @@ typedef struct {
 } named_iter_entry_t;
 
 void named_registry_for_each(named_iter_callback_t callback, void *user_data) {
-    if (!callback || !atomic_load(&g_named_registry.initialized)) {
+    if (!callback || !lifecycle_is_initialized(&g_named_registry.lifecycle)) {
         return;
     }
 
