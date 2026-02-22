@@ -16,6 +16,7 @@
 #include <ascii-chat/log/grep.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
+#include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/util/pcre2.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/video/ansi_fast.h>
@@ -82,7 +83,7 @@ static struct {
   int pattern_capacity;                ///< Allocated capacity
   bool enabled;                        ///< Is filtering active?
   tls_key_t match_data_key;            ///< Thread-local match_data key
-  volatile int match_data_initialized; ///< Once flag for key initialization
+  lifecycle_t match_data_lifecycle;    ///< Lifecycle for TLS key initialization
 
   // Context line buffering
   char **line_buffer;    ///< Circular buffer for context_before
@@ -105,7 +106,7 @@ static struct {
     .pattern_count = 0,
     .pattern_capacity = 0,
     .enabled = false,
-    .match_data_initialized = 0,
+    .match_data_lifecycle = LIFECYCLE_INIT,
     .line_buffer = NULL,
     .buffer_size = 0,
     .buffer_pos = 0,
@@ -314,38 +315,12 @@ static size_t map_plain_to_colored_pos(const char *colored_text, size_t char_pos
  * @brief Ensure TLS key is initialized (thread-safe)
  */
 static void ensure_match_data_key_initialized(void) {
-  // Simple once-flag pattern using atomic compare-and-swap
-  // 0 = uninitialized, 1 = in progress, 2 = done
-  if (g_filter_state.match_data_initialized == 2) {
-    return; // Already initialized
+  if (!lifecycle_init_once(&g_filter_state.match_data_lifecycle)) {
+    return; // Already initialized, spin-wait completed
   }
-
-#ifdef _WIN32
-  // Windows: Use InterlockedCompareExchange
-  if (InterlockedCompareExchange((volatile LONG *)&g_filter_state.match_data_initialized, 1, 0) == 0) {
-    create_match_data_key();
-    InterlockedExchange((volatile LONG *)&g_filter_state.match_data_initialized, 2);
-  } else {
-    // Another thread is initializing, spin wait
-    while (g_filter_state.match_data_initialized != 2) {
-      // Yield to let the other thread complete
-      SwitchToThread();
-    }
-  }
-#else
-  // POSIX: Use __sync_bool_compare_and_swap
-  if (__sync_bool_compare_and_swap(&g_filter_state.match_data_initialized, 0, 1)) {
-    create_match_data_key();
-    __sync_synchronize();
-    g_filter_state.match_data_initialized = 2;
-  } else {
-    // Another thread is initializing, spin wait
-    while (g_filter_state.match_data_initialized != 2) {
-      // Yield to let the other thread complete
-      sched_yield();
-    }
-  }
-#endif
+  // Winner of init_once - do the initialization work
+  create_match_data_key();
+  lifecycle_init_commit(&g_filter_state.match_data_lifecycle);
 }
 
 /**
