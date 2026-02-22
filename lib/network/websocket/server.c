@@ -821,7 +821,7 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   info.gid = (gid_t)-1;                                // Cast to avoid undefined behavior with unsigned type
   info.uid = (uid_t)-1;                                // Cast to avoid undefined behavior with unsigned type
   info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT; // Initialize SSL/TLS support (required for server binding)
-  info.extensions = websocket_extensions;              // Enable permessage-deflate with small window bits
+  info.extensions = NULL;                             // Disable permessage-deflate - causing connection issues
   info.retry_and_idle_policy = &keep_alive_policy;    // Configure keep-alive to prevent idle disconnects during handshake
 
   // TCP-level keep-alive: detect dead connections quickly
