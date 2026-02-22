@@ -546,28 +546,6 @@ char *get_lum_palette(void);
  */
 #define ascii_clear_screen(fd) terminal_clear_screen()
 
-/**
- * @brief Hide terminal cursor
- * @param fd File descriptor for terminal
- *
- * Hides terminal cursor for clean ASCII art display.
- * Equivalent to terminal_hide_cursor(fd, true).
- *
- * @ingroup video
- */
-#define cursor_hide(fd) terminal_hide_cursor(fd, true)
-
-/**
- * @brief Show terminal cursor
- * @param fd File descriptor for terminal
- *
- * Shows terminal cursor.
- * Equivalent to terminal_hide_cursor(fd, false).
- *
- * @ingroup video
- */
-#define cursor_show(fd) terminal_hide_cursor(fd, false)
-
 /* ============================================================================
  * Frame Rate Limiting
  * ============================================================================

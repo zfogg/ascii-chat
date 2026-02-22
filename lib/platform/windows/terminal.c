@@ -513,39 +513,87 @@ asciichat_error_t terminal_ring_bell(void) {
 }
 
 /**
- * @brief Hide or show cursor
- * @param fd File descriptor (ignored on Windows - console APIs use stdout)
- * @param hide True to hide cursor, false to show
- * @return 0 on success, -1 on failure
+ * @brief Runtime helper to enable VT processing on Windows stdout
+ * @param hOut The output handle to configure
+ * @return true if VT was successfully enabled or already enabled
  */
-asciichat_error_t terminal_hide_cursor(int fd, bool hide) {
-  (void)fd; // Windows console APIs operate on stdout, not arbitrary file descriptors
-  HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-  CONSOLE_CURSOR_INFO cursorInfo;
-
+static bool windows_try_enable_vt_processing(HANDLE hOut) {
   if (hOut == INVALID_HANDLE_VALUE) {
-    // Fallback to ANSI
-    printf(hide ? "\033[?25l" : "\033[?25h");
+    return false;
+  }
+
+  DWORD mode = 0;
+  if (!GetConsoleMode(hOut, &mode)) {
+    return false;
+  }
+
+  // Try to enable ANSI VT processing
+  return SetConsoleMode(hOut, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+}
+
+/**
+ * @brief Hide terminal cursor
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Hides the cursor on stdout if interactive. On Windows, tries VT processing
+ * first (modern Windows 10+), falls back to SetConsoleCursorInfo for older versions.
+ */
+asciichat_error_t terminal_cursor_hide(void) {
+  // Only operate in interactive mode
+  if (!terminal_is_interactive()) {
+    return ASCIICHAT_OK;
+  }
+
+  HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+
+  // Try VT processing first (Windows 10.1607+)
+  if (windows_try_enable_vt_processing(hOut)) {
+    printf("\033[?25l");
     (void)fflush(stdout);
     return ASCIICHAT_OK;
   }
 
-  if (!GetConsoleCursorInfo(hOut, &cursorInfo)) {
-    // If we can't get console cursor info, fall back to ANSI escape sequences
-    // This happens in PowerShell or other non-console environments
-    printf(hide ? "\033[?25l" : "\033[?25h");
+  // Fallback to console API for older Windows
+  CONSOLE_CURSOR_INFO cursorInfo;
+  if (hOut != INVALID_HANDLE_VALUE && GetConsoleCursorInfo(hOut, &cursorInfo)) {
+    cursorInfo.bVisible = FALSE;
+    if (SetConsoleCursorInfo(hOut, &cursorInfo)) {
+      return ASCIICHAT_OK;
+    }
+  }
+
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Show terminal cursor
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Shows the cursor on stdout if interactive. On Windows, tries VT processing
+ * first, falls back to SetConsoleCursorInfo for older versions.
+ */
+asciichat_error_t terminal_cursor_show(void) {
+  // Only operate in interactive mode
+  if (!terminal_is_interactive()) {
+    return ASCIICHAT_OK;
+  }
+
+  HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+
+  // Try VT processing first (Windows 10.1607+)
+  if (windows_try_enable_vt_processing(hOut)) {
+    printf("\033[?25h");
     (void)fflush(stdout);
     return ASCIICHAT_OK;
   }
 
-  cursorInfo.bVisible = !hide;
-
-  if (!SetConsoleCursorInfo(hOut, &cursorInfo)) {
-    // If we can't set console cursor info, fall back to ANSI escape sequences
-    // This happens in PowerShell or other non-console environments
-    printf(hide ? "\033[?25l" : "\033[?25h");
-    (void)fflush(stdout);
-    return ASCIICHAT_OK;
+  // Fallback to console API for older Windows
+  CONSOLE_CURSOR_INFO cursorInfo;
+  if (hOut != INVALID_HANDLE_VALUE && GetConsoleCursorInfo(hOut, &cursorInfo)) {
+    cursorInfo.bVisible = TRUE;
+    if (SetConsoleCursorInfo(hOut, &cursorInfo)) {
+      return ASCIICHAT_OK;
+    }
   }
 
   return ASCIICHAT_OK;

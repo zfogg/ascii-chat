@@ -274,6 +274,16 @@ static const mode_descriptor_t *find_mode(asciichat_mode_t mode) {
  * Helper Functions for Post-Options Processing
  * ============================================================================ */
 
+/**
+ * @brief atexit() wrapper for terminal_cursor_show()
+ *
+ * atexit() expects void (*)(void) but terminal_cursor_show() returns
+ * asciichat_error_t. This wrapper ignores the return value.
+ */
+static void on_exit_show_cursor(void) {
+  (void)terminal_cursor_show();
+}
+
 /* ============================================================================
  * Main Entry Point
  * ============================================================================ */
@@ -287,6 +297,9 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "Error: Invalid argument vector\n");
     return 1;
   }
+
+  // Show cursor early in case a previous session crashed with it hidden
+  (void)terminal_cursor_show();
 
   // VERY FIRST: Scan for --color BEFORE ANY logging initialization
   // This sets global flags that persist through cleanup, enabling --color to force colors
@@ -480,6 +493,8 @@ int main(int argc, char *argv[]) {
 
   // Register cleanup of shared subsystems to run on normal exit
   // Library code doesn't call atexit() - the application is responsible
+  // Register cursor show FIRST so it runs LAST (atexit is LIFO) - cursor restored after cleanup
+  (void)atexit(on_exit_show_cursor);
   (void)atexit(asciichat_shared_destroy);
 
   // SECRET: Check for --backtrace (debug builds only) BEFORE options_init()

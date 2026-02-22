@@ -379,21 +379,33 @@ asciichat_error_t terminal_set_title(const char *title);
 asciichat_error_t terminal_ring_bell(void);
 
 /**
- * @brief Hide or show cursor
- * @param fd File descriptor for terminal (must be valid)
- * @param hide true to hide cursor, false to show cursor
+ * @brief Hide terminal cursor
  * @return ASCIICHAT_OK on success, error code on failure
  *
- * Controls terminal cursor visibility. Hiding the cursor is useful for
- * full-screen ASCII art rendering where cursor flicker is distracting.
- * Uses ANSI escape sequences (ESC[?25l to hide, ESC[?25h to show).
+ * Hides the terminal cursor on stdout. Useful during full-screen ASCII art
+ * rendering where cursor flicker is distracting. No-op when not interactive
+ * (piped or redirected output).
  *
- * @note Hidden cursor should be restored before program exit.
- * @note Cursor visibility change is immediate.
+ * Uses ESC[?25l. On Windows, tries VT processing first and falls back to
+ * SetConsoleCursorInfo for older consoles.
+ *
+ * @note Cursor should be restored with terminal_cursor_show() before exit.
  *
  * @ingroup platform
  */
-asciichat_error_t terminal_hide_cursor(int fd, bool hide);
+asciichat_error_t terminal_cursor_hide(void);
+
+/**
+ * @brief Show terminal cursor
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Restores the terminal cursor on stdout. No-op when not interactive.
+ * Uses ESC[?25h. On Windows, tries VT processing first and falls back to
+ * SetConsoleCursorInfo for older consoles.
+ *
+ * @ingroup platform
+ */
+asciichat_error_t terminal_cursor_show(void);
 
 /**
  * @brief Set scroll region

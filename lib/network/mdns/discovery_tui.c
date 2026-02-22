@@ -102,8 +102,6 @@ int discovery_tui_prompt_selection(const discovery_tui_server_t *servers, int co
 #define ANSI_CYAN "\033[36m"         // Cyan text
 #define ANSI_GREEN "\033[32m"        // Green text
 #define ANSI_YELLOW "\033[33m"       // Yellow text
-#define ANSI_HIDE_CURSOR "\033[?25l" // Hide cursor
-#define ANSI_SHOW_CURSOR "\033[?25h" // Show cursor
 #define ANSI_CLEAR_LINE "\033[K"     // Clear to end of line
 
 /**

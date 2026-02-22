@@ -216,6 +216,9 @@ void interactive_grep_destroy(void) {
  * ========================================================================== */
 
 void interactive_grep_enter_mode(void) {
+  // Ensure cursor is visible for user typing
+  (void)terminal_cursor_show();
+
   mutex_lock(&g_grep_state.mutex);
 
   // Save current patterns (CLI --grep patterns)

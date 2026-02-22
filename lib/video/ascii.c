@@ -58,7 +58,7 @@ asciichat_error_t ascii_write_init(int fd, bool reset_terminal) {
       return ERROR_TERMINAL;
     }
     // Hide cursor using platform abstraction
-    if (terminal_hide_cursor(fd, true) != 0) {
+    if (terminal_cursor_hide() != 0) {
       log_warn("Failed to hide cursor");
     }
   }
@@ -363,7 +363,7 @@ void ascii_write_destroy(int fd, bool reset_terminal) {
   // 2. terminal_should_use_control_sequences() confirms it's safe (TTY, not snapshot, not testing)
   if (reset_terminal && terminal_should_use_control_sequences(fd)) {
     // Show cursor using platform abstraction
-    if (terminal_hide_cursor(fd, false) != 0) {
+    if (terminal_cursor_show() != 0) {
       log_warn("Failed to show cursor");
     }
 

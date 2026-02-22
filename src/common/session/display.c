@@ -121,7 +121,7 @@ static void full_terminal_reset_internal(bool snapshot_mode) {
   (void)terminal_cursor_home(STDOUT_FILENO);
   (void)terminal_clear_scrollback(STDOUT_FILENO); // Clear history to avoid old logs visible above ASCII
   if (!snapshot_mode) {
-    (void)terminal_hide_cursor(STDOUT_FILENO, true);
+    (void)terminal_cursor_hide();
   }
   (void)terminal_flush(STDOUT_FILENO);
 }
@@ -789,7 +789,7 @@ void session_display_reset(session_display_ctx_t *ctx) {
   // Only perform terminal operations if we have a valid TTY
   if (ctx->has_tty && ctx->tty_info.fd >= 0) {
     (void)terminal_reset(ctx->tty_info.fd);
-    (void)terminal_hide_cursor(ctx->tty_info.fd, false); // Show cursor
+    (void)terminal_cursor_show();
     (void)terminal_flush(ctx->tty_info.fd);
   }
 }
@@ -832,7 +832,11 @@ void session_display_set_cursor_visible(session_display_ctx_t *ctx, bool visible
 
   // Only perform terminal operations when we have a valid TTY (not when piping)
   if (ctx->has_tty && ctx->tty_info.fd >= 0) {
-    (void)terminal_hide_cursor(ctx->tty_info.fd, !visible);
+    if (visible) {
+      (void)terminal_cursor_show();
+    } else {
+      (void)terminal_cursor_hide();
+    }
   }
 }
 

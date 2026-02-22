@@ -507,6 +507,8 @@ int splash_intro_start(session_display_ctx_t *ctx) {
 
   // Clear screen
   terminal_clear_screen();
+  // Show cursor for splash screen display (with logs)
+  (void)terminal_cursor_show();
   fflush(stdout);
 
   // Set running flag
