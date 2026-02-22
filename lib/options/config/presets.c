@@ -364,9 +364,7 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   // ============================================================================
   // Display & Screen Conflicts
   // ============================================================================
-  // Cannot use --no-splash-screen with options that depend on splash
-  options_builder_add_dependency_conflicts(b, "no-splash-screen", "splash-delay",
-                                           "Cannot use --no-splash-screen with --splash-delay (splash is disabled)");
+  // (No splash screen conflicts - --splash-delay option doesn't exist)
 
   // ============================================================================
   // Requirements (dependencies that must be satisfied)
