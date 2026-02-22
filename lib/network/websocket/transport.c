@@ -522,18 +522,8 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     }
     mutex_unlock(&ws_data->send_mutex);
 
-    // Wake the LWS event loop from this non-service thread.
-    // Only lws_cancel_service() is thread-safe from non-service threads.
-    // lws_callback_on_writable() must NOT be called here — it's only safe
-    // from the service thread. LWS_CALLBACK_EVENT_WAIT_CANCELLED (in server.c)
-    // handles calling lws_callback_on_writable_all_protocol() on the service thread.
     log_debug(">>> SERVER FRAME QUEUED: %zu bytes for wsi=%p", send_len, (void *)ws_data->wsi);
 
-    struct lws_context *ctx = lws_get_context(ws_data->wsi);
-    lws_cancel_service(ctx);
-
-    log_debug(">>> Server-side WebSocket: queued %zu bytes, cancel_service sent for wsi=%p", send_len,
-                  (void *)ws_data->wsi);
     SAFE_FREE(send_buffer);
     if (encrypted_packet)
       buffer_pool_free(NULL, encrypted_packet, send_len);
