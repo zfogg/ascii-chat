@@ -292,24 +292,17 @@ elseif(UNIX AND NOT APPLE)
         set(GHOSTTY_INCLUDE_DIRS "")
     endif()
 
-    # Custom target to build ghostty and cache headers (Linux)
+    # Custom target to cache ghostty.h header (Linux)
     if(UNIX AND NOT APPLE AND EXISTS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/ghostty")
         set(GHOSTTY_EMBEDDED_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/ghostty")
         set(GHOSTTY_EMBEDDED_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/ghostty")
         set(GHOSTTY_EMBEDDED_HEADER_SRC "${GHOSTTY_EMBEDDED_SOURCE_DIR}/include/ghostty.h")
         set(GHOSTTY_EMBEDDED_HEADER_DST "${GHOSTTY_EMBEDDED_BUILD_DIR}/include/ghostty.h")
 
-        find_program(ZIG_FOR_EMBEDDED NAMES zig)
-
         add_custom_target(ghostty-embedded
-            COMMAND ${CMAKE_COMMAND} -E echo "Building ghostty with GTK runtime for caching..."
-            COMMAND mkdir -p "${GHOSTTY_EMBEDDED_BUILD_DIR}"
-            COMMAND "${ZIG_FOR_EMBEDDED}" build install -Dapp-runtime=gtk -Doptimize=ReleaseFast --prefix "${GHOSTTY_EMBEDDED_BUILD_DIR}"
-            COMMAND ${CMAKE_COMMAND} -E echo "Copying ghostty.h to cache..."
             COMMAND mkdir -p "${GHOSTTY_EMBEDDED_BUILD_DIR}/include"
             COMMAND ${CMAKE_COMMAND} -E copy_if_different "${GHOSTTY_EMBEDDED_HEADER_SRC}" "${GHOSTTY_EMBEDDED_HEADER_DST}"
-            COMMAND ${CMAKE_COMMAND} -E echo "✓ ghostty-embedded cache complete"
-            WORKING_DIRECTORY "${GHOSTTY_EMBEDDED_SOURCE_DIR}"
+            COMMAND ${CMAKE_COMMAND} -E echo "✓ ghostty.h cached at ${GHOSTTY_EMBEDDED_HEADER_DST}"
             VERBATIM
         )
     endif()
