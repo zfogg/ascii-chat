@@ -807,12 +807,31 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
       assembled_capacity = new_capacity;
     }
 
-    // Append fragment data
-    memcpy(assembled_buffer + assembled_size, frag.data, frag.len);
-    assembled_size += frag.len;
+    // Append fragment data with bounds checking
+    if (frag.len > 0 && frag.data) {
+      // Safety check: ensure we don't overflow the buffer
+      if (assembled_size + frag.len > assembled_capacity) {
+        log_error("[WS_REASSEMBLE] CRITICAL: Buffer overflow detected! assembled_size=%zu, frag.len=%zu, capacity=%zu",
+                  assembled_size, frag.len, assembled_capacity);
+        buffer_pool_free(NULL, frag.data, frag.len);
+        if (assembled_buffer) {
+          buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
+        }
+        mutex_unlock(&ws_data->recv_mutex);
+        return SET_ERRNO(ERROR_MEMORY, "Fragment reassembly buffer overflow");
+      }
 
-    // Free fragment data (we've copied it)
-    buffer_pool_free(NULL, frag.data, frag.len);
+      memcpy(assembled_buffer + assembled_size, frag.data, frag.len);
+      assembled_size += frag.len;
+    }
+
+    // Free fragment data after copying (allocated in LWS callback with buffer_pool_alloc)
+    if (frag.data) {
+      // Use the fragment length that was stored when we allocated it
+      // This must match the size passed to buffer_pool_alloc in the LWS callback
+      buffer_pool_free(NULL, frag.data, frag.len);
+      frag.data = NULL;  // Prevent accidental double-free
+    }
 
     // Try to detect packet boundary using protocol structure
     // ACIP packet header: magic(8) + type(2) + length(4) + crc(4) + client_id(4) = 22 bytes
