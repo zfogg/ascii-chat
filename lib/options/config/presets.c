@@ -364,7 +364,6 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   // ============================================================================
   // Display & Screen Conflicts
   // ============================================================================
-  // (No splash screen conflicts - --splash-delay option doesn't exist)
 
   // ============================================================================
   // Requirements (dependencies that must be satisfied)
