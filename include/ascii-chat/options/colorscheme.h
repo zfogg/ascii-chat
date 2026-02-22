@@ -3,17 +3,28 @@
  * @brief Color scheme management system for ascii-chat
  * @ingroup options
  *
- * Provides comprehensive color scheme support with:
- * - Built-in themes (pastel, nord, solarized, dracula, gruvbox, monokai)
+ * Provides comprehensive color scheme support with theme-aware adaptation:
+ * - Built-in color schemes (pastel, nord, solarized, dracula, gruvbox, monokai)
  * - RGB to ANSI conversion (16, 256, truecolor)
- * - Light/dark mode variants
+ * - Light/dark theme variants that adapt to terminal background
  * - TOML configuration file support
- * - Terminal background detection
+ * - Terminal theme detection (dark vs light background)
  * - Early initialization before logging
  *
  * Color schemes define how log messages are displayed with different colors
- * for various log levels (debug, info, warn, error, etc.). Schemes can be
+ * for various log levels (debug, info, warn, error, etc.). Schemes automatically
+ * adapt to the user's terminal theme (dark or light background) and can be
  * selected via CLI arguments, config files, or programmatically.
+ *
+ * ## Theme System
+ *
+ * The theme system respects the user's terminal background color preference:
+ * - **Dark Theme**: Terminal has a dark/black background (default for most dev terminals)
+ * - **Light Theme**: Terminal has a light/white background
+ *
+ * Terminal theme is detected automatically via terminal_has_dark_background() which
+ * uses OSC 11 queries, environment variables, and terminal type hints. Color schemes
+ * then adapt their palettes accordingly to maintain readability.
  */
 
 #pragma once
@@ -31,12 +42,15 @@ extern "C" {
  * ============================================================================ */
 
 /**
- * @brief Terminal background detection result
+ * @brief Terminal theme detection result
+ *
+ * Represents the detected or selected terminal theme (color background preference).
+ * Used to choose appropriate color schemes and contrast levels.
  */
 typedef enum {
-  TERM_BACKGROUND_UNKNOWN = 0, /**< Background not detected */
-  TERM_BACKGROUND_LIGHT = 1,   /**< Light background (use dark colors) */
-  TERM_BACKGROUND_DARK = 2     /**< Dark background (use normal colors) */
+  TERM_BACKGROUND_UNKNOWN = 0, /**< Theme not detected or auto-detect disabled */
+  TERM_BACKGROUND_LIGHT = 1,   /**< Light theme: light/white background, use dark text colors */
+  TERM_BACKGROUND_DARK = 2     /**< Dark theme: dark/black background, use light text colors */
 } terminal_background_t;
 
 /**

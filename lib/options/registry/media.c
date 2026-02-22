@@ -201,9 +201,9 @@ const registry_entry_t g_media_entries[] = {
      offsetof(options_t, render_font),
      "",
      sizeof(((options_t *)0)->render_font),
-     "Font family name or .ttf/.otf path for render-file output. "
-     "Defaults to SF Mono (macOS) or the system monospace font via fontconfig (Linux). "
-     "Examples: \"JetBrains Mono\", \"Nerd Font Mono\", \"/path/to/font.[ttf|otf]\"  "
+     "Font for render-file output: bundled names (\"matrix\" or \"default\"), system font names, or absolute .ttf/.otf path. "
+     "Default: \"matrix\" (Matrix Resurrected font). Falls back to \"default\" (DejaVu Sans Mono) if unavailable. "
+     "Examples: \"matrix\", \"default\", \"JetBrains Mono\", \"Nerd Font Mono\", \"/path/to/font.ttf\"  "
      "(macOS and Linux only)",
      "MEDIA",
      "FONT",

@@ -47,13 +47,55 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y doxygen graphviz cmake
 
+      - name: Restore configure and build caches
+        id: cache-build
+        uses: ./.github/actions/cache-build
+        with:
+          cache-version: v7
+
       - name: Configure CMake build
         run: |
           cmake --preset release -B build_release
 
+      - name: Save configure cache
+        if: always()
+        uses: ./.github/actions/cache-build-save
+        with:
+          build-directory: build_release
+          configure-cache-key: ${{ steps.cache-build.outputs.configure-cache-key }}
+          configure-cache-hit: ${{ steps.cache-build.outputs.configure-cache-hit }}
+          build-cache-key: ${{ steps.cache-build.outputs.build-cache-key }}
+          build-cache-hit: ${{ steps.cache-build.outputs.build-cache-hit }}
+          cache-deps-enabled: ${{ steps.cache-build.outputs.cache-deps-enabled }}
+          deps-cache-directory: ${{ steps.cache-build.outputs.deps-cache-path }}
+          deps-cache-key: ${{ steps.cache-build.outputs.deps-cache-key }}
+          deps-cache-hit: ${{ steps.cache-build.outputs.deps-cache-hit }}
+          cache-ccache-enabled: ${{ steps.cache-build.outputs.cache-ccache-enabled }}
+          ccache-directory: ${{ steps.cache-build.outputs.ccache-directory-path }}
+          ccache-cache-key: ${{ steps.cache-build.outputs.ccache-cache-key }}
+          ccache-cache-hit: ${{ steps.cache-build.outputs.ccache-cache-hit }}
+
       - name: Build documentation with CMake
         run: |
           cmake --build build_release --target docs
+
+      - name: Save build cache
+        if: always()
+        uses: ./.github/actions/cache-build-save
+        with:
+          build-directory: build_release
+          configure-cache-key: ${{ steps.cache-build.outputs.configure-cache-key }}
+          configure-cache-hit: ${{ steps.cache-build.outputs.configure-cache-hit }}
+          build-cache-key: ${{ steps.cache-build.outputs.build-cache-key }}
+          build-cache-hit: ${{ steps.cache-build.outputs.build-cache-hit }}
+          cache-deps-enabled: ${{ steps.cache-build.outputs.cache-deps-enabled }}
+          deps-cache-directory: ${{ steps.cache-build.outputs.deps-cache-path }}
+          deps-cache-key: ${{ steps.cache-build.outputs.deps-cache-key }}
+          deps-cache-hit: ${{ steps.cache-build.outputs.deps-cache-hit }}
+          cache-ccache-enabled: ${{ steps.cache-build.outputs.cache-ccache-enabled }}
+          ccache-directory: ${{ steps.cache-build.outputs.ccache-directory-path }}
+          ccache-cache-key: ${{ steps.cache-build.outputs.ccache-cache-key }}
+          ccache-cache-hit: ${{ steps.cache-build.outputs.ccache-cache-hit }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

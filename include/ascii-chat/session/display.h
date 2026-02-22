@@ -143,6 +143,18 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
  */
 void session_display_destroy(session_display_ctx_t *ctx);
 
+/**
+ * @brief Set stdin frame reader for ASCII-to-video rendering
+ *
+ * @param ctx Display context (must not be NULL)
+ * @param reader Stdin frame reader (borrowed reference, not owned)
+ *
+ * Only used when reading ASCII frames from stdin for rendering.
+ *
+ * @ingroup session
+ */
+void session_display_set_stdin_reader(session_display_ctx_t *ctx, void *reader);
+
 /** @} */
 
 /* ============================================================================
@@ -217,6 +229,15 @@ const char *session_display_get_luminance_palette(session_display_ctx_t *ctx);
  * @ingroup session
  */
 int session_display_get_tty_fd(session_display_ctx_t *ctx);
+
+/**
+ * @brief Get the stdin frame reader for ASCII-to-video rendering
+ * @param ctx Display context (must not be NULL)
+ * @return Pointer to stdin reader, or NULL if not configured
+ *
+ * @ingroup session
+ */
+void *session_display_get_stdin_reader(session_display_ctx_t *ctx);
 
 /** @} */
 

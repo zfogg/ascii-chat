@@ -9,6 +9,7 @@
 #include <ascii-chat/session/display.h>
 #include <ascii-chat/session/render.h>
 #include <ascii-chat/session/session_log_buffer.h>
+#include <ascii-chat/session/stdin_reader.h>
 
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/audio/audio.h>
@@ -40,6 +41,9 @@ static bool (*g_render_should_exit)(void *) = NULL;
 static tcp_client_t *g_tcp_client = NULL;
 static websocket_client_t *g_websocket_client = NULL;
 
+// Module-level stdin reader for ASCII-to-video rendering (stdin render mode only)
+static stdin_frame_reader_t *g_stdin_reader = NULL;
+
 // External exit function from src/main.c
 extern bool should_exit(void);
 
@@ -57,6 +61,10 @@ tcp_client_t *session_client_like_get_tcp_client(void) {
 
 websocket_client_t *session_client_like_get_websocket_client(void) {
   return g_websocket_client;
+}
+
+stdin_frame_reader_t *session_client_like_get_stdin_reader(void) {
+  return g_stdin_reader;
 }
 
 /* ============================================================================
@@ -312,12 +320,63 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // SETUP: Capture Context
   // ============================================================================
 
+  // Check for stdin render mode: read ASCII frames from stdin, render to video
+  const char *render_file_opt = GET_OPTION(render_file);
+  bool stdin_render_mode = (render_file_opt && strcmp(render_file_opt, "-") == 0 &&
+                            !terminal_is_stdin_tty());
+
+  if (stdin_render_mode) {
+    // Stdin render mode: read ASCII frames from stdin, output video to stdout
+    log_info("Stdin render mode enabled: reading ASCII frames from stdin, output to stdout");
+
+    // Require explicit --height when reading from stdin
+    // (height determines frame boundaries; width can be detected from line lengths)
+    int frame_height = GET_OPTION(height);
+    int frame_width = GET_OPTION(width);
+
+    // Check if height was explicitly set (not default)
+    if (frame_height == OPT_HEIGHT_DEFAULT) {
+      result = SET_ERRNO(ERROR_USAGE,
+                         "Stdin render mode requires explicit frame height.\n"
+                         "Please specify: --height <rows>");
+      goto cleanup;
+    }
+
+    // Disallow explicit --width in stdin render mode (auto-detected from first frame)
+    if (frame_width != OPT_WIDTH_DEFAULT) {
+      result = SET_ERRNO(ERROR_USAGE,
+                         "Stdin render mode does not accept --width (auto-detected from frames).\n"
+                         "Only specify: --height <rows>");
+      goto cleanup;
+    }
+
+    asciichat_error_t stdin_err = stdin_frame_reader_create(frame_height, &g_stdin_reader);
+    if (stdin_err != ASCIICHAT_OK) {
+      log_fatal("Failed to initialize stdin frame reader: %s", asciichat_error_string(stdin_err));
+      result = ERROR_MEDIA_INIT;
+      goto cleanup;
+    }
+
+    // For stdin render mode, create a minimal capture context for compatibility
+    int fps = GET_OPTION(fps);
+    capture = session_network_capture_create((uint32_t)(fps > 0 ? fps : 60));
+    if (!capture) {
+      log_fatal("Failed to initialize capture context for stdin rendering");
+      stdin_frame_reader_destroy(g_stdin_reader);
+      g_stdin_reader = NULL;
+      result = ERROR_MEDIA_INIT;
+      goto cleanup;
+    }
+
+    log_info("stdin render mode: reading %d-line frames from stdin, auto-detecting width", frame_height);
+  }
+
   // Choose capture type based on mode:
   // - Mirror mode: needs to capture local media (webcam, file, test pattern)
   // - Network modes (client/discovery): receive frames from network, no local capture
   bool is_network_mode = (g_tcp_client != NULL || g_websocket_client != NULL);
 
-  if (is_network_mode) {
+  if (!stdin_render_mode && is_network_mode) {
     // Network mode: create minimal capture context without media source
     log_debug("Network mode detected - using network capture (no local media source)");
     int fps = GET_OPTION(fps);
@@ -330,7 +389,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     if (fps > 0) {
       log_debug("Network capture FPS set to %d from options", fps);
     }
-  } else {
+  } else if (!stdin_render_mode) {
     // Mirror mode: create capture context with local media source
     log_debug("Mirror mode detected - using mirror capture with local media source");
     capture = session_mirror_capture_create(&capture_config);
@@ -415,6 +474,12 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     log_fatal("Failed to initialize display");
     result = ERROR_DISPLAY;
     goto cleanup;
+  }
+
+  // Pass stdin_reader to display if in stdin render mode
+  if (stdin_render_mode && g_stdin_reader) {
+    session_display_set_stdin_reader(display, g_stdin_reader);
+    log_debug("stdin_reader passed to display context");
   }
 
   // ============================================================================
@@ -545,6 +610,12 @@ cleanup:
   if (capture) {
     session_capture_destroy(capture);
     capture = NULL;
+  }
+
+  // Destroy stdin reader if active (stdin render mode)
+  if (g_stdin_reader) {
+    stdin_frame_reader_destroy(g_stdin_reader);
+    g_stdin_reader = NULL;
   }
 
   // Clean up probe source if still allocated (shouldn't happen, but be safe)

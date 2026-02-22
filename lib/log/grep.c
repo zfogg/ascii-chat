@@ -33,15 +33,20 @@
 #endif
 
 /**
- * @brief Default highlight colors (grey)
- * Dark grey (70) for dark backgrounds, light grey (200) for light backgrounds
+ * @brief Highlight colors that adapt to terminal theme
+ *
+ * Highlight colors are chosen based on the detected terminal theme:
+ * - Dark theme: Dark grey (70) provides subtle highlighting on dark backgrounds
+ * - Light theme: Light grey (200) provides subtle highlighting on light backgrounds
  */
-#define HIGHLIGHT_DARK_BG 70   // Dark grey for dark backgrounds
-#define HIGHLIGHT_LIGHT_BG 200 // Light grey for light backgrounds
+#define HIGHLIGHT_DARK_BG 70   // Dark grey for dark theme backgrounds
+#define HIGHLIGHT_LIGHT_BG 200 // Light grey for light theme backgrounds
 
 /**
  * @brief Minimum color difference threshold (0-255 scale)
- * If background is within this distance of the highlight, use black/white instead
+ *
+ * If the background color is too close to the highlight color (within this distance),
+ * use high-contrast black or white instead for readability.
  */
 #define MIN_HIGHLIGHT_DISTANCE 40
 
@@ -133,10 +138,12 @@ static void create_match_data_key(void) {
 }
 
 /**
- * @brief Get highlight color based on terminal background (with caching)
- * Caches color query results to avoid terminal I/O on every render, which
- * interferes with keyboard input during interactive grep.
- * Only queries terminal once per 2 seconds.
+ * @brief Get highlight color that adapts to terminal theme (with caching)
+ *
+ * Determines the best highlight color based on the detected terminal theme
+ * (dark or light background). Caches results to avoid terminal I/O on every
+ * render, which would interfere with keyboard input during interactive grep.
+ * Theme detection is cached and refreshed every 2 seconds.
  */
 static void get_highlight_color(uint8_t *r, uint8_t *g, uint8_t *b) {
   // Get current time for cache validation

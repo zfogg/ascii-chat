@@ -57,6 +57,48 @@
 #define SIGTERM 15  // Termination signal (limited support on Windows)
 #endif
 
+// ============================================================================
+// Theme-Aware Default Colors
+// ============================================================================
+
+/**
+ * @brief Default text color for light theme (RGB)
+ *
+ * Used for text on light/white backgrounds. A subtle dark blue-grey that's
+ * readable on light backgrounds and matches modern terminal color schemes.
+ */
+#define TERMINAL_COLOR_THEME_LIGHT_FG_R 65
+#define TERMINAL_COLOR_THEME_LIGHT_FG_G 61
+#define TERMINAL_COLOR_THEME_LIGHT_FG_B 61
+
+/**
+ * @brief Default text color for dark theme (RGB)
+ *
+ * Used for text on dark/black backgrounds. A light neutral color that's
+ * readable on dark backgrounds and provides good contrast.
+ */
+#define TERMINAL_COLOR_THEME_DARK_FG_R 204
+#define TERMINAL_COLOR_THEME_DARK_FG_G 204
+#define TERMINAL_COLOR_THEME_DARK_FG_B 204
+
+/**
+ * @brief Default background color for light theme (RGB)
+ *
+ * Used for background in light/bright theme. White background for light terminals.
+ */
+#define TERMINAL_COLOR_THEME_LIGHT_BG_R 255
+#define TERMINAL_COLOR_THEME_LIGHT_BG_G 255
+#define TERMINAL_COLOR_THEME_LIGHT_BG_B 255
+
+/**
+ * @brief Default background color for dark theme (RGB)
+ *
+ * Used for background in dark/black theme. Black background for dark terminals.
+ */
+#define TERMINAL_COLOR_THEME_DARK_BG_R 0
+#define TERMINAL_COLOR_THEME_DARK_BG_G 0
+#define TERMINAL_COLOR_THEME_DARK_BG_B 0
+
 /* ============================================================================
  * Terminal Data Structures
  * ============================================================================
@@ -766,16 +808,23 @@ bool terminal_should_color_output(int fd);
 terminal_color_mode_t terminal_get_effective_color_mode(void);
 
 /**
- * @brief Detect if terminal has a dark background
- * @return true if terminal has dark background, false if light or unknown
+ * @brief Detect if terminal theme is dark
+ * @return true if terminal has a dark theme, false if light theme or unknown
  *
- * Attempts to detect terminal background color using:
- * 1. Common environment variables (COLORFGBG, TERM_PROGRAM)
- * 2. Terminal-specific hints (iTerm2, VS Code, etc.)
- * 3. Defaults to assuming dark background (most common for dev terminals)
+ * Attempts to detect terminal's color theme (dark or light background) using:
+ * 1. OSC 11 escape sequence query with luminance calculation (modern terminals)
+ * 2. Common environment variables (COLORFGBG, TERM_PROGRAM)
+ * 3. Terminal-specific hints (iTerm2, VS Code, Konsole, etc.)
+ * 4. Defaults to dark theme (most common for developer terminals)
+ *
+ * Used by the theme system to select appropriate colors throughout the UI:
+ * - Color schemes adapt based on detected theme
+ * - Highlight colors choose better contrast for the detected theme
+ * - Text colors are selected to work with the background theme
  *
  * @note This is a best-effort heuristic and may not be 100% accurate
- * @note Used for choosing appropriate highlight colors
+ * @note Result is cached for performance (theme doesn't change during session)
+ * @note User can override via TERM_BACKGROUND environment variable
  *
  * @ingroup platform
  */
@@ -1024,6 +1073,55 @@ int terminal_choose_log_fd(log_level_t level);
  * @ingroup platform
  */
 bool terminal_can_prompt_user(void);
+
+/* ============================================================================
+ * Renderer Color Selection (Cross-Platform Abstraction)
+ * ============================================================================ */
+
+/**
+ * @brief Get theme-aware default foreground color for pixel renderers
+ * @param theme Terminal theme (0=dark, 1=light, 2=auto)
+ * @param out_r Pointer to store red component (0-255)
+ * @param out_g Pointer to store green component (0-255)
+ * @param out_b Pointer to store blue component (0-255)
+ *
+ * Used by both Linux and macOS renderers for consistent color selection.
+ * Returns appropriate text color based on terminal theme.
+ *
+ * @ingroup platform
+ */
+void terminal_get_default_foreground_color(int theme, uint8_t *out_r, uint8_t *out_g, uint8_t *out_b);
+
+/**
+ * @brief Get theme-aware default background color for pixel renderers
+ * @param theme Terminal theme (0=dark, 1=light, 2=auto)
+ * @param out_r Pointer to store red component (0-255)
+ * @param out_g Pointer to store green component (0-255)
+ * @param out_b Pointer to store blue component (0-255)
+ *
+ * Used by both Linux and macOS renderers for consistent color selection.
+ * Returns appropriate background color based on terminal theme.
+ *
+ * @ingroup platform
+ */
+void terminal_get_default_background_color(int theme, uint8_t *out_r, uint8_t *out_g, uint8_t *out_b);
+
+/**
+ * @brief Thread-safe one-time initialization of ghostty global state
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Initializes ghostty's global state exactly once, using C11 atomics for thread safety.
+ * This MUST be called before any other ghostty functions (ghostty_config_new, etc.).
+ * Safe to call multiple times from multiple threads - only the first call performs
+ * actual initialization.
+ *
+ * @note This is required for pixel rendering with ghostty offscreen surfaces
+ * @note Uses atomic operations to ensure thread-safe initialization
+ * @note Returns ASCIICHAT_OK if already initialized
+ *
+ * @ingroup platform
+ */
+asciichat_error_t terminal_ghostty_init_once(void);
 
 /** @} */
 

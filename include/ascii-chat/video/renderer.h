@@ -3,9 +3,12 @@
  * @ingroup video
  * @brief Terminal-to-pixel renderer and render-file output
  *
- * Platform-specific renderers (Linux: libvterm+FreeType, macOS: ghostty+Metal)
- * implement the functions declared here.  render_file_* is the public orchestrator
+ * Platform-specific renderers (Linux: FreeType+ghostty_vt, macOS: ghostty+Metal)
+ * implement the functions declared here. render_file_* is the public orchestrator
  * called from the session display layer.
+ *
+ * Supports theme-aware rendering that adapts colors based on the terminal's
+ * background theme (dark or light) for optimal readability.
  */
 #pragma once
 #ifndef _WIN32
@@ -18,10 +21,17 @@
 
 typedef struct terminal_renderer_s terminal_renderer_t;
 
+/**
+ * @brief Terminal rendering theme
+ *
+ * Determines color palette for pixel-based ANSI text rendering.
+ * When TERM_RENDERER_THEME_AUTO is used, theme is detected from
+ * terminal_has_dark_background() to adapt colors to user's theme.
+ */
 typedef enum {
-    TERM_RENDERER_THEME_DARK  = 0,
-    TERM_RENDERER_THEME_LIGHT = 1,
-    TERM_RENDERER_THEME_AUTO  = 2,
+    TERM_RENDERER_THEME_DARK  = 0, /**< Dark theme: use light colors for dark background */
+    TERM_RENDERER_THEME_LIGHT = 1, /**< Light theme: use dark colors for light background */
+    TERM_RENDERER_THEME_AUTO  = 2, /**< Auto-detect theme from terminal (default) */
 } term_renderer_theme_t;
 
 typedef struct {

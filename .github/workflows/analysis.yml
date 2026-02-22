@@ -55,31 +55,56 @@ jobs:
         with:
           cache-version: v7  # Bumped to force WebRTC rebuild with correct SIMD support
 
-      - name: Clean build directory to force reconfigure
+      - name: Clean libraries only
         run: |
-          rm -rf build/CMakeCache.txt build/CMakeFiles
-          # Clean library files to prevent stale archive format issues when switching build types
+          # Clean library files to prevent stale archive format issues
+          # Keep CMakeCache.txt and CMakeFiles to preserve configure cache
           rm -rf build/lib/*.a
 
-      - name: Run static analysis
+      - name: Configure for static analysis
         run: |
-          # Build with CMake for static analysis
+          # Configure with CMake for static analysis
           # Disable PCH to avoid clang-tidy issues with missing PCH files
           cmake --preset github -DBUILD_TESTS=OFF -DASCIICHAT_USE_PCH=OFF
 
-      - name: Run scan-build
-        run: |
-          scan-build cmake --build build
-
-      - name: Run clang-tidy
-        run: |
-          cmake --build build --target clang-tidy
-
-      - name: Save build caches
+      - name: Save configure cache
         if: always()
         uses: ./.github/actions/cache-build-save
         with:
           build-directory: ${{ steps.cache-build.outputs['build-directory-path'] }}
+          configure-cache-key: ${{ steps.cache-build.outputs['configure-cache-key'] }}
+          configure-cache-hit: ${{ steps.cache-build.outputs['configure-cache-hit'] }}
+          build-cache-key: ${{ steps.cache-build.outputs['build-cache-key'] }}
+          build-cache-hit: ${{ steps.cache-build.outputs['build-cache-hit'] }}
+          cache-deps-enabled: ${{ steps.cache-build.outputs['cache-deps-enabled'] }}
+          deps-cache-directory: ${{ steps.cache-build.outputs['deps-cache-path'] }}
+          deps-cache-key: ${{ steps.cache-build.outputs['deps-cache-key'] }}
+          deps-cache-hit: ${{ steps.cache-build.outputs['deps-cache-hit'] }}
+          cache-ccache-enabled: ${{ steps.cache-build.outputs['cache-ccache-enabled'] }}
+          ccache-directory: ${{ steps.cache-build.outputs['ccache-directory-path'] }}
+          ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
+          ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
+
+      - name: Restore build cache
+        uses: actions/cache/restore@v4
+        with:
+          path: build
+          key: ${{ steps.cache-build.outputs['build-cache-key'] }}
+          restore-keys: |
+            ${{ format('{0}-build-{1}-{2}-{3}-{4}-', steps.cache-build.outputs['build-cache-key'], runner.os, runner.arch, github.workflow, github.job) }}
+
+      - name: Run static analysis
+        run: |
+          scan-build cmake --build build
+          cmake --build build --target clang-tidy
+
+      - name: Save build cache
+        if: always()
+        uses: ./.github/actions/cache-build-save
+        with:
+          build-directory: ${{ steps.cache-build.outputs['build-directory-path'] }}
+          configure-cache-key: ${{ steps.cache-build.outputs['configure-cache-key'] }}
+          configure-cache-hit: ${{ steps.cache-build.outputs['configure-cache-hit'] }}
           build-cache-key: ${{ steps.cache-build.outputs['build-cache-key'] }}
           build-cache-hit: ${{ steps.cache-build.outputs['build-cache-hit'] }}
           cache-deps-enabled: ${{ steps.cache-build.outputs['cache-deps-enabled'] }}

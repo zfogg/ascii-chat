@@ -204,3 +204,62 @@ int terminal_choose_log_fd(log_level_t level) {
 
   return STDOUT_FILENO;
 }
+
+/* ============================================================================
+ * Theme-Aware Renderer Color Selection
+ * ============================================================================ */
+
+/**
+ * @brief Get theme-aware default foreground color for the renderer
+ * @param theme Terminal theme (dark or light)
+ * @param out_r Pointer to store red component (0-255)
+ * @param out_g Pointer to store green component (0-255)
+ * @param out_b Pointer to store blue component (0-255)
+ *
+ * Returns appropriate default text color based on terminal theme.
+ * Both Linux and macOS renderers use this for consistent color selection.
+ */
+void terminal_get_default_foreground_color(int theme, uint8_t *out_r, uint8_t *out_g, uint8_t *out_b) {
+  if (theme == 1) { // TERM_RENDERER_THEME_LIGHT
+    *out_r = TERMINAL_COLOR_THEME_LIGHT_FG_R;
+    *out_g = TERMINAL_COLOR_THEME_LIGHT_FG_G;
+    *out_b = TERMINAL_COLOR_THEME_LIGHT_FG_B;
+  } else { // TERM_RENDERER_THEME_DARK or TERM_RENDERER_THEME_AUTO
+    *out_r = TERMINAL_COLOR_THEME_DARK_FG_R;
+    *out_g = TERMINAL_COLOR_THEME_DARK_FG_G;
+    *out_b = TERMINAL_COLOR_THEME_DARK_FG_B;
+  }
+}
+
+/**
+ * @brief Get theme-aware default background color for the renderer
+ * @param theme Terminal theme (dark or light)
+ * @param out_r Pointer to store red component (0-255)
+ * @param out_g Pointer to store green component (0-255)
+ * @param out_b Pointer to store blue component (0-255)
+ *
+ * Returns appropriate default background color based on terminal theme.
+ * Light theme uses white background, dark theme uses black background.
+ */
+void terminal_get_default_background_color(int theme, uint8_t *out_r, uint8_t *out_g, uint8_t *out_b) {
+  if (theme == 1) { // TERM_RENDERER_THEME_LIGHT
+    *out_r = TERMINAL_COLOR_THEME_LIGHT_BG_R;
+    *out_g = TERMINAL_COLOR_THEME_LIGHT_BG_G;
+    *out_b = TERMINAL_COLOR_THEME_LIGHT_BG_B;
+  } else { // TERM_RENDERER_THEME_DARK or TERM_RENDERER_THEME_AUTO
+    *out_r = TERMINAL_COLOR_THEME_DARK_BG_R;
+    *out_g = TERMINAL_COLOR_THEME_DARK_BG_G;
+    *out_b = TERMINAL_COLOR_THEME_DARK_BG_B;
+  }
+}
+
+/* ============================================================================
+ * Ghostty Initialization (Offscreen Rendering)
+ * ============================================================================ */
+
+// Default stub implementation for platforms that don't implement ghostty
+// Linux implementation is in linux/terminal.c
+__attribute__((weak))
+asciichat_error_t terminal_ghostty_init_once(void) {
+  return ASCIICHAT_OK;
+}

@@ -69,12 +69,11 @@ jobs:
         cache-version: v7
         build-cache-key: ${{ matrix.build_type }}
 
-    - name: Clean build directory to force reconfigure
+    - name: Clean test executables and libraries only
       run: |
-        rm -rf build/CMakeCache.txt build/CMakeFiles
-        # Also clean test executables to ensure they're rebuilt with correct configuration
+        # Only clean test executables and old libraries
+        # Keep CMakeCache.txt and CMakeFiles to preserve configure cache across build type changes
         rm -rf build/bin/test_*
-        # Clean library files to prevent stale archive format issues when switching build types
         rm -rf build/lib/*.a
 
     - name: Build test suite (${{ matrix.build_type }})
@@ -134,6 +133,35 @@ jobs:
         fi
 
         cmake -B build "${cmake_args[@]}"
+
+    - name: Save configure cache (unit-tests)
+      if: always()
+      uses: ./.github/actions/cache-build-save
+      with:
+        build-directory: ${{ steps.cache-build.outputs['build-directory-path'] }}
+        configure-cache-key: ${{ steps.cache-build.outputs['configure-cache-key'] }}
+        configure-cache-hit: ${{ steps.cache-build.outputs['configure-cache-hit'] }}
+        build-cache-key: ${{ steps.cache-build.outputs['build-cache-key'] }}
+        build-cache-hit: ${{ steps.cache-build.outputs['build-cache-hit'] }}
+        cache-deps-enabled: ${{ steps.cache-build.outputs['cache-deps-enabled'] }}
+        deps-cache-directory: ${{ steps.cache-build.outputs['deps-cache-path'] }}
+        deps-cache-key: ${{ steps.cache-build.outputs['deps-cache-key'] }}
+        deps-cache-hit: ${{ steps.cache-build.outputs['deps-cache-hit'] }}
+        cache-ccache-enabled: ${{ steps.cache-build.outputs['cache-ccache-enabled'] }}
+        ccache-directory: ${{ steps.cache-build.outputs['ccache-directory-path'] }}
+        ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
+        ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
+
+    - name: Restore build cache (unit-tests)
+      uses: actions/cache/restore@v4
+      with:
+        path: build
+        key: ${{ steps.cache-build.outputs['build-cache-key'] }}
+        restore-keys: |
+          ${{ format('{0}-build-{1}-{2}-{3}-{4}-', steps.cache-build.outputs['build-cache-key'], runner.os, runner.arch, github.workflow, github.job) }}
+
+    - name: Build test suite
+      run: |
         cmake --build build
 
         echo "Test executables built:"
@@ -251,6 +279,24 @@ jobs:
         ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
         ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
 
+    - name: Save build cache (unit-tests)
+      if: always()
+      uses: ./.github/actions/cache-build-save
+      with:
+        build-directory: ${{ steps.cache-build.outputs['build-directory-path'] }}
+        configure-cache-key: ${{ steps.cache-build.outputs['configure-cache-key'] }}
+        configure-cache-hit: ${{ steps.cache-build.outputs['configure-cache-hit'] }}
+        build-cache-key: ${{ steps.cache-build.outputs['build-cache-key'] }}
+        build-cache-hit: ${{ steps.cache-build.outputs['build-cache-hit'] }}
+        cache-deps-enabled: ${{ steps.cache-build.outputs['cache-deps-enabled'] }}
+        deps-cache-directory: ${{ steps.cache-build.outputs['deps-cache-path'] }}
+        deps-cache-key: ${{ steps.cache-build.outputs['deps-cache-key'] }}
+        deps-cache-hit: ${{ steps.cache-build.outputs['deps-cache-hit'] }}
+        cache-ccache-enabled: ${{ steps.cache-build.outputs['cache-ccache-enabled'] }}
+        ccache-directory: ${{ steps.cache-build.outputs['ccache-directory-path'] }}
+        ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
+        ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
+
     - name: Publish Test Results and Coverage
       uses: ./.github/actions/publish-test-results
       if: always()
@@ -307,17 +353,16 @@ jobs:
       with:
         cache-version: v7
 
-    - name: Clean build directory to force reconfigure
+    - name: Clean test executables and libraries only
       run: |
-        rm -rf build/CMakeCache.txt build/CMakeFiles
-        # Also clean test executables to ensure they're rebuilt with correct configuration
+        # Only clean test executables and old libraries
+        # Keep CMakeCache.txt and CMakeFiles to preserve configure cache
         rm -rf build/bin/test_*
-        # Clean library files to prevent stale archive format issues when switching build types
         rm -rf build/lib/*.a
 
-    - name: Build and run integration tests with coverage
+    - name: Configure integration tests with coverage
       run: |
-        echo "Running integration tests with coverage build..."
+        echo "Configuring integration tests with coverage build..."
         # Use CMake build system with coverage
         # Use Homebrew LLVM on macOS for better standards support
         # Detect Homebrew prefix (ARM Mac uses /opt/homebrew, Intel uses /usr/local)
@@ -344,6 +389,35 @@ jobs:
           -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
           -DCMAKE_BUILD_TYPE=Debug \
           -DCMAKE_C_FLAGS="${FLAGS}"
+
+    - name: Save configure cache (integration-tests)
+      if: always()
+      uses: ./.github/actions/cache-build-save
+      with:
+        build-directory: ${{ steps.cache-build.outputs['build-directory-path'] }}
+        configure-cache-key: ${{ steps.cache-build.outputs['configure-cache-key'] }}
+        configure-cache-hit: ${{ steps.cache-build.outputs['configure-cache-hit'] }}
+        build-cache-key: ${{ steps.cache-build.outputs['build-cache-key'] }}
+        build-cache-hit: ${{ steps.cache-build.outputs['build-cache-hit'] }}
+        cache-deps-enabled: ${{ steps.cache-build.outputs['cache-deps-enabled'] }}
+        deps-cache-directory: ${{ steps.cache-build.outputs['deps-cache-path'] }}
+        deps-cache-key: ${{ steps.cache-build.outputs['deps-cache-key'] }}
+        deps-cache-hit: ${{ steps.cache-build.outputs['deps-cache-hit'] }}
+        cache-ccache-enabled: ${{ steps.cache-build.outputs['cache-ccache-enabled'] }}
+        ccache-directory: ${{ steps.cache-build.outputs['ccache-directory-path'] }}
+        ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
+        ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
+
+    - name: Restore build cache (integration-tests)
+      uses: actions/cache/restore@v4
+      with:
+        path: build
+        key: ${{ steps.cache-build.outputs['build-cache-key'] }}
+        restore-keys: |
+          ${{ format('{0}-build-{1}-{2}-{3}-{4}-', steps.cache-build.outputs['build-cache-key'], runner.os, runner.arch, github.workflow, github.job) }}
+
+    - name: Build and run integration tests
+      run: |
         cmake --build build
 
         # Run integration tests via ctest preset
@@ -358,11 +432,13 @@ jobs:
       with:
         os-type: ${{ matrix.os-name }}
 
-    - name: Save build caches
+    - name: Save build cache (integration-tests)
       if: always()
       uses: ./.github/actions/cache-build-save
       with:
         build-directory: ${{ steps.cache-build.outputs['build-directory-path'] }}
+        configure-cache-key: ${{ steps.cache-build.outputs['configure-cache-key'] }}
+        configure-cache-hit: ${{ steps.cache-build.outputs['configure-cache-hit'] }}
         build-cache-key: ${{ steps.cache-build.outputs['build-cache-key'] }}
         build-cache-hit: ${{ steps.cache-build.outputs['build-cache-hit'] }}
         cache-deps-enabled: ${{ steps.cache-build.outputs['cache-deps-enabled'] }}
@@ -423,17 +499,16 @@ jobs:
       with:
         cache-version: v7
 
-    - name: Clean build directory to force reconfigure
+    - name: Clean test executables and libraries only
       run: |
-        rm -rf build/CMakeCache.txt build/CMakeFiles
-        # Also clean test executables to ensure they're rebuilt with correct configuration
+        # Only clean test executables and old libraries
+        # Keep CMakeCache.txt and CMakeFiles to preserve configure cache
         rm -rf build/bin/test_*
-        # Clean library files to prevent stale archive format issues when switching build types
         rm -rf build/lib/*.a
 
-    - name: Build performance tests with coverage
+    - name: Configure performance tests with coverage
       run: |
-        # Build performance tests with Release mode + coverage for accurate performance
+        # Configure performance tests with Release mode + coverage for accurate performance
         # Use Homebrew LLVM on macOS for better standards support
         # Detect Homebrew prefix (ARM Mac uses /opt/homebrew, Intel uses /usr/local)
         if [ "${{ startsWith(matrix.os, 'macos') && 'macos' || 'ubuntu' }}" = "macos" ]; then
@@ -453,7 +528,7 @@ jobs:
           CLANGXX_BIN="clang++"
         fi
 
-        echo "Building performance tests with Release optimization and coverage instrumentation..."
+        echo "Configuring performance tests with Release optimization and coverage instrumentation..."
         FLAGS="-std=c2x -O3 --coverage"
 
         cmake_args=(
@@ -468,6 +543,35 @@ jobs:
         )
 
         cmake -B build "${cmake_args[@]}"
+
+    - name: Save configure cache (performance-tests)
+      if: always()
+      uses: ./.github/actions/cache-build-save
+      with:
+        build-directory: ${{ steps.cache-build.outputs['build-directory-path'] }}
+        configure-cache-key: ${{ steps.cache-build.outputs['configure-cache-key'] }}
+        configure-cache-hit: ${{ steps.cache-build.outputs['configure-cache-hit'] }}
+        build-cache-key: ${{ steps.cache-build.outputs['build-cache-key'] }}
+        build-cache-hit: ${{ steps.cache-build.outputs['build-cache-hit'] }}
+        cache-deps-enabled: ${{ steps.cache-build.outputs['cache-deps-enabled'] }}
+        deps-cache-directory: ${{ steps.cache-build.outputs['deps-cache-path'] }}
+        deps-cache-key: ${{ steps.cache-build.outputs['deps-cache-key'] }}
+        deps-cache-hit: ${{ steps.cache-build.outputs['deps-cache-hit'] }}
+        cache-ccache-enabled: ${{ steps.cache-build.outputs['cache-ccache-enabled'] }}
+        ccache-directory: ${{ steps.cache-build.outputs['ccache-directory-path'] }}
+        ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
+        ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
+
+    - name: Restore build cache (performance-tests)
+      uses: actions/cache/restore@v4
+      with:
+        path: build
+        key: ${{ steps.cache-build.outputs['build-cache-key'] }}
+        restore-keys: |
+          ${{ format('{0}-build-{1}-{2}-{3}-{4}-', steps.cache-build.outputs['build-cache-key'], runner.os, runner.arch, github.workflow, github.job) }}
+
+    - name: Build performance tests
+      run: |
         cmake --build build
         echo "Performance test executables built:"
         ls -la build/bin/test_performance_* 2>/dev/null || echo "No performance test executables found"
@@ -482,11 +586,13 @@ jobs:
 
         echo "Performance tests completed successfully"
 
-    - name: Save build caches
+    - name: Save build cache (performance-tests)
       if: always()
       uses: ./.github/actions/cache-build-save
       with:
         build-directory: ${{ steps.cache-build.outputs['build-directory-path'] }}
+        configure-cache-key: ${{ steps.cache-build.outputs['configure-cache-key'] }}
+        configure-cache-hit: ${{ steps.cache-build.outputs['configure-cache-hit'] }}
         build-cache-key: ${{ steps.cache-build.outputs['build-cache-key'] }}
         build-cache-hit: ${{ steps.cache-build.outputs['build-cache-hit'] }}
         cache-deps-enabled: ${{ steps.cache-build.outputs['cache-deps-enabled'] }}
@@ -549,15 +655,14 @@ jobs:
       with:
         cache-version: v7
 
-    - name: Clean build directory to force reconfigure
+    - name: Clean test executables and libraries only
       run: |
-        rm -rf build/CMakeCache.txt build/CMakeFiles
-        # Also clean test executables to ensure they're rebuilt with correct configuration
+        # Only clean test executables and old libraries
+        # Keep CMakeCache.txt and CMakeFiles to preserve configure cache
         rm -rf build/bin/test_*
-        # Clean library files to prevent stale archive format issues when switching build types
         rm -rf build/lib/*.a
 
-    - name: Build with AddressSanitizer
+    - name: Configure with AddressSanitizer
       run: |
         # Use CMake build system with AddressSanitizer
         FLAGS="-std=c2x -fsanitize=address"
@@ -565,6 +670,35 @@ jobs:
         cmake -B build --preset github \
           -DCMAKE_BUILD_TYPE=Debug \
           -DCMAKE_C_FLAGS="${FLAGS}"
+
+    - name: Save configure cache (memory-tests)
+      if: always()
+      uses: ./.github/actions/cache-build-save
+      with:
+        build-directory: ${{ steps.cache-build.outputs['build-directory-path'] }}
+        configure-cache-key: ${{ steps.cache-build.outputs['configure-cache-key'] }}
+        configure-cache-hit: ${{ steps.cache-build.outputs['configure-cache-hit'] }}
+        build-cache-key: ${{ steps.cache-build.outputs['build-cache-key'] }}
+        build-cache-hit: ${{ steps.cache-build.outputs['build-cache-hit'] }}
+        cache-deps-enabled: ${{ steps.cache-build.outputs['cache-deps-enabled'] }}
+        deps-cache-directory: ${{ steps.cache-build.outputs['deps-cache-path'] }}
+        deps-cache-key: ${{ steps.cache-build.outputs['deps-cache-key'] }}
+        deps-cache-hit: ${{ steps.cache-build.outputs['deps-cache-hit'] }}
+        cache-ccache-enabled: ${{ steps.cache-build.outputs['cache-ccache-enabled'] }}
+        ccache-directory: ${{ steps.cache-build.outputs['ccache-directory-path'] }}
+        ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
+        ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
+
+    - name: Restore build cache (memory-tests)
+      uses: actions/cache/restore@v4
+      with:
+        path: build
+        key: ${{ steps.cache-build.outputs['build-cache-key'] }}
+        restore-keys: |
+          ${{ format('{0}-build-{1}-{2}-{3}-{4}-', steps.cache-build.outputs['build-cache-key'], runner.os, runner.arch, github.workflow, github.job) }}
+
+    - name: Build with AddressSanitizer
+      run: |
         cmake --build build --target ascii-chat
 
     - name: Run memory leak detection
@@ -592,11 +726,13 @@ jobs:
           echo "✅ No memory leaks detected"
         fi
 
-    - name: Save build caches
+    - name: Save build cache (memory-tests)
       if: always()
       uses: ./.github/actions/cache-build-save
       with:
         build-directory: ${{ steps.cache-build.outputs['build-directory-path'] }}
+        configure-cache-key: ${{ steps.cache-build.outputs['configure-cache-key'] }}
+        configure-cache-hit: ${{ steps.cache-build.outputs['configure-cache-hit'] }}
         build-cache-key: ${{ steps.cache-build.outputs['build-cache-key'] }}
         build-cache-hit: ${{ steps.cache-build.outputs['build-cache-hit'] }}
         cache-deps-enabled: ${{ steps.cache-build.outputs['cache-deps-enabled'] }}
@@ -645,15 +781,14 @@ jobs:
       with:
         cache-version: v7
 
-    - name: Clean build directory to force reconfigure
+    - name: Clean test executables and libraries only
       run: |
-        rm -rf build/CMakeCache.txt build/CMakeFiles
-        # Also clean test executables to ensure they're rebuilt with correct configuration
+        # Only clean test executables and old libraries
+        # Keep CMakeCache.txt and CMakeFiles to preserve configure cache
         rm -rf build/bin/test_*
-        # Clean library files to prevent stale archive format issues when switching build types
         rm -rf build/lib/*.a
 
-    - name: Build project
+    - name: Configure project
       run: |
         # Use CMake build system
         # Use Homebrew LLVM on macOS for better standards support
@@ -684,6 +819,35 @@ jobs:
           -DCMAKE_C_FLAGS="${FLAGS}" \
           -DBUILD_TESTS=OFF \
           -DASCIICHAT_ENABLE_COVERAGE=OFF
+
+    - name: Save configure cache (functional-tests)
+      if: always()
+      uses: ./.github/actions/cache-build-save
+      with:
+        build-directory: ${{ steps.cache-build.outputs['build-directory-path'] }}
+        configure-cache-key: ${{ steps.cache-build.outputs['configure-cache-key'] }}
+        configure-cache-hit: ${{ steps.cache-build.outputs['configure-cache-hit'] }}
+        build-cache-key: ${{ steps.cache-build.outputs['build-cache-key'] }}
+        build-cache-hit: ${{ steps.cache-build.outputs['build-cache-hit'] }}
+        cache-deps-enabled: ${{ steps.cache-build.outputs['cache-deps-enabled'] }}
+        deps-cache-directory: ${{ steps.cache-build.outputs['deps-cache-path'] }}
+        deps-cache-key: ${{ steps.cache-build.outputs['deps-cache-key'] }}
+        deps-cache-hit: ${{ steps.cache-build.outputs['deps-cache-hit'] }}
+        cache-ccache-enabled: ${{ steps.cache-build.outputs['cache-ccache-enabled'] }}
+        ccache-directory: ${{ steps.cache-build.outputs['ccache-directory-path'] }}
+        ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
+        ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
+
+    - name: Restore build cache (functional-tests)
+      uses: actions/cache/restore@v4
+      with:
+        path: build
+        key: ${{ steps.cache-build.outputs['build-cache-key'] }}
+        restore-keys: |
+          ${{ format('{0}-build-{1}-{2}-{3}-{4}-', steps.cache-build.outputs['build-cache-key'], runner.os, runner.arch, github.workflow, github.job) }}
+
+    - name: Build project
+      run: |
         cmake --build build
 
     - name: Test binary help and modes
@@ -707,11 +871,13 @@ jobs:
         ./build/bin/ascii-chat client --show-capabilities
         echo "✅ Client capability detection test passed"
 
-    - name: Save build caches
+    - name: Save build cache (functional-tests)
       if: always()
       uses: ./.github/actions/cache-build-save
       with:
         build-directory: ${{ steps.cache-build.outputs['build-directory-path'] }}
+        configure-cache-key: ${{ steps.cache-build.outputs['configure-cache-key'] }}
+        configure-cache-hit: ${{ steps.cache-build.outputs['configure-cache-hit'] }}
         build-cache-key: ${{ steps.cache-build.outputs['build-cache-key'] }}
         build-cache-hit: ${{ steps.cache-build.outputs['build-cache-hit'] }}
         cache-deps-enabled: ${{ steps.cache-build.outputs['cache-deps-enabled'] }}

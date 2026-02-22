@@ -120,6 +120,7 @@ set(SESSION_SRCS
     ${LIB_DIR}/session/host.c
     ${LIB_DIR}/session/keyboard_handler.c
     ${LIB_DIR}/session/session_log_buffer.c
+    ${LIB_DIR}/session/stdin_reader.c
 )
 
 # Include subdirectories that define module source variables
@@ -474,9 +475,10 @@ if(NOT BUILDING_OBJECT_LIBS)
     target_link_libraries(ascii-chat-video ${GHOSTTY_LIBS})
 endif()
 
-# Mark generated font file as generated (for OBJECT libraries, must be before module creation)
+# Mark generated font files as generated (for OBJECT libraries, must be before module creation)
 set_source_files_properties(
     "${CMAKE_BINARY_DIR}/generated/matrix_resurrected_font.c"
+    "${CMAKE_BINARY_DIR}/generated/default_font.c"
     PROPERTIES LANGUAGE C GENERATED TRUE
 )
 

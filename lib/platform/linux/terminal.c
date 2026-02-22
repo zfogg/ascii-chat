@@ -1,105 +1,142 @@
 /**
  * @file platform/linux/terminal.c
  * @ingroup platform
- * @brief Pixel renderer for render-file: libvterm + FreeType2 software compositor
+ * @brief Pixel renderer for render-file using Ghostty's full terminal emulation
  */
 #if defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+#include <pty.h>
+#include <ghostty.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdint.h>
 #include <ascii-chat/video/renderer.h>
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/log/logging.h>
-#include <vterm.h>
-#include <ft2build.h>
-#include FT_FREETYPE_H
-#include <string.h>
+#include <ascii-chat/platform/terminal.h>
 
 struct terminal_renderer_s {
-    VTerm         *vt;
-    VTermScreen   *vts;
-    int            cols, rows;
-    FT_Library     ft_lib;
-    FT_Face        ft_face;
-    int            cell_w, cell_h, baseline;
-    uint8_t       *framebuffer;
-    int            width_px, height_px, pitch;
+    ghostty_config_t config;
+    ghostty_app_t app;
+    ghostty_surface_t surface;
+    int pty_master, pty_slave;
+    uint8_t *framebuffer;
+    int width_px, height_px, pitch;
     term_renderer_theme_t theme;
+    uint8_t fg_r, fg_g, fg_b;     // Theme-aware foreground color
+    uint8_t bg_r, bg_g, bg_b;     // Theme-aware background color
 };
 
-static int screen_damage(VTermRect r, void *u) { (void)r; (void)u; return 1; }
-static VTermScreenCallbacks g_vterm_cbs = { .damage = screen_damage };
-
-// Alpha-composite a FreeType bitmap glyph at pixel (px,py) with fg/bg colors.
-static void blit_glyph(terminal_renderer_t *r, FT_Bitmap *bm, int px, int py,
-                        uint8_t fr, uint8_t fg, uint8_t fb,
-                        uint8_t br, uint8_t bg, uint8_t bb) {
-    for (unsigned row = 0; row < bm->rows; row++) {
-        int dy = py + (int)row;
-        if (dy < 0 || dy >= r->height_px) continue;
-        for (unsigned col = 0; col < bm->width; col++) {
-            int dx = px + (int)col;
-            if (dx < 0 || dx >= r->width_px) continue;
-            uint8_t a = bm->buffer[row * bm->pitch + col];
-            uint8_t *dst = r->framebuffer + dy * r->pitch + dx * 3;
-            dst[0] = (uint8_t)((fr * a + br * (255 - a)) / 255);
-            dst[1] = (uint8_t)((fg * a + bg * (255 - a)) / 255);
-            dst[2] = (uint8_t)((fb * a + bb * (255 - a)) / 255);
-        }
-    }
-}
+static void wakeup_cb(void *ud) { (void)ud; }
+static bool action_cb(ghostty_app_t a, ghostty_target_s t, ghostty_action_s ac)
+    { (void)a; (void)t; (void)ac; return false; }
 
 asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg,
                                        terminal_renderer_t **out) {
+    // Initialize ghostty global state (thread-safe, one-time only)
+    asciichat_error_t init_err = terminal_ghostty_init_once();
+    if (init_err != ASCIICHAT_OK) {
+        log_error("term_renderer_create: terminal_ghostty_init_once failed");
+        return init_err;
+    }
+
     terminal_renderer_t *r = SAFE_CALLOC(1, sizeof(*r), terminal_renderer_t *);
-    r->cols = cfg->cols;
-    r->rows = cfg->rows;
     r->theme = cfg->theme;
 
-    if (FT_Init_FreeType(&r->ft_lib)) {
+    // Initialize theme-aware default colors using platform abstraction
+    terminal_get_default_foreground_color(cfg->theme, &r->fg_r, &r->fg_g, &r->fg_b);
+    terminal_get_default_background_color(cfg->theme, &r->bg_r, &r->bg_g, &r->bg_b);
+
+    log_info("term_renderer_create: Starting ghostty renderer setup");
+
+    if (openpty(&r->pty_master, &r->pty_slave, NULL, NULL, NULL) != 0) {
+        log_error("term_renderer_create: openpty failed");
         SAFE_FREE(r);
-        return SET_ERRNO(ERROR_INIT, "FreeType init failed");
+        return SET_ERRNO_SYS(ERROR_INIT, "openpty");
+    }
+    log_info("term_renderer_create: PTY created master=%d slave=%d", r->pty_master, r->pty_slave);
+
+    log_info("term_renderer_create: About to call ghostty_config_new - r=%p", (void*)r);
+    r->config = ghostty_config_new();
+    log_info("term_renderer_create: ghostty_config_new returned r->config=%p", (void*)r->config);
+    if (!r->config) {
+        log_error("term_renderer_create: ghostty_config_new returned NULL");
+        close(r->pty_master);
+        close(r->pty_slave);
+        SAFE_FREE(r);
+        return SET_ERRNO(ERROR_INIT, "ghostty_config_new failed");
     }
 
-    // Load font from either file path or memory
-    if (cfg->font_data && cfg->font_data_size > 0) {
-        if (FT_New_Memory_Face(r->ft_lib, cfg->font_data, (FT_Long)cfg->font_data_size,
-                              0, &r->ft_face)) {
-            FT_Done_FreeType(r->ft_lib);
-            SAFE_FREE(r);
-            return SET_ERRNO(ERROR_INIT, "FreeType: cannot load bundled font");
-        }
-    } else {
-        if (FT_New_Face(r->ft_lib, cfg->font_spec, 0, &r->ft_face)) {
-            FT_Done_FreeType(r->ft_lib);
-            SAFE_FREE(r);
-            return SET_ERRNO(ERROR_NOT_FOUND,
-                            "FreeType: cannot load font '%s'", cfg->font_spec);
-        }
+    // Write a transient config snippet to set the font
+    char tmp[64] = "/tmp/ascii-chat-render-XXXXXX.conf";
+    int tfd = mkstemp(tmp);
+    if (tfd >= 0) {
+        const char *fname = cfg->font_spec[0] ? cfg->font_spec : "monospace";
+        dprintf(tfd, "font-family = %s\nfont-size = %.4g\n",
+                fname, cfg->font_size_pt);
+        close(tfd);
+        log_info("term_renderer_create: Loading config from %s", tmp);
+        ghostty_config_load_file(r->config, tmp);
+        unlink(tmp);
     }
+    log_info("term_renderer_create: Finalizing ghostty config");
+    ghostty_config_finalize(r->config);
 
-    // FT_Set_Char_Size takes 1/64pt units and DPI — supports fractional point sizes.
-    // 96 DPI is the standard screen DPI used here; the 64 factor is the 26.6 fixed-point scale.
-    FT_Set_Char_Size(r->ft_face, 0, (FT_F26Dot6)(cfg->font_size_pt * 64.0), 96, 96);
+    log_info("term_renderer_create: Creating ghostty app");
+    ghostty_runtime_config_s rt = {
+        .userdata = r,
+        .supports_selection_clipboard = false,
+        .wakeup_cb = wakeup_cb,
+        .action_cb = action_cb,
+    };
+    r->app = ghostty_app_new(&rt, r->config);
+    if (!r->app) {
+        log_error("term_renderer_create: ghostty_app_new returned NULL");
+        ghostty_config_free(r->config);
+        close(r->pty_master);
+        close(r->pty_slave);
+        SAFE_FREE(r);
+        return SET_ERRNO(ERROR_INIT, "ghostty_app_new failed");
+    }
+    log_info("term_renderer_create: Ghostty app created");
 
-    FT_Load_Char(r->ft_face, 'M', FT_LOAD_RENDER);
-    r->cell_w  = (int)(r->ft_face->glyph->advance.x >> 6);
-    // Cell height = full em-size (ascender to descender). FreeType size->metrics.height
-    // includes line_gap which adds extra vertical spacing. Instead, use the actual
-    // glyph bounds scaled proportionally: cell_h/cell_w should match font aspect ratio.
-    // Use em-size as basis: em-size is width of 'M' for the font.
-    int em_size = (int)(r->ft_face->size->metrics.x_ppem);  // pixels-per-em for current size
-    // For proper aspect: height should be approximately equal to em-size (which is typically
-    // narrower than full ascender-descender for well-designed fonts)
-    r->cell_h = em_size;
-    r->baseline = (int)(r->ft_face->size->metrics.ascender >> 6);
+    // Estimate pixel dimensions; corrected below after surface is realized
+    r->width_px  = (int)(cfg->cols * cfg->font_size_pt);
+    r->height_px = (int)(cfg->rows * cfg->font_size_pt * 2.0);
+    r->pitch     = r->width_px * 3;
 
-    r->width_px = r->cols * r->cell_w;
-    r->height_px = r->rows * r->cell_h;
-    r->pitch = r->width_px * 3;
+    log_info("term_renderer_create: Creating ghostty surface config");
+    ghostty_surface_config_s sc = ghostty_surface_config_new();
+    sc.platform_tag = GHOSTTY_PLATFORM_INVALID;  // Offscreen rendering
+    sc.font_size    = (float)cfg->font_size_pt;
+    sc.userdata     = r;
+    sc.scale_factor = 1.0;  // 1x scale for offscreen rendering
+
+    log_info("term_renderer_create: Creating ghostty surface");
+    r->surface = ghostty_surface_new(r->app, &sc);
+    if (!r->surface) {
+        log_error("term_renderer_create: ghostty_surface_new returned NULL");
+        ghostty_app_free(r->app);
+        ghostty_config_free(r->config);
+        close(r->pty_master);
+        close(r->pty_slave);
+        SAFE_FREE(r);
+        return SET_ERRNO(ERROR_INIT, "ghostty_surface_new failed");
+    }
+    log_info("term_renderer_create: Ghostty surface created, setting size");
+
+    ghostty_surface_set_size(r->surface, (uint32_t)cfg->cols, (uint32_t)cfg->rows);
+    ghostty_surface_set_focus(r->surface, true);
+
+    // Correct pixel dimensions from ghostty's realized cell metrics
+    ghostty_surface_size_s sz = ghostty_surface_size(r->surface);
+    r->width_px  = (int)sz.width_px;
+    r->height_px = (int)sz.height_px;
+    r->pitch     = r->width_px * 3;
+
+    log_info("term_renderer_create: Final dimensions: %dx%d pixels, pitch=%d", r->width_px, r->height_px, r->pitch);
+
     r->framebuffer = SAFE_MALLOC((size_t)r->pitch * r->height_px, uint8_t *);
-
-    r->vt  = vterm_new(r->rows, r->cols);
-    r->vts = vterm_obtain_screen(r->vt);
-    vterm_screen_set_callbacks(r->vts, &g_vterm_cbs, r);
-    vterm_screen_reset(r->vts, 1);
+    log_info("term_renderer_create: Framebuffer allocated: %zu bytes", (size_t)r->pitch * r->height_px);
 
     *out = r;
     return ASCIICHAT_OK;
@@ -107,59 +144,114 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg,
 
 asciichat_error_t term_renderer_feed(terminal_renderer_t *r,
                                      const char *ansi_frame, size_t len) {
-    static const char home[] = "\033[H";
-    vterm_input_write(r->vt, home, sizeof(home) - 1);
-    vterm_input_write(r->vt, ansi_frame, len);
+    log_info("term_renderer_feed: Writing %zu bytes to PTY", len);
 
-    uint8_t def_bg = (r->theme == TERM_RENDERER_THEME_LIGHT) ? 255 : 0;
+    // Deliver ANSI bytes through the PTY master — ghostty reads from the slave
+    const char *cur = ansi_frame;
+    size_t rem = len;
+    while (rem > 0) {
+        ssize_t n = write(r->pty_master, cur, rem);
+        if (n < 0) return SET_ERRNO_SYS(ERROR_GENERAL, "write pty_master");
+        cur += n;
+        rem -= (size_t)n;
+    }
+    log_info("term_renderer_feed: PTY write complete");
 
-    for (int row = 0; row < r->rows; row++) {
-        for (int col = 0; col < r->cols; col++) {
-            VTermScreenCell cell;
-            vterm_screen_get_cell(r->vts, (VTermPos){row, col}, &cell);
+    // Allow ghostty's event loop to consume the PTY bytes and render
+    log_info("term_renderer_feed: Ticking ghostty app");
+    usleep(16000);
+    ghostty_app_tick(r->app);
+    log_info("term_renderer_feed: Drawing ghostty surface");
+    ghostty_surface_draw(r->surface);
 
-            uint8_t fr, fg, fb, br, bg, bb;
-            if (VTERM_COLOR_IS_RGB(&cell.fg))
-                { fr=cell.fg.rgb.red; fg=cell.fg.rgb.green; fb=cell.fg.rgb.blue; }
-            else { fr=fg=fb=204; }
-
-            if (VTERM_COLOR_IS_RGB(&cell.bg))
-                { br=cell.bg.rgb.red; bg=cell.bg.rgb.green; bb=cell.bg.rgb.blue; }
-            else { br=bg=bb=def_bg; }
-
-            int px = col * r->cell_w, py = row * r->cell_h;
-            for (int dy = 0; dy < r->cell_h; dy++) {
-                uint8_t *line = r->framebuffer + (py+dy)*r->pitch + px*3;
-                for (int dx = 0; dx < r->cell_w; dx++)
-                    { line[dx*3]=br; line[dx*3+1]=bg; line[dx*3+2]=bb; }
+    // Extract rendered pixels from ghostty surface
+    log_info("term_renderer_feed: Getting pixels from ghostty");
+    ghostty_pixel_data_t pixels = ghostty_surface_get_pixels(r->surface);
+    if (pixels.pixels && pixels.width > 0 && pixels.height > 0) {
+        log_info("term_renderer_feed: Got pixels: %ux%u pitch=%u", pixels.width, pixels.height, pixels.pitch);
+        // Convert ghostty's BGRA pixels to RGB for framebuffer
+        for (uint32_t y = 0; y < pixels.height && y < (uint32_t)r->height_px; y++) {
+            for (uint32_t x = 0; x < pixels.width && x < (uint32_t)r->width_px; x++) {
+                // Source: BGRA from ghostty
+                const uint8_t *src = (const uint8_t *)pixels.pixels + y * pixels.pitch + x * 4;
+                // Destination: RGB in our framebuffer
+                uint8_t *dst = r->framebuffer + y * r->pitch + x * 3;
+                dst[0] = src[2];  // R ← src[2]
+                dst[1] = src[1];  // G ← src[1]
+                dst[2] = src[0];  // B ← src[0]
             }
-
-            if (cell.chars[0] && cell.chars[0] != ' ') {
-                FT_UInt gi = FT_Get_Char_Index(r->ft_face, cell.chars[0]);
-                if (gi && FT_Load_Glyph(r->ft_face, gi, FT_LOAD_RENDER) == 0) {
-                    FT_GlyphSlot g = r->ft_face->glyph;
-                    blit_glyph(r, &g->bitmap,
-                               px + g->bitmap_left,
-                               py + r->baseline - g->bitmap_top,
-                               fr,fg,fb, br,bg,bb);
-                }
+        }
+        ghostty_free_pixels(&pixels);
+    } else {
+        log_warn("term_renderer_feed: ghostty_surface_get_pixels returned no pixels, using fallback");
+        // Fallback: fill with theme background color if ghostty pixel API not implemented
+        for (int py = 0; py < r->height_px; py++) {
+            for (int px = 0; px < r->width_px; px++) {
+                uint8_t *dst = r->framebuffer + py * r->pitch + px * 3;
+                dst[0] = r->bg_r;
+                dst[1] = r->bg_g;
+                dst[2] = r->bg_b;
             }
         }
     }
+
     return ASCIICHAT_OK;
 }
 
-const uint8_t *term_renderer_pixels(terminal_renderer_t *r)   { return r->framebuffer; }
-int term_renderer_width_px(terminal_renderer_t *r)             { return r->width_px;   }
-int term_renderer_height_px(terminal_renderer_t *r)            { return r->height_px;  }
-int term_renderer_pitch(terminal_renderer_t *r)                { return r->pitch;      }
+const uint8_t *term_renderer_pixels(terminal_renderer_t *r) { return r->framebuffer; }
+int term_renderer_width_px(terminal_renderer_t *r) { return r->width_px; }
+int term_renderer_height_px(terminal_renderer_t *r) { return r->height_px; }
+int term_renderer_pitch(terminal_renderer_t *r) { return r->pitch; }
 
 void term_renderer_destroy(terminal_renderer_t *r) {
     if (!r) return;
-    vterm_free(r->vt);
-    FT_Done_Face(r->ft_face);
-    FT_Done_FreeType(r->ft_lib);
+    close(r->pty_master);
+    close(r->pty_slave);
+    ghostty_surface_free(r->surface);
+    ghostty_app_free(r->app);
+    ghostty_config_free(r->config);
     SAFE_FREE(r->framebuffer);
     SAFE_FREE(r);
+}
+
+/* ============================================================================
+ * Ghostty Initialization (Offscreen Rendering)
+ * ============================================================================ */
+
+#include <stdatomic.h>
+
+static _Atomic(int) ghostty_initialized = 0;
+static _Atomic(int) ghostty_init_in_progress = 0;
+
+asciichat_error_t terminal_ghostty_init_once(void) {
+    // Check if already initialized
+    if (atomic_load(&ghostty_initialized)) {
+        return ASCIICHAT_OK;
+    }
+
+    // Try to claim initialization
+    int expected = 0;
+    if (!atomic_compare_exchange_strong(&ghostty_init_in_progress, &expected, 1)) {
+        // Another thread is initializing, wait for completion
+        while (!atomic_load(&ghostty_initialized)) {
+            usleep(1000); // 1ms sleep
+        }
+        return ASCIICHAT_OK;
+    }
+
+    // We own initialization now
+    int argc = 1;
+    char *argv[] = {"ascii-chat", NULL};
+
+    int ret = ghostty_init((uintptr_t)argc, (char**)argv);
+    if (ret != 0) {
+        atomic_store(&ghostty_init_in_progress, 0);
+        log_error("terminal_ghostty_init_once: ghostty_init failed with code %d", ret);
+        return SET_ERRNO(ERROR_INIT, "ghostty_init failed with code %d", ret);
+    }
+
+    log_info("terminal_ghostty_init_once: ghostty global state initialized successfully");
+    atomic_store(&ghostty_initialized, 1);
+    return ASCIICHAT_OK;
 }
 #endif

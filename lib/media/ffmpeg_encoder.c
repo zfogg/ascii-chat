@@ -154,6 +154,13 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path,
         return SET_ERRNO(ERROR_INIT, "ffmpeg: avcodec_parameters_from_context failed");
     }
 
+    // For image2 format (single frame images like PNG), set appropriate options
+    AVDictionary *opts = NULL;
+    if (enc->is_image) {
+        // Use -update flag for single frame output
+        av_dict_set(&opts, "update", "1", 0);
+    }
+
     // Allocate frames
     enc->frame = av_frame_alloc();
     enc->frame_encoded = av_frame_alloc();
@@ -213,7 +220,8 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path,
     }
 
     // Write header
-    ret = avformat_write_header(enc->fmt_ctx, NULL);
+    ret = avformat_write_header(enc->fmt_ctx, &opts);
+    av_dict_free(&opts);  // Free options after use
     if (ret < 0) {
         avio_closep(&enc->fmt_ctx->pb);
         sws_freeContext(enc->sws_ctx);

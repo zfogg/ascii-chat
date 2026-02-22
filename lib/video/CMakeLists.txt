@@ -24,9 +24,10 @@ if(FFMPEG_FOUND)
         list(APPEND VIDEO_SRCS
             ${CMAKE_CURRENT_SOURCE_DIR}/renderer.c
             ${CMAKE_SOURCE_DIR}/lib/media/ffmpeg_encoder.c
-            # Bundled font and generated C code (generated at CMake configure time)
+            # Bundled fonts and generated C code (generated at CMake configure time)
             ${CMAKE_SOURCE_DIR}/lib/font.c
             "${CMAKE_BINARY_DIR}/generated/matrix_resurrected_font.c"
+            "${CMAKE_BINARY_DIR}/generated/default_font.c"
         )
     endif()
 endif()
