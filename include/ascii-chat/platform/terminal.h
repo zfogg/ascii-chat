@@ -57,6 +57,30 @@
 #define SIGTERM 15  // Termination signal (limited support on Windows)
 #endif
 
+// ============================================================================
+// Theme-Aware Default Colors
+// ============================================================================
+
+/**
+ * @brief Default text color for light theme (RGB)
+ *
+ * Used for text on light/white backgrounds. A subtle dark blue-grey that's
+ * readable on light backgrounds and matches modern terminal color schemes.
+ */
+#define TERMINAL_COLOR_THEME_LIGHT_DEFAULT_R 65
+#define TERMINAL_COLOR_THEME_LIGHT_DEFAULT_G 61
+#define TERMINAL_COLOR_THEME_LIGHT_DEFAULT_B 61
+
+/**
+ * @brief Default text color for dark theme (RGB)
+ *
+ * Used for text on dark/black backgrounds. A light neutral color that's
+ * readable on dark backgrounds and provides good contrast.
+ */
+#define TERMINAL_COLOR_THEME_DARK_DEFAULT_R 232
+#define TERMINAL_COLOR_THEME_DARK_DEFAULT_G 243
+#define TERMINAL_COLOR_THEME_DARK_DEFAULT_B 248
+
 /* ============================================================================
  * Terminal Data Structures
  * ============================================================================
