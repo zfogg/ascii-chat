@@ -72,11 +72,11 @@
 extern const char embedded_manpage_template[];
 
 /**
- * @brief Length of embedded_manpage_template (excluding null terminator)
+ * @brief Size of embedded_manpage_template (excluding null terminator)
  * @ingroup embedded
  * @internal
  */
-extern const size_t embedded_manpage_template_len;
+extern const size_t embedded_manpage_template_size;
 
 // =============================================================================
 // Resource Access Functions

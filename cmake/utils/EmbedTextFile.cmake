@@ -16,7 +16,7 @@
 # Generates:
 #   - An extern declaration in the output file for the embedded data
 #   - A const char array containing the file contents (escaped for C)
-#   - A const size_t variable containing the string length
+#   - A const size_t variable containing the data size
 #
 
 if(NOT DEFINED INPUT_FILE OR INPUT_FILE STREQUAL "")
@@ -62,9 +62,9 @@ const char ${VARIABLE_NAME}[] =
     \"${CONTENT}\";
 
 /**
- * @brief Length of embedded content (excluding null terminator)
+ * @brief Size of embedded content (excluding null terminator)
  */
-const size_t ${VARIABLE_NAME}_len = sizeof(${VARIABLE_NAME}) - 1;
+const size_t ${VARIABLE_NAME}_size = sizeof(${VARIABLE_NAME}) - 1;
 ")
 
 message(STATUS "Embedded ${INPUT_FILE} (${VARIABLE_NAME}) → ${OUTPUT_FILE}")

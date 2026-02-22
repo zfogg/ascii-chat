@@ -25,7 +25,7 @@
 // CMakeLists.txt custom commands), but are only used in Release builds (NDEBUG defined)
 //
 extern const char embedded_manpage_template[];
-extern const size_t embedded_manpage_template_len;
+extern const size_t embedded_manpage_template_size;
 
 // =============================================================================
 // Resource Access Implementation
@@ -38,13 +38,13 @@ int get_manpage_template(FILE **out_file, const char **out_content, size_t *out_
     *out_content = embedded_manpage_template;
   }
   if (out_len) {
-    *out_len = embedded_manpage_template_len;
+    *out_len = embedded_manpage_template_size;
   }
   if (out_file) {
     *out_file = NULL;
   }
 
-  log_debug("Using embedded man page template (%zu bytes)", embedded_manpage_template_len);
+  log_debug("Using embedded man page template (%zu bytes)", embedded_manpage_template_size);
   return 0;
 #else
   // Debug build: Read from filesystem
