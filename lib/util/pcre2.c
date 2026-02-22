@@ -5,6 +5,7 @@
  */
 
 #include <ascii-chat/util/pcre2.h>
+#include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
 #include <string.h>
@@ -14,14 +15,14 @@
 /**
  * @brief Represents a thread-safe compiled PCRE2 regex singleton
  *
- * Uses atomic flag for thread-safe lazy initialization without mutexes.
+ * Uses lifecycle_t for thread-safe lazy initialization without mutexes.
  * The compilation flag is set only once, and the compiled code is read-only
  * after that, enabling concurrent access from multiple threads.
  */
 typedef struct pcre2_singleton {
+  lifecycle_t lc;               ///< Per-object compilation lifecycle (UNINITIALIZED → INITIALIZED)
   _Atomic(pcre2_code *) code;   ///< Compiled regex (lazy init, atomic)
   pcre2_jit_stack *jit_stack;   ///< JIT stack for performance
-  _Atomic(bool) compiled;       ///< Whether compilation was attempted
   char *pattern;                ///< Pattern string (owned by singleton, dynamically allocated)
   uint32_t flags;               ///< PCRE2 compile flags
   struct pcre2_singleton *next; ///< Next singleton in global registry
@@ -29,7 +30,7 @@ typedef struct pcre2_singleton {
 
 /* Global registry of all PCRE2 singletons for automatic cleanup */
 static pcre2_singleton_t *g_singleton_registry = NULL;
-static _Atomic(bool) g_registry_initialized = false;
+static lifecycle_t g_registry_lc = LIFECYCLE_INIT; ///< Tracks if registry has been initialized
 
 /**
  * @brief Compile and cache a PCRE2 regex pattern with thread-safe singleton semantics
@@ -67,15 +68,17 @@ pcre2_singleton_t *asciichat_pcre2_singleton_compile(const char *pattern, uint32
   memcpy(singleton->pattern, pattern, pattern_len + 1);
 
   /* Initialize fields */
+  singleton->lc = (lifecycle_t)LIFECYCLE_INIT; ///< Per-object lifecycle for lazy compilation
   atomic_store(&singleton->code, NULL);
   singleton->jit_stack = NULL;
-  atomic_store(&singleton->compiled, false);
   singleton->flags = flags;
 
   /* Register singleton in global list for automatic cleanup */
   singleton->next = g_singleton_registry;
   g_singleton_registry = singleton;
-  atomic_store(&g_registry_initialized, true);
+
+  /* Mark registry as initialized (one-time per process) */
+  lifecycle_init(&g_registry_lc, "pcre2_registry");
 
   return singleton;
 }
@@ -103,13 +106,22 @@ pcre2_code *asciichat_pcre2_singleton_get_code(pcre2_singleton_t *singleton) {
     return code;
   }
 
-  /* If compilation was already attempted (code freed during cleanup, or compilation
-   * failed), don't recompile. Prevents re-entrant allocation during shutdown. */
-  if (atomic_load(&singleton->compiled)) {
+  /* Check if compilation already attempted via lifecycle state */
+  if (lifecycle_is_initialized(&singleton->lc)) {
+    /* Already initialized but code is NULL - compilation failed previously */
     return NULL;
   }
 
-  /* Slow path: first call, need to compile. */
+  /* Try to win the compilation race using lifecycle_t */
+  if (!lifecycle_init(&singleton->lc, "pcre2_pattern")) {
+    /* Lost race - someone else is compiling or already compiled. Spin for their result. */
+    while (atomic_load(&singleton->code) == NULL && lifecycle_is_initialized(&singleton->lc)) {
+      /* Spin-wait for compiler to finish */
+    }
+    return atomic_load(&singleton->code);
+  }
+
+  /* Slow path: we won the race, need to compile. */
   int errornumber;
   PCRE2_SIZE erroroffset;
 
@@ -120,8 +132,8 @@ pcre2_code *asciichat_pcre2_singleton_get_code(pcre2_singleton_t *singleton) {
     PCRE2_UCHAR error_buf[256];
     pcre2_get_error_message(errornumber, error_buf, sizeof(error_buf));
     log_warn("Failed to compile PCRE2 regex at offset %zu: %s", erroroffset, (const char *)error_buf);
-    /* Mark as "attempted" by setting a sentinel value (store NULL explicitly) */
-    atomic_store(&singleton->compiled, true);
+    /* Mark compilation as attempted (failed) by moving to INITIALIZED state */
+    lifecycle_init_commit(&singleton->lc);
     return NULL;
   }
 
@@ -139,7 +151,8 @@ pcre2_code *asciichat_pcre2_singleton_get_code(pcre2_singleton_t *singleton) {
 
   /* Store compiled code (atomic, so subsequent calls see it immediately) */
   atomic_store(&singleton->code, code);
-  atomic_store(&singleton->compiled, true);
+  /* Mark compilation as completed by moving to INITIALIZED state */
+  lifecycle_init_commit(&singleton->lc);
 
   return code;
 }
@@ -195,7 +208,7 @@ void asciichat_pcre2_singleton_free(pcre2_singleton_t *singleton) {
  * multiple times (idempotent). Should be called once during shutdown.
  */
 void asciichat_pcre2_cleanup_all(void) {
-  if (!atomic_load(&g_registry_initialized)) {
+  if (!lifecycle_shutdown(&g_registry_lc)) {
     return; /* No singletons were ever created or already cleaned up */
   }
 
@@ -208,7 +221,6 @@ void asciichat_pcre2_cleanup_all(void) {
 
   /* Clear registry first to prevent re-entry */
   g_singleton_registry = NULL;
-  atomic_store(&g_registry_initialized, false);
 
   /* Now free all singletons */
   while (current) {
