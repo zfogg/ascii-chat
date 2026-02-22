@@ -378,6 +378,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       // Exit conditions: snapshot mode exits after capturing the final frame or initial paused frame
       if (snapshot_mode && (snapshot_done || output_paused_frame)) {
         SAFE_FREE(ascii_frame);
+        // Signal application to exit in snapshot mode
+        extern void signal_exit(void);
+        signal_exit();
         break;
       }
 
