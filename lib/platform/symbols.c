@@ -34,6 +34,7 @@
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/string.h>
+#include <ascii-chat/util/lifecycle.h>
 
 // ============================================================================
 // Constants
@@ -113,7 +114,7 @@ typedef struct {
 
 static symbol_entry_t *g_symbol_cache = NULL; // uthash uses structure pointer as head
 static rwlock_t g_symbol_cache_lock = {0};    // External locking for thread safety
-static atomic_bool g_symbol_cache_initialized = false;
+static lifecycle_t g_symbol_cache_lc = LIFECYCLE_INIT;
 
 // Statistics
 static atomic_uint_fast64_t g_cache_hits = 0;
@@ -262,20 +263,19 @@ static symbolizer_type_t detect_symbolizer(void) {
 // ============================================================================
 
 asciichat_error_t symbol_cache_init(void) {
-  bool expected = false;
-  if (!atomic_compare_exchange_strong(&g_symbol_cache_initialized, &expected, true)) {
+  if (!lifecycle_init(&g_symbol_cache_lc)) {
     return 0; // Already initialized
   }
 
   // Detect which symbolizer is available (once at init)
-  expected = false;
+  bool expected = false;
   if (atomic_compare_exchange_strong(&g_symbolizer_detected, &expected, true)) {
     g_symbolizer_type = detect_symbolizer();
   }
 
   // Initialize rwlock for thread safety (uthash requires external locking)
   if (rwlock_init(&g_symbol_cache_lock, "symbol_cache") != 0) {
-    atomic_store(&g_symbol_cache_initialized, false);
+    lifecycle_init_abort(&g_symbol_cache_lc);
     return SET_ERRNO(ERROR_THREAD, "Failed to initialize symbol cache rwlock");
   }
 
@@ -290,12 +290,11 @@ asciichat_error_t symbol_cache_init(void) {
 }
 
 void symbol_cache_destroy(void) {
-  if (!atomic_load(&g_symbol_cache_initialized)) {
+  if (!lifecycle_shutdown(&g_symbol_cache_lc)) {
     return;
   }
 
   // Mark as uninitialized FIRST to prevent new inserts during cleanup
-  atomic_store(&g_symbol_cache_initialized, false);
 
   // Acquire write lock to prevent any concurrent operations
   rwlock_wrlock(&g_symbol_cache_lock);
@@ -329,7 +328,7 @@ void symbol_cache_destroy(void) {
 }
 
 const char *symbol_cache_lookup(void *addr) {
-  if (!atomic_load(&g_symbol_cache_initialized) || !addr) {
+  if (!lifecycle_is_initialized(&g_symbol_cache_lc) || !addr) {
     return NULL;
   }
 
@@ -352,7 +351,7 @@ const char *symbol_cache_lookup(void *addr) {
 }
 
 bool symbol_cache_insert(void *addr, const char *symbol) {
-  if (!atomic_load(&g_symbol_cache_initialized) || !addr || !symbol) {
+  if (!lifecycle_is_initialized(&g_symbol_cache_lc) || !addr || !symbol) {
     return false;
   }
 
@@ -361,7 +360,7 @@ bool symbol_cache_insert(void *addr, const char *symbol) {
 
   // Double-check cache is still initialized after acquiring lock
   // (cleanup might have marked it uninitialized between our check and lock acquisition)
-  if (!atomic_load(&g_symbol_cache_initialized)) {
+  if (!lifecycle_is_initialized(&g_symbol_cache_lc)) {
     rwlock_wrunlock(&g_symbol_cache_lock);
     return false;
   }
@@ -809,7 +808,7 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
 
   // DO NOT auto-initialize here - causes circular dependency during lock_debug_init()
   // The cache must be initialized explicitly by platform_init() before use
-  if (!atomic_load(&g_symbol_cache_initialized)) {
+  if (!lifecycle_is_initialized(&g_symbol_cache_lc)) {
     // Cache not initialized - fall back to uncached resolution
     // This happens during early initialization before platform_init() completes
     char **result = run_llvm_symbolizer_batch(buffer, size);
