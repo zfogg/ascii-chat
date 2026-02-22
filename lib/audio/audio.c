@@ -11,6 +11,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>       // For START_TIMER/STOP_TIMER macros
+#include <ascii-chat/util/lifecycle.h>  // For lifecycle_t
 #include <ascii-chat/asciichat_errno.h> // For asciichat_errno system
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/options/options.h>
@@ -32,32 +33,34 @@
 #include <fcntl.h>  // For O_WRONLY
 #endif
 
-// PortAudio initialization reference counter
-// Tracks how many audio contexts are using PortAudio to avoid conflicts
-static unsigned int g_pa_init_refcount = 0;
-static static_mutex_t g_pa_refcount_mutex = STATIC_MUTEX_INIT;
+// PortAudio initialization lifecycle (one-time init/shutdown, no refcounting)
+// Uses lifecycle_t for thread-safe, lock-free initialization tracking
+static lifecycle_t g_pa_lc = LIFECYCLE_INIT;
 
-// Track how many times Pa_Initialize and Pa_Terminate are called
+// Track how many times Pa_Initialize and Pa_Terminate are called (for debugging)
 static int g_pa_init_count = 0;
 static int g_pa_terminate_count = 0;
 
 /**
- * @brief Ensure PortAudio is initialized with reference counting
+ * @brief Ensure PortAudio is initialized
  *
  * This is the single centralized function that initializes PortAudio.
  * All code paths (audio_init, device enumeration) call this to prevent
  * multiple independent Pa_Initialize() calls and duplicate ALSA/PulseAudio probing.
  *
+ * Uses lifecycle_t for thread-safe, lock-free initialization tracking.
+ *
  * @return ASCIICHAT_OK on success, error code on failure
  */
 static asciichat_error_t audio_ensure_portaudio_initialized(void) {
-  static_mutex_lock(&g_pa_refcount_mutex);
-
-  // If already initialized, just increment refcount
-  if (g_pa_init_refcount > 0) {
-    g_pa_init_refcount++;
-    static_mutex_unlock(&g_pa_refcount_mutex);
+  // Check if already initialized
+  if (lifecycle_is_initialized(&g_pa_lc)) {
     return ASCIICHAT_OK;
+  }
+
+  // Try to win the initialization race
+  if (!lifecycle_init(&g_pa_lc, "portaudio")) {
+    return ASCIICHAT_OK; // Already initialized by another thread
   }
 
   // First initialization - call Pa_Initialize() exactly once
@@ -74,35 +77,22 @@ static asciichat_error_t audio_ensure_portaudio_initialized(void) {
   platform_stdout_stderr_restore(stdio_handle);
 
   if (err != paNoError) {
-    static_mutex_unlock(&g_pa_refcount_mutex);
     return SET_ERRNO(ERROR_AUDIO, "Failed to initialize PortAudio: %s", Pa_GetErrorText(err));
   }
-
-  g_pa_init_refcount = 1;
-  static_mutex_unlock(&g_pa_refcount_mutex);
 
   return ASCIICHAT_OK;
 }
 
 /**
- * @brief Release PortAudio reference count
+ * @brief Release PortAudio (no-op with lifecycle_t)
  *
- * Counterpart to audio_ensure_portaudio_initialized().
- * Decrements refcount. Note: Pa_Terminate() is NOT called here,
- * use audio_terminate_portaudio_final() when you want to actually
- * terminate PortAudio and free device resources.
+ * With the lifecycle_t pattern (no refcounting), this is a no-op.
+ * PortAudio remains initialized for the lifetime of the process.
+ * Use audio_terminate_portaudio_final() to actually terminate PortAudio.
  */
 static void audio_release_portaudio(void) {
-  static_mutex_lock(&g_pa_refcount_mutex);
-
-  if (g_pa_init_refcount > 0) {
-    g_pa_init_refcount--;
-    log_debug("PortAudio refcount decremented to %u", g_pa_init_refcount);
-  } else {
-    log_warn("audio_release_portaudio() called but refcount is already 0");
-  }
-
-  static_mutex_unlock(&g_pa_refcount_mutex);
+  // No-op with lifecycle_t (no refcounting)
+  log_debug_every(1000, "audio_release_portaudio() called (lifecycle managed)");
 }
 
 /**
@@ -112,9 +102,7 @@ static void audio_release_portaudio(void) {
  * It should be called AFTER all audio contexts are destroyed and session cleanup is complete.
  */
 void audio_terminate_portaudio_final(void) {
-  static_mutex_lock(&g_pa_refcount_mutex);
-
-  if (g_pa_init_refcount == 0 && g_pa_init_count > 0 && g_pa_terminate_count == 0) {
+  if (lifecycle_shutdown(&g_pa_lc)) {
     log_debug("[PORTAUDIO_TERM] Calling Pa_Terminate() to release PortAudio");
 
     PaError err = Pa_Terminate();
@@ -122,8 +110,6 @@ void audio_terminate_portaudio_final(void) {
 
     log_debug("[PORTAUDIO_TERM] Pa_Terminate() returned: %s", Pa_GetErrorText(err));
   }
-
-  static_mutex_unlock(&g_pa_refcount_mutex);
 }
 
 // Worker thread batch size (in frames, not samples)
