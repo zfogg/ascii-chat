@@ -23,7 +23,11 @@ asciichat_error_t crypto_handshake_init(crypto_handshake_context_t *ctx, bool is
   memset(ctx, 0, sizeof(crypto_handshake_context_t));
 
   // Initialize core crypto context
+  log_info("★★★ BEFORE crypto_init()");
+  lock_debug_print_state();
   crypto_result_t result = crypto_init(&ctx->crypto_ctx);
+  log_info("★★★ AFTER crypto_init(), result=%d", result);
+  lock_debug_print_state();
   if (result != CRYPTO_OK) {
     return SET_ERRNO(ERROR_CRYPTO, "Failed to initialize crypto context: %s", crypto_result_to_string(result));
   }

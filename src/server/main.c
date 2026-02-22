@@ -1482,6 +1482,8 @@ static void *websocket_client_handler(void *arg) {
   // Initialize crypto handshake context directly in client structure
   // This must happen BEFORE sending KEY_EXCHANGE_INIT so that when the client
   // responds, the receive thread has a properly initialized context
+  log_info("[WS_HANDLER] ★★★ LOCK STATE BEFORE crypto_handshake_init()");
+  lock_debug_print_state();
   log_debug("[WS_HANDLER] Calling crypto_handshake_init()...");
   asciichat_error_t handshake_init_result = crypto_handshake_init(&client->crypto_handshake_ctx, true /* is_server */);
   log_info("[WS_HANDLER] ★★★ DEBUG: Printing lock state after crypto_handshake_init");
@@ -1911,6 +1913,10 @@ int server_main(void) {
   } else {
     log_info("WebSocket server initialized on port %d", GET_OPTION(websocket_port));
   }
+
+  // DEBUG: Print lock state immediately after WebSocket init
+  log_info("★★★ LOCK STATE AFTER WEBSOCKET INIT ★★★");
+  lock_debug_print_state();
 
   // =========================================================================
   // UPnP Port Mapping (Quick Win for Direct TCP)
