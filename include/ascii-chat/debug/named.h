@@ -75,27 +75,33 @@ int named_init(void);
 void named_destroy(void);
 
 /**
- * @brief Register a resource with an auto-suffixed name and location info
+ * @brief Register a resource with an auto-suffixed name, type, and location info
  * @param key A uintptr_t representing the resource (pointer or integer handle)
- * @param base_name The base name (e.g., "recv_mutex"); suffix auto-generated
+ * @param base_name The base name (e.g., "recv"); suffix auto-generated
+ * @param type Data type label (e.g., "mutex", "rwlock", "socket"); stored and printed
  * @param file Source file where registration occurred (typically __FILE__)
  * @param line Source line where registration occurred (typically __LINE__)
  * @param func Function where registration occurred (typically __func__)
- * @return Pointer to the full registered name (e.g., "recv_mutex.7"), valid until unregister
+ * @return Pointer to the full registered name (e.g., "recv.7"), valid until unregister
  * @ingroup debug_named
  *
  * The returned name string is stored in the registry and remains valid until
  * named_unregister(key) is called. Do not modify or free the returned pointer.
  *
+ * The type parameter is stored in the registry and used by named_describe() to format
+ * output as "type: name (0xKEY) @ file:line:func()" automatically, without needing
+ * a type_hint parameter.
+ *
  * Multiple registrations of the same key will overwrite the previous entry.
  * In release builds (NDEBUG), this is a no-op and returns base_name.
  */
-const char *named_register(uintptr_t key, const char *base_name,
+const char *named_register(uintptr_t key, const char *base_name, const char *type,
                           const char *file, int line, const char *func);
 
 /**
- * @brief Register a resource with a formatted name and location info (no auto-suffix)
+ * @brief Register a resource with a formatted name, type, and location info (no auto-suffix)
  * @param key A uintptr_t representing the resource
+ * @param type Data type label (e.g., "mutex", "socket"); stored and printed
  * @param file Source file where registration occurred
  * @param line Source line where registration occurred
  * @param func Function where registration occurred
@@ -108,9 +114,12 @@ const char *named_register(uintptr_t key, const char *base_name,
  * are printed to create the name (e.g., "client.%u" with args "17" → "client.17").
  * No auto-suffix counter is applied.
  *
+ * The type parameter is stored in the registry and used by named_describe() for
+ * automatic formatting without needing type_hint.
+ *
  * In release builds (NDEBUG), this is a no-op and returns "?".
  */
-const char *named_register_fmt(uintptr_t key,
+const char *named_register_fmt(uintptr_t key, const char *type,
                               const char *file, int line, const char *func,
                               const char *fmt, ...);
 
@@ -171,24 +180,26 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
 // ============================================================================
 
 /**
- * @brief Register any pointer with base name (auto-suffix)
+ * @brief Register any pointer with base name, type, and location (auto-suffix)
  * @param ptr Object pointer (void* or typed pointer)
  * @param name Base name string
+ * @param type Data type label (e.g., "mutex", "socket")
  * @ingroup debug_named
  *
  * In debug builds, automatically captures __FILE__, __LINE__, and __func__ for location info.
  * In release builds (NDEBUG), this is a no-op.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER(ptr, name) \
-  named_register((uintptr_t)(const void *)(ptr), (name), __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER(ptr, name, type) \
+  named_register((uintptr_t)(const void *)(ptr), (name), (type), __FILE__, __LINE__, __func__)
 #else
-#define NAMED_REGISTER(ptr, name) ((void)0)
+#define NAMED_REGISTER(ptr, name, type) ((void)0)
 #endif
 
 /**
- * @brief Register with a formatted name
+ * @brief Register with a formatted name and type
  * @param ptr Object pointer
+ * @param type Data type label
  * @param fmt Printf-style format string
  * @param ... Format arguments
  * @ingroup debug_named
@@ -197,10 +208,10 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * In release builds (NDEBUG), this is a no-op.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_FMT(ptr, fmt, ...) \
-  named_register_fmt((uintptr_t)(const void *)(ptr), __FILE__, __LINE__, __func__, (fmt), __VA_ARGS__)
+#define NAMED_REGISTER_FMT(ptr, type, fmt, ...) \
+  named_register_fmt((uintptr_t)(const void *)(ptr), (type), __FILE__, __LINE__, __func__, (fmt), __VA_ARGS__)
 #else
-#define NAMED_REGISTER_FMT(ptr, fmt, ...) ((void)0)
+#define NAMED_REGISTER_FMT(ptr, type, fmt, ...) ((void)0)
 #endif
 
 /**
@@ -245,19 +256,20 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
 // ============================================================================
 
 /**
- * @brief Register an integer handle (fd, socket, etc.)
+ * @brief Register an integer handle (fd, socket, etc.) with type
  * @param id Integer handle (socket_t, int, etc.)
  * @param name Base name string
+ * @param type Data type label (e.g., "socket", "fd")
  * @ingroup debug_named
  *
  * In debug builds, automatically captures __FILE__, __LINE__, and __func__ for location info.
  * In release builds (NDEBUG), this is a no-op.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_ID(id, name) \
-  named_register((uintptr_t)(intptr_t)(id), (name), __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_ID(id, name, type) \
+  named_register((uintptr_t)(intptr_t)(id), (name), (type), __FILE__, __LINE__, __func__)
 #else
-#define NAMED_REGISTER_ID(id, name) ((void)0)
+#define NAMED_REGISTER_ID(id, name, type) ((void)0)
 #endif
 
 /**
@@ -371,6 +383,34 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * properly, converting it through asciichat_thread_to_key().
  */
 const char *named_describe_thread(void *thread);
+
+// ============================================================================
+// Registry Iteration
+// ============================================================================
+
+/**
+ * @brief Callback function for iterating registered entries
+ * @param key The registered key (uintptr_t)
+ * @param name The registered name string
+ * @param user_data User-provided context pointer
+ * @ingroup debug_named
+ *
+ * Called for each entry in the registry. The callback should not modify
+ * the registry during iteration.
+ */
+typedef void (*named_iter_callback_t)(uintptr_t key, const char *name, void *user_data);
+
+/**
+ * @brief Iterate through all registered entries
+ * @param callback Function to call for each entry
+ * @param user_data Opaque context passed to callback
+ * @ingroup debug_named
+ *
+ * Safely iterates through all registered entries without holding the lock
+ * for the entire iteration (entries are copied). Callback is invoked for
+ * each entry. In release builds (NDEBUG), this is a no-op.
+ */
+void named_registry_for_each(named_iter_callback_t callback, void *user_data);
 
 #ifdef __cplusplus
 }

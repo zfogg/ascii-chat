@@ -19,7 +19,7 @@
  */
 int mutex_init(mutex_t *mutex, const char *name) {
   InitializeCriticalSectionAndSpinCount(&mutex->impl, 4000);
-  mutex->name = NAMED_REGISTER(mutex, name ? name : "unnamed");
+  mutex->name = NAMED_REGISTER(mutex, name, "mutex");
   return 0;
 }
 

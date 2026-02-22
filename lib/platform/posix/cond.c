@@ -21,7 +21,7 @@
 int cond_init(cond_t *cond, const char *name) {
   int err = pthread_cond_init(&cond->impl, NULL);
   if (err == 0) {
-    cond->name = NAMED_REGISTER(cond, name ? name : "unnamed");
+    cond->name = NAMED_REGISTER(cond, name, "cond");
   }
   return err;
 }

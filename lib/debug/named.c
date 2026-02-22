@@ -37,7 +37,8 @@
  */
 typedef struct named_entry {
     uintptr_t key;                      // Registry lookup key
-    char *name;                         // Allocated name string (e.g., "recv_mutex.7")
+    char *name;                         // Allocated name string (e.g., "recv.7")
+    char *type;                         // Data type label (e.g., "mutex", "socket") (allocated)
     char *file;                         // Source file where registered (allocated)
     int line;                           // Source line where registered
     char *func;                         // Function where registered (allocated)
@@ -95,6 +96,9 @@ void named_destroy(void) {
     HASH_ITER(hh, g_named_registry.entries, entry, tmp) {
         HASH_DEL(g_named_registry.entries, entry);
         free(entry->name);
+        free(entry->type);
+        free(entry->file);
+        free(entry->func);
         free(entry);
     }
 
@@ -104,9 +108,9 @@ void named_destroy(void) {
     atomic_store(&g_named_registry.initialized, false);
 }
 
-const char *named_register(uintptr_t key, const char *base_name,
+const char *named_register(uintptr_t key, const char *base_name, const char *type,
                           const char *file, int line, const char *func) {
-    if (!base_name) {
+    if (!base_name || !type) {
         return "?";
     }
 
@@ -135,9 +139,11 @@ const char *named_register(uintptr_t key, const char *base_name,
     if (entry) {
         // Update existing entry
         free(entry->name);
+        free(entry->type);
         free(entry->file);
         free(entry->func);
         entry->name = full_name;
+        entry->type = type ? strdup(type) : NULL;
         entry->file = file ? strdup(relative_file) : NULL;
         entry->line = line;
         entry->func = func ? strdup(func) : NULL;
@@ -152,6 +158,7 @@ const char *named_register(uintptr_t key, const char *base_name,
         }
         entry->key = key;
         entry->name = full_name;
+        entry->type = type ? strdup(type) : NULL;
         entry->file = file ? strdup(relative_file) : NULL;
         entry->line = line;
         entry->func = func ? strdup(func) : NULL;
@@ -163,10 +170,10 @@ const char *named_register(uintptr_t key, const char *base_name,
     return entry->name;
 }
 
-const char *named_register_fmt(uintptr_t key,
+const char *named_register_fmt(uintptr_t key, const char *type,
                               const char *file, int line, const char *func,
                               const char *fmt, ...) {
-    if (!fmt) {
+    if (!type || !fmt) {
         return "?";
     }
 
@@ -198,9 +205,11 @@ const char *named_register_fmt(uintptr_t key,
     if (entry) {
         // Update existing entry
         free(entry->name);
+        free(entry->type);
         free(entry->file);
         free(entry->func);
         entry->name = full_name;
+        entry->type = type ? strdup(type) : NULL;
         entry->file = file ? strdup(relative_file) : NULL;
         entry->line = line;
         entry->func = func ? strdup(func) : NULL;
@@ -215,6 +224,7 @@ const char *named_register_fmt(uintptr_t key,
         }
         entry->key = key;
         entry->name = full_name;
+        entry->type = type ? strdup(type) : NULL;
         entry->file = file ? strdup(relative_file) : NULL;
         entry->line = line;
         entry->func = func ? strdup(func) : NULL;
@@ -239,6 +249,7 @@ void named_unregister(uintptr_t key) {
     if (entry) {
         HASH_DEL(g_named_registry.entries, entry);
         free(entry->name);
+        free(entry->type);
         free(entry->file);
         free(entry->func);
         free(entry);
@@ -282,13 +293,16 @@ const char *named_describe(uintptr_t key, const char *type_hint) {
     HASH_FIND(hh, g_named_registry.entries, &key, sizeof(key), entry);
 
     if (entry) {
+        // Use stored type if available, otherwise use type_hint
+        const char *type = entry->type ? entry->type : type_hint;
+
         if (entry->file && entry->func) {
             snprintf(buffer, sizeof(buffer), "%s: %s (0x%tx) @ %s:%d:%s()",
-                     type_hint, entry->name, (ptrdiff_t)key,
+                     type, entry->name, (ptrdiff_t)key,
                      entry->file, entry->line, entry->func);
         } else {
             snprintf(buffer, sizeof(buffer), "%s: %s (0x%tx)",
-                     type_hint, entry->name, (ptrdiff_t)key);
+                     type, entry->name, (ptrdiff_t)key);
         }
     } else {
         snprintf(buffer, sizeof(buffer), "%s (0x%tx)",
@@ -305,6 +319,43 @@ const char *named_describe_thread(void *thread) {
     return named_describe(key, "thread");
 }
 
+/**
+ * @brief Temporary entry for iteration (stack-allocated to avoid allocations)
+ */
+typedef struct {
+    uintptr_t key;
+    char name[MAX_NAME_LEN];
+} named_iter_entry_t;
+
+void named_registry_for_each(named_iter_callback_t callback, void *user_data) {
+    if (!callback || !atomic_load(&g_named_registry.initialized)) {
+        return;
+    }
+
+    // Collect entries while holding read lock
+    named_iter_entry_t entries[256];
+    int count = 0;
+
+    rwlock_rdlock_impl(&g_named_registry.entries_lock);
+
+    named_entry_t *entry, *tmp;
+    HASH_ITER(hh, g_named_registry.entries, entry, tmp) {
+        if (count < 256) {
+            entries[count].key = entry->key;
+            strncpy(entries[count].name, entry->name ? entry->name : "?", MAX_NAME_LEN - 1);
+            entries[count].name[MAX_NAME_LEN - 1] = '\0';
+            count++;
+        }
+    }
+
+    rwlock_rdunlock_impl(&g_named_registry.entries_lock);
+
+    // Call callback for each entry (without holding lock)
+    for (int i = 0; i < count; i++) {
+        callback(entries[i].key, entries[i].name, user_data);
+    }
+}
+
 #else // NDEBUG (Release builds - stubs)
 
 int named_init(void) {
@@ -314,19 +365,21 @@ int named_init(void) {
 void named_destroy(void) {
 }
 
-const char *named_register(uintptr_t key, const char *base_name,
+const char *named_register(uintptr_t key, const char *base_name, const char *type,
                           const char *file, int line, const char *func) {
     (void)key;
+    (void)type;
     (void)file;
     (void)line;
     (void)func;
     return base_name ? base_name : "?";
 }
 
-const char *named_register_fmt(uintptr_t key,
+const char *named_register_fmt(uintptr_t key, const char *type,
                               const char *file, int line, const char *func,
                               const char *fmt, ...) {
     (void)key;
+    (void)type;
     (void)file;
     (void)line;
     (void)func;
@@ -351,6 +404,12 @@ const char *named_describe(uintptr_t key, const char *type_hint) {
 const char *named_describe_thread(void *thread) {
     (void)thread;
     return "?";
+}
+
+void named_registry_for_each(named_iter_callback_t callback, void *user_data) {
+    (void)callback;
+    (void)user_data;
+    // No-op in release builds
 }
 
 #endif // !NDEBUG

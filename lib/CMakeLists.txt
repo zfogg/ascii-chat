@@ -116,7 +116,7 @@ set(CORE_SRCS
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     list(APPEND CORE_SRCS
         ${LIB_DIR}/debug/named.c
-        ${LIB_DIR}/debug/lock.c
+        ${LIB_DIR}/debug/sync.c
         ${LIB_DIR}/debug/memory.c
     )
 endif()

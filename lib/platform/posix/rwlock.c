@@ -24,7 +24,7 @@ int rwlock_init_impl(rwlock_t *lock) {
 int rwlock_init(rwlock_t *lock, const char *name) {
   int err = pthread_rwlock_init(&lock->impl, NULL);
   if (err == 0) {
-    lock->name = NAMED_REGISTER(lock, name ? name : "unnamed");
+    lock->name = NAMED_REGISTER(lock, name, "rwlock");
   }
   return err;
 }

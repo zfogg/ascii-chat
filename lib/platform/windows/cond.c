@@ -20,7 +20,7 @@
  */
 int cond_init(cond_t *cond, const char *name) {
   InitializeConditionVariable(&cond->impl);
-  cond->name = NAMED_REGISTER(cond, name ? name : "unnamed");
+  cond->name = NAMED_REGISTER(cond, name, "cond");
   return 0;
 }
 
