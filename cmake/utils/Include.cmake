@@ -32,9 +32,7 @@ function(configure_include_directories)
     include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/deps)
 
     # Add ghostty include directories (for ghostty.h)
-    if(DEFINED GHOSTTY_INCLUDE_DIRS)
-        include_directories(SYSTEM ${GHOSTTY_INCLUDE_DIRS})
-    endif()
+    include_directories(SYSTEM ${GHOSTTY_INCLUDE_DIRS})
 
     # Add dependency include directories (matching pkg-config approach)
     if(WIN32)
