@@ -56,8 +56,8 @@ typedef struct {
   _Atomic int state;               ///< lifecycle_state_t enum value
   lifecycle_sync_type_t sync_type; ///< Type of sync primitive (if any)
   union {
-    struct mutex_t *mutex;   ///< Pointer to mutex (if sync_type == LIFECYCLE_SYNC_MUTEX)
-    struct rwlock_t *rwlock; ///< Pointer to rwlock (if sync_type == LIFECYCLE_SYNC_RWLOCK)
+    mutex_t *mutex;   ///< Pointer to mutex (if sync_type == LIFECYCLE_SYNC_MUTEX)
+    rwlock_t *rwlock; ///< Pointer to rwlock (if sync_type == LIFECYCLE_SYNC_RWLOCK)
   } sync;
 } lifecycle_t;
 
@@ -193,39 +193,6 @@ bool lifecycle_is_dead(const lifecycle_t *lc);
  *   if (lifecycle_shutdown(&g_lc)) {
  *       // Mutex is destroyed, do shutdown work
  *   }
- * @{
- */
-
-/**
- * CAS-based initialization with optional sync primitive.
- *
- * @param lc lifecycle state (may include sync_type and sync pointer)
- * @param name name tag for any sync primitive (for debugging)
- * @return true if THIS caller won and should do init work
- * @return false if already initialized or DEAD
- *
- * Atomically:
- *   1. Check if lifecycle needs init (CAS UNINIT → INITIALIZED)
- *   2. If winner and sync_type != NONE: initialize the sync primitive
- *   3. Return true if init succeeded
- */
-bool lifecycle_init(lifecycle_t *lc, const char *name);
-
-/**
- * CAS-based shutdown with optional sync primitive destruction.
- *
- * @param lc lifecycle state (may include sync_type and sync pointer)
- * @return true if THIS caller won and should do shutdown work
- * @return false if already shutdown or DEAD
- *
- * Atomically:
- *   1. Check if lifecycle needs shutdown (CAS INITIALIZED → UNINITIALIZED)
- *   2. If winner and sync_type != NONE: destroy the sync primitive
- *   3. Return true if shutdown succeeded
- */
-bool lifecycle_shutdown(lifecycle_t *lc);
-
-/**
  * @}
  */
 
