@@ -67,9 +67,9 @@
  * Used for text on light/white backgrounds. A subtle dark blue-grey that's
  * readable on light backgrounds and matches modern terminal color schemes.
  */
-#define TERMINAL_COLOR_THEME_LIGHT_DEFAULT_R 65
-#define TERMINAL_COLOR_THEME_LIGHT_DEFAULT_G 61
-#define TERMINAL_COLOR_THEME_LIGHT_DEFAULT_B 61
+#define TERMINAL_COLOR_THEME_LIGHT_FG_R 232
+#define TERMINAL_COLOR_THEME_LIGHT_FG_G 243
+#define TERMINAL_COLOR_THEME_LIGHT_FG_B 248
 
 /**
  * @brief Default text color for dark theme (RGB)
@@ -77,9 +77,27 @@
  * Used for text on dark/black backgrounds. A light neutral color that's
  * readable on dark backgrounds and provides good contrast.
  */
-#define TERMINAL_COLOR_THEME_DARK_DEFAULT_R 232
-#define TERMINAL_COLOR_THEME_DARK_DEFAULT_G 243
-#define TERMINAL_COLOR_THEME_DARK_DEFAULT_B 248
+#define TERMINAL_COLOR_THEME_DARK_FG_R 65
+#define TERMINAL_COLOR_THEME_DARK_FG_G 61
+#define TERMINAL_COLOR_THEME_DARK_FG_B 61
+
+/**
+ * @brief Default background color for light theme (RGB)
+ *
+ * Used for background in light/bright theme. White background for light terminals.
+ */
+#define TERMINAL_COLOR_THEME_LIGHT_BG_R 255
+#define TERMINAL_COLOR_THEME_LIGHT_BG_G 255
+#define TERMINAL_COLOR_THEME_LIGHT_BG_B 255
+
+/**
+ * @brief Default background color for dark theme (RGB)
+ *
+ * Used for background in dark/black theme. Black background for dark terminals.
+ */
+#define TERMINAL_COLOR_THEME_DARK_BG_R 0
+#define TERMINAL_COLOR_THEME_DARK_BG_G 0
+#define TERMINAL_COLOR_THEME_DARK_BG_B 0
 
 /* ============================================================================
  * Terminal Data Structures
@@ -1055,6 +1073,38 @@ int terminal_choose_log_fd(log_level_t level);
  * @ingroup platform
  */
 bool terminal_can_prompt_user(void);
+
+/* ============================================================================
+ * Renderer Color Selection (Cross-Platform Abstraction)
+ * ============================================================================ */
+
+/**
+ * @brief Get theme-aware default foreground color for pixel renderers
+ * @param theme Terminal theme (0=dark, 1=light, 2=auto)
+ * @param out_r Pointer to store red component (0-255)
+ * @param out_g Pointer to store green component (0-255)
+ * @param out_b Pointer to store blue component (0-255)
+ *
+ * Used by both Linux and macOS renderers for consistent color selection.
+ * Returns appropriate text color based on terminal theme.
+ *
+ * @ingroup platform
+ */
+void terminal_get_default_foreground_color(int theme, uint8_t *out_r, uint8_t *out_g, uint8_t *out_b);
+
+/**
+ * @brief Get theme-aware default background color for pixel renderers
+ * @param theme Terminal theme (0=dark, 1=light, 2=auto)
+ * @param out_r Pointer to store red component (0-255)
+ * @param out_g Pointer to store green component (0-255)
+ * @param out_b Pointer to store blue component (0-255)
+ *
+ * Used by both Linux and macOS renderers for consistent color selection.
+ * Returns appropriate background color based on terminal theme.
+ *
+ * @ingroup platform
+ */
+void terminal_get_default_background_color(int theme, uint8_t *out_r, uint8_t *out_g, uint8_t *out_b);
 
 /** @} */
 

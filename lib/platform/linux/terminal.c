@@ -46,36 +46,23 @@ static void terminal_get_cell(ghostty_terminal_t *term, uint32_t row, uint32_t c
     uint8_t term_bg_r = 0, term_bg_g = 0, term_bg_b = 0;
     bool got_bg_color = terminal_query_background_color(&term_bg_r, &term_bg_g, &term_bg_b);
 
-    // Determine if terminal has dark or light background
-    bool is_dark = terminal_has_dark_background();
+    // Determine terminal theme (dark or light)
+    int theme = terminal_has_dark_background() ? 0 : 1;  // 0=dark, 1=light
 
     // Default empty space
     *codepoint_out = ' ';
 
-    // Set background from terminal query if successful
+    // Set background from terminal query if successful, otherwise use theme-aware default
     if (got_bg_color) {
         *bg_r = term_bg_r;
         *bg_g = term_bg_g;
         *bg_b = term_bg_b;
     } else {
-        // Fallback based on theme detection
-        if (is_dark) {
-            *bg_r = 0; *bg_g = 0; *bg_b = 0;  // Black for dark theme
-        } else {
-            *bg_r = 255; *bg_g = 255; *bg_b = 255;  // White for light theme
-        }
+        terminal_get_default_background_color(theme, bg_r, bg_g, bg_b);
     }
 
-    // Set text color with good contrast for detected background theme
-    if (is_dark) {
-        *fg_r = TERMINAL_COLOR_THEME_DARK_DEFAULT_R;
-        *fg_g = TERMINAL_COLOR_THEME_DARK_DEFAULT_G;
-        *fg_b = TERMINAL_COLOR_THEME_DARK_DEFAULT_B;
-    } else {
-        *fg_r = TERMINAL_COLOR_THEME_LIGHT_DEFAULT_R;
-        *fg_g = TERMINAL_COLOR_THEME_LIGHT_DEFAULT_G;
-        *fg_b = TERMINAL_COLOR_THEME_LIGHT_DEFAULT_B;
-    }
+    // Set text color using theme-aware defaults from abstraction layer
+    terminal_get_default_foreground_color(theme, fg_r, fg_g, fg_b);
 }
 
 struct terminal_renderer_s {
@@ -157,19 +144,19 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg,
 
 asciichat_error_t term_renderer_feed(terminal_renderer_t *r,
                                      const char *ansi_frame, size_t len) {
-    // Select theme-appropriate default colors based on terminal background
-    uint8_t def_bg = (r->theme == TERM_RENDERER_THEME_LIGHT) ? 255 : 0;
-    uint8_t def_fg_r = (r->theme == TERM_RENDERER_THEME_LIGHT) ? TERMINAL_COLOR_THEME_LIGHT_DEFAULT_R : TERMINAL_COLOR_THEME_DARK_DEFAULT_R;
-    uint8_t def_fg_g = (r->theme == TERM_RENDERER_THEME_LIGHT) ? TERMINAL_COLOR_THEME_LIGHT_DEFAULT_G : TERMINAL_COLOR_THEME_DARK_DEFAULT_G;
-    uint8_t def_fg_b = (r->theme == TERM_RENDERER_THEME_LIGHT) ? TERMINAL_COLOR_THEME_LIGHT_DEFAULT_B : TERMINAL_COLOR_THEME_DARK_DEFAULT_B;
+    // Get theme-appropriate default colors from platform abstraction
+    uint8_t def_bg_r, def_bg_g, def_bg_b;
+    uint8_t def_fg_r, def_fg_g, def_fg_b;
+    terminal_get_default_background_color(r->theme, &def_bg_r, &def_bg_g, &def_bg_b);
+    terminal_get_default_foreground_color(r->theme, &def_fg_r, &def_fg_g, &def_fg_b);
 
     // Fill framebuffer with theme-appropriate background
     for (int py = 0; py < r->height_px; py++) {
         for (int px = 0; px < r->width_px; px++) {
             uint8_t *dst = r->framebuffer + py * r->pitch + px * 3;
-            dst[0] = def_bg;
-            dst[1] = def_bg;
-            dst[2] = def_bg;
+            dst[0] = def_bg_r;
+            dst[1] = def_bg_g;
+            dst[2] = def_bg_b;
         }
     }
 
@@ -182,7 +169,7 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r,
             uint32_t codepoint = 0;
             // Start with theme-appropriate defaults
             uint8_t fg_r = def_fg_r, fg_g = def_fg_g, fg_b = def_fg_b;
-            uint8_t bg_r = def_bg, bg_g = def_bg, bg_b = def_bg;
+            uint8_t bg_r = def_bg_r, bg_g = def_bg_g, bg_b = def_bg_b;
 
             terminal_get_cell(r->ghostty_term, row, col, &codepoint,
                             &fg_r, &fg_g, &fg_b, &bg_r, &bg_g, &bg_b);

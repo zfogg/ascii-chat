@@ -10,6 +10,7 @@
 #include <ghostty.h>
 #include <ascii-chat/video/renderer.h>
 #include <ascii-chat/platform/memory.h>
+#include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/log/logging.h>
 #include <unistd.h>
 
@@ -23,6 +24,9 @@ struct terminal_renderer_s {
     NSView            *offscreen_view;
     uint8_t           *framebuffer;
     int                width_px, height_px, pitch;
+    term_renderer_theme_t theme;  // Terminal theme for color selection
+    uint8_t fg_r, fg_g, fg_b;     // Theme-aware foreground color
+    uint8_t bg_r, bg_g, bg_b;     // Theme-aware background color
 };
 
 static void wakeup_cb(void *ud) { (void)ud; }
@@ -32,6 +36,11 @@ static bool action_cb(ghostty_app_t a, ghostty_target_s t, ghostty_action_s ac)
 asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg,
                                        terminal_renderer_t **out) {
     terminal_renderer_t *r = SAFE_CALLOC(1, sizeof(*r), terminal_renderer_t *);
+    r->theme = cfg->theme;
+
+    // Initialize theme-aware default colors using platform abstraction
+    terminal_get_default_foreground_color(cfg->theme, &r->fg_r, &r->fg_g, &r->fg_b);
+    terminal_get_default_background_color(cfg->theme, &r->bg_r, &r->bg_g, &r->bg_b);
 
     if (openpty(&r->pty_master, &r->pty_slave, NULL, NULL, NULL) != 0) {
         SAFE_FREE(r);
