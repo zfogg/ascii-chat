@@ -17,6 +17,7 @@
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/string.h>
+#include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/errno.h>
 #include <ascii-chat/platform/init.h>
@@ -50,9 +51,11 @@ static bool g_suppress_error_context = false;
  * ============================================================================
  */
 
-static asciichat_error_stats_t error_stats = {0};
-static bool stats_initialized = false;
-static static_mutex_t g_error_stats_mutex = STATIC_MUTEX_INIT;
+static struct {
+  asciichat_error_stats_t stats;
+  mutex_t mutex;
+  lifecycle_t lifecycle;
+} g_error_stats = {.stats = {0}, .lifecycle = LIFECYCLE_INIT};
 
 /* ============================================================================
  * Thread-Safe Error Storage
@@ -363,46 +366,45 @@ void asciichat_print_error_context(const asciichat_error_context_t *context) {
  */
 
 void asciichat_error_stats_init(void) {
-  static_mutex_lock(&g_error_stats_mutex);
-
-  if (!stats_initialized) {
-    memset(&error_stats, 0, sizeof(error_stats));
-    stats_initialized = true;
+  if (lifecycle_init(&g_error_stats.lifecycle, "error_stats")) {
+    memset(&g_error_stats.stats, 0, sizeof(g_error_stats.stats));
   }
-
-  static_mutex_unlock(&g_error_stats_mutex);
 }
 
 void asciichat_error_stats_record(asciichat_error_t code) {
-  static_mutex_lock(&g_error_stats_mutex);
-
-  if (!stats_initialized) {
-    memset(&error_stats, 0, sizeof(error_stats));
-    stats_initialized = true;
+  if (!lifecycle_is_initialized(&g_error_stats.lifecycle)) {
+    lifecycle_init(&g_error_stats.lifecycle, "error_stats");
   }
+
+  mutex_lock(&g_error_stats.mutex);
 
   if (code >= 0 && code < 256) {
-    error_stats.error_counts[code]++;
+    g_error_stats.stats.error_counts[code]++;
   }
-  error_stats.total_errors++;
-  error_stats.last_error_time = time_ns_to_us(time_get_realtime_ns());
-  error_stats.last_error_code = code;
+  g_error_stats.stats.total_errors++;
+  g_error_stats.stats.last_error_time = time_ns_to_us(time_get_realtime_ns());
+  g_error_stats.stats.last_error_code = code;
 
-  static_mutex_unlock(&g_error_stats_mutex);
+  mutex_unlock(&g_error_stats.mutex);
 }
 
 void asciichat_error_stats_print(void) {
-  static_mutex_lock(&g_error_stats_mutex);
+  if (!lifecycle_is_initialized(&g_error_stats.lifecycle)) {
+    log_plain("No errors recorded.\n");
+    return;
+  }
 
-  if (!stats_initialized || error_stats.total_errors == 0) {
-    static_mutex_unlock(&g_error_stats_mutex);
+  mutex_lock(&g_error_stats.mutex);
+
+  if (g_error_stats.stats.total_errors == 0) {
+    mutex_unlock(&g_error_stats.mutex);
     log_plain("No errors recorded.\n");
     return;
   }
 
   // Copy stats to local variable to minimize lock hold time
-  asciichat_error_stats_t local_stats = error_stats;
-  static_mutex_unlock(&g_error_stats_mutex);
+  asciichat_error_stats_t local_stats = g_error_stats.stats;
+  mutex_unlock(&g_error_stats.mutex);
 
   log_plain("\n=== ascii-chat Error Statistics ===\n");
   log_plain("Total errors: %llu\n", (unsigned long long)local_stats.total_errors);
@@ -428,21 +430,21 @@ void asciichat_error_stats_print(void) {
 }
 
 void asciichat_error_stats_reset(void) {
-  static_mutex_lock(&g_error_stats_mutex);
-  memset(&error_stats, 0, sizeof(error_stats));
-  static_mutex_unlock(&g_error_stats_mutex);
+  if (lifecycle_is_initialized(&g_error_stats.lifecycle)) {
+    mutex_lock(&g_error_stats.mutex);
+    memset(&g_error_stats.stats, 0, sizeof(g_error_stats.stats));
+    mutex_unlock(&g_error_stats.mutex);
+  }
 }
 
 asciichat_error_stats_t asciichat_error_stats_get(void) {
-  static_mutex_lock(&g_error_stats_mutex);
-
-  if (!stats_initialized) {
-    memset(&error_stats, 0, sizeof(error_stats));
-    stats_initialized = true;
+  if (!lifecycle_is_initialized(&g_error_stats.lifecycle)) {
+    lifecycle_init(&g_error_stats.lifecycle, "error_stats");
   }
 
-  asciichat_error_stats_t result = error_stats;
-  static_mutex_unlock(&g_error_stats_mutex);
+  mutex_lock(&g_error_stats.mutex);
+  asciichat_error_stats_t result = g_error_stats.stats;
+  mutex_unlock(&g_error_stats.mutex);
 
   return result;
 }

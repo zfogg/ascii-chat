@@ -10,6 +10,7 @@
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/util/format.h>
+#include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/magic.h>
 #include <stdlib.h>
@@ -383,30 +384,31 @@ void buffer_pool_log_stats(buffer_pool_t *pool, const char *name) {
  * ============================================================================
  */
 
-static buffer_pool_t *g_global_pool = NULL;
-static static_mutex_t g_global_pool_mutex = STATIC_MUTEX_INIT;
+static struct {
+  buffer_pool_t *pool;
+  mutex_t mutex;
+  lifecycle_t lifecycle;
+} g_global_pool_state = {.pool = NULL, .lifecycle = LIFECYCLE_INIT};
 
 void buffer_pool_init_global(void) {
-  static_mutex_lock(&g_global_pool_mutex);
-  if (!g_global_pool) {
-    g_global_pool = buffer_pool_create(0, 0);
-    if (g_global_pool) {
+  if (lifecycle_init(&g_global_pool_state.lifecycle, "buffer_pool")) {
+    g_global_pool_state.pool = buffer_pool_create(0, 0);
+    if (g_global_pool_state.pool) {
       log_dev("Initialized global buffer pool");
     }
   }
-  static_mutex_unlock(&g_global_pool_mutex);
 }
 
 void buffer_pool_cleanup_global(void) {
-  static_mutex_lock(&g_global_pool_mutex);
-  if (g_global_pool) {
-    buffer_pool_log_stats(g_global_pool, "Global (final)");
-    buffer_pool_destroy(g_global_pool);
-    g_global_pool = NULL;
+  if (lifecycle_shutdown(&g_global_pool_state.lifecycle)) {
+    if (g_global_pool_state.pool) {
+      buffer_pool_log_stats(g_global_pool_state.pool, "Global (final)");
+      buffer_pool_destroy(g_global_pool_state.pool);
+      g_global_pool_state.pool = NULL;
+    }
   }
-  static_mutex_unlock(&g_global_pool_mutex);
 }
 
 buffer_pool_t *buffer_pool_get_global(void) {
-  return g_global_pool;
+  return g_global_pool_state.pool;
 }
