@@ -56,7 +56,9 @@ asciichat_error_t platform_font_resolve(const char *spec,
                                         bool *out_is_path,
                                         const uint8_t **out_font_data,
                                         size_t *out_font_data_size) {
-    const char *eff = (spec && spec[0]) ? spec : k_default;
+    // If no font is specified, use the bundled default font (DejaVu Sans Mono) for render-file output.
+    // This ensures render-file always has a suitable fallback font available.
+    const char *eff = (spec && spec[0]) ? spec : "default";
 
     if (out_font_data) *out_font_data = NULL;
     if (out_font_data_size) *out_font_data_size = 0;
@@ -68,13 +70,22 @@ asciichat_error_t platform_font_resolve(const char *spec,
                : SET_ERRNO(ERROR_NOT_FOUND, "render-font: not found: %s", out);
     }
 
-    // Check for bundled font name ("matrix")
+    // Check for bundled font names ("matrix" or "default")
     if (strcmp(eff, "matrix") == 0) {
         if (out_font_data) *out_font_data = g_font_matrix_resurrected;
         if (out_font_data_size) *out_font_data_size = g_font_matrix_resurrected_size;
         out[0] = '\0';
         *out_is_path = false;
         log_debug("platform_font_resolve: using bundled matrix font");
+        return ASCIICHAT_OK;
+    }
+
+    if (strcmp(eff, "default") == 0) {
+        if (out_font_data) *out_font_data = g_font_default;
+        if (out_font_data_size) *out_font_data_size = g_font_default_size;
+        out[0] = '\0';
+        *out_is_path = false;
+        log_debug("platform_font_resolve: using bundled default font");
         return ASCIICHAT_OK;
     }
 
@@ -85,11 +96,11 @@ asciichat_error_t platform_font_resolve(const char *spec,
         err = resolve_via_fontconfig(k_fallback, out, out_size);
     }
 
-    // Final fallback: bundled matrix font
+    // Fallback chain: system fonts → bundled default font
     if (err != ASCIICHAT_OK) {
-        log_warn("platform_font_resolve: system font resolution failed, using bundled matrix font");
-        if (out_font_data) *out_font_data = g_font_matrix_resurrected;
-        if (out_font_data_size) *out_font_data_size = g_font_matrix_resurrected_size;
+        log_warn("platform_font_resolve: system font resolution failed, using bundled default font");
+        if (out_font_data) *out_font_data = g_font_default;
+        if (out_font_data_size) *out_font_data_size = g_font_default_size;
         out[0] = '\0';
         *out_is_path = false;
         err = ASCIICHAT_OK;

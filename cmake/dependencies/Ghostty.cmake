@@ -294,6 +294,58 @@ if(NOT EXISTS "${MATRIX_FONT_GEN}" OR "${MATRIX_FONT_SRC}" IS_NEWER_THAN "${MATR
     endif()
 endif()
 
+# Download and embed a default monospace font (DejaVu Sans Mono) for fallback
+# This ensures render-file works even if system fonts are unavailable
+set(DEFAULT_FONT_TARBALL_URL "https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-fonts-ttf-2.37.tar.bz2")
+set(DEFAULT_FONT_TARBALL "${CMAKE_BINARY_DIR}/fonts/dejavu-fonts-ttf-2.37.tar.bz2")
+set(DEFAULT_FONT_SRC "${CMAKE_BINARY_DIR}/fonts/DejaVuSansMono.ttf")
+set(DEFAULT_FONT_GEN "${CMAKE_BINARY_DIR}/generated/default_font.c")
+
+# Download and extract font tarball at configure time
+if(NOT EXISTS "${DEFAULT_FONT_SRC}")
+    if(NOT EXISTS "${DEFAULT_FONT_TARBALL}")
+        message(STATUS "Downloading DejaVu fonts tarball...")
+        file(DOWNLOAD "${DEFAULT_FONT_TARBALL_URL}" "${DEFAULT_FONT_TARBALL}"
+             SHOW_PROGRESS
+             TLS_VERIFY ON
+             STATUS DOWNLOAD_STATUS)
+        list(GET DOWNLOAD_STATUS 0 DOWNLOAD_RESULT)
+        list(GET DOWNLOAD_STATUS 1 DOWNLOAD_ERROR)
+        if(NOT DOWNLOAD_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to download DejaVu fonts tarball: ${DOWNLOAD_ERROR}")
+        endif()
+    endif()
+
+    message(STATUS "Extracting DejaVuSansMono.ttf from tarball...")
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} -E tar xjf "${DEFAULT_FONT_TARBALL}" "dejavu-fonts-ttf-2.37/ttf/DejaVuSansMono.ttf"
+        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/fonts"
+        RESULT_VARIABLE EXTRACT_RESULT
+    )
+    if(NOT EXTRACT_RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to extract DejaVuSansMono.ttf from tarball")
+    endif()
+
+    # Move extracted file to the right place
+    file(RENAME "${CMAKE_BINARY_DIR}/fonts/dejavu-fonts-ttf-2.37/ttf/DejaVuSansMono.ttf" "${DEFAULT_FONT_SRC}")
+endif()
+
+# Convert to C array at configure time
+if(NOT EXISTS "${DEFAULT_FONT_GEN}" OR "${DEFAULT_FONT_SRC}" IS_NEWER_THAN "${DEFAULT_FONT_GEN}")
+    message(STATUS "Embedding DejaVuSansMono.ttf as C array...")
+    execute_process(
+        COMMAND ${CMAKE_COMMAND}
+                "-DINPUT=${DEFAULT_FONT_SRC}"
+                "-DOUTPUT=${DEFAULT_FONT_GEN}"
+                "-DVAR_NAME=g_font_default"
+                "-P" "${CMAKE_SOURCE_DIR}/cmake/tools/bin2c.cmake"
+        RESULT_VARIABLE BIN2C_RESULT
+    )
+    if(NOT BIN2C_RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to convert default font to C array")
+    endif()
+endif()
+
 # =============================================================================
 # Render-to-file backend selection (platform-specific)
 # =============================================================================
