@@ -8,7 +8,6 @@ set(CORE_SRCS
     ${LIB_DIR}/common.c
     ${LIB_DIR}/asciichat_errno.c
     ${LIB_DIR}/lifecycle.c
-    ${LIB_DIR}/embedded_resources.c
     # log/
     ${LIB_DIR}/log/logging.c
     ${LIB_DIR}/log/format.c
@@ -66,6 +65,7 @@ set(CORE_SRCS
     ${LIB_DIR}/options/parsing/validation.c
     ${LIB_DIR}/options/parsing/actions.c
     # options/manpage/
+    ${LIB_DIR}/options/manpage/embedded.c
     ${LIB_DIR}/options/manpage/resources.c
     ${LIB_DIR}/options/manpage/parser.c
     ${LIB_DIR}/options/manpage/formatter.c
