@@ -14,6 +14,7 @@
 #include <ascii-chat/video/ansi_fast.h>
 #include <ascii-chat/platform/stat.h>
 #include <ascii-chat/platform/util.h>
+#include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat-deps/tomlc17/src/tomlc17.h>
 #include <string.h>
 #include <stdlib.h>
@@ -25,7 +26,7 @@
  * ============================================================================ */
 
 static color_scheme_t g_active_scheme = {0};
-static bool g_colorscheme_initialized = false;
+static lifecycle_t g_colorscheme_lifecycle = LIFECYCLE_INIT;
 
 /* Mutex for color scheme compilation - used by both colorscheme.c and logging.c */
 /* Must be statically initialized with PTHREAD_MUTEX_INITIALIZER to avoid deadlock
@@ -276,7 +277,7 @@ static const color_scheme_t *find_builtin_scheme(const char *name) {
  * ============================================================================ */
 
 asciichat_error_t colorscheme_init(void) {
-  if (g_colorscheme_initialized) {
+  if (lifecycle_is_initialized(&g_colorscheme_lifecycle)) {
     return ASCIICHAT_OK;
   }
 
@@ -305,7 +306,9 @@ asciichat_error_t colorscheme_init(void) {
   }
 
   memcpy(&g_active_scheme, pastel, sizeof(color_scheme_t));
-  g_colorscheme_initialized = true;
+
+  /* Mark as initialized */
+  lifecycle_init(&g_colorscheme_lifecycle, NULL);
 
   return ASCIICHAT_OK;
 }
@@ -335,13 +338,16 @@ void colorscheme_cleanup_compiled(compiled_color_scheme_t *compiled) {
 }
 
 void colorscheme_destroy(void) {
-  if (!g_colorscheme_initialized) {
+  if (!lifecycle_is_initialized(&g_colorscheme_lifecycle)) {
     return;
   }
 
   mutex_lock(&g_colorscheme_mutex);
   memset(&g_active_scheme, 0, sizeof(color_scheme_t));
-  g_colorscheme_initialized = false;
+
+  /* Mark as uninitialized */
+  lifecycle_shutdown(&g_colorscheme_lifecycle);
+
   mutex_unlock(&g_colorscheme_mutex);
 
   /* NOTE: Do NOT call mutex_destroy() on native POSIX because the mutex is statically
@@ -358,7 +364,7 @@ void colorscheme_destroy(void) {
  * ============================================================================ */
 
 const color_scheme_t *colorscheme_get_active_scheme(void) {
-  if (!g_colorscheme_initialized) {
+  if (!lifecycle_is_initialized(&g_colorscheme_lifecycle)) {
     /* Lazy initialization of color system */
     colorscheme_init();
   }
@@ -372,7 +378,7 @@ asciichat_error_t colorscheme_set_active_scheme(const char *name) {
   }
 
   /* Ensure color system is initialized */
-  if (!g_colorscheme_initialized) {
+  if (!lifecycle_is_initialized(&g_colorscheme_lifecycle)) {
     colorscheme_init();
   }
 
