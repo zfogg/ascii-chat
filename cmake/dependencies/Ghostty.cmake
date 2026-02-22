@@ -174,6 +174,22 @@ elseif(UNIX AND NOT APPLE)
                 string(APPEND GHOSTTY_CFLAGS " -isystem ${include_dir}")
             endforeach()
 
+            # Patch ghostty's SharedDeps.zig to include all GTK dependencies
+            # This ensures pkg-config finds all transitive dependencies
+            file(READ "${GHOSTTY_SOURCE_DIR}/src/build/SharedDeps.zig" SHARED_DEPS_CONTENT)
+
+            # Check if patching is needed (look for our marker)
+            if(NOT SHARED_DEPS_CONTENT MATCHES "cairo-gobject.*dynamic_link_opts")
+                # Find the line where gtk4 is linked and add more dependencies after libadwaita-1
+                string(REPLACE
+                    "step.linkSystemLibrary2(\"libadwaita-1\", dynamic_link_opts);"
+                    "step.linkSystemLibrary2(\"libadwaita-1\", dynamic_link_opts);\n    step.linkSystemLibrary2(\"graphene-gobject-1.0\", dynamic_link_opts);\n    step.linkSystemLibrary2(\"cairo-gobject\", dynamic_link_opts);\n    step.linkSystemLibrary2(\"cairo\", dynamic_link_opts);\n    step.linkSystemLibrary2(\"pango\", dynamic_link_opts);\n    step.linkSystemLibrary2(\"harfbuzz\", dynamic_link_opts);"
+                    SHARED_DEPS_CONTENT "${SHARED_DEPS_CONTENT}")
+
+                file(WRITE "${GHOSTTY_SOURCE_DIR}/src/build/SharedDeps.zig" "${SHARED_DEPS_CONTENT}")
+                message(STATUS "Patched ghostty SharedDeps.zig with GTK dependencies")
+            endif()
+
             message(STATUS "Building ghostty library with CFLAGS:${GHOSTTY_CFLAGS}")
             message(STATUS "Working directory: ${GHOSTTY_SOURCE_DIR}")
 

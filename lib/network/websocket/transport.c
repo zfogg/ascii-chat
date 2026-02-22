@@ -156,6 +156,7 @@ static void *websocket_service_thread(void *arg) {
       }
       mutex_unlock(&ws_data->send_mutex);
 
+<<<<<<< Updated upstream
       if (messages_sent > 0) {
         log_info(">>> SERVICE_BATCH: sent %d messages (total: %d)", messages_sent, total_messages_sent);
       }
@@ -163,6 +164,13 @@ static void *websocket_service_thread(void *arg) {
       if (loop_count <= 10) {
         log_info("[LOOP %d] CLIENT condition FALSE (owns_context=%d, wsi=%p)", loop_count,
                  ws_data->owns_context, (void *)ws_data->wsi);
+=======
+      if (has_queued_data) {
+        // Request writeable callback to process queued messages
+        log_debug("Service thread: found queued data, requesting WRITEABLE callback for wsi=%p",
+                  (void *)ws_data->wsi);
+        lws_callback_on_writable(ws_data->wsi);
+>>>>>>> Stashed changes
       }
     }
 
