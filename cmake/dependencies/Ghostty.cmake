@@ -156,6 +156,7 @@ elseif(UNIX AND NOT APPLE)
             find_package(PkgConfig REQUIRED)
             pkg_check_modules(GTK4 gtk4)
             pkg_check_modules(LIBADWAITA libadwaita-1)
+            pkg_check_modules(GRAPHENE graphene-gobject-1.0)
 
             # Build CFLAGS from pkg-config results
             set(GHOSTTY_CFLAGS "")
@@ -169,11 +170,23 @@ elseif(UNIX AND NOT APPLE)
                     string(APPEND GHOSTTY_CFLAGS " -isystem ${include_dir}")
                 endforeach()
             endif()
+            foreach(include_dir ${GRAPHENE_INCLUDE_DIRS})
+                string(APPEND GHOSTTY_CFLAGS " -isystem ${include_dir}")
+            endforeach()
 
             message(STATUS "Building ghostty library with CFLAGS:${GHOSTTY_CFLAGS}")
             message(STATUS "Working directory: ${GHOSTTY_SOURCE_DIR}")
+
+            # Build search-prefix list for existing directories
+            set(SEARCH_PREFIXES "")
+            foreach(PREFIX "/usr" "/usr/local" "/home/linuxbrew/.linuxbrew" "/opt/homebrew")
+                if(EXISTS "${PREFIX}")
+                    list(APPEND SEARCH_PREFIXES "--search-prefix" "${PREFIX}")
+                endif()
+            endforeach()
+
             execute_process(
-                COMMAND env CFLAGS="${GHOSTTY_CFLAGS}" "${ZIG_EXECUTABLE}" build install -Dapp-runtime=gtk -Doptimize=ReleaseFast --prefix "${GHOSTTY_BUILD_DIR}"
+                COMMAND env CFLAGS="${GHOSTTY_CFLAGS}" CXXFLAGS="${GHOSTTY_CFLAGS}" PKG_CONFIG_PATH="/usr/lib/pkgconfig:/usr/share/pkgconfig:/home/linuxbrew/.linuxbrew/lib/pkgconfig:/home/linuxbrew/.linuxbrew/share/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig" "${ZIG_EXECUTABLE}" build install -Dapp-runtime=gtk -Doptimize=ReleaseFast ${SEARCH_PREFIXES} --prefix "${GHOSTTY_BUILD_DIR}"
                 WORKING_DIRECTORY "${GHOSTTY_SOURCE_DIR}"
                 RESULT_VARIABLE GHOSTTY_BUILD_RESULT
                 OUTPUT_FILE "${GHOSTTY_LOG_FILE}"
