@@ -7,6 +7,7 @@
 #include <ascii-chat/session/stdin_reader.h>
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/log/logging.h>
+#include <ascii-chat/util/display.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -106,8 +107,29 @@ asciichat_error_t stdin_frame_reader_next(stdin_frame_reader_t *reader, char **o
     frame_pos--;
   }
 
+  // Detect frame width from first frame (count visible chars in first line)
+  if (!reader->first_frame_processed && frame_pos > 0) {
+    reader->first_frame_processed = true;
+
+    // Find first line by looking for newline
+    char *first_newline = strchr(frame_data, '\n');
+    if (first_newline) {
+      // Null-terminate first line temporarily for width calculation
+      char saved_char = *first_newline;
+      *first_newline = '\0';
+      reader->frame_width = display_width(frame_data);
+      *first_newline = saved_char;  // Restore
+    } else {
+      // Only one line in frame, use it for width
+      reader->frame_width = display_width(frame_data);
+    }
+
+    log_info("stdin_reader: detected frame width %d from first frame", reader->frame_width);
+  }
+
   *out_frame = frame_data;
-  log_debug_every(NS_PER_SEC_INT, "stdin_reader: read frame (%zu bytes)", frame_pos);
+  log_debug_every(NS_PER_SEC_INT, "stdin_reader: read frame (%zu bytes, %dx%d)",
+                  frame_pos, reader->frame_width, reader->frame_height);
   return ASCIICHAT_OK;
 }
 
