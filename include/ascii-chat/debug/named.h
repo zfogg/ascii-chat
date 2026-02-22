@@ -147,6 +147,19 @@ void named_unregister(uintptr_t key);
 const char *named_get(uintptr_t key);
 
 /**
+ * @brief Look up the registered type for a resource
+ * @param key The resource key
+ * @return Registered type string, or NULL if not registered
+ * @ingroup debug_named
+ *
+ * Returns the type string registered with named_register() or named_register_fmt(),
+ * or NULL if the key is not in the registry.
+ *
+ * In release builds (NDEBUG), this always returns NULL.
+ */
+const char *named_get_type(uintptr_t key);
+
+/**
  * @brief Format a description string for logging
  * @param key The resource key
  * @param type_hint A type label (e.g., "mutex", "socket", "thread")

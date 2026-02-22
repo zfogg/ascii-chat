@@ -275,6 +275,23 @@ const char *named_get(uintptr_t key) {
     return result;
 }
 
+const char *named_get_type(uintptr_t key) {
+    if (!atomic_load(&g_named_registry.initialized)) {
+        return NULL;
+    }
+
+    rwlock_rdlock_impl(&g_named_registry.entries_lock);
+
+    named_entry_t *entry;
+    HASH_FIND(hh, g_named_registry.entries, &key, sizeof(key), entry);
+
+    const char *result = entry ? entry->type : NULL;
+
+    rwlock_rdunlock_impl(&g_named_registry.entries_lock);
+
+    return result;
+}
+
 const char *named_describe(uintptr_t key, const char *type_hint) {
     if (!type_hint) {
         type_hint = "object";
@@ -391,6 +408,11 @@ void named_unregister(uintptr_t key) {
 }
 
 const char *named_get(uintptr_t key) {
+    (void)key;
+    return NULL;
+}
+
+const char *named_get_type(uintptr_t key) {
     (void)key;
     return NULL;
 }

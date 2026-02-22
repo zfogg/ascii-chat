@@ -40,40 +40,6 @@ static void format_elapsed(uint64_t elapsed_ns, char *buffer, size_t size) {
     }
 }
 
-/**
- * @brief Check if pointer might be a valid mutex
- * @param ptr Pointer to inspect
- * @return true if it might be a mutex_t
- *
- * Tries to safely read from the pointer to determine if it looks like a mutex.
- * Note: This is heuristic-based and may have false positives.
- */
-static bool looks_like_mutex(const void *ptr) {
-    if (!ptr) return false;
-    // Try to read first field (impl) - if it crashes, we catch it elsewhere
-    // For now, assume any pointer might be valid
-    return true;
-}
-
-/**
- * @brief Check if pointer might be a valid rwlock
- * @param ptr Pointer to inspect
- * @return true if it might be an rwlock_t
- */
-static bool looks_like_rwlock(const void *ptr) {
-    if (!ptr) return false;
-    return true;
-}
-
-/**
- * @brief Check if pointer might be a valid cond
- * @param ptr Pointer to inspect
- * @return true if it might be a cond_t
- */
-static bool looks_like_cond(const void *ptr) {
-    if (!ptr) return false;
-    return true;
-}
 
 /**
  * @brief Extract timing info from a mutex_t
@@ -178,7 +144,8 @@ static int format_cond_timing(const cond_t *cond, char *buffer, size_t size) {
 static void mutex_iter_callback(uintptr_t key, const char *name, void *user_data) {
     (void)user_data; // Unused
 
-    if (!looks_like_mutex((const void *)key)) {
+    const char *type = named_get_type(key);
+    if (!type || strcmp(type, "mutex") != 0) {
         return;
     }
 
@@ -194,7 +161,8 @@ static void mutex_iter_callback(uintptr_t key, const char *name, void *user_data
 static void rwlock_iter_callback(uintptr_t key, const char *name, void *user_data) {
     (void)user_data; // Unused
 
-    if (!looks_like_rwlock((const void *)key)) {
+    const char *type = named_get_type(key);
+    if (!type || strcmp(type, "rwlock") != 0) {
         return;
     }
 
@@ -210,7 +178,8 @@ static void rwlock_iter_callback(uintptr_t key, const char *name, void *user_dat
 static void cond_iter_callback(uintptr_t key, const char *name, void *user_data) {
     (void)user_data; // Unused
 
-    if (!looks_like_cond((const void *)key)) {
+    const char *type = named_get_type(key);
+    if (!type || strcmp(type, "cond") != 0) {
         return;
     }
 
