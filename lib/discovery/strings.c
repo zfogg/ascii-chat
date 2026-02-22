@@ -14,6 +14,7 @@
 #include <ascii-chat/discovery/nouns.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/util/utf8.h>
+#include <ascii-chat/util/lifecycle.h>
 // NOTE: Use explicit path to avoid Windows include resolution picking up options/common.h
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/init.h>
@@ -23,7 +24,6 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <stdatomic.h>
-#include <threads.h>
 #include <ascii-chat/util/pcre2.h>
 #include <pcre2.h>
 
@@ -44,10 +44,8 @@ typedef struct {
  */
 static word_cache_entry_t *g_adjectives_cache = NULL;
 static word_cache_entry_t *g_nouns_cache = NULL;
-// One-time initialization flag using C11 threads.h call_once for thread-safe setup
-static once_flag g_cache_once = ONCE_FLAG_INIT;
-// Track if cache has been built (for cleanup function)
-static _Atomic(bool) g_cache_built = false;
+// Lifecycle for thread-safe one-time cache initialization (replaces C11 call_once)
+static lifecycle_t g_cache_lc = LIFECYCLE_INIT;
 
 /**
  * @brief Cleanup function for session string cache
@@ -55,9 +53,9 @@ static _Atomic(bool) g_cache_built = false;
  * Safe to call multiple times (idempotent).
  */
 void acds_strings_destroy(void) {
-  // Check if cache was built (using atomic load for thread-safety)
-  if (!atomic_load(&g_cache_built)) {
-    return;
+  // Shutdown if initialized
+  if (!lifecycle_shutdown(&g_cache_lc)) {
+    return; // Not initialized
   }
 
   // Cleanup adjectives cache
@@ -78,7 +76,6 @@ void acds_strings_destroy(void) {
   }
   g_nouns_cache = NULL;
 
-  atomic_store(&g_cache_built, false);
   log_dev("Session string word cache cleaned up");
 }
 
@@ -133,16 +130,25 @@ static void do_build_validation_caches(void) {
     HASH_ADD_KEYPTR(hh, g_nouns_cache, entry->word, strlen(entry->word), entry);
   }
 
-  atomic_store(&g_cache_built, true);
   log_dev("Session string word cache initialized (%zu adjectives, %zu nouns)", adjectives_count, nouns_count);
 }
 
 /**
  * @brief Build hashtable caches for word validation (lazy initialization)
- * Called on first validation - thread-safe using C11 call_once for exactly-once execution
+ * Called on first validation - thread-safe using lifecycle API for exactly-once execution
  */
 static void build_validation_caches(void) {
-  call_once(&g_cache_once, do_build_validation_caches);
+  if (!lifecycle_init_once(&g_cache_lc)) {
+    // Already initialized or in progress - spin-wait for completion
+    while (!lifecycle_is_initialized(&g_cache_lc)) {
+      // Spin until initialization completes
+    }
+    return;
+  }
+
+  // Winner: do the initialization
+  do_build_validation_caches();
+  lifecycle_init_commit(&g_cache_lc);
 }
 
 // ============================================================================
