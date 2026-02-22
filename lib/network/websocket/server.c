@@ -270,11 +270,17 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       // Handler is managed by thread pool - no join needed
       // The pool worker will finish handling the transport and return to the pool
       // Transport was already closed above, signaling the handler to exit
+      // DO NOT destroy the transport here - the handler might still be using it!
+      // The handler will free the context, and the transport will be cleaned up
+      // through the client structure (remove_client handles transport cleanup)
       conn_data->handler_started = false;
-      log_debug("[LWS_CALLBACK_CLOSED] Handler was queued to pool (pool manages cleanup)");
+      log_debug("[LWS_CALLBACK_CLOSED] Handler was queued to pool (it will cleanup when done)");
+      log_debug("[LWS_CALLBACK_CLOSED] NOT destroying transport here - handler is still executing");
+      transport_snapshot = NULL; // Don't destroy below
     }
 
-    // Destroy the transport and free all its resources (send_queue, recv_queue, etc)
+    // Destroy the transport only if the handler is NOT running
+    // (Handler manages cleanup when it's running)
     if (transport_snapshot) {
       log_debug("[LWS_CALLBACK_CLOSED] Destroying transport=%p", (void *)transport_snapshot);
       acip_transport_destroy(transport_snapshot);
