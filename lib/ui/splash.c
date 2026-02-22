@@ -20,6 +20,7 @@
 #include "session/display.h"
 #include "session/session_log_buffer.h"
 #include <ascii-chat/util/display.h>
+#include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/platform/terminal.h>
@@ -49,7 +50,8 @@
 
 // Global update notification (set via splash_set_update_notification)
 static char g_update_notification[1024] = {0};
-static static_mutex_t g_update_notification_mutex = STATIC_MUTEX_INIT;
+static mutex_t g_update_notification_mutex;
+static lifecycle_t g_update_notification_lifecycle = LIFECYCLE_INIT;
 
 static const rgb_pixel_t g_rainbow_colors[] = {
     {255, 0, 0},   // Red
@@ -433,9 +435,14 @@ static void *splash_animation_thread(void *arg) {
     };
 
     // Copy update notification from global state (thread-safe)
-    static_mutex_lock(&g_update_notification_mutex);
+    if (lifecycle_init_once(&g_update_notification_lifecycle)) {
+    g_update_notification_lifecycle.sync_type = LIFECYCLE_SYNC_MUTEX;
+    g_update_notification_lifecycle.sync.mutex = &g_update_notification_mutex;
+    lifecycle_init(&g_update_notification_lifecycle, "update_notification");
+  }
+  mutex_lock(&g_update_notification_mutex);
     SAFE_STRNCPY(header_ctx.update_notification, g_update_notification, sizeof(header_ctx.update_notification));
-    static_mutex_unlock(&g_update_notification_mutex);
+    mutex_unlock(&g_update_notification_mutex);
 
     // Calculate header lines: 8 base lines + 1 if update notification present
     int header_lines = 8;
@@ -587,12 +594,17 @@ int splash_display_status(int mode) {
   }
 
   // Add update notification if available
-  static_mutex_lock(&g_update_notification_mutex);
+  if (lifecycle_init_once(&g_update_notification_lifecycle)) {
+    g_update_notification_lifecycle.sync_type = LIFECYCLE_SYNC_MUTEX;
+    g_update_notification_lifecycle.sync.mutex = &g_update_notification_mutex;
+    lifecycle_init(&g_update_notification_lifecycle, "update_notification");
+  }
+  mutex_lock(&g_update_notification_mutex);
   if (g_update_notification[0] != '\0') {
     snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), "\n  %s\n",
              colored_string(LOG_COLOR_WARN, g_update_notification));
   }
-  static_mutex_unlock(&g_update_notification_mutex);
+  mutex_unlock(&g_update_notification_mutex);
 
   snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), "\n");
 
@@ -603,7 +615,12 @@ int splash_display_status(int mode) {
 }
 
 void splash_set_update_notification(const char *notification) {
-  static_mutex_lock(&g_update_notification_mutex);
+  if (lifecycle_init_once(&g_update_notification_lifecycle)) {
+    g_update_notification_lifecycle.sync_type = LIFECYCLE_SYNC_MUTEX;
+    g_update_notification_lifecycle.sync.mutex = &g_update_notification_mutex;
+    lifecycle_init(&g_update_notification_lifecycle, "update_notification");
+  }
+  mutex_lock(&g_update_notification_mutex);
 
   if (!notification || notification[0] == '\0') {
     g_update_notification[0] = '\0';
@@ -613,5 +630,5 @@ void splash_set_update_notification(const char *notification) {
     log_debug("Set update notification for splash/status screens: %s", notification);
   }
 
-  static_mutex_unlock(&g_update_notification_mutex);
+  mutex_unlock(&g_update_notification_mutex);
 }

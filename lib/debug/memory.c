@@ -21,6 +21,7 @@
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/util/format.h>
+#include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/time.h>
@@ -130,7 +131,7 @@ static struct {
   atomic_size_t calloc_calls;
   atomic_size_t realloc_calls;
   mutex_t mutex;
-  atomic_int mutex_state;
+  lifecycle_t lifecycle;
   bool quiet_mode;
 } g_mem = {.head = NULL,
            .total_allocated = 0,
@@ -141,7 +142,7 @@ static struct {
            .free_calls = 0,
            .calloc_calls = 0,
            .realloc_calls = 0,
-           .mutex_state = 0,
+           .lifecycle = LIFECYCLE_INIT,
            .quiet_mode = false};
 
 #undef malloc
@@ -149,35 +150,17 @@ static struct {
 #undef calloc
 #undef realloc
 
-static atomic_flag g_logged_mutex_init_failure = ATOMIC_FLAG_INIT;
-
 static bool ensure_mutex_initialized(void) {
-  for (;;) {
-    int state = atomic_load_explicit(&g_mem.mutex_state, memory_order_acquire);
-    if (state == 2) {
-      return true;
-    }
-
-    if (state == 0) {
-      int expected = 0;
-      if (atomic_compare_exchange_strong_explicit(&g_mem.mutex_state, &expected, 1, memory_order_acq_rel,
-                                                  memory_order_acquire)) {
-        if (mutex_init(&g_mem.mutex, "debug_memory") == 0) {
-          atomic_store_explicit(&g_mem.mutex_state, 2, memory_order_release);
-          return true;
-        }
-
-        atomic_store_explicit(&g_mem.mutex_state, 0, memory_order_release);
-        if (!atomic_flag_test_and_set(&g_logged_mutex_init_failure)) {
-          log_error("Failed to initialize debug memory mutex; memory tracking will run without locking");
-        }
-        return false;
-      }
-      continue;
-    }
-
-    platform_sleep_ms(1);
+  if (lifecycle_is_initialized(&g_mem.lifecycle)) {
+    return true;
   }
+
+  if (!lifecycle_init(&g_mem.lifecycle, "debug_memory")) {
+    log_error("Failed to initialize debug memory mutex; memory tracking will run without locking");
+    return false;
+  }
+
+  return true;
 }
 
 void *debug_malloc(size_t size, const char *file, int line) {

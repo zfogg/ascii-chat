@@ -12,6 +12,7 @@
 #include "ascii-chat/log/grep.h"
 #include "ascii-chat/platform/keyboard.h"
 #include "ascii-chat/platform/mutex.h"
+#include "ascii-chat/util/lifecycle.h"
 #include "ascii-chat/util/pcre2.h"
 #include "ascii-chat/util/utf8.h"
 #include "session/session_log_buffer.h"
@@ -57,10 +58,10 @@ typedef struct {
   int context_after;
 
   mutex_t mutex;
+  lifecycle_t lifecycle;
   _Atomic bool needs_rerender;
   _Atomic bool signal_cancelled; ///< Set by signal handler, checked by render loop
   _Atomic int mode_atomic;       ///< Shadow of mode for signal-safe reads
-  bool initialized;
   bool cli_pattern_auto_populated; ///< Track if CLI pattern was already populated
 } interactive_grep_state_t;
 
@@ -76,12 +77,14 @@ static interactive_grep_state_t g_grep_state = {
     .invert_match = false,
     .context_before = 0,
     .context_after = 0,
+    .lifecycle = LIFECYCLE_INIT,
     .needs_rerender = false,
     .signal_cancelled = false,
     .mode_atomic = GREP_MODE_INACTIVE,
-    .initialized = false,
     .cli_pattern_auto_populated = false,
 };
+
+static lifecycle_t g_interactive_grep_lifecycle = LIFECYCLE_INIT;
 
 /* ============================================================================
  * Pattern Validation
@@ -124,19 +127,19 @@ static bool validate_pcre2_pattern(const char *input) {
  * ========================================================================== */
 
 asciichat_error_t interactive_grep_init(void) {
-  // Initialize mutex first (before any locking!)
-  static bool mutex_inited = false;
-  if (!mutex_inited) {
-    mutex_init(&g_grep_state.mutex, "grep_state");
-    mutex_inited = true;
-  }
-
-  mutex_lock(&g_grep_state.mutex);
-
-  if (g_grep_state.initialized) {
-    mutex_unlock(&g_grep_state.mutex);
+  // Use lifecycle API for unified initialization
+  if (!lifecycle_init_once(&g_interactive_grep_lifecycle)) {
+    // Already initialized, acquire mutex lock and return
+    mutex_lock(&g_grep_state.mutex);
     return ASCIICHAT_OK;
   }
+
+  // Winner of init_once - initialize mutex and state
+  g_interactive_grep_lifecycle.sync_type = LIFECYCLE_SYNC_MUTEX;
+  g_interactive_grep_lifecycle.sync.mutex = &g_grep_state.mutex;
+  lifecycle_init(&g_interactive_grep_lifecycle, "interactive_grep");
+
+  mutex_lock(&g_grep_state.mutex);
 
   // Initialize state (careful not to destroy the mutex!)
   // Save the mutex before clearing state
@@ -155,7 +158,7 @@ asciichat_error_t interactive_grep_init(void) {
     // No CLI pattern - start inactive
     g_grep_state.mode = GREP_MODE_INACTIVE;
     atomic_store(&g_grep_state.mode_atomic, GREP_MODE_INACTIVE);
-    g_grep_state.initialized = true;
+    lifecycle_init_commit(&g_interactive_grep_lifecycle);
     mutex_unlock(&g_grep_state.mutex);
     return ASCIICHAT_OK;
   }
@@ -184,19 +187,18 @@ asciichat_error_t interactive_grep_init(void) {
   }
 
   atomic_store(&g_grep_state.needs_rerender, true);
-  g_grep_state.initialized = true;
+  lifecycle_init_commit(&g_interactive_grep_lifecycle);
 
   mutex_unlock(&g_grep_state.mutex);
   return ASCIICHAT_OK;
 }
 
 void interactive_grep_destroy(void) {
-  mutex_lock(&g_grep_state.mutex);
-
-  if (!g_grep_state.initialized) {
-    mutex_unlock(&g_grep_state.mutex);
-    return;
+  if (!lifecycle_shutdown(&g_interactive_grep_lifecycle)) {
+    return; // Already shut down or never initialized
   }
+
+  mutex_lock(&g_grep_state.mutex);
 
   // Free active patterns
   for (int i = 0; i < g_grep_state.active_pattern_count; i++) {
@@ -205,8 +207,6 @@ void interactive_grep_destroy(void) {
       g_grep_state.active_patterns[i] = NULL;
     }
   }
-
-  g_grep_state.initialized = false;
 
   mutex_unlock(&g_grep_state.mutex);
 }
