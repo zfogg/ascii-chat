@@ -3,6 +3,7 @@
 
 #include <stdatomic.h>
 #include <stdbool.h>
+#include <ascii-chat/platform/mutex.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -150,6 +151,84 @@ bool lifecycle_is_initialized(const lifecycle_t *lc);
  * Load-only, no side effects. Safe to call from any thread.
  */
 bool lifecycle_is_dead(const lifecycle_t *lc);
+
+/**
+ * @defgroup lifecycle_sync Lifecycle with Sync Primitives
+ * @brief Combined lifecycle + sync primitive initialization and shutdown.
+ *
+ * These functions handle both the lifecycle state machine AND the sync primitive
+ * (mutex/rwlock) initialization/destruction in one atomic operation. This consolidates
+ * init/shutdown logic into a single call.
+ *
+ * Example (mutex):
+ *   static lifecycle_t g_lc = LIFECYCLE_INIT;
+ *   static mutex_t g_mutex;
+ *
+ *   if (lifecycle_init_with_mutex(&g_lc, &g_mutex, "my_mutex")) {
+ *       // do init work
+ *   }
+ *
+ *   if (lifecycle_shutdown_with_mutex(&g_lc, &g_mutex)) {
+ *       // do shutdown work
+ *   }
+ * @{
+ */
+
+/**
+ * CAS-based initialization: init lifecycle and mutex together.
+ *
+ * @param lc lifecycle state
+ * @param mutex sync primitive to initialize
+ * @param name name tag for the mutex (for debugging)
+ * @return true if THIS caller won and should do init work; mutex is initialized
+ * @return false if already initialized or DEAD; mutex left untouched
+ *
+ * Atomically:
+ *   1. Check if lifecycle needs init (CAS UNINIT → INITIALIZED)
+ *   2. If winner: call mutex_init(mutex, name)
+ *   3. Return true if init succeeded
+ */
+bool lifecycle_init_with_mutex(lifecycle_t *lc, mutex_t *mutex, const char *name);
+
+/**
+ * CAS-based shutdown: shutdown lifecycle and destroy mutex together.
+ *
+ * @param lc lifecycle state
+ * @param mutex sync primitive to destroy
+ * @return true if THIS caller won and should do shutdown work; mutex is destroyed
+ * @return false if already shutdown or DEAD; mutex left untouched
+ *
+ * Atomically:
+ *   1. Check if lifecycle needs shutdown (CAS INITIALIZED → UNINITIALIZED)
+ *   2. If winner: call mutex_destroy(mutex)
+ *   3. Return true if shutdown succeeded
+ */
+bool lifecycle_shutdown_with_mutex(lifecycle_t *lc, mutex_t *mutex);
+
+/**
+ * CAS-based initialization: init lifecycle and rwlock together.
+ *
+ * @param lc lifecycle state
+ * @param rwlock sync primitive to initialize
+ * @param name name tag for the rwlock (for debugging)
+ * @return true if THIS caller won and should do init work; rwlock is initialized
+ * @return false if already initialized or DEAD; rwlock left untouched
+ */
+bool lifecycle_init_with_rwlock(lifecycle_t *lc, rwlock_t *rwlock, const char *name);
+
+/**
+ * CAS-based shutdown: shutdown lifecycle and destroy rwlock together.
+ *
+ * @param lc lifecycle state
+ * @param rwlock sync primitive to destroy
+ * @return true if THIS caller won and should do shutdown work; rwlock is destroyed
+ * @return false if already shutdown or DEAD; rwlock left untouched
+ */
+bool lifecycle_shutdown_with_rwlock(lifecycle_t *lc, rwlock_t *rwlock);
+
+/**
+ * @}
+ */
 
 #ifdef __cplusplus
 }

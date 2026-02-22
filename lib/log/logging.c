@@ -507,9 +507,7 @@ static void maybe_rotate_log(void) {
 
 void log_init(const char *filename, log_level_t level, bool force_stderr, bool use_mmap) {
   // Initialize rotation mutex (only operation that uses a mutex)
-  if (lifecycle_init(&g_log.rotation_mutex_lifecycle)) {
-    mutex_init(&g_log.rotation_mutex, "log_rotation");
-  }
+  lifecycle_init_with_mutex(&g_log.rotation_mutex_lifecycle, &g_log.rotation_mutex, "log_rotation");
 
   // Set basic config using atomic stores
   atomic_store(&g_log.force_stderr, force_stderr);
@@ -625,9 +623,7 @@ void log_destroy(void) {
   lifecycle_shutdown(&g_log.lifecycle);
 
   // Destroy rotation mutex
-  if (lifecycle_shutdown(&g_log.rotation_mutex_lifecycle)) {
-    mutex_destroy(&g_log.rotation_mutex);
-  }
+  lifecycle_shutdown_with_mutex(&g_log.rotation_mutex_lifecycle, &g_log.rotation_mutex);
 }
 
 void log_set_level(log_level_t level) {

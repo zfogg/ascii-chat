@@ -10,6 +10,7 @@
 #include <ascii-chat/video/palette.h>
 #include <ascii-chat/util/fnv1a.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/platform/init.h>
 #include <time.h>
 #include <math.h>
@@ -116,7 +117,7 @@ static bool try_insert_with_eviction_utf8(uint32_t hash, utf8_palette_cache_t *n
 // UTF-8 palette cache system with min-heap eviction
 static utf8_palette_cache_t *g_utf8_cache_table = NULL; // uthash uses structure pointer as head
 static rwlock_t g_utf8_cache_rwlock = {0};
-static _Atomic(bool) g_utf8_cache_initialized = false;
+static lifecycle_t g_utf8_cache_lc = LIFECYCLE_INIT;
 
 // Min-heap for O(log n) intelligent eviction
 static utf8_palette_cache_t **g_utf8_heap = NULL; // Min-heap array
@@ -127,32 +128,15 @@ static const size_t g_utf8_heap_capacity = 2048;  // Max heap size (matching uth
 
 // Initialize UTF-8 cache system with min-heap (thread-safe)
 static void init_utf8_cache_system(void) {
-  // Fast path: already initialized
-  if (atomic_load(&g_utf8_cache_initialized)) {
-    return;
+  // Lock-free init: lifecycle handles synchronization
+  if (!lifecycle_init_with_rwlock(&g_utf8_cache_lc, &g_utf8_cache_rwlock, "utf8_cache")) {
+    return; // Already initialized by another thread
   }
 
-  // Slow path: need to initialize
-  // Use static_mutex_t to avoid bootstrap problem (can't protect init mutex with itself)
-  static static_mutex_t init_bootstrap_mutex = STATIC_MUTEX_INIT;
-
-  static_mutex_lock(&init_bootstrap_mutex);
-
-  // Double-check after acquiring lock (another thread may have initialized while we waited)
-  if (!atomic_load(&g_utf8_cache_initialized)) {
-    // Initialize the cache rwlock
-    rwlock_init(&g_utf8_cache_rwlock, "utf8_cache");
-
-    // Initialize uthash head to NULL (required)
-    g_utf8_cache_table = NULL;
-    g_utf8_heap = SAFE_MALLOC(g_utf8_heap_capacity * sizeof(utf8_palette_cache_t *), utf8_palette_cache_t **);
-    g_utf8_heap_size = 0;
-
-    // Mark as initialized
-    atomic_store(&g_utf8_cache_initialized, true);
-  }
-
-  static_mutex_unlock(&init_bootstrap_mutex);
+  // Initialize uthash head to NULL (required)
+  g_utf8_cache_table = NULL;
+  g_utf8_heap = SAFE_MALLOC(g_utf8_heap_capacity * sizeof(utf8_palette_cache_t *), utf8_palette_cache_t **);
+  g_utf8_heap_size = 0;
 }
 
 // Min-heap management functions for UTF-8 cache
@@ -512,7 +496,7 @@ void simd_caches_destroy_all(void) {
   log_dev("SIMD_CACHE: Starting cleanup of all SIMD caches");
 
   // Only destroy caches if they were ever initialized
-  if (atomic_load(&g_utf8_cache_initialized)) {
+  if (lifecycle_is_initialized(&g_utf8_cache_lc)) {
     // Destroy shared UTF-8 palette cache (write lock for cleanup)
     rwlock_wrlock(&g_utf8_cache_rwlock);
     if (g_utf8_cache_table) {
@@ -531,9 +515,9 @@ void simd_caches_destroy_all(void) {
       g_utf8_heap = NULL;
       g_utf8_heap_size = 0;
     }
-    // Reset initialization flag so system can be reinitialized
-    atomic_store(&g_utf8_cache_initialized, false);
     rwlock_wrunlock(&g_utf8_cache_rwlock);
+    // Shutdown lifecycle and destroy rwlock together
+    lifecycle_shutdown_with_rwlock(&g_utf8_cache_lc, &g_utf8_cache_rwlock);
   }
 
   // Call architecture-specific cache cleanup functions

@@ -1,4 +1,5 @@
 #include "ascii-chat/util/lifecycle.h"
+#include <ascii-chat/platform/mutex.h>
 #include <stdatomic.h>
 
 bool lifecycle_init(lifecycle_t *lc) {
@@ -62,4 +63,63 @@ bool lifecycle_is_initialized(const lifecycle_t *lc) {
 bool lifecycle_is_dead(const lifecycle_t *lc) {
     if (lc == NULL) return false;
     return atomic_load(&lc->state) == LIFECYCLE_DEAD;
+}
+
+/* ============================================================================
+ * Lifecycle + Sync Primitive Wrappers
+ * ============================================================================
+ * These functions handle both the lifecycle state machine AND sync primitive
+ * initialization/destruction in atomic operations.
+ */
+
+bool lifecycle_init_with_mutex(lifecycle_t *lc, mutex_t *mutex, const char *name) {
+    if (lc == NULL || mutex == NULL) return false;
+
+    if (lifecycle_init(lc)) {
+        /* Winner of the CAS: initialize the mutex */
+        mutex_init(mutex, name);
+        return true;
+    }
+
+    /* Already initialized or DEAD: don't touch mutex */
+    return false;
+}
+
+bool lifecycle_shutdown_with_mutex(lifecycle_t *lc, mutex_t *mutex) {
+    if (lc == NULL || mutex == NULL) return false;
+
+    if (lifecycle_shutdown(lc)) {
+        /* Winner of the CAS: destroy the mutex */
+        mutex_destroy(mutex);
+        return true;
+    }
+
+    /* Already shutdown or DEAD: don't touch mutex */
+    return false;
+}
+
+bool lifecycle_init_with_rwlock(lifecycle_t *lc, rwlock_t *rwlock, const char *name) {
+    if (lc == NULL || rwlock == NULL) return false;
+
+    if (lifecycle_init(lc)) {
+        /* Winner of the CAS: initialize the rwlock */
+        rwlock_init(rwlock, name);
+        return true;
+    }
+
+    /* Already initialized or DEAD: don't touch rwlock */
+    return false;
+}
+
+bool lifecycle_shutdown_with_rwlock(lifecycle_t *lc, rwlock_t *rwlock) {
+    if (lc == NULL || rwlock == NULL) return false;
+
+    if (lifecycle_shutdown(lc)) {
+        /* Winner of the CAS: destroy the rwlock */
+        rwlock_destroy(rwlock);
+        return true;
+    }
+
+    /* Already shutdown or DEAD: don't touch rwlock */
+    return false;
 }
