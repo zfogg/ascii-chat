@@ -151,16 +151,15 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   static char example_buf10[SESSION_STRING_BUFFER_SIZE];
 
   safe_snprintf(example_buf1, sizeof(example_buf1), "%s", example_session_string1);
-  safe_snprintf(example_buf2, sizeof(example_buf2), "%s --discovery-service discovery.example.com",
-                example_session_string2);
-  safe_snprintf(example_buf3, sizeof(example_buf3), "%s -f video.mp4", example_session_string3);
-  safe_snprintf(example_buf4, sizeof(example_buf4), "%s --url 'https://youtu.be/7ynHVGCehoM'", example_session_string4);
-  safe_snprintf(example_buf5, sizeof(example_buf5), "%s -f '-'", example_session_string5);
-  safe_snprintf(example_buf6, sizeof(example_buf6), "%s --palette-chars '@%%#*+=-:. '", example_session_string6);
+  safe_snprintf(example_buf2, sizeof(example_buf2), "%s", example_session_string2);
+  safe_snprintf(example_buf3, sizeof(example_buf3), "%s", example_session_string3);
+  safe_snprintf(example_buf4, sizeof(example_buf4), "%s", example_session_string4);
+  safe_snprintf(example_buf5, sizeof(example_buf5), "%s", example_session_string5);
+  safe_snprintf(example_buf6, sizeof(example_buf6), "%s", example_session_string6);
   safe_snprintf(example_buf7, sizeof(example_buf7), "%s", example_session_string7);
   safe_snprintf(example_buf8, sizeof(example_buf8), "%s", example_session_string8);
   safe_snprintf(example_buf9, sizeof(example_buf9), "%s", example_session_string9);
-  safe_snprintf(example_buf10, sizeof(example_buf10), "%s --matrix --color-filter rainbow", example_session_string10);
+  safe_snprintf(example_buf10, sizeof(example_buf10), "%s", example_session_string10);
 
   // Client mode: [address] - can be IP, hostname, hostname:port, or WebSocket URL
   static const char *client_examples[] = {"localhost",
