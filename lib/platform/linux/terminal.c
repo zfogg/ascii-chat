@@ -88,14 +88,21 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg,
     r->framebuffer = SAFE_MALLOC((size_t)r->pitch * r->height_px, uint8_t *);
     r->ghostty_term = terminal_new(cfg->cols, cfg->rows);
 
+    log_debug("term_renderer_create: Theme: %s, cell %dx%d px, grid %dx%d",
+             (cfg->theme == TERM_RENDERER_THEME_LIGHT) ? "light" : (cfg->theme == TERM_RENDERER_THEME_DARK) ? "dark" : "auto-detect",
+             r->cell_w, r->cell_h, r->cols, r->rows);
+
     *out = r;
     return ASCIICHAT_OK;
 }
 
 asciichat_error_t term_renderer_feed(terminal_renderer_t *r,
                                      const char *ansi_frame, size_t len) {
+    // Determine default colors based on terminal theme
     uint8_t def_bg = (r->theme == TERM_RENDERER_THEME_LIGHT) ? 255 : 0;
+    uint8_t def_fg = (r->theme == TERM_RENDERER_THEME_LIGHT) ? 0 : 204;
 
+    // Fill framebuffer with theme-appropriate background
     for (int py = 0; py < r->height_px; py++) {
         for (int px = 0; px < r->width_px; px++) {
             uint8_t *dst = r->framebuffer + py * r->pitch + px * 3;
@@ -108,10 +115,12 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r,
     if (!r->ghostty_term) return ASCIICHAT_OK;
     terminal_feed(r->ghostty_term, (const uint8_t *)ansi_frame, len);
 
+    // Render each cell with theme-aware default colors
     for (int row = 0; row < r->rows; row++) {
         for (int col = 0; col < r->cols; col++) {
             uint32_t codepoint = 0;
-            uint8_t fg_r = 204, fg_g = 204, fg_b = 204;
+            // Start with theme-appropriate defaults
+            uint8_t fg_r = def_fg, fg_g = def_fg, fg_b = def_fg;
             uint8_t bg_r = def_bg, bg_g = def_bg, bg_b = def_bg;
 
             terminal_get_cell(r->ghostty_term, row, col, &codepoint,
