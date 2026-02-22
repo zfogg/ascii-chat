@@ -161,10 +161,8 @@ static void *websocket_service_thread(void *arg) {
         // Sleep briefly to avoid busy-waiting
         platform_sleep_us(10000); // 10ms
       } else {
-        // This is a CLIENT transport - actively drain send queue instead of relying on callbacks
-        // The WRITEABLE callback mechanism doesn't reliably trigger for browser clients,
-        // so we drain the queue directly in the service thread.
-        websocket_recv_msg_t msg;
+        // This is a CLIENT transport - request WRITEABLE callback to send queued messages
+        // lws_write() must be called from within LWS callbacks, not from external threads
         int messages_sent = 0;
 
         mutex_lock(&ws_data->send_mutex);
@@ -175,50 +173,17 @@ static void *websocket_service_thread(void *arg) {
         }
 
         if (has_data) {
-          log_info(">>> SERVICE_THREAD: CLIENT queue has data, draining...");
+          log_info(">>> SERVICE_THREAD: CLIENT queue has data, requesting CLIENT_WRITEABLE callback");
+          // Request CLIENT_WRITEABLE callback instead of calling lws_write() directly
+          // lws_write() MUST be called from within a callback context, not from external threads
+          lws_callback_on_writable(ws_data->wsi);
+          messages_sent++;
+          total_messages_sent++;
         }
-
-      while (ringbuffer_read(ws_data->send_queue, &msg)) {
         mutex_unlock(&ws_data->send_mutex);
 
-        // Send message directly with lws_write()
-        // IMPORTANT: msg.data already points to start of buffer (with LWS_PRE padding)
-        // lws_write() will write the frame header backwards into LWS_PRE region
-        // then write the data. We need to pass pointer to start of LWS_PRE region.
-        uint64_t write_start_ns = time_get_ns();
-        log_info(">>> SERVICE_THREAD_WRITE: %zu bytes via lws_write() for wsi=%p, is_connected=%d",
-                 msg.len, (void *)ws_data->wsi, ws_data->is_connected);
-        int written = lws_write(ws_data->wsi, msg.data + LWS_PRE, msg.len, LWS_WRITE_BINARY);
-        uint64_t write_end_ns = time_get_ns();
-
-        if (written < 0) {
-          log_fatal("🔴 SERVICE_THREAD_WRITE_FAILED: error code %d for %zu bytes, duration %.3fms, is_connected=%d",
-                    written, msg.len, (double)(write_end_ns - write_start_ns) / 1000000.0, ws_data->is_connected);
-          // Queue buffer for deferred free to allow compression layer to complete
-          deferred_buffer_free(ws_data, msg.data, LWS_PRE + msg.len);
-          mutex_lock(&ws_data->send_mutex);
-          break;
-        }
-
-        if ((size_t)written != msg.len) {
-          log_warn(">>> PARTIAL_WRITE: sent %d/%zu bytes (%.1f%%), duration %.3fms",
-                   written, msg.len, (100.0 * written) / msg.len,
-                   (double)(write_end_ns - write_start_ns) / 1000000.0);
-        } else {
-          log_info(">>> WRITE_SUCCESS: sent %d bytes, duration %.3fms",
-                   written, (double)(write_end_ns - write_start_ns) / 1000000.0);
-        }
-
-        // Queue buffer for deferred free to allow compression layer to complete asynchronously.
-        deferred_buffer_free(ws_data, msg.data, LWS_PRE + msg.len);
-        messages_sent++;
-        total_messages_sent++;
-        mutex_lock(&ws_data->send_mutex);
-      }
-      mutex_unlock(&ws_data->send_mutex);
-
       if (messages_sent > 0) {
-        log_info(">>> SERVICE_BATCH: sent %d messages (total: %d)", messages_sent, total_messages_sent);
+        log_info(">>> SERVICE_BATCH: requested %d writable callbacks (total: %d)", messages_sent, total_messages_sent);
       }
       } // End of if (connected) block
     } else {
