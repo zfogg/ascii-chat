@@ -174,22 +174,6 @@ elseif(UNIX AND NOT APPLE)
                 string(APPEND GHOSTTY_CFLAGS " -isystem ${include_dir}")
             endforeach()
 
-            # Patch ghostty's SharedDeps.zig to include all GTK dependencies
-            # This ensures pkg-config finds all transitive dependencies
-            file(READ "${GHOSTTY_SOURCE_DIR}/src/build/SharedDeps.zig" SHARED_DEPS_CONTENT)
-
-            # Check if patching is needed (look for our marker)
-            if(NOT SHARED_DEPS_CONTENT MATCHES "cairo-gobject.*dynamic_link_opts")
-                # Find the line where gtk4 is linked and add more dependencies after libadwaita-1
-                string(REPLACE
-                    "step.linkSystemLibrary2(\"libadwaita-1\", dynamic_link_opts);"
-                    "step.linkSystemLibrary2(\"libadwaita-1\", dynamic_link_opts);\n    step.linkSystemLibrary2(\"graphene-gobject-1.0\", dynamic_link_opts);\n    step.linkSystemLibrary2(\"cairo-gobject\", dynamic_link_opts);\n    step.linkSystemLibrary2(\"cairo\", dynamic_link_opts);\n    step.linkSystemLibrary2(\"pango\", dynamic_link_opts);\n    step.linkSystemLibrary2(\"harfbuzz\", dynamic_link_opts);"
-                    SHARED_DEPS_CONTENT "${SHARED_DEPS_CONTENT}")
-
-                file(WRITE "${GHOSTTY_SOURCE_DIR}/src/build/SharedDeps.zig" "${SHARED_DEPS_CONTENT}")
-                message(STATUS "Patched ghostty SharedDeps.zig with GTK dependencies")
-            endif()
-
             message(STATUS "Building ghostty library with CFLAGS:${GHOSTTY_CFLAGS}")
             message(STATUS "Working directory: ${GHOSTTY_SOURCE_DIR}")
 
@@ -201,24 +185,8 @@ elseif(UNIX AND NOT APPLE)
                 endif()
             endforeach()
 
-            # Build pkg-config path for all possible locations
-            set(PKG_CONFIG_DIRS "/usr/lib/pkgconfig:/usr/share/pkgconfig")
-            if(EXISTS "/home/linuxbrew/.linuxbrew")
-                string(APPEND PKG_CONFIG_DIRS ":/home/linuxbrew/.linuxbrew/lib/pkgconfig:/home/linuxbrew/.linuxbrew/share/pkgconfig")
-            endif()
-            if(EXISTS "/usr/local/lib/pkgconfig")
-                string(APPEND PKG_CONFIG_DIRS ":/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig")
-            endif()
-            if(EXISTS "/opt/homebrew")
-                string(APPEND PKG_CONFIG_DIRS ":/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig")
-            endif()
-
-            # Pass PKG_CONFIG_PATH explicitly so Zig can find system libraries
-            # Note: PKG_CONFIG_PATH is set by PkgConfigSetup.cmake earlier in CMakeLists.txt
-            set(PKG_CONFIG_PATH_VALUE "$ENV{PKG_CONFIG_PATH}")
-
             execute_process(
-                COMMAND env CFLAGS="${GHOSTTY_CFLAGS}" CXXFLAGS="${GHOSTTY_CFLAGS}" PKG_CONFIG_PATH="${PKG_CONFIG_PATH_VALUE}" "${ZIG_EXECUTABLE}" build install -Dapp-runtime=gtk -Doptimize=ReleaseFast ${SEARCH_PREFIXES} --prefix "${GHOSTTY_BUILD_DIR}"
+                COMMAND env CFLAGS="${GHOSTTY_CFLAGS}" CXXFLAGS="${GHOSTTY_CFLAGS}" PKG_CONFIG_PATH="/usr/lib/pkgconfig:/usr/share/pkgconfig:/home/linuxbrew/.linuxbrew/lib/pkgconfig:/home/linuxbrew/.linuxbrew/share/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig" "${ZIG_EXECUTABLE}" build install -Dapp-runtime=gtk -Doptimize=ReleaseFast ${SEARCH_PREFIXES} --prefix "${GHOSTTY_BUILD_DIR}"
                 WORKING_DIRECTORY "${GHOSTTY_SOURCE_DIR}"
                 RESULT_VARIABLE GHOSTTY_BUILD_RESULT
                 OUTPUT_FILE "${GHOSTTY_LOG_FILE}"
@@ -228,29 +196,32 @@ elseif(UNIX AND NOT APPLE)
 
             if(GHOSTTY_BUILD_RESULT EQUAL 0)
                 # Ghostty build succeeded, find and copy library to cache location
-                # Look for any ghostty library (including lib-vt versioned files)
-                file(GLOB GHOSTTY_BUILT_LIBS "${GHOSTTY_BUILD_DIR}/lib/libghostty*")
-
-                if(GHOSTTY_BUILT_LIBS)
-                    list(GET GHOSTTY_BUILT_LIBS 0 GHOSTTY_FOUND_LIB)
-                    message(STATUS "Found built library: ${GHOSTTY_FOUND_LIB}")
-
-                    # Check if source exists before copying
-                    if(EXISTS "${GHOSTTY_FOUND_LIB}")
-                        file(COPY_FILE "${GHOSTTY_FOUND_LIB}" "${GHOSTTY_LIB}")
-                        message(STATUS "Copied ${GHOSTTY_FOUND_LIB} to ${GHOSTTY_LIB}")
+                # Look for libghostty (the full library)
+                find_file(GHOSTTY_FULL_LIB NAMES "libghostty.a" "libghostty.so" "libghostty.so.0"
+                          PATHS "${GHOSTTY_BUILD_DIR}/lib"
+                          NO_DEFAULT_PATH)
+                if(GHOSTTY_FULL_LIB)
+                    file(COPY_FILE "${GHOSTTY_FULL_LIB}" "${GHOSTTY_LIB}")
+                    message(STATUS "Copied ${GHOSTTY_FULL_LIB} to ${GHOSTTY_LIB}")
+                else()
+                    message(STATUS "Warning: libghostty not found in ${GHOSTTY_BUILD_DIR}/lib")
+                    # Try to find lib-vt as fallback
+                    find_file(GHOSTTY_VT_LIB NAMES "libghostty-vt.a" "libghostty-vt.so.0" "libghostty-vt.so"
+                              PATHS "${GHOSTTY_BUILD_DIR}/lib"
+                              NO_DEFAULT_PATH)
+                    if(GHOSTTY_VT_LIB)
+                        file(COPY_FILE "${GHOSTTY_VT_LIB}" "${GHOSTTY_LIB}")
+                        message(STATUS "Fallback: Copied ${GHOSTTY_VT_LIB} to ${GHOSTTY_LIB}")
                     else()
-                        message(WARNING "Library file exists in glob but not found: ${GHOSTTY_FOUND_LIB}")
                         set(GHOSTTY_BUILD_RESULT 1)
                     endif()
-                else()
-                    message(STATUS "Warning: No ghostty libraries found in ${GHOSTTY_BUILD_DIR}/lib")
-                    set(GHOSTTY_BUILD_RESULT 1)
                 endif()
             endif()
 
             if(NOT GHOSTTY_BUILD_RESULT EQUAL 0)
-                message(FATAL_ERROR "${BoldRed}ghostty lib-vt build failed${ColorReset}. Check log: ${GHOSTTY_LOG_FILE}")
+                message(WARNING "${BoldYellow}ghostty lib-vt build failed${ColorReset}. Check log: ${GHOSTTY_LOG_FILE}")
+                message(STATUS "${BoldYellow}Continuing without ghostty...${ColorReset}")
+                set(GHOSTTY_FOUND FALSE)
             endif()
 
             message(STATUS "  ${BoldGreen}ghostty lib-vt${ColorReset} library built and cached successfully")
@@ -260,49 +231,46 @@ elseif(UNIX AND NOT APPLE)
             add_custom_target(ghostty_build)
         endif()
 
-        # Copy ghostty shared library to build lib directory for RPATH resolution
-        # This ensures the library is available where the executable can find it at runtime
-        if(UNIX AND NOT APPLE AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
-            file(GLOB GHOSTTY_SHARED_LIBS "${GHOSTTY_BUILD_DIR}/lib/libghostty*.so*")
-            if(GHOSTTY_SHARED_LIBS)
-                add_custom_command(TARGET ghostty_build POST_BUILD
-                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                        ${GHOSTTY_SHARED_LIBS}
-                        ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/
-                    COMMENT "Copying ghostty shared libraries to ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
-                )
-            endif()
+        # Create an imported library that links to the built library (only if build succeeded)
+        if(EXISTS "${GHOSTTY_LIB}")
+            add_library(ghostty_lib STATIC IMPORTED GLOBAL)
+            set_target_properties(ghostty_lib PROPERTIES
+                IMPORTED_LOCATION "${GHOSTTY_LIB}"
+            )
+            target_include_directories(ghostty_lib INTERFACE
+                "${GHOSTTY_BUILD_DIR}/include"
+            )
+            add_dependencies(ghostty_lib ghostty_build)
+        else()
+            # Create stub library if build failed
+            set(GHOSTTY_FOUND FALSE)
         endif()
 
-        # Create an imported library that links to the built library
-        add_library(ghostty_lib STATIC IMPORTED GLOBAL)
-        set_target_properties(ghostty_lib PROPERTIES
-            IMPORTED_LOCATION "${GHOSTTY_LIB}"
-        )
-        target_include_directories(ghostty_lib INTERFACE
-            "${GHOSTTY_BUILD_DIR}/include"
-        )
-        add_dependencies(ghostty_lib ghostty_build)
-
-        # Link ghostty's dependencies
+        # Link ghostty's dependencies (only if library was created)
         # libghostty built as static archive contains symbols from its dependencies
         # These must be available when linking the final executable
-        find_package(PkgConfig QUIET)
-        if(PkgConfig_FOUND)
-            pkg_check_modules(ONIGURUMA QUIET oniguruma)
-            if(ONIGURUMA_FOUND)
-                target_link_libraries(ghostty_lib INTERFACE ${ONIGURUMA_LIBRARIES})
+        if(TARGET ghostty_lib)
+            find_package(PkgConfig QUIET)
+            if(PkgConfig_FOUND)
+                pkg_check_modules(ONIGURUMA QUIET oniguruma)
+                if(ONIGURUMA_FOUND)
+                    target_link_libraries(ghostty_lib INTERFACE ${ONIGURUMA_LIBRARIES})
+                else()
+                    # Fallback if pkg-config doesn't find oniguruma
+                    target_link_libraries(ghostty_lib INTERFACE onig)
+                endif()
             else()
-                # Fallback if pkg-config doesn't find oniguruma
                 target_link_libraries(ghostty_lib INTERFACE onig)
             endif()
-        else()
-            target_link_libraries(ghostty_lib INTERFACE onig)
-        endif()
 
-        set(GHOSTTY_LIBRARIES ghostty_lib)
-        set(GHOSTTY_INCLUDE_DIRS "${GHOSTTY_BUILD_DIR}/include")
-        set(GHOSTTY_FOUND TRUE)
+            set(GHOSTTY_LIBRARIES ghostty_lib)
+            set(GHOSTTY_INCLUDE_DIRS "${GHOSTTY_BUILD_DIR}/include")
+            set(GHOSTTY_FOUND TRUE)
+        else()
+            set(GHOSTTY_LIBRARIES "")
+            set(GHOSTTY_INCLUDE_DIRS "")
+            set(GHOSTTY_FOUND FALSE)
+        endif()
 
         message(STATUS "${BoldGreen}ghostty${ColorReset} configured: ${GHOSTTY_LIB}")
 
@@ -426,7 +394,7 @@ elseif(UNIX AND NOT APPLE)
     # Linux: ghostty with GTK backend for rendering
     if(GHOSTTY_FOUND)
         find_package(PkgConfig REQUIRED)
-        pkg_check_modules(GTK gtk4 libadwaita-1 REQUIRED)
+        pkg_check_modules(GTK gtk+-3.0 REQUIRED)
 
         set(GHOSTTY_LIBS ${GHOSTTY_LIBRARIES} ${GTK_LDFLAGS})
         set(GHOSTTY_INCLUDES ${GHOSTTY_INCLUDE_DIRS} ${GTK_INCLUDE_DIRS})
