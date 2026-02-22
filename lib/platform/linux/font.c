@@ -10,11 +10,10 @@
 #include <fontconfig/fontconfig.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <stddef.h>
 
-// Platform-guaranteed defaults (always present on a stock Linux install).
-// "monospace" is a fontconfig generic alias — always resolves to the distro's
-// preferred monospace. DejaVu Sans Mono ships with the vast majority of distros.
-static const char *k_default  = "monospace";
+// Fallback font name for fontconfig when a requested font is not found.
+// DejaVu Sans Mono ships with the vast majority of distros.
 static const char *k_fallback = "DejaVu Sans Mono";
 
 static bool is_absolute_path(const char *s) { return s && s[0] == '/'; }
