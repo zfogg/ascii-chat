@@ -186,7 +186,7 @@ elseif(UNIX AND NOT APPLE)
             endforeach()
 
             execute_process(
-                COMMAND env CFLAGS="${GHOSTTY_CFLAGS}" CXXFLAGS="${GHOSTTY_CFLAGS}" PKG_CONFIG_PATH="/usr/lib/pkgconfig:/usr/share/pkgconfig:/home/linuxbrew/.linuxbrew/lib/pkgconfig:/home/linuxbrew/.linuxbrew/share/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig" "${ZIG_EXECUTABLE}" build install -Dapp-runtime=gtk -Doptimize=ReleaseFast ${SEARCH_PREFIXES} --prefix "${GHOSTTY_BUILD_DIR}"
+                COMMAND env CFLAGS="${GHOSTTY_CFLAGS}" CXXFLAGS="${GHOSTTY_CFLAGS}" PKG_CONFIG_PATH="/usr/lib/pkgconfig:/usr/share/pkgconfig:/home/linuxbrew/.linuxbrew/lib/pkgconfig:/home/linuxbrew/.linuxbrew/share/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig" "${ZIG_EXECUTABLE}" build install -Dapp-runtime=embedded -Doptimize=ReleaseFast ${SEARCH_PREFIXES} --prefix "${GHOSTTY_BUILD_DIR}"
                 WORKING_DIRECTORY "${GHOSTTY_SOURCE_DIR}"
                 RESULT_VARIABLE GHOSTTY_BUILD_RESULT
                 OUTPUT_FILE "${GHOSTTY_LOG_FILE}"
