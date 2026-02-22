@@ -15,11 +15,11 @@
 #include <unistd.h>
 #endif
 #include <limits.h>
+#include <threads.h>
 
 // 256-color lookup table (optional)
 static char color256_strings[256][16]; // Pre-built SGR strings like "\033[38;5;123m"
-static bool color256_initialized = false;
-static static_mutex_t g_color256_mutex = STATIC_MUTEX_INIT;
+static once_flag g_color256_once = ONCE_FLAG_INIT;
 
 // Fast foreground color: \033[38;2;R;G;Bm
 // Maximum output: 19 bytes (\033[38;2;255;255;255m)
@@ -201,21 +201,16 @@ void ansi_fast_init(void) {
 }
 
 // 256-color mode initialization (optional high-speed mode)
-// Thread-safe: uses mutex to prevent duplicate initialization
-void ansi_fast_init_256color(void) {
-  static_mutex_lock(&g_color256_mutex);
-
-  if (color256_initialized) {
-    static_mutex_unlock(&g_color256_mutex);
-    return;
-  }
-
+// Private initialization function (called exactly once via call_once)
+static void do_init_256color(void) {
   for (int i = 0; i < 256; i++) {
     SAFE_SNPRINTF(color256_strings[i], sizeof(color256_strings[i]), "\033[38;5;%dm", i);
   }
+}
 
-  color256_initialized = true;
-  static_mutex_unlock(&g_color256_mutex);
+// Public initialization wrapper - thread-safe using C11 call_once
+void ansi_fast_init_256color(void) {
+  call_once(&g_color256_once, do_init_256color);
 }
 
 // Fast 256-color foreground
@@ -251,17 +246,10 @@ uint8_t rgb_to_256color(uint8_t r, uint8_t g, uint8_t b) {
 // 16-color mode support
 static char color16_fg_strings[16][16];
 static char color16_bg_strings[16][16];
-static bool color16_initialized = false;
-static static_mutex_t g_color16_mutex = STATIC_MUTEX_INIT;
+static once_flag g_color16_once = ONCE_FLAG_INIT;
 
-void ansi_fast_init_16color(void) {
-  static_mutex_lock(&g_color16_mutex);
-
-  if (color16_initialized) {
-    static_mutex_unlock(&g_color16_mutex);
-    return;
-  }
-
+// Private initialization function (called exactly once via call_once)
+static void do_init_16color(void) {
   // Standard ANSI color codes
   const char *fg_codes[] = {"30", "31", "32", "33", "34", "35", "36", "37",          // Normal colors (30-37)
                             "90", "91", "92", "93", "94", "95", "96", "97"};         // Bright colors (90-97)
@@ -272,15 +260,16 @@ void ansi_fast_init_16color(void) {
     SAFE_SNPRINTF(color16_fg_strings[i], sizeof(color16_fg_strings[i]), "\033[%sm", fg_codes[i]);
     SAFE_SNPRINTF(color16_bg_strings[i], sizeof(color16_bg_strings[i]), "\033[%sm", bg_codes[i]);
   }
+}
 
-  color16_initialized = true;
-  static_mutex_unlock(&g_color16_mutex);
+// Public initialization wrapper - thread-safe using C11 call_once
+void ansi_fast_init_16color(void) {
+  call_once(&g_color16_once, do_init_16color);
 }
 
 char *append_16color_fg(char *dst, uint8_t color_index) {
-  if (!color16_initialized) {
-    ansi_fast_init_16color();
-  }
+  // Ensure initialization before use
+  ansi_fast_init_16color();
 
   if (color_index >= 16) {
     color_index = 7; // Default to white
@@ -295,9 +284,8 @@ char *append_16color_fg(char *dst, uint8_t color_index) {
 }
 
 char *append_16color_bg(char *dst, uint8_t color_index) {
-  if (!color16_initialized) {
-    ansi_fast_init_16color();
-  }
+  // Ensure initialization before use
+  ansi_fast_init_16color();
 
   if (color_index >= 16) {
     color_index = 0; // Default to black background

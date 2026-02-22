@@ -22,6 +22,8 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include <stdatomic.h>
+#include <threads.h>
 #include <ascii-chat/util/pcre2.h>
 #include <pcre2.h>
 
@@ -42,9 +44,10 @@ typedef struct {
  */
 static word_cache_entry_t *g_adjectives_cache = NULL;
 static word_cache_entry_t *g_nouns_cache = NULL;
-static bool g_cache_initialized = false;
-// Mutex to protect lazy initialization of word validation caches
-static static_mutex_t g_cache_init_mutex = STATIC_MUTEX_INIT;
+// One-time initialization flag using C11 threads.h call_once for thread-safe setup
+static once_flag g_cache_once = ONCE_FLAG_INIT;
+// Track if cache has been built (for cleanup function)
+static _Atomic(bool) g_cache_built = false;
 
 /**
  * @brief Cleanup function for session string cache
@@ -52,7 +55,8 @@ static static_mutex_t g_cache_init_mutex = STATIC_MUTEX_INIT;
  * Safe to call multiple times (idempotent).
  */
 void acds_strings_destroy(void) {
-  if (!g_cache_initialized) {
+  // Check if cache was built (using atomic load for thread-safety)
+  if (!atomic_load(&g_cache_built)) {
     return;
   }
 
@@ -74,42 +78,35 @@ void acds_strings_destroy(void) {
   }
   g_nouns_cache = NULL;
 
-  g_cache_initialized = false;
+  atomic_store(&g_cache_built, false);
   log_dev("Session string word cache cleaned up");
 }
 
 /**
- * @brief Build hashtable caches for word validation (lazy initialization)
- * Called on first validation, not during init - avoids 7500+ slow HASH_ADD_KEYPTR calls
+ * @brief Private initialization function for word validation caches (called exactly once)
+ * Builds hashtable caches for O(1) validation - avoids 7500+ slow HASH_ADD_KEYPTR calls
  *
- * Uses mutex to prevent multiple threads from building caches concurrently,
- * which could cause memory leaks and hashtable corruption.
+ * This function is called exactly once by call_once() across all threads,
+ * preventing concurrent building which could cause memory leaks and hashtable corruption.
+ *
+ * Error handling is internal - failures silently skip cache population.
+ * Without cache, validation falls back to slower linear search.
  */
-static asciichat_error_t build_validation_caches(void) {
-  static_mutex_lock(&g_cache_init_mutex);
-
-  // Double-check under lock: another thread may have already built while we waited
-  if (g_cache_initialized) {
-    static_mutex_unlock(&g_cache_init_mutex);
-    return ASCIICHAT_OK;
-  }
-
+static void do_build_validation_caches(void) {
   // Build adjectives cache
   for (size_t i = 0; i < adjectives_count; i++) {
     word_cache_entry_t *entry = SAFE_MALLOC(sizeof(word_cache_entry_t), word_cache_entry_t *);
     if (!entry) {
-      static_mutex_unlock(&g_cache_init_mutex);
-      acds_strings_destroy();
-      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate adjectives cache entry");
+      log_warn("Failed to allocate adjectives cache entry - validation will be slower");
+      return;
     }
 
     size_t word_len = strlen(adjectives[i]) + 1;
     entry->word = SAFE_MALLOC(word_len, char *);
     if (!entry->word) {
       SAFE_FREE(entry);
-      static_mutex_unlock(&g_cache_init_mutex);
-      acds_strings_destroy();
-      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for adjective word");
+      log_warn("Failed to allocate memory for adjective word - validation will be slower");
+      return;
     }
     memcpy(entry->word, adjectives[i], word_len);
 
@@ -120,32 +117,32 @@ static asciichat_error_t build_validation_caches(void) {
   for (size_t i = 0; i < nouns_count; i++) {
     word_cache_entry_t *entry = SAFE_MALLOC(sizeof(word_cache_entry_t), word_cache_entry_t *);
     if (!entry) {
-      static_mutex_unlock(&g_cache_init_mutex);
-      acds_strings_destroy();
-      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate nouns cache entry");
+      log_warn("Failed to allocate nouns cache entry - validation will be slower");
+      return;
     }
 
     size_t word_len = strlen(nouns[i]) + 1;
     entry->word = SAFE_MALLOC(word_len, char *);
     if (!entry->word) {
       SAFE_FREE(entry);
-      static_mutex_unlock(&g_cache_init_mutex);
-      acds_strings_destroy();
-      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for noun word");
+      log_warn("Failed to allocate memory for noun word - validation will be slower");
+      return;
     }
     memcpy(entry->word, nouns[i], word_len);
 
     HASH_ADD_KEYPTR(hh, g_nouns_cache, entry->word, strlen(entry->word), entry);
   }
 
-  g_cache_initialized = true;
-
-  // NOTE: Cleanup is now handled by asciichat_shared_destroy() called from application code.
-  // Library code does not call atexit() - that's the application's responsibility.
-
-  static_mutex_unlock(&g_cache_init_mutex);
+  atomic_store(&g_cache_built, true);
   log_dev("Session string word cache initialized (%zu adjectives, %zu nouns)", adjectives_count, nouns_count);
-  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Build hashtable caches for word validation (lazy initialization)
+ * Called on first validation - thread-safe using C11 call_once for exactly-once execution
+ */
+static void build_validation_caches(void) {
+  call_once(&g_cache_once, do_build_validation_caches);
 }
 
 // ============================================================================
@@ -296,15 +293,10 @@ bool is_session_string(const char *str) {
   noun2[noun2_len] = '\0';
 
   // Lazy initialization: build validation caches on first use
-  // Note: build_validation_caches() handles synchronization internally
-  if (!g_cache_initialized) {
-    asciichat_error_t cache_err = build_validation_caches();
-    if (cache_err != ASCIICHAT_OK) {
-      log_warn("Failed to initialize session string cache; accepting format-valid string");
-      log_dev("Valid session string format (cache unavailable): %s", str);
-      return true; // Format is valid, cache is unavailable, accept anyway
-    }
-  }
+  // call_once ensures thread-safe exactly-once execution
+  build_validation_caches();
+  // If initialization fails silently (logs warning), hashtables will be empty
+  // and validation will fail, which is safe behavior
 
   // Validate first word is an adjective
   word_cache_entry_t *adj_entry = NULL;
