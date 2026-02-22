@@ -241,6 +241,23 @@ elseif(UNIX AND NOT APPLE)
                 "${GHOSTTY_BUILD_DIR}/include"
             )
             add_dependencies(ghostty_lib ghostty_build)
+
+            # Copy ghostty shared library to build/lib so RPATH can find it at runtime
+            # Look for the actual shared library in the build directory
+            find_file(GHOSTTY_SHARED_LIB
+                     NAMES "libghostty-vt.so.0.1.0" "libghostty-vt.so.0" "libghostty-vt.so"
+                     PATHS "${GHOSTTY_BUILD_DIR}/lib"
+                     NO_DEFAULT_PATH)
+            if(GHOSTTY_SHARED_LIB)
+                # Create a custom command to copy the shared library to build/lib after build
+                add_custom_command(TARGET ghostty_build POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
+                    COMMAND ${CMAKE_COMMAND} -E copy "${GHOSTTY_SHARED_LIB}" "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/"
+                    COMMAND ${CMAKE_COMMAND} -E create_symlink "libghostty-vt.so.0.1.0" "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libghostty-vt.so.0"
+                    COMMENT "Copying ghostty shared library to ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
+                    VERBATIM
+                )
+            endif()
         else()
             # Create stub library if build failed
             set(GHOSTTY_FOUND FALSE)

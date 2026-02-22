@@ -803,6 +803,22 @@ add_library(ascii-chat-shared SHARED
         SOVERSION ${ASCIICHAT_LIB_VERSION_MAJOR}
     )
 
+    # Set RPATH on shared library so it can find ghostty library at runtime
+    # This ensures transitive dependencies (like libghostty-vt.so.0) are found
+    if((APPLE OR UNIX) AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+        set(_shared_rpath_list "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+        if(CMAKE_BUILD_RPATH)
+            list(APPEND _shared_rpath_list ${CMAKE_BUILD_RPATH})
+        endif()
+        if(APPLE)
+            list(APPEND _shared_rpath_list "${HOMEBREW_PREFIX}/lib")
+        endif()
+        set_target_properties(ascii-chat-shared PROPERTIES
+            BUILD_RPATH "${_shared_rpath_list}"
+            SKIP_BUILD_RPATH FALSE
+        )
+    endif()
+
     # Windows: Explicitly set import library location for Windows
     if(WIN32)
         target_link_options(ascii-chat-shared PRIVATE "LINKER:/implib:${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/asciichat.lib")

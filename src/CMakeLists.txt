@@ -142,26 +142,20 @@ endif()
 # Skip for Release builds - they use static linking and shouldn't embed developer paths
 # EXCEPTION: ASCIICHAT_SHARED_DEPS builds need rpath to find Homebrew LLVM's libc++ and libunwind
 if((APPLE OR UNIX) AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
-    # Explicitly set BUILD_RPATH to put build/lib first, before any system paths
-    # This ensures we use the freshly built library, not any installed version
-    # For macOS, also include ${HOMEBREW_PREFIX}/lib for Homebrew-installed dependencies
-    # Also include ghostty library path for debug builds
-    set(_debug_rpath_dirs "${CMAKE_LIBRARY_OUTPUT_DIRECTORY};${CMAKE_BUILD_RPATH}")
-
-    # Add ghostty library directory for shared library builds (debug)
-    if(GHOSTTY_LIBRARIES AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
-        string(APPEND _debug_rpath_dirs ";${ASCIICHAT_DEPS_CACHE_DIR}/ghostty/lib")
+    # Put our build/lib directory FIRST in the RPATH so it's searched before system paths
+    # This ensures ghostty library is found before any system conflicts
+    # Use CMAKE_BUILD_RPATH but prepend our path to it
+    set(_rpath_list "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+    if(CMAKE_BUILD_RPATH)
+        list(APPEND _rpath_list ${CMAKE_BUILD_RPATH})
     endif()
-
     if(APPLE)
-        set(_debug_install_rpath "${_debug_rpath_dirs};${HOMEBREW_PREFIX}/lib")
-    else()
-        set(_debug_install_rpath "${_debug_rpath_dirs}")
+        list(APPEND _rpath_list "${HOMEBREW_PREFIX}/lib")
     endif()
+
     set_target_properties(ascii-chat PROPERTIES
-        BUILD_RPATH "${_debug_install_rpath}"
-        INSTALL_RPATH "${_debug_install_rpath}"
-        INSTALL_RPATH_USE_LINK_PATH TRUE
+        BUILD_RPATH "${_rpath_list}"
+        SKIP_BUILD_RPATH FALSE
     )
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release" AND ASCIICHAT_SHARED_DEPS)
     # Release builds with shared deps (Homebrew) need rpath for dynamic linking
