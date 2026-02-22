@@ -119,7 +119,7 @@ static inline void static_mutex_lock(static_mutex_t *m) {
   LONG prev = InterlockedCompareExchange(&m->initialized, 1, 0);
   if (prev == 0) {
     // We won the race - initialize the mutex
-    mutex_init(&m->mutex);
+    mutex_init(&m->mutex, "static_mutex");
     // Memory barrier to ensure init is visible before flag update
     MemoryBarrier();
     InterlockedExchange(&m->initialized, 2);
@@ -136,7 +136,7 @@ static inline void static_mutex_lock(static_mutex_t *m) {
   // Use atomic operations for thread-safe detection
   if (__atomic_load_n(&m->initialized, __ATOMIC_ACQUIRE) == 0) {
     // Mutex needs initialization (either never initialized or reset after fork)
-    mutex_init(&m->mutex);
+    mutex_init(&m->mutex, "static_mutex");
     __atomic_store_n(&m->initialized, 1, __ATOMIC_RELEASE);
   }
 #endif
@@ -151,7 +151,7 @@ static inline void static_rwlock_rdlock(static_rwlock_t *l) {
 #if PLATFORM_WINDOWS
   LONG prev = InterlockedCompareExchange(&l->initialized, 1, 0);
   if (prev == 0) {
-    rwlock_init(&l->lock);
+    rwlock_init(&l->lock, "static_rwlock");
     MemoryBarrier();
     InterlockedExchange(&l->initialized, 2);
   } else if (prev == 1) {
@@ -161,7 +161,7 @@ static inline void static_rwlock_rdlock(static_rwlock_t *l) {
   }
 #else
   if (__atomic_load_n(&l->initialized, __ATOMIC_ACQUIRE) == 0) {
-    rwlock_init(&l->lock);
+    rwlock_init(&l->lock, "static_rwlock");
     __atomic_store_n(&l->initialized, 1, __ATOMIC_RELEASE);
   }
 #endif
@@ -172,7 +172,7 @@ static inline void static_rwlock_wrlock(static_rwlock_t *l) {
 #if PLATFORM_WINDOWS
   LONG prev = InterlockedCompareExchange(&l->initialized, 1, 0);
   if (prev == 0) {
-    rwlock_init(&l->lock);
+    rwlock_init(&l->lock, "static_rwlock");
     MemoryBarrier();
     InterlockedExchange(&l->initialized, 2);
   } else if (prev == 1) {
@@ -182,7 +182,7 @@ static inline void static_rwlock_wrlock(static_rwlock_t *l) {
   }
 #else
   if (__atomic_load_n(&l->initialized, __ATOMIC_ACQUIRE) == 0) {
-    rwlock_init(&l->lock);
+    rwlock_init(&l->lock, "static_rwlock");
     __atomic_store_n(&l->initialized, 1, __ATOMIC_RELEASE);
   }
 #endif
@@ -193,7 +193,7 @@ static inline void static_cond_wait(static_cond_t *c, static_mutex_t *m) {
 #if PLATFORM_WINDOWS
   LONG prev = InterlockedCompareExchange(&c->initialized, 1, 0);
   if (prev == 0) {
-    cond_init(&c->cond);
+    cond_init(&c->cond, "static_cond");
     MemoryBarrier();
     InterlockedExchange(&c->initialized, 2);
   } else if (prev == 1) {
@@ -206,7 +206,7 @@ static inline void static_cond_wait(static_cond_t *c, static_mutex_t *m) {
   }
 #else
   if (__atomic_load_n(&c->initialized, __ATOMIC_ACQUIRE) == 0) {
-    cond_init(&c->cond);
+    cond_init(&c->cond, "static_cond");
     __atomic_store_n(&c->initialized, 1, __ATOMIC_RELEASE);
   }
   if (__atomic_load_n(&m->initialized, __ATOMIC_ACQUIRE) == 0) {
@@ -221,7 +221,7 @@ static inline void static_cond_timedwait(static_cond_t *c, static_mutex_t *m, in
 #if PLATFORM_WINDOWS
   LONG prev = InterlockedCompareExchange(&c->initialized, 1, 0);
   if (prev == 0) {
-    cond_init(&c->cond);
+    cond_init(&c->cond, "static_cond");
     MemoryBarrier();
     InterlockedExchange(&c->initialized, 2);
   } else if (prev == 1) {
@@ -234,7 +234,7 @@ static inline void static_cond_timedwait(static_cond_t *c, static_mutex_t *m, in
   }
 #else
   if (__atomic_load_n(&c->initialized, __ATOMIC_ACQUIRE) == 0) {
-    cond_init(&c->cond);
+    cond_init(&c->cond, "static_cond");
     __atomic_store_n(&c->initialized, 1, __ATOMIC_RELEASE);
   }
   if (__atomic_load_n(&m->initialized, __ATOMIC_ACQUIRE) == 0) {
@@ -249,7 +249,7 @@ static inline void static_cond_signal(static_cond_t *c) {
 #if PLATFORM_WINDOWS
   LONG prev = InterlockedCompareExchange(&c->initialized, 1, 0);
   if (prev == 0) {
-    cond_init(&c->cond);
+    cond_init(&c->cond, "static_cond");
     MemoryBarrier();
     InterlockedExchange(&c->initialized, 2);
   } else if (prev == 1) {
@@ -259,7 +259,7 @@ static inline void static_cond_signal(static_cond_t *c) {
   }
 #else
   if (__atomic_load_n(&c->initialized, __ATOMIC_ACQUIRE) == 0) {
-    cond_init(&c->cond);
+    cond_init(&c->cond, "static_cond");
     __atomic_store_n(&c->initialized, 1, __ATOMIC_RELEASE);
   }
 #endif
@@ -270,7 +270,7 @@ static inline void static_cond_broadcast(static_cond_t *c) {
 #if PLATFORM_WINDOWS
   LONG prev = InterlockedCompareExchange(&c->initialized, 1, 0);
   if (prev == 0) {
-    cond_init(&c->cond);
+    cond_init(&c->cond, "static_cond");
     MemoryBarrier();
     InterlockedExchange(&c->initialized, 2);
   } else if (prev == 1) {
@@ -280,7 +280,7 @@ static inline void static_cond_broadcast(static_cond_t *c) {
   }
 #else
   if (__atomic_load_n(&c->initialized, __ATOMIC_ACQUIRE) == 0) {
-    cond_init(&c->cond);
+    cond_init(&c->cond, "static_cond");
     __atomic_store_n(&c->initialized, 1, __ATOMIC_RELEASE);
   }
 #endif
