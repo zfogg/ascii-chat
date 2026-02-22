@@ -85,12 +85,12 @@
  * @author Zachary Fogg <me@zfo.gg>
  * @date 2025
  */
-#include "capture.h"
+#include "session/capture.h"
 #include "main.h"
 #include "../main.h" // Global exit API
 #include "server.h"
 #include "audio.h"
-#include <ascii-chat/session/capture.h>
+#include "session/capture.h"
 #include <ascii-chat/video/image.h>
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/common.h>

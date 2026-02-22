@@ -34,12 +34,12 @@
 #include "main.h"
 #include "../main.h" // Global exit API
 #include "session.h"
-#include <ascii-chat/session/capture.h>
-#include <ascii-chat/session/display.h>
-#include <ascii-chat/session/host.h>
-#include <ascii-chat/session/render.h>
-#include <ascii-chat/session/keyboard_handler.h>
-#include <ascii-chat/session/client_like.h>
+#include "session/capture.h"
+#include "session/display.h"
+#include "session/host.h"
+#include "session/render.h"
+#include "session/keyboard_handler.h"
+#include "session/client_like.h"
 
 #include <stdio.h>
 

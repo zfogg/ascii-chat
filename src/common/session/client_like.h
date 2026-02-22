@@ -49,10 +49,10 @@
 
 #pragma once
 
-#include <ascii-chat/session/capture.h>
-#include <ascii-chat/session/display.h>
-#include <ascii-chat/session/keyboard_handler.h>
-#include <ascii-chat/session/render.h>
+#include "session/capture.h"
+#include "session/display.h"
+#include "session/keyboard_handler.h"
+#include "session/render.h"
 #include <ascii-chat/asciichat_errno.h>
 #include <stdbool.h>
 

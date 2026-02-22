@@ -15,7 +15,7 @@
 
 #include "ascii-chat/ui/terminal_screen.h"
 #include "ascii-chat/log/interactive_grep.h"
-#include "ascii-chat/session/session_log_buffer.h"
+#include "session/session_log_buffer.h"
 #include "ascii-chat/util/display.h"
 #include "ascii-chat/util/time.h"
 #include "ascii-chat/platform/system.h"

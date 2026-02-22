@@ -52,8 +52,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "../media/source.h"
-#include "../video/image.h"
+#include <ascii-chat/media/source.h>
+#include <ascii-chat/video/image.h>
 
 /* ============================================================================
  * Session Capture Configuration

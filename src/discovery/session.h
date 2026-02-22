@@ -16,8 +16,8 @@
 #include <ascii-chat/asciichat_errno.h>
 #include "negotiate.h"
 #include <ascii-chat/platform/socket.h>
-#include <ascii-chat/session/host.h>
-#include <ascii-chat/session/participant.h>
+#include "session/host.h"
+#include "session/participant.h"
 #include <ascii-chat/discovery/strings.h>
 #include <ascii-chat/network/webrtc/stun.h>
 #include <ascii-chat/network/webrtc/turn.h>

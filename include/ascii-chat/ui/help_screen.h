@@ -28,7 +28,7 @@
 
 #pragma once
 
-#include <ascii-chat/session/display.h>
+#include "session/display.h"
 #include <stdbool.h>
 
 /* ============================================================================

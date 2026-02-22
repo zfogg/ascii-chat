@@ -5,7 +5,7 @@
  */
 
 #include <criterion/criterion.h>
-#include <ascii-chat/session/consensus.h>
+#include "consensus.h"
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/common.h>
 #include <string.h>

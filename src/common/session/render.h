@@ -21,9 +21,9 @@
 
 #pragma once
 
-#include "capture.h"
-#include "display.h"
-#include "../asciichat_errno.h"
+#include "session/capture.h"
+#include "session/display.h"
+#include <ascii-chat/asciichat_errno.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include <ascii-chat/session/consensus.h>
+#include "session/consensus.h"
 #include <ascii-chat/asciichat_errno.h>
 #include <stdint.h>
 

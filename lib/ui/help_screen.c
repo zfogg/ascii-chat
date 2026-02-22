@@ -5,7 +5,7 @@
  */
 
 #include <ascii-chat/ui/help_screen.h>
-#include <ascii-chat/session/display.h>
+#include "session/display.h"
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/terminal.h>

@@ -53,8 +53,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "../asciichat_errno.h"
-#include "settings.h"
+#include <ascii-chat/asciichat_errno.h>
+#include "session/settings.h"
 
 /* ============================================================================
  * Session Participant Types

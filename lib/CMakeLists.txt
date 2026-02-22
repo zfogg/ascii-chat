@@ -1,5 +1,5 @@
 # lib/ - Core application infrastructure
-# Sources from: log/, logging/, options/, discovery/, debug/, ui/, session/
+# Sources from: log/, logging/, options/, discovery/, debug/, ui/
 
 # Store lib directory since this file may be included() from parent scope
 set(LIB_DIR ${CMAKE_SOURCE_DIR}/lib)
@@ -94,6 +94,20 @@ set(CORE_SRCS
     ${CMAKE_SOURCE_DIR}/src/discovery/negotiate.c
     ${CMAKE_SOURCE_DIR}/src/discovery/session.c
     ${CMAKE_SOURCE_DIR}/src/discovery/webrtc.c
+    # src/common/session/ (executable code, refactored from lib/session)
+    ${CMAKE_SOURCE_DIR}/src/common/session/client_like.c
+    ${CMAKE_SOURCE_DIR}/src/common/session/consensus.c
+    ${CMAKE_SOURCE_DIR}/src/common/session/consensus_integration.c
+    ${CMAKE_SOURCE_DIR}/src/common/session/capture.c
+    ${CMAKE_SOURCE_DIR}/src/common/session/display.c
+    ${CMAKE_SOURCE_DIR}/src/common/session/render.c
+    ${CMAKE_SOURCE_DIR}/src/common/session/settings.c
+    ${CMAKE_SOURCE_DIR}/src/common/session/audio.c
+    ${CMAKE_SOURCE_DIR}/src/common/session/participant.c
+    ${CMAKE_SOURCE_DIR}/src/common/session/host.c
+    ${CMAKE_SOURCE_DIR}/src/common/session/keyboard_handler.c
+    ${CMAKE_SOURCE_DIR}/src/common/session/session_log_buffer.c
+    ${CMAKE_SOURCE_DIR}/src/common/session/stdin_reader.c
     # Third-party: tomlc17
     ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/tomlc17/src/tomlc17.c
 )
@@ -105,23 +119,6 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
         ${LIB_DIR}/debug/memory.c
     )
 endif()
-
-# Session library
-set(SESSION_SRCS
-    ${LIB_DIR}/session/client_like.c
-    ${LIB_DIR}/session/consensus.c
-    ${LIB_DIR}/session/consensus_integration.c
-    ${LIB_DIR}/session/capture.c
-    ${LIB_DIR}/session/display.c
-    ${LIB_DIR}/session/render.c
-    ${LIB_DIR}/session/settings.c
-    ${LIB_DIR}/session/audio.c
-    ${LIB_DIR}/session/participant.c
-    ${LIB_DIR}/session/host.c
-    ${LIB_DIR}/session/keyboard_handler.c
-    ${LIB_DIR}/session/session_log_buffer.c
-    ${LIB_DIR}/session/stdin_reader.c
-)
 
 # Include subdirectories that define module source variables
 add_subdirectory(${LIB_DIR}/util ${CMAKE_BINARY_DIR}/lib/util)
@@ -209,7 +206,7 @@ macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
         endif()
     endif()
 
-    # Version dependency (build-timer-start removed to prevent unnecessary rebuilds)
+    # Version dependency
     add_dependencies(${MODULE_NAME} generate_version)
 
     # Include paths
@@ -511,6 +508,10 @@ target_compile_definitions(ascii-chat-core PRIVATE PCRE2_CODE_UNIT_WIDTH=8)
 # Add PCRE2 include directory
 target_include_directories(ascii-chat-core PRIVATE ${PCRE2_INCLUDE_DIRS})
 
+# Add session headers directory (refactored from lib/session to src/common/session)
+# Using src/common allows #include "session/display.h" style includes
+target_include_directories(ascii-chat-core PRIVATE ${CMAKE_SOURCE_DIR}/src/common)
+
 # Link PCRE2 library (required)
 target_link_libraries(ascii-chat-core ${PCRE2_LIBRARIES})
 if(PCRE2_LIBRARY_DIRS)
@@ -582,8 +583,6 @@ if(NOT WIN32 AND TARGET Threads::Threads)
     target_link_libraries(ascii-chat-panic PUBLIC Threads::Threads)
 endif()
 
-# Note: Module 9b (defer runtime) was removed - now using direct code insertion
-
 # -----------------------------------------------------------------------------
 # Module 10: Network (depends on: util, platform, crypto, core)
 # -----------------------------------------------------------------------------
@@ -652,22 +651,6 @@ else()
     endif()
 endif()
 
-# Core module was moved earlier in the dependency chain (Module 7)
-
-# -----------------------------------------------------------------------------
-# Module 11: Session Library (depends on: util, platform, core, video, audio)
-# -----------------------------------------------------------------------------
-create_ascii_chat_module(ascii-chat-session "${SESSION_SRCS}")
-if(NOT BUILDING_OBJECT_LIBS)
-    target_link_libraries(ascii-chat-session
-        ascii-chat-util
-        ascii-chat-platform
-        ascii-chat-core
-        ascii-chat-video
-        ascii-chat-audio
-    )
-endif()
-
 # =============================================================================
 # Unified Library Targets (OPTIONAL - not built by default)
 # =============================================================================
@@ -694,7 +677,6 @@ add_library(ascii-chat-shared SHARED
         $<TARGET_OBJECTS:ascii-chat-audio>
         $<TARGET_OBJECTS:ascii-chat-network>
         $<TARGET_OBJECTS:ascii-chat-core>
-        $<TARGET_OBJECTS:ascii-chat-session>
         $<TARGET_OBJECTS:ascii-chat-panic>
     )
     if(ASCIICHAT_ENABLE_UNITY_BUILDS)
@@ -756,7 +738,6 @@ add_library(ascii-chat-shared SHARED
         ascii-chat-audio
         ascii-chat-network
         ascii-chat-core
-        ascii-chat-session
         ascii-chat-panic
     )
 
@@ -1245,7 +1226,6 @@ set(STATIC_LIB_MODULES
     ascii-chat-audio
     ascii-chat-network
     ascii-chat-core
-    ascii-chat-session
     ascii-chat-panic
 )
 
@@ -1505,7 +1485,6 @@ endif()
 # Solution: List consumers before providers, with circulars listed twice
 add_library(ascii-chat-lib INTERFACE)
 target_link_libraries(ascii-chat-lib INTERFACE
-    ascii-chat-session
     ascii-chat-simd
     ascii-chat-video
     ascii-chat-audio

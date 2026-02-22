@@ -17,8 +17,8 @@
  * @date January 2026
  */
 
-#include "capture.h"
-#include "../platform/keyboard.h"
+#include "session/capture.h"
+#include <ascii-chat/platform/keyboard.h>
 
 /* Forward declaration of opaque display context */
 typedef struct session_display_ctx session_display_ctx_t;

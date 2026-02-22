@@ -194,6 +194,8 @@ endif()
 
 # Include directories for executable (needed for version.h and other generated headers)
 target_include_directories(ascii-chat PRIVATE $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/generated>)
+# Add src/common for session headers (allows #include "session/display.h" style)
+target_include_directories(ascii-chat PRIVATE ${CMAKE_SOURCE_DIR}/src/common)
 
 # Add mimalloc include directory for executable (needed for SAFE_MALLOC macros in src/)
 if(USE_MIMALLOC AND MIMALLOC_INCLUDE_DIRS)
