@@ -603,6 +603,27 @@ int platform_format_backtrace_symbols(char *buffer, size_t buffer_size, const ch
  */
 void platform_print_backtrace(int skip_frames);
 
+/**
+ * @brief Log N backtrace frames with function name, line number, and file
+ *
+ * Captures and logs the backtrace at debug level, showing the function name,
+ * file path, and line number for each frame.
+ *
+ * @param num_frames Number of frames to capture and log (0 = all available)
+ * @param skip_frames Number of frames to skip from the top (e.g., skip this function itself)
+ *
+ * Example output:
+ *   [0] my_function() at src/main.c:42
+ *   [1] caller_function() at src/caller.c:123
+ *   [2] main() at src/main.c:999
+ *
+ * @note Uses log_debug() for output
+ * @note Call with skip_frames=1 to skip the platform_log_backtrace_frames() call itself
+ *
+ * @ingroup platform
+ */
+void platform_log_backtrace_frames(int num_frames, int skip_frames);
+
 // ============================================================================
 // Safe String Functions
 // ============================================================================

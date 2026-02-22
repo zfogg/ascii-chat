@@ -1014,6 +1014,44 @@ void platform_print_backtrace(int skip_frames) {
 }
 
 /**
+ * @brief Log N backtrace frames with function name, line number, and file (Windows)
+ *
+ * Captures and logs each frame showing the function name, file path, and line number.
+ */
+void platform_log_backtrace_frames(int num_frames, int skip_frames) {
+  const int MAX_FRAMES = 64;
+  void *buffer[MAX_FRAMES];
+
+  int size = platform_backtrace(buffer, MAX_FRAMES);
+  if (size <= 0) {
+    log_debug("Backtrace: (unable to capture)");
+    return;
+  }
+
+  char **symbols = platform_backtrace_symbols(buffer, size);
+  if (!symbols) {
+    log_debug("Backtrace: (unable to resolve symbols)");
+    return;
+  }
+
+  // Calculate frame limits (skip internal frames + requested skip)
+  // Windows skip is 1 frame (vs 2 on POSIX)
+  int start = 1 + skip_frames;
+  int end = size;
+  if (num_frames > 0 && (start + num_frames) < end) {
+    end = start + num_frames;
+  }
+
+  // Log each frame
+  for (int i = start; i < end; i++) {
+    const char *symbol = symbols[i] ? symbols[i] : "???";
+    log_debug("  [%d] %s", i - start, symbol);
+  }
+
+  platform_backtrace_symbols_destroy(symbols);
+}
+
+/**
  * @brief Windows structured exception handler for crashes
  */
 static LONG WINAPI crash_handler(EXCEPTION_POINTERS *exception_info) {
