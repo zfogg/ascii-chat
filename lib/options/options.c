@@ -855,6 +855,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (rcu_init_result != ASCIICHAT_OK) {
     return rcu_init_result;
   }
+
   // ========================================================================
   // STAGE 1: Mode Detection and Binary-Level Option Handling
   // ========================================================================

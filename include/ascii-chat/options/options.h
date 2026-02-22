@@ -207,6 +207,7 @@
 #include "../platform/terminal.h"
 #include "../video/palette.h"
 #include "../discovery/strings.h"
+#include "explicit.h"
 
 /** @brief Backward compatibility aliases for color mode enum values */
 #define COLOR_MODE_AUTO TERM_COLOR_AUTO           ///< Auto-detect color support
@@ -1127,6 +1128,35 @@ const options_t *options_get(void);
     static typeof(((options_t *)0)->field) _default = {0};                                                             \
     (_opts ? (_opts->field) : _default);                                                                               \
   })
+
+/**
+ * @brief Check if an option was explicitly set via command-line
+ *
+ * Convenience macro for checking if a specific option was explicitly provided
+ * by the user via command-line arguments (as opposed to using a default value).
+ *
+ * **Usage Examples**:
+ * @code{.c}
+ * // Check if user explicitly provided --width
+ * if (IS_OPTION_EXPLICIT("width")) {
+ *     printf("User set width explicitly\n");
+ * }
+ *
+ * // Use in conditional logic
+ * if (!IS_OPTION_EXPLICIT("color") && terminal_is_dark_mode()) {
+ *     // Color not set, apply dark mode defaults
+ * }
+ * @endcode
+ *
+ * @param option_name The long name of the option (e.g., "width", "port", "color")
+ * @return true if option was explicitly set, false otherwise
+ *
+ * @note Option name must be a string literal matching the long_name from registry
+ * @note Case-sensitive: must match exact option name
+ * @note No locks needed - lock-free read via atomic pointer
+ *
+ * @ingroup options
+ */
 
 /**
  * @brief Set a single option field (thread-safe, RCU-based)
