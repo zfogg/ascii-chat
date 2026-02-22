@@ -10,14 +10,73 @@
 #include <ascii-chat/video/renderer.h>
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/log/logging.h>
+#include <ascii-chat/platform/terminal.h>
 
-typedef void ghostty_terminal_t;
-extern ghostty_terminal_t *terminal_new(uint32_t cols, uint32_t rows);
-extern void terminal_free(ghostty_terminal_t *term);
-extern void terminal_feed(ghostty_terminal_t *term, const uint8_t *data, size_t len);
-extern void terminal_get_cell(ghostty_terminal_t *term, uint32_t row, uint32_t col,
+// Stub terminal type - not used yet
+typedef struct {
+    uint32_t cols, rows;
+} ghostty_terminal_t;
+
+static ghostty_terminal_t *terminal_new(uint32_t cols, uint32_t rows) {
+    ghostty_terminal_t *t = SAFE_MALLOC(sizeof(*t), ghostty_terminal_t *);
+    t->cols = cols;
+    t->rows = rows;
+    return t;
+}
+
+static void terminal_free(ghostty_terminal_t *term) {
+    SAFE_FREE(term);
+}
+
+static void terminal_feed(ghostty_terminal_t *term, const uint8_t *data, size_t len) {
+    (void)term;
+    (void)data;
+    (void)len;
+    // TODO: Parse ANSI sequences using ghostty's API
+}
+
+static void terminal_get_cell(ghostty_terminal_t *term, uint32_t row, uint32_t col,
     uint32_t *codepoint_out, uint8_t *fg_r, uint8_t *fg_g, uint8_t *fg_b,
-    uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b);
+    uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b) {
+    (void)term;
+    (void)row;
+    (void)col;
+
+    // Query actual terminal background color to respect user's theme
+    uint8_t term_bg_r = 0, term_bg_g = 0, term_bg_b = 0;
+    bool got_bg_color = terminal_query_background_color(&term_bg_r, &term_bg_g, &term_bg_b);
+
+    // Determine if terminal has dark or light background
+    bool is_dark = terminal_has_dark_background();
+
+    // Default empty space
+    *codepoint_out = ' ';
+
+    // Set background from terminal query if successful
+    if (got_bg_color) {
+        *bg_r = term_bg_r;
+        *bg_g = term_bg_g;
+        *bg_b = term_bg_b;
+    } else {
+        // Fallback based on theme detection
+        if (is_dark) {
+            *bg_r = 0; *bg_g = 0; *bg_b = 0;  // Black for dark theme
+        } else {
+            *bg_r = 255; *bg_g = 255; *bg_b = 255;  // White for light theme
+        }
+    }
+
+    // Set text color with good contrast for detected background theme
+    if (is_dark) {
+        *fg_r = TERMINAL_COLOR_THEME_DARK_DEFAULT_R;
+        *fg_g = TERMINAL_COLOR_THEME_DARK_DEFAULT_G;
+        *fg_b = TERMINAL_COLOR_THEME_DARK_DEFAULT_B;
+    } else {
+        *fg_r = TERMINAL_COLOR_THEME_LIGHT_DEFAULT_R;
+        *fg_g = TERMINAL_COLOR_THEME_LIGHT_DEFAULT_G;
+        *fg_b = TERMINAL_COLOR_THEME_LIGHT_DEFAULT_B;
+    }
+}
 
 struct terminal_renderer_s {
     int cols, rows;
@@ -98,9 +157,11 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg,
 
 asciichat_error_t term_renderer_feed(terminal_renderer_t *r,
                                      const char *ansi_frame, size_t len) {
-    // Determine default colors based on terminal theme
+    // Select theme-appropriate default colors based on terminal background
     uint8_t def_bg = (r->theme == TERM_RENDERER_THEME_LIGHT) ? 255 : 0;
-    uint8_t def_fg = (r->theme == TERM_RENDERER_THEME_LIGHT) ? 0 : 204;
+    uint8_t def_fg_r = (r->theme == TERM_RENDERER_THEME_LIGHT) ? TERMINAL_COLOR_THEME_LIGHT_DEFAULT_R : TERMINAL_COLOR_THEME_DARK_DEFAULT_R;
+    uint8_t def_fg_g = (r->theme == TERM_RENDERER_THEME_LIGHT) ? TERMINAL_COLOR_THEME_LIGHT_DEFAULT_G : TERMINAL_COLOR_THEME_DARK_DEFAULT_G;
+    uint8_t def_fg_b = (r->theme == TERM_RENDERER_THEME_LIGHT) ? TERMINAL_COLOR_THEME_LIGHT_DEFAULT_B : TERMINAL_COLOR_THEME_DARK_DEFAULT_B;
 
     // Fill framebuffer with theme-appropriate background
     for (int py = 0; py < r->height_px; py++) {
@@ -120,7 +181,7 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r,
         for (int col = 0; col < r->cols; col++) {
             uint32_t codepoint = 0;
             // Start with theme-appropriate defaults
-            uint8_t fg_r = def_fg, fg_g = def_fg, fg_b = def_fg;
+            uint8_t fg_r = def_fg_r, fg_g = def_fg_g, fg_b = def_fg_b;
             uint8_t bg_r = def_bg, bg_g = def_bg, bg_b = def_bg;
 
             terminal_get_cell(r->ghostty_term, row, col, &codepoint,
