@@ -6,7 +6,6 @@ option(ASCIICHAT_BUILD_WITH_PANIC "Generate and build panic-instrumented sources
 set(ASCIICHAT_PANIC_TOOL "" CACHE FILEPATH "Path to pre-built ascii-instr-panic tool (optional)")
 
 include(${CMAKE_SOURCE_DIR}/cmake/utils/BuildLLVMTool.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/utils/GenerateCompilationDB.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/utils/PathConversion.cmake)
 set(_ASCII_PANIC_SCRIPT "${CMAKE_SOURCE_DIR}/cmake/tooling/run_panic_instrumentation.sh")
 
