@@ -13,6 +13,7 @@
 #include <ascii-chat/session/render.h>
 #include <ascii-chat/session/capture.h>
 #include <ascii-chat/session/display.h>
+#include <ascii-chat/session/stdin_reader.h>
 #include <ascii-chat/ui/help_screen.h>
 #include <ascii-chat/log/interactive_grep.h>
 #include <ascii-chat/common.h>
@@ -23,6 +24,7 @@
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/asciichat_errno.h>
 
 #include <stddef.h>
@@ -79,6 +81,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   bool first_frame_rendered = false;
   bool snapshot_mode = GET_OPTION(snapshot_mode);
 
+  log_info("session_render_loop: STARTING - display=%p capture=%p capture_cb=%p snapshot_mode=%s",
+           (void*)display, (void*)capture, (void*)capture_cb, snapshot_mode ? "YES" : "NO");
+
   // Pause mode state tracking
   bool initial_paused_frame_rendered = false;
   bool was_paused = false;
@@ -116,6 +121,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   log_set_terminal_output(false);
 
   // Main render loop - works for both synchronous and event-driven modes
+  log_info("session_render_loop: entering main loop - is_synchronous=%s", is_synchronous ? "YES" : "NO");
   log_debug("session_render_loop: entering main loop");
   while (!should_exit(user_data)) {
     log_debug_every(US_PER_SEC_INT, "session_render_loop: frame %lu", frame_count);
@@ -132,6 +138,66 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     if (is_synchronous) {
       capture_start_ns = time_get_ns();
       // SYNCHRONOUS MODE: Use session_capture context
+
+      // Check if we're in stdin render mode (reading ASCII frames from stdin)
+      stdin_frame_reader_t *stdin_reader = (stdin_frame_reader_t *)session_display_get_stdin_reader(display);
+      if (stdin_reader) {
+        // STDIN RENDER MODE: Read ASCII frame text directly from stdin
+        char *ascii_frame = NULL;
+        asciichat_error_t stdin_err = stdin_frame_reader_next(stdin_reader, &ascii_frame);
+        if (stdin_err != ASCIICHAT_OK) {
+          log_error("Failed to read stdin frame: %s", asciichat_error_string(stdin_err));
+          break; // Exit render loop on error
+        }
+
+        if (!ascii_frame) {
+          // EOF reached - exit render loop
+          log_info("stdin_render_mode: EOF reached, exiting render loop");
+          break;
+        }
+
+        frame_count++;
+        log_debug_every(US_PER_SEC_INT, "RENDER[%lu]: Read ASCII frame from stdin (%zu bytes)", frame_count, strlen(ascii_frame));
+
+        // In stdin render mode, check if rendering to stdout or to file
+        const char *render_file_opt = GET_OPTION(render_file);
+        if (render_file_opt && strcmp(render_file_opt, "-") == 0) {
+          // Render to stdout: write raw ASCII frame directly
+          (void)platform_write_all(STDOUT_FILENO, ascii_frame, strlen(ascii_frame));
+          (void)platform_write_all(STDOUT_FILENO, "\n", 1);
+        } else {
+          // Render to file: use display rendering (will use render_file if configured)
+          session_display_render_frame(display, ascii_frame);
+        }
+
+        SAFE_FREE(ascii_frame);
+
+        // Handle keyboard input (only when connected to TTY)
+        if (keyboard_handler && terminal_is_interactive()) {
+          keyboard_key_t key = keyboard_read_nonblocking();
+          if (key != KEY_NONE) {
+            if (interactive_grep_should_handle(key)) {
+              interactive_grep_handle_key(key);
+            } else {
+              keyboard_handler(capture, key, user_data);
+            }
+          }
+        }
+
+        // Frame timing for stdin mode
+        uint64_t frame_end_ns = time_get_ns();
+        uint64_t frame_elapsed_ns = time_elapsed_ns(frame_start_ns, frame_end_ns);
+        uint64_t target_frame_ns = (uint64_t)(NS_PER_SEC_INT / GET_OPTION(fps));
+
+        // Sleep to maintain target FPS if frame was faster than target
+        if (frame_elapsed_ns < target_frame_ns) {
+          uint64_t sleep_ns = target_frame_ns - frame_elapsed_ns;
+          platform_sleep_ns(sleep_ns);
+        }
+
+        // Skip the normal image capture for this frame
+        continue;
+      }
 
       // Check pause state and handle initial frame rendering
       media_source_t *source = session_capture_get_media_source(capture);
@@ -186,7 +252,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
         log_debug_every(3 * US_PER_SEC_INT, "RENDER[%lu]: Starting frame read", frame_count);
         image = session_capture_read_frame(capture);
-        log_debug_every(3 * US_PER_SEC_INT, "RENDER[%lu]: Frame read done, image=%p", frame_count, (void *)image);
+        log_info("RENDER[%lu]: Frame read done, image=%p", frame_count, (void *)image);
         capture_elapsed_ns = time_elapsed_ns(capture_start_ns, time_get_ns());
 
         if (!image) {
@@ -275,6 +341,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     uint64_t conversion_elapsed_ns = post_convert_ns - pre_convert_ns;
 
     if (ascii_frame) {
+      log_info("render_loop: ascii_frame ready (len=%zu)", strlen(ascii_frame));
       // Detect when we have a paused frame (first frame after pausing)
       bool is_paused_frame = initial_paused_frame_rendered && is_paused;
 
@@ -293,6 +360,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         pre_render_ns = time_get_ns();
         START_TIMER("render_frame");
 
+        log_info("render_loop: calling session_display_render_frame - display=%p", (void*)display);
         // Check if help screen is active - if so, render help instead of frame
         // Help screen is disabled in snapshot mode and non-interactive terminals (keyboard disabled)
         if (display && session_display_is_help_active(display) && terminal_is_interactive() && !snapshot_mode) {

@@ -69,15 +69,23 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
 }
 
 asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *ansi_frame) {
-  if (!ctx)
+  log_info("render_file_write_frame: CALLED - ctx=%p", (void*)ctx);
+
+  if (!ctx) {
+    log_warn("render_file_write_frame: ctx is NULL");
     return ASCIICHAT_OK;
+  }
+
   if (!ansi_frame) {
     log_warn("render_file_write_frame: ansi_frame is NULL");
     return ASCIICHAT_OK;
   }
 
   size_t frame_len = strlen(ansi_frame);
-  log_info("render_file_write_frame: processing frame (len=%zu, first 100 chars: %.100s)", frame_len, ansi_frame);
+  log_info("render_file_write_frame: processing frame (len=%zu)", frame_len);
+  if (frame_len > 0) {
+    log_info("  first 100 chars: %.100s", ansi_frame);
+  }
 
   asciichat_error_t err = term_renderer_feed(ctx->renderer, ansi_frame, frame_len);
   if (err != ASCIICHAT_OK) {
@@ -85,8 +93,22 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *an
     return err;
   }
 
+  const uint8_t *pixels = term_renderer_pixels(ctx->renderer);
+  int pitch = term_renderer_pitch(ctx->renderer);
+  int width_px = term_renderer_width_px(ctx->renderer);
+  int height_px = term_renderer_height_px(ctx->renderer);
+
+  log_info("render_file_write_frame: pixels=%p pitch=%d dims=%dx%d", (void*)pixels, pitch, width_px, height_px);
+
+  // Check first few pixels to verify content
+  if (pixels) {
+    uint8_t sample_r = pixels[0], sample_g = pixels[1], sample_b = pixels[2];
+    uint8_t sample_r_mid = pixels[(height_px/2) * pitch], sample_g_mid = pixels[(height_px/2) * pitch + 1], sample_b_mid = pixels[(height_px/2) * pitch + 2];
+    log_info("  pixel[0]: RGB(%u,%u,%u),  pixel[mid]: RGB(%u,%u,%u)", sample_r, sample_g, sample_b, sample_r_mid, sample_g_mid, sample_b_mid);
+  }
+
   err =
-      ffmpeg_encoder_write_frame(ctx->encoder, term_renderer_pixels(ctx->renderer), term_renderer_pitch(ctx->renderer));
+      ffmpeg_encoder_write_frame(ctx->encoder, pixels, pitch);
   if (err != ASCIICHAT_OK) {
     log_warn("render_file_write_frame: ffmpeg_encoder_write_frame failed: %s", asciichat_error_string(err));
   }

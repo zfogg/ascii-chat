@@ -1444,6 +1444,9 @@ static bool is_mode_keyword(const char *arg) {
 static bool is_flag_argument(const char *arg) {
   if (!arg || arg[0] == '\0')
     return false;
+  // Allow "-" as a value (Unix convention for stdin/stdout), but treat other "-" args as flags
+  if (arg[0] == '-' && arg[1] == '\0')
+    return false; // Just "-" is a value, not a flag
   return arg[0] == '-' || is_mode_keyword(arg);
 }
 

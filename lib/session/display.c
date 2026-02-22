@@ -23,6 +23,7 @@
 #include <ascii-chat/video/color_filter.h>
 #include <ascii-chat/video/digital_rain.h>
 #include <ascii-chat/video/image.h>
+#include <ascii-chat/session/stdin_reader.h>
 #ifndef _WIN32
 #include <ascii-chat/video/renderer.h>
 #endif
@@ -94,6 +95,9 @@ typedef struct session_display_ctx {
 #ifndef _WIN32
   /** @brief Render-to-file context (NULL if disabled) */
   render_file_ctx_t *render_file;
+
+  /** @brief Stdin frame reader for ASCII-to-video rendering (borrowed ref, not owned) */
+  stdin_frame_reader_t *stdin_reader;
 #endif
 } session_display_ctx_t;
 
@@ -254,12 +258,13 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   }
 
 #ifndef _WIN32
-  // Initialize render-file if enabled
-  if (strlen(GET_OPTION(render_file)) > 0) {
+  // Initialize render-file if enabled (skip "-" which is used for stdin render mode to stdout)
+  const char *render_file_opt = GET_OPTION(render_file);
+  if (strlen(render_file_opt) > 0 && strcmp(render_file_opt, "-") != 0) {
     int width = GET_OPTION(width);
     int height = GET_OPTION(height);
     asciichat_error_t rf_err = render_file_create(
-        GET_OPTION(render_file),
+        render_file_opt,
         width, height,
         GET_OPTION(fps),
         GET_OPTION(render_theme),
@@ -267,7 +272,9 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
     if (rf_err != ASCIICHAT_OK)
       log_warn("render-file: init failed — file output disabled");
     else
-      log_info("render-file: initialized for %s", GET_OPTION(render_file));
+      log_info("render-file: initialized for %s", render_file_opt);
+  } else if (strcmp(render_file_opt, "-") == 0) {
+    log_info("stdin render mode: stdout output enabled (skipping render_file encoder)");
   }
 #endif
 
@@ -310,6 +317,20 @@ void session_display_destroy(session_display_ctx_t *ctx) {
 
   ctx->initialized = false;
   SAFE_FREE(ctx);
+}
+
+void session_display_set_stdin_reader(session_display_ctx_t *ctx, void *reader) {
+  if (!ctx) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Display context is NULL");
+    return;
+  }
+
+#ifndef _WIN32
+  ctx->stdin_reader = (stdin_frame_reader_t *)reader;
+  log_debug("session_display: stdin_reader set");
+#else
+  (void)reader;  // Unused on Windows
+#endif
 }
 
 /* ============================================================================
@@ -362,6 +383,19 @@ int session_display_get_tty_fd(session_display_ctx_t *ctx) {
     return -1;
   }
   return ctx->tty_info.fd;
+}
+
+void *session_display_get_stdin_reader(session_display_ctx_t *ctx) {
+  if (!ctx || !ctx->initialized) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p", ctx);
+    return NULL;
+  }
+
+#ifndef _WIN32
+  return ctx->stdin_reader;
+#else
+  return NULL;
+#endif
 }
 
 /* ============================================================================
@@ -543,6 +577,12 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
  * ============================================================================ */
 
 void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_data) {
+  static int call_count = 0;
+  if (call_count++ < 5) {
+    log_info("session_display_render_frame: CALLED - ctx=%p render_file=%p frame_len=%zu",
+        (void*)ctx, (void*)(ctx ? ctx->render_file : NULL), frame_data ? strlen(frame_data) : 0);
+  }
+
   if (!ctx || !ctx->initialized) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Display context is NULL or uninitialized");
     return;

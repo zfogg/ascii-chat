@@ -41,6 +41,9 @@ static bool (*g_render_should_exit)(void *) = NULL;
 static tcp_client_t *g_tcp_client = NULL;
 static websocket_client_t *g_websocket_client = NULL;
 
+// Module-level stdin reader for ASCII-to-video rendering (stdin render mode only)
+static stdin_frame_reader_t *g_stdin_reader = NULL;
+
 // External exit function from src/main.c
 extern bool should_exit(void);
 
@@ -58,6 +61,10 @@ tcp_client_t *session_client_like_get_tcp_client(void) {
 
 websocket_client_t *session_client_like_get_websocket_client(void) {
   return g_websocket_client;
+}
+
+stdin_frame_reader_t *session_client_like_get_stdin_reader(void) {
+  return g_stdin_reader;
 }
 
 /* ============================================================================
@@ -343,30 +350,25 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
       goto cleanup;
     }
 
-    stdin_frame_reader_t *stdin_reader = NULL;
-    asciichat_error_t stdin_err = stdin_frame_reader_create(frame_height, &stdin_reader);
+    asciichat_error_t stdin_err = stdin_frame_reader_create(frame_height, &g_stdin_reader);
     if (stdin_err != ASCIICHAT_OK) {
       log_fatal("Failed to initialize stdin frame reader: %s", asciichat_error_string(stdin_err));
       result = ERROR_MEDIA_INIT;
       goto cleanup;
     }
 
-    // For stdin render mode, we still need to create a capture context for display compatibility
-    // But we'll bypass the actual frame reading and feed ASCII frames directly to display
-    // For now, create a minimal mock capture context
+    // For stdin render mode, create a minimal capture context for compatibility
     int fps = GET_OPTION(fps);
     capture = session_network_capture_create((uint32_t)(fps > 0 ? fps : 60));
     if (!capture) {
       log_fatal("Failed to initialize capture context for stdin rendering");
-      stdin_frame_reader_destroy(stdin_reader);
+      stdin_frame_reader_destroy(g_stdin_reader);
+      g_stdin_reader = NULL;
       result = ERROR_MEDIA_INIT;
       goto cleanup;
     }
 
-    // TODO: Store stdin_reader somewhere accessible to the render loop
-    // For now, this is a placeholder - the full integration needs render loop support
-    log_warn("stdin render mode: Note - render loop integration still needed");
-    stdin_frame_reader_destroy(stdin_reader);
+    log_info("stdin render mode: reading %d-line frames from stdin, auto-detecting width", frame_height);
   }
 
   // Choose capture type based on mode:
@@ -472,6 +474,12 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     log_fatal("Failed to initialize display");
     result = ERROR_DISPLAY;
     goto cleanup;
+  }
+
+  // Pass stdin_reader to display if in stdin render mode
+  if (stdin_render_mode && g_stdin_reader) {
+    session_display_set_stdin_reader(display, g_stdin_reader);
+    log_debug("stdin_reader passed to display context");
   }
 
   // ============================================================================
@@ -602,6 +610,12 @@ cleanup:
   if (capture) {
     session_capture_destroy(capture);
     capture = NULL;
+  }
+
+  // Destroy stdin reader if active (stdin render mode)
+  if (g_stdin_reader) {
+    stdin_frame_reader_destroy(g_stdin_reader);
+    g_stdin_reader = NULL;
   }
 
   // Clean up probe source if still allocated (shouldn't happen, but be safe)

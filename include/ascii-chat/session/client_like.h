@@ -59,6 +59,7 @@
 /* Forward declarations - callers include full headers themselves */
 typedef struct tcp_client tcp_client_t;
 typedef struct websocket_client websocket_client_t;
+typedef struct stdin_frame_reader_s stdin_frame_reader_t;
 /* discovery_session is defined in src/discovery/session.h as an opaque type
    Discovery mode should include that header and cast to/from void * */
 
@@ -272,6 +273,19 @@ tcp_client_t *session_client_like_get_tcp_client(void);
  * @return Pointer to websocket_client_t, or NULL if not created or using TCP
  */
 websocket_client_t *session_client_like_get_websocket_client(void);
+
+/**
+ * Get the stdin frame reader for ASCII-to-video rendering (stdin render mode only).
+ *
+ * Returns the stdin reader created when stdin render mode is active.
+ * Only valid after session_client_like_run() is called and during run_fn execution.
+ * May be NULL if not in stdin render mode.
+ *
+ * @return Pointer to stdin_frame_reader_t, or NULL if not in stdin render mode
+ *
+ * @ingroup session
+ */
+stdin_frame_reader_t *session_client_like_get_stdin_reader(void);
 
 /**
  * Run a client-like mode with fully shared initialization and teardown
