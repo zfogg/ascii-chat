@@ -411,6 +411,7 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
   log_dev_every(1000000, "websocket_send: is_connected=%d, wsi=%p, send_len=%zu", connected, (void *)ws_data->wsi, len);
 
   if (!connected) {
+    log_error("[WEBSOCKET_SEND_ERROR] ★★★ Transport NOT connected! ws_data=%p, wsi=%p, len=%zu", (void *)ws_data, (void *)ws_data->wsi, len);
     log_error("WebSocket send called but transport NOT connected! wsi=%p, len=%zu", (void *)ws_data->wsi, len);
     return SET_ERRNO(ERROR_NETWORK, "WebSocket transport not connected (wsi=%p)", (void *)ws_data->wsi);
   }
@@ -1380,6 +1381,7 @@ acip_transport_t *acip_websocket_server_transport_create(struct lws *wsi, crypto
   ws_data->context = lws_get_context(wsi); // Get context from wsi (not owned)
   ws_data->owns_context = false;           // Server owns context, not transport
   ws_data->is_connected = true;            // Already connected (server-side)
+  log_info("[WEBSOCKET_TRANSPORT_CREATE] ★★★ SERVER TRANSPORT CREATED: is_connected=true, wsi=%p, ws_data=%p", (void *)wsi, (void *)ws_data);
   log_debug("Server transport created: is_connected=true, wsi=%p", (void *)wsi);
 
   // Initialize transport
