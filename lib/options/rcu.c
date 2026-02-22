@@ -8,6 +8,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
+#include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/platform/process.h>
@@ -47,11 +48,9 @@ static _Atomic(options_t *) g_options = NULL;
 static mutex_t g_options_write_mutex;
 
 /**
- * @brief Initialization flag
+ * @brief Lifecycle for options initialization (handles TOCTOU race prevention)
  */
-static bool g_options_initialized = false;
-// Mutex to protect initialization check (TOCTOU race prevention)
-static static_mutex_t g_options_init_mutex = STATIC_MUTEX_INIT;
+static lifecycle_t g_options_lifecycle = LIFECYCLE_INIT;
 // Track the PID to detect fork() - after fork, child needs to reinitialize
 static pid_t g_init_pid = -1;
 
@@ -189,14 +188,15 @@ static void deferred_free_all(void) {
  * This is called automatically by pthread after fork() in the child process.
  */
 static void options_rcu_atfork_child(void) {
-  // Reset the static mutex initialized flag to force reinitialization
-  g_options_init_mutex.initialized = 0;
-  // Reset the RCU state
-  g_options_initialized = false;
-  // Reset the atomic options pointer to avoid dangling references
-  // The parent's allocated memory is not accessible/valid in the child
+  /* Reset the lifecycle state to allow reinitialization after fork */
+  /* This is safe because lifecycle_t is just an atomic int, can be reset directly */
+  atomic_store(&g_options_lifecycle.state, LIFECYCLE_UNINITIALIZED);
+
+  /* Reset the atomic options pointer to avoid dangling references */
+  /* The parent's allocated memory is not accessible/valid in the child */
   atomic_store(&g_options, NULL);
-  // Don't reset g_init_pid - we'll detect the fork in options_state_init
+
+  /* Don't reset g_init_pid - we'll detect the fork in options_state_init */
 }
 
 /**
@@ -216,45 +216,41 @@ __attribute__((constructor)) static void register_fork_handlers_constructor(void
 // ============================================================================
 
 asciichat_error_t options_state_init(void) {
-  // Detect fork: after fork(), child process must reinitialize mutexes BEFORE locking
-  // The inherited mutex is in an inconsistent state and can cause deadlocks/signals
-  // We must reset it before calling static_mutex_lock
+  // Detect fork: after fork(), child process must reinitialize
   pid_t current_pid = platform_get_pid();
-  if ((g_options_initialized || g_init_pid != -1) && g_init_pid != current_pid) {
-// We're in a forked child - reset the static mutex state before using it
-// On POSIX, set initialized=0 so static_mutex_lock will reinitialize it
-// On Windows, the InterlockedCompareExchange logic handles this automatically
-#ifndef _WIN32
-    g_options_init_mutex.initialized = 0; // Force reinitialization on next lock
-#else
-    g_options_init_mutex.initialized = 0; // Same approach for Windows
-#endif
-    log_debug("Detected fork in options_state_init (parent PID %d, child PID %d) - resetting mutex", g_init_pid,
+  if ((lifecycle_is_initialized(&g_options_lifecycle) || g_init_pid != -1) && g_init_pid != current_pid) {
+    log_debug("Detected fork in options_state_init (parent PID %d, child PID %d) - resetting lifecycle", g_init_pid,
               current_pid);
-    g_options_initialized = false;
-    g_init_pid = current_pid; // Set to current PID so we know we're initialized in this process
+    /* Reset lifecycle to allow reinitialization after fork */
+    lifecycle_shutdown(&g_options_lifecycle);
+    g_init_pid = current_pid;
   }
 
-  static_mutex_lock(&g_options_init_mutex);
-
-  // Check if already initialized in this process
-  if (g_options_initialized && g_init_pid == current_pid) {
-    // Already initialized in this process
-    static_mutex_unlock(&g_options_init_mutex);
+  // Check if already initialized in this process using lifecycle
+  if (lifecycle_is_initialized(&g_options_lifecycle) && g_init_pid == current_pid) {
     log_warn("Options state already initialized");
     return ASCIICHAT_OK;
   }
 
+  /* Use lifecycle to serialize initialization */
+  if (!lifecycle_init(&g_options_lifecycle, NULL)) {
+    /* Another thread is initializing or already initialized */
+    if (lifecycle_is_initialized(&g_options_lifecycle)) {
+      return ASCIICHAT_OK;
+    }
+    return SET_ERRNO(ERROR_INVALID_STATE, "Failed to acquire options initialization lock");
+  }
+
   // Initialize write mutex
   if (mutex_init(&g_options_write_mutex, "options_write") != 0) {
-    static_mutex_unlock(&g_options_init_mutex);
+    lifecycle_shutdown(&g_options_lifecycle);
     return SET_ERRNO(ERROR_THREAD, "Failed to initialize options write mutex");
   }
 
   // Initialize deferred free mutex
   if (mutex_init(&g_deferred_free_mutex, "deferred_free") != 0) {
     mutex_destroy(&g_options_write_mutex);
-    static_mutex_unlock(&g_options_init_mutex);
+    lifecycle_shutdown(&g_options_lifecycle);
     return SET_ERRNO(ERROR_THREAD, "Failed to initialize deferred free mutex");
   }
 
@@ -263,7 +259,7 @@ asciichat_error_t options_state_init(void) {
   if (!initial_opts) {
     mutex_destroy(&g_options_write_mutex);
     mutex_destroy(&g_deferred_free_mutex);
-    static_mutex_unlock(&g_options_init_mutex);
+    lifecycle_shutdown(&g_options_lifecycle);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate initial options struct");
   }
 
@@ -273,9 +269,7 @@ asciichat_error_t options_state_init(void) {
   // Publish initial struct (release semantics - make all fields visible to readers)
   atomic_store_explicit(&g_options, initial_opts, memory_order_release);
 
-  g_options_initialized = true;
   g_init_pid = current_pid; // Record PID to detect fork later
-  static_mutex_unlock(&g_options_init_mutex);
   log_dev("Options state initialized with RCU pattern (PID %d)", current_pid);
 
   return ASCIICHAT_OK;
@@ -286,13 +280,10 @@ asciichat_error_t options_state_set(const options_t *opts) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "opts is NULL");
   }
 
-  // Check initialization flag under lock to prevent TOCTOU race
-  static_mutex_lock(&g_options_init_mutex);
-  if (!g_options_initialized) {
-    static_mutex_unlock(&g_options_init_mutex);
+  // Check initialization state using lifecycle
+  if (!lifecycle_is_initialized(&g_options_lifecycle)) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Options state not initialized (call options_state_init first)");
   }
-  static_mutex_unlock(&g_options_init_mutex);
 
   // Get current struct (should be the initial zero-initialized one during startup)
   options_t *current = atomic_load_explicit(&g_options, memory_order_acquire);
@@ -307,14 +298,13 @@ asciichat_error_t options_state_set(const options_t *opts) {
 }
 
 void options_state_destroy(void) {
-  // Check and clear initialization flag under lock
-  static_mutex_lock(&g_options_init_mutex);
-  if (!g_options_initialized) {
-    static_mutex_unlock(&g_options_init_mutex);
+  // Check if initialized using lifecycle
+  if (!lifecycle_is_initialized(&g_options_lifecycle)) {
     return;
   }
-  g_options_initialized = false; // Clear flag first to prevent new operations
-  static_mutex_unlock(&g_options_init_mutex);
+
+  /* Shutdown lifecycle to mark as no longer initialized */
+  lifecycle_shutdown(&g_options_lifecycle);
 
   // Get current options pointer
   options_t *current = atomic_load_explicit(&g_options, memory_order_acquire);
@@ -332,8 +322,6 @@ void options_state_destroy(void) {
   config_schema_destroy();
 
   // Destroy dynamically created mutexes
-  // NOTE: Do NOT destroy g_options_init_mutex - it's statically initialized
-  // and needs to persist across shutdown/init cycles (especially in tests)
   mutex_destroy(&g_options_write_mutex);
   mutex_destroy(&g_deferred_free_mutex);
 
@@ -364,7 +352,7 @@ static asciichat_error_t options_update(void (*updater)(options_t *, void *), vo
     return SET_ERRNO(ERROR_INVALID_PARAM, "updater function is NULL");
   }
 
-  if (!g_options_initialized) {
+  if (!lifecycle_is_initialized(&g_options_lifecycle)) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Options state not initialized");
   }
 
