@@ -1181,6 +1181,9 @@ endif()
 # Link render-file dependencies
 if(NOT WIN32)
     target_link_libraries(ascii-chat-shared PRIVATE ${GHOSTTY_LIBS})
+
+    # Add RPATH for ghostty shared library (unconditional - if code compiles, ghostty is found)
+    list(APPEND CMAKE_INSTALL_RPATH "${ASCIICHAT_DEPS_CACHE_DIR}/ghostty/lib")
 endif()
 
 # Suppress linker warnings about duplicate debug symbols in libdatachannel

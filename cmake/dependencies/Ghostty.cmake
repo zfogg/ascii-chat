@@ -233,9 +233,9 @@ elseif(UNIX AND NOT APPLE)
 
         # Create an imported library that links to the built library (only if build succeeded)
         if(EXISTS "${GHOSTTY_LIB}")
-            add_library(ghostty_lib STATIC IMPORTED GLOBAL)
+            add_library(ghostty_lib SHARED IMPORTED GLOBAL)
             set_target_properties(ghostty_lib PROPERTIES
-                IMPORTED_LOCATION "${GHOSTTY_LIB}"
+                IMPORTED_LOCATION "${GHOSTTY_BUILD_DIR}/lib/libghostty-vt.so.0"
             )
             target_include_directories(ghostty_lib INTERFACE
                 "${GHOSTTY_BUILD_DIR}/include"
