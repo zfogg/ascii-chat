@@ -7,6 +7,7 @@
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/init.h>
+#include <ascii-chat/util/lifecycle.h>
 // utf8.h no longer needed - keyboard thread handles raw bytes
 
 #include <termios.h>
@@ -29,32 +30,32 @@
  * ============================================================================ */
 
 static struct termios g_original_termios;
-// Keyboard initialization reference counting (supports multiple init/cleanup pairs)
-static unsigned int g_keyboard_init_refcount = 0;
-static static_mutex_t g_keyboard_init_mutex = STATIC_MUTEX_INIT;
+// Keyboard lifecycle (thread-safe init/cleanup)
+static lifecycle_t g_keyboard_lc = LIFECYCLE_INIT;
 
 /* ============================================================================
  * Keyboard Functions
  * ============================================================================ */
 
 asciichat_error_t keyboard_init(void) {
-  static_mutex_lock(&g_keyboard_init_mutex);
-
-  // If already initialized, just increment refcount
-  if (g_keyboard_init_refcount > 0) {
-    g_keyboard_init_refcount++;
-    static_mutex_unlock(&g_keyboard_init_mutex);
+  // If already initialized, return success
+  if (lifecycle_is_initialized(&g_keyboard_lc)) {
     return ASCIICHAT_OK;
   }
 
-  // Hold lock for entire initialization sequence to prevent TOCTOU race.
+  // CAS to claim initialization
+  if (!lifecycle_init(&g_keyboard_lc, "keyboard")) {
+    return ASCIICHAT_OK; // Already initialized
+  }
+
+  // We won the init race - do the actual work
   // Multiple threads must not call tcgetattr/tcsetattr concurrently.
 
   struct termios new_termios;
 
   // Get current terminal settings
   if (tcgetattr(STDIN_FILENO, &g_original_termios) < 0) {
-    static_mutex_unlock(&g_keyboard_init_mutex);
+    lifecycle_init_abort(&g_keyboard_lc);
     return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Failed to get terminal attributes");
   }
 
@@ -77,7 +78,7 @@ asciichat_error_t keyboard_init(void) {
 
   // Apply new settings
   if (tcsetattr(STDIN_FILENO, TCSANOW, &new_termios) < 0) {
-    static_mutex_unlock(&g_keyboard_init_mutex);
+    lifecycle_init_abort(&g_keyboard_lc);
     return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Failed to set terminal attributes");
   }
 
@@ -85,38 +86,25 @@ asciichat_error_t keyboard_init(void) {
   // blocking select(). Non-blocking mode is unnecessary and can cause
   // read() to return EAGAIN spuriously.
 
-  // Mark as initialized with reference counting (still under lock)
-  g_keyboard_init_refcount = 1;
-  static_mutex_unlock(&g_keyboard_init_mutex);
-
+  // Mark as initialized (still under lock-free CAS)
   return ASCIICHAT_OK;
 }
 
 void keyboard_destroy(void) {
-  static_mutex_lock(&g_keyboard_init_mutex);
-  if (g_keyboard_init_refcount == 0) {
-    static_mutex_unlock(&g_keyboard_init_mutex);
-    return;
+  if (!lifecycle_shutdown(&g_keyboard_lc)) {
+    return; // Not initialized or already shutting down
   }
-
-  g_keyboard_init_refcount = 0;
 
   // Restore original terminal settings to prevent corrupting subsequent shell commands
   // This is safe to call at process exit time after all output is complete
   if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &g_original_termios) < 0) {
     // Silently ignore errors during cleanup
   }
-
-  static_mutex_unlock(&g_keyboard_init_mutex);
 }
 
 keyboard_key_t keyboard_read_nonblocking(void) {
-  // Check if keyboard is initialized with reference counting
-  static_mutex_lock(&g_keyboard_init_mutex);
-  bool is_initialized = (g_keyboard_init_refcount > 0);
-  static_mutex_unlock(&g_keyboard_init_mutex);
-
-  if (!is_initialized) {
+  // Check if keyboard is initialized
+  if (!lifecycle_is_initialized(&g_keyboard_lc)) {
     return KEY_NONE;
   }
 
@@ -191,11 +179,7 @@ keyboard_key_t keyboard_read_nonblocking(void) {
 
 keyboard_key_t keyboard_read_with_timeout(uint32_t timeout_ms) {
   // Check if keyboard is initialized
-  static_mutex_lock(&g_keyboard_init_mutex);
-  bool is_initialized = (g_keyboard_init_refcount > 0);
-  static_mutex_unlock(&g_keyboard_init_mutex);
-
-  if (!is_initialized) {
+  if (!lifecycle_is_initialized(&g_keyboard_lc)) {
     return KEY_NONE;
   }
 
