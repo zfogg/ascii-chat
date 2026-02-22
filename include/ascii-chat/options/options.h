@@ -207,7 +207,6 @@
 #include "../platform/terminal.h"
 #include "../video/palette.h"
 #include "../discovery/strings.h"
-#include "explicit.h"
 
 /** @brief Backward compatibility aliases for color mode enum values */
 #define COLOR_MODE_AUTO TERM_COLOR_AUTO           ///< Auto-detect color support

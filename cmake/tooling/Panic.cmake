@@ -95,7 +95,6 @@ function(ascii_panic_prepare)
         "lib/platform/windows/system.c"
         "lib/platform/windows/mutex.c"
         "lib/platform/windows/thread.c"
-        "lib/debug/lock.c"
         # SIMD files use intrinsics that confuse the panic instrumentation tool
         "lib/video/simd/ascii_simd.c"
         "lib/video/simd/ascii_simd_color.c"

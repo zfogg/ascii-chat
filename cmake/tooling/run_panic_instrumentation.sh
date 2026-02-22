@@ -330,8 +330,7 @@ SOURCE_PATHS=("${deduped_paths[@]}")
 filtered_paths=()
 for path in "${SOURCE_PATHS[@]}"; do
   case "$path" in
-  lib/debug/lock.c | \
-    lib/platform/system.c | \
+  lib/platform/system.c | \
     lib/platform/posix/system.c | \
     lib/platform/posix/mutex.c | \
     lib/platform/posix/thread.c | \
@@ -456,7 +455,6 @@ echo "Headers copied to instrumented tree"
 
 extra_source_files=(
   "lib/platform/system.c"
-  "lib/debug/lock.c"
   "lib/debug/memory.c"
   "lib/platform/posix/system.c"
   "lib/platform/posix/mutex.c"

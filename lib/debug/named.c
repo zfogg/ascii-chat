@@ -298,7 +298,7 @@ const char *named_describe(uintptr_t key, const char *type_hint) {
         type_hint = "object";
     }
 
-    if (!atomic_load(&g_named_registry.initialized)) {
+    if (!lifecycle_is_initialized(&g_named_registry.lifecycle)) {
         return type_hint;
     }
 
