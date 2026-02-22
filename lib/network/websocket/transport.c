@@ -76,6 +76,38 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
 // =============================================================================
 
 /**
+ * @brief Queue a buffer for deferred freeing to prevent use-after-free with compression
+ *
+ * Permessage-deflate compression holds buffer references asynchronously after lws_write().
+ * This function queues buffers for later freeing instead of immediate deallocation.
+ */
+static void deferred_buffer_free(websocket_transport_data_t *ws_data, uint8_t *ptr, size_t size) {
+  if (!ws_data || !ptr) return;
+
+  pending_free_item_t item = {.ptr = ptr, .size = size};
+  mutex_lock(&ws_data->pending_free_mutex);
+  ringbuffer_write(ws_data->pending_free_queue, &item);
+  mutex_unlock(&ws_data->pending_free_mutex);
+}
+
+/**
+ * @brief Drain pending-free queue to actually free deferred buffers
+ *
+ * Called periodically from the service thread to free buffers that were
+ * queued for deferred freeing after their associated compression operations complete.
+ */
+static void drain_pending_free_queue(websocket_transport_data_t *ws_data) {
+  if (!ws_data) return;
+
+  pending_free_item_t item;
+  mutex_lock(&ws_data->pending_free_mutex);
+  while (ringbuffer_read(ws_data->pending_free_queue, &item)) {
+    buffer_pool_free(NULL, item.ptr, item.size);
+  }
+  mutex_unlock(&ws_data->pending_free_mutex);
+}
+
+/**
  * @brief Service thread that continuously processes libwebsockets events
  *
  * This thread is necessary for client-side transports to receive incoming messages.
@@ -94,6 +126,12 @@ static void *websocket_service_thread(void *arg) {
   while (ws_data->service_running) {
     loop_count++;
 
+    // Periodically drain pending-free queue to free buffers deferred from compression
+    // Do this at the start of each loop to ensure buffers are freed after compression completes
+    if (loop_count % 10 == 0) {
+      drain_pending_free_queue(ws_data);
+    }
+
     // ALWAYS log first 10 loops to debug why queue checks aren't working
     if (loop_count <= 10) {
       log_info("[LOOP %d] owns_context=%d, wsi=%p, service_running=%d", loop_count,
@@ -109,22 +147,36 @@ static void *websocket_service_thread(void *arg) {
         log_info("[LOOP %d] CLIENT condition TRUE - checking queue", loop_count);
       }
 
-      // This is a CLIENT transport - actively drain send queue instead of relying on callbacks
-      // The WRITEABLE callback mechanism doesn't reliably trigger for browser clients,
-      // so we drain the queue directly in the service thread.
-      websocket_recv_msg_t msg;
-      int messages_sent = 0;
+      // Wait for connection to be established before sending
+      // The CLIENT_ESTABLISHED callback sets is_connected = true
+      // If we try to send before handshake completes, lws_write() fails
+      mutex_lock(&ws_data->state_mutex);
+      bool connected = ws_data->is_connected;
+      mutex_unlock(&ws_data->state_mutex);
 
-      mutex_lock(&ws_data->send_mutex);
-      bool has_data = !ringbuffer_is_empty(ws_data->send_queue);
+      if (!connected) {
+        if (loop_count <= 10) {
+          log_info("[LOOP %d] CLIENT not connected yet, skipping queue drain", loop_count);
+        }
+        // Sleep briefly to avoid busy-waiting
+        platform_sleep_us(10000); // 10ms
+      } else {
+        // This is a CLIENT transport - actively drain send queue instead of relying on callbacks
+        // The WRITEABLE callback mechanism doesn't reliably trigger for browser clients,
+        // so we drain the queue directly in the service thread.
+        websocket_recv_msg_t msg;
+        int messages_sent = 0;
 
-      if (loop_count <= 10) {
-        log_info("[LOOP %d] Queue check: has_data=%d", loop_count, has_data);
-      }
+        mutex_lock(&ws_data->send_mutex);
+        bool has_data = !ringbuffer_is_empty(ws_data->send_queue);
 
-      if (has_data) {
-        log_info(">>> SERVICE_THREAD: CLIENT queue has data, draining...");
-      }
+        if (loop_count <= 10) {
+          log_info("[LOOP %d] Queue check: has_data=%d", loop_count, has_data);
+        }
+
+        if (has_data) {
+          log_info(">>> SERVICE_THREAD: CLIENT queue has data, draining...");
+        }
 
       while (ringbuffer_read(ws_data->send_queue, &msg)) {
         mutex_unlock(&ws_data->send_mutex);
@@ -138,9 +190,8 @@ static void *websocket_service_thread(void *arg) {
 
         if (written < 0) {
           log_error(">>> LWS_WRITE_FAILED: error code %d for %zu bytes", written, msg.len);
-          // Use buffer_pool_free to safely return to pool instead of deallocating immediately.
-          // libwebsockets may still hold references with compression enabled.
-          buffer_pool_free(NULL, msg.data, LWS_PRE + msg.len);
+          // Queue buffer for deferred free to allow compression layer to complete
+          deferred_buffer_free(ws_data, msg.data, LWS_PRE + msg.len);
           mutex_lock(&ws_data->send_mutex);
           break;
         }
@@ -151,9 +202,8 @@ static void *websocket_service_thread(void *arg) {
           log_info(">>> WRITE_SUCCESS: sent %d bytes", written);
         }
 
-        // Use buffer_pool_free to safely return to pool instead of deallocating immediately.
-        // libwebsockets may buffer this with permessage-deflate compression and process it asynchronously.
-        buffer_pool_free(NULL, msg.data, LWS_PRE + msg.len);
+        // Queue buffer for deferred free to allow compression layer to complete asynchronously.
+        deferred_buffer_free(ws_data, msg.data, LWS_PRE + msg.len);
         messages_sent++;
         total_messages_sent++;
         mutex_lock(&ws_data->send_mutex);
@@ -163,6 +213,7 @@ static void *websocket_service_thread(void *arg) {
       if (messages_sent > 0) {
         log_info(">>> SERVICE_BATCH: sent %d messages (total: %d)", messages_sent, total_messages_sent);
       }
+      } // End of if (connected) block
     } else {
       if (loop_count <= 10) {
         log_info("[LOOP %d] CLIENT condition FALSE (owns_context=%d, wsi=%p)", loop_count,
@@ -278,7 +329,7 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
     break;
 
   case LWS_CALLBACK_CLIENT_WRITEABLE: {
-    // Socket is writable - process queued messages for sending
+    // Socket is writable - process queued messages for sending with flow control
     log_debug("<<< LWS_CALLBACK_CLIENT_WRITEABLE FIRED for wsi=%p", (void *)wsi);
     if (!ws_data) break;
 
@@ -286,7 +337,12 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
     int message_count = 0;
 
     mutex_lock(&ws_data->send_mutex);
-    while (ringbuffer_read(ws_data->send_queue, &msg)) {
+    do {
+      // Check if we have messages to send
+      if (!ringbuffer_peek(ws_data->send_queue, &msg)) {
+        break;
+      }
+      ringbuffer_read(ws_data->send_queue, &msg);
       mutex_unlock(&ws_data->send_mutex);
 
       log_debug("WebSocket CLIENT_WRITEABLE: sending queued %zu bytes (msg %d)", msg.len, message_count + 1);
@@ -299,8 +355,8 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
 
       if (written < 0) {
         log_error("WebSocket write failed for %zu bytes", msg.len);
-        // Use buffer_pool_free to safely return to pool. libwebsockets may still hold references.
-        buffer_pool_free(NULL, msg.data, LWS_PRE + msg.len);
+        // Queue for deferred free to allow compression layer to complete
+        deferred_buffer_free(ws_data, msg.data, LWS_PRE + msg.len);
         mutex_lock(&ws_data->send_mutex);
         break;
       }
@@ -309,16 +365,26 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
         log_warn("WebSocket partial write: %d/%zu bytes", written, msg.len);
       }
 
-      // Use buffer_pool_free to safely return to pool (instead of SAFE_FREE which deallocates immediately)
-      // libwebsockets may buffer this with permessage-deflate compression and process it asynchronously
-      buffer_pool_free(NULL, msg.data, LWS_PRE + msg.len);
+      // Queue for deferred free to allow compression layer to complete asynchronously
+      deferred_buffer_free(ws_data, msg.data, LWS_PRE + msg.len);
       message_count++;
+
       mutex_lock(&ws_data->send_mutex);
-    }
+
+      // Continue while pipe is not choked
+      // This prevents callback flooding when TCP buffers are full
+    } while (!lws_send_pipe_choked(ws_data->wsi));
     mutex_unlock(&ws_data->send_mutex);
 
-    // Request another callback if we sent messages (more may have been queued)
-    if (message_count > 0) {
+    // Request another callback only if:
+    // - We sent messages AND
+    // - Pipe is not choked AND
+    // - More messages are queued
+    mutex_lock(&ws_data->send_mutex);
+    bool has_more = ringbuffer_peek(ws_data->send_queue, &msg);
+    mutex_unlock(&ws_data->send_mutex);
+
+    if (message_count > 0 && has_more && !lws_send_pipe_choked(ws_data->wsi)) {
       lws_callback_on_writable(ws_data->wsi);
     }
     break;
@@ -819,10 +885,11 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
 
     if (ws_data->send_queue) {
       // Drain send queue before destroying to free allocated message data
+      // Use buffer_pool_free to match buffer_pool_alloc used for send messages
       websocket_recv_msg_t msg;
       while (ringbuffer_read(ws_data->send_queue, &msg)) {
         if (msg.data) {
-          SAFE_FREE(msg.data);
+          buffer_pool_free(NULL, msg.data, LWS_PRE + msg.len);
         }
       }
       ringbuffer_destroy(ws_data->send_queue);
@@ -1220,6 +1287,19 @@ acip_transport_t *acip_websocket_server_transport_create(struct lws *wsi, crypto
     return NULL;
   }
 
+  // Initialize pending-free queue for deferred buffer freeing
+  // permessage-deflate compression holds buffer references asynchronously,
+  // so we defer freeing to prevent use-after-free errors
+  ws_data->pending_free_queue = ringbuffer_create(sizeof(pending_free_item_t), 256);
+  if (!ws_data->pending_free_queue) {
+    ringbuffer_destroy(ws_data->recv_queue);
+    ringbuffer_destroy(ws_data->send_queue);
+    SAFE_FREE(ws_data);
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_MEMORY, "Failed to create pending-free queue");
+    return NULL;
+  }
+
   // Initialize synchronization primitives
   if (mutex_init(&ws_data->recv_mutex) != 0) {
     ringbuffer_destroy(ws_data->recv_queue);
@@ -1273,6 +1353,21 @@ acip_transport_t *acip_websocket_server_transport_create(struct lws *wsi, crypto
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
     SET_ERRNO(ERROR_NETWORK, "Failed to initialize state condition variable");
+    return NULL;
+  }
+
+  if (mutex_init(&ws_data->pending_free_mutex) != 0) {
+    cond_destroy(&ws_data->state_cond);
+    mutex_destroy(&ws_data->state_mutex);
+    mutex_destroy(&ws_data->send_mutex);
+    cond_destroy(&ws_data->recv_cond);
+    mutex_destroy(&ws_data->recv_mutex);
+    ringbuffer_destroy(ws_data->recv_queue);
+    ringbuffer_destroy(ws_data->send_queue);
+    ringbuffer_destroy(ws_data->pending_free_queue);
+    SAFE_FREE(ws_data);
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_NETWORK, "Failed to initialize pending-free mutex");
     return NULL;
   }
 
