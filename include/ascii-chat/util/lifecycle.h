@@ -3,9 +3,11 @@
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <ascii-chat/platform/mutex.h>
+#include <ascii-chat/platform/rwlock.h>
 
 #ifdef __cplusplus
 extern "C" {
+#endif
 
 /**
  * @file lifecycle.h
@@ -198,6 +200,4 @@ bool lifecycle_is_dead(const lifecycle_t *lc);
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif
