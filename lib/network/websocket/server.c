@@ -63,16 +63,15 @@ static struct lws_protocols websocket_protocols[];
  * This captures LWS internal logging so we can see what's happening
  */
 static void websocket_lws_log_callback(int level, const char *line) {
-  UNUSED(level);
-  UNUSED(line);
-  // INFO: Logging disabled to reduce noise. Uncomment below for debugging.
-  // if (level & LLL_ERR) {
-  //   log_error("[LWS] %s", line);
-  // } else if (level & LLL_WARN) {
-  //   log_warn("[LWS] %s", line);
-  // } else if (level & LLL_NOTICE) {
-  //   log_info("[LWS] %s", line);
-  // } else if (level & LLL_INFO) {
+  if (level & LLL_ERR) {
+    log_error("[LWS] %s", line);
+  } else if (level & LLL_WARN) {
+    log_warn("[LWS] %s", line);
+  } else if (level & LLL_NOTICE) {
+    log_info("[LWS] %s", line);
+  }
+  // INFO: Debug and info logging disabled to reduce noise. Uncomment below if needed.
+  // else if (level & LLL_INFO) {
   //   log_info("[LWS] %s", line);
   // } else if (level & LLL_DEBUG) {
   //   log_debug("[LWS] %s", line);
@@ -778,6 +777,24 @@ static const struct lws_extension websocket_extensions[] = {
     {"permessage-deflate", lws_extension_callback_pm_deflate, "permessage-deflate; server_max_window_bits=15"},
     {NULL, NULL, NULL}};
 
+/**
+ * @brief Keep-alive policy for WebSocket connections
+ *
+ * Configures libwebsockets to send PING frames during idle periods to maintain connections
+ * during long handshakes or quiet periods with no application data.
+ *
+ * - secs_since_valid_ping: Send a PING after 30 seconds of idle
+ * - secs_since_valid_hangup: Close connection if no PONG after 35 seconds total idle
+ *
+ * This prevents lws from closing the connection during the crypto handshake.
+ * Without this, connections close at the default HTTP keepalive timeout (5 seconds),
+ * which is too short for crypto negotiation.
+ */
+static const lws_retry_bo_t keep_alive_policy = {
+    .secs_since_valid_ping = 30,   // Send PING after 30s idle
+    .secs_since_valid_hangup = 35, // Hangup if still idle after 35s
+};
+
 asciichat_error_t websocket_server_init(websocket_server_t *server, const websocket_server_config_t *config) {
   if (!server || !config || !config->client_handler) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
@@ -805,6 +822,16 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   info.uid = (uid_t)-1;                                // Cast to avoid undefined behavior with unsigned type
   info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT; // Initialize SSL/TLS support (required for server binding)
   info.extensions = websocket_extensions;              // Enable permessage-deflate with small window bits
+  info.retry_and_idle_policy = &keep_alive_policy;    // Configure keep-alive to prevent idle disconnects during handshake
+
+  // TCP-level keep-alive: detect dead connections quickly
+  // Enabled after ka_time seconds of idle, probe every ka_interval seconds, give up after ka_probes attempts
+  info.ka_time = 10;      // Wait 10 seconds before first keep-alive probe on idle TCP connection
+  info.ka_probes = 3;     // Send 3 keep-alive probes
+  info.ka_interval = 10;  // Wait 10 seconds between probes
+
+  // HTTP connection keep-alive timeout (for connections before WebSocket upgrade)
+  info.keepalive_timeout = 60;  // Allow 60 seconds for HTTP to WebSocket upgrade
 
   // Create libwebsockets context
   server->context = lws_create_context(&info);
