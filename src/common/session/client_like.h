@@ -275,6 +275,17 @@ tcp_client_t *session_client_like_get_tcp_client(void);
 websocket_client_t *session_client_like_get_websocket_client(void);
 
 /**
+ * Set the WebSocket client for this session.
+ *
+ * Called by connection_attempt_tcp() after successfully creating a WebSocket client
+ * to update the global state. This ensures that session_client_like_run() correctly
+ * detects network mode instead of mirror mode.
+ *
+ * @param client WebSocket client instance, or NULL to clear
+ */
+void session_client_like_set_websocket_client(websocket_client_t *client);
+
+/**
  * Get the stdin frame reader for ASCII-to-video rendering (stdin render mode only).
  *
  * Returns the stdin reader created when stdin render mode is active.

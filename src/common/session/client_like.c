@@ -63,6 +63,10 @@ websocket_client_t *session_client_like_get_websocket_client(void) {
   return g_websocket_client;
 }
 
+void session_client_like_set_websocket_client(websocket_client_t *client) {
+  g_websocket_client = client;
+}
+
 stdin_frame_reader_t *session_client_like_get_stdin_reader(void) {
   return g_stdin_reader;
 }
@@ -307,13 +311,23 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   g_tcp_client = config->tcp_client;
   g_websocket_client = config->websocket_client;
 
-  // Only create network clients if not already provided in config
-  // Mirror mode doesn't need them (both are NULL in config)
-  // Client mode should have created them before calling this function
-  if (!g_tcp_client && !g_websocket_client && !config->discovery) {
-    log_debug("No network clients in config - mirror mode detected, using local capture only");
-  } else if (!g_tcp_client && !g_websocket_client && config->discovery) {
+  // Determine the networking mode based on available indicators:
+  // - If config has a discovery object, it's discovery mode (will create network clients later)
+  // - If config already has tcp_client or websocket_client, it's network mode
+  // - Otherwise, check if this looks like client mode (run_fn with network clients to be created)
+  // Note: For client mode with WebSocket, g_websocket_client will be NULL here because
+  // the WebSocket client is created inside client_run(). The run_fn (client_run) will
+  // create the connection and call session_client_like_set_websocket_client() to update this.
+  bool likely_client_mode = (config->run_fn != NULL && !config->discovery && !g_tcp_client && !g_websocket_client);
+  bool discovery_mode = (config->discovery != NULL);
+  bool mirror_mode = (!discovery_mode && !g_tcp_client && !g_websocket_client && !likely_client_mode);
+
+  if (mirror_mode) {
+    log_debug("Mirror mode detected - will use local capture with media source");
+  } else if (discovery_mode) {
     log_debug("Discovery mode detected - discovery session will manage networking");
+  } else if (likely_client_mode || g_tcp_client || g_websocket_client) {
+    log_debug("Client/Network mode detected - will use network capture without local media source");
   }
 
   // ============================================================================
@@ -374,7 +388,11 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // Choose capture type based on mode:
   // - Mirror mode: needs to capture local media (webcam, file, test pattern)
   // - Network modes (client/discovery): receive frames from network, no local capture
-  bool is_network_mode = (g_tcp_client != NULL || g_websocket_client != NULL);
+  // For client mode: g_websocket_client will be NULL here (created in client_run),
+  // but likely_client_mode will be true since it has a run_fn
+  bool is_network_mode = (g_tcp_client != NULL || g_websocket_client != NULL ||
+                          (config->run_fn != NULL && !config->discovery && !mirror_mode) ||
+                          discovery_mode);
 
   if (!stdin_render_mode && is_network_mode) {
     // Network mode: create minimal capture context without media source

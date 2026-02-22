@@ -25,6 +25,7 @@
 #include "crypto.h"
 #include "main.h"
 #include "../main.h" // Global exit API
+#include "../common/session/client_like.h" // For session_client_like_set_websocket_client()
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/options/options.h>
@@ -275,6 +276,10 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     connection_state_transition(ctx, CONN_STATE_CONNECTED);
     ctx->active_transport = transport;
     ctx->ws_client_instance = ws_client;
+
+    // Update global websocket client so session_client_like_run() detects network mode
+    session_client_like_set_websocket_client(ws_client);
+
     url_parts_destroy(&url_parts);
     return ASCIICHAT_OK;
   }

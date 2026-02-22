@@ -404,16 +404,24 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
 static asciichat_error_t websocket_send(acip_transport_t *transport, const void *data, size_t len) {
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
 
-  mutex_lock(&ws_data->state_mutex);
-  bool connected = ws_data->is_connected;
-  mutex_unlock(&ws_data->state_mutex);
+  // For server-side transports (owns_context=false), the connection is already established
+  // because this code only runs after LWS_CALLBACK_ESTABLISHED. Don't check is_connected
+  // as it may not have been set properly yet due to initialization timing.
+  // For client-side transports (owns_context=true), verify connection status.
+  if (ws_data->owns_context) {
+    mutex_lock(&ws_data->state_mutex);
+    bool connected = ws_data->is_connected;
+    mutex_unlock(&ws_data->state_mutex);
 
-  log_dev_every(1000000, "websocket_send: is_connected=%d, wsi=%p, send_len=%zu", connected, (void *)ws_data->wsi, len);
+    log_dev_every(1000000, "websocket_send (client): is_connected=%d, wsi=%p, send_len=%zu", connected, (void *)ws_data->wsi, len);
 
-  if (!connected) {
-    log_error("[WEBSOCKET_SEND_ERROR] ★★★ Transport NOT connected! ws_data=%p, wsi=%p, len=%zu", (void *)ws_data, (void *)ws_data->wsi, len);
-    log_error("WebSocket send called but transport NOT connected! wsi=%p, len=%zu", (void *)ws_data->wsi, len);
-    return SET_ERRNO(ERROR_NETWORK, "WebSocket transport not connected (wsi=%p)", (void *)ws_data->wsi);
+    if (!connected) {
+      log_error("[WEBSOCKET_SEND_ERROR] ★★★ Client transport NOT connected! ws_data=%p, wsi=%p, len=%zu", (void *)ws_data, (void *)ws_data->wsi, len);
+      log_error("WebSocket send called but client transport NOT connected! wsi=%p, len=%zu", (void *)ws_data->wsi, len);
+      return SET_ERRNO(ERROR_NETWORK, "WebSocket transport not connected (wsi=%p)", (void *)ws_data->wsi);
+    }
+  } else {
+    log_info("[WEBSOCKET_SEND_SERVER] ★★★ Server transport send: wsi=%p, len=%zu (bypassing is_connected check)", (void *)ws_data->wsi, len);
   }
 
   // Check if encryption is needed (matching tcp_send logic)
