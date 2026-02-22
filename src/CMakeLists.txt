@@ -87,9 +87,8 @@ if(_use_shared_lib)
             Winmm  # For timeBeginPeriod/timeEndPeriod
             ${CORE_LIBS}
         )
-        if(BEARSSL_FOUND)
-            target_link_libraries(ascii-chat ${BEARSSL_LIBRARIES})
-        endif()
+        # Link BearSSL (required)
+        target_link_libraries(ascii-chat ${BEARSSL_LIBRARIES})
         # Note: On Windows, we do NOT link webrtc_audio_processing directly to the executable.
         # The shared library (asciichat.dll) already links it, and direct C++ library linkage
         # would pull in MSVCP140D.dll as a direct dependency of the exe, causing ASan bad-free
@@ -114,9 +113,8 @@ if(_use_shared_lib)
         target_link_libraries(ascii-chat
             ${CORE_LIBS}
         )
-        if(BEARSSL_FOUND)
-            target_link_libraries(ascii-chat ${BEARSSL_LIBRARIES})
-        endif()
+        # Link BearSSL (required)
+        target_link_libraries(ascii-chat ${BEARSSL_LIBRARIES})
         # Link WebRTC audio processing for echo cancellation
         if(TARGET webrtc_audio_processing)
             target_link_libraries(ascii-chat webrtc_audio_processing)
@@ -278,15 +276,11 @@ if(USE_MUSL)
         -lm -lpthread
     )
 
-    # Link FFmpeg for media file streaming (musl-built static libraries)
-    if(FFMPEG_FOUND AND FFMPEG_LINK_LIBRARIES)
-        target_link_libraries(ascii-chat PRIVATE ${FFMPEG_LINK_LIBRARIES})
-    endif()
+    # Link FFmpeg for media file streaming (musl-built static libraries - required)
+    target_link_libraries(ascii-chat PRIVATE ${FFMPEG_LINK_LIBRARIES})
 
-    # Link libwebsockets for WebSocket transport (musl-built static library)
-    if(LIBWEBSOCKETS_FOUND AND LIBWEBSOCKETS_LIBRARIES)
-        target_link_libraries(ascii-chat PRIVATE ${LIBWEBSOCKETS_LIBRARIES})
-    endif()
+    # Link libwebsockets for WebSocket transport (musl-built static library - required)
+    target_link_libraries(ascii-chat PRIVATE ${LIBWEBSOCKETS_LIBRARIES})
 
     # libdatachannel and its dependencies (must be linked explicitly for static builds)
     # The libdatachannel INTERFACE target's dependencies don't propagate through

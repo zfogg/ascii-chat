@@ -258,22 +258,16 @@ target_compile_definitions(ascii-chat-util PUBLIC PCRE2_CODE_UNIT_WIDTH=8)
 
 # Add PCRE2 include directory (must be before linking)
 # PUBLIC because pcre2.h is included from public header include/ascii-chat/util/pcre2.h
-if(PCRE2_INCLUDE_DIRS)
-    target_include_directories(ascii-chat-util PUBLIC ${PCRE2_INCLUDE_DIRS})
-endif()
+target_include_directories(ascii-chat-util PUBLIC ${PCRE2_INCLUDE_DIRS})
 
 # Link PCRE2 library
 # Two modes: (1) pkg-config sets LIBRARY_DIRS + LIBRARIES, (2) static lib sets full path in LIBRARIES
-if(PCRE2_LIBRARIES)
-    # If LIBRARY_DIRS is set (pkg-config mode), add link directory first
-    if(PCRE2_LIBRARY_DIRS)
-        target_link_directories(ascii-chat-util PRIVATE ${PCRE2_LIBRARY_DIRS})
-    endif()
-    # Link the library (either library name or full path)
-    target_link_libraries(ascii-chat-util ${PCRE2_LIBRARIES} pthread)
-else()
-    message(FATAL_ERROR "PCRE2 library not found. PCRE2_LIBRARIES=${PCRE2_LIBRARIES}")
+# If LIBRARY_DIRS is set (pkg-config mode), add link directory first
+if(PCRE2_LIBRARY_DIRS)
+    target_link_directories(ascii-chat-util PRIVATE ${PCRE2_LIBRARY_DIRS})
 endif()
+# Link the library (either library name or full path)
+target_link_libraries(ascii-chat-util ${PCRE2_LIBRARIES} pthread)
 
 # Add dependency on PCRE2 build target if building from source (musl)
 if(DEFINED PCRE2_BUILD_TARGET)
@@ -284,22 +278,18 @@ endif()
 # Module 2: Data Structures (depends on: util)
 # -----------------------------------------------------------------------------
 create_ascii_chat_module(ascii-chat-data-structures "${DATA_STRUCTURES_SRCS}")
-if(NOT BUILDING_OBJECT_LIBS)
-    target_link_libraries(ascii-chat-data-structures ascii-chat-util)
-endif()
+target_link_libraries(ascii-chat-data-structures ascii-chat-util)
 
 # -----------------------------------------------------------------------------
 # Module 3: Platform Abstraction (depends on: util, data-structures)
 # -----------------------------------------------------------------------------
 
 create_ascii_chat_module(ascii-chat-platform "${PLATFORM_SRCS}")
-if(NOT BUILDING_OBJECT_LIBS)
-    target_link_libraries(ascii-chat-platform
-        ascii-chat-util
-        ascii-chat-data-structures
-        ascii-chat-core
-    )
-endif()
+target_link_libraries(ascii-chat-platform
+    ascii-chat-util
+    ascii-chat-data-structures
+    ascii-chat-core
+)
 
 # Link render-file dependencies to platform module (for terminal renderers)
 target_include_directories(ascii-chat-platform PRIVATE ${PLATFORM_INCLUDES} ${GHOSTTY_INCLUDES})
@@ -358,22 +348,11 @@ endif()
 # Module 3: Cryptography (depends on: util, platform)
 # -----------------------------------------------------------------------------
 create_ascii_chat_module(ascii-chat-crypto "${CRYPTO_SRCS}")
-if(NOT BUILDING_OBJECT_LIBS)
-    target_link_libraries(ascii-chat-crypto
-        ascii-chat-util
-        ascii-chat-platform
-        ascii-chat-network
-        ${LIBSODIUM_LIBRARIES}
-    )
-else()
-    # For OBJECT libs, link external deps only (no module deps)
-    target_link_libraries(ascii-chat-crypto ${LIBSODIUM_LIBRARIES})
-endif()
+# For OBJECT libs, link external deps only (no module deps)
+target_link_libraries(ascii-chat-crypto ${LIBSODIUM_LIBRARIES})
 
 # Add libsodium include directory (for GCC builds from source)
-if(LIBSODIUM_INCLUDE_DIRS)
-    target_include_directories(ascii-chat-crypto PRIVATE ${LIBSODIUM_INCLUDE_DIRS})
-endif()
+target_include_directories(ascii-chat-crypto PRIVATE ${LIBSODIUM_INCLUDE_DIRS})
 
 # Add dependency on libsodium build target if building from source
 if(DEFINED LIBSODIUM_BUILD_TARGET)
@@ -385,19 +364,12 @@ endif()
 target_compile_definitions(ascii-chat-crypto PRIVATE PCRE2_CODE_UNIT_WIDTH=8)
 
 # Add PCRE2 include directory
-if(PCRE2_INCLUDE_DIRS)
-    target_include_directories(ascii-chat-crypto PRIVATE ${PCRE2_INCLUDE_DIRS})
-endif()
+target_include_directories(ascii-chat-crypto PRIVATE ${PCRE2_INCLUDE_DIRS})
 
 # Link PCRE2 library
-if(PCRE2_LIBRARY_DIRS AND PCRE2_LIBRARIES)
-    if(BUILDING_OBJECT_LIBS)
-        # For OBJECT libs, add PCRE2 to link libraries
-        target_link_libraries(ascii-chat-crypto ${PCRE2_LIBRARIES})
-    endif()
+target_link_libraries(ascii-chat-crypto ${PCRE2_LIBRARIES})
+if(PCRE2_LIBRARY_DIRS)
     target_link_directories(ascii-chat-crypto PRIVATE ${PCRE2_LIBRARY_DIRS})
-else()
-    message(WARNING "PCRE2 not found for crypto module (SSH parser regex will not work)")
 endif()
 
 # Add dependency on PCRE2 build target if building from source
@@ -405,10 +377,8 @@ if(DEFINED PCRE2_BUILD_TARGET)
     add_dependencies(ascii-chat-crypto ${PCRE2_BUILD_TARGET})
 endif()
 
-# Add BearSSL if available
-if(BEARSSL_FOUND)
-    target_link_libraries(ascii-chat-crypto ${BEARSSL_LIBRARIES})
-endif()
+# Add BearSSL (required crypto library)
+target_link_libraries(ascii-chat-crypto ${BEARSSL_LIBRARIES})
 
 # Configure libsodium-bcrypt-pbkdf source files
 # These files need src/ directory in include path to find their own internal headers
@@ -440,40 +410,24 @@ set_source_files_properties(
 # -----------------------------------------------------------------------------
 create_ascii_chat_module(ascii-chat-simd "${SIMD_SRCS}")
 
-if(NOT BUILDING_OBJECT_LIBS)
-    target_link_libraries(ascii-chat-simd PRIVATE
-        ascii-chat-util
-        ascii-chat-core
-        ascii-chat-video
-    )
-endif()
+# Note: SIMD and Video have circular dependency (simd benchmarks use video, video uses simd).
+# This is resolved at link time when both libraries are linked together in executables.
+# We don't link module dependencies here due to OBJECT library pattern.
 
 # -----------------------------------------------------------------------------
 # Module 5: Video Processing (depends on: util, platform, core, simd)
 # -----------------------------------------------------------------------------
 # Add FFmpeg include directories BEFORE creating the module (for media file streaming)
 # Use SYSTEM to suppress warnings from third-party headers (e.g., FFmpeg's undefined bit shift behavior)
-if(FFMPEG_FOUND)
-    include_directories(SYSTEM ${FFMPEG_INCLUDE_DIRS})
-endif()
+include_directories(SYSTEM ${FFMPEG_INCLUDE_DIRS})
 
 create_ascii_chat_module(ascii-chat-video "${VIDEO_SRCS}")
 
-if(NOT BUILDING_OBJECT_LIBS)
-    target_link_libraries(ascii-chat-video
-        ascii-chat-util
-        ascii-chat-platform
-        ascii-chat-core
-        ascii-chat-simd
-    )
-    # Link FFmpeg for media file streaming
-    if(FFMPEG_FOUND)
-        target_link_libraries(ascii-chat-video ${FFMPEG_LINK_LIBRARIES})
-    endif()
-    # Link render-file dependencies
-    target_include_directories(ascii-chat-video PRIVATE ${GHOSTTY_INCLUDES})
-    target_link_libraries(ascii-chat-video ${GHOSTTY_LIBS})
-endif()
+# Link external dependencies (FFmpeg, ghostty)
+# Module dependencies (util, platform, core, simd) are resolved through OBJECT library merging
+target_link_libraries(ascii-chat-video ${FFMPEG_LINK_LIBRARIES})
+target_include_directories(ascii-chat-video PRIVATE ${GHOSTTY_INCLUDES})
+target_link_libraries(ascii-chat-video ${GHOSTTY_LIBS})
 
 # Mark generated font files as generated (for OBJECT libraries, must be before module creation)
 set_source_files_properties(
@@ -487,19 +441,12 @@ set_source_files_properties(
 target_compile_definitions(ascii-chat-video PRIVATE PCRE2_CODE_UNIT_WIDTH=8)
 
 # Add PCRE2 include directory
-if(PCRE2_INCLUDE_DIRS)
-    target_include_directories(ascii-chat-video PRIVATE ${PCRE2_INCLUDE_DIRS})
-endif()
+target_include_directories(ascii-chat-video PRIVATE ${PCRE2_INCLUDE_DIRS})
 
-# Link PCRE2 library
-if(PCRE2_LIBRARY_DIRS AND PCRE2_LIBRARIES)
-    if(BUILDING_OBJECT_LIBS)
-        # For OBJECT libs, add PCRE2 to link libraries
-        target_link_libraries(ascii-chat-video ${PCRE2_LIBRARIES})
-    endif()
+# Link PCRE2 library (required)
+target_link_libraries(ascii-chat-video ${PCRE2_LIBRARIES})
+if(PCRE2_LIBRARY_DIRS)
     target_link_directories(ascii-chat-video PRIVATE ${PCRE2_LIBRARY_DIRS})
-else()
-    message(WARNING "PCRE2 not found for media module (YouTube video ID extraction will not work)")
 endif()
 
 # Add dependency on PCRE2 build target if building from source
@@ -521,19 +468,8 @@ endif()
 # Now create the module with WebRTC includes in scope
 create_ascii_chat_module(ascii-chat-audio "${AUDIO_SRCS}")
 
-if(NOT BUILDING_OBJECT_LIBS)
-    target_link_libraries(ascii-chat-audio
-        ascii-chat-util
-        ascii-chat-platform
-        ascii-chat-data-structures
-        ${PORTAUDIO_LIBRARIES}
-        ${OPUS_LIBRARIES}
-        webrtc_audio_processing
-    )
-else()
-    # For OBJECT libs, link external deps only
-    target_link_libraries(ascii-chat-audio ${PORTAUDIO_LIBRARIES} ${OPUS_LIBRARIES} webrtc_audio_processing)
-endif()
+# For OBJECT libs, link external deps only
+target_link_libraries(ascii-chat-audio ${PORTAUDIO_LIBRARIES} ${OPUS_LIBRARIES} webrtc_audio_processing)
 
 # Link platform-specific audio libraries
 # macOS: CoreAudio, AudioUnit, AudioToolbox (required for static portaudio)
@@ -563,32 +499,22 @@ endif()
 # -----------------------------------------------------------------------------
 create_ascii_chat_module(ascii-chat-core "${CORE_SRCS}")
 
-if(NOT BUILDING_OBJECT_LIBS)
-    target_link_libraries(ascii-chat-core
-        ascii-chat-util
-        ascii-chat-platform
-        ${SQLITE3_LIBRARIES}
-    )
-endif()
+# For OBJECT libs, link external deps
+target_link_libraries(ascii-chat-core
+    ${SQLITE3_LIBRARIES}
+)
 
 # PCRE2: Configure for core module (for session string format validation)
 # Define PCRE2_CODE_UNIT_WIDTH=8 for 8-bit API (UTF-8 support)
 target_compile_definitions(ascii-chat-core PRIVATE PCRE2_CODE_UNIT_WIDTH=8)
 
 # Add PCRE2 include directory
-if(PCRE2_INCLUDE_DIRS)
-    target_include_directories(ascii-chat-core PRIVATE ${PCRE2_INCLUDE_DIRS})
-endif()
+target_include_directories(ascii-chat-core PRIVATE ${PCRE2_INCLUDE_DIRS})
 
-# Link PCRE2 library
-if(PCRE2_LIBRARY_DIRS AND PCRE2_LIBRARIES)
-    if(BUILDING_OBJECT_LIBS)
-        # For OBJECT libs, add PCRE2 to link libraries
-        target_link_libraries(ascii-chat-core ${PCRE2_LIBRARIES})
-    endif()
+# Link PCRE2 library (required)
+target_link_libraries(ascii-chat-core ${PCRE2_LIBRARIES})
+if(PCRE2_LIBRARY_DIRS)
     target_link_directories(ascii-chat-core PRIVATE ${PCRE2_LIBRARY_DIRS})
-else()
-    message(WARNING "PCRE2 not found for core module (session string validation will not work)")
 endif()
 
 # Add dependency on PCRE2 build target if building from source
@@ -624,9 +550,7 @@ endif()
 target_compile_definitions(ascii-chat-core PRIVATE YYJSON_DISABLE_READER=1)
 
 # Add yyjson include directory
-if(YYJSON_INCLUDE_DIRS)
-    target_include_directories(ascii-chat-core PRIVATE ${YYJSON_INCLUDE_DIRS})
-endif()
+target_include_directories(ascii-chat-core PRIVATE ${YYJSON_INCLUDE_DIRS})
 
 # Link yyjson library
 if(USE_MUSL)
@@ -635,13 +559,8 @@ if(USE_MUSL)
     endif()
 endif()
 
-# Link yyjson - use YYJSON_LIBRARIES which is set by Yyjson.cmake
-if(YYJSON_LIBRARIES)
-    target_link_libraries(ascii-chat-core ${YYJSON_LIBRARIES})
-else()
-    # Fallback: try to link against system yyjson
-    target_link_libraries(ascii-chat-core yyjson)
-endif()
+# Link yyjson (required)
+target_link_libraries(ascii-chat-core ${YYJSON_LIBRARIES})
 
 # -----------------------------------------------------------------------------
 # Module 9: Panic Instrumentation Runtime (depends on: util, platform, core)
@@ -883,15 +802,12 @@ add_library(ascii-chat-shared SHARED
     endif()
 
     # Add yyjson include directory
-    if(YYJSON_INCLUDE_DIRS)
-        target_include_directories(ascii-chat-shared PRIVATE ${YYJSON_INCLUDE_DIRS})
-    endif()
+    # Add yyjson include directory (required)
+    target_include_directories(ascii-chat-shared PRIVATE ${YYJSON_INCLUDE_DIRS})
 
     # Add PCRE2 include directory and library directory for the shared library
-    # PUBLIC because public header include/ascii-chat/util/pcre2.h includes pcre2.h
-    if(PCRE2_INCLUDE_DIRS)
-        target_include_directories(ascii-chat-shared PUBLIC ${PCRE2_INCLUDE_DIRS})
-    endif()
+    # PUBLIC because public header include/ascii-chat/util/pcre2.h includes pcre2.h (required)
+    target_include_directories(ascii-chat-shared PUBLIC ${PCRE2_INCLUDE_DIRS})
     # PCRE2_CODE_UNIT_WIDTH=8 must be defined before including pcre2.h
     target_compile_definitions(ascii-chat-shared PUBLIC PCRE2_CODE_UNIT_WIDTH=8)
     if(PCRE2_LIBRARY_DIRS)
@@ -982,9 +898,8 @@ add_library(ascii-chat-shared SHARED
             target_link_libraries(ascii-chat-shared PRIVATE ${NATPMP_LIBRARY})
         endif()
     endif()
-    if(BEARSSL_FOUND)
-        target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
-    endif()
+    # Link BearSSL (required)
+    target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
     # Link libwebsockets
     if(TARGET PkgConfig::LIBWEBSOCKETS)
         target_link_libraries(ascii-chat-shared PRIVATE PkgConfig::LIBWEBSOCKETS)
@@ -1017,9 +932,8 @@ if(WIN32)
         Winmm    # For timeBeginPeriod/timeEndPeriod
         ${CORE_LIBS}
     )
-    if(BEARSSL_FOUND)
-        target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
-    endif()
+    # Link BearSSL (required)
+    target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
     # Link miniupnpc if available (UPnP/NAT-PMP support)
     if(MINIUPNPC_FOUND)
         target_include_directories(ascii-chat-shared PRIVATE ${MINIUPNPC_INCLUDE_DIRS})
@@ -1065,9 +979,8 @@ else()
 
         # Link BearSSL and mimalloc static libraries into shared library
         # These are compiled with -fPIC and correct TLS model for shared library compatibility
-        if(BEARSSL_FOUND)
-            target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
-        endif()
+        # BearSSL is required
+        target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
         # Link miniupnpc if available (UPnP/NAT-PMP support)
         if(MINIUPNPC_FOUND)
             target_include_directories(ascii-chat-shared PRIVATE ${MINIUPNPC_INCLUDE_DIRS})
@@ -1115,9 +1028,8 @@ else()
                 target_link_libraries(ascii-chat-shared PRIVATE ${NATPMP_LIBRARY})
             endif()
         endif()
-        if(BEARSSL_FOUND)
-            target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
-        endif()
+        # Link BearSSL (required)
+        target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
         # Audio codec and processing
         if(OPUS_LIBRARIES)
             target_link_libraries(ascii-chat-shared PRIVATE ${OPUS_LIBRARIES})
@@ -1392,9 +1304,8 @@ add_library(ascii-chat-static-lib-deps INTERFACE)
 
 # Link bundled dependencies (not available via package managers)
 # BearSSL and WebRTC AEC3 are embedded in the static library
-if(BEARSSL_LIBRARIES)
-    target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${BEARSSL_LIBRARIES})
-endif()
+# BearSSL is required
+target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${BEARSSL_LIBRARIES})
 if(WEBRTC_AEC3_LIBRARIES)
     target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${WEBRTC_AEC3_LIBRARIES})
 endif()
