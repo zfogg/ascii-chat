@@ -252,3 +252,120 @@ void debug_sync_print_state(void) {
     debug_sync_print_cond_state();
     log_info("=== End Synchronization Primitive State ===");
 }
+
+// ============================================================================
+// Legacy API - stubs for backward compatibility
+// ============================================================================
+
+int lock_debug_init(void) {
+    return 0;
+}
+
+int lock_debug_start_thread(void) {
+    return 0;
+}
+
+void lock_debug_destroy(void) {
+}
+
+void lock_debug_cleanup_thread(void) {
+}
+
+void lock_debug_trigger_print(void) {
+    debug_sync_print_state();
+}
+
+void lock_debug_get_stats(uint64_t *total_acquired, uint64_t *total_released, uint32_t *currently_held) {
+    if (total_acquired) *total_acquired = 0;
+    if (total_released) *total_released = 0;
+    if (currently_held) *currently_held = 0;
+}
+
+void lock_debug_print_state(void) {
+    debug_sync_print_state();
+}
+
+// ============================================================================
+// Debug Lock Operation Stubs - pass-through to implementations
+// ============================================================================
+
+int debug_sync_mutex_lock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name) {
+    (void)file_name;
+    (void)line_number;
+    (void)function_name;
+    return mutex_lock_impl(mutex);
+}
+
+int debug_sync_mutex_trylock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name) {
+    (void)file_name;
+    (void)line_number;
+    (void)function_name;
+    return mutex_trylock_impl(mutex);
+}
+
+int debug_sync_mutex_unlock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name) {
+    (void)file_name;
+    (void)line_number;
+    (void)function_name;
+    return mutex_unlock_impl(mutex);
+}
+
+int debug_sync_rwlock_rdlock(rwlock_t *lock, const char *file_name, int line_number, const char *function_name) {
+    (void)file_name;
+    (void)line_number;
+    (void)function_name;
+    return rwlock_rdlock_impl(lock);
+}
+
+int debug_sync_rwlock_rdunlock(rwlock_t *lock, const char *file_name, int line_number, const char *function_name) {
+    (void)file_name;
+    (void)line_number;
+    (void)function_name;
+    return rwlock_rdunlock_impl(lock);
+}
+
+int debug_sync_rwlock_wrlock(rwlock_t *lock, const char *file_name, int line_number, const char *function_name) {
+    (void)file_name;
+    (void)line_number;
+    (void)function_name;
+    return rwlock_wrlock_impl(lock);
+}
+
+int debug_sync_rwlock_wrunlock(rwlock_t *lock, const char *file_name, int line_number, const char *function_name) {
+    (void)file_name;
+    (void)line_number;
+    (void)function_name;
+    return rwlock_wrunlock_impl(lock);
+}
+
+int debug_sync_cond_wait(cond_t *cond, mutex_t *mutex, const char *file_name, int line_number, const char *function_name) {
+    (void)file_name;
+    (void)line_number;
+    (void)function_name;
+    return cond_wait(cond, mutex);
+}
+
+int debug_sync_cond_timedwait(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns, const char *file_name, int line_number, const char *function_name) {
+    (void)file_name;
+    (void)line_number;
+    (void)function_name;
+    return cond_timedwait(cond, mutex, timeout_ns);
+}
+
+int debug_sync_cond_signal(cond_t *cond, const char *file_name, int line_number, const char *function_name) {
+    (void)file_name;
+    (void)line_number;
+    (void)function_name;
+    return cond_signal(cond);
+}
+
+int debug_sync_cond_broadcast(cond_t *cond, const char *file_name, int line_number, const char *function_name) {
+    (void)file_name;
+    (void)line_number;
+    (void)function_name;
+    return cond_broadcast(cond);
+}
+
+bool lock_debug_is_initialized(void) {
+    return true;
+}
