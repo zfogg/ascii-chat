@@ -145,25 +145,21 @@ if((APPLE OR UNIX) AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     # Explicitly set BUILD_RPATH to put build/lib first, before any system paths
     # This ensures we use the freshly built library, not any installed version
     # For macOS, also include ${HOMEBREW_PREFIX}/lib for Homebrew-installed dependencies
-    # Also include ghostty library path (required dependency)
-    set(_debug_rpath_dirs "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+    # Also include ghostty library path for debug builds
+    set(_debug_rpath_dirs "${CMAKE_LIBRARY_OUTPUT_DIRECTORY};${CMAKE_BUILD_RPATH}")
 
-    if(CMAKE_BUILD_RPATH)
-        list(APPEND _debug_rpath_dirs "${CMAKE_BUILD_RPATH}")
+    # Add ghostty library directory for shared library builds (debug)
+    if(GHOSTTY_LIBRARIES AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+        string(APPEND _debug_rpath_dirs ";${ASCIICHAT_DEPS_CACHE_DIR}/ghostty/lib")
     endif()
-
-    # Add ghostty library directory (code compiles only if it's found, so always include it)
-    list(APPEND _debug_rpath_dirs "${ASCIICHAT_DEPS_CACHE_DIR}/ghostty/lib")
 
     if(APPLE)
-        list(APPEND _debug_rpath_dirs "${HOMEBREW_PREFIX}/lib")
-        list(JOIN _debug_rpath_dirs ":" _debug_install_rpath)
+        set(_debug_install_rpath "${_debug_rpath_dirs};${HOMEBREW_PREFIX}/lib")
     else()
-        list(JOIN _debug_rpath_dirs ":" _debug_install_rpath)
+        set(_debug_install_rpath "${_debug_rpath_dirs}")
     endif()
     set_target_properties(ascii-chat PROPERTIES
-        SKIP_BUILD_RPATH FALSE
-        BUILD_WITH_INSTALL_RPATH TRUE
+        BUILD_RPATH "${_debug_install_rpath}"
         INSTALL_RPATH "${_debug_install_rpath}"
         INSTALL_RPATH_USE_LINK_PATH TRUE
     )
