@@ -286,7 +286,7 @@ file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/generated/embedded")
 string(SUBSTRING "${PROJECT_VERSION_DATE}" 0 4 COPYRIGHT_YEAR_END)
 set(MANPAGE_TEMPLATE_SOURCE "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in")
 set(MANPAGE_TEMPLATE_CONFIGURED "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1.in")
-set(MANPAGE_TEMPLATE_EMBEDDED "${CMAKE_BINARY_DIR}/generated/embedded/manpage_template.c")
+set(MANPAGE_TEMPLATE_EMBEDDED "${CMAKE_BINARY_DIR}/generated/data/man1.c")
 
 # Step 1: Configure template at build time (before embedding)
 add_custom_command(
