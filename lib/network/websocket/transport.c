@@ -602,28 +602,51 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   bool connected = ws_data->is_connected;
   mutex_unlock(&ws_data->state_mutex);
 
-  if (!connected) {
+  mutex_lock(&ws_data->recv_mutex);
+
+  // Even if connection is closed, we should try to deliver any buffered data
+  // Check if there's data in the queue
+  bool has_queued_data = !ringbuffer_is_empty(ws_data->recv_queue);
+
+  if (!connected && !has_queued_data) {
+    // Only fail if connection is closed AND no buffered data
+    mutex_unlock(&ws_data->recv_mutex);
     return SET_ERRNO(ERROR_NETWORK, "Connection not established");
   }
 
-  mutex_lock(&ws_data->recv_mutex);
-
-  // Reassemble fragmented WebSocket messages with SHORT timeout (100ms)
+  // Reassemble fragmented WebSocket messages with SHORT timeout
   // We queue each fragment from the LWS callback with first/final flags.
-  // Unlike long blocking waits, 100ms is short enough that polling retry
-  // is acceptable. The dispatch thread handles retries.
+  // Key insight: if we wait too long for final fragment, connection times out.
+  // Return partial messages quickly (500ms) to avoid blocking handler thread.
 
   uint8_t *assembled_buffer = NULL;
   size_t assembled_size = 0;
   size_t assembled_capacity = 0;
   uint64_t assembly_start_ns = time_get_ns();
+  uint64_t last_fragment_ns = assembly_start_ns;
   int fragment_count = 0;
-  const uint64_t MAX_REASSEMBLY_TIME_NS = 10000 * 1000000ULL; // 10 second timeout - enough for server to render and send ASCII frames with compression overhead
+  const uint64_t MAX_REASSEMBLY_TIME_NS = 10000 * 1000000ULL; // 10 second max - prevent infinite waits
+  const uint64_t FRAGMENT_WAIT_TIMEOUT_NS = 50 * 1000000ULL; // 50ms: return partial messages quickly to avoid connection timeout
 
   while (true) {
     // Wait for fragment if queue is empty (with short timeout)
     while (ringbuffer_is_empty(ws_data->recv_queue)) {
       uint64_t elapsed_ns = time_get_ns() - assembly_start_ns;
+      uint64_t since_last_frag_ns = time_get_ns() - last_fragment_ns;
+
+      // Return partial message if we've been waiting 500ms with no new fragments
+      // This prevents blocking the handler thread during connection idle timeouts
+      if (assembled_size > 0 && since_last_frag_ns > FRAGMENT_WAIT_TIMEOUT_NS) {
+        log_info("[WS_REASSEMBLE] Returning partial message after %.0fms (got %d fragments, %zu bytes, waiting for final)",
+                 (double)since_last_frag_ns / 1000000.0, fragment_count, assembled_size);
+        // Return what we have - caller will queue partial message back if needed
+        *buffer = assembled_buffer;
+        *out_len = assembled_size;
+        *out_allocated_buffer = assembled_buffer;
+        mutex_unlock(&ws_data->recv_mutex);
+        return ASCIICHAT_OK;
+      }
+
       if (elapsed_ns > MAX_REASSEMBLY_TIME_NS) {
         // Timeout - return error instead of partial fragments
         // Dispatch thread will retry, avoiding fragment loss issue
@@ -640,22 +663,39 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
         return SET_ERRNO(ERROR_NETWORK, "Fragment reassembly timeout - no data from network");
       }
 
-      // Check connection state
+      // Check connection state - but don't fail immediately if connection closes
+      // while reassembling. Instead, return what we have so the handler can process it.
+      // This prevents losing buffered data due to connection timeouts.
       mutex_lock(&ws_data->state_mutex);
       bool still_connected = ws_data->is_connected;
       mutex_unlock(&ws_data->state_mutex);
 
-      if (!still_connected) {
+      if (!still_connected && assembled_size > 0) {
+        // Connection closed but we have partial data - return it
+        log_info("[WS_REASSEMBLE] Connection closed mid-reassembly, returning %zu bytes received so far",
+                 assembled_size);
+        *buffer = assembled_buffer;
+        *out_len = assembled_size;
+        *out_allocated_buffer = assembled_buffer;
+        mutex_unlock(&ws_data->recv_mutex);
+        return ASCIICHAT_OK;
+      }
+
+      if (!still_connected && assembled_size == 0) {
+        // Connection closed and no data yet
         if (assembled_buffer) {
           buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
         }
         mutex_unlock(&ws_data->recv_mutex);
-        return SET_ERRNO(ERROR_NETWORK, "Connection closed while reassembling fragments");
+        return SET_ERRNO(ERROR_NETWORK, "Connection closed");
       }
 
       // Wait for next fragment with 1ms timeout
       cond_timedwait(&ws_data->recv_cond, &ws_data->recv_mutex, 1 * 1000000ULL);
     }
+
+    // Update last_fragment_ns when we get a new fragment
+    last_fragment_ns = time_get_ns();
 
     // Read next fragment from queue
     websocket_recv_msg_t frag;
