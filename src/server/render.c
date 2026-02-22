@@ -353,7 +353,7 @@ void *client_video_render_thread(void *arg) {
   log_debug("Video render thread: client_id=%u, webrtc=%d", thread_client_id, is_webrtc);
 
   log_info("[VIDEO_RENDER_THREAD_START] ★★★ LOCK STATE at thread entry for client %u", thread_client_id);
-  lock_debug_print_state();
+  debug_sync_print_state();
 
   // Get client's desired FPS from capabilities or use default
   int client_fps = VIDEO_RENDER_FPS; // Default to 60 FPS
@@ -496,7 +496,7 @@ void *client_video_render_thread(void *arg) {
                   width_snapshot, height_snapshot);
 
     log_info("[VIDEO_RENDER_LOOP] ★★★ LOCK STATE before create_mixed_ascii_frame_for_client for client %u", thread_client_id);
-    lock_debug_print_state();
+    debug_sync_print_state();
 
     char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot,
                                                             false, &frame_size, NULL, &sources_count);

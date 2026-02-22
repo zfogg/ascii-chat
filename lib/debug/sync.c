@@ -223,35 +223,81 @@ void debug_sync_print_state(void) {
 }
 
 // ============================================================================
-// Legacy API - stubs for backward compatibility
+// Scheduled Debug State Printing (runs on separate thread)
 // ============================================================================
 
-int lock_debug_init(void) {
+typedef struct {
+    uint64_t delay_ns;
+    volatile bool should_run;
+    volatile bool should_exit;
+} debug_state_request_t;
+
+static debug_state_request_t g_debug_state_request = {0, false, false};
+static asciichat_thread_t g_debug_thread;
+
+/**
+ * @brief Thread function for scheduled debug state printing
+ */
+static void *debug_print_thread_fn(void *arg) {
+    (void)arg;
+
+    while (!g_debug_state_request.should_exit) {
+        if (g_debug_state_request.should_run && g_debug_state_request.delay_ns > 0) {
+            platform_sleep_ns(g_debug_state_request.delay_ns);
+            g_debug_state_request.delay_ns = 0;
+        }
+
+        if (g_debug_state_request.should_run && !g_debug_state_request.should_exit) {
+            debug_sync_print_state();
+            g_debug_state_request.should_run = false;
+        }
+
+        // Small sleep to avoid busy-waiting
+        if (!g_debug_state_request.should_exit) {
+            platform_sleep_ns(10000000);  // 10ms
+        }
+    }
+
+    return NULL;
+}
+
+/**
+ * @brief Schedule delayed debug state printing on debug thread
+ * @param delay_ns Nanoseconds to sleep before printing
+ */
+void debug_sync_print_state_delayed(uint64_t delay_ns) {
+    g_debug_state_request.delay_ns = delay_ns;
+    g_debug_state_request.should_run = true;
+}
+
+// ============================================================================
+// Debug Sync API - Thread management
+// ============================================================================
+
+int debug_sync_init(void) {
     return 0;
 }
 
-int lock_debug_start_thread(void) {
-    return 0;
+int debug_sync_start_thread(void) {
+    g_debug_state_request.should_exit = false;
+    int err = asciichat_thread_create(&g_debug_thread, debug_print_thread_fn, NULL);
+    return err;
 }
 
-void lock_debug_destroy(void) {
+void debug_sync_destroy(void) {
 }
 
-void lock_debug_cleanup_thread(void) {
+void debug_sync_cleanup_thread(void) {
 }
 
-void lock_debug_trigger_print(void) {
+void debug_sync_trigger_print(void) {
     debug_sync_print_state();
 }
 
-void lock_debug_get_stats(uint64_t *total_acquired, uint64_t *total_released, uint32_t *currently_held) {
+void debug_sync_get_stats(uint64_t *total_acquired, uint64_t *total_released, uint32_t *currently_held) {
     if (total_acquired) *total_acquired = 0;
     if (total_released) *total_released = 0;
     if (currently_held) *currently_held = 0;
-}
-
-void lock_debug_print_state(void) {
-    debug_sync_print_state();
 }
 
 // ============================================================================
@@ -335,6 +381,6 @@ int debug_sync_cond_broadcast(cond_t *cond, const char *file_name, int line_numb
     return cond_broadcast(cond);
 }
 
-bool lock_debug_is_initialized(void) {
+bool debug_sync_is_initialized(void) {
     return true;
 }

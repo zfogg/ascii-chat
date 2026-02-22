@@ -344,10 +344,10 @@ void *stats_logger_thread(void *arg) {
     char lock_debug_info[BUFFER_SIZE_MEDIUM] = {0};
     // Check exit condition again before accessing lock_debug.
     // lock_debug might be destroyed during shutdown
-    if (!atomic_load(&g_server_should_exit) && lock_debug_is_initialized()) {
+    if (!atomic_load(&g_server_should_exit) && debug_sync_is_initialized()) {
       uint64_t total_acquired = 0, total_released = 0;
       uint32_t currently_held = 0;
-      lock_debug_get_stats(&total_acquired, &total_released, &currently_held);
+      debug_sync_get_stats(&total_acquired, &total_released, &currently_held);
 
       safe_snprintf(lock_debug_info, sizeof(lock_debug_info),
                     "Historical Mutex/RWLock Statistics:\n"

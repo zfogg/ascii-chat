@@ -179,13 +179,13 @@ void asciichat_shared_destroy(void) {
 
 #ifndef NDEBUG
   // Lock debug thread - must join before any lock cleanup
-  extern void lock_debug_cleanup_thread(void);
-  lock_debug_cleanup_thread();
+  extern void debug_sync_cleanup_thread(void);
+  debug_sync_cleanup_thread();
 
   // Lock debug system - set initialized=false so mutex_lock uses mutex_lock_impl directly
   // This must happen after thread cleanup but before any subsystem that uses mutex_lock
-  extern void lock_debug_destroy(void);
-  lock_debug_destroy();
+  extern void debug_sync_destroy(void);
+  debug_sync_destroy();
 #endif
 
   // 1. Webcam - cleanup resources

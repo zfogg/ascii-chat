@@ -67,7 +67,7 @@ typedef struct {
 extern "C" {
 #endif
 
-bool lock_debug_is_initialized(void);
+bool debug_sync_is_initialized(void);
 int debug_sync_rwlock_rdlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name);
 int debug_sync_rwlock_wrlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name);
 int debug_sync_rwlock_rdunlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name);
@@ -246,7 +246,7 @@ int rwlock_wrunlock_impl(rwlock_t *lock);
 #define rwlock_rdlock(lock) rwlock_rdlock_impl(lock)
 #else
 #define rwlock_rdlock(lock)                                                                                            \
-  (lock_debug_is_initialized() ? debug_sync_rwlock_rdlock(lock, __FILE__, __LINE__, __func__) : rwlock_rdlock_impl(lock))
+  (debug_sync_is_initialized() ? debug_sync_rwlock_rdlock(lock, __FILE__, __LINE__, __func__) : rwlock_rdlock_impl(lock))
 #endif
 
 /**
@@ -265,7 +265,7 @@ int rwlock_wrunlock_impl(rwlock_t *lock);
 #define rwlock_wrlock(lock) rwlock_wrlock_impl(lock)
 #else
 #define rwlock_wrlock(lock)                                                                                            \
-  (lock_debug_is_initialized() ? debug_sync_rwlock_wrlock(lock, __FILE__, __LINE__, __func__) : rwlock_wrlock_impl(lock))
+  (debug_sync_is_initialized() ? debug_sync_rwlock_wrlock(lock, __FILE__, __LINE__, __func__) : rwlock_wrlock_impl(lock))
 #endif
 
 /**
@@ -283,7 +283,7 @@ int rwlock_wrunlock_impl(rwlock_t *lock);
 #define rwlock_rdunlock(lock) rwlock_rdunlock_impl(lock)
 #else
 #define rwlock_rdunlock(lock)                                                                                          \
-  (lock_debug_is_initialized() ? debug_sync_rwlock_rdunlock(lock, __FILE__, __LINE__, __func__) : rwlock_rdunlock_impl(lock))
+  (debug_sync_is_initialized() ? debug_sync_rwlock_rdunlock(lock, __FILE__, __LINE__, __func__) : rwlock_rdunlock_impl(lock))
 #endif
 
 /**
@@ -301,7 +301,7 @@ int rwlock_wrunlock_impl(rwlock_t *lock);
 #define rwlock_wrunlock(lock) rwlock_wrunlock_impl(lock)
 #else
 #define rwlock_wrunlock(lock)                                                                                          \
-  (lock_debug_is_initialized() ? debug_sync_rwlock_wrunlock(lock, __FILE__, __LINE__, __func__) : rwlock_wrunlock_impl(lock))
+  (debug_sync_is_initialized() ? debug_sync_rwlock_wrunlock(lock, __FILE__, __LINE__, __func__) : rwlock_wrunlock_impl(lock))
 #endif
 
 #ifdef __cplusplus

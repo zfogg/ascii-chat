@@ -286,7 +286,7 @@ static void shutdown_client() {
   // Stop lock debug thread BEFORE display_cleanup() because the debug thread uses
   // _kbhit()/_getch() on Windows which interact with the console. If we close the
   // CON handle first, the debug thread can hang on console I/O, blocking process exit.
-  lock_debug_destroy();
+  debug_sync_destroy();
 #endif
 
   // Cleanup display and terminal state
@@ -319,7 +319,7 @@ static void shutdown_client() {
 
 #ifndef NDEBUG
   // Join the debug thread as the very last thing (after log_destroy since thread may log)
-  lock_debug_cleanup_thread();
+  debug_sync_cleanup_thread();
 #endif
 }
 

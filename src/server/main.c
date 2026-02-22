@@ -1484,11 +1484,11 @@ static void *websocket_client_handler(void *arg) {
   // This must happen BEFORE sending KEY_EXCHANGE_INIT so that when the client
   // responds, the receive thread has a properly initialized context
   log_info("[WS_HANDLER] ★★★ LOCK STATE BEFORE crypto_handshake_init()");
-  lock_debug_print_state();
+  debug_sync_print_state();
   log_debug("[WS_HANDLER] Calling crypto_handshake_init()...");
   asciichat_error_t handshake_init_result = crypto_handshake_init(&client->crypto_handshake_ctx, true /* is_server */);
   log_info("[WS_HANDLER] ★★★ DEBUG: Printing lock state after crypto_handshake_init");
-  lock_debug_print_state();
+  debug_sync_print_state();
   if (handshake_init_result != ASCIICHAT_OK) {
     log_error("[WS_HANDLER] FAILED: crypto_handshake_init returned %d: %s", handshake_init_result,
               asciichat_error_string(handshake_init_result));
@@ -1917,7 +1917,7 @@ int server_main(void) {
 
   // DEBUG: Print lock state immediately after WebSocket init
   log_info("★★★ LOCK STATE AFTER WEBSOCKET INIT ★★★");
-  lock_debug_print_state();
+  debug_sync_print_state();
 
   // =========================================================================
   // UPnP Port Mapping (Quick Win for Direct TCP)
@@ -2648,7 +2648,7 @@ cleanup:
 #ifndef NDEBUG
   // Clean up lock debugging system (always, regardless of build type)
   // Lock debug records are allocated in debug builds too, so they must be cleaned up
-  lock_debug_destroy();
+  debug_sync_destroy();
 #endif
 
   // Destroy session host (before TCP server shutdown)
@@ -2737,7 +2737,7 @@ cleanup:
 
 #ifndef NDEBUG
   // Join the lock debug thread as one of the very last things before exit
-  lock_debug_cleanup_thread();
+  debug_sync_cleanup_thread();
 #endif
 
   log_info("Server shutdown complete");

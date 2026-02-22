@@ -155,7 +155,7 @@ static bool console_ctrl_handler(console_ctrl_event_t event) {
  */
 static void common_handle_sigusr1(int sig) {
   (void)sig;
-  lock_debug_trigger_print();
+  debug_sync_trigger_print();
 }
 #endif
 #endif
@@ -648,19 +648,9 @@ int main(int argc, char *argv[]) {
 
 #ifndef NDEBUG
   // Handle --debug-state (debug builds only)
-  if (IS_OPTION_EXPLICIT(debug_state_time, opts)) {
-    log_set_terminal_output(true);
-
-    if (opts->debug_state_time > 0.0) {
-      log_info("Sleeping for %f seconds before printing debug state...", opts->debug_state_time);
-      uint64_t sleep_ns = (uint64_t)(opts->debug_state_time * NS_PER_SEC_INT);
-      platform_sleep_ns(sleep_ns);
-    }
-
-    log_info("Printing synchronization state");
-    debug_sync_print_state();
-    log_info("Synchronization state printed successfully");
-    _Exit(0);
+  // Sleep for specified time AFTER mode initialization so locks are created
+  if (IS_OPTION_EXPLICIT(debug_state_time, opts) && opts->debug_state_time > 0.0) {
+    log_info("Will print sync state after %f seconds", opts->debug_state_time);
   }
 #endif
 
@@ -682,19 +672,19 @@ int main(int argc, char *argv[]) {
 #ifndef NDEBUG
   // Initialize lock debugging system after logging is fully set up
   log_debug("Initializing lock debug system...");
-  int lock_debug_result = lock_debug_init();
-  if (lock_debug_result != 0) {
-    LOG_ERRNO_IF_SET("Lock debug system initialization failed");
-    FATAL(ERROR_PLATFORM_INIT, "Lock debug system initialization failed");
+  int debug_sync_result = debug_sync_init();
+  if (debug_sync_result != 0) {
+    LOG_ERRNO_IF_SET("Debug sync system initialization failed");
+    FATAL(ERROR_PLATFORM_INIT, "Debug sync system initialization failed");
   }
-  log_debug("Lock debug system initialized successfully");
+  log_debug("Debug sync system initialized successfully");
 
-  // Start lock debug thread in all modes (not just server)
-  if (lock_debug_start_thread() != 0) {
-    LOG_ERRNO_IF_SET("Lock debug thread startup failed");
-    FATAL(ERROR_THREAD, "Lock debug thread startup failed");
+  // Start debug sync thread in all modes
+  if (debug_sync_start_thread() != 0) {
+    LOG_ERRNO_IF_SET("Debug sync thread startup failed");
+    FATAL(ERROR_THREAD, "Debug sync thread startup failed");
   }
-  log_debug("Lock debug thread started");
+  log_debug("Debug sync thread started");
 
 #ifndef _WIN32
   // Register SIGUSR1 to trigger lock state printing in all modes
@@ -733,6 +723,16 @@ int main(int argc, char *argv[]) {
 #ifndef _WIN32
   platform_signal(SIGUSR1, common_handle_sigusr1);
 #endif
+#endif
+
+#ifndef NDEBUG
+  // Handle --debug-state (debug builds only)
+  // Schedule debug state printing on the debug thread after specified delay
+  if (IS_OPTION_EXPLICIT(debug_state_time, opts) && opts->debug_state_time > 0.0) {
+    log_info("Scheduling sync state print after %f seconds on debug thread", opts->debug_state_time);
+    uint64_t delay_ns = (uint64_t)(opts->debug_state_time * NS_PER_SEC_INT);
+    debug_sync_print_state_delayed(delay_ns);
+  }
 #endif
 
   // Find and dispatch to mode entry point

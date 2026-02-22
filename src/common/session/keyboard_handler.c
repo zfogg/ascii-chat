@@ -227,7 +227,7 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
   // ===== LOCK DEBUG (debug builds only) =====
 #ifndef NDEBUG
   case KEY_CTRL_L: {
-    lock_debug_trigger_print();
+    debug_sync_trigger_print();
     log_debug("Lock state dump triggered via Ctrl+L");
     break;
   }

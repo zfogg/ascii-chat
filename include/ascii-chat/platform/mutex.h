@@ -66,7 +66,7 @@ extern "C" {
 int debug_sync_mutex_lock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name);
 int debug_sync_mutex_trylock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name);
 int debug_sync_mutex_unlock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name);
-bool lock_debug_is_initialized(void);
+bool debug_sync_is_initialized(void);
 #endif
 
 // ============================================================================
@@ -179,7 +179,7 @@ int mutex_unlock_impl(mutex_t *mutex);
 #define mutex_lock(mutex) mutex_lock_impl(mutex)
 #else
 #define mutex_lock(mutex)                                                                                              \
-  (lock_debug_is_initialized() ? debug_sync_mutex_lock(mutex, __FILE__, __LINE__, __func__) : mutex_lock_impl(mutex))
+  (debug_sync_is_initialized() ? debug_sync_mutex_lock(mutex, __FILE__, __LINE__, __func__) : mutex_lock_impl(mutex))
 #endif
 
 /**
@@ -196,7 +196,7 @@ int mutex_unlock_impl(mutex_t *mutex);
 #define mutex_trylock(mutex) mutex_trylock_impl(mutex)
 #else
 #define mutex_trylock(mutex)                                                                                           \
-  (lock_debug_is_initialized() ? debug_sync_mutex_trylock(mutex, __FILE__, __LINE__, __func__) : mutex_trylock_impl(mutex))
+  (debug_sync_is_initialized() ? debug_sync_mutex_trylock(mutex, __FILE__, __LINE__, __func__) : mutex_trylock_impl(mutex))
 #endif
 
 /**
@@ -214,7 +214,7 @@ int mutex_unlock_impl(mutex_t *mutex);
 #define mutex_unlock(mutex) mutex_unlock_impl(mutex)
 #else
 #define mutex_unlock(mutex)                                                                                            \
-  (lock_debug_is_initialized() ? debug_sync_mutex_unlock(mutex, __FILE__, __LINE__, __func__) : mutex_unlock_impl(mutex))
+  (debug_sync_is_initialized() ? debug_sync_mutex_unlock(mutex, __FILE__, __LINE__, __func__) : mutex_unlock_impl(mutex))
 #endif
 
 /** @} */ /* Mutex Locking Macros */
