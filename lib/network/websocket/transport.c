@@ -138,7 +138,9 @@ static void *websocket_service_thread(void *arg) {
 
         if (written < 0) {
           log_error(">>> LWS_WRITE_FAILED: error code %d for %zu bytes", written, msg.len);
-          SAFE_FREE(msg.data);
+          // Use buffer_pool_free to safely return to pool instead of deallocating immediately.
+          // libwebsockets may still hold references with compression enabled.
+          buffer_pool_free(NULL, msg.data, LWS_PRE + msg.len);
           mutex_lock(&ws_data->send_mutex);
           break;
         }
@@ -149,7 +151,9 @@ static void *websocket_service_thread(void *arg) {
           log_info(">>> WRITE_SUCCESS: sent %d bytes", written);
         }
 
-        SAFE_FREE(msg.data);
+        // Use buffer_pool_free to safely return to pool instead of deallocating immediately.
+        // libwebsockets may buffer this with permessage-deflate compression and process it asynchronously.
+        buffer_pool_free(NULL, msg.data, LWS_PRE + msg.len);
         messages_sent++;
         total_messages_sent++;
         mutex_lock(&ws_data->send_mutex);
@@ -295,7 +299,8 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
 
       if (written < 0) {
         log_error("WebSocket write failed for %zu bytes", msg.len);
-        SAFE_FREE(msg.data);
+        // Use buffer_pool_free to safely return to pool. libwebsockets may still hold references.
+        buffer_pool_free(NULL, msg.data, LWS_PRE + msg.len);
         mutex_lock(&ws_data->send_mutex);
         break;
       }
@@ -304,7 +309,9 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
         log_warn("WebSocket partial write: %d/%zu bytes", written, msg.len);
       }
 
-      SAFE_FREE(msg.data);
+      // Use buffer_pool_free to safely return to pool (instead of SAFE_FREE which deallocates immediately)
+      // libwebsockets may buffer this with permessage-deflate compression and process it asynchronously
+      buffer_pool_free(NULL, msg.data, LWS_PRE + msg.len);
       message_count++;
       mutex_lock(&ws_data->send_mutex);
     }
@@ -417,9 +424,11 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     // Queue the data for server-side sending
     // IMPORTANT: Allocate with LWS_PRE padding because lws_write() needs to write
     // the WebSocket frame header backwards into the LWS_PRE region
+    // Use buffer_pool instead of SAFE_MALLOC to avoid use-after-free with
+    // permessage-deflate compression (same issue as client-side sends)
     websocket_recv_msg_t msg;
     size_t buffer_size = LWS_PRE + send_len;
-    msg.data = SAFE_MALLOC(buffer_size, uint8_t *);
+    msg.data = buffer_pool_alloc(NULL, buffer_size);
     if (!msg.data) {
       SAFE_FREE(send_buffer);
       if (encrypted_packet)
@@ -439,7 +448,7 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
       mutex_unlock(&ws_data->send_mutex);
       log_error("WebSocket server send queue FULL - cannot queue %zu byte message for wsi=%p", send_len,
                 (void *)ws_data->wsi);
-      SAFE_FREE(msg.data);
+      buffer_pool_free(NULL, msg.data, buffer_size);
       SAFE_FREE(send_buffer);
       if (encrypted_packet)
         buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
@@ -468,11 +477,15 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
   // Client-side: queue entire message for service thread to send
   // Avoid fragmentation race conditions by sending atomic messages from service thread
   // libwebsockets handles automatic fragmentation internally when needed
-  // IMPORTANT: Allocate with LWS_PRE padding because lws_write() needs to write
+  // Allocate with LWS_PRE padding because lws_write() needs to write
   // the WebSocket frame header backwards into the LWS_PRE region
+  // Use buffer_pool instead of SAFE_MALLOC to avoid use-after-free with permessage-deflate
+  // compression. libwebsockets may buffer this data asynchronously after lws_write() returns,
+  // so we can't free it immediately. buffer_pool_free() safely returns it to the pool instead
+  // of deallocating, preventing the use-after-free race condition with the compression layer.
   websocket_recv_msg_t msg;
   size_t buffer_size = LWS_PRE + send_len;
-  msg.data = SAFE_MALLOC(buffer_size, uint8_t *);
+  msg.data = buffer_pool_alloc(NULL, buffer_size);
   if (!msg.data) {
     SAFE_FREE(send_buffer);
     if (encrypted_packet)
@@ -492,7 +505,7 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     mutex_unlock(&ws_data->send_mutex);
     log_error("WebSocket client send queue FULL - cannot queue %zu byte message for wsi=%p", send_len,
               (void *)ws_data->wsi);
-    SAFE_FREE(msg.data);
+    buffer_pool_free(NULL, msg.data, buffer_size);
     SAFE_FREE(send_buffer);
     if (encrypted_packet)
       buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
