@@ -107,10 +107,9 @@ if(APPLE)
         endif()
 
         # Create an imported library that links to the built library
-        add_library(ghostty_lib SHARED IMPORTED GLOBAL)
+        add_library(ghostty_lib STATIC IMPORTED GLOBAL)
         set_target_properties(ghostty_lib PROPERTIES
             IMPORTED_LOCATION "${GHOSTTY_LIB}"
-            IMPORTED_NO_SONAME ON
         )
         target_include_directories(ghostty_lib INTERFACE
             "${GHOSTTY_SOURCE_DIR}/zig-out/include"
@@ -262,10 +261,9 @@ elseif(UNIX AND NOT APPLE)
         endif()
 
         # Create an imported library that links to the built library
-        add_library(ghostty_lib SHARED IMPORTED GLOBAL)
+        add_library(ghostty_lib STATIC IMPORTED GLOBAL)
         set_target_properties(ghostty_lib PROPERTIES
             IMPORTED_LOCATION "${GHOSTTY_LIB}"
-            IMPORTED_NO_SONAME ON
         )
         target_include_directories(ghostty_lib INTERFACE
             "${GHOSTTY_BUILD_DIR}/include"

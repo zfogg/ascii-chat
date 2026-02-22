@@ -145,10 +145,18 @@ if((APPLE OR UNIX) AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     # Explicitly set BUILD_RPATH to put build/lib first, before any system paths
     # This ensures we use the freshly built library, not any installed version
     # For macOS, also include ${HOMEBREW_PREFIX}/lib for Homebrew-installed dependencies
+    # Also include ghostty library path for debug builds
+    set(_debug_rpath_dirs "${CMAKE_LIBRARY_OUTPUT_DIRECTORY};${CMAKE_BUILD_RPATH}")
+
+    # Add ghostty library directory for shared library builds (debug)
+    if(GHOSTTY_LIBRARIES AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+        string(APPEND _debug_rpath_dirs ";${ASCIICHAT_DEPS_CACHE_DIR}/ghostty/lib")
+    endif()
+
     if(APPLE)
-        set(_debug_install_rpath "${CMAKE_LIBRARY_OUTPUT_DIRECTORY};${CMAKE_BUILD_RPATH};${HOMEBREW_PREFIX}/lib")
+        set(_debug_install_rpath "${_debug_rpath_dirs};${HOMEBREW_PREFIX}/lib")
     else()
-        set(_debug_install_rpath "${CMAKE_LIBRARY_OUTPUT_DIRECTORY};${CMAKE_BUILD_RPATH}")
+        set(_debug_install_rpath "${_debug_rpath_dirs}")
     endif()
     set_target_properties(ascii-chat PROPERTIES
         BUILD_RPATH "${_debug_install_rpath}"
@@ -176,6 +184,7 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
     # Release builds now use shared library (after OBJECT library simplification)
     # Use relative rpath to avoid embedding developer paths in the binary
     # This satisfies the ValidatePaths.cmake security check
+    # Add ghostty library directory for releases (ghostty is static in release, no rpath needed)
     if(APPLE)
         set(_release_rpath "@loader_path/../lib;/usr/local/lib;${HOMEBREW_PREFIX}/lib")
     else()
