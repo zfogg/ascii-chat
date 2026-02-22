@@ -180,16 +180,15 @@ elseif(UNIX AND NOT APPLE)
         # Create target that depends on the output
         add_custom_target(ghostty_build DEPENDS "${GHOSTTY_LIB}")
 
-        # Create an imported library that links to the built library (only if build succeeded)
-        if(EXISTS "${GHOSTTY_LIB}")
-            add_library(ghostty_lib SHARED IMPORTED GLOBAL)
-            set_target_properties(ghostty_lib PROPERTIES
-                IMPORTED_LOCATION "${GHOSTTY_BUILD_DIR}/lib/libghostty-vt.so.0"
-            )
-            target_include_directories(ghostty_lib INTERFACE
-                "${GHOSTTY_BUILD_DIR}/include"
-            )
-            add_dependencies(ghostty_lib ghostty_build)
+        # Create an imported library that links to the built library (required, not optional)
+        add_library(ghostty_lib SHARED IMPORTED GLOBAL)
+        set_target_properties(ghostty_lib PROPERTIES
+            IMPORTED_LOCATION "${GHOSTTY_BUILD_DIR}/lib/libghostty-vt.so.0"
+        )
+        target_include_directories(ghostty_lib INTERFACE
+            "${GHOSTTY_BUILD_DIR}/include"
+        )
+        add_dependencies(ghostty_lib ghostty_build)
 
             # Copy ghostty shared library to build/lib so RPATH can find it at runtime
             # Look for the actual shared library in the build directory
