@@ -120,6 +120,7 @@ set(SESSION_SRCS
     ${LIB_DIR}/session/host.c
     ${LIB_DIR}/session/keyboard_handler.c
     ${LIB_DIR}/session/session_log_buffer.c
+    ${LIB_DIR}/session/stdin_reader.c
 )
 
 # Include subdirectories that define module source variables
