@@ -431,8 +431,8 @@ target_link_libraries(ascii-chat-video ${GHOSTTY_LIBS})
 
 # Mark generated font files as generated (for OBJECT libraries, must be before module creation)
 set_source_files_properties(
-    "${CMAKE_BINARY_DIR}/generated/matrix_resurrected_font.c"
-    "${CMAKE_BINARY_DIR}/generated/default_font.c"
+    "${CMAKE_BINARY_DIR}/generated/data/fonts/matrix_resurrected.c"
+    "${CMAKE_BINARY_DIR}/generated/data/fonts/default.c"
     PROPERTIES LANGUAGE C GENERATED TRUE
 )
 

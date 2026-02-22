@@ -310,10 +310,12 @@ endif()
 
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/fonts")
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/generated")
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/generated/data")
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/generated/data/fonts")
 
 set(MATRIX_FONT_URL "https://github.com/Rezmason/matrix/raw/master/assets/Matrix-Resurrected.ttf")
 set(MATRIX_FONT_SRC "${CMAKE_BINARY_DIR}/fonts/Matrix-Resurrected.ttf")
-set(MATRIX_FONT_GEN "${CMAKE_BINARY_DIR}/generated/matrix_resurrected_font.c")
+set(MATRIX_FONT_GEN "${CMAKE_BINARY_DIR}/generated/data/fonts/matrix_resurrected.c")
 
 # Download font at configure time
 if(NOT EXISTS "${MATRIX_FONT_SRC}")
@@ -342,7 +344,7 @@ endif()
 set(DEFAULT_FONT_TARBALL_URL "https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-fonts-ttf-2.37.tar.bz2")
 set(DEFAULT_FONT_TARBALL "${CMAKE_BINARY_DIR}/fonts/dejavu-fonts-ttf-2.37.tar.bz2")
 set(DEFAULT_FONT_SRC "${CMAKE_BINARY_DIR}/fonts/DejaVuSansMono.ttf")
-set(DEFAULT_FONT_GEN "${CMAKE_BINARY_DIR}/generated/default_font.c")
+set(DEFAULT_FONT_GEN "${CMAKE_BINARY_DIR}/generated/data/fonts/default.c")
 
 # Download and extract font tarball at configure time
 if(NOT EXISTS "${DEFAULT_FONT_SRC}")

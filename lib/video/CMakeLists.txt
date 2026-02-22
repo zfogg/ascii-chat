@@ -26,8 +26,8 @@ if(FFMPEG_FOUND)
             ${CMAKE_SOURCE_DIR}/lib/media/ffmpeg_encoder.c
             # Bundled fonts and generated C code (generated at CMake configure time)
             ${CMAKE_SOURCE_DIR}/lib/font.c
-            "${CMAKE_BINARY_DIR}/generated/matrix_resurrected_font.c"
-            "${CMAKE_BINARY_DIR}/generated/default_font.c"
+            "${CMAKE_BINARY_DIR}/generated/data/fonts/matrix_resurrected.c"
+            "${CMAKE_BINARY_DIR}/generated/data/fonts/default.c"
         )
     endif()
 endif()
