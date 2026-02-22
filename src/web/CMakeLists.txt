@@ -39,7 +39,12 @@ FetchContent_Declare(pcre2
 )
 set(PCRE2_BUILD_TESTS OFF CACHE BOOL "Build PCRE2 tests")
 set(PCRE2_BUILD_PCRE2GREP OFF CACHE BOOL "Build pcre2grep")
+
+# Silence PCRE2 configure step output during fetch/build
+set(OLD_MESSAGE_LOG_LEVEL "${CMAKE_MESSAGE_LOG_LEVEL}")
+set(CMAKE_MESSAGE_LOG_LEVEL "WARNING")
 FetchContent_MakeAvailable(pcre2)
+set(CMAKE_MESSAGE_LOG_LEVEL "${OLD_MESSAGE_LOG_LEVEL}")
 
 # Opus codec (for client mode audio encoding/decoding)
 FetchContent_Declare(Opus
