@@ -573,6 +573,44 @@ All comments in code are important by nature. Write them in a professional, matt
 3. Use `SET_ERRNO_SYS()` for system call errors
 4. Check return values and propagate errors up
 
+### CMake Best Practices
+
+**CRITICAL: Never wrap required dependencies in `if(FOUND)` guards in cmake.**
+
+This is a C project. If the C code uses symbols from a library, those symbols MUST be linked. There is no way to conditionally compile away the symbols — they're either in the code or they're not.
+
+Spurious `if(FOUND)` guards around linking create silent failures:
+- Cmake finds the package ✓
+- Code compiles ✓
+- But linking is skipped (if condition somehow fails) ✗
+- Undefined symbols at runtime OR different behavior in CI with different environments
+
+**All project dependencies are non-optional.** This includes:
+- PCRE2, libsodium, BearSSL, yyjson — used unconditionally in multiple modules
+- FFmpeg, libwebsockets — required for musl static builds
+- PortAudio, Opus, JACK — audio pipeline components
+- Ghostty, libdatachannel, OpenSSL — networking and crypto
+
+**The only legitimate conditionals for dependencies:**
+- `if(JACK_FOUND)` — JACK is optional system audio backend (PortAudio may or may not use it)
+- Platform checks: `if(WIN32)`, `if(APPLE)`, `if(NOT WIN32)`
+- Build type checks: `if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")`, `if(USE_MUSL)`
+- Runtime checks: `if(TARGET ...)`, `if(DEFINED ...)`, `if(BUILD_SHARED_LIBS)` (actual build variants)
+
+**Correct pattern:** Link required deps unconditionally after they're found:
+```cmake
+# ✅ CORRECT - find checks error if not found, linking is unconditional
+find_package(PCRE2 REQUIRED)
+target_link_libraries(my-target ${PCRE2_LIBRARIES})
+
+# ❌ WRONG - silent failure if PCRE2_FOUND somehow becomes false
+if(PCRE2_FOUND)
+    target_link_libraries(my-target ${PCRE2_LIBRARIES})
+endif()
+```
+
+The `REQUIRED` keyword on `find_package()` is the found-check. It fails at config time if the package is missing. That's the right place for it.
+
 ### Git Workflow
 
 ```bash
