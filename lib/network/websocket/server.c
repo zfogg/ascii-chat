@@ -187,14 +187,26 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     client_ctx->client_port = 0; // WebSocket doesn't expose client port easily
     client_ctx->user_data = server->user_data;
 
-    // Spawn handler thread - this calls websocket_client_handler which creates client_info_t
-    log_info("🔴 ABOUT TO SPAWN HANDLER THREAD: handler=%p, ctx=%p", (void *)server->handler, (void *)client_ctx);
-    log_debug("[LWS_CALLBACK_ESTABLISHED] Spawning handler thread (handler=%p, ctx=%p)...", (void *)server->handler,
-              (void *)client_ctx);
-    int handler_create_result = asciichat_thread_create(&conn_data->handler_thread, server->handler, client_ctx);
-    log_info("🔴 asciichat_thread_create returned: %d", handler_create_result);
-    if (handler_create_result != 0) {
-      log_error("[LWS_CALLBACK_ESTABLISHED] FAILED: asciichat_thread_create returned error");
+    // Queue handler to thread pool (no pthread_create from callback context)
+    // The handler_pool was created at server startup with pre-allocated workers
+    log_info("🔴 ABOUT TO QUEUE HANDLER: handler=%p, ctx=%p", (void *)server->handler, (void *)client_ctx);
+    log_debug("[LWS_CALLBACK_ESTABLISHED] Queueing handler to work pool (handler=%p, ctx=%p)...",
+              (void *)server->handler, (void *)client_ctx);
+
+    if (!server->handler_pool) {
+      log_error("[LWS_CALLBACK_ESTABLISHED] FAILED: handler_pool is NULL");
+      SAFE_FREE(client_ctx);
+      acip_transport_destroy(conn_data->transport);
+      conn_data->transport = NULL;
+      return -1;
+    }
+
+    asciichat_error_t queue_result = thread_pool_queue_work(server->handler_pool, server->handler, client_ctx);
+    log_info("🔴 thread_pool_queue_work returned: %s",
+             queue_result == ASCIICHAT_OK ? "OK" : "ERROR");
+
+    if (queue_result != ASCIICHAT_OK) {
+      log_error("[LWS_CALLBACK_ESTABLISHED] FAILED: thread_pool_queue_work returned error");
       SAFE_FREE(client_ctx);
       acip_transport_destroy(conn_data->transport);
       conn_data->transport = NULL;
@@ -202,8 +214,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     }
 
     conn_data->handler_started = true;
-    log_debug("[LWS_CALLBACK_ESTABLISHED] Handler thread spawned successfully");
-    log_info("★★★ ESTABLISHED CALLBACK SUCCESS - handler thread spawned! ★★★");
+    log_debug("[LWS_CALLBACK_ESTABLISHED] Handler work queued successfully");
+    log_info("★★★ ESTABLISHED CALLBACK SUCCESS - handler work queued! ★★★");
     break;
   }
 
@@ -255,15 +267,11 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     }
 
     if (conn_data && conn_data->handler_started) {
-      // Wait for handler thread to complete
-      uint64_t join_start_ns = time_get_ns();
-      log_debug("[LWS_CALLBACK_CLOSED] Waiting for handler thread to complete...");
-      asciichat_thread_join(&conn_data->handler_thread, NULL);
-      uint64_t join_end_ns = time_get_ns();
-      char join_duration_str[32];
-      format_duration_ns((double)(join_end_ns - join_start_ns), join_duration_str, sizeof(join_duration_str));
+      // Handler is managed by thread pool - no join needed
+      // The pool worker will finish handling the transport and return to the pool
+      // Transport was already closed above, signaling the handler to exit
       conn_data->handler_started = false;
-      log_info("[LWS_CALLBACK_CLOSED] Handler thread completed (join took %s)", join_duration_str);
+      log_debug("[LWS_CALLBACK_CLOSED] Handler was queued to pool (pool manages cleanup)");
     }
 
     // Destroy the transport and free all its resources (send_queue, recv_queue, etc)
@@ -439,8 +447,9 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       client_ctx->client_port = 0;
       client_ctx->user_data = server->user_data;
 
-      if (asciichat_thread_create(&conn_data->handler_thread, server->handler, client_ctx) != 0) {
-        log_error("LWS_CALLBACK_RECEIVE: Failed to spawn handler thread");
+      // Queue handler to thread pool (fallback if not queued in ESTABLISHED)
+      if (thread_pool_queue_work(server->handler_pool, server->handler, client_ctx) != ASCIICHAT_OK) {
+        log_error("LWS_CALLBACK_RECEIVE: Failed to queue handler work");
         SAFE_FREE(client_ctx);
         acip_transport_destroy(conn_data->transport);
         conn_data->transport = NULL;
@@ -448,7 +457,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       }
 
       conn_data->handler_started = true;
-      log_info("LWS_CALLBACK_RECEIVE: Handler thread spawned in fallback");
+      log_info("LWS_CALLBACK_RECEIVE: Handler work queued in fallback");
 
       // Update snapshot after creating transport
       transport_snapshot = conn_data->transport;
@@ -780,6 +789,15 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
     return SET_ERRNO(ERROR_NETWORK_BIND, "Failed to create libwebsockets context");
   }
 
+  // Create thread pool for handling client connections
+  // Use 4 worker threads to handle concurrent client handlers without blocking LWS event loop
+  server->handler_pool = thread_pool_create_with_workers("websocket_handlers", 4);
+  if (!server->handler_pool) {
+    lws_context_destroy(server->context);
+    server->context = NULL;
+    return SET_ERRNO(ERROR_THREAD, "Failed to create WebSocket handler thread pool");
+  }
+
   log_info("WebSocket server initialized on port %d with static file serving", config->port);
   return ASCIICHAT_OK;
 }
@@ -844,6 +862,12 @@ void websocket_server_destroy(websocket_server_t *server) {
   }
 
   atomic_store(&server->running, false);
+
+  // Destroy handler thread pool (waits for pending work to complete)
+  if (server->handler_pool) {
+    thread_pool_destroy(server->handler_pool);
+    server->handler_pool = NULL;
+  }
 
   // Context is normally destroyed by websocket_server_run (from the event loop
   // thread) for fast shutdown. This handles the case where run() wasn't called

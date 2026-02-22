@@ -54,11 +54,13 @@
 #include <stdatomic.h>
 #include "../../common.h"
 #include "../../platform/abstraction.h"
+#include "../../thread_pool.h"
 #include <libwebsockets.h>
 
 // Forward declarations
 typedef struct websocket_server websocket_server_t;
 typedef struct acip_transport acip_transport_t;
+typedef struct thread_pool thread_pool_t;
 
 /**
  * @brief Client handler function type
@@ -101,6 +103,7 @@ struct websocket_server {
   void *user_data;                     ///< User data for handlers
   atomic_bool running;                 ///< Server running flag
   int port;                            ///< Listening port
+  struct thread_pool *handler_pool;    ///< Thread pool for queueing handler work
 };
 
 /**
