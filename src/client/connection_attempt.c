@@ -202,6 +202,11 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     url_parts_t url_parts = {0};
     if (url_parse(server_address, &url_parts) == ASCIICHAT_OK) {
       log_debug("WebSocket URL parsed: host=%s, port=%d, scheme=%s", url_parts.host, url_parts.port, url_parts.scheme);
+      // Set server IP for crypto context (same as TCP path does)
+      if (url_parts.host[0] != '\0') {
+        server_connection_set_ip(url_parts.host);
+        log_debug("Server IP extracted from WebSocket URL: %s", url_parts.host);
+      }
     }
 
     log_info("Attempting WebSocket connection to %s", ws_url);
