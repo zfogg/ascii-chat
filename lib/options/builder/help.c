@@ -420,9 +420,11 @@ static int calculate_section_max_col_width(const options_config_t *config, const
             p++;
           int first_len_bytes = (int)(p - first_part);
 
-          int w = utf8_display_width_n(first_part, first_len_bytes);
-          if (w > max_width)
-            max_width = w;
+          if (first_len_bytes > 0) {
+            int w = utf8_display_width_n(first_part, first_len_bytes);
+            if (w > max_width)
+              max_width = w;
+          }
         }
       }
     }

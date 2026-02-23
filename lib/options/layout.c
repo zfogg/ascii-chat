@@ -52,7 +52,8 @@ static int calculate_segment_display_width(const char *text, int len) {
     return 0;
 
   // Calculate display width of stripped text
-  int width = utf8_display_width_n(stripped, strlen(stripped));
+  size_t stripped_len = strlen(stripped);
+  int width = (stripped_len == 0) ? 0 : utf8_display_width_n(stripped, stripped_len);
   SAFE_FREE(stripped);
 
   return width < 0 ? 0 : width;
