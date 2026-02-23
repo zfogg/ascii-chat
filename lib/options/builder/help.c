@@ -1147,6 +1147,12 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
   // Binary help uses MODE_DISCOVERY as the mode value
   bool for_binary_help = (mode == MODE_DISCOVERY);
 
+  // Calculate column widths for USAGE upfront (before printing) for alignment
+  int usage_max_col_width = calculate_section_max_col_width(config, "usage", mode, for_binary_help);
+  // Use USAGE width for both USAGE and EXAMPLES sections for consistent alignment
+  // (don't let long examples push column too far right)
+  int usage_examples_col_width = usage_max_col_width;
+
   // Print USAGE section (with section-specific column width and mode filtering)
   fprintf(desc, "%s\n", colored_string(LOG_COLOR_DEBUG, "USAGE"));
   if (config->num_usage_lines > 0) {
@@ -1172,8 +1178,6 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
       mode_name = NULL;
       break;
     }
-
-    int usage_max_col_width = calculate_section_max_col_width(config, "usage", mode, for_binary_help);
 
     for (size_t i = 0; i < config->num_usage_lines; i++) {
       const usage_descriptor_t *usage = &config->usage_lines[i];
@@ -1219,7 +1223,7 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
                              colored_string(LOG_COLOR_WARN, options_text));
       }
 
-      layout_print_two_column_row(desc, usage_buf, usage->description, usage_max_col_width, term_width, 0);
+      layout_print_two_column_row(desc, usage_buf, usage->description, usage_examples_col_width, term_width, 0);
     }
   }
   fprintf(desc, "\n");
@@ -1299,9 +1303,8 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
     }
   }
 
-  // Print EXAMPLES section (with section-specific column width)
-  int examples_max_col_width = calculate_section_max_col_width(config, "examples", mode, for_binary_help);
-  print_examples_section(config, desc, term_width, examples_max_col_width, mode, for_binary_help);
+  // Print EXAMPLES section (using USAGE column width for alignment)
+  print_examples_section(config, desc, term_width, usage_examples_col_width, mode, for_binary_help);
 
   // Print custom sections (after EXAMPLES, before OPTIONS)
   if (config->num_custom_sections > 0) {
