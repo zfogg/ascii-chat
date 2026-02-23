@@ -208,11 +208,11 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   }
 
   // If stretch is enabled, use full dimensions, otherwise calculate aspect ratio
-  if (use_aspect_ratio && caps->render_mode != RENDER_MODE_HALF_BLOCK) {
-    // Normal modes: apply aspect ratio correction
+  // For half-block mode, height has already been doubled, so aspect_ratio() will
+  // compute the correct width to maintain proportions with the doubled height
+  if (use_aspect_ratio) {
     aspect_ratio(original->w, original->h, resized_width, resized_height, stretch, &resized_width, &resized_height);
   }
-  // Half-block mode: skip aspect ratio to preserve full doubled dimensions for 2x resolution
 
   // Calculate padding for centering (only if client wants padding)
   size_t pad_width = 0;
