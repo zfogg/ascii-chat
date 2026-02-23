@@ -17,6 +17,8 @@
 #include <ascii-chat/log/logging.h>
 #include <stdio.h>
 #include <string.h>
+#include <signal.h>
+#include <pthread.h>
 
 // ============================================================================
 // Helper Functions
@@ -257,6 +259,14 @@ static asciichat_thread_t g_debug_thread;
  */
 static void *debug_print_thread_fn(void *arg) {
     (void)arg;
+
+    // Block SIGUSR1 in debug thread so it's only delivered to main thread
+    #ifndef _WIN32
+    sigset_t set;
+    sigemptyset(&set);
+    sigaddset(&set, SIGUSR1);
+    pthread_sigmask(SIG_BLOCK, &set, NULL);
+    #endif
 
     while (!g_debug_state_request.should_exit) {
         // Handle delayed printing
