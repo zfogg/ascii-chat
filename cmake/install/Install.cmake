@@ -317,13 +317,13 @@ endif()
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     # Configure the single cmake config file
     configure_file(
-        "${CMAKE_SOURCE_DIR}/share/cmake/ascii-chat-config.cmake.in"
-        "${CMAKE_BINARY_DIR}/ascii-chat-config.cmake"
+        "${CMAKE_SOURCE_DIR}/share/cmake/libasciichat.cmake.in"
+        "${CMAKE_BINARY_DIR}/libasciichat.cmake"
         @ONLY
     )
 
     install(FILES
-        "${CMAKE_BINARY_DIR}/ascii-chat-config.cmake"
+        "${CMAKE_BINARY_DIR}/libasciichat.cmake"
         DESTINATION lib/cmake/ascii-chat
         COMPONENT Development
     )
