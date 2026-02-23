@@ -6,80 +6,200 @@
  * This module defines the single source of truth for all command-line options
  * that can be used across all modes (server, client, mirror, discovery service, etc.).
  *
- * **Philosophy**:
+ * ## Architecture Overview
  *
- * - **Single Definition**: Each option defined exactly once with all metadata
+ * The registry is the **single source of truth** for option definitions. It works with:
+ * - **Builder** (`builder.h`): Use builder to construct custom option configurations,
+ *   populated from the registry via `options_registry_add_all_to_builder()`.
+ * - **RCU Thread-Safety** (`rcu.h`): Registered options are parsed and published to
+ *   RCU for lock-free thread-safe access via `GET_OPTION()` macro.
+ * - **Options System** (`options.h`): The unified parsing system uses the registry
+ *   to build option configurations for different modes.
+ *
+ * ## Design Philosophy
+ *
+ * - **Single Definition**: Each option defined exactly once with all metadata (no duplication)
  * - **Mode Bitmasks**: Each option includes `mode_bitmask` indicating which modes it applies to
  * - **Automatic Filtering**: Registry functions automatically filter by mode
  * - **Immutable After Load**: Once loaded, registry is read-only (no runtime modifications)
  * - **Shared with Builder**: Registry options added to builder via `options_registry_add_all_to_builder()`
+ * - **Completion Metadata**: Each option includes shell completion hints (enums, ranges, examples)
  *
- * **Architecture**:
+ * ## Registry Structure
  *
  * The registry is defined in `registry.c` as a static array of `option_descriptor_t`
- * structures. Each descriptor includes:
+ * structures. Each descriptor includes complete metadata:
  *
- * - **Identification**: Long name (e.g., "port"), short name (e.g., 'p')
- * - **Type**: BOOL, INT, STRING, DOUBLE, CALLBACK, ACTION
- * - **Storage**: Offset into `options_t` struct (via `offsetof()`)
- * - **Documentation**: Help text, group name, visibility flags
- * - **Defaults**: Default value pointer, required flag, env var fallback
- * - **Validation**: Custom validator function for this option
- * - **Parsing**: Custom parser for OPTION_TYPE_CALLBACK
- * - **Mode**: Bitmask indicating which modes this option applies to
+ * **Identification**:
+ * - Long name (e.g., "port")
+ * - Short name (e.g., 'p')
+ * - Argument placeholder (e.g., "NUM", "STR", "PATH")
  *
- * **Mode Bitmasks**:
+ * **Type and Storage**:
+ * - Type: BOOL, INT, STRING, DOUBLE, CALLBACK, ACTION
+ * - Offset into `options_t` struct (via `offsetof()`)
+ *
+ * **Documentation**:
+ * - Help text (brief description for --help output)
+ * - Group name (for organizing help sections: "NETWORK OPTIONS", "DISPLAY OPTIONS", etc.)
+ * - Visibility flags (hide_from_binary_help, hide_from_mode_help)
+ *
+ * **Values and Validation**:
+ * - Default value pointer
+ * - Required flag (must user provide this option?)
+ * - Environment variable fallback (e.g., PORT, PASSWORD_FILE)
+ * - Custom validator function (validates across option fields)
+ *
+ * **Parsing and Actions**:
+ * - Custom parser for OPTION_TYPE_CALLBACK
+ * - Action function for OPTION_TYPE_ACTION (executes immediately, may exit)
+ *
+ * **Mode Applicability**:
+ * - Bitmask indicating which modes this option applies to
+ *
+ * **Completion Metadata** (Phase 3):
+ * - Enum values and descriptions (for shell completions)
+ * - Numeric range (min, max, step)
+ * - Example values
+ * - Input type hint (ENUM, NUMERIC, FILEPATH, CHOICE, etc.)
+ *
+ * ## Mode Bitmask System
  *
  * Each option includes a `mode_bitmask` that controls where it appears:
  *
+ * **Mode Bitmask Values**:
+ * - `OPTION_MODE_BINARY`: Parsed before mode detection (--help, --version, --log-file, --log-level)
+ * - `OPTION_MODE_SERVER`: Server-only options (--max-clients, --discovery-service, etc.)
+ * - `OPTION_MODE_CLIENT`: Client-only options (--color, --audio, --snapshot, etc.)
+ * - `OPTION_MODE_MIRROR`: Mirror mode options (local webcam preview)
+ * - `OPTION_MODE_DISCOVERY_SVC`: Discovery service (ACDS) options
+ * - `OPTION_MODE_ALL`: Available in all modes
+ *
+ * **Examples**:
  * ```c
- * .mode_bitmask = OPTION_MODE_CLIENT | OPTION_MODE_MIRROR  // Client and mirror modes only
+ * .mode_bitmask = OPTION_MODE_CLIENT | OPTION_MODE_MIRROR  // Client and mirror modes
  * .mode_bitmask = OPTION_MODE_SERVER                        // Server mode only
- * .mode_bitmask = OPTION_MODE_BINARY | OPTION_MODE_CLIENT   // Binary + client modes
+ * .mode_bitmask = OPTION_MODE_BINARY | OPTION_MODE_CLIENT   // Binary + client options
  * .mode_bitmask = OPTION_MODE_ALL                           // All modes
  * ```
  *
- * **Usage Pattern**:
+ * **How Mode Filtering Works**:
+ * 1. User runs `ascii-chat client` or `ascii-chat server`
+ * 2. Mode detection determines detected_mode (MODE_CLIENT, MODE_SERVER, etc.)
+ * 3. Registry functions filter options by matching mode_bitmask
+ * 4. Parser only accepts options for the detected mode
+ * 5. Help output only shows relevant options
  *
+ * ## Usage Patterns
+ *
+ * **Pattern 1: Get all options for a specific mode**
  * ```c
- * // Get all options for a specific mode
  * size_t num_opts;
- * const option_descriptor_t *opts = options_registry_get_for_mode(
- *     MODE_CLIENT, &num_opts);
+ * const option_descriptor_t *opts = options_registry_get_for_mode(MODE_CLIENT, &num_opts);
  * for (size_t i = 0; i < num_opts; i++) {
- *     printf("%s: %s\\n", opts[i].long_name, opts[i].help_text);
+ *     printf(\"%s: %s\\n\", opts[i].long_name, opts[i].help_text);
  * }
- *
- * // Look up individual options
- * const option_descriptor_t *port_opt = options_registry_find_by_name("port");
- * if (port_opt && (port_opt->mode_bitmask & OPTION_MODE_SERVER)) {
- *     // Port option available in server mode
- * }
- *
- * // Add all registry options to builder
- * options_builder_t *builder = options_builder_create("myapp");
- * options_registry_add_all_to_builder(builder);
  * ```
  *
- * **Adding New Options**:
+ * **Pattern 2: Look up individual options**
+ * ```c
+ * const option_descriptor_t *port_opt = options_registry_find_by_name(\"port\");
+ * if (port_opt && (port_opt->mode_bitmask & OPTION_MODE_SERVER)) {
+ *     printf(\"Port option available in server mode\\n\");
+ * }
+ * ```
  *
- * To add a new option:
+ * **Pattern 3: Populate builder with registry options**
+ * ```c
+ * options_builder_t *builder = options_builder_create(sizeof(options_t));
+ * options_registry_add_all_to_builder(builder);  // Add all registered options
+ * options_config_t *config = options_builder_build(builder);
+ * ```
  *
- * 1. **Add field to `options_t`** in `options.h`
- * 2. **Add default constant** (e.g., `OPT_MY_OPTION_DEFAULT`)
- * 3. **Add registry entry** in `registry.c` with:
+ * **Pattern 4: Get shell completion metadata**
+ * ```c
+ * const option_metadata_t *meta = options_registry_get_metadata(\"color-mode\");
+ * if (meta && meta->input_type == OPTION_INPUT_ENUM) {
+ *     size_t count;
+ *     const char **values = options_registry_get_enum_values(\"color-mode\", NULL, &count);
+ *     // Use values for shell completion suggestions
+ * }
+ * ```
+ *
+ * ## Adding New Options to Registry
+ *
+ * To add a new option to the registry:
+ *
+ * 1. **Add field to `options_t` struct** in `include/ascii-chat/options/options.h`
+ * 2. **Add default constant** in `options.h` (e.g., `OPT_MY_OPTION_DEFAULT`)
+ * 3. **Add registry entry** in `lib/options/registry.c` with:
  *    - Long and short names
- *    - Type and storage offset
- *    - Default value and validation
- *    - Help text and group
- *    - Mode bitmask(s)
+ *    - Type and storage offset (via offsetof)
+ *    - Default value and validation function
+ *    - Help text and group name
+ *    - Mode bitmask(s) indicating which modes apply
+ *    - Completion metadata (if enum, ranges, or examples needed)
  *
- * **Registry Lookup Functions**:
+ * **Example Registry Entry**:
+ * ```c
+ * {
+ *     .long_name = \"max-clients\",
+ *     .short_name = 'c',
+ *     .type = OPTION_TYPE_INT,
+ *     .offset = offsetof(options_t, max_clients),
+ *     .default_value = &(int){OPT_MAX_CLIENTS_DEFAULT},
+ *     .help_text = \"Maximum number of simultaneous clients\",
+ *     .group = \"NETWORK OPTIONS\",
+ *     .mode_bitmask = OPTION_MODE_SERVER,
+ *     .validate = validate_max_clients,  // Custom validator
+ *     .metadata = {
+ *         .input_type = OPTION_INPUT_NUMERIC,
+ *         .numeric_range = {.min = 1, .max = 100, .step = 1},
+ *         .examples = (const char *[]){\"1\", \"4\", \"10\", NULL},
+ *     }
+ * }
+ * ```
  *
+ * ## Registry Lookup Functions
+ *
+ * **Core Functions**:
  * - `options_registry_add_all_to_builder()`: Populate builder with all registry options
- * - `options_registry_find_by_name()`: Find option by long name (e.g., "port")
+ * - `options_registry_find_by_name()`: Find option by long name (e.g., \"port\")
  * - `options_registry_find_by_short()`: Find option by short name (e.g., 'p')
  * - `options_registry_get_for_mode()`: Get all options for a specific mode
+ * - `options_registry_get_binary_options()`: Get all binary-level options
+ * - `options_registry_get_for_display()`: Get options filtered for help/completions display
+ *
+ * **Completion Metadata Functions** (Phase 3):
+ * - `options_registry_get_metadata()`: Get complete metadata for option
+ * - `options_registry_get_enum_values()`: Get enum values and descriptions
+ * - `options_registry_get_numeric_range()`: Get numeric min/max/step
+ * - `options_registry_get_examples()`: Get example values
+ * - `options_registry_get_input_type()`: Get input type hint
+ *
+ * ## RCU Thread-Safety Integration
+ *
+ * After registry options are parsed through the builder, they're published via RCU:
+ * ```c
+ * // Build config from registered options
+ * options_builder_t *builder = options_builder_create(sizeof(options_t));
+ * options_registry_add_all_to_builder(builder);
+ * options_config_t *config = options_builder_build(builder);
+ *
+ * // Parse command line
+ * options_t opts = options_t_new();
+ * options_config_parse(config, argc, argv, &opts, MODE_DETECTION_RESULT, ...);
+ *
+ * // Publish to RCU (lock-free access from worker threads)
+ * options_state_init();
+ * options_state_set(&opts);
+ *
+ * // Worker threads now read lock-free via GET_OPTION() macro
+ * ```
+ *
+ * @see builder.h - Builder API for constructing option configurations
+ * @see rcu.h - Thread-safe RCU-based access to published options
+ * @see options.h - Unified options parsing system (uses registry internally)
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date January 2026
