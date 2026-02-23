@@ -502,13 +502,13 @@ void options_builder_add_string(options_builder_t *builder, const char *long_nam
 void options_builder_add_double(options_builder_t *builder, const char *long_name, char short_name, size_t offset,
                                 double default_value, const char *help_text, const char *group, bool required,
                                 const char *env_var_name,
-                                bool (*validate)(const void *options_struct, char **error_msg));
+                                bool (*validate)(const void *options_struct, char **error_msg), bool optional_arg);
 
 void options_builder_add_double_with_metadata(options_builder_t *builder, const char *long_name, char short_name,
                                               size_t offset, double default_value, const char *help_text,
                                               const char *group, bool required, const char *env_var_name,
                                               bool (*validate)(const void *options_struct, char **error_msg),
-                                              const option_metadata_t *metadata);
+                                              const option_metadata_t *metadata, bool optional_arg);
 
 /**
  * @brief Add option with custom callback parser

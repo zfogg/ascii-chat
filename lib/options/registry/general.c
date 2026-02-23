@@ -173,12 +173,12 @@ const registry_entry_t g_general_entries[] = {
      "Print synchronization primitive state with optional time offset (debug builds only).",
      "DEBUG",
      "TIME",
-     true,  // This option takes an argument
+     false,  // Argument is optional
      NULL,
      NULL,
      NULL,
      false,
-     false,
+     true,  // optional_arg: argument is optional, not required
      OPTION_MODE_ALL,
      {0},
      NULL},

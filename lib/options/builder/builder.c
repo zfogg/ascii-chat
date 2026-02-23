@@ -756,7 +756,7 @@ void options_builder_add_string(options_builder_t *builder, const char *long_nam
 
 void options_builder_add_double(options_builder_t *builder, const char *long_name, char short_name, size_t offset,
                                 double default_value, const char *help_text, const char *group, bool required,
-                                const char *env_var_name, bool (*validate)(const void *, char **)) {
+                                const char *env_var_name, bool (*validate)(const void *, char **), bool optional_arg) {
   ensure_descriptor_capacity(builder);
 
   // Increased from 256 to 1024 to support multiple test builders without overflow
@@ -782,7 +782,8 @@ void options_builder_add_double(options_builder_t *builder, const char *long_nam
                               .validate = validate,
                               .parse_fn = NULL,
                               .owns_memory = false,
-                              .mode_bitmask = OPTION_MODE_NONE};
+                              .mode_bitmask = OPTION_MODE_NONE,
+                              .optional_arg = optional_arg};
 
   builder->descriptors[builder->num_descriptors++] = desc;
 }
@@ -791,7 +792,7 @@ void options_builder_add_double_with_metadata(options_builder_t *builder, const 
                                               size_t offset, double default_value, const char *help_text,
                                               const char *group, bool required, const char *env_var_name,
                                               bool (*validate)(const void *, char **),
-                                              const option_metadata_t *metadata) {
+                                              const option_metadata_t *metadata, bool optional_arg) {
   ensure_descriptor_capacity(builder);
 
   static double defaults[1024];
@@ -817,7 +818,8 @@ void options_builder_add_double_with_metadata(options_builder_t *builder, const 
                               .parse_fn = NULL,
                               .owns_memory = false,
                               .mode_bitmask = OPTION_MODE_NONE,
-                              .metadata = metadata ? *metadata : (option_metadata_t){0}};
+                              .metadata = metadata ? *metadata : (option_metadata_t){0},
+                              .optional_arg = optional_arg};
 
   builder->descriptors[builder->num_descriptors++] = desc;
 }
