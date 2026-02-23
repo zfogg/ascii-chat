@@ -69,12 +69,19 @@ static int next_color_mode(int current) {
  * @brief Get next render mode in cycle
  */
 static int next_render_mode(int current) {
-  // Cycle through render modes (Foreground → Background → Half-block → Foreground)
   switch (current) {
   case 0:     // RENDER_MODE_FOREGROUND
     return 1; // RENDER_MODE_BACKGROUND
   case 1:     // RENDER_MODE_BACKGROUND
+#if SIMD_SUPPORT_NEON
+    // Half-block mode only available on ARM with NEON
     return 2; // RENDER_MODE_HALF_BLOCK
+  case 2:     // RENDER_MODE_HALF_BLOCK
+    return 0; // Back to RENDER_MODE_FOREGROUND
+#else
+    // No half-block support, cycle back to foreground
+    return 0; // RENDER_MODE_FOREGROUND
+#endif
   default:
     return 0; // Back to RENDER_MODE_FOREGROUND
   }
@@ -205,7 +212,8 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
   }
 
   // ===== COLOR MODE CONTROL =====
-  case KEY_C: {
+  case KEY_C:
+  case 'C': {
     int current_mode = (int)GET_OPTION(color_mode);
     int next_mode = next_color_mode(current_mode);
     options_set_int("color_mode", next_mode);
@@ -218,7 +226,8 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
   }
 
   // ===== MUTE CONTROL =====
-  case KEY_M: {
+  case KEY_M:
+  case 'M': {
     double current_volume = GET_OPTION(speakers_volume);
     log_debug("Mute toggle: current_volume=%.2f, g_mute_saved_volume=%.2f, threshold=0.01", current_volume,
               g_mute_saved_volume);
@@ -240,7 +249,8 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
   }
 
   // ===== RENDER MODE CONTROL =====
-  case KEY_R: {
+  case KEY_R:
+  case 'R': {
     int current_mode = (int)GET_OPTION(render_mode);
     int next_mode = next_render_mode(current_mode);
     options_set_int("render_mode", next_mode);
@@ -253,7 +263,8 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
   }
 
   // ===== HORIZONTAL FLIP CONTROL =====
-  case KEY_F: {
+  case KEY_F:
+  case 'F': {
     bool current_flip_x = (bool)GET_OPTION(flip_x);
     options_set_bool("flip_x", !current_flip_x);
     log_info("Horizontal flip: %s", !current_flip_x ? "enabled" : "disabled");
