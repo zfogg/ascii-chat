@@ -163,43 +163,5 @@ const registry_entry_t g_general_entries[] = {
      OPTION_MODE_ALL,
      {0},
      NULL},
-#ifndef NDEBUG
-    {"debug-state",
-     '\0',
-     OPTION_TYPE_DOUBLE,
-     offsetof(options_t, debug_state_time),
-     &default_debug_state_time_value,
-     sizeof(double),
-     "Print synchronization primitive state with optional time offset (debug builds only).",
-     "DEBUG",
-     "TIME",
-     false,  // Argument is optional
-     NULL,
-     NULL,
-     NULL,
-     false,
-     true,  // optional_arg: argument is optional, not required
-     OPTION_MODE_ALL,
-     {0},
-     NULL},
-    {"backtrace",
-     '\0',
-     OPTION_TYPE_DOUBLE,
-     offsetof(options_t, debug_backtrace_time),
-     &default_debug_backtrace_time_value,
-     sizeof(double),
-     "Print backtrace with optional time offset (debug builds only).",
-     "DEBUG",
-     "TIME",
-     false,  // Argument is optional
-     NULL,
-     NULL,
-     NULL,
-     false,
-     true,  // optional_arg: argument is optional, not required
-     OPTION_MODE_ALL,
-     {0},
-     NULL},
-#endif
 
     REGISTRY_TERMINATOR()};
