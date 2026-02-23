@@ -413,6 +413,15 @@ typedef enum {
 /** @brief Default color mode (auto-detect terminal capabilities) */
 #define OPT_COLOR_MODE_DEFAULT COLOR_MODE_AUTO
 
+/** @brief Default list webcams flag (false = don't list and exit) */
+#define OPT_LIST_WEBCAMS_DEFAULT false
+
+/** @brief Default list microphones flag (false = don't list and exit) */
+#define OPT_LIST_MICROPHONES_DEFAULT false
+
+/** @brief Default list speakers flag (false = don't list and exit) */
+#define OPT_LIST_SPEAKERS_DEFAULT false
+
 /** @brief Default show terminal capabilities flag */
 #define OPT_SHOW_CAPABILITIES_DEFAULT false
 
