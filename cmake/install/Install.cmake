@@ -301,7 +301,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     # Configure the pkgconfig file (works for both shared and static library)
     # Both require external dependencies: libsodium, zstd, portaudio, opus, mimalloc
     configure_file(
-        "${CMAKE_SOURCE_DIR}/cmake/install/ascii-chat.pc.in"
+        "${CMAKE_SOURCE_DIR}/share/pkgconfig/ascii-chat.pc.in"
         "${CMAKE_BINARY_DIR}/ascii-chat.pc"
         @ONLY
     )
@@ -317,7 +317,7 @@ endif()
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     # Configure the single cmake config file
     configure_file(
-        "${CMAKE_SOURCE_DIR}/cmake/install/ascii-chat-config.cmake.in"
+        "${CMAKE_SOURCE_DIR}/share/cmake/ascii-chat-config.cmake.in"
         "${CMAKE_BINARY_DIR}/ascii-chat-config.cmake"
         @ONLY
     )
