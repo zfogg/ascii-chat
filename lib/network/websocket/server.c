@@ -649,16 +649,26 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     // Log callback duration with breakdown
     {
       uint64_t callback_exit_ns = time_get_ns();
-      double callback_dur_us = (double)(callback_exit_ns - callback_enter_ns) / 1e3;
-      double alloc_dur_us = (double)(alloc_end_ns - alloc_start_ns) / 1e3;
-      double lock_wait_dur_us = (double)(lock_end_ns - lock_start_ns) / 1e3;
+      uint64_t callback_dur_ns = callback_exit_ns - callback_enter_ns;
+      uint64_t alloc_dur_ns = alloc_end_ns - alloc_start_ns;
+      uint64_t lock_wait_dur_ns = lock_end_ns - lock_start_ns;
 
-      if (callback_dur_us > 500) {
-        log_warn("[WS_CALLBACK_DURATION] RECEIVE callback took %.1f µs (alloc=%.1f µs, lock_wait=%.1f µs)",
-                 callback_dur_us, alloc_dur_us, lock_wait_dur_us);
+      if (callback_dur_ns > 500000) { // 500 µs in nanoseconds
+        char callback_str[32], alloc_str[32], lock_str[32];
+        time_pretty(callback_dur_ns, -1, callback_str, sizeof(callback_str));
+        time_pretty(alloc_dur_ns, -1, alloc_str, sizeof(alloc_str));
+        time_pretty(lock_wait_dur_ns, -1, lock_str, sizeof(lock_str));
+        log_warn("[WS_CALLBACK_DURATION] RECEIVE callback took %s (alloc=%s, lock_wait=%s)",
+                 callback_str, alloc_str, lock_str);
       }
-      log_debug("[WS_CALLBACK_TIMING] total=%.1f µs (alloc=%.1f µs, lock_wait=%.1f µs, other=%.1f µs)", callback_dur_us,
-                alloc_dur_us, lock_wait_dur_us, callback_dur_us - alloc_dur_us - lock_wait_dur_us);
+      char callback_str[32], alloc_str[32], lock_str[32], other_str[32];
+      time_pretty(callback_dur_ns, -1, callback_str, sizeof(callback_str));
+      time_pretty(alloc_dur_ns, -1, alloc_str, sizeof(alloc_str));
+      time_pretty(lock_wait_dur_ns, -1, lock_str, sizeof(lock_str));
+      uint64_t other_dur_ns = callback_dur_ns - alloc_dur_ns - lock_wait_dur_ns;
+      time_pretty(other_dur_ns, -1, other_str, sizeof(other_str));
+      log_debug("[WS_CALLBACK_TIMING] total=%s (alloc=%s, lock_wait=%s, other=%s)", callback_str,
+                alloc_str, lock_str, other_str);
     }
     log_debug("[WS_RECEIVE] ===== RECEIVE CALLBACK COMPLETE, returning 0 to continue =====");
     log_info("[WS_RECEIVE_RETURN] Returning 0 from RECEIVE callback (success). fragmented=%d (first=%d final=%d)",

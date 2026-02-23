@@ -1478,8 +1478,10 @@ void *client_dispatch_thread(void *arg) {
     }
 
     // Frame received! Log it immediately
-    log_info("✅ DISPATCH_THREAD[%u] DEQUEUED packet: %zu bytes (dequeue took %.1fμs)", client_id, queued_pkt->data_len,
-             (dequeue_end - dequeue_start) / 1000.0);
+    char dequeue_elapsed_str[32];
+    time_pretty(dequeue_end - dequeue_start, -1, dequeue_elapsed_str, sizeof(dequeue_elapsed_str));
+    log_info("✅ DISPATCH_THREAD[%u] DEQUEUED packet: %zu bytes (dequeue took %s)", client_id, queued_pkt->data_len,
+             dequeue_elapsed_str);
 
     // Process the dequeued packet
     // The queued packet contains the complete ACIP packet (header + payload) from websocket_recv()
@@ -2030,8 +2032,10 @@ void *client_send_thread_func(void *arg) {
 
       sent_something = true;
       uint64_t audio_done_ns = time_get_ns();
-      log_info_every(5000 * US_PER_MS_INT, "[SEND_LOOP_%d] AUDIO_SENT: took %.2fms", loop_iteration_count,
-                     (audio_done_ns - loop_start_ns) / 1e6);
+      char audio_elapsed_str[32];
+      time_pretty(audio_done_ns - loop_start_ns, -1, audio_elapsed_str, sizeof(audio_elapsed_str));
+      log_info_every(5000 * US_PER_MS_INT, "[SEND_LOOP_%d] AUDIO_SENT: took %s", loop_iteration_count,
+                     audio_elapsed_str);
 
       // Small sleep to let more audio packets queue (helps batching efficiency)
       if (audio_packet_count > 0) {
@@ -2093,8 +2097,10 @@ void *client_send_thread_func(void *arg) {
     // This marks the frame as consumed even if we don't send it yet
     const video_frame_t *frame = video_frame_get_latest(client->outgoing_video_buffer);
     uint64_t frame_get_ns = time_get_ns();
-    log_info_every(5000 * US_PER_MS_INT, "[SEND_LOOP_%d] VIDEO_GET_FRAME: took %.3fms, frame=%p", loop_iteration_count,
-                   (frame_get_ns - video_check_ns) / 1e6, (void *)frame);
+    char frame_get_elapsed_str[32];
+    time_pretty(frame_get_ns - video_check_ns, -1, frame_get_elapsed_str, sizeof(frame_get_elapsed_str));
+    log_info_every(5000 * US_PER_MS_INT, "[SEND_LOOP_%d] VIDEO_GET_FRAME: took %s, frame=%p", loop_iteration_count,
+                   frame_get_elapsed_str, (void *)frame);
     log_dev_every(4500 * US_PER_MS_INT, "Send thread: video_frame_get_latest returned %p for client %u", (void *)frame,
                   client->client_id);
 
@@ -2225,8 +2231,9 @@ void *client_send_thread_func(void *arg) {
       asciichat_error_t send_result = acip_send_ascii_frame(frame_transport, frame_data, frame_size, width, height,
                                                             atomic_load(&client->client_id));
       uint64_t send_end_ns = time_get_ns();
-      uint64_t send_ms = (send_end_ns - send_start_ns) / 1e6;
-      log_dev("[SEND_LOOP_%d] FRAME_SEND_END: took %.2fms, result=%d", loop_iteration_count, send_ms, send_result);
+      char send_elapsed_str[32];
+      time_pretty(send_end_ns - send_start_ns, -1, send_elapsed_str, sizeof(send_elapsed_str));
+      log_dev("[SEND_LOOP_%d] FRAME_SEND_END: took %s, result=%d", loop_iteration_count, send_elapsed_str, send_result);
       uint64_t step5_ns = time_get_ns();
 
       if (send_result != ASCIICHAT_OK) {
@@ -2274,9 +2281,11 @@ void *client_send_thread_func(void *arg) {
       platform_sleep_us(1 * US_PER_MS_INT); // 1ms sleep
     }
     uint64_t loop_end_ns = time_get_ns();
-    uint64_t loop_ms = (loop_end_ns - loop_start_ns) / 1e6;
-    if (loop_ms > 10) {
-      log_warn("[SEND_LOOP_%d] SLOW_ITERATION: took %.2fms (client=%u)", loop_iteration_count, loop_ms,
+    uint64_t loop_elapsed_ns = loop_end_ns - loop_start_ns;
+    if (loop_elapsed_ns > 10 * NS_PER_MS) {
+      char loop_elapsed_str[32];
+      time_pretty(loop_elapsed_ns, -1, loop_elapsed_str, sizeof(loop_elapsed_str));
+      log_warn("[SEND_LOOP_%d] SLOW_ITERATION: took %s (client=%u)", loop_iteration_count, loop_elapsed_str,
                atomic_load(&client->client_id));
     }
   }

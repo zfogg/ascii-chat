@@ -832,13 +832,14 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
     asciichat_error_t video_err = ffmpeg_decoder_seek_to_timestamp(source->video_decoder, timestamp_sec);
     double video_pos_after = ffmpeg_decoder_get_position(source->video_decoder);
     uint64_t video_seek_ns = time_elapsed_ns(seek_start_ns, time_get_ns());
+    char video_seek_str[32];
+    time_pretty(video_seek_ns, -1, video_seek_str, sizeof(video_seek_str));
     if (video_err != ASCIICHAT_OK) {
-      log_warn("Video seek to %.2f failed: error code %d (took %.1fms)", timestamp_sec, video_err,
-               (double)video_seek_ns / NS_PER_MS);
+      log_warn("Video seek to %.2f failed: error code %d (took %s)", timestamp_sec, video_err, video_seek_str);
       result = video_err;
     } else {
-      log_info("Video SEEK: %.2f → %.2f sec (target %.2f, took %.1fms)", video_pos_before, video_pos_after,
-               timestamp_sec, (double)video_seek_ns / NS_PER_MS);
+      log_info("Video SEEK: %.2f → %.2f sec (target %.2f, took %s)", video_pos_before, video_pos_after,
+               timestamp_sec, video_seek_str);
     }
   }
 
@@ -852,13 +853,14 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
     double audio_pos_after = ffmpeg_decoder_get_position(source->audio_decoder);
     uint64_t audio_seek_ns = time_elapsed_ns(audio_seek_start_ns, time_get_ns());
     log_info("Audio position after seek: %.2f", audio_pos_after);
+    char audio_seek_str[32];
+    time_pretty(audio_seek_ns, -1, audio_seek_str, sizeof(audio_seek_str));
     if (audio_err != ASCIICHAT_OK) {
-      log_warn("Audio seek to %.2f failed: error code %d (took %.1fms)", timestamp_sec, audio_err,
-               (double)audio_seek_ns / NS_PER_MS);
+      log_warn("Audio seek to %.2f failed: error code %d (took %s)", timestamp_sec, audio_err, audio_seek_str);
       result = audio_err;
     } else {
-      log_info("Audio SEEK COMPLETE: %.2f → %.2f sec (target %.2f, took %.1fms)", audio_pos_before, audio_pos_after,
-               timestamp_sec, (double)audio_seek_ns / NS_PER_MS);
+      log_info("Audio SEEK COMPLETE: %.2f → %.2f sec (target %.2f, took %s)", audio_pos_before, audio_pos_after,
+               timestamp_sec, audio_seek_str);
     }
   }
 

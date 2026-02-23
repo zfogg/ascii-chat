@@ -289,8 +289,12 @@ static void *audio_worker_thread(void *arg) {
 
             if (aec3_count % 100 == 0) {
               long avg_ns = aec3_total_ns / aec3_count;
-              log_info("AEC3 performance: avg=%.2fms, max=%.2fms, latest=%.2fms (samples=%zu, %d calls)",
-                       avg_ns / NS_PER_MS, aec3_max_ns / NS_PER_MS, aec3_ns / NS_PER_MS, capture_read, aec3_count);
+              char avg_str[32], max_str[32], latest_str[32];
+              time_pretty((uint64_t)avg_ns, -1, avg_str, sizeof(avg_str));
+              time_pretty((uint64_t)aec3_max_ns, -1, max_str, sizeof(max_str));
+              time_pretty((uint64_t)aec3_ns, -1, latest_str, sizeof(latest_str));
+              log_info("AEC3 performance: avg=%s, max=%s, latest=%s (samples=%zu, %d calls)",
+                       avg_str, max_str, latest_str, capture_read, aec3_count);
             }
           }
         }

@@ -331,7 +331,6 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
 
     if (frame_decoded) {
       uint64_t read_time_ns = time_elapsed_ns(read_start_ns, time_get_ns());
-      double read_ms = (double)read_time_ns / NS_PER_MS;
 
       // Get current decode buffer
       image_t *decode_buffer = use_image_a ? decoder->prefetch_image_a : decoder->prefetch_image_b;
@@ -342,7 +341,9 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
       decoder->prefetch_frame_ready = true;
       mutex_unlock(&decoder->prefetch_mutex);
 
-      log_dev_every(5 * US_PER_SEC_INT, "PREFETCH: decoded frame in %.2f ms", read_ms);
+      char read_time_str[32];
+      time_pretty(read_time_ns, -1, read_time_str, sizeof(read_time_str));
+      log_dev_every(5 * US_PER_SEC_INT, "PREFETCH: decoded frame in %s", read_time_str);
 
       // Switch to the other buffer for next iteration (MUST use boolean flag, not pointer comparison)
       use_image_a = !use_image_a;

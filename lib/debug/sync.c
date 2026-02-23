@@ -26,21 +26,13 @@
 // ============================================================================
 
 /**
- * @brief Format elapsed time string
+ * @brief Format elapsed time string (uses time_pretty for consistent formatting)
  * @param elapsed_ns Elapsed time in nanoseconds
  * @param buffer Output buffer
  * @param size Buffer size
  */
 static void format_elapsed(uint64_t elapsed_ns, char *buffer, size_t size) {
-    if (elapsed_ns < 1000) {
-        snprintf(buffer, size, "%lu ns", (unsigned long)elapsed_ns);
-    } else if (elapsed_ns < 1000000) {
-        snprintf(buffer, size, "%.2f µs", (double)elapsed_ns / 1000.0);
-    } else if (elapsed_ns < 1000000000) {
-        snprintf(buffer, size, "%.2f ms", (double)elapsed_ns / 1000000.0);
-    } else {
-        snprintf(buffer, size, "%.2f s", (double)elapsed_ns / 1000000000.0);
-    }
+    time_pretty(elapsed_ns, -1, buffer, size);
 }
 
 

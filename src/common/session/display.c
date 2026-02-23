@@ -573,7 +573,9 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
     }
 
     uint64_t t_color_replace_end = time_get_ns();
-    log_dev("COLOR_REPLACE: %.2f ms", (double)(t_color_replace_end - t_color_replace_start) / (double)NS_PER_MS_INT);
+    char color_replace_str[32];
+    time_pretty(t_color_replace_end - t_color_replace_start, -1, color_replace_str, sizeof(color_replace_str));
+    log_dev("COLOR_REPLACE: %s", color_replace_str);
   }
 
   // Apply digital rain effect if enabled
@@ -594,7 +596,9 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
     }
 
     uint64_t t_rain_end = time_get_ns();
-    log_dev("DIGITAL_RAIN: Effect applied (%.2f ms)", (double)(t_rain_end - t_rain_start) / (double)NS_PER_MS_INT);
+    char rain_str[32];
+    time_pretty(t_rain_end - t_rain_start, -1, rain_str, sizeof(rain_str));
+    log_dev("DIGITAL_RAIN: Effect applied (%s)", rain_str);
   }
 
   uint64_t t_cleanup_start = time_get_ns();

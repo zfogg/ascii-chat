@@ -321,8 +321,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
       // Log capture time every 30 frames
       if (frame_count % 30 == 0) {
-        double capture_ms = (double)capture_elapsed_ns / NS_PER_MS;
-        log_dev_every(5 * US_PER_SEC_INT, "PROFILE[%lu]: CAPTURE=%.2f ms", frame_count, capture_ms);
+        char capture_str[32];
+        time_pretty(capture_elapsed_ns, -1, capture_str, sizeof(capture_str));
+        log_dev_every(5 * US_PER_SEC_INT, "PROFILE[%lu]: CAPTURE=%s", frame_count, capture_str);
       }
 
       // Pause after first frame if requested via --pause flag
@@ -434,10 +435,11 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         log_dev_every(5 * US_PER_SEC_INT, "ACTUAL_TIME[%lu]: Total frame time from start to render complete: %.1f ms",
                       frame_count, total_frame_time_ms);
 
-        double conversion_ms = (double)conversion_elapsed_ns / NS_PER_MS;
-        double render_ms = (double)render_elapsed_ns / NS_PER_MS;
-        log_dev_every(5 * US_PER_SEC_INT, "PROFILE[%lu]: CONVERT=%.2f ms, RENDER=%.2f ms", frame_count, conversion_ms,
-                      render_ms);
+        char conversion_str[32], render_str[32];
+        time_pretty(conversion_elapsed_ns, -1, conversion_str, sizeof(conversion_str));
+        time_pretty(render_elapsed_ns, -1, render_str, sizeof(render_str));
+        log_dev_every(5 * US_PER_SEC_INT, "PROFILE[%lu]: CONVERT=%s, RENDER=%s", frame_count, conversion_str,
+                      render_str);
       }
 
       // Keyboard input polling (if enabled) - MUST come before snapshot exit check so help screen can be toggled
@@ -555,8 +557,11 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         uint64_t frame_elapsed_ns = time_elapsed_ns(frame_start_ns, frame_end_ns);
         uint64_t frame_target_ns = NS_PER_SEC_INT / target_fps;
 
-        log_dev_every(500 * NS_PER_MS_INT, "RENDER[%lu] TIMING_TOTAL: frame_time_ms=%.2f target_ms=%.2f", frame_count,
-                      (double)frame_elapsed_ns / NS_PER_MS, (double)frame_target_ns / NS_PER_MS);
+        char frame_time_str[32], target_time_str[32];
+        time_pretty(frame_elapsed_ns, -1, frame_time_str, sizeof(frame_time_str));
+        time_pretty(frame_target_ns, -1, target_time_str, sizeof(target_time_str));
+        log_dev_every(500 * NS_PER_MS_INT, "RENDER[%lu] TIMING_TOTAL: frame_time=%s target_time=%s", frame_count,
+                      frame_time_str, target_time_str);
 
         // Only sleep if we have time budget remaining
         // If already behind, skip sleep to catch up

@@ -200,8 +200,9 @@ static void *websocket_service_thread(void *arg) {
     uint64_t service_end_ns = time_get_ns();
 
     if (loop_count <= 50) {
-      log_info("[LOOP %d] lws_service() returned %d, duration %.3fms", loop_count, result,
-               (double)(service_end_ns - service_start_ns) / 1000000.0);
+      char service_duration_str[32];
+      time_pretty(service_end_ns - service_start_ns, -1, service_duration_str, sizeof(service_duration_str));
+      log_info("[LOOP %d] lws_service() returned %d, duration %s", loop_count, result, service_duration_str);
     }
 
     if (result < 0) {
