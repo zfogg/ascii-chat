@@ -74,7 +74,7 @@
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/lifecycle.h>
-#include <ascii-chat/uthash/uthash.h>
+#include <ascii-chat/uthash.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/platform/init.h>

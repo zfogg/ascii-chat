@@ -6,7 +6,7 @@
 #include <ascii-chat/platform/util.h>
 #include <ascii-chat/tooling/panic/instrument_log.h>
 
-#include <ascii-chat/uthash/uthash.h>
+#include <ascii-chat/uthash.h>
 #include <ascii-chat/util/parsing.h>
 
 #include <errno.h>

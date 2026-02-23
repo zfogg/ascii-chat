@@ -6,7 +6,7 @@
 
 #include <ascii-chat/common.h>
 #include <ascii-chat/video/simd/common.h>
-#include <ascii-chat/uthash/uthash.h>
+#include <ascii-chat/uthash.h>
 #include <ascii-chat/video/palette.h>
 #include <ascii-chat/util/fnv1a.h>
 #include <ascii-chat/util/time.h>

@@ -29,7 +29,7 @@
 #include <ascii-chat/platform/symbols.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/uthash/uthash.h>
+#include <ascii-chat/uthash.h>
 #include <ascii-chat/platform/rwlock.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/util/path.h>

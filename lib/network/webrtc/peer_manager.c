@@ -17,7 +17,7 @@
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/util/endian.h>
-#include <ascii-chat/uthash/uthash.h>
+#include <ascii-chat/uthash.h>
 #include <string.h>
 
 /**

@@ -18,7 +18,7 @@
 // NOTE: Use explicit path to avoid Windows include resolution picking up options/common.h
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/init.h>
-#include <ascii-chat/uthash/uthash.h>
+#include <ascii-chat/uthash.h>
 #include <sodium.h>
 #include <string.h>
 #include <ctype.h>

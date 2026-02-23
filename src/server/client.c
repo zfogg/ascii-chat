@@ -136,7 +136,7 @@
 #include <ascii-chat/audio/mixer.h>
 #include <ascii-chat/audio/opus_codec.h>
 #include <ascii-chat/video/video_frame.h>
-#include <ascii-chat/uthash/uthash.h>
+#include <ascii-chat/uthash.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/format.h>
 #include <ascii-chat/util/time.h>

@@ -12,7 +12,7 @@
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/platform/mutex.h>
 #include <libwebsockets.h>
-#include <ascii-chat/uthash/uthash.h>
+#include <ascii-chat/uthash.h>
 #include <stdio.h>
 #include <stdatomic.h>
 #include <string.h>

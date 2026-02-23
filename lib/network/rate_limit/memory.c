@@ -10,7 +10,7 @@
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/uthash/uthash.h>
+#include <ascii-chat/uthash.h>
 #include <stdlib.h>
 #include <string.h>
 

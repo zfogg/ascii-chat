@@ -66,7 +66,7 @@ using std::memory_order_relaxed;
 
 // Include uthash wrapper for UBSan-safe hash functions
 // Headers can include this even before common.h is fully processed
-#include "../uthash/uthash.h"
+#include <ascii-chat/uthash.h>
 
 // ============================================================================
 // Core Monotonic Timing API (Nanosecond Precision)

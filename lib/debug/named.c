@@ -9,7 +9,7 @@
 
 #include "ascii-chat/debug/named.h"
 #include "ascii-chat/platform/rwlock.h"
-#include "ascii-chat/uthash/uthash.h"
+#include <ascii-chat/uthash.h>
 #include "ascii-chat/log/logging.h"
 #include "ascii-chat/util/path.h"
 #include "ascii-chat/util/lifecycle.h"
