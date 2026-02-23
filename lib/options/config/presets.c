@@ -233,7 +233,7 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf2,
                               "Join session and stream from YouTube video", false);
   options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf3,
-                              "Join session and stream media from stdin (cat file.mov | ascii-chat ... -f '-')", false);
+                              "Join session and stream media from stdin", false);
   options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf4,
                               "Join session with custom ASCII palette characters", false);
   options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf5,
