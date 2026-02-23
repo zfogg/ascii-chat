@@ -764,16 +764,34 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
     return NULL;
   }
 
-  // Handle half-block mode (NEON optimized or scalar fallback)
+  // Handle half-block mode with appropriate color depth
   if (caps->render_mode == RENDER_MODE_HALF_BLOCK) {
     const uint8_t *rgb_data = (const uint8_t *)image->pixels;
+
+    // Choose halfblock renderer based on terminal color capabilities
+    switch (caps->color_level) {
+    case TERM_COLOR_TRUECOLOR:
 #if SIMD_SUPPORT_NEON
-    // Use NEON half-block renderer (optimized SIMD path)
-    return rgb_to_truecolor_halfblocks_neon(rgb_data, image->w, image->h, 0);
+      // Use NEON half-block renderer (optimized SIMD path)
+      return rgb_to_truecolor_halfblocks_neon(rgb_data, image->w, image->h, 0);
 #else
-    // Fallback to scalar halfblock renderer (works on all platforms)
-    return rgb_to_truecolor_halfblocks_scalar(rgb_data, image->w, image->h, 0);
+      // Fallback to scalar halfblock renderer (works on all platforms)
+      return rgb_to_truecolor_halfblocks_scalar(rgb_data, image->w, image->h, 0);
 #endif
+
+    case TERM_COLOR_256:
+      // Use 256-color halfblock renderer
+      return rgb_to_256color_halfblocks_scalar(rgb_data, image->w, image->h, 0, palette);
+
+    case TERM_COLOR_16:
+      // Use 16-color halfblock renderer
+      return rgb_to_16color_halfblocks_scalar(rgb_data, image->w, image->h, 0, palette);
+
+    case TERM_COLOR_NONE:
+    default:
+      // Use monochrome halfblock renderer
+      return rgb_to_halfblocks_scalar(rgb_data, image->w, image->h, 0, palette);
+    }
   }
 
   // Standard color modes
