@@ -330,32 +330,39 @@ static void *audio_sender_thread_func(void *arg) {
  * threads might attempt initialization simultaneously.
  */
 static void audio_sender_init(void) {
+  log_info("[AUDIO_SENDER_INIT] Starting audio sender initialization");
+
   if (!lifecycle_init(&g_audio_send_queue_lc, "audio_queue")) {
+    log_info("[AUDIO_SENDER_INIT] Already initialized, returning early");
     return; // Already initialized
   }
 
+  log_info("[AUDIO_SENDER_INIT] Initializing mutex");
   // Initialize queue structures with error checking
   if (mutex_init(&g_audio_send_queue_mutex, "audio_send_queue_mutex") != 0) {
-    log_error("Failed to initialize audio queue mutex");
+    log_error("[AUDIO_SENDER_INIT] Failed to initialize audio queue mutex");
     return;
   }
 
+  log_info("[AUDIO_SENDER_INIT] Initializing condition variable");
   if (cond_init(&g_audio_send_queue_cond, "audio_send_queue_cond") != 0) {
-    log_error("Failed to initialize audio queue condition variable");
+    log_error("[AUDIO_SENDER_INIT] Failed to initialize audio queue condition variable");
     mutex_destroy(&g_audio_send_queue_mutex);
     return;
   }
 
+  log_info("[AUDIO_SENDER_INIT] Setting queue state");
   g_audio_send_queue_head = 0;
   g_audio_send_queue_tail = 0;
   atomic_store(&g_audio_sender_should_exit, false);
 
+  log_info("[AUDIO_SENDER_INIT] Spawning audio sender thread");
   // Start sender thread (after lock release to avoid blocking other threads)
   if (thread_pool_spawn(g_client_worker_pool, audio_sender_thread_func, NULL, 5, "audio_sender") == ASCIICHAT_OK) {
     g_audio_sender_thread_created = true;
-    log_debug("Audio sender thread created");
+    log_info("[AUDIO_SENDER_INIT] ✓ Audio sender thread created successfully");
   } else {
-    log_error("Failed to spawn audio sender thread in worker pool");
+    log_error("[AUDIO_SENDER_INIT] Failed to spawn audio sender thread in worker pool");
     LOG_ERRNO_IF_SET("Audio sender thread creation failed");
   }
 }
