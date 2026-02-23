@@ -1137,7 +1137,7 @@ if(NOT EXISTS "${YYJSON_PREFIX}/lib/libyyjson.a")
     message(STATUS "  yyjson library not found in cache, will build from source")
     ExternalProject_Add(yyjson-musl
         URL https://github.com/ibireme/yyjson/archive/refs/tags/0.12.0.tar.gz
-        URL_HASH SHA256=f75c26cb1e5d6f0e20b8f3a89b9f7e26c47bb4cdc6f3bc3abc8a3da4d006c5df
+        URL_HASH SHA256=b16246f617b2a136c78d73e5e2647c6f1de1313e46678062985bdcf1f40bb75d
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         TLS_VERIFY FALSE
         PREFIX ${YYJSON_BUILD_DIR}
