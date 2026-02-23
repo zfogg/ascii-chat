@@ -44,6 +44,64 @@ static struct {
 static bool g_sokol_time_initialized = false;
 
 // ============================================================================
+// Human-Readable Time Formatting Helper
+// ============================================================================
+
+/**
+ * @brief Format duration as human-readable string with suffix
+ * @param total_seconds Total elapsed seconds
+ * @param minutes Minutes component
+ * @param hours Hours component
+ * @param days Days component
+ * @param months Months component
+ * @param years Years component
+ * @param suffix "ago" or "from now"
+ * @param buffer Output buffer
+ * @param buffer_size Buffer size
+ * @return Number of characters written, or -1 on error
+ *
+ * Uses moment.js-compatible thresholds with granular seconds for small durations:
+ * - 0-3 seconds: "a moment {suffix}"
+ * - 3-10 seconds: "a few seconds {suffix}"
+ * - 10-45 seconds: "N seconds {suffix}" (exact value)
+ * - 45+ seconds: moment.js thresholds continue
+ */
+static int format_human_readable_time_ago(double total_seconds, int minutes, int hours, int days, int months, int years,
+                                           const char *suffix, char *buffer, size_t buffer_size) {
+  int written = 0;
+
+  if (total_seconds < 3) {
+    written = safe_snprintf(buffer, buffer_size, "a moment %s", suffix);
+  } else if (total_seconds < 10) {
+    written = safe_snprintf(buffer, buffer_size, "a few seconds %s", suffix);
+  } else if (total_seconds < 45) {
+    written = safe_snprintf(buffer, buffer_size, "%d seconds %s", (int)total_seconds, suffix);
+  } else if (total_seconds < 90) {
+    written = safe_snprintf(buffer, buffer_size, "a minute %s", suffix);
+  } else if (minutes < 45) {
+    written = safe_snprintf(buffer, buffer_size, "%d minutes %s", minutes, suffix);
+  } else if (minutes < 90) {
+    written = safe_snprintf(buffer, buffer_size, "an hour %s", suffix);
+  } else if (hours < 22) {
+    written = safe_snprintf(buffer, buffer_size, "%d hours %s", hours, suffix);
+  } else if (hours < 36) {
+    written = safe_snprintf(buffer, buffer_size, "a day %s", suffix);
+  } else if (days < 25) {
+    written = safe_snprintf(buffer, buffer_size, "%d days %s", days, suffix);
+  } else if (days < 45) {
+    written = safe_snprintf(buffer, buffer_size, "a month %s", suffix);
+  } else if (months < 11) {
+    written = safe_snprintf(buffer, buffer_size, "%d months %s", months, suffix);
+  } else if (months < 18) {
+    written = safe_snprintf(buffer, buffer_size, "a year %s", suffix);
+  } else {
+    written = safe_snprintf(buffer, buffer_size, "%d years %s", years, suffix);
+  }
+
+  return written;
+}
+
+// ============================================================================
 // Core Monotonic Timing Implementation
 // ============================================================================
 
@@ -472,6 +530,28 @@ int time_pretty_now(int decimals, char *buffer, size_t buffer_size) {
 // Human-Readable Time Formatting (moment.js style)
 // ============================================================================
 
+int time_human_readable_unsigned(uint64_t nanoseconds, char *buffer, size_t buffer_size) {
+  if (!buffer || buffer_size == 0) {
+    return -1;
+  }
+
+  // Convert nanoseconds to seconds for threshold checking
+  double total_seconds = (double)nanoseconds / NS_PER_SEC;
+  int minutes = (int)(total_seconds / 60);
+  int hours = minutes / 60;
+  int days = hours / 24;
+  int months = days / 30;  // Approximate
+  int years = months / 12;
+
+  int written = format_human_readable_time_ago(total_seconds, minutes, hours, days, months, years, "ago", buffer, buffer_size);
+
+  if (written < 0 || (size_t)written >= buffer_size) {
+    return -1;
+  }
+
+  return written;
+}
+
 int time_human_readable(int64_t nanoseconds, char *buffer, size_t buffer_size) {
   if (!buffer || buffer_size == 0) {
     return -1;
@@ -489,33 +569,8 @@ int time_human_readable(int64_t nanoseconds, char *buffer, size_t buffer_size) {
   int months = days / 30;  // Approximate
   int years = months / 12;
 
-  int written = 0;
   const char *suffix = is_future ? "from now" : "ago";
-
-  // Moment.js-compatible thresholds
-  if (total_seconds < 45) {
-    written = safe_snprintf(buffer, buffer_size, "a few seconds %s", suffix);
-  } else if (total_seconds < 90) {
-    written = safe_snprintf(buffer, buffer_size, "a minute %s", suffix);
-  } else if (minutes < 45) {
-    written = safe_snprintf(buffer, buffer_size, "%d minutes %s", minutes, suffix);
-  } else if (minutes < 90) {
-    written = safe_snprintf(buffer, buffer_size, "an hour %s", suffix);
-  } else if (hours < 22) {
-    written = safe_snprintf(buffer, buffer_size, "%d hours %s", hours, suffix);
-  } else if (hours < 36) {
-    written = safe_snprintf(buffer, buffer_size, "a day %s", suffix);
-  } else if (days < 25) {
-    written = safe_snprintf(buffer, buffer_size, "%d days %s", days, suffix);
-  } else if (days < 45) {
-    written = safe_snprintf(buffer, buffer_size, "a month %s", suffix);
-  } else if (months < 11) {
-    written = safe_snprintf(buffer, buffer_size, "%d months %s", months, suffix);
-  } else if (months < 18) {
-    written = safe_snprintf(buffer, buffer_size, "a year %s", suffix);
-  } else {
-    written = safe_snprintf(buffer, buffer_size, "%d years %s", years, suffix);
-  }
+  int written = format_human_readable_time_ago(total_seconds, minutes, hours, days, months, years, suffix, buffer, buffer_size);
 
   if (written < 0 || (size_t)written >= buffer_size) {
     return -1;
