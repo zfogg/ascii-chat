@@ -19,6 +19,7 @@
 
 // 256-color lookup table (optional)
 static char color256_strings[256][16]; // Pre-built SGR strings like "\033[38;5;123m"
+static char color256_bg_strings[256][16]; // Pre-built SGR strings like "\033[48;5;123m"
 static lifecycle_t g_color256_lc = LIFECYCLE_INIT;
 
 // Fast foreground color: \033[38;2;R;G;Bm
@@ -205,6 +206,7 @@ void ansi_fast_init(void) {
 static void do_init_256color(void) {
   for (int i = 0; i < 256; i++) {
     SAFE_SNPRINTF(color256_strings[i], sizeof(color256_strings[i]), "\033[38;5;%dm", i);
+    SAFE_SNPRINTF(color256_bg_strings[i], sizeof(color256_bg_strings[i]), "\033[48;5;%dm", i);
   }
 }
 
@@ -219,6 +221,14 @@ void ansi_fast_init_256color(void) {
 // Fast 256-color foreground
 char *append_256color_fg(char *dst, uint8_t color_index) {
   const char *color_str = color256_strings[color_index];
+  size_t len = strlen(color_str);
+  SAFE_MEMCPY(dst, len, color_str, len);
+  return dst + len;
+}
+
+// Fast 256-color background
+char *append_256color_bg(char *dst, uint8_t color_index) {
+  const char *color_str = color256_bg_strings[color_index];
   size_t len = strlen(color_str);
   SAFE_MEMCPY(dst, len, color_str, len);
   return dst + len;

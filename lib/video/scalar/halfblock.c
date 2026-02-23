@@ -486,12 +486,18 @@ char *rgb_to_256color_halfblocks_scalar(const uint8_t *rgb, int width, int heigh
           }
         }
       } else {
-        // Emit 256-color foreground code if changed (use top pixel color)
+        // Emit 256-color codes if changed
         if (cur_fg != color_fg) {
           char buf[16];
           char *ptr = append_256color_fg(buf, color_fg);
           ob_write(&ob, buf, (size_t)(ptr - buf));
           cur_fg = color_fg;
+        }
+        if (cur_bg != color_bg) {
+          char buf[16];
+          char *ptr = append_256color_bg(buf, color_bg);
+          ob_write(&ob, buf, (size_t)(ptr - buf));
+          cur_bg = color_bg;
         }
 
         ob_write(&ob, HB, 3);
@@ -511,7 +517,7 @@ char *rgb_to_256color_halfblocks_scalar(const uint8_t *rgb, int width, int heigh
     if (y + 2 < height) {
       ob_putc(&ob, '\n');
     }
-    cur_fg = -1;
+    cur_fg = cur_bg = -1;
   }
 
   ob_term(&ob);
