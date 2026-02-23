@@ -370,6 +370,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
             log_info("Terminal height changed: %u → %u", last_terminal_height, current_height);
             last_terminal_height = current_height;
           }
+          // Clear screen when terminal is resized to avoid visual artifacts
+          terminal_clear_screen();
         }
       }
     }
