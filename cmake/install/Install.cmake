@@ -302,10 +302,10 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     # Both require external dependencies: libsodium, zstd, portaudio, opus, mimalloc
     configure_file(
         "${CMAKE_SOURCE_DIR}/share/pkgconfig/libasciichat.pc.in"
-        "${CMAKE_BINARY_DIR}/libasciichat.pc"
+        "${CMAKE_BINARY_DIR}/share/pkgconfig/libasciichat.pc"
         @ONLY
     )
-    install(FILES "${CMAKE_BINARY_DIR}/libasciichat.pc"
+    install(FILES "${CMAKE_BINARY_DIR}/share/pkgconfig/libasciichat.pc"
         DESTINATION lib/pkgconfig
         COMPONENT Development
     )
@@ -318,12 +318,12 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     # Configure the single cmake config file
     configure_file(
         "${CMAKE_SOURCE_DIR}/share/cmake/libasciichat.cmake.in"
-        "${CMAKE_BINARY_DIR}/libasciichat.cmake"
+        "${CMAKE_BINARY_DIR}/share/cmake/libasciichat.cmake"
         @ONLY
     )
 
     install(FILES
-        "${CMAKE_BINARY_DIR}/libasciichat.cmake"
+        "${CMAKE_BINARY_DIR}/share/cmake/libasciichat.cmake"
         DESTINATION lib/cmake/ascii-chat
         COMPONENT Development
     )
