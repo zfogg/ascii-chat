@@ -56,13 +56,13 @@ static int format_mutex_timing(const mutex_t *mutex, char *buffer, size_t size) 
     int offset = 0;
     uint64_t now_ns = time_get_ns();
 
-    if (mutex->last_lock_time_ns > 0) {
+    if (mutex->last_lock_time_ns > 0 && mutex->last_lock_time_ns <= now_ns) {
         char elapsed_str[64];
         format_elapsed(now_ns - mutex->last_lock_time_ns, elapsed_str, sizeof(elapsed_str));
         offset += snprintf(buffer + offset, size - offset, "    Last lock: %s ago\n", elapsed_str);
     }
 
-    if (mutex->last_unlock_time_ns > 0) {
+    if (mutex->last_unlock_time_ns > 0 && mutex->last_unlock_time_ns <= now_ns) {
         char elapsed_str[64];
         format_elapsed(now_ns - mutex->last_unlock_time_ns, elapsed_str, sizeof(elapsed_str));
         offset += snprintf(buffer + offset, size - offset, "    Last unlock: %s ago\n", elapsed_str);
@@ -84,19 +84,19 @@ static int format_rwlock_timing(const rwlock_t *rwlock, char *buffer, size_t siz
     int offset = 0;
     uint64_t now_ns = time_get_ns();
 
-    if (rwlock->last_rdlock_time_ns > 0) {
+    if (rwlock->last_rdlock_time_ns > 0 && rwlock->last_rdlock_time_ns <= now_ns) {
         char elapsed_str[64];
         format_elapsed(now_ns - rwlock->last_rdlock_time_ns, elapsed_str, sizeof(elapsed_str));
         offset += snprintf(buffer + offset, size - offset, "    Last rdlock: %s ago\n", elapsed_str);
     }
 
-    if (rwlock->last_wrlock_time_ns > 0) {
+    if (rwlock->last_wrlock_time_ns > 0 && rwlock->last_wrlock_time_ns <= now_ns) {
         char elapsed_str[64];
         format_elapsed(now_ns - rwlock->last_wrlock_time_ns, elapsed_str, sizeof(elapsed_str));
         offset += snprintf(buffer + offset, size - offset, "    Last wrlock: %s ago\n", elapsed_str);
     }
 
-    if (rwlock->last_unlock_time_ns > 0) {
+    if (rwlock->last_unlock_time_ns > 0 && rwlock->last_unlock_time_ns <= now_ns) {
         char elapsed_str[64];
         format_elapsed(now_ns - rwlock->last_unlock_time_ns, elapsed_str, sizeof(elapsed_str));
         offset += snprintf(buffer + offset, size - offset, "    Last unlock: %s ago\n", elapsed_str);
@@ -118,19 +118,19 @@ static int format_cond_timing(const cond_t *cond, char *buffer, size_t size) {
     int offset = 0;
     uint64_t now_ns = time_get_ns();
 
-    if (cond->last_wait_time_ns > 0) {
+    if (cond->last_wait_time_ns > 0 && cond->last_wait_time_ns <= now_ns) {
         char elapsed_str[64];
         format_elapsed(now_ns - cond->last_wait_time_ns, elapsed_str, sizeof(elapsed_str));
         offset += snprintf(buffer + offset, size - offset, "    Last wait: %s ago\n", elapsed_str);
     }
 
-    if (cond->last_signal_time_ns > 0) {
+    if (cond->last_signal_time_ns > 0 && cond->last_signal_time_ns <= now_ns) {
         char elapsed_str[64];
         format_elapsed(now_ns - cond->last_signal_time_ns, elapsed_str, sizeof(elapsed_str));
         offset += snprintf(buffer + offset, size - offset, "    Last signal: %s ago\n", elapsed_str);
     }
 
-    if (cond->last_broadcast_time_ns > 0) {
+    if (cond->last_broadcast_time_ns > 0 && cond->last_broadcast_time_ns <= now_ns) {
         char elapsed_str[64];
         format_elapsed(now_ns - cond->last_broadcast_time_ns, elapsed_str, sizeof(elapsed_str));
         offset += snprintf(buffer + offset, size - offset, "    Last broadcast: %s ago\n", elapsed_str);
@@ -245,9 +245,12 @@ typedef struct {
     volatile bool should_run;
     volatile bool should_exit;
     volatile bool signal_triggered;  // Flag set by SIGUSR1 handler
+    mutex_t mutex;                   // Protects access to flags
+    cond_t cond;                     // Wakes thread when signal arrives
+    bool initialized;                // Tracks if mutex/cond are initialized
 } debug_state_request_t;
 
-static debug_state_request_t g_debug_state_request = {0, false, false, false};
+static debug_state_request_t g_debug_state_request = {0, false, false, false, {0}, {0}, false};
 static asciichat_thread_t g_debug_thread;
 
 /**
@@ -256,17 +259,12 @@ static asciichat_thread_t g_debug_thread;
  * Handles both delayed printing and signal-triggered printing (via SIGUSR1).
  * Logging is performed on this thread, not in signal handler context,
  * avoiding potential deadlocks with logging mutexes.
+ *
+ * Uses a condition variable to wake up immediately when SIGUSR1 is received,
+ * without polling or busy-waiting.
  */
 static void *debug_print_thread_fn(void *arg) {
     (void)arg;
-
-    // Block SIGUSR1 in debug thread so it's only delivered to main thread
-    #ifndef _WIN32
-    sigset_t set;
-    sigemptyset(&set);
-    sigaddset(&set, SIGUSR1);
-    pthread_sigmask(SIG_BLOCK, &set, NULL);
-    #endif
 
     while (!g_debug_state_request.should_exit) {
         // Handle delayed printing
@@ -276,18 +274,21 @@ static void *debug_print_thread_fn(void *arg) {
         }
 
         // Handle both scheduled and signal-triggered printing
+        mutex_lock(&g_debug_state_request.mutex);
         if ((g_debug_state_request.should_run || g_debug_state_request.signal_triggered)
             && !g_debug_state_request.should_exit) {
+            mutex_unlock(&g_debug_state_request.mutex);
             debug_sync_print_state();
+            mutex_lock(&g_debug_state_request.mutex);
             g_debug_state_request.should_run = false;
             g_debug_state_request.signal_triggered = false;
         }
 
-        // Small sleep to avoid busy-waiting
-        // Use shorter sleep (1ms) to be more responsive to SIGUSR1 signals
+        // Wait for work or signal, with 100ms timeout to check should_exit
         if (!g_debug_state_request.should_exit) {
-            platform_sleep_ns(1000000);  // 1ms
+            cond_timedwait(&g_debug_state_request.cond, &g_debug_state_request.mutex, 100000000);  // 100ms
         }
+        mutex_unlock(&g_debug_state_request.mutex);
     }
 
     return NULL;
@@ -300,6 +301,7 @@ static void *debug_print_thread_fn(void *arg) {
 void debug_sync_print_state_delayed(uint64_t delay_ns) {
     g_debug_state_request.delay_ns = delay_ns;
     g_debug_state_request.should_run = true;
+    cond_signal(&g_debug_state_request.cond);
 }
 
 // ============================================================================
@@ -311,6 +313,13 @@ int debug_sync_init(void) {
 }
 
 int debug_sync_start_thread(void) {
+    // Initialize mutex and condition variable for signal wakeup
+    if (!g_debug_state_request.initialized) {
+        mutex_init(&g_debug_state_request.mutex, "debug_sync_state");
+        cond_init(&g_debug_state_request.cond, "debug_sync_signal");
+        g_debug_state_request.initialized = true;
+    }
+
     g_debug_state_request.should_exit = false;
     int err = asciichat_thread_create(&g_debug_thread, debug_print_thread_fn, NULL);
     return err;
@@ -328,10 +337,11 @@ void debug_sync_trigger_print(void) {
     // Set flag to trigger printing on debug thread (from SIGUSR1 handler).
     // We don't call debug_sync_print_state() directly here to avoid logging
     // in signal handler context, which could deadlock with logging mutexes.
+    //
+    // Signal the condition variable to wake up the debug thread immediately
+    // (without waiting for the 100ms timeout).
     g_debug_state_request.signal_triggered = true;
-    // Note: logging from signal handler is unsafe, but this is just a marker
-    // to verify the handler is being called. The actual logging happens on the
-    // debug thread in debug_print_thread_fn().
+    cond_signal(&g_debug_state_request.cond);
 }
 
 void debug_sync_get_stats(uint64_t *total_acquired, uint64_t *total_released, uint32_t *currently_held) {

@@ -27,15 +27,6 @@ static void *thread_pool_worker_thread(void *arg) {
     return NULL;
   }
 
-  // Block SIGUSR1 in worker threads so it's only delivered to main thread
-  // This ensures SIGUSR1 handlers registered on the main thread can process signals
-  #ifndef _WIN32
-  sigset_t set;
-  sigemptyset(&set);
-  sigaddset(&set, SIGUSR1);
-  pthread_sigmask(SIG_BLOCK, &set, NULL);
-  #endif
-
   log_debug("[ThreadPool] Worker thread started for pool '%s'", pool->name);
 
   while (true) {

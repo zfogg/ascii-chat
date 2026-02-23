@@ -724,12 +724,6 @@ int main(int argc, char *argv[]) {
   // All modes use the same centralized exit mechanism
   setup_signal_handlers();
 
-  // Register SIGUSR1 for lock debugging in debug builds (uses shared handler)
-#ifndef NDEBUG
-#ifndef _WIN32
-  platform_signal(SIGUSR1, common_handle_sigusr1);
-#endif
-#endif
 
 #ifndef NDEBUG
   // Handle --debug-state (debug builds only)
