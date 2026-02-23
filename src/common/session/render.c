@@ -24,6 +24,7 @@
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/asciichat_errno.h>
 
@@ -83,6 +84,10 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
   // Help screen state tracking for clear-screen transition
   bool help_was_active = false;
+
+  // Terminal resize tracking (for auto_width/auto_height mode)
+  unsigned short int last_terminal_width = (unsigned short int)GET_OPTION(width);
+  unsigned short int last_terminal_height = (unsigned short int)GET_OPTION(height);
 
   log_info("session_render_loop: STARTING - display=%p capture=%p capture_cb=%p snapshot_mode=%s", (void *)display,
            (void *)capture, (void *)capture_cb, snapshot_mode ? "YES" : "NO");
@@ -338,6 +343,34 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         // No frame available - this is normal in async modes (network latency, etc.)
         // Just continue to next iteration, don't exit
         continue;
+      }
+    }
+
+    // Check for terminal resize (if auto_width or auto_height is enabled)
+    // This allows the render to adapt immediately when the user resizes the terminal
+    bool auto_width = GET_OPTION(auto_width);
+    bool auto_height = GET_OPTION(auto_height);
+    if (auto_width || auto_height) {
+      unsigned short int current_width = 0;
+      unsigned short int current_height = 0;
+
+      asciichat_error_t size_err = get_terminal_size(&current_width, &current_height);
+      if (size_err == ASCIICHAT_OK) {
+        bool width_changed = auto_width && (current_width != last_terminal_width);
+        bool height_changed = auto_height && (current_height != last_terminal_height);
+
+        if (width_changed || height_changed) {
+          if (width_changed) {
+            options_set_int("width", current_width);
+            log_info("Terminal width changed: %u → %u", last_terminal_width, current_width);
+            last_terminal_width = current_width;
+          }
+          if (height_changed) {
+            options_set_int("height", current_height);
+            log_info("Terminal height changed: %u → %u", last_terminal_height, current_height);
+            last_terminal_height = current_height;
+          }
+        }
       }
     }
 
