@@ -555,17 +555,11 @@ void debug_memory_set_quiet_mode(bool quiet) {
 }
 
 void debug_memory_report(void) {
-  // Guard against multiple calls during shutdown
-  static bool report_done = false;
-  if (report_done) {
-    return;
-  }
-
   // Check for usage error BEFORE cleanup clears it
   asciichat_error_t error = GET_ERRNO();
 
+  // Always clean up errno, even if we're not printing
   asciichat_errno_destroy();
-  report_done = true;
 
   // Skip memory report if an action flag was passed (for clean action output)
   // unless explicitly forced via ASCII_CHAT_MEMORY_DEBUG environment variable
@@ -583,7 +577,7 @@ void debug_memory_report(void) {
   // Reset ignore counters at start of report
   reset_ignore_counters();
 
-  if (!quiet && terminal_is_interactive()) {
+  if (!quiet) {
     SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "\n%s\n", colored_string(LOG_COLOR_DEV, "=== Memory Report ===")));
 
     size_t total_allocated = atomic_load(&g_mem.total_allocated);
