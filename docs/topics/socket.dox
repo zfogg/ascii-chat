@@ -1,0 +1,489 @@
+/**
+ * @page topic_socket Socket API and Cross-Platform Networking
+ * @ingroup module_networking
+ * @ingroup platform
+ *
+ * @tableofcontents
+ *
+ * @section socket_architecture Architecture
+ *
+ * The socket abstraction layer provides a unified, cross-platform interface for TCP/UDP
+ * network communication. It abstracts the differences between Windows Winsock2 and
+ * POSIX BSD sockets, enabling application code to remain completely platform-agnostic.
+ *
+ * **Design Principles:**
+ * - Single API: Same function signatures work on Windows, Linux, and macOS
+ * - Type unification: socket_t abstracts SOCKET (Windows) vs int (POSIX)
+ * - Error normalization: Consistent error handling across platforms
+ * - Zero overhead: Inline wrappers compile to direct API calls in release builds
+ * - Auto-optimization: Accepted sockets are automatically optimized for video streaming
+ *
+ * @section socket_quick_start Quick Start
+ *
+ * @subsection socket_server_example Creating a TCP Server
+ *
+ * ```c
+ * #include "ascii-chat/platform/socket.h"
+ *
+ * // Initialize socket subsystem (required on Windows)
+ * socket_init();
+ *
+ * // Create listening socket
+ * struct sockaddr_in addr;
+ * addr.sin_family = AF_INET;
+ * addr.sin_port = htons(27224);
+ * addr.sin_addr.s_addr = htonl(INADDR_ANY);
+ *
+ * socket_t server_sock = socket_create(AF_INET, SOCK_STREAM, 0);
+ * socket_set_reuseaddr(server_sock, true);
+ * socket_bind(server_sock, (struct sockaddr *)&addr, sizeof(addr));
+ * socket_listen(server_sock, 10);
+ *
+ * // Accept connection
+ * socket_t client = socket_accept(server_sock, NULL, NULL);
+ * if (socket_is_valid(client)) {
+ *     // Automatic optimization for streaming
+ *     char buf[4096];
+ *     ssize_t received = socket_recv(client, buf, sizeof(buf), 0);
+ *     if (received > 0) {
+ *         socket_send(client, buf, (size_t)received, 0);
+ *     }
+ *     socket_close(client);
+ * }
+ *
+ * socket_close(server_sock);
+ * socket_cleanup();
+ * ```
+ *
+ * @subsection socket_client_example Creating a TCP Client
+ *
+ * ```c
+ * #include "ascii-chat/platform/socket.h"
+ *
+ * socket_init();
+ *
+ * // Create and connect socket
+ * struct sockaddr_in addr;
+ * addr.sin_family = AF_INET;
+ * addr.sin_port = htons(27224);
+ * inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
+ *
+ * socket_t sock = socket_create(AF_INET, SOCK_STREAM, 0);
+ * if (socket_connect(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+ *     log_error("Connection failed: %s", socket_get_error_string());
+ *     socket_close(sock);
+ *     socket_cleanup();
+ *     return;
+ * }
+ *
+ * // Send and receive data
+ * socket_send(sock, "Hello", 5, 0);
+ * char buf[1024];
+ * ssize_t received = socket_recv(sock, buf, sizeof(buf) - 1, 0);
+ * if (received > 0) {
+ *     buf[received] = '\0';
+ *     log_info("Received: %s", buf);
+ * }
+ *
+ * socket_close(sock);
+ * socket_cleanup();
+ * ```
+ *
+ * @section socket_features Core Features
+ *
+ * @subsection socket_ipv4_ipv6 IPv4 and IPv6 Support
+ *
+ * The socket API seamlessly supports both IPv4 and IPv6 through standard
+ * struct sockaddr_in (IPv4) and struct sockaddr_in6 (IPv6) structures.
+ *
+ * **IPv4 Example:**
+ * ```c
+ * struct sockaddr_in addr4;
+ * memset(&addr4, 0, sizeof(addr4));
+ * addr4.sin_family = AF_INET;
+ * addr4.sin_port = htons(27224);
+ * inet_pton(AF_INET, "192.168.1.100", &addr4.sin_addr);
+ *
+ * socket_t sock = socket_create(AF_INET, SOCK_STREAM, 0);
+ * socket_bind(sock, (struct sockaddr *)&addr4, sizeof(addr4));
+ * ```
+ *
+ * **IPv6 Example:**
+ * ```c
+ * struct sockaddr_in6 addr6;
+ * memset(&addr6, 0, sizeof(addr6));
+ * addr6.sin6_family = AF_INET6;
+ * addr6.sin6_port = htons(27224);
+ * inet_pton(AF_INET6, "::1", &addr6.sin6_addr);
+ *
+ * socket_t sock = socket_create(AF_INET6, SOCK_STREAM, 0);
+ * socket_bind(sock, (struct sockaddr *)&addr6, sizeof(addr6));
+ *
+ * // Optional: Allow IPv4 connections on IPv6 socket
+ * int v6only = 0;
+ * socket_setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &v6only, sizeof(v6only));
+ * ```
+ *
+ * @subsection socket_error_handling Comprehensive Error Handling
+ *
+ * All socket functions use consistent error reporting with platform-agnostic
+ * error code helpers.
+ *
+ * **Standard error patterns:**
+ * ```c
+ * // Socket creation errors
+ * socket_t sock = socket_create(AF_INET, SOCK_STREAM, 0);
+ * if (!socket_is_valid(sock)) {
+ *     log_error("Socket creation failed: %s", socket_get_error_string());
+ *     return false;
+ * }
+ *
+ * // Connection errors
+ * if (socket_connect(sock, &addr, sizeof(addr)) < 0) {
+ *     int err = socket_get_last_error();
+ *     log_error("Connection failed: %s", socket_get_error_string());
+ *     socket_close(sock);
+ *     return false;
+ * }
+ *
+ * // Send/recv errors
+ * ssize_t result = socket_recv(sock, buf, len, 0);
+ * if (result < 0) {
+ *     if (socket_is_would_block_error(socket_get_last_error())) {
+ *         // Non-blocking socket, no data available
+ *     } else if (socket_is_connection_reset_error(socket_get_last_error())) {
+ *         // Connection reset
+ *     } else {
+ *         log_error("Recv failed: %s", socket_get_error_string());
+ *     }
+ * } else if (result == 0) {
+ *     // Connection closed gracefully
+ * } else {
+ *     // Process received data
+ * }
+ * ```
+ *
+ * **Error detection helpers:**
+ * - socket_is_would_block_error() - EAGAIN/EWOULDBLOCK (non-blocking retry)
+ * - socket_is_connection_reset_error() - ECONNRESET (peer forced close)
+ * - socket_is_invalid_socket_error() - EBADF/WSAENOTSOCK (closed socket)
+ * - socket_is_in_progress_error() - EINPROGRESS/WSAEINPROGRESS (non-blocking connect)
+ *
+ * @subsection socket_blocking_modes Blocking and Non-Blocking Modes
+ *
+ * Sockets are blocking by default. Switch to non-blocking for asynchronous I/O.
+ *
+ * **Blocking socket (default):**
+ * ```c
+ * socket_t sock = socket_create(AF_INET, SOCK_STREAM, 0);
+ * // socket_recv() waits indefinitely for data
+ * ssize_t received = socket_recv(sock, buf, len, 0);
+ * ```
+ *
+ * **Non-blocking socket:**
+ * ```c
+ * socket_set_nonblocking(sock, true);
+ *
+ * // socket_recv() returns immediately
+ * ssize_t received = socket_recv(sock, buf, len, 0);
+ * if (received > 0) {
+ *     // Data available
+ * } else if (received < 0 && socket_is_would_block_error(socket_get_last_error())) {
+ *     // No data available, retry later
+ * } else {
+ *     // Error
+ * }
+ * ```
+ *
+ * @section socket_performance Performance Optimization
+ *
+ * @subsection socket_video_streaming Video Streaming Optimization
+ *
+ * The socket layer provides automatic optimization for high-throughput video streaming:
+ *
+ * ```c
+ * socket_t client = socket_accept(server_sock, NULL, NULL);
+ *
+ * // Automatically applies:
+ * // - Disables Nagle's algorithm (TCP_NODELAY)
+ * // - Sets large send/receive buffers (2MB with fallbacks)
+ * // - Enables keepalive probes
+ * // - Sets appropriate timeouts
+ * socket_optimize_for_streaming(client);
+ * ```
+ *
+ * **Manual tuning for specialized use cases:**
+ * ```c
+ * socket_set_nodelay(sock, true);           // Reduce latency
+ * socket_set_reuseaddr(sock, true);         // Quick rebinding
+ * socket_set_keepalive(sock, true);         // Detect dead connections
+ * socket_set_buffer_sizes(sock, 2MB, 2MB);  // Large buffers for throughput
+ * socket_set_timeout(sock, 30 * 1000000000LL);  // 30s nanosecond timeout
+ * ```
+ *
+ * @subsection socket_keepalive_tuning TCP Keepalive Configuration
+ *
+ * Fine-tune keepalive for different use cases:
+ *
+ * ```c
+ * // Aggressive keepalive for real-time communication
+ * socket_set_keepalive_params(sock, true, 10, 5, 3);
+ * // idle=10s, interval=5s, count=3 probes before timeout
+ *
+ * // Relaxed keepalive for background connections
+ * socket_set_keepalive_params(sock, true, 300, 60, 9);
+ * // idle=5min, interval=1min, count=9 probes
+ * ```
+ *
+ * @section socket_multiplexing I/O Multiplexing
+ *
+ * Use multiplexing to efficiently monitor multiple sockets.
+ *
+ * @subsection socket_poll_api Poll API (Recommended)
+ *
+ * More efficient and modern than select() for high-descriptor-count scenarios:
+ *
+ * ```c
+ * struct pollfd fds[2];
+ *
+ * // Monitor server socket for incoming connections
+ * fds[0].fd = socket_get_fd(server_sock);
+ * fds[0].events = POLLIN;
+ * fds[0].revents = 0;
+ *
+ * // Monitor client socket for read and write readiness
+ * fds[1].fd = socket_get_fd(client_sock);
+ * fds[1].events = POLLIN | POLLOUT;
+ * fds[1].revents = 0;
+ *
+ * // Wait up to 5 seconds
+ * int ready = socket_poll(fds, 2, 5000000000LL);
+ *
+ * if (ready < 0) {
+ *     // Error
+ * } else if (ready == 0) {
+ *     // Timeout
+ * } else {
+ *     // Check which sockets are ready
+ *     if (fds[0].revents & POLLIN) {
+ *         // Server ready to accept
+ *         socket_t client = socket_accept(server_sock, NULL, NULL);
+ *     }
+ *     if (fds[1].revents & POLLIN) {
+ *         // Client has data available
+ *     }
+ *     if (fds[1].revents & POLLOUT) {
+ *         // Client socket writable
+ *     }
+ *     if (fds[1].revents & POLLERR) {
+ *         // Client socket error
+ *     }
+ * }
+ * ```
+ *
+ * **Event flags:**
+ * - POLLIN: Data available to read
+ * - POLLOUT: Socket writable (buffer has space)
+ * - POLLERR: Socket error condition
+ * - POLLHUP: Connection closed
+ * - POLLNVAL: Invalid socket
+ *
+ * @subsection socket_select_api Select API (Legacy)
+ *
+ * The select() API for systems that need it:
+ *
+ * ```c
+ * fd_set readfds, writefds;
+ *
+ * socket_fd_zero(&readfds);
+ * socket_fd_zero(&writefds);
+ *
+ * // Add sockets to sets
+ * socket_fd_set(server_sock, &readfds);
+ * socket_fd_set(client_sock, &readfds);
+ * socket_fd_set(client_sock, &writefds);
+ *
+ * // Set timeout
+ * struct timeval timeout;
+ * timeout.tv_sec = 5;
+ * timeout.tv_usec = 0;
+ *
+ * int ready = socket_select(client_sock + 1, &readfds, &writefds, NULL, &timeout);
+ *
+ * if (ready > 0) {
+ *     if (socket_fd_isset(server_sock, &readfds)) {
+ *         // Server ready to accept
+ *     }
+ *     if (socket_fd_isset(client_sock, &readfds)) {
+ *         // Client ready to read
+ *     }
+ * }
+ * ```
+ *
+ * @section socket_platform_specifics Platform-Specific Details
+ *
+ * @subsection socket_windows Windows (Winsock2)
+ *
+ * **Initialization:**
+ * Windows requires explicit Winsock initialization before socket operations:
+ * ```c
+ * asciichat_error_t err = socket_init();
+ * if (err != ASCIICHAT_OK) {
+ *     log_error("Failed to initialize Winsock");
+ *     return false;
+ * }
+ * // ... use sockets ...
+ * socket_cleanup();  // Cleanup when done
+ * ```
+ *
+ * **Type mapping:**
+ * - socket_t ↔ SOCKET
+ * - INVALID_SOCKET_VALUE ↔ INVALID_SOCKET (~0)
+ * - socklen_t ↔ int
+ *
+ * **Error codes:**
+ * - WSAEWOULDBLOCK (non-blocking no-data)
+ * - WSAEINPROGRESS (operation in progress)
+ * - WSAECONNRESET (connection reset)
+ *
+ * **Polling:**
+ * Uses WSAPoll() on Windows Vista+ for efficiency, falls back to select() on older versions.
+ *
+ * @subsection socket_posix POSIX Systems (Linux, macOS)
+ *
+ * **Initialization:**
+ * Automatic (socket_init() is a no-op on POSIX):
+ * ```c
+ * // On POSIX, this does nothing, but call it for portability
+ * socket_init();
+ * socket_t sock = socket_create(AF_INET, SOCK_STREAM, 0);
+ * ```
+ *
+ * **Type mapping:**
+ * - socket_t ↔ int (file descriptor)
+ * - INVALID_SOCKET_VALUE ↔ -1
+ * - socklen_t ↔ socklen_t (already defined)
+ *
+ * **Error codes:**
+ * - EAGAIN/EWOULDBLOCK (non-blocking no-data)
+ * - EINPROGRESS (operation in progress)
+ * - ECONNRESET (connection reset)
+ *
+ * **Polling:**
+ * Uses poll() for efficient I/O multiplexing (preferred over select() for modern systems).
+ *
+ * @section socket_lifecycle Socket State Machine
+ *
+ * ```
+ * ┌─────────────────────────────────────────────────────────────┐
+ * │                    Socket Lifecycle                          │
+ * └─────────────────────────────────────────────────────────────┘
+ *
+ * CLIENT SIDE:
+ *     socket_create()
+ *          ↓
+ *     socket_connect()  ──→  (blocks until connected or error)
+ *          ↓
+ *     socket_send()/recv()
+ *          ↓
+ *     socket_shutdown() (optional)
+ *          ↓
+ *     socket_close()
+ *          ↓
+ *     CLOSED
+ *
+ * SERVER SIDE:
+ *     socket_create()
+ *          ↓
+ *     socket_bind()
+ *          ↓
+ *     socket_listen()
+ *          ↓
+ *     socket_accept()  ──→  Returns new socket for client
+ *          ↓                 (original socket continues listening)
+ *     socket_send()/recv() on accepted socket
+ *          ↓
+ *     socket_close() on accepted socket
+ *          ↓
+ *     (loop back to accept for next client)
+ *          ↓
+ *     socket_close() on server socket
+ *          ↓
+ *     CLOSED
+ * ```
+ *
+ * @section socket_best_practices Best Practices
+ *
+ * @subsection socket_always_check_validity Always Check Socket Validity
+ *
+ * ```c
+ * // ❌ WRONG - Directly comparing to -1 (breaks on Windows)
+ * socket_t sock = socket_create(...);
+ * if (sock == -1) { ... }
+ *
+ * // ✅ CORRECT - Use portable function
+ * socket_t sock = socket_create(...);
+ * if (!socket_is_valid(sock)) { ... }
+ * ```
+ *
+ * @subsection socket_error_context Always Log Error Context
+ *
+ * ```c
+ * // ❌ POOR
+ * if (!socket_is_valid(sock)) return false;
+ *
+ * // ✅ BETTER
+ * if (!socket_is_valid(sock)) {
+ *     log_error("Socket creation failed: %s", socket_get_error_string());
+ *     return false;
+ * }
+ * ```
+ *
+ * @subsection socket_handle_partial_sends Handle Partial Sends
+ *
+ * ```c
+ * // ❌ WRONG - Assumes full send
+ * socket_send(sock, data, 1000, 0);
+ *
+ * // ✅ CORRECT - Handles partial sends
+ * size_t total_sent = 0;
+ * while (total_sent < 1000) {
+ *     ssize_t sent = socket_send(sock, (char *)data + total_sent,
+ *                                 1000 - total_sent, 0);
+ *     if (sent < 0) { handle_error(); }
+ *     total_sent += sent;
+ * }
+ * ```
+ *
+ * @subsection socket_non_blocking_patterns Non-Blocking I/O Patterns
+ *
+ * Always use helper functions for error classification:
+ * ```c
+ * socket_set_nonblocking(sock, true);
+ * ssize_t result = socket_recv(sock, buf, len, 0);
+ * if (result < 0) {
+ *     int err = socket_get_last_error();
+ *     if (socket_is_would_block_error(err)) {
+ *         // Retry later, don't treat as fatal
+ *     } else if (socket_is_connection_reset_error(err)) {
+ *         // Connection lost, clean up
+ *     } else {
+ *         // Other error
+ *     }
+ * }
+ * ```
+ *
+ * @section socket_integration Integration with ascii-chat
+ *
+ * The socket API is used throughout ascii-chat for:
+ * - Client-server communication for video streaming
+ * - Multi-client connections to a central server
+ * - Network protocol layer abstraction
+ * - Cross-platform TCP and UDP support
+ *
+ * See @ref lib/network for higher-level protocol abstraction using sockets.
+ *
+ * @sa @ref platform "Platform Abstraction Layer"
+ * @sa @ref lib/network "Network Module"
+ * @sa include/ascii-chat/platform/socket.h
+ */
