@@ -781,7 +781,7 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
       // Option has specific mode restrictions - check if current mode matches
       bool applies_to_mode = false;
       if (detected_mode >= 0 && detected_mode <= MODE_DISCOVERY) {
-        option_mode_bitmask_t mode_bit = (1 << detected_mode);
+        option_mode_bitmask_t mode_bit = (option_mode_bitmask_t)(1 << detected_mode);
         applies_to_mode = (meta->mode_bitmask & mode_bit) != 0;
       }
 
