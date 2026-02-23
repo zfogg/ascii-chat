@@ -25,6 +25,10 @@ set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 
+# Prevent CMake from searching in system directories that conflict with musl
+set(CMAKE_IGNORE_PATH "/usr/include" "/usr/lib" "/usr/lib64" "/usr/local/include" "/usr/local/lib")
+set(CMAKE_SYSTEM_IGNORE_PATH "/usr/include" "/usr/lib" "/usr/lib64" "/usr/local/include" "/usr/local/lib")
+
 # Prevent CMake from adding system include paths discovered during compiler detection
 # These paths are captured during compiler introspection and added automatically
 set(CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES "")

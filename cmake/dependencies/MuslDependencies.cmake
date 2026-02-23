@@ -1937,10 +1937,12 @@ if(NOT EXISTS "${FREETYPE_PREFIX}/lib/libfreetype.a")
             -DCMAKE_BUILD_TYPE=Release
             -DBUILD_SHARED_LIBS=OFF
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-            -DCMAKE_PREFIX_PATH=
-            -DFT_WITH_PNG=OFF
-            -DFT_WITH_ZLIB=OFF
-            -DFT_WITH_BZIP2=OFF
+            -DCMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES=
+            -DCMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES=
+            -DCMAKE_C_FLAGS=-nostdinc\ -isystem\ /usr/lib/musl/include\ -O2\ -fPIC
+            -DFT_DISABLE_PNG=ON
+            -DFT_DISABLE_ZLIB=ON
+            -DFT_DISABLE_BZIP2=ON
             -DFT_DISABLE_HARFBUZZ=ON
             -DFT_DISABLE_BROTLI=ON
         BUILD_BYPRODUCTS ${FREETYPE_PREFIX}/lib/libfreetype.a
