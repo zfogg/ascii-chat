@@ -60,6 +60,7 @@
 #ifndef NDEBUG
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/debug/sync.h>
+#include <ascii-chat/debug/named.h>
 #endif
 
 #ifndef _WIN32
@@ -300,6 +301,11 @@ int main(int argc, char *argv[]) {
 
   // Show cursor early in case a previous session crashed with it hidden
   (void)terminal_cursor_show();
+
+  // Initialize the named registry for debugging (allows --debug-state to show registered synchronization primitives)
+#ifndef NDEBUG
+  named_init();
+#endif
 
   // VERY FIRST: Scan for --color BEFORE ANY logging initialization
   // This sets global flags that persist through cleanup, enabling --color to force colors
