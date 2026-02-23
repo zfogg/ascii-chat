@@ -1850,7 +1850,7 @@ pkg-config = 'pkg-config'
                 -Dtests=false
                 -Dbsearch_tests=false
                 --cross-file=${GLIB_CROSS_FILE}
-            BUILD_COMMAND ${MESON_EXECUTABLE} compile -C <BINARY_DIR> -j${CMAKE_BUILD_PARALLEL_LEVEL}
+            BUILD_COMMAND ${MESON_EXECUTABLE} compile -C <BINARY_DIR> -j16
             INSTALL_COMMAND ${MESON_EXECUTABLE} install -C <BINARY_DIR>
             BUILD_BYPRODUCTS
                 ${GLIB_PREFIX}/lib/libglib-2.0.a
@@ -1972,8 +1972,8 @@ set(CAIRO_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/cairo-build")
 if(NOT EXISTS "${CAIRO_PREFIX}/lib/libcairo.a")
     message(STATUS "  cairo library not found in cache, will build from source")
     ExternalProject_Add(cairo-musl
-        URL https://cgit.freedesktop.org/cairo/snapshot/cairo-1.18.2.tar.gz
-        URL_HASH SHA256=4bf5bff9664d92db7e7474e7949dd4e7c34179e69eb78ecd99f27fcb0d0a19df
+        URL https://cairographics.org/releases/cairo-1.18.2.tar.xz
+        URL_HASH SHA256=f1495bb17efd2c3382e5e140a98801c2b5b77e5f5ac79e73bb88d5eb52c78181
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         PREFIX ${CAIRO_BUILD_DIR}
         STAMP_DIR ${CAIRO_BUILD_DIR}/stamps
@@ -2063,7 +2063,7 @@ strip = 'strip'
                 -Dintrospection=disabled
                 -Dcpp_std=c++17
                 --cross-file=${HARFBUZZ_CROSS_FILE}
-            BUILD_COMMAND ${MESON_EXECUTABLE} compile -C <BINARY_DIR> -j${CMAKE_BUILD_PARALLEL_LEVEL}
+            BUILD_COMMAND ${MESON_EXECUTABLE} compile -C <BINARY_DIR> -j16
             INSTALL_COMMAND ${MESON_EXECUTABLE} install -C <BINARY_DIR>
             DEPENDS freetype-musl
             BUILD_BYPRODUCTS ${HARFBUZZ_PREFIX}/lib/libharfbuzz.a
@@ -2136,7 +2136,7 @@ pkg-config = 'pkg-config'
                 -Dtests=false
                 -Ddocs=disabled
                 --cross-file=${PANGO_CROSS_FILE}
-            BUILD_COMMAND ${MESON_EXECUTABLE} compile -C <BINARY_DIR> -j${CMAKE_BUILD_PARALLEL_LEVEL}
+            BUILD_COMMAND ${MESON_EXECUTABLE} compile -C <BINARY_DIR> -j16
             INSTALL_COMMAND ${MESON_EXECUTABLE} install -C <BINARY_DIR>
             DEPENDS glib-musl harfbuzz-musl cairo-musl
             BUILD_BYPRODUCTS
@@ -2205,7 +2205,7 @@ pkg-config = 'pkg-config'
             UPDATE_DISCONNECTED 1
             BUILD_ALWAYS 0
             CONFIGURE_COMMAND bash -c "CC=${MUSL_GCC} CXX=clang++ PATH=${GLIB_PREFIX}/bin:$PATH PKG_CONFIG_PATH=${GTK4_PKG_CONFIG_PATH} /usr/sbin/meson setup <BINARY_DIR> <SOURCE_DIR> --prefix=${GTK4_PREFIX} --buildtype=release --default-library=static --wrap-mode=nofallback -Dintrospection=disabled -Dx11-backend=false -Dwin32-backend=false -Dwayland-backend=true"
-            BUILD_COMMAND ${MESON_EXECUTABLE} compile -C <BINARY_DIR> -j${CMAKE_BUILD_PARALLEL_LEVEL}
+            BUILD_COMMAND ${MESON_EXECUTABLE} compile -C <BINARY_DIR> -j16
             INSTALL_COMMAND ${MESON_EXECUTABLE} install -C <BINARY_DIR>
             DEPENDS pango-musl cairo-musl pixman-musl harfbuzz-musl freetype-musl glib-musl
             BUILD_BYPRODUCTS ${GTK4_PREFIX}/lib/libgtk-4.a
