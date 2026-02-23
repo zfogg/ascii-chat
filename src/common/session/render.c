@@ -450,7 +450,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         double keyboard_elapsed_ns = STOP_TIMER("keyboard_read_%lu", (unsigned long)frame_count);
         if (keyboard_elapsed_ns >= 0.0) {
           char _duration_str[32];
-          format_duration_ns(keyboard_elapsed_ns, _duration_str, sizeof(_duration_str));
+          time_pretty((uint64_t)keyboard_elapsed_ns, -1, _duration_str, sizeof(_duration_str));
           log_dev_every(1 * NS_PER_SEC_INT, "RENDER[%lu] Keyboard read complete (key=%d) in %s",
                         (unsigned long)frame_count, key, _duration_str);
         }

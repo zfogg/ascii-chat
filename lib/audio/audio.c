@@ -223,14 +223,14 @@ static void *audio_worker_thread(void *arg) {
       char avg_wait_str[32], max_wait_str[32];
       char avg_capture_str[32], max_capture_str[32];
       char avg_playback_str[32], max_playback_str[32];
-      format_duration_ns(total_wait_ns / loop_count, avg_wait_str, sizeof(avg_wait_str));
-      format_duration_ns(max_wait_ns, max_wait_str, sizeof(max_wait_str));
-      format_duration_ns(total_capture_ns / (process_count > 0 ? process_count : 1), avg_capture_str,
+      time_pretty((uint64_t)(total_wait_ns / loop_count), -1, avg_wait_str, sizeof(avg_wait_str));
+      time_pretty(max_wait_ns, -1, max_wait_str, sizeof(max_wait_str));
+      time_pretty((uint64_t)(total_capture_ns / (process_count > 0 ? process_count : 1)), -1, avg_capture_str,
                          sizeof(avg_capture_str));
-      format_duration_ns(max_capture_ns, max_capture_str, sizeof(max_capture_str));
-      format_duration_ns(total_playback_ns / (process_count > 0 ? process_count : 1), avg_playback_str,
+      time_pretty(max_capture_ns, -1, max_capture_str, sizeof(max_capture_str));
+      time_pretty((uint64_t)(total_playback_ns / (process_count > 0 ? process_count : 1)), -1, avg_playback_str,
                          sizeof(avg_playback_str));
-      format_duration_ns(max_playback_ns, max_playback_str, sizeof(max_playback_str));
+      time_pretty(max_playback_ns, -1, max_playback_str, sizeof(max_playback_str));
 
       log_info("Worker stats: loops=%lu, signals=%lu, timeouts=%lu, processed=%lu", loop_count, signal_count,
                timeout_count, process_count);
@@ -342,8 +342,8 @@ static void *audio_worker_thread(void *arg) {
 
     if (loop_count % 100 == 0) {
       char avg_loop_str[32], max_loop_str[32];
-      format_duration_ns(total_loop_ns / loop_count, avg_loop_str, sizeof(avg_loop_str));
-      format_duration_ns(max_loop_ns, max_loop_str, sizeof(max_loop_str));
+      time_pretty((uint64_t)(total_loop_ns / loop_count), -1, avg_loop_str, sizeof(avg_loop_str));
+      time_pretty(max_loop_ns, -1, max_loop_str, sizeof(max_loop_str));
       log_info("Worker loop timing: avg=%s max=%s", avg_loop_str, max_loop_str);
     }
   }
@@ -529,8 +529,8 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
 
   if (callback_count % 500 == 0) { // Log every ~10 seconds @ 48 FPS
     char avg_str[32], max_str[32];
-    format_duration_ns(total_callback_ns / callback_count, avg_str, sizeof(avg_str));
-    format_duration_ns(max_callback_ns, max_str, sizeof(max_str));
+    time_pretty((uint64_t)(total_callback_ns / callback_count), -1, avg_str, sizeof(avg_str));
+    time_pretty(max_callback_ns, -1, max_str, sizeof(max_str));
     log_info("Duplex callback timing: count=%lu, avg=%s, max=%s (budget: 2ms)", callback_count, avg_str, max_str);
     log_info("Playback stats: total_samples_read=%lu, underruns=%lu, read_success_rate=%.1f%%",
              total_samples_read_local, underrun_count_local,

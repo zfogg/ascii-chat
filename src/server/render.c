@@ -563,7 +563,7 @@ void *client_video_render_thread(void *arg) {
                 video_frame_commit(vfb_snapshot);
                 uint64_t commit_end_ns = time_get_ns();
                 char commit_duration_str[32];
-                format_duration_ns((double)(commit_end_ns - commit_start_ns), commit_duration_str,
+                time_pretty((uint64_t)(commit_end_ns - commit_start_ns), -1, commit_duration_str,
                                    sizeof(commit_duration_str));
 
                 static uint32_t commits_count = 0;

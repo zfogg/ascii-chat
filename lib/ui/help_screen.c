@@ -12,6 +12,7 @@
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/utf8.h>
+#include <ascii-chat/video/color_filter.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdatomic.h>
@@ -91,6 +92,17 @@ static const char *render_mode_to_string(int mode) {
   default:
     return "Unknown";
   }
+}
+
+/**
+ * @brief Get color filter name
+ */
+static const char *color_filter_to_string(color_filter_t filter) {
+  if (filter == COLOR_FILTER_NONE) {
+    return "None";
+  }
+  const color_filter_def_t *def = color_filter_get_metadata(filter);
+  return def ? def->name : "Unknown";
 }
 
 
@@ -404,7 +416,9 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
                   "c       Cycle color mode");
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                  "f       Flip webcam horizontally");
+                  "f       Cycle color filter");
+  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
+                  "g       Flip webcam horizontally");
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
                   "r       Cycle render mode");
 
@@ -426,6 +440,7 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   double current_volume = GET_OPTION(speakers_volume);
   int current_color_mode = (int)GET_OPTION(color_mode);
   int current_render_mode = (int)GET_OPTION(render_mode);
+  color_filter_t current_color_filter = GET_OPTION(color_filter);
   bool flip_x = (bool)GET_OPTION(flip_x);
   bool flip_y = (bool)GET_OPTION(flip_y);
   bool current_audio = (bool)GET_OPTION(audio_enabled);
@@ -436,6 +451,7 @@ void session_display_render_help(session_display_ctx_t *ctx) {
 
   // Get string values
   const char *color_str = color_mode_to_string(current_color_mode);
+  const char *filter_str = color_filter_to_string(current_color_filter);
   const char *render_str = render_mode_to_string(current_render_mode);
 
   // Create status indicators for flip, audio, and matrix rain
@@ -445,13 +461,15 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   bool matrix_rain_enabled = GET_OPTION(matrix_rain);
   const char *matrix_text = status_indicator(matrix_rain_enabled);
 
-  // Build settings lines with UTF-8 width-aware padding (ordered to match keybinds: m, ↑/↓, c, r, f)
+  // Build settings lines with UTF-8 width-aware padding (ordered to match keybinds: m, ↑/↓, c, f, g, r)
   append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
                       "Audio", audio_text, 6);
   append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
                       "Volume", volume_bar, 6);
   append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
                       "Color", color_str, 6);
+  append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
+                      "Filter", filter_str, 6);
   append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
                       "Render", render_str, 6);
   append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,

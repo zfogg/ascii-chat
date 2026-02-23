@@ -529,14 +529,32 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
   uint64_t t_flip_end = time_get_ns();
 
   uint64_t t_filter_start = time_get_ns();
-  // No pixel-based filtering for rainbow (ANSI replacement happens later)
+
+  // Apply color filter to RGB pixels before ASCII conversion
+  // Rainbow filter is handled separately via ANSI color replacement
+  image_t *filtered_image = NULL;
+  if (color_filter != COLOR_FILTER_NONE && color_filter != COLOR_FILTER_RAINBOW) {
+    // Create a copy to avoid modifying the original
+    filtered_image = image_new((size_t)display_image->w, (size_t)display_image->h);
+    if (filtered_image) {
+      memcpy(filtered_image->pixels, display_image->pixels,
+             (size_t)display_image->w * (size_t)display_image->h * sizeof(rgb_pixel_t));
+
+      // Apply filter to the copy
+      int stride = (int)display_image->w * 3;
+      float time_seconds = (float)t_filter_start / (float)NS_PER_SEC_INT;
+      apply_color_filter((uint8_t *)filtered_image->pixels, (uint32_t)display_image->w,
+                         (uint32_t)display_image->h, (uint32_t)stride, color_filter, time_seconds);
+    }
+  }
+
+  const image_t *ascii_input_image = filtered_image ? filtered_image : display_image;
   uint64_t t_filter_end = time_get_ns();
 
   uint64_t t_convert_start = time_get_ns();
-  // Call the standard ASCII conversion using the display image (unfiltered)
-  // This ensures character selection is based on original image brightness
+  // Call the standard ASCII conversion using the filtered (or original) image
   START_TIMER("ascii_convert_with_capabilities");
-  char *result = ascii_convert_with_capabilities(display_image, width, height, &caps_copy, preserve_aspect_ratio,
+  char *result = ascii_convert_with_capabilities(ascii_input_image, width, height, &caps_copy, preserve_aspect_ratio,
                                                  stretch, ctx->palette_chars);
   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "ascii_convert_with_capabilities",
                            "ASCII_CONVERT: Conversion complete (%.2f ms)");
@@ -576,8 +594,11 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
   }
 
   uint64_t t_cleanup_start = time_get_ns();
-  // Clean up flipped image if created
+  // Clean up flipped and filtered images if created
   START_TIMER("ascii_convert_cleanup");
+  if (filtered_image) {
+    image_destroy(filtered_image);
+  }
   if (flipped_image) {
     image_destroy(flipped_image);
   }

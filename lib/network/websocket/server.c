@@ -292,8 +292,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
     uint64_t close_callback_end_ns = time_get_ns();
     char total_duration_str[32];
-    format_duration_ns((double)(close_callback_end_ns - close_callback_start_ns), total_duration_str,
-                       sizeof(total_duration_str));
+    time_pretty(close_callback_end_ns - close_callback_start_ns, -1, total_duration_str,
+                sizeof(total_duration_str));
     log_info("[LWS_CALLBACK_CLOSED] Complete cleanup took %s", total_duration_str);
     break;
   }

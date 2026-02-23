@@ -422,7 +422,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
 
       if (elapsed >= GET_OPTION(snapshot_delay)) {
         char duration_str[32];
-        format_duration_s(elapsed, duration_str, sizeof(duration_str));
+        time_pretty((uint64_t)(elapsed * 1e9), -1, duration_str, sizeof(duration_str));
         log_debug("Snapshot captured after %s!", duration_str);
         take_snapshot = true;
         signal_exit();

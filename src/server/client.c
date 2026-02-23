@@ -2321,7 +2321,7 @@ void broadcast_server_state_to_all_clients(void) {
   uint64_t lock_time_ns = time_elapsed_ns(lock_start_ns, lock_end_ns);
   if (lock_time_ns > 1 * NS_PER_MS_INT) {
     char duration_str[32];
-    format_duration_ns((double)lock_time_ns, duration_str, sizeof(duration_str));
+    time_pretty((uint64_t)((double)lock_time_ns), -1, duration_str, sizeof(duration_str));
     log_warn("broadcast_server_state: rwlock_rdlock took %s", duration_str);
   }
 
@@ -2422,7 +2422,7 @@ void broadcast_server_state_to_all_clients(void) {
 
   if (lock_held_ns > 1 * NS_PER_MS_INT) {
     char duration_str[32];
-    format_duration_ns((double)lock_held_ns, duration_str, sizeof(duration_str));
+    time_pretty((uint64_t)((double)lock_held_ns), -1, duration_str, sizeof(duration_str));
     log_warn("broadcast_server_state: rwlock held for %s (includes network I/O)", duration_str);
   }
 }
@@ -2810,7 +2810,7 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
 
   uint64_t callback_end_ns = time_get_ns();
   char cb_duration_str[32];
-  format_duration_ns((double)(callback_end_ns - callback_start_ns), cb_duration_str, sizeof(cb_duration_str));
+  time_pretty((uint64_t)((double)(callback_end_ns - callback_start_ns)), -1, cb_duration_str, sizeof(cb_duration_str));
   log_info("[WS_TIMING] on_image_frame callback took %s (data_len=%zu)", cb_duration_str, data_len);
 }
 

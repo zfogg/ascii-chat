@@ -87,6 +87,13 @@ static int next_render_mode(int current) {
   }
 }
 
+/**
+ * @brief Get next color filter in cycle
+ */
+static int next_color_filter(int current) {
+  return (current + 1) % COLOR_FILTER_COUNT;
+}
+
 /* ============================================================================
  * Keyboard Handler
  * ============================================================================ */
@@ -262,12 +269,34 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
     break;
   }
 
-  // ===== HORIZONTAL FLIP CONTROL =====
+  // ===== COLOR FILTER CONTROL =====
   case KEY_F:
   case 'F': {
+    int current_filter = (int)GET_OPTION(color_filter);
+    int next_filter = next_color_filter(current_filter);
+    options_set_int("color_filter", next_filter);
+
+    const char *filter_names[] = {"None", "Black", "White", "Green", "Magenta", "Fuchsia", "Orange", "Teal", "Cyan", "Pink", "Red", "Yellow", "Rainbow"};
+    if (next_filter >= 0 && next_filter < (int)COLOR_FILTER_COUNT) {
+      log_info("Color filter: %s", filter_names[next_filter]);
+    }
+    break;
+  }
+
+  // ===== HORIZONTAL FLIP CONTROL =====
+  case 'G':
+  case 'g': {
     bool current_flip_x = (bool)GET_OPTION(flip_x);
     options_set_bool("flip_x", !current_flip_x);
     log_info("Horizontal flip: %s", !current_flip_x ? "enabled" : "disabled");
+    break;
+  }
+
+  // ===== MATRIX RAIN EFFECT CONTROL =====
+  case KEY_0: {
+    bool current_matrix = (bool)GET_OPTION(matrix_rain);
+    options_set_bool("matrix_rain", !current_matrix);
+    log_info("Matrix rain effect: %s", !current_matrix ? "enabled" : "disabled");
     break;
   }
 

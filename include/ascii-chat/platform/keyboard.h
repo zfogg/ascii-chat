@@ -58,6 +58,7 @@ typedef enum {
   KEY_DOWN = 257,     ///< Down arrow key
   KEY_LEFT = 258,     ///< Left arrow key
   KEY_RIGHT = 259,    ///< Right arrow key
+  KEY_0 = '0',        ///< '0' key - toggle matrix rain effect
   KEY_C = 'c',        ///< 'c' key - cycle color modes
   KEY_R = 'r',        ///< 'r' key - cycle render modes
   KEY_M = 'm',        ///< 'm' key - toggle mute

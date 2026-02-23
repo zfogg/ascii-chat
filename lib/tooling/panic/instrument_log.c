@@ -340,7 +340,7 @@ void asciichat_instr_log_line(const char *file_path, uint32_t line_number, const
   if (g_ticks_initialized) {
     uint64_t now_ns = time_get_ns();
     uint64_t elapsed_ns = time_elapsed_ns(g_start_ns, now_ns);
-    if (format_duration_ns((double)elapsed_ns, elapsed_buf, sizeof(elapsed_buf)) < 0) {
+    if (time_pretty((uint64_t)elapsed_ns, -1, elapsed_buf, sizeof(elapsed_buf)) < 0) {
       elapsed_buf[0] = '\0';
     }
   }
