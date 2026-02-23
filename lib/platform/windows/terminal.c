@@ -394,6 +394,46 @@ asciichat_error_t terminal_move_cursor(int row, int col) {
 }
 
 /**
+ * @brief Move cursor relative to current position
+ * @param offset Relative movement: positive = right, negative = left
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Gets current cursor position, adds offset, and moves to new position
+ */
+asciichat_error_t terminal_move_cursor_relative(int offset) {
+  if (offset == 0) {
+    return ASCIICHAT_OK;
+  }
+
+  HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+  if (hConsole == INVALID_HANDLE_VALUE)
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Terminal operation failed");
+
+  // Get current cursor position
+  CONSOLE_SCREEN_BUFFER_INFO csbi;
+  if (!GetConsoleScreenBufferInfo(hConsole, &csbi)) {
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to get cursor position");
+  }
+
+  // Calculate new position
+  SHORT newX = csbi.dwCursorPosition.X + (SHORT)offset;
+
+  // Clamp to valid range (0 to buffer width - 1)
+  if (newX < 0) {
+    newX = 0;
+  } else if (newX >= csbi.dwSize.X) {
+    newX = csbi.dwSize.X - 1;
+  }
+
+  // Move to new position
+  COORD newCoord;
+  newCoord.X = newX;
+  newCoord.Y = csbi.dwCursorPosition.Y;
+
+  return SetConsoleCursorPosition(hConsole, newCoord) ? ASCIICHAT_OK : SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to move cursor");
+}
+
+/**
  * @brief Enable ANSI escape sequence processing
  * @note Enable ANSI escape sequences on Windows 10+
  */

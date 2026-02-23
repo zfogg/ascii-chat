@@ -12,6 +12,7 @@
 #include "ascii-chat/log/grep.h"
 #include "ascii-chat/platform/keyboard.h"
 #include "ascii-chat/platform/mutex.h"
+#include "ascii-chat/platform/terminal.h"
 #include "ascii-chat/util/lifecycle.h"
 #include "ascii-chat/util/pcre2.h"
 #include "ascii-chat/util/utf8.h"
@@ -703,25 +704,20 @@ void interactive_grep_render_input_line(int width) {
   // Render the pattern and position terminal cursor at current edit position
   char output_buf[512];
 
-  // Build output: "/" + pattern + cursor positioning escape sequence
-  // Cursor position in pattern: 1 (for "/") + cursor position in buffer
+  // Build output: "/" + pattern
   int pattern_len = snprintf(output_buf, sizeof(output_buf), "/%.*s", (int)g_grep_state.len, g_grep_state.input_buffer);
 
-  if (pattern_len > 0) {
-    // Calculate cursor column: column 1 + "/" + cursor position
-    int cursor_col = 2 + (int)g_grep_state.cursor;
+  if (pattern_len > 0 && pattern_len < (int)sizeof(output_buf)) {
+    // Write the pattern to terminal
+    platform_write_all(STDOUT_FILENO, output_buf, pattern_len);
 
-    // Append cursor positioning escape sequence to move to the correct column
-    // Format: \x1b[col;col H (VT100 cursor positioning to column)
-    // We use: \x1b[<col>G (ANSI cursor forward absolute)
-    int append_len = snprintf(output_buf + pattern_len, sizeof(output_buf) - pattern_len, "\x1b[%dG", cursor_col);
-
-    if (append_len > 0) {
-      pattern_len += append_len;
-    }
-
-    if (pattern_len > 0 && pattern_len < (int)sizeof(output_buf)) {
-      platform_write_all(STDOUT_FILENO, output_buf, pattern_len);
+    // After writing, cursor is at: column = 1 (for "/") + len + 1
+    // We want it at: column = 1 (for "/") + cursor_position + 1
+    // So we need to move back by: len - cursor_position columns
+    int cursor_offset = (int)g_grep_state.len - (int)g_grep_state.cursor;
+    if (cursor_offset > 0) {
+      // Move left by the difference
+      terminal_move_cursor_relative(-cursor_offset);
     }
   }
 

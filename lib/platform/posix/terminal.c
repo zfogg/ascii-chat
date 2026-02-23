@@ -226,6 +226,35 @@ asciichat_error_t terminal_move_cursor(int row, int col) {
 }
 
 /**
+ * @brief Move cursor relative to current position
+ * @param offset Relative movement: positive = right, negative = left
+ * @return ASCIICHAT_OK on success
+ *
+ * Uses ANSI escape sequences: \x1b[nC (right) or \x1b[nD (left)
+ */
+asciichat_error_t terminal_move_cursor_relative(int offset) {
+  // Skip ANSI codes when not writing to a TTY
+  if (!terminal_is_stdout_tty()) {
+    return ASCIICHAT_OK;
+  }
+
+  if (offset == 0) {
+    return ASCIICHAT_OK;
+  }
+
+  if (offset > 0) {
+    // Move right: \x1b[<n>C
+    printf("\033[%dC", offset);
+  } else {
+    // Move left: \x1b[<n>D
+    printf("\033[%dD", -offset);
+  }
+
+  (void)fflush(stdout);
+  return ASCIICHAT_OK;
+}
+
+/**
  * @brief Enable ANSI escape sequence processing
  * @note POSIX terminals typically support ANSI by default
  */
