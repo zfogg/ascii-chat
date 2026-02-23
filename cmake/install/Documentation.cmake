@@ -11,7 +11,7 @@
 #
 # Outputs:
 #   - man1: ${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1 (uncompressed for development)
-#   - docs: ${CMAKE_BINARY_DIR}/docs/html/ and ${CMAKE_BINARY_DIR}/docs/man/man3/
+#   - docs: ${CMAKE_BINARY_DIR}/share/doc/html/ and ${CMAKE_BINARY_DIR}/share/man/man3/
 # =============================================================================
 
 # =============================================================================
@@ -125,7 +125,7 @@ message(STATUS \"Manpage renaming: \${RENAMED_COUNT} renamed, \${SKIPPED_COUNT} 
     add_custom_target(docs
         COMMAND timeout 30 ${ASCIICHAT_DOXYGEN_EXECUTABLE} ${DOXYFILE_OUT}
         COMMAND ${CMAKE_COMMAND} -E echo "Adding ascii-chat- prefix to manpages..."
-        COMMAND ${CMAKE_COMMAND} -DMAN_DIR=${CMAKE_BINARY_DIR}/docs/man/man3 -P ${CMAKE_BINARY_DIR}/RenameManpages.cmake
+        COMMAND ${CMAKE_COMMAND} -DMAN_DIR=${CMAKE_BINARY_DIR}/share/man/man3 -P ${CMAKE_BINARY_DIR}/RenameManpages.cmake
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         COMMENT "Generating API documentation with Doxygen"
         VERBATIM
@@ -136,7 +136,7 @@ message(STATUS \"Manpage renaming: \${RENAMED_COUNT} renamed, \${SKIPPED_COUNT} 
         # Windows: use PowerShell Start-Process
         add_custom_target(docs-open
             COMMAND ${CMAKE_COMMAND} -E echo "Opening documentation in browser..."
-            COMMAND powershell -Command "Start-Process \"${CMAKE_BINARY_DIR}/docs/html/index.html\""
+            COMMAND powershell -Command "Start-Process \"${CMAKE_BINARY_DIR}/share/doc/html/index.html\""
             DEPENDS docs
             COMMENT "Opening documentation in default browser"
             VERBATIM
@@ -145,7 +145,7 @@ message(STATUS \"Manpage renaming: \${RENAMED_COUNT} renamed, \${SKIPPED_COUNT} 
         # macOS: use open command
         add_custom_target(docs-open
             COMMAND ${CMAKE_COMMAND} -E echo "Opening documentation in browser..."
-            COMMAND open "${CMAKE_BINARY_DIR}/docs/html/index.html"
+            COMMAND open "${CMAKE_BINARY_DIR}/share/doc/html/index.html"
             DEPENDS docs
             COMMENT "Opening documentation in default browser"
             VERBATIM
@@ -154,7 +154,7 @@ message(STATUS \"Manpage renaming: \${RENAMED_COUNT} renamed, \${SKIPPED_COUNT} 
         # Linux: use xdg-open command
         add_custom_target(docs-open
             COMMAND ${CMAKE_COMMAND} -E echo "Opening documentation in browser..."
-            COMMAND xdg-open "${CMAKE_BINARY_DIR}/docs/html/index.html"
+            COMMAND xdg-open "${CMAKE_BINARY_DIR}/share/doc/html/index.html"
             DEPENDS docs
             COMMENT "Opening documentation in default browser"
             VERBATIM
