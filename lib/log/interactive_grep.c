@@ -700,11 +700,29 @@ void interactive_grep_render_input_line(int width) {
     return;
   }
 
-  // Just show slash and pattern (cursor already positioned by caller)
-  char output_buf[256];
-  int len = snprintf(output_buf, sizeof(output_buf), "/%.*s", (int)g_grep_state.len, g_grep_state.input_buffer);
-  if (len > 0) {
-    platform_write_all(STDOUT_FILENO, output_buf, len);
+  // Render the pattern and position terminal cursor at current edit position
+  char output_buf[512];
+
+  // Build output: "/" + pattern + cursor positioning escape sequence
+  // Cursor position in pattern: 1 (for "/") + cursor position in buffer
+  int pattern_len = snprintf(output_buf, sizeof(output_buf), "/%.*s", (int)g_grep_state.len, g_grep_state.input_buffer);
+
+  if (pattern_len > 0) {
+    // Calculate cursor column: column 1 + "/" + cursor position
+    int cursor_col = 2 + (int)g_grep_state.cursor;
+
+    // Append cursor positioning escape sequence to move to the correct column
+    // Format: \x1b[col;col H (VT100 cursor positioning to column)
+    // We use: \x1b[<col>G (ANSI cursor forward absolute)
+    int append_len = snprintf(output_buf + pattern_len, sizeof(output_buf) - pattern_len, "\x1b[%dG", cursor_col);
+
+    if (append_len > 0) {
+      pattern_len += append_len;
+    }
+
+    if (pattern_len > 0 && pattern_len < (int)sizeof(output_buf)) {
+      platform_write_all(STDOUT_FILENO, output_buf, pattern_len);
+    }
   }
 
   mutex_unlock(&g_grep_state.mutex);
@@ -927,6 +945,10 @@ void *interactive_grep_get_mutex(void) {
 
 int interactive_grep_get_input_len(void) {
   return (int)g_grep_state.len;
+}
+
+int interactive_grep_get_cursor_position(void) {
+  return (int)g_grep_state.cursor;
 }
 
 const char *interactive_grep_get_input_buffer(void) {

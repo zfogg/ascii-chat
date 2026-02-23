@@ -312,74 +312,70 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   build_help_line(line_buf, sizeof(line_buf), "?       Toggle this help screen");
   APPEND("%s", line_buf);
 
-  APPEND("\033[%d;%dH", start_row + 7, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "Space   Play/Pause (files only)");
-  APPEND("%s", line_buf);
+  // Only show Play/Pause and Seek controls if a file or URL is being used
+  const char *url = GET_OPTION(media_url);
+  const char *file = GET_OPTION(media_file);
+  int row_offset = 0;
+  if ((url && url[0] != '\0') || (file && file[0] != '\0')) {
+    APPEND("\033[%d;%dH", start_row + 7, start_col + 1);
+    build_help_line(line_buf, sizeof(line_buf), "Space   Play/Pause (files only)");
+    APPEND("%s", line_buf);
 
-  APPEND("\033[%d;%dH", start_row + 8, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "← / →   Seek backward/forward 30s");
-  APPEND("%s", line_buf);
+    APPEND("\033[%d;%dH", start_row + 8, start_col + 1);
+    build_help_line(line_buf, sizeof(line_buf), "← / →   Seek backward/forward 30s");
+    APPEND("%s", line_buf);
+  } else {
+    row_offset = -2;  // Skip the 2 hidden lines
+  }
 
-  APPEND("\033[%d;%dH", start_row + 9, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 9 + row_offset, start_col + 1);
   build_help_line(line_buf, sizeof(line_buf), "m       Mute/Unmute audio");
   APPEND("%s", line_buf);
 
-  APPEND("\033[%d;%dH", start_row + 10, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 10 + row_offset, start_col + 1);
   build_help_line(line_buf, sizeof(line_buf), "↑ / ↓   Volume up/down (10%)");
   APPEND("%s", line_buf);
 
-  APPEND("\033[%d;%dH", start_row + 11, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 11 + row_offset, start_col + 1);
   build_help_line(line_buf, sizeof(line_buf), "c       Cycle color mode");
   APPEND("%s", line_buf);
 
-  APPEND("\033[%d;%dH", start_row + 12, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 12 + row_offset, start_col + 1);
   build_help_line(line_buf, sizeof(line_buf), "f       Flip webcam horizontally");
   APPEND("%s", line_buf);
 
-  APPEND("\033[%d;%dH", start_row + 13, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 13 + row_offset, start_col + 1);
   build_help_line(line_buf, sizeof(line_buf), "r       Cycle render mode");
   APPEND("%s", line_buf);
 
 #ifndef NDEBUG
-  APPEND("\033[%d;%dH", start_row + 14, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 14 + row_offset, start_col + 1);
   build_help_line(line_buf, sizeof(line_buf), "`       Print current sync primitive state");
   APPEND("%s", line_buf);
 
-  // Blank line before settings section
-  APPEND("\033[%d;%dH", start_row + 15, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "");
-  APPEND("%s", line_buf);
-
-  // Current settings section (adjusted row numbers for Ctrl+L line)
-  APPEND("\033[%d;%dH", start_row + 16, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "Current Settings:");
-  APPEND("%s", line_buf);
-
-  APPEND("\033[%d;%dH", start_row + 17, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "───────────────");
-  APPEND("%s", line_buf);
+  // Blank line before settings section (debug builds shift by 1 more row)
+  APPEND("\033[%d;%dH", start_row + 15 + row_offset, start_col + 1);
 #else
-  // Blank line before settings section
-  APPEND("\033[%d;%dH", start_row + 14, start_col + 1);
+  // Blank line before settings section (release builds skip backtick line)
+  APPEND("\033[%d;%dH", start_row + 14 + row_offset, start_col + 1);
+#endif
   build_help_line(line_buf, sizeof(line_buf), "");
   APPEND("%s", line_buf);
 
   // Current settings section
-  APPEND("\033[%d;%dH", start_row + 15, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "Current Settings:");
-  APPEND("%s", line_buf);
-
-  APPEND("\033[%d;%dH", start_row + 16, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "───────────────");
-  APPEND("%s", line_buf);
+#ifndef NDEBUG
+  APPEND("\033[%d;%dH", start_row + 16 + row_offset, start_col + 1);
+#else
+  APPEND("\033[%d;%dH", start_row + 15 + row_offset, start_col + 1);
 #endif
-
-  // Current settings section
-  APPEND("\033[%d;%dH", start_row + 15, start_col + 1);
   build_help_line(line_buf, sizeof(line_buf), "Current Settings:");
   APPEND("%s", line_buf);
 
-  APPEND("\033[%d;%dH", start_row + 16, start_col + 1);
+#ifndef NDEBUG
+  APPEND("\033[%d;%dH", start_row + 17 + row_offset, start_col + 1);
+#else
+  APPEND("\033[%d;%dH", start_row + 16 + row_offset, start_col + 1);
+#endif
   build_help_line(line_buf, sizeof(line_buf), "───────────────");
   APPEND("%s", line_buf);
 
@@ -417,80 +413,76 @@ void session_display_render_help(session_display_ctx_t *ctx) {
 
   // Build settings lines with UTF-8 width-aware padding (ordered to match keybinds: m, ↑/↓, c, r, f)
 #ifndef NDEBUG
-  APPEND("\033[%d;%dH", start_row + 18, start_col + 1);
-  build_settings_line(line_buf, sizeof(line_buf), "Audio", audio_text);
-  APPEND("%s", line_buf);
-
-  APPEND("\033[%d;%dH", start_row + 19, start_col + 1);
-  build_settings_line(line_buf, sizeof(line_buf), "Volume", volume_bar);
-  APPEND("%s", line_buf);
-
-  APPEND("\033[%d;%dH", start_row + 20, start_col + 1);
-  build_settings_line(line_buf, sizeof(line_buf), "Color", color_str);
-  APPEND("%s", line_buf);
-
-  APPEND("\033[%d;%dH", start_row + 21, start_col + 1);
-  build_settings_line(line_buf, sizeof(line_buf), "Render", render_str);
-  APPEND("%s", line_buf);
-
-  APPEND("\033[%d;%dH", start_row + 22, start_col + 1);
-  build_settings_line(line_buf, sizeof(line_buf), "Flip", flip_text);
-  APPEND("%s", line_buf);
-
-  // Blank line before footer
-  APPEND("\033[%d;%dH", start_row + 23, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "");
-  APPEND("%s", line_buf);
-
-  // Footer
-  APPEND("\033[%d;%dH", start_row + 24, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "Press ? to close");
-  APPEND("%s", line_buf);
-
-  // Bottom border
-  APPEND("\033[%d;%dH", start_row + 25, start_col + 1);
-  APPEND("╚══════════════════════════════════════════════╝");
+  APPEND("\033[%d;%dH", start_row + 18 + row_offset, start_col + 1);
 #else
-  APPEND("\033[%d;%dH", start_row + 17, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 17 + row_offset, start_col + 1);
+#endif
   build_settings_line(line_buf, sizeof(line_buf), "Audio", audio_text);
   APPEND("%s", line_buf);
 
-  APPEND("\033[%d;%dH", start_row + 18, start_col + 1);
+#ifndef NDEBUG
+  APPEND("\033[%d;%dH", start_row + 19 + row_offset, start_col + 1);
+#else
+  APPEND("\033[%d;%dH", start_row + 18 + row_offset, start_col + 1);
+#endif
   build_settings_line(line_buf, sizeof(line_buf), "Volume", volume_bar);
   APPEND("%s", line_buf);
 
-  APPEND("\033[%d;%dH", start_row + 19, start_col + 1);
+#ifndef NDEBUG
+  APPEND("\033[%d;%dH", start_row + 20 + row_offset, start_col + 1);
+#else
+  APPEND("\033[%d;%dH", start_row + 19 + row_offset, start_col + 1);
+#endif
   build_settings_line(line_buf, sizeof(line_buf), "Color", color_str);
   APPEND("%s", line_buf);
 
-  APPEND("\033[%d;%dH", start_row + 20, start_col + 1);
+#ifndef NDEBUG
+  APPEND("\033[%d;%dH", start_row + 21 + row_offset, start_col + 1);
+#else
+  APPEND("\033[%d;%dH", start_row + 20 + row_offset, start_col + 1);
+#endif
   build_settings_line(line_buf, sizeof(line_buf), "Render", render_str);
   APPEND("%s", line_buf);
 
-  APPEND("\033[%d;%dH", start_row + 21, start_col + 1);
+#ifndef NDEBUG
+  APPEND("\033[%d;%dH", start_row + 22 + row_offset, start_col + 1);
+#else
+  APPEND("\033[%d;%dH", start_row + 21 + row_offset, start_col + 1);
+#endif
   build_settings_line(line_buf, sizeof(line_buf), "Flip", flip_text);
   APPEND("%s", line_buf);
 
   // Blank line before footer
-  APPEND("\033[%d;%dH", start_row + 22, start_col + 1);
+#ifndef NDEBUG
+  APPEND("\033[%d;%dH", start_row + 23 + row_offset, start_col + 1);
+#else
+  APPEND("\033[%d;%dH", start_row + 22 + row_offset, start_col + 1);
+#endif
   build_help_line(line_buf, sizeof(line_buf), "");
   APPEND("%s", line_buf);
 
   // Footer
-  APPEND("\033[%d;%dH", start_row + 23, start_col + 1);
+#ifndef NDEBUG
+  APPEND("\033[%d;%dH", start_row + 24 + row_offset, start_col + 1);
+#else
+  APPEND("\033[%d;%dH", start_row + 23 + row_offset, start_col + 1);
+#endif
   build_help_line(line_buf, sizeof(line_buf), "Press ? to close");
   APPEND("%s", line_buf);
 
   // Bottom border
-  APPEND("\033[%d;%dH", start_row + 24, start_col + 1);
-  APPEND("╚══════════════════════════════════════════════╝");
+#ifndef NDEBUG
+  APPEND("\033[%d;%dH", start_row + 25 + row_offset, start_col + 1);
+#else
+  APPEND("\033[%d;%dH", start_row + 24 + row_offset, start_col + 1);
 #endif
+  APPEND("╚══════════════════════════════════════════════╝");
 
   // Cursor positioning after rendering
 #ifndef NDEBUG
-  APPEND("\033[%d;%dH", start_row + 26, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 27 + row_offset, start_col + 1);
 #else
-  APPEND("\033[%d;%dH", start_row + 25, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 26 + row_offset, start_col + 1);
 #endif
 
 #undef APPEND

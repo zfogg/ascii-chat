@@ -243,6 +243,14 @@ void *interactive_grep_get_mutex(void);
 int interactive_grep_get_input_len(void);
 
 /**
+ * @brief Get current cursor position in input buffer (must hold mutex)
+ * @return Cursor position (0-based index within input buffer)
+ *
+ * Must be called while holding the mutex from interactive_grep_get_mutex().
+ */
+int interactive_grep_get_cursor_position(void);
+
+/**
  * @brief Get current input buffer content (must hold mutex)
  * @return Pointer to the input buffer (valid only while holding mutex)
  *
