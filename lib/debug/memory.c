@@ -1047,36 +1047,23 @@ static void *debug_memory_thread_fn(void *arg) {
   (void)arg;
 
   while (!g_debug_memory_request.should_exit) {
-    fprintf(stderr, "[DEBUG] memory_thread: checking should_exit=%d\n", g_debug_memory_request.should_exit);
-    fflush(stderr);
     mutex_lock(&g_debug_memory_request.mutex);
 
     if ((g_debug_memory_request.should_run || g_debug_memory_request.signal_triggered)
         && !g_debug_memory_request.should_exit) {
-      fprintf(stderr, "[DEBUG] memory_thread: calling debug_memory_report\n");
-      fflush(stderr);
       mutex_unlock(&g_debug_memory_request.mutex);
       debug_memory_report();
       mutex_lock(&g_debug_memory_request.mutex);
       g_debug_memory_request.should_run = false;
       g_debug_memory_request.signal_triggered = false;
-      fprintf(stderr, "[DEBUG] memory_thread: report done\n");
-      fflush(stderr);
     }
 
     // Wait for work or signal, with 100ms timeout to check should_exit
     if (!g_debug_memory_request.should_exit) {
-      fprintf(stderr, "[DEBUG] memory_thread: waiting on condition\n");
-      fflush(stderr);
       cond_timedwait(&g_debug_memory_request.cond, &g_debug_memory_request.mutex, 100000000);  // 100ms
-      fprintf(stderr, "[DEBUG] memory_thread: woke from condition\n");
-      fflush(stderr);
     }
     mutex_unlock(&g_debug_memory_request.mutex);
   }
-
-  fprintf(stderr, "[DEBUG] memory_thread: exiting main loop\n");
-  fflush(stderr);
   return NULL;
 }
 
@@ -1116,17 +1103,9 @@ void debug_memory_trigger_report(void) {
 void debug_memory_thread_cleanup(void) {
   // Set exit flag and signal thread - don't acquire mutex to avoid deadlock
   // The thread reads should_exit without locking, and cond_signal is safe without mutex
-  fprintf(stderr, "[DEBUG] memory_thread_cleanup: setting should_exit\n");
-  fflush(stderr);
   g_debug_memory_request.should_exit = true;
-  fprintf(stderr, "[DEBUG] memory_thread_cleanup: signaling condition\n");
-  fflush(stderr);
   cond_signal(&g_debug_memory_request.cond);
-  fprintf(stderr, "[DEBUG] memory_thread_cleanup: joining thread\n");
-  fflush(stderr);
   asciichat_thread_join(&g_debug_memory_thread, NULL);
-  fprintf(stderr, "[DEBUG] memory_thread_cleanup: thread joined\n");
-  fflush(stderr);
 }
 
 #elif defined(DEBUG_MEMORY)
