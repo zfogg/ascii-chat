@@ -62,7 +62,7 @@ typedef enum {
   KEY_M = 'm',        ///< 'm' key - toggle mute
   KEY_F = 'f',        ///< 'f' key - flip webcam
   KEY_QUESTION = '?', ///< '?' key - show help screen
-  KEY_CTRL_L = 12,    ///< Ctrl+L - print held lock state (debug builds)
+  KEY_BACKTICK = '`', ///< '`' key - print held lock state (debug builds)
 } keyboard_key_t;
 
 /* ============================================================================
