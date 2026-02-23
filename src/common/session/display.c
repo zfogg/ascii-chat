@@ -438,6 +438,9 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
   // Make a mutable copy of terminal capabilities for ascii_convert_with_capabilities
   terminal_capabilities_t caps_copy = ctx->caps;
 
+  // Re-evaluate render_mode on every frame to pick up live changes
+  caps_copy.render_mode = (render_mode_t)GET_OPTION(render_mode);
+
   // MEASURE EVERY OPERATION - Debug systematic timing
   uint64_t t_flip_start = time_get_ns();
 
@@ -587,6 +590,12 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
   if (!frame_data) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Frame data is NULL");
     return;
+  }
+
+  // Re-evaluate color_level on every frame to pick up live color_mode changes
+  terminal_color_mode_t color_mode = (terminal_color_mode_t)GET_OPTION(color_mode);
+  if (color_mode != TERM_COLOR_AUTO) {
+    ctx->caps.color_level = color_mode;
   }
 
   // Suppress frame rendering when help screen is active
