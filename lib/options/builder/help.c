@@ -823,7 +823,7 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
           desc->help_text && (strstr(desc->help_text, "(default:") || strstr(desc->help_text, "=default)"));
 
       if (desc->default_value && !description_has_default) {
-        char default_buf[32];
+        char default_buf[256];
         int default_len = format_option_default_value_str(desc, default_buf, sizeof(default_buf));
         if (default_len > 0) {
           desc_len +=
@@ -1045,7 +1045,7 @@ void options_config_print_options_sections_with_width(const options_config_t *co
           desc->help_text && (strstr(desc->help_text, "(default:") || strstr(desc->help_text, "=default)"));
 
       if (desc->default_value && !description_has_default) {
-        char default_buf[32];
+        char default_buf[256];
         int default_len = format_option_default_value_str(desc, default_buf, sizeof(default_buf));
         if (default_len > 0) {
           desc_len +=

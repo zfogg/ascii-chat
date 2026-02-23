@@ -6,7 +6,6 @@ option(ASCIICHAT_BUILD_WITH_PANIC "Generate and build panic-instrumented sources
 set(ASCIICHAT_PANIC_TOOL "" CACHE FILEPATH "Path to pre-built ascii-instr-panic tool (optional)")
 
 include(${CMAKE_SOURCE_DIR}/cmake/utils/BuildLLVMTool.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/utils/GenerateCompilationDB.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/utils/PathConversion.cmake)
 set(_ASCII_PANIC_SCRIPT "${CMAKE_SOURCE_DIR}/cmake/tooling/run_panic_instrumentation.sh")
 
@@ -189,25 +188,9 @@ function(ascii_panic_prepare)
         convert_path_for_shell("${_ascii_instrumented_dir_for_shell}" _ascii_instrumented_dir_for_shell)
     endif()
 
-    # Detect Clang resource directory for compilation database generation
-    # This is required for Clang's LibTooling to find builtin headers like stdatomic.h
-    detect_clang_resource_dir(_panic_clang_resource_dir)
-    if(_panic_clang_resource_dir)
-        message(STATUS "Panic tool: Using Clang resource directory: ${_panic_clang_resource_dir}")
-    else()
-        message(WARNING "Panic tool: Could not detect Clang resource directory - builtin headers may not be found")
-    endif()
-
-    # Generate compilation database with original source paths using the common utility
-    set(_ascii_temp_build_dir "${CMAKE_BINARY_DIR}/compile_db_temp")
-    generate_compilation_database(
-        OUTPUT "${CMAKE_BINARY_DIR}/compile_commands_original.json"
-        TEMP_DIR "${_ascii_temp_build_dir}"
-        LOG_FILE "${CMAKE_BINARY_DIR}/panic_compile_db.log"
-        COMMENT "Generating compilation database for the panic tool"
-        CLANG_RESOURCE_DIR "${_panic_clang_resource_dir}"
-        DISABLE_OPTIONS ASCIICHAT_BUILD_WITH_PANIC ASCIICHAT_USE_PCH
-    )
+    # Use CMake's standard compilation database
+    # CMake generates compile_commands.json in the build directory
+    set(_ASCII_COMPILE_DB "${CMAKE_BINARY_DIR}/compile_commands.json")
 
     add_custom_command(
         OUTPUT "${instrumented_dir}/.stamp"
@@ -217,7 +200,7 @@ function(ascii_panic_prepare)
             ASCII_PANIC_TOOL=$<TARGET_FILE:ascii-instr-panic>
             "${_ascii_bash_executable}" "${_ascii_instr_script_for_shell}" -b "${_ascii_binary_dir_for_shell}" -o "${_ascii_instrumented_dir_for_shell}"
         COMMAND ${CMAKE_COMMAND} -E touch "${instrumented_dir}/.stamp"
-        DEPENDS ascii-instr-panic ${instrumented_abs_paths} "${CMAKE_BINARY_DIR}/compile_commands_original.json"
+        DEPENDS ascii-instr-panic ${instrumented_abs_paths} "${_ASCII_COMPILE_DB}"
         BYPRODUCTS ${instrumented_generated_paths}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         COMMENT "Generating panic-instrumented source tree"
