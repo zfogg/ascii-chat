@@ -1718,16 +1718,10 @@ if(NOT EXISTS "${GTK4_LIBRARIES}")
         )
 
         message(STATUS "    Configuring glib...")
+        set(GLIB_PKG_CONFIG_LIBDIR "${PCRE2_PREFIX}/lib/pkgconfig:${LIBFFI_PREFIX}/lib/pkgconfig:${ZLIB_PREFIX}/lib/pkgconfig")
         execute_process(
-            COMMAND env CC=${MUSL_GCC} CXX=clang++ PKG_CONFIG_LIBDIR=${PCRE2_PREFIX}/lib/pkgconfig:${LIBFFI_PREFIX}/lib/pkgconfig:${ZLIB_PREFIX}/lib/pkgconfig PKG_CONFIG_PATH= ${MESON_EXECUTABLE} setup
-                "${GLIB_BUILD_DIR}"
-                "${GLIB_SOURCE_DIR}"
-                --prefix=${GLIB_PREFIX}
-                --buildtype=release
-                --default-library=static
-                --wrap-mode=nofallback
-                --native-file=${GLIB_NATIVE_FILE}
-                -Dintrospection=disabled
+            WORKING_DIRECTORY "${GLIB_DOWNLOAD_DIR}"
+            COMMAND bash -c "CC=${MUSL_GCC} CXX=clang++ PKG_CONFIG_LIBDIR=${GLIB_PKG_CONFIG_LIBDIR} PKG_CONFIG_PATH= /usr/sbin/meson setup ${GLIB_BUILD_DIR} ${GLIB_SOURCE_DIR} --prefix=${GLIB_PREFIX} --buildtype=release --default-library=static --wrap-mode=nofallback --native-file=${GLIB_NATIVE_FILE} -Dintrospection=disabled"
             RESULT_VARIABLE GLIB_CONFIG_RESULT
             ERROR_VARIABLE GLIB_CONFIG_ERROR
         )
@@ -1737,7 +1731,8 @@ if(NOT EXISTS "${GTK4_LIBRARIES}")
 
         message(STATUS "    Building glib...")
         execute_process(
-            COMMAND ${MESON_EXECUTABLE} compile -C "${GLIB_BUILD_DIR}"
+            WORKING_DIRECTORY "${GLIB_BUILD_DIR}"
+            COMMAND /usr/sbin/meson compile
             RESULT_VARIABLE GLIB_BUILD_RESULT
             ERROR_VARIABLE GLIB_BUILD_ERROR
         )
@@ -1747,7 +1742,8 @@ if(NOT EXISTS "${GTK4_LIBRARIES}")
 
         message(STATUS "    Installing glib...")
         execute_process(
-            COMMAND ${MESON_EXECUTABLE} install -C "${GLIB_BUILD_DIR}"
+            WORKING_DIRECTORY "${GLIB_BUILD_DIR}"
+            COMMAND /usr/sbin/meson install
             RESULT_VARIABLE GLIB_INSTALL_RESULT
             ERROR_VARIABLE GLIB_INSTALL_ERROR
         )
@@ -1797,19 +1793,14 @@ if(NOT EXISTS "${GTK4_LIBRARIES}")
     set(GTK4_BUILD_DIR "${GTK4_DOWNLOAD_DIR}/build")
     file(MAKE_DIRECTORY "${GTK4_BUILD_DIR}")
 
-    message(STATUS "  Configuring GTK4 with meson...")
+    message(STATUS "  Configuring GTK4 with meson (with Wayland backend)...")
+    set(GTK4_PKG_CONFIG_LIBDIR "${GLIB_PREFIX}/lib/pkgconfig:${LIBFFI_PREFIX}/lib/pkgconfig:${WAYLAND_PREFIX}/lib/pkgconfig:${WAYLAND_PROTOCOLS_PREFIX}/share/pkgconfig:${XKBCOMMON_PREFIX}/lib/pkgconfig:${LIBXML2_PREFIX}/lib/pkgconfig:${EXPAT_PREFIX}/lib/pkgconfig")
     execute_process(
-        COMMAND env CC=${MUSL_GCC} CXX=clang++ PKG_CONFIG_LIBDIR=${GLIB_PREFIX}/lib/pkgconfig:${WAYLAND_PREFIX}/lib/pkgconfig:${WAYLAND_PROTOCOLS_PREFIX}/share/pkgconfig:${XKBCOMMON_PREFIX}/lib/pkgconfig PKG_CONFIG_PATH= ${MESON_EXECUTABLE} setup
-            "${GTK4_BUILD_DIR}"
-            "${GTK4_SOURCE_DIR}"
-            --prefix=${GTK4_PREFIX}
-            --buildtype=release
-            --default-library=static
-            -Dintrospection=disabled
-            -Dx11-backend=false
-            -Dwayland-backend=true
+        WORKING_DIRECTORY "${GTK4_DOWNLOAD_DIR}"
+        COMMAND bash -c "CC=${MUSL_GCC} CXX=clang++ PKG_CONFIG_LIBDIR=${GTK4_PKG_CONFIG_LIBDIR} PKG_CONFIG_PATH= /usr/sbin/meson setup ${GTK4_BUILD_DIR} ${GTK4_SOURCE_DIR} --prefix=${GTK4_PREFIX} --buildtype=release --default-library=static -Dintrospection=disabled -Dx11-backend=false -Dwayland-backend=true"
         RESULT_VARIABLE CONFIG_RESULT
         ERROR_VARIABLE CONFIG_ERROR
+        OUTPUT_VARIABLE CONFIG_OUTPUT
     )
     if(NOT CONFIG_RESULT EQUAL 0)
         message(FATAL_ERROR "GTK4 meson setup failed:\n${CONFIG_ERROR}")
@@ -1817,9 +1808,11 @@ if(NOT EXISTS "${GTK4_LIBRARIES}")
 
     message(STATUS "  Building GTK4...")
     execute_process(
-        COMMAND ${MESON_EXECUTABLE} compile -C "${GTK4_BUILD_DIR}"
+        WORKING_DIRECTORY "${GTK4_BUILD_DIR}"
+        COMMAND /usr/sbin/meson compile
         RESULT_VARIABLE BUILD_RESULT
         ERROR_VARIABLE BUILD_ERROR
+        OUTPUT_VARIABLE BUILD_OUTPUT
     )
     if(NOT BUILD_RESULT EQUAL 0)
         message(FATAL_ERROR "GTK4 build failed:\n${BUILD_ERROR}")
@@ -1827,9 +1820,11 @@ if(NOT EXISTS "${GTK4_LIBRARIES}")
 
     message(STATUS "  Installing GTK4...")
     execute_process(
-        COMMAND ${MESON_EXECUTABLE} install -C "${GTK4_BUILD_DIR}"
+        WORKING_DIRECTORY "${GTK4_BUILD_DIR}"
+        COMMAND /usr/sbin/meson install
         RESULT_VARIABLE INSTALL_RESULT
         ERROR_VARIABLE INSTALL_ERROR
+        OUTPUT_VARIABLE INSTALL_OUTPUT
     )
     if(NOT INSTALL_RESULT EQUAL 0)
         message(FATAL_ERROR "GTK4 install failed:\n${INSTALL_ERROR}")
