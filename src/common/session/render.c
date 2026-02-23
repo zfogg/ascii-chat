@@ -123,8 +123,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   // This must be done BEFORE the render loop to avoid repeated lock/unlock cycles that could cause deadlocks
   log_set_terminal_output(false);
 
-  // Main render loop - works for both synchronous and event-driven modes
-  log_info("session_render_loop: entering main loop - is_synchronous=%s", is_synchronous ? "YES" : "NO");
+  // Main render loop
   log_debug("session_render_loop: entering main loop");
   while (!should_exit(user_data)) {
     log_debug_every(US_PER_SEC_INT, "session_render_loop: frame %lu", frame_count);
@@ -167,8 +166,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         const char *render_file_opt = GET_OPTION(render_file);
         if (render_file_opt && strcmp(render_file_opt, "-") == 0) {
           // Render to stdout: write raw ASCII frame directly
-          (void)platform_write_all(STDOUT_FILENO, ascii_frame, strlen(ascii_frame));
-          (void)platform_write_all(STDOUT_FILENO, "\n", 1);
+          platform_write_all(STDOUT_FILENO, ascii_frame, strlen(ascii_frame));
+          platform_write_all(STDOUT_FILENO, "\n", 1);
         } else {
           // Render to file: use display rendering (will use render_file if configured)
           session_display_render_frame(display, ascii_frame);

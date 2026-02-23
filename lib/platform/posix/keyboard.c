@@ -148,13 +148,11 @@ keyboard_key_t keyboard_read_nonblocking(void) {
     if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
       unsigned char ch2;
       if (read(STDIN_FILENO, &ch2, 1) > 0) {
-        log_debug("ESC followed by: %d (0x%02x) '%c'", ch2, ch2, (ch2 >= 32 && ch2 < 127) ? ch2 : '?');
         if (ch2 == '[') {
           // Might be an arrow key sequence
           if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
             unsigned char ch3;
             if (read(STDIN_FILENO, &ch3, 1) > 0) {
-              log_debug("ESC[%c sequence detected", ch3);
               switch (ch3) {
               case 'A':
                 return KEY_UP;
@@ -166,17 +164,16 @@ keyboard_key_t keyboard_read_nonblocking(void) {
                 return KEY_LEFT;
               default:
                 // Unknown escape sequence - ignore it
-                log_debug("Unknown ESC[%c - returning KEY_NONE", ch3);
                 return KEY_NONE;
               }
             }
           }
         } else {
-          log_debug("ESC not followed by [ - returning KEY_ESCAPE");
+          // ESC followed by something other than [ (like Ctrl+number sending ESC+digit)
+          // Ignore the sequence and return KEY_NONE
+          return KEY_NONE;
         }
       }
-    } else {
-      log_debug("ESC timeout (no follow-up data)");
     }
 
     return KEY_ESCAPE;
@@ -226,24 +223,30 @@ keyboard_key_t keyboard_read_with_timeout(uint32_t timeout_ms) {
 
     if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
       unsigned char ch2;
-      if (read(STDIN_FILENO, &ch2, 1) > 0 && ch2 == '[') {
-        if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
-          unsigned char ch3;
-          if (read(STDIN_FILENO, &ch3, 1) > 0) {
-            switch (ch3) {
-            case 'A':
-              return KEY_UP;
-            case 'B':
-              return KEY_DOWN;
-            case 'C':
-              return KEY_RIGHT;
-            case 'D':
-              return KEY_LEFT;
-            default:
-              // Unknown escape sequence - ignore it
-              return KEY_NONE;
+      if (read(STDIN_FILENO, &ch2, 1) > 0) {
+        if (ch2 == '[') {
+          if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
+            unsigned char ch3;
+            if (read(STDIN_FILENO, &ch3, 1) > 0) {
+              switch (ch3) {
+              case 'A':
+                return KEY_UP;
+              case 'B':
+                return KEY_DOWN;
+              case 'C':
+                return KEY_RIGHT;
+              case 'D':
+                return KEY_LEFT;
+              default:
+                // Unknown escape sequence - ignore it
+                return KEY_NONE;
+              }
             }
           }
+        } else {
+          // ESC followed by something other than [
+          // Ignore the sequence and return KEY_NONE
+          return KEY_NONE;
         }
       }
     }
