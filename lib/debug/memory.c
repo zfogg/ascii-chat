@@ -1109,8 +1109,6 @@ void debug_memory_report(void) {
     // undefined behavior (modifying hash table during iteration = infinite loop/hang).
     // Since we're exiting anyway, skip this cleanup - the OS will reclaim memory.
 
-    // Output accumulated report to both stderr and log file
-    APPEND_REPORT("\n=== End Memory Report ===\n");
 
     // Write to stderr (colored output)
     SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "%s", report_buffer));
