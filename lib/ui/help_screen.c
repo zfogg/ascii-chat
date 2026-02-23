@@ -272,6 +272,62 @@ static void build_settings_line(char *output, size_t output_size, const char *la
 }
 
 /**
+ * @brief Helper to append a help line to the buffer
+ */
+static void append_help_line(char *buffer, size_t *buf_pos, size_t BUFFER_SIZE,
+                            int start_row, int *current_row, int start_col, int box_width,
+                            const char *content) {
+  if (!buffer || *buf_pos >= BUFFER_SIZE || !content) {
+    return;
+  }
+
+  char line_buf[256];
+  int remaining = BUFFER_SIZE - *buf_pos;
+
+  int written = snprintf(buffer + *buf_pos, remaining, "\033[%d;%dH",
+                        start_row + *current_row, start_col + 1);
+  if (written > 0) {
+    *buf_pos += written;
+  }
+
+  build_help_line(line_buf, sizeof(line_buf), content, box_width);
+  written = snprintf(buffer + *buf_pos, BUFFER_SIZE - *buf_pos, "%s", line_buf);
+  if (written > 0) {
+    *buf_pos += written;
+  }
+
+  (*current_row)++;
+}
+
+/**
+ * @brief Helper to append a settings line to the buffer
+ */
+static void append_settings_line(char *buffer, size_t *buf_pos, size_t BUFFER_SIZE,
+                                int start_row, int *current_row, int start_col, int box_width,
+                                const char *label, const char *value) {
+  if (!buffer || *buf_pos >= BUFFER_SIZE || !label || !value) {
+    return;
+  }
+
+  char line_buf[256];
+  int remaining = BUFFER_SIZE - *buf_pos;
+
+  int written = snprintf(buffer + *buf_pos, remaining, "\033[%d;%dH",
+                        start_row + *current_row, start_col + 1);
+  if (written > 0) {
+    *buf_pos += written;
+  }
+
+  build_settings_line(line_buf, sizeof(line_buf), label, value, box_width);
+  written = snprintf(buffer + *buf_pos, BUFFER_SIZE - *buf_pos, "%s", line_buf);
+  if (written > 0) {
+    *buf_pos += written;
+  }
+
+  (*current_row)++;
+}
+
+/**
  * @brief Render help screen centered on terminal
  */
 void session_display_render_help(session_display_ctx_t *ctx) {
@@ -348,88 +404,50 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   APPEND("%s", border_buf);
 
   // Navigation section
-  APPEND("\033[%d;%dH", start_row + 4, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "Navigation & Control:", box_width);
-  APPEND("%s", line_buf);
+  int current_row = 4;
+  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
+                  "Navigation & Control:");
+  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
+                  "─────────────────────");
+  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
+                  "?       Toggle this help screen");
 
-  APPEND("\033[%d;%dH", start_row + 5, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "─────────────────────", box_width);
-  APPEND("%s", line_buf);
+  // Check if media is provided (only show Space/Seek keys if media is loaded)
+  const char *media_url = GET_OPTION(media_url);
+  const char *media_file = GET_OPTION(media_file);
+  bool has_media = (media_url && strlen(media_url) > 0) || (media_file && strlen(media_file) > 0);
 
-  APPEND("\033[%d;%dH", start_row + 6, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "?       Toggle this help screen", box_width);
-  APPEND("%s", line_buf);
+  if (has_media) {
+    append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
+                    "Space   Play/Pause (files only)");
+    append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
+                    "← / →   Seek backward/forward 30s");
+  }
 
-  APPEND("\033[%d;%dH", start_row + 7, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "Space   Play/Pause (files only)", box_width);
-  APPEND("%s", line_buf);
-
-  APPEND("\033[%d;%dH", start_row + 8, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "← / →   Seek backward/forward 30s", box_width);
-  APPEND("%s", line_buf);
-
-  APPEND("\033[%d;%dH", start_row + 9, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "m       Mute/Unmute audio", box_width);
-  APPEND("%s", line_buf);
-
-  APPEND("\033[%d;%dH", start_row + 10, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "↑ / ↓   Volume up/down (10%)", box_width);
-  APPEND("%s", line_buf);
-
-  APPEND("\033[%d;%dH", start_row + 11, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "c       Cycle color mode", box_width);
-  APPEND("%s", line_buf);
-
-  APPEND("\033[%d;%dH", start_row + 12, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "f       Flip webcam horizontally", box_width);
-  APPEND("%s", line_buf);
-
-  APPEND("\033[%d;%dH", start_row + 13, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "r       Cycle render mode", box_width);
-  APPEND("%s", line_buf);
+  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
+                  "m       Mute/Unmute audio");
+  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
+                  "↑ / ↓   Volume up/down (10%)");
+  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
+                  "c       Cycle color mode");
+  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
+                  "f       Flip webcam horizontally");
+  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
+                  "r       Cycle render mode");
 
 #ifndef NDEBUG
-  APPEND("\033[%d;%dH", start_row + 14, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "`       Print current sync primitive state", box_width);
-  APPEND("%s", line_buf);
-
-  // Blank line before settings section
-  APPEND("\033[%d;%dH", start_row + 15, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "", box_width);
-  APPEND("%s", line_buf);
-
-  // Current settings section (adjusted row numbers for Ctrl+L line)
-  APPEND("\033[%d;%dH", start_row + 16, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "Current Settings:", box_width);
-  APPEND("%s", line_buf);
-
-  APPEND("\033[%d;%dH", start_row + 17, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "───────────────", box_width);
-  APPEND("%s", line_buf);
-#else
-  // Blank line before settings section
-  APPEND("\033[%d;%dH", start_row + 14, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "", box_width);
-  APPEND("%s", line_buf);
-
-  // Current settings section
-  APPEND("\033[%d;%dH", start_row + 15, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "Current Settings:", box_width);
-  APPEND("%s", line_buf);
-
-  APPEND("\033[%d;%dH", start_row + 16, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "───────────────", box_width);
-  APPEND("%s", line_buf);
+  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
+                  "`       Print current sync primitive state");
 #endif
 
-  // Current settings section
-  APPEND("\033[%d;%dH", start_row + 15, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "Current Settings:", box_width);
-  APPEND("%s", line_buf);
+  // Blank line before settings section
+  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, "");
 
-  APPEND("\033[%d;%dH", start_row + 16, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "───────────────", box_width);
-  APPEND("%s", line_buf);
+  // Current settings section
+  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
+                  "Current Settings:");
+  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
+                  "───────────────");
 
   // Get current option values
   double current_volume = GET_OPTION(speakers_volume);
@@ -464,82 +482,39 @@ void session_display_render_help(session_display_ctx_t *ctx) {
       current_audio ? colored_string(ENABLED_COLOR, "Enabled") : colored_string(DISABLED_COLOR, "Disabled");
 
   // Build settings lines with UTF-8 width-aware padding (ordered to match keybinds: m, ↑/↓, c, r, f)
-#ifndef NDEBUG
-  APPEND("\033[%d;%dH", start_row + 18, start_col + 1);
-  build_settings_line(line_buf, sizeof(line_buf), "Audio", audio_text, box_width);
-  APPEND("%s", line_buf);
-
-  APPEND("\033[%d;%dH", start_row + 19, start_col + 1);
-  build_settings_line(line_buf, sizeof(line_buf), "Volume", volume_bar, box_width);
-  APPEND("%s", line_buf);
-
-  APPEND("\033[%d;%dH", start_row + 20, start_col + 1);
-  build_settings_line(line_buf, sizeof(line_buf), "Color", color_str, box_width);
-  APPEND("%s", line_buf);
-
-  APPEND("\033[%d;%dH", start_row + 21, start_col + 1);
-  build_settings_line(line_buf, sizeof(line_buf), "Render", render_str, box_width);
-  APPEND("%s", line_buf);
-
-  APPEND("\033[%d;%dH", start_row + 22, start_col + 1);
-  build_settings_line(line_buf, sizeof(line_buf), "Flip", flip_text, box_width);
-  APPEND("%s", line_buf);
+  append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
+                      "Audio", audio_text);
+  append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
+                      "Volume", volume_bar);
+  append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
+                      "Color", color_str);
+  append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
+                      "Render", render_str);
+  append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
+                      "Flip", flip_text);
 
   // Blank line before footer
-  APPEND("\033[%d;%dH", start_row + 23, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "", box_width);
-  APPEND("%s", line_buf);
+  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, "");
 
   // Footer
-  APPEND("\033[%d;%dH", start_row + 24, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "Press ? to close", box_width);
-  APPEND("%s", line_buf);
+  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
+                  "Press ? to close");
 
   // Bottom border
-  APPEND("\033[%d;%dH", start_row + 25, start_col + 1);
-  border_buf[0] = '\0'; strcat(border_buf, "╚"); for (int i = 1; i < box_width - 1; i++) strcat(border_buf, "═"); strcat(border_buf, "╝"); APPEND("%s", border_buf);
-#else
-  APPEND("\033[%d;%dH", start_row + 17, start_col + 1);
-  build_settings_line(line_buf, sizeof(line_buf), "Audio", audio_text, box_width);
-  APPEND("%s", line_buf);
-
-  APPEND("\033[%d;%dH", start_row + 18, start_col + 1);
-  build_settings_line(line_buf, sizeof(line_buf), "Volume", volume_bar, box_width);
-  APPEND("%s", line_buf);
-
-  APPEND("\033[%d;%dH", start_row + 19, start_col + 1);
-  build_settings_line(line_buf, sizeof(line_buf), "Color", color_str, box_width);
-  APPEND("%s", line_buf);
-
-  APPEND("\033[%d;%dH", start_row + 20, start_col + 1);
-  build_settings_line(line_buf, sizeof(line_buf), "Render", render_str, box_width);
-  APPEND("%s", line_buf);
-
-  APPEND("\033[%d;%dH", start_row + 21, start_col + 1);
-  build_settings_line(line_buf, sizeof(line_buf), "Flip", flip_text, box_width);
-  APPEND("%s", line_buf);
-
-  // Blank line before footer
-  APPEND("\033[%d;%dH", start_row + 22, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "", box_width);
-  APPEND("%s", line_buf);
-
-  // Footer
-  APPEND("\033[%d;%dH", start_row + 23, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "Press ? to close", box_width);
-  APPEND("%s", line_buf);
-
-  // Bottom border
-  APPEND("\033[%d;%dH", start_row + 24, start_col + 1);
-  border_buf[0] = '\0'; strcat(border_buf, "╚"); for (int i = 1; i < box_width - 1; i++) strcat(border_buf, "═"); strcat(border_buf, "╝"); APPEND("%s", border_buf);
-#endif
-
-  // Cursor positioning after rendering
-#ifndef NDEBUG
-  APPEND("\033[%d;%dH", start_row + 26, start_col + 1);
-#else
-  APPEND("\033[%d;%dH", start_row + 25, start_col + 1);
-#endif
+  int remaining_buf = BUFFER_SIZE - buf_pos;
+  int written = snprintf(buffer + buf_pos, remaining_buf, "\033[%d;%dH",
+                        start_row + current_row, start_col + 1);
+  if (written > 0) {
+    buf_pos += written;
+  }
+  border_buf[0] = '\0';
+  strcat(border_buf, "╚");
+  for (int i = 1; i < box_width - 1; i++) strcat(border_buf, "═");
+  strcat(border_buf, "╝");
+  written = snprintf(buffer + buf_pos, BUFFER_SIZE - buf_pos, "%s", border_buf);
+  if (written > 0) {
+    buf_pos += written;
+  }
 
 #undef APPEND
 
