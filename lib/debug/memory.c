@@ -790,7 +790,7 @@ void debug_memory_report(void) {
       } \
     } while (0)
 
-    APPEND_REPORT("\n=== Memory Report ===\n");
+    APPEND_REPORT("=== Memory Report ===\n");
 
     size_t total_allocated = atomic_load(&g_mem.total_allocated);
     size_t total_freed = atomic_load(&g_mem.total_freed);
