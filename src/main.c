@@ -300,6 +300,7 @@ static void on_exit_show_cursor(void) {
  * ============================================================================ */
 
 int main(int argc, char *argv[]) {
+
   // Set global argc/argv for early argv inspection (e.g., in terminal.c)
   g_argc = argc;
   g_argv = argv;
@@ -665,8 +666,8 @@ int main(int argc, char *argv[]) {
 #ifndef NDEBUG
   // Handle --debug-state (debug builds only)
   // Sleep for specified time AFTER mode initialization so locks are created
-  if (IS_OPTION_EXPLICIT(debug_state_time, opts) && opts->debug_state_time > 0.0) {
-    log_info("Will print sync state after %f seconds", opts->debug_state_time);
+  if (IS_OPTION_EXPLICIT(debug_sync_state_time, opts) && opts->debug_sync_state_time > 0.0) {
+    log_info("Will print sync state after %f seconds", opts->debug_sync_state_time);
   }
 #endif
 
@@ -774,9 +775,9 @@ int main(int argc, char *argv[]) {
 #ifndef NDEBUG
   // Handle --debug-state (debug builds only)
   // Schedule debug state printing on the debug thread after specified delay
-  if (IS_OPTION_EXPLICIT(debug_state_time, opts) && opts->debug_state_time > 0.0) {
-    log_info("Scheduling sync state print after %f seconds on debug thread", opts->debug_state_time);
-    uint64_t delay_ns = (uint64_t)(opts->debug_state_time * NS_PER_SEC_INT);
+  if (IS_OPTION_EXPLICIT(debug_sync_state_time, opts) && opts->debug_sync_state_time > 0.0) {
+    log_info("Scheduling sync state print after %f seconds on debug thread", opts->debug_sync_state_time);
+    uint64_t delay_ns = (uint64_t)(opts->debug_sync_state_time * NS_PER_SEC_INT);
     debug_sync_print_state_delayed(delay_ns);
   }
 

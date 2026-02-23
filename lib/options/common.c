@@ -707,7 +707,6 @@ void usage(FILE *desc, asciichat_mode_t mode) {
   }
 
   options_print_help_for_mode(config, mode, metadata->program_name, metadata->description, desc);
-
   options_config_destroy(config);
 }
 

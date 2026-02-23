@@ -171,8 +171,9 @@ static alloc_site_t *get_or_create_site(const char *file, int line) {
   memset(site, 0, sizeof(alloc_site_t));
   SAFE_STRNCPY(site->key, key, sizeof(site->key) - 1);
 
-  // Capture and symbolize backtrace for this site
-  backtrace_capture_and_symbolize(&site->backtrace);
+  // Capture backtrace addresses only (fast)
+  // Symbolization is deferred to exit time (memory report) to avoid 50ms+ per site during startup
+  backtrace_capture(&site->backtrace);
 
   // Add to hash table
   HASH_ADD_STR(g_site_cache, key, site);
@@ -979,6 +980,9 @@ void debug_memory_report(void) {
                                                  colored_string(LOG_COLOR_FATAL, line_str), tid,
                                                  colored_string(size_color, count_str),
                                                  colored_string(size_color, pretty_bytes)));
+
+          // Symbolize backtrace now if it hasn't been symbolized yet
+          backtrace_symbolize(&site->backtrace);
 
           // Print backtrace if site has symbols
           if (site->backtrace.symbols != NULL && site->backtrace.count > 0) {

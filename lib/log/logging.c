@@ -579,6 +579,7 @@ void log_init(const char *filename, log_level_t level, bool force_stderr, bool u
   if (!lifecycle_is_initialized(&g_log.lifecycle)) {
     lifecycle_init(&g_log.lifecycle, "logging");
   }
+
   atomic_store(&g_log.terminal_output_enabled, preserve_terminal_output);
 
   // Reset terminal detection if needed
@@ -692,6 +693,7 @@ asciichat_error_t log_set_format(const char *format_str, bool console_only) {
 
   /* Parse the format string (always parse, never skip) */
   log_template_t *parsed_format = log_template_parse(format_to_use, false);
+
   if (!parsed_format) {
     log_error("Failed to parse log format: %s", format_to_use);
     return SET_ERRNO(ERROR_INVALID_STATE, "Invalid log format string");
@@ -700,6 +702,7 @@ asciichat_error_t log_set_format(const char *format_str, bool console_only) {
   /* If console_only is true, we also need the default format for file output */
   if (console_only && is_custom) {
     log_template_t *default_format = log_template_parse(OPT_LOG_TEMPLATE_DEFAULT, false);
+
     if (!default_format) {
       log_template_free(parsed_format);
       log_error("Failed to parse default log format");

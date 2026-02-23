@@ -1702,8 +1702,8 @@ asciichat_error_t options_init(int argc, char **argv) {
       opts.status_screen_explicitly_set = true;
     }
 #ifndef NDEBUG
-    if (mode_argv[i] && (strcmp(mode_argv[i], "--debug-state") == 0 || strncmp(mode_argv[i], "--debug-state=", 14) == 0)) {
-      opts.debug_state_time_explicit = true;
+    if (mode_argv[i] && (strcmp(mode_argv[i], "--sync-state") == 0 || strncmp(mode_argv[i], "--sync-state=", 13) == 0)) {
+      opts.debug_sync_state_time_explicit = true;
     }
 #endif
   }
