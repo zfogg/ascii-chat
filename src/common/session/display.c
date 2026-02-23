@@ -263,12 +263,8 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   if (strlen(render_file_opt) > 0 && strcmp(render_file_opt, "-") != 0) {
     int width = GET_OPTION(width);
     int height = GET_OPTION(height);
-    asciichat_error_t rf_err = render_file_create(
-        render_file_opt,
-        width, height,
-        GET_OPTION(fps),
-        GET_OPTION(render_theme),
-        &ctx->render_file);
+    asciichat_error_t rf_err = render_file_create(render_file_opt, width, height, GET_OPTION(fps),
+                                                  GET_OPTION(render_theme), &ctx->render_file);
     if (rf_err != ASCIICHAT_OK)
       log_warn("render-file: init failed — file output disabled");
     else
@@ -329,7 +325,7 @@ void session_display_set_stdin_reader(session_display_ctx_t *ctx, void *reader) 
   ctx->stdin_reader = (stdin_frame_reader_t *)reader;
   log_debug("session_display: stdin_reader set");
 #else
-  (void)reader;  // Unused on Windows
+  (void)reader; // Unused on Windows
 #endif
 }
 
@@ -579,8 +575,8 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
 void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_data) {
   static int call_count = 0;
   if (call_count++ < 5) {
-    log_info("session_display_render_frame: CALLED - ctx=%p render_file=%p frame_len=%zu",
-        (void*)ctx, (void*)(ctx ? ctx->render_file : NULL), frame_data ? strlen(frame_data) : 0);
+    log_info("session_display_render_frame: CALLED - ctx=%p render_file=%p frame_len=%zu", (void *)ctx,
+             (void *)(ctx ? ctx->render_file : NULL), frame_data ? strlen(frame_data) : 0);
   }
 
   if (!ctx || !ctx->initialized) {
@@ -746,8 +742,7 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
   if (ctx->render_file) {
     asciichat_error_t fe = render_file_write_frame(ctx->render_file, frame_data);
     if (fe != ASCIICHAT_OK)
-      log_warn_every(5 * NS_PER_SEC_INT, "render-file: encode failed (%s)",
-                    asciichat_error_string(fe));
+      log_warn_every(5 * NS_PER_SEC_INT, "render-file: encode failed (%s)", asciichat_error_string(fe));
   }
 #endif
 
@@ -896,6 +891,10 @@ void session_display_toggle_help(session_display_ctx_t *ctx) {
     return;
   }
 
+  if (!terminal_is_interactive() || GET_OPTION(snapshot_mode)) {
+    return;
+  }
+
   bool current = atomic_load(&ctx->help_screen_active);
   atomic_store(&ctx->help_screen_active, !current);
 }
@@ -906,6 +905,10 @@ void session_display_toggle_help(session_display_ctx_t *ctx) {
 bool session_display_is_help_active(session_display_ctx_t *ctx) {
   if (!ctx) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Session display context is NULL");
+    return false;
+  }
+
+  if (!terminal_is_interactive() || GET_OPTION(snapshot_mode)) {
     return false;
   }
 
