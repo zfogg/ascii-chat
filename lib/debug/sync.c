@@ -359,7 +359,11 @@ void debug_sync_destroy(void) {
 }
 
 void debug_sync_cleanup_thread(void) {
+    // Signal the thread to wake up immediately instead of waiting for 100ms timeout
+    mutex_lock(&g_debug_state_request.mutex);
     g_debug_state_request.should_exit = true;
+    cond_signal(&g_debug_state_request.cond);
+    mutex_unlock(&g_debug_state_request.mutex);
     asciichat_thread_join(&g_debug_thread, NULL);
 }
 

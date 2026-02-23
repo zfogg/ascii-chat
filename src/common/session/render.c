@@ -295,9 +295,14 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         break; // Exit retry loop
       } while (true);
 
-      // If we still don't have an image after retries, skip this frame and continue
+      // If we still don't have an image after retries, check if we've reached end of file
       // (This happens during network latency or when prefetch thread is catching up)
       if (!image) {
+        // Exit main render loop if we've reached end of media file
+        if (session_capture_at_end(capture)) {
+          log_debug("[SHUTDOWN] Media EOF detected, exiting render loop");
+          break;
+        }
         continue;
       }
 

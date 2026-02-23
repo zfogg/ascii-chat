@@ -1104,8 +1104,11 @@ void debug_memory_trigger_report(void) {
  * @brief Stop the memory debug thread
  */
 void debug_memory_thread_cleanup(void) {
+  // Signal the thread to wake up immediately instead of waiting for 100ms timeout
+  mutex_lock(&g_debug_memory_request.mutex);
   g_debug_memory_request.should_exit = true;
   cond_signal(&g_debug_memory_request.cond);
+  mutex_unlock(&g_debug_memory_request.mutex);
   asciichat_thread_join(&g_debug_memory_thread, NULL);
 }
 
