@@ -21,9 +21,10 @@ void backtrace_capture(backtrace_t *bt) {
 }
 
 void backtrace_symbolize(backtrace_t *bt) {
-  if (!bt || bt->symbols != NULL) {
-    return; // Already symbolized or invalid
+  if (!bt || bt->tried_symbolize) {
+    return; // Already tried or invalid (don't try twice)
   }
+  bt->tried_symbolize = true;
   bt->symbols = platform_backtrace_symbols(bt->ptrs, bt->count);
 }
 

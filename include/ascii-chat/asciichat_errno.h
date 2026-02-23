@@ -99,6 +99,7 @@ typedef struct {
   void *ptrs[32];    ///< Raw return addresses
   char **symbols;    ///< Symbolized strings (NULL until backtrace_symbolize called)
   int count;         ///< Number of frames captured
+  bool tried_symbolize;  ///< Track if we've already tried to symbolize (prevents duplicate work)
 } backtrace_t;
 
 /**

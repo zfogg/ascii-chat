@@ -178,6 +178,10 @@ void asciichat_shared_destroy(void) {
   terminal_stop_resize_detection();
 
 #ifndef NDEBUG
+  // Memory debug thread - must join before memory report
+  extern void debug_memory_thread_cleanup(void);
+  debug_memory_thread_cleanup();
+
   // Lock debug thread - must join before any lock cleanup
   extern void debug_sync_cleanup_thread(void);
   debug_sync_cleanup_thread();

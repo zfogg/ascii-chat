@@ -923,9 +923,16 @@ void debug_memory_report(void) {
           goto skip_allocations_list;
         }
 
-        // Iterate site cache, printing each site with live allocations
+        // Iterate site cache with timeout (max 500ms to avoid hanging during shutdown)
+        uint64_t iteration_start_ns = time_get_ns();
+        const uint64_t max_iteration_ns = 500000000; // 500ms timeout
         alloc_site_t *site, *tmp;
         HASH_ITER(hh, g_site_cache, site, tmp) {
+          // Check timeout every iteration
+          if (time_elapsed_ns(iteration_start_ns, time_get_ns()) > max_iteration_ns) {
+            SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "  (printing truncated - timeout)\n"));
+            break;
+          }
           // Skip sites with no live allocations
           if (site->live_count == 0) {
             continue;
@@ -980,11 +987,11 @@ void debug_memory_report(void) {
                                                  colored_string(LOG_COLOR_FATAL, line_str), tid,
                                                  colored_string(size_color, count_str),
                                                  colored_string(size_color, pretty_bytes)));
+          fflush(stderr);
 
-          // Symbolize backtrace now if it hasn't been symbolized yet
-          backtrace_symbolize(&site->backtrace);
-
-          // Print backtrace if site has symbols
+          // Don't synchronously symbolize backtraces during memory report - symbolization is slow
+          // and can cause hangs during shutdown. Instead, backtraces will be symbolized asynchronously
+          // by the debug sync thread. Just print whatever symbols are available.
           if (site->backtrace.symbols != NULL && site->backtrace.count > 0) {
             SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "    Backtrace (%d frames):\n", site->backtrace.count));
             for (int i = 0; i < site->backtrace.count; i++) {
