@@ -153,8 +153,11 @@ static void mutex_iter_callback(uintptr_t key, const char *name, void *user_data
     char timing_str[256] = {0};
     format_mutex_timing(mutex, timing_str, sizeof(timing_str));
 
+    // Always print mutex info, even if timing_str is empty (shows "never used")
     if (timing_str[0]) {
         log_info("Mutex %s (0x%tx):\n%s", name, (ptrdiff_t)key, timing_str);
+    } else {
+        log_info("Mutex %s (0x%tx): [never locked]", name, (ptrdiff_t)key);
     }
 }
 
@@ -170,8 +173,11 @@ static void rwlock_iter_callback(uintptr_t key, const char *name, void *user_dat
     char timing_str[512] = {0};
     format_rwlock_timing(rwlock, timing_str, sizeof(timing_str));
 
+    // Always print rwlock info, even if timing_str is empty (shows "never used")
     if (timing_str[0]) {
         log_info("RWLock %s (0x%tx):\n%s", name, (ptrdiff_t)key, timing_str);
+    } else {
+        log_info("RWLock %s (0x%tx): [never locked]", name, (ptrdiff_t)key);
     }
 }
 
@@ -187,8 +193,11 @@ static void cond_iter_callback(uintptr_t key, const char *name, void *user_data)
     char timing_str[512] = {0};
     format_cond_timing(cond, timing_str, sizeof(timing_str));
 
+    // Always print condition variable info, even if timing_str is empty (shows "never used")
     if (timing_str[0]) {
         log_info("Cond %s (0x%tx):\n%s", name, (ptrdiff_t)key, timing_str);
+    } else {
+        log_info("Cond %s (0x%tx): [never signaled]", name, (ptrdiff_t)key);
     }
 }
 
@@ -198,6 +207,9 @@ static void cond_iter_callback(uintptr_t key, const char *name, void *user_data)
 
 void debug_sync_print_mutex_state(void) {
     log_info("=== Mutex Timing State ===");
+    // TODO: Debug why mutexes aren't being registered. In theory, every mutex
+    // created with mutex_init(mutex, "name") should call NAMED_REGISTER(mutex, "name", "mutex")
+    // which should add it to the named registry for inspection.
     named_registry_for_each(mutex_iter_callback, NULL);
     log_info("=== End Mutex Timing State ===");
 }
