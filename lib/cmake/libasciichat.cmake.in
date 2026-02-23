@@ -1,0 +1,186 @@
+# ascii-chat CMake Package Config
+#
+# Usage:
+#   find_package(ascii-chat REQUIRED)
+#   target_link_libraries(your-target PRIVATE ascii-chat::shared)  # dynamic
+#   target_link_libraries(your-target PRIVATE ascii-chat::static)  # static
+#
+# Targets:
+#   ascii-chat::shared - Shared library
+#   ascii-chat::static - Static library
+#
+# Required dependencies (install via package manager):
+#   libsodium, zstd, portaudio, opus, mimalloc
+#
+# Bundled in libasciichat.a (not required to install):
+#   BearSSL, WebRTC AEC3
+
+cmake_minimum_required(VERSION 3.16)
+
+# Compute install prefix from this file's location
+# Config is installed to lib/cmake/ascii-chat/ascii-chat-config.cmake
+get_filename_component(_IMPORT_PREFIX "${CMAKE_CURRENT_LIST_DIR}/../../" ABSOLUTE)
+
+set(_INCLUDE_DIRS "${_IMPORT_PREFIX}/include/ascii-chat")
+
+# =============================================================================
+# ascii-chat::shared - Dynamic library
+# =============================================================================
+if(NOT TARGET ascii-chat::shared)
+    add_library(ascii-chat::shared SHARED IMPORTED)
+    set_target_properties(ascii-chat::shared PROPERTIES
+        IMPORTED_LOCATION "${_IMPORT_PREFIX}/lib/libasciichat@CMAKE_SHARED_LIBRARY_SUFFIX@"
+        IMPORTED_SONAME "libasciichat@CMAKE_SHARED_LIBRARY_SUFFIX@"
+        VERSION "@ASCIICHAT_LIB_VERSION@"
+        SOVERSION "@ASCIICHAT_LIB_VERSION_MAJOR@"
+        INTERFACE_INCLUDE_DIRECTORIES "${_INCLUDE_DIRS}"
+    )
+
+    # Shared library needs runtime dependencies
+    find_package(PkgConfig QUIET)
+    if(PkgConfig_FOUND)
+        pkg_check_modules(_LIBSODIUM QUIET IMPORTED_TARGET libsodium)
+        pkg_check_modules(_ZSTD QUIET IMPORTED_TARGET libzstd)
+        pkg_check_modules(_PORTAUDIO QUIET IMPORTED_TARGET portaudio-2.0)
+        pkg_check_modules(_OPUS QUIET IMPORTED_TARGET opus)
+        pkg_check_modules(_MIMALLOC QUIET IMPORTED_TARGET mimalloc)
+
+        if(_LIBSODIUM_FOUND)
+            set_property(TARGET ascii-chat::shared APPEND PROPERTY
+                INTERFACE_LINK_LIBRARIES PkgConfig::_LIBSODIUM)
+        endif()
+        if(_ZSTD_FOUND)
+            set_property(TARGET ascii-chat::shared APPEND PROPERTY
+                INTERFACE_LINK_LIBRARIES PkgConfig::_ZSTD)
+        endif()
+        if(_PORTAUDIO_FOUND)
+            set_property(TARGET ascii-chat::shared APPEND PROPERTY
+                INTERFACE_LINK_LIBRARIES PkgConfig::_PORTAUDIO)
+        endif()
+        if(_OPUS_FOUND)
+            set_property(TARGET ascii-chat::shared APPEND PROPERTY
+                INTERFACE_LINK_LIBRARIES PkgConfig::_OPUS)
+        endif()
+        if(_MIMALLOC_FOUND)
+            set_property(TARGET ascii-chat::shared APPEND PROPERTY
+                INTERFACE_LINK_LIBRARIES PkgConfig::_MIMALLOC)
+        endif()
+    else()
+        # Fallback: try to find libraries without pkg-config
+        find_library(_LIBSODIUM_LIB sodium REQUIRED)
+        find_library(_ZSTD_LIB zstd REQUIRED)
+        find_library(_PORTAUDIO_LIB portaudio REQUIRED)
+        find_library(_OPUS_LIB opus REQUIRED)
+        find_library(_MIMALLOC_LIB mimalloc REQUIRED)
+
+        set_property(TARGET ascii-chat::shared APPEND PROPERTY
+            INTERFACE_LINK_LIBRARIES ${_LIBSODIUM_LIB} ${_ZSTD_LIB} ${_PORTAUDIO_LIB} ${_OPUS_LIB} ${_MIMALLOC_LIB}
+        )
+    endif()
+endif()
+
+# =============================================================================
+# ascii-chat::static - Static library
+# =============================================================================
+# Bundled: BearSSL, WebRTC AEC3 (baked into the archive)
+# Required: libsodium, zstd, portaudio, opus, mimalloc (install via package manager)
+if(NOT TARGET ascii-chat::static)
+    add_library(ascii-chat::static STATIC IMPORTED)
+    set_target_properties(ascii-chat::static PROPERTIES
+        IMPORTED_LOCATION "${_IMPORT_PREFIX}/lib/libasciichat.a"
+        VERSION "@ASCIICHAT_LIB_VERSION@"
+        INTERFACE_INCLUDE_DIRECTORIES "${_INCLUDE_DIRS}"
+    )
+
+    # External dependencies - users must install these
+    find_package(PkgConfig QUIET)
+    if(PkgConfig_FOUND)
+        pkg_check_modules(_LIBSODIUM QUIET IMPORTED_TARGET libsodium)
+        pkg_check_modules(_ZSTD QUIET IMPORTED_TARGET libzstd)
+        pkg_check_modules(_PORTAUDIO QUIET IMPORTED_TARGET portaudio-2.0)
+        pkg_check_modules(_OPUS QUIET IMPORTED_TARGET opus)
+        pkg_check_modules(_MIMALLOC QUIET IMPORTED_TARGET mimalloc)
+
+        if(_LIBSODIUM_FOUND)
+            set_property(TARGET ascii-chat::static APPEND PROPERTY
+                INTERFACE_LINK_LIBRARIES PkgConfig::_LIBSODIUM)
+        endif()
+        if(_ZSTD_FOUND)
+            set_property(TARGET ascii-chat::static APPEND PROPERTY
+                INTERFACE_LINK_LIBRARIES PkgConfig::_ZSTD)
+        endif()
+        if(_PORTAUDIO_FOUND)
+            set_property(TARGET ascii-chat::static APPEND PROPERTY
+                INTERFACE_LINK_LIBRARIES PkgConfig::_PORTAUDIO)
+        endif()
+        if(_OPUS_FOUND)
+            set_property(TARGET ascii-chat::static APPEND PROPERTY
+                INTERFACE_LINK_LIBRARIES PkgConfig::_OPUS)
+        endif()
+        if(_MIMALLOC_FOUND)
+            set_property(TARGET ascii-chat::static APPEND PROPERTY
+                INTERFACE_LINK_LIBRARIES PkgConfig::_MIMALLOC)
+        endif()
+    else()
+        # Fallback: try to find libraries without pkg-config
+        find_library(_LIBSODIUM_LIB sodium REQUIRED)
+        find_library(_ZSTD_LIB zstd REQUIRED)
+        find_library(_PORTAUDIO_LIB portaudio REQUIRED)
+        find_library(_OPUS_LIB opus REQUIRED)
+        find_library(_MIMALLOC_LIB mimalloc REQUIRED)
+
+        set_property(TARGET ascii-chat::static APPEND PROPERTY
+            INTERFACE_LINK_LIBRARIES ${_LIBSODIUM_LIB} ${_ZSTD_LIB} ${_PORTAUDIO_LIB} ${_OPUS_LIB} ${_MIMALLOC_LIB}
+        )
+    endif()
+
+    # System libraries
+    find_package(Threads QUIET)
+    if(Threads_FOUND)
+        set_property(TARGET ascii-chat::static APPEND PROPERTY
+            INTERFACE_LINK_LIBRARIES Threads::Threads
+        )
+    endif()
+
+    # Platform-specific system libraries
+    if(APPLE)
+        set_property(TARGET ascii-chat::static APPEND PROPERTY
+            INTERFACE_LINK_LIBRARIES
+                "-framework Foundation"
+                "-framework AVFoundation"
+                "-framework CoreMedia"
+                "-framework CoreVideo"
+                "-framework CoreAudio"
+                "-framework AudioUnit"
+                "-framework AudioToolbox"
+                "-framework CoreServices"
+                c++
+        )
+    elseif(UNIX)
+        set_property(TARGET ascii-chat::static APPEND PROPERTY
+            INTERFACE_LINK_LIBRARIES m dl stdc++
+        )
+    endif()
+endif()
+
+# Package info
+set(ascii-chat_FOUND TRUE)
+set(ascii-chat_VERSION "@PROJECT_VERSION@")
+set(ascii-chat_INCLUDE_DIRS ${_INCLUDE_DIRS})
+
+# Version compatibility checking
+if(DEFINED ascii-chat_FIND_VERSION)
+    if(ascii-chat_VERSION VERSION_LESS ascii-chat_FIND_VERSION)
+        set(ascii-chat_FOUND FALSE)
+        if(ascii-chat_FIND_REQUIRED)
+            message(FATAL_ERROR "ascii-chat version ${ascii-chat_VERSION} is less than required version ${ascii-chat_FIND_VERSION}")
+        endif()
+    endif()
+endif()
+
+unset(_IMPORT_PREFIX)
+unset(_INCLUDE_DIRS)
+
+if(NOT ascii-chat_FIND_QUIETLY)
+    message(STATUS "Found ascii-chat: ${ascii-chat_VERSION}")
+endif()
