@@ -93,46 +93,6 @@ static const char *render_mode_to_string(int mode) {
   }
 }
 
-/**
- * @brief Truncate UTF-8 string to fit within max display width
- *
- * @param input Input string (may be UTF-8)
- * @param output Output buffer for truncated string
- * @param output_size Size of output buffer
- * @param max_width Maximum display width in columns
- */
-static void truncate_to_width(const char *input, char *output, size_t output_size, int max_width) {
-  if (!input || !output || output_size < 2) {
-    if (output && output_size > 0) output[0] = '\0';
-    return;
-  }
-
-  // Copy input to output first
-  int input_len = strlen(input);
-  if (input_len >= (int)output_size) {
-    input_len = output_size - 1;
-  }
-  memcpy(output, input, input_len);
-  output[input_len] = '\0';
-
-  // Check if truncation is needed
-  int current_width = utf8_display_width(output);
-  if (current_width <= max_width) {
-    return;  // Already fits
-  }
-
-  // Truncate byte by byte, checking display width at each step
-  for (int i = input_len - 1; i > 0; i--) {
-    output[i] = '\0';
-    current_width = utf8_display_width(output);
-    if (current_width <= max_width) {
-      return;  // Found the right length
-    }
-  }
-
-  // Fallback: just one character or empty
-  output[0] = '\0';
-}
 
 /**
  * @brief Build a help screen line with UTF-8 width-aware padding and truncation
@@ -154,9 +114,9 @@ static void build_help_line(char *output, size_t output_size, const char *conten
   int content_available = max_width - 4;
   if (content_available < 1) content_available = 1;
 
-  // Truncate content if needed
+  // Truncate content if needed (with ellipsis indicator)
   char truncated[256];
-  truncate_to_width(content, truncated, sizeof(truncated), content_available);
+  truncate_utf8_with_ellipsis(content, truncated, sizeof(truncated), content_available);
 
   int content_width = utf8_display_width(truncated);
   int padding = content_available - content_width;
@@ -222,9 +182,9 @@ static void build_settings_line(char *output, size_t output_size, const char *la
   int available = max_width - fixed_prefix - right_border;
   if (available < 4) available = 4;  // Minimum space for truncated value
 
-  // Truncate value if needed
+  // Truncate value if needed (with ellipsis indicator)
   char truncated_value[256];
-  truncate_to_width(value, truncated_value, sizeof(truncated_value), available);
+  truncate_utf8_with_ellipsis(value, truncated_value, sizeof(truncated_value), available);
 
   int value_width = utf8_display_width(truncated_value);
   int padding = available - value_width;

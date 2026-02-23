@@ -15,6 +15,7 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/util/ip.h>
+#include <ascii-chat/util/string.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/common.h>
 #include <stdio.h>
@@ -87,52 +88,6 @@ asciichat_error_t server_status_gather(tcp_server_t *server, const char *session
  * Truncates a plain text string to fit within max_display_width, with ellipsis.
  * Tests progressively shorter substrings until one fits.
  */
-static void truncate_to_fit(const char *src, int max_display_width, char *dst, size_t dst_size) {
-  if (!src || !dst || max_display_width < 0) {
-    if (dst && dst_size > 0) {
-      dst[0] = '\0';
-    }
-    return;
-  }
-
-  // Check if it fits without truncation
-  int width = display_width(src);
-  if (width <= max_display_width) {
-    SAFE_STRNCPY(dst, src, dst_size);
-    return;
-  }
-
-  // Reserve 3 characters for ellipsis
-  int target_width = max_display_width - 3;
-  if (target_width <= 0) {
-    dst[0] = '\0';
-    return;
-  }
-
-  // Try progressively shorter versions until one fits
-  size_t src_len = strlen(src);
-  for (size_t truncate_at = src_len; truncate_at > 0; truncate_at--) {
-    // Create test string with this length
-    char test_buf[512];
-    if (truncate_at >= sizeof(test_buf) - 4) {
-      continue;
-    }
-
-    memcpy(test_buf, src, truncate_at);
-    test_buf[truncate_at] = '\0';
-
-    // Check if this fits
-    if (display_width(test_buf) <= target_width) {
-      // Found a length that fits - copy it and add ellipsis
-      safe_snprintf(dst, dst_size, "%.*s...", (int)truncate_at, src);
-      return;
-    }
-  }
-
-  // Fallback: just ellipsis if nothing else fits
-  SAFE_STRNCPY(dst, "...", dst_size);
-}
-
 /**
  * @brief Render server status header (callback for terminal_screen)
  *
@@ -174,7 +129,7 @@ static void render_server_status_header(terminal_size_t term_size, void *user_da
            status->connected_count, uptime_str);
 
   // Truncate if needed
-  truncate_to_fit(status_line, term_size.cols - 2, status_line_truncated, sizeof(status_line_truncated));
+  truncate_utf8_with_ellipsis(status_line, status_line_truncated, sizeof(status_line_truncated), term_size.cols - 2);
   snprintf(status_line_colored, sizeof(status_line_colored), "\033[1;36m%s\033[0m", status_line_truncated);
 
   int padding = display_center_horizontal(status_line_truncated, term_size.cols);
@@ -218,7 +173,7 @@ static void render_server_status_header(terminal_size_t term_size, void *user_da
   }
 
   // Truncate if needed
-  truncate_to_fit(addr_line, term_size.cols - 2, addr_line_truncated, sizeof(addr_line_truncated));
+  truncate_utf8_with_ellipsis(addr_line, addr_line_truncated, sizeof(addr_line_truncated), term_size.cols - 2);
 
   int addr_padding = display_center_horizontal(addr_line_truncated, term_size.cols);
   for (int i = 0; i < addr_padding; i++) {

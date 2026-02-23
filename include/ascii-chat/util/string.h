@@ -257,4 +257,31 @@ bool escape_path_for_shell(const char *path, char *out_buffer, size_t out_buffer
  */
 const char *colored_string(log_color_t color, const char *text);
 
+/**
+ * @brief Truncate UTF-8 string to fit within max display width, adding ellipsis if truncated
+ *
+ * Truncates a UTF-8 string to fit within a maximum display width (accounting for
+ * multi-byte characters), and appends "..." if truncation occurred.
+ *
+ * BEHAVIOR:
+ * - If string fits within max_width: Returns truncated string without ellipsis
+ * - If string exceeds max_width: Returns truncated string with "..." appended
+ * - Properly handles UTF-8 multi-byte characters (won't cut in the middle)
+ *
+ * EXAMPLE:
+ * @code
+ * char buf[256];
+ * truncate_utf8_with_ellipsis("Hello, World!", buf, sizeof(buf), 10);
+ * // buf now contains "Hello, ..." (10 columns max, including ellipsis)
+ * @endcode
+ *
+ * @param input Input string (may be UTF-8)
+ * @param output Output buffer for truncated string
+ * @param output_size Size of output buffer
+ * @param max_width Maximum display width in columns (must account for "..." if truncating)
+ *
+ * @ingroup util
+ */
+void truncate_utf8_with_ellipsis(const char *input, char *output, size_t output_size, int max_width);
+
 /** @} */

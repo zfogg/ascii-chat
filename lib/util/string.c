@@ -318,3 +318,55 @@ const char *colored_string(log_color_t color, const char *text) {
   safe_snprintf(current_buf, COLORED_BUFFER_SIZE, "%s%s%s", color_code, text, reset_code);
   return current_buf;
 }
+
+void truncate_utf8_with_ellipsis(const char *input, char *output, size_t output_size, int max_width) {
+  if (!input || !output || output_size < 2) {
+    if (output && output_size > 0)
+      output[0] = '\0';
+    return;
+  }
+
+  // Copy input to output first
+  int input_len = strlen(input);
+  if (input_len >= (int)output_size) {
+    input_len = output_size - 1;
+  }
+  memcpy(output, input, input_len);
+  output[input_len] = '\0';
+
+  // Get display width of current string
+  int current_width = utf8_display_width(output);
+
+  // If it fits, we're done
+  if (current_width <= max_width) {
+    return;
+  }
+
+  // Need to truncate - reserve space for "..." (3 chars, 3 width)
+  int available_width = max_width - 3;
+  if (available_width <= 0) {
+    // No room for ellipsis, just show "..."
+    output[0] = '.';
+    output[1] = '.';
+    output[2] = '.';
+    output[3] = '\0';
+    return;
+  }
+
+  // Truncate byte by byte until we fit in available_width
+  for (int i = input_len - 1; i > 0; i--) {
+    output[i] = '\0';
+    current_width = utf8_display_width(output);
+    if (current_width <= available_width) {
+      // Found the right length - add ellipsis
+      strcat(output, "...");
+      return;
+    }
+  }
+
+  // Fallback: just "..."
+  output[0] = '.';
+  output[1] = '.';
+  output[2] = '.';
+  output[3] = '\0';
+}
