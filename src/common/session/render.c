@@ -149,18 +149,18 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         char *ascii_frame = NULL;
         asciichat_error_t stdin_err = stdin_frame_reader_next(stdin_reader, &ascii_frame);
         if (stdin_err != ASCIICHAT_OK) {
-          log_error("Failed to read stdin frame: %s", asciichat_error_string(stdin_err));
+          log_error_every(200 * MS_PER_SEC_INT, "Failed to read stdin frame: %s", asciichat_error_string(stdin_err));
           break; // Exit render loop on error
         }
 
         if (!ascii_frame) {
           // EOF reached - exit render loop
-          log_info("stdin_render_mode: EOF reached, exiting render loop");
+          log_info_every(200 * MS_PER_SEC_INT, "stdin_render_mode: EOF reached, exiting render loop");
           break;
         }
 
         frame_count++;
-        log_debug_every(US_PER_SEC_INT, "RENDER[%lu]: Read ASCII frame from stdin (%zu bytes)", frame_count,
+        log_debug_every(1 * NS_PER_SEC_INT, "RENDER[%lu]: Read ASCII frame from stdin (%zu bytes)", frame_count,
                         strlen(ascii_frame));
 
         // In stdin render mode, check if rendering to stdout or to file
@@ -210,13 +210,13 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       // Detect pause transition - mark initial frame as rendered so polling starts
       if (!was_paused && is_paused) {
         initial_paused_frame_rendered = true;
-        log_debug("Media paused, enabling keyboard polling");
+        log_debug_every(1 * NS_PER_SEC_INT, "Media paused, enabling keyboard polling");
       }
 
       // Detect unpause transition to reset flag
       if (was_paused && !is_paused) {
         initial_paused_frame_rendered = false;
-        log_debug("Media unpaused, resuming frame capture");
+        log_debug_every(1 * NS_PER_SEC_INT, "Media unpaused, resuming frame capture");
       }
       was_paused = is_paused;
 
@@ -256,13 +256,13 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
         log_debug_every(3 * US_PER_SEC_INT, "RENDER[%lu]: Starting frame read", frame_count);
         image = session_capture_read_frame(capture);
-        log_info("RENDER[%lu]: Frame read done, image=%p", frame_count, (void *)image);
+        log_info_every(1 * NS_PER_SEC_INT, "RENDER[%lu]: Frame read done, image=%p", frame_count, (void *)image);
         capture_elapsed_ns = time_elapsed_ns(capture_start_ns, time_get_ns());
 
         if (!image) {
           // Check if we've reached end of file for media sources
           if (session_capture_at_end(capture)) {
-            log_info("Media source reached end of file");
+            log_info_every(1 * NS_PER_SEC_INT, "Media source reached end of file");
             break; // Exit render loop - end of media
           }
 
@@ -327,7 +327,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         media_source_pause(source);
         is_paused = true;
         // Note: initial_paused_frame_rendered will be set in next iteration when pause is detected above
-        log_debug("Paused media source after first frame");
+        log_debug_every(1 * NS_PER_SEC_INT, "Paused media source after first frame");
       }
 
     } else {
@@ -350,7 +350,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     uint64_t conversion_elapsed_ns = post_convert_ns - pre_convert_ns;
 
     if (ascii_frame) {
-      log_info("render_loop: ascii_frame ready (len=%zu)", strlen(ascii_frame));
+      log_info_every(1 * NS_PER_SEC_INT, "render_loop: ascii_frame ready (len=%zu)", strlen(ascii_frame));
       // Detect when we have a paused frame (first frame after pausing)
       bool is_paused_frame = initial_paused_frame_rendered && is_paused;
 
@@ -369,7 +369,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         pre_render_ns = time_get_ns();
         START_TIMER("render_frame");
 
-        log_info("render_loop: calling session_display_render_frame - display=%p", (void *)display);
+        log_info_every(1 * NS_PER_SEC_INT, "render_loop: calling session_display_render_frame - display=%p",
+                       (void *)display);
         // Check if help screen is active - if so, render help instead of frame
         // Help screen is disabled in snapshot mode and non-interactive terminals (keyboard disabled)
         bool help_is_active = display && session_display_is_help_active(display);
@@ -378,7 +379,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         // When help closes, clear the screen before rendering ASCII art
         if (help_was_active && !help_is_active) {
           terminal_clear_screen();
-          log_debug("Cleared screen when transitioning from help to ASCII art");
+          log_debug_every(1 * NS_PER_SEC_INT, "Cleared screen when transitioning from help to ASCII art");
         }
 
         if (help_is_active) {
@@ -395,19 +396,14 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
         // Calculate total time from frame START (frame_start_ns) to render COMPLETE
         frame_to_render_ns = time_elapsed_ns(frame_start_ns, post_render_ns);
-        if (frame_count % 30 == 0) {
-          double total_frame_time_ms = (double)frame_to_render_ns / NS_PER_MS;
-          log_dev("ACTUAL_TIME[%lu]: Total frame time from start to render complete: %.1f ms", frame_count,
-                  total_frame_time_ms);
-        }
+        double total_frame_time_ms = (double)frame_to_render_ns / NS_PER_MS;
+        log_dev_every(5 * US_PER_SEC_INT, "ACTUAL_TIME[%lu]: Total frame time from start to render complete: %.1f ms",
+                      frame_count, total_frame_time_ms);
 
-        // Log render time every 30 frames
-        if (frame_count % 150 == 0) {
-          double conversion_ms = (double)conversion_elapsed_ns / NS_PER_MS;
-          double render_ms = (double)render_elapsed_ns / NS_PER_MS;
-          log_dev_every(5 * US_PER_SEC_INT, "PROFILE[%lu]: CONVERT=%.2f ms, RENDER=%.2f ms", frame_count, conversion_ms,
-                        render_ms);
-        }
+        double conversion_ms = (double)conversion_elapsed_ns / NS_PER_MS;
+        double render_ms = (double)render_elapsed_ns / NS_PER_MS;
+        log_dev_every(5 * US_PER_SEC_INT, "PROFILE[%lu]: CONVERT=%.2f ms, RENDER=%.2f ms", frame_count, conversion_ms,
+                      render_ms);
       }
 
       // Keyboard input polling (if enabled) - MUST come before snapshot exit check so help screen can be toggled
@@ -421,7 +417,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         if (keyboard_elapsed_ns >= 0.0) {
           char _duration_str[32];
           format_duration_ns(keyboard_elapsed_ns, _duration_str, sizeof(_duration_str));
-          log_dev("RENDER[%lu] Keyboard read complete (key=%d) in %s", (unsigned long)frame_count, key, _duration_str);
+          log_dev_every(1 * NS_PER_SEC_INT, "RENDER[%lu] Keyboard read complete (key=%d) in %s",
+                        (unsigned long)frame_count, key, _duration_str);
         }
         if (key != KEY_NONE) {
           // Check if interactive grep should handle this key
@@ -439,7 +436,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       if (snapshot_mode && !first_frame_rendered) {
         snapshot_start_time_ns = time_get_ns();
         first_frame_rendered = true;
-        log_debug("Snapshot mode: first frame rendered, timer started");
+        log_dev_every(1 * NS_PER_SEC_INT, "Snapshot mode: first frame rendered, timer started");
       }
 
       // Snapshot mode: check if delay has elapsed after rendering a frame
@@ -456,10 +453,10 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
           // We don't end frames with newlines so the next log would print on the same line as the frame's
           // last row without an \n here. We only need this \n in stdout in snapshot mode and when interactive,
           // so piped snapshots don't have a weird newline in stdout that they don't need.
-          if (GET_OPTION(snapshot_mode) && terminal_is_interactive()) {
+          if (snapshot_mode && terminal_is_interactive()) {
             printf("\n");
           }
-          log_info("Snapshot delay %.2f seconds elapsed, exiting", snapshot_delay);
+          log_info_every(1 * NS_PER_SEC_INT, "Snapshot delay %.2f seconds elapsed, exiting", snapshot_delay);
           snapshot_done = true;
         }
       }
@@ -492,7 +489,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
       // Log phase breakdown every 5 frames
       if (frame_count % 5 == 0) {
-        log_dev(
+        log_dev_every(
+            2 * NS_PER_SEC_INT,
             "PHASE_BREAKDOWN[%lu]: prestart=%llu ms, capture=%llu ms, convert=%llu ms, render=%llu ms (total=%llu ms)",
             frame_count, prestart_ms, capture_ms, convert_ms, render_ms, total_ms);
       }
@@ -523,8 +521,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         uint64_t frame_elapsed_ns = time_elapsed_ns(frame_start_ns, frame_end_ns);
         uint64_t frame_target_ns = NS_PER_SEC_INT / target_fps;
 
-        log_dev("RENDER[%lu] TIMING_TOTAL: frame_time_ms=%.2f target_ms=%.2f", frame_count,
-                (double)frame_elapsed_ns / NS_PER_MS, (double)frame_target_ns / NS_PER_MS);
+        log_dev_every(500 * NS_PER_MS_INT, "RENDER[%lu] TIMING_TOTAL: frame_time_ms=%.2f target_ms=%.2f", frame_count,
+                      (double)frame_elapsed_ns / NS_PER_MS, (double)frame_target_ns / NS_PER_MS);
 
         // Only sleep if we have time budget remaining
         // If already behind, skip sleep to catch up
@@ -544,14 +542,14 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
   // Re-enable console logging after rendering completes
   log_set_terminal_output(true);
-  if (!GET_OPTION(snapshot_mode) && terminal_is_interactive()) {
+  if (!snapshot_mode && terminal_is_interactive()) {
     printf("\n");
   }
 
   // Keyboard input cleanup (if it was initialized)
   if (keyboard_enabled) {
     keyboard_destroy();
-    log_debug("Keyboard input disabled");
+    log_debug_every(2 * NS_PER_SEC_INT, "Keyboard input disabled");
   }
 
   return ASCIICHAT_OK;
