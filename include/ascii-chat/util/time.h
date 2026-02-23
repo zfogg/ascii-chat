@@ -500,8 +500,6 @@ int time_pretty_now(int decimals, char *buffer, size_t buffer_size);
  *
  * @ingroup module_utilities
  */
-int time_human_readable(uint64_t nanoseconds, char *buffer, size_t buffer_size);
-
 /**
  * @brief Format elapsed time as human-readable relative duration with past/future support
  * @param nanoseconds Signed elapsed nanoseconds (negative for future times)
@@ -522,7 +520,7 @@ int time_human_readable(uint64_t nanoseconds, char *buffer, size_t buffer_size);
  *
  * @ingroup module_utilities
  */
-int time_human_readable_signed(int64_t nanoseconds, char *buffer, size_t buffer_size);
+int time_human_readable(int64_t nanoseconds, char *buffer, size_t buffer_size);
 
 /**
  * @brief Format current monotonic time as human-readable relative duration

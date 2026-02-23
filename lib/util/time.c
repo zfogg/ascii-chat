@@ -472,16 +472,7 @@ int time_pretty_now(int decimals, char *buffer, size_t buffer_size) {
 // Human-Readable Time Formatting (moment.js style)
 // ============================================================================
 
-int time_human_readable(uint64_t nanoseconds, char *buffer, size_t buffer_size) {
-  if (!buffer || buffer_size == 0) {
-    return -1;
-  }
-
-  // Delegate to signed version (always past times)
-  return time_human_readable_signed((int64_t)nanoseconds, buffer, buffer_size);
-}
-
-int time_human_readable_signed(int64_t nanoseconds, char *buffer, size_t buffer_size) {
+int time_human_readable(int64_t nanoseconds, char *buffer, size_t buffer_size) {
   if (!buffer || buffer_size == 0) {
     return -1;
   }
@@ -535,7 +526,7 @@ int time_human_readable_signed(int64_t nanoseconds, char *buffer, size_t buffer_
 
 int time_human_readable_now(char *buffer, size_t buffer_size) {
   int64_t ns = (int64_t)time_get_ns();
-  return time_human_readable_signed(ns, buffer, buffer_size);
+  return time_human_readable(ns, buffer, buffer_size);
 }
 
 // ============================================================================
