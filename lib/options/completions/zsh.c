@@ -53,24 +53,16 @@ static void zsh_write_option(FILE *output, const option_descriptor_t *opt) {
   const option_metadata_t *meta = options_registry_get_metadata(opt->long_name);
 
   // Build completion spec based on metadata
-  char completion_spec[2048] = "";
+  char completion_spec[512] = "";
   if (meta) {
     if (meta->input_type == OPTION_INPUT_ENUM && meta->enum_values && meta->enum_values[0] != NULL) {
-      // Enum completion with descriptions: "(value1[desc1] value2[desc2] ...)"
-      // Zsh will display descriptions when autocompleting
+      // Enum completion: "(value1 value2 value3)"
       size_t pos = 0;
       pos += safe_snprintf(completion_spec + pos, sizeof(completion_spec) - pos, ":(");
       for (size_t i = 0; meta->enum_values[i] != NULL && pos < sizeof(completion_spec) - 1; i++) {
         if (i > 0)
           pos += safe_snprintf(completion_spec + pos, sizeof(completion_spec) - pos, " ");
-
-        // Include description if available, otherwise just value
-        const char *desc = (meta->enum_descriptions && meta->enum_descriptions[i]) ? meta->enum_descriptions[i] : "";
-        if (desc[0] != '\0') {
-          pos += safe_snprintf(completion_spec + pos, sizeof(completion_spec) - pos, "%s\\[%s\\]", meta->enum_values[i], desc);
-        } else {
-          pos += safe_snprintf(completion_spec + pos, sizeof(completion_spec) - pos, "%s", meta->enum_values[i]);
-        }
+        pos += safe_snprintf(completion_spec + pos, sizeof(completion_spec) - pos, "%s", meta->enum_values[i]);
       }
       safe_snprintf(completion_spec + pos, sizeof(completion_spec) - pos, ")");
     } else if (meta->input_type == OPTION_INPUT_FILEPATH) {
