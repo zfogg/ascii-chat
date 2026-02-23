@@ -254,7 +254,7 @@ double timer_stop(const char *name) {
 
   // Format duration for human-readable logging
   char duration_str[32];
-  format_duration_ns(elapsed_ns, duration_str, sizeof(duration_str));
+  time_pretty((uint64_t)elapsed_ns, -1, duration_str, sizeof(duration_str));
 
   // Log the result (dev level - only shown with --verbose)
   log_dev("Timer '%s': %s", name, duration_str);
@@ -388,6 +388,234 @@ int format_uptime_hms(int hours, int minutes, int seconds, char *buffer, size_t 
   }
 
   return written;
+}
+
+// ============================================================================
+// Pretty Time Formatting with Spaces and Configurable Precision
+// ============================================================================
+
+/**
+ * Helper: Strip trailing zeros and decimal point from a formatted number
+ * Modifies the string in-place, returns new length.
+ * Stops at space (which indicates start of unit) or end of string.
+ */
+static int strip_trailing_zeros(char *str) {
+  if (!str || !*str) return 0;
+
+  int len = (int)strlen(str);
+  if (len <= 0) return len;
+
+  // Find decimal point
+  char *decimal = strchr(str, '.');
+  if (!decimal) return len;  // No decimal point
+
+  // Find where the number ends (space indicates unit follows)
+  char *space = strchr(decimal, ' ');
+  int end_pos = space ? (int)(space - str) - 1 : len - 1;
+
+  // Strip trailing zeros from the fractional part
+  int pos = end_pos;
+  while (pos > (int)(decimal - str) && str[pos] == '0') {
+    pos--;
+  }
+
+  // If we end up at the decimal point itself, remove it too
+  if (pos == (int)(decimal - str)) {
+    pos--;
+  }
+
+  // Shift everything after pos (the unit) forward, or just null-terminate if no unit
+  if (space) {
+    // Move unit to new position
+    int space_idx = (int)(space - str);
+    memmove(str + pos + 1, str + space_idx, len - space_idx + 1);
+  } else {
+    // Just null-terminate
+    str[pos + 1] = '\0';
+  }
+
+  return (int)strlen(str);
+}
+
+int time_pretty(uint64_t nanoseconds, int decimals, char *buffer, size_t buffer_size) {
+  if (!buffer || buffer_size == 0) {
+    return -1;
+  }
+
+  // Handle zero
+  if (nanoseconds == 0) {
+    int written = safe_snprintf(buffer, buffer_size, "0 ns");
+    return (written < 0 || (size_t)written >= buffer_size) ? -1 : written;
+  }
+
+  // Determine decimals for this range if not explicitly set
+  int actual_decimals = decimals;
+  if (decimals == -1) {
+    if (nanoseconds < NS_PER_MS_INT) {
+      actual_decimals = 3;  // ns/µs
+    } else if (nanoseconds < NS_PER_SEC_INT) {
+      actual_decimals = 3;  // ms
+    } else if (nanoseconds < NS_PER_MIN_INT) {
+      actual_decimals = 2;  // seconds
+    } else {
+      actual_decimals = 3;  // colon notation
+    }
+  }
+
+  // Clamp decimals to valid range
+  if (actual_decimals < 0) actual_decimals = 0;
+  if (actual_decimals > 9) actual_decimals = 9;
+
+  int written = 0;
+
+  // Nanoseconds (< 1µs)
+  if (nanoseconds < NS_PER_US_INT) {
+    written = safe_snprintf(buffer, buffer_size, "%llu ns", (unsigned long long)nanoseconds);
+  }
+  // Microseconds (< 1ms)
+  else if (nanoseconds < NS_PER_MS_INT) {
+    double us = (double)nanoseconds / NS_PER_US;
+    char temp_buf[64];
+    // Use a direct snprintf with large enough buffer first
+    snprintf(temp_buf, sizeof(temp_buf), "%.*f µs", actual_decimals, us);
+    strip_trailing_zeros(temp_buf);
+    written = (int)strlen(temp_buf);
+    if (written > 0 && written < (int)buffer_size) {
+      SAFE_STRNCPY(buffer, temp_buf, buffer_size);
+    } else {
+      written = -1;
+    }
+  }
+  // Milliseconds (< 1s)
+  else if (nanoseconds < NS_PER_SEC_INT) {
+    double ms = (double)nanoseconds / NS_PER_MS;
+    char temp_buf[64];
+    snprintf(temp_buf, sizeof(temp_buf), "%.*f ms", actual_decimals, ms);
+    strip_trailing_zeros(temp_buf);
+    written = (int)strlen(temp_buf);
+    if (written > 0 && written < (int)buffer_size) {
+      SAFE_STRNCPY(buffer, temp_buf, buffer_size);
+    } else {
+      written = -1;
+    }
+  }
+  // Seconds (< 1 minute)
+  else if (nanoseconds < NS_PER_MIN_INT) {
+    double s = (double)nanoseconds / NS_PER_SEC;
+    char temp_buf[64];
+    snprintf(temp_buf, sizeof(temp_buf), "%.*f s", actual_decimals, s);
+    strip_trailing_zeros(temp_buf);
+    written = (int)strlen(temp_buf);
+    if (written > 0 && written < (int)buffer_size) {
+      SAFE_STRNCPY(buffer, temp_buf, buffer_size);
+    } else {
+      written = -1;
+    }
+  }
+  // Minutes (< 1 hour) - use colon notation: M:SS.frac
+  else if (nanoseconds < NS_PER_HOUR_INT) {
+    uint64_t total_seconds = nanoseconds / NS_PER_SEC_INT;
+    uint64_t minutes = total_seconds / 60;
+    uint64_t seconds = total_seconds % 60;
+    uint64_t remainder_ns = nanoseconds % NS_PER_SEC_INT;
+    double fraction = (double)remainder_ns / NS_PER_SEC;
+
+    char temp_buf[64];
+    if (actual_decimals == 0) {
+      snprintf(temp_buf, sizeof(temp_buf), "%llu:%02llu",
+               (unsigned long long)minutes, (unsigned long long)seconds);
+    } else {
+      snprintf(temp_buf, sizeof(temp_buf), "%llu:%02llu.%.*f",
+               (unsigned long long)minutes, (unsigned long long)seconds, actual_decimals, fraction);
+      strip_trailing_zeros(temp_buf);
+    }
+
+    written = (int)strlen(temp_buf);
+    if (written > 0 && written < (int)buffer_size) {
+      SAFE_STRNCPY(buffer, temp_buf, buffer_size);
+    } else {
+      written = -1;
+    }
+  }
+  // Hours+ - use colon notation: H:MM:SS or HH:MM:SS
+  else {
+    uint64_t total_seconds = nanoseconds / NS_PER_SEC_INT;
+    uint64_t hours = total_seconds / 3600;
+    uint64_t remaining = total_seconds % 3600;
+    uint64_t minutes = remaining / 60;
+    uint64_t seconds = remaining % 60;
+
+    written = safe_snprintf(buffer, buffer_size, "%llu:%02llu:%02llu",
+                            (unsigned long long)hours, (unsigned long long)minutes,
+                            (unsigned long long)seconds);
+  }
+
+  if (written < 0 || (size_t)written >= buffer_size) {
+    return -1;
+  }
+
+  return written;
+}
+
+int time_pretty_now(int decimals, char *buffer, size_t buffer_size) {
+  uint64_t ns = time_get_ns();
+  return time_pretty(ns, decimals, buffer, buffer_size);
+}
+
+// ============================================================================
+// Human-Readable Time Formatting (moment.js style)
+// ============================================================================
+
+int time_human_readable(uint64_t nanoseconds, char *buffer, size_t buffer_size) {
+  if (!buffer || buffer_size == 0) {
+    return -1;
+  }
+
+  // Convert nanoseconds to seconds for threshold checking
+  double total_seconds = (double)nanoseconds / NS_PER_SEC;
+  int minutes = (int)(total_seconds / 60);
+  int hours = minutes / 60;
+  int days = hours / 24;
+  int months = days / 30;  // Approximate
+  int years = months / 12;
+
+  int written = 0;
+
+  // Moment.js-compatible thresholds
+  if (total_seconds < 45) {
+    written = safe_snprintf(buffer, buffer_size, "a few seconds ago");
+  } else if (total_seconds < 90) {
+    written = safe_snprintf(buffer, buffer_size, "a minute ago");
+  } else if (minutes < 45) {
+    written = safe_snprintf(buffer, buffer_size, "%d minutes ago", minutes);
+  } else if (minutes < 90) {
+    written = safe_snprintf(buffer, buffer_size, "an hour ago");
+  } else if (hours < 22) {
+    written = safe_snprintf(buffer, buffer_size, "%d hours ago", hours);
+  } else if (hours < 36) {
+    written = safe_snprintf(buffer, buffer_size, "a day ago");
+  } else if (days < 25) {
+    written = safe_snprintf(buffer, buffer_size, "%d days ago", days);
+  } else if (days < 45) {
+    written = safe_snprintf(buffer, buffer_size, "a month ago");
+  } else if (months < 11) {
+    written = safe_snprintf(buffer, buffer_size, "%d months ago", months);
+  } else if (months < 18) {
+    written = safe_snprintf(buffer, buffer_size, "a year ago");
+  } else {
+    written = safe_snprintf(buffer, buffer_size, "%d years ago", years);
+  }
+
+  if (written < 0 || (size_t)written >= buffer_size) {
+    return -1;
+  }
+
+  return written;
+}
+
+int time_human_readable_now(char *buffer, size_t buffer_size) {
+  uint64_t ns = time_get_ns();
+  return time_human_readable(ns, buffer, buffer_size);
 }
 
 // ============================================================================

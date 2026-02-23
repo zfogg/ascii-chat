@@ -480,6 +480,105 @@ int format_duration_ns(double nanoseconds, char *buffer, size_t buffer_size);
 int format_duration_s(double seconds, char *buffer, size_t buffer_size);
 
 /**
+ * @brief Format nanoseconds as pretty duration with spaces and configurable precision
+ * @param nanoseconds Duration in nanoseconds
+ * @param decimals Number of decimal places (0-9), or -1 for sensible defaults per range
+ * @param buffer Output buffer for formatted string
+ * @param buffer_size Size of output buffer
+ * @return Number of characters written (excluding null terminator), or -1 on error
+ *
+ * Formats a duration with space-separated number and unit, with configurable precision.
+ * Automatically strips trailing zeros and decimal points.
+ *
+ * Examples (with decimals=-1):
+ * - 500 ns     → "500 ns"
+ * - 3500 ns    → "3.5 µs"
+ * - 1253000 ns → "1.253 ms"
+ * - 2500000000 ns → "2.5 s"
+ * - 83456000000000 ns → "1:23.456"  (minutes range, MM:SS.fraction)
+ * - 7530000000000 ns → "2:05:30"   (hours range, H:MM:SS)
+ *
+ * Unit selection logic:
+ * - [0, 1k) ns       → "NNN ns"
+ * - [1k, 1M) ns      → "N.N µs" (up to 3 decimals)
+ * - [1M, 1G) ns      → "N.NNN ms" (up to 3 decimals)
+ * - [1G, 60G) ns     → "N.NN s" (up to 2 decimals)
+ * - [60G, 3.6T) ns   → "M:SS.fraction" (colon notation, up to 3 decimals)
+ * - [3.6T+) ns       → "H:MM:SS" (colon notation)
+ *
+ * @note Buffer should be at least 32 bytes for all possible outputs
+ * @note Thread-safe (no global state)
+ * @note decimals=-1 uses appropriate defaults (3 for ns/µs/ms/colon, 2 for s)
+ * @note decimals=0 produces no decimal point
+ *
+ * @ingroup module_utilities
+ */
+int time_pretty(uint64_t nanoseconds, int decimals, char *buffer, size_t buffer_size);
+
+/**
+ * @brief Format current monotonic time as pretty duration
+ * @param decimals Number of decimal places (0-9), or -1 for sensible defaults per range
+ * @param buffer Output buffer for formatted string
+ * @param buffer_size Size of output buffer
+ * @return Number of characters written (excluding null terminator), or -1 on error
+ *
+ * Convenience wrapper that calls time_get_ns() and delegates to time_pretty().
+ * Useful for measuring elapsed time since program start in a single call.
+ *
+ * @note Buffer should be at least 32 bytes for all possible outputs
+ * @note Thread-safe (no global state)
+ *
+ * @ingroup module_utilities
+ */
+int time_pretty_now(int decimals, char *buffer, size_t buffer_size);
+
+/**
+ * @brief Format nanoseconds as human-readable relative duration (moment.js style)
+ * @param nanoseconds Duration in nanoseconds
+ * @param buffer Output buffer for formatted string
+ * @param buffer_size Size of output buffer
+ * @return Number of characters written (excluding null terminator), or -1 on error
+ *
+ * Formats a duration using moment.js-compatible thresholds to produce natural language
+ * relative time strings like "a few seconds ago", "3 minutes ago", "2 hours ago", etc.
+ *
+ * Threshold table (moment.js compatible):
+ * - < 45 s        → "a few seconds ago"
+ * - < 90 s        → "a minute ago"
+ * - < 45 min      → "%d minutes ago"
+ * - < 90 min      → "an hour ago"
+ * - < 22 h        → "%d hours ago"
+ * - < 36 h        → "a day ago"
+ * - < 25 d        → "%d days ago"
+ * - < 45 d        → "a month ago"
+ * - < 11 months   → "%d months ago"
+ * - < 18 months   → "a year ago"
+ * - ≥ 18 months   → "%d years ago"
+ *
+ * @note Buffer should be at least 32 bytes for all possible outputs
+ * @note Thread-safe (no global state)
+ *
+ * @ingroup module_utilities
+ */
+int time_human_readable(uint64_t nanoseconds, char *buffer, size_t buffer_size);
+
+/**
+ * @brief Format current monotonic time as human-readable relative duration
+ * @param buffer Output buffer for formatted string
+ * @param buffer_size Size of output buffer
+ * @return Number of characters written (excluding null terminator), or -1 on error
+ *
+ * Convenience wrapper that calls time_get_ns() and delegates to time_human_readable().
+ * Useful for measuring time since program start in a single call.
+ *
+ * @note Buffer should be at least 32 bytes for all possible outputs
+ * @note Thread-safe (no global state)
+ *
+ * @ingroup module_utilities
+ */
+int time_human_readable_now(char *buffer, size_t buffer_size);
+
+/**
  * @brief Format uptime as HH:MM:SS string
  * @param hours Hours component (0-999)
  * @param minutes Minutes component (0-59)
@@ -532,7 +631,7 @@ int format_uptime_hms(int hours, int minutes, int seconds, char *buffer, size_t 
     double _elapsed_ns = STOP_TIMER(timer_name, ##__VA_ARGS__);                                                        \
     if (_elapsed_ns >= 0.0 && (threshold_ns == 0 || _elapsed_ns >= (double)(threshold_ns))) {                          \
       char _duration_str[32];                                                                                          \
-      format_duration_ns(_elapsed_ns, _duration_str, sizeof(_duration_str));                                           \
+      time_pretty((uint64_t)_elapsed_ns, -1, _duration_str, sizeof(_duration_str));                                    \
       log_##log_level(msg_fmt " in %s", ##__VA_ARGS__, _duration_str);                                                 \
     }                                                                                                                  \
   } while (0)
@@ -573,7 +672,7 @@ int format_uptime_hms(int hours, int minutes, int seconds, char *buffer, size_t 
         if (atomic_compare_exchange_weak_explicit(&_log_every_last_time, &_log_every_last, _log_every_now,             \
                                                   memory_order_relaxed, memory_order_relaxed)) {                       \
           char _duration_str[32];                                                                                      \
-          format_duration_ns(_elapsed_ns, _duration_str, sizeof(_duration_str));                                       \
+          time_pretty((uint64_t)_elapsed_ns, -1, _duration_str, sizeof(_duration_str));                                \
           log_##log_level(msg_fmt " in %s", ##__VA_ARGS__, _duration_str);                                             \
         }                                                                                                              \
       }                                                                                                                \
