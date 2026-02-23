@@ -95,7 +95,8 @@ static bool is_metadata_start(const char *p) {
   return strncmp(buf, "(default:", 9) == 0 || strncmp(buf, "(env:", 5) == 0;
 }
 
-void layout_print_wrapped_description(FILE *stream, const char *text, int indent_width, int term_width) {
+void layout_print_wrapped_description(FILE *stream, const char *text, int indent_width, int term_width,
+                                      int continuation_indent_extra) {
   if (!text || !stream)
     return;
 
@@ -104,9 +105,11 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
     term_width = 80;
 
   // Available width for text after indentation, capped at 130 for readability
+  // Account for continuation lines having extra indent, so reduce available width accordingly
   // This allows the description column itself to be up to 130 chars wide,
-  // starting from indent_width, for a max total line of indent_width + 130
-  int available_width = term_width - indent_width;
+  // starting from indent_width, for a max total line of indent_width + 130 (first line)
+  // or indent_width + continuation_indent_extra + 130 (continuation lines)
+  int available_width = term_width - indent_width - continuation_indent_extra;
   if (available_width > 130)
     available_width = 130;
   if (available_width < 20)
@@ -130,7 +133,9 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
 
       fprintf(stream, "\n");
       if (*(p + 1)) {
-        for (int i = 0; i < indent_width; i++)
+        // Continuation lines get extra indent if specified
+        int continuation_indent = indent_width + continuation_indent_extra;
+        for (int i = 0; i < continuation_indent; i++)
           fprintf(stream, " ");
       }
       p++;
@@ -180,7 +185,9 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
       layout_print_colored_segment(stream, seg);
 
       fprintf(stream, "\n");
-      for (int i = 0; i < indent_width; i++)
+      // Continuation lines get extra indent if specified
+      int continuation_indent = indent_width + continuation_indent_extra;
+      for (int i = 0; i < continuation_indent; i++)
         fprintf(stream, " ");
 
       p = last_space + 1;
@@ -204,7 +211,7 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
  * ============================================================================ */
 
 void layout_print_two_column_row(FILE *stream, const char *first_column, const char *second_column, int first_col_len,
-                                 int term_width) {
+                                 int term_width, int continuation_indent_extra) {
   if (!stream || !first_column || !second_column)
     return;
 
@@ -256,7 +263,7 @@ void layout_print_two_column_row(FILE *stream, const char *first_column, const c
     }
 
     // Print description with wrapping at second column position
-    layout_print_wrapped_description(stream, second_column, second_col_start, term_width);
+    layout_print_wrapped_description(stream, second_column, second_col_start, term_width, continuation_indent_extra);
     fprintf(stream, "\n");
   } else if (force_single_column) {
     // Terminal too narrow, put description on next line with indent
@@ -268,7 +275,7 @@ void layout_print_two_column_row(FILE *stream, const char *first_column, const c
       for (int i = 0; i < description_indent; i++)
         fprintf(stream, " ");
 
-      layout_print_wrapped_description(stream, second_column, description_indent, term_width);
+      layout_print_wrapped_description(stream, second_column, description_indent, term_width, continuation_indent_extra);
       fprintf(stream, "\n");
     }
   } else {
@@ -281,7 +288,7 @@ void layout_print_two_column_row(FILE *stream, const char *first_column, const c
       // Print description on next line at second column position, with wide wrapping
       for (int i = 0; i < second_col_start; i++)
         fprintf(stream, " ");
-      layout_print_wrapped_description(stream, second_column, second_col_start, term_width);
+      layout_print_wrapped_description(stream, second_column, second_col_start, term_width, continuation_indent_extra);
       fprintf(stream, "\n");
     }
   }

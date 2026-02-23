@@ -482,7 +482,7 @@ static void print_usage_section(const options_config_t *config, FILE *stream, in
     }
 
     // Print with layout function using global column width
-    layout_print_two_column_row(stream, usage_buf, usage->description, max_col_width, term_width);
+    layout_print_two_column_row(stream, usage_buf, usage->description, max_col_width, term_width, 0);
   }
   fprintf(stream, "\n");
 }
@@ -651,7 +651,7 @@ static void print_examples_section(const options_config_t *config, FILE *stream,
     }
 
     // Print with layout function using global column width
-    layout_print_two_column_row(stream, cmd_buf, example->description, max_col_width, term_width);
+    layout_print_two_column_row(stream, cmd_buf, example->description, max_col_width, term_width, 0);
   }
 
   fprintf(stream, "\n");
@@ -671,7 +671,7 @@ static void print_modes_section(const options_config_t *config, FILE *stream, in
   for (size_t i = 0; i < config->num_modes; i++) {
     char mode_buf[BUFFER_SIZE_SMALL];
     safe_snprintf(mode_buf, sizeof(mode_buf), "%s", colored_string(LOG_COLOR_FATAL, config->modes[i].name));
-    layout_print_two_column_row(stream, mode_buf, config->modes[i].description, max_col_width, term_width);
+    layout_print_two_column_row(stream, mode_buf, config->modes[i].description, max_col_width, term_width, 0);
   }
 
   fprintf(stream, "\n");
@@ -699,7 +699,7 @@ static void print_mode_options_section(FILE *stream, int term_width, int max_col
   // Space and help option (yellow)
   len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_WARN, "--help"));
 
-  layout_print_two_column_row(stream, usage_buf, "Show options for a mode", max_col_width, term_width);
+  layout_print_two_column_row(stream, usage_buf, "Show options for a mode", max_col_width, term_width, 0);
 
   fprintf(stream, "\n");
 }
@@ -838,7 +838,7 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
 
       // Use layout function with section-specific column width for consistent alignment
       // option_str already contains colored_string() results, so pass it directly
-      layout_print_two_column_row(stream, option_str, desc_str, options_max_col_width, term_width);
+      layout_print_two_column_row(stream, option_str, desc_str, options_max_col_width, term_width, 2);
     }
   }
 
@@ -1058,7 +1058,7 @@ void options_config_print_options_sections_with_width(const options_config_t *co
         desc_len += safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " [REQUIRED]");
       }
 
-      layout_print_two_column_row(stream, colored_option_str, desc_str, max_col_width, term_width);
+      layout_print_two_column_row(stream, colored_option_str, desc_str, max_col_width, term_width, 2);
     }
   }
 
@@ -1219,7 +1219,7 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
                              colored_string(LOG_COLOR_WARN, options_text));
       }
 
-      layout_print_two_column_row(desc, usage_buf, usage->description, usage_max_col_width, term_width);
+      layout_print_two_column_row(desc, usage_buf, usage->description, usage_max_col_width, term_width, 0);
     }
   }
   fprintf(desc, "\n");
@@ -1291,7 +1291,7 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
                           colored_string(LOG_COLOR_INFO, colored_first_part));
 
             layout_print_two_column_row(desc, colored_result, desc_start ? desc_start : "", positional_max_col_width,
-                                        term_width);
+                                        term_width, 0);
           }
           (void)fprintf(desc, "\n");
         }
@@ -1421,7 +1421,7 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
           // Print with 2-space indent, wrapping at min(terminal width, 90)
           fprintf(desc, "  ");
           int keybindings_wrap_width = term_width < 90 ? term_width : 90;
-          layout_print_wrapped_description(desc, colored_output, 2, keybindings_wrap_width);
+          layout_print_wrapped_description(desc, colored_output, 2, keybindings_wrap_width, 0);
           fprintf(desc, "\n");
         } else {
           fprintf(desc, "%s\n", section->content);
