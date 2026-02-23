@@ -113,6 +113,12 @@ function(ascii_defer_prepare)
     # instead of creating a separate one. The script run_defer_with_includes.py will
     # look for compile_commands.json in CMAKE_BINARY_DIR automatically.
 
+    # Build PCH files first so defer can read them from compile_commands.json
+    add_custom_target(defer-pch-prereq
+        COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target ascii-chat-core 2>&1 | grep -E "cmake_pch|Precompiling" || true
+        COMMENT "Building PCH files for defer"
+    )
+
     # Create timer targets for defer transformation (comments disabled for quiet builds)
     add_timer_targets(
         NAME defer-all
@@ -138,7 +144,7 @@ function(ascii_defer_prepare)
             OUTPUT "${_gen_path}"
             COMMAND ${CMAKE_COMMAND} -E make_directory "${_gen_dir}"
             COMMAND ${_defer_tool_exe} -p ${CMAKE_BINARY_DIR} --output-dir=${defer_transformed_dir} ${_rel_path}
-            DEPENDS defer-all-timer-start ${_defer_tool_depends} "${_abs_path}" "${CMAKE_BINARY_DIR}/compile_commands.json"
+            DEPENDS defer-all-timer-start defer-pch-prereq ${_defer_tool_depends} "${_abs_path}" "${CMAKE_BINARY_DIR}/compile_commands.json"
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             COMMENT "Defer: ${_rel_path}"
             VERBATIM
