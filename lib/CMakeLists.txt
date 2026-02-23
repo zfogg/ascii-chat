@@ -120,6 +120,7 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
         ${LIB_DIR}/debug/named.c
         ${LIB_DIR}/debug/sync.c
         ${LIB_DIR}/debug/memory.c
+        ${LIB_DIR}/options/registry/debug.c
     )
 endif()
 

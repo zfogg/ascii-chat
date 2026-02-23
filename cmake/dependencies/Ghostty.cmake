@@ -421,12 +421,41 @@ elseif(APPLE)
     message(STATUS "${BoldGreen}✓${ColorReset} Ghostty (macOS): ghostty + Metal")
 elseif(UNIX AND NOT APPLE)
     # Linux: ghostty with GTK backend for rendering
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(GTK gtk4 REQUIRED)
+    if(USE_MUSL)
+        # For musl static builds, GTK4 is built as static library in MuslDependencies.cmake
+        # Collect all GTK4 dependencies as static libraries
+        set(GHOSTTY_GTK_LIBS
+            ${GTK4_LIBRARIES}
+            ${PANGO_LIBRARIES}
+            ${CAIRO_LIBRARIES}
+            ${HARFBUZZ_LIBRARIES}
+            ${FREETYPE_LIBRARIES}
+            ${PIXMAN_LIBRARIES}
+            ${GLIB_LIBRARIES}
+        )
 
-    set(GHOSTTY_LIBS ${GHOSTTY_LIBRARIES} ${GTK_LDFLAGS})
-    set(GHOSTTY_INCLUDES ${GHOSTTY_INCLUDE_DIRS} ${GTK_INCLUDE_DIRS})
-    message(STATUS "${BoldGreen}✓${ColorReset} Ghostty (Linux): ghostty + GTK")
+        set(GHOSTTY_GTK_INCLUDES
+            ${GTK4_INCLUDE_DIRS}
+            ${PANGO_INCLUDE_DIRS}
+            ${CAIRO_INCLUDE_DIRS}
+            ${HARFBUZZ_INCLUDE_DIRS}
+            ${FREETYPE_INCLUDE_DIRS}
+            ${PIXMAN_INCLUDE_DIRS}
+            ${GLIB_INCLUDE_DIRS}
+        )
+
+        set(GHOSTTY_LIBS ${GHOSTTY_LIBRARIES} ${GHOSTTY_GTK_LIBS})
+        set(GHOSTTY_INCLUDES ${GHOSTTY_INCLUDE_DIRS} ${GHOSTTY_GTK_INCLUDES})
+        message(STATUS "${BoldGreen}✓${ColorReset} Ghostty (Linux/musl): ghostty + GTK4 (static)")
+    else()
+        # For glibc builds, use pkg-config to find GTK
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(GTK gtk4 REQUIRED)
+
+        set(GHOSTTY_LIBS ${GHOSTTY_LIBRARIES} ${GTK_LDFLAGS})
+        set(GHOSTTY_INCLUDES ${GHOSTTY_INCLUDE_DIRS} ${GTK_INCLUDE_DIRS})
+        message(STATUS "${BoldGreen}✓${ColorReset} Ghostty (Linux): ghostty + GTK")
+    endif()
 else()
     # Windows: stubs only
     set(GHOSTTY_LIBS "")

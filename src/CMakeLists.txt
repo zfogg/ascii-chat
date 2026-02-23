@@ -260,6 +260,7 @@ if(USE_MUSL)
 
     # Link internal modules directly (OBJECT libraries avoid shared library dependency)
     # These are the same modules that make up ascii-chat-shared
+    # Note: Session files are part of ascii-chat-core, not a separate module
     target_link_libraries(ascii-chat PRIVATE
         ascii-chat-util
         ascii-chat-data-structures
@@ -270,7 +271,6 @@ if(USE_MUSL)
         ascii-chat-audio
         ascii-chat-network
         ascii-chat-core
-        ascii-chat-session
         ascii-chat-panic
     )
 

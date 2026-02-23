@@ -84,17 +84,13 @@ set(KERNEL_HEADER_SEARCH_PATHS
 )
 
 # Check if kernel headers exist
-set(KERNEL_HEADERS_FOUND FALSE)
 foreach(HEADER_PATH ${KERNEL_HEADER_SEARCH_PATHS})
     if(EXISTS "${HEADER_PATH}")
-        set(KERNEL_HEADERS_FOUND TRUE)
         break()
     endif()
 endforeach()
 
-if(NOT KERNEL_HEADERS_FOUND)
-    message(WARNING "Kernel headers not found in common locations. Install linux-libc-dev or kernel-headers package.")
-else()
+if(KERNEL_HEADERS_FOUND)
     # Copy kernel headers only if they don't exist in cache
     if(NOT EXISTS "${KERNEL_HEADERS_DIR}/linux")
         message(STATUS "Copying kernel headers to ${KERNEL_HEADERS_DIR}...")
@@ -139,6 +135,8 @@ else()
 
     # Set CFLAGS to include kernel headers for ALSA and PortAudio builds
     set(MUSL_KERNEL_CFLAGS "-fPIC -I${KERNEL_HEADERS_DIR}")
+else()
+    message(WARNING "Kernel headers not found in common locations. Install linux-libc-dev or kernel-headers package.")
 endif()
 
 # =============================================================================
@@ -176,7 +174,6 @@ else()
     add_custom_target(zstd-musl)
 endif()
 
-set(ZSTD_FOUND TRUE)
 set(ZSTD_LIBRARIES "${ZSTD_PREFIX}/lib/libzstd.a")
 set(ZSTD_INCLUDE_DIRS "${ZSTD_PREFIX}/include")
 
@@ -308,7 +305,6 @@ ExternalProject_Add(libsodium-musl
     LOG_OUTPUT_ON_FAILURE TRUE
 )
 
-set(LIBSODIUM_FOUND TRUE)
 set(LIBSODIUM_LIBRARIES "${LIBSODIUM_PREFIX}/lib/libsodium.a")
 set(LIBSODIUM_INCLUDE_DIRS "${LIBSODIUM_PREFIX}/include")
 
@@ -435,7 +431,6 @@ add_custom_target(openssl-musl DEPENDS libsodium-musl)
 
 # Set OpenSSL variables for CMake find_package to use
 # Note: OpenSSL 3.x installs to lib64/ by default on x86_64
-set(OPENSSL_FOUND TRUE)
 set(OPENSSL_ROOT_DIR "${OPENSSL_PREFIX}" CACHE PATH "OpenSSL root directory" FORCE)
 set(OPENSSL_INCLUDE_DIR "${OPENSSL_PREFIX}/include" CACHE PATH "OpenSSL include directory" FORCE)
 set(OPENSSL_SSL_LIBRARY "${OPENSSL_PREFIX}/lib64/libssl.a" CACHE FILEPATH "OpenSSL SSL library" FORCE)
@@ -587,7 +582,6 @@ endif()
 add_custom_target(ffmpeg-musl DEPENDS openssl-musl)
 
 # Set FFmpeg variables for use in the build
-set(FFMPEG_FOUND TRUE)
 set(FFMPEG_INCLUDE_DIRS "${FFMPEG_PREFIX}/include" CACHE PATH "FFmpeg include directory" FORCE)
 set(FFMPEG_LIBRARY_DIR "${FFMPEG_PREFIX}/lib" CACHE PATH "FFmpeg library directory" FORCE)
 
@@ -709,7 +703,6 @@ endif()
 add_custom_target(sqlite3-musl DEPENDS zstd-musl)
 
 # Set SQLite3 variables for use in the build
-set(SQLITE3_FOUND TRUE)
 set(SQLITE3_INCLUDE_DIRS "${SQLITE3_PREFIX}/include" CACHE PATH "SQLite3 include directory" FORCE)
 set(SQLITE3_LIBRARIES "${SQLITE3_PREFIX}/lib/libsqlite3.a" CACHE FILEPATH "SQLite3 library" FORCE)
 
@@ -751,7 +744,6 @@ else()
 endif()
 
 # Set ALSA variables for PortAudio to find
-set(ALSA_FOUND TRUE)
 set(ALSA_LIBRARIES "${ALSA_PREFIX}/lib/libasound.a")
 set(ALSA_INCLUDE_DIRS "${ALSA_PREFIX}/include")
 
@@ -792,7 +784,6 @@ else()
     add_custom_target(portaudio-musl DEPENDS alsa-lib-musl)
 endif()
 
-set(PORTAUDIO_FOUND TRUE)
 set(PORTAUDIO_LIBRARIES "${PORTAUDIO_PREFIX}/lib/libportaudio.a")
 set(PORTAUDIO_INCLUDE_DIRS "${PORTAUDIO_PREFIX}/include")
 
@@ -831,7 +822,6 @@ else()
     add_custom_target(opus-musl)
 endif()
 
-set(OPUS_FOUND TRUE)
 set(OPUS_LIBRARIES "${OPUS_PREFIX}/lib/libopus.a")
 set(OPUS_INCLUDE_DIRS "${OPUS_PREFIX}/include")
 
@@ -869,7 +859,6 @@ else()
     add_custom_target(libexecinfo-musl)
 endif()
 
-set(LIBEXECINFO_FOUND TRUE)
 set(LIBEXECINFO_LIBRARIES "${LIBEXECINFO_PREFIX}/lib/libexecinfo.a")
 set(LIBEXECINFO_INCLUDE_DIRS "${LIBEXECINFO_PREFIX}/include")
 
@@ -929,12 +918,10 @@ if(EXISTS "${BEARSSL_SOURCE_DIR}")
         "${BEARSSL_SOURCE_DIR}/inc"
     )
 
-    set(BEARSSL_FOUND TRUE)
     set(BEARSSL_LIBRARIES bearssl_static)
     set(BEARSSL_INCLUDE_DIRS "${BEARSSL_SOURCE_DIR}/inc")
 else()
     message(WARNING "BearSSL submodule not found - GitHub/GitLab key fetching will be disabled")
-    set(BEARSSL_FOUND FALSE)
     set(BEARSSL_LIBRARIES "")
     set(BEARSSL_INCLUDE_DIRS "")
 endif()
@@ -974,7 +961,6 @@ else()
     add_custom_target(pcre2-musl)
 endif()
 
-set(PCRE2_FOUND TRUE)
 set(PCRE2_LIBRARIES "${PCRE2_PREFIX}/lib/libpcre2-8.a")
 set(PCRE2_INCLUDE_DIRS "${PCRE2_PREFIX}/include")
 
@@ -1118,7 +1104,6 @@ else()
     add_custom_target(abseil-musl)
 endif()
 
-set(ABSEIL_FOUND TRUE)
 set(ABSEIL_LIBRARIES "${ABSEIL_PREFIX}/lib")
 set(ABSEIL_INCLUDE_DIRS "${ABSEIL_PREFIX}/include")
 
@@ -1165,9 +1150,747 @@ else()
     add_custom_target(yyjson-musl)
 endif()
 
-set(YYJSON_FOUND TRUE)
 set(YYJSON_LIBRARIES "${YYJSON_PREFIX}/lib/libyyjson.a")
 set(YYJSON_INCLUDE_DIRS "${YYJSON_PREFIX}/include")
+
+# =============================================================================
+# libffi - Function Interface library for glib gobject (built synchronously)
+# =============================================================================
+message(STATUS "Configuring ${BoldBlue}libffi${ColorReset} from source...")
+
+set(LIBFFI_PREFIX "${MUSL_DEPS_DIR_STATIC}/libffi")
+
+if(NOT EXISTS "${LIBFFI_PREFIX}/lib/libffi.a")
+    message(STATUS "  libffi library not found in cache, will build from source")
+
+    set(LIBFFI_DOWNLOAD_DIR "${MUSL_DEPS_DIR_STATIC}/libffi-src")
+    set(LIBFFI_TARBALL "${LIBFFI_DOWNLOAD_DIR}/libffi-3.4.4.tar.gz")
+    set(LIBFFI_SOURCE_DIR "${LIBFFI_DOWNLOAD_DIR}/libffi-3.4.4")
+
+    file(MAKE_DIRECTORY "${LIBFFI_DOWNLOAD_DIR}")
+
+    if(NOT EXISTS "${LIBFFI_SOURCE_DIR}")
+        if(NOT EXISTS "${LIBFFI_TARBALL}")
+            message(STATUS "    Downloading libffi...")
+            file(DOWNLOAD
+                "https://github.com/libffi/libffi/releases/download/v3.4.4/libffi-3.4.4.tar.gz"
+                "${LIBFFI_TARBALL}"
+                EXPECTED_HASH SHA256=d66c56ad259a82cf2a9dfc408b32bf5da52371500b84745f7fb8b645712df676
+                SHOW_PROGRESS
+            )
+        endif()
+
+        message(STATUS "    Extracting libffi...")
+        execute_process(
+            COMMAND ${CMAKE_COMMAND} -E tar xzf "${LIBFFI_TARBALL}"
+            WORKING_DIRECTORY "${LIBFFI_DOWNLOAD_DIR}"
+            RESULT_VARIABLE EXTRACT_RESULT
+        )
+        if(NOT EXTRACT_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to extract libffi")
+        endif()
+    endif()
+
+    set(LIBFFI_BUILD_DIR "${LIBFFI_DOWNLOAD_DIR}/build")
+    file(MAKE_DIRECTORY "${LIBFFI_BUILD_DIR}")
+
+    message(STATUS "    Configuring libffi...")
+    set(ENV{CC} ${MUSL_GCC})
+    set(ENV{CFLAGS} "-O2 -fPIC")
+    execute_process(
+        COMMAND "${LIBFFI_SOURCE_DIR}/configure"
+            --prefix=${LIBFFI_PREFIX}
+            --enable-static
+            --disable-shared
+            --disable-exec-static-tramp
+        WORKING_DIRECTORY "${LIBFFI_BUILD_DIR}"
+        RESULT_VARIABLE LIBFFI_CONFIG_RESULT
+        ERROR_VARIABLE LIBFFI_CONFIG_ERROR
+    )
+    if(NOT LIBFFI_CONFIG_RESULT EQUAL 0)
+        message(FATAL_ERROR "libffi configure failed:\n${LIBFFI_CONFIG_ERROR}")
+    endif()
+
+    message(STATUS "    Building libffi...")
+    execute_process(
+        COMMAND make -j
+        WORKING_DIRECTORY "${LIBFFI_BUILD_DIR}"
+        RESULT_VARIABLE LIBFFI_BUILD_RESULT
+        ERROR_VARIABLE LIBFFI_BUILD_ERROR
+    )
+    if(NOT LIBFFI_BUILD_RESULT EQUAL 0)
+        message(FATAL_ERROR "libffi build failed:\n${LIBFFI_BUILD_ERROR}")
+    endif()
+
+    message(STATUS "    Installing libffi...")
+    execute_process(
+        COMMAND make install
+        WORKING_DIRECTORY "${LIBFFI_BUILD_DIR}"
+        RESULT_VARIABLE LIBFFI_INSTALL_RESULT
+        ERROR_VARIABLE LIBFFI_INSTALL_ERROR
+    )
+    if(NOT LIBFFI_INSTALL_RESULT EQUAL 0)
+        message(FATAL_ERROR "libffi install failed:\n${LIBFFI_INSTALL_ERROR}")
+    endif()
+
+    message(STATUS "    ${BoldGreen}libffi${ColorReset} built successfully")
+else()
+    message(STATUS "  ${BoldBlue}libffi${ColorReset} library found in cache: ${BoldMagenta}${LIBFFI_PREFIX}/lib/libffi.a${ColorReset}")
+endif()
+
+set(LIBFFI_LIBRARIES "${LIBFFI_PREFIX}/lib/libffi.a")
+set(LIBFFI_INCLUDE_DIRS "${LIBFFI_PREFIX}/include")
+file(MAKE_DIRECTORY "${LIBFFI_PREFIX}/include" "${LIBFFI_PREFIX}/lib")
+
+# =============================================================================
+# GTK4 and dependencies - Static build for musl
+# =============================================================================
+# Build GTK4 ecosystem from source for musl static linking
+# Required for Ghostty: gtk4, graphene-gobject-1.0, libadwaita-1
+message(STATUS "Configuring ${BoldBlue}GTK4 ecosystem${ColorReset} from source...")
+
+# Define glib prefix first (needed before glib build)
+set(GLIB_PREFIX "${MUSL_DEPS_DIR_STATIC}/glib")
+set(GLIB_LIBRARIES "${GLIB_PREFIX}/lib/libglib-2.0.a")
+set(GLIB_INCLUDE_DIRS "${GLIB_PREFIX}/include/glib-2.0")
+
+set(GTK4_PREFIX "${MUSL_DEPS_DIR_STATIC}/gtk4")
+set(GTK4_LIBRARIES "${GTK4_PREFIX}/lib/libgtk-4.a")
+set(GTK4_INCLUDE_DIRS "${GTK4_PREFIX}/include/gtk-4.0")
+
+set(GRAPHENE_PREFIX "${MUSL_DEPS_DIR_STATIC}/graphene")
+set(GRAPHENE_LIBRARIES "${GRAPHENE_PREFIX}/lib/libgraphene-1.a")
+set(GRAPHENE_INCLUDE_DIRS "${GRAPHENE_PREFIX}/include/graphene-1.0")
+
+set(LIBADWAITA_PREFIX "${MUSL_DEPS_DIR_STATIC}/libadwaita")
+set(LIBADWAITA_LIBRARIES "${LIBADWAITA_PREFIX}/lib/libadwaita-1.a")
+set(LIBADWAITA_INCLUDE_DIRS "${LIBADWAITA_PREFIX}/include/adwaita-1")
+
+# Create placeholder directories
+file(MAKE_DIRECTORY "${GTK4_PREFIX}/include" "${GTK4_PREFIX}/lib")
+file(MAKE_DIRECTORY "${GRAPHENE_PREFIX}/include" "${GRAPHENE_PREFIX}/lib")
+file(MAKE_DIRECTORY "${LIBADWAITA_PREFIX}/include" "${LIBADWAITA_PREFIX}/lib")
+
+# Build GTK4 with meson at configure time
+if(NOT EXISTS "${GTK4_LIBRARIES}")
+    message(STATUS "  GTK4 library not found, will build from source")
+
+    find_program(MESON_EXECUTABLE meson)
+    if(NOT MESON_EXECUTABLE)
+        message(FATAL_ERROR "meson not found - required to build GTK4")
+    endif()
+
+    # FIRST: Build glib if not already built (GTK4 depends on it)
+    if(NOT EXISTS "${GLIB_LIBRARIES}")
+        message(STATUS "  Building glib (dependency of GTK4)...")
+
+        set(GLIB_DOWNLOAD_DIR "${MUSL_DEPS_DIR_STATIC}/glib-src")
+        set(GLIB_TARBALL "${GLIB_DOWNLOAD_DIR}/glib-2.82.0.tar.xz")
+        set(GLIB_SOURCE_DIR "${GLIB_DOWNLOAD_DIR}/glib-2.82.0")
+
+        file(MAKE_DIRECTORY "${GLIB_DOWNLOAD_DIR}")
+
+        if(NOT EXISTS "${GLIB_SOURCE_DIR}")
+            if(NOT EXISTS "${GLIB_TARBALL}")
+                message(STATUS "    Downloading glib...")
+                file(DOWNLOAD
+                    "https://download.gnome.org/sources/glib/2.82/glib-2.82.0.tar.xz"
+                    "${GLIB_TARBALL}"
+                    EXPECTED_HASH SHA256=f4c82ada51366bddace49d7ba54b33b4e4d6067afa3008e4847f41cb9b5c38d3
+                    SHOW_PROGRESS
+                )
+            endif()
+
+            message(STATUS "    Extracting glib...")
+            execute_process(
+                COMMAND ${CMAKE_COMMAND} -E tar xJf "${GLIB_TARBALL}"
+                WORKING_DIRECTORY "${GLIB_DOWNLOAD_DIR}"
+                RESULT_VARIABLE EXTRACT_RESULT
+            )
+            if(NOT EXTRACT_RESULT EQUAL 0)
+                message(FATAL_ERROR "Failed to extract glib")
+            endif()
+        endif()
+
+        set(GLIB_BUILD_DIR "${GLIB_DOWNLOAD_DIR}/build")
+        file(MAKE_DIRECTORY "${GLIB_BUILD_DIR}")
+
+        # Create a meson native file to disable problematic dependencies for musl
+        set(GLIB_NATIVE_FILE "${GLIB_DOWNLOAD_DIR}/musl-native.txt")
+        file(WRITE "${GLIB_NATIVE_FILE}"
+            "[binaries]\n"
+            "c = '/usr/bin/musl-gcc'\n"
+            "cpp = 'clang++'\n"
+            "\n"
+            "[properties]\n"
+            "c_args = ['-O2', '-fPIC']\n"
+        )
+
+        message(STATUS "    Configuring glib...")
+        execute_process(
+            COMMAND env CC=${MUSL_GCC} CXX=clang++ PKG_CONFIG_LIBDIR=${PCRE2_PREFIX}/lib/pkgconfig:${LIBFFI_PREFIX}/lib/pkgconfig:${ZLIB_PREFIX}/lib/pkgconfig PKG_CONFIG_PATH= ${MESON_EXECUTABLE} setup
+                "${GLIB_BUILD_DIR}"
+                "${GLIB_SOURCE_DIR}"
+                --prefix=${GLIB_PREFIX}
+                --buildtype=release
+                --default-library=static
+                --wrap-mode=nofallback
+                --native-file=${GLIB_NATIVE_FILE}
+                -Dintrospection=disabled
+            RESULT_VARIABLE GLIB_CONFIG_RESULT
+            ERROR_VARIABLE GLIB_CONFIG_ERROR
+        )
+        if(NOT GLIB_CONFIG_RESULT EQUAL 0)
+            message(FATAL_ERROR "glib meson setup failed:\n${GLIB_CONFIG_ERROR}")
+        endif()
+
+        message(STATUS "    Building glib...")
+        execute_process(
+            COMMAND ${MESON_EXECUTABLE} compile -C "${GLIB_BUILD_DIR}"
+            RESULT_VARIABLE GLIB_BUILD_RESULT
+            ERROR_VARIABLE GLIB_BUILD_ERROR
+        )
+        if(NOT GLIB_BUILD_RESULT EQUAL 0)
+            message(FATAL_ERROR "glib build failed:\n${GLIB_BUILD_ERROR}")
+        endif()
+
+        message(STATUS "    Installing glib...")
+        execute_process(
+            COMMAND ${MESON_EXECUTABLE} install -C "${GLIB_BUILD_DIR}"
+            RESULT_VARIABLE GLIB_INSTALL_RESULT
+            ERROR_VARIABLE GLIB_INSTALL_ERROR
+        )
+        if(NOT GLIB_INSTALL_RESULT EQUAL 0)
+            message(FATAL_ERROR "glib install failed:\n${GLIB_INSTALL_ERROR}")
+        endif()
+
+        message(STATUS "    ${BoldGreen}glib${ColorReset} built successfully")
+    endif()
+
+    # THEN: Download GTK4
+    set(GTK4_DOWNLOAD_DIR "${MUSL_DEPS_DIR_STATIC}/gtk4-src")
+    set(GTK4_TARBALL "${GTK4_DOWNLOAD_DIR}/gtk-4.14.1.tar.xz")
+    set(GTK4_SOURCE_DIR "${GTK4_DOWNLOAD_DIR}/gtk-4.14.1")
+
+    file(MAKE_DIRECTORY "${GTK4_DOWNLOAD_DIR}")
+
+    if(NOT EXISTS "${GTK4_SOURCE_DIR}")
+        if(NOT EXISTS "${GTK4_TARBALL}")
+            message(STATUS "  Downloading GTK4...")
+            file(DOWNLOAD
+                "https://download.gnome.org/sources/gtk/4.14/gtk-4.14.1.tar.xz"
+                "${GTK4_TARBALL}"
+                EXPECTED_HASH SHA256=fcefb3f132f8cc4711a9efa5b353c9ae9bb5eeff0246fa74dbc2f2f839b9e308
+                STATUS DOWNLOAD_STATUS
+                SHOW_PROGRESS
+            )
+            list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
+            if(NOT STATUS_CODE EQUAL 0)
+                list(GET DOWNLOAD_STATUS 1 ERROR_MSG)
+                message(FATAL_ERROR "Failed to download GTK4: ${ERROR_MSG}")
+            endif()
+        endif()
+
+        message(STATUS "  Extracting GTK4...")
+        execute_process(
+            COMMAND ${CMAKE_COMMAND} -E tar xJf "${GTK4_TARBALL}"
+            WORKING_DIRECTORY "${GTK4_DOWNLOAD_DIR}"
+            RESULT_VARIABLE EXTRACT_RESULT
+        )
+        if(NOT EXTRACT_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to extract GTK4")
+        endif()
+    endif()
+
+    # Build with meson
+    set(GTK4_BUILD_DIR "${GTK4_DOWNLOAD_DIR}/build")
+    file(MAKE_DIRECTORY "${GTK4_BUILD_DIR}")
+
+    message(STATUS "  Configuring GTK4 with meson...")
+    execute_process(
+        COMMAND env CC=${MUSL_GCC} CXX=clang++ PKG_CONFIG_PATH=${GLIB_PREFIX}/lib/pkgconfig ${MESON_EXECUTABLE} setup
+            "${GTK4_BUILD_DIR}"
+            "${GTK4_SOURCE_DIR}"
+            --prefix=${GTK4_PREFIX}
+            --buildtype=release
+            --default-library=static
+            -Dintrospection=disabled
+            -Dx11-backend=false
+            -Dwayland-backend=false
+        RESULT_VARIABLE CONFIG_RESULT
+        ERROR_VARIABLE CONFIG_ERROR
+    )
+    if(NOT CONFIG_RESULT EQUAL 0)
+        message(FATAL_ERROR "GTK4 meson setup failed:\n${CONFIG_ERROR}")
+    endif()
+
+    message(STATUS "  Building GTK4...")
+    execute_process(
+        COMMAND ${MESON_EXECUTABLE} compile -C "${GTK4_BUILD_DIR}"
+        RESULT_VARIABLE BUILD_RESULT
+        ERROR_VARIABLE BUILD_ERROR
+    )
+    if(NOT BUILD_RESULT EQUAL 0)
+        message(FATAL_ERROR "GTK4 build failed:\n${BUILD_ERROR}")
+    endif()
+
+    message(STATUS "  Installing GTK4...")
+    execute_process(
+        COMMAND ${MESON_EXECUTABLE} install -C "${GTK4_BUILD_DIR}"
+        RESULT_VARIABLE INSTALL_RESULT
+        ERROR_VARIABLE INSTALL_ERROR
+    )
+    if(NOT INSTALL_RESULT EQUAL 0)
+        message(FATAL_ERROR "GTK4 install failed:\n${INSTALL_ERROR}")
+    endif()
+
+    message(STATUS "  ${BoldGreen}GTK4${ColorReset} built successfully")
+else()
+    message(STATUS "  ${BoldBlue}GTK4${ColorReset} found in cache: ${GTK4_LIBRARIES}")
+endif()
+
+# =============================================================================
+# glib - Core utility library (foundation for GTK ecosystem)
+# =============================================================================
+message(STATUS "Configuring ${BoldBlue}glib${ColorReset} from source...")
+
+set(GLIB_PREFIX "${MUSL_DEPS_DIR_STATIC}/glib")
+set(GLIB_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/glib-build")
+
+if(NOT EXISTS "${GLIB_PREFIX}/lib/libglib-2.0.a")
+    message(STATUS "  glib library not found in cache, will build from source")
+
+    # Check if meson is available
+    find_program(MESON_EXECUTABLE meson)
+    if(NOT MESON_EXECUTABLE)
+        message(WARNING "meson not found - skipping glib. Install with: sudo apt install meson")
+    else()
+        # glib requires a cross file for musl builds
+        set(GLIB_CROSS_FILE "${GLIB_BUILD_DIR}/musl-cross.ini")
+        file(MAKE_DIRECTORY "${GLIB_BUILD_DIR}")
+        file(WRITE "${GLIB_CROSS_FILE}"
+"[properties]
+c_args = ['-O2', '-fPIC', '-I${KERNEL_HEADERS_DIR}']
+cpp_args = ['-O2', '-fPIC', '-I${KERNEL_HEADERS_DIR}']
+
+[binaries]
+c = '${MUSL_GCC}'
+cpp = 'clang++'
+ar = '${CMAKE_AR}'
+strip = 'strip'
+pkg-config = 'pkg-config'
+"
+        )
+
+        ExternalProject_Add(glib-musl
+            URL https://download.gnome.org/sources/glib/2.78/glib-2.78.1.tar.xz
+            URL_HASH SHA256=915bc3d0f8507d650ead3832e2f8fb670fce59aac4d7754a7dab6f1e6fed78b2
+            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+            PREFIX ${GLIB_BUILD_DIR}
+            STAMP_DIR ${GLIB_BUILD_DIR}/stamps
+            UPDATE_DISCONNECTED 1
+            BUILD_ALWAYS 0
+            CONFIGURE_COMMAND env CC=${MUSL_GCC} CXX=clang++ PKG_CONFIG_PATH=${GLIB_PREFIX}/lib/pkgconfig ${MESON_EXECUTABLE} setup
+                <BINARY_DIR>
+                <SOURCE_DIR>
+                --prefix=${GLIB_PREFIX}
+                --buildtype=release
+                --default-library=static
+                --wrap-mode=nodownload
+                -Dintrospection=disabled
+                -Dselinux=disabled
+                -Dlibmount=disabled
+                -Dlibsysprof_capture=disabled
+                -Dtests=false
+                -Dbsearch_tests=false
+                --cross-file=${GLIB_CROSS_FILE}
+            BUILD_COMMAND ${MESON_EXECUTABLE} compile -C <BINARY_DIR> -j${CMAKE_BUILD_PARALLEL_LEVEL}
+            INSTALL_COMMAND ${MESON_EXECUTABLE} install -C <BINARY_DIR>
+            BUILD_BYPRODUCTS
+                ${GLIB_PREFIX}/lib/libglib-2.0.a
+                ${GLIB_PREFIX}/lib/libgobject-2.0.a
+            LOG_DOWNLOAD TRUE
+            LOG_CONFIGURE TRUE
+            LOG_BUILD TRUE
+            LOG_INSTALL TRUE
+            LOG_OUTPUT_ON_FAILURE TRUE
+        )
+
+        set(GLIB_LIBRARIES "${GLIB_PREFIX}/lib/libglib-2.0.a;${GLIB_PREFIX}/lib/libgobject-2.0.a")
+        set(GLIB_INCLUDE_DIRS "${GLIB_PREFIX}/include/glib-2.0;${GLIB_PREFIX}/lib/glib-2.0/include")
+    endif()
+else()
+    message(STATUS "  ${BoldBlue}glib${ColorReset} library found in cache: ${BoldMagenta}${GLIB_PREFIX}/lib/libglib-2.0.a${ColorReset}")
+    add_custom_target(glib-musl)
+    set(GLIB_LIBRARIES "${GLIB_PREFIX}/lib/libglib-2.0.a;${GLIB_PREFIX}/lib/libgobject-2.0.a")
+    set(GLIB_INCLUDE_DIRS "${GLIB_PREFIX}/include/glib-2.0;${GLIB_PREFIX}/lib/glib-2.0/include")
+endif()
+
+file(MAKE_DIRECTORY "${GLIB_PREFIX}/include" "${GLIB_PREFIX}/lib")
+
+# =============================================================================
+# pixman - Pixel manipulation library
+# =============================================================================
+message(STATUS "Configuring ${BoldBlue}pixman${ColorReset} from source...")
+
+set(PIXMAN_PREFIX "${MUSL_DEPS_DIR_STATIC}/pixman")
+set(PIXMAN_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/pixman-build")
+
+if(NOT EXISTS "${PIXMAN_PREFIX}/lib/libpixman-1.a")
+    message(STATUS "  pixman library not found in cache, will build from source")
+    ExternalProject_Add(pixman-musl
+        URL https://www.x.org/releases/individual/lib/pixman-0.42.2.tar.gz
+        URL_HASH SHA256=ea1480efada2fd948bc75366f7c349e1c96d3297d09a3fe62626e38e234a625e
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        PREFIX ${PIXMAN_BUILD_DIR}
+        STAMP_DIR ${PIXMAN_BUILD_DIR}/stamps
+        UPDATE_DISCONNECTED 1
+        BUILD_ALWAYS 0
+        CONFIGURE_COMMAND env CC=${MUSL_GCC} CFLAGS="-O2 -fPIC" <SOURCE_DIR>/configure --prefix=${PIXMAN_PREFIX} --enable-static --disable-shared --disable-libpng
+        BUILD_COMMAND env CFLAGS="-O2 -fPIC" make -j
+        INSTALL_COMMAND make install
+        BUILD_BYPRODUCTS ${PIXMAN_PREFIX}/lib/libpixman-1.a
+        LOG_DOWNLOAD TRUE
+        LOG_CONFIGURE TRUE
+        LOG_BUILD TRUE
+        LOG_INSTALL TRUE
+        LOG_OUTPUT_ON_FAILURE TRUE
+    )
+else()
+    message(STATUS "  ${BoldBlue}pixman${ColorReset} library found in cache: ${BoldMagenta}${PIXMAN_PREFIX}/lib/libpixman-1.a${ColorReset}")
+    add_custom_target(pixman-musl)
+endif()
+
+set(PIXMAN_LIBRARIES "${PIXMAN_PREFIX}/lib/libpixman-1.a")
+set(PIXMAN_INCLUDE_DIRS "${PIXMAN_PREFIX}/include")
+file(MAKE_DIRECTORY "${PIXMAN_PREFIX}/include" "${PIXMAN_PREFIX}/lib")
+
+# =============================================================================
+# freetype - Font rendering engine
+# =============================================================================
+message(STATUS "Configuring ${BoldBlue}freetype${ColorReset} from source...")
+
+set(FREETYPE_PREFIX "${MUSL_DEPS_DIR_STATIC}/freetype")
+set(FREETYPE_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/freetype-build")
+
+if(NOT EXISTS "${FREETYPE_PREFIX}/lib/libfreetype.a")
+    message(STATUS "  freetype library not found in cache, will build from source")
+    ExternalProject_Add(freetype-musl
+        URL https://github.com/freetype/freetype/archive/refs/tags/VER-2-13-2.tar.gz
+        URL_HASH SHA256=427201f5d5151670d05c1f5b45bef5dda1f2e7dd971ef54f0feaaa7ffd2ab90c
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        PREFIX ${FREETYPE_BUILD_DIR}
+        STAMP_DIR ${FREETYPE_BUILD_DIR}/stamps
+        UPDATE_DISCONNECTED 1
+        BUILD_ALWAYS 0
+        CMAKE_ARGS
+            -DCMAKE_C_COMPILER=${MUSL_GCC}
+            -DCMAKE_INSTALL_PREFIX=${FREETYPE_PREFIX}
+            -DCMAKE_BUILD_TYPE=Release
+            -DBUILD_SHARED_LIBS=OFF
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+            -DCMAKE_C_FLAGS=-O2\ -fPIC
+            -DFT_WITH_PNG=OFF
+            -DFT_WITH_ZLIB=ON
+            -DFT_WITH_BZIP2=OFF
+        BUILD_BYPRODUCTS ${FREETYPE_PREFIX}/lib/libfreetype.a
+        LOG_DOWNLOAD TRUE
+        LOG_CONFIGURE TRUE
+        LOG_BUILD TRUE
+        LOG_INSTALL TRUE
+        LOG_OUTPUT_ON_FAILURE TRUE
+    )
+else()
+    message(STATUS "  ${BoldBlue}freetype${ColorReset} library found in cache: ${BoldMagenta}${FREETYPE_PREFIX}/lib/libfreetype.a${ColorReset}")
+    add_custom_target(freetype-musl)
+endif()
+
+set(FREETYPE_LIBRARIES "${FREETYPE_PREFIX}/lib/libfreetype.a")
+set(FREETYPE_INCLUDE_DIRS "${FREETYPE_PREFIX}/include")
+file(MAKE_DIRECTORY "${FREETYPE_PREFIX}/include" "${FREETYPE_PREFIX}/lib")
+
+# =============================================================================
+# cairo - 2D graphics library
+# =============================================================================
+message(STATUS "Configuring ${BoldBlue}cairo${ColorReset} from source...")
+
+set(CAIRO_PREFIX "${MUSL_DEPS_DIR_STATIC}/cairo")
+set(CAIRO_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/cairo-build")
+
+if(NOT EXISTS "${CAIRO_PREFIX}/lib/libcairo.a")
+    message(STATUS "  cairo library not found in cache, will build from source")
+    ExternalProject_Add(cairo-musl
+        URL https://cgit.freedesktop.org/cairo/snapshot/cairo-1.18.2.tar.gz
+        URL_HASH SHA256=4bf5bff9664d92db7e7474e7949dd4e7c34179e69eb78ecd99f27fcb0d0a19df
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        PREFIX ${CAIRO_BUILD_DIR}
+        STAMP_DIR ${CAIRO_BUILD_DIR}/stamps
+        UPDATE_DISCONNECTED 1
+        BUILD_ALWAYS 0
+        CONFIGURE_COMMAND env CC=${MUSL_GCC} PKG_CONFIG_PATH=${PIXMAN_PREFIX}/lib/pkgconfig CFLAGS="-O2 -fPIC" <SOURCE_DIR>/configure
+            --prefix=${CAIRO_PREFIX}
+            --enable-static
+            --disable-shared
+            --disable-xlib
+            --disable-xlib-xrender
+            --disable-xcb
+            --disable-win32
+            --enable-image
+            --disable-gobject
+            --disable-trace
+            --disable-tools
+            --disable-tests
+            --disable-valgrind
+            --disable-interpreters
+        BUILD_COMMAND env CFLAGS="-O2 -fPIC" PKG_CONFIG_PATH=${PIXMAN_PREFIX}/lib/pkgconfig make -j
+        INSTALL_COMMAND make install
+        DEPENDS pixman-musl
+        BUILD_BYPRODUCTS ${CAIRO_PREFIX}/lib/libcairo.a
+        LOG_DOWNLOAD TRUE
+        LOG_CONFIGURE TRUE
+        LOG_BUILD TRUE
+        LOG_INSTALL TRUE
+        LOG_OUTPUT_ON_FAILURE TRUE
+    )
+else()
+    message(STATUS "  ${BoldBlue}cairo${ColorReset} library found in cache: ${BoldMagenta}${CAIRO_PREFIX}/lib/libcairo.a${ColorReset}")
+    add_custom_target(cairo-musl DEPENDS pixman-musl)
+endif()
+
+set(CAIRO_LIBRARIES "${CAIRO_PREFIX}/lib/libcairo.a")
+set(CAIRO_INCLUDE_DIRS "${CAIRO_PREFIX}/include")
+file(MAKE_DIRECTORY "${CAIRO_PREFIX}/include" "${CAIRO_PREFIX}/lib")
+
+# =============================================================================
+# harfbuzz - Text shaping engine
+# =============================================================================
+message(STATUS "Configuring ${BoldBlue}harfbuzz${ColorReset} from source...")
+
+set(HARFBUZZ_PREFIX "${MUSL_DEPS_DIR_STATIC}/harfbuzz")
+set(HARFBUZZ_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/harfbuzz-build")
+
+if(NOT EXISTS "${HARFBUZZ_PREFIX}/lib/libharfbuzz.a")
+    message(STATUS "  harfbuzz library not found in cache, will build from source")
+
+    find_program(MESON_EXECUTABLE meson)
+    if(NOT MESON_EXECUTABLE)
+        message(WARNING "meson not found - skipping harfbuzz")
+    else()
+        set(HARFBUZZ_CROSS_FILE "${HARFBUZZ_BUILD_DIR}/musl-cross.ini")
+        file(MAKE_DIRECTORY "${HARFBUZZ_BUILD_DIR}")
+        file(WRITE "${HARFBUZZ_CROSS_FILE}"
+"[properties]
+c_args = ['-O2', '-fPIC', '-I${KERNEL_HEADERS_DIR}']
+cpp_args = ['-O2', '-fPIC', '-I${KERNEL_HEADERS_DIR}']
+
+[binaries]
+c = '${MUSL_GCC}'
+cpp = 'clang++'
+ar = '${CMAKE_AR}'
+strip = 'strip'
+"
+        )
+
+        ExternalProject_Add(harfbuzz-musl
+            URL https://github.com/harfbuzz/harfbuzz/archive/refs/tags/8.3.1.tar.gz
+            URL_HASH SHA256=19a54fe9596f7a47c502549fce8e8a10978c697203774008cc173f8360b19a9a
+            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+            PREFIX ${HARFBUZZ_BUILD_DIR}
+            STAMP_DIR ${HARFBUZZ_BUILD_DIR}/stamps
+            UPDATE_DISCONNECTED 1
+            BUILD_ALWAYS 0
+            CONFIGURE_COMMAND env CC=${MUSL_GCC} CXX=clang++ PKG_CONFIG_PATH=${FREETYPE_PREFIX}/lib/pkgconfig ${MESON_EXECUTABLE} setup
+                <BINARY_DIR>
+                <SOURCE_DIR>
+                --prefix=${HARFBUZZ_PREFIX}
+                --buildtype=release
+                --default-library=static
+                --wrap-mode=nodownload
+                -Dtests=disabled
+                -Ddocs=disabled
+                -Dintrospection=disabled
+                -Dcpp_std=c++17
+                --cross-file=${HARFBUZZ_CROSS_FILE}
+            BUILD_COMMAND ${MESON_EXECUTABLE} compile -C <BINARY_DIR> -j${CMAKE_BUILD_PARALLEL_LEVEL}
+            INSTALL_COMMAND ${MESON_EXECUTABLE} install -C <BINARY_DIR>
+            DEPENDS freetype-musl
+            BUILD_BYPRODUCTS ${HARFBUZZ_PREFIX}/lib/libharfbuzz.a
+            LOG_DOWNLOAD TRUE
+            LOG_CONFIGURE TRUE
+            LOG_BUILD TRUE
+            LOG_INSTALL TRUE
+            LOG_OUTPUT_ON_FAILURE TRUE
+        )
+
+        set(HARFBUZZ_LIBRARIES "${HARFBUZZ_PREFIX}/lib/libharfbuzz.a")
+        set(HARFBUZZ_INCLUDE_DIRS "${HARFBUZZ_PREFIX}/include")
+    endif()
+else()
+    message(STATUS "  ${BoldBlue}harfbuzz${ColorReset} library found in cache: ${BoldMagenta}${HARFBUZZ_PREFIX}/lib/libharfbuzz.a${ColorReset}")
+    add_custom_target(harfbuzz-musl DEPENDS freetype-musl)
+    set(HARFBUZZ_LIBRARIES "${HARFBUZZ_PREFIX}/lib/libharfbuzz.a")
+    set(HARFBUZZ_INCLUDE_DIRS "${HARFBUZZ_PREFIX}/include")
+endif()
+
+file(MAKE_DIRECTORY "${HARFBUZZ_PREFIX}/include" "${HARFBUZZ_PREFIX}/lib")
+
+# =============================================================================
+# pango - Text layout and rendering
+# =============================================================================
+message(STATUS "Configuring ${BoldBlue}pango${ColorReset} from source...")
+
+set(PANGO_PREFIX "${MUSL_DEPS_DIR_STATIC}/pango")
+set(PANGO_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/pango-build")
+
+if(NOT EXISTS "${PANGO_PREFIX}/lib/libpango-1.0.a")
+    message(STATUS "  pango library not found in cache, will build from source")
+
+    find_program(MESON_EXECUTABLE meson)
+    if(NOT MESON_EXECUTABLE)
+        message(WARNING "meson not found - skipping pango")
+    else()
+        set(PANGO_CROSS_FILE "${PANGO_BUILD_DIR}/musl-cross.ini")
+        file(MAKE_DIRECTORY "${PANGO_BUILD_DIR}")
+        file(WRITE "${PANGO_CROSS_FILE}"
+"[properties]
+c_args = ['-O2', '-fPIC', '-I${KERNEL_HEADERS_DIR}']
+cpp_args = ['-O2', '-fPIC', '-I${KERNEL_HEADERS_DIR}']
+
+[binaries]
+c = '${MUSL_GCC}'
+cpp = 'clang++'
+ar = '${CMAKE_AR}'
+strip = 'strip'
+pkg-config = 'pkg-config'
+"
+        )
+
+        ExternalProject_Add(pango-musl
+            URL https://download.gnome.org/sources/pango/1.54/pango-1.54.0.tar.xz
+            URL_HASH SHA256=8a9eed75021ee734d7fc0fdf3a65c3bba51dfefe4ae51a9b414a60c70b2d1ed8
+            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+            PREFIX ${PANGO_BUILD_DIR}
+            STAMP_DIR ${PANGO_BUILD_DIR}/stamps
+            UPDATE_DISCONNECTED 1
+            BUILD_ALWAYS 0
+            CONFIGURE_COMMAND env CC=${MUSL_GCC} CXX=clang++ PKG_CONFIG_PATH=${GLIB_PREFIX}/lib/pkgconfig:${HARFBUZZ_PREFIX}/lib/pkgconfig:${CAIRO_PREFIX}/lib/pkgconfig:${FREETYPE_PREFIX}/lib/pkgconfig ${MESON_EXECUTABLE} setup
+                <BINARY_DIR>
+                <SOURCE_DIR>
+                --prefix=${PANGO_PREFIX}
+                --buildtype=release
+                --default-library=static
+                --wrap-mode=nodownload
+                -Dintrospection=disabled
+                -Dtests=false
+                -Ddocs=disabled
+                --cross-file=${PANGO_CROSS_FILE}
+            BUILD_COMMAND ${MESON_EXECUTABLE} compile -C <BINARY_DIR> -j${CMAKE_BUILD_PARALLEL_LEVEL}
+            INSTALL_COMMAND ${MESON_EXECUTABLE} install -C <BINARY_DIR>
+            DEPENDS glib-musl harfbuzz-musl cairo-musl
+            BUILD_BYPRODUCTS
+                ${PANGO_PREFIX}/lib/libpango-1.0.a
+                ${PANGO_PREFIX}/lib/libpangocairo-1.0.a
+            LOG_DOWNLOAD TRUE
+            LOG_CONFIGURE TRUE
+            LOG_BUILD TRUE
+            LOG_INSTALL TRUE
+            LOG_OUTPUT_ON_FAILURE TRUE
+        )
+
+        set(PANGO_LIBRARIES "${PANGO_PREFIX}/lib/libpango-1.0.a;${PANGO_PREFIX}/lib/libpangocairo-1.0.a")
+        set(PANGO_INCLUDE_DIRS "${PANGO_PREFIX}/include/pango-1.0")
+    endif()
+else()
+    message(STATUS "  ${BoldBlue}pango${ColorReset} library found in cache: ${BoldMagenta}${PANGO_PREFIX}/lib/libpango-1.0.a${ColorReset}")
+    add_custom_target(pango-musl DEPENDS glib-musl harfbuzz-musl cairo-musl)
+    set(PANGO_LIBRARIES "${PANGO_PREFIX}/lib/libpango-1.0.a;${PANGO_PREFIX}/lib/libpangocairo-1.0.a")
+    set(PANGO_INCLUDE_DIRS "${PANGO_PREFIX}/include/pango-1.0")
+endif()
+
+file(MAKE_DIRECTORY "${PANGO_PREFIX}/include" "${PANGO_PREFIX}/lib")
+
+# =============================================================================
+# GTK4 - GTK UI toolkit (statically linked)
+# =============================================================================
+message(STATUS "Configuring ${BoldBlue}GTK4${ColorReset} from source...")
+
+set(GTK4_PREFIX "${MUSL_DEPS_DIR_STATIC}/gtk4")
+set(GTK4_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/gtk4-build")
+
+if(NOT EXISTS "${GTK4_PREFIX}/lib/libgtk-4.a")
+    message(STATUS "  GTK4 library not found in cache, will build from source")
+    message(STATUS "  This will take several minutes on first build...")
+
+    find_program(MESON_EXECUTABLE meson)
+    if(NOT MESON_EXECUTABLE)
+        message(WARNING "meson not found - skipping GTK4. Install with: sudo apt install meson")
+    else()
+        set(GTK4_CROSS_FILE "${GTK4_BUILD_DIR}/musl-cross.ini")
+        file(MAKE_DIRECTORY "${GTK4_BUILD_DIR}")
+        file(WRITE "${GTK4_CROSS_FILE}"
+"[properties]
+c_args = ['-O2', '-fPIC', '-I${KERNEL_HEADERS_DIR}']
+cpp_args = ['-O2', '-fPIC', '-I${KERNEL_HEADERS_DIR}']
+
+[binaries]
+c = '${MUSL_GCC}'
+cpp = 'clang++'
+ar = '${CMAKE_AR}'
+strip = 'strip'
+pkg-config = 'pkg-config'
+"
+        )
+
+        ExternalProject_Add(gtk4-musl
+            URL https://download.gnome.org/sources/gtk/4.14/gtk-4.14.1.tar.xz
+            URL_HASH SHA256=fcefb3f132f8cc4711a9efa5b353c9ae9bb5eeff0246fa74dbc2f2f839b9e308
+            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+            PREFIX ${GTK4_BUILD_DIR}
+            STAMP_DIR ${GTK4_BUILD_DIR}/stamps
+            UPDATE_DISCONNECTED 1
+            BUILD_ALWAYS 0
+            CONFIGURE_COMMAND env CC=${MUSL_GCC} CXX=clang++ PKG_CONFIG_PATH=${PANGO_PREFIX}/lib/pkgconfig:${GLIB_PREFIX}/lib/pkgconfig:${CAIRO_PREFIX}/lib/pkgconfig:${HARFBUZZ_PREFIX}/lib/pkgconfig:${FREETYPE_PREFIX}/lib/pkgconfig ${MESON_EXECUTABLE} setup
+                <BINARY_DIR>
+                <SOURCE_DIR>
+                --prefix=${GTK4_PREFIX}
+                --buildtype=release
+                --default-library=static
+                --wrap-mode=nodownload
+                -Dintrospection=disabled
+                -Dtests=false
+                -Ddemos=false
+                -Dexamples=false
+                -Dbuild-tests=false
+                -Dbuild-examples=false
+                -Dbuild-testsuite=false
+                -Dgtk_doc=false
+                -Dwin32-backend=false
+                -Dwayland-backend=false
+                -Dmedia-gstreamer=disabled
+                -Dvulkan=disabled
+                --cross-file=${GTK4_CROSS_FILE}
+            BUILD_COMMAND ${MESON_EXECUTABLE} compile -C <BINARY_DIR> -j${CMAKE_BUILD_PARALLEL_LEVEL}
+            INSTALL_COMMAND ${MESON_EXECUTABLE} install -C <BINARY_DIR>
+            DEPENDS pango-musl cairo-musl pixman-musl harfbuzz-musl freetype-musl glib-musl
+            BUILD_BYPRODUCTS ${GTK4_PREFIX}/lib/libgtk-4.a
+            LOG_DOWNLOAD TRUE
+            LOG_CONFIGURE TRUE
+            LOG_BUILD TRUE
+            LOG_INSTALL TRUE
+            LOG_OUTPUT_ON_FAILURE TRUE
+        )
+
+        set(GTK4_LIBRARIES "${GTK4_PREFIX}/lib/libgtk-4.a")
+        set(GTK4_INCLUDE_DIRS "${GTK4_PREFIX}/include/gtk-4.0")
+    endif()
+else()
+    message(STATUS "  ${BoldBlue}GTK4${ColorReset} library found in cache: ${BoldMagenta}${GTK4_PREFIX}/lib/libgtk-4.a${ColorReset}")
+    add_custom_target(gtk4-musl DEPENDS pango-musl cairo-musl pixman-musl harfbuzz-musl freetype-musl glib-musl)
+    set(GTK4_LIBRARIES "${GTK4_PREFIX}/lib/libgtk-4.a")
+    set(GTK4_INCLUDE_DIRS "${GTK4_PREFIX}/include/gtk-4.0")
+endif()
+
+file(MAKE_DIRECTORY "${GTK4_PREFIX}/include" "${GTK4_PREFIX}/lib")
 
 # Restore output directories
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${_SAVED_ARCHIVE_OUTPUT_DIR})
