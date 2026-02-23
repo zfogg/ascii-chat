@@ -113,6 +113,21 @@ function(ascii_defer_prepare)
     # CMake generates compile_commands.json in the build directory
     set(_ASCII_COMPILE_DB "${CMAKE_BINARY_DIR}/compile_commands.json")
 
+    # Collect include directories (will be exposed to finalize phase)
+    set(defer_source_dirs "")
+    list(APPEND defer_source_dirs
+        "${CMAKE_SOURCE_DIR}/include"  # Public API headers
+        "${CMAKE_SOURCE_DIR}/lib"      # Private implementation headers
+        "${CMAKE_SOURCE_DIR}/src"      # Application headers
+    )
+    foreach(rel_path IN LISTS defer_rel_paths)
+        get_filename_component(dir_path "${rel_path}" DIRECTORY)
+        if(dir_path AND NOT "${CMAKE_SOURCE_DIR}/${dir_path}" IN_LIST defer_source_dirs)
+            list(APPEND defer_source_dirs "${CMAKE_SOURCE_DIR}/${dir_path}")
+        endif()
+    endforeach()
+    list(REMOVE_DUPLICATES defer_source_dirs)
+
     # Create timer targets for defer transformation (comments disabled for quiet builds)
     add_timer_targets(
         NAME defer-all
@@ -137,7 +152,7 @@ function(ascii_defer_prepare)
         add_custom_command(
             OUTPUT "${_gen_path}"
             COMMAND ${CMAKE_COMMAND} -E make_directory "${_gen_dir}"
-            COMMAND "${_defer_tool_exe}" "${_abs_path}" --output-dir=${defer_transformed_dir} --compilation-database=${_ASCII_COMPILE_DB}
+            COMMAND "${_defer_tool_exe}" -p ${CMAKE_BINARY_DIR} --output-dir=${defer_transformed_dir} ${_rel_path}
             DEPENDS defer-all-timer-start ${_defer_tool_depends} "${_abs_path}" "${_ASCII_COMPILE_DB}"
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             COMMENT "Defer: ${_rel_path}"
@@ -206,28 +221,6 @@ function(ascii_defer_prepare)
         endforeach()
         set(${var} "${updated_list}" PARENT_SCOPE)
     endforeach()
-
-    # Collect unique source directories that contain defer-transformed files
-    # These need to be added as include paths so relative includes work
-    # Use hardcoded paths to support flexible header directory structure
-    set(defer_source_dirs "")
-
-    # Add standard include directories (mirrors Include.cmake exactly)
-    list(APPEND defer_source_dirs
-        "${CMAKE_SOURCE_DIR}/include"  # Public API headers
-        "${CMAKE_SOURCE_DIR}/lib"      # Private implementation headers
-        "${CMAKE_SOURCE_DIR}/src"      # Application headers
-    )
-
-    # Also add directories where defer-transformed sources live
-    # (for local headers in the same directory as .c files)
-    foreach(rel_path IN LISTS defer_rel_paths)
-        get_filename_component(dir_path "${rel_path}" DIRECTORY)
-        if(dir_path AND NOT "${CMAKE_SOURCE_DIR}/${dir_path}" IN_LIST defer_source_dirs)
-            list(APPEND defer_source_dirs "${CMAKE_SOURCE_DIR}/${dir_path}")
-        endif()
-    endforeach()
-    list(REMOVE_DUPLICATES defer_source_dirs)
 
     set(ASCII_DEFER_SOURCE_DIR "${defer_transformed_dir}" PARENT_SCOPE)
     set(ASCII_DEFER_INCLUDE_DIRS "${defer_source_dirs}" PARENT_SCOPE)
