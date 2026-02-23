@@ -1,0 +1,394 @@
+/**
+ * @page topic_options_completions Shell Completions Architecture
+ * @ingroup module_core
+ * @ingroup options
+ *
+ * @section completions_overview Completion System
+ *
+ * The shell completion system auto-generates tab-completion scripts for multiple shells
+ * (bash, fish, zsh, powershell) from the centralized options registry. This enables
+ * intelligent IDE-like completion of ascii-chat command-line options.
+ *
+ * **Design Goal**: *Single source of truth (registry) feeds all shell generators.*
+ *
+ * @section completions_motivation Why Auto-Generate?
+ *
+ * **Manual Maintenance Burden**:
+ * - Adding a new option requires updating 4+ shell completion files
+ * - Consistency breaks when option changes
+ * - Help text gets out of sync with --help output
+ * - Error-prone and time-consuming
+ *
+ * **Solution: Registry-Driven Generation**:
+ * - Define option once in registry.c with metadata
+ * - Run `ascii-chat --completions <shell>` to generate script
+ * - All shells always in sync with actual options
+ * - Same help text, enum values, examples used everywhere
+ *
+ * @section completions_architecture Three-Layer Architecture
+ *
+ * @subsection completions_layer_registry Layer 1: Option Registry
+ *
+ * **File**: `lib/options/registry.c`
+ *
+ * Central registry with option metadata:
+ *
+ * ```c
+ * {
+ *     .long_name = "color",
+ *     .short_name = 'C',
+ *     .help_text = "Enable color output (auto/true/false)",
+ *     .mode_bitmask = MODE_CLIENT | MODE_MIRROR,
+ * }
+ * ```
+ *
+ * Enhanced metadata for completions:
+ *
+ * ```c
+ * const option_metadata_t completion_metadata = {
+ *     .input_type = OPTION_INPUT_ENUM,
+ *     .enum_values = {"auto", "true", "false", NULL},
+ *     .examples = NULL,
+ * };
+ * ```
+ *
+ * Metadata types:
+ * - **ENUM**: Fixed set of valid values (show all)
+ * - **EXAMPLES**: Practical suggestions (1-5 examples)
+ * - **FILEPATH**: File path completion
+ * - **FREEFORM**: No suggestions (user types freely)
+ * - **NUMERIC_RANGE**: Range of valid values (optional suggestions)
+ *
+ * @subsection completions_layer_collector Layer 2: Completion Collector
+ *
+ * **File**: `lib/options/completions/completions.c`
+ *
+ * Dispatcher that routes to shell-specific generators:
+ *
+ * ```c
+ * asciichat_error_t completions_generate_for_shell(
+ *     completion_format_t format,  // BASH, FISH, ZSH, POWERSHELL
+ *     FILE *output
+ * );
+ * ```
+ *
+ * Helper function collects options from all modes with deduplication:
+ *
+ * ```c
+ * option_descriptor_t *completions_collect_all_modes_unique(size_t *count);
+ * ```
+ *
+ * This collects across:
+ * - MODE_BINARY (--help, --version, --log-file)
+ * - MODE_SERVER (--port, --max-clients, etc.)
+ * - MODE_CLIENT (--width, --height, --color, etc.)
+ * - MODE_MIRROR (--webcam, --test-pattern, etc.)
+ * - MODE_DISCOVERY_SVC (--database, --port, etc.)
+ * - MODE_ALL (--quiet, --verbose, etc.)
+ *
+ * Deduplication ensures each option appears once.
+ *
+ * @subsection completions_layer_generators Layer 3: Shell-Specific Generators
+ *
+ * Four generator implementations, one per shell:
+ *
+ * **Bash Completion** (bash.c):
+ * - Uses bash-completion framework with `_init_completion`
+ * - Generates completion function that uses COMPREPLY array
+ * - Output: bash function definition
+ * - Escapes: single quotes as `'\''`
+ *
+ * **Fish Completion** (fish.c):
+ * - Uses Fish `complete` built-in system
+ * - Supports context-aware completions (enum values, examples)
+ * - Output: complete command lines
+ * - Escapes: single quotes as `'\''`
+ *
+ * **Zsh Completion** (zsh.c):
+ * - Uses `_arguments` framework
+ * - Supports descriptions and grouped completions
+ * - Output: zsh completion function
+ * - Escapes: as needed for zsh syntax
+ *
+ * **PowerShell Completion** (powershell.c):
+ * - Uses Register-ArgumentCompleter
+ * - Supports dynamic suggestions
+ * - Output: PowerShell completer function
+ * - Escapes: as needed for PowerShell syntax
+ *
+ * Each generator:
+ * 1. Gets option descriptors from collector
+ * 2. Reads metadata for each option
+ * 3. Formats for target shell
+ * 4. Writes to output stream
+ *
+ * @section completions_workflow Completion Workflow
+ *
+ * @subsection completions_generation Generation (One-Time)
+ *
+ * **Step 1: User Invokes Completions**
+ * ```bash
+ * ascii-chat --completions bash
+ * ```
+ *
+ * **Step 2: Deferred Action Execution**
+ * - Parser finds --completions flag
+ * - Defers action with shell name: `actions_defer(ACTION_COMPLETIONS, {shell: "bash"})`
+ * - Options continue parsing
+ * - After options_init, executes `execute_completions()`
+ *
+ * **Step 3: Registry Load**
+ * - `options_preset_unified()` loads registry
+ * - All option descriptors available
+ * - Mode filtering applied
+ *
+ * **Step 4: Collector Extracts Options**
+ * - Calls `completions_collect_all_modes_unique()`
+ * - Gets unique options across all modes
+ * - Returns sorted array of descriptors
+ *
+ * **Step 5: Format Dispatch**
+ * - Calls `completions_generate_for_shell(BASH, stdout)`
+ * - Router selects `completions_generate_bash()`
+ *
+ * **Step 6: Generator Produces Script**
+ * - `bash_write_header()` outputs shebang and function start
+ * - `bash_write_option()` outputs each option with help text
+ * - `bash_write_footer()` outputs completion hook line
+ * - Result: Complete bash completion script on stdout
+ *
+ * **Step 7: User Installs Completions**
+ * - User pipes output to evaluation or file:
+ *   ```bash
+ *   eval "$(ascii-chat --completions bash)"        # Immediate activation
+ *   ascii-chat --completions bash > ~/.bashrc_ac   # Save for persistence
+ *   ```
+ *
+ * @subsection completions_usage Usage (Interactive)
+ *
+ * **User Types and Tabs**:
+ * ```bash
+ * $ ascii-chat --colo<TAB>
+ * ```
+ *
+ * **Shell Completer Invoked** (automatically):
+ * - Bash calls `_ascii_chat()` completion function
+ * - Function checks what's being completed
+ * - Calls compgen to match: "--colo*" patterns
+ * - Returns candidates: --color, --color-mode, --color-filter
+ *
+ * **Shell Displays Candidates**:
+ * ```bash
+ * --color          (--color flag)
+ * --color-mode     (color mode option)
+ * --color-filter   (color filter option)
+ * ```
+ *
+ * **User Selects**:
+ * ```bash
+ * $ ascii-chat --color
+ * ```
+ *
+ * **Fish Enhanced Experience**:
+ * - Same process, but with descriptions:
+ *   ```
+ *   --color         (Enable/disable color output)
+ *   --color-mode    (Terminal color capability: 16/256/truecolor)
+ *   --color-filter  (Apply color filter effect)
+ *   ```
+ *
+ * - Enum completions show valid values:
+ *   ```bash
+ *   $ ascii-chat --color <TAB>
+ *   auto   (Auto-detect from terminal)
+ *   true   (Force enabled)
+ *   false  (Force disabled)
+ *   ```
+ *
+ * @section completions_metadata Option Metadata
+ *
+ * Each option can include metadata to enhance completions:
+ *
+ * @subsection completions_enum_values Enum Values
+ *
+ * Options with fixed valid values:
+ *
+ * ```c
+ * {
+ *     .long_name = "color",
+ *     .input_type = OPTION_INPUT_ENUM,
+ *     .enum_values = {"auto", "true", "false", NULL},
+ * }
+ * ```
+ *
+ * Completions show all values:
+ * - Bash: "auto true false"
+ * - Fish: "auto" / "true" / "false" with descriptions
+ * - Zsh: values grouped with descriptions
+ *
+ * @subsection completions_examples Practical Examples
+ *
+ * Options with example values (preferred over calculated ranges):
+ *
+ * ```c
+ * {
+ *     .long_name = "port",
+ *     .input_type = OPTION_INPUT_EXAMPLES,
+ *     .examples = {"27224", "8080", "3000", "5000", NULL},
+ * }
+ * ```
+ *
+ * Completions suggest examples:
+ * - Fish: Shows "27224 8080 3000 5000" with descriptions
+ * - User can still type other values (not exclusive)
+ *
+ * @subsection completions_filepath File Path Completion
+ *
+ * Options expecting file paths:
+ *
+ * ```c
+ * {
+ *     .long_name = "config",
+ *     .input_type = OPTION_INPUT_FILEPATH,
+ * }
+ * ```
+ *
+ * Completions use shell file completion:
+ * - Bash: $(compgen -f ...) for file completion
+ * - Fish: Uses default file completion
+ * - Zsh: Uses _files directive
+ *
+ * @subsection completions_numeric Numeric Ranges
+ *
+ * Options with numeric constraints:
+ *
+ * ```c
+ * {
+ *     .long_name = "width",
+ *     .input_type = OPTION_INPUT_NUMERIC,
+ *     .min_int = 1,
+ *     .max_int = 9999,
+ * }
+ * ```
+ *
+ * Completions may show ranges:
+ * - Fish: Can show "1..9999" as suggestion
+ * - Others: No specific suggestions (user types freely)
+ *
+ * @section completions_data_flow Data Flow
+ *
+ * **High-Level Flow**:
+ * ```
+ * user input (--completions bash)
+ *        ↓
+ * options_init() detects action
+ *        ↓
+ * completions_generate_for_shell()
+ *        ↓
+ * completions_collect_all_modes_unique()  ← reads registry
+ *        ↓
+ * completions_generate_bash()             ← shell-specific
+ *        ↓
+ * bash_write_*() functions               ← format output
+ *        ↓
+ * stdout (bash completion script)
+ *        ↓
+ * user runs: eval "$(ascii-chat --completions bash)"
+ * ```
+ *
+ * **Per-Option Flow**:
+ * ```
+ * option_descriptor_t from registry
+ *        ↓
+ * get metadata (enum_values, examples, input_type)
+ *        ↓
+ * shell-specific formatting
+ *    ↓       ↓       ↓        ↓
+ *  bash    fish     zsh    powershell
+ *    ↓       ↓       ↓        ↓
+ * completion output format
+ * ```
+ *
+ * @section completions_adding Adding New Options
+ *
+ * When adding a new option, completions are automatically generated:
+ *
+ * **Step 1: Define Option in Registry** (registry.c):
+ * ```c
+ * {
+ *     .long_name = "new-option",
+ *     .short_name = 'n',
+ *     .help_text = "Description of new option",
+ *     .mode_bitmask = MODE_CLIENT,
+ *     // ... other fields ...
+ * }
+ * ```
+ *
+ * **Step 2 (Optional): Add Completion Metadata**:
+ * ```c
+ * const option_metadata_t new_metadata = {
+ *     .input_type = OPTION_INPUT_EXAMPLES,
+ *     .examples = {"example1", "example2", NULL},
+ * };
+ * ```
+ *
+ * **Step 3: Done**:
+ * - Next time user runs `ascii-chat --completions bash`, new option appears
+ * - No updates needed to individual shell generators
+ * - No changes needed to completion scripts
+ *
+ * **Example**:
+ * ```bash
+ * # New option added to registry
+ * $ ascii-chat --completions bash > ~/.bashrc_ac
+ * # Completions now include new option
+ * $ ascii-chat --new<TAB>
+ * --new-option (Description of new option)
+ * ```
+ *
+ * @section completions_platforms Platform Support
+ *
+ * | Shell | Version | Status | Notes |
+ * |-------|---------|--------|-------|
+ * | Bash | 4.0+ | ✓ Full | Uses bash-completion v2 |
+ * | Fish | 2.3+ | ✓ Full | Context-aware suggestions |
+ * | Zsh | 5.0+ | ✓ Full | Grouped completions |
+ * | PowerShell | 5.0+ | ✓ Full | Dynamic suggestions |
+ *
+ * @section completions_performance Performance
+ *
+ * **Generation Time**:
+ * - One-time cost at `--completions` invocation
+ * - ~50-200ms to load registry, generate script, output
+ * - Negligible user impact (happens once per shell session)
+ *
+ * **Runtime Performance**:
+ * - Completion triggering: ~1-10ms (shell builtin)
+ * - No application startup overhead (completions in shell, not app)
+ *
+ * @section completions_testing Testing Completions
+ *
+ * **Manual Testing**:
+ * ```bash
+ * # Generate and verify bash completions
+ * ./build/bin/ascii-chat --completions bash | head -20
+ *
+ * # Generate and verify fish completions
+ * ./build/bin/ascii-chat --completions fish | head -20
+ *
+ * # Load completions and test interactively
+ * eval "$(./build/bin/ascii-chat --completions bash)"
+ * ascii-chat --colo<TAB>  # Should complete
+ * ```
+ *
+ * **Automated Testing**:
+ * - Verify all options appear in generated scripts
+ * - Verify metadata is preserved (enum values, examples)
+ * - Verify shell syntax is valid
+ * - Verify mode filtering works (MODE_CLIENT options in client completions)
+ *
+ * @see @ref topic_options "Options" for high-level overview
+ * @see @ref topic_options_parsing "Options Parsing" for parsing details
+ * @see completions.h for public API
+ * @see registry.h for registry structure
+ */

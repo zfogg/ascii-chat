@@ -1,7 +1,83 @@
 /**
  * @file fish.c
  * @brief Fish shell completion script generator
- * @ingroup options
+ * @ingroup options_completions
+ * @addtogroup options_completions
+ * @{
+ *
+ * **Fish Completion Generator**: Auto-generates Fish shell completion definitions
+ * from the centralized options registry, enabling intelligent tab-completion for
+ * ascii-chat with context-aware suggestions.
+ *
+ * **Fish Completion Strategy**:
+ *
+ * Fish shell uses `complete` built-in to define completion behavior for commands:
+ *
+ * 1. **Completion Commands**: `complete -c <command> <conditions> <actions>`
+ *    - `-c ascii-chat`: Apply to ascii-chat command
+ *    - `-s <char>`: Short option (e.g., -x)
+ *    - `-l <name>`: Long option (e.g., --help)
+ *    - `-x`: Option takes argument (not a flag)
+ *    - `-a <values>`: Completion suggestions (space or newline separated)
+ *    - `-d <description>`: Help text shown in completion menu
+ *    - `--condition`: Condition (e.g., only suggest when mode=client)
+ *
+ * 2. **Smart Completion Types**:
+ *    - **Enum Completions**: Options with enum values show all valid choices
+ *      - Example: `--color {auto,true,false}`
+ *      - Uses `option_metadata_t.enum_values` array
+ *    - **Example Completions**: Options with practical examples (preferred over ranges)
+ *      - Example: `--port` suggests `{27224,8080,3000}` instead of ranges
+ *      - Uses `option_metadata_t.examples` array
+ *    - **File Path Completions**: Options expecting file paths use Fish file completion
+ *      - Example: `--config` uses default file completion
+ *      - Uses `option_metadata_t.input_type == OPTION_INPUT_FILEPATH`
+ *    - **Flag Completions**: Options that don't take arguments
+ *
+ * 3. **Metadata-Driven Generation**:
+ *    - Reads `option_metadata_t` from registry for each option
+ *    - Provides context-specific completion based on input type:
+ *      - ENUM: Show enum values from metadata
+ *      - FILEPATH: Default file completion
+ *      - EXAMPLES: Show practical examples
+ *      - Others: No suggestions (freeform input)
+ *
+ * 4. **Output Format**: Fish completion lines:
+ *    ```fish
+ *    complete -c ascii-chat -l width -x -a '100..200' -d 'Terminal width'
+ *    complete -c ascii-chat -l color -x -a 'auto true false' -d 'Color output'
+ *    complete -c ascii-chat -s h -d 'Show help' -f
+ *    ```
+ *
+ * **Usage**:
+ *
+ * Users enable Fish completions by sourcing the generated script:
+ * ```bash
+ * ascii-chat --completions fish | source
+ * ```
+ *
+ * Or save to completions directory for persistent shell integration:
+ * ```bash
+ * ascii-chat --completions fish > ~/.config/fish/completions/ascii-chat.fish
+ * ```
+ *
+ * **Special Handling**:
+ *
+ * - **Help Text Escaping**: Single quotes in help text escaped as `'\''`
+ * - **Newlines/Tabs**: Converted to spaces for single-line help text
+ * - **Enum Priority**: Enum completions marked exclusive (`-f` flag) to suppress
+ *   file completion when enum values are known and finite
+ * - **File Completion**: Non-enum, non-example options use Fish file completion
+ * - **Mode Filtering**: Options shown only in applicable modes (not yet implemented)
+ *
+ * **Performance**:
+ * - Completions generated once at startup and cached
+ * - No runtime overhead during interactive use
+ * - Metadata lookup uses linear search (small option count, negligible overhead)
+ *
+ * @see completions.h for public completion API
+ * @see bash.c for Bash shell completion strategy
+ * @}
  */
 
 #include <string.h>

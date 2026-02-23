@@ -1,13 +1,59 @@
 /**
  * @file actions.c
- * @brief Action option callbacks for ascii-chat
+ * @brief Deferred action execution for command-line queries
  * @ingroup options
+ * @addtogroup options
+ * @{
  *
- * Action options are deferred until after all options are fully parsed and initialized.
- * This ensures that options like --width and --height are properly reflected in action
- * output (e.g., --show-capabilities displays the final terminal dimensions).
+ * **Action Option System**: Handles informational command-line actions that must
+ * run AFTER all options are fully parsed and initialized, then exit immediately.
  *
- * Examples: --list-webcams, --list-microphones, --list-speakers, --show-capabilities
+ * **The Deferred Pattern**:
+ *
+ * Command-line actions like --help, --version, --list-webcams, etc. are informational
+ * queries that should not run the main application. They work in two phases:
+ *
+ * 1. **Deferral Phase** (during options parsing):
+ *    - Parser encounters an action flag (e.g., --list-webcams)
+ *    - Calls `actions_defer(ACTION_LIST_WEBCAMS, NULL)` to record the request
+ *    - Parsing continues so other options (like --width, --height) are processed
+ *    - Only the FIRST action encountered is recorded (others are ignored)
+ *
+ * 2. **Execution Phase** (after options_init() completes):
+ *    - Main code checks `actions_get_deferred()` for pending action
+ *    - If action is pending, calls `actions_execute_deferred()` to run it
+ *    - Action implementation enumerates devices, prints help, etc.
+ *    - Exits immediately using `action_exit()` (skips atexit handlers)
+ *
+ * **Why Deferral?**:
+ *
+ * Actions need full option context before running:
+ * - `--show-capabilities --width 120 --height 30` must display 120x30 grid
+ * - `--completions zsh` needs registry loaded and parsed
+ * - Deferral ensures all options (binary-level, mode-specific) are processed first
+ *
+ * **Design Notes**:
+ *
+ * - Action output goes to stderr (or stdout for completions) to avoid pollution
+ * - Uses `_Exit()` to skip atexit handlers (prevents debug memory reports polluting output)
+ * - Only one action can execute per invocation
+ * - If multiple action flags provided, first one wins (intentional simplicity)
+ * - Action arguments stored in `action_args_t` (e.g., shell name for --completions)
+ *
+ * **Implemented Actions**:
+ * - `--help`: Show help text
+ * - `--version`: Show version and build info
+ * - `--list-webcams`: Enumerate video input devices
+ * - `--list-microphones`: Enumerate audio input devices
+ * - `--list-speakers`: Enumerate audio output devices
+ * - `--show-capabilities`: Display platform capabilities and terminal info
+ * - `--completions <shell>`: Generate shell completion scripts (bash, fish, zsh, powershell)
+ * - `--schema`: Output options schema as JSON or TOML
+ * - `--check-update`: Check for newer application version
+ * - `--config-create`: Create default configuration file template
+ *
+ * @see actions.h for public API
+ * @}
  */
 
 #include <ascii-chat/options/actions.h>

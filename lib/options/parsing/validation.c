@@ -1,7 +1,85 @@
 /**
  * @file options/validation.c
- * @ingroup options_validation
- * @brief Implementation of options validation functions
+ * @brief Options validation implementation
+ * @ingroup options
+ * @addtogroup options
+ * @{
+ *
+ * **Options Validation System**: Validates user-provided option values against
+ * constraints and business rules before they're stored in the options_t struct.
+ *
+ * **Validation Strategy**:
+ *
+ * The validation layer sits between the user input and option storage:
+ *
+ * 1. **Input Validation** (per-field):
+ *    - Parse string argument to expected type (int, bool, enum, etc.)
+ *    - Check basic constraints (range, format, required fields)
+ *    - Return error with user-friendly message on failure
+ *
+ * 2. **Format Validation**:
+ *    - IPv4/IPv6 addresses (use `is_valid_ipv4()`, `is_valid_ipv6()`)
+ *    - Port numbers (1-65535)
+ *    - Numeric ranges (FPS: 1-120, compression: 0-9, etc.)
+ *    - File paths (must exist, must be readable, safe locations)
+ *    - Enum values (must match known values)
+ *
+ * 3. **Cross-Field Validation** (multiple options):
+ *    - Address/port conflicts (--address and --port must not conflict)
+ *    - Mode-specific constraints (--audio only valid in certain modes)
+ *    - Dependency checks (if --file is set, --webcam must not be)
+ *    - Incompatible combinations (--password and --key are mutually exclusive)
+ *
+ * 4. **Platform-Specific Validation**:
+ *    - File path safety (reject /etc, /System, /Windows paths)
+ *    - Terminal capability detection
+ *    - Audio backend availability
+ *    - Video device support
+ *
+ * **Design Patterns**:
+ *
+ * - **Generic Range Validator**: `validate_int_range()` eliminates duplication
+ *   for FPS, max clients, compression, etc.
+ * - **Error Message Customization**: Validators produce context-aware messages
+ *   (e.g., "Port must be between 1-65535", "FPS must be 1-120", etc.)
+ * - **Fail-Fast on Invalid Input**: First invalid option stops parsing with error
+ * - **Sensible Defaults**: If validation fails, safe defaults are available
+ *
+ * **Validation Entry Points**:
+ *
+ * Public validator functions (called by options parser):
+ * - `validate_opt_port()`: Port number (1-65535)
+ * - `validate_opt_width()`: Terminal width (1-9999)
+ * - `validate_opt_height()`: Terminal height (1-9999)
+ * - `validate_opt_fps()`: Frame rate (1-120)
+ * - `validate_opt_compression()`: Compression level (0-9)
+ * - `validate_opt_max_clients()`: Max concurrent clients (1-1000)
+ * - `validate_opt_address()`: IPv4 or IPv6 address
+ * - `validate_opt_log_file()`: File path with safety checks
+ *
+ * **Common Validation Constraints**:
+ *
+ * | Option | Min | Max | Notes |
+ * |--------|-----|-----|-------|
+ * | port | 1 | 65535 | Port number |
+ * | width | 1 | 9999 | Terminal columns |
+ * | height | 1 | 9999 | Terminal rows |
+ * | fps | 1 | 120 | Frames per second |
+ * | compression | 0 | 9 | Zlib level |
+ * | max_clients | 1 | 1000 | Concurrent connections |
+ * | snapshot_delay | 0.0 | 3600.0 | Seconds to wait |
+ *
+ * **Error Handling**:
+ *
+ * Validators return integer status and optionally set error message:
+ * - Return 0 = success
+ * - Return < 0 = validation failure
+ * - Return > 0 = fatal error (e.g., memory allocation)
+ * - Error message is formatted in provided buffer for display to user
+ *
+ * @see options.h for option structure
+ * @see parsers.h for custom enum parsers
+ * @}
  */
 
 #include <ascii-chat/options/validation.h>

@@ -1,9 +1,65 @@
 /**
  * @file bash.c
  * @brief Bash shell completion script generator
- * @ingroup options
+ * @ingroup options_completions
+ * @addtogroup options_completions Completions
+ * @{
  *
- * Generates bash completions dynamically from the options registry.
+ * **Bash Completion Generator**: Auto-generates bash completion scripts from the
+ * centralized options registry, enabling tab-completion for ascii-chat options.
+ *
+ * **Bash Completion Strategy**:
+ *
+ * The bash generator creates a completion function using bash-completion v2 API:
+ *
+ * 1. **Completion Function**: Defines `_ascii_chat()` completion handler
+ *    - Triggered when user presses TAB after typing "ascii-chat"
+ *    - Uses bash-completion built-ins (`_init_completion`, `_get_comp_words_by_ref`)
+ *    - Parses current command line to detect what to complete
+ *
+ * 2. **Option Extraction**: Reads all options from registry via
+ *    - `completions_collect_all_modes_unique()` - Get all options across modes
+ *    - Filter by mode bitmask to show only applicable options
+ *    - Include both short (-x) and long (--long) variants
+ *
+ * 3. **Completion Types**:
+ *    - **Flags**: Options that don't take arguments (--help, --version)
+ *    - **Arguments**: Options that take values (--port 27224, --width 120)
+ *    - **Positional**: Mode names (server, client, mirror, discovery-service)
+ *
+ * 4. **Output Format**: Bash completion function with COMPREPLY array:
+ *    ```bash
+ *    _ascii_chat() {
+ *      local cur prev words cword
+ *      _init_completion || return
+ *      COMPREPLY=($(compgen -W "--help --version --width ..." -- "$cur"))
+ *    }
+ *    complete -o bashdefault -o default -o nospace -F _ascii_chat ascii-chat
+ *    ```
+ *
+ * **Usage**:
+ *
+ * Users enable bash completions by sourcing the generated script:
+ * ```bash
+ * eval "$(ascii-chat --completions bash)"
+ * ```
+ *
+ * Or save to bash_completion.d for persistent shell integration:
+ * ```bash
+ * ascii-chat --completions bash > ~/.local/share/bash-completion/completions/ascii-chat
+ * ```
+ *
+ * **Special Handling**:
+ *
+ * - **Help Text Escaping**: Single quotes in help text are escaped as `'\''`
+ *   (end quote, escaped quote, start quote) for safe bash strings
+ * - **Newlines**: Converted to spaces in help text to fit single line
+ * - **Short Names**: Generated for all options with short variant
+ * - **Long Names**: Generated for all options with long variant
+ *
+ * @see completions.h for public completion API
+ * @see fish.c for Fish shell completion strategy
+ * @}
  */
 
 #include <string.h>

@@ -1,0 +1,402 @@
+/**
+ * @page topic_options_parsing Options Parsing Architecture
+ * @ingroup module_core
+ * @ingroup options
+ *
+ * @section parsing_overview Parsing Strategy
+ *
+ * The command-line parsing system in ascii-chat is designed with a multi-stage approach
+ * that separates concerns and validates options incrementally. Unlike simple flat parsing,
+ * this strategy enables complex option interdependencies, mode detection, and error handling.
+ *
+ * **Core Design Principle**: *Fail fast with clear errors, not silent defaults.*
+ *
+ * @section parsing_architecture Architecture Layers
+ *
+ * The options parsing system is built in layers from bottom to top:
+ *
+ * @subsection parsing_layer_registry Layer 1: Option Descriptors (Registry)
+ *
+ * The single source of truth for all options:
+ *
+ * - **File**: `lib/options/registry.c`
+ * - **Header**: `include/ascii-chat/options/registry.h`
+ * - **Purpose**: Central definition of all options with metadata
+ *
+ * Each option descriptor includes:
+ * - **Identity**: long_name ("--width"), short_name ('W')
+ * - **Type**: STRING, INT, BOOL, ENUM, FILEPATH, etc.
+ * - **Applicability**: mode_bitmask (BINARY, SERVER, CLIENT, ALL, etc.)
+ * - **Constraints**: min/max values, validation callbacks
+ * - **Metadata**: help text, examples, enum values
+ * - **Storage**: offset in options_t struct via offsetof()
+ *
+ * The registry uses a fixed array of descriptors compiled at build time:
+ * ```c
+ * static const option_descriptor_t g_option_descriptors[] = {
+ *     {
+ *         .long_name = "width",
+ *         .short_name = 'W',
+ *         .type = OPTION_TYPE_INT,
+ *         .mode_bitmask = MODE_CLIENT | MODE_MIRROR,
+ *         .offset = offsetof(options_t, width),
+ *         .default_int = 80,
+ *         .min_int = 1,
+ *         .max_int = 9999,
+ *         .help_text = "Terminal width in characters",
+ *     },
+ *     // ... more options ...
+ * };
+ * ```
+ *
+ * @subsection parsing_layer_builder Layer 2: Builder Pattern (Configuration)
+ *
+ * Flexible API for constructing option configurations:
+ *
+ * - **File**: `lib/options/builder.c`
+ * - **Header**: `include/ascii-chat/options/builder.h`
+ * - **Purpose**: Build custom option configurations from registry
+ *
+ * The builder allows selective inclusion of options and custom constraints:
+ * ```c
+ * options_builder_t *builder = options_builder_create("myapp");
+ * options_registry_add_filtered(builder, MODE_CLIENT);
+ * options_builder_add_custom(builder, &my_custom_option);
+ * options_config_t *config = options_builder_build(builder);
+ * ```
+ *
+ * Predefined builders via presets:
+ * - `options_preset_unified()`: All modes (default)
+ * - `options_preset_server()`: Server mode only
+ * - `options_preset_client()`: Client mode only
+ * - `options_preset_mirror()`: Mirror mode only
+ *
+ * @subsection parsing_layer_validators Layer 3: Validators & Parsers
+ *
+ * Type-specific parsing and validation:
+ *
+ * - **Files**:
+ *   - `lib/options/parsing/parsers.c`: Custom enum and type parsers
+ *   - `lib/options/parsing/validation.c`: Option value validation
+ *   - `lib/options/parsing/actions.c`: Deferred actions (--help, --list-webcams, etc.)
+ *
+ * - **Parsers** (convert string to typed value):
+ *   - `parse_color_setting()`: auto/true/false → color_setting_t
+ *   - `parse_color_mode()`: 16/256/truecolor → terminal_color_mode_t
+ *   - `parse_port_option()`: "8080" → uint16_t with range check
+ *   - `parse_server_bind_address()`: "192.168.1.1" or "::1" → IPv4/IPv6
+ *
+ * - **Validators** (check constraints):
+ *   - `validate_opt_port()`: port in range 1-65535
+ *   - `validate_opt_width()`: width > 0 and < 10000
+ *   - `validate_opt_address()`: valid IPv4 or IPv6
+ *   - `validate_opt_log_file()`: safe path, not /etc or /System
+ *
+ * - **Actions** (deferred operations):
+ *   - `--help`: Show usage information
+ *   - `--version`: Show version and build info
+ *   - `--list-webcams`: Enumerate video input devices
+ *   - `--show-capabilities`: Display platform and terminal capabilities
+ *   - `--completions <shell>`: Generate shell completion scripts
+ *
+ * @subsection parsing_layer_init Layer 4: Unified Initialization (options_init)
+ *
+ * Single entry point orchestrating the entire parsing flow:
+ *
+ * - **File**: `lib/options/options.c`
+ * - **Header**: `include/ascii-chat/options/options.h`
+ * - **Function**: `asciichat_error_t options_init(int argc, char **argv)`
+ *
+ * Options initialization happens in 8 stages:
+ *
+ * **STAGE 1: Mode Detection**
+ * - Scan argv for mode keyword (server, client, mirror, discovery-service)
+ * - Extract mode before other option processing
+ * - Default to MODE_DISCOVERY if no mode specified
+ * - Impact: Determines which options are allowed in subsequent stages
+ *
+ * **STAGE 2: Binary-Level Options**
+ * - Parse options that apply before mode detection
+ * - Include: `--help`, `--version`, `--log-file`, `--log-level`
+ * - Mode bitmask: OPTION_MODE_BINARY
+ * - Early exit for actions: `--help` shows help and exits immediately
+ *
+ * **STAGE 3: Mode-Specific Options**
+ * - Parse options applicable to the detected mode
+ * - Use `options_preset_unified()` to load mode-appropriate builder
+ * - Filter descriptors by mode bitmask
+ * - Apply mode-specific defaults
+ *
+ * **STAGE 4: Custom Parser Handling**
+ * - Invoke custom option parsers (not just simple type coercion)
+ * - Examples: `parse_color_mode()`, `parse_server_bind_address()`
+ * - Allows context-aware parsing (e.g., parsing "localhost:8080")
+ * - May consume multiple arguments (positional parsers)
+ *
+ * **STAGE 5: Default Value Application**
+ * - For unprovided options, apply defaults from registry
+ * - Defaults may be mode-specific (SERVER vs CLIENT defaults differ)
+ * - Defaults may depend on environment variables (OPT_*_ENV)
+ *
+ * **STAGE 6: Cross-Field Validation**
+ * - Validate combinations and dependencies
+ * - Examples:
+ *   - `--port` must not conflict with `--address` port component
+ *   - `--password` and `--key` are mutually exclusive
+ *   - `--audio` only valid with audio-enabled modes
+ * - Fail early with descriptive error messages
+ *
+ * **STAGE 7: RCU Publishing**
+ * - Make options available globally via lock-free RCU
+ * - `options_publish_via_rcu()` atomically publishes options_t
+ * - Enables lock-free read access via `GET_OPTION()` macro
+ *
+ * **STAGE 8: Deferred Actions**
+ * - Check for pending deferred action (set during STAGE 2/3)
+ * - If action pending, execute it and exit
+ * - Otherwise, return ASCIICHAT_OK to main
+ *
+ * @section parsing_modes Mode-Specific Parsing
+ *
+ * Options may apply to different combinations of modes. The mode bitmask determines
+ * which options are parsed for a given mode:
+ *
+ * | Mode | Bitmask | Examples |
+ * |------|---------|----------|
+ * | Binary (pre-mode) | OPTION_MODE_BINARY | --help, --version, --log-file |
+ * | Server | OPTION_MODE_SERVER | --port, --max-clients, --discovery |
+ * | Client | OPTION_MODE_CLIENT | --color, --width, --height |
+ * | Mirror | OPTION_MODE_MIRROR | --webcam, --test-pattern |
+ * | Discovery Service | OPTION_MODE_DISCOVERY_SVC | --database, --tls |
+ * | All Modes | OPTION_MODE_ALL | --quiet, --verbose, --config |
+ *
+ * A single option may apply to multiple modes using bitwise OR:
+ * ```c
+ * .mode_bitmask = OPTION_MODE_SERVER | OPTION_MODE_CLIENT  // Both server and client
+ * ```
+ *
+ * @section parsing_positional Positional Arguments
+ *
+ * Most options are named flags (--option value), but some parse positional arguments.
+ * These use special multi-argument parsers:
+ *
+ * **Server Mode**:
+ * - Positional: `server [bind-address1] [bind-address2]`
+ * - Parser: `parse_server_bind_address()`
+ * - Rules:
+ *   - 0 args: defaults to 127.0.0.1 and ::1 (dual-stack localhost)
+ *   - 1 arg: single IPv4 or IPv6 address
+ *   - 2 args: one IPv4 and one IPv6 address (order-independent)
+ *
+ * **Client Mode**:
+ * - Positional: `client [address][:port]`
+ * - Parser: `parse_client_address()`
+ * - Rules:
+ *   - Parses address and optional port from single argument
+ *   - IPv6 with brackets: `[::1]:8080`
+ *   - IPv4 with port: `192.168.1.1:8080` or `example.com:8080`
+ *   - Bare IPv6: `::1` (detected by multiple colons)
+ *   - Bare IPv4/hostname: `192.168.1.1` or `example.com`
+ *   - Detects conflicts with `--port` flag
+ *
+ * Positional parsers return number of arguments consumed (0-2), or -1 on error.
+ *
+ * @section parsing_validation Validation Strategy
+ *
+ * Validation happens at three levels:
+ *
+ * **Level 1: Parse-Time Validation**
+ * - Occurs when parsing each option value
+ * - Check type constraints (int range, valid enum, etc.)
+ * - Fail immediately with error message
+ * - Example: `validate_opt_port()` checks 1-65535 range
+ *
+ * **Level 2: Format Validation**
+ * - Validates string format matches expected pattern
+ * - Examples:
+ *   - IPv4/IPv6 address format
+ *   - File path safety (reject /etc, /System)
+ *   - Numeric string parsing with overflow protection
+ * - Uses PCRE2 for complex patterns (email, URL, etc.)
+ *
+ * **Level 3: Cross-Field Validation**
+ * - Validates combinations of options
+ * - Examples:
+ *   - `--port` conflicts with `[address]:port` positional
+ *   - `--password` and `--key` mutually exclusive
+ *   - Certain options only valid in certain modes
+ * - Happens in STAGE 6 after all options parsed
+ *
+ * **Error Handling**:
+ * Validators return structured errors:
+ * - Return 0 = success
+ * - Return < 0 = validation error (show message to user)
+ * - Return > 0 = fatal error (e.g., memory allocation)
+ *
+ * Error messages are user-friendly:
+ * - "Port must be between 1 and 65535" (not "invalid input")
+ * - "IPv4 address required for bind-address" (explain what's wrong)
+ * - "Cannot specify both --password and --key" (show conflict)
+ *
+ * @section parsing_actions Deferred Actions
+ *
+ * Some command-line options (--help, --list-webcams, etc.) are actions that run
+ * AFTER options are fully initialized, then exit. This is the deferred action pattern:
+ *
+ * **Why Deferral?**
+ * - `--help --width 120` should show help with 120-column width
+ * - `--list-microphones` needs audio subsystem initialized
+ * - `--completions bash` needs registry loaded
+ *
+ * **How It Works**:
+ * 1. Parser encounters action flag (--help, --list-webcams, etc.)
+ * 2. Calls `actions_defer(ACTION_HELP, NULL)` to record request
+ * 3. Parsing continues (other options processed)
+ * 4. After STAGE 7 (RCU publishing), check `actions_get_deferred()`
+ * 5. If action pending, execute and exit (STAGE 8)
+ * 6. Otherwise, return ASCIICHAT_OK to main program
+ *
+ * Only ONE action executes per invocation (first one encountered).
+ *
+ * **Implemented Actions**:
+ * - `--help`: Show usage and options
+ * - `--version`: Show version and build info
+ * - `--list-webcams`: Enumerate video input devices
+ * - `--list-microphones`: Enumerate audio input devices
+ * - `--list-speakers`: Enumerate audio output devices
+ * - `--show-capabilities`: Display platform and terminal capabilities
+ * - `--completions <shell>`: Generate shell completion script
+ * - `--schema`: Output options schema (JSON/TOML)
+ * - `--check-update`: Check for newer version
+ * - `--config-create`: Create default configuration file
+ *
+ * @section parsing_completions Shell Completion Generation
+ *
+ * The shell completion system auto-generates completions from the options registry.
+ * Three generators support different shells:
+ *
+ * **Bash Completion** (bash.c):
+ * - Uses bash-completion v2 API with `_init_completion`
+ * - Generates function `_ascii_chat()` for tab-completion
+ * - Output: space-separated completion candidates
+ * - Usage: `eval "$(ascii-chat --completions bash)"`
+ *
+ * **Fish Completion** (fish.c):
+ * - Uses Fish `complete -c` built-in definitions
+ * - Provides context-aware suggestions (enum values, examples)
+ * - Output: Fish completion lines with descriptions
+ * - Usage: `ascii-chat --completions fish | source`
+ *
+ * **Zsh Completion** (zsh.c):
+ * - Uses Zsh `_arguments` framework
+ * - Supports context-aware completion with descriptions
+ * - Output: Zsh completion function
+ * - Usage: `eval "$(ascii-chat --completions zsh)"`
+ *
+ * **PowerShell Completion** (powershell.c):
+ * - Uses PowerShell Register-ArgumentCompleter
+ * - Supports dynamic completion suggestions
+ * - Output: PowerShell completer function
+ * - Usage: `ascii-chat --completions powershell | Out-String | Invoke-Expression`
+ *
+ * All generators extract metadata from the options registry to provide:
+ * - Option names (both short and long)
+ * - Help text / descriptions
+ * - Valid enum values (when applicable)
+ * - Practical examples (for common options)
+ * - Mode-specific filtering
+ *
+ * @section parsing_error_handling Error Handling
+ *
+ * The parsing system uses the asciichat_error_t system for comprehensive error reporting:
+ *
+ * **Error Codes**:
+ * - `ASCIICHAT_OK`: Success
+ * - `ERROR_USAGE`: Invalid command-line options
+ * - `ERROR_INVALID_PARAM`: Parameter validation failed
+ * - `ERROR_INVALID_STATE`: Conflicting options
+ * - `ERROR_CONFIG`: Configuration file issue
+ *
+ * **Error Messages**:
+ * Errors include context messages from `SET_ERRNO()`:
+ * ```c
+ * if (!is_valid_ipv4(arg)) {
+ *     return SET_ERRNO(ERROR_INVALID_PARAM,
+ *         "Invalid IPv4 address '%s'. Expected format: a.b.c.d", arg);
+ * }
+ * ```
+ *
+ * **Main Displays Errors**:
+ * ```c
+ * asciichat_error_t err = options_init(argc, argv);
+ * if (err != ASCIICHAT_OK) {
+ *     asciichat_error_context_t ctx;
+ *     if (HAS_ERRNO(&ctx)) {
+ *         log_error("Invalid options: %s", ctx.context_message);
+ *     }
+ *     return 1;
+ * }
+ * ```
+ *
+ * @section parsing_usage Usage Examples
+ *
+ * **Server with Custom Port**:
+ * ```bash
+ * ascii-chat server --port 8080
+ * ```
+ * Parsing:
+ * - STAGE 1: Detect MODE_SERVER from "server" keyword
+ * - STAGE 2: Check binary options (none provided)
+ * - STAGE 3: Parse MODE_SERVER options, find --port
+ * - STAGE 4: Call validator on "8080", confirm 1-65535
+ * - STAGE 5: Apply defaults for unprovided options
+ * - STAGE 6: Cross-field validation (port doesn't conflict)
+ * - STAGE 7: Publish options via RCU
+ * - STAGE 8: No deferred action, return OK
+ *
+ * **Client Connecting to Remote Server**:
+ * ```bash
+ * ascii-chat client example.com:8080 --color --width 120
+ * ```
+ * Parsing:
+ * - STAGE 1: Detect MODE_CLIENT from "client" keyword
+ * - STAGE 2: Check binary options (none)
+ * - STAGE 3: Parse MODE_CLIENT options
+ * - STAGE 4: `parse_client_address()` parses "example.com:8080" → address="example.com", port=8080
+ * - STAGE 4: `parse_color_setting()` parses "true" (implied by --color flag)
+ * - STAGE 4: `parse_int()` parses "120" → width=120
+ * - STAGE 5: Apply defaults for other options
+ * - STAGE 6: Validation passes
+ * - STAGE 7: Publish options
+ * - STAGE 8: Return OK to main
+ *
+ * **Show Help Before Running**:
+ * ```bash
+ * ascii-chat server --help
+ * ```
+ * Parsing:
+ * - STAGE 1: Detect MODE_SERVER
+ * - STAGE 2: See --help flag, call `actions_defer(ACTION_HELP, NULL)`
+ * - STAGE 3-7: Continue normally (--help is recorded)
+ * - STAGE 8: Check `actions_get_deferred()` → ACTION_HELP pending
+ * - STAGE 8: Call `execute_help()` → prints help text → exits
+ * - Main never runs
+ *
+ * **Generate Shell Completions**:
+ * ```bash
+ * ascii-chat --completions bash
+ * ```
+ * Parsing:
+ * - STAGE 2: See --completions, call `actions_defer(ACTION_COMPLETIONS, {shell: BASH})`
+ * - STAGE 8: Check `actions_get_deferred()` → ACTION_COMPLETIONS pending
+ * - STAGE 8: Call `execute_completions()` → loads registry → generates script → exits
+ *
+ * @see @ref topic_options "Options" for high-level overview
+ * @see options.h for API documentation
+ * @see registry.h for option descriptor format
+ * @see builder.h for configuration builder
+ * @see parsers.h for custom parser implementations
+ * @see validation.h for validator implementations
+ * @see actions.h for deferred action system
+ * @see completions.h for shell completion generators
+ */
