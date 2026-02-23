@@ -43,6 +43,28 @@ const char *get_option_help_placeholder_str(const option_descriptor_t *desc) {
   if (desc->arg_placeholder != NULL) {
     return desc->arg_placeholder;
   }
+
+  // For callback options, check if it's a boolean based on enum values
+  if (desc->type == OPTION_TYPE_CALLBACK && desc->metadata.enum_values) {
+    // Check if enum values contain "true" and "false" (boolean-like)
+    const char *const *values = desc->metadata.enum_values;
+    bool has_true = false, has_false = false;
+
+    for (int i = 0; values[i] != NULL; i++) {
+      if (strcmp(values[i], "true") == 0 || strcmp(values[i], "yes") == 0 || strcmp(values[i], "on") == 0) {
+        has_true = true;
+      }
+      if (strcmp(values[i], "false") == 0 || strcmp(values[i], "no") == 0 || strcmp(values[i], "off") == 0) {
+        has_false = true;
+      }
+    }
+
+    // If it has both true-like and false-like values, it's boolean
+    if (has_true && has_false) {
+      return "BOOLEAN";
+    }
+  }
+
   return options_get_type_placeholder(desc->type);
 }
 

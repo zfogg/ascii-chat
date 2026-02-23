@@ -566,7 +566,7 @@ const char *options_get_type_placeholder(option_type_t type) {
   case OPTION_TYPE_CALLBACK:
     return "VALUE";
   case OPTION_TYPE_BOOL:
-    return "[BOOLEAN]";
+    return "BOOLEAN";
   case OPTION_TYPE_ACTION:
   default:
     return "";
