@@ -81,8 +81,11 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   bool first_frame_rendered = false;
   bool snapshot_mode = GET_OPTION(snapshot_mode);
 
-  log_info("session_render_loop: STARTING - display=%p capture=%p capture_cb=%p snapshot_mode=%s",
-           (void*)display, (void*)capture, (void*)capture_cb, snapshot_mode ? "YES" : "NO");
+  // Help screen state tracking for clear-screen transition
+  bool help_was_active = false;
+
+  log_info("session_render_loop: STARTING - display=%p capture=%p capture_cb=%p snapshot_mode=%s", (void *)display,
+           (void *)capture, (void *)capture_cb, snapshot_mode ? "YES" : "NO");
 
   // Pause mode state tracking
   bool initial_paused_frame_rendered = false;
@@ -157,7 +160,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         }
 
         frame_count++;
-        log_debug_every(US_PER_SEC_INT, "RENDER[%lu]: Read ASCII frame from stdin (%zu bytes)", frame_count, strlen(ascii_frame));
+        log_debug_every(US_PER_SEC_INT, "RENDER[%lu]: Read ASCII frame from stdin (%zu bytes)", frame_count,
+                        strlen(ascii_frame));
 
         // In stdin render mode, check if rendering to stdout or to file
         const char *render_file_opt = GET_OPTION(render_file);
@@ -365,14 +369,26 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         pre_render_ns = time_get_ns();
         START_TIMER("render_frame");
 
-        log_info("render_loop: calling session_display_render_frame - display=%p", (void*)display);
+        log_info("render_loop: calling session_display_render_frame - display=%p", (void *)display);
         // Check if help screen is active - if so, render help instead of frame
         // Help screen is disabled in snapshot mode and non-interactive terminals (keyboard disabled)
-        if (display && session_display_is_help_active(display) && terminal_is_interactive() && !snapshot_mode) {
+        bool help_is_active = display && session_display_is_help_active(display);
+
+        // Detect transition from help to ASCII art rendering
+        // When help closes, clear the screen before rendering ASCII art
+        if (help_was_active && !help_is_active) {
+          terminal_clear_screen();
+          log_debug("Cleared screen when transitioning from help to ASCII art");
+        }
+
+        if (help_is_active) {
           session_display_render_help(display);
         } else {
           session_display_render_frame(display, ascii_frame);
         }
+
+        // Update help state for next iteration
+        help_was_active = help_is_active;
 
         uint64_t render_elapsed_ns = STOP_TIMER("render_frame");
         post_render_ns = time_get_ns();
