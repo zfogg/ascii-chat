@@ -435,6 +435,29 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
 
   color_filter_t color_filter = GET_OPTION(color_filter);
 
+  // Handle dynamic matrix rain effect toggle
+  bool matrix_rain_enabled = GET_OPTION(matrix_rain);
+  if (matrix_rain_enabled && !ctx->digital_rain) {
+    // Initialize digital rain if it's now enabled but wasn't before
+    unsigned short int width_us = GET_OPTION(width);
+    unsigned short int height_us = GET_OPTION(height);
+    if (width_us == 0 || height_us == 0) {
+      (void)get_terminal_size(&width_us, &height_us);
+    }
+    int width_for_rain = (int)width_us;
+    int height_for_rain = (int)height_us;
+    ctx->digital_rain = digital_rain_init(width_for_rain, height_for_rain);
+    if (ctx->digital_rain) {
+      digital_rain_set_color_from_filter(ctx->digital_rain, color_filter);
+      log_info("Matrix rain effect: enabled");
+    }
+  } else if (!matrix_rain_enabled && ctx->digital_rain) {
+    // Disable digital rain if it's now disabled but was enabled before
+    digital_rain_destroy(ctx->digital_rain);
+    ctx->digital_rain = NULL;
+    log_info("Matrix rain effect: disabled");
+  }
+
   // Make a mutable copy of terminal capabilities for ascii_convert_with_capabilities
   terminal_capabilities_t caps_copy = ctx->caps;
 
