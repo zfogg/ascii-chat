@@ -2165,6 +2165,15 @@ pkg-config = 'pkg-config'
             LOG_OUTPUT_ON_FAILURE TRUE
         )
 
+        # Disable bzip2 in freetype subproject after download but before configure
+        # This prevents freetype from trying to find bzip2 headers and compile ftbzip2.c
+        ExternalProject_Add_Step(pango-musl patch-freetype-wrap
+            COMMAND bash -c "cat > ${PANGO_BUILD_DIR}/src/pango-musl/subprojects/freetype2.wrap << 'EOF'\n[wrap-git]\ndirectory = freetype\nurl = https://gitlab.freedesktop.org/freetype/freetype.git\nrevision = VER-2-11-0\n\n[provide]\ndependency_names = freetype2\nEOF"
+            DEPENDEES download
+            DEPENDERS configure
+            LOG TRUE
+        )
+
         set(PANGO_LIBRARIES "${PANGO_PREFIX}/lib/libpango-1.0.a;${PANGO_PREFIX}/lib/libpangocairo-1.0.a")
         set(PANGO_INCLUDE_DIRS "${PANGO_PREFIX}/include/pango-1.0")
     endif()
