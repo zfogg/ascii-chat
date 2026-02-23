@@ -857,6 +857,95 @@ void debug_memory_report(void) {
   }
 }
 
+// ============================================================================
+// Memory Report Debug Thread (triggered via SIGUSR2)
+// ============================================================================
+
+#include <ascii-chat/platform/cond.h>
+#include <ascii-chat/platform/thread.h>
+
+typedef struct {
+  volatile bool should_run;
+  volatile bool should_exit;
+  volatile bool signal_triggered;  // Flag set by SIGUSR2 handler
+  mutex_t mutex;                   // Protects access to flags
+  cond_t cond;                     // Wakes thread when signal arrives
+  bool initialized;                // Tracks if mutex/cond are initialized
+} debug_memory_request_t;
+
+static debug_memory_request_t g_debug_memory_request = {false, false, false, {0}, {0}, false};
+static asciichat_thread_t g_debug_memory_thread;
+
+/**
+ * @brief Thread function for memory report printing
+ *
+ * Waits for SIGUSR2 signal or explicit trigger. When triggered,
+ * prints the memory report on this thread rather than in signal context.
+ */
+static void *debug_memory_thread_fn(void *arg) {
+  (void)arg;
+
+  while (!g_debug_memory_request.should_exit) {
+    mutex_lock(&g_debug_memory_request.mutex);
+
+    if ((g_debug_memory_request.should_run || g_debug_memory_request.signal_triggered)
+        && !g_debug_memory_request.should_exit) {
+      mutex_unlock(&g_debug_memory_request.mutex);
+      debug_memory_report();
+      mutex_lock(&g_debug_memory_request.mutex);
+      g_debug_memory_request.should_run = false;
+      g_debug_memory_request.signal_triggered = false;
+    }
+
+    // Wait for work or signal, with 100ms timeout to check should_exit
+    if (!g_debug_memory_request.should_exit) {
+      cond_timedwait(&g_debug_memory_request.cond, &g_debug_memory_request.mutex, 100000000);  // 100ms
+    }
+    mutex_unlock(&g_debug_memory_request.mutex);
+  }
+
+  return NULL;
+}
+
+/**
+ * @brief Initialize memory debug thread resources
+ */
+int debug_memory_thread_init(void) {
+  return 0;
+}
+
+/**
+ * @brief Start the memory debug thread
+ */
+int debug_memory_thread_start(void) {
+  if (!g_debug_memory_request.initialized) {
+    mutex_init(&g_debug_memory_request.mutex, "debug_memory_state");
+    cond_init(&g_debug_memory_request.cond, "debug_memory_signal");
+    g_debug_memory_request.initialized = true;
+  }
+
+  g_debug_memory_request.should_exit = false;
+  int err = asciichat_thread_create(&g_debug_memory_thread, debug_memory_thread_fn, NULL);
+  return err;
+}
+
+/**
+ * @brief Trigger memory report from SIGUSR2 handler
+ */
+void debug_memory_trigger_report(void) {
+  g_debug_memory_request.signal_triggered = true;
+  cond_signal(&g_debug_memory_request.cond);
+}
+
+/**
+ * @brief Stop the memory debug thread
+ */
+void debug_memory_thread_cleanup(void) {
+  g_debug_memory_request.should_exit = true;
+  cond_signal(&g_debug_memory_request.cond);
+  asciichat_thread_join(&g_debug_memory_thread, NULL);
+}
+
 #elif defined(DEBUG_MEMORY)
 
 void debug_memory_set_quiet_mode(bool quiet) {
@@ -864,6 +953,18 @@ void debug_memory_set_quiet_mode(bool quiet) {
 }
 
 void debug_memory_report(void) {}
+
+int debug_memory_thread_init(void) {
+  return 0;
+}
+
+int debug_memory_thread_start(void) {
+  return 0;
+}
+
+void debug_memory_trigger_report(void) {}
+
+void debug_memory_thread_cleanup(void) {}
 
 void *debug_malloc(size_t size, const char *file, int line) {
   (void)file;

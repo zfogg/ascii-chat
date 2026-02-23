@@ -2736,8 +2736,9 @@ cleanup:
   platform_restore_timer_resolution(); // Restore timer resolution (no-op on POSIX)
 
 #ifndef NDEBUG
-  // Join the lock debug thread as one of the very last things before exit
+  // Join the debug threads as one of the very last things before exit
   debug_sync_cleanup_thread();
+  debug_memory_thread_cleanup();
 #endif
 
   log_info("Server shutdown complete");

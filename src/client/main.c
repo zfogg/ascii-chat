@@ -318,8 +318,9 @@ static void shutdown_client() {
   log_destroy();
 
 #ifndef NDEBUG
-  // Join the debug thread as the very last thing (after log_destroy since thread may log)
+  // Join the debug threads as the very last thing (after log_destroy since threads may log)
   debug_sync_cleanup_thread();
+  debug_memory_thread_cleanup();
 #endif
 }
 

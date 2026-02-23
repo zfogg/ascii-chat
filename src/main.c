@@ -61,6 +61,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/debug/sync.h>
 #include <ascii-chat/debug/named.h>
+#include <ascii-chat/debug/memory.h>
 #endif
 
 #ifndef _WIN32
@@ -157,6 +158,11 @@ static bool console_ctrl_handler(console_ctrl_event_t event) {
 static void common_handle_sigusr1(int sig) {
   (void)sig;
   debug_sync_trigger_print();
+}
+
+static void common_handle_sigusr2(int sig) {
+  (void)sig;
+  debug_memory_trigger_report();
 }
 #endif
 #endif
@@ -692,9 +698,27 @@ int main(int argc, char *argv[]) {
   }
   log_debug("Debug sync thread started");
 
+  // Initialize memory debug system
+  log_debug("Initializing memory debug system...");
+  int debug_memory_result = debug_memory_thread_init();
+  if (debug_memory_result != 0) {
+    LOG_ERRNO_IF_SET("Memory debug system initialization failed");
+    FATAL(ERROR_PLATFORM_INIT, "Memory debug system initialization failed");
+  }
+  log_debug("Memory debug system initialized successfully");
+
+  // Start memory debug thread in all modes
+  if (debug_memory_thread_start() != 0) {
+    LOG_ERRNO_IF_SET("Memory debug thread startup failed");
+    FATAL(ERROR_THREAD, "Memory debug thread startup failed");
+  }
+  log_debug("Memory debug thread started");
+
 #ifndef _WIN32
   // Register SIGUSR1 to trigger lock state printing in all modes
   platform_signal(SIGUSR1, common_handle_sigusr1);
+  // Register SIGUSR2 to trigger memory report in all modes
+  platform_signal(SIGUSR2, common_handle_sigusr2);
 #endif
 #endif
 
