@@ -1,0 +1,437 @@
+/**
+ * @page logging_subsystem Logging Subsystem Architecture
+ * @ingroup logging
+ *
+ * @section logging_overview Overview
+ *
+ * The ascii-chat logging subsystem provides a comprehensive, high-performance logging
+ * system designed for terminal-based applications with multiple concurrent threads
+ * and real-time constraints.
+ *
+ * **Key features:**
+ * - Six severity levels (DEV, DEBUG, INFO, WARN, ERROR, FATAL)
+ * - Simultaneous file and terminal output with automatic color coding
+ * - Lock-free memory-mapped logging for high-performance scenarios
+ * - PCRE2-based regex filtering with context display
+ * - Flexible format customization for both console and file output
+ * - Rate-limited and call-count-based logging macros
+ * - Thread-safe logging with optional terminal locking for interactive prompts
+ *
+ * @section logging_architecture System Architecture
+ *
+ * The logging system is organized into modular layers:
+ *
+ * ```
+ * ┌──────────────────────────────────────────────────────────┐
+ * │ Application Code (log_info, log_warn, etc.)              │
+ * └────────────────────┬─────────────────────────────────────┘
+ *                      │
+ * ┌────────────────────▼─────────────────────────────────────┐
+ * │ lib/log/logging.c - Core logging system                  │
+ * │ - log_init, log_destroy, log_set_level                   │
+ * │ - log_msg, log_terminal_msg, log_plain_msg               │
+ * │ - Terminal locking for interactive prompts               │
+ * └──┬──────────────────┬───────────────────┬────────────────┘
+ *    │                  │                   │
+ * ┌──▼──────────┐  ┌───▼──────────┐  ┌────▼─────────────────┐
+ * │ Output      │  │ Formatting   │  │ Filtering & Colors   │
+ * │             │  │              │  │                      │
+ * │ - File I/O  │  │- format.c    │  │ - grep.c (PCRE2)     │
+ * │ - mmap.c    │  │- Custom      │  │ - colorize.c         │
+ * │ - Buffering │  │  templates   │  │ - Terminal detection │
+ * └─────────────┘  └──────────────┘  └─────────────────────┘
+ * ```
+ *
+ * @section logging_levels Log Levels
+ *
+ * The logging system defines six severity levels, from most to least verbose:
+ *
+ * | Level  | Value | Purpose | Compile-Time Stripping | Example |
+ * |--------|-------|---------|------------------------|---------|
+ * | DEV    | 0     | Development/trace logs | Strippable in release | Frame timing, buffer state, handshake details |
+ * | DEBUG  | 1     | Debug diagnostic messages | Strippable in release | Algorithm decisions, state transitions |
+ * | INFO   | 2     | Informational messages | Strippable via LOG_COMPILE_LEVEL=LOG_WARN | Initialization, connection events |
+ * | WARN   | 3     | Warning conditions | Strippable via LOG_COMPILE_LEVEL=LOG_ERROR | Recoverable errors, performance concerns |
+ * | ERROR  | 4     | Error conditions | Strippable via LOG_COMPILE_LEVEL=LOG_FATAL | Failed operations, broken connections |
+ * | FATAL  | 5     | Fatal errors (program exit) | Never stripped | Out of memory, crypto failure |
+ *
+ * **Key characteristics:**
+ *
+ * - **DEV/DEBUG** are compile-time strippable, allowing verbose debug builds while
+ *   keeping release builds small. Override with `LOG_COMPILE_LEVEL=LOG_DEV` to keep them.
+ *
+ * - **INFO/WARN** use `log_info_every()` and `log_warn_every()` for high-frequency paths
+ *   (video/audio loops) to avoid log spam while maintaining visibility.
+ *
+ * - **ERROR/FATAL** go to stderr; others go to stdout (unless `force_stderr` is enabled).
+ *   This keeps stdout clean for client mode where ASCII art is rendered.
+ *
+ * **Macro API:**
+ * ```c
+ * log_dev("Development message");           // Compile-time strippable
+ * log_debug("Debug message");               // Compile-time strippable
+ * log_info("Info message");                 // Production-safe
+ * log_warn("Warning: %d", value);           // Warning condition
+ * log_error("Error: %s", error_msg);        // Error condition
+ * log_fatal("Fatal: exiting");              // Program termination
+ * ```
+ *
+ * @section logging_formatting Message Formatting
+ *
+ * The logging system uses a templated formatting system that allows customization
+ * of message output while maintaining performance.
+ *
+ * **Default format (debug mode):**
+ * ```
+ * [14:30:45] [DEBUG] [tid:1234] src/client.c:42 in client_init(): Starting client
+ * ```
+ *
+ * **Default format (release mode):**
+ * ```
+ * [14:30:45] [DEBUG] Starting client
+ * ```
+ *
+ * **Custom format support via `log_set_format()`:**
+ * ```c
+ * // Compact format
+ * log_set_format("[%time(%H:%M:%S)] [%level_aligned] %message", false);
+ *
+ * // Detailed format with colors
+ * log_set_format("%color(LOG_DEBUG, [%level_aligned]) %message", false);
+ *
+ * // Relative file paths
+ * log_set_format("[%time(%H:%M:%S.%microseconds)] %file_relative:%line %message", false);
+ * ```
+ *
+ * **Format specifiers:**
+ * - `%time(fmt)` - Time in strftime format (e.g., %H:%M:%S, %Y-%m-%d)
+ * - `%level` - Log level name (DEBUG, INFO, WARN, ERROR)
+ * - `%level_aligned` - Log level padded to 5 chars (for alignment)
+ * - `%file` - Full file path (debug mode only)
+ * - `%file_relative` - Relative file path (debug mode only)
+ * - `%line` - Line number (debug mode only)
+ * - `%func` - Function name (debug mode only)
+ * - `%tid` - Thread ID (debug mode only)
+ * - `%message` - Log message body
+ * - `%microseconds` - Microsecond component of timestamp
+ * - `%nanoseconds` - Nanosecond component of timestamp
+ *
+ * **Console-only formatting:**
+ * By passing `console_only=true` to `log_set_format()`, the custom format applies
+ * only to terminal output. File logging uses the default format, which is useful
+ * for preserving readable logs while having fancy terminal colors.
+ *
+ * @section logging_filtering Log Filtering with Grep
+ *
+ * The filtering system uses PCRE2 regex to dynamically filter log output, with
+ * support for highlighting matched text.
+ *
+ * **CLI usage:**
+ * ```bash
+ * # Plain regex - matches "error" or "warning" case-insensitive
+ * ./ascii-chat server --grep "/error|warning/i"
+ *
+ * # With context - show 2 lines before and after match
+ * ./ascii-chat client --grep "/handshake/C2"
+ *
+ * # Fixed string search (no regex)
+ * ./ascii-chat server --grep "/DEBUG/F"
+ *
+ * # Multiple patterns - OR logic
+ * ./ascii-chat client --grep "/error/i" --grep "/connection/i"
+ *
+ * # Invert match - show everything EXCEPT matches
+ * ./ascii-chat server --grep "/debug|trace/iI"
+ * ```
+ *
+ * **Supported flags:**
+ * - `i` - Case-insensitive matching
+ * - `m` - Multiline mode (^ and $ match line boundaries)
+ * - `s` - Dotall mode (. matches newlines)
+ * - `x` - Extended regex (ignore whitespace in pattern)
+ * - `F` - Fixed string literal (no regex, exact match)
+ * - `g` - Global highlighting (highlight all matches in line)
+ * - `I` - Invert match (show lines that DON'T match)
+ * - `B<n>` - Show n lines before match (context)
+ * - `A<n>` - Show n lines after match (context)
+ * - `C<n>` - Show n lines before and after (context)
+ *
+ * **Filter performance:**
+ * - Each pattern is compiled once at startup (not on every log)
+ * - Matching uses thread-local storage (no allocations per match)
+ * - Matched text is highlighted with yellow background
+ * - Filtering is applied after formatting, so matches include colored output
+ *
+ * @section logging_output_routing Output Routing
+ *
+ * The logging system routes messages to different outputs based on level and configuration.
+ *
+ * **Default routing:**
+ * - **DEV, DEBUG, INFO** → stdout (unless force_stderr enabled)
+ * - **WARN, ERROR, FATAL** → stderr
+ * - **All levels** → log file (if configured)
+ *
+ * **Client mode special handling:**
+ * Client mode keeps stdout clean for ASCII art rendering by enabling `force_stderr`:
+ * ```c
+ * log_init("client.log", LOG_DEBUG, true, false);  // force_stderr=true
+ * ```
+ * This routes all log messages (including INFO) to stderr, keeping stdout available.
+ *
+ * **Output control functions:**
+ * ```c
+ * log_set_terminal_output(false);  // Disable all terminal output
+ * log_set_force_stderr(true);      // Force all logs to stderr
+ * log_disable_file_output();       // Disable file output, use stderr fallback
+ * ```
+ *
+ * **Buffering for interactive prompts:**
+ * When prompting for user input (passwords, yes/no questions), use terminal locking
+ * to ensure clean output:
+ * ```c
+ * bool prev = log_lock_terminal();      // Lock out other threads
+ * fputs("Enter password: ", stdout);
+ * // user types input
+ * log_unlock_terminal(prev);             // Unlock and flush buffered logs
+ * ```
+ *
+ * @section logging_performance Performance Characteristics
+ *
+ * The logging system is designed for low-latency, high-throughput scenarios
+ * common in real-time multimedia applications.
+ *
+ * **Lock-free mmap mode (recommended for production):**
+ * - **File output:** Lock-free atomic operations on mmap'd memory
+ * - **Terminal output:** Atomic fprintf/fwrite (no mutex held)
+ * - **No contention:** Multiple threads can log simultaneously without blocking
+ * - **Crash-safe:** Text written directly to file, readable after crash
+ * - **Performance:** ~5-10 microseconds per log message (x86-64)
+ *
+ * **Mutex-based mode (fallback):**
+ * - Single mutex protects both file and terminal output
+ * - Suitable for applications with low logging volume
+ * - Fallback when mmap initialization fails
+ *
+ * **Optimizations for high-frequency logging:**
+ * ```c
+ * // Log at most once per second (1,000,000 microseconds)
+ * log_info_every(1000000, "Frame buffer utilization: %d%%", percent);
+ *
+ * // Log every 60th call (for 60 FPS, logs ~1x per second)
+ * log_debug_nth(60, "Processing frame %zu", frame_count);
+ *
+ * // Log exactly once per session
+ * log_info_once("Client connected from %s", client_address);
+ * ```
+ *
+ * **Memory usage:**
+ * - **Terminal buffer:** 64 KB maximum (256 buffered entries)
+ * - **Single message:** 4 KB maximum (truncated if exceeded)
+ * - **File buffer:** Variable (mmap mode) or unbuffered
+ * - **Per-format specifier:** ~100 bytes compiled size
+ *
+ * **CPU characteristics:**
+ * - Message formatting: ~2-5% of CPU in typical scenarios
+ * - PCRE2 filtering: <1% overhead for simple patterns
+ * - Terminal color detection: One-time cost at startup
+ * - Rate-limited macros: Atomic operations only (no syscalls)
+ *
+ * @section logging_use_cases Appropriate Use Cases
+ *
+ * **Good use cases for logging:**
+ * - Connection lifecycle events (connected, disconnected, handshake)
+ * - Configuration changes or mode transitions
+ * - Recoverable errors and retry attempts
+ * - Performance metrics and statistics (with rate limiting)
+ * - Authentication and security events
+ * - Frame drops or quality degradation
+ * - Shader compilation or resource loading
+ *
+ * **Poor use cases (leads to spam):**
+ * - Every video frame processed (use log_nth or log_every)
+ * - Every byte received (use log_every instead)
+ * - Every mutex acquisition/release (use log_once or don't log)
+ * - Every packet in a high-frequency network loop (use sampling)
+ *
+ * **Performance-sensitive code patterns:**
+ * ```c
+ * // ❌ BAD: 60 logs per second (60 FPS scenario)
+ * void process_frame(void) {
+ *     log_debug("Processing frame %zu", frame_count);
+ * }
+ *
+ * // ✅ GOOD: 1 log per second using rate limiting
+ * void process_frame(void) {
+ *     log_debug_every(1000000, "Processed %zu frames", frame_count);
+ * }
+ *
+ * // ✅ GOOD: 1 log per 60 frames using call counting
+ * void process_frame(void) {
+ *     log_debug_nth(60, "Processing frames (batch complete)");
+ * }
+ * ```
+ *
+ * @section logging_error_handling Error Handling in Logs
+ *
+ * The logging system integrates with the application's error tracking system.
+ * For critical failures, use `SET_ERRNO()` to capture error context:
+ *
+ * ```c
+ * // Set errno with context message
+ * if (crypto_failed) {
+ *     log_error("Crypto handshake failed: %s", reason);
+ *     return SET_ERRNO(ERROR_CRYPTO_FAILED, "Key exchange timeout");
+ * }
+ *
+ * // Check and log errors from other functions
+ * asciichat_error_t result = process_network_packet();
+ * if (result != ASCIICHAT_OK) {
+ *     log_error("Network error: %d", result);
+ *     return result;
+ * }
+ * ```
+ *
+ * @section logging_initialization Initialization and Shutdown
+ *
+ * **Standard initialization (debug mode):**
+ * ```c
+ * log_init("output.log",           // Log file path
+ *          LOG_DEBUG,              // Minimum log level
+ *          false,                  // force_stderr: no (INFO to stdout)
+ *          false);                 // use_mmap: no (use mutex-based)
+ * ```
+ *
+ * **Production initialization (server mode with mmap):**
+ * ```c
+ * log_init("/var/log/asciichat.log",
+ *          LOG_INFO,               // Only INFO and above
+ *          false,                  // Normal routing
+ *          true);                  // use_mmap: yes (lock-free)
+ *
+ * // Optionally upgrade to lock-free mode
+ * log_enable_mmap("/var/log/asciichat.log");
+ * ```
+ *
+ * **Client mode (keep stdout clean):**
+ * ```c
+ * log_init("client.log",
+ *          LOG_DEBUG,
+ *          true,                   // force_stderr: yes
+ *          false);
+ * ```
+ *
+ * **Graceful shutdown:**
+ * ```c
+ * // Disable console output, keep file logging for shutdown messages
+ * log_shutdown_begin();
+ * log_info("Shutting down server");
+ * log_info("All clients disconnected");
+ * log_shutdown_end();
+ *
+ * // Destroy logging system
+ * log_destroy();
+ * ```
+ *
+ * @section logging_threading Thread Safety
+ *
+ * All logging functions are thread-safe:
+ * - **log_msg()** - Safe to call from any thread
+ * - **log_set_level()** - Safe to call while logging active
+ * - **log_lock_terminal()** - Safe for nested calls
+ * - **Rate-limited macros** - Atomic operations ensure correctness
+ *
+ * **Interactive prompt pattern:**
+ * ```c
+ * // Thread 1 (main thread) - handle user input
+ * bool prev = log_lock_terminal();
+ * char *password = getpass("Password: ");
+ * log_unlock_terminal(prev);
+ * // Now buffered logs from other threads are flushed
+ *
+ * // Thread 2 (network thread) - can log normally
+ * log_info("Received %d bytes", packet_size);  // Buffered during lock
+ * ```
+ *
+ * @section logging_debugging Debugging with Logs
+ *
+ * **Enable verbose logging:**
+ * ```bash
+ * # -V increases verbosity (can be stacked)
+ * ./ascii-chat --log-level debug -V server
+ * ./ascii-chat -VVV client  # Maximum verbosity with DEV level
+ * ```
+ *
+ * **Log to file for analysis:**
+ * ```bash
+ * ./ascii-chat --log-file debug.log server
+ * # Or using CLI options
+ * ./ascii-chat --log-level dev --log-file debug.log server
+ * ```
+ *
+ * **Filter logs during execution:**
+ * ```bash
+ * # Watch crypto handshake
+ * ./ascii-chat --log-level debug server --grep "/handshake|crypto/ig"
+ *
+ * # See only errors and warnings with context
+ * ./ascii-chat client --grep "/error|warn/iC3"
+ *
+ * # Monitor specific component
+ * ./ascii-chat server --grep "/\\[AUDIO\\]/i"
+ * ```
+ *
+ * **Post-mortem analysis (from log file):**
+ * ```bash
+ * # Check for errors
+ * grep -i error debug.log
+ *
+ * # Find performance issues
+ * grep "timeout\|delay\|slow" debug.log
+ *
+ * # Track connection lifecycle
+ * grep "connected\|disconnected\|handshake" debug.log
+ * ```
+ *
+ * @section logging_examples Code Examples
+ *
+ * **Basic logging:**
+ * ```c
+ * log_info("Server started on port %d", 27224);
+ * log_warn("Connection timeout after %d seconds", timeout);
+ * log_error("Failed to bind socket: %s", strerror(errno));
+ * ```
+ *
+ * **Conditional logging:**
+ * ```c
+ * if (verbose_mode) {
+ *     log_debug("Processing frame %zu in %llu µs", frame_num, elapsed_us);
+ * }
+ *
+ * // Or use compile-time stripping for release builds
+ * log_dev("Frame pipeline state: input=%d, processing=%d, output=%d",
+ *         input_queue, process_queue, output_queue);
+ * ```
+ *
+ * **Labeled output:**
+ * ```c
+ * log_labeled("[INIT]", LOG_COLOR_DEBUG, "Initializing subsystem");
+ * log_labeled("[ERROR]", LOG_COLOR_ERROR, "Failed to create thread");
+ * ```
+ *
+ * **Raw output (no formatting):**
+ * ```c
+ * // Write to file only (no terminal)
+ * log_file("Raw packet dump follows:");
+ * log_file("  00 01 02 03 04 05 06 07");
+ *
+ * // Plain message to stderr
+ * log_plain_stderr("Critical condition detected");
+ * ```
+ *
+ * **Network logging:**
+ * ```c
+ * // Log to remote server, file, and terminal simultaneously
+ * log_net_message(server_socket, crypto_ctx, LOG_INFO, REMOTE_LOG_OUTBOUND,
+ *                 NULL, 0, NULL, "Video quality: %d%% (%d kbps)", quality, bitrate);
+ * ```
+ */
