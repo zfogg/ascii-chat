@@ -158,27 +158,17 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
     }
 
     // Track spaces for word wrapping, including inside metadata blocks
-    // Skip spaces right before parenthetical groups ONLY if they're short
+    // Prefer breaks before metadata blocks by updating last_space even if we already have one
     if (*p == ' ') {
       const char *next = p + 1;
       while (*next == ' ')
         next++;
-      // Check if this is a short parenthetical (closing paren within 50 chars)
-      bool is_short_paren = false;
-      if (*next == '(') {
-        const char *closing = next;
-        int paren_len = 0;
-        while (*closing && paren_len < 50) {
-          if (*closing == ')')
-            break;
-          closing++;
-          paren_len++;
-        }
-        // If closing paren found within 50 chars, it's short
-        is_short_paren = (*closing == ')');
-      }
-      // Don't break before short parentheticals, but allow for long ones
-      if (*next != '(' || !is_short_paren) {
+      // Check if next is a metadata marker - this is a good break point to prefer
+      if (is_metadata_start(next)) {
+        // Update last_space to this position (prefer breaking before metadata)
+        last_space = p;
+      } else if (!last_space || *next != '(') {
+        // Otherwise track normal spaces, but skip spaces before non-short parentheticals
         last_space = p;
       }
     }
