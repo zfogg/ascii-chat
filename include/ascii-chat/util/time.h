@@ -23,9 +23,9 @@
  * START_TIMER("process_frame_%d", frame_num);
  * // ... do work ...
  * double elapsed_ns = STOP_TIMER("process_frame_%d", frame_num);
- * // Use format_duration_ns() for human-readable output
+ * // Use time_pretty() for human-readable formatted output
  * char duration_str[32];
- * format_duration_ns(elapsed_ns, duration_str, sizeof(duration_str));
+ * time_pretty((uint64_t)elapsed_ns, -1, duration_str, sizeof(duration_str));
  * log_info("Frame took %s", duration_str);
  * ```
  *
@@ -142,7 +142,7 @@ uint64_t time_elapsed_ns(uint64_t start_ns, uint64_t end_ns);
 // Time Unit Constants (moved before inline functions that use them)
 // ============================================================================
 
-// Floating-point versions (for format_duration functions)
+// Floating-point versions (for time formatting and conversions)
 #define NS_PER_US 1000.0
 #define NS_PER_MS (1000.0 * NS_PER_US)
 #define NS_PER_SEC (1000.0 * NS_PER_MS)
