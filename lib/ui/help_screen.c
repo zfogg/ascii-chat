@@ -274,6 +274,15 @@ static void build_settings_line(char *output, size_t output_size, const char *la
 }
 
 /**
+ * @brief Format enabled/disabled status as colored X or O
+ * @param enabled true for enabled (green O), false for disabled (red X)
+ * @return Colored string with "O" or "X"
+ */
+static const char *status_indicator(bool enabled) {
+  return enabled ? colored_string(ENABLED_COLOR, "O") : colored_string(DISABLED_COLOR, "X");
+}
+
+/**
  * @brief Helper to append a help line to the buffer
  */
 static void append_help_line(char *buffer, size_t *buf_pos, size_t BUFFER_SIZE,
@@ -467,21 +476,12 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   const char *color_str = color_mode_to_string(current_color_mode);
   const char *render_str = render_mode_to_string(current_render_mode);
 
-  // Create colored strings for flip state
-  const char *flip_text = "None";
-  if (flip_x && flip_y) {
-    flip_text = colored_string(ENABLED_COLOR, "X & Y");
-  } else if (flip_x) {
-    flip_text = colored_string(ENABLED_COLOR, "X");
-  } else if (flip_y) {
-    flip_text = colored_string(ENABLED_COLOR, "Y");
-  } else {
-    flip_text = colored_string(DISABLED_COLOR, "None");
-  }
-
-  // Audio state (Enabled = green, Disabled = red)
-  const char *audio_text =
-      current_audio ? colored_string(ENABLED_COLOR, "Enabled") : colored_string(DISABLED_COLOR, "Disabled");
+  // Create status indicators for flip, audio, and matrix rain
+  bool any_flip = flip_x || flip_y;
+  const char *flip_text = status_indicator(any_flip);
+  const char *audio_text = status_indicator(current_audio);
+  bool matrix_rain_enabled = GET_OPTION(matrix_rain);
+  const char *matrix_text = status_indicator(matrix_rain_enabled);
 
   // Build settings lines with UTF-8 width-aware padding (ordered to match keybinds: m, ↑/↓, c, r, f)
   append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
@@ -494,6 +494,15 @@ void session_display_render_help(session_display_ctx_t *ctx) {
                       "Render", render_str);
   append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
                       "Flip", flip_text);
+
+  // Blank line before animations section
+  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, "");
+
+  // Animations section
+  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
+                  "Animations:");
+  append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
+                      "Matrix Rain (0)", matrix_text);
 
   // Blank line before footer
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, "");
