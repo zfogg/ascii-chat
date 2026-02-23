@@ -377,14 +377,18 @@ bool splash_should_display(bool is_intro) {
   if (is_intro) {
     // Allow splash in snapshot mode if loading from URL/file (has loading time)
     // Skip splash only for quick webcam snapshots
+    bool splash_screen_opt = GET_OPTION(splash_screen);
     bool is_snapshot = GET_OPTION(snapshot_mode);
     bool has_media = (GET_OPTION(media_url) && strlen(GET_OPTION(media_url)) > 0) ||
                      (GET_OPTION(media_file) && strlen(GET_OPTION(media_file)) > 0);
 
+    bool should_display = splash_screen_opt && (!is_snapshot || has_media);
+    log_info("splash_should_display(intro): splash_screen=%d snapshot=%d has_media=%d => %d",
+             splash_screen_opt, is_snapshot, has_media, should_display);
     // Show splash if:
     // 1. Not in snapshot mode, OR
     // 2. In snapshot mode but loading from URL/file (needs splash during load)
-    return GET_OPTION(splash_screen) && (!is_snapshot || has_media);
+    return should_display;
   } else {
     return GET_OPTION(status_screen);
   }
@@ -485,13 +489,21 @@ static void *splash_animation_thread(void *arg) {
 int splash_intro_start(session_display_ctx_t *ctx) {
   (void)ctx; // Parameter not used currently
 
+  log_info("splash_intro_start: ENTRY");
+
   // Pre-checks
-  if (!splash_should_display(true)) {
+  bool should_display = splash_should_display(true);
+  log_info("splash_intro_start: splash_should_display(true)=%d", should_display);
+  if (!should_display) {
+    log_info("splash_intro_start: returning early - splash should not display");
     return 0; // ASCIICHAT_OK equivalent
   }
 
   // Don't initialize log buffer in non-interactive mode - logs go directly to stdout/stderr
-  if (!terminal_is_interactive()) {
+  bool is_interactive = terminal_is_interactive();
+  log_info("splash_intro_start: terminal_is_interactive()=%d", is_interactive);
+  if (!is_interactive) {
+    log_info("splash_intro_start: returning early - not interactive");
     return 0;
   }
 

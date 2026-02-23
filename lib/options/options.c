@@ -1694,7 +1694,12 @@ asciichat_error_t options_init(int argc, char **argv) {
 
   // Detect if splash or status_screen were explicitly set on command line
   for (int i = 0; i < mode_argc; i++) {
+    if (mode_argv[i] && (strcmp(mode_argv[i], "--splash-screen") == 0 || strncmp(mode_argv[i], "--splash-screen=", 16) == 0)) {
+      opts.splash_screen = true;
+      opts.splash_screen_explicitly_set = true;
+    }
     if (mode_argv[i] && (strcmp(mode_argv[i], "--no-splash-screen") == 0 || strncmp(mode_argv[i], "--no-splash-screen=", 19) == 0)) {
+      opts.splash_screen = false;
       opts.splash_screen_explicitly_set = true;
     }
     if (mode_argv[i] &&
