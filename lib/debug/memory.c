@@ -7,7 +7,6 @@
 
 #if defined(DEBUG_MEMORY) && !defined(NDEBUG)
 
-#include <errno.h>
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,6 +29,7 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/options/options.h>
+#include <ascii-chat/video/ansi.h>
 
 typedef struct mem_block {
   void *ptr;
@@ -773,7 +773,24 @@ void debug_memory_report(void) {
   reset_suppression_counters();
 
   if (!quiet) {
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "\n%s\n", colored_string(LOG_COLOR_DEV, "=== Memory Report ===")));
+    // Build report in buffer, then output once to stderr and log file
+    #define REPORT_BUFFER_SIZE (256 * 1024)  // 256KB for full memory report
+    char *report_buffer = malloc(REPORT_BUFFER_SIZE);
+    if (!report_buffer) {
+      SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "Failed to allocate memory for report buffer\n"));
+      return;
+    }
+    size_t report_len = 0;
+
+    #define APPEND_REPORT(fmt, ...) do { \
+      size_t remaining = REPORT_BUFFER_SIZE - report_len; \
+      if (remaining > 1) { \
+        int written = safe_snprintf(report_buffer + report_len, remaining, fmt, ##__VA_ARGS__); \
+        if (written > 0) report_len += written; \
+      } \
+    } while (0)
+
+    APPEND_REPORT("\n=== Memory Report ===\n");
 
     size_t total_allocated = atomic_load(&g_mem.total_allocated);
     size_t total_freed = atomic_load(&g_mem.total_freed);
@@ -863,16 +880,15 @@ void debug_memory_report(void) {
         }
 
         if (total_count != g_suppression_config[i].expected_count || total_bytes != g_suppression_config[i].expected_bytes) {
-          SAFE_IGNORE_PRINTF_RESULT(
-              safe_fprintf(stderr, "%s\n", colored_string(LOG_COLOR_ERROR, "WARNING: Suppression mismatch detected")));
-          SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "  %s:%d\n", g_suppression_config[i].file, g_suppression_config[i].line));
+          APPEND_REPORT("%s\n", colored_string(LOG_COLOR_ERROR, "WARNING: Suppression mismatch detected"));
+          APPEND_REPORT("  %s:%d\n", g_suppression_config[i].file, g_suppression_config[i].line);
           if (total_count != g_suppression_config[i].expected_count) {
-            SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "    Count mismatch: expected %d, found %d\n",
-                                                   g_suppression_config[i].expected_count, total_count));
+            APPEND_REPORT("    Count mismatch: expected %d, found %d\n",
+                         g_suppression_config[i].expected_count, total_count);
           }
           if (total_bytes != g_suppression_config[i].expected_bytes) {
-            SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "    Bytes mismatch: expected %zu, found %zu\n",
-                                                   g_suppression_config[i].expected_bytes, total_bytes));
+            APPEND_REPORT("    Bytes mismatch: expected %zu, found %zu\n",
+                         g_suppression_config[i].expected_bytes, total_bytes);
           }
         }
       }
@@ -886,6 +902,15 @@ void debug_memory_report(void) {
     format_bytes_pretty(total_freed, pretty_freed, sizeof(pretty_freed));
     format_bytes_pretty(adjusted_current_usage, pretty_current, sizeof(pretty_current));
     format_bytes_pretty(peak_usage, pretty_peak, sizeof(pretty_peak));
+
+    // Add summary statistics to buffer for log file
+    APPEND_REPORT("Total allocated: %s\n", pretty_total);
+    APPEND_REPORT("Total freed: %s\n", pretty_freed);
+    APPEND_REPORT("Current usage: %s\n", pretty_current);
+    APPEND_REPORT("Peak usage: %s\n", pretty_peak);
+    APPEND_REPORT("malloc calls: %zu\n", malloc_calls);
+    APPEND_REPORT("calloc calls: %zu\n", calloc_calls);
+    APPEND_REPORT("free calls: %zu\n", free_calls);
 
     // Calculate max label width for column alignment
     const char *label_total = "Total allocated:";
@@ -909,33 +934,33 @@ void debug_memory_report(void) {
     max_label_width = MAX(max_label_width, strlen(label_suppressions));
     max_label_width = MAX(max_label_width, strlen(label_diff));
 
-#define PRINT_MEM_LINE(label, value_str)                                                                               \
+#define APPEND_MEM_LINE(label, value_str)                                                                            \
   do {                                                                                                                 \
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "%s", colored_string(LOG_COLOR_GREY, label)));                      \
+    APPEND_REPORT("%s", colored_string(LOG_COLOR_GREY, label));                                                        \
     for (size_t i = strlen(label); i < max_label_width; i++) {                                                         \
-      SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, " "));                                                            \
+      APPEND_REPORT(" ");                                                                                              \
     }                                                                                                                  \
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, " %s\n", value_str));                                               \
+    APPEND_REPORT(" %s\n", value_str);                                                                                 \
   } while (0)
 
-#define PRINT_MEM_LINE_COLORED(label, value_str, color)                                                                \
+#define APPEND_MEM_LINE_COLORED(label, value_str, color)                                                               \
   do {                                                                                                                 \
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "%s", colored_string(LOG_COLOR_GREY, label)));                      \
+    APPEND_REPORT("%s", colored_string(LOG_COLOR_GREY, label));                                                        \
     for (size_t i = strlen(label); i < max_label_width; i++) {                                                         \
-      SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, " "));                                                            \
+      APPEND_REPORT(" ");                                                                                              \
     }                                                                                                                  \
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, " %s\n", colored_string(color, value_str)));                        \
+    APPEND_REPORT(" %s\n", colored_string(color, value_str));                                                          \
   } while (0)
 
     // Colorize total allocated/freed: green if they match, red if they don't (memory leak)
     // We've already adjusted allocated to exclude suppressions, so now compare directly
     log_color_t alloc_freed_color = (adjusted_total_allocated == total_freed) ? LOG_COLOR_INFO : LOG_COLOR_ERROR;
-    PRINT_MEM_LINE_COLORED(label_total, pretty_total, alloc_freed_color);
-    PRINT_MEM_LINE_COLORED(label_freed, pretty_freed, alloc_freed_color);
+    APPEND_MEM_LINE_COLORED(label_total, pretty_total, alloc_freed_color);
+    APPEND_MEM_LINE_COLORED(label_freed, pretty_freed, alloc_freed_color);
 
     // Colorize current usage: green if 0 (no leaks), red if any unfreed memory (leak detected)
     log_color_t current_color = (adjusted_current_usage == 0) ? LOG_COLOR_INFO : LOG_COLOR_ERROR;
-    PRINT_MEM_LINE_COLORED(label_current, pretty_current, current_color);
+    APPEND_MEM_LINE_COLORED(label_current, pretty_current, current_color);
 
     // Colorize peak usage: green if 0-50 MB, yellow if 50-80 MB, red if above 80 MB
     log_color_t peak_color = LOG_COLOR_INFO; // Default green
@@ -944,7 +969,7 @@ void debug_memory_report(void) {
     } else if (peak_usage >= (50 * 1024 * 1024)) {
       peak_color = LOG_COLOR_WARN; // Yellow if >= 50 MB
     }
-    PRINT_MEM_LINE_COLORED(label_peak, pretty_peak, peak_color);
+    APPEND_MEM_LINE_COLORED(label_peak, pretty_peak, peak_color);
 
     // unfreed_count already calculated earlier for suppression warning filtering
 
@@ -952,15 +977,15 @@ void debug_memory_report(void) {
     log_color_t calls_color = (unfreed_count == 0) ? LOG_COLOR_INFO : LOG_COLOR_ERROR;
     char malloc_str[32];
     safe_snprintf(malloc_str, sizeof(malloc_str), "%zu", malloc_calls);
-    PRINT_MEM_LINE_COLORED(label_malloc, malloc_str, calls_color);
+    APPEND_MEM_LINE_COLORED(label_malloc, malloc_str, calls_color);
 
     char calloc_str[32];
     safe_snprintf(calloc_str, sizeof(calloc_str), "%zu", calloc_calls);
-    PRINT_MEM_LINE_COLORED(label_calloc, calloc_str, calls_color);
+    APPEND_MEM_LINE_COLORED(label_calloc, calloc_str, calls_color);
 
     char free_str[32];
     safe_snprintf(free_str, sizeof(free_str), "%zu", free_calls);
-    PRINT_MEM_LINE_COLORED(label_free, free_str, calls_color);
+    APPEND_MEM_LINE_COLORED(label_free, free_str, calls_color);
 
     // Colorize suppressions: green if working properly, red if >= 1MB or >= 100 allocations
     if (suppressed_count > 0) {
@@ -973,20 +998,19 @@ void debug_memory_report(void) {
       if (suppressed_bytes >= (1024 * 1024) || suppressed_count >= 100) {
         suppressions_color = LOG_COLOR_ERROR; // Red if >= 1MB or >= 100 allocations
       }
-      PRINT_MEM_LINE_COLORED(label_suppressions, suppressions_str, suppressions_color);
+      APPEND_MEM_LINE_COLORED(label_suppressions, suppressions_str, suppressions_color);
     }
 
     char diff_str[32];
     safe_snprintf(diff_str, sizeof(diff_str), "%zu", unfreed_count);
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "%s", colored_string(LOG_COLOR_GREY, label_diff)));
+    APPEND_REPORT("%s", colored_string(LOG_COLOR_GREY, label_diff));
     for (size_t i = strlen(label_diff); i < max_label_width; i++) {
-      SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, " "));
+      APPEND_REPORT(" ");
     }
-    SAFE_IGNORE_PRINTF_RESULT(
-        safe_fprintf(stderr, " %s\n", colored_string(unfreed_count == 0 ? LOG_COLOR_INFO : LOG_COLOR_ERROR, diff_str)));
+    APPEND_REPORT(" %s\n", colored_string(unfreed_count == 0 ? LOG_COLOR_INFO : LOG_COLOR_ERROR, diff_str));
 
-#undef PRINT_MEM_LINE
-#undef PRINT_MEM_LINE_COLORED
+#undef APPEND_MEM_LINE
+#undef APPEND_MEM_LINE_COLORED
 
     // Only show "Current allocations:" section if there are actual leaks
     if (unfreed_count > 0) {
@@ -994,7 +1018,7 @@ void debug_memory_report(void) {
       reset_suppression_counters();
 
       // Print "Current allocations:" header (count already shown in "unfreed allocations" above)
-      SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "\n%s\n", colored_string(LOG_COLOR_DEV, "Current allocations:")));
+      APPEND_REPORT("\n%s\n", colored_string(LOG_COLOR_DEV, "Current allocations:"));
     }
 
     if (g_site_cache && unfreed_count > 0) {
@@ -1010,7 +1034,7 @@ void debug_memory_report(void) {
         HASH_ITER(hh, g_site_cache, site, tmp) {
           // Check timeout every iteration
           if (time_elapsed_ns(iteration_start_ns, time_get_ns()) > max_iteration_ns) {
-            SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "  (printing truncated - timeout)\n"));
+            APPEND_REPORT("  (printing truncated - timeout)\n");
             break;
           }
           // Skip sites with no live allocations
@@ -1062,30 +1086,28 @@ void debug_memory_report(void) {
           }
 
           // Print site summary
-          SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "  - %s:%s  [tid 0x%" PRIx64 "]  %s live  %s total\n",
-                                                 colored_string(LOG_COLOR_GREY, file),
-                                                 colored_string(LOG_COLOR_FATAL, line_str), tid,
-                                                 colored_string(size_color, count_str),
-                                                 colored_string(size_color, pretty_bytes)));
-          fflush(stderr);
+          APPEND_REPORT("  - %s:%s  [tid 0x%" PRIx64 "]  %s live  %s total\n",
+                       colored_string(LOG_COLOR_GREY, file),
+                       colored_string(LOG_COLOR_FATAL, line_str), tid,
+                       colored_string(size_color, count_str),
+                       colored_string(size_color, pretty_bytes));
 
           // Don't synchronously symbolize backtraces during memory report - symbolization is slow
           // and can cause hangs during shutdown. Instead, backtraces will be symbolized asynchronously
           // by the debug sync thread. Just print whatever symbols are available.
           if (site->backtrace.symbols != NULL && site->backtrace.count > 0) {
-            SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "    Backtrace (%d frames):\n", site->backtrace.count));
+            APPEND_REPORT("    Backtrace (%d frames):\n", site->backtrace.count);
             for (int i = 0; i < site->backtrace.count; i++) {
-              SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "      [%d] %s\n", i, site->backtrace.symbols[i]));
+              APPEND_REPORT("      [%d] %s\n", i, site->backtrace.symbols[i]);
             }
           }
         }
 
         mutex_unlock(&g_mem.mutex);
       } else {
-        SAFE_IGNORE_PRINTF_RESULT(
-            safe_fprintf(stderr, "\n%s\n",
-                         colored_string(LOG_COLOR_ERROR,
-                                        "Current allocations unavailable: failed to initialize debug memory mutex")));
+        APPEND_REPORT("\n%s\n",
+                     colored_string(LOG_COLOR_ERROR,
+                                    "Current allocations unavailable: failed to initialize debug memory mutex"));
       }
     }
 
@@ -1095,6 +1117,23 @@ void debug_memory_report(void) {
     // We used to clean up the hash table here, but HASH_DEL inside HASH_ITER causes
     // undefined behavior (modifying hash table during iteration = infinite loop/hang).
     // Since we're exiting anyway, skip this cleanup - the OS will reclaim memory.
+
+    // Output accumulated report to both stderr and log file
+    APPEND_REPORT("\n=== End Memory Report ===\n");
+
+    // Write to stderr (colored output)
+    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "%s", report_buffer));
+
+    // Write to log file (for SIGUSR2 debugging persistence) - strip ANSI codes
+    char *stripped = ansi_strip_escapes(report_buffer, report_len);
+    if (stripped) {
+      log_file_msg("%s", stripped);
+      free(stripped);
+    }
+
+    free(report_buffer);
+    #undef REPORT_BUFFER_SIZE
+    #undef APPEND_REPORT
   }
 }
 
