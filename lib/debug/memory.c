@@ -903,15 +903,6 @@ void debug_memory_report(void) {
     format_bytes_pretty(adjusted_current_usage, pretty_current, sizeof(pretty_current));
     format_bytes_pretty(peak_usage, pretty_peak, sizeof(pretty_peak));
 
-    // Add summary statistics to buffer for log file
-    APPEND_REPORT("Total allocated: %s\n", pretty_total);
-    APPEND_REPORT("Total freed: %s\n", pretty_freed);
-    APPEND_REPORT("Current usage: %s\n", pretty_current);
-    APPEND_REPORT("Peak usage: %s\n", pretty_peak);
-    APPEND_REPORT("malloc calls: %zu\n", malloc_calls);
-    APPEND_REPORT("calloc calls: %zu\n", calloc_calls);
-    APPEND_REPORT("free calls: %zu\n", free_calls);
-
     // Calculate max label width for column alignment
     const char *label_total = "Total allocated:";
     const char *label_freed = "Total freed:";
