@@ -413,14 +413,6 @@ static void *splash_animation_thread(void *arg) {
     }
   }
 
-  // Initialize update notification lifecycle once before animation loop
-  log_info("SPLASH: Pre-initializing update notification lifecycle");
-  if (lifecycle_init_once(&g_update_notification_lifecycle)) {
-    g_update_notification_lifecycle.sync_type = LIFECYCLE_SYNC_MUTEX;
-    g_update_notification_lifecycle.sync.mutex = &g_update_notification_mutex;
-    lifecycle_init(&g_update_notification_lifecycle, "update_notification");
-  }
-
   // Animate with rainbow wave effect
   int frame = 0;
   const int anim_speed = 100; // milliseconds per frame
@@ -447,6 +439,13 @@ static void *splash_animation_thread(void *arg) {
         .frame = frame,
         .use_colors = use_colors,
     };
+
+    // Initialize update notification lifecycle once (safe to call multiple times)
+    if (lifecycle_init_once(&g_update_notification_lifecycle)) {
+      g_update_notification_lifecycle.sync_type = LIFECYCLE_SYNC_MUTEX;
+      g_update_notification_lifecycle.sync.mutex = &g_update_notification_mutex;
+      lifecycle_init(&g_update_notification_lifecycle, "update_notification");
+    }
 
     // Copy update notification from global state (thread-safe)
     mutex_lock(&g_update_notification_mutex);

@@ -36,13 +36,27 @@ bool lifecycle_init_once(lifecycle_t *lc) {
 
     int expected = LIFECYCLE_UNINITIALIZED;
     if (!atomic_compare_exchange_strong(&lc->state, &expected, LIFECYCLE_INITIALIZING)) {
-        // Spin until the INITIALIZING transient state resolves
-        log_dev("[lifecycle] init_once: spinning on INITIALIZING state (current: %d)", expected);
-        int s;
-        do {
-            s = atomic_load(&lc->state);
-        } while (s == LIFECYCLE_INITIALIZING);
-        log_dev("[lifecycle] init_once: spin complete, final state: %d", s);
+        // If already initialized, just return false (no work needed)
+        if (expected == LIFECYCLE_INITIALIZED) {
+            log_dev("[lifecycle] init_once: already initialized");
+            return false;
+        }
+
+        // If dead, never allow re-init
+        if (expected == LIFECYCLE_DEAD) {
+            log_dev("[lifecycle] init_once: module is dead, no re-init allowed");
+            return false;
+        }
+
+        // If initializing, don't spin (caller may be retrying or it may complete asynchronously)
+        // Just return false to indicate this thread doesn't need to do init work
+        if (expected == LIFECYCLE_INITIALIZING) {
+            log_dev("[lifecycle] init_once: already initializing, skipping (will resolve asynchronously)");
+            return false;
+        }
+
+        // Unexpected state
+        log_dev("[lifecycle] init_once: unexpected state: %d", expected);
         return false;
     }
 
