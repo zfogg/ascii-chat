@@ -280,10 +280,10 @@ void log_json_async_safe(int fd, log_level_t level, const char *file, int line, 
 
   /* Format complete JSON object with timestamp */
   int written = snprintf(json_buffer, sizeof(json_buffer),
-                         "{\"header\":{\"timestamp\":\"%s\",\"level\":\"%s\",\"tid\":%" PRIu64 ","
+                         "{\"header\":{\"timestamp\":\"%s\",\"level\":\"%s\",\"tid\":%lu,"
                          "\"file\":\"%s\",\"line\":%d,\"func\":\"%s\"},"
                          "\"body\":{\"message\":\"%s\"}}\n",
-                         timestamp_buf, log_level_to_string(level), tid, file ? escaped_file : "", line,
+                         timestamp_buf, log_level_to_string(level), (unsigned long)tid, file ? escaped_file : "", line,
                          func ? escaped_func : "", escaped_message);
 
   /* Write to fd if successful */

@@ -10,6 +10,7 @@
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/debug/backtrace.h>
