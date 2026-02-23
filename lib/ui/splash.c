@@ -28,6 +28,7 @@
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/init.h>
+#include <ascii-chat/debug/sync.h>
 #include <ascii-chat/video/image.h>
 #include <ascii-chat/video/ansi_fast.h>
 #include <ascii-chat/options/options.h>
@@ -412,6 +413,14 @@ static void *splash_animation_thread(void *arg) {
     }
   }
 
+  // Initialize update notification lifecycle once before animation loop
+  log_info("SPLASH: Pre-initializing update notification lifecycle");
+  if (lifecycle_init_once(&g_update_notification_lifecycle)) {
+    g_update_notification_lifecycle.sync_type = LIFECYCLE_SYNC_MUTEX;
+    g_update_notification_lifecycle.sync.mutex = &g_update_notification_mutex;
+    lifecycle_init(&g_update_notification_lifecycle, "update_notification");
+  }
+
   // Animate with rainbow wave effect
   int frame = 0;
   const int anim_speed = 100; // milliseconds per frame
@@ -432,6 +441,7 @@ static void *splash_animation_thread(void *arg) {
         // Continue to render immediately with grep active
       }
     }
+
     // Set up splash header context for this frame
     splash_header_ctx_t header_ctx = {
         .frame = frame,
@@ -439,12 +449,7 @@ static void *splash_animation_thread(void *arg) {
     };
 
     // Copy update notification from global state (thread-safe)
-    if (lifecycle_init_once(&g_update_notification_lifecycle)) {
-    g_update_notification_lifecycle.sync_type = LIFECYCLE_SYNC_MUTEX;
-    g_update_notification_lifecycle.sync.mutex = &g_update_notification_mutex;
-    lifecycle_init(&g_update_notification_lifecycle, "update_notification");
-  }
-  mutex_lock(&g_update_notification_mutex);
+    mutex_lock(&g_update_notification_mutex);
     SAFE_STRNCPY(header_ctx.update_notification, g_update_notification, sizeof(header_ctx.update_notification));
     mutex_unlock(&g_update_notification_mutex);
 
@@ -463,8 +468,11 @@ static void *splash_animation_thread(void *arg) {
     };
 
     // Render the screen (header + logs) only in interactive mode
-    // In non-interactive mode, logs flow to stdout/stderr normally
-    if (terminal_is_interactive()) {
+    // OR if splash screen was explicitly requested
+    // In non-interactive mode without explicit flag, logs flow to stdout/stderr normally
+    const options_t *opts_render = options_get();
+    bool should_render = terminal_is_interactive() || (opts_render && opts_render->splash_screen_explicitly_set);
+    if (should_render) {
       terminal_screen_render(&screen_config);
     }
 
@@ -499,11 +507,13 @@ int splash_intro_start(session_display_ctx_t *ctx) {
     return 0; // ASCIICHAT_OK equivalent
   }
 
-  // Don't initialize log buffer in non-interactive mode - logs go directly to stdout/stderr
+  // Don't initialize log buffer in non-interactive mode UNLESS explicitly requested
   bool is_interactive = terminal_is_interactive();
-  log_info("splash_intro_start: terminal_is_interactive()=%d", is_interactive);
-  if (!is_interactive) {
-    log_info("splash_intro_start: returning early - not interactive");
+  const options_t *opts = options_get();
+  bool splash_explicitly_set = opts && opts->splash_screen_explicitly_set;
+  log_info("splash_intro_start: terminal_is_interactive()=%d, splash_explicitly_set=%d", is_interactive, splash_explicitly_set);
+  if (!is_interactive && !splash_explicitly_set) {
+    log_info("splash_intro_start: returning early - not interactive and splash not explicitly set");
     return 0;
   }
 
