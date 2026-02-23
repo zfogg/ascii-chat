@@ -95,11 +95,13 @@ bool should_exit(void) {
 }
 
 void signal_exit(void) {
-  log_console(LOG_DEBUG, "[SHUTDOWN] Exit signal received, setting exit flag");
+  // Note: This function may be called from a signal handler context where
+  // other threads may hold mutex locks. We avoid log_console() here to prevent
+  // deadlock (render loop holds terminal lock, signal handler can't acquire it).
+  // The shutdown will be logged by normal thread context later.
   atomic_store(&g_app_should_exit, true);
   void (*cb)(void) = g_interrupt_callback;
   if (cb) {
-    log_console(LOG_DEBUG, "[SHUTDOWN] Calling interrupt callback");
     cb();
   }
 }

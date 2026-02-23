@@ -34,6 +34,15 @@
 // ============================================================================
 
 /**
+ * @brief Per-name counter entry
+ */
+typedef struct name_counter_entry {
+    char *base_name;                    // The base name (e.g., "media_pause")
+    _Atomic uint64_t counter;           // Per-name counter
+    UT_hash_handle hh;                  // uthash handle
+} name_counter_entry_t;
+
+/**
  * @brief Registry entry for a named object
  */
 typedef struct named_entry {
@@ -51,8 +60,8 @@ typedef struct named_entry {
  */
 typedef struct {
     named_entry_t *entries;             // uthash hash table (NULL = empty)
+    name_counter_entry_t *name_counters; // Per-name counter registry
     rwlock_t entries_lock;              // Thread-safe access to uthash
-    _Atomic uint64_t name_counter;      // Auto-incrementing suffix for uniqueness
     lifecycle_t lifecycle;              // Init/shutdown state machine
 } named_registry_t;
 
@@ -62,8 +71,8 @@ typedef struct {
 
 static named_registry_t g_named_registry = {
     .entries = NULL,
+    .name_counters = NULL,
     .entries_lock = {0},
-    .name_counter = 0,
     .lifecycle = LIFECYCLE_INIT,
 };
 
@@ -105,6 +114,14 @@ void named_destroy(void) {
         free(entry);
     }
 
+    // Free all per-name counters
+    name_counter_entry_t *counter_entry, *counter_tmp;
+    HASH_ITER(hh, g_named_registry.name_counters, counter_entry, counter_tmp) {
+        HASH_DEL(g_named_registry.name_counters, counter_entry);
+        free(counter_entry->base_name);
+        free(counter_entry);
+    }
+
     rwlock_wrunlock_impl(&g_named_registry.entries_lock);
     rwlock_destroy_impl(&g_named_registry.entries_lock);
 }
@@ -119,8 +136,37 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
         return base_name;
     }
 
+    // Get or create per-name counter
+    rwlock_wrlock_impl(&g_named_registry.entries_lock);
+
+    name_counter_entry_t *counter_entry;
+    HASH_FIND_STR(g_named_registry.name_counters, base_name, counter_entry);
+
+    if (!counter_entry) {
+        // Create new per-name counter entry
+        counter_entry = malloc(sizeof(name_counter_entry_t));
+        if (!counter_entry) {
+            log_error("named_register: malloc failed for counter_entry");
+            rwlock_wrunlock_impl(&g_named_registry.entries_lock);
+            return base_name;
+        }
+        counter_entry->base_name = strdup(base_name);
+        if (!counter_entry->base_name) {
+            log_error("named_register: strdup failed for base_name");
+            free(counter_entry);
+            rwlock_wrunlock_impl(&g_named_registry.entries_lock);
+            return base_name;
+        }
+        atomic_init(&counter_entry->counter, 0);
+        HASH_ADD_KEYPTR(hh, g_named_registry.name_counters, counter_entry->base_name,
+                       strlen(counter_entry->base_name), counter_entry);
+    }
+
+    // Increment and get counter for this name
+    uint64_t counter = atomic_fetch_add(&counter_entry->counter, 1);
+    rwlock_wrunlock_impl(&g_named_registry.entries_lock);
+
     // Generate suffixed name: "base_name.counter"
-    uint64_t counter = atomic_fetch_add(&g_named_registry.name_counter, 1);
     char *full_name = NULL;
     int ret = asprintf(&full_name, "%s.%" PRIu64, base_name, counter);
     if (ret < 0) {

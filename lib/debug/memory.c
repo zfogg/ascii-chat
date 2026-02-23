@@ -99,7 +99,9 @@ static const debug_memory_suppression_t g_suppression_config[] = {
     {"lib/options/colorscheme.c", 602, 8, 88,  "8 256-color ANSI code strings"},
     {"lib/options/colorscheme.c", 619, 8, 144, "8 truecolor ANSI code strings"},
     {"lib/util/path.c", 1211, 1, 43,           "normalized path allocation (caller frees)"},
-    {"lib/debug/named.c", 166, 2, 576,         "named registry entries (singleton, cleaned at exit)"},
+    // Note: lib/debug/named.c:166 only allocated in client/server modes, not in mirror/standalone modes
+    // Expected counts set conservatively (0 minimum, up to 2 in some modes)
+    {"lib/debug/named.c", 166, 0, 0,           "named registry entries (mode-dependent, 0-2)"},
     {NULL, 0, 0, 0, NULL}                      // Sentinel
 };
 
