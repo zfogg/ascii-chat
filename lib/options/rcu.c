@@ -55,60 +55,204 @@ static lifecycle_t g_options_lifecycle = LIFECYCLE_INIT;
 static pid_t g_init_pid = -1;
 
 /**
- * @brief Static default options used when options_get() is called before initialization
- * or during cleanup. This ensures atexit handlers can safely call GET_OPTION().
+ * @brief Static default options fallback - returned when options not yet initialized or destroyed
  *
- * Critical note: This must match the defaults in options_t_new(). Any field with a
- * non-zero default should be explicitly set here to avoid division-by-zero or other
- * issues when options haven't been initialized yet (e.g., during early startup or
- * atexit handlers).
+ * This static struct provides a safe fallback that:
+ * 1. Outlives the lifetime of any dynamically allocated options structs
+ * 2. Never gets freed (static memory lifetime matches program lifetime)
+ * 3. Ensures atexit handlers can safely call GET_OPTION() during cleanup
+ * 4. Ensures early startup code (before options_state_init) has sensible defaults
+ * 5. Ensures code after options_state_destroy() continues working with fallback defaults
+ *
+ * All non-zero defaults are explicitly initialized from OPT_*_DEFAULT constants
+ * to match the defaults created by options_t_new() function. This prevents
+ * issues like division-by-zero, invalid enum values, or NULL pointer dereferences
+ * when options haven't been properly initialized yet.
+ *
+ * Memory: Static const storage - allocated once at startup, never freed
+ * Lifetime: Program lifetime (outlives all dynamically allocated options)
+ * Thread-safe: Read-only after initialization, no synchronization needed
+ *
+ * @see options_get() - Returns this struct as fallback when g_options is NULL
+ * @see options_state_init() - Initializes g_options, this becomes fallback
+ * @see options_state_destroy() - Clears g_options, this becomes fallback again
  */
 static const options_t g_default_options = (options_t){
-    // Binary-Level Options (must match options_t_new() defaults)
+    // ========================================================================
+    // Mode Detection (auto-detected, default here is uninitialized)
+    // ========================================================================
+    .detected_mode = MODE_INVALID,
+
+    // ========================================================================
+    // Binary-Level Options (parsed before mode selection)
+    // ========================================================================
     .help = OPT_HELP_DEFAULT,
     .version = OPT_VERSION_DEFAULT,
+    .config_file = OPT_STRING_EMPTY_DEFAULT,
 
-    // Logging
-    .log_level = LOG_INFO,
-    .quiet = false,
-    .json = false,
-    .verbose_level = OPT_VERBOSE_LEVEL_DEFAULT,
-
+    // ========================================================================
     // Terminal Dimensions
+    // ========================================================================
     .width = OPT_WIDTH_DEFAULT,
     .height = OPT_HEIGHT_DEFAULT,
     .auto_width = OPT_AUTO_WIDTH_DEFAULT,
     .auto_height = OPT_AUTO_HEIGHT_DEFAULT,
 
-    // Display
-    .color_mode = COLOR_MODE_AUTO,
-    .palette_type = PALETTE_STANDARD,
-    .render_mode = RENDER_MODE_FOREGROUND,
-    .fps = OPT_FPS_DEFAULT,
+    // ========================================================================
+    // Network Options
+    // ========================================================================
+    .address = OPT_ADDRESS_DEFAULT,
+    .address6 = OPT_ADDRESS6_DEFAULT,
+    .port = OPT_PORT_INT_DEFAULT,
+    .websocket_port = OPT_WEBSOCKET_PORT_SERVER_DEFAULT,
+    .max_clients = OPT_MAX_CLIENTS_DEFAULT,
+    .session_string = OPT_STRING_EMPTY_DEFAULT,
+
+    // ========================================================================
+    // Discovery Service (ACDS) Options
+    // ========================================================================
+    .discovery = OPT_ACDS_DEFAULT,
+    .discovery_expose_ip = OPT_ACDS_EXPOSE_IP_DEFAULT,
+    .discovery_insecure = OPT_ACDS_INSECURE_DEFAULT,
+    .discovery_port = OPT_ACDS_PORT_INT_DEFAULT,
+    .discovery_server = OPT_STRING_EMPTY_DEFAULT,
+    .discovery_service_key = OPT_STRING_EMPTY_DEFAULT,
+    .discovery_database_path = OPT_STRING_EMPTY_DEFAULT,
+    .webrtc = OPT_WEBRTC_DEFAULT,
+
+    // ========================================================================
+    // LAN Discovery & WebRTC Options
+    // ========================================================================
+    .lan_discovery = OPT_LAN_DISCOVERY_DEFAULT,
+    .no_mdns_advertise = OPT_NO_MDNS_ADVERTISE_DEFAULT,
+    .enable_upnp = OPT_ENABLE_UPNP_DEFAULT,
+
+    // ========================================================================
+    // WebRTC Connection Strategy Options
+    // ========================================================================
+    .prefer_webrtc = OPT_PREFER_WEBRTC_DEFAULT,
+    .no_webrtc = OPT_NO_WEBRTC_DEFAULT,
+    .webrtc_skip_stun = OPT_WEBRTC_SKIP_STUN_DEFAULT,
+    .webrtc_disable_turn = OPT_WEBRTC_DISABLE_TURN_DEFAULT,
+    .webrtc_skip_host = OPT_WEBRTC_SKIP_HOST_DEFAULT,
+    .webrtc_ice_timeout_ms = OPT_WEBRTC_ICE_TIMEOUT_MS_DEFAULT,
+    .webrtc_reconnect_attempts = OPT_WEBRTC_RECONNECT_ATTEMPTS_DEFAULT,
+
+    // ========================================================================
+    // WebRTC Connectivity Options (ACDS mode)
+    // ========================================================================
+    .stun_servers = OPT_STUN_SERVERS_DEFAULT,
+    .turn_servers = OPT_TURN_SERVERS_DEFAULT,
+    .turn_username = OPT_TURN_USERNAME_DEFAULT,
+    .turn_credential = OPT_TURN_CREDENTIAL_DEFAULT,
+    .turn_secret = OPT_STRING_EMPTY_DEFAULT,
+
+    // ========================================================================
+    // Encryption & Security Options
+    // ========================================================================
+    .encrypt_enabled = OPT_ENCRYPT_ENABLED_DEFAULT,
+    .no_encrypt = OPT_NO_ENCRYPT_DEFAULT,
+    .no_auth = OPT_NO_AUTH_DEFAULT,
+    .encrypt_key = OPT_STRING_EMPTY_DEFAULT,
+    .encrypt_keyfile = OPT_STRING_EMPTY_DEFAULT,
+    .password = OPT_STRING_EMPTY_DEFAULT,
+    .server_key = OPT_STRING_EMPTY_DEFAULT,
+    .client_keys = OPT_STRING_EMPTY_DEFAULT,
+    .require_server_identity = OPT_REQUIRE_SERVER_IDENTITY_DEFAULT,
+    .require_client_identity = OPT_REQUIRE_CLIENT_IDENTITY_DEFAULT,
+    .require_server_verify = OPT_REQUIRE_SERVER_VERIFY_DEFAULT,
+    .require_client_verify = OPT_REQUIRE_CLIENT_VERIFY_DEFAULT,
+
+    // ========================================================================
+    // Media Options
+    // ========================================================================
+    .media_file = OPT_STRING_EMPTY_DEFAULT,
+    .media_url = OPT_STRING_EMPTY_DEFAULT,
+    .media_loop = OPT_MEDIA_LOOP_DEFAULT,
+    .media_from_stdin = OPT_MEDIA_FROM_STDIN_DEFAULT,
+    .media_seek_timestamp = OPT_MEDIA_SEEK_TIMESTAMP_DEFAULT,
+    .pause = OPT_PAUSE_DEFAULT,
+    .yt_dlp_options = OPT_STRING_EMPTY_DEFAULT,
+
+    // ========================================================================
+    // Webcam Options
+    // ========================================================================
+    .webcam_index = OPT_WEBCAM_INDEX_DEFAULT,
+    .test_pattern = OPT_TEST_PATTERN_DEFAULT,
+    .no_audio_mixer = OPT_NO_AUDIO_MIXER_DEFAULT,
+    .stretch = OPT_STRETCH_DEFAULT,
     .flip_x = OPT_FLIP_X_DEFAULT,
     .flip_y = OPT_FLIP_Y_DEFAULT,
 
-    // Performance
+    // ========================================================================
+    // Display Options
+    // ========================================================================
+    .color = OPT_COLOR_DEFAULT,
+    .color_mode = OPT_COLOR_MODE_DEFAULT,
+    .color_filter = OPT_COLOR_FILTER_DEFAULT,
+    .color_scheme_name = OPT_COLOR_SCHEME_NAME_DEFAULT,
+    .render_mode = OPT_RENDER_MODE_DEFAULT,
+    .show_capabilities = OPT_SHOW_CAPABILITIES_DEFAULT,
+    .fps = OPT_FPS_DEFAULT,
+    .palette_type = OPT_PALETTE_TYPE_DEFAULT,
+    .palette_custom = OPT_STRING_EMPTY_DEFAULT,
+    .palette_custom_set = OPT_PALETTE_CUSTOM_SET_DEFAULT,
+
+    // ========================================================================
+    // Compression Options
+    // ========================================================================
     .compression_level = OPT_COMPRESSION_LEVEL_DEFAULT,
+    .no_compress = OPT_NO_COMPRESS_DEFAULT,
 
-    // Webcam
-    .test_pattern = false,
-    .webcam_index = OPT_WEBCAM_INDEX_DEFAULT,
-
-    // Network
-    .max_clients = OPT_MAX_CLIENTS_DEFAULT,
-    .discovery_port = OPT_ACDS_PORT_INT_DEFAULT,
-    .port = OPT_PORT_INT_DEFAULT,
-    .websocket_port = OPT_WEBSOCKET_PORT_SERVER_DEFAULT,
-
-    // Audio
+    // ========================================================================
+    // Audio Options
+    // ========================================================================
     .audio_enabled = OPT_AUDIO_ENABLED_DEFAULT,
+    .audio_source = OPT_AUDIO_SOURCE_DEFAULT,
     .microphone_index = OPT_MICROPHONE_INDEX_DEFAULT,
     .speakers_index = OPT_SPEAKERS_INDEX_DEFAULT,
     .microphone_sensitivity = OPT_MICROPHONE_SENSITIVITY_DEFAULT,
     .speakers_volume = OPT_SPEAKERS_VOLUME_DEFAULT,
+    .audio_analysis_enabled = OPT_AUDIO_ANALYSIS_ENABLED_DEFAULT,
+    .audio_no_playback = OPT_AUDIO_NO_PLAYBACK_DEFAULT,
+    .encode_audio = OPT_ENCODE_AUDIO_DEFAULT,
 
-    // All other fields are zero-initialized (empty strings, NULL, 0, false, etc.)
+    // ========================================================================
+    // Terminal & Output Options (consolidated)
+    // ========================================================================
+    .force_utf8 = OPT_FORCE_UTF8_DEFAULT,
+    .quiet = OPT_QUIET_DEFAULT,
+    .verbose_level = OPT_VERBOSE_LEVEL_DEFAULT,
+    .snapshot_mode = OPT_SNAPSHOT_MODE_DEFAULT,
+    .snapshot_delay = SNAPSHOT_DELAY_DEFAULT,
+    .matrix_rain = OPT_MATRIX_RAIN_DEFAULT,
+    .strip_ansi = OPT_STRIP_ANSI_DEFAULT,
+    .log_file = OPT_STRING_EMPTY_DEFAULT,
+    .log_level = OPT_LOG_LEVEL_DEFAULT,
+    .grep_pattern = OPT_GREP_PATTERN_DEFAULT,
+    .json = OPT_JSON_DEFAULT,
+    .log_template = OPT_LOG_TEMPLATE_DEFAULT,
+    .log_format_console_only = OPT_LOG_FORMAT_CONSOLE_DEFAULT,
+    .enable_keepawake = OPT_ENABLE_KEEPAWAKE_DEFAULT,
+    .disable_keepawake = OPT_DISABLE_KEEPAWAKE_DEFAULT,
+
+    // ========================================================================
+    // UI Screen Options
+    // ========================================================================
+    .splash_screen = OPT_SPLASH_DEFAULT,
+    .status_screen = OPT_STATUS_SCREEN_DEFAULT,
+
+    // ========================================================================
+    // Remaining Options (zero-initialized by default)
+    // ========================================================================
+    .reconnect_attempts = OPT_RECONNECT_ATTEMPTS_DEFAULT,
+    .splash_screen_explicitly_set = OPT_SPLASH_SCREEN_EXPLICITLY_SET_DEFAULT,
+    .status_screen_explicitly_set = OPT_STATUS_SCREEN_EXPLICITLY_SET_DEFAULT,
+    .no_check_update = OPT_NO_CHECK_UPDATE_DEFAULT,
+
+    // All remaining array fields (identity_keys, num_identity_keys, etc.)
+    // are zero-initialized (empty strings, NULL pointers, 0 values, etc.)
+    // which is appropriate for their types.
 };
 
 // ============================================================================
@@ -337,10 +481,19 @@ const options_t *options_get(void) {
   // Guarantees we see all writes made before the pointer was published
   options_t *current = atomic_load_explicit(&g_options, memory_order_acquire);
 
-  // If options not yet published, return safe static default instead of crashing
-  // This allows atexit handlers to safely call GET_OPTION() during cleanup
+  // If options not yet published or after destruction, return safe static default.
+  // This is a critical fallback that:
+  // 1. Allows early startup code (before options_state_init) to work safely
+  // 2. Allows atexit handlers and cleanup code to call GET_OPTION() safely
+  // 3. Never crashes due to NULL pointer access
+  // 4. Provides sensible defaults for all option fields
+  //
+  // The static default options are:
+  // - Allocated once at startup (static storage)
+  // - Never freed (outlives all dynamically allocated options)
+  // - Thread-safe to read (immutable const data)
+  // - Complete with all OPT_*_DEFAULT values matching options_t_new()
   if (!current) {
-    // Return static default - safe for atexit handlers to read
     return (const options_t *)&g_default_options;
   }
 

@@ -44,8 +44,7 @@ int utf8_decode(const uint8_t *s, uint32_t *codepoint) {
 }
 
 int utf8_display_width(const char *str) {
-  if (!str) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "str is NULL");
+  if (!str || !*str) {
     return 0;
   }
 
@@ -91,7 +90,6 @@ int utf8_display_width(const char *str) {
 
 int utf8_display_width_n(const char *str, size_t max_bytes) {
   if (!str || max_bytes == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "str is NULL or max_bytes is 0");
     return 0;
   }
 
