@@ -649,24 +649,223 @@
  * - Use identity keys for authenticated sessions
  * - Prefer local mDNS discovery on trusted networks
  *
+ * @section acds_service_lifecycle Service Lifecycle
+ *
+ * The ACDS server follows a well-defined lifecycle with distinct phases:
+ *
+ * @subsection acds_lifecycle_initialization Initialization Phase
+ *
+ * **Entry Point**: `acds_main()` in `src/discovery-service/main.c`
+ *
+ * Initialization sequence:
+ * 1. **Signal Handling**: Register SIGINT/SIGTERM handlers for graceful shutdown
+ * 2. **Global Context**: Initialize global server instance and UPnP/mDNS contexts
+ * 3. **Server Initialization**: Call `acds_server_init()`
+ *    - Load or generate Ed25519 identity keys (stored in `~/.config/ascii-chat/acds_identity`)
+ *    - Open SQLite database (`~/.config/ascii-chat/acds.db` by default)
+ *    - Create database schema if missing
+ *    - Initialize rate limiter
+ *    - Bind TCP socket(s) to configured addresses
+ *    - Enable UPnP/NAT-PMP port mapping if requested
+ *    - Register mDNS service if enabled
+ * 4. **Thread Pool**: Create worker thread pool for background tasks
+ * 5. **Cleanup Thread**: Spawn background cleanup thread
+ * 6. **Status Screen**: Initialize optional discovery status UI
+ *
+ * @subsection acds_lifecycle_running Running Phase
+ *
+ * **Main Loop**: `acds_server_run()` in `src/discovery-service/server.c`
+ *
+ * Server runs in an accept loop that:
+ * 1. **Accept Loop**: Use select()-based multiplexing to accept client connections
+ * 2. **Per-Client Handler**: Spawn a handler thread for each connected client
+ * 3. **Client Processing**:
+ *    - Perform crypto handshake (using shared lib/crypto/ infrastructure)
+ *    - Enter packet dispatch loop
+ *    - Process incoming ACIP packets:
+ *      - SESSION_CREATE/LOOKUP/JOIN - routed to `lib/discovery/database.c`
+ *      - WEBRTC_SDP/ICE - routed to signaling relay
+ *      - Invalid packets rejected with error response
+ * 4. **Connection Cleanup**: Remove from client registry on disconnect
+ * 5. **Background Tasks**:
+ *    - Cleanup thread runs every 5 minutes
+ *    - Removes old rate limit events from database
+ *    - Cleans up expired sessions
+ *    - Monitors host migrations with timeout detection
+ *
+ * @subsection acds_lifecycle_shutdown Shutdown Phase
+ *
+ * **Graceful Shutdown**: Triggered by SIGINT/SIGTERM or application request
+ *
+ * Shutdown sequence in `acds_server_shutdown()`:
+ * 1. **Signal Main Loop**: Set `server->tcp_server.running = false`
+ * 2. **Stop Accepting**: Close listen socket (pending accepts fail)
+ * 3. **Wait for Handlers**: All per-client handler threads exit
+ * 4. **Stop Workers**: Signal worker thread pool to shutdown
+ * 5. **Database Cleanup**: Checkpoint and close SQLite database
+ * 6. **Resource Cleanup**:
+ *    - Release UPnP/NAT-PMP port mappings
+ *    - Deregister mDNS service
+ *    - Free thread pool and memory
+ * 7. **Status Display**: Shutdown status screen UI
+ *
+ * @section acds_persistence Persistence and Data Management
+ *
+ * @subsection acds_sqlite_storage SQLite as Single Source of Truth
+ *
+ * ACDS uses SQLite as the authoritative storage for all persistent data:
+ *
+ * **Sessions Table** (`sessions`):
+ * - Indexed by 16-byte `session_id` (UUID)
+ * - Stores session metadata: string, host pubkey, capabilities, participant count, max participants
+ * - Tracks expiration time for automatic cleanup
+ * - Records whether IP is publicly exposed
+ * - Stores server address/port for Direct TCP connections
+ *
+ * **Participants Table** (`participants`):
+ * - Indexed by 16-byte `participant_id` (UUID)
+ * - Foreign key reference to `session_id`
+ * - Cascade delete when session expires
+ * - Stores participant's Ed25519 identity pubkey
+ * - Records join timestamp
+ *
+ * **Rate Limit Events Table** (`rate_events`):
+ * - Tracks request events for rate limiting (IP address, event type, timestamp)
+ * - Automatic cleanup removes events older than 1 hour
+ * - Prevents abuse through per-IP rate limiting:
+ *   - SESSION_CREATE: 10 per hour
+ *   - SESSION_LOOKUP: 60 per minute
+ *   - SESSION_JOIN: 30 per minute
+ *
+ * **Database Features**:
+ * - WAL (Write-Ahead Logging) mode for concurrent read performance
+ * - Synchronous writes for data integrity
+ * - Automatic schema migration on first run
+ * - Efficient queries with proper indexing
+ *
+ * @subsection acds_multikey_session Multi-Key Session Creation
+ *
+ * ACDS supports **multi-key session creation** - servers can register with multiple identity keys
+ * (e.g., SSH + GPG) in a single session.
+ *
+ * **Protocol** (defined in `server.h`):
+ * 1. Client sends `SESSION_CREATE` with first key
+ *    - ACDS generates session_id and stores in `pending_session`
+ *    - Client enters multi-key creation state: `in_multikey_session_create = true`
+ * 2. Client sends `SESSION_CREATE` with second key
+ *    - Key added to `pending_session_keys[]` array
+ *    - Duplicate detection prevents adding same key twice
+ * 3. Client sends `SESSION_CREATE` with zero key (empty key field)
+ *    - Finalizes session creation
+ *    - All keys in `pending_session_keys[]` written to database
+ *    - Session exits multi-key state
+ *
+ * **Implementation** (`acds_client_data_t` in `server.h`):
+ * - `in_multikey_session_create`: State flag
+ * - `pending_session`: Session data from first CREATE request
+ * - `pending_session_keys[]`: Array of Ed25519 public keys (up to MAX_IDENTITY_KEYS)
+ * - `num_pending_keys`: Count of keys received so far
+ *
+ * **Restrictions During Multi-Key Creation**:
+ * - Only PING/PONG packets allowed (other commands rejected)
+ * - Prevents interleaving with other session operations
+ * - Timeout after 5 minutes automatically clears pending state
+ *
+ * @subsection acds_host_migration Host Migration Management
+ *
+ * ACDS tracks **host migration** events when a session changes its host server.
+ *
+ * **Migration Tracking** (`migration_context_t` in `server.h`):
+ * - `session_id`: Session undergoing migration
+ * - `migration_start_ns`: When migration started (nanoseconds)
+ * - Array of up to 32 concurrent migrations
+ *
+ * **Migration Process**:
+ * 1. Host picks a future host (every 5 minutes proactively)
+ * 2. Host notifies ACDS of pending migration
+ * 3. New host connects to ACDS and takes over session
+ * 4. ACDS updates database with new host
+ * 5. Migration context tracked until completion
+ * 6. Timeout (configurable, typically 30 seconds) marks migration as failed
+ * 7. `database_session_clear_host()` clears host on timeout
+ *
+ * **Cleanup Thread Monitoring** (`monitor_host_migrations()`):
+ * - Wakes every 5 minutes
+ * - Checks each active migration for timeout
+ * - Calls `database_session_clear_host()` when timeout reached
+ *
+ * @section acds_peer_discovery Peer Discovery Integration
+ *
+ * ACDS provides both **server-side discovery service** and integrates with **client-side peer discovery**:
+ *
+ * @subsection acds_discovery_service Server-Side Discovery Service
+ *
+ * The ACDS server (`src/discovery-service/`) enables:
+ * 1. **Session Registration**: Servers register via SESSION_CREATE
+ * 2. **Session Lookup**: Clients find servers via SESSION_LOOKUP/SESSION_INFO
+ * 3. **Session Join**: Clients join via SESSION_JOIN
+ * 4. **Fallback Coordination**: ACDS provides STUN/TURN servers for WebRTC fallback
+ * 5. **Metadata Relay**: Participants can relay SDP/ICE through ACDS
+ *
+ * @subsection acds_client_discovery Client-Side Discovery Integration
+ *
+ * ascii-chat clients use ACDS for:
+ * 1. **Session String Resolution**: Convert "happy-sunset-ocean" → session metadata
+ * 2. **NAT Traversal**: Obtain STUN/TURN servers from ACDS
+ * 3. **Signaling Relay**: Optional relay of WebRTC signaling through ACDS
+ * 4. **Address Resolution**: Get server address (if allowed) for Direct TCP
+ *
+ * **Client Connection Sequence**:
+ * @code{.text}
+ * Client                ACDS               Server
+ *   |                    |                    |
+ *   |--- SESSION_LOOKUP->|                    |
+ *   |<-- SESSION_INFO ---|                    |
+ *   |--- SESSION_JOIN --->|                    |
+ *   |                    |-- [identity check]-|
+ *   |<-- SESSION_JOINED -|                    |
+ *   |<-- STUN/TURN list -|                    |
+ *   |                    |                    |
+ *   |-- Try Direct TCP ------->| (if addr provided)
+ *   |-- Try WebRTC P2P ------->| (via ICE/STUN)
+ *   |-- Try TURN relay ------->| (fallback)
+ * @endcode
+ *
+ * @subsection acds_mdns_discovery mDNS Local Discovery
+ *
+ * ACDS also integrates with **mDNS** for local network discovery:
+ * - Server registers as `_ascii-chat-discovery-service._tcp.local`
+ * - Clients can discover servers without knowing their IP
+ * - Useful for LANs where no internet connectivity is available
+ * - Zero-configuration for local sessions
+ *
  * @section acds_files Implementation Files
  *
- * **Source Files (src/acds/)**:
- * - `main.c` - ACDS entry point and initialization
- * - `server.c` - TCP server and packet dispatch
- * - `signaling.c` - WebRTC SDP/ICE relay
+ * **Source Files (src/discovery-service/)**:
+ * - `main.c` - ACDS entry point, signal handling, initialization, main loop
+ * - `main.h` - Configuration structures and entry point declaration
+ * - `server.c` - TCP server implementation, client handlers, migration tracking, cleanup
+ * - `server.h` - Server structures, per-client state, migration context
+ * - `signaling.c` - WebRTC SDP/ICE relay implementation
+ * - `signaling.h` - Signaling relay function declarations
  *
- * **Library Files (lib/acds/)**:
- * - `database.c` - SQLite session storage
- * - `session.c` - Session data structures
- * - `identity.c` - Ed25519 key management
- * - `strings.c` - Session string generation
+ * **Library Files (lib/discovery/)**:
+ * - `database.c/h` - SQLite operations, session lifecycle, rate limiting
+ * - `session.c` - Session data structure helpers
+ * - `identity.c/h` - Ed25519 key generation, loading, saving, fingerprinting
+ * - `strings.c/h` - Session string generation (adjective-noun-noun)
+ * - `adjectives.c/nouns.c` - Word lists for session string generation
  *
  * **Network Protocol (lib/network/acip/)**:
- * - `acds.c` - ACDS packet parsing
- * - `acds_handlers.c` - ACDS packet type handlers
- * - `acds_client.c` - Client-side ACDS protocol
+ * - `acds.c` - ACDS packet parsing and type definitions
+ * - `acds_handlers.c` - Packet type handlers (SESSION_*, WEBRTC_*)
+ * - `acds_client.c` - Client-side ACDS protocol helpers
  * - `send.c` - ACDS packet sending helpers
+ * - Transport abstraction uses `lib/network/tcp/` for connection handling
+ *
+ * **Rate Limiting (lib/network/rate_limit/)**:
+ * - `rate_limit.c/h` - Rate limiter abstraction
+ * - `sqlite.c` - SQLite-backed rate limit event storage
  *
  * @see @ref topic_network "Network Protocol"
  * @see @ref topic_handshake "Cryptographic Handshake"
