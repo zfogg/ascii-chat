@@ -7,7 +7,7 @@ set(LIB_DIR ${CMAKE_SOURCE_DIR}/lib)
 set(CORE_SRCS
     ${LIB_DIR}/common.c
     ${LIB_DIR}/asciichat_errno.c
-    ${LIB_DIR}/embedded_resources.c
+    ${LIB_DIR}/lifecycle.c
     # log/
     ${LIB_DIR}/log/logging.c
     ${LIB_DIR}/log/format.c
@@ -65,6 +65,7 @@ set(CORE_SRCS
     ${LIB_DIR}/options/parsing/validation.c
     ${LIB_DIR}/options/parsing/actions.c
     # options/manpage/
+    ${LIB_DIR}/options/manpage/embedded.c
     ${LIB_DIR}/options/manpage/resources.c
     ${LIB_DIR}/options/manpage/parser.c
     ${LIB_DIR}/options/manpage/formatter.c
@@ -115,8 +116,11 @@ set(CORE_SRCS
 # Debug sources only in non-Release builds
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     list(APPEND CORE_SRCS
-        ${LIB_DIR}/debug/lock.c
+        ${LIB_DIR}/debug/backtrace.c
+        ${LIB_DIR}/debug/named.c
+        ${LIB_DIR}/debug/sync.c
         ${LIB_DIR}/debug/memory.c
+        ${LIB_DIR}/options/registry/debug.c
     )
 endif()
 
@@ -757,7 +761,7 @@ add_library(ascii-chat-shared SHARED
                 -DMODULE_TARGETS=${MODULE_TARGETS_STR}
                 -DOUTPUT_FILE=${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def
                 -DLIBRARY_NAME=asciichat
-                -P ${CMAKE_SOURCE_DIR}/cmake/targets/GenerateDefFile.cmake
+                -P ${CMAKE_SOURCE_DIR}/cmake/tools/GenerateDefFile.cmake
             DEPENDS ${MODULE_TARGETS}
             COMMENT "Generating Windows .def file from object files"
             VERBATIM

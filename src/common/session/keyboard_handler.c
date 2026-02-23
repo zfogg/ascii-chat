@@ -12,11 +12,12 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/audio/audio.h>
+#include <ascii-chat/platform/terminal.h>
 #include <string.h>
 #include <signal.h>
 
 #ifndef NDEBUG
-#include <ascii-chat/debug/lock.h>
+#include <ascii-chat/debug/sync.h>
 #endif
 
 /* ============================================================================
@@ -64,11 +65,32 @@ static int next_color_mode(int current) {
   }
 }
 
+/**
+ * @brief Get next render mode in cycle
+ */
+static int next_render_mode(int current) {
+  // 3 render modes: FOREGROUND (0), BACKGROUND (1), HALF_BLOCK (2)
+  return (current + 1) % 3;
+}
+
+/**
+ * @brief Get next color filter in cycle
+ */
+static int next_color_filter(int current) {
+  return (current + 1) % COLOR_FILTER_COUNT;
+}
+
 /* ============================================================================
  * Keyboard Handler
  * ============================================================================ */
 
 void session_handle_keyboard_input(session_capture_ctx_t *capture, session_display_ctx_t *display, keyboard_key_t key) {
+  // Debug: log all key codes to help identify unknown keys
+  if (key != KEY_NONE) {
+    log_debug("Keyboard input received: code=%d (0x%02x) char='%c'", key, key,
+              (key >= 32 && key < 127) ? key : '?');
+  }
+
   switch (key) {
   // ===== HELP SCREEN TOGGLE =====
   case KEY_QUESTION: {
@@ -85,6 +107,7 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
     if (display && session_display_is_help_active(display)) {
       // Close help screen if it's active
       session_display_toggle_help(display);
+      terminal_clear_screen();
     } else {
       // If help screen is not active, quit the app (like Ctrl-C)
       // The signal handler will gracefully shutdown all modes (client, server, mirror, etc.)
@@ -182,7 +205,8 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
   }
 
   // ===== COLOR MODE CONTROL =====
-  case KEY_C: {
+  case KEY_C:
+  case 'C': {
     int current_mode = (int)GET_OPTION(color_mode);
     int next_mode = next_color_mode(current_mode);
     options_set_int("color_mode", next_mode);
@@ -195,7 +219,8 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
   }
 
   // ===== MUTE CONTROL =====
-  case KEY_M: {
+  case KEY_M:
+  case 'M': {
     double current_volume = GET_OPTION(speakers_volume);
     log_debug("Mute toggle: current_volume=%.2f, g_mute_saved_volume=%.2f, threshold=0.01", current_volume,
               g_mute_saved_volume);
@@ -216,19 +241,56 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
     break;
   }
 
+  // ===== RENDER MODE CONTROL =====
+  case KEY_R:
+  case 'R': {
+    int current_mode = (int)GET_OPTION(render_mode);
+    int next_mode = next_render_mode(current_mode);
+    options_set_int("render_mode", next_mode);
+
+    const char *mode_names[] = {"Foreground", "Background", "Half-block"};
+    if (next_mode >= 0 && next_mode <= 2) {
+      log_info("Render mode: %s", mode_names[next_mode]);
+    }
+    break;
+  }
+
+  // ===== COLOR FILTER CONTROL =====
+  case KEY_F:
+  case 'F': {
+    int current_filter = (int)GET_OPTION(color_filter);
+    int next_filter = next_color_filter(current_filter);
+    options_set_int("color_filter", next_filter);
+
+    const char *filter_names[] = {"None", "Black", "White", "Green", "Magenta", "Fuchsia", "Orange", "Teal", "Cyan", "Pink", "Red", "Yellow", "Rainbow"};
+    if (next_filter >= 0 && next_filter < (int)COLOR_FILTER_COUNT) {
+      log_info("Color filter: %s", filter_names[next_filter]);
+    }
+    break;
+  }
+
   // ===== HORIZONTAL FLIP CONTROL =====
-  case KEY_F: {
+  case 'G':
+  case 'g': {
     bool current_flip_x = (bool)GET_OPTION(flip_x);
     options_set_bool("flip_x", !current_flip_x);
     log_info("Horizontal flip: %s", !current_flip_x ? "enabled" : "disabled");
     break;
   }
 
+  // ===== MATRIX RAIN EFFECT CONTROL =====
+  case KEY_0: {
+    bool current_matrix = (bool)GET_OPTION(matrix_rain);
+    options_set_bool("matrix_rain", !current_matrix);
+    log_info("Matrix rain effect: %s", !current_matrix ? "enabled" : "disabled");
+    break;
+  }
+
   // ===== LOCK DEBUG (debug builds only) =====
 #ifndef NDEBUG
-  case KEY_CTRL_L: {
-    lock_debug_trigger_print();
-    log_debug("Lock state dump triggered via Ctrl+L");
+  case KEY_BACKTICK: {
+    debug_sync_trigger_print();
+    log_debug("Lock state dump triggered via backtick key");
     break;
   }
 #endif

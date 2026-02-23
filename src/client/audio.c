@@ -79,6 +79,7 @@
 #include <ascii-chat/util/fps.h>
 #include <ascii-chat/util/thread.h>
 #include <ascii-chat/util/time.h> // For timing instrumentation
+#include <ascii-chat/util/lifecycle.h>
 
 #include <ascii-chat/audio/audio.h>                 // lib/audio/audio.h for PortAudio wrapper
 #include <ascii-chat/audio/client_audio_pipeline.h> // Unified audio processing pipeline
@@ -197,8 +198,7 @@ static int g_audio_send_queue_head = 0; // Write position
 static int g_audio_send_queue_tail = 0; // Read position
 static mutex_t g_audio_send_queue_mutex;
 static cond_t g_audio_send_queue_cond;
-static bool g_audio_send_queue_initialized = false;
-static static_mutex_t g_audio_send_queue_init_mutex = STATIC_MUTEX_INIT;
+static lifecycle_t g_audio_send_queue_lc = LIFECYCLE_INIT;
 
 /** Audio sender thread */
 static bool g_audio_sender_thread_created = false;
@@ -217,7 +217,7 @@ static atomic_bool g_audio_sender_should_exit = false;
  */
 static int audio_queue_packet(const uint8_t *opus_data, size_t opus_size, const uint16_t *frame_sizes,
                               int frame_count) {
-  if (!g_audio_send_queue_initialized || !opus_data || opus_size == 0) {
+  if (!lifecycle_is_initialized(&g_audio_send_queue_lc) || !opus_data || opus_size == 0) {
     return -1;
   }
 
@@ -233,17 +233,21 @@ static int audio_queue_packet(const uint8_t *opus_data, size_t opus_size, const 
 
   // Copy packet to queue
   audio_send_packet_t *packet = &g_audio_send_queue[g_audio_send_queue_head];
-  if (opus_size <= sizeof(packet->data)) {
-    memcpy(packet->data, opus_data, opus_size);
-    packet->size = opus_size;
-    packet->frame_count = frame_count;
-    for (int i = 0; i < frame_count && i < 8; i++) {
-      packet->frame_sizes[i] = frame_sizes[i];
-    }
-    g_audio_send_queue_head = next_head;
+  if (opus_size > sizeof(packet->data)) {
+    mutex_unlock(&g_audio_send_queue_mutex);
+    log_warn("Audio packet too large for queue: %zu > %zu bytes", opus_size, sizeof(packet->data));
+    return -1;
   }
 
-  // Signal sender thread
+  memcpy(packet->data, opus_data, opus_size);
+  packet->size = opus_size;
+  packet->frame_count = frame_count;
+  for (int i = 0; i < frame_count && i < 8; i++) {
+    packet->frame_sizes[i] = frame_sizes[i];
+  }
+  g_audio_send_queue_head = next_head;
+
+  // Signal sender thread (must be held while signaling)
   cond_signal(&g_audio_send_queue_cond);
   mutex_unlock(&g_audio_send_queue_mutex);
 
@@ -270,14 +274,22 @@ static void *audio_sender_thread_func(void *arg) {
   while (!atomic_load(&g_audio_sender_should_exit)) {
     mutex_lock(&g_audio_send_queue_mutex);
 
-    // Wait for packet or exit signal
+    // Wait for packet or exit signal (cond_wait re-acquires mutex before returning)
     while (g_audio_send_queue_head == g_audio_send_queue_tail && !atomic_load(&g_audio_sender_should_exit)) {
       cond_wait(&g_audio_send_queue_cond, &g_audio_send_queue_mutex);
     }
 
+    // Check exit flag after waking from cond_wait
     if (atomic_load(&g_audio_sender_should_exit)) {
       mutex_unlock(&g_audio_send_queue_mutex);
       break;
+    }
+
+    // Safety check: ensure queue actually has data (handle spurious wakeups)
+    if (g_audio_send_queue_head == g_audio_send_queue_tail) {
+      // Spurious wakeup - queue is empty, go back to waiting
+      mutex_unlock(&g_audio_send_queue_mutex);
+      continue;
     }
 
     // Dequeue packet
@@ -297,7 +309,7 @@ static void *audio_sender_thread_func(void *arg) {
       log_debug_every(LOG_RATE_VERY_FAST, "Failed to send audio packet");
     } else if (send_count % 50 == 0) {
       char duration_str[32];
-      format_duration_ns(send_time_ns, duration_str, sizeof(duration_str));
+      time_pretty((uint64_t)(send_time_ns), -1, duration_str, sizeof(duration_str));
       log_debug("Audio network send #%d: %zu bytes (%d frames) in %s", send_count, packet.size, packet.frame_count,
                 duration_str);
     }
@@ -318,30 +330,39 @@ static void *audio_sender_thread_func(void *arg) {
  * threads might attempt initialization simultaneously.
  */
 static void audio_sender_init(void) {
-  static_mutex_lock(&g_audio_send_queue_init_mutex);
+  log_info("[AUDIO_SENDER_INIT] Starting audio sender initialization");
 
-  // Check again under lock to prevent race condition
-  if (g_audio_send_queue_initialized) {
-    static_mutex_unlock(&g_audio_send_queue_init_mutex);
+  if (!lifecycle_init(&g_audio_send_queue_lc, "audio_queue")) {
+    log_info("[AUDIO_SENDER_INIT] Already initialized, returning early");
+    return; // Already initialized
+  }
+
+  log_info("[AUDIO_SENDER_INIT] Initializing mutex");
+  // Initialize queue structures with error checking
+  if (mutex_init(&g_audio_send_queue_mutex, "audio_send_queue_mutex") != 0) {
+    log_error("[AUDIO_SENDER_INIT] Failed to initialize audio queue mutex");
     return;
   }
 
-  // Initialize queue structures under lock
-  mutex_init(&g_audio_send_queue_mutex);
-  cond_init(&g_audio_send_queue_cond);
+  log_info("[AUDIO_SENDER_INIT] Initializing condition variable");
+  if (cond_init(&g_audio_send_queue_cond, "audio_send_queue_cond") != 0) {
+    log_error("[AUDIO_SENDER_INIT] Failed to initialize audio queue condition variable");
+    mutex_destroy(&g_audio_send_queue_mutex);
+    return;
+  }
+
+  log_info("[AUDIO_SENDER_INIT] Setting queue state");
   g_audio_send_queue_head = 0;
   g_audio_send_queue_tail = 0;
-  g_audio_send_queue_initialized = true;
   atomic_store(&g_audio_sender_should_exit, false);
 
-  static_mutex_unlock(&g_audio_send_queue_init_mutex);
-
+  log_info("[AUDIO_SENDER_INIT] Spawning audio sender thread");
   // Start sender thread (after lock release to avoid blocking other threads)
   if (thread_pool_spawn(g_client_worker_pool, audio_sender_thread_func, NULL, 5, "audio_sender") == ASCIICHAT_OK) {
     g_audio_sender_thread_created = true;
-    log_debug("Audio sender thread created");
+    log_info("[AUDIO_SENDER_INIT] ✓ Audio sender thread created successfully");
   } else {
-    log_error("Failed to spawn audio sender thread in worker pool");
+    log_error("[AUDIO_SENDER_INIT] Failed to spawn audio sender thread in worker pool");
     LOG_ERRNO_IF_SET("Audio sender thread creation failed");
   }
 }
@@ -350,7 +371,8 @@ static void audio_sender_init(void) {
  * @brief Cleanup async audio sender
  */
 static void audio_sender_cleanup(void) {
-  if (!g_audio_send_queue_initialized) {
+  lifecycle_shutdown(&g_audio_send_queue_lc);
+  if (false) { // Old code removed, keep structure
     return;
   }
 
@@ -368,7 +390,7 @@ static void audio_sender_cleanup(void) {
 
   mutex_destroy(&g_audio_send_queue_mutex);
   cond_destroy(&g_audio_send_queue_cond);
-  g_audio_send_queue_initialized = false;
+  lifecycle_shutdown(&g_audio_send_queue_lc);
 }
 
 /* ============================================================================
@@ -714,7 +736,7 @@ static void *audio_capture_thread_func(void *arg) {
           if (encode_count % 50 == 0) {
             if (opus_elapsed_ns >= 0.0) {
               char _duration_str[32];
-              format_duration_ns(opus_elapsed_ns, _duration_str, sizeof(_duration_str));
+              time_pretty((uint64_t)(opus_elapsed_ns), -1, _duration_str, sizeof(_duration_str));
               log_dev("Opus encode #%d: %d samples -> %d bytes in %s", encode_count, OPUS_FRAME_SAMPLES, opus_len,
                       _duration_str);
             }
@@ -777,7 +799,7 @@ static void *audio_capture_thread_func(void *arg) {
         } else {
           if (batch_send_count <= 10 || batch_send_count % 50 == 0) {
             char queue_duration_str[32];
-            format_duration_ns(queue_time_ns, queue_duration_str, sizeof(queue_duration_str));
+            time_pretty((uint64_t)(queue_time_ns), -1, queue_duration_str, sizeof(queue_duration_str));
             log_debug("CLIENT: Queued Opus batch #%d (%d frames, %zu bytes) in %s", batch_send_count, batch_frame_count,
                       batch_total_size, queue_duration_str);
           }
@@ -804,14 +826,14 @@ static void *audio_capture_thread_func(void *arg) {
         char avg_encode_str[32], max_encode_str[32];
         char avg_queue_str[32], max_queue_str[32];
 
-        format_duration_ns(total_loop_ns / timing_loop_count, avg_loop_str, sizeof(avg_loop_str));
-        format_duration_ns(max_loop_ns, max_loop_str, sizeof(max_loop_str));
-        format_duration_ns(total_read_ns / timing_loop_count, avg_read_str, sizeof(avg_read_str));
-        format_duration_ns(max_read_ns, max_read_str, sizeof(max_read_str));
-        format_duration_ns(total_encode_ns / timing_loop_count, avg_encode_str, sizeof(avg_encode_str));
-        format_duration_ns(max_encode_ns, max_encode_str, sizeof(max_encode_str));
-        format_duration_ns(total_queue_ns / timing_loop_count, avg_queue_str, sizeof(avg_queue_str));
-        format_duration_ns(max_queue_ns, max_queue_str, sizeof(max_queue_str));
+        time_pretty((uint64_t)(total_loop_ns / timing_loop_count), -1, avg_loop_str, sizeof(avg_loop_str));
+        time_pretty((uint64_t)(max_loop_ns), -1, max_loop_str, sizeof(max_loop_str));
+        time_pretty((uint64_t)(total_read_ns / timing_loop_count), -1, avg_read_str, sizeof(avg_read_str));
+        time_pretty((uint64_t)(max_read_ns), -1, max_read_str, sizeof(max_read_str));
+        time_pretty((uint64_t)(total_encode_ns / timing_loop_count), -1, avg_encode_str, sizeof(avg_encode_str));
+        time_pretty((uint64_t)(max_encode_ns), -1, max_encode_str, sizeof(max_encode_str));
+        time_pretty((uint64_t)(total_queue_ns / timing_loop_count), -1, avg_queue_str, sizeof(avg_queue_str));
+        time_pretty((uint64_t)(max_queue_ns), -1, max_queue_str, sizeof(max_queue_str));
 
         log_debug("CAPTURE TIMING #%lu: loop avg=%s max=%s, read avg=%s max=%s", timing_loop_count, avg_loop_str,
                   max_loop_str, avg_read_str, max_read_str);
@@ -1061,7 +1083,7 @@ void audio_stop_thread() {
   // This must happen before thread_pool_stop_all() is called, otherwise the sender
   // thread will be stuck in cond_wait() and thread_pool_stop_all() will hang forever.
   // The sender thread uses a condition variable to wait for packets - we must wake it up.
-  if (g_audio_send_queue_initialized) {
+  if (lifecycle_is_initialized(&g_audio_send_queue_lc)) {
     log_debug("Signaling audio sender thread to exit");
     atomic_store(&g_audio_sender_should_exit, true);
     mutex_lock(&g_audio_send_queue_mutex);

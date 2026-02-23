@@ -233,33 +233,3 @@ add_custom_target(shared-lib
     DEPENDS ascii-chat-shared build-timer-start
     VERBATIM
 )
-
-# =============================================================================
-# Man5 Page Generation Target (Unix only)
-# =============================================================================
-# Generate man5 (file format documentation) page from template
-# Usage: cmake --build build --target man5
-#
-# This target processes the template with CMake variables and outputs:
-# - Generated page: ${CMAKE_BINARY_DIR}/share/man/man5/ascii-chat.5
-# =============================================================================
-if(UNIX)
-    # Create output directory for man5 page
-    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/share/man/man5")
-
-    # Create custom target that generates man5 page
-    add_custom_target(man5
-        COMMAND ${CMAKE_COMMAND}
-            -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
-            -DBINARY_DIR=${CMAKE_BINARY_DIR}
-            -DPROJECT_VERSION=${PROJECT_VERSION}
-            -DPROJECT_VERSION_DATE=${PROJECT_VERSION_DATE}
-            -P ${CMAKE_SOURCE_DIR}/cmake/utils/ConfigureMan5Template.cmake
-        COMMENT "Generating man5 page: ${BoldBlue}ascii-chat.5${ColorReset}"
-        VERBATIM
-    )
-    message(STATUS "Custom target ${BoldGreen}man5${ColorReset} available: ${BoldBlue}cmake --build build --target man5${ColorReset}")
-else()
-    message(STATUS "Custom target ${BoldYellow}man5${ColorReset} skipped (Unix only)")
-endif()
-

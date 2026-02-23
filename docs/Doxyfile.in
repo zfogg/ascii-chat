@@ -18,7 +18,7 @@ HTML_EXTRA_STYLESHEET  = @AWESOME_CSS_DIR@/doxygen-awesome.css \
                          @AWESOME_CSS_DIR@/doxygen-awesome-sidebar-only.css \
                          @CMAKE_SOURCE_DIR@/docs/custom-theme.css
 
-OUTPUT_DIRECTORY       = @CMAKE_BINARY_DIR@/docs
+OUTPUT_DIRECTORY       = @CMAKE_BINARY_DIR@/share
 CREATE_SUBDIRS         = NO
 ALLOW_UNICODE_NAMES    = NO
 OUTPUT_LANGUAGE        = English
@@ -192,7 +192,7 @@ IGNORE_PREFIX          =
 #---------------------------------------------------------------------------
 
 GENERATE_HTML          = YES
-HTML_OUTPUT            = html
+HTML_OUTPUT            = doc/html
 HTML_FILE_EXTENSION    = .html
 HTML_HEADER            = @CMAKE_SOURCE_DIR@/docs/header.html
 HTML_FOOTER            =

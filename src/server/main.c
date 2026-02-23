@@ -73,7 +73,8 @@
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/uthash/uthash.h>
+#include <ascii-chat/util/lifecycle.h>
+#include <ascii-chat/uthash.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/platform/init.h>
@@ -1482,8 +1483,12 @@ static void *websocket_client_handler(void *arg) {
   // Initialize crypto handshake context directly in client structure
   // This must happen BEFORE sending KEY_EXCHANGE_INIT so that when the client
   // responds, the receive thread has a properly initialized context
+  log_info("[WS_HANDLER] ★★★ LOCK STATE BEFORE crypto_handshake_init()");
+  debug_sync_print_state();
   log_debug("[WS_HANDLER] Calling crypto_handshake_init()...");
   asciichat_error_t handshake_init_result = crypto_handshake_init(&client->crypto_handshake_ctx, true /* is_server */);
+  log_info("[WS_HANDLER] ★★★ DEBUG: Printing lock state after crypto_handshake_init");
+  debug_sync_print_state();
   if (handshake_init_result != ASCIICHAT_OK) {
     log_error("[WS_HANDLER] FAILED: crypto_handshake_init returned %d: %s", handshake_init_result,
               asciichat_error_string(handshake_init_result));
@@ -1910,6 +1915,10 @@ int server_main(void) {
     log_info("WebSocket server initialized on port %d", GET_OPTION(websocket_port));
   }
 
+  // DEBUG: Print lock state immediately after WebSocket init
+  log_info("★★★ LOCK STATE AFTER WEBSOCKET INIT ★★★");
+  debug_sync_print_state();
+
   // =========================================================================
   // UPnP Port Mapping (Quick Win for Direct TCP)
   // =========================================================================
@@ -1945,7 +1954,7 @@ int server_main(void) {
   }
 
   // Initialize synchronization primitives
-  if (rwlock_init(&g_client_manager_rwlock) != 0) {
+  if (rwlock_init(&g_client_manager_rwlock, "clients")  != 0) {
     FATAL(ERROR_THREAD, "Failed to initialize client manager rwlock");
   }
 
@@ -1962,7 +1971,7 @@ int server_main(void) {
 
   // NOTE: g_client_manager is already zero-initialized in client.c with = {0}
   // We only need to initialize the mutex
-  mutex_init(&g_client_manager.mutex);
+  mutex_init(&g_client_manager.mutex, "client_manager");
 
   // Initialize uthash head pointer for O(1) lookup (uthash requires NULL initialization)
   g_client_manager.clients_by_id = NULL;
@@ -2291,12 +2300,10 @@ int server_main(void) {
 
             // Configure STUN servers for ICE gathering (static to persist for peer_manager lifetime)
             static stun_server_t stun_servers[4] = {0};
-            static unsigned int g_stun_init_refcount = 0;
-            static static_mutex_t g_stun_init_mutex = STATIC_MUTEX_INIT;
+            static lifecycle_t g_stun_lc = LIFECYCLE_INIT;
             static int stun_count = 0; // Store actual count separately
 
-            static_mutex_lock(&g_stun_init_mutex);
-            if (g_stun_init_refcount == 0) {
+            if (lifecycle_init(&g_stun_lc, "stun")) {
               log_debug("Parsing STUN servers from options: '%s'", GET_OPTION(stun_servers));
               int count =
                   stun_servers_parse(GET_OPTION(stun_servers), OPT_ENDPOINT_STUN_SERVERS_DEFAULT, stun_servers, 4);
@@ -2315,9 +2322,7 @@ int server_main(void) {
                   log_debug("  STUN[%d]: '%s' (len=%d)", i, stun_servers[i].host, stun_servers[i].host_len);
                 }
               }
-              g_stun_init_refcount = 1;
             }
-            static_mutex_unlock(&g_stun_init_mutex);
 
             // Configure peer_manager
             webrtc_peer_manager_config_t pm_config = {
@@ -2643,7 +2648,7 @@ cleanup:
 #ifndef NDEBUG
   // Clean up lock debugging system (always, regardless of build type)
   // Lock debug records are allocated in debug builds too, so they must be cleaned up
-  lock_debug_destroy();
+  debug_sync_destroy();
 #endif
 
   // Destroy session host (before TCP server shutdown)
@@ -2731,8 +2736,9 @@ cleanup:
   platform_restore_timer_resolution(); // Restore timer resolution (no-op on POSIX)
 
 #ifndef NDEBUG
-  // Join the lock debug thread as one of the very last things before exit
-  lock_debug_cleanup_thread();
+  // Join the debug threads as one of the very last things before exit
+  debug_sync_cleanup_thread();
+  debug_memory_thread_cleanup();
 #endif
 
   log_info("Server shutdown complete");

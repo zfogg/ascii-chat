@@ -16,6 +16,10 @@
 #include <ascii-chat/options/registry/core.h>
 #include <string.h>
 
+#ifndef NDEBUG
+extern const registry_entry_t g_debug_entries[];
+#endif
+
 // ============================================================================
 // Master Registry - Composition of all category arrays
 // ============================================================================
@@ -23,13 +27,25 @@
 // Note: count field is computed at runtime (sentinel-terminated arrays)
 // Non-static so core.c can access it via extern declaration
 // Each category file contains options from ONLY ONE help group
+#ifndef NDEBUG
 category_builder_t g_category_builders[] = {
     {g_general_entries, "GENERAL"},   {g_logging_entries, "LOGGING"},
     {g_terminal_entries, "TERMINAL"}, {g_configuration_entries, "CONFIGURATION"},
     {g_display_entries, "DISPLAY"},   {g_webcam_entries, "WEBCAM"},
     {g_audio_entries, "AUDIO"},       {g_media_entries, "MEDIA"},
     {g_network_entries, "NETWORK"},   {g_security_entries, "SECURITY"},
-    {g_database_entries, "DATABASE"}, {NULL, NULL}};
+    {g_database_entries, "DATABASE"}, {g_debug_entries, "DEBUG"},
+    {NULL, NULL}};
+#else
+category_builder_t g_category_builders[] = {
+    {g_general_entries, "GENERAL"},   {g_logging_entries, "LOGGING"},
+    {g_terminal_entries, "TERMINAL"}, {g_configuration_entries, "CONFIGURATION"},
+    {g_display_entries, "DISPLAY"},   {g_webcam_entries, "WEBCAM"},
+    {g_audio_entries, "AUDIO"},       {g_media_entries, "MEDIA"},
+    {g_network_entries, "NETWORK"},   {g_security_entries, "SECURITY"},
+    {g_database_entries, "DATABASE"},
+    {NULL, NULL}};
+#endif
 
 // Unified view of all registry entries (for backward compatibility)
 registry_entry_t g_options_registry[2048];

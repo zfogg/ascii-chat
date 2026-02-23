@@ -226,6 +226,35 @@ asciichat_error_t terminal_move_cursor(int row, int col) {
 }
 
 /**
+ * @brief Move cursor relative to current position
+ * @param offset Relative movement: positive = right, negative = left
+ * @return ASCIICHAT_OK on success
+ *
+ * Uses ANSI escape sequences: \x1b[nC (right) or \x1b[nD (left)
+ */
+asciichat_error_t terminal_move_cursor_relative(int offset) {
+  // Skip ANSI codes when not writing to a TTY
+  if (!terminal_is_stdout_tty()) {
+    return ASCIICHAT_OK;
+  }
+
+  if (offset == 0) {
+    return ASCIICHAT_OK;
+  }
+
+  if (offset > 0) {
+    // Move right: \x1b[<n>C
+    printf("\033[%dC", offset);
+  } else {
+    // Move left: \x1b[<n>D
+    printf("\033[%dD", -offset);
+  }
+
+  (void)fflush(stdout);
+  return ASCIICHAT_OK;
+}
+
+/**
  * @brief Enable ANSI escape sequence processing
  * @note POSIX terminals typically support ANSI by default
  */
@@ -261,27 +290,39 @@ asciichat_error_t terminal_flush(int fd) {
 }
 
 /**
- * @brief Show or hide terminal cursor
- * @param fd File descriptor for TTY output
- * @param hide true to hide cursor, false to show
- * @return 0 on success, -1 on failure
+ * @brief Hide terminal cursor
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Hides the cursor on stdout if in interactive mode.
  */
-asciichat_error_t terminal_hide_cursor(int fd, bool hide) {
-  // Skip ANSI codes when not writing to a TTY (e.g., piping to file)
-  if (!platform_isatty(fd)) {
+asciichat_error_t terminal_cursor_hide(void) {
+  // Only emit escape sequences in interactive mode
+  if (!terminal_is_interactive()) {
     return ASCIICHAT_OK;
   }
 
-  if (hide) {
-    if (dprintf(fd, "\033[?25l") < 0) {
-      return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to hide cursor");
-    }
-  } else {
-    if (dprintf(fd, "\033[?25h") < 0) {
-      return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to show cursor");
-    }
+  if (dprintf(STDOUT_FILENO, "\033[?25l") < 0) {
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to hide cursor");
   }
-  return terminal_flush(fd);
+  return terminal_flush(STDOUT_FILENO);
+}
+
+/**
+ * @brief Show terminal cursor
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Shows the cursor on stdout if in interactive mode.
+ */
+asciichat_error_t terminal_cursor_show(void) {
+  // Only emit escape sequences in interactive mode
+  if (!terminal_is_interactive()) {
+    return ASCIICHAT_OK;
+  }
+
+  if (dprintf(STDOUT_FILENO, "\033[?25h") < 0) {
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to show cursor");
+  }
+  return terminal_flush(STDOUT_FILENO);
 }
 
 /**

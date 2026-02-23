@@ -26,16 +26,35 @@
  */
 
 #include <stdbool.h>
+#include <stdint.h>
 #include "mutex.h"
 
 #ifdef _WIN32
 #include "windows_compat.h"
-/** @brief Condition variable type (Windows: CONDITION_VARIABLE) */
-typedef CONDITION_VARIABLE cond_t;
+/**
+ * @brief Condition variable type (Windows: CONDITION_VARIABLE with name)
+ * @ingroup platform
+ */
+typedef struct {
+    CONDITION_VARIABLE impl; ///< Underlying Windows condition variable
+    const char *name;        ///< Human-readable name for debugging
+    uint64_t last_signal_time_ns;  ///< Timestamp of last signal (nanoseconds)
+    uint64_t last_broadcast_time_ns; ///< Timestamp of last broadcast (nanoseconds)
+    uint64_t last_wait_time_ns;    ///< Timestamp of last wait (nanoseconds)
+} cond_t;
 #else
 #include <pthread.h>
-/** @brief Condition variable type (POSIX: pthread_cond_t) */
-typedef pthread_cond_t cond_t;
+/**
+ * @brief Condition variable type (POSIX: pthread_cond_t with name)
+ * @ingroup platform
+ */
+typedef struct {
+    pthread_cond_t impl;     ///< Underlying POSIX condition variable
+    const char *name;        ///< Human-readable name for debugging
+    uint64_t last_signal_time_ns;  ///< Timestamp of last signal (nanoseconds)
+    uint64_t last_broadcast_time_ns; ///< Timestamp of last broadcast (nanoseconds)
+    uint64_t last_wait_time_ns;    ///< Timestamp of last wait (nanoseconds)
+} cond_t;
 #endif
 
 #ifdef __cplusplus
@@ -47,16 +66,18 @@ extern "C" {
 // ============================================================================
 
 /**
- * @brief Initialize a condition variable
+ * @brief Initialize a condition variable with a name
  * @param cond Pointer to condition variable to initialize
+ * @param name Human-readable name for debugging (e.g., "audio_ready")
  * @return 0 on success, non-zero on error
  *
  * Initializes the condition variable for use. Must be called before any other
- * condition variable operations.
+ * condition variable operations. The name is stored for debugging and automatically
+ * suffixed with a unique counter.
  *
  * @ingroup platform
  */
-int cond_init(cond_t *cond);
+int cond_init(cond_t *cond, const char *name);
 
 /**
  * @brief Destroy a condition variable
@@ -125,6 +146,39 @@ int cond_signal(cond_t *cond);
  * @ingroup platform
  */
 int cond_broadcast(cond_t *cond);
+
+/**
+ * @brief Hook called when a thread waits on a condition variable
+ * @param cond Pointer to the condition variable being waited on
+ *
+ * Called by platform-specific implementations before blocking on wait.
+ * Records timing and other diagnostic data.
+ *
+ * @ingroup platform
+ */
+void cond_on_wait(cond_t *cond);
+
+/**
+ * @brief Hook called when a condition variable is signaled
+ * @param cond Pointer to the condition variable being signaled
+ *
+ * Called by platform-specific implementations after waking one thread.
+ * Records timing and other diagnostic data.
+ *
+ * @ingroup platform
+ */
+void cond_on_signal(cond_t *cond);
+
+/**
+ * @brief Hook called when a condition variable is broadcast
+ * @param cond Pointer to the condition variable being broadcast
+ *
+ * Called by platform-specific implementations after waking all threads.
+ * Records timing and other diagnostic data.
+ *
+ * @ingroup platform
+ */
+void cond_on_broadcast(cond_t *cond);
 
 #ifdef __cplusplus
 }

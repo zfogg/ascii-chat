@@ -29,15 +29,34 @@
  */
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #ifdef _WIN32
 #include "windows_compat.h"
-/** @brief Read-write lock type (Windows: SRWLOCK) */
-typedef SRWLOCK rwlock_t;
+/**
+ * @brief Read-write lock type (Windows: SRWLOCK with name)
+ * @ingroup platform
+ */
+typedef struct {
+    SRWLOCK impl;            ///< Underlying Windows SRW lock
+    const char *name;        ///< Human-readable name for debugging
+    uint64_t last_rdlock_time_ns;  ///< Timestamp of last read lock acquisition (nanoseconds)
+    uint64_t last_wrlock_time_ns;  ///< Timestamp of last write lock acquisition (nanoseconds)
+    uint64_t last_unlock_time_ns;  ///< Timestamp of last unlock (nanoseconds)
+} rwlock_t;
 #else
 #include <pthread.h>
-/** @brief Read-write lock type (POSIX: pthread_rwlock_t) */
-typedef pthread_rwlock_t rwlock_t;
+/**
+ * @brief Read-write lock type (POSIX: pthread_rwlock_t with name)
+ * @ingroup platform
+ */
+typedef struct {
+    pthread_rwlock_t impl;   ///< Underlying POSIX rwlock
+    const char *name;        ///< Human-readable name for debugging
+    uint64_t last_rdlock_time_ns;  ///< Timestamp of last read lock acquisition (nanoseconds)
+    uint64_t last_wrlock_time_ns;  ///< Timestamp of last write lock acquisition (nanoseconds)
+    uint64_t last_unlock_time_ns;  ///< Timestamp of last unlock (nanoseconds)
+} rwlock_t;
 #endif
 
 // Forward declarations for lock debugging
@@ -48,11 +67,11 @@ typedef pthread_rwlock_t rwlock_t;
 extern "C" {
 #endif
 
-bool lock_debug_is_initialized(void);
-int debug_rwlock_rdlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name);
-int debug_rwlock_wrlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name);
-int debug_rwlock_rdunlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name);
-int debug_rwlock_wrunlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name);
+bool debug_sync_is_initialized(void);
+int debug_sync_rwlock_rdlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name);
+int debug_sync_rwlock_wrlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name);
+int debug_sync_rwlock_rdunlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name);
+int debug_sync_rwlock_wrunlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name);
 
 #ifdef __cplusplus
 }
@@ -68,16 +87,18 @@ extern "C" {
 // ============================================================================
 
 /**
- * @brief Initialize a read-write lock
+ * @brief Initialize a read-write lock with a name
  * @param lock Pointer to read-write lock to initialize
+ * @param name Human-readable name for debugging (e.g., "client_list_lock")
  * @return 0 on success, non-zero on error
  *
  * Initializes the read-write lock for use. Must be called before any other
- * lock operations.
+ * lock operations. The name is stored for debugging and automatically suffixed
+ * with a unique counter.
  *
  * @ingroup platform
  */
-int rwlock_init(rwlock_t *lock);
+int rwlock_init(rwlock_t *lock, const char *name);
 
 /**
  * @brief Destroy a read-write lock
@@ -90,6 +111,39 @@ int rwlock_init(rwlock_t *lock);
  * @ingroup platform
  */
 int rwlock_destroy(rwlock_t *lock);
+
+/**
+ * @brief Hook called when a read lock is successfully acquired
+ * @param rwlock Pointer to the rwlock that was read-locked
+ *
+ * Called by platform-specific implementations after read lock acquisition.
+ * Records timing and other diagnostic data.
+ *
+ * @ingroup platform
+ */
+void rwlock_on_rdlock(rwlock_t *rwlock);
+
+/**
+ * @brief Hook called when a write lock is successfully acquired
+ * @param rwlock Pointer to the rwlock that was write-locked
+ *
+ * Called by platform-specific implementations after write lock acquisition.
+ * Records timing and other diagnostic data.
+ *
+ * @ingroup platform
+ */
+void rwlock_on_wrlock(rwlock_t *rwlock);
+
+/**
+ * @brief Hook called when an rwlock is unlocked (read or write)
+ * @param rwlock Pointer to the rwlock that was unlocked
+ *
+ * Called by platform-specific implementations before lock release.
+ * Records timing and other diagnostic data.
+ *
+ * @ingroup platform
+ */
+void rwlock_on_unlock(rwlock_t *rwlock);
 
 /**
  * @brief Initialize a read-write lock (implementation function)
@@ -192,7 +246,7 @@ int rwlock_wrunlock_impl(rwlock_t *lock);
 #define rwlock_rdlock(lock) rwlock_rdlock_impl(lock)
 #else
 #define rwlock_rdlock(lock)                                                                                            \
-  (lock_debug_is_initialized() ? debug_rwlock_rdlock(lock, __FILE__, __LINE__, __func__) : rwlock_rdlock_impl(lock))
+  (debug_sync_is_initialized() ? debug_sync_rwlock_rdlock(lock, __FILE__, __LINE__, __func__) : rwlock_rdlock_impl(lock))
 #endif
 
 /**
@@ -211,7 +265,7 @@ int rwlock_wrunlock_impl(rwlock_t *lock);
 #define rwlock_wrlock(lock) rwlock_wrlock_impl(lock)
 #else
 #define rwlock_wrlock(lock)                                                                                            \
-  (lock_debug_is_initialized() ? debug_rwlock_wrlock(lock, __FILE__, __LINE__, __func__) : rwlock_wrlock_impl(lock))
+  (debug_sync_is_initialized() ? debug_sync_rwlock_wrlock(lock, __FILE__, __LINE__, __func__) : rwlock_wrlock_impl(lock))
 #endif
 
 /**
@@ -229,7 +283,7 @@ int rwlock_wrunlock_impl(rwlock_t *lock);
 #define rwlock_rdunlock(lock) rwlock_rdunlock_impl(lock)
 #else
 #define rwlock_rdunlock(lock)                                                                                          \
-  (lock_debug_is_initialized() ? debug_rwlock_rdunlock(lock, __FILE__, __LINE__, __func__) : rwlock_rdunlock_impl(lock))
+  (debug_sync_is_initialized() ? debug_sync_rwlock_rdunlock(lock, __FILE__, __LINE__, __func__) : rwlock_rdunlock_impl(lock))
 #endif
 
 /**
@@ -247,7 +301,7 @@ int rwlock_wrunlock_impl(rwlock_t *lock);
 #define rwlock_wrunlock(lock) rwlock_wrunlock_impl(lock)
 #else
 #define rwlock_wrunlock(lock)                                                                                          \
-  (lock_debug_is_initialized() ? debug_rwlock_wrunlock(lock, __FILE__, __LINE__, __func__) : rwlock_wrunlock_impl(lock))
+  (debug_sync_is_initialized() ? debug_sync_rwlock_wrunlock(lock, __FILE__, __LINE__, __func__) : rwlock_wrunlock_impl(lock))
 #endif
 
 #ifdef __cplusplus

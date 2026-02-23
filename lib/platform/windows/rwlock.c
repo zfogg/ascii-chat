@@ -9,20 +9,23 @@
 #include <ascii-chat/platform/api.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/windows_compat.h>
+#include <ascii-chat/debug/named.h>
 
 /**
- * @brief Initialize a read-write lock
+ * @brief Initialize a read-write lock with a name
  * @param lock Pointer to read-write lock structure to initialize
+ * @param name Human-readable name for debugging
  * @return 0 on success, error code on failure
  */
 int rwlock_init_impl(rwlock_t *lock) {
-  InitializeSRWLock(lock);
+  InitializeSRWLock(&lock->impl);
   return 0;
 }
 
-// Public wrappers to match non-impl API used across the codebase
-int rwlock_init(rwlock_t *lock) {
-  return rwlock_init_impl(lock);
+int rwlock_init(rwlock_t *lock, const char *name) {
+  InitializeSRWLock(&lock->impl);
+  lock->name = NAMED_REGISTER(lock, name, "rwlock");
+  return 0;
 }
 
 /**
@@ -38,6 +41,7 @@ int rwlock_destroy_impl(rwlock_t *lock) {
 }
 
 int rwlock_destroy(rwlock_t *lock) {
+  NAMED_UNREGISTER(lock);
   return rwlock_destroy_impl(lock);
 }
 
@@ -47,7 +51,8 @@ int rwlock_destroy(rwlock_t *lock) {
  * @return 0 on success, error code on failure
  */
 int rwlock_rdlock_impl(rwlock_t *lock) {
-  AcquireSRWLockShared(lock);
+  AcquireSRWLockShared(&lock->impl);
+  rwlock_on_rdlock(lock);
   return 0;
 }
 
@@ -57,7 +62,8 @@ int rwlock_rdlock_impl(rwlock_t *lock) {
  * @return 0 on success, error code on failure
  */
 int rwlock_wrlock_impl(rwlock_t *lock) {
-  AcquireSRWLockExclusive(lock);
+  AcquireSRWLockExclusive(&lock->impl);
+  rwlock_on_wrlock(lock);
   return 0;
 }
 
@@ -67,7 +73,8 @@ int rwlock_wrlock_impl(rwlock_t *lock) {
  * @return 0 on success, error code on failure
  */
 int rwlock_rdunlock_impl(rwlock_t *lock) {
-  ReleaseSRWLockShared(lock);
+  rwlock_on_unlock(lock);
+  ReleaseSRWLockShared(&lock->impl);
   return 0;
 }
 
@@ -77,7 +84,8 @@ int rwlock_rdunlock_impl(rwlock_t *lock) {
  * @return 0 on success, error code on failure
  */
 int rwlock_wrunlock_impl(rwlock_t *lock) {
-  ReleaseSRWLockExclusive(lock);
+  rwlock_on_unlock(lock);
+  ReleaseSRWLockExclusive(&lock->impl);
   return 0;
 }
 

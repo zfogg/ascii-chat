@@ -27,15 +27,32 @@
  */
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #ifdef _WIN32
 #include "windows_compat.h"
-/** @brief Mutex type (Windows: CRITICAL_SECTION) */
-typedef CRITICAL_SECTION mutex_t;
+/**
+ * @brief Mutex type (Windows: CRITICAL_SECTION with name)
+ * @ingroup platform
+ */
+typedef struct {
+    CRITICAL_SECTION impl;   ///< Underlying Windows critical section
+    const char *name;        ///< Human-readable name for debugging
+    uint64_t last_lock_time_ns;   ///< Timestamp of last lock acquisition (nanoseconds)
+    uint64_t last_unlock_time_ns; ///< Timestamp of last unlock (nanoseconds)
+} mutex_t;
 #else
 #include <pthread.h>
-/** @brief Mutex type (POSIX: pthread_mutex_t) */
-typedef pthread_mutex_t mutex_t;
+/**
+ * @brief Mutex type (POSIX: pthread_mutex_t with name)
+ * @ingroup platform
+ */
+typedef struct {
+    pthread_mutex_t impl;    ///< Underlying POSIX mutex
+    const char *name;        ///< Human-readable name for debugging
+    uint64_t last_lock_time_ns;   ///< Timestamp of last lock acquisition (nanoseconds)
+    uint64_t last_unlock_time_ns; ///< Timestamp of last unlock (nanoseconds)
+} mutex_t;
 #endif
 
 // Forward declare debug_mutex functions (full declarations in debug/lock.h)
@@ -46,10 +63,10 @@ extern "C" {
 #ifndef NDEBUG
 // Only declare these when not in release mode
 // The actual implementations are in lib/debug/lock.c when DEBUG_LOCKS is enabled
-int debug_mutex_lock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name);
-int debug_mutex_trylock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name);
-int debug_mutex_unlock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name);
-bool lock_debug_is_initialized(void);
+int debug_sync_mutex_lock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name);
+int debug_sync_mutex_trylock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name);
+int debug_sync_mutex_unlock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name);
+bool debug_sync_is_initialized(void);
 #endif
 
 // ============================================================================
@@ -57,15 +74,17 @@ bool lock_debug_is_initialized(void);
 // ============================================================================
 
 /**
- * @brief Initialize a mutex
+ * @brief Initialize a mutex with a name
  * @param mutex Pointer to mutex to initialize
+ * @param name Human-readable name for debugging (e.g., "recv_mutex")
  * @return 0 on success, non-zero on error
  *
  * Initializes the mutex for use. Must be called before any other mutex operations.
+ * The name is stored for debugging and automatically suffixed with a unique counter.
  *
  * @ingroup platform
  */
-int mutex_init(mutex_t *mutex);
+int mutex_init(mutex_t *mutex, const char *name);
 
 /**
  * @brief Destroy a mutex
@@ -78,6 +97,28 @@ int mutex_init(mutex_t *mutex);
  * @ingroup platform
  */
 int mutex_destroy(mutex_t *mutex);
+
+/**
+ * @brief Hook called when a mutex is successfully locked
+ * @param mutex Pointer to the mutex that was locked
+ *
+ * Called by platform-specific implementations after lock acquisition.
+ * Records timing and other diagnostic data.
+ *
+ * @ingroup platform
+ */
+void mutex_on_lock(mutex_t *mutex);
+
+/**
+ * @brief Hook called when a mutex is unlocked
+ * @param mutex Pointer to the mutex that was unlocked
+ *
+ * Called by platform-specific implementations before lock release.
+ * Records timing and other diagnostic data.
+ *
+ * @ingroup platform
+ */
+void mutex_on_unlock(mutex_t *mutex);
 
 /**
  * @brief Lock a mutex (implementation function)
@@ -138,7 +179,7 @@ int mutex_unlock_impl(mutex_t *mutex);
 #define mutex_lock(mutex) mutex_lock_impl(mutex)
 #else
 #define mutex_lock(mutex)                                                                                              \
-  (lock_debug_is_initialized() ? debug_mutex_lock(mutex, __FILE__, __LINE__, __func__) : mutex_lock_impl(mutex))
+  (debug_sync_is_initialized() ? debug_sync_mutex_lock(mutex, __FILE__, __LINE__, __func__) : mutex_lock_impl(mutex))
 #endif
 
 /**
@@ -155,7 +196,7 @@ int mutex_unlock_impl(mutex_t *mutex);
 #define mutex_trylock(mutex) mutex_trylock_impl(mutex)
 #else
 #define mutex_trylock(mutex)                                                                                           \
-  (lock_debug_is_initialized() ? debug_mutex_trylock(mutex, __FILE__, __LINE__, __func__) : mutex_trylock_impl(mutex))
+  (debug_sync_is_initialized() ? debug_sync_mutex_trylock(mutex, __FILE__, __LINE__, __func__) : mutex_trylock_impl(mutex))
 #endif
 
 /**
@@ -173,7 +214,7 @@ int mutex_unlock_impl(mutex_t *mutex);
 #define mutex_unlock(mutex) mutex_unlock_impl(mutex)
 #else
 #define mutex_unlock(mutex)                                                                                            \
-  (lock_debug_is_initialized() ? debug_mutex_unlock(mutex, __FILE__, __LINE__, __func__) : mutex_unlock_impl(mutex))
+  (debug_sync_is_initialized() ? debug_sync_mutex_unlock(mutex, __FILE__, __LINE__, __func__) : mutex_unlock_impl(mutex))
 #endif
 
 /** @} */ /* Mutex Locking Macros */

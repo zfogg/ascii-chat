@@ -215,14 +215,29 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   // Add examples for binary-level help and discovery mode
   options_builder_add_example(b, OPTION_MODE_BINARY, NULL, "Start new session (share the session string)", false);
   options_builder_add_example(b, OPTION_MODE_BINARY, example_buf1, "Join a session using the session string", true);
-  options_builder_add_example(b, OPTION_MODE_BINARY, example_buf2, "Join session via custom discovery server", true);
-  options_builder_add_example(b, OPTION_MODE_BINARY, example_buf3, "Join session and stream from local video file",
-                              true);
-  options_builder_add_example(b, OPTION_MODE_BINARY, example_buf4, "Join session and stream from YouTube video", true);
-  options_builder_add_example(b, OPTION_MODE_BINARY, example_buf5,
-                              "Join session and stream media from stdin (cat file.mov | ascii-chat ... -f '-')", true);
-  options_builder_add_example(b, OPTION_MODE_BINARY, example_buf6, "Join session with custom ASCII palette characters",
-                              true);
+
+  // Build combined examples with session string + flags
+  static char combined_buf1[256];
+  static char combined_buf2[256];
+  static char combined_buf3[256];
+  static char combined_buf4[256];
+  static char combined_buf5[256];
+  safe_snprintf(combined_buf1, sizeof(combined_buf1), "%s --file video.mp4", example_buf3);
+  safe_snprintf(combined_buf2, sizeof(combined_buf2), "%s --url 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'", example_buf4);
+  safe_snprintf(combined_buf3, sizeof(combined_buf3), "%s -f -", example_buf5);
+  safe_snprintf(combined_buf4, sizeof(combined_buf4), "%s --palette-chars '@%%#*+=-:. '", example_buf6);
+  safe_snprintf(combined_buf5, sizeof(combined_buf5), "%s --discovery-service --discovery-service-port 27225", example_buf2);
+
+  options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf1,
+                              "Join session and stream from local video file", false);
+  options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf2,
+                              "Join session and stream from YouTube video", false);
+  options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf3,
+                              "Join session and stream media from stdin", false);
+  options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf4,
+                              "Join session with custom ASCII palette characters", false);
+  options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf5,
+                              "Join session via custom discovery server", false);
 
   // Add examples for server-like modes (server + discovery-service)
   options_builder_add_example(b, OPTION_MODE_SERVER_LIKE, NULL, "Start on localhost (127.0.0.1 and ::1)", false);
@@ -317,22 +332,62 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
 
   // Add common dependencies (these will be validated after parsing)
   // Note: Dependencies are validated at runtime, so we add them here for documentation
+
+  // ============================================================================
+  // Media Source Conflicts
+  // ============================================================================
   // URL conflicts: --url cannot be used with --file or --loop
   options_builder_add_dependency_conflicts(b, "url", "file",
                                            "Option --url cannot be used with --file (--url takes priority)");
   options_builder_add_dependency_conflicts(
       b, "url", "loop", "Option --url cannot be used with --loop (network streams cannot be looped)");
-  // Encryption conflicts
+
+  // ============================================================================
+  // Encryption & Authentication Conflicts
+  // ============================================================================
+  // Cannot use both --encrypt and --no-encrypt
   options_builder_add_dependency_conflicts(b, "no-encrypt", "encrypt", "Cannot use --no-encrypt with --encrypt");
-  // Compression conflicts
+
+  // Cannot use --no-auth with authentication material (--key, --password, --client-keys, --server-key)
+  options_builder_add_dependency_conflicts(b, "no-auth", "key",
+                                           "Cannot use --no-auth with --key (key requires authentication)");
+  options_builder_add_dependency_conflicts(b, "no-auth", "password",
+                                           "Cannot use --no-auth with --password (password requires authentication)");
+  options_builder_add_dependency_conflicts(b, "no-auth", "client-keys",
+                                           "Cannot use --no-auth with --client-keys (key list requires authentication)");
+  options_builder_add_dependency_conflicts(b, "no-auth", "server-key",
+                                           "Cannot use --no-auth with --server-key (verification requires authentication)");
+
+  // Cannot use --key with --server-key (both server-side key options)
+  options_builder_add_dependency_conflicts(b, "key", "server-key",
+                                           "Cannot use --key with --server-key (--key is server identity, --server-key is client-side)");
+
+  // ============================================================================
+  // Compression Conflicts
+  // ============================================================================
+  // Cannot use --no-compress with --compression-level
   options_builder_add_dependency_conflicts(b, "no-compress", "compression-level",
                                            "Cannot use --no-compress with --compression-level");
-  // Audio encoding conflicts
+
+  // ============================================================================
+  // Audio Encoding Conflicts
+  // ============================================================================
+  // Cannot use both --encode-audio and --no-encode-audio
   options_builder_add_dependency_conflicts(b, "encode-audio", "no-encode-audio",
                                            "Cannot use both --encode-audio and --no-encode-audio");
-  // Requirements
+
+  // ============================================================================
+  // Display & Screen Conflicts
+  // ============================================================================
+
+  // ============================================================================
+  // Requirements (dependencies that must be satisfied)
+  // ============================================================================
+  // --snapshot-delay requires --snapshot
   options_builder_add_dependency_requires(b, "snapshot-delay", "snapshot",
                                           "Option --snapshot-delay requires --snapshot");
+
+  // --loop requires --file (can't loop network streams)
   options_builder_add_dependency_requires(b, "loop", "file", "Option --loop requires --file");
 
   const options_config_t *config = options_builder_build(b);

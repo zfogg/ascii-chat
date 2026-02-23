@@ -13,6 +13,7 @@
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/util/lifecycle.h>
 
 struct terminal_renderer_s {
     ghostty_config_t config;
@@ -220,38 +221,27 @@ void term_renderer_destroy(terminal_renderer_t *r) {
 
 #include <stdatomic.h>
 
-static _Atomic(int) ghostty_initialized = 0;
-static _Atomic(int) ghostty_init_in_progress = 0;
+static lifecycle_t g_ghostty_lc = LIFECYCLE_INIT;
 
 asciichat_error_t terminal_ghostty_init_once(void) {
-    // Check if already initialized
-    if (atomic_load(&ghostty_initialized)) {
+    if (!lifecycle_init_once(&g_ghostty_lc)) {
+        // Already initialized or in progress, wait for completion
         return ASCIICHAT_OK;
     }
 
-    // Try to claim initialization
-    int expected = 0;
-    if (!atomic_compare_exchange_strong(&ghostty_init_in_progress, &expected, 1)) {
-        // Another thread is initializing, wait for completion
-        while (!atomic_load(&ghostty_initialized)) {
-            usleep(1000); // 1ms sleep
-        }
-        return ASCIICHAT_OK;
-    }
-
-    // We own initialization now
+    // We won the init race, do the work
     int argc = 1;
     char *argv[] = {"ascii-chat", NULL};
 
     int ret = ghostty_init((uintptr_t)argc, (char**)argv);
     if (ret != 0) {
-        atomic_store(&ghostty_init_in_progress, 0);
+        lifecycle_init_abort(&g_ghostty_lc);
         log_error("terminal_ghostty_init_once: ghostty_init failed with code %d", ret);
         return SET_ERRNO(ERROR_INIT, "ghostty_init failed with code %d", ret);
     }
 
     log_info("terminal_ghostty_init_once: ghostty global state initialized successfully");
-    atomic_store(&ghostty_initialized, 1);
+    lifecycle_init_commit(&g_ghostty_lc);
     return ASCIICHAT_OK;
 }
 #endif

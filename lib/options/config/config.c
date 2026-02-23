@@ -528,7 +528,7 @@ static asciichat_error_t write_bool(const option_parsed_value_t *parsed, const c
   char *field_ptr = ((char *)opts) + meta->field_offset;
   bool bool_value = parsed->bool_value;
   bool is_inverted_no_splash = false;
-  if (meta && meta->field_offset == offsetof(options_t, splash) && meta->toml_key) {
+  if (meta && meta->field_offset == offsetof(options_t, splash_screen) && meta->toml_key) {
     const char *key = meta->toml_key;
     size_t key_len = strlen(key);
     static const char suffix[] = ".no_splash";
@@ -666,7 +666,7 @@ static void format_bool(const char *field_ptr, size_t field_size, const config_o
     bool_value = *(bool *)field_ptr;
   }
   bool is_inverted_no_splash = false;
-  if (meta && meta->field_offset == offsetof(options_t, splash) && meta->toml_key) {
+  if (meta && meta->field_offset == offsetof(options_t, splash_screen) && meta->toml_key) {
     const char *key = meta->toml_key;
     size_t key_len = strlen(key);
     static const char suffix[] = ".no_splash";

@@ -422,7 +422,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
 
       if (elapsed >= GET_OPTION(snapshot_delay)) {
         char duration_str[32];
-        format_duration_s(elapsed, duration_str, sizeof(duration_str));
+        time_pretty((uint64_t)(elapsed * 1e9), -1, duration_str, sizeof(duration_str));
         log_debug("Snapshot captured after %s!", duration_str);
         take_snapshot = true;
         signal_exit();
@@ -611,8 +611,12 @@ static void handle_audio_opus_packet(const void *data, size_t len) {
 
   static int timing_count = 0;
   if (++timing_count % 100 == 0) {
-    log_debug("Audio packet timing #%d: decode=%.2fµs, process=%.2fµs, total=%.2fµs", timing_count, decode_ns / 1000.0,
-              process_ns / 1000.0, total_ns / 1000.0);
+    char decode_str[32], process_str[32], total_str[32];
+    time_pretty((uint64_t)decode_ns, -1, decode_str, sizeof(decode_str));
+    time_pretty((uint64_t)process_ns, -1, process_str, sizeof(process_str));
+    time_pretty((uint64_t)total_ns, -1, total_str, sizeof(total_str));
+    log_debug("Audio packet timing #%d: decode=%s, process=%s, total=%s", timing_count, decode_str,
+              process_str, total_str);
   }
 
   log_debug_every(LOG_RATE_DEFAULT, "Processed Opus audio: %d decoded samples from %zu byte packet", decoded_samples,

@@ -25,6 +25,7 @@
 #include "crypto.h"
 #include "main.h"
 #include "../main.h" // Global exit API
+#include "../common/session/client_like.h" // For session_client_like_set_websocket_client()
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/options/options.h>
@@ -159,8 +160,10 @@ bool connection_check_timeout(const connection_attempt_context_t *ctx) {
   bool timeout_exceeded = elapsed_ns > ctx->timeout_ns;
 
   if (timeout_exceeded) {
-    log_warn("Connection timeout exceeded: elapsed %.3f seconds > %.3f seconds limit", time_ns_to_s(elapsed_ns),
-             time_ns_to_s(ctx->timeout_ns));
+    char elapsed_str[32], timeout_str[32];
+    time_pretty(elapsed_ns, -1, elapsed_str, sizeof(elapsed_str));
+    time_pretty(ctx->timeout_ns, -1, timeout_str, sizeof(timeout_str));
+    log_warn("Connection timeout exceeded: elapsed %s > %s limit", elapsed_str, timeout_str);
   }
 
   return timeout_exceeded;
@@ -201,6 +204,11 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     url_parts_t url_parts = {0};
     if (url_parse(server_address, &url_parts) == ASCIICHAT_OK) {
       log_debug("WebSocket URL parsed: host=%s, port=%d, scheme=%s", url_parts.host, url_parts.port, url_parts.scheme);
+      // Set server IP for crypto context (same as TCP path does)
+      if (url_parts.host[0] != '\0') {
+        server_connection_set_ip(url_parts.host);
+        log_debug("Server IP extracted from WebSocket URL: %s", url_parts.host);
+      }
     }
 
     log_info("Attempting WebSocket connection to %s", ws_url);
@@ -275,6 +283,10 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     connection_state_transition(ctx, CONN_STATE_CONNECTED);
     ctx->active_transport = transport;
     ctx->ws_client_instance = ws_client;
+
+    // Update global websocket client so session_client_like_run() detects network mode
+    session_client_like_set_websocket_client(ws_client);
+
     url_parts_destroy(&url_parts);
     return ASCIICHAT_OK;
   }

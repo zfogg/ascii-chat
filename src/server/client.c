@@ -136,7 +136,7 @@
 #include <ascii-chat/audio/mixer.h>
 #include <ascii-chat/audio/opus_codec.h>
 #include <ascii-chat/video/video_frame.h>
-#include <ascii-chat/uthash/uthash.h>
+#include <ascii-chat/uthash.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/format.h>
 #include <ascii-chat/util/time.h>
@@ -470,13 +470,13 @@ static int start_client_threads(server_context_t *server_ctx, client_info_t *cli
 
   // Step 2: Create render threads BEFORE send thread
   // This ensures the render threads generate the first frame before the send thread tries to read it
-  log_debug("Creating render threads for client %u", client_id);
+  log_info("★★★ CLIENT SETUP: About to create render threads for client %u", client_id);
   if (create_client_render_threads(server_ctx, client) != 0) {
     log_error("Failed to create render threads for client %u", client_id);
     remove_client(server_ctx, client_id);
     return -1;
   }
-  log_debug("Successfully created render threads for client %u", client_id);
+  log_info("★★★ CLIENT SETUP: Successfully created render threads for client %u", client_id);
 
   // Step 3: Create send thread AFTER render threads are running
   if (is_tcp) {
@@ -676,13 +676,13 @@ int add_client(server_context_t *server_ctx, socket_t socket, const char *client
   configure_client_socket(socket, new_client_id);
 
   // Initialize mutexes OUTSIDE lock
-  if (mutex_init(&client->client_state_mutex) != 0) {
+  if (mutex_init(&client->client_state_mutex, "client_state")  != 0) {
     log_error("Failed to initialize client state mutex for client %u", new_client_id);
     remove_client(server_ctx, new_client_id);
     return -1;
   }
 
-  if (mutex_init(&client->send_mutex) != 0) {
+  if (mutex_init(&client->send_mutex, "client_send")  != 0) {
     log_error("Failed to initialize send mutex for client %u", new_client_id);
     remove_client(server_ctx, new_client_id);
     return -1;
@@ -1035,6 +1035,10 @@ int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
   HASH_ADD_INT(g_client_manager.clients_by_id, client_id, client);
   log_debug("Added WebRTC client %u to uthash table", cid);
 
+  // Release the write lock IMMEDIATELY after adding to hash table
+  // All subsequent operations (mutex init, mixer registration) don't need global client manager lock
+  rwlock_wrunlock(&g_client_manager_rwlock);
+
   // Register this client's audio buffer with the mixer
   if (g_audio_mixer && client->incoming_audio_buffer) {
     if (mixer_add_source(g_audio_mixer, atomic_load(&client->client_id), client->incoming_audio_buffer) < 0) {
@@ -1047,24 +1051,20 @@ int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
   }
 
   // Initialize mutexes BEFORE creating any threads to prevent race conditions
-  if (mutex_init(&client->client_state_mutex) != 0) {
+  if (mutex_init(&client->client_state_mutex, "client_state")  != 0) {
     log_error("Failed to initialize client state mutex for WebRTC client %u", atomic_load(&client->client_id));
     // Client is already in hash table - use remove_client for proper cleanup
-    rwlock_wrunlock(&g_client_manager_rwlock);
     remove_client(server_ctx, atomic_load(&client->client_id));
     return -1;
   }
 
   // Initialize send mutex to protect concurrent socket writes
-  if (mutex_init(&client->send_mutex) != 0) {
+  if (mutex_init(&client->send_mutex, "client_send")  != 0) {
     log_error("Failed to initialize send mutex for WebRTC client %u", atomic_load(&client->client_id));
     // Client is already in hash table - use remove_client for proper cleanup
-    rwlock_wrunlock(&g_client_manager_rwlock);
     remove_client(server_ctx, atomic_load(&client->client_id));
     return -1;
   }
-
-  rwlock_wrunlock(&g_client_manager_rwlock);
 
   // For WebRTC clients, the capabilities packet will be received by the receive thread
   // when it starts. Unlike TCP clients where we handle it synchronously in add_client(),
@@ -1478,8 +1478,10 @@ void *client_dispatch_thread(void *arg) {
     }
 
     // Frame received! Log it immediately
-    log_info("✅ DISPATCH_THREAD[%u] DEQUEUED packet: %zu bytes (dequeue took %.1fμs)", client_id, queued_pkt->data_len,
-             (dequeue_end - dequeue_start) / 1000.0);
+    char dequeue_elapsed_str[32];
+    time_pretty(dequeue_end - dequeue_start, -1, dequeue_elapsed_str, sizeof(dequeue_elapsed_str));
+    log_info("✅ DISPATCH_THREAD[%u] DEQUEUED packet: %zu bytes (dequeue took %s)", client_id, queued_pkt->data_len,
+             dequeue_elapsed_str);
 
     // Process the dequeued packet
     // The queued packet contains the complete ACIP packet (header + payload) from websocket_recv()
@@ -2030,8 +2032,10 @@ void *client_send_thread_func(void *arg) {
 
       sent_something = true;
       uint64_t audio_done_ns = time_get_ns();
-      log_info_every(5000 * US_PER_MS_INT, "[SEND_LOOP_%d] AUDIO_SENT: took %.2fms", loop_iteration_count,
-                     (audio_done_ns - loop_start_ns) / 1e6);
+      char audio_elapsed_str[32];
+      time_pretty(audio_done_ns - loop_start_ns, -1, audio_elapsed_str, sizeof(audio_elapsed_str));
+      log_info_every(5000 * US_PER_MS_INT, "[SEND_LOOP_%d] AUDIO_SENT: took %s", loop_iteration_count,
+                     audio_elapsed_str);
 
       // Small sleep to let more audio packets queue (helps batching efficiency)
       if (audio_packet_count > 0) {
@@ -2093,8 +2097,10 @@ void *client_send_thread_func(void *arg) {
     // This marks the frame as consumed even if we don't send it yet
     const video_frame_t *frame = video_frame_get_latest(client->outgoing_video_buffer);
     uint64_t frame_get_ns = time_get_ns();
-    log_info_every(5000 * US_PER_MS_INT, "[SEND_LOOP_%d] VIDEO_GET_FRAME: took %.3fms, frame=%p", loop_iteration_count,
-                   (frame_get_ns - video_check_ns) / 1e6, (void *)frame);
+    char frame_get_elapsed_str[32];
+    time_pretty(frame_get_ns - video_check_ns, -1, frame_get_elapsed_str, sizeof(frame_get_elapsed_str));
+    log_info_every(5000 * US_PER_MS_INT, "[SEND_LOOP_%d] VIDEO_GET_FRAME: took %s, frame=%p", loop_iteration_count,
+                   frame_get_elapsed_str, (void *)frame);
     log_dev_every(4500 * US_PER_MS_INT, "Send thread: video_frame_get_latest returned %p for client %u", (void *)frame,
                   client->client_id);
 
@@ -2225,8 +2231,9 @@ void *client_send_thread_func(void *arg) {
       asciichat_error_t send_result = acip_send_ascii_frame(frame_transport, frame_data, frame_size, width, height,
                                                             atomic_load(&client->client_id));
       uint64_t send_end_ns = time_get_ns();
-      uint64_t send_ms = (send_end_ns - send_start_ns) / 1e6;
-      log_dev("[SEND_LOOP_%d] FRAME_SEND_END: took %.2fms, result=%d", loop_iteration_count, send_ms, send_result);
+      char send_elapsed_str[32];
+      time_pretty(send_end_ns - send_start_ns, -1, send_elapsed_str, sizeof(send_elapsed_str));
+      log_dev("[SEND_LOOP_%d] FRAME_SEND_END: took %s, result=%d", loop_iteration_count, send_elapsed_str, send_result);
       uint64_t step5_ns = time_get_ns();
 
       if (send_result != ASCIICHAT_OK) {
@@ -2274,9 +2281,11 @@ void *client_send_thread_func(void *arg) {
       platform_sleep_us(1 * US_PER_MS_INT); // 1ms sleep
     }
     uint64_t loop_end_ns = time_get_ns();
-    uint64_t loop_ms = (loop_end_ns - loop_start_ns) / 1e6;
-    if (loop_ms > 10) {
-      log_warn("[SEND_LOOP_%d] SLOW_ITERATION: took %.2fms (client=%u)", loop_iteration_count, loop_ms,
+    uint64_t loop_elapsed_ns = loop_end_ns - loop_start_ns;
+    if (loop_elapsed_ns > 10 * NS_PER_MS) {
+      char loop_elapsed_str[32];
+      time_pretty(loop_elapsed_ns, -1, loop_elapsed_str, sizeof(loop_elapsed_str));
+      log_warn("[SEND_LOOP_%d] SLOW_ITERATION: took %s (client=%u)", loop_iteration_count, loop_elapsed_str,
                atomic_load(&client->client_id));
     }
   }
@@ -2321,7 +2330,7 @@ void broadcast_server_state_to_all_clients(void) {
   uint64_t lock_time_ns = time_elapsed_ns(lock_start_ns, lock_end_ns);
   if (lock_time_ns > 1 * NS_PER_MS_INT) {
     char duration_str[32];
-    format_duration_ns((double)lock_time_ns, duration_str, sizeof(duration_str));
+    time_pretty((uint64_t)((double)lock_time_ns), -1, duration_str, sizeof(duration_str));
     log_warn("broadcast_server_state: rwlock_rdlock took %s", duration_str);
   }
 
@@ -2422,7 +2431,7 @@ void broadcast_server_state_to_all_clients(void) {
 
   if (lock_held_ns > 1 * NS_PER_MS_INT) {
     char duration_str[32];
-    format_duration_ns((double)lock_held_ns, duration_str, sizeof(duration_str));
+    time_pretty((uint64_t)((double)lock_held_ns), -1, duration_str, sizeof(duration_str));
     log_warn("broadcast_server_state: rwlock held for %s (includes network I/O)", duration_str);
   }
 }
@@ -2810,7 +2819,7 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
 
   uint64_t callback_end_ns = time_get_ns();
   char cb_duration_str[32];
-  format_duration_ns((double)(callback_end_ns - callback_start_ns), cb_duration_str, sizeof(cb_duration_str));
+  time_pretty((uint64_t)((double)(callback_end_ns - callback_start_ns)), -1, cb_duration_str, sizeof(cb_duration_str));
   log_info("[WS_TIMING] on_image_frame callback took %s (data_len=%zu)", cb_duration_str, data_len);
 }
 

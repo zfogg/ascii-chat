@@ -173,17 +173,17 @@
 
 #include <ascii-chat/platform/question.h>
 #include <ascii-chat/platform/init.h>
+#include <ascii-chat/util/lifecycle.h>
 
 /**
- * @brief Flag indicating if crypto subsystem has been initialized
+ * @brief Crypto subsystem lifecycle (supports reset/reinit for reconnection)
  *
- * Set to true after successful initialization of cryptographic components.
- * Used to prevent multiple initialization attempts and ensure proper cleanup.
+ * Tracks initialization state of cryptographic components.
+ * Supports reset cycle for client reconnection scenarios.
  *
  * @ingroup client_crypto
  */
-static bool g_crypto_initialized = false;
-static static_mutex_t g_crypto_init_mutex = STATIC_MUTEX_INIT;
+static lifecycle_t g_crypto_lc = LIFECYCLE_INIT;
 static uint8_t g_crypto_mode = ACIP_CRYPTO_ENCRYPT; // Default: encrypt only, no authentication
 
 /**
@@ -208,14 +208,9 @@ void client_crypto_set_mode(uint8_t mode) {
 int client_crypto_init(void) {
   log_debug("CLIENT_CRYPTO_INIT: Starting crypto initialization");
 
-  // Check and reset initialization state with thread safety
-  static_mutex_lock(&g_crypto_init_mutex);
-  bool was_initialized = g_crypto_initialized;
-  g_crypto_initialized = false;
-  static_mutex_unlock(&g_crypto_init_mutex);
-
-  if (was_initialized) {
-    log_debug("CLIENT_CRYPTO_INIT: Already initialized, cleaning up and reinitializing");
+  // Reset if already initialized (allows reinit on reconnection)
+  if (lifecycle_reset(&g_crypto_lc)) {
+    log_debug("CLIENT_CRYPTO_INIT: Already initialized, resetting for reinit");
     crypto_handshake_destroy(&g_crypto_ctx);
   }
 
@@ -420,13 +415,11 @@ int client_crypto_init(void) {
     log_debug("Expected server key (from ACDS): %s", server_key_hex);
   }
 
-  // Mark initialization as complete with thread safety
-  static_mutex_lock(&g_crypto_init_mutex);
-  g_crypto_initialized = true;
-  static_mutex_unlock(&g_crypto_init_mutex);
+  // Mark initialization as complete
+  lifecycle_init(&g_crypto_lc, "client_crypto");
 
   log_debug("Client crypto handshake initialized");
-  log_debug("CLIENT_CRYPTO_INIT: Initialization complete, g_crypto_initialized=true");
+  log_debug("CLIENT_CRYPTO_INIT: Initialization complete");
   return 0;
 }
 
@@ -446,11 +439,7 @@ int client_crypto_handshake(socket_t socket) {
   }
 
   // If we reach here, crypto must be initialized for encryption
-  static_mutex_lock(&g_crypto_init_mutex);
-  bool is_initialized = g_crypto_initialized;
-  static_mutex_unlock(&g_crypto_init_mutex);
-
-  if (!is_initialized) {
+  if (!lifecycle_is_initialized(&g_crypto_lc)) {
     log_error("Crypto not initialized but server requires encryption");
     log_error("Server requires encrypted connection but client has no encryption configured");
     log_error("Use --key to specify a client key or --password for password authentication");
@@ -753,7 +742,7 @@ int client_crypto_handshake(socket_t socket) {
  * @ingroup client_crypto
  */
 bool crypto_client_is_ready(void) {
-  if (!g_crypto_initialized || GET_OPTION(no_encrypt)) {
+  if (!lifecycle_is_initialized(&g_crypto_lc) || GET_OPTION(no_encrypt)) {
     return false;
   }
 
@@ -817,13 +806,8 @@ int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_le
  * @ingroup client_crypto
  */
 void crypto_client_cleanup(void) {
-  // Check and reset initialization state with thread safety
-  static_mutex_lock(&g_crypto_init_mutex);
-  bool was_initialized = g_crypto_initialized;
-  g_crypto_initialized = false;
-  static_mutex_unlock(&g_crypto_init_mutex);
-
-  if (was_initialized) {
+  // Shutdown if initialized
+  if (lifecycle_shutdown(&g_crypto_lc)) {
     crypto_handshake_destroy(&g_crypto_ctx);
     log_debug("Client crypto handshake cleaned up");
   }
@@ -841,7 +825,7 @@ void crypto_client_cleanup(void) {
  * @ingroup client_crypto
  */
 bool crypto_client_should_rekey(void) {
-  if (!g_crypto_initialized || !crypto_client_is_ready()) {
+  if (!lifecycle_is_initialized(&g_crypto_lc) || !crypto_client_is_ready()) {
     return false;
   }
   return crypto_handshake_should_rekey(&g_crypto_ctx);
@@ -855,7 +839,7 @@ bool crypto_client_should_rekey(void) {
  * @ingroup client_crypto
  */
 int crypto_client_initiate_rekey(void) {
-  if (!g_crypto_initialized || !crypto_client_is_ready()) {
+  if (!lifecycle_is_initialized(&g_crypto_lc) || !crypto_client_is_ready()) {
     log_error("Cannot initiate rekey: crypto not initialized or not ready");
     return -1;
   }
@@ -885,7 +869,7 @@ int crypto_client_initiate_rekey(void) {
  * @ingroup client_crypto
  */
 int crypto_client_process_rekey_request(const uint8_t *packet, size_t packet_len) {
-  if (!g_crypto_initialized || !crypto_client_is_ready()) {
+  if (!lifecycle_is_initialized(&g_crypto_lc) || !crypto_client_is_ready()) {
     log_error("Cannot process rekey request: crypto not initialized or not ready");
     return -1;
   }
@@ -907,7 +891,7 @@ int crypto_client_process_rekey_request(const uint8_t *packet, size_t packet_len
  * @ingroup client_crypto
  */
 int crypto_client_send_rekey_response(void) {
-  if (!g_crypto_initialized || !crypto_client_is_ready()) {
+  if (!lifecycle_is_initialized(&g_crypto_lc) || !crypto_client_is_ready()) {
     log_error("Cannot send rekey response: crypto not initialized or not ready");
     return -1;
   }
@@ -937,7 +921,7 @@ int crypto_client_send_rekey_response(void) {
  * @ingroup client_crypto
  */
 int crypto_client_process_rekey_response(const uint8_t *packet, size_t packet_len) {
-  if (!g_crypto_initialized || !crypto_client_is_ready()) {
+  if (!lifecycle_is_initialized(&g_crypto_lc) || !crypto_client_is_ready()) {
     log_error("Cannot process rekey response: crypto not initialized or not ready");
     return -1;
   }
@@ -959,7 +943,7 @@ int crypto_client_process_rekey_response(const uint8_t *packet, size_t packet_le
  * @ingroup client_crypto
  */
 int crypto_client_send_rekey_complete(void) {
-  if (!g_crypto_initialized || !crypto_client_is_ready()) {
+  if (!lifecycle_is_initialized(&g_crypto_lc) || !crypto_client_is_ready()) {
     log_error("Cannot send rekey complete: crypto not initialized or not ready");
     return -1;
   }

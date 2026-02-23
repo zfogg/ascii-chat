@@ -51,6 +51,7 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
             <ascii-chat/util/parsing.h>
             <ascii-chat/util/aspect_ratio.h>
             <ascii-chat/util/ip.h>
+            <ascii-chat/util/lifecycle.h>
 
             <ascii-chat/crypto/known_hosts.h>
 

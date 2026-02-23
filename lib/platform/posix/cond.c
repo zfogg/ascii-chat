@@ -8,16 +8,22 @@
 
 #include <ascii-chat/platform/api.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/debug/named.h>
 #include <pthread.h>
 #include <time.h>
 
 /**
- * @brief Initialize a condition variable
+ * @brief Initialize a condition variable with a name
  * @param cond Pointer to condition variable structure to initialize
+ * @param name Human-readable name for debugging
  * @return 0 on success, error code on failure
  */
-int cond_init(cond_t *cond) {
-  return pthread_cond_init(cond, NULL);
+int cond_init(cond_t *cond, const char *name) {
+  int err = pthread_cond_init(&cond->impl, NULL);
+  if (err == 0) {
+    cond->name = NAMED_REGISTER(cond, name, "cond");
+  }
+  return err;
 }
 
 /**
@@ -26,7 +32,8 @@ int cond_init(cond_t *cond) {
  * @return 0 on success, error code on failure
  */
 int cond_destroy(cond_t *cond) {
-  return pthread_cond_destroy(cond);
+  NAMED_UNREGISTER(cond);
+  return pthread_cond_destroy(&cond->impl);
 }
 
 /**
@@ -37,7 +44,8 @@ int cond_destroy(cond_t *cond) {
  * @note The mutex is automatically released while waiting and reacquired before returning
  */
 int cond_wait(cond_t *cond, mutex_t *mutex) {
-  return pthread_cond_wait(cond, mutex);
+  cond_on_wait(cond);
+  return pthread_cond_wait(&cond->impl, &mutex->impl);
 }
 
 /**
@@ -49,11 +57,12 @@ int cond_wait(cond_t *cond, mutex_t *mutex) {
  * @note The mutex is automatically released while waiting and reacquired before returning
  */
 int cond_timedwait(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns) {
+  cond_on_wait(cond);
   struct timespec ts;
   uint64_t now_ns = time_get_realtime_ns();
   uint64_t deadline_ns = now_ns + timeout_ns;
   time_ns_to_timespec(deadline_ns, &ts);
-  return pthread_cond_timedwait(cond, mutex, &ts);
+  return pthread_cond_timedwait(&cond->impl, &mutex->impl, &ts);
 }
 
 /**
@@ -62,7 +71,8 @@ int cond_timedwait(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns) {
  * @return 0 on success, error code on failure
  */
 int cond_signal(cond_t *cond) {
-  return pthread_cond_signal(cond);
+  cond_on_signal(cond);
+  return pthread_cond_signal(&cond->impl);
 }
 
 /**
@@ -71,7 +81,8 @@ int cond_signal(cond_t *cond) {
  * @return 0 on success, error code on failure
  */
 int cond_broadcast(cond_t *cond) {
-  return pthread_cond_broadcast(cond);
+  cond_on_broadcast(cond);
+  return pthread_cond_broadcast(&cond->impl);
 }
 
 #endif // !_WIN32

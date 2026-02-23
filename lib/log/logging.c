@@ -13,6 +13,7 @@
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/utf8.h>
+#include <ascii-chat/util/lifecycle.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -58,7 +59,7 @@ static struct log_context_t {
   _Atomic int file;                        /* File descriptor (atomic for safe access) */
   _Atomic int json_file;                   /* JSON output file descriptor (-1 = disabled) */
   _Atomic int level;                       /* Log level as int for atomic ops */
-  _Atomic bool initialized;                /* Initialization flag */
+  lifecycle_t lifecycle;                   /* Initialization state machine */
   char filename[LOG_MSG_BUFFER_SIZE];      /* Store filename (set once at init) */
   _Atomic size_t current_size;             /* Track current file size */
   _Atomic bool terminal_output_enabled;    /* Control stderr output to terminal */
@@ -68,7 +69,7 @@ static struct log_context_t {
   _Atomic uint64_t terminal_owner_thread;  /* Thread that owns terminal output (stored as uint64) */
   _Atomic unsigned int flush_delay_ms;     /* Delay between each buffered log flush (0 = disabled) */
   mutex_t rotation_mutex;                  /* Mutex for log rotation only (not for logging!) */
-  _Atomic bool rotation_mutex_initialized; /* Track if rotation mutex is ready */
+  lifecycle_t rotation_mutex_lifecycle;    /* Rotation mutex initialization state machine */
   log_template_t *format;                  /* Compiled log format (NULL = use default) */
   log_template_t *format_console_only;     /* Console-only format variant */
   _Atomic bool has_custom_format;          /* True if format was customized */
@@ -76,7 +77,7 @@ static struct log_context_t {
     .file = 2, /* STDERR_FILENO - fd 0 is STDIN (read-only!) */
     .json_file = -1,
     .level = DEFAULT_LOG_LEVEL,
-    .initialized = false,
+    .lifecycle = LIFECYCLE_INIT,
     .filename = {0},
     .current_size = 0,
     .terminal_output_enabled = true,
@@ -85,7 +86,7 @@ static struct log_context_t {
     .terminal_locked = false,
     .terminal_owner_thread = 0,
     .flush_delay_ms = 0,
-    .rotation_mutex_initialized = false,
+    .rotation_mutex_lifecycle = LIFECYCLE_INIT,
     .format = NULL,
     .format_console_only = NULL,
     .has_custom_format = false,
@@ -474,7 +475,7 @@ static void rotate_log_locked(void) {
 /* Check if rotation is needed and perform it (acquires mutex only if needed) */
 static void maybe_rotate_log(void) {
   /* Rotation mutex not initialized - skip rotation */
-  if (!atomic_load(&g_log.rotation_mutex_initialized)) {
+  if (!lifecycle_is_initialized(&g_log.rotation_mutex_lifecycle)) {
     return;
   }
 
@@ -506,10 +507,9 @@ static void maybe_rotate_log(void) {
 
 void log_init(const char *filename, log_level_t level, bool force_stderr, bool use_mmap) {
   // Initialize rotation mutex (only operation that uses a mutex)
-  if (!atomic_load(&g_log.rotation_mutex_initialized)) {
-    mutex_init(&g_log.rotation_mutex);
-    atomic_store(&g_log.rotation_mutex_initialized, true);
-  }
+  g_log.rotation_mutex_lifecycle.sync_type = LIFECYCLE_SYNC_MUTEX;
+  g_log.rotation_mutex_lifecycle.sync.mutex = &g_log.rotation_mutex;
+  lifecycle_init(&g_log.rotation_mutex_lifecycle, "log_rotation");
 
   // Set basic config using atomic stores
   atomic_store(&g_log.force_stderr, force_stderr);
@@ -524,7 +524,7 @@ void log_init(const char *filename, log_level_t level, bool force_stderr, bool u
 
   // Close any existing file (atomic load/store)
   int old_file = atomic_load(&g_log.file);
-  if (atomic_load(&g_log.initialized) && old_file >= 0 && old_file != STDERR_FILENO) {
+  if (lifecycle_is_initialized(&g_log.lifecycle) && old_file >= 0 && old_file != STDERR_FILENO) {
     platform_close(old_file);
     atomic_store(&g_log.file, -1);
   }
@@ -575,7 +575,11 @@ void log_init(const char *filename, log_level_t level, bool force_stderr, bool u
   /* Initialize default log format (NULL means use mode-specific default) */
   log_set_format(NULL, false);
 
-  atomic_store(&g_log.initialized, true);
+  /* Mark logging system as initialized (state machine transition) */
+  if (!lifecycle_is_initialized(&g_log.lifecycle)) {
+    lifecycle_init(&g_log.lifecycle, "logging");
+  }
+
   atomic_store(&g_log.terminal_output_enabled, preserve_terminal_output);
 
   // Reset terminal detection if needed
@@ -617,13 +621,12 @@ void log_destroy(void) {
     platform_close(old_file);
   }
   atomic_store(&g_log.file, -1);
-  atomic_store(&g_log.initialized, false);
+
+  /* Mark logging system as shutdown (state machine transition) */
+  lifecycle_shutdown(&g_log.lifecycle);
 
   // Destroy rotation mutex
-  if (atomic_load(&g_log.rotation_mutex_initialized)) {
-    mutex_destroy(&g_log.rotation_mutex);
-    atomic_store(&g_log.rotation_mutex_initialized, false);
-  }
+  lifecycle_shutdown(&g_log.rotation_mutex_lifecycle);
 }
 
 void log_set_level(log_level_t level) {
@@ -690,6 +693,7 @@ asciichat_error_t log_set_format(const char *format_str, bool console_only) {
 
   /* Parse the format string (always parse, never skip) */
   log_template_t *parsed_format = log_template_parse(format_to_use, false);
+
   if (!parsed_format) {
     log_error("Failed to parse log format: %s", format_to_use);
     return SET_ERRNO(ERROR_INVALID_STATE, "Invalid log format string");
@@ -698,6 +702,7 @@ asciichat_error_t log_set_format(const char *format_str, bool console_only) {
   /* If console_only is true, we also need the default format for file output */
   if (console_only && is_custom) {
     log_template_t *default_format = log_template_parse(OPT_LOG_TEMPLATE_DEFAULT, false);
+
     if (!default_format) {
       log_template_free(parsed_format);
       log_error("Failed to parse default log format");
@@ -952,7 +957,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
 
 void log_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...) {
   // All state access uses atomic operations - fully lock-free
-  if (!atomic_load(&g_log.initialized)) {
+  if (!lifecycle_is_initialized(&g_log.lifecycle)) {
     return;
   }
   if (level < (log_level_t)atomic_load(&g_log.level)) {
@@ -1118,7 +1123,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 
 void log_terminal_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...) {
   // Lock-free: only uses atomic loads, no mutex
-  if (!atomic_load(&g_log.initialized)) {
+  if (!lifecycle_is_initialized(&g_log.lifecycle)) {
     return;
   }
 
@@ -1138,7 +1143,7 @@ void log_terminal_msg(log_level_t level, const char *file, int line, const char 
 }
 
 void log_plain_msg(const char *fmt, ...) {
-  if (!atomic_load(&g_log.initialized)) {
+  if (!lifecycle_is_initialized(&g_log.lifecycle)) {
     return;
   }
 
@@ -1293,7 +1298,7 @@ static void log_plain_stderr_internal_atomic(const char *fmt, va_list args, bool
 }
 
 void log_plain_stderr_msg(const char *fmt, ...) {
-  if (!atomic_load(&g_log.initialized)) {
+  if (!lifecycle_is_initialized(&g_log.lifecycle)) {
     return;
   }
   if (shutdown_is_requested()) {
@@ -1307,7 +1312,7 @@ void log_plain_stderr_msg(const char *fmt, ...) {
 }
 
 void log_plain_stderr_nonewline_msg(const char *fmt, ...) {
-  if (!atomic_load(&g_log.initialized)) {
+  if (!lifecycle_is_initialized(&g_log.lifecycle)) {
     return;
   }
   if (shutdown_is_requested()) {
@@ -1321,7 +1326,7 @@ void log_plain_stderr_nonewline_msg(const char *fmt, ...) {
 }
 
 void log_file_msg(const char *fmt, ...) {
-  if (!atomic_load(&g_log.initialized)) {
+  if (!lifecycle_is_initialized(&g_log.lifecycle)) {
     return;
   }
 
@@ -1528,7 +1533,7 @@ void log_init_colors(void) {
   }
 
   /* Skip color initialization before logging is fully initialized */
-  if (!atomic_load(&g_log.initialized)) {
+  if (!lifecycle_is_initialized(&g_log.lifecycle)) {
     return;
   }
 

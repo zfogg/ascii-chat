@@ -735,6 +735,80 @@ void platform_print_backtrace(int skip_frames) {
 }
 
 /**
+ * @brief Log the Nth frame up from current location
+ *
+ * Captures a single backtrace frame N levels up and logs with resolved symbol
+ * information (function name, file, line) with colored formatting.
+ */
+void platform_log_backtrace_frame(int n) {
+  // Import the extract function (forward declaration, implemented in log/format.c)
+  extern const char *extract_project_relative_path(const char *file);
+
+  if (n < 1) {
+    log_debug("Invalid frame number: %d (must be >= 1)", n);
+    return;
+  }
+
+  const int MAX_FRAMES = 64;
+  void *buffer[MAX_FRAMES];
+
+  int size = platform_backtrace(buffer, MAX_FRAMES);
+  if (size <= 0) {
+    log_debug("Unable to capture backtrace");
+    return;
+  }
+
+  // Calculate actual frame index (skip 2 internal frames + n frames up)
+  int frame_idx = 2 + n;
+  if (frame_idx >= size) {
+    log_debug("Frame %d not available (only %d frames in stack)", n, size - 2);
+    return;
+  }
+
+  // Resolve the single frame symbol
+  char **symbols = platform_backtrace_symbols(buffer + frame_idx, 1);
+  if (!symbols || !symbols[0]) {
+    log_debug("Unable to resolve frame %d", n);
+    if (symbols) platform_backtrace_symbols_destroy(symbols);
+    return;
+  }
+
+  const char *symbol = symbols[0];
+
+  // Format: [frame_num] function_name() (relative/path/file.c:line)
+  // Extract repo-relative path from symbol
+  const char *file_start = strchr(symbol, '(');
+  char frame_buf[16];
+  safe_snprintf(frame_buf, sizeof(frame_buf), "%d", n);
+
+  if (file_start) {
+    // Symbol contains file path: extract it
+    file_start++; // Skip '('
+    const char *file_end = strchr(file_start, ')');
+    if (file_end) {
+      size_t file_len = (size_t)(file_end - file_start);
+      char full_path[512];
+      safe_snprintf(full_path, sizeof(full_path), "%.*s", (int)file_len, file_start);
+
+      const char *rel_file = extract_project_relative_path(full_path);
+      const char *colored_frame = colored_string(LOG_COLOR_FATAL, frame_buf);
+      const char *colored_file = colored_string(LOG_COLOR_WARN, rel_file);
+
+      log_debug("[%s] %s", colored_frame, colored_file);
+    } else {
+      const char *colored_frame = colored_string(LOG_COLOR_FATAL, frame_buf);
+      log_debug("[%s] %s", colored_frame, symbol);
+    }
+  } else {
+    // Raw symbol, just color the frame number
+    const char *colored_frame = colored_string(LOG_COLOR_FATAL, frame_buf);
+    log_debug("[%s] %s", colored_frame, symbol);
+  }
+
+  platform_backtrace_symbols_destroy(symbols);
+}
+
+/**
  * @brief Crash signal handler
  */
 static const char *get_signal_name(int sig) {

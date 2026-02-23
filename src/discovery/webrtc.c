@@ -13,6 +13,7 @@
 
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
+#include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/network/acip/protocol.h>
 #include <ascii-chat/network/acip/acds.h>
 #include <ascii-chat/network/acip/send.h>
@@ -53,8 +54,7 @@ static struct {
  * @brief Mutex protecting signaling state
  */
 static mutex_t g_webrtc_mutex;
-static bool g_webrtc_mutex_initialized = false;
-static static_mutex_t g_webrtc_init_mutex = STATIC_MUTEX_INIT;
+static lifecycle_t g_webrtc_lc = LIFECYCLE_INIT_MUTEX(&g_webrtc_mutex);
 
 // =============================================================================
 // Internal Helpers
@@ -63,19 +63,12 @@ static static_mutex_t g_webrtc_init_mutex = STATIC_MUTEX_INIT;
 /**
  * @brief Initialize mutex (called once)
  *
- * Uses static mutex to prevent TOCTOU race condition where multiple threads
- * might attempt to initialize the main mutex simultaneously.
+ * Uses lifecycle gate to prevent TOCTOU race condition where multiple threads
+ * might attempt to initialize the main mutex simultaneously. Mutex initialization
+ * is handled automatically by lifecycle_init.
  */
 static void ensure_mutex_initialized(void) {
-  static_mutex_lock(&g_webrtc_init_mutex);
-
-  // Check again under lock to prevent race condition
-  if (!g_webrtc_mutex_initialized) {
-    mutex_init(&g_webrtc_mutex);
-    g_webrtc_mutex_initialized = true;
-  }
-
-  static_mutex_unlock(&g_webrtc_init_mutex);
+  if (!lifecycle_init(&g_webrtc_lc, "webrtc")) return;
 }
 
 // =============================================================================

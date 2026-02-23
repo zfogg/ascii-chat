@@ -25,7 +25,7 @@ if(FFMPEG_FOUND)
             ${CMAKE_CURRENT_SOURCE_DIR}/renderer.c
             ${CMAKE_SOURCE_DIR}/lib/media/ffmpeg_encoder.c
             # Bundled fonts and generated C code (generated at CMake configure time)
-            ${CMAKE_SOURCE_DIR}/lib/font.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/font.c
             "${CMAKE_BINARY_DIR}/generated/data/fonts/matrix_resurrected.c"
             "${CMAKE_BINARY_DIR}/generated/data/fonts/default.c"
         )
@@ -39,6 +39,7 @@ set(SIMD_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/simd/common.c
     ${CMAKE_CURRENT_SOURCE_DIR}/output_buffer.c
     ${CMAKE_CURRENT_SOURCE_DIR}/rle.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/scalar/halfblock.c
 )
 
 if(ENABLE_SIMD_SSE2)

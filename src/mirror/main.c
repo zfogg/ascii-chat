@@ -70,19 +70,25 @@ static void mirror_keyboard_handler(session_capture_ctx_t *capture, int key, voi
 static asciichat_error_t mirror_run(session_capture_ctx_t *capture, session_display_ctx_t *display, void *user_data) {
   (void)user_data; // Unused
 
+  log_info("mirror_run: CALLED - capture=%p display=%p", (void*)capture, (void*)display);
+
   // Get the render loop's should_exit callback from session_client_like
   bool (*render_should_exit)(void *) = session_client_like_get_render_should_exit();
   if (!render_should_exit) {
+    log_error("mirror_run: render_should_exit callback not initialized");
     return SET_ERRNO(ERROR_INVALID_STATE, "Render should_exit callback not initialized");
   }
 
+  log_info("mirror_run: Calling session_render_loop");
   // Run the unified render loop with keyboard support
-  return session_render_loop(capture, display,
+  asciichat_error_t result = session_render_loop(capture, display,
                              render_should_exit,      // Exit check (checks global + custom)
                              NULL,                    // No custom capture callback
                              NULL,                    // No custom sleep callback
                              mirror_keyboard_handler, // Keyboard handler
                              display);                // user_data for keyboard handler
+  log_info("mirror_run: session_render_loop returned with result=%d", result);
+  return result;
 }
 
 /* ============================================================================
@@ -108,8 +114,10 @@ int mirror_main(void) {
       .print_newline_on_tty_exit = true, // Mirror prints newline to separate frame from prompt
   };
 
+  log_info("mirror_main: Starting session_client_like_run");
   // Run shared initialization/teardown with mode-specific loop
   asciichat_error_t result = session_client_like_run(&config);
+  log_info("mirror_main: session_client_like_run returned with result=%d", result);
 
   if (result != ASCIICHAT_OK) {
     log_error("Mirror mode failed with error code: %d", result);

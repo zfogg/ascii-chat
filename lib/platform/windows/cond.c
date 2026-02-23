@@ -9,15 +9,18 @@
 #include <ascii-chat/platform/api.h>
 #include <ascii-chat/platform/windows_compat.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/debug/named.h>
 #include <errno.h> // For ETIMEDOUT
 
 /**
- * @brief Initialize a condition variable
+ * @brief Initialize a condition variable with a name
  * @param cond Pointer to condition variable structure to initialize
+ * @param name Human-readable name for debugging
  * @return 0 on success, error code on failure
  */
-int cond_init(cond_t *cond) {
-  InitializeConditionVariable(cond);
+int cond_init(cond_t *cond, const char *name) {
+  InitializeConditionVariable(&cond->impl);
+  cond->name = NAMED_REGISTER(cond, name, "cond");
   return 0;
 }
 
@@ -28,6 +31,7 @@ int cond_init(cond_t *cond) {
  * @note Condition variables don't need explicit destruction on Windows
  */
 int cond_destroy(cond_t *cond) {
+  NAMED_UNREGISTER(cond);
   // Condition variables don't need explicit destruction on Windows
   (void)cond; // Suppress unused parameter warning
   return 0;
@@ -41,7 +45,8 @@ int cond_destroy(cond_t *cond) {
  * @note The mutex is automatically released while waiting and reacquired before returning
  */
 int cond_wait(cond_t *cond, mutex_t *mutex) {
-  return SleepConditionVariableCS(cond, mutex, INFINITE) ? 0 : -1;
+  cond_on_wait(cond);
+  return SleepConditionVariableCS(&cond->impl, &mutex->impl, INFINITE) ? 0 : -1;
 }
 
 /**
@@ -54,8 +59,9 @@ int cond_wait(cond_t *cond, mutex_t *mutex) {
  * @note Returns ETIMEDOUT on timeout for POSIX compatibility
  */
 int cond_timedwait(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns) {
+  cond_on_wait(cond);
   DWORD timeout_ms = (DWORD)time_ns_to_ms(timeout_ns);
-  if (!SleepConditionVariableCS(cond, mutex, timeout_ms)) {
+  if (!SleepConditionVariableCS(&cond->impl, &mutex->impl, timeout_ms)) {
     DWORD err = GetLastError();
     if (err == ERROR_TIMEOUT) {
       return ETIMEDOUT; // Match POSIX pthread_cond_timedwait behavior
@@ -71,7 +77,8 @@ int cond_timedwait(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns) {
  * @return 0 on success, error code on failure
  */
 int cond_signal(cond_t *cond) {
-  WakeConditionVariable(cond);
+  cond_on_signal(cond);
+  WakeConditionVariable(&cond->impl);
   return 0;
 }
 
@@ -81,7 +88,8 @@ int cond_signal(cond_t *cond) {
  * @return 0 on success, error code on failure
  */
 int cond_broadcast(cond_t *cond) {
-  WakeAllConditionVariable(cond);
+  cond_on_broadcast(cond);
+  WakeAllConditionVariable(&cond->impl);
   return 0;
 }
 

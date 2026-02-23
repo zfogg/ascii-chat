@@ -43,6 +43,28 @@ const char *get_option_help_placeholder_str(const option_descriptor_t *desc) {
   if (desc->arg_placeholder != NULL) {
     return desc->arg_placeholder;
   }
+
+  // For callback options, check if it's a boolean based on enum values
+  if (desc->type == OPTION_TYPE_CALLBACK && desc->metadata.enum_values) {
+    // Check if enum values contain "true" and "false" (boolean-like)
+    const char *const *values = desc->metadata.enum_values;
+    bool has_true = false, has_false = false;
+
+    for (int i = 0; values[i] != NULL; i++) {
+      if (strcmp(values[i], "true") == 0 || strcmp(values[i], "yes") == 0 || strcmp(values[i], "on") == 0) {
+        has_true = true;
+      }
+      if (strcmp(values[i], "false") == 0 || strcmp(values[i], "no") == 0 || strcmp(values[i], "off") == 0) {
+        has_false = true;
+      }
+    }
+
+    // If it has both true-like and false-like values, it's boolean
+    if (has_true && has_false) {
+      return "BOOLEAN";
+    }
+  }
+
   return options_get_type_placeholder(desc->type);
 }
 
@@ -756,7 +778,7 @@ void options_builder_add_string(options_builder_t *builder, const char *long_nam
 
 void options_builder_add_double(options_builder_t *builder, const char *long_name, char short_name, size_t offset,
                                 double default_value, const char *help_text, const char *group, bool required,
-                                const char *env_var_name, bool (*validate)(const void *, char **)) {
+                                const char *env_var_name, bool (*validate)(const void *, char **), bool optional_arg) {
   ensure_descriptor_capacity(builder);
 
   // Increased from 256 to 1024 to support multiple test builders without overflow
@@ -782,7 +804,8 @@ void options_builder_add_double(options_builder_t *builder, const char *long_nam
                               .validate = validate,
                               .parse_fn = NULL,
                               .owns_memory = false,
-                              .mode_bitmask = OPTION_MODE_NONE};
+                              .mode_bitmask = OPTION_MODE_NONE,
+                              .optional_arg = optional_arg};
 
   builder->descriptors[builder->num_descriptors++] = desc;
 }
@@ -791,7 +814,7 @@ void options_builder_add_double_with_metadata(options_builder_t *builder, const 
                                               size_t offset, double default_value, const char *help_text,
                                               const char *group, bool required, const char *env_var_name,
                                               bool (*validate)(const void *, char **),
-                                              const option_metadata_t *metadata) {
+                                              const option_metadata_t *metadata, bool optional_arg) {
   ensure_descriptor_capacity(builder);
 
   static double defaults[1024];
@@ -817,7 +840,8 @@ void options_builder_add_double_with_metadata(options_builder_t *builder, const 
                               .parse_fn = NULL,
                               .owns_memory = false,
                               .mode_bitmask = OPTION_MODE_NONE,
-                              .metadata = metadata ? *metadata : (option_metadata_t){0}};
+                              .metadata = metadata ? *metadata : (option_metadata_t){0},
+                              .optional_arg = optional_arg};
 
   builder->descriptors[builder->num_descriptors++] = desc;
 }

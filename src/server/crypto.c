@@ -159,9 +159,12 @@
  * @return 0 on success, -1 on failure
  */
 int server_crypto_init(void) {
-  // Check if encryption is disabled
-  if (GET_OPTION(no_encrypt)) {
-    log_info("Encryption disabled via --no-encrypt");
+  // Only skip handshake if BOTH encryption and authentication are disabled
+  bool no_encrypt = GET_OPTION(no_encrypt);
+  bool no_auth = GET_OPTION(no_auth);
+
+  if (no_encrypt && no_auth) {
+    log_info("ACIP handshake disabled (both encryption and authentication disabled)");
     return 0;
   }
 
@@ -176,14 +179,18 @@ int server_crypto_init(void) {
  * @return 0 on success, -1 on failure
  */
 int server_crypto_handshake(client_info_t *client) {
-  if (GET_OPTION(no_encrypt)) {
-    log_debug("Crypto handshake skipped (disabled)");
-    return 0;
-  }
-
   if (!client) {
     FATAL(ERROR_CRYPTO_HANDSHAKE, "Client is NULL for crypto handshake");
     return -1;
+  }
+
+  // Only skip handshake if BOTH encryption and authentication are disabled
+  bool no_encrypt = GET_OPTION(no_encrypt);
+  bool no_auth = GET_OPTION(no_auth);
+
+  if (no_encrypt && no_auth) {
+    log_debug("Crypto handshake skipped (ACIP_CRYPTO_NONE: both encryption and authentication disabled)");
+    return 0;
   }
 
   // Initialize crypto context for this specific client

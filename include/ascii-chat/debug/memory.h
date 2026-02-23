@@ -218,6 +218,29 @@ void debug_free(void *ptr, const char *file, int line);
  */
 void debug_track_aligned(void *ptr, size_t size, const char *file, int line);
 
+/**
+ * @brief Initialize memory debug thread (called at startup)
+ * @return 0 on success, non-zero on error
+ */
+int debug_memory_thread_init(void);
+
+/**
+ * @brief Start the memory debug report thread
+ * @return 0 on success, non-zero on error
+ */
+int debug_memory_thread_start(void);
+
+/**
+ * @brief Trigger memory report from SIGUSR2 signal handler
+ * Sets flag and signals the debug thread to print a memory report
+ */
+void debug_memory_trigger_report(void);
+
+/**
+ * @brief Stop the memory debug report thread (called at shutdown)
+ */
+void debug_memory_thread_cleanup(void);
+
 /** @} */
 
 #ifdef __cplusplus

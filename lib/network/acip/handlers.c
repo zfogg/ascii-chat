@@ -80,13 +80,12 @@ static inline int handler_hash_lookup(const handler_hash_entry_t *table, packet_
 static const handler_hash_entry_t g_client_handler_hash[HANDLER_HASH_SIZE] = {
    [0]  = {PACKET_TYPE_AUDIO_BATCH,                 1},   // hash(4000)=0
    [1]  = {PACKET_TYPE_AUDIO_OPUS_BATCH,            2},   // hash(4001)=1
-   [6]  = {PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT,    14},  // hash(1102)=6
-   [7]  = {PACKET_TYPE_CRYPTO_AUTH_CHALLENGE,       15},  // hash(1104)=7, probed from hash(1104)=16
+   [7]  = {PACKET_TYPE_CRYPTO_AUTH_CHALLENGE,       15},  // hash(1104)=16, probed->7
    [8]  = {PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP,     16},  // hash(1107)=11, probed->8
    [9]  = {PACKET_TYPE_PING,                        6},   // hash(5001)=9
    [10] = {PACKET_TYPE_PONG,                        7},   // hash(5002)=10
    [11] = {PACKET_TYPE_CRYPTO_AUTH_FAILED,          17},  // hash(1108)=12, probed->11
-   [14] = {PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE,   18},  // hash(1106)=10, probed->14
+   [14] = {PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE,   18},  // hash(1106)=18, probed->14
    [15] = {PACKET_TYPE_CLEAR_CONSOLE,               8},   // hash(5007)=15
    [16] = {PACKET_TYPE_SERVER_STATE,                3},   // hash(5008)=16
    [17] = {PACKET_TYPE_CRYPTO_REKEY_REQUEST,        9},   // hash(1201)=17
@@ -94,6 +93,7 @@ static const handler_hash_entry_t g_client_handler_hash[HANDLER_HASH_SIZE] = {
    [19] = {PACKET_TYPE_ERROR_MESSAGE,               4},   // hash(2003)=19
    [20] = {PACKET_TYPE_REMOTE_LOG,                  5},   // hash(2004)=20
    [21] = {PACKET_TYPE_ACIP_SESSION_JOINED,         13},  // hash(6005)=21
+   [22] = {PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT,    14},  // hash(1102)=14, probed->22
    [24] = {PACKET_TYPE_ASCII_FRAME,                 0},   // hash(3000)=24
    [25] = {PACKET_TYPE_ACIP_WEBRTC_SDP,             11},  // hash(6009)=25
    [26] = {PACKET_TYPE_ACIP_WEBRTC_ICE,             12},  // hash(6010)=26

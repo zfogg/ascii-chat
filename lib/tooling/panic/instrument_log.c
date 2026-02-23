@@ -5,9 +5,11 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/util.h>
 #include <ascii-chat/platform/mutex.h>
+#include <ascii-chat/platform/init.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/util/path.h>
+#include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/util/time.h>
 
 #include <ctype.h>
@@ -125,9 +127,7 @@ typedef struct asciichat_instr_runtime {
 } asciichat_instr_runtime_t;
 
 static tls_key_t g_runtime_key;
-static mutex_t g_runtime_mutex;
-static bool g_runtime_initialized = false;
-static bool g_runtime_mutex_initialized = false;
+static lifecycle_t g_runtime_lc = LIFECYCLE_INIT;
 static char g_output_dir[PATH_MAX];
 static bool g_output_dir_set = false;
 static bool g_disable_write = false;
@@ -169,19 +169,12 @@ asciichat_instr_runtime_t *asciichat_instr_runtime_get(void) {
     return NULL;
   }
 
-  // Initialize runtime once using mutex-protected initialization
-  if (!g_runtime_initialized) {
-    // Initialize mutex if needed
-    if (!g_runtime_mutex_initialized) {
-      mutex_init(&g_runtime_mutex);
-      g_runtime_mutex_initialized = true;
-    }
-
-    mutex_lock(&g_runtime_mutex);
-    if (!g_runtime_initialized) {
+  // Initialize runtime once using lock-free lifecycle API
+  if (!lifecycle_is_initialized(&g_runtime_lc)) {
+    if (lifecycle_init_once(&g_runtime_lc)) {
       asciichat_instr_runtime_init_once();
+      lifecycle_init_commit(&g_runtime_lc);
     }
-    mutex_unlock(&g_runtime_mutex);
   }
 
   asciichat_instr_runtime_t *runtime = ascii_tls_get(g_runtime_key);
@@ -252,14 +245,9 @@ void asciichat_instr_runtime_destroy(asciichat_instr_runtime_t *runtime) {
 }
 
 void asciichat_instr_runtime_global_destroy(void) {
-  if (g_runtime_mutex_initialized) {
-    mutex_lock(&g_runtime_mutex);
-  }
-
-  if (g_runtime_initialized) {
+  if (lifecycle_shutdown(&g_runtime_lc)) {
     g_disable_write = true;
     ascii_tls_key_delete(g_runtime_key);
-    g_runtime_initialized = false;
     g_ticks_initialized = false;
     g_start_ns = 0;
     g_coverage_enabled = false;
@@ -273,12 +261,6 @@ void asciichat_instr_runtime_global_destroy(void) {
 
   // Reset g_disable_write so instrumentation can be re-enabled in subsequent tests
   g_disable_write = false;
-
-  if (g_runtime_mutex_initialized) {
-    mutex_unlock(&g_runtime_mutex);
-    mutex_destroy(&g_runtime_mutex);
-    g_runtime_mutex_initialized = false;
-  }
 }
 
 void asciichat_instr_log_line(const char *file_path, uint32_t line_number, const char *function_name,
@@ -358,7 +340,7 @@ void asciichat_instr_log_line(const char *file_path, uint32_t line_number, const
   if (g_ticks_initialized) {
     uint64_t now_ns = time_get_ns();
     uint64_t elapsed_ns = time_elapsed_ns(g_start_ns, now_ns);
-    if (format_duration_ns((double)elapsed_ns, elapsed_buf, sizeof(elapsed_buf)) < 0) {
+    if (time_pretty((uint64_t)elapsed_ns, -1, elapsed_buf, sizeof(elapsed_buf)) < 0) {
       elapsed_buf[0] = '\0';
     }
   }
@@ -436,18 +418,12 @@ bool asciichat_instr_coverage_enabled(void) {
     return false;
   }
 
-  // Initialize runtime once using mutex-protected initialization
-  if (!g_runtime_initialized) {
-    if (!g_runtime_mutex_initialized) {
-      mutex_init(&g_runtime_mutex);
-      g_runtime_mutex_initialized = true;
-    }
-
-    mutex_lock(&g_runtime_mutex);
-    if (!g_runtime_initialized) {
+  // Initialize runtime once using lock-free lifecycle API
+  if (!lifecycle_is_initialized(&g_runtime_lc)) {
+    if (lifecycle_init_once(&g_runtime_lc)) {
       asciichat_instr_runtime_init_once();
+      lifecycle_init_commit(&g_runtime_lc);
     }
-    mutex_unlock(&g_runtime_mutex);
   }
 
   return g_coverage_enabled;
@@ -464,30 +440,26 @@ void asciichat_instr_log_pc(uintptr_t program_counter) {
 }
 
 static void asciichat_instr_runtime_init_once(void) {
-  // NOTE: This function is always called with g_runtime_mutex held by the caller
-  // so we don't need to lock/unlock here
-  if (!g_runtime_initialized) {
-    (void)ascii_tls_key_create(&g_runtime_key, asciichat_instr_runtime_tls_destructor);
-    const char *output_dir_env = SAFE_GETENV("ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR");
-    if (output_dir_env != NULL && output_dir_env[0] != '\0') {
-      char *normalized_output_dir = NULL;
-      asciichat_error_t validation_result =
-          path_validate_user_path(output_dir_env, PATH_ROLE_LOG_FILE, &normalized_output_dir);
-      if (validation_result == ASCIICHAT_OK && normalized_output_dir != NULL) {
-        SAFE_STRNCPY(g_output_dir, normalized_output_dir, sizeof(g_output_dir));
-        g_output_dir[sizeof(g_output_dir) - 1] = '\0';
-        g_output_dir_set = true;
-      } else {
-        log_warn("Ignoring invalid ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR path: %s", output_dir_env);
-      }
-      SAFE_FREE(normalized_output_dir);
+  // Called by lifecycle_init_once winner
+  (void)ascii_tls_key_create(&g_runtime_key, asciichat_instr_runtime_tls_destructor);
+  const char *output_dir_env = SAFE_GETENV("ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR");
+  if (output_dir_env != NULL && output_dir_env[0] != '\0') {
+    char *normalized_output_dir = NULL;
+    asciichat_error_t validation_result =
+        path_validate_user_path(output_dir_env, PATH_ROLE_LOG_FILE, &normalized_output_dir);
+    if (validation_result == ASCIICHAT_OK && normalized_output_dir != NULL) {
+      SAFE_STRNCPY(g_output_dir, normalized_output_dir, sizeof(g_output_dir));
+      g_output_dir[sizeof(g_output_dir) - 1] = '\0';
+      g_output_dir_set = true;
+    } else {
+      log_warn("Ignoring invalid ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR path: %s", output_dir_env);
     }
-    const char *coverage_env = SAFE_GETENV("ASCII_INSTR_SOURCE_PRINT_ENABLE_COVERAGE");
-    g_coverage_enabled = asciichat_instr_env_is_enabled(coverage_env);
-    g_start_ns = time_get_ns();
-    g_ticks_initialized = true;
-    g_runtime_initialized = true;
+    SAFE_FREE(normalized_output_dir);
   }
+  const char *coverage_env = SAFE_GETENV("ASCII_INSTR_SOURCE_PRINT_ENABLE_COVERAGE");
+  g_coverage_enabled = asciichat_instr_env_is_enabled(coverage_env);
+  g_start_ns = time_get_ns();
+  g_ticks_initialized = true;
 }
 
 static void asciichat_instr_runtime_tls_destructor(void *ptr) {

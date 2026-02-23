@@ -59,12 +59,12 @@ typedef struct color_scheme_t color_scheme_t;
 
 #include "../network/logging.h"
 
-#ifdef NDEBUG
-/** @brief Default log level for release builds (INFO and above) */
-#define DEFAULT_LOG_LEVEL LOG_INFO
-#else
+#ifndef NDEBUG
 /** @brief Default log level for debug builds (DEBUG and above) */
 #define DEFAULT_LOG_LEVEL LOG_DEBUG
+#else
+/** @brief Default log level for release builds (INFO and above) */
+#define DEFAULT_LOG_LEVEL LOG_INFO
 #endif
 
 /** @brief Maximum log file size in bytes (3MB) before rotation */

@@ -525,111 +525,68 @@ options_t options_t_new(void) {
   memset(&opts, 0, sizeof(opts));
 
   // ============================================================================
-  // LOGGING
+  // GENERAL CATEGORY - General-purpose options
   // ============================================================================
-  // log_file is mode-dependent at startup and intentionally left empty here
-  opts.log_level = OPT_LOG_LEVEL_DEFAULT;
-  opts.verbose_level = OPT_VERBOSE_LEVEL_DEFAULT;
-  opts.quiet = OPT_QUIET_DEFAULT;
-  opts.grep_pattern[0] = '\0'; // Explicitly ensure grep_pattern is empty
+  opts.help = OPT_HELP_DEFAULT;
+  opts.version = OPT_VERSION_DEFAULT;
+  opts.splash_screen = OPT_SPLASH_DEFAULT;
+  opts.splash_screen_explicitly_set = OPT_SPLASH_SCREEN_EXPLICITLY_SET_DEFAULT;
+  opts.status_screen = OPT_STATUS_SCREEN_DEFAULT;
+  opts.status_screen_explicitly_set = OPT_STATUS_SCREEN_EXPLICITLY_SET_DEFAULT;
+  opts.enable_keepawake = OPT_ENABLE_KEEPAWAKE_DEFAULT;
+  opts.disable_keepawake = OPT_DISABLE_KEEPAWAKE_DEFAULT;
+  opts.no_check_update = OPT_NO_CHECK_UPDATE_DEFAULT;
 
   // ============================================================================
-  // TERMINAL
+  // LOGGING CATEGORY - Binary-level logging and output control options
+  // ============================================================================
+  // log_file is mode-dependent at startup and intentionally left empty here
+  opts.quiet = OPT_QUIET_DEFAULT;
+  opts.verbose_level = OPT_VERBOSE_LEVEL_DEFAULT;
+  opts.log_level = OPT_LOG_LEVEL_DEFAULT;
+  opts.grep_pattern[0] = '\0'; // Explicitly ensure grep_pattern is empty
+  opts.json = OPT_JSON_DEFAULT;
+  SAFE_STRNCPY(opts.color_scheme_name, OPT_COLOR_SCHEME_NAME_DEFAULT, sizeof(opts.color_scheme_name));
+  // log_template and log_format are set by get_default_log_template()
+
+  // ============================================================================
+  // TERMINAL CATEGORY - Terminal display options
   // ============================================================================
   opts.width = OPT_WIDTH_DEFAULT;
   opts.height = OPT_HEIGHT_DEFAULT;
   opts.auto_width = OPT_AUTO_WIDTH_DEFAULT;
   opts.auto_height = OPT_AUTO_HEIGHT_DEFAULT;
+  opts.color_mode = OPT_COLOR_MODE_DEFAULT;
+  opts.show_capabilities = OPT_SHOW_CAPABILITIES_DEFAULT;
+  opts.force_utf8 = OPT_FORCE_UTF8_DEFAULT;
+  opts.strip_ansi = OPT_STRIP_ANSI_DEFAULT;
   opts.color = OPT_COLOR_DEFAULT;
-  SAFE_STRNCPY(opts.color_scheme_name, OPT_COLOR_SCHEME_NAME_DEFAULT, sizeof(opts.color_scheme_name));
 
   // ============================================================================
-  // WEBCAM
+  // DISPLAY CATEGORY - Display and rendering options
+  // ============================================================================
+  opts.color_filter = OPT_COLOR_FILTER_DEFAULT;
+  opts.render_mode = OPT_RENDER_MODE_DEFAULT;
+  opts.palette_type = OPT_PALETTE_TYPE_DEFAULT;
+  // palette_custom is already zeroed by memset
+  opts.palette_custom_set = OPT_PALETTE_CUSTOM_SET_DEFAULT;
+  opts.stretch = OPT_STRETCH_DEFAULT;
+  opts.fps = OPT_FPS_DEFAULT;
+  opts.snapshot_mode = OPT_SNAPSHOT_MODE_DEFAULT;
+  opts.snapshot_delay = OPT_SNAPSHOT_DELAY_DEFAULT;
+  opts.matrix_rain = OPT_MATRIX_RAIN_DEFAULT;
+  opts.flip_x = OPT_FLIP_X_DEFAULT;
+  opts.flip_y = OPT_FLIP_Y_DEFAULT;
+
+  // ============================================================================
+  // WEBCAM CATEGORY - Webcam and capture device options
   // ============================================================================
   opts.webcam_index = OPT_WEBCAM_INDEX_DEFAULT;
   opts.test_pattern = OPT_TEST_PATTERN_DEFAULT;
   opts.no_audio_mixer = OPT_NO_AUDIO_MIXER_DEFAULT;
 
   // ============================================================================
-  // DISPLAY
-  // ============================================================================
-  opts.color_mode = OPT_COLOR_MODE_DEFAULT;
-  opts.color_filter = OPT_COLOR_FILTER_DEFAULT;
-  opts.render_mode = OPT_RENDER_MODE_DEFAULT;
-  opts.palette_type = OPT_PALETTE_TYPE_DEFAULT;
-  // palette_custom is already zeroed by memset
-  opts.palette_custom_set = OPT_PALETTE_CUSTOM_SET_DEFAULT;
-  opts.show_capabilities = OPT_SHOW_CAPABILITIES_DEFAULT;
-  opts.force_utf8 = OPT_FORCE_UTF8_DEFAULT;
-  opts.stretch = OPT_STRETCH_DEFAULT;
-  opts.strip_ansi = OPT_STRIP_ANSI_DEFAULT;
-  opts.fps = OPT_FPS_DEFAULT;
-  opts.flip_x = OPT_FLIP_X_DEFAULT;
-  opts.flip_y = OPT_FLIP_Y_DEFAULT;
-  opts.splash = OPT_SPLASH_DEFAULT;
-  opts.splash_explicitly_set = false;
-  opts.status_screen = OPT_STATUS_SCREEN_DEFAULT;
-  opts.status_screen_explicitly_set = false;
-
-  // ============================================================================
-  // SNAPSHOT
-  // ============================================================================
-  opts.snapshot_mode = OPT_SNAPSHOT_MODE_DEFAULT;
-  opts.snapshot_delay = SNAPSHOT_DELAY_DEFAULT;
-
-  // ============================================================================
-  // PERFORMANCE
-  // ============================================================================
-  opts.compression_level = OPT_COMPRESSION_LEVEL_DEFAULT;
-  opts.no_compress = OPT_NO_COMPRESS_DEFAULT;
-  opts.encode_audio = OPT_ENCODE_AUDIO_DEFAULT;
-
-  // ============================================================================
-  // SECURITY
-  // ============================================================================
-  opts.encrypt_enabled = OPT_ENCRYPT_ENABLED_DEFAULT;
-  // encrypt_key is already zeroed by memset
-  // password is already zeroed by memset
-  // encrypt_keyfile is already zeroed by memset
-  opts.no_encrypt = OPT_NO_ENCRYPT_DEFAULT;
-  // server_key is already zeroed by memset
-  // client_keys is already zeroed by memset
-  opts.discovery_insecure = OPT_ACDS_INSECURE_DEFAULT;
-  // discovery_service_key is already zeroed by memset
-  // identity_keys array is already zeroed by memset
-  opts.num_identity_keys = 0;
-  opts.require_server_identity = OPT_REQUIRE_SERVER_IDENTITY_DEFAULT;
-  opts.require_client_identity = OPT_REQUIRE_CLIENT_IDENTITY_DEFAULT;
-  opts.require_server_verify = OPT_REQUIRE_SERVER_VERIFY_DEFAULT;
-  opts.require_client_verify = OPT_REQUIRE_CLIENT_VERIFY_DEFAULT;
-
-  // ============================================================================
-  // NETWORK
-  // ============================================================================
-  opts.port = OPT_PORT_INT_DEFAULT;
-  opts.websocket_port = OPT_WEBSOCKET_PORT_SERVER_DEFAULT;
-  opts.max_clients = OPT_MAX_CLIENTS_DEFAULT;
-  opts.reconnect_attempts = OPT_RECONNECT_ATTEMPTS_DEFAULT;
-  opts.lan_discovery = OPT_LAN_DISCOVERY_DEFAULT;
-  opts.no_mdns_advertise = OPT_NO_MDNS_ADVERTISE_DEFAULT;
-  opts.webrtc = OPT_WEBRTC_DEFAULT;
-  opts.no_webrtc = OPT_NO_WEBRTC_DEFAULT;
-  opts.prefer_webrtc = OPT_PREFER_WEBRTC_DEFAULT;
-  opts.webrtc_skip_stun = OPT_WEBRTC_SKIP_STUN_DEFAULT;
-  opts.webrtc_disable_turn = OPT_WEBRTC_DISABLE_TURN_DEFAULT;
-  SAFE_STRNCPY(opts.stun_servers, OPT_STUN_SERVERS_DEFAULT, sizeof(opts.stun_servers));
-  SAFE_STRNCPY(opts.turn_servers, OPT_TURN_SERVERS_DEFAULT, sizeof(opts.turn_servers));
-  SAFE_STRNCPY(opts.turn_username, OPT_TURN_USERNAME_DEFAULT, sizeof(opts.turn_username));
-  SAFE_STRNCPY(opts.turn_credential, OPT_TURN_CREDENTIAL_DEFAULT, sizeof(opts.turn_credential));
-  // turn_secret is already zeroed by memset
-  SAFE_STRNCPY(opts.discovery_server, OPT_ENDPOINT_DISCOVERY_SERVICE, sizeof(opts.discovery_server));
-  opts.discovery_port = OPT_ACDS_PORT_INT_DEFAULT;
-  opts.discovery_expose_ip = OPT_ACDS_EXPOSE_IP_DEFAULT;
-  opts.enable_upnp = OPT_ENABLE_UPNP_DEFAULT;
-  opts.discovery = OPT_ACDS_DEFAULT;
-
-  // ============================================================================
-  // MEDIA
+  // MEDIA CATEGORY - Media file streaming and playback options
   // ============================================================================
   // media_file is already zeroed by memset
   // media_url is already zeroed by memset
@@ -648,7 +605,47 @@ options_t options_t_new(void) {
 #endif
 
   // ============================================================================
-  // AUDIO
+  // NETWORK CATEGORY - Network connectivity and protocol options
+  // ============================================================================
+  SAFE_STRNCPY(opts.address, OPT_ADDRESS_DEFAULT, sizeof(opts.address));
+  SAFE_STRNCPY(opts.address6, OPT_ADDRESS6_DEFAULT, sizeof(opts.address6));
+  opts.port = OPT_PORT_INT_DEFAULT;
+  opts.websocket_port = OPT_WEBSOCKET_PORT_SERVER_DEFAULT;
+  opts.max_clients = OPT_MAX_CLIENTS_DEFAULT;
+  opts.reconnect_attempts = OPT_RECONNECT_ATTEMPTS_DEFAULT;
+  opts.compression_level = OPT_COMPRESSION_LEVEL_DEFAULT;
+  opts.no_compress = OPT_NO_COMPRESS_DEFAULT;
+  // Discovery Service (ACDS) Options
+  opts.discovery = OPT_ACDS_DEFAULT;
+  opts.discovery_port = OPT_ACDS_PORT_INT_DEFAULT;
+  SAFE_STRNCPY(opts.discovery_server, OPT_ENDPOINT_DISCOVERY_SERVICE, sizeof(opts.discovery_server));
+  opts.discovery_expose_ip = OPT_ACDS_EXPOSE_IP_DEFAULT;
+  opts.discovery_insecure = OPT_ACDS_INSECURE_DEFAULT;
+  opts.require_server_identity = OPT_REQUIRE_SERVER_IDENTITY_DEFAULT;
+  opts.require_client_identity = OPT_REQUIRE_CLIENT_IDENTITY_DEFAULT;
+  // discovery_service_key is already zeroed by memset
+  opts.discovery_database_path[0] = '\0'; // Explicitly ensure discovery_database_path is empty
+  // LAN Discovery & WebRTC Options
+  opts.lan_discovery = OPT_LAN_DISCOVERY_DEFAULT;
+  opts.no_mdns_advertise = OPT_NO_MDNS_ADVERTISE_DEFAULT;
+  opts.enable_upnp = OPT_ENABLE_UPNP_DEFAULT;
+  // WebRTC Mode & Strategy Options
+  opts.webrtc = OPT_WEBRTC_DEFAULT;
+  opts.prefer_webrtc = OPT_PREFER_WEBRTC_DEFAULT;
+  opts.no_webrtc = OPT_NO_WEBRTC_DEFAULT;
+  opts.webrtc_skip_stun = OPT_WEBRTC_SKIP_STUN_DEFAULT;
+  opts.webrtc_disable_turn = OPT_WEBRTC_DISABLE_TURN_DEFAULT;
+  opts.webrtc_skip_host = OPT_WEBRTC_SKIP_HOST_DEFAULT;
+  opts.webrtc_ice_timeout_ms = OPT_WEBRTC_ICE_TIMEOUT_MS_DEFAULT;
+  opts.webrtc_reconnect_attempts = OPT_WEBRTC_RECONNECT_ATTEMPTS_DEFAULT;
+  SAFE_STRNCPY(opts.stun_servers, OPT_STUN_SERVERS_DEFAULT, sizeof(opts.stun_servers));
+  SAFE_STRNCPY(opts.turn_servers, OPT_TURN_SERVERS_DEFAULT, sizeof(opts.turn_servers));
+  SAFE_STRNCPY(opts.turn_username, OPT_TURN_USERNAME_DEFAULT, sizeof(opts.turn_username));
+  SAFE_STRNCPY(opts.turn_credential, OPT_TURN_CREDENTIAL_DEFAULT, sizeof(opts.turn_credential));
+  // turn_secret is already zeroed by memset
+
+  // ============================================================================
+  // AUDIO CATEGORY - Audio capture, playback and processing options
   // ============================================================================
   opts.audio_enabled = OPT_AUDIO_ENABLED_DEFAULT;
   opts.audio_source = OPT_AUDIO_SOURCE_DEFAULT;
@@ -658,20 +655,37 @@ options_t options_t_new(void) {
   opts.speakers_volume = OPT_SPEAKERS_VOLUME_DEFAULT;
   opts.audio_no_playback = OPT_AUDIO_NO_PLAYBACK_DEFAULT;
   opts.audio_analysis_enabled = OPT_AUDIO_ANALYSIS_ENABLED_DEFAULT;
+  opts.encode_audio = OPT_ENCODE_AUDIO_DEFAULT;
 
   // ============================================================================
-  // DATABASE (discovery-service only)
+  // SECURITY CATEGORY - Encryption and authentication options
   // ============================================================================
-  // discovery_database_path is already zeroed by memset
+  opts.encrypt_enabled = OPT_ENCRYPT_ENABLED_DEFAULT;
+  // encrypt_key is already zeroed by memset
+  // password is already zeroed by memset
+  // encrypt_keyfile is already zeroed by memset
+  opts.no_encrypt = OPT_NO_ENCRYPT_DEFAULT;
+  opts.no_auth = OPT_NO_AUTH_DEFAULT;
+  // server_key is already zeroed by memset
+  // client_keys is already zeroed by memset
+  // identity_keys array is already zeroed by memset
+  opts.num_identity_keys = 0;
+  opts.require_server_verify = OPT_REQUIRE_SERVER_VERIFY_DEFAULT;
+  opts.require_client_verify = OPT_REQUIRE_CLIENT_VERIFY_DEFAULT;
 
   // ============================================================================
-  // Internal/Non-Displayed Fields
+  // CONFIGURATION CATEGORY - Application configuration options
   // ============================================================================
-  opts.help = OPT_HELP_DEFAULT;
-  opts.version = OPT_VERSION_DEFAULT;
   // config_file is already zeroed by memset
-  SAFE_STRNCPY(opts.address, OPT_ADDRESS_DEFAULT, sizeof(opts.address));
-  SAFE_STRNCPY(opts.address6, OPT_ADDRESS6_DEFAULT, sizeof(opts.address6));
+
+  // ============================================================================
+  // DATABASE CATEGORY - Database and persistent storage options
+  // ============================================================================
+  // discovery_database_path is already zeroed by memset (set above in NETWORK)
+
+  // ============================================================================
+  // Internal/System Fields
+  // ============================================================================
   // session_string is already zeroed by memset
   // detected_mode is already zeroed by memset
 
@@ -855,6 +869,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (rcu_init_result != ASCIICHAT_OK) {
     return rcu_init_result;
   }
+
   // ========================================================================
   // STAGE 1: Mode Detection and Binary-Level Option Handling
   // ========================================================================
@@ -1679,13 +1694,23 @@ asciichat_error_t options_init(int argc, char **argv) {
 
   // Detect if splash or status_screen were explicitly set on command line
   for (int i = 0; i < mode_argc; i++) {
-    if (mode_argv[i] && (strcmp(mode_argv[i], "--no-splash") == 0 || strncmp(mode_argv[i], "--no-splash=", 12) == 0)) {
-      opts.splash_explicitly_set = true;
+    if (mode_argv[i] && (strcmp(mode_argv[i], "--splash-screen") == 0 || strncmp(mode_argv[i], "--splash-screen=", 16) == 0)) {
+      opts.splash_screen = true;
+      opts.splash_screen_explicitly_set = true;
+    }
+    if (mode_argv[i] && (strcmp(mode_argv[i], "--no-splash-screen") == 0 || strncmp(mode_argv[i], "--no-splash-screen=", 19) == 0)) {
+      opts.splash_screen = false;
+      opts.splash_screen_explicitly_set = true;
     }
     if (mode_argv[i] &&
         (strcmp(mode_argv[i], "--no-status-screen") == 0 || strncmp(mode_argv[i], "--no-status-screen=", 19) == 0)) {
       opts.status_screen_explicitly_set = true;
     }
+#ifndef NDEBUG
+    if (mode_argv[i] && (strcmp(mode_argv[i], "--sync-state") == 0 || strncmp(mode_argv[i], "--sync-state=", 13) == 0)) {
+      opts.debug_sync_state_time_explicit = true;
+    }
+#endif
   }
 
   // Auto-disable splash when grep is used (since it's one-time startup screen)
@@ -1700,9 +1725,26 @@ asciichat_error_t options_init(int argc, char **argv) {
   }
 
   if (grep_was_provided) {
-    if (!opts.splash_explicitly_set) {
-      opts.splash = false;
+    if (!opts.splash_screen_explicitly_set) {
+      opts.splash_screen = false;
       log_debug("Auto-disabled splash because --grep was provided");
+    }
+  }
+
+  // Auto-disable splash and status screens when terminal is non-interactive or CLAUDECODE is set
+  // This ensures clean output when running under LLM automation or non-interactive shells
+  bool is_terminal_interactive = terminal_is_interactive();
+  bool is_claudecode_set = platform_getenv("CLAUDECODE") != NULL;
+  bool should_auto_disable_screens = !is_terminal_interactive || is_claudecode_set;
+
+  if (should_auto_disable_screens) {
+    if (!opts.splash_screen_explicitly_set) {
+      opts.splash_screen = false;
+      log_debug("Auto-disabled splash (non-interactive terminal or CLAUDECODE set)");
+    }
+    if (!opts.status_screen_explicitly_set) {
+      opts.status_screen = false;
+      log_debug("Auto-disabled status screen (non-interactive terminal or CLAUDECODE set)");
     }
   }
 

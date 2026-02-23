@@ -76,6 +76,38 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
 // =============================================================================
 
 /**
+ * @brief Queue a buffer for deferred freeing to prevent use-after-free with compression
+ *
+ * Permessage-deflate compression holds buffer references asynchronously after lws_write().
+ * This function queues buffers for later freeing instead of immediate deallocation.
+ */
+static void deferred_buffer_free(websocket_transport_data_t *ws_data, uint8_t *ptr, size_t size) {
+  if (!ws_data || !ptr) return;
+
+  pending_free_item_t item = {.ptr = ptr, .size = size};
+  mutex_lock(&ws_data->pending_free_mutex);
+  ringbuffer_write(ws_data->pending_free_queue, &item);
+  mutex_unlock(&ws_data->pending_free_mutex);
+}
+
+/**
+ * @brief Drain pending-free queue to actually free deferred buffers
+ *
+ * Called periodically from the service thread to free buffers that were
+ * queued for deferred freeing after their associated compression operations complete.
+ */
+static void drain_pending_free_queue(websocket_transport_data_t *ws_data) {
+  if (!ws_data) return;
+
+  pending_free_item_t item;
+  mutex_lock(&ws_data->pending_free_mutex);
+  while (ringbuffer_read(ws_data->pending_free_queue, &item)) {
+    buffer_pool_free(NULL, item.ptr, item.size);
+  }
+  mutex_unlock(&ws_data->pending_free_mutex);
+}
+
+/**
  * @brief Service thread that continuously processes libwebsockets events
  *
  * This thread is necessary for client-side transports to receive incoming messages.
@@ -94,6 +126,12 @@ static void *websocket_service_thread(void *arg) {
   while (ws_data->service_running) {
     loop_count++;
 
+    // Periodically drain pending-free queue to free buffers deferred from compression
+    // Do this at the start of each loop to ensure buffers are freed after compression completes
+    if (loop_count % 10 == 0) {
+      drain_pending_free_queue(ws_data);
+    }
+
     // ALWAYS log first 10 loops to debug why queue checks aren't working
     if (loop_count <= 10) {
       log_info("[LOOP %d] owns_context=%d, wsi=%p, service_running=%d", loop_count,
@@ -109,56 +147,45 @@ static void *websocket_service_thread(void *arg) {
         log_info("[LOOP %d] CLIENT condition TRUE - checking queue", loop_count);
       }
 
-      // This is a CLIENT transport - actively drain send queue instead of relying on callbacks
-      // The WRITEABLE callback mechanism doesn't reliably trigger for browser clients,
-      // so we drain the queue directly in the service thread.
-      websocket_recv_msg_t msg;
-      int messages_sent = 0;
+      // Wait for connection to be established before sending
+      // The CLIENT_ESTABLISHED callback sets is_connected = true
+      // If we try to send before handshake completes, lws_write() fails
+      mutex_lock(&ws_data->state_mutex);
+      bool connected = ws_data->is_connected;
+      mutex_unlock(&ws_data->state_mutex);
 
-      mutex_lock(&ws_data->send_mutex);
-      bool has_data = !ringbuffer_is_empty(ws_data->send_queue);
+      if (!connected) {
+        if (loop_count <= 10) {
+          log_info("[LOOP %d] CLIENT not connected yet, skipping queue drain", loop_count);
+        }
+        // Sleep briefly to avoid busy-waiting
+        platform_sleep_us(10000); // 10ms
+      } else {
+        // This is a CLIENT transport - request WRITEABLE callback to send queued messages
+        // lws_write() must be called from within LWS callbacks, not from external threads
+        int messages_sent = 0;
 
-      if (loop_count <= 10) {
-        log_info("[LOOP %d] Queue check: has_data=%d", loop_count, has_data);
-      }
+        mutex_lock(&ws_data->send_mutex);
+        bool has_data = !ringbuffer_is_empty(ws_data->send_queue);
 
-      if (has_data) {
-        log_info(">>> SERVICE_THREAD: CLIENT queue has data, draining...");
-      }
+        if (loop_count <= 10) {
+          log_info("[LOOP %d] Queue check: has_data=%d", loop_count, has_data);
+        }
 
-      while (ringbuffer_read(ws_data->send_queue, &msg)) {
+        if (has_data) {
+          log_info(">>> SERVICE_THREAD: CLIENT queue has data, requesting CLIENT_WRITEABLE callback");
+          // Request CLIENT_WRITEABLE callback instead of calling lws_write() directly
+          // lws_write() MUST be called from within a callback context, not from external threads
+          lws_callback_on_writable(ws_data->wsi);
+          messages_sent++;
+          total_messages_sent++;
+        }
         mutex_unlock(&ws_data->send_mutex);
 
-        // Send message directly with lws_write()
-        // IMPORTANT: msg.data already points to start of buffer (with LWS_PRE padding)
-        // lws_write() will write the frame header backwards into LWS_PRE region
-        // then write the data. We need to pass pointer to start of LWS_PRE region.
-        log_info(">>> SENDING: %zu bytes via lws_write() for wsi=%p", msg.len, (void *)ws_data->wsi);
-        int written = lws_write(ws_data->wsi, msg.data + LWS_PRE, msg.len, LWS_WRITE_BINARY);
-
-        if (written < 0) {
-          log_error(">>> LWS_WRITE_FAILED: error code %d for %zu bytes", written, msg.len);
-          SAFE_FREE(msg.data);
-          mutex_lock(&ws_data->send_mutex);
-          break;
-        }
-
-        if ((size_t)written != msg.len) {
-          log_warn(">>> PARTIAL_WRITE: sent %d/%zu bytes", written, msg.len);
-        } else {
-          log_info(">>> WRITE_SUCCESS: sent %d bytes", written);
-        }
-
-        SAFE_FREE(msg.data);
-        messages_sent++;
-        total_messages_sent++;
-        mutex_lock(&ws_data->send_mutex);
-      }
-      mutex_unlock(&ws_data->send_mutex);
-
       if (messages_sent > 0) {
-        log_info(">>> SERVICE_BATCH: sent %d messages (total: %d)", messages_sent, total_messages_sent);
+        log_info(">>> SERVICE_BATCH: requested %d writable callbacks (total: %d)", messages_sent, total_messages_sent);
       }
+      } // End of if (connected) block
     } else {
       if (loop_count <= 10) {
         log_info("[LOOP %d] CLIENT condition FALSE (owns_context=%d, wsi=%p)", loop_count,
@@ -168,10 +195,26 @@ static void *websocket_service_thread(void *arg) {
 
     // Service libwebsockets (processes network events, triggers callbacks)
     // 50ms timeout allows checking service_running flag regularly
+    uint64_t service_start_ns = time_get_ns();
     int result = lws_service(ws_data->context, 50);
+    uint64_t service_end_ns = time_get_ns();
+
+    if (loop_count <= 50) {
+      char service_duration_str[32];
+      time_pretty(service_end_ns - service_start_ns, -1, service_duration_str, sizeof(service_duration_str));
+      log_info("[LOOP %d] lws_service() returned %d, duration %s", loop_count, result, service_duration_str);
+    }
+
     if (result < 0) {
-      log_error("lws_service error: %d", result);
+      log_fatal("🔴 lws_service error: %d at loop %d", result, loop_count);
       break;
+    }
+
+    // Check if connection is still alive
+    if (loop_count <= 50 && ws_data->is_connected) {
+      log_info("[LOOP %d] After lws_service: is_connected=true, wsi=%p", loop_count, (void *)ws_data->wsi);
+    } else if (loop_count <= 50) {
+      log_warn("[LOOP %d] After lws_service: is_connected=false, wsi=%p", loop_count, (void *)ws_data->wsi);
     }
   }
 
@@ -193,26 +236,34 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)user;
 
   switch (reason) {
-  case LWS_CALLBACK_CLIENT_ESTABLISHED:
-    log_info("WebSocket connection established");
+  case LWS_CALLBACK_CLIENT_ESTABLISHED: {
+    uint64_t now_ns = time_get_ns();
+    log_fatal("🟢🟢🟢 WebSocket CLIENT_ESTABLISHED! wsi=%p, ws_data=%p, timestamp=%llu",
+              (void *)wsi, (void *)ws_data, (unsigned long long)now_ns);
     if (ws_data) {
       mutex_lock(&ws_data->state_mutex);
+      log_fatal("    [ESTABLISHED] Setting is_connected=true (was %d)", ws_data->is_connected);
       ws_data->is_connected = true;
       cond_signal(&ws_data->state_cond);
       mutex_unlock(&ws_data->state_mutex);
+      log_fatal("    [ESTABLISHED] State updated, wsi=%p ready for send/recv", (void *)wsi);
     }
     break;
+  }
 
   case LWS_CALLBACK_CLIENT_RECEIVE: {
     // Received data from server - may be fragmented for large messages
+    uint64_t now_ns = time_get_ns();
     if (!ws_data || !in || len == 0) {
+      log_debug("CLIENT_RECEIVE: ws_data=%p, in=%p, len=%zu - skipping", (void *)ws_data, in, len);
       break;
     }
 
     bool is_first = lws_is_first_fragment(wsi);
     bool is_final = lws_is_final_fragment(wsi);
 
-    log_dev_every(4500000, "WebSocket fragment: %zu bytes (first=%d, final=%d)", len, is_first, is_final);
+    log_info("🟡 LWS_CALLBACK_CLIENT_RECEIVE: %zu bytes (first=%d, final=%d), wsi=%p, timestamp=%llu",
+             len, is_first, is_final, (void *)wsi, (unsigned long long)now_ns);
 
     // Queue this fragment immediately with first/final flags.
     // Per LWS design, each fragment is processed individually by the callback.
@@ -249,8 +300,28 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
   }
 
   case LWS_CALLBACK_CLIENT_CLOSED:
-  case LWS_CALLBACK_CLOSED:
-    log_info("WebSocket connection closed");
+  case LWS_CALLBACK_CLOSED: {
+    uint64_t now_ns = time_get_ns();
+    log_fatal("🔴🔴🔴 WebSocket connection CLOSED! reason=%d, wsi=%p, ws_data=%p, is_connected=%d, timestamp=%llu",
+              reason, (void *)wsi, (void *)ws_data, ws_data ? ws_data->is_connected : -1,
+              (unsigned long long)now_ns);
+    if (ws_data) {
+      mutex_lock(&ws_data->state_mutex);
+      log_fatal("    [CLOSE] Setting is_connected=false (was %d)", ws_data->is_connected);
+      ws_data->is_connected = false;
+      mutex_unlock(&ws_data->state_mutex);
+
+      // Wake any blocking recv() calls
+      cond_broadcast(&ws_data->recv_cond);
+    }
+    break;
+  }
+
+  case LWS_CALLBACK_CLIENT_CONNECTION_ERROR: {
+    uint64_t now_ns = time_get_ns();
+    log_fatal("🔴🔴🔴 WebSocket CONNECTION ERROR! reason=%d, error=%s, wsi=%p, ws_data=%p, timestamp=%llu",
+              reason, in ? (const char *)in : "unknown", (void *)wsi, (void *)ws_data,
+              (unsigned long long)now_ns);
     if (ws_data) {
       mutex_lock(&ws_data->state_mutex);
       ws_data->is_connected = false;
@@ -260,29 +331,28 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
       cond_broadcast(&ws_data->recv_cond);
     }
     break;
-
-  case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
-    log_error("WebSocket connection error: %s", in ? (const char *)in : "unknown");
-    if (ws_data) {
-      mutex_lock(&ws_data->state_mutex);
-      ws_data->is_connected = false;
-      mutex_unlock(&ws_data->state_mutex);
-
-      // Wake any blocking recv() calls
-      cond_broadcast(&ws_data->recv_cond);
-    }
-    break;
+  }
 
   case LWS_CALLBACK_CLIENT_WRITEABLE: {
-    // Socket is writable - process queued messages for sending
-    log_debug("<<< LWS_CALLBACK_CLIENT_WRITEABLE FIRED for wsi=%p", (void *)wsi);
-    if (!ws_data) break;
+    // Socket is writable - process queued messages for sending with flow control
+    uint64_t now_ns = time_get_ns();
+    log_info("🟡 LWS_CALLBACK_CLIENT_WRITEABLE FIRED for wsi=%p, ws_data=%p, is_connected=%d, timestamp=%llu",
+             (void *)wsi, (void *)ws_data, ws_data ? ws_data->is_connected : -1, (unsigned long long)now_ns);
+    if (!ws_data) {
+      log_warn("    [CLIENT_WRITEABLE] ws_data is NULL, breaking");
+      break;
+    }
 
     websocket_recv_msg_t msg;
     int message_count = 0;
 
     mutex_lock(&ws_data->send_mutex);
-    while (ringbuffer_read(ws_data->send_queue, &msg)) {
+    do {
+      // Check if we have messages to send
+      if (!ringbuffer_peek(ws_data->send_queue, &msg)) {
+        break;
+      }
+      ringbuffer_read(ws_data->send_queue, &msg);
       mutex_unlock(&ws_data->send_mutex);
 
       log_debug("WebSocket CLIENT_WRITEABLE: sending queued %zu bytes (msg %d)", msg.len, message_count + 1);
@@ -295,7 +365,8 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
 
       if (written < 0) {
         log_error("WebSocket write failed for %zu bytes", msg.len);
-        SAFE_FREE(msg.data);
+        // Queue for deferred free to allow compression layer to complete
+        deferred_buffer_free(ws_data, msg.data, LWS_PRE + msg.len);
         mutex_lock(&ws_data->send_mutex);
         break;
       }
@@ -304,14 +375,26 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
         log_warn("WebSocket partial write: %d/%zu bytes", written, msg.len);
       }
 
-      SAFE_FREE(msg.data);
+      // Queue for deferred free to allow compression layer to complete asynchronously
+      deferred_buffer_free(ws_data, msg.data, LWS_PRE + msg.len);
       message_count++;
+
       mutex_lock(&ws_data->send_mutex);
-    }
+
+      // Continue while pipe is not choked
+      // This prevents callback flooding when TCP buffers are full
+    } while (!lws_send_pipe_choked(ws_data->wsi));
     mutex_unlock(&ws_data->send_mutex);
 
-    // Request another callback if we sent messages (more may have been queued)
-    if (message_count > 0) {
+    // Request another callback only if:
+    // - We sent messages AND
+    // - Pipe is not choked AND
+    // - More messages are queued
+    mutex_lock(&ws_data->send_mutex);
+    bool has_more = ringbuffer_peek(ws_data->send_queue, &msg);
+    mutex_unlock(&ws_data->send_mutex);
+
+    if (message_count > 0 && has_more && !lws_send_pipe_choked(ws_data->wsi)) {
       lws_callback_on_writable(ws_data->wsi);
     }
     break;
@@ -331,15 +414,24 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
 static asciichat_error_t websocket_send(acip_transport_t *transport, const void *data, size_t len) {
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
 
-  mutex_lock(&ws_data->state_mutex);
-  bool connected = ws_data->is_connected;
-  mutex_unlock(&ws_data->state_mutex);
+  // For server-side transports (owns_context=false), the connection is already established
+  // because this code only runs after LWS_CALLBACK_ESTABLISHED. Don't check is_connected
+  // as it may not have been set properly yet due to initialization timing.
+  // For client-side transports (owns_context=true), verify connection status.
+  if (ws_data->owns_context) {
+    mutex_lock(&ws_data->state_mutex);
+    bool connected = ws_data->is_connected;
+    mutex_unlock(&ws_data->state_mutex);
 
-  log_dev_every(1000000, "websocket_send: is_connected=%d, wsi=%p, send_len=%zu", connected, (void *)ws_data->wsi, len);
+    log_dev_every(1000000, "websocket_send (client): is_connected=%d, wsi=%p, send_len=%zu", connected, (void *)ws_data->wsi, len);
 
-  if (!connected) {
-    log_error("WebSocket send called but transport NOT connected! wsi=%p, len=%zu", (void *)ws_data->wsi, len);
-    return SET_ERRNO(ERROR_NETWORK, "WebSocket transport not connected (wsi=%p)", (void *)ws_data->wsi);
+    if (!connected) {
+      log_error("[WEBSOCKET_SEND_ERROR] ★★★ Client transport NOT connected! ws_data=%p, wsi=%p, len=%zu", (void *)ws_data, (void *)ws_data->wsi, len);
+      log_error("WebSocket send called but client transport NOT connected! wsi=%p, len=%zu", (void *)ws_data->wsi, len);
+      return SET_ERRNO(ERROR_NETWORK, "WebSocket transport not connected (wsi=%p)", (void *)ws_data->wsi);
+    }
+  } else {
+    log_info("[WEBSOCKET_SEND_SERVER] ★★★ Server transport send: wsi=%p, len=%zu (bypassing is_connected check)", (void *)ws_data->wsi, len);
   }
 
   // Check if encryption is needed (matching tcp_send logic)
@@ -417,9 +509,11 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     // Queue the data for server-side sending
     // IMPORTANT: Allocate with LWS_PRE padding because lws_write() needs to write
     // the WebSocket frame header backwards into the LWS_PRE region
+    // Use buffer_pool instead of SAFE_MALLOC to avoid use-after-free with
+    // permessage-deflate compression (same issue as client-side sends)
     websocket_recv_msg_t msg;
     size_t buffer_size = LWS_PRE + send_len;
-    msg.data = SAFE_MALLOC(buffer_size, uint8_t *);
+    msg.data = buffer_pool_alloc(NULL, buffer_size);
     if (!msg.data) {
       SAFE_FREE(send_buffer);
       if (encrypted_packet)
@@ -439,7 +533,7 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
       mutex_unlock(&ws_data->send_mutex);
       log_error("WebSocket server send queue FULL - cannot queue %zu byte message for wsi=%p", send_len,
                 (void *)ws_data->wsi);
-      SAFE_FREE(msg.data);
+      buffer_pool_free(NULL, msg.data, buffer_size);
       SAFE_FREE(send_buffer);
       if (encrypted_packet)
         buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
@@ -447,32 +541,31 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     }
     mutex_unlock(&ws_data->send_mutex);
 
-    // Wake the LWS event loop from this non-service thread.
-    // Only lws_cancel_service() is thread-safe from non-service threads.
-    // lws_callback_on_writable() must NOT be called here — it's only safe
-    // from the service thread. LWS_CALLBACK_EVENT_WAIT_CANCELLED (in server.c)
-    // handles calling lws_callback_on_writable_all_protocol() on the service thread.
     log_debug(">>> SERVER FRAME QUEUED: %zu bytes for wsi=%p", send_len, (void *)ws_data->wsi);
 
-    struct lws_context *ctx = lws_get_context(ws_data->wsi);
-    lws_cancel_service(ctx);
+    // Notify libwebsockets that there's data to send - triggers LWS_CALLBACK_SERVER_WRITEABLE
+    // This is essential! Without this, the queued frames never get transmitted.
+    lws_callback_on_writable(ws_data->wsi);
+    log_debug(">>> REQUESTED SERVER_WRITEABLE CALLBACK for wsi=%p", (void *)ws_data->wsi);
 
-    log_debug(">>> Server-side WebSocket: queued %zu bytes, cancel_service sent for wsi=%p", send_len,
-                  (void *)ws_data->wsi);
     SAFE_FREE(send_buffer);
     if (encrypted_packet)
-      buffer_pool_free(NULL, encrypted_packet, send_len);
+      buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
     return ASCIICHAT_OK;
   }
 
   // Client-side: queue entire message for service thread to send
   // Avoid fragmentation race conditions by sending atomic messages from service thread
   // libwebsockets handles automatic fragmentation internally when needed
-  // IMPORTANT: Allocate with LWS_PRE padding because lws_write() needs to write
+  // Allocate with LWS_PRE padding because lws_write() needs to write
   // the WebSocket frame header backwards into the LWS_PRE region
+  // Use buffer_pool instead of SAFE_MALLOC to avoid use-after-free with permessage-deflate
+  // compression. libwebsockets may buffer this data asynchronously after lws_write() returns,
+  // so we can't free it immediately. buffer_pool_free() safely returns it to the pool instead
+  // of deallocating, preventing the use-after-free race condition with the compression layer.
   websocket_recv_msg_t msg;
   size_t buffer_size = LWS_PRE + send_len;
-  msg.data = SAFE_MALLOC(buffer_size, uint8_t *);
+  msg.data = buffer_pool_alloc(NULL, buffer_size);
   if (!msg.data) {
     SAFE_FREE(send_buffer);
     if (encrypted_packet)
@@ -492,7 +585,7 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     mutex_unlock(&ws_data->send_mutex);
     log_error("WebSocket client send queue FULL - cannot queue %zu byte message for wsi=%p", send_len,
               (void *)ws_data->wsi);
-    SAFE_FREE(msg.data);
+    buffer_pool_free(NULL, msg.data, buffer_size);
     SAFE_FREE(send_buffer);
     if (encrypted_packet)
       buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
@@ -500,16 +593,8 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
   }
   mutex_unlock(&ws_data->send_mutex);
 
-  // Wake the LWS event loop from this non-service thread to process the queued message.
-  // Only lws_cancel_service() is thread-safe from non-service threads.
-  struct lws_context *ctx = lws_get_context(ws_data->wsi);
-  if (ctx) {
-    log_debug(">>> QUEUED CLIENT MESSAGE: %zu bytes queued at %p, waking service thread (wsi=%p, ctx=%p)",
-              send_len, (void *)ws_data->wsi, (void *)ws_data->wsi, (void *)ctx);
-    lws_cancel_service(ctx);
-  } else {
-    log_error("WebSocket client: could not get context to wake service thread");
-  }
+  log_debug(">>> QUEUED CLIENT MESSAGE: %zu bytes queued at %p for service thread (wsi=%p)",
+            send_len, (void *)ws_data->wsi, (void *)ws_data->wsi);
 
   log_dev_every(1000000, "WebSocket client: queued %zu bytes for service thread to send", send_len);
   SAFE_FREE(send_buffer);
@@ -527,28 +612,54 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   bool connected = ws_data->is_connected;
   mutex_unlock(&ws_data->state_mutex);
 
-  if (!connected) {
+  mutex_lock(&ws_data->recv_mutex);
+
+  // Even if connection is closed, we should try to deliver any buffered data
+  // Check if there's data in the queue
+  bool has_queued_data = !ringbuffer_is_empty(ws_data->recv_queue);
+
+  if (!connected && !has_queued_data) {
+    // Only fail if connection is closed AND no buffered data
+    uint64_t now_ns = time_get_ns();
+    log_fatal("🔴 WEBSOCKET_RECV: Connection not established! connected=%d, has_queued_data=%d, wsi=%p, timestamp=%llu",
+              connected, has_queued_data, (void *)ws_data->wsi, (unsigned long long)now_ns);
+    mutex_unlock(&ws_data->recv_mutex);
     return SET_ERRNO(ERROR_NETWORK, "Connection not established");
   }
 
-  mutex_lock(&ws_data->recv_mutex);
-
-  // Reassemble fragmented WebSocket messages with SHORT timeout (100ms)
+  // Reassemble fragmented WebSocket messages with SHORT timeout
   // We queue each fragment from the LWS callback with first/final flags.
-  // Unlike long blocking waits, 100ms is short enough that polling retry
-  // is acceptable. The dispatch thread handles retries.
+  // Key insight: if we wait too long for final fragment, connection times out.
+  // Return partial messages quickly (500ms) to avoid blocking handler thread.
 
   uint8_t *assembled_buffer = NULL;
   size_t assembled_size = 0;
   size_t assembled_capacity = 0;
   uint64_t assembly_start_ns = time_get_ns();
+  uint64_t last_fragment_ns = assembly_start_ns;
   int fragment_count = 0;
-  const uint64_t MAX_REASSEMBLY_TIME_NS = 1000 * 1000000ULL; // 1 second timeout - enough for localhost transmission of fragmented messages
+  const uint64_t MAX_REASSEMBLY_TIME_NS = 10000 * 1000000ULL; // 10 second max - prevent infinite waits
+  const uint64_t FRAGMENT_WAIT_TIMEOUT_NS = 50 * 1000000ULL; // 50ms: return partial messages quickly to avoid connection timeout
 
   while (true) {
     // Wait for fragment if queue is empty (with short timeout)
     while (ringbuffer_is_empty(ws_data->recv_queue)) {
       uint64_t elapsed_ns = time_get_ns() - assembly_start_ns;
+      uint64_t since_last_frag_ns = time_get_ns() - last_fragment_ns;
+
+      // Return partial message if we've been waiting 500ms with no new fragments
+      // This prevents blocking the handler thread during connection idle timeouts
+      if (assembled_size > 0 && since_last_frag_ns > FRAGMENT_WAIT_TIMEOUT_NS) {
+        log_info("[WS_REASSEMBLE] Returning partial message after %.0fms (got %d fragments, %zu bytes, waiting for final)",
+                 (double)since_last_frag_ns / 1000000.0, fragment_count, assembled_size);
+        // Return what we have - caller will queue partial message back if needed
+        *buffer = assembled_buffer;
+        *out_len = assembled_size;
+        *out_allocated_buffer = assembled_buffer;
+        mutex_unlock(&ws_data->recv_mutex);
+        return ASCIICHAT_OK;
+      }
+
       if (elapsed_ns > MAX_REASSEMBLY_TIME_NS) {
         // Timeout - return error instead of partial fragments
         // Dispatch thread will retry, avoiding fragment loss issue
@@ -565,22 +676,39 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
         return SET_ERRNO(ERROR_NETWORK, "Fragment reassembly timeout - no data from network");
       }
 
-      // Check connection state
+      // Check connection state - but don't fail immediately if connection closes
+      // while reassembling. Instead, return what we have so the handler can process it.
+      // This prevents losing buffered data due to connection timeouts.
       mutex_lock(&ws_data->state_mutex);
       bool still_connected = ws_data->is_connected;
       mutex_unlock(&ws_data->state_mutex);
 
-      if (!still_connected) {
+      if (!still_connected && assembled_size > 0) {
+        // Connection closed but we have partial data - return it
+        log_info("[WS_REASSEMBLE] Connection closed mid-reassembly, returning %zu bytes received so far",
+                 assembled_size);
+        *buffer = assembled_buffer;
+        *out_len = assembled_size;
+        *out_allocated_buffer = assembled_buffer;
+        mutex_unlock(&ws_data->recv_mutex);
+        return ASCIICHAT_OK;
+      }
+
+      if (!still_connected && assembled_size == 0) {
+        // Connection closed and no data yet
         if (assembled_buffer) {
           buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
         }
         mutex_unlock(&ws_data->recv_mutex);
-        return SET_ERRNO(ERROR_NETWORK, "Connection closed while reassembling fragments");
+        return SET_ERRNO(ERROR_NETWORK, "Connection closed");
       }
 
       // Wait for next fragment with 1ms timeout
       cond_timedwait(&ws_data->recv_cond, &ws_data->recv_mutex, 1 * 1000000ULL);
     }
+
+    // Update last_fragment_ns when we get a new fragment
+    last_fragment_ns = time_get_ns();
 
     // Read next fragment from queue
     websocket_recv_msg_t frag;
@@ -645,12 +773,31 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
       assembled_capacity = new_capacity;
     }
 
-    // Append fragment data
-    memcpy(assembled_buffer + assembled_size, frag.data, frag.len);
-    assembled_size += frag.len;
+    // Append fragment data with bounds checking
+    if (frag.len > 0 && frag.data) {
+      // Safety check: ensure we don't overflow the buffer
+      if (assembled_size + frag.len > assembled_capacity) {
+        log_error("[WS_REASSEMBLE] CRITICAL: Buffer overflow detected! assembled_size=%zu, frag.len=%zu, capacity=%zu",
+                  assembled_size, frag.len, assembled_capacity);
+        buffer_pool_free(NULL, frag.data, frag.len);
+        if (assembled_buffer) {
+          buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
+        }
+        mutex_unlock(&ws_data->recv_mutex);
+        return SET_ERRNO(ERROR_MEMORY, "Fragment reassembly buffer overflow");
+      }
 
-    // Free fragment data (we've copied it)
-    buffer_pool_free(NULL, frag.data, frag.len);
+      memcpy(assembled_buffer + assembled_size, frag.data, frag.len);
+      assembled_size += frag.len;
+    }
+
+    // Free fragment data after copying (allocated in LWS callback with buffer_pool_alloc)
+    if (frag.data) {
+      // Use the fragment length that was stored when we allocated it
+      // This must match the size passed to buffer_pool_alloc in the LWS callback
+      buffer_pool_free(NULL, frag.data, frag.len);
+      frag.data = NULL;  // Prevent accidental double-free
+    }
 
     // Try to detect packet boundary using protocol structure
     // ACIP packet header: magic(8) + type(2) + length(4) + crc(4) + client_id(4) = 22 bytes
@@ -705,29 +852,33 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
 
 static asciichat_error_t websocket_close(acip_transport_t *transport) {
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
+  uint64_t now_ns = time_get_ns();
 
   mutex_lock(&ws_data->state_mutex);
 
   if (!ws_data->is_connected) {
     mutex_unlock(&ws_data->state_mutex);
-    log_debug("websocket_close: Already closed (is_connected=false), wsi=%p", (void *)ws_data->wsi);
+    log_info("websocket_close: Already closed (is_connected=false), wsi=%p, timestamp=%llu",
+             (void *)ws_data->wsi, (unsigned long long)now_ns);
     return ASCIICHAT_OK; // Already closed
   }
 
-  log_info("websocket_close: Setting is_connected=false, wsi=%p", (void *)ws_data->wsi);
+  log_fatal("🔴 websocket_close called! Setting is_connected=false, wsi=%p, timestamp=%llu",
+            (void *)ws_data->wsi, (unsigned long long)now_ns);
   ws_data->is_connected = false;
   mutex_unlock(&ws_data->state_mutex);
 
   // Close WebSocket connection
   if (ws_data->wsi) {
-    log_debug("websocket_close: Calling lws_close_reason for wsi=%p", (void *)ws_data->wsi);
+    log_fatal("    [websocket_close] Calling lws_close_reason for wsi=%p", (void *)ws_data->wsi);
     lws_close_reason(ws_data->wsi, LWS_CLOSE_STATUS_NORMAL, NULL, 0);
+    log_fatal("    [websocket_close] lws_close_reason returned");
   }
 
   // Wake any blocking recv() calls
   cond_broadcast(&ws_data->recv_cond);
 
-  log_debug("WebSocket transport closed");
+  log_info("WebSocket transport closed, wsi=%p", (void *)ws_data->wsi);
   return ASCIICHAT_OK;
 }
 
@@ -806,10 +957,11 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
 
     if (ws_data->send_queue) {
       // Drain send queue before destroying to free allocated message data
+      // Use buffer_pool_free to match buffer_pool_alloc used for send messages
       websocket_recv_msg_t msg;
       while (ringbuffer_read(ws_data->send_queue, &msg)) {
         if (msg.data) {
-          SAFE_FREE(msg.data);
+          buffer_pool_free(NULL, msg.data, LWS_PRE + msg.len);
         }
       }
       ringbuffer_destroy(ws_data->send_queue);
@@ -960,7 +1112,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
   }
 
   // Initialize synchronization primitives
-  if (mutex_init(&ws_data->recv_mutex) != 0) {
+  if (mutex_init(&ws_data->recv_mutex, "ws_recv")  != 0) {
     ringbuffer_destroy(ws_data->send_queue);
     ringbuffer_destroy(ws_data->recv_queue);
     SAFE_FREE(ws_data);
@@ -969,7 +1121,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
     return NULL;
   }
 
-  if (cond_init(&ws_data->recv_cond) != 0) {
+  if (cond_init(&ws_data->recv_cond, "recv")  != 0) {
     mutex_destroy(&ws_data->recv_mutex);
     ringbuffer_destroy(ws_data->send_queue);
     ringbuffer_destroy(ws_data->recv_queue);
@@ -979,7 +1131,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
     return NULL;
   }
 
-  if (mutex_init(&ws_data->state_mutex) != 0) {
+  if (mutex_init(&ws_data->state_mutex, "ws_state")  != 0) {
     cond_destroy(&ws_data->recv_cond);
     mutex_destroy(&ws_data->recv_mutex);
     ringbuffer_destroy(ws_data->send_queue);
@@ -990,7 +1142,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
     return NULL;
   }
 
-  if (cond_init(&ws_data->state_cond) != 0) {
+  if (cond_init(&ws_data->state_cond, "state")  != 0) {
     mutex_destroy(&ws_data->state_mutex);
     cond_destroy(&ws_data->recv_cond);
     mutex_destroy(&ws_data->recv_mutex);
@@ -1023,11 +1175,13 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
       {"acip", websocket_callback, 0, 4096, 0, NULL, 0}, {NULL, NULL, 0, 0, 0, NULL, 0} // Terminator
   };
 
-  // Enable permessage-deflate compression on client to match server
-  // Use client_max_window_bits=15 for proper decompression of large fragmented messages
-  static const struct lws_extension client_extensions[] = {
-      {"permessage-deflate", lws_extension_callback_pm_deflate, "permessage-deflate; client_max_window_bits=15"},
-      {NULL, NULL, NULL}};
+  // Disable client compression for now - causes assertion in lws_set_extension_option()
+  // This is a known issue with libwebsockets permessage-deflate negotiation
+  // Server-side compression is still enabled, data will be compressed from server to client
+  // but client->server traffic remains uncompressed (acceptable since client sends less data)
+  // static const struct lws_extension client_extensions[] = {
+  //     {"permessage-deflate", lws_extension_callback_pm_deflate, "permessage-deflate; client_max_window_bits=15"},
+  //     {NULL, NULL, NULL}};
 
   struct lws_context_creation_info info;
   memset(&info, 0, sizeof(info));
@@ -1036,7 +1190,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
   info.gid = (gid_t)-1; // Cast to avoid undefined behavior with unsigned type
   info.uid = (uid_t)-1; // Cast to avoid undefined behavior with unsigned type
   info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
-  info.extensions = client_extensions; // Enable permessage-deflate compression
+  info.extensions = NULL; // Disable client compression due to lws_set_extension_option() assertion
 
   ws_data->context = lws_create_context(&info);
   if (!ws_data->context) {
@@ -1207,8 +1361,21 @@ acip_transport_t *acip_websocket_server_transport_create(struct lws *wsi, crypto
     return NULL;
   }
 
+  // Initialize pending-free queue for deferred buffer freeing
+  // permessage-deflate compression holds buffer references asynchronously,
+  // so we defer freeing to prevent use-after-free errors
+  ws_data->pending_free_queue = ringbuffer_create(sizeof(pending_free_item_t), 256);
+  if (!ws_data->pending_free_queue) {
+    ringbuffer_destroy(ws_data->recv_queue);
+    ringbuffer_destroy(ws_data->send_queue);
+    SAFE_FREE(ws_data);
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_MEMORY, "Failed to create pending-free queue");
+    return NULL;
+  }
+
   // Initialize synchronization primitives
-  if (mutex_init(&ws_data->recv_mutex) != 0) {
+  if (mutex_init(&ws_data->recv_mutex, "ws_recv")  != 0) {
     ringbuffer_destroy(ws_data->recv_queue);
     ringbuffer_destroy(ws_data->send_queue);
     SAFE_FREE(ws_data);
@@ -1217,7 +1384,7 @@ acip_transport_t *acip_websocket_server_transport_create(struct lws *wsi, crypto
     return NULL;
   }
 
-  if (cond_init(&ws_data->recv_cond) != 0) {
+  if (cond_init(&ws_data->recv_cond, "recv")  != 0) {
     mutex_destroy(&ws_data->recv_mutex);
     ringbuffer_destroy(ws_data->recv_queue);
     ringbuffer_destroy(ws_data->send_queue);
@@ -1227,7 +1394,7 @@ acip_transport_t *acip_websocket_server_transport_create(struct lws *wsi, crypto
     return NULL;
   }
 
-  if (mutex_init(&ws_data->send_mutex) != 0) {
+  if (mutex_init(&ws_data->send_mutex, "ws_send")  != 0) {
     cond_destroy(&ws_data->recv_cond);
     mutex_destroy(&ws_data->recv_mutex);
     ringbuffer_destroy(ws_data->recv_queue);
@@ -1238,7 +1405,7 @@ acip_transport_t *acip_websocket_server_transport_create(struct lws *wsi, crypto
     return NULL;
   }
 
-  if (mutex_init(&ws_data->state_mutex) != 0) {
+  if (mutex_init(&ws_data->state_mutex, "ws_state")  != 0) {
     mutex_destroy(&ws_data->send_mutex);
     cond_destroy(&ws_data->recv_cond);
     mutex_destroy(&ws_data->recv_mutex);
@@ -1250,7 +1417,7 @@ acip_transport_t *acip_websocket_server_transport_create(struct lws *wsi, crypto
     return NULL;
   }
 
-  if (cond_init(&ws_data->state_cond) != 0) {
+  if (cond_init(&ws_data->state_cond, "state")  != 0) {
     mutex_destroy(&ws_data->state_mutex);
     mutex_destroy(&ws_data->send_mutex);
     cond_destroy(&ws_data->recv_cond);
@@ -1260,6 +1427,21 @@ acip_transport_t *acip_websocket_server_transport_create(struct lws *wsi, crypto
     SAFE_FREE(ws_data);
     SAFE_FREE(transport);
     SET_ERRNO(ERROR_NETWORK, "Failed to initialize state condition variable");
+    return NULL;
+  }
+
+  if (mutex_init(&ws_data->pending_free_mutex, "ws_pending_free")  != 0) {
+    cond_destroy(&ws_data->state_cond);
+    mutex_destroy(&ws_data->state_mutex);
+    mutex_destroy(&ws_data->send_mutex);
+    cond_destroy(&ws_data->recv_cond);
+    mutex_destroy(&ws_data->recv_mutex);
+    ringbuffer_destroy(ws_data->recv_queue);
+    ringbuffer_destroy(ws_data->send_queue);
+    ringbuffer_destroy(ws_data->pending_free_queue);
+    SAFE_FREE(ws_data);
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_NETWORK, "Failed to initialize pending-free mutex");
     return NULL;
   }
 
@@ -1285,6 +1467,7 @@ acip_transport_t *acip_websocket_server_transport_create(struct lws *wsi, crypto
   ws_data->context = lws_get_context(wsi); // Get context from wsi (not owned)
   ws_data->owns_context = false;           // Server owns context, not transport
   ws_data->is_connected = true;            // Already connected (server-side)
+  log_info("[WEBSOCKET_TRANSPORT_CREATE] ★★★ SERVER TRANSPORT CREATED: is_connected=true, wsi=%p, ws_data=%p", (void *)wsi, (void *)ws_data);
   log_debug("Server transport created: is_connected=true, wsi=%p", (void *)wsi);
 
   // Initialize transport

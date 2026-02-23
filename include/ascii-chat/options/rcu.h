@@ -118,6 +118,65 @@ asciichat_error_t options_state_set(const options_t *opts);
 void options_state_destroy(void);
 
 /**
+ * @brief Get pointer to current options struct (lock-free, thread-safe)
+ *
+ * Returns a pointer to the currently published options struct or a safe static
+ * default if options haven't been initialized yet (before options_state_init())
+ * or after options have been destroyed (options_state_destroy()).
+ *
+ * This function is specifically designed to be safe to call:
+ * - **Before initialization**: Early startup code gets sensible defaults
+ * - **During normal operation**: Lock-free atomic load with no blocking
+ * - **During cleanup**: atexit handlers and shutdown code get fallback defaults
+ * - **After destruction**: Code after options_state_destroy() still works
+ *
+ * ## Return Behavior
+ *
+ * Returns pointer to either:
+ * 1. **Published dynamic options** (after options_state_init() and before options_state_destroy())
+ * 2. **Static fallback defaults** (before init or after destroy)
+ *
+ * The static fallback ensures:
+ * - **Never NULL**: Code never crashes on NULL pointer dereference
+ * - **Sensible defaults**: All OPT_*_DEFAULT constants properly initialized
+ * - **Static lifetime**: Outlives all dynamically allocated options structs
+ * - **No cleanup needed**: Static memory never freed
+ * - **Thread-safe**: Immutable const data, safe to read from any thread
+ *
+ * ## Usage Example
+ *
+ * @code
+ * // Safe before options_state_init()
+ * const options_t *opts = options_get();
+ * printf("Default width: %d\n", opts->width);
+ *
+ * // After initialization
+ * options_state_init();
+ * options_state_set(&parsed_opts);
+ * opts = options_get();  // Returns published struct
+ *
+ * // Safe after options_state_destroy()
+ * options_state_destroy();
+ * opts = options_get();  // Returns static defaults again
+ * // Can still safely call GET_OPTION() in atexit handlers
+ * @endcode
+ *
+ * @return Pointer to options_t struct (guaranteed never NULL)
+ *
+ * @note **Thread-safe**: Lock-free atomic load with acquire semantics
+ * @note **Lock-free**: No mutexes or blocking calls
+ * @note **Fast**: Single atomic instruction (~1-2ns latency)
+ * @note **Fallback support**: Returns static defaults when not initialized or after destroy
+ *
+ * @see options_state_init() - Initializes options, publishes to RCU
+ * @see options_state_destroy() - Clears options, returns fallback to defaults
+ * @see GET_OPTION() - Convenience macro for reading single fields
+ *
+ * @ingroup options
+ */
+const options_t *options_get(void);
+
+/**
  * @brief Clean up schema resources
  *
  * Frees the dynamically allocated options schema array and all associated strings.

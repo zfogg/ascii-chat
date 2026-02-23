@@ -307,7 +307,7 @@
 #include "../platform/filesystem.h"
 #include "../platform/pipe.h"
 #ifndef __cplusplus
-#include "../debug/lock.h"
+#include "../debug/sync.h"
 #endif
 
 // ============================================================================

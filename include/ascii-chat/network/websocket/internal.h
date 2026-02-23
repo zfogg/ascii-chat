@@ -31,6 +31,16 @@ typedef struct {
 typedef websocket_msg_t websocket_recv_msg_t;
 
 /**
+ * @brief Pending buffer free item for deferred cleanup
+ * Used to defer buffer freeing when permessage-deflate compression
+ * may still hold references asynchronously
+ */
+typedef struct {
+  uint8_t *ptr;    ///< Pointer to buffer to free
+  size_t size;     ///< Size of buffer
+} pending_free_item_t;
+
+/**
  * @brief WebSocket transport implementation data
  */
 typedef struct {
@@ -61,6 +71,12 @@ typedef struct {
   uint64_t reassembly_start_ns;      ///< Start time of current reassembly (for timeout detection)
   int fragment_count;                ///< Fragment count for current reassembly
   bool reassembling;                 ///< True if currently assembling a message
+
+  // Deferred buffer freeing for compression layer compatibility
+  // permessage-deflate holds buffer references asynchronously after lws_write()
+  // We defer freeing to prevent use-after-free in the compression layer
+  ringbuffer_t *pending_free_queue;  ///< Queue of buffers pending delayed free
+  mutex_t pending_free_mutex;        ///< Protect pending_free_queue operations
 
 } websocket_transport_data_t;
 

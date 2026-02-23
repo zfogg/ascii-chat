@@ -26,7 +26,11 @@ const registry_entry_t g_logging_entries[] = {
      offsetof(options_t, log_file),
      NULL, // Use mode_default_getter instead
      0,
-     "Set FILE as path for log file (default: /tmp/ascii-chat-<mode>.log or Windows temp dir).",
+#ifndef NDEBUG
+     "Set FILE as path for log file (default: current directory; filenames: server.log, client.log, mirror.log, acds.log, discovery.log).",
+#else
+     "Set FILE as path for log file (default: $TMPDIR/ascii-chat/ or %TEMP%\\ascii-chat\\; filenames: server.log, client.log, mirror.log, acds.log, discovery.log).",
+#endif
      "LOGGING",
      "FILE",
      false,

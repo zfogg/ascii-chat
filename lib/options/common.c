@@ -566,7 +566,7 @@ const char *options_get_type_placeholder(option_type_t type) {
   case OPTION_TYPE_CALLBACK:
     return "VALUE";
   case OPTION_TYPE_BOOL:
-    return "[BOOLEAN]";
+    return "BOOLEAN";
   case OPTION_TYPE_ACTION:
   default:
     return "";
@@ -707,7 +707,6 @@ void usage(FILE *desc, asciichat_mode_t mode) {
   }
 
   options_print_help_for_mode(config, mode, metadata->program_name, metadata->description, desc);
-
   options_config_destroy(config);
 }
 

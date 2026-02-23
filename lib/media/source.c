@@ -182,14 +182,14 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
   source->is_paused = false;
 
   // Initialize mutex for protecting shared decoder access (for YouTube URLs)
-  if (mutex_init(&source->decoder_mutex) != 0) {
+  if (mutex_init(&source->decoder_mutex, "media_decoder") != 0) {
     SET_ERRNO(ERROR_MEMORY, "Failed to initialize mutex");
     SAFE_FREE(source);
     return NULL;
   }
 
   // Initialize mutex for protecting pause state (accessed from keyboard and video threads)
-  if (mutex_init(&source->pause_mutex) != 0) {
+  if (mutex_init(&source->pause_mutex, "media_pause") != 0) {
     SET_ERRNO(ERROR_MEMORY, "Failed to initialize pause mutex");
     mutex_destroy(&source->decoder_mutex);
     SAFE_FREE(source);
@@ -197,7 +197,7 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
   }
 
   // Initialize mutex for protecting decoder access during seeks (prevents race conditions)
-  if (mutex_init(&source->seek_access_mutex) != 0) {
+  if (mutex_init(&source->seek_access_mutex, "media_seek") != 0) {
     SET_ERRNO(ERROR_MEMORY, "Failed to initialize seek access mutex");
     mutex_destroy(&source->decoder_mutex);
     mutex_destroy(&source->pause_mutex);
@@ -221,6 +221,10 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
     if (webcam_error != ASCIICHAT_OK) {
       // Webcam init failed - log and cleanup
       log_error("Failed to initialize webcam device %u (error code: %d)", index, webcam_error);
+      // Destroy mutexes before freeing source
+      mutex_destroy(&source->decoder_mutex);
+      mutex_destroy(&source->pause_mutex);
+      mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
 
       // Explicitly re-set errno to preserve the specific error code for the caller
@@ -240,6 +244,10 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
   case MEDIA_SOURCE_FILE: {
     if (!path || path[0] == '\0') {
       SET_ERRNO(ERROR_INVALID_PARAM, "File path is required for FILE source");
+      // Destroy mutexes before freeing source
+      mutex_destroy(&source->decoder_mutex);
+      mutex_destroy(&source->pause_mutex);
+      mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
     }
@@ -253,6 +261,10 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
     asciichat_error_t resolve_err = media_source_resolve_url(path, yt_dlp_options, resolved_url, sizeof(resolved_url));
     if (resolve_err != ASCIICHAT_OK) {
       log_debug("Failed to resolve URL (error: %d)", resolve_err);
+      // Destroy mutexes before freeing source
+      mutex_destroy(&source->decoder_mutex);
+      mutex_destroy(&source->pause_mutex);
+      mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
     }
@@ -270,6 +282,10 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
     if (!source->file_path) {
       SET_ERRNO(ERROR_MEMORY, "Failed to duplicate file path");
       SAFE_FREE(source->original_youtube_url);
+      // Destroy mutexes before freeing source
+      mutex_destroy(&source->decoder_mutex);
+      mutex_destroy(&source->pause_mutex);
+      mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
     }
@@ -281,6 +297,10 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
       log_error("Failed to open media file for video: %s", effective_path);
       SAFE_FREE(source->file_path);
       SAFE_FREE(source->original_youtube_url);
+      // Destroy mutexes before freeing source
+      mutex_destroy(&source->decoder_mutex);
+      mutex_destroy(&source->pause_mutex);
+      mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
     }
@@ -300,6 +320,10 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
       source->video_decoder = NULL;
       SAFE_FREE(source->file_path);
       SAFE_FREE(source->original_youtube_url);
+      // Destroy mutexes before freeing source
+      mutex_destroy(&source->decoder_mutex);
+      mutex_destroy(&source->pause_mutex);
+      mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
     }
@@ -314,6 +338,10 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
     source->video_decoder = ffmpeg_decoder_create_stdin();
     if (!source->video_decoder) {
       log_error("Failed to open stdin for video input");
+      // Destroy mutexes before freeing source
+      mutex_destroy(&source->decoder_mutex);
+      mutex_destroy(&source->pause_mutex);
+      mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
     }
@@ -330,6 +358,10 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
       log_error("Failed to open stdin for audio input");
       ffmpeg_decoder_destroy(source->video_decoder);
       source->video_decoder = NULL;
+      // Destroy mutexes before freeing source
+      mutex_destroy(&source->decoder_mutex);
+      mutex_destroy(&source->pause_mutex);
+      mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
     }
@@ -350,6 +382,10 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
 
   default:
     SET_ERRNO(ERROR_INVALID_PARAM, "Unknown media source type: %d", type);
+    // Destroy mutexes before freeing source
+    mutex_destroy(&source->decoder_mutex);
+    mutex_destroy(&source->pause_mutex);
+    mutex_destroy(&source->seek_access_mutex);
     SAFE_FREE(source);
     return NULL;
   }
@@ -796,13 +832,14 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
     asciichat_error_t video_err = ffmpeg_decoder_seek_to_timestamp(source->video_decoder, timestamp_sec);
     double video_pos_after = ffmpeg_decoder_get_position(source->video_decoder);
     uint64_t video_seek_ns = time_elapsed_ns(seek_start_ns, time_get_ns());
+    char video_seek_str[32];
+    time_pretty(video_seek_ns, -1, video_seek_str, sizeof(video_seek_str));
     if (video_err != ASCIICHAT_OK) {
-      log_warn("Video seek to %.2f failed: error code %d (took %.1fms)", timestamp_sec, video_err,
-               (double)video_seek_ns / NS_PER_MS);
+      log_warn("Video seek to %.2f failed: error code %d (took %s)", timestamp_sec, video_err, video_seek_str);
       result = video_err;
     } else {
-      log_info("Video SEEK: %.2f → %.2f sec (target %.2f, took %.1fms)", video_pos_before, video_pos_after,
-               timestamp_sec, (double)video_seek_ns / NS_PER_MS);
+      log_info("Video SEEK: %.2f → %.2f sec (target %.2f, took %s)", video_pos_before, video_pos_after,
+               timestamp_sec, video_seek_str);
     }
   }
 
@@ -816,13 +853,14 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
     double audio_pos_after = ffmpeg_decoder_get_position(source->audio_decoder);
     uint64_t audio_seek_ns = time_elapsed_ns(audio_seek_start_ns, time_get_ns());
     log_info("Audio position after seek: %.2f", audio_pos_after);
+    char audio_seek_str[32];
+    time_pretty(audio_seek_ns, -1, audio_seek_str, sizeof(audio_seek_str));
     if (audio_err != ASCIICHAT_OK) {
-      log_warn("Audio seek to %.2f failed: error code %d (took %.1fms)", timestamp_sec, audio_err,
-               (double)audio_seek_ns / NS_PER_MS);
+      log_warn("Audio seek to %.2f failed: error code %d (took %s)", timestamp_sec, audio_err, audio_seek_str);
       result = audio_err;
     } else {
-      log_info("Audio SEEK COMPLETE: %.2f → %.2f sec (target %.2f, took %.1fms)", audio_pos_before, audio_pos_after,
-               timestamp_sec, (double)audio_seek_ns / NS_PER_MS);
+      log_info("Audio SEEK COMPLETE: %.2f → %.2f sec (target %.2f, took %s)", audio_pos_before, audio_pos_after,
+               timestamp_sec, audio_seek_str);
     }
   }
 

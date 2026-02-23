@@ -10,7 +10,7 @@
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/uthash/uthash.h>
+#include <ascii-chat/uthash.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -245,7 +245,7 @@ void *memory_backend_create(void) {
 
   memset(backend, 0, sizeof(*backend));
 
-  if (mutex_init(&backend->lock) != 0) {
+  if (mutex_init(&backend->lock, "rate_limiter")  != 0) {
     log_error("Failed to initialize mutex");
     SAFE_FREE(backend);
     return NULL;

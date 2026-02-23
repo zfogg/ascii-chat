@@ -5,6 +5,9 @@ set(PLATFORM_SRCS_COMMON
     ${CMAKE_CURRENT_SOURCE_DIR}/socket.c
     ${CMAKE_CURRENT_SOURCE_DIR}/thread.c
     ${CMAKE_CURRENT_SOURCE_DIR}/filesystem.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/mutex.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/rwlock.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/cond.c
 )
 
 if(WIN32)

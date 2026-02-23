@@ -8,15 +8,18 @@
 
 #include <ascii-chat/platform/api.h>
 #include <ascii-chat/platform/windows_compat.h>
+#include <ascii-chat/debug/named.h>
 #include <ascii-chat/asciichat_errno.h>
 
 /**
- * @brief Initialize a mutex
+ * @brief Initialize a mutex with a name
  * @param mutex Pointer to mutex structure to initialize
+ * @param name Human-readable name for debugging
  * @return 0 on success, error code on failure
  */
-int mutex_init(mutex_t *mutex) {
-  InitializeCriticalSectionAndSpinCount(mutex, 4000);
+int mutex_init(mutex_t *mutex, const char *name) {
+  InitializeCriticalSectionAndSpinCount(&mutex->impl, 4000);
+  mutex->name = NAMED_REGISTER(mutex, name, "mutex");
   return 0;
 }
 
@@ -26,7 +29,8 @@ int mutex_init(mutex_t *mutex) {
  * @return 0 on success, error code on failure
  */
 int mutex_destroy(mutex_t *mutex) {
-  DeleteCriticalSection(mutex);
+  NAMED_UNREGISTER(mutex);
+  DeleteCriticalSection(&mutex->impl);
   return 0;
 }
 
@@ -36,7 +40,8 @@ int mutex_destroy(mutex_t *mutex) {
  * @return 0 on success, error code on failure
  */
 int mutex_lock_impl(mutex_t *mutex) {
-  EnterCriticalSection(mutex);
+  EnterCriticalSection(&mutex->impl);
+  mutex_on_lock(mutex);
   return 0;
 }
 
@@ -46,7 +51,7 @@ int mutex_lock_impl(mutex_t *mutex) {
  * @return 0 on success, EBUSY if already locked, other error code on failure
  */
 int mutex_trylock_impl(mutex_t *mutex) {
-  return TryEnterCriticalSection(mutex) ? 0 : 16; // EBUSY = 16
+  return TryEnterCriticalSection(&mutex->impl) ? 0 : 16; // EBUSY = 16
 }
 
 /**
@@ -55,7 +60,8 @@ int mutex_trylock_impl(mutex_t *mutex) {
  * @return 0 on success, error code on failure
  */
 int mutex_unlock_impl(mutex_t *mutex) {
-  LeaveCriticalSection(mutex);
+  mutex_on_unlock(mutex);
+  LeaveCriticalSection(&mutex->impl);
   return 0;
 }
 

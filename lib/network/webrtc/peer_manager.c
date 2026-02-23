@@ -17,7 +17,7 @@
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/util/endian.h>
-#include <ascii-chat/uthash/uthash.h>
+#include <ascii-chat/uthash.h>
 #include <string.h>
 
 /**
@@ -342,7 +342,7 @@ asciichat_error_t webrtc_peer_manager_create(const webrtc_peer_manager_config_t 
   manager->role = config->role;
   manager->peers = NULL;
 
-  if (mutex_init(&manager->peers_mutex) != 0) {
+  if (mutex_init(&manager->peers_mutex, "peers")  != 0) {
     SAFE_FREE(manager);
     return SET_ERRNO(ERROR_INTERNAL, "Failed to initialize peers mutex");
   }

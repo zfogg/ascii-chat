@@ -121,7 +121,7 @@ static void full_terminal_reset_internal(bool snapshot_mode) {
   (void)terminal_cursor_home(STDOUT_FILENO);
   (void)terminal_clear_scrollback(STDOUT_FILENO); // Clear history to avoid old logs visible above ASCII
   if (!snapshot_mode) {
-    (void)terminal_hide_cursor(STDOUT_FILENO, true);
+    (void)terminal_cursor_hide();
   }
   (void)terminal_flush(STDOUT_FILENO);
 }
@@ -263,12 +263,8 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   if (strlen(render_file_opt) > 0 && strcmp(render_file_opt, "-") != 0) {
     int width = GET_OPTION(width);
     int height = GET_OPTION(height);
-    asciichat_error_t rf_err = render_file_create(
-        render_file_opt,
-        width, height,
-        GET_OPTION(fps),
-        GET_OPTION(render_theme),
-        &ctx->render_file);
+    asciichat_error_t rf_err = render_file_create(render_file_opt, width, height, GET_OPTION(fps),
+                                                  GET_OPTION(render_theme), &ctx->render_file);
     if (rf_err != ASCIICHAT_OK)
       log_warn("render-file: init failed — file output disabled");
     else
@@ -329,7 +325,7 @@ void session_display_set_stdin_reader(session_display_ctx_t *ctx, void *reader) 
   ctx->stdin_reader = (stdin_frame_reader_t *)reader;
   log_debug("session_display: stdin_reader set");
 #else
-  (void)reader;  // Unused on Windows
+  (void)reader; // Unused on Windows
 #endif
 }
 
@@ -439,8 +435,34 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
 
   color_filter_t color_filter = GET_OPTION(color_filter);
 
+  // Handle dynamic matrix rain effect toggle
+  bool matrix_rain_enabled = GET_OPTION(matrix_rain);
+  if (matrix_rain_enabled && !ctx->digital_rain) {
+    // Initialize digital rain if it's now enabled but wasn't before
+    unsigned short int width_us = GET_OPTION(width);
+    unsigned short int height_us = GET_OPTION(height);
+    if (width_us == 0 || height_us == 0) {
+      (void)get_terminal_size(&width_us, &height_us);
+    }
+    int width_for_rain = (int)width_us;
+    int height_for_rain = (int)height_us;
+    ctx->digital_rain = digital_rain_init(width_for_rain, height_for_rain);
+    if (ctx->digital_rain) {
+      digital_rain_set_color_from_filter(ctx->digital_rain, color_filter);
+      log_info("Matrix rain effect: enabled");
+    }
+  } else if (!matrix_rain_enabled && ctx->digital_rain) {
+    // Disable digital rain if it's now disabled but was enabled before
+    digital_rain_destroy(ctx->digital_rain);
+    ctx->digital_rain = NULL;
+    log_info("Matrix rain effect: disabled");
+  }
+
   // Make a mutable copy of terminal capabilities for ascii_convert_with_capabilities
   terminal_capabilities_t caps_copy = ctx->caps;
+
+  // Re-evaluate render_mode on every frame to pick up live changes
+  caps_copy.render_mode = (render_mode_t)GET_OPTION(render_mode);
 
   // MEASURE EVERY OPERATION - Debug systematic timing
   uint64_t t_flip_start = time_get_ns();
@@ -507,14 +529,32 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
   uint64_t t_flip_end = time_get_ns();
 
   uint64_t t_filter_start = time_get_ns();
-  // No pixel-based filtering for rainbow (ANSI replacement happens later)
+
+  // Apply color filter to RGB pixels before ASCII conversion
+  // Rainbow filter is handled separately via ANSI color replacement
+  image_t *filtered_image = NULL;
+  if (color_filter != COLOR_FILTER_NONE && color_filter != COLOR_FILTER_RAINBOW) {
+    // Create a copy to avoid modifying the original
+    filtered_image = image_new((size_t)display_image->w, (size_t)display_image->h);
+    if (filtered_image) {
+      memcpy(filtered_image->pixels, display_image->pixels,
+             (size_t)display_image->w * (size_t)display_image->h * sizeof(rgb_pixel_t));
+
+      // Apply filter to the copy
+      int stride = (int)display_image->w * 3;
+      float time_seconds = (float)t_filter_start / (float)NS_PER_SEC_INT;
+      apply_color_filter((uint8_t *)filtered_image->pixels, (uint32_t)display_image->w,
+                         (uint32_t)display_image->h, (uint32_t)stride, color_filter, time_seconds);
+    }
+  }
+
+  const image_t *ascii_input_image = filtered_image ? filtered_image : display_image;
   uint64_t t_filter_end = time_get_ns();
 
   uint64_t t_convert_start = time_get_ns();
-  // Call the standard ASCII conversion using the display image (unfiltered)
-  // This ensures character selection is based on original image brightness
+  // Call the standard ASCII conversion using the filtered (or original) image
   START_TIMER("ascii_convert_with_capabilities");
-  char *result = ascii_convert_with_capabilities(display_image, width, height, &caps_copy, preserve_aspect_ratio,
+  char *result = ascii_convert_with_capabilities(ascii_input_image, width, height, &caps_copy, preserve_aspect_ratio,
                                                  stretch, ctx->palette_chars);
   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "ascii_convert_with_capabilities",
                            "ASCII_CONVERT: Conversion complete (%.2f ms)");
@@ -533,7 +573,9 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
     }
 
     uint64_t t_color_replace_end = time_get_ns();
-    log_dev("COLOR_REPLACE: %.2f ms", (double)(t_color_replace_end - t_color_replace_start) / (double)NS_PER_MS_INT);
+    char color_replace_str[32];
+    time_pretty(t_color_replace_end - t_color_replace_start, -1, color_replace_str, sizeof(color_replace_str));
+    log_dev("COLOR_REPLACE: %s", color_replace_str);
   }
 
   // Apply digital rain effect if enabled
@@ -543,6 +585,10 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
     float delta_time = (float)(current_time_ns - ctx->last_frame_time_ns) / (float)NS_PER_SEC_INT;
     ctx->last_frame_time_ns = current_time_ns;
 
+    // Update digital rain color from current filter (allows live filter changes)
+    color_filter_t current_filter = GET_OPTION(color_filter);
+    digital_rain_set_color_from_filter(ctx->digital_rain, current_filter);
+
     char *rain_result = digital_rain_apply(ctx->digital_rain, result, delta_time);
     if (rain_result) {
       SAFE_FREE(result);
@@ -550,12 +596,17 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
     }
 
     uint64_t t_rain_end = time_get_ns();
-    log_dev("DIGITAL_RAIN: Effect applied (%.2f ms)", (double)(t_rain_end - t_rain_start) / (double)NS_PER_MS_INT);
+    char rain_str[32];
+    time_pretty(t_rain_end - t_rain_start, -1, rain_str, sizeof(rain_str));
+    log_dev("DIGITAL_RAIN: Effect applied (%s)", rain_str);
   }
 
   uint64_t t_cleanup_start = time_get_ns();
-  // Clean up flipped image if created
+  // Clean up flipped and filtered images if created
   START_TIMER("ascii_convert_cleanup");
+  if (filtered_image) {
+    image_destroy(filtered_image);
+  }
   if (flipped_image) {
     image_destroy(flipped_image);
   }
@@ -579,8 +630,8 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
 void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_data) {
   static int call_count = 0;
   if (call_count++ < 5) {
-    log_info("session_display_render_frame: CALLED - ctx=%p render_file=%p frame_len=%zu",
-        (void*)ctx, (void*)(ctx ? ctx->render_file : NULL), frame_data ? strlen(frame_data) : 0);
+    log_info("session_display_render_frame: CALLED - ctx=%p render_file=%p frame_len=%zu", (void *)ctx,
+             (void *)(ctx ? ctx->render_file : NULL), frame_data ? strlen(frame_data) : 0);
   }
 
   if (!ctx || !ctx->initialized) {
@@ -591,6 +642,12 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
   if (!frame_data) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Frame data is NULL");
     return;
+  }
+
+  // Re-evaluate color_level on every frame to pick up live color_mode changes
+  terminal_color_mode_t color_mode = (terminal_color_mode_t)GET_OPTION(color_mode);
+  if (color_mode != TERM_COLOR_AUTO) {
+    ctx->caps.color_level = color_mode;
   }
 
   // Suppress frame rendering when help screen is active
@@ -746,8 +803,7 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
   if (ctx->render_file) {
     asciichat_error_t fe = render_file_write_frame(ctx->render_file, frame_data);
     if (fe != ASCIICHAT_OK)
-      log_warn_every(5 * NS_PER_SEC_INT, "render-file: encode failed (%s)",
-                    asciichat_error_string(fe));
+      log_warn_every(5 * NS_PER_SEC_INT, "render-file: encode failed (%s)", asciichat_error_string(fe));
   }
 #endif
 
@@ -789,7 +845,7 @@ void session_display_reset(session_display_ctx_t *ctx) {
   // Only perform terminal operations if we have a valid TTY
   if (ctx->has_tty && ctx->tty_info.fd >= 0) {
     (void)terminal_reset(ctx->tty_info.fd);
-    (void)terminal_hide_cursor(ctx->tty_info.fd, false); // Show cursor
+    (void)terminal_cursor_show();
     (void)terminal_flush(ctx->tty_info.fd);
   }
 }
@@ -821,18 +877,6 @@ void session_display_cursor_home(session_display_ctx_t *ctx) {
   int fd = ctx->has_tty ? ctx->tty_info.fd : STDOUT_FILENO;
   if (fd >= 0) {
     (void)terminal_cursor_home(fd);
-  }
-}
-
-void session_display_set_cursor_visible(session_display_ctx_t *ctx, bool visible) {
-  if (!ctx || !ctx->initialized) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Session display context is NULL or uninitialized");
-    return;
-  }
-
-  // Only perform terminal operations when we have a valid TTY (not when piping)
-  if (ctx->has_tty && ctx->tty_info.fd >= 0) {
-    (void)terminal_hide_cursor(ctx->tty_info.fd, !visible);
   }
 }
 
@@ -908,6 +952,10 @@ void session_display_toggle_help(session_display_ctx_t *ctx) {
     return;
   }
 
+  if (!terminal_is_interactive() || GET_OPTION(snapshot_mode)) {
+    return;
+  }
+
   bool current = atomic_load(&ctx->help_screen_active);
   atomic_store(&ctx->help_screen_active, !current);
 }
@@ -918,6 +966,10 @@ void session_display_toggle_help(session_display_ctx_t *ctx) {
 bool session_display_is_help_active(session_display_ctx_t *ctx) {
   if (!ctx) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Session display context is NULL");
+    return false;
+  }
+
+  if (!terminal_is_interactive() || GET_OPTION(snapshot_mode)) {
     return false;
   }
 

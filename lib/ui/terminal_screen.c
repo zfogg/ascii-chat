@@ -99,6 +99,9 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     return;
   }
 
+  // Ensure cursor is visible for log-only UI (splash, status screens)
+  (void)terminal_cursor_show();
+
   // Update terminal size (cached with 1-second refresh interval)
   uint64_t now_us = platform_get_monotonic_time_us();
   if (now_us - g_last_term_size_check_us >= TERM_SIZE_CHECK_INTERVAL_US) {

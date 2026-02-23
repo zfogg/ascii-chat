@@ -11,6 +11,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>       // For START_TIMER/STOP_TIMER macros
+#include <ascii-chat/util/lifecycle.h>  // For lifecycle_t
 #include <ascii-chat/asciichat_errno.h> // For asciichat_errno system
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/options/options.h>
@@ -32,32 +33,34 @@
 #include <fcntl.h>  // For O_WRONLY
 #endif
 
-// PortAudio initialization reference counter
-// Tracks how many audio contexts are using PortAudio to avoid conflicts
-static unsigned int g_pa_init_refcount = 0;
-static static_mutex_t g_pa_refcount_mutex = STATIC_MUTEX_INIT;
+// PortAudio initialization lifecycle (one-time init/shutdown, no refcounting)
+// Uses lifecycle_t for thread-safe, lock-free initialization tracking
+static lifecycle_t g_pa_lc = LIFECYCLE_INIT;
 
-// Track how many times Pa_Initialize and Pa_Terminate are called
+// Track how many times Pa_Initialize and Pa_Terminate are called (for debugging)
 static int g_pa_init_count = 0;
 static int g_pa_terminate_count = 0;
 
 /**
- * @brief Ensure PortAudio is initialized with reference counting
+ * @brief Ensure PortAudio is initialized
  *
  * This is the single centralized function that initializes PortAudio.
  * All code paths (audio_init, device enumeration) call this to prevent
  * multiple independent Pa_Initialize() calls and duplicate ALSA/PulseAudio probing.
  *
+ * Uses lifecycle_t for thread-safe, lock-free initialization tracking.
+ *
  * @return ASCIICHAT_OK on success, error code on failure
  */
 static asciichat_error_t audio_ensure_portaudio_initialized(void) {
-  static_mutex_lock(&g_pa_refcount_mutex);
-
-  // If already initialized, just increment refcount
-  if (g_pa_init_refcount > 0) {
-    g_pa_init_refcount++;
-    static_mutex_unlock(&g_pa_refcount_mutex);
+  // Check if already initialized
+  if (lifecycle_is_initialized(&g_pa_lc)) {
     return ASCIICHAT_OK;
+  }
+
+  // Try to win the initialization race
+  if (!lifecycle_init(&g_pa_lc, "portaudio")) {
+    return ASCIICHAT_OK; // Already initialized by another thread
   }
 
   // First initialization - call Pa_Initialize() exactly once
@@ -74,35 +77,22 @@ static asciichat_error_t audio_ensure_portaudio_initialized(void) {
   platform_stdout_stderr_restore(stdio_handle);
 
   if (err != paNoError) {
-    static_mutex_unlock(&g_pa_refcount_mutex);
     return SET_ERRNO(ERROR_AUDIO, "Failed to initialize PortAudio: %s", Pa_GetErrorText(err));
   }
-
-  g_pa_init_refcount = 1;
-  static_mutex_unlock(&g_pa_refcount_mutex);
 
   return ASCIICHAT_OK;
 }
 
 /**
- * @brief Release PortAudio reference count
+ * @brief Release PortAudio (no-op with lifecycle_t)
  *
- * Counterpart to audio_ensure_portaudio_initialized().
- * Decrements refcount. Note: Pa_Terminate() is NOT called here,
- * use audio_terminate_portaudio_final() when you want to actually
- * terminate PortAudio and free device resources.
+ * With the lifecycle_t pattern (no refcounting), this is a no-op.
+ * PortAudio remains initialized for the lifetime of the process.
+ * Use audio_terminate_portaudio_final() to actually terminate PortAudio.
  */
 static void audio_release_portaudio(void) {
-  static_mutex_lock(&g_pa_refcount_mutex);
-
-  if (g_pa_init_refcount > 0) {
-    g_pa_init_refcount--;
-    log_debug("PortAudio refcount decremented to %u", g_pa_init_refcount);
-  } else {
-    log_warn("audio_release_portaudio() called but refcount is already 0");
-  }
-
-  static_mutex_unlock(&g_pa_refcount_mutex);
+  // No-op with lifecycle_t (no refcounting)
+  log_debug_every(1000, "audio_release_portaudio() called (lifecycle managed)");
 }
 
 /**
@@ -112,9 +102,7 @@ static void audio_release_portaudio(void) {
  * It should be called AFTER all audio contexts are destroyed and session cleanup is complete.
  */
 void audio_terminate_portaudio_final(void) {
-  static_mutex_lock(&g_pa_refcount_mutex);
-
-  if (g_pa_init_refcount == 0 && g_pa_init_count > 0 && g_pa_terminate_count == 0) {
+  if (lifecycle_shutdown(&g_pa_lc)) {
     log_debug("[PORTAUDIO_TERM] Calling Pa_Terminate() to release PortAudio");
 
     PaError err = Pa_Terminate();
@@ -122,8 +110,6 @@ void audio_terminate_portaudio_final(void) {
 
     log_debug("[PORTAUDIO_TERM] Pa_Terminate() returned: %s", Pa_GetErrorText(err));
   }
-
-  static_mutex_unlock(&g_pa_refcount_mutex);
 }
 
 // Worker thread batch size (in frames, not samples)
@@ -237,14 +223,14 @@ static void *audio_worker_thread(void *arg) {
       char avg_wait_str[32], max_wait_str[32];
       char avg_capture_str[32], max_capture_str[32];
       char avg_playback_str[32], max_playback_str[32];
-      format_duration_ns(total_wait_ns / loop_count, avg_wait_str, sizeof(avg_wait_str));
-      format_duration_ns(max_wait_ns, max_wait_str, sizeof(max_wait_str));
-      format_duration_ns(total_capture_ns / (process_count > 0 ? process_count : 1), avg_capture_str,
+      time_pretty((uint64_t)(total_wait_ns / loop_count), -1, avg_wait_str, sizeof(avg_wait_str));
+      time_pretty(max_wait_ns, -1, max_wait_str, sizeof(max_wait_str));
+      time_pretty((uint64_t)(total_capture_ns / (process_count > 0 ? process_count : 1)), -1, avg_capture_str,
                          sizeof(avg_capture_str));
-      format_duration_ns(max_capture_ns, max_capture_str, sizeof(max_capture_str));
-      format_duration_ns(total_playback_ns / (process_count > 0 ? process_count : 1), avg_playback_str,
+      time_pretty(max_capture_ns, -1, max_capture_str, sizeof(max_capture_str));
+      time_pretty((uint64_t)(total_playback_ns / (process_count > 0 ? process_count : 1)), -1, avg_playback_str,
                          sizeof(avg_playback_str));
-      format_duration_ns(max_playback_ns, max_playback_str, sizeof(max_playback_str));
+      time_pretty(max_playback_ns, -1, max_playback_str, sizeof(max_playback_str));
 
       log_info("Worker stats: loops=%lu, signals=%lu, timeouts=%lu, processed=%lu", loop_count, signal_count,
                timeout_count, process_count);
@@ -303,8 +289,12 @@ static void *audio_worker_thread(void *arg) {
 
             if (aec3_count % 100 == 0) {
               long avg_ns = aec3_total_ns / aec3_count;
-              log_info("AEC3 performance: avg=%.2fms, max=%.2fms, latest=%.2fms (samples=%zu, %d calls)",
-                       avg_ns / NS_PER_MS, aec3_max_ns / NS_PER_MS, aec3_ns / NS_PER_MS, capture_read, aec3_count);
+              char avg_str[32], max_str[32], latest_str[32];
+              time_pretty((uint64_t)avg_ns, -1, avg_str, sizeof(avg_str));
+              time_pretty((uint64_t)aec3_max_ns, -1, max_str, sizeof(max_str));
+              time_pretty((uint64_t)aec3_ns, -1, latest_str, sizeof(latest_str));
+              log_info("AEC3 performance: avg=%s, max=%s, latest=%s (samples=%zu, %d calls)",
+                       avg_str, max_str, latest_str, capture_read, aec3_count);
             }
           }
         }
@@ -356,8 +346,8 @@ static void *audio_worker_thread(void *arg) {
 
     if (loop_count % 100 == 0) {
       char avg_loop_str[32], max_loop_str[32];
-      format_duration_ns(total_loop_ns / loop_count, avg_loop_str, sizeof(avg_loop_str));
-      format_duration_ns(max_loop_ns, max_loop_str, sizeof(max_loop_str));
+      time_pretty((uint64_t)(total_loop_ns / loop_count), -1, avg_loop_str, sizeof(avg_loop_str));
+      time_pretty(max_loop_ns, -1, max_loop_str, sizeof(max_loop_str));
       log_info("Worker loop timing: avg=%s max=%s", avg_loop_str, max_loop_str);
     }
   }
@@ -543,8 +533,8 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
 
   if (callback_count % 500 == 0) { // Log every ~10 seconds @ 48 FPS
     char avg_str[32], max_str[32];
-    format_duration_ns(total_callback_ns / callback_count, avg_str, sizeof(avg_str));
-    format_duration_ns(max_callback_ns, max_str, sizeof(max_str));
+    time_pretty((uint64_t)(total_callback_ns / callback_count), -1, avg_str, sizeof(avg_str));
+    time_pretty(max_callback_ns, -1, max_str, sizeof(max_str));
     log_info("Duplex callback timing: count=%lu, avg=%s, max=%s (budget: 2ms)", callback_count, avg_str, max_str);
     log_info("Playback stats: total_samples_read=%lu, underruns=%lu, read_success_rate=%.1f%%",
              total_samples_read_local, underrun_count_local,
@@ -814,7 +804,7 @@ static audio_ring_buffer_t *audio_ring_buffer_create_internal(bool jitter_buffer
   rb->underrun_count = 0;
   rb->jitter_buffer_enabled = jitter_buffer_enabled;
 
-  if (mutex_init(&rb->mutex) != 0) {
+  if (mutex_init(&rb->mutex, "audio_ring_buffer") != 0) {
     SET_ERRNO(ERROR_THREAD, "Failed to initialize audio ring buffer mutex");
     buffer_pool_free(NULL, rb, sizeof(audio_ring_buffer_t));
     return NULL;
@@ -1137,7 +1127,7 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
 
   SAFE_MEMSET(ctx, sizeof(audio_context_t), 0, sizeof(audio_context_t));
 
-  if (mutex_init(&ctx->state_mutex) != 0) {
+  if (mutex_init(&ctx->state_mutex, "audio_context") != 0) {
     return SET_ERRNO(ERROR_THREAD, "Failed to initialize audio context mutex");
   }
 
@@ -1188,7 +1178,7 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
   }
 
   // Initialize worker thread infrastructure
-  if (mutex_init(&ctx->worker_mutex) != 0) {
+  if (mutex_init(&ctx->worker_mutex, "audio_worker") != 0) {
     audio_ring_buffer_destroy(ctx->processed_playback_rb);
     audio_ring_buffer_destroy(ctx->raw_render_rb);
     audio_ring_buffer_destroy(ctx->raw_capture_rb);
@@ -1199,7 +1189,7 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
     return SET_ERRNO(ERROR_THREAD, "Failed to initialize worker mutex");
   }
 
-  if (cond_init(&ctx->worker_cond) != 0) {
+  if (cond_init(&ctx->worker_cond, "audio_worker") != 0) {
     mutex_destroy(&ctx->worker_mutex);
     audio_ring_buffer_destroy(ctx->processed_playback_rb);
     audio_ring_buffer_destroy(ctx->raw_render_rb);

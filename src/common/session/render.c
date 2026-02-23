@@ -24,6 +24,7 @@
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/asciichat_errno.h>
 
@@ -81,8 +82,15 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   bool first_frame_rendered = false;
   bool snapshot_mode = GET_OPTION(snapshot_mode);
 
-  log_info("session_render_loop: STARTING - display=%p capture=%p capture_cb=%p snapshot_mode=%s",
-           (void*)display, (void*)capture, (void*)capture_cb, snapshot_mode ? "YES" : "NO");
+  // Help screen state tracking for clear-screen transition
+  bool help_was_active = false;
+
+  // Terminal resize tracking (for auto_width/auto_height mode)
+  unsigned short int last_terminal_width = (unsigned short int)GET_OPTION(width);
+  unsigned short int last_terminal_height = (unsigned short int)GET_OPTION(height);
+
+  log_info("session_render_loop: STARTING - display=%p capture=%p capture_cb=%p snapshot_mode=%s", (void *)display,
+           (void *)capture, (void *)capture_cb, snapshot_mode ? "YES" : "NO");
 
   // Pause mode state tracking
   bool initial_paused_frame_rendered = false;
@@ -120,8 +128,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   // This must be done BEFORE the render loop to avoid repeated lock/unlock cycles that could cause deadlocks
   log_set_terminal_output(false);
 
-  // Main render loop - works for both synchronous and event-driven modes
-  log_info("session_render_loop: entering main loop - is_synchronous=%s", is_synchronous ? "YES" : "NO");
+  // Main render loop
   log_debug("session_render_loop: entering main loop");
   while (!should_exit(user_data)) {
     log_debug_every(US_PER_SEC_INT, "session_render_loop: frame %lu", frame_count);
@@ -146,25 +153,26 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         char *ascii_frame = NULL;
         asciichat_error_t stdin_err = stdin_frame_reader_next(stdin_reader, &ascii_frame);
         if (stdin_err != ASCIICHAT_OK) {
-          log_error("Failed to read stdin frame: %s", asciichat_error_string(stdin_err));
+          log_error_every(200 * MS_PER_SEC_INT, "Failed to read stdin frame: %s", asciichat_error_string(stdin_err));
           break; // Exit render loop on error
         }
 
         if (!ascii_frame) {
           // EOF reached - exit render loop
-          log_info("stdin_render_mode: EOF reached, exiting render loop");
+          log_info_every(200 * MS_PER_SEC_INT, "stdin_render_mode: EOF reached, exiting render loop");
           break;
         }
 
         frame_count++;
-        log_debug_every(US_PER_SEC_INT, "RENDER[%lu]: Read ASCII frame from stdin (%zu bytes)", frame_count, strlen(ascii_frame));
+        log_debug_every(1 * NS_PER_SEC_INT, "RENDER[%lu]: Read ASCII frame from stdin (%zu bytes)", frame_count,
+                        strlen(ascii_frame));
 
         // In stdin render mode, check if rendering to stdout or to file
         const char *render_file_opt = GET_OPTION(render_file);
         if (render_file_opt && strcmp(render_file_opt, "-") == 0) {
           // Render to stdout: write raw ASCII frame directly
-          (void)platform_write_all(STDOUT_FILENO, ascii_frame, strlen(ascii_frame));
-          (void)platform_write_all(STDOUT_FILENO, "\n", 1);
+          platform_write_all(STDOUT_FILENO, ascii_frame, strlen(ascii_frame));
+          platform_write_all(STDOUT_FILENO, "\n", 1);
         } else {
           // Render to file: use display rendering (will use render_file if configured)
           session_display_render_frame(display, ascii_frame);
@@ -206,13 +214,13 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       // Detect pause transition - mark initial frame as rendered so polling starts
       if (!was_paused && is_paused) {
         initial_paused_frame_rendered = true;
-        log_debug("Media paused, enabling keyboard polling");
+        log_debug_every(1 * NS_PER_SEC_INT, "Media paused, enabling keyboard polling");
       }
 
       // Detect unpause transition to reset flag
       if (was_paused && !is_paused) {
         initial_paused_frame_rendered = false;
-        log_debug("Media unpaused, resuming frame capture");
+        log_debug_every(1 * NS_PER_SEC_INT, "Media unpaused, resuming frame capture");
       }
       was_paused = is_paused;
 
@@ -252,13 +260,13 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
         log_debug_every(3 * US_PER_SEC_INT, "RENDER[%lu]: Starting frame read", frame_count);
         image = session_capture_read_frame(capture);
-        log_info("RENDER[%lu]: Frame read done, image=%p", frame_count, (void *)image);
+        log_info_every(1 * NS_PER_SEC_INT, "RENDER[%lu]: Frame read done, image=%p", frame_count, (void *)image);
         capture_elapsed_ns = time_elapsed_ns(capture_start_ns, time_get_ns());
 
         if (!image) {
           // Check if we've reached end of file for media sources
           if (session_capture_at_end(capture)) {
-            log_info("Media source reached end of file");
+            log_info_every(1 * NS_PER_SEC_INT, "Media source reached end of file");
             break; // Exit render loop - end of media
           }
 
@@ -295,9 +303,14 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         break; // Exit retry loop
       } while (true);
 
-      // If we still don't have an image after retries, skip this frame and continue
+      // If we still don't have an image after retries, check if we've reached end of file
       // (This happens during network latency or when prefetch thread is catching up)
       if (!image) {
+        // Exit main render loop if we've reached end of media file
+        if (session_capture_at_end(capture)) {
+          log_debug("[SHUTDOWN] Media EOF detected, exiting render loop");
+          break;
+        }
         continue;
       }
 
@@ -308,8 +321,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
       // Log capture time every 30 frames
       if (frame_count % 30 == 0) {
-        double capture_ms = (double)capture_elapsed_ns / NS_PER_MS;
-        log_dev_every(5 * US_PER_SEC_INT, "PROFILE[%lu]: CAPTURE=%.2f ms", frame_count, capture_ms);
+        char capture_str[32];
+        time_pretty(capture_elapsed_ns, -1, capture_str, sizeof(capture_str));
+        log_dev_every(5 * US_PER_SEC_INT, "PROFILE[%lu]: CAPTURE=%s", frame_count, capture_str);
       }
 
       // Pause after first frame if requested via --pause flag
@@ -318,7 +332,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         media_source_pause(source);
         is_paused = true;
         // Note: initial_paused_frame_rendered will be set in next iteration when pause is detected above
-        log_debug("Paused media source after first frame");
+        log_debug_every(1 * NS_PER_SEC_INT, "Paused media source after first frame");
       }
 
     } else {
@@ -333,6 +347,36 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       }
     }
 
+    // Check for terminal resize (if auto_width or auto_height is enabled)
+    // This allows the render to adapt immediately when the user resizes the terminal
+    bool auto_width = GET_OPTION(auto_width);
+    bool auto_height = GET_OPTION(auto_height);
+    if (auto_width || auto_height) {
+      unsigned short int current_width = 0;
+      unsigned short int current_height = 0;
+
+      asciichat_error_t size_err = get_terminal_size(&current_width, &current_height);
+      if (size_err == ASCIICHAT_OK) {
+        bool width_changed = auto_width && (current_width != last_terminal_width);
+        bool height_changed = auto_height && (current_height != last_terminal_height);
+
+        if (width_changed || height_changed) {
+          if (width_changed) {
+            options_set_int("width", current_width);
+            log_info("Terminal width changed: %u → %u", last_terminal_width, current_width);
+            last_terminal_width = current_width;
+          }
+          if (height_changed) {
+            options_set_int("height", current_height);
+            log_info("Terminal height changed: %u → %u", last_terminal_height, current_height);
+            last_terminal_height = current_height;
+          }
+          // Clear screen when terminal is resized to avoid visual artifacts
+          terminal_clear_screen();
+        }
+      }
+    }
+
     // Convert image to ASCII using display context
     // Handles all palette, terminal caps, width, height, stretch settings
     pre_convert_ns = time_get_ns();
@@ -341,7 +385,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     uint64_t conversion_elapsed_ns = post_convert_ns - pre_convert_ns;
 
     if (ascii_frame) {
-      log_info("render_loop: ascii_frame ready (len=%zu)", strlen(ascii_frame));
+      log_info_every(1 * NS_PER_SEC_INT, "render_loop: ascii_frame ready (len=%zu)", strlen(ascii_frame));
       // Detect when we have a paused frame (first frame after pausing)
       bool is_paused_frame = initial_paused_frame_rendered && is_paused;
 
@@ -360,33 +404,42 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         pre_render_ns = time_get_ns();
         START_TIMER("render_frame");
 
-        log_info("render_loop: calling session_display_render_frame - display=%p", (void*)display);
+        log_info_every(1 * NS_PER_SEC_INT, "render_loop: calling session_display_render_frame - display=%p",
+                       (void *)display);
         // Check if help screen is active - if so, render help instead of frame
         // Help screen is disabled in snapshot mode and non-interactive terminals (keyboard disabled)
-        if (display && session_display_is_help_active(display) && terminal_is_interactive() && !snapshot_mode) {
+        bool help_is_active = display && session_display_is_help_active(display);
+
+        // Detect transition from help to ASCII art rendering
+        // When help closes, clear the screen before rendering ASCII art
+        if (help_was_active && !help_is_active) {
+          terminal_clear_screen();
+          log_debug_every(1 * NS_PER_SEC_INT, "Cleared screen when transitioning from help to ASCII art");
+        }
+
+        if (help_is_active) {
           session_display_render_help(display);
         } else {
           session_display_render_frame(display, ascii_frame);
         }
+
+        // Update help state for next iteration
+        help_was_active = help_is_active;
 
         uint64_t render_elapsed_ns = STOP_TIMER("render_frame");
         post_render_ns = time_get_ns();
 
         // Calculate total time from frame START (frame_start_ns) to render COMPLETE
         frame_to_render_ns = time_elapsed_ns(frame_start_ns, post_render_ns);
-        if (frame_count % 30 == 0) {
-          double total_frame_time_ms = (double)frame_to_render_ns / NS_PER_MS;
-          log_dev("ACTUAL_TIME[%lu]: Total frame time from start to render complete: %.1f ms", frame_count,
-                  total_frame_time_ms);
-        }
+        double total_frame_time_ms = (double)frame_to_render_ns / NS_PER_MS;
+        log_dev_every(5 * US_PER_SEC_INT, "ACTUAL_TIME[%lu]: Total frame time from start to render complete: %.1f ms",
+                      frame_count, total_frame_time_ms);
 
-        // Log render time every 30 frames
-        if (frame_count % 150 == 0) {
-          double conversion_ms = (double)conversion_elapsed_ns / NS_PER_MS;
-          double render_ms = (double)render_elapsed_ns / NS_PER_MS;
-          log_dev_every(5 * US_PER_SEC_INT, "PROFILE[%lu]: CONVERT=%.2f ms, RENDER=%.2f ms", frame_count, conversion_ms,
-                        render_ms);
-        }
+        char conversion_str[32], render_str[32];
+        time_pretty(conversion_elapsed_ns, -1, conversion_str, sizeof(conversion_str));
+        time_pretty(render_elapsed_ns, -1, render_str, sizeof(render_str));
+        log_dev_every(5 * US_PER_SEC_INT, "PROFILE[%lu]: CONVERT=%s, RENDER=%s", frame_count, conversion_str,
+                      render_str);
       }
 
       // Keyboard input polling (if enabled) - MUST come before snapshot exit check so help screen can be toggled
@@ -399,8 +452,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         double keyboard_elapsed_ns = STOP_TIMER("keyboard_read_%lu", (unsigned long)frame_count);
         if (keyboard_elapsed_ns >= 0.0) {
           char _duration_str[32];
-          format_duration_ns(keyboard_elapsed_ns, _duration_str, sizeof(_duration_str));
-          log_dev("RENDER[%lu] Keyboard read complete (key=%d) in %s", (unsigned long)frame_count, key, _duration_str);
+          time_pretty((uint64_t)keyboard_elapsed_ns, -1, _duration_str, sizeof(_duration_str));
+          log_dev_every(1 * NS_PER_SEC_INT, "RENDER[%lu] Keyboard read complete (key=%d) in %s",
+                        (unsigned long)frame_count, key, _duration_str);
         }
         if (key != KEY_NONE) {
           // Check if interactive grep should handle this key
@@ -418,7 +472,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       if (snapshot_mode && !first_frame_rendered) {
         snapshot_start_time_ns = time_get_ns();
         first_frame_rendered = true;
-        log_debug("Snapshot mode: first frame rendered, timer started");
+        log_dev_every(1 * NS_PER_SEC_INT, "Snapshot mode: first frame rendered, timer started");
       }
 
       // Snapshot mode: check if delay has elapsed after rendering a frame
@@ -435,10 +489,10 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
           // We don't end frames with newlines so the next log would print on the same line as the frame's
           // last row without an \n here. We only need this \n in stdout in snapshot mode and when interactive,
           // so piped snapshots don't have a weird newline in stdout that they don't need.
-          if (GET_OPTION(snapshot_mode) && terminal_is_interactive()) {
+          if (snapshot_mode && terminal_is_interactive()) {
             printf("\n");
           }
-          log_info("Snapshot delay %.2f seconds elapsed, exiting", snapshot_delay);
+          log_info_every(1 * NS_PER_SEC_INT, "Snapshot delay %.2f seconds elapsed, exiting", snapshot_delay);
           snapshot_done = true;
         }
       }
@@ -471,7 +525,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
       // Log phase breakdown every 5 frames
       if (frame_count % 5 == 0) {
-        log_dev(
+        log_dev_every(
+            2 * NS_PER_SEC_INT,
             "PHASE_BREAKDOWN[%lu]: prestart=%llu ms, capture=%llu ms, convert=%llu ms, render=%llu ms (total=%llu ms)",
             frame_count, prestart_ms, capture_ms, convert_ms, render_ms, total_ms);
       }
@@ -502,8 +557,11 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         uint64_t frame_elapsed_ns = time_elapsed_ns(frame_start_ns, frame_end_ns);
         uint64_t frame_target_ns = NS_PER_SEC_INT / target_fps;
 
-        log_dev("RENDER[%lu] TIMING_TOTAL: frame_time_ms=%.2f target_ms=%.2f", frame_count,
-                (double)frame_elapsed_ns / NS_PER_MS, (double)frame_target_ns / NS_PER_MS);
+        char frame_time_str[32], target_time_str[32];
+        time_pretty(frame_elapsed_ns, -1, frame_time_str, sizeof(frame_time_str));
+        time_pretty(frame_target_ns, -1, target_time_str, sizeof(target_time_str));
+        log_dev_every(500 * NS_PER_MS_INT, "RENDER[%lu] TIMING_TOTAL: frame_time=%s target_time=%s", frame_count,
+                      frame_time_str, target_time_str);
 
         // Only sleep if we have time budget remaining
         // If already behind, skip sleep to catch up
@@ -523,14 +581,14 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
   // Re-enable console logging after rendering completes
   log_set_terminal_output(true);
-  if (!GET_OPTION(snapshot_mode) && terminal_is_interactive()) {
+  if (!snapshot_mode && terminal_is_interactive()) {
     printf("\n");
   }
 
   // Keyboard input cleanup (if it was initialized)
   if (keyboard_enabled) {
     keyboard_destroy();
-    log_debug("Keyboard input disabled");
+    log_debug_every(2 * NS_PER_SEC_INT, "Keyboard input disabled");
   }
 
   return ASCIICHAT_OK;

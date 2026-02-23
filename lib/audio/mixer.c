@@ -313,7 +313,7 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
   }
 
   // OPTIMIZATION 2: Initialize reader-writer lock
-  if (rwlock_init(&mixer->source_lock) != 0) {
+  if (rwlock_init(&mixer->source_lock, "audio_mixer_sources") != 0) {
     SET_ERRNO(ERROR_THREAD, "Failed to initialize mixer source lock");
     SAFE_FREE(mixer->source_buffers);
     SAFE_FREE(mixer->source_ids);
@@ -713,11 +713,11 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
 
     uint64_t read_end_ns = time_get_ns();
     uint64_t read_time_ns = time_elapsed_ns(read_start_ns, read_end_ns);
-    uint64_t read_time_us = time_ns_to_us(read_time_ns);
 
     if (read_time_ns > 10 * NS_PER_MS_INT) {
-      log_warn_every(LOG_RATE_DEFAULT, "Mixer: Slow source reading took %lluus (%.2fms) for %d sources", read_time_us,
-                     (float)read_time_us / 1000.0f, source_count);
+      char read_time_str[32];
+      time_pretty(read_time_ns, -1, read_time_str, sizeof(read_time_str));
+      log_warn_every(LOG_RATE_DEFAULT, "Mixer: Slow source reading took %s for %d sources", read_time_str, source_count);
     }
 
     // OPTIMIZATION: Batch envelope calculation per-frame instead of per-sample

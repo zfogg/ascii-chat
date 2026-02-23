@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include <ascii-chat/debug/memory.h>
+#include <ascii-chat/debug/backtrace.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/common/error_codes.h>
@@ -20,26 +21,45 @@
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/uthash.h>
 #include <ascii-chat/util/format.h>
+#include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/options/options.h>
+#include <ascii-chat/video/ansi.h>
 
 typedef struct mem_block {
   void *ptr;
   size_t size;
   char file[BUFFER_SIZE_SMALL];
   int line;
+  uint64_t tid;           // Allocating thread ID (for site lookup)
   bool is_aligned;
-  void *backtrace_ptrs[16]; // Store up to 16 return addresses
-  int backtrace_count;      // Number of frames captured
   struct mem_block *next;
 } mem_block_t;
 
+// Allocation site cache - tracks per-site backtraces
+typedef struct alloc_site {
+  char key[BUFFER_SIZE_SMALL + 32]; // "file:line:tid" - uthash key
+  size_t live_count;                // Live (unfreed) allocations from this site
+  size_t live_bytes;                // Live bytes from this site
+  size_t total_count;               // Total ever allocated from this site
+  backtrace_t backtrace;            // Captured+symbolized once on first alloc from site
+  UT_hash_handle hh;
+} alloc_site_t;
+
+#define MEM_SITE_CACHE_MAX_KEYS            1024
+#define MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY  256
+
 // Non-static for shared library compatibility (still thread-local)
 __thread bool g_in_debug_memory = false;
+
+// Allocation site cache (protected by g_mem.mutex)
+static alloc_site_t *g_site_cache = NULL;
+static size_t g_site_count = 0;
 
 /**
  * @brief Allocation ignore list for memory report
@@ -52,35 +72,57 @@ __thread bool g_in_debug_memory = false;
  * Example: {"lib/util/pcre2.c", 52, 2} means exactly 2 PCRE2 singleton allocations
  * are expected. If 3 exist, the 3rd one will be reported as a leak.
  */
+/**
+ * @brief Debug memory suppression entry for both configuration and runtime tracking
+ *
+ * Static fields (file, line, expected_count, expected_bytes, reason) define
+ * what we expect. Runtime fields (key, count, bytes) track what we've seen.
+ */
 typedef struct {
+  // Configuration (static, in g_suppression_config[])
   const char *file;
   int line;
-  int expected_count; // Exact number of allocations expected from this location
-} ignore_entry_t;
+  int expected_count;     // Expected allocations per thread
+  size_t expected_bytes;  // Expected total bytes per thread
+  const char *reason;     // Why these allocations are expected/harmless
 
-static const ignore_entry_t g_ignore_list[] = {
-    {"lib/options/colorscheme.c", 579, 8}, // 8 16-color ANSI strings (cleaned after report)
-    {"lib/options/colorscheme.c", 596, 8}, // 8 256-color ANSI strings (cleaned after report)
-    {"lib/options/colorscheme.c", 613, 8}, // 8 truecolor ANSI strings (cleaned after report)
-    {"lib/util/path.c", 1203, 1},          // Normalized path allocation (caller responsibility to free)
-    {NULL, 0, 0}                           // Sentinel
+  // Runtime counter (dynamic, in g_suppression_counters[])
+  // Key format: "file:line:tid"
+  char key[BUFFER_SIZE_SMALL + 32];
+  int count;
+  size_t bytes;
+} debug_memory_suppression_t;
+
+// Static configuration of expected suppressions
+static const debug_memory_suppression_t g_suppression_config[] = {
+    {"lib/options/colorscheme.c", 585, 8, 47,     "8 16-color ANSI code strings"},
+    {"lib/options/colorscheme.c", 602, 8, 88,     "8 256-color ANSI code strings"},
+    {"lib/options/colorscheme.c", 619, 8, 144,    "8 truecolor ANSI code strings"},
+    {"lib/util/path.c", 1211, 1, 43,              "normalized path allocation (caller frees)"},
+    {"lib/debug/named.c", 162, 2, 576,            "named registry name_counters hash entries (per thread)"},
+    {"lib/debug/named.c", 212, 2, 576,            "named registry entries hash entries (per thread)"},
+    {"lib/platform/posix/util.c", 35, 18, 1260,   "platform_strdup() string allocations (mirror mode)"},
+    {NULL, 0, 0, 0, NULL}                         // Sentinel
 };
 
-// Track seen count for each ignore entry (reset at start of memory report)
-static int g_ignore_counts[32] = {0};
+// Runtime counters tracking per-thread allocations (cleared at report boundaries)
+#define MAX_SUPPRESSION_COUNTERS 64
+static debug_memory_suppression_t g_suppression_counters[MAX_SUPPRESSION_COUNTERS];
+static size_t g_suppression_counter_count = 0;
 
 /**
- * @brief Reset ignore counters at start of memory report
+ * @brief Reset suppression counters at report boundaries
  */
-static void reset_ignore_counters(void) {
-  memset(g_ignore_counts, 0, sizeof(g_ignore_counts));
+static void reset_suppression_counters(void) {
+  memset(g_suppression_counters, 0, sizeof(g_suppression_counters));
+  g_suppression_counter_count = 0;
 }
 
 /**
  * @brief Check if an allocation should be ignored in the memory report
  *
- * Tracks how many allocations from each ignore location have been seen.
- * Only ignores up to the expected_count for each location.
+ * Tracks how many allocations from each ignore location have been seen per thread.
+ * Only ignores up to the expected_count for each location/thread combination.
  */
 // Helper function to acquire mutex with polling instead of blocking.
 // mutex_lock() can be unsafe during shutdown when signals may arrive.
@@ -100,16 +142,44 @@ static bool acquire_mutex_with_polling(mutex_t *mutex, int timeout_ms) {
   return false; // Timeout
 }
 
-static bool should_ignore_allocation(const char *file, int line) {
+static bool should_ignore_allocation(const char *file, int line, uint64_t tid, size_t size) {
   // file is already the normalized relative path from curr->file
   // (set during debug_malloc/debug_calloc using extract_project_relative_path)
   // Do NOT call extract_project_relative_path again - it won't work on already-relative paths
 
-  for (size_t i = 0; g_ignore_list[i].file != NULL; i++) {
-    if (line == g_ignore_list[i].line && strcmp(file, g_ignore_list[i].file) == 0) {
-      // Found matching ignore entry - check if we've exceeded expected count
-      if (g_ignore_counts[i] < g_ignore_list[i].expected_count) {
-        g_ignore_counts[i]++;
+  for (size_t i = 0; g_suppression_config[i].file != NULL; i++) {
+    if (line == g_suppression_config[i].line && strcmp(file, g_suppression_config[i].file) == 0) {
+      // Found matching suppression entry - check if we've exceeded expected count for this thread
+      char key[BUFFER_SIZE_SMALL + 32];
+      safe_snprintf(key, sizeof(key), "%s:%d:%" PRIu64, file, line, tid);
+
+      // Look up existing counter for this site/thread combination
+      debug_memory_suppression_t *counter = NULL;
+      for (size_t j = 0; j < g_suppression_counter_count; j++) {
+        if (strcmp(g_suppression_counters[j].key, key) == 0) {
+          counter = &g_suppression_counters[j];
+          break;
+        }
+      }
+
+      // Create new counter if needed
+      if (!counter) {
+        if (g_suppression_counter_count < MAX_SUPPRESSION_COUNTERS) {
+          counter = &g_suppression_counters[g_suppression_counter_count];
+          SAFE_STRNCPY(counter->key, key, sizeof(counter->key) - 1);
+          counter->count = 0;
+          counter->bytes = 0;
+          g_suppression_counter_count++;
+        } else {
+          // Counter array full - report as leak to avoid silent failures
+          return false;
+        }
+      }
+
+      // Check if we've exceeded expected count for this thread
+      if (counter->count < g_suppression_config[i].expected_count) {
+        counter->count++;
+        counter->bytes += size;
         return true; // Ignore this allocation
       }
       // Exceeded expected count - report as leak!
@@ -117,6 +187,61 @@ static bool should_ignore_allocation(const char *file, int line) {
     }
   }
   return false;
+}
+
+/**
+ * Get or create an allocation site cache entry (called while holding g_mem.mutex)
+ */
+static alloc_site_t *get_or_create_site(const char *file, int line) {
+  uint64_t tid = asciichat_thread_current_id();
+
+  char key[BUFFER_SIZE_SMALL + 32];
+  safe_snprintf(key, sizeof(key), "%s:%d:%" PRIu64, file, line, tid);
+
+  // Try to find existing site
+  alloc_site_t *site = NULL;
+  HASH_FIND_STR(g_site_cache, key, site);
+  if (site) {
+    return site;
+  }
+
+  // Check if we've exceeded cache capacity
+  if (g_site_count >= MEM_SITE_CACHE_MAX_KEYS) {
+    log_warn_every(LOG_RATE_FAST, "Allocation site cache full (%zu keys), not tracking %s:%d:%" PRIu64,
+                   MEM_SITE_CACHE_MAX_KEYS, file, line, tid);
+    return NULL;
+  }
+
+  // Create new site entry
+  site = (alloc_site_t *)malloc(sizeof(alloc_site_t));
+  if (!site) {
+    return NULL;
+  }
+
+  memset(site, 0, sizeof(alloc_site_t));
+  SAFE_STRNCPY(site->key, key, sizeof(site->key) - 1);
+
+  // Capture backtrace addresses only (fast)
+  // Symbolization is deferred to exit time (memory report) to avoid 50ms+ per site during startup
+  backtrace_capture(&site->backtrace);
+
+  // Add to hash table
+  HASH_ADD_STR(g_site_cache, key, site);
+  g_site_count++;
+
+  return site;
+}
+
+/**
+ * Look up an allocation site by file, line, and thread ID (called while holding g_mem.mutex)
+ */
+static alloc_site_t *lookup_site(const char *file, int line, uint64_t tid) {
+  char key[BUFFER_SIZE_SMALL + 32];
+  safe_snprintf(key, sizeof(key), "%s:%d:%" PRIu64, file, line, tid);
+
+  alloc_site_t *site = NULL;
+  HASH_FIND_STR(g_site_cache, key, site);
+  return site;
 }
 
 static struct {
@@ -130,7 +255,7 @@ static struct {
   atomic_size_t calloc_calls;
   atomic_size_t realloc_calls;
   mutex_t mutex;
-  atomic_int mutex_state;
+  lifecycle_t lifecycle;
   bool quiet_mode;
 } g_mem = {.head = NULL,
            .total_allocated = 0,
@@ -141,7 +266,7 @@ static struct {
            .free_calls = 0,
            .calloc_calls = 0,
            .realloc_calls = 0,
-           .mutex_state = 0,
+           .lifecycle = LIFECYCLE_INIT,
            .quiet_mode = false};
 
 #undef malloc
@@ -149,35 +274,17 @@ static struct {
 #undef calloc
 #undef realloc
 
-static atomic_flag g_logged_mutex_init_failure = ATOMIC_FLAG_INIT;
-
 static bool ensure_mutex_initialized(void) {
-  for (;;) {
-    int state = atomic_load_explicit(&g_mem.mutex_state, memory_order_acquire);
-    if (state == 2) {
-      return true;
-    }
-
-    if (state == 0) {
-      int expected = 0;
-      if (atomic_compare_exchange_strong_explicit(&g_mem.mutex_state, &expected, 1, memory_order_acq_rel,
-                                                  memory_order_acquire)) {
-        if (mutex_init(&g_mem.mutex) == 0) {
-          atomic_store_explicit(&g_mem.mutex_state, 2, memory_order_release);
-          return true;
-        }
-
-        atomic_store_explicit(&g_mem.mutex_state, 0, memory_order_release);
-        if (!atomic_flag_test_and_set(&g_logged_mutex_init_failure)) {
-          log_error("Failed to initialize debug memory mutex; memory tracking will run without locking");
-        }
-        return false;
-      }
-      continue;
-    }
-
-    platform_sleep_ms(1);
+  if (lifecycle_is_initialized(&g_mem.lifecycle)) {
+    return true;
   }
+
+  if (!lifecycle_init(&g_mem.lifecycle, "debug_memory")) {
+    log_error("Failed to initialize debug memory mutex; memory tracking will run without locking");
+    return false;
+  }
+
+  return true;
 }
 
 void *debug_malloc(size_t size, const char *file, int line) {
@@ -213,14 +320,21 @@ void *debug_malloc(size_t size, const char *file, int line) {
       const char *normalized_file = extract_project_relative_path(file);
       SAFE_STRNCPY(block->file, normalized_file, sizeof(block->file) - 1);
       block->line = line;
-      // Capture backtrace (skip 1 frame for this function)
-      block->backtrace_count = platform_backtrace(block->backtrace_ptrs, 16);
-      // Ensure valid backtrace count
-      if (block->backtrace_count < 0) {
-        block->backtrace_count = 0;
-      }
+      block->tid = asciichat_thread_current_id();
       block->next = g_mem.head;
       g_mem.head = block;
+
+      // Update allocation site cache
+      alloc_site_t *site = get_or_create_site(normalized_file, line);
+      if (site) {
+        site->live_count++;
+        site->live_bytes += size;
+        site->total_count++;
+        if (site->live_count == MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY) {
+          log_warn("%s:%d:%" PRIu64 " — %d live allocations, possible memory accumulation", normalized_file, line,
+                   asciichat_thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY);
+        }
+      }
     }
 
     mutex_unlock(&g_mem.mutex);
@@ -262,14 +376,21 @@ void debug_track_aligned(void *ptr, size_t size, const char *file, int line) {
       const char *normalized_file = extract_project_relative_path(file);
       SAFE_STRNCPY(block->file, normalized_file, sizeof(block->file) - 1);
       block->line = line;
-      // Capture backtrace (skip 1 frame for this function)
-      block->backtrace_count = platform_backtrace(block->backtrace_ptrs, 16);
-      // Ensure valid backtrace count
-      if (block->backtrace_count < 0) {
-        block->backtrace_count = 0;
-      }
+      block->tid = asciichat_thread_current_id();
       block->next = g_mem.head;
       g_mem.head = block;
+
+      // Update allocation site cache
+      alloc_site_t *site = get_or_create_site(normalized_file, line);
+      if (site) {
+        site->live_count++;
+        site->live_bytes += size;
+        site->total_count++;
+        if (site->live_count == MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY) {
+          log_warn("%s:%d:%" PRIu64 " — %d live allocations, possible memory accumulation", normalized_file, line,
+                   asciichat_thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY);
+        }
+      }
     }
 
     mutex_unlock(&g_mem.mutex);
@@ -317,6 +438,14 @@ void debug_free(void *ptr, const char *file, int line) {
 #ifdef _WIN32
         was_aligned = curr->is_aligned;
 #endif
+
+        // Update allocation site cache counters
+        alloc_site_t *site = lookup_site(curr->file, curr->line, curr->tid);
+        if (site && site->live_count > 0) {
+          site->live_count--;
+          site->live_bytes -= freed_size;
+        }
+
         free(curr);
         break;
       }
@@ -383,10 +512,24 @@ void *debug_calloc(size_t count, size_t size, const char *file, int line) {
       block->ptr = ptr;
       block->size = total;
       block->is_aligned = false;
-      SAFE_STRNCPY(block->file, file, sizeof(block->file) - 1);
+      const char *normalized_file = extract_project_relative_path(file);
+      SAFE_STRNCPY(block->file, normalized_file, sizeof(block->file) - 1);
       block->line = line;
+      block->tid = asciichat_thread_current_id();
       block->next = g_mem.head;
       g_mem.head = block;
+
+      // Update allocation site cache
+      alloc_site_t *site = get_or_create_site(normalized_file, line);
+      if (site) {
+        site->live_count++;
+        site->live_bytes += total;
+        site->total_count++;
+        if (site->live_count == MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY) {
+          log_warn("%s:%d:%" PRIu64 " — %d live allocations, possible memory accumulation", normalized_file, line,
+                   asciichat_thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY);
+        }
+      }
     }
 
     mutex_unlock(&g_mem.mutex);
@@ -536,13 +679,34 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
     }
 
     if (curr) {
-      // Update existing block with new metadata
+      // Update site cache: decrement old site, increment new site
+      alloc_site_t *old_site = lookup_site(curr->file, curr->line, curr->tid);
+      if (old_site && old_site->live_count > 0) {
+        old_site->live_count--;
+        old_site->live_bytes -= curr->size;
+      }
+
+      // Update block with new metadata
       curr->ptr = new_ptr;
-      curr->size = size;
-      curr->is_aligned = false;
-      SAFE_STRNCPY(curr->file, file, sizeof(curr->file) - 1);
+      const char *normalized_file = extract_project_relative_path(file);
+      SAFE_STRNCPY(curr->file, normalized_file, sizeof(curr->file) - 1);
       curr->file[sizeof(curr->file) - 1] = '\0';
       curr->line = line;
+      curr->tid = asciichat_thread_current_id();
+      curr->size = size;
+      curr->is_aligned = false;
+
+      // Add to new site
+      alloc_site_t *new_site = get_or_create_site(normalized_file, line);
+      if (new_site) {
+        new_site->live_count++;
+        new_site->live_bytes += size;
+        new_site->total_count++;
+        if (new_site->live_count == MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY) {
+          log_warn("%s:%d:%" PRIu64 " — %d live allocations, possible memory accumulation", normalized_file, line,
+                   asciichat_thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY);
+        }
+      }
     } else {
       // Block not found - create new tracking entry
       mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
@@ -550,10 +714,24 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
         block->ptr = new_ptr;
         block->size = size;
         block->is_aligned = false;
-        SAFE_STRNCPY(block->file, file, sizeof(block->file) - 1);
+        const char *normalized_file = extract_project_relative_path(file);
+        SAFE_STRNCPY(block->file, normalized_file, sizeof(block->file) - 1);
         block->line = line;
+        block->tid = asciichat_thread_current_id();
         block->next = g_mem.head;
         g_mem.head = block;
+
+        // Add to site cache
+        alloc_site_t *site = get_or_create_site(normalized_file, line);
+        if (site) {
+          site->live_count++;
+          site->live_bytes += size;
+          site->total_count++;
+          if (site->live_count == MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY) {
+            log_warn("%s:%d:%" PRIu64 " — %d live allocations, possible memory accumulation", normalized_file, line,
+                     asciichat_thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY);
+          }
+        }
       }
     }
 
@@ -572,17 +750,11 @@ void debug_memory_set_quiet_mode(bool quiet) {
 }
 
 void debug_memory_report(void) {
-  // Guard against multiple calls during shutdown
-  static bool report_done = false;
-  if (report_done) {
-    return;
-  }
-
   // Check for usage error BEFORE cleanup clears it
   asciichat_error_t error = GET_ERRNO();
 
+  // Always clean up errno, even if we're not printing
   asciichat_errno_destroy();
-  report_done = true;
 
   // Skip memory report if an action flag was passed (for clean action output)
   // unless explicitly forced via ASCII_CHAT_MEMORY_DEBUG environment variable
@@ -597,11 +769,28 @@ void debug_memory_report(void) {
 
   bool quiet = g_mem.quiet_mode;
 
-  // Reset ignore counters at start of report
-  reset_ignore_counters();
+  // Reset suppression counters at start of report
+  reset_suppression_counters();
 
-  if (!quiet && terminal_is_interactive()) {
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "\n%s\n", colored_string(LOG_COLOR_DEV, "=== Memory Report ===")));
+  if (!quiet) {
+    // Build report in buffer, then output once to stderr and log file
+    #define REPORT_BUFFER_SIZE (256 * 1024)  // 256KB for full memory report
+    char *report_buffer = malloc(REPORT_BUFFER_SIZE);
+    if (!report_buffer) {
+      SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "Failed to allocate memory for report buffer\n"));
+      return;
+    }
+    size_t report_len = 0;
+
+    #define APPEND_REPORT(fmt, ...) do { \
+      size_t remaining = REPORT_BUFFER_SIZE - report_len; \
+      if (remaining > 1) { \
+        int written = safe_snprintf(report_buffer + report_len, remaining, fmt, ##__VA_ARGS__); \
+        if (written > 0) report_len += written; \
+      } \
+    } while (0)
+
+    APPEND_REPORT("=== Memory Report ===\n");
 
     size_t total_allocated = atomic_load(&g_mem.total_allocated);
     size_t total_freed = atomic_load(&g_mem.total_freed);
@@ -624,7 +813,7 @@ void debug_memory_report(void) {
         // Now we have the lock - iterate memory blocks
         mem_block_t *curr = g_mem.head;
         while (curr) {
-          if (should_ignore_allocation(curr->file, curr->line)) {
+          if (should_ignore_allocation(curr->file, curr->line, curr->tid, curr->size)) {
             suppressed_bytes += curr->size;
             suppressed_count++;
           }
@@ -643,8 +832,8 @@ void debug_memory_report(void) {
     size_t adjusted_total_allocated =
         (total_allocated >= suppressed_bytes) ? (total_allocated - suppressed_bytes) : total_allocated;
 
-    // Reset ignore counters after counting suppressed bytes
-    reset_ignore_counters();
+    // Reset suppression counters after counting suppressed bytes
+    reset_suppression_counters();
 
     // Count actual unfreed allocations early so we can use it to filter suppression warnings
     size_t unfreed_count = 0;
@@ -653,7 +842,7 @@ void debug_memory_report(void) {
         if (acquire_mutex_with_polling(&g_mem.mutex, 100)) {
           mem_block_t *curr = g_mem.head;
           while (curr) {
-            if (!should_ignore_allocation(curr->file, curr->line)) {
+            if (!should_ignore_allocation(curr->file, curr->line, curr->tid, curr->size)) {
               unfreed_count++;
             }
             curr = curr->next;
@@ -665,13 +854,42 @@ void debug_memory_report(void) {
 
     // Only warn about suppression mismatches if there are outstanding allocations
     if (unfreed_count > 0) {
-      for (size_t i = 0; g_ignore_list[i].file != NULL; i++) {
-        if (g_ignore_counts[i] != g_ignore_list[i].expected_count) {
-          SAFE_IGNORE_PRINTF_RESULT(
-              safe_fprintf(stderr, "%s\n", colored_string(LOG_COLOR_ERROR, "WARNING: Suppression mismatch detected")));
-          SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "  %s:%d - expected %d, found %d\n", g_ignore_list[i].file,
-                                                 g_ignore_list[i].line, g_ignore_list[i].expected_count,
-                                                 g_ignore_counts[i]));
+      for (size_t i = 0; g_suppression_config[i].file != NULL; i++) {
+        // Sum counts and bytes from all threads for this file:line combination
+        int total_count = 0;
+        size_t total_bytes = 0;
+        for (size_t j = 0; j < g_suppression_counter_count; j++) {
+          // Parse counter key "file:line:tid" to extract file and line
+          char *last_colon = strrchr(g_suppression_counters[j].key, ':');
+          if (last_colon) {
+            char *second_colon = last_colon - 1;
+            while (second_colon > g_suppression_counters[j].key && *second_colon != ':') {
+              second_colon--;
+            }
+            if (second_colon > g_suppression_counters[j].key) {
+              int line_from_key = 0;
+              sscanf(second_colon + 1, "%d", &line_from_key);
+              size_t file_len = second_colon - g_suppression_counters[j].key;
+              if (file_len == strlen(g_suppression_config[i].file) && line_from_key == g_suppression_config[i].line &&
+                  strncmp(g_suppression_counters[j].key, g_suppression_config[i].file, file_len) == 0) {
+                total_count += g_suppression_counters[j].count;
+                total_bytes += g_suppression_counters[j].bytes;
+              }
+            }
+          }
+        }
+
+        if (total_count != g_suppression_config[i].expected_count || total_bytes != g_suppression_config[i].expected_bytes) {
+          APPEND_REPORT("%s\n", colored_string(LOG_COLOR_ERROR, "WARNING: Suppression mismatch detected"));
+          APPEND_REPORT("  %s:%d\n", g_suppression_config[i].file, g_suppression_config[i].line);
+          if (total_count != g_suppression_config[i].expected_count) {
+            APPEND_REPORT("    Count mismatch: expected %d, found %d\n",
+                         g_suppression_config[i].expected_count, total_count);
+          }
+          if (total_bytes != g_suppression_config[i].expected_bytes) {
+            APPEND_REPORT("    Bytes mismatch: expected %zu, found %zu\n",
+                         g_suppression_config[i].expected_bytes, total_bytes);
+          }
         }
       }
     }
@@ -707,33 +925,33 @@ void debug_memory_report(void) {
     max_label_width = MAX(max_label_width, strlen(label_suppressions));
     max_label_width = MAX(max_label_width, strlen(label_diff));
 
-#define PRINT_MEM_LINE(label, value_str)                                                                               \
+#define APPEND_MEM_LINE(label, value_str)                                                                            \
   do {                                                                                                                 \
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "%s", colored_string(LOG_COLOR_GREY, label)));                      \
+    APPEND_REPORT("%s", colored_string(LOG_COLOR_GREY, label));                                                        \
     for (size_t i = strlen(label); i < max_label_width; i++) {                                                         \
-      SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, " "));                                                            \
+      APPEND_REPORT(" ");                                                                                              \
     }                                                                                                                  \
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, " %s\n", value_str));                                               \
+    APPEND_REPORT(" %s\n", value_str);                                                                                 \
   } while (0)
 
-#define PRINT_MEM_LINE_COLORED(label, value_str, color)                                                                \
+#define APPEND_MEM_LINE_COLORED(label, value_str, color)                                                               \
   do {                                                                                                                 \
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "%s", colored_string(LOG_COLOR_GREY, label)));                      \
+    APPEND_REPORT("%s", colored_string(LOG_COLOR_GREY, label));                                                        \
     for (size_t i = strlen(label); i < max_label_width; i++) {                                                         \
-      SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, " "));                                                            \
+      APPEND_REPORT(" ");                                                                                              \
     }                                                                                                                  \
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, " %s\n", colored_string(color, value_str)));                        \
+    APPEND_REPORT(" %s\n", colored_string(color, value_str));                                                          \
   } while (0)
 
     // Colorize total allocated/freed: green if they match, red if they don't (memory leak)
     // We've already adjusted allocated to exclude suppressions, so now compare directly
     log_color_t alloc_freed_color = (adjusted_total_allocated == total_freed) ? LOG_COLOR_INFO : LOG_COLOR_ERROR;
-    PRINT_MEM_LINE_COLORED(label_total, pretty_total, alloc_freed_color);
-    PRINT_MEM_LINE_COLORED(label_freed, pretty_freed, alloc_freed_color);
+    APPEND_MEM_LINE_COLORED(label_total, pretty_total, alloc_freed_color);
+    APPEND_MEM_LINE_COLORED(label_freed, pretty_freed, alloc_freed_color);
 
     // Colorize current usage: green if 0 (no leaks), red if any unfreed memory (leak detected)
     log_color_t current_color = (adjusted_current_usage == 0) ? LOG_COLOR_INFO : LOG_COLOR_ERROR;
-    PRINT_MEM_LINE_COLORED(label_current, pretty_current, current_color);
+    APPEND_MEM_LINE_COLORED(label_current, pretty_current, current_color);
 
     // Colorize peak usage: green if 0-50 MB, yellow if 50-80 MB, red if above 80 MB
     log_color_t peak_color = LOG_COLOR_INFO; // Default green
@@ -742,7 +960,7 @@ void debug_memory_report(void) {
     } else if (peak_usage >= (50 * 1024 * 1024)) {
       peak_color = LOG_COLOR_WARN; // Yellow if >= 50 MB
     }
-    PRINT_MEM_LINE_COLORED(label_peak, pretty_peak, peak_color);
+    APPEND_MEM_LINE_COLORED(label_peak, pretty_peak, peak_color);
 
     // unfreed_count already calculated earlier for suppression warning filtering
 
@@ -750,15 +968,15 @@ void debug_memory_report(void) {
     log_color_t calls_color = (unfreed_count == 0) ? LOG_COLOR_INFO : LOG_COLOR_ERROR;
     char malloc_str[32];
     safe_snprintf(malloc_str, sizeof(malloc_str), "%zu", malloc_calls);
-    PRINT_MEM_LINE_COLORED(label_malloc, malloc_str, calls_color);
+    APPEND_MEM_LINE_COLORED(label_malloc, malloc_str, calls_color);
 
     char calloc_str[32];
     safe_snprintf(calloc_str, sizeof(calloc_str), "%zu", calloc_calls);
-    PRINT_MEM_LINE_COLORED(label_calloc, calloc_str, calls_color);
+    APPEND_MEM_LINE_COLORED(label_calloc, calloc_str, calls_color);
 
     char free_str[32];
     safe_snprintf(free_str, sizeof(free_str), "%zu", free_calls);
-    PRINT_MEM_LINE_COLORED(label_free, free_str, calls_color);
+    APPEND_MEM_LINE_COLORED(label_free, free_str, calls_color);
 
     // Colorize suppressions: green if working properly, red if >= 1MB or >= 100 allocations
     if (suppressed_count > 0) {
@@ -771,107 +989,231 @@ void debug_memory_report(void) {
       if (suppressed_bytes >= (1024 * 1024) || suppressed_count >= 100) {
         suppressions_color = LOG_COLOR_ERROR; // Red if >= 1MB or >= 100 allocations
       }
-      PRINT_MEM_LINE_COLORED(label_suppressions, suppressions_str, suppressions_color);
+      APPEND_MEM_LINE_COLORED(label_suppressions, suppressions_str, suppressions_color);
     }
 
     char diff_str[32];
     safe_snprintf(diff_str, sizeof(diff_str), "%zu", unfreed_count);
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "%s", colored_string(LOG_COLOR_GREY, label_diff)));
+    APPEND_REPORT("%s", colored_string(LOG_COLOR_GREY, label_diff));
     for (size_t i = strlen(label_diff); i < max_label_width; i++) {
-      SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, " "));
+      APPEND_REPORT(" ");
     }
-    SAFE_IGNORE_PRINTF_RESULT(
-        safe_fprintf(stderr, " %s\n", colored_string(unfreed_count == 0 ? LOG_COLOR_INFO : LOG_COLOR_ERROR, diff_str)));
+    APPEND_REPORT(" %s\n", colored_string(unfreed_count == 0 ? LOG_COLOR_INFO : LOG_COLOR_ERROR, diff_str));
 
-#undef PRINT_MEM_LINE
-#undef PRINT_MEM_LINE_COLORED
+#undef APPEND_MEM_LINE
+#undef APPEND_MEM_LINE_COLORED
 
     // Only show "Current allocations:" section if there are actual leaks
     if (unfreed_count > 0) {
       // Reset counters before printing pass (after counting pass used them)
-      reset_ignore_counters();
+      reset_suppression_counters();
 
       // Print "Current allocations:" header (count already shown in "unfreed allocations" above)
-      SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "\n%s\n", colored_string(LOG_COLOR_DEV, "Current allocations:")));
+      APPEND_REPORT("\n%s\n", colored_string(LOG_COLOR_DEV, "Current allocations:"));
     }
 
-    if (g_mem.head && unfreed_count > 0) {
+    if (g_site_cache && unfreed_count > 0) {
       if (ensure_mutex_initialized()) {
         if (!acquire_mutex_with_polling(&g_mem.mutex, 100)) {
           goto skip_allocations_list;
         }
 
-        // Check if we should print backtraces
-        const char *print_backtrace = SAFE_GETENV("ASCII_CHAT_MEMORY_REPORT_BACKTRACE");
-        int backtrace_count = 0;
-        int backtrace_limit = (print_backtrace != NULL) ? 5 : 0; // Only print first 5 backtraces to save time
-
-        mem_block_t *curr = g_mem.head;
-        while (curr) {
-          // Skip ignored allocations (e.g., PCRE2 singletons)
-          if (should_ignore_allocation(curr->file, curr->line)) {
-            curr = curr->next;
+        // Iterate site cache with timeout (max 500ms to avoid hanging during shutdown)
+        uint64_t iteration_start_ns = time_get_ns();
+        const uint64_t max_iteration_ns = 500000000; // 500ms timeout
+        alloc_site_t *site, *tmp;
+        HASH_ITER(hh, g_site_cache, site, tmp) {
+          // Check timeout every iteration
+          if (time_elapsed_ns(iteration_start_ns, time_get_ns()) > max_iteration_ns) {
+            APPEND_REPORT("  (printing truncated - timeout)\n");
+            break;
+          }
+          // Skip sites with no live allocations
+          if (site->live_count == 0) {
             continue;
           }
 
-          char pretty_size[64];
-          format_bytes_pretty(curr->size, pretty_size, sizeof(pretty_size));
-          const char *file_location = curr->file; // Already normalized relative path
-
-          // Determine color based on unit (1 MB and over=red, KB=yellow, B=light blue)
-          log_color_t size_color = LOG_COLOR_DEBUG; // Default to light blue for bytes
-          if (strstr(pretty_size, "MB") || strstr(pretty_size, "GB") || strstr(pretty_size, "TB") ||
-              strstr(pretty_size, "PB") || strstr(pretty_size, "EB")) {
-            size_color = LOG_COLOR_ERROR; // Red for 1 MB and over (MB, GB, TB, PB, EB)
-          } else if (strstr(pretty_size, "KB")) {
-            size_color = LOG_COLOR_WARN; // Yellow for kilobytes
-          } else if (strstr(pretty_size, " B")) {
-            size_color = LOG_COLOR_DEBUG; // Light blue for bytes
+          // Parse site key to extract file and line for ignore checking
+          char file[BUFFER_SIZE_SMALL];
+          int line = 0;
+          uint64_t tid = 0;
+          char *last_colon = strrchr(site->key, ':');
+          if (last_colon) {
+            char *second_colon = last_colon - 1;
+            while (second_colon > site->key && *second_colon != ':') {
+              second_colon--;
+            }
+            if (second_colon > site->key) {
+              sscanf(second_colon + 1, "%d", &line);
+              sscanf(last_colon + 1, "%" PRIu64, &tid);
+              size_t file_len = second_colon - site->key;
+              if (file_len < sizeof(file)) {
+                strncpy(file, site->key, file_len);
+                file[file_len] = '\0';
+              }
+            }
           }
+
+          // Skip ignored allocations
+          if (should_ignore_allocation(file, line, tid, site->live_bytes)) {
+            continue;
+          }
+
+          char pretty_bytes[64];
+          format_bytes_pretty(site->live_bytes, pretty_bytes, sizeof(pretty_bytes));
 
           char line_str[32];
-          safe_snprintf(line_str, sizeof(line_str), "%d", curr->line);
-          SAFE_IGNORE_PRINTF_RESULT(
-              safe_fprintf(stderr, "  - %s:%s - %s\n", colored_string(LOG_COLOR_GREY, file_location),
-                           colored_string(LOG_COLOR_FATAL, line_str), colored_string(size_color, pretty_size)));
+          safe_snprintf(line_str, sizeof(line_str), "%d", line);
+          char count_str[32];
+          safe_snprintf(count_str, sizeof(count_str), "%zu", site->live_count);
 
-          // Print backtrace if environment variable is set and we haven't hit the limit
-          if (backtrace_count < backtrace_limit && curr->backtrace_count > 0) {
-            backtrace_count++;
-            // Unlock mutex before calling platform_backtrace_symbols to avoid deadlock
-            // when backtrace symbol resolution allocates memory.
-            mutex_unlock(&g_mem.mutex);
-
-            // Print backtrace with symbol names
-            char **symbols = platform_backtrace_symbols(curr->backtrace_ptrs, curr->backtrace_count);
-            if (symbols) {
-              SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "    Backtrace (%d frames):\n", curr->backtrace_count));
-              for (int i = 0; i < curr->backtrace_count; i++) {
-                SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "      [%d] %s\n", i, symbols[i]));
-              }
-              platform_backtrace_symbols_destroy(symbols);
-            }
-
-            // Re-acquire mutex for next iteration (with polling, not blocking)
-            if (!acquire_mutex_with_polling(&g_mem.mutex, 100)) {
-              break; // Exit loop if we can't re-acquire the lock
-            }
+          // Determine color based on byte size (1 MB and over=red, KB=yellow, B=light blue)
+          log_color_t size_color = LOG_COLOR_DEBUG;
+          if (strstr(pretty_bytes, "MB") || strstr(pretty_bytes, "GB") || strstr(pretty_bytes, "TB") ||
+              strstr(pretty_bytes, "PB") || strstr(pretty_bytes, "EB")) {
+            size_color = LOG_COLOR_ERROR;
+          } else if (strstr(pretty_bytes, "KB")) {
+            size_color = LOG_COLOR_WARN;
           }
 
-          curr = curr->next;
+          // Print site summary
+          APPEND_REPORT("  - %s:%s  [tid 0x%" PRIx64 "]  %s live  %s total\n",
+                       colored_string(LOG_COLOR_GREY, file),
+                       colored_string(LOG_COLOR_FATAL, line_str), tid,
+                       colored_string(size_color, count_str),
+                       colored_string(size_color, pretty_bytes));
+
+          // Don't synchronously symbolize backtraces during memory report - symbolization is slow
+          // and can cause hangs during shutdown. Instead, backtraces will be symbolized asynchronously
+          // by the debug sync thread. Just print whatever symbols are available.
+          if (site->backtrace.symbols != NULL && site->backtrace.count > 0) {
+            APPEND_REPORT("    Backtrace (%d frames):\n", site->backtrace.count);
+            for (int i = 0; i < site->backtrace.count; i++) {
+              APPEND_REPORT("      [%d] %s\n", i, site->backtrace.symbols[i]);
+            }
+          }
         }
 
         mutex_unlock(&g_mem.mutex);
       } else {
-        SAFE_IGNORE_PRINTF_RESULT(
-            safe_fprintf(stderr, "\n%s\n",
-                         colored_string(LOG_COLOR_ERROR,
-                                        "Current allocations unavailable: failed to initialize debug memory mutex")));
+        APPEND_REPORT("\n%s\n",
+                     colored_string(LOG_COLOR_ERROR,
+                                    "Current allocations unavailable: failed to initialize debug memory mutex"));
       }
     }
 
   skip_allocations_list:
+
+    // SKIP cleanup site cache at shutdown
+    // We used to clean up the hash table here, but HASH_DEL inside HASH_ITER causes
+    // undefined behavior (modifying hash table during iteration = infinite loop/hang).
+    // Since we're exiting anyway, skip this cleanup - the OS will reclaim memory.
+
+
+    // Write to stderr (colored output)
+    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "%s", report_buffer));
+
+    // Write to log file (for SIGUSR2 debugging persistence) - strip ANSI codes
+    char *stripped = ansi_strip_escapes(report_buffer, report_len);
+    if (stripped) {
+      log_file_msg("%s", stripped);
+      free(stripped);
+    }
+
+    free(report_buffer);
+    #undef REPORT_BUFFER_SIZE
+    #undef APPEND_REPORT
   }
+}
+
+// ============================================================================
+// Memory Report Debug Thread (triggered via SIGUSR2)
+// ============================================================================
+
+#include <ascii-chat/platform/cond.h>
+#include <ascii-chat/platform/thread.h>
+
+typedef struct {
+  volatile bool should_run;
+  volatile bool should_exit;
+  volatile bool signal_triggered;  // Flag set by SIGUSR2 handler
+  mutex_t mutex;                   // Protects access to flags
+  cond_t cond;                     // Wakes thread when signal arrives
+  bool initialized;                // Tracks if mutex/cond are initialized
+} debug_memory_request_t;
+
+static debug_memory_request_t g_debug_memory_request = {false, false, false, {0}, {0}, false};
+static asciichat_thread_t g_debug_memory_thread;
+
+/**
+ * @brief Thread function for memory report printing
+ *
+ * Waits for SIGUSR2 signal or explicit trigger. When triggered,
+ * prints the memory report on this thread rather than in signal context.
+ */
+static void *debug_memory_thread_fn(void *arg) {
+  (void)arg;
+
+  while (!g_debug_memory_request.should_exit) {
+    mutex_lock(&g_debug_memory_request.mutex);
+
+    if ((g_debug_memory_request.should_run || g_debug_memory_request.signal_triggered)
+        && !g_debug_memory_request.should_exit) {
+      mutex_unlock(&g_debug_memory_request.mutex);
+      debug_memory_report();
+      mutex_lock(&g_debug_memory_request.mutex);
+      g_debug_memory_request.should_run = false;
+      g_debug_memory_request.signal_triggered = false;
+    }
+
+    // Wait for work or signal, with 100ms timeout to check should_exit
+    if (!g_debug_memory_request.should_exit) {
+      cond_timedwait(&g_debug_memory_request.cond, &g_debug_memory_request.mutex, 100000000);  // 100ms
+    }
+    mutex_unlock(&g_debug_memory_request.mutex);
+  }
+  return NULL;
+}
+
+/**
+ * @brief Initialize memory debug thread resources
+ */
+int debug_memory_thread_init(void) {
+  return 0;
+}
+
+/**
+ * @brief Start the memory debug thread
+ */
+int debug_memory_thread_start(void) {
+  if (!g_debug_memory_request.initialized) {
+    mutex_init(&g_debug_memory_request.mutex, "debug_memory_state");
+    cond_init(&g_debug_memory_request.cond, "debug_memory_signal");
+    g_debug_memory_request.initialized = true;
+  }
+
+  g_debug_memory_request.should_exit = false;
+  int err = asciichat_thread_create(&g_debug_memory_thread, debug_memory_thread_fn, NULL);
+  return err;
+}
+
+/**
+ * @brief Trigger memory report from SIGUSR2 handler
+ */
+void debug_memory_trigger_report(void) {
+  g_debug_memory_request.signal_triggered = true;
+  cond_signal(&g_debug_memory_request.cond);
+}
+
+/**
+ * @brief Stop the memory debug thread
+ */
+void debug_memory_thread_cleanup(void) {
+  // Set exit flag and signal thread - don't acquire mutex to avoid deadlock
+  // The thread reads should_exit without locking, and cond_signal is safe without mutex
+  g_debug_memory_request.should_exit = true;
+  cond_signal(&g_debug_memory_request.cond);
+  asciichat_thread_join(&g_debug_memory_thread, NULL);
 }
 
 #elif defined(DEBUG_MEMORY)
@@ -881,6 +1223,18 @@ void debug_memory_set_quiet_mode(bool quiet) {
 }
 
 void debug_memory_report(void) {}
+
+int debug_memory_thread_init(void) {
+  return 0;
+}
+
+int debug_memory_thread_start(void) {
+  return 0;
+}
+
+void debug_memory_trigger_report(void) {}
+
+void debug_memory_thread_cleanup(void) {}
 
 void *debug_malloc(size_t size, const char *file, int line) {
   (void)file;
@@ -911,6 +1265,44 @@ void debug_track_aligned(void *ptr, size_t size, const char *file, int line) {
   (void)size;
   (void)file;
   (void)line;
+}
+
+/**
+ * @brief Asynchronously symbolize unsymbolized backtraces from memory allocations
+ * Called by debug sync thread to avoid blocking the memory report during shutdown
+ */
+void debug_sync_symbolize_allocations(void) {
+  if (!g_site_cache) {
+    return;  // No allocations to symbolize
+  }
+
+  if (!ensure_mutex_initialized()) {
+    return;  // Can't acquire mutex
+  }
+
+  // Try to acquire mutex with short timeout (don't block the debug thread)
+  if (!acquire_mutex_with_polling(&g_mem.mutex, 50)) {
+    return;  // Mutex busy, skip this iteration
+  }
+
+  // Iterate site cache and symbolize backtraces that haven't been tried yet
+  alloc_site_t *site, *tmp;
+  int symbolized_count = 0;
+  const int max_per_iteration = 5;  // Symbolize max 5 backtraces per iteration
+
+  HASH_ITER(hh, g_site_cache, site, tmp) {
+    if (symbolized_count >= max_per_iteration) {
+      break;  // Don't symbolize too many in one iteration
+    }
+
+    // Only symbolize backtraces that haven't been tried yet
+    if (site->backtrace.count > 0 && !site->backtrace.tried_symbolize) {
+      backtrace_symbolize(&site->backtrace);
+      symbolized_count++;
+    }
+  }
+
+  mutex_unlock(&g_mem.mutex);
 }
 
 #endif

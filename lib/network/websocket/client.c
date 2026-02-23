@@ -15,6 +15,7 @@
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/acip/send.h>
+#include <ascii-chat/util/fnv1a.h>
 
 #include <string.h>
 #include <stdatomic.h>
@@ -41,7 +42,7 @@ websocket_client_t *websocket_client_create(void) {
   client->should_reconnect = false;
 
   // Initialize thread-safe mutex for packet transmission
-  if (mutex_init(&client->send_mutex) != 0) {
+  if (mutex_init(&client->send_mutex, "client_send")  != 0) {
     log_error("Failed to initialize send_mutex");
     SAFE_FREE(client);
     return NULL;
@@ -173,13 +174,9 @@ acip_transport_t *websocket_client_connect(websocket_client_t *client, const cha
     return NULL;
   }
 
-  // Derive client ID from URL hash (simple CRC32 of URL)
-  // This provides a stable, unique ID per connection URL
-  uint32_t client_id = 0;
-  for (size_t i = 0; url[i] != '\0'; i++) {
-    client_id = ((client_id << 5) + client_id) ^ url[i]; // Simple hash
-  }
-  client->my_client_id = client_id;
+  // Derive client ID from URL hash using FNV-1a (proper implementation with 64-bit arithmetic)
+  // This provides a stable, unique ID per connection URL without undefined behavior
+  client->my_client_id = fnv1a_hash_string(url);
 
   // Mark encryption as enabled if crypto context provided
   client->encryption_enabled = (crypto_ctx != NULL);

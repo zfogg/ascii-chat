@@ -279,6 +279,7 @@ static asciichat_error_t apply_cli_bool(void *field, const char *opt_value, cons
   // Set the new value
   unsigned char new_value_byte = new_value ? 1 : 0;
   memcpy(field, &new_value_byte, 1);
+
   return ASCIICHAT_OK;
 }
 
@@ -304,6 +305,7 @@ static asciichat_error_t apply_cli_int(void *field, const char *opt_value, const
   }
 
   memcpy(field, &int_value, sizeof(int));
+
   return ASCIICHAT_OK;
 }
 
@@ -318,11 +320,16 @@ static asciichat_error_t apply_cli_string(void *field, const char *opt_value, co
   char *dest = (char *)field;
   safe_snprintf(dest, OPTIONS_BUFF_SIZE, "%s", opt_value);
   dest[OPTIONS_BUFF_SIZE - 1] = '\0';
+
   return ASCIICHAT_OK;
 }
 
 static asciichat_error_t apply_cli_double(void *field, const char *opt_value, const option_descriptor_t *desc) {
-  (void)desc;
+  // Handle optional arguments - if no value provided, keep default
+  if (!opt_value || !opt_value[0]) {
+    return ASCIICHAT_OK;
+  }
+
   char *endptr;
   double value = strtod(opt_value, &endptr);
   // Check: endptr must have advanced past the input, and must be at the string end
@@ -330,6 +337,7 @@ static asciichat_error_t apply_cli_double(void *field, const char *opt_value, co
     return ERROR_USAGE;
   }
   memcpy(field, &value, sizeof(double));
+
   return ASCIICHAT_OK;
 }
 
@@ -342,6 +350,7 @@ static asciichat_error_t apply_cli_callback(void *field, const char *opt_value, 
       return err;
     }
   }
+
   return ASCIICHAT_OK;
 }
 
@@ -351,6 +360,7 @@ static asciichat_error_t apply_cli_action(void *field, const char *opt_value, co
   if (desc->action_fn) {
     desc->action_fn();
   }
+
   return ASCIICHAT_OK;
 }
 

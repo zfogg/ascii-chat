@@ -4,9 +4,6 @@
 cmake_minimum_required(VERSION 3.18)
 project(ascii-chat-wasm)
 
-# Suppress verbose build output from dependencies
-set(CMAKE_MESSAGE_LOG_LEVEL WARNING)
-
 # Export compile commands for IDE integration
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -27,8 +24,13 @@ endif()
 # Fetch and build dependencies for WASM
 include(FetchContent)
 
-# Set quiet build for all FetchContent projects
+# Suppress verbose configure output from all dependency builds
+set(CMAKE_MESSAGE_LOG_LEVEL_BACKUP "${CMAKE_MESSAGE_LOG_LEVEL}")
+set(CMAKE_MESSAGE_LOG_LEVEL "WARNING")
 set(FETCHCONTENT_QUIET ON)
+
+# Suppress CMake find_package output
+set(CMAKE_FIND_PACKAGE_PREFER_CONFIG ON)
 
 # libsodium
 FetchContent_Declare(Sodium
@@ -71,6 +73,9 @@ set(ZSTD_BUILD_SHARED OFF CACHE BOOL "Build shared library")
 set(ZSTD_BUILD_STATIC ON CACHE BOOL "Build static library")
 set(ZSTD_MULTITHREAD_SUPPORT OFF CACHE BOOL "Disable zstd threading for WASM")
 FetchContent_MakeAvailable(zstd)
+
+# Restore original message log level
+set(CMAKE_MESSAGE_LOG_LEVEL "${CMAKE_MESSAGE_LOG_LEVEL_BACKUP}")
 
 # TOML (using tomlc17 from deps)
 # No FetchContent needed - using vendored tomlc17
@@ -227,7 +232,6 @@ set(LIB_SRC_COMMON
 
     # Debug/memory tracking
     ${LIB_ROOT}/debug/memory.c
-    ${LIB_ROOT}/debug/lock.c
 
     # Terminal abstraction (using WASM-specific version from PLATFORM_SRC)
     # ${LIB_ROOT}/platform/terminal.c - EXCLUDED: using wasm/terminal.c instead

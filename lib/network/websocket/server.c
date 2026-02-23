@@ -63,16 +63,15 @@ static struct lws_protocols websocket_protocols[];
  * This captures LWS internal logging so we can see what's happening
  */
 static void websocket_lws_log_callback(int level, const char *line) {
-  UNUSED(level);
-  UNUSED(line);
-  // INFO: Logging disabled to reduce noise. Uncomment below for debugging.
-  // if (level & LLL_ERR) {
-  //   log_error("[LWS] %s", line);
-  // } else if (level & LLL_WARN) {
-  //   log_warn("[LWS] %s", line);
-  // } else if (level & LLL_NOTICE) {
-  //   log_info("[LWS] %s", line);
-  // } else if (level & LLL_INFO) {
+  if (level & LLL_ERR) {
+    log_error("[LWS] %s", line);
+  } else if (level & LLL_WARN) {
+    log_warn("[LWS] %s", line);
+  } else if (level & LLL_NOTICE) {
+    log_info("[LWS] %s", line);
+  }
+  // INFO: Debug and info logging disabled to reduce noise. Uncomment below if needed.
+  // else if (level & LLL_INFO) {
   //   log_info("[LWS] %s", line);
   // } else if (level & LLL_DEBUG) {
   //   log_debug("[LWS] %s", line);
@@ -187,14 +186,26 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     client_ctx->client_port = 0; // WebSocket doesn't expose client port easily
     client_ctx->user_data = server->user_data;
 
-    // Spawn handler thread - this calls websocket_client_handler which creates client_info_t
-    log_info("🔴 ABOUT TO SPAWN HANDLER THREAD: handler=%p, ctx=%p", (void *)server->handler, (void *)client_ctx);
-    log_debug("[LWS_CALLBACK_ESTABLISHED] Spawning handler thread (handler=%p, ctx=%p)...", (void *)server->handler,
-              (void *)client_ctx);
-    int handler_create_result = asciichat_thread_create(&conn_data->handler_thread, server->handler, client_ctx);
-    log_info("🔴 asciichat_thread_create returned: %d", handler_create_result);
-    if (handler_create_result != 0) {
-      log_error("[LWS_CALLBACK_ESTABLISHED] FAILED: asciichat_thread_create returned error");
+    // Queue handler to thread pool (no pthread_create from callback context)
+    // The handler_pool was created at server startup with pre-allocated workers
+    log_info("🔴 ABOUT TO QUEUE HANDLER: handler=%p, ctx=%p", (void *)server->handler, (void *)client_ctx);
+    log_debug("[LWS_CALLBACK_ESTABLISHED] Queueing handler to work pool (handler=%p, ctx=%p)...",
+              (void *)server->handler, (void *)client_ctx);
+
+    if (!server->handler_pool) {
+      log_error("[LWS_CALLBACK_ESTABLISHED] FAILED: handler_pool is NULL");
+      SAFE_FREE(client_ctx);
+      acip_transport_destroy(conn_data->transport);
+      conn_data->transport = NULL;
+      return -1;
+    }
+
+    asciichat_error_t queue_result = thread_pool_queue_work(server->handler_pool, server->handler, client_ctx);
+    log_info("🔴 thread_pool_queue_work returned: %s",
+             queue_result == ASCIICHAT_OK ? "OK" : "ERROR");
+
+    if (queue_result != ASCIICHAT_OK) {
+      log_error("[LWS_CALLBACK_ESTABLISHED] FAILED: thread_pool_queue_work returned error");
       SAFE_FREE(client_ctx);
       acip_transport_destroy(conn_data->transport);
       conn_data->transport = NULL;
@@ -202,8 +213,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     }
 
     conn_data->handler_started = true;
-    log_debug("[LWS_CALLBACK_ESTABLISHED] Handler thread spawned successfully");
-    log_info("★★★ ESTABLISHED CALLBACK SUCCESS - handler thread spawned! ★★★");
+    log_debug("[LWS_CALLBACK_ESTABLISHED] Handler work queued successfully");
+    log_info("★★★ ESTABLISHED CALLBACK SUCCESS - handler work queued! ★★★");
     break;
   }
 
@@ -255,18 +266,20 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     }
 
     if (conn_data && conn_data->handler_started) {
-      // Wait for handler thread to complete
-      uint64_t join_start_ns = time_get_ns();
-      log_debug("[LWS_CALLBACK_CLOSED] Waiting for handler thread to complete...");
-      asciichat_thread_join(&conn_data->handler_thread, NULL);
-      uint64_t join_end_ns = time_get_ns();
-      char join_duration_str[32];
-      format_duration_ns((double)(join_end_ns - join_start_ns), join_duration_str, sizeof(join_duration_str));
+      // Handler is managed by thread pool - no join needed
+      // The pool worker will finish handling the transport and return to the pool
+      // Transport was already closed above, signaling the handler to exit
+      // DO NOT destroy the transport here - the handler might still be using it!
+      // The handler will free the context, and the transport will be cleaned up
+      // through the client structure (remove_client handles transport cleanup)
       conn_data->handler_started = false;
-      log_info("[LWS_CALLBACK_CLOSED] Handler thread completed (join took %s)", join_duration_str);
+      log_debug("[LWS_CALLBACK_CLOSED] Handler was queued to pool (it will cleanup when done)");
+      log_debug("[LWS_CALLBACK_CLOSED] NOT destroying transport here - handler is still executing");
+      transport_snapshot = NULL; // Don't destroy below
     }
 
-    // Destroy the transport and free all its resources (send_queue, recv_queue, etc)
+    // Destroy the transport only if the handler is NOT running
+    // (Handler manages cleanup when it's running)
     if (transport_snapshot) {
       log_debug("[LWS_CALLBACK_CLOSED] Destroying transport=%p", (void *)transport_snapshot);
       acip_transport_destroy(transport_snapshot);
@@ -279,8 +292,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
     uint64_t close_callback_end_ns = time_get_ns();
     char total_duration_str[32];
-    format_duration_ns((double)(close_callback_end_ns - close_callback_start_ns), total_duration_str,
-                       sizeof(total_duration_str));
+    time_pretty(close_callback_end_ns - close_callback_start_ns, -1, total_duration_str,
+                sizeof(total_duration_str));
     log_info("[LWS_CALLBACK_CLOSED] Complete cleanup took %s", total_duration_str);
     break;
   }
@@ -291,19 +304,17 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     log_debug("=== LWS_CALLBACK_SERVER_WRITEABLE FIRED === wsi=%p, timestamp=%llu",
                   (void *)wsi, (unsigned long long)writeable_callback_start_ns);
 
-    // Dequeue and send pending data
+    // Validate preconditions
     if (!conn_data) {
       log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: No conn_data");
       break;
     }
 
-    // Check if cleanup is in progress to avoid race condition with remove_client
     if (conn_data->cleaning_up) {
       log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: Cleanup in progress, skipping");
       break;
     }
 
-    // Snapshot the transport pointer to avoid race condition with cleanup thread
     acip_transport_t *transport_snapshot = conn_data->transport;
     if (!transport_snapshot) {
       log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: No transport");
@@ -316,191 +327,90 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       break;
     }
 
-    // Fragment size must match rx_buffer_size per LWS performance guidelines.
-    // Sending fragments larger than rx_buffer_size causes lws_write() to internally
-    // buffer data, leading to performance degradation. The recommended approach is to
-    // send chunks equal to (or slightly smaller than) the rx_buffer_size.
-    // See: https://github.com/warmcat/libwebsockets/issues/464
-    // We configured rx_buffer_size=524288 (512KB) above in websocket_protocols.
-    // This reduces 1.2MB frames from 300x4KB fragments to 2-3x512KB fragments,
-    // dramatically improving throughput and FPS.
-    const size_t FRAGMENT_SIZE = 262144; // 256KB - balance between throughput and stability
+    // Dequeue and send messages until pipe is choked or queue is empty
+    // This follows the libwebsockets reference pattern (protocol_lws_mirror.c)
+    websocket_recv_msg_t msg = {0};
 
-    // Check if we have a message in progress
-    if (conn_data->has_pending_send) {
-      size_t chunk_size = (conn_data->pending_send_len - conn_data->pending_send_offset > FRAGMENT_SIZE)
-                              ? FRAGMENT_SIZE
-                              : (conn_data->pending_send_len - conn_data->pending_send_offset);
-      int is_start = (conn_data->pending_send_offset == 0);
-      int is_end = (conn_data->pending_send_offset + chunk_size >= conn_data->pending_send_len);
-
-      // Compute appropriate WebSocket frame flags for libwebsockets
-      // First frame: LWS_WRITE_BINARY | LWS_WRITE_NO_FIN (starts new message, don't finish yet)
-      // Middle frames: LWS_WRITE_CONTINUATION | LWS_WRITE_NO_FIN (continue, don't finish yet)
-      // Final frame: LWS_WRITE_CONTINUATION (continue and finish)
-      // CRITICAL: Without NO_FIN, fragment 1 completes the message, causing fragment 2+ to crash
-      enum lws_write_protocol flags;
-      if (is_start) {
-        flags = is_end ? LWS_WRITE_BINARY : (LWS_WRITE_BINARY | LWS_WRITE_NO_FIN);
-      } else {
-        flags = is_end ? LWS_WRITE_CONTINUATION : (LWS_WRITE_CONTINUATION | LWS_WRITE_NO_FIN);
+    do {
+      // Dequeue one message
+      mutex_lock(&ws_data->send_mutex);
+      if (ringbuffer_is_empty(ws_data->send_queue)) {
+        mutex_unlock(&ws_data->send_mutex);
+        break;  // No more messages
       }
+      if (!ringbuffer_read(ws_data->send_queue, &msg)) {
+        mutex_unlock(&ws_data->send_mutex);
+        break;  // Failed to read
+      }
+      mutex_unlock(&ws_data->send_mutex);
 
-      // Ensure send buffer is large enough
-      size_t required_size = LWS_PRE + chunk_size;
-      if (ws_data->send_buffer_capacity < required_size) {
-        SAFE_FREE(ws_data->send_buffer);
-        ws_data->send_buffer = SAFE_MALLOC(required_size, uint8_t *);
-        if (!ws_data->send_buffer) {
-          log_error("Failed to allocate send buffer");
-          SAFE_FREE(conn_data->pending_send_data);
-          conn_data->pending_send_data = NULL;
-          conn_data->has_pending_send = false;
-          break;
+      if (!msg.data || msg.len == 0) {
+        log_error("SERVER_WRITEABLE: Dequeued invalid message (data=%p, len=%zu)", (void *)msg.data, msg.len);
+        if (msg.data) {
+          buffer_pool_free(NULL, msg.data, LWS_PRE + msg.len);
         }
-        ws_data->send_buffer_capacity = required_size;
+        continue;
       }
 
-      // Copy from payload portion (after LWS_PRE) of queued message, not from the LWS_PRE padding itself
-      memcpy(ws_data->send_buffer + LWS_PRE, conn_data->pending_send_data + LWS_PRE + conn_data->pending_send_offset, chunk_size);
-
-      uint64_t write_start_ns = time_get_ns();
-      log_debug(">>> lws_write() sending %zu byte continuation fragment (flags=0x%x) for wsi=%p", chunk_size, flags, (void *)wsi);
-      int written = lws_write(wsi, ws_data->send_buffer + LWS_PRE, chunk_size, flags);
-      uint64_t write_end_ns = time_get_ns();
-      char write_duration_str[32];
-      format_duration_ns((double)(write_end_ns - write_start_ns), write_duration_str, sizeof(write_duration_str));
-      log_debug(">>> lws_write() returned %d bytes in %s (chunk_size=%zu)", written,
-                    write_duration_str, chunk_size);
+      // Send entire message - libwebsockets handles fragmentation automatically
+      // msg.data already has LWS_PRE padding, so we pass data at offset LWS_PRE
+      int written = lws_write(wsi, msg.data + LWS_PRE, msg.len, LWS_WRITE_BINARY);
 
       if (written < 0) {
-        log_error("Server WebSocket write error: %d at offset %zu/%zu", written, conn_data->pending_send_offset,
-                  conn_data->pending_send_len);
-        SAFE_FREE(conn_data->pending_send_data);
-        conn_data->pending_send_data = NULL;
-        conn_data->has_pending_send = false;
-        break;
+        log_error("Server WebSocket write error: %d (msg_len=%zu)", written, msg.len);
+        buffer_pool_free(NULL, msg.data, LWS_PRE + msg.len);
+        break;  // Connection error, stop sending
       }
 
-      if ((size_t)written != chunk_size) {
-        log_warn("Server WebSocket partial write: %d/%zu bytes at offset %zu/%zu", written, chunk_size,
-                 conn_data->pending_send_offset, conn_data->pending_send_len);
-        // Don't fail on partial write - request another callback to continue
-        conn_data->pending_send_offset += written;
+      if ((size_t)written != msg.len) {
+        // Partial write - with permessage-deflate compression, this can happen
+        // Re-queue the unsent portion for the next callback instead of freeing it
+        log_debug("Server WebSocket partial write: %d/%zu bytes (re-queueing %zu bytes for next callback)",
+                  written, msg.len, msg.len - (size_t)written);
+
+        // Create new message for the unsent data
+        websocket_recv_msg_t unsent_msg;
+        unsent_msg.data = msg.data;  // Keep the same buffer allocation
+        unsent_msg.len = msg.len - (size_t)written;
+        unsent_msg.first = 0;  // No longer first fragment
+        unsent_msg.final = msg.final;  // Preserve final flag
+
+        // Re-queue at front of send queue (mutex already unlocked above)
+        mutex_lock(&ws_data->send_mutex);
+        bool requeue_success = ringbuffer_write(ws_data->send_queue, &unsent_msg);
+        if (!requeue_success) {
+          mutex_unlock(&ws_data->send_mutex);
+          log_error("Failed to re-queue unsent data (%zu bytes)", unsent_msg.len);
+          buffer_pool_free(NULL, msg.data, LWS_PRE + msg.len);
+          break;
+        }
+        mutex_unlock(&ws_data->send_mutex);
+
+        // Request immediate callback to continue sending
         lws_callback_on_writable(wsi);
-        break;
+        break;  // Stop processing more messages, let next callback retry
       }
 
-      conn_data->pending_send_offset += chunk_size;
+      log_debug(">>> lws_write() sent %d/%zu bytes, wsi=%p", written, msg.len, (void *)wsi);
+      // Only free buffer when entire message was sent successfully
+      buffer_pool_free(NULL, msg.data, LWS_PRE + msg.len);
 
-      if (is_end) {
-        // Message fully sent
-        log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: Message fully sent (%zu bytes)",
-                      conn_data->pending_send_len);
-        SAFE_FREE(conn_data->pending_send_data);
-        conn_data->pending_send_data = NULL;
-        conn_data->has_pending_send = false;
-      } else {
-        // More fragments to send
-        log_dev_every(4500 * US_PER_MS_INT,
-                      "SERVER_WRITEABLE: Sent fragment %zu/%zu bytes, requesting another callback",
-                      conn_data->pending_send_offset, conn_data->pending_send_len);
-        lws_callback_on_writable(wsi);
-        break;
-      }
-    }
+      // Continue sending while pipe is not choked and we have data
+      // This matches lws_mirror.c line 396: } while (!lws_send_pipe_choked(wsi));
+    } while (!lws_send_pipe_choked(wsi));
 
-    // Try to dequeue next message if current one is done
-    // Fix: Combine into single lock section to eliminate TOCTOU race condition
-    websocket_recv_msg_t msg = {0};
-    bool success = false;
-    bool more_messages = false;
-
+    // If messages still queued and pipe not choked, request callback for next batch
     mutex_lock(&ws_data->send_mutex);
-    // Check and dequeue in one atomic operation to avoid race conditions
-    if (!ringbuffer_is_empty(ws_data->send_queue)) {
-      success = ringbuffer_read(ws_data->send_queue, &msg);
-      // Check if there are more messages for the next callback
-      more_messages = !ringbuffer_is_empty(ws_data->send_queue);
-      log_debug(">>> Dequeued from send_queue: success=%d, msg.len=%zu, more_messages=%d", success, msg.len, more_messages);
-    } else {
-      log_debug(">>> send_queue is EMPTY (nothing to dequeue)");
-    }
+    bool has_more = !ringbuffer_is_empty(ws_data->send_queue);
     mutex_unlock(&ws_data->send_mutex);
 
-    if (success && msg.data) {
-      // Start sending this message
-      conn_data->pending_send_data = msg.data;
-      conn_data->pending_send_len = msg.len;
-      conn_data->pending_send_offset = 0;
-      conn_data->has_pending_send = true;
-
-      log_debug(">>> SERVER_WRITEABLE: Dequeued message %zu bytes, sending first fragment",
-                    msg.len);
-
-      // Send first fragment
-      size_t chunk_size = (msg.len > FRAGMENT_SIZE) ? FRAGMENT_SIZE : msg.len;
-      int is_end = (chunk_size >= msg.len);
-
-      // Compute appropriate WebSocket frame flags for libwebsockets
-      // First frame: LWS_WRITE_BINARY | LWS_WRITE_NO_FIN (starts new message, don't finish yet)
-      // Middle frames: LWS_WRITE_CONTINUATION | LWS_WRITE_NO_FIN (continue, don't finish yet)
-      // Final frame: LWS_WRITE_CONTINUATION (continue and finish)
-      // CRITICAL: Without NO_FIN, fragment 1 completes the message, causing fragment 2+ to crash
-      enum lws_write_protocol flags = is_end ? LWS_WRITE_BINARY : (LWS_WRITE_BINARY | LWS_WRITE_NO_FIN);
-
-      size_t required_size = LWS_PRE + chunk_size;
-      if (ws_data->send_buffer_capacity < required_size) {
-        SAFE_FREE(ws_data->send_buffer);
-        ws_data->send_buffer = SAFE_MALLOC(required_size, uint8_t *);
-        if (!ws_data->send_buffer) {
-          log_error("Failed to allocate send buffer");
-          SAFE_FREE(msg.data);
-          conn_data->has_pending_send = false;
-          break;
-        }
-        ws_data->send_buffer_capacity = required_size;
-      }
-
-      memcpy(ws_data->send_buffer + LWS_PRE, msg.data + LWS_PRE, chunk_size);
-
-      log_debug(">>> lws_write() sending %zu bytes (flags=0x%x) for wsi=%p", chunk_size, flags, (void *)wsi);
-      int written = lws_write(wsi, ws_data->send_buffer + LWS_PRE, chunk_size, flags);
-      log_debug(">>> lws_write() returned %d bytes", written);
-      if (written < 0) {
-        log_error("Server WebSocket write error on first fragment: %d", written);
-        SAFE_FREE(msg.data);
-        conn_data->has_pending_send = false;
-        break;
-      }
-
-      if ((size_t)written != chunk_size) {
-        log_warn("Server WebSocket partial write on first fragment: %d/%zu", written, chunk_size);
-        conn_data->pending_send_offset = written;
-      } else {
-        conn_data->pending_send_offset = chunk_size;
-      }
-
-      if (!is_end) {
-        log_debug(
-                      ">>> SERVER_WRITEABLE: First fragment sent, requesting callback for next fragment");
-        lws_callback_on_writable(wsi);
-      } else {
-        log_debug("SERVER_WRITEABLE: Message fully sent in first fragment (%zu bytes)",
-                      chunk_size);
-        SAFE_FREE(msg.data);
-        conn_data->has_pending_send = false;
-
-        // Request callback if more messages are queued (info from earlier dequeue with lock held)
-        if (more_messages) {
-          log_dev_every(4500 * US_PER_MS_INT, ">>> SERVER_WRITEABLE: More messages queued, requesting callback");
-          lws_callback_on_writable(wsi);
-        }
-      }
+    if (has_more && !lws_send_pipe_choked(wsi)) {
+      log_dev_every(4500 * US_PER_MS_INT, "SERVER_WRITEABLE: More messages queued, requesting callback");
+      lws_callback_on_writable(wsi);
     }
 
     // Record timing for this callback
-    uint64_t writeable_callback_end_ns = websocket_callback_timing_start();
+    uint64_t writeable_callback_end_ns = time_get_ns();
     websocket_callback_timing_record(&g_ws_callback_timing.server_writeable, writeable_callback_start_ns,
                                      writeable_callback_end_ns);
     break;
@@ -568,8 +478,9 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       client_ctx->client_port = 0;
       client_ctx->user_data = server->user_data;
 
-      if (asciichat_thread_create(&conn_data->handler_thread, server->handler, client_ctx) != 0) {
-        log_error("LWS_CALLBACK_RECEIVE: Failed to spawn handler thread");
+      // Queue handler to thread pool (fallback if not queued in ESTABLISHED)
+      if (thread_pool_queue_work(server->handler_pool, server->handler, client_ctx) != ASCIICHAT_OK) {
+        log_error("LWS_CALLBACK_RECEIVE: Failed to queue handler work");
         SAFE_FREE(client_ctx);
         acip_transport_destroy(conn_data->transport);
         conn_data->transport = NULL;
@@ -577,7 +488,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       }
 
       conn_data->handler_started = true;
-      log_info("LWS_CALLBACK_RECEIVE: Handler thread spawned in fallback");
+      log_info("LWS_CALLBACK_RECEIVE: Handler work queued in fallback");
 
       // Update snapshot after creating transport
       transport_snapshot = conn_data->transport;
@@ -728,14 +639,9 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     mutex_unlock(&ws_data->recv_mutex);
     log_dev("[WS_DEBUG] RECEIVE: Unlocked recv_mutex");
 
-    // Signal handler to process queued fragments
-    // IMPORTANT: With permessage-deflate, lws_is_final_fragment() is unreliable (GitHub #1768)
-    // So we signal for EVERY fragment instead of waiting for is_final=1.
-    // The handler thread will detect complete ACIP messages using protocol structure:
-    // - ACIP header: magic(8) + type(2) + length(4) + crc(4) + client_id(2) = 20 bytes
-    // - Use length field to know when we have a complete packet
-    // This avoids relying on WebSocket fragmentation flags which are unreliable with compression
-    lws_callback_on_writable(wsi);
+    // Signal handler to process queued fragments via the condition variable
+    // (cond_signal already called above - do not call lws_callback_on_writable here as it
+    // interferes with fragmented frame processing in libwebsockets)
 
     log_info("[WS_FRAG] Queued fragment: %zu bytes (first=%d final=%d, total_fragments=%llu)", len, is_first, is_final,
              (unsigned long long)atomic_load(&g_receive_callback_count));
@@ -743,16 +649,26 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     // Log callback duration with breakdown
     {
       uint64_t callback_exit_ns = time_get_ns();
-      double callback_dur_us = (double)(callback_exit_ns - callback_enter_ns) / 1e3;
-      double alloc_dur_us = (double)(alloc_end_ns - alloc_start_ns) / 1e3;
-      double lock_wait_dur_us = (double)(lock_end_ns - lock_start_ns) / 1e3;
+      uint64_t callback_dur_ns = callback_exit_ns - callback_enter_ns;
+      uint64_t alloc_dur_ns = alloc_end_ns - alloc_start_ns;
+      uint64_t lock_wait_dur_ns = lock_end_ns - lock_start_ns;
 
-      if (callback_dur_us > 500) {
-        log_warn("[WS_CALLBACK_DURATION] RECEIVE callback took %.1f µs (alloc=%.1f µs, lock_wait=%.1f µs)",
-                 callback_dur_us, alloc_dur_us, lock_wait_dur_us);
+      if (callback_dur_ns > 500000) { // 500 µs in nanoseconds
+        char callback_str[32], alloc_str[32], lock_str[32];
+        time_pretty(callback_dur_ns, -1, callback_str, sizeof(callback_str));
+        time_pretty(alloc_dur_ns, -1, alloc_str, sizeof(alloc_str));
+        time_pretty(lock_wait_dur_ns, -1, lock_str, sizeof(lock_str));
+        log_warn("[WS_CALLBACK_DURATION] RECEIVE callback took %s (alloc=%s, lock_wait=%s)",
+                 callback_str, alloc_str, lock_str);
       }
-      log_debug("[WS_CALLBACK_TIMING] total=%.1f µs (alloc=%.1f µs, lock_wait=%.1f µs, other=%.1f µs)", callback_dur_us,
-                alloc_dur_us, lock_wait_dur_us, callback_dur_us - alloc_dur_us - lock_wait_dur_us);
+      char callback_str[32], alloc_str[32], lock_str[32], other_str[32];
+      time_pretty(callback_dur_ns, -1, callback_str, sizeof(callback_str));
+      time_pretty(alloc_dur_ns, -1, alloc_str, sizeof(alloc_str));
+      time_pretty(lock_wait_dur_ns, -1, lock_str, sizeof(lock_str));
+      uint64_t other_dur_ns = callback_dur_ns - alloc_dur_ns - lock_wait_dur_ns;
+      time_pretty(other_dur_ns, -1, other_str, sizeof(other_str));
+      log_debug("[WS_CALLBACK_TIMING] total=%s (alloc=%s, lock_wait=%s, other=%s)", callback_str,
+                alloc_str, lock_str, other_str);
     }
     log_debug("[WS_RECEIVE] ===== RECEIVE CALLBACK COMPLETE, returning 0 to continue =====");
     log_info("[WS_RECEIVE_RETURN] Returning 0 from RECEIVE callback (success). fragmented=%d (first=%d final=%d)",
@@ -871,6 +787,24 @@ static const struct lws_extension websocket_extensions[] = {
     {"permessage-deflate", lws_extension_callback_pm_deflate, "permessage-deflate; server_max_window_bits=15"},
     {NULL, NULL, NULL}};
 
+/**
+ * @brief Keep-alive policy for WebSocket connections
+ *
+ * Configures libwebsockets to send PING frames during idle periods to maintain connections
+ * during long handshakes or quiet periods with no application data.
+ *
+ * - secs_since_valid_ping: Send a PING after 30 seconds of idle
+ * - secs_since_valid_hangup: Close connection if no PONG after 35 seconds total idle
+ *
+ * This prevents lws from closing the connection during the crypto handshake.
+ * Without this, connections close at the default HTTP keepalive timeout (5 seconds),
+ * which is too short for crypto negotiation.
+ */
+static const lws_retry_bo_t keep_alive_policy = {
+    .secs_since_valid_ping = 30,   // Send PING after 30s idle
+    .secs_since_valid_hangup = 35, // Hangup if still idle after 35s
+};
+
 asciichat_error_t websocket_server_init(websocket_server_t *server, const websocket_server_config_t *config) {
   if (!server || !config || !config->client_handler) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
@@ -897,16 +831,31 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   info.gid = (gid_t)-1;                                // Cast to avoid undefined behavior with unsigned type
   info.uid = (uid_t)-1;                                // Cast to avoid undefined behavior with unsigned type
   info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT; // Initialize SSL/TLS support (required for server binding)
-  info.extensions = websocket_extensions;              // Enable permessage-deflate with small window bits
-  // Permessage-deflate configuration (RFC 7692):
-  // - server_max_window_bits=8: Use 256-byte (2^8) sliding window instead of 32KB (2^15)
-  // - Reduces decompression buffer size to prevent "rx buffer underflow" in LWS 4.5.2
-  // - Still achieves good compression for video frames (10:1 ratio typical for 921KB frames)
+  info.extensions = NULL;                             // Disable permessage-deflate - causing connection issues
+  info.retry_and_idle_policy = &keep_alive_policy;    // Configure keep-alive to prevent idle disconnects during handshake
+
+  // TCP-level keep-alive: detect dead connections quickly
+  // Enabled after ka_time seconds of idle, probe every ka_interval seconds, give up after ka_probes attempts
+  info.ka_time = 10;      // Wait 10 seconds before first keep-alive probe on idle TCP connection
+  info.ka_probes = 3;     // Send 3 keep-alive probes
+  info.ka_interval = 10;  // Wait 10 seconds between probes
+
+  // HTTP connection keep-alive timeout (for connections before WebSocket upgrade)
+  info.keepalive_timeout = 60;  // Allow 60 seconds for HTTP to WebSocket upgrade
 
   // Create libwebsockets context
   server->context = lws_create_context(&info);
   if (!server->context) {
     return SET_ERRNO(ERROR_NETWORK_BIND, "Failed to create libwebsockets context");
+  }
+
+  // Create thread pool for handling client connections
+  // Use 4 worker threads to handle concurrent client handlers without blocking LWS event loop
+  server->handler_pool = thread_pool_create_with_workers("websocket_handlers", 4);
+  if (!server->handler_pool) {
+    lws_context_destroy(server->context);
+    server->context = NULL;
+    return SET_ERRNO(ERROR_THREAD, "Failed to create WebSocket handler thread pool");
   }
 
   log_info("WebSocket server initialized on port %d with static file serving", config->port);
@@ -973,6 +922,12 @@ void websocket_server_destroy(websocket_server_t *server) {
   }
 
   atomic_store(&server->running, false);
+
+  // Destroy handler thread pool (waits for pending work to complete)
+  if (server->handler_pool) {
+    thread_pool_destroy(server->handler_pool);
+    server->handler_pool = NULL;
+  }
 
   // Context is normally destroyed by websocket_server_run (from the event loop
   // thread) for fast shutdown. This handles the case where run() wasn't called

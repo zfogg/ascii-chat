@@ -600,6 +600,10 @@ build/bin/test_performance_ascii_simd --filter "*monochrome*"
 - [ ] ascii-chat official homebrew bottles (brew install ascii-chat with no tap)
 - [ ] get libgcrypt and gpg fixed and integrate with libgcrypt
 
+## Links
+
+* [Everything you never wanted to know about ANSI escape codes](https://notes.burke.libbey.me/ansi-escape-codes)
+
 ## Notes
 
 - **Note:** Colored frames are many times larger than monochrome frames due

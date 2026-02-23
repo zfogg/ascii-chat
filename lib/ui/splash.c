@@ -20,12 +20,15 @@
 #include "session/display.h"
 #include "session/session_log_buffer.h"
 #include <ascii-chat/util/display.h>
+#include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/init.h>
+#include <ascii-chat/debug/sync.h>
 #include <ascii-chat/video/image.h>
 #include <ascii-chat/video/ansi_fast.h>
 #include <ascii-chat/options/options.h>
@@ -49,6 +52,7 @@
 // Global update notification (set via splash_set_update_notification)
 static char g_update_notification[1024] = {0};
 static mutex_t g_update_notification_mutex;
+static lifecycle_t g_update_notification_lifecycle = LIFECYCLE_INIT;
 
 static const rgb_pixel_t g_rainbow_colors[] = {
     {255, 0, 0},   // Red
@@ -374,14 +378,18 @@ bool splash_should_display(bool is_intro) {
   if (is_intro) {
     // Allow splash in snapshot mode if loading from URL/file (has loading time)
     // Skip splash only for quick webcam snapshots
+    bool splash_screen_opt = GET_OPTION(splash_screen);
     bool is_snapshot = GET_OPTION(snapshot_mode);
     bool has_media = (GET_OPTION(media_url) && strlen(GET_OPTION(media_url)) > 0) ||
                      (GET_OPTION(media_file) && strlen(GET_OPTION(media_file)) > 0);
 
+    bool should_display = splash_screen_opt && (!is_snapshot || has_media);
+    log_info("splash_should_display(intro): splash_screen=%d snapshot=%d has_media=%d => %d",
+             splash_screen_opt, is_snapshot, has_media, should_display);
     // Show splash if:
     // 1. Not in snapshot mode, OR
     // 2. In snapshot mode but loading from URL/file (needs splash during load)
-    return GET_OPTION(splash) && (!is_snapshot || has_media);
+    return should_display;
   } else {
     return GET_OPTION(status_screen);
   }
@@ -425,18 +433,21 @@ static void *splash_animation_thread(void *arg) {
         // Continue to render immediately with grep active
       }
     }
+
     // Set up splash header context for this frame
     splash_header_ctx_t header_ctx = {
         .frame = frame,
         .use_colors = use_colors,
     };
 
-    // Copy update notification from global state (thread-safe)
-    static bool mutex_initialized = false;
-    if (!mutex_initialized) {
-      mutex_init(&g_update_notification_mutex);
-      mutex_initialized = true;
+    // Initialize update notification lifecycle once (safe to call multiple times)
+    if (lifecycle_init_once(&g_update_notification_lifecycle)) {
+      g_update_notification_lifecycle.sync_type = LIFECYCLE_SYNC_MUTEX;
+      g_update_notification_lifecycle.sync.mutex = &g_update_notification_mutex;
+      lifecycle_init(&g_update_notification_lifecycle, "update_notification");
     }
+
+    // Copy update notification from global state (thread-safe)
     mutex_lock(&g_update_notification_mutex);
     SAFE_STRNCPY(header_ctx.update_notification, g_update_notification, sizeof(header_ctx.update_notification));
     mutex_unlock(&g_update_notification_mutex);
@@ -456,8 +467,11 @@ static void *splash_animation_thread(void *arg) {
     };
 
     // Render the screen (header + logs) only in interactive mode
-    // In non-interactive mode, logs flow to stdout/stderr normally
-    if (terminal_is_interactive()) {
+    // OR if splash screen was explicitly requested
+    // In non-interactive mode without explicit flag, logs flow to stdout/stderr normally
+    const options_t *opts_render = options_get();
+    bool should_render = terminal_is_interactive() || (opts_render && opts_render->splash_screen_explicitly_set);
+    if (should_render) {
       terminal_screen_render(&screen_config);
     }
 
@@ -482,13 +496,23 @@ static void *splash_animation_thread(void *arg) {
 int splash_intro_start(session_display_ctx_t *ctx) {
   (void)ctx; // Parameter not used currently
 
+  log_info("splash_intro_start: ENTRY");
+
   // Pre-checks
-  if (!splash_should_display(true)) {
+  bool should_display = splash_should_display(true);
+  log_info("splash_intro_start: splash_should_display(true)=%d", should_display);
+  if (!should_display) {
+    log_info("splash_intro_start: returning early - splash should not display");
     return 0; // ASCIICHAT_OK equivalent
   }
 
-  // Don't initialize log buffer in non-interactive mode - logs go directly to stdout/stderr
-  if (!terminal_is_interactive()) {
+  // Don't initialize log buffer in non-interactive mode UNLESS explicitly requested
+  bool is_interactive = terminal_is_interactive();
+  const options_t *opts = options_get();
+  bool splash_explicitly_set = opts && opts->splash_screen_explicitly_set;
+  log_info("splash_intro_start: terminal_is_interactive()=%d, splash_explicitly_set=%d", is_interactive, splash_explicitly_set);
+  if (!is_interactive && !splash_explicitly_set) {
+    log_info("splash_intro_start: returning early - not interactive and splash not explicitly set");
     return 0;
   }
 
@@ -507,6 +531,8 @@ int splash_intro_start(session_display_ctx_t *ctx) {
 
   // Clear screen
   terminal_clear_screen();
+  // Show cursor for splash screen display (with logs)
+  (void)terminal_cursor_show();
   fflush(stdout);
 
   // Set running flag
@@ -589,10 +615,10 @@ int splash_display_status(int mode) {
   }
 
   // Add update notification if available
-  static bool mutex_initialized_for_status = false;
-  if (!mutex_initialized_for_status) {
-    mutex_init(&g_update_notification_mutex);
-    mutex_initialized_for_status = true;
+  if (lifecycle_init_once(&g_update_notification_lifecycle)) {
+    g_update_notification_lifecycle.sync_type = LIFECYCLE_SYNC_MUTEX;
+    g_update_notification_lifecycle.sync.mutex = &g_update_notification_mutex;
+    lifecycle_init(&g_update_notification_lifecycle, "update_notification");
   }
   mutex_lock(&g_update_notification_mutex);
   if (g_update_notification[0] != '\0') {
@@ -610,12 +636,11 @@ int splash_display_status(int mode) {
 }
 
 void splash_set_update_notification(const char *notification) {
-  static bool mutex_initialized = false;
-  if (!mutex_initialized) {
-    mutex_init(&g_update_notification_mutex);
-    mutex_initialized = true;
+  if (lifecycle_init_once(&g_update_notification_lifecycle)) {
+    g_update_notification_lifecycle.sync_type = LIFECYCLE_SYNC_MUTEX;
+    g_update_notification_lifecycle.sync.mutex = &g_update_notification_mutex;
+    lifecycle_init(&g_update_notification_lifecycle, "update_notification");
   }
-
   mutex_lock(&g_update_notification_mutex);
 
   if (!notification || notification[0] == '\0') {

@@ -12,6 +12,7 @@
 
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/init.h>
+#include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/video/simd/ascii_simd.h>
 #include <ascii-chat/video/palette.h>
@@ -33,18 +34,10 @@ size_t write_rgb_triplet(uint8_t value, char *dst) {
 
 // Default luminance palette for legacy functions
 char g_default_luminance_palette[256];
-static bool g_default_palette_initialized = false;
-static static_mutex_t g_default_palette_mutex = STATIC_MUTEX_INIT;
+static lifecycle_t g_default_palette_lc = LIFECYCLE_INIT;
 
-// Initialize default luminance palette (thread-safe with mutex protection)
-void init_default_luminance_palette(void) {
-  static_mutex_lock(&g_default_palette_mutex);
-
-  if (g_default_palette_initialized) {
-    static_mutex_unlock(&g_default_palette_mutex);
-    return;
-  }
-
+// Private initialization function (called exactly once via lifecycle)
+static void do_init_default_luminance_palette(void) {
   // Build default luminance mapping using standard palette
   const size_t len = DEFAULT_ASCII_PALETTE_LEN;
   for (int i = 0; i < 256; i++) {
@@ -54,8 +47,14 @@ void init_default_luminance_palette(void) {
     }
     g_default_luminance_palette[i] = DEFAULT_ASCII_PALETTE[palette_index];
   }
-  g_default_palette_initialized = true;
-  static_mutex_unlock(&g_default_palette_mutex);
+}
+
+// Initialize default luminance palette (thread-safe with lifecycle API)
+void init_default_luminance_palette(void) {
+  if (!lifecycle_init(&g_default_palette_lc, "default_palette")) {
+    return; // Already initialized
+  }
+  do_init_default_luminance_palette();
 }
 
 // Helper function for benchmarks and fallback cases

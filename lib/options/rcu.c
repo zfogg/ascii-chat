@@ -8,6 +8,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
+#include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/platform/process.h>
@@ -47,69 +48,211 @@ static _Atomic(options_t *) g_options = NULL;
 static mutex_t g_options_write_mutex;
 
 /**
- * @brief Initialization flag
+ * @brief Lifecycle for options initialization (handles TOCTOU race prevention)
  */
-static bool g_options_initialized = false;
-// Mutex to protect initialization check (TOCTOU race prevention)
-static static_mutex_t g_options_init_mutex = STATIC_MUTEX_INIT;
+static lifecycle_t g_options_lifecycle = LIFECYCLE_INIT;
 // Track the PID to detect fork() - after fork, child needs to reinitialize
 static pid_t g_init_pid = -1;
 
 /**
- * @brief Static default options used when options_get() is called before initialization
- * or during cleanup. This ensures atexit handlers can safely call GET_OPTION().
+ * @brief Static default options fallback - returned when options not yet initialized or destroyed
  *
- * Critical note: This must match the defaults in options_t_new(). Any field with a
- * non-zero default should be explicitly set here to avoid division-by-zero or other
- * issues when options haven't been initialized yet (e.g., during early startup or
- * atexit handlers).
+ * This static struct provides a safe fallback that:
+ * 1. Outlives the lifetime of any dynamically allocated options structs
+ * 2. Never gets freed (static memory lifetime matches program lifetime)
+ * 3. Ensures atexit handlers can safely call GET_OPTION() during cleanup
+ * 4. Ensures early startup code (before options_state_init) has sensible defaults
+ * 5. Ensures code after options_state_destroy() continues working with fallback defaults
+ *
+ * All non-zero defaults are explicitly initialized from OPT_*_DEFAULT constants
+ * to match the defaults created by options_t_new() function. This prevents
+ * issues like division-by-zero, invalid enum values, or NULL pointer dereferences
+ * when options haven't been properly initialized yet.
+ *
+ * Memory: Static const storage - allocated once at startup, never freed
+ * Lifetime: Program lifetime (outlives all dynamically allocated options)
+ * Thread-safe: Read-only after initialization, no synchronization needed
+ *
+ * @see options_get() - Returns this struct as fallback when g_options is NULL
+ * @see options_state_init() - Initializes g_options, this becomes fallback
+ * @see options_state_destroy() - Clears g_options, this becomes fallback again
  */
 static const options_t g_default_options = (options_t){
-    // Binary-Level Options (must match options_t_new() defaults)
+    // ========================================================================
+    // Mode Detection (auto-detected, default here is uninitialized)
+    // ========================================================================
+    .detected_mode = MODE_INVALID,
+
+    // ========================================================================
+    // Binary-Level Options (parsed before mode selection)
+    // ========================================================================
     .help = OPT_HELP_DEFAULT,
     .version = OPT_VERSION_DEFAULT,
+    .config_file = OPT_STRING_EMPTY_DEFAULT,
 
-    // Logging
-    .log_level = LOG_INFO,
-    .quiet = false,
-    .json = false,
-    .verbose_level = OPT_VERBOSE_LEVEL_DEFAULT,
-
+    // ========================================================================
     // Terminal Dimensions
+    // ========================================================================
     .width = OPT_WIDTH_DEFAULT,
     .height = OPT_HEIGHT_DEFAULT,
     .auto_width = OPT_AUTO_WIDTH_DEFAULT,
     .auto_height = OPT_AUTO_HEIGHT_DEFAULT,
 
-    // Display
-    .color_mode = COLOR_MODE_AUTO,
-    .palette_type = PALETTE_STANDARD,
-    .render_mode = RENDER_MODE_FOREGROUND,
-    .fps = OPT_FPS_DEFAULT,
+    // ========================================================================
+    // Network Options
+    // ========================================================================
+    .address = OPT_ADDRESS_DEFAULT,
+    .address6 = OPT_ADDRESS6_DEFAULT,
+    .port = OPT_PORT_INT_DEFAULT,
+    .websocket_port = OPT_WEBSOCKET_PORT_SERVER_DEFAULT,
+    .max_clients = OPT_MAX_CLIENTS_DEFAULT,
+    .session_string = OPT_STRING_EMPTY_DEFAULT,
+
+    // ========================================================================
+    // Discovery Service (ACDS) Options
+    // ========================================================================
+    .discovery = OPT_ACDS_DEFAULT,
+    .discovery_expose_ip = OPT_ACDS_EXPOSE_IP_DEFAULT,
+    .discovery_insecure = OPT_ACDS_INSECURE_DEFAULT,
+    .discovery_port = OPT_ACDS_PORT_INT_DEFAULT,
+    .discovery_server = OPT_STRING_EMPTY_DEFAULT,
+    .discovery_service_key = OPT_STRING_EMPTY_DEFAULT,
+    .discovery_database_path = OPT_STRING_EMPTY_DEFAULT,
+    .webrtc = OPT_WEBRTC_DEFAULT,
+
+    // ========================================================================
+    // LAN Discovery & WebRTC Options
+    // ========================================================================
+    .lan_discovery = OPT_LAN_DISCOVERY_DEFAULT,
+    .no_mdns_advertise = OPT_NO_MDNS_ADVERTISE_DEFAULT,
+    .enable_upnp = OPT_ENABLE_UPNP_DEFAULT,
+
+    // ========================================================================
+    // WebRTC Connection Strategy Options
+    // ========================================================================
+    .prefer_webrtc = OPT_PREFER_WEBRTC_DEFAULT,
+    .no_webrtc = OPT_NO_WEBRTC_DEFAULT,
+    .webrtc_skip_stun = OPT_WEBRTC_SKIP_STUN_DEFAULT,
+    .webrtc_disable_turn = OPT_WEBRTC_DISABLE_TURN_DEFAULT,
+    .webrtc_skip_host = OPT_WEBRTC_SKIP_HOST_DEFAULT,
+    .webrtc_ice_timeout_ms = OPT_WEBRTC_ICE_TIMEOUT_MS_DEFAULT,
+    .webrtc_reconnect_attempts = OPT_WEBRTC_RECONNECT_ATTEMPTS_DEFAULT,
+
+    // ========================================================================
+    // WebRTC Connectivity Options (ACDS mode)
+    // ========================================================================
+    .stun_servers = OPT_STUN_SERVERS_DEFAULT,
+    .turn_servers = OPT_TURN_SERVERS_DEFAULT,
+    .turn_username = OPT_TURN_USERNAME_DEFAULT,
+    .turn_credential = OPT_TURN_CREDENTIAL_DEFAULT,
+    .turn_secret = OPT_STRING_EMPTY_DEFAULT,
+
+    // ========================================================================
+    // Encryption & Security Options
+    // ========================================================================
+    .encrypt_enabled = OPT_ENCRYPT_ENABLED_DEFAULT,
+    .no_encrypt = OPT_NO_ENCRYPT_DEFAULT,
+    .no_auth = OPT_NO_AUTH_DEFAULT,
+    .encrypt_key = OPT_STRING_EMPTY_DEFAULT,
+    .encrypt_keyfile = OPT_STRING_EMPTY_DEFAULT,
+    .password = OPT_STRING_EMPTY_DEFAULT,
+    .server_key = OPT_STRING_EMPTY_DEFAULT,
+    .client_keys = OPT_STRING_EMPTY_DEFAULT,
+    .require_server_identity = OPT_REQUIRE_SERVER_IDENTITY_DEFAULT,
+    .require_client_identity = OPT_REQUIRE_CLIENT_IDENTITY_DEFAULT,
+    .require_server_verify = OPT_REQUIRE_SERVER_VERIFY_DEFAULT,
+    .require_client_verify = OPT_REQUIRE_CLIENT_VERIFY_DEFAULT,
+
+    // ========================================================================
+    // Media Options
+    // ========================================================================
+    .media_file = OPT_STRING_EMPTY_DEFAULT,
+    .media_url = OPT_STRING_EMPTY_DEFAULT,
+    .media_loop = OPT_MEDIA_LOOP_DEFAULT,
+    .media_from_stdin = OPT_MEDIA_FROM_STDIN_DEFAULT,
+    .media_seek_timestamp = OPT_MEDIA_SEEK_TIMESTAMP_DEFAULT,
+    .pause = OPT_PAUSE_DEFAULT,
+    .yt_dlp_options = OPT_STRING_EMPTY_DEFAULT,
+
+    // ========================================================================
+    // Webcam Options
+    // ========================================================================
+    .webcam_index = OPT_WEBCAM_INDEX_DEFAULT,
+    .test_pattern = OPT_TEST_PATTERN_DEFAULT,
+    .no_audio_mixer = OPT_NO_AUDIO_MIXER_DEFAULT,
+    .stretch = OPT_STRETCH_DEFAULT,
     .flip_x = OPT_FLIP_X_DEFAULT,
     .flip_y = OPT_FLIP_Y_DEFAULT,
 
-    // Performance
+    // ========================================================================
+    // Display Options
+    // ========================================================================
+    .color = OPT_COLOR_DEFAULT,
+    .color_mode = OPT_COLOR_MODE_DEFAULT,
+    .color_filter = OPT_COLOR_FILTER_DEFAULT,
+    .color_scheme_name = OPT_COLOR_SCHEME_NAME_DEFAULT,
+    .render_mode = OPT_RENDER_MODE_DEFAULT,
+    .show_capabilities = OPT_SHOW_CAPABILITIES_DEFAULT,
+    .fps = OPT_FPS_DEFAULT,
+    .palette_type = OPT_PALETTE_TYPE_DEFAULT,
+    .palette_custom = OPT_STRING_EMPTY_DEFAULT,
+    .palette_custom_set = OPT_PALETTE_CUSTOM_SET_DEFAULT,
+
+    // ========================================================================
+    // Compression Options
+    // ========================================================================
     .compression_level = OPT_COMPRESSION_LEVEL_DEFAULT,
+    .no_compress = OPT_NO_COMPRESS_DEFAULT,
 
-    // Webcam
-    .test_pattern = false,
-    .webcam_index = OPT_WEBCAM_INDEX_DEFAULT,
-
-    // Network
-    .max_clients = OPT_MAX_CLIENTS_DEFAULT,
-    .discovery_port = OPT_ACDS_PORT_INT_DEFAULT,
-    .port = OPT_PORT_INT_DEFAULT,
-    .websocket_port = OPT_WEBSOCKET_PORT_SERVER_DEFAULT,
-
-    // Audio
+    // ========================================================================
+    // Audio Options
+    // ========================================================================
     .audio_enabled = OPT_AUDIO_ENABLED_DEFAULT,
+    .audio_source = OPT_AUDIO_SOURCE_DEFAULT,
     .microphone_index = OPT_MICROPHONE_INDEX_DEFAULT,
     .speakers_index = OPT_SPEAKERS_INDEX_DEFAULT,
     .microphone_sensitivity = OPT_MICROPHONE_SENSITIVITY_DEFAULT,
     .speakers_volume = OPT_SPEAKERS_VOLUME_DEFAULT,
+    .audio_analysis_enabled = OPT_AUDIO_ANALYSIS_ENABLED_DEFAULT,
+    .audio_no_playback = OPT_AUDIO_NO_PLAYBACK_DEFAULT,
+    .encode_audio = OPT_ENCODE_AUDIO_DEFAULT,
 
-    // All other fields are zero-initialized (empty strings, NULL, 0, false, etc.)
+    // ========================================================================
+    // Terminal & Output Options (consolidated)
+    // ========================================================================
+    .force_utf8 = OPT_FORCE_UTF8_DEFAULT,
+    .quiet = OPT_QUIET_DEFAULT,
+    .verbose_level = OPT_VERBOSE_LEVEL_DEFAULT,
+    .snapshot_mode = OPT_SNAPSHOT_MODE_DEFAULT,
+    .snapshot_delay = OPT_SNAPSHOT_DELAY_DEFAULT,
+    .matrix_rain = OPT_MATRIX_RAIN_DEFAULT,
+    .strip_ansi = OPT_STRIP_ANSI_DEFAULT,
+    .log_file = OPT_STRING_EMPTY_DEFAULT,
+    .log_level = OPT_LOG_LEVEL_DEFAULT,
+    .grep_pattern = OPT_GREP_PATTERN_DEFAULT,
+    .json = OPT_JSON_DEFAULT,
+    .log_template = OPT_LOG_TEMPLATE_DEFAULT,
+    .log_format_console_only = OPT_LOG_FORMAT_CONSOLE_DEFAULT,
+    .enable_keepawake = OPT_ENABLE_KEEPAWAKE_DEFAULT,
+    .disable_keepawake = OPT_DISABLE_KEEPAWAKE_DEFAULT,
+
+    // ========================================================================
+    // UI Screen Options
+    // ========================================================================
+    .splash_screen = OPT_SPLASH_DEFAULT,
+    .status_screen = OPT_STATUS_SCREEN_DEFAULT,
+
+    // ========================================================================
+    // Remaining Options (zero-initialized by default)
+    // ========================================================================
+    .reconnect_attempts = OPT_RECONNECT_ATTEMPTS_DEFAULT,
+    .splash_screen_explicitly_set = OPT_SPLASH_SCREEN_EXPLICITLY_SET_DEFAULT,
+    .status_screen_explicitly_set = OPT_STATUS_SCREEN_EXPLICITLY_SET_DEFAULT,
+    .no_check_update = OPT_NO_CHECK_UPDATE_DEFAULT,
+
+    // All remaining array fields (identity_keys, num_identity_keys, etc.)
+    // are zero-initialized (empty strings, NULL pointers, 0 values, etc.)
+    // which is appropriate for their types.
 };
 
 // ============================================================================
@@ -189,14 +332,15 @@ static void deferred_free_all(void) {
  * This is called automatically by pthread after fork() in the child process.
  */
 static void options_rcu_atfork_child(void) {
-  // Reset the static mutex initialized flag to force reinitialization
-  g_options_init_mutex.initialized = 0;
-  // Reset the RCU state
-  g_options_initialized = false;
-  // Reset the atomic options pointer to avoid dangling references
-  // The parent's allocated memory is not accessible/valid in the child
+  /* Reset the lifecycle state to allow reinitialization after fork */
+  /* This is safe because lifecycle_t is just an atomic int, can be reset directly */
+  atomic_store(&g_options_lifecycle.state, LIFECYCLE_UNINITIALIZED);
+
+  /* Reset the atomic options pointer to avoid dangling references */
+  /* The parent's allocated memory is not accessible/valid in the child */
   atomic_store(&g_options, NULL);
-  // Don't reset g_init_pid - we'll detect the fork in options_state_init
+
+  /* Don't reset g_init_pid - we'll detect the fork in options_state_init */
 }
 
 /**
@@ -216,45 +360,41 @@ __attribute__((constructor)) static void register_fork_handlers_constructor(void
 // ============================================================================
 
 asciichat_error_t options_state_init(void) {
-  // Detect fork: after fork(), child process must reinitialize mutexes BEFORE locking
-  // The inherited mutex is in an inconsistent state and can cause deadlocks/signals
-  // We must reset it before calling static_mutex_lock
+  // Detect fork: after fork(), child process must reinitialize
   pid_t current_pid = platform_get_pid();
-  if ((g_options_initialized || g_init_pid != -1) && g_init_pid != current_pid) {
-// We're in a forked child - reset the static mutex state before using it
-// On POSIX, set initialized=0 so static_mutex_lock will reinitialize it
-// On Windows, the InterlockedCompareExchange logic handles this automatically
-#ifndef _WIN32
-    g_options_init_mutex.initialized = 0; // Force reinitialization on next lock
-#else
-    g_options_init_mutex.initialized = 0; // Same approach for Windows
-#endif
-    log_debug("Detected fork in options_state_init (parent PID %d, child PID %d) - resetting mutex", g_init_pid,
+  if ((lifecycle_is_initialized(&g_options_lifecycle) || g_init_pid != -1) && g_init_pid != current_pid) {
+    log_debug("Detected fork in options_state_init (parent PID %d, child PID %d) - resetting lifecycle", g_init_pid,
               current_pid);
-    g_options_initialized = false;
-    g_init_pid = current_pid; // Set to current PID so we know we're initialized in this process
+    /* Reset lifecycle to allow reinitialization after fork */
+    lifecycle_shutdown(&g_options_lifecycle);
+    g_init_pid = current_pid;
   }
 
-  static_mutex_lock(&g_options_init_mutex);
-
-  // Check if already initialized in this process
-  if (g_options_initialized && g_init_pid == current_pid) {
-    // Already initialized in this process
-    static_mutex_unlock(&g_options_init_mutex);
+  // Check if already initialized in this process using lifecycle
+  if (lifecycle_is_initialized(&g_options_lifecycle) && g_init_pid == current_pid) {
     log_warn("Options state already initialized");
     return ASCIICHAT_OK;
   }
 
+  /* Use lifecycle to serialize initialization */
+  if (!lifecycle_init(&g_options_lifecycle, "options")) {
+    /* Another thread is initializing or already initialized */
+    if (lifecycle_is_initialized(&g_options_lifecycle)) {
+      return ASCIICHAT_OK;
+    }
+    return SET_ERRNO(ERROR_INVALID_STATE, "Failed to acquire options initialization lock");
+  }
+
   // Initialize write mutex
-  if (mutex_init(&g_options_write_mutex) != 0) {
-    static_mutex_unlock(&g_options_init_mutex);
+  if (mutex_init(&g_options_write_mutex, "options_write") != 0) {
+    lifecycle_shutdown(&g_options_lifecycle);
     return SET_ERRNO(ERROR_THREAD, "Failed to initialize options write mutex");
   }
 
   // Initialize deferred free mutex
-  if (mutex_init(&g_deferred_free_mutex) != 0) {
+  if (mutex_init(&g_deferred_free_mutex, "deferred_free") != 0) {
     mutex_destroy(&g_options_write_mutex);
-    static_mutex_unlock(&g_options_init_mutex);
+    lifecycle_shutdown(&g_options_lifecycle);
     return SET_ERRNO(ERROR_THREAD, "Failed to initialize deferred free mutex");
   }
 
@@ -263,7 +403,7 @@ asciichat_error_t options_state_init(void) {
   if (!initial_opts) {
     mutex_destroy(&g_options_write_mutex);
     mutex_destroy(&g_deferred_free_mutex);
-    static_mutex_unlock(&g_options_init_mutex);
+    lifecycle_shutdown(&g_options_lifecycle);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate initial options struct");
   }
 
@@ -273,9 +413,7 @@ asciichat_error_t options_state_init(void) {
   // Publish initial struct (release semantics - make all fields visible to readers)
   atomic_store_explicit(&g_options, initial_opts, memory_order_release);
 
-  g_options_initialized = true;
   g_init_pid = current_pid; // Record PID to detect fork later
-  static_mutex_unlock(&g_options_init_mutex);
   log_dev("Options state initialized with RCU pattern (PID %d)", current_pid);
 
   return ASCIICHAT_OK;
@@ -286,13 +424,10 @@ asciichat_error_t options_state_set(const options_t *opts) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "opts is NULL");
   }
 
-  // Check initialization flag under lock to prevent TOCTOU race
-  static_mutex_lock(&g_options_init_mutex);
-  if (!g_options_initialized) {
-    static_mutex_unlock(&g_options_init_mutex);
+  // Check initialization state using lifecycle
+  if (!lifecycle_is_initialized(&g_options_lifecycle)) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Options state not initialized (call options_state_init first)");
   }
-  static_mutex_unlock(&g_options_init_mutex);
 
   // Get current struct (should be the initial zero-initialized one during startup)
   options_t *current = atomic_load_explicit(&g_options, memory_order_acquire);
@@ -307,14 +442,13 @@ asciichat_error_t options_state_set(const options_t *opts) {
 }
 
 void options_state_destroy(void) {
-  // Check and clear initialization flag under lock
-  static_mutex_lock(&g_options_init_mutex);
-  if (!g_options_initialized) {
-    static_mutex_unlock(&g_options_init_mutex);
+  // Check if initialized using lifecycle
+  if (!lifecycle_is_initialized(&g_options_lifecycle)) {
     return;
   }
-  g_options_initialized = false; // Clear flag first to prevent new operations
-  static_mutex_unlock(&g_options_init_mutex);
+
+  /* Shutdown lifecycle to mark as no longer initialized */
+  lifecycle_shutdown(&g_options_lifecycle);
 
   // Get current options pointer
   options_t *current = atomic_load_explicit(&g_options, memory_order_acquire);
@@ -332,8 +466,6 @@ void options_state_destroy(void) {
   config_schema_destroy();
 
   // Destroy dynamically created mutexes
-  // NOTE: Do NOT destroy g_options_init_mutex - it's statically initialized
-  // and needs to persist across shutdown/init cycles (especially in tests)
   mutex_destroy(&g_options_write_mutex);
   mutex_destroy(&g_deferred_free_mutex);
 
@@ -349,10 +481,19 @@ const options_t *options_get(void) {
   // Guarantees we see all writes made before the pointer was published
   options_t *current = atomic_load_explicit(&g_options, memory_order_acquire);
 
-  // If options not yet published, return safe static default instead of crashing
-  // This allows atexit handlers to safely call GET_OPTION() during cleanup
+  // If options not yet published or after destruction, return safe static default.
+  // This is a critical fallback that:
+  // 1. Allows early startup code (before options_state_init) to work safely
+  // 2. Allows atexit handlers and cleanup code to call GET_OPTION() safely
+  // 3. Never crashes due to NULL pointer access
+  // 4. Provides sensible defaults for all option fields
+  //
+  // The static default options are:
+  // - Allocated once at startup (static storage)
+  // - Never freed (outlives all dynamically allocated options)
+  // - Thread-safe to read (immutable const data)
+  // - Complete with all OPT_*_DEFAULT values matching options_t_new()
   if (!current) {
-    // Return static default - safe for atexit handlers to read
     return (const options_t *)&g_default_options;
   }
 
@@ -364,7 +505,7 @@ static asciichat_error_t options_update(void (*updater)(options_t *, void *), vo
     return SET_ERRNO(ERROR_INVALID_PARAM, "updater function is NULL");
   }
 
-  if (!g_options_initialized) {
+  if (!lifecycle_is_initialized(&g_options_lifecycle)) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Options state not initialized");
   }
 
@@ -551,8 +692,8 @@ static void bool_field_updater(options_t *opts, void *context) {
     opts->auto_width = ctx->value;
   else if (strcmp(ctx->field_name, "auto_height") == 0)
     opts->auto_height = ctx->value;
-  else if (strcmp(ctx->field_name, "splash") == 0)
-    opts->splash = ctx->value;
+  else if (strcmp(ctx->field_name, "splash_screen") == 0)
+    opts->splash_screen = ctx->value;
   else if (strcmp(ctx->field_name, "status_screen") == 0)
     opts->status_screen = ctx->value;
   else if (strcmp(ctx->field_name, "matrix_rain") == 0)
@@ -584,7 +725,7 @@ asciichat_error_t options_set_bool(const char *field_name, bool value) {
       strcmp(field_name, "require_server_verify") != 0 && strcmp(field_name, "require_client_verify") != 0 &&
       strcmp(field_name, "palette_custom_set") != 0 && strcmp(field_name, "media_loop") != 0 &&
       strcmp(field_name, "media_from_stdin") != 0 && strcmp(field_name, "auto_width") != 0 &&
-      strcmp(field_name, "auto_height") != 0 && strcmp(field_name, "splash") != 0 &&
+      strcmp(field_name, "auto_height") != 0 && strcmp(field_name, "splash_screen") != 0 &&
       strcmp(field_name, "status_screen") != 0 && strcmp(field_name, "matrix_rain") != 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Unknown boolean field: %s", field_name);
     return ERROR_INVALID_PARAM;

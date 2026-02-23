@@ -15,11 +15,10 @@
 #include <inttypes.h>
 #include <stdatomic.h>
 #include <ascii-chat/platform/init.h>
+#include <ascii-chat/util/lifecycle.h>
 
-// Static initialization flag for libsodium (atomic for thread-safe check)
-static _Atomic bool g_libsodium_initialized = false;
-// Mutex to protect libsodium initialization from concurrent calls
-static static_mutex_t g_libsodium_init_mutex = STATIC_MUTEX_INIT;
+// Lifecycle state for libsodium initialization
+static lifecycle_t g_libsodium_lc = LIFECYCLE_INIT;
 
 // Internal packet type constants (for test helper functions only)
 // These are NOT part of the main network protocol - they're used for simple
@@ -33,32 +32,20 @@ static const uint32_t CRYPTO_PACKET_AUTH_RESPONSE = 104;
 // Internal helper functions
 // =============================================================================
 
-// Initialize libsodium (thread-safe, idempotent)
+// Initialize libsodium (thread-safe, exactly-once via DCL pattern)
 static crypto_result_t init_libsodium(void) {
-  // Fast path (no lock): if already initialized, return immediately
-  if (atomic_load(&g_libsodium_initialized)) {
-    return CRYPTO_OK;
+  if (!lifecycle_init_once(&g_libsodium_lc)) {
+    return CRYPTO_OK;  // Already initialized or in progress
   }
 
-  // Slow path: use mutex to serialize initialization and prevent concurrent sodium_init() calls
-  // This ensures exactly ONE thread calls sodium_init(), others wait and see initialized=true
-  static_mutex_lock(&g_libsodium_init_mutex);
-
-  // Double-check under lock: another thread may have initialized while we waited
-  if (atomic_load(&g_libsodium_initialized)) {
-    static_mutex_unlock(&g_libsodium_init_mutex);
-    return CRYPTO_OK;
-  }
-
-  // Attempt initialization (only ONE thread will reach here)
+  // We won the initialization race
   if (sodium_init() < 0) {
-    static_mutex_unlock(&g_libsodium_init_mutex);
+    lifecycle_init_abort(&g_libsodium_lc);
     SET_ERRNO(ERROR_CRYPTO, "Failed to initialize libsodium");
     return CRYPTO_ERROR_LIBSODIUM;
   }
 
-  atomic_store(&g_libsodium_initialized, true);
-  static_mutex_unlock(&g_libsodium_init_mutex);
+  lifecycle_init_commit(&g_libsodium_lc);
   return CRYPTO_OK;
 }
 
@@ -150,14 +137,14 @@ crypto_result_t crypto_init(crypto_context_t *ctx) {
     ctx->rekey_packet_threshold = REKEY_TEST_PACKET_THRESHOLD; // 1,000 packets
     ctx->rekey_time_threshold = REKEY_TEST_TIME_THRESHOLD;     // 30 seconds
     char duration_str[32];
-    format_duration_s((double)ctx->rekey_time_threshold, duration_str, sizeof(duration_str));
+    time_pretty((uint64_t)(ctx->rekey_time_threshold * 1e9), -1, duration_str, sizeof(duration_str));
     log_dev("Crypto context initialized with X25519 key exchange (TEST MODE rekey thresholds: %llu packets, %s)",
             (unsigned long long)ctx->rekey_packet_threshold, duration_str);
   } else {
     ctx->rekey_packet_threshold = REKEY_DEFAULT_PACKET_THRESHOLD; // 1 million packets
     ctx->rekey_time_threshold = REKEY_DEFAULT_TIME_THRESHOLD;     // 3600 seconds (1 hour)
     char duration_str[32];
-    format_duration_s((double)ctx->rekey_time_threshold, duration_str, sizeof(duration_str));
+    time_pretty((uint64_t)(ctx->rekey_time_threshold * 1e9), -1, duration_str, sizeof(duration_str));
     log_dev("Crypto context initialized with X25519 key exchange (rekey thresholds: %llu packets, %s)",
             (unsigned long long)ctx->rekey_packet_threshold, duration_str);
   }
@@ -1197,8 +1184,8 @@ crypto_result_t crypto_rekey_init(crypto_context_t *ctx) {
   time_t min_interval_seconds = (time_t)(REKEY_MIN_INTERVAL / NS_PER_SEC_INT);
   if (since_last_rekey < min_interval_seconds) {
     char elapsed_str[32], min_str[32];
-    format_duration_s((double)since_last_rekey, elapsed_str, sizeof(elapsed_str));
-    format_duration_s((double)min_interval_seconds, min_str, sizeof(min_str));
+    time_pretty((uint64_t)(since_last_rekey * 1e9), -1, elapsed_str, sizeof(elapsed_str));
+    time_pretty((uint64_t)(min_interval_seconds * 1e9), -1, min_str, sizeof(min_str));
     log_warn("Rekey rate limited: %s since last rekey (minimum: %s)", elapsed_str, min_str);
     return CRYPTO_ERROR_REKEY_RATE_LIMITED;
   }

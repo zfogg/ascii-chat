@@ -228,6 +228,19 @@ asciichat_error_t asciichat_thread_set_realtime_priority(void);
 asciichat_error_t thread_create_or_fail(asciichat_thread_t *thread, void *(*func)(void *), void *arg,
                                         const char *thread_name, uint32_t client_id);
 
+/**
+ * @brief Convert a thread handle to a uintptr_t registry key
+ * @param thread Thread handle (asciichat_thread_t)
+ * @return uintptr_t representation suitable for pointer/ID lookups
+ *
+ * Platform-specific conversion for use with registry systems (e.g., named object registry).
+ * On POSIX, pthread_t is cast directly to uintptr_t.
+ * On Windows, HANDLE is cast directly to uintptr_t.
+ *
+ * @ingroup platform
+ */
+uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
+
 // ============================================================================
 // Thread-Local Storage (TLS) Functions
 // ============================================================================

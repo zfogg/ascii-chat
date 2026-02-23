@@ -427,7 +427,7 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   double elapsed_ms = ((double)(end.QuadPart - start.QuadPart)) * 1000.0 / (double)freq.QuadPart;
 
   char duration_str[32];
-  format_duration_ms(elapsed_ms, duration_str, sizeof(duration_str));
+  time_pretty((uint64_t)(elapsed_ms * 1e6), -1, duration_str, sizeof(duration_str));
   log_info("ReadSample took %s (hr=0x%08x, flags=0x%08x, sample=%p)", duration_str, hr, flags, sample);
 
   // Check for stream tick or other non-data flags
@@ -595,7 +595,7 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   double copy_ms = ((double)(copy_end.QuadPart - copy_start.QuadPart)) * 1000.0 / (double)freq.QuadPart;
 
   char copy_duration_str[32];
-  format_duration_ms(copy_ms, copy_duration_str, sizeof(copy_duration_str));
+  time_pretty((uint64_t)(copy_ms * 1e6), -1, copy_duration_str, sizeof(copy_duration_str));
   log_info("Pixel copy took %s (%u pixels)", copy_duration_str, pixel_count);
 
   // Unlock and cleanup

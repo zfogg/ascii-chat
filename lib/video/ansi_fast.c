@@ -5,6 +5,7 @@
  */
 
 #include <ascii-chat/common.h>
+#include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/video/simd/ascii_simd.h>
 #include <ascii-chat/video/ansi_fast.h>
 #include <ascii-chat/util/math.h>
@@ -18,8 +19,8 @@
 
 // 256-color lookup table (optional)
 static char color256_strings[256][16]; // Pre-built SGR strings like "\033[38;5;123m"
-static bool color256_initialized = false;
-static static_mutex_t g_color256_mutex = STATIC_MUTEX_INIT;
+static char color256_bg_strings[256][16]; // Pre-built SGR strings like "\033[48;5;123m"
+static lifecycle_t g_color256_lc = LIFECYCLE_INIT;
 
 // Fast foreground color: \033[38;2;R;G;Bm
 // Maximum output: 19 bytes (\033[38;2;255;255;255m)
@@ -201,26 +202,33 @@ void ansi_fast_init(void) {
 }
 
 // 256-color mode initialization (optional high-speed mode)
-// Thread-safe: uses mutex to prevent duplicate initialization
-void ansi_fast_init_256color(void) {
-  static_mutex_lock(&g_color256_mutex);
-
-  if (color256_initialized) {
-    static_mutex_unlock(&g_color256_mutex);
-    return;
-  }
-
+// Private initialization function (called exactly once via lifecycle)
+static void do_init_256color(void) {
   for (int i = 0; i < 256; i++) {
     SAFE_SNPRINTF(color256_strings[i], sizeof(color256_strings[i]), "\033[38;5;%dm", i);
+    SAFE_SNPRINTF(color256_bg_strings[i], sizeof(color256_bg_strings[i]), "\033[48;5;%dm", i);
   }
+}
 
-  color256_initialized = true;
-  static_mutex_unlock(&g_color256_mutex);
+// Public initialization wrapper - thread-safe using lifecycle API
+void ansi_fast_init_256color(void) {
+  if (!lifecycle_init(&g_color256_lc, "ansi_256color")) {
+    return; // Already initialized
+  }
+  do_init_256color();
 }
 
 // Fast 256-color foreground
 char *append_256color_fg(char *dst, uint8_t color_index) {
   const char *color_str = color256_strings[color_index];
+  size_t len = strlen(color_str);
+  SAFE_MEMCPY(dst, len, color_str, len);
+  return dst + len;
+}
+
+// Fast 256-color background
+char *append_256color_bg(char *dst, uint8_t color_index) {
+  const char *color_str = color256_bg_strings[color_index];
   size_t len = strlen(color_str);
   SAFE_MEMCPY(dst, len, color_str, len);
   return dst + len;
@@ -251,17 +259,10 @@ uint8_t rgb_to_256color(uint8_t r, uint8_t g, uint8_t b) {
 // 16-color mode support
 static char color16_fg_strings[16][16];
 static char color16_bg_strings[16][16];
-static bool color16_initialized = false;
-static static_mutex_t g_color16_mutex = STATIC_MUTEX_INIT;
+static lifecycle_t g_color16_lc = LIFECYCLE_INIT;
 
-void ansi_fast_init_16color(void) {
-  static_mutex_lock(&g_color16_mutex);
-
-  if (color16_initialized) {
-    static_mutex_unlock(&g_color16_mutex);
-    return;
-  }
-
+// Private initialization function (called exactly once via lifecycle)
+static void do_init_16color(void) {
   // Standard ANSI color codes
   const char *fg_codes[] = {"30", "31", "32", "33", "34", "35", "36", "37",          // Normal colors (30-37)
                             "90", "91", "92", "93", "94", "95", "96", "97"};         // Bright colors (90-97)
@@ -272,15 +273,19 @@ void ansi_fast_init_16color(void) {
     SAFE_SNPRINTF(color16_fg_strings[i], sizeof(color16_fg_strings[i]), "\033[%sm", fg_codes[i]);
     SAFE_SNPRINTF(color16_bg_strings[i], sizeof(color16_bg_strings[i]), "\033[%sm", bg_codes[i]);
   }
+}
 
-  color16_initialized = true;
-  static_mutex_unlock(&g_color16_mutex);
+// Public initialization wrapper - thread-safe using lifecycle API
+void ansi_fast_init_16color(void) {
+  if (!lifecycle_init(&g_color16_lc, "ansi_16color")) {
+    return; // Already initialized
+  }
+  do_init_16color();
 }
 
 char *append_16color_fg(char *dst, uint8_t color_index) {
-  if (!color16_initialized) {
-    ansi_fast_init_16color();
-  }
+  // Ensure initialization before use
+  ansi_fast_init_16color();
 
   if (color_index >= 16) {
     color_index = 7; // Default to white
@@ -295,9 +300,8 @@ char *append_16color_fg(char *dst, uint8_t color_index) {
 }
 
 char *append_16color_bg(char *dst, uint8_t color_index) {
-  if (!color16_initialized) {
-    ansi_fast_init_16color();
-  }
+  // Ensure initialization before use
+  ansi_fast_init_16color();
 
   if (color_index >= 16) {
     color_index = 0; // Default to black background

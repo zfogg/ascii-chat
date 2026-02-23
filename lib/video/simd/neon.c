@@ -18,6 +18,7 @@
 #include <arm_neon.h>
 
 #include <ascii-chat/common.h>
+#include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/video/simd/neon.h>
 #include <ascii-chat/video/simd/ascii_simd.h>
 #include <ascii-chat/video/image.h>
@@ -205,22 +206,12 @@ static inline bool all_same_length_neon(uint8x16_t lengths, uint8_t *out_length)
 // NEON TBL lookup tables for decimal conversion (256 entries each)
 // Format: each entry has length byte + up to 3 decimal chars (4 bytes per entry)
 static uint8_t neon_decimal_table_data[256 * 4]; // 1024 bytes: [len][d1][d2][d3] per entry
-static bool neon_decimal_table_initialized = false;
-// Mutex to protect NEON decimal table initialization (TOCTOU race prevention)
-static static_mutex_t g_neon_table_init_mutex = STATIC_MUTEX_INIT;
+// Lifecycle for thread-safe one-time initialization (replaces C11 call_once)
+static lifecycle_t g_neon_table_lc = LIFECYCLE_INIT;
 
-// Initialize NEON TBL decimal lookup table (called once at startup)
-// Thread-safe with proper mutex protection
-void init_neon_decimal_table(void) {
-  static_mutex_lock(&g_neon_table_init_mutex);
-
-  // Double-check under lock: another thread may have initialized while we waited
-  if (neon_decimal_table_initialized) {
-    static_mutex_unlock(&g_neon_table_init_mutex);
-    return;
-  }
-
-  // Initialize g_dec3_cache first (also mutex-protected if needed)
+// Private initialization function (called exactly once via lifecycle)
+static void do_init_neon_decimal_table(void) {
+  // Initialize g_dec3_cache first
   if (!g_dec3_cache.dec3_initialized) {
     init_dec3();
   }
@@ -234,9 +225,15 @@ void init_neon_decimal_table(void) {
     entry[2] = (dec->len >= 2) ? dec->s[1] : '0'; // Second digit
     entry[3] = (dec->len >= 3) ? dec->s[2] : '0'; // Third digit
   }
+}
 
-  neon_decimal_table_initialized = true;
-  static_mutex_unlock(&g_neon_table_init_mutex);
+// Initialize NEON TBL decimal lookup table (called once at startup)
+// Thread-safe with lifecycle API ensuring exactly-once execution
+void init_neon_decimal_table(void) {
+  if (!lifecycle_init(&g_neon_table_lc, "neon_decimal")) {
+    return; // Already initialized
+  }
+  do_init_neon_decimal_table();
 }
 
 // TODO: Implement true NEON vectorized ANSI sequence generation using TBL + compaction

@@ -14,9 +14,11 @@
 #endif
 
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/debug/backtrace.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/string.h>
+#include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/errno.h>
 #include <ascii-chat/platform/init.h>
@@ -35,9 +37,7 @@ __thread asciichat_error_context_t asciichat_errno_context = {.code = ASCIICHAT_
                                                               .context_message = NULL,
                                                               .timestamp = 0,
                                                               .system_errno = 0,
-                                                              .backtrace = {0},
-                                                              .backtrace_symbols = NULL,
-                                                              .stack_depth = 0,
+                                                              .backtrace = {.count = 0, .symbols = NULL},
                                                               .has_system_error = false};
 
 __thread asciichat_error_t asciichat_errno = ASCIICHAT_OK;
@@ -50,9 +50,11 @@ static bool g_suppress_error_context = false;
  * ============================================================================
  */
 
-static asciichat_error_stats_t error_stats = {0};
-static bool stats_initialized = false;
-static static_mutex_t g_error_stats_mutex = STATIC_MUTEX_INIT;
+static struct {
+  asciichat_error_stats_t stats;
+  mutex_t mutex;
+  lifecycle_t lifecycle;
+} g_error_stats = {.stats = {0}, .lifecycle = LIFECYCLE_INIT};
 
 /* ============================================================================
  * Thread-Safe Error Storage
@@ -71,14 +73,13 @@ static struct {
  * ============================================================================
  */
 
-static void capture_backtrace(void **backtrace, char ***backtrace_symbols, int *stack_depth) {
+static void capture_backtrace(backtrace_t *bt) {
 #ifndef NDEBUG // Capture in Debug and Dev modes
-  *stack_depth = platform_backtrace(backtrace, 32);
-  *backtrace_symbols = platform_backtrace_symbols(backtrace, *stack_depth);
+  if (bt) {
+    backtrace_capture_and_symbolize(bt);
+  }
 #else
-  (void)backtrace;
-  (void)backtrace_symbols;
-  *stack_depth = 0;
+  (void)bt;
 #endif
 }
 
@@ -155,12 +156,8 @@ void asciichat_set_errno(asciichat_error_t code, const char *file, int line, con
   }
 
   // Capture stack trace in debug builds
-  if (asciichat_errno_context.backtrace_symbols != NULL) {
-    platform_backtrace_symbols_destroy(asciichat_errno_context.backtrace_symbols);
-    asciichat_errno_context.backtrace_symbols = NULL;
-  }
-  capture_backtrace(asciichat_errno_context.backtrace, &asciichat_errno_context.backtrace_symbols,
-                    &asciichat_errno_context.stack_depth);
+  backtrace_t_free(&asciichat_errno_context.backtrace);
+  capture_backtrace(&asciichat_errno_context.backtrace);
 
   // Record in statistics
   asciichat_error_stats_record(code);
@@ -239,10 +236,7 @@ void asciichat_clear_errno(void) {
     asciichat_errno_context.context_message = NULL;
   }
 
-  if (asciichat_errno_context.backtrace_symbols != NULL) {
-    platform_backtrace_symbols_destroy(asciichat_errno_context.backtrace_symbols);
-    asciichat_errno_context.backtrace_symbols = NULL;
-  }
+  backtrace_t_free(&asciichat_errno_context.backtrace);
 
   memset(&asciichat_errno_context, 0, sizeof(asciichat_errno_context));
   asciichat_errno_context.code = ASCIICHAT_OK;
@@ -297,14 +291,11 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
 
 #ifndef NDEBUG
   // Always print platform backtrace in debug/dev builds
-  void *buffer[32];
-  int size = platform_backtrace(buffer, 32);
-  if (size > 0) {
-    char **symbols = platform_backtrace_symbols(buffer, size);
-    if (symbols) {
-      platform_print_backtrace_symbols("\nFATAL BACKTRACE", symbols, size, 0, 0, skip_backtrace_frame);
-      platform_backtrace_symbols_destroy(symbols);
-    }
+  backtrace_t bt = {0};
+  backtrace_capture_and_symbolize(&bt);
+  if (bt.count > 0) {
+    backtrace_print("\nFATAL BACKTRACE", &bt, 0, 0, skip_backtrace_frame);
+    backtrace_t_free(&bt);
   }
 #endif
 
@@ -351,9 +342,8 @@ void asciichat_print_error_context(const asciichat_error_context_t *context) {
   }
 
   // Print stack trace from library error
-  if (context->stack_depth > 0 && context->backtrace_symbols) {
-    platform_print_backtrace_symbols("\nBacktrace from library error", context->backtrace_symbols, context->stack_depth,
-                                     0, 0, skip_backtrace_frame);
+  if (context->backtrace.count > 0 && context->backtrace.symbols) {
+    backtrace_print("\nBacktrace from library error", &context->backtrace, 0, 0, skip_backtrace_frame);
   }
 }
 
@@ -363,46 +353,45 @@ void asciichat_print_error_context(const asciichat_error_context_t *context) {
  */
 
 void asciichat_error_stats_init(void) {
-  static_mutex_lock(&g_error_stats_mutex);
-
-  if (!stats_initialized) {
-    memset(&error_stats, 0, sizeof(error_stats));
-    stats_initialized = true;
+  if (lifecycle_init(&g_error_stats.lifecycle, "error_stats")) {
+    memset(&g_error_stats.stats, 0, sizeof(g_error_stats.stats));
   }
-
-  static_mutex_unlock(&g_error_stats_mutex);
 }
 
 void asciichat_error_stats_record(asciichat_error_t code) {
-  static_mutex_lock(&g_error_stats_mutex);
-
-  if (!stats_initialized) {
-    memset(&error_stats, 0, sizeof(error_stats));
-    stats_initialized = true;
+  if (!lifecycle_is_initialized(&g_error_stats.lifecycle)) {
+    lifecycle_init(&g_error_stats.lifecycle, "error_stats");
   }
+
+  mutex_lock(&g_error_stats.mutex);
 
   if (code >= 0 && code < 256) {
-    error_stats.error_counts[code]++;
+    g_error_stats.stats.error_counts[code]++;
   }
-  error_stats.total_errors++;
-  error_stats.last_error_time = time_ns_to_us(time_get_realtime_ns());
-  error_stats.last_error_code = code;
+  g_error_stats.stats.total_errors++;
+  g_error_stats.stats.last_error_time = time_ns_to_us(time_get_realtime_ns());
+  g_error_stats.stats.last_error_code = code;
 
-  static_mutex_unlock(&g_error_stats_mutex);
+  mutex_unlock(&g_error_stats.mutex);
 }
 
 void asciichat_error_stats_print(void) {
-  static_mutex_lock(&g_error_stats_mutex);
+  if (!lifecycle_is_initialized(&g_error_stats.lifecycle)) {
+    log_plain("No errors recorded.\n");
+    return;
+  }
 
-  if (!stats_initialized || error_stats.total_errors == 0) {
-    static_mutex_unlock(&g_error_stats_mutex);
+  mutex_lock(&g_error_stats.mutex);
+
+  if (g_error_stats.stats.total_errors == 0) {
+    mutex_unlock(&g_error_stats.mutex);
     log_plain("No errors recorded.\n");
     return;
   }
 
   // Copy stats to local variable to minimize lock hold time
-  asciichat_error_stats_t local_stats = error_stats;
-  static_mutex_unlock(&g_error_stats_mutex);
+  asciichat_error_stats_t local_stats = g_error_stats.stats;
+  mutex_unlock(&g_error_stats.mutex);
 
   log_plain("\n=== ascii-chat Error Statistics ===\n");
   log_plain("Total errors: %llu\n", (unsigned long long)local_stats.total_errors);
@@ -428,21 +417,21 @@ void asciichat_error_stats_print(void) {
 }
 
 void asciichat_error_stats_reset(void) {
-  static_mutex_lock(&g_error_stats_mutex);
-  memset(&error_stats, 0, sizeof(error_stats));
-  static_mutex_unlock(&g_error_stats_mutex);
+  if (lifecycle_is_initialized(&g_error_stats.lifecycle)) {
+    mutex_lock(&g_error_stats.mutex);
+    memset(&g_error_stats.stats, 0, sizeof(g_error_stats.stats));
+    mutex_unlock(&g_error_stats.mutex);
+  }
 }
 
 asciichat_error_stats_t asciichat_error_stats_get(void) {
-  static_mutex_lock(&g_error_stats_mutex);
-
-  if (!stats_initialized) {
-    memset(&error_stats, 0, sizeof(error_stats));
-    stats_initialized = true;
+  if (!lifecycle_is_initialized(&g_error_stats.lifecycle)) {
+    lifecycle_init(&g_error_stats.lifecycle, "error_stats");
   }
 
-  asciichat_error_stats_t result = error_stats;
-  static_mutex_unlock(&g_error_stats_mutex);
+  mutex_lock(&g_error_stats.mutex);
+  asciichat_error_stats_t result = g_error_stats.stats;
+  mutex_unlock(&g_error_stats.mutex);
 
   return result;
 }
@@ -500,10 +489,7 @@ void asciichat_errno_suppress(bool suppress) {
 }
 
 void asciichat_errno_destroy(void) {
-  if (asciichat_errno_context.backtrace_symbols != NULL) {
-    platform_backtrace_symbols_destroy(asciichat_errno_context.backtrace_symbols);
-    asciichat_errno_context.backtrace_symbols = NULL;
-  }
+  backtrace_t_free(&asciichat_errno_context.backtrace);
 
   if (asciichat_errno_context.context_message != NULL) {
     SAFE_FREE(asciichat_errno_context.context_message);

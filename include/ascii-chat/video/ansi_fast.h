@@ -176,6 +176,16 @@ void ansi_fast_init_256color(void);
 char *append_256color_fg(char *dst, uint8_t color_index);
 
 /**
+ * @brief Append 256-color background ANSI sequence
+ * @param dst Destination buffer pointer
+ * @param color_index 256-color palette index (0-255)
+ * @return Pointer to end of appended sequence
+ *
+ * @ingroup video
+ */
+char *append_256color_bg(char *dst, uint8_t color_index);
+
+/**
  * @brief Convert RGB to 256-color palette index
  * @param r Red component (0-255)
  * @param g Green component (0-255)

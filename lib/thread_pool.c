@@ -7,12 +7,65 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/platform/thread.h>
+#include <ascii-chat/platform/cond.h>
 #include <string.h>
 
 #ifndef _WIN32
 #include <signal.h>
 #include <pthread.h>
 #endif
+
+/**
+ * @brief Worker thread function for work queue mode
+ *
+ * Waits for work to be added to the queue, executes it, and loops.
+ * Exits when pool->shutdown_requested is set.
+ */
+static void *thread_pool_worker_thread(void *arg) {
+  thread_pool_t *pool = (thread_pool_t *)arg;
+  if (!pool) {
+    return NULL;
+  }
+
+  log_debug("[ThreadPool] Worker thread started for pool '%s'", pool->name);
+
+  while (true) {
+    thread_pool_work_entry_t *work = NULL;
+
+    // Wait for work or shutdown signal
+    mutex_lock(&pool->work_queue_mutex);
+
+    // Loop until we get work or shutdown is requested
+    while (!pool->work_queue && !pool->shutdown_requested) {
+      cond_wait(&pool->work_available, &pool->work_queue_mutex);
+    }
+
+    // Check if we're shutting down
+    if (pool->shutdown_requested && !pool->work_queue) {
+      mutex_unlock(&pool->work_queue_mutex);
+      log_debug("[ThreadPool] Worker thread exiting (shutdown requested)");
+      break;
+    }
+
+    // Dequeue work
+    if (pool->work_queue) {
+      work = pool->work_queue;
+      pool->work_queue = work->next;
+    }
+
+    mutex_unlock(&pool->work_queue_mutex);
+
+    // Execute work (outside the lock)
+    if (work) {
+      if (work->work_func) {
+        work->work_func(work->work_arg);
+      }
+      SAFE_FREE(work);
+    }
+  }
+
+  return NULL;
+}
 
 thread_pool_t *thread_pool_create(const char *pool_name) {
   thread_pool_t *pool = SAFE_MALLOC(sizeof(thread_pool_t), thread_pool_t *);
@@ -33,15 +86,106 @@ thread_pool_t *thread_pool_create(const char *pool_name) {
   // Initialize linked list
   pool->threads = NULL;
   pool->thread_count = 0;
+  pool->is_work_queue_mode = false;
+  pool->num_workers = 0;
 
   // Initialize mutex
-  if (mutex_init(&pool->threads_mutex) != 0) {
+  if (mutex_init(&pool->threads_mutex, "thread_pool") != 0) {
     SAFE_FREE(pool);
     SET_ERRNO(ERROR_THREAD, "Failed to initialize thread pool mutex");
     return NULL;
   }
 
-  log_debug("Thread pool '%s' created", pool->name);
+  log_debug("Thread pool '%s' created (long-lived thread mode)", pool->name);
+  return pool;
+}
+
+thread_pool_t *thread_pool_create_with_workers(const char *pool_name, size_t num_workers) {
+  if (num_workers == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "num_workers must be > 0");
+    return NULL;
+  }
+
+  thread_pool_t *pool = SAFE_MALLOC(sizeof(thread_pool_t), thread_pool_t *);
+  if (!pool) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate thread pool");
+    return NULL;
+  }
+
+  memset(pool, 0, sizeof(*pool));
+
+  // Copy pool name
+  if (pool_name) {
+    SAFE_STRNCPY(pool->name, pool_name, sizeof(pool->name));
+  } else {
+    SAFE_STRNCPY(pool->name, "unnamed", sizeof(pool->name));
+  }
+
+  // Mark as work queue mode
+  pool->is_work_queue_mode = true;
+  pool->num_workers = num_workers;
+  pool->work_queue = NULL;
+  pool->shutdown_requested = false;
+
+  // Initialize mutexes
+  if (mutex_init(&pool->threads_mutex, "worker_list") != 0) {
+    SAFE_FREE(pool);
+    SET_ERRNO(ERROR_THREAD, "Failed to initialize threads_mutex");
+    return NULL;
+  }
+
+  if (mutex_init(&pool->work_queue_mutex, "pending_tasks") != 0) {
+    mutex_destroy(&pool->threads_mutex);
+    SAFE_FREE(pool);
+    SET_ERRNO(ERROR_THREAD, "Failed to initialize work_queue_mutex");
+    return NULL;
+  }
+
+  // Initialize condition variable
+  if (cond_init(&pool->work_available, "task_available") != 0) {
+    mutex_destroy(&pool->work_queue_mutex);
+    mutex_destroy(&pool->threads_mutex);
+    SAFE_FREE(pool);
+    SET_ERRNO(ERROR_THREAD, "Failed to initialize work_available condition");
+    return NULL;
+  }
+
+  // Create worker threads
+  for (size_t i = 0; i < num_workers; i++) {
+    thread_pool_entry_t *entry = SAFE_MALLOC(sizeof(thread_pool_entry_t), thread_pool_entry_t *);
+    if (!entry) {
+      log_error("Failed to allocate worker entry %zu", i);
+      thread_pool_destroy(pool);
+      SET_ERRNO(ERROR_MEMORY, "Failed to allocate worker entry");
+      return NULL;
+    }
+
+    memset(entry, 0, sizeof(*entry));
+    entry->stop_id = 0;
+    entry->thread_func = thread_pool_worker_thread;
+    entry->thread_arg = pool;
+    SAFE_SNPRINTF(entry->name, sizeof(entry->name), "%s_worker_%zu", pool->name, i);
+
+    // Create worker thread
+    if (asciichat_thread_create(&entry->thread, thread_pool_worker_thread, pool) != 0) {
+      log_error("Failed to create worker thread %zu", i);
+      SAFE_FREE(entry);
+      thread_pool_destroy(pool);
+      SET_ERRNO(ERROR_THREAD, "Failed to create worker thread %zu", i);
+      return NULL;
+    }
+
+    // Add to thread list
+    mutex_lock(&pool->threads_mutex);
+    entry->next = pool->threads;
+    pool->threads = entry;
+    pool->thread_count++;
+    mutex_unlock(&pool->threads_mutex);
+
+    log_debug("[ThreadPool] Created worker thread %zu for pool '%s'", i, pool->name);
+  }
+
+  log_info("[ThreadPool] Created work queue pool '%s' with %zu worker threads", pool->name, num_workers);
   return pool;
 }
 
@@ -50,7 +194,8 @@ void thread_pool_destroy(thread_pool_t *pool) {
     return;
   }
 
-  log_debug("Destroying thread pool '%s' (thread_count=%zu)", pool->name, pool->thread_count);
+  log_debug("Destroying thread pool '%s' (thread_count=%zu, work_queue_mode=%d)", pool->name, pool->thread_count,
+            pool->is_work_queue_mode);
 
   // Stop all threads first (if not already stopped)
   if (pool->thread_count > 0) {
@@ -58,7 +203,24 @@ void thread_pool_destroy(thread_pool_t *pool) {
     thread_pool_stop_all(pool);
   }
 
-  // Destroy mutex
+  // Clean up work queue (in case there's pending work)
+  if (pool->is_work_queue_mode) {
+    mutex_lock(&pool->work_queue_mutex);
+    thread_pool_work_entry_t *entry = pool->work_queue;
+    while (entry) {
+      thread_pool_work_entry_t *next = entry->next;
+      SAFE_FREE(entry);
+      entry = next;
+    }
+    pool->work_queue = NULL;
+    mutex_unlock(&pool->work_queue_mutex);
+
+    // Destroy condition variable and work queue mutex
+    cond_destroy(&pool->work_available);
+    mutex_destroy(&pool->work_queue_mutex);
+  }
+
+  // Destroy threads mutex
   mutex_destroy(&pool->threads_mutex);
 
   // Free pool
@@ -67,10 +229,60 @@ void thread_pool_destroy(thread_pool_t *pool) {
   log_debug("Thread pool destroyed");
 }
 
+asciichat_error_t thread_pool_queue_work(thread_pool_t *pool, void *(*work_func)(void *), void *work_arg) {
+  if (!pool) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "pool is NULL");
+  }
+
+  if (!pool->is_work_queue_mode) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "Pool not in work queue mode. Use thread_pool_create_with_workers()");
+  }
+
+  if (!work_func) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "work_func is NULL");
+  }
+
+  // Allocate work entry
+  thread_pool_work_entry_t *entry = SAFE_MALLOC(sizeof(thread_pool_work_entry_t), thread_pool_work_entry_t *);
+  if (!entry) {
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate work entry");
+  }
+
+  entry->work_func = work_func;
+  entry->work_arg = work_arg;
+  entry->next = NULL;
+
+  // Add to work queue (at the end)
+  mutex_lock(&pool->work_queue_mutex);
+
+  // Find the last entry in the queue
+  if (!pool->work_queue) {
+    pool->work_queue = entry;
+  } else {
+    thread_pool_work_entry_t *last = pool->work_queue;
+    while (last->next) {
+      last = last->next;
+    }
+    last->next = entry;
+  }
+
+  // Signal workers that work is available
+  cond_signal(&pool->work_available);
+
+  mutex_unlock(&pool->work_queue_mutex);
+
+  log_dev("Queued work to pool '%s' (workers=%zu)", pool->name, pool->num_workers);
+  return ASCIICHAT_OK;
+}
+
 asciichat_error_t thread_pool_spawn(thread_pool_t *pool, void *(*thread_func)(void *), void *thread_arg, int stop_id,
                                     const char *thread_name) {
   if (!pool) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "pool is NULL");
+  }
+
+  if (pool->is_work_queue_mode) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "Cannot spawn threads in work queue mode. Use thread_pool_queue_work()");
   }
 
   if (!thread_func) {
@@ -146,6 +358,14 @@ asciichat_error_t thread_pool_stop_all(thread_pool_t *pool) {
   }
 
   log_debug("Stopping %zu threads in pool '%s' in stop_id order", pool->thread_count, pool->name);
+
+  // For work queue mode, signal workers to shutdown
+  if (pool->is_work_queue_mode) {
+    mutex_lock(&pool->work_queue_mutex);
+    pool->shutdown_requested = true;
+    cond_broadcast(&pool->work_available);
+    mutex_unlock(&pool->work_queue_mutex);
+  }
 
   // Threads are already sorted by stop_id (ascending), so just iterate and join
   thread_pool_entry_t *entry = pool->threads;

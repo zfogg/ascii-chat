@@ -14,7 +14,6 @@
 #   3. Cache built library for reuse across clean builds
 #
 # Outputs (variables set by this file):
-#   - GHOSTTY_FOUND: Whether ghostty was found or built successfully (macOS only)
 #   - GHOSTTY_LIBRARIES: Libraries to link against (ghostty_lib target)
 #   - GHOSTTY_INCLUDE_DIRS: Include directories
 #   - GHOSTTY_LIBS: Render backend libraries for all platforms
@@ -49,7 +48,6 @@ if(APPLE)
         target_include_directories(ghostty_lib INTERFACE "${GHOSTTY_SYSTEM_INC}")
         set(GHOSTTY_LIBRARIES ghostty_lib)
         set(GHOSTTY_INCLUDE_DIRS "${GHOSTTY_SYSTEM_INC}")
-        set(GHOSTTY_FOUND TRUE)
 
         message(STATUS "Using system ${BoldGreen}ghostty${ColorReset} library: ${GHOSTTY_SYSTEM_LIB}")
 
@@ -118,13 +116,11 @@ if(APPLE)
 
         set(GHOSTTY_LIBRARIES ghostty_lib)
         set(GHOSTTY_INCLUDE_DIRS "${GHOSTTY_SOURCE_DIR}/zig-out/include")
-        set(GHOSTTY_FOUND TRUE)
 
         message(STATUS "${BoldGreen}ghostty${ColorReset} configured: ${GHOSTTY_LIB}")
 
     else()
         message(STATUS "${BoldYellow}ghostty submodule not found${ColorReset} - Ghostty macOS support will be limited")
-        set(GHOSTTY_FOUND FALSE)
         set(GHOSTTY_LIBRARIES "")
         set(GHOSTTY_INCLUDE_DIRS "")
     endif()
@@ -232,7 +228,6 @@ elseif(UNIX AND NOT APPLE)
             if(NOT GHOSTTY_BUILD_RESULT EQUAL 0)
                 message(WARNING "${BoldYellow}ghostty lib-vt build failed${ColorReset}. Check log: ${GHOSTTY_LOG_FILE}")
                 message(STATUS "${BoldYellow}Continuing without ghostty...${ColorReset}")
-                set(GHOSTTY_FOUND FALSE)
             endif()
 
             message(STATUS "  ${BoldGreen}ghostty lib-vt${ColorReset} library built and cached successfully")
@@ -273,18 +268,15 @@ elseif(UNIX AND NOT APPLE)
             endif()
 
             set(GHOSTTY_LIBRARIES ghostty_lib)
-            set(GHOSTTY_FOUND TRUE)
         else()
             # Header-only mode (ghostty-embedded generated headers but no library)
             set(GHOSTTY_LIBRARIES "")
-            set(GHOSTTY_FOUND FALSE)
         endif()
 
         message(STATUS "${BoldGreen}ghostty${ColorReset} configured: ${GHOSTTY_LIB}")
 
     else()
         message(STATUS "${BoldYellow}ghostty submodule not found${ColorReset} - Ghostty Linux support will be limited")
-        set(GHOSTTY_FOUND FALSE)
         set(GHOSTTY_LIBRARIES "")
         set(GHOSTTY_INCLUDE_DIRS "")
     endif()
@@ -325,7 +317,6 @@ elseif(UNIX AND NOT APPLE)
     endif()
 else()
     # Windows: ghostty not used for rendering
-    set(GHOSTTY_FOUND FALSE)
     set(GHOSTTY_LIBRARIES "")
     set(GHOSTTY_INCLUDE_DIRS "")
 endif()
@@ -425,28 +416,45 @@ if(WIN32)
     set(GHOSTTY_LIBS "")
     set(GHOSTTY_INCLUDES "")
 elseif(APPLE)
-    if(GHOSTTY_FOUND)
-        set(GHOSTTY_LIBS ${GHOSTTY_LIBRARIES} "-framework Metal" "-framework Cocoa" "-framework CoreGraphics")
-        set(GHOSTTY_INCLUDES ${GHOSTTY_INCLUDE_DIRS})
-        message(STATUS "${BoldGreen}✓${ColorReset} Ghostty (macOS): ghostty + Metal")
-    else()
-        message(WARNING "Ghostty: ghostty not found - macOS renderer will fail at runtime")
-        set(GHOSTTY_LIBS "")
-        set(GHOSTTY_INCLUDES "")
-    endif()
+    set(GHOSTTY_LIBS ${GHOSTTY_LIBRARIES} "-framework Metal" "-framework Cocoa" "-framework CoreGraphics")
+    set(GHOSTTY_INCLUDES ${GHOSTTY_INCLUDE_DIRS})
+    message(STATUS "${BoldGreen}✓${ColorReset} Ghostty (macOS): ghostty + Metal")
 elseif(UNIX AND NOT APPLE)
     # Linux: ghostty with GTK backend for rendering
-    if(GHOSTTY_FOUND)
+    if(USE_MUSL)
+        # For musl static builds, GTK4 is built as static library in MuslDependencies.cmake
+        # Collect all GTK4 dependencies as static libraries
+        set(GHOSTTY_GTK_LIBS
+            ${GTK4_LIBRARIES}
+            ${PANGO_LIBRARIES}
+            ${CAIRO_LIBRARIES}
+            ${HARFBUZZ_LIBRARIES}
+            ${FREETYPE_LIBRARIES}
+            ${PIXMAN_LIBRARIES}
+            ${GLIB_LIBRARIES}
+        )
+
+        set(GHOSTTY_GTK_INCLUDES
+            ${GTK4_INCLUDE_DIRS}
+            ${PANGO_INCLUDE_DIRS}
+            ${CAIRO_INCLUDE_DIRS}
+            ${HARFBUZZ_INCLUDE_DIRS}
+            ${FREETYPE_INCLUDE_DIRS}
+            ${PIXMAN_INCLUDE_DIRS}
+            ${GLIB_INCLUDE_DIRS}
+        )
+
+        set(GHOSTTY_LIBS ${GHOSTTY_LIBRARIES} ${GHOSTTY_GTK_LIBS})
+        set(GHOSTTY_INCLUDES ${GHOSTTY_INCLUDE_DIRS} ${GHOSTTY_GTK_INCLUDES})
+        message(STATUS "${BoldGreen}✓${ColorReset} Ghostty (Linux/musl): ghostty + GTK4 (static)")
+    else()
+        # For glibc builds, use pkg-config to find GTK
         find_package(PkgConfig REQUIRED)
         pkg_check_modules(GTK gtk4 REQUIRED)
 
         set(GHOSTTY_LIBS ${GHOSTTY_LIBRARIES} ${GTK_LDFLAGS})
         set(GHOSTTY_INCLUDES ${GHOSTTY_INCLUDE_DIRS} ${GTK_INCLUDE_DIRS})
         message(STATUS "${BoldGreen}✓${ColorReset} Ghostty (Linux): ghostty + GTK")
-    else()
-        message(FATAL "Ghostty: ghostty not found - Linux renderer will not be available")
-        set(GHOSTTY_LIBS "")
-        set(GHOSTTY_INCLUDES "")
     endif()
 else()
     # Windows: stubs only

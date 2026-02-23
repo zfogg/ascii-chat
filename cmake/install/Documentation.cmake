@@ -11,7 +11,7 @@
 #
 # Outputs:
 #   - man1: ${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1 (uncompressed for development)
-#   - docs: ${CMAKE_BINARY_DIR}/docs/html/ and ${CMAKE_BINARY_DIR}/docs/man/man3/
+#   - docs: ${CMAKE_BINARY_DIR}/share/doc/html/ and ${CMAKE_BINARY_DIR}/share/man/man3/
 # =============================================================================
 
 # =============================================================================
@@ -125,7 +125,7 @@ message(STATUS \"Manpage renaming: \${RENAMED_COUNT} renamed, \${SKIPPED_COUNT} 
     add_custom_target(docs
         COMMAND timeout 30 ${ASCIICHAT_DOXYGEN_EXECUTABLE} ${DOXYFILE_OUT}
         COMMAND ${CMAKE_COMMAND} -E echo "Adding ascii-chat- prefix to manpages..."
-        COMMAND ${CMAKE_COMMAND} -DMAN_DIR=${CMAKE_BINARY_DIR}/docs/man/man3 -P ${CMAKE_BINARY_DIR}/RenameManpages.cmake
+        COMMAND ${CMAKE_COMMAND} -DMAN_DIR=${CMAKE_BINARY_DIR}/share/man/man3 -P ${CMAKE_BINARY_DIR}/RenameManpages.cmake
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         COMMENT "Generating API documentation with Doxygen"
         VERBATIM
@@ -136,7 +136,7 @@ message(STATUS \"Manpage renaming: \${RENAMED_COUNT} renamed, \${SKIPPED_COUNT} 
         # Windows: use PowerShell Start-Process
         add_custom_target(docs-open
             COMMAND ${CMAKE_COMMAND} -E echo "Opening documentation in browser..."
-            COMMAND powershell -Command "Start-Process \"${CMAKE_BINARY_DIR}/docs/html/index.html\""
+            COMMAND powershell -Command "Start-Process \"${CMAKE_BINARY_DIR}/share/doc/html/index.html\""
             DEPENDS docs
             COMMENT "Opening documentation in default browser"
             VERBATIM
@@ -145,7 +145,7 @@ message(STATUS \"Manpage renaming: \${RENAMED_COUNT} renamed, \${SKIPPED_COUNT} 
         # macOS: use open command
         add_custom_target(docs-open
             COMMAND ${CMAKE_COMMAND} -E echo "Opening documentation in browser..."
-            COMMAND open "${CMAKE_BINARY_DIR}/docs/html/index.html"
+            COMMAND open "${CMAKE_BINARY_DIR}/share/doc/html/index.html"
             DEPENDS docs
             COMMENT "Opening documentation in default browser"
             VERBATIM
@@ -154,7 +154,7 @@ message(STATUS \"Manpage renaming: \${RENAMED_COUNT} renamed, \${SKIPPED_COUNT} 
         # Linux: use xdg-open command
         add_custom_target(docs-open
             COMMAND ${CMAKE_COMMAND} -E echo "Opening documentation in browser..."
-            COMMAND xdg-open "${CMAKE_BINARY_DIR}/docs/html/index.html"
+            COMMAND xdg-open "${CMAKE_BINARY_DIR}/share/doc/html/index.html"
             DEPENDS docs
             COMMENT "Opening documentation in default browser"
             VERBATIM
@@ -180,5 +180,33 @@ else()
     add_custom_target(docs-open
         COMMAND ${CMAKE_COMMAND} -E echo "Doxygen not found. Please install Doxygen to generate documentation."
     )
+endif()
+
+
+# =============================================================================
+# Man5 Page Generation Target
+# =============================================================================
+# Generate man5 (file format documentation) page from template
+# Usage: cmake --build build --target man5
+#
+# This target processes the template with CMake variables and outputs:
+# - Generated page: ${CMAKE_BINARY_DIR}/share/man/man5/ascii-chat.5
+# =============================================================================
+if(UNIX)
+    # Create output directory for man5 page
+    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/share/man/man5")
+
+    # Create custom target that generates man5 page
+    add_custom_target(man5
+        COMMAND ${CMAKE_COMMAND}
+            -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+            -DBINARY_DIR=${CMAKE_BINARY_DIR}
+            -DPROJECT_VERSION=${PROJECT_VERSION}
+            -DPROJECT_VERSION_DATE=${PROJECT_VERSION_DATE}
+            -P ${CMAKE_SOURCE_DIR}/cmake/utils/ConfigureMan5Template.cmake
+        COMMENT "Generating man5 page: ${BoldBlue}ascii-chat.5${ColorReset}"
+        VERBATIM
+    )
+    message(STATUS "Custom target ${BoldGreen}man5${ColorReset} available: ${BoldBlue}cmake --build build --target man5${ColorReset}")
 endif()
 

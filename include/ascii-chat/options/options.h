@@ -207,6 +207,7 @@
 #include "../platform/terminal.h"
 #include "../video/palette.h"
 #include "../discovery/strings.h"
+#include "explicit.h"
 
 /** @brief Backward compatibility aliases for color mode enum values */
 #define COLOR_MODE_AUTO TERM_COLOR_AUTO           ///< Auto-detect color support
@@ -293,6 +294,94 @@ typedef enum {
  */
 #define OPTIONS_BUFF_SIZE 256
 
+/** @brief Maximum number of identity keys that can be loaded (for multi-key support) */
+#define MAX_IDENTITY_KEYS 32
+
+// ============================================================================
+// GENERAL CATEGORY - General-purpose options (from --help registry)
+// ============================================================================
+
+/** @brief Default help flag (false = don't show help) */
+#define OPT_HELP_DEFAULT false
+
+/** @brief Default version flag (false = don't show version) */
+#define OPT_VERSION_DEFAULT false
+
+/** @brief Default splash screen flag (true = show splash, false = hide splash) */
+#define OPT_SPLASH_DEFAULT true
+
+/** @brief Default splash screen explicitly set flag (false = use default splash setting) */
+#define OPT_SPLASH_SCREEN_EXPLICITLY_SET_DEFAULT false
+
+/** @brief Default status screen flag (true = show status, false = hide status) */
+#define OPT_STATUS_SCREEN_DEFAULT true
+
+/** @brief Default status screen explicitly set flag (false = use default status screen setting) */
+#define OPT_STATUS_SCREEN_EXPLICITLY_SET_DEFAULT false
+
+/** @brief Default keep-awake (prevent system sleep) flag (false = normal system sleep) */
+#define OPT_ENABLE_KEEPAWAKE_DEFAULT false
+
+/** @brief Default disable keep-awake flag (false = allow system sleep prevention) */
+#define OPT_DISABLE_KEEPAWAKE_DEFAULT false
+
+/** @brief Default no-check-update flag (false = check for updates enabled) */
+#define OPT_NO_CHECK_UPDATE_DEFAULT false
+
+// ============================================================================
+// LOGGING CATEGORY - Binary-level logging and output control options
+// ============================================================================
+
+/** @brief Default quiet mode flag (false = logging enabled) */
+#define OPT_QUIET_DEFAULT false
+
+/** @brief Default verbose level (0 = not verbose) */
+#define OPT_VERBOSE_LEVEL_DEFAULT 0
+
+/** @brief Default log level (LOG_INFO) */
+#define OPT_LOG_LEVEL_DEFAULT LOG_INFO
+
+/** @brief Default grep pattern (empty = no filtering) */
+#define OPT_GREP_PATTERN_DEFAULT ""
+
+/** @brief Default JSON logging flag (false = text output) */
+#define OPT_JSON_DEFAULT false
+
+/** @brief Default color scheme name (pastel) */
+#define OPT_COLOR_SCHEME_NAME_DEFAULT "pastel"
+
+/** @brief Default log format string - release mode (simple format with timestamp, level, and message) */
+#define OPT_LOG_TEMPLATE_DEFAULT_RELEASE                                                                               \
+  "[%color(*, %H):%color(*, %M):%color(*, %S).%color(*, %ms)] [%color(*, %level_aligned)] "                            \
+  "%colored_message"
+
+/** @brief Default log format string - debug mode (verbose with thread ID, file relative path, line, and function) */
+#define OPT_LOG_TEMPLATE_DEFAULT_DEBUG                                                                                 \
+  "[%color(*, %H):%color(*, %M):%color(*, %S).%color(*, %ms)] [%color(*, %level_aligned)] "                            \
+  "[tid:%color(GREY, %tid)] %color(DEBUG, %file_relative):%color(GREY, %line)@%color(DEV, %func)(): "                  \
+  "%colored_message"
+
+/** @brief Default log template string (selected based on build mode)
+ *
+ * Release builds use simple format. Debug builds use verbose format with thread ID, file path, line, and function.
+ * The get_default_log_template() function returns this value via the options system.
+ */
+#ifdef NDEBUG
+#define OPT_LOG_TEMPLATE_DEFAULT OPT_LOG_TEMPLATE_DEFAULT_RELEASE
+#else
+#define OPT_LOG_TEMPLATE_DEFAULT OPT_LOG_TEMPLATE_DEFAULT_DEBUG
+#endif
+
+/** @brief Default log format output type (TEXT = human-readable, JSON = structured) */
+#define OPT_LOG_FORMAT_OUTPUT_DEFAULT LOG_OUTPUT_TEXT
+
+/** @brief Default log format console only flag (false = use default format everywhere) */
+#define OPT_LOG_FORMAT_CONSOLE_DEFAULT false
+
+// ============================================================================
+// TERMINAL CATEGORY - Terminal display options
+// ============================================================================
+
 /** @brief Default terminal width in characters
  *
  * Default width used when terminal size cannot be detected or when auto-detection
@@ -321,6 +410,55 @@ typedef enum {
 /** @brief Default auto-detect height flag (true = auto-detect from terminal) */
 #define OPT_AUTO_HEIGHT_DEFAULT true
 
+/** @brief Default color mode (auto-detect terminal capabilities) */
+#define OPT_COLOR_MODE_DEFAULT COLOR_MODE_AUTO
+
+/** @brief Default list webcams flag (false = don't list and exit) */
+#define OPT_LIST_WEBCAMS_DEFAULT false
+
+/** @brief Default list microphones flag (false = don't list and exit) */
+#define OPT_LIST_MICROPHONES_DEFAULT false
+
+/** @brief Default list speakers flag (false = don't list and exit) */
+#define OPT_LIST_SPEAKERS_DEFAULT false
+
+/** @brief Default show terminal capabilities flag */
+#define OPT_SHOW_CAPABILITIES_DEFAULT false
+
+/** @brief Default force UTF-8 support setting (auto-detect) */
+#define OPT_FORCE_UTF8_DEFAULT UTF8_SETTING_AUTO
+
+/** @brief Default strip ANSI escape sequences flag */
+#define OPT_STRIP_ANSI_DEFAULT false
+
+/** @brief Default color setting (COLOR_SETTING_AUTO = smart detection) */
+#define OPT_COLOR_DEFAULT COLOR_SETTING_AUTO
+
+// ============================================================================
+// DISPLAY CATEGORY - Display and rendering options
+// ============================================================================
+
+/** @brief Default color filter (none - no filtering) */
+#define OPT_COLOR_FILTER_DEFAULT COLOR_FILTER_NONE
+
+/** @brief Default render mode (foreground characters only) */
+#define OPT_RENDER_MODE_DEFAULT RENDER_MODE_FOREGROUND
+
+/** @brief Default palette type (standard ASCII art) */
+#define OPT_PALETTE_TYPE_DEFAULT PALETTE_STANDARD
+
+/** @brief Default custom palette set flag (false = not set) */
+#define OPT_PALETTE_CUSTOM_SET_DEFAULT false
+
+/** @brief Default allow aspect ratio distortion flag */
+#define OPT_STRETCH_DEFAULT false
+
+/** @brief Default FPS (frames per second) */
+#define OPT_FPS_DEFAULT 60
+
+/** @brief Default snapshot mode flag (false = continuous) */
+#define OPT_SNAPSHOT_MODE_DEFAULT false
+
 /** @brief Default snapshot delay in seconds
  *
  * Default delay for snapshot mode before exiting. macOS webcams show pure black
@@ -330,10 +468,73 @@ typedef enum {
  * @ingroup options
  */
 #if defined(__APPLE__)
-// macOS webcams show pure black first then fade up into a real color image over a few seconds
-#define SNAPSHOT_DELAY_DEFAULT 4.0f
+#define OPT_SNAPSHOT_DELAY_DEFAULT 4.0f
 #else
-#define SNAPSHOT_DELAY_DEFAULT 3.0f
+#define OPT_SNAPSHOT_DELAY_DEFAULT 3.0f
+#endif
+
+/** @brief Default Matrix rain effect flag (false = disabled) */
+#define OPT_MATRIX_RAIN_DEFAULT false
+
+/** @brief Default horizontal flip state (true = horizontally flipped)
+ * macOS webcams default to flipped (mirrored), other platforms default to normal */
+#ifdef __APPLE__
+#define OPT_FLIP_X_DEFAULT true
+#else
+#define OPT_FLIP_X_DEFAULT false
+#endif
+
+/** @brief Default vertical flip state (false = no vertical flip) */
+#define OPT_FLIP_Y_DEFAULT false
+
+// ============================================================================
+// WEBCAM CATEGORY - Webcam and capture device options
+// ============================================================================
+
+/** @brief Default webcam device index */
+#define OPT_WEBCAM_INDEX_DEFAULT 0
+
+/** @brief Default test pattern mode (false = use actual webcam) */
+#define OPT_TEST_PATTERN_DEFAULT false
+
+/** @brief Default no audio mixer flag (false = enable mixer) */
+#define OPT_NO_AUDIO_MIXER_DEFAULT false
+
+// ============================================================================
+// MEDIA CATEGORY - Media file streaming and playback options
+// ============================================================================
+
+/** @brief Default loop media flag (false = play once) */
+#define OPT_MEDIA_LOOP_DEFAULT false
+
+/** @brief Default media from stdin flag (false = not reading from stdin) */
+#define OPT_MEDIA_FROM_STDIN_DEFAULT false
+
+/** @brief Default media seek timestamp (start from beginning) */
+#define OPT_MEDIA_SEEK_TIMESTAMP_DEFAULT 0.0
+
+/** @brief Default pause media flag (false = play immediately) */
+#define OPT_PAUSE_DEFAULT false
+
+// ============================================================================
+// NETWORK CATEGORY - Network connectivity and protocol options
+// ============================================================================
+
+/** @brief Default server address for client connections */
+#define OPT_ADDRESS_DEFAULT "localhost"
+
+/** @brief Default IPv6 server address */
+#define OPT_ADDRESS6_DEFAULT "::1"
+
+/** @brief Default discovery service endpoint
+ *
+ * @note In production (NDEBUG), uses discovery-service.ascii-chat.com
+ *       In debug builds, uses localhost for local testing
+ */
+#ifdef NDEBUG
+#define OPT_ENDPOINT_DISCOVERY_SERVICE "discovery-service.ascii-chat.com"
+#else
+#define OPT_ENDPOINT_DISCOVERY_SERVICE "localhost"
 #endif
 
 /** @brief Default TCP port for client/server communication (string) */
@@ -342,33 +543,60 @@ typedef enum {
 /** @brief Default TCP port for client/server communication (integer) */
 #define OPT_PORT_INT_DEFAULT 27224
 
-/** @brief Default ACDS discovery service port (integer) */
-#define OPT_ACDS_PORT_INT_DEFAULT 27225
-
-/** @brief Default ACDS discovery service port (string) */
-#define OPT_ACDS_PORT_DEFAULT "27225"
-
 /** @brief Default WebSocket port for server mode (integer) */
 #define OPT_WEBSOCKET_PORT_SERVER_DEFAULT 27226
 
 /** @brief Default WebSocket port for discovery-service mode (integer) */
 #define OPT_WEBSOCKET_PORT_ACDS_DEFAULT 27227
 
-/** @brief Default server address for client connections */
-#define OPT_ADDRESS_DEFAULT "localhost"
+/** @brief Default maximum concurrent clients (server only) */
+#define OPT_MAX_CLIENTS_DEFAULT 9
 
-/** @brief Default IPv6 server address */
-#define OPT_ADDRESS6_DEFAULT "::1"
+/** @brief Default reconnect attempts (-1 means auto/infinite) */
+#define OPT_RECONNECT_ATTEMPTS_DEFAULT (-1)
+
+/** @brief Default compression level (1-9) */
+#define OPT_COMPRESSION_LEVEL_DEFAULT 3
+
+/** @brief Default no compression flag (false = enable compression) */
+#define OPT_NO_COMPRESS_DEFAULT false
+
+/** @brief Default ACDS registration flag (false = disabled) */
+#define OPT_ACDS_DEFAULT false
+
+/** @brief Default ACDS discovery service port (integer) */
+#define OPT_ACDS_PORT_INT_DEFAULT 27225
+
+/** @brief Default ACDS discovery service port (string) */
+#define OPT_ACDS_PORT_DEFAULT "27225"
+
+/** @brief Default ACDS expose IP flag (false = private by default) */
+#define OPT_ACDS_EXPOSE_IP_DEFAULT false
+
+/** @brief Default ACDS insecure mode flag (false = verify server) */
+#define OPT_ACDS_INSECURE_DEFAULT false
+
+/** @brief Default require-server-identity setting for ACDS */
+#define OPT_REQUIRE_SERVER_IDENTITY_DEFAULT false
+
+/** @brief Default require-client-identity setting for ACDS */
+#define OPT_REQUIRE_CLIENT_IDENTITY_DEFAULT false
+
+/** @brief Default LAN discovery flag (false = discovery disabled) */
+#define OPT_LAN_DISCOVERY_DEFAULT false
+
+/** @brief Default no mDNS advertise flag (false = advertise enabled) */
+#define OPT_NO_MDNS_ADVERTISE_DEFAULT false
+
+/** @brief Default enable UPnP flag (false = UPnP disabled) */
+#define OPT_ENABLE_UPNP_DEFAULT false
 
 /**
- * @name Network Endpoint Defaults
- * @brief Centralized definitions for all network service endpoints
+ * @name Network Endpoint Defaults (WebRTC)
+ * @brief Centralized definitions for STUN/TURN servers
  * @{
  * @ingroup options
  */
-
-/** @brief Discovery service (ACDS) endpoint for session management */
-#define OPT_ENDPOINT_DISCOVERY_SERVICE "discovery-service.ascii-chat.com"
 
 /** @brief Primary STUN server (ascii-chat hosted) */
 #define OPT_ENDPOINT_STUN_PRIMARY "stun:stun.ascii-chat.com:3478"
@@ -403,153 +631,16 @@ typedef enum {
 /** @brief TURN server port */
 #define OPT_TURN_SERVER_PORT 3478
 
+/** @brief Default STUN server URLs (comma-separated) */
+#define OPT_STUN_SERVERS_DEFAULT OPT_ENDPOINT_STUN_SERVERS_DEFAULT
+
+/** @brief Default TURN server URLs (comma-separated) */
+#define OPT_TURN_SERVERS_DEFAULT OPT_ENDPOINT_TURN_SERVERS_DEFAULT
+
 /** @} */
-
-/** @brief Default maximum concurrent clients (server only) */
-#define OPT_MAX_CLIENTS_DEFAULT 9
-
-/** @brief Default compression level (1-9) */
-#define OPT_COMPRESSION_LEVEL_DEFAULT 3
-
-/** @brief Default FPS (frames per second) */
-#define OPT_FPS_DEFAULT 60
-
-/** @brief Default webcam device index */
-#define OPT_WEBCAM_INDEX_DEFAULT 0
-
-/** @brief Default microphone device index (-1 means system default) */
-#define OPT_MICROPHONE_INDEX_DEFAULT (-1)
-
-/** @brief Maximum number of identity keys that can be loaded (for multi-key support) */
-#define MAX_IDENTITY_KEYS 32
-
-/** @brief Default speakers device index (-1 means system default) */
-#define OPT_SPEAKERS_INDEX_DEFAULT (-1)
-
-/** @brief Default reconnect attempts (-1 means auto/infinite) */
-#define OPT_RECONNECT_ATTEMPTS_DEFAULT (-1)
-
-/** @brief Default horizontal flip state (true = horizontally flipped)
- * macOS webcams default to flipped (mirrored), other platforms default to normal */
-#ifdef __APPLE__
-#define OPT_FLIP_X_DEFAULT true
-#else
-#define OPT_FLIP_X_DEFAULT false
-#endif
-
-/** @brief Default vertical flip state (false = no vertical flip) */
-#define OPT_FLIP_Y_DEFAULT false
-
-/** @brief Default color setting (COLOR_SETTING_AUTO = smart detection) */
-#define OPT_COLOR_DEFAULT COLOR_SETTING_AUTO
-
-/** @brief Default color mode (auto-detect terminal capabilities) */
-#define OPT_COLOR_MODE_DEFAULT COLOR_MODE_AUTO
-
-/** @brief Default color filter (none - no filtering) */
-#define OPT_COLOR_FILTER_DEFAULT COLOR_FILTER_NONE
-
-/** @brief Default color scheme name (pastel) */
-#define OPT_COLOR_SCHEME_NAME_DEFAULT "pastel"
-
-/** @brief Default render mode (foreground characters only) */
-#define OPT_RENDER_MODE_DEFAULT RENDER_MODE_FOREGROUND
-
-/** @brief Default palette type (standard ASCII art) */
-#define OPT_PALETTE_TYPE_DEFAULT PALETTE_STANDARD
-
-/** @brief Default media seek timestamp (start from beginning) */
-#define OPT_MEDIA_SEEK_TIMESTAMP_DEFAULT 0.0
-
-/** @brief Default color mode (auto-detect) */
-#define OPT_COLOR_MODE_DEFAULT COLOR_MODE_AUTO
-
-/** @brief Default require-server-identity setting for ACDS */
-#define OPT_REQUIRE_SERVER_IDENTITY_DEFAULT false
-
-/** @brief Default require-client-identity setting for ACDS */
-#define OPT_REQUIRE_CLIENT_IDENTITY_DEFAULT false
-
-/** @brief Default audio encoding state (true = Opus encoding enabled) */
-#define OPT_ENCODE_AUDIO_DEFAULT true
-
-/** @brief Default test pattern mode (false = use actual webcam) */
-#define OPT_TEST_PATTERN_DEFAULT false
-
-/** @brief Default show terminal capabilities flag */
-#define OPT_SHOW_CAPABILITIES_DEFAULT false
-
-/** @brief Default list webcams flag */
-#define OPT_LIST_WEBCAMS_DEFAULT false
-
-/** @brief Default list microphones flag */
-#define OPT_LIST_MICROPHONES_DEFAULT false
-
-/** @brief Default list speakers flag */
-#define OPT_LIST_SPEAKERS_DEFAULT false
-
-/** @brief Default force UTF-8 support setting (auto-detect) */
-#define OPT_FORCE_UTF8_DEFAULT UTF8_SETTING_AUTO
-
-/** @brief Default allow aspect ratio distortion flag */
-#define OPT_STRETCH_DEFAULT false
-
-/** @brief Default strip ANSI escape sequences flag */
-#define OPT_STRIP_ANSI_DEFAULT false
-
-/** @brief Default snapshot mode flag (false = continuous) */
-#define OPT_SNAPSHOT_MODE_DEFAULT false
-
-/** @brief Default Matrix rain effect flag (false = disabled) */
-#define OPT_MATRIX_RAIN_DEFAULT false
-
-/** @brief Default no compression flag (false = enable compression) */
-#define OPT_NO_COMPRESS_DEFAULT false
-
-/** @brief Default encrypt enabled flag (true = encryption required) */
-#define OPT_ENCRYPT_ENABLED_DEFAULT true
-
-/** @brief Default no encrypt flag (false = allow encryption) */
-#define OPT_NO_ENCRYPT_DEFAULT false
 
 /** @brief Default WebRTC mode flag (true = P2P WebRTC, false = direct TCP) */
 #define OPT_WEBRTC_DEFAULT true
-
-/** @brief Default audio enabled flag (true = audio enabled by default) */
-#define OPT_AUDIO_ENABLED_DEFAULT true
-
-/** @brief Default audio source (AUDIO_SOURCE_AUTO = smart selection) */
-#define OPT_AUDIO_SOURCE_DEFAULT AUDIO_SOURCE_AUTO
-
-/** @brief Default audio analysis enabled flag */
-#define OPT_AUDIO_ANALYSIS_ENABLED_DEFAULT false
-
-/** @brief Default audio playback flag (false = enable playback) */
-#define OPT_AUDIO_NO_PLAYBACK_DEFAULT false
-
-/** @brief Default help flag */
-#define OPT_HELP_DEFAULT false
-
-/** @brief Default version flag */
-#define OPT_VERSION_DEFAULT false
-
-/** @brief Default no audio mixer flag (false = enable mixer) */
-#define OPT_NO_AUDIO_MIXER_DEFAULT false
-
-/** @brief Default ACDS expose IP flag (false = private by default) */
-#define OPT_ACDS_EXPOSE_IP_DEFAULT false
-
-/** @brief Default ACDS registration flag (false = disabled) */
-#define OPT_ACDS_DEFAULT false
-
-/** @brief Default enable UPnP flag (false = UPnP disabled) */
-#define OPT_ENABLE_UPNP_DEFAULT false
-
-/** @brief Default no mDNS advertise flag (false = advertise enabled) */
-#define OPT_NO_MDNS_ADVERTISE_DEFAULT false
-
-/** @brief Default LAN discovery flag (false = discovery disabled) */
-#define OPT_LAN_DISCOVERY_DEFAULT false
 
 /** @brief Default prefer WebRTC flag (false = try direct TCP first) */
 #define OPT_PREFER_WEBRTC_DEFAULT false
@@ -571,30 +662,6 @@ typedef enum {
 
 /** @brief Default WebRTC reconnection attempts (3 = try initial + 3 retries) */
 #define OPT_WEBRTC_RECONNECT_ATTEMPTS_DEFAULT 3
-
-/** @brief Default ACDS insecure mode flag (false = verify server) */
-#define OPT_ACDS_INSECURE_DEFAULT false
-
-/** @brief Default microphone sensitivity (1.0 = normal volume) */
-#define OPT_MICROPHONE_SENSITIVITY_DEFAULT 1.0
-
-/** @brief Default speakers volume (1.0 = normal volume) */
-#define OPT_SPEAKERS_VOLUME_DEFAULT 1.0
-
-/** @brief Default quiet mode flag (false = logging enabled) */
-#define OPT_QUIET_DEFAULT false
-
-/** @brief Default loop media flag (false = play once) */
-#define OPT_MEDIA_LOOP_DEFAULT false
-
-/** @brief Default pause media flag (false = play immediately) */
-#define OPT_PAUSE_DEFAULT false
-
-/** @brief Default STUN server URLs (comma-separated) */
-#define OPT_STUN_SERVERS_DEFAULT OPT_ENDPOINT_STUN_SERVERS_DEFAULT
-
-/** @brief Default TURN server URLs (comma-separated) */
-#define OPT_TURN_SERVERS_DEFAULT OPT_ENDPOINT_TURN_SERVERS_DEFAULT
 
 /** @brief Default TURN server username
  *
@@ -618,20 +685,49 @@ typedef enum {
 #define OPT_TURN_CREDENTIAL_DEFAULT "0aa9917b4dad1b01631e87a32b875e09"
 #endif
 
-/** @brief Default verbose level (0 = not verbose) */
-#define OPT_VERBOSE_LEVEL_DEFAULT 0
+// ============================================================================
+// AUDIO CATEGORY - Audio capture, playback and processing options
+// ============================================================================
 
-/** @brief Default grep pattern (empty = no filtering) */
-#define OPT_GREP_PATTERN_DEFAULT ""
+/** @brief Default audio enabled flag (true = audio enabled by default) */
+#define OPT_AUDIO_ENABLED_DEFAULT true
 
-/** @brief Default log level (LOG_INFO) */
-#define OPT_LOG_LEVEL_DEFAULT LOG_INFO
+/** @brief Default audio source (AUDIO_SOURCE_AUTO = smart selection) */
+#define OPT_AUDIO_SOURCE_DEFAULT AUDIO_SOURCE_AUTO
 
-/** @brief Default media from stdin flag (false = not reading from stdin) */
-#define OPT_MEDIA_FROM_STDIN_DEFAULT false
+/** @brief Default microphone device index (-1 means system default) */
+#define OPT_MICROPHONE_INDEX_DEFAULT (-1)
 
-/** @brief Default custom palette set flag (false = not set) */
-#define OPT_PALETTE_CUSTOM_SET_DEFAULT false
+/** @brief Default speakers device index (-1 means system default) */
+#define OPT_SPEAKERS_INDEX_DEFAULT (-1)
+
+/** @brief Default microphone sensitivity (1.0 = normal volume) */
+#define OPT_MICROPHONE_SENSITIVITY_DEFAULT 1.0
+
+/** @brief Default speakers volume (1.0 = normal volume) */
+#define OPT_SPEAKERS_VOLUME_DEFAULT 1.0
+
+/** @brief Default audio analysis enabled flag */
+#define OPT_AUDIO_ANALYSIS_ENABLED_DEFAULT false
+
+/** @brief Default audio playback flag (false = enable playback) */
+#define OPT_AUDIO_NO_PLAYBACK_DEFAULT false
+
+/** @brief Default audio encoding state (true = Opus encoding enabled) */
+#define OPT_ENCODE_AUDIO_DEFAULT true
+
+// ============================================================================
+// SECURITY CATEGORY - Encryption and authentication options
+// ============================================================================
+
+/** @brief Default encrypt enabled flag (true = encryption required) */
+#define OPT_ENCRYPT_ENABLED_DEFAULT true
+
+/** @brief Default no encrypt flag (false = allow encryption) */
+#define OPT_NO_ENCRYPT_DEFAULT false
+
+/** @brief Default no auth flag (false = allow authentication) */
+#define OPT_NO_AUTH_DEFAULT false
 
 /** @brief Default require server verify flag (false = not required) */
 #define OPT_REQUIRE_SERVER_VERIFY_DEFAULT false
@@ -639,39 +735,24 @@ typedef enum {
 /** @brief Default require client verify flag (false = not required) */
 #define OPT_REQUIRE_CLIENT_VERIFY_DEFAULT false
 
-/** @brief Default splash screen flag (true = show splash, false = hide splash) */
-#define OPT_SPLASH_DEFAULT true
+// ============================================================================
+// CONFIGURATION CATEGORY - Application configuration options
+// ============================================================================
 
-/** @brief Default status screen flag (true = show status, false = hide status) */
-#define OPT_STATUS_SCREEN_DEFAULT true
+// (Configuration options are typically handled separately via --config etc.)
 
-/** @brief Default log format string - release mode (simple format with timestamp, level, and message) */
-#define OPT_LOG_TEMPLATE_DEFAULT_RELEASE                                                                               \
-  "[%color(*, %H):%color(*, %M):%color(*, %S).%color(*, %ms)] [%color(*, %level_aligned)] "                            \
-  "%colored_message"
+// ============================================================================
+// DATABASE CATEGORY - Database and persistent storage options
+// ============================================================================
 
-/** @brief Default log format string - debug mode (verbose with thread ID, file relative path, line, and function) */
-#define OPT_LOG_TEMPLATE_DEFAULT_DEBUG                                                                                 \
-  "[%color(*, %H):%color(*, %M):%color(*, %S).%color(*, %ms)] [%color(*, %level_aligned)] "                            \
-  "[tid:%color(GREY, %tid)] %color(DEBUG, %file_relative):%color(GREY, %line)@%color(DEV, %func)(): "                  \
-  "%colored_message"
+// (Database options are typically handled separately via --database etc.)
 
-/** @brief Default log template string (selected based on build mode)
- *
- * Release builds use simple format. Debug builds use verbose format with thread ID, file path, line, and function.
- * The get_default_log_template() function returns this value via the options system.
- */
-#ifdef NDEBUG
-#define OPT_LOG_TEMPLATE_DEFAULT OPT_LOG_TEMPLATE_DEFAULT_RELEASE
-#else
-#define OPT_LOG_TEMPLATE_DEFAULT OPT_LOG_TEMPLATE_DEFAULT_DEBUG
-#endif
+// ============================================================================
+// String Default Values
+// ============================================================================
 
-/** @brief Default log format output type (TEXT = human-readable, JSON = structured) */
-#define OPT_LOG_FORMAT_OUTPUT_DEFAULT LOG_OUTPUT_TEXT
-
-/** @brief Default log format console only flag (false = use default format everywhere) */
-#define OPT_LOG_FORMAT_CONSOLE_DEFAULT false
+/** @brief Default empty string for string option fields that have no configured value */
+#define OPT_STRING_EMPTY_DEFAULT ""
 
 // ============================================================================
 // Render-to-file Options (macOS and Linux only)
@@ -689,11 +770,11 @@ typedef enum {
 // These are referenced from the registry and provide const void * pointers
 // for non-string default values. Defined alongside OPT_*_DEFAULT for clarity.
 
-static const int default_log_level_value = DEFAULT_LOG_LEVEL;
-static const bool default_quiet_value = false;
-static const bool default_json_value = false;
-static const bool default_enable_keepawake_value = false;
-static const bool default_disable_keepawake_value = false;
+static const int default_log_level_value = OPT_LOG_LEVEL_DEFAULT;
+static const bool default_quiet_value = OPT_QUIET_DEFAULT;
+static const bool default_json_value = OPT_JSON_DEFAULT;
+static const bool default_enable_keepawake_value = OPT_ENABLE_KEEPAWAKE_DEFAULT;
+static const bool default_disable_keepawake_value = OPT_DISABLE_KEEPAWAKE_DEFAULT;
 static const int default_width_value = OPT_WIDTH_DEFAULT;
 static const int default_height_value = OPT_HEIGHT_DEFAULT;
 static const int default_port_value = OPT_PORT_INT_DEFAULT;
@@ -712,13 +793,14 @@ static const int default_force_utf8_value = OPT_FORCE_UTF8_DEFAULT;
 static const bool default_stretch_value = OPT_STRETCH_DEFAULT;
 static const bool default_strip_ansi_value = OPT_STRIP_ANSI_DEFAULT;
 static const bool default_snapshot_mode_value = OPT_SNAPSHOT_MODE_DEFAULT;
-static const double default_snapshot_delay_value = SNAPSHOT_DELAY_DEFAULT;
+static const double default_snapshot_delay_value = OPT_SNAPSHOT_DELAY_DEFAULT;
 static const bool default_matrix_rain_value = OPT_MATRIX_RAIN_DEFAULT;
 static const int default_fps_value = OPT_FPS_DEFAULT;
 static const int default_compression_level_value = OPT_COMPRESSION_LEVEL_DEFAULT;
 static const bool default_no_compress_value = OPT_NO_COMPRESS_DEFAULT;
 static const bool default_encrypt_enabled_value = OPT_ENCRYPT_ENABLED_DEFAULT;
 static const bool default_no_encrypt_value = OPT_NO_ENCRYPT_DEFAULT;
+static const bool default_no_auth_value = OPT_NO_AUTH_DEFAULT;
 static const int default_max_clients_value = OPT_MAX_CLIENTS_DEFAULT;
 static const int default_reconnect_attempts_value = OPT_RECONNECT_ATTEMPTS_DEFAULT;
 static const int default_discovery_port_value = OPT_ACDS_PORT_INT_DEFAULT;
@@ -755,8 +837,15 @@ static const bool default_require_server_identity_value = OPT_REQUIRE_SERVER_IDE
 static const bool default_require_client_identity_value = OPT_REQUIRE_CLIENT_IDENTITY_DEFAULT;
 static const bool default_splash_value = OPT_SPLASH_DEFAULT;
 static const bool default_status_screen_value = OPT_STATUS_SCREEN_DEFAULT;
-static const bool default_no_check_update_value = false;
+static const bool default_no_check_update_value = OPT_NO_CHECK_UPDATE_DEFAULT;
 static const bool default_log_format_console_only_value = OPT_LOG_FORMAT_CONSOLE_DEFAULT;
+
+#ifndef NDEBUG
+static const double default_debug_sync_state_time_value = 0.0;
+static const bool default_debug_sync_state_time_explicit_value = false;
+static const double default_debug_backtrace_time_value = 0.0;
+static const bool default_debug_backtrace_time_explicit_value = false;
+#endif
 
 #ifndef _WIN32
 static const int    default_render_theme_value     = OPT_RENDER_THEME_DEFAULT;
@@ -993,6 +1082,7 @@ typedef struct options_state {
   char password[OPTIONS_BUFF_SIZE];        ///< Password string
   char encrypt_keyfile[OPTIONS_BUFF_SIZE]; ///< Alternative key file path
   bool no_encrypt;                         ///< Disable encryption (opt-out)
+  bool no_auth;                            ///< Disable authentication layer (--no-auth)
   char server_key[OPTIONS_BUFF_SIZE];      ///< Expected server public key (client)
   char client_keys[OPTIONS_BUFF_SIZE];     ///< Allowed client keys (server)
 
@@ -1043,11 +1133,21 @@ typedef struct options_state {
   // ============================================================================
   // Splash Screen Options
   // ============================================================================
-  bool splash;                       ///< Show splash screen (default: true = show, use --no-splash to hide)
-  bool splash_explicitly_set;        ///< True if splash was explicitly set by user
+  bool splash_screen;                ///< Show splash screen (default: true = show, use --no-splash-screen to hide)
+  bool splash_screen_explicitly_set; ///< True if splash screen was explicitly set by user
   bool status_screen;                ///< Show status screen (default: true = show, use --no-status-screen to hide)
   bool status_screen_explicitly_set; ///< True if status_screen was explicitly set by user
   bool no_check_update;              ///< Disable automatic update checks (default: false = checks enabled)
+
+  // ============================================================================
+  // Debug Options (Debug builds only)
+  // ============================================================================
+#ifndef NDEBUG
+  double debug_sync_state_time;           ///< Time parameter for --sync-state option (debug builds only)
+  bool debug_sync_state_time_explicit;    ///< True if --debug-state was explicitly provided
+  double debug_backtrace_time;       ///< Time parameter for --backtrace option (debug builds only)
+  bool debug_backtrace_time_explicit; ///< True if --backtrace was explicitly provided
+#endif
 
   // ============================================================================
   // Render-to-file Options (macOS and Linux only)
@@ -1127,6 +1227,35 @@ const options_t *options_get(void);
     static typeof(((options_t *)0)->field) _default = {0};                                                             \
     (_opts ? (_opts->field) : _default);                                                                               \
   })
+
+/**
+ * @brief Check if an option was explicitly set via command-line
+ *
+ * Convenience macro for checking if a specific option was explicitly provided
+ * by the user via command-line arguments (as opposed to using a default value).
+ *
+ * **Usage Examples**:
+ * @code{.c}
+ * // Check if user explicitly provided --width
+ * if (IS_OPTION_EXPLICIT("width")) {
+ *     printf("User set width explicitly\n");
+ * }
+ *
+ * // Use in conditional logic
+ * if (!IS_OPTION_EXPLICIT("color") && terminal_is_dark_mode()) {
+ *     // Color not set, apply dark mode defaults
+ * }
+ * @endcode
+ *
+ * @param option_name The long name of the option (e.g., "width", "port", "color")
+ * @return true if option was explicitly set, false otherwise
+ *
+ * @note Option name must be a string literal matching the long_name from registry
+ * @note Case-sensitive: must match exact option name
+ * @note No locks needed - lock-free read via atomic pointer
+ *
+ * @ingroup options
+ */
 
 /**
  * @brief Set a single option field (thread-safe, RCU-based)

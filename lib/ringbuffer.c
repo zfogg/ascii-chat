@@ -154,7 +154,7 @@ framebuffer_t *framebuffer_create(size_t capacity) {
   fb = SAFE_CALLOC(1, sizeof(framebuffer_t), framebuffer_t *);
 
   // Initialize mutex for thread-safe access
-  if (mutex_init(&fb->mutex) != 0) {
+  if (mutex_init(&fb->mutex, "framebuffer") != 0) {
     SET_ERRNO(ERROR_THREAD, "Failed to initialize framebuffer mutex");
     SAFE_FREE(fb);
     return NULL;
@@ -182,7 +182,7 @@ framebuffer_t *framebuffer_create_multi(size_t capacity) {
   fb = SAFE_CALLOC(1, sizeof(framebuffer_t), framebuffer_t *);
 
   // Initialize mutex for thread-safe access
-  if (mutex_init(&fb->mutex) != 0) {
+  if (mutex_init(&fb->mutex, "framebuffer_multi") != 0) {
     SET_ERRNO(ERROR_THREAD, "Failed to initialize framebuffer mutex");
     SAFE_FREE(fb);
     return NULL;

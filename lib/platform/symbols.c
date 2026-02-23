@@ -29,11 +29,12 @@
 #include <ascii-chat/platform/symbols.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/uthash/uthash.h>
+#include <ascii-chat/uthash.h>
 #include <ascii-chat/platform/rwlock.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/string.h>
+#include <ascii-chat/util/lifecycle.h>
 
 // ============================================================================
 // Constants
@@ -57,10 +58,11 @@ static atomic_bool g_symbolizer_detected = false;
 static atomic_bool g_llvm_symbolizer_checked = false;
 static atomic_bool g_llvm_symbolizer_available = false;
 static char g_llvm_symbolizer_cmd[PLATFORM_MAX_PATH_LENGTH];
-static atomic_bool g_addr2line_checked = false;
 static atomic_bool g_addr2line_available = false;
 static char g_addr2line_cmd[PLATFORM_MAX_PATH_LENGTH];
-static static_mutex_t g_symbolizer_detection_mutex = STATIC_MUTEX_INIT;
+// Lifecycle for symbolizer detection (replaces double-checked locking with mutex)
+static lifecycle_t g_llvm_symbolizer_lc = LIFECYCLE_INIT;
+static lifecycle_t g_addr2line_lc = LIFECYCLE_INIT;
 
 // ============================================================================
 // Cache State
@@ -113,7 +115,7 @@ typedef struct {
 
 static symbol_entry_t *g_symbol_cache = NULL; // uthash uses structure pointer as head
 static rwlock_t g_symbol_cache_lock = {0};    // External locking for thread safety
-static atomic_bool g_symbol_cache_initialized = false;
+static lifecycle_t g_symbol_cache_lc = LIFECYCLE_INIT;
 
 // Statistics
 static atomic_uint_fast64_t g_cache_hits = 0;
@@ -155,35 +157,47 @@ static bool symbolizer_path_is_executable(const char *path) {
 }
 
 static const char *get_llvm_symbolizer_command(void) {
-  if (!atomic_load(&g_llvm_symbolizer_checked)) {
-    static_mutex_lock(&g_symbolizer_detection_mutex);
-    if (!atomic_load(&g_llvm_symbolizer_checked)) {
-      const char *env_path = SAFE_GETENV("LLVM_SYMBOLIZER_PATH");
-      bool available = false;
-
-      g_llvm_symbolizer_cmd[0] = '\0';
-
-      if (env_path && env_path[0] != '\0') {
-        if (symbolizer_path_is_executable(env_path)) {
-          SAFE_STRNCPY(g_llvm_symbolizer_cmd, env_path, sizeof(g_llvm_symbolizer_cmd));
-          available = true;
-          log_dev("Using llvm-symbolizer from LLVM_SYMBOLIZER_PATH: %s", env_path);
-        } else {
-          log_warn("LLVM_SYMBOLIZER_PATH is set but not executable: %s", env_path);
-        }
-      }
-
-      if (!available && platform_is_binary_in_path(LLVM_SYMBOLIZER_BIN)) {
-        available = true;
-        g_llvm_symbolizer_cmd[0] = '\0'; // Use binary name from PATH
-        log_dev("Found %s in PATH", LLVM_SYMBOLIZER_BIN);
-      }
-
-      atomic_store(&g_llvm_symbolizer_available, available);
-      atomic_store(&g_llvm_symbolizer_checked, true);
-    }
-    static_mutex_unlock(&g_symbolizer_detection_mutex);
+  // Check if already initialized
+  if (lifecycle_is_initialized(&g_llvm_symbolizer_lc)) {
+    goto check_available;
   }
+
+  // Try to win the initialization race
+  if (!lifecycle_init(&g_llvm_symbolizer_lc, "llvm_symbolizer")) {
+    // Lost race - wait for winner to complete
+    while (!lifecycle_is_initialized(&g_llvm_symbolizer_lc)) {
+      // Spin-wait
+    }
+    goto check_available;
+  }
+
+  // Winner: do the initialization
+  {
+    const char *env_path = SAFE_GETENV("LLVM_SYMBOLIZER_PATH");
+    bool available = false;
+
+    g_llvm_symbolizer_cmd[0] = '\0';
+
+    if (env_path && env_path[0] != '\0') {
+      if (symbolizer_path_is_executable(env_path)) {
+        SAFE_STRNCPY(g_llvm_symbolizer_cmd, env_path, sizeof(g_llvm_symbolizer_cmd));
+        available = true;
+        log_dev("Using llvm-symbolizer from LLVM_SYMBOLIZER_PATH: %s", env_path);
+      } else {
+        log_warn("LLVM_SYMBOLIZER_PATH is set but not executable: %s", env_path);
+      }
+    }
+
+    if (!available && platform_is_binary_in_path(LLVM_SYMBOLIZER_BIN)) {
+      available = true;
+      g_llvm_symbolizer_cmd[0] = '\0'; // Use binary name from PATH
+      log_dev("Found %s in PATH", LLVM_SYMBOLIZER_BIN);
+    }
+
+    atomic_store(&g_llvm_symbolizer_available, available);
+  }
+
+check_available:
 
   if (!atomic_load(&g_llvm_symbolizer_available)) {
     return NULL;
@@ -197,35 +211,47 @@ static const char *get_llvm_symbolizer_command(void) {
 }
 
 static const char *get_addr2line_command(void) {
-  if (!atomic_load(&g_addr2line_checked)) {
-    static_mutex_lock(&g_symbolizer_detection_mutex);
-    if (!atomic_load(&g_addr2line_checked)) {
-      const char *env_path = SAFE_GETENV("ADDR2LINE_PATH");
-      bool available = false;
-
-      g_addr2line_cmd[0] = '\0';
-
-      if (env_path && env_path[0] != '\0') {
-        if (symbolizer_path_is_executable(env_path)) {
-          SAFE_STRNCPY(g_addr2line_cmd, env_path, sizeof(g_addr2line_cmd));
-          available = true;
-          log_dev("Using addr2line from ADDR2LINE_PATH: %s", env_path);
-        } else {
-          log_warn("ADDR2LINE_PATH is set but not executable: %s", env_path);
-        }
-      }
-
-      if (!available && platform_is_binary_in_path(ADDR2LINE_BIN)) {
-        available = true;
-        g_addr2line_cmd[0] = '\0'; // Use binary name from PATH
-        log_dev("Found %s in PATH", ADDR2LINE_BIN);
-      }
-
-      atomic_store(&g_addr2line_available, available);
-      atomic_store(&g_addr2line_checked, true);
-    }
-    static_mutex_unlock(&g_symbolizer_detection_mutex);
+  // Check if already initialized
+  if (lifecycle_is_initialized(&g_addr2line_lc)) {
+    goto check_available;
   }
+
+  // Try to win the initialization race
+  if (!lifecycle_init(&g_addr2line_lc, "addr2line")) {
+    // Lost race - wait for winner to complete
+    while (!lifecycle_is_initialized(&g_addr2line_lc)) {
+      // Spin-wait
+    }
+    goto check_available;
+  }
+
+  // Winner: do the initialization
+  {
+    const char *env_path = SAFE_GETENV("ADDR2LINE_PATH");
+    bool available = false;
+
+    g_addr2line_cmd[0] = '\0';
+
+    if (env_path && env_path[0] != '\0') {
+      if (symbolizer_path_is_executable(env_path)) {
+        SAFE_STRNCPY(g_addr2line_cmd, env_path, sizeof(g_addr2line_cmd));
+        available = true;
+        log_dev("Using addr2line from ADDR2LINE_PATH: %s", env_path);
+      } else {
+        log_warn("ADDR2LINE_PATH is set but not executable: %s", env_path);
+      }
+    }
+
+    if (!available && platform_is_binary_in_path(ADDR2LINE_BIN)) {
+      available = true;
+      g_addr2line_cmd[0] = '\0'; // Use binary name from PATH
+      log_dev("Found %s in PATH", ADDR2LINE_BIN);
+    }
+
+    atomic_store(&g_addr2line_available, available);
+  }
+
+check_available:
 
   if (!atomic_load(&g_addr2line_available)) {
     return NULL;
@@ -262,20 +288,19 @@ static symbolizer_type_t detect_symbolizer(void) {
 // ============================================================================
 
 asciichat_error_t symbol_cache_init(void) {
-  bool expected = false;
-  if (!atomic_compare_exchange_strong(&g_symbol_cache_initialized, &expected, true)) {
+  if (!lifecycle_init(&g_symbol_cache_lc, "symbol_cache")) {
     return 0; // Already initialized
   }
 
   // Detect which symbolizer is available (once at init)
-  expected = false;
+  bool expected = false;
   if (atomic_compare_exchange_strong(&g_symbolizer_detected, &expected, true)) {
     g_symbolizer_type = detect_symbolizer();
   }
 
   // Initialize rwlock for thread safety (uthash requires external locking)
-  if (rwlock_init(&g_symbol_cache_lock) != 0) {
-    atomic_store(&g_symbol_cache_initialized, false);
+  if (rwlock_init(&g_symbol_cache_lock, "symbol_cache") != 0) {
+    lifecycle_init_abort(&g_symbol_cache_lc);
     return SET_ERRNO(ERROR_THREAD, "Failed to initialize symbol cache rwlock");
   }
 
@@ -290,12 +315,11 @@ asciichat_error_t symbol_cache_init(void) {
 }
 
 void symbol_cache_destroy(void) {
-  if (!atomic_load(&g_symbol_cache_initialized)) {
+  if (!lifecycle_shutdown(&g_symbol_cache_lc)) {
     return;
   }
 
   // Mark as uninitialized FIRST to prevent new inserts during cleanup
-  atomic_store(&g_symbol_cache_initialized, false);
 
   // Acquire write lock to prevent any concurrent operations
   rwlock_wrlock(&g_symbol_cache_lock);
@@ -329,7 +353,7 @@ void symbol_cache_destroy(void) {
 }
 
 const char *symbol_cache_lookup(void *addr) {
-  if (!atomic_load(&g_symbol_cache_initialized) || !addr) {
+  if (!lifecycle_is_initialized(&g_symbol_cache_lc) || !addr) {
     return NULL;
   }
 
@@ -352,7 +376,7 @@ const char *symbol_cache_lookup(void *addr) {
 }
 
 bool symbol_cache_insert(void *addr, const char *symbol) {
-  if (!atomic_load(&g_symbol_cache_initialized) || !addr || !symbol) {
+  if (!lifecycle_is_initialized(&g_symbol_cache_lc) || !addr || !symbol) {
     return false;
   }
 
@@ -361,7 +385,7 @@ bool symbol_cache_insert(void *addr, const char *symbol) {
 
   // Double-check cache is still initialized after acquiring lock
   // (cleanup might have marked it uninitialized between our check and lock acquisition)
-  if (!atomic_load(&g_symbol_cache_initialized)) {
+  if (!lifecycle_is_initialized(&g_symbol_cache_lc)) {
     rwlock_wrunlock(&g_symbol_cache_lock);
     return false;
   }
@@ -809,7 +833,7 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
 
   // DO NOT auto-initialize here - causes circular dependency during lock_debug_init()
   // The cache must be initialized explicitly by platform_init() before use
-  if (!atomic_load(&g_symbol_cache_initialized)) {
+  if (!lifecycle_is_initialized(&g_symbol_cache_lc)) {
     // Cache not initialized - fall back to uncached resolution
     // This happens during early initialization before platform_init() completes
     char **result = run_llvm_symbolizer_batch(buffer, size);

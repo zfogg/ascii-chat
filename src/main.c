@@ -17,6 +17,7 @@
  */
 
 #include <stdio.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
@@ -59,7 +60,9 @@
 
 #ifndef NDEBUG
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/debug/lock.h>
+#include <ascii-chat/debug/sync.h>
+#include <ascii-chat/debug/named.h>
+#include <ascii-chat/debug/memory.h>
 #endif
 
 #ifndef _WIN32
@@ -92,6 +95,10 @@ bool should_exit(void) {
 }
 
 void signal_exit(void) {
+  // Note: This function may be called from a signal handler context where
+  // other threads may hold mutex locks. We avoid log_console() here to prevent
+  // deadlock (render loop holds terminal lock, signal handler can't acquire it).
+  // The shutdown will be logged by normal thread context later.
   atomic_store(&g_app_should_exit, true);
   void (*cb)(void) = g_interrupt_callback;
   if (cb) {
@@ -155,7 +162,15 @@ static bool console_ctrl_handler(console_ctrl_event_t event) {
  */
 static void common_handle_sigusr1(int sig) {
   (void)sig;
-  lock_debug_trigger_print();
+  debug_sync_trigger_print();
+}
+
+static void common_handle_sigusr2(int sig) {
+  (void)sig;
+  // Log to stderr directly since we're in signal context
+  // (avoid logging system which uses mutexes)
+  write(STDERR_FILENO, "[SIGUSR2 received]\n", 19);
+  debug_memory_trigger_report();
 }
 #endif
 #endif
@@ -274,11 +289,22 @@ static const mode_descriptor_t *find_mode(asciichat_mode_t mode) {
  * Helper Functions for Post-Options Processing
  * ============================================================================ */
 
+/**
+ * @brief atexit() wrapper for terminal_cursor_show()
+ *
+ * atexit() expects void (*)(void) but terminal_cursor_show() returns
+ * asciichat_error_t. This wrapper ignores the return value.
+ */
+static void on_exit_show_cursor(void) {
+  (void)terminal_cursor_show();
+}
+
 /* ============================================================================
  * Main Entry Point
  * ============================================================================ */
 
 int main(int argc, char *argv[]) {
+
   // Set global argc/argv for early argv inspection (e.g., in terminal.c)
   g_argc = argc;
   g_argv = argv;
@@ -287,6 +313,14 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "Error: Invalid argument vector\n");
     return 1;
   }
+
+  // Show cursor early in case a previous session crashed with it hidden
+  (void)terminal_cursor_show();
+
+  // Initialize the named registry for debugging (allows --debug-state to show registered synchronization primitives)
+#ifndef NDEBUG
+  named_init();
+#endif
 
   // VERY FIRST: Scan for --color BEFORE ANY logging initialization
   // This sets global flags that persist through cleanup, enabling --color to force colors
@@ -480,6 +514,8 @@ int main(int argc, char *argv[]) {
 
   // Register cleanup of shared subsystems to run on normal exit
   // Library code doesn't call atexit() - the application is responsible
+  // Register cursor show FIRST so it runs LAST (atexit is LIFO) - cursor restored after cleanup
+  (void)atexit(on_exit_show_cursor);
   (void)atexit(asciichat_shared_destroy);
 
   // SECRET: Check for --backtrace (debug builds only) BEFORE options_init()
@@ -631,6 +667,14 @@ int main(int argc, char *argv[]) {
     // action_show_version() calls _Exit(), so we don't reach here
   }
 
+#ifndef NDEBUG
+  // Handle --debug-state (debug builds only)
+  // Sleep for specified time AFTER mode initialization so locks are created
+  if (IS_OPTION_EXPLICIT(debug_sync_state_time, opts) && opts->debug_sync_state_time > 0.0) {
+    log_info("Will print sync state after %f seconds", opts->debug_sync_state_time);
+  }
+#endif
+
   // For server mode with status screen: disable terminal output only if interactive
   // In non-interactive mode (piped output), logs go to stdout/stderr normally
   // The status screen (when shown) will capture and display logs in its buffer instead
@@ -649,23 +693,59 @@ int main(int argc, char *argv[]) {
 #ifndef NDEBUG
   // Initialize lock debugging system after logging is fully set up
   log_debug("Initializing lock debug system...");
-  int lock_debug_result = lock_debug_init();
-  if (lock_debug_result != 0) {
-    LOG_ERRNO_IF_SET("Lock debug system initialization failed");
-    FATAL(ERROR_PLATFORM_INIT, "Lock debug system initialization failed");
+  int debug_sync_result = debug_sync_init();
+  if (debug_sync_result != 0) {
+    LOG_ERRNO_IF_SET("Debug sync system initialization failed");
+    FATAL(ERROR_PLATFORM_INIT, "Debug sync system initialization failed");
   }
-  log_debug("Lock debug system initialized successfully");
+  log_debug("Debug sync system initialized successfully");
 
-  // Start lock debug thread in all modes (not just server)
-  if (lock_debug_start_thread() != 0) {
-    LOG_ERRNO_IF_SET("Lock debug thread startup failed");
-    FATAL(ERROR_THREAD, "Lock debug thread startup failed");
+  // Start debug sync thread in all modes
+  if (debug_sync_start_thread() != 0) {
+    LOG_ERRNO_IF_SET("Debug sync thread startup failed");
+    FATAL(ERROR_THREAD, "Debug sync thread startup failed");
   }
-  log_debug("Lock debug thread started");
+  log_debug("Debug sync thread started");
+
+  // Initialize memory debug system
+  log_debug("Initializing memory debug system...");
+  int debug_memory_result = debug_memory_thread_init();
+  if (debug_memory_result != 0) {
+    LOG_ERRNO_IF_SET("Memory debug system initialization failed");
+    FATAL(ERROR_PLATFORM_INIT, "Memory debug system initialization failed");
+  }
+  log_debug("Memory debug system initialized successfully");
+
+  // Start memory debug thread in all modes
+  if (debug_memory_thread_start() != 0) {
+    LOG_ERRNO_IF_SET("Memory debug thread startup failed");
+    FATAL(ERROR_THREAD, "Memory debug thread startup failed");
+  }
+  log_debug("Memory debug thread started");
 
 #ifndef _WIN32
+  // Unblock SIGUSR1 and SIGUSR2 at process level to ensure delivery
+  sigset_t set;
+  sigemptyset(&set);
+  sigaddset(&set, SIGUSR1);
+  sigaddset(&set, SIGUSR2);
+  sigprocmask(SIG_UNBLOCK, &set, NULL);
+
   // Register SIGUSR1 to trigger lock state printing in all modes
-  platform_signal(SIGUSR1, common_handle_sigusr1);
+  signal_handler_t old_usr1 = platform_signal(SIGUSR1, common_handle_sigusr1);
+  if (old_usr1 == SIG_ERR) {
+    log_warn("Failed to register SIGUSR1 handler");
+  } else {
+    log_debug("SIGUSR1 handler registered successfully");
+  }
+
+  // Register SIGUSR2 to trigger memory report in all modes
+  signal_handler_t old_usr2 = platform_signal(SIGUSR2, common_handle_sigusr2);
+  if (old_usr2 == SIG_ERR) {
+    log_warn("Failed to register SIGUSR2 handler");
+  } else {
+    log_debug("SIGUSR2 handler registered successfully");
+  }
 #endif
 #endif
 
@@ -695,11 +775,23 @@ int main(int argc, char *argv[]) {
   // All modes use the same centralized exit mechanism
   setup_signal_handlers();
 
-  // Register SIGUSR1 for lock debugging in debug builds (uses shared handler)
+
 #ifndef NDEBUG
-#ifndef _WIN32
-  platform_signal(SIGUSR1, common_handle_sigusr1);
-#endif
+  // Handle --debug-state (debug builds only)
+  // Schedule debug state printing on the debug thread after specified delay
+  if (IS_OPTION_EXPLICIT(debug_sync_state_time, opts) && opts->debug_sync_state_time > 0.0) {
+    log_info("Scheduling sync state print after %f seconds on debug thread", opts->debug_sync_state_time);
+    uint64_t delay_ns = (uint64_t)(opts->debug_sync_state_time * NS_PER_SEC_INT);
+    debug_sync_print_state_delayed(delay_ns);
+  }
+
+  // Handle --backtrace (debug builds only)
+  // Schedule backtrace printing on the debug thread after specified delay
+  if (IS_OPTION_EXPLICIT(debug_backtrace_time, opts) && opts->debug_backtrace_time > 0.0) {
+    log_info("Scheduling backtrace print after %f seconds on debug thread", opts->debug_backtrace_time);
+    uint64_t delay_ns = (uint64_t)(opts->debug_backtrace_time * NS_PER_SEC_INT);
+    debug_sync_print_backtrace_delayed(delay_ns);
+  }
 #endif
 
   // Find and dispatch to mode entry point

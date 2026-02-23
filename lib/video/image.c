@@ -22,6 +22,7 @@
 #include <ascii-chat/video/ascii.h>
 #include <ascii-chat/video/simd/ascii_simd.h>
 #include <ascii-chat/video/simd/common.h>
+#include <ascii-chat/video/scalar/halfblock.h>
 #include <ascii-chat/video/ansi_fast.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/buffer_pool.h> // For buffer pool allocation functions
@@ -763,16 +764,34 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
     return NULL;
   }
 
-  // Handle half-block mode first (requires NEON)
+  // Handle half-block mode with appropriate color depth
   if (caps->render_mode == RENDER_MODE_HALF_BLOCK) {
-#if SIMD_SUPPORT_NEON
-    // Use NEON half-block renderer
     const uint8_t *rgb_data = (const uint8_t *)image->pixels;
-    return rgb_to_truecolor_halfblocks_neon(rgb_data, image->w, image->h, 0);
+
+    // Choose halfblock renderer based on terminal color capabilities
+    switch (caps->color_level) {
+    case TERM_COLOR_TRUECOLOR:
+#if SIMD_SUPPORT_NEON
+      // Use NEON half-block renderer (optimized SIMD path)
+      return rgb_to_truecolor_halfblocks_neon(rgb_data, image->w, image->h, 0);
 #else
-    SET_ERRNO(ERROR_INVALID_STATE, "Half-block mode requires NEON support (ARM architecture)");
-    return NULL;
+      // Fallback to scalar halfblock renderer (works on all platforms)
+      return rgb_to_truecolor_halfblocks_scalar(rgb_data, image->w, image->h, 0);
 #endif
+
+    case TERM_COLOR_256:
+      // Use 256-color halfblock renderer
+      return rgb_to_256color_halfblocks_scalar(rgb_data, image->w, image->h, 0, palette);
+
+    case TERM_COLOR_16:
+      // Use 16-color halfblock renderer
+      return rgb_to_16color_halfblocks_scalar(rgb_data, image->w, image->h, 0, palette);
+
+    case TERM_COLOR_NONE:
+    default:
+      // Use monochrome halfblock renderer
+      return rgb_to_halfblocks_scalar(rgb_data, image->w, image->h, 0, palette);
+    }
   }
 
   // Standard color modes

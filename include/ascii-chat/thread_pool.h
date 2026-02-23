@@ -80,6 +80,17 @@ typedef struct thread_pool thread_pool_t;
 typedef struct thread_pool_entry thread_pool_entry_t;
 
 /**
+ * @brief Work queue entry for task-based thread pools
+ *
+ * Represents a single unit of work to be executed by a pool worker.
+ */
+typedef struct thread_pool_work_entry {
+  void *(*work_func)(void *);     ///< Work function to execute
+  void *work_arg;                 ///< Argument passed to work function
+  struct thread_pool_work_entry *next; ///< Linked list next pointer
+} thread_pool_work_entry_t;
+
+/**
  * @brief Thread pool entry (internal linked list node)
  *
  * Tracks individual threads in the pool. Threads are maintained in a
@@ -99,24 +110,57 @@ struct thread_pool_entry {
  *
  * Manages a collection of worker threads with ordered cleanup support.
  * Thread-safe for concurrent spawn/stop operations.
+ *
+ * Can operate in two modes:
+ * 1. Long-lived threads mode (original): spawn() creates permanent threads
+ * 2. Work queue mode (new): pre-created workers pull tasks from a queue
  */
 struct thread_pool {
   char name[64];                ///< Pool name for debugging
   thread_pool_entry_t *threads; ///< Linked list of threads (sorted by stop_id)
   mutex_t threads_mutex;        ///< Mutex protecting thread list
   size_t thread_count;          ///< Number of threads in pool
+
+  // Work queue mode fields (only used if num_workers > 0)
+  bool is_work_queue_mode;                ///< True if using work queue mode
+  size_t num_workers;                     ///< Number of pre-created worker threads
+  thread_pool_work_entry_t *work_queue;   ///< Queue of pending work
+  mutex_t work_queue_mutex;               ///< Mutex protecting work queue
+  cond_t work_available;                  ///< Condition variable for workers to wait on
+  bool shutdown_requested;                ///< Signal workers to exit
 };
 
 /**
- * @brief Create a new thread pool
+ * @brief Create a new thread pool (long-lived threads mode)
  *
  * Allocates and initializes a thread pool structure. The pool starts empty
  * with no threads. Use thread_pool_spawn() to add threads to the pool.
+ *
+ * This mode is used for long-lived worker threads that run for the lifetime
+ * of the application or connection (e.g., stats logger, cleanup thread).
  *
  * @param pool_name Name for the pool (max 63 chars, used for debugging)
  * @return Pointer to new thread pool, or NULL on allocation failure
  */
 thread_pool_t *thread_pool_create(const char *pool_name);
+
+/**
+ * @brief Create a new thread pool in work queue mode
+ *
+ * Creates a thread pool with pre-allocated worker threads that pull tasks
+ * from a work queue. Use thread_pool_queue_work() to add work to the pool.
+ *
+ * This mode is used for short-lived tasks that need to be executed without
+ * creating new threads from callback context (e.g., WebSocket handlers).
+ *
+ * Worker threads are created immediately and wait for work to be queued.
+ * The pool will not accept spawn() calls - use queue_work() instead.
+ *
+ * @param pool_name Name for the pool (max 63 chars, used for debugging)
+ * @param num_workers Number of pre-allocated worker threads
+ * @return Pointer to new thread pool, or NULL on allocation failure
+ */
+thread_pool_t *thread_pool_create_with_workers(const char *pool_name, size_t num_workers);
 
 /**
  * @brief Destroy a thread pool
@@ -128,6 +172,23 @@ thread_pool_t *thread_pool_create(const char *pool_name);
  * @param pool Thread pool to destroy (NULL is safe, does nothing)
  */
 void thread_pool_destroy(thread_pool_t *pool);
+
+/**
+ * @brief Queue a work item to a work queue pool
+ *
+ * Adds a work item to the pool's work queue. One of the pre-created worker
+ * threads will pick up the work and execute it. This function is only valid
+ * for pools created with thread_pool_create_with_workers().
+ *
+ * Safe to call from callback context (e.g., LWS callbacks). Work is queued
+ * without creating new threads.
+ *
+ * @param pool Thread pool to queue work to (must be in work queue mode)
+ * @param work_func Function to execute
+ * @param work_arg Argument passed to work function
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+asciichat_error_t thread_pool_queue_work(thread_pool_t *pool, void *(*work_func)(void *), void *work_arg);
 
 /**
  * @brief Spawn a worker thread in the pool

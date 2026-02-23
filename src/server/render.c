@@ -352,6 +352,9 @@ void *client_video_render_thread(void *arg) {
 
   log_debug("Video render thread: client_id=%u, webrtc=%d", thread_client_id, is_webrtc);
 
+  log_info("[VIDEO_RENDER_THREAD_START] ★★★ LOCK STATE at thread entry for client %u", thread_client_id);
+  debug_sync_print_state();
+
   // Get client's desired FPS from capabilities or use default
   int client_fps = VIDEO_RENDER_FPS; // Default to 60 FPS
   // Use snapshot pattern to avoid mutex in render thread
@@ -491,8 +494,22 @@ void *client_video_render_thread(void *arg) {
     log_dev_every(5 * NS_PER_MS_INT,
                   "About to call create_mixed_ascii_frame_for_client for client %u with dims %ux%u", thread_client_id,
                   width_snapshot, height_snapshot);
+
+    log_info("[VIDEO_RENDER_LOOP] ★★★ LOCK STATE before create_mixed_ascii_frame_for_client for client %u", thread_client_id);
+    debug_sync_print_state();
+
     char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot,
                                                             false, &frame_size, NULL, &sources_count);
+
+    // RACE CONDITION FIX: If no video sources are available yet, skip frame generation
+    // This prevents sending empty/NULL frames early and allows more time for video frames to arrive
+    if (sources_count == 0) {
+      log_dev_every(100 * NS_PER_MS_INT,
+                    "Video render waiting for sources on client %u (no video sources yet, skipping frame)",
+                    thread_client_id);
+      SAFE_FREE(ascii_frame);
+      continue; // Skip to next iteration (frame rate limited by adaptive_sleep_do above)
+    }
 
     // DEBUG: Log frame generation details
     static uint32_t last_frame_hash = -1; // Initialize to -1 so first frame is always new
@@ -546,7 +563,7 @@ void *client_video_render_thread(void *arg) {
                 video_frame_commit(vfb_snapshot);
                 uint64_t commit_end_ns = time_get_ns();
                 char commit_duration_str[32];
-                format_duration_ns((double)(commit_end_ns - commit_start_ns), commit_duration_str,
+                time_pretty((uint64_t)(commit_end_ns - commit_start_ns), -1, commit_duration_str,
                                    sizeof(commit_duration_str));
 
                 static uint32_t commits_count = 0;
@@ -1145,6 +1162,8 @@ void *client_audio_render_thread(void *arg) {
  */
 
 int create_client_render_threads(server_context_t *server_ctx, client_info_t *client) {
+  log_info("★★★ create_client_render_threads() CALLED for client_id=%u", client ? atomic_load(&client->client_id) : 0);
+
   if (!server_ctx || !client) {
     log_error("Cannot create render threads: NULL %s", !server_ctx ? "server_ctx" : "client");
     return -1;
