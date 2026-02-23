@@ -1011,9 +1011,6 @@ void debug_memory_report(void) {
 
   skip_allocations_list:
 
-    fprintf(stderr, "[SHUTDOWN] debug_memory_report: reached skip_allocations_list\n");
-    fflush(stderr);
-
     // SKIP cleanup site cache at shutdown
     // We used to clean up the hash table here, but HASH_DEL inside HASH_ITER causes
     // undefined behavior (modifying hash table during iteration = infinite loop/hang).
