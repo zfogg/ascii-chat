@@ -242,31 +242,41 @@ typedef struct {
     uint64_t delay_ns;
     volatile bool should_run;
     volatile bool should_exit;
+    volatile bool signal_triggered;  // Flag set by SIGUSR1 handler
 } debug_state_request_t;
 
-static debug_state_request_t g_debug_state_request = {0, false, false};
+static debug_state_request_t g_debug_state_request = {0, false, false, false};
 static asciichat_thread_t g_debug_thread;
 
 /**
  * @brief Thread function for scheduled debug state printing
+ *
+ * Handles both delayed printing and signal-triggered printing (via SIGUSR1).
+ * Logging is performed on this thread, not in signal handler context,
+ * avoiding potential deadlocks with logging mutexes.
  */
 static void *debug_print_thread_fn(void *arg) {
     (void)arg;
 
     while (!g_debug_state_request.should_exit) {
+        // Handle delayed printing
         if (g_debug_state_request.should_run && g_debug_state_request.delay_ns > 0) {
             platform_sleep_ns(g_debug_state_request.delay_ns);
             g_debug_state_request.delay_ns = 0;
         }
 
-        if (g_debug_state_request.should_run && !g_debug_state_request.should_exit) {
+        // Handle both scheduled and signal-triggered printing
+        if ((g_debug_state_request.should_run || g_debug_state_request.signal_triggered)
+            && !g_debug_state_request.should_exit) {
             debug_sync_print_state();
             g_debug_state_request.should_run = false;
+            g_debug_state_request.signal_triggered = false;
         }
 
         // Small sleep to avoid busy-waiting
+        // Use shorter sleep (1ms) to be more responsive to SIGUSR1 signals
         if (!g_debug_state_request.should_exit) {
-            platform_sleep_ns(10000000);  // 10ms
+            platform_sleep_ns(1000000);  // 1ms
         }
     }
 
@@ -300,10 +310,18 @@ void debug_sync_destroy(void) {
 }
 
 void debug_sync_cleanup_thread(void) {
+    g_debug_state_request.should_exit = true;
+    asciichat_thread_join(&g_debug_thread, NULL);
 }
 
 void debug_sync_trigger_print(void) {
-    debug_sync_print_state();
+    // Set flag to trigger printing on debug thread (from SIGUSR1 handler).
+    // We don't call debug_sync_print_state() directly here to avoid logging
+    // in signal handler context, which could deadlock with logging mutexes.
+    g_debug_state_request.signal_triggered = true;
+    // Note: logging from signal handler is unsafe, but this is just a marker
+    // to verify the handler is being called. The actual logging happens on the
+    // debug thread in debug_print_thread_fn().
 }
 
 void debug_sync_get_stats(uint64_t *total_acquired, uint64_t *total_released, uint32_t *currently_held) {
