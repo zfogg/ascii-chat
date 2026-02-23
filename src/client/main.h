@@ -106,21 +106,86 @@ extern struct webrtc_peer_manager *g_peer_manager;
  * @brief Client mode entry point for unified binary
  *
  * This function implements the complete client lifecycle including:
- * - Client-specific initialization (display, capture, audio)
- * - Server connection with reconnection logic
- * - Media streaming and frame display
- * - Graceful shutdown and cleanup
+ * - Client-specific subsystem initialization (display, capture, audio)
+ * - Server connection establishment with exponential backoff reconnection
+ * - Main event loop coordinating connection state and thread lifecycle
+ * - Media streaming (webcam frames and optional audio)
+ * - Frame display to terminal
+ * - Graceful shutdown and resource cleanup
  *
- * Options are already parsed by the main dispatcher before this function
- * is called, so they are available via global opt_* variables.
+ * ## Lifecycle Overview
  *
- * @return 0 on success, non-zero error code on failure
+ * The client follows this high-level state flow:
+ * 1. **Initialize**: Set up display, capture, audio subsystems
+ * 2. **Connect Loop**:
+ *    - Establish TCP connection to server
+ *    - Perform cryptographic handshake
+ *    - Spawn worker threads (data reception, capture, keepalive, audio)
+ *    - Monitor connection health
+ *    - Detect connection loss via thread exit or socket errors
+ * 3. **Cleanup**: Stop threads, close socket, reset terminal
+ * 4. **Reconnect**: Exponential backoff, retry (unless fatal auth error)
+ * 5. **Exit**: On user signal (SIGINT) or fatal error
+ *
+ * ## Connection Failure Handling
+ *
+ * **Transient Errors** (retryable):
+ * - Connection refused, timeout, DNS failure → exponential backoff retry
+ * - Network temporarily unavailable → wait and retry
+ *
+ * **Fatal Errors** (no retry):
+ * - Authentication failed (`CONNECTION_ERROR_AUTH_FAILED`) → exit immediately
+ * - Host key verification failed (`CONNECTION_ERROR_HOST_KEY_FAILED`) → exit immediately
+ *
+ * ## Thread Management
+ *
+ * The client spawns several worker threads coordinated by the main thread:
+ * - **Data Reception Thread**: Receives and processes server packets
+ * - **Webcam Capture Thread**: Captures frames, transmits to server
+ * - **Ping/Keepalive Thread**: Sends periodic pings, detects timeouts
+ * - **Audio Threads** (optional): Captures/plays audio with Opus encoding
+ *
+ * All threads check the global `g_should_exit` flag and exit cleanly on shutdown.
+ * Main thread waits for all threads to exit before reconnection or final cleanup.
+ *
+ * ## Options
+ *
+ * Options are already parsed by the main dispatcher (src/main.c) before this
+ * function is called. They are available via the global options API (GET_OPTION, etc.).
+ *
+ * Key options affecting behavior:
+ * - `opt_address`: Server address or session string
+ * - `opt_port`: Server port (default 27224)
+ * - `opt_audio_enabled`: Enable audio capture/playback
+ * - `opt_snapshot`: Capture single frame and exit
+ * - `opt_client_key`, `opt_server_key`: SSH keys for authentication
+ *
+ * @return Exit code:
+ *         - 0: Success (clean exit or snapshot completed)
+ *         - 1: Initialization/configuration error
+ *         - 2: Connection fatal error (auth failed)
+ *         - 130: Signal interrupt (SIGINT/Ctrl+C)
  *
  * @par Example
  * @code{.sh}
  * # Invoked by dispatcher after options are parsed:
  * ascii-chat client --address localhost --audio
- * # Options parsed in main.c, then client_main() called
+ *
+ * # Dispatcher (src/main.c) handles:
+ * # - Option parsing
+ * # - Log initialization
+ * # - Signal handler setup
+ *
+ * # Then calls client_main() which handles:
+ * # - Subsystem init (display, capture, audio)
+ * # - Connection loop with reconnection logic
+ * # - Thread coordination
+ * # - Graceful shutdown
  * @endcode
+ *
+ * @see topic_client "Client Architecture Overview"
+ * @see topic_client_main "Client Lifecycle Details"
+ * @see topic_client_connection "Connection Management"
+ * @see topic_client_protocol "Packet Processing"
  */
 int client_main(void);
