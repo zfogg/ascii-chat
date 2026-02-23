@@ -59,18 +59,40 @@ static int calculate_segment_display_width(const char *text, int len) {
 }
 
 /**
- * @brief Check if we're at a metadata marker that should prevent word wrapping
+ * @brief Check if we're at a metadata marker, accounting for ANSI codes
  *
- * Only certain metadata blocks prevent word wrapping. Parenthetical information
- * like "(default: ...)" should still wrap normally on spaces. This function
- * returns true only for metadata we want to keep on a single line.
- *
- * Currently no metadata blocks prevent wrapping - all are allowed to wrap
- * on word boundaries for better readability.
+ * Handles cases where metadata like "(default:" or "(env:" has ANSI color codes
+ * mixed in, like "(\x1b[..mdefault:\x1b[0m"
  */
 static bool is_metadata_start(const char *p) {
-  (void)p; // Unused - all parenthetical groups allowed to wrap
-  return false;
+  if (!p || *p != '(')
+    return false;
+
+  // Strip ANSI codes to check the actual text
+  char buf[256];
+  const char *src = p;
+  char *dst = buf;
+  int remaining = sizeof(buf) - 1;
+
+  // Copy up to 20 chars, stripping ANSI codes
+  int count = 0;
+  while (*src && count < 20 && remaining > 0) {
+    if (*src == '\x1b') {
+      // Skip ANSI escape sequence
+      src++;
+      while (*src && *src != 'm')
+        src++;
+      if (*src == 'm')
+        src++;
+    } else {
+      *dst++ = *src++;
+      remaining--;
+      count++;
+    }
+  }
+  *dst = '\0';
+
+  return strncmp(buf, "(default:", 9) == 0 || strncmp(buf, "(env:", 5) == 0;
 }
 
 void layout_print_wrapped_description(FILE *stream, const char *text, int indent_width, int term_width,
