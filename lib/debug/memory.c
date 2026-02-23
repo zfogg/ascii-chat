@@ -75,32 +75,41 @@ static size_t g_site_count = 0;
 typedef struct {
   const char *file;
   int line;
-  int expected_count; // Exact number of allocations expected from this location
+  int expected_count; // Exact number of allocations expected from this location (per thread)
 } ignore_entry_t;
 
 static const ignore_entry_t g_ignore_list[] = {
-    {"lib/options/colorscheme.c", 579, 8}, // 8 16-color ANSI strings (cleaned after report)
-    {"lib/options/colorscheme.c", 596, 8}, // 8 256-color ANSI strings (cleaned after report)
-    {"lib/options/colorscheme.c", 613, 8}, // 8 truecolor ANSI strings (cleaned after report)
-    {"lib/util/path.c", 1203, 1},          // Normalized path allocation (caller responsibility to free)
+    {"lib/options/colorscheme.c", 585, 8}, // 8 16-color ANSI strings (cleaned after report)
+    {"lib/options/colorscheme.c", 602, 8}, // 8 256-color ANSI strings (cleaned after report)
+    {"lib/options/colorscheme.c", 619, 8}, // 8 truecolor ANSI strings (cleaned after report)
+    {"lib/util/path.c", 1211, 1},          // Normalized path allocation (caller responsibility to free)
     {NULL, 0, 0}                           // Sentinel
 };
 
-// Track seen count for each ignore entry (reset at start of memory report)
-static int g_ignore_counts[32] = {0};
+// Track seen count per (file, line, tid) tuple
+// Since we can't allocate during memory report, use a pre-sized array with (file:line:tid) keys
+typedef struct ignore_counter {
+  char key[BUFFER_SIZE_SMALL + 32]; // "file:line:tid"
+  int count;
+} ignore_counter_t;
+
+#define MAX_IGNORE_COUNTERS 64
+static ignore_counter_t g_ignore_counts[MAX_IGNORE_COUNTERS];
+static size_t g_ignore_count_entries = 0;
 
 /**
  * @brief Reset ignore counters at start of memory report
  */
 static void reset_ignore_counters(void) {
   memset(g_ignore_counts, 0, sizeof(g_ignore_counts));
+  g_ignore_count_entries = 0;
 }
 
 /**
  * @brief Check if an allocation should be ignored in the memory report
  *
- * Tracks how many allocations from each ignore location have been seen.
- * Only ignores up to the expected_count for each location.
+ * Tracks how many allocations from each ignore location have been seen per thread.
+ * Only ignores up to the expected_count for each location/thread combination.
  */
 // Helper function to acquire mutex with polling instead of blocking.
 // mutex_lock() can be unsafe during shutdown when signals may arrive.
@@ -120,16 +129,42 @@ static bool acquire_mutex_with_polling(mutex_t *mutex, int timeout_ms) {
   return false; // Timeout
 }
 
-static bool should_ignore_allocation(const char *file, int line) {
+static bool should_ignore_allocation(const char *file, int line, uint64_t tid) {
   // file is already the normalized relative path from curr->file
   // (set during debug_malloc/debug_calloc using extract_project_relative_path)
   // Do NOT call extract_project_relative_path again - it won't work on already-relative paths
 
   for (size_t i = 0; g_ignore_list[i].file != NULL; i++) {
     if (line == g_ignore_list[i].line && strcmp(file, g_ignore_list[i].file) == 0) {
-      // Found matching ignore entry - check if we've exceeded expected count
-      if (g_ignore_counts[i] < g_ignore_list[i].expected_count) {
-        g_ignore_counts[i]++;
+      // Found matching ignore entry - check if we've exceeded expected count for this thread
+      char key[BUFFER_SIZE_SMALL + 32];
+      safe_snprintf(key, sizeof(key), "%s:%d:%" PRIu64, file, line, tid);
+
+      // Look up existing counter for this site/thread combination
+      ignore_counter_t *counter = NULL;
+      for (size_t j = 0; j < g_ignore_count_entries; j++) {
+        if (strcmp(g_ignore_counts[j].key, key) == 0) {
+          counter = &g_ignore_counts[j];
+          break;
+        }
+      }
+
+      // Create new counter if needed
+      if (!counter) {
+        if (g_ignore_count_entries < MAX_IGNORE_COUNTERS) {
+          counter = &g_ignore_counts[g_ignore_count_entries];
+          SAFE_STRNCPY(counter->key, key, sizeof(counter->key) - 1);
+          counter->count = 0;
+          g_ignore_count_entries++;
+        } else {
+          // Counter array full - report as leak to avoid silent failures
+          return false;
+        }
+      }
+
+      // Check if we've exceeded expected count for this thread
+      if (counter->count < g_ignore_list[i].expected_count) {
+        counter->count++;
         return true; // Ignore this allocation
       }
       // Exceeded expected count - report as leak!
@@ -746,7 +781,7 @@ void debug_memory_report(void) {
         // Now we have the lock - iterate memory blocks
         mem_block_t *curr = g_mem.head;
         while (curr) {
-          if (should_ignore_allocation(curr->file, curr->line)) {
+          if (should_ignore_allocation(curr->file, curr->line, curr->tid)) {
             suppressed_bytes += curr->size;
             suppressed_count++;
           }
@@ -775,7 +810,7 @@ void debug_memory_report(void) {
         if (acquire_mutex_with_polling(&g_mem.mutex, 100)) {
           mem_block_t *curr = g_mem.head;
           while (curr) {
-            if (!should_ignore_allocation(curr->file, curr->line)) {
+            if (!should_ignore_allocation(curr->file, curr->line, curr->tid)) {
               unfreed_count++;
             }
             curr = curr->next;
@@ -788,12 +823,34 @@ void debug_memory_report(void) {
     // Only warn about suppression mismatches if there are outstanding allocations
     if (unfreed_count > 0) {
       for (size_t i = 0; g_ignore_list[i].file != NULL; i++) {
-        if (g_ignore_counts[i] != g_ignore_list[i].expected_count) {
+        // Sum counts from all threads for this file:line combination
+        int total_count = 0;
+        for (size_t j = 0; j < g_ignore_count_entries; j++) {
+          // Parse counter key "file:line:tid" to extract file and line
+          char *last_colon = strrchr(g_ignore_counts[j].key, ':');
+          if (last_colon) {
+            char *second_colon = last_colon - 1;
+            while (second_colon > g_ignore_counts[j].key && *second_colon != ':') {
+              second_colon--;
+            }
+            if (second_colon > g_ignore_counts[j].key) {
+              int line_from_key = 0;
+              sscanf(second_colon + 1, "%d", &line_from_key);
+              size_t file_len = second_colon - g_ignore_counts[j].key;
+              if (file_len == strlen(g_ignore_list[i].file) && line_from_key == g_ignore_list[i].line &&
+                  strncmp(g_ignore_counts[j].key, g_ignore_list[i].file, file_len) == 0) {
+                total_count += g_ignore_counts[j].count;
+              }
+            }
+          }
+        }
+
+        if (total_count != g_ignore_list[i].expected_count) {
           SAFE_IGNORE_PRINTF_RESULT(
               safe_fprintf(stderr, "%s\n", colored_string(LOG_COLOR_ERROR, "WARNING: Suppression mismatch detected")));
           SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "  %s:%d - expected %d, found %d\n", g_ignore_list[i].file,
                                                  g_ignore_list[i].line, g_ignore_list[i].expected_count,
-                                                 g_ignore_counts[i]));
+                                                 total_count));
         }
       }
     }
@@ -960,7 +1017,7 @@ void debug_memory_report(void) {
           }
 
           // Skip ignored allocations
-          if (should_ignore_allocation(file, line)) {
+          if (should_ignore_allocation(file, line, tid)) {
             continue;
           }
 
