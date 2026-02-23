@@ -226,9 +226,9 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
 
   // ===== LOCK DEBUG (debug builds only) =====
 #ifndef NDEBUG
-  case KEY_BACKTICK: {
+  case KEY_CTRL_BACKTICK: {
     debug_sync_trigger_print();
-    log_debug("Lock state dump triggered via backtick key");
+    log_debug("Lock state dump triggered via Ctrl+backtick key");
     break;
   }
 #endif
