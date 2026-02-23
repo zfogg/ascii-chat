@@ -357,6 +357,16 @@ ascii_panic_finalize()
 ascii_defer_finalize()
 ascii_query_finalize()
 
+# =============================================================================
+# Optional Web Components
+# =============================================================================
+if(BUILD_WEB)
+    message(STATUS "Web components ${BoldGreen}enabled${ColorReset} (BUILD_WEB=ON)")
+    add_subdirectory(${CMAKE_SOURCE_DIR}/src/web ${CMAKE_BINARY_DIR}/web)
+else()
+    message(STATUS "Web components ${BoldYellow}disabled${ColorReset} (BUILD_WEB=OFF)")
+endif()
+
 # WASM build configuration
 # Configured and built via execute_process with Emscripten toolchain during cmake setup phase
 # WASM is built separately because it requires a different compiler (emcc) than the native project

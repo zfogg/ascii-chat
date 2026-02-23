@@ -142,4 +142,14 @@ set(ASCIICHAT_CPPCHECK "" CACHE STRING "Override cppcheck executable (leave empt
 option(ASCIICHAT_ENABLE_UNITY_BUILDS "Enable unity builds (batch compilation) for faster rebuilds" OFF)
 option(ASCIICHAT_ENABLE_CTEST_DASHBOARD "Configure CTest dashboards (include(CTest))" OFF)
 
+# =============================================================================
+# Web Build Configuration
+# =============================================================================
+# Build WASM/web targets as a subdirectory when enabled
+#
+# Default: OFF (web components are optional)
+# When ON: src/web/ is added as a CMake subdirectory
+#
+option(BUILD_WEB "Build web components (WASM, browser targets)" OFF)
+
 
