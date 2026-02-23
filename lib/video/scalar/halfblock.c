@@ -193,15 +193,12 @@ char *rgb_to_halfblocks_scalar(const uint8_t *rgb, int width, int height, int st
     stride_bytes = width * 3;
 
   outbuf_t ob = {0};
-  // Estimate: per cell ~ 3 bytes (UTF-8 halfblock); half the rows + newlines
+  // Estimate: per cell ~ 3 bytes (UTF-8 block shade); half the rows + newlines
   size_t est_cells = (size_t)width * ((size_t)(height + 1) / 2);
   ob.cap = est_cells * 3u + (size_t)((height + 1) / 2) * 2u + 64u;
   ob.buf = SAFE_MALLOC(ob.cap ? ob.cap : 1, char *);
   if (!ob.buf)
     return NULL;
-
-  // Upper half-block character: U+2580 = UTF-8 0xE2 0x96 0x80
-  static const char HB[3] = {(char)0xE2, (char)0x96, (char)0x80};
 
   // Process 2 source rows per output line
   for (int y = 0; y < height; y += 2) {
@@ -242,8 +239,12 @@ char *rgb_to_halfblocks_scalar(const uint8_t *rgb, int width, int height, int st
       }
       uint32_t run = (uint32_t)(j - x);
 
-      // Check if transparent (all black = padding)
-      bool is_transparent = (rT == 0 && gT == 0 && bT == 0 && rB == 0 && gB == 0 && bB == 0);
+      // Convert to luminance for monochrome shading
+      uint8_t lum_top = (rT * 76 + gT * 150 + bT * 29) >> 8; // ITU-R BT.601
+      uint8_t lum_bot = (rB * 76 + gB * 150 + bB * 29) >> 8;
+
+      // Check if transparent (both pixels very dark)
+      bool is_transparent = (lum_top < 16 && lum_bot < 16);
 
       if (is_transparent) {
         // Emit spaces for transparent area
@@ -256,13 +257,25 @@ char *rgb_to_halfblocks_scalar(const uint8_t *rgb, int width, int height, int st
           }
         }
       } else {
-        // Emit halfblock with no color codes
-        ob_write(&ob, HB, 3);
+        // Use block characters based on luminance levels
+        // Map luminance (0-255) to block shade characters
+        uint8_t shade_top = (lum_top >> 6);    // Map 0-255 to 0-3
+
+        static const char shades[4][3] = {
+          {(char)0xE2, (char)0x96, (char)0x91},  // ░ light shade
+          {(char)0xE2, (char)0x96, (char)0x92},  // ▒ medium shade
+          {(char)0xE2, (char)0x96, (char)0x93},  // ▓ dark shade
+          {(char)0xE2, (char)0x96, (char)0x88}   // █ full block
+        };
+
+        // Emit the appropriate shade character
+        const char *shade_char = shades[shade_top];
+        ob_write(&ob, shade_char, 3);
         if (rep_is_profitable(run)) {
           emit_rep(&ob, run - 1);
         } else {
           for (uint32_t k = 1; k < run; ++k) {
-            ob_write(&ob, HB, 3);
+            ob_write(&ob, shade_char, 3);
           }
         }
       }
@@ -270,7 +283,8 @@ char *rgb_to_halfblocks_scalar(const uint8_t *rgb, int width, int height, int st
       x = j;
     }
 
-    // End of line: newline (except for last output line)
+    // End of line: reset and newline (except for last output line)
+    // Note: even monochrome calls reset for structural consistency
     if (y + 2 < height) {
       ob_putc(&ob, '\n');
     }
