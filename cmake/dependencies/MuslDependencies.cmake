@@ -1892,8 +1892,8 @@ if(NOT EXISTS "${PIXMAN_PREFIX}/lib/libpixman-1.a")
         STAMP_DIR ${PIXMAN_BUILD_DIR}/stamps
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
-        CONFIGURE_COMMAND env CC=${MUSL_GCC} CFLAGS="-O2 -fPIC" <SOURCE_DIR>/configure --prefix=${PIXMAN_PREFIX} --enable-static --disable-shared --disable-libpng
-        BUILD_COMMAND env CFLAGS="-O2 -fPIC" make -j
+        CONFIGURE_COMMAND env CC=${MUSL_GCC} CFLAGS=-O2\ -fPIC <SOURCE_DIR>/configure --prefix=${PIXMAN_PREFIX} --enable-static --disable-shared --disable-libpng
+        BUILD_COMMAND env CFLAGS=-O2\ -fPIC make -j
         INSTALL_COMMAND make install
         BUILD_BYPRODUCTS ${PIXMAN_PREFIX}/lib/libpixman-1.a
         LOG_DOWNLOAD TRUE
