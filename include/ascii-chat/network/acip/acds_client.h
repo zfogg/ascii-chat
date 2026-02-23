@@ -1,20 +1,76 @@
 #pragma once
 
 /**
- * @file network/acip/client.h
- * @brief ACIP client-side protocol library
+ * @file network/acip/acds_client.h
+ * @brief ACIP client-side protocol library and ACDS client connection API
  * @ingroup acip
+ * @addtogroup acds_client
+ * @{
  *
  * Client-side ACIP (ascii-chat IP Protocol) implementation for:
  * - Session discovery and management (create, lookup, join, leave)
  * - WebRTC signaling relay (SDP, ICE candidates)
  * - String reservation (future feature)
  *
+ * # ACDS Client Protocol
+ *
+ * ## Protocol Overview
+ * - **Transport**: TCP (default port 27225, configurable)
+ * - **Protocol**: ACIP binary protocol (not HTTP/JSON)
+ * - **Packet Format**: packet_header_t + payload (see network/acip/protocol.h)
+ * - **Authentication**: Ed25519 digital signatures (ECDSA alternative available)
+ * - **Encryption**: Optional TLS or application-level encryption via crypto_context_t
+ * - **Validation**: CRC32 checksum on every packet payload
+ *
+ * ## Session Lifecycle (Client Perspective)
+ * 1. **Discovery** (Optional): Lookup existing session by string
+ *    - Send: SESSION_LOOKUP packet with session_string
+ *    - Recv: SESSION_INFO packet with session metadata (no connection details)
+ *
+ * 2. **Creation** (Host): Create new session and become host
+ *    - Send: SESSION_CREATE packet with host public key + signature
+ *    - Recv: SESSION_CREATED packet with session_id, participant_id, STUN/TURN servers
+ *    - Server assigns participant ID and tracks session in database
+ *
+ * 3. **Join** (Guest): Connect to existing session
+ *    - Send: SESSION_JOIN packet with credentials (password or identity)
+ *    - Recv: SESSION_JOINED packet with server address, TURN credentials
+ *    - Server verifies credentials and reveals IP:port to authenticated client
+ *
+ * 4. **P2P Negotiation** (Discovery Mode):
+ *    - Send/Recv: WEBRTC_SDP packets for offer/answer
+ *    - Send/Recv: WEBRTC_ICE packets for candidate exchange
+ *    - Negotiate best connection (host election if no host exists)
+ *
+ * 5. **Disconnect**: Leave session cleanly
+ *    - Send: SESSION_LEAVE packet
+ *    - Recv: SESSION_END notification when all participants leave
+ *
+ * ## Packet Type Summary
+ * - SESSION_CREATE (100): Host creates new session
+ * - SESSION_CREATED (101): Discovery confirms creation
+ * - SESSION_LOOKUP (102): Client queries for session
+ * - SESSION_INFO (103): Discovery returns metadata
+ * - SESSION_JOIN (104): Guest requests to join
+ * - SESSION_JOINED (105): Discovery confirms join with details
+ * - SESSION_LEAVE (106): Client notifies disconnect
+ * - SESSION_END (107): Discovery notifies session closed
+ * - WEBRTC_SDP (110): P2P session description
+ * - WEBRTC_ICE (111): P2P ICE candidate
+ *
+ * ## Connection Configuration
+ * The acds_client_config_t structure specifies:
+ * - Server address (IPv4, IPv6, or hostname)
+ * - Server port (default: 27225)
+ * - Timeout (connection timeout in milliseconds)
+ * - Optional callback for graceful shutdown
+ *
  * **ACIP Protocol Overview:**
  * - Binary TCP protocol (not HTTP/JSON)
  * - Packet-based with CRC32 validation
- * - Ed25519 identity signatures
+ * - Ed25519 identity signatures (alternative to password auth)
  * - Optional password protection
+ * - UUID identifiers for sessions and participants (16 bytes each)
  *
  * **Primary Use Case:**
  * Connecting to ACDS (ascii-chat Discovery Service) servers for
@@ -25,7 +81,13 @@
  * application needing ACIP/ACDS integration.
  *
  * @see network/acip/acds.h for ACDS message structures
- * @see network/acip/protocol.h for ACIP packet types
+ * @see network/acip/protocol.h for ACIP packet types and protocol version
+ * @see network/acip/transport.h for transport abstraction layer
+ *
+ * @author Zachary Fogg <me@zfo.gg>
+ * @date January 2026
+ * @version 1.0 (ACDS Client API)
+ * @}
  */
 
 #include <stdint.h>

@@ -1,8 +1,8 @@
 /**
- * @file network/acip/server.h
- * @brief ACIP server-side protocol library
+ * @file network/acip/acds_server.h
+ * @brief ACIP server-side protocol library and ACDS server utilities
  * @ingroup acip
- * @addtogroup acip_server
+ * @addtogroup acds_server
  * @{
  *
  * Server-side ACIP (ascii-chat IP Protocol) utilities for:
@@ -11,10 +11,45 @@
  * - Error response generation
  * - Common server-side packet handling
  *
+ * # ACDS Server Protocol
+ *
+ * ## Server Role in ACIP
+ * The ACDS (ascii-chat Discovery Service) server orchestrates:
+ * 1. **Session Management**: Creating, joining, leaving sessions
+ * 2. **Credential Verification**: Password/identity authentication
+ * 3. **Connection Brokerage**: Revealing host IP only to authenticated clients
+ * 4. **WebRTC Coordination**: Relaying SDP and ICE candidates
+ * 5. **Participant Tracking**: Maintaining session roster and state
+ *
+ * ## Packet Processing Flow
+ * 1. **Receive**: acip_transport_recv() reads packet from socket
+ * 2. **Validate**: Verify packet header (magic, CRC32, length)
+ * 3. **Dispatch**: Route to appropriate handler (session, webrtc, etc.)
+ * 4. **Process**: Handler executes business logic
+ * 5. **Respond**: Send response packet back to client
+ *
+ * ## Security Features
+ * - **Identity Verification**: Ed25519 digital signatures (replay-protected with timestamps)
+ * - **Password Auth**: Argon2id hashing (resistant to brute-force)
+ * - **IP Privacy**: Host IP only revealed after authentication
+ * - **CRC32 Validation**: Detect payload corruption
+ * - **Timestamp Validation**: Prevent replay attacks (5-minute window)
+ *
+ * ## Session Database
+ * - **Storage**: SQLite (persistent across restarts)
+ * - **Schema**: session_id (UUID) → session_info (metadata, expiration)
+ * - **Expiration**: Sessions expire after 24 hours
+ * - **Cleanup**: Automatic garbage collection of expired sessions
+ *
+ * ## Packet Type Reference (Server Perspective)
+ * - **Inbound**: SESSION_CREATE, SESSION_LOOKUP, SESSION_JOIN, SESSION_LEAVE, WEBRTC_SDP, WEBRTC_ICE
+ * - **Outbound**: SESSION_CREATED, SESSION_INFO, SESSION_JOINED, SESSION_END, PARTICIPANT_JOINED, PARTICIPANT_LEFT
+ * - **Broadcast**: PARTICIPANT_* notifications to all session members
+ *
  * **ACIP Protocol Overview:**
  * - Binary TCP protocol (not HTTP/JSON)
  * - Packet-based with CRC32 validation
- * - Ed25519 identity signatures
+ * - Ed25519 identity signatures for authentication
  * - Session management and WebRTC signaling
  *
  * **Primary Use Case:**
@@ -25,18 +60,20 @@
  * **Integration:**
  * - Used by src/acds/ ACDS server implementation
  * - Can be used by custom ACIP server implementations
- * - Complements network/acip/client.h (client-side protocol)
+ * - Complements network/acip/acds_client.h (client-side protocol)
  *
  * @note This module provides library-level utilities. The ACDS server
  *       application code is in src/acds/.
  *
- * @see network/acip/client.h for client-side ACIP library
+ * @see network/acip/acds_client.h for client-side ACIP library
  * @see network/acip/acds.h for ACDS message structures
  * @see network/acip/protocol.h for ACIP packet types
+ * @see network/acip/transport.h for transport abstraction layer
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date January 2026
- * @version 1.0 (ACIP Protocol Refactoring)
+ * @version 1.0 (ACDS Server API)
+ * @}
  */
 
 #pragma once

@@ -5,6 +5,35 @@
  * Provides a transport-agnostic interface that allows ACIP protocol handlers
  * to work with any underlying transport (TCP, WebSocket, HTTP, etc.).
  *
+ * # Transport Layer Design
+ *
+ * ## Architecture
+ * The transport layer abstracts protocol delivery, allowing the same ACIP
+ * protocol handlers to work with multiple underlying transports:
+ *
+ * - **TCP** (acip_tcp_transport_create): Raw TCP sockets, binary packet streaming
+ * - **WebSocket** (acip_websocket_client_transport_create): HTTP upgrade, frame-based
+ * - **WebRTC** (acip_webrtc_transport_create): P2P data channels, encryption at transport
+ * - **HTTP** (future): Long-polling, REST-style
+ * - **QUIC** (future): UDP with congestion control
+ *
+ * ## Design Principles
+ * 1. Protocol code never calls socket()/send()/recv() directly
+ * 2. Same ACIP handlers work with any transport implementation
+ * 3. Each transport handles its own connection state and reliability
+ * 4. Clean separation between protocol logic (acip_*) and transport logic
+ *
+ * ## Packet Framing
+ * Transports handle packet framing transparently:
+ * - **TCP**: Uses packet_header_t (magic + type + length + CRC32 + client_id)
+ * - **WebSocket**: Wraps packets in WebSocket frames
+ * - **WebRTC**: Sends packets directly on data channel
+ *
+ * ## Version Information
+ * - **Transport API Version**: 1.0 (stable)
+ * - **Supported ACIP Version**: 1.0
+ * - **Release Date**: January 2026
+ *
  * DESIGN GOALS:
  * =============
  * 1. Protocol code never calls socket()/send()/recv() directly
@@ -15,29 +44,34 @@
  * USAGE PATTERN:
  * ==============
  * ```c
- * // Create TCP transport
+ * // Create TCP transport from existing socket
  * acip_transport_t *tcp = acip_tcp_transport_create(sockfd, crypto_ctx);
  *
- * // Use with ACIP protocol handlers
- * asciichat_error_t result = acip_send_ascii_frame(tcp, frame_data, frame_size);
+ * // Send packet with type-specific helper
+ * asciichat_error_t result = acip_send_ascii_frame(tcp, frame_data, frame_size, ...);
  *
- * // Or WebSocket transport
+ * // Receive packet with dispatcher
+ * acip_client_receive_and_dispatch(tcp, &callbacks);
+ *
+ * // Or create WebSocket client transport
  * acip_transport_t *ws = acip_websocket_client_transport_create("ws://localhost:27225", crypto_ctx);
- * asciichat_error_t result = acip_send_ascii_frame(ws, frame_data, frame_size);
+ * asciichat_error_t result = acip_send_ascii_frame(ws, frame_data, frame_size, ...);
  *
  * // Cleanup
  * acip_transport_destroy(tcp);
+ * acip_transport_destroy(ws);
  * ```
  *
  * MEMORY OWNERSHIP:
  * =================
- * - Transport owns its connection state
+ * - Transport owns its connection state (socket, pointers, etc.)
  * - send() does NOT take ownership of data (caller must keep it valid)
  * - recv() allocates buffer, caller must free via out_allocated_buffer
- * - destroy() cleans up all transport resources
+ * - destroy() cleans up all transport resources and frees transport structure
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date January 2026
+ * @version 1.0 (Transport API)
  */
 
 #pragma once
