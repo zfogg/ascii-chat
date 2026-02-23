@@ -206,7 +206,7 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
 #define NAMED_REGISTER(ptr, name, type) \
   named_register((uintptr_t)(const void *)(ptr), (name), (type), __FILE__, __LINE__, __func__)
 #else
-#define NAMED_REGISTER(ptr, name, type) ((void)0)
+#define NAMED_REGISTER(ptr, name, type) (name)
 #endif
 
 /**
@@ -224,7 +224,7 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
 #define NAMED_REGISTER_FMT(ptr, type, fmt, ...) \
   named_register_fmt((uintptr_t)(const void *)(ptr), (type), __FILE__, __LINE__, __func__, (fmt), __VA_ARGS__)
 #else
-#define NAMED_REGISTER_FMT(ptr, type, fmt, ...) ((void)0)
+#define NAMED_REGISTER_FMT(ptr, type, fmt, ...) ("?")
 #endif
 
 /**
@@ -282,7 +282,7 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
 #define NAMED_REGISTER_ID(id, name, type) \
   named_register((uintptr_t)(intptr_t)(id), (name), (type), __FILE__, __LINE__, __func__)
 #else
-#define NAMED_REGISTER_ID(id, name, type) ((void)0)
+#define NAMED_REGISTER_ID(id, name, type) (name)
 #endif
 
 /**

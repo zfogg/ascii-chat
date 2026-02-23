@@ -17,6 +17,7 @@
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/platform/system.h>
+#include <ascii-chat/util/lifecycle.h>
 
 #include <string.h>
 #include <rtc/rtc.h>
