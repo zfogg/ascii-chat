@@ -1973,30 +1973,17 @@ if(NOT EXISTS "${CAIRO_PREFIX}/lib/libcairo.a")
     message(STATUS "  cairo library not found in cache, will build from source")
     ExternalProject_Add(cairo-musl
         URL https://cairographics.org/releases/cairo-1.18.2.tar.xz
-        URL_HASH SHA256=f1495bb17efd2c3382e5e140a98801c2b5b77e5f5ac79e73bb88d5eb52c78181
+        URL_HASH SHA256=a62b9bb42425e844cc3d6ddde043ff39dbabedd1542eba57a2eb79f85889d45a
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        SOURCE_SUBDIR cairo-musl
         PREFIX ${CAIRO_BUILD_DIR}
         STAMP_DIR ${CAIRO_BUILD_DIR}/stamps
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
-        CONFIGURE_COMMAND env CC=${MUSL_GCC} PKG_CONFIG_PATH=${PIXMAN_PREFIX}/lib/pkgconfig:${FREETYPE_PREFIX}/lib/pkgconfig:${ZLIB_PREFIX}/lib/pkgconfig CFLAGS="-O2 -fPIC" <SOURCE_DIR>/configure
-            --prefix=${CAIRO_PREFIX}
-            --enable-static
-            --disable-shared
-            --disable-xlib
-            --disable-xlib-xrender
-            --disable-xcb
-            --disable-win32
-            --enable-image
-            --disable-gobject
-            --disable-trace
-            --disable-tools
-            --disable-tests
-            --disable-valgrind
-            --disable-interpreters
-        BUILD_COMMAND env CFLAGS="-O2 -fPIC" PKG_CONFIG_PATH=${PIXMAN_PREFIX}/lib/pkgconfig:${FREETYPE_PREFIX}/lib/pkgconfig:${ZLIB_PREFIX}/lib/pkgconfig make -j
-        INSTALL_COMMAND make install
-        DEPENDS pixman-musl freetype-musl
+        CONFIGURE_COMMAND env CC=${MUSL_GCC} PKG_CONFIG_PATH=${PIXMAN_PREFIX}/lib/pkgconfig:${FREETYPE_PREFIX}/lib/pkgconfig:${ZLIB_PREFIX}/lib/pkgconfig meson setup <BINARY_DIR> <SOURCE_DIR> --prefix=${CAIRO_PREFIX} -Ddefault_library=static -Dgtk_doc=false -Dtests=disabled -Dxlib=disabled -Dxcb=disabled -Dfontconfig=disabled
+        BUILD_COMMAND meson compile -C <BINARY_DIR> -j16
+        INSTALL_COMMAND meson install -C <BINARY_DIR>
+        DEPENDS pixman-musl freetype-musl zlib-musl
         BUILD_BYPRODUCTS ${CAIRO_PREFIX}/lib/libcairo.a
         LOG_DOWNLOAD TRUE
         LOG_CONFIGURE TRUE
@@ -2133,8 +2120,8 @@ pkg-config = 'pkg-config'
                 --default-library=static
                 --wrap-mode=nodownload
                 -Dintrospection=disabled
-                -Dtests=false
-                -Ddocs=disabled
+                -Dbuild-testsuite=false
+                -Ddocumentation=false
                 --cross-file=${PANGO_CROSS_FILE}
             BUILD_COMMAND ${MESON_EXECUTABLE} compile -C <BINARY_DIR> -j16
             INSTALL_COMMAND ${MESON_EXECUTABLE} install -C <BINARY_DIR>
