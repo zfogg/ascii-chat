@@ -996,6 +996,165 @@
  * }
  * ```
  *
+ * @subsection platform_components_filesystem Filesystem Operations (filesystem.h)
+ *
+ * High-level cross-platform filesystem operations: directories, paths, and file discovery.
+ * This header provides unified directory management, path utilities, and configuration
+ * file discovery across Windows and POSIX systems.
+ *
+ * Directory operations:
+ * ```c
+ * // Create a single directory (no-op if exists)
+ * if (platform_mkdir("~/.ascii-chat", 0700) == ASCIICHAT_OK) {
+ *   printf("Directory created or already exists\n");
+ * }
+ *
+ * // Create directories recursively (like mkdir -p)
+ * if (platform_mkdir_recursive("~/.ascii-chat/config/keys", 0700) == ASCIICHAT_OK) {
+ *   printf("Directory tree created\n");
+ * }
+ *
+ * // Clean up: recursively delete directory and contents
+ * if (platform_rmdir_recursive("~/.ascii-chat/temp") == ASCIICHAT_OK) {
+ *   printf("Directory removed\n");
+ * }
+ * ```
+ *
+ * File type checking and statistics:
+ * ```c
+ * // Check file type without following symlinks
+ * if (platform_is_regular_file("config.toml")) {
+ *   printf("config.toml is a regular file\n");
+ * }
+ *
+ * if (platform_is_directory("./data")) {
+ *   printf("./data is a directory\n");
+ * }
+ *
+ * // Get detailed file metadata
+ * platform_stat_t stat_info;
+ * if (platform_stat("myfile", &stat_info) == ASCIICHAT_OK) {
+ *   printf("File size: %zu bytes\n", stat_info.size);
+ *   printf("Is symlink: %d\n", stat_info.is_symlink);
+ * }
+ * ```
+ *
+ * Path utilities:
+ * ```c
+ * // Check if path is absolute
+ * if (platform_path_is_absolute("/etc/config")) {
+ *   printf("Absolute path\n");  // Unix
+ * }
+ * if (platform_path_is_absolute("C:\\Users\\data")) {
+ *   printf("Absolute path\n");  // Windows
+ * }
+ *
+ * // Get platform-specific path separator
+ * char sep = platform_path_get_separator();
+ * printf("Separator: %c\n", sep);  // '/' on Unix, '\\' on Windows
+ *
+ * // Normalize path (converts separators, validates)
+ * char normalized[PATH_MAX];
+ * platform_path_normalize("C:\\Users\\..\\data", normalized, sizeof(normalized));
+ * printf("Normalized: %s\n", normalized);
+ * ```
+ *
+ * Temporary files and directories:
+ * ```c
+ * // Create temporary directory with unique suffix
+ * char tempdir[256];
+ * if (platform_mkdtemp(tempdir, sizeof(tempdir), "ascii-chat-gpg") == ASCIICHAT_OK) {
+ *   printf("Temp dir: %s\n", tempdir);  // e.g., /tmp/ascii-chat-gpg-ABC123
+ *   // ... use tempdir for sensitive operations ...
+ *   platform_rmdir_recursive(tempdir);  // Clean up
+ * }
+ *
+ * // Create temporary file with proper permissions
+ * char tempfile[256];
+ * int fd;
+ * if (platform_create_temp_file(tempfile, sizeof(tempfile), "asc_sig", &fd) == 0) {
+ *   // On Unix: fd is open and ready for writing
+ *   // On Windows: fd == -1, must open with platform_temp_file_open()
+ *   if (fd < 0) {
+ *     platform_temp_file_open(tempfile, &fd);
+ *   }
+ *   write(fd, data, size);
+ *   close(fd);
+ *   platform_delete_temp_file(tempfile);
+ * }
+ * ```
+ *
+ * Configuration file discovery:
+ * ```c
+ * // Find config file across standard locations
+ * // Returns all matches in priority order (highest priority first)
+ * config_file_list_t config_list = {0};
+ * if (platform_find_config_file("config.toml", &config_list) == ASCIICHAT_OK) {
+ *   // Use first match (highest priority) - Override semantics
+ *   if (config_list.count > 0) {
+ *     printf("Using config: %s\n", config_list.files[0].path);
+ *     load_config(config_list.files[0].path);
+ *   }
+ *   config_file_list_destroy(&config_list);
+ * }
+ *
+ * // Cascade semantics: load all configs (system to user)
+ * if (platform_find_config_file("colors.toml", &config_list) == ASCIICHAT_OK) {
+ *   // Load in reverse order (lowest priority first)
+ *   // Higher priority configs override lower priority
+ *   for (size_t i = config_list.count; i > 0; i--) {
+ *     apply_config(config_list.files[i - 1].path, &theme);
+ *   }
+ *   config_file_list_destroy(&config_list);
+ * }
+ * ```
+ *
+ * Search paths by platform:
+ * - **Linux/macOS**: ~/.config/ascii-chat/ → ~/.local/share/ascii-chat/ → /etc/ascii-chat/
+ * - **Windows**: %APPDATA%\ascii-chat\ → %PROGRAMDATA%\ascii-chat\
+ *
+ * Home and config directory discovery:
+ * ```c
+ * // Get home directory (platform-aware)
+ * const char* home = platform_get_home_dir();
+ * printf("Home: %s\n", home);  // e.g., "/home/user" or "C:\\Users\\user"
+ *
+ * // Get app config directory (with trailing separator)
+ * char* config_dir = platform_get_config_dir();
+ * printf("Config dir: %s\n", config_dir);
+ * // Linux:   /home/user/.config/ascii-chat/
+ * // macOS:   /Users/user/.config/ascii-chat/
+ * // Windows: C:\Users\user\AppData\Roaming\ascii-chat\
+ * SAFE_FREE(config_dir);
+ *
+ * // Get app data directory
+ * char* data_dir = platform_get_data_dir();
+ * printf("Data dir: %s\n", data_dir);
+ * // Linux:   /home/user/.local/share/ascii-chat/
+ * // macOS:   /Users/user/.local/share/ascii-chat/
+ * // Windows: C:\Users\user\AppData\Roaming\ascii-chat\
+ * SAFE_FREE(data_dir);
+ * ```
+ *
+ * Cryptographic key file validation:
+ * ```c
+ * // Validate key file permissions (critical for security!)
+ * // Checks that only owner can read the private key
+ * if (platform_validate_key_file_permissions("~/.ssh/id_ed25519") == ASCIICHAT_OK) {
+ *   printf("Key file permissions are secure\n");
+ * } else {
+ *   printf("Key file has insecure permissions! Use chmod 600\n");
+ * }
+ * ```
+ *
+ * Platform-specific details:
+ * - **POSIX**: Uses chmod, stat, mkdir, opendir for all operations
+ * - **Windows**: Uses CreateDirectoryA, GetFileAttributesEx, ACLs for permissions
+ * - **Symlinks**: All functions skip symlinks (use lstat/no-follow logic)
+ * - **Path separators**: Automatically handled (/ or \ based on platform)
+ * - **Permissions**: Unix mode parameter ignored on Windows (uses ACLs)
+ * - **Relative paths**: Expanded from current directory (not home)
+ *
  * @section platform_static_init Static Initialization
  *
  * One of the most powerful features of the platform abstraction layer is static

@@ -14,6 +14,28 @@
  * - Recursive directory deletion
  * - Key file permission validation
  * - Config file search across standard locations
+ * - Home and configuration directory discovery
+ * - Path utilities and normalization
+ *
+ * This header abstracts away platform differences in directory management, path
+ * handling, and configuration file discovery. All operations are platform-aware
+ * and handle differences like path separators, permission models, and standard
+ * configuration directories transparently.
+ *
+ * **Platform-specific behavior:**
+ * - **POSIX (Linux/macOS)**: Uses POSIX APIs (mkdir, stat, lstat, opendir)
+ * - **Windows**: Uses Win32 API (CreateDirectoryA, GetFileAttributesEx, FindFile)
+ * - **Path separators**: Automatically converted (/ on POSIX, \\ on Windows)
+ * - **Permissions**: Unix mode parameter used on POSIX; ignored on Windows (ACL-based)
+ * - **Symlinks**: All functions skip symlinks (lstat on POSIX, no-follow on Windows)
+ * - **Configuration directories**: Follow XDG standard on Unix, APPDATA on Windows
+ *
+ * **Thread safety:**
+ * Most operations are thread-safe under normal conditions. However:
+ * - Config file discovery uses static buffers - safe to call from multiple threads
+ * - Directory operations are safe as long as multiple threads don't create/delete
+ *   the same directory simultaneously (standard filesystem semantics)
+ * - Temporary file creation uses platform-specific atomic operations (mkstemp, etc.)
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date January 2026
