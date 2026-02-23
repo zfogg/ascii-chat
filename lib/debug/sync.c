@@ -10,6 +10,7 @@
 
 #include <ascii-chat/debug/sync.h>
 #include <ascii-chat/debug/named.h>
+#include <ascii-chat/debug/backtrace.h>
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/platform/rwlock.h>
 #include <ascii-chat/platform/cond.h>
@@ -240,7 +241,13 @@ void debug_sync_print_state(void) {
 // Scheduled Debug State Printing (runs on separate thread)
 // ============================================================================
 
+typedef enum {
+    DEBUG_REQUEST_STATE,      // Print sync state
+    DEBUG_REQUEST_BACKTRACE,  // Print backtrace
+} debug_request_type_t;
+
 typedef struct {
+    debug_request_type_t request_type;  // What to print
     uint64_t delay_ns;
     volatile bool should_run;
     volatile bool should_exit;
@@ -250,7 +257,7 @@ typedef struct {
     bool initialized;                // Tracks if mutex/cond are initialized
 } debug_state_request_t;
 
-static debug_state_request_t g_debug_state_request = {0, false, false, false, {0}, {0}, false};
+static debug_state_request_t g_debug_state_request = {DEBUG_REQUEST_STATE, 0, false, false, false, {0}, {0}, false};
 static asciichat_thread_t g_debug_thread;
 
 /**
@@ -277,8 +284,19 @@ static void *debug_print_thread_fn(void *arg) {
         mutex_lock(&g_debug_state_request.mutex);
         if ((g_debug_state_request.should_run || g_debug_state_request.signal_triggered)
             && !g_debug_state_request.should_exit) {
+            debug_request_type_t request_type = g_debug_state_request.request_type;
             mutex_unlock(&g_debug_state_request.mutex);
-            debug_sync_print_state();
+
+            // Print based on request type
+            if (request_type == DEBUG_REQUEST_STATE) {
+                debug_sync_print_state();
+            } else if (request_type == DEBUG_REQUEST_BACKTRACE) {
+                backtrace_t bt;
+                backtrace_capture_and_symbolize(&bt);
+                backtrace_print("Backtrace", &bt, 0, 0, NULL);
+                backtrace_t_free(&bt);
+            }
+
             mutex_lock(&g_debug_state_request.mutex);
             g_debug_state_request.should_run = false;
             g_debug_state_request.signal_triggered = false;
@@ -299,6 +317,18 @@ static void *debug_print_thread_fn(void *arg) {
  * @param delay_ns Nanoseconds to sleep before printing
  */
 void debug_sync_print_state_delayed(uint64_t delay_ns) {
+    g_debug_state_request.request_type = DEBUG_REQUEST_STATE;
+    g_debug_state_request.delay_ns = delay_ns;
+    g_debug_state_request.should_run = true;
+    cond_signal(&g_debug_state_request.cond);
+}
+
+/**
+ * @brief Schedule delayed backtrace printing on debug thread
+ * @param delay_ns Nanoseconds to sleep before printing
+ */
+void debug_sync_print_backtrace_delayed(uint64_t delay_ns) {
+    g_debug_state_request.request_type = DEBUG_REQUEST_BACKTRACE;
     g_debug_state_request.delay_ns = delay_ns;
     g_debug_state_request.should_run = true;
     cond_signal(&g_debug_state_request.cond);

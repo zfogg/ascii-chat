@@ -843,6 +843,8 @@ static const bool default_log_format_console_only_value = OPT_LOG_FORMAT_CONSOLE
 #ifndef NDEBUG
 static const double default_debug_state_time_value = 0.0;
 static const bool default_debug_state_time_explicit_value = false;
+static const double default_debug_backtrace_time_value = 0.0;
+static const bool default_debug_backtrace_time_explicit_value = false;
 #endif
 
 #ifndef _WIN32
@@ -1143,6 +1145,8 @@ typedef struct options_state {
 #ifndef NDEBUG
   double debug_state_time;           ///< Time parameter for --debug-state option (debug builds only)
   bool debug_state_time_explicit;    ///< True if --debug-state was explicitly provided
+  double debug_backtrace_time;       ///< Time parameter for --backtrace option (debug builds only)
+  bool debug_backtrace_time_explicit; ///< True if --backtrace was explicitly provided
 #endif
 
   // ============================================================================

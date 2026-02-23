@@ -89,6 +89,16 @@ void debug_sync_print_state(void);
  */
 void debug_sync_print_state_delayed(uint64_t delay_ns);
 
+/**
+ * @brief Schedule delayed backtrace printing on debug thread
+ * @param delay_ns Nanoseconds to sleep before printing
+ * @ingroup debug_sync
+ *
+ * Schedules a backtrace print to run on the debug thread after the specified delay.
+ * The debug thread must be running (started via debug_sync_start_thread).
+ */
+void debug_sync_print_backtrace_delayed(uint64_t delay_ns);
+
 // ============================================================================
 // Debug Sync API - Thread management
 // ============================================================================

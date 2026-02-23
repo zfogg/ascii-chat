@@ -779,6 +779,14 @@ int main(int argc, char *argv[]) {
     uint64_t delay_ns = (uint64_t)(opts->debug_state_time * NS_PER_SEC_INT);
     debug_sync_print_state_delayed(delay_ns);
   }
+
+  // Handle --backtrace (debug builds only)
+  // Schedule backtrace printing on the debug thread after specified delay
+  if (IS_OPTION_EXPLICIT(debug_backtrace_time, opts) && opts->debug_backtrace_time > 0.0) {
+    log_info("Scheduling backtrace print after %f seconds on debug thread", opts->debug_backtrace_time);
+    uint64_t delay_ns = (uint64_t)(opts->debug_backtrace_time * NS_PER_SEC_INT);
+    debug_sync_print_backtrace_delayed(delay_ns);
+  }
 #endif
 
   // Find and dispatch to mode entry point
