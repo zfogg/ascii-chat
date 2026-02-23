@@ -72,15 +72,29 @@ static size_t g_site_count = 0;
  * Example: {"lib/util/pcre2.c", 52, 2} means exactly 2 PCRE2 singleton allocations
  * are expected. If 3 exist, the 3rd one will be reported as a leak.
  */
+/**
+ * @brief Debug memory suppression entry for both configuration and runtime tracking
+ *
+ * Static fields (file, line, expected_count, expected_bytes, reason) define
+ * what we expect. Runtime fields (key, count, bytes) track what we've seen.
+ */
 typedef struct {
+  // Configuration (static, in g_suppression_config[])
   const char *file;
   int line;
-  int expected_count;     // Exact number of allocations expected from this location (per thread)
-  size_t expected_bytes;  // Expected total bytes for these allocations (per thread)
+  int expected_count;     // Expected allocations per thread
+  size_t expected_bytes;  // Expected total bytes per thread
   const char *reason;     // Why these allocations are expected/harmless
-} ignore_entry_t;
 
-static const ignore_entry_t g_ignore_list[] = {
+  // Runtime counter (dynamic, in g_suppression_counters[])
+  // Key format: "file:line:tid"
+  char key[BUFFER_SIZE_SMALL + 32];
+  int count;
+  size_t bytes;
+} debug_memory_suppression_t;
+
+// Static configuration of expected suppressions
+static const debug_memory_suppression_t g_suppression_config[] = {
     {"lib/options/colorscheme.c", 585, 8, 47,  "8 16-color ANSI code strings"},
     {"lib/options/colorscheme.c", 602, 8, 88,  "8 256-color ANSI code strings"},
     {"lib/options/colorscheme.c", 619, 8, 144, "8 truecolor ANSI code strings"},
@@ -89,24 +103,17 @@ static const ignore_entry_t g_ignore_list[] = {
     {NULL, 0, 0, 0, NULL}                      // Sentinel
 };
 
-// Track seen count and bytes per (file, line, tid) tuple
-// Since we can't allocate during memory report, use a pre-sized array with (file:line:tid) keys
-typedef struct ignore_counter {
-  char key[BUFFER_SIZE_SMALL + 32]; // "file:line:tid"
-  int count;
-  size_t bytes;
-} ignore_counter_t;
-
-#define MAX_IGNORE_COUNTERS 64
-static ignore_counter_t g_ignore_counts[MAX_IGNORE_COUNTERS];
-static size_t g_ignore_count_entries = 0;
+// Runtime counters tracking per-thread allocations (cleared at report boundaries)
+#define MAX_SUPPRESSION_COUNTERS 64
+static debug_memory_suppression_t g_suppression_counters[MAX_SUPPRESSION_COUNTERS];
+static size_t g_suppression_counter_count = 0;
 
 /**
- * @brief Reset ignore counters at start of memory report
+ * @brief Reset suppression counters at report boundaries
  */
-static void reset_ignore_counters(void) {
-  memset(g_ignore_counts, 0, sizeof(g_ignore_counts));
-  g_ignore_count_entries = 0;
+static void reset_suppression_counters(void) {
+  memset(g_suppression_counters, 0, sizeof(g_suppression_counters));
+  g_suppression_counter_count = 0;
 }
 
 /**
@@ -138,29 +145,29 @@ static bool should_ignore_allocation(const char *file, int line, uint64_t tid, s
   // (set during debug_malloc/debug_calloc using extract_project_relative_path)
   // Do NOT call extract_project_relative_path again - it won't work on already-relative paths
 
-  for (size_t i = 0; g_ignore_list[i].file != NULL; i++) {
-    if (line == g_ignore_list[i].line && strcmp(file, g_ignore_list[i].file) == 0) {
-      // Found matching ignore entry - check if we've exceeded expected count for this thread
+  for (size_t i = 0; g_suppression_config[i].file != NULL; i++) {
+    if (line == g_suppression_config[i].line && strcmp(file, g_suppression_config[i].file) == 0) {
+      // Found matching suppression entry - check if we've exceeded expected count for this thread
       char key[BUFFER_SIZE_SMALL + 32];
       safe_snprintf(key, sizeof(key), "%s:%d:%" PRIu64, file, line, tid);
 
       // Look up existing counter for this site/thread combination
-      ignore_counter_t *counter = NULL;
-      for (size_t j = 0; j < g_ignore_count_entries; j++) {
-        if (strcmp(g_ignore_counts[j].key, key) == 0) {
-          counter = &g_ignore_counts[j];
+      debug_memory_suppression_t *counter = NULL;
+      for (size_t j = 0; j < g_suppression_counter_count; j++) {
+        if (strcmp(g_suppression_counters[j].key, key) == 0) {
+          counter = &g_suppression_counters[j];
           break;
         }
       }
 
       // Create new counter if needed
       if (!counter) {
-        if (g_ignore_count_entries < MAX_IGNORE_COUNTERS) {
-          counter = &g_ignore_counts[g_ignore_count_entries];
+        if (g_suppression_counter_count < MAX_SUPPRESSION_COUNTERS) {
+          counter = &g_suppression_counters[g_suppression_counter_count];
           SAFE_STRNCPY(counter->key, key, sizeof(counter->key) - 1);
           counter->count = 0;
           counter->bytes = 0;
-          g_ignore_count_entries++;
+          g_suppression_counter_count++;
         } else {
           // Counter array full - report as leak to avoid silent failures
           return false;
@@ -168,7 +175,7 @@ static bool should_ignore_allocation(const char *file, int line, uint64_t tid, s
       }
 
       // Check if we've exceeded expected count for this thread
-      if (counter->count < g_ignore_list[i].expected_count) {
+      if (counter->count < g_suppression_config[i].expected_count) {
         counter->count++;
         counter->bytes += size;
         return true; // Ignore this allocation
@@ -760,8 +767,8 @@ void debug_memory_report(void) {
 
   bool quiet = g_mem.quiet_mode;
 
-  // Reset ignore counters at start of report
-  reset_ignore_counters();
+  // Reset suppression counters at start of report
+  reset_suppression_counters();
 
   if (!quiet) {
     SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "\n%s\n", colored_string(LOG_COLOR_DEV, "=== Memory Report ===")));
@@ -806,8 +813,8 @@ void debug_memory_report(void) {
     size_t adjusted_total_allocated =
         (total_allocated >= suppressed_bytes) ? (total_allocated - suppressed_bytes) : total_allocated;
 
-    // Reset ignore counters after counting suppressed bytes
-    reset_ignore_counters();
+    // Reset suppression counters after counting suppressed bytes
+    reset_suppression_counters();
 
     // Count actual unfreed allocations early so we can use it to filter suppression warnings
     size_t unfreed_count = 0;
@@ -828,42 +835,42 @@ void debug_memory_report(void) {
 
     // Only warn about suppression mismatches if there are outstanding allocations
     if (unfreed_count > 0) {
-      for (size_t i = 0; g_ignore_list[i].file != NULL; i++) {
+      for (size_t i = 0; g_suppression_config[i].file != NULL; i++) {
         // Sum counts and bytes from all threads for this file:line combination
         int total_count = 0;
         size_t total_bytes = 0;
-        for (size_t j = 0; j < g_ignore_count_entries; j++) {
+        for (size_t j = 0; j < g_suppression_counter_count; j++) {
           // Parse counter key "file:line:tid" to extract file and line
-          char *last_colon = strrchr(g_ignore_counts[j].key, ':');
+          char *last_colon = strrchr(g_suppression_counters[j].key, ':');
           if (last_colon) {
             char *second_colon = last_colon - 1;
-            while (second_colon > g_ignore_counts[j].key && *second_colon != ':') {
+            while (second_colon > g_suppression_counters[j].key && *second_colon != ':') {
               second_colon--;
             }
-            if (second_colon > g_ignore_counts[j].key) {
+            if (second_colon > g_suppression_counters[j].key) {
               int line_from_key = 0;
               sscanf(second_colon + 1, "%d", &line_from_key);
-              size_t file_len = second_colon - g_ignore_counts[j].key;
-              if (file_len == strlen(g_ignore_list[i].file) && line_from_key == g_ignore_list[i].line &&
-                  strncmp(g_ignore_counts[j].key, g_ignore_list[i].file, file_len) == 0) {
-                total_count += g_ignore_counts[j].count;
-                total_bytes += g_ignore_counts[j].bytes;
+              size_t file_len = second_colon - g_suppression_counters[j].key;
+              if (file_len == strlen(g_suppression_config[i].file) && line_from_key == g_suppression_config[i].line &&
+                  strncmp(g_suppression_counters[j].key, g_suppression_config[i].file, file_len) == 0) {
+                total_count += g_suppression_counters[j].count;
+                total_bytes += g_suppression_counters[j].bytes;
               }
             }
           }
         }
 
-        if (total_count != g_ignore_list[i].expected_count || total_bytes != g_ignore_list[i].expected_bytes) {
+        if (total_count != g_suppression_config[i].expected_count || total_bytes != g_suppression_config[i].expected_bytes) {
           SAFE_IGNORE_PRINTF_RESULT(
               safe_fprintf(stderr, "%s\n", colored_string(LOG_COLOR_ERROR, "WARNING: Suppression mismatch detected")));
-          SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "  %s:%d\n", g_ignore_list[i].file, g_ignore_list[i].line));
-          if (total_count != g_ignore_list[i].expected_count) {
+          SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "  %s:%d\n", g_suppression_config[i].file, g_suppression_config[i].line));
+          if (total_count != g_suppression_config[i].expected_count) {
             SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "    Count mismatch: expected %d, found %d\n",
-                                                   g_ignore_list[i].expected_count, total_count));
+                                                   g_suppression_config[i].expected_count, total_count));
           }
-          if (total_bytes != g_ignore_list[i].expected_bytes) {
+          if (total_bytes != g_suppression_config[i].expected_bytes) {
             SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "    Bytes mismatch: expected %zu, found %zu\n",
-                                                   g_ignore_list[i].expected_bytes, total_bytes));
+                                                   g_suppression_config[i].expected_bytes, total_bytes));
           }
         }
       }
@@ -982,7 +989,7 @@ void debug_memory_report(void) {
     // Only show "Current allocations:" section if there are actual leaks
     if (unfreed_count > 0) {
       // Reset counters before printing pass (after counting pass used them)
-      reset_ignore_counters();
+      reset_suppression_counters();
 
       // Print "Current allocations:" header (count already shown in "unfreed allocations" above)
       SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "\n%s\n", colored_string(LOG_COLOR_DEV, "Current allocations:")));
