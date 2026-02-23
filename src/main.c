@@ -95,9 +95,11 @@ bool should_exit(void) {
 }
 
 void signal_exit(void) {
+  log_console(LOG_DEBUG, "[SHUTDOWN] Exit signal received, setting exit flag");
   atomic_store(&g_app_should_exit, true);
   void (*cb)(void) = g_interrupt_callback;
   if (cb) {
+    log_console(LOG_DEBUG, "[SHUTDOWN] Calling interrupt callback");
     cb();
   }
 }

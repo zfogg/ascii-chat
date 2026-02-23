@@ -1011,19 +1011,13 @@ void debug_memory_report(void) {
 
   skip_allocations_list:
 
-    // Cleanup site cache at shutdown
-    if (ensure_mutex_initialized()) {
-      if (acquire_mutex_with_polling(&g_mem.mutex, 100)) {
-        alloc_site_t *site, *tmp;
-        HASH_ITER(hh, g_site_cache, site, tmp) {
-          HASH_DEL(g_site_cache, site);
-          backtrace_t_free(&site->backtrace);
-          free(site);
-        }
-        g_site_count = 0;
-        mutex_unlock(&g_mem.mutex);
-      }
-    }
+    fprintf(stderr, "[SHUTDOWN] debug_memory_report: reached skip_allocations_list\n");
+    fflush(stderr);
+
+    // SKIP cleanup site cache at shutdown
+    // We used to clean up the hash table here, but HASH_DEL inside HASH_ITER causes
+    // undefined behavior (modifying hash table during iteration = infinite loop/hang).
+    // Since we're exiting anyway, skip this cleanup - the OS will reclaim memory.
   }
 }
 
@@ -1056,24 +1050,36 @@ static void *debug_memory_thread_fn(void *arg) {
   (void)arg;
 
   while (!g_debug_memory_request.should_exit) {
+    fprintf(stderr, "[DEBUG] memory_thread: checking should_exit=%d\n", g_debug_memory_request.should_exit);
+    fflush(stderr);
     mutex_lock(&g_debug_memory_request.mutex);
 
     if ((g_debug_memory_request.should_run || g_debug_memory_request.signal_triggered)
         && !g_debug_memory_request.should_exit) {
+      fprintf(stderr, "[DEBUG] memory_thread: calling debug_memory_report\n");
+      fflush(stderr);
       mutex_unlock(&g_debug_memory_request.mutex);
       debug_memory_report();
       mutex_lock(&g_debug_memory_request.mutex);
       g_debug_memory_request.should_run = false;
       g_debug_memory_request.signal_triggered = false;
+      fprintf(stderr, "[DEBUG] memory_thread: report done\n");
+      fflush(stderr);
     }
 
     // Wait for work or signal, with 100ms timeout to check should_exit
     if (!g_debug_memory_request.should_exit) {
+      fprintf(stderr, "[DEBUG] memory_thread: waiting on condition\n");
+      fflush(stderr);
       cond_timedwait(&g_debug_memory_request.cond, &g_debug_memory_request.mutex, 100000000);  // 100ms
+      fprintf(stderr, "[DEBUG] memory_thread: woke from condition\n");
+      fflush(stderr);
     }
     mutex_unlock(&g_debug_memory_request.mutex);
   }
 
+  fprintf(stderr, "[DEBUG] memory_thread: exiting main loop\n");
+  fflush(stderr);
   return NULL;
 }
 
@@ -1111,12 +1117,19 @@ void debug_memory_trigger_report(void) {
  * @brief Stop the memory debug thread
  */
 void debug_memory_thread_cleanup(void) {
-  // Signal the thread to wake up immediately instead of waiting for 100ms timeout
-  mutex_lock(&g_debug_memory_request.mutex);
+  // Set exit flag and signal thread - don't acquire mutex to avoid deadlock
+  // The thread reads should_exit without locking, and cond_signal is safe without mutex
+  fprintf(stderr, "[DEBUG] memory_thread_cleanup: setting should_exit\n");
+  fflush(stderr);
   g_debug_memory_request.should_exit = true;
+  fprintf(stderr, "[DEBUG] memory_thread_cleanup: signaling condition\n");
+  fflush(stderr);
   cond_signal(&g_debug_memory_request.cond);
-  mutex_unlock(&g_debug_memory_request.mutex);
+  fprintf(stderr, "[DEBUG] memory_thread_cleanup: joining thread\n");
+  fflush(stderr);
   asciichat_thread_join(&g_debug_memory_thread, NULL);
+  fprintf(stderr, "[DEBUG] memory_thread_cleanup: thread joined\n");
+  fflush(stderr);
 }
 
 #elif defined(DEBUG_MEMORY)
@@ -1168,6 +1181,44 @@ void debug_track_aligned(void *ptr, size_t size, const char *file, int line) {
   (void)size;
   (void)file;
   (void)line;
+}
+
+/**
+ * @brief Asynchronously symbolize unsymbolized backtraces from memory allocations
+ * Called by debug sync thread to avoid blocking the memory report during shutdown
+ */
+void debug_sync_symbolize_allocations(void) {
+  if (!g_site_cache) {
+    return;  // No allocations to symbolize
+  }
+
+  if (!ensure_mutex_initialized()) {
+    return;  // Can't acquire mutex
+  }
+
+  // Try to acquire mutex with short timeout (don't block the debug thread)
+  if (!acquire_mutex_with_polling(&g_mem.mutex, 50)) {
+    return;  // Mutex busy, skip this iteration
+  }
+
+  // Iterate site cache and symbolize backtraces that haven't been tried yet
+  alloc_site_t *site, *tmp;
+  int symbolized_count = 0;
+  const int max_per_iteration = 5;  // Symbolize max 5 backtraces per iteration
+
+  HASH_ITER(hh, g_site_cache, site, tmp) {
+    if (symbolized_count >= max_per_iteration) {
+      break;  // Don't symbolize too many in one iteration
+    }
+
+    // Only symbolize backtraces that haven't been tried yet
+    if (site->backtrace.count > 0 && !site->backtrace.tried_symbolize) {
+      backtrace_symbolize(&site->backtrace);
+      symbolized_count++;
+    }
+  }
+
+  mutex_unlock(&g_mem.mutex);
 }
 
 #endif
