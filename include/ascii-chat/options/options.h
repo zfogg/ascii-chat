@@ -771,10 +771,10 @@ typedef enum {
 // for non-string default values. Defined alongside OPT_*_DEFAULT for clarity.
 
 static const int default_log_level_value = DEFAULT_LOG_LEVEL;
-static const bool default_quiet_value = false;
-static const bool default_json_value = false;
-static const bool default_enable_keepawake_value = false;
-static const bool default_disable_keepawake_value = false;
+static const bool default_quiet_value = OPT_QUIET_DEFAULT;
+static const bool default_json_value = OPT_JSON_DEFAULT;
+static const bool default_enable_keepawake_value = OPT_ENABLE_KEEPAWAKE_DEFAULT;
+static const bool default_disable_keepawake_value = OPT_DISABLE_KEEPAWAKE_DEFAULT;
 static const int default_width_value = OPT_WIDTH_DEFAULT;
 static const int default_height_value = OPT_HEIGHT_DEFAULT;
 static const int default_port_value = OPT_PORT_INT_DEFAULT;
@@ -837,7 +837,7 @@ static const bool default_require_server_identity_value = OPT_REQUIRE_SERVER_IDE
 static const bool default_require_client_identity_value = OPT_REQUIRE_CLIENT_IDENTITY_DEFAULT;
 static const bool default_splash_value = OPT_SPLASH_DEFAULT;
 static const bool default_status_screen_value = OPT_STATUS_SCREEN_DEFAULT;
-static const bool default_no_check_update_value = false;
+static const bool default_no_check_update_value = OPT_NO_CHECK_UPDATE_DEFAULT;
 static const bool default_log_format_console_only_value = OPT_LOG_FORMAT_CONSOLE_DEFAULT;
 
 #ifndef NDEBUG
