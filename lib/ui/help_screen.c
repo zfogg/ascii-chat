@@ -62,6 +62,8 @@ static void format_volume_bar(double volume, char *bar_output, size_t bar_output
  */
 static const char *color_mode_to_string(int mode) {
   switch (mode) {
+  case -1:
+    return "Auto";
   case 0:
     return "Mono";
   case 1:
