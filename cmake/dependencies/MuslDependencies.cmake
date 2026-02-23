@@ -274,6 +274,35 @@ else()
 endif()
 
 # =============================================================================
+# bzip2 - Compression library (needed by freetype subproject in pango)
+# =============================================================================
+set(BZIP2_PREFIX "${MUSL_DEPS_DIR_STATIC}/bzip2")
+set(BZIP2_LIBRARY "${BZIP2_PREFIX}/lib/libbz2.a")
+
+if(NOT EXISTS "${BZIP2_LIBRARY}")
+    message(STATUS "Configuring ${BoldBlue}bzip2${ColorReset} from source...")
+    ExternalProject_Add(bzip2-musl
+        URL https://www.sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz
+        URL_HASH SHA256=ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        PREFIX ${MUSL_DEPS_DIR_STATIC}/bzip2-build
+        STAMP_DIR ${MUSL_DEPS_DIR_STATIC}/bzip2-build/stamps
+        UPDATE_DISCONNECTED 1
+        BUILD_ALWAYS 0
+        CONFIGURE_COMMAND ""
+        BUILD_COMMAND bash -c "cd <SOURCE_DIR> && env CC=${MUSL_GCC} CFLAGS=-fPIC make -j"
+        INSTALL_COMMAND bash -c "mkdir -p ${BZIP2_PREFIX}/lib ${BZIP2_PREFIX}/include && cp <SOURCE_DIR>/bzlib.h ${BZIP2_PREFIX}/include/ && cp <SOURCE_DIR>/libbz2.a ${BZIP2_PREFIX}/lib/"
+        BUILD_BYPRODUCTS ${BZIP2_LIBRARY}
+        LOG_BUILD TRUE
+        LOG_INSTALL TRUE
+        LOG_OUTPUT_ON_FAILURE TRUE
+    )
+else()
+    message(STATUS "  ${BoldBlue}bzip2${ColorReset} library found in cache: ${BoldMagenta}${BZIP2_LIBRARY}${ColorReset}")
+    add_custom_target(bzip2-musl)
+endif()
+
+# =============================================================================
 # libsodium - Cryptography library
 # =============================================================================
 message(STATUS "Configuring ${BoldBlue}libsodium${ColorReset} from source...")
@@ -2112,7 +2141,7 @@ pkg-config = 'pkg-config'
             STAMP_DIR ${PANGO_BUILD_DIR}/stamps
             UPDATE_DISCONNECTED 1
             BUILD_ALWAYS 0
-            CONFIGURE_COMMAND env CC=${MUSL_GCC} CXX=clang++ PKG_CONFIG_PATH=${GLIB_PREFIX}/lib/pkgconfig:${HARFBUZZ_PREFIX}/lib/pkgconfig:${CAIRO_PREFIX}/lib/pkgconfig:${FREETYPE_PREFIX}/lib/pkgconfig ${MESON_EXECUTABLE} setup
+            CONFIGURE_COMMAND env CC=${MUSL_GCC} CXX=clang++ PKG_CONFIG_PATH=${GLIB_PREFIX}/lib/pkgconfig:${HARFBUZZ_PREFIX}/lib/pkgconfig:${CAIRO_PREFIX}/lib/pkgconfig:${FREETYPE_PREFIX}/lib/pkgconfig:${BZIP2_PREFIX}/lib/pkgconfig ${MESON_EXECUTABLE} setup
                 <BINARY_DIR>
                 <SOURCE_DIR>
                 --prefix=${PANGO_PREFIX}
@@ -2125,7 +2154,7 @@ pkg-config = 'pkg-config'
                 --cross-file=${PANGO_CROSS_FILE}
             BUILD_COMMAND ${MESON_EXECUTABLE} compile -C <BINARY_DIR> -j16
             INSTALL_COMMAND ${MESON_EXECUTABLE} install -C <BINARY_DIR>
-            DEPENDS glib-musl harfbuzz-musl cairo-musl
+            DEPENDS glib-musl harfbuzz-musl cairo-musl freetype-musl bzip2-musl zlib-musl
             BUILD_BYPRODUCTS
                 ${PANGO_PREFIX}/lib/libpango-1.0.a
                 ${PANGO_PREFIX}/lib/libpangocairo-1.0.a
