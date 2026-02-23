@@ -16,6 +16,13 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/TimerTargets.cmake)
 
 function(ascii_defer_prepare)
 
+    # Defer transformation must run before PCH is available, so disable PCH
+    # The deferred sources will be compiled without PCH anyway
+    if(ASCIICHAT_USE_PCH)
+        message(STATUS "Disabling PCH for defer transformation (defer must run before PCH generation)")
+        set(ASCIICHAT_USE_PCH OFF CACHE BOOL "PCH disabled for defer transformation" FORCE)
+    endif()
+
     # Build extra cmake args for the defer tool
     set(_defer_extra_args "")
     if(ASCIICHAT_DEFER_PREFER_STATIC)
