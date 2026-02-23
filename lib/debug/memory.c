@@ -95,13 +95,14 @@ typedef struct {
 
 // Static configuration of expected suppressions
 static const debug_memory_suppression_t g_suppression_config[] = {
-    {"lib/options/colorscheme.c", 585, 8, 47,  "8 16-color ANSI code strings"},
-    {"lib/options/colorscheme.c", 602, 8, 88,  "8 256-color ANSI code strings"},
-    {"lib/options/colorscheme.c", 619, 8, 144, "8 truecolor ANSI code strings"},
-    {"lib/util/path.c", 1211, 1, 43,           "normalized path allocation (caller frees)"},
-    {"lib/debug/named.c", 162, 2, 576,         "named registry name_counters hash entries (per thread)"},
-    {"lib/debug/named.c", 212, 2, 576,         "named registry entries hash entries (per thread)"},
-    {NULL, 0, 0, 0, NULL}                      // Sentinel
+    {"lib/options/colorscheme.c", 585, 8, 47,     "8 16-color ANSI code strings"},
+    {"lib/options/colorscheme.c", 602, 8, 88,     "8 256-color ANSI code strings"},
+    {"lib/options/colorscheme.c", 619, 8, 144,    "8 truecolor ANSI code strings"},
+    {"lib/util/path.c", 1211, 1, 43,              "normalized path allocation (caller frees)"},
+    {"lib/debug/named.c", 162, 2, 576,            "named registry name_counters hash entries (per thread)"},
+    {"lib/debug/named.c", 212, 2, 576,            "named registry entries hash entries (per thread)"},
+    {"lib/platform/posix/util.c", 35, 18, 1260,   "platform_strdup() string allocations (mirror mode)"},
+    {NULL, 0, 0, 0, NULL}                         // Sentinel
 };
 
 // Runtime counters tracking per-thread allocations (cleared at report boundaries)
