@@ -69,16 +69,8 @@ static int next_color_mode(int current) {
  * @brief Get next render mode in cycle
  */
 static int next_render_mode(int current) {
-  switch (current) {
-  case 0:     // RENDER_MODE_FOREGROUND
-    return 1; // RENDER_MODE_BACKGROUND
-  case 1:     // RENDER_MODE_BACKGROUND
-    return 2; // RENDER_MODE_HALF_BLOCK
-  case 2:     // RENDER_MODE_HALF_BLOCK
-    return 0; // Back to RENDER_MODE_FOREGROUND
-  default:
-    return 0; // Back to RENDER_MODE_FOREGROUND
-  }
+  // 3 render modes: FOREGROUND (0), BACKGROUND (1), HALF_BLOCK (2)
+  return (current + 1) % 3;
 }
 
 /**
