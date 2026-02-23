@@ -1789,48 +1789,8 @@ if(NOT EXISTS "${GTK4_LIBRARIES}")
         endif()
     endif()
 
-    # Build with meson
-    set(GTK4_BUILD_DIR "${GTK4_DOWNLOAD_DIR}/build")
-    file(MAKE_DIRECTORY "${GTK4_BUILD_DIR}")
-
-    message(STATUS "  Configuring GTK4 with meson (with Wayland backend)...")
-    set(GTK4_PKG_CONFIG_LIBDIR "${GLIB_PREFIX}/lib/pkgconfig:${LIBFFI_PREFIX}/lib/pkgconfig:${WAYLAND_PREFIX}/lib/pkgconfig:${WAYLAND_PROTOCOLS_PREFIX}/share/pkgconfig:${XKBCOMMON_PREFIX}/lib/pkgconfig:${LIBXML2_PREFIX}/lib/pkgconfig:${EXPAT_PREFIX}/lib/pkgconfig")
-    execute_process(
-        WORKING_DIRECTORY "${GTK4_DOWNLOAD_DIR}"
-        COMMAND bash -c "CC=${MUSL_GCC} CXX=clang++ PKG_CONFIG_LIBDIR=${GTK4_PKG_CONFIG_LIBDIR} PKG_CONFIG_PATH= /usr/sbin/meson setup ${GTK4_BUILD_DIR} ${GTK4_SOURCE_DIR} --prefix=${GTK4_PREFIX} --buildtype=release --default-library=static -Dintrospection=disabled -Dx11-backend=false -Dwayland-backend=true"
-        RESULT_VARIABLE CONFIG_RESULT
-        ERROR_VARIABLE CONFIG_ERROR
-        OUTPUT_VARIABLE CONFIG_OUTPUT
-    )
-    if(NOT CONFIG_RESULT EQUAL 0)
-        message(FATAL_ERROR "GTK4 meson setup failed:\n${CONFIG_ERROR}")
-    endif()
-
-    message(STATUS "  Building GTK4...")
-    execute_process(
-        WORKING_DIRECTORY "${GTK4_BUILD_DIR}"
-        COMMAND /usr/sbin/meson compile
-        RESULT_VARIABLE BUILD_RESULT
-        ERROR_VARIABLE BUILD_ERROR
-        OUTPUT_VARIABLE BUILD_OUTPUT
-    )
-    if(NOT BUILD_RESULT EQUAL 0)
-        message(FATAL_ERROR "GTK4 build failed:\n${BUILD_ERROR}")
-    endif()
-
-    message(STATUS "  Installing GTK4...")
-    execute_process(
-        WORKING_DIRECTORY "${GTK4_BUILD_DIR}"
-        COMMAND /usr/sbin/meson install
-        RESULT_VARIABLE INSTALL_RESULT
-        ERROR_VARIABLE INSTALL_ERROR
-        OUTPUT_VARIABLE INSTALL_OUTPUT
-    )
-    if(NOT INSTALL_RESULT EQUAL 0)
-        message(FATAL_ERROR "GTK4 install failed:\n${INSTALL_ERROR}")
-    endif()
-
-    message(STATUS "  ${BoldGreen}GTK4${ColorReset} built successfully")
+    # GTK4 will be built by ExternalProject_Add below (deferred to build phase)
+    message(STATUS "  GTK4 library not found, will build from source via ExternalProject_Add")
 else()
     message(STATUS "  ${BoldBlue}GTK4${ColorReset} found in cache: ${GTK4_LIBRARIES}")
 endif()
@@ -2013,7 +1973,7 @@ if(NOT EXISTS "${CAIRO_PREFIX}/lib/libcairo.a")
         STAMP_DIR ${CAIRO_BUILD_DIR}/stamps
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
-        CONFIGURE_COMMAND env CC=${MUSL_GCC} PKG_CONFIG_PATH=${PIXMAN_PREFIX}/lib/pkgconfig CFLAGS="-O2 -fPIC" <SOURCE_DIR>/configure
+        CONFIGURE_COMMAND env CC=${MUSL_GCC} PKG_CONFIG_PATH=${PIXMAN_PREFIX}/lib/pkgconfig:${FREETYPE_PREFIX}/lib/pkgconfig:${ZLIB_PREFIX}/lib/pkgconfig CFLAGS="-O2 -fPIC" <SOURCE_DIR>/configure
             --prefix=${CAIRO_PREFIX}
             --enable-static
             --disable-shared
@@ -2028,9 +1988,9 @@ if(NOT EXISTS "${CAIRO_PREFIX}/lib/libcairo.a")
             --disable-tests
             --disable-valgrind
             --disable-interpreters
-        BUILD_COMMAND env CFLAGS="-O2 -fPIC" PKG_CONFIG_PATH=${PIXMAN_PREFIX}/lib/pkgconfig make -j
+        BUILD_COMMAND env CFLAGS="-O2 -fPIC" PKG_CONFIG_PATH=${PIXMAN_PREFIX}/lib/pkgconfig:${FREETYPE_PREFIX}/lib/pkgconfig:${ZLIB_PREFIX}/lib/pkgconfig make -j
         INSTALL_COMMAND make install
-        DEPENDS pixman-musl
+        DEPENDS pixman-musl freetype-musl
         BUILD_BYPRODUCTS ${CAIRO_PREFIX}/lib/libcairo.a
         LOG_DOWNLOAD TRUE
         LOG_CONFIGURE TRUE
@@ -2227,6 +2187,9 @@ pkg-config = 'pkg-config'
 "
         )
 
+        # Set PKG_CONFIG_PATH to include all GTK4 dependencies (cache only, no system paths)
+        set(GTK4_PKG_CONFIG_PATH "${PANGO_PREFIX}/lib/pkgconfig:${GLIB_PREFIX}/lib/pkgconfig:${CAIRO_PREFIX}/lib/pkgconfig:${HARFBUZZ_PREFIX}/lib/pkgconfig:${FREETYPE_PREFIX}/lib/pkgconfig:${WAYLAND_PREFIX}/lib/pkgconfig:${PIXMAN_PREFIX}/lib/pkgconfig:${WAYLAND_PROTOCOLS_PREFIX}/share/pkgconfig:${XKBCOMMON_PREFIX}/lib/pkgconfig:${LIBXML2_PREFIX}/lib/pkgconfig:${EXPAT_PREFIX}/lib/pkgconfig:${LIBFFI_PREFIX}/lib/pkgconfig:${PCRE2_PREFIX}/lib/pkgconfig:${ZLIB_PREFIX}/lib/pkgconfig")
+
         ExternalProject_Add(gtk4-musl
             URL https://download.gnome.org/sources/gtk/4.14/gtk-4.14.1.tar.xz
             URL_HASH SHA256=fcefb3f132f8cc4711a9efa5b353c9ae9bb5eeff0246fa74dbc2f2f839b9e308
@@ -2235,29 +2198,10 @@ pkg-config = 'pkg-config'
             STAMP_DIR ${GTK4_BUILD_DIR}/stamps
             UPDATE_DISCONNECTED 1
             BUILD_ALWAYS 0
-            CONFIGURE_COMMAND env CC=${MUSL_GCC} CXX=clang++ PKG_CONFIG_PATH=${PANGO_PREFIX}/lib/pkgconfig:${GLIB_PREFIX}/lib/pkgconfig:${CAIRO_PREFIX}/lib/pkgconfig:${HARFBUZZ_PREFIX}/lib/pkgconfig:${FREETYPE_PREFIX}/lib/pkgconfig ${MESON_EXECUTABLE} setup
-                <BINARY_DIR>
-                <SOURCE_DIR>
-                --prefix=${GTK4_PREFIX}
-                --buildtype=release
-                --default-library=static
-                --wrap-mode=nodownload
-                -Dintrospection=disabled
-                -Dtests=false
-                -Ddemos=false
-                -Dexamples=false
-                -Dbuild-tests=false
-                -Dbuild-examples=false
-                -Dbuild-testsuite=false
-                -Dgtk_doc=false
-                -Dwin32-backend=false
-                -Dwayland-backend=false
-                -Dmedia-gstreamer=disabled
-                -Dvulkan=disabled
-                --cross-file=${GTK4_CROSS_FILE}
+            CONFIGURE_COMMAND bash -c "CC=${MUSL_GCC} CXX=clang++ PATH=${GLIB_PREFIX}/bin:$PATH PKG_CONFIG_PATH=${GTK4_PKG_CONFIG_PATH} /usr/sbin/meson setup <BINARY_DIR> <SOURCE_DIR> --prefix=${GTK4_PREFIX} --buildtype=release --default-library=static --wrap-mode=nofallback -Dintrospection=disabled -Dx11-backend=false -Dwin32-backend=false -Dwayland-backend=true"
             BUILD_COMMAND ${MESON_EXECUTABLE} compile -C <BINARY_DIR> -j${CMAKE_BUILD_PARALLEL_LEVEL}
             INSTALL_COMMAND ${MESON_EXECUTABLE} install -C <BINARY_DIR>
-            DEPENDS pango-musl cairo-musl pixman-musl harfbuzz-musl freetype-musl glib-musl
+            DEPENDS pango-musl cairo-musl pixman-musl harfbuzz-musl freetype-musl glib-musl wayland-musl
             BUILD_BYPRODUCTS ${GTK4_PREFIX}/lib/libgtk-4.a
             LOG_DOWNLOAD TRUE
             LOG_CONFIGURE TRUE
