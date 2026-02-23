@@ -94,6 +94,13 @@
  * - System error context (errno)
  */
 
+/* Forward declaration of backtrace_t - will be typedef'd next */
+typedef struct {
+  void *ptrs[32];    ///< Raw return addresses
+  char **symbols;    ///< Symbolized strings (NULL until backtrace_symbolize called)
+  int count;         ///< Number of frames captured
+} backtrace_t;
+
 /**
  * @brief Error context structure
  *
@@ -116,9 +123,7 @@ typedef struct {
   uint64_t timestamp;       ///< Timestamp when error occurred (microseconds since epoch)
   int system_errno;         ///< System errno value (if applicable, 0 otherwise)
   int wsa_error;            ///< Windows socket error code (if applicable, 0 otherwise)
-  void *backtrace[32];      ///< Stack trace addresses (debug builds only)
-  char **backtrace_symbols; ///< Stack trace symbol strings (debug builds only)
-  int stack_depth;          ///< Number of stack frames captured (0 if not captured)
+  backtrace_t backtrace;    ///< Stack trace (debug builds only)
   bool has_system_error;    ///< True if system_errno is valid
   bool has_wsa_error;       ///< True if wsa_error is valid
 } asciichat_error_context_t;

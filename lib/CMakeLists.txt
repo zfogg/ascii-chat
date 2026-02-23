@@ -116,6 +116,7 @@ set(CORE_SRCS
 # Debug sources only in non-Release builds
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     list(APPEND CORE_SRCS
+        ${LIB_DIR}/debug/backtrace.c
         ${LIB_DIR}/debug/named.c
         ${LIB_DIR}/debug/sync.c
         ${LIB_DIR}/debug/memory.c

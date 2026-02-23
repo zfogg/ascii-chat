@@ -14,6 +14,7 @@
 #endif
 
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/debug/backtrace.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/string.h>
@@ -36,9 +37,7 @@ __thread asciichat_error_context_t asciichat_errno_context = {.code = ASCIICHAT_
                                                               .context_message = NULL,
                                                               .timestamp = 0,
                                                               .system_errno = 0,
-                                                              .backtrace = {0},
-                                                              .backtrace_symbols = NULL,
-                                                              .stack_depth = 0,
+                                                              .backtrace = {.count = 0, .symbols = NULL},
                                                               .has_system_error = false};
 
 __thread asciichat_error_t asciichat_errno = ASCIICHAT_OK;
@@ -74,14 +73,13 @@ static struct {
  * ============================================================================
  */
 
-static void capture_backtrace(void **backtrace, char ***backtrace_symbols, int *stack_depth) {
+static void capture_backtrace(backtrace_t *bt) {
 #ifndef NDEBUG // Capture in Debug and Dev modes
-  *stack_depth = platform_backtrace(backtrace, 32);
-  *backtrace_symbols = platform_backtrace_symbols(backtrace, *stack_depth);
+  if (bt) {
+    backtrace_capture_and_symbolize(bt);
+  }
 #else
-  (void)backtrace;
-  (void)backtrace_symbols;
-  *stack_depth = 0;
+  (void)bt;
 #endif
 }
 
@@ -158,12 +156,8 @@ void asciichat_set_errno(asciichat_error_t code, const char *file, int line, con
   }
 
   // Capture stack trace in debug builds
-  if (asciichat_errno_context.backtrace_symbols != NULL) {
-    platform_backtrace_symbols_destroy(asciichat_errno_context.backtrace_symbols);
-    asciichat_errno_context.backtrace_symbols = NULL;
-  }
-  capture_backtrace(asciichat_errno_context.backtrace, &asciichat_errno_context.backtrace_symbols,
-                    &asciichat_errno_context.stack_depth);
+  backtrace_t_free(&asciichat_errno_context.backtrace);
+  capture_backtrace(&asciichat_errno_context.backtrace);
 
   // Record in statistics
   asciichat_error_stats_record(code);
@@ -242,10 +236,7 @@ void asciichat_clear_errno(void) {
     asciichat_errno_context.context_message = NULL;
   }
 
-  if (asciichat_errno_context.backtrace_symbols != NULL) {
-    platform_backtrace_symbols_destroy(asciichat_errno_context.backtrace_symbols);
-    asciichat_errno_context.backtrace_symbols = NULL;
-  }
+  backtrace_t_free(&asciichat_errno_context.backtrace);
 
   memset(&asciichat_errno_context, 0, sizeof(asciichat_errno_context));
   asciichat_errno_context.code = ASCIICHAT_OK;
@@ -300,14 +291,11 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
 
 #ifndef NDEBUG
   // Always print platform backtrace in debug/dev builds
-  void *buffer[32];
-  int size = platform_backtrace(buffer, 32);
-  if (size > 0) {
-    char **symbols = platform_backtrace_symbols(buffer, size);
-    if (symbols) {
-      platform_print_backtrace_symbols("\nFATAL BACKTRACE", symbols, size, 0, 0, skip_backtrace_frame);
-      platform_backtrace_symbols_destroy(symbols);
-    }
+  backtrace_t bt = {0};
+  backtrace_capture_and_symbolize(&bt);
+  if (bt.count > 0) {
+    backtrace_print("\nFATAL BACKTRACE", &bt, 0, 0, skip_backtrace_frame);
+    backtrace_t_free(&bt);
   }
 #endif
 
@@ -354,9 +342,8 @@ void asciichat_print_error_context(const asciichat_error_context_t *context) {
   }
 
   // Print stack trace from library error
-  if (context->stack_depth > 0 && context->backtrace_symbols) {
-    platform_print_backtrace_symbols("\nBacktrace from library error", context->backtrace_symbols, context->stack_depth,
-                                     0, 0, skip_backtrace_frame);
+  if (context->backtrace.count > 0 && context->backtrace.symbols) {
+    backtrace_print("\nBacktrace from library error", &context->backtrace, 0, 0, skip_backtrace_frame);
   }
 }
 
@@ -502,10 +489,7 @@ void asciichat_errno_suppress(bool suppress) {
 }
 
 void asciichat_errno_destroy(void) {
-  if (asciichat_errno_context.backtrace_symbols != NULL) {
-    platform_backtrace_symbols_destroy(asciichat_errno_context.backtrace_symbols);
-    asciichat_errno_context.backtrace_symbols = NULL;
-  }
+  backtrace_t_free(&asciichat_errno_context.backtrace);
 
   if (asciichat_errno_context.context_message != NULL) {
     SAFE_FREE(asciichat_errno_context.context_message);
