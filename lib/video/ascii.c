@@ -343,11 +343,11 @@ asciichat_error_t ascii_write(const char *frame) {
 
   size_t frame_len = strlen(frame);
   // Write all frame data with automatic retry on transient errors
-  (void)platform_write_all(STDOUT_FILENO, frame, frame_len);
+  platform_write_all(STDOUT_FILENO, frame, frame_len);
 
   // Flush C stdio buffer and terminal to ensure piped output is written immediately
   (void)fflush(stdout);
-  (void)terminal_flush(STDOUT_FILENO);
+  terminal_flush(STDOUT_FILENO);
 
   return ASCIICHAT_OK;
 }
@@ -397,6 +397,7 @@ void ascii_read_destroy(void) {
  */
 char *ascii_pad_frame_width(const char *frame, size_t pad_left) {
   if (!frame) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "ascii_pad_frame_width: frame is NULL");
     return NULL;
   }
 
