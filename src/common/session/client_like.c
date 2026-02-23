@@ -383,14 +383,10 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     log_info("stdin render mode: reading %d-line frames from stdin, auto-detecting width", frame_height);
   }
 
-  // Choose capture type based on mode:
+  // Choose capture type based on mode determined earlier:
   // - Mirror mode: needs to capture local media (webcam, file, test pattern)
   // - Network modes (client/discovery): receive frames from network, no local capture
-  // For client mode: g_websocket_client will be NULL here (created in client_run),
-  // but likely_client_mode will be true since it has a run_fn
-  bool is_network_mode = (g_tcp_client != NULL || g_websocket_client != NULL ||
-                          (config->run_fn != NULL && !config->discovery && !mirror_mode) ||
-                          discovery_mode);
+  bool is_network_mode = network_mode || discovery_mode;
 
   if (!stdin_render_mode && is_network_mode) {
     // Network mode: create minimal capture context without media source
