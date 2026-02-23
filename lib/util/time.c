@@ -571,7 +571,6 @@ int time_format_now(const char *format_str, char *buf, size_t buf_size) {
 
   /* Extract seconds and nanoseconds */
   time_t seconds = (time_t)(ts_ns / NS_PER_SEC_INT);
-  long nanoseconds = (long)(ts_ns % NS_PER_SEC_INT);
 
   /* Convert seconds to struct tm */
   struct tm tm_info;
