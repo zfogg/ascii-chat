@@ -2201,7 +2201,7 @@ pkg-config = 'pkg-config'
             CONFIGURE_COMMAND bash -c "CC=${MUSL_GCC} CXX=clang++ PATH=${GLIB_PREFIX}/bin:$PATH PKG_CONFIG_PATH=${GTK4_PKG_CONFIG_PATH} /usr/sbin/meson setup <BINARY_DIR> <SOURCE_DIR> --prefix=${GTK4_PREFIX} --buildtype=release --default-library=static --wrap-mode=nofallback -Dintrospection=disabled -Dx11-backend=false -Dwin32-backend=false -Dwayland-backend=true"
             BUILD_COMMAND ${MESON_EXECUTABLE} compile -C <BINARY_DIR> -j${CMAKE_BUILD_PARALLEL_LEVEL}
             INSTALL_COMMAND ${MESON_EXECUTABLE} install -C <BINARY_DIR>
-            DEPENDS pango-musl cairo-musl pixman-musl harfbuzz-musl freetype-musl glib-musl wayland-musl
+            DEPENDS pango-musl cairo-musl pixman-musl harfbuzz-musl freetype-musl glib-musl
             BUILD_BYPRODUCTS ${GTK4_PREFIX}/lib/libgtk-4.a
             LOG_DOWNLOAD TRUE
             LOG_CONFIGURE TRUE

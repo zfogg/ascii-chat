@@ -232,7 +232,6 @@ set(LIB_SRC_COMMON
 
     # Debug/memory tracking
     ${LIB_ROOT}/debug/memory.c
-    ${LIB_ROOT}/debug/lock.c
 
     # Terminal abstraction (using WASM-specific version from PLATFORM_SRC)
     # ${LIB_ROOT}/platform/terminal.c - EXCLUDED: using wasm/terminal.c instead
