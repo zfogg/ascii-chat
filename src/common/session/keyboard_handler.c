@@ -65,6 +65,21 @@ static int next_color_mode(int current) {
   }
 }
 
+/**
+ * @brief Get next render mode in cycle
+ */
+static int next_render_mode(int current) {
+  // Cycle through render modes (Foreground → Background → Half-block → Foreground)
+  switch (current) {
+  case 0:     // RENDER_MODE_FOREGROUND
+    return 1; // RENDER_MODE_BACKGROUND
+  case 1:     // RENDER_MODE_BACKGROUND
+    return 2; // RENDER_MODE_HALF_BLOCK
+  default:
+    return 0; // Back to RENDER_MODE_FOREGROUND
+  }
+}
+
 /* ============================================================================
  * Keyboard Handler
  * ============================================================================ */
@@ -220,6 +235,19 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
       options_set_double("speakers_volume", restore_volume);
       double verify = GET_OPTION(speakers_volume);
       log_info("Unmuted: restored %.0f%% (verified: %.2f)", restore_volume * 100.0, verify);
+    }
+    break;
+  }
+
+  // ===== RENDER MODE CONTROL =====
+  case KEY_R: {
+    int current_mode = (int)GET_OPTION(render_mode);
+    int next_mode = next_render_mode(current_mode);
+    options_set_int("render_mode", next_mode);
+
+    const char *mode_names[] = {"Foreground", "Background", "Half-block"};
+    if (next_mode >= 0 && next_mode <= 2) {
+      log_info("Render mode: %s", mode_names[next_mode]);
     }
     break;
   }

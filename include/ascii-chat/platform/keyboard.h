@@ -59,6 +59,7 @@ typedef enum {
   KEY_LEFT = 258,     ///< Left arrow key
   KEY_RIGHT = 259,    ///< Right arrow key
   KEY_C = 'c',        ///< 'c' key - cycle color modes
+  KEY_R = 'r',        ///< 'r' key - cycle render modes
   KEY_M = 'm',        ///< 'm' key - toggle mute
   KEY_F = 'f',        ///< 'f' key - flip webcam
   KEY_QUESTION = '?', ///< '?' key - show help screen
