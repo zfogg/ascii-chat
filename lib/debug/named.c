@@ -240,11 +240,24 @@ const char *named_register_fmt(uintptr_t key, const char *type,
         return "?";
     }
 
+    // Check for duplicate names
+    rwlock_wrlock_impl(&g_named_registry.entries_lock);
+
+    named_entry_t *existing, *tmp;
+    HASH_ITER(hh, g_named_registry.entries, existing, tmp) {
+        if (existing->name && strcmp(existing->name, full_name) == 0) {
+            // Name already exists
+            SET_ERRNO(ERROR_INVALID_STATE,
+                     "Name '%s' already registered (key=0x%tx, existing_key=0x%tx)",
+                     full_name, (ptrdiff_t)key, (ptrdiff_t)existing->key);
+            rwlock_wrunlock_impl(&g_named_registry.entries_lock);
+            free(full_name);
+            return "?";
+        }
+    }
+
     // Make file path relative to project root
     const char *relative_file = extract_project_relative_path(file ? file : "unknown");
-
-    // Lock and insert/update in registry
-    rwlock_wrlock_impl(&g_named_registry.entries_lock);
 
     named_entry_t *entry;
     HASH_FIND(hh, g_named_registry.entries, &key, sizeof(key), entry);
