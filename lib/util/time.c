@@ -477,8 +477,21 @@ int time_human_readable(uint64_t nanoseconds, char *buffer, size_t buffer_size) 
     return -1;
   }
 
+  // Delegate to signed version (always past times)
+  return time_human_readable_signed((int64_t)nanoseconds, buffer, buffer_size);
+}
+
+int time_human_readable_signed(int64_t nanoseconds, char *buffer, size_t buffer_size) {
+  if (!buffer || buffer_size == 0) {
+    return -1;
+  }
+
+  // Determine direction (past vs future)
+  bool is_future = nanoseconds < 0;
+  uint64_t abs_ns = is_future ? (uint64_t)(-nanoseconds) : (uint64_t)nanoseconds;
+
   // Convert nanoseconds to seconds for threshold checking
-  double total_seconds = (double)nanoseconds / NS_PER_SEC;
+  double total_seconds = (double)abs_ns / NS_PER_SEC;
   int minutes = (int)(total_seconds / 60);
   int hours = minutes / 60;
   int days = hours / 24;
@@ -486,30 +499,31 @@ int time_human_readable(uint64_t nanoseconds, char *buffer, size_t buffer_size) 
   int years = months / 12;
 
   int written = 0;
+  const char *suffix = is_future ? "from now" : "ago";
 
   // Moment.js-compatible thresholds
   if (total_seconds < 45) {
-    written = safe_snprintf(buffer, buffer_size, "a few seconds ago");
+    written = safe_snprintf(buffer, buffer_size, "a few seconds %s", suffix);
   } else if (total_seconds < 90) {
-    written = safe_snprintf(buffer, buffer_size, "a minute ago");
+    written = safe_snprintf(buffer, buffer_size, "a minute %s", suffix);
   } else if (minutes < 45) {
-    written = safe_snprintf(buffer, buffer_size, "%d minutes ago", minutes);
+    written = safe_snprintf(buffer, buffer_size, "%d minutes %s", minutes, suffix);
   } else if (minutes < 90) {
-    written = safe_snprintf(buffer, buffer_size, "an hour ago");
+    written = safe_snprintf(buffer, buffer_size, "an hour %s", suffix);
   } else if (hours < 22) {
-    written = safe_snprintf(buffer, buffer_size, "%d hours ago", hours);
+    written = safe_snprintf(buffer, buffer_size, "%d hours %s", hours, suffix);
   } else if (hours < 36) {
-    written = safe_snprintf(buffer, buffer_size, "a day ago");
+    written = safe_snprintf(buffer, buffer_size, "a day %s", suffix);
   } else if (days < 25) {
-    written = safe_snprintf(buffer, buffer_size, "%d days ago", days);
+    written = safe_snprintf(buffer, buffer_size, "%d days %s", days, suffix);
   } else if (days < 45) {
-    written = safe_snprintf(buffer, buffer_size, "a month ago");
+    written = safe_snprintf(buffer, buffer_size, "a month %s", suffix);
   } else if (months < 11) {
-    written = safe_snprintf(buffer, buffer_size, "%d months ago", months);
+    written = safe_snprintf(buffer, buffer_size, "%d months %s", months, suffix);
   } else if (months < 18) {
-    written = safe_snprintf(buffer, buffer_size, "a year ago");
+    written = safe_snprintf(buffer, buffer_size, "a year %s", suffix);
   } else {
-    written = safe_snprintf(buffer, buffer_size, "%d years ago", years);
+    written = safe_snprintf(buffer, buffer_size, "%d years %s", years, suffix);
   }
 
   if (written < 0 || (size_t)written >= buffer_size) {
@@ -520,8 +534,8 @@ int time_human_readable(uint64_t nanoseconds, char *buffer, size_t buffer_size) 
 }
 
 int time_human_readable_now(char *buffer, size_t buffer_size) {
-  uint64_t ns = time_get_ns();
-  return time_human_readable(ns, buffer, buffer_size);
+  int64_t ns = (int64_t)time_get_ns();
+  return time_human_readable_signed(ns, buffer, buffer_size);
 }
 
 // ============================================================================

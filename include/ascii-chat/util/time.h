@@ -503,6 +503,28 @@ int time_pretty_now(int decimals, char *buffer, size_t buffer_size);
 int time_human_readable(uint64_t nanoseconds, char *buffer, size_t buffer_size);
 
 /**
+ * @brief Format elapsed time as human-readable relative duration with past/future support
+ * @param nanoseconds Signed elapsed nanoseconds (negative for future times)
+ * @param buffer Output buffer for formatted string
+ * @param buffer_size Size of output buffer
+ * @return Number of characters written (excluding null terminator), or -1 on error
+ *
+ * Formats a duration as a human-readable string with moment.js-compatible thresholds.
+ * Supports both past times ("3 hours ago") and future times ("in 5 minutes").
+ *
+ * Examples:
+ * - Positive: 3600000000000 ns → "an hour ago"
+ * - Negative: -300000000000 ns → "in 5 minutes"
+ *
+ * @note Use positive values for elapsed time (past), negative for countdown (future)
+ * @note Buffer should be at least 32 bytes for all possible outputs
+ * @note Thread-safe (no global state)
+ *
+ * @ingroup module_utilities
+ */
+int time_human_readable_signed(int64_t nanoseconds, char *buffer, size_t buffer_size);
+
+/**
  * @brief Format current monotonic time as human-readable relative duration
  * @param buffer Output buffer for formatted string
  * @param buffer_size Size of output buffer
