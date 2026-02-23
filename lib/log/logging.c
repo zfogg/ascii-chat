@@ -577,7 +577,7 @@ void log_init(const char *filename, log_level_t level, bool force_stderr, bool u
 
   /* Mark logging system as initialized (state machine transition) */
   if (!lifecycle_is_initialized(&g_log.lifecycle)) {
-    lifecycle_init(&g_log.lifecycle, NULL);
+    lifecycle_init(&g_log.lifecycle, "logging");
   }
   atomic_store(&g_log.terminal_output_enabled, preserve_terminal_output);
 

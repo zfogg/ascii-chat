@@ -377,7 +377,7 @@ asciichat_error_t options_state_init(void) {
   }
 
   /* Use lifecycle to serialize initialization */
-  if (!lifecycle_init(&g_options_lifecycle, NULL)) {
+  if (!lifecycle_init(&g_options_lifecycle, "options")) {
     /* Another thread is initializing or already initialized */
     if (lifecycle_is_initialized(&g_options_lifecycle)) {
       return ASCIICHAT_OK;

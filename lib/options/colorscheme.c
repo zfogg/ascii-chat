@@ -308,7 +308,7 @@ asciichat_error_t colorscheme_init(void) {
   memcpy(&g_active_scheme, pastel, sizeof(color_scheme_t));
 
   /* Mark as initialized */
-  lifecycle_init(&g_colorscheme_lifecycle, NULL);
+  lifecycle_init(&g_colorscheme_lifecycle, "colorscheme");
 
   return ASCIICHAT_OK;
 }

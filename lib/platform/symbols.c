@@ -288,7 +288,7 @@ static symbolizer_type_t detect_symbolizer(void) {
 // ============================================================================
 
 asciichat_error_t symbol_cache_init(void) {
-  if (!lifecycle_init(&g_symbol_cache_lc, NULL)) {
+  if (!lifecycle_init(&g_symbol_cache_lc, "symbol_cache")) {
     return 0; // Already initialized
   }
 
