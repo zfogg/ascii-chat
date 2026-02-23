@@ -233,17 +233,21 @@ static int audio_queue_packet(const uint8_t *opus_data, size_t opus_size, const 
 
   // Copy packet to queue
   audio_send_packet_t *packet = &g_audio_send_queue[g_audio_send_queue_head];
-  if (opus_size <= sizeof(packet->data)) {
-    memcpy(packet->data, opus_data, opus_size);
-    packet->size = opus_size;
-    packet->frame_count = frame_count;
-    for (int i = 0; i < frame_count && i < 8; i++) {
-      packet->frame_sizes[i] = frame_sizes[i];
-    }
-    g_audio_send_queue_head = next_head;
+  if (opus_size > sizeof(packet->data)) {
+    mutex_unlock(&g_audio_send_queue_mutex);
+    log_warn("Audio packet too large for queue: %zu > %zu bytes", opus_size, sizeof(packet->data));
+    return -1;
   }
 
-  // Signal sender thread
+  memcpy(packet->data, opus_data, opus_size);
+  packet->size = opus_size;
+  packet->frame_count = frame_count;
+  for (int i = 0; i < frame_count && i < 8; i++) {
+    packet->frame_sizes[i] = frame_sizes[i];
+  }
+  g_audio_send_queue_head = next_head;
+
+  // Signal sender thread (must be held while signaling)
   cond_signal(&g_audio_send_queue_cond);
   mutex_unlock(&g_audio_send_queue_mutex);
 
@@ -270,14 +274,22 @@ static void *audio_sender_thread_func(void *arg) {
   while (!atomic_load(&g_audio_sender_should_exit)) {
     mutex_lock(&g_audio_send_queue_mutex);
 
-    // Wait for packet or exit signal
+    // Wait for packet or exit signal (cond_wait re-acquires mutex before returning)
     while (g_audio_send_queue_head == g_audio_send_queue_tail && !atomic_load(&g_audio_sender_should_exit)) {
       cond_wait(&g_audio_send_queue_cond, &g_audio_send_queue_mutex);
     }
 
+    // Check exit flag after waking from cond_wait
     if (atomic_load(&g_audio_sender_should_exit)) {
       mutex_unlock(&g_audio_send_queue_mutex);
       break;
+    }
+
+    // Safety check: ensure queue actually has data (handle spurious wakeups)
+    if (g_audio_send_queue_head == g_audio_send_queue_tail) {
+      // Spurious wakeup - queue is empty, go back to waiting
+      mutex_unlock(&g_audio_send_queue_mutex);
+      continue;
     }
 
     // Dequeue packet
