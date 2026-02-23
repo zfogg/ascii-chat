@@ -301,15 +301,15 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     # Configure the pkgconfig file (works for both shared and static library)
     # Both require external dependencies: libsodium, zstd, portaudio, opus, mimalloc
     configure_file(
-        "${CMAKE_SOURCE_DIR}/share/pkgconfig/ascii-chat.pc.in"
-        "${CMAKE_BINARY_DIR}/ascii-chat.pc"
+        "${CMAKE_SOURCE_DIR}/share/pkgconfig/libasciichat.pc.in"
+        "${CMAKE_BINARY_DIR}/libasciichat.pc"
         @ONLY
     )
-    install(FILES "${CMAKE_BINARY_DIR}/ascii-chat.pc"
+    install(FILES "${CMAKE_BINARY_DIR}/libasciichat.pc"
         DESTINATION lib/pkgconfig
         COMPONENT Development
     )
-    message(STATUS "${BoldGreen}Configured${ColorReset} ${BoldBlue}pkg-config${ColorReset} file: ascii-chat.pc")
+    message(STATUS "${BoldGreen}Configured${ColorReset} ${BoldBlue}pkg-config${ColorReset} file: libasciichat.pc")
 endif()
 
 # Install CMake package config file (for find_package support)
