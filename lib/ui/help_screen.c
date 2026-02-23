@@ -157,24 +157,25 @@ static void build_help_line(char *output, size_t output_size, const char *conten
  * @param label Label string (e.g., "Volume")
  * @param value Value string to display (may contain UTF-8)
  * @param max_width Maximum total line width
+ * @param label_width Fixed width for labels (usually 6 for standard settings, wider for other sections)
  */
-static void build_settings_line(char *output, size_t output_size, const char *label, const char *value, int max_width) {
+static void build_settings_line(char *output, size_t output_size, const char *label, const char *value, int max_width, int label_width) {
   if (!output || output_size < 256 || !label || !value || max_width < 20) {
     return;
   }
 
   // Align all values to start at the same column by padding labels to fixed width
-  const int MAX_LABEL_WIDTH = 6;
+  const int MAX_LABEL_WIDTH = label_width;
 
-  int label_width = utf8_display_width(label);
+  int actual_label_width = utf8_display_width(label);
 
   // Calculate label padding to align all values vertically
-  int label_padding = MAX_LABEL_WIDTH - label_width;
+  int label_padding = MAX_LABEL_WIDTH - actual_label_width;
   if (label_padding < 0) {
     label_padding = 0;
   }
 
-  // Fixed prefix: "║  " (3) + label (padded to 6) + ":  " (3) = 12 columns
+  // Fixed prefix: "║  " (3) + label (padded to MAX_LABEL_WIDTH) + " : " (3) = 6 + MAX_LABEL_WIDTH columns
   int fixed_prefix = 1 + 2 + MAX_LABEL_WIDTH + 3;
   int right_border = 1;
 
@@ -207,8 +208,8 @@ static void build_settings_line(char *output, size_t output_size, const char *la
     remaining--;
   }
 
-  // Colon and spacing before value (two spaces)
-  n = snprintf(pos, remaining, ":  ");
+  // Colon with spacing (one space before and after)
+  n = snprintf(pos, remaining, " : ");
   if (n > 0) {
     pos += n;
     remaining -= n;
@@ -272,10 +273,11 @@ static void append_help_line(char *buffer, size_t *buf_pos, size_t BUFFER_SIZE,
 
 /**
  * @brief Helper to append a settings line to the buffer
+ * @param label_width Fixed width for label alignment (typically 6 for standard settings)
  */
 static void append_settings_line(char *buffer, size_t *buf_pos, size_t BUFFER_SIZE,
                                 int start_row, int *current_row, int start_col, int box_width,
-                                const char *label, const char *value) {
+                                const char *label, const char *value, int label_width) {
   if (!buffer || *buf_pos >= BUFFER_SIZE || !label || !value) {
     return;
   }
@@ -289,7 +291,7 @@ static void append_settings_line(char *buffer, size_t *buf_pos, size_t BUFFER_SI
     *buf_pos += written;
   }
 
-  build_settings_line(line_buf, sizeof(line_buf), label, value, box_width);
+  build_settings_line(line_buf, sizeof(line_buf), label, value, box_width, label_width);
   written = snprintf(buffer + *buf_pos, BUFFER_SIZE - *buf_pos, "%s", line_buf);
   if (written > 0) {
     *buf_pos += written;
@@ -445,24 +447,28 @@ void session_display_render_help(session_display_ctx_t *ctx) {
 
   // Build settings lines with UTF-8 width-aware padding (ordered to match keybinds: m, ↑/↓, c, r, f)
   append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                      "Audio", audio_text);
+                      "Audio", audio_text, 6);
   append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                      "Volume", volume_bar);
+                      "Volume", volume_bar, 6);
   append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                      "Color", color_str);
+                      "Color", color_str, 6);
   append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                      "Render", render_str);
+                      "Render", render_str, 6);
   append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                      "Flip", flip_text);
+                      "Flip", flip_text, 6);
 
   // Blank line before animations section
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, "");
 
   // Animations section
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                  "Animations:");
-  append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                      "Matrix Rain (0)", matrix_text);
+                  "Animations (number key toggle):");
+
+  // Format: "(0) Matrix \"Digital Rain\" : X/O"
+  char animation_line[256];
+  snprintf(animation_line, sizeof(animation_line), "(0) Matrix \"Digital Rain\" : %s", matrix_text);
+  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
+                  animation_line);
 
   // Blank line before footer
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, "");
