@@ -334,9 +334,18 @@ static void audio_sender_init(void) {
     return; // Already initialized
   }
 
-  // Initialize queue structures
-  mutex_init(&g_audio_send_queue_mutex, "audio_queue");
-  cond_init(&g_audio_send_queue_cond, "audio_queue");
+  // Initialize queue structures with error checking
+  if (mutex_init(&g_audio_send_queue_mutex, "audio_send_queue_mutex") != 0) {
+    log_error("Failed to initialize audio queue mutex");
+    return;
+  }
+
+  if (cond_init(&g_audio_send_queue_cond, "audio_send_queue_cond") != 0) {
+    log_error("Failed to initialize audio queue condition variable");
+    mutex_destroy(&g_audio_send_queue_mutex);
+    return;
+  }
+
   g_audio_send_queue_head = 0;
   g_audio_send_queue_tail = 0;
   atomic_store(&g_audio_sender_should_exit, false);
