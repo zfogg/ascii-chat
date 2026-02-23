@@ -157,9 +157,30 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
       inside_metadata = false;
     }
 
-    // Track spaces for word wrapping (but NOT inside metadata blocks)
-    if (*p == ' ' && !inside_metadata) {
-      last_space = p;
+    // Track spaces for word wrapping, including inside metadata blocks
+    // Skip spaces right before parenthetical groups ONLY if they're short
+    if (*p == ' ') {
+      const char *next = p + 1;
+      while (*next == ' ')
+        next++;
+      // Check if this is a short parenthetical (closing paren within 50 chars)
+      bool is_short_paren = false;
+      if (*next == '(') {
+        const char *closing = next;
+        int paren_len = 0;
+        while (*closing && paren_len < 50) {
+          if (*closing == ')')
+            break;
+          closing++;
+          paren_len++;
+        }
+        // If closing paren found within 50 chars, it's short
+        is_short_paren = (*closing == ')');
+      }
+      // Don't break before short parentheticals, but allow for long ones
+      if (*next != '(' || !is_short_paren) {
+        last_space = p;
+      }
     }
 
     // Decode UTF-8 character length
