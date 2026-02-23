@@ -221,6 +221,10 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
     if (webcam_error != ASCIICHAT_OK) {
       // Webcam init failed - log and cleanup
       log_error("Failed to initialize webcam device %u (error code: %d)", index, webcam_error);
+      // Destroy mutexes before freeing source
+      mutex_destroy(&source->decoder_mutex);
+      mutex_destroy(&source->pause_mutex);
+      mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
 
       // Explicitly re-set errno to preserve the specific error code for the caller
@@ -240,6 +244,10 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
   case MEDIA_SOURCE_FILE: {
     if (!path || path[0] == '\0') {
       SET_ERRNO(ERROR_INVALID_PARAM, "File path is required for FILE source");
+      // Destroy mutexes before freeing source
+      mutex_destroy(&source->decoder_mutex);
+      mutex_destroy(&source->pause_mutex);
+      mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
     }
@@ -253,6 +261,10 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
     asciichat_error_t resolve_err = media_source_resolve_url(path, yt_dlp_options, resolved_url, sizeof(resolved_url));
     if (resolve_err != ASCIICHAT_OK) {
       log_debug("Failed to resolve URL (error: %d)", resolve_err);
+      // Destroy mutexes before freeing source
+      mutex_destroy(&source->decoder_mutex);
+      mutex_destroy(&source->pause_mutex);
+      mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
     }
@@ -270,6 +282,10 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
     if (!source->file_path) {
       SET_ERRNO(ERROR_MEMORY, "Failed to duplicate file path");
       SAFE_FREE(source->original_youtube_url);
+      // Destroy mutexes before freeing source
+      mutex_destroy(&source->decoder_mutex);
+      mutex_destroy(&source->pause_mutex);
+      mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
     }
@@ -281,6 +297,10 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
       log_error("Failed to open media file for video: %s", effective_path);
       SAFE_FREE(source->file_path);
       SAFE_FREE(source->original_youtube_url);
+      // Destroy mutexes before freeing source
+      mutex_destroy(&source->decoder_mutex);
+      mutex_destroy(&source->pause_mutex);
+      mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
     }
@@ -300,6 +320,10 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
       source->video_decoder = NULL;
       SAFE_FREE(source->file_path);
       SAFE_FREE(source->original_youtube_url);
+      // Destroy mutexes before freeing source
+      mutex_destroy(&source->decoder_mutex);
+      mutex_destroy(&source->pause_mutex);
+      mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
     }
@@ -314,6 +338,10 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
     source->video_decoder = ffmpeg_decoder_create_stdin();
     if (!source->video_decoder) {
       log_error("Failed to open stdin for video input");
+      // Destroy mutexes before freeing source
+      mutex_destroy(&source->decoder_mutex);
+      mutex_destroy(&source->pause_mutex);
+      mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
     }
@@ -330,6 +358,10 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
       log_error("Failed to open stdin for audio input");
       ffmpeg_decoder_destroy(source->video_decoder);
       source->video_decoder = NULL;
+      // Destroy mutexes before freeing source
+      mutex_destroy(&source->decoder_mutex);
+      mutex_destroy(&source->pause_mutex);
+      mutex_destroy(&source->seek_access_mutex);
       SAFE_FREE(source);
       return NULL;
     }
@@ -350,6 +382,10 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
 
   default:
     SET_ERRNO(ERROR_INVALID_PARAM, "Unknown media source type: %d", type);
+    // Destroy mutexes before freeing source
+    mutex_destroy(&source->decoder_mutex);
+    mutex_destroy(&source->pause_mutex);
+    mutex_destroy(&source->seek_access_mutex);
     SAFE_FREE(source);
     return NULL;
   }
