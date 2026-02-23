@@ -526,6 +526,9 @@ check_static_linking(ascii-chat)
 # =============================================================================
 # WASM is built as a standalone project via src/web/CMakeLists.txt
 # We pass the Emscripten toolchain file directly instead of wrapping through emcmake.
+# Only configure WASM targets if BUILD_WEB is enabled.
+
+if(BUILD_WEB)
 
 set(WASM_SOURCE_DIR "${CMAKE_SOURCE_DIR}/src/web")
 set(WASM_BUILD_DIR "${CMAKE_BINARY_DIR}/web")
@@ -617,3 +620,5 @@ message(STATUS "  web        - Build all WASM modules")
 if(EMSCRIPTEN_TOOLCHAIN_FILE)
     message(STATUS "  Emscripten toolchain: ${EMSCRIPTEN_TOOLCHAIN_FILE}")
 endif()
+
+endif() # BUILD_WEB
