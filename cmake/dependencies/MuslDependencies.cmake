@@ -180,6 +180,9 @@ set(ZSTD_FOUND TRUE)
 set(ZSTD_LIBRARIES "${ZSTD_PREFIX}/lib/libzstd.a")
 set(ZSTD_INCLUDE_DIRS "${ZSTD_PREFIX}/include")
 
+# Create placeholder directories so CMake validation doesn't fail at configure time
+file(MAKE_DIRECTORY "${ZSTD_PREFIX}/include")
+
 # Create imported target for zstd to match system find_package behavior
 if(NOT TARGET zstd::libzstd)
     add_library(zstd::libzstd STATIC IMPORTED GLOBAL)
@@ -1055,21 +1058,21 @@ else()
     add_custom_target(libwebsockets-musl)
 endif()
 
-set(LIBWEBSOCKETS_FOUND TRUE)
 set(LIBWEBSOCKETS_LIBRARIES "${LWS_PREFIX}/lib/libwebsockets.a")
 set(LIBWEBSOCKETS_INCLUDE_DIRS "${LWS_PREFIX}/include")
 set(LIBWEBSOCKETS_BUILD_TARGET libwebsockets-musl)
 add_compile_definitions(HAVE_LIBWEBSOCKETS=1)
 
+# Create placeholder directories so CMake validation doesn't fail at configure time
+file(MAKE_DIRECTORY "${LIBWEBSOCKETS_INCLUDE_DIRS}")
+
 # Create imported target for libwebsockets (musl build) to match Libwebsockets.cmake behavior
-if(NOT TARGET websockets)
-    add_library(websockets STATIC IMPORTED GLOBAL)
-    set_target_properties(websockets PROPERTIES
-        IMPORTED_LOCATION "${LIBWEBSOCKETS_LIBRARIES}"
-        INTERFACE_INCLUDE_DIRECTORIES "${LIBWEBSOCKETS_INCLUDE_DIRS}"
-    )
-    add_dependencies(websockets libwebsockets-musl)
-endif()
+add_library(websockets STATIC IMPORTED GLOBAL)
+set_target_properties(websockets PROPERTIES
+    IMPORTED_LOCATION "${LIBWEBSOCKETS_LIBRARIES}"
+    INTERFACE_INCLUDE_DIRECTORIES "${LIBWEBSOCKETS_INCLUDE_DIRS}"
+)
+add_dependencies(websockets libwebsockets-musl)
 
 # =============================================================================
 # Abseil-cpp - Google's C++ library for WebRTC dependencies
