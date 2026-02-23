@@ -12,6 +12,7 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/audio/audio.h>
+#include <ascii-chat/platform/terminal.h>
 #include <string.h>
 #include <signal.h>
 
@@ -69,6 +70,12 @@ static int next_color_mode(int current) {
  * ============================================================================ */
 
 void session_handle_keyboard_input(session_capture_ctx_t *capture, session_display_ctx_t *display, keyboard_key_t key) {
+  // Debug: log all key codes to help identify unknown keys
+  if (key != KEY_NONE) {
+    log_debug("Keyboard input received: code=%d (0x%02x) char='%c'", key, key,
+              (key >= 32 && key < 127) ? key : '?');
+  }
+
   switch (key) {
   // ===== HELP SCREEN TOGGLE =====
   case KEY_QUESTION: {
@@ -85,6 +92,7 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
     if (display && session_display_is_help_active(display)) {
       // Close help screen if it's active
       session_display_toggle_help(display);
+      terminal_clear_screen();
     } else {
       // If help screen is not active, quit the app (like Ctrl-C)
       // The signal handler will gracefully shutdown all modes (client, server, mirror, etc.)
@@ -226,9 +234,9 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
 
   // ===== LOCK DEBUG (debug builds only) =====
 #ifndef NDEBUG
-  case KEY_CTRL_BACKTICK: {
+  case KEY_BACKTICK: {
     debug_sync_trigger_print();
-    log_debug("Lock state dump triggered via Ctrl+backtick key");
+    log_debug("Lock state dump triggered via backtick key");
     break;
   }
 #endif

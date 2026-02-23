@@ -60,7 +60,7 @@ asciichat_error_t keyboard_init(void) {
   DWORD new_mode = g_original_console_mode;
   new_mode &= ~ENABLE_LINE_INPUT; // Disable line buffering
   new_mode &= ~ENABLE_ECHO_INPUT; // Disable echo
-  // Keep ENABLE_PROCESSED_INPUT for signal handling
+  // Keep ENABLE_PROCESSED_INPUT for Ctrl+C signal handling
 
   if (!SetConsoleMode(g_console_input, new_mode)) {
     lifecycle_init_abort(&g_keyboard_lc);
@@ -103,6 +103,10 @@ keyboard_key_t keyboard_read_nonblocking(void) {
   if (ch < 0) {
     return KEY_NONE;
   }
+
+  // Debug: Log all bytes received from terminal
+  log_debug("keyboard_read_nonblocking: received byte=%d (0x%02x) char='%c'", ch, ch,
+            (ch >= 32 && ch < 127) ? ch : '?');
 
   // Handle special characters
   if (ch == ' ') {

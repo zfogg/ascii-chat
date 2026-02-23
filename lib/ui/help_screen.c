@@ -342,7 +342,7 @@ void session_display_render_help(session_display_ctx_t *ctx) {
 
 #ifndef NDEBUG
   APPEND("\033[%d;%dH", start_row + 14, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "Ctrl+`  Print current sync primitive state");
+  build_help_line(line_buf, sizeof(line_buf), "`       Print current sync primitive state");
   APPEND("%s", line_buf);
 
   // Blank line before settings section
