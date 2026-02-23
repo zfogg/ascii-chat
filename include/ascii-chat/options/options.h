@@ -770,7 +770,7 @@ typedef enum {
 // These are referenced from the registry and provide const void * pointers
 // for non-string default values. Defined alongside OPT_*_DEFAULT for clarity.
 
-static const int default_log_level_value = DEFAULT_LOG_LEVEL;
+static const int default_log_level_value = OPT_LOG_LEVEL_DEFAULT;
 static const bool default_quiet_value = OPT_QUIET_DEFAULT;
 static const bool default_json_value = OPT_JSON_DEFAULT;
 static const bool default_enable_keepawake_value = OPT_ENABLE_KEEPAWAKE_DEFAULT;
