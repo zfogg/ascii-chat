@@ -418,6 +418,9 @@ char *rgb_to_256color_halfblocks_scalar(const uint8_t *rgb, int width, int heigh
   if (stride_bytes <= 0)
     stride_bytes = width * 3;
 
+  // Initialize 256-color lookup table
+  ansi_fast_init_256color();
+
   outbuf_t ob = {0};
   // Estimate: per cell ~ 14 bytes (256-color codes); half the rows + newlines + resets
   size_t est_cells = (size_t)width * ((size_t)(height + 1) / 2);
