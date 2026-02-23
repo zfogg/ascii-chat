@@ -1271,6 +1271,397 @@ file(MAKE_DIRECTORY "${GTK4_PREFIX}/include" "${GTK4_PREFIX}/lib")
 file(MAKE_DIRECTORY "${GRAPHENE_PREFIX}/include" "${GRAPHENE_PREFIX}/lib")
 file(MAKE_DIRECTORY "${LIBADWAITA_PREFIX}/include" "${LIBADWAITA_PREFIX}/lib")
 
+# =============================================================================
+# wayland-protocols - Wayland protocol definitions (header-only)
+# =============================================================================
+message(STATUS "Configuring ${BoldBlue}wayland-protocols${ColorReset} from source...")
+
+set(WAYLAND_PROTOCOLS_PREFIX "${MUSL_DEPS_DIR_STATIC}/wayland-protocols")
+
+if(NOT EXISTS "${WAYLAND_PROTOCOLS_PREFIX}/share/pkgconfig/wayland-protocols.pc")
+    message(STATUS "  wayland-protocols not found, will build from source")
+
+    set(WP_SOURCE_DIR "${MUSL_DEPS_DIR_STATIC}/wayland-protocols-src")
+
+    if(NOT EXISTS "${WP_SOURCE_DIR}")
+        message(STATUS "    Cloning wayland-protocols...")
+        execute_process(
+            COMMAND git clone --depth 1 --branch 1.32 https://gitlab.freedesktop.org/wayland/wayland-protocols.git "${WP_SOURCE_DIR}"
+            RESULT_VARIABLE CLONE_RESULT
+        )
+        if(NOT CLONE_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to clone wayland-protocols")
+        endif()
+    endif()
+
+    set(WP_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/wayland-protocols-build")
+    file(MAKE_DIRECTORY "${WP_BUILD_DIR}")
+
+    message(STATUS "    Configuring wayland-protocols with meson...")
+    execute_process(
+        COMMAND env CC=${MUSL_GCC} CXX=clang++ ${MESON_EXECUTABLE} setup
+            "${WP_BUILD_DIR}"
+            "${WP_SOURCE_DIR}"
+            --prefix=${WAYLAND_PROTOCOLS_PREFIX}
+            --buildtype=release
+            -Dtests=false
+        RESULT_VARIABLE WP_CONFIG_RESULT
+        ERROR_VARIABLE WP_CONFIG_ERROR
+    )
+    if(NOT WP_CONFIG_RESULT EQUAL 0)
+        message(FATAL_ERROR "wayland-protocols meson setup failed:\n${WP_CONFIG_ERROR}")
+    endif()
+
+    message(STATUS "    Installing wayland-protocols...")
+    execute_process(
+        COMMAND ${MESON_EXECUTABLE} install -C "${WP_BUILD_DIR}"
+        RESULT_VARIABLE WP_INSTALL_RESULT
+        ERROR_VARIABLE WP_INSTALL_ERROR
+    )
+    if(NOT WP_INSTALL_RESULT EQUAL 0)
+        message(FATAL_ERROR "wayland-protocols install failed:\n${WP_INSTALL_ERROR}")
+    endif()
+
+    message(STATUS "    ${BoldGreen}wayland-protocols${ColorReset} built successfully")
+else()
+    message(STATUS "  ${BoldBlue}wayland-protocols${ColorReset} found in cache: ${BoldMagenta}${WAYLAND_PROTOCOLS_PREFIX}/share/pkgconfig/wayland-protocols.pc${ColorReset}")
+endif()
+
+# =============================================================================
+# libxkbcommon - Keyboard handling library for wayland
+# =============================================================================
+message(STATUS "Configuring ${BoldBlue}libxkbcommon${ColorReset} from source...")
+
+set(XKBCOMMON_PREFIX "${MUSL_DEPS_DIR_STATIC}/xkbcommon")
+
+if(NOT EXISTS "${XKBCOMMON_PREFIX}/lib/libxkbcommon.a")
+    message(STATUS "  libxkbcommon not found, will build from source")
+
+    set(XKB_DOWNLOAD_DIR "${MUSL_DEPS_DIR_STATIC}/xkbcommon-src")
+    set(XKB_TARBALL "${XKB_DOWNLOAD_DIR}/xkbcommon-1.5.0.tar.xz")
+    set(XKB_SOURCE_DIR "${XKB_DOWNLOAD_DIR}/libxkbcommon-1.5.0")
+
+    file(MAKE_DIRECTORY "${XKB_DOWNLOAD_DIR}")
+
+    if(NOT EXISTS "${XKB_SOURCE_DIR}")
+        if(NOT EXISTS "${XKB_TARBALL}")
+            message(STATUS "    Downloading libxkbcommon...")
+            file(DOWNLOAD
+                "https://xkbcommon.org/download/libxkbcommon-1.5.0.tar.xz"
+                "${XKB_TARBALL}"
+                EXPECTED_HASH SHA256=560f11c4bbbca10f495f3ef7d3a6aa4ca62b4f8fb0b52e7d459d18a26e46e017
+                SHOW_PROGRESS
+            )
+        endif()
+
+        message(STATUS "    Extracting libxkbcommon...")
+        execute_process(
+            COMMAND ${CMAKE_COMMAND} -E tar xJf "${XKB_TARBALL}"
+            WORKING_DIRECTORY "${XKB_DOWNLOAD_DIR}"
+            RESULT_VARIABLE EXTRACT_RESULT
+        )
+        if(NOT EXTRACT_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to extract libxkbcommon")
+        endif()
+    endif()
+
+    set(XKB_BUILD_DIR "${XKB_DOWNLOAD_DIR}/build")
+    file(MAKE_DIRECTORY "${XKB_BUILD_DIR}")
+
+    message(STATUS "    Configuring libxkbcommon with meson...")
+    execute_process(
+        COMMAND env CC=${MUSL_GCC} CXX=clang++ PKG_CONFIG_LIBDIR=${XKBCOMMON_PREFIX}/lib/pkgconfig PKG_CONFIG_PATH= ${MESON_EXECUTABLE} setup
+            "${XKB_BUILD_DIR}"
+            "${XKB_SOURCE_DIR}"
+            --prefix=${XKBCOMMON_PREFIX}
+            --buildtype=release
+            --default-library=static
+            -Denable-x11=false
+            -Denable-tools=false
+            -Denable-xkbregistry=false
+        RESULT_VARIABLE XKB_CONFIG_RESULT
+        ERROR_VARIABLE XKB_CONFIG_ERROR
+    )
+    if(NOT XKB_CONFIG_RESULT EQUAL 0)
+        message(FATAL_ERROR "libxkbcommon meson setup failed:\n${XKB_CONFIG_ERROR}")
+    endif()
+
+    message(STATUS "    Building libxkbcommon...")
+    execute_process(
+        COMMAND ${MESON_EXECUTABLE} compile -C "${XKB_BUILD_DIR}"
+        RESULT_VARIABLE XKB_BUILD_RESULT
+        ERROR_VARIABLE XKB_BUILD_ERROR
+    )
+    if(NOT XKB_BUILD_RESULT EQUAL 0)
+        message(FATAL_ERROR "libxkbcommon build failed:\n${XKB_BUILD_ERROR}")
+    endif()
+
+    message(STATUS "    Installing libxkbcommon...")
+    execute_process(
+        COMMAND ${MESON_EXECUTABLE} install -C "${XKB_BUILD_DIR}"
+        RESULT_VARIABLE XKB_INSTALL_RESULT
+        ERROR_VARIABLE XKB_INSTALL_ERROR
+    )
+    if(NOT XKB_INSTALL_RESULT EQUAL 0)
+        message(FATAL_ERROR "libxkbcommon install failed:\n${XKB_INSTALL_ERROR}")
+    endif()
+
+    message(STATUS "    ${BoldGreen}libxkbcommon${ColorReset} built successfully")
+else()
+    message(STATUS "  ${BoldBlue}libxkbcommon${ColorReset} found in cache: ${BoldMagenta}${XKBCOMMON_PREFIX}/lib/libxkbcommon.a${ColorReset}")
+endif()
+
+set(XKBCOMMON_LIBRARIES "${XKBCOMMON_PREFIX}/lib/libxkbcommon.a")
+set(XKBCOMMON_INCLUDE_DIRS "${XKBCOMMON_PREFIX}/include")
+file(MAKE_DIRECTORY "${XKBCOMMON_PREFIX}/include" "${XKBCOMMON_PREFIX}/lib")
+
+# =============================================================================
+# libxml2 - XML parser library (required by wayland)
+# =============================================================================
+message(STATUS "Configuring ${BoldBlue}libxml2${ColorReset} from source...")
+
+set(LIBXML2_PREFIX "${MUSL_DEPS_DIR_STATIC}/libxml2")
+
+if(NOT EXISTS "${LIBXML2_PREFIX}/lib/libxml2.a")
+    message(STATUS "  libxml2 not found, will build from source")
+
+    set(XML2_DOWNLOAD_DIR "${MUSL_DEPS_DIR_STATIC}/libxml2-src")
+    set(XML2_TARBALL "${XML2_DOWNLOAD_DIR}/libxml2-2.13.0.tar.xz")
+    set(XML2_SOURCE_DIR "${XML2_DOWNLOAD_DIR}/libxml2-2.13.0")
+
+    file(MAKE_DIRECTORY "${XML2_DOWNLOAD_DIR}")
+
+    if(NOT EXISTS "${XML2_SOURCE_DIR}")
+        if(NOT EXISTS "${XML2_TARBALL}")
+            message(STATUS "    Downloading libxml2...")
+            file(DOWNLOAD
+                "https://download.gnome.org/sources/libxml2/2.13/libxml2-2.13.0.tar.xz"
+                "${XML2_TARBALL}"
+                EXPECTED_HASH SHA256=d5a2f36bea96e1fb8297c6046fb02016c152d81ed58e65f3d20477de85291bc9
+                SHOW_PROGRESS
+            )
+        endif()
+
+        message(STATUS "    Extracting libxml2...")
+        execute_process(
+            COMMAND ${CMAKE_COMMAND} -E tar xJf "${XML2_TARBALL}"
+            WORKING_DIRECTORY "${XML2_DOWNLOAD_DIR}"
+            RESULT_VARIABLE EXTRACT_RESULT
+        )
+        if(NOT EXTRACT_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to extract libxml2")
+        endif()
+    endif()
+
+    message(STATUS "    Configuring libxml2...")
+    execute_process(
+        COMMAND env CFLAGS=-Os ${XML2_SOURCE_DIR}/configure
+            --prefix=${LIBXML2_PREFIX}
+            --host=x86_64-linux-musl
+            CC=${MUSL_GCC}
+            --disable-shared
+            --enable-static
+            --without-python
+            --without-perl
+            --without-iconv
+            --with-zlib=${ZLIB_PREFIX}
+        WORKING_DIRECTORY ${XML2_SOURCE_DIR}
+        RESULT_VARIABLE XML2_CONFIG_RESULT
+        ERROR_VARIABLE XML2_CONFIG_ERROR
+    )
+    if(NOT XML2_CONFIG_RESULT EQUAL 0)
+        message(FATAL_ERROR "libxml2 configure failed:\n${XML2_CONFIG_ERROR}")
+    endif()
+
+    message(STATUS "    Building libxml2...")
+    execute_process(
+        COMMAND make -j4
+        WORKING_DIRECTORY ${XML2_SOURCE_DIR}
+        RESULT_VARIABLE XML2_BUILD_RESULT
+        ERROR_VARIABLE XML2_BUILD_ERROR
+    )
+    if(NOT XML2_BUILD_RESULT EQUAL 0)
+        message(FATAL_ERROR "libxml2 build failed:\n${XML2_BUILD_ERROR}")
+    endif()
+
+    message(STATUS "    Installing libxml2...")
+    execute_process(
+        COMMAND make install
+        WORKING_DIRECTORY ${XML2_SOURCE_DIR}
+        RESULT_VARIABLE XML2_INSTALL_RESULT
+        ERROR_VARIABLE XML2_INSTALL_ERROR
+    )
+    if(NOT XML2_INSTALL_RESULT EQUAL 0)
+        message(FATAL_ERROR "libxml2 install failed:\n${XML2_INSTALL_ERROR}")
+    endif()
+
+    message(STATUS "    ${BoldGreen}libxml2${ColorReset} built successfully")
+else()
+    message(STATUS "  ${BoldBlue}libxml2${ColorReset} found in cache: ${BoldMagenta}${LIBXML2_PREFIX}/lib/libxml2.a${ColorReset}")
+endif()
+
+set(LIBXML2_LIBRARIES "${LIBXML2_PREFIX}/lib/libxml2.a")
+set(LIBXML2_INCLUDE_DIRS "${LIBXML2_PREFIX}/include")
+file(MAKE_DIRECTORY "${LIBXML2_PREFIX}/include" "${LIBXML2_PREFIX}/lib")
+
+# =============================================================================
+# expat - XML parser library (required by wayland)
+# =============================================================================
+message(STATUS "Configuring ${BoldBlue}expat${ColorReset} from source...")
+
+set(EXPAT_PREFIX "${MUSL_DEPS_DIR_STATIC}/expat")
+
+if(NOT EXISTS "${EXPAT_PREFIX}/lib/libexpat.a")
+    message(STATUS "  expat library not found, will build from source")
+
+    set(EXPAT_DOWNLOAD_DIR "${MUSL_DEPS_DIR_STATIC}/expat-src")
+    set(EXPAT_SOURCE_DIR "${EXPAT_DOWNLOAD_DIR}/expat-2.6.4")
+
+    if(NOT EXISTS "${EXPAT_SOURCE_DIR}")
+        file(MAKE_DIRECTORY "${EXPAT_DOWNLOAD_DIR}")
+        message(STATUS "    Downloading expat 2.6.4...")
+
+        file(DOWNLOAD
+            "https://github.com/libexpat/libexpat/releases/download/R_2_6_4/expat-2.6.4.tar.gz"
+            "${EXPAT_DOWNLOAD_DIR}/expat-2.6.4.tar.gz"
+            SHOW_PROGRESS
+            STATUS DOWNLOAD_STATUS
+        )
+        list(GET DOWNLOAD_STATUS 0 DOWNLOAD_CODE)
+        list(GET DOWNLOAD_STATUS 1 DOWNLOAD_MSG)
+        if(NOT DOWNLOAD_CODE EQUAL 0)
+            message(FATAL_ERROR "Failed to download expat: ${DOWNLOAD_MSG}")
+        endif()
+
+        message(STATUS "    Verifying expat SHA256...")
+        file(SHA256 "${EXPAT_DOWNLOAD_DIR}/expat-2.6.4.tar.gz" EXPAT_SHA256)
+        if(NOT EXPAT_SHA256 STREQUAL "fd03b7172b3bd7427a3e7a812063f74754f24542429b634e0db6511b53fb2278")
+            message(FATAL_ERROR "expat SHA256 mismatch. Got: ${EXPAT_SHA256}")
+        endif()
+
+        message(STATUS "    Extracting expat...")
+        execute_process(
+            COMMAND tar -xzf "${EXPAT_DOWNLOAD_DIR}/expat-2.6.4.tar.gz" -C "${EXPAT_DOWNLOAD_DIR}"
+            RESULT_VARIABLE EXPAT_EXTRACT_RESULT
+        )
+        if(NOT EXPAT_EXTRACT_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to extract expat")
+        endif()
+    endif()
+
+    file(MAKE_DIRECTORY "${EXPAT_PREFIX}" "${EXPAT_PREFIX}/build")
+
+    message(STATUS "    Configuring expat with autoconf...")
+    execute_process(
+        WORKING_DIRECTORY "${EXPAT_SOURCE_DIR}"
+        COMMAND bash -c "CFLAGS='-march=x86-64 -mtune=generic -O2' CC=/usr/bin/musl-gcc ./configure --prefix=${EXPAT_PREFIX} --host=x86_64-linux-musl --disable-shared --enable-static --without-xmlwf"
+        RESULT_VARIABLE EXPAT_CONFIG_RESULT
+        ERROR_VARIABLE EXPAT_CONFIG_ERROR
+    )
+    if(NOT EXPAT_CONFIG_RESULT EQUAL 0)
+        message(FATAL_ERROR "expat configure failed:\n${EXPAT_CONFIG_ERROR}")
+    endif()
+
+    message(STATUS "    Building expat...")
+    execute_process(
+        WORKING_DIRECTORY "${EXPAT_SOURCE_DIR}"
+        COMMAND make -j${CMAKE_BUILD_PARALLEL_LEVEL}
+        RESULT_VARIABLE EXPAT_BUILD_RESULT
+        ERROR_VARIABLE EXPAT_BUILD_ERROR
+    )
+    if(NOT EXPAT_BUILD_RESULT EQUAL 0)
+        message(FATAL_ERROR "expat build failed:\n${EXPAT_BUILD_ERROR}")
+    endif()
+
+    message(STATUS "    Installing expat...")
+    execute_process(
+        WORKING_DIRECTORY "${EXPAT_SOURCE_DIR}"
+        COMMAND make install
+        RESULT_VARIABLE EXPAT_INSTALL_RESULT
+        ERROR_VARIABLE EXPAT_INSTALL_ERROR
+    )
+    if(NOT EXPAT_INSTALL_RESULT EQUAL 0)
+        message(FATAL_ERROR "expat install failed:\n${EXPAT_INSTALL_ERROR}")
+    endif()
+else()
+    message(STATUS "  ${BoldBlue}expat${ColorReset} found in cache: ${BoldMagenta}${EXPAT_PREFIX}/lib/libexpat.a${ColorReset}")
+endif()
+
+set(EXPAT_LIBRARIES "${EXPAT_PREFIX}/lib/libexpat.a")
+set(EXPAT_INCLUDE_DIRS "${EXPAT_PREFIX}/include")
+file(MAKE_DIRECTORY "${EXPAT_PREFIX}/include" "${EXPAT_PREFIX}/lib")
+
+# =============================================================================
+# wayland - Display server protocol library
+# =============================================================================
+message(STATUS "Configuring ${BoldBlue}wayland${ColorReset} from source...")
+
+set(WAYLAND_PREFIX "${MUSL_DEPS_DIR_STATIC}/wayland")
+
+if(NOT EXISTS "${WAYLAND_PREFIX}/lib/libwayland-client.a")
+    message(STATUS "  wayland library not found, will build from source")
+
+    set(WL_DOWNLOAD_DIR "${MUSL_DEPS_DIR_STATIC}/wayland-src")
+    set(WL_SOURCE_DIR "${WL_DOWNLOAD_DIR}/wayland")
+
+    if(NOT EXISTS "${WL_SOURCE_DIR}")
+        file(MAKE_DIRECTORY "${WL_DOWNLOAD_DIR}")
+        message(STATUS "    Cloning wayland...")
+        execute_process(
+            COMMAND git clone --depth 1 --branch 1.22.0 https://gitlab.freedesktop.org/wayland/wayland.git "${WL_SOURCE_DIR}"
+            RESULT_VARIABLE CLONE_RESULT
+        )
+        if(NOT CLONE_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to clone wayland")
+        endif()
+    endif()
+
+    set(WL_BUILD_DIR "${WL_DOWNLOAD_DIR}/build")
+    file(MAKE_DIRECTORY "${WL_BUILD_DIR}")
+
+    message(STATUS "    Configuring wayland with meson...")
+    set(WL_PKG_CONFIG_LIBDIR "${WAYLAND_PROTOCOLS_PREFIX}/share/pkgconfig:${LIBFFI_PREFIX}/lib/pkgconfig:${LIBXML2_PREFIX}/lib/pkgconfig:${EXPAT_PREFIX}/lib/pkgconfig")
+
+    execute_process(
+        WORKING_DIRECTORY "${WL_DOWNLOAD_DIR}"
+        COMMAND bash -c "CC=${MUSL_GCC} CXX=clang++ PKG_CONFIG_LIBDIR=${WL_PKG_CONFIG_LIBDIR} PKG_CONFIG_PATH= /usr/sbin/meson setup ${WL_BUILD_DIR} ${WL_SOURCE_DIR} --prefix=${WAYLAND_PREFIX} --buildtype=release --default-library=static -Ddocumentation=false -Dtests=false"
+        RESULT_VARIABLE WL_CONFIG_RESULT
+        ERROR_VARIABLE WL_CONFIG_ERROR
+        OUTPUT_VARIABLE WL_CONFIG_OUTPUT
+    )
+    if(NOT WL_CONFIG_RESULT EQUAL 0)
+        message(FATAL_ERROR "wayland meson setup failed:\n${WL_CONFIG_ERROR}")
+    endif()
+
+    message(STATUS "    Building wayland...")
+    execute_process(
+        COMMAND ${MESON_EXECUTABLE} compile -C "${WL_BUILD_DIR}"
+        RESULT_VARIABLE WL_BUILD_RESULT
+        ERROR_VARIABLE WL_BUILD_ERROR
+    )
+    if(NOT WL_BUILD_RESULT EQUAL 0)
+        message(FATAL_ERROR "wayland build failed:\n${WL_BUILD_ERROR}")
+    endif()
+
+    message(STATUS "    Installing wayland...")
+    execute_process(
+        COMMAND ${MESON_EXECUTABLE} install -C "${WL_BUILD_DIR}"
+        RESULT_VARIABLE WL_INSTALL_RESULT
+        ERROR_VARIABLE WL_INSTALL_ERROR
+    )
+    if(NOT WL_INSTALL_RESULT EQUAL 0)
+        message(FATAL_ERROR "wayland install failed:\n${WL_INSTALL_ERROR}")
+    endif()
+
+    message(STATUS "    ${BoldGreen}wayland${ColorReset} built successfully")
+else()
+    message(STATUS "  ${BoldBlue}wayland${ColorReset} found in cache: ${BoldMagenta}${WAYLAND_PREFIX}/lib/libwayland-client.a${ColorReset}")
+endif()
+
+set(WAYLAND_LIBRARIES "${WAYLAND_PREFIX}/lib/libwayland-client.a")
+set(WAYLAND_INCLUDE_DIRS "${WAYLAND_PREFIX}/include")
+file(MAKE_DIRECTORY "${WAYLAND_PREFIX}/include" "${WAYLAND_PREFIX}/lib")
+
 # Build GTK4 with meson at configure time
 if(NOT EXISTS "${GTK4_LIBRARIES}")
     message(STATUS "  GTK4 library not found, will build from source")
@@ -1408,7 +1799,7 @@ if(NOT EXISTS "${GTK4_LIBRARIES}")
 
     message(STATUS "  Configuring GTK4 with meson...")
     execute_process(
-        COMMAND env CC=${MUSL_GCC} CXX=clang++ PKG_CONFIG_PATH=${GLIB_PREFIX}/lib/pkgconfig ${MESON_EXECUTABLE} setup
+        COMMAND env CC=${MUSL_GCC} CXX=clang++ PKG_CONFIG_LIBDIR=${GLIB_PREFIX}/lib/pkgconfig:${WAYLAND_PREFIX}/lib/pkgconfig:${WAYLAND_PROTOCOLS_PREFIX}/share/pkgconfig:${XKBCOMMON_PREFIX}/lib/pkgconfig PKG_CONFIG_PATH= ${MESON_EXECUTABLE} setup
             "${GTK4_BUILD_DIR}"
             "${GTK4_SOURCE_DIR}"
             --prefix=${GTK4_PREFIX}
@@ -1416,7 +1807,7 @@ if(NOT EXISTS "${GTK4_LIBRARIES}")
             --default-library=static
             -Dintrospection=disabled
             -Dx11-backend=false
-            -Dwayland-backend=false
+            -Dwayland-backend=true
         RESULT_VARIABLE CONFIG_RESULT
         ERROR_VARIABLE CONFIG_ERROR
     )
