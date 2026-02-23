@@ -575,7 +575,7 @@ options_t options_t_new(void) {
   // SNAPSHOT
   // ============================================================================
   opts.snapshot_mode = OPT_SNAPSHOT_MODE_DEFAULT;
-  opts.snapshot_delay = SNAPSHOT_DELAY_DEFAULT;
+  opts.snapshot_delay = OPT_SNAPSHOT_DELAY_DEFAULT;
 
   // ============================================================================
   // PERFORMANCE

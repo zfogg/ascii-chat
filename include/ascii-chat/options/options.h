@@ -468,9 +468,9 @@ typedef enum {
  * @ingroup options
  */
 #if defined(__APPLE__)
-#define SNAPSHOT_DELAY_DEFAULT 4.0f
+#define OPT_SNAPSHOT_DELAY_DEFAULT 4.0f
 #else
-#define SNAPSHOT_DELAY_DEFAULT 3.0f
+#define OPT_SNAPSHOT_DELAY_DEFAULT 3.0f
 #endif
 
 /** @brief Default Matrix rain effect flag (false = disabled) */
@@ -793,7 +793,7 @@ static const int default_force_utf8_value = OPT_FORCE_UTF8_DEFAULT;
 static const bool default_stretch_value = OPT_STRETCH_DEFAULT;
 static const bool default_strip_ansi_value = OPT_STRIP_ANSI_DEFAULT;
 static const bool default_snapshot_mode_value = OPT_SNAPSHOT_MODE_DEFAULT;
-static const double default_snapshot_delay_value = SNAPSHOT_DELAY_DEFAULT;
+static const double default_snapshot_delay_value = OPT_SNAPSHOT_DELAY_DEFAULT;
 static const bool default_matrix_rain_value = OPT_MATRIX_RAIN_DEFAULT;
 static const int default_fps_value = OPT_FPS_DEFAULT;
 static const int default_compression_level_value = OPT_COMPRESSION_LEVEL_DEFAULT;
