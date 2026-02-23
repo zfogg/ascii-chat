@@ -583,6 +583,10 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
     float delta_time = (float)(current_time_ns - ctx->last_frame_time_ns) / (float)NS_PER_SEC_INT;
     ctx->last_frame_time_ns = current_time_ns;
 
+    // Update digital rain color from current filter (allows live filter changes)
+    color_filter_t current_filter = GET_OPTION(color_filter);
+    digital_rain_set_color_from_filter(ctx->digital_rain, current_filter);
+
     char *rain_result = digital_rain_apply(ctx->digital_rain, result, delta_time);
     if (rain_result) {
       SAFE_FREE(result);
