@@ -73,15 +73,9 @@ static int next_render_mode(int current) {
   case 0:     // RENDER_MODE_FOREGROUND
     return 1; // RENDER_MODE_BACKGROUND
   case 1:     // RENDER_MODE_BACKGROUND
-#if SIMD_SUPPORT_NEON
-    // Half-block mode only available on ARM with NEON
     return 2; // RENDER_MODE_HALF_BLOCK
   case 2:     // RENDER_MODE_HALF_BLOCK
     return 0; // Back to RENDER_MODE_FOREGROUND
-#else
-    // No half-block support, cycle back to foreground
-    return 0; // RENDER_MODE_FOREGROUND
-#endif
   default:
     return 0; // Back to RENDER_MODE_FOREGROUND
   }
