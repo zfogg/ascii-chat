@@ -1,0 +1,688 @@
+/**
+ * @page topic_audio_architecture Audio System Architecture
+ * @ingroup audio
+ *
+ * @tableofcontents
+ *
+ * @section audio_arch_overview Overview
+ *
+ * This document provides an in-depth technical look at ascii-chat's audio system,
+ * covering the complete processing pipeline from microphone capture to speaker output,
+ * including compression, mixing, analysis, and debugging tools.
+ *
+ * The audio system is designed for real-time performance with low-latency requirements:
+ * - **End-to-end latency**: ~50-60ms
+ * - **CPU overhead**: ~2-4%
+ * - **Bandwidth**: 176-384 KB/s (depending on configuration)
+ *
+ * @section audio_pipeline Audio Processing Pipeline
+ *
+ * The audio pipeline processes audio through a series of well-defined stages:
+ *
+ * @subsection audio_pipeline_flow Processing Flow
+ *
+ * @code
+ * INPUT (Microphone)
+ *   |
+ *   v
+ * CAPTURE (PortAudio) [Real-time thread]
+ *   |
+ *   v
+ * ANALYSIS (Track metrics for debugging)
+ *   |
+ *   v
+ * OPUS ENCODING (Compression)
+ *   |
+ *   v
+ * NETWORK TRANSMISSION
+ *   |
+ * [Network receives audio]
+ *   |
+ *   v
+ * OPUS DECODING (Decompression)
+ *   |
+ *   v
+ * MIXER (Multi-source blending)
+ *   - Ducking (active speaker detection)
+ *   - Compression (dynamic range control)
+ *   - Noise gating
+ *   - High-pass filtering
+ *   - Crowd scaling (volume adjustment)
+ *   |
+ *   v
+ * PLAYBACK (PortAudio) [Real-time thread]
+ *   |
+ *   v
+ * OUTPUT (Speakers)
+ * @endcode
+ *
+ * @subsection audio_pipeline_stages Stage Details
+ *
+ * **1. Audio Capture**
+ * - PortAudio opens an input stream from the microphone
+ * - Sample rate: 44.1 kHz (CD quality)
+ * - Format: 32-bit floating-point samples
+ * - Channels: Mono (1 channel)
+ * - Buffer size: 256 frames per callback (~5.8ms latency)
+ * - Thread: Real-time priority (SCHED_FIFO on Linux, THREAD_PRIORITY_TIME_CRITICAL on Windows)
+ *
+ * **2. Analysis & Diagnostics**
+ * - Tracks sent audio characteristics (RMS level, peak, clipping)
+ * - Detects audio quality issues (silence, jitter, discontinuities)
+ * - Monitors packet delivery (dropped packets, gaps)
+ * - Enables audio dumping to WAV files for debugging
+ * - Detects echo, beeps, and tonal artifacts
+ *
+ * **3. Opus Encoding (Compression)**
+ * - Compresses audio from ~176 KB/s to ~2-50 KB/s depending on content
+ * - Bitrate: 24 kbps default for voice (adjustable 6-128 kbps)
+ * - Mode: VOIP (optimized for speech) or AUDIO (optimized for music)
+ * - Frame size: 882 samples (20ms) - standard for low-latency voice
+ * - Features:
+ *   - Voice Activity Detection (VAD)
+ *   - Discontinuous Transmission (DTX) - send silence frames instead of full frames
+ *   - Automatic packet loss handling
+ *
+ * **4. Network Transmission**
+ * - Packets sent via PACKET_TYPE_AUDIO_BATCH
+ * - Payload: Compressed Opus frames + metadata
+ * - Includes packet number for loss detection
+ * - Optional encryption (if crypto enabled)
+ *
+ * **5. Opus Decoding (Decompression)**
+ * - Decompresses received Opus frames back to PCM
+ * - Handles packet loss via Packet Loss Concealment (PLC)
+ * - Reconstructs audio at original sample rate (44.1 kHz)
+ * - Output: 882 samples (20ms) per frame
+ *
+ * **6. Audio Mixing**
+ * - Combines audio from multiple clients (up to 10 sources)
+ * - Processing stages:
+ *   1. Read samples from each client's ring buffer
+ *   2. Apply ducking (emphasize active speaker, attenuate others)
+ *   3. Mix all sources with gain scaling (crowd scaling)
+ *   4. Compress dynamic range (prevent clipping)
+ *   5. Apply noise gate (suppress background noise)
+ *   6. Apply high-pass filter (remove rumble and low-frequency noise)
+ *   7. Soft clip (prevent hard clipping artifacts)
+ *
+ * **7. Audio Playback**
+ * - PortAudio opens an output stream to speakers
+ * - Reads mixed audio from ring buffer
+ * - Real-time thread priority (same as capture)
+ * - Underrun handling: fills with silence if buffer exhausted
+ *
+ * @section audio_codec_integration Codec Integration
+ *
+ * @subsection audio_codec_opus Opus Codec Overview
+ *
+ * Opus is the primary audio codec used in ascii-chat. It's a modern, open-source codec
+ * optimized for real-time communication with excellent voice quality and low latency.
+ *
+ * **Codec Features:**
+ * - Real-time performance (ms-level latency)
+ * - Flexible bitrate from 6 kbps to 128+ kbps
+ * - Voice and music modes with automatic detection
+ * - Packet loss resilience
+ * - Low complexity (efficient CPU usage)
+ *
+ * @subsection audio_codec_encoder Encoding (Compression)
+ *
+ * **Encoding Process:**
+ *
+ * @code{.c}
+ * // Create encoder for VOIP (voice) at 24 kbps
+ * opus_codec_t *encoder = opus_codec_create_encoder(
+ *     OPUS_APPLICATION_VOIP,  // Optimize for speech
+ *     44100,                   // Sample rate (Hz)
+ *     24000                    // Bitrate (bits/sec)
+ * );
+ *
+ * // Encode a 20ms frame (882 samples)
+ * float samples[882];  // Input audio samples
+ * uint8_t compressed[250];  // Output compressed data
+ *
+ * size_t encoded_bytes = opus_codec_encode(
+ *     encoder,
+ *     samples,
+ *     882,           // 20ms @ 44.1kHz
+ *     compressed,
+ *     sizeof(compressed)
+ * );
+ *
+ * if (encoded_bytes > 0) {
+ *     // Send compressed audio over network
+ *     send_audio_packet(sockfd, compressed, encoded_bytes);
+ * }
+ * @endcode
+ *
+ * **Key Parameters:**
+ * - **Sample Rate**: 44.1 kHz (standard for CD-quality audio)
+ * - **Frame Size**: 882 samples = 20ms latency (configurable: 10ms, 20ms, 40ms, 60ms)
+ * - **Bitrate**: 24 kbps for voice (adjustable based on network conditions)
+ * - **Application Mode**: VOIP optimized for speech vs AUDIO for music
+ * - **Output Size**: Typically 30-100 bytes per frame (highly variable compression)
+ *
+ * **Bitrate Selection:**
+ * - **6-12 kbps**: Minimal bandwidth, acceptable voice quality
+ * - **16-24 kbps**: Good voice quality, recommended for voice calls
+ * - **64-128 kbps**: High quality audio, suitable for music
+ *
+ * @subsection audio_codec_decoder Decoding (Decompression)
+ *
+ * **Decoding Process:**
+ *
+ * @code{.c}
+ * // Create decoder for 44.1 kHz audio
+ * opus_codec_t *decoder = opus_codec_create_decoder(44100);
+ *
+ * // Decode received compressed frame
+ * uint8_t compressed[250];  // Received data
+ * size_t compressed_len = 45;  // Received size
+ *
+ * float decoded[882];  // Output audio samples
+ * int decoded_samples = opus_codec_decode(
+ *     decoder,
+ *     compressed,
+ *     compressed_len,
+ *     decoded,
+ *     882  // Expected frame size
+ * );
+ *
+ * if (decoded_samples > 0) {
+ *     // Decoded samples ready for playback
+ *     audio_ringbuffer_write(&playback_buffer, decoded, decoded_samples);
+ * }
+ *
+ * // Handle packet loss with Packet Loss Concealment (PLC)
+ * if (packet_loss_detected) {
+ *     opus_codec_decode(decoder, NULL, 0, decoded, 882);
+ *     // Decoder internally generates plausible audio to mask loss
+ * }
+ * @endcode
+ *
+ * **Key Features:**
+ * - **Packet Loss Concealment**: Pass NULL data to generate plausible audio for lost packets
+ * - **Stream Synchronization**: Decoder maintains state across frames
+ * - **Error Handling**: Returns negative on decoding errors
+ *
+ * @subsection audio_codec_bitrate_adaptation Bitrate Adaptation
+ *
+ * The codec bitrate can be adjusted dynamically based on network conditions:
+ *
+ * @code{.c}
+ * // Detect network congestion
+ * if (packet_loss_rate > 5%) {
+ *     // Reduce bitrate to improve robustness
+ *     opus_codec_set_bitrate(encoder, 16000);  // Reduce to 16 kbps
+ * } else if (packet_loss_rate == 0) {
+ *     // Network is good, increase quality
+ *     opus_codec_set_bitrate(encoder, 32000);  // Increase to 32 kbps
+ * }
+ * @endcode
+ *
+ * **Thread Safety:**
+ * - Each encoder/decoder instance must be used by only one thread
+ * - Create separate instances per thread if needed
+ * - No mutex protection within codec (caller's responsibility)
+ *
+ * @section audio_mixing_strategy Audio Mixing Strategy
+ *
+ * @subsection audio_mixing_overview Mixing Overview
+ *
+ * The mixer combines audio from multiple clients into a single output stream
+ * with advanced audio processing to ensure good voice quality and speaker clarity.
+ *
+ * **Processing Pipeline (in order):**
+ * 1. Source Reading
+ * 2. Active Speaker Detection (Ducking)
+ * 3. Mix Combination (with Crowd Scaling)
+ * 4. Dynamic Range Compression
+ * 5. Noise Gate
+ * 6. High-Pass Filter
+ * 7. Soft Clipping
+ *
+ * @subsection audio_mixing_ducking Ducking System
+ *
+ * Ducking automatically emphasizes the active speaker(s) while attenuating others.
+ * This reduces echo and makes conversation more natural.
+ *
+ * **How Ducking Works:**
+ * 1. Measure RMS level of each source over a short window (~100ms)
+ * 2. Find the loudest source (primary speaker)
+ * 3. Identify sources within margin of loudest (secondary speakers)
+ * 4. Attenuate non-active sources (background)
+ * 5. Use smooth attack/release curves for natural transitions
+ *
+ * **Parameters:**
+ * - **Detection Window**: 100ms - how long to measure levels
+ * - **Active Margin**: 6dB - how close to loudest to be considered active
+ * - **Attenuation**: -20dB - how much to reduce non-active sources
+ * - **Attack Time**: 5ms - ramp speed when ducking engages
+ * - **Release Time**: 100ms - ramp speed when ducking disengages
+ *
+ * **Example:**
+ * @code
+ * If 4 clients are speaking:
+ * - Client A: -15 dB (loudest - primary speaker)
+ * - Client B: -18 dB (within 6dB margin - secondary speaker)
+ * - Client C: -25 dB (attenuated - background)
+ * - Client D: -30 dB (attenuated - background)
+ *
+ * Result:
+ * - Client A: Full volume (0 dB attenuation)
+ * - Client B: Full volume (0 dB attenuation)
+ * - Client C: -20 dB attenuation
+ * - Client D: -20 dB attenuation
+ * @endcode
+ *
+ * @subsection audio_mixing_crowd_scaling Crowd Scaling
+ *
+ * As more participants join, the individual source volumes are automatically
+ * reduced to prevent audio overload and maintain consistent perceived loudness.
+ *
+ * **Crowd Scaling Formula:**
+ * @code
+ * gain = 1.0 / sqrt(num_active_sources)
+ * @endcode
+ *
+ * **Example:**
+ * - 1 speaker: 0 dB gain reduction
+ * - 2 speakers: -3 dB per source
+ * - 4 speakers: -6 dB per source
+ * - 10 speakers: -10 dB per source
+ *
+ * This ensures the mixed output doesn't become too loud as more people join.
+ *
+ * @subsection audio_mixing_compression Compression
+ *
+ * Dynamic range compression prevents loud audio from clipping while maintaining
+ * overall loudness for quiet audio.
+ *
+ * **Compression Parameters:**
+ * - **Threshold**: -10 dB - where compression starts
+ * - **Ratio**: 4:1 - output gain reduction (4dB input → 1dB output above threshold)
+ * - **Attack**: 10 ms - how fast to respond to audio above threshold
+ * - **Release**: 100 ms - how fast to return to no compression
+ * - **Makeup Gain**: 0 dB - compensate for overall loudness reduction
+ * - **Knee**: 2 dB (soft) - smooth transition into compression
+ *
+ * **How Compression Works:**
+ *
+ * @code
+ * If input level is -20 dB (quiet): No compression applied
+ * If input level is 0 dB (loud):
+ *   - Gain reduction = (1 - 1/ratio) * (level - threshold)
+ *                    = (1 - 1/4) * (0 - (-10))
+ *                    = 0.75 * 10 = 7.5 dB reduction
+ *   - Output = 0 - 7.5 = -7.5 dB (prevented clipping)
+ * @endcode
+ *
+ * @subsection audio_mixing_noise_gate Noise Gate
+ *
+ * The noise gate suppresses low-level background noise (hum, air conditioning,
+ * keyboard clicks) without affecting speech.
+ *
+ * **Noise Gate Parameters:**
+ * - **Threshold**: -50 dB - below this, audio is considered noise
+ * - **Release**: 50 ms - hang time after audio drops below threshold
+ * - **Hold Time**: 1 ms - how long to measure levels
+ *
+ * **Behavior:**
+ * - Signals above threshold: Pass through unchanged
+ * - Signals below threshold: Fade to silence over release time
+ * - Prevents sudden clicks when gate opens/closes
+ *
+ * @subsection audio_mixing_filter High-Pass Filter
+ *
+ * A 80 Hz high-pass filter removes low-frequency rumble and wind noise
+ * while preserving voice intelligibility.
+ *
+ * **Filter Characteristics:**
+ * - **Cutoff**: 80 Hz
+ * - **Type**: First-order high-pass Butterworth
+ * - **Roll-off**: 20 dB/decade above cutoff
+ *
+ * **Frequency Response:**
+ * @code
+ * 20 Hz:   -24 dB (removed rumble)
+ * 80 Hz:   -3 dB (cutoff point)
+ * 200 Hz:  -1 dB (minimal impact on voice)
+ * 1 kHz:   0 dB (no impact on speech formants)
+ * @endcode
+ *
+ * @subsection audio_mixing_soft_clip Soft Clipping
+ *
+ * Soft clipping prevents digital clipping artifacts by gradually limiting
+ * audio instead of abruptly cutting it off.
+ *
+ * **Algorithm:**
+ * @code
+ * if (|sample| <= threshold) {
+ *     return sample;  // No clipping
+ * } else {
+ *     // Tanh soft clipping (smooth saturation)
+ *     return threshold * tanh(sample / threshold);
+ * }
+ * @endcode
+ *
+ * **Effect:**
+ * - Avoids harsh digital clipping
+ * - Generates pleasant distortion instead of harsh artifacts
+ * - Typically imperceptible to listeners
+ *
+ * @section audio_wav_format WAV Format Handling
+ *
+ * @subsection audio_wav_overview WAV Format Overview
+ *
+ * WAV (WAVE) is a simple, uncompressed audio format based on the RIFF container.
+ * ascii-chat uses WAV files for audio debugging and analysis.
+ *
+ * **Format Specification:**
+ * - **Container**: RIFF (Resource Interchange File Format)
+ * - **Audio Format**: IEEE 32-bit floating-point
+ * - **Sample Rate**: 44.1 kHz (or configurable)
+ * - **Channels**: Mono (1) or Stereo (2)
+ * - **Byte Order**: Little-endian
+ *
+ * @subsection audio_wav_structure WAV File Structure
+ *
+ * Every WAV file has this structure:
+ *
+ * @code
+ * RIFF Header (12 bytes)
+ * ├─ "RIFF" (4 bytes)          - Container identifier
+ * ├─ File Size - 8 (4 bytes)   - Total file size minus 8 bytes
+ * └─ "WAVE" (4 bytes)          - Format identifier
+ *
+ * Format Chunk (24+ bytes)
+ * ├─ "fmt " (4 bytes)          - Chunk identifier
+ * ├─ Chunk Size = 16 (4 bytes) - Format chunk size (16 for PCM)
+ * ├─ Audio Format = 3 (2 bytes) - 3 = IEEE float, 1 = PCM int
+ * ├─ Channels (2 bytes)         - 1 = mono, 2 = stereo
+ * ├─ Sample Rate (4 bytes)      - e.g., 44100 Hz
+ * ├─ Byte Rate (4 bytes)        - sample_rate * channels * bytes_per_sample
+ * ├─ Block Align (2 bytes)      - channels * bytes_per_sample
+ * └─ Bits Per Sample (2 bytes)  - 32 for float, 16 for int16
+ *
+ * Data Chunk (8+ bytes)
+ * ├─ "data" (4 bytes)           - Chunk identifier
+ * ├─ Data Size (4 bytes)        - Size of audio data in bytes
+ * └─ Audio Samples (variable)   - Raw audio data
+ * @endcode
+ *
+ * @subsection audio_wav_usage WAV Writer Usage
+ *
+ * The `wav_writer` module provides utilities for dumping audio to WAV files
+ * for debugging and analysis.
+ *
+ * **Enable Audio Dumping:**
+ * @code{.bash}
+ * # Enable audio dumping via environment variable
+ * ASCIICHAT_DUMP_AUDIO=1 ./build/bin/ascii-chat server
+ *
+ * # Will create:
+ * # - audio_sent.wav (microphone input)
+ * # - audio_received.wav (speakers output)
+ * @endcode
+ *
+ * **Programmatic Usage:**
+ * @code{.c}
+ * // Create WAV writer for 44.1 kHz mono audio
+ * wav_writer_t *writer = wav_writer_open("debug.wav", 44100, 1);
+ *
+ * if (writer) {
+ *     float samples[256];
+ *     // ... fill samples ...
+ *     wav_writer_write(writer, samples, 256);
+ *
+ *     // When done, close and finalize header
+ *     wav_writer_close(writer);
+ * }
+ * @endcode
+ *
+ * **WAV File Analysis:**
+ * The created WAV files can be analyzed with standard audio tools:
+ * @code{.bash}
+ * # Play the file
+ * ffplay audio_sent.wav
+ *
+ * # Analyze with ffmpeg
+ * ffmpeg -i audio_sent.wav
+ *
+ * # View waveform with Audacity
+ * audacity audio_sent.wav
+ * @endcode
+ *
+ * @subsection audio_wav_format_details IEEE Float Format
+ *
+ * ascii-chat uses 32-bit IEEE floating-point samples (-1.0 to +1.0 range):
+ *
+ * **Sample Value Mapping:**
+ * - 0.0f = silence (no signal)
+ * - ±0.5f = moderate volume
+ * - ±1.0f = maximum volume (can clip if exceeded)
+ * - ±1.5f or higher = clipping (distortion)
+ *
+ * **Advantages of Float Format:**
+ * - Prevents clipping during mixing (can go beyond ±1.0 temporarily)
+ * - Provides 24-bit effective precision (good for voice)
+ * - Standard for audio processing (used by DAWs, Audacity, etc.)
+ * - Simplifies analysis of dynamic range and headroom
+ *
+ * **Disadvantages:**
+ * - Larger file size than 16-bit PCM (double the size)
+ * - Not supported by all legacy tools
+ *
+ * @section audio_analysis Audio Analysis System
+ *
+ * @subsection audio_analysis_overview Analysis Overview
+ *
+ * The analysis module tracks audio quality metrics for debugging issues
+ * like distortion, echo, silence, and network packet loss.
+ *
+ * @subsection audio_analysis_metrics Tracked Metrics
+ *
+ * **Basic Statistics:**
+ * - **Total Samples**: Count of samples processed
+ * - **Peak Level**: Maximum sample value (clipping detection)
+ * - **RMS Level**: Root mean square (loudness measure)
+ * - **Clipping Count**: Samples exceeding ±1.0 (distortion indicator)
+ * - **Silent Samples**: Samples below 0.001 (silence detection)
+ * - **DC Offset**: Bias in the signal (microphone issue indicator)
+ *
+ * **Packet Metrics:**
+ * - **Packets Count**: Total packets received/sent
+ * - **Packets Dropped**: Lost packets (network issue)
+ * - **Packet Spacing**: Time between consecutive packets
+ * - **Max Gap**: Largest gap between packets (stuttering indicator)
+ *
+ * **Quality Indicators:**
+ * - **Jitter Count**: Rapid amplitude changes (compression artifacts)
+ * - **Discontinuities**: Gaps in packet delivery (network dropout)
+ * - **Zero Crossings**: Number of samples crossing zero (spectral content)
+ *
+ * **Artifact Detection:**
+ * - **Beep Events**: Short tonal bursts (system notifications, codec artifacts)
+ * - **Tonal Samples**: Samples in beep-like patterns (tone detection)
+ *
+ * @subsection audio_analysis_usage Analysis Usage
+ *
+ * **Enable Analysis:**
+ * @code{.c}
+ * audio_analysis_init();
+ * @endcode
+ *
+ * **Track Sent Audio:**
+ * @code{.c}
+ * // For each sample from microphone:
+ * audio_analysis_track_sent_sample(sample);
+ *
+ * // For each packet sent:
+ * audio_analysis_track_sent_packet(packet_size);
+ * @endcode
+ *
+ * **Track Received Audio:**
+ * @code{.c}
+ * // For each sample from network:
+ * audio_analysis_track_received_sample(sample);
+ *
+ * // For each packet received:
+ * audio_analysis_track_received_packet(packet_size);
+ * @endcode
+ *
+ * **Print Report:**
+ * @code{.c}
+ * audio_analysis_print_report();
+ *
+ * // Output example:
+ * // Sent Audio Analysis:
+ * //   Total Samples: 882000
+ * //   Peak Level: 0.87 (-1.2 dB)
+ * //   RMS Level: 0.25 (-12.0 dB)
+ * //   Clipping: 0 samples
+ * //   Silence: 123 samples
+ * //   DC Offset: +0.01
+ * //   Packets: 1000, Dropped: 0
+ * @endcode
+ *
+ * **Common Issues Detected:**
+ *
+ * | Metric | Issue | Remedy |
+ * |--------|-------|--------|
+ * | High clipping count | Audio distortion | Reduce microphone gain |
+ * | High DC offset | Microphone bias | Check microphone |
+ * | High jitter count | Codec artifacts | Increase bitrate |
+ * | High discontinuities | Network dropout | Check connection |
+ * | Many silent samples | Low volume | Increase microphone gain |
+ * | Many beep events | Codec artifacts or system sounds | Check environment |
+ *
+ * @section audio_performance Performance Characteristics
+ *
+ * @subsection audio_perf_latency Latency Budget
+ *
+ * @code
+ * Capture buffer:     ~5.8 ms  (256 frames @ 44.1 kHz)
+ * Encoding delay:     ~20 ms   (Opus frame size)
+ * Network jitter:     ~46 ms   (8 packet buffer)
+ * Decoding delay:     ~20 ms   (Opus frame size)
+ * Playback buffer:    ~5.8 ms  (256 frames @ 44.1 kHz)
+ * ─────────────────────────────
+ * Total:              ~98 ms   (typical)
+ *
+ * Practical end-to-end: ~50-60 ms (optimized buffer settings)
+ * @endcode
+ *
+ * @subsection audio_perf_bandwidth Bandwidth Usage
+ *
+ * | Sample Rate | Channels | Opus Bitrate | Network Usage |
+ * |-------------|----------|--------------|---------------|
+ * | 44.1 kHz    | Mono     | 24 kbps      | 3 KB/s        |
+ * | 44.1 kHz    | Mono     | 48 kbps      | 6 KB/s        |
+ * | 48 kHz      | Mono     | 24 kbps      | 3 KB/s        |
+ * | 48 kHz      | Stereo   | 48 kbps      | 6 KB/s        |
+ *
+ * **Comparison:**
+ * - Audio only: 3-6 KB/s
+ * - Video + Audio: 500-5000 KB/s (100-1000x more than audio)
+ *
+ * @subsection audio_perf_cpu CPU Usage
+ *
+ * | Component | CPU Overhead |
+ * |-----------|--------------|
+ * | Capture thread | ~1-2% |
+ * | Opus encoding | ~0.5-1% |
+ * | Mixing (10 sources) | ~1-2% |
+ * | Playback thread | ~1-2% |
+ * | **Total** | **~2-4%** |
+ *
+ * Audio is a very lightweight component compared to video encoding/decoding.
+ *
+ * @section audio_implementation_notes Implementation Notes
+ *
+ * @subsection audio_impl_threading Thread Safety
+ *
+ * - **Capture callback**: Real-time thread, no blocking allowed
+ * - **Playback callback**: Real-time thread, no blocking allowed
+ * - **Encoder/Decoder**: Not thread-safe, create separate instances per thread
+ * - **Ring buffers**: Thread-safe via atomic operations
+ * - **Mixer**: Protected by reader-writer locks
+ *
+ * @subsection audio_impl_memory Memory Usage
+ *
+ * | Component | Memory |
+ * |-----------|--------|
+ * | Ring buffer (8K samples) | ~32 KB |
+ * | Opus encoder state | ~12 KB |
+ * | Opus decoder state | ~12 KB |
+ * | Mixer (10 sources) | ~64 KB |
+ * | Analysis state | ~8 KB |
+ * | **Total per stream** | **~128 KB** |
+ *
+ * Very low memory overhead, suitable for embedded systems.
+ *
+ * @subsection audio_impl_error_handling Error Handling
+ *
+ * All audio operations return `asciichat_error_t`. Callers must check
+ * return values and log errors appropriately:
+ *
+ * @code{.c}
+ * asciichat_error_t err = opus_codec_encode(encoder, samples, 882, out, 250);
+ * if (err != ASCIICHAT_OK) {
+ *     log_error("Opus encoding failed: %d", err);
+ *     return err;
+ * }
+ * @endcode
+ *
+ * @subsection audio_impl_portaudio PortAudio Integration
+ *
+ * PortAudio is used for cross-platform audio I/O:
+ * - Provides abstraction for Windows (WASAPI, DirectSound, ASIO)
+ * - Provides abstraction for Linux (ALSA, JACK, PulseAudio)
+ * - Provides abstraction for macOS (CoreAudio)
+ * - Handles device enumeration and selection
+ * - Manages stream lifecycle and thread priority
+ *
+ * @section audio_debugging Debugging Audio Issues
+ *
+ * @subsection audio_debug_tools Tools and Techniques
+ *
+ * **1. Enable Audio Dumping:**
+ * @code{.bash}
+ * ASCIICHAT_DUMP_AUDIO=1 ./build/bin/ascii-chat server
+ * ffplay audio_sent.wav
+ * ffplay audio_received.wav
+ * @endcode
+ *
+ * **2. Run Audio Analysis:**
+ * @code{.bash}
+ * ./build/bin/ascii-chat server --log-level debug --grep "audio_analysis"
+ * @endcode
+ *
+ * **3. Log Detailed Metrics:**
+ * @code{.bash}
+ * ./build/bin/ascii-chat server --log-level dev --grep "audio|mixer|opus"
+ * @endcode
+ *
+ * **4. Analyze WAV Files:**
+ * - Use Audacity to view waveforms and spectrograms
+ * - Use ffmpeg-normalize to measure loudness (LUFS)
+ * - Use sox to measure noise floor and SNR
+ *
+ * @subsection audio_debug_common_issues Common Issues and Solutions
+ *
+ * | Issue | Symptoms | Diagnosis | Solution |
+ * |-------|----------|-----------|----------|
+ * | Echo | Hearing yourself | Check for duplicate mixing | Enable AEC (echo cancellation) |
+ * | Silence | Can't hear others | Check network connectivity | Verify audio devices |
+ * | Distortion | Crackling/buzzing | Peak level too high | Reduce microphone gain |
+ * | Stuttering | Audio dropouts | Check network packet loss | Increase jitter buffer |
+ * | Latency | Delayed conversation | Check buffer settings | Reduce buffer sizes |
+ * | Noise | Hum/hiss | Check microphone | Enable noise gate |
+ *
+ * @see @ref topic_audio "Audio System Overview"
+ * @see lib/audio/analysis.h
+ * @see lib/audio/opus_codec.h
+ * @see lib/audio/mixer.h
+ * @see lib/audio/wav_writer.h
+ */
