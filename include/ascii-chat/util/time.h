@@ -523,6 +523,29 @@ int time_pretty_now(int decimals, char *buffer, size_t buffer_size);
 int time_human_readable(int64_t nanoseconds, char *buffer, size_t buffer_size);
 
 /**
+ * @brief Format elapsed time as human-readable relative duration (unsigned version)
+ * @param nanoseconds Unsigned elapsed nanoseconds (always past times)
+ * @param buffer Output buffer for formatted string
+ * @param buffer_size Size of output buffer
+ * @return Number of characters written (excluding null terminator), or -1 on error
+ *
+ * Formats unsigned nanosecond durations as human-readable past-time strings.
+ * Uses moment.js-compatible thresholds. All values are interpreted as elapsed time
+ * and formatted with "ago" suffix.
+ *
+ * Examples:
+ * - 3600000000000 ns → "an hour ago"
+ * - 300000000000 ns → "5 minutes ago"
+ *
+ * @note Use this for values from time_get_ns() or other unsigned sources
+ * @note Buffer should be at least 32 bytes for all possible outputs
+ * @note Thread-safe (no global state)
+ *
+ * @ingroup module_utilities
+ */
+int time_human_readable_unsigned(uint64_t nanoseconds, char *buffer, size_t buffer_size);
+
+/**
  * @brief Format current monotonic time as human-readable relative duration
  * @param buffer Output buffer for formatted string
  * @param buffer_size Size of output buffer
