@@ -17,6 +17,7 @@
  */
 
 #include <stdio.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
@@ -162,6 +163,9 @@ static void common_handle_sigusr1(int sig) {
 
 static void common_handle_sigusr2(int sig) {
   (void)sig;
+  // Log to stderr directly since we're in signal context
+  // (avoid logging system which uses mutexes)
+  write(STDERR_FILENO, "[SIGUSR2 received]\n", 19);
   debug_memory_trigger_report();
 }
 #endif
@@ -715,10 +719,28 @@ int main(int argc, char *argv[]) {
   log_debug("Memory debug thread started");
 
 #ifndef _WIN32
+  // Unblock SIGUSR1 and SIGUSR2 at process level to ensure delivery
+  sigset_t set;
+  sigemptyset(&set);
+  sigaddset(&set, SIGUSR1);
+  sigaddset(&set, SIGUSR2);
+  sigprocmask(SIG_UNBLOCK, &set, NULL);
+
   // Register SIGUSR1 to trigger lock state printing in all modes
-  platform_signal(SIGUSR1, common_handle_sigusr1);
+  signal_handler_t old_usr1 = platform_signal(SIGUSR1, common_handle_sigusr1);
+  if (old_usr1 == SIG_ERR) {
+    log_warn("Failed to register SIGUSR1 handler");
+  } else {
+    log_debug("SIGUSR1 handler registered successfully");
+  }
+
   // Register SIGUSR2 to trigger memory report in all modes
-  platform_signal(SIGUSR2, common_handle_sigusr2);
+  signal_handler_t old_usr2 = platform_signal(SIGUSR2, common_handle_sigusr2);
+  if (old_usr2 == SIG_ERR) {
+    log_warn("Failed to register SIGUSR2 handler");
+  } else {
+    log_debug("SIGUSR2 handler registered successfully");
+  }
 #endif
 #endif
 
