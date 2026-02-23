@@ -26,6 +26,7 @@
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/video/simd/ascii_simd.h>
+#include <ascii-chat/video/scalar/halfblock.h>
 
 /* ============================================================================
  * ASCII Art Video Processing
@@ -131,16 +132,17 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
 
   char *ascii;
   if (color) {
-    // Check for half-block mode first (requires NEON)
+    // Check for half-block mode first
     if (GET_OPTION(render_mode) == RENDER_MODE_HALF_BLOCK) {
-#if SIMD_SUPPORT_NEON
-      // Use NEON half-block renderer
       const uint8_t *rgb_data = (const uint8_t *)resized->pixels;
+#if SIMD_SUPPORT_NEON
+      // Use NEON half-block renderer (optimized SIMD path)
+      log_dev("Using NEON halfblock renderer");
       ascii = rgb_to_truecolor_halfblocks_neon(rgb_data, resized->w, resized->h, 0);
 #else
-      log_error("Half-block mode requires NEON support (ARM architecture)");
-      image_destroy(resized);
-      return NULL;
+      // Fallback to scalar halfblock renderer (works on all platforms)
+      log_dev("Using scalar halfblock renderer (NEON not available)");
+      ascii = rgb_to_truecolor_halfblocks_scalar(rgb_data, resized->w, resized->h, 0);
 #endif
     } else {
 #ifdef SIMD_SUPPORT
@@ -316,11 +318,16 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 2 * NS_PER_MS_INT, "ascii_padding",
                            "ASCII_PADDING: Padding complete (%.2f ms)");
 
-  uint64_t pad_time_us = time_ns_to_us(time_elapsed_ns(prof_pad_start_ns, prof_pad_end_ns));
-  log_dev("ASCII_BREAKDOWN: alloc=%.2f ms, resize=%.2f ms, print=%.2f ms, pad=%.2f ms (total=%.2f ms)",
-          (double)alloc_time_us / 1000.0, (double)resize_time_us / 1000.0, (double)print_time_us / 1000.0,
-          (double)pad_time_us / 1000.0,
-          (double)(alloc_time_us + resize_time_us + print_time_us + pad_time_us) / 1000.0);
+  uint64_t pad_time_ns = time_elapsed_ns(prof_pad_start_ns, prof_pad_end_ns);
+  char alloc_str[32], resize_str[32], print_str[32], pad_str[32], total_str[32];
+  time_pretty(alloc_time_us * 1000, -1, alloc_str, sizeof(alloc_str));
+  time_pretty(resize_time_us * 1000, -1, resize_str, sizeof(resize_str));
+  time_pretty(print_time_us * 1000, -1, print_str, sizeof(print_str));
+  time_pretty(pad_time_ns, -1, pad_str, sizeof(pad_str));
+  uint64_t total_time_ns = (alloc_time_us + resize_time_us + print_time_us) * 1000 + pad_time_ns;
+  time_pretty(total_time_ns, -1, total_str, sizeof(total_str));
+  log_dev("ASCII_BREAKDOWN: alloc=%s, resize=%s, print=%s, pad=%s (total=%s)",
+          alloc_str, resize_str, print_str, pad_str, total_str);
 
   image_destroy(resized);
 

@@ -39,6 +39,7 @@ set(SIMD_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/simd/common.c
     ${CMAKE_CURRENT_SOURCE_DIR}/output_buffer.c
     ${CMAKE_CURRENT_SOURCE_DIR}/rle.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/scalar/halfblock.c
 )
 
 if(ENABLE_SIMD_SSE2)
