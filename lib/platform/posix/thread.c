@@ -56,11 +56,6 @@ int asciichat_thread_create(asciichat_thread_t *thread, const char *name, void *
  * @return 0 on success, error code on failure
  */
 int asciichat_thread_join(asciichat_thread_t *thread, void **retval) {
-  // Unregister the thread from named registry before joining
-  if (thread) {
-    NAMED_UNREGISTER_THREAD(*thread);
-  }
-
   int result = pthread_join(*thread, retval);
   if (result == 0) {
     // Clear the handle after successful join to match Windows behavior

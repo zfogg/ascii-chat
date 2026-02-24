@@ -654,9 +654,6 @@ int asciichat_thread_join(asciichat_thread_t *thread, void **retval) {
     return -1;
   }
 
-  // Unregister the thread from named registry before joining
-  NAMED_UNREGISTER_THREAD(*thread);
-
   DWORD result = WaitForSingleObject((*thread), INFINITE);
 
   if (result == WAIT_OBJECT_0) {
