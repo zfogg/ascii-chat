@@ -137,14 +137,14 @@ crypto_result_t crypto_init(crypto_context_t *ctx) {
     ctx->rekey_packet_threshold = REKEY_TEST_PACKET_THRESHOLD; // 1,000 packets
     ctx->rekey_time_threshold = REKEY_TEST_TIME_THRESHOLD;     // 30 seconds
     char duration_str[32];
-    time_pretty((uint64_t)(ctx->rekey_time_threshold * 1e9), -1, duration_str, sizeof(duration_str));
+    time_pretty(ctx->rekey_time_threshold, -1, duration_str, sizeof(duration_str));
     log_dev("Crypto context initialized with X25519 key exchange (TEST MODE rekey thresholds: %llu packets, %s)",
             (unsigned long long)ctx->rekey_packet_threshold, duration_str);
   } else {
     ctx->rekey_packet_threshold = REKEY_DEFAULT_PACKET_THRESHOLD; // 1 million packets
-    ctx->rekey_time_threshold = REKEY_DEFAULT_TIME_THRESHOLD;     // 3600 seconds (1 hour)
+    ctx->rekey_time_threshold = REKEY_DEFAULT_TIME_THRESHOLD;     // already in nanoseconds (3600 * NS_PER_SEC_INT)
     char duration_str[32];
-    time_pretty((uint64_t)(ctx->rekey_time_threshold * 1e9), -1, duration_str, sizeof(duration_str));
+    time_pretty(ctx->rekey_time_threshold, -1, duration_str, sizeof(duration_str));
     log_dev("Crypto context initialized with X25519 key exchange (rekey thresholds: %llu packets, %s)",
             (unsigned long long)ctx->rekey_packet_threshold, duration_str);
   }
