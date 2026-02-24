@@ -1352,11 +1352,9 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
     return pa_result;
   }
 
-  mutex_lock(&ctx->state_mutex);
-
-  // Already running?
+  // Check if already running (without holding lock during blocking operations)
+  // Do this check first before acquiring any locks
   if (ctx->duplex_stream || ctx->input_stream || ctx->output_stream) {
-    mutex_unlock(&ctx->state_mutex);
     return ASCIICHAT_OK;
   }
 
@@ -1373,7 +1371,6 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
     }
 
     if (inputParams.device == paNoDevice) {
-      mutex_unlock(&ctx->state_mutex);
       return SET_ERRNO(ERROR_AUDIO, "No input device available");
     }
 
@@ -1476,7 +1473,6 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
     // Create render buffer for AEC3 reference synchronization
     ctx->render_buffer = audio_ring_buffer_create_for_capture();
     if (!ctx->render_buffer) {
-      mutex_unlock(&ctx->state_mutex);
       return SET_ERRNO(ERROR_MEMORY, "Failed to create render buffer");
     }
 
@@ -1596,7 +1592,6 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
       // Neither stream works - fail completely
       audio_ring_buffer_destroy(ctx->render_buffer);
       ctx->render_buffer = NULL;
-      mutex_unlock(&ctx->state_mutex);
       return SET_ERRNO(ERROR_AUDIO, "Failed to open both input and output streams");
     }
 
@@ -1622,7 +1617,6 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
         ctx->output_stream = NULL;
         audio_ring_buffer_destroy(ctx->render_buffer);
         ctx->render_buffer = NULL;
-        mutex_unlock(&ctx->state_mutex);
         return SET_ERRNO(ERROR_AUDIO, "Failed to start output stream: %s", Pa_GetErrorText(err));
       }
     }
@@ -1641,7 +1635,6 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
         ctx->output_stream = NULL;
         audio_ring_buffer_destroy(ctx->render_buffer);
         ctx->render_buffer = NULL;
-        mutex_unlock(&ctx->state_mutex);
         return SET_ERRNO(ERROR_AUDIO, "Failed to start input stream: %s", Pa_GetErrorText(err));
       }
     }
@@ -1677,13 +1670,14 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
       }
       audio_ring_buffer_destroy(ctx->render_buffer);
       ctx->render_buffer = NULL;
-      mutex_unlock(&ctx->state_mutex);
       return SET_ERRNO(ERROR_THREAD, "Failed to create worker thread");
     }
     ctx->worker_running = true;
     log_debug("Worker thread started successfully");
   }
 
+  // Lock to update final state flags atomically
+  mutex_lock(&ctx->state_mutex);
   ctx->running = true;
   ctx->sample_rate = AUDIO_SAMPLE_RATE;
   mutex_unlock(&ctx->state_mutex);
