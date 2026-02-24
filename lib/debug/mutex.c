@@ -27,7 +27,7 @@ typedef struct {
     int depth;
 } thread_lock_stack_t;
 
-// Thread-local storage for lock stacks
+// Thread-local storage for fast per-thread access
 static __thread thread_lock_stack_t g_thread_lock_stack = {0};
 
 // Global lock to protect thread registry
@@ -37,7 +37,7 @@ static pthread_mutex_t g_thread_registry_lock = PTHREAD_MUTEX_INITIALIZER;
 #define MAX_THREADS 256
 typedef struct {
     pthread_t thread_id;
-    thread_lock_stack_t *stack;
+    thread_lock_stack_t *stack;  // Separate allocation per thread (not thread-local)
 } thread_registry_entry_t;
 
 static thread_registry_entry_t g_thread_registry[MAX_THREADS] = {0};
@@ -48,9 +48,16 @@ static int g_thread_registry_count = 0;
 // ============================================================================
 
 /**
+ * @brief Get the thread-local stack for fast per-thread operations
+ */
+static thread_lock_stack_t *get_thread_local_stack(void) {
+    return &g_thread_lock_stack;
+}
+
+/**
  * @brief Get or create thread registry entry for current thread
  */
-static thread_lock_stack_t *get_thread_stack(void) {
+static thread_lock_stack_t *get_or_create_registry_stack(void) {
     pthread_t current = pthread_self();
 
     // Try to find existing entry
@@ -62,18 +69,25 @@ static thread_lock_stack_t *get_thread_stack(void) {
         }
     }
 
-    // Create new entry
+    // Create new entry with separate allocation
     if (g_thread_registry_count >= MAX_THREADS) {
         pthread_mutex_unlock(&g_thread_registry_lock);
         return NULL;  // Registry full
     }
 
+    // Allocate new stack for this thread
+    thread_lock_stack_t *new_stack = SAFE_CALLOC(1, sizeof(thread_lock_stack_t), thread_lock_stack_t *);
+    if (!new_stack) {
+        pthread_mutex_unlock(&g_thread_registry_lock);
+        return NULL;
+    }
+
     g_thread_registry[g_thread_registry_count].thread_id = current;
-    g_thread_registry[g_thread_registry_count].stack = &g_thread_lock_stack;
+    g_thread_registry[g_thread_registry_count].stack = new_stack;
     g_thread_registry_count++;
 
     pthread_mutex_unlock(&g_thread_registry_lock);
-    return &g_thread_lock_stack;
+    return new_stack;
 }
 
 // ============================================================================
@@ -81,7 +95,7 @@ static thread_lock_stack_t *get_thread_stack(void) {
 // ============================================================================
 
 void mutex_stack_push_pending(uintptr_t mutex_key, const char *mutex_name) {
-    thread_lock_stack_t *stack = get_thread_stack();
+    thread_lock_stack_t *stack = get_thread_local_stack();
     if (!stack || stack->depth >= MUTEX_STACK_MAX_DEPTH) {
         return;
     }
@@ -91,10 +105,16 @@ void mutex_stack_push_pending(uintptr_t mutex_key, const char *mutex_name) {
     stack->stack[stack->depth].state = MUTEX_STACK_STATE_PENDING;
     stack->stack[stack->depth].timestamp_ns = time_get_ns();
     stack->depth++;
+
+    // Also update registry copy
+    thread_lock_stack_t *registry_stack = get_or_create_registry_stack();
+    if (registry_stack && registry_stack != stack) {
+        memcpy(registry_stack, stack, sizeof(thread_lock_stack_t));
+    }
 }
 
 void mutex_stack_mark_locked(uintptr_t mutex_key) {
-    thread_lock_stack_t *stack = get_thread_stack();
+    thread_lock_stack_t *stack = get_thread_local_stack();
     if (!stack || stack->depth == 0) {
         return;
     }
@@ -105,10 +125,16 @@ void mutex_stack_mark_locked(uintptr_t mutex_key) {
         stack->stack[top].state = MUTEX_STACK_STATE_LOCKED;
         stack->stack[top].timestamp_ns = time_get_ns();
     }
+
+    // Also update registry copy
+    thread_lock_stack_t *registry_stack = get_or_create_registry_stack();
+    if (registry_stack && registry_stack != stack) {
+        memcpy(registry_stack, stack, sizeof(thread_lock_stack_t));
+    }
 }
 
 void mutex_stack_pop(uintptr_t mutex_key) {
-    thread_lock_stack_t *stack = get_thread_stack();
+    thread_lock_stack_t *stack = get_thread_local_stack();
     if (!stack || stack->depth == 0) {
         return;
     }
@@ -118,10 +144,16 @@ void mutex_stack_pop(uintptr_t mutex_key) {
     if (stack->stack[top].mutex_key == mutex_key) {
         stack->depth--;
     }
+
+    // Also update registry copy
+    thread_lock_stack_t *registry_stack = get_or_create_registry_stack();
+    if (registry_stack && registry_stack != stack) {
+        memcpy(registry_stack, stack, sizeof(thread_lock_stack_t));
+    }
 }
 
 int mutex_stack_get_current(mutex_stack_entry_t *out_entries, int max_entries) {
-    thread_lock_stack_t *stack = get_thread_stack();
+    thread_lock_stack_t *stack = get_thread_local_stack();
     if (!stack || !out_entries) {
         return 0;
     }
