@@ -161,8 +161,8 @@ static int format_cond_timing(const cond_t *cond, char *buffer, size_t size) {
 
     if (cond->waiting_count > 0) {
         const char *thread_name = named_describe(cond->last_waiting_key, "thread");
-        offset += snprintf(buffer + offset, size - offset, "    *** %lu thread(s) WAITING (most recent: %s (0x%tx)) ***\n",
-                          cond->waiting_count, thread_name, (ptrdiff_t)cond->last_waiting_key);
+        offset += snprintf(buffer + offset, size - offset, "    *** %lu thread(s) WAITING (most recent: %s) ***\n",
+                          cond->waiting_count, thread_name);
     }
 
     return offset;
