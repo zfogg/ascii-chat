@@ -16,6 +16,7 @@
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/ui/splash.h>
+#include <ascii-chat/debug/sync.h>
 
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/options/options.h>
@@ -654,6 +655,9 @@ cleanup:
 
   // Free cached webcam images and test patterns
   webcam_destroy();
+
+  // Stop debug sync thread before destroying log buffer to prevent use-after-free
+  debug_sync_cleanup_thread();
 
   // Cleanup session log buffer (used by splash screen)
   session_log_buffer_destroy();
