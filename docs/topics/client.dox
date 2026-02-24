@@ -767,8 +767,8 @@
  * **Recovery Pattern**:
  * @code{.c}
  * if (result == CONNECTION_ERROR_GENERIC) {
- *   // Transient errors recover with exponential backoff
- *   int delay_ms = 10 + (200 * reconnect_attempt);
+ *   // Transient errors recover with linear backoff
+ *   int delay_ms = 100 + (200 * (reconnect_attempt - 1));
  *   if (delay_ms > 5000) delay_ms = 5000;
  *   platform_sleep_usec(delay_ms * 1000);
  *   reconnect_attempt++;
@@ -777,15 +777,15 @@
  * @endcode
  *
  * **Backoff Strategy**:
- * - Initial delay: 10ms
+ * - Initial delay: 100ms
  * - Growth: +200ms per attempt
  * - Cap: 5 seconds maximum
- * - **Attempt 0**: 10ms
- * - **Attempt 1**: 210ms
- * - **Attempt 2**: 410ms
- * - **Attempt 3+**: 5000ms (capped)
+ * - **Attempt 1**: 100ms
+ * - **Attempt 2**: 300ms
+ * - **Attempt 3**: 500ms
+ * - **Attempt 4+**: 5000ms (capped)
  *
- * **Why Exponential Backoff**: Prevents thundering herd when server is briefly down.
+ * **Why Linear Backoff**: Prevents thundering herd when server is briefly down.
  * Gives server time to recover from temporary issues while not abandoning the client too quickly.
  *
  * @subsection client_recovery_runtime Runtime Connection Loss (With Recovery)
