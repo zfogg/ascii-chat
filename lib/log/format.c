@@ -582,7 +582,7 @@ int log_template_apply(const log_template_t *format, char *buf, size_t buf_size,
       if (spec->literal) {
         /* Construct format string with % prefix */
         size_t fmt_len = spec->literal_len + 1;
-        char *format_str = (char *)malloc(fmt_len + 1);
+        char *format_str = SAFE_MALLOC(fmt_len + 1, char *);
         if (format_str) {
           format_str[0] = '%';
           memcpy(format_str + 1, spec->literal, spec->literal_len);

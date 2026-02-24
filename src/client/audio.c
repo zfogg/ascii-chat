@@ -956,8 +956,8 @@ int audio_client_init() {
   if (g_audio_context.initialized) {
     log_debug("Cleaning up previous audio context before reinitializing");
     audio_destroy(&g_audio_context);
-    // Reset lifecycle to allow re-initialization on reconnection
-    lifecycle_reset(&g_audio_client_init_lc);
+    // NOTE: Do NOT reset lifecycle - keep it INITIALIZED so only ONE global
+    // audio context is ever created. Subsequent calls will return early.
   }
 
   // Initialize WAV dumper for received audio if debugging enabled
