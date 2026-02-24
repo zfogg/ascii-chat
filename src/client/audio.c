@@ -376,16 +376,13 @@ static void audio_sender_init(void) {
  * @brief Cleanup async audio sender
  */
 static void audio_sender_cleanup(void) {
-  lifecycle_shutdown(&g_audio_send_queue_lc);
-  if (false) { // Old code removed, keep structure
-    return;
-  }
-
   // Signal thread to exit
-  atomic_store(&g_audio_sender_should_exit, true);
-  mutex_lock(&g_audio_send_queue_mutex);
-  cond_signal(&g_audio_send_queue_cond);
-  mutex_unlock(&g_audio_send_queue_mutex);
+  if (lifecycle_is_initialized(&g_audio_send_queue_lc)) {
+    atomic_store(&g_audio_sender_should_exit, true);
+    mutex_lock(&g_audio_send_queue_mutex);
+    cond_signal(&g_audio_send_queue_cond);
+    mutex_unlock(&g_audio_send_queue_mutex);
+  }
 
   // Thread will be joined by thread_pool_stop_all() in protocol_stop_connection()
   if (THREAD_IS_CREATED(g_audio_sender_thread_created)) {
