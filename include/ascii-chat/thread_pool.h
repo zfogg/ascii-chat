@@ -174,21 +174,23 @@ thread_pool_t *thread_pool_create_with_workers(const char *pool_name, size_t num
 void thread_pool_destroy(thread_pool_t *pool);
 
 /**
- * @brief Queue a work item to a work queue pool
+ * @brief Queue a named work item to a work queue pool
  *
- * Adds a work item to the pool's work queue. One of the pre-created worker
+ * Adds a named work item to the pool's work queue. One of the pre-created worker
  * threads will pick up the work and execute it. This function is only valid
  * for pools created with thread_pool_create_with_workers().
+ * The work is automatically registered with the debug naming system.
  *
  * Safe to call from callback context (e.g., LWS callbacks). Work is queued
  * without creating new threads.
  *
+ * @param name Debug name for the work item
  * @param pool Thread pool to queue work to (must be in work queue mode)
  * @param work_func Function to execute
  * @param work_arg Argument passed to work function
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t thread_pool_queue_work(thread_pool_t *pool, void *(*work_func)(void *), void *work_arg);
+asciichat_error_t thread_pool_queue_work(const char *name, thread_pool_t *pool, void *(*work_func)(void *), void *work_arg);
 
 /**
  * @brief Spawn a worker thread in the pool

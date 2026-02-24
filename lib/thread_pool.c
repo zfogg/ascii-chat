@@ -8,6 +8,7 @@
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/platform/cond.h>
+#include <ascii-chat/debug/named.h>
 #include <string.h>
 
 #ifndef _WIN32
@@ -229,7 +230,11 @@ void thread_pool_destroy(thread_pool_t *pool) {
   log_debug("Thread pool destroyed");
 }
 
-asciichat_error_t thread_pool_queue_work(thread_pool_t *pool, void *(*work_func)(void *), void *work_arg) {
+asciichat_error_t thread_pool_queue_work(const char *name, thread_pool_t *pool, void *(*work_func)(void *), void *work_arg) {
+  if (!name) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "work name is required");
+  }
+
   if (!pool) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "pool is NULL");
   }
@@ -251,6 +256,9 @@ asciichat_error_t thread_pool_queue_work(thread_pool_t *pool, void *(*work_func)
   entry->work_func = work_func;
   entry->work_arg = work_arg;
   entry->next = NULL;
+
+  // Register work with debug naming system
+  NAMED_REGISTER_THREADPOOL_WORK(entry, name);
 
   // Add to work queue (at the end)
   mutex_lock(&pool->work_queue_mutex);

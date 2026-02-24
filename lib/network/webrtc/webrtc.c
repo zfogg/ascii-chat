@@ -18,6 +18,7 @@
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/util/lifecycle.h>
+#include <ascii-chat/debug/named.h>
 
 #include <string.h>
 #include <rtc/rtc.h>
@@ -617,6 +618,9 @@ asciichat_error_t webrtc_create_datachannel(webrtc_peer_connection_t *pc, const 
 
   pc->dc = dc;
   *dc_out = dc;
+
+  // Register data channel with debug naming system
+  NAMED_REGISTER_DATACHANNEL(dc, label);
 
   log_debug("Created DataChannel '%s' (dc_id=%d, pc_id=%d)", label, dc_id, pc->rtc_id);
   return ASCIICHAT_OK;

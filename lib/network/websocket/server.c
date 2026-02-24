@@ -200,7 +200,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       return -1;
     }
 
-    asciichat_error_t queue_result = thread_pool_queue_work(server->handler_pool, server->handler, client_ctx);
+    asciichat_error_t queue_result = thread_pool_queue_work("websocket_handler_established", server->handler_pool, server->handler, client_ctx);
     log_info("🔴 thread_pool_queue_work returned: %s",
              queue_result == ASCIICHAT_OK ? "OK" : "ERROR");
 
@@ -479,7 +479,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       client_ctx->user_data = server->user_data;
 
       // Queue handler to thread pool (fallback if not queued in ESTABLISHED)
-      if (thread_pool_queue_work(server->handler_pool, server->handler, client_ctx) != ASCIICHAT_OK) {
+      if (thread_pool_queue_work("websocket_handler_receive", server->handler_pool, server->handler, client_ctx) != ASCIICHAT_OK) {
         log_error("LWS_CALLBACK_RECEIVE: Failed to queue handler work");
         SAFE_FREE(client_ctx);
         acip_transport_destroy(conn_data->transport);
