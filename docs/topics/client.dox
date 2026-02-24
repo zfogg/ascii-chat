@@ -45,7 +45,7 @@
  *
  * - **Main Thread**: Connection management, reconnection logic, event coordination
  * - **Data Reception Thread** (protocol.c): Handles incoming packets from server
- * - **Ping Thread** (keepalive.c): Sends keepalive pings every 5 seconds
+ * - **Ping Thread** (keepalive.c): Sends keepalive pings every 1 second
  * - **Webcam Capture Thread** (capture.c): Captures and transmits video frames
  * - **Audio Capture Thread** (audio.c): Captures and transmits audio data (optional)
  *
@@ -103,8 +103,8 @@
  * The client implements exponential backoff with jitter for reconnection:
  *
  * **Retry Strategy**:
- * - Initial delay: 10ms
- * - Exponential growth: delay = 10ms + (200ms * attempt)
+ * - Initial delay: 100ms
+ * - Exponential growth: delay = 100ms + (200ms * (attempt - 1))
  * - Maximum delay: 5 seconds
  * - Jitter: Small random component to prevent thundering herd
  *
@@ -119,7 +119,7 @@
  *   }
  *
  *   // Exponential backoff with cap at 5 seconds
- *   int delay_ms = 10 + (200 * reconnect_attempt);
+ *   int delay_ms = 100 + (200 * (reconnect_attempt - 1));
  *   if (delay_ms > 5000) delay_ms = 5000;
  *   platform_sleep_usec(delay_ms * 1000);
  *   reconnect_attempt++;
@@ -129,7 +129,7 @@
  * **Connection Loss Detection**:
  * - Thread exit detection (data reception thread died)
  * - Socket error detection (network errors during packet send)
- * - Keepalive timeout (no pong response for 30 seconds)
+ * - Keepalive timeout (no pong response for 5 seconds, server-side enforcement)
  *
  * @section client_modules Client Modules
  *
@@ -416,9 +416,10 @@
  * @endcode
  *
  * **Timeout Behavior**:
- * - Ping sent every 5 seconds
- * - Pong expected within 30 seconds of last pong
- * - Timeout triggers reconnection attempt
+ * - Ping sent every 1 second (defined as PING_INTERVAL_NS in keepalive.c)
+ * - Server timeout: 5 seconds of silence triggers server-side disconnection
+ * - Client detects timeout via socket errors or protocol thread exit
+ * - Triggers reconnection attempt with exponential backoff
  * - Prevents zombie connections from blocking resources
  *
  * @subsection client_crypto Client Cryptography
@@ -777,13 +778,15 @@
  * @endcode
  *
  * **Backoff Strategy**:
- * - Initial delay: 10ms
+ * - Initial delay: 100ms
  * - Growth: +200ms per attempt
- * - Cap: 5 seconds maximum
- * - **Attempt 0**: 10ms
- * - **Attempt 1**: 210ms
- * - **Attempt 2**: 410ms
- * - **Attempt 3+**: 5000ms (capped)
+ * - Cap: 5 seconds (5000ms) maximum
+ * - **Attempt 0**: 100ms
+ * - **Attempt 1**: 300ms
+ * - **Attempt 2**: 500ms
+ * - **Attempt 3**: 700ms
+ * - **Attempt 4**: 900ms
+ * - **Attempt 22+**: 5000ms (capped)
  *
  * **Why Exponential Backoff**: Prevents thundering herd when server is briefly down.
  * Gives server time to recover from temporary issues while not abandoning the client too quickly.
@@ -793,7 +796,7 @@
  * **Detection Triggers**:
  * 1. Socket read error during `receive_packet()`
  * 2. Socket write error during `send_packet_to_server()`
- * 3. Keepalive timeout (no pong for 30 seconds)
+ * 3. Keepalive timeout (server times out after 5 seconds of silence)
  * 4. Data reception thread exits unexpectedly
  *
  * **Recovery Pattern**:
@@ -905,7 +908,8 @@
  * **Reconnection Behavior**:
  * - Reconnection resets frame display (first frame optimization repeats)
  * - Brief flicker during reconnection is expected
- * - Keepalive timeout (30s) may be too long for some use cases
+ * - Server-side timeout: 5 seconds of silence triggers disconnection
+ * - Client sends pings every 1 second to maintain connection
  *
  * @see src/client/main.c
  * @see src/client/server.c
