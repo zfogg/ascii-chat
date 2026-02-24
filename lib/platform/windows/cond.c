@@ -44,30 +44,43 @@ int cond_destroy(cond_t *cond) {
 }
 
 /**
- * @brief Wait on a condition variable indefinitely
+ * @brief Wait on a condition variable indefinitely - implementation function
  * @param cond Pointer to condition variable to wait on
  * @param mutex Pointer to associated mutex (must be locked by caller)
  * @return 0 on success, -1 on failure
  * @note The mutex is automatically released while waiting and reacquired before returning
+ * @note This is the raw implementation - use cond_wait macro for debug tracking
  */
-int cond_wait(cond_t *cond, mutex_t *mutex) {
-  cond_on_wait(cond);
-  return SleepConditionVariableCS(&cond->impl, &mutex->impl, INFINITE) ? 0 : -1;
+int cond_wait_impl(cond_t *cond, mutex_t *mutex) {
+  // SleepConditionVariableCS atomically releases mutex before waiting, then re-acquires it
+  // Track the release that SleepConditionVariableCS performs
+  mutex_on_unlock(mutex);
+  BOOL result = SleepConditionVariableCS(&cond->impl, &mutex->impl, INFINITE);
+  // Track the re-acquisition that SleepConditionVariableCS performs after signal
+  mutex_on_lock(mutex);
+  return result ? 0 : -1;
 }
 
 /**
- * @brief Wait on a condition variable with timeout
+ * @brief Wait on a condition variable with timeout - implementation function
  * @param cond Pointer to condition variable to wait on
  * @param mutex Pointer to associated mutex (must be locked by caller)
  * @param timeout_ns Timeout in nanoseconds
  * @return 0 on success, ETIMEDOUT on timeout, -1 on other failure
  * @note The mutex is automatically released while waiting and reacquired before returning
  * @note Returns ETIMEDOUT on timeout for POSIX compatibility
+ * @note This is the raw implementation - use cond_timedwait macro for debug tracking
  */
-int cond_timedwait(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns) {
-  cond_on_wait(cond);
+int cond_timedwait_impl(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns) {
   DWORD timeout_ms = (DWORD)time_ns_to_ms(timeout_ns);
-  if (!SleepConditionVariableCS(&cond->impl, &mutex->impl, timeout_ms)) {
+  // SleepConditionVariableCS atomically releases mutex before waiting, then re-acquires it
+  // Track the release that SleepConditionVariableCS performs
+  mutex_on_unlock(mutex);
+  BOOL result = SleepConditionVariableCS(&cond->impl, &mutex->impl, timeout_ms);
+  // Track the re-acquisition that SleepConditionVariableCS performs (whether signaled or timed out)
+  mutex_on_lock(mutex);
+
+  if (!result) {
     DWORD err = GetLastError();
     if (err == ERROR_TIMEOUT) {
       // If we timed out (not signaled), decrement waiting_count

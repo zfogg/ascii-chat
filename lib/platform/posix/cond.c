@@ -44,32 +44,43 @@ int cond_destroy(cond_t *cond) {
 }
 
 /**
- * @brief Wait on a condition variable indefinitely
+ * @brief Wait on a condition variable indefinitely - implementation function
  * @param cond Pointer to condition variable to wait on
  * @param mutex Pointer to associated mutex (must be locked by caller)
  * @return 0 on success, error code on failure
  * @note The mutex is automatically released while waiting and reacquired before returning
+ * @note This is the raw implementation - use cond_wait macro for debug tracking
  */
-int cond_wait(cond_t *cond, mutex_t *mutex) {
-  cond_on_wait(cond);
-  return pthread_cond_wait(&cond->impl, &mutex->impl);
+int cond_wait_impl(cond_t *cond, mutex_t *mutex) {
+  // pthread_cond_wait atomically releases mutex before waiting, then re-acquires it
+  // Track the release that pthread_cond_wait performs
+  mutex_on_unlock(mutex);
+  int result = pthread_cond_wait(&cond->impl, &mutex->impl);
+  // Track the re-acquisition that pthread_cond_wait performs after signal
+  mutex_on_lock(mutex);
+  return result;
 }
 
 /**
- * @brief Wait on a condition variable with timeout
+ * @brief Wait on a condition variable with timeout - implementation function
  * @param cond Pointer to condition variable to wait on
  * @param mutex Pointer to associated mutex (must be locked by caller)
  * @param timeout_ns Timeout in nanoseconds
  * @return 0 on success, ETIMEDOUT on timeout, other error code on failure
  * @note The mutex is automatically released while waiting and reacquired before returning
+ * @note This is the raw implementation - use cond_timedwait macro for debug tracking
  */
-int cond_timedwait(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns) {
-  cond_on_wait(cond);
+int cond_timedwait_impl(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns) {
   struct timespec ts;
   uint64_t now_ns = time_get_realtime_ns();
   uint64_t deadline_ns = now_ns + timeout_ns;
   time_ns_to_timespec(deadline_ns, &ts);
+  // pthread_cond_timedwait atomically releases mutex before waiting, then re-acquires it
+  // Track the release that pthread_cond_timedwait performs
+  mutex_on_unlock(mutex);
   int result = pthread_cond_timedwait(&cond->impl, &mutex->impl, &ts);
+  // Track the re-acquisition that pthread_cond_timedwait performs (whether signaled or timed out)
+  mutex_on_lock(mutex);
 
   // If we timed out (not signaled), decrement waiting_count
   // cond_on_signal() is called by another thread if we were actually signaled

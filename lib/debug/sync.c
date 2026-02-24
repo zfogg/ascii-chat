@@ -11,9 +11,9 @@
 #include <ascii-chat/debug/sync.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/debug/backtrace.h>
-#include <ascii-chat/platform/mutex.h>
-#include <ascii-chat/platform/rwlock.h>
 #include <ascii-chat/platform/cond.h>
+#include <ascii-chat/platform/mutex.h>  // Must come after cond.h since cond.h includes it
+#include <ascii-chat/platform/rwlock.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/log/logging.h>
 #include <stdio.h>
@@ -293,6 +293,77 @@ void debug_sync_print_state(void) {
 }
 
 // ============================================================================
+// Condition Variable Deadlock Detection
+// ============================================================================
+
+#define COND_DEADLOCK_THRESHOLD_NS (5ULL * 1000000000ULL)  // 5 seconds
+
+/**
+ * @brief Callback for checking condition variable deadlocks
+ * @param key Registry key of the primitive
+ * @param name Human-readable name of the primitive
+ * @param user_data Unused
+ */
+static void cond_deadlock_check_callback(uintptr_t key, const char *name, void *user_data) {
+    (void)user_data;  // Unused
+
+    const char *type = named_get_type(key);
+    if (!type || strcmp(type, "cond") != 0) {
+        return;
+    }
+
+    const cond_t *cond = (const cond_t *)key;
+    if (cond->waiting_count == 0) {
+        return;  // No threads waiting, nothing to check
+    }
+
+    uint64_t now = time_get_ns();
+    uint64_t stuck_ns = now - cond->last_wait_time_ns;
+    bool no_signal_since_wait = (cond->last_signal_time_ns == 0 ||
+                                 cond->last_signal_time_ns < cond->last_wait_time_ns);
+
+    if (stuck_ns < COND_DEADLOCK_THRESHOLD_NS || !no_signal_since_wait) {
+        return;  // Not stuck yet or was signaled recently
+    }
+
+    // Condition variable appears to be stuck - log detailed diagnostic info
+    char stuck_str[64];
+    time_pretty(stuck_ns, -1, stuck_str, sizeof(stuck_str));
+    const char *waiter = named_describe(cond->last_waiting_key, "thread");
+
+    log_warn("Stuck cond '%s': %lu thread(s) waiting %s with no signal (most recent waiter: %s)",
+             name, cond->waiting_count, stuck_str, waiter);
+
+    if (cond->last_wait_file) {
+        log_warn("  wait entered at %s:%d %s()",
+                 cond->last_wait_file, cond->last_wait_line, cond->last_wait_func);
+    }
+
+    if (cond->last_wait_mutex) {
+        uintptr_t holder = cond->last_wait_mutex->currently_held_by_key;
+        if (holder) {
+            log_warn("  associated mutex held by: %s (signal must come from this thread)",
+                     named_describe(holder, "thread"));
+        } else {
+            log_warn("  associated mutex is FREE — producer is not calling cond_signal");
+        }
+    }
+}
+
+/**
+ * @brief Check all condition variables for deadlocks
+ *
+ * Scans all registered condition variables and logs warnings for any that
+ * have been waiting without signal for longer than COND_DEADLOCK_THRESHOLD_NS.
+ * Called periodically by the debug thread (every 100ms).
+ *
+ * @ingroup debug_sync
+ */
+void debug_sync_check_cond_deadlocks(void) {
+    named_registry_for_each(cond_deadlock_check_callback, NULL);
+}
+
+// ============================================================================
 // Scheduled Debug State Printing (runs on separate thread)
 // ============================================================================
 
@@ -365,6 +436,9 @@ static void *debug_print_thread_fn(void *arg) {
             cond_timedwait(&g_debug_state_request.cond, &g_debug_state_request.mutex, 100000000);  // 100ms
         }
         mutex_unlock(&g_debug_state_request.mutex);
+
+        // Periodic deadlock detection (runs every 100ms during wait timeout)
+        debug_sync_check_cond_deadlocks();
     }
 
     return NULL;
@@ -495,17 +569,13 @@ int debug_sync_rwlock_wrunlock(rwlock_t *lock, const char *file_name, int line_n
 }
 
 int debug_sync_cond_wait(cond_t *cond, mutex_t *mutex, const char *file_name, int line_number, const char *function_name) {
-    (void)file_name;
-    (void)line_number;
-    (void)function_name;
-    return cond_wait(cond, mutex);
+    cond_on_wait(cond, mutex, file_name, line_number, function_name);
+    return cond_wait_impl(cond, mutex);
 }
 
 int debug_sync_cond_timedwait(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns, const char *file_name, int line_number, const char *function_name) {
-    (void)file_name;
-    (void)line_number;
-    (void)function_name;
-    return cond_timedwait(cond, mutex, timeout_ns);
+    cond_on_wait(cond, mutex, file_name, line_number, function_name);
+    return cond_timedwait_impl(cond, mutex, timeout_ns);
 }
 
 int debug_sync_cond_signal(cond_t *cond, const char *file_name, int line_number, const char *function_name) {

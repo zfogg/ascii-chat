@@ -445,6 +445,37 @@ void debug_sync_trigger_print(void);
  */
 void debug_sync_get_stats(uint64_t *total_acquired, uint64_t *total_released, uint32_t *currently_held);
 
+/**
+ * @brief Check all condition variables for potential deadlocks
+ * @ingroup debug_sync
+ *
+ * Scans all registered condition variables and logs warnings for any that
+ * have threads waiting without being signaled for longer than 5 seconds.
+ *
+ * For each stuck condition variable, logs:
+ * - Number of waiting threads and elapsed wait time
+ * - Callsite where wait was entered (file, line, function)
+ * - Associated mutex status (held by whom, or free)
+ *
+ * Called periodically by the debug thread (every 100ms), so detection latency
+ * is at most 5 seconds + 100ms for stuck conditions.
+ *
+ * ## Output Example
+ *
+ * @code
+ * [WARN] Stuck cond 'audio_send_queue_cond.0': 1 thread(s) waiting 66s with no signal (most recent waiter: audio_sender.0)
+ * [WARN]   wait entered at src/client/audio.c:291 audio_sender_thread_func()
+ * [WARN]   associated mutex is FREE — producer is not calling cond_signal
+ * @endcode
+ *
+ * @note Thread-safe: can be called from any thread
+ * @note No blocking: reads only, doesn't acquire locks
+ * @note Called automatically by debug thread; only call manually for immediate checks
+ *
+ * @see debug_sync_start_thread() to ensure periodic checking
+ */
+void debug_sync_check_cond_deadlocks(void);
+
 #ifdef __cplusplus
 }
 #endif

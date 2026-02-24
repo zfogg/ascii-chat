@@ -15,15 +15,23 @@
 /**
  * @brief Hook called when a thread waits on a condition variable
  * @param cond Pointer to the condition variable being waited on
+ * @param mutex Pointer to the associated mutex
+ * @param file Source file of the wait callsite (for deadlock detection)
+ * @param line Source line of the wait callsite (for deadlock detection)
+ * @param func Source function of the wait callsite (for deadlock detection)
  *
  * Called by platform-specific cond_wait() or cond_timedwait() before blocking.
- * Can be extended in the future to add more diagnostics or callbacks.
+ * Records timing, callsite information, and mutex reference for deadlock detection.
  *
  * @ingroup platform
  */
-void cond_on_wait(cond_t *cond) {
+void cond_on_wait(cond_t *cond, mutex_t *mutex, const char *file, int line, const char *func) {
   if (cond) {
     cond->last_wait_time_ns = time_get_ns();
+    cond->last_wait_mutex = mutex;
+    cond->last_wait_file = file;
+    cond->last_wait_line = line;
+    cond->last_wait_func = func;
     asciichat_thread_t current_thread = (asciichat_thread_t)asciichat_thread_current_id();
     cond->last_waiting_key = asciichat_thread_to_key(current_thread);
     atomic_fetch_add((volatile _Atomic(uint64_t) *)&cond->waiting_count, 1);
