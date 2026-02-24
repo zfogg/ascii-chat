@@ -334,7 +334,7 @@ int main(int argc, char *argv[]) {
 #ifndef NDEBUG
   named_init();
   // Register the main thread with the named registry so it shows up in logs with %tname
-  NAMED_REGISTER_THREAD(asciichat_thread_self(), "main", "thread");
+  NAMED_REGISTER_THREAD(asciichat_thread_self(), "main");
 #endif
 
   // VERY FIRST: Scan for --color BEFORE ANY logging initialization

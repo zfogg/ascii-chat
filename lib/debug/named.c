@@ -49,6 +49,7 @@ typedef struct named_entry {
     uintptr_t key;                      // Registry lookup key
     char *name;                         // Allocated name string (e.g., "recv.7")
     char *type;                         // Data type label (e.g., "mutex", "socket") (allocated)
+    char *format_spec;                  // Format specifier for printing (e.g., "0x%tx") (allocated)
     char *file;                         // Source file where registered (allocated)
     int line;                           // Source line where registered
     char *func;                         // Function where registered (allocated)
@@ -127,8 +128,9 @@ void named_destroy(void) {
 }
 
 const char *named_register(uintptr_t key, const char *base_name, const char *type,
+                          const char *format_spec,
                           const char *file, int line, const char *func) {
-    if (!base_name || !type) {
+    if (!base_name || !type || !format_spec) {
         return "?";
     }
 
@@ -187,10 +189,12 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
         // Update existing entry
         free(entry->name);
         free(entry->type);
+        free(entry->format_spec);
         free(entry->file);
         free(entry->func);
         entry->name = full_name;
         entry->type = type ? strdup(type) : NULL;
+        entry->format_spec = format_spec ? strdup(format_spec) : NULL;
         entry->file = file ? strdup(relative_file) : NULL;
         entry->line = line;
         entry->func = func ? strdup(func) : NULL;
@@ -206,6 +210,7 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
         entry->key = key;
         entry->name = full_name;
         entry->type = type ? strdup(type) : NULL;
+        entry->format_spec = format_spec ? strdup(format_spec) : NULL;
         entry->file = file ? strdup(relative_file) : NULL;
         entry->line = line;
         entry->func = func ? strdup(func) : NULL;
@@ -218,9 +223,10 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
 }
 
 const char *named_register_fmt(uintptr_t key, const char *type,
+                              const char *format_spec,
                               const char *file, int line, const char *func,
                               const char *fmt, ...) {
-    if (!type || !fmt) {
+    if (!type || !format_spec || !fmt) {
         return "?";
     }
 
@@ -266,10 +272,12 @@ const char *named_register_fmt(uintptr_t key, const char *type,
         // Update existing entry
         free(entry->name);
         free(entry->type);
+        free(entry->format_spec);
         free(entry->file);
         free(entry->func);
         entry->name = full_name;
         entry->type = type ? strdup(type) : NULL;
+        entry->format_spec = format_spec ? strdup(format_spec) : NULL;
         entry->file = file ? strdup(relative_file) : NULL;
         entry->line = line;
         entry->func = func ? strdup(func) : NULL;
@@ -285,6 +293,7 @@ const char *named_register_fmt(uintptr_t key, const char *type,
         entry->key = key;
         entry->name = full_name;
         entry->type = type ? strdup(type) : NULL;
+        entry->format_spec = format_spec ? strdup(format_spec) : NULL;
         entry->file = file ? strdup(relative_file) : NULL;
         entry->line = line;
         entry->func = func ? strdup(func) : NULL;
@@ -310,6 +319,7 @@ void named_unregister(uintptr_t key) {
         HASH_DEL(g_named_registry.entries, entry);
         free(entry->name);
         free(entry->type);
+        free(entry->format_spec);
         free(entry->file);
         free(entry->func);
         free(entry);
@@ -346,6 +356,23 @@ const char *named_get_type(uintptr_t key) {
     HASH_FIND(hh, g_named_registry.entries, &key, sizeof(key), entry);
 
     const char *result = entry ? entry->type : NULL;
+
+    rwlock_rdunlock_impl(&g_named_registry.entries_lock);
+
+    return result;
+}
+
+const char *named_get_format_spec(uintptr_t key) {
+    if (!lifecycle_is_initialized(&g_named_registry.lifecycle)) {
+        return NULL;
+    }
+
+    rwlock_rdlock_impl(&g_named_registry.entries_lock);
+
+    named_entry_t *entry;
+    HASH_FIND(hh, g_named_registry.entries, &key, sizeof(key), entry);
+
+    const char *result = entry ? entry->format_spec : NULL;
 
     rwlock_rdunlock_impl(&g_named_registry.entries_lock);
 
@@ -443,9 +470,11 @@ void named_destroy(void) {
 }
 
 const char *named_register(uintptr_t key, const char *base_name, const char *type,
+                          const char *format_spec,
                           const char *file, int line, const char *func) {
     (void)key;
     (void)type;
+    (void)format_spec;
     (void)file;
     (void)line;
     (void)func;
@@ -453,10 +482,12 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
 }
 
 const char *named_register_fmt(uintptr_t key, const char *type,
+                              const char *format_spec,
                               const char *file, int line, const char *func,
                               const char *fmt, ...) {
     (void)key;
     (void)type;
+    (void)format_spec;
     (void)file;
     (void)line;
     (void)func;
@@ -473,6 +504,11 @@ const char *named_get(uintptr_t key) {
 }
 
 const char *named_get_type(uintptr_t key) {
+    (void)key;
+    return NULL;
+}
+
+const char *named_get_format_spec(uintptr_t key) {
     (void)key;
     return NULL;
 }

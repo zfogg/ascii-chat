@@ -60,12 +60,26 @@ int log_named_format_message(const char *message, char *output, size_t output_si
 
         if (name && type) {
           /* This is a registered named object - format it */
-          int written =
-            snprintf(output + out_pos, output_size - out_pos, "%s/%s (0x%tx)", type, name, address);
+          const char *fmt_spec = named_get_format_spec(address);
+          if (!fmt_spec) {
+              fmt_spec = "0x%tx";  /* Default format for addresses */
+          }
+
+          /* Format: "type/name (formatted_value)" */
+          int written = snprintf(output + out_pos, output_size - out_pos, "%s/%s (", type, name);
           if (written > 0 && (size_t)written < output_size - out_pos) {
             out_pos += written;
-            any_transformed = true;
-            continue;
+            /* Format the value using the registered format spec */
+            written = snprintf(output + out_pos, output_size - out_pos, fmt_spec, (ptrdiff_t)address);
+            if (written > 0 && (size_t)written < output_size - out_pos) {
+              out_pos += written;
+              /* Add closing paren */
+              if (out_pos + 1 < output_size) {
+                output[out_pos++] = ')';
+                any_transformed = true;
+                continue;
+              }
+            }
           }
         }
 

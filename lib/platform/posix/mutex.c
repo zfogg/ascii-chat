@@ -20,7 +20,7 @@
 int mutex_init(mutex_t *mutex, const char *name) {
   int err = pthread_mutex_init(&mutex->impl, NULL);
   if (err == 0) {
-    mutex->name = NAMED_REGISTER(mutex, name, "mutex");
+    mutex->name = NAMED_REGISTER_MUTEX(mutex, name);
     mutex->last_lock_time_ns = 0;
     mutex->last_unlock_time_ns = 0;
     mutex->currently_held_by_key = 0;

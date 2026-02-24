@@ -44,7 +44,7 @@
 int asciichat_thread_create(asciichat_thread_t *thread, const char *name, void *(*func)(void *), void *arg) {
   int err = pthread_create(thread, NULL, func, arg);
   if (err == 0 && name && thread) {
-    NAMED_REGISTER_THREAD(*thread, name, "thread");
+    NAMED_REGISTER_THREAD(*thread, name);
   }
   return err;
 }

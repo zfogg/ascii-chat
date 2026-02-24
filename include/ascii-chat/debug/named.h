@@ -96,6 +96,7 @@ void named_destroy(void);
  * In release builds (NDEBUG), this is a no-op and returns base_name.
  */
 const char *named_register(uintptr_t key, const char *base_name, const char *type,
+                          const char *format_spec,
                           const char *file, int line, const char *func);
 
 /**
@@ -120,6 +121,7 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
  * In release builds (NDEBUG), this is a no-op and returns "?".
  */
 const char *named_register_fmt(uintptr_t key, const char *type,
+                              const char *format_spec,
                               const char *file, int line, const char *func,
                               const char *fmt, ...);
 
@@ -160,6 +162,19 @@ const char *named_get(uintptr_t key);
 const char *named_get_type(uintptr_t key);
 
 /**
+ * @brief Get the format specifier for a registered named object
+ * @param key The resource key
+ * @return Format specifier string (e.g., "0x%tx"), or NULL if not registered
+ * @ingroup debug_named
+ *
+ * Returns the format specifier registered with named_register(), or NULL if
+ * the key is not in the registry.
+ *
+ * In release builds (NDEBUG), this always returns NULL.
+ */
+const char *named_get_format_spec(uintptr_t key);
+
+/**
  * @brief Format a description string for logging
  * @param key The resource key
  * @param type_hint A type label (e.g., "mutex", "socket", "thread")
@@ -193,27 +208,29 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
 // ============================================================================
 
 /**
- * @brief Register any pointer with base name, type, and location (auto-suffix)
+ * @brief Register any pointer with base name, type, format spec, and location (auto-suffix)
  * @param ptr Object pointer (void* or typed pointer)
  * @param name Base name string
  * @param type Data type label (e.g., "mutex", "socket")
+ * @param fmt Format specifier for printing (e.g., "0x%tx")
  * @ingroup debug_named
  *
  * In debug builds, automatically captures __FILE__, __LINE__, and __func__ for location info.
  * In release builds (NDEBUG), this is a no-op.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER(ptr, name, type) \
-  named_register((uintptr_t)(const void *)(ptr), (name), (type), __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER(ptr, name, type, fmt) \
+  named_register((uintptr_t)(const void *)(ptr), (name), (type), (fmt), __FILE__, __LINE__, __func__)
 #else
-#define NAMED_REGISTER(ptr, name, type) (name)
+#define NAMED_REGISTER(ptr, name, type, fmt) (name)
 #endif
 
 /**
- * @brief Register with a formatted name and type
+ * @brief Register with a formatted name, type, and format spec
  * @param ptr Object pointer
  * @param type Data type label
- * @param fmt Printf-style format string
+ * @param fmt_spec Format specifier for printing (e.g., "0x%tx")
+ * @param fmt Printf-style format string for name
  * @param ... Format arguments
  * @ingroup debug_named
  *
@@ -221,10 +238,10 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * In release builds (NDEBUG), this is a no-op.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_FMT(ptr, type, fmt, ...) \
-  named_register_fmt((uintptr_t)(const void *)(ptr), (type), __FILE__, __LINE__, __func__, (fmt), __VA_ARGS__)
+#define NAMED_REGISTER_FMT(ptr, type, fmt_spec, fmt, ...) \
+  named_register_fmt((uintptr_t)(const void *)(ptr), (type), (fmt_spec), __FILE__, __LINE__, __func__, (fmt), __VA_ARGS__)
 #else
-#define NAMED_REGISTER_FMT(ptr, type, fmt, ...) ("?")
+#define NAMED_REGISTER_FMT(ptr, type, fmt_spec, fmt, ...) ("?")
 #endif
 
 /**
@@ -279,8 +296,8 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * In release builds (NDEBUG), this is a no-op.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_ID(id, name, type) \
-  named_register((uintptr_t)(intptr_t)(id), (name), (type), __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_ID(id, name, type, fmt) \
+  named_register((uintptr_t)(intptr_t)(id), (name), (type), (fmt), __FILE__, __LINE__, __func__)
 #else
 #define NAMED_REGISTER_ID(id, name, type) (name)
 #endif
@@ -311,25 +328,74 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
 #endif
 
 // ============================================================================
+// Type-Specific Convenience Macros (Mutex, RWLock, Cond, Thread)
+// ============================================================================
+
+/**
+ * @brief Register a mutex with automatic format specifier
+ * @param mutex Mutex pointer
+ * @param name Base name string
+ * @ingroup debug_named
+ *
+ * Convenience macro that automatically uses "0x%tx" format specifier for mutex addresses.
+ */
+#ifndef NDEBUG
+#define NAMED_REGISTER_MUTEX(mutex, name) \
+  named_register((uintptr_t)(const void *)(mutex), (name), "mutex", "0x%tx", __FILE__, __LINE__, __func__)
+#else
+#define NAMED_REGISTER_MUTEX(mutex, name) (name)
+#endif
+
+/**
+ * @brief Register an rwlock with automatic format specifier
+ * @param lock RWLock pointer
+ * @param name Base name string
+ * @ingroup debug_named
+ *
+ * Convenience macro that automatically uses "0x%tx" format specifier for rwlock addresses.
+ */
+#ifndef NDEBUG
+#define NAMED_REGISTER_RWLOCK(lock, name) \
+  named_register((uintptr_t)(const void *)(lock), (name), "rwlock", "0x%tx", __FILE__, __LINE__, __func__)
+#else
+#define NAMED_REGISTER_RWLOCK(lock, name) (name)
+#endif
+
+/**
+ * @brief Register a condition variable with automatic format specifier
+ * @param cond Condition variable pointer
+ * @param name Base name string
+ * @ingroup debug_named
+ *
+ * Convenience macro that automatically uses "0x%tx" format specifier for cond addresses.
+ */
+#ifndef NDEBUG
+#define NAMED_REGISTER_COND(cond, name) \
+  named_register((uintptr_t)(const void *)(cond), (name), "cond", "0x%tx", __FILE__, __LINE__, __func__)
+#else
+#define NAMED_REGISTER_COND(cond, name) (name)
+#endif
+
+// ============================================================================
 // Thread-Specific Registration Macros
 // ============================================================================
 
 /**
- * @brief Register a thread handle with name and type
+ * @brief Register a thread handle with name and automatic format specifier
  * @param thread asciichat_thread_t handle (NOT a pointer)
  * @param name Base name string
- * @param type Data type label (typically "thread")
  * @ingroup debug_named
  *
+ * Convenience macro that automatically uses "0x%tx" format specifier for thread addresses.
  * In debug builds, automatically captures __FILE__, __LINE__, and __func__ for location info.
  * The thread handle itself (not a pointer) is used as the registry key.
  * In release builds (NDEBUG), this is a no-op.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_THREAD(thread, name, type) \
-  named_register(asciichat_thread_to_key((thread)), (name), (type), __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_THREAD(thread, name) \
+  named_register(asciichat_thread_to_key((thread)), (name), "thread", "0x%tx", __FILE__, __LINE__, __func__)
 #else
-#define NAMED_REGISTER_THREAD(thread, name, type) ((void)0)
+#define NAMED_REGISTER_THREAD(thread, name) ((void)0)
 #endif
 
 /**
