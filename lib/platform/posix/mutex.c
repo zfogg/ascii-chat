@@ -8,6 +8,7 @@
 
 #include <ascii-chat/platform/api.h>
 #include <ascii-chat/debug/named.h>
+#include <ascii-chat/debug/mutex.h>
 #include <pthread.h>
 #include <ascii-chat/asciichat_errno.h>
 
@@ -44,9 +45,17 @@ int mutex_destroy(mutex_t *mutex) {
  * @return 0 on success, error code on failure
  */
 int mutex_lock_impl(mutex_t *mutex) {
+  // Track lock attempt on stack
+  mutex_stack_push_pending((uintptr_t)mutex, mutex->name);
+
   int err = pthread_mutex_lock(&mutex->impl);
   if (err == 0) {
+    // Mark as successfully locked
+    mutex_stack_mark_locked((uintptr_t)mutex);
     mutex_on_lock(mutex);
+  } else {
+    // Lock failed, remove from stack
+    mutex_stack_pop((uintptr_t)mutex);
   }
   return err;
 }
@@ -57,7 +66,18 @@ int mutex_lock_impl(mutex_t *mutex) {
  * @return 0 on success, EBUSY if already locked, other error code on failure
  */
 int mutex_trylock_impl(mutex_t *mutex) {
-  return pthread_mutex_trylock(&mutex->impl);
+  // Track lock attempt on stack
+  mutex_stack_push_pending((uintptr_t)mutex, mutex->name);
+
+  int err = pthread_mutex_trylock(&mutex->impl);
+  if (err == 0) {
+    // Mark as successfully locked
+    mutex_stack_mark_locked((uintptr_t)mutex);
+  } else {
+    // Lock failed, remove from stack
+    mutex_stack_pop((uintptr_t)mutex);
+  }
+  return err;
 }
 
 /**
@@ -67,7 +87,14 @@ int mutex_trylock_impl(mutex_t *mutex) {
  */
 int mutex_unlock_impl(mutex_t *mutex) {
   mutex_on_unlock(mutex);
-  return pthread_mutex_unlock(&mutex->impl);
+  int err = pthread_mutex_unlock(&mutex->impl);
+
+  // Pop from lock stack after successful unlock
+  if (err == 0) {
+    mutex_stack_pop((uintptr_t)mutex);
+  }
+
+  return err;
 }
 
 #endif // !_WIN32

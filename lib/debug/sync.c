@@ -11,6 +11,7 @@
 #include <ascii-chat/debug/sync.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/debug/backtrace.h>
+#include <ascii-chat/debug/mutex.h>
 #include <ascii-chat/platform/cond.h>
 #include <ascii-chat/platform/mutex.h>  // Must come after cond.h since cond.h includes it
 #include <ascii-chat/platform/rwlock.h>
@@ -256,6 +257,55 @@ static void cond_iter_callback(uintptr_t key, const char *name, void *user_data)
 }
 
 // ============================================================================
+// Lock Stack Printing
+// ============================================================================
+
+/**
+ * @brief Print all thread lock stacks
+ */
+static void debug_sync_print_lock_stacks(char *buffer, size_t buffer_size, size_t *offset) {
+    mutex_stack_entry_t **all_stacks = NULL;
+    int *stack_counts = NULL;
+    int thread_count = 0;
+
+    if (mutex_stack_get_all_threads(&all_stacks, &stack_counts, &thread_count) != 0) {
+        return;
+    }
+
+    if (thread_count == 0) {
+        mutex_stack_free_all_threads(all_stacks, stack_counts, thread_count);
+        return;
+    }
+
+    *offset += snprintf(buffer + *offset, buffer_size - *offset,
+                       "\nThread Lock Stacks:\n");
+
+    for (int i = 0; i < thread_count; i++) {
+        int depth = stack_counts[i];
+        if (depth == 0) continue;
+
+        *offset += snprintf(buffer + *offset, buffer_size - *offset,
+                           "  Thread %d: %d lock(s)\n", i, depth);
+
+        for (int j = 0; j < depth; j++) {
+            const mutex_stack_entry_t *entry = &all_stacks[i][j];
+            const char *state_str = (entry->state == MUTEX_STACK_STATE_LOCKED) ? "LOCKED" : "PENDING";
+
+            uint64_t elapsed = time_get_ns() - entry->timestamp_ns;
+            char elapsed_str[64];
+            time_pretty(elapsed, -1, elapsed_str, sizeof(elapsed_str));
+
+            *offset += snprintf(buffer + *offset, buffer_size - *offset,
+                               "    [%d] %s @ %p (%s) %s\n",
+                               j, entry->mutex_name, (void *)entry->mutex_key,
+                               state_str, elapsed_str);
+        }
+    }
+
+    mutex_stack_free_all_threads(all_stacks, stack_counts, thread_count);
+}
+
+// ============================================================================
 // Public API Implementation
 // ============================================================================
 
@@ -276,12 +326,12 @@ void debug_sync_print_state(void) {
                           "Synchronization Primitive State:\n");
 
     // Iterate through all registered syncs
-    // TODO: Debug why mutexes aren't being registered. In theory, every mutex
-    // created with mutex_init(mutex, "name") should call NAMED_REGISTER(mutex, "name", "mutex")
-    // which should add it to the named registry for inspection.
     named_registry_for_each(mutex_iter_callback, &buf);
     named_registry_for_each(rwlock_iter_callback, &buf);
     named_registry_for_each(cond_iter_callback, &buf);
+
+    // Print lock stacks for deadlock analysis
+    debug_sync_print_lock_stacks(buf.buffer, buf.buffer_size, &buf.offset);
 
     // Log everything in one call
     if (buf.offset > 0) {
@@ -439,6 +489,7 @@ static void *debug_print_thread_fn(void *arg) {
 
         // Periodic deadlock detection (runs every 100ms during wait timeout)
         debug_sync_check_cond_deadlocks();
+        mutex_stack_detect_deadlocks();
     }
 
     return NULL;
