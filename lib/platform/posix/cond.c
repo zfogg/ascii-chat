@@ -11,6 +11,8 @@
 #include <ascii-chat/debug/named.h>
 #include <pthread.h>
 #include <time.h>
+#include <stdatomic.h> // For atomic_fetch_sub
+#include <errno.h> // For ETIMEDOUT
 
 /**
  * @brief Initialize a condition variable with a name
@@ -67,7 +69,15 @@ int cond_timedwait(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns) {
   uint64_t now_ns = time_get_realtime_ns();
   uint64_t deadline_ns = now_ns + timeout_ns;
   time_ns_to_timespec(deadline_ns, &ts);
-  return pthread_cond_timedwait(&cond->impl, &mutex->impl, &ts);
+  int result = pthread_cond_timedwait(&cond->impl, &mutex->impl, &ts);
+
+  // If we timed out (not signaled), decrement waiting_count
+  // cond_on_signal() is called by another thread if we were actually signaled
+  if (result == ETIMEDOUT && cond && cond->waiting_count > 0) {
+    atomic_fetch_sub((volatile _Atomic(uint64_t) *)&cond->waiting_count, 1);
+  }
+
+  return result;
 }
 
 /**
