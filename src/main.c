@@ -612,10 +612,10 @@ int main(int argc, char *argv[]) {
     final_log_file = json_filename_buf;
     // For JSON mode: Initialize logging without file (text will be disabled)
     // We'll set up JSON output separately below
-    log_init(NULL, GET_OPTION(log_level), false, false);
+    // Note: log_init() was already called in asciichat_shared_init()
   } else {
     // Text logging mode: use the file from options (which is mode-specific default or user-specified)
-    log_init(final_log_file, GET_OPTION(log_level), false, false);
+    // Note: log_init() was already called in asciichat_shared_init()
   }
 
   // Apply custom log template if specified (use early parsed value if available, otherwise use options)

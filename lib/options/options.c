@@ -1136,9 +1136,8 @@ asciichat_error_t options_init(int argc, char **argv) {
   opts.detected_mode = detected_mode;
   char *log_filename = options_get_log_filepath(detected_mode, opts);
   SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", log_filename);
-  // Force stderr when stdout is not a TTY (piping or redirecting output)
-  bool force_stderr = terminal_is_piped_output();
-  log_init(opts.log_file, GET_OPTION(log_level), force_stderr, false);
+  // Note: log_init() is called earlier in asciichat_shared_init() and will be
+  // reconfigured with the actual log level and file in main.c after options are fully parsed
   // NOTE: --color detection now happens in src/main.c BEFORE asciichat_shared_init()
   // This ensures g_color_flag_passed and g_color_flag_value are set before any logging.
   //
