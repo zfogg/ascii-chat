@@ -71,8 +71,7 @@ static int format_mutex_timing(const mutex_t *mutex, char *buffer, size_t size) 
     }
 
     if (mutex->currently_held_by_key != 0) {
-        const char *thread_name = named_describe(mutex->currently_held_by_key, "thread");
-        snprintf(held_str, sizeof(held_str), "HELD_BY=%s", thread_name);
+        snprintf(held_str, sizeof(held_str), "HELD_BY=%p", (void *)mutex->currently_held_by_key);
     }
 
     offset += snprintf(buffer + offset, size - offset, "%s %s %s",
@@ -123,8 +122,7 @@ static int format_rwlock_timing(const rwlock_t *rwlock, char *buffer, size_t siz
     }
 
     if (rwlock->write_held_by_key != 0) {
-        const char *thread_name = named_describe(rwlock->write_held_by_key, "thread");
-        snprintf(write_held_str, sizeof(write_held_str), "WRITE_HELD_BY=%s", thread_name);
+        snprintf(write_held_str, sizeof(write_held_str), "WRITE_HELD_BY=%p", (void *)rwlock->write_held_by_key);
     }
 
     if (rwlock->read_lock_count > 0) {
@@ -178,8 +176,7 @@ static int format_cond_timing(const cond_t *cond, char *buffer, size_t size) {
     }
 
     if (cond->waiting_count > 0) {
-        const char *thread_name = named_describe(cond->last_waiting_key, "thread");
-        snprintf(waiting_str, sizeof(waiting_str), "WAITING=%lu(%s)", cond->waiting_count, thread_name);
+        snprintf(waiting_str, sizeof(waiting_str), "WAITING=%lu:%p", cond->waiting_count, (void *)cond->last_waiting_key);
     }
 
     offset += snprintf(buffer + offset, size - offset, "%s %s %s %s",
