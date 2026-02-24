@@ -69,7 +69,7 @@ static int format_mutex_timing(const mutex_t *mutex, char *buffer, size_t size) 
 
     if (mutex->currently_held_by_key != 0) {
         const char *thread_name = named_describe(mutex->currently_held_by_key, "thread");
-        offset += snprintf(buffer + offset, size - offset, "    *** HELD by %s (0x%tx) ***\n", thread_name, (ptrdiff_t)mutex->currently_held_by_key);
+        offset += snprintf(buffer + offset, size - offset, "    *** HELD by %s ***\n", thread_name);
     }
 
     return offset;
@@ -113,7 +113,7 @@ static int format_rwlock_timing(const rwlock_t *rwlock, char *buffer, size_t siz
 
     if (rwlock->write_held_by_key != 0) {
         const char *thread_name = named_describe(rwlock->write_held_by_key, "thread");
-        offset += snprintf(buffer + offset, size - offset, "    *** WRITE HELD by %s (0x%tx) ***\n", thread_name, (ptrdiff_t)rwlock->write_held_by_key);
+        offset += snprintf(buffer + offset, size - offset, "    *** WRITE HELD by %s ***\n", thread_name);
     }
 
     if (rwlock->read_lock_count > 0) {
