@@ -450,7 +450,11 @@ void debug_free(void *ptr, const char *file, int line) {
         alloc_site_t *site = lookup_site(curr->file, curr->line, curr->tid);
         if (site && site->live_count > 0) {
           site->live_count--;
-          site->live_bytes -= freed_size;
+          if (site->live_bytes >= freed_size) {
+            site->live_bytes -= freed_size;
+          } else {
+            site->live_bytes = 0; // Prevent underflow
+          }
         }
 
         free(curr);
