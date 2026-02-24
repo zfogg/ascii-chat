@@ -448,6 +448,7 @@ int platform_open(const char *name, const char *pathname, int flags, ...) {
 
   if (fd >= 0) {
     NAMED_REGISTER_FD(fd, name);
+    log_dev("Opened file descriptor %d for %s at path %s", fd, name, pathname);
   }
 
   return fd;
@@ -468,6 +469,7 @@ FILE *platform_fdopen(const char *name, int fd, const char *mode) {
   FILE *stream = fdopen(fd, mode);
   if (stream && fd >= 0) {
     NAMED_REGISTER_FD(fd, name);
+    log_dev("Wrapped file descriptor %d with stream for %s", fd, name);
   }
   return stream;
 }
@@ -523,6 +525,7 @@ FILE *platform_fopen(const char *name, const char *filename, const char *mode) {
     int fd = fileno(stream);
     if (fd >= 0) {
       NAMED_REGISTER_FD(fd, name);
+      log_dev("Opened file stream with file descriptor %d for %s", fd, name);
     }
   }
   return stream;

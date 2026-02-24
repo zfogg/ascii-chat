@@ -39,6 +39,7 @@ asciichat_error_t platform_popen(const char *name, const char *command, const ch
   int fd = fileno(stream);
   if (fd >= 0) {
     NAMED_REGISTER_FD(fd, name);
+    log_dev("Opened process pipe with file descriptor %d for %s: %s", fd, name, command);
   }
 
   *out_stream = stream;
