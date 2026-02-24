@@ -1237,9 +1237,27 @@
  * "Trust on first use" (TOFU) with IP binding - assumes first connection to specific IP:port
  * is legitimate, detects any changes in either IP or key thereafter.
  *
- * @section crypto_auth_modes Authentication Modes
+ * @section crypto_auth_modes Authentication and Encryption Decoupling
  *
- * @subsection crypto_mode_default Mode 1: Default (Ephemeral DH Only)
+ * The crypto system supports independent control of authentication and encryption layers
+ * through command-line flags. This enables four distinct operational modes:
+ *
+ * | Mode | Flags | Auth | Encrypt | ACIP | Use Case |
+ * |------|-------|------|---------|------|----------|
+ * | **Mode 1: Authenticated + Encrypted** | (default) | ✅ | ✅ | Enabled | Production, trusted peers |
+ * | **Mode 2: Authenticated, Plaintext** | `--no-encrypt` | ✅ | ❌ | Auth layer only | Development, debug |
+ * | **Mode 3: Anonymous Encrypted** | `--no-auth` | ❌ | ✅ | Enabled | Quick sessions, low-threat |
+ * | **Mode 4: Plaintext Only** | `--no-auth --no-encrypt` | ❌ | ❌ | Disabled | Testing, packet inspection |
+ *
+ * **Key Design Notes:**
+ * - **Default behavior:** Both authentication and encryption are enabled
+ * - **No explicit `--auth` flag:** Authentication is enabled by default; use `--no-auth` to disable
+ * - **Plaintext mode validation:** When `--no-auth` is specified, authentication flags (`--key`, `--password`, etc.) are rejected
+ * - **Complete bypass:** Only when BOTH flags are used (`--no-auth --no-encrypt`) is the entire ACIP handshake skipped
+ *
+ * @subsection crypto_mode_default Mode 1: Authenticated + Encrypted (Default)
+ *
+ * **Flags:** (none - this is the default)
  *
  * **Server:**
  * @code{.bash}
@@ -1251,14 +1269,99 @@
  * ascii-chat client
  * @endcode
  *
- * **Security:**
+ * **Protocol:**
+ * - ACIP handshake performed with both authentication and encryption enabled
+ * - Client and server perform cryptographic key exchange
+ * - All subsequent packets encrypted with negotiated session key
+ *
+ * **Security Properties:**
+ * - ✅ Privacy: All packets encrypted with ephemeral X25519/XSalsa20-Poly1305
+ * - ✅ Forward secrecy: Ephemeral keys per connection (long-term key only for authentication)
+ * - ✅ Identity verification: Server identity can be verified with --server-key, --known-hosts, or --password
+ * - ✅ Recommended for production use
+ *
+ * **Use case:** Production deployments, trusted peer networks, when identity verification is desired
+ *
+ * @subsection crypto_mode_auth_plaintext Mode 2: Authenticated + Plaintext
+ *
+ * **Flags:** `--no-encrypt`
+ *
+ * **Server:**
+ * @code{.bash}
+ * ascii-chat server --no-encrypt
+ * @endcode
+ *
+ * **Client:**
+ * @code{.bash}
+ * ascii-chat client --no-encrypt
+ * @endcode
+ *
+ * **Protocol:**
+ * - ACIP handshake performed with authentication enabled
+ * - Packets sent in plaintext (no encryption)
+ * - Server identity verification still possible
+ *
+ * **Security Properties:**
+ * - ❌ Privacy: All packets sent in plaintext (visible to eavesdroppers)
+ * - ✅ Authentication: Server identity verified (with --password, --key, etc.)
+ * - ⚠️ Suitable only for debugging and testing
+ *
+ * **Use case:** Development, debugging with tcpdump, trusted networks only
+ *
+ * @subsection crypto_mode_anon_encrypted Mode 3: Anonymous + Encrypted
+ *
+ * **Flags:** `--no-auth`
+ *
+ * **Server:**
+ * @code{.bash}
+ * ascii-chat server --no-auth
+ * @endcode
+ *
+ * **Client:**
+ * @code{.bash}
+ * ascii-chat client --no-auth
+ * @endcode
+ *
+ * **Protocol:**
+ * - ACIP handshake performed with encryption enabled
+ * - No authentication: server identity not verified
+ * - All subsequent packets encrypted with ephemeral X25519/XSalsa20-Poly1305
+ *
+ * **Security Properties:**
  * - ✅ Privacy: All packets encrypted
- * - ✅ Forward secrecy: New keys per connection
- * - ❌ MITM vulnerable: No identity verification
+ * - ✅ Forward secrecy: Ephemeral keys per connection
+ * - ❌ No authentication: Vulnerable to MITM attacks from active adversaries
+ * - ⚠️ Suitable for quick sessions in low-threat environments
  *
- * **Use case:** Quick sessions, low-threat environments
+ * **Use case:** Quick sessions, low-threat LANs, temporary connections
  *
- * @subsection crypto_mode_password Mode 2: Password Authentication
+ * @subsection crypto_mode_plaintext Mode 4: Plaintext Only
+ *
+ * **Flags:** `--no-auth --no-encrypt`
+ *
+ * **Server:**
+ * @code{.bash}
+ * ascii-chat server --no-auth --no-encrypt
+ * @endcode
+ *
+ * **Client:**
+ * @code{.bash}
+ * ascii-chat client --no-auth --no-encrypt
+ * @endcode
+ *
+ * **Protocol:**
+ * - ACIP handshake completely skipped
+ * - All packets sent in plaintext with no authentication or encryption
+ * - Minimal protocol overhead
+ *
+ * **Security Properties:**
+ * - ❌ Privacy: None (all packets plaintext)
+ * - ❌ Authentication: None (no identity verification)
+ * - ⚠️ Only for debugging and testing
+ *
+ * **Use case:** Packet inspection, protocol debugging, isolated test environments
+ *
+ * @subsection crypto_mode_password Mode 5: Password Authentication
  *
  * **Server:**
  * @code{.bash}
