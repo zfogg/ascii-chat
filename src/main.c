@@ -125,6 +125,12 @@ static void handle_sigterm(int sig) {
   (void)sig;
   // Use log_console for SIGTERM - it's async-signal-safe
   log_console(LOG_INFO, "SIGTERM received - shutting down");
+
+#ifndef NDEBUG
+  // Trigger debug sync state printing on shutdown
+  debug_sync_trigger_print();
+#endif
+
   signal_exit();
 }
 #endif
@@ -143,6 +149,11 @@ static bool console_ctrl_handler(console_ctrl_event_t event) {
   if (atomic_fetch_add(&ctrl_c_count, 1) + 1 > 1) {
     platform_force_exit(1);
   }
+
+#ifndef NDEBUG
+  // Trigger debug sync state printing on shutdown
+  debug_sync_trigger_print();
+#endif
 
   // Note: Don't use log_console() here - on Unix, this is called from SIGINT context
   // where SAFE_MALLOC may be holding its mutex, causing deadlock. Windows runs this
