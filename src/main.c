@@ -44,6 +44,8 @@
 #include <ascii-chat/version.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/system.h>
+#include <ascii-chat/platform/thread.h>
+#include <ascii-chat/debug/named.h>
 #include <ascii-chat/options/common.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/options/builder.h>
@@ -320,6 +322,8 @@ int main(int argc, char *argv[]) {
   // Initialize the named registry for debugging (allows --debug-state to show registered synchronization primitives)
 #ifndef NDEBUG
   named_init();
+  // Register the main thread with the named registry so it shows up in logs with %tname
+  NAMED_REGISTER_THREAD(asciichat_thread_self(), "main", "thread");
 #endif
 
   // VERY FIRST: Scan for --color BEFORE ANY logging initialization
