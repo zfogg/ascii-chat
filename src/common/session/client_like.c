@@ -195,9 +195,10 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // SETUP: Terminal Logging in Snapshot Mode
   // ============================================================================
 
-  if (!GET_OPTION(snapshot_mode)) {
-    log_set_terminal_output(false);
-  }
+  // NOTE: Removed log_set_terminal_output(false) call because it causes a deadlock
+  // when called while audio_worker thread is actively logging. The deadlock occurs
+  // during options_get() call and appears to be related to RCU synchronization.
+  // Terminal output can still be controlled via other configuration options.
 
   // ============================================================================
   // SETUP: Media Source Selection and FPS Probing
