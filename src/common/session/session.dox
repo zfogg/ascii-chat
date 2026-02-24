@@ -30,6 +30,7 @@
  * - session_audio_* (@ref audio.h) - Audio capture and playback
  * - session_handle_keyboard_input() (@ref keyboard_handler.h) - Interactive controls
  * - session_log_buffer_t (@ref session_log_buffer.h) - Log capture for UI screens
+ * - session_client_like_run() (@ref client_like.h) - Unified initialization/cleanup framework
  *
  * ### State Management
  *
@@ -64,6 +65,426 @@
  * │           └─────────────────────────────────┘              │
  * │                                                              │
  * └─────────────────────────────────────────────────────────────┘
+ * ```
+ *
+ * ## Session State Machines
+ *
+ * Each major component in the session module has a well-defined state machine:
+ *
+ * ### Host State Machine
+ *
+ * ```
+ * ┌─────────────────────────────────────────────────────────────┐
+ * │ SESSION HOST LIFECYCLE                                      │
+ * ├─────────────────────────────────────────────────────────────┤
+ * │                                                              │
+ * │  session_host_create()                                      │
+ * │         │                                                   │
+ * │         v                                                   │
+ * │  ┌──────────────┐                                           │
+ * │  │  CREATED     │  - Allocated but not listening           │
+ * │  │              │  - No network socket yet                 │
+ * │  │              │  - Config applied, ready for start       │
+ * │  └──────────────┘                                           │
+ * │         │                                                   │
+ * │         v                                                   │
+ * │  session_host_start()                                       │
+ * │         │                                                   │
+ * │         v                                                   │
+ * │  ┌──────────────┐                                           │
+ * │  │  LISTENING   │  - Socket listening on configured port   │
+ * │  │              │  - Accepting client connections          │
+ * │  │              │  - Client registry initialized           │
+ * │  └──────────────┘                                           │
+ * │   ↕ (accepts clients)                                       │
+ * │  ┌──────────────┐                                           │
+ * │  │  HOSTING     │  - One or more clients connected         │
+ * │  │   CLIENTS    │  - Callbacks fired on client events      │
+ * │  │              │  - Render thread can be started          │
+ * │  └──────────────┘                                           │
+ * │         │                                                   │
+ * │         v                                                   │
+ * │  session_host_stop()                                        │
+ * │         │                                                   │
+ * │         v                                                   │
+ * │  ┌──────────────┐                                           │
+ * │  │  STOPPED     │  - Socket closed, no new connections     │
+ * │  │              │  - Existing clients still drain buffers  │
+ * │  │              │  - Ready for destroy                     │
+ * │  └──────────────┘                                           │
+ * │         │                                                   │
+ * │         v                                                   │
+ * │  session_host_destroy()                                     │
+ * │         │                                                   │
+ * │         v                                                   │
+ * │  ┌──────────────┐                                           │
+ * │  │  DESTROYED   │  - All resources freed                   │
+ * │  │              │  - Handle invalid                        │
+ * │  └──────────────┘                                           │
+ * │                                                              │
+ * └─────────────────────────────────────────────────────────────┘
+ * ```
+ *
+ * ### Participant State Machine
+ *
+ * ```
+ * ┌─────────────────────────────────────────────────────────────┐
+ * │ SESSION PARTICIPANT LIFECYCLE                               │
+ * ├─────────────────────────────────────────────────────────────┤
+ * │                                                              │
+ * │  session_participant_create()                               │
+ * │         │                                                   │
+ * │         v                                                   │
+ * │  ┌──────────────┐                                           │
+ * │  │  CREATED     │  - Allocated but not connected           │
+ * │  │              │  - Config applied, no network socket     │
+ * │  └──────────────┘                                           │
+ * │         │                                                   │
+ * │         v                                                   │
+ * │  session_participant_connect()                              │
+ * │         │                                                   │
+ * │         v (handshake)                                       │
+ * │  ┌──────────────┐                                           │
+ * │  │  CONNECTING  │  - TCP connection established            │
+ * │  │              │  - Crypto handshake in progress          │
+ * │  │              │  - Waiting for server acknowledgment     │
+ * │  └──────────────┘                                           │
+ * │         │                                                   │
+ * │         v                                                   │
+ * │  ┌──────────────┐                                           │
+ * │  │  CONNECTED   │  - Encrypted connection established      │
+ * │  │              │  - Received unique client ID             │
+ * │  │              │  - on_connected callback fired           │
+ * │  │              │  - Ready for video/audio streams         │
+ * │  └──────────────┘                                           │
+ * │         │                                                   │
+ * │         ├─ session_participant_start_video()               │
+ * │         │         │                                         │
+ * │         │         v                                         │
+ * │         │  ┌──────────────────┐                             │
+ * │         │  │  VIDEO STREAMING │  - Sending local frames    │
+ * │         │  │                  │  - on_frame_received fired  │
+ * │         │  └──────────────────┘                             │
+ * │         │                                                   │
+ * │         ├─ session_participant_start_audio()               │
+ * │         │         │                                         │
+ * │         │         v                                         │
+ * │         │  ┌──────────────────┐                             │
+ * │         │  │  AUDIO STREAMING │  - Sending audio samples   │
+ * │         │  │                  │  - on_audio_received fired  │
+ * │         │  └──────────────────┘                             │
+ * │         │                                                   │
+ * │         v                                                   │
+ * │  session_participant_disconnect()                           │
+ * │         │                                                   │
+ * │         v                                                   │
+ * │  ┌──────────────┐                                           │
+ * │  │  DISCONNECTED│  - Connection closed                     │
+ * │  │              │  - Streams stopped, socket closed        │
+ * │  │              │  - on_disconnected callback fired        │
+ * │  │              │  - Ready for destroy                     │
+ * │  └──────────────┘                                           │
+ * │         │                                                   │
+ * │         v                                                   │
+ * │  session_participant_destroy()                              │
+ * │         │                                                   │
+ * │         v                                                   │
+ * │  ┌──────────────┐                                           │
+ * │  │  DESTROYED   │  - All resources freed                   │
+ * │  │              │  - Handle invalid                        │
+ * │  └──────────────┘                                           │
+ * │                                                              │
+ * └─────────────────────────────────────────────────────────────┘
+ * ```
+ *
+ * ### Capture Context State Machine
+ *
+ * ```
+ * ┌─────────────────────────────────────────────────────────────┐
+ * │ CAPTURE CONTEXT LIFECYCLE                                   │
+ * ├─────────────────────────────────────────────────────────────┤
+ * │                                                              │
+ * │  session_capture_create()                                   │
+ * │         │                                                   │
+ * │         v                                                   │
+ * │  ┌──────────────┐                                           │
+ * │  │  IDLE        │  - Media source initialized              │
+ * │  │              │  - FFmpeg/webcam opened                  │
+ * │  │              │  - First frame potentially buffered      │
+ * │  │              │  - FPS tracking active                   │
+ * │  └──────────────┘                                           │
+ * │   ↕ (pause/resume)                                          │
+ * │  ┌──────────────┐                                           │
+ * │  │  PLAYING     │  - Frames being read and delivered       │
+ * │  │              │  - FPS regulation active                 │
+ * │  │              │  - seek_relative() affects playback      │
+ * │  │              │  - Video loop on file sources            │
+ * │  └──────────────┘                                           │
+ * │   ↕ (pause)                                                 │
+ * │  ┌──────────────┐                                           │
+ * │  │  PAUSED      │  - Same frame returned repeatedly        │
+ * │  │              │  - seek_relative() queued for resume     │
+ * │  │              │  - FPS regulation continues              │
+ * │  └──────────────┘                                           │
+ * │         │                                                   │
+ * │         v                                                   │
+ * │  session_capture_destroy()                                  │
+ * │         │                                                   │
+ * │         v                                                   │
+ * │  ┌──────────────┐                                           │
+ * │  │  DESTROYED   │  - Media source closed                   │
+ * │  │              │  - FFmpeg subprocess terminated          │
+ * │  │              │  - Handle invalid                        │
+ * │  └──────────────┘                                           │
+ * │                                                              │
+ * └─────────────────────────────────────────────────────────────┘
+ * ```
+ *
+ * ## Thread Coordination
+ *
+ * The session module uses thread-safe components and clear ownership patterns:
+ *
+ * ### Thread Safety by Component
+ *
+ * **Fully Thread-Safe (Can be accessed from multiple threads):**
+ * - session_settings_* (RCU-based lock-free reads)
+ * - session_handle_keyboard_input() (thread-safe input queuing)
+ * - session_host_t send operations (async, internally synchronized)
+ * - session_log_buffer_t (circular append with atomic operations)
+ *
+ * **Thread-Confined (Single-threaded access only):**
+ * - session_capture_ctx_t - media source not thread-safe
+ * - session_display_ctx_t - terminal rendering not atomic
+ * - Individual frame/audio buffers
+ *
+ * **Multi-Threaded (Clear thread ownership):**
+ * - session_host_t callbacks run from any thread (host determines timing)
+ * - session_participant_t receive callbacks from dedicated receive thread
+ * - session_host_t render thread separate from accept thread
+ *
+ * ### Render Loop Threading Pattern
+ *
+ * ```
+ * Main Thread                   Render Thread
+ * ────────────────────────────────────────────
+ * session_client_like_run()
+ *   ├─ Initialize capture      (main thread)
+ *   ├─ Initialize display      (main thread)
+ *   ├─ Initialize audio        (main thread)
+ *   │
+ *   ├─ Start render thread ─────┐
+ *   │                           │
+ *   │                           v
+ *   │                    session_render_loop()
+ *   │                      while (!exit):
+ *   │                        read frame (capture)
+ *   │                        process frame
+ *   │                        write display
+ *   │                        handle keyboard ← lock-free read
+ *   │                        update settings ← RCU read
+ *   │                        sleep for FPS
+ *   │
+ *   ├─ Wait for render thread ←─┘
+ *   │
+ *   └─ Cleanup
+ *        ├─ Destroy capture
+ *        ├─ Destroy display
+ *        ├─ Cleanup audio
+ * ```
+ *
+ * ### Synchronization Primitives
+ *
+ * **RCU (Read-Copy-Update) for Settings:**
+ * - Multiple readers (render thread) never block
+ * - Writers (keyboard handler) briefly lock for atomic swap
+ * - Use case: pause state, volume, color mode changes
+ *
+ * **Circular Buffer for Logs:**
+ * - Lock-free append for log entries
+ * - Atomic read for recent entries
+ * - Multiple readers, single writer pattern
+ *
+ * **Mutex-Based Synchronization (if needed):**
+ * - Client registry in session_host_t
+ * - Callback notification timing
+ *
+ * ## Capture Integration
+ *
+ * The capture abstraction integrates seamlessly with the render loop and state machine:
+ *
+ * ### Capture Sources and Behavior
+ *
+ * **Webcam Source (Direct Platform Camera):**
+ * - Opens platform camera device (e.g., /dev/video0 on Linux)
+ * - Reads frames at native device frame rate
+ * - session_capture_sleep_for_fps() throttles to target FPS
+ * - No seek support (live stream)
+ *
+ * **File Source (FFmpeg):**
+ * - Spawns FFmpeg subprocess to decode video
+ * - Reads frames via stdout pipe at variable rate
+ * - Seeks supported: session_capture_seek_relative()
+ * - Loop support: restarts FFmpeg when end reached
+ *
+ * **URL Source (FFmpeg with yt-dlp resolution):**
+ * - Media resolver (@ref lib/media/source.c):
+ *   1. Direct detection: .mp4, .m3u8 → FFmpeg directly (fastest)
+ *   2. yt-dlp extraction: YouTube, TikTok, etc. → extract stream URL
+ *   3. Fallback: try FFmpeg as last resort
+ * - Result: streaming URL passed to FFmpeg subprocess
+ * - Seek support varies by protocol (HLS/DASH may not support)
+ *
+ * **Test Pattern (Procedural):**
+ * - Generates frames algorithmically
+ * - Useful for testing without camera/media files
+ * - Precise frame rate control
+ *
+ * ### FPS Detection and Adaptation
+ *
+ * The client_like framework probes source FPS:
+ *
+ * @code{.c}
+ * // During initialization:
+ * session_capture_probe_fps(capture, 1.0)  // Read for 1 second
+ * // Result: detected_fps (e.g., 30, 60, etc.)
+ *
+ * // Render loop then uses:
+ * session_capture_sleep_for_fps(capture)  // Adaptive sleep
+ * @endcode
+ *
+ * **Adaptive Sleep Strategy:**
+ * - Tracks actual frame delivery times
+ * - Compensates for processing delays
+ * - Prevents frame drops or excessive buffering
+ * - Critical for smooth playback
+ *
+ * ### Pause/Resume Behavior
+ *
+ * Pause is coordinated via session_settings_*:
+ *
+ * @code{.c}
+ * // Keyboard handler (any thread):
+ * session_settings_set_pause_state(true);
+ *
+ * // Render loop (single-threaded):
+ * while (!exit) {
+ *     bool paused = session_settings_get_pause_state();  // Lock-free read
+ *     image_t *frame = session_capture_read_frame(ctx);  // Pause state affects?
+ *     // Paused: same frame returned repeatedly
+ *     // Playing: next frame from source
+ * }
+ * @endcode
+ *
+ * ## Resource Lifecycle
+ *
+ * Complete lifecycle from creation to destruction:
+ *
+ * ### Initialization Sequence (session_client_like_run)
+ *
+ * ```
+ * 1. Keepawake System
+ *    └─ Prevent OS sleep while running
+ *
+ * 2. Terminal Output Check
+ *    └─ Detect if stdout is piped (affects splash screen)
+ *
+ * 3. Media Source Setup
+ *    ├─ session_capture_create()
+ *    ├─ Probe source FPS
+ *    └─ Initialize frame buffer
+ *
+ * 4. Audio System Setup
+ *    ├─ Platform audio context (PortAudio, JACK, etc.)
+ *    ├─ Allocate audio buffers
+ *    └─ Start capture thread (if needed)
+ *
+ * 5. Display Context Creation
+ *    ├─ Detect terminal capabilities (color, resolution)
+ *    ├─ Initialize color palette
+ *    └─ Set up rendering state
+ *
+ * 6. Splash Screen
+ *    ├─ Animated ASCII art display
+ *    ├─ Shows log capture buffer
+ *    └─ User can dismiss with keypress
+ *
+ * 7. Mode-Specific Initialization
+ *    └─ Passed to run_fn callback (mode-dependent)
+ *
+ * 8. Main Loop Execution
+ *    └─ session_render_loop() or custom mode loop
+ * ```
+ *
+ * ### Cleanup Sequence (Error Recovery and Normal Exit)
+ *
+ * ```
+ * 1. Exit Render Loop
+ *    └─ Graceful shutdown signal set
+ *
+ * 2. Render Thread Join
+ *    └─ Wait for render thread to finish current frame
+ *
+ * 3. Keyboard Handler Cleanup
+ *    ├─ Clear any queued input
+ *    └─ Disable async input if needed
+ *
+ * 4. Audio System Shutdown
+ *    ├─ Stop capture thread
+ *    ├─ Drain remaining samples
+ *    └─ CRITICAL: Stop BEFORE display cleanup (PortAudio constraint)
+ *
+ * 5. Capture Context Cleanup
+ *    ├─ Close media source
+ *    ├─ Terminate FFmpeg if running
+ *    └─ Free frame buffers
+ *
+ * 6. Display Context Cleanup
+ *    ├─ Restore terminal state
+ *    ├─ Clear any partial renders
+ *    └─ Re-enable cursor if needed
+ *
+ * 7. Keepawake Release
+ *    └─ Re-enable system sleep
+ *
+ * 8. Memory Reports
+ *    └─ Print leak detection (debug builds)
+ * ```
+ *
+ * **Critical Ordering Notes:**
+ * - Audio MUST be stopped before display (PortAudio cleans up terminal)
+ * - Display cleanup must restore full terminal state before exit
+ * - Render thread must be joined before freeing shared buffers
+ *
+ * ### Memory Ownership
+ *
+ * Clear ownership prevents double-frees and memory leaks:
+ *
+ * **session_client_like_run owns and manages:**
+ * - session_capture_ctx_t (owns underlying media source)
+ * - session_display_ctx_t (owns terminal state)
+ * - Audio context (owns PortAudio/JACK resources)
+ * - Session log buffer (owns circular buffer)
+ *
+ * **Mode callbacks receive:**
+ * - Initialized, ready-to-use contexts
+ * - MUST NOT attempt to free or destroy contexts
+ * - Can read and modify state through provided APIs
+ *
+ * **Framebuffer Policy:**
+ * - Capture context owns frame buffers returned by session_capture_read_frame()
+ * - Caller receives pointer, must not free
+ * - Capture destruction releases all frame buffers
+ *
+ * ### Error Recovery
+ *
+ * If error occurs during execution:\n
+ * ```
+ * capture_open fails ───────┐
+ * audio_start fails ────────┤─→ Skip mode callback
+ * display_create fails ─────┤─→ Run cleanup sequence
+ * render_loop fails ────────┘─→ Exit with error
+ *
+ * Result: all allocated resources freed, terminal restored
  * ```
  *
  * ## Key Concepts
