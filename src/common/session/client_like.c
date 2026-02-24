@@ -499,6 +499,13 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // SETUP: End Splash Screen
   // ============================================================================
 
+  // Keep splash screen visible for user to read (1s debug, 2.5s release)
+#ifndef NDEBUG
+  platform_sleep_ms(1000);  // 1 second in debug mode
+#else
+  platform_sleep_ms(2500);  // 2.5 seconds in release mode
+#endif
+
   log_debug("About to call splash_intro_done()");
   splash_intro_done();
   log_debug("splash_intro_done() returned");

@@ -777,11 +777,18 @@ int client_main(void) {
   // Get reconnect attempts setting (-1 = unlimited, 0 = no retry, >0 = retry N times)
   int reconnect_attempts = GET_OPTION(reconnect_attempts);
 
+  // Create TCP client for network mode (will be used by session_client_like_run)
+  tcp_client_t *client_tcp = tcp_client_create();
+  if (!client_tcp) {
+    log_error("Failed to create TCP client for connection attempts");
+    return 1; // Return error to exit client
+  }
+
   // Configure session_client_like with client-specific settings
   session_client_like_config_t config = {
       .run_fn = client_run,
       .run_user_data = NULL,
-      .tcp_client = NULL,
+      .tcp_client = client_tcp,
       .websocket_client = NULL,
       .discovery = NULL,
       .custom_should_exit = NULL,
@@ -797,6 +804,9 @@ int client_main(void) {
   log_debug("Client: calling session_client_like_run() with %d max reconnection attempts", reconnect_attempts);
   asciichat_error_t session_result = session_client_like_run(&config);
   log_debug("Client: session_client_like_run() returned %d", session_result);
+
+  // Note: TCP client lifecycle is managed by session_client_like_run() and connection attempts
+  // Do not destroy it here as it may be reused or already cleaned up
 
   // Cleanup connection context
   connection_context_cleanup(&g_client_session.connection_ctx);
