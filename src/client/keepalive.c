@@ -12,9 +12,9 @@
  * ## Timing Strategy
  *
  * Keepalive timing optimized for connection reliability:
- * - **Ping Interval**: 3 seconds between ping packets
+ * - **Ping Interval**: 1 second between ping packets
  * - **Server Timeout**: Server times out clients after 5 seconds of silence
- * - **Safety Margin**: 2-second buffer prevents false disconnections
+ * - **Safety Margin**: 4-second buffer prevents false disconnections
  * - **Network Tolerance**: Accounts for network jitter and processing delays
  *
  * ## Thread Management
@@ -145,12 +145,12 @@ static void *ping_thread_func(void *arg) {
   log_debug("Ping thread started");
 #endif
 
-  // FPS tracking for keepalive thread (ping sent every 3 seconds = ~0.33 Hz)
+  // FPS tracking for keepalive thread (ping sent every 1 second)
   static fps_t fps_tracker = {0};
   static bool fps_tracker_initialized = false;
   if (!fps_tracker_initialized) {
     fps_init_with_interval(&fps_tracker, 1, "KEEPALIVE",
-                           10 * NS_PER_MS_INT); // 1 "frame" per 3 seconds, report every 10ms
+                           100 * NS_PER_MS_INT); // Report keepalive metrics every 100ms
     fps_tracker_initialized = true;
   }
 

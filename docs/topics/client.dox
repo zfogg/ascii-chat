@@ -103,23 +103,23 @@
  * The client implements exponential backoff with jitter for reconnection:
  *
  * **Retry Strategy**:
- * - Initial delay: 10ms
- * - Exponential growth: delay = 10ms + (200ms * attempt)
+ * - Initial delay: 100ms
+ * - Linear growth: delay = 100ms + (200ms * (attempt - 1))
  * - Maximum delay: 5 seconds
  * - Jitter: Small random component to prevent thundering herd
  *
  * **Reconnection Flow**:
  * @code{.c}
- * int reconnect_attempt = 0;
+ * int reconnect_attempt = 1;
  * while (!should_exit()) {
  *   if (server_connection_establish(...) == 0) {
  *     // Connection successful
- *     reconnect_attempt = 0;
+ *     reconnect_attempt = 1;
  *     break;
  *   }
  *
- *   // Exponential backoff with cap at 5 seconds
- *   int delay_ms = 10 + (200 * reconnect_attempt);
+ *   // Linear backoff with cap at 5 seconds
+ *   int delay_ms = 100 + (200 * (reconnect_attempt - 1));
  *   if (delay_ms > 5000) delay_ms = 5000;
  *   platform_sleep_usec(delay_ms * 1000);
  *   reconnect_attempt++;
