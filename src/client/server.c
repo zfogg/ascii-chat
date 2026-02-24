@@ -991,7 +991,7 @@ void server_connection_cleanup() {
  * @ingroup client_connection
  */
 asciichat_error_t threaded_send_packet(packet_type_t type, const void *data, size_t len) {
-  // Get transport reference while holding mutex (brief lock)
+  // Lock mutex for entire send operation to prevent concurrent socket writes
   mutex_lock(&g_send_mutex);
 
   // Check connection status and get transport reference
@@ -1006,10 +1006,12 @@ asciichat_error_t threaded_send_packet(packet_type_t type, const void *data, siz
   acip_transport_t *transport = g_client_transport;
   log_debug_every(LOG_RATE_SLOW, "[TRANSPORT_LIFECYCLE] threaded_send_packet() using transport=%p, is_connected=%s",
                   (void *)transport, acip_transport_is_connected(transport) ? "true" : "false");
-  mutex_unlock(&g_send_mutex);
 
-  // Network I/O happens OUTSIDE the mutex to prevent deadlock on TCP buffer full
+  // Network I/O happens while holding mutex to prevent concurrent socket writes
   asciichat_error_t result = packet_send_via_transport(transport, type, data, len, 0);
+
+  // Unlock after send completes
+  mutex_unlock(&g_send_mutex);
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {
@@ -1036,7 +1038,7 @@ asciichat_error_t threaded_send_packet(packet_type_t type, const void *data, siz
  * @ingroup client_connection
  */
 int threaded_send_audio_batch_packet(const float *samples, int num_samples, int batch_count) {
-  // Get transport reference while holding mutex (brief lock)
+  // Lock mutex for entire send operation to prevent concurrent socket writes
   mutex_lock(&g_send_mutex);
 
   // Check connection status and get transport reference
@@ -1047,10 +1049,12 @@ int threaded_send_audio_batch_packet(const float *samples, int num_samples, int 
 
   // Get transport reference - transport has its own internal synchronization
   acip_transport_t *transport = g_client_transport;
-  mutex_unlock(&g_send_mutex);
 
-  // Network I/O happens OUTSIDE the mutex to prevent deadlock on TCP buffer full
+  // Network I/O happens while holding mutex to prevent concurrent socket writes
   asciichat_error_t result = acip_send_audio_batch(transport, samples, (uint32_t)num_samples, (uint32_t)batch_count);
+
+  // Unlock after send completes
+  mutex_unlock(&g_send_mutex);
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {
@@ -1141,7 +1145,7 @@ asciichat_error_t threaded_send_audio_opus(const uint8_t *opus_data, size_t opus
  */
 asciichat_error_t threaded_send_audio_opus_batch(const uint8_t *opus_data, size_t opus_size,
                                                  const uint16_t *frame_sizes, int frame_count) {
-  // Get transport reference while holding mutex (brief lock)
+  // Lock mutex for entire send operation to prevent concurrent socket writes
   mutex_lock(&g_send_mutex);
 
   // Check connection status and get transport reference
@@ -1152,12 +1156,14 @@ asciichat_error_t threaded_send_audio_opus_batch(const uint8_t *opus_data, size_
 
   // Get transport reference - transport has its own internal synchronization
   acip_transport_t *transport = g_client_transport;
-  mutex_unlock(&g_send_mutex);
 
-  // Network I/O happens OUTSIDE the mutex to prevent deadlock on TCP buffer full
+  // Network I/O happens while holding mutex to prevent concurrent socket writes
   // Opus uses 20ms frames at 48kHz (960 samples = 20ms)
   asciichat_error_t result =
       acip_send_audio_opus_batch(transport, opus_data, opus_size, frame_sizes, frame_count, 48000, 20);
+
+  // Unlock after send completes
+  mutex_unlock(&g_send_mutex);
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {
