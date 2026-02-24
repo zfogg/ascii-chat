@@ -451,6 +451,57 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
 #define NAMED_REGISTER_CLIENT(client, name) (name)
 #endif
 
+/**
+ * @brief Open a file and register the file descriptor
+ * @param pathname File path to open
+ * @param name Debug name for the file descriptor
+ * @param flags Open flags (O_RDONLY, O_WRONLY, etc.)
+ * @param ... Optional mode argument for O_CREAT
+ * @ingroup debug_named
+ *
+ * Convenience macro that opens a file and registers the returned FD.
+ * Automatically uses "%d" format specifier for file descriptor integers.
+ *
+ * Usage:
+ *   int fd = NAMED_OPEN("/path/to/file", "myfile", O_RDONLY);
+ *   int fd = NAMED_OPEN("/path/to/file", "myfile", O_CREAT | O_WRONLY, 0644);
+ */
+#ifndef NDEBUG
+#define NAMED_OPEN(pathname, name, flags, ...) \
+  ({ \
+    int _fd; \
+    if ((flags) & O_CREAT) { \
+      _fd = platform_open((pathname), (flags), __VA_ARGS__); \
+    } else { \
+      _fd = platform_open((pathname), (flags)); \
+    } \
+    if (_fd >= 0) { \
+      named_register((uintptr_t)_fd, (name), "fd", "%d", __FILE__, __LINE__, __func__); \
+    } \
+    _fd; \
+  })
+#else
+#define NAMED_OPEN(pathname, name, flags, ...) \
+  ({ \
+    int _fd; \
+    if ((flags) & O_CREAT) { \
+      _fd = platform_open((pathname), (flags), __VA_ARGS__); \
+    } else { \
+      _fd = platform_open((pathname), (flags)); \
+    } \
+    _fd; \
+  })
+#endif
+
+/**
+ * @brief Unregister a file descriptor
+ * @param fd File descriptor to unregister
+ * @ingroup debug_named
+ *
+ * Call this before closing a named file descriptor.
+ */
+#define NAMED_UNREGISTER_FD(fd) NAMED_UNREGISTER_ID((fd))
+
 // ============================================================================
 // Thread-Specific Registration Macros
 // ============================================================================
