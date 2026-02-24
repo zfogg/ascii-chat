@@ -84,18 +84,20 @@ typedef pthread_key_t tls_key_t;
 // ============================================================================
 
 /**
- * @brief Create a new thread
+ * @brief Create a new named thread
  * @param thread Pointer to thread handle (output parameter)
+ * @param name Human-readable name for debugging (e.g., "audio_reader")
  * @param func Thread function to execute
  * @param arg Argument to pass to thread function
  * @return 0 on success, non-zero on error
  *
  * Creates a new thread that executes the given function with the provided argument.
  * The thread handle is stored in the thread parameter.
+ * The name is registered in the debug named registry for thread identification.
  *
  * @ingroup platform
  */
-int asciichat_thread_create(asciichat_thread_t *thread, void *(*func)(void *), void *arg);
+int asciichat_thread_create(asciichat_thread_t *thread, const char *name, void *(*func)(void *), void *arg);
 
 /**
  * @brief Wait for a thread to complete (blocking)

@@ -268,7 +268,7 @@ asciichat_error_t tcp_server_run(tcp_server_t *server) {
     // 5. Calling tcp_server_remove_client() on disconnect
     // 6. Closing socket and freeing ctx
     asciichat_thread_t thread;
-    if (asciichat_thread_create(&thread, server->config.client_handler, ctx) != 0) {
+    if (asciichat_thread_create(&thread, "tcp_client", server->config.client_handler, ctx) != 0) {
       log_error("Failed to create client handler thread for %s", client_ip);
       SAFE_FREE(ctx);
       socket_close(client_socket);
@@ -550,7 +550,7 @@ asciichat_error_t tcp_server_spawn_thread(tcp_server_t *server, socket_t client_
     // This is a hack to allow reusing tcp_server_spawn_thread for WebRTC
     // In the future, consider a unified thread management system
     asciichat_thread_t temp_thread;
-    asciichat_error_t result = asciichat_thread_create(&temp_thread, thread_func, thread_arg);
+    asciichat_error_t result = asciichat_thread_create(&temp_thread, "tcp_worker", thread_func, thread_arg);
     if (result != ASCIICHAT_OK) {
       return result;
     }

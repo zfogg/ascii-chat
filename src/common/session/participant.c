@@ -616,7 +616,7 @@ asciichat_error_t session_participant_start_video_capture(session_participant_t 
 
   // Spawn video capture thread (media source is ready in ctx)
   p->video_capture_running = true;
-  if (asciichat_thread_create(&p->video_capture_thread, participant_video_capture_thread, p) != 0) {
+  if (asciichat_thread_create(&p->video_capture_thread, "video_capture", participant_video_capture_thread, p) != 0) {
     log_error("Failed to spawn video capture thread");
     p->video_capture_running = false;
     return SET_ERRNO(ERROR_THREAD, "Failed to spawn video capture thread");
@@ -686,7 +686,7 @@ asciichat_error_t session_participant_start_audio_capture(session_participant_t 
 
   // Spawn audio capture thread
   p->audio_capture_running = true;
-  if (asciichat_thread_create(&p->audio_capture_thread, participant_audio_capture_thread, p) != 0) {
+  if (asciichat_thread_create(&p->audio_capture_thread, "audio_capture", participant_audio_capture_thread, p) != 0) {
     log_error("Failed to spawn audio capture thread");
     p->audio_capture_running = false;
     return SET_ERRNO(ERROR_THREAD, "Failed to spawn audio capture thread");

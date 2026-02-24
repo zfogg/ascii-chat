@@ -39,7 +39,8 @@ int mutex_unlock_impl(mutex_t *mutex) {
 }
 
 // Thread functions (not used in mirror mode, but provided for completeness)
-int asciichat_thread_create(asciichat_thread_t *thread, void *(*start_routine)(void *), void *arg) {
+int asciichat_thread_create(asciichat_thread_t *thread, const char *name, void *(*start_routine)(void *), void *arg) {
+  (void)name;  // Unused in WASM - no thread registry
   return pthread_create(thread, NULL, start_routine, arg);
 }
 

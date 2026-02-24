@@ -9,6 +9,7 @@
 #include <ascii-chat/platform/api.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/debug/named.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <time.h>
@@ -33,14 +34,19 @@
 /** @} */
 
 /**
- * @brief Create a new thread
+ * @brief Create a new thread with name
  * @param thread Pointer to thread structure to initialize
+ * @param name Human-readable name for debugging
  * @param func Thread function to execute
  * @param arg Argument to pass to thread function
  * @return 0 on success, error code on failure
  */
-int asciichat_thread_create(asciichat_thread_t *thread, void *(*func)(void *), void *arg) {
-  return pthread_create(thread, NULL, func, arg);
+int asciichat_thread_create(asciichat_thread_t *thread, const char *name, void *(*func)(void *), void *arg) {
+  int err = pthread_create(thread, NULL, func, arg);
+  if (err == 0 && name) {
+    NAMED_REGISTER(thread, name, "thread");
+  }
+  return err;
 }
 
 /**
@@ -50,6 +56,9 @@ int asciichat_thread_create(asciichat_thread_t *thread, void *(*func)(void *), v
  * @return 0 on success, error code on failure
  */
 int asciichat_thread_join(asciichat_thread_t *thread, void **retval) {
+  // Unregister the thread from named registry before joining
+  NAMED_UNREGISTER(thread);
+
   int result = pthread_join(*thread, retval);
   if (result == 0) {
     // Clear the handle after successful join to match Windows behavior

@@ -17,7 +17,7 @@ asciichat_error_t thread_create_or_fail(asciichat_thread_t *thread, void *(*func
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for thread creation");
   }
 
-  int result = asciichat_thread_create(thread, func, arg);
+  int result = asciichat_thread_create(thread, thread_name, func, arg);
   if (result != 0) {
     return SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to create %s thread for client %u (result=%d)", thread_name,
                      client_id, result);

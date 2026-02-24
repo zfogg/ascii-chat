@@ -1207,7 +1207,7 @@ static void *status_screen_thread(void *arg) {
     log_info("Terminal is interactive, initializing keyboard...");
     if (keyboard_init() == ASCIICHAT_OK) {
       atomic_store(&g_keyboard_thread_running, true);
-      if (asciichat_thread_create(&g_keyboard_thread, keyboard_thread_func, NULL) == 0) {
+      if (asciichat_thread_create(&g_keyboard_thread, "keyboard", keyboard_thread_func, NULL) == 0) {
         keyboard_enabled = true;
         log_info("Keyboard thread started - press '/' to activate grep");
       } else {
@@ -2277,7 +2277,7 @@ int server_main(void) {
           log_debug("ACDS transport wrapper created for signaling");
 
           // Start ACDS ping thread to keep connection alive (for ALL session types)
-          int ping_thread_result = asciichat_thread_create(&g_acds_ping_thread, acds_ping_thread, NULL);
+          int ping_thread_result = asciichat_thread_create(&g_acds_ping_thread, "acds_ping", acds_ping_thread, NULL);
           if (ping_thread_result != 0) {
             log_error("Failed to create ACDS ping thread: %d", ping_thread_result);
           } else {
@@ -2350,7 +2350,7 @@ int server_main(void) {
               log_debug("WebRTC peer_manager initialized successfully");
 
               // Start ACDS receive thread for WebRTC signaling relay
-              int thread_result = asciichat_thread_create(&g_acds_receive_thread, acds_receive_thread, NULL);
+              int thread_result = asciichat_thread_create(&g_acds_receive_thread, "acds_recv", acds_receive_thread, NULL);
               if (thread_result != 0) {
                 log_error("Failed to create ACDS receive thread: %d", thread_result);
                 // Cleanup peer_manager since signaling won't work
@@ -2445,7 +2445,7 @@ skip_acds_session:
   // Start status screen thread if enabled
   // Runs independently at target FPS (default 60 Hz), decoupled from network accept loop
   if (GET_OPTION(status_screen)) {
-    if (asciichat_thread_create(&g_status_screen_thread, status_screen_thread, NULL) != 0) {
+    if (asciichat_thread_create(&g_status_screen_thread, "status_screen", status_screen_thread, NULL) != 0) {
       log_error("Failed to create status screen thread");
       goto cleanup;
     }
@@ -2454,7 +2454,7 @@ skip_acds_session:
 
   // Start WebSocket server thread if initialized
   if (g_websocket_server.context != NULL) {
-    if (asciichat_thread_create(&g_websocket_server_thread, websocket_server_thread_wrapper, &g_websocket_server) !=
+    if (asciichat_thread_create(&g_websocket_server_thread, "ws_server", websocket_server_thread_wrapper, &g_websocket_server) !=
         0) {
       log_error("Failed to create WebSocket server thread");
     } else {

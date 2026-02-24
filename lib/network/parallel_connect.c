@@ -248,7 +248,7 @@ asciichat_error_t parallel_connect(const parallel_connect_config_t *config, sock
     memcpy(&ipv4_attempt.addr, ipv4_addr->ai_addr, ipv4_addr->ai_addrlen);
     ipv4_attempt.addr_len = ipv4_addr->ai_addrlen;
 
-    asciichat_thread_create(&ipv4_thread, attempt_connection_thread, &ipv4_attempt);
+    asciichat_thread_create(&ipv4_thread, "connect_ipv4", attempt_connection_thread, &ipv4_attempt);
   }
 
   // Start IPv6 attempt if available
@@ -265,7 +265,7 @@ asciichat_error_t parallel_connect(const parallel_connect_config_t *config, sock
     memcpy(&ipv6_attempt.addr, ipv6_addr->ai_addr, ipv6_addr->ai_addrlen);
     ipv6_attempt.addr_len = ipv6_addr->ai_addrlen;
 
-    asciichat_thread_create(&ipv6_thread, attempt_connection_thread, &ipv6_attempt);
+    asciichat_thread_create(&ipv6_thread, "connect_ipv6", attempt_connection_thread, &ipv6_attempt);
   }
 
   // Wait for winner or both to finish

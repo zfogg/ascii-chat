@@ -1658,7 +1658,7 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
   // Start worker thread for heavy audio processing
   if (!ctx->worker_running) {
     atomic_store(&ctx->worker_should_stop, false);
-    if (asciichat_thread_create(&ctx->worker_thread, audio_worker_thread, ctx) != 0) {
+    if (asciichat_thread_create(&ctx->worker_thread, "audio_worker", audio_worker_thread, ctx) != 0) {
       // Failed to create worker thread - stop streams and cleanup
       if (ctx->duplex_stream) {
         Pa_StopStream(ctx->duplex_stream);

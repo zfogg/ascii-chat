@@ -10,6 +10,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h> // For asciichat_errno system
 #include <ascii-chat/platform/thread.h>
+#include <ascii-chat/debug/named.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/time.h>
 #include <process.h>
@@ -563,13 +564,14 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
 }
 
 /**
- * @brief Create a new thread
+ * @brief Create a new thread with name
  * @param thread Pointer to thread structure to initialize
+ * @param name Human-readable name for debugging
  * @param func Thread function to execute
  * @param arg Argument to pass to thread function
  * @return 0 on success, -1 on failure
  */
-int asciichat_thread_create(asciichat_thread_t *thread, void *(*func)(void *), void *arg) {
+int asciichat_thread_create(asciichat_thread_t *thread, const char *name, void *(*func)(void *), void *arg) {
   // Initialize symbol handler on first thread creation
   initialize_symbol_handler();
 
@@ -629,6 +631,11 @@ int asciichat_thread_create(asciichat_thread_t *thread, void *(*func)(void *), v
     return -1;
   }
 
+  // Register thread with name in debug registry
+  if (name) {
+    NAMED_REGISTER(thread, name, "thread");
+  }
+
   // IMPORTANT: Add a memory barrier to ensure all writes complete before returning
   MemoryBarrier();
 
@@ -646,6 +653,9 @@ int asciichat_thread_join(asciichat_thread_t *thread, void **retval) {
     SET_ERRNO(ERROR_THREAD, "Invalid thread handle for join operation");
     return -1;
   }
+
+  // Unregister the thread from named registry before joining
+  NAMED_UNREGISTER(thread);
 
   DWORD result = WaitForSingleObject((*thread), INFINITE);
 

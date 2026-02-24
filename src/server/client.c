@@ -442,7 +442,7 @@ static int start_client_threads(server_context_t *server_ctx, client_info_t *cli
     log_debug("  client=%p, func=%p, &receive_thread=%p", (void *)client, (void *)client_receive_thread,
               (void *)&client->receive_thread);
     log_debug("  Pre-create: receive_thread value=%p", (void *)(uintptr_t)client->receive_thread);
-    result = asciichat_thread_create(&client->receive_thread, client_receive_thread, client);
+    result = asciichat_thread_create(&client->receive_thread, "client_recv", client_receive_thread, client);
     log_debug("  Post-create: result=%d, receive_thread value=%p", result, (void *)(uintptr_t)client->receive_thread);
   }
 
@@ -459,7 +459,7 @@ static int start_client_threads(server_context_t *server_ctx, client_info_t *cli
   if (!is_tcp) { // Only for WebRTC/WebSocket clients that need async dispatch
     safe_snprintf(thread_name, sizeof(thread_name), "dispatch_%u", client_id);
     atomic_store(&client->dispatch_thread_running, true);
-    result = asciichat_thread_create(&client->dispatch_thread, client_dispatch_thread, client);
+    result = asciichat_thread_create(&client->dispatch_thread, "client_dispatch", client_dispatch_thread, client);
     if (result != ASCIICHAT_OK) {
       log_error("Failed to create dispatch thread for client %u: %s", client_id, asciichat_error_string(result));
       remove_client(server_ctx, client_id);
@@ -485,7 +485,7 @@ static int start_client_threads(server_context_t *server_ctx, client_info_t *cli
                                      thread_name);
   } else {
     safe_snprintf(thread_name, sizeof(thread_name), "webrtc_send_%u", client_id);
-    result = asciichat_thread_create(&client->send_thread, client_send_thread_func, client);
+    result = asciichat_thread_create(&client->send_thread, "client_send", client_send_thread_func, client);
   }
 
   if (result != ASCIICHAT_OK) {

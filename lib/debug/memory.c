@@ -1194,7 +1194,7 @@ int debug_memory_thread_start(void) {
   }
 
   g_debug_memory_request.should_exit = false;
-  int err = asciichat_thread_create(&g_debug_memory_thread, debug_memory_thread_fn, NULL);
+  int err = asciichat_thread_create(&g_debug_memory_thread, "debug_memory", debug_memory_thread_fn, NULL);
   return err;
 }
 

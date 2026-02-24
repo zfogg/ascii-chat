@@ -32,6 +32,7 @@ typedef enum {
   LOG_FORMAT_LINE,            /* %line - line number */
   LOG_FORMAT_FUNC,            /* %func - function name */
   LOG_FORMAT_TID,             /* %tid - thread ID */
+  LOG_FORMAT_TNAME,           /* %tname - thread name (from debug registry) */
   LOG_FORMAT_MESSAGE,         /* %message - log message */
   LOG_FORMAT_COLORLOG_LEVEL,  /* %colorlog_level_string_to_color - color code */
   LOG_FORMAT_COLOR,           /* %color(LEVEL, content) - colorize content using LEVEL's color */

@@ -12,6 +12,7 @@
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
+#include <ascii-chat/debug/named.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -177,6 +178,10 @@ static log_template_t *parse_format_string(const char *format_str, bool console_
           result->specs[spec_idx].type = LOG_FORMAT_FUNC;
           spec_idx++;
           p += 4;
+        } else if (strncmp(p, "tname", 5) == 0) {
+          result->specs[spec_idx].type = LOG_FORMAT_TNAME;
+          spec_idx++;
+          p += 5;
         } else if (strncmp(p, "tid", 3) == 0) {
           result->specs[spec_idx].type = LOG_FORMAT_TID;
           spec_idx++;
@@ -535,6 +540,18 @@ int log_template_apply(const log_template_t *format, char *buf, size_t buf_size,
     case LOG_FORMAT_TID:
       written = safe_snprintf(p, remaining + 1, "%llu", (unsigned long long)tid);
       break;
+
+    case LOG_FORMAT_TNAME: {
+      asciichat_thread_t thread = (asciichat_thread_t)tid;
+      uintptr_t key = asciichat_thread_to_key(thread);
+      const char *tname = named_get(key);
+      if (tname) {
+        written = safe_snprintf(p, remaining + 1, "%s", tname);
+      } else {
+        written = safe_snprintf(p, remaining + 1, "%llu", (unsigned long long)tid);
+      }
+      break;
+    }
 
     case LOG_FORMAT_MICROSECONDS: {
       /* Extract microseconds from nanoseconds (ns_value % 1_000_000_000 / 1000) */

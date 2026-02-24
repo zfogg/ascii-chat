@@ -945,7 +945,7 @@ asciichat_error_t ffmpeg_decoder_start_prefetch(ffmpeg_decoder_t *decoder) {
   // Reset stop flag and create thread
   decoder->prefetch_should_stop = false;
 
-  int thread_err = asciichat_thread_create(&decoder->prefetch_thread, ffmpeg_decoder_prefetch_thread_func, decoder);
+  int thread_err = asciichat_thread_create(&decoder->prefetch_thread, "ffmpeg_prefetch", ffmpeg_decoder_prefetch_thread_func, decoder);
   if (thread_err != 0) {
     return SET_ERRNO(ERROR_THREAD, "Failed to create video prefetch thread");
   }

@@ -378,7 +378,7 @@ int debug_sync_start_thread(void) {
     }
 
     g_debug_state_request.should_exit = false;
-    int err = asciichat_thread_create(&g_debug_thread, debug_print_thread_fn, NULL);
+    int err = asciichat_thread_create(&g_debug_thread, "debug_sync", debug_print_thread_fn, NULL);
     return err;
 }
 

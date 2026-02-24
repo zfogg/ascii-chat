@@ -159,7 +159,7 @@ int terminal_start_resize_detection(terminal_resize_callback_t callback) {
   g_resize_callback = callback;
   atomic_store(&g_resize_thread_should_exit, false);
 
-  if (asciichat_thread_create(&g_resize_thread, resize_detection_thread, NULL) != 0) {
+  if (asciichat_thread_create(&g_resize_thread, "resize_detect", resize_detection_thread, NULL) != 0) {
     log_error("Failed to create resize detection thread");
     g_resize_callback = NULL;
     return -1;

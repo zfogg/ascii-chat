@@ -563,7 +563,7 @@ asciichat_error_t discover_session_parallel(const char *session_string, const di
     mdns_ctx->state = &state;
     mdns_ctx->expected_pubkey = config->expected_pubkey;
 
-    int thread_err = asciichat_thread_create(&mdns_thread, mdns_thread_fn, mdns_ctx);
+    int thread_err = asciichat_thread_create(&mdns_thread, "mdns", mdns_thread_fn, mdns_ctx);
     if (thread_err != 0) {
       log_warn("Discovery: Failed to spawn mDNS thread");
       SAFE_FREE(mdns_ctx);
@@ -591,7 +591,7 @@ asciichat_error_t discover_session_parallel(const char *session_string, const di
     acds_ctx->state = &state;
     acds_ctx->config = config;
 
-    int thread_err = asciichat_thread_create(&acds_thread, acds_thread_fn, acds_ctx);
+    int thread_err = asciichat_thread_create(&acds_thread, "acds_client", acds_thread_fn, acds_ctx);
     if (thread_err != 0) {
       log_warn("Discovery: Failed to spawn ACDS thread");
       SAFE_FREE(acds_ctx);

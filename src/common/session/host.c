@@ -821,7 +821,7 @@ asciichat_error_t session_host_start(session_host_t *host) {
 
   // Spawn accept loop thread
   host->accept_thread_running = true;
-  if (asciichat_thread_create(&host->accept_thread, accept_loop_thread, host) != 0) {
+  if (asciichat_thread_create(&host->accept_thread, "accept", accept_loop_thread, host) != 0) {
     log_error("Failed to spawn accept loop thread");
     host->accept_thread_running = false;
     if (host->callbacks.on_error) {
@@ -835,7 +835,7 @@ asciichat_error_t session_host_start(session_host_t *host) {
 
   // Spawn receive loop thread
   host->receive_thread_running = true;
-  if (asciichat_thread_create(&host->receive_thread, receive_loop_thread, host) != 0) {
+  if (asciichat_thread_create(&host->receive_thread, "host_recv", receive_loop_thread, host) != 0) {
     log_error("Failed to spawn receive loop thread");
     host->receive_thread_running = false;
     host->accept_thread_running = false;
@@ -1360,7 +1360,7 @@ asciichat_error_t session_host_start_render(session_host_t *host) {
 
   // Spawn render thread
   host->render_thread_running = true;
-  if (asciichat_thread_create(&host->render_thread, host_render_thread, host) != 0) {
+  if (asciichat_thread_create(&host->render_thread, "render", host_render_thread, host) != 0) {
     log_error("Failed to spawn render thread");
     host->render_thread_running = false;
     return SET_ERRNO(ERROR_THREAD, "Failed to spawn render thread");

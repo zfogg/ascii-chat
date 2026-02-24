@@ -1251,7 +1251,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
   // Only the service thread should call lws_service() on this context
   log_debug("Starting WebSocket service thread...");
   ws_data->service_running = true;
-  if (asciichat_thread_create(&ws_data->service_thread, websocket_service_thread, ws_data) != 0) {
+  if (asciichat_thread_create(&ws_data->service_thread, "ws_service", websocket_service_thread, ws_data) != 0) {
     log_error("Failed to create WebSocket service thread");
     ws_data->service_running = false;
     lws_context_destroy(ws_data->context);

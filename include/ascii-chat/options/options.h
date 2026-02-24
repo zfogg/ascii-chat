@@ -355,10 +355,10 @@ typedef enum {
   "[%color(*, %H):%color(*, %M):%color(*, %S).%color(*, %ms)] [%color(*, %level_aligned)] "                            \
   "%colored_message"
 
-/** @brief Default log format string - debug mode (verbose with thread ID, file relative path, line, and function) */
+/** @brief Default log format string - debug mode (verbose with thread name, file relative path, line, and function) */
 #define OPT_LOG_TEMPLATE_DEFAULT_DEBUG                                                                                 \
   "[%color(*, %H):%color(*, %M):%color(*, %S).%color(*, %ms)] [%color(*, %level_aligned)] "                            \
-  "[tid:%color(GREY, %tid)] %color(DEBUG, %file_relative):%color(GREY, %line)@%color(DEV, %func)(): "                  \
+  "[%color(GREY, %tname)] %color(DEBUG, %file_relative):%color(GREY, %line)@%color(DEV, %func)(): "                   \
   "%colored_message"
 
 /** @brief Default log template string (selected based on build mode)

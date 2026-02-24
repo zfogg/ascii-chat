@@ -541,7 +541,7 @@ int splash_intro_start(session_display_ctx_t *ctx) {
   g_splash_state.frame = 0;
 
   // Start animation thread
-  if (asciichat_thread_create(&g_splash_state.anim_thread, splash_animation_thread, NULL) != ASCIICHAT_OK) {
+  if (asciichat_thread_create(&g_splash_state.anim_thread, "splash_anim", splash_animation_thread, NULL) != ASCIICHAT_OK) {
     log_warn("Failed to create splash animation thread");
     return 0;
   }
