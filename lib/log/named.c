@@ -5,7 +5,7 @@
  *
  * This module scans log message text for hex addresses (0x[0-9a-fA-F]+) and replaces
  * them with friendly descriptions from the named object registry when available.
- * For example, 0x7f1234567890 might become "mutex: recv_mutex.2 (0x7f1234567890)"
+ * For example, 0x7f1234567890 might become "mutex/recv_mutex.2 (0x7f1234567890)"
  */
 
 #include <string.h>
@@ -25,7 +25,7 @@
  * @return Length of output string (excluding null terminator), -1 on error or no formatting applied
  *
  * Scans for patterns like 0x[0-9a-fA-F]+ and checks if they're registered named objects.
- * If found, replaces with "type: name (0xaddress)" format.
+ * If found, replaces with "type/name (0xaddress)" format.
  * Otherwise, leaves the address as-is.
  */
 int log_named_format_message(const char *message, char *output, size_t output_size) {
@@ -61,7 +61,7 @@ int log_named_format_message(const char *message, char *output, size_t output_si
         if (name && type) {
           /* This is a registered named object - format it */
           int written =
-            snprintf(output + out_pos, output_size - out_pos, "%s: %s (0x%tx)", type, name, address);
+            snprintf(output + out_pos, output_size - out_pos, "%s/%s (0x%tx)", type, name, address);
           if (written > 0 && (size_t)written < output_size - out_pos) {
             out_pos += written;
             any_transformed = true;

@@ -374,11 +374,11 @@ const char *named_describe(uintptr_t key, const char *type_hint) {
         const char *type = entry->type ? entry->type : type_hint;
 
         if (entry->file && entry->func) {
-            snprintf(buffer, sizeof(buffer), "%s: %s (0x%tx) @ %s:%d:%s()",
+            snprintf(buffer, sizeof(buffer), "%s/%s (0x%tx) @ %s:%d:%s()",
                      type, entry->name, (ptrdiff_t)key,
                      entry->file, entry->line, entry->func);
         } else {
-            snprintf(buffer, sizeof(buffer), "%s: %s (0x%tx)",
+            snprintf(buffer, sizeof(buffer), "%s/%s (0x%tx)",
                      type, entry->name, (ptrdiff_t)key);
         }
     } else {
