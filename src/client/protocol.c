@@ -1088,6 +1088,13 @@ int protocol_start_connection() {
  * @ingroup client_protocol
  */
 void protocol_stop_connection() {
+  // Signal audio sender thread immediately if it was created
+  // Must happen FIRST, even in mirror mode where data_thread was never created
+  // Audio sender is created in ALL modes (mirror, network, discovery) and must be properly stopped
+  audio_stop_thread();
+
+  // Early return if data thread was never created (e.g., mirror mode)
+  // In mirror mode, we only need to stop the audio sender (done above)
   if (!g_data_thread_created) {
     return;
   }
@@ -1103,9 +1110,6 @@ void protocol_stop_connection() {
 
   // Stop webcam capture thread
   capture_stop_thread();
-
-  // Stop audio threads if running
-  audio_stop_thread();
 
   // Wait for data reception thread to exit gracefully
   int wait_count = 0;
