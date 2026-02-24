@@ -311,6 +311,40 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
 #endif
 
 // ============================================================================
+// Thread-Specific Registration Macros
+// ============================================================================
+
+/**
+ * @brief Register a thread handle with name and type
+ * @param thread asciichat_thread_t handle (NOT a pointer)
+ * @param name Base name string
+ * @param type Data type label (typically "thread")
+ * @ingroup debug_named
+ *
+ * In debug builds, automatically captures __FILE__, __LINE__, and __func__ for location info.
+ * The thread handle itself (not a pointer) is used as the registry key.
+ * In release builds (NDEBUG), this is a no-op.
+ */
+#ifndef NDEBUG
+#define NAMED_REGISTER_THREAD(thread, name, type) \
+  named_register(asciichat_thread_to_key((thread)), (name), (type), __FILE__, __LINE__, __func__)
+#else
+#define NAMED_REGISTER_THREAD(thread, name, type) ((void)0)
+#endif
+
+/**
+ * @brief Unregister a thread handle
+ * @param thread asciichat_thread_t handle (NOT a pointer)
+ * @ingroup debug_named
+ */
+#ifndef NDEBUG
+#define NAMED_UNREGISTER_THREAD(thread) \
+  named_unregister(asciichat_thread_to_key((thread)))
+#else
+#define NAMED_UNREGISTER_THREAD(thread) ((void)0)
+#endif
+
+// ============================================================================
 // Type-Specific Description Macros
 // ============================================================================
 

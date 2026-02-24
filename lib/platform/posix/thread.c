@@ -43,8 +43,8 @@
  */
 int asciichat_thread_create(asciichat_thread_t *thread, const char *name, void *(*func)(void *), void *arg) {
   int err = pthread_create(thread, NULL, func, arg);
-  if (err == 0 && name) {
-    NAMED_REGISTER(thread, name, "thread");
+  if (err == 0 && name && thread) {
+    NAMED_REGISTER_THREAD(*thread, name, "thread");
   }
   return err;
 }
@@ -57,7 +57,9 @@ int asciichat_thread_create(asciichat_thread_t *thread, const char *name, void *
  */
 int asciichat_thread_join(asciichat_thread_t *thread, void **retval) {
   // Unregister the thread from named registry before joining
-  NAMED_UNREGISTER(thread);
+  if (thread) {
+    NAMED_UNREGISTER_THREAD(*thread);
+  }
 
   int result = pthread_join(*thread, retval);
   if (result == 0) {

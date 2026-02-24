@@ -632,8 +632,8 @@ int asciichat_thread_create(asciichat_thread_t *thread, const char *name, void *
   }
 
   // Register thread with name in debug registry
-  if (name) {
-    NAMED_REGISTER(thread, name, "thread");
+  if (name && thread) {
+    NAMED_REGISTER_THREAD(*thread, name, "thread");
   }
 
   // IMPORTANT: Add a memory barrier to ensure all writes complete before returning
@@ -655,7 +655,7 @@ int asciichat_thread_join(asciichat_thread_t *thread, void **retval) {
   }
 
   // Unregister the thread from named registry before joining
-  NAMED_UNREGISTER(thread);
+  NAMED_UNREGISTER_THREAD(*thread);
 
   DWORD result = WaitForSingleObject((*thread), INFINITE);
 
