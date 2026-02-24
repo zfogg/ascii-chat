@@ -642,11 +642,17 @@ log_level_t log_get_level(void) {
 void log_set_terminal_output(bool enabled) {
   // Respect --quiet flag: if quiet is set, never enable terminal output
   // But allow disabling even if options are unavailable (for shutdown cleanup)
-  const options_t *opts = options_get();
 
-  if (enabled && opts && opts->quiet) {
-    return; // Silently ignore attempts to enable terminal output when --quiet is set
+  // Only check quiet flag when ENABLING output to avoid deadlock with
+  // concurrent logging from other threads (options_get() can deadlock when
+  // called while other threads are actively logging due to RCU synchronization)
+  if (enabled) {
+    const options_t *opts = options_get();
+    if (opts && opts->quiet) {
+      return; // Silently ignore attempts to enable terminal output when --quiet is set
+    }
   }
+
   atomic_store(&g_log.terminal_output_enabled, enabled);
 }
 
