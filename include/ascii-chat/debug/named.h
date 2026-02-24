@@ -376,6 +376,81 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
 #define NAMED_REGISTER_COND(cond, name) (name)
 #endif
 
+/**
+ * @brief Register a socket with automatic format specifier
+ * @param socket Socket pointer
+ * @param name Base name string
+ * @ingroup debug_named
+ *
+ * Convenience macro that automatically uses "0x%tx" format specifier for socket addresses.
+ */
+#ifndef NDEBUG
+#define NAMED_REGISTER_SOCKET(socket, name) \
+  named_register((uintptr_t)(const void *)(socket), (name), "socket", "0x%tx", __FILE__, __LINE__, __func__)
+#else
+#define NAMED_REGISTER_SOCKET(socket, name) (name)
+#endif
+
+/**
+ * @brief Register a WebSocket connection with automatic format specifier
+ * @param websocket WebSocket pointer
+ * @param name Base name string
+ * @ingroup debug_named
+ *
+ * Convenience macro that automatically uses "0x%tx" format specifier for websocket addresses.
+ */
+#ifndef NDEBUG
+#define NAMED_REGISTER_WEBSOCKET(websocket, name) \
+  named_register((uintptr_t)(const void *)(websocket), (name), "websocket", "0x%tx", __FILE__, __LINE__, __func__)
+#else
+#define NAMED_REGISTER_WEBSOCKET(websocket, name) (name)
+#endif
+
+/**
+ * @brief Register a data channel with automatic format specifier
+ * @param datachannel Data channel pointer
+ * @param name Base name string
+ * @ingroup debug_named
+ *
+ * Convenience macro that automatically uses "0x%tx" format specifier for datachannel addresses.
+ */
+#ifndef NDEBUG
+#define NAMED_REGISTER_DATACHANNEL(datachannel, name) \
+  named_register((uintptr_t)(const void *)(datachannel), (name), "datachannel", "0x%tx", __FILE__, __LINE__, __func__)
+#else
+#define NAMED_REGISTER_DATACHANNEL(datachannel, name) (name)
+#endif
+
+/**
+ * @brief Register a thread pool work item with automatic format specifier
+ * @param work Work item pointer
+ * @param name Base name string
+ * @ingroup debug_named
+ *
+ * Convenience macro that automatically uses "0x%tx" format specifier for work item addresses.
+ */
+#ifndef NDEBUG
+#define NAMED_REGISTER_THREADPOOL_WORK(work, name) \
+  named_register((uintptr_t)(const void *)(work), (name), "work", "0x%tx", __FILE__, __LINE__, __func__)
+#else
+#define NAMED_REGISTER_THREADPOOL_WORK(work, name) (name)
+#endif
+
+/**
+ * @brief Register a client connection with automatic format specifier
+ * @param client Client pointer
+ * @param name Base name string
+ * @ingroup debug_named
+ *
+ * Convenience macro that automatically uses "0x%tx" format specifier for client addresses.
+ */
+#ifndef NDEBUG
+#define NAMED_REGISTER_CLIENT(client, name) \
+  named_register((uintptr_t)(const void *)(client), (name), "client", "0x%tx", __FILE__, __LINE__, __func__)
+#else
+#define NAMED_REGISTER_CLIENT(client, name) (name)
+#endif
+
 // ============================================================================
 // Thread-Specific Registration Macros
 // ============================================================================

@@ -32,6 +32,7 @@
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/crypto/handshake/common.h>
+#include <ascii-chat/debug/named.h>
 
 #include <string.h>
 #include <time.h>
@@ -115,6 +116,8 @@ tcp_client_t *tcp_client_create(void) {
     return NULL;
   }
 
+  NAMED_REGISTER_CLIENT(client, "tcp_client");
+
   log_debug("TCP client created successfully");
   return client;
 }
@@ -136,6 +139,7 @@ void tcp_client_destroy(tcp_client_t **client_ptr) {
     client->sockfd = INVALID_SOCKET_VALUE;
   }
 
+  NAMED_UNREGISTER(client);
   mutex_destroy(&client->send_mutex);
   SAFE_FREE(*client_ptr);
 
