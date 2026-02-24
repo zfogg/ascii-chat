@@ -21,6 +21,11 @@
 int cond_init(cond_t *cond, const char *name) {
   InitializeConditionVariable(&cond->impl);
   cond->name = NAMED_REGISTER(cond, name, "cond");
+  cond->last_signal_time_ns = 0;
+  cond->last_broadcast_time_ns = 0;
+  cond->last_wait_time_ns = 0;
+  cond->waiting_count = 0;
+  cond->last_waiting_key = 0;
   return 0;
 }
 

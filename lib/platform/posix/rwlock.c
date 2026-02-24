@@ -25,6 +25,11 @@ int rwlock_init(rwlock_t *lock, const char *name) {
   int err = pthread_rwlock_init(&lock->impl, NULL);
   if (err == 0) {
     lock->name = NAMED_REGISTER(lock, name, "rwlock");
+    lock->last_rdlock_time_ns = 0;
+    lock->last_wrlock_time_ns = 0;
+    lock->last_unlock_time_ns = 0;
+    lock->read_lock_count = 0;
+    lock->write_held_by_key = 0;
   }
   return err;
 }

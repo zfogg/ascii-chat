@@ -22,6 +22,11 @@ int cond_init(cond_t *cond, const char *name) {
   int err = pthread_cond_init(&cond->impl, NULL);
   if (err == 0) {
     cond->name = NAMED_REGISTER(cond, name, "cond");
+    cond->last_signal_time_ns = 0;
+    cond->last_broadcast_time_ns = 0;
+    cond->last_wait_time_ns = 0;
+    cond->waiting_count = 0;
+    cond->last_waiting_key = 0;
   }
   return err;
 }
