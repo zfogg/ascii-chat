@@ -46,6 +46,11 @@ static void format_elapsed(uint64_t elapsed_ns, char *buffer, size_t size) {
 static int format_mutex_timing(const mutex_t *mutex, char *buffer, size_t size) {
     if (!mutex) return 0;
 
+    // If mutex was never locked, return empty
+    if (mutex->last_lock_time_ns == 0) {
+        return 0;
+    }
+
     int offset = 0;
     uint64_t now_ns = time_get_ns();
 
@@ -62,7 +67,8 @@ static int format_mutex_timing(const mutex_t *mutex, char *buffer, size_t size) 
     }
 
     if (mutex->currently_held_by_tid != 0) {
-        offset += snprintf(buffer + offset, size - offset, "    *** HELD by thread %lu ***\n", mutex->currently_held_by_tid);
+        const char *thread_name = named_describe((uintptr_t)mutex->currently_held_by_tid, "thread");
+        offset += snprintf(buffer + offset, size - offset, "    *** HELD by %s ***\n", thread_name);
     }
 
     return offset;
@@ -77,6 +83,11 @@ static int format_mutex_timing(const mutex_t *mutex, char *buffer, size_t size) 
  */
 static int format_rwlock_timing(const rwlock_t *rwlock, char *buffer, size_t size) {
     if (!rwlock) return 0;
+
+    // If rwlock was never locked, return empty
+    if (rwlock->last_rdlock_time_ns == 0 && rwlock->last_wrlock_time_ns == 0) {
+        return 0;
+    }
 
     int offset = 0;
     uint64_t now_ns = time_get_ns();
@@ -100,7 +111,8 @@ static int format_rwlock_timing(const rwlock_t *rwlock, char *buffer, size_t siz
     }
 
     if (rwlock->write_held_by_tid != 0) {
-        offset += snprintf(buffer + offset, size - offset, "    *** WRITE HELD by thread %lu ***\n", rwlock->write_held_by_tid);
+        const char *thread_name = named_describe((uintptr_t)rwlock->write_held_by_tid, "thread");
+        offset += snprintf(buffer + offset, size - offset, "    *** WRITE HELD by %s ***\n", thread_name);
     }
 
     if (rwlock->read_lock_count > 0) {
@@ -119,6 +131,11 @@ static int format_rwlock_timing(const rwlock_t *rwlock, char *buffer, size_t siz
  */
 static int format_cond_timing(const cond_t *cond, char *buffer, size_t size) {
     if (!cond) return 0;
+
+    // If cond was never waited on, return empty
+    if (cond->last_wait_time_ns == 0) {
+        return 0;
+    }
 
     int offset = 0;
     uint64_t now_ns = time_get_ns();
@@ -142,8 +159,9 @@ static int format_cond_timing(const cond_t *cond, char *buffer, size_t size) {
     }
 
     if (cond->waiting_count > 0) {
-        offset += snprintf(buffer + offset, size - offset, "    *** %lu thread(s) WAITING (most recent: thread %lu) ***\n",
-                          cond->waiting_count, cond->last_waiting_tid);
+        const char *thread_name = named_describe((uintptr_t)cond->last_waiting_tid, "thread");
+        offset += snprintf(buffer + offset, size - offset, "    *** %lu thread(s) WAITING (most recent: %s) ***\n",
+                          cond->waiting_count, thread_name);
     }
 
     return offset;
