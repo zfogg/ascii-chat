@@ -809,6 +809,11 @@ int main(int argc, char *argv[]) {
   // Mode entry points use options_get() to access parsed options
   int exit_code = mode->entry_point();
 
+#ifndef NDEBUG
+  // Clean up named registry (debug builds only)
+  named_destroy();
+#endif
+
   if (exit_code == ERROR_USAGE) {
     exit(ERROR_USAGE);
   }

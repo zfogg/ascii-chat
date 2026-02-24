@@ -100,8 +100,8 @@ static const debug_memory_suppression_t g_suppression_config[] = {
     {"lib/options/colorscheme.c", 602, 8, 88,     "8 256-color ANSI code strings"},
     {"lib/options/colorscheme.c", 619, 8, 144,    "8 truecolor ANSI code strings"},
     {"lib/util/path.c", 1211, 1, 43,              "normalized path allocation (caller frees)"},
-    {"lib/debug/named.c", 162, 2, 576,            "named registry name_counters hash entries (per thread)"},
-    {"lib/debug/named.c", 212, 2, 576,            "named registry entries hash entries (per thread)"},
+    {"lib/debug/named.c", 147, 1000, 0,           "named object registry: dynamic allocation of synchronization primitives (cleaned up at shutdown)"},
+    {"lib/debug/memory.c", 35, 1000, 0,           "named object registry allocations (file/line extraction artifact - cleaned up at shutdown)"},
     {"lib/platform/posix/util.c", 35, 18, 1260,   "platform_strdup() string allocations (mirror mode)"},
     {NULL, 0, 0, 0, NULL}                         // Sentinel
 };
@@ -332,8 +332,11 @@ void *debug_malloc(size_t size, const char *file, int line) {
         site->live_bytes += size;
         site->total_count++;
         if (site->live_count == MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY) {
-          log_warn("%s:%d:%lu — %d live allocations, possible memory accumulation", normalized_file, line,
-                   asciichat_thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY);
+          // Only warn if this allocation site is not suppressed (expected/benign allocations)
+          if (!should_ignore_allocation(normalized_file, line, asciichat_thread_current_id(), size)) {
+            log_warn("%s:%d:%lu — %d live allocations, possible memory accumulation", normalized_file, line,
+                     asciichat_thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY);
+          }
         }
       }
     }
@@ -388,8 +391,11 @@ void debug_track_aligned(void *ptr, size_t size, const char *file, int line) {
         site->live_bytes += size;
         site->total_count++;
         if (site->live_count == MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY) {
-          log_warn("%s:%d:%lu — %d live allocations, possible memory accumulation", normalized_file, line,
-                   asciichat_thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY);
+          // Only warn if this allocation site is not suppressed (expected/benign allocations)
+          if (!should_ignore_allocation(normalized_file, line, asciichat_thread_current_id(), size)) {
+            log_warn("%s:%d:%lu — %d live allocations, possible memory accumulation", normalized_file, line,
+                     asciichat_thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY);
+          }
         }
       }
     }
@@ -527,8 +533,11 @@ void *debug_calloc(size_t count, size_t size, const char *file, int line) {
         site->live_bytes += total;
         site->total_count++;
         if (site->live_count == MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY) {
-          log_warn("%s:%d:%lu — %d live allocations, possible memory accumulation", normalized_file, line,
-                   asciichat_thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY);
+          // Only warn if this allocation site is not suppressed (expected/benign allocations)
+          if (!should_ignore_allocation(normalized_file, line, asciichat_thread_current_id(), size)) {
+            log_warn("%s:%d:%lu — %d live allocations, possible memory accumulation", normalized_file, line,
+                     asciichat_thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY);
+          }
         }
       }
     }
