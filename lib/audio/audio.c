@@ -1178,7 +1178,7 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
   }
 
   // Initialize worker thread infrastructure
-  if (mutex_init(&ctx->worker_mutex, "audio_worker") != 0) {
+  if (mutex_init(&ctx->worker_mutex, "audio_worker_mutex") != 0) {
     audio_ring_buffer_destroy(ctx->processed_playback_rb);
     audio_ring_buffer_destroy(ctx->raw_render_rb);
     audio_ring_buffer_destroy(ctx->raw_capture_rb);
@@ -1189,7 +1189,7 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
     return SET_ERRNO(ERROR_THREAD, "Failed to initialize worker mutex");
   }
 
-  if (cond_init(&ctx->worker_cond, "audio_worker") != 0) {
+  if (cond_init(&ctx->worker_cond, "audio_worker_cond") != 0) {
     mutex_destroy(&ctx->worker_mutex);
     audio_ring_buffer_destroy(ctx->processed_playback_rb);
     audio_ring_buffer_destroy(ctx->raw_render_rb);
