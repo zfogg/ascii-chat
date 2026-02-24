@@ -43,6 +43,8 @@ typedef struct {
     uint64_t last_rdlock_time_ns;  ///< Timestamp of last read lock acquisition (nanoseconds)
     uint64_t last_wrlock_time_ns;  ///< Timestamp of last write lock acquisition (nanoseconds)
     uint64_t last_unlock_time_ns;  ///< Timestamp of last unlock (nanoseconds)
+    uint64_t write_held_by_tid;    ///< Thread ID holding write lock (0 if not held)
+    uint64_t read_lock_count;      ///< Number of threads holding read locks
 } rwlock_t;
 #else
 #include <pthread.h>
@@ -56,6 +58,8 @@ typedef struct {
     uint64_t last_rdlock_time_ns;  ///< Timestamp of last read lock acquisition (nanoseconds)
     uint64_t last_wrlock_time_ns;  ///< Timestamp of last write lock acquisition (nanoseconds)
     uint64_t last_unlock_time_ns;  ///< Timestamp of last unlock (nanoseconds)
+    uint64_t write_held_by_tid;    ///< Thread ID holding write lock (0 if not held)
+    uint64_t read_lock_count;      ///< Number of threads holding read locks
 } rwlock_t;
 #endif
 

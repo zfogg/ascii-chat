@@ -61,6 +61,10 @@ static int format_mutex_timing(const mutex_t *mutex, char *buffer, size_t size) 
         offset += snprintf(buffer + offset, size - offset, "    Last unlock: %s ago\n", elapsed_str);
     }
 
+    if (mutex->currently_held_by_tid != 0) {
+        offset += snprintf(buffer + offset, size - offset, "    *** HELD by thread %lu ***\n", mutex->currently_held_by_tid);
+    }
+
     return offset;
 }
 
@@ -95,6 +99,14 @@ static int format_rwlock_timing(const rwlock_t *rwlock, char *buffer, size_t siz
         offset += snprintf(buffer + offset, size - offset, "    Last unlock: %s ago\n", elapsed_str);
     }
 
+    if (rwlock->write_held_by_tid != 0) {
+        offset += snprintf(buffer + offset, size - offset, "    *** WRITE HELD by thread %lu ***\n", rwlock->write_held_by_tid);
+    }
+
+    if (rwlock->read_lock_count > 0) {
+        offset += snprintf(buffer + offset, size - offset, "    *** READ HELD by %lu thread(s) ***\n", rwlock->read_lock_count);
+    }
+
     return offset;
 }
 
@@ -127,6 +139,11 @@ static int format_cond_timing(const cond_t *cond, char *buffer, size_t size) {
         char elapsed_str[64];
         format_elapsed(now_ns - cond->last_broadcast_time_ns, elapsed_str, sizeof(elapsed_str));
         offset += snprintf(buffer + offset, size - offset, "    Last broadcast: %s ago\n", elapsed_str);
+    }
+
+    if (cond->waiting_count > 0) {
+        offset += snprintf(buffer + offset, size - offset, "    *** %lu thread(s) WAITING (most recent: thread %lu) ***\n",
+                          cond->waiting_count, cond->last_waiting_tid);
     }
 
     return offset;

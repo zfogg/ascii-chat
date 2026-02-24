@@ -8,6 +8,7 @@
  */
 
 #include <ascii-chat/platform/mutex.h>
+#include <ascii-chat/platform/thread.h>
 #include <ascii-chat/util/time.h>
 
 /**
@@ -22,6 +23,7 @@
 void mutex_on_lock(mutex_t *mutex) {
   if (mutex) {
     mutex->last_lock_time_ns = time_get_ns();
+    mutex->currently_held_by_tid = (uint64_t)asciichat_thread_current_id();
   }
 }
 
@@ -37,5 +39,6 @@ void mutex_on_lock(mutex_t *mutex) {
 void mutex_on_unlock(mutex_t *mutex) {
   if (mutex) {
     mutex->last_unlock_time_ns = time_get_ns();
+    mutex->currently_held_by_tid = 0;
   }
 }

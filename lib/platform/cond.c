@@ -8,7 +8,9 @@
  */
 
 #include <ascii-chat/platform/cond.h>
+#include <ascii-chat/platform/thread.h>
 #include <ascii-chat/util/time.h>
+#include <stdatomic.h>
 
 /**
  * @brief Hook called when a thread waits on a condition variable
@@ -22,6 +24,8 @@
 void cond_on_wait(cond_t *cond) {
   if (cond) {
     cond->last_wait_time_ns = time_get_ns();
+    cond->last_waiting_tid = (uint64_t)asciichat_thread_current_id();
+    atomic_fetch_add((volatile _Atomic(uint64_t) *)&cond->waiting_count, 1);
   }
 }
 
@@ -37,6 +41,9 @@ void cond_on_wait(cond_t *cond) {
 void cond_on_signal(cond_t *cond) {
   if (cond) {
     cond->last_signal_time_ns = time_get_ns();
+    if (cond->waiting_count > 0) {
+      atomic_fetch_sub((volatile _Atomic(uint64_t) *)&cond->waiting_count, 1);
+    }
   }
 }
 
@@ -52,5 +59,6 @@ void cond_on_signal(cond_t *cond) {
 void cond_on_broadcast(cond_t *cond) {
   if (cond) {
     cond->last_broadcast_time_ns = time_get_ns();
+    atomic_store((volatile _Atomic(uint64_t) *)&cond->waiting_count, 0);
   }
 }
