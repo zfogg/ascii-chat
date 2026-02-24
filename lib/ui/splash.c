@@ -73,7 +73,8 @@ static struct {
   _Atomic(bool) should_stop;      // set to true when first frame ready
   int frame;                      // current animation frame
   asciichat_thread_t anim_thread; // animation thread handle
-} g_splash_state = {.is_running = false, .should_stop = false, .frame = 0};
+  uint64_t start_time_ns;         // when splash was started (for minimum display time)
+} g_splash_state = {.is_running = false, .should_stop = false, .frame = 0, .start_time_ns = 0};
 
 // ============================================================================
 // Helper Functions - TTY Detection
@@ -418,12 +419,12 @@ static void *splash_animation_thread(void *arg) {
   int fps = GET_OPTION(fps);
   if (fps <= 0) fps = 60; // Default to 60 FPS if not specified
   const int anim_speed = 1000 / fps; // milliseconds per frame
+  uint64_t loop_start_ns = time_get_ns();
 
-  log_debug("[SPLASH_ANIM] Entering animation loop");
+  log_info("[SPLASH_ANIM] Starting animation loop: fps=%d, anim_speed=%dms per frame", fps, anim_speed);
   while (!atomic_load(&g_splash_state.should_stop) && !shutdown_is_requested()) {
-    if (frame == 0 || frame % 10 == 0) {
-      log_debug("[SPLASH_ANIM] Frame %d START", frame);
-    }
+    log_debug("[SPLASH_ANIM] Frame %d: should_stop=%d, shutdown=%d", frame,
+              atomic_load(&g_splash_state.should_stop), shutdown_is_requested());
 
     // Poll keyboard for interactive grep and Escape to cancel
     log_debug("[SPLASH_ANIM] Frame %d: keyboard_enabled=%d", frame, keyboard_enabled);
@@ -497,20 +498,37 @@ static void *splash_animation_thread(void *arg) {
     // Move to next frame
     frame++;
 
+    // Log frame progress every 60 frames (1 second at 60fps)
+    if (frame % 60 == 0) {
+      uint64_t now_ns = time_get_ns();
+      uint64_t elapsed_ns = now_ns - loop_start_ns;
+      double elapsed_sec = elapsed_ns / 1e9;
+      double actual_fps = frame / elapsed_sec;
+      log_info("[SPLASH_ANIM] Frame %d: %.1f seconds elapsed, actual FPS: %.1f", frame, elapsed_sec, actual_fps);
+    }
+
     // Sleep to control animation speed (unless grep needs immediate rerender)
-    log_debug("[SPLASH_ANIM] Frame %d: About to sleep for %d ms", frame - 1, anim_speed);
     if (!interactive_grep_needs_rerender()) {
       platform_sleep_ms(anim_speed);
     }
-    log_debug("[SPLASH_ANIM] Frame %d: Sleep completed", frame - 1);
   }
+
+  // Log final frame count
+  uint64_t final_ns = time_get_ns();
+  uint64_t total_elapsed_ns = final_ns - loop_start_ns;
+  double total_elapsed_sec = total_elapsed_ns / 1e9;
+  double final_fps = total_elapsed_sec > 0 ? frame / total_elapsed_sec : 0;
+  log_info("[SPLASH_ANIM] === ANIMATION LOOP EXITED === %d frames rendered in %.3f seconds (%.1f FPS). should_stop=%d, shutdown=%d",
+           frame, total_elapsed_sec, final_fps, atomic_load(&g_splash_state.should_stop), shutdown_is_requested());
 
   // Cleanup keyboard
   if (keyboard_enabled) {
+    log_debug("[SPLASH_ANIM] Destroying keyboard");
     keyboard_destroy();
   }
 
   atomic_store(&g_splash_state.is_running, false);
+  log_debug("[SPLASH_ANIM] Animation thread exiting");
   return NULL;
 }
 
@@ -564,6 +582,7 @@ int splash_intro_start(session_display_ctx_t *ctx) {
   atomic_store(&g_splash_state.is_running, true);
   atomic_store(&g_splash_state.should_stop, false);
   g_splash_state.frame = 0;
+  g_splash_state.start_time_ns = time_get_ns();  // Track start time for minimum display duration
 
   // Start animation thread
   log_debug("[SPLASH] About to create animation thread");
@@ -577,12 +596,27 @@ int splash_intro_start(session_display_ctx_t *ctx) {
 }
 
 int splash_intro_done(void) {
-  log_debug("[SPLASH_DONE] Entry: is_running=%d, should_stop=%d",
-            atomic_load(&g_splash_state.is_running),
-            atomic_load(&g_splash_state.should_stop));
+  log_info("[SPLASH_DONE] Entry: is_running=%d, should_stop=%d",
+           atomic_load(&g_splash_state.is_running),
+           atomic_load(&g_splash_state.should_stop));
+
+  // Enforce minimum display time of 2 seconds
+  if (g_splash_state.start_time_ns > 0) {
+    uint64_t now_ns = time_get_ns();
+    uint64_t elapsed_ns = now_ns - g_splash_state.start_time_ns;
+    const uint64_t min_display_ns = 2000000000ULL;  // 2 seconds in nanoseconds
+
+    if (elapsed_ns < min_display_ns) {
+      uint64_t remaining_ns = min_display_ns - elapsed_ns;
+      uint64_t remaining_ms = (remaining_ns + 999999) / 1000000;  // Round up to ms
+      log_info("[SPLASH_DONE] Elapsed: %.2f seconds, minimum: 2s. Waiting %llu ms",
+               elapsed_ns / 1000000000.0, (unsigned long long)remaining_ms);
+      platform_sleep_ms(remaining_ms);
+    }
+  }
 
   // Signal animation thread to stop
-  log_debug("[SPLASH_DONE] Setting should_stop=true");
+  log_info("[SPLASH_DONE] Setting should_stop=true");
   atomic_store(&g_splash_state.should_stop, true);
 
   // Wait for animation thread to finish

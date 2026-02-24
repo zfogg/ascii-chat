@@ -656,6 +656,9 @@ cleanup:
   // Free cached webcam images and test patterns
   webcam_destroy();
 
+  // Stop splash animation and enforce minimum display time (even on error path)
+  splash_intro_done();
+
   // Stop debug sync thread before destroying log buffer to prevent use-after-free
   debug_sync_cleanup_thread();
 
