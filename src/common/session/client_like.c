@@ -177,6 +177,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   temp_display = session_display_create(NULL);
   if (temp_display) {
     splash_intro_start(temp_display);
+    log_debug("session_client_like_run(): splash_intro_start() returned");
 
     // Detect if we're using media vs webcam (needed for splash timing)
     const char *media_url = GET_OPTION(media_url);
@@ -187,6 +188,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     if (!has_media && !GET_OPTION(snapshot_mode)) {
       platform_sleep_ms(250);
     }
+    log_debug("session_client_like_run(): After splash sleep");
   }
 
   // ============================================================================
