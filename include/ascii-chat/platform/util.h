@@ -265,6 +265,7 @@ void platform_set_last_error(int error);
 
 /**
  * @brief Safe file open (open replacement)
+ * @param name Debug name for the file descriptor (required, e.g., "config_file")
  * @param pathname File path to open
  * @param flags Open flags (O_RDONLY, O_WRONLY, O_RDWR, etc.)
  * @param ... Variable arguments (mode for O_CREAT)
@@ -272,22 +273,25 @@ void platform_set_last_error(int error);
  *
  * Cross-platform file opening with consistent behavior.
  * Use PLATFORM_O_* flags for portability.
+ * The name parameter is required for debug tracking and validation.
  *
  * @ingroup platform
  */
-int platform_open(const char *pathname, int flags, ...);
+int platform_open(const char *name, const char *pathname, int flags, ...);
 
 /**
  * @brief Safe file open stream (fopen replacement)
+ * @param name Debug name for the file (required, e.g., "config_file")
  * @param filename File path to open
  * @param mode Open mode string (e.g., "r", "w", "rb")
  * @return FILE pointer, or NULL on error
  *
  * Cross-platform file stream opening.
+ * The name parameter is required for debug tracking and validation.
  *
  * @ingroup platform
  */
-FILE *platform_fopen(const char *filename, const char *mode);
+FILE *platform_fopen(const char *name, const char *filename, const char *mode);
 
 /**
  * @brief Create a temporary file (tmpfile replacement)
@@ -301,15 +305,17 @@ FILE *platform_tmpfile(void);
 
 /**
  * @brief Convert file descriptor to stream (fdopen replacement)
+ * @param name Debug name for the stream (required, e.g., "log_stream")
  * @param fd File descriptor
  * @param mode Open mode string for the stream
  * @return FILE pointer, or NULL on error
  *
  * Associates a FILE stream with an existing file descriptor.
+ * The name parameter is required for debug tracking and validation.
  *
  * @ingroup platform
  */
-FILE *platform_fdopen(int fd, const char *mode);
+FILE *platform_fdopen(const char *name, int fd, const char *mode);
 
 /**
  * @brief Safe file read (read replacement)

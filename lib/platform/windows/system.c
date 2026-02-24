@@ -9,6 +9,7 @@
 #include <ascii-chat/platform/api.h>
 #include <ascii-chat/platform/internal.h>
 #include <ascii-chat/platform/socket.h>
+#include <ascii-chat/debug/named.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/asciichat_errno.h>
@@ -1318,12 +1319,17 @@ void platform_set_last_error(int error) {
 
 /**
  * @brief Open file with platform-safe flags
+ * @param name Debug name for the file descriptor
  * @param pathname File path
  * @param flags Open flags
  * @param ... Mode (if O_CREAT is specified)
  * @return File descriptor on success, -1 on failure
  */
-int platform_open(const char *pathname, int flags, ...) {
+int platform_open(const char *name, const char *pathname, int flags, ...) {
+  if (!name) {
+    return -1;
+  }
+
   int mode = 0;
   if (flags & _O_CREAT) {
     va_list args;
@@ -1343,17 +1349,31 @@ int platform_open(const char *pathname, int flags, ...) {
   if (err != 0) {
     return -1;
   }
+
+  if (fd >= 0) {
+    NAMED_REGISTER_FD(fd, name);
+  }
+
   return fd;
 }
 
 /**
  * @brief Open file descriptor with platform-safe mode
+ * @param name Debug name for the stream
  * @param fd File descriptor
  * @param mode File mode
  * @return File pointer on success, NULL on failure
  */
-FILE *platform_fdopen(int fd, const char *mode) {
-  return _fdopen(fd, mode);
+FILE *platform_fdopen(const char *name, int fd, const char *mode) {
+  if (!name) {
+    return NULL;
+  }
+
+  FILE *stream = _fdopen(fd, mode);
+  if (stream && fd >= 0) {
+    NAMED_REGISTER_FD(fd, name);
+  }
+  return stream;
 }
 
 /**
@@ -1401,16 +1421,27 @@ int platform_close(int fd) {
 
 /**
  * @brief Open file with platform-safe mode
+ * @param name Debug name for the file
  * @param filename File path
  * @param mode File mode (e.g., "r", "w", "a", "rb", "wb")
  * @return File pointer on success, NULL on failure
  */
-FILE *platform_fopen(const char *filename, const char *mode) {
+FILE *platform_fopen(const char *name, const char *filename, const char *mode) {
+  if (!name) {
+    return NULL;
+  }
+
   FILE *file = NULL;
   errno_t err = fopen_s(&file, filename, mode);
   if (err != 0 || file == NULL) {
     return NULL;
   }
+
+  int fd = _fileno(file);
+  if (fd >= 0) {
+    NAMED_REGISTER_FD(fd, name);
+  }
+
   return file;
 }
 

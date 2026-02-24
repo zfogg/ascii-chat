@@ -112,13 +112,13 @@ asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const u
   for (size_t file_idx = 0; file_idx < known_hosts_files.count; file_idx++) {
     const char *path = known_hosts_files.files[file_idx].path;
 
-    int fd = platform_open(path, PLATFORM_O_RDONLY, FILE_PERM_PRIVATE);
+    int fd = platform_open("known_hosts_file", path, PLATFORM_O_RDONLY, FILE_PERM_PRIVATE);
     if (fd < 0) {
       log_debug("KNOWN_HOSTS: Cannot open file: %s", path);
       continue; // Skip files that can't be opened
     }
 
-    FILE *f = platform_fdopen(fd, "r");
+    FILE *f = platform_fdopen("known_hosts_stream", fd, "r");
     if (!f) {
       platform_close(fd);
       log_debug("KNOWN_HOSTS: Failed to fdopen: %s", path);
@@ -250,14 +250,14 @@ asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const u
 // ERROR_CRYPTO_VERIFICATION = server changed from identity to no-identity
 asciichat_error_t check_known_host_no_identity(const char *server_ip, uint16_t port) {
   const char *path = get_known_hosts_path();
-  int fd = platform_open(path, PLATFORM_O_RDONLY, FILE_PERM_PRIVATE);
+  int fd = platform_open("known_hosts_file", path, PLATFORM_O_RDONLY, FILE_PERM_PRIVATE);
   if (fd < 0) {
     // File doesn't exist - this is an unknown host that needs verification
     log_warn("Known hosts file does not exist: %s", path);
     return ASCIICHAT_OK; // Return 0 to indicate unknown host (first connection)
   }
 
-  FILE *f = platform_fdopen(fd, "r");
+  FILE *f = platform_fdopen("known_hosts_stream", fd, "r");
   defer(SAFE_FCLOSE(f));
   if (!f) {
     // Failed to open file descriptor as FILE*
@@ -425,7 +425,7 @@ asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uin
   // Note: Temporarily removed log_debug to avoid potential crashes during debugging
   // log_debug("KNOWN_HOSTS: Attempting to create/open file: %s", path);
   // Use "a" mode for append-only (simpler and works better with chmod)
-  FILE *f = platform_fopen(path, "a");
+  FILE *f = platform_fopen("file_stream", path, "a");
   defer(SAFE_FCLOSE(f));
   if (!f) {
     // log_debug("KNOWN_HOSTS: platform_fopen failed: %s (errno=%d)", SAFE_STRERROR(errno), errno);
@@ -490,12 +490,12 @@ asciichat_error_t remove_known_host(const char *server_ip, uint16_t port) {
   }
 
   const char *path = get_known_hosts_path();
-  int fd = platform_open(path, PLATFORM_O_RDONLY, FILE_PERM_PRIVATE);
+  int fd = platform_open("known_hosts_file", path, PLATFORM_O_RDONLY, FILE_PERM_PRIVATE);
   if (fd < 0) {
     // File doesn't exist - nothing to remove, return success
     return ASCIICHAT_OK;
   }
-  FILE *f = platform_fdopen(fd, "r");
+  FILE *f = platform_fdopen("known_hosts_stream", fd, "r");
   defer(SAFE_FCLOSE(f));
   if (!f) {
     platform_close(fd);
@@ -548,8 +548,8 @@ asciichat_error_t remove_known_host(const char *server_ip, uint16_t port) {
   }
 
   // Write back the filtered lines
-  fd = platform_open(path, PLATFORM_O_WRONLY | PLATFORM_O_CREAT | PLATFORM_O_TRUNC, FILE_PERM_PRIVATE);
-  f = platform_fdopen(fd, "w");
+  fd = platform_open("known_hosts_file_write", path, PLATFORM_O_WRONLY | PLATFORM_O_CREAT | PLATFORM_O_TRUNC, FILE_PERM_PRIVATE);
+  f = platform_fdopen("known_hosts_write_stream", fd, "w");
   if (!f) {
     // Cleanup on error - fdopen failed, so fd is still open but f is NULL
     // Individual line strings will be freed by defer cleanup

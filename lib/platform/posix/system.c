@@ -8,6 +8,7 @@
 
 #include <ascii-chat/platform/api.h>
 #include <ascii-chat/platform/internal.h>
+#include <ascii-chat/debug/named.h>
 #include <ascii-chat/common.h> // For log_error()
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/asciichat_errno.h>
@@ -422,31 +423,53 @@ void platform_set_last_error(int error) {
 
 /**
  * @brief Open file with platform-safe flags
+ * @param name Debug name for the file descriptor
  * @param pathname File path
  * @param flags Open flags
  * @param ... Mode (if O_CREAT is specified)
  * @return File descriptor on success, -1 on failure
  */
-int platform_open(const char *pathname, int flags, ...) {
+int platform_open(const char *name, const char *pathname, int flags, ...) {
+  if (!name) {
+    return -1;
+  }
+
+  int fd = -1;
   int mode = 0;
   if (flags & O_CREAT) {
     va_list args;
     va_start(args, flags);
     mode = va_arg(args, int);
     va_end(args);
-    return open(pathname, flags, mode);
+    fd = open(pathname, flags, mode);
+  } else {
+    fd = open(pathname, flags);
   }
-  return open(pathname, flags);
+
+  if (fd >= 0) {
+    NAMED_REGISTER_FD(fd, name);
+  }
+
+  return fd;
 }
 
 /**
  * @brief Open file descriptor with platform-safe mode
+ * @param name Debug name for the stream
  * @param fd File descriptor
  * @param mode File mode
  * @return File pointer on success, NULL on failure
  */
-FILE *platform_fdopen(int fd, const char *mode) {
-  return fdopen(fd, mode);
+FILE *platform_fdopen(const char *name, int fd, const char *mode) {
+  if (!name) {
+    return NULL;
+  }
+
+  FILE *stream = fdopen(fd, mode);
+  if (stream && fd >= 0) {
+    NAMED_REGISTER_FD(fd, name);
+  }
+  return stream;
 }
 
 /**
@@ -485,12 +508,24 @@ int platform_close(int fd) {
 
 /**
  * @brief Open file with platform-safe mode
+ * @param name Debug name for the file
  * @param filename File path
  * @param mode File mode (e.g., "r", "w", "a", "rb", "wb")
  * @return File pointer on success, NULL on failure
  */
-FILE *platform_fopen(const char *filename, const char *mode) {
-  return fopen(filename, mode);
+FILE *platform_fopen(const char *name, const char *filename, const char *mode) {
+  if (!name) {
+    return NULL;
+  }
+
+  FILE *stream = fopen(filename, mode);
+  if (stream) {
+    int fd = fileno(stream);
+    if (fd >= 0) {
+      NAMED_REGISTER_FD(fd, name);
+    }
+  }
+  return stream;
 }
 
 FILE *platform_tmpfile(void) {
@@ -1174,7 +1209,7 @@ platform_stderr_redirect_handle_t platform_stderr_redirect_to_null(void) {
   }
 
   // Open /dev/null
-  handle.devnull_fd = platform_open("/dev/null", O_WRONLY, 0);
+  handle.devnull_fd = platform_open("devnull_redirect", "/dev/null", O_WRONLY, 0);
   if (handle.devnull_fd < 0) {
     close(handle.original_fd);
     handle.original_fd = -1;
@@ -1207,7 +1242,7 @@ void platform_stderr_restore(platform_stderr_redirect_handle_t handle) {
 }
 
 void platform_stdio_redirect_to_null_permanent(void) {
-  int dev_null = platform_open("/dev/null", O_WRONLY, 0);
+  int dev_null = platform_open("devnull_redirect", "/dev/null", O_WRONLY, 0);
   if (dev_null >= 0) {
     dup2(dev_null, STDERR_FILENO);
     dup2(dev_null, STDOUT_FILENO);
@@ -1241,7 +1276,7 @@ platform_stderr_redirect_handle_t platform_stdout_stderr_redirect_to_null(void) 
   }
 
   // Open /dev/null for redirection
-  int devnull = platform_open("/dev/null", O_WRONLY, 0);
+  int devnull = platform_open("devnull_redirect", "/dev/null", O_WRONLY, 0);
   if (devnull < 0) {
     close(saved_stdout);
     close(saved_stderr);

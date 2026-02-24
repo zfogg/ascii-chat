@@ -28,6 +28,53 @@
  * If found, replaces with "type/name (0xaddress)" format.
  * Otherwise, leaves the address as-is.
  */
+/**
+ * @brief Check if an integer is a registered file descriptor
+ * @param fd File descriptor value
+ * @return true if the fd is registered as an FD type
+ */
+static bool is_registered_fd(int fd) {
+  const char *type = named_get_type((uintptr_t)fd);
+  return type && strcmp(type, "fd") == 0;
+}
+
+/**
+ * @brief Check if current position matches FD prefix pattern
+ * @param p Current position in string
+ * @return true if preceded by fd/file/descriptor keywords
+ */
+static bool has_fd_prefix(const char *start, const char *p) {
+  if (p == start) return false;  /* At beginning, no prefix */
+
+  const char *word_start = p - 1;
+  /* Skip back over whitespace, '=', ':' */
+  while (word_start > start && (*word_start == ' ' || *word_start == '\t' ||
+                                 *word_start == '=' || *word_start == ':')) {
+    word_start--;
+  }
+
+  /* Check if we have a digit (we're in a decimal number) */
+  if (!isdigit(*word_start)) {
+    /* Not a digit, so look for fd/file/descriptor keywords before us */
+    const char *check = word_start;
+    while (check > start && (isalnum(*check) || *check == '_')) {
+      check--;
+    }
+    check++;  /* Move back to start of word */
+
+    size_t word_len = word_start - check + 1;
+    if (word_len >= 2) {
+      if ((word_len == 2 && strncasecmp(check, "fd", 2) == 0) ||
+          (word_len == 4 && strncasecmp(check, "file", 4) == 0) ||
+          (word_len == 10 && strncasecmp(check, "descriptor", 10) == 0)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 int log_named_format_message(const char *message, char *output, size_t output_size) {
   if (!message || !output || output_size == 0) {
     return -1;
@@ -92,6 +139,56 @@ int log_named_format_message(const char *message, char *output, size_t output_si
           /* Buffer overflow - truncate and stop */
           break;
         }
+      }
+    } else if (isdigit(*p)) {
+      /* Look for decimal integers that might be FDs */
+      const char *int_start = p;
+      int fd_value = 0;
+      int digit_count = 0;
+
+      /* Parse decimal digits */
+      while (*p && isdigit(*p) && digit_count < 6) {  /* FDs rarely exceed 999999 */
+        fd_value = fd_value * 10 + (*p - '0');
+        p++;
+        digit_count++;
+      }
+
+      if (digit_count > 0 && is_registered_fd(fd_value) &&
+          has_fd_prefix(message, int_start)) {
+        /* This integer is a registered FD with appropriate prefix - format it */
+        const char *name = named_get(fd_value);
+        const char *type = named_get_type(fd_value);
+        const char *fmt_spec = named_get_format_spec(fd_value);
+
+        if (!fmt_spec) {
+          fmt_spec = "%d";  /* Default format for FDs */
+        }
+
+        if (name && type) {
+          /* Format: "fd/name (value)" */
+          int written = snprintf(output + out_pos, output_size - out_pos, "%s/%s (", type, name);
+          if (written > 0 && (size_t)written < output_size - out_pos) {
+            out_pos += written;
+            written = snprintf(output + out_pos, output_size - out_pos, fmt_spec, fd_value);
+            if (written > 0 && (size_t)written < output_size - out_pos) {
+              out_pos += written;
+              if (out_pos + 1 < output_size) {
+                output[out_pos++] = ')';
+                any_transformed = true;
+                continue;
+              }
+            }
+          }
+        }
+      }
+
+      /* Not a registered FD or formatting failed - copy original number */
+      size_t int_len = p - int_start;
+      if (int_len < output_size - out_pos) {
+        memcpy(output + out_pos, int_start, int_len);
+        out_pos += int_len;
+      } else {
+        break;
       }
     } else {
       /* Regular character - copy it */

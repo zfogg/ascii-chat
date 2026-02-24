@@ -532,6 +532,23 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  */
 #define NAMED_UNREGISTER_FD(fd) NAMED_UNREGISTER_ID((fd))
 
+/**
+ * @brief Register an existing file descriptor with a name
+ * @param fd File descriptor (must be >= 0)
+ * @param name Debug name for the file descriptor
+ * @ingroup debug_named
+ *
+ * Convenience macro for registering file descriptors that are already open.
+ * Automatically uses "%d" format specifier for file descriptor integers.
+ * In release builds (NDEBUG), this is a no-op.
+ */
+#ifndef NDEBUG
+#define NAMED_REGISTER_FD(fd, name) \
+  named_register((uintptr_t)(fd), (name), "fd", "%d", __FILE__, __LINE__, __func__)
+#else
+#define NAMED_REGISTER_FD(fd, name) ((void)0)
+#endif
+
 // ============================================================================
 // Thread-Specific Registration Macros
 // ============================================================================

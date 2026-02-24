@@ -361,11 +361,11 @@ static void rotate_log_locked(void) {
   atomic_store(&g_log.file, -1);
 
   /* Open file for reading to get the tail */
-  int read_file = platform_open(g_log.filename, O_RDONLY, 0);
+  int read_file = platform_open("log_file_read", g_log.filename, O_RDONLY, 0);
   if (read_file < 0) {
-    safe_fprintf(stderr, "Failed to open log file for tail rotation: %s\n", g_log.filename);
+    log_error("Failed to open file descriptor for log rotation: fd=%d, path=%s", read_file, g_log.filename);
     /* Fall back to regular truncation */
-    int fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
+    int fd = platform_open("log_file_write", g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
     atomic_store(&g_log.file, fd);
     atomic_store(&g_log.current_size, 0);
     return;
@@ -376,7 +376,7 @@ static void rotate_log_locked(void) {
   if (current_size < keep_size) {
     platform_close(read_file);
     /* Fall back to truncation since we don't have enough data to rotate */
-    int fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
+    int fd = platform_open("log_file_write", g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
     atomic_store(&g_log.file, fd);
     atomic_store(&g_log.current_size, 0);
     return;
@@ -384,7 +384,7 @@ static void rotate_log_locked(void) {
   if (lseek(read_file, (off_t)(current_size - keep_size), SEEK_SET) == (off_t)-1) {
     platform_close(read_file);
     /* Fall back to truncation */
-    int fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
+    int fd = platform_open("log_file_write", g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
     atomic_store(&g_log.file, fd);
     atomic_store(&g_log.current_size, 0);
     return;
@@ -402,16 +402,17 @@ static void rotate_log_locked(void) {
   if (result <= 0 || result >= (int)sizeof(temp_filename)) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format temp filename");
     platform_close(read_file);
-    int fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_APPEND, FILE_PERM_PRIVATE);
+    int fd = platform_open("log_file_append", g_log.filename, O_CREAT | O_RDWR | O_APPEND, FILE_PERM_PRIVATE);
     atomic_store(&g_log.file, fd);
     return;
   }
 
-  int temp_file = platform_open(temp_filename, O_CREAT | O_WRONLY | O_TRUNC, FILE_PERM_PRIVATE);
+  int temp_file = platform_open("log_file_temp", temp_filename, O_CREAT | O_WRONLY | O_TRUNC, FILE_PERM_PRIVATE);
   if (temp_file < 0) {
+    log_warn("Failed to open temporary file descriptor for log rotation: fd=%d, path=%s", temp_file, temp_filename);
     platform_close(read_file);
     /* Fall back to truncation */
-    int fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
+    int fd = platform_open("log_file_write", g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
     atomic_store(&g_log.file, fd);
     atomic_store(&g_log.current_size, 0);
     return;
@@ -428,7 +429,7 @@ static void rotate_log_locked(void) {
       platform_close(temp_file);
       unlink(temp_filename);
       /* Fall back to truncation */
-      int fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
+      int fd = platform_open("log_file_write", g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
       atomic_store(&g_log.file, fd);
       atomic_store(&g_log.current_size, 0);
       return;
@@ -443,14 +444,14 @@ static void rotate_log_locked(void) {
   if (rename(temp_filename, g_log.filename) != 0) {
     unlink(temp_filename); /* Clean up temp file */
     /* Fall back to truncation */
-    int fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
+    int fd = platform_open("log_file_write", g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
     atomic_store(&g_log.file, fd);
     atomic_store(&g_log.current_size, 0);
     return;
   }
 
   /* Reopen for appending */
-  int new_fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_APPEND, FILE_PERM_PRIVATE);
+  int new_fd = platform_open("log_file_append", g_log.filename, O_CREAT | O_RDWR | O_APPEND, FILE_PERM_PRIVATE);
   if (new_fd < 0) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to reopen rotated log file: %s", g_log.filename);
     atomic_store(&g_log.file, STDERR_FILENO);

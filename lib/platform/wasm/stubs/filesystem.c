@@ -7,6 +7,7 @@
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/platform/wasm_console.h>
+#include <ascii-chat/debug/named.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -15,8 +16,18 @@
 #include <fcntl.h>
 
 // File operations - basic WASM stubs
-FILE *platform_fopen(const char *filename, const char *mode) {
-  return fopen(filename, mode); // Use standard fopen
+FILE *platform_fopen(const char *name, const char *filename, const char *mode) {
+  if (!name) {
+    return NULL;
+  }
+  FILE *stream = fopen(filename, mode); // Use standard fopen
+  if (stream) {
+    int fd = fileno(stream);
+    if (fd >= 0) {
+      NAMED_REGISTER_FD(fd, name);
+    }
+  }
+  return stream;
 }
 
 FILE *platform_tmpfile(void) {
@@ -67,17 +78,29 @@ ssize_t platform_read(int fd, void *buf, size_t count) {
   return read(fd, buf, count);
 }
 
-int platform_open(const char *pathname, int flags, ...) {
+int platform_open(const char *name, const char *pathname, int flags, ...) {
+  if (!name) {
+    return -1;
+  }
+
   // Handle optional mode parameter for O_CREAT
+  int fd = -1;
   int mode = 0;
   if (flags & 0x0200) { // O_CREAT flag value
     va_list args;
     va_start(args, flags);
     mode = va_arg(args, int);
     va_end(args);
-    return open(pathname, flags, mode);
+    fd = open(pathname, flags, mode);
+  } else {
+    fd = open(pathname, flags);
   }
-  return open(pathname, flags);
+
+  if (fd >= 0) {
+    NAMED_REGISTER_FD(fd, name);
+  }
+
+  return fd;
 }
 
 int platform_close(int fd) {

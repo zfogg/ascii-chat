@@ -614,7 +614,7 @@ static int asciichat_instr_open_log_file(asciichat_instr_runtime_t *runtime) {
   }
 
   const mode_t mode = S_IRUSR | S_IWUSR;
-  int fd = platform_open(runtime->log_path, flags, mode);
+  int fd = platform_open("instrumentation_log", runtime->log_path, flags, mode);
   if (fd < 0) {
     if (debug_env && debug_env[0] == '1') {
       fprintf(stderr, "ASCII_INSTR: Failed to open log file: %s (errno=%d)\n", runtime->log_path, errno);
