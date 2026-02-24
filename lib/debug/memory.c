@@ -208,7 +208,7 @@ static alloc_site_t *get_or_create_site(const char *file, int line) {
 
   // Check if we've exceeded cache capacity
   if (g_site_count >= MEM_SITE_CACHE_MAX_KEYS) {
-    log_warn_every(LOG_RATE_FAST, "Allocation site cache full (%zu keys), not tracking %s:%d:%lu,
+    log_warn_every(LOG_RATE_FAST, "Allocation site cache full (%zu keys), not tracking %s:%d:%lu",
                    MEM_SITE_CACHE_MAX_KEYS, file, line, tid);
     return NULL;
   }
@@ -1078,7 +1078,7 @@ void debug_memory_report(void) {
           }
 
           // Print site summary
-          APPEND_REPORT("  - %s:%s  [tid 0x"%lx "]  %s live  %s total\n",
+          APPEND_REPORT("  - %s:%s  [tid 0x%lx]  %s live  %s total\n",
                        colored_string(LOG_COLOR_GREY, file),
                        colored_string(LOG_COLOR_FATAL, line_str), tid,
                        colored_string(size_color, count_str),
