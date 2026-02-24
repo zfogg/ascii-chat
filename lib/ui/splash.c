@@ -52,7 +52,7 @@
 // Global update notification (set via splash_set_update_notification)
 static char g_update_notification[1024] = {0};
 static mutex_t g_update_notification_mutex;
-static lifecycle_t g_update_notification_lifecycle = LIFECYCLE_INIT;
+static lifecycle_t g_update_notification_lifecycle = LIFECYCLE_INIT_MUTEX(&g_update_notification_mutex);
 
 static const rgb_pixel_t g_rainbow_colors[] = {
     {255, 0, 0},   // Red
@@ -452,11 +452,15 @@ static void *splash_animation_thread(void *arg) {
 
     log_debug("[SPLASH_ANIM] Frame %d: Setting up header context", frame);
 
-    // Initialize update notification lifecycle once (safe to call multiple times)
+    // Initialize update notification lifecycle and mutex once (safe to call multiple times)
     if (lifecycle_init_once(&g_update_notification_lifecycle)) {
-      g_update_notification_lifecycle.sync_type = LIFECYCLE_SYNC_MUTEX;
-      g_update_notification_lifecycle.sync.mutex = &g_update_notification_mutex;
-      lifecycle_init(&g_update_notification_lifecycle, "update_notification");
+      log_debug("[SPLASH_ANIM] Initializing lifecycle for update_notification");
+      if (!lifecycle_init(&g_update_notification_lifecycle, "update_notification")) {
+        log_error("[SPLASH_ANIM] Failed to initialize update_notification lifecycle");
+        lifecycle_init_abort(&g_update_notification_lifecycle);
+      } else {
+        lifecycle_init_commit(&g_update_notification_lifecycle);
+      }
     }
 
     // Copy update notification from global state (thread-safe)
