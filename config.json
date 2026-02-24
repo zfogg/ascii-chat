@@ -1,0 +1,11 @@
+{
+  "type": "rig",
+  "version": 1,
+  "name": "asciichat",
+  "git_url": "https://github.com/zfogg/ascii-chat.git",
+  "default_branch": "master",
+  "created_at": "2026-02-23T17:20:00.901735051-05:00",
+  "beads": {
+    "prefix": "as"
+  }
+}

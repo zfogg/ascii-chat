@@ -1,0 +1,35 @@
+{
+  "patrol_count": 1,
+  "extraordinary_action": true,
+  "last_patrol": "2026-02-23T23:25:00Z",
+  "escalations": {
+    "constraint_violation": {
+      "filed_at": "2026-02-23T23:21:00Z",
+      "updated_at": "2026-02-23T23:26:00Z",
+      "status": "database_cleanup_completed_driver_broken",
+      "affected_polecats": 10,
+      "issue": "ephemeral_mr_bead_unique_constraint - resolved",
+      "resolution": "Cleaned dirty Dolt database (discarded 105KB pending changes in issues/deps/events/labels tables)"
+    },
+    "dolt_driver_failure": {
+      "discovered_at": "2026-02-23T23:27:00Z",
+      "status": "unresolved",
+      "issue": "Dolt SQL engine panics on initialization - nil pointer in SetCrashOnFatalError",
+      "location": "github.com/dolthub/dolt/go@v0.40.5/.../doltdb.go:2041",
+      "panic_trace": "DoltDB.SetCrashOnFatalError -> newDatabase -> CollectDBs -> NewSqlEngine",
+      "requires": "gt binary rebuild or system recovery"
+    }
+  },
+  "nudges": {},
+  "witness_status": "BLOCKED - dolt driver broken (cannot query issues, cannot send escalation mail due to constraint violation). Database partially recovered but unstable. Ace still working normally.",
+  "session_2_findings": {
+    "timestamp": "2026-02-23T23:47:00Z",
+    "rig_health": "operational",
+    "polecats": "23 done, 1 working (ace on documentation fixes)",
+    "database_state": "partially operational - bd status works, bd show <id> panics",
+    "dolt_panic": "nil pointer in SetCrashOnFatalError at doltdb.go:2041",
+    "mail_failure": "UNIQUE constraint failed on issues.id table",
+    "action_taken": "attempted escalation, blocked by database constraint",
+    "next_steps": "awaiting system recovery or external gt binary rebuild"
+  }
+}

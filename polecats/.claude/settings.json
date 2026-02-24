@@ -1,0 +1,81 @@
+{
+  "editorMode": "normal",
+  "enabledPlugins": {
+    "beads@beads-marketplace": false
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash(gh pr create*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "export PATH=\"$HOME/go/bin:$HOME/.local/bin:$PATH\" \u0026\u0026 gt tap guard pr-workflow"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash(git checkout -b*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "export PATH=\"$HOME/go/bin:$HOME/.local/bin:$PATH\" \u0026\u0026 gt tap guard pr-workflow"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash(git switch -c*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "export PATH=\"$HOME/go/bin:$HOME/.local/bin:$PATH\" \u0026\u0026 gt tap guard pr-workflow"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "export PATH=\"$HOME/go/bin:$HOME/.local/bin:$PATH\" \u0026\u0026 gt prime --hook"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "export PATH=\"$HOME/go/bin:$HOME/.local/bin:$PATH\" \u0026\u0026 gt costs record"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "export PATH=\"$HOME/go/bin:$HOME/.local/bin:$PATH\" \u0026\u0026 gt prime --hook"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "export PATH=\"$HOME/go/bin:$HOME/.local/bin:$PATH\" \u0026\u0026 gt mail check --inject"
+          }
+        ]
+      }
+    ]
+  }
+}
