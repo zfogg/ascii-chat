@@ -493,7 +493,10 @@ static asciichat_error_t client_run(session_capture_ctx_t *capture, session_disp
   }
 
   if (connection_result != ASCIICHAT_OK) {
-    // Connection failed - framework will handle retry based on config
+    // Connection failed - need to stop audio threads that were initialized early
+    // (even though protocol_start_connection was never called)
+    audio_stop_thread();
+    // Framework will handle retry based on config
     log_error("Connection attempt failed");
     return connection_result;
   }
