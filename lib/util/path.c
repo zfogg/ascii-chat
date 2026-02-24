@@ -928,7 +928,7 @@ static bool is_file_empty(const char *path) {
     return false;
   }
 
-  FILE *f = platform_fopen(path, "r");
+  FILE *f = platform_fopen("file_stream", path, "r");
   if (!f) {
     return false;
   }
@@ -949,7 +949,7 @@ static bool is_existing_ascii_chat_log(const char *path) {
   }
 
   // Try to open and read the first line
-  FILE *f = platform_fopen(path, "r");
+  FILE *f = platform_fopen("file_stream", path, "r");
   if (!f) {
     return false; // Can't read file
   }

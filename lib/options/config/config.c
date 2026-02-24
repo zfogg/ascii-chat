@@ -1510,7 +1510,7 @@ asciichat_error_t config_create_default(const char *config_path) {
     }
 
     // Open file for writing
-    FILE *output_file = platform_fopen(config_path_expanded, "w");
+    FILE *output_file = platform_fopen("file_stream", config_path_expanded, "w");
     if (!output_file) {
       return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to open config file for writing: %s", config_path_expanded);
     }

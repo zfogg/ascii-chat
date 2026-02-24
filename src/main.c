@@ -632,7 +632,7 @@ int main(int argc, char *argv[]) {
   // Configure JSON output if requested
   if (use_json_logging) {
     // Open the JSON file for output
-    int json_fd = platform_open(final_log_file, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
+    int json_fd = platform_open("main_log_file", final_log_file, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
     if (json_fd >= 0) {
       log_set_json_output(json_fd);
     } else {

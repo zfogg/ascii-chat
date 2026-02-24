@@ -420,7 +420,7 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
 
 #ifdef _WIN32
   // On Windows, platform_create_temp_file returns fd=-1, need to open separately
-  fd = platform_open(temp_file, O_WRONLY | O_BINARY);
+  fd = platform_open("https_key_temp", temp_file, O_WRONLY | O_BINARY);
   if (fd < 0) {
     platform_delete_temp_file(temp_file);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to open temp file for writing");
@@ -439,7 +439,7 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
   char import_cmd[BUFFER_SIZE_MEDIUM];
   safe_snprintf(import_cmd, sizeof(import_cmd), "gpg --import '%s' 2>&1", temp_file);
   FILE *import_fp = NULL;
-  if (platform_popen(import_cmd, "r", &import_fp) != ASCIICHAT_OK || !import_fp) {
+  if (platform_popen("gpg_https_import", import_cmd, "r", &import_fp) != ASCIICHAT_OK || !import_fp) {
     platform_unlink(temp_file);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to run gpg --import");
   }
@@ -499,7 +499,7 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
     safe_snprintf(list_cmd, sizeof(list_cmd),
                   "gpg --list-keys --with-colons --fingerprint '%s' " PLATFORM_SHELL_NULL_REDIRECT, key_ids[k]);
     FILE *list_fp = NULL;
-    if (platform_popen(list_cmd, "r", &list_fp) != ASCIICHAT_OK || !list_fp) {
+    if (platform_popen("gpg_https_list", list_cmd, "r", &list_fp) != ASCIICHAT_OK || !list_fp) {
       continue; // Skip this key if we can't list it
     }
 

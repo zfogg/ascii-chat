@@ -377,7 +377,7 @@ tty_info_t get_current_tty(void) {
   if (tty_env && strlen(tty_env) > 0 && is_valid_tty_path(tty_env)) {
     // Strict validation: path must start with "/dev/", and not contain ".." or extra slashes after "/dev/"
     if (strncmp(tty_env, "/dev/", 5) == 0 && strstr(tty_env, "..") == NULL && strchr(tty_env + 5, '/') == NULL) {
-      result.fd = platform_open(tty_env, PLATFORM_O_WRONLY);
+      result.fd = platform_open("terminal_tty", tty_env, PLATFORM_O_WRONLY);
       if (result.fd >= 0) {
         result.path = tty_env;
         result.owns_fd = true;
@@ -423,7 +423,7 @@ bool is_valid_tty_path(const char *path) {
     return false;
   }
 
-  int fd = platform_open(path, PLATFORM_O_WRONLY | O_NOCTTY);
+  int fd = platform_open("terminal_device", path, PLATFORM_O_WRONLY | O_NOCTTY);
   if (fd < 0) {
     return false;
   }

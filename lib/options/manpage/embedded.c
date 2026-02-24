@@ -65,7 +65,7 @@ int get_manpage_template(FILE **out_file, const char **out_content, size_t *out_
 
   // Use binary mode to ensure fread byte count matches ftell file size.
   // Text mode on Windows translates \r\n to \n, causing size mismatch.
-  FILE *f = platform_fopen(path, "rb");
+  FILE *f = platform_fopen("file_stream", path, "rb");
   if (!f) {
     SET_ERRNO_SYS(ERROR_CONFIG, "Failed to open man page template: %s", path);
     return -1;

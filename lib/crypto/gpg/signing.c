@@ -100,7 +100,7 @@ int gpg_sign_with_key(const char *key_id, const uint8_t *message, size_t message
   }
 
   // Read signature file
-  FILE *sig_fp = platform_fopen(sig_path, "rb");
+  FILE *sig_fp = platform_fopen("file_stream", sig_path, "rb");
   if (!sig_fp) {
     log_error("Failed to open signature file: %s", SAFE_STRERROR(errno));
     goto cleanup;

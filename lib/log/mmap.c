@@ -209,7 +209,7 @@ asciichat_error_t log_mmap_init(const log_mmap_config_t *config) {
 
   /* Open mmap file */
   platform_mmap_init(&g_mmap_log.mmap);
-  asciichat_error_t result = platform_mmap_open(config->log_path, file_size, &g_mmap_log.mmap);
+  asciichat_error_t result = platform_mmap_open("mmap_log_file", config->log_path, file_size, &g_mmap_log.mmap);
   if (result != ASCIICHAT_OK) {
     return result;
   }

@@ -544,7 +544,7 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
 
 #ifdef _WIN32
   // On Windows, platform_create_temp_file returns fd=-1, need to open separately
-  input_fd = platform_open(input_path, O_WRONLY | O_BINARY);
+  input_fd = platform_open("gpg_input_file", input_path, O_WRONLY | O_BINARY);
   if (input_fd < 0) {
     platform_delete_temp_file(input_path);
     gpg_homedir_destroy(homedir);
@@ -607,7 +607,7 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
   }
 
   // Read the decrypted output
-  FILE *output_file = platform_fopen(output_path, "r");
+  FILE *output_file = platform_fopen("file_stream", output_path, "r");
   if (!output_file) {
     platform_unlink(output_path);
     gpg_homedir_destroy(homedir);

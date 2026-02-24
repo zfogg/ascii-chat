@@ -56,7 +56,7 @@ wav_writer_t *wav_writer_open(const char *filepath, int sample_rate, int channel
     return NULL;
   }
 
-  writer->file = platform_fopen(filepath, "wb");
+  writer->file = platform_fopen("file_stream", filepath, "wb");
   if (!writer->file) {
     SAFE_FREE(writer);
     return NULL;

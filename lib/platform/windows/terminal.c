@@ -769,7 +769,7 @@ tty_info_t get_current_tty(void) {
   tty_info_t result = {-1, NULL, false};
 
   // On Windows, use CON for console output
-  result.fd = platform_open("CON", _O_WRONLY, 0);
+  result.fd = platform_open("windows_console", "CON", _O_WRONLY, 0);
   if (result.fd >= 0) {
     result.path = "CON";
     result.owns_fd = true;

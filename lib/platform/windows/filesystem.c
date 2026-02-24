@@ -522,15 +522,15 @@ char *platform_get_data_dir(void) {
 // Platform Path Utilities
 // ============================================================================
 
-asciichat_error_t platform_temp_file_open(const char *path, int *fd_out) {
-  if (!path || !fd_out) {
+asciichat_error_t platform_temp_file_open(const char *name, const char *path, int *fd_out) {
+  if (!name || !path || !fd_out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
   int temp_fd = -1;
   errno_t err = _sopen_s(&temp_fd, path, _O_RDWR | _O_BINARY, _SH_DENYNO, _S_IREAD | _S_IWRITE);
   if (err != 0 || temp_fd < 0) {
-    return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Failed to open temp file: %s", path);
+    return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Failed to open temp file: %s (file descriptor: %s)", path, name);
   }
 
   *fd_out = temp_fd;

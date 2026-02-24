@@ -4,7 +4,10 @@
  * @ingroup platform
  */
 
+#ifdef _WIN32
+
 #include <ascii-chat/platform/mmap.h>
+#include <ascii-chat/debug/named.h>
 #include <ascii-chat/log/logging.h>
 
 #include <windows.h>
@@ -19,9 +22,9 @@ void platform_mmap_init(platform_mmap_t *mapping) {
   mapping->mapping_handle = NULL;
 }
 
-asciichat_error_t platform_mmap_open(const char *path, size_t size, platform_mmap_t *out) {
-  if (!path || !out) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "mmap: NULL path or output pointer");
+asciichat_error_t platform_mmap_open(const char *name, const char *path, size_t size, platform_mmap_t *out) {
+  if (!name || !path || !out) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "mmap: NULL name, path or output pointer");
   }
 
   if (size == 0) {
@@ -54,11 +57,11 @@ asciichat_error_t platform_mmap_open(const char *path, size_t size, platform_mma
       CloseHandle(file);
       return SET_ERRNO(ERROR_CONFIG, "mmap: failed to resize file to %zu bytes: %s (error %lu)", size, path, error);
     }
-    log_debug("mmap: created/resized file %s to %zu bytes", path, size);
+    log_debug("mmap: created/resized file %s to %zu bytes (file descriptor: %s)", path, size, name);
   } else if ((size_t)file_size.QuadPart > size) {
     // File is larger than requested - use existing size
     size = (size_t)file_size.QuadPart;
-    log_dev("mmap: using existing file size %zu bytes for %s", size, path);
+    log_dev("mmap: using existing file size %zu bytes for %s (file descriptor: %s)", size, path, name);
   }
 
   // Create file mapping
@@ -139,3 +142,5 @@ void platform_mmap_sync(platform_mmap_t *mapping, bool async) {
 bool platform_mmap_is_valid(const platform_mmap_t *mapping) {
   return mapping && mapping->addr && mapping->file_handle != INVALID_HANDLE_VALUE && mapping->mapping_handle;
 }
+
+#endif

@@ -496,7 +496,7 @@ static bool parse_arguments(int argc, char **argv, report_config_t *config) {
 }
 
 static bool process_file(const report_config_t *config, const char *path, thread_entry_t **entries) {
-  FILE *handle = platform_fopen(path, "r");
+  FILE *handle = platform_fopen("file_stream", path, "r");
   if (handle == NULL) {
     log_warn("Cannot open log file '%s': %s", path, SAFE_STRERROR(errno));
     return false;

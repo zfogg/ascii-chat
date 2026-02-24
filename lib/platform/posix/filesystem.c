@@ -620,8 +620,10 @@ char *platform_get_data_dir(void) {
  *
  * On POSIX, platform_create_temp_file already returns a valid fd, so just return it.
  */
-asciichat_error_t platform_temp_file_open(const char *path, int *fd_out) {
-  (void)path; // Unused on POSIX - fd already obtained from platform_create_temp_file
+asciichat_error_t platform_temp_file_open(const char *name, const char *path, int *fd_out) {
+  if (!name || !path) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "name and path cannot be NULL");
+  }
   if (!fd_out) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "fd_out cannot be NULL");
   }

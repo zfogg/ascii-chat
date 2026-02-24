@@ -619,7 +619,7 @@ void action_completions(const char *shell_name, const char *output_path) {
       log_plain("Overwriting existing completions file...");
     }
 
-    output = platform_fopen(output_path, "w");
+    output = platform_fopen("file_stream", output_path, "w");
     if (!output) {
       log_plain_stderr("Error: Failed to open %s for writing", output_path);
       action_exit(ERROR_FILE_OPERATION);

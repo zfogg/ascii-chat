@@ -214,7 +214,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
   char pub_key_path[BUFFER_SIZE_LARGE];
   safe_snprintf(pub_key_path, sizeof(pub_key_path), "%s.pub", key_path);
 
-  FILE *pub_f = platform_fopen(pub_key_path, "r");
+  FILE *pub_f = platform_fopen("file_stream", pub_key_path, "r");
   if (pub_f) {
     char pub_line[BUFFER_SIZE_LARGE];
     if (fgets(pub_line, sizeof(pub_line), pub_f)) {
@@ -248,7 +248,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
   }
 
   // Read the private key file
-  FILE *f = platform_fopen(key_path, "r");
+  FILE *f = platform_fopen("file_stream", key_path, "r");
   if (!f) {
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Cannot read private key file: %s", key_path);
   }
@@ -954,7 +954,7 @@ asciichat_error_t validate_ssh_key_file(const char *key_path) {
   }
 
   // Check if file exists and is readable
-  FILE *test_file = platform_fopen(normalized_path, "r");
+  FILE *test_file = platform_fopen("file_stream", normalized_path, "r");
   if (test_file == NULL) {
     SAFE_FREE(normalized_path);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Cannot read key file: %s", key_path);

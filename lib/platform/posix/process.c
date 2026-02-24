@@ -7,6 +7,7 @@
 #ifndef _WIN32
 
 #include <ascii-chat/platform/process.h>
+#include <ascii-chat/debug/named.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <stdlib.h>
@@ -24,8 +25,8 @@ pid_t platform_get_pid(void) {
 /**
  * @brief Execute a command and return a file stream (POSIX implementation)
  */
-asciichat_error_t platform_popen(const char *command, const char *mode, FILE **out_stream) {
-  if (!command || !mode || !out_stream) {
+asciichat_error_t platform_popen(const char *name, const char *command, const char *mode, FILE **out_stream) {
+  if (!name || !command || !mode || !out_stream) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters to platform_popen");
     return ERROR_INVALID_PARAM;
   }
@@ -33,6 +34,11 @@ asciichat_error_t platform_popen(const char *command, const char *mode, FILE **o
   FILE *stream = popen(command, mode);
   if (!stream) {
     return SET_ERRNO_SYS(ERROR_PROCESS_FAILED, "Failed to execute command: %s", command);
+  }
+
+  int fd = fileno(stream);
+  if (fd >= 0) {
+    NAMED_REGISTER_FD(fd, name);
   }
 
   *out_stream = stream;

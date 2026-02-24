@@ -97,7 +97,7 @@ int gpg_verify_detached_ed25519(const char *key_id, const uint8_t *message, size
   log_debug("Running: %s", cmd);
 
   FILE *fp;
-  platform_popen(cmd, "r", &fp);
+  platform_popen("gpg_verify", cmd, "r", &fp);
   if (!fp) {
     log_error("Failed to run gpg --verify");
     platform_unlink(msg_path);
@@ -321,7 +321,7 @@ int gpg_verify_signature_with_binary(const uint8_t *signature, size_t signature_
 
   // Execute gpg --verify command
   FILE *fp;
-  platform_popen(cmd, "r", &fp);
+  platform_popen("gpg_verify", cmd, "r", &fp);
   if (!fp) {
     log_error("Failed to execute gpg --verify command");
     goto cleanup;

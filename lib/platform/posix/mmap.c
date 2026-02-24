@@ -5,6 +5,7 @@
  */
 
 #include <ascii-chat/platform/mmap.h>
+#include <ascii-chat/debug/named.h>
 #include <ascii-chat/log/logging.h>
 
 #include <sys/mman.h>
@@ -23,9 +24,9 @@ void platform_mmap_init(platform_mmap_t *mapping) {
   mapping->fd = -1;
 }
 
-asciichat_error_t platform_mmap_open(const char *path, size_t size, platform_mmap_t *out) {
-  if (!path || !out) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "mmap: NULL path or output pointer");
+asciichat_error_t platform_mmap_open(const char *name, const char *path, size_t size, platform_mmap_t *out) {
+  if (!name || !path || !out) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "mmap: NULL name, path or output pointer");
   }
 
   if (size == 0) {
@@ -35,8 +36,10 @@ asciichat_error_t platform_mmap_open(const char *path, size_t size, platform_mma
   // Open or create the file
   int fd = open(path, O_RDWR | O_CREAT, 0600);
   if (fd < 0) {
-    return SET_ERRNO_SYS(ERROR_CONFIG, "mmap: failed to open file: %s", path);
+    return SET_ERRNO_SYS(ERROR_CONFIG, "mmap: failed to open file descriptor for %s: %s", name, path);
   }
+
+  NAMED_REGISTER_FD(fd, name);
 
   // Check current file size
   struct stat st;
@@ -55,11 +58,11 @@ asciichat_error_t platform_mmap_open(const char *path, size_t size, platform_mma
       errno = saved_errno;
       return SET_ERRNO_SYS(ERROR_CONFIG, "mmap: failed to resize file to %zu bytes: %s", size, path);
     }
-    log_debug("mmap: created/resized file %s to %zu bytes", path, size);
+    log_debug("mmap: created/resized file %s to %zu bytes (file descriptor: %s)", path, size, name);
   } else if ((size_t)st.st_size > size) {
     // File is larger than requested - use existing size
     size = (size_t)st.st_size;
-    log_dev("mmap: using existing file size %zu bytes for %s", size, path);
+    log_dev("mmap: using existing file size %zu bytes for %s (file descriptor: %s)", size, path, name);
   }
 
   // Map the file into memory

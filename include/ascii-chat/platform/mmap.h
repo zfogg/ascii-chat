@@ -92,7 +92,7 @@ void platform_mmap_init(platform_mmap_t *mapping);
  * }
  * @endcode
  */
-asciichat_error_t platform_mmap_open(const char *path, size_t size, platform_mmap_t *out);
+asciichat_error_t platform_mmap_open(const char *name, const char *path, size_t size, platform_mmap_t *out);
 
 /**
  * @brief Unmap and close a memory-mapped file

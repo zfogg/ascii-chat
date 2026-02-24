@@ -675,7 +675,7 @@ asciichat_error_t colorscheme_export_scheme(const char *scheme_name, const char 
 
   /* Write to file or stdout */
   if (file_path) {
-    FILE *fp = platform_fopen(file_path, "w");
+    FILE *fp = platform_fopen("file_stream", file_path, "w");
     if (!fp) {
       return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Cannot open %s for writing", file_path);
     }

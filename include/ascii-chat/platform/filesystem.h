@@ -325,7 +325,7 @@ int platform_delete_temp_file(const char *path);
  *
  * @ingroup platform
  */
-asciichat_error_t platform_temp_file_open(const char *path, int *fd_out);
+asciichat_error_t platform_temp_file_open(const char *name, const char *path, int *fd_out);
 
 // ============================================================================
 // File Truncation

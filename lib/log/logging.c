@@ -559,7 +559,7 @@ void log_init(const char *filename, log_level_t level, bool force_stderr, bool u
       }
     } else {
       // Lock-free file I/O path - uses atomic write() syscalls
-      int fd = platform_open(filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
+      int fd = platform_open("log_file", filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
       atomic_store(&g_log.file, (fd >= 0) ? fd : STDERR_FILENO);
       if (fd < 0) {
         if (preserve_terminal_output) {

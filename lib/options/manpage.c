@@ -103,7 +103,7 @@ asciichat_error_t options_config_generate_manpage_template(const options_config_
   bool should_close = false;
 
   if (output_path) {
-    f = platform_fopen(output_path, "w");
+    f = platform_fopen("file_stream", output_path, "w");
     if (!f) {
       return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to open output file: %s", output_path);
     }
@@ -260,7 +260,7 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
       log_plain("Overwriting existing man page file...");
     }
 
-    f = platform_fopen(output_path, "w");
+    f = platform_fopen("file_stream", output_path, "w");
     if (!f) {
       return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to open output file: %s", output_path);
     }
@@ -679,7 +679,7 @@ parsed_section_t *parse_manpage_sections(const char *filepath, size_t *num_secti
     return NULL;
   }
 
-  FILE *f = platform_fopen(filepath, "r");
+  FILE *f = platform_fopen("file_stream", filepath, "r");
   if (!f) {
     SET_ERRNO_SYS(ERROR_CONFIG, "Failed to open file: %s", filepath);
     return NULL;

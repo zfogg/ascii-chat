@@ -207,7 +207,7 @@ asciichat_error_t check_gpg_key_expiry(const char *gpg_key_text, bool *is_expire
   safe_snprintf(cmd, sizeof(cmd), "gpg --list-keys --with-colons %s " PLATFORM_SHELL_NULL_REDIRECT, key_id);
 
   FILE *fp = NULL;
-  if (platform_popen(cmd, "r", &fp) != ASCIICHAT_OK || !fp) {
+  if (platform_popen("gpg_keys", cmd, "r", &fp) != ASCIICHAT_OK || !fp) {
     log_error("Failed to run gpg --list-keys for key %s", key_id);
     *is_expired = false; // Assume not expired if we can't check
     return ASCIICHAT_OK;

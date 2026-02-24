@@ -218,7 +218,7 @@ asciichat_error_t discovery_keys_save_cached(const char *acds_server, const uint
   }
 
   // Save key in OpenSSH public key format
-  FILE *f = platform_fopen(cache_path, "w");
+  FILE *f = platform_fopen("file_stream", cache_path, "w");
   if (!f) {
     return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Failed to create cache file: %s", cache_path);
   }

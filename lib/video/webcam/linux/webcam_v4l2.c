@@ -285,7 +285,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   SAFE_SNPRINTF(device_path, sizeof(device_path), "/dev/video%d", device_index);
 
   // Check if device file exists before trying to open it
-  context->fd = platform_open(device_path, PLATFORM_O_RDWR | O_NONBLOCK);
+  context->fd = platform_open("webcam_device", device_path, PLATFORM_O_RDWR | O_NONBLOCK);
   if (context->fd == -1) {
     // Provide more helpful error messages based on errno
     if (errno == ENOENT) {

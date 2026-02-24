@@ -173,7 +173,7 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
       return path_result;
     }
 
-    FILE *f = platform_fopen(normalized_path, "r");
+    FILE *f = platform_fopen("file_stream", normalized_path, "r");
     if (f) {
       char line[BUFFER_SIZE_LARGE];
       if (fgets(line, sizeof(line), f)) {
@@ -263,7 +263,7 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
   }
 
   // Read file content to detect format
-  FILE *f = platform_fopen(normalized_path, "r");
+  FILE *f = platform_fopen("file_stream", normalized_path, "r");
   if (!f) {
     SAFE_FREE(normalized_path);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to open private key file: %s", key_path);
@@ -281,7 +281,7 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
   if (strstr(header, "-----BEGIN PGP PRIVATE KEY") != NULL || strstr(header, "-----BEGIN PGP SECRET KEY") != NULL) {
     log_debug("Detected PGP armored secret key format in %s", key_path);
     // Load entire file for OpenPGP parsing
-    f = platform_fopen(normalized_path, "r");
+    f = platform_fopen("file_stream", normalized_path, "r");
     if (!f) {
       SAFE_FREE(normalized_path);
       return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to open GPG key file: %s", key_path);
@@ -560,7 +560,7 @@ asciichat_error_t parse_keys_from_file(const char *path, public_key_t *keys, siz
     return path_result;
   }
 
-  FILE *f = platform_fopen(normalized_path, "r");
+  FILE *f = platform_fopen("file_stream", normalized_path, "r");
   if (!f) {
     SAFE_FREE(normalized_path);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to open keys file: %s", path);

@@ -35,7 +35,7 @@ asciichat_error_t acds_identity_load(const char *path, uint8_t public_key[32], u
   }
 
   // Open file for reading
-  FILE *fp = platform_fopen(path, "rb");
+  FILE *fp = platform_fopen("file_stream", path, "rb");
   if (!fp) {
     if (errno == ENOENT) {
       return SET_ERRNO(ERROR_CONFIG, "Identity file does not exist: %s", path);
@@ -84,7 +84,7 @@ asciichat_error_t acds_identity_save(const char *path, const uint8_t public_key[
   }
 
   // Open file for writing (mode 0600 = owner read/write only)
-  int fd = platform_open(path, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+  int fd = platform_open("identity_file", path, O_WRONLY | O_CREAT | O_TRUNC, 0600);
   if (fd < 0) {
     return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create identity file: %s", path);
   }

@@ -75,7 +75,7 @@ static int gpg_export_public_key(const char *key_id, uint8_t *public_key_out) {
   log_debug("GPG export completed successfully");
 
   // Read the exported key file
-  FILE *fp = platform_fopen(temp_path, "rb");
+  FILE *fp = platform_fopen("file_stream", temp_path, "rb");
   if (!fp) {
     log_error("Failed to open exported GPG key file");
     platform_delete_temp_file(temp_path);
@@ -282,7 +282,7 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
                 escaped_key_id);
 
   FILE *fp = NULL;
-  if (platform_popen(cmd, "r", &fp) != ASCIICHAT_OK || !fp) {
+  if (platform_popen("gpg_export", cmd, "r", &fp) != ASCIICHAT_OK || !fp) {
     log_error("Failed to run gpg command - GPG may not be installed");
 #ifdef _WIN32
     log_error("To install GPG on Windows, download Gpg4win from:");

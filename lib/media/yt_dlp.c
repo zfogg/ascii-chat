@@ -205,7 +205,7 @@ asciichat_error_t yt_dlp_extract_stream_url(const char *url, const char *yt_dlp_
 
   // Execute yt-dlp and capture output
   FILE *pipe = NULL;
-  if (platform_popen(command, "r", &pipe) != ASCIICHAT_OK || !pipe) {
+  if (platform_popen("yt_dlp_extract", command, "r", &pipe) != ASCIICHAT_OK || !pipe) {
     SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "Failed to execute yt-dlp subprocess");
     return ERROR_YOUTUBE_EXTRACT_FAILED;
   }

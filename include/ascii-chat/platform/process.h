@@ -85,7 +85,7 @@ pid_t platform_get_pid(void);
  *
  * @ingroup platform
  */
-asciichat_error_t platform_popen(const char *command, const char *mode, FILE **out_stream);
+asciichat_error_t platform_popen(const char *name, const char *command, const char *mode, FILE **out_stream);
 
 /**
  * @brief Close a process stream opened with platform_popen()
