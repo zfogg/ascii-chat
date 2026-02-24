@@ -113,6 +113,16 @@
 static audio_context_t g_audio_context = {0};
 
 /**
+ * @brief Lifecycle guard for audio initialization
+ *
+ * Ensures only one thread can initialize/reinitialize the global audio context
+ * at a time, preventing race conditions in worker thread creation.
+ *
+ * @ingroup client_audio
+ */
+static lifecycle_t g_audio_client_init_lc = LIFECYCLE_INIT;
+
+/**
  * @brief Unified audio processing pipeline
  *
  * Handles all audio processing including:
@@ -930,6 +940,16 @@ int audio_client_init() {
     return 0; // Audio disabled - not an error
   }
 
+  // Use lifecycle to ensure only one thread initializes audio at a time
+  // This prevents race conditions in worker thread creation
+  if (!lifecycle_init_once(&g_audio_client_init_lc)) {
+    // Another thread is already initializing, wait for it to complete
+    while (!lifecycle_is_initialized(&g_audio_client_init_lc)) {
+      platform_sleep_us(1000); // 1ms
+    }
+    return 0; // Already initialized by another thread
+  }
+
   // Clean up previous audio context if it was already initialized
   // This prevents leaks and thread creation issues on reconnection
   if (g_audio_context.initialized) {
@@ -947,6 +967,7 @@ int audio_client_init() {
 
   // Initialize PortAudio context using library function
   log_debug("DEBUG: About to call audio_init()...");
+  int init_result = 0;
   if (audio_init(&g_audio_context) != ASCIICHAT_OK) {
     log_error("Failed to initialize audio system");
     // Clean up WAV writer if it was opened
@@ -954,9 +975,12 @@ int audio_client_init() {
       wav_writer_close(g_wav_playback_received);
       g_wav_playback_received = NULL;
     }
+    lifecycle_init_abort(&g_audio_client_init_lc);
     return -1;
   }
   log_debug("DEBUG: audio_init() completed successfully");
+
+  lifecycle_init_commit(&g_audio_client_init_lc);
 
   // Create unified audio pipeline (handles AEC, AGC, noise suppression, Opus)
   client_audio_pipeline_config_t pipeline_config = client_audio_pipeline_default_config();
