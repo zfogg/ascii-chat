@@ -1,0 +1,291 @@
+/**
+ * @page audio_analysis Audio Analysis Module
+ * @ingroup audio
+ *
+ * @section analysis_overview Overview
+ *
+ * The Audio Analysis module provides comprehensive diagnostics and quality metrics for audio
+ * streams in ascii-chat. It tracks both sent (microphone) and received (playback) audio
+ * to identify quality issues, latency problems, artifacts, and network issues.
+ *
+ * @section analysis_purpose Purpose
+ *
+ * Audio analysis enables troubleshooting of poor call quality by measuring:
+ * - **Signal Quality**: Peak levels, RMS energy, clipping detection
+ * - **Temporal Issues**: Jitter, discontinuities, packet gaps, stuttering
+ * - **Artifacts**: Echo, beeping, static, tonal artifacts from codec
+ * - **Network Health**: Packet loss, discontinuities, delivery timing
+ * - **Echo Cancellation**: Effectiveness of AEC3 echo cancellation
+ *
+ * @section analysis_pipeline Audio Processing Pipeline
+ *
+ * The analysis system fits into the audio pipeline as follows:
+ *
+ * @verbatim
+ * SENT AUDIO PATH:
+ * Microphone → Audio Capture (48kHz) → audio_analysis_track_sent_sample()
+ *                                    ↓
+ *                                 Opus Encoder → audio_analysis_track_sent_packet()
+ *                                    ↓
+ *                              Network TX
+ *
+ * RECEIVED AUDIO PATH:
+ * Network RX → Opus Decoder → audio_analysis_track_received_sample()
+ *                                    ↓
+ *                          Mixer → Playback
+ *
+ * REPORTING:
+ * Both paths → audio_analysis_print_report() → Diagnostics output
+ * @endverbatim
+ *
+ * @section analysis_key_concepts Key Concepts
+ *
+ * @subsection analysis_statistics Statistics Structures
+ *
+ * Two `audio_analysis_stats_t` structures track sent and received audio independently:
+ * - **Sent Stats**: Microphone capture quality (your audio)
+ * - **Received Stats**: Playback quality (incoming audio from others)
+ *
+ * Each tracks:
+ * - **Total Samples**: Cumulative sample count over session
+ * - **Peak Level**: Maximum absolute sample value (should be < 1.0)
+ * - **RMS Level**: Root mean square (energy/loudness) of audio
+ * - **Clipping Count**: Samples exceeding ±1.0 (distortion indicator)
+ * - **Silent Samples**: Samples below 0.001 threshold
+ *
+ * @subsection analysis_quality_metrics Quality Indicators
+ *
+ * The module tracks several quality indicators that correlate with perceived audio quality:
+ *
+ * **Jitter Events**
+ * - Rapid amplitude changes between consecutive samples (Δ > 0.5)
+ * - Indicates buffer underruns, packet arrival jitter, or codec artifacts
+ * - Causes audio to sound "scratchy" or "distorted"
+ *
+ * **Discontinuities**
+ * - Gaps in packet arrival > 100ms
+ * - Indicates sparse packet delivery (stuttering pattern)
+ * - Measured as interval between consecutive packets
+ *
+ * **Zero-Crossing Rate**
+ * - Fraction of samples where waveform crosses zero
+ * - Music: 1-5% (smooth sine waves)
+ * - Noise: 15-50% (high frequency content)
+ * - Increases during corruption/artifacts
+ *
+ * **Silence Analysis**
+ * - Percentage of audio below noise floor (< 0.001 amplitude)
+ * - Silence bursts indicate gaps between talker segments
+ * - High silence percentage (>30%) causes "scratchy" perception
+ * - Max silence burst indicates longest continuous quiet period
+ *
+ * **Clipping/Artifacts**
+ * - Sharp transitions (samples jumping > 0.3 amplitude units)
+ * - Indicates clicks, pops, or codec artifacts
+ * - Sharp transitions > 2% of samples sounds "static-like"
+ *
+ * @subsection analysis_echo_detection Echo Detection
+ *
+ * The module implements sophisticated echo detection through:
+ *
+ * **Cross-Correlation at Multiple Delays**
+ * - Stores sent samples in 1-second circular buffer
+ * - Compares received samples with sent samples from 50-250ms ago
+ * - If > 5% of samples match at a delay, echo is detected at that delay
+ *
+ * **Why This Detects Echo**
+ * - Echo is your sent audio bouncing back through acoustics/network
+ * - It arrives delayed (typically 100-200ms)
+ * - If strong echo detected, AEC3 is not working properly
+ *
+ * **AEC3 Metrics**
+ * - Echo Return Loss (ERL): dB reduction of echo level
+ *   - Good: > 10 dB (echo is 10x quieter)
+ *   - Acceptable: 3-10 dB
+ *   - Poor: < 3 dB (echo still audible)
+ *
+ * @subsection analysis_beep_detection Beep/Tone Artifact Detection
+ *
+ * Detects codec artifacts that sound like system beeps:
+ *
+ * **Detection Algorithm**
+ * - Analyzes audio in 10ms windows (480 samples @ 48kHz)
+ * - Calculates zero-crossing rate (indicates frequency content)
+ * - Measures amplitude consistency (sine waves have low variance)
+ * - Tonal pattern: 5-100 zero crossings per window (500Hz-10kHz)
+ *
+ * **Beep Event Criteria**
+ * - Tonal sound with consistent frequency
+ * - Duration < 500ms (longer sounds are music, not artifacts)
+ * - Indicates: Opus codec artifacts, buffer underruns, AEC3 resonance
+ *
+ * @subsection analysis_stuttering_detection Periodic Stuttering Detection
+ *
+ * Detects when playback occurs in chunks with gaps:
+ *
+ * **Analysis Method**
+ * - Tracks inter-packet arrival times (actual timing between packets)
+ * - Detects if ~66% of intervals are ~50ms apart (clear pattern)
+ * - Distinguishes from natural network jitter
+ *
+ * **Root Causes**
+ * - Server sending packets every 50ms instead of 20ms (2 frames per packet)
+ * - Insufficient jitter buffer depth (can't bridge 50ms gaps with 20ms chunks)
+ * - Frame-based delivery instead of stream-based
+ *
+ * **Packet Analysis**
+ * - Reports samples per packet (e.g., 1.5 frames = 30ms audio)
+ * - Calculates playback gaps (gap - audio_per_packet)
+ * - Detects if buffer needs to hold 30ms to play 20ms gaps
+ *
+ * @section analysis_usage Usage Guide
+ *
+ * @subsection analysis_init Initialization
+ *
+ * @code
+ * // At application startup
+ * if (audio_analysis_init() != 0) {
+ *     log_error("Failed to initialize audio analysis");
+ *     return;
+ * }
+ * @endcode
+ *
+ * @subsection analysis_tracking Tracking Audio
+ *
+ * During audio capture and playback:
+ *
+ * @code
+ * // In microphone capture loop
+ * for (int i = 0; i < captured_samples; i++) {
+ *     audio_analysis_track_sent_sample(mic_buffer[i]);
+ * }
+ * // After encoding and sending packet
+ * audio_analysis_track_sent_packet(encoded_packet_size);
+ *
+ * // In audio playback loop
+ * for (int i = 0; i < decoded_samples; i++) {
+ *     audio_analysis_track_received_sample(playback_buffer[i]);
+ * }
+ * // After receiving network packet
+ * audio_analysis_track_received_packet(received_packet_size);
+ * @endcode
+ *
+ * @subsection analysis_echo_metrics Echo Metrics
+ *
+ * If using WebRTC AEC3, provide echo cancellation metrics:
+ *
+ * @code
+ * // From WebRTC EchoController::GetMetrics()
+ * double echo_return_loss = aec3_metrics.echo_return_loss;
+ * double erle = aec3_metrics.echo_return_loss_enhancement;
+ * uint64_t delay_ns = aec3_metrics.delay_ms * 1e6;
+ *
+ * audio_analysis_set_aec3_metrics(echo_return_loss, erle, delay_ns);
+ * @endcode
+ *
+ * @subsection analysis_reporting Generating Reports
+ *
+ * @code
+ * // At application shutdown or on user request
+ * audio_analysis_print_report();  // Prints comprehensive report to logs
+ *
+ * // For programmatic access to metrics
+ * const audio_analysis_stats_t *sent = audio_analysis_get_sent_stats();
+ * const audio_analysis_stats_t *received = audio_analysis_get_received_stats();
+ *
+ * printf("Sent peak level: %.4f\n", sent->peak_level);
+ * printf("Received RMS: %.4f\n", received->rms_level);
+ *
+ * // Cleanup
+ * audio_analysis_destroy();
+ * @endcode
+ *
+ * @section analysis_wav_dumping WAV File Dumping
+ *
+ * For detailed offline analysis, audio can be dumped to WAV files:
+ *
+ * @code
+ * # Enable dumping
+ * ASCIICHAT_DUMP_AUDIO=1 ./build/bin/ascii-chat client
+ *
+ * # Output files
+ * /tmp/sent_audio.wav       # Your microphone capture
+ * /tmp/received_audio.wav   # Received (playback) audio
+ *
+ * # Analyze with Audacity or MATLAB
+ * audacity /tmp/received_audio.wav
+ * @endcode
+ *
+ * @section analysis_report_interpretation Report Interpretation
+ *
+ * The audio analysis report contains several sections:
+ *
+ * @subsection analysis_report_basic Basic Metrics
+ *
+ * - **Duration**: How long audio was captured/received (milliseconds)
+ * - **Peak Level**: Maximum amplitude (should be < 1.0 to avoid clipping)
+ * - **RMS Level**: Energy/loudness (0.02-0.1 is typical for speech)
+ * - **Clipping**: Samples exceeding ±1.0 (indicates distortion/overload)
+ * - **Silent Samples**: Percentage of audio below noise floor
+ *
+ * @subsection analysis_report_quality Quality Metrics
+ *
+ * **For "Scratchy/Distorted" Audio**
+ * - Check **Jitter Events**: High jitter (> 1% of samples) indicates instability
+ * - Check **Discontinuities**: Gaps > 100ms between packets
+ * - Check **Max Gap**: Largest gap between packets (should be ~20ms)
+ * - Check **Silence Percentage**: If > 30%, audio has too many gaps
+ *
+ * **For "Static-Like" Audio**
+ * - Check **Zero Crossing Rate**: If > 10%, suggests noise corruption
+ * - Check **Sharp Transitions**: If > 2%, indicates click/pop artifacts
+ * - Check **Beep Events**: Short tonal bursts indicate codec artifacts
+ *
+ * **For "Muddy/Quiet" Audio**
+ * - Check **RMS Level**: If < 0.02, audio is too quiet
+ * - Check **Very Quiet Samples**: If > 50%, audio is mostly inaudible
+ * - Check **Silence Bursts**: If max burst is large, expect gaps
+ *
+ * @subsection analysis_report_diagnostics Diagnostics Section
+ *
+ * The report provides actionable diagnostics:
+ *
+ * - **No audio captured**: Check microphone connection/permissions
+ * - **No audio received**: Check network connectivity
+ * - **Clipping detected**: Reduce microphone volume (AGC too aggressive)
+ * - **Echo cancellation not working**: AEC3 failing, may indicate latency issues
+ * - **Scratchy audio**: Packet delivery is sparse/inconsistent
+ * - **Periodic stuttering**: Server sends packets too infrequently
+ *
+ * @section analysis_optimization Performance Considerations
+ *
+ * The analysis module is designed for minimal overhead:
+ *
+ * - **Per-Sample Overhead**: O(1) operations per audio sample
+ * - **No Locks**: Lock-free statistics accumulation
+ * - **Limited Buffers**: 1-second echo buffer (48K samples), 200-entry packet array
+ * - **Sample Limiting**: Echo detection stops after ~10 seconds to limit memory
+ *
+ * Typical overhead: < 1% CPU for analysis tracking
+ *
+ * @section analysis_limitations Limitations
+ *
+ * - **Echo Detection**: Only detects echo in received audio (sent → received path)
+ * - **Latency**: Does not measure network latency directly (would require markers)
+ * - **Codec Quality**: Cannot distinguish codec artifacts from network artifacts
+ * - **Beep Detection**: May have false positives for sustained tones (music)
+ * - **Statistical**: Metrics are averages; brief glitches may not be visible
+ *
+ * @section analysis_future_work Future Enhancements
+ *
+ * Potential improvements to the analysis module:
+ * - Frequency domain analysis (FFT-based spectrum analysis)
+ * - Voice Activity Detection (VAD) for better silence tracking
+ * - Perceptual audio quality metrics (PESQ simulation)
+ * - Network delay measurement (RTP timestamp-based)
+ * - Codec-specific artifact detection (Opus frame loss patterns)
+ * - Real-time visualization of waveforms and spectrograms
+ *
+ * @see audio_analysis.h - Public API header
+ * @see analysis.c - Implementation
+ */

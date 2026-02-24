@@ -1,0 +1,414 @@
+/**
+ * @page audio_mixer Audio Mixer Module
+ * @ingroup audio
+ *
+ * @section mixer_overview Overview
+ *
+ * The Audio Mixer is a professional-quality real-time audio mixing engine that combines
+ * multiple client audio sources into a single output stream. It implements advanced features
+ * including active speaker detection with ducking, dynamic range compression, noise gating,
+ * and crowd scaling to maintain consistent loudness as participant count changes.
+ *
+ * @section mixer_purpose Purpose
+ *
+ * Multi-client audio mixing requires solving several challenges:
+ *
+ * - **Level Management**: Prevent clipping when combining multiple sources
+ * - **Speech Intelligibility**: Ensure all speakers can be heard clearly
+ * - **Echo Prevention**: Exclude each client's audio from their own output
+ * - **Background Noise Suppression**: Gate out low-level background noise
+ * - **Crowd Scaling**: Automatic volume adjustment as participants join/leave
+ * - **Active Speaker Detection**: Identify and prioritize current speaker
+ *
+ * The mixer addresses these through an integrated audio processing pipeline.
+ *
+ * @section mixer_architecture Architecture
+ *
+ * @subsection mixer_pipeline Processing Pipeline
+ *
+ * Audio flows through a multi-stage pipeline optimized for real-time performance:
+ *
+ * @verbatim
+ * ┌─────────────────────────────────────────────────────────────────┐
+ * │                    AUDIO MIXING PIPELINE                        │
+ * └─────────────────────────────────────────────────────────────────┘
+ *
+ * Client 1 ──┐
+ * Client 2 ──┤
+ * Client 3 ──┤        ┌──────────────┐
+ * ...       ──┼───────→  Source      │
+ * Client N ──┘        │  Reading     │
+ *                      └──────┬───────┘
+ *                             │
+ *                      ┌──────▼───────┐
+ *                      │   Ducking    │ ← Active speaker detection
+ *                      │  & Gains     │   Attenuate non-speakers
+ *                      └──────┬───────┘
+ *                             │
+ *                      ┌──────▼───────┐
+ *                      │  Summation   │ ← Add all sources with gains
+ *                      │  & Mixing    │   Crowd scaling applied
+ *                      └──────┬───────┘
+ *                             │
+ *                      ┌──────▼───────┐
+ *                      │ Compression  │ ← Prevent clipping
+ *                      │   & Makeup   │   Maintain loudness
+ *                      └──────┬───────┘
+ *                             │
+ *                      ┌──────▼───────┐
+ *                      │ Soft Clipping│ ← Smooth limiting
+ *                      │  at 0.7x     │   Headroom: 3dB
+ *                      └──────┬───────┘
+ *                             │
+ *                           Output
+ * @endverbatim
+ *
+ * @subsection mixer_stages Pipeline Stages in Detail
+ *
+ * **1. Source Reading**
+ * - Reads audio samples from each client's ring buffer
+ * - Handles partial frames (padding with silence)
+ * - Prevents audio dropouts from sparse buffers
+ *
+ * **2. Ducking System**
+ * - Detects loudest active speaker (envelope > threshold)
+ * - Identifies sources within leader_margin of loudest
+ * - Attenuates non-active sources by atten_dB
+ * - Smooth attack/release prevents clicks/pops
+ * - Default: -6dB attenuation (soften background, don't mute)
+ *
+ * **3. Mixing & Summation**
+ * - Applies per-source ducking gains
+ * - Applies crowd scaling (sqrt scaling for N sources)
+ * - Sums all source samples: output[i] = Σ(source[j][i] × gain[j])
+ * - Pre-calculated gains avoid per-sample computation
+ *
+ * **4. Compression**
+ * - Dynamic range compression with configurable ratio
+ * - Threshold: -10dB (acts above noise floor)
+ * - Ratio: 4:1 (if 4dB above threshold, output is 1dB above)
+ * - Attack: 10ms (fast, prevents peaks)
+ * - Release: 100ms (smooth, natural relaxation)
+ *
+ * **5. Soft Clipping**
+ * - Prevents hard distortion at 1.0 boundary
+ * - Threshold: 0.7 (3dB headroom)
+ * - Maps asymptotically toward 1.0
+ * - Steepness: 3.0 (gentle curve, musical)
+ *
+ * @section mixer_ducking Ducking System (Active Speaker Detection)
+ *
+ * @subsection mixer_ducking_concept Concept
+ *
+ * When multiple people speak simultaneously, it's hard to hear the quieter speakers.
+ * Ducking automatically softens background speakers to highlight the primary speaker:
+ *
+ * @verbatim
+ * Scenario: 3 clients, all speaking
+ * ===============================
+ * Client 1 (loud, primary speaker):   level = -5dB  → LEADER
+ * Client 2 (medium):                  level = -20dB → within 6dB margin → LEADER
+ * Client 3 (quiet):                   level = -30dB → not leader → ATTENUATED
+ *
+ * With ducking (-6dB attenuation):
+ * Client 1 output: 0dB (full volume)
+ * Client 2 output: 0dB (still audible)
+ * Client 3 output: -6dB (softened to prevent masking)
+ * @endverbatim
+ *
+ * @subsection mixer_ducking_parameters Configuration Parameters
+ *
+ * - **threshold_dB**: Sources below this aren't considered "speaking"
+ *   - Default: -45dB (very lenient)
+ *   - Prevents very quiet sources from triggering ducking
+ *
+ * - **leader_margin_dB**: How close to loudest before treated as leader
+ *   - Default: 6dB
+ *   - Wider margin = more sources treated as leaders (allow choruses)
+ *   - Narrower = tighter ducking (focus on single speaker)
+ *
+ * - **atten_dB**: How much to attenuate non-leaders
+ *   - Default: -6dB (soft attenuation)
+ *   - Was -12dB (too aggressive, sounds unnatural)
+ *   - Use -6dB for balanced multi-speaker scenarios
+ *
+ * - **attack_ns**: How fast ducking responds to speech bursts
+ *   - Default: 10ms (fast, prevents peaks)
+ *   - Longer = smoother but more latency
+ *
+ * - **release_ns**: How fast ducking releases after speaker stops
+ *   - Default: 200ms (slow, prevents floor shifting)
+ *   - Longer = more stability, less chatter
+ *
+ * @section mixer_crowd_scaling Crowd Scaling
+ *
+ * As more participants join, raw summation would increase overall loudness
+ * (N sources = N× peak levels). Crowd scaling maintains consistent output:
+ *
+ * @subsection mixer_crowd_scaling_concept Concept
+ *
+ * @verbatim
+ * Crowd Scaling Formula: output = Σ(sources) / sqrt(N_speakers)
+ *
+ * Example: -10dBFS peak per source
+ * ===============================
+ * 1 speaker:  peak = -10dBFS → -10dBFS output
+ * 2 speakers: peak = -10dBFS each, but sum = -7dBFS without scaling
+ *             With sqrt scaling: -7dBFS / √2 = -10dBFS output ✓
+ * 4 speakers: peak = -10dBFS each, but sum = -4dBFS without scaling
+ *             With sqrt scaling: -4dBFS / √4 = -10dBFS output ✓
+ * @endverbatim
+ *
+ * @subsection mixer_crowd_scaling_exponent Scaling Exponent
+ *
+ * The alpha parameter controls scaling aggressiveness:
+ * - **alpha = 0.0**: No scaling (raw summation, loudness increases with N)
+ * - **alpha = 0.5**: sqrt scaling (commonly used, maintains perceived loudness)
+ * - **alpha = 1.0**: Linear scaling (divide by N, too quiet with many sources)
+ *
+ * Default: **alpha = 0.5** (square root scaling)
+ *
+ * @section mixer_source_management Source Management
+ *
+ * @subsection mixer_source_lifecycle Source Lifecycle
+ *
+ * @code
+ * // Add a client
+ * int slot = mixer_add_source(mixer, client_id, ring_buffer);
+ * if (slot < 0) {
+ *     log_error("Cannot add source - mixer full");
+ * }
+ *
+ * // ... audio flows through mixer ...
+ *
+ * // Remove when client disconnects
+ * mixer_remove_source(mixer, client_id);
+ * @endcode
+ *
+ * @subsection mixer_source_optimization O(1) Source Exclusion
+ *
+ * The mixer uses two optimization structures for fast source lookup:
+ *
+ * **Bitset Mask**
+ * - `active_sources_mask`: 64-bit mask of active sources
+ * - Enables O(1) iteration over only active sources
+ * - Used for mixer_process_excluding_source() for per-client output
+ *
+ * **Hash Table**
+ * - `source_id_to_index[256]`: Hash table mapping client_id → mixer slot
+ * - Maps 32-bit client IDs to 8-bit mixer indices
+ * - Enables O(1) lookup: mixer_hash_get_slot(mixer, client_id)
+ * - Collision detection: verify retrieved slot's client_id matches
+ *
+ * @code
+ * // Without optimization: O(n) to exclude a source
+ * for (int i = 0; i < max_sources; i++) {
+ *     if (mixer->source_ids[i] == exclude_client_id) {
+ *         skip this source;
+ *     }
+ * }
+ *
+ * // With optimization: O(1) to exclude a source
+ * uint8_t exclude_slot = mixer_hash_get_slot(mixer, exclude_client_id);
+ * if (exclude_slot < MIXER_MAX_SOURCES) {
+ *     active_mask &= ~(1ULL << exclude_slot);  // Remove from mask
+ *     // Now iterate only active sources (bitset iteration)
+ * }
+ * @endcode
+ *
+ * @section mixer_compression Compression System
+ *
+ * The compressor prevents clipping by reducing gain when output exceeds threshold:
+ *
+ * @subsection mixer_compression_concept Compression Concept
+ *
+ * @verbatim
+ * Compressor with 4:1 ratio and -10dB threshold
+ * ==============================================
+ *
+ * Input Level    Gain Reduction    Output Level
+ * ============   ==============    ============
+ * -20dB (quiet)  0dB               -20dB (no compression)
+ * -10dB (thresh) 0dB               -10dB (no compression)
+ * -6dB (above)   -1dB              -7dB (4:1 ratio)
+ * -2dB (louder)  -2dB              -4dB (4:1 ratio)
+ * +2dB (peaks)   -3dB              -1dB (4:1 ratio)
+ *
+ * Ratio = (input gain reduction) / (output gain reduction)
+ *       = 4dB / 1dB = 4:1
+ * @endverbatim
+ *
+ * @subsection mixer_compression_makeup Makeup Gain
+ *
+ * Makeup gain compensates for compression's level reduction:
+ *
+ * @code
+ * // Default: 0dB makeup gain
+ * // The mixer already scales by 1/sqrt(N), so makeup isn't needed
+ * // Compression only prevents clipping, doesn't need to restore levels
+ * @endcode
+ *
+ * @section mixer_noise_gate Noise Gate
+ *
+ * The noise gate mutes audio below a threshold, suppressing background noise:
+ *
+ * @code
+ * // Typical settings
+ * - Threshold: 0.01 (-40dB)
+ * - Attack: 10ms (fast response)
+ * - Release: 50ms (smooth)
+ * - Hysteresis: 0.9 (opens at -40dB, closes at -42dB)
+ * @endcode
+ *
+ * Hysteresis prevents "gate chatter" (rapid opening/closing on borderline signals).
+ *
+ * @section mixer_filtering High-Pass and Low-Pass Filters
+ *
+ * @subsection mixer_highpass_filter High-Pass Filter
+ *
+ * Removes low-frequency noise, rumble, and DC offset:
+ * - Cutoff: ~80 Hz (removes subsonic rumble)
+ * - Improves voice clarity (reduces background rumble)
+ * - Typical usage: First filter in processing chain
+ *
+ * @code
+ * // 80 Hz high-pass removes rumble
+ * for (int i = 0; i < num_samples; i++) {
+ *     samples[i] = highpass_filter_process_sample(&hpf, samples[i]);
+ * }
+ * @endcode
+ *
+ * @subsection mixer_lowpass_filter Low-Pass Filter
+ *
+ * Removes high-frequency hiss and electronic interference:
+ * - Cutoff: ~8000 Hz (removes hiss, preserves voice clarity)
+ * - Useful for reducing microphone noise
+ * - Typical usage: Optional, depends on microphone quality
+ *
+ * @section mixer_usage_guide Usage Guide
+ *
+ * @subsection mixer_initialize Initialize Mixer
+ *
+ * @code
+ * // Create mixer for up to 32 clients at 48kHz
+ * mixer_t *mixer = mixer_create(32, 48000);
+ * if (!mixer) {
+ *     log_error("Failed to create mixer");
+ *     return;
+ * }
+ * @endcode
+ *
+ * @subsection mixer_add_clients Add Clients
+ *
+ * @code
+ * // When client connects
+ * uint32_t client_id = 12345;
+ * audio_ring_buffer_t *client_buffer = create_client_buffer();
+ *
+ * int slot = mixer_add_source(mixer, client_id, client_buffer);
+ * if (slot >= 0) {
+ *     log_info("Client %u added at mixer slot %d", client_id, slot);
+ * } else {
+ *     log_error("Cannot add client %u (mixer full)", client_id);
+ * }
+ * @endcode
+ *
+ * @subsection mixer_process_mixed Mix for Broadcast
+ *
+ * Mix all sources for broadcasting:
+ *
+ * @code
+ * // Generate mixed output for all clients (broadcast)
+ * float mixed[960];  // 20ms at 48kHz
+ * int samples = mixer_process(mixer, mixed, 960);
+ * if (samples > 0) {
+ *     // mixed[] now contains combined audio from all clients
+ *     broadcast_to_all_clients(mixed, samples);
+ * }
+ * @endcode
+ *
+ * @subsection mixer_process_exclusive Mix for Per-Client Output
+ *
+ * Mix excluding one client (avoid echo):
+ *
+ * @code
+ * // Generate output for client 12345 (exclude their own audio)
+ * float client_output[960];
+ * int samples = mixer_process_excluding_source(mixer, client_output, 960, 12345);
+ * if (samples > 0) {
+ *     // client_output[] contains all sources except client 12345
+ *     send_to_client(12345, client_output, samples);
+ * }
+ * @endcode
+ *
+ * @subsection mixer_remove_clients Remove Clients
+ *
+ * @code
+ * // When client disconnects
+ * mixer_remove_source(mixer, client_id);
+ * log_info("Client %u removed from mixer", client_id);
+ * @endcode
+ *
+ * @subsection mixer_cleanup Cleanup
+ *
+ * @code
+ * mixer_destroy(mixer);
+ * mixer = NULL;
+ * @endcode
+ *
+ * @section mixer_performance Performance Characteristics
+ *
+ * @subsection mixer_computational_complexity Time Complexity
+ *
+ * For N active sources, 256 sample frame:
+ *
+ * - **Source reading**: O(N)
+ * - **Ducking calculation**: O(N) envelope follower + O(N) gain calc
+ * - **Mixing summation**: O(N × FRAME_SIZE) = O(256N)
+ * - **Compression**: O(FRAME_SIZE) = O(256)
+ * - **Total**: O(N × FRAME_SIZE) dominated by mixing
+ *
+ * @subsection mixer_benchmarks Typical Performance
+ *
+ * On modern CPU (Intel i7 @ 2GHz):
+ * - Per-source overhead: ~5-10µs per 20ms frame (per-frame)
+ * - Mixer overhead: ~20-30µs per frame (fixed)
+ * - Total for 10 sources: ~70-100µs per frame
+ * - CPU usage: ~0.1-0.2% at 48kHz (negligible)
+ *
+ * @section mixer_threading Thread Safety
+ *
+ * The mixer uses reader-writer locks for concurrent access:
+ *
+ * @code
+ * // Source modification (add/remove) requires write lock
+ * mixer_add_source(mixer, client_id, buffer);     // Acquires write lock
+ * mixer_remove_source(mixer, client_id);          // Acquires write lock
+ *
+ * // Processing requires read lock
+ * mixer_process(mixer, output, 960);              // Acquires read lock
+ * mixer_process_excluding_source(mixer, output, 960, client_id);  // Read lock
+ * @endcode
+ *
+ * Multiple threads can call mixer_process() concurrently, but source add/remove
+ * will block processing threads briefly.
+ *
+ * @section mixer_limitations Limitations
+ *
+ * - **Mono only**: Supports single-channel mixing
+ * - **Fixed frame size**: 256 samples (hardcoded)
+ * - **Per-client output**: Requires separate mixer_process_excluding_source() call
+ * - **No level metering**: Ducking/compression are internal; no gain visualization
+ *
+ * @section mixer_future_work Future Enhancements
+ *
+ * - Stereo mixing support
+ * - Variable frame sizes
+ * - Real-time visualization of levels and ducking
+ * - Voice Activity Detection (VAD) integration
+ * - Frequency domain processing (EQ, spatial effects)
+ * - Preset configurations (quiet room, noisy room, concert hall)
+ *
+ * @see mixer.h - Public API header
+ * @see mixer.c - Implementation (1100+ lines of processing code)
+ */

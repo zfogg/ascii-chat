@@ -1,0 +1,332 @@
+/**
+ * @page audio_wav_writer WAV File Writer Module
+ * @ingroup audio
+ *
+ * @section wav_overview Overview
+ *
+ * The WAV File Writer is a lightweight utility for dumping audio buffers to WAV files
+ * for offline analysis and debugging. It enables capturing audio at any point in the
+ * pipeline for inspection in audio editing software like Audacity or analysis tools.
+ *
+ * @section wav_purpose Purpose
+ *
+ * WAV dumping is essential for audio debugging because:
+ * - **Offline analysis**: Examine audio with Audacity spectrograms, waveforms
+ * - **Quality evaluation**: Listen to specific segments or compare versions
+ * - **Artifact identification**: Detect codec artifacts, noise, distortion
+ * - **Regression testing**: Verify audio quality hasn't degraded after changes
+ * - **Problem reproduction**: Share audio files with developers for investigation
+ *
+ * @section wav_architecture WAV Format
+ *
+ * The WAV writer creates standard RIFF WAV files compatible with all audio software:
+ *
+ * @subsection wav_format WAV File Structure
+ *
+ * @verbatim
+ * WAV File Format (RIFF Container)
+ * ===============================
+ *
+ * Byte Range    Description
+ * ==========    ===========
+ * 0-3           "RIFF" magic number
+ * 4-7           File size - 8 (little-endian 32-bit)
+ * 8-11          "WAVE" format identifier
+ *
+ * 12-15         "fmt " chunk header
+ * 16-19         Chunk size = 16 bytes
+ * 20-21         Audio format = 3 (IEEE float)
+ * 22-23         Number of channels = 1 (mono)
+ * 24-27         Sample rate = 48000 Hz (little-endian 32-bit)
+ * 28-31         Byte rate = 48000 * 1 * 4 = 192000 bytes/sec
+ * 32-33         Block align = 1 * 4 = 4 bytes
+ * 34-35         Bits per sample = 32
+ *
+ * 36-39         "data" chunk header
+ * 40-43         Data size in bytes (filled on close)
+ * 44-...        Audio samples (32-bit float, little-endian)
+ * @endverbatim
+ *
+ * @subsection wav_sample_format Sample Format
+ *
+ * Audio is stored as IEEE 32-bit float PCM:
+ * - **Range**: -1.0 to +1.0 (floating-point)
+ * - **Endianness**: Little-endian (Intel byte order)
+ * - **Channels**: 1 (mono) or 2 (stereo, if supported)
+ * - **Sample Rate**: User-specified (typically 48000 Hz)
+ *
+ * @section wav_usage_guide Usage Guide
+ *
+ * @subsection wav_enable_dumping Enable Audio Dumping
+ *
+ * WAV dumping is controlled by environment variable:
+ *
+ * @code
+ * # Enable dumping before running
+ * export ASCIICHAT_DUMP_AUDIO=1
+ *
+ * # Run ascii-chat (analysis.c checks this variable)
+ * ./build/bin/ascii-chat client
+ *
+ * # Check output files
+ * ls -lh /tmp/sent_audio.wav /tmp/received_audio.wav
+ * @endcode
+ *
+ * @subsection wav_output_files Output Files
+ *
+ * When dumping is enabled, two WAV files are created:
+ *
+ * - **/tmp/sent_audio.wav**
+ *   - Your microphone capture (mono, 48kHz)
+ *   - Created when: `audio_analysis_init()` is called
+ *   - Finalized when: `audio_analysis_destroy()` is called
+ *   - Size: ~10 seconds = 480,000 samples × 4 bytes = 1.92 MB
+ *
+ * - **/tmp/received_audio.wav**
+ *   - Server-mixed audio output (mono, 48kHz)
+ *   - Same lifecycle as sent_audio.wav
+ *   - Size: Same as sent_audio.wav (same duration)
+ *
+ * @subsection wav_programmatic_usage Programmatic Usage
+ *
+ * @code
+ * #include <ascii-chat/audio/wav_writer.h>
+ *
+ * // Create WAV file
+ * wav_writer_t *writer = wav_writer_open(
+ *     "/tmp/my_audio.wav",  // Filepath
+ *     48000,                // Sample rate (Hz)
+ *     1                     // Channels (1=mono)
+ * );
+ *
+ * if (!writer) {
+ *     log_error("Failed to create WAV file");
+ *     return;
+ * }
+ *
+ * // Write audio samples
+ * float audio_buffer[960];  // 20ms at 48kHz
+ *
+ * while (more_audio) {
+ *     capture_audio(audio_buffer, 960);
+ *     if (wav_writer_write(writer, audio_buffer, 960) != 0) {
+ *         log_error("Failed to write to WAV file");
+ *         break;
+ *     }
+ * }
+ *
+ * // Close file and finalize header
+ * wav_writer_close(writer);
+ * log_info("WAV file written: /tmp/my_audio.wav");
+ * @endcode
+ *
+ * @section wav_analysis_workflow Offline Analysis Workflow
+ *
+ * @subsection wav_audacity_analysis Analyzing with Audacity
+ *
+ * @code
+ * # 1. Open Audacity (free audio editor)
+ * audacity /tmp/received_audio.wav
+ *
+ * # 2. Visual inspection
+ * - Waveform view: Look for clipping (flat peaks), gaps (silence)
+ * - Spectrogram view: Look for frequency content, artifacts
+ * - Mono conversion: Verify only one channel
+ *
+ * # 3. Playback and listening
+ * - Listen for audio artifacts, static, beeping
+ * - Compare sent_audio.wav vs received_audio.wav
+ * - Identify where quality degrades
+ * @endcode
+ *
+ * @subsection wav_matlab_analysis Analyzing with MATLAB
+ *
+ * @code
+ * % MATLAB script for audio analysis
+ * [y, fs] = audioread('/tmp/received_audio.wav');
+ *
+ * % Basic statistics
+ * fprintf('Sample rate: %d Hz\n', fs);
+ * fprintf('Duration: %.2f seconds\n', length(y) / fs);
+ * fprintf('RMS level: %.4f\n', rms(y));
+ * fprintf('Peak level: %.4f\n', max(abs(y)));
+ *
+ * % Frequency domain
+ * Y = fft(y);
+ * f = (0:length(Y)-1) * fs / length(Y);
+ * plot(f, abs(Y));
+ * xlabel('Frequency (Hz)');
+ * ylabel('Magnitude');
+ * title('Frequency Spectrum');
+ * @endcode
+ *
+ * @subsection wav_python_analysis Analyzing with Python
+ *
+ * @code
+ * import scipy.io.wavfile as wavfile
+ * import numpy as np
+ *
+ * # Load audio
+ * fs, audio = wavfile.read('/tmp/received_audio.wav')
+ * audio = audio.astype(np.float32)  # Convert to float if needed
+ *
+ * # Basic statistics
+ * print(f\"Duration: {len(audio) / fs:.2f} seconds\")
+ * print(f\"RMS level: {np.sqrt(np.mean(audio**2)):.4f}\")
+ * print(f\"Peak level: {np.max(np.abs(audio)):.4f}\")
+ * print(f\"Silence fraction: {np.mean(np.abs(audio) < 0.001):.1%}\")
+ *
+ * # Spectral analysis
+ * import matplotlib.pyplot as plt
+ * plt.specgram(audio, Fs=fs)
+ * plt.ylabel('Frequency (Hz)')
+ * plt.xlabel('Time (sec)')
+ * plt.show()
+ * @endcode
+ *
+ * @section wav_implementation Implementation Details
+ *
+ * @subsection wav_header_writing WAV Header Structure
+ *
+ * The writer pre-allocates header space and fills placeholders on close:
+ *
+ * @code
+ * // On file open:
+ * 1. Write RIFF header with file_size = 0 (placeholder)
+ * 2. Write fmt chunk (16 bytes) with format info
+ * 3. Write data chunk header with data_size = 0 (placeholder)
+ * 4. Position at byte 44 (ready for audio samples)
+ *
+ * // During writing:
+ * - Append float samples directly (no conversion)
+ * - Increment samples_written counter
+ * - Call fflush() after each write (real-time assurance)
+ *
+ * // On file close:
+ * 1. Calculate file_size = data_size + 36
+ * 2. Seek to byte 4, write file_size
+ * 3. Seek to byte 40, write data_size
+ * 4. Flush and close file
+ * @endcode
+ *
+ * @subsection wav_buffering Buffering Strategy
+ *
+ * The writer uses `fflush()` after each write to ensure data hits disk:
+ *
+ * @code
+ * // Critical for real-time debugging:
+ * // - If process crashes, partial data is still on disk
+ * // - Immediate visibility of what was captured
+ * // - No loss of recent samples
+ *
+ * // Trade-off: Slight performance cost for data safety
+ * // - I/O operations are relatively fast
+ * // - Audio processing is bottleneck, not file I/O
+ * @endcode
+ *
+ * @section wav_file_sizes File Size Estimation
+ *
+ * WAV file sizes are predictable:
+ *
+ * @verbatim
+ * Duration   Samples (48kHz)   File Size
+ * ========   ==============   ==========
+ * 1 second   48,000           192 KB (44-byte header + samples)
+ * 5 seconds  240,000          960 KB
+ * 10 seconds 480,000          1.92 MB
+ * 60 seconds 2,880,000        11.5 MB
+ *
+ * Formula: FileSize ≈ duration_seconds × 48000 × 4 bytes
+ * @endverbatim
+ *
+ * @section wav_quality_considerations Audio Quality
+ *
+ * @subsection wav_float_precision Float Precision
+ *
+ * 32-bit IEEE float provides excellent precision:
+ * - **Precision**: ~7 decimal digits
+ * - **Dynamic range**: -∞ to +∞ (practically -200dB to +200dB)
+ * - **Resolution**: 0.0000001 at ±1.0 range
+ *
+ * This is much better than 16-bit integer PCM:
+ * - 16-bit: Only 65,536 discrete levels
+ * - 32-bit float: Billions of discrete levels
+ *
+ * @subsection wav_no_quantization No Quantization Noise
+ *
+ * Float format eliminates quantization noise present in integer formats:
+ *
+ * @verbatim
+ * Integer PCM (16-bit):
+ * Real audio: 0.1234567
+ * Quantized:  0.1234741  ← Error introduced
+ *
+ * Float PCM (32-bit):
+ * Real audio: 0.1234567
+ * Stored:     0.1234567  ← Exact representation
+ * @endverbatim
+ *
+ * @section wav_limitations Limitations
+ *
+ * - **Mono only**: Current implementation (easy to extend to stereo)
+ * - **No compression**: Uses raw float data (not MP3/AAC)
+ * - **Fixed format**: Always 32-bit float IEEE (cannot change)
+ * - **No streaming API**: Must call wav_writer_open() once per file
+ *
+ * @section wav_integration_points Integration with Audio Pipeline
+ *
+ * The WAV writer is used by **audio_analysis.c** to dump debugging audio:
+ *
+ * @code
+ * // In analysis.c at initialization:
+ * if (wav_dump_enabled()) {
+ *     g_sent_wav = wav_writer_open("/tmp/sent_audio.wav", 48000, 1);
+ *     g_received_wav = wav_writer_open("/tmp/received_audio.wav", 48000, 1);
+ * }
+ *
+ * // During sample tracking:
+ * void audio_analysis_track_sent_sample(float sample) {
+ *     if (g_sent_wav) {
+ *         wav_writer_write(g_sent_wav, &sample, 1);
+ *     }
+ *     // ... other analysis ...
+ * }
+ *
+ * // At cleanup:
+ * wav_writer_close(g_sent_wav);
+ * wav_writer_close(g_received_wav);
+ * @endcode
+ *
+ * @section wav_future_work Future Enhancements
+ *
+ * Potential improvements:
+ * - **Stereo support**: Capture multi-channel audio
+ * - **Compression**: Write MP3 or FLAC for smaller files
+ * - **Multiple streams**: Dump each source separately (per-client audio)
+ * - **Ring buffer mode**: Circular dumping (keep last N seconds)
+ * - **Selective dumping**: Enable only for specific time windows
+ * - **Markers**: Insert timestamps or event markers in WAV file
+ *
+ * @section wav_tools Recommended Audio Tools
+ *
+ * **Free/Open Source:**
+ * - **Audacity** (https://www.audacityteam.org/)
+ *   - Visual editing, spectrogram analysis, filters
+ * - **SoX** (http://sox.sourceforge.net/)
+ *   - Command-line audio processing
+ * - **ffmpeg** (https://ffmpeg.org/)
+ *   - Format conversion, streaming analysis
+ *
+ * **Commercial:**
+ * - **Adobe Audition**: Professional audio editing
+ * - **iZotope RX**: Audio repair and analysis
+ * - **MATLAB**: Scientific audio processing
+ *
+ * **Online:**
+ * - **Jsfiddle with audio API**: Real-time analysis
+ * - **Spectrogram.com**: Upload WAV, view spectrogram
+ *
+ * @see wav_writer.h - Public API header
+ * @see wav_writer.c - Implementation (143 lines)
+ * @see audio_analysis.c - Integration point (uses wav_writer)
+ */

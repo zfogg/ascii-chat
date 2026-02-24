@@ -1,0 +1,338 @@
+/**
+ * @page audio_opus Opus Codec Module
+ * @ingroup audio
+ *
+ * @section opus_overview Overview
+ *
+ * The Opus Codec module provides a high-level C wrapper around libopus, the industry-standard
+ * audio codec for real-time communication. It handles audio compression/decompression with
+ * minimal latency while supporting variable bitrates from 6-128 kbps.
+ *
+ * @section opus_purpose Purpose
+ *
+ * Opus codec is essential for real-time audio communication because it:
+ * - **Compresses audio** to reduce network bandwidth (e.g., 48kHz mono → 24 kbps)
+ * - **Minimizes latency** (typical 20ms frame = negligible delay)
+ * - **Handles packet loss** gracefully with Packet Loss Concealment (PLC)
+ * - **Adapts bitrate** dynamically for varying network conditions
+ * - **Detects content** (voice vs music) and optimizes encoding
+ *
+ * @section opus_architecture Opus Architecture
+ *
+ * The Opus codec consists of two paths:
+ *
+ * @subsection opus_encoder Encoding Path (Compressing Audio)
+ *
+ * @verbatim
+ * User Microphone (48 kHz)
+ *         ↓
+ *   PCM Samples (float, -1.0 to 1.0)
+ *         ↓
+ * Opus Encoder (24 kbps or 16 kbps)
+ *         ↓
+ * Compressed Frames (30-100 bytes per frame)
+ *         ↓
+ *   Network Packet
+ * @endverbatim
+ *
+ * **Encoder Configuration:**
+ * - Sample rate: 48000 Hz (wideband audio)
+ * - Channels: 1 (mono for bandwidth efficiency)
+ * - Application: OPUS_APPLICATION_VOIP (optimized for speech)
+ * - Bitrate: Typically 16-24 kbps (adjustable)
+ * - Frame size: 960 samples = 20ms (fixed)
+ * - Input: Float samples in [-1.0, 1.0] range
+ * - Output: Compressed bytes (variable length, 0-250 bytes typical)
+ *
+ * @subsection opus_decoder Decoding Path (Decompressing Audio)
+ *
+ * @verbatim
+ * Network Packet
+ *         ↓
+ * Opus Decoder (reconstructing from 24 kbps)
+ *         ↓
+ * PCM Samples (float, -1.0 to 1.0)
+ *         ↓
+ *   Audio Mixer (combines with other sources)
+ *         ↓
+ *    Speaker (48 kHz playback)
+ * @endverbatim
+ *
+ * **Decoder Configuration:**
+ * - Sample rate: 48000 Hz (must match encoder)
+ * - Channels: 1 (mono)
+ * - Input: Compressed bytes from network
+ * - Output: 960 PCM samples (20ms of audio)
+ * - Packet Loss: Handles NULL packets with PLC
+ *
+ * @section opus_key_features Key Features
+ *
+ * @subsection opus_variable_bitrate Variable Bitrate (VBR)
+ *
+ * Opus automatically adjusts encoded frame size based on content:
+ * - **Silent passages**: 0 bytes (DTX - Discontinuous Transmission)
+ * - **Consonants**: 20-30 bytes (high compression)
+ * - **Vowels**: 50-80 bytes (less compressible)
+ * - **Music**: 100-120 bytes (requires higher quality)
+ *
+ * At 24 kbps, typical frame distribution:
+ * - 10% silence frames: 0 bytes
+ * - 30% consonant frames: 24 bytes
+ * - 40% vowel frames: 40 bytes
+ * - 20% transition frames: 60 bytes
+ * - **Average: ~30 bytes per 20ms frame**
+ *
+ * @subsection opus_packet_loss Packet Loss Concealment (PLC)
+ *
+ * When network packets are lost, Opus can generate plausible replacement audio:
+ *
+ * @code
+ * // Normal decoding
+ * opus_codec_decode(decoder, compressed_data, size, output, 960);
+ *
+ * // Lost packet - pass NULL to enable PLC
+ * if (packet_missing) {
+ *     opus_codec_decode(decoder, NULL, 0, output, 960);  // PLC fills silence
+ * }
+ * @endcode
+ *
+ * PLC works by:
+ * - Detecting speech/silence patterns from previous frames
+ * - Filling gaps with synthetic silence or periodic tone
+ * - Providing more graceful degradation than abrupt silence
+ * - Typical packet loss < 5% is imperceptible
+ *
+ * @subsection opus_discontinuous_transmission DTX (Discontinuous Transmission)
+ *
+ * When enabled, Opus produces zero-byte frames during silence:
+ *
+ * @code
+ * opus_codec_set_dtx(encoder, 1);  // Enable DTX
+ *
+ * // During silence:
+ * size_t encoded_bytes = opus_codec_encode(encoder, silent_samples, 960, buffer, 250);
+ * // encoded_bytes == 0 (no data to send)
+ * @endcode
+ *
+ * **Bandwidth savings with DTX:**
+ * - Normal: 24 kbps × 100% = 24 kbps
+ * - With DTX: 24 kbps × 40% (talk time) = 9.6 kbps average
+ * - **Savings: 60% for typical voice conversation**
+ *
+ * @section opus_frame_timing Frame Timing
+ *
+ * Opus uses fixed frame sizes for predictable latency:
+ *
+ * @verbatim
+ * Frame Size         Sample Count    Duration at 48kHz
+ * ============       ============    ==================
+ * 10ms               480 samples     10 milliseconds
+ * 20ms               960 samples     20 milliseconds (STANDARD)
+ * 40ms               1920 samples    40 milliseconds
+ * 60ms               2880 samples    60 milliseconds
+ * @endverbatim
+ *
+ * **ascii-chat uses 20ms frames:**
+ * - 960 samples per frame
+ * - 20ms latency per encoding step
+ * - Total end-to-end latency: ~40-60ms (encoding + network + decoding)
+ *
+ * @section opus_bitrate_selection Bitrate Selection Guide
+ *
+ * @subsection opus_bitrate_voice Voice Communication
+ *
+ * For typical voice calls:
+ * - **16 kbps**: Acceptable quality, maximum compression
+ * - **24 kbps**: Good quality, standard for VOIP
+ * - **32 kbps**: Excellent quality, stereo capable
+ * - **48 kbps+**: Music quality (rarely needed for voice)
+ *
+ * @subsection opus_bitrate_music Music/Mixed Content
+ *
+ * For streaming music or high-quality audio:
+ * - **64 kbps**: High quality stereo (good for podcasts)
+ * - **96 kbps**: Very high quality stereo
+ * - **128 kbps**: Near-CD quality
+ *
+ * @section opus_usage_guide Usage Guide
+ *
+ * @subsection opus_encode Encoding Example
+ *
+ * @code
+ * // Create encoder for voice at 24 kbps
+ * opus_codec_t *encoder = opus_codec_create_encoder(
+ *     OPUS_APPLICATION_VOIP,  // Voice optimized
+ *     48000,                  // 48 kHz sample rate
+ *     24000                   // 24 kbps bitrate
+ * );
+ *
+ * // Enable silence compression
+ * opus_codec_set_dtx(encoder, 1);
+ *
+ * // Encode 20ms of audio (960 samples)
+ * float samples[960];  // Read from microphone
+ * uint8_t compressed[250];
+ * size_t encoded_bytes = opus_codec_encode(encoder, samples, 960, compressed, 250);
+ *
+ * if (encoded_bytes > 0) {
+ *     // Send encoded_bytes to network
+ *     network_send_audio_packet(compressed, encoded_bytes);
+ * } else if (encoded_bytes == 0) {
+ *     // DTX frame (silence) - send nothing or send comfort noise
+ * } else {
+ *     // Error - encoded_bytes is negative
+ * }
+ *
+ * opus_codec_destroy(encoder);
+ * @endcode
+ *
+ * @subsection opus_decode Decoding Example
+ *
+ * @code
+ * // Create decoder (sample rate must match encoder)
+ * opus_codec_t *decoder = opus_codec_create_decoder(48000);
+ *
+ * // Decode received packet
+ * uint8_t compressed[250];
+ * size_t packet_size = network_receive_audio_packet(compressed);
+ *
+ * float decoded[960];
+ *
+ * if (packet_size > 0) {
+ *     // Normal packet decoding
+ *     int samples = opus_codec_decode(decoder, compressed, packet_size, decoded, 960);
+ *     // samples == 960 on success
+ * } else {
+ *     // Packet lost - use PLC (Packet Loss Concealment)
+ *     int samples = opus_codec_decode(decoder, NULL, 0, decoded, 960);
+ *     // Opus fills with synthesized audio based on pattern
+ * }
+ *
+ * // Send decoded samples to audio mixer/playback
+ * audio_output(decoded, samples);
+ *
+ * opus_codec_destroy(decoder);
+ * @endcode
+ *
+ * @subsection opus_dynamic_bitrate Dynamic Bitrate Adjustment
+ *
+ * @code
+ * // Monitor network conditions and adjust bitrate
+ * if (packet_loss > 5%) {
+ *     // High loss - reduce bitrate to improve robustness
+ *     opus_codec_set_bitrate(encoder, 16000);  // Reduce to 16 kbps
+ * } else if (packet_loss < 1%) {
+ *     // Low loss - increase quality
+ *     opus_codec_set_bitrate(encoder, 32000);  // Increase to 32 kbps
+ * }
+ * @endcode
+ *
+ * @section opus_compression_ratio Compression Ratios
+ *
+ * Typical compression ratios for voice at 48 kHz:
+ *
+ * @verbatim
+ * Bitrate     Frame Size   Bytes per Frame   Compression Ratio
+ * ========    ==========   ===============   =================
+ * 16 kbps     20ms (960)   40 bytes          1024:40 = 25.6:1
+ * 24 kbps     20ms (960)   60 bytes          1024:60 = 17.1:1
+ * 32 kbps     20ms (960)   80 bytes          1024:80 = 12.8:1
+ *
+ * (Without compression: 960 float samples × 4 bytes = 3840 bytes)
+ * @endverbatim
+ *
+ * @section opus_bandwidth Network Bandwidth
+ *
+ * Network bandwidth required for audio streaming:
+ *
+ * @verbatim
+ * Bitrate   Overhead*    Total Bandwidth   Two-Way Calling
+ * ========  =========    ===============   ================
+ * 16 kbps   ~3 kbps      19 kbps           38 kbps
+ * 24 kbps   ~3 kbps      27 kbps           54 kbps
+ * 32 kbps   ~3 kbps      35 kbps           70 kbps
+ *
+ * * Includes RTP (12 bytes), UDP (8 bytes), IP (20 bytes) headers
+ * @endverbatim
+ *
+ * @section opus_quality_metrics Perceived Quality vs Bitrate
+ *
+ * @verbatim
+ * Bitrate   Quality Description           MOS Score*
+ * ========  ==========================    ===========
+ * 6 kbps    Acceptable (limited quality) 3.2
+ * 16 kbps   Good quality                 4.0
+ * 24 kbps   Excellent quality            4.4
+ * 32 kbps   Excellent quality (stereo)   4.5
+ * 64 kbps   Near CD quality              4.7
+ *
+ * * MOS = Mean Opinion Score (1-5 scale where 5 = excellent)
+ * @endverbatim
+ *
+ * @section opus_thread_safety Thread Safety
+ *
+ * **IMPORTANT**: Each codec instance (encoder or decoder) is NOT thread-safe.
+ *
+ * @code
+ * // CORRECT: Separate instances per thread
+ * encoder_t *encoder = opus_codec_create_encoder(...);
+ * decoder_t *decoder = opus_codec_create_decoder(...);
+ * // encoder can be used from thread A, decoder from thread B safely
+ *
+ * // WRONG: Sharing codec between threads
+ * // If both thread A and B call opus_codec_encode(shared_encoder, ...)
+ * // concurrently, you'll get corrupted output
+ * @endcode
+ *
+ * If you need per-thread encoding/decoding, create separate instances.
+ *
+ * @section opus_error_handling Error Handling
+ *
+ * @code
+ * // Check for encoding errors
+ * size_t encoded = opus_codec_encode(encoder, samples, 960, buffer, 250);
+ * if (encoded == 0) {
+ *     log_debug("DTX frame (silence)");
+ * } else if (encoded > 250) {
+ *     log_error("Encoded size exceeds buffer");
+ *     // This shouldn't happen if buffer is large enough
+ * }
+ * // encoded never returns < 0 in this wrapper (errors checked internally)
+ *
+ * // Check for decoding errors
+ * int samples = opus_codec_decode(decoder, compressed, size, output, 960);
+ * if (samples < 0) {
+ *     log_error("Opus decoding failed");
+ *     // Fall back to silence or PLC
+ * }
+ * // samples > 0 on success (typically 960)
+ * @endcode
+ *
+ * @section opus_optimization Optimization Tips
+ *
+ * - **Reuse codec instances**: Create once, reuse for entire session
+ * - **Buffer management**: Pre-allocate input/output buffers
+ * - **Minimal allocations**: No allocations in codec.c's hot path
+ * - **Bitrate tuning**: Adjust based on network conditions (not per-frame)
+ * - **DTX enabling**: Enable for voice, disable for music/mixed content
+ *
+ * @section opus_limitations Limitations
+ *
+ * - **Mono only**: Current implementation supports single channel
+ * - **Fixed frame size**: 960 samples at 48kHz (20ms)
+ * - **Float input/output**: Requires float format (no int16 conversion)
+ * - **Non-realtime**: No special handling for priority scheduling
+ *
+ * @section opus_future_work Future Enhancements
+ *
+ * Potential improvements:
+ * - Stereo support for music streaming
+ * - Variable frame size support
+ * - Int16 encoding/decoding (for WebRTC compatibility)
+ * - In-place encoding/decoding (reduce allocations)
+ * - Metrics: Encoder bandwidth tracking
+ *
+ * @see opus_codec.h - Public API header
+ * @see opus_codec.c - Implementation
+ * @see https://opus-codec.org - Opus codec specification
+ */
