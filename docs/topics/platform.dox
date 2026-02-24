@@ -7,22 +7,18 @@
  *
  * @section platform_overview Overview
  *
- * Welcome! This guide will help you understand the platform abstraction layer—the unsung hero
- * that makes ascii-chat work seamlessly across Windows, Linux, and macOS.
+ * The platform abstraction layer provides a unified API for cross-platform development
+ * across Windows, Linux, and macOS. It eliminates platform-specific conditional compilation
+ * from application code by centralizing OS-specific implementations.
  *
- * Here's the thing about cross-platform development: every operating system has its own way of
- * doing things. Windows uses different APIs than Linux. macOS has its quirks. Writing code that
- * works everywhere usually means lots of `#ifdef _WIN32` scattered throughout your codebase,
- * making it a mess to read and maintain.
+ * Cross-platform development without abstraction typically requires conditional compilation
+ * (`#ifdef` blocks) scattered throughout the codebase, with Windows APIs differing significantly
+ * from POSIX systems. This approach reduces code readability and increases maintenance complexity.
  *
- * But what if you could write your code once and have it just work everywhere? That's exactly
- * what the platform abstraction layer does. It provides a unified API—one set of functions that
- * work identically on all platforms. Under the hood, it translates your calls to the appropriate
- * platform-specific APIs. You write clean, readable code, and the platform layer handles all
- * the messy details.
- *
- * Think of it like an adapter plug for international travel. You don't need to carry different
- * devices for each country—you just bring one adapter that works everywhere. Same idea here!
+ * The platform abstraction layer solves this by providing a single, consistent API that works
+ * identically across all supported platforms. Application code calls platform functions with a
+ * unified interface; implementation details translate these calls to the appropriate
+ * platform-specific APIs at runtime.
  *
  * What does the platform layer abstract?
  * ---------------------------------------
@@ -1200,7 +1196,7 @@
  *
  * @subsection platform_static_init_how How It Works
  *
- * The magic happens at different times on different platforms:
+ * Initialization timing differs between platforms based on OS capabilities:
  *
  * **POSIX (Linux/macOS):**
  * ```c
