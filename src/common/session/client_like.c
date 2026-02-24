@@ -10,6 +10,7 @@
 #include "session/render.h"
 #include "session/session_log_buffer.h"
 #include "session/stdin_reader.h"
+#include "../../client/audio.h"
 
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/audio/audio.h>
@@ -606,6 +607,10 @@ cleanup:
 
   // Stop and destroy audio (after PortAudio is terminated)
   if (audio_ctx) {
+    // Signal audio sender thread to exit before destroying audio context
+    // This prevents deadlock if audio_sender is waiting on condition variable
+    audio_stop_thread();
+
     audio_stop_duplex(audio_ctx);
     audio_destroy(audio_ctx);
     SAFE_FREE(audio_ctx);

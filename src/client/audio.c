@@ -203,6 +203,7 @@ static lifecycle_t g_audio_send_queue_lc = LIFECYCLE_INIT;
 /** Audio sender thread */
 static bool g_audio_sender_thread_created = false;
 static atomic_bool g_audio_sender_should_exit = false;
+static atomic_bool g_audio_sender_exited = false;
 
 /**
  * @brief Queue an audio packet for async sending (non-blocking)
@@ -320,6 +321,9 @@ static void *audio_sender_thread_func(void *arg) {
   // Clean up thread-local error context before exit
   asciichat_errno_destroy();
 
+  // Signal that audio sender thread has exited
+  atomic_store(&g_audio_sender_exited, true);
+
   return NULL;
 }
 
@@ -355,6 +359,7 @@ static void audio_sender_init(void) {
   g_audio_send_queue_head = 0;
   g_audio_send_queue_tail = 0;
   atomic_store(&g_audio_sender_should_exit, false);
+  atomic_store(&g_audio_sender_exited, false);
 
   log_info("[AUDIO_SENDER_INIT] Spawning audio sender thread");
   // Start sender thread (after lock release to avoid blocking other threads)
@@ -1091,6 +1096,18 @@ void audio_stop_thread() {
     mutex_unlock(&g_audio_send_queue_mutex);
   }
 
+  // Wait for audio sender thread to exit gracefully
+  // This must complete before thread_pool_stop_all() to prevent deadlock
+  int wait_count = 0;
+  while (wait_count < 20 && !atomic_load(&g_audio_sender_exited)) {
+    platform_sleep_us(100 * US_PER_MS_INT); // 100ms
+    wait_count++;
+  }
+
+  if (!atomic_load(&g_audio_sender_exited)) {
+    log_warn("Audio sender thread not responding - will be joined by thread pool");
+  }
+
   if (!THREAD_IS_CREATED(g_audio_capture_thread_created)) {
     return;
   }
@@ -1099,10 +1116,10 @@ void audio_stop_thread() {
   // The audio capture thread checks server_connection_is_active() to detect connection loss
 
   // Wait for thread to exit gracefully
-  int wait_count = 0;
-  while (wait_count < 20 && !atomic_load(&g_audio_capture_thread_exited)) {
+  int wait_count2 = 0;
+  while (wait_count2 < 20 && !atomic_load(&g_audio_capture_thread_exited)) {
     platform_sleep_us(100 * US_PER_MS_INT); // 100ms
-    wait_count++;
+    wait_count2++;
   }
 
   if (!atomic_load(&g_audio_capture_thread_exited)) {
