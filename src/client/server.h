@@ -50,14 +50,73 @@ int server_connection_init();
 
 /**
  * @brief Establish connection to ascii-chat server
- * @param address Server IP address or hostname
- * @param port Server port number
- * @param reconnect_attempt Current reconnection attempt (0 for first)
- * @param first_connection True if this is the initial connection
- * @param has_ever_connected True if a connection was ever successfully established
- * @return 0 on success, negative on error
+ *
+ * Establishes a TCP connection to the server and performs the cryptographic handshake.
+ * This function handles DNS resolution, socket creation, connection establishment,
+ * and authentication. It is designed for use in a reconnection loop with exponential backoff.
+ *
+ * @param address Server IP address, hostname, or ACDS session string (e.g., "localhost",
+ *                 "192.168.1.100", or "blue-mountain-tiger")
+ * @param port Server port number (typically 27224)
+ * @param reconnect_attempt Current reconnection attempt number (0 for first attempt).
+ *                          Used to track retry count for logging and backoff calculation.
+ * @param first_connection Whether this is the client's first attempt to connect.
+ *                         If true, displays more informative messages. If false,
+ *                         this is a reconnection attempt after previous connection loss.
+ * @param has_ever_connected Whether the client has EVER successfully connected in this session.
+ *                           Used to distinguish "first attempt ever" from "reconnection attempt".
+ * @return Connection establishment status:
+ *         - CONNECTION_SUCCESS (0): Connection established and authenticated successfully
+ *         - CONNECTION_WARNING_NO_CLIENT_AUTH (1): Connected but server is not verifying client identity
+ *         - CONNECTION_ERROR_GENERIC (-1): Network error (resolve failed, connect refused, timeout).
+ *           Caller should retry with exponential backoff.
+ *         - CONNECTION_ERROR_AUTH_FAILED (-2): Authentication failed (wrong password, bad SSH key).
+ *           Caller should NOT retry - user intervention required.
+ *         - CONNECTION_ERROR_HOST_KEY_FAILED (-3): Server host key verification failed.
+ *           Caller should NOT retry - user must update known_hosts.
+ *
+ * ## Connection Lifecycle
+ *
+ * 1. **Resolution**: Resolves hostname/IP to socket address (supports IPv4 and IPv6)
+ * 2. **Socket Creation**: Creates TCP socket with appropriate options
+ * 3. **Connection**: Attempts TCP connect with timeout
+ * 4. **Handshake**: Performs cryptographic handshake (X25519 key exchange, Ed25519 auth)
+ * 5. **Initialization**: Sends client capabilities and client join packet
+ * 6. **State Update**: Updates global connection state atomically
+ *
+ * ## Error Recovery
+ *
+ * **Retryable (CONNECTION_ERROR_GENERIC)**:
+ * - Connection refused: Server not listening yet
+ * - Connection timeout: Network slow or firewall blocking
+ * - DNS resolution failure: Temporary DNS issue
+ * - Socket creation failure: System resource exhaustion
+ *
+ * Caller should implement exponential backoff:
+ * @code{.c}
+ * int result = server_connection_establish(address, port, attempt, first, ever_connected);
+ * if (result == CONNECTION_ERROR_GENERIC) {
+ *   // Exponential backoff: 10ms, 210ms, 410ms, 610ms, ..., capped at 5 seconds
+ *   int delay_ms = 10 + (200 * attempt);
+ *   if (delay_ms > 5000) delay_ms = 5000;
+ *   sleep_ms(delay_ms);
+ *   attempt++;
+ *   continue;  // Retry
+ * }
+ * @endcode
+ *
+ * **Non-Retryable (AUTH or HOST_KEY failures)**:
+ * - `CONNECTION_ERROR_AUTH_FAILED`: Password or SSH key doesn't match server's expectations
+ * - `CONNECTION_ERROR_HOST_KEY_FAILED`: Server's public key not in client's known_hosts
+ *
+ * These indicate configuration problems that won't be fixed by waiting or retrying.
  *
  * @ingroup client_connection
+ *
+ * @see server_connection_is_active "Check connection status"
+ * @see server_connection_close "Close connection gracefully"
+ * @see server_connection_lost "Signal connection loss (called by other threads)"
+ * @see topic_client_connection "Connection Management Architecture"
  */
 int server_connection_establish(const char *address, int port, int reconnect_attempt, bool first_connection,
                                 bool has_ever_connected);

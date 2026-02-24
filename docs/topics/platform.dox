@@ -996,6 +996,165 @@
  * }
  * ```
  *
+ * @subsection platform_components_filesystem Filesystem Operations (filesystem.h)
+ *
+ * High-level cross-platform filesystem operations: directories, paths, and file discovery.
+ * This header provides unified directory management, path utilities, and configuration
+ * file discovery across Windows and POSIX systems.
+ *
+ * Directory operations:
+ * ```c
+ * // Create a single directory (no-op if exists)
+ * if (platform_mkdir("~/.ascii-chat", 0700) == ASCIICHAT_OK) {
+ *   printf("Directory created or already exists\n");
+ * }
+ *
+ * // Create directories recursively (like mkdir -p)
+ * if (platform_mkdir_recursive("~/.ascii-chat/config/keys", 0700) == ASCIICHAT_OK) {
+ *   printf("Directory tree created\n");
+ * }
+ *
+ * // Clean up: recursively delete directory and contents
+ * if (platform_rmdir_recursive("~/.ascii-chat/temp") == ASCIICHAT_OK) {
+ *   printf("Directory removed\n");
+ * }
+ * ```
+ *
+ * File type checking and statistics:
+ * ```c
+ * // Check file type without following symlinks
+ * if (platform_is_regular_file("config.toml")) {
+ *   printf("config.toml is a regular file\n");
+ * }
+ *
+ * if (platform_is_directory("./data")) {
+ *   printf("./data is a directory\n");
+ * }
+ *
+ * // Get detailed file metadata
+ * platform_stat_t stat_info;
+ * if (platform_stat("myfile", &stat_info) == ASCIICHAT_OK) {
+ *   printf("File size: %zu bytes\n", stat_info.size);
+ *   printf("Is symlink: %d\n", stat_info.is_symlink);
+ * }
+ * ```
+ *
+ * Path utilities:
+ * ```c
+ * // Check if path is absolute
+ * if (platform_path_is_absolute("/etc/config")) {
+ *   printf("Absolute path\n");  // Unix
+ * }
+ * if (platform_path_is_absolute("C:\\Users\\data")) {
+ *   printf("Absolute path\n");  // Windows
+ * }
+ *
+ * // Get platform-specific path separator
+ * char sep = platform_path_get_separator();
+ * printf("Separator: %c\n", sep);  // '/' on Unix, '\\' on Windows
+ *
+ * // Normalize path (converts separators, validates)
+ * char normalized[PATH_MAX];
+ * platform_path_normalize("C:\\Users\\..\\data", normalized, sizeof(normalized));
+ * printf("Normalized: %s\n", normalized);
+ * ```
+ *
+ * Temporary files and directories:
+ * ```c
+ * // Create temporary directory with unique suffix
+ * char tempdir[256];
+ * if (platform_mkdtemp(tempdir, sizeof(tempdir), "ascii-chat-gpg") == ASCIICHAT_OK) {
+ *   printf("Temp dir: %s\n", tempdir);  // e.g., /tmp/ascii-chat-gpg-ABC123
+ *   // ... use tempdir for sensitive operations ...
+ *   platform_rmdir_recursive(tempdir);  // Clean up
+ * }
+ *
+ * // Create temporary file with proper permissions
+ * char tempfile[256];
+ * int fd;
+ * if (platform_create_temp_file(tempfile, sizeof(tempfile), "asc_sig", &fd) == 0) {
+ *   // On Unix: fd is open and ready for writing
+ *   // On Windows: fd == -1, must open with platform_temp_file_open()
+ *   if (fd < 0) {
+ *     platform_temp_file_open(tempfile, &fd);
+ *   }
+ *   write(fd, data, size);
+ *   close(fd);
+ *   platform_delete_temp_file(tempfile);
+ * }
+ * ```
+ *
+ * Configuration file discovery:
+ * ```c
+ * // Find config file across standard locations
+ * // Returns all matches in priority order (highest priority first)
+ * config_file_list_t config_list = {0};
+ * if (platform_find_config_file("config.toml", &config_list) == ASCIICHAT_OK) {
+ *   // Use first match (highest priority) - Override semantics
+ *   if (config_list.count > 0) {
+ *     printf("Using config: %s\n", config_list.files[0].path);
+ *     load_config(config_list.files[0].path);
+ *   }
+ *   config_file_list_destroy(&config_list);
+ * }
+ *
+ * // Cascade semantics: load all configs (system to user)
+ * if (platform_find_config_file("colors.toml", &config_list) == ASCIICHAT_OK) {
+ *   // Load in reverse order (lowest priority first)
+ *   // Higher priority configs override lower priority
+ *   for (size_t i = config_list.count; i > 0; i--) {
+ *     apply_config(config_list.files[i - 1].path, &theme);
+ *   }
+ *   config_file_list_destroy(&config_list);
+ * }
+ * ```
+ *
+ * Search paths by platform:
+ * - **Linux/macOS**: ~/.config/ascii-chat/ → ~/.local/share/ascii-chat/ → /etc/ascii-chat/
+ * - **Windows**: %APPDATA%\ascii-chat\ → %PROGRAMDATA%\ascii-chat\
+ *
+ * Home and config directory discovery:
+ * ```c
+ * // Get home directory (platform-aware)
+ * const char* home = platform_get_home_dir();
+ * printf("Home: %s\n", home);  // e.g., "/home/user" or "C:\\Users\\user"
+ *
+ * // Get app config directory (with trailing separator)
+ * char* config_dir = platform_get_config_dir();
+ * printf("Config dir: %s\n", config_dir);
+ * // Linux:   /home/user/.config/ascii-chat/
+ * // macOS:   /Users/user/.config/ascii-chat/
+ * // Windows: C:\Users\user\AppData\Roaming\ascii-chat\
+ * SAFE_FREE(config_dir);
+ *
+ * // Get app data directory
+ * char* data_dir = platform_get_data_dir();
+ * printf("Data dir: %s\n", data_dir);
+ * // Linux:   /home/user/.local/share/ascii-chat/
+ * // macOS:   /Users/user/.local/share/ascii-chat/
+ * // Windows: C:\Users\user\AppData\Roaming\ascii-chat\
+ * SAFE_FREE(data_dir);
+ * ```
+ *
+ * Cryptographic key file validation:
+ * ```c
+ * // Validate key file permissions (critical for security!)
+ * // Checks that only owner can read the private key
+ * if (platform_validate_key_file_permissions("~/.ssh/id_ed25519") == ASCIICHAT_OK) {
+ *   printf("Key file permissions are secure\n");
+ * } else {
+ *   printf("Key file has insecure permissions! Use chmod 600\n");
+ * }
+ * ```
+ *
+ * Platform-specific details:
+ * - **POSIX**: Uses chmod, stat, mkdir, opendir for all operations
+ * - **Windows**: Uses CreateDirectoryA, GetFileAttributesEx, ACLs for permissions
+ * - **Symlinks**: All functions skip symlinks (use lstat/no-follow logic)
+ * - **Path separators**: Automatically handled (/ or \ based on platform)
+ * - **Permissions**: Unix mode parameter ignored on Windows (uses ACLs)
+ * - **Relative paths**: Expanded from current directory (not home)
+ *
  * @section platform_static_init Static Initialization
  *
  * One of the most powerful features of the platform abstraction layer is static
@@ -1138,6 +1297,425 @@
  *   g_work_available = true;
  *   static_cond_signal(&g_work_cond);
  *   static_mutex_unlock(&g_work_mutex);
+ * }
+ * ```
+ *
+ * @section platform_threading_api Threading API Reference
+ *
+ * Complete reference for all threading, synchronization, and thread-local storage APIs.
+ *
+ * @subsection platform_api_thread_lifecycle Thread Lifecycle Management
+ *
+ * **Thread Creation**:
+ * ```c
+ * int asciichat_thread_create(asciichat_thread_t *thread,
+ *                              void *(*func)(void *), void *arg);
+ * ```
+ * Creates a new thread that executes `func(arg)`. The thread handle is stored in `*thread`.
+ *
+ * - **Parameters**:
+ *   - `thread`: Output parameter for thread handle (must be initialized with asciichat_thread_init or uninitialized)
+ *   - `func`: Thread function with signature `void* (*)(void*)`
+ *   - `arg`: Single void pointer argument passed to thread function
+ * - **Return**: 0 on success, non-zero on error
+ * - **Thread safety**: Safe to call from any thread
+ * - **Platform notes**:
+ *   - Windows: Uses CreateThread()
+ *   - POSIX: Uses pthread_create()
+ *
+ * **Error handling example**:
+ * ```c
+ * asciichat_thread_t thread;
+ * asciichat_thread_init(&thread);
+ * int result = asciichat_thread_create(&thread, worker, data);
+ * if (result != 0) {
+ *   log_error("Failed to create thread: %s", strerror(result));
+ *   return;
+ * }
+ * ```
+ *
+ * **Thread Exit**:
+ * ```c
+ * void asciichat_thread_exit(void *retval);
+ * ```
+ * Terminates the calling thread and passes `retval` to any waiting joiners.
+ * - This function never returns
+ * - Called implicitly when thread function returns
+ * - Only necessary if you need to exit before return statement
+ *
+ * **Thread Joining** (blocking wait):
+ * ```c
+ * int asciichat_thread_join(asciichat_thread_t *thread, void **retval);
+ * ```
+ * Blocks until the specified thread terminates.
+ *
+ * - **Parameters**:
+ *   - `thread`: Thread handle from asciichat_thread_create()
+ *   - `retval`: Optional output parameter for thread return value (NULL to ignore)
+ * - **Return**: 0 on success, non-zero on error
+ * - **Blocks**: Calling thread waits indefinitely for target thread to finish
+ * - **Usage**: Always used in cleanup or synchronization points
+ *
+ * **Thread Joining with Timeout**:
+ * ```c
+ * int asciichat_thread_join_timeout(asciichat_thread_t *thread,
+ *                                    void **retval, uint64_t timeout_ns);
+ * ```
+ * Wait for thread with maximum wait time.
+ *
+ * - **Parameters**:
+ *   - `timeout_ns`: Timeout in nanoseconds (1,000,000 ns = 1 ms)
+ * - **Return**: 0 if thread finished, non-zero on timeout or error
+ * - **Use case**: Graceful shutdown with timeout, watchdog patterns
+ * - **Platform notes**:
+ *   - macOS: Falls back to blocking join (no timeout support in POSIX)
+ *   - Linux: Full support via pthread_timedjoin_np()
+ *   - Windows: Full support
+ *
+ * **Timeout example** (graceful shutdown):
+ * ```c
+ * void shutdown_worker(asciichat_thread_t *worker) {
+ *   // Signal thread to stop (set flag, send message, etc.)
+ *   tell_thread_to_stop(worker);
+ *
+ *   // Wait up to 5 seconds
+ *   uint64_t timeout = 5 * 1000000000ULL;  // 5 seconds in nanoseconds
+ *   int result = asciichat_thread_join_timeout(worker, NULL, timeout);
+ *
+ *   if (result != 0) {
+ *     log_warn("Thread did not stop gracefully");
+ *     // On real systems: force-kill, cleanup resources, etc.
+ *   }
+ * }
+ * ```
+ *
+ * @subsection platform_api_thread_identity Thread Identification
+ *
+ * **Get Current Thread ID**:
+ * ```c
+ * thread_id_t asciichat_thread_self(void);
+ * ```
+ * Returns the calling thread's ID.
+ *
+ * - **Return type**: `thread_id_t` (platform-specific, may be int, long, or struct)
+ * - **Use case**: Compare with other thread IDs, logging with thread context
+ * - **Unique per thread**: Each thread has a distinct ID throughout its lifetime
+ *
+ * **Compare Thread IDs**:
+ * ```c
+ * int asciichat_thread_equal(thread_id_t t1, thread_id_t t2);
+ * ```
+ * Safely compare two thread IDs for equality.
+ *
+ * - **Return**: Non-zero (true) if IDs are equal, 0 (false) otherwise
+ * - **Why use this?**: Direct comparison of thread_id_t may not work on all platforms
+ * - **Logging example**:
+ * ```c
+ * thread_id_t main_tid = asciichat_thread_self();
+ * thread_id_t current_tid = asciichat_thread_self();
+ * if (asciichat_thread_equal(main_tid, current_tid)) {
+ *   log_debug("Running in main thread");
+ * }
+ * ```
+ *
+ * **Get Numeric Thread ID**:
+ * ```c
+ * uint64_t asciichat_thread_current_id(void);
+ * ```
+ * Returns a unique numeric identifier for the current thread.
+ *
+ * - **Return**: 64-bit unsigned integer unique per thread
+ * - **Advantage**: Always comparable with ==, safe for hashing
+ * - **Use case**: Hash tables, thread-local registries, concise logging
+ *
+ * **Thread Registry Example**:
+ * ```c
+ * typedef struct {
+ *   uint64_t thread_id;
+ *   char name[64];
+ *   int client_fd;
+ * } thread_registry_entry_t;
+ *
+ * void register_thread(const char *name, int client_fd) {
+ *   thread_registry_entry_t entry = {
+ *     .thread_id = asciichat_thread_current_id(),
+ *     .client_fd = client_fd,
+ *   };
+ *   platform_strlcpy(entry.name, name, sizeof(entry.name));
+ *   registry_add(&g_registry, &entry);
+ * }
+ * ```
+ *
+ * **Check Thread Initialization**:
+ * ```c
+ * bool asciichat_thread_is_initialized(asciichat_thread_t *thread);
+ * int  asciichat_thread_init(asciichat_thread_t *thread);
+ * ```
+ * Check/set thread handle initialization state.
+ *
+ * - **Use case**: Pool structures, static initialization verification
+ * - `thread_init()` resets handle to uninitialized state
+ * - Check before re-using handles from pools
+ *
+ * **Thread Pool Example**:
+ * ```c
+ * typedef struct {
+ *   asciichat_thread_t thread;
+ *   bool available;
+ * } thread_pool_entry_t;
+ *
+ * thread_pool_entry_t* acquire_thread_from_pool() {
+ *   for (size_t i = 0; i < POOL_SIZE; i++) {
+ *     if (!asciichat_thread_is_initialized(&g_pool[i].thread)) {
+ *       // Thread handle is available, can be reused
+ *       return &g_pool[i];
+ *     }
+ *   }
+ *   return NULL;  // No available threads
+ * }
+ * ```
+ *
+ * @subsection platform_api_mutex_operations Mutex Operations
+ *
+ * **Mutex Initialization**:
+ * ```c
+ * int mutex_init(mutex_t *mutex, const char *name);
+ * int mutex_destroy(mutex_t *mutex);
+ * ```
+ * Initialize and destroy mutexes.
+ *
+ * - `name`: Human-readable name for debugging (e.g., "recv_lock", "state_mutex")
+ * - Must call `mutex_init()` before any lock/unlock operations
+ * - Must call `mutex_destroy()` when done (usually in cleanup)
+ * - Never destroy a locked mutex
+ *
+ * **Locking** (blocking):
+ * ```c
+ * int mutex_lock(mutex_t *mutex);
+ * ```
+ * Acquires the mutex, blocking until available.
+ *
+ * - **Blocks**: Thread waits if another thread holds the lock
+ * - **Return**: 0 on success (lock acquired)
+ * - **Recursive**: NOT recursive - deadlocks if same thread locks twice
+ * - **Must be paired**: Always unlock when done
+ *
+ * **Try-Lock** (non-blocking):
+ * ```c
+ * int mutex_trylock(mutex_t *mutex);
+ * ```
+ * Attempts to acquire the mutex without blocking.
+ *
+ * - **Return**: 0 if lock acquired, non-zero if already locked
+ * - **Use case**: Non-blocking operations, avoiding deadlock patterns
+ * - **Busy-wait pattern**: Don't loop on trylock; use condition variables instead
+ *
+ * **Unlocking**:
+ * ```c
+ * int mutex_unlock(mutex_t *mutex);
+ * ```
+ * Releases the mutex, potentially waking waiting threads.
+ *
+ * - **Precondition**: Mutex must be locked by calling thread
+ * - **Return**: 0 on success
+ * - **Error check**: Always check return value (indicates misuse)
+ *
+ * **Critical Section Pattern**:
+ * ```c
+ * struct shared_data {
+ *   mutex_t lock;
+ *   int counter;
+ *   char* buffer;
+ * };
+ *
+ * void increment_counter(struct shared_data *data) {
+ *   if (mutex_lock(&data->lock) != 0) {
+ *     log_error("Lock failed");
+ *     return;
+ *   }
+ *
+ *   // Critical section - protected from concurrent access
+ *   data->counter++;
+ *
+ *   if (mutex_unlock(&data->lock) != 0) {
+ *     log_error("Unlock failed");
+ *   }
+ * }
+ * ```
+ *
+ * @subsection platform_api_condition_variables Condition Variables
+ *
+ * **Condition Variable Initialization**:
+ * ```c
+ * int cond_init(cond_t *cond, const char *name);
+ * int cond_destroy(cond_t *cond);
+ * ```
+ * Initialize and destroy condition variables.
+ *
+ * - Must initialize before use
+ * - Always pair with a mutex for synchronization
+ * - Destroy when no longer needed
+ *
+ * **Waiting**:
+ * ```c
+ * int cond_wait(cond_t *cond, mutex_t *mutex);
+ * ```
+ * Atomically unlocks mutex and waits for condition to be signaled.
+ *
+ * - **Mutex state**:
+ *   - Must be locked BEFORE calling cond_wait()
+ *   - Atomically unlocked while waiting
+ *   - Re-locked before returning
+ * - **Spurious wakeups**: Check condition in a loop, don't assume it's true
+ *
+ * **Timed Waiting**:
+ * ```c
+ * int cond_timedwait(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns);
+ * ```
+ * Wait with timeout.
+ *
+ * - **Return**: 0 if signaled, non-zero on timeout or error
+ * - **Timeout unit**: Nanoseconds (1,000,000,000 ns = 1 second)
+ * - **Use case**: Resource initialization with timeout, watchdog patterns
+ *
+ * **Signaling**:
+ * ```c
+ * int cond_signal(cond_t *cond);   // Wake one waiter
+ * int cond_broadcast(cond_t *cond); // Wake all waiters
+ * ```
+ * Wake waiting threads.
+ *
+ * - `cond_signal()`: Wakes one arbitrary waiter
+ * - `cond_broadcast()`: Wakes all waiters
+ * - **Lost signals**: If no threads are waiting, signal is lost
+ * - **Best practice**: Always check condition after waking
+ *
+ * **Producer-Consumer with Timeout**:
+ * ```c
+ * typedef struct {
+ *   int* items;
+ *   int size;
+ *   int count;
+ *   int head, tail;
+ *   mutex_t lock;
+ *   cond_t not_empty;
+ *   cond_t not_full;
+ * } queue_t;
+ *
+ * int queue_pop_timeout(queue_t *q, int *item, uint64_t timeout_ns) {
+ *   mutex_lock(&q->lock);
+ *
+ *   // Wait for item with timeout
+ *   while (q->count == 0) {
+ *     int result = cond_timedwait(&q->not_empty, &q->lock, timeout_ns);
+ *     if (result != 0) {
+ *       // Timeout occurred
+ *       mutex_unlock(&q->lock);
+ *       return -1;
+ *     }
+ *   }
+ *
+ *   // Item available
+ *   *item = q->items[q->head];
+ *   q->head = (q->head + 1) % q->size;
+ *   q->count--;
+ *   cond_signal(&q->not_full);
+ *
+ *   mutex_unlock(&q->lock);
+ *   return 0;
+ * }
+ * ```
+ *
+ * @subsection platform_api_thread_local_storage Thread-Local Storage
+ *
+ * **TLS Key Management**:
+ * ```c
+ * int ascii_tls_key_create(tls_key_t *key, void (*destructor)(void *));
+ * int ascii_tls_key_delete(tls_key_t key);
+ * ```
+ * Create and destroy thread-local storage keys.
+ *
+ * - `destructor`: Optional function called with stored value when thread exits (NULL if not needed)
+ * - One key is shared across all threads
+ * - Each thread stores a different value for that key
+ *
+ * **TLS Get/Set**:
+ * ```c
+ * void* ascii_tls_get(tls_key_t key);
+ * int   ascii_tls_set(tls_key_t key, void *value);
+ * ```
+ * Get and set thread-local values.
+ *
+ * - `tls_get()`: Returns value for current thread, or NULL if not set
+ * - `tls_set()`: Sets value for current thread
+ * - Each thread has independent values
+ *
+ * **Thread-Local Registry Pattern**:
+ * ```c
+ * // Global TLS key for client context
+ * static tls_key_t g_client_context_key;
+ *
+ * typedef struct {
+ *   int client_id;
+ *   char* name;
+ *   // ... other client data ...
+ * } client_context_t;
+ *
+ * void cleanup_client_context(void *value) {
+ *   client_context_t *ctx = (client_context_t *)value;
+ *   if (ctx) {
+ *     free(ctx->name);
+ *     free(ctx);
+ *   }
+ * }
+ *
+ * void initialize_tls() {
+ *   ascii_tls_key_create(&g_client_context_key, cleanup_client_context);
+ * }
+ *
+ * void set_client_context(int client_id, const char *name) {
+ *   client_context_t *ctx = malloc(sizeof(*ctx));
+ *   ctx->client_id = client_id;
+ *   ctx->name = strdup(name);
+ *   ascii_tls_set(g_client_context_key, ctx);
+ * }
+ *
+ * client_context_t* get_client_context(void) {
+ *   return (client_context_t *)ascii_tls_get(g_client_context_key);
+ * }
+ * ```
+ *
+ * @subsection platform_api_realtime Real-Time Priority
+ *
+ * **Set Realtime Priority**:
+ * ```c
+ * asciichat_error_t asciichat_thread_set_realtime_priority(void);
+ * ```
+ * Elevate current thread to real-time priority.
+ *
+ * - **Use case**: Audio processing, video rendering, time-critical tasks
+ * - **Return**: ASCIICHAT_OK on success, error code on failure
+ * - **Permissions**:
+ *   - Linux: Requires CAP_SYS_NICE capability or rtprio ulimit increase
+ *   - macOS: Requires special mach thread setup
+ *   - Windows: Requires no special permissions
+ * - **Fallback**: Always check return value; graceful degradation if not available
+ *
+ * **Audio Thread Setup**:
+ * ```c
+ * void* audio_worker(void* arg) {
+ *   // Attempt to use real-time priority
+ *   if (asciichat_thread_set_realtime_priority() != ASCIICHAT_OK) {
+ *     log_warn("Could not enable real-time priority for audio thread");
+ *   } else {
+ *     log_debug("Audio thread running with real-time priority");
+ *   }
+ *
+ *   // Process audio in tight loop
+ *   while (!should_stop()) {
+ *     process_audio_frame();
+ *   }
+ *   return NULL;
  * }
  * ```
  *

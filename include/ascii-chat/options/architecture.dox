@@ -1,0 +1,632 @@
+/**
+ * @page options_architecture Options System Architecture
+ * @ingroup options
+ *
+ * @tableofcontents
+ *
+ * ## Overview
+ *
+ * The **ascii-chat options system** is a comprehensive command-line argument parsing
+ * and configuration management framework built on three key components:
+ *
+ * 1. **Registry** (`registry.h`): Central single-source-of-truth for all option definitions
+ * 2. **Builder** (`builder.h`): Flexible API for constructing option configurations
+ * 3. **RCU Thread-Safety** (`rcu.h`): Lock-free read access to options from any thread
+ *
+ * Together, these provide:
+ * - **Mode-aware parsing**: Automatically filter options by detected mode
+ * - **Type-safe defaults**: All options have sensible defaults (OPT_*_DEFAULT constants)
+ * - **Validation**: Required fields, dependencies, cross-field validators, custom validators
+ * - **Automatic memory management**: Strings are auto-duplicated and auto-freed
+ * - **Lock-free thread safety**: Read options from 60fps render threads without locking
+ * - **Shell completion support**: Metadata for enum values, numeric ranges, examples
+ * - **Grouped help output**: Organized by category with semantic coloring
+ * - **Environment variable fallbacks**: Options can fall back to env vars
+ *
+ * ## Architecture Diagram
+ *
+ * ```
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │                        COMMAND LINE ARGUMENTS                            │
+ * │                         ./ascii-chat server                              │
+ * └──────────────────────────┬──────────────────────────────────────────────┘
+ *                            │
+ *                            ▼
+ *         ┌──────────────────────────────────────┐
+ *         │   MODE DETECTION (main.c)            │
+ *         │   Detects: server / client / mirror  │
+ *         │   Sets: detected_mode in options_t   │
+ *         └──────────────────┬────────────────────┘
+ *                            │
+ *         ┌──────────────────▼──────────────────────────────────┐
+ *         │         REGISTRY LOOKUP (registry.h)                │
+ *         │  ┌─────────────────────────────────────────────┐   │
+ *         │  │ options_registry_t global_registry[] = {   │   │
+ *         │  │   { .long_name = "port", .mode = SERVER,  │   │
+ *         │  │     .type = INT, .default = 27224, ...},  │   │
+ *         │  │   { .long_name = "color", .mode = ALL,    │   │
+ *         │  │     .type = CALLBACK, ... },               │   │
+ *         │  │   ...                                       │   │
+ *         │  │ }                                           │   │
+ *         │  └─────────────────────────────────────────────┘   │
+ *         │                                                      │
+ *         │  Lookup Functions:                                 │
+ *         │  - find_by_name("port")                            │
+ *         │  - find_by_short('p')                              │
+ *         │  - get_for_mode(MODE_SERVER) → filters by mode    │
+ *         │  - get_for_display(MODE_SERVER, true) → help-     │
+ *         │    aware filtering                                  │
+ *         └──────────────────┬───────────────────────────────────┘
+ *                            │
+ *         ┌──────────────────▼──────────────────────────────────┐
+ *         │    BUILDER CONSTRUCTION (builder.h)                │
+ *         │                                                      │
+ *         │  Step 1: Create builder                            │
+ *         │  ┌──────────────────────────────────────────────┐  │
+ *         │  │ builder = options_builder_create(            │  │
+ *         │  │     sizeof(options_t))                       │  │
+ *         │  └──────────────────────────────────────────────┘  │
+ *         │                                                      │
+ *         │  Step 2: Populate from registry                    │
+ *         │  ┌──────────────────────────────────────────────┐  │
+ *         │  │ options_registry_add_all_to_builder(        │  │
+ *         │  │     builder)  // Copies all registered opts  │  │
+ *         │  └──────────────────────────────────────────────┘  │
+ *         │                                                      │
+ *         │  Step 3: Build immutable config                    │
+ *         │  ┌──────────────────────────────────────────────┐  │
+ *         │  │ config = options_builder_build(builder)      │  │
+ *         │  │ // Creates options_config_t with all state   │  │
+ *         │  │ // Both arrays and descriptors locked/locked │  │
+ *         │  └──────────────────────────────────────────────┘  │
+ *         └──────────────────┬───────────────────────────────────┘
+ *                            │
+ *         ┌──────────────────▼──────────────────────────────────┐
+ *         │      COMMAND-LINE PARSING (options.c)              │
+ *         │                                                      │
+ *         │  Step 1: Set defaults from descriptors             │
+ *         │  ┌──────────────────────────────────────────────┐  │
+ *         │  │ options_config_set_defaults(config,          │  │
+ *         │  │     &options_struct)                         │  │
+ *         │  │ // Fills options_t with defaults             │  │
+ *         │  │ // Checks env vars for missing options       │  │
+ *         │  └──────────────────────────────────────────────┘  │
+ *         │                                                      │
+ *         │  Step 2: Parse command-line arguments              │
+ *         │  ┌──────────────────────────────────────────────┐  │
+ *         │  │ options_config_parse(config, argc, argv,    │  │
+ *         │  │     &options_struct, MODE_DETECTED, ...)    │  │
+ *         │  │ // Uses mode_bitmask to filter options      │  │
+ *         │  │ // Applies custom parsers (OPTION_CALLBACK) │  │
+ *         │  │ // Auto-duplicates strings                  │  │
+ *         │  └──────────────────────────────────────────────┘  │
+ *         │                                                      │
+ *         │  Step 3: Validate parsed options                   │
+ *         │  ┌──────────────────────────────────────────────┐  │
+ *         │  │ options_config_validate(config,              │  │
+ *         │  │     &options_struct, &error_msg)            │  │
+ *         │  │ // Check required fields set                 │  │
+ *         │  │ // Validate dependencies (REQUIRES,          │  │
+ *         │  │ //  CONFLICTS, IMPLIES)                     │  │
+ *         │  │ // Call custom validators                    │  │
+ *         │  └──────────────────────────────────────────────┘  │
+ *         │                                                      │
+ *         │  Step 4: Positional argument parsing               │
+ *         │  ┌──────────────────────────────────────────────┐  │
+ *         │  │ options_config_parse_positional(config,      │  │
+ *         │  │     remaining_argc, remaining_argv, &opts)  │  │
+ *         │  │ // Parses non-option args (client address,  │  │
+ *         │  │ //  session string, bind address, etc.)     │  │
+ *         │  └──────────────────────────────────────────────┘  │
+ *         └──────────────────┬───────────────────────────────────┘
+ *                            │
+ *         ┌──────────────────▼──────────────────────────────────┐
+ *         │  RCU THREAD-SAFE PUBLISHING (rcu.h)               │
+ *         │                                                      │
+ *         │  Step 1: Initialize RCU system                     │
+ *         │  ┌──────────────────────────────────────────────┐  │
+ *         │  │ options_state_init()                         │  │
+ *         │  │ // Allocates atomic pointer structure        │  │
+ *         │  └──────────────────────────────────────────────┘  │
+ *         │                                                      │
+ *         │  Step 2: Publish parsed options                    │
+ *         │  ┌──────────────────────────────────────────────┐  │
+ *         │  │ options_state_set(&options_struct)           │  │
+ *         │  │ // Atomically swaps pointer to new options   │  │
+ *         │  │ // OLD: options readers see old version      │  │
+ *         │  │ // NEW: options readers see new version      │  │
+ *         │  │ // Defers freeing old struct (grace period)  │  │
+ *         │  └──────────────────────────────────────────────┘  │
+ *         │                                                      │
+ *         │  Step 3: Spawn worker threads (safe to read)       │
+ *         │  ┌──────────────────────────────────────────────┐  │
+ *         │  │ thread_pool_init()                           │  │
+ *         │  │ // Video render (60fps)                      │  │
+ *         │  │ // Audio playback (172fps)                   │  │
+ *         │  │ // Network packet handling                   │  │
+ *         │  └──────────────────────────────────────────────┘  │
+ *         └──────────────────┬───────────────────────────────────┘
+ *                            │
+ *         ┌──────────────────▼──────────────────────────────────┐
+ *         │  LOCK-FREE READING (60fps video thread)            │
+ *         │                                                      │
+ *         │  ┌──────────────────────────────────────────────┐  │
+ *         │  │ // Render thread (no locks, no blocking)     │  │
+ *         │  │ const options_t *opts = options_get();       │  │
+ *         │  │ int width = opts->width;                     │  │
+ *         │  │ int height = opts->height;                   │  │
+ *         │  │ color_mode_t color = opts->color_mode;       │  │
+ *         │  │ char *address = opts->server_address;        │  │
+ *         │  │                                              │  │
+ *         │  │ // Or use convenience macro:                 │  │
+ *         │  │ const options_t *opts = GET_OPTION(width);   │  │
+ *         │  │                                              │  │
+ *         │  │ // No contention, no cache line bouncing     │  │
+ *         │  │ // Single atomic load (~1-2ns latency)       │  │
+ *         │  │ // Consistent snapshot (no partial updates)  │  │
+ *         │  └──────────────────────────────────────────────┘  │
+ *         └──────────────────────────────────────────────────────┘
+ * ```
+ *
+ * ## Component Details
+ *
+ * ### 1. Registry (registry.h)
+ *
+ * **Purpose**: Single source of truth for all option definitions
+ *
+ * **Key Data Structure**:
+ * ```c
+ * typedef struct {
+ *     const char *long_name;              // "port"
+ *     char short_name;                    // 'p'
+ *     option_type_t type;                 // INT, STRING, BOOL, CALLBACK, ACTION
+ *     size_t offset;                      // offsetof(options_t, port)
+ *     const void *default_value;          // &(int){27224}
+ *     bool required;                      // true/false
+ *     const char *env_var_name;           // "PORT"
+ *     bool (*validate)(...);              // Custom validator
+ *     option_mode_bitmask_t mode_bitmask; // SERVER | CLIENT | MIRROR
+ *     option_metadata_t metadata;         // Enums, ranges, examples
+ *     // ... more fields
+ * } option_descriptor_t;
+ * ```
+ *
+ * **Registry Global Array** (registry.c):
+ * ```c
+ * static const option_descriptor_t options_registry[] = {
+ *     {
+ *         .long_name = "port",
+ *         .short_name = 'p',
+ *         .type = OPTION_TYPE_INT,
+ *         .offset = offsetof(options_t, port),
+ *         .default_value = &(int){27224},
+ *         .help_text = "Server port",
+ *         .group = "NETWORK OPTIONS",
+ *         .mode_bitmask = OPTION_MODE_SERVER,
+ *         .validate = validate_port,
+ *         .metadata = {
+ *             .input_type = OPTION_INPUT_NUMERIC,
+ *             .numeric_range = {.min = 1, .max = 65535, .step = 1},
+ *             .examples = (const char *[]){
+ *                 "27224", "8080", "3000", NULL
+ *             }
+ *         }
+ *     },
+ *     // ... more options ...
+ * };
+ * ```
+ *
+ * **Key Functions**:
+ * - `options_registry_find_by_name("port")` → Returns option descriptor
+ * - `options_registry_get_for_mode(MODE_SERVER, &count)` → Filters by mode
+ * - `options_registry_add_all_to_builder(builder)` → Populates builder
+ * - `options_registry_get_metadata("port")` → Gets completion metadata
+ *
+ * **Advantages**:
+ * - No duplication (each option defined once)
+ * - Type-safe defaults (constants, not magic numbers)
+ * - Consistent across all modes
+ * - Easy to add new options
+ * - Facilitates shell completions
+ *
+ * ### 2. Builder (builder.h)
+ *
+ * **Purpose**: Flexible API for constructing option configurations
+ *
+ * **Key Data Structure**:
+ * ```c
+ * typedef struct {
+ *     option_descriptor_t *descriptors;   // Dynamic array
+ *     size_t num_descriptors;
+ *     size_t descriptor_capacity;
+ *
+ *     option_dependency_t *dependencies;  // Dynamic array
+ *     size_t num_dependencies;
+ *     size_t dependency_capacity;
+ *
+ *     // ... more arrays for positional args, examples, modes, sections
+ * } options_builder_t;
+ * ```
+ *
+ * **Builder Workflow**:
+ * ```c
+ * // 1. Create empty builder
+ * options_builder_t *builder = options_builder_create(sizeof(options_t));
+ *
+ * // 2. Populate from registry OR add custom options
+ * options_registry_add_all_to_builder(builder);
+ *
+ * // 3. Add dependencies (optional)
+ * options_builder_add_dependency_requires(
+ *     builder, "tls-cert", "tls-enabled", NULL);
+ *
+ * // 4. Add positional arguments (optional)
+ * options_builder_add_positional(builder, "address", ...);
+ *
+ * // 5. Add examples (optional, for help)
+ * options_builder_add_example(builder, OPTION_MODE_SERVER, NULL,
+ *                            "Run as server");
+ *
+ * // 6. Build immutable config
+ * options_config_t *config = options_builder_build(builder);
+ *
+ * // 7. Free builder (config is independent)
+ * options_builder_destroy(builder);
+ * ```
+ *
+ * **Key Functions**:
+ * - `options_builder_add_bool/int/string/double()` → Add single option
+ * - `options_builder_add_callback()` → Add option with custom parser
+ * - `options_builder_add_action()` → Add action option (--version, --help)
+ * - `options_builder_add_dependency_requires/conflicts/implies()` → Add constraints
+ * - `options_builder_set_mode_bitmask()` → Set mode for last added option
+ * - `options_builder_add_positional()` → Add positional args
+ * - `options_builder_add_example()` → Add example for help
+ * - `options_builder_build()` → Create immutable config
+ *
+ * **Building Options**: Three Approaches
+ *
+ * **Approach 1: From Registry** (Most Common)
+ * ```c
+ * options_builder_t *b = options_builder_create(sizeof(options_t));
+ * options_registry_add_all_to_builder(b);  // Use all registered options
+ * options_config_t *config = options_builder_build(b);
+ * ```
+ *
+ * **Approach 2: From Preset** (Pre-built configurations)
+ * ```c
+ * options_config_t *preset = options_preset_unified("ascii-chat", "...");
+ * options_builder_t *b = options_builder_from_preset(preset);
+ * // Modify if needed
+ * options_config_t *config = options_builder_build(b);
+ * ```
+ *
+ * **Approach 3: Custom from Scratch**
+ * ```c
+ * options_builder_t *b = options_builder_create(sizeof(my_options_t));
+ * options_builder_add_bool(b, "verbose", 'v', offsetof(...), ...);
+ * options_builder_add_int(b, "port", 'p', offsetof(...), ...);
+ * // ... add more options
+ * options_config_t *config = options_builder_build(b);
+ * ```
+ *
+ * ### 3. RCU Thread-Safety (rcu.h)
+ *
+ * **Purpose**: Lock-free read access to options from any thread
+ *
+ * **Key Concept: Read-Copy-Update Pattern**
+ *
+ * RCU is perfect for ascii-chat because:
+ * - **Read-Heavy**: Options accessed constantly (60fps video, 172fps audio)
+ * - **Write-Rare**: Options set at startup, rarely changed
+ * - **Lock-Free Reads**: Zero contention, no blocking, ~1-2ns latency
+ *
+ * **How RCU Works**:
+ *
+ * ```
+ * Global atomic pointer to options_t
+ * ┌────────────────────────────────────────────────┐
+ * │ atomic<const options_t*> g_options_ptr          │
+ * └────────────────────────────────────────────────┘
+ *         │
+ *         ├─→ [options_t]  ← Current (readers see this)
+ *         │   {
+ *         │       width: 120,
+ *         │       height: 60,
+ *         │       color_mode: TRUECOLOR,
+ *         │       port: 27224,
+ *         │       ...
+ *         │   }
+ *
+ * When updating options:
+ * 1. Allocate new options_t struct
+ * 2. Copy current values
+ * 3. Apply modifications
+ * 4. Atomic swap pointer
+ * 5. Defer freeing old struct
+ *
+ * Timeline:
+ * ────────────────────────────────────────────
+ * OLD readers: [Old]─┐
+ *                    ├─[Swap]─→ [New]
+ * NEW readers:       └────────→ [New]
+ * FREE: Defer until all old readers done
+ * ```
+ *
+ * **Data Structures**:
+ * ```c
+ * // Opaque internal structure (rcu.c)
+ * typedef struct {
+ *     atomic<const options_t*> ptr;      // Atomic pointer
+ *     mutex_t update_lock;                // Serializes writers
+ *     // ... grace period tracking ...
+ * } options_state_t;
+ * ```
+ *
+ * **API**:
+ * ```c
+ * // Initialization (main thread, before spawning workers)
+ * options_state_init()
+ * options_state_set(&parsed_options)
+ *
+ * // Reading (worker threads, lock-free)
+ * const options_t *opts = options_get();  // 1-2ns atomic load
+ * int width = opts->width;
+ *
+ * // Convenience macro (same as above)
+ * int width = GET_OPTION(width);
+ *
+ * // Cleanup (program exit)
+ * options_state_destroy()
+ * ```
+ *
+ * **Key Features**:
+ * - **Lock-Free**: No mutexes, spinlocks, or blocking
+ * - **Wait-Free**: Guaranteed to complete in bounded time
+ * - **Fallback Defaults**: Returns static defaults before init or after destroy
+ * - **Atomic Semantics**: acquire/release for proper memory ordering
+ * - **Immutable Snapshots**: Readers always see consistent state
+ *
+ * ## Mode Bitmask System
+ *
+ * Options are filtered by mode using bitmasks. This enables:
+ * - **Mode-Specific Options**: Only server can use --max-clients
+ * - **Mode-Aware Help**: Client help doesn't show server options
+ * - **Automatic Filtering**: Parser only accepts relevant options
+ * - **Shell Completions**: Only suggest options for current mode
+ *
+ * **Mode Values**:
+ * ```c
+ * OPTION_MODE_BINARY           // Parsed before mode detection
+ * OPTION_MODE_SERVER           // Server-only
+ * OPTION_MODE_CLIENT           // Client-only
+ * OPTION_MODE_MIRROR           // Mirror mode (local preview)
+ * OPTION_MODE_DISCOVERY_SVC    // Discovery service (ACDS)
+ * OPTION_MODE_ALL              // All modes (combine with |)
+ * ```
+ *
+ * **Examples**:
+ * ```c
+ * // Server-only option
+ * .mode_bitmask = OPTION_MODE_SERVER
+ *
+ * // Available in client and mirror
+ * .mode_bitmask = OPTION_MODE_CLIENT | OPTION_MODE_MIRROR
+ *
+ * // Binary-level (before mode detection)
+ * .mode_bitmask = OPTION_MODE_BINARY
+ *
+ * // Available everywhere
+ * .mode_bitmask = OPTION_MODE_ALL
+ * ```
+ *
+ * **Mode Filtering Workflow**:
+ * ```
+ * 1. User: ./ascii-chat client example.com
+ * 2. Mode Detection: Detects MODE_CLIENT
+ * 3. Registry Filter: Get all options with CLIENT bit set
+ * 4. Parser: Only parses CLIENT options (--color, --audio, --snapshot)
+ * 5. Help: Only shows CLIENT options in --help
+ * 6. Completions: Only suggests CLIENT options
+ * ```
+ *
+ * ## Option Dependencies
+ *
+ * Options can express relationships that are validated:
+ *
+ * **REQUIRES**: If A is set, B must be set
+ * ```c
+ * options_builder_add_dependency_requires(
+ *     builder, "tls-cert", "tls-enabled",
+ *     "TLS certificate requires TLS to be enabled");
+ * ```
+ *
+ * **CONFLICTS**: If A is set, B must NOT be set
+ * ```c
+ * options_builder_add_dependency_conflicts(
+ *     builder, "no-crypto", "key-file",
+ *     "Cannot use key-file with crypto disabled");
+ * ```
+ *
+ * **IMPLIES**: If A is set, B defaults to true
+ * ```c
+ * options_builder_add_dependency_implies(
+ *     builder, "tls-enabled", "secure", NULL);
+ * ```
+ *
+ * Dependencies are validated in `options_config_validate()` after parsing.
+ *
+ * ## Complete Example: Server Mode
+ *
+ * ```c
+ * int main(int argc, char **argv) {
+ *     // 1. Initialize RCU system
+ *     asciichat_error_t err = options_state_init();
+ *     if (err != ASCIICHAT_OK) return 1;
+ *
+ *     // 2. Create builder and populate from registry
+ *     options_builder_t *builder = options_builder_create(sizeof(options_t));
+ *     options_registry_add_all_to_builder(builder);
+ *     options_config_t *config = options_builder_build(builder);
+ *
+ *     // 3. Parse command line
+ *     options_t opts = options_t_new();
+ *     options_config_set_defaults(config, &opts);
+ *
+ *     err = options_config_parse(config, argc, argv, &opts,
+ *                                MODE_DETECTED, NULL, NULL);
+ *     if (err != ASCIICHAT_OK) {
+ *         options_config_print_usage(config, stderr);
+ *         return 1;
+ *     }
+ *
+ *     // 4. Validate options
+ *     char *error_msg = NULL;
+ *     err = options_config_validate(config, &opts, &error_msg);
+ *     if (err != ASCIICHAT_OK) {
+ *         log_error("Option validation failed: %s", error_msg);
+ *         SAFE_FREE(error_msg);
+ *         return 1;
+ *     }
+ *
+ *     // 5. Publish to RCU (before spawning threads)
+ *     err = options_state_set(&opts);
+ *     if (err != ASCIICHAT_OK) return 1;
+ *
+ *     // 6. Now safe to spawn worker threads
+ *     server_run();  // Uses options_get() or GET_OPTION() for lock-free access
+ *
+ *     // 7. Cleanup
+ *     options_struct_destroy(config, &opts);
+ *     options_config_destroy(config);
+ *     options_builder_destroy(builder);
+ *     options_state_destroy();
+ *
+ *     return 0;
+ * }
+ * ```
+ *
+ * ## Design Patterns and Best Practices
+ *
+ * ### Pattern 1: Lock-Free Reading (Render Thread)
+ *
+ * ```c
+ * // Video render thread (60fps, no locks)
+ * void render_frame_thread(void) {
+ *     while (running) {
+ *         // Safe lock-free read (~1-2ns atomic load)
+ *         const options_t *opts = options_get();
+ *
+ *         // Use options from consistent snapshot
+ *         framebuffer_t fb = render_frame(opts->width, opts->height);
+ *         apply_color_mode(&fb, opts->color_mode);
+ *         display_frame(&fb);
+ *
+ *         usleep(16667);  // ~60fps
+ *     }
+ * }
+ * ```
+ *
+ * ### Pattern 2: Runtime Option Updates
+ *
+ * ```c
+ * // Main thread updates option (e.g., terminal resized)
+ * void on_terminal_resize(int new_width, int new_height) {
+ *     // Create new options struct with updated values
+ *     options_t new_opts = *options_get();  // Copy current
+ *     new_opts.width = new_width;
+ *     new_opts.height = new_height;
+ *
+ *     // Publish atomically
+ *     options_state_set(&new_opts);
+ *
+ *     // Render threads now see new dimensions (lock-free)
+ * }
+ * ```
+ *
+ * ### Pattern 3: Mode-Aware Option Filtering
+ *
+ * ```c
+ * // Get only options for current mode
+ * void show_mode_specific_help(asciichat_mode_t mode) {
+ *     size_t num_opts;
+ *     const option_descriptor_t *opts =
+ *         options_registry_get_for_mode(mode, &num_opts);
+ *
+ *     for (size_t i = 0; i < num_opts; i++) {
+ *         if (opts[i].hide_from_mode_help) continue;  // Skip binary-only
+ *         printf("  --%s      %s\n", opts[i].long_name,
+ *                opts[i].help_text);
+ *     }
+ * }
+ * ```
+ *
+ * ### Pattern 4: Custom Option with Validation
+ *
+ * In registry.c:
+ * ```c
+ * bool validate_port(const void *options_struct, char **error_msg) {
+ *     const options_t *opts = (const options_t *)options_struct;
+ *     if (opts->port < 1 || opts->port > 65535) {
+ *         *error_msg = strdup("Port must be between 1 and 65535");
+ *         return false;
+ *     }
+ *     return true;
+ * }
+ *
+ * // In registry array:
+ * {
+ *     .long_name = "port",
+ *     .short_name = 'p',
+ *     .type = OPTION_TYPE_INT,
+ *     .offset = offsetof(options_t, port),
+ *     .default_value = &(int){27224},
+ *     .help_text = "Server port (1-65535)",
+ *     .group = "NETWORK OPTIONS",
+ *     .mode_bitmask = OPTION_MODE_SERVER,
+ *     .validate = validate_port,  // Custom validator
+ * }
+ * ```
+ *
+ * ## Thread Safety Summary
+ *
+ * | Phase | Operation | Thread Safety |
+ * |-------|-----------|---------------|
+ * | Startup | Parse args | Main thread only |
+ * | Startup | Validate | Main thread only |
+ * | Startup | Publish (options_state_set) | Main thread only |
+ * | Runtime | Read (options_get) | All threads, lock-free |
+ * | Runtime | Update | One writer, readers see atomic update |
+ * | Shutdown | Destroy | Main thread only |
+ *
+ * ## Performance Characteristics
+ *
+ * | Operation | Latency | Threads | Notes |
+ * |-----------|---------|---------|-------|
+ * | options_get() | ~1-2ns | Lock-free | Single atomic load |
+ * | GET_OPTION(field) | ~1-2ns | Lock-free | Convenience macro |
+ * | Parse (100 options) | ~10μs | Main thread | One-time startup |
+ * | Validate | ~1μs | Main thread | One-time startup |
+ * | options_state_set | ~100ns | Serialized | Defers free old struct |
+ *
+ * ## Summary
+ *
+ * The options system provides:
+ * - **Registry**: Single definition of all options
+ * - **Builder**: Flexible configuration construction
+ * - **RCU**: Lock-free read access from any thread
+ * - **Mode Bitmasks**: Automatic mode-aware filtering
+ * - **Type Safety**: Default constants, no magic numbers
+ * - **Validation**: Required fields, dependencies, cross-field validators
+ * - **Memory Safety**: Auto-duplicated strings, auto-freed
+ * - **Shell Completions**: Metadata for rich completions
+ * - **Grouped Help**: Organized by category with colors
+ *
+ * All components work together to provide a comprehensive, type-safe,
+ * thread-safe command-line option handling system.
+ *
+ * @see registry.h - Central registry of option definitions
+ * @see builder.h - Builder API for option configurations
+ * @see rcu.h - RCU-based thread-safe access
+ * @see options.h - Unified options parsing system
+ */

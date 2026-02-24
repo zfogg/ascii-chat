@@ -670,6 +670,221 @@
  * ./bin/ascii-chat client --palette simple
  * @endcode
  *
+ * @section client_state_machine Client State Machine
+ *
+ * The client implements a robust state machine that handles connection lifecycle,
+ * reconnection logic, and thread coordination across multiple concurrent operations.
+ *
+ * @subsection client_states Connection States
+ *
+ * **State Diagram**:
+ * @verbatim
+ *
+ *                                 +---> CONNECTED
+ *                                 |        |
+ *         START ---> CONNECTING --+        |
+ *                       |         |        |
+ *                       |         +-> RECONNECTING
+ *                       |
+ *                       +---> FAILED (auth/host key)
+ *
+ *      CONNECTED/RECONNECTING ---> (connection loss detected) ---> CLEANUP
+ *                                                                      |
+ *      CLEANUP ---> (threads joined) ---> (user exit?) ---> SHUTDOWN
+ *                                                               |
+ *                                              (retry?) ---> CONNECTING
+ * @endverbatim
+ *
+ * **State Descriptions**:
+ * - **START**: Initial state before connection attempt
+ * - **CONNECTING**: Attempting to establish socket and handshake
+ * - **CONNECTED**: Active connection with all threads running
+ * - **RECONNECTING**: Connection lost, exponential backoff active, preparing retry
+ * - **FAILED**: Fatal error (auth failed, host key verification failed) - no retry
+ * - **CLEANUP**: Stopping threads and releasing resources after connection loss
+ * - **SHUTDOWN**: Final cleanup and exit
+ *
+ * @subsection client_session_management Session State Management
+ *
+ * Session state persists across reconnections to maintain coherent behavior:
+ *
+ * @code{.c}
+ * typedef struct {
+ *   connection_attempt_context_t connection_ctx;  // Fallback attempt context (TCP -> STUN -> TURN)
+ *   const char *discovered_address;               // Server IP discovered via LAN/ACDS
+ *   int discovered_port;                          // Server port
+ *   int reconnect_attempt;                        // Current retry attempt number
+ *   bool has_ever_connected;                      // Track if any connection succeeded
+ * } client_session_state_t;
+ * @endcode
+ *
+ * **Session Lifecycle**:
+ * - `reconnect_attempt = 0`: First connection attempt
+ * - `has_ever_connected = false`: No successful connection yet (fresh session)
+ * - **On connection success**: `reconnect_attempt = 0` (reset), `has_ever_connected = true` (set)
+ * - **On connection loss**: `reconnect_attempt++` (increment), `has_ever_connected` remains true
+ * - **On fatal error**: State cleared, exit without retry
+ *
+ * **Fallback Connection Strategy**:
+ * The connection context maintains state across fallback attempts:
+ * 1. **Try Direct TCP**: `connection_attempt_tcp(address, port)`
+ * 2. **Try STUN P2P**: `connection_attempt_stun(address, port)` (WebRTC negotiation)
+ * 3. **Try TURN Relay**: `connection_attempt_turn(address, port)` (guaranteed success)
+ *
+ * Each stage reuses the same context, allowing the client to remember which stages succeeded
+ * and avoid repeated failures in subsequent reconnections.
+ *
+ * @section client_error_recovery Error Recovery Patterns
+ *
+ * The client implements sophisticated error recovery with distinct handling for different
+ * error classes:
+ *
+ * @subsection client_recovery_fatal Fatal Errors (No Recovery)
+ *
+ * **Error Codes**:
+ * - `CONNECTION_ERROR_AUTH_FAILED (-2)`: Client authentication rejected by server
+ * - `CONNECTION_ERROR_HOST_KEY_FAILED (-3)`: Server host key verification failed
+ *
+ * **Recovery Pattern**:
+ * @code{.c}
+ * if (result == CONNECTION_ERROR_AUTH_FAILED ||
+ *     result == CONNECTION_ERROR_HOST_KEY_FAILED) {
+ *   // Fatal auth errors - inform user and exit
+ *   log_error("Authentication failed - cannot reconnect: %s", error_message);
+ *   return result;  // Exit immediately
+ * }
+ * @endcode
+ *
+ * **Why No Retry**: Retrying would be futile - the server has explicitly rejected the client
+ * (auth failed) or the client cannot trust the server identity (host key failed). User intervention
+ * required (different password, updated host key, etc.).
+ *
+ * @subsection client_recovery_transient Transient Errors (With Recovery)
+ *
+ * **Error Codes**:
+ * - `CONNECTION_ERROR_GENERIC (-1)`: Network error (connection refused, timeout, DNS failure)
+ *
+ * **Recovery Pattern**:
+ * @code{.c}
+ * if (result == CONNECTION_ERROR_GENERIC) {
+ *   // Transient errors recover with exponential backoff
+ *   int delay_ms = 10 + (200 * reconnect_attempt);
+ *   if (delay_ms > 5000) delay_ms = 5000;
+ *   platform_sleep_usec(delay_ms * 1000);
+ *   reconnect_attempt++;
+ *   continue;  // Try again
+ * }
+ * @endcode
+ *
+ * **Backoff Strategy**:
+ * - Initial delay: 10ms
+ * - Growth: +200ms per attempt
+ * - Cap: 5 seconds maximum
+ * - **Attempt 0**: 10ms
+ * - **Attempt 1**: 210ms
+ * - **Attempt 2**: 410ms
+ * - **Attempt 3+**: 5000ms (capped)
+ *
+ * **Why Exponential Backoff**: Prevents thundering herd when server is briefly down.
+ * Gives server time to recover from temporary issues while not abandoning the client too quickly.
+ *
+ * @subsection client_recovery_runtime Runtime Connection Loss (With Recovery)
+ *
+ * **Detection Triggers**:
+ * 1. Socket read error during `receive_packet()`
+ * 2. Socket write error during `send_packet_to_server()`
+ * 3. Keepalive timeout (no pong for 30 seconds)
+ * 4. Data reception thread exits unexpectedly
+ *
+ * **Recovery Pattern**:
+ * @code{.c}
+ * // Thread A detects loss
+ * if (socket_error_detected) {
+ *   server_connection_lost();  // Atomic flag set
+ * }
+ *
+ * // Main thread detects loss
+ * while (server_connection_is_active()) {
+ *   if (protocol_connection_lost()) break;  // Lost detected
+ *   platform_sleep_usec(100000);  // 100ms poll
+ * }
+ *
+ * // Main thread recovers
+ * capture_stop_thread();
+ * audio_stop_thread();
+ * keepalive_stop_thread();
+ * protocol_stop_connection();  // Wait for threads
+ *
+ * server_connection_close();
+ * display_reset_for_new_connection();
+ *
+ * // Loop back to reconnect
+ * reconnect_attempt++;
+ * @endcode
+ *
+ * **Why This Works**: By coordinating thread shutdown and resource cleanup in proper order,
+ * we ensure no race conditions during reconnection. Each reconnection cycle is a clean restart
+ * of all subsystems.
+ *
+ * @subsection client_recovery_cleanup Resource Cleanup Order
+ *
+ * **Critical**: Resources must be cleaned up in reverse initialization order to avoid
+ * use-after-free bugs:
+ *
+ * **Initialization Order** (first → last):
+ * 1. Platform initialization
+ * 2. Display initialization
+ * 3. Capture initialization
+ * 4. Audio initialization
+ *
+ * **Cleanup Order** (must be reversed):
+ * 1. Audio cleanup (stop playback)
+ * 2. Capture cleanup (stop webcam)
+ * 3. Display cleanup (restore terminal)
+ * 4. Platform cleanup (close handles)
+ *
+ * **Why Order Matters**: Display cleanup restores terminal state, but if capture is still
+ * running and trying to use the terminal, we get corruption. Platform cleanup closes OS handles
+ * that other subsystems may still need.
+ *
+ * **Signal Handler Context**: The cleanup handler registered with `atexit()` follows this order:
+ * @code{.c}
+ * signal_exit();              // Stop all threads
+ * splash_intro_done();        // Stop splash animation
+ * protocol_stop_connection(); // Shut down socket, wait for threads
+ * thread_pool_destroy();      // Destroy worker pool
+ * app_client_destroy();       // Destroy client context
+ * server_connection_cleanup(); // Legacy cleanup
+ * capture_cleanup();          // Stop webcam
+ * audio_cleanup();            // Stop audio
+ * display_cleanup();          // Restore terminal
+ * buffer_pool_cleanup_global(); // Free buffer pools
+ * platform_disable_keepawake();
+ * symbol_cache_destroy();
+ * asciichat_errno_destroy();
+ * options_state_destroy();
+ * log_destroy();
+ * @endcode
+ *
+ * @subsection client_recovery_thread_safety Thread-Safe Error Detection
+ *
+ * **Connection Loss Detection** uses atomic operations to prevent race conditions:
+ *
+ * @code{.c}
+ * void server_connection_lost(void) {
+ *   // Atomic compare-exchange ensures only FIRST detector takes action
+ *   bool expected = true;
+ *   if (atomic_compare_exchange_strong(&g_connection_active, &expected, false)) {
+ *     // Only first thread to detect loss sets the flag
+ *     atomic_store(&g_connection_lost, true);
+ *     log_warn("Connection lost detected by thread");
+ *   }
+ * }
+ * @endcode
+ *
+ * **Why Atomic CAS**: Multiple threads may detect loss simultaneously (data thread, keepalive thread).
+ * Using compare-exchange ensures only one thread triggers cleanup, preventing double-cleanup race.
+ *
  * @section client_known_issues Known Issues and Limitations
  *
  * **SSH Key Decryption**:

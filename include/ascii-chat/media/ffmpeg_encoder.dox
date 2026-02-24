@@ -1,0 +1,490 @@
+/**
+ * @page ffmpeg_encoder_architecture FFmpeg Encoder Architecture & Implementation
+ *
+ * @tableofcontents
+ *
+ * @section arch_overview Architecture Overview
+ *
+ * The FFmpeg encoder is a thin wrapper around FFmpeg's encoding pipeline that simplifies
+ * video/image encoding by automating format selection, color space conversion, and
+ * encoder configuration. Rather than expose FFmpeg's complex API directly, it provides
+ * a minimal three-function interface: create, write frame, destroy.
+ *
+ * ```
+ * Application
+ *     ↓
+ * ffmpeg_encoder_create() ─────→ [Format Detection] ─→ [Codec Selection] ─→ [SWS Setup]
+ *     ↓
+ * ffmpeg_encoder_write_frame() → [RGB24 Input] ─→ [Color Space Conversion] ─→ [Encoding]
+ *     ↓
+ * ffmpeg_encoder_destroy() ────→ [Flush Frames] ─→ [Write Trailer] ─→ [Cleanup]
+ * ```
+ *
+ * @section arch_pipeline Encoding Pipeline
+ *
+ * @subsection pipeline_create Initialization Phase (ffmpeg_encoder_create)
+ *
+ * 1. **Validation:** Parameters checked for validity (dimensions > 0, fps > 0, paths valid)
+ *
+ * 2. **Format Detection:** File extension parsed to determine:
+ *    - Container format (MP4, WebM, AVI, GIF, image2)
+ *    - Video codec (H.264, VP9, MPEG-4, GIF, PNG, MJPEG)
+ *    - Output pixel format (YUV420P, YUVJ420P, RGB24, PAL8)
+ *
+ * 3. **Context Allocation:**
+ *    - `AVFormatContext` allocated (muxer for output file)
+ *    - `AVCodecContext` allocated and configured with:
+ *      - Dimensions (width × height)
+ *      - Pixel format (for target codec)
+ *      - Frame rate (fps)
+ *      - Bitrate (auto-calculated from resolution)
+ *      - Time base (1/fps for frame timing)
+ *
+ * 4. **Codec Lookup:** FFmpeg looks up encoder by name (e.g., "libx264" for H.264)
+ *
+ * 5. **Stream Creation:** `AVStream` created in muxer context
+ *
+ * 6. **Codec Parameters:** Codec context parameters copied to stream for muxer configuration
+ *
+ * 7. **Color Space Converter Setup:** `SwsContext` created to convert:
+ *    - Input: RGB24 (24-bit per pixel)
+ *    - Output: Target pixel format (YUV420P, RGB24, YUVJ420P, etc.)
+ *    - Algorithm: SWS_BICUBIC (bicubic interpolation for quality)
+ *
+ * 8. **Frame Allocation:**
+ *    - Input frame buffer (for RGB24 data)
+ *    - Encoded frame buffer (in target pixel format)
+ *    - Packet buffer (for compressed output)
+ *
+ * 9. **File Opening:** Output file handle opened (unless AVFMT_NOFILE is set)
+ *
+ * 10. **Header Writing:** Format-specific header written to file
+ *
+ * @subsection pipeline_write Frame Writing Phase (ffmpeg_encoder_write_frame)
+ *
+ * Called once per frame to encode and write a single frame:
+ *
+ * ```
+ * Input Frame (RGB24)
+ *     ↓
+ * [SWS Scaling] ─→ Color Space Conversion to Target Format
+ *     ↓
+ * [Encoded Frame] ─→ Set PTS (presentation timestamp)
+ *     ↓
+ * [Codec] ─→ Encode Frame to Compressed Packets
+ *     ↓
+ * [Packets] ─→ Rescale Timestamps, Set Stream Index
+ *     ↓
+ * [Muxer] ─→ Write Interleaved Packets to File
+ *     ↓
+ * Output File
+ * ```
+ *
+ * **Detailed Steps:**
+ *
+ * 1. **Frame Setup:** Input RGB24 frame configured with pitch/linesize
+ *
+ * 2. **Color Space Conversion:** `sws_scale()` converts RGB24 to target format:
+ *    - For YUV formats: Applies ITU-R BT.601 RGB→YUV transformation
+ *    - For RGB formats: Direct copy with optional padding adjustment
+ *    - For Palette formats (GIF): Dithering and palette selection
+ *
+ * 3. **Timestamp Assignment:** PTS set to frame counter for proper timing
+ *
+ * 4. **Encoding:** `avcodec_send_frame()` sends converted frame to codec
+ *
+ * 5. **Packet Reception:** Loop calling `avcodec_receive_packet()` to get compressed packets
+ *    - Multiple packets may be produced per frame (especially for motion)
+ *    - EAGAIN/EOF indicates end of current packet batch
+ *
+ * 6. **Timestamp Rescaling:** Packet timestamps converted from codec time base to stream time base
+ *
+ * 7. **Muxing:** `av_interleaved_write_frame()` writes packet to output file
+ *    - Interleaved: Maintains proper frame order even with variable packet sizes
+ *
+ * 8. **Cleanup:** Packet reference unreferenced after writing
+ *
+ * @subsection pipeline_destroy Finalization Phase (ffmpeg_encoder_destroy)
+ *
+ * Called once at end to finalize file and free resources:
+ *
+ * 1. **Encoder Flush:** Send NULL frame to encoder to flush pending frames
+ *
+ * 2. **Receive Remaining Packets:** Loop to get all remaining packets (especially important
+ *    for B-frames in H.264 that may be delayed)
+ *
+ * 3. **Write Trailer:** Final container-specific trailer/footer written
+ *    - For MP4: Updates file size, metadata in atoms
+ *    - For WebM: Writes Cues element for seeking
+ *    - For GIF: Finalizes palette if needed
+ *
+ * 4. **Resource Cleanup:**
+ *    - Color space converter freed
+ *    - Frames freed
+ *    - Codec context freed
+ *    - Muxer context and file handle freed
+ *
+ * @section arch_formats Format & Codec Details
+ *
+ * @subsection formats_video Video Formats
+ *
+ * **MP4 / MOV Container with H.264 Codec**
+ * - Codec: libx264 (MPEG-4 Part 10 / AVC)
+ * - Pixel Format: YUV420P (4:2:0 subsampling)
+ * - Bitrate: Auto-calculated
+ * - Frame Rate: Variable (specified by fps parameter)
+ * - Use Case: Standard streaming, maximum compatibility
+ * - Quality: Good compression with high quality at reasonable bitrates
+ * - Speed: Fast to moderate encoding
+ *
+ * **WebM Container with VP9 Codec**
+ * - Codec: libvpx-vp9 (VP9 video codec)
+ * - Pixel Format: YUV420P (4:2:0 subsampling)
+ * - Bitrate: Auto-calculated
+ * - Frame Rate: Variable (specified by fps parameter)
+ * - Use Case: Web streaming where quality/size ratio is important
+ * - Quality: Superior quality-to-bitrate ratio compared to H.264
+ * - Speed: Slow to moderate encoding (significantly slower than H.264)
+ * - Note: Larger file size than H.264 at equivalent quality is offset by better efficiency
+ *
+ * **AVI Container with MPEG-4 Codec**
+ * - Codec: mpeg4 (MPEG-4 Part 2)
+ * - Pixel Format: YUV420P (4:2:0 subsampling)
+ * - Bitrate: Auto-calculated
+ * - Frame Rate: Variable (specified by fps parameter)
+ * - Use Case: Legacy systems, historical/archival content
+ * - Quality: Adequate compression, less efficient than modern codecs
+ * - Speed: Fast encoding
+ * - Note: Larger files than modern formats at equivalent quality
+ *
+ * @subsection formats_gif GIF Animation
+ *
+ * - Codec: gif (FFmpeg's GIF encoder)
+ * - Pixel Format: Palette (8-bit color, max 256 colors)
+ * - Frame Rate: Variable (specified by fps parameter)
+ * - Use Case: Short animated sequences, compatibility with all browsers
+ * - Quality: Lossless but severely limited to 256 colors (dithered)
+ * - Speed: Fast encoding
+ * - Limitations: Color banding for gradients, large files for long animations
+ * - Best for: Screen recordings, short clips with limited color palette
+ *
+ * @subsection formats_images Image Formats
+ *
+ * **PNG (Portable Network Graphics)**
+ * - Codec: png
+ * - Container: image2 (single image format)
+ * - Pixel Format: RGB24 (true color, no compression)
+ * - Compression: Lossless deflate (DEFLATE algorithm)
+ * - Use Case: Single-frame snapshots, critical content requiring lossless quality
+ * - Quality: Perfect preservation of input RGB values
+ * - Speed: Slow (lossless compression is computationally expensive)
+ * - File Size: Large (typically 2-5x larger than JPEG for equivalent visual quality)
+ * - Advantages: Lossless, alpha channel support (not exposed here)
+ * - Best for: Screenshots, archival, cases where pixel-perfect quality is required
+ *
+ * **MJPEG (Motion JPEG) via image2 Format**
+ * - Codec: mjpeg (JPEG encoder)
+ * - Container: image2 (single image format)
+ * - Pixel Format: YUVJ420P (full-range YUV as used in JPEG)
+ * - Compression: Lossy JPEG compression
+ * - Use Case: Single-frame snapshots with reasonable file size
+ * - Quality: Good visual quality, some compression artifacts at high compression
+ * - Speed: Fast encoding (JPEG is efficient)
+ * - File Size: Small to moderate (typically 50-200 KB for high-quality snapshots)
+ * - Advantages: Universal compatibility, efficient compression
+ * - Best for: General-purpose snapshots, web thumbnails
+ *
+ * @section arch_colorspace Color Space Conversion Details
+ *
+ * All input frames are in **RGB24** format. The encoder automatically converts to the
+ * appropriate output pixel format for each target codec using libswscale.
+ *
+ * @subsection colorspace_rgb24 Input: RGB24
+ *
+ * - **Format:** 24 bits per pixel (8-bit red, 8-bit green, 8-bit blue)
+ * - **Memory Layout:** Pixels laid out as RGBRGBRGB... in memory
+ * - **Pitch:** Byte offset from one row to the next (typically width × 3 for tight packing)
+ * - **Color Space:** Linear RGB (gamma-uncorrected)
+ * - **Range:** Full range (0-255 per channel)
+ *
+ * @subsection colorspace_yuv420p Output: YUV420P (Video Formats)
+ *
+ * Used for H.264, VP9, MPEG-4.
+ *
+ * - **Format:** YUV 4:2:0 planar (luminance + 2× subsampled chrominance)
+ * - **Conversion:** RGB → Y'CbCr (ITU-R BT.601)
+ *   - Y (luma): Brightness; computed from R, G, B weighted by perception
+ *   - Cb, Cr (chroma): Color; U and V components, each at 1/4 resolution
+ * - **Spatial Arrangement:**
+ *   - Y plane: Full resolution (W × H pixels)
+ *   - Cb plane: 1/4 resolution (W/2 × H/2 pixels)
+ *   - Cr plane: 1/4 resolution (W/2 × H/2 pixels)
+ * - **Advantage:** 50% memory reduction vs. RGB24 due to chroma subsampling
+ *   (human vision is less sensitive to color detail than brightness)
+ * - **Perceptual Quality:** Transparent to most viewers for natural video
+ *
+ * @subsection colorspace_yuvj420p Output: YUVJ420P (JPEG Formats)
+ *
+ * Used for MJPEG (JPEG single-frame format).
+ *
+ * - **Format:** YUV 4:2:0 planar with **full-range** values
+ * - **Key Difference vs. YUV420P:**
+ *   - YUV420P uses ITU-R BT.601 restricted range: Y ∈ [16, 235], Cb/Cr ∈ [16, 240]
+ *   - YUVJ420P uses full range: Y, Cb, Cr ∈ [0, 255]
+ * - **Why Different:** JPEG standard uses full-range YUV encoding
+ * - **Conversion:** Same RGB → Y'CbCr transformation, but with full-range scaling
+ * - **Perceptual Quality:** Identical to YUV420P for viewing
+ *
+ * @subsection colorspace_rgb24_output Output: RGB24 (PNG, GIF)
+ *
+ * - **PNG:** Direct RGB24 output, no conversion (pixel-perfect preservation)
+ * - **GIF:** RGB24 input converted to indexed color (256-color palette) with dithering
+ *   - FFmpeg handles palette generation and dithering automatically
+ *   - Quality depends on the color content (poor for gradients, excellent for solid colors)
+ *
+ * @subsection colorspace_algorithm Conversion Algorithm: SWS_BICUBIC
+ *
+ * The encoder uses **SWS_BICUBIC** (bicubic interpolation) for color space conversion:
+ *
+ * - **Quality:** Good quality for both upsampling and downsampling
+ * - **Speed:** Moderate performance (acceptable for real-time use with moderate resolutions)
+ * - **Alternatives Available (not exposed here):**
+ *   - SWS_FAST_BILINEAR: Fast but lower quality (used in many web video services)
+ *   - SWS_BICUBIC: Current choice, good balance
+ *   - SWS_LANCZOS: Higher quality but significantly slower
+ * - **Why SWS_BICUBIC:** Chosen as a reasonable balance for general use
+ *
+ * @section arch_bitrate Automatic Bitrate Calculation
+ *
+ * The encoder calculates bitrate automatically to avoid requiring manual tuning:
+ *
+ * ```c
+ * int megapixels = (width_px * height_px) / (1024 * 1024);
+ * int bitrate_kbps = megapixels;  // ~1 Mbps per megapixel
+ * bitrate_kbps = clamp(bitrate_kbps, 500, 5000);  // Enforce [500, 5000] kbps range
+ * ```
+ *
+ * @subsection bitrate_rationale Rationale
+ *
+ * **1 Mbps per megapixel** is a perceptually-tuned heuristic:
+ *
+ * | Resolution | Megapixels | Bitrate | Quality | Common Use |
+ * |---|---|---|---|---|
+ * | 320×240 | 0.077 | 500 kbps | Good | Video conferencing, low-bandwidth |
+ * | 640×480 | 0.31 | 500 kbps | Acceptable | Webcam, standard definition |
+ * | 1280×720 | 0.92 | 920 kbps | Good | HD ready |
+ * | 1920×1080 | 2.07 | 2070 kbps | Good | Full HD |
+ * | 3840×2160 | 8.29 | 5000 kbps (clamped) | Acceptable | 4K (bitrate limited) |
+ *
+ * @subsection bitrate_considerations Considerations
+ *
+ * - **Lower resolutions** clamp at 500 kbps minimum (wasteful to use less)
+ * - **Higher resolutions** clamp at 5000 kbps maximum (balance file size vs. quality)
+ * - **H.264 at these bitrates:** Acceptable quality for general streaming/recording
+ * - **VP9 at these bitrates:** Superior quality compared to H.264
+ * - **Static content** (slide shows): Could use lower bitrates effectively
+ * - **High-motion content** (sports, action): May benefit from higher bitrates
+ *
+ * @section arch_memory Memory Management & Resource Lifetime
+ *
+ * @subsection memory_allocation Resource Ownership
+ *
+ * **Encoder Owns:**
+ * - AVFormatContext (muxer, output file handle)
+ * - AVCodecContext (encoder state)
+ * - AVStream (stream metadata)
+ * - SwsContext (color space converter)
+ * - AVFrame objects (input and encoded frames)
+ * - AVPacket (for compressed output)
+ *
+ * **Caller Owns:**
+ * - Input RGB24 frame buffer
+ * - Output file path string
+ * - ffmpeg_encoder_t pointer (stack or heap)
+ *
+ * @subsection memory_lifecycle Lifetime Rules
+ *
+ * 1. **Creation:** `ffmpeg_encoder_create()` allocates all encoder resources
+ *
+ * 2. **Usage:** Input buffer must remain valid for duration of `ffmpeg_encoder_write_frame()` call
+ *    - Buffer is NOT copied; used immediately for color conversion
+ *    - Safe to reuse/free after function returns
+ *
+ * 3. **Finalization:** `ffmpeg_encoder_destroy()` releases all resources
+ *    - **Must be called** to finalize output file properly
+ *    - **Must be called** to avoid resource leaks
+ *    - Safe to call with NULL (no-op)
+ *
+ * @subsection memory_errors Error Recovery
+ *
+ * If `ffmpeg_encoder_create()` fails:
+ * - Partial resources may be allocated
+ * - `out` pointer is not modified (safe to check for NULL)
+ * - No cleanup needed (all resources freed on error)
+ *
+ * If `ffmpeg_encoder_write_frame()` fails:
+ * - Encoder state may be corrupted
+ * - Must still call `ffmpeg_encoder_destroy()` to clean up
+ * - Output file may be partially written
+ *
+ * @section arch_windows Windows Support
+ *
+ * This encoder is **NOT AVAILABLE on Windows (_WIN32)**. All functions are stubbed out
+ * with `#ifndef _WIN32` guards.
+ *
+ * **Rationale:** Windows PortAudio/audio subsystem complexity; future implementation would
+ * require Windows-specific codec/muxer setup.
+ *
+ * @section troubleshooting Troubleshooting Guide
+ *
+ * @subsection troubleshoot_file File not created or incomplete
+ *
+ * **Problem:** Output file missing or unplayable
+ * **Causes:**
+ * - ffmpeg_encoder_destroy() not called (file not finalized)
+ * - File path invalid or not writable
+ * - Disk full during encoding
+ *
+ * **Solution:**
+ * - Always call ffmpeg_encoder_destroy() when done
+ * - Check file path is valid: use absolute paths if unsure
+ * - Ensure sufficient disk space before encoding large videos
+ *
+ * @subsection troubleshoot_color Color shift or incorrect output
+ *
+ * **Problem:** Output colors don't match input (greenish, reddish, too dark/bright)
+ * **Causes:**
+ * - Input buffer not actually RGB24
+ * - Pitch parameter incorrect (row offset doesn't match buffer)
+ * - Input buffer not linearized (gamma-corrected input)
+ *
+ * **Solution:**
+ * - Verify input is packed RGB24 (24 bits = 8R + 8G + 8B)
+ * - Verify pitch = width × 3 for tightly-packed; adjust for padded buffers
+ * - Ensure RGB values are in linear space (not sRGB-gamma encoded)
+ *
+ * @subsection troubleshoot_size File size unexpectedly large or small
+ *
+ * **Problem:** Output file much larger or smaller than expected
+ * **Causes:**
+ * - Bitrate auto-calculation doesn't match desired size
+ * - Codec differences (VP9 vs. H.264 have different compression ratios)
+ * - Extension mismatch (saved as .mp4 but encoder treating as different format)
+ *
+ * **Solution:**
+ * - For lower bitrate: Use WebM (VP9) instead of MP4 (H.264) for equivalent quality
+ * - For smaller single frames: Use JPEG instead of PNG
+ * - Verify file extension matches intended codec
+ *
+ * @subsection troubleshoot_speed Encoding very slow
+ *
+ * **Problem:** ffmpeg_encoder_write_frame() takes very long
+ * **Causes:**
+ * - VP9 codec is slow (inherent to codec design)
+ * - Very high resolution (4K+)
+ * - CPU bottleneck
+ * - Disk I/O bottleneck
+ *
+ * **Solution:**
+ * - For real-time encoding: Use MP4 H.264 instead of WebM VP9
+ * - For high resolution: Consider lower resolution or acceptance of slower encoding
+ * - Ensure output file is on fast storage (SSD preferred over HDD)
+ * - Use lower FPS if acceptable for use case
+ *
+ * @subsection troubleshoot_memory Memory leak
+ *
+ * **Problem:** Memory usage grows unbounded, program crashes with out-of-memory
+ * **Causes:**
+ * - ffmpeg_encoder_destroy() not called (resources not freed)
+ * - Encoder created in loop without cleanup between iterations
+ * - Caller buffer not freed between frames
+ *
+ * **Solution:**
+ * - Always call ffmpeg_encoder_destroy() before exiting
+ * - If creating multiple encoders, ensure each is destroyed before next is created
+ * - Reuse caller buffer if possible (don't allocate new buffer per frame)
+ *
+ * @section examples_advanced Advanced Usage Patterns
+ *
+ * @subsection example_quality_ladder Quality ladder encoding (multiple formats)
+ *
+ * Encode same video in multiple qualities for adaptive streaming:
+ *
+ * ```c
+ * struct {
+ *     const char *path;
+ *     int width, height;
+ *     const char *format_hint;  // "webm" for VP9, "mp4" for H.264
+ * } quality_ladder[] = {
+ *     {"output_480p.webm", 854, 480, "webm"},
+ *     {"output_720p.webm", 1280, 720, "webm"},
+ *     {"output_1080p.mp4", 1920, 1080, "mp4"},
+ * };
+ *
+ * ffmpeg_encoder_t *encoders[3];
+ * for (int i = 0; i < 3; i++) {
+ *     ffmpeg_encoder_create(quality_ladder[i].path,
+ *                          quality_ladder[i].width,
+ *                          quality_ladder[i].height,
+ *                          30, &encoders[i]);
+ * }
+ *
+ * // For each frame
+ * uint8_t *frame_rgb = capture_frame();
+ * for (int i = 0; i < 3; i++) {
+ *     // Would need to rescale frame_rgb to match each encoder resolution
+ *     ffmpeg_encoder_write_frame(encoders[i], frame_rgb, pitch);
+ * }
+ *
+ * for (int i = 0; i < 3; i++) {
+ *     ffmpeg_encoder_destroy(encoders[i]);
+ * }
+ * ```
+ *
+ * @subsection example_snapshot Periodic snapshot capture
+ *
+ * Capture individual frames as high-quality PNG snapshots:
+ *
+ * ```c
+ * // Every N frames, capture a snapshot
+ * if (frame_number % 30 == 0) {
+ *     char path[256];
+ *     snprintf(path, sizeof(path), "snapshot_%d.png", frame_number);
+ *
+ *     ffmpeg_encoder_t *snap;
+ *     ffmpeg_encoder_create(path, width, height, 1, &snap);
+ *     ffmpeg_encoder_write_frame(snap, frame_rgb, pitch);
+ *     ffmpeg_encoder_destroy(snap);
+ * }
+ * ```
+ *
+ * @subsection example_format_fallback Format format-aware fallback
+ *
+ * Attempt high-quality encoding with fallback to lower quality:
+ *
+ * ```c
+ * const char *preferred_formats[] = {"output.webm", "output.mp4"};
+ * ffmpeg_encoder_t *enc = NULL;
+ *
+ * for (int i = 0; i < 2; i++) {
+ *     asciichat_error_t err = ffmpeg_encoder_create(preferred_formats[i],
+ *                                                   1920, 1080, 30, &enc);
+ *     if (err == ASCIICHAT_OK) break;
+ *     log_warn("Format %s not available, trying next", preferred_formats[i]);
+ * }
+ *
+ * if (enc == NULL) {
+ *     log_error("No encoding format available");
+ *     return;
+ * }
+ *
+ * // Use enc...
+ * ffmpeg_encoder_destroy(enc);
+ * ```
+ *
+ * @section see_also See Also
+ * - FFmpeg Documentation: https://ffmpeg.org/documentation.html
+ * - libswscale: Image scaling, color space conversion
+ * - libavcodec: Video encoding
+ * - libavformat: Container muxing
+ */

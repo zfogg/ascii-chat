@@ -1,0 +1,655 @@
+/**
+ * @page topic_crypto_module_organization Crypto Module Organization
+ * @ingroup module_crypto
+ * @brief Comprehensive guide to lib/crypto/ directory structure and subsystems
+ *
+ * @tableofcontents
+ *
+ * @section module_crypto_overview Overview
+ *
+ * The `lib/crypto/` module is the heart of ascii-chat's cryptographic implementation.
+ * It provides:
+ * - **Core cryptography:** X25519 key exchange, XSalsa20-Poly1305 encryption, Ed25519 signatures
+ * - **Authentication:** HMAC-based challenge-response, password derivation, signature verification
+ * - **Key management:** Loading, validating, and storing cryptographic keys from multiple sources
+ * - **Integration:** SSH agent, GPG agent, HTTPS key fetching, GitHub/GitLab key lookup
+ * - **Protocol:** Complete cryptographic handshake, session rekeying, message encryption/decryption
+ *
+ * ## File Organization
+ *
+ * The module is organized into several logical subsystems:
+ *
+ * ```
+ * lib/crypto/
+ * ├── Core Cryptography
+ * │   ├── crypto.c/h          - Core crypto operations (encryption, key exchange, HMAC)
+ * │   ├── crypto.h            - Main public interface (1382 lines of documented functions)
+ * │   ├── key_types.h         - Key type definitions (private_key_t, key_purpose_t)
+ * │   ├── pem_utils.c/h       - PEM format parsing (OpenSSH, PKCS8)
+ * │   ├── regex.c/h           - Regex utilities for key format detection
+ * │   ├── sha1.c/h            - SHA-1 implementation (for key fingerprinting)
+ * │   └── common.c/h          - Shared utilities
+ * │
+ * ├── SSH Key Handling
+ * │   ├── ssh/
+ * │   │   ├── ssh_agent.c/h   - SSH agent communication (signing, key lookup)
+ * │   │   ├── ssh_keys.c/h    - OpenSSH key format parsing and handling
+ * │   │   └── [ssh_*.c]       - SSH-specific operations
+ * │   ├── keys_validation.c/h - SSH key validation and format checking
+ * │   └── known_hosts.c/h     - SSH-style known_hosts file management
+ * │
+ * ├── GPG Key Handling
+ * │   ├── gpg/
+ * │   │   ├── gpg.h           - Main GPG interface (aggregates submodules)
+ * │   │   ├── agent.c/h       - GPG agent communication
+ * │   │   ├── export.c/h      - Export keys from GPG keyring
+ * │   │   ├── gpg_keys.c/h    - GPG key format handling
+ * │   │   ├── homedir.c/h     - GPG home directory detection
+ * │   │   ├── openpgp.c/h     - OpenPGP format parsing
+ * │   │   ├── signing.c/h     - Signing operations with GPG
+ * │   │   └── verification.c/h - GPG signature verification
+ * │   └── [gpg_*.c]           - Additional GPG operations
+ * │
+ * ├── HTTPS & Key Fetching
+ * │   ├── https_keys.c/h      - HTTPS key fetching (using BearSSL)
+ * │   ├── discovery_keys.c/h  - ACDS discovery server key management
+ * │   └── http_client.c/h     - Low-level HTTPS client
+ * │
+ * ├── Handshake & Protocol
+ * │   ├── handshake/
+ * │   │   ├── client.c/h      - Client-side handshake implementation
+ * │   │   ├── server.c/h      - Server-side handshake implementation
+ * │   │   └── common.c/h      - Shared handshake utilities
+ * │   ├── handshake_protocol.md - Protocol specification
+ * │   └── [handshake_*.c]     - Handshake state machines
+ * │
+ * ├── Key Management
+ * │   ├── keys.c/h            - Master key loading and management
+ * │   ├── discovery_keys.c/h  - Discovery service key caching
+ * │   └── key_types.h         - Key structure definitions
+ * │
+ * └── Support Files
+ *     ├── CMakeLists.txt       - Build configuration
+ *     ├── README.md            - Module README (usage examples)
+ *     └── Doxygen docs/
+ *         ├── crypto.dox       - Comprehensive crypto reference
+ *         ├── client_crypto.dox - Client-side crypto details
+ *         └── server_crypto.dox - Server-side crypto details
+ * ```
+ *
+ * @section module_crypto_subsystems Subsystems
+ *
+ * ### 1. Core Cryptography (`crypto.c/h`)
+ *
+ * **Purpose:** Low-level cryptographic operations
+ *
+ * **Key Functions:**
+ * - `crypto_init()` - Initialize context and libsodium
+ * - `crypto_init_with_password()` - Enable password-based encryption
+ * - `crypto_generate_keypair()` - Generate X25519 ephemeral keys
+ * - `crypto_set_peer_public_key()` - Perform DH key exchange
+ * - `crypto_encrypt()` / `crypto_decrypt()` - XSalsa20-Poly1305 operations
+ * - `crypto_derive_password_key()` - Argon2id password-based KDF
+ * - `crypto_compute_hmac*()` / `crypto_verify_hmac*()` - HMAC operations
+ * - `crypto_should_rekey()` - Check if session rekeying needed
+ * - `crypto_rekey_*()` - Session rekeying protocol
+ *
+ * **Dependencies:** libsodium only
+ *
+ * **Size:** ~3000 lines (crypto.c + crypto.h)
+ *
+ * **Interfaces:**
+ * ```c
+ * // Key exchange protocol (3 steps)
+ * crypto_get_public_key(ctx, public_key_out);         // Step 1: Send our key
+ * crypto_set_peer_public_key(ctx, peer_public_key);   // Step 2: Receive peer key
+ * bool ready = crypto_is_ready(ctx);                  // Step 3: Ready for encryption
+ *
+ * // Encryption/Decryption
+ * crypto_encrypt(ctx, plaintext, plaintext_len, ciphertext_out, ...);
+ * crypto_decrypt(ctx, ciphertext, ciphertext_len, plaintext_out, ...);
+ * ```
+ *
+ * ### 2. SSH Key Handling (`ssh/*`)
+ *
+ * **Purpose:** Support for SSH keys and SSH agent integration
+ *
+ * **Submodules:**
+ * - **ssh_agent.h** - SSH agent communication protocol
+ * - **ssh_keys.h** - OpenSSH format parsing
+ *
+ * **Key Functions:**
+ * - `ssh_agent_is_available()` - Check if ssh-agent is running
+ * - `ssh_agent_sign()` - Request signature from agent
+ * - `ssh_agent_list_keys()` - List available keys in agent
+ * - `ssh_keys_parse()` - Parse OpenSSH key format
+ * - `ssh_keys_export()` - Export key to OpenSSH format
+ *
+ * **Integration Points:**
+ * 1. **Key Loading:** `lib/crypto/keys.c` loads SSH keys via ssh_keys_parse()
+ * 2. **Agent Signing:** During handshake, if key is in agent, use ssh_agent_sign()
+ * 3. **Verification:** Server verifies Ed25519 signature from client
+ *
+ * **Trust Flow:**
+ * ```
+ * User provides: --key ~/.ssh/id_ed25519
+ *        ↓
+ * Load via ssh_keys_parse() - Check if encrypted
+ *        ↓
+ * If encrypted & SSH agent available:
+ *   - Detect key in agent via ssh_agent_is_available()
+ *   - Set agent signing mode
+ *        ↓
+ * During handshake:
+ *   - Generate ephemeral X25519 key
+ *   - Sign ephemeral key with identity key
+ *   - If agent: use ssh_agent_sign()
+ *   - If not agent: use in-memory key (requires password)
+ * ```
+ *
+ * ### 3. Known Hosts Management (`known_hosts.c/h`)
+ *
+ * **Purpose:** SSH-style Trust On First Use (TOFU) verification
+ *
+ * **Location:** `~/.ascii-chat/known_hosts` (same format as SSH)
+ *
+ * **File Format:**
+ * ```
+ * hostname:port ssh-ed25519 AAAAC3Nza...  # Server identity key (32 bytes)
+ * 127.0.0.1:27224 ssh-ed25519 BBBBC3Nza...
+ * ```
+ *
+ * **Key Functions:**
+ * - `known_hosts_verify()` - Check if server key is in known_hosts
+ * - `known_hosts_add()` - Add new server key to known_hosts
+ * - `known_hosts_update()` - Update existing entry
+ * - `known_hosts_remove()` - Remove entry
+ *
+ * **Usage in Handshake:**
+ * ```
+ * Client receives: [ephemeral_key || identity_key || signature]
+ *        ↓
+ * Verify signature: ed25519_verify(identity_key, ephemeral_key, sig)
+ *        ↓
+ * Check known_hosts: known_hosts_verify("localhost:27224", identity_key)
+ *        ↓
+ * If key exists: Accept (already trusted)
+ * If key new: Ask user: "Trust this server? [y/N]"
+ *   - Yes: Save to known_hosts
+ *   - No: Reject connection
+ * If key changed: Warn "Server key changed! Possible MITM!"
+ * ```
+ *
+ * **Security Properties:**
+ * - ✅ Protects against MITM on subsequent connections
+ * - ⚠️ First connection vulnerable to MITM (inherent to TOFU)
+ * - ✅ Detects key changes (alerts user)
+ *
+ * ### 4. GPG Key Handling (`gpg/*`)
+ *
+ * **Purpose:** Support for GPG keys and GPG agent integration
+ *
+ * **Submodules:**
+ * - **agent.h** - GPG agent communication protocol
+ * - **export.h** - Export keys from GPG keyring
+ * - **signing.h** - Signing operations with GPG
+ * - **verification.h** - Signature verification with GPG
+ * - **gpg_keys.h** - GPG key format parsing
+ * - **openpgp.h** - OpenPGP format handling
+ *
+ * **Key Functions:**
+ * - `gpg_agent_sign()` - Request signature from gpg-agent
+ * - `gpg_export_public_key()` - Export public key from keyring
+ * - `gpg_verify_signature()` - Verify GPG signature
+ * - `gpg_keys_parse()` - Parse GPG key format
+ *
+ * **Integration Points:**
+ * 1. **Key Loading:** `lib/crypto/keys.c` loads GPG keys via gpg_export_public_key()
+ * 2. **Agent Signing:** If key is in gpg-agent, use gpg_agent_sign()
+ * 3. **Verification:** Server verifies signature from client
+ *
+ * **Trust Flow:**
+ * ```
+ * User provides: --key gpg:zfogg
+ *        ↓
+ * Load via gpg_export_public_key()
+ *        ↓
+ * If GPG agent available:
+ *   - Set agent signing mode
+ *   - No passphrase prompt needed
+ *        ↓
+ * During handshake:
+ *   - Generate ephemeral X25519 key
+ *   - Sign ephemeral key with identity key
+ *   - Use gpg_agent_sign() for signature
+ * ```
+ *
+ * ### 5. HTTPS Key Fetching (`https_keys.c/h`, `discovery_keys.c/h`)
+ *
+ * **Purpose:** Fetch public keys from HTTPS URLs (GitHub, GitLab, custom servers)
+ *
+ * **Supported Formats:**
+ * - SSH public key format (RFC 4253) - e.g., GitHub API
+ * - OpenPGP armor - e.g., GitLab API
+ * - HTTPS URLs - e.g., discovery.ascii-chat.com/key.pub
+ *
+ * **Key Functions:**
+ * - `https_keys_fetch()` - Fetch key from HTTPS URL using BearSSL
+ * - `discovery_keys_verify()` - Verify and cache discovery service keys
+ * - `github_keys_fetch()` - Special case for GitHub public keys API
+ * - `gitlab_keys_fetch()` - Special case for GitLab public keys API
+ *
+ * **Trust Model:**
+ * ```
+ * User provides: --server-key github:zfogg
+ *        ↓
+ * Fetch from: GET https://github.com/zfogg.keys
+ *        ↓
+ * Parse SSH keys from response
+ *        ↓
+ * During handshake:
+ *   - Verify server identity key against fetched key
+ *   - If matches: Accept
+ *   - If mismatch: Reject (possible MITM)
+ * ```
+ *
+ * **Security Properties:**
+ * - ✅ Trust delegated to GitHub/GitLab (TLS + identity verification)
+ * - ✅ User can verify identity via GitHub profile
+ * - ⚠️ Requires HTTPS access to GitHub/GitLab
+ * - ✅ No local trust anchors needed
+ *
+ * ### 6. Key Validation (`keys_validation.c/h`)
+ *
+ * **Purpose:** Validate cryptographic keys for security and format correctness
+ *
+ * **Key Functions:**
+ * - `keys_validate_format()` - Check key format (SSH, PEM, OpenPGP)
+ * - `keys_validate_size()` - Verify key is correct size for algorithm
+ * - `keys_validate_permissions()` - Check file permissions (0600 on Unix)
+ * - `keys_validate_expiration()` - Check GPG key expiration
+ * - `keys_validate_strength()` - Verify key strength (e.g., 256-bit)
+ *
+ * **Validation Points:**
+ * 1. **After loading:** Validate format, size, permissions
+ * 2. **Before use:** Validate expiration, strength
+ * 3. **During handshake:** Validate peer key format and size
+ *
+ * **Integration:**
+ * ```c
+ * // When loading a key
+ * keys_validate_format(key_data, key_len);     // Check format
+ * keys_validate_size(key_data, key_len);       // Check size
+ * keys_validate_permissions(key_path);         // Check file perms
+ * ```
+ *
+ * ### 7. Discovery Keys (`discovery_keys.c/h`)
+ *
+ * **Purpose:** Manage ACDS (ASCII-Chat Discovery Service) server keys with caching
+ *
+ * **Cache Location:** `~/.ascii-chat/acds_keys/<hostname>/`
+ *
+ * **Key Functions:**
+ * - `discovery_keys_verify()` - Verify and cache ACDS server key
+ * - `discovery_keys_invalidate()` - Invalidate cache on key change
+ * - `discovery_keys_get_cache()` - Get cached key
+ *
+ * **Trust Model for Official Server:**
+ * ```
+ * User wants: ACDS connection to discovery.ascii-chat.com
+ *        ↓
+ * discovery_keys_verify("discovery.ascii-chat.com", NULL, pubkey)
+ *        ↓
+ * If cached: Verify cache is valid, use cached key
+ * If not cached:
+ *   - Download from https://discovery.ascii-chat.com/key.pub
+ *   - Trust without verification (official server)
+ *   - Cache key
+ *        ↓
+ * Use key to verify ACDS server identity
+ * ```
+ *
+ * **Trust Model for Third-Party Server:**
+ * ```
+ * User provides: --discovery-service-key https://acds.example.com/key.pub
+ *        ↓
+ * discovery_keys_verify("acds.example.com", "https://...", pubkey)
+ *        ↓
+ * Download and verify key (requires explicit specification)
+ * Cache key
+ *        ↓
+ * Use key to verify ACDS server identity
+ * ```
+ *
+ * ### 8. Handshake Protocol (`handshake/*`)
+ *
+ * **Purpose:** Complete cryptographic handshake implementation
+ *
+ * **Files:**
+ * - `handshake/client.c/h` - Client-side state machine
+ * - `handshake/server.c/h` - Server-side state machine
+ * - `handshake/common.c/h` - Shared utilities
+ *
+ * **Phases:**
+ * 1. **Key Exchange:** Exchange ephemeral public keys (X25519)
+ * 2. **Authentication:** Prove identity via password/key/signature
+ * 3. **Session Setup:** Negotiate algorithms, establish encryption keys
+ * 4. **Ready:** Begin encrypted communication
+ *
+ * **Integration with Other Subsystems:**
+ * ```
+ * Handshake
+ *    ├── Core Crypto (crypto.c)
+ *    │   ├── Generate ephemeral keys
+ *    │   ├── Compute shared secret
+ *    │   ├── Derive password key
+ *    │   └── Compute HMAC
+ *    │
+ *    ├── SSH Keys (if --key ~/.ssh/id_ed25519)
+ *    │   ├── Load SSH key via ssh_keys_parse()
+ *    │   ├── Check SSH agent
+ *    │   └── Sign ephemeral key
+ *    │
+ *    ├── GPG Keys (if --key gpg:zfogg)
+ *    │   ├── Export key from GPG keyring
+ *    │   ├── Check GPG agent
+ *    │   └── Request signature
+ *    │
+ *    ├── Known Hosts (client-side, if --use-known-hosts)
+ *    │   ├── Verify server identity key
+ *    │   ├── Check for key changes
+ *    │   └── Prompt user if needed
+ *    │
+ *    ├── GitHub Keys (if --server-key github:zfogg)
+ *    │   ├── Fetch keys from GitHub API
+ *    │   └── Verify server identity
+ *    │
+ *    └── Discovery Keys (if using ACDS)
+ *        ├── Verify ACDS server key
+ *        └── Establish secure ACDS connection
+ * ```
+ *
+ * @section module_crypto_data_flow Data Flow Through Subsystems
+ *
+ * ### Client Initialization
+ * ```
+ * User provides: --key /path/to/key.pem --server-key github:zfogg --use-known-hosts
+ *        ↓
+ * 1. Load identity key
+ *    keys.c:1 Load from file/agent/gpg
+ *           ├── Detect format (SSH/PEM/GPG)
+ *           ├── Parse with pem_utils.c / ssh_keys.c / gpg/export.c
+ *           ├── Validate with keys_validation.c
+ *           └── Store in memory
+ *
+ * 2. Load server verification key
+ *    https_keys.c:1 Fetch from HTTPS
+ *           ├── Parse github:zfogg → https://github.com/zfogg.keys
+ *           ├── Fetch via HTTPS using BearSSL
+ *           ├── Parse SSH format
+ *           └── Store server_identity_key
+ *
+ * 3. Setup known_hosts verification
+ *    known_hosts.c:1 Load ~/.ascii-chat/known_hosts
+ *           └── Cache in memory
+ *
+ * 4. Initialize crypto
+ *    crypto.c:1 Initialize libsodium
+ *           ├── Generate ephemeral X25519 keypair
+ *           ├── Initialize nonce counter
+ *           └── Ready for handshake
+ * ```
+ *
+ * ### Handshake Execution
+ * ```
+ * Client                              Server
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * 1. KEY_EXCHANGE_REQUEST
+ *    Send: ephemeral_pub || identity_pub || signature
+ *           ↓
+ *          │ Receive
+ *          │ - Parse keys (ssh_keys.c / key_types.h)
+ *          │ - Verify signature (crypto.c: ed25519_verify)
+ *          │ - Check whitelist (keys_validation.c)
+ *          │ - Generate server ephemeral keys (crypto.c)
+ *          ↓
+ *    Send:                           ephemeral_pub || identity_pub || signature
+ *
+ * 2. SHARED_SECRET_COMPUTED
+ *    crypto.c: DH(client_ephemeral, server_ephemeral)
+ *           ↓
+ *          │ DH(server_ephemeral, client_ephemeral)
+ *          │ Same shared secret ✓
+ *          ↓
+ *
+ * 3. AUTHENTICATION
+ *    If password mode:
+ *      - Derive key: crypto_derive_password_key()
+ *      - Compute HMAC: crypto_compute_auth_response()
+ *    If signature mode:
+ *      - SSH agent sign: ssh_agent_sign()
+ *      - GPG agent sign: gpg_agent_sign()
+ *
+ * 4. KNOWN_HOSTS VERIFICATION (client-side)
+ *    known_hosts_verify("localhost:27224", server_identity_key)
+ *           ├── In cache? Accept ✓
+ *           ├── New key? Ask user & save
+ *           └── Key changed? Warn & reject
+ *
+ * 5. READY FOR ENCRYPTION
+ *    crypto.c: crypto_is_ready() = true
+ * ```
+ *
+ * @section module_crypto_integration Integration Patterns
+ *
+ * ### Pattern 1: SSH Key with SSH Agent
+ * ```
+ * User: ./ascii-chat client --key ~/.ssh/id_ed25519
+ *
+ * Flow:
+ *   1. ssh_keys_parse() detects key is encrypted
+ *   2. ssh_agent_is_available() returns true
+ *   3. During handshake:
+ *      - ssh_agent_sign() requests signature from agent
+ *      - No passphrase prompt needed ✓
+ * ```
+ *
+ * ### Pattern 2: GPG Key with GPG Agent
+ * ```
+ * User: ./ascii-chat client --key gpg:zfogg
+ *
+ * Flow:
+ *   1. gpg_export_public_key() loads key from GPG keyring
+ *   2. GPG agent available?
+ *      - Yes: gpg_agent_sign() in handshake ✓
+ *      - No: Prompt for passphrase
+ * ```
+ *
+ * ### Pattern 3: GitHub Key Verification
+ * ```
+ * User: ./ascii-chat client --server-key github:zfogg
+ *
+ * Flow:
+ *   1. https_keys_fetch("https://github.com/zfogg.keys")
+ *   2. Parse SSH public keys from response
+ *   3. During handshake:
+ *      - Verify server's identity key matches fetched key
+ *      - Blocks MITM attacks ✓
+ * ```
+ *
+ * ### Pattern 4: Known Hosts Trust On First Use
+ * ```
+ * User: ./ascii-chat client --use-known-hosts
+ *
+ * Flow:
+ *   1. First connection:
+ *      - Verify server identity key signature ✓
+ *      - Key not in known_hosts → Ask user
+ *      - User confirms → Save to known_hosts ✓
+ *   2. Second connection:
+ *      - Verify identity key signature ✓
+ *      - Key in known_hosts → Accept ✓
+ *   3. If server key changes:
+ *      - Warn "Server key has changed!" ⚠️
+ *      - Possible MITM attack
+ * ```
+ *
+ * ### Pattern 5: Discovery Keys with ACDS
+ * ```
+ * User: ./ascii-chat client --discovery-service acds.example.com
+ *
+ * Flow:
+ *   1. discovery_keys_verify("acds.example.com", NULL, pubkey)
+ *   2. If official server:
+ *      - Download https://discovery.ascii-chat.com/key.pub
+ *      - Cache without verification ✓
+ *   3. Connect to ACDS server:
+ *      - Verify ACDS identity with cached key ✓
+ *   4. ACDS provides session discovery
+ * ```
+ *
+ * @section module_crypto_file_locations File Locations Summary
+ *
+ * **Source Code:**
+ * - `lib/crypto/*.c/*.h` - Implementation files
+ *
+ * **Configuration & Keys:**
+ * - `~/.ascii-chat/` - Config directory
+ * - `~/.ascii-chat/authorized_clients.txt` - Server whitelist
+ * - `~/.ascii-chat/known_hosts` - Known servers (SSH-style)
+ * - `~/.ascii-chat/acds_keys/` - Cached ACDS server keys
+ * - `~/.ssh/` - User SSH keys
+ * - `~/.gnupg/` - User GPG keyring
+ *
+ * **Headers (Public API):**
+ * - `include/ascii-chat/crypto/crypto.h` - Main interface (1382 lines documented)
+ * - `include/ascii-chat/crypto/key_types.h` - Key type definitions
+ * - `include/ascii-chat/crypto/gpg/gpg.h` - GPG interface
+ * - `include/ascii-chat/crypto/ssh/ssh_agent.h` - SSH agent interface
+ * - `include/ascii-chat/crypto/known_hosts.h` - Known hosts interface
+ * - `include/ascii-chat/crypto/discovery_keys.h` - Discovery keys interface
+ *
+ * **Documentation:**
+ * - `docs/topics/crypto.dox` - Comprehensive crypto reference (2620 lines)
+ * - `docs/topics/client_crypto.dox` - Client-side details
+ * - `docs/topics/server_crypto.dox` - Server-side details
+ * - `docs/topics/module_crypto_organization.dox` - This file
+ *
+ * @section module_crypto_building Building & Testing
+ *
+ * **Build Configuration:**
+ * ```cmake
+ * # From CMakeLists.txt
+ * add_library(ascii-chat-lib-crypto
+ *   lib/crypto/crypto.c
+ *   lib/crypto/handshake/client.c
+ *   lib/crypto/handshake/server.c
+ *   lib/crypto/handshake/common.c
+ *   lib/crypto/ssh/ssh_agent.c
+ *   lib/crypto/ssh/ssh_keys.c
+ *   lib/crypto/gpg/agent.c
+ *   lib/crypto/gpg/export.c
+ *   # ... etc
+ * )
+ * target_link_libraries(ascii-chat-lib-crypto libsodium BearSSL)
+ * ```
+ *
+ * **Dependencies:**
+ * - `libsodium` - Modern cryptography (X25519, XSalsa20-Poly1305, Argon2id, Ed25519)
+ * - `BearSSL` - TLS for HTTPS key fetching
+ * - `OpenSSL` - System integration (gpg-agent communication)
+ * - `libgpgme` (optional) - GPG operations
+ *
+ * **Testing:**
+ * ```bash
+ * # Unit tests for crypto operations
+ * ctest --test-dir build -R crypto
+ *
+ * # Handshake protocol tests
+ * ctest --test-dir build -R handshake
+ *
+ * # SSH key tests
+ * ctest --test-dir build -R ssh
+ *
+ * # Known hosts tests
+ * ctest --test-dir build -R known_hosts
+ * ```
+ *
+ * @section module_crypto_performance Performance Considerations
+ *
+ * **Initialization:**
+ * - `crypto_init()` - ~100μs (libsodium init + key generation)
+ * - `ssh_keys_parse()` - ~50μs (format detection + parsing)
+ * - `gpg_export_public_key()` - ~500ms (calls external gpg process)
+ *
+ * **Handshake:**
+ * - Key exchange - ~500μs (X25519 computation)
+ * - HMAC computation - ~50μs (SHA256)
+ * - SSH agent sign - ~1ms (IPC + SSH protocol)
+ * - GPG agent sign - ~50ms (IPC + GPG protocol)
+ * - HTTPS key fetch - ~200ms (network + TLS)
+ *
+ * **Per-Packet:**
+ * - Encryption - ~20μs per KB (XSalsa20)
+ * - Decryption - ~20μs per KB (XSalsa20)
+ * - MAC verification - ~10μs (Poly1305)
+ *
+ * **Optimization Tips:**
+ * 1. Cache SSH agent public keys (avoid repeated queries)
+ * 2. Cache HTTPS fetched keys (use discovery_keys for ACDS)
+ * 3. Use password auth for repeated connections (faster than SSH agent)
+ * 4. Prefer SSH agent over GPG agent (faster protocol)
+ *
+ * @section module_crypto_security Security Properties
+ *
+ * **Encryption:**
+ * - ✅ XSalsa20-Poly1305 (authenticated encryption)
+ * - ✅ Constant-time MAC verification
+ * - ✅ Unique nonces (session_id || counter)
+ * - ✅ Automatic rekeying (1 hour or 1M packets)
+ *
+ * **Key Exchange:**
+ * - ✅ X25519 ephemeral keys (forward secrecy)
+ * - ✅ Signature-based authentication (when provided)
+ * - ✅ Password-based optional encryption (Argon2id KDF)
+ *
+ * **Authentication:**
+ * - ✅ HMAC-SHA256 challenge-response
+ * - ✅ Ed25519 signatures
+ * - ✅ SSH agent integration (keys never in memory)
+ * - ✅ GPG agent integration (keys never in memory)
+ *
+ * **Vulnerabilities (Known & Fixed):**
+ * - ✅ Replay attacks (fixed via session ID in nonce)
+ * - ✅ Timing attacks (fixed via sodium_memcmp)
+ * - ✅ Code duplication (fixed via shared functions)
+ * - See docs/topics/crypto.dox for full vulnerability disclosure
+ *
+ * @section module_crypto_future Future Enhancements
+ *
+ * 1. **Post-Quantum Cryptography**
+ *    - Hybrid X25519-Kyber1024 key exchange
+ *    - Hybrid Ed25519-Dilithium3 signatures
+ *    - Status: RFC in progress
+ *
+ * 2. **Verification Server**
+ *    - Global key registry (like Certificate Authorities)
+ *    - Key pinning without pre-sharing
+ *    - Status: Planned (Issue #82)
+ *
+ * 3. **Hardware Security Modules**
+ *    - PKCS#11 support
+ *    - YubiKey integration
+ *    - Status: Research phase
+ *
+ * 4. **Double Ratchet Protocol**
+ *    - Signal-style per-message forward secrecy
+ *    - Status: Deferred (session rekeying sufficient)
+ *
+ * @see @ref topic_crypto "Cryptography Reference"
+ * @see @ref topic_client_crypto "Client-Side Crypto Details"
+ * @see @ref topic_server_crypto "Server-Side Crypto Details"
+ * @see @ref topic_handshake_protocol "Handshake Protocol Specification"
+ *
+ */

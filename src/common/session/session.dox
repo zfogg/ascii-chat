@@ -1,0 +1,331 @@
+/**
+ * @defgroup session Session Management Module
+ * @brief Real-time audio-video session abstraction layer
+ * @details
+ *
+ * The **Session Module** provides a unified, cross-platform abstraction for
+ * managing real-time audio-video sessions in ascii-chat. It encapsulates:
+ *
+ * - **Server-side hosting** with multi-client support and media mixing
+ * - **Client-side participation** with encrypted streams and state coordination
+ * - **Shared infrastructure** for media capture, terminal rendering, and audio handling
+ * - **Consensus protocol** for distributed state management and host election
+ * - **Interactive controls** via keyboard input and configuration
+ *
+ * ## Module Organization
+ *
+ * The session module is organized into several layers:
+ *
+ * ### High-Level APIs
+ *
+ * - session_host_t (@ref host.h) - Server session management
+ * - session_participant_t (@ref participant.h) - Client session participation
+ * - session_client_like_config_t (@ref client_like.h) - Unified client-like mode framework
+ *
+ * ### Shared Infrastructure
+ *
+ * - session_capture_ctx_t (@ref capture.h) - Media source abstraction (webcam/file/URL)
+ * - session_display_ctx_t (@ref display.h) - Terminal rendering abstraction
+ * - session_render_loop() (@ref render.h) - Unified frame processing loop
+ * - session_audio_* (@ref audio.h) - Audio capture and playback
+ * - session_handle_keyboard_input() (@ref keyboard_handler.h) - Interactive controls
+ * - session_log_buffer_t (@ref session_log_buffer.h) - Log capture for UI screens
+ *
+ * ### State Management
+ *
+ * - session_settings_* (@ref settings.h) - Thread-safe global settings (RCU-based)
+ * - session_consensus_t (@ref consensus.h) - Distributed consensus and host election
+ *
+ * ## Architecture Overview
+ *
+ * ```
+ * ┌─────────────────────────────────────────────────────────────┐
+ * │                    Session Module                           │
+ * ├─────────────────────────────────────────────────────────────┤
+ * │                                                              │
+ * │  Server-Side          ←  Consensus Protocol  →  Client-Side │
+ * │  ────────────                 ──────────         ──────────  │
+ * │  session_host_t               Ring Consensus    session_participant_t
+ * │  - Listen/Accept              State Election    - Connect
+ * │  - Client Registry            Coordination      - Stream
+ * │  - Media Mixing               Distributed       - Receive
+ * │  - Broadcasting               State Mgmt        - Disconnect
+ * │                                                              │
+ * │           ┌─────────────────────────────────┐              │
+ * │           │  Shared Session Infrastructure  │              │
+ * │           ├─────────────────────────────────┤              │
+ * │           │ Capture (webcam/file/URL)       │              │
+ * │           │ Display (terminal/TTY)          │              │
+ * │           │ Render Loop (unified)           │              │
+ * │           │ Audio (capture/playback)        │              │
+ * │           │ Keyboard (interactive)          │              │
+ * │           │ Settings (RCU-based)            │              │
+ * │           │ Log Buffer (UI support)         │              │
+ * │           └─────────────────────────────────┘              │
+ * │                                                              │
+ * └─────────────────────────────────────────────────────────────┘
+ * ```
+ *
+ * ## Key Concepts
+ *
+ * ### Media Capture
+ *
+ * The capture abstraction (session_capture_ctx_t) unifies all media sources:
+ * - **Webcam**: Direct camera input via platform abstraction
+ * - **Files**: Local video files (MP4, MKV, etc.) via FFmpeg
+ * - **URLs**: Streaming URLs (HTTP, RTSP, DASH, HLS) via FFmpeg
+ * - **YouTube/TikTok**: Via yt-dlp extraction, then FFmpeg playback
+ * - **Test Patterns**: Procedurally generated for testing
+ *
+ * All sources provide a unified interface:
+ * - session_capture_read_frame() - Get next frame
+ * - session_capture_sleep_for_fps() - FPS-aware sleep
+ * - session_capture_toggle_pause() - Pause/resume
+ * - session_capture_seek_relative() - Seek in time
+ *
+ * ### Terminal Display
+ *
+ * The display abstraction (session_display_ctx_t) manages terminal rendering:
+ * - **TTY Detection**: Check if output is a terminal
+ * - **Capability Detection**: Detect color support (mono/16/256/truecolor)
+ * - **Palette Selection**: Choose luminance mapping for ASCII conversion
+ * - **Frame Rendering**: Convert and output to terminal
+ * - **Color Modes**: Support for ANSI, 256-color, and true color
+ *
+ * ### Render Loop
+ *
+ * The unified render loop (session_render_loop) abstracts two patterns:
+ *
+ * **Synchronous Mode** (with capture context):
+ * - Capture drives the loop
+ * - Frame rate determined by media source
+ * - Automatic FPS limiting via adaptive sleep
+ * - Used by: mirror mode, discovery participant mode
+ *
+ * **Event-Driven Mode** (with custom callbacks):
+ * - Protocol/network drives the loop
+ * - Custom frame and sleep callbacks
+ * - Integration with network event loops
+ * - Used by: client mode (network receives frames)
+ *
+ * ### Audio Handling
+ *
+ * Audio operations are decoupled from media source:
+ * - **Capture**: Get samples from default audio input (microphone)
+ * - **Playback**: Send samples to default audio output (speakers)
+ * - **Audio Context**: Platform-specific state (PortAudio, JACK optional)
+ * - **Format**: Float32 mono, normalized to [-1.0, 1.0]
+ *
+ * ### Keyboard Input
+ *
+ * Interactive controls via keyboard (session_handle_keyboard_input):
+ * - `?` - Toggle help screen
+ * - `SPACE` - Play/pause
+ * - `←` / `→` - Seek ±30 seconds
+ * - `↑` / `↓` - Volume ±10%
+ * - `m` - Mute toggle
+ * - `c` - Cycle color modes
+ * - `f` - Flip webcam (mirror)
+ *
+ * Thread-safe: Can be called from any thread (including render threads)
+ *
+ * ### State Management
+ *
+ * Session settings (session_settings_*) use RCU (Read-Copy-Update) for
+ * lock-free reads and atomic writes:
+ *
+ * - session_settings_get_volume() - Read current volume (lock-free)
+ * - session_settings_set_color_mode() - Update color mode (brief lock)
+ * - session_settings_get_pause_state() - Check pause state (lock-free)
+ *
+ * Manages:
+ * - Color mode (mono/16/256/true color)
+ * - Pause state (playing/paused)
+ * - Volume level (0.0 to 1.0)
+ * - Flip state (for webcam mirroring)
+ * - Help screen visibility
+ *
+ * ### Consensus Protocol
+ *
+ * The consensus module (session_consensus_t) implements a distributed
+ * ring consensus protocol for:
+ *
+ * - **Host Election**: Elect the best-suited participant as session host
+ * - **State Coordination**: Synchronize pause/play state across participants
+ * - **Metrics Collection**: Gather network quality metrics from all participants
+ * - **Topology Management**: Maintain ring topology for state propagation
+ *
+ * Used primarily in **Discovery Mode** for P2P scenarios without a central server.
+ *
+ * ## Usage Patterns
+ *
+ * ### Server Mode
+ *
+ * @code{.c}
+ * // Configure server
+ * session_host_config_t config = {
+ *     .port = 27224,
+ *     .max_clients = 32,
+ *     .callbacks = {
+ *         .on_client_join = handle_join,
+ *         .on_frame_received = handle_frame,
+ *         .on_audio_received = handle_audio,
+ *     },
+ *     .user_data = app_context
+ * };
+ *
+ * // Create and start
+ * session_host_t *host = session_host_create(&config);
+ * session_host_start(host);
+ *
+ * // Render thread (mixes video/audio)
+ * session_host_start_render(host);
+ *
+ * // Cleanup
+ * session_host_stop_render(host);
+ * session_host_stop(host);
+ * session_host_destroy(host);
+ * @endcode
+ *
+ * ### Client Mode
+ *
+ * @code{.c}
+ * // Configure participant
+ * session_participant_config_t config = {
+ *     .address = "server.example.com",
+ *     .port = 27224,
+ *     .callbacks = {
+ *         .on_connected = handle_connected,
+ *         .on_frame_received = render_frame,
+ *         .on_audio_received = play_audio,
+ *     },
+ *     .user_data = app_context
+ * };
+ *
+ * // Create and connect
+ * session_participant_t *p = session_participant_create(&config);
+ * session_participant_connect(p);
+ *
+ * // Start streams
+ * session_participant_start_video(p);
+ * session_participant_start_audio(p);
+ *
+ * // Cleanup
+ * session_participant_disconnect(p);
+ * session_participant_destroy(p);
+ * @endcode
+ *
+ * ### Mirror Mode (via client_like framework)
+ *
+ * @code{.c}
+ * // Configure unified framework
+ * session_client_like_config_t config = {
+ *     .media_source = { .type = MEDIA_SOURCE_WEBCAM },
+ *     .run_fn = mirror_main_loop,
+ *     .run_user_data = app_context,
+ *     // ... audio, display, keyboard config ...
+ * };
+ *
+ * // Run (all setup and teardown handled)
+ * asciichat_error_t result = session_client_like_run(&config);
+ * // Automatic cleanup
+ * @endcode
+ *
+ * ## Error Handling
+ *
+ * All functions return `asciichat_error_t`. On error:
+ *
+ * @code{.c}
+ * asciichat_error_t result = session_host_start(host);
+ * if (result != ASCIICHAT_OK) {
+ *     asciichat_error_context_t ctx;
+ *     if (HAS_ERRNO(&ctx)) {
+ *         log_error("Failed: %s", ctx.context_message);
+ *     }
+ *     return result;
+ * }
+ * @endcode
+ *
+ * ## Thread Safety
+ *
+ * - **session_host_t**: Fully thread-safe for all operations
+ *   - Callbacks may be invoked from any thread
+ *   - Safe to call from render threads
+ *
+ * - **session_participant_t**: Thread-safe for stream control
+ *   - Async send operations
+ *   - Receive callbacks from dedicated thread
+ *
+ * - **session_capture_ctx_t**: Single-threaded design
+ *   - Safe to call from single render thread
+ *   - Intended for synchronous media reading
+ *
+ * - **session_display_ctx_t**: Single-threaded design
+ *   - Safe to call from single render thread
+ *   - Terminal operations not atomic across threads
+ *
+ * - **session_settings_***: Fully thread-safe (RCU-based)
+ *   - Lock-free reads
+ *   - Brief lock for writes
+ *   - Safe from any thread
+ *
+ * - **session_handle_keyboard_input()**: Thread-safe
+ *   - Can be called from any thread
+ *   - Safe to call concurrently
+ *
+ * ## Memory Management
+ *
+ * All allocations are tracked via `SAFE_MALLOC/CALLOC/FREE`:
+ *
+ * @code{.c}
+ * // Automatic tracking
+ * uint8_t *buffer = SAFE_MALLOC(1024, uint8_t *);
+ * // Memory report printed at program exit (debug builds)
+ * SAFE_FREE(buffer);
+ * @endcode
+ *
+ * ## Encryption and Authentication
+ *
+ * All connections are encrypted by default using:
+ * - **X25519**: Key exchange
+ * - **XSalsa20-Poly1305**: AEAD symmetric encryption
+ * - **Ed25519**: Signature verification (SSH key auth)
+ *
+ * Supported authentication modes:
+ * - **Ephemeral**: Anonymous encrypted connection
+ * - **Password**: Both sides prove knowledge of password
+ * - **SSH Key**: Server authenticates with Ed25519 key
+ *
+ * Configuration:
+ * @code{.c}
+ * config.encryption_enabled = true;      // Default
+ * config.password = "secret";             // Password auth
+ * config.key_path = "~/.ssh/id_ed25519";  // SSH key auth
+ * @endcode
+ *
+ * ## Files Reference
+ *
+ * @ref host.h - Server session management
+ * @ref participant.h - Client session participation
+ * @ref client_like.h - Unified client-like mode framework
+ * @ref capture.h - Media source abstraction
+ * @ref display.h - Terminal rendering abstraction
+ * @ref render.h - Unified render loop
+ * @ref audio.h - Audio capture and playback
+ * @ref keyboard_handler.h - Interactive keyboard controls
+ * @ref session_log_buffer.h - Log capture for UI
+ * @ref settings.h - Thread-safe session settings
+ * @ref consensus.h - Distributed consensus protocol
+ * @ref consensus_integration.h - Consensus integration helpers
+ *
+ * ## See Also
+ *
+ * - **Session README**: @ref README.md (comprehensive overview)
+ * - **Cryptography**: lib/crypto/ (encryption implementation)
+ * - **Network Protocol**: lib/network/ (ACIP packet protocol)
+ * - **Media**: lib/media/ (FFmpeg/yt-dlp integration)
+ * - **Platform**: lib/platform/ (cross-platform abstractions)
+ *
+ * @{
+ * @}
+ */

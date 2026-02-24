@@ -7,24 +7,139 @@
  * that can be used by library consumers to create custom tools based on ascii-chat
  * modes or build entirely custom option sets from scratch.
  *
+ * ## Integration with Registry and RCU
+ *
+ * The builder pattern works together with:
+ * - **Registry** (`registry.h`): Centralized option definitions. Use
+ *   `options_registry_add_all_to_builder()` to populate builder with registered options.
+ * - **RCU Thread-Safety** (`rcu.h`): Lock-free access to parsed options. Built configs
+ *   are used by `options_init()` to parse and publish to RCU.
+ * - **Mode Bitmasks**: Each option includes a mode_bitmask indicating which modes it
+ *   applies to (SERVER, CLIENT, MIRROR, DISCOVERY_SVC, BINARY, etc.).
+ *
  * **Features**:
  * - Three-tier parsing (binary → mode → mode-specific)
  * - Required fields with environment variable fallbacks
  * - Option dependencies (REQUIRES, CONFLICTS, IMPLIES)
  * - Cross-field validation (validators receive full options struct)
  * - Automatic string memory management (auto-strdup, cleanup)
- * - Grouped help output
+ * - Grouped help output with semantic coloring
+ * - Mode-aware option filtering and applicability
+ * - Smart shell completion metadata (enums, ranges, examples, filepath hints)
  * - Preset configs for server/client/mirror/acds modes
  *
- * **Usage Pattern**:
- * 1. Create builder (from scratch or preset)
- * 2. Add options with builder functions
- * 3. Add dependencies if needed
- * 4. Build immutable config
- * 5. Parse command line into options struct
- * 6. Validate (required, dependencies, custom)
- * 7. Use options in application
- * 8. Cleanup memory before exit
+ * ## Builder Pattern Workflow
+ *
+ * ```
+ * CREATE BUILDER
+ *    ↓
+ * ADD OPTIONS (with mode bitmasks)
+ *    ↓
+ * ADD DEPENDENCIES (REQUIRES, CONFLICTS, IMPLIES)
+ *    ↓
+ * BUILD IMMUTABLE CONFIG
+ *    ↓
+ * PARSE COMMAND LINE (options are mode-filtered)
+ *    ↓
+ * VALIDATE (required, dependencies, custom validators)
+ *    ↓
+ * PUBLISH TO RCU (lock-free thread-safe access)
+ * ```
+ *
+ * ## Builder Usage Patterns
+ *
+ * **Pattern 1: Start from Registry**
+ * ```c
+ * // Use registered options as base
+ * options_builder_t *builder = options_builder_create(sizeof(options_t));
+ * options_registry_add_all_to_builder(builder);  // Add all registered options
+ * options_config_t *config = options_builder_build(builder);
+ * ```
+ *
+ * **Pattern 2: Start from Preset**
+ * ```c
+ * // Start with unified preset (standard multi-mode setup)
+ * options_config_t *preset = options_preset_unified("ascii-chat", "Terminal video chat");
+ * options_builder_t *builder = options_builder_from_preset(preset);
+ * // Add custom options or modify
+ * options_config_t *config = options_builder_build(builder);
+ * ```
+ *
+ * **Pattern 3: Custom Builder from Scratch**
+ * ```c
+ * // Build entirely custom config
+ * options_builder_t *builder = options_builder_create(sizeof(my_options_t));
+ * options_builder_add_bool(builder, "verbose", 'v', offsetof(my_options_t, verbose), ...);
+ * options_builder_add_int(builder, "port", 'p', offsetof(my_options_t, port), ...);
+ * options_builder_set_mode_bitmask(builder, OPTION_MODE_SERVER);  // For last added option
+ * options_config_t *config = options_builder_build(builder);
+ * ```
+ *
+ * ## Mode Bitmask System
+ *
+ * Options are filtered based on mode using bitmasks:
+ * - `OPTION_MODE_BINARY`: Parsed before mode detection (--help, --version, --log-file)
+ * - `OPTION_MODE_SERVER`: Server-only options
+ * - `OPTION_MODE_CLIENT`: Client-only options
+ * - `OPTION_MODE_MIRROR`: Mirror mode options
+ * - `OPTION_MODE_DISCOVERY_SVC`: Discovery service options
+ * - `OPTION_MODE_ALL`: Available in all modes
+ *
+ * Each option's `mode_bitmask` field controls where it appears in:
+ * - Help output (mode-specific or binary-level)
+ * - Shell completions
+ * - Parsing (only options matching detected mode are parsed)
+ *
+ * **Setting Mode Bitmask**:
+ * ```c
+ * options_builder_add_int(builder, "max-clients", 'm', ...);
+ * options_builder_set_mode_bitmask(builder, OPTION_MODE_SERVER);  // Server-only option
+ * ```
+ *
+ * ## Option Types and Parsing
+ *
+ * - `OPTION_TYPE_BOOL`: Boolean flag (--flag, no value)
+ * - `OPTION_TYPE_INT`: Integer with validation and optional range
+ * - `OPTION_TYPE_STRING`: String (auto-duplicated, auto-freed)
+ * - `OPTION_TYPE_DOUBLE`: Floating point with optional range
+ * - `OPTION_TYPE_CALLBACK`: Custom parser for complex types
+ * - `OPTION_TYPE_ACTION`: Action that executes immediately (--version, --help)
+ *
+ * ## Option Dependencies
+ *
+ * Enforce relationships between options during validation:
+ * - `DEPENDENCY_REQUIRES`: If A is set, B must be set (e.g., --tls requires --cert)
+ * - `DEPENDENCY_CONFLICTS`: If A is set, B must NOT be set (e.g., --no-crypto conflicts with --key-file)
+ * - `DEPENDENCY_IMPLIES`: If A is set, B defaults to true (e.g., --tls implies --secure)
+ *
+ * **Adding Dependencies**:
+ * ```c
+ * options_builder_add_dependency_requires(builder, "tls-cert", "tls-enabled", NULL);
+ * options_builder_add_dependency_conflicts(builder, "no-crypto", "key-file", NULL);
+ * options_builder_add_dependency_implies(builder, "secure", "tls-enabled", NULL);
+ * ```
+ *
+ * ## RCU Integration
+ *
+ * After building and parsing, options are published to RCU for thread-safe access:
+ * ```c
+ * options_config_t *config = options_builder_build(builder);
+ * options_t opts = options_t_new();
+ * options_config_parse(config, argc, argv, &opts, MODE_DETECTION_RESULT, ...);
+ * options_config_validate(config, &opts, NULL);
+ *
+ * // Publish to RCU before spawning worker threads
+ * options_state_init();
+ * options_state_set(&opts);
+ *
+ * // Now worker threads can safely read options lock-free
+ * const options_t *current_opts = options_get();
+ * int port = current_opts->port;  // No locks needed!
+ * ```
+ *
+ * @see registry.h - Central registry of all option definitions
+ * @see rcu.h - Thread-safe RCU-based access to published options
+ * @see options.h - Unified options parsing system (uses builder internally)
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date December 2025

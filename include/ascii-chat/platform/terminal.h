@@ -18,6 +18,52 @@
  * - Terminal capability detection (color, unicode, UTF-8)
  * - Terminal title and bell control
  * - Windows console resize detection
+ * - TTY state detection and interactive mode checking
+ * - Terminal theme detection (dark/light background)
+ * - Signal handling (SIGWINCH for window resizing)
+ *
+ * **Platform-specific behavior:**
+ * - **POSIX (Linux/macOS)**: Uses termios for terminal control, SIGWINCH for resizing
+ * - **Windows**: Uses Console API, thread-based resize detection (no SIGWINCH)
+ * - **ANSI sequences**: Automatically enabled on Windows 10+ via ENABLE_VIRTUAL_TERMINAL_PROCESSING
+ * - **Raw mode**: Uses tcgetattr/tcsetattr on POSIX; Windows console mode on Win32
+ * - **Color support**: Auto-detected from $TERM, $COLORTERM environment variables
+ *
+ * **Signal handling (POSIX systems):**
+ * - SIGWINCH: Terminal window resize signal
+ *   - Received when terminal is resized
+ *   - Call terminal_get_size() to get new dimensions
+ *   - Safe to call from signal handler
+ * - SIGTERM: Termination signal (defined as 15 on both platforms)
+ *
+ * **Window size detection:**
+ * - **POSIX**: Uses ioctl(TIOCGWINSZ) with fallback to $COLUMNS/$LINES
+ * - **Windows**: Uses GetConsoleScreenBufferInfo() with Console API
+ * - Both: Default to 80x24 if all methods fail
+ *
+ * **TTY detection and interactive mode:**
+ * - terminal_is_stdin_tty(): Check if stdin is connected to terminal
+ * - terminal_is_stdout_tty(): Check if stdout is connected to terminal
+ * - terminal_is_stderr_tty(): Check if stderr is connected to terminal
+ * - terminal_is_interactive(): Check if BOTH stdin AND stdout are TTYs
+ * - terminal_is_piped_output(): Check if output is redirected/piped
+ *
+ * These functions determine whether interactive features (prompts, animations,
+ * padding) should be used. When output is piped or redirected, formatting is
+ * disabled to avoid corrupting piped data.
+ *
+ * **Theme detection:**
+ * - terminal_has_dark_background(): Detect terminal theme
+ *   - Uses OSC 11 query on modern terminals
+ *   - Falls back to environment variables
+ *   - Defaults to dark theme (most common)
+ * - Used by rendering system to select appropriate colors
+ *
+ * **Thread safety:**
+ * - All functions are thread-safe except those that modify global terminal state
+ * - Raw mode, echo, buffering are global state - coordinate if using from threads
+ * - Terminal size queries are safe from any thread
+ * - SIGWINCH handlers must be registered before threading starts (POSIX)
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date September 2025
@@ -509,6 +555,24 @@ asciichat_error_t terminal_clear_scrollback(int fd);
  * to full 24-bit truecolor support. Used for capability detection and
  * rendering mode selection.
  *
+ * **Color palette sizes:**
+ * - **NONE**: 2 colors (black and white)
+ * - **16**: 16 ANSI colors (black, red, green, yellow, blue, magenta, cyan, white + bright variants)
+ * - **256**: 256-color palette (16 base + 216 RGB cube + 24 grayscale)
+ * - **TRUECOLOR**: 16,777,216 colors (24-bit RGB, 256 levels per channel)
+ *
+ * **Detection method:**
+ * - Auto-detect from $TERM and $COLORTERM environment variables
+ * - Falls back to terminal type database lookups
+ * - Can be overridden with command-line flags (--color, --256, --truecolor)
+ *
+ * **Common terminal capabilities:**
+ * - xterm, xterm-256color, xterm-truecolor
+ * - Linux console (VT100, color, 256color)
+ * - iTerm2 (auto-detects truecolor)
+ * - Windows Console (Windows 10+ supports ANSI)
+ * - tmux (supports truecolor with proper configuration)
+ *
  * @ingroup platform
  */
 typedef enum {
@@ -609,6 +673,35 @@ typedef enum {
  * terminal features, color support, encoding capabilities, and rendering
  * preferences. Used for optimal ASCII art rendering configuration.
  *
+ * This structure is populated by detect_terminal_capabilities() and contains
+ * all information needed to make rendering decisions. The structure balances
+ * automatic detection with user overrides and sensible defaults.
+ *
+ * **Detection reliability:**
+ * The detection_reliable field indicates confidence in detected capabilities.
+ * If unreliable, the terminal capabilities may be guessed or defaulted rather
+ * than definitively detected. In such cases, users can override with command-line
+ * flags (--color, --256, --truecolor) for more accurate results.
+ *
+ * **Color and rendering:**
+ * - color_level: Auto-detected or user-overridden via --color-mode
+ * - render_mode: Determines how ASCII art is rendered (foreground vs background)
+ * - wants_background: Whether to prefer background colors over foreground
+ * - color_filter: Optional monochromatic filter for accessibility/visibility
+ *
+ * **Encoding and internationalization:**
+ * - utf8_support: Determines whether Unicode characters can be used
+ * - Required for palette characters that use Unicode blocks/symbols
+ *
+ * **User preferences:**
+ * - desired_fps: Client's requested frame rate (1-144 FPS)
+ * - wants_padding: Whether to center video in terminal (false when piped/snapshot)
+ * - palette_type: Selected character palette (ASCII, Unicode blocks, custom)
+ *
+ * **Debugging information:**
+ * - term_type: Value of $TERM environment variable (for troubleshooting)
+ * - colorterm: Value of $COLORTERM (RGB/256/none hints)
+ *
  * @ingroup platform
  */
 typedef struct {
@@ -616,7 +709,7 @@ typedef struct {
   terminal_color_mode_t color_level;
   /** @brief Capability flags bitmask (terminal_capability_flags_t) */
   uint32_t capabilities;
-  /** @brief Maximum number of colors (16, 256, or 16777216) */
+  /** @brief Maximum number of colors (2, 16, 256, or 16777216) */
   uint32_t color_count;
   /** @brief True if terminal supports UTF-8 encoding */
   bool utf8_support;
