@@ -81,6 +81,34 @@
  *
  * **Implementation**: src/server/*.c, src/server/*.h
  *
+ * @section server_subsystem_interaction Core Subsystem Interactions
+ *
+ * The server's architecture revolves around **four core subsystems** that interact through
+ * well-defined boundaries:
+ *
+ * **@ref server_crypto "Cryptography"**:
+ * - Handles per-client key exchange and session encryption
+ * - Runs during connection handshake and packet processing
+ * - Provides encrypted channels for all communication
+ *
+ * **@ref server_protocol "Protocol Handler"**:
+ * - Processes inbound packets from clients
+ * - Decrypts and validates packet structure
+ * - Populates client video/audio buffers for rendering
+ *
+ * **@ref server_render "Render Subsystem"**:
+ * - Consumes video/audio buffers from protocol
+ * - Generates ASCII frames via the stream module
+ * - Delivers frames back to clients at 60fps
+ *
+ * **@ref server_stats "Statistics Monitoring"**:
+ * - Observes all three above (crypto, protocol, render)
+ * - Tracks buffer occupancy, frame rates, packet throughput
+ * - Reports health every 30 seconds
+ *
+ * These subsystems are **thread-independent**: each owns its threads, communicates through
+ * shared buffers protected by mutexes, and maintains isolation to prevent cascade failures.
+ *
  * @section server_architecture Architecture
  *
  * @subsection server_threading_model Threading Model
@@ -117,9 +145,61 @@
  * For the nitty-gritty details on locks, synchronization, and threading internals, check out
  * <a href="../notes/CONCURRENCY.md">Concurrency Architecture Documentation</a>.
  *
+ * @subsection server_subsystem_relationships Subsystem Relationships
+ *
+ * The server's core subsystems (render, stats, protocol, crypto) interact in a coordinated flow:
+ *
+ * @code
+ *                          ┌─────────────────────────────────┐
+ *                          │       Main Thread               │
+ *                          │  - Accept connections          │
+ *                          │  - Coordinate startup/shutdown │
+ *                          └─────────────────────────────────┘
+ *                                         │
+ *                ┌────────────────────────┼────────────────────────┐
+ *                │                        │                        │
+ *                ▼                        ▼                        ▼
+ *         ┌──────────────┐         ┌──────────────┐        ┌──────────────┐
+ *         │   CRYPTO     │         │  PROTOCOL    │        │   RENDER     │
+ *         │ Subsystem    │◄────────│ Subsystem    │────┐   │ Subsystem    │
+ *         │              │         │              │    │   │              │
+ *         │ • Handshake  │         │ • Recv thread│    │   │ • Video path │
+ *         │ • Per-client │         │ • Packet mgmt│    │   │ • Audio path │
+ *         │   keys       │         │ • Decryption ├────┤   │ • 60fps/172  │
+ *         │ • Encryption │         │   of packets │    │   │   fps        │
+ *         └──────────────┘         └──────────────┘    │   └──────────────┘
+ *                                          │           │
+ *                                          │           ├──► Stream (mix frames)
+ *                                          │           │
+ *                                          └───────────┘
+ *                                                       │
+ *                                                       ▼
+ *                                          ┌──────────────────────┐
+ *                                          │   STATS Subsystem    │
+ *                                          │ • Monitors all above  │
+ *                                          │ • 30-second intervals │
+ *                                          │ • Reports utilization │
+ *                                          └──────────────────────┘
+ * @endcode
+ *
+ * **Data Flow**:
+ *
+ * 1. **Crypto → Protocol**: Each packet receives decryption keys from crypto subsystem
+ * 2. **Protocol → Render**: Decoded packets update client video/audio buffers
+ * 3. **Render → Stats**: Stats monitors buffer occupancy and frame drop rates
+ * 4. **Stats → Main**: Reports health back to main thread for monitoring
+ *
+ * **Thread Isolation**:
+ *
+ * Each subsystem owns specific threads (no thread sharing between subsystems):
+ * - **Main** thread: Initialization, signal handling, shutdown coordination
+ * - **Per-client receive** thread: Handles protocol/crypto for inbound packets
+ * - **Per-client render** (video + audio): Generates frames via stream module
+ * - **Stats** thread: Reads-only monitoring (reader locks only)
+ *
  * @subsection server_modules Server Modules
  *
- * The server is organized into modular components:
+ * Detailed breakdown of each subsystem:
  *
  * @subsubsection server_main Main Entry Point
  * @ingroup server_main
