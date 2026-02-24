@@ -38,7 +38,7 @@ static void format_elapsed(uint64_t elapsed_ns, char *buffer, size_t size) {
 
 
 /**
- * @brief Extract timing info from a mutex_t
+ * @brief Extract timing info from a mutex_t as a single line
  * @param mutex Pointer to mutex_t
  * @param buffer Output buffer for formatted info
  * @param size Buffer size
@@ -54,29 +54,35 @@ static int format_mutex_timing(const mutex_t *mutex, char *buffer, size_t size) 
 
     int offset = 0;
     uint64_t now_ns = time_get_ns();
+    char lock_str[64] = "";
+    char unlock_str[64] = "";
+    char held_str[128] = "";
 
     if (mutex->last_lock_time_ns > 0 && mutex->last_lock_time_ns <= now_ns) {
         char elapsed_str[64];
         format_elapsed(now_ns - mutex->last_lock_time_ns, elapsed_str, sizeof(elapsed_str));
-        offset += snprintf(buffer + offset, size - offset, "    Last lock: %s ago\n", elapsed_str);
+        snprintf(lock_str, sizeof(lock_str), "lock=%s", elapsed_str);
     }
 
     if (mutex->last_unlock_time_ns > 0 && mutex->last_unlock_time_ns <= now_ns) {
         char elapsed_str[64];
         format_elapsed(now_ns - mutex->last_unlock_time_ns, elapsed_str, sizeof(elapsed_str));
-        offset += snprintf(buffer + offset, size - offset, "    Last unlock: %s ago\n", elapsed_str);
+        snprintf(unlock_str, sizeof(unlock_str), "unlock=%s", elapsed_str);
     }
 
     if (mutex->currently_held_by_key != 0) {
         const char *thread_name = named_describe(mutex->currently_held_by_key, "thread");
-        offset += snprintf(buffer + offset, size - offset, "    *** HELD by %s ***\n", thread_name);
+        snprintf(held_str, sizeof(held_str), "HELD_BY=%s", thread_name);
     }
+
+    offset += snprintf(buffer + offset, size - offset, "%s %s %s",
+                      lock_str, unlock_str, held_str);
 
     return offset;
 }
 
 /**
- * @brief Extract timing info from an rwlock_t
+ * @brief Extract timing info from an rwlock_t as a single line
  * @param rwlock Pointer to rwlock_t
  * @param buffer Output buffer for formatted info
  * @param size Buffer size
@@ -92,39 +98,47 @@ static int format_rwlock_timing(const rwlock_t *rwlock, char *buffer, size_t siz
 
     int offset = 0;
     uint64_t now_ns = time_get_ns();
+    char rdlock_str[64] = "";
+    char wrlock_str[64] = "";
+    char unlock_str[64] = "";
+    char write_held_str[128] = "";
+    char read_held_str[64] = "";
 
     if (rwlock->last_rdlock_time_ns > 0 && rwlock->last_rdlock_time_ns <= now_ns) {
         char elapsed_str[64];
         format_elapsed(now_ns - rwlock->last_rdlock_time_ns, elapsed_str, sizeof(elapsed_str));
-        offset += snprintf(buffer + offset, size - offset, "    Last rdlock: %s ago\n", elapsed_str);
+        snprintf(rdlock_str, sizeof(rdlock_str), "rdlock=%s", elapsed_str);
     }
 
     if (rwlock->last_wrlock_time_ns > 0 && rwlock->last_wrlock_time_ns <= now_ns) {
         char elapsed_str[64];
         format_elapsed(now_ns - rwlock->last_wrlock_time_ns, elapsed_str, sizeof(elapsed_str));
-        offset += snprintf(buffer + offset, size - offset, "    Last wrlock: %s ago\n", elapsed_str);
+        snprintf(wrlock_str, sizeof(wrlock_str), "wrlock=%s", elapsed_str);
     }
 
     if (rwlock->last_unlock_time_ns > 0 && rwlock->last_unlock_time_ns <= now_ns) {
         char elapsed_str[64];
         format_elapsed(now_ns - rwlock->last_unlock_time_ns, elapsed_str, sizeof(elapsed_str));
-        offset += snprintf(buffer + offset, size - offset, "    Last unlock: %s ago\n", elapsed_str);
+        snprintf(unlock_str, sizeof(unlock_str), "unlock=%s", elapsed_str);
     }
 
     if (rwlock->write_held_by_key != 0) {
         const char *thread_name = named_describe(rwlock->write_held_by_key, "thread");
-        offset += snprintf(buffer + offset, size - offset, "    *** WRITE HELD by %s ***\n", thread_name);
+        snprintf(write_held_str, sizeof(write_held_str), "WRITE_HELD_BY=%s", thread_name);
     }
 
     if (rwlock->read_lock_count > 0) {
-        offset += snprintf(buffer + offset, size - offset, "    *** READ HELD by %lu thread(s) ***\n", rwlock->read_lock_count);
+        snprintf(read_held_str, sizeof(read_held_str), "READ_HELD=%lu", rwlock->read_lock_count);
     }
+
+    offset += snprintf(buffer + offset, size - offset, "%s %s %s %s %s",
+                      rdlock_str, wrlock_str, unlock_str, write_held_str, read_held_str);
 
     return offset;
 }
 
 /**
- * @brief Extract timing info from a cond_t
+ * @brief Extract timing info from a cond_t as a single line
  * @param cond Pointer to cond_t
  * @param buffer Output buffer for formatted info
  * @param size Buffer size
@@ -140,30 +154,36 @@ static int format_cond_timing(const cond_t *cond, char *buffer, size_t size) {
 
     int offset = 0;
     uint64_t now_ns = time_get_ns();
+    char wait_str[64] = "";
+    char signal_str[64] = "";
+    char broadcast_str[64] = "";
+    char waiting_str[128] = "";
 
     if (cond->last_wait_time_ns > 0 && cond->last_wait_time_ns <= now_ns) {
         char elapsed_str[64];
         format_elapsed(now_ns - cond->last_wait_time_ns, elapsed_str, sizeof(elapsed_str));
-        offset += snprintf(buffer + offset, size - offset, "    Last wait: %s ago\n", elapsed_str);
+        snprintf(wait_str, sizeof(wait_str), "wait=%s", elapsed_str);
     }
 
     if (cond->last_signal_time_ns > 0 && cond->last_signal_time_ns <= now_ns) {
         char elapsed_str[64];
         format_elapsed(now_ns - cond->last_signal_time_ns, elapsed_str, sizeof(elapsed_str));
-        offset += snprintf(buffer + offset, size - offset, "    Last signal: %s ago\n", elapsed_str);
+        snprintf(signal_str, sizeof(signal_str), "signal=%s", elapsed_str);
     }
 
     if (cond->last_broadcast_time_ns > 0 && cond->last_broadcast_time_ns <= now_ns) {
         char elapsed_str[64];
         format_elapsed(now_ns - cond->last_broadcast_time_ns, elapsed_str, sizeof(elapsed_str));
-        offset += snprintf(buffer + offset, size - offset, "    Last broadcast: %s ago\n", elapsed_str);
+        snprintf(broadcast_str, sizeof(broadcast_str), "broadcast=%s", elapsed_str);
     }
 
     if (cond->waiting_count > 0) {
         const char *thread_name = named_describe(cond->last_waiting_key, "thread");
-        offset += snprintf(buffer + offset, size - offset, "    *** %lu thread(s) WAITING (most recent: %s) ***\n",
-                          cond->waiting_count, thread_name);
+        snprintf(waiting_str, sizeof(waiting_str), "WAITING=%lu(%s)", cond->waiting_count, thread_name);
     }
+
+    offset += snprintf(buffer + offset, size - offset, "%s %s %s %s",
+                      wait_str, signal_str, broadcast_str, waiting_str);
 
     return offset;
 }
@@ -172,8 +192,15 @@ static int format_cond_timing(const cond_t *cond, char *buffer, size_t size) {
 // Iterator Callbacks for named.c
 // ============================================================================
 
+typedef struct {
+    char *buffer;
+    size_t buffer_size;
+    size_t offset;
+} sync_buffer_t;
+
 static void mutex_iter_callback(uintptr_t key, const char *name, void *user_data) {
-    (void)user_data; // Unused
+    sync_buffer_t *buf = (sync_buffer_t *)user_data;
+    if (!buf) return;
 
     const char *type = named_get_type(key);
     if (!type || strcmp(type, "mutex") != 0) {
@@ -184,14 +211,16 @@ static void mutex_iter_callback(uintptr_t key, const char *name, void *user_data
     char timing_str[256] = {0};
     format_mutex_timing(mutex, timing_str, sizeof(timing_str));
 
-    // Only print if mutex has been used
+    // Only append if mutex has been used
     if (timing_str[0]) {
-        log_info("Mutex %s:\n%s", name, timing_str);
+        buf->offset += snprintf(buf->buffer + buf->offset, buf->buffer_size - buf->offset,
+                               "  Mutex %s: %s\n", name, timing_str);
     }
 }
 
 static void rwlock_iter_callback(uintptr_t key, const char *name, void *user_data) {
-    (void)user_data; // Unused
+    sync_buffer_t *buf = (sync_buffer_t *)user_data;
+    if (!buf) return;
 
     const char *type = named_get_type(key);
     if (!type || strcmp(type, "rwlock") != 0) {
@@ -202,14 +231,16 @@ static void rwlock_iter_callback(uintptr_t key, const char *name, void *user_dat
     char timing_str[512] = {0};
     format_rwlock_timing(rwlock, timing_str, sizeof(timing_str));
 
-    // Only print if rwlock has been used
+    // Only append if rwlock has been used
     if (timing_str[0]) {
-        log_info("RWLock %s:\n%s", name, timing_str);
+        buf->offset += snprintf(buf->buffer + buf->offset, buf->buffer_size - buf->offset,
+                               "  RWLock %s: %s\n", name, timing_str);
     }
 }
 
 static void cond_iter_callback(uintptr_t key, const char *name, void *user_data) {
-    (void)user_data; // Unused
+    sync_buffer_t *buf = (sync_buffer_t *)user_data;
+    if (!buf) return;
 
     const char *type = named_get_type(key);
     if (!type || strcmp(type, "cond") != 0) {
@@ -220,9 +251,10 @@ static void cond_iter_callback(uintptr_t key, const char *name, void *user_data)
     char timing_str[512] = {0};
     format_cond_timing(cond, timing_str, sizeof(timing_str));
 
-    // Only print if condition variable has been used
+    // Only append if condition variable has been used
     if (timing_str[0]) {
-        log_info("Cond %s:\n%s", name, timing_str);
+        buf->offset += snprintf(buf->buffer + buf->offset, buf->buffer_size - buf->offset,
+                               "  Cond %s: %s\n", name, timing_str);
     }
 }
 
@@ -230,33 +262,37 @@ static void cond_iter_callback(uintptr_t key, const char *name, void *user_data)
 // Public API Implementation
 // ============================================================================
 
-void debug_sync_print_mutex_state(void) {
-    log_info("=== Mutex Timing State ===");
+void debug_sync_print_state(void) {
+    // Use a single large buffer for all sync state output
+    #define SYNC_BUFFER_SIZE 8192
+    char *buffer = SAFE_MALLOC(SYNC_BUFFER_SIZE, char *);
+    if (!buffer) return;
+
+    sync_buffer_t buf = {
+        .buffer = buffer,
+        .buffer_size = SYNC_BUFFER_SIZE,
+        .offset = 0
+    };
+
+    // Collect all sync state in one buffer
+    buf.offset += snprintf(buf.buffer + buf.offset, buf.buffer_size - buf.offset,
+                          "Synchronization Primitive State:\n");
+
+    // Iterate through all registered syncs
     // TODO: Debug why mutexes aren't being registered. In theory, every mutex
     // created with mutex_init(mutex, "name") should call NAMED_REGISTER(mutex, "name", "mutex")
     // which should add it to the named registry for inspection.
-    named_registry_for_each(mutex_iter_callback, NULL);
-    log_info("=== End Mutex Timing State ===");
-}
+    named_registry_for_each(mutex_iter_callback, &buf);
+    named_registry_for_each(rwlock_iter_callback, &buf);
+    named_registry_for_each(cond_iter_callback, &buf);
 
-void debug_sync_print_rwlock_state(void) {
-    log_info("=== RWLock Timing State ===");
-    named_registry_for_each(rwlock_iter_callback, NULL);
-    log_info("=== End RWLock Timing State ===");
-}
+    // Log everything in one call
+    if (buf.offset > 0) {
+        log_info("%s", buf.buffer);
+    }
 
-void debug_sync_print_cond_state(void) {
-    log_info("=== Condition Variable Timing State ===");
-    named_registry_for_each(cond_iter_callback, NULL);
-    log_info("=== End Condition Variable Timing State ===");
-}
-
-void debug_sync_print_state(void) {
-    log_info("=== Synchronization Primitive State ===");
-    debug_sync_print_mutex_state();
-    debug_sync_print_rwlock_state();
-    debug_sync_print_cond_state();
-    log_info("=== End Synchronization Primitive State ===");
+    SAFE_FREE(buffer);
+    #undef SYNC_BUFFER_SIZE
 }
 
 // ============================================================================
