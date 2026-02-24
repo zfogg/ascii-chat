@@ -168,3 +168,55 @@ bool lifecycle_reset(lifecycle_t *lc) {
     return true;
 }
 
+bool lifecycle_destroy_once(lifecycle_t *lc) {
+    if (lc == NULL) {
+        log_dev("[lifecycle] destroy_once: NULL lifecycle pointer");
+        return false;
+    }
+
+    int expected = LIFECYCLE_INITIALIZED;
+    if (!atomic_compare_exchange_strong(&lc->state, &expected, LIFECYCLE_DESTROYING)) {
+        // If not initialized, nothing to destroy
+        if (expected == LIFECYCLE_UNINITIALIZED) {
+            log_dev("[lifecycle] destroy_once: already uninitialized, nothing to destroy");
+            return false;
+        }
+
+        // If dead, never allow destruction (already permanently shut down)
+        if (expected == LIFECYCLE_DEAD) {
+            log_dev("[lifecycle] destroy_once: module is dead, no destruction allowed");
+            return false;
+        }
+
+        // If already destroying, don't duplicate work (return false, let first destroyer finish)
+        if (expected == LIFECYCLE_DESTROYING) {
+            log_dev("[lifecycle] destroy_once: already destroying, skipping (first destroyer has priority)");
+            return false;
+        }
+
+        // If initializing, skip destruction (init may still be in progress)
+        if (expected == LIFECYCLE_INITIALIZING) {
+            log_dev("[lifecycle] destroy_once: still initializing, skipping destruction");
+            return false;
+        }
+
+        // Unexpected state
+        log_dev("[lifecycle] destroy_once: unexpected state: %d", expected);
+        return false;
+    }
+
+    // Winner: state is now LIFECYCLE_DESTROYING
+    // Caller must call lifecycle_destroy_commit()
+    log_dev("[lifecycle] destroy_once: won CAS, transitioned to DESTROYING");
+    return true;
+}
+
+void lifecycle_destroy_commit(lifecycle_t *lc) {
+    if (lc == NULL) {
+        log_dev("[lifecycle] destroy_commit: NULL lifecycle pointer");
+        return;
+    }
+    log_dev("[lifecycle] destroy_commit: transitioning DESTROYING → UNINITIALIZED");
+    atomic_store(&lc->state, LIFECYCLE_UNINITIALIZED);
+}
+

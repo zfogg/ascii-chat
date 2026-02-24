@@ -42,6 +42,7 @@ typedef enum {
   LIFECYCLE_INITIALIZING = 1,  ///< init_once winner in progress; losers spin
   LIFECYCLE_INITIALIZED = 2,   ///< Ready to use
   LIFECYCLE_DEAD = 3,          ///< Permanently shut down; no re-init
+  LIFECYCLE_DESTROYING = 4,    ///< destroy_once winner in progress; losers skip
 } lifecycle_state_t;
 
 typedef enum {
@@ -188,6 +189,36 @@ bool lifecycle_is_dead(const lifecycle_t *lc);
  * Used for modules that support reset/reinit cycles (e.g., client crypto reconnect).
  */
 bool lifecycle_reset(lifecycle_t *lc);
+
+/**
+ * Lock-free concurrent destruction: CAS INITIALIZED → DESTROYING.
+ *
+ * Winner receives true and must complete the two-phase sequence:
+ *   1. Do actual destroy work
+ *   2. Call lifecycle_destroy_commit() on completion
+ *
+ * Losing callers return false and should skip cleanup work. Once destruction begins,
+ * no further operations are possible until the winner completes.
+ *
+ * @param lc lifecycle state
+ * @return true if THIS caller won the destroy race and should do work
+ * @return false if not INITIALIZED, already being destroyed, or in DEAD state
+ *
+ * Safe for concurrent callers. Exactly one caller gets true (the CAS winner).
+ * Prevents double-join and other double-cleanup issues when multiple threads
+ * call cleanup functions concurrently.
+ */
+bool lifecycle_destroy_once(lifecycle_t *lc);
+
+/**
+ * Commit successful destruction: DESTROYING → UNINITIALIZED.
+ * Call this after lifecycle_destroy_once() returns true and destroy work completes.
+ *
+ * @param lc lifecycle state
+ *
+ * Returns the module to UNINITIALIZED state, allowing future re-initialization.
+ */
+void lifecycle_destroy_commit(lifecycle_t *lc);
 
 /**
  * @defgroup lifecycle_sync Lifecycle with Sync Primitives

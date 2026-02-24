@@ -121,6 +121,7 @@ static audio_context_t g_audio_context = {0};
  * @ingroup client_audio
  */
 static lifecycle_t g_audio_client_init_lc = LIFECYCLE_INIT;
+static lifecycle_t g_audio_stop_thread_lc = LIFECYCLE_INIT;
 
 /**
  * @brief Unified audio processing pipeline
@@ -1119,6 +1120,12 @@ void audio_stop_thread() {
     return;
   }
 
+  // Ensure only one thread performs cleanup - prevent double-join and double-cleanup
+  if (!lifecycle_destroy_once(&g_audio_stop_thread_lc)) {
+    log_debug("Audio stop already in progress or completed, skipping");
+    return;
+  }
+
   // Signal audio sender thread to exit first.
   // This must happen before thread_pool_stop_all() is called, otherwise the sender
   // thread will be stuck in cond_wait() and thread_pool_stop_all() will hang forever.
@@ -1144,6 +1151,7 @@ void audio_stop_thread() {
   }
 
   if (!THREAD_IS_CREATED(g_audio_capture_thread_created)) {
+    lifecycle_destroy_commit(&g_audio_stop_thread_lc);
     return;
   }
 
@@ -1163,6 +1171,8 @@ void audio_stop_thread() {
 
   // Thread will be joined by thread_pool_stop_all() in protocol_stop_connection()
   g_audio_capture_thread_created = false;
+
+  lifecycle_destroy_commit(&g_audio_stop_thread_lc);
 
   log_debug("Audio capture thread stopped");
 }
