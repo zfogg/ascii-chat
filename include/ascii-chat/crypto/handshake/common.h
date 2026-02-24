@@ -116,12 +116,15 @@ typedef struct crypto_handshake_context_t {
  */
 
 /**
- * @brief Initialize crypto handshake context
+ * @brief Initialize named crypto handshake context
+ * @param name Debug name for the crypto context (typically "crypto_client_<id>")
  * @param ctx Handshake context to initialize (must not be NULL)
  * @param is_server True if this is the server side, false for client
  * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * The context is automatically registered with the debug naming system.
  */
-asciichat_error_t crypto_handshake_init(crypto_handshake_context_t *ctx, bool is_server);
+asciichat_error_t crypto_handshake_init(const char *name, crypto_handshake_context_t *ctx, bool is_server);
 
 /**
  * @brief Set crypto parameters from crypto_parameters_packet_t
@@ -143,13 +146,16 @@ asciichat_error_t crypto_handshake_validate_packet_size(const crypto_handshake_c
                                                         size_t packet_size);
 
 /**
- * @brief Initialize crypto handshake context with password authentication
+ * @brief Initialize named crypto handshake context with password authentication
+ * @param name Debug name for the crypto context (typically "crypto_client_<id>")
  * @param ctx Handshake context to initialize (must not be NULL)
  * @param is_server True if this is the server side, false for client
  * @param password Password for authentication (must meet length requirements)
  * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * The context is automatically registered with the debug naming system.
  */
-asciichat_error_t crypto_handshake_init_with_password(crypto_handshake_context_t *ctx, bool is_server,
+asciichat_error_t crypto_handshake_init_with_password(const char *name, crypto_handshake_context_t *ctx, bool is_server,
                                                       const char *password);
 
 /**

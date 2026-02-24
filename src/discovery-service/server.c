@@ -845,8 +845,10 @@ void *acds_client_handler(void *arg) {
   client_data->joined_session = false;
   client_data->handshake_complete = false;
 
-  // Initialize crypto handshake context
-  asciichat_error_t handshake_result = crypto_handshake_init(&client_data->handshake_ctx, true);
+  // Initialize crypto handshake context with client IP name
+  char crypto_name[96];
+  SAFE_SNPRINTF(crypto_name, sizeof(crypto_name), "crypto_discovery_client_%s", client_ip);
+  asciichat_error_t handshake_result = crypto_handshake_init(crypto_name, &client_data->handshake_ctx, true);
   if (handshake_result != ASCIICHAT_OK) {
     log_error("Failed to initialize crypto handshake for client %s", client_ip);
     SAFE_FREE(client_data);

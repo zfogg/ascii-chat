@@ -1483,10 +1483,14 @@ static void *websocket_client_handler(void *arg) {
   // Initialize crypto handshake context directly in client structure
   // This must happen BEFORE sending KEY_EXCHANGE_INIT so that when the client
   // responds, the receive thread has a properly initialized context
+  // Create debug name with client_id
+  char crypto_name[64];
+  SAFE_SNPRINTF(crypto_name, sizeof(crypto_name), "crypto_client_%lu", (unsigned long)client_id);
+
   log_info("[WS_HANDLER] ★★★ LOCK STATE BEFORE crypto_handshake_init()");
   debug_sync_print_state();
   log_debug("[WS_HANDLER] Calling crypto_handshake_init()...");
-  asciichat_error_t handshake_init_result = crypto_handshake_init(&client->crypto_handshake_ctx, true /* is_server */);
+  asciichat_error_t handshake_init_result = crypto_handshake_init(crypto_name, &client->crypto_handshake_ctx, true /* is_server */);
   log_info("[WS_HANDLER] ★★★ DEBUG: Printing lock state after crypto_handshake_init");
   debug_sync_print_state();
   if (handshake_init_result != ASCIICHAT_OK) {

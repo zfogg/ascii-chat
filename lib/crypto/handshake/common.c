@@ -10,14 +10,22 @@
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/crypto/handshake/common.h>
+#include <ascii-chat/debug/named.h>
 #include <stdio.h>
 #include <string.h>
 
-// Initialize crypto handshake context
-asciichat_error_t crypto_handshake_init(crypto_handshake_context_t *ctx, bool is_server) {
+// Initialize named crypto handshake context
+asciichat_error_t crypto_handshake_init(const char *name, crypto_handshake_context_t *ctx, bool is_server) {
+  if (!name) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Crypto context name is required");
+  }
+
   if (!ctx) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p", ctx);
   }
+
+  // Register crypto context with debug naming system
+  NAMED_REGISTER_CRYPTO_CONTEXT(ctx, name);
 
   // Zero out the context
   memset(ctx, 0, sizeof(crypto_handshake_context_t));
@@ -229,12 +237,19 @@ asciichat_error_t crypto_handshake_validate_packet_size(const crypto_handshake_c
   return ASCIICHAT_OK;
 }
 
-// Initialize crypto handshake context with password authentication
-asciichat_error_t crypto_handshake_init_with_password(crypto_handshake_context_t *ctx, bool is_server,
+// Initialize named crypto handshake context with password authentication
+asciichat_error_t crypto_handshake_init_with_password(const char *name, crypto_handshake_context_t *ctx, bool is_server,
                                                       const char *password) {
+  if (!name) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Crypto context name is required");
+  }
+
   if (!ctx || !password) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p, password=%p", ctx, password);
   }
+
+  // Register crypto context with debug naming system
+  NAMED_REGISTER_CRYPTO_CONTEXT(ctx, name);
 
   // Zero out the context
   memset(ctx, 0, sizeof(crypto_handshake_context_t));

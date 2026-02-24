@@ -452,6 +452,21 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
 #endif
 
 /**
+ * @brief Register a crypto context with automatic format specifier
+ * @param ctx Crypto context pointer
+ * @param name Base name string (typically "crypto_client_<id>")
+ * @ingroup debug_named
+ *
+ * Convenience macro that automatically uses "0x%tx" format specifier for crypto context addresses.
+ */
+#ifndef NDEBUG
+#define NAMED_REGISTER_CRYPTO_CONTEXT(ctx, name) \
+  named_register((uintptr_t)(const void *)(ctx), (name), "crypto", "0x%tx", __FILE__, __LINE__, __func__)
+#else
+#define NAMED_REGISTER_CRYPTO_CONTEXT(ctx, name) (name)
+#endif
+
+/**
  * @brief Open a file and register the file descriptor
  * @param pathname File path to open
  * @param name Debug name for the file descriptor

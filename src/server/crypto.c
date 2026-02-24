@@ -197,15 +197,19 @@ int server_crypto_handshake(client_info_t *client) {
   const options_t *opts = options_get();
   const char *password = opts && opts->password[0] != '\0' ? opts->password : "";
 
+  // Create debug name with client_id
+  char crypto_name[64];
+  SAFE_SNPRINTF(crypto_name, sizeof(crypto_name), "crypto_client_%u", atomic_load(&client->client_id));
+
   int init_result;
   if (strlen(password) > 0) {
     // Password provided - use password-based encryption (even if SSH key is also provided)
     log_debug("SERVER_CRYPTO_HANDSHAKE: Using password-based encryption");
-    init_result = crypto_handshake_init_with_password(&client->crypto_handshake_ctx, true, password); // true = server
+    init_result = crypto_handshake_init_with_password(crypto_name, &client->crypto_handshake_ctx, true, password); // true = server
   } else {
     // Server has SSH key - use standard initialization
     log_debug("SERVER_CRYPTO_HANDSHAKE: Using passwordless-based encryption");
-    init_result = crypto_handshake_init(&client->crypto_handshake_ctx, true); // true = server
+    init_result = crypto_handshake_init(crypto_name, &client->crypto_handshake_ctx, true); // true = server
   }
 
   if (init_result != ASCIICHAT_OK) {

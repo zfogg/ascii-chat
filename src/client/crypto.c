@@ -271,7 +271,7 @@ int client_crypto_init(void) {
     log_debug("CLIENT_CRYPTO_INIT: Using SSH key for authentication");
 
     // Initialize crypto context (generates ephemeral X25519 keys)
-    result = crypto_handshake_init(&g_crypto_ctx, false); // false = client
+    result = crypto_handshake_init("crypto_client_local", &g_crypto_ctx, false); // false = client
     if (result != ASCIICHAT_OK) {
       FATAL(result, "Failed to initialize crypto handshake");
     }
@@ -324,14 +324,14 @@ int client_crypto_init(void) {
   } else if (strlen(GET_OPTION(password)) > 0) {
     // Password provided - use password-based initialization
     log_debug("CLIENT_CRYPTO_INIT: Using password authentication");
-    result = crypto_handshake_init_with_password(&g_crypto_ctx, false, GET_OPTION(password)); // false = client
+    result = crypto_handshake_init_with_password("crypto_client_local", &g_crypto_ctx, false, GET_OPTION(password)); // false = client
     if (result != ASCIICHAT_OK) {
       FATAL(result, "Failed to initialize crypto handshake with password");
     }
   } else {
     // No password or SSH key - use standard initialization with random keys
     log_debug("CLIENT_CRYPTO_INIT: Using standard initialization");
-    result = crypto_handshake_init(&g_crypto_ctx, false); // false = client
+    result = crypto_handshake_init("crypto_client_local", &g_crypto_ctx, false); // false = client
     if (result != ASCIICHAT_OK) {
       FATAL(result, "Failed to initialize crypto handshake");
     }
