@@ -930,6 +930,13 @@ int audio_client_init() {
     return 0; // Audio disabled - not an error
   }
 
+  // Clean up previous audio context if it was already initialized
+  // This prevents leaks and thread creation issues on reconnection
+  if (g_audio_context.initialized) {
+    log_debug("Cleaning up previous audio context before reinitializing");
+    audio_destroy(&g_audio_context);
+  }
+
   // Initialize WAV dumper for received audio if debugging enabled
   if (wav_dump_enabled()) {
     g_wav_playback_received = wav_writer_open("/tmp/audio_playback_received.wav", AUDIO_SAMPLE_RATE, 1);
