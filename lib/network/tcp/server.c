@@ -55,7 +55,8 @@ static socket_t bind_and_listen(const char *address, int family, int port) {
     return INVALID_SOCKET_VALUE;
   }
 
-  socket_t server_socket = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+  const char *socket_name = (family == AF_INET6) ? "tcp_server_ipv6" : "tcp_server_ipv4";
+  socket_t server_socket = socket_create(socket_name, res->ai_family, res->ai_socktype, res->ai_protocol);
   if (server_socket == INVALID_SOCKET_VALUE) {
     log_error("Failed to create socket for %s:%d", addr_str ? addr_str : "(wildcard)", port);
     freeaddrinfo(res);
