@@ -11,6 +11,7 @@ set(CORE_SRCS
     # log/
     ${LIB_DIR}/log/logging.c
     ${LIB_DIR}/log/format.c
+    ${LIB_DIR}/log/named.c
     ${LIB_DIR}/log/colorize.c
     ${LIB_DIR}/log/mmap.c
     ${LIB_DIR}/log/grep.c

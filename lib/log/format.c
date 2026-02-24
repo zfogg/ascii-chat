@@ -6,6 +6,7 @@
 
 #include <ascii-chat/log/format.h>
 #include <ascii-chat/log/colorize.h>
+#include <ascii-chat/log/named.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/util/time.h>
@@ -600,14 +601,17 @@ int log_template_apply(const log_template_t *format, char *buf, size_t buf_size,
 
     case LOG_FORMAT_MESSAGE:
       if (message) {
-        written = safe_snprintf(p, remaining + 1, "%s", message);
+        /* Format hex addresses as named object descriptions (type/name format) */
+        const char *formatted_msg = log_named_format_or_original(message);
+        written = safe_snprintf(p, remaining + 1, "%s", formatted_msg);
       }
       break;
 
     case LOG_FORMAT_COLORED_MESSAGE: {
-      /* Apply colorize_log_message() for number/unit/hex highlighting (keeps text white) */
+      /* Apply colorize_log_message() for number/unit/hex highlighting, then format named objects */
       if (message) {
-        const char *colorized_msg = colorize_log_message(message);
+        const char *formatted_msg = log_named_format_or_original(message);
+        const char *colorized_msg = colorize_log_message(formatted_msg);
         written = safe_snprintf(p, remaining + 1, "%s", colorized_msg);
       }
       break;
