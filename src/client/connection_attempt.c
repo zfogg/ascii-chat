@@ -261,7 +261,7 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
 
     // Create WebSocket client instance
-    websocket_client_t *ws_client = websocket_client_create();
+    websocket_client_t *ws_client = websocket_client_create("websocket_client_connection");
     if (!ws_client) {
       log_error("Failed to create WebSocket client");
       connection_state_transition(ctx, CONN_STATE_FAILED);
@@ -472,7 +472,7 @@ asciichat_error_t connection_attempt_websocket(connection_attempt_context_t *ctx
   const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
 
   // Create WebSocket client instance
-  websocket_client_t *ws_client = websocket_client_create();
+  websocket_client_t *ws_client = websocket_client_create("websocket_client_connection");
   if (!ws_client) {
     log_error("Failed to create WebSocket client");
     connection_state_transition(ctx, CONN_STATE_FAILED);

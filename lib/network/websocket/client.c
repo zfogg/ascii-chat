@@ -16,14 +16,20 @@
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/util/fnv1a.h>
+#include <ascii-chat/debug/named.h>
 
 #include <string.h>
 #include <stdatomic.h>
 
 /**
- * @brief Create and initialize WebSocket client
+ * @brief Create and initialize named WebSocket client
  */
-websocket_client_t *websocket_client_create(void) {
+websocket_client_t *websocket_client_create(const char *name) {
+  if (!name) {
+    log_error("WebSocket client name is required");
+    return NULL;
+  }
+
   websocket_client_t *client = SAFE_MALLOC(sizeof(websocket_client_t), websocket_client_t *);
   if (!client) {
     log_error("Failed to allocate websocket_client_t");
@@ -47,6 +53,9 @@ websocket_client_t *websocket_client_create(void) {
     SAFE_FREE(client);
     return NULL;
   }
+
+  // Register WebSocket client with debug naming system
+  NAMED_REGISTER_WEBSOCKET(client, name);
 
   log_debug("WebSocket client created");
 

@@ -34,8 +34,13 @@ void socket_cleanup(void) {
 }
 
 socket_t socket_create(const char *name, int domain, int type, int protocol) {
+  if (!name) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Socket name is required");
+    return INVALID_SOCKET_VALUE;
+  }
+
   socket_t sock = socket(domain, type, protocol);
-  if (socket_is_valid(sock) && name) {
+  if (socket_is_valid(sock)) {
     NAMED_REGISTER_SOCKET(sock, name);
   }
   return sock;

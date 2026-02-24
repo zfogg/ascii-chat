@@ -122,17 +122,18 @@ typedef struct websocket_client {
 } websocket_client_t;
 
 /**
- * @brief Create and initialize a WebSocket client instance
+ * @brief Create and initialize a named WebSocket client instance
+ * @param name Debug name for the WebSocket client
  *
  * Allocates a new websocket_client_t structure and initializes all fields
  * to safe defaults. The transport remains NULL until websocket_client_connect()
- * is called.
+ * is called. The client is automatically registered with the debug naming system.
  *
  * @return Pointer to initialized client, or NULL on failure
  * @note Caller must call websocket_client_destroy() when done
  * @see websocket_client_destroy() For proper cleanup
  */
-websocket_client_t *websocket_client_create(void);
+websocket_client_t *websocket_client_create(const char *name);
 
 /**
  * @brief Destroy WebSocket client and free all resources
