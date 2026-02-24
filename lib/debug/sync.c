@@ -20,6 +20,7 @@
 #include <string.h>
 #include <signal.h>
 #include <pthread.h>
+#include <stdatomic.h>
 
 // ============================================================================
 // Helper Functions
@@ -268,14 +269,14 @@ typedef enum {
 } debug_request_type_t;
 
 typedef struct {
-    debug_request_type_t request_type;  // What to print
+    debug_request_type_t request_type;      // What to print
     uint64_t delay_ns;
-    volatile bool should_run;
-    volatile bool should_exit;
-    volatile bool signal_triggered;  // Flag set by SIGUSR1 handler
-    mutex_t mutex;                   // Protects access to flags
-    cond_t cond;                     // Wakes thread when signal arrives
-    bool initialized;                // Tracks if mutex/cond are initialized
+    _Atomic(bool) should_run;               // Atomic flag set by main thread
+    _Atomic(bool) should_exit;              // Atomic flag for shutdown
+    _Atomic(bool) signal_triggered;         // Flag set by SIGUSR1 handler
+    mutex_t mutex;                          // Protects access to flags during locked operations
+    cond_t cond;                            // Wakes thread when signal arrives
+    bool initialized;                       // Tracks if mutex/cond are initialized
 } debug_state_request_t;
 
 static debug_state_request_t g_debug_state_request = {DEBUG_REQUEST_STATE, 0, false, false, false, {0}, {0}, false};
@@ -294,17 +295,20 @@ static asciichat_thread_t g_debug_thread;
 static void *debug_print_thread_fn(void *arg) {
     (void)arg;
 
-    while (!g_debug_state_request.should_exit) {
+    while (!atomic_load(&g_debug_state_request.should_exit)) {
         // Handle delayed printing
-        if (g_debug_state_request.should_run && g_debug_state_request.delay_ns > 0) {
+        if (atomic_load(&g_debug_state_request.should_run) && g_debug_state_request.delay_ns > 0) {
             platform_sleep_ns(g_debug_state_request.delay_ns);
             g_debug_state_request.delay_ns = 0;
         }
 
         // Handle both scheduled and signal-triggered printing
         mutex_lock(&g_debug_state_request.mutex);
-        if ((g_debug_state_request.should_run || g_debug_state_request.signal_triggered)
-            && !g_debug_state_request.should_exit) {
+        bool should_run = atomic_load(&g_debug_state_request.should_run);
+        bool signal_triggered = atomic_load(&g_debug_state_request.signal_triggered);
+        bool should_exit = atomic_load(&g_debug_state_request.should_exit);
+
+        if ((should_run || signal_triggered) && !should_exit) {
             debug_request_type_t request_type = g_debug_state_request.request_type;
             mutex_unlock(&g_debug_state_request.mutex);
 
@@ -319,12 +323,12 @@ static void *debug_print_thread_fn(void *arg) {
             }
 
             mutex_lock(&g_debug_state_request.mutex);
-            g_debug_state_request.should_run = false;
-            g_debug_state_request.signal_triggered = false;
+            atomic_store(&g_debug_state_request.should_run, false);
+            atomic_store(&g_debug_state_request.signal_triggered, false);
         }
 
         // Wait for work or signal, with 100ms timeout to check should_exit
-        if (!g_debug_state_request.should_exit) {
+        if (!atomic_load(&g_debug_state_request.should_exit)) {
             cond_timedwait(&g_debug_state_request.cond, &g_debug_state_request.mutex, 100000000);  // 100ms
         }
         mutex_unlock(&g_debug_state_request.mutex);
@@ -340,7 +344,7 @@ static void *debug_print_thread_fn(void *arg) {
 void debug_sync_print_state_delayed(uint64_t delay_ns) {
     g_debug_state_request.request_type = DEBUG_REQUEST_STATE;
     g_debug_state_request.delay_ns = delay_ns;
-    g_debug_state_request.should_run = true;
+    atomic_store(&g_debug_state_request.should_run, true);
     cond_signal(&g_debug_state_request.cond);
 }
 
@@ -351,7 +355,7 @@ void debug_sync_print_state_delayed(uint64_t delay_ns) {
 void debug_sync_print_backtrace_delayed(uint64_t delay_ns) {
     g_debug_state_request.request_type = DEBUG_REQUEST_BACKTRACE;
     g_debug_state_request.delay_ns = delay_ns;
-    g_debug_state_request.should_run = true;
+    atomic_store(&g_debug_state_request.should_run, true);
     cond_signal(&g_debug_state_request.cond);
 }
 
@@ -381,10 +385,8 @@ void debug_sync_destroy(void) {
 
 void debug_sync_cleanup_thread(void) {
     // Signal the thread to wake up immediately instead of waiting for 100ms timeout
-    mutex_lock(&g_debug_state_request.mutex);
-    g_debug_state_request.should_exit = true;
+    atomic_store(&g_debug_state_request.should_exit, true);
     cond_signal(&g_debug_state_request.cond);
-    mutex_unlock(&g_debug_state_request.mutex);
     asciichat_thread_join(&g_debug_thread, NULL);
 }
 
@@ -392,10 +394,11 @@ void debug_sync_trigger_print(void) {
     // Set flag to trigger printing on debug thread (from SIGUSR1 handler).
     // We don't call debug_sync_print_state() directly here to avoid logging
     // in signal handler context, which could deadlock with logging mutexes.
+    // Uses atomic_store for thread-safe flag setting from signal handler.
     //
     // Signal the condition variable to wake up the debug thread immediately
     // (without waiting for the 100ms timeout).
-    g_debug_state_request.signal_triggered = true;
+    atomic_store(&g_debug_state_request.signal_triggered, true);
     cond_signal(&g_debug_state_request.cond);
 }
 
