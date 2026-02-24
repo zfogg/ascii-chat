@@ -415,10 +415,18 @@ static void *splash_animation_thread(void *arg) {
 
   // Animate with rainbow wave effect
   int frame = 0;
-  const int anim_speed = 100; // milliseconds per frame
+  int fps = GET_OPTION(fps);
+  if (fps <= 0) fps = 60; // Default to 60 FPS if not specified
+  const int anim_speed = 1000 / fps; // milliseconds per frame
 
+  log_debug("[SPLASH_ANIM] Entering animation loop");
   while (!atomic_load(&g_splash_state.should_stop) && !shutdown_is_requested()) {
+    if (frame == 0 || frame % 10 == 0) {
+      log_debug("[SPLASH_ANIM] Frame %d START", frame);
+    }
+
     // Poll keyboard for interactive grep and Escape to cancel
+    log_debug("[SPLASH_ANIM] Frame %d: keyboard_enabled=%d", frame, keyboard_enabled);
     if (keyboard_enabled) {
       keyboard_key_t key = keyboard_read_nonblocking();
       if (key == KEY_ESCAPE) {
@@ -433,12 +441,15 @@ static void *splash_animation_thread(void *arg) {
         // Continue to render immediately with grep active
       }
     }
+    log_debug("[SPLASH_ANIM] Frame %d: keyboard check done", frame);
 
     // Set up splash header context for this frame
     splash_header_ctx_t header_ctx = {
         .frame = frame,
         .use_colors = use_colors,
     };
+
+    log_debug("[SPLASH_ANIM] Frame %d: Setting up header context", frame);
 
     // Initialize update notification lifecycle once (safe to call multiple times)
     if (lifecycle_init_once(&g_update_notification_lifecycle)) {
@@ -448,9 +459,12 @@ static void *splash_animation_thread(void *arg) {
     }
 
     // Copy update notification from global state (thread-safe)
+    log_debug("[SPLASH_ANIM] Frame %d: About to lock update_notification_mutex", frame);
     mutex_lock(&g_update_notification_mutex);
+    log_debug("[SPLASH_ANIM] Frame %d: Locked update_notification_mutex", frame);
     SAFE_STRNCPY(header_ctx.update_notification, g_update_notification, sizeof(header_ctx.update_notification));
     mutex_unlock(&g_update_notification_mutex);
+    log_debug("[SPLASH_ANIM] Frame %d: Unlocked update_notification_mutex", frame);
 
     // Calculate header lines: 8 base lines + 1 if update notification present
     int header_lines = 8;
@@ -469,19 +483,26 @@ static void *splash_animation_thread(void *arg) {
     // Render the screen (header + logs) only in interactive mode
     // OR if splash screen was explicitly requested
     // In non-interactive mode without explicit flag, logs flow to stdout/stderr normally
+    log_debug("[SPLASH_ANIM] Frame %d: About to render", frame);
     const options_t *opts_render = options_get();
     bool should_render = terminal_is_interactive() || (opts_render && opts_render->splash_screen_explicitly_set);
     if (should_render) {
+      log_debug("[SPLASH_ANIM] Frame %d: Calling terminal_screen_render()", frame);
       terminal_screen_render(&screen_config);
+      log_debug("[SPLASH_ANIM] Frame %d: terminal_screen_render() completed", frame);
+    } else {
+      log_debug("[SPLASH_ANIM] Frame %d: Skipping render (should_render=false)", frame);
     }
 
     // Move to next frame
     frame++;
 
     // Sleep to control animation speed (unless grep needs immediate rerender)
+    log_debug("[SPLASH_ANIM] Frame %d: About to sleep for %d ms", frame - 1, anim_speed);
     if (!interactive_grep_needs_rerender()) {
       platform_sleep_ms(anim_speed);
     }
+    log_debug("[SPLASH_ANIM] Frame %d: Sleep completed", frame - 1);
   }
 
   // Cleanup keyboard
@@ -524,41 +545,56 @@ int splash_intro_start(session_display_ctx_t *ctx) {
   }
 
   // Initialize log buffer for capturing logs during animation
+  log_debug("[SPLASH] About to call session_log_buffer_init()");
   if (!session_log_buffer_init()) {
     log_warn("Failed to initialize splash log buffer");
     return 0;
   }
+  log_debug("[SPLASH] session_log_buffer_init() completed successfully");
 
   // Clear screen
+  log_debug("[SPLASH] Clearing screen");
   terminal_clear_screen();
   // Show cursor for splash screen display (with logs)
   (void)terminal_cursor_show();
   fflush(stdout);
 
   // Set running flag
+  log_debug("[SPLASH] Setting running flag and initializing state");
   atomic_store(&g_splash_state.is_running, true);
   atomic_store(&g_splash_state.should_stop, false);
   g_splash_state.frame = 0;
 
   // Start animation thread
+  log_debug("[SPLASH] About to create animation thread");
   if (asciichat_thread_create(&g_splash_state.anim_thread, "splash_anim", splash_animation_thread, NULL) != ASCIICHAT_OK) {
     log_warn("Failed to create splash animation thread");
     return 0;
   }
+  log_debug("[SPLASH] Animation thread created successfully");
 
   return 0; // ASCIICHAT_OK
 }
 
 int splash_intro_done(void) {
+  log_debug("[SPLASH_DONE] Entry: is_running=%d, should_stop=%d",
+            atomic_load(&g_splash_state.is_running),
+            atomic_load(&g_splash_state.should_stop));
+
   // Signal animation thread to stop
+  log_debug("[SPLASH_DONE] Setting should_stop=true");
   atomic_store(&g_splash_state.should_stop, true);
 
   // Wait for animation thread to finish
+  log_debug("[SPLASH_DONE] Checking if animation thread is running");
   if (atomic_load(&g_splash_state.is_running)) {
+    log_debug("[SPLASH_DONE] About to join animation thread");
     asciichat_thread_join(&g_splash_state.anim_thread, NULL);
+    log_debug("[SPLASH_DONE] Animation thread join completed");
   }
 
   atomic_store(&g_splash_state.is_running, false);
+  log_debug("[SPLASH_DONE] Exit");
 
   // Don't clear screen here - first frame will do it
   // Clearing here can cause a brief scroll artifact during transition
