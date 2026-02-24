@@ -274,7 +274,7 @@ asciichat_error_t thread_pool_queue_work(const char *name, thread_pool_t *pool, 
     last->next = entry;
   }
 
-  // Signal workers that work is available
+  // Signal workers that work is available (WHILE HOLDING MUTEX to prevent lost wakeup race)
   cond_signal(&pool->work_available);
 
   mutex_unlock(&pool->work_queue_mutex);
@@ -367,7 +367,7 @@ asciichat_error_t thread_pool_stop_all(thread_pool_t *pool) {
 
   log_debug("Stopping %zu threads in pool '%s' in stop_id order", pool->thread_count, pool->name);
 
-  // For work queue mode, signal workers to shutdown
+  // For work queue mode, signal workers to shutdown (BEFORE releasing the mutex to prevent new work)
   if (pool->is_work_queue_mode) {
     mutex_lock(&pool->work_queue_mutex);
     pool->shutdown_requested = true;
@@ -375,8 +375,16 @@ asciichat_error_t thread_pool_stop_all(thread_pool_t *pool) {
     mutex_unlock(&pool->work_queue_mutex);
   }
 
-  // Threads are already sorted by stop_id (ascending), so just iterate and join
-  thread_pool_entry_t *entry = pool->threads;
+  // Save thread list and clear it (WHILE holding mutex to prevent worker state changes)
+  thread_pool_entry_t *threads_to_join = pool->threads;
+  pool->threads = NULL;
+  pool->thread_count = 0;
+
+  // Release mutex BEFORE joining threads to prevent deadlock if workers need to acquire it
+  mutex_unlock(&pool->threads_mutex);
+
+  // Now join threads (WITHOUT holding the mutex to prevent deadlock)
+  thread_pool_entry_t *entry = threads_to_join;
   while (entry) {
     log_debug("Joining thread '%s' (stop_id=%d) in pool '%s'", entry->name, entry->stop_id, pool->name);
 
@@ -389,12 +397,6 @@ asciichat_error_t thread_pool_stop_all(thread_pool_t *pool) {
     SAFE_FREE(entry);
     entry = next;
   }
-
-  // Clear list
-  pool->threads = NULL;
-  pool->thread_count = 0;
-
-  mutex_unlock(&pool->threads_mutex);
 
   log_debug("All threads stopped in pool '%s'", pool->name);
   return ASCIICHAT_OK;
