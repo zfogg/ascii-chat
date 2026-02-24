@@ -39,6 +39,7 @@
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/platform/cond.h>
 #include <ascii-chat/debug/memory.h>
+#include <ascii-chat/debug/named.h>
 #include <libwebsockets.h>
 #include <string.h>
 #include <unistd.h>
@@ -1020,7 +1021,12 @@ static const acip_transport_methods_t websocket_methods = {
  * @param crypto_ctx Optional encryption context (can be NULL)
  * @return Transport instance or NULL on failure
  */
-acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto_context_t *crypto_ctx) {
+acip_transport_t *acip_websocket_client_transport_create(const char *name, const char *url, crypto_context_t *crypto_ctx) {
+  if (!name) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Transport name is required");
+    return NULL;
+  }
+
   if (!url) {
     SET_ERRNO(ERROR_INVALID_PARAM, "url is required");
     return NULL;
@@ -1311,6 +1317,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
 
   log_info("WebSocket connection established (crypto: %s)", crypto_ctx ? "enabled" : "disabled");
 
+  NAMED_REGISTER_TRANSPORT(transport, name);
   return transport;
 }
 
@@ -1324,7 +1331,12 @@ acip_transport_t *acip_websocket_client_transport_create(const char *url, crypto
  * @param crypto_ctx Optional crypto context
  * @return Transport instance or NULL on error
  */
-acip_transport_t *acip_websocket_server_transport_create(struct lws *wsi, crypto_context_t *crypto_ctx) {
+acip_transport_t *acip_websocket_server_transport_create(const char *name, struct lws *wsi, crypto_context_t *crypto_ctx) {
+  if (!name) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Transport name is required");
+    return NULL;
+  }
+
   if (!wsi) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid wsi parameter");
     return NULL;
@@ -1481,5 +1493,6 @@ acip_transport_t *acip_websocket_server_transport_create(struct lws *wsi, crypto
 
   log_info("Created WebSocket server transport (crypto: %s)", crypto_ctx ? "enabled" : "disabled");
 
+  NAMED_REGISTER_TRANSPORT(transport, name);
   return transport;
 }

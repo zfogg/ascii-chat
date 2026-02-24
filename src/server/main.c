@@ -2274,7 +2274,7 @@ int server_main(void) {
         log_debug("Server staying connected to ACDS for signaling relay");
 
         // Create ACDS transport wrapper for sending signaling packets
-        g_acds_transport = acip_tcp_transport_create(g_acds_client->socket, NULL);
+        g_acds_transport = acip_tcp_transport_create("transport_acds_server", g_acds_client->socket, NULL);
         if (!g_acds_transport) {
           log_error("Failed to create ACDS transport wrapper");
         } else {

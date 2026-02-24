@@ -18,6 +18,7 @@
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/network/crc32.h>
+#include <ascii-chat/debug/named.h>
 #include <string.h>
 
 /**
@@ -296,7 +297,12 @@ static const acip_transport_methods_t tcp_methods = {
 // TCP Transport Creation
 // =============================================================================
 
-acip_transport_t *acip_tcp_transport_create(socket_t sockfd, crypto_context_t *crypto_ctx) {
+acip_transport_t *acip_tcp_transport_create(const char *name, socket_t sockfd, crypto_context_t *crypto_ctx) {
+  if (!name) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Transport name is required");
+    return NULL;
+  }
+
   if (sockfd == INVALID_SOCKET_VALUE) {
     log_error("[TCP_CREATE_STATE] ❌ INVALID_SOCKET: sockfd=%d", sockfd);
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid socket descriptor");
@@ -349,6 +355,7 @@ acip_transport_t *acip_tcp_transport_create(socket_t sockfd, crypto_context_t *c
   log_info("[TCP_CREATE_STATE] ✅ CREATE_COMPLETE: transport=%p, sockfd=%d, is_connected=true, crypto=%s",
            (void *)transport, sockfd, crypto_ctx ? "enabled" : "disabled");
 
+  NAMED_REGISTER_TRANSPORT(transport, name);
   return transport;
 }
 

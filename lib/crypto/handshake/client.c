@@ -865,7 +865,7 @@ asciichat_error_t crypto_handshake_client_key_exchange_socket(crypto_handshake_c
   }
 
   // Create temporary TCP transport
-  acip_transport_t *temp_transport = acip_tcp_transport_create(client_socket, NULL);
+  acip_transport_t *temp_transport = acip_tcp_transport_create("crypto_handshake_temp_socket", client_socket, NULL);
   if (!temp_transport) {    return SET_ERRNO(ERROR_NETWORK, "Failed to create temporary transport");
   }
 
@@ -894,7 +894,7 @@ asciichat_error_t crypto_handshake_client_auth_response_socket(crypto_handshake_
   }
 
   // Create temporary TCP transport
-  acip_transport_t *temp_transport = acip_tcp_transport_create(client_socket, NULL);
+  acip_transport_t *temp_transport = acip_tcp_transport_create("crypto_handshake_temp_socket", client_socket, NULL);
   if (!temp_transport) {    return SET_ERRNO(ERROR_NETWORK, "Failed to create temporary transport");
   }
 
@@ -922,7 +922,7 @@ asciichat_error_t crypto_handshake_client_complete_socket(crypto_handshake_conte
   }
 
   // Create temporary TCP transport
-  acip_transport_t *temp_transport = acip_tcp_transport_create(client_socket, NULL);
+  acip_transport_t *temp_transport = acip_tcp_transport_create("crypto_handshake_temp_socket", client_socket, NULL);
   if (!temp_transport) {    return SET_ERRNO(ERROR_NETWORK, "Failed to create temporary transport");
   }
 

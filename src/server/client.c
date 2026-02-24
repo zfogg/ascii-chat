@@ -735,7 +735,9 @@ int add_client(server_context_t *server_ctx, socket_t socket, const char *client
     // Create ACIP transport for protocol-agnostic packet sending
     // The transport wraps the socket with encryption context from the handshake
     const crypto_context_t *crypto_ctx = crypto_server_get_context(atomic_load(&client->client_id));
-    client->transport = acip_tcp_transport_create(socket, (crypto_context_t *)crypto_ctx);
+    char transport_name[64];
+    snprintf(transport_name, sizeof(transport_name), "transport_tcp_client_%u", atomic_load(&client->client_id));
+    client->transport = acip_tcp_transport_create(transport_name, socket, (crypto_context_t *)crypto_ctx);
     if (!client->transport) {
       log_error("Failed to create ACIP transport for client %u", atomic_load(&client->client_id));
       if (remove_client(server_ctx, atomic_load(&client->client_id)) != 0) {

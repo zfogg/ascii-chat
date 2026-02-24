@@ -374,7 +374,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
 
     // Create WebSocket transport (handles connection internally)
-    g_client_transport = acip_websocket_client_transport_create(ws_url, (crypto_context_t *)crypto_ctx);
+    g_client_transport = acip_websocket_client_transport_create("transport_websocket_client", ws_url, (crypto_context_t *)crypto_ctx);
     if (!g_client_transport) {
       log_error("Failed to create WebSocket ACIP transport");
       url_parts_destroy(&url_parts);
@@ -647,7 +647,7 @@ connection_success:
   const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
 
   // Create TCP transport (WebSocket is handled earlier in the function)
-  g_client_transport = acip_tcp_transport_create(g_sockfd, (crypto_context_t *)crypto_ctx);
+  g_client_transport = acip_tcp_transport_create("transport_tcp_client", g_sockfd, (crypto_context_t *)crypto_ctx);
   if (!g_client_transport) {
     log_error("Failed to create TCP ACIP transport");
     close_socket(g_sockfd);

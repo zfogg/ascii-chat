@@ -467,6 +467,21 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
 #endif
 
 /**
+ * @brief Register a transport with automatic format specifier
+ * @param transport Transport pointer
+ * @param name Base name string (typically "transport_client_<id>" or "transport_tcp_<id>")
+ * @ingroup debug_named
+ *
+ * Convenience macro that automatically uses "0x%tx" format specifier for transport addresses.
+ */
+#ifndef NDEBUG
+#define NAMED_REGISTER_TRANSPORT(transport, name) \
+  named_register((uintptr_t)(const void *)(transport), (name), "transport", "0x%tx", __FILE__, __LINE__, __func__)
+#else
+#define NAMED_REGISTER_TRANSPORT(transport, name) (name)
+#endif
+
+/**
  * @brief Open a file and register the file descriptor
  * @param pathname File path to open
  * @param name Debug name for the file descriptor

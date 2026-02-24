@@ -164,7 +164,9 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     // Create ACIP WebSocket server transport for this connection
     // Note: We pass NULL for crypto_ctx here - crypto handshake happens at ACIP level
     log_debug("[LWS_CALLBACK_ESTABLISHED] Creating ACIP WebSocket transport...");
-    conn_data->transport = acip_websocket_server_transport_create(wsi, NULL);
+    char ws_transport_name[64];
+    snprintf(ws_transport_name, sizeof(ws_transport_name), "transport_websocket_server_%p", (void *)wsi);
+    conn_data->transport = acip_websocket_server_transport_create(ws_transport_name, wsi, NULL);
     if (!conn_data->transport) {
       log_error("[LWS_CALLBACK_ESTABLISHED] FAILED: acip_websocket_server_transport_create returned NULL");
       return -1;
@@ -451,7 +453,9 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
       log_info("LWS_CALLBACK_RECEIVE: Initializing transport as fallback (client_ip=%s)", client_ip);
       conn_data->server = server;
-      conn_data->transport = acip_websocket_server_transport_create(wsi, NULL);
+      char ws_transport_name[64];
+      snprintf(ws_transport_name, sizeof(ws_transport_name), "transport_websocket_server_%p", (void *)wsi);
+      conn_data->transport = acip_websocket_server_transport_create(ws_transport_name, wsi, NULL);
       conn_data->handler_started = false;
       conn_data->pending_send_data = NULL;
       conn_data->pending_send_len = 0;
