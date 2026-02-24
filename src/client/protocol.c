@@ -1088,9 +1088,14 @@ int protocol_start_connection() {
  * @ingroup client_protocol
  */
 void protocol_stop_connection() {
+  // In snapshot mode, protocol threads were never started, so nothing to stop
+  if (GET_OPTION(snapshot_mode)) {
+    return;
+  }
+
   // Signal audio sender thread immediately if it was created
   // Must happen FIRST, even in mirror mode where data_thread was never created
-  // Audio sender is created in ALL modes (mirror, network, discovery) and must be properly stopped
+  // Audio sender is created in ALL modes except snapshot mode
   audio_stop_thread();
 
   // Early return if data thread was never created (e.g., mirror mode)

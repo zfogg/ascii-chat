@@ -340,12 +340,15 @@ static int initialize_client_systems(void) {
   // All shared subsystem initialization (timer, logging, platform, buffer pool)
   // is now done by asciichat_shared_init() in src/main.c BEFORE options_init()
 
-  // Initialize client worker thread pool (always needed, even if shared init done)
-  if (!g_client_worker_pool) {
-    g_client_worker_pool = thread_pool_create("client_workers");
+  // Skip thread pool in snapshot mode (no network threads needed for local capture)
+  if (!GET_OPTION(snapshot_mode)) {
+    // Initialize client worker thread pool (needed for network protocol threads)
     if (!g_client_worker_pool) {
-      log_fatal("Failed to create client worker thread pool");
-      return ERROR_THREAD;
+      g_client_worker_pool = thread_pool_create("client_workers");
+      if (!g_client_worker_pool) {
+        log_fatal("Failed to create client worker thread pool");
+        return ERROR_THREAD;
+      }
     }
   }
 
@@ -381,8 +384,8 @@ static int initialize_client_systems(void) {
     return capture_result;
   }
 
-  // Initialize audio if enabled
-  if (GET_OPTION(audio_enabled)) {
+  // Initialize audio if enabled (skip in snapshot mode - no server connection needed)
+  if (GET_OPTION(audio_enabled) && !GET_OPTION(snapshot_mode)) {
     if (audio_client_init() != 0) {
       log_warn("Failed to initialize audio system");
       // Continue without audio instead of crashing (e.g., ARM systems with audio device incompatibility)
@@ -467,6 +470,12 @@ static bool client_should_reconnect(asciichat_error_t last_error, int attempt_nu
 static asciichat_error_t client_run(session_capture_ctx_t *capture, session_display_ctx_t *display, void *user_data) {
   (void)capture;   // Provided by session_client_like, used by protocol threads
   (void)user_data; // Unused
+
+  // In snapshot mode, skip network connection - just capture local frames and exit
+  if (GET_OPTION(snapshot_mode)) {
+    log_debug("Snapshot mode: skipping network connection, capturing frames locally");
+    return ASCIICHAT_OK;
+  }
 
   // Make the framework-created display context available to protocol threads
   display_set_context(display);

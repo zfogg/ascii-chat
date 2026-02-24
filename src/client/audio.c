@@ -955,6 +955,8 @@ int audio_client_init() {
   if (g_audio_context.initialized) {
     log_debug("Cleaning up previous audio context before reinitializing");
     audio_destroy(&g_audio_context);
+    // Reset lifecycle to allow re-initialization on reconnection
+    lifecycle_reset(&g_audio_client_init_lc);
   }
 
   // Initialize WAV dumper for received audio if debugging enabled
@@ -1112,6 +1114,11 @@ int audio_start_thread() {
  * @ingroup client_audio
  */
 void audio_stop_thread() {
+  // If audio was never initialized (e.g., in snapshot mode), nothing to stop
+  if (!lifecycle_is_initialized(&g_audio_client_init_lc)) {
+    return;
+  }
+
   // Signal audio sender thread to exit first.
   // This must happen before thread_pool_stop_all() is called, otherwise the sender
   // thread will be stuck in cond_wait() and thread_pool_stop_all() will hang forever.
