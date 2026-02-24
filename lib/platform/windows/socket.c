@@ -15,6 +15,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/debug/named.h>
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -56,7 +57,7 @@ void socket_cleanup(void) {
   }
 }
 
-socket_t socket_create(int domain, int type, int protocol) {
+socket_t socket_create(const char *name, int domain, int type, int protocol) {
   // Ensure Winsock is initialized
   if (socket_init() != ASCIICHAT_OK) {
     return INVALID_SOCKET;
@@ -69,7 +70,11 @@ socket_t socket_create(int domain, int type, int protocol) {
   }
 
   // For other domains, use as-is
-  return socket(domain, type, protocol);
+  socket_t sock = socket(domain, type, protocol);
+  if (socket_is_valid(sock) && name) {
+    NAMED_REGISTER_SOCKET(sock, name);
+  }
+  return sock;
 }
 
 int socket_close(socket_t sock) {

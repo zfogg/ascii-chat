@@ -188,7 +188,8 @@ static asciichat_error_t nat_stun_probe(nat_quality_t *quality, const char *stun
   int stun_family = is_valid_ipv6(host_buf) ? AF_INET6 : AF_INET;
 
   // Create UDP socket for STUN probe
-  socket_t sock = socket_create(stun_family, SOCK_DGRAM, 0);
+  const char *socket_name = stun_family == AF_INET6 ? "stun_probe_ipv6" : "stun_probe_ipv4";
+  socket_t sock = socket_create(socket_name, stun_family, SOCK_DGRAM, 0);
   if (sock == INVALID_SOCKET_VALUE) {
     log_warn("Failed to create UDP socket for STUN probe");
     return SET_ERRNO(ERROR_NETWORK, "Cannot create UDP socket");

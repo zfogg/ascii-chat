@@ -21,6 +21,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/debug/named.h>
 
 // Socket implementation (mostly pass-through for POSIX)
 asciichat_error_t socket_init(void) {
@@ -32,8 +33,12 @@ void socket_cleanup(void) {
   // POSIX doesn't need socket cleanup
 }
 
-socket_t socket_create(int domain, int type, int protocol) {
-  return socket(domain, type, protocol);
+socket_t socket_create(const char *name, int domain, int type, int protocol) {
+  socket_t sock = socket(domain, type, protocol);
+  if (socket_is_valid(sock) && name) {
+    NAMED_REGISTER_SOCKET(sock, name);
+  }
+  return sock;
 }
 
 int socket_close(socket_t sock) {

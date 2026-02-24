@@ -301,14 +301,16 @@ asciichat_error_t socket_init(void);
 void socket_cleanup(void);
 
 /**
- * @brief Create a new socket
+ * @brief Create a new named socket
+ * @param name Debug name for the socket
  * @param domain Socket domain (AF_INET for IPv4, AF_INET6 for IPv6, AF_UNIX for local)
  * @param type Socket type (SOCK_STREAM for TCP, SOCK_DGRAM for UDP)
  * @param protocol Protocol (typically 0 for automatic selection based on domain/type)
  * @return Socket handle on success, INVALID_SOCKET_VALUE on error
  *
- * Creates a new socket but does not connect it. Use with socket_bind() and
+ * Creates a new named socket but does not connect it. Use with socket_bind() and
  * socket_listen() for servers, or socket_connect() for clients.
+ * The socket is automatically registered with the debug naming system.
  *
  * **Common domain/type combinations:**
  * - AF_INET + SOCK_STREAM = TCP over IPv4
@@ -322,7 +324,7 @@ void socket_cleanup(void);
  *
  * **Error handling:**
  * ```c
- * socket_t sock = socket_create(AF_INET, SOCK_STREAM, 0);
+ * socket_t sock = socket_create("my_socket", AF_INET, SOCK_STREAM, 0);
  * if (!socket_is_valid(sock)) {
  *     log_error("Socket creation failed: %s", socket_get_error_string());
  *     return false;
@@ -331,7 +333,7 @@ void socket_cleanup(void);
  *
  * @ingroup platform
  */
-socket_t socket_create(int domain, int type, int protocol);
+socket_t socket_create(const char *name, int domain, int type, int protocol);
 
 /**
  * @brief Close a socket
