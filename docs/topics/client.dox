@@ -6,36 +6,33 @@
  *
  * @section client_overview Overview
  *
- * Welcome to the ascii-chat client—where the magic happens on your screen!
+ * The ascii-chat client is a real-time audio-video communication terminal application that
+ * captures local media, encrypts, and transmits to the server, while rendering remote participants
+ * as ASCII art in the terminal.
  *
- * Think of the client as your personal video chat portal. It's the part of ascii-chat that runs
- * on your computer, capturing your webcam and microphone, sending that data to the server, and
- * displaying everyone else's video as beautiful ASCII art right in your terminal. It's like a
- * normal video chat app, except way cooler because it works in your terminal!
+ * The client executes multiple concurrent operations: webcam capture, audio capture/playback,
+ * encryption, network transmission, frame reception, and terminal rendering. These operations
+ * are coordinated through a multithreaded architecture that maintains responsiveness while
+ * handling network interruptions and media synchronization.
  *
- * The client is surprisingly sophisticated under the hood. It juggles multiple tasks simultaneously:
- * grabbing frames from your webcam, capturing audio, encrypting everything, sending it over the
- * network, receiving ASCII frames from the server, and rendering them to your terminal—all while
- * staying responsive and handling network hiccups gracefully.
- *
- * But here's the best part: all of this complexity is hidden from you. Just run the client, and
- * it connects to the server, authenticates securely, and starts streaming. If your connection drops?
- * No problem—it automatically reconnects. Network slow? It handles that too. The client is designed
- * to be reliable and resilient, so you can focus on your conversation, not technical issues.
+ * The client automatically manages connection lifecycle including authentication, connection
+ * establishment, automatic reconnection with exponential backoff on network interruption,
+ * and graceful shutdown. Error conditions such as network timeouts, packet loss, and device
+ * failures are handled without requiring user intervention.
  *
  * **Implementation**: src/client/*.c, src/client/*.h
  *
- * What makes the client special?
- * -------------------------------
- * - **Smart connection management**: Connects automatically with exponential backoff (won't spam the server)
- * - **Cross-platform video capture**: Works with your webcam on macOS, Linux, or Windows (or test patterns if you prefer)
- * - **Crystal-clear audio**: PortAudio handles both capture and playback with jitter buffering
- * - **Real-time rendering**: ASCII frames appear instantly in your terminal—no lag
- * - **Secure by default**: End-to-end encryption using modern cryptography (X25519/XSalsa20-Poly1305)
- * - **SSH key authentication**: Use your existing SSH keys (Ed25519) for secure login
- * - **Stays connected**: Ping/pong keepalive prevents timeout disconnects
- * - **Handles interruptions**: Reconnects gracefully when your network burps
- * - **Snapshot mode**: Perfect for testing—capture a single frame and exit
+ * Key capabilities:
+ * -----------------
+ * - **Automatic connection management**: Exponential backoff reconnection prevents server spam
+ * - **Cross-platform video capture**: Supports system webcams on macOS, Linux, Windows; test patterns available
+ * - **Audio I/O**: PortAudio for capture and playback with jitter buffering
+ * - **Real-time frame rendering**: Terminal rendering pipeline for immediate ASCII display
+ * - **Encryption by default**: End-to-end encryption using X25519/XSalsa20-Poly1305
+ * - **SSH key authentication**: Ed25519 key-based authentication from existing SSH infrastructure
+ * - **Connection persistence**: Keepalive mechanism prevents idle disconnects
+ * - **Network resilience**: Automatic reconnection on transport failures
+ * - **Snapshot mode**: Single-frame capture for testing
  *
  * @section client_architecture Architecture
  *
