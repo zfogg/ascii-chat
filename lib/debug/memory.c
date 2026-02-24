@@ -152,7 +152,7 @@ static bool should_ignore_allocation(const char *file, int line, uint64_t tid, s
     if (line == g_suppression_config[i].line && strcmp(file, g_suppression_config[i].file) == 0) {
       // Found matching suppression entry - check if we've exceeded expected count for this thread
       char key[BUFFER_SIZE_SMALL + 32];
-      safe_snprintf(key, sizeof(key), "%s:%d:%" PRIu64, file, line, tid);
+      safe_snprintf(key, sizeof(key), "%s:%d:%lu", file, line, tid);
 
       // Look up existing counter for this site/thread combination
       debug_memory_suppression_t *counter = NULL;
@@ -197,7 +197,7 @@ static alloc_site_t *get_or_create_site(const char *file, int line) {
   uint64_t tid = asciichat_thread_current_id();
 
   char key[BUFFER_SIZE_SMALL + 32];
-  safe_snprintf(key, sizeof(key), "%s:%d:%" PRIu64, file, line, tid);
+  safe_snprintf(key, sizeof(key), "%s:%d:%lu", file, line, tid);
 
   // Try to find existing site
   alloc_site_t *site = NULL;
@@ -208,7 +208,7 @@ static alloc_site_t *get_or_create_site(const char *file, int line) {
 
   // Check if we've exceeded cache capacity
   if (g_site_count >= MEM_SITE_CACHE_MAX_KEYS) {
-    log_warn_every(LOG_RATE_FAST, "Allocation site cache full (%zu keys), not tracking %s:%d:%" PRIu64,
+    log_warn_every(LOG_RATE_FAST, "Allocation site cache full (%zu keys), not tracking %s:%d:%lu,
                    MEM_SITE_CACHE_MAX_KEYS, file, line, tid);
     return NULL;
   }
@@ -238,7 +238,7 @@ static alloc_site_t *get_or_create_site(const char *file, int line) {
  */
 static alloc_site_t *lookup_site(const char *file, int line, uint64_t tid) {
   char key[BUFFER_SIZE_SMALL + 32];
-  safe_snprintf(key, sizeof(key), "%s:%d:%" PRIu64, file, line, tid);
+  safe_snprintf(key, sizeof(key), "%s:%d:%lu", file, line, tid);
 
   alloc_site_t *site = NULL;
   HASH_FIND_STR(g_site_cache, key, site);
@@ -332,7 +332,7 @@ void *debug_malloc(size_t size, const char *file, int line) {
         site->live_bytes += size;
         site->total_count++;
         if (site->live_count == MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY) {
-          log_warn("%s:%d:%" PRIu64 " — %d live allocations, possible memory accumulation", normalized_file, line,
+          log_warn("%s:%d:%lu — %d live allocations, possible memory accumulation", normalized_file, line,
                    asciichat_thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY);
         }
       }
@@ -388,7 +388,7 @@ void debug_track_aligned(void *ptr, size_t size, const char *file, int line) {
         site->live_bytes += size;
         site->total_count++;
         if (site->live_count == MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY) {
-          log_warn("%s:%d:%" PRIu64 " — %d live allocations, possible memory accumulation", normalized_file, line,
+          log_warn("%s:%d:%lu — %d live allocations, possible memory accumulation", normalized_file, line,
                    asciichat_thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY);
         }
       }
@@ -527,7 +527,7 @@ void *debug_calloc(size_t count, size_t size, const char *file, int line) {
         site->live_bytes += total;
         site->total_count++;
         if (site->live_count == MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY) {
-          log_warn("%s:%d:%" PRIu64 " — %d live allocations, possible memory accumulation", normalized_file, line,
+          log_warn("%s:%d:%lu — %d live allocations, possible memory accumulation", normalized_file, line,
                    asciichat_thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY);
         }
       }
@@ -704,7 +704,7 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
         new_site->live_bytes += size;
         new_site->total_count++;
         if (new_site->live_count == MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY) {
-          log_warn("%s:%d:%" PRIu64 " — %d live allocations, possible memory accumulation", normalized_file, line,
+          log_warn("%s:%d:%lu — %d live allocations, possible memory accumulation", normalized_file, line,
                    asciichat_thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY);
         }
       }
@@ -729,7 +729,7 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
           site->live_bytes += size;
           site->total_count++;
           if (site->live_count == MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY) {
-            log_warn("%s:%d:%" PRIu64 " — %d live allocations, possible memory accumulation", normalized_file, line,
+            log_warn("%s:%d:%lu — %d live allocations, possible memory accumulation", normalized_file, line,
                      asciichat_thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY);
           }
         }
@@ -1046,7 +1046,7 @@ void debug_memory_report(void) {
             }
             if (second_colon > site->key) {
               sscanf(second_colon + 1, "%d", &line);
-              sscanf(last_colon + 1, "%" PRIu64, &tid);
+              sscanf(last_colon + 1, "%lu", &tid);
               size_t file_len = second_colon - site->key;
               if (file_len < sizeof(file)) {
                 strncpy(file, site->key, file_len);
@@ -1078,7 +1078,7 @@ void debug_memory_report(void) {
           }
 
           // Print site summary
-          APPEND_REPORT("  - %s:%s  [tid 0x%" PRIx64 "]  %s live  %s total\n",
+          APPEND_REPORT("  - %s:%s  [tid 0x"%lx "]  %s live  %s total\n",
                        colored_string(LOG_COLOR_GREY, file),
                        colored_string(LOG_COLOR_FATAL, line_str), tid,
                        colored_string(size_color, count_str),
