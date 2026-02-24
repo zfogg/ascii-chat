@@ -66,9 +66,9 @@ static int format_mutex_timing(const mutex_t *mutex, char *buffer, size_t size) 
         offset += snprintf(buffer + offset, size - offset, "    Last unlock: %s ago\n", elapsed_str);
     }
 
-    if (mutex->currently_held_by_tid != 0) {
-        const char *thread_name = named_describe((uintptr_t)mutex->currently_held_by_tid, "thread");
-        offset += snprintf(buffer + offset, size - offset, "    *** HELD by %s ***\n", thread_name);
+    if (mutex->currently_held_by_key != 0) {
+        const char *thread_name = named_describe(mutex->currently_held_by_key, "thread");
+        offset += snprintf(buffer + offset, size - offset, "    *** HELD by %s (0x%tx) ***\n", thread_name, (ptrdiff_t)mutex->currently_held_by_key);
     }
 
     return offset;
@@ -110,9 +110,9 @@ static int format_rwlock_timing(const rwlock_t *rwlock, char *buffer, size_t siz
         offset += snprintf(buffer + offset, size - offset, "    Last unlock: %s ago\n", elapsed_str);
     }
 
-    if (rwlock->write_held_by_tid != 0) {
-        const char *thread_name = named_describe((uintptr_t)rwlock->write_held_by_tid, "thread");
-        offset += snprintf(buffer + offset, size - offset, "    *** WRITE HELD by %s ***\n", thread_name);
+    if (rwlock->write_held_by_key != 0) {
+        const char *thread_name = named_describe(rwlock->write_held_by_key, "thread");
+        offset += snprintf(buffer + offset, size - offset, "    *** WRITE HELD by %s (0x%tx) ***\n", thread_name, (ptrdiff_t)rwlock->write_held_by_key);
     }
 
     if (rwlock->read_lock_count > 0) {
@@ -159,9 +159,9 @@ static int format_cond_timing(const cond_t *cond, char *buffer, size_t size) {
     }
 
     if (cond->waiting_count > 0) {
-        const char *thread_name = named_describe((uintptr_t)cond->last_waiting_tid, "thread");
-        offset += snprintf(buffer + offset, size - offset, "    *** %lu thread(s) WAITING (most recent: %s) ***\n",
-                          cond->waiting_count, thread_name);
+        const char *thread_name = named_describe(cond->last_waiting_key, "thread");
+        offset += snprintf(buffer + offset, size - offset, "    *** %lu thread(s) WAITING (most recent: %s (0x%tx)) ***\n",
+                          cond->waiting_count, thread_name, (ptrdiff_t)cond->last_waiting_key);
     }
 
     return offset;
@@ -183,11 +183,9 @@ static void mutex_iter_callback(uintptr_t key, const char *name, void *user_data
     char timing_str[256] = {0};
     format_mutex_timing(mutex, timing_str, sizeof(timing_str));
 
-    // Always print mutex info, even if timing_str is empty (shows "never used")
+    // Only print if mutex has been used
     if (timing_str[0]) {
-        log_info("Mutex %s (0x%tx):\n%s", name, (ptrdiff_t)key, timing_str);
-    } else {
-        log_info("Mutex %s (0x%tx): [never locked]", name, (ptrdiff_t)key);
+        log_info("Mutex %s:\n%s", name, timing_str);
     }
 }
 
@@ -203,11 +201,9 @@ static void rwlock_iter_callback(uintptr_t key, const char *name, void *user_dat
     char timing_str[512] = {0};
     format_rwlock_timing(rwlock, timing_str, sizeof(timing_str));
 
-    // Always print rwlock info, even if timing_str is empty (shows "never used")
+    // Only print if rwlock has been used
     if (timing_str[0]) {
-        log_info("RWLock %s (0x%tx):\n%s", name, (ptrdiff_t)key, timing_str);
-    } else {
-        log_info("RWLock %s (0x%tx): [never locked]", name, (ptrdiff_t)key);
+        log_info("RWLock %s:\n%s", name, timing_str);
     }
 }
 
@@ -223,11 +219,9 @@ static void cond_iter_callback(uintptr_t key, const char *name, void *user_data)
     char timing_str[512] = {0};
     format_cond_timing(cond, timing_str, sizeof(timing_str));
 
-    // Always print condition variable info, even if timing_str is empty (shows "never used")
+    // Only print if condition variable has been used
     if (timing_str[0]) {
-        log_info("Cond %s (0x%tx):\n%s", name, (ptrdiff_t)key, timing_str);
-    } else {
-        log_info("Cond %s (0x%tx): [never signaled]", name, (ptrdiff_t)key);
+        log_info("Cond %s:\n%s", name, timing_str);
     }
 }
 

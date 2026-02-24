@@ -40,7 +40,7 @@ typedef struct {
     const char *name;        ///< Human-readable name for debugging
     uint64_t last_lock_time_ns;   ///< Timestamp of last lock acquisition (nanoseconds)
     uint64_t last_unlock_time_ns; ///< Timestamp of last unlock (nanoseconds)
-    uint64_t currently_held_by_tid; ///< Thread ID currently holding the lock (0 if free)
+    uintptr_t currently_held_by_key; ///< Registry key of thread holding the lock (0 if free)
 } mutex_t;
 #else
 #include <pthread.h>
@@ -53,7 +53,7 @@ typedef struct {
     const char *name;        ///< Human-readable name for debugging
     uint64_t last_lock_time_ns;   ///< Timestamp of last lock acquisition (nanoseconds)
     uint64_t last_unlock_time_ns; ///< Timestamp of last unlock (nanoseconds)
-    uint64_t currently_held_by_tid; ///< Thread ID currently holding the lock (0 if free)
+    uintptr_t currently_held_by_key; ///< Registry key of thread holding the lock (0 if free)
 } mutex_t;
 #endif
 

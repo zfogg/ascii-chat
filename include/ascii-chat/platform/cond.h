@@ -42,7 +42,7 @@ typedef struct {
     uint64_t last_broadcast_time_ns; ///< Timestamp of last broadcast (nanoseconds)
     uint64_t last_wait_time_ns;    ///< Timestamp of last wait (nanoseconds)
     uint64_t waiting_count;        ///< Number of threads currently waiting
-    uint64_t last_waiting_tid;     ///< Thread ID of most recent waiter
+    uintptr_t last_waiting_key;     ///< Registry key of most recent waiter
 } cond_t;
 #else
 #include <pthread.h>
@@ -57,7 +57,7 @@ typedef struct {
     uint64_t last_broadcast_time_ns; ///< Timestamp of last broadcast (nanoseconds)
     uint64_t last_wait_time_ns;    ///< Timestamp of last wait (nanoseconds)
     uint64_t waiting_count;        ///< Number of threads currently waiting
-    uint64_t last_waiting_tid;     ///< Thread ID of most recent waiter
+    uintptr_t last_waiting_key;     ///< Registry key of most recent waiter
 } cond_t;
 #endif
 

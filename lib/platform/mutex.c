@@ -10,6 +10,7 @@
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/util/time.h>
+#include <stdint.h>
 
 /**
  * @brief Hook called when a mutex is successfully locked
@@ -23,7 +24,8 @@
 void mutex_on_lock(mutex_t *mutex) {
   if (mutex) {
     mutex->last_lock_time_ns = time_get_ns();
-    mutex->currently_held_by_tid = (uint64_t)asciichat_thread_current_id();
+    asciichat_thread_t current_thread = (asciichat_thread_t)asciichat_thread_current_id();
+    mutex->currently_held_by_key = asciichat_thread_to_key(current_thread);
   }
 }
 
@@ -39,6 +41,6 @@ void mutex_on_lock(mutex_t *mutex) {
 void mutex_on_unlock(mutex_t *mutex) {
   if (mutex) {
     mutex->last_unlock_time_ns = time_get_ns();
-    mutex->currently_held_by_tid = 0;
+    mutex->currently_held_by_key = 0;
   }
 }

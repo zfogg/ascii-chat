@@ -24,7 +24,8 @@
 void cond_on_wait(cond_t *cond) {
   if (cond) {
     cond->last_wait_time_ns = time_get_ns();
-    cond->last_waiting_tid = (uint64_t)asciichat_thread_current_id();
+    asciichat_thread_t current_thread = (asciichat_thread_t)asciichat_thread_current_id();
+    cond->last_waiting_key = asciichat_thread_to_key(current_thread);
     atomic_fetch_add((volatile _Atomic(uint64_t) *)&cond->waiting_count, 1);
   }
 }

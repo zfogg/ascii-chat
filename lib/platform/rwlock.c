@@ -40,7 +40,8 @@ void rwlock_on_rdlock(rwlock_t *rwlock) {
 void rwlock_on_wrlock(rwlock_t *rwlock) {
   if (rwlock) {
     rwlock->last_wrlock_time_ns = time_get_ns();
-    rwlock->write_held_by_tid = (uint64_t)asciichat_thread_current_id();
+    asciichat_thread_t current_thread = (asciichat_thread_t)asciichat_thread_current_id();
+    rwlock->write_held_by_key = asciichat_thread_to_key(current_thread);
   }
 }
 
@@ -57,8 +58,10 @@ void rwlock_on_wrlock(rwlock_t *rwlock) {
 void rwlock_on_unlock(rwlock_t *rwlock) {
   if (rwlock) {
     rwlock->last_unlock_time_ns = time_get_ns();
-    if (rwlock->write_held_by_tid == (uint64_t)asciichat_thread_current_id()) {
-      rwlock->write_held_by_tid = 0;
+    asciichat_thread_t current_thread = (asciichat_thread_t)asciichat_thread_current_id();
+    uintptr_t current_key = asciichat_thread_to_key(current_thread);
+    if (rwlock->write_held_by_key == current_key) {
+      rwlock->write_held_by_key = 0;
     } else if (rwlock->read_lock_count > 0) {
       atomic_fetch_sub((volatile _Atomic(uint64_t) *)&rwlock->read_lock_count, 1);
     }
