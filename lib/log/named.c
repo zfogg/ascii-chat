@@ -172,12 +172,12 @@ int log_named_format_message(const char *message, char *output, size_t output_si
         }
 
         if (name && type) {
-          /* Format: type/name (value) - plain text, colors added by memory report */
+          /* Format: type/name (fd=value) - plain text, colors added by memory report */
           char temp_output[512];
           char id_buffer[64];
           int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, fd_value);
           if (id_written > 0 && id_written < (int)sizeof(id_buffer)) {
-            int temp_written = snprintf(temp_output, sizeof(temp_output), "%s/%s (%s)", type, name, id_buffer);
+            int temp_written = snprintf(temp_output, sizeof(temp_output), "%s/%s (fd=%s)", type, name, id_buffer);
             if (temp_written > 0 && (size_t)temp_written < sizeof(temp_output)) {
               int copy_len = temp_written;
               if (out_pos + copy_len < output_size - 1) {
