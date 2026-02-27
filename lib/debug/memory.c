@@ -14,6 +14,7 @@
 
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/debug/backtrace.h>
+#include <ascii-chat/debug/named.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/common/error_codes.h>
@@ -1091,9 +1092,9 @@ void debug_memory_report(void) {
           }
 
           // Print site summary
-          APPEND_REPORT("  - %s:%s  [tid 0x%lx]  %s live  %s total\n",
+          APPEND_REPORT("  - %s:%s  %s live  %s total\n",
                        colored_string(LOG_COLOR_GREY, file),
-                       colored_string(LOG_COLOR_FATAL, line_str), tid,
+                       colored_string(LOG_COLOR_FATAL, line_str),
                        colored_string(size_color, count_str),
                        colored_string(size_color, pretty_bytes));
 
@@ -1200,9 +1201,15 @@ int debug_memory_thread_init(void) {
  * @brief Start the memory debug thread
  */
 int debug_memory_thread_start(void) {
-  // Print memory report directly instead of starting a thread to avoid deadlock
-  debug_memory_report();
-  return 0;
+  if (!g_debug_memory_request.initialized) {
+    mutex_init(&g_debug_memory_request.mutex, "debug_memory_state");
+    cond_init(&g_debug_memory_request.cond, "debug_memory_signal");
+    g_debug_memory_request.initialized = true;
+  }
+
+  g_debug_memory_request.should_exit = false;
+  int err = asciichat_thread_create(&g_debug_memory_thread, "debug_memory", debug_memory_thread_fn, NULL);
+  return err;
 }
 
 /**
@@ -1217,6 +1224,13 @@ void debug_memory_trigger_report(void) {
  * @brief Stop the memory debug thread
  */
 void debug_memory_thread_cleanup(void) {
+  // Only join if thread was actually created
+  if (!g_debug_memory_request.initialized) {
+    return;
+  }
+
+  g_debug_memory_request.initialized = false;  // Prevent double-join
+
   // Set exit flag and signal thread - don't acquire mutex to avoid deadlock
   // The thread reads should_exit without locking, and cond_signal is safe without mutex
   g_debug_memory_request.should_exit = true;
