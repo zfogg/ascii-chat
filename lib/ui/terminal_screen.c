@@ -286,45 +286,60 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
 
   // Calculate which logs fit (working backwards from most recent).
   // Walk through logs from newest to oldest, counting display lines needed.
-  // This handles multiline messages and width wrapping correctly.
+  // Cap at max_logs_to_display to keep header position stable during startup.
   int total_lines_needed = 0;
   int first_log_to_display = (log_count > 0) ? (int)log_count - 1 : 0;
+  int max_logs_to_display = 30; // Cap at 30 logs to keep layout stable during startup
+  int logs_counted = 0;
 
   for (int i = (int)log_count - 1; i >= 0; i--) {
     const char *msg = log_entries[i].message;
     int lines_for_this_log = calculate_log_display_lines(msg, g_cached_term_size.cols);
 
-    if (total_lines_needed + lines_for_this_log > renderable_log_rows) {
+    // Stop if we exceed available space OR hit log count cap
+    if (total_lines_needed + lines_for_this_log > renderable_log_rows || logs_counted >= max_logs_to_display) {
       first_log_to_display = i + 1;
       break;
     }
 
     total_lines_needed += lines_for_this_log;
     first_log_to_display = i;
+    logs_counted++;
   }
+
+  // Log detailed info about what logs are being displayed
+  int logs_displayed_count = (int)log_count - first_log_to_display;
+  log_debug("[HEIGHT_CALC] log_count=%zu first_log_to_display=%d logs_displayed=%d total_lines_needed=%d "
+            "renderable_log_rows=%d cap=%d",
+            log_count, first_log_to_display, logs_displayed_count, total_lines_needed, renderable_log_rows,
+            max_logs_to_display);
 
   if (!grep_entering) {
     // Normal mode: flush header from frame buffer first
     frame_buffer_flush(g_frame_buf);
 
-    // Output only the logs that fit
+    // Output only the logs, counting actual lines output
+    int logs_actually_output = 0;
     for (int i = first_log_to_display; i < (int)log_count; i++) {
       const char *msg = log_entries[i].message;
       fprintf(stdout, "%s\n", msg);
+      logs_actually_output++;
     }
 
-    // Fill remaining lines with blank lines to exact height
-    // Use total_lines_needed (display lines accounting for wrapping) to calculate remaining space
-    int remaining = log_area_rows - total_lines_needed;
+    // Fill remaining space: header is already output (8 lines fixed), so fill rest to reach log_area_rows
+    // log_area_rows includes the header height, so remaining = log_area_rows - (header lines) - logs_output
+    // But header is already printed, so we just need to fill log_area_rows - logs_output blank lines
+    int remaining = log_area_rows - logs_actually_output;
     for (int i = 0; i < remaining; i++) {
       fprintf(stdout, "\n");
     }
     fflush(stdout);
 
-    // Verify height calculation
-    log_debug("[HEIGHT] terminal=%dx%d log_area_rows=%d total_lines_needed=%d remaining=%d sum=%d",
-              g_cached_term_size.cols, g_cached_term_size.rows, log_area_rows, total_lines_needed, remaining,
-              total_lines_needed + remaining);
+    // Verify output height matches terminal area
+    int actual_height_rendered = logs_actually_output + remaining; // logs + blank (header already output)
+    log_debug("[RENDER_OUTPUT] log_count=%zu logs_output=%d blank=%d ACTUAL_HEIGHT=%d log_area=%d MATCH=%s", log_count,
+              logs_actually_output, remaining, actual_height_rendered, log_area_rows,
+              (actual_height_rendered == log_area_rows) ? "YES" : "NO");
   } else {
     // Grep mode: diff-based rendering. Only rewrite lines that changed.
     // Logs fill renderable_log_rows; the last row is the `/` input line.
