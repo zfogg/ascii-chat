@@ -127,18 +127,23 @@ int log_named_format_message(const char *message, char *output, size_t output_si
         const char *type = named_get_type(address);
 
         if (name && type) {
-          /* This is a registered named object - format it (plain text for logs) */
+          /* Format: type(yellow)/name(blue) (address(grey)) */
           const char *fmt_spec = named_get_format_spec(address);
           if (!fmt_spec) {
             fmt_spec = "0x%tx"; /* Default format for addresses */
           }
 
-          /* Format: type/name (formatted_value) - plain text, colors added by memory report */
           char temp_output[512];
           char id_buffer[128];
           int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, (ptrdiff_t)address);
           if (id_written > 0 && id_written < (int)sizeof(id_buffer)) {
-            int temp_written = snprintf(temp_output, sizeof(temp_output), "%s/%s (%s)", type, name, id_buffer);
+            /* Apply colors to components */
+            const char *type_colored = colored_string(LOG_COLOR_WARN, type);    /* Yellow */
+            const char *name_colored = colored_string(LOG_COLOR_DEV, name);     /* Blue */
+            const char *id_colored = colored_string(LOG_COLOR_GREY, id_buffer); /* Grey */
+
+            int temp_written =
+                snprintf(temp_output, sizeof(temp_output), "%s/%s (%s)", type_colored, name_colored, id_colored);
             if (temp_written > 0 && (size_t)temp_written < sizeof(temp_output)) {
               int copy_len = temp_written;
               if (out_pos + copy_len < output_size - 1) {
@@ -185,12 +190,18 @@ int log_named_format_message(const char *message, char *output, size_t output_si
         }
 
         if (name && type) {
-          /* Format: type/name (fd=value) - plain text, colors added by memory report */
+          /* Format: type(yellow)/name(blue) (fd=value(grey)) */
           char temp_output[512];
           char id_buffer[64];
           int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, fd_value);
           if (id_written > 0 && id_written < (int)sizeof(id_buffer)) {
-            int temp_written = snprintf(temp_output, sizeof(temp_output), "%s/%s (fd=%s)", type, name, id_buffer);
+            /* Apply colors to components */
+            const char *type_colored = colored_string(LOG_COLOR_WARN, type);    /* Yellow */
+            const char *name_colored = colored_string(LOG_COLOR_DEV, name);     /* Blue */
+            const char *id_colored = colored_string(LOG_COLOR_GREY, id_buffer); /* Grey */
+
+            int temp_written =
+                snprintf(temp_output, sizeof(temp_output), "%s/%s (fd=%s)", type_colored, name_colored, id_colored);
             if (temp_written > 0 && (size_t)temp_written < sizeof(temp_output)) {
               /* Find where prefix starts in original message, calculate how much to skip */
               const char *prefix_start = find_fd_prefix_start(message, int_start);
