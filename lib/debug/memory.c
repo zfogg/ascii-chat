@@ -1084,6 +1084,7 @@ void debug_memory_report(void) {
 
           // Parse site key to extract file and line for ignore checking
           char file[BUFFER_SIZE_SMALL];
+          memset(file, 0, sizeof(file)); // Initialize to prevent garbage data
           int line = 0;
           uint64_t tid = 0;
           char *last_colon = strrchr(site->key, ':');
@@ -1099,8 +1100,17 @@ void debug_memory_report(void) {
               if (file_len < sizeof(file)) {
                 strncpy(file, site->key, file_len);
                 file[file_len] = '\0';
+              } else {
+                // Filename too long, use fallback
+                safe_snprintf(file, sizeof(file), "%.*s...", (int)(sizeof(file) - 4), site->key);
               }
+            } else {
+              // Parsing failed, use the full key as fallback
+              safe_snprintf(file, sizeof(file), "%s", site->key);
             }
+          } else {
+            // No colons found in key (shouldn't happen), use fallback
+            safe_snprintf(file, sizeof(file), "%s", site->key);
           }
 
           // Skip ignored allocations
