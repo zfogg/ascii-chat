@@ -25,7 +25,7 @@ struct frame_buffer {
 };
 
 frame_buffer_t *frame_buffer_create(int rows, int cols) {
-  frame_buffer_t *buf = SAFE_MALLOC(1, frame_buffer_t *);
+  frame_buffer_t *buf = SAFE_MALLOC(sizeof(frame_buffer_t), frame_buffer_t *);
   if (!buf) {
     return NULL;
   }
