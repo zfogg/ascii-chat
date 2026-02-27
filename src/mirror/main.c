@@ -207,6 +207,7 @@
 #include "session/render.h"
 #include "session/keyboard_handler.h"
 #include <ascii-chat/log/logging.h>
+#include <unistd.h>
 
 /* ============================================================================
  * Mode-Specific Keyboard Handler
@@ -242,7 +243,7 @@ static void mirror_keyboard_handler(session_capture_ctx_t *capture, int key, voi
 static asciichat_error_t mirror_run(session_capture_ctx_t *capture, session_display_ctx_t *display, void *user_data) {
   (void)user_data; // Unused
 
-  log_info("mirror_run: CALLED - capture=%p display=%p", (void*)capture, (void*)display);
+  log_info("mirror_run: CALLED - capture=%p display=%p", (void *)capture, (void *)display);
 
   // Get the render loop's should_exit callback from session_client_like
   bool (*render_should_exit)(void *) = session_client_like_get_render_should_exit();
@@ -254,13 +255,48 @@ static asciichat_error_t mirror_run(session_capture_ctx_t *capture, session_disp
   log_info("mirror_run: Calling session_render_loop");
   // Run the unified render loop with keyboard support
   asciichat_error_t result = session_render_loop(capture, display,
-                             render_should_exit,      // Exit check (checks global + custom)
-                             NULL,                    // No custom capture callback
-                             NULL,                    // No custom sleep callback
-                             mirror_keyboard_handler, // Keyboard handler
-                             display);                // user_data for keyboard handler
+                                                 render_should_exit,      // Exit check (checks global + custom)
+                                                 NULL,                    // No custom capture callback
+                                                 NULL,                    // No custom sleep callback
+                                                 mirror_keyboard_handler, // Keyboard handler
+                                                 display);                // user_data for keyboard handler
   log_info("mirror_run: session_render_loop returned with result=%d", result);
   return result;
+}
+
+/* ============================================================================
+ * Deadlock Test Code
+ * ============================================================================ */
+
+static mutex_t g_test_mutex_a, g_test_mutex_b;
+
+static void *test_thread_a(void *arg) {
+  (void)arg;
+  log_info("TEST DEADLOCK: Thread A acquiring mutex_a");
+  mutex_lock(&g_test_mutex_a);
+  log_info("TEST DEADLOCK: Thread A got mutex_a, sleeping 1s");
+  sleep(1);
+  log_info("TEST DEADLOCK: Thread A trying to acquire mutex_b (will deadlock)");
+  mutex_lock(&g_test_mutex_b); // Will block forever
+  log_info("TEST DEADLOCK: Thread A got both (should never reach)");
+  mutex_unlock(&g_test_mutex_b);
+  mutex_unlock(&g_test_mutex_a);
+  return NULL;
+}
+
+static void *test_thread_b(void *arg) {
+  (void)arg;
+  usleep(500000); // Let thread A go first (500ms)
+  log_info("TEST DEADLOCK: Thread B acquiring mutex_b");
+  mutex_lock(&g_test_mutex_b);
+  log_info("TEST DEADLOCK: Thread B got mutex_b, sleeping 500ms");
+  usleep(500000);
+  log_info("TEST DEADLOCK: Thread B trying to acquire mutex_a (will deadlock)");
+  mutex_lock(&g_test_mutex_a); // Will block forever
+  log_info("TEST DEADLOCK: Thread B got both (should never reach)");
+  mutex_unlock(&g_test_mutex_a);
+  mutex_unlock(&g_test_mutex_b);
+  return NULL;
 }
 
 /* ============================================================================
@@ -278,6 +314,20 @@ static asciichat_error_t mirror_run(session_capture_ctx_t *capture, session_disp
  * @return 0 on success, non-zero error code on failure
  */
 int mirror_main(void) {
+  // Initialize test mutexes for deadlock demonstration
+  mutex_init(&g_test_mutex_a, "test_mutex_a");
+  mutex_init(&g_test_mutex_b, "test_mutex_b");
+
+  // Create deadlock threads
+  asciichat_thread_t tid_a, tid_b;
+  log_info("Creating deadlock test threads...");
+  asciichat_thread_create(&tid_a, "test_deadlock_a", test_thread_a, NULL);
+  asciichat_thread_create(&tid_b, "test_deadlock_b", test_thread_b, NULL);
+
+  log_info("===== DEADLOCK WILL FORM IN ~2 SECONDS =====");
+  log_info("In another terminal, run: kill -SIGUSR1 %d", getpid());
+  log_info("======================================================");
+
   // Configure mode-specific session settings
   session_client_like_config_t config = {
       .run_fn = mirror_run,

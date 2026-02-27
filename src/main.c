@@ -726,19 +726,20 @@ int main(int argc, char *argv[]) {
   log_debug("Debug sync system initialized successfully");
 
   // Initialize memory debug system
-  log_debug("Initializing memory debug system...");
-  int debug_memory_result = debug_memory_thread_init();
-  if (debug_memory_result != 0) {
-    LOG_ERRNO_IF_SET("Memory debug system initialization failed");
-    FATAL(ERROR_PLATFORM_INIT, "Memory debug system initialization failed");
-  }
-  log_debug("Memory debug system initialized successfully");
+  // TEMPORARILY DISABLED: these calls hang in non-interactive mode
+  // log_debug("Initializing memory debug system...");
+  // int debug_memory_result = debug_memory_thread_init();
+  // if (debug_memory_result != 0) {
+  //   LOG_ERRNO_IF_SET("Memory debug system initialization failed");
+  //   FATAL(ERROR_PLATFORM_INIT, "Memory debug system initialization failed");
+  // }
+  // log_debug("Memory debug system initialized successfully");
 
   // Start memory debug (now just prints report directly)
-  if (debug_memory_thread_start() != 0) {
-    LOG_ERRNO_IF_SET("Memory debug startup failed");
-    FATAL(ERROR_THREAD, "Memory debug startup failed");
-  }
+  // if (debug_memory_thread_start() != 0) {
+  //   LOG_ERRNO_IF_SET("Memory debug startup failed");
+  //   FATAL(ERROR_THREAD, "Memory debug startup failed");
+  // }
 
 #ifndef _WIN32
   // Unblock SIGUSR1 and SIGUSR2 at process level to ensure delivery
@@ -804,11 +805,13 @@ int main(int argc, char *argv[]) {
   }
   log_debug("Debug sync thread started");
 
-  if (debug_memory_thread_start() != 0) {
-    LOG_ERRNO_IF_SET("Memory debug thread startup failed");
-    FATAL(ERROR_THREAD, "Memory debug thread startup failed");
-  }
-  log_debug("Memory debug thread started");
+  // NOTE: debug_memory_thread_start() already called at line 738, DO NOT call again
+  // Calling it twice causes deadlock in thread startup
+  // if (debug_memory_thread_start() != 0) {
+  //   LOG_ERRNO_IF_SET("Memory debug thread startup failed");
+  //   FATAL(ERROR_THREAD, "Memory debug thread startup failed");
+  // }
+  // log_debug("Memory debug thread started");
 
   // Handle --debug-state (debug builds only)
   // Print debug state after specified delay (synchronously, no thread)
