@@ -41,6 +41,14 @@ typedef struct {
 static thread_registry_entry_t g_thread_registry[MAX_THREADS] = {0};
 static _Atomic(int) g_thread_registry_count = 0;
 
+// Track the mutexes involved in the last detected deadlock for throttling
+#define MAX_CYCLE_MUTEXES 16
+typedef struct {
+  uintptr_t mutexes[MAX_CYCLE_MUTEXES];
+  int count;
+} deadlock_state_t;
+static deadlock_state_t g_last_deadlock = {0};
+
 // ============================================================================
 // Thread Registry Management
 // ============================================================================
@@ -335,6 +343,56 @@ static int detect_cycle_dfs(int thread_count, int start_thread, int *cycle_path,
 }
 
 /**
+ * @brief Compare two sorted arrays of mutexes
+ */
+static int compare_uintptr(const void *a, const void *b) {
+  uintptr_t ua = *(const uintptr_t *)a;
+  uintptr_t ub = *(const uintptr_t *)b;
+  if (ua < ub)
+    return -1;
+  if (ua > ub)
+    return 1;
+  return 0;
+}
+
+/**
+ * @brief Check if deadlock involves different mutexes than the previous one
+ * (order-independent comparison)
+ */
+static bool deadlock_mutexes_changed(const uintptr_t *current_mutexes, int count) {
+  if (count != g_last_deadlock.count)
+    return true;
+
+  // Sort both arrays for order-independent comparison
+  uintptr_t current_sorted[MAX_CYCLE_MUTEXES];
+  uintptr_t last_sorted[MAX_CYCLE_MUTEXES];
+
+  for (int i = 0; i < count; i++) {
+    current_sorted[i] = current_mutexes[i];
+    last_sorted[i] = g_last_deadlock.mutexes[i];
+  }
+
+  qsort(current_sorted, count, sizeof(uintptr_t), compare_uintptr);
+  qsort(last_sorted, count, sizeof(uintptr_t), compare_uintptr);
+
+  for (int i = 0; i < count; i++) {
+    if (current_sorted[i] != last_sorted[i])
+      return true;
+  }
+  return false;
+}
+
+/**
+ * @brief Update tracked deadlock state
+ */
+static void update_deadlock_state(const uintptr_t *mutexes, int count) {
+  g_last_deadlock.count = (count < MAX_CYCLE_MUTEXES) ? count : MAX_CYCLE_MUTEXES;
+  for (int i = 0; i < g_last_deadlock.count; i++) {
+    g_last_deadlock.mutexes[i] = mutexes[i];
+  }
+}
+
+/**
  * @brief Detect circular wait deadlocks using DFS-based cycle detection
  *
  * Detects both same-thread and multi-thread deadlock patterns of any length:
@@ -380,6 +438,24 @@ void mutex_stack_detect_deadlocks(void) {
     int cycle_start = detect_cycle_dfs(thread_count, i, cycle_path, &cycle_len);
 
     if (cycle_start >= 0 && cycle_len > 1) {
+      // Collect mutexes involved in this deadlock
+      uintptr_t cycle_mutexes[MAX_CYCLE_MUTEXES];
+      int mutex_count = 0;
+      for (int k = 0; k < cycle_len && mutex_count < MAX_CYCLE_MUTEXES; k++) {
+        int thread_idx = cycle_path[k];
+        thread_lock_stack_t *stack = g_thread_registry[thread_idx].stack;
+        uintptr_t waiting_for = thread_waiting_for_mutex(stack);
+        if (waiting_for != 0) {
+          cycle_mutexes[mutex_count++] = waiting_for;
+        }
+      }
+
+      // Check if mutexes are different from last deadlock
+      bool is_new_deadlock = deadlock_mutexes_changed(cycle_mutexes, mutex_count);
+      if (is_new_deadlock) {
+        update_deadlock_state(cycle_mutexes, mutex_count);
+      }
+
       // Cycle detected! Build complete message in one string
       char cycle_msg[4096];
       int msg_len = 0;
@@ -406,8 +482,12 @@ void mutex_stack_detect_deadlocks(void) {
                      (unsigned long)g_thread_registry[next_thread_idx].thread_id, k < cycle_len - 1 ? "\n" : "");
       }
 
-      // Print entire message in one call
-      log_error("%s", cycle_msg);
+      // Print entire message in one call - use log_error_every if same deadlock
+      if (is_new_deadlock) {
+        log_error("%s", cycle_msg);
+      } else {
+        log_error_every(1000000, "%s", cycle_msg); // 1000000 µs = 1 second
+      }
     }
   }
 
