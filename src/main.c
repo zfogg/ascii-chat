@@ -707,34 +707,36 @@ int main(int argc, char *argv[]) {
 
 #ifndef NDEBUG
   // Initialize lock debugging system after logging is fully set up
-  // Note: Don't log during debug thread initialization to avoid lock ordering deadlocks
+  log_debug("Initializing lock debug system...");
   int debug_sync_result = debug_sync_init();
   if (debug_sync_result != 0) {
     LOG_ERRNO_IF_SET("Debug sync system initialization failed");
     FATAL(ERROR_PLATFORM_INIT, "Debug sync system initialization failed");
   }
+  log_debug("Debug sync system initialized successfully");
 
   // Start debug sync thread in all modes
   if (debug_sync_start_thread() != 0) {
     LOG_ERRNO_IF_SET("Debug sync thread startup failed");
     FATAL(ERROR_THREAD, "Debug sync thread startup failed");
   }
+  log_debug("Debug sync thread started");
 
   // Initialize memory debug system
-  // Note: Don't log here - avoid lock ordering deadlock with debug thread
+  log_debug("Initializing memory debug system...");
   int debug_memory_result = debug_memory_thread_init();
   if (debug_memory_result != 0) {
     LOG_ERRNO_IF_SET("Memory debug system initialization failed");
     FATAL(ERROR_PLATFORM_INIT, "Memory debug system initialization failed");
   }
-  // Note: Don't log here - avoid lock ordering deadlock
+  log_debug("Memory debug system initialized successfully");
 
   // Start memory debug thread in all modes
   if (debug_memory_thread_start() != 0) {
     LOG_ERRNO_IF_SET("Memory debug thread startup failed");
     FATAL(ERROR_THREAD, "Memory debug thread startup failed");
   }
-  // Note: Don't log here - avoid lock ordering deadlock
+  log_debug("Memory debug thread started");
 
 #ifndef _WIN32
   // Unblock SIGUSR1 and SIGUSR2 at process level to ensure delivery
