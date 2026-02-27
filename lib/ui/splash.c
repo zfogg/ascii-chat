@@ -79,13 +79,15 @@ static struct {
   asciichat_thread_t anim_thread; // animation thread handle
   uint64_t start_time_ns;         // when splash was started (for minimum display time)
   int stderr_fd_saved;            // saved stderr fd during splash (to suppress real-time log output)
-  int devnull_fd;                 // /dev/null fd to redirect stderr during splash
+  int stdout_fd_saved;            // saved stdout fd during splash
+  int devnull_fd;                 // /dev/null fd to redirect stderr/stdout during splash
 } g_splash_state = {.is_running = false,
                     .should_stop = false,
                     .thread_created = false,
                     .frame = 0,
                     .start_time_ns = 0,
                     .stderr_fd_saved = -1,
+                    .stdout_fd_saved = -1,
                     .devnull_fd = -1};
 
 // ============================================================================
@@ -632,11 +634,16 @@ int splash_intro_start(session_display_ctx_t *ctx) {
   if (err != ASCIICHAT_OK) {
     log_warn("Failed to create splash animation thread: error=%d", err);
     atomic_store(&g_splash_state.thread_created, false);
-    // Restore stderr on error
+    // Restore stderr and stdout on error
     if (g_splash_state.stderr_fd_saved >= 0) {
       dup2(g_splash_state.stderr_fd_saved, STDERR_FILENO);
       close(g_splash_state.stderr_fd_saved);
       g_splash_state.stderr_fd_saved = -1;
+    }
+    if (g_splash_state.stdout_fd_saved >= 0) {
+      dup2(g_splash_state.stdout_fd_saved, STDOUT_FILENO);
+      close(g_splash_state.stdout_fd_saved);
+      g_splash_state.stdout_fd_saved = -1;
     }
     if (g_splash_state.devnull_fd >= 0) {
       close(g_splash_state.devnull_fd);
@@ -648,14 +655,14 @@ int splash_intro_start(session_display_ctx_t *ctx) {
   log_debug("[SPLASH] Animation thread created successfully, thread_created=%d",
             atomic_load(&g_splash_state.thread_created));
 
-  // Redirect stderr to /dev/null during splash animation so logs don't flicker on screen.
-  // Logs are still captured in session_log_buffer and rendered by terminal_screen_render.
-  // Real-time stderr output would cause the header to jump and distort during animation.
-  // This happens AFTER thread creation so any errors are visible.
-  g_splash_state.stderr_fd_saved = dup(STDERR_FILENO);
+  // Suppress stderr/stdout during animation to prevent real-time logs from pushing the header around.
+  // Logs are still captured in session_log_buffer and displayed through frame rendering.
   g_splash_state.devnull_fd = open("/dev/null", O_WRONLY);
   if (g_splash_state.devnull_fd >= 0) {
+    g_splash_state.stderr_fd_saved = dup(STDERR_FILENO);
+    g_splash_state.stdout_fd_saved = dup(STDOUT_FILENO);
     dup2(g_splash_state.devnull_fd, STDERR_FILENO);
+    dup2(g_splash_state.devnull_fd, STDOUT_FILENO);
   }
 
   return 0; // ASCIICHAT_OK
@@ -700,11 +707,16 @@ int splash_intro_done(void) {
 
   atomic_store(&g_splash_state.is_running, false);
 
-  // Restore stderr now that splash animation is complete
+  // Restore stderr and stdout now that splash animation is complete
   if (g_splash_state.stderr_fd_saved >= 0) {
     dup2(g_splash_state.stderr_fd_saved, STDERR_FILENO);
     close(g_splash_state.stderr_fd_saved);
     g_splash_state.stderr_fd_saved = -1;
+  }
+  if (g_splash_state.stdout_fd_saved >= 0) {
+    dup2(g_splash_state.stdout_fd_saved, STDOUT_FILENO);
+    close(g_splash_state.stdout_fd_saved);
+    g_splash_state.stdout_fd_saved = -1;
   }
   if (g_splash_state.devnull_fd >= 0) {
     close(g_splash_state.devnull_fd);
