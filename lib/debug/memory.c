@@ -41,8 +41,8 @@ typedef struct mem_block {
   size_t size;
   char file[BUFFER_SIZE_SMALL];
   int line;
-  uint64_t tid;           // Allocating thread ID (for site lookup)
-  char thread_name[256];  // Thread name from named registry
+  uint64_t tid;          // Allocating thread ID (for site lookup)
+  char thread_name[256]; // Thread name from named registry
   bool is_aligned;
   struct mem_block *next;
 } mem_block_t;
@@ -58,8 +58,8 @@ typedef struct alloc_site {
   UT_hash_handle hh;
 } alloc_site_t;
 
-#define MEM_SITE_CACHE_MAX_KEYS            1024
-#define MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY  256
+#define MEM_SITE_CACHE_MAX_KEYS 1024
+#define MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY 256
 
 // Non-static for shared library compatibility (still thread-local)
 __thread bool g_in_debug_memory = false;
@@ -89,9 +89,9 @@ typedef struct {
   // Configuration (static, in g_suppression_config[])
   const char *file;
   int line;
-  int expected_count;     // Expected allocations per thread
-  size_t expected_bytes;  // Expected total bytes per thread
-  const char *reason;     // Why these allocations are expected/harmless
+  int expected_count;    // Expected allocations per thread
+  size_t expected_bytes; // Expected total bytes per thread
+  const char *reason;    // Why these allocations are expected/harmless
 
   // Runtime counter (dynamic, in g_suppression_counters[])
   // Key format: "file:line:tid"
@@ -102,14 +102,14 @@ typedef struct {
 
 // Static configuration of expected suppressions
 static const debug_memory_suppression_t g_suppression_config[] = {
-    {"lib/options/colorscheme.c", 585, 8, 47,     "8 16-color ANSI code strings"},
-    {"lib/options/colorscheme.c", 602, 8, 88,     "8 256-color ANSI code strings"},
-    {"lib/options/colorscheme.c", 619, 8, 144,    "8 truecolor ANSI code strings"},
-    {"lib/util/path.c", 1211, 1, 43,              "normalized path allocation (caller frees)"},
-    {"lib/platform/posix/util.c", 35, 18, 1247,   "platform_strdup() string allocations (mirror mode)"},
-    {"lib/util/pcre2.c", 54, 1, 56,               "PCRE2 JIT singleton for code compilation (intentional, cleaned up at shutdown)"},
-    {"lib/util/pcre2.c", 62, 1, 7,                "PCRE2 mcontext singleton for matching (intentional, cleaned up at shutdown)"},
-    {NULL, 0, 0, 0, NULL}                         // Sentinel
+    {"lib/options/colorscheme.c", 585, 8, 47, "8 16-color ANSI code strings"},
+    {"lib/options/colorscheme.c", 602, 8, 88, "8 256-color ANSI code strings"},
+    {"lib/options/colorscheme.c", 619, 8, 144, "8 truecolor ANSI code strings"},
+    {"lib/util/path.c", 1211, 1, 43, "normalized path allocation (caller frees)"},
+    {"lib/platform/posix/util.c", 35, 18, 1280, "platform_strdup() string allocations (mirror mode)"},
+    {"lib/util/pcre2.c", 54, 1, 56, "PCRE2 JIT singleton for code compilation (intentional, cleaned up at shutdown)"},
+    {"lib/util/pcre2.c", 62, 1, 7, "PCRE2 mcontext singleton for matching (intentional, cleaned up at shutdown)"},
+    {NULL, 0, 0, 0, NULL} // Sentinel
 };
 
 // Runtime counters tracking per-thread allocations (cleared at report boundaries)
@@ -819,8 +819,8 @@ void debug_memory_report(void) {
   reset_suppression_counters();
 
   if (!quiet) {
-    // Build report in buffer, then output once to stderr and log file
-    #define REPORT_BUFFER_SIZE (256 * 1024)  // 256KB for full memory report
+// Build report in buffer, then output once to stderr and log file
+#define REPORT_BUFFER_SIZE (256 * 1024) // 256KB for full memory report
     char *report_buffer = malloc(REPORT_BUFFER_SIZE);
     if (!report_buffer) {
       SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "Failed to allocate memory for report buffer\n"));
@@ -828,13 +828,15 @@ void debug_memory_report(void) {
     }
     size_t report_len = 0;
 
-    #define APPEND_REPORT(fmt, ...) do { \
-      size_t remaining = REPORT_BUFFER_SIZE - report_len; \
-      if (remaining > 1) { \
-        int written = safe_snprintf(report_buffer + report_len, remaining, fmt, ##__VA_ARGS__); \
-        if (written > 0) report_len += written; \
-      } \
-    } while (0)
+#define APPEND_REPORT(fmt, ...)                                                                                        \
+  do {                                                                                                                 \
+    size_t remaining = REPORT_BUFFER_SIZE - report_len;                                                                \
+    if (remaining > 1) {                                                                                               \
+      int written = safe_snprintf(report_buffer + report_len, remaining, fmt, ##__VA_ARGS__);                          \
+      if (written > 0)                                                                                                 \
+        report_len += written;                                                                                         \
+    }                                                                                                                  \
+  } while (0)
 
     APPEND_REPORT("=== Memory Report ===\n");
 
@@ -925,16 +927,17 @@ void debug_memory_report(void) {
           }
         }
 
-        if (total_count != g_suppression_config[i].expected_count || total_bytes != g_suppression_config[i].expected_bytes) {
+        if (total_count != g_suppression_config[i].expected_count ||
+            total_bytes != g_suppression_config[i].expected_bytes) {
           APPEND_REPORT("%s\n", colored_string(LOG_COLOR_ERROR, "WARNING: Suppression mismatch detected"));
           APPEND_REPORT("  %s:%d\n", g_suppression_config[i].file, g_suppression_config[i].line);
           if (total_count != g_suppression_config[i].expected_count) {
-            APPEND_REPORT("    Count mismatch: expected %d, found %d\n",
-                         g_suppression_config[i].expected_count, total_count);
+            APPEND_REPORT("    Count mismatch: expected %d, found %d\n", g_suppression_config[i].expected_count,
+                          total_count);
           }
           if (total_bytes != g_suppression_config[i].expected_bytes) {
-            APPEND_REPORT("    Bytes mismatch: expected %zu, found %zu\n",
-                         g_suppression_config[i].expected_bytes, total_bytes);
+            APPEND_REPORT("    Bytes mismatch: expected %zu, found %zu\n", g_suppression_config[i].expected_bytes,
+                          total_bytes);
           }
         }
       }
@@ -971,7 +974,7 @@ void debug_memory_report(void) {
     max_label_width = MAX(max_label_width, strlen(label_suppressions));
     max_label_width = MAX(max_label_width, strlen(label_diff));
 
-#define APPEND_MEM_LINE(label, value_str)                                                                            \
+#define APPEND_MEM_LINE(label, value_str)                                                                              \
   do {                                                                                                                 \
     APPEND_REPORT("%s", colored_string(LOG_COLOR_GREY, label));                                                        \
     for (size_t i = strlen(label); i < max_label_width; i++) {                                                         \
@@ -1123,12 +1126,9 @@ void debug_memory_report(void) {
           }
 
           // Print site summary with thread name (captured at site creation)
-          APPEND_REPORT("  - %s:%s  [%s]  %s live  %s total\n",
-                       colored_string(LOG_COLOR_GREY, file),
-                       colored_string(LOG_COLOR_FATAL, line_str),
-                       site->thread_name,
-                       colored_string(size_color, count_str),
-                       colored_string(size_color, pretty_bytes));
+          APPEND_REPORT("  - %s:%s  [%s]  %s live  %s total\n", colored_string(LOG_COLOR_GREY, file),
+                        colored_string(LOG_COLOR_FATAL, line_str), site->thread_name,
+                        colored_string(size_color, count_str), colored_string(size_color, pretty_bytes));
 
           // Don't synchronously symbolize backtraces during memory report - symbolization is slow
           // and can cause hangs during shutdown. Instead, backtraces will be symbolized asynchronously
@@ -1144,8 +1144,8 @@ void debug_memory_report(void) {
         mutex_unlock(&g_mem.mutex);
       } else {
         APPEND_REPORT("\n%s\n",
-                     colored_string(LOG_COLOR_ERROR,
-                                    "Current allocations unavailable: failed to initialize debug memory mutex"));
+                      colored_string(LOG_COLOR_ERROR,
+                                     "Current allocations unavailable: failed to initialize debug memory mutex"));
       }
     }
 
@@ -1155,7 +1155,6 @@ void debug_memory_report(void) {
     // We used to clean up the hash table here, but HASH_DEL inside HASH_ITER causes
     // undefined behavior (modifying hash table during iteration = infinite loop/hang).
     // Since we're exiting anyway, skip this cleanup - the OS will reclaim memory.
-
 
     // Write to stderr (colored output)
     SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "%s", report_buffer));
@@ -1168,8 +1167,8 @@ void debug_memory_report(void) {
     }
 
     free(report_buffer);
-    #undef REPORT_BUFFER_SIZE
-    #undef APPEND_REPORT
+#undef REPORT_BUFFER_SIZE
+#undef APPEND_REPORT
   }
 }
 
@@ -1183,10 +1182,10 @@ void debug_memory_report(void) {
 typedef struct {
   volatile bool should_run;
   volatile bool should_exit;
-  volatile bool signal_triggered;  // Flag set by SIGUSR2 handler
-  mutex_t mutex;                   // Protects access to flags
-  cond_t cond;                     // Wakes thread when signal arrives
-  bool initialized;                // Tracks if mutex/cond are initialized
+  volatile bool signal_triggered; // Flag set by SIGUSR2 handler
+  mutex_t mutex;                  // Protects access to flags
+  cond_t cond;                    // Wakes thread when signal arrives
+  bool initialized;               // Tracks if mutex/cond are initialized
 } debug_memory_request_t;
 
 static debug_memory_request_t g_debug_memory_request = {false, false, false, {0}, {0}, false};
@@ -1204,8 +1203,8 @@ static void *debug_memory_thread_fn(void *arg) {
   while (!g_debug_memory_request.should_exit) {
     mutex_lock(&g_debug_memory_request.mutex);
 
-    if ((g_debug_memory_request.should_run || g_debug_memory_request.signal_triggered)
-        && !g_debug_memory_request.should_exit) {
+    if ((g_debug_memory_request.should_run || g_debug_memory_request.signal_triggered) &&
+        !g_debug_memory_request.should_exit) {
       mutex_unlock(&g_debug_memory_request.mutex);
       debug_memory_report();
       mutex_lock(&g_debug_memory_request.mutex);
@@ -1215,7 +1214,7 @@ static void *debug_memory_thread_fn(void *arg) {
 
     // Wait for work or signal, with 100ms timeout to check should_exit
     if (!g_debug_memory_request.should_exit) {
-      cond_timedwait(&g_debug_memory_request.cond, &g_debug_memory_request.mutex, 100000000);  // 100ms
+      cond_timedwait(&g_debug_memory_request.cond, &g_debug_memory_request.mutex, 100000000); // 100ms
     }
     mutex_unlock(&g_debug_memory_request.mutex);
   }
@@ -1261,7 +1260,7 @@ void debug_memory_thread_cleanup(void) {
     return;
   }
 
-  g_debug_memory_request.initialized = false;  // Prevent double-join
+  g_debug_memory_request.initialized = false; // Prevent double-join
 
   // Set exit flag and signal thread - don't acquire mutex to avoid deadlock
   // The thread reads should_exit without locking, and cond_signal is safe without mutex
@@ -1327,26 +1326,26 @@ void debug_track_aligned(void *ptr, size_t size, const char *file, int line) {
  */
 void debug_sync_symbolize_allocations(void) {
   if (!g_site_cache) {
-    return;  // No allocations to symbolize
+    return; // No allocations to symbolize
   }
 
   if (!ensure_mutex_initialized()) {
-    return;  // Can't acquire mutex
+    return; // Can't acquire mutex
   }
 
   // Try to acquire mutex with short timeout (don't block the debug thread)
   if (!acquire_mutex_with_polling(&g_mem.mutex, 50)) {
-    return;  // Mutex busy, skip this iteration
+    return; // Mutex busy, skip this iteration
   }
 
   // Iterate site cache and symbolize backtraces that haven't been tried yet
   alloc_site_t *site, *tmp;
   int symbolized_count = 0;
-  const int max_per_iteration = 5;  // Symbolize max 5 backtraces per iteration
+  const int max_per_iteration = 5; // Symbolize max 5 backtraces per iteration
 
   HASH_ITER(hh, g_site_cache, site, tmp) {
     if (symbolized_count >= max_per_iteration) {
-      break;  // Don't symbolize too many in one iteration
+      break; // Don't symbolize too many in one iteration
     }
 
     // Only symbolize backtraces that haven't been tried yet
