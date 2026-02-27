@@ -9,7 +9,7 @@
  *
  * Output is colorized for better readability:
  * - Type name: yellow (LOG_COLOR_WARN)
- * - Name: blue (LOG_COLOR_DEV)
+ * - Name: orange (LOG_COLOR_DEV)
  * - ID value: grey (LOG_COLOR_GREY)
  */
 
