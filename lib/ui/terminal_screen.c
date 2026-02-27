@@ -247,11 +247,8 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
 
   // Calculate log area: total rows - header lines - 1 (prevent scroll)
   int log_area_rows = g_cached_term_size.rows - config->fixed_header_lines - 1;
-  log_debug("[LOG_AREA_CALC] rows=%d header=%d log_area_rows=%d", g_cached_term_size.rows, config->fixed_header_lines,
-            log_area_rows);
 
   if (log_area_rows <= 0) {
-    log_debug("[EARLY_RETURN_LOG_AREA] log_area_rows=%d", log_area_rows);
     if (grep_entering) {
       interactive_grep_render_input_line(g_cached_term_size.cols);
     }
@@ -288,16 +285,13 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
   }
 
   // Calculate which logs fit (working backwards from most recent).
-  // Use renderable_log_rows so that entering grep mode doesn't change
-  // which logs are selected - only the bottom line changes from log to input.
-  log_debug("[BEFORE_CALC] log_count=%zu log_area_rows=%d", log_count, log_area_rows);
+  // Walk through logs from newest to oldest, counting display lines needed.
+  // This handles multiline messages and width wrapping correctly.
   int total_lines_needed = 0;
   int first_log_to_display = (log_count > 0) ? (int)log_count - 1 : 0;
 
   for (int i = (int)log_count - 1; i >= 0; i--) {
     const char *msg = log_entries[i].message;
-
-    // Calculate display lines properly handling multiline messages and width wrapping
     int lines_for_this_log = calculate_log_display_lines(msg, g_cached_term_size.cols);
 
     if (total_lines_needed + lines_for_this_log > renderable_log_rows) {
@@ -314,20 +308,23 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     frame_buffer_flush(g_frame_buf);
 
     // Output only the logs that fit
-    int logs_output = 0;
     for (int i = first_log_to_display; i < (int)log_count; i++) {
       const char *msg = log_entries[i].message;
       fprintf(stdout, "%s\n", msg);
-      logs_output++;
     }
 
     // Fill remaining lines with blank lines to exact height
-    // remaining = log_area_rows - logs_output (not based on total_lines_needed!)
-    int remaining = log_area_rows - logs_output;
+    // Use total_lines_needed (display lines accounting for wrapping) to calculate remaining space
+    int remaining = log_area_rows - total_lines_needed;
     for (int i = 0; i < remaining; i++) {
       fprintf(stdout, "\n");
     }
     fflush(stdout);
+
+    // Verify height calculation
+    log_debug("[HEIGHT] terminal=%dx%d log_area_rows=%d total_lines_needed=%d remaining=%d sum=%d",
+              g_cached_term_size.cols, g_cached_term_size.rows, log_area_rows, total_lines_needed, remaining,
+              total_lines_needed + remaining);
   } else {
     // Grep mode: diff-based rendering. Only rewrite lines that changed.
     // Logs fill renderable_log_rows; the last row is the `/` input line.
