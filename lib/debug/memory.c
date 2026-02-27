@@ -15,6 +15,7 @@
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/debug/backtrace.h>
 #include <ascii-chat/debug/named.h>
+#include <ascii-chat/log/named.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/common/error_codes.h>
@@ -23,6 +24,7 @@
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/platform/thread.h>
 #include <ascii-chat/uthash.h>
 #include <ascii-chat/util/format.h>
 #include <ascii-chat/util/lifecycle.h>
@@ -1091,10 +1093,23 @@ void debug_memory_report(void) {
             size_color = LOG_COLOR_WARN;
           }
 
+          // Get thread name from registered threads, fallback to hex tid if not registered
+          const char *thread_desc = named_describe((uintptr_t)tid, "thread");
+          char tid_str[256];
+          // If named_describe returns just "thread (0x...)" with no name part, use simpler format
+          if (strstr(thread_desc, " (0x") != NULL && strstr(thread_desc, "/") == NULL) {
+            // No slash means it's "thread (0x...)" format - thread is not registered, simplify it
+            safe_snprintf(tid_str, sizeof(tid_str), "0x%lx", tid);
+          } else {
+            // Use the full description if it has a registered name
+            safe_snprintf(tid_str, sizeof(tid_str), "%s", thread_desc);
+          }
+
           // Print site summary
-          APPEND_REPORT("  - %s:%s  %s live  %s total\n",
+          APPEND_REPORT("  - %s:%s  [%s]  %s live  %s total\n",
                        colored_string(LOG_COLOR_GREY, file),
                        colored_string(LOG_COLOR_FATAL, line_str),
+                       tid_str,
                        colored_string(size_color, count_str),
                        colored_string(size_color, pretty_bytes));
 
