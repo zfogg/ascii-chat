@@ -66,6 +66,40 @@ static void ensure_registry_lock_initialized(void) {
   }
 }
 
+/**
+ * @brief Register current thread in the global registry if not already registered
+ * Does NOT use mutex_lock to avoid recursion - uses raw pthread operations
+ */
+static void register_thread_if_needed(void) {
+  thread_lock_stack_t *local_stack = get_thread_local_stack();
+  if (!local_stack) {
+    return;
+  }
+
+  pthread_t current_thread = pthread_self();
+
+  ensure_registry_lock_initialized();
+  // Use raw pthread_mutex_lock to avoid recursive stack tracking
+  pthread_mutex_lock(&g_thread_registry_lock.impl);
+
+  // Check if thread is already registered
+  for (int i = 0; i < g_thread_registry_count; i++) {
+    if (pthread_equal(g_thread_registry[i].thread_id, current_thread)) {
+      pthread_mutex_unlock(&g_thread_registry_lock.impl);
+      return; // Already registered
+    }
+  }
+
+  // Add thread to registry if there's space
+  if (g_thread_registry_count < MAX_THREADS) {
+    g_thread_registry[g_thread_registry_count].thread_id = current_thread;
+    g_thread_registry[g_thread_registry_count].stack = local_stack;
+    g_thread_registry_count++;
+  }
+
+  pthread_mutex_unlock(&g_thread_registry_lock.impl);
+}
+
 // ============================================================================
 // Public Stack Operations
 // ============================================================================
@@ -76,13 +110,14 @@ void mutex_stack_push_pending(uintptr_t mutex_key, const char *mutex_name) {
     return;
   }
 
+  // Register this thread in the global registry on first mutex use
+  register_thread_if_needed();
+
   stack->stack[stack->depth].mutex_key = mutex_key;
   stack->stack[stack->depth].mutex_name = mutex_name;
   stack->stack[stack->depth].state = MUTEX_STACK_STATE_PENDING;
   stack->stack[stack->depth].timestamp_ns = time_get_ns();
   stack->depth++;
-
-  // Thread-local only. Registry is populated on-demand by mutex_stack_get_all_threads()
 }
 
 void mutex_stack_mark_locked(uintptr_t mutex_key) {
@@ -139,11 +174,10 @@ int mutex_stack_get_all_threads(mutex_stack_entry_t ***out_stacks, int **out_sta
 
   ensure_registry_lock_initialized();
   mutex_lock(&g_thread_registry_lock);
-  int thread_count = g_thread_registry_count;
 
-  // Allocate arrays
-  *out_stacks = SAFE_MALLOC(thread_count, mutex_stack_entry_t **);
-  *out_stack_counts = SAFE_MALLOC(thread_count, int *);
+  // Allocate arrays for maximum possible threads
+  *out_stacks = SAFE_MALLOC(g_thread_registry_count, mutex_stack_entry_t **);
+  *out_stack_counts = SAFE_MALLOC(g_thread_registry_count, int *);
 
   if (!*out_stacks || !*out_stack_counts) {
     SAFE_FREE(*out_stacks);
@@ -152,13 +186,8 @@ int mutex_stack_get_all_threads(mutex_stack_entry_t ***out_stacks, int **out_sta
     return -1;
   }
 
-  // Ensure all threads with active stacks are in the registry
-  // (populate registry from thread-local stacks)
-  // Note: This is a snapshot at lock time. Threads created after we lock
-  // won't appear in this snapshot, which is fine for deadlock detection.
-
-  // Copy each thread's stack
-  for (int i = 0; i < thread_count; i++) {
+  // Copy each thread's stack from the registry
+  for (int i = 0; i < g_thread_registry_count; i++) {
     thread_lock_stack_t *src = g_thread_registry[i].stack;
     int depth = src->depth;
 
@@ -170,7 +199,7 @@ int mutex_stack_get_all_threads(mutex_stack_entry_t ***out_stacks, int **out_sta
     }
   }
 
-  *out_thread_count = thread_count;
+  *out_thread_count = g_thread_registry_count;
   mutex_unlock(&g_thread_registry_lock);
   return 0;
 }
