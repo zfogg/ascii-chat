@@ -42,6 +42,8 @@
 #include <stdint.h>
 #include <stdatomic.h>
 #include <time.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 // ============================================================================
 // ASCII Art and Constants
@@ -76,7 +78,15 @@ static struct {
   int frame;                      // current animation frame
   asciichat_thread_t anim_thread; // animation thread handle
   uint64_t start_time_ns;         // when splash was started (for minimum display time)
-} g_splash_state = {.is_running = false, .should_stop = false, .thread_created = false, .frame = 0, .start_time_ns = 0};
+  int stderr_fd_saved;            // saved stderr fd during splash (to suppress real-time log output)
+  int devnull_fd;                 // /dev/null fd to redirect stderr during splash
+} g_splash_state = {.is_running = false,
+                    .should_stop = false,
+                    .thread_created = false,
+                    .frame = 0,
+                    .start_time_ns = 0,
+                    .stderr_fd_saved = -1,
+                    .devnull_fd = -1};
 
 // ============================================================================
 // Helper Functions - TTY Detection
@@ -615,6 +625,15 @@ int splash_intro_start(session_display_ctx_t *ctx) {
   // This prevents any pre-splash logs from appearing in first frame
   session_log_buffer_clear();
 
+  // Redirect stderr to /dev/null during splash animation so logs don't flicker on screen.
+  // Logs are still captured in session_log_buffer and rendered by terminal_screen_render.
+  // Real-time stderr output would cause the header to jump and distort during animation.
+  g_splash_state.stderr_fd_saved = dup(STDERR_FILENO);
+  g_splash_state.devnull_fd = open("/dev/null", O_WRONLY);
+  if (g_splash_state.devnull_fd >= 0) {
+    dup2(g_splash_state.devnull_fd, STDERR_FILENO);
+  }
+
   // Set running flag
   log_debug("[SPLASH] Setting running flag and initializing state");
   atomic_store(&g_splash_state.is_running, true);
@@ -628,6 +647,16 @@ int splash_intro_start(session_display_ctx_t *ctx) {
   if (err != ASCIICHAT_OK) {
     log_warn("Failed to create splash animation thread: error=%d", err);
     atomic_store(&g_splash_state.thread_created, false);
+    // Restore stderr on error
+    if (g_splash_state.stderr_fd_saved >= 0) {
+      dup2(g_splash_state.stderr_fd_saved, STDERR_FILENO);
+      close(g_splash_state.stderr_fd_saved);
+      g_splash_state.stderr_fd_saved = -1;
+    }
+    if (g_splash_state.devnull_fd >= 0) {
+      close(g_splash_state.devnull_fd);
+      g_splash_state.devnull_fd = -1;
+    }
     return 0;
   }
   atomic_store(&g_splash_state.thread_created, true);
@@ -675,6 +704,18 @@ int splash_intro_done(void) {
   }
 
   atomic_store(&g_splash_state.is_running, false);
+
+  // Restore stderr now that splash animation is complete
+  if (g_splash_state.stderr_fd_saved >= 0) {
+    dup2(g_splash_state.stderr_fd_saved, STDERR_FILENO);
+    close(g_splash_state.stderr_fd_saved);
+    g_splash_state.stderr_fd_saved = -1;
+  }
+  if (g_splash_state.devnull_fd >= 0) {
+    close(g_splash_state.devnull_fd);
+    g_splash_state.devnull_fd = -1;
+  }
+
   log_debug("[SPLASH_DONE] Exit");
 
   // Don't clear screen here - first frame will do it
