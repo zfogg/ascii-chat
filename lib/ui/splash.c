@@ -241,10 +241,6 @@ static void render_splash_header(frame_buffer_t *buf, terminal_size_t term_size,
       "| (_| \\__ \\ (__| | |_____| (__| | | | (_| | |_ ", " \\__,_|___/\\___|_|_|      \\___|_| |_|\\__,_|\\__| "};
   const char *tagline = "Video chat in your terminal";
   const int logo_width = 52;
-  const double rainbow_speed = 0.01; // Characters per frame of wave speed
-
-  // Calculate rainbow offset for this frame (smooth continuous wave)
-  double offset = ctx->frame * rainbow_speed;
 
   // Line 1: Top border
   frame_buffer_printf(buf, "\033[1;36m━");
@@ -284,7 +280,7 @@ static void render_splash_header(frame_buffer_t *buf, terminal_size_t term_size,
       if (ch == ' ') {
         frame_buffer_printf(buf, " ");
       } else if (ctx->use_colors) {
-        double char_pos = (ctx->frame * 52 + char_idx + offset) / 30.0;
+        double char_pos = (char_idx + ctx->frame / 5.0) / 30.0;
         rgb_pixel_t color = get_rainbow_color_rgb(char_pos);
         frame_buffer_printf(buf, "\x1b[38;2;%u;%u;%um%c\x1b[0m", color.r, color.g, color.b, ch);
         char_idx++;
@@ -429,26 +425,39 @@ static void *splash_animation_thread(void *arg) {
     }
   }
 
-  // Animate with rainbow wave effect
-  int frame = 0;
+  // Animate with rainbow wave effect - TIME-BASED, not frame-based
+  // This ensures animation speed is consistent regardless of FPS
   int fps = GET_OPTION(fps);
   if (fps <= 0)
     fps = 60;                        // Default to 60 FPS if not specified
   const int anim_speed = 1000 / fps; // milliseconds per frame
   uint64_t loop_start_ns = time_get_ns();
+  int iteration_count = 0; // Just for logging actual FPS
+
+  log_debug("[SPLASH_ANIM_INIT] fps=%d anim_speed=%dms", fps, anim_speed);
 
   // Don't log until after first frame to avoid startup flicker
   bool first_frame = true;
 
   while (!atomic_load(&g_splash_state.should_stop) && !shutdown_is_requested()) {
+    // Calculate animation frame based on ELAPSED TIME, not iteration count
+    // This ensures the animation plays at the same speed regardless of FPS variation
+    uint64_t now_ns = time_get_ns();
+    uint64_t elapsed_ns = now_ns - loop_start_ns;
+    uint64_t elapsed_ms = elapsed_ns / 1000000;
+
+    // Convert elapsed time to animation frame (at target FPS)
+    // For 60 FPS target: frame = elapsed_ms / 16.67
+    int frame = (int)(elapsed_ms * fps / 1000);
+
     if (!first_frame) {
-      log_debug("[SPLASH_ANIM] Frame %d: should_stop=%d, shutdown=%d", frame, atomic_load(&g_splash_state.should_stop),
-                shutdown_is_requested());
+      log_debug("[SPLASH_ANIM] Iter %d: elapsed=%llums frame=%d should_stop=%d", iteration_count,
+                (unsigned long long)elapsed_ms, frame, atomic_load(&g_splash_state.should_stop));
     }
 
     // Poll keyboard for interactive grep and Escape to cancel
     if (!first_frame) {
-      log_debug("[SPLASH_ANIM] Frame %d: keyboard_enabled=%d", frame, keyboard_enabled);
+      log_debug("[SPLASH_ANIM] Iter %d: keyboard_enabled=%d", iteration_count, keyboard_enabled);
     }
     if (keyboard_enabled) {
       keyboard_key_t key = keyboard_read_nonblocking();
@@ -465,10 +474,10 @@ static void *splash_animation_thread(void *arg) {
       }
     }
     if (!first_frame) {
-      log_debug("[SPLASH_ANIM] Frame %d: keyboard check done", frame);
+      log_debug("[SPLASH_ANIM] Iter %d: keyboard check done", iteration_count);
     }
 
-    // Set up splash header context for this frame
+    // Set up splash header context for this frame (using TIME-BASED frame value)
     splash_header_ctx_t header_ctx = {
         .frame = frame,
         .use_colors = use_colors,
@@ -523,55 +532,61 @@ static void *splash_animation_thread(void *arg) {
     bool should_render = terminal_is_interactive() || (opts_render && opts_render->splash_screen_explicitly_set);
 
     // Log startup phase timing
-    static uint64_t splash_start_time_ns = 0;
-    if (splash_start_time_ns == 0) {
-      splash_start_time_ns = time_get_ns();
-    }
-    uint64_t startup_elapsed_ms = (time_get_ns() - splash_start_time_ns) / 1000000;
-    if (startup_elapsed_ms < 500) {
-      log_debug("[STARTUP_PHASE] elapsed_ms=%llu frame=%d header_lines=%d should_render=%d log_count_in_buffer=? "
-                "header_should_stay_at_rows_0_to_%d",
-                (unsigned long long)startup_elapsed_ms, frame, header_lines, should_render, header_lines - 1);
+    if (elapsed_ms < 500) {
+      log_debug("[STARTUP_PHASE] elapsed_ms=%llu frame=%d (time-based) header_lines=%d should_render=%d",
+                (unsigned long long)elapsed_ms, frame, header_lines, should_render);
     }
 
     if (should_render) {
       terminal_screen_render(&screen_config);
       if (!first_frame) {
-        log_debug("[SPLASH_ANIM] Frame %d: terminal_screen_render() completed", frame);
+        log_debug("[SPLASH_ANIM] Iter %d: terminal_screen_render() completed", iteration_count);
       }
       first_frame = false; // Mark first frame as complete
     } else {
       if (!first_frame) {
-        log_debug("[SPLASH_ANIM] Frame %d: Skipping render (should_render=false)", frame);
+        log_debug("[SPLASH_ANIM] Iter %d: Skipping render (should_render=false)", iteration_count);
       }
     }
 
-    // Move to next frame
-    frame++;
+    iteration_count++;
 
-    // Log frame progress every 60 frames (1 second at 60fps)
-    if (frame % 60 == 0) {
+    // Log progress every 1 second of actual time (not frame count)
+    if (elapsed_ms > 0 && elapsed_ms % 1000 < anim_speed) {
       uint64_t now_ns = time_get_ns();
-      uint64_t elapsed_ns = now_ns - loop_start_ns;
-      double elapsed_sec = elapsed_ns / 1e9;
-      double actual_fps = frame / elapsed_sec;
-      log_info("[SPLASH_ANIM] Frame %d: %.1f seconds elapsed, actual FPS: %.1f", frame, elapsed_sec, actual_fps);
+      uint64_t total_elapsed_ns = now_ns - loop_start_ns;
+      double elapsed_sec = total_elapsed_ns / 1e9;
+      double actual_fps = iteration_count / elapsed_sec;
+      log_info("[SPLASH_ANIM] %llu ms elapsed, iteration %d, actual FPS: %.1f", (unsigned long long)elapsed_ms,
+               iteration_count, actual_fps);
     }
 
-    // Sleep to control animation speed (unless grep needs immediate rerender)
+    // Sleep to control frame rate (unless grep needs immediate rerender)
     if (!interactive_grep_needs_rerender()) {
+      uint64_t sleep_start_ns = time_get_ns();
       platform_sleep_ms(anim_speed);
+      uint64_t sleep_end_ns = time_get_ns();
+      uint64_t actual_sleep_ms = (sleep_end_ns - sleep_start_ns) / 1000000;
+      if (iteration_count % 60 == 0) {
+        log_debug("[SPLASH_SLEEP] Iter %d: requested=%dms actual=%llums", iteration_count, anim_speed,
+                  (unsigned long long)actual_sleep_ms);
+      }
+    } else {
+      if (iteration_count % 60 == 0) {
+        log_debug("[SPLASH_GREP_RERENDER] Iter %d: skipping sleep for grep rerender", iteration_count);
+      }
     }
   }
 
-  // Log final frame count
+  // Log final iteration count
   uint64_t final_ns = time_get_ns();
   uint64_t total_elapsed_ns = final_ns - loop_start_ns;
   double total_elapsed_sec = total_elapsed_ns / 1e9;
-  double final_fps = total_elapsed_sec > 0 ? frame / total_elapsed_sec : 0;
-  log_info("[SPLASH_ANIM] === ANIMATION LOOP EXITED === %d frames rendered in %.3f seconds (%.1f FPS). should_stop=%d, "
-           "shutdown=%d",
-           frame, total_elapsed_sec, final_fps, atomic_load(&g_splash_state.should_stop), shutdown_is_requested());
+  double final_fps = total_elapsed_sec > 0 ? iteration_count / total_elapsed_sec : 0;
+  log_info(
+      "[SPLASH_ANIM] === ANIMATION LOOP EXITED === %d iterations in %.3f seconds (%.1f actual FPS). should_stop=%d, "
+      "shutdown=%d",
+      iteration_count, total_elapsed_sec, final_fps, atomic_load(&g_splash_state.should_stop), shutdown_is_requested());
 
   // Cleanup keyboard
   if (keyboard_enabled) {

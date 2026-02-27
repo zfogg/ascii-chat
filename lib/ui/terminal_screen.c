@@ -78,8 +78,8 @@ static void strip_ansi_codes(const char *src, char *dst, size_t dst_size) {
 
 // Cached terminal size (to avoid flooding logs with terminal_get_size errors)
 static terminal_size_t g_cached_term_size = {.rows = 24, .cols = 80};
-static uint64_t g_last_term_size_check_us = 0;
-#define TERM_SIZE_CHECK_INTERVAL_US US_PER_SEC_INT // Check terminal size max once per second
+static uint64_t g_last_term_size_check_us = UINT64_MAX; // Force check on first call
+#define TERM_SIZE_CHECK_INTERVAL_US US_PER_SEC_INT      // Check terminal size max once per second
 
 // Cache of previously rendered log lines for diff-based rendering.
 // Only rewrite lines whose content actually changed.
@@ -112,15 +112,16 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
   uint64_t now_ns = platform_get_monotonic_time_us() * 1000;
   uint64_t elapsed_ms = (now_ns - g_render_start_time_ns) / 1000000;
 
-  log_debug("[RENDER_CALLED] show_logs=%d fixed_header_lines=%d elapsed_ms=%llu", config->show_logs,
-            config->fixed_header_lines, (unsigned long long)elapsed_ms);
-
   // Ensure cursor is visible for log-only UI (splash, status screens)
   (void)terminal_cursor_show();
 
   // Update terminal size (cached with 1-second refresh interval)
+  // Always check on first call (when still at default 24x80) to get correct dimensions immediately
   uint64_t now_us = platform_get_monotonic_time_us();
-  if (now_us - g_last_term_size_check_us >= TERM_SIZE_CHECK_INTERVAL_US) {
+  bool should_check = (g_cached_term_size.rows == 24 && g_cached_term_size.cols == 80) ||
+                      (now_us - g_last_term_size_check_us >= TERM_SIZE_CHECK_INTERVAL_US);
+
+  if (should_check) {
     const options_t *opts = options_get();
     terminal_size_t new_size = {0};
 
