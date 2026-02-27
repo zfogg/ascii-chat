@@ -464,12 +464,9 @@ static void *splash_animation_thread(void *arg) {
     }
 
     // Copy update notification from global state (thread-safe)
-    log_debug("[SPLASH_ANIM] Frame %d: About to lock update_notification_mutex", frame);
     mutex_lock(&g_update_notification_mutex);
-    log_debug("[SPLASH_ANIM] Frame %d: Locked update_notification_mutex", frame);
     SAFE_STRNCPY(header_ctx.update_notification, g_update_notification, sizeof(header_ctx.update_notification));
     mutex_unlock(&g_update_notification_mutex);
-    log_debug("[SPLASH_ANIM] Frame %d: Unlocked update_notification_mutex", frame);
 
     // Calculate header lines: 8 base lines + 1 if update notification present
     int header_lines = 8;
