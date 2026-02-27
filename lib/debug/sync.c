@@ -435,6 +435,7 @@ typedef struct {
 
 static debug_state_request_t g_debug_state_request = {DEBUG_REQUEST_STATE, 0, false, false, false, {0}, {0}, false};
 static asciichat_thread_t g_debug_thread;
+static uint64_t g_debug_main_thread_id = 0;  // Main thread ID for memory reporting
 
 /**
  * @brief Thread function for scheduled debug state printing
@@ -521,20 +522,44 @@ void debug_sync_print_backtrace_delayed(uint64_t delay_ns) {
 // Debug Sync API - Thread management
 // ============================================================================
 
+void debug_sync_set_main_thread_id(void) {
+    // Save main thread ID for memory reporting (call very early)
+    g_debug_main_thread_id = asciichat_thread_current_id();
+}
+
 int debug_sync_init(void) {
+    // debug_sync_set_main_thread_id() should have already been called
     return 0;
 }
 
+uint64_t debug_sync_get_main_thread_id(void) {
+    return g_debug_main_thread_id;
+}
+
 int debug_sync_start_thread(void) {
-    // Print sync state directly instead of starting a thread to avoid deadlock
-    debug_sync_print_state();
-    return 0;
+    // Initialize mutex and condition variable for signal wakeup
+    if (!g_debug_state_request.initialized) {
+        mutex_init(&g_debug_state_request.mutex, "debug_sync_state");
+        cond_init(&g_debug_state_request.cond, "debug_sync_signal");
+        g_debug_state_request.initialized = true;
+    }
+
+    g_debug_state_request.should_exit = false;
+    int err = asciichat_thread_create(&g_debug_thread, "debug_sync", debug_print_thread_fn, NULL);
+    return err;
 }
 
 void debug_sync_destroy(void) {
 }
 
 void debug_sync_cleanup_thread(void) {
+    // Only join if thread was actually created
+    if (!g_debug_state_request.initialized) {
+        return;
+    }
+
+    g_debug_state_request.initialized = false;  // Prevent double-join
+
     // Signal the thread to wake up immediately instead of waiting for 100ms timeout
     atomic_store(&g_debug_state_request.should_exit, true);
     cond_signal(&g_debug_state_request.cond);

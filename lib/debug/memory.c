@@ -15,6 +15,7 @@
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/debug/backtrace.h>
 #include <ascii-chat/debug/named.h>
+#include <ascii-chat/debug/sync.h>
 #include <ascii-chat/log/named.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/buffer_sizes.h>
@@ -105,9 +106,8 @@ static const debug_memory_suppression_t g_suppression_config[] = {
     {"lib/options/colorscheme.c", 602, 8, 88,     "8 256-color ANSI code strings"},
     {"lib/options/colorscheme.c", 619, 8, 144,    "8 truecolor ANSI code strings"},
     {"lib/util/path.c", 1211, 1, 43,              "normalized path allocation (caller frees)"},
-    {"lib/debug/named.c", 147, 1000, 0,           "named object registry: dynamic allocation of synchronization primitives (cleaned up at shutdown)"},
-    {"lib/debug/memory.c", 35, 1000, 0,           "named object registry allocations (file/line extraction artifact - cleaned up at shutdown)"},
-    {"lib/platform/posix/util.c", 35, 18, 1260,   "platform_strdup() string allocations (mirror mode)"},
+    {"lib/util/pcre2.c", 54, 1, 56,               "PCRE2 JIT singleton for code compilation (intentional, cleaned up at shutdown)"},
+    {"lib/util/pcre2.c", 62, 1, 7,                "PCRE2 mcontext singleton for matching (intentional, cleaned up at shutdown)"},
     {NULL, 0, 0, 0, NULL}                         // Sentinel
 };
 
@@ -150,6 +150,13 @@ static bool acquire_mutex_with_polling(mutex_t *mutex, int timeout_ms) {
 
 // Helper: Capture thread name from named registry
 static void capture_thread_name(uint64_t tid, char *thread_name_buf, size_t buf_size) {
+  // Check if this is the main thread (saved during initialization)
+  uint64_t main_tid = debug_sync_get_main_thread_id();
+  if (main_tid != 0 && tid == main_tid) {
+    safe_snprintf(thread_name_buf, buf_size, "thread/main (0x%lx)", tid);
+    return;
+  }
+
   // Try to look up thread name from registry using the tid directly
   const char *name = named_get((uintptr_t)tid);
   if (name) {

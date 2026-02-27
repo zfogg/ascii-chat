@@ -339,6 +339,8 @@ int main(int argc, char *argv[]) {
   // Register the main thread IMMEDIATELY after named_init() to ensure it's available for all subsequent allocations
 #ifndef NDEBUG
   NAMED_REGISTER_THREAD(asciichat_thread_self(), "main");
+  // Also save main thread ID for memory reporting (must be very early)
+  debug_sync_set_main_thread_id();
 #endif
 
   // VERY FIRST: Scan for --color BEFORE ANY logging initialization

@@ -311,7 +311,16 @@ void debug_sync_print_backtrace_delayed(uint64_t delay_ns);
  *
  * @see debug_sync_start_thread() to start the background debug thread
  */
+void debug_sync_set_main_thread_id(void);
+
 int debug_sync_init(void);
+
+/**
+ * @brief Get the main thread ID for memory reporting
+ * @return Main thread ID as uint64_t, or 0 if not initialized
+ * @ingroup debug_sync
+ */
+uint64_t debug_sync_get_main_thread_id(void);
 
 /**
  * @brief Start background debug thread for scheduled operations
