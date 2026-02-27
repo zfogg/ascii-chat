@@ -482,10 +482,8 @@ void mutex_stack_detect_deadlocks(void) {
                      (unsigned long)g_thread_registry[next_thread_idx].thread_id, k < cycle_len - 1 ? "\n" : "");
       }
 
-      // Print entire message in one call - use log_error_every if same deadlock
-      if (is_new_deadlock) {
-        log_error("%s", cycle_msg);
-      } else {
+      // Log repeated deadlock detections (skip first call, throttle subsequent ones)
+      if (!is_new_deadlock) {
         log_error_every(1000000, "%s", cycle_msg); // 1000000 µs = 1 second
       }
     }
