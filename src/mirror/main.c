@@ -314,19 +314,33 @@ static void *test_thread_b(void *arg) {
  * @return 0 on success, non-zero error code on failure
  */
 int mirror_main(void) {
-  // Initialize test mutexes for deadlock demonstration
-  mutex_init(&g_test_mutex_a, "test_mutex_a");
-  mutex_init(&g_test_mutex_b, "test_mutex_b");
+  // Test deadlock detection if env var is set
+  if (getenv("ASCII_CHAT_TEST_DEADLOCK")) {
+    fprintf(stderr, "\n========================================\n");
+    fprintf(stderr, "DEADLOCK TEST MODE ENABLED\n");
+    fprintf(stderr, "========================================\n");
+    fflush(stderr);
 
-  // Create deadlock threads
-  asciichat_thread_t tid_a, tid_b;
-  log_info("Creating deadlock test threads...");
-  asciichat_thread_create(&tid_a, "test_deadlock_a", test_thread_a, NULL);
-  asciichat_thread_create(&tid_b, "test_deadlock_b", test_thread_b, NULL);
+    // Initialize test mutexes for deadlock demonstration
+    mutex_init(&g_test_mutex_a, "test_mutex_a");
+    mutex_init(&g_test_mutex_b, "test_mutex_b");
 
-  log_info("===== DEADLOCK WILL FORM IN ~2 SECONDS =====");
-  log_info("In another terminal, run: kill -SIGUSR1 %d", getpid());
-  log_info("======================================================");
+    // Create deadlock threads
+    asciichat_thread_t tid_a, tid_b;
+    log_info("Creating deadlock test threads...");
+    asciichat_thread_create(&tid_a, "test_deadlock_a", test_thread_a, NULL);
+    asciichat_thread_create(&tid_b, "test_deadlock_b", test_thread_b, NULL);
+
+    fprintf(stderr, "Test deadlock threads created\n");
+    fprintf(stderr, "Deadlock will form in 2-3 seconds\n");
+    fprintf(stderr, "Use: kill -SIGUSR1 <pid> to dump state\n");
+    fprintf(stderr, "========================================\n\n");
+    fflush(stderr);
+
+    // Just wait and let deadlock happen
+    while (1)
+      sleep(1);
+  }
 
   // Configure mode-specific session settings
   session_client_like_config_t config = {
