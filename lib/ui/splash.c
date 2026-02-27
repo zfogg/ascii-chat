@@ -634,16 +634,11 @@ int splash_intro_start(session_display_ctx_t *ctx) {
   if (err != ASCIICHAT_OK) {
     log_warn("Failed to create splash animation thread: error=%d", err);
     atomic_store(&g_splash_state.thread_created, false);
-    // Restore stderr and stdout on error
+    // Restore stderr on error
     if (g_splash_state.stderr_fd_saved >= 0) {
       dup2(g_splash_state.stderr_fd_saved, STDERR_FILENO);
       close(g_splash_state.stderr_fd_saved);
       g_splash_state.stderr_fd_saved = -1;
-    }
-    if (g_splash_state.stdout_fd_saved >= 0) {
-      dup2(g_splash_state.stdout_fd_saved, STDOUT_FILENO);
-      close(g_splash_state.stdout_fd_saved);
-      g_splash_state.stdout_fd_saved = -1;
     }
     if (g_splash_state.devnull_fd >= 0) {
       close(g_splash_state.devnull_fd);
@@ -655,14 +650,13 @@ int splash_intro_start(session_display_ctx_t *ctx) {
   log_debug("[SPLASH] Animation thread created successfully, thread_created=%d",
             atomic_load(&g_splash_state.thread_created));
 
-  // Suppress stderr/stdout during animation to prevent real-time logs from pushing the header around.
+  // Suppress stderr during animation to prevent real-time logs from pushing the header around.
+  // Keep stdout open for the splash animation frames.
   // Logs are still captured in session_log_buffer and displayed through frame rendering.
   g_splash_state.devnull_fd = open("/dev/null", O_WRONLY);
   if (g_splash_state.devnull_fd >= 0) {
     g_splash_state.stderr_fd_saved = dup(STDERR_FILENO);
-    g_splash_state.stdout_fd_saved = dup(STDOUT_FILENO);
     dup2(g_splash_state.devnull_fd, STDERR_FILENO);
-    dup2(g_splash_state.devnull_fd, STDOUT_FILENO);
   }
 
   return 0; // ASCIICHAT_OK
@@ -707,16 +701,11 @@ int splash_intro_done(void) {
 
   atomic_store(&g_splash_state.is_running, false);
 
-  // Restore stderr and stdout now that splash animation is complete
+  // Restore stderr now that splash animation is complete
   if (g_splash_state.stderr_fd_saved >= 0) {
     dup2(g_splash_state.stderr_fd_saved, STDERR_FILENO);
     close(g_splash_state.stderr_fd_saved);
     g_splash_state.stderr_fd_saved = -1;
-  }
-  if (g_splash_state.stdout_fd_saved >= 0) {
-    dup2(g_splash_state.stdout_fd_saved, STDOUT_FILENO);
-    close(g_splash_state.stdout_fd_saved);
-    g_splash_state.stdout_fd_saved = -1;
   }
   if (g_splash_state.devnull_fd >= 0) {
     close(g_splash_state.devnull_fd);
