@@ -295,6 +295,27 @@ void debug_sync_print_state_delayed(uint64_t delay_ns);
  */
 void debug_sync_print_backtrace_delayed(uint64_t delay_ns);
 
+/**
+ * @brief Set periodic memory report interval
+ * @param interval_ns Interval in nanoseconds (0 to disable)
+ * @ingroup debug_sync
+ *
+ * Configures the debug sync thread to print memory reports at the specified interval.
+ * The first report will be printed after interval_ns nanoseconds, subsequent reports
+ * will follow at that interval.
+ *
+ * @param interval_ns Nanoseconds between reports (0 disables periodic reporting)
+ *
+ * Example:
+ * @code
+ * // Print memory report every 5 seconds
+ * debug_sync_set_memory_report_interval(5 * 1000000000ULL);
+ * @endcode
+ *
+ * @see debug_memory_report() for the memory report function being called
+ */
+void debug_sync_set_memory_report_interval(uint64_t interval_ns);
+
 // ============================================================================
 // Debug Sync API - Thread management and utilities
 // ============================================================================

@@ -81,66 +81,6 @@ static terminal_size_t g_cached_term_size = {.rows = 24, .cols = 80};
 static uint64_t g_last_term_size_check_us = 0;
 #define TERM_SIZE_CHECK_INTERVAL_US US_PER_SEC_INT // Check terminal size max once per second
 
-/**
- * @brief Calculate display lines needed for a log message, accounting for newlines and width wrapping
- *
- * Handles:
- * - Multiline messages with embedded newlines
- * - Width-based wrapping when a line exceeds terminal width
- * - ANSI escape sequences that don't count toward display width
- */
-static int calculate_log_display_lines(const char *msg, int term_width) {
-  if (!msg || term_width <= 0) {
-    return 1;
-  }
-
-  int total_lines = 0;
-  const char *line_start = msg;
-
-  // Process message line by line (split by \n)
-  while (*line_start != '\0') {
-    // Find end of current line
-    const char *line_end = strchr(line_start, '\n');
-    if (!line_end) {
-      line_end = line_start + strlen(line_start);
-    }
-
-    // Calculate display width of this line segment
-    int line_length = (int)(line_end - line_start);
-    char *line_segment = SAFE_MALLOC(line_length + 1, char *);
-    if (!line_segment) {
-      return 1; // Fallback
-    }
-
-    memcpy(line_segment, line_start, line_length);
-    line_segment[line_length] = '\0';
-
-    int segment_display_width = display_width(line_segment);
-    if (segment_display_width <= 0) {
-      // If display_width fails, assume the line is single-width as fallback
-      segment_display_width = 1;
-    }
-
-    // Account for width wrapping
-    int lines_in_segment = 1;
-    if (term_width > 0 && segment_display_width > term_width) {
-      lines_in_segment = (segment_display_width + term_width - 1) / term_width;
-    }
-
-    total_lines += lines_in_segment;
-    SAFE_FREE(line_segment);
-
-    // Move to next line
-    if (*line_end == '\n') {
-      line_start = line_end + 1;
-    } else {
-      break;
-    }
-  }
-
-  return total_lines > 0 ? total_lines : 1;
-}
-
 // Cache of previously rendered log lines for diff-based rendering.
 // Only rewrite lines whose content actually changed.
 #define MAX_CACHED_LINES 256
@@ -154,13 +94,26 @@ static void terminal_screen_clear_cache(void) {
   g_prev_total_lines = 0;
 }
 
+static uint64_t g_render_start_time_ns = 0;
+
 void terminal_screen_render(const terminal_screen_config_t *config) {
   // Validate config
   if (!config || !config->render_header) {
     return;
   }
 
-  log_debug("[RENDER_CALLED] show_logs=%d fixed_header_lines=%d", config->show_logs, config->fixed_header_lines);
+  // Track startup timing (first 500ms)
+  static bool first_render = true;
+  if (first_render) {
+    g_render_start_time_ns = platform_get_monotonic_time_us() * 1000;
+    first_render = false;
+  }
+
+  uint64_t now_ns = platform_get_monotonic_time_us() * 1000;
+  uint64_t elapsed_ms = (now_ns - g_render_start_time_ns) / 1000000;
+
+  log_debug("[RENDER_CALLED] show_logs=%d fixed_header_lines=%d elapsed_ms=%llu", config->show_logs,
+            config->fixed_header_lines, (unsigned long long)elapsed_ms);
 
   // Ensure cursor is visible for log-only UI (splash, status screens)
   (void)terminal_cursor_show();
@@ -249,10 +202,11 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
   int log_area_rows = g_cached_term_size.rows - config->fixed_header_lines - 1;
 
   if (log_area_rows <= 0) {
+    // Terminal too small for logs, flush header and return
+    frame_buffer_flush(g_frame_buf);
     if (grep_entering) {
       interactive_grep_render_input_line(g_cached_term_size.cols);
     }
-    fflush(stdout);
     return;
   }
 
@@ -284,62 +238,62 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     }
   }
 
-  // Calculate which logs fit (working backwards from most recent).
-  // Walk through logs from newest to oldest, counting display lines needed.
-  // Cap at max_logs_to_display to keep header position stable during startup.
-  int total_lines_needed = 0;
-  int first_log_to_display = (log_count > 0) ? (int)log_count - 1 : 0;
-  int max_logs_to_display = 30; // Cap at 30 logs to keep layout stable during startup
-  int logs_counted = 0;
+  // Display logs - most recent at bottom, oldest scrolled off top.
+  // Calculate a stable window: show up to log_area_rows logs, newest last.
+  // This ensures smooth scrolling as new logs arrive (no jumping viewport).
+  int logs_to_display = (int)log_count;
+  int first_log_to_display = 0;
 
-  for (int i = (int)log_count - 1; i >= 0; i--) {
-    const char *msg = log_entries[i].message;
-    int lines_for_this_log = calculate_log_display_lines(msg, g_cached_term_size.cols);
-
-    // Stop if we exceed available space OR hit log count cap
-    if (total_lines_needed + lines_for_this_log > renderable_log_rows || logs_counted >= max_logs_to_display) {
-      first_log_to_display = i + 1;
-      break;
-    }
-
-    total_lines_needed += lines_for_this_log;
-    first_log_to_display = i;
-    logs_counted++;
+  // Cap display at available space (each log = 1 line in output)
+  if (logs_to_display > log_area_rows) {
+    first_log_to_display = logs_to_display - log_area_rows;
+    logs_to_display = log_area_rows;
   }
 
   // Log detailed info about what logs are being displayed
-  int logs_displayed_count = (int)log_count - first_log_to_display;
-  log_debug("[HEIGHT_CALC] log_count=%zu first_log_to_display=%d logs_displayed=%d total_lines_needed=%d "
-            "renderable_log_rows=%d cap=%d",
-            log_count, first_log_to_display, logs_displayed_count, total_lines_needed, renderable_log_rows,
-            max_logs_to_display);
+  int logs_displayed_count = logs_to_display;
+  if (elapsed_ms < 500) {
+    log_debug("[STARTUP_FRAME] t=%llu log_count=%zu first=%d display=%d area=%d", (unsigned long long)elapsed_ms,
+              log_count, first_log_to_display, logs_displayed_count, log_area_rows);
+  } else {
+    log_debug("[HEIGHT_CALC] log_count=%zu first_log_to_display=%d logs_displayed=%d "
+              "renderable_log_rows=%d",
+              log_count, first_log_to_display, logs_displayed_count, renderable_log_rows);
+  }
 
   if (!grep_entering) {
-    // Normal mode: flush header from frame buffer first
-    frame_buffer_flush(g_frame_buf);
+    // Normal mode: accumulate everything (header + logs + blank lines) into frame buffer,
+    // then flush atomically. This prevents real-time logs from appearing after the frame,
+    // which would cause the display to scroll and push the header up.
 
-    // Output only the logs, counting actual lines output
+    // Output logs to frame buffer, counting actual lines output
     int logs_actually_output = 0;
     for (int i = first_log_to_display; i < (int)log_count; i++) {
       const char *msg = log_entries[i].message;
-      fprintf(stdout, "%s\n", msg);
+      frame_buffer_printf(g_frame_buf, "%s\n", msg);
       logs_actually_output++;
     }
 
-    // Fill remaining space: header is already output (8 lines fixed), so fill rest to reach log_area_rows
-    // log_area_rows includes the header height, so remaining = log_area_rows - (header lines) - logs_output
-    // But header is already printed, so we just need to fill log_area_rows - logs_output blank lines
+    // Fill remaining space with blank lines (complete the log area)
     int remaining = log_area_rows - logs_actually_output;
     for (int i = 0; i < remaining; i++) {
-      fprintf(stdout, "\n");
+      frame_buffer_append(g_frame_buf, "\n", 1);
     }
-    fflush(stdout);
+
+    // Flush entire frame (header + logs + blank lines) in one atomic write
+    frame_buffer_flush(g_frame_buf);
 
     // Verify output height matches terminal area
-    int actual_height_rendered = logs_actually_output + remaining; // logs + blank (header already output)
-    log_debug("[RENDER_OUTPUT] log_count=%zu logs_output=%d blank=%d ACTUAL_HEIGHT=%d log_area=%d MATCH=%s", log_count,
-              logs_actually_output, remaining, actual_height_rendered, log_area_rows,
-              (actual_height_rendered == log_area_rows) ? "YES" : "NO");
+    int actual_height_rendered = logs_actually_output + remaining;
+    if (elapsed_ms < 500) {
+      log_debug("[STARTUP_OUTPUT] t=%llu output=%d blank=%d height=%d area=%d match=%s", (unsigned long long)elapsed_ms,
+                logs_actually_output, remaining, actual_height_rendered, log_area_rows,
+                (actual_height_rendered == log_area_rows) ? "YES" : "NO");
+    } else {
+      log_debug("[RENDER_OUTPUT] log_count=%zu logs_output=%d blank=%d ACTUAL_HEIGHT=%d log_area=%d MATCH=%s",
+                log_count, logs_actually_output, remaining, actual_height_rendered, log_area_rows,
+                (actual_height_rendered == log_area_rows) ? "YES" : "NO");
+    }
   } else {
     // Grep mode: diff-based rendering. Only rewrite lines that changed.
     // Logs fill renderable_log_rows; the last row is the `/` input line.

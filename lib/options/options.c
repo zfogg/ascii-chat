@@ -1693,11 +1693,13 @@ asciichat_error_t options_init(int argc, char **argv) {
 
   // Detect if splash or status_screen were explicitly set on command line
   for (int i = 0; i < mode_argc; i++) {
-    if (mode_argv[i] && (strcmp(mode_argv[i], "--splash-screen") == 0 || strncmp(mode_argv[i], "--splash-screen=", 16) == 0)) {
+    if (mode_argv[i] &&
+        (strcmp(mode_argv[i], "--splash-screen") == 0 || strncmp(mode_argv[i], "--splash-screen=", 16) == 0)) {
       opts.splash_screen = true;
       opts.splash_screen_explicitly_set = true;
     }
-    if (mode_argv[i] && (strcmp(mode_argv[i], "--no-splash-screen") == 0 || strncmp(mode_argv[i], "--no-splash-screen=", 19) == 0)) {
+    if (mode_argv[i] &&
+        (strcmp(mode_argv[i], "--no-splash-screen") == 0 || strncmp(mode_argv[i], "--no-splash-screen=", 19) == 0)) {
       opts.splash_screen = false;
       opts.splash_screen_explicitly_set = true;
     }
@@ -1706,8 +1708,16 @@ asciichat_error_t options_init(int argc, char **argv) {
       opts.status_screen_explicitly_set = true;
     }
 #ifndef NDEBUG
-    if (mode_argv[i] && (strcmp(mode_argv[i], "--sync-state") == 0 || strncmp(mode_argv[i], "--sync-state=", 13) == 0)) {
+    if (mode_argv[i] &&
+        (strcmp(mode_argv[i], "--sync-state") == 0 || strncmp(mode_argv[i], "--sync-state=", 13) == 0)) {
       opts.debug_sync_state_time_explicit = true;
+    }
+    if (mode_argv[i] && (strcmp(mode_argv[i], "--backtrace") == 0 || strncmp(mode_argv[i], "--backtrace=", 12) == 0)) {
+      opts.debug_backtrace_time_explicit = true;
+    }
+    if (mode_argv[i] &&
+        (strcmp(mode_argv[i], "--memory-report") == 0 || strncmp(mode_argv[i], "--memory-report=", 16) == 0)) {
+      opts.debug_memory_report_interval_explicit = true;
     }
 #endif
   }

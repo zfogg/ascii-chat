@@ -833,6 +833,14 @@ int main(int argc, char *argv[]) {
     backtrace_print("Backtrace", &bt, 0, 0, NULL);
     backtrace_t_free(&bt);
   }
+
+  // Handle --memory-report (debug builds only)
+  // Enable periodic memory reporting at specified interval
+  if (IS_OPTION_EXPLICIT(debug_memory_report_interval, opts) && opts->debug_memory_report_interval > 0.0) {
+    log_info("Enabling memory reports every %f seconds", opts->debug_memory_report_interval);
+    uint64_t interval_ns = (uint64_t)(opts->debug_memory_report_interval * NS_PER_SEC_INT);
+    debug_sync_set_memory_report_interval(interval_ns);
+  }
 #endif
 
   // Find and dispatch to mode entry point

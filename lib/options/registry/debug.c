@@ -48,6 +48,24 @@ const registry_entry_t g_debug_entries[] = {
      OPTION_MODE_ALL,
      {0},    // metadata
      NULL},  // action_fn
+    {"memory-report",
+     '\0',
+     OPTION_TYPE_DOUBLE,
+     offsetof(options_t, debug_memory_report_interval),
+     &default_debug_memory_report_interval_value,
+     sizeof(double),
+     "Print memory report periodically at specified interval in seconds (debug builds only).",
+     "DEBUG",
+     "TIME",
+     false,  // required
+     NULL,   // env_var_name
+     NULL,   // validate_fn
+     NULL,   // parse_fn
+     false,  // owns_memory
+     true,   // optional_arg
+     OPTION_MODE_ALL,
+     {0},    // metadata
+     NULL},  // action_fn
 
     REGISTRY_TERMINATOR()};
 // clang-format on

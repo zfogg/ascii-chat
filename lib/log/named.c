@@ -133,16 +133,16 @@ int log_named_format_message(const char *message, char *output, size_t output_si
             fmt_spec = "0x%tx"; /* Default format for addresses */
           }
 
-          char temp_output[512];
           char id_buffer[128];
           int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, (ptrdiff_t)address);
           if (id_written > 0 && id_written < (int)sizeof(id_buffer)) {
+            // Format without colors - let the logging system colorize the output
+            char temp_output[512];
             int temp_written = snprintf(temp_output, sizeof(temp_output), "%s/%s (%s)", type, name, id_buffer);
             if (temp_written > 0 && (size_t)temp_written < sizeof(temp_output)) {
-              int copy_len = temp_written;
-              if (out_pos + copy_len < output_size - 1) {
-                memcpy(output + out_pos, temp_output, copy_len);
-                out_pos += copy_len;
+              if (out_pos + temp_written < output_size - 1) {
+                memcpy(output + out_pos, temp_output, temp_written);
+                out_pos += temp_written;
                 any_transformed = true;
                 continue;
               }

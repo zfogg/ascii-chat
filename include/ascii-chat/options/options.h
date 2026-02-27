@@ -358,7 +358,7 @@ typedef enum {
 /** @brief Default log format string - debug mode (verbose with thread name, file relative path, line, and function) */
 #define OPT_LOG_TEMPLATE_DEFAULT_DEBUG                                                                                 \
   "[%color(*, %H):%color(*, %M):%color(*, %S).%color(*, %ms)] [%color(*, %level_aligned)] "                            \
-  "[%color(GREY, %tname)] %color(DEBUG, %file_relative):%color(GREY, %line)@%color(DEV, %func)(): "                   \
+  "[%color(GREY, %tname)] %color(DEBUG, %file_relative):%color(GREY, %line)@%color(DEV, %func)(): "                    \
   "%colored_message"
 
 /** @brief Default log template string (selected based on build mode)
@@ -759,7 +759,7 @@ typedef enum {
 // ============================================================================
 #ifndef _WIN32
 #define OPT_RENDER_FILE_DEFAULT ""
-#define OPT_RENDER_THEME_DEFAULT 0  // 0=dark, 1=light, 2=auto
+#define OPT_RENDER_THEME_DEFAULT 0 // 0=dark, 1=light, 2=auto
 #define OPT_RENDER_FONT_DEFAULT ""
 #define OPT_RENDER_FONT_SIZE_DEFAULT 12.0
 #endif
@@ -845,10 +845,12 @@ static const double default_debug_sync_state_time_value = 0.0;
 static const bool default_debug_sync_state_time_explicit_value = false;
 static const double default_debug_backtrace_time_value = 0.0;
 static const bool default_debug_backtrace_time_explicit_value = false;
+static const double default_debug_memory_report_interval_value = 0.0;
+static const bool default_debug_memory_report_interval_explicit_value = false;
 #endif
 
 #ifndef _WIN32
-static const int    default_render_theme_value     = OPT_RENDER_THEME_DEFAULT;
+static const int default_render_theme_value = OPT_RENDER_THEME_DEFAULT;
 static const double default_render_font_size_value = OPT_RENDER_FONT_SIZE_DEFAULT;
 #endif
 
@@ -1143,10 +1145,12 @@ typedef struct options_state {
   // Debug Options (Debug builds only)
   // ============================================================================
 #ifndef NDEBUG
-  double debug_sync_state_time;           ///< Time parameter for --sync-state option (debug builds only)
-  bool debug_sync_state_time_explicit;    ///< True if --debug-state was explicitly provided
-  double debug_backtrace_time;       ///< Time parameter for --backtrace option (debug builds only)
-  bool debug_backtrace_time_explicit; ///< True if --backtrace was explicitly provided
+  double debug_sync_state_time;               ///< Time parameter for --sync-state option (debug builds only)
+  bool debug_sync_state_time_explicit;        ///< True if --debug-state was explicitly provided
+  double debug_backtrace_time;                ///< Time parameter for --backtrace option (debug builds only)
+  bool debug_backtrace_time_explicit;         ///< True if --backtrace was explicitly provided
+  double debug_memory_report_interval;        ///< Interval in seconds for periodic memory reports (debug builds only)
+  bool debug_memory_report_interval_explicit; ///< True if --memory-report was explicitly provided
 #endif
 
   // ============================================================================
@@ -1154,7 +1158,7 @@ typedef struct options_state {
   // ============================================================================
 #ifndef _WIN32
   char render_file[OPTIONS_BUFF_SIZE]; ///< Output file path (e.g. output.mp4)
-  int  render_theme;                   ///< 0=dark 1=light 2=auto
+  int render_theme;                    ///< 0=dark 1=light 2=auto
   char render_font[OPTIONS_BUFF_SIZE]; ///< Font family name or .ttf path (empty = platform default)
   double render_font_size;             ///< Font size in points (default 12.0, supports e.g. 10.5)
 #endif

@@ -521,6 +521,19 @@ static void *splash_animation_thread(void *arg) {
     // In non-interactive mode without explicit flag, logs flow to stdout/stderr normally
     const options_t *opts_render = options_get();
     bool should_render = terminal_is_interactive() || (opts_render && opts_render->splash_screen_explicitly_set);
+
+    // Log startup phase timing
+    static uint64_t splash_start_time_ns = 0;
+    if (splash_start_time_ns == 0) {
+      splash_start_time_ns = time_get_ns();
+    }
+    uint64_t startup_elapsed_ms = (time_get_ns() - splash_start_time_ns) / 1000000;
+    if (startup_elapsed_ms < 500) {
+      log_debug("[STARTUP_PHASE] elapsed_ms=%llu frame=%d header_lines=%d should_render=%d log_count_in_buffer=? "
+                "header_should_stay_at_rows_0_to_%d",
+                (unsigned long long)startup_elapsed_ms, frame, header_lines, should_render, header_lines - 1);
+    }
+
     if (should_render) {
       terminal_screen_render(&screen_config);
       if (!first_frame) {
@@ -621,6 +634,15 @@ int splash_intro_start(session_display_ctx_t *ctx) {
   // This prevents any pre-splash logs from appearing in first frame
   session_log_buffer_clear();
 
+  // Suppress stderr BEFORE creating animation thread to prevent real-time logs from
+  // appearing on screen and pushing the header around. Logs are captured in session_log_buffer
+  // and displayed through frame rendering. Stdout stays open for splash frames.
+  g_splash_state.devnull_fd = open("/dev/null", O_WRONLY);
+  if (g_splash_state.devnull_fd >= 0) {
+    g_splash_state.stderr_fd_saved = dup(STDERR_FILENO);
+    dup2(g_splash_state.devnull_fd, STDERR_FILENO);
+  }
+
   // Set running flag
   log_debug("[SPLASH] Setting running flag and initializing state");
   atomic_store(&g_splash_state.is_running, true);
@@ -628,7 +650,7 @@ int splash_intro_start(session_display_ctx_t *ctx) {
   g_splash_state.frame = 0;
   g_splash_state.start_time_ns = time_get_ns(); // Track start time for minimum display duration
 
-  // Start animation thread
+  // Start animation thread (stderr now suppressed, so only session_log_buffer captures logs)
   log_debug("[SPLASH] About to create animation thread");
   int err = asciichat_thread_create(&g_splash_state.anim_thread, "splash_anim", splash_animation_thread, NULL);
   if (err != ASCIICHAT_OK) {
@@ -649,15 +671,6 @@ int splash_intro_start(session_display_ctx_t *ctx) {
   atomic_store(&g_splash_state.thread_created, true);
   log_debug("[SPLASH] Animation thread created successfully, thread_created=%d",
             atomic_load(&g_splash_state.thread_created));
-
-  // Suppress stderr during animation to prevent real-time logs from pushing the header around.
-  // Keep stdout open for the splash animation frames.
-  // Logs are still captured in session_log_buffer and displayed through frame rendering.
-  g_splash_state.devnull_fd = open("/dev/null", O_WRONLY);
-  if (g_splash_state.devnull_fd >= 0) {
-    g_splash_state.stderr_fd_saved = dup(STDERR_FILENO);
-    dup2(g_splash_state.devnull_fd, STDERR_FILENO);
-  }
 
   return 0; // ASCIICHAT_OK
 }

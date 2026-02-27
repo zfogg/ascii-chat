@@ -12,6 +12,7 @@
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/debug/backtrace.h>
 #include <ascii-chat/debug/mutex.h>
+#include <ascii-chat/debug/memory.h>
 #include <ascii-chat/platform/cond.h>
 #include <ascii-chat/platform/mutex.h> // Must come after cond.h since cond.h includes it
 #include <ascii-chat/platform/rwlock.h>
@@ -310,7 +311,7 @@ static void debug_sync_print_lock_stacks(char *buffer, size_t buffer_size, size_
       char elapsed_str[64];
       time_pretty(elapsed, -1, elapsed_str, sizeof(elapsed_str));
 
-      *offset += snprintf(buffer + *offset, buffer_size - *offset, "    [%d] %s @ %p (%s) %s\n", j, entry->mutex_name,
+      *offset += snprintf(buffer + *offset, buffer_size - *offset, "    [%d] %s @ %p (%s) %s", j, entry->mutex_name,
                           (void *)entry->mutex_key, state_str, elapsed_str);
     }
   }
@@ -423,19 +424,22 @@ void debug_sync_check_cond_deadlocks(void) {
 // ============================================================================
 
 typedef enum {
-  DEBUG_REQUEST_STATE,     // Print sync state
-  DEBUG_REQUEST_BACKTRACE, // Print backtrace
+  DEBUG_REQUEST_STATE,         // Print sync state
+  DEBUG_REQUEST_BACKTRACE,     // Print backtrace
+  DEBUG_REQUEST_MEMORY_REPORT, // Print memory report
 } debug_request_type_t;
 
 typedef struct {
   debug_request_type_t request_type; // What to print
   uint64_t delay_ns;
-  _Atomic(bool) should_run;       // Atomic flag set by main thread
-  _Atomic(bool) should_exit;      // Atomic flag for shutdown
-  _Atomic(bool) signal_triggered; // Flag set by SIGUSR1 handler
-  mutex_t mutex;                  // Protects access to flags during locked operations
-  cond_t cond;                    // Wakes thread when signal arrives
-  bool initialized;               // Tracks if mutex/cond are initialized
+  _Atomic(bool) should_run;            // Atomic flag set by main thread
+  _Atomic(bool) should_exit;           // Atomic flag for shutdown
+  _Atomic(bool) signal_triggered;      // Flag set by SIGUSR1 handler
+  uint64_t memory_report_interval_ns;  // Interval for periodic memory reports (0 = disabled)
+  uint64_t last_memory_report_time_ns; // Timestamp of last memory report
+  mutex_t mutex;                       // Protects access to flags during locked operations
+  cond_t cond;                         // Wakes thread when signal arrives
+  bool initialized;                    // Tracks if mutex/cond are initialized
 } debug_state_request_t;
 
 static debug_state_request_t g_debug_state_request = {DEBUG_REQUEST_STATE, 0, false, false, false, {0}, {0}, false};
@@ -496,6 +500,18 @@ static void *debug_print_thread_fn(void *arg) {
     // Periodic deadlock detection (runs every 100ms during wait timeout)
     debug_sync_check_cond_deadlocks();
     mutex_stack_detect_deadlocks();
+
+    // Periodic memory report (if enabled)
+    if (g_debug_state_request.memory_report_interval_ns > 0) {
+      uint64_t now = time_get_ns();
+      uint64_t last_time = g_debug_state_request.last_memory_report_time_ns;
+
+      // Check if enough time has passed (or first report)
+      if (last_time == 0 || (now - last_time >= g_debug_state_request.memory_report_interval_ns)) {
+        debug_memory_report();
+        g_debug_state_request.last_memory_report_time_ns = now;
+      }
+    }
   }
 
   return NULL;
@@ -521,6 +537,15 @@ void debug_sync_print_backtrace_delayed(uint64_t delay_ns) {
   g_debug_state_request.delay_ns = delay_ns;
   atomic_store(&g_debug_state_request.should_run, true);
   cond_signal(&g_debug_state_request.cond);
+}
+
+/**
+ * @brief Set periodic memory report interval
+ * @param interval_ns Interval in nanoseconds (0 to disable)
+ */
+void debug_sync_set_memory_report_interval(uint64_t interval_ns) {
+  g_debug_state_request.memory_report_interval_ns = interval_ns;
+  g_debug_state_request.last_memory_report_time_ns = 0; // Reset timer
 }
 
 // ============================================================================
