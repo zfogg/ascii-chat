@@ -110,6 +110,7 @@ void named_destroy(void) {
         HASH_DEL(g_named_registry.entries, entry);
         free(entry->name);
         free(entry->type);
+        free(entry->format_spec);
         free(entry->file);
         free(entry->func);
         free(entry);
