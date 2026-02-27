@@ -69,12 +69,13 @@ static const rgb_pixel_t g_rainbow_colors[] = {
  * @brief Animation state for intro splash
  */
 static struct {
-  _Atomic(bool) is_running;       // true while animation should continue
-  _Atomic(bool) should_stop;      // set to true when first frame ready
-  int frame;                      // current animation frame
-  asciichat_thread_t anim_thread; // animation thread handle
-  uint64_t start_time_ns;         // when splash was started (for minimum display time)
-} g_splash_state = {.is_running = false, .should_stop = false, .frame = 0, .start_time_ns = 0};
+  _Atomic(bool) is_running;           // true while animation should continue
+  _Atomic(bool) should_stop;          // set to true when first frame ready
+  _Atomic(bool) thread_created;       // true if animation thread was successfully created
+  int frame;                          // current animation frame
+  asciichat_thread_t anim_thread;     // animation thread handle
+  uint64_t start_time_ns;             // when splash was started (for minimum display time)
+} g_splash_state = {.is_running = false, .should_stop = false, .thread_created = false, .frame = 0, .start_time_ns = 0};
 
 // ============================================================================
 // Helper Functions - TTY Detection
@@ -455,12 +456,9 @@ static void *splash_animation_thread(void *arg) {
     // Initialize update notification lifecycle and mutex once (safe to call multiple times)
     if (lifecycle_init_once(&g_update_notification_lifecycle)) {
       log_debug("[SPLASH_ANIM] Initializing lifecycle for update_notification");
-      if (!lifecycle_init(&g_update_notification_lifecycle, "update_notification")) {
-        log_error("[SPLASH_ANIM] Failed to initialize update_notification lifecycle");
-        lifecycle_init_abort(&g_update_notification_lifecycle);
-      } else {
-        lifecycle_init_commit(&g_update_notification_lifecycle);
-      }
+      // Initialize the mutex (already configured in the lifecycle structure)
+      mutex_init(&g_update_notification_mutex, "update_notification");
+      lifecycle_init_commit(&g_update_notification_lifecycle);
     }
 
     // Copy update notification from global state (thread-safe)
@@ -590,19 +588,23 @@ int splash_intro_start(session_display_ctx_t *ctx) {
 
   // Start animation thread
   log_debug("[SPLASH] About to create animation thread");
-  if (asciichat_thread_create(&g_splash_state.anim_thread, "splash_anim", splash_animation_thread, NULL) != ASCIICHAT_OK) {
-    log_warn("Failed to create splash animation thread");
+  int err = asciichat_thread_create(&g_splash_state.anim_thread, "splash_anim", splash_animation_thread, NULL);
+  if (err != ASCIICHAT_OK) {
+    log_warn("Failed to create splash animation thread: error=%d", err);
+    atomic_store(&g_splash_state.thread_created, false);
     return 0;
   }
-  log_debug("[SPLASH] Animation thread created successfully");
+  atomic_store(&g_splash_state.thread_created, true);
+  log_debug("[SPLASH] Animation thread created successfully, thread_created=%d", atomic_load(&g_splash_state.thread_created));
 
   return 0; // ASCIICHAT_OK
 }
 
 int splash_intro_done(void) {
-  log_info("[SPLASH_DONE] Entry: is_running=%d, should_stop=%d",
+  log_info("[SPLASH_DONE] Entry: is_running=%d, should_stop=%d, thread_created=%d",
            atomic_load(&g_splash_state.is_running),
-           atomic_load(&g_splash_state.should_stop));
+           atomic_load(&g_splash_state.should_stop),
+           atomic_load(&g_splash_state.thread_created));
 
   // Enforce minimum display time of 2 seconds
   if (g_splash_state.start_time_ns > 0) {
@@ -623,12 +625,17 @@ int splash_intro_done(void) {
   log_info("[SPLASH_DONE] Setting should_stop=true");
   atomic_store(&g_splash_state.should_stop, true);
 
-  // Wait for animation thread to finish
-  log_debug("[SPLASH_DONE] Checking if animation thread is running");
-  if (atomic_load(&g_splash_state.is_running)) {
+  // Wait for animation thread to finish (only join once, even if called multiple times)
+  log_debug("[SPLASH_DONE] Checking if animation thread was created");
+  bool expected = true;
+  if (atomic_compare_exchange_strong(&g_splash_state.thread_created, &expected, false)) {
+    // We successfully changed thread_created from true to false, so we join
     log_debug("[SPLASH_DONE] About to join animation thread");
     asciichat_thread_join(&g_splash_state.anim_thread, NULL);
     log_debug("[SPLASH_DONE] Animation thread join completed");
+  } else {
+    // Another caller already joined the thread
+    log_debug("[SPLASH_DONE] Animation thread already joined or never created");
   }
 
   atomic_store(&g_splash_state.is_running, false);
@@ -690,9 +697,8 @@ int splash_display_status(int mode) {
 
   // Add update notification if available
   if (lifecycle_init_once(&g_update_notification_lifecycle)) {
-    g_update_notification_lifecycle.sync_type = LIFECYCLE_SYNC_MUTEX;
-    g_update_notification_lifecycle.sync.mutex = &g_update_notification_mutex;
-    lifecycle_init(&g_update_notification_lifecycle, "update_notification");
+    mutex_init(&g_update_notification_mutex, "update_notification");
+    lifecycle_init_commit(&g_update_notification_lifecycle);
   }
   mutex_lock(&g_update_notification_mutex);
   if (g_update_notification[0] != '\0') {
@@ -711,9 +717,8 @@ int splash_display_status(int mode) {
 
 void splash_set_update_notification(const char *notification) {
   if (lifecycle_init_once(&g_update_notification_lifecycle)) {
-    g_update_notification_lifecycle.sync_type = LIFECYCLE_SYNC_MUTEX;
-    g_update_notification_lifecycle.sync.mutex = &g_update_notification_mutex;
-    lifecycle_init(&g_update_notification_lifecycle, "update_notification");
+    mutex_init(&g_update_notification_mutex, "update_notification");
+    lifecycle_init_commit(&g_update_notification_lifecycle);
   }
   mutex_lock(&g_update_notification_mutex);
 
