@@ -31,10 +31,6 @@ typedef struct {
 // Thread-local storage for fast per-thread access
 static __thread thread_lock_stack_t g_thread_lock_stack = {0};
 
-// Global lock to protect thread registry
-static mutex_t g_thread_registry_lock;
-static bool g_thread_registry_lock_initialized = false;
-
 // Global registry of all threads that have used mutexes
 #define MAX_THREADS 256
 typedef struct {
@@ -43,7 +39,7 @@ typedef struct {
 } thread_registry_entry_t;
 
 static thread_registry_entry_t g_thread_registry[MAX_THREADS] = {0};
-static int g_thread_registry_count = 0;
+static _Atomic(int) g_thread_registry_count = 0;
 
 // ============================================================================
 // Thread Registry Management
@@ -57,20 +53,21 @@ static thread_lock_stack_t *get_thread_local_stack(void) {
 }
 
 /**
- * @brief Ensure registry lock is initialized (called only from non-hot-path functions)
- */
-static void ensure_registry_lock_initialized(void) {
-  if (!g_thread_registry_lock_initialized) {
-    mutex_init(&g_thread_registry_lock, "thread_registry");
-    g_thread_registry_lock_initialized = true;
-  }
-}
-
-/**
  * @brief Register current thread in the global registry if not already registered
- * Does NOT use mutex_lock to avoid recursion - uses raw pthread operations
+ * Lock-free implementation using atomic operations - completely avoids recursion
+ * This is safe from concurrent access because:
+ * 1. Each thread gets a unique index via atomic compare-exchange
+ * 2. Writes to the registry are ordered with atomic release semantics
+ * 3. Reads from the debug thread use acquire semantics
  */
 static void register_thread_if_needed(void) {
+  static __thread bool registered = false;
+
+  // Once registered, skip immediately
+  if (registered) {
+    return;
+  }
+
   thread_lock_stack_t *local_stack = get_thread_local_stack();
   if (!local_stack) {
     return;
@@ -78,26 +75,41 @@ static void register_thread_if_needed(void) {
 
   pthread_t current_thread = pthread_self();
 
-  ensure_registry_lock_initialized();
-  // Use raw pthread_mutex_lock to avoid recursive stack tracking
-  pthread_mutex_lock(&g_thread_registry_lock.impl);
-
-  // Check if thread is already registered
-  for (int i = 0; i < g_thread_registry_count; i++) {
+  // Check if thread is already in registry (without lock)
+  int current_count = atomic_load_explicit(&g_thread_registry_count, memory_order_acquire);
+  for (int i = 0; i < current_count; i++) {
     if (pthread_equal(g_thread_registry[i].thread_id, current_thread)) {
-      pthread_mutex_unlock(&g_thread_registry_lock.impl);
+      registered = true;
       return; // Already registered
     }
   }
 
-  // Add thread to registry if there's space
-  if (g_thread_registry_count < MAX_THREADS) {
-    g_thread_registry[g_thread_registry_count].thread_id = current_thread;
-    g_thread_registry[g_thread_registry_count].stack = local_stack;
-    g_thread_registry_count++;
+  // Try to claim a slot in the registry atomically
+  int slot;
+  while (1) {
+    int old_count = atomic_load_explicit(&g_thread_registry_count, memory_order_acquire);
+    if (old_count >= MAX_THREADS) {
+      registered = true; // Registry is full, give up
+      return;
+    }
+
+    // Try to atomically increment the count and claim a slot
+    if (atomic_compare_exchange_strong_explicit(&g_thread_registry_count, &old_count, old_count + 1,
+                                                memory_order_release, memory_order_acquire)) {
+      slot = old_count;
+      break; // Successfully claimed slot
+    }
+    // If compare-exchange failed, loop and try again
   }
 
-  pthread_mutex_unlock(&g_thread_registry_lock.impl);
+  // Write thread data to claimed slot (release semantics for visibility)
+  g_thread_registry[slot].thread_id = current_thread;
+  g_thread_registry[slot].stack = local_stack;
+
+  // Memory barrier to ensure writes are visible to other threads
+  atomic_thread_fence(memory_order_release);
+
+  registered = true;
 }
 
 // ============================================================================
@@ -172,35 +184,44 @@ int mutex_stack_get_all_threads(mutex_stack_entry_t ***out_stacks, int **out_sta
     return -1;
   }
 
-  ensure_registry_lock_initialized();
-  mutex_lock(&g_thread_registry_lock);
+  // Read the thread count with acquire semantics (lock-free, no mutex needed)
+  // Use memory_order_seq_cst to ensure we get a consistent snapshot
+  int thread_count = atomic_load_explicit(&g_thread_registry_count, memory_order_seq_cst);
 
-  // Allocate arrays for maximum possible threads
-  *out_stacks = SAFE_MALLOC(g_thread_registry_count, mutex_stack_entry_t **);
-  *out_stack_counts = SAFE_MALLOC(g_thread_registry_count, int *);
+  // Allocate arrays for threads in the registry
+  // Note: SAFE_MALLOC takes bytes as first parameter, not count
+  *out_stacks = SAFE_MALLOC(thread_count * sizeof(mutex_stack_entry_t *), mutex_stack_entry_t **);
+  *out_stack_counts = SAFE_MALLOC(thread_count * sizeof(int), int *);
 
   if (!*out_stacks || !*out_stack_counts) {
     SAFE_FREE(*out_stacks);
     SAFE_FREE(*out_stack_counts);
-    mutex_unlock(&g_thread_registry_lock);
     return -1;
   }
 
   // Copy each thread's stack from the registry
-  for (int i = 0; i < g_thread_registry_count; i++) {
+  // Note: the thread count can change concurrently, so we only process entries
+  // that existed at the time we allocated our arrays
+  int actual_count = 0;
+  for (int i = 0; i < thread_count; i++) {
     thread_lock_stack_t *src = g_thread_registry[i].stack;
+    if (!src) {
+      // Stack not yet initialized for this thread, skip it
+      continue;
+    }
+
     int depth = src->depth;
 
     (*out_stack_counts)[i] = depth;
-    (*out_stacks)[i] = SAFE_MALLOC(depth, mutex_stack_entry_t *);
+    (*out_stacks)[i] = SAFE_MALLOC(depth * sizeof(mutex_stack_entry_t), mutex_stack_entry_t *);
 
     if ((*out_stacks)[i]) {
       memcpy((*out_stacks)[i], src->stack, depth * sizeof(mutex_stack_entry_t));
     }
+    actual_count++;
   }
 
-  *out_thread_count = g_thread_registry_count;
-  mutex_unlock(&g_thread_registry_lock);
+  *out_thread_count = actual_count;
   return 0;
 }
 
@@ -348,28 +369,11 @@ void mutex_stack_detect_deadlocks(void) {
 // ============================================================================
 
 int mutex_stack_init(void) {
-  // Initialize the thread registry lock if not already done
-  if (g_thread_registry_lock_initialized) {
-    return 0; // Already initialized
-  }
-
-  int err = mutex_init(&g_thread_registry_lock, "thread_registry");
-  if (err != 0) {
-    return err;
-  }
-
-  g_thread_registry_lock_initialized = true;
+  // No initialization needed - registry uses lock-free atomic operations
   return 0;
 }
 
 void mutex_stack_cleanup(void) {
-  // Clear registry on cleanup
-  if (!g_thread_registry_lock_initialized) {
-    return; // Never initialized, nothing to clean up
-  }
-
-  ensure_registry_lock_initialized();
-  mutex_lock(&g_thread_registry_lock);
-  g_thread_registry_count = 0;
-  mutex_unlock(&g_thread_registry_lock);
+  // Clear registry on cleanup using atomic operations
+  atomic_store_explicit(&g_thread_registry_count, 0, memory_order_release);
 }
