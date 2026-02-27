@@ -57,7 +57,8 @@ void set_interrupt_callback(void (*cb)(void));
  * Registers:
  * - SIGTERM → graceful shutdown with logging
  * - SIGPIPE → ignore (prevent crashes from broken pipes)
- * - SIGUSR1 → lock debug output (debug builds only)
+ * - SIGUSR1 → synchronization debugging output (debug builds only)
+ * - SIGUSR2 → memory report (debug builds only)
  * - Console Ctrl+C handler (all platforms)
  *
  * SIGWINCH (terminal resize) is NOT registered here - client mode

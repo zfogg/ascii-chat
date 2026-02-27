@@ -5,6 +5,7 @@
 
 #include <ascii-chat/ui/server_status.h>
 #include <ascii-chat/ui/terminal_screen.h>
+#include <ascii-chat/ui/frame_buffer.h>
 #include <ascii-chat/log/interactive_grep.h>
 #include "session/session_log_buffer.h"
 #include <ascii-chat/log/grep.h>
@@ -99,7 +100,7 @@ asciichat_error_t server_status_gather(tcp_server_t *server, const char *session
  *
  * Lines are truncated if they exceed terminal width.
  */
-static void render_server_status_header(terminal_size_t term_size, void *user_data) {
+static void render_server_status_header(frame_buffer_t *buf, terminal_size_t term_size, void *user_data) {
   const server_status_t *status = (const server_status_t *)user_data;
   if (!status) {
     return;
@@ -113,11 +114,11 @@ static void render_server_status_header(terminal_size_t term_size, void *user_da
   int uptime_secs_rem = uptime_secs % 60;
 
   // Line 1: Top border
-  printf("\033[1;36m━");
+  frame_buffer_printf(buf, "\033[1;36m━");
   for (int i = 1; i < term_size.cols - 1; i++) {
-    printf("━");
+    frame_buffer_printf(buf, "━");
   }
-  printf("\033[0m\n");
+  frame_buffer_printf(buf, "\033[0m\n");
 
   // Line 2: Title + Stats (centered)
   char status_line[512];
@@ -134,9 +135,9 @@ static void render_server_status_header(terminal_size_t term_size, void *user_da
 
   int padding = display_center_horizontal(status_line_truncated, term_size.cols);
   for (int i = 0; i < padding; i++) {
-    printf(" ");
+    frame_buffer_printf(buf, " ");
   }
-  printf("%s\n", status_line_colored);
+  frame_buffer_printf(buf, "%s\n", status_line_colored);
 
   // Line 3: Session + Addresses (centered)
   char addr_line[512];
@@ -177,16 +178,16 @@ static void render_server_status_header(terminal_size_t term_size, void *user_da
 
   int addr_padding = display_center_horizontal(addr_line_truncated, term_size.cols);
   for (int i = 0; i < addr_padding; i++) {
-    printf(" ");
+    frame_buffer_printf(buf, " ");
   }
-  printf("%s\n", addr_line_truncated);
+  frame_buffer_printf(buf, "%s\n", addr_line_truncated);
 
   // Line 4: Bottom border
-  printf("\033[1;36m━");
+  frame_buffer_printf(buf, "\033[1;36m━");
   for (int i = 1; i < term_size.cols - 1; i++) {
-    printf("━");
+    frame_buffer_printf(buf, "━");
   }
-  printf("\033[0m\n");
+  frame_buffer_printf(buf, "\033[0m\n");
 }
 
 void server_status_display(const server_status_t *status) {

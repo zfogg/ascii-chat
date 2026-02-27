@@ -13,7 +13,7 @@
 #include <ascii-chat/debug/backtrace.h>
 #include <ascii-chat/debug/mutex.h>
 #include <ascii-chat/platform/cond.h>
-#include <ascii-chat/platform/mutex.h>  // Must come after cond.h since cond.h includes it
+#include <ascii-chat/platform/mutex.h> // Must come after cond.h since cond.h includes it
 #include <ascii-chat/platform/rwlock.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/log/logging.h>
@@ -34,9 +34,8 @@
  * @param size Buffer size
  */
 static void format_elapsed(uint64_t elapsed_ns, char *buffer, size_t size) {
-    time_pretty(elapsed_ns, -1, buffer, size);
+  time_pretty(elapsed_ns, -1, buffer, size);
 }
-
 
 /**
  * @brief Extract timing info from a mutex_t as a single line
@@ -46,39 +45,42 @@ static void format_elapsed(uint64_t elapsed_ns, char *buffer, size_t size) {
  * @return Number of bytes written
  */
 static int format_mutex_timing(const mutex_t *mutex, char *buffer, size_t size) {
-    if (!mutex) return 0;
+  if (!mutex)
+    return 0;
 
-    // If mutex was never locked, return empty
-    if (mutex->last_lock_time_ns == 0) {
-        return 0;
-    }
+  // If mutex was never locked, return empty
+  if (mutex->last_lock_time_ns == 0) {
+    return 0;
+  }
 
-    int offset = 0;
-    uint64_t now_ns = time_get_ns();
-    char lock_str[64] = "";
-    char unlock_str[64] = "";
-    char held_str[128] = "";
+  int offset = 0;
+  uint64_t now_ns = time_get_ns();
+  char lock_str[64] = "";
+  char unlock_str[64] = "";
+  char held_str[256] = "";
 
-    if (mutex->last_lock_time_ns > 0 && mutex->last_lock_time_ns <= now_ns) {
-        char elapsed_str[64];
-        format_elapsed(now_ns - mutex->last_lock_time_ns, elapsed_str, sizeof(elapsed_str));
-        snprintf(lock_str, sizeof(lock_str), "lock=%s", elapsed_str);
-    }
+  if (mutex->last_lock_time_ns > 0 && mutex->last_lock_time_ns <= now_ns) {
+    char elapsed_str[64];
+    format_elapsed(now_ns - mutex->last_lock_time_ns, elapsed_str, sizeof(elapsed_str));
+    snprintf(lock_str, sizeof(lock_str), "lock=%s", elapsed_str);
+  }
 
-    if (mutex->last_unlock_time_ns > 0 && mutex->last_unlock_time_ns <= now_ns) {
-        char elapsed_str[64];
-        format_elapsed(now_ns - mutex->last_unlock_time_ns, elapsed_str, sizeof(elapsed_str));
-        snprintf(unlock_str, sizeof(unlock_str), "unlock=%s", elapsed_str);
-    }
+  if (mutex->last_unlock_time_ns > 0 && mutex->last_unlock_time_ns <= now_ns) {
+    char elapsed_str[64];
+    format_elapsed(now_ns - mutex->last_unlock_time_ns, elapsed_str, sizeof(elapsed_str));
+    snprintf(unlock_str, sizeof(unlock_str), "unlock=%s", elapsed_str);
+  }
 
-    if (mutex->currently_held_by_key != 0) {
-        snprintf(held_str, sizeof(held_str), "HELD_BY=%p", (void *)mutex->currently_held_by_key);
-    }
+  if (mutex->currently_held_by_key != 0) {
+    const char *holder_desc = named_describe(mutex->currently_held_by_key, "thread");
+    snprintf(held_str, sizeof(held_str), "[LOCKED_BY=%s]", holder_desc);
+  } else {
+    snprintf(held_str, sizeof(held_str), "[FREE]");
+  }
 
-    offset += snprintf(buffer + offset, size - offset, "%s %s %s",
-                      lock_str, unlock_str, held_str);
+  offset += snprintf(buffer + offset, size - offset, "%s %s %s", lock_str, unlock_str, held_str);
 
-    return offset;
+  return offset;
 }
 
 /**
@@ -89,51 +91,58 @@ static int format_mutex_timing(const mutex_t *mutex, char *buffer, size_t size) 
  * @return Number of bytes written
  */
 static int format_rwlock_timing(const rwlock_t *rwlock, char *buffer, size_t size) {
-    if (!rwlock) return 0;
+  if (!rwlock)
+    return 0;
 
-    // If rwlock was never locked, return empty
-    if (rwlock->last_rdlock_time_ns == 0 && rwlock->last_wrlock_time_ns == 0) {
-        return 0;
-    }
+  // If rwlock was never locked, return empty
+  if (rwlock->last_rdlock_time_ns == 0 && rwlock->last_wrlock_time_ns == 0) {
+    return 0;
+  }
 
-    int offset = 0;
-    uint64_t now_ns = time_get_ns();
-    char rdlock_str[64] = "";
-    char wrlock_str[64] = "";
-    char unlock_str[64] = "";
-    char write_held_str[128] = "";
-    char read_held_str[64] = "";
+  int offset = 0;
+  uint64_t now_ns = time_get_ns();
+  char rdlock_str[64] = "";
+  char wrlock_str[64] = "";
+  char unlock_str[64] = "";
+  char write_held_str[256] = "";
+  char read_held_str[256] = "";
+  char status_str[128] = "";
 
-    if (rwlock->last_rdlock_time_ns > 0 && rwlock->last_rdlock_time_ns <= now_ns) {
-        char elapsed_str[64];
-        format_elapsed(now_ns - rwlock->last_rdlock_time_ns, elapsed_str, sizeof(elapsed_str));
-        snprintf(rdlock_str, sizeof(rdlock_str), "rdlock=%s", elapsed_str);
-    }
+  if (rwlock->last_rdlock_time_ns > 0 && rwlock->last_rdlock_time_ns <= now_ns) {
+    char elapsed_str[64];
+    format_elapsed(now_ns - rwlock->last_rdlock_time_ns, elapsed_str, sizeof(elapsed_str));
+    snprintf(rdlock_str, sizeof(rdlock_str), "rdlock=%s", elapsed_str);
+  }
 
-    if (rwlock->last_wrlock_time_ns > 0 && rwlock->last_wrlock_time_ns <= now_ns) {
-        char elapsed_str[64];
-        format_elapsed(now_ns - rwlock->last_wrlock_time_ns, elapsed_str, sizeof(elapsed_str));
-        snprintf(wrlock_str, sizeof(wrlock_str), "wrlock=%s", elapsed_str);
-    }
+  if (rwlock->last_wrlock_time_ns > 0 && rwlock->last_wrlock_time_ns <= now_ns) {
+    char elapsed_str[64];
+    format_elapsed(now_ns - rwlock->last_wrlock_time_ns, elapsed_str, sizeof(elapsed_str));
+    snprintf(wrlock_str, sizeof(wrlock_str), "wrlock=%s", elapsed_str);
+  }
 
-    if (rwlock->last_unlock_time_ns > 0 && rwlock->last_unlock_time_ns <= now_ns) {
-        char elapsed_str[64];
-        format_elapsed(now_ns - rwlock->last_unlock_time_ns, elapsed_str, sizeof(elapsed_str));
-        snprintf(unlock_str, sizeof(unlock_str), "unlock=%s", elapsed_str);
-    }
+  if (rwlock->last_unlock_time_ns > 0 && rwlock->last_unlock_time_ns <= now_ns) {
+    char elapsed_str[64];
+    format_elapsed(now_ns - rwlock->last_unlock_time_ns, elapsed_str, sizeof(elapsed_str));
+    snprintf(unlock_str, sizeof(unlock_str), "unlock=%s", elapsed_str);
+  }
 
-    if (rwlock->write_held_by_key != 0) {
-        snprintf(write_held_str, sizeof(write_held_str), "WRITE_HELD_BY=%p", (void *)rwlock->write_held_by_key);
-    }
+  if (rwlock->write_held_by_key != 0) {
+    const char *writer_desc = named_describe(rwlock->write_held_by_key, "thread");
+    snprintf(write_held_str, sizeof(write_held_str), "[WRITE_LOCKED_BY=%s]", writer_desc);
+  }
 
-    if (rwlock->read_lock_count > 0) {
-        snprintf(read_held_str, sizeof(read_held_str), "READ_HELD=%lu", rwlock->read_lock_count);
-    }
+  if (rwlock->read_lock_count > 0) {
+    snprintf(read_held_str, sizeof(read_held_str), "[READ_LOCKED=%lu]", rwlock->read_lock_count);
+  }
 
-    offset += snprintf(buffer + offset, size - offset, "%s %s %s %s %s",
-                      rdlock_str, wrlock_str, unlock_str, write_held_str, read_held_str);
+  if (rwlock->write_held_by_key == 0 && rwlock->read_lock_count == 0) {
+    snprintf(status_str, sizeof(status_str), "[FREE]");
+  }
 
-    return offset;
+  offset += snprintf(buffer + offset, size - offset, "%s %s %s %s %s %s", rdlock_str, wrlock_str, unlock_str,
+                     write_held_str, read_held_str, status_str);
+
+  return offset;
 }
 
 /**
@@ -144,46 +153,51 @@ static int format_rwlock_timing(const rwlock_t *rwlock, char *buffer, size_t siz
  * @return Number of bytes written
  */
 static int format_cond_timing(const cond_t *cond, char *buffer, size_t size) {
-    if (!cond) return 0;
+  if (!cond)
+    return 0;
 
-    // If cond was never waited on, return empty
-    if (cond->last_wait_time_ns == 0) {
-        return 0;
-    }
+  // If cond was never waited on, return empty
+  if (cond->last_wait_time_ns == 0) {
+    return 0;
+  }
 
-    int offset = 0;
-    uint64_t now_ns = time_get_ns();
-    char wait_str[64] = "";
-    char signal_str[64] = "";
-    char broadcast_str[64] = "";
-    char waiting_str[128] = "";
+  int offset = 0;
+  uint64_t now_ns = time_get_ns();
+  char wait_str[64] = "";
+  char signal_str[64] = "";
+  char broadcast_str[64] = "";
+  char waiting_str[256] = "";
+  char status_str[128] = "";
 
-    if (cond->last_wait_time_ns > 0 && cond->last_wait_time_ns <= now_ns) {
-        char elapsed_str[64];
-        format_elapsed(now_ns - cond->last_wait_time_ns, elapsed_str, sizeof(elapsed_str));
-        snprintf(wait_str, sizeof(wait_str), "wait=%s", elapsed_str);
-    }
+  if (cond->last_wait_time_ns > 0 && cond->last_wait_time_ns <= now_ns) {
+    char elapsed_str[64];
+    format_elapsed(now_ns - cond->last_wait_time_ns, elapsed_str, sizeof(elapsed_str));
+    snprintf(wait_str, sizeof(wait_str), "wait=%s", elapsed_str);
+  }
 
-    if (cond->last_signal_time_ns > 0 && cond->last_signal_time_ns <= now_ns) {
-        char elapsed_str[64];
-        format_elapsed(now_ns - cond->last_signal_time_ns, elapsed_str, sizeof(elapsed_str));
-        snprintf(signal_str, sizeof(signal_str), "signal=%s", elapsed_str);
-    }
+  if (cond->last_signal_time_ns > 0 && cond->last_signal_time_ns <= now_ns) {
+    char elapsed_str[64];
+    format_elapsed(now_ns - cond->last_signal_time_ns, elapsed_str, sizeof(elapsed_str));
+    snprintf(signal_str, sizeof(signal_str), "signal=%s", elapsed_str);
+  }
 
-    if (cond->last_broadcast_time_ns > 0 && cond->last_broadcast_time_ns <= now_ns) {
-        char elapsed_str[64];
-        format_elapsed(now_ns - cond->last_broadcast_time_ns, elapsed_str, sizeof(elapsed_str));
-        snprintf(broadcast_str, sizeof(broadcast_str), "broadcast=%s", elapsed_str);
-    }
+  if (cond->last_broadcast_time_ns > 0 && cond->last_broadcast_time_ns <= now_ns) {
+    char elapsed_str[64];
+    format_elapsed(now_ns - cond->last_broadcast_time_ns, elapsed_str, sizeof(elapsed_str));
+    snprintf(broadcast_str, sizeof(broadcast_str), "broadcast=%s", elapsed_str);
+  }
 
-    if (cond->waiting_count > 0) {
-        snprintf(waiting_str, sizeof(waiting_str), "WAITING=%lu:%p", cond->waiting_count, (void *)cond->last_waiting_key);
-    }
+  if (cond->waiting_count > 0) {
+    const char *waiter_desc = named_describe(cond->last_waiting_key, "thread");
+    snprintf(waiting_str, sizeof(waiting_str), "[WAITING=%lu threads, last=%s]", cond->waiting_count, waiter_desc);
+  } else {
+    snprintf(status_str, sizeof(status_str), "[IDLE]");
+  }
 
-    offset += snprintf(buffer + offset, size - offset, "%s %s %s %s",
-                      wait_str, signal_str, broadcast_str, waiting_str);
+  offset += snprintf(buffer + offset, size - offset, "%s %s %s %s %s", wait_str, signal_str, broadcast_str, waiting_str,
+                     status_str);
 
-    return offset;
+  return offset;
 }
 
 // ============================================================================
@@ -191,69 +205,72 @@ static int format_cond_timing(const cond_t *cond, char *buffer, size_t size) {
 // ============================================================================
 
 typedef struct {
-    char *buffer;
-    size_t buffer_size;
-    size_t offset;
+  char *buffer;
+  size_t buffer_size;
+  size_t offset;
 } sync_buffer_t;
 
 static void mutex_iter_callback(uintptr_t key, const char *name, void *user_data) {
-    sync_buffer_t *buf = (sync_buffer_t *)user_data;
-    if (!buf) return;
+  sync_buffer_t *buf = (sync_buffer_t *)user_data;
+  if (!buf)
+    return;
 
-    const char *type = named_get_type(key);
-    if (!type || strcmp(type, "mutex") != 0) {
-        return;
-    }
+  const char *type = named_get_type(key);
+  if (!type || strcmp(type, "mutex") != 0) {
+    return;
+  }
 
-    const mutex_t *mutex = (const mutex_t *)key;
-    char timing_str[256] = {0};
-    format_mutex_timing(mutex, timing_str, sizeof(timing_str));
+  const mutex_t *mutex = (const mutex_t *)key;
+  char timing_str[256] = {0};
+  format_mutex_timing(mutex, timing_str, sizeof(timing_str));
 
-    // Only append if mutex has been used
-    if (timing_str[0]) {
-        buf->offset += snprintf(buf->buffer + buf->offset, buf->buffer_size - buf->offset,
-                               "  Mutex %s: %s\n", name, timing_str);
-    }
+  // Only append if mutex has been used
+  if (timing_str[0]) {
+    buf->offset +=
+        snprintf(buf->buffer + buf->offset, buf->buffer_size - buf->offset, "  Mutex %s: %s\n", name, timing_str);
+  }
 }
 
 static void rwlock_iter_callback(uintptr_t key, const char *name, void *user_data) {
-    sync_buffer_t *buf = (sync_buffer_t *)user_data;
-    if (!buf) return;
+  sync_buffer_t *buf = (sync_buffer_t *)user_data;
+  if (!buf)
+    return;
 
-    const char *type = named_get_type(key);
-    if (!type || strcmp(type, "rwlock") != 0) {
-        return;
-    }
+  const char *type = named_get_type(key);
+  if (!type || strcmp(type, "rwlock") != 0) {
+    return;
+  }
 
-    const rwlock_t *rwlock = (const rwlock_t *)key;
-    char timing_str[512] = {0};
-    format_rwlock_timing(rwlock, timing_str, sizeof(timing_str));
+  const rwlock_t *rwlock = (const rwlock_t *)key;
+  char timing_str[512] = {0};
+  format_rwlock_timing(rwlock, timing_str, sizeof(timing_str));
 
-    // Only append if rwlock has been used
-    if (timing_str[0]) {
-        buf->offset += snprintf(buf->buffer + buf->offset, buf->buffer_size - buf->offset,
-                               "  RWLock %s: %s\n", name, timing_str);
-    }
+  // Only append if rwlock has been used
+  if (timing_str[0]) {
+    buf->offset +=
+        snprintf(buf->buffer + buf->offset, buf->buffer_size - buf->offset, "  RWLock %s: %s\n", name, timing_str);
+  }
 }
 
 static void cond_iter_callback(uintptr_t key, const char *name, void *user_data) {
-    sync_buffer_t *buf = (sync_buffer_t *)user_data;
-    if (!buf) return;
+  sync_buffer_t *buf = (sync_buffer_t *)user_data;
+  if (!buf)
+    return;
 
-    const char *type = named_get_type(key);
-    if (!type || strcmp(type, "cond") != 0) {
-        return;
-    }
+  const char *type = named_get_type(key);
+  if (!type || strcmp(type, "cond") != 0) {
+    return;
+  }
 
-    const cond_t *cond = (const cond_t *)key;
-    char timing_str[512] = {0};
-    format_cond_timing(cond, timing_str, sizeof(timing_str));
+  const cond_t *cond = (const cond_t *)key;
+  char timing_str[512] = {0};
+  format_cond_timing(cond, timing_str, sizeof(timing_str));
 
-    // Only append if condition variable has been used
-    if (timing_str[0]) {
-        buf->offset += snprintf(buf->buffer + buf->offset, buf->buffer_size - buf->offset,
-                               "  Cond %s: %s\n", name, timing_str);
-    }
+  // Only append if condition variable has been used
+  if (timing_str[0]) {
+    buf->offset +=
+        snprintf(buf->buffer + buf->offset, buf->buffer_size - buf->offset, "  Cond %s: %s\n", name, timing_str);
+  }
 }
 
 // ============================================================================
@@ -264,45 +281,42 @@ static void cond_iter_callback(uintptr_t key, const char *name, void *user_data)
  * @brief Print all thread lock stacks
  */
 static void debug_sync_print_lock_stacks(char *buffer, size_t buffer_size, size_t *offset) {
-    mutex_stack_entry_t **all_stacks = NULL;
-    int *stack_counts = NULL;
-    int thread_count = 0;
+  mutex_stack_entry_t **all_stacks = NULL;
+  int *stack_counts = NULL;
+  int thread_count = 0;
 
-    if (mutex_stack_get_all_threads(&all_stacks, &stack_counts, &thread_count) != 0) {
-        return;
-    }
+  if (mutex_stack_get_all_threads(&all_stacks, &stack_counts, &thread_count) != 0) {
+    return;
+  }
 
-    if (thread_count == 0) {
-        mutex_stack_free_all_threads(all_stacks, stack_counts, thread_count);
-        return;
-    }
-
-    *offset += snprintf(buffer + *offset, buffer_size - *offset,
-                       "\nThread Lock Stacks:\n");
-
-    for (int i = 0; i < thread_count; i++) {
-        int depth = stack_counts[i];
-        if (depth == 0) continue;
-
-        *offset += snprintf(buffer + *offset, buffer_size - *offset,
-                           "  Thread %d: %d lock(s)\n", i, depth);
-
-        for (int j = 0; j < depth; j++) {
-            const mutex_stack_entry_t *entry = &all_stacks[i][j];
-            const char *state_str = (entry->state == MUTEX_STACK_STATE_LOCKED) ? "LOCKED" : "PENDING";
-
-            uint64_t elapsed = time_get_ns() - entry->timestamp_ns;
-            char elapsed_str[64];
-            time_pretty(elapsed, -1, elapsed_str, sizeof(elapsed_str));
-
-            *offset += snprintf(buffer + *offset, buffer_size - *offset,
-                               "    [%d] %s @ %p (%s) %s\n",
-                               j, entry->mutex_name, (void *)entry->mutex_key,
-                               state_str, elapsed_str);
-        }
-    }
-
+  if (thread_count == 0) {
     mutex_stack_free_all_threads(all_stacks, stack_counts, thread_count);
+    return;
+  }
+
+  *offset += snprintf(buffer + *offset, buffer_size - *offset, "\nThread Lock Stacks:\n");
+
+  for (int i = 0; i < thread_count; i++) {
+    int depth = stack_counts[i];
+    if (depth == 0)
+      continue;
+
+    *offset += snprintf(buffer + *offset, buffer_size - *offset, "  Thread %d: %d lock(s)\n", i, depth);
+
+    for (int j = 0; j < depth; j++) {
+      const mutex_stack_entry_t *entry = &all_stacks[i][j];
+      const char *state_str = (entry->state == MUTEX_STACK_STATE_LOCKED) ? "LOCKED" : "PENDING";
+
+      uint64_t elapsed = time_get_ns() - entry->timestamp_ns;
+      char elapsed_str[64];
+      time_pretty(elapsed, -1, elapsed_str, sizeof(elapsed_str));
+
+      *offset += snprintf(buffer + *offset, buffer_size - *offset, "    [%d] %s @ %p (%s) %s\n", j, entry->mutex_name,
+                          (void *)entry->mutex_key, state_str, elapsed_str);
+    }
+  }
+
+  mutex_stack_free_all_threads(all_stacks, stack_counts, thread_count);
 }
 
 // ============================================================================
@@ -310,43 +324,39 @@ static void debug_sync_print_lock_stacks(char *buffer, size_t buffer_size, size_
 // ============================================================================
 
 void debug_sync_print_state(void) {
-    // Use a single large buffer for all sync state output
-    #define SYNC_BUFFER_SIZE 8192
-    char *buffer = SAFE_MALLOC(SYNC_BUFFER_SIZE, char *);
-    if (!buffer) return;
+// Use a single large buffer for all sync state output
+#define SYNC_BUFFER_SIZE 8192
+  char *buffer = SAFE_MALLOC(SYNC_BUFFER_SIZE, char *);
+  if (!buffer)
+    return;
 
-    sync_buffer_t buf = {
-        .buffer = buffer,
-        .buffer_size = SYNC_BUFFER_SIZE,
-        .offset = 0
-    };
+  sync_buffer_t buf = {.buffer = buffer, .buffer_size = SYNC_BUFFER_SIZE, .offset = 0};
 
-    // Collect all sync state in one buffer
-    buf.offset += snprintf(buf.buffer + buf.offset, buf.buffer_size - buf.offset,
-                          "Synchronization Primitive State:\n");
+  // Collect all sync state in one buffer
+  buf.offset += snprintf(buf.buffer + buf.offset, buf.buffer_size - buf.offset, "Synchronization Primitive State:\n");
 
-    // Iterate through all registered syncs
-    named_registry_for_each(mutex_iter_callback, &buf);
-    named_registry_for_each(rwlock_iter_callback, &buf);
-    named_registry_for_each(cond_iter_callback, &buf);
+  // Iterate through all registered syncs
+  named_registry_for_each(mutex_iter_callback, &buf);
+  named_registry_for_each(rwlock_iter_callback, &buf);
+  named_registry_for_each(cond_iter_callback, &buf);
 
-    // Print lock stacks for deadlock analysis
-    debug_sync_print_lock_stacks(buf.buffer, buf.buffer_size, &buf.offset);
+  // Print lock stacks for deadlock analysis
+  debug_sync_print_lock_stacks(buf.buffer, buf.buffer_size, &buf.offset);
 
-    // Log everything in one call
-    if (buf.offset > 0) {
-        log_info("%s", buf.buffer);
-    }
+  // Log everything in one call
+  if (buf.offset > 0) {
+    log_info("%s", buf.buffer);
+  }
 
-    SAFE_FREE(buffer);
-    #undef SYNC_BUFFER_SIZE
+  SAFE_FREE(buffer);
+#undef SYNC_BUFFER_SIZE
 }
 
 // ============================================================================
 // Condition Variable Deadlock Detection
 // ============================================================================
 
-#define COND_DEADLOCK_THRESHOLD_NS (5ULL * 1000000000ULL)  // 5 seconds
+#define COND_DEADLOCK_THRESHOLD_NS (5ULL * 1000000000ULL) // 5 seconds
 
 /**
  * @brief Callback for checking condition variable deadlocks
@@ -355,49 +365,46 @@ void debug_sync_print_state(void) {
  * @param user_data Unused
  */
 static void cond_deadlock_check_callback(uintptr_t key, const char *name, void *user_data) {
-    (void)user_data;  // Unused
+  (void)user_data; // Unused
 
-    const char *type = named_get_type(key);
-    if (!type || strcmp(type, "cond") != 0) {
-        return;
+  const char *type = named_get_type(key);
+  if (!type || strcmp(type, "cond") != 0) {
+    return;
+  }
+
+  const cond_t *cond = (const cond_t *)key;
+  if (cond->waiting_count == 0) {
+    return; // No threads waiting, nothing to check
+  }
+
+  uint64_t now = time_get_ns();
+  uint64_t stuck_ns = now - cond->last_wait_time_ns;
+  bool no_signal_since_wait = (cond->last_signal_time_ns == 0 || cond->last_signal_time_ns < cond->last_wait_time_ns);
+
+  if (stuck_ns < COND_DEADLOCK_THRESHOLD_NS || !no_signal_since_wait) {
+    return; // Not stuck yet or was signaled recently
+  }
+
+  // Condition variable appears to be stuck - log detailed diagnostic info
+  char stuck_str[64];
+  time_pretty(stuck_ns, -1, stuck_str, sizeof(stuck_str));
+  const char *waiter = named_describe(cond->last_waiting_key, "thread");
+
+  log_warn("Stuck cond '%s': %lu thread(s) waiting %s with no signal (most recent waiter: %s)", name,
+           cond->waiting_count, stuck_str, waiter);
+
+  if (cond->last_wait_file) {
+    log_warn("  wait entered at %s:%d %s()", cond->last_wait_file, cond->last_wait_line, cond->last_wait_func);
+  }
+
+  if (cond->last_wait_mutex) {
+    uintptr_t holder = cond->last_wait_mutex->currently_held_by_key;
+    if (holder) {
+      log_warn("  associated mutex held by: %s (signal must come from this thread)", named_describe(holder, "thread"));
+    } else {
+      log_warn("  associated mutex is FREE — producer is not calling cond_signal");
     }
-
-    const cond_t *cond = (const cond_t *)key;
-    if (cond->waiting_count == 0) {
-        return;  // No threads waiting, nothing to check
-    }
-
-    uint64_t now = time_get_ns();
-    uint64_t stuck_ns = now - cond->last_wait_time_ns;
-    bool no_signal_since_wait = (cond->last_signal_time_ns == 0 ||
-                                 cond->last_signal_time_ns < cond->last_wait_time_ns);
-
-    if (stuck_ns < COND_DEADLOCK_THRESHOLD_NS || !no_signal_since_wait) {
-        return;  // Not stuck yet or was signaled recently
-    }
-
-    // Condition variable appears to be stuck - log detailed diagnostic info
-    char stuck_str[64];
-    time_pretty(stuck_ns, -1, stuck_str, sizeof(stuck_str));
-    const char *waiter = named_describe(cond->last_waiting_key, "thread");
-
-    log_warn("Stuck cond '%s': %lu thread(s) waiting %s with no signal (most recent waiter: %s)",
-             name, cond->waiting_count, stuck_str, waiter);
-
-    if (cond->last_wait_file) {
-        log_warn("  wait entered at %s:%d %s()",
-                 cond->last_wait_file, cond->last_wait_line, cond->last_wait_func);
-    }
-
-    if (cond->last_wait_mutex) {
-        uintptr_t holder = cond->last_wait_mutex->currently_held_by_key;
-        if (holder) {
-            log_warn("  associated mutex held by: %s (signal must come from this thread)",
-                     named_describe(holder, "thread"));
-        } else {
-            log_warn("  associated mutex is FREE — producer is not calling cond_signal");
-        }
-    }
+  }
 }
 
 /**
@@ -410,7 +417,7 @@ static void cond_deadlock_check_callback(uintptr_t key, const char *name, void *
  * @ingroup debug_sync
  */
 void debug_sync_check_cond_deadlocks(void) {
-    named_registry_for_each(cond_deadlock_check_callback, NULL);
+  named_registry_for_each(cond_deadlock_check_callback, NULL);
 }
 
 // ============================================================================
@@ -418,24 +425,24 @@ void debug_sync_check_cond_deadlocks(void) {
 // ============================================================================
 
 typedef enum {
-    DEBUG_REQUEST_STATE,      // Print sync state
-    DEBUG_REQUEST_BACKTRACE,  // Print backtrace
+  DEBUG_REQUEST_STATE,     // Print sync state
+  DEBUG_REQUEST_BACKTRACE, // Print backtrace
 } debug_request_type_t;
 
 typedef struct {
-    debug_request_type_t request_type;      // What to print
-    uint64_t delay_ns;
-    _Atomic(bool) should_run;               // Atomic flag set by main thread
-    _Atomic(bool) should_exit;              // Atomic flag for shutdown
-    _Atomic(bool) signal_triggered;         // Flag set by SIGUSR1 handler
-    mutex_t mutex;                          // Protects access to flags during locked operations
-    cond_t cond;                            // Wakes thread when signal arrives
-    bool initialized;                       // Tracks if mutex/cond are initialized
+  debug_request_type_t request_type; // What to print
+  uint64_t delay_ns;
+  _Atomic(bool) should_run;       // Atomic flag set by main thread
+  _Atomic(bool) should_exit;      // Atomic flag for shutdown
+  _Atomic(bool) signal_triggered; // Flag set by SIGUSR1 handler
+  mutex_t mutex;                  // Protects access to flags during locked operations
+  cond_t cond;                    // Wakes thread when signal arrives
+  bool initialized;               // Tracks if mutex/cond are initialized
 } debug_state_request_t;
 
 static debug_state_request_t g_debug_state_request = {DEBUG_REQUEST_STATE, 0, false, false, false, {0}, {0}, false};
 static asciichat_thread_t g_debug_thread;
-static uint64_t g_debug_main_thread_id = 0;  // Main thread ID for memory reporting
+static uint64_t g_debug_main_thread_id = 0; // Main thread ID for memory reporting
 
 /**
  * @brief Thread function for scheduled debug state printing
@@ -448,52 +455,52 @@ static uint64_t g_debug_main_thread_id = 0;  // Main thread ID for memory report
  * without polling or busy-waiting.
  */
 static void *debug_print_thread_fn(void *arg) {
-    (void)arg;
+  (void)arg;
 
-    while (!atomic_load(&g_debug_state_request.should_exit)) {
-        // Handle delayed printing
-        if (atomic_load(&g_debug_state_request.should_run) && g_debug_state_request.delay_ns > 0) {
-            platform_sleep_ns(g_debug_state_request.delay_ns);
-            g_debug_state_request.delay_ns = 0;
-        }
-
-        // Handle both scheduled and signal-triggered printing
-        mutex_lock(&g_debug_state_request.mutex);
-        bool should_run = atomic_load(&g_debug_state_request.should_run);
-        bool signal_triggered = atomic_load(&g_debug_state_request.signal_triggered);
-        bool should_exit = atomic_load(&g_debug_state_request.should_exit);
-
-        if ((should_run || signal_triggered) && !should_exit) {
-            debug_request_type_t request_type = g_debug_state_request.request_type;
-            mutex_unlock(&g_debug_state_request.mutex);
-
-            // Print based on request type
-            if (request_type == DEBUG_REQUEST_STATE) {
-                debug_sync_print_state();
-            } else if (request_type == DEBUG_REQUEST_BACKTRACE) {
-                backtrace_t bt;
-                backtrace_capture_and_symbolize(&bt);
-                backtrace_print("Backtrace", &bt, 0, 0, NULL);
-                backtrace_t_free(&bt);
-            }
-
-            mutex_lock(&g_debug_state_request.mutex);
-            atomic_store(&g_debug_state_request.should_run, false);
-            atomic_store(&g_debug_state_request.signal_triggered, false);
-        }
-
-        // Wait for work or signal, with 100ms timeout to check should_exit
-        if (!atomic_load(&g_debug_state_request.should_exit)) {
-            cond_timedwait(&g_debug_state_request.cond, &g_debug_state_request.mutex, 100000000);  // 100ms
-        }
-        mutex_unlock(&g_debug_state_request.mutex);
-
-        // Periodic deadlock detection (runs every 100ms during wait timeout)
-        debug_sync_check_cond_deadlocks();
-        mutex_stack_detect_deadlocks();
+  while (!atomic_load(&g_debug_state_request.should_exit)) {
+    // Handle delayed printing
+    if (atomic_load(&g_debug_state_request.should_run) && g_debug_state_request.delay_ns > 0) {
+      platform_sleep_ns(g_debug_state_request.delay_ns);
+      g_debug_state_request.delay_ns = 0;
     }
 
-    return NULL;
+    // Handle both scheduled and signal-triggered printing
+    mutex_lock(&g_debug_state_request.mutex);
+    bool should_run = atomic_load(&g_debug_state_request.should_run);
+    bool signal_triggered = atomic_load(&g_debug_state_request.signal_triggered);
+    bool should_exit = atomic_load(&g_debug_state_request.should_exit);
+
+    if ((should_run || signal_triggered) && !should_exit) {
+      debug_request_type_t request_type = g_debug_state_request.request_type;
+      mutex_unlock(&g_debug_state_request.mutex);
+
+      // Print based on request type
+      if (request_type == DEBUG_REQUEST_STATE) {
+        debug_sync_print_state();
+      } else if (request_type == DEBUG_REQUEST_BACKTRACE) {
+        backtrace_t bt;
+        backtrace_capture_and_symbolize(&bt);
+        backtrace_print("Backtrace", &bt, 0, 0, NULL);
+        backtrace_t_free(&bt);
+      }
+
+      mutex_lock(&g_debug_state_request.mutex);
+      atomic_store(&g_debug_state_request.should_run, false);
+      atomic_store(&g_debug_state_request.signal_triggered, false);
+    }
+
+    // Wait for work or signal, with 100ms timeout to check should_exit
+    if (!atomic_load(&g_debug_state_request.should_exit)) {
+      cond_timedwait(&g_debug_state_request.cond, &g_debug_state_request.mutex, 100000000); // 100ms
+    }
+    mutex_unlock(&g_debug_state_request.mutex);
+
+    // Periodic deadlock detection (runs every 100ms during wait timeout)
+    debug_sync_check_cond_deadlocks();
+    mutex_stack_detect_deadlocks();
+  }
+
+  return NULL;
 }
 
 /**
@@ -501,10 +508,10 @@ static void *debug_print_thread_fn(void *arg) {
  * @param delay_ns Nanoseconds to sleep before printing
  */
 void debug_sync_print_state_delayed(uint64_t delay_ns) {
-    g_debug_state_request.request_type = DEBUG_REQUEST_STATE;
-    g_debug_state_request.delay_ns = delay_ns;
-    atomic_store(&g_debug_state_request.should_run, true);
-    cond_signal(&g_debug_state_request.cond);
+  g_debug_state_request.request_type = DEBUG_REQUEST_STATE;
+  g_debug_state_request.delay_ns = delay_ns;
+  atomic_store(&g_debug_state_request.should_run, true);
+  cond_signal(&g_debug_state_request.cond);
 }
 
 /**
@@ -512,10 +519,10 @@ void debug_sync_print_state_delayed(uint64_t delay_ns) {
  * @param delay_ns Nanoseconds to sleep before printing
  */
 void debug_sync_print_backtrace_delayed(uint64_t delay_ns) {
-    g_debug_state_request.request_type = DEBUG_REQUEST_BACKTRACE;
-    g_debug_state_request.delay_ns = delay_ns;
-    atomic_store(&g_debug_state_request.should_run, true);
-    cond_signal(&g_debug_state_request.cond);
+  g_debug_state_request.request_type = DEBUG_REQUEST_BACKTRACE;
+  g_debug_state_request.delay_ns = delay_ns;
+  atomic_store(&g_debug_state_request.should_run, true);
+  cond_signal(&g_debug_state_request.cond);
 }
 
 // ============================================================================
@@ -523,65 +530,67 @@ void debug_sync_print_backtrace_delayed(uint64_t delay_ns) {
 // ============================================================================
 
 void debug_sync_set_main_thread_id(void) {
-    // Save main thread ID for memory reporting (call very early)
-    g_debug_main_thread_id = asciichat_thread_current_id();
+  // Save main thread ID for memory reporting (call very early)
+  g_debug_main_thread_id = asciichat_thread_current_id();
 }
 
 int debug_sync_init(void) {
-    // debug_sync_set_main_thread_id() should have already been called
-    return 0;
+  // debug_sync_set_main_thread_id() should have already been called
+  return 0;
 }
 
 uint64_t debug_sync_get_main_thread_id(void) {
-    return g_debug_main_thread_id;
+  return g_debug_main_thread_id;
 }
 
 int debug_sync_start_thread(void) {
-    // Initialize mutex and condition variable for signal wakeup
-    if (!g_debug_state_request.initialized) {
-        mutex_init(&g_debug_state_request.mutex, "debug_sync_state");
-        cond_init(&g_debug_state_request.cond, "debug_sync_signal");
-        g_debug_state_request.initialized = true;
-    }
+  // Initialize mutex and condition variable for signal wakeup
+  if (!g_debug_state_request.initialized) {
+    mutex_init(&g_debug_state_request.mutex, "debug_sync_state");
+    cond_init(&g_debug_state_request.cond, "debug_sync_signal");
+    g_debug_state_request.initialized = true;
+  }
 
-    g_debug_state_request.should_exit = false;
-    int err = asciichat_thread_create(&g_debug_thread, "debug_sync", debug_print_thread_fn, NULL);
-    return err;
+  g_debug_state_request.should_exit = false;
+  int err = asciichat_thread_create(&g_debug_thread, "debug_sync", debug_print_thread_fn, NULL);
+  return err;
 }
 
-void debug_sync_destroy(void) {
-}
+void debug_sync_destroy(void) {}
 
 void debug_sync_cleanup_thread(void) {
-    // Only join if thread was actually created
-    if (!g_debug_state_request.initialized) {
-        return;
-    }
+  // Only join if thread was actually created
+  if (!g_debug_state_request.initialized) {
+    return;
+  }
 
-    g_debug_state_request.initialized = false;  // Prevent double-join
+  g_debug_state_request.initialized = false; // Prevent double-join
 
-    // Signal the thread to wake up immediately instead of waiting for 100ms timeout
-    atomic_store(&g_debug_state_request.should_exit, true);
-    cond_signal(&g_debug_state_request.cond);
-    asciichat_thread_join(&g_debug_thread, NULL);
+  // Signal the thread to wake up immediately instead of waiting for 100ms timeout
+  atomic_store(&g_debug_state_request.should_exit, true);
+  cond_signal(&g_debug_state_request.cond);
+  asciichat_thread_join(&g_debug_thread, NULL);
 }
 
 void debug_sync_trigger_print(void) {
-    // Set flag to trigger printing on debug thread (from SIGUSR1 handler).
-    // We don't call debug_sync_print_state() directly here to avoid logging
-    // in signal handler context, which could deadlock with logging mutexes.
-    // Uses atomic_store for thread-safe flag setting from signal handler.
-    //
-    // Signal the condition variable to wake up the debug thread immediately
-    // (without waiting for the 100ms timeout).
-    atomic_store(&g_debug_state_request.signal_triggered, true);
-    cond_signal(&g_debug_state_request.cond);
+  // Set flag to trigger printing on debug thread (from SIGUSR1 handler).
+  // We don't call debug_sync_print_state() directly here to avoid logging
+  // in signal handler context, which could deadlock with logging mutexes.
+  // Uses atomic_store for thread-safe flag setting from signal handler.
+  //
+  // Signal the condition variable to wake up the debug thread immediately
+  // (without waiting for the 100ms timeout).
+  atomic_store(&g_debug_state_request.signal_triggered, true);
+  cond_signal(&g_debug_state_request.cond);
 }
 
 void debug_sync_get_stats(uint64_t *total_acquired, uint64_t *total_released, uint32_t *currently_held) {
-    if (total_acquired) *total_acquired = 0;
-    if (total_released) *total_released = 0;
-    if (currently_held) *currently_held = 0;
+  if (total_acquired)
+    *total_acquired = 0;
+  if (total_released)
+    *total_released = 0;
+  if (currently_held)
+    *currently_held = 0;
 }
 
 // ============================================================================
@@ -589,78 +598,80 @@ void debug_sync_get_stats(uint64_t *total_acquired, uint64_t *total_released, ui
 // ============================================================================
 
 int debug_sync_mutex_lock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name) {
-    (void)file_name;
-    (void)line_number;
-    (void)function_name;
-    return mutex_lock_impl(mutex);
+  (void)file_name;
+  (void)line_number;
+  (void)function_name;
+  return mutex_lock_impl(mutex);
 }
 
 int debug_sync_mutex_trylock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name) {
-    (void)file_name;
-    (void)line_number;
-    (void)function_name;
-    return mutex_trylock_impl(mutex);
+  (void)file_name;
+  (void)line_number;
+  (void)function_name;
+  return mutex_trylock_impl(mutex);
 }
 
 int debug_sync_mutex_unlock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name) {
-    (void)file_name;
-    (void)line_number;
-    (void)function_name;
-    return mutex_unlock_impl(mutex);
+  (void)file_name;
+  (void)line_number;
+  (void)function_name;
+  return mutex_unlock_impl(mutex);
 }
 
 int debug_sync_rwlock_rdlock(rwlock_t *lock, const char *file_name, int line_number, const char *function_name) {
-    (void)file_name;
-    (void)line_number;
-    (void)function_name;
-    return rwlock_rdlock_impl(lock);
+  (void)file_name;
+  (void)line_number;
+  (void)function_name;
+  return rwlock_rdlock_impl(lock);
 }
 
 int debug_sync_rwlock_rdunlock(rwlock_t *lock, const char *file_name, int line_number, const char *function_name) {
-    (void)file_name;
-    (void)line_number;
-    (void)function_name;
-    return rwlock_rdunlock_impl(lock);
+  (void)file_name;
+  (void)line_number;
+  (void)function_name;
+  return rwlock_rdunlock_impl(lock);
 }
 
 int debug_sync_rwlock_wrlock(rwlock_t *lock, const char *file_name, int line_number, const char *function_name) {
-    (void)file_name;
-    (void)line_number;
-    (void)function_name;
-    return rwlock_wrlock_impl(lock);
+  (void)file_name;
+  (void)line_number;
+  (void)function_name;
+  return rwlock_wrlock_impl(lock);
 }
 
 int debug_sync_rwlock_wrunlock(rwlock_t *lock, const char *file_name, int line_number, const char *function_name) {
-    (void)file_name;
-    (void)line_number;
-    (void)function_name;
-    return rwlock_wrunlock_impl(lock);
+  (void)file_name;
+  (void)line_number;
+  (void)function_name;
+  return rwlock_wrunlock_impl(lock);
 }
 
-int debug_sync_cond_wait(cond_t *cond, mutex_t *mutex, const char *file_name, int line_number, const char *function_name) {
-    cond_on_wait(cond, mutex, file_name, line_number, function_name);
-    return cond_wait_impl(cond, mutex);
+int debug_sync_cond_wait(cond_t *cond, mutex_t *mutex, const char *file_name, int line_number,
+                         const char *function_name) {
+  cond_on_wait(cond, mutex, file_name, line_number, function_name);
+  return cond_wait_impl(cond, mutex);
 }
 
-int debug_sync_cond_timedwait(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns, const char *file_name, int line_number, const char *function_name) {
-    cond_on_wait(cond, mutex, file_name, line_number, function_name);
-    return cond_timedwait_impl(cond, mutex, timeout_ns);
+int debug_sync_cond_timedwait(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns, const char *file_name, int line_number,
+                              const char *function_name) {
+  cond_on_wait(cond, mutex, file_name, line_number, function_name);
+  return cond_timedwait_impl(cond, mutex, timeout_ns);
 }
 
 int debug_sync_cond_signal(cond_t *cond, const char *file_name, int line_number, const char *function_name) {
-    (void)file_name;
-    (void)line_number;
-    (void)function_name;
-    return cond_signal(cond);
+  (void)file_name;
+  (void)line_number;
+  (void)function_name;
+  return cond_signal(cond);
 }
 
 int debug_sync_cond_broadcast(cond_t *cond, const char *file_name, int line_number, const char *function_name) {
-    (void)file_name;
-    (void)line_number;
-    (void)function_name;
-    return cond_broadcast(cond);
+  (void)file_name;
+  (void)line_number;
+  (void)function_name;
+  return cond_broadcast(cond);
 }
 
 bool debug_sync_is_initialized(void) {
-    return true;
+  return true;
 }

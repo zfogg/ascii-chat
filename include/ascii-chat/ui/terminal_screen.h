@@ -13,22 +13,25 @@
 #pragma once
 
 #include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/ui/frame_buffer.h>
 #include <stdbool.h>
 #include <stddef.h>
 
 /**
  * @brief Callback to render the fixed header portion of the screen
  *
+ * @param buf Frame buffer to write header content into (via frame_buffer_printf, etc.)
  * @param term_size Current terminal dimensions (cached, refreshed every 1 second)
  * @param user_data Caller-provided context data
  *
  * The callback should:
- * - Print exactly the number of lines specified in terminal_screen_config_t.fixed_header_lines
+ * - Append exactly the number of lines specified in terminal_screen_config_t.fixed_header_lines
  * - Use display_width() to ensure lines don't exceed term_size.cols
+ * - Write to buf parameter (frame_buffer_printf, frame_buffer_append)
  * - NOT clear the screen (terminal_screen_render does that)
  * - NOT print the final newline if it would be line N+1 (causes scroll)
  */
-typedef void (*terminal_screen_header_fn)(terminal_size_t term_size, void *user_data);
+typedef void (*terminal_screen_header_fn)(frame_buffer_t *buf, terminal_size_t term_size, void *user_data);
 
 /**
  * @brief Configuration for terminal screen rendering

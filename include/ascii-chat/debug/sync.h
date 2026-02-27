@@ -73,8 +73,8 @@
  * // In main:
  * debug_sync_init();
  * debug_sync_start_thread();
- * signal(SIGUSR2, handle_debug_signal);
- * // Now: kill -SIGUSR2 <pid> triggers state dump in logs
+ * signal(SIGUSR2, handle_debug_signal);  // SIGUSR2 is mapped to sync state printing
+ * // Now: kill -USR2 <pid> triggers state dump in logs
  * @endcode
  *
  * ### Testing: Capture State at Specific Moments
@@ -406,8 +406,8 @@ void debug_sync_cleanup_thread(void);
  *     debug_sync_trigger_print();
  * }
  *
- * signal(SIGUSR1, handle_debug_signal);
- * // Now: kill -USR1 <pid> triggers immediate state print
+ * signal(SIGUSR2, handle_debug_signal);  // SIGUSR2 is mapped to sync state printing
+ * // Now: kill -USR2 <pid> triggers immediate state print
  * @endcode
  *
  * @note Blocks until print is complete
@@ -472,9 +472,9 @@ void debug_sync_get_stats(uint64_t *total_acquired, uint64_t *total_released, ui
  * ## Output Example
  *
  * @code
- * [WARN] Stuck cond 'audio_send_queue_cond.0': 1 thread(s) waiting 66s with no signal (most recent waiter: audio_sender.0)
- * [WARN]   wait entered at src/client/audio.c:291 audio_sender_thread_func()
- * [WARN]   associated mutex is FREE — producer is not calling cond_signal
+ * [WARN] Stuck cond 'audio_send_queue_cond.0': 1 thread(s) waiting 66s with no signal (most recent waiter:
+ * audio_sender.0) [WARN]   wait entered at src/client/audio.c:291 audio_sender_thread_func() [WARN]   associated mutex
+ * is FREE — producer is not calling cond_signal
  * @endcode
  *
  * @note Thread-safe: can be called from any thread

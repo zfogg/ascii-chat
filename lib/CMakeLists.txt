@@ -20,6 +20,7 @@ set(CORE_SRCS
     # platform/terminal.c - unified color detection
     ${LIB_DIR}/platform/terminal.c
     # ui/
+    ${LIB_DIR}/ui/frame_buffer.c
     ${LIB_DIR}/ui/terminal_screen.c
     ${LIB_DIR}/ui/help_screen.c
     ${LIB_DIR}/ui/splash.c

@@ -16,6 +16,7 @@
 
 #include <ascii-chat/ui/splash.h>
 #include <ascii-chat/ui/terminal_screen.h>
+#include <ascii-chat/ui/frame_buffer.h>
 #include <ascii-chat/log/interactive_grep.h>
 #include "session/display.h"
 #include "session/session_log_buffer.h"
@@ -69,12 +70,12 @@ static const rgb_pixel_t g_rainbow_colors[] = {
  * @brief Animation state for intro splash
  */
 static struct {
-  _Atomic(bool) is_running;           // true while animation should continue
-  _Atomic(bool) should_stop;          // set to true when first frame ready
-  _Atomic(bool) thread_created;       // true if animation thread was successfully created
-  int frame;                          // current animation frame
-  asciichat_thread_t anim_thread;     // animation thread handle
-  uint64_t start_time_ns;             // when splash was started (for minimum display time)
+  _Atomic(bool) is_running;       // true while animation should continue
+  _Atomic(bool) should_stop;      // set to true when first frame ready
+  _Atomic(bool) thread_created;   // true if animation thread was successfully created
+  int frame;                      // current animation frame
+  asciichat_thread_t anim_thread; // animation thread handle
+  uint64_t start_time_ns;         // when splash was started (for minimum display time)
 } g_splash_state = {.is_running = false, .should_stop = false, .thread_created = false, .frame = 0, .start_time_ns = 0};
 
 // ============================================================================
@@ -212,10 +213,11 @@ static void build_connection_target(char *buffer, size_t buffer_size) {
  * - Line 7: Connection target (centered)
  * - Line 8: Bottom border
  *
+ * @param buf Frame buffer to write into
  * @param term_size Current terminal dimensions
  * @param user_data Pointer to splash_header_ctx_t
  */
-static void render_splash_header(terminal_size_t term_size, void *user_data) {
+static void render_splash_header(frame_buffer_t *buf, terminal_size_t term_size, void *user_data) {
   const splash_header_ctx_t *ctx = (const splash_header_ctx_t *)user_data;
   if (!ctx) {
     return;
@@ -233,11 +235,11 @@ static void render_splash_header(terminal_size_t term_size, void *user_data) {
   double offset = ctx->frame * rainbow_speed;
 
   // Line 1: Top border
-  printf("\033[1;36m━");
+  frame_buffer_printf(buf, "\033[1;36m━");
   for (int i = 1; i < term_size.cols - 1; i++) {
-    printf("━");
+    frame_buffer_printf(buf, "━");
   }
-  printf("\033[0m\n");
+  frame_buffer_printf(buf, "\033[0m\n");
 
   // Lines 2-5: ASCII logo (centered, truncated if too long)
   for (int logo_line = 0; logo_line < 4; logo_line++) {
@@ -268,18 +270,18 @@ static void render_splash_header(terminal_size_t term_size, void *user_data) {
     for (int i = 0; plain_line[i] != '\0'; i++) {
       char ch = plain_line[i];
       if (ch == ' ') {
-        printf(" ");
+        frame_buffer_printf(buf, " ");
       } else if (ctx->use_colors) {
         double char_pos = (ctx->frame * 52 + char_idx + offset) / 30.0;
         rgb_pixel_t color = get_rainbow_color_rgb(char_pos);
-        printf("\x1b[38;2;%u;%u;%um%c\x1b[0m", color.r, color.g, color.b, ch);
+        frame_buffer_printf(buf, "\x1b[38;2;%u;%u;%um%c\x1b[0m", color.r, color.g, color.b, ch);
         char_idx++;
       } else {
-        printf("%c", ch);
+        frame_buffer_printf(buf, "%c", ch);
         char_idx++;
       }
     }
-    printf("\n");
+    frame_buffer_printf(buf, "\n");
   }
 
   // Line 6: Tagline (centered, truncated if too long)
@@ -305,7 +307,7 @@ static void render_splash_header(terminal_size_t term_size, void *user_data) {
     plain_tagline[term_size.cols - 1] = '\0';
   }
 
-  printf("%s\n", plain_tagline);
+  frame_buffer_printf(buf, "%s\n", plain_tagline);
 
   // Line 7: Update notification (if available)
   if (ctx->update_notification[0] != '\0') {
@@ -332,7 +334,7 @@ static void render_splash_header(terminal_size_t term_size, void *user_data) {
     }
 
     // Print in yellow/warning color
-    printf("%s\n", colored_string(LOG_COLOR_WARN, plain_update));
+    frame_buffer_printf(buf, "%s\n", colored_string(LOG_COLOR_WARN, plain_update));
   }
 
   // Line 8 (or 7 if no update): Connection target (centered, truncated if too long)
@@ -361,14 +363,14 @@ static void render_splash_header(terminal_size_t term_size, void *user_data) {
     plain_connection[term_size.cols - 1] = '\0';
   }
 
-  printf("%s\n", plain_connection);
+  frame_buffer_printf(buf, "%s\n", plain_connection);
 
   // Line 9 (or 8 if no update): Bottom border
-  printf("\033[1;36m━");
+  frame_buffer_printf(buf, "\033[1;36m━");
   for (int i = 1; i < term_size.cols - 1; i++) {
-    printf("━");
+    frame_buffer_printf(buf, "━");
   }
-  printf("\033[0m\n");
+  frame_buffer_printf(buf, "\033[0m\n");
 }
 
 // ============================================================================
@@ -386,8 +388,8 @@ bool splash_should_display(bool is_intro) {
                      (GET_OPTION(media_file) && strlen(GET_OPTION(media_file)) > 0);
 
     bool should_display = splash_screen_opt && (!is_snapshot || has_media);
-    log_info("splash_should_display(intro): splash_screen=%d snapshot=%d has_media=%d => %d",
-             splash_screen_opt, is_snapshot, has_media, should_display);
+    log_info("splash_should_display(intro): splash_screen=%d snapshot=%d has_media=%d => %d", splash_screen_opt,
+             is_snapshot, has_media, should_display);
     // Show splash if:
     // 1. Not in snapshot mode, OR
     // 2. In snapshot mode but loading from URL/file (needs splash during load)
@@ -418,17 +420,24 @@ static void *splash_animation_thread(void *arg) {
   // Animate with rainbow wave effect
   int frame = 0;
   int fps = GET_OPTION(fps);
-  if (fps <= 0) fps = 60; // Default to 60 FPS if not specified
+  if (fps <= 0)
+    fps = 60;                        // Default to 60 FPS if not specified
   const int anim_speed = 1000 / fps; // milliseconds per frame
   uint64_t loop_start_ns = time_get_ns();
 
-  log_info("[SPLASH_ANIM] Starting animation loop: fps=%d, anim_speed=%dms per frame", fps, anim_speed);
+  // Don't log until after first frame to avoid startup flicker
+  bool first_frame = true;
+
   while (!atomic_load(&g_splash_state.should_stop) && !shutdown_is_requested()) {
-    log_debug("[SPLASH_ANIM] Frame %d: should_stop=%d, shutdown=%d", frame,
-              atomic_load(&g_splash_state.should_stop), shutdown_is_requested());
+    if (!first_frame) {
+      log_debug("[SPLASH_ANIM] Frame %d: should_stop=%d, shutdown=%d", frame, atomic_load(&g_splash_state.should_stop),
+                shutdown_is_requested());
+    }
 
     // Poll keyboard for interactive grep and Escape to cancel
-    log_debug("[SPLASH_ANIM] Frame %d: keyboard_enabled=%d", frame, keyboard_enabled);
+    if (!first_frame) {
+      log_debug("[SPLASH_ANIM] Frame %d: keyboard_enabled=%d", frame, keyboard_enabled);
+    }
     if (keyboard_enabled) {
       keyboard_key_t key = keyboard_read_nonblocking();
       if (key == KEY_ESCAPE) {
@@ -443,7 +452,9 @@ static void *splash_animation_thread(void *arg) {
         // Continue to render immediately with grep active
       }
     }
-    log_debug("[SPLASH_ANIM] Frame %d: keyboard check done", frame);
+    if (!first_frame) {
+      log_debug("[SPLASH_ANIM] Frame %d: keyboard check done", frame);
+    }
 
     // Set up splash header context for this frame
     splash_header_ctx_t header_ctx = {
@@ -451,23 +462,33 @@ static void *splash_animation_thread(void *arg) {
         .use_colors = use_colors,
     };
 
-    log_debug("[SPLASH_ANIM] Frame %d: Setting up header context", frame);
+    if (!first_frame) {
+      log_debug("[SPLASH_ANIM] Frame %d: Setting up header context", frame);
+    }
 
     // Initialize update notification lifecycle and mutex once (safe to call multiple times)
     if (lifecycle_init_once(&g_update_notification_lifecycle)) {
-      log_debug("[SPLASH_ANIM] Initializing lifecycle for update_notification");
+      if (!first_frame) {
+        log_debug("[SPLASH_ANIM] Initializing lifecycle for update_notification");
+      }
       // Initialize the mutex (already configured in the lifecycle structure)
       mutex_init(&g_update_notification_mutex, "update_notification");
       lifecycle_init_commit(&g_update_notification_lifecycle);
     }
 
     // Copy update notification from global state (thread-safe)
-    log_debug("[SPLASH_ANIM] Frame %d: About to lock update_notification_mutex", frame);
+    if (!first_frame) {
+      log_debug("[SPLASH_ANIM] Frame %d: About to lock update_notification_mutex", frame);
+    }
     mutex_lock(&g_update_notification_mutex);
-    log_debug("[SPLASH_ANIM] Frame %d: Locked update_notification_mutex", frame);
+    if (!first_frame) {
+      log_debug("[SPLASH_ANIM] Frame %d: Locked update_notification_mutex", frame);
+    }
     SAFE_STRNCPY(header_ctx.update_notification, g_update_notification, sizeof(header_ctx.update_notification));
     mutex_unlock(&g_update_notification_mutex);
-    log_debug("[SPLASH_ANIM] Frame %d: Unlocked update_notification_mutex", frame);
+    if (!first_frame) {
+      log_debug("[SPLASH_ANIM] Frame %d: Unlocked update_notification_mutex", frame);
+    }
 
     // Calculate header lines: 8 base lines + 1 if update notification present
     int header_lines = 8;
@@ -486,15 +507,24 @@ static void *splash_animation_thread(void *arg) {
     // Render the screen (header + logs) only in interactive mode
     // OR if splash screen was explicitly requested
     // In non-interactive mode without explicit flag, logs flow to stdout/stderr normally
-    log_debug("[SPLASH_ANIM] Frame %d: About to render", frame);
+    if (!first_frame) {
+      log_debug("[SPLASH_ANIM] Frame %d: About to render", frame);
+    }
     const options_t *opts_render = options_get();
     bool should_render = terminal_is_interactive() || (opts_render && opts_render->splash_screen_explicitly_set);
     if (should_render) {
-      log_debug("[SPLASH_ANIM] Frame %d: Calling terminal_screen_render()", frame);
+      if (!first_frame) {
+        log_debug("[SPLASH_ANIM] Frame %d: Calling terminal_screen_render()", frame);
+      }
       terminal_screen_render(&screen_config);
-      log_debug("[SPLASH_ANIM] Frame %d: terminal_screen_render() completed", frame);
+      if (!first_frame) {
+        log_debug("[SPLASH_ANIM] Frame %d: terminal_screen_render() completed", frame);
+      }
+      first_frame = false; // Mark first frame as complete
     } else {
-      log_debug("[SPLASH_ANIM] Frame %d: Skipping render (should_render=false)", frame);
+      if (!first_frame) {
+        log_debug("[SPLASH_ANIM] Frame %d: Skipping render (should_render=false)", frame);
+      }
     }
 
     // Move to next frame
@@ -520,7 +550,8 @@ static void *splash_animation_thread(void *arg) {
   uint64_t total_elapsed_ns = final_ns - loop_start_ns;
   double total_elapsed_sec = total_elapsed_ns / 1e9;
   double final_fps = total_elapsed_sec > 0 ? frame / total_elapsed_sec : 0;
-  log_info("[SPLASH_ANIM] === ANIMATION LOOP EXITED === %d frames rendered in %.3f seconds (%.1f FPS). should_stop=%d, shutdown=%d",
+  log_info("[SPLASH_ANIM] === ANIMATION LOOP EXITED === %d frames rendered in %.3f seconds (%.1f FPS). should_stop=%d, "
+           "shutdown=%d",
            frame, total_elapsed_sec, final_fps, atomic_load(&g_splash_state.should_stop), shutdown_is_requested());
 
   // Cleanup keyboard
@@ -551,7 +582,8 @@ int splash_intro_start(session_display_ctx_t *ctx) {
   bool is_interactive = terminal_is_interactive();
   const options_t *opts = options_get();
   bool splash_explicitly_set = opts && opts->splash_screen_explicitly_set;
-  log_info("splash_intro_start: terminal_is_interactive()=%d, splash_explicitly_set=%d", is_interactive, splash_explicitly_set);
+  log_info("splash_intro_start: terminal_is_interactive()=%d, splash_explicitly_set=%d", is_interactive,
+           splash_explicitly_set);
   if (!is_interactive && !splash_explicitly_set) {
     log_info("splash_intro_start: returning early - not interactive and splash not explicitly set");
     return 0;
@@ -579,12 +611,16 @@ int splash_intro_start(session_display_ctx_t *ctx) {
   (void)terminal_cursor_show();
   fflush(stdout);
 
+  // Clear the log buffer so animation starts with clean slate
+  // This prevents any pre-splash logs from appearing in first frame
+  session_log_buffer_clear();
+
   // Set running flag
   log_debug("[SPLASH] Setting running flag and initializing state");
   atomic_store(&g_splash_state.is_running, true);
   atomic_store(&g_splash_state.should_stop, false);
   g_splash_state.frame = 0;
-  g_splash_state.start_time_ns = time_get_ns();  // Track start time for minimum display duration
+  g_splash_state.start_time_ns = time_get_ns(); // Track start time for minimum display duration
 
   // Start animation thread
   log_debug("[SPLASH] About to create animation thread");
@@ -595,28 +631,28 @@ int splash_intro_start(session_display_ctx_t *ctx) {
     return 0;
   }
   atomic_store(&g_splash_state.thread_created, true);
-  log_debug("[SPLASH] Animation thread created successfully, thread_created=%d", atomic_load(&g_splash_state.thread_created));
+  log_debug("[SPLASH] Animation thread created successfully, thread_created=%d",
+            atomic_load(&g_splash_state.thread_created));
 
   return 0; // ASCIICHAT_OK
 }
 
 int splash_intro_done(void) {
   log_info("[SPLASH_DONE] Entry: is_running=%d, should_stop=%d, thread_created=%d",
-           atomic_load(&g_splash_state.is_running),
-           atomic_load(&g_splash_state.should_stop),
+           atomic_load(&g_splash_state.is_running), atomic_load(&g_splash_state.should_stop),
            atomic_load(&g_splash_state.thread_created));
 
   // Enforce minimum display time of 2 seconds
   if (g_splash_state.start_time_ns > 0) {
     uint64_t now_ns = time_get_ns();
     uint64_t elapsed_ns = now_ns - g_splash_state.start_time_ns;
-    const uint64_t min_display_ns = 2000000000ULL;  // 2 seconds in nanoseconds
+    const uint64_t min_display_ns = 2000000000ULL; // 2 seconds in nanoseconds
 
     if (elapsed_ns < min_display_ns) {
       uint64_t remaining_ns = min_display_ns - elapsed_ns;
-      uint64_t remaining_ms = (remaining_ns + 999999) / 1000000;  // Round up to ms
-      log_info("[SPLASH_DONE] Elapsed: %.2f seconds, minimum: 2s. Waiting %llu ms",
-               elapsed_ns / 1000000000.0, (unsigned long long)remaining_ms);
+      uint64_t remaining_ms = (remaining_ns + 999999) / 1000000; // Round up to ms
+      log_info("[SPLASH_DONE] Elapsed: %.2f seconds, minimum: 2s. Waiting %llu ms", elapsed_ns / 1000000000.0,
+               (unsigned long long)remaining_ms);
       platform_sleep_ms(remaining_ms);
     }
   }

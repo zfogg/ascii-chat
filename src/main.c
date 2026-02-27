@@ -171,7 +171,7 @@ static bool console_ctrl_handler(console_ctrl_event_t event) {
 #ifndef NDEBUG
 #ifndef _WIN32
 /**
- * @brief Common SIGUSR1 handler - triggers lock debugging output in all modes
+ * @brief Common SIGUSR1 handler - triggers synchronization debugging output in all modes
  * @param sig The signal number (unused, required by signal handler signature)
  */
 static void common_handle_sigusr1(int sig) {
@@ -179,6 +179,10 @@ static void common_handle_sigusr1(int sig) {
   debug_sync_trigger_print();
 }
 
+/**
+ * @brief Common SIGUSR2 handler - triggers memory report in all modes
+ * @param sig The signal number (unused, required by signal handler signature)
+ */
 static void common_handle_sigusr2(int sig) {
   (void)sig;
   // Log to stderr directly since we're in signal context
@@ -744,7 +748,7 @@ int main(int argc, char *argv[]) {
   sigaddset(&set, SIGUSR2);
   sigprocmask(SIG_UNBLOCK, &set, NULL);
 
-  // Register SIGUSR1 to trigger lock state printing in all modes
+  // Register SIGUSR1 to trigger synchronization debugging output in all modes
   signal_handler_t old_usr1 = platform_signal(SIGUSR1, common_handle_sigusr1);
   if (old_usr1 == SIG_ERR) {
     log_warn("Failed to register SIGUSR1 handler");
@@ -787,7 +791,6 @@ int main(int argc, char *argv[]) {
   // Set up global signal handlers BEFORE mode dispatch
   // All modes use the same centralized exit mechanism
   setup_signal_handlers();
-
 
 #ifndef NDEBUG
   // Start debug threads now, after initialization but before mode entry

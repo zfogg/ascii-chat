@@ -14,6 +14,7 @@
  */
 
 #include "ascii-chat/ui/terminal_screen.h"
+#include "ascii-chat/ui/frame_buffer.h"
 #include "ascii-chat/log/interactive_grep.h"
 #include "session/session_log_buffer.h"
 #include "ascii-chat/util/display.h"
@@ -188,21 +189,31 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
 
   last_grep_state = grep_entering;
 
-  if (!grep_entering) {
-    // Normal mode: clear and redraw (no flicker concern without grep)
-    terminal_clear_screen();
-    terminal_cursor_home(STDOUT_FILENO);
-  } else {
-    // Grep mode: overwrite in place, never clear whole screen
-    terminal_cursor_home(STDOUT_FILENO);
+  // Allocate or reuse frame buffer (static to avoid malloc per frame)
+  static frame_buffer_t *g_frame_buf = NULL;
+  if (!g_frame_buf) {
+    g_frame_buf = frame_buffer_create(g_cached_term_size.rows, g_cached_term_size.cols);
+    if (!g_frame_buf) {
+      return; // Allocation failed
+    }
   }
 
-  // Render fixed header via callback
-  config->render_header(g_cached_term_size, config->user_data);
+  frame_buffer_reset(g_frame_buf);
 
-  // If logs are disabled, we're done
+  if (!grep_entering) {
+    // Normal mode: clear and redraw (all output goes into frame buffer)
+    frame_buffer_clear_screen(g_frame_buf);
+  } else {
+    // Grep mode: overwrite in place, never clear whole screen
+    frame_buffer_cursor_home(g_frame_buf);
+  }
+
+  // Render fixed header via callback (writes into frame buffer)
+  config->render_header(g_frame_buf, g_cached_term_size, config->user_data);
+
+  // If logs are disabled, flush and return
   if (!config->show_logs) {
-    fflush(stdout);
+    frame_buffer_flush(g_frame_buf);
     return;
   }
 
