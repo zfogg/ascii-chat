@@ -72,8 +72,7 @@ static int format_mutex_timing(const mutex_t *mutex, char *buffer, size_t size) 
   }
 
   if (mutex->currently_held_by_key != 0) {
-    const char *holder_desc = named_describe(mutex->currently_held_by_key, "thread");
-    snprintf(held_str, sizeof(held_str), "[LOCKED_BY=%s]", holder_desc);
+    snprintf(held_str, sizeof(held_str), "[LOCKED_BY=0x%lx]", (unsigned long)mutex->currently_held_by_key);
   } else {
     snprintf(held_str, sizeof(held_str), "[FREE]");
   }
@@ -127,8 +126,8 @@ static int format_rwlock_timing(const rwlock_t *rwlock, char *buffer, size_t siz
   }
 
   if (rwlock->write_held_by_key != 0) {
-    const char *writer_desc = named_describe(rwlock->write_held_by_key, "thread");
-    snprintf(write_held_str, sizeof(write_held_str), "[WRITE_LOCKED_BY=%s]", writer_desc);
+    snprintf(write_held_str, sizeof(write_held_str), "[WRITE_LOCKED_BY=0x%lx]",
+             (unsigned long)rwlock->write_held_by_key);
   }
 
   if (rwlock->read_lock_count > 0) {
@@ -188,8 +187,8 @@ static int format_cond_timing(const cond_t *cond, char *buffer, size_t size) {
   }
 
   if (cond->waiting_count > 0) {
-    const char *waiter_desc = named_describe(cond->last_waiting_key, "thread");
-    snprintf(waiting_str, sizeof(waiting_str), "[WAITING=%lu threads, last=%s]", cond->waiting_count, waiter_desc);
+    snprintf(waiting_str, sizeof(waiting_str), "[WAITING=%lu threads, last=0x%lx]", cond->waiting_count,
+             (unsigned long)cond->last_waiting_key);
   } else {
     snprintf(status_str, sizeof(status_str), "[IDLE]");
   }
@@ -388,10 +387,9 @@ static void cond_deadlock_check_callback(uintptr_t key, const char *name, void *
   // Condition variable appears to be stuck - log detailed diagnostic info
   char stuck_str[64];
   time_pretty(stuck_ns, -1, stuck_str, sizeof(stuck_str));
-  const char *waiter = named_describe(cond->last_waiting_key, "thread");
 
-  log_warn("Stuck cond '%s': %lu thread(s) waiting %s with no signal (most recent waiter: %s)", name,
-           cond->waiting_count, stuck_str, waiter);
+  log_warn("Stuck cond '%s': %lu thread(s) waiting %s with no signal (most recent waiter: 0x%lx)", name,
+           cond->waiting_count, stuck_str, (unsigned long)cond->last_waiting_key);
 
   if (cond->last_wait_file) {
     log_warn("  wait entered at %s:%d %s()", cond->last_wait_file, cond->last_wait_line, cond->last_wait_func);
@@ -400,7 +398,7 @@ static void cond_deadlock_check_callback(uintptr_t key, const char *name, void *
   if (cond->last_wait_mutex) {
     uintptr_t holder = cond->last_wait_mutex->currently_held_by_key;
     if (holder) {
-      log_warn("  associated mutex held by: %s (signal must come from this thread)", named_describe(holder, "thread"));
+      log_warn("  associated mutex held by: 0x%lx (signal must come from this thread)", holder);
     } else {
       log_warn("  associated mutex is FREE — producer is not calling cond_signal");
     }

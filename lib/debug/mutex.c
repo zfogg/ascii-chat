@@ -12,7 +12,6 @@
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/string.h>
-#include <ascii-chat/debug/named.h>
 #include <ascii-chat/platform/api.h>
 #include <ascii-chat/platform/mutex.h>
 #include <string.h>
@@ -366,13 +365,11 @@ void mutex_stack_detect_deadlocks(void) {
 
     // Same-thread deadlock: thread trying to acquire a mutex it already holds
     if (thread_holds_mutex(stack_a, waiting_for)) {
-      const char *mutex_name = named_describe(waiting_for, "mutex");
       log_error("%s", colored_string(LOG_COLOR_ERROR, "╔═══════════════════════════════════════════════════════════╗"));
       log_error("%s", colored_string(LOG_COLOR_ERROR, "║  ⚠️  DEADLOCK DETECTED: Same-thread Recursive Lock  ⚠️  ║"));
       log_error("%s", colored_string(LOG_COLOR_ERROR, "╚═══════════════════════════════════════════════════════════╝"));
       log_error("  Thread Address:        0x%lx", (unsigned long)g_thread_registry[i].thread_id);
-      log_error("  Mutex Address:         0x%lx", waiting_for);
-      log_error("  Mutex Name:            %s", mutex_name ? mutex_name : "unknown");
+      log_error("  Mutex:                 0x%lx", waiting_for);
       log_error("  Issue:                 Thread attempts recursive lock on non-recursive mutex");
       continue;
     }
@@ -383,11 +380,19 @@ void mutex_stack_detect_deadlocks(void) {
     int cycle_start = detect_cycle_dfs(thread_count, i, cycle_path, &cycle_len);
 
     if (cycle_start >= 0 && cycle_len > 1) {
-      // Cycle detected! Build the cycle description
-      log_error("%s", colored_string(LOG_COLOR_ERROR, "╔═══════════════════════════════════════════════════════════╗"));
-      log_error("%s", colored_string(LOG_COLOR_ERROR, "║      ⚠️  DEADLOCK DETECTED: Circular Wait Cycle  ⚠️     ║"));
-      log_error("%s", colored_string(LOG_COLOR_ERROR, "╚═══════════════════════════════════════════════════════════╝"));
-      log_error("");
+      // Cycle detected! Build complete message in one string
+      char cycle_msg[4096];
+      int msg_len = 0;
+
+      // Header boxes
+      msg_len +=
+          snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, "%s\n",
+                   colored_string(LOG_COLOR_ERROR, "╔═══════════════════════════════════════════════════════════╗"));
+      msg_len += snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, "%s\n",
+                          colored_string(LOG_COLOR_ERROR, "║      ⚠️  DEADLOCK DETECTED: Circular Wait Cycle  ⚠️     ║"));
+      msg_len +=
+          snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, "%s\n\n",
+                   colored_string(LOG_COLOR_ERROR, "╚═══════════════════════════════════════════════════════════╝"));
 
       // Print each thread in the cycle
       for (int k = 0; k < cycle_len; k++) {
@@ -395,51 +400,36 @@ void mutex_stack_detect_deadlocks(void) {
         int next_thread_idx = cycle_path[(k + 1) % cycle_len];
 
         thread_lock_stack_t *current_stack = g_thread_registry[thread_idx].stack;
-        thread_lock_stack_t *next_stack = g_thread_registry[next_thread_idx].stack;
-
         uintptr_t current_waiting = thread_waiting_for_mutex(current_stack);
-        uintptr_t next_holding = 0;
-
-        // Find what mutex next_thread holds that current_thread wants
-        for (int j = 0; j < next_stack->depth; j++) {
-          if (next_stack->stack[j].mutex_key == current_waiting &&
-              next_stack->stack[j].state == MUTEX_STACK_STATE_LOCKED) {
-            next_holding = current_waiting;
-            break;
-          }
-        }
-
-        const char *mutex_name = named_describe(current_waiting, "mutex");
-        const char *held_by_name = "unknown";
-        if (next_stack->depth > 0) {
-          for (int j = 0; j < next_stack->depth; j++) {
-            if (next_stack->stack[j].state == MUTEX_STACK_STATE_LOCKED) {
-              held_by_name = next_stack->stack[j].mutex_name;
-              break;
-            }
-          }
-        }
 
         char thread_label[64];
         snprintf(thread_label, sizeof(thread_label), "Thread %d:", k + 1);
-        log_error("  %s", colored_string(LOG_COLOR_ERROR, thread_label));
-        log_error("    Address:           0x%lx", (unsigned long)g_thread_registry[thread_idx].thread_id);
-        log_error("    Waiting for:       0x%lx (%s)", current_waiting, mutex_name ? mutex_name : "unknown");
-        log_error("    Held by Thread:    0x%lx", (unsigned long)g_thread_registry[next_thread_idx].thread_id);
+        msg_len += snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, "  %s\n",
+                            colored_string(LOG_COLOR_ERROR, thread_label));
+        msg_len += snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, "    Address:           0x%lx\n",
+                            (unsigned long)g_thread_registry[thread_idx].thread_id);
+        msg_len += snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, "    Waiting for:       0x%lx\n",
+                            current_waiting);
+        msg_len += snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, "    Held by Thread:    0x%lx\n",
+                            (unsigned long)g_thread_registry[next_thread_idx].thread_id);
         if (k < cycle_len - 1) {
-          log_error("");
+          msg_len += snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, "\n");
         }
       }
 
-      log_error("");
-      log_error("  Deadlock Cycle: ");
+      // Cycle summary
+      msg_len += snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, "\n  Deadlock Cycle: ");
       for (int k = 0; k < cycle_len; k++) {
         int thread_idx = cycle_path[k];
         thread_lock_stack_t *stack = g_thread_registry[thread_idx].stack;
         uintptr_t waiting_for_mutex = thread_waiting_for_mutex(stack);
-        const char *mutex_name = named_describe(waiting_for_mutex, "mutex");
-        log_error("                  T%d waits for %s →", k + 1, mutex_name ? mutex_name : "?");
+        msg_len += snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len,
+                            "\n                  T%d waits for 0x%lx →", k + 1, waiting_for_mutex);
       }
+      msg_len += snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, "\n");
+
+      // Print entire message in one call
+      log_error("%s", cycle_msg);
     }
   }
 
