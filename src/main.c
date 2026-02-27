@@ -716,14 +716,6 @@ int main(int argc, char *argv[]) {
   }
   log_debug("Debug sync system initialized successfully");
 
-  // Start debug sync (now just prints state directly)
-  log_debug("About to call debug_sync_start_thread");
-  if (debug_sync_start_thread() != 0) {
-    LOG_ERRNO_IF_SET("Debug sync startup failed");
-    FATAL(ERROR_THREAD, "Debug sync startup failed");
-  }
-  log_debug("debug_sync_start_thread returned successfully");
-
   // Initialize memory debug system
   log_debug("Initializing memory debug system...");
   int debug_memory_result = debug_memory_thread_init();
