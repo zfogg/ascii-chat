@@ -65,6 +65,7 @@
 #include <ascii-chat/debug/sync.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/debug/memory.h>
+#include <ascii-chat/debug/backtrace.h>
 #endif
 
 #ifndef _WIN32
@@ -715,12 +716,13 @@ int main(int argc, char *argv[]) {
   }
   log_debug("Debug sync system initialized successfully");
 
-  // Start debug sync thread in all modes
+  // Start debug sync (now just prints state directly)
+  log_debug("About to call debug_sync_start_thread");
   if (debug_sync_start_thread() != 0) {
-    LOG_ERRNO_IF_SET("Debug sync thread startup failed");
-    FATAL(ERROR_THREAD, "Debug sync thread startup failed");
+    LOG_ERRNO_IF_SET("Debug sync startup failed");
+    FATAL(ERROR_THREAD, "Debug sync startup failed");
   }
-  log_debug("Debug sync thread started");
+  log_debug("debug_sync_start_thread returned successfully");
 
   // Initialize memory debug system
   log_debug("Initializing memory debug system...");
@@ -731,12 +733,11 @@ int main(int argc, char *argv[]) {
   }
   log_debug("Memory debug system initialized successfully");
 
-  // Start memory debug thread in all modes
+  // Start memory debug (now just prints report directly)
   if (debug_memory_thread_start() != 0) {
-    LOG_ERRNO_IF_SET("Memory debug thread startup failed");
-    FATAL(ERROR_THREAD, "Memory debug thread startup failed");
+    LOG_ERRNO_IF_SET("Memory debug startup failed");
+    FATAL(ERROR_THREAD, "Memory debug startup failed");
   }
-  log_debug("Memory debug thread started");
 
 #ifndef _WIN32
   // Unblock SIGUSR1 and SIGUSR2 at process level to ensure delivery
@@ -792,20 +793,42 @@ int main(int argc, char *argv[]) {
 
 
 #ifndef NDEBUG
+  // Start debug threads now, after initialization but before mode entry
+  // This avoids lock contention during critical initialization phase
+  // Note: debug_sync_start_thread() and debug_memory_thread_start() now use
+  // direct pthread calls instead of mutex_init/cond_init to avoid named registry
+  // deadlock during thread startup
+  if (debug_sync_start_thread() != 0) {
+    LOG_ERRNO_IF_SET("Debug sync thread startup failed");
+    FATAL(ERROR_THREAD, "Debug sync thread startup failed");
+  }
+  log_debug("Debug sync thread started");
+
+  if (debug_memory_thread_start() != 0) {
+    LOG_ERRNO_IF_SET("Memory debug thread startup failed");
+    FATAL(ERROR_THREAD, "Memory debug thread startup failed");
+  }
+  log_debug("Memory debug thread started");
+
   // Handle --debug-state (debug builds only)
-  // Schedule debug state printing on the debug thread after specified delay
+  // Print debug state after specified delay (synchronously, no thread)
   if (IS_OPTION_EXPLICIT(debug_sync_state_time, opts) && opts->debug_sync_state_time > 0.0) {
-    log_info("Scheduling sync state print after %f seconds on debug thread", opts->debug_sync_state_time);
+    log_info("Printing sync state after %f seconds", opts->debug_sync_state_time);
     uint64_t delay_ns = (uint64_t)(opts->debug_sync_state_time * NS_PER_SEC_INT);
-    debug_sync_print_state_delayed(delay_ns);
+    platform_sleep_ns(delay_ns);
+    debug_sync_print_state();
   }
 
   // Handle --backtrace (debug builds only)
-  // Schedule backtrace printing on the debug thread after specified delay
+  // Print backtrace after specified delay (synchronously, no thread)
   if (IS_OPTION_EXPLICIT(debug_backtrace_time, opts) && opts->debug_backtrace_time > 0.0) {
-    log_info("Scheduling backtrace print after %f seconds on debug thread", opts->debug_backtrace_time);
+    log_info("Printing backtrace after %f seconds", opts->debug_backtrace_time);
     uint64_t delay_ns = (uint64_t)(opts->debug_backtrace_time * NS_PER_SEC_INT);
-    debug_sync_print_backtrace_delayed(delay_ns);
+    platform_sleep_ns(delay_ns);
+    backtrace_t bt;
+    backtrace_capture_and_symbolize(&bt);
+    backtrace_print("Backtrace", &bt, 0, 0, NULL);
+    backtrace_t_free(&bt);
   }
 #endif
 

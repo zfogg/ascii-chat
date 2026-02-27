@@ -1200,15 +1200,9 @@ int debug_memory_thread_init(void) {
  * @brief Start the memory debug thread
  */
 int debug_memory_thread_start(void) {
-  if (!g_debug_memory_request.initialized) {
-    mutex_init(&g_debug_memory_request.mutex, "debug_memory_state");
-    cond_init(&g_debug_memory_request.cond, "debug_memory_signal");
-    g_debug_memory_request.initialized = true;
-  }
-
-  g_debug_memory_request.should_exit = false;
-  int err = asciichat_thread_create(&g_debug_memory_thread, "debug_memory", debug_memory_thread_fn, NULL);
-  return err;
+  // Print memory report directly instead of starting a thread to avoid deadlock
+  debug_memory_report();
+  return 0;
 }
 
 /**

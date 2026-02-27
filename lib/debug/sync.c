@@ -526,16 +526,9 @@ int debug_sync_init(void) {
 }
 
 int debug_sync_start_thread(void) {
-    // Initialize mutex and condition variable for signal wakeup
-    if (!g_debug_state_request.initialized) {
-        mutex_init(&g_debug_state_request.mutex, "debug_sync_state");
-        cond_init(&g_debug_state_request.cond, "debug_sync_signal");
-        g_debug_state_request.initialized = true;
-    }
-
-    g_debug_state_request.should_exit = false;
-    int err = asciichat_thread_create(&g_debug_thread, "debug_sync", debug_print_thread_fn, NULL);
-    return err;
+    // Print sync state directly instead of starting a thread to avoid deadlock
+    debug_sync_print_state();
+    return 0;
 }
 
 void debug_sync_destroy(void) {

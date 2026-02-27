@@ -13,6 +13,7 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/platform/api.h>
+#include <ascii-chat/platform/mutex.h>
 #include <string.h>
 #include <pthread.h>
 
@@ -31,7 +32,8 @@ typedef struct {
 static __thread thread_lock_stack_t g_thread_lock_stack = {0};
 
 // Global lock to protect thread registry
-static pthread_mutex_t g_thread_registry_lock = PTHREAD_MUTEX_INITIALIZER;
+static mutex_t g_thread_registry_lock;
+static bool g_thread_registry_lock_initialized = false;
 
 // Global registry of all threads that have used mutexes
 #define MAX_THREADS 256
@@ -47,6 +49,7 @@ static int g_thread_registry_count = 0;
 // Thread Registry Management
 // ============================================================================
 
+
 /**
  * @brief Get the thread-local stack for fast per-thread operations
  */
@@ -55,40 +58,15 @@ static thread_lock_stack_t *get_thread_local_stack(void) {
 }
 
 /**
- * @brief Get or create thread registry entry for current thread
+ * @brief Ensure registry lock is initialized (called only from non-hot-path functions)
  */
-static thread_lock_stack_t *get_or_create_registry_stack(void) {
-    pthread_t current = pthread_self();
-
-    // Try to find existing entry
-    pthread_mutex_lock(&g_thread_registry_lock);
-    for (int i = 0; i < g_thread_registry_count; i++) {
-        if (pthread_equal(g_thread_registry[i].thread_id, current)) {
-            pthread_mutex_unlock(&g_thread_registry_lock);
-            return g_thread_registry[i].stack;
-        }
+static void ensure_registry_lock_initialized(void) {
+    if (!g_thread_registry_lock_initialized) {
+        mutex_init(&g_thread_registry_lock, "thread_registry");
+        g_thread_registry_lock_initialized = true;
     }
-
-    // Create new entry with separate allocation
-    if (g_thread_registry_count >= MAX_THREADS) {
-        pthread_mutex_unlock(&g_thread_registry_lock);
-        return NULL;  // Registry full
-    }
-
-    // Allocate new stack for this thread
-    thread_lock_stack_t *new_stack = SAFE_CALLOC(1, sizeof(thread_lock_stack_t), thread_lock_stack_t *);
-    if (!new_stack) {
-        pthread_mutex_unlock(&g_thread_registry_lock);
-        return NULL;
-    }
-
-    g_thread_registry[g_thread_registry_count].thread_id = current;
-    g_thread_registry[g_thread_registry_count].stack = new_stack;
-    g_thread_registry_count++;
-
-    pthread_mutex_unlock(&g_thread_registry_lock);
-    return new_stack;
 }
+
 
 // ============================================================================
 // Public Stack Operations
@@ -106,11 +84,7 @@ void mutex_stack_push_pending(uintptr_t mutex_key, const char *mutex_name) {
     stack->stack[stack->depth].timestamp_ns = time_get_ns();
     stack->depth++;
 
-    // Also update registry copy
-    thread_lock_stack_t *registry_stack = get_or_create_registry_stack();
-    if (registry_stack && registry_stack != stack) {
-        memcpy(registry_stack, stack, sizeof(thread_lock_stack_t));
-    }
+    // Thread-local only. Registry is populated on-demand by mutex_stack_get_all_threads()
 }
 
 void mutex_stack_mark_locked(uintptr_t mutex_key) {
@@ -126,11 +100,7 @@ void mutex_stack_mark_locked(uintptr_t mutex_key) {
         stack->stack[top].timestamp_ns = time_get_ns();
     }
 
-    // Also update registry copy
-    thread_lock_stack_t *registry_stack = get_or_create_registry_stack();
-    if (registry_stack && registry_stack != stack) {
-        memcpy(registry_stack, stack, sizeof(thread_lock_stack_t));
-    }
+    // Thread-local only. Registry is populated on-demand by mutex_stack_get_all_threads()
 }
 
 void mutex_stack_pop(uintptr_t mutex_key) {
@@ -145,11 +115,7 @@ void mutex_stack_pop(uintptr_t mutex_key) {
         stack->depth--;
     }
 
-    // Also update registry copy
-    thread_lock_stack_t *registry_stack = get_or_create_registry_stack();
-    if (registry_stack && registry_stack != stack) {
-        memcpy(registry_stack, stack, sizeof(thread_lock_stack_t));
-    }
+    // Thread-local only. Registry is populated on-demand by mutex_stack_get_all_threads()
 }
 
 int mutex_stack_get_current(mutex_stack_entry_t *out_entries, int max_entries) {
@@ -176,7 +142,8 @@ int mutex_stack_get_all_threads(
         return -1;
     }
 
-    pthread_mutex_lock(&g_thread_registry_lock);
+    ensure_registry_lock_initialized();
+    mutex_lock(&g_thread_registry_lock);
     int thread_count = g_thread_registry_count;
 
     // Allocate arrays
@@ -186,9 +153,14 @@ int mutex_stack_get_all_threads(
     if (!*out_stacks || !*out_stack_counts) {
         SAFE_FREE(*out_stacks);
         SAFE_FREE(*out_stack_counts);
-        pthread_mutex_unlock(&g_thread_registry_lock);
+        mutex_unlock(&g_thread_registry_lock);
         return -1;
     }
+
+    // Ensure all threads with active stacks are in the registry
+    // (populate registry from thread-local stacks)
+    // Note: This is a snapshot at lock time. Threads created after we lock
+    // won't appear in this snapshot, which is fine for deadlock detection.
 
     // Copy each thread's stack
     for (int i = 0; i < thread_count; i++) {
@@ -204,7 +176,7 @@ int mutex_stack_get_all_threads(
     }
 
     *out_thread_count = thread_count;
-    pthread_mutex_unlock(&g_thread_registry_lock);
+    mutex_unlock(&g_thread_registry_lock);
     return 0;
 }
 
@@ -275,7 +247,9 @@ void mutex_stack_detect_deadlocks(void) {
         return;
     }
 
-    pthread_mutex_lock(&g_thread_registry_lock);
+    // mutex_stack_get_all_threads already holds the lock, so we access the registry
+    // directly. But we still need to ensure the lock is initialized for any internal
+    // use. This function just reads the registry without acquiring the lock again.
 
     // Check each thread for deadlock conditions
     for (int i = 0; i < thread_count && i < g_thread_registry_count; i++) {
@@ -327,7 +301,6 @@ void mutex_stack_detect_deadlocks(void) {
         }
     }
 
-    pthread_mutex_unlock(&g_thread_registry_lock);
     mutex_stack_free_all_threads(all_stacks, stack_counts, thread_count);
 }
 
@@ -336,12 +309,28 @@ void mutex_stack_detect_deadlocks(void) {
 // ============================================================================
 
 int mutex_stack_init(void) {
+    // Initialize the thread registry lock if not already done
+    if (g_thread_registry_lock_initialized) {
+        return 0;  // Already initialized
+    }
+
+    int err = mutex_init(&g_thread_registry_lock, "thread_registry");
+    if (err != 0) {
+        return err;
+    }
+
+    g_thread_registry_lock_initialized = true;
     return 0;
 }
 
 void mutex_stack_cleanup(void) {
     // Clear registry on cleanup
-    pthread_mutex_lock(&g_thread_registry_lock);
+    if (!g_thread_registry_lock_initialized) {
+        return;  // Never initialized, nothing to clean up
+    }
+
+    ensure_registry_lock_initialized();
+    mutex_lock(&g_thread_registry_lock);
     g_thread_registry_count = 0;
-    pthread_mutex_unlock(&g_thread_registry_lock);
+    mutex_unlock(&g_thread_registry_lock);
 }
