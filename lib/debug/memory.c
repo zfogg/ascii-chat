@@ -1087,30 +1087,36 @@ void debug_memory_report(void) {
           memset(file, 0, sizeof(file)); // Initialize to prevent garbage data
           int line = 0;
           uint64_t tid = 0;
+          bool parse_success = false;
+
           char *last_colon = strrchr(site->key, ':');
           if (last_colon) {
             char *second_colon = last_colon - 1;
             while (second_colon > site->key && *second_colon != ':') {
               second_colon--;
             }
-            if (second_colon > site->key) {
+            if (second_colon > site->key && *second_colon == ':') {
               sscanf(second_colon + 1, "%d", &line);
               sscanf(last_colon + 1, "%lu", &tid);
               size_t file_len = second_colon - site->key;
-              if (file_len < sizeof(file)) {
+              if (file_len > 0 && file_len < sizeof(file)) {
                 strncpy(file, site->key, file_len);
                 file[file_len] = '\0';
-              } else {
-                // Filename too long, use fallback
-                safe_snprintf(file, sizeof(file), "%.*s...", (int)(sizeof(file) - 4), site->key);
+                parse_success = true;
+              } else if (file_len > 0) {
+                // Filename too long, truncate with ellipsis
+                size_t max_len = sizeof(file) - 4;
+                strncpy(file, site->key, max_len);
+                file[max_len] = '\0';
+                strcat(file, "...");
+                parse_success = true;
               }
-            } else {
-              // Parsing failed, use the full key as fallback
-              safe_snprintf(file, sizeof(file), "%s", site->key);
             }
-          } else {
-            // No colons found in key (shouldn't happen), use fallback
-            safe_snprintf(file, sizeof(file), "%s", site->key);
+          }
+
+          // If parsing failed, use a descriptive fallback
+          if (!parse_success) {
+            safe_snprintf(file, sizeof(file), "<parsing failed>");
           }
 
           // Skip ignored allocations
@@ -1137,7 +1143,7 @@ void debug_memory_report(void) {
 
           // Print site summary with thread name (captured at site creation)
           APPEND_REPORT("  - %s:%s  [%s]  %s live  %s total\n", colored_string(LOG_COLOR_GREY, file),
-                        colored_string(LOG_COLOR_FATAL, line_str), colorize_named_string(site->thread_name),
+                        colored_string(LOG_COLOR_FATAL, line_str), site->thread_name,
                         colored_string(size_color, count_str), colored_string(size_color, pretty_bytes));
 
           // Don't synchronously symbolize backtraces during memory report - symbolization is slow
