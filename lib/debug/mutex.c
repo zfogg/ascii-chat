@@ -11,6 +11,7 @@
 #include <ascii-chat/debug/mutex.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/util/string.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/platform/api.h>
 #include <ascii-chat/platform/mutex.h>
@@ -366,9 +367,9 @@ void mutex_stack_detect_deadlocks(void) {
     // Same-thread deadlock: thread trying to acquire a mutex it already holds
     if (thread_holds_mutex(stack_a, waiting_for)) {
       const char *mutex_name = named_describe(waiting_for, "mutex");
-      log_error("\x1b[1;31m╔═══════════════════════════════════════════════════════════╗\x1b[0m");
-      log_error("\x1b[1;31m║  ⚠️  DEADLOCK DETECTED: Same-thread Recursive Lock  ⚠️  ║\x1b[0m");
-      log_error("\x1b[1;31m╚═══════════════════════════════════════════════════════════╝\x1b[0m");
+      log_error("%s", colored_string(LOG_COLOR_ERROR, "╔═══════════════════════════════════════════════════════════╗"));
+      log_error("%s", colored_string(LOG_COLOR_ERROR, "║  ⚠️  DEADLOCK DETECTED: Same-thread Recursive Lock  ⚠️  ║"));
+      log_error("%s", colored_string(LOG_COLOR_ERROR, "╚═══════════════════════════════════════════════════════════╝"));
       log_error("  Thread Address:        0x%lx", (unsigned long)g_thread_registry[i].thread_id);
       log_error("  Mutex Address:         0x%lx", waiting_for);
       log_error("  Mutex Name:            %s", mutex_name ? mutex_name : "unknown");
@@ -383,9 +384,9 @@ void mutex_stack_detect_deadlocks(void) {
 
     if (cycle_start >= 0 && cycle_len > 1) {
       // Cycle detected! Build the cycle description
-      log_error("\x1b[1;31m╔═══════════════════════════════════════════════════════════╗\x1b[0m");
-      log_error("\x1b[1;31m║      ⚠️  DEADLOCK DETECTED: Circular Wait Cycle  ⚠️     ║\x1b[0m");
-      log_error("\x1b[1;31m╚═══════════════════════════════════════════════════════════╝\x1b[0m");
+      log_error("%s", colored_string(LOG_COLOR_ERROR, "╔═══════════════════════════════════════════════════════════╗"));
+      log_error("%s", colored_string(LOG_COLOR_ERROR, "║      ⚠️  DEADLOCK DETECTED: Circular Wait Cycle  ⚠️     ║"));
+      log_error("%s", colored_string(LOG_COLOR_ERROR, "╚═══════════════════════════════════════════════════════════╝"));
       log_error("");
 
       // Print each thread in the cycle
@@ -419,7 +420,9 @@ void mutex_stack_detect_deadlocks(void) {
           }
         }
 
-        log_error("  \x1b[1;31mThread %d:\x1b[0m", k + 1);
+        char thread_label[64];
+        snprintf(thread_label, sizeof(thread_label), "Thread %d:", k + 1);
+        log_error("  %s", colored_string(LOG_COLOR_ERROR, thread_label));
         log_error("    Address:           0x%lx", (unsigned long)g_thread_registry[thread_idx].thread_id);
         log_error("    Waiting for:       0x%lx (%s)", current_waiting, mutex_name ? mutex_name : "unknown");
         log_error("    Held by Thread:    0x%lx", (unsigned long)g_thread_registry[next_thread_idx].thread_id);
