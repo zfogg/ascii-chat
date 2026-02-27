@@ -384,15 +384,13 @@ void mutex_stack_detect_deadlocks(void) {
       char cycle_msg[4096];
       int msg_len = 0;
 
-      // Header boxes
-      msg_len +=
-          snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, "%s\n",
-                   colored_string(LOG_COLOR_ERROR, "╔═══════════════════════════════════════════════════════════╗"));
+      // Leading newline and header box
+      msg_len += snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, "\n%s\n",
+                          colored_string(LOG_COLOR_ERROR, "╔════════════════════════════════════╗"));
       msg_len += snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, "%s\n",
-                          colored_string(LOG_COLOR_ERROR, "║      ⚠️  DEADLOCK DETECTED: Circular Wait Cycle  ⚠️     ║"));
-      msg_len +=
-          snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, "%s\n\n",
-                   colored_string(LOG_COLOR_ERROR, "╚═══════════════════════════════════════════════════════════╝"));
+                          colored_string(LOG_COLOR_ERROR, "║  DEADLOCK: Circular Wait Cycle  ║"));
+      msg_len += snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, "%s\n",
+                          colored_string(LOG_COLOR_ERROR, "╚════════════════════════════════════╝"));
 
       // Print each thread in the cycle
       for (int k = 0; k < cycle_len; k++) {
@@ -402,31 +400,11 @@ void mutex_stack_detect_deadlocks(void) {
         thread_lock_stack_t *current_stack = g_thread_registry[thread_idx].stack;
         uintptr_t current_waiting = thread_waiting_for_mutex(current_stack);
 
-        char thread_label[64];
-        snprintf(thread_label, sizeof(thread_label), "Thread %d:", k + 1);
-        msg_len += snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, "  %s\n",
-                            colored_string(LOG_COLOR_ERROR, thread_label));
-        msg_len += snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, "    Address:           0x%lx\n",
-                            (unsigned long)g_thread_registry[thread_idx].thread_id);
-        msg_len += snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, "    Waiting for:       0x%lx\n",
-                            current_waiting);
-        msg_len += snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, "    Held by Thread:    0x%lx\n",
-                            (unsigned long)g_thread_registry[next_thread_idx].thread_id);
-        if (k < cycle_len - 1) {
-          msg_len += snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, "\n");
-        }
+        msg_len +=
+            snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, "T%d: 0x%lx waits for 0x%lx (held by 0x%lx)\n",
+                     k + 1, (unsigned long)g_thread_registry[thread_idx].thread_id, current_waiting,
+                     (unsigned long)g_thread_registry[next_thread_idx].thread_id);
       }
-
-      // Cycle summary
-      msg_len += snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, "\n  Deadlock Cycle: ");
-      for (int k = 0; k < cycle_len; k++) {
-        int thread_idx = cycle_path[k];
-        thread_lock_stack_t *stack = g_thread_registry[thread_idx].stack;
-        uintptr_t waiting_for_mutex = thread_waiting_for_mutex(stack);
-        msg_len += snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len,
-                            "\n                  T%d waits for 0x%lx →", k + 1, waiting_for_mutex);
-      }
-      msg_len += snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, "\n");
 
       // Print entire message in one call
       log_error("%s", cycle_msg);
