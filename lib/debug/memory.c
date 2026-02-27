@@ -106,6 +106,7 @@ static const debug_memory_suppression_t g_suppression_config[] = {
     {"lib/options/colorscheme.c", 602, 8, 88,     "8 256-color ANSI code strings"},
     {"lib/options/colorscheme.c", 619, 8, 144,    "8 truecolor ANSI code strings"},
     {"lib/util/path.c", 1211, 1, 43,              "normalized path allocation (caller frees)"},
+    {"lib/platform/posix/util.c", 35, 18, 1247,   "platform_strdup() string allocations (mirror mode)"},
     {"lib/util/pcre2.c", 54, 1, 56,               "PCRE2 JIT singleton for code compilation (intentional, cleaned up at shutdown)"},
     {"lib/util/pcre2.c", 62, 1, 7,                "PCRE2 mcontext singleton for matching (intentional, cleaned up at shutdown)"},
     {NULL, 0, 0, 0, NULL}                         // Sentinel
