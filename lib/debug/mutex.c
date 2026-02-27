@@ -268,17 +268,83 @@ static uintptr_t thread_waiting_for_mutex(thread_lock_stack_t *stack) {
 }
 
 /**
- * @brief Detect circular wait deadlocks
+ * @brief Find which thread holds a given mutex (-1 if none)
+ */
+static int find_thread_holding_mutex(int thread_count, uintptr_t mutex_key) {
+  for (int i = 0; i < thread_count && i < g_thread_registry_count; i++) {
+    thread_lock_stack_t *stack = g_thread_registry[i].stack;
+    if (thread_holds_mutex(stack, mutex_key)) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+/**
+ * @brief DFS-based cycle detection in the waits-for graph
+ * Returns cycle start index if found, -1 otherwise
+ * Fills cycle_path with indices of threads in the cycle (if found)
+ */
+#define MAX_CYCLE_LEN 64
+static int detect_cycle_dfs(int thread_count, int start_thread, int *cycle_path, int *cycle_len) {
+  int visited[MAX_THREADS];
+  int path[MAX_CYCLE_LEN];
+  int path_len = 0;
+
+  // Initialize visited array
+  for (int i = 0; i < MAX_THREADS; i++) {
+    visited[i] = -1; // -1 = not visited, >= 0 = index in path
+  }
+
+  // DFS starting from start_thread
+  int current = start_thread;
+  while (path_len < MAX_CYCLE_LEN && path_len < thread_count) {
+    if (current < 0 || current >= thread_count) {
+      break; // Invalid thread
+    }
+
+    // Check if current is already in path (cycle found!)
+    for (int i = 0; i < path_len; i++) {
+      if (path[i] == current) {
+        // Found a cycle! Extract the cycle portion
+        *cycle_len = path_len - i;
+        for (int j = 0; j < *cycle_len; j++) {
+          cycle_path[j] = path[i + j];
+        }
+        return i; // Return where the cycle starts
+      }
+    }
+
+    // Add current to path
+    path[path_len++] = current;
+
+    // Find next thread in the waits-for graph
+    thread_lock_stack_t *stack = g_thread_registry[current].stack;
+    uintptr_t waiting_for = thread_waiting_for_mutex(stack);
+
+    if (waiting_for == 0) {
+      break; // No waiting, path ends
+    }
+
+    // Find who holds the mutex we're waiting for
+    current = find_thread_holding_mutex(thread_count, waiting_for);
+  }
+
+  *cycle_len = 0;
+  return -1; // No cycle found
+}
+
+/**
+ * @brief Detect circular wait deadlocks using DFS-based cycle detection
  *
- * Detects both same-thread and multi-thread deadlock patterns:
+ * Detects both same-thread and multi-thread deadlock patterns of any length:
  *
  * Same-thread deadlock:
  * - Thread tries to acquire a mutex it already holds (recursive lock on non-recursive mutex)
  *
- * Multi-thread circular wait:
- * - Thread A holds mutex M1 and waits for M2
- * - Thread B holds M2 and waits for M1
- * This creates a cycle in the "waits-for" graph.
+ * Multi-thread circular wait (2-way, 3-way, N-way):
+ * - Uses DFS to detect cycles in the "waits-for" graph
+ * - Reports all threads involved in the cycle
  */
 void mutex_stack_detect_deadlocks(void) {
   mutex_stack_entry_t **all_stacks = NULL;
@@ -289,17 +355,13 @@ void mutex_stack_detect_deadlocks(void) {
     return;
   }
 
-  // mutex_stack_get_all_threads already holds the lock, so we access the registry
-  // directly. But we still need to ensure the lock is initialized for any internal
-  // use. This function just reads the registry without acquiring the lock again.
-
   // Check each thread for deadlock conditions
   for (int i = 0; i < thread_count && i < g_thread_registry_count; i++) {
     thread_lock_stack_t *stack_a = g_thread_registry[i].stack;
     uintptr_t waiting_for = thread_waiting_for_mutex(stack_a);
 
     if (waiting_for == 0)
-      continue; // Thread A not waiting
+      continue; // Thread not waiting
 
     // Same-thread deadlock: thread trying to acquire a mutex it already holds
     if (thread_holds_mutex(stack_a, waiting_for)) {
@@ -314,49 +376,66 @@ void mutex_stack_detect_deadlocks(void) {
       continue;
     }
 
-    // Multi-thread circular wait
-    for (int j = 0; j < thread_count && j < g_thread_registry_count; j++) {
-      if (i == j)
-        continue;
+    // Multi-thread circular wait: use DFS to detect cycles
+    int cycle_path[MAX_CYCLE_LEN];
+    int cycle_len = 0;
+    int cycle_start = detect_cycle_dfs(thread_count, i, cycle_path, &cycle_len);
 
-      thread_lock_stack_t *stack_b = g_thread_registry[j].stack;
-      if (!thread_holds_mutex(stack_b, waiting_for))
-        continue; // B doesn't hold it
+    if (cycle_start >= 0 && cycle_len > 1) {
+      // Cycle detected! Build the cycle description
+      log_error("\x1b[1;31m╔═══════════════════════════════════════════════════════════╗\x1b[0m");
+      log_error("\x1b[1;31m║      ⚠️  DEADLOCK DETECTED: Circular Wait Cycle  ⚠️     ║\x1b[0m");
+      log_error("\x1b[1;31m╚═══════════════════════════════════════════════════════════╝\x1b[0m");
+      log_error("");
 
-      // Check if B is waiting for something A holds
-      uintptr_t b_waiting_for = thread_waiting_for_mutex(stack_b);
-      if (b_waiting_for == 0)
-        continue; // B not waiting
+      // Print each thread in the cycle
+      for (int k = 0; k < cycle_len; k++) {
+        int thread_idx = cycle_path[k];
+        int next_thread_idx = cycle_path[(k + 1) % cycle_len];
 
-      if (thread_holds_mutex(stack_a, b_waiting_for)) {
-        // Circular wait detected!
-        char mutex_a_name[256] = "unknown";
-        char mutex_b_name[256] = "unknown";
+        thread_lock_stack_t *current_stack = g_thread_registry[thread_idx].stack;
+        thread_lock_stack_t *next_stack = g_thread_registry[next_thread_idx].stack;
 
-        const char *a_name = named_describe(waiting_for, "mutex");
-        const char *b_name = named_describe(b_waiting_for, "mutex");
+        uintptr_t current_waiting = thread_waiting_for_mutex(current_stack);
+        uintptr_t next_holding = 0;
 
-        if (a_name)
-          snprintf(mutex_a_name, sizeof(mutex_a_name), "%s", a_name);
-        if (b_name)
-          snprintf(mutex_b_name, sizeof(mutex_b_name), "%s", b_name);
+        // Find what mutex next_thread holds that current_thread wants
+        for (int j = 0; j < next_stack->depth; j++) {
+          if (next_stack->stack[j].mutex_key == current_waiting &&
+              next_stack->stack[j].state == MUTEX_STACK_STATE_LOCKED) {
+            next_holding = current_waiting;
+            break;
+          }
+        }
 
-        log_error("\x1b[1;31m╔═══════════════════════════════════════════════════════════╗\x1b[0m");
-        log_error("\x1b[1;31m║      ⚠️  DEADLOCK DETECTED: Circular Wait Cycle  ⚠️     ║\x1b[0m");
-        log_error("\x1b[1;31m╚═══════════════════════════════════════════════════════════╝\x1b[0m");
-        log_error("");
-        log_error("  \x1b[1;31mThread 1:\x1b[0m");
-        log_error("    Address:           0x%lx", (unsigned long)g_thread_registry[i].thread_id);
-        log_error("    Holds Mutex:       0x%lx (%s)", b_waiting_for, mutex_b_name);
-        log_error("    Waiting for:       0x%lx (%s)", waiting_for, mutex_a_name);
-        log_error("");
-        log_error("  \x1b[1;31mThread 2:\x1b[0m");
-        log_error("    Address:           0x%lx", (unsigned long)g_thread_registry[j].thread_id);
-        log_error("    Holds Mutex:       0x%lx (%s)", waiting_for, mutex_a_name);
-        log_error("    Waiting for:       0x%lx (%s)", b_waiting_for, mutex_b_name);
-        log_error("");
-        log_error("  Deadlock Cycle:    T1 holds %s, waits for %s", mutex_b_name, mutex_a_name);
-        log_error("                     T2 holds %s, waits for %s", mutex_a_name, mutex_b_name);
+        const char *mutex_name = named_describe(current_waiting, "mutex");
+        const char *held_by_name = "unknown";
+        if (next_stack->depth > 0) {
+          for (int j = 0; j < next_stack->depth; j++) {
+            if (next_stack->stack[j].state == MUTEX_STACK_STATE_LOCKED) {
+              held_by_name = next_stack->stack[j].mutex_name;
+              break;
+            }
+          }
+        }
+
+        log_error("  \x1b[1;31mThread %d:\x1b[0m", k + 1);
+        log_error("    Address:           0x%lx", (unsigned long)g_thread_registry[thread_idx].thread_id);
+        log_error("    Waiting for:       0x%lx (%s)", current_waiting, mutex_name ? mutex_name : "unknown");
+        log_error("    Held by Thread:    0x%lx", (unsigned long)g_thread_registry[next_thread_idx].thread_id);
+        if (k < cycle_len - 1) {
+          log_error("");
+        }
+      }
+
+      log_error("");
+      log_error("  Deadlock Cycle: ");
+      for (int k = 0; k < cycle_len; k++) {
+        int thread_idx = cycle_path[k];
+        thread_lock_stack_t *stack = g_thread_registry[thread_idx].stack;
+        uintptr_t waiting_for_mutex = thread_waiting_for_mutex(stack);
+        const char *mutex_name = named_describe(waiting_for_mutex, "mutex");
+        log_error("                  T%d waits for %s →", k + 1, mutex_name ? mutex_name : "?");
       }
     }
   }
