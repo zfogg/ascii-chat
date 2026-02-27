@@ -1141,9 +1141,12 @@ void debug_memory_report(void) {
             size_color = LOG_COLOR_WARN;
           }
 
-          // Print site summary with thread name (captured at site creation)
+          // Colorize thread name separately to avoid rotating buffer conflicts
+          const char *colored_thread_name = colorize_named_string(site->thread_name);
+
+          // Print site summary with thread name (captured at site creation, colorized)
           APPEND_REPORT("  - %s:%s  [%s]  %s live  %s total\n", colored_string(LOG_COLOR_GREY, file),
-                        colored_string(LOG_COLOR_FATAL, line_str), site->thread_name,
+                        colored_string(LOG_COLOR_FATAL, line_str), colored_thread_name,
                         colored_string(size_color, count_str), colored_string(size_color, pretty_bytes));
 
           // Don't synchronously symbolize backtraces during memory report - symbolization is slow
