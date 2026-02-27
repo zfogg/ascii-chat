@@ -278,16 +278,35 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
   }
 
   if (!grep_entering) {
-    // Normal mode: just print everything (screen was cleared)
+    // Normal mode: flush header from frame buffer first
+    frame_buffer_flush(g_frame_buf);
+
+    // Recalculate heights during rendering to match actual output
+    // (this mirrors the logic from the loop above but with actual line counts)
+    int total_output_lines = 0;
+
+    // Then print logs with proper spacing for multiline messages
     for (int i = first_log_to_display; i < (int)log_count; i++) {
-      fprintf(stdout, "%s\n", log_entries[i].message);
+      const char *msg = log_entries[i].message;
+      fprintf(stdout, "%s\n", msg);
+
+      // Account for messages that span multiple display lines
+      int lines_for_this = calculate_log_display_lines(msg, g_cached_term_size.cols);
+      if (lines_for_this > 1) {
+        // Output additional newlines to match the calculated line count
+        for (int j = 1; j < lines_for_this; j++) {
+          fprintf(stdout, "\n");
+        }
+      }
+      total_output_lines += lines_for_this;
     }
 
     // Fill remaining lines (use full log_area_rows)
-    int remaining = log_area_rows - total_lines_needed;
+    int remaining = log_area_rows - total_output_lines;
     for (int i = 0; i < remaining; i++) {
       fprintf(stdout, "\n");
     }
+    fflush(stdout);
   } else {
     // Grep mode: diff-based rendering. Only rewrite lines that changed.
     // Logs fill renderable_log_rows; the last row is the `/` input line.

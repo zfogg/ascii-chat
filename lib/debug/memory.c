@@ -1137,7 +1137,7 @@ void debug_memory_report(void) {
 
           // Print site summary with thread name (captured at site creation)
           APPEND_REPORT("  - %s:%s  [%s]  %s live  %s total\n", colored_string(LOG_COLOR_GREY, file),
-                        colored_string(LOG_COLOR_FATAL, line_str), site->thread_name,
+                        colored_string(LOG_COLOR_FATAL, line_str), colorize_named_string(site->thread_name),
                         colored_string(size_color, count_str), colored_string(size_color, pretty_bytes));
 
           // Don't synchronously symbolize backtraces during memory report - symbolization is slow

@@ -625,15 +625,6 @@ int splash_intro_start(session_display_ctx_t *ctx) {
   // This prevents any pre-splash logs from appearing in first frame
   session_log_buffer_clear();
 
-  // Redirect stderr to /dev/null during splash animation so logs don't flicker on screen.
-  // Logs are still captured in session_log_buffer and rendered by terminal_screen_render.
-  // Real-time stderr output would cause the header to jump and distort during animation.
-  g_splash_state.stderr_fd_saved = dup(STDERR_FILENO);
-  g_splash_state.devnull_fd = open("/dev/null", O_WRONLY);
-  if (g_splash_state.devnull_fd >= 0) {
-    dup2(g_splash_state.devnull_fd, STDERR_FILENO);
-  }
-
   // Set running flag
   log_debug("[SPLASH] Setting running flag and initializing state");
   atomic_store(&g_splash_state.is_running, true);
@@ -662,6 +653,16 @@ int splash_intro_start(session_display_ctx_t *ctx) {
   atomic_store(&g_splash_state.thread_created, true);
   log_debug("[SPLASH] Animation thread created successfully, thread_created=%d",
             atomic_load(&g_splash_state.thread_created));
+
+  // Redirect stderr to /dev/null during splash animation so logs don't flicker on screen.
+  // Logs are still captured in session_log_buffer and rendered by terminal_screen_render.
+  // Real-time stderr output would cause the header to jump and distort during animation.
+  // This happens AFTER thread creation so any errors are visible.
+  g_splash_state.stderr_fd_saved = dup(STDERR_FILENO);
+  g_splash_state.devnull_fd = open("/dev/null", O_WRONLY);
+  if (g_splash_state.devnull_fd >= 0) {
+    dup2(g_splash_state.devnull_fd, STDERR_FILENO);
+  }
 
   return 0; // ASCIICHAT_OK
 }

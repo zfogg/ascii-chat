@@ -66,6 +66,25 @@ int log_named_format_message(const char *message, char *output, size_t output_si
  */
 const char *log_named_format_or_original(const char *message);
 
+/**
+ * @brief Colorize a "type/name" string for display
+ * @param name_str String in "type/name" or "type/name.id" format
+ * @return Colorized string with ANSI codes: type(yellow)/name(blue)
+ * @ingroup logging
+ *
+ * Used by memory report and other displays to colorize named objects.
+ * Applies colors:
+ * - Type: yellow (LOG_COLOR_WARN)
+ * - Name: blue (LOG_COLOR_DEV)
+ * - Separator: uncolored
+ *
+ * Example: "thread/splash_anim.0" displays with type in yellow, name in blue
+ *
+ * @note Returns pointer to rotating static buffer (4 buffers)
+ * @note Safe to use in printf-style calls: "%s"
+ */
+const char *colorize_named_string(const char *name_str);
+
 #ifdef __cplusplus
 }
 #endif

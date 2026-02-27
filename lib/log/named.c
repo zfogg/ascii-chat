@@ -6,6 +6,11 @@
  * This module scans log message text for hex addresses (0x[0-9a-fA-F]+) and replaces
  * them with friendly descriptions from the named object registry when available.
  * For example, 0x7f1234567890 might become "mutex/recv_mutex.2 (0x7f1234567890)"
+ *
+ * Output is colorized for better readability:
+ * - Type name: yellow (LOG_COLOR_WARN)
+ * - Name: blue (LOG_COLOR_DEV)
+ * - ID value: grey (LOG_COLOR_GREY)
  */
 
 #include <string.h>
@@ -13,6 +18,8 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include "ascii-chat/debug/named.h"
+#include "ascii-chat/util/string.h"
+#include "ascii-chat/log/logging.h"
 
 /* Use a thread-local buffer to avoid allocations in the hot path */
 #define NAMED_FORMAT_BUFFER_SIZE (4096)
@@ -44,12 +51,13 @@ static bool is_registered_fd(int fd) {
  * @return true if preceded by fd/file/descriptor keywords
  */
 static bool has_fd_prefix(const char *start, const char *p) {
-  if (p == start) return false;  /* At beginning, no prefix */
+  if (p == start)
+    return false; /* At beginning, no prefix */
 
   const char *word_start = p - 1;
   /* Skip back over whitespace, '=', ':' */
-  while (word_start > start && (*word_start == ' ' || *word_start == '\t' ||
-                                 *word_start == '=' || *word_start == ':')) {
+  while (word_start > start &&
+         (*word_start == ' ' || *word_start == '\t' || *word_start == '=' || *word_start == ':')) {
     word_start--;
   }
 
@@ -60,7 +68,7 @@ static bool has_fd_prefix(const char *start, const char *p) {
     while (check > start && (isalnum(*check) || *check == '_')) {
       check--;
     }
-    check++;  /* Move back to start of word */
+    check++; /* Move back to start of word */
 
     size_t word_len = word_start - check + 1;
     if (word_len >= 2) {
@@ -106,23 +114,23 @@ int log_named_format_message(const char *message, char *output, size_t output_si
         const char *type = named_get_type(address);
 
         if (name && type) {
-          /* This is a registered named object - format it */
+          /* This is a registered named object - format it (plain text for logs) */
           const char *fmt_spec = named_get_format_spec(address);
           if (!fmt_spec) {
-              fmt_spec = "0x%tx";  /* Default format for addresses */
+            fmt_spec = "0x%tx"; /* Default format for addresses */
           }
 
-          /* Format: "type/name (formatted_value)" */
-          int written = snprintf(output + out_pos, output_size - out_pos, "%s/%s (", type, name);
-          if (written > 0 && (size_t)written < output_size - out_pos) {
-            out_pos += written;
-            /* Format the value using the registered format spec */
-            written = snprintf(output + out_pos, output_size - out_pos, fmt_spec, (ptrdiff_t)address);
-            if (written > 0 && (size_t)written < output_size - out_pos) {
-              out_pos += written;
-              /* Add closing paren */
-              if (out_pos + 1 < output_size) {
-                output[out_pos++] = ')';
+          /* Format: type/name (formatted_value) - plain text, colors added by memory report */
+          char temp_output[512];
+          char id_buffer[128];
+          int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, (ptrdiff_t)address);
+          if (id_written > 0 && id_written < (int)sizeof(id_buffer)) {
+            int temp_written = snprintf(temp_output, sizeof(temp_output), "%s/%s (%s)", type, name, id_buffer);
+            if (temp_written > 0 && (size_t)temp_written < sizeof(temp_output)) {
+              int copy_len = temp_written;
+              if (out_pos + copy_len < output_size - 1) {
+                memcpy(output + out_pos, temp_output, copy_len);
+                out_pos += copy_len;
                 any_transformed = true;
                 continue;
               }
@@ -147,33 +155,34 @@ int log_named_format_message(const char *message, char *output, size_t output_si
       int digit_count = 0;
 
       /* Parse decimal digits */
-      while (*p && isdigit(*p) && digit_count < 6) {  /* FDs rarely exceed 999999 */
+      while (*p && isdigit(*p) && digit_count < 6) { /* FDs rarely exceed 999999 */
         fd_value = fd_value * 10 + (*p - '0');
         p++;
         digit_count++;
       }
 
-      if (digit_count > 0 && is_registered_fd(fd_value) &&
-          has_fd_prefix(message, int_start)) {
-        /* This integer is a registered FD with appropriate prefix - format it */
+      if (digit_count > 0 && is_registered_fd(fd_value) && has_fd_prefix(message, int_start)) {
+        /* This integer is a registered FD with appropriate prefix - format it (plain text for logs) */
         const char *name = named_get(fd_value);
         const char *type = named_get_type(fd_value);
         const char *fmt_spec = named_get_format_spec(fd_value);
 
         if (!fmt_spec) {
-          fmt_spec = "%d";  /* Default format for FDs */
+          fmt_spec = "%d"; /* Default format for FDs */
         }
 
         if (name && type) {
-          /* Format: "fd/name (value)" */
-          int written = snprintf(output + out_pos, output_size - out_pos, "%s/%s (", type, name);
-          if (written > 0 && (size_t)written < output_size - out_pos) {
-            out_pos += written;
-            written = snprintf(output + out_pos, output_size - out_pos, fmt_spec, fd_value);
-            if (written > 0 && (size_t)written < output_size - out_pos) {
-              out_pos += written;
-              if (out_pos + 1 < output_size) {
-                output[out_pos++] = ')';
+          /* Format: type/name (value) - plain text, colors added by memory report */
+          char temp_output[512];
+          char id_buffer[64];
+          int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, fd_value);
+          if (id_written > 0 && id_written < (int)sizeof(id_buffer)) {
+            int temp_written = snprintf(temp_output, sizeof(temp_output), "%s/%s (%s)", type, name, id_buffer);
+            if (temp_written > 0 && (size_t)temp_written < sizeof(temp_output)) {
+              int copy_len = temp_written;
+              if (out_pos + copy_len < output_size - 1) {
+                memcpy(output + out_pos, temp_output, copy_len);
+                out_pos += copy_len;
                 any_transformed = true;
                 continue;
               }
@@ -227,4 +236,93 @@ const char *log_named_format_or_original(const char *message) {
   }
 
   return message;
+}
+
+/**
+ * @brief Colorize a "type/name (0xaddress)" string for display in memory reports
+ * @param name_str String in "type/name (0xaddress)" format (e.g., "thread/splash_anim.0 (0x7f123456)")
+ * @return Colorized string with ANSI codes: type(yellow)/name(blue) (id(grey))
+ *
+ * Used by memory report to colorize named object display.
+ * Returns a pointer to a static rotating buffer (4 buffers, valid until next call).
+ *
+ * Example: "thread/splash_anim.0 (0x7f123456)" displays with:
+ *   - "thread" in yellow
+ *   - "splash_anim.0" in blue
+ *   - "0x7f123456" in grey
+ */
+const char *colorize_named_string(const char *name_str) {
+#define COLORIZE_BUFFERS 4
+#define COLORIZE_BUFFER_SIZE 512
+  static char buffers[COLORIZE_BUFFERS][COLORIZE_BUFFER_SIZE];
+  static int buffer_idx = 0;
+
+  if (!name_str || name_str[0] == '\0') {
+    return name_str;
+  }
+
+  char *current_buf = buffers[buffer_idx];
+  buffer_idx = (buffer_idx + 1) % COLORIZE_BUFFERS;
+
+  /* Find the slash separator (type/name) */
+  const char *slash = strchr(name_str, '/');
+  if (!slash) {
+    /* No slash found - just return the string as-is */
+    return name_str;
+  }
+
+  /* Find opening paren for address */
+  const char *paren = strchr(name_str, '(');
+
+  /* Extract type (before slash) */
+  size_t type_len = slash - name_str;
+  char type_buf[256];
+  strncpy(type_buf, name_str, type_len < sizeof(type_buf) - 1 ? type_len : sizeof(type_buf) - 1);
+  type_buf[type_len] = '\0';
+
+  /* Extract name (between slash and paren, or end of string) */
+  const char *name_start = slash + 1;
+  size_t name_len;
+  if (paren && paren > slash) {
+    /* Skip spaces before paren */
+    const char *name_end = paren - 1;
+    while (name_end > name_start && *name_end == ' ') {
+      name_end--;
+    }
+    name_len = name_end - name_start + 1;
+  } else {
+    name_len = strlen(name_start);
+  }
+
+  char name_buf[256];
+  strncpy(name_buf, name_start, name_len < sizeof(name_buf) - 1 ? name_len : sizeof(name_buf) - 1);
+  name_buf[name_len] = '\0';
+
+  /* Apply colors */
+  const char *type_colored = colored_string(LOG_COLOR_WARN, type_buf);
+  const char *name_colored = colored_string(LOG_COLOR_DEV, name_buf);
+
+  /* Format: type(yellow)/name(blue) and add address part if present */
+  if (paren) {
+    /* Extract address (0x...) from parentheses */
+    const char *addr_start = paren + 1;
+    const char *addr_end = strchr(addr_start, ')');
+    if (addr_end) {
+      size_t addr_len = addr_end - addr_start;
+      char addr_buf[128];
+      strncpy(addr_buf, addr_start, addr_len < sizeof(addr_buf) - 1 ? addr_len : sizeof(addr_buf) - 1);
+      addr_buf[addr_len] = '\0';
+
+      const char *addr_colored = colored_string(LOG_COLOR_GREY, addr_buf);
+      safe_snprintf(current_buf, COLORIZE_BUFFER_SIZE, "%s/%s (%s)", type_colored, name_colored, addr_colored);
+    } else {
+      safe_snprintf(current_buf, COLORIZE_BUFFER_SIZE, "%s/%s %s", type_colored, name_colored, paren);
+    }
+  } else {
+    safe_snprintf(current_buf, COLORIZE_BUFFER_SIZE, "%s/%s", type_colored, name_colored);
+  }
+
+  return current_buf;
+#undef COLORIZE_BUFFERS
+#undef COLORIZE_BUFFER_SIZE
 }
