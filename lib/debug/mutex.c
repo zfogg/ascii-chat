@@ -477,7 +477,7 @@ void mutex_stack_detect_deadlocks(void) {
         uintptr_t current_waiting = thread_waiting_for_mutex(current_stack);
 
         msg_len +=
-            snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, "T%d: 0x%lx waits for 0x%lx (held by 0x%lx)%s",
+            snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, "  T%d: 0x%lx waits for 0x%lx (held by 0x%lx)%s",
                      k + 1, (unsigned long)g_thread_registry[thread_idx].thread_id, current_waiting,
                      (unsigned long)g_thread_registry[next_thread_idx].thread_id, k < cycle_len - 1 ? "\n" : "");
       }
