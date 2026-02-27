@@ -46,13 +46,17 @@ static bool is_registered_fd(int fd) {
 }
 
 /**
- * @brief Check if current position matches FD prefix pattern
+ * @brief Find the start of the fd/file/descriptor prefix before a position
+ * @param start Start of string
  * @param p Current position in string
- * @return true if preceded by fd/file/descriptor keywords
+ * @return Pointer to start of prefix (fd/file/descriptor), or p if no prefix found
+ *
+ * Walks backwards from position p to find fd/file/descriptor keyword.
+ * Returns pointer to the first character of the keyword.
  */
-static bool has_fd_prefix(const char *start, const char *p) {
+static const char *find_fd_prefix_start(const char *start, const char *p) {
   if (p == start)
-    return false; /* At beginning, no prefix */
+    return p;
 
   const char *word_start = p - 1;
   /* Skip back over whitespace, '=', ':' */
@@ -75,12 +79,21 @@ static bool has_fd_prefix(const char *start, const char *p) {
       if ((word_len == 2 && strncasecmp(check, "fd", 2) == 0) ||
           (word_len == 4 && strncasecmp(check, "file", 4) == 0) ||
           (word_len == 10 && strncasecmp(check, "descriptor", 10) == 0)) {
-        return true;
+        return check; /* Return start of keyword */
       }
     }
   }
 
-  return false;
+  return p; /* No prefix found, return original position */
+}
+
+/**
+ * @brief Check if current position matches FD prefix pattern
+ * @param p Current position in string
+ * @return true if preceded by fd/file/descriptor keywords
+ */
+static bool has_fd_prefix(const char *start, const char *p) {
+  return find_fd_prefix_start(start, p) != p;
 }
 
 int log_named_format_message(const char *message, char *output, size_t output_size) {
@@ -179,6 +192,15 @@ int log_named_format_message(const char *message, char *output, size_t output_si
           if (id_written > 0 && id_written < (int)sizeof(id_buffer)) {
             int temp_written = snprintf(temp_output, sizeof(temp_output), "%s/%s (fd=%s)", type, name, id_buffer);
             if (temp_written > 0 && (size_t)temp_written < sizeof(temp_output)) {
+              /* Find where prefix starts in original message, calculate how much to skip */
+              const char *prefix_start = find_fd_prefix_start(message, int_start);
+              size_t prefix_len = int_start - prefix_start; /* Length of prefix in original message */
+
+              /* Backtrack in output buffer to remove the prefix we already copied */
+              if (out_pos >= prefix_len) {
+                out_pos -= prefix_len;
+              }
+
               int copy_len = temp_written;
               if (out_pos + copy_len < output_size - 1) {
                 memcpy(output + out_pos, temp_output, copy_len);

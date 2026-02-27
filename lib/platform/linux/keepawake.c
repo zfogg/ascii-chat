@@ -7,6 +7,7 @@
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/debug/named.h>
 #include <unistd.h>
 
 #ifdef HAVE_LIBSYSTEMD
@@ -74,6 +75,9 @@ asciichat_error_t platform_enable_keepawake(void) {
   sd_bus_error_free(&error);
   sd_bus_unref(bus);
 
+  // Register the inhibit fd with the named registry for debug logging
+  NAMED_REGISTER_FD(g_inhibit_fd, "inhibit");
+
   log_debug("Keepawake enabled via systemd-inhibit (fd: %d)", g_inhibit_fd);
   return ASCIICHAT_OK;
 
@@ -89,6 +93,8 @@ void platform_disable_keepawake(void) {
   if (g_inhibit_fd >= 0) {
     close(g_inhibit_fd);
     log_debug("Keepawake disabled (closed inhibit fd: %d)", g_inhibit_fd);
+    // Unregister from named registry after logging
+    NAMED_UNREGISTER_FD(g_inhibit_fd);
     g_inhibit_fd = -1;
   }
 #endif
