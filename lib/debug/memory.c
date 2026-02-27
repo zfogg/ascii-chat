@@ -41,6 +41,7 @@ typedef struct mem_block {
   char file[BUFFER_SIZE_SMALL];
   int line;
   uint64_t tid;           // Allocating thread ID (for site lookup)
+  char thread_name[256];  // Thread name from named registry
   bool is_aligned;
   struct mem_block *next;
 } mem_block_t;
@@ -52,6 +53,7 @@ typedef struct alloc_site {
   size_t live_bytes;                // Live bytes from this site
   size_t total_count;               // Total ever allocated from this site
   backtrace_t backtrace;            // Captured+symbolized once on first alloc from site
+  char thread_name[256];            // Thread name for this site (cached at first alloc)
   UT_hash_handle hh;
 } alloc_site_t;
 
@@ -146,6 +148,19 @@ static bool acquire_mutex_with_polling(mutex_t *mutex, int timeout_ms) {
   return false; // Timeout
 }
 
+// Helper: Capture thread name from named registry
+static void capture_thread_name(uint64_t tid, char *thread_name_buf, size_t buf_size) {
+  // Try to look up thread name from registry using the tid directly
+  const char *name = named_get((uintptr_t)tid);
+  if (name) {
+    // Found a registered name, format it with the type
+    safe_snprintf(thread_name_buf, buf_size, "thread/%s (0x%lx)", name, tid);
+  } else {
+    // Not registered - just show hex tid
+    safe_snprintf(thread_name_buf, buf_size, "0x%lx", tid);
+  }
+}
+
 static bool should_ignore_allocation(const char *file, int line, uint64_t tid, size_t size) {
   // file is already the normalized relative path from curr->file
   // (set during debug_malloc/debug_calloc using extract_project_relative_path)
@@ -228,6 +243,9 @@ static alloc_site_t *get_or_create_site(const char *file, int line) {
   // Capture backtrace addresses only (fast)
   // Symbolization is deferred to exit time (memory report) to avoid 50ms+ per site during startup
   backtrace_capture(&site->backtrace);
+
+  // Capture thread name at site creation time
+  capture_thread_name(tid, site->thread_name, sizeof(site->thread_name));
 
   // Add to hash table
   HASH_ADD_STR(g_site_cache, key, site);
@@ -325,6 +343,7 @@ void *debug_malloc(size_t size, const char *file, int line) {
       SAFE_STRNCPY(block->file, normalized_file, sizeof(block->file) - 1);
       block->line = line;
       block->tid = asciichat_thread_current_id();
+      capture_thread_name(block->tid, block->thread_name, sizeof(block->thread_name));
       block->next = g_mem.head;
       g_mem.head = block;
 
@@ -384,6 +403,7 @@ void debug_track_aligned(void *ptr, size_t size, const char *file, int line) {
       SAFE_STRNCPY(block->file, normalized_file, sizeof(block->file) - 1);
       block->line = line;
       block->tid = asciichat_thread_current_id();
+      capture_thread_name(block->tid, block->thread_name, sizeof(block->thread_name));
       block->next = g_mem.head;
       g_mem.head = block;
 
@@ -530,6 +550,7 @@ void *debug_calloc(size_t count, size_t size, const char *file, int line) {
       SAFE_STRNCPY(block->file, normalized_file, sizeof(block->file) - 1);
       block->line = line;
       block->tid = asciichat_thread_current_id();
+      capture_thread_name(block->tid, block->thread_name, sizeof(block->thread_name));
       block->next = g_mem.head;
       g_mem.head = block;
 
@@ -1093,23 +1114,11 @@ void debug_memory_report(void) {
             size_color = LOG_COLOR_WARN;
           }
 
-          // Get thread name from registered threads, fallback to hex tid if not registered
-          const char *thread_desc = named_describe((uintptr_t)tid, "thread");
-          char tid_str[256];
-          // If named_describe returns just "thread (0x...)" with no name part, use simpler format
-          if (strstr(thread_desc, " (0x") != NULL && strstr(thread_desc, "/") == NULL) {
-            // No slash means it's "thread (0x...)" format - thread is not registered, simplify it
-            safe_snprintf(tid_str, sizeof(tid_str), "0x%lx", tid);
-          } else {
-            // Use the full description if it has a registered name
-            safe_snprintf(tid_str, sizeof(tid_str), "%s", thread_desc);
-          }
-
-          // Print site summary
+          // Print site summary with thread name (captured at site creation)
           APPEND_REPORT("  - %s:%s  [%s]  %s live  %s total\n",
                        colored_string(LOG_COLOR_GREY, file),
                        colored_string(LOG_COLOR_FATAL, line_str),
-                       tid_str,
+                       site->thread_name,
                        colored_string(size_color, count_str),
                        colored_string(size_color, pretty_bytes));
 
