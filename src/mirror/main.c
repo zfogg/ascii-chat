@@ -208,6 +208,8 @@
 #include "session/keyboard_handler.h"
 #include <ascii-chat/log/logging.h>
 #include <unistd.h>
+#include <string.h>
+#include <stdint.h>
 
 /* ============================================================================
  * Mode-Specific Keyboard Handler
@@ -268,15 +270,16 @@ static asciichat_error_t mirror_run(session_capture_ctx_t *capture, session_disp
  * Deadlock Test Code
  * ============================================================================ */
 
-static mutex_t g_test_mutex_a, g_test_mutex_b;
+static mutex_t g_test_mutex_a, g_test_mutex_b, g_test_mutex_c;
 
+// 2-way deadlock: Thread A ↔ Thread B
 static void *test_thread_a(void *arg) {
   (void)arg;
   log_info("TEST DEADLOCK: Thread A acquiring mutex_a");
   mutex_lock(&g_test_mutex_a);
-  log_info("TEST DEADLOCK: Thread A got mutex_a, sleeping 1s");
+  log_info("TEST DEADLOCK: Thread A got mutex_a (0x%lx), sleeping 1s", (uintptr_t)&g_test_mutex_a);
   sleep(1);
-  log_info("TEST DEADLOCK: Thread A trying to acquire mutex_b (will deadlock)");
+  log_info("TEST DEADLOCK: Thread A trying to acquire mutex_b (0x%lx) - will deadlock", (uintptr_t)&g_test_mutex_b);
   mutex_lock(&g_test_mutex_b); // Will block forever
   log_info("TEST DEADLOCK: Thread A got both (should never reach)");
   mutex_unlock(&g_test_mutex_b);
@@ -289,13 +292,55 @@ static void *test_thread_b(void *arg) {
   usleep(500000); // Let thread A go first (500ms)
   log_info("TEST DEADLOCK: Thread B acquiring mutex_b");
   mutex_lock(&g_test_mutex_b);
-  log_info("TEST DEADLOCK: Thread B got mutex_b, sleeping 500ms");
+  log_info("TEST DEADLOCK: Thread B got mutex_b (0x%lx), sleeping 500ms", (uintptr_t)&g_test_mutex_b);
   usleep(500000);
-  log_info("TEST DEADLOCK: Thread B trying to acquire mutex_a (will deadlock)");
+  log_info("TEST DEADLOCK: Thread B trying to acquire mutex_a (0x%lx) - will deadlock", (uintptr_t)&g_test_mutex_a);
   mutex_lock(&g_test_mutex_a); // Will block forever
   log_info("TEST DEADLOCK: Thread B got both (should never reach)");
   mutex_unlock(&g_test_mutex_a);
   mutex_unlock(&g_test_mutex_b);
+  return NULL;
+}
+
+// 3-way deadlock: Thread A → B → C → A (only used when ASCII_CHAT_TEST_DEADLOCK_3WAY is set)
+static void *test_thread_a_3way(void *arg) {
+  (void)arg;
+  log_info("TEST DEADLOCK 3-WAY: Thread A acquiring mutex_a");
+  mutex_lock(&g_test_mutex_a);
+  log_info("TEST DEADLOCK 3-WAY: Thread A got mutex_a (0x%lx)", (uintptr_t)&g_test_mutex_a);
+  sleep(1);
+  log_info("TEST DEADLOCK 3-WAY: Thread A waiting for mutex_b (0x%lx) - will form cycle", (uintptr_t)&g_test_mutex_b);
+  mutex_lock(&g_test_mutex_b);
+  mutex_unlock(&g_test_mutex_b);
+  mutex_unlock(&g_test_mutex_a);
+  return NULL;
+}
+
+static void *test_thread_b_3way(void *arg) {
+  (void)arg;
+  usleep(300000); // Let thread A acquire mutex_a first
+  log_info("TEST DEADLOCK 3-WAY: Thread B acquiring mutex_b");
+  mutex_lock(&g_test_mutex_b);
+  log_info("TEST DEADLOCK 3-WAY: Thread B got mutex_b (0x%lx)", (uintptr_t)&g_test_mutex_b);
+  usleep(300000);
+  log_info("TEST DEADLOCK 3-WAY: Thread B waiting for mutex_c (0x%lx) - will form cycle", (uintptr_t)&g_test_mutex_c);
+  mutex_lock(&g_test_mutex_c);
+  mutex_unlock(&g_test_mutex_c);
+  mutex_unlock(&g_test_mutex_b);
+  return NULL;
+}
+
+static void *test_thread_c_3way(void *arg) {
+  (void)arg;
+  usleep(600000); // Let A and B start
+  log_info("TEST DEADLOCK 3-WAY: Thread C acquiring mutex_c");
+  mutex_lock(&g_test_mutex_c);
+  log_info("TEST DEADLOCK 3-WAY: Thread C got mutex_c (0x%lx)", (uintptr_t)&g_test_mutex_c);
+  usleep(300000);
+  log_info("TEST DEADLOCK 3-WAY: Thread C waiting for mutex_a (0x%lx) - CYCLE COMPLETE", (uintptr_t)&g_test_mutex_a);
+  mutex_lock(&g_test_mutex_a); // Closes the cycle: C waits for A
+  mutex_unlock(&g_test_mutex_a);
+  mutex_unlock(&g_test_mutex_c);
   return NULL;
 }
 
@@ -315,7 +360,8 @@ static void *test_thread_b(void *arg) {
  */
 int mirror_main(void) {
   // Test deadlock detection if env var is set
-  if (getenv("ASCII_CHAT_TEST_DEADLOCK")) {
+  const char *deadlock_mode = getenv("ASCII_CHAT_TEST_DEADLOCK");
+  if (deadlock_mode) {
     fprintf(stderr, "\n========================================\n");
     fprintf(stderr, "DEADLOCK TEST MODE ENABLED\n");
     fprintf(stderr, "========================================\n");
@@ -324,15 +370,30 @@ int mirror_main(void) {
     // Initialize test mutexes for deadlock demonstration
     mutex_init(&g_test_mutex_a, "test_mutex_a");
     mutex_init(&g_test_mutex_b, "test_mutex_b");
+    mutex_init(&g_test_mutex_c, "test_mutex_c");
 
-    // Create deadlock threads
-    asciichat_thread_t tid_a, tid_b;
-    log_info("Creating deadlock test threads...");
-    asciichat_thread_create(&tid_a, "test_deadlock_a", test_thread_a, NULL);
-    asciichat_thread_create(&tid_b, "test_deadlock_b", test_thread_b, NULL);
+    // Check for 3-way mode
+    bool use_3way = (strcmp(deadlock_mode, "3way") == 0);
 
-    fprintf(stderr, "Test deadlock threads created\n");
-    fprintf(stderr, "Deadlock will form in 2-3 seconds\n");
+    if (use_3way) {
+      fprintf(stderr, "Mode: 3-way deadlock (A→B→C→A)\n");
+      fprintf(stderr, "Deadlock will form around second 2-4\n");
+      asciichat_thread_t tid_a, tid_b, tid_c;
+      log_info("Creating 3-way deadlock test threads...");
+      asciichat_thread_create(&tid_a, "test_deadlock_a", test_thread_a_3way, NULL);
+      asciichat_thread_create(&tid_b, "test_deadlock_b", test_thread_b_3way, NULL);
+      asciichat_thread_create(&tid_c, "test_deadlock_c", test_thread_c_3way, NULL);
+    } else {
+      fprintf(stderr, "Mode: 2-way deadlock (A↔B)\n");
+      fprintf(stderr, "Deadlock will form around second 2\n");
+      // Create 2-way deadlock threads
+      asciichat_thread_t tid_a, tid_b;
+      log_info("Creating 2-way deadlock test threads...");
+      asciichat_thread_create(&tid_a, "test_deadlock_a", test_thread_a, NULL);
+      asciichat_thread_create(&tid_b, "test_deadlock_b", test_thread_b, NULL);
+    }
+
+    fprintf(stderr, "Threads created\n");
     fprintf(stderr, "Use: kill -SIGUSR1 <pid> to dump state\n");
     fprintf(stderr, "========================================\n\n");
     fflush(stderr);
