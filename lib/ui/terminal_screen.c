@@ -160,6 +160,9 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     return;
   }
 
+  fprintf(stderr, "[RENDER_CALLED] show_logs=%d fixed_header_lines=%d\n", config->show_logs,
+          config->fixed_header_lines);
+
   // Ensure cursor is visible for log-only UI (splash, status screens)
   (void)terminal_cursor_show();
 
@@ -219,8 +222,11 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
 
   // Calculate log area: total rows - header lines - 1 (prevent scroll)
   int log_area_rows = g_cached_term_size.rows - config->fixed_header_lines - 1;
+  fprintf(stderr, "[LOG_AREA_CALC] rows=%d header=%d log_area_rows=%d\n", g_cached_term_size.rows,
+          config->fixed_header_lines, log_area_rows);
 
   if (log_area_rows <= 0) {
+    fprintf(stderr, "[EARLY_RETURN_LOG_AREA] log_area_rows=%d\n", log_area_rows);
     if (grep_entering) {
       interactive_grep_render_input_line(g_cached_term_size.cols);
     }
@@ -259,6 +265,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
   // Calculate which logs fit (working backwards from most recent).
   // Use renderable_log_rows so that entering grep mode doesn't change
   // which logs are selected - only the bottom line changes from log to input.
+  fprintf(stderr, "[BEFORE_CALC] log_count=%zu log_area_rows=%d\n", log_count, log_area_rows);
   int total_lines_needed = 0;
   int first_log_to_display = (log_count > 0) ? (int)log_count - 1 : 0;
 
@@ -277,36 +284,39 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     first_log_to_display = i;
   }
 
+  // Log calculated height after computing which logs fit
+  int calculated_total_height = total_lines_needed + (log_area_rows - total_lines_needed);
+  fprintf(stderr,
+          "[CALC_HEIGHT] terminal=%dx%d header=%d log_area_rows=%d total_lines_needed=%d calculated_height=%d\n",
+          g_cached_term_size.cols, g_cached_term_size.rows, config->fixed_header_lines, log_area_rows,
+          total_lines_needed, calculated_total_height);
+
   if (!grep_entering) {
     // Normal mode: flush header from frame buffer first
     frame_buffer_flush(g_frame_buf);
 
-    // Recalculate heights during rendering to match actual output
-    // (this mirrors the logic from the loop above but with actual line counts)
-    int total_output_lines = 0;
-
-    // Then print logs with proper spacing for multiline messages
+    // Output only the logs that fit (don't add extra newlines for wrapping)
+    int logs_output = 0;
     for (int i = first_log_to_display; i < (int)log_count; i++) {
       const char *msg = log_entries[i].message;
-      fprintf(stdout, "%s\n", msg);
-
-      // Account for messages that span multiple display lines
-      int lines_for_this = calculate_log_display_lines(msg, g_cached_term_size.cols);
-      if (lines_for_this > 1) {
-        // Output additional newlines to match the calculated line count
-        for (int j = 1; j < lines_for_this; j++) {
-          fprintf(stdout, "\n");
-        }
-      }
-      total_output_lines += lines_for_this;
+      log_info("%s", msg);
+      logs_output++;
     }
 
-    // Fill remaining lines (use full log_area_rows)
-    int remaining = log_area_rows - total_output_lines;
+    // Fill remaining lines with blank lines
+    int remaining = log_area_rows - total_lines_needed;
     for (int i = 0; i < remaining; i++) {
-      fprintf(stdout, "\n");
+      log_info("");
     }
-    fflush(stdout);
+
+    // Log actual height verification for debugging
+    int actual_height = logs_output + remaining;
+    fprintf(stderr,
+            "[ACTUAL_HEIGHT] terminal=%dx%d logs_output=%d remaining=%d actual_height=%d log_area_rows=%d | "
+            "MATCH_CALC=%s MATCH_LOG_AREA=%s CONSTANT=%s\n",
+            g_cached_term_size.cols, g_cached_term_size.rows, logs_output, remaining, actual_height, log_area_rows,
+            (actual_height == calculated_total_height ? "YES" : "NO"), (actual_height == log_area_rows ? "YES" : "NO"),
+            (actual_height == calculated_total_height && actual_height == log_area_rows ? "YES" : "NO"));
   } else {
     // Grep mode: diff-based rendering. Only rewrite lines that changed.
     // Logs fill renderable_log_rows; the last row is the `/` input line.
