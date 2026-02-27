@@ -517,15 +517,9 @@ static void *splash_animation_thread(void *arg) {
     // Render the screen (header + logs) only in interactive mode
     // OR if splash screen was explicitly requested
     // In non-interactive mode without explicit flag, logs flow to stdout/stderr normally
-    if (!first_frame) {
-      log_debug("[SPLASH_ANIM] Frame %d: About to render", frame);
-    }
     const options_t *opts_render = options_get();
     bool should_render = terminal_is_interactive() || (opts_render && opts_render->splash_screen_explicitly_set);
     if (should_render) {
-      if (!first_frame) {
-        log_debug("[SPLASH_ANIM] Frame %d: Calling terminal_screen_render()", frame);
-      }
       terminal_screen_render(&screen_config);
       if (!first_frame) {
         log_debug("[SPLASH_ANIM] Frame %d: terminal_screen_render() completed", frame);
