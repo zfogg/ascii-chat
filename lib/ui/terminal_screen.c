@@ -80,6 +80,66 @@ static terminal_size_t g_cached_term_size = {.rows = 24, .cols = 80};
 static uint64_t g_last_term_size_check_us = 0;
 #define TERM_SIZE_CHECK_INTERVAL_US US_PER_SEC_INT // Check terminal size max once per second
 
+/**
+ * @brief Calculate display lines needed for a log message, accounting for newlines and width wrapping
+ *
+ * Handles:
+ * - Multiline messages with embedded newlines
+ * - Width-based wrapping when a line exceeds terminal width
+ * - ANSI escape sequences that don't count toward display width
+ */
+static int calculate_log_display_lines(const char *msg, int term_width) {
+  if (!msg || term_width <= 0) {
+    return 1;
+  }
+
+  int total_lines = 0;
+  const char *line_start = msg;
+
+  // Process message line by line (split by \n)
+  while (*line_start != '\0') {
+    // Find end of current line
+    const char *line_end = strchr(line_start, '\n');
+    if (!line_end) {
+      line_end = line_start + strlen(line_start);
+    }
+
+    // Calculate display width of this line segment
+    int line_length = (int)(line_end - line_start);
+    char *line_segment = SAFE_MALLOC(line_length + 1, char *);
+    if (!line_segment) {
+      return 1; // Fallback
+    }
+
+    memcpy(line_segment, line_start, line_length);
+    line_segment[line_length] = '\0';
+
+    int segment_display_width = display_width(line_segment);
+    if (segment_display_width <= 0) {
+      // If display_width fails, assume the line is single-width as fallback
+      segment_display_width = 1;
+    }
+
+    // Account for width wrapping
+    int lines_in_segment = 1;
+    if (term_width > 0 && segment_display_width > term_width) {
+      lines_in_segment = (segment_display_width + term_width - 1) / term_width;
+    }
+
+    total_lines += lines_in_segment;
+    SAFE_FREE(line_segment);
+
+    // Move to next line
+    if (*line_end == '\n') {
+      line_start = line_end + 1;
+    } else {
+      break;
+    }
+  }
+
+  return total_lines > 0 ? total_lines : 1;
+}
+
 // Cache of previously rendered log lines for diff-based rendering.
 // Only rewrite lines whose content actually changed.
 #define MAX_CACHED_LINES 256
@@ -193,15 +253,9 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
 
   for (int i = (int)log_count - 1; i >= 0; i--) {
     const char *msg = log_entries[i].message;
-    int msg_display_width = display_width(msg);
-    if (msg_display_width < 0) {
-      msg_display_width = (int)strlen(msg);
-    }
 
-    int lines_for_this_log = 1;
-    if (g_cached_term_size.cols > 0 && msg_display_width > g_cached_term_size.cols) {
-      lines_for_this_log = (msg_display_width + g_cached_term_size.cols - 1) / g_cached_term_size.cols;
-    }
+    // Calculate display lines properly handling multiline messages and width wrapping
+    int lines_for_this_log = calculate_log_display_lines(msg, g_cached_term_size.cols);
 
     if (total_lines_needed + lines_for_this_log > renderable_log_rows) {
       first_log_to_display = i + 1;
