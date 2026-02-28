@@ -515,6 +515,11 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     }
   }
 
+  // Ensure frame buffer with header is flushed (either in normal mode above, or here for grep mode)
+  if (grep_entering) {
+    frame_buffer_flush(g_frame_buf);
+  }
+
   SAFE_FREE(log_entries);
 }
 
