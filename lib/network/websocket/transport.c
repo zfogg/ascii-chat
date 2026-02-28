@@ -654,8 +654,8 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   uint64_t last_fragment_ns = assembly_start_ns;
   int fragment_count = 0;
   const uint64_t MAX_REASSEMBLY_TIME_NS = 10000 * 1000000ULL; // 10 second max - prevent infinite waits
-  const uint64_t FRAGMENT_WAIT_TIMEOUT_NS =
-      50 * 1000000ULL; // 50ms: return partial messages quickly to avoid connection timeout
+  // REMOVED: FRAGMENT_WAIT_TIMEOUT_NS was causing incomplete frames to be returned
+  // Handlers expect complete frames with final=1, not partial buffers
 
   while (true) {
     // Wait for fragment if queue is empty (with short timeout)
@@ -663,19 +663,17 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
       uint64_t elapsed_ns = time_get_ns() - assembly_start_ns;
       uint64_t since_last_frag_ns = time_get_ns() - last_fragment_ns;
 
-      // Return partial message if we've been waiting 500ms with no new fragments
-      // This prevents blocking the handler thread during connection idle timeouts
+      // CRITICAL FIX: Do NOT return partial frames!
+      // Frame handlers (acip_server_on_image_frame) expect complete frames with final=1
+      // Returning incomplete frames causes heap-buffer-overflow when handler memcpys data
+      // The 50ms timeout was causing incomplete frames to be returned, breaking frame handling
+      // Comment out the early return - wait for final fragment or max timeout
+      /*
       if (assembled_size > 0 && since_last_frag_ns > FRAGMENT_WAIT_TIMEOUT_NS) {
-        log_info(
-            "[WS_REASSEMBLE] Returning partial message after %.0fms (got %d fragments, %zu bytes, waiting for final)",
-            (double)since_last_frag_ns / 1000000.0, fragment_count, assembled_size);
-        // Return what we have - caller will queue partial message back if needed
-        *buffer = assembled_buffer;
-        *out_len = assembled_size;
-        *out_allocated_buffer = assembled_buffer;
-        mutex_unlock(&ws_data->recv_mutex);
-        return ASCIICHAT_OK;
+        log_info("[WS_REASSEMBLE] Would return partial message after %.0fms, but waiting for final fragment",
+                 (double)since_last_frag_ns / 1000000.0);
       }
+      */
 
       if (elapsed_ns > MAX_REASSEMBLY_TIME_NS) {
         // Timeout - return error instead of partial fragments
