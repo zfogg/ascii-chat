@@ -577,6 +577,10 @@ static asciichat_error_t client_run(session_capture_ctx_t *capture, session_disp
   protocol_stop_connection();
   server_connection_close();
 
+  // Clear transport reference from connection context since server_connection_close() already destroyed it
+  // This prevents double-free when connection_context_cleanup() is called below
+  g_client_session.connection_ctx.active_transport = NULL;
+
   // Recreate thread pool for clean reconnection
   if (g_client_worker_pool) {
     thread_pool_destroy(g_client_worker_pool);
