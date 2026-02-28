@@ -840,6 +840,11 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   info.extensions = NULL;                              // Disable permessage-deflate - causing connection issues
   info.retry_and_idle_policy = &keep_alive_policy; // Configure keep-alive to prevent idle disconnects during handshake
 
+  // Increase per-thread service buffer to prevent fragmentation of large messages
+  // Default is 4KB, causing 291KB frames to fragment into 74 × 4KB chunks
+  // Increase to 512KB to allow larger WebSocket frames without fragmentation
+  info.pt_serv_buf_size = 512 * 1024; // 512KB per-thread service buffer
+
   // TCP-level keep-alive: detect dead connections quickly
   // Enabled after ka_time seconds of idle, probe every ka_interval seconds, give up after ka_probes attempts
   info.ka_time = 10;     // Wait 10 seconds before first keep-alive probe on idle TCP connection
@@ -847,7 +852,7 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   info.ka_interval = 10; // Wait 10 seconds between probes
 
   // HTTP connection keep-alive timeout (for connections before WebSocket upgrade)
-  info.keepalive_timeout = 60; // Allow 60 seconds for HTTP to WebSocket upgrade
+  info.keepalive_timeout = 0; // Disable default HTTP keep-alive timeout - use retry_and_idle_policy instead
 
   // Create libwebsockets context
   server->context = lws_create_context(&info);
