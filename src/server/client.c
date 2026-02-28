@@ -2812,11 +2812,12 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
       uint32_t width_net = HOST_TO_NET_U32(header->width);
       uint32_t height_net = HOST_TO_NET_U32(header->height);
       size_t total_size = sizeof(uint32_t) * 2 + data_len;
+      size_t max_allowed = client->incoming_video_buffer->allocated_buffer_size;
 
-      log_info("STORE_FRAME_DATA: total_size=%zu, max_allowed=2097152, fits=%d", total_size,
-               total_size <= 2 * 1024 * 1024);
+      log_info("STORE_FRAME_DATA: total_size=%zu, max_allowed=%zu, fits=%d", total_size, max_allowed,
+               total_size <= max_allowed);
 
-      if (total_size <= 2 * 1024 * 1024) { // Max 2MB
+      if (total_size <= max_allowed) {
         memcpy(frame->data, &width_net, sizeof(uint32_t));
         memcpy((char *)frame->data + sizeof(uint32_t), &height_net, sizeof(uint32_t));
         memcpy((char *)frame->data + sizeof(uint32_t) * 2, pixel_data, data_len);
@@ -2829,7 +2830,7 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
         log_info("FRAME_COMMITTED: client_id=%s, seq=%u, size=%zu hash=0x%08x", client->client_id,
                  frame->sequence_number, total_size, incoming_pixel_hash);
       } else {
-        log_warn("FRAME_TOO_LARGE: client_id=%s, size=%zu > max 2MB", client->client_id, total_size);
+        log_warn("FRAME_TOO_LARGE: client_id=%s, size=%zu > max %zu", client->client_id, total_size, max_allowed);
       }
     } else {
       log_warn("STORE_FRAME_FAILED: frame_ptr=%p, frame->data=%p, data_len=%zu", (void *)frame,
