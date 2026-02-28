@@ -756,6 +756,8 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
       (void)terminal_clear_screen();  // Clear AFTER splash thread exits to avoid log overlap
       (void)terminal_cursor_home(STDOUT_FILENO);
       (void)terminal_clear_scrollback(STDOUT_FILENO);
+      // Ensure cursor is visible after splash before hiding it for rendering
+      (void)terminal_cursor_show();
       if (!ctx->snapshot_mode) {
         (void)terminal_cursor_hide();
       }
