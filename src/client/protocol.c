@@ -1101,8 +1101,11 @@ int protocol_start_connection() {
  * @ingroup client_protocol
  */
 void protocol_stop_connection() {
+  log_debug("[PROTOCOL_STOP] 1. Starting protocol_stop_connection");
+
   // In snapshot mode, protocol threads were never started, so nothing to stop
   if (GET_OPTION(snapshot_mode)) {
+    log_debug("[PROTOCOL_STOP] Snapshot mode, returning early");
     return;
   }
 
@@ -1111,26 +1114,36 @@ void protocol_stop_connection() {
 
   // Shutdown the socket FIRST to interrupt any blocking network operations in worker threads
   // This must happen BEFORE audio_stop_thread() so audio sender thread unblocks from network send
+  log_debug("[PROTOCOL_STOP] 2. About to call server_connection_shutdown");
   server_connection_shutdown();
+  log_debug("[PROTOCOL_STOP] 3. server_connection_shutdown() returned");
 
   // Signal audio sender thread to exit
   // Must happen after socket shutdown so any blocked network calls fail
   // Audio sender is created in ALL modes except snapshot mode
+  log_debug("[PROTOCOL_STOP] 4. About to call audio_stop_thread");
   audio_stop_thread();
+  log_debug("[PROTOCOL_STOP] 5. audio_stop_thread() returned");
 
   // Early return if data thread was never created (e.g., mirror mode)
   // In mirror mode, we only need to stop the audio sender (done above)
   if (!g_data_thread_created) {
+    log_debug("[PROTOCOL_STOP] 6. Data thread not created, returning");
     return;
   }
 
   // Stop keepalive/ping thread - it checks connection status and will exit
+  log_debug("[PROTOCOL_STOP] 7. About to call keepalive_stop_thread");
   keepalive_stop_thread();
+  log_debug("[PROTOCOL_STOP] 8. keepalive_stop_thread() returned");
 
   // Stop webcam capture thread
+  log_debug("[PROTOCOL_STOP] 9. About to call capture_stop_thread");
   capture_stop_thread();
+  log_debug("[PROTOCOL_STOP] 10. capture_stop_thread() returned");
 
   // Wait for data reception thread to exit gracefully
+  log_debug("[PROTOCOL_STOP] 11. Waiting for data thread to exit");
   int wait_count = 0;
   while (wait_count < 5 && !atomic_load(&g_data_thread_exited)) {
     platform_sleep_us(100 * US_PER_MS_INT); // 100ms * 5 = 500ms max wait
@@ -1140,9 +1153,11 @@ void protocol_stop_connection() {
   if (!atomic_load(&g_data_thread_exited)) {
     log_warn("Data thread not responding after 500ms - will be joined by thread pool");
   }
+  log_debug("[PROTOCOL_STOP] 12. Data thread wait complete");
 
   // Join all threads in the client worker pool (in stop_id order)
   // This handles the data reception thread and (eventually) all other worker threads
+  log_debug("[PROTOCOL_STOP] 13. About to call thread_pool_stop_all");
   if (g_client_worker_pool) {
     asciichat_error_t result = thread_pool_stop_all(g_client_worker_pool);
     if (result != ASCIICHAT_OK) {
@@ -1150,12 +1165,14 @@ void protocol_stop_connection() {
       LOG_ERRNO_IF_SET("Thread pool stop failed");
     }
   }
+  log_debug("[PROTOCOL_STOP] 14. thread_pool_stop_all() returned");
 
   g_data_thread_created = false;
 
 #ifdef DEBUG_THREADS
   log_debug("Data reception thread stopped and joined by thread pool");
 #endif
+  log_debug("[PROTOCOL_STOP] 15. protocol_stop_connection complete");
 }
 
 /**

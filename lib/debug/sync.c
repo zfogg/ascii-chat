@@ -580,6 +580,14 @@ static void *debug_print_thread_fn(void *arg) {
 }
 
 /**
+ * @brief Final cleanup of all debug allocations at shutdown
+ */
+void debug_sync_final_cleanup(void) {
+  // Clean up current thread's mutex stack explicitly
+  mutex_stack_cleanup_current_thread();
+}
+
+/**
  * @brief Schedule delayed debug state printing on debug thread
  * @param delay_ns Nanoseconds to sleep before printing
  */

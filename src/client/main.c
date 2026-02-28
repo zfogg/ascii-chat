@@ -243,36 +243,50 @@ static void shutdown_client() {
   }
   shutdown_done = true;
 
+  log_debug("[SHUTDOWN] 1. Starting shutdown");
+
   // Set global shutdown flag to stop all threads
   signal_exit();
+  log_debug("[SHUTDOWN] 2. signal_exit() called");
 
   // Stop splash animation thread before any resource cleanup
   splash_intro_done();
+  log_debug("[SHUTDOWN] 3. splash_intro_done() returned");
 
   // IMPORTANT: Stop all protocol threads BEFORE cleaning up resources
   // protocol_stop_connection() shuts down the socket to interrupt blocking recv(),
   // then waits for the data reception thread and capture thread to exit.
   // This prevents race conditions where threads access freed resources.
+  log_debug("[SHUTDOWN] 4. About to call protocol_stop_connection()");
   protocol_stop_connection();
+  log_debug("[SHUTDOWN] 5. protocol_stop_connection() returned");
 
   // Destroy client worker thread pool (all threads already stopped by protocol_stop_connection)
+  log_debug("[SHUTDOWN] 6. About to destroy thread pool");
   if (g_client_worker_pool) {
     thread_pool_destroy(g_client_worker_pool);
     g_client_worker_pool = NULL;
   }
+  log_debug("[SHUTDOWN] 7. Thread pool destroyed");
 
   // Destroy application client context
+  log_debug("[SHUTDOWN] 8. About to destroy app_client");
   if (g_client) {
     app_client_destroy(&g_client);
     log_debug("Application client context destroyed successfully");
   }
+  log_debug("[SHUTDOWN] 9. app_client destroyed");
 
   // Now safe to cleanup server connection (socket already closed by protocol_stop_connection)
   // Legacy cleanup - will be removed after full migration to tcp_client
+  log_debug("[SHUTDOWN] 10. About to cleanup server connection");
   server_connection_cleanup();
+  log_debug("[SHUTDOWN] 11. Server connection cleaned up");
 
   // Cleanup capture subsystems (capture thread already stopped by protocol_stop_connection)
+  log_debug("[SHUTDOWN] 12. About to cleanup capture");
   capture_cleanup();
+  log_debug("[SHUTDOWN] 13. Capture cleaned up");
 
   // Print audio analysis report if enabled
   if (GET_OPTION(audio_analysis_enabled)) {
@@ -806,9 +820,9 @@ int client_main(void) {
       .print_newline_on_tty_exit = false, // Server/client manages cursor
   };
 
-  log_debug("Client: calling session_client_like_run() with %d max reconnection attempts", reconnect_attempts);
+  log_debug("[CLIENT_MAIN] About to call session_client_like_run() with %d attempts", reconnect_attempts);
   asciichat_error_t session_result = session_client_like_run(&config);
-  log_debug("Client: session_client_like_run() returned %d", session_result);
+  log_debug("[CLIENT_MAIN] session_client_like_run() returned %d", session_result);
 
   // Note: TCP client lifecycle is managed by session_client_like_run() and connection attempts
   // Do not destroy it here as it may be reused or already cleaned up

@@ -408,6 +408,15 @@ void debug_sync_destroy(void);
 void debug_sync_cleanup_thread(void);
 
 /**
+ * @brief Final cleanup of debug allocations at shutdown
+ * @ingroup debug_sync
+ *
+ * Cleans up any remaining thread-local allocations (mutex stacks, etc)
+ * from the current thread. Must be called before debug_sync_destroy().
+ */
+void debug_sync_final_cleanup(void);
+
+/**
  * @brief Trigger sync state print immediately (synchronous)
  * @ingroup debug_sync
  *

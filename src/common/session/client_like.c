@@ -552,12 +552,14 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   int attempt = 0;
   int max_attempts = config->max_reconnect_attempts;
 
+  log_debug("[CLIENT_LIKE_LOOP] Starting connection loop, max_attempts=%d", max_attempts);
+
   while (true) {
     attempt++;
 
-    log_debug("About to call config->run_fn() (attempt %d)", attempt);
+    log_debug("[CLIENT_LIKE_LOOP] About to call config->run_fn() (attempt %d)", attempt);
     result = config->run_fn(capture, display, config->run_user_data);
-    log_debug("config->run_fn() returned with result=%d", result);
+    log_debug("[CLIENT_LIKE_LOOP] config->run_fn() returned with result=%d", result);
 
     // Exit immediately if run_fn succeeded
     if (result == ASCIICHAT_OK) {
@@ -607,6 +609,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // ============================================================================
 
 cleanup:
+  log_debug("[CLIENT_LIKE_CLEANUP] Reached cleanup label");
   // Re-enable terminal output for shutdown logs
   log_set_terminal_output(true);
 
