@@ -24,6 +24,7 @@
 #include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/string.h>
+#include <ascii-chat/util/time.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/platform/system.h>
@@ -775,7 +776,7 @@ int splash_intro_done(void) {
   if (atomic_compare_exchange_strong(&g_splash_state.thread_created, &expected, false)) {
     // We successfully changed thread_created from true to false, so we join with timeout
     // Use 500ms timeout to prevent blocking during shutdown
-    asciichat_thread_join_timeout(&g_splash_state.anim_thread, NULL, 500000000ULL); // 500ms in nanoseconds
+    asciichat_thread_join_timeout(&g_splash_state.anim_thread, NULL, 500LL * NS_PER_MS_INT);
   }
 
   atomic_store(&g_splash_state.is_running, false);
