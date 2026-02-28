@@ -812,7 +812,6 @@ void *client_audio_render_thread(void *arg) {
   adaptive_sleep_init(&audio_sleep_state, &audio_config);
 
   // Per-thread counters (NOT static - each thread instance gets its own)
-  int mixer_debug_count = 0;
   int backpressure_check_counter = 0;
   int server_audio_frame_count = 0;
 
@@ -925,20 +924,6 @@ void *client_audio_render_thread(void *arg) {
     // log_debug_every(LOG_RATE_SLOW, "Audio render for client %u: samples_mixed=%d", client_id_snapshot,
     // samples_mixed);
 
-    // DEBUG: Log samples mixed every iteration
-    // NOTE: mixer_debug_count is now per-thread (not static), so each client thread has its own counter
-    mixer_debug_count++;
-    if (mixer_debug_count <= 10) {
-      float sample_peak = 0.0f;
-      for (int i = 0; i < samples_mixed && i < 480; i++) {
-        float abs_val = fabsf(mix_buffer[i]);
-        if (abs_val > sample_peak)
-          sample_peak = abs_val;
-      }
-      log_error("MIXER_OUTPUT: iteration=%d client=%s samples_mixed=%d peak=%.6f accumulated=%d", mixer_debug_count,
-                client_id_snapshot, samples_mixed, sample_peak, opus_frame_accumulated);
-    }
-
     // Accumulate all samples (including 0 or partial) until we have a full Opus frame
     // This maintains continuous stream without silence padding
     START_TIMER("accum_%s", client_id_snapshot);
@@ -990,14 +975,6 @@ void *client_audio_render_thread(void *arg) {
       // Encode accumulated Opus frame (960 samples = 20ms @ 48kHz)
       uint8_t opus_buffer[1024]; // Max Opus frame size
 
-      // DEBUG: Check if buffer looks valid before encoding
-      float buffer_peak = 0.0f;
-      for (int i = 0; i < OPUS_FRAME_SAMPLES; i++) {
-        float abs_val = fabsf(opus_frame_buffer[i]);
-        if (abs_val > buffer_peak)
-          buffer_peak = abs_val;
-      }
-
       START_TIMER("opus_encode_%s", client_id_snapshot);
 
       int opus_size =
@@ -1005,11 +982,6 @@ void *client_audio_render_thread(void *arg) {
 
       STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 10 * NS_PER_MS_INT, "opus_encode_%s",
                                "Opus encode for client %s: took", client_id_snapshot);
-
-      if (opus_size <= 16) {
-        log_error("OPUS_DEBUG: client=%s opus_size=%d (TINY!), buffer_peak=%.6f, first_bytes=%02x%02x%02x",
-                  client_id_snapshot, opus_size, buffer_peak, opus_buffer[0], opus_buffer[1], opus_buffer[2]);
-      }
 
       // DEBUG: Log mix buffer and encoding results to see audio levels being sent
       {
