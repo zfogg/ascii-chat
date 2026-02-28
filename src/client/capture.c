@@ -210,6 +210,12 @@ static void *webcam_capture_thread_func(void *arg) {
     // Frame rate limiting using session capture adaptive sleep
     session_capture_sleep_for_fps(g_capture_capture_ctx);
 
+    // Re-check connection after FPS sleep in case it was lost during sleep (reconnection)
+    if (!server_connection_is_active() || server_connection_is_lost()) {
+      log_debug("Capture thread: connection lost after FPS sleep, exiting");
+      break;
+    }
+
     // Read frame using session capture library
     image_t *image = session_capture_read_frame(g_capture_capture_ctx);
 
@@ -262,20 +268,28 @@ static void *webcam_capture_thread_func(void *arg) {
       break;
     }
 
+    uint64_t send_start_ns = time_get_ns();
     log_debug_every(LOG_RATE_SLOW, "Capture thread: sending IMAGE_FRAME %ux%u via transport %p", processed_image->w,
                     processed_image->h, (void *)transport);
     asciichat_error_t send_result = acip_send_image_frame(transport, (const void *)processed_image->pixels,
                                                           (uint32_t)processed_image->w, (uint32_t)processed_image->h,
                                                           1); // pixel_format = 1 (RGB24)
+    uint64_t send_duration_ns = time_elapsed_ns(send_start_ns, time_get_ns());
 
     if (send_result != ASCIICHAT_OK) {
-      log_error("🔴 CAPTURE_SEND_FAILED: IMAGE_FRAME send error=%d (%s), closing connection", send_result,
-                asciichat_error_string(send_result));
+      log_error("🔴 CAPTURE_SEND_FAILED: IMAGE_FRAME send error=%d (%s) after %.1fms, closing connection", send_result,
+                asciichat_error_string(send_result), (double)send_duration_ns / 1e6);
       server_connection_lost();
       image_destroy(processed_image);
       break;
     }
-    log_info("✅ CAPTURE_FRAME_SENT: IMAGE_FRAME delivered to server");
+
+    if (send_duration_ns > 500 * NS_PER_MS_INT) {
+      log_warn("⚠️  SLOW_FRAME_SEND: %.1fms to send %ux%u frame (may indicate full send buffer)",
+               (double)send_duration_ns / 1e6, processed_image->w, processed_image->h);
+    }
+
+    log_info("✅ CAPTURE_FRAME_SENT: IMAGE_FRAME delivered to server in %.1fms", (double)send_duration_ns / 1e6);
 
     // Cache last frame for rendering when paused
     // Make a copy since the original is owned by media_source
