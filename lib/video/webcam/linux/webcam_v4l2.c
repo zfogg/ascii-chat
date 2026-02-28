@@ -3,8 +3,9 @@
  * @ingroup webcam
  * @brief 📷 Linux V4L2 webcam capture with multi-format support
  *
- * Supports RGB24 (native), NV12, I420, YUYV, and UYVY formats.
+ * Supports RGB24 (native), NV12, I420, MJPEG (60fps), YUYV, and UYVY formats.
  * Uses libswscale for efficient format conversion to RGB24.
+ * MJPEG frames are decompressed using FFmpeg's JPEG codec before conversion.
  */
 
 #ifdef __linux__
@@ -22,6 +23,8 @@
 
 #include <libswscale/swscale.h>
 #include <libavutil/pixfmt.h>
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
 
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/common.h>
@@ -49,12 +52,14 @@ struct webcam_context_t {
   int fd;
   int width;
   int height;
-  uint32_t pixelformat; // Actual pixel format from driver (RGB24, YUYV, NV12, I420, UYVY)
+  uint32_t pixelformat; // Actual pixel format from driver (RGB24, YUYV, NV12, I420, MJPEG, UYVY)
   webcam_buffer_t *buffers;
   int buffer_count;
   image_t *cached_frame;              // Reusable frame buffer (allocated once, reused for each read)
   struct SwsContext *sws_ctx;         // libswscale context for format conversion (if needed)
   enum AVPixelFormat av_pixel_format; // FFmpeg pixel format for swscale
+  AVCodecContext *mjpeg_codec_ctx;    // MJPEG JPEG decompression context (if using MJPEG format)
+  AVFrame *mjpeg_decoded_frame;       // Decoded JPEG frame buffer
 };
 
 /**
@@ -89,14 +94,68 @@ static int webcam_v4l2_init_swscale(webcam_context_t *ctx, enum AVPixelFormat sr
 }
 
 /**
+ * @brief Initialize MJPEG (JPEG) decompression context
+ *
+ * Sets up FFmpeg's JPEG codec decoder for decompressing MJPEG frames from the camera.
+ *
+ * @param ctx The webcam context
+ * @return int 0 on success, -1 on failure
+ */
+static int webcam_v4l2_init_mjpeg_decoder(webcam_context_t *ctx) {
+  // Find JPEG codec
+  const AVCodec *codec = avcodec_find_decoder(AV_CODEC_ID_MJPEG);
+  if (!codec) {
+    log_error("MJPEG codec not found in FFmpeg");
+    return -1;
+  }
+
+  // Allocate codec context
+  ctx->mjpeg_codec_ctx = avcodec_alloc_context3(codec);
+  if (!ctx->mjpeg_codec_ctx) {
+    log_error("Failed to allocate MJPEG codec context");
+    return -1;
+  }
+
+  // Set expected frame dimensions (V4L2 tells us these)
+  ctx->mjpeg_codec_ctx->width = ctx->width;
+  ctx->mjpeg_codec_ctx->height = ctx->height;
+
+  // Open codec
+  if (avcodec_open2(ctx->mjpeg_codec_ctx, codec, NULL) < 0) {
+    log_error("Failed to open MJPEG codec");
+    avcodec_free_context(&ctx->mjpeg_codec_ctx);
+    return -1;
+  }
+
+  // Allocate frame for decoded output
+  ctx->mjpeg_decoded_frame = av_frame_alloc();
+  if (!ctx->mjpeg_decoded_frame) {
+    log_error("Failed to allocate MJPEG decoded frame");
+    avcodec_free_context(&ctx->mjpeg_codec_ctx);
+    return -1;
+  }
+
+  // Initialize swscale for converting decoded MJPEG (typically YUV420P) to RGB24
+  if (webcam_v4l2_init_swscale(ctx, AV_PIX_FMT_YUV420P) != 0) {
+    log_error("Failed to initialize swscale for MJPEG decoded frames");
+    av_frame_free(&ctx->mjpeg_decoded_frame);
+    avcodec_free_context(&ctx->mjpeg_codec_ctx);
+    return -1;
+  }
+
+  return 0;
+}
+
+/**
  * @brief Set the format of the webcam
  *
  * Tries formats in this order:
- * 1. RGB24 (native, no conversion)
+ * 1. RGB24 (native, no conversion needed)
  * 2. NV12 (libswscale - Raspberry Pi, modern USB cameras)
  * 3. I420 (libswscale - planar YUV)
- * 4. YUYV (libswscale - YUV 4:2:2)
- * 5. UYVY (libswscale - YUV 4:2:2 variant)
+ * 4. MJPEG (FFmpeg JPEG decompression - supports 60fps on many cameras)
+ * 5. YUYV (libswscale - YUV 4:2:2)
+ * 6. UYVY (libswscale - YUV 4:2:2 variant)
  *
  * V4L2 drivers may change the requested format, so we check what was actually set.
  *
@@ -143,6 +202,18 @@ static int webcam_v4l2_set_format(webcam_context_t *ctx, int width, int height) 
     ctx->height = fmt.fmt.pix.height;
     if (webcam_v4l2_init_swscale(ctx, AV_PIX_FMT_YUV420P) == 0) {
       log_debug("V4L2 format set to I420 %dx%d (will convert to RGB with swscale)", ctx->width, ctx->height);
+      return 0;
+    }
+  }
+
+  // Try MJPEG (Motion-JPEG - compressed format supporting 60fps on many cameras)
+  fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_MJPEG;
+  if (ioctl(ctx->fd, VIDIOC_S_FMT, &fmt) == 0 && fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_MJPEG) {
+    ctx->pixelformat = V4L2_PIX_FMT_MJPEG;
+    ctx->width = fmt.fmt.pix.width;
+    ctx->height = fmt.fmt.pix.height;
+    if (webcam_v4l2_init_mjpeg_decoder(ctx) == 0) {
+      log_debug("V4L2 format set to MJPEG %dx%d (60fps compressed - will decompress JPEG with FFmpeg)", ctx->width, ctx->height);
       return 0;
     }
   }
@@ -418,6 +489,18 @@ void webcam_cleanup_context(webcam_context_t *ctx) {
     ctx->sws_ctx = NULL;
   }
 
+  // Free MJPEG codec context if it was allocated
+  if (ctx->mjpeg_codec_ctx) {
+    avcodec_free_context(&ctx->mjpeg_codec_ctx);
+    ctx->mjpeg_codec_ctx = NULL;
+  }
+
+  // Free MJPEG decoded frame if it was allocated
+  if (ctx->mjpeg_decoded_frame) {
+    av_frame_free(&ctx->mjpeg_decoded_frame);
+    ctx->mjpeg_decoded_frame = NULL;
+  }
+
   // Free cached frame if it was allocated
   if (v4l2_cached_frame) {
     image_destroy(v4l2_cached_frame);
@@ -509,6 +592,66 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   }
 
   image_t *img = v4l2_cached_frame;
+
+  // Handle MJPEG decompression if using MJPEG format
+  if (ctx->pixelformat == V4L2_PIX_FMT_MJPEG) {
+    if (!ctx->mjpeg_codec_ctx) {
+      log_error("MJPEG codec context not initialized");
+      if (ioctl(ctx->fd, VIDIOC_QBUF, &buf) == -1) {
+        log_error("Failed to re-queue buffer after MJPEG codec error: %s", SAFE_STRERROR(errno));
+      }
+      return NULL;
+    }
+
+    // Create packet from MJPEG frame data
+    AVPacket pkt = {0};
+    av_new_packet(&pkt, buf.bytesused);
+    memcpy(pkt.data, ctx->buffers[buf.index].start, buf.bytesused);
+
+    // Send packet to decoder
+    if (avcodec_send_packet(ctx->mjpeg_codec_ctx, &pkt) < 0) {
+      log_warn_every(1000000000LL, "Failed to send MJPEG packet to decoder");
+      av_packet_unref(&pkt);
+      if (ioctl(ctx->fd, VIDIOC_QBUF, &buf) == -1) {
+        log_error("Failed to re-queue buffer after MJPEG decode error: %s", SAFE_STRERROR(errno));
+      }
+      return NULL;
+    }
+
+    // Receive decoded frame
+    if (avcodec_receive_frame(ctx->mjpeg_codec_ctx, ctx->mjpeg_decoded_frame) < 0) {
+      log_warn_every(1000000000LL, "Failed to decode MJPEG frame");
+      av_packet_unref(&pkt);
+      if (ioctl(ctx->fd, VIDIOC_QBUF, &buf) == -1) {
+        log_error("Failed to re-queue buffer after MJPEG receive error: %s", SAFE_STRERROR(errno));
+      }
+      return NULL;
+    }
+
+    av_packet_unref(&pkt);
+
+    // Convert decoded frame to RGB24 using swscale
+    if (!ctx->sws_ctx) {
+      log_error("Swscale context not initialized for MJPEG decoded frame");
+      if (ioctl(ctx->fd, VIDIOC_QBUF, &buf) == -1) {
+        log_error("Failed to re-queue buffer after swscale init error: %s", SAFE_STRERROR(errno));
+      }
+      return NULL;
+    }
+
+    uint8_t *dst_data[1] = {(uint8_t *)img->pixels};
+    int dst_linesize[1] = {ctx->width * 3};
+
+    sws_scale(ctx->sws_ctx, (const uint8_t * const *)ctx->mjpeg_decoded_frame->data,
+              ctx->mjpeg_decoded_frame->linesize, 0, ctx->height, dst_data, dst_linesize);
+
+    // Re-queue the buffer for future use
+    if (ioctl(ctx->fd, VIDIOC_QBUF, &buf) == -1) {
+      log_error("Failed to re-queue V4L2 buffer %u after MJPEG decode: %s", buf.index, SAFE_STRERROR(errno));
+    }
+
+    return img;
+  }
 
   // Copy and convert frame data based on pixel format
   if (ctx->sws_ctx) {
