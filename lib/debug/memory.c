@@ -109,6 +109,11 @@ static const debug_memory_suppression_t g_suppression_config[] = {
     {"lib/platform/posix/util.c", 35, 18, 1280, "platform_strdup() string allocations (mirror mode)"},
     {"lib/util/pcre2.c", 54, 1, 56, "PCRE2 JIT singleton for code compilation (intentional, cleaned up at shutdown)"},
     {"lib/util/pcre2.c", 62, 1, 7, "PCRE2 mcontext singleton for matching (intentional, cleaned up at shutdown)"},
+    // Debug system allocations (intentional, tied to thread lifetimes)
+    {"lib/debug/mutex.c", 327, 500, 15000, "Debug mutex stack tracking allocations (freed on thread/program exit)"},
+    {"lib/thread_pool.c", 114, 10, 3840, "Thread pool metadata allocations"},
+    {"lib/thread_pool.c", 160, 40, 416, "Thread pool work queue entries"},
+    {"lib/platform/posix/thread.c", 87, 100, 1600, "Thread creation tracking allocations"},
     {NULL, 0, 0, 0, NULL} // Sentinel
 };
 
