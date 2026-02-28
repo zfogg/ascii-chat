@@ -52,12 +52,6 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/CoreDependencies.cmake)
 # Unified binary with both server and client modes
 add_executable(ascii-chat ${APP_SRCS})
 
-# Ensure ghostty.h header is generated before compiling (Linux only)
-if(UNIX AND NOT APPLE)
-    set(GHOSTTY_HEADER_OUTPUT "${ASCIICHAT_DEPS_CACHE_DIR}/ghostty/include/ghostty.h")
-    add_dependencies(ascii-chat ghostty-embedded)
-endif()
-
 if(ASCIICHAT_ENABLE_UNITY_BUILDS)
     set_target_properties(ascii-chat PROPERTIES UNITY_BUILD ON)
 endif()

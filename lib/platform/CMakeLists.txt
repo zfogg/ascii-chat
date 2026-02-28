@@ -69,7 +69,6 @@ elseif(PLATFORM_POSIX)
             ${CMAKE_CURRENT_SOURCE_DIR}/macos/system.c
             ${CMAKE_CURRENT_SOURCE_DIR}/macos/keepawake.c
             ${CMAKE_CURRENT_SOURCE_DIR}/macos/font.c
-            ${CMAKE_CURRENT_SOURCE_DIR}/macos/terminal.m
             ${CMAKE_SOURCE_DIR}/lib/video/webcam/macos/webcam_avfoundation.m
         )
     elseif(PLATFORM_LINUX)
@@ -77,7 +76,6 @@ elseif(PLATFORM_POSIX)
             ${CMAKE_CURRENT_SOURCE_DIR}/linux/system.c
             ${CMAKE_CURRENT_SOURCE_DIR}/linux/keepawake.c
             ${CMAKE_CURRENT_SOURCE_DIR}/linux/font.c
-            ${CMAKE_CURRENT_SOURCE_DIR}/linux/terminal.c
             ${CMAKE_SOURCE_DIR}/lib/video/webcam/linux/webcam_v4l2.c
         )
     else()

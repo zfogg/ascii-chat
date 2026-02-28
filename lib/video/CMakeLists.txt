@@ -29,6 +29,8 @@ if(FFMPEG_FOUND)
             "${CMAKE_BINARY_DIR}/generated/data/fonts/matrix_resurrected.c"
             "${CMAKE_BINARY_DIR}/generated/data/fonts/default.c"
         )
+        # Include render-file module
+        add_subdirectory(render/file)
     endif()
 endif()
 

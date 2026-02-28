@@ -10,6 +10,7 @@
 
 // Packet handling functions
 void handle_image_frame_packet(client_info_t *client, void *data, size_t len);
+void handle_image_frame_h265_packet(client_info_t *client, const void *data, size_t len);
 void handle_audio_batch_packet(client_info_t *client, const void *data, size_t len);
 void handle_audio_opus_batch_packet(client_info_t *client, const void *data, size_t len);
 void handle_audio_opus_packet(client_info_t *client, const void *data, size_t len);

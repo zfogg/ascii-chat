@@ -10,9 +10,9 @@
 
 /**
  * H.265 frame packet type identifier
- * Sent as part of the network packet header to identify codec payloads
+ * Maps to PACKET_TYPE_IMAGE_FRAME_H265 (3002) from network/packet.h
  */
-#define PACKET_TYPE_IMAGE_FRAME_H265  0x42
+#define H265_PACKET_TYPE  PACKET_TYPE_IMAGE_FRAME_H265
 
 /**
  * H.265 packet header structure

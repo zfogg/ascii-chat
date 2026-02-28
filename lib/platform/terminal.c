@@ -253,12 +253,3 @@ void terminal_get_default_background_color(int theme, uint8_t *out_r, uint8_t *o
   }
 }
 
-/* ============================================================================
- * Ghostty Initialization (Offscreen Rendering)
- * ============================================================================ */
-
-// Default stub implementation for platforms that don't implement ghostty
-// Linux implementation is in linux/terminal.c
-__attribute__((weak)) asciichat_error_t terminal_ghostty_init_once(void) {
-  return ASCIICHAT_OK;
-}

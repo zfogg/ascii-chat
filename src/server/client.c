@@ -160,7 +160,7 @@
 typedef void (*client_packet_handler_t)(client_info_t *client, const void *data, size_t len);
 
 #define CLIENT_DISPATCH_HASH_SIZE 32
-#define CLIENT_DISPATCH_HANDLER_COUNT 12
+#define CLIENT_DISPATCH_HANDLER_COUNT 13
 
 /**
  * @brief Hash table entry for client packet dispatch
@@ -198,6 +198,7 @@ static const client_packet_handler_t g_client_dispatch_handlers[CLIENT_DISPATCH_
     (client_packet_handler_t)handle_ping_packet,                   // 9
     (client_packet_handler_t)handle_pong_packet,                   // 10
     (client_packet_handler_t)handle_remote_log_packet_from_client, // 11
+    (client_packet_handler_t)handle_image_frame_h265_packet,       // 12
 };
 
 // Hash table mapping packet type -> handler index
@@ -215,6 +216,7 @@ static const client_dispatch_entry_t g_client_dispatch_hash[CLIENT_DISPATCH_HASH
     [14] = {PACKET_TYPE_STREAM_STOP,           7},   // hash(5006)=14
     [20] = {PACKET_TYPE_REMOTE_LOG,            11},  // hash(2004)=20
     [25] = {PACKET_TYPE_IMAGE_FRAME,           1},   // hash(3001)=25
+    [26] = {PACKET_TYPE_IMAGE_FRAME_H265,      12},  // hash(3002)=26
 };
 // clang-format on
 

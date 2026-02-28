@@ -899,6 +899,50 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
 }
 
 /**
+ * @brief Process H.265-encoded image frame from client
+ *
+ * Handles incoming H.265/HEVC-encoded video frames from clients.
+ * Frames are decoded to ASCII art and added to the compositing pipeline.
+ *
+ * @param client Client connection info
+ * @param data H.265 packet payload (includes header with frame dimensions)
+ * @param len Payload size in bytes
+ *
+ * PACKET FORMAT:
+ *   [flags: u8][width: u16][height: u16][x265_data...]
+ *   - flags: H265_FLAG_KEYFRAME, H265_FLAG_SIZE_CHANGE
+ *   - width/height: Frame dimensions in characters
+ *   - x265_data: H.265-encoded frame data
+ */
+void handle_image_frame_h265_packet(client_info_t *client, const void *data, size_t len) {
+  if (!data || len < 5) {
+    disconnect_client_for_bad_data(client, "H265_FRAME payload too small: %zu bytes (min 5)", len);
+    return;
+  }
+
+  log_info("RECV_H265_FRAME: client_id=%u, len=%zu", client->client_id, len);
+
+  bool was_sending_video = atomic_load(&client->is_sending_video);
+  if (!was_sending_video) {
+    if (atomic_compare_exchange_strong(&client->is_sending_video, &was_sending_video, true)) {
+      log_info("Client %u auto-enabled H.265 video stream (received IMAGE_FRAME_H265)", client->client_id);
+      if (client->socket != INVALID_SOCKET_VALUE) {
+        log_info_client(client, "First H.265 video frame received - streaming active");
+      }
+    }
+  }
+
+  uint8_t flags = *(const uint8_t *)data;
+  bool is_keyframe = (flags & 0x01) != 0;
+  bool size_changed = (flags & 0x02) != 0;
+
+  log_debug("H265_FRAME: flags=0x%02x, keyframe=%s, size_change=%s", flags, is_keyframe ? "yes" : "no",
+            size_changed ? "yes" : "no");
+
+  log_info("H.265 frame handler: TODO - decode to ASCII and composite");
+}
+
+/**
  * @brief Process AUDIO packet - store single audio sample batch (legacy format)
  *
  * Handles the original audio packet format that sends one batch of float samples

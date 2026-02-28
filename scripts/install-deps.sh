@@ -150,6 +150,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       yt-dlp \
       libwebsockets-dev  \
       yyjson \
+      libvterm-dev libfreetype6-dev libfontconfig1-dev \
       || true
 
     sudo /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
@@ -310,7 +311,8 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       yyjson-devel \
       emscripten \
       doxygen \
-      rpm-build
+      rpm-build \
+      libvterm-devel freetype-devel fontconfig-devel
 
     sudo python3 -m pip install -U "yt-dlp[default]"
 

@@ -1227,23 +1227,6 @@ void terminal_get_default_foreground_color(int theme, uint8_t *out_r, uint8_t *o
  */
 void terminal_get_default_background_color(int theme, uint8_t *out_r, uint8_t *out_g, uint8_t *out_b);
 
-/**
- * @brief Thread-safe one-time initialization of ghostty global state
- * @return ASCIICHAT_OK on success, error code on failure
- *
- * Initializes ghostty's global state exactly once, using C11 atomics for thread safety.
- * This MUST be called before any other ghostty functions (ghostty_config_new, etc.).
- * Safe to call multiple times from multiple threads - only the first call performs
- * actual initialization.
- *
- * @note This is required for pixel rendering with ghostty offscreen surfaces
- * @note Uses atomic operations to ensure thread-safe initialization
- * @note Returns ASCIICHAT_OK if already initialized
- *
- * @ingroup platform
- */
-asciichat_error_t terminal_ghostty_init_once(void);
-
 /** @} */
 
 #ifdef _WIN32
