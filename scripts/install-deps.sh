@@ -68,6 +68,7 @@ if [[ "$PLATFORM" == "macos" ]]; then
   brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool \
     ninja mimalloc zstd libsodium portaudio opus criterion doxygen sqlite3 \
     miniupnpc libnatpmp ffmpeg abseil emscripten binaryen yt-dlp libwebsockets openssl@3 yyjson \
+    libvterm freetype fontconfig \
     >/dev/null 2>&1 || true
 
   echo "Homebrew packages: installation attempt completed"
@@ -338,7 +339,8 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       yyjson \
       emscripten \
       bun \
-      libwebsockets
+      libwebsockets \
+      libvterm freetype2 fontconfig
 
   else
     echo >&2 "ERROR: No supported package manager found (apt-get, yum, or pacman)"

@@ -28,9 +28,9 @@ if(FFMPEG_FOUND)
             ${CMAKE_CURRENT_SOURCE_DIR}/font.c
             "${CMAKE_BINARY_DIR}/generated/data/fonts/matrix_resurrected.c"
             "${CMAKE_BINARY_DIR}/generated/data/fonts/default.c"
+            # libvterm + FreeType2 render-file backend
+            ${CMAKE_CURRENT_SOURCE_DIR}/render/file/terminal.c
         )
-        # Include render-file module
-        add_subdirectory(render/file)
     endif()
 endif()
 

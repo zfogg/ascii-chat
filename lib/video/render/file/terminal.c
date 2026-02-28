@@ -14,7 +14,6 @@
 #include <ascii-chat/video/renderer.h>
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/debug/named.h>
 #include <vterm.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -112,7 +111,6 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg,
     log_debug_every(1000, "term_renderer_create: Renderer created (%dx%d cells, %dx%d pixels)",
                    r->cols, r->rows, r->width_px, r->height_px);
 
-    NAMED_REGISTER(r, "terminal_renderer");
     *out = r;
     return ASCIICHAT_OK;
 }
@@ -168,7 +166,6 @@ int term_renderer_pitch(terminal_renderer_t *r)                { return r->pitch
 
 void term_renderer_destroy(terminal_renderer_t *r) {
     if (!r) return;
-    NAMED_UNREGISTER(r);
     vterm_free(r->vt);
     FT_Done_Face(r->ft_face);
     FT_Done_FreeType(r->ft_lib);
