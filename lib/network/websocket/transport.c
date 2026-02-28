@@ -1259,8 +1259,27 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
 
   // Create libwebsockets context
   // Protocol array must persist for lifetime of context - use static
+  // IMPORTANT: "http" protocol MUST be first for WebSocket upgrade handshake to work
   static struct lws_protocols client_protocols[] = {
-      {"acip", websocket_callback, 0, 524288, 0, NULL, 524288}, {NULL, NULL, 0, 0, 0, NULL, 0} // Terminator
+      {
+          "http",                              // Required first for WebSocket upgrade
+          websocket_callback,
+          0,                                   // Per-session data (unused, using connect_info.userdata instead)
+          524288,                              // RX buffer size
+          0,                                   // ID
+          NULL,                                // User pointer (will be set from connect_info.userdata)
+          524288                               // TX packet size
+      },
+      {
+          "acip",                              // ACIP protocol
+          websocket_callback,
+          0,                                   // Per-session data (unused, using connect_info.userdata instead)
+          524288,                              // RX buffer size
+          0,                                   // ID
+          NULL,                                // User pointer (will be set from connect_info.userdata)
+          524288                               // TX packet size
+      },
+      {NULL, NULL, 0, 0, 0, NULL, 0}           // Terminator
   };
 
   // Disable client compression for now - causes assertion in lws_set_extension_option()
