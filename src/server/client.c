@@ -2817,28 +2817,37 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
   // This ensures frame data is available immediately for the render thread
   if (client->incoming_video_buffer) {
     video_frame_t *frame = video_frame_begin_write(client->incoming_video_buffer);
-    log_info("STORE_FRAME: client_id=%s, frame_ptr=%p, frame->data=%p", client->client_id, (void *)frame,
-             frame ? frame->data : NULL);
-    if (frame && frame->data && data_len > 0) {
-      // Get buffer capacity from frame buffer
-      size_t buffer_capacity = client->incoming_video_buffer->allocated_buffer_size;
+    size_t buffer_capacity = client->incoming_video_buffer->allocated_buffer_size;
+    size_t expected_capacity = MAX_FRAME_BUFFER_SIZE; // Should be 2MB
 
+    // Debug: Check what the actual frame buffer pointers are
+    video_frame_buffer_t *vfb = client->incoming_video_buffer;
+    log_info(
+        "DEBUG_FRAME_PTRS: frame[0].data=%p (size:%zu), frame[1].data=%p (size:%zu), back_buffer=%p, front_buffer=%p",
+        (void *)vfb->frames[0].data, vfb->frames[0].size, (void *)vfb->frames[1].data, vfb->frames[1].size,
+        (void *)vfb->back_buffer, (void *)vfb->front_buffer);
+
+    log_info("STORE_FRAME: client_id=%s, frame_ptr=%p, frame->data=%p, allocated_size=%zu (expected %zu)",
+             client->client_id, (void *)frame, frame ? frame->data : NULL, buffer_capacity, expected_capacity);
+
+    if (frame && frame->data && data_len > 0) {
       // Calculate total frame size: width (4B) + height (4B) + pixel data
       size_t total_size = sizeof(uint32_t) * 2 + data_len;
+
+      // CRITICAL: If allocated_buffer_size doesn't match expected size, something is very wrong
+      // This indicates frame->data is pointing to a different buffer (e.g., websocket buffer)
+      if (buffer_capacity != expected_capacity) {
+        log_error("FRAME_BUFFER_SIZE_MISMATCH: client_id=%s, allocated=%zu but expected=%zu (frame->data pointing to "
+                  "wrong buffer!)",
+                  client->client_id, buffer_capacity, expected_capacity);
+        return;
+      }
 
       // Safety check: Reject frames that don't fit in the allocated buffer
       // This prevents heap-buffer-overflow if allocated_buffer_size is somehow undersized
       if (total_size > buffer_capacity) {
         log_warn("FRAME_OVERFLOW: client_id=%s, need=%zu bytes but buffer only has %zu", client->client_id, total_size,
                  buffer_capacity);
-        return;
-      }
-
-      // Additional validation: buffer should be reasonably sized (>= 512 KB)
-      // If allocated_buffer_size is drastically smaller than expected, reject it
-      if (buffer_capacity < (512 * 1024)) {
-        log_error("FRAME_BUFFER_UNDERSIZED: client_id=%s, buffer_capacity=%zu bytes < 512 KB minimum",
-                  client->client_id, buffer_capacity);
         return;
       }
 

@@ -48,8 +48,8 @@ video_frame_buffer_t *video_frame_buffer_create(const char *client_id) {
   vfb->frames[0].data = NULL;
   vfb->frames[1].data = NULL;
 
-  // Store the allocated buffer size for cleanup (different from data size!)
-  vfb->allocated_buffer_size = frame_size;
+  // Initialize allocated_buffer_size to 0 - will be set AFTER successful allocation
+  vfb->allocated_buffer_size = 0;
 
   if (pool) {
     vfb->frames[0].data = buffer_pool_alloc(pool, frame_size);
@@ -64,6 +64,18 @@ video_frame_buffer_t *video_frame_buffer_create(const char *client_id) {
     if (!vfb->frames[1].data)
       vfb->frames[1].data = SAFE_MALLOC_ALIGNED(frame_size, 64, void *);
   }
+
+  // CRITICAL: Only set allocated_buffer_size after BOTH buffers are successfully allocated
+  // This prevents claiming 2MB buffers when actual allocation failed or returned smaller buffers
+  if (!vfb->frames[0].data || !vfb->frames[1].data) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate video frame buffers (frame[0].data=%p, frame[1].data=%p)",
+              vfb->frames[0].data, vfb->frames[1].data);
+    video_frame_buffer_destroy(vfb);
+    return NULL;
+  }
+
+  // Only now that both buffers are successfully allocated, set the capacity
+  vfb->allocated_buffer_size = frame_size;
 
   // When buffers are allocated from the pool, they may contain leftover data from previous clients
   // This ensures frames with size=0 are truly empty, preventing ghost frames during reconnection
