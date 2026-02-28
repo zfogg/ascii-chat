@@ -96,5 +96,3 @@ void h265_server_client_get_stats(
     uint16_t *last_width,
     uint16_t *last_height
 );
-
-#endif

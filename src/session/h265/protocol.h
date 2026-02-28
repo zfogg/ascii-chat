@@ -34,5 +34,3 @@ typedef struct {
  */
 #define H265_FLAG_KEYFRAME      0x01    // IDR frame (keyframe)
 #define H265_FLAG_SIZE_CHANGE   0x02    // Frame dimensions changed
-
-#endif

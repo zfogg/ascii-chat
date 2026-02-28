@@ -6,11 +6,10 @@
 #include "server.h"
 #include <ascii-chat/video/h265/decoder.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/common/limits.h>
 #include <ascii-chat/debug/named.h>
 #include <string.h>
 #include <stdlib.h>
-
-#define MAX_CLIENTS 64
 
 typedef struct {
     uint32_t client_id;

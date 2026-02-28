@@ -114,5 +114,3 @@ void h265_client_get_stats(
     uint64_t *keyframes,
     uint32_t *avg_bitrate
 );
-
-#endif
