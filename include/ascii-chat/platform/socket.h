@@ -370,11 +370,15 @@ int socket_listen(socket_t sock, int backlog);
  * @param sock Listening socket
  * @param addr Pointer to store peer address (or NULL)
  * @param addrlen Pointer to address length (input/output)
+ * @param name Human-readable name for the accepted socket (required, e.g., "client_connection:1234")
  * @return New socket handle on success, INVALID_SOCKET_VALUE on error
+ *
+ * Accepts an incoming connection and registers it with the named registry for debugging.
+ * The name parameter is required and must describe the connection purpose.
  *
  * @ingroup platform
  */
-socket_t socket_accept(socket_t sock, struct sockaddr *addr, socklen_t *addrlen);
+socket_t socket_accept(socket_t sock, struct sockaddr *addr, socklen_t *addrlen, const char *name);
 
 /**
  * @brief Connect to a remote address

@@ -287,7 +287,7 @@ int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *add
     return -1;
   }
 
-  socket_t accept_result = socket_accept(listenfd, addr, addrlen);
+  socket_t accept_result = socket_accept(listenfd, addr, addrlen, "accepted_connection");
 
   if (accept_result == INVALID_SOCKET_VALUE) {
     // Check if this is a socket closed error (common during shutdown)

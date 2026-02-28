@@ -59,11 +59,19 @@ int socket_listen(socket_t sock, int backlog) {
   return listen(sock, backlog);
 }
 
-socket_t socket_accept(socket_t sock, struct sockaddr *addr, socklen_t *addrlen) {
+socket_t socket_accept(socket_t sock, struct sockaddr *addr, socklen_t *addrlen, const char *name) {
+  if (!name) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Socket name is required for accepted connections");
+    return INVALID_SOCKET_VALUE;
+  }
+
   socket_t client_sock = accept(sock, addr, addrlen);
   if (client_sock == INVALID_SOCKET_VALUE) {
     return client_sock;
   }
+
+  // Register the accepted socket with the named registry
+  NAMED_REGISTER_SOCKET(client_sock, name);
 
   // Optimize the socket for high-throughput video streaming
   socket_optimize_for_streaming(client_sock);
