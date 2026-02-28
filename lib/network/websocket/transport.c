@@ -611,16 +611,36 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     bool success = ringbuffer_write(ws_data->send_queue, &msg);
 
     if (!success) {
+      // Queue is full - process all queued data before failing
       mutex_unlock(&ws_data->send_mutex);
-      log_error("WebSocket server send queue FULL - cannot queue %zu byte message for wsi=%p", send_len,
-                (void *)ws_data->wsi);
-      buffer_pool_free(NULL, msg.data, buffer_size);
-      SAFE_FREE(send_buffer);
-      if (encrypted_packet)
-        buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
-      return SET_ERRNO(ERROR_NETWORK, "Send queue full (cannot queue %zu bytes)", send_len);
+      log_warn("WebSocket server send queue FULL - forcing drain");
+
+      // Force immediate processing of all queued data
+      // This triggers LWS_CALLBACK_SERVER_WRITEABLE to drain the queue
+      lws_callback_on_writable(ws_data->wsi);
+
+      // Give libwebsockets a chance to process the queue
+      // Service with minimal timeout to drain frames immediately
+      if (ws_data->context) {
+        lws_service(ws_data->context, 1);
+      }
+
+      // Try again after draining
+      mutex_lock(&ws_data->send_mutex);
+      success = ringbuffer_write(ws_data->send_queue, &msg);
+      mutex_unlock(&ws_data->send_mutex);
+
+      if (!success) {
+        log_error("WebSocket server send queue FULL after drain - dropping frame %zu bytes", send_len);
+        buffer_pool_free(NULL, msg.data, buffer_size);
+        SAFE_FREE(send_buffer);
+        if (encrypted_packet)
+          buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
+        return SET_ERRNO(ERROR_NETWORK, "Send queue full (cannot queue %zu bytes)", send_len);
+      }
+    } else {
+      mutex_unlock(&ws_data->send_mutex);
     }
-    mutex_unlock(&ws_data->send_mutex);
 
     log_debug(">>> SERVER FRAME QUEUED: %zu bytes for wsi=%p", send_len, (void *)ws_data->wsi);
 
@@ -663,16 +683,32 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
   bool success = ringbuffer_write(ws_data->send_queue, &msg);
 
   if (!success) {
+    // Queue is full - process all queued data before failing
     mutex_unlock(&ws_data->send_mutex);
-    log_error("WebSocket client send queue FULL - cannot queue %zu byte message for wsi=%p", send_len,
-              (void *)ws_data->wsi);
-    buffer_pool_free(NULL, msg.data, buffer_size);
-    SAFE_FREE(send_buffer);
-    if (encrypted_packet)
-      buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
-    return SET_ERRNO(ERROR_NETWORK, "Client send queue full (cannot queue %zu bytes)", send_len);
+    log_warn("WebSocket client send queue FULL - forcing drain");
+
+    // Force immediate processing of all queued data via service thread
+    // Service thread will drain the queue on its next iteration
+    if (ws_data->context) {
+      lws_service(ws_data->context, 1);
+    }
+
+    // Try again after draining
+    mutex_lock(&ws_data->send_mutex);
+    success = ringbuffer_write(ws_data->send_queue, &msg);
+    mutex_unlock(&ws_data->send_mutex);
+
+    if (!success) {
+      log_error("WebSocket client send queue FULL after drain - dropping frame %zu bytes", send_len);
+      buffer_pool_free(NULL, msg.data, buffer_size);
+      SAFE_FREE(send_buffer);
+      if (encrypted_packet)
+        buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
+      return SET_ERRNO(ERROR_NETWORK, "Client send queue full (cannot queue %zu bytes)", send_len);
+    }
+  } else {
+    mutex_unlock(&ws_data->send_mutex);
   }
-  mutex_unlock(&ws_data->send_mutex);
 
   log_debug(">>> QUEUED CLIENT MESSAGE: %zu bytes queued at %p for service thread (wsi=%p)", send_len,
             (void *)ws_data->wsi, (void *)ws_data->wsi);
