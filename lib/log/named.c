@@ -338,6 +338,7 @@ int log_named_format_message(const char *message, char *output, size_t output_si
  * @return Formatted message string (thread-local buffer, valid only until next call)
  *
  * Convenience wrapper that uses a thread-local buffer internally.
+ * Applies formatting iteratively until the message stops changing (fixpoint).
  * Returns the original message if no formatting was applied.
  */
 const char *log_named_format_or_original(const char *message) {
@@ -346,13 +347,39 @@ const char *log_named_format_or_original(const char *message) {
   }
 
   static _Thread_local char format_buffer[NAMED_FORMAT_BUFFER_SIZE];
-  int result = log_named_format_message(message, format_buffer, sizeof(format_buffer));
+  static _Thread_local char work_buffer[NAMED_FORMAT_BUFFER_SIZE];
 
-  if (result > 0) {
-    return format_buffer;
+  /* Apply formatting iteratively until the message stabilizes (no more changes) */
+  const char *current = message;
+  size_t max_iterations = 10; /* Prevent infinite loops */
+
+  for (size_t iter = 0; iter < max_iterations; iter++) {
+    int result = log_named_format_message(current, format_buffer, sizeof(format_buffer));
+
+    if (result <= 0) {
+      /* No transformation was made, we've reached a fixpoint */
+      return current == message ? message : format_buffer;
+    }
+
+    /* Check if the message changed */
+    if (strcmp(current, format_buffer) == 0) {
+      /* No actual change, return the current version */
+      return format_buffer;
+    }
+
+    /* Message changed, prepare for next iteration */
+    if (current == message) {
+      /* First iteration, use format_buffer as input for next iteration */
+      current = format_buffer;
+    } else {
+      /* Subsequent iterations, swap buffers */
+      strcpy(work_buffer, format_buffer);
+      current = work_buffer;
+    }
   }
 
-  return message;
+  /* Max iterations reached, return last formatted version */
+  return format_buffer;
 }
 
 /**
