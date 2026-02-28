@@ -180,9 +180,20 @@ int log_named_format_message(const char *message, char *output, size_t output_si
       }
 
       if (hex_count > 0) {
+        /* Check if this hex address is already inside a formatted output like "type/name (0xaddress)"
+         * to prevent recursive formatting. Look for "(" immediately before the hex address.
+         */
+        bool is_already_in_parens = false;
+        if (hex_start > message) {
+          /* Check if previous character is "(" which indicates we're inside parentheses */
+          if (*(hex_start - 1) == '(') {
+            is_already_in_parens = true;
+          }
+        }
+
         /* We parsed a valid hex number - check if it's in the registry */
-        const char *name = named_get(address);
-        const char *type = named_get_type(address);
+        const char *name = !is_already_in_parens ? named_get(address) : NULL;
+        const char *type = !is_already_in_parens ? named_get_type(address) : NULL;
 
         if (name && type) {
           /* Format: type/name (address) - plain text, colors applied at output stage */
@@ -234,7 +245,7 @@ int log_named_format_message(const char *message, char *output, size_t output_si
       /* Skip if this integer is part of already-formatted output like "(fd=20)" or "(pkt_type=123)" */
       bool is_already_formatted = false;
       if (int_start >= 5) {
-        /* Check for "(fd=" or "(pkt_type=" patterns immediately before this integer */
+        /* Check for "(fd=", "(pkt_type=", or "(thread/" patterns to prevent re-formatting */
         const char *check = int_start - 1;
         while (check > message && isspace(*check))
           check--;
@@ -251,6 +262,19 @@ int log_named_format_message(const char *message, char *output, size_t output_si
           size_t prefix_len = eq_pos - check;
           if ((prefix_len == 2 && strncmp(check, "fd", 2) == 0) ||
               (prefix_len == 8 && strncmp(check, "pkt_type", 8) == 0)) {
+            is_already_formatted = true;
+          }
+        } else if (*check == '/') {
+          /* Check for "(thread/" pattern - already-formatted thread names */
+          const char *slash_pos = check;
+          check--;
+          while (check > message && (isalnum(*check) || *check == '_')) {
+            check--;
+          }
+          check++;
+
+          size_t prefix_len = slash_pos - check;
+          if (prefix_len == 6 && strncmp(check, "thread", 6) == 0) {
             is_already_formatted = true;
           }
         }
