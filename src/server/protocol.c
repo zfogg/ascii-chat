@@ -119,6 +119,7 @@
 #include "main.h"
 #include "protocol.h"
 #include "client.h"
+#include "session/h265/server.h"
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/util/endian.h>
@@ -904,6 +905,13 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
  * Handles incoming H.265/HEVC-encoded video frames from clients.
  * Frames are decoded to ASCII art and added to the compositing pipeline.
  *
+ * FLOW:
+ * 1. Validate packet structure and minimum size
+ * 2. Auto-enable video stream on first frame
+ * 3. Decode H.265 packet to ASCII grid
+ * 4. Convert ASCII to frame buffer format for rendering
+ * 5. Store in client's incoming_video_buffer
+ *
  * @param client Client connection info
  * @param data H.265 packet payload (includes header with frame dimensions)
  * @param len Payload size in bytes
@@ -920,12 +928,10 @@ void handle_image_frame_h265_packet(client_info_t *client, const void *data, siz
     return;
   }
 
-  log_info("RECV_H265_FRAME: client_id=%u, len=%zu", client->client_id, len);
-
   bool was_sending_video = atomic_load(&client->is_sending_video);
   if (!was_sending_video) {
     if (atomic_compare_exchange_strong(&client->is_sending_video, &was_sending_video, true)) {
-      log_info("Client %u auto-enabled H.265 video stream (received IMAGE_FRAME_H265)", client->client_id);
+      log_info("Client %s auto-enabled H.265 video stream (received IMAGE_FRAME_H265)", client->client_id);
       if (client->socket != INVALID_SOCKET_VALUE) {
         log_info_client(client, "First H.265 video frame received - streaming active");
       }
@@ -936,10 +942,88 @@ void handle_image_frame_h265_packet(client_info_t *client, const void *data, siz
   bool is_keyframe = (flags & 0x01) != 0;
   bool size_changed = (flags & 0x02) != 0;
 
-  log_debug("H265_FRAME: flags=0x%02x, keyframe=%s, size_change=%s", flags, is_keyframe ? "yes" : "no",
-            size_changed ? "yes" : "no");
+  log_debug("H265_FRAME: flags=0x%02x, keyframe=%s, size_change=%s, len=%zu", flags, is_keyframe ? "yes" : "no",
+            size_changed ? "yes" : "no", len);
 
-  log_info("H.265 frame handler: TODO - decode to ASCII and composite");
+  if (!client->incoming_video_buffer) {
+    log_error("Client %s has no incoming video buffer for H.265 frames", client->client_id);
+    return;
+  }
+
+  // Get H.265 server context (may be NULL during shutdown)
+  h265_server_context_t *h265_ctx = g_h265_server;
+  if (!h265_ctx) {
+    if (!atomic_load(&g_server_should_exit)) {
+      log_error("H.265 codec server context not initialized");
+    }
+    return;
+  }
+
+  // Get or create decoder for this client
+  uint32_t client_id_num = 0;
+  if (sscanf(client->client_id, "%u", &client_id_num) != 1) {
+    // Fallback to string hash if can't parse as number
+    client_id_num = 0;
+    for (int i = 0; client->client_id[i]; i++) {
+      client_id_num = (client_id_num * 31 + (unsigned char)client->client_id[i]) & 0xFFFFFFFF;
+    }
+  }
+
+  h265_server_client_t *client_decoder = h265_server_get_client_decoder(h265_ctx, client_id_num);
+  if (!client_decoder) {
+    log_error("Failed to get H.265 decoder for client %s", client->client_id);
+    disconnect_client_for_bad_data(client, "Failed to initialize H.265 decoder");
+    return;
+  }
+
+  // Allocate temporary RGBA buffer for decoding
+  // H.265 frames from client are sent as [flags:u8][width:u16][height:u16][h265_data...]
+  // Max frame is (256x256 = 65536 pixels) * 4 bytes/pixel = 262KB
+  uint8_t *rgba_buf = SAFE_MALLOC(512 * 512 * 4, uint8_t *);
+  if (!rgba_buf) {
+    log_error("Failed to allocate RGBA buffer for H.265 decoding");
+    disconnect_client_for_bad_data(client, "Out of memory for H.265 frame decoding");
+    return;
+  }
+
+  uint16_t frame_width = 0;
+  uint16_t frame_height = 0;
+  size_t rgba_size = 512 * 512 * 4;
+
+  // Decode H.265 packet to RGBA
+  asciichat_error_t decode_result = h265_server_decode_and_convert(
+      client_decoder, (const uint8_t *)data, len, rgba_buf, &frame_width, &frame_height, &rgba_size);
+
+  if (decode_result != ASCIICHAT_OK) {
+    log_error("H.265 decoding failed for client %s: %s", client->client_id, asciichat_error_string(decode_result));
+    SAFE_FREE(rgba_buf);
+    disconnect_client_for_bad_data(client, "H.265 frame decode error");
+    return;
+  }
+
+  // Write decoded frame to video buffer
+  video_frame_t *frame = video_frame_begin_write(client->incoming_video_buffer);
+  if (frame && frame->data) {
+    memcpy(frame->data, rgba_buf, rgba_size);
+    frame->size = rgba_size;
+    frame->width = frame_width;
+    frame->height = frame_height;
+    frame->is_keyframe = is_keyframe;
+
+    // Update frame metadata
+    frame->receive_timestamp_ns = time_get_realtime_ns();
+    frame->sequence_number = client->frames_received++;
+
+    log_info_every(100, "RECV_H265 #%lu: client_id=%s size=%zu dims=%ux%u keyframe=%s", frame->sequence_number,
+                   client->client_id, rgba_size, frame_width, frame_height, is_keyframe ? "yes" : "no");
+
+    video_frame_commit(client->incoming_video_buffer);
+  } else {
+    log_warn("Failed to get write buffer for client %s (frame=%p, frame->data=%p)", client->client_id, (void *)frame,
+             frame ? frame->data : NULL);
+  }
+
+  SAFE_FREE(rgba_buf);
 }
 
 /**

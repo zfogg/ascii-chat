@@ -646,8 +646,8 @@ int splash_intro_start(session_display_ctx_t *ctx) {
   }
 
   // Check terminal size
-  int width = GET_OPTION(width);
-  int height = GET_OPTION(height);
+  int width = (int)terminal_get_effective_width();
+  int height = (int)terminal_get_effective_height();
   if (width < 50 || height < 20) {
     return 0;
   }

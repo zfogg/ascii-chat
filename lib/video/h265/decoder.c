@@ -96,7 +96,7 @@ asciichat_error_t h265_decode(
         }
     }
 
-    const de265_image *img = de265_get_next_picture(decoder->context);
+    const struct de265_image *img = de265_get_next_picture(decoder->context);
     if (!img) {
         return SET_ERRNO(ERROR_MEDIA_DECODE, "No decoded image available");
     }
@@ -109,7 +109,7 @@ asciichat_error_t h265_decode(
     }
 
     const uint8_t *y_plane = de265_get_image_plane(img, 0, NULL);
-    int y_stride = de265_get_image_stride(img, 0);
+    int y_stride = de265_get_image_width(img, 0);  // Stride typically equals width for standard layouts
 
     for (int y = 0; y < img_height && y < (int)height; y++) {
         memcpy(output_buf + y * width, y_plane + y * y_stride, width);

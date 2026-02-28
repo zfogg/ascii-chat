@@ -222,13 +222,8 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   // Initialize digital rain effect if enabled
   if (GET_OPTION(matrix_rain)) {
     // Get terminal dimensions for grid size
-    unsigned short int width_us = (unsigned short int)GET_OPTION(width);
-    unsigned short int height_us = (unsigned short int)GET_OPTION(height);
-
-    // If dimensions are not set, detect from terminal
-    if (width_us == 0 || height_us == 0) {
-      (void)get_terminal_size(&width_us, &height_us);
-    }
+    unsigned short int width_us = terminal_get_effective_width();
+    unsigned short int height_us = terminal_get_effective_height();
 
     int width = (int)width_us;
     int height = (int)height_us;
@@ -425,9 +420,9 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
     return NULL;
   }
 
-  // Get conversion parameters from command-line options
-  unsigned short int width = GET_OPTION(width);
-  unsigned short int height = GET_OPTION(height);
+  // Get conversion parameters from command-line options or terminal detection
+  unsigned short int width = terminal_get_effective_width();
+  unsigned short int height = terminal_get_effective_height();
   bool stretch = GET_OPTION(stretch);
   bool preserve_aspect_ratio = !stretch;
 
@@ -450,11 +445,8 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
   bool matrix_rain_enabled = GET_OPTION(matrix_rain);
   if (matrix_rain_enabled && !ctx->digital_rain) {
     // Initialize digital rain if it's now enabled but wasn't before
-    unsigned short int width_us = GET_OPTION(width);
-    unsigned short int height_us = GET_OPTION(height);
-    if (width_us == 0 || height_us == 0) {
-      (void)get_terminal_size(&width_us, &height_us);
-    }
+    unsigned short int width_us = terminal_get_effective_width();
+    unsigned short int height_us = terminal_get_effective_height();
     int width_for_rain = (int)width_us;
     int height_for_rain = (int)height_us;
     ctx->digital_rain = digital_rain_init(width_for_rain, height_for_rain);
@@ -732,7 +724,7 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     }
   }
 
-  unsigned short int term_width = GET_OPTION(width);
+  unsigned short int term_width = terminal_get_effective_width();
   if (max_line_chars > term_width) {
     log_warn("FRAME_ANALYSIS: Line %zu chars exceeds terminal width %u - this may cause wrapping!", max_line_chars,
              term_width);

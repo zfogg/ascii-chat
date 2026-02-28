@@ -97,6 +97,7 @@
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/audio/mixer.h>
 #include <ascii-chat/audio/audio.h>
+#include "session/h265/server.h"
 #include "client.h"
 #include "stream.h"
 #include "stats.h"
@@ -168,6 +169,18 @@ static bool check_shutdown(void) {
  * During shutdown, set to NULL before destroying to prevent use-after-free.
  */
 mixer_t *volatile g_audio_mixer = NULL;
+
+/**
+ * @brief Global H.265 codec server context
+ *
+ * Shared H.265 decoding context used by all packet handlers to decode
+ * client H.265 frames. Each client gets its own decoder instance.
+ *
+ * THREAD SAFETY: The h265_server context is thread-safe and can be used
+ * concurrently by multiple client handlers. Decoders are per-client.
+ * During shutdown, set to NULL before destroying to prevent use-after-free.
+ */
+h265_server_context_t *volatile g_h265_server = NULL;
 
 /**
  * @brief Global shutdown condition variable for waking blocked threads
@@ -1883,6 +1896,13 @@ int server_main(void) {
 
   // Create server context - encapsulates all server state for passing to client handlers
   // This reduces global state and improves modularity by using tcp_server.user_data
+  // Create H.265 server decoder context for multi-client codec support
+  h265_server_context_t *h265_server_ctx = h265_server_context_create();
+  if (!h265_server_ctx) {
+    log_error("Failed to create H.265 server context");
+    FATAL(ERROR_MEDIA_INIT, "Cannot initialize H.265 codec support");
+  }
+
   server_context_t server_ctx = {
       .tcp_server = &g_tcp_server,
       .rate_limiter = g_rate_limiter,
@@ -1897,6 +1917,7 @@ int server_main(void) {
       .client_whitelist = g_client_whitelist,
       .num_whitelisted_clients = g_num_whitelisted_clients,
       .session_host = NULL, // Will be created after TCP server init
+      .h265_server = h265_server_ctx, // H.265 codec support
   };
 
   // Configure TCP server
@@ -2033,6 +2054,22 @@ int server_main(void) {
     } else {
       if (!atomic_load(&g_server_should_exit)) {
         log_debug("Audio mixer initialized successfully for per-client audio rendering");
+      }
+    }
+  }
+
+  // Initialize H.265 codec server context (always enabled on server)
+  if (!atomic_load(&g_server_should_exit)) {
+    log_debug("Initializing H.265 codec server context...");
+    g_h265_server = h265_server_context_create();
+    if (!g_h265_server) {
+      LOG_ERRNO_IF_SET("Failed to initialize H.265 codec context");
+      if (!atomic_load(&g_server_should_exit)) {
+        FATAL(ERROR_MEDIA_INIT, "Failed to initialize H.265 codec context");
+      }
+    } else {
+      if (!atomic_load(&g_server_should_exit)) {
+        log_debug("H.265 codec server context initialized successfully");
       }
     }
   }
@@ -2683,6 +2720,16 @@ cleanup:
     mixer_destroy(mixer_to_destroy);
   }
 
+  // Clean up H.265 codec server context
+  if (g_h265_server) {
+    // Set to NULL first before destroying, similar to g_audio_mixer
+    // Client handler threads may still be running and checking g_h265_server.
+    h265_server_context_t *h265_to_destroy = g_h265_server;
+    g_h265_server = NULL;
+    h265_server_context_destroy(h265_to_destroy);
+    log_debug("H.265 codec server context shut down");
+  }
+
   // Clean up mDNS context
   if (g_mdns_ctx) {
     asciichat_mdns_destroy(g_mdns_ctx);
@@ -2710,6 +2757,13 @@ cleanup:
     log_debug("Destroying session host");
     session_host_destroy(server_ctx.session_host);
     server_ctx.session_host = NULL;
+  }
+
+  // Destroy H.265 server codec context
+  if (server_ctx.h265_server) {
+    log_debug("Destroying H.265 server context");
+    h265_server_context_destroy(server_ctx.h265_server);
+    server_ctx.h265_server = NULL;
   }
 
   // Shutdown TCP server (closes listen sockets and cleans up)

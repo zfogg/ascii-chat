@@ -1227,6 +1227,82 @@ void terminal_get_default_foreground_color(int theme, uint8_t *out_r, uint8_t *o
  */
 void terminal_get_default_background_color(int theme, uint8_t *out_r, uint8_t *out_g, uint8_t *out_b);
 
+/**
+ * @brief Get effective terminal width with fallback priority
+ * @return Terminal width in characters with priority: option → detected → default
+ *
+ * Returns the effective terminal width to use, checking in priority order:
+ * 1. **Option value**: If `--width` was set to a non-zero value, return it
+ * 2. **Detected size**: Try to detect actual terminal width via `terminal_get_size()`
+ * 3. **Default**: Return `OPT_WIDTH_DEFAULT` (110) as final fallback
+ *
+ * This function simplifies the common pattern of "use option if set, else detect,
+ * else use default" that appears throughout the codebase for terminal dimension
+ * handling.
+ *
+ * @note Safe to call from any thread (uses lock-free option access)
+ * @note Detection may fail on non-TTY output (piped/redirected), falls back gracefully
+ * @note Width option defaults to 0, so non-zero means it was explicitly set
+ *
+ * **Usage Example:**
+ * @code{.c}
+ * // Old pattern (scattered throughout code):
+ * unsigned short int width = GET_OPTION(width);
+ * if (width == 0) {
+ *     terminal_size_t size;
+ *     if (terminal_get_size(&size) == ASCIICHAT_OK) {
+ *         width = size.cols;
+ *     } else {
+ *         width = OPT_WIDTH_DEFAULT;
+ *     }
+ * }
+ *
+ * // New pattern (unified):
+ * unsigned short int width = terminal_get_effective_width();
+ * @endcode
+ *
+ * @ingroup platform
+ */
+unsigned short int terminal_get_effective_width(void);
+
+/**
+ * @brief Get effective terminal height with fallback priority
+ * @return Terminal height in characters with priority: option → detected → default
+ *
+ * Returns the effective terminal height to use, checking in priority order:
+ * 1. **Option value**: If `--height` was set to a non-zero value, return it
+ * 2. **Detected size**: Try to detect actual terminal height via `terminal_get_size()`
+ * 3. **Default**: Return `OPT_HEIGHT_DEFAULT` (70) as final fallback
+ *
+ * This function simplifies the common pattern of "use option if set, else detect,
+ * else use default" that appears throughout the codebase for terminal dimension
+ * handling.
+ *
+ * @note Safe to call from any thread (uses lock-free option access)
+ * @note Detection may fail on non-TTY output (piped/redirected), falls back gracefully
+ * @note Height option defaults to 0, so non-zero means it was explicitly set
+ *
+ * **Usage Example:**
+ * @code{.c}
+ * // Old pattern (scattered throughout code):
+ * unsigned short int height = GET_OPTION(height);
+ * if (height == 0) {
+ *     terminal_size_t size;
+ *     if (terminal_get_size(&size) == ASCIICHAT_OK) {
+ *         height = size.rows;
+ *     } else {
+ *         height = OPT_HEIGHT_DEFAULT;
+ *     }
+ * }
+ *
+ * // New pattern (unified):
+ * unsigned short int height = terminal_get_effective_height();
+ * @endcode
+ *
+ * @ingroup platform
+ */
+unsigned short int terminal_get_effective_height(void);
+
 /** @} */
 
 #ifdef _WIN32

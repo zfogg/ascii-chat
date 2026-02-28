@@ -85,8 +85,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   bool help_was_active = false;
 
   // Terminal resize tracking (for auto_width/auto_height mode)
-  unsigned short int last_terminal_width = (unsigned short int)GET_OPTION(width);
-  unsigned short int last_terminal_height = (unsigned short int)GET_OPTION(height);
+  unsigned short int last_terminal_width = terminal_get_effective_width();
+  unsigned short int last_terminal_height = terminal_get_effective_height();
 
   log_info("session_render_loop: STARTING - display=%p capture=%p capture_cb=%p snapshot_mode=%s", (void *)display,
            (void *)capture, (void *)capture_cb, snapshot_mode ? "YES" : "NO");

@@ -149,6 +149,58 @@ bool terminal_is_interactive(void) {
   return terminal_is_stdin_tty() && terminal_is_stdout_tty();
 }
 
+/**
+ * @brief Get effective terminal width with fallback priority
+ *
+ * Returns width in priority order:
+ * 1. Option width if set to non-zero value
+ * 2. Detected terminal width
+ * 3. OPT_WIDTH_DEFAULT fallback
+ */
+unsigned short int terminal_get_effective_width(void) {
+  int width = GET_OPTION(width);
+
+  // If width option is explicitly set to non-zero, use it
+  if (width > 0) {
+    return (unsigned short int)width;
+  }
+
+  // Try to detect actual terminal width
+  terminal_size_t size;
+  if (terminal_get_size(&size) == ASCIICHAT_OK && size.cols > 0) {
+    return (unsigned short int)size.cols;
+  }
+
+  // Fallback to default
+  return OPT_WIDTH_DEFAULT;
+}
+
+/**
+ * @brief Get effective terminal height with fallback priority
+ *
+ * Returns height in priority order:
+ * 1. Option height if set to non-zero value
+ * 2. Detected terminal height
+ * 3. OPT_HEIGHT_DEFAULT fallback
+ */
+unsigned short int terminal_get_effective_height(void) {
+  int height = GET_OPTION(height);
+
+  // If height option is explicitly set to non-zero, use it
+  if (height > 0) {
+    return (unsigned short int)height;
+  }
+
+  // Try to detect actual terminal height
+  terminal_size_t size;
+  if (terminal_get_size(&size) == ASCIICHAT_OK && size.rows > 0) {
+    return (unsigned short int)size.rows;
+  }
+
+  // Fallback to default
+  return OPT_HEIGHT_DEFAULT;
+}
+
 bool terminal_is_piped_output(void) {
   return !terminal_is_stdout_tty();
 }

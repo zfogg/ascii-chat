@@ -11,6 +11,20 @@
 #include <string.h>
 #include <stdlib.h>
 
+/**
+ * Wrapper functions for x265 library calls
+ * These provide a consistent h265_ prefix for all codec operations
+ */
+static inline x265_encoder *h265_encoder_open(x265_param *params) {
+    return x265_encoder_open(params);
+}
+
+static inline void h265_encoder_close(x265_encoder *encoder) {
+    if (encoder) {
+        x265_encoder_close(encoder);
+    }
+}
+
 typedef struct h265_encoder {
     x265_encoder *handle;
     x265_param *params;
@@ -61,7 +75,7 @@ h265_encoder_t *h265_encoder_create(uint16_t initial_width, uint16_t initial_hei
     enc->params->bRepeatHeaders = 1;
     enc->params->logLevel = X265_LOG_ERROR;
 
-    enc->handle = x265_encoder_open(enc->params);
+    enc->handle = h265_encoder_open(enc->params);
     if (!enc->handle) {
         SET_ERRNO(ERROR_MEDIA_INIT, "Failed to open x265 encoder");
         x265_param_free(enc->params);
@@ -102,7 +116,7 @@ void h265_encoder_destroy(h265_encoder_t *encoder) {
     SAFE_FREE(encoder);
 }
 
-static asciichat_error_t x265_encode_reconfigure(
+static asciichat_error_t h265_encoder_reconfigure(
     h265_encoder_t *encoder,
     uint16_t new_width,
     uint16_t new_height
@@ -141,7 +155,7 @@ static asciichat_error_t x265_encode_reconfigure(
     return ASCIICHAT_OK;
 }
 
-static void x265_encode_ascii_to_yuv420(
+static void h265_encoder_ascii_to_yuv420(
     const uint8_t *ascii_data,
     uint16_t width,
     uint16_t height,
@@ -173,12 +187,12 @@ asciichat_error_t h265_encode(
         return SET_ERRNO(ERROR_NETWORK_SIZE, "Output buffer too small (minimum 5 bytes)");
     }
 
-    asciichat_error_t result = x265_encode_reconfigure(encoder, width, height);
+    asciichat_error_t result = h265_encoder_reconfigure(encoder, width, height);
     if (result != ASCIICHAT_OK) {
         return result;
     }
 
-    x265_encode_ascii_to_yuv420(ascii_data, width, height, encoder->yuv_buf);
+    h265_encoder_ascii_to_yuv420(ascii_data, width, height, encoder->yuv_buf);
 
     x265_picture pic_in;
     x265_picture pic_out;
@@ -196,10 +210,11 @@ asciichat_error_t h265_encode(
         encoder->request_keyframe = false;
     }
 
-    x265_nal *nal_out;
-    uint32_t nal_count;
+    x265_nal *nal_out = NULL;
+    uint32_t nal_count = 0;
 
-    int frame_size = h265_encoder_encode(encoder->handle, &pic_in, &pic_out, &nal_out, &nal_count);
+    // Call actual x265 library encoder function
+    int frame_size = x265_encoder_encode(encoder->handle, &nal_out, &nal_count, &pic_in, &pic_out);
     if (frame_size < 0) {
         return SET_ERRNO(ERROR_MEDIA_DECODE, "x265 encoding failed");
     }

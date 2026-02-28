@@ -48,6 +48,7 @@
 #include <ascii-chat/options/options.h>
 #include "stats.h"
 #include "client.h"
+#include "session/h265/server.h"
 
 /* ============================================================================
  * Global Server State
@@ -92,6 +93,14 @@ extern atomic_bool g_server_should_exit;
  * Used to mix audio from multiple clients for playback.
  */
 extern mixer_t *volatile g_audio_mixer;
+
+/**
+ * @brief Global H.265 codec server context
+ *
+ * Shared H.265 decoding context used by all packet handlers to decode
+ * client H.265 frames. Each client gets its own decoder instance.
+ */
+extern h265_server_context_t *volatile g_h265_server;
 
 /**
  * @brief Server encryption enabled flag
@@ -189,6 +198,9 @@ typedef struct server_context_t {
 
   // Session library integration
   session_host_t *session_host; ///< Session host for discovery mode support
+
+  // H.265 codec integration
+  h265_server_context_t *h265_server; ///< H.265 decoder pool for all clients
 } server_context_t;
 
 /**

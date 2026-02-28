@@ -321,8 +321,8 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   }
 
   // Get terminal dimensions
-  int term_width = (int)GET_OPTION(width);
-  int term_height = (int)GET_OPTION(height);
+  int term_width = (int)terminal_get_effective_width();
+  int term_height = (int)terminal_get_effective_height();
 
   // Use available terminal width, capped at preferred width
   int box_width = term_width;
