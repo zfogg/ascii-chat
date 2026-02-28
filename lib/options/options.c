@@ -1717,13 +1717,70 @@ asciichat_error_t options_init(int argc, char **argv) {
     if (mode_argv[i] &&
         (strcmp(mode_argv[i], "--sync-state") == 0 || strncmp(mode_argv[i], "--sync-state=", 13) == 0)) {
       opts.debug_sync_state_time_explicit = true;
+      if (strcmp(mode_argv[i], "--sync-state") == 0) {
+        if (i + 1 < mode_argc) {
+          char *endptr;
+          double val = strtod(mode_argv[i + 1], &endptr);
+          if (endptr != mode_argv[i + 1] && val > 0.0) {
+            opts.debug_sync_state_time = val;
+            i++;
+          }
+        }
+      } else {
+        const char *value_str = mode_argv[i] + 13;
+        if (value_str[0] != '\0') {
+          char *endptr;
+          double val = strtod(value_str, &endptr);
+          if (endptr != value_str && val > 0.0) {
+            opts.debug_sync_state_time = val;
+          }
+        }
+      }
     }
     if (mode_argv[i] && (strcmp(mode_argv[i], "--backtrace") == 0 || strncmp(mode_argv[i], "--backtrace=", 12) == 0)) {
       opts.debug_backtrace_time_explicit = true;
+      if (strcmp(mode_argv[i], "--backtrace") == 0) {
+        if (i + 1 < mode_argc) {
+          char *endptr;
+          double val = strtod(mode_argv[i + 1], &endptr);
+          if (endptr != mode_argv[i + 1] && val > 0.0) {
+            opts.debug_backtrace_time = val;
+            i++;
+          }
+        }
+      } else {
+        const char *value_str = mode_argv[i] + 12;
+        if (value_str[0] != '\0') {
+          char *endptr;
+          double val = strtod(value_str, &endptr);
+          if (endptr != value_str && val > 0.0) {
+            opts.debug_backtrace_time = val;
+          }
+        }
+      }
     }
     if (mode_argv[i] &&
         (strcmp(mode_argv[i], "--memory-report") == 0 || strncmp(mode_argv[i], "--memory-report=", 16) == 0)) {
       opts.debug_memory_report_interval_explicit = true;
+      if (strcmp(mode_argv[i], "--memory-report") == 0) {
+        if (i + 1 < mode_argc) {
+          char *endptr;
+          double val = strtod(mode_argv[i + 1], &endptr);
+          if (endptr != mode_argv[i + 1] && val > 0.0) {
+            opts.debug_memory_report_interval = val;
+            i++;
+          }
+        }
+      } else {
+        const char *value_str = mode_argv[i] + 16;
+        if (value_str[0] != '\0') {
+          char *endptr;
+          double val = strtod(value_str, &endptr);
+          if (endptr != value_str && val > 0.0) {
+            opts.debug_memory_report_interval = val;
+          }
+        }
+      }
     }
 #endif
   }
