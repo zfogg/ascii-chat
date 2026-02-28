@@ -622,10 +622,33 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
                                         void **out_allocated_buffer) {
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
 
-  // Check connection first without holding queue lock
+  // Wait for connection to be established (service thread may still be connecting)
+  // The service thread creates the transport immediately and returns, allowing the main
+  // thread to respond to input, but the connection may not be established yet.
+  // We need to wait for it with a timeout to avoid hanging forever.
+  const uint64_t CONNECT_WAIT_TIMEOUT_NS = 100 * 1000000ULL;  // 100ms per wait iteration
+  uint64_t wait_start_ns = time_get_ns();
+
   mutex_lock(&ws_data->state_mutex);
+  while (!ws_data->is_connected && !ws_data->connection_failed) {
+    uint64_t elapsed_ns = time_get_ns() - wait_start_ns;
+    if (elapsed_ns > 30 * 1000000000ULL) {  // 30 second total timeout
+      log_error("🔴 WEBSOCKET_RECV: Connection timeout after 30 seconds, connection_failed=%d",
+                ws_data->connection_failed);
+      mutex_unlock(&ws_data->state_mutex);
+      return SET_ERRNO(ERROR_NETWORK, "WebSocket connection timeout");
+    }
+    // Wait for connection with timeout
+    cond_timedwait(&ws_data->state_cond, &ws_data->state_mutex, CONNECT_WAIT_TIMEOUT_NS);
+  }
   bool connected = ws_data->is_connected;
+  bool connection_failed = ws_data->connection_failed;
   mutex_unlock(&ws_data->state_mutex);
+
+  if (connection_failed && !connected) {
+    log_error("🔴 WEBSOCKET_RECV: Connection failed during establishment");
+    return SET_ERRNO(ERROR_NETWORK, "WebSocket connection failed");
+  }
 
   mutex_lock(&ws_data->recv_mutex);
 
@@ -636,10 +659,10 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   if (!connected && !has_queued_data && ws_data->partial_size == 0) {
     // Only fail if connection is closed AND no buffered data AND no leftover from previous call
     uint64_t now_ns = time_get_ns();
-    log_fatal("🔴 WEBSOCKET_RECV: Connection not established! connected=%d, has_queued_data=%d, partial_size=%zu, wsi=%p, timestamp=%llu",
+    log_fatal("🔴 WEBSOCKET_RECV: Connection closed! connected=%d, has_queued_data=%d, partial_size=%zu, wsi=%p, timestamp=%llu",
               connected, has_queued_data, ws_data->partial_size, (void *)ws_data->wsi, (unsigned long long)now_ns);
     mutex_unlock(&ws_data->recv_mutex);
-    return SET_ERRNO(ERROR_NETWORK, "Connection not established");
+    return SET_ERRNO(ERROR_NETWORK, "Connection closed");
   }
 
   // Reassemble fragmented WebSocket messages with SHORT timeout
