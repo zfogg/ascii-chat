@@ -1773,9 +1773,7 @@ void *client_receive_thread(void *arg) {
       asciichat_error_t recv_result =
           transport_snapshot->methods->recv(transport_snapshot, &packet_data, &packet_len, &allocated_buffer);
 
-      log_info("🔍 RECV_THREAD[%s]: transport->recv() returned result=%d, packet_len=%zu, allocated_buffer=%p",
-               client->client_id, recv_result, packet_len, allocated_buffer);
-
+      // Check error BEFORE logging - logging system may clear thread-local errno
       if (recv_result != ASCIICHAT_OK) {
         asciichat_error_context_t err_ctx;
         if (HAS_ERRNO(&err_ctx)) {
@@ -1798,6 +1796,9 @@ void *client_receive_thread(void *arg) {
                  asciichat_error_string(recv_result));
         break;
       }
+
+      log_info("🔍 RECV_THREAD[%s]: transport->recv() returned result=%d, packet_len=%zu, allocated_buffer=%p",
+               client->client_id, recv_result, packet_len, allocated_buffer);
 
       // Validate received packet before queueing
       if (packet_len < sizeof(packet_header_t)) {
