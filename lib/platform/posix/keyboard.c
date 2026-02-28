@@ -163,6 +163,12 @@ keyboard_key_t keyboard_read_nonblocking(void) {
                 return KEY_RIGHT;
               case 'D':
                 return KEY_LEFT;
+              case 'H':
+                // Home key (some terminals send ESC [ H instead of ESC [ 1 ~)
+                return 261; // KEY_HOME
+              case 'F':
+                // End key (some terminals send ESC [ F instead of ESC [ 4 ~)
+                return 262; // KEY_END
               case '1':
                 // Home key sends ESC [ 1 ~
                 if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
@@ -281,6 +287,12 @@ keyboard_key_t keyboard_read_with_timeout(uint32_t timeout_ms) {
                 return KEY_RIGHT;
               case 'D':
                 return KEY_LEFT;
+              case 'H':
+                // Home key (some terminals send ESC [ H instead of ESC [ 1 ~)
+                return 261; // KEY_HOME
+              case 'F':
+                // End key (some terminals send ESC [ F instead of ESC [ 4 ~)
+                return 262; // KEY_END
               case '1':
                 // Home key sends ESC [ 1 ~
                 if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
