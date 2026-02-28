@@ -122,6 +122,7 @@ int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_le
 #include <time.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #ifdef _WIN32
 #include <ascii-chat/platform/windows_compat.h>
