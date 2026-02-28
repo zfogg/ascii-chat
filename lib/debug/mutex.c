@@ -629,7 +629,7 @@ void mutex_stack_cleanup_current_thread(void) {
   thread_id_t current_thread = asciichat_thread_self();
   int count = atomic_load_explicit(&g_thread_registry_count, memory_order_acquire);
   for (int i = 0; i < count; i++) {
-    if (pthread_equal(g_thread_registry[i].thread_id, current_thread) && g_thread_registry[i].stack == stack) {
+    if (asciichat_thread_equal(g_thread_registry[i].thread_id, current_thread) && g_thread_registry[i].stack == stack) {
       g_thread_registry[i].stack = NULL; // Mark as freed in registry
       break;
     }
