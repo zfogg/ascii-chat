@@ -208,14 +208,20 @@ static int webcam_v4l2_set_format(webcam_context_t *ctx, int width, int height) 
 
   // Try MJPEG (Motion-JPEG - compressed format supporting 60fps on many cameras)
   fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_MJPEG;
-  if (ioctl(ctx->fd, VIDIOC_S_FMT, &fmt) == 0 && fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_MJPEG) {
+  int mjpeg_ret = ioctl(ctx->fd, VIDIOC_S_FMT, &fmt);
+  if (mjpeg_ret == 0 && fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_MJPEG) {
     ctx->pixelformat = V4L2_PIX_FMT_MJPEG;
     ctx->width = fmt.fmt.pix.width;
     ctx->height = fmt.fmt.pix.height;
     if (webcam_v4l2_init_mjpeg_decoder(ctx) == 0) {
       log_debug("V4L2 format set to MJPEG %dx%d (60fps compressed - will decompress JPEG with FFmpeg)", ctx->width, ctx->height);
+      log_info("MJPEG format selected: pixelformat=0x%x", ctx->pixelformat);
       return 0;
+    } else {
+      log_warn("MJPEG decoder init failed, trying next format");
     }
+  } else {
+    log_debug("MJPEG format not supported (ioctl returned %d, got format 0x%x)", mjpeg_ret, fmt.fmt.pix.pixelformat);
   }
 
   // Try YUYV (YUV 4:2:2 - most webcams support this)
@@ -610,7 +616,7 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
 
     // Send packet to decoder
     if (avcodec_send_packet(ctx->mjpeg_codec_ctx, &pkt) < 0) {
-      log_warn_every(1000000000LL, "Failed to send MJPEG packet to decoder");
+      log_warn_every(1000000000LL, "Failed to send MJPEG packet (size=%u) to decoder", buf.bytesused);
       av_packet_unref(&pkt);
       if (ioctl(ctx->fd, VIDIOC_QBUF, &buf) == -1) {
         log_error("Failed to re-queue buffer after MJPEG decode error: %s", SAFE_STRERROR(errno));
@@ -620,7 +626,7 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
 
     // Receive decoded frame
     if (avcodec_receive_frame(ctx->mjpeg_codec_ctx, ctx->mjpeg_decoded_frame) < 0) {
-      log_warn_every(1000000000LL, "Failed to decode MJPEG frame");
+      log_warn_every(1000000000LL, "Failed to decode MJPEG frame from %u bytes", buf.bytesused);
       av_packet_unref(&pkt);
       if (ioctl(ctx->fd, VIDIOC_QBUF, &buf) == -1) {
         log_error("Failed to re-queue buffer after MJPEG receive error: %s", SAFE_STRERROR(errno));
@@ -628,6 +634,7 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
       return NULL;
     }
 
+    log_debug_every(5000000000LL, "MJPEG frame decoded: %dx%d, %u bytes", ctx->width, ctx->height, buf.bytesused);
     av_packet_unref(&pkt);
 
     // Convert decoded frame to RGB24 using swscale
