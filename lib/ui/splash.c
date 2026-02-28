@@ -677,22 +677,9 @@ int splash_intro_start(session_display_ctx_t *ctx) {
       return 0; // ASCIICHAT_OK equivalent
     }
 
-    // Check if interactive (skip if explicitly set)
-    bool is_interactive = terminal_is_interactive();
-    if (!is_interactive) {
-      log_set_terminal_output(saved_console_state);
-      // Restore stderr on early return
-      if (g_splash_state.stderr_fd_saved >= 0) {
-        dup2(g_splash_state.stderr_fd_saved, STDERR_FILENO);
-        close(g_splash_state.stderr_fd_saved);
-        g_splash_state.stderr_fd_saved = -1;
-      }
-      if (g_splash_state.devnull_fd >= 0) {
-        close(g_splash_state.devnull_fd);
-        g_splash_state.devnull_fd = -1;
-      }
-      return 0;
-    }
+    // Don't check terminal_is_interactive() when --splash-screen is explicitly set
+    // The interactive check above (splash_should_display) already handles this
+    // If we get here and splash_screen_opt is true, we should proceed
   }
 
   // Always check terminal size (applies regardless of explicit flag)
