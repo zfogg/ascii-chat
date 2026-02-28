@@ -84,7 +84,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     echo "Detected apt-get package manager"
     echo "Installing dependencies..."
 
-    sudo add-apt-repository ppa:tomtomtom/yt-dlp
+    sudo add-apt-repository ppa:tomtomtom/yt-dlp -y
 
     # INFO: see https://apt.kitware.com/
     set +e
