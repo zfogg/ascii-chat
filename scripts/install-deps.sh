@@ -146,7 +146,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       dpkg-dev rpm \
       yt-dlp \
       libwebsockets-dev  \
-      libyyjson-dev
+      yyjson
 
     curl -fsSL https://bun.com/install | sudo bash
 
