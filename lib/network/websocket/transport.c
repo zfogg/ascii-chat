@@ -427,23 +427,36 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
 
   // For server-side transports (owns_context=false), the connection is already established
-  // because this code only runs after LWS_CALLBACK_ESTABLISHED. Don't check is_connected
-  // as it may not have been set properly yet due to initialization timing.
-  // For client-side transports (owns_context=true), verify connection status.
+  // For client-side transports (owns_context=true), wait for connection to be established
+  // before sending, instead of failing immediately. This allows sends to work even if
+  // they're called before the service thread has fully established the connection.
   if (ws_data->owns_context) {
+    // Wait for connection with same timeout as recv()
+    const uint64_t CONNECT_WAIT_TIMEOUT_NS = 100 * 1000000ULL;  // 100ms per wait iteration
+    uint64_t wait_start_ns = time_get_ns();
+
     mutex_lock(&ws_data->state_mutex);
+    while (!ws_data->is_connected && !ws_data->connection_failed) {
+      uint64_t elapsed_ns = time_get_ns() - wait_start_ns;
+      if (elapsed_ns > 30 * 1000000000ULL) {  // 30 second total timeout
+        log_error("[WEBSOCKET_SEND] Connection timeout after 30 seconds, cannot send");
+        mutex_unlock(&ws_data->state_mutex);
+        return SET_ERRNO(ERROR_NETWORK, "WebSocket connection timeout");
+      }
+      // Wait for connection with timeout
+      cond_timedwait(&ws_data->state_cond, &ws_data->state_mutex, CONNECT_WAIT_TIMEOUT_NS);
+    }
     bool connected = ws_data->is_connected;
+    bool connection_failed = ws_data->connection_failed;
     mutex_unlock(&ws_data->state_mutex);
+
+    if (connection_failed && !connected) {
+      log_error("[WEBSOCKET_SEND] Connection failed during establishment");
+      return SET_ERRNO(ERROR_NETWORK, "WebSocket connection failed");
+    }
 
     log_dev_every(1000000, "websocket_send (client): is_connected=%d, wsi=%p, send_len=%zu", connected,
                   (void *)ws_data->wsi, len);
-
-    if (!connected) {
-      log_error("[WEBSOCKET_SEND_ERROR] ★★★ Client transport NOT connected! ws_data=%p, wsi=%p, len=%zu",
-                (void *)ws_data, (void *)ws_data->wsi, len);
-      log_error("WebSocket send called but client transport NOT connected! wsi=%p, len=%zu", (void *)ws_data->wsi, len);
-      return SET_ERRNO(ERROR_NETWORK, "WebSocket transport not connected (wsi=%p)", (void *)ws_data->wsi);
-    }
   } else {
     log_info("[WEBSOCKET_SEND_SERVER] ★★★ Server transport send: wsi=%p, len=%zu (bypassing is_connected check)",
              (void *)ws_data->wsi, len);
