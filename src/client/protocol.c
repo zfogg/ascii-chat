@@ -943,9 +943,6 @@ static void *data_reception_thread_func(void *arg) {
 #endif
 
   int packet_count = 0;
-  fprintf(stderr, "★ DATA_RECEPTION_CHECK_BEFORE_LOOP: should_exit()=%d, server_connection_is_active()=%d\n",
-          should_exit(), server_connection_is_active());
-  fflush(stderr);
   while (!should_exit() && server_connection_is_active()) {
     // Main loop: receive and process packets while connection is active
     // When connection becomes inactive or shutdown is requested, thread exits cleanly

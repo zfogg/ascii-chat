@@ -504,15 +504,7 @@ static asciichat_error_t client_run(session_capture_ctx_t *capture, session_disp
 
   // Connection successful - integrate transport into server layer
   if (g_client_session.connection_ctx.active_transport) {
-    fprintf(stderr, "★ SETTING_TRANSPORT: context.active_transport=%p\n",
-            (void *)g_client_session.connection_ctx.active_transport);
-    fflush(stderr);
     server_connection_set_transport(g_client_session.connection_ctx.active_transport);
-    fprintf(stderr, "★ TRANSPORT_SET: calling server_connection_get_transport() to verify...\n");
-    fflush(stderr);
-    acip_transport_t *verify_transport = server_connection_get_transport();
-    fprintf(stderr, "★ TRANSPORT_VERIFY: server_connection_get_transport()=%p\n", (void *)verify_transport);
-    fflush(stderr);
     g_client_session.connection_ctx.active_transport = NULL;
   } else {
     log_error("Connection succeeded but no active transport");

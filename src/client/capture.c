@@ -436,11 +436,6 @@ int capture_start_thread() {
   g_capture_thread_created = true;
   log_debug("Webcam capture thread created successfully");
 
-  // Notify server we're starting to send video
-  if (threaded_send_stream_start_packet(STREAM_TYPE_VIDEO) < 0) {
-    LOG_ERRNO_IF_SET("Failed to send stream start packet");
-  }
-
   return 0;
 }
 /**
