@@ -160,6 +160,18 @@ static void *websocket_service_thread(void *arg) {
         if (loop_count <= 10) {
           log_info("[LOOP %d] CLIENT not connected yet, skipping queue drain", loop_count);
         }
+
+        // Check if connection attempt failed (CONNECTION_ERROR was called)
+        // If so, break from service loop to avoid indefinite retry
+        mutex_lock(&ws_data->state_mutex);
+        bool failed = ws_data->connection_failed;
+        mutex_unlock(&ws_data->state_mutex);
+
+        if (failed) {
+          log_info("[LOOP %d] Connection attempt failed, exiting service thread", loop_count);
+          break;
+        }
+
         // Sleep briefly to avoid busy-waiting
         platform_sleep_us(10000); // 10ms
       } else {
@@ -326,6 +338,8 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
     if (ws_data) {
       mutex_lock(&ws_data->state_mutex);
       ws_data->is_connected = false;
+      ws_data->connection_failed = true; // Signal service thread to exit
+      cond_signal(&ws_data->state_cond); // Wake anyone waiting on connection
       mutex_unlock(&ws_data->state_mutex);
 
       // Wake any blocking recv() calls
@@ -865,6 +879,17 @@ static asciichat_error_t websocket_close(acip_transport_t *transport) {
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
   uint64_t now_ns = time_get_ns();
 
+  // CRITICAL: Stop service thread BEFORE calling lws_close_reason()
+  // lws_close_reason() triggers LWS callbacks synchronously, which try to acquire state_mutex.
+  // If the service thread is running in lws_service(), it may also try to acquire state_mutex,
+  // causing a deadlock. We must stop the service thread first to prevent callback contention.
+  if (ws_data->service_running) {
+    log_debug("[websocket_close] Stopping service thread to prevent deadlock during lws_close_reason()");
+    ws_data->service_running = false;
+    asciichat_thread_join(&ws_data->service_thread, NULL);
+    log_debug("[websocket_close] Service thread stopped");
+  }
+
   mutex_lock(&ws_data->state_mutex);
 
   if (!ws_data->is_connected) {
@@ -880,6 +905,7 @@ static asciichat_error_t websocket_close(acip_transport_t *transport) {
   mutex_unlock(&ws_data->state_mutex);
 
   // Close WebSocket connection
+  // Safe to call lws_close_reason() now - service thread is stopped, so no callback contention
   if (ws_data->wsi) {
     log_fatal("    [websocket_close] Calling lws_close_reason for wsi=%p", (void *)ws_data->wsi);
     lws_close_reason(ws_data->wsi, LWS_CLOSE_STATUS_NORMAL, NULL, 0);
@@ -1270,8 +1296,9 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
     return NULL;
   }
 
-  ws_data->is_connected = false; // Will be set to true in LWS_CALLBACK_CLIENT_ESTABLISHED
-  ws_data->owns_context = true;  // Client transport owns the context
+  ws_data->is_connected = false;      // Will be set to true in LWS_CALLBACK_CLIENT_ESTABLISHED
+  ws_data->connection_failed = false; // Set to true in LWS_CALLBACK_CLIENT_CONNECTION_ERROR
+  ws_data->owns_context = true;       // Client transport owns the context
 
   // Initialize transport
   transport->methods = &websocket_methods;
@@ -1308,8 +1335,11 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   const int POLL_INTERVAL_MS = 50;
 
   // Use condition variable to wait for connection instead of calling lws_service
+  // Check should_exit() to allow SIGTERM to interrupt the connection wait
+  extern bool should_exit(void);
+
   mutex_lock(&ws_data->state_mutex);
-  while (!ws_data->is_connected && elapsed_ms < timeout_ms) {
+  while (!ws_data->is_connected && elapsed_ms < timeout_ms && !should_exit()) {
     // Wait on condition variable with timeout
     cond_timedwait(&ws_data->state_cond, &ws_data->state_mutex, POLL_INTERVAL_MS * 1000000ULL);
     elapsed_ms += POLL_INTERVAL_MS;
@@ -1318,6 +1348,23 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
     log_dev_every(1000000, "Waiting for connection: elapsed=%dms, is_connected=%d", elapsed_ms, ws_data->is_connected);
   }
   mutex_unlock(&ws_data->state_mutex);
+
+  // If shutdown was requested during connection wait, exit cleanly
+  if (should_exit()) {
+    log_debug("WebSocket connection interrupted by shutdown signal");
+    ws_data->service_running = false;
+    asciichat_thread_join(&ws_data->service_thread, NULL);
+    lws_context_destroy(ws_data->context);
+    SAFE_FREE(ws_data->send_buffer);
+    cond_destroy(&ws_data->state_cond);
+    mutex_destroy(&ws_data->state_mutex);
+    cond_destroy(&ws_data->recv_cond);
+    mutex_destroy(&ws_data->recv_mutex);
+    ringbuffer_destroy(ws_data->recv_queue);
+    SAFE_FREE(ws_data);
+    SAFE_FREE(transport);
+    return NULL;
+  }
 
   if (!ws_data->is_connected) {
     log_error("WebSocket connection timeout after %d ms", elapsed_ms);

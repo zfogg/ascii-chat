@@ -103,9 +103,21 @@ void platform_destroy(void) {
 /**
  * @brief Sleep for specified milliseconds
  * @param ms Number of milliseconds to sleep
+ *
+ * Uses a loop with 100ms intervals instead of a single usleep() call.
+ * This allows signals to be processed more frequently without requiring
+ * signal handlers to interrupt usleep(). Makes SIGTERM shutdown responsive
+ * during reconnection delays.
  */
 void platform_sleep_ms(unsigned int ms) {
-  usleep(ms * 1000);
+  // Sleep in 100ms chunks so signals can wake us up more frequently
+  unsigned int chunk_ms = 100;
+
+  while (ms > 0) {
+    unsigned int sleep_ms = (ms < chunk_ms) ? ms : chunk_ms;
+    usleep(sleep_ms * 1000);
+    ms -= sleep_ms;
+  }
 }
 
 /**
@@ -807,7 +819,8 @@ void platform_log_backtrace_frame(int n) {
   char **symbols = platform_backtrace_symbols(buffer + frame_idx, 1);
   if (!symbols || !symbols[0]) {
     log_debug("Unable to resolve frame %d", n);
-    if (symbols) platform_backtrace_symbols_destroy(symbols);
+    if (symbols)
+      platform_backtrace_symbols_destroy(symbols);
     return;
   }
 

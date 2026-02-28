@@ -36,8 +36,8 @@ typedef websocket_msg_t websocket_recv_msg_t;
  * may still hold references asynchronously
  */
 typedef struct {
-  uint8_t *ptr;    ///< Pointer to buffer to free
-  size_t size;     ///< Size of buffer
+  uint8_t *ptr; ///< Pointer to buffer to free
+  size_t size;  ///< Size of buffer
 } pending_free_item_t;
 
 /**
@@ -53,6 +53,7 @@ typedef struct {
   cond_t recv_cond;            ///< Signal when recv_queue messages arrive
   mutex_t send_mutex;          ///< Protect send_queue operations only
   bool is_connected;           ///< Connection state
+  bool connection_failed;      ///< Connection attempt failed (for client-side detection)
   mutex_t state_mutex;         ///< Protect state changes
   cond_t state_cond;           ///< Signal when is_connected changes (for connection wait)
   uint8_t *send_buffer;        ///< Send buffer with LWS_PRE padding
@@ -65,18 +66,18 @@ typedef struct {
   // Partial message reassembly state (preserved across recv() calls)
   // Fixes issue where slow fragment delivery caused reassembly timeouts
   // and orphaned fragments in the queue
-  uint8_t *partial_buffer;           ///< Partial message buffer being assembled
-  size_t partial_size;               ///< Current size of partial buffer
-  size_t partial_capacity;           ///< Capacity of partial buffer
-  uint64_t reassembly_start_ns;      ///< Start time of current reassembly (for timeout detection)
-  int fragment_count;                ///< Fragment count for current reassembly
-  bool reassembling;                 ///< True if currently assembling a message
+  uint8_t *partial_buffer;      ///< Partial message buffer being assembled
+  size_t partial_size;          ///< Current size of partial buffer
+  size_t partial_capacity;      ///< Capacity of partial buffer
+  uint64_t reassembly_start_ns; ///< Start time of current reassembly (for timeout detection)
+  int fragment_count;           ///< Fragment count for current reassembly
+  bool reassembling;            ///< True if currently assembling a message
 
   // Deferred buffer freeing for compression layer compatibility
   // permessage-deflate holds buffer references asynchronously after lws_write()
   // We defer freeing to prevent use-after-free in the compression layer
-  ringbuffer_t *pending_free_queue;  ///< Queue of buffers pending delayed free
-  mutex_t pending_free_mutex;        ///< Protect pending_free_queue operations
+  ringbuffer_t *pending_free_queue; ///< Queue of buffers pending delayed free
+  mutex_t pending_free_mutex;       ///< Protect pending_free_queue operations
 
 } websocket_transport_data_t;
 

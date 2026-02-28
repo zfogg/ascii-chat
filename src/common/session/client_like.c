@@ -647,8 +647,16 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     }
 
     // Apply reconnection delay if configured
+    // Check should_exit() frequently during sleep so SIGTERM can interrupt reconnection attempts
     if (config->reconnect_delay_ms > 0) {
-      platform_sleep_ms(config->reconnect_delay_ms);
+      unsigned int remaining_ms = config->reconnect_delay_ms;
+      const unsigned int check_interval_ms = 100; // Check exit flag every 100ms
+
+      while (remaining_ms > 0 && !should_exit()) {
+        unsigned int sleep_ms = (remaining_ms < check_interval_ms) ? remaining_ms : check_interval_ms;
+        platform_sleep_ms(sleep_ms);
+        remaining_ms -= sleep_ms;
+      }
     }
 
     // Continue loop to retry
