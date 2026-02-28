@@ -22,7 +22,16 @@ video_frame_buffer_t *video_frame_buffer_create(const char *client_id) {
 
   video_frame_buffer_t *vfb = SAFE_CALLOC(1, sizeof(video_frame_buffer_t), video_frame_buffer_t *);
 
-  vfb->client_id = client_id;
+  // Copy client_id string - we own this memory now
+  // (caller's client_id may be a stack variable that goes out of scope)
+  char *client_id_copy = SAFE_MALLOC(strlen(client_id) + 1, char *);
+  if (!client_id_copy) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for client_id copy");
+    SAFE_FREE(vfb);
+    return NULL;
+  }
+  strcpy(client_id_copy, client_id);
+  vfb->client_id = client_id_copy;
   vfb->active = true;
 
   // Initialize double buffers
@@ -111,6 +120,10 @@ void video_frame_buffer_destroy(video_frame_buffer_t *vfb) {
   }
 
   mutex_destroy(&vfb->swap_mutex);
+
+  // Free the allocated client_id string
+  SAFE_FREE(vfb->client_id);
+
   SAFE_FREE(vfb);
 }
 

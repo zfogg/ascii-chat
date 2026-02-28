@@ -2643,15 +2643,13 @@ cleanup:
   }
 
   // Clean up hash table
-  // Clean up uthash table (uthash handles deletion when the last item is removed,
-  // but we should clear it here just in case there are stragglers)
-  if (g_client_manager.clients_by_id) {
-    client_info_t *current_client, *tmp;
-    HASH_ITER(hh, g_client_manager.clients_by_id, current_client, tmp) {
-      HASH_DELETE(hh, g_client_manager.clients_by_id, current_client);
-      // Note: We don't free current_client here because it's part of the clients[] array
-    }
-    g_client_manager.clients_by_id = NULL;
+  // Cannot use HASH_ITER when deleting - HASH_DELETE modifies the table and can set
+  // the pointer to NULL, causing HASH_ITER to dereference a null pointer.
+  // Instead, repeatedly delete the first item until the table is empty.
+  while (g_client_manager.clients_by_id) {
+    client_info_t *current_client = g_client_manager.clients_by_id;
+    HASH_DELETE(hh, g_client_manager.clients_by_id, current_client);
+    // Note: We don't free current_client here because it's part of the clients[] array
   }
 
   // Clean up audio mixer
