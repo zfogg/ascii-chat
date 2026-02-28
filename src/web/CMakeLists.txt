@@ -110,6 +110,9 @@ set(PLATFORM_SRC
     ${LIB_ROOT}/platform/wasm/system.c
     ${LIB_ROOT}/platform/wasm/time.c
     ${LIB_ROOT}/platform/wasm/string.c
+    ${LIB_ROOT}/platform/wasm/lifecycle.c
+    ${LIB_ROOT}/platform/wasm/backtrace.c
+    ${LIB_ROOT}/platform/wasm/log.c
     ${LIB_ROOT}/platform/wasm/stubs/util.c
     ${LIB_ROOT}/platform/wasm/stubs/actions.c
     ${LIB_ROOT}/platform/wasm/stubs/terminal.c
@@ -201,6 +204,7 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/video/simd/ascii_simd.c
     ${LIB_ROOT}/video/simd/ascii_simd_color.c
     ${LIB_ROOT}/video/simd/avx2.c
+    ${LIB_ROOT}/video/scalar/halfblock.c  # Scalar halfblock rendering fallback
 
     # Utilities (minimal set needed by options)
     ${LIB_ROOT}/util/format.c
@@ -224,11 +228,11 @@ set(LIB_SRC_COMMON
     # wasm/system.c file, which follows the same pattern as posix/system.c and windows/system.c
 
     # Logging
-    ${LIB_ROOT}/log/logging.c
-    ${LIB_ROOT}/log/format.c
-    ${LIB_ROOT}/log/colorize.c
-    ${LIB_ROOT}/log/grep.c
-    ${LIB_ROOT}/log/interactive_grep.c
+    # ${LIB_ROOT}/log/log.c - EXCLUDED for WASM (depends on log_template_parse and other functions)
+    # ${LIB_ROOT}/log/format.c - EXCLUDED for WASM (depends on lifecycle)
+    # ${LIB_ROOT}/log/colorize.c - EXCLUDED for WASM
+    # ${LIB_ROOT}/log/grep.c - EXCLUDED for WASM
+    # ${LIB_ROOT}/log/interactive_grep.c - EXCLUDED: not needed for web client
 
     # Debug/memory tracking
     ${LIB_ROOT}/debug/memory.c

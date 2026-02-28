@@ -1163,7 +1163,7 @@ asciichat_error_t options_init(int argc, char **argv) {
       options_state_set(&opts);
       return ASCIICHAT_OK;
     }
-    if (create_config) {
+    else if (create_config) {
       // Build the schema first so config_create_default can generate options from it
       const options_config_t *unified_config = options_preset_unified(NULL, NULL);
       if (unified_config) {
@@ -1179,7 +1179,7 @@ asciichat_error_t options_init(int argc, char **argv) {
       action_create_config(config_create_path);
       // action_create_config() calls _Exit(), so we don't reach here
     }
-    if (create_manpage) {
+    else if (create_manpage) {
       // Call action handler which handles all output and prompts properly
       action_create_manpage(manpage_create_path);
       // action_create_manpage() calls _Exit(), so we don't reach here
