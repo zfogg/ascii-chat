@@ -1126,13 +1126,11 @@ void audio_stop_thread() {
   // This must happen before thread_pool_stop_all() is called, otherwise the sender
   // thread will be stuck in cond_wait() and thread_pool_stop_all() will hang forever.
   // The sender thread uses a condition variable to wait for packets - we must wake it up.
-  if (lifecycle_is_initialized(&g_audio_send_queue_lc)) {
-    log_debug("Signaling audio sender thread to exit");
-    atomic_store(&g_audio_sender_should_exit, true);
-    mutex_lock(&g_audio_send_queue_mutex);
-    cond_signal(&g_audio_send_queue_cond);
-    mutex_unlock(&g_audio_send_queue_mutex);
-  }
+  log_debug("Signaling audio sender thread to exit");
+  atomic_store(&g_audio_sender_should_exit, true);
+  mutex_lock(&g_audio_send_queue_mutex);
+  cond_signal(&g_audio_send_queue_cond);
+  mutex_unlock(&g_audio_send_queue_mutex);
 
   // Wait for audio sender thread to exit gracefully
   // This must complete before thread_pool_stop_all() to prevent deadlock

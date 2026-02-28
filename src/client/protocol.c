@@ -1106,8 +1106,15 @@ void protocol_stop_connection() {
     return;
   }
 
-  // Signal audio sender thread immediately if it was created
-  // Must happen FIRST, even in mirror mode where data_thread was never created
+  // Don't call signal_exit() here - that's for global shutdown only!
+  // We just want to stop threads for this connection, not exit the entire client
+
+  // Shutdown the socket FIRST to interrupt any blocking network operations in worker threads
+  // This must happen BEFORE audio_stop_thread() so audio sender thread unblocks from network send
+  server_connection_shutdown();
+
+  // Signal audio sender thread to exit
+  // Must happen after socket shutdown so any blocked network calls fail
   // Audio sender is created in ALL modes except snapshot mode
   audio_stop_thread();
 
@@ -1116,12 +1123,6 @@ void protocol_stop_connection() {
   if (!g_data_thread_created) {
     return;
   }
-
-  // Don't call signal_exit() here - that's for global shutdown only!
-  // We just want to stop threads for this connection, not exit the entire client
-
-  // Shutdown the socket to interrupt any blocking recv() in data thread
-  server_connection_shutdown();
 
   // Stop keepalive/ping thread - it checks connection status and will exit
   keepalive_stop_thread();

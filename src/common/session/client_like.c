@@ -681,12 +681,16 @@ cleanup:
   platform_disable_keepawake();
 
   // Write newline to separate final frame from prompt (if configured)
+  log_debug("About to check print_newline_on_tty_exit");
   if (config->print_newline_on_tty_exit && terminal_is_stdout_tty()) {
+    log_debug("Writing newline");
     const char newline = '\n';
     (void)platform_write_all(STDOUT_FILENO, &newline, 1);
   }
 
+  log_debug("About to disable terminal output");
   log_set_terminal_output(false);
+  log_debug("Returning from session_client_like_run");
 
   return result;
 }
