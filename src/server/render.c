@@ -1158,7 +1158,7 @@ int create_client_render_threads(server_context_t *server_ctx, client_info_t *cl
 
   // Create video rendering thread (stop_id=2, stop after receive thread)
   char thread_name[64];
-  safe_snprintf(thread_name, sizeof(thread_name), "video_render_%u", client->client_id);
+  safe_snprintf(thread_name, sizeof(thread_name), "video_render_%s", client->client_id);
   asciichat_error_t video_result = tcp_server_spawn_thread(server_ctx->tcp_server, client->socket,
                                                            client_video_render_thread, client, 2, thread_name);
   if (video_result != ASCIICHAT_OK) {
@@ -1169,7 +1169,7 @@ int create_client_render_threads(server_context_t *server_ctx, client_info_t *cl
   }
 
   // Create audio rendering thread (stop_id=2, same priority as video)
-  safe_snprintf(thread_name, sizeof(thread_name), "audio_render_%u", client->client_id);
+  safe_snprintf(thread_name, sizeof(thread_name), "audio_render_%s", client->client_id);
   asciichat_error_t audio_result = tcp_server_spawn_thread(server_ctx->tcp_server, client->socket,
                                                            client_audio_render_thread, client, 2, thread_name);
   if (audio_result != ASCIICHAT_OK) {
