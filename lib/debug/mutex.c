@@ -9,11 +9,14 @@
  */
 
 #include <ascii-chat/debug/mutex.h>
+#include <ascii-chat/debug/named.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/string.h>
+#include <ascii-chat/util/path.h>
 #include <ascii-chat/platform/api.h>
 #include <ascii-chat/platform/mutex.h>
+#include <ascii-chat/platform/cond.h>
 #include <ascii-chat/platform/thread.h>
 #include <string.h>
 
@@ -601,6 +604,81 @@ void mutex_stack_detect_deadlocks(void) {
   }
 
   mutex_stack_free_all_threads(all_stacks, stack_counts, thread_count);
+}
+
+// ============================================================================
+// Condition Variable Deadlock Detection
+// ============================================================================
+
+#define COND_DEADLOCK_THRESHOLD_NS (5ULL * 1000000000ULL) // 5 seconds
+
+/**
+ * @brief Callback for checking condition variable deadlocks
+ * @param key Registry key of the primitive
+ * @param name Human-readable name of the primitive
+ * @param user_data Unused
+ */
+static void cond_deadlock_check_callback(uintptr_t key, const char *name, void *user_data) {
+  (void)user_data; // Unused
+
+  const char *type = named_get_type(key);
+  if (!type || strcmp(type, "cond") != 0) {
+    return;
+  }
+
+  const cond_t *cond = (const cond_t *)key;
+  if (cond->waiting_count == 0) {
+    return; // No threads waiting, nothing to check
+  }
+
+  // Skip deadlock checks for thread pool work queues - it's normal for worker threads
+  // to wait idly when there's no work to process
+  if (name && strstr(name, "task_available") != NULL) {
+    return;
+  }
+
+  uint64_t now = time_get_ns();
+  uint64_t stuck_ns = now - cond->last_wait_time_ns;
+  bool no_signal_since_wait = (cond->last_signal_time_ns == 0 || cond->last_signal_time_ns < cond->last_wait_time_ns);
+
+  if (stuck_ns < COND_DEADLOCK_THRESHOLD_NS || !no_signal_since_wait) {
+    return; // Not stuck yet or was signaled recently
+  }
+
+  // Condition variable appears to be stuck - log detailed diagnostic info
+  char stuck_str[64];
+  time_pretty(stuck_ns, -1, stuck_str, sizeof(stuck_str));
+
+  char cond_buf[1024] = {0};
+  int cond_written =
+      safe_snprintf(cond_buf, sizeof(cond_buf),
+                    "Stuck cond '%s': %lu thread(s) waiting %s with no signal (most recent waiter: 0x%lx)\n", name,
+                    cond->waiting_count, stuck_str, (unsigned long)cond->last_waiting_key);
+
+  cond_written +=
+      safe_snprintf(cond_buf + cond_written, sizeof(cond_buf) - cond_written, "  wait entered at %s:%d %s()\n",
+                    extract_project_relative_path(cond->last_wait_file), cond->last_wait_line, cond->last_wait_func);
+
+  if (cond_written >= 0 && cond->last_wait_mutex) {
+    safe_snprintf(cond_buf + cond_written, sizeof(cond_buf) - cond_written,
+                  "  associated mutex: %p (cannot safely inspect without lock ownership)",
+                  (void *)cond->last_wait_mutex);
+  }
+
+  log_warn_every(500 * NS_PER_MS_INT, "%s", cond_buf);
+}
+
+/**
+ * @brief Check all condition variables for deadlocks
+ *
+ * Scans all registered condition variables and logs warnings for any that
+ * have been waiting without signal for longer than COND_DEADLOCK_THRESHOLD_NS.
+ * Called periodically by the debug thread (every 100ms).
+ *
+ * @ingroup debug_sync
+ */
+void debug_sync_check_cond_deadlocks(void) {
+  named_registry_for_each(cond_deadlock_check_callback, NULL);
 }
 
 // ============================================================================
