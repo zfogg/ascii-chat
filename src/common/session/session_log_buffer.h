@@ -22,9 +22,7 @@
 
 // Configuration
 #define SESSION_LOG_BUFFER_SIZE 8192
-// Must be large enough for full formatted log lines from logging.c
-// which can be LOG_MSG_BUFFER_SIZE + 512 (4096 + 512) + timestamp/location overhead
-#define SESSION_LOG_LINE_MAX 5120
+#define SESSION_LOG_LINE_MAX 1024
 
 /**
  * @brief Single log entry with sequence number for ordering
