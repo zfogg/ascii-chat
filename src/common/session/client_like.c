@@ -719,7 +719,8 @@ cleanup:
   log_debug("[CLEANUP] webcam_destroy() returned");
 
   // Stop splash animation and enforce minimum display time (even on error path)
-  // But skip if we're shutting down due to signal - the animation will exit automatically
+  // But skip completely if shutting down - don't interact with splash at all during shutdown
+  // The animation thread will exit on its own when it detects shutdown_is_requested()
   if (!should_exit()) {
     log_debug("[CLEANUP] About to call splash_intro_done()");
     splash_intro_done();
@@ -730,7 +731,9 @@ cleanup:
     splash_wait_for_animation();
     log_debug("[CLEANUP] splash_wait_for_animation() returned");
   } else {
-    log_debug("[CLEANUP] Skipping splash cleanup (shutdown requested)");
+    log_debug("[CLEANUP] Skipping all splash operations (shutdown in progress)");
+    // During shutdown, don't interact with splash - let animation thread exit naturally
+    // and don't wait for it (prevents blocking on signals)
   }
 
   // Stop debug sync thread before destroying log buffer to prevent use-after-free

@@ -617,6 +617,15 @@ static void *splash_animation_thread(void *arg) {
       "shutdown=%d",
       iteration_count, total_elapsed_sec, final_fps, atomic_load(&g_splash_state.should_stop), shutdown_is_requested());
 
+  // If shutdown was requested, clear the screen immediately to prevent splash from
+  // appearing briefly during exit
+  if (shutdown_is_requested()) {
+    log_dev("[SPLASH_ANIM] Shutdown detected, clearing screen before exit");
+    terminal_clear_screen();
+    terminal_cursor_home(STDOUT_FILENO);
+    terminal_flush(STDOUT_FILENO);
+  }
+
   // Cleanup keyboard
   if (keyboard_enabled) {
     log_dev("[SPLASH_ANIM] Destroying keyboard");
@@ -851,22 +860,28 @@ void splash_wait_for_animation(void) {
   if (atomic_load(&g_splash_state.thread_created)) {
     log_dev("[SPLASH_WAIT] Waiting for animation thread to exit...");
 
-    // If shutdown was requested, signal the animation thread to stop immediately
-    // without waiting for the splash timing to complete
-    if (shutdown_is_requested()) {
+    // Check if shutdown was requested - handle it specially
+    bool is_shutting_down = shutdown_is_requested();
+    if (is_shutting_down) {
       log_dev("[SPLASH_WAIT] Shutdown requested, signaling animation thread to stop");
       atomic_store(&g_splash_state.should_stop, true);
     }
 
-    // Join with a reasonable timeout (10 seconds) to prevent indefinite blocking
-    asciichat_error_t err = asciichat_thread_join_timeout(&g_splash_state.anim_thread, NULL,
-                                                          10000LL * NS_PER_MS_INT // 10 second timeout
-    );
+    // Use different timeout based on shutdown state:
+    // - Normal operation: 10 seconds (wait for clean exit)
+    // - Shutdown: 100ms (quick exit, let signal handler take over)
+    uint64_t timeout_ns = is_shutting_down ? (100LL * NS_PER_MS_INT) : (10000LL * NS_PER_MS_INT);
+
+    asciichat_error_t err = asciichat_thread_join_timeout(&g_splash_state.anim_thread, NULL, timeout_ns);
 
     if (err == ASCIICHAT_OK) {
       log_dev("[SPLASH_WAIT] Animation thread exited cleanly");
     } else {
-      log_warn("[SPLASH_WAIT] Animation thread join timed out after 10 seconds");
+      if (is_shutting_down) {
+        log_dev("[SPLASH_WAIT] Shutdown in progress, not waiting for animation thread");
+      } else {
+        log_warn("[SPLASH_WAIT] Animation thread join timed out after 10 seconds");
+      }
     }
 
     // Mark that we've joined (safe to call multiple times - only joins once)
