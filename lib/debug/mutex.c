@@ -28,18 +28,18 @@ typedef struct {
   int depth;
 } thread_lock_stack_t;
 
-// Thread-local storage for fast per-thread access
-static __thread thread_lock_stack_t g_thread_lock_stack = {0};
-
 // Global registry of all threads that have used mutexes
 #define MAX_THREADS 256
 typedef struct {
   pthread_t thread_id;
-  thread_lock_stack_t *stack; // Separate allocation per thread (not thread-local)
+  thread_lock_stack_t *stack; // Heap-allocated stack per thread
 } thread_registry_entry_t;
 
 static thread_registry_entry_t g_thread_registry[MAX_THREADS] = {0};
 static _Atomic(int) g_thread_registry_count = 0;
+
+// Thread-local pointer to the heap-allocated stack for this thread
+static __thread thread_lock_stack_t *g_thread_lock_stack = NULL;
 
 // Track the mutexes involved in the last detected deadlock for throttling
 #define MAX_CYCLE_MUTEXES 16
@@ -53,11 +53,22 @@ static deadlock_state_t g_last_deadlock = {0};
 // Thread Registry Management
 // ============================================================================
 
+// Forward declaration
+static void register_thread_if_needed(void);
+
 /**
  * @brief Get the thread-local stack for fast per-thread operations
+ * Lazily allocates and registers the stack on first access
  */
 static thread_lock_stack_t *get_thread_local_stack(void) {
-  return &g_thread_lock_stack;
+  if (g_thread_lock_stack == NULL) {
+    // Allocate stack on heap (stays valid after thread exits)
+    g_thread_lock_stack = SAFE_CALLOC(1, sizeof(thread_lock_stack_t), thread_lock_stack_t *);
+    if (g_thread_lock_stack) {
+      register_thread_if_needed();
+    }
+  }
+  return g_thread_lock_stack;
 }
 
 /**
