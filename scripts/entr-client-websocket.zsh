@@ -11,8 +11,8 @@ source scripts/developer-helpers.zsh
 cbb --target ascii-chat
 
 
-pkill -f "ascii-chat.*server 0.0.0.0" || true
+pkill -f "ascii-chat.*client" "lldb.*ascii-chat" || true
 
 find src lib include web/web.ascii-chat.com/src | entr -rdc bash -c \
-  'cmake --build build --target ascii-chat && ./build/bin/ascii-chat --log-file server.log --log-level debug server 0.0.0.0 "::" --no-status-screen --websocket-port 27226'
+  'cmake --build build --target ascii-chat && ./build/bin/ascii-chat --log-file client.log --log-level debug client ws://localhost:27226'
 
