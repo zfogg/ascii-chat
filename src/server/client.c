@@ -433,6 +433,36 @@ static int start_client_threads(server_context_t *server_ctx, client_info_t *cli
   char thread_name[64];
   asciichat_error_t result;
 
+  // Step 0: Send initial server state BEFORE spawning receive thread
+  // This prevents use-after-free if the receive thread immediately errors and calls remove_client()
+  if (send_server_state_to_client(client) != 0) {
+    log_warn("Failed to send initial server state to client %u", client_id);
+  }
+
+  // Get current client count for state packet
+  rwlock_rdlock(&g_client_manager_rwlock);
+  uint32_t connected_count = g_client_manager.client_count;
+  rwlock_rdunlock(&g_client_manager_rwlock);
+
+  server_state_packet_t state;
+  state.connected_client_count = connected_count;
+  state.active_client_count = 0; // Will be updated by broadcast thread
+  memset(state.reserved, 0, sizeof(state.reserved));
+
+  // Convert to network byte order
+  server_state_packet_t net_state;
+  net_state.connected_client_count = HOST_TO_NET_U32(state.connected_client_count);
+  net_state.active_client_count = HOST_TO_NET_U32(state.active_client_count);
+  memset(net_state.reserved, 0, sizeof(net_state.reserved));
+
+  // Send initial server state via ACIP transport
+  asciichat_error_t packet_result = acip_send_server_state(client->transport, &net_state);
+  if (packet_result != ASCIICHAT_OK) {
+    log_warn("Failed to send initial server state to client %u: %s", client_id, asciichat_error_string(packet_result));
+  } else {
+    log_debug("Sent initial server state to client %u: %u connected clients", client_id, state.connected_client_count);
+  }
+
   // Step 1: Create receive thread
   if (is_tcp) {
     safe_snprintf(thread_name, sizeof(thread_name), "receive_%u", client_id);
@@ -498,36 +528,7 @@ static int start_client_threads(server_context_t *server_ctx, client_info_t *cli
   }
   log_debug("Created send thread for %s client %u", is_tcp ? "TCP" : "WebRTC", client_id);
 
-  // Step 4: Send initial server state to the new client
-  if (send_server_state_to_client(client) != 0) {
-    log_warn("Failed to send initial server state to client %u", client_id);
-  }
-
-  // Get current client count for initial state packet
-  rwlock_rdlock(&g_client_manager_rwlock);
-  uint32_t connected_count = g_client_manager.client_count;
-  rwlock_rdunlock(&g_client_manager_rwlock);
-
-  server_state_packet_t state;
-  state.connected_client_count = connected_count;
-  state.active_client_count = 0; // Will be updated by broadcast thread
-  memset(state.reserved, 0, sizeof(state.reserved));
-
-  // Convert to network byte order
-  server_state_packet_t net_state;
-  net_state.connected_client_count = HOST_TO_NET_U32(state.connected_client_count);
-  net_state.active_client_count = HOST_TO_NET_U32(state.active_client_count);
-  memset(net_state.reserved, 0, sizeof(net_state.reserved));
-
-  // Send initial server state via ACIP transport
-  asciichat_error_t packet_result = acip_send_server_state(client->transport, &net_state);
-  if (packet_result != ASCIICHAT_OK) {
-    log_warn("Failed to send initial server state to client %u: %s", client_id, asciichat_error_string(packet_result));
-  } else {
-    log_debug("Sent initial server state to client %u: %u connected clients", client_id, state.connected_client_count);
-  }
-
-  // Step 5: Broadcast server state to ALL clients AFTER the new client is fully set up
+  // Step 4: Broadcast server state to ALL clients AFTER the new client is fully set up
   broadcast_server_state_to_all_clients();
 
   return 0;
