@@ -17,6 +17,7 @@
 // fcntl.h no longer needed - O_NONBLOCK removed
 #include <string.h>
 #include <stdio.h>
+#include <ctype.h>
 
 /* ============================================================================
  * Constants
@@ -320,6 +321,35 @@ keyboard_line_edit_result_t keyboard_read_line_interactive(keyboard_line_edit_op
       *opts->cursor = cursor;
     } else if (len == 0) {
       // Backspace with empty buffer - cancel (like vim)
+      return LINE_EDIT_CANCELLED;
+    }
+    return LINE_EDIT_CONTINUE;
+  }
+
+  // Ctrl+W - delete word (zsh/readline style)
+  if (c == 23) {
+    if (cursor > 0) {
+      size_t word_start = cursor;
+
+      // Skip whitespace backwards
+      while (word_start > 0 && isspace((unsigned char)buffer[word_start - 1])) {
+        word_start--;
+      }
+
+      // Skip word characters backwards
+      while (word_start > 0 && !isspace((unsigned char)buffer[word_start - 1])) {
+        word_start--;
+      }
+
+      // Delete from word_start to cursor
+      memmove(&buffer[word_start], &buffer[cursor], len - cursor);
+      len -= (cursor - word_start);
+      cursor = word_start;
+      buffer[len] = '\0';
+      *opts->len = len;
+      *opts->cursor = cursor;
+    } else if (len == 0) {
+      // Ctrl+W with empty buffer - cancel
       return LINE_EDIT_CANCELLED;
     }
     return LINE_EDIT_CONTINUE;
