@@ -88,7 +88,9 @@ static void tls_mutex_stack_destructor(void *arg) {
 
   // Only free if we found it in the registry (not already freed by cleanup)
   if (found_in_registry) {
-    SAFE_FREE(arg);
+    // Use raw free() - stacks are allocated with raw malloc(), not SAFE_CALLOC()
+    // This avoids recursive mutex allocation during destructor execution
+    free(arg);
   }
 }
 
@@ -127,8 +129,12 @@ static thread_lock_stack_t *get_thread_local_stack(void) {
 
   if (stack == NULL) {
     // Allocate stack on heap for this thread
-    stack = SAFE_CALLOC(1, sizeof(thread_lock_stack_t), thread_lock_stack_t *);
+    // Use raw malloc() to avoid recursive mutex allocation during destructor
+    // (SAFE_CALLOC would trigger debug_free which locks a mutex)
+    stack = (thread_lock_stack_t *)malloc(sizeof(thread_lock_stack_t));
     if (stack) {
+      // Zero-initialize like SAFE_CALLOC would
+      memset(stack, 0, sizeof(thread_lock_stack_t));
       // Store in TLS (destructor will free it when thread exits)
       ascii_tls_set(g_tls_mutex_stack, stack);
       register_thread_if_needed();
@@ -605,7 +611,8 @@ void mutex_stack_cleanup(void) {
   int count = atomic_load_explicit(&g_thread_registry_count, memory_order_acquire);
   for (int i = 0; i < count; i++) {
     if (g_thread_registry[i].stack) {
-      SAFE_FREE(g_thread_registry[i].stack);
+      // Use raw free() - stacks are allocated with raw malloc(), not SAFE_CALLOC()
+      free(g_thread_registry[i].stack);
       g_thread_registry[i].stack = NULL;
     }
   }
