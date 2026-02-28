@@ -630,9 +630,9 @@ static inline uintptr_t encode_packet_type_key(int pkt_type) {
 }
 
 const char *named_register_fd(int fd, const char *file, int line, const char *func) {
-  char fd_key[32];
-  snprintf(fd_key, sizeof(fd_key), "fd=%d", fd);
-  return named_register(encode_fd_key(fd), fd_key, "fd", "%d", file, line, func);
+  char fd_name[32];
+  snprintf(fd_name, sizeof(fd_name), "%d", fd);
+  return named_register(encode_fd_key(fd), fd_name, "fd", "%d", file, line, func);
 }
 
 const char *named_get_fd(int fd) {
