@@ -10,6 +10,7 @@
 #include <ascii-chat/platform/cond.h>
 #include <ascii-chat/debug/named.h>
 #include <string.h>
+#include <errno.h>
 
 #ifndef _WIN32
 #include <signal.h>
@@ -398,12 +399,22 @@ asciichat_error_t thread_pool_stop_all(thread_pool_t *pool) {
   // Now join threads (WITHOUT holding the mutex to prevent deadlock)
   thread_pool_entry_t *entry = threads_to_join;
   int joined_count = 0, freed_count = 0;
-  while (entry) {
-    log_debug("Joining thread '%s' (stop_id=%d) in pool '%s'", entry->name, entry->stop_id, pool->name);
+  const uint64_t THREAD_JOIN_TIMEOUT_NS = 2 * 1000000000ULL; // 2 second timeout per thread
 
-    // Join thread (wait for it to exit)
-    if (asciichat_thread_join(&entry->thread, NULL) != 0) {
-      log_warn("Failed to join thread '%s' in pool '%s'", entry->name, pool->name);
+  while (entry) {
+    log_debug("Joining thread '%s' (stop_id=%d) in pool '%s' with 2s timeout", entry->name, entry->stop_id, pool->name);
+
+    // Join thread with timeout to prevent hanging on stuck threads
+    // If thread doesn't exit in 2 seconds, log warning and continue anyway
+    // This prevents reconnection loop from being blocked by deadlocked workers
+    int join_result = asciichat_thread_join_timeout(&entry->thread, NULL, THREAD_JOIN_TIMEOUT_NS);
+    if (join_result != 0) {
+      if (join_result == ETIMEDOUT) {
+        log_warn("Thread '%s' (stop_id=%d) did not exit within 2s timeout - may be stuck. Continuing anyway.",
+                 entry->name, entry->stop_id);
+      } else {
+        log_warn("Failed to join thread '%s' in pool '%s' (error %d)", entry->name, pool->name, join_result);
+      }
     } else {
       joined_count++;
     }
