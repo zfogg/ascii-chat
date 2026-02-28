@@ -737,9 +737,9 @@ void splash_wait_for_animation(void) {
     }
 
     // Use different timeout based on shutdown state:
-    // - Normal operation: 10 seconds (wait for clean exit)
+    // - Normal operation: 1 second (don't block ASCII art rendering in scripts)
     // - Shutdown: 100ms (quick exit, let signal handler take over)
-    uint64_t timeout_ns = is_shutting_down ? (100LL * NS_PER_MS_INT) : (10000LL * NS_PER_MS_INT);
+    uint64_t timeout_ns = is_shutting_down ? (100LL * NS_PER_MS_INT) : (1000LL * NS_PER_MS_INT);
 
     asciichat_error_t err = asciichat_thread_join_timeout(&g_splash_state.anim_thread, NULL, timeout_ns);
 
