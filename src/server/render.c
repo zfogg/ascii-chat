@@ -859,7 +859,7 @@ void *client_audio_render_thread(void *arg) {
     }
 
     // Create mix excluding THIS client's audio using snapshot data
-    START_TIMER("mix_%u", client_id_snapshot);
+    START_TIMER("mix_%s", client_id_snapshot);
 
     // ADAPTIVE READING: Read more samples when we're behind to catch up
     // Normal: 480 samples per 10ms iteration
@@ -871,7 +871,7 @@ void *client_audio_render_thread(void *arg) {
     if (g_audio_mixer) {
       // Check source buffer latency for all sources
       for (int i = 0; i < g_audio_mixer->max_sources; i++) {
-        if (g_audio_mixer->source_ids[i] != 0 && g_audio_mixer->source_ids[i] != client_id_snapshot &&
+        if (g_audio_mixer->source_ids[i] && strcmp(g_audio_mixer->source_ids[i], client_id_snapshot) != 0 &&
             g_audio_mixer->source_buffers[i]) {
           size_t available = audio_ring_buffer_available_read(g_audio_mixer->source_buffers[i]);
           float buffer_latency_ms = (float)available / 48.0f; // samples / (48000 / 1000)
@@ -893,7 +893,7 @@ void *client_audio_render_thread(void *arg) {
       // Log outgoing queue latency
       size_t queue_depth = packet_queue_size(audio_queue_snapshot);
       float queue_latency_ms = (float)queue_depth * 20.0f; // ~20ms per Opus packet
-      log_dev_every(5 * NS_PER_MS_INT, "LATENCY: Server send queue for client %u: %.1fms (%zu packets)",
+      log_dev_every(5 * NS_PER_MS_INT, "LATENCY: Server send queue for client %s: %.1fms (%zu packets)",
                     client_id_snapshot, queue_latency_ms, queue_depth);
     }
 
@@ -907,7 +907,7 @@ void *client_audio_render_thread(void *arg) {
         int max_samples_in_frame = 0;
         // Simple mixing: just add all sources except current client
         for (int i = 0; i < g_audio_mixer->max_sources; i++) {
-          if (g_audio_mixer->source_ids[i] != 0 && g_audio_mixer->source_ids[i] != client_id_snapshot &&
+          if (g_audio_mixer->source_ids[i] && strcmp(g_audio_mixer->source_ids[i], client_id_snapshot) != 0 &&
               g_audio_mixer->source_buffers[i]) {
             // Read from this source and add to mix buffer
             float temp_buffer[960]; // Max adaptive read size
@@ -937,7 +937,7 @@ void *client_audio_render_thread(void *arg) {
       samples_mixed = mixer_process_excluding_source(g_audio_mixer, mix_buffer, samples_to_read, client_id_hash);
     }
 
-    STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "mix_%u", "Mixer for client %u: took",
+    STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "mix_%s", "Mixer for client %s: took",
                              client_id_snapshot);
 
     // Debug logging every 100 iterations (disabled - can slow down audio rendering)
@@ -948,12 +948,12 @@ void *client_audio_render_thread(void *arg) {
     // NOTE: mixer_debug_count is now per-thread (not static), so each client thread has its own counter
     mixer_debug_count++;
     log_dev_every(4500 * US_PER_MS_INT,
-                  "Server mixer iteration #%d for client %u: samples_mixed=%d, opus_frame_accumulated=%d/%d",
+                  "Server mixer iteration #%d for client %s: samples_mixed=%d, opus_frame_accumulated=%d/%d",
                   mixer_debug_count, client_id_snapshot, samples_mixed, opus_frame_accumulated, OPUS_FRAME_SAMPLES);
 
     // Accumulate all samples (including 0 or partial) until we have a full Opus frame
     // This maintains continuous stream without silence padding
-    START_TIMER("accum_%u", client_id_snapshot);
+    START_TIMER("accum_%s", client_id_snapshot);
 
     int space_available = OPUS_FRAME_SAMPLES - opus_frame_accumulated;
     int samples_to_copy = (samples_mixed <= space_available) ? samples_mixed : space_available;
@@ -966,7 +966,7 @@ void *client_audio_render_thread(void *arg) {
       opus_frame_accumulated += samples_to_copy;
     }
 
-    STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 2 * NS_PER_MS_INT, "accum_%u", "Accumulate for client %u: took",
+    STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 2 * NS_PER_MS_INT, "accum_%s", "Accumulate for client %s: took",
                              client_id_snapshot);
 
     // Only encode and send when we have accumulated a full Opus frame
@@ -985,7 +985,7 @@ void *client_audio_render_thread(void *arg) {
 
         if (apply_backpressure) {
           log_warn_every(4500 * US_PER_MS_INT,
-                         "Audio backpressure for client %u: queue depth %zu packets (%.1fs buffered)",
+                         "Audio backpressure for client %s: queue depth %zu packets (%.1fs buffered)",
                          client_id_snapshot, queue_depth, (float)queue_depth / 50.0f);
         }
       }
@@ -1002,13 +1002,13 @@ void *client_audio_render_thread(void *arg) {
       // Encode accumulated Opus frame (960 samples = 20ms @ 48kHz)
       uint8_t opus_buffer[1024]; // Max Opus frame size
 
-      START_TIMER("opus_encode_%u", client_id_snapshot);
+      START_TIMER("opus_encode_%s", client_id_snapshot);
 
       int opus_size =
           opus_codec_encode(opus_encoder, opus_frame_buffer, OPUS_FRAME_SAMPLES, opus_buffer, sizeof(opus_buffer));
 
-      STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 10 * NS_PER_MS_INT, "opus_encode_%u",
-                               "Opus encode for client %u: took", client_id_snapshot);
+      STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 10 * NS_PER_MS_INT, "opus_encode_%s",
+                               "Opus encode for client %s: took", client_id_snapshot);
 
       // DEBUG: Log mix buffer and encoding results to see audio levels being sent
       {
@@ -1037,19 +1037,19 @@ void *client_audio_render_thread(void *arg) {
       opus_frame_accumulated = 0;
 
       if (opus_size <= 0) {
-        log_error("Failed to encode audio to Opus for client %u: opus_size=%d", client_id_snapshot, opus_size);
+        log_error("Failed to encode audio to Opus for client %s: opus_size=%d", client_id_snapshot, opus_size);
       } else {
         // Queue Opus-encoded audio for this specific client
-        START_TIMER("audio_queue_%u", client_id_snapshot);
+        START_TIMER("audio_queue_%s", client_id_snapshot);
 
         int result = packet_queue_enqueue(audio_queue_snapshot, PACKET_TYPE_AUDIO_OPUS_BATCH, opus_buffer,
                                           (size_t)opus_size, 0, true);
 
-        STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 1 * NS_PER_MS_INT, "audio_queue_%u",
-                                 "Audio queue for client %u: took", client_id_snapshot);
+        STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 1 * NS_PER_MS_INT, "audio_queue_%s",
+                                 "Audio queue for client %s: took", client_id_snapshot);
 
         if (result < 0) {
-          log_debug("Failed to queue Opus audio for client %u", client_id_snapshot);
+          log_debug("Failed to queue Opus audio for client %s", client_id_snapshot);
         } else {
           // FPS tracking - audio packet successfully queued (handles lag detection and periodic reporting)
           fps_frame_ns(&audio_fps_tracker, time_get_ns(), "audio packet queued");
