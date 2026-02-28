@@ -39,3 +39,11 @@ leak:FcConfigGetDefaultLangs
 leak:FcInitLoadConfigAndFonts
 leak:FcPatternMatch
 leak:FcConfigSubstitute
+
+# PortAudio callback thread TLS cleanup
+# PortAudio creates callback threads (e.g., for duplex audio processing)
+# These threads don't always run TLS destructors on exit on all platforms,
+# causing a small leak of the thread-local mutex stack (2KB per callback thread)
+# The memory is freed on process exit by the OS
+leak:get_thread_local_stack
+leak:duplex_callback
