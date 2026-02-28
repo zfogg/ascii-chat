@@ -480,22 +480,34 @@ int log_named_format_message(const char *message, char *output, size_t output_si
         const char *prefix_start = find_generic_type_prefix(message, int_start, &type_name, &type_len);
 
         if (type_name && prefix_start != int_start) {
-          /* Skip if already inside parentheses (e.g., "socket=12") */
+          /* Skip if already formatted with a name (e.g., "socket/listener.0" already has a /) */
           bool skip_format = false;
-          if (prefix_start > message) {
-            const char *check = prefix_start - 1;
-            while (check > message && isspace(*check)) {
-              check--;
-            }
-            if (*check == '(' || *check == '=') {
-              skip_format = true;
-            }
+          /* Check if this looks like it's already been formatted by looking for / in the pattern */
+          const char *check_ptr = prefix_start;
+          while (check_ptr < int_start && *check_ptr && *check_ptr != '/') {
+            check_ptr++;
+          }
+          if (check_ptr < int_start && *check_ptr == '/') {
+            /* Already formatted (contains /), skip */
+            skip_format = true;
           }
 
           if (!skip_format) {
             /* We found a type prefix like "socket", "client", etc.
              * Try to look up a registered name for this type+id */
-            const char *name = named_get_by_type_and_id(type_name, type_len, fd_value);
+
+            /* Normalize type name aliases: "sockfd" → "socket", "descriptor" → "fd" */
+            const char *lookup_type = type_name;
+            size_t lookup_len = type_len;
+            if (type_len == 6 && strncmp(type_name, "sockfd", 6) == 0) {
+              lookup_type = "socket";
+              lookup_len = 6;
+            } else if (type_len == 10 && strncmp(type_name, "descriptor", 10) == 0) {
+              lookup_type = "fd";
+              lookup_len = 2;
+            }
+
+            const char *name = named_get_by_type_and_id(lookup_type, lookup_len, fd_value);
 
             char temp_output[512];
             char type_str[32];
