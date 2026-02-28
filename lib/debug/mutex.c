@@ -14,6 +14,7 @@
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/platform/api.h>
 #include <ascii-chat/platform/mutex.h>
+#include <ascii-chat/platform/thread.h>
 #include <string.h>
 #include <pthread.h>
 
@@ -38,8 +39,10 @@ typedef struct {
 static thread_registry_entry_t g_thread_registry[MAX_THREADS] = {0};
 static _Atomic(int) g_thread_registry_count = 0;
 
-// Thread-local pointer to the heap-allocated stack for this thread
-static __thread thread_lock_stack_t *g_thread_lock_stack = NULL;
+// Thread-local storage key for per-thread lock stack
+// Destructor automatically frees memory when thread exits
+static tls_key_t g_tls_mutex_stack = 0;
+static _Atomic(bool) g_tls_initialized = false;
 
 // Track the mutexes involved in the last detected deadlock for throttling
 #define MAX_CYCLE_MUTEXES 16
@@ -53,22 +56,68 @@ static deadlock_state_t g_last_deadlock = {0};
 // Thread Registry Management
 // ============================================================================
 
+/**
+ * @brief Destructor called when thread exits to free TLS data
+ * Also clears the stack pointer from the global registry to prevent use-after-free
+ */
+static void tls_mutex_stack_destructor(void *arg) {
+  if (!arg) {
+    return;
+  }
+
+  // Clear the registry entry for this thread to prevent use-after-free
+  // when the global thread reads stale pointers during shutdown
+  pthread_t current_thread = pthread_self();
+  int count = atomic_load_explicit(&g_thread_registry_count, memory_order_acquire);
+  for (int i = 0; i < count; i++) {
+    if (pthread_equal(g_thread_registry[i].thread_id, current_thread)) {
+      // Mark as cleared by setting stack to NULL (no locking needed - only this thread updates its entry)
+      g_thread_registry[i].stack = NULL;
+      break;
+    }
+  }
+
+  // Free the heap-allocated stack
+  SAFE_FREE(arg);
+}
+
+/**
+ * @brief Initialize the TLS key for mutex stacks (called once at first use)
+ * Uses atomic flag to ensure one-time initialization
+ */
+static void ensure_tls_initialized(void) {
+  if (!atomic_load_explicit(&g_tls_initialized, memory_order_acquire)) {
+    // Try to initialize TLS key with destructor
+    if (ascii_tls_key_create(&g_tls_mutex_stack, tls_mutex_stack_destructor) == 0) {
+      atomic_store_explicit(&g_tls_initialized, true, memory_order_release);
+    }
+  }
+}
+
 // Forward declaration
 static void register_thread_if_needed(void);
 
 /**
  * @brief Get the thread-local stack for fast per-thread operations
- * Lazily allocates and registers the stack on first access
+ * Lazily allocates on first access. Destructor automatically frees on thread exit.
  */
 static thread_lock_stack_t *get_thread_local_stack(void) {
-  if (g_thread_lock_stack == NULL) {
-    // Allocate stack on heap (stays valid after thread exits)
-    g_thread_lock_stack = SAFE_CALLOC(1, sizeof(thread_lock_stack_t), thread_lock_stack_t *);
-    if (g_thread_lock_stack) {
+  // Ensure TLS key is initialized
+  ensure_tls_initialized();
+
+  // Get current thread's stack from TLS
+  thread_lock_stack_t *stack = (thread_lock_stack_t *)ascii_tls_get(g_tls_mutex_stack);
+
+  if (stack == NULL) {
+    // Allocate stack on heap for this thread
+    stack = SAFE_CALLOC(1, sizeof(thread_lock_stack_t), thread_lock_stack_t *);
+    if (stack) {
+      // Store in TLS (destructor will free it when thread exits)
+      ascii_tls_set(g_tls_mutex_stack, stack);
       register_thread_if_needed();
     }
   }
-  return g_thread_lock_stack;
+  return stack;
 }
 
 /**
@@ -529,6 +578,13 @@ int mutex_stack_init(void) {
 }
 
 void mutex_stack_cleanup(void) {
+  // Delete the TLS key (if it was created)
+  // This ensures destructors are called for any remaining thread-local values
+  if (atomic_load_explicit(&g_tls_initialized, memory_order_acquire)) {
+    ascii_tls_key_delete(g_tls_mutex_stack);
+    atomic_store_explicit(&g_tls_initialized, false, memory_order_release);
+  }
+
   // Clear registry on cleanup using atomic operations
   atomic_store_explicit(&g_thread_registry_count, 0, memory_order_release);
 }

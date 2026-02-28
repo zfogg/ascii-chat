@@ -190,6 +190,10 @@ void asciichat_shared_destroy(void) {
   // This must happen after thread cleanup but before any subsystem that uses mutex_lock
   extern void debug_sync_destroy(void);
   debug_sync_destroy();
+
+  // Cleanup mutex stack TLS (deletes TLS key and triggers destructors)
+  extern void mutex_stack_cleanup(void);
+  mutex_stack_cleanup();
 #endif
 
   // 1. Webcam - cleanup resources
