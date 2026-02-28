@@ -195,43 +195,47 @@ void asciichat_shared_destroy(void) {
   // 1. Webcam - cleanup resources
   webcam_destroy();
 
-  // 2. SIMD caches - cleanup CPU-specific caches
+  // 2. Terminal screen - cleanup frame buffer
+  extern void terminal_screen_cleanup(void);
+  terminal_screen_cleanup();
+
+  // 3. SIMD caches - cleanup CPU-specific caches
   simd_caches_destroy_all();
 
-  // 3. Discovery service strings cache - cleanup session string cache
+  // 4. Discovery service strings cache - cleanup session string cache
   acds_strings_destroy();
 
-  // 4. Logging - in correct order (end first, then begin)
+  // 5. Logging - in correct order (end first, then begin)
   log_shutdown_end();
   log_shutdown_begin();
 
-  // 5. Known hosts - cleanup authentication state
+  // 6. Known hosts - cleanup authentication state
   known_hosts_destroy();
 
-  // 6. Options state - cleanup RCU-based options
+  // 7. Options state - cleanup RCU-based options
   options_state_destroy();
 
-  // 7. Buffer pool - cleanup global buffer pool
+  // 8. Buffer pool - cleanup global buffer pool
   buffer_pool_cleanup_global();
 
-  // 8. Platform cleanup - restores terminal, cleans up platform resources
+  // 9. Platform cleanup - restores terminal, cleans up platform resources
   // (includes symbol cache cleanup on Windows)
   platform_destroy();
 
-  // 9. Keyboard - restore terminal settings (redundant with platform_destroy but safe)
+  // 10. Keyboard - restore terminal settings (redundant with platform_destroy but safe)
   extern void keyboard_destroy(void);
   keyboard_destroy();
 
-  // 10. Timer system - cleanup timers (may still log!)
+  // 11. Timer system - cleanup timers (may still log!)
   timer_system_destroy();
 
-  // 11. Error context cleanup
+  // 12. Error context cleanup
   asciichat_errno_destroy();
 
-  // 12. Logging cleanup - free log format buffers before memory report
+  // 13. Logging cleanup - free log format buffers before memory report
   log_destroy();
 
-  // 13. Memory stats (debug builds only) - runs with colors still available
+  // 14. Memory stats (debug builds only) - runs with colors still available
   //     Note: PCRE2 singletons are ignored in the report (expected system allocations)
   //     Note: debug_memory_report() is also called manually during shutdown in server_main()
   //     The function is safe to call multiple times with polling-based locking

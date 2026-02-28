@@ -62,3 +62,11 @@ typedef struct {
  * flooding error logs if terminal size checks fail repeatedly.
  */
 void terminal_screen_render(const terminal_screen_config_t *config);
+
+/**
+ * @brief Clean up terminal screen resources
+ *
+ * Destroys the internal static frame buffer allocated by terminal_screen_render().
+ * Call at program exit or when terminal screen rendering is no longer needed.
+ */
+void terminal_screen_cleanup(void);

@@ -30,6 +30,9 @@
 #include <string.h>
 #include <stdbool.h>
 
+// Module-level static frame buffer (reused across renders to avoid malloc per frame)
+static frame_buffer_t *g_frame_buf = NULL;
+
 // Strip ANSI escape codes from a string (matches map_plain_to_colored_pos logic)
 static void strip_ansi_codes(const char *src, char *dst, size_t dst_size) {
   if (!src || !dst || dst_size == 0)
@@ -171,8 +174,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
 
   last_grep_state = grep_entering;
 
-  // Allocate or reuse frame buffer (static to avoid malloc per frame)
-  static frame_buffer_t *g_frame_buf = NULL;
+  // Allocate or reuse frame buffer (module-level static to avoid malloc per frame)
   if (!g_frame_buf) {
     g_frame_buf = frame_buffer_create(g_cached_term_size.rows, g_cached_term_size.cols);
     if (!g_frame_buf) {
@@ -489,4 +491,11 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
   }
 
   SAFE_FREE(log_entries);
+}
+
+void terminal_screen_cleanup(void) {
+  if (g_frame_buf) {
+    frame_buffer_destroy(g_frame_buf);
+    g_frame_buf = NULL;
+  }
 }
