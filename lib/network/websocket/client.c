@@ -74,11 +74,11 @@ void websocket_client_destroy(websocket_client_t **client_ptr) {
 
   log_debug("Destroying WebSocket client");
 
-  // Close and destroy transport if it exists
-  if (client->transport) {
-    acip_transport_destroy(client->transport);
-    client->transport = NULL;
-  }
+  // Note: Do NOT destroy the transport. The transport is created and owned by the
+  // connection layer (acip_websocket_client_transport_create). The WebSocket client
+  // is just a thin wrapper that holds a reference. The transport will be destroyed
+  // by the connection context or server connection cleanup code.
+  client->transport = NULL;
 
   NAMED_UNREGISTER(client);
 
