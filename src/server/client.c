@@ -1296,6 +1296,18 @@ int remove_client(server_context_t *server_ctx, const char *client_id) {
       }
     }
 
+    // Join dispatch thread (BEFORE destroying packet queues)
+    if (asciichat_thread_is_initialized(&target_client->dispatch_thread)) {
+      atomic_store(&target_client->dispatch_thread_running, false);
+      void *dispatch_result = NULL;
+      asciichat_error_t dispatch_join_result = asciichat_thread_join(&target_client->dispatch_thread, &dispatch_result);
+      if (dispatch_join_result != ASCIICHAT_OK) {
+        log_warn("Failed to join dispatch thread for WebRTC client %s: error %d", client_id, dispatch_join_result);
+      } else {
+        log_debug("Joined dispatch thread for WebRTC client %s", client_id);
+      }
+    }
+
     // Join send thread
     void *send_result = NULL;
     asciichat_error_t send_join_result = asciichat_thread_join(&target_client->send_thread, &send_result);
@@ -2808,48 +2820,43 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
     log_info("STORE_FRAME: client_id=%s, frame_ptr=%p, frame->data=%p", client->client_id, (void *)frame,
              frame ? frame->data : NULL);
     if (frame && frame->data && data_len > 0) {
-      // Validate incoming_video_buffer is properly initialized
-      size_t max_allowed = 0;
-      if (!client->incoming_video_buffer) {
-        log_error("STORE_FRAME: incoming_video_buffer is NULL!");
+      // Get buffer capacity from frame buffer
+      size_t buffer_capacity = client->incoming_video_buffer->allocated_buffer_size;
+
+      // Calculate total frame size: width (4B) + height (4B) + pixel data
+      size_t total_size = sizeof(uint32_t) * 2 + data_len;
+
+      // Safety check: Reject frames that don't fit in the allocated buffer
+      // This prevents heap-buffer-overflow if allocated_buffer_size is somehow undersized
+      if (total_size > buffer_capacity) {
+        log_warn("FRAME_OVERFLOW: client_id=%s, need=%zu bytes but buffer only has %zu", client->client_id, total_size,
+                 buffer_capacity);
         return;
       }
-      max_allowed = client->incoming_video_buffer->allocated_buffer_size;
 
-      // Diagnostic logging to understand buffer sizing
-      log_info("FRAME_BUFFER_DEBUG: client_id=%s, frame->data=%p, vfb=%p, allocated_size=%zu, data_len=%zu",
-               client->client_id, frame->data, (void *)client->incoming_video_buffer, max_allowed, data_len);
-
-      // Safety check: buffer should be at least a reasonable size (>= 1MB)
-      // If allocated size is too small, don't risk writing beyond bounds
-      if (max_allowed < (1024 * 1024)) {
-        log_error("FRAME_BUFFER_INVALID: allocated_buffer_size=%zu is too small (expected >= 1MB)", max_allowed);
+      // Additional validation: buffer should be reasonably sized (>= 512 KB)
+      // If allocated_buffer_size is drastically smaller than expected, reject it
+      if (buffer_capacity < (512 * 1024)) {
+        log_error("FRAME_BUFFER_UNDERSIZED: client_id=%s, buffer_capacity=%zu bytes < 512 KB minimum",
+                  client->client_id, buffer_capacity);
         return;
       }
 
       // Store frame data: [width:4][height:4][pixel_data]
       uint32_t width_net = HOST_TO_NET_U32(header->width);
       uint32_t height_net = HOST_TO_NET_U32(header->height);
-      size_t total_size = sizeof(uint32_t) * 2 + data_len;
 
-      log_info("STORE_FRAME_DATA: total_size=%zu, max_allowed=%zu, fits=%d", total_size, max_allowed,
-               total_size <= max_allowed);
-
-      if (total_size <= max_allowed) {
-        memcpy(frame->data, &width_net, sizeof(uint32_t));
-        memcpy((char *)frame->data + sizeof(uint32_t), &height_net, sizeof(uint32_t));
-        memcpy((char *)frame->data + sizeof(uint32_t) * 2, pixel_data, data_len);
-        frame->size = total_size;
-        frame->width = header->width;
-        frame->height = header->height;
-        frame->capture_timestamp_ns = (uint64_t)time(NULL) * NS_PER_SEC_INT;
-        frame->sequence_number = ++client->frames_received;
-        video_frame_commit(client->incoming_video_buffer);
-        log_info("FRAME_COMMITTED: client_id=%s, seq=%u, size=%zu hash=0x%08x", client->client_id,
-                 frame->sequence_number, total_size, incoming_pixel_hash);
-      } else {
-        log_warn("FRAME_TOO_LARGE: client_id=%s, size=%zu > max %zu", client->client_id, total_size, max_allowed);
-      }
+      // Safe to write - capacity checks passed
+      memcpy(frame->data, &width_net, sizeof(uint32_t));
+      memcpy((char *)frame->data + sizeof(uint32_t), &height_net, sizeof(uint32_t));
+      memcpy((char *)frame->data + sizeof(uint32_t) * 2, pixel_data, data_len);
+      frame->size = total_size;
+      frame->width = header->width;
+      frame->height = header->height;
+      frame->capture_timestamp_ns = (uint64_t)time(NULL) * NS_PER_SEC_INT;
+      frame->sequence_number = ++client->frames_received;
+      video_frame_commit(client->incoming_video_buffer);
+      log_debug("FRAME_STORED: client_id=%s, seq=%u, size=%zu", client->client_id, frame->sequence_number, total_size);
     } else {
       log_warn("STORE_FRAME_FAILED: frame_ptr=%p, frame->data=%p, data_len=%zu", (void *)frame,
                frame ? frame->data : NULL, data_len);
