@@ -51,7 +51,8 @@
 #ifdef _WIN32
 #include <io.h>
 #else
-#include <unistd.h> // For write(), STDERR_FILENO (signal handler)
+#include <unistd.h> // For write(), STDERR_FILENO (signal handler), dup(), dup2()
+#include <fcntl.h>  // For open() and O_WRONLY
 #endif
 
 #include <ascii-chat/platform/network.h> // Consolidates platform-specific network headers
@@ -1204,6 +1205,16 @@ static void *status_screen_thread(void *arg) {
 
   log_debug("Status screen thread started (target %u FPS)", fps);
 
+  // Redirect stderr to /dev/null during status screen mode to prevent async logs
+  // from other threads from appearing on the terminal and pushing the header off-screen.
+  // This ensures the status screen remains the only output visible.
+  int original_stderr = dup(STDERR_FILENO);
+  int devnull = open("/dev/null", O_WRONLY);
+  if (devnull >= 0) {
+    dup2(devnull, STDERR_FILENO);
+    close(devnull);
+  }
+
   // Initialize keyboard for interactive grep (cross-platform)
   bool keyboard_enabled = false;
   if (terminal_is_interactive()) {
@@ -1306,6 +1317,12 @@ static void *status_screen_thread(void *arg) {
     asciichat_thread_join(&g_keyboard_thread, NULL);
     log_debug("Keyboard thread stopped");
     keyboard_destroy();
+  }
+
+  // Restore stderr before exiting
+  if (original_stderr >= 0) {
+    dup2(original_stderr, STDERR_FILENO);
+    close(original_stderr);
   }
 
   log_debug("Status screen thread exiting");
