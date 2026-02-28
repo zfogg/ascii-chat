@@ -94,6 +94,8 @@ static std::atomic<int> g_render_frames_fed{0};
 extern "C" {
 #endif
 
+#include <ascii-chat/debug/named.h>
+
 // ============================================================================
 // Default Configuration
 // ============================================================================
@@ -344,6 +346,8 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   log_info("Audio pipeline created: %dHz, %dms frames, %dkbps Opus", p->config.sample_rate, p->config.frame_size_ns,
            p->config.opus_bitrate / 1000);
 
+  NAMED_REGISTER_CLIENT_AUDIO_PIPELINE(p, "audio_pipeline");
+
   return p;
 
 error:
@@ -397,6 +401,8 @@ void client_audio_pipeline_destroy(client_audio_pipeline_t *pipeline) {
     wav_writer_close((wav_writer_t *)pipeline->debug_wav_aec3_out);
     pipeline->debug_wav_aec3_out = NULL;
   }
+
+  NAMED_UNREGISTER(pipeline);
 
   SAFE_FREE(pipeline);
 }

@@ -45,11 +45,12 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "../platform/thread.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include "../platform/thread.h"
 
 // ============================================================================
 // Core Registry API
@@ -939,19 +940,6 @@ typedef void (*named_iter_callback_t)(uintptr_t key, const char *name, void *use
   named_register((uintptr_t)(const void *)(builder), (name), "options_builder", "0x%tx", __FILE__, __LINE__, __func__)
 #else
 #define NAMED_REGISTER_OPTIONS_BUILDER(builder, name) (name)
-#endif
-
-/**
- * @brief Register a GPG homedir with automatic format specifier
- * @param homedir GPG homedir pointer
- * @param name Base name string
- * @ingroup debug_named
- */
-#ifndef NDEBUG
-#define NAMED_REGISTER_GPG_HOMEDIR(homedir, name)                                                                      \
-  named_register((uintptr_t)(const void *)(homedir), (name), "gpg_homedir", "0x%tx", __FILE__, __LINE__, __func__)
-#else
-#define NAMED_REGISTER_GPG_HOMEDIR(homedir, name) (name)
 #endif
 
 /**

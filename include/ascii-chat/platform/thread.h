@@ -48,6 +48,10 @@ typedef pthread_key_t tls_key_t;
 
 #include "../common.h" // For asciichat_error_t (must come AFTER type definitions)
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // ============================================================================
 // Thread-Local Storage Macros
 // ============================================================================
@@ -296,5 +300,9 @@ void *ascii_tls_get(tls_key_t key);
  * @ingroup platform
  */
 int ascii_tls_set(tls_key_t key, void *value);
+
+#ifdef __cplusplus
+}
+#endif
 
 /** @} */
