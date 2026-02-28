@@ -1244,7 +1244,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   }
 
   // Allocate initial send buffer
-  ws_data->send_buffer_capacity = LWS_PRE + 8192; // Initial 8KB buffer
+  ws_data->send_buffer_capacity = LWS_PRE + 524288; // Match tx_packet_size (512KB)
   ws_data->send_buffer = SAFE_MALLOC(ws_data->send_buffer_capacity, uint8_t *);
   if (!ws_data->send_buffer) {
     mutex_destroy(&ws_data->state_mutex);
