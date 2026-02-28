@@ -156,7 +156,7 @@ asciichat_error_t tcp_server_init(tcp_server_t *server, const tcp_server_config_
   /* Register server with named registry, identified by port */
   char port_name[32];
   snprintf(port_name, sizeof(port_name), "server:%d", server->config.port);
-  named_register((uintptr_t)server, port_name, "tcp_server", "0x%tx", __FILE__, __LINE__, __func__);
+  NAMED_REGISTER(server, port_name, "tcp_server", "0x%tx");
 
   return ASCIICHAT_OK;
 }

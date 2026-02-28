@@ -17,6 +17,7 @@
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/platform/cond.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/debug/named.h>
 #include <libwebsockets.h>
 #include <string.h>
 #include <errno.h>
@@ -860,6 +861,11 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
     return SET_ERRNO(ERROR_THREAD, "Failed to create WebSocket handler thread pool");
   }
 
+  /* Register WebSocket server with named registry, identified by port */
+  char ws_port_name[32];
+  snprintf(ws_port_name, sizeof(ws_port_name), "ws_server:%d", server->port);
+  NAMED_REGISTER(server, ws_port_name, "websocket_server", "0x%tx");
+
   log_info("WebSocket server initialized on port %d with static file serving", config->port);
   return ASCIICHAT_OK;
 }
@@ -939,6 +945,9 @@ void websocket_server_destroy(websocket_server_t *server) {
     lws_context_destroy(server->context);
     server->context = NULL;
   }
+
+  /* Deregister WebSocket server from named registry */
+  NAMED_UNREGISTER(server);
 
   log_debug("WebSocket server destroyed");
 }
