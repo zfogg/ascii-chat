@@ -773,8 +773,9 @@ int splash_intro_done(void) {
   // Wait for animation thread to finish (only join once, even if called multiple times)
   bool expected = true;
   if (atomic_compare_exchange_strong(&g_splash_state.thread_created, &expected, false)) {
-    // We successfully changed thread_created from true to false, so we join
-    asciichat_thread_join(&g_splash_state.anim_thread, NULL);
+    // We successfully changed thread_created from true to false, so we join with timeout
+    // Use 500ms timeout to prevent blocking during shutdown
+    asciichat_thread_join_timeout(&g_splash_state.anim_thread, NULL, 500000000ULL); // 500ms in nanoseconds
   }
 
   atomic_store(&g_splash_state.is_running, false);
