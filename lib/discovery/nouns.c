@@ -735,7 +735,7 @@ const size_t nouns_count = sizeof(nouns) / sizeof(nouns[0]);
  * Caller MUST hold write lock on g_client_manager_rwlock before calling.
  * This function iterates the existing clients hash to check for duplicate names.
  */
-int generate_client_name(char *buffer, size_t buffer_size, void *existing_clients_hash) {
+int generate_client_name(char *buffer, size_t buffer_size, void *existing_clients_hash, int port, bool is_tcp) {
   if (!buffer || buffer_size < 1 || !nouns_count) {
     return -1;
   }
@@ -749,10 +749,12 @@ int generate_client_name(char *buffer, size_t buffer_size, void *existing_client
     return -1;
   }
 
+  const char *transport_name = is_tcp ? "tcp" : "webrtc";
+
   // Try to generate a unique name by appending a counter
-  // Format: "noun.0", "noun.1", etc.
+  // Format: "noun.0 (tcp:48036)", "noun.1 (webrtc:52441)", etc.
   for (int counter = 0; counter < 100; counter++) {
-    int written = snprintf(buffer, buffer_size, "%s.%d", noun, counter);
+    int written = snprintf(buffer, buffer_size, "%s.%d (%s:%d)", noun, counter, transport_name, port);
     if (written < 0 || (size_t)written >= buffer_size) {
       return -1; // Buffer too small
     }
@@ -776,6 +778,6 @@ int generate_client_name(char *buffer, size_t buffer_size, void *existing_client
 
   // Couldn't find a unique name after 100 tries
   // Fall back to numeric-only name as last resort
-  snprintf(buffer, buffer_size, "client_%u", (unsigned int)rand() % 10000);
+  snprintf(buffer, buffer_size, "client_%u (%s:%d)", (unsigned int)rand() % 10000, transport_name, port);
   return 0;
 }

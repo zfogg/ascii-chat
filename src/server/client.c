@@ -652,11 +652,12 @@ int add_client(server_context_t *server_ctx, socket_t socket, const char *client
   client->send_buffer = send_buffer;
   client->send_buffer_size = MAX_FRAME_BUFFER_SIZE;
 
-  // Generate unique noun-based client name
+  // Generate unique noun-based client name with transport type and port
   // Note: We're holding the write lock here, so it's safe to iterate existing clients
-  if (generate_client_name(client->display_name, sizeof(client->display_name), g_client_manager.clients_by_id) != 0) {
+  if (generate_client_name(client->display_name, sizeof(client->display_name), g_client_manager.clients_by_id, port,
+                           true /* is_tcp */) != 0) {
     // Fallback to numeric name if generation fails
-    safe_snprintf(client->display_name, sizeof(client->display_name), "client_%u", new_client_id);
+    safe_snprintf(client->display_name, sizeof(client->display_name), "client_%u (tcp:%d)", new_client_id, port);
   }
 
   // Register client with named debug system using the generated name
@@ -993,7 +994,15 @@ int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
   client->pending_packet_payload = NULL;
   client->pending_packet_length = 0;
 
-  safe_snprintf(client->display_name, sizeof(client->display_name), "WebRTC%u", atomic_load(&client->client_id));
+  // Generate unique noun-based client name for WebRTC client
+  // Note: We're holding the write lock here, so it's safe to iterate existing clients
+  // WebRTC uses port 0 as a placeholder since there's no traditional port
+  if (generate_client_name(client->display_name, sizeof(client->display_name), g_client_manager.clients_by_id, 0,
+                           false /* is_webrtc */) != 0) {
+    // Fallback to numeric name if generation fails
+    safe_snprintf(client->display_name, sizeof(client->display_name), "client_%u (webrtc:0)",
+                  atomic_load(&client->client_id));
+  }
 
   // Create individual video buffer for this client using modern double-buffering
   client->incoming_video_buffer = video_frame_buffer_create(atomic_load(&client->client_id));
