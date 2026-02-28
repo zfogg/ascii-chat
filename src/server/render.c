@@ -1017,10 +1017,10 @@ void *client_audio_render_thread(void *arg) {
         // Frame sizes: frame_count * 2B (one uint16 per frame with Opus data size)
         // Opus data: raw encoded audio
 
-        // Fixed values for Opus encoding (standard 48kHz, 960 samples per frame)
+        // Fixed values for Opus encoding (standard 48kHz, 960 samples per frame = 20ms)
         const uint32_t sample_rate = 48000;
-        const uint32_t frame_duration = 960; // samples per frame
-        const uint32_t frame_count = 1;      // one Opus frame per packet
+        const uint32_t frame_duration = 20; // milliseconds (960 samples / 48kHz = 20ms)
+        const uint32_t frame_count = 1;     // one Opus frame per packet
         const uint16_t frame_size = (uint16_t)opus_size;
 
         // Calculate total packet size: 12-byte header + 2-byte frame size + opus data
