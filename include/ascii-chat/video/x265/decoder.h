@@ -64,10 +64,10 @@ void x265_decoder_destroy(x265_decoder_t *decoder);
  *   uint16_t width, height;
  *   uint8_t ascii_grid[256*64];
  *   size_t decoded_size = sizeof(ascii_grid);
- *   x265_decoder_decode(decoder, packet, packet_size, &width, &height,
- *                       ascii_grid, &decoded_size);
+ *   x265_decode(decoder, packet, packet_size, &width, &height,
+ *               ascii_grid, &decoded_size);
  */
-asciichat_error_t x265_decoder_decode(
+asciichat_error_t x265_decode(
     x265_decoder_t *decoder,
     const uint8_t *encoded_packet,
     size_t packet_size,

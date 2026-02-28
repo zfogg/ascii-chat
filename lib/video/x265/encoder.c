@@ -102,7 +102,7 @@ void x265_encoder_destroy(x265_encoder_t *encoder) {
     SAFE_FREE(encoder);
 }
 
-static asciichat_error_t x265_encoder_reconfigure(
+static asciichat_error_t x265_encode_reconfigure(
     x265_encoder_t *encoder,
     uint16_t new_width,
     uint16_t new_height
@@ -141,7 +141,7 @@ static asciichat_error_t x265_encoder_reconfigure(
     return ASCIICHAT_OK;
 }
 
-static void x265_encoder_ascii_to_yuv420(
+static void x265_encode_ascii_to_yuv420(
     const uint8_t *ascii_data,
     uint16_t width,
     uint16_t height,
@@ -157,7 +157,7 @@ static void x265_encoder_ascii_to_yuv420(
     memset(v_plane, 128, (width / 2) * (height / 2));
 }
 
-asciichat_error_t x265_encoder_encode(
+asciichat_error_t x265_encode(
     x265_encoder_t *encoder,
     uint16_t width,
     uint16_t height,
@@ -173,12 +173,12 @@ asciichat_error_t x265_encoder_encode(
         return SET_ERRNO(ERROR_NETWORK_SIZE, "Output buffer too small (minimum 5 bytes)");
     }
 
-    asciichat_error_t result = x265_encoder_reconfigure(encoder, width, height);
+    asciichat_error_t result = x265_encode_reconfigure(encoder, width, height);
     if (result != ASCIICHAT_OK) {
         return result;
     }
 
-    x265_encoder_ascii_to_yuv420(ascii_data, width, height, encoder->yuv_buf);
+    x265_encode_ascii_to_yuv420(ascii_data, width, height, encoder->yuv_buf);
 
     x265_picture pic_in;
     x265_picture pic_out;

@@ -66,7 +66,7 @@ void x265_encoder_destroy(x265_encoder_t *encoder);
  * OUTPUT PACKET FORMAT:
  *   [flags: u8][width: u16][height: u16][x265_data...]
  */
-asciichat_error_t x265_encoder_encode(
+asciichat_error_t x265_encode(
     x265_encoder_t *encoder,
     uint16_t width,
     uint16_t height,

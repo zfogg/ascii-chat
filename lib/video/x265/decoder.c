@@ -49,7 +49,7 @@ void x265_decoder_destroy(x265_decoder_t *decoder) {
     SAFE_FREE(decoder);
 }
 
-asciichat_error_t x265_decoder_decode(
+asciichat_error_t x265_decode(
     x265_decoder_t *decoder,
     const uint8_t *encoded_packet,
     size_t packet_size,
