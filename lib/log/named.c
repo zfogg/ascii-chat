@@ -270,7 +270,7 @@ int log_named_format_message(const char *message, char *output, size_t output_si
         } else if (*check == '/') {
           /* Found "/", now check if this is a type/name pattern.
            * Format is "(type/name (...)" where type is word characters (thread, mutex, socket, etc.)
-           * If we find "/" pattern, we're already formatted.
+           * Must verify "/" is preceded by word characters AND "(" to ensure it's a formatted type.
            */
           const char *slash_pos = check;
           check--;
@@ -282,8 +282,17 @@ int log_named_format_message(const char *message, char *output, size_t output_si
           /* Check that the "/" was preceded by word characters (indicating a type name) */
           size_t type_len = slash_pos - check;
           if (type_len > 0 && (isalpha(*check) || *check == '_')) {
-            /* This looks like a "type/" pattern from a registered type, mark as already formatted */
-            is_already_formatted = true;
+            /* Verify this is a registered type/name pattern by checking for "(" before the type */
+            const char *type_start = check;
+            const char *before_type = type_start - 1;
+            while (before_type > message && isspace(*before_type)) {
+              before_type--;
+            }
+
+            /* Only mark as formatted if preceded by "(" - ensures it's "(type/name ...)" pattern */
+            if (before_type >= message && *before_type == '(') {
+              is_already_formatted = true;
+            }
           }
         }
       }
