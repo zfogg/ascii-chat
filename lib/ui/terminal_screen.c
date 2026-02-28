@@ -508,12 +508,16 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
         }
 
         // Position cursor at the current edit position within the pattern
-        // Cursor column = 2 (for "/" + column 1) + cursor_position
-        int cursor_col = 2 + cursor_pos;
-        int remaining = snprintf(grep_ui_buffer + pos, sizeof(grep_ui_buffer) - (size_t)pos, "\x1b[%d;%dH",
-                                 g_cached_term_size.rows, cursor_col);
-        if (remaining > 0 && remaining < (int)sizeof(grep_ui_buffer) - (int)pos) {
-          pos += remaining;
+        // After writing "/{pattern}", cursor is at column = 1 + pattern_len + 1
+        // We want it at column = 1 + cursor_pos + 1 (for "/" at column 1, then cursor_pos chars)
+        // So move left by: pattern_len - cursor_pos columns
+        int cursor_offset = pattern_len - cursor_pos;
+        if (cursor_offset > 0) {
+          int remaining =
+              snprintf(grep_ui_buffer + pos, sizeof(grep_ui_buffer) - (size_t)pos, "\x1b[%dD", cursor_offset);
+          if (remaining > 0 && remaining < (int)(sizeof(grep_ui_buffer) - (size_t)pos)) {
+            pos += remaining;
+          }
         }
 
         mutex_unlock(grep_mutex);
