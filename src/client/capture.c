@@ -262,7 +262,7 @@ static void *webcam_capture_thread_func(void *arg) {
 
     // Send frame packet to server using proper packet format
     acip_transport_t *transport = server_connection_get_transport();
-    if (!transport) {
+    if (!transport || !server_connection_is_active()) {
       log_warn("Transport became unavailable during capture, stopping transmission");
       image_destroy(processed_image);
       break;
@@ -274,6 +274,13 @@ static void *webcam_capture_thread_func(void *arg) {
     asciichat_error_t send_result = acip_send_image_frame(transport, (const void *)processed_image->pixels,
                                                           (uint32_t)processed_image->w, (uint32_t)processed_image->h,
                                                           1); // pixel_format = 1 (RGB24)
+
+    // If send failed due to connection loss, break out of loop
+    if (send_result != ASCIICHAT_OK && !server_connection_is_active()) {
+      log_debug("Connection lost during send, stopping transmission");
+      image_destroy(processed_image);
+      break;
+    }
     uint64_t send_duration_ns = time_elapsed_ns(send_start_ns, time_get_ns());
 
     if (send_result != ASCIICHAT_OK) {

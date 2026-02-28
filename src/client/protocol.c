@@ -1100,9 +1100,11 @@ int protocol_start_connection() {
 void protocol_stop_connection() {
   log_debug("[PROTOCOL_STOP] 1. Starting protocol_stop_connection");
 
-  // In snapshot mode, protocol threads were never started, so nothing to stop
+  // In snapshot mode, data reception thread was never started, but capture thread may still be running
+  // Always stop the capture thread to prevent use-after-free when transport is destroyed
   if (GET_OPTION(snapshot_mode)) {
-    log_debug("[PROTOCOL_STOP] Snapshot mode, returning early");
+    log_debug("[PROTOCOL_STOP] Snapshot mode: stopping capture thread before returning");
+    capture_stop_thread();
     return;
   }
 
