@@ -242,16 +242,27 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
   }
 
   // Display logs - most recent at bottom, oldest scrolled off top.
-  // Calculate a stable window: show up to log_area_rows logs, newest last.
+  // Calculate a stable window: show logs that fit in log_area_rows, newest last.
   // This ensures smooth scrolling as new logs arrive (no jumping viewport).
-  int logs_to_display = (int)log_count;
+  // NOTE: Each log may consume multiple display lines when wrapped (use display_height())
   int first_log_to_display = 0;
 
-  // Cap display at available space (each log = 1 line in output)
-  if (logs_to_display > log_area_rows) {
-    first_log_to_display = logs_to_display - log_area_rows;
-    logs_to_display = log_area_rows;
+  // Work backwards from the end to find which logs fit in available space
+  // This accounts for multi-line logs via display_height()
+  int total_lines_used = 0;
+  for (int i = (int)log_count - 1; i >= 0 && total_lines_used < log_area_rows; i--) {
+    int lines_for_msg = display_height(log_entries[i].message, g_cached_term_size.cols);
+    if (lines_for_msg <= 0) {
+      lines_for_msg = 1;
+    }
+    if (total_lines_used + lines_for_msg <= log_area_rows) {
+      total_lines_used += lines_for_msg;
+      first_log_to_display = i;
+    } else {
+      break; // Can't fit this log, stop
+    }
   }
+  int logs_to_display = (int)log_count - first_log_to_display;
 
   // Log detailed info about what logs are being displayed
   int logs_displayed_count = logs_to_display;
