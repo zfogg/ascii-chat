@@ -645,15 +645,10 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     log_debug("[CLIENT_LIKE_LOOP] Reconnection will be attempted, showing splash screen");
     session_display_reset_first_frame(display);
 
-    // Check if splash will actually display before attempting to start it
-    // If splash won't display, we need to enable logging so user sees reconnection messages
-    if (splash_should_display(true)) {
-      splash_intro_start(display);
-    } else {
-      // Splash not showing - restore stderr and enable terminal logging for reconnection feedback
-      splash_restore_stderr();
-      log_set_terminal_output(true);
-    }
+    // splash_intro_start() handles all the logic:
+    // - If splash should display: shows splash and disables console logging
+    // - If splash shouldn't display: restores stderr and returns without changing logging state
+    splash_intro_start(display);
 
     // Log reconnection message
     if (max_attempts == -1) {
