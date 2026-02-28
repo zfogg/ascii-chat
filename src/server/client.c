@@ -2813,10 +2813,66 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
              first_pixel_rgb);
   }
 
-  // NOTE: Frame storage disabled - the incoming pixel_data points to a temporary websocket buffer
-  // that will be freed immediately after this callback returns. Attempting to memcpy this data
-  // into frame->data causes overflow because websocket buffers are too small (41KB vs 2MB needed).
-  // Proper frame storage should happen in the render thread with dedicated frame buffers.
+  // Store frame data directly to incoming_video_buffer (don't wait for legacy handler)
+  // This ensures frame data is available immediately for the render thread
+  if (client->incoming_video_buffer) {
+    video_frame_t *frame = video_frame_begin_write(client->incoming_video_buffer);
+    size_t buffer_capacity = client->incoming_video_buffer->allocated_buffer_size;
+    size_t expected_capacity = MAX_FRAME_BUFFER_SIZE; // Should be 2MB
+
+    // Debug: Check what the actual frame buffer pointers are
+    video_frame_buffer_t *vfb = client->incoming_video_buffer;
+    log_info(
+        "DEBUG_FRAME_PTRS: frame[0].data=%p (size:%zu), frame[1].data=%p (size:%zu), back_buffer=%p, front_buffer=%p",
+        (void *)vfb->frames[0].data, vfb->frames[0].size, (void *)vfb->frames[1].data, vfb->frames[1].size,
+        (void *)vfb->back_buffer, (void *)vfb->front_buffer);
+
+    log_info("STORE_FRAME: client_id=%s, frame_ptr=%p, frame->data=%p, allocated_size=%zu (expected %zu)",
+             client->client_id, (void *)frame, frame ? frame->data : NULL, buffer_capacity, expected_capacity);
+
+    if (frame && frame->data && data_len > 0) {
+      // Calculate total frame size: width (4B) + height (4B) + pixel data
+      size_t total_size = sizeof(uint32_t) * 2 + data_len;
+
+      // CRITICAL: If allocated_buffer_size doesn't match expected size, something is very wrong
+      // This indicates frame->data is pointing to a different buffer (e.g., websocket buffer)
+      if (buffer_capacity != expected_capacity) {
+        log_error("FRAME_BUFFER_SIZE_MISMATCH: client_id=%s, allocated=%zu but expected=%zu (frame->data pointing to "
+                  "wrong buffer!)",
+                  client->client_id, buffer_capacity, expected_capacity);
+        return;
+      }
+
+      // Safety check: Reject frames that don't fit in the allocated buffer
+      // This prevents heap-buffer-overflow if allocated_buffer_size is somehow undersized
+      if (total_size > buffer_capacity) {
+        log_warn("FRAME_OVERFLOW: client_id=%s, need=%zu bytes but buffer only has %zu", client->client_id, total_size,
+                 buffer_capacity);
+        return;
+      }
+
+      // Store frame data: [width:4][height:4][pixel_data]
+      uint32_t width_net = HOST_TO_NET_U32(header->width);
+      uint32_t height_net = HOST_TO_NET_U32(header->height);
+
+      // Safe to write - capacity checks passed
+      memcpy(frame->data, &width_net, sizeof(uint32_t));
+      memcpy((char *)frame->data + sizeof(uint32_t), &height_net, sizeof(uint32_t));
+      memcpy((char *)frame->data + sizeof(uint32_t) * 2, pixel_data, data_len);
+      frame->size = total_size;
+      frame->width = header->width;
+      frame->height = header->height;
+      frame->capture_timestamp_ns = (uint64_t)time(NULL) * NS_PER_SEC_INT;
+      frame->sequence_number = ++client->frames_received;
+      video_frame_commit(client->incoming_video_buffer);
+      log_debug("FRAME_STORED: client_id=%s, seq=%u, size=%zu", client->client_id, frame->sequence_number, total_size);
+    } else {
+      log_warn("STORE_FRAME_FAILED: frame_ptr=%p, frame->data=%p, data_len=%zu", (void *)frame,
+               frame ? frame->data : NULL, data_len);
+    }
+  } else {
+    log_warn("NO_INCOMING_VIDEO_BUFFER: client_id=%s", client->client_id);
+  }
 
   uint64_t callback_end_ns = time_get_ns();
   char cb_duration_str[32];
