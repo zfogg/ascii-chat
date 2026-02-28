@@ -343,8 +343,11 @@ static void *audio_sender_thread_func(void *arg) {
  *
  * Uses mutex protection to prevent TOCTOU race conditions where multiple
  * threads might attempt initialization simultaneously.
+ *
+ * Called from protocol_start_connection() after server connection succeeds,
+ * to prevent deadlock if connection fails before capture thread starts.
  */
-static void audio_sender_init(void) {
+void audio_sender_init(void) {
   log_info("[AUDIO_SENDER_INIT] Starting audio sender initialization");
 
   if (!lifecycle_init(&g_audio_send_queue_lc, "audio_queue")) {
@@ -386,7 +389,7 @@ static void audio_sender_init(void) {
 /**
  * @brief Cleanup async audio sender
  */
-static void audio_sender_cleanup(void) {
+void audio_sender_cleanup(void) {
   // Signal thread to exit
   if (lifecycle_is_initialized(&g_audio_send_queue_lc)) {
     atomic_store(&g_audio_sender_should_exit, true);
@@ -1042,8 +1045,8 @@ int audio_client_init() {
     return -1;
   }
 
-  // Initialize async audio sender (decouples capture from network I/O)
-  audio_sender_init();
+  // Note: audio_sender_init() is now called from protocol_start_connection()
+  // after connection succeeds, to prevent deadlock if connection fails
 
   return 0;
 }

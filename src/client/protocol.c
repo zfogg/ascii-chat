@@ -1076,6 +1076,11 @@ int protocol_start_connection() {
   }
   log_debug("Webcam capture thread started successfully");
 
+  // Initialize audio sender thread BEFORE starting audio capture
+  // This ensures sender is ready when capture thread starts queueing packets
+  // Must happen after connection succeeds to prevent deadlock if connection fails
+  audio_sender_init();
+
   // Start audio capture thread if audio is enabled
   log_debug("Starting audio capture thread...");
   if (audio_start_thread() != 0) {

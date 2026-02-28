@@ -96,6 +96,25 @@ void audio_process_received_samples(const float *samples, int num_samples);
 int audio_client_init(void);
 
 /**
+ * @brief Initialize audio sender thread
+ *
+ * Spawns the audio sender thread in the worker pool. This thread pulls
+ * packets from the send queue (populated by the capture thread) and sends
+ * them to the server.
+ *
+ * Must be called after audio_client_init() and BEFORE audio_start_thread()
+ * during protocol_start_connection() after server connection succeeds.
+ *
+ * @note This is called automatically by protocol_start_connection() and
+ *       should not be called directly in most code.
+ *
+ * @ingroup client_audio
+ *
+ * @see audio_start_thread "Start audio capture thread"
+ */
+void audio_sender_init(void);
+
+/**
  * @brief Start audio capture thread
  *
  * Spawns audio capture/transmission thread in global worker pool.
