@@ -653,10 +653,10 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   uint64_t assembly_start_ns = time_get_ns();
   uint64_t last_fragment_ns = assembly_start_ns;
   int fragment_count = 0;
-  const uint64_t MAX_REASSEMBLY_TIME_NS = 1000 * 1000000ULL; // 1 second timeout for frame reassembly
-  // If WebSocket frames arrive fragmented, wait up to 1 second for all fragments.
-  // Return complete ACIP packets immediately (don't wait for final flag).
-  // 1 second handles network jitter and reassembly latency.
+  const uint64_t MAX_REASSEMBLY_TIME_NS = 5000 * 1000000ULL; // 5 second timeout for frame reassembly
+  // If WebSocket frames arrive fragmented, wait up to 5 seconds for all fragments.
+  // WebSocket delivery is slow - need long timeout to allow fragments to arrive.
+  // 5 seconds ensures complete frame reassembly without premature timeout.
 
   while (true) {
     // Wait for fragment if queue is empty (with short timeout)
