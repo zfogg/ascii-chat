@@ -2817,14 +2817,19 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
   // pixel_data points to websocket reassembly buffer which will be freed after callback returns,
   // so we must copy it immediately into the persistent frame buffer (which is pre-allocated to 2MB)
   if (client->incoming_video_buffer) {
+    video_frame_buffer_t *vfb = client->incoming_video_buffer;
+    log_info("VFB_DEBUG: vfb=%p, vfb->allocated_size=%zu, vfb->active=%d, back_buffer=%p, frames[0]=%p frames[1]=%p",
+             (void *)vfb, vfb->allocated_buffer_size, vfb->active, (void *)vfb->back_buffer, (void *)&vfb->frames[0],
+             (void *)&vfb->frames[1]);
+
     video_frame_t *frame = video_frame_begin_write(client->incoming_video_buffer);
     if (frame && frame->data && data_len > 0) {
       // Debug: Check frame buffer capacity
       size_t buffer_capacity = client->incoming_video_buffer->allocated_buffer_size;
       size_t total_size = sizeof(uint32_t) * 2 + data_len;
 
-      log_info("FRAME_STORAGE: client=%s, frame->data=%p, capacity=%zu, data_len=%zu, total=%zu", client->client_id,
-               (void *)frame->data, buffer_capacity, data_len, total_size);
+      log_info("FRAME_STORAGE: client=%s, frame=%p, frame->data=%p, capacity=%zu, data_len=%zu, total=%zu",
+               client->client_id, (void *)frame, (void *)frame->data, buffer_capacity, data_len, total_size);
 
       // Copy frame data: width (4B) + height (4B) + pixel data
       uint32_t width_net = HOST_TO_NET_U32(header->width);
