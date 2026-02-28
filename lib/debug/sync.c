@@ -386,6 +386,12 @@ static void cond_deadlock_check_callback(uintptr_t key, const char *name, void *
     return; // No threads waiting, nothing to check
   }
 
+  // Skip deadlock checks for thread pool work queues - it's normal for worker threads
+  // to wait idly when there's no work to process
+  if (name && strstr(name, "task_available") != NULL) {
+    return;
+  }
+
   uint64_t now = time_get_ns();
   uint64_t stuck_ns = now - cond->last_wait_time_ns;
   bool no_signal_since_wait = (cond->last_signal_time_ns == 0 || cond->last_signal_time_ns < cond->last_wait_time_ns);
