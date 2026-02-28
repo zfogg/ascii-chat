@@ -239,8 +239,8 @@ static alloc_site_t *get_or_create_site(const char *file, int line) {
 
   // Check if we've exceeded cache capacity
   if (g_site_count >= MEM_SITE_CACHE_MAX_KEYS) {
-    log_warn_every(LOG_RATE_FAST, "Allocation site cache full (%zu keys), not tracking %s:%d:%lu",
-                   MEM_SITE_CACHE_MAX_KEYS, file, line, tid);
+    log_warn_every(LOG_RATE_FAST, "Allocation site cache full (%zu keys), not tracking %s:%d (tid: 0x%lx)",
+                   MEM_SITE_CACHE_MAX_KEYS, extract_project_relative_path(file), line, tid);
     return NULL;
   }
 
