@@ -25,8 +25,9 @@
  * @brief TCP transport implementation data
  */
 typedef struct {
-  socket_t sockfd;   ///< Socket descriptor (NOT owned - don't close)
-  bool is_connected; ///< Connection state
+  socket_t sockfd;    ///< Socket descriptor (NOT owned - don't close)
+  bool is_connected;  ///< Connection state
+  mutex_t send_mutex; ///< Mutex to protect concurrent sends (multiple threads may send packets)
 } tcp_transport_data_t;
 
 // =============================================================================
@@ -88,12 +89,16 @@ static asciichat_error_t tcp_send_all(socket_t sockfd, const void *data, size_t 
 static asciichat_error_t tcp_send(acip_transport_t *transport, const void *data, size_t len) {
   tcp_transport_data_t *tcp = (tcp_transport_data_t *)transport->impl_data;
 
+  // Lock send mutex to prevent concurrent sends from corrupting packet data
+  mutex_lock(&tcp->send_mutex);
+
   log_info("[TCP_SEND_STATE] Entry: transport=%p, sockfd=%d, len=%zu, is_connected=%s, data=%p", (void *)transport,
            tcp->sockfd, len, tcp->is_connected ? "true" : "false", data);
 
   if (!tcp->is_connected) {
     log_error("[TCP_SEND_STATE] ❌ DISCONNECTED: Cannot send - transport marked disconnected! sockfd=%d, len=%zu",
               tcp->sockfd, len);
+    mutex_unlock(&tcp->send_mutex);
     return SET_ERRNO(ERROR_NETWORK, "TCP transport not connected");
   }
 
@@ -101,6 +106,7 @@ static asciichat_error_t tcp_send(acip_transport_t *transport, const void *data,
   // to determine if this is a handshake packet (which should NOT be encrypted)
   if (len < sizeof(packet_header_t)) {
     log_error("[TCP_SEND_STATE] ❌ PACKET_TOO_SMALL: len=%zu < header_size=%zu", len, sizeof(packet_header_t));
+    mutex_unlock(&tcp->send_mutex);
     return SET_ERRNO(ERROR_NETWORK, "Packet too small: %zu < %zu", len, sizeof(packet_header_t));
   }
 
@@ -136,6 +142,7 @@ static asciichat_error_t tcp_send(acip_transport_t *transport, const void *data,
     } else {
       log_error("[TCP_SEND_STATE] ❌ PLAINTEXT_SEND_FAILED: sockfd=%d, len=%zu - error code set", tcp->sockfd, len);
     }
+    mutex_unlock(&tcp->send_mutex);
     return result;
   }
 
@@ -147,6 +154,7 @@ static asciichat_error_t tcp_send(acip_transport_t *transport, const void *data,
   uint8_t *ciphertext = buffer_pool_alloc(NULL, ciphertext_size);
   if (!ciphertext) {
     log_error("[TCP_SEND_STATE] ❌ ENCRYPT_ALLOC_FAILED: needed %zu bytes", ciphertext_size);
+    mutex_unlock(&tcp->send_mutex);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate ciphertext buffer");
   }
 
@@ -161,6 +169,7 @@ static asciichat_error_t tcp_send(acip_transport_t *transport, const void *data,
   if (result != CRYPTO_OK) {
     log_error("[TCP_SEND_STATE] ❌ ENCRYPT_FAILED: %s (code=%d)", crypto_result_to_string(result), result);
     buffer_pool_free(NULL, ciphertext, ciphertext_size);
+    mutex_unlock(&tcp->send_mutex);
     return SET_ERRNO(ERROR_CRYPTO, "Failed to encrypt packet: %s", crypto_result_to_string(result));
   }
 
@@ -182,6 +191,7 @@ static asciichat_error_t tcp_send(acip_transport_t *transport, const void *data,
   if (!combined) {
     log_error("[TCP_SEND_STATE] ❌ ENCRYPTED_ALLOC_FAILED: needed %zu bytes for header+payload", combined_size);
     buffer_pool_free(NULL, ciphertext, ciphertext_size);
+    mutex_unlock(&tcp->send_mutex);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate combined packet buffer");
   }
 
@@ -206,6 +216,7 @@ static asciichat_error_t tcp_send(acip_transport_t *transport, const void *data,
   buffer_pool_free(NULL, ciphertext, ciphertext_size);
 
   log_debug_every(LOG_RATE_SLOW, "Sent encrypted packet (original type %d as PACKET_TYPE_ENCRYPTED)", packet_type);
+  mutex_unlock(&tcp->send_mutex);
   return send_result;
 }
 
@@ -301,6 +312,17 @@ static bool tcp_is_connected(acip_transport_t *transport) {
   return result;
 }
 
+static void tcp_destroy_impl(acip_transport_t *transport) {
+  tcp_transport_data_t *tcp = (tcp_transport_data_t *)transport->impl_data;
+  if (tcp) {
+    // Destroy the send mutex
+    int result = mutex_destroy(&tcp->send_mutex);
+    if (result != 0) {
+      log_warn("[TCP_DESTROY] ⚠️ MUTEX_DESTROY_FAILED: result=%d", result);
+    }
+  }
+}
+
 // =============================================================================
 // TCP Transport Method Table
 // =============================================================================
@@ -312,7 +334,7 @@ static const acip_transport_methods_t tcp_methods = {
     .get_type = tcp_get_type,
     .get_socket = tcp_get_socket,
     .is_connected = tcp_is_connected,
-    .destroy_impl = NULL, // No custom cleanup needed
+    .destroy_impl = tcp_destroy_impl, // Destroy send_mutex
 };
 
 // =============================================================================
@@ -357,7 +379,18 @@ acip_transport_t *acip_tcp_transport_create(const char *name, socket_t sockfd, c
   // Initialize TCP data
   tcp_data->sockfd = sockfd;
   tcp_data->is_connected = true;
-  log_info("[TCP_CREATE_STATE] 🟢 TCP_DATA_INITIALIZED: sockfd=%d, is_connected=true", sockfd);
+
+  // Initialize send mutex to protect concurrent sends from multiple threads
+  int mutex_result = mutex_init(&tcp_data->send_mutex, "tcp_send");
+  if (mutex_result != 0) {
+    log_error("[TCP_CREATE_STATE] ❌ MUTEX_INIT_FAILED: result=%d", mutex_result);
+    SAFE_FREE(tcp_data);
+    SAFE_FREE(transport);
+    SET_ERRNO(ERROR_MEMORY, "Failed to initialize send mutex");
+    return NULL;
+  }
+
+  log_info("[TCP_CREATE_STATE] 🟢 TCP_DATA_INITIALIZED: sockfd=%d, is_connected=true, send_mutex=initialized", sockfd);
 
   // Register impl_data in named registry for debug logging
   NAMED_REGISTER(tcp_data, name, "tcp_impl", "0x%tx");
