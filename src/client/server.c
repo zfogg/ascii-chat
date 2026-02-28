@@ -458,7 +458,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     int ipv6_result = getaddrinfo("::1", port_str, &hints, &res);
     if (ipv6_result == 0 && res != NULL) {
       // Try IPv6 loopback connection
-      g_sockfd = socket_create("client_socket_ipv6", res->ai_family, res->ai_socktype, res->ai_protocol);
+      g_sockfd = socket_create("ipv6", res->ai_family, res->ai_socktype, res->ai_protocol);
       if (g_sockfd != INVALID_SOCKET_VALUE) {
         log_debug("Trying IPv6 loopback connection to [::1]:%s...", port_str);
         if (connect_with_timeout(g_sockfd, res->ai_addr, res->ai_addrlen, CONNECT_TIMEOUT)) {
@@ -492,7 +492,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
 
     int ipv4_result = getaddrinfo("127.0.0.1", port_str, &hints, &res);
     if (ipv4_result == 0 && res != NULL) {
-      g_sockfd = socket_create("client_socket_ipv4", res->ai_family, res->ai_socktype, res->ai_protocol);
+      g_sockfd = socket_create("ipv4", res->ai_family, res->ai_socktype, res->ai_protocol);
       if (g_sockfd != INVALID_SOCKET_VALUE) {
         log_debug("Trying IPv4 loopback connection to 127.0.0.1:%s...", port_str);
         if (connect_with_timeout(g_sockfd, res->ai_addr, res->ai_addrlen, CONNECT_TIMEOUT)) {
