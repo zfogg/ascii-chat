@@ -4,10 +4,13 @@
  */
 
 #include <ascii-chat/ui/discovery_status.h>
+#include <ascii-chat/ui/terminal_screen.h>
+#include <ascii-chat/ui/frame_buffer.h>
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/options/options.h>
 #include <ascii-chat/common.h>
 #include <stdio.h>
 #include <string.h>
@@ -46,22 +49,17 @@ asciichat_error_t discovery_status_gather(tcp_server_t *server, discovery_databa
   return ASCIICHAT_OK;
 }
 
-void discovery_status_display(const discovery_status_t *status) {
+/**
+ * @brief Render discovery status header (callback for terminal_screen)
+ *
+ * Renders status information in a fixed header using frame buffer.
+ * Lines are accumulated in the frame buffer and output atomically.
+ */
+static void render_discovery_status_header(frame_buffer_t *buf, terminal_size_t term_size, void *user_data) {
+  const discovery_status_t *status = (const discovery_status_t *)user_data;
   if (!status) {
     return;
   }
-
-  // Get actual terminal dimensions
-  terminal_size_t term_size;
-  if (terminal_get_size(&term_size) != ASCIICHAT_OK) {
-    // Fallback to standard dimensions
-    term_size.cols = 80;
-    term_size.rows = 24;
-  }
-
-  // Content is max 80 chars wide, centered in terminal
-  const int CONTENT_WIDTH = 80;
-  int box_padding = (term_size.cols > CONTENT_WIDTH) ? (term_size.cols - CONTENT_WIDTH) / 2 : 0;
 
   // Calculate uptime
   time_t now = time(NULL);
@@ -70,98 +68,106 @@ void discovery_status_display(const discovery_status_t *status) {
   int uptime_mins = (uptime_secs % SEC_PER_HOUR) / SEC_PER_MIN;
   int uptime_secs_rem = uptime_secs % 60;
 
-  // Clear screen and move to home position
-  printf("\033[H\033[2J");
+  // Top border
+  frame_buffer_printf(buf, "\033[1;36m━");
+  for (int i = 1; i < term_size.cols - 1; i++) {
+    frame_buffer_printf(buf, "━");
+  }
+  frame_buffer_printf(buf, "\033[0m\n");
 
-  // Add vertical centering
-  int vertical_padding = display_center_vertical(10, term_size.rows);
-  for (int i = 0; i < vertical_padding; i++)
-    printf("\n");
-
-  // Print top border (80 chars wide, centered)
-  for (int i = 0; i < box_padding; i++)
-    printf(" ");
-  for (int i = 0; i < CONTENT_WIDTH; i++)
-    printf("━");
-  printf("\n");
-
-  // Build and center the title
+  // Title line
   char title[] = "ascii-chat discovery-service Status";
+  int title_padding = display_center_horizontal(title, term_size.cols - 2);
+  for (int i = 0; i < title_padding; i++) {
+    frame_buffer_printf(buf, " ");
+  }
+  frame_buffer_printf(buf, "\033[1;36m%s\033[0m\n", title);
 
-  char colored_title[256];
-  snprintf(colored_title, sizeof(colored_title), "\033[1;36m%s\033[0m", title);
+  // Status info line with servers and sessions
+  char info_line[256];
+  snprintf(info_line, sizeof(info_line), "🖥️  %zu Server | 🔗 %zu Session | ⏱️ ", status->connected_servers,
+           status->active_sessions);
 
-  // Calculate horizontal padding to center within the 80-char box
-  int horizontal_padding = display_center_horizontal(title, CONTENT_WIDTH);
+  char uptime_str[12];
+  format_uptime_hms(uptime_hours, uptime_mins, uptime_secs_rem, uptime_str, sizeof(uptime_str));
+  strncat(info_line, uptime_str, sizeof(info_line) - strlen(info_line) - 1);
 
-  // Print centered title (80 chars wide, centered)
-  for (int i = 0; i < box_padding; i++)
-    printf(" ");
-  for (int i = 0; i < horizontal_padding; i++)
-    printf(" ");
-  printf("%s\n", colored_title);
+  int info_padding = display_center_horizontal(info_line, term_size.cols - 2);
+  for (int i = 0; i < info_padding; i++) {
+    frame_buffer_printf(buf, " ");
+  }
+  frame_buffer_printf(buf, "%s\n", info_line);
 
-  // Print bottom border (80 chars wide, centered)
-  for (int i = 0; i < box_padding; i++)
-    printf(" ");
-  for (int i = 0; i < CONTENT_WIDTH; i++)
-    printf("━");
-  printf("\n");
+  // Address info
+  char addr_line[256];
+  int pos = 0;
 
-  // Bind addresses with IP type
   if (status->ipv4_bound) {
     char ipv4_only[64];
     const char *type = "";
     if (extract_ip_from_address(status->ipv4_address, ipv4_only, sizeof(ipv4_only)) == 0) {
       type = get_ip_type_string(ipv4_only);
     }
-    for (int i = 0; i < box_padding; i++)
-      printf(" ");
     if (type[0] != '\0') {
-      printf("📍 IPv4: %s (%s)\n", status->ipv4_address, type);
+      pos = snprintf(addr_line, sizeof(addr_line), "📍 IPv4: %s (%s)", status->ipv4_address, type);
     } else {
-      printf("📍 IPv4: %s\n", status->ipv4_address);
+      pos = snprintf(addr_line, sizeof(addr_line), "📍 IPv4: %s", status->ipv4_address);
     }
   }
+
   if (status->ipv6_bound) {
     char ipv6_only[64];
     const char *type = "";
     if (extract_ip_from_address(status->ipv6_address, ipv6_only, sizeof(ipv6_only)) == 0) {
       type = get_ip_type_string(ipv6_only);
     }
-    for (int i = 0; i < box_padding; i++)
-      printf(" ");
+    if (pos > 0) {
+      pos += snprintf(addr_line + pos, sizeof(addr_line) - pos, " | ");
+    }
     if (type[0] != '\0') {
-      printf("📍 IPv6: %s (%s)\n", status->ipv6_address, type);
+      snprintf(addr_line + pos, sizeof(addr_line) - pos, "📍 IPv6: %s (%s)", status->ipv6_address, type);
     } else {
-      printf("📍 IPv6: %s\n", status->ipv6_address);
+      snprintf(addr_line + pos, sizeof(addr_line) - pos, "📍 IPv6: %s", status->ipv6_address);
     }
   }
 
-  // Connected servers
-  for (int i = 0; i < box_padding; i++)
-    printf(" ");
-  printf("🖥️  Connected Servers: \033[1;33m%zu\033[0m\n", status->connected_servers);
+  int addr_padding = display_center_horizontal(addr_line, term_size.cols - 2);
+  for (int i = 0; i < addr_padding; i++) {
+    frame_buffer_printf(buf, " ");
+  }
+  frame_buffer_printf(buf, "%s\n", addr_line);
 
-  // Active sessions
-  for (int i = 0; i < box_padding; i++)
-    printf(" ");
-  printf("🔗 Active Sessions: \033[1;33m%zu\033[0m\n", status->active_sessions);
+  // Bottom border
+  frame_buffer_printf(buf, "\033[1;36m━");
+  for (int i = 1; i < term_size.cols - 1; i++) {
+    frame_buffer_printf(buf, "━");
+  }
+  frame_buffer_printf(buf, "\033[0m\n");
+}
 
-  // Uptime
-  char uptime_str[12];
-  format_uptime_hms(uptime_hours, uptime_mins, uptime_secs_rem, uptime_str, sizeof(uptime_str));
-  for (int i = 0; i < box_padding; i++)
-    printf(" ");
-  printf("⏱️ %s\n", uptime_str);
+void discovery_status_display(const discovery_status_t *status) {
+  if (!status) {
+    return;
+  }
 
-  // Print bottom border (80 chars wide, centered)
-  for (int i = 0; i < box_padding; i++)
-    printf(" ");
-  for (int i = 0; i < CONTENT_WIDTH; i++)
-    printf("━");
-  printf("\n");
-  fflush(stdout);
+  // Check if status screen was explicitly requested via --status-screen
+  const options_t *opts = options_get();
+  bool status_screen_explicitly_set = opts && opts->status_screen_explicitly_set;
+
+  // Only render if interactive mode OR if explicitly requested
+  if (!terminal_is_interactive() && !status_screen_explicitly_set) {
+    return;
+  }
+
+  // Use terminal_screen abstraction for rendering with frame buffer
+  terminal_screen_config_t config = {
+      .fixed_header_lines = 5,
+      .render_header = render_discovery_status_header,
+      .user_data = (void *)status,
+      .show_logs = false, // Discovery status doesn't show logs, just header
+  };
+
+  terminal_screen_render(&config);
 }
 
 void discovery_status_update(tcp_server_t *server, discovery_database_t *db, const char *ipv4_address,
