@@ -320,15 +320,10 @@ static char *decode_frame_data(const char *frame_data_ptr, size_t frame_data_len
  * @ingroup client_protocol
  */
 static void handle_ascii_frame_packet(const void *data, size_t len) {
-  printf("★★★ PRINTF FROM handle_ascii_frame_packet: ENTRY len=%zu\n", len);
   fflush(stdout);
-  fprintf(stderr, "★ HANDLE_ASCII_FRAME_PACKET: ENTRY: data=%p, len=%zu\n", data, len);
-  fflush(stderr);
   static int frame_count = 0;
   frame_count++;
   if (frame_count == 1) {
-    fprintf(stderr, "★ HANDLE_ASCII_FRAME_PACKET: First frame received! len=%zu\n", len);
-    fflush(stderr);
   }
 
   if (should_exit()) {
@@ -933,9 +928,6 @@ const acip_client_callbacks_t *protocol_get_acip_callbacks() {
 static void *data_reception_thread_func(void *arg) {
   (void)arg;
 
-  fprintf(stderr, "★ DATA_RECEPTION_THREAD_FUNC: Thread started, about to enter main loop\n");
-  fflush(stderr);
-
   log_warn("[FRAME_RECV_LOOP] 🔄 THREAD_STARTED: Data reception thread active, callbacks initialized");
 
 #ifdef DEBUG_THREADS
@@ -951,13 +943,9 @@ static void *data_reception_thread_func(void *arg) {
     // This combines packet reception, decryption, parsing, handler dispatch, and cleanup
     acip_transport_t *transport = server_connection_get_transport();
     if (packet_count < 3) {
-      fprintf(stderr, "★ DATA_THREAD_LOOP_START: packet_count=%d, transport=%p\n", packet_count, (void *)transport);
-      fflush(stderr);
     }
     if (!transport) {
       log_error("[FRAME_RECV_LOOP] ❌ NO_TRANSPORT: connection lost, transport not available");
-      fprintf(stderr, "★ DATA_THREAD_NO_TRANSPORT: calling server_connection_lost()\n");
-      fflush(stderr);
       server_connection_lost();
       break;
     }
@@ -965,13 +953,9 @@ static void *data_reception_thread_func(void *arg) {
     log_debug("[FRAME_RECV_LOOP] 📥 RECV_WAITING: awaiting packet #%d from server (transport ready)", packet_count + 1);
 
     if (packet_count == 0) {
-      fprintf(stderr, "★ DATA_RECEPTION_THREAD: About to call acip_client_receive_and_dispatch for first time\n");
-      fflush(stderr);
     }
     asciichat_error_t acip_result = acip_client_receive_and_dispatch(transport, &g_acip_client_callbacks);
     if (packet_count == 0) {
-      fprintf(stderr, "★ DATA_RECEPTION_THREAD: acip_client_receive_and_dispatch returned: result=%d\n", acip_result);
-      fflush(stderr);
     }
 
     if (acip_result == ASCIICHAT_OK) {
@@ -1032,8 +1016,6 @@ static void *data_reception_thread_func(void *arg) {
  * @ingroup client_protocol
  */
 int protocol_start_connection() {
-  fprintf(stderr, "★ PROTOCOL_START_CONNECTION: About to initialize\n");
-  fflush(stderr);
   log_warn("[FRAME_RECV_INIT] 🟢 PROTOCOL_START: Starting client protocol initialization");
 
   // Reset protocol state for new connection
@@ -1074,17 +1056,11 @@ int protocol_start_connection() {
   // Start data reception thread
   log_warn("[FRAME_RECV_INIT] 🔄 STARTING_DATA_THREAD: callbacks registered, about to spawn thread");
   atomic_store(&g_data_thread_exited, false);
-  fprintf(stderr, "★ PROTOCOL_START_CONNECTION: About to spawn data_reception thread\n");
-  fflush(stderr);
   if (thread_pool_spawn(g_client_worker_pool, data_reception_thread_func, NULL, 1, "data_reception") != ASCIICHAT_OK) {
     log_error("[FRAME_RECV_INIT] ❌ DATA_THREAD_SPAWN_FAILED: cannot start frame receive thread");
     LOG_ERRNO_IF_SET("Data reception thread creation failed");
-    fprintf(stderr, "★ PROTOCOL_START_CONNECTION: DATA_THREAD_SPAWN_FAILED\n");
-    fflush(stderr);
     return -1;
   }
-  fprintf(stderr, "★ PROTOCOL_START_CONNECTION: data_reception thread spawned successfully\n");
-  fflush(stderr);
   log_warn("[FRAME_RECV_INIT] ✅ DATA_THREAD_SPAWNED: frame receive thread is now running, waiting for frames...");
 
   // Start webcam capture thread
@@ -1204,11 +1180,6 @@ static void acip_on_ascii_frame(const ascii_frame_packet_t *header, const void *
                                 void *ctx) {
   static int callback_count = 0;
   callback_count++;
-  if (callback_count == 1) {
-    fprintf(stderr, "★ ACIP_ON_ASCII_FRAME: First callback! width=%u, height=%u, data_len=%zu\n", header->width,
-            header->height, data_len);
-    fflush(stderr);
-  }
   (void)ctx;
 
   log_info("[FRAME_RECV_CALLBACK] 🎬 FRAME_RECEIVED: width=%u, height=%u, data_len=%zu bytes, flags=0x%x",
@@ -1245,11 +1216,7 @@ static void acip_on_ascii_frame(const ascii_frame_packet_t *header, const void *
   memcpy(packet + sizeof(net_header), frame_data, data_len);
 
   log_info("[FRAME_RECV_CALLBACK] 📥 FRAME_DISPATCH: calling handle_ascii_frame_packet() with %zu bytes", total_len);
-  fprintf(stderr, "★ ACIP_ON_ASCII_FRAME: About to call handle_ascii_frame_packet, packet_size=%zu\n", total_len);
-  fflush(stderr);
   handle_ascii_frame_packet(packet, total_len);
-  fprintf(stderr, "★ ACIP_ON_ASCII_FRAME: handle_ascii_frame_packet returned\n");
-  fflush(stderr);
   log_info("[FRAME_RECV_CALLBACK] ✅ FRAME_DISPATCH_COMPLETE: frame processing finished");
 
   SAFE_FREE(packet);
