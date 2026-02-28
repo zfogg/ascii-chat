@@ -640,10 +640,11 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
       break;
     }
 
-    // Reconnection will happen - reset first_frame flag so splash cleanup runs on next successful connection
-    // Don't call splash_intro_start() during reconnection (no animation delay), just reset the flag
-    log_debug("[CLIENT_LIKE_LOOP] Reconnection will be attempted, resetting first frame flag");
+    // Reconnection will happen - show splash screen during reconnection attempt
+    // Reset first_frame flag so splash cleanup runs on next successful connection
+    log_debug("[CLIENT_LIKE_LOOP] Reconnection will be attempted, showing splash screen");
     session_display_reset_first_frame(display);
+    splash_intro_start(display);
 
     // Log reconnection message
     if (max_attempts == -1) {
