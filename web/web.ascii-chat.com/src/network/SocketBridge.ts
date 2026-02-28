@@ -44,6 +44,10 @@ export class SocketBridge {
   private readonly RECONNECT_DELAY = 1000; // 1 second fixed delay
   private readonly HEARTBEAT_INTERVAL = 1000; // 1 second heartbeat check (detect disconnects quickly)
 
+  // ★ Fragment reassembly: WebSocket may fragment large packets
+  private reassemblyBuffer: Uint8Array | null = null;
+  private reassemblySize = 0;
+
   constructor(private options: SocketBridgeOptions) {
     this.onPacketCallback = options.onPacket || null;
     this.onErrorCallback = options.onError || null;
@@ -93,13 +97,82 @@ export class SocketBridge {
 
     const handleMessage = (event: Event) => {
       const msgEvent = event as MessageEvent;
-      const packet = new Uint8Array(msgEvent.data);
-      const pktType = quickParseType(packet);
-      const typeHex = pktType !== null ? pktType.toString(16) : "??";
-      console.error(
-        `[SocketBridge] <<< RECV ${packet.length} bytes, pkt_type=${pktType} (0x${typeHex})`,
-      );
-      this.onPacketCallback?.(packet);
+      const fragment = new Uint8Array(msgEvent.data);
+
+      // ★ CRITICAL FIX: Reassemble WebSocket-fragmented messages
+      // WebSocket may split large packets into multiple frames. We need to reassemble
+      // them before passing to the packet handler.
+
+      // Add fragment to reassembly buffer
+      if (this.reassemblyBuffer === null) {
+        // Start new reassembly with this fragment
+        this.reassemblyBuffer = new Uint8Array(fragment);
+        this.reassemblySize = fragment.length;
+        console.error(
+          `[SocketBridge] ★ START REASSEMBLY: received first fragment ${fragment.length} bytes`,
+        );
+      } else {
+        // Append to existing reassembly buffer
+        const newSize = this.reassemblySize + fragment.length;
+        const newBuffer = new Uint8Array(newSize);
+        newBuffer.set(this.reassemblyBuffer, 0);
+        newBuffer.set(fragment, this.reassemblySize);
+        this.reassemblyBuffer = newBuffer;
+        this.reassemblySize = newSize;
+        console.error(
+          `[SocketBridge] ★ CONTINUE REASSEMBLY: appended ${fragment.length} bytes, total now ${newSize} bytes`,
+        );
+      }
+
+      // Check if we have a complete ACIP packet by reading the length field
+      // ACIP header: magic(8) + type(2) + length(4) + crc32(4) + client_id(4) = 22 bytes
+      if (this.reassemblySize >= 14 && this.reassemblyBuffer !== null) {
+        // Read length field at offset 10 (4 bytes, big-endian)
+        const data = this.reassemblyBuffer;
+        const len =
+          ((data[10] ?? 0) << 24) |
+          ((data[11] ?? 0) << 16) |
+          ((data[12] ?? 0) << 8) |
+          (data[13] ?? 0);
+        const expectedPacketSize = 22 + len; // Header + payload
+
+        if (this.reassemblySize >= expectedPacketSize) {
+          // We have a complete packet!
+          const completePacket = this.reassemblyBuffer.slice(
+            0,
+            expectedPacketSize,
+          );
+          const pktType = quickParseType(completePacket);
+          const typeHex = pktType !== null ? pktType.toString(16) : "??";
+          console.error(
+            `[SocketBridge] ★ COMPLETE PACKET: assembled from ${this.reassemblySize} bytes, extracted ${expectedPacketSize} bytes, pkt_type=${pktType} (0x${typeHex})`,
+          );
+
+          // Save any leftover data for next packet
+          if (this.reassemblySize > expectedPacketSize) {
+            const leftover = this.reassemblyBuffer.slice(expectedPacketSize);
+            this.reassemblyBuffer = leftover;
+            this.reassemblySize = leftover.length;
+            console.error(
+              `[SocketBridge] ★ LEFTOVER: saved ${leftover.length} bytes for next packet`,
+            );
+          } else {
+            this.reassemblyBuffer = null;
+            this.reassemblySize = 0;
+          }
+
+          // Pass complete packet to handler
+          this.onPacketCallback?.(completePacket);
+        } else {
+          console.error(
+            `[SocketBridge] ★ INCOMPLETE: need ${expectedPacketSize} bytes, have ${this.reassemblySize} bytes, waiting for more fragments`,
+          );
+        }
+      } else {
+        console.error(
+          `[SocketBridge] ★ NEED MORE: only ${this.reassemblySize} bytes, need at least 14 to read length field`,
+        );
+      }
     };
 
     const handleError = (event: Event) => {
@@ -126,6 +199,9 @@ export class SocketBridge {
         `[SocketBridge] WebSocket CLOSED: code=${closeEvent.code} reason="${closeEvent.reason}" wasClean=${closeEvent.wasClean}`,
       );
       this.stopHeartbeat();
+      // ★ Clear reassembly buffer on disconnect
+      this.reassemblyBuffer = null;
+      this.reassemblySize = 0;
       this.onStateChangeCallback?.("closed");
 
       // If user explicitly closed the connection, don't reconnect
