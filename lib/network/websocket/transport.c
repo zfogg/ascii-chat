@@ -867,36 +867,16 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
     }
 
     // Fallback: check if we have the final WebSocket fragment
-    // BUT: Only return if we have a COMPLETE ACIP packet!
-    // ACIP packets can span multiple WebSocket frames, so final=true doesn't mean
-    // we have the complete ACIP packet - we must verify using the ACIP header's length field
+    // With permessage-deflate, is_final is unreliable, but use as last resort
     if (frag.final) {
-      // Check if this is actually a complete ACIP packet by validating the length field
-      if (assembled_size >= 14) {  // Minimum to read ACIP length field
-        const uint8_t *data = (const uint8_t *)assembled_buffer;
-        uint32_t msg_payload_len = (data[10] << 24) | (data[11] << 16) | (data[12] << 8) | data[13];
-        const size_t HEADER_SIZE = 22;
-        size_t expected_size = HEADER_SIZE + msg_payload_len;
-
-        if (assembled_size >= expected_size) {
-          // We have a complete ACIP packet
-          log_info("[WS_REASSEMBLE] Complete ACIP packet by WebSocket final fragment: %zu bytes in %d fragments",
-                   expected_size, fragment_count);
-          *buffer = assembled_buffer;
-          *out_len = expected_size;
-          *out_allocated_buffer = assembled_buffer;
-          mutex_unlock(&ws_data->recv_mutex);
-          return ASCIICHAT_OK;
-        } else {
-          // ACIP packet is incomplete even though WebSocket frame is final
-          // This shouldn't happen - WebSocket is delivering corrupt data
-          log_error("[WS_REASSEMBLE] ERROR: WebSocket final fragment but incomplete ACIP packet (have %zu, need %zu)",
-                    assembled_size, expected_size);
-          buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
-          mutex_unlock(&ws_data->recv_mutex);
-          return SET_ERRNO(ERROR_NETWORK, "WebSocket final fragment but incomplete ACIP packet");
-        }
-      }
+      // Complete WebSocket message assembled (or timeout reached, return what we have)
+      log_info("[WS_REASSEMBLE] WebSocket final fragment reached: %zu bytes in %d fragments", assembled_size,
+               fragment_count);
+      *buffer = assembled_buffer;
+      *out_len = assembled_size;
+      *out_allocated_buffer = assembled_buffer;
+      mutex_unlock(&ws_data->recv_mutex);
+      return ASCIICHAT_OK;
     }
 
     // More fragments coming, continue reassembling
