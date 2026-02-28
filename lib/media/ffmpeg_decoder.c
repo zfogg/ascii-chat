@@ -6,6 +6,7 @@
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
+#include <ascii-chat/debug/named.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/video/image.h>
 #include <ascii-chat/platform/system.h>
@@ -622,6 +623,10 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
   log_debug("FFmpeg decoder opened: %s (video=%s, audio=%s)", path, decoder->video_stream_idx >= 0 ? "yes" : "no",
             decoder->audio_stream_idx >= 0 ? "yes" : "no");
 
+  char decoder_name[256];
+  snprintf(decoder_name, sizeof(decoder_name), "ffmpeg_%s", path);
+  NAMED_REGISTER_FFMPEG_DECODER(decoder, decoder_name);
+
   return decoder;
 }
 
@@ -793,6 +798,8 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
   log_debug("FFmpeg decoder opened from stdin (video=%s, audio=%s)", decoder->video_stream_idx >= 0 ? "yes" : "no",
             decoder->audio_stream_idx >= 0 ? "yes" : "no");
 
+  NAMED_REGISTER_FFMPEG_DECODER(decoder, "ffmpeg_stdin");
+
   return decoder;
 }
 
@@ -800,6 +807,8 @@ void ffmpeg_decoder_destroy(ffmpeg_decoder_t *decoder) {
   if (!decoder) {
     return;
   }
+
+  NAMED_UNREGISTER(decoder);
 
   // Stop prefetch thread (signal it to stop and wait for it to finish)
   if (decoder->prefetch_thread_running) {
@@ -945,7 +954,8 @@ asciichat_error_t ffmpeg_decoder_start_prefetch(ffmpeg_decoder_t *decoder) {
   // Reset stop flag and create thread
   decoder->prefetch_should_stop = false;
 
-  int thread_err = asciichat_thread_create(&decoder->prefetch_thread, "ffmpeg_prefetch", ffmpeg_decoder_prefetch_thread_func, decoder);
+  int thread_err = asciichat_thread_create(&decoder->prefetch_thread, "ffmpeg_prefetch",
+                                           ffmpeg_decoder_prefetch_thread_func, decoder);
   if (thread_err != 0) {
     return SET_ERRNO(ERROR_THREAD, "Failed to create video prefetch thread");
   }

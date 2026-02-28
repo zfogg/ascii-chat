@@ -9,6 +9,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/init.h>
+#include <ascii-chat/debug/named.h>
 #include <ascii-chat/util/format.h>
 #include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/util/time.h>
@@ -84,6 +85,8 @@ buffer_pool_t *buffer_pool_create(size_t max_bytes, uint64_t shrink_delay_ns) {
 void buffer_pool_destroy(buffer_pool_t *pool) {
   if (!pool)
     return;
+
+  NAMED_UNREGISTER(pool);
 
   // Drain the free list
   buffer_node_t *node = atomic_load(&pool->free_list);

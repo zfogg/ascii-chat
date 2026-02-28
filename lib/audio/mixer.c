@@ -8,9 +8,10 @@
 #include <ascii-chat/audio/mixer.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h> // For asciichat_errno system
-#include <ascii-chat/util/time.h>       // For timing instrumentation
-#include <ascii-chat/util/bits.h>       // For find_first_set_bit
-#include <ascii-chat/util/overflow.h>   // For overflow checking
+#include <ascii-chat/debug/named.h>
+#include <ascii-chat/util/time.h>     // For timing instrumentation
+#include <ascii-chat/util/bits.h>     // For find_first_set_bit
+#include <ascii-chat/util/overflow.h> // For overflow checking
 #include <math.h>
 #include <string.h>
 #include <stdint.h>
@@ -347,6 +348,8 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
 void mixer_destroy(mixer_t *mixer) {
   if (!mixer)
     return;
+
+  NAMED_UNREGISTER(mixer);
 
   // OPTIMIZATION 2: Destroy reader-writer lock
   rwlock_destroy(&mixer->source_lock);
@@ -717,7 +720,8 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
     if (read_time_ns > 10 * NS_PER_MS_INT) {
       char read_time_str[32];
       time_pretty(read_time_ns, -1, read_time_str, sizeof(read_time_str));
-      log_warn_every(LOG_RATE_DEFAULT, "Mixer: Slow source reading took %s for %d sources", read_time_str, source_count);
+      log_warn_every(LOG_RATE_DEFAULT, "Mixer: Slow source reading took %s for %d sources", read_time_str,
+                     source_count);
     }
 
     // OPTIMIZATION: Batch envelope calculation per-frame instead of per-sample

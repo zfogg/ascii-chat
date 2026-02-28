@@ -7,6 +7,7 @@
 #include <ascii-chat/audio/opus_codec.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/debug/named.h>
 #include <opus/opus.h>
 #include <stdlib.h>
 #include <string.h>
@@ -216,6 +217,8 @@ void opus_codec_destroy(opus_codec_t *codec) {
   if (!codec) {
     return;
   }
+
+  NAMED_UNREGISTER(codec);
 
   if (codec->encoder) {
     opus_encoder_destroy(codec->encoder);

@@ -19,7 +19,8 @@
 #include <ascii-chat/platform/abstraction.h> // For platform_sleep_us
 #include <ascii-chat/network/packet.h>       // For audio_batch_packet_t
 #include <ascii-chat/log/logging.h>          // For log_* macros
-#include <ascii-chat/media/source.h>         // For media_source_read_audio()
+#include <ascii-chat/debug/named.h>
+#include <ascii-chat/media/source.h> // For media_source_read_audio()
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -226,10 +227,10 @@ static void *audio_worker_thread(void *arg) {
       time_pretty((uint64_t)(total_wait_ns / loop_count), -1, avg_wait_str, sizeof(avg_wait_str));
       time_pretty(max_wait_ns, -1, max_wait_str, sizeof(max_wait_str));
       time_pretty((uint64_t)(total_capture_ns / (process_count > 0 ? process_count : 1)), -1, avg_capture_str,
-                         sizeof(avg_capture_str));
+                  sizeof(avg_capture_str));
       time_pretty(max_capture_ns, -1, max_capture_str, sizeof(max_capture_str));
       time_pretty((uint64_t)(total_playback_ns / (process_count > 0 ? process_count : 1)), -1, avg_playback_str,
-                         sizeof(avg_playback_str));
+                  sizeof(avg_playback_str));
       time_pretty(max_playback_ns, -1, max_playback_str, sizeof(max_playback_str));
 
       log_info("Worker stats: loops=%lu, signals=%lu, timeouts=%lu, processed=%lu", loop_count, signal_count,
@@ -293,8 +294,8 @@ static void *audio_worker_thread(void *arg) {
               time_pretty((uint64_t)avg_ns, -1, avg_str, sizeof(avg_str));
               time_pretty((uint64_t)aec3_max_ns, -1, max_str, sizeof(max_str));
               time_pretty((uint64_t)aec3_ns, -1, latest_str, sizeof(latest_str));
-              log_info("AEC3 performance: avg=%s, max=%s, latest=%s (samples=%zu, %d calls)",
-                       avg_str, max_str, latest_str, capture_read, aec3_count);
+              log_info("AEC3 performance: avg=%s, max=%s, latest=%s (samples=%zu, %d calls)", avg_str, max_str,
+                       latest_str, capture_read, aec3_count);
             }
           }
         }
@@ -824,6 +825,8 @@ audio_ring_buffer_t *audio_ring_buffer_create_for_capture(void) {
 void audio_ring_buffer_destroy(audio_ring_buffer_t *rb) {
   if (!rb)
     return;
+
+  NAMED_UNREGISTER(rb);
 
   mutex_destroy(&rb->mutex);
   buffer_pool_free(NULL, rb, sizeof(audio_ring_buffer_t));
