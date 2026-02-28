@@ -47,21 +47,20 @@
 /**
  * @brief Maximum incoming message queue size (frames received from peer)
  *
- * Power of 2 for ringbuffer optimization.
- * Used for both client (recv from server) and server (recv from client).
- * Each slot holds one message (up to 921KB). With 4096 slots, can buffer ~3.7GB.
+ * Set to 64 for balance: allows buffering across one large frame's fragments
+ * while keeping latency reasonable. With ~70 fragments per 291KB frame,
+ * we need at least 64 slots to avoid dropping the frame while it's fragmenting.
  */
-#define WEBSOCKET_MESSAGE_QUEUE_SIZE_INCOMING 4096
+#define WEBSOCKET_MESSAGE_QUEUE_SIZE_INCOMING 64
 
 /**
  * @brief Maximum outgoing message queue size (frames to send to peer)
  *
- * Must be large enough to buffer video + audio simultaneously.
- * With ~50 audio packets/sec + ~30 video frames/sec = ~80 packets/sec,
- * a 4096-message queue allows ~50ms of buffering at full load.
- * Used for both client (send to server) and server (send to client).
+ * Set to 64 to match incoming queue and prevent "BINARY after FIN" errors.
+ * Large video frames fragment into ~70 chunks; queue must be large enough
+ * to buffer one complete message worth of fragments.
  */
-#define WEBSOCKET_MESSAGE_QUEUE_SIZE_OUTGOING 4096
+#define WEBSOCKET_MESSAGE_QUEUE_SIZE_OUTGOING 64
 
 // Legacy names for backward compatibility
 #define WEBSOCKET_RECV_QUEUE_SIZE WEBSOCKET_MESSAGE_QUEUE_SIZE_INCOMING
@@ -419,41 +418,31 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
 
     mutex_lock(&ws_data->send_mutex);
 
-    // Process one message at a time with chunking
-    if (ringbuffer_peek(ws_data->send_queue, &msg)) {
+    // Process all messages in queue until pipe is choked or queue is empty
+    // This ensures remainders are sent before new messages
+    while (ringbuffer_peek(ws_data->send_queue, &msg)) {
+      // Check pipe state BEFORE dequeuing
+      if (lws_send_pipe_choked(ws_data->wsi)) {
+        log_debug("Pipe choked, stopping message processing");
+        break;
+      }
       ringbuffer_read(ws_data->send_queue, &msg);
 
       log_debug("WebSocket CLIENT_WRITEABLE: sending queued %zu bytes in fragments (msg %d)", msg.len, message_count + 1);
 
-      // Fragment the message into ~4KB chunks
+      // CRITICAL: Let libwebsockets handle fragmentation internally
+      // We send the entire message at once with LWS_WRITE_BINARY
+      // libwebsockets automatically fragments based on its MTU and manages FIN bits
+      log_debug("WebSocket sending %zu bytes (first=%d) with LWS_WRITE_BINARY", msg.len, msg.first);
+
+      int written = lws_write(ws_data->wsi, msg.data + LWS_PRE, msg.len, LWS_WRITE_BINARY);
+
       size_t offset = 0;
-      while (offset < msg.len && !lws_send_pipe_choked(ws_data->wsi)) {
-        size_t chunk_size = (msg.len - offset > CHUNK_SIZE) ? CHUNK_SIZE : (msg.len - offset);
-        bool is_first = (offset == 0);
-        bool is_final = (offset + chunk_size >= msg.len);
-
-        // Use lws_write_ws_flags to get correct flags for fragment sequence
-        // First fragment uses LWS_WRITE_BINARY, subsequent use LWS_WRITE_CONTINUATION
-        int write_flags = lws_write_ws_flags(LWS_WRITE_BINARY, is_first, is_final);
-
-        log_debug("  Fragment: offset=%zu, chunk=%zu, is_first=%d, is_final=%d, flags=%d",
-                  offset, chunk_size, is_first, is_final, write_flags);
-
-        // CRITICAL: Keep send_mutex locked during all lws_write() calls
-        // libwebsockets is not thread-safe for concurrent writes on same connection
-        int written = lws_write(ws_data->wsi, msg.data + LWS_PRE + offset, chunk_size, write_flags);
-
-        if (written < 0) {
-          log_error("WebSocket fragment write failed at offset %zu (chunk %zu bytes)", offset, chunk_size);
-          // Keep what we sent, but don't try to send more
-          break;
-        }
-
-        if ((size_t)written != chunk_size) {
-          log_warn("WebSocket partial write: %d/%zu bytes at offset %zu", written, chunk_size, offset);
-        }
-
-        offset += chunk_size;
+      if (written > 0) {
+        offset = written;
+      } else if (written < 0) {
+        log_error("WebSocket write failed, buffer may be full");
+        offset = 0;
       }
 
       // Only free AFTER entire message is sent
@@ -462,25 +451,39 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
         deferred_buffer_free(ws_data, msg.data, LWS_PRE + msg.len);
         message_count++;
       } else if (offset > 0) {
-        // Partial send - re-queue the remainder for next writeable event
-        // Create a new message with the unsent portion
-        websocket_recv_msg_t remainder;
+        // Partial send - COPY the unsent portion to a new buffer
+        // This avoids use-after-free when freeing the original buffer
         size_t remaining_len = msg.len - offset;
-        remainder.data = msg.data;  // Keep same buffer
-        remainder.len = remaining_len;
-        remainder.first = 0;  // Mark as continuation
-        remainder.final = msg.final;
+        uint8_t *remainder_buffer = buffer_pool_alloc(NULL, remaining_len + LWS_PRE);
 
-        // Since we already read this message, we need to queue the remainder back
-        // Insert at front of queue by re-reading and writing remainder
-        ringbuffer_write(ws_data->send_queue, &remainder);
+        if (remainder_buffer) {
+          // Copy unsent data to new buffer (after LWS_PRE space)
+          memcpy(remainder_buffer + LWS_PRE, msg.data + LWS_PRE + offset, remaining_len);
 
-        log_info("  Re-queued %zu bytes remainder (sent %zu of %zu)", remaining_len, offset, msg.len);
+          websocket_recv_msg_t remainder;
+          remainder.data = remainder_buffer;
+          remainder.len = remaining_len;
+          remainder.first = 0;  // Mark as continuation (will use LWS_WRITE_CONTINUATION)
+          remainder.final = msg.final;
+
+          ringbuffer_write(ws_data->send_queue, &remainder);
+          log_info("  Re-queued %zu bytes remainder in new buffer (sent %zu of %zu)",
+                   remaining_len, offset, msg.len);
+
+          // Free the original buffer now that we've extracted what we need
+          deferred_buffer_free(ws_data, msg.data, LWS_PRE + msg.len);
+        } else {
+          log_error("Failed to allocate remainder buffer (%zu bytes), re-queueing original",
+                    remaining_len + LWS_PRE);
+          // Re-queue original on allocation failure
+          ringbuffer_write(ws_data->send_queue, &msg);
+        }
       } else {
         // No bytes sent - buffer is choked, re-queue this message
         ringbuffer_write(ws_data->send_queue, &msg);
+        break;  // Exit while loop when pipe is choked
       }
-    }
+    }  // End while loop - continues until queue empty or pipe choked
 
     mutex_unlock(&ws_data->send_mutex);
 
