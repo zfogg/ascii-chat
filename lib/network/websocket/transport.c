@@ -56,11 +56,12 @@
 /**
  * @brief Maximum outgoing message queue size (frames to send to peer)
  *
- * Smaller than incoming queue for temporary buffering during event processing.
+ * Must be large enough to buffer video + audio simultaneously.
+ * With ~50 audio packets/sec + ~30 video frames/sec = ~80 packets/sec,
+ * a 4096-message queue allows ~50ms of buffering at full load.
  * Used for both client (send to server) and server (send to client).
- * Size must accommodate worst-case burst while service thread drains queue.
  */
-#define WEBSOCKET_MESSAGE_QUEUE_SIZE_OUTGOING 256
+#define WEBSOCKET_MESSAGE_QUEUE_SIZE_OUTGOING 4096
 
 // Legacy names for backward compatibility
 #define WEBSOCKET_RECV_QUEUE_SIZE WEBSOCKET_MESSAGE_QUEUE_SIZE_INCOMING
