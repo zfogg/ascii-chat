@@ -533,7 +533,7 @@ static int start_client_threads(server_context_t *server_ctx, client_info_t *cli
   return 0;
 }
 
-int add_client(server_context_t *server_ctx, socket_t socket, const char *client_ip, int port) {
+client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const char *client_ip, int port) {
   // Find empty slot WITHOUT holding the global lock
   // We'll re-verify under lock after allocations complete
   int slot = -1;
@@ -554,7 +554,7 @@ int add_client(server_context_t *server_ctx, socket_t socket, const char *client
     if (send_result < 0) {
       log_warn("Failed to send rejection message to client: %s", SAFE_STRERROR(errno));
     }
-    return -1;
+    return NULL;
   }
 
   // NOW acquire the lock early for generating unique client name
@@ -565,7 +565,7 @@ int add_client(server_context_t *server_ctx, socket_t socket, const char *client
   if (generate_client_name(new_client_id, sizeof(new_client_id), g_client_manager.clients_by_id, port, true) != 0) {
     rwlock_wrunlock(&g_client_manager_rwlock);
     log_error("Failed to generate unique client name");
-    return -1;
+    return NULL;
   }
 
   rwlock_wrunlock(&g_client_manager_rwlock);
@@ -576,7 +576,7 @@ int add_client(server_context_t *server_ctx, socket_t socket, const char *client
   if (!incoming_video_buffer) {
     SET_ERRNO(ERROR_MEMORY, "Failed to create video buffer for client %s", new_client_id);
     log_error("Failed to create video buffer for client %s", new_client_id);
-    return -1;
+    return NULL;
   }
 
   audio_ring_buffer_t *incoming_audio_buffer = audio_ring_buffer_create_for_capture();
@@ -584,7 +584,7 @@ int add_client(server_context_t *server_ctx, socket_t socket, const char *client
     SET_ERRNO(ERROR_MEMORY, "Failed to create audio buffer for client %s", new_client_id);
     log_error("Failed to create audio buffer for client %s", new_client_id);
     video_frame_buffer_destroy(incoming_video_buffer);
-    return -1;
+    return NULL;
   }
 
   packet_queue_t *audio_queue = packet_queue_create_with_pools(500, 1000, false);
@@ -592,7 +592,7 @@ int add_client(server_context_t *server_ctx, socket_t socket, const char *client
     LOG_ERRNO_IF_SET("Failed to create audio queue for client");
     audio_ring_buffer_destroy(incoming_audio_buffer);
     video_frame_buffer_destroy(incoming_video_buffer);
-    return -1;
+    return NULL;
   }
 
   video_frame_buffer_t *outgoing_video_buffer = video_frame_buffer_create(new_client_id);
@@ -601,7 +601,7 @@ int add_client(server_context_t *server_ctx, socket_t socket, const char *client
     packet_queue_destroy(audio_queue);
     audio_ring_buffer_destroy(incoming_audio_buffer);
     video_frame_buffer_destroy(incoming_video_buffer);
-    return -1;
+    return NULL;
   }
 
   void *send_buffer = SAFE_MALLOC_ALIGNED(MAX_FRAME_BUFFER_SIZE, 64, void *);
@@ -611,7 +611,7 @@ int add_client(server_context_t *server_ctx, socket_t socket, const char *client
     packet_queue_destroy(audio_queue);
     audio_ring_buffer_destroy(incoming_audio_buffer);
     video_frame_buffer_destroy(incoming_video_buffer);
-    return -1;
+    return NULL;
   }
 
   // NOW acquire the lock for the critical section: slot assignment + registration
@@ -628,7 +628,7 @@ int add_client(server_context_t *server_ctx, socket_t socket, const char *client
 
     const char *reject_msg = "SERVER_FULL: Slot reassigned, try again\n";
     socket_send(socket, reject_msg, strlen(reject_msg), 0);
-    return -1;
+    return NULL;
   }
 
   // Now we have exclusive access to the slot - do the actual registration
@@ -701,13 +701,13 @@ int add_client(server_context_t *server_ctx, socket_t socket, const char *client
   if (mutex_init(&client->client_state_mutex, "client_state") != 0) {
     log_error("Failed to initialize client state mutex for client %s", new_client_id);
     remove_client(server_ctx, new_client_id);
-    return -1;
+    return NULL;
   }
 
   if (mutex_init(&client->send_mutex, "client_send") != 0) {
     log_error("Failed to initialize send mutex for client %s", new_client_id);
     remove_client(server_ctx, new_client_id);
-    return -1;
+    return NULL;
   }
 
   // Register with audio mixer OUTSIDE lock
@@ -740,7 +740,7 @@ int add_client(server_context_t *server_ctx, socket_t socket, const char *client
       if (remove_client(server_ctx, new_client_id) != 0) {
         log_error("Failed to remove client after crypto handshake failure");
       }
-      return -1;
+      return NULL;
     }
 
     // Clear socket timeout after handshake completes successfully
@@ -763,7 +763,7 @@ int add_client(server_context_t *server_ctx, socket_t socket, const char *client
       if (remove_client(server_ctx, new_client_id) != 0) {
         log_error("Failed to remove client after transport creation failure");
       }
-      return -1;
+      return NULL;
     }
     log_debug("Created ACIP transport for client %s with crypto context", new_client_id);
 
@@ -808,19 +808,19 @@ int add_client(server_context_t *server_ctx, socket_t socket, const char *client
       mutex_unlock(&client->client_state_mutex);
 
       if (result != PACKET_RECV_SUCCESS) {
-        log_error("Failed to receive initial capabilities packet from client %u: result=%d", client->client_id, result);
+        log_error("Failed to receive initial capabilities packet from client %s: result=%d", client->client_id, result);
         if (envelope.allocated_buffer) {
           buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
         }
         if (remove_client(server_ctx, client->client_id) != 0) {
           log_error("Failed to remove client after crypto handshake failure");
         }
-        return -1;
+        return NULL;
       }
     }
 
     if (envelope.type != PACKET_TYPE_CLIENT_CAPABILITIES) {
-      log_error("Expected PACKET_TYPE_CLIENT_CAPABILITIES but got packet type %d from client %u", envelope.type,
+      log_error("Expected PACKET_TYPE_CLIENT_CAPABILITIES but got packet type %d from client %s", envelope.type,
                 client->client_id);
       if (envelope.allocated_buffer) {
         buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
@@ -828,7 +828,7 @@ int add_client(server_context_t *server_ctx, socket_t socket, const char *client
       if (remove_client(server_ctx, client->client_id) != 0) {
         log_error("Failed to remove client after crypto handshake failure");
       }
-      return -1;
+      return NULL;
     }
 
     // Process the capabilities packet directly
@@ -852,17 +852,17 @@ int add_client(server_context_t *server_ctx, socket_t socket, const char *client
     log_error("Failed to start threads for TCP client %s", client_id_snapshot);
     // Client is already in hash table - use remove_client for proper cleanup
     remove_client(server_ctx, client_id_snapshot);
-    return -1;
+    return NULL;
   }
-  log_debug("Successfully created render threads for client %u", client_id_snapshot);
+  log_debug("Successfully created render threads for client %s", client_id_snapshot);
 
   // Register client with session_host (for discovery mode support)
   if (server_ctx->session_host) {
-    uint32_t session_client_id = session_host_add_client(server_ctx->session_host, socket, client_ip, port);
-    if (session_client_id == 0) {
-      log_warn("Failed to register client %u with session_host", client_id_snapshot);
+    client->session_client_id = session_host_add_client(server_ctx->session_host, socket, client_ip, port);
+    if (client->session_client_id == 0) {
+      log_warn("Failed to register client %s with session_host", client_id_snapshot);
     } else {
-      log_debug("Client %u registered with session_host as %u", client_id_snapshot, session_client_id);
+      log_debug("Client %s registered with session_host as %u", client_id_snapshot, client->session_client_id);
     }
   }
 
@@ -870,7 +870,7 @@ int add_client(server_context_t *server_ctx, socket_t socket, const char *client
   // This notifies all clients (including the new one) about the updated grid
   broadcast_server_state_to_all_clients();
 
-  return (int)client_id_snapshot;
+  return client;
 
 error_cleanup:
   // Clean up all partially allocated resources
@@ -878,7 +878,7 @@ error_cleanup:
   // the client is added to the hash table. Don't call remove_client() here.
   cleanup_client_all_buffers(client);
   rwlock_wrunlock(&g_client_manager_rwlock);
-  return -1;
+  return NULL;
 }
 
 /**
@@ -899,16 +899,16 @@ error_cleanup:
  * @param server_ctx Server context
  * @param transport WebRTC transport (already created and connected)
  * @param client_ip Client IP address for logging (may be empty for P2P)
- * @return Client ID on success, -1 on failure
+ * @return Pointer to client_info_t on success, NULL on failure
  *
  * @note The transport must be fully initialized and ready to send/receive
  * @note Client capabilities are still expected as first packet
  */
-int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport, const char *client_ip,
-                      bool start_threads) {
+client_info_t *add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport, const char *client_ip,
+                                 bool start_threads) {
   if (!server_ctx || !transport || !client_ip) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters to add_webrtc_client");
-    return -1;
+    return NULL;
   }
 
   rwlock_wrlock(&g_client_manager_rwlock);
@@ -932,14 +932,14 @@ int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
     SET_ERRNO(ERROR_RESOURCE_EXHAUSTED, "Maximum client limit reached (%d/%d active clients)", existing_count,
               GET_OPTION(max_clients));
     log_error("Maximum client limit reached (%d/%d active clients)", existing_count, GET_OPTION(max_clients));
-    return -1;
+    return NULL;
   }
 
   if (slot == -1) {
     rwlock_wrunlock(&g_client_manager_rwlock);
     SET_ERRNO(ERROR_RESOURCE_EXHAUSTED, "No available client slots (all %d array slots are in use)", MAX_CLIENTS);
     log_error("No available client slots (all %d array slots are in use)", MAX_CLIENTS);
-    return -1;
+    return NULL;
   }
 
   // Update client_count to match actual count before adding new client
@@ -950,7 +950,7 @@ int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
   if (generate_client_name(new_client_id, sizeof(new_client_id), g_client_manager.clients_by_id, 0, false) != 0) {
     rwlock_wrunlock(&g_client_manager_rwlock);
     log_error("Failed to generate unique client name for WebRTC client");
-    return -1;
+    return NULL;
   }
 
   // Initialize client
@@ -1082,7 +1082,7 @@ int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
     log_error("Failed to initialize client state mutex for WebRTC client %s", new_client_id);
     // Client is already in hash table - use remove_client for proper cleanup
     remove_client(server_ctx, new_client_id);
-    return -1;
+    return NULL;
   }
 
   // Initialize send mutex to protect concurrent socket writes
@@ -1090,7 +1090,7 @@ int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
     log_error("Failed to initialize send mutex for WebRTC client %s", new_client_id);
     // Client is already in hash table - use remove_client for proper cleanup
     remove_client(server_ctx, client->client_id);
-    return -1;
+    return NULL;
   }
 
   // For WebRTC clients, the capabilities packet will be received by the receive thread
@@ -1105,7 +1105,7 @@ int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
     log_debug("[ADD_WEBRTC_CLIENT] Starting client threads (receive, render) for client %s...", new_client_id);
     if (start_client_threads(server_ctx, client, false) != 0) {
       log_error("Failed to start threads for WebRTC client %s", new_client_id);
-      return -1;
+      return NULL;
     }
     log_debug("Created receive thread for WebRTC client %s", new_client_id);
     log_debug("[ADD_WEBRTC_CLIENT] Receive thread started - thread will now be processing packets", new_client_id);
@@ -1151,11 +1151,11 @@ int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
   // Register client with session_host (for discovery mode support)
   // WebRTC clients use INVALID_SOCKET_VALUE since they don't have a TCP socket
   if (server_ctx->session_host) {
-    uint32_t session_client_id = session_host_add_client(server_ctx->session_host, INVALID_SOCKET_VALUE, client_ip, 0);
-    if (session_client_id == 0) {
+    client->session_client_id = session_host_add_client(server_ctx->session_host, INVALID_SOCKET_VALUE, client_ip, 0);
+    if (client->session_client_id == 0) {
       log_warn("Failed to register WebRTC client %s with session_host", new_client_id);
     } else {
-      log_debug("WebRTC client %s registered with session_host as %u", new_client_id, session_client_id);
+      log_debug("WebRTC client %s registered with session_host as %u", new_client_id, client->session_client_id);
     }
   }
 
@@ -1163,7 +1163,7 @@ int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
   // This notifies all clients (including the new one) about the updated grid
   broadcast_server_state_to_all_clients();
 
-  return 0; // Return 0 to indicate success (return value changed, client_id is now in client->client_id)
+  return client;
 
 error_cleanup_webrtc:
   // Clean up all partially allocated resources for WebRTC client
@@ -1171,7 +1171,7 @@ error_cleanup_webrtc:
   // the client is added to the hash table. Don't call remove_client() here.
   cleanup_client_all_buffers(client);
   rwlock_wrunlock(&g_client_manager_rwlock);
-  return -1;
+  return NULL;
 }
 
 int remove_client(server_context_t *server_ctx, const char *client_id) {
@@ -1240,8 +1240,9 @@ int remove_client(server_context_t *server_ctx, const char *client_id) {
 
   // Unregister client from session_host (for discovery mode support)
   // NOTE: Client may not be registered if crypto handshake failed before session_host registration
-  if (server_ctx->session_host) {
-    asciichat_error_t session_result = session_host_remove_client(server_ctx->session_host, client_id);
+  if (server_ctx->session_host && target_client->session_client_id != 0) {
+    asciichat_error_t session_result =
+        session_host_remove_client(server_ctx->session_host, target_client->session_client_id);
     if (session_result != ASCIICHAT_OK) {
       // ERROR_NOT_FOUND (91) is expected if client failed crypto before being registered with session_host
       if (session_result == ERROR_NOT_FOUND) {
@@ -1337,11 +1338,10 @@ int remove_client(server_context_t *server_ctx, const char *client_id) {
   // Another thread might have invalidated the pointer while we had the lock released.
   if (target_client) {
     // Verify client_id still matches and client is still in shutting_down state
-    uint32_t current_id = target_client->client_id;
     bool still_shutting_down = atomic_load(&target_client->shutting_down);
-    if (current_id != client_id || !still_shutting_down) {
-      log_warn("Client %u pointer invalidated during thread cleanup (id=%u, shutting_down=%d)", client_id, current_id,
-               still_shutting_down);
+    if (strcmp(target_client->client_id, client_id) != 0 || !still_shutting_down) {
+      log_warn("Client %s pointer invalidated during thread cleanup (id=%s, shutting_down=%d)", client_id,
+               target_client->client_id, still_shutting_down);
       rwlock_wrunlock(&g_client_manager_rwlock);
       return 0; // Another thread completed the cleanup
     }
@@ -1803,8 +1803,9 @@ void *client_receive_thread(void *arg) {
       // Build a complete packet to queue (header + payload)
       // The entire buffer (allocated_buffer) contains the full packet
       // copy_data=false because we want to transfer ownership to the queue
+      uint32_t client_id_hash = fnv1a_hash_string(client->client_id);
       int enqueue_result = packet_queue_enqueue(client->received_packet_queue, pkt_type, allocated_buffer, packet_len,
-                                                client->client_id, false);
+                                                client_id_hash, false);
 
       if (enqueue_result < 0) {
         log_error("🔴 RECV_THREAD[%u]: Failed to queue received packet (queue full?) - DROPPING FRAME",
@@ -1959,8 +1960,9 @@ void *client_send_thread_func(void *arg) {
         mutex_unlock(&client->send_mutex);
 
         // Network I/O happens OUTSIDE the mutex
+        uint32_t client_id_hash = fnv1a_hash_string(client->client_id);
         result = packet_send_via_transport(transport, pkt_type, audio_packets[0]->data, audio_packets[0]->data_len,
-                                           client->client_id);
+                                           client_id_hash);
         if (result != ASCIICHAT_OK) {
           log_error("AUDIO SEND FAIL: client=%u, len=%zu, result=%d", client->client_id, audio_packets[0]->data_len,
                     result);

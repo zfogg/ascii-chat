@@ -406,7 +406,7 @@ static void *accept_loop_thread(void *arg) {
       log_info("New connection from %s:%d", client_ip, client_port);
 
       // Add client to host
-      const char *client_id = session_host_add_client(host, client_socket, client_ip, client_port);
+      uint32_t client_id = session_host_add_client(host, client_socket, client_ip, client_port);
       if (client_id == 0) {
         log_error("Failed to add client");
         socket_close(client_socket);
@@ -500,7 +500,7 @@ static void *receive_loop_thread(void *arg) {
       }
 
       // Process packet based on type
-      const char *client_id = host->clients[i].client_id;
+      uint32_t client_id = host->clients[i].client_id;
       socket_t client_socket = host->clients[i].socket;
       mutex_unlock(&host->clients_mutex);
 
@@ -975,7 +975,7 @@ uint32_t session_host_add_client(session_host_t *host, socket_t socket, const ch
         return 0;
       }
 
-      const char *client_id = host->clients[i].client_id;
+      uint32_t client_id = host->clients[i].client_id;
       host->client_count++;
 
       mutex_unlock(&host->clients_mutex);

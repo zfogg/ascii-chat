@@ -933,7 +933,8 @@ void *client_audio_render_thread(void *arg) {
                       client_id_snapshot);
     } else {
       // Use adaptive sample count in normal mixer mode
-      samples_mixed = mixer_process_excluding_source(g_audio_mixer, mix_buffer, samples_to_read, client_id_snapshot);
+      uint32_t client_id_hash = fnv1a_hash_string(client_id_snapshot);
+      samples_mixed = mixer_process_excluding_source(g_audio_mixer, mix_buffer, samples_to_read, client_id_hash);
     }
 
     STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "mix_%u", "Mixer for client %u: took",

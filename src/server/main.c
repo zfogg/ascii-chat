@@ -807,14 +807,14 @@ static void on_webrtc_transport_ready(acip_transport_t *transport, const uint8_t
 
   // Add client to server (calls add_webrtc_client internally)
   // For WebRTC DataChannel: start threads immediately (crypto already handled by ACDS)
-  int client_id = add_webrtc_client(server_ctx, transport, participant_str, true);
-  if (client_id < 0) {
+  client_info_t *client = add_webrtc_client(server_ctx, transport, participant_str, true);
+  if (!client) {
     log_error("Failed to add WebRTC client for participant %s", participant_str);
     acip_transport_destroy(transport);
     return;
   }
 
-  log_debug("Successfully added WebRTC client ID=%d for participant %s", client_id, participant_str);
+  log_debug("Successfully added WebRTC client ID=%s for participant %s", client->client_id, participant_str);
 }
 
 /**
@@ -1376,8 +1376,8 @@ static void *ascii_chat_client_handler(void *arg) {
   }
 
   // Add client (initializes structures, spawns workers via tcp_server_spawn_thread)
-  int client_id = add_client(server_ctx, client_socket, client_ip, client_port);
-  if (client_id < 0) {
+  client_info_t *client = add_client(server_ctx, client_socket, client_ip, client_port);
+  if (!client) {
     if (HAS_ERRNO(&asciichat_errno_context)) {
       PRINT_ERRNO_CONTEXT(&asciichat_errno_context);
       CLEAR_ERRNO();
@@ -1387,32 +1387,31 @@ static void *ascii_chat_client_handler(void *arg) {
     return NULL;
   }
 
-  log_debug("Client %d added successfully from %s:%d", client_id, client_ip, client_port);
+  log_debug("Client %s added successfully from %s:%d", client->client_id, client_ip, client_port);
 
   // Block until client disconnects (active flag is set by receive thread)
-  client_info_t *client = find_client_by_id((uint32_t)client_id);
-  if (!client) {
-    log_error("CRITICAL: Client %d not found after successful add! (not in hash table?)", client_id);
-  } else {
-    log_debug("HANDLER: Client %d found, waiting for disconnect (active=%d)", client_id, atomic_load(&client->active));
+  if (client) {
+    log_debug("HANDLER: Client %s found, waiting for disconnect (active=%d)", client->client_id,
+              atomic_load(&client->active));
     int wait_count = 0;
     while (atomic_load(&client->active) && !atomic_load(server_ctx->server_should_exit)) {
       wait_count++;
       if (wait_count % 10 == 0) {
         // Log every 1 second (10 * 100ms)
-        log_debug("HANDLER: Client %d still active (waited %d seconds), active=%d", client_id, wait_count / 10,
+        log_debug("HANDLER: Client %s still active (waited %d seconds), active=%d", client->client_id, wait_count / 10,
                   atomic_load(&client->active));
       }
       platform_sleep_ms(100); // Check every 100ms
     }
-    log_info("Client %d disconnected from %s:%d (waited %d seconds, active=%d, server_should_exit=%d)", client_id,
-             client_ip, client_port, wait_count / 10, atomic_load(&client->active),
+    log_info("Client %s disconnected from %s:%d (waited %d seconds, active=%d, server_should_exit=%d)",
+             client->client_id, client_ip, client_port, wait_count / 10, atomic_load(&client->active),
              atomic_load(server_ctx->server_should_exit));
   }
 
   // Cleanup (this will call tcp_server_stop_client_threads internally)
-  if (remove_client(server_ctx, (uint32_t)client_id) != 0) {
-    log_error("CRITICAL BUG: Failed to remove client %d from server (potential zombie client leak!)", client_id);
+  if (remove_client(server_ctx, client->client_id) != 0) {
+    log_error("CRITICAL BUG: Failed to remove client %s from server (potential zombie client leak!)",
+              client->client_id);
   }
 
   // Close socket and free context
@@ -1456,9 +1455,9 @@ static void *websocket_client_handler(void *arg) {
 
   // STEP 1: Add client first (creates client structure WITHOUT starting threads yet)
   log_debug("[WS_HANDLER] STEP 1: Calling add_webrtc_client()...");
-  int client_id = add_webrtc_client(server_ctx, ctx->transport, ctx->client_ip, false);
-  if (client_id < 0) {
-    log_error("[WS_HANDLER] FAILED: add_webrtc_client returned %d", client_id);
+  client_info_t *client = add_webrtc_client(server_ctx, ctx->transport, ctx->client_ip, false);
+  if (!client) {
+    log_error("[WS_HANDLER] FAILED: add_webrtc_client returned NULL");
     if (ctx->transport) {
       acip_transport_destroy(ctx->transport);
     }
@@ -1469,26 +1468,19 @@ static void *websocket_client_handler(void *arg) {
   // Transport ownership transferred to client structure - don't destroy it here
   ctx->transport = NULL;
 
-  log_info("WebSocket client %d added successfully", client_id);
-  log_debug("[WS_HANDLER] add_webrtc_client returned client_id=%d, transport ownership transferred", client_id);
+  log_info("WebSocket client %s added successfully", client->client_id);
+  log_debug("[WS_HANDLER] add_webrtc_client returned client_id=%s, transport ownership transferred", client->client_id);
 
-  // STEP 2: Get client structure and initialize crypto handshake
-  log_debug("[WS_HANDLER] STEP 2: Finding client structure for ID %d...", client_id);
-  client_info_t *client = find_client_by_id((uint32_t)client_id);
-  if (!client) {
-    log_error("[WS_HANDLER] FAILED: Client %d not found after successful add", client_id);
-    SAFE_FREE(ctx);
-    return NULL;
-  }
-  log_debug("[WS_HANDLER] Found client structure: client=%p, transport=%p, crypto_initialized=%d", (void *)client,
-            (void *)client->transport, client->crypto_initialized);
+  // STEP 2: Client structure is already initialized - set up crypto handshake
+  log_debug("[WS_HANDLER] STEP 2: Client structure obtained: client=%p, transport=%p, crypto_initialized=%d",
+            (void *)client, (void *)client->transport, client->crypto_initialized);
 
   // Initialize crypto handshake context directly in client structure
   // This must happen BEFORE sending KEY_EXCHANGE_INIT so that when the client
   // responds, the receive thread has a properly initialized context
   // Create debug name with client_id
   char crypto_name[64];
-  SAFE_SNPRINTF(crypto_name, sizeof(crypto_name), "crypto_client_%lu", (unsigned long)client_id);
+  SAFE_SNPRINTF(crypto_name, sizeof(crypto_name), "crypto_client_%s", client->client_id);
 
   log_info("[WS_HANDLER] ★★★ LOCK STATE BEFORE crypto_handshake_init()");
   debug_sync_print_state();
@@ -1500,7 +1492,7 @@ static void *websocket_client_handler(void *arg) {
   if (handshake_init_result != ASCIICHAT_OK) {
     log_error("[WS_HANDLER] FAILED: crypto_handshake_init returned %d: %s", handshake_init_result,
               asciichat_error_string(handshake_init_result));
-    remove_client(server_ctx, (uint32_t)client_id);
+    remove_client(server_ctx, client->client_id);
     SAFE_FREE(ctx);
     return NULL;
   }
@@ -1510,7 +1502,7 @@ static void *websocket_client_handler(void *arg) {
   log_debug("[WS_HANDLER] Setting crypto_initialized from %d to false...", client->crypto_initialized);
   client->crypto_initialized = false;
 
-  log_debug("Initialized crypto handshake context for WebSocket client %d", client_id);
+  log_debug("Initialized crypto handshake context for WebSocket client %s", client->client_id);
   log_debug("[WS_HANDLER] crypto_initialized now = %d", client->crypto_initialized);
 
   // STEP 3: Now send KEY_EXCHANGE_INIT to start the handshake
@@ -1524,24 +1516,24 @@ static void *websocket_client_handler(void *arg) {
   if (handshake_start_result != ASCIICHAT_OK) {
     log_error("[WS_HANDLER] FAILED: crypto_handshake_server_start returned %d: %s", handshake_start_result,
               asciichat_error_string(handshake_start_result));
-    remove_client(server_ctx, (uint32_t)client_id);
+    remove_client(server_ctx, client->client_id);
     SAFE_FREE(ctx);
     return NULL;
   }
 
-  log_info("Sent CRYPTO_KEY_EXCHANGE_INIT to WebSocket client %d", client_id);
-  log_info("[WS_HANDLER] ===== SUCCESS: Handshake started for client %d =====", client_id);
+  log_info("Sent CRYPTO_KEY_EXCHANGE_INIT to WebSocket client %s", client->client_id);
+  log_info("[WS_HANDLER] ===== SUCCESS: Handshake started for client %s =====", client->client_id);
 
   // STEP 4: Now start the threads after crypto is initialized
   // This ensures receive thread doesn't try to process packets before crypto context exists
   log_debug("[WS_HANDLER] STEP 4: Starting client threads after crypto initialization...");
-  if (start_webrtc_client_threads(server_ctx, (uint32_t)client_id) != 0) {
+  if (start_webrtc_client_threads(server_ctx, client->client_id) != 0) {
     log_error("[WS_HANDLER] FAILED: start_webrtc_client_threads returned error");
-    remove_client(server_ctx, (uint32_t)client_id);
+    remove_client(server_ctx, client->client_id);
     SAFE_FREE(ctx);
     return NULL;
   }
-  log_info("[WS_HANDLER] Client threads started successfully for client %d", client_id);
+  log_info("[WS_HANDLER] Client threads started successfully for client %s", client->client_id);
 
   // Handler thread exit - cleanup happens in the receive thread
   // The receive thread is responsible for calling remove_client() when it detects connection closure.
@@ -1551,8 +1543,8 @@ static void *websocket_client_handler(void *arg) {
   // 1. Detects transport closure (recv fails or returns error)
   // 2. Sets active=false and signals other threads to stop
   // 3. Calls remove_client() with proper self-join detection to avoid deadlock
-  log_debug("[WS_HANDLER] STEP 5: Handler thread exiting (client_id=%d, cleanup will happen in receive thread)",
-            client_id);
+  log_debug("[WS_HANDLER] STEP 5: Handler thread exiting (client_id=%s, cleanup will happen in receive thread)",
+            client->client_id);
 
   SAFE_FREE(ctx);
   return NULL;
@@ -2597,7 +2589,7 @@ cleanup:
       rwlock_rdlock(&g_client_manager_rwlock);
       bool all_cleaned = true;
       for (int i = 0; i < MAX_CLIENTS; i++) {
-        if (atomic_load(&g_client_manager.clients[i].client_id) != 0) {
+        if (g_client_manager.clients[i].client_id[0] != '\0') {
           all_cleaned = false;
           break;
         }
@@ -2619,7 +2611,7 @@ cleanup:
   // Clean up all connected clients
   log_debug("Cleaning up connected clients...");
   // FIXED: Simplified to collect client IDs first, then remove them without holding locks
-  uint32_t clients_to_remove[MAX_CLIENTS];
+  char clients_to_remove[MAX_CLIENTS][MAX_CLIENT_ID_LEN];
   int client_count = 0;
 
   rwlock_rdlock(&g_client_manager_rwlock);
@@ -2627,26 +2619,26 @@ cleanup:
     client_info_t *client = &g_client_manager.clients[i];
 
     // Only attempt to clean up clients that were actually connected
-    // (client_id is 0 for uninitialized clients, starts from 1 for connected clients)
+    // (client_id is empty string for uninitialized clients)
     // FIXED: Only access mutex for initialized clients to avoid accessing uninitialized mutex
-    if (client->client_id == 0) {
+    if (client->client_id[0] == '\0') {
       continue; // Skip uninitialized clients
     }
 
     // Use snapshot pattern to avoid holding both locks simultaneously
     // This prevents deadlock by not acquiring client_state_mutex while holding rwlock
-    const char *client_id_snapshot = client->client_id; // Atomic read is safe under rwlock
+    SAFE_STRNCPY(clients_to_remove[client_count], client->client_id, MAX_CLIENT_ID_LEN - 1);
 
     // Clean up ANY client that was allocated, whether active or not
     // (disconnected clients may not be active but still have resources)
-    clients_to_remove[client_count++] = client_id_snapshot;
+    client_count++;
   }
   rwlock_rdunlock(&g_client_manager_rwlock);
 
   // Remove all clients without holding any locks
   for (int i = 0; i < client_count; i++) {
     if (remove_client(&server_ctx, clients_to_remove[i]) != 0) {
-      log_error("Failed to remove client %u during shutdown", clients_to_remove[i]);
+      log_error("Failed to remove client %s during shutdown", clients_to_remove[i]);
     }
   }
 

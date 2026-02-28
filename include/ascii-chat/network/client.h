@@ -95,6 +95,7 @@ typedef struct client_info {
   thread_id_t receive_thread_id;     // Thread ID of receive thread (for self-join detection)
   void *server_ctx;                  // Pointer to server_context_t (avoid circular includes)
   char client_id[MAX_CLIENT_ID_LEN]; // String-based client ID: "noun.N (transport:port)"
+  uint32_t session_client_id;        // Session host client ID (0 if not registered)
   char display_name[MAX_DISPLAY_NAME_LEN];
   char client_ip[INET_ADDRSTRLEN];
   int port;

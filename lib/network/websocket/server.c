@@ -861,10 +861,10 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
     return SET_ERRNO(ERROR_THREAD, "Failed to create WebSocket handler thread pool");
   }
 
-  /* Register WebSocket server with named registry, identified by port */
+  /* Register WebSocket context with named registry, identified by port */
   char ws_port_name[32];
-  snprintf(ws_port_name, sizeof(ws_port_name), "ws_server:%d", server->port);
-  NAMED_REGISTER(server, ws_port_name, "websocket_server", "0x%tx");
+  snprintf(ws_port_name, sizeof(ws_port_name), "ws:%d", server->port);
+  NAMED_REGISTER_WEBSOCKET(server->context, ws_port_name);
 
   log_info("WebSocket server initialized on port %d with static file serving", config->port);
   return ASCIICHAT_OK;
@@ -893,8 +893,8 @@ asciichat_error_t websocket_server_run(websocket_server_t *server) {
       log_info_every(1 * US_PER_MS_INT, "[LWS_SERVICE_GAP] %.1fms gap between lws_service calls", gap_ms);
     }
     service_call_count++;
-    log_debug_every(500 * US_PER_MS_INT, "[LWS_SERVICE] Call #%d, context=%p", service_call_count,
-                    (void *)server->context);
+    log_debug_every(500 * US_PER_MS_INT, "[LWS_SERVICE] Call #%d, context=%s", service_call_count,
+                    NAMED_DESCRIBE(server->context, "websocket_server"));
     int result = lws_service(server->context, 50);
     if (result < 0) {
       log_error("libwebsockets service error: %d", result);
@@ -910,6 +910,7 @@ asciichat_error_t websocket_server_run(websocket_server_t *server) {
   // (no event loop running), so it waits for the close handshake timeout
   // (5+ seconds). Destroying from the event loop thread avoids this.
   if (server->context) {
+    NAMED_UNREGISTER(server->context);
     lws_context_destroy(server->context);
     server->context = NULL;
   }
@@ -941,13 +942,11 @@ void websocket_server_destroy(websocket_server_t *server) {
   // thread) for fast shutdown. This handles the case where run() wasn't called
   // or didn't complete normally.
   if (server->context) {
+    NAMED_UNREGISTER(server->context);
     log_debug("WebSocket context still alive in destroy, cleaning up");
     lws_context_destroy(server->context);
     server->context = NULL;
   }
-
-  /* Deregister WebSocket server from named registry */
-  NAMED_UNREGISTER(server);
 
   log_debug("WebSocket server destroyed");
 }
