@@ -172,6 +172,15 @@ keyboard_key_t keyboard_read_nonblocking(void) {
                   }
                 }
                 return 261; // KEY_HOME
+              case '2':
+                // Insert/Ctrl+Delete sends ESC [ 2 ~
+                if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
+                  unsigned char ch4;
+                  if (read(STDIN_FILENO, &ch4, 1) > 0) {
+                    // ch4 should be '~', consume it
+                  }
+                }
+                return 263; // KEY_CTRL_DELETE
               case '3':
                 // Delete key sends ESC [ 3 ~
                 if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
@@ -190,15 +199,6 @@ keyboard_key_t keyboard_read_nonblocking(void) {
                   }
                 }
                 return 262; // KEY_END
-              case '5':
-                // Ctrl+Delete sends ESC [ 5 ~
-                if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
-                  unsigned char ch4;
-                  if (read(STDIN_FILENO, &ch4, 1) > 0) {
-                    // ch4 should be '~', consume it
-                  }
-                }
-                return 263; // KEY_CTRL_DELETE
               default:
                 // Unknown escape sequence - consume any trailing ~ to avoid leaving it in buffer
                 if (ch3 >= '0' && ch3 <= '9') {
@@ -290,6 +290,15 @@ keyboard_key_t keyboard_read_with_timeout(uint32_t timeout_ms) {
                   }
                 }
                 return 261; // KEY_HOME
+              case '2':
+                // Insert/Ctrl+Delete sends ESC [ 2 ~
+                if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
+                  unsigned char ch4;
+                  if (read(STDIN_FILENO, &ch4, 1) > 0) {
+                    // ch4 should be '~', consume it
+                  }
+                }
+                return 263; // KEY_CTRL_DELETE
               case '3':
                 // Delete key sends ESC [ 3 ~
                 if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
@@ -308,15 +317,6 @@ keyboard_key_t keyboard_read_with_timeout(uint32_t timeout_ms) {
                   }
                 }
                 return 262; // KEY_END
-              case '5':
-                // Ctrl+Delete sends ESC [ 5 ~
-                if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
-                  unsigned char ch4;
-                  if (read(STDIN_FILENO, &ch4, 1) > 0) {
-                    // ch4 should be '~', consume it
-                  }
-                }
-                return 263; // KEY_CTRL_DELETE
               default:
                 // Unknown escape sequence - consume any trailing ~ to avoid leaving it in buffer
                 if (ch3 >= '0' && ch3 <= '9') {
