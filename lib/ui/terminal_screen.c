@@ -244,25 +244,33 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
   // Display logs - most recent at bottom, oldest scrolled off top.
   // Calculate a stable window: show logs that fit in log_area_rows, newest last.
   // This ensures smooth scrolling as new logs arrive (no jumping viewport).
-  // NOTE: Each log may consume multiple display lines when wrapped (use display_height())
-  int first_log_to_display = 0;
-
-  // Work backwards from the end to find which logs fit in available space
-  // This accounts for multi-line logs via display_height()
+  // CRITICAL: account for multi-line logs via display_height() in pre-selection.
+  // Without this, logs overflow and push the header off screen.
+  int first_log_to_display = log_count; // Start past the end (no logs selected)
   int total_lines_used = 0;
-  for (int i = (int)log_count - 1; i >= 0 && total_lines_used < log_area_rows; i--) {
+
+  // Work backwards from newest to oldest log, selecting which fit
+  for (int i = (int)log_count - 1; i >= 0; i--) {
     int lines_for_msg = display_height(log_entries[i].message, g_cached_term_size.cols);
     if (lines_for_msg <= 0) {
       lines_for_msg = 1;
     }
+    // Check if adding this log would exceed available space
     if (total_lines_used + lines_for_msg <= log_area_rows) {
       total_lines_used += lines_for_msg;
-      first_log_to_display = i;
+      first_log_to_display = i; // This is the first (oldest) log we'll display
     } else {
-      break; // Can't fit this log, stop
+      // This log doesn't fit, and older logs won't either - stop searching
+      break;
     }
   }
-  int logs_to_display = (int)log_count - first_log_to_display;
+
+  // If no logs fit, show nothing (just padding)
+  if (first_log_to_display == (int)log_count) {
+    first_log_to_display = log_count; // Will result in 0 logs to display
+  }
+
+  int logs_to_display = log_count - first_log_to_display;
 
   // Log detailed info about what logs are being displayed
   int logs_displayed_count = logs_to_display;
