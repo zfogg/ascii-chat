@@ -271,14 +271,44 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     int logs_actually_output = 0;
     for (int i = first_log_to_display; i < (int)log_count; i++) {
       const char *msg = log_entries[i].message;
-      frame_buffer_printf(g_frame_buf, "%s\n", msg);
+      int msg_display_width = display_width(msg);
+      if (msg_display_width < 0) {
+        msg_display_width = (int)strlen(msg);
+      }
+
+      // Truncate message to terminal width if needed
+      const char *truncated_msg = msg;
+      size_t truncated_len = strlen(msg);
+      char truncated_buf[512]; // Reasonable buffer for a log line
+
+      if (msg_display_width > g_cached_term_size.cols) {
+        // Message is too wide - truncate it
+        size_t max_len = g_cached_term_size.cols - 1; // Leave room for null terminator
+        truncated_len = 0;
+        for (size_t j = 0; j < strlen(msg) && truncated_len < max_len; j++) {
+          truncated_buf[truncated_len++] = msg[j];
+        }
+        truncated_buf[truncated_len] = '\0';
+        truncated_msg = truncated_buf;
+        msg_display_width = display_width(truncated_msg);
+        if (msg_display_width < 0) {
+          msg_display_width = (int)truncated_len;
+        }
+      }
+
+      // Pad line to terminal width to ensure consistent visual layout
+      int padding = g_cached_term_size.cols - msg_display_width;
+      if (padding < 0)
+        padding = 0;
+      frame_buffer_printf(g_frame_buf, "%s%*s\n", truncated_msg, padding, "");
       logs_actually_output++;
     }
 
     // Fill remaining space with blank lines (complete the log area)
+    // Pad blank lines to terminal width to ensure consistent visual layout
     int remaining = log_area_rows - logs_actually_output;
     for (int i = 0; i < remaining; i++) {
-      frame_buffer_append(g_frame_buf, "\n", 1);
+      frame_buffer_printf(g_frame_buf, "%*s\n", g_cached_term_size.cols, "");
     }
 
     // Flush entire frame (header + logs + blank lines) in one atomic write
