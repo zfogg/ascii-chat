@@ -2816,10 +2816,14 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
       }
       max_allowed = client->incoming_video_buffer->allocated_buffer_size;
 
+      // Diagnostic logging to understand buffer sizing
+      log_info("FRAME_BUFFER_DEBUG: client_id=%s, frame->data=%p, vfb=%p, allocated_size=%zu, data_len=%zu",
+               client->client_id, frame->data, (void *)client->incoming_video_buffer, max_allowed, data_len);
+
       // Safety check: buffer should be at least a reasonable size (>= 1MB)
       // If allocated size is too small, don't risk writing beyond bounds
       if (max_allowed < (1024 * 1024)) {
-        log_error("FRAME_BUFFER_INVALID: allocated_buffer_size=%zu is too small", max_allowed);
+        log_error("FRAME_BUFFER_INVALID: allocated_buffer_size=%zu is too small (expected >= 1MB)", max_allowed);
         return;
       }
 
