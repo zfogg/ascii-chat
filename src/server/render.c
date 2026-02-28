@@ -1217,7 +1217,7 @@ void *client_audio_render_thread(void *arg) {
  */
 
 int create_client_render_threads(server_context_t *server_ctx, client_info_t *client) {
-  log_info("★★★ create_client_render_threads() CALLED for client_id=%u", client ? client->client_id : 0);
+  log_info("★★★ create_client_render_threads() CALLED for client_id=%s", client ? client->client_id : "NULL");
 
   if (!server_ctx || !client) {
     log_error("Cannot create render threads: NULL %s", !server_ctx ? "server_ctx" : "client");
@@ -1225,7 +1225,7 @@ int create_client_render_threads(server_context_t *server_ctx, client_info_t *cl
   }
 
 #ifdef DEBUG_THREADS
-  log_debug("Creating render threads for client %u", client->client_id);
+  log_debug("Creating render threads for client %s", client->client_id);
 #endif
 
   // NOTE: Mutexes are already initialized in add_client() before any threads start
@@ -1240,8 +1240,17 @@ int create_client_render_threads(server_context_t *server_ctx, client_info_t *cl
   // Create video rendering thread (stop_id=2, stop after receive thread)
   char thread_name[64];
   safe_snprintf(thread_name, sizeof(thread_name), "video_render_%s", client->client_id);
-  asciichat_error_t video_result = tcp_server_spawn_thread(server_ctx->tcp_server, client->socket,
-                                                           client_video_render_thread, client, 2, thread_name);
+  asciichat_error_t video_result;
+
+  if (client->is_tcp_client) {
+    video_result = tcp_server_spawn_thread(server_ctx->tcp_server, client->socket,
+                                           client_video_render_thread, client, 2, thread_name);
+  } else {
+    log_debug("THREAD_CREATE: WebRTC/WebSocket render video thread for client %s", client->client_id);
+    video_result = asciichat_thread_create(&client->video_render_thread, thread_name,
+                                           client_video_render_thread, client);
+  }
+
   if (video_result != ASCIICHAT_OK) {
     // Reset flag since thread creation failed
     atomic_store(&client->video_render_thread_running, false);
@@ -1251,8 +1260,16 @@ int create_client_render_threads(server_context_t *server_ctx, client_info_t *cl
 
   // Create audio rendering thread (stop_id=2, same priority as video)
   safe_snprintf(thread_name, sizeof(thread_name), "audio_render_%s", client->client_id);
-  asciichat_error_t audio_result = tcp_server_spawn_thread(server_ctx->tcp_server, client->socket,
-                                                           client_audio_render_thread, client, 2, thread_name);
+  asciichat_error_t audio_result;
+
+  if (client->is_tcp_client) {
+    audio_result = tcp_server_spawn_thread(server_ctx->tcp_server, client->socket,
+                                           client_audio_render_thread, client, 2, thread_name);
+  } else {
+    log_debug("THREAD_CREATE: WebRTC/WebSocket render audio thread for client %s", client->client_id);
+    audio_result = asciichat_thread_create(&client->audio_render_thread, thread_name,
+                                           client_audio_render_thread, client);
+  }
   if (audio_result != ASCIICHAT_OK) {
     // Clean up video thread (atomic operation, no mutex needed)
     atomic_store(&client->video_render_thread_running, false);
@@ -1265,7 +1282,7 @@ int create_client_render_threads(server_context_t *server_ctx, client_info_t *cl
   }
 
 #ifdef DEBUG_THREADS
-  log_debug("Created render threads for client %u", client->client_id);
+  log_debug("Created render threads for client %s", client->client_id);
 #endif
 
   return 0;
@@ -1358,7 +1375,7 @@ void stop_client_render_threads(client_info_t *client) {
     return;
   }
 
-  log_debug("Stopping render threads for client %u", client->client_id);
+  log_debug("Stopping render threads for client %s", client->client_id);
 
   // Signal threads to stop (atomic operations, no mutex needed)
   atomic_store(&client->video_render_thread_running, false);
