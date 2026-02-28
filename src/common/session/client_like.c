@@ -204,26 +204,35 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // SETUP: Terminal Logging in Snapshot Mode
   // ============================================================================
 
+  log_debug("session_client_like_run(): About to disable terminal logging (snapshot=%d)", GET_OPTION(snapshot_mode));
   if (!GET_OPTION(snapshot_mode)) {
     log_set_terminal_output(false);
   }
+  log_debug("session_client_like_run(): Terminal logging disabled, starting media source setup");
 
   // ============================================================================
   // SETUP: Media Source Selection and FPS Probing
   // ============================================================================
 
+  log_debug("session_client_like_run(): Initializing capture config");
   session_capture_config_t capture_config = {0};
   capture_config.resize_for_network = false;
   capture_config.should_exit_callback = capture_should_exit_adapter;
   capture_config.callback_data = NULL;
 
   // Determine FPS explicitly set by user
+  log_debug("session_client_like_run(): Getting FPS option");
   int user_fps = GET_OPTION(fps);
   bool fps_explicitly_set = user_fps > 0;
+  log_debug("session_client_like_run(): FPS=%d (explicitly_set=%d)", user_fps, fps_explicitly_set);
 
   // Select media source based on options (priority order)
+  log_debug("session_client_like_run(): Getting media_url option");
   const char *media_url_val = GET_OPTION(media_url);
+  log_debug("session_client_like_run(): Getting media_file option");
   const char *media_file_val = GET_OPTION(media_file);
+  log_debug("session_client_like_run(): media_url=%s, media_file=%s", media_url_val ? media_url_val : "(null)",
+            media_file_val ? media_file_val : "(null)");
 
   if (media_url_val && strlen(media_url_val) > 0) {
     // Network URL takes priority
@@ -289,6 +298,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     }
   } else if (GET_OPTION(test_pattern)) {
     // Test pattern
+    log_debug("session_client_like_run(): Using test pattern");
     log_info("Using test pattern");
     capture_config.type = MEDIA_SOURCE_TEST;
     capture_config.path = NULL;
@@ -296,20 +306,30 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     capture_config.loop = false;
   } else {
     // Default: webcam
+    log_debug("session_client_like_run(): Using local webcam (about to log)");
     log_info("Using local webcam");
+    log_debug("session_client_like_run(): Setting webcam capture config");
     capture_config.type = MEDIA_SOURCE_WEBCAM;
     capture_config.path = NULL;
     capture_config.target_fps = fps_explicitly_set ? (uint32_t)user_fps : 60;
     capture_config.loop = false;
+    log_debug("session_client_like_run(): Webcam config set (type=%d, fps=%u)", capture_config.type,
+              capture_config.target_fps);
   }
 
   // Apply initial seek if specified
+  log_debug("session_client_like_run(): Getting media_seek_timestamp option");
   capture_config.initial_seek_timestamp = GET_OPTION(media_seek_timestamp);
+  log_debug("session_client_like_run(): Media seek timestamp set");
 
   // Clean up probe source (don't reuse for actual capture)
   if (probe_source) {
+    log_debug("session_client_like_run(): Destroying probe source");
     media_source_destroy(probe_source);
     probe_source = NULL;
+    log_debug("session_client_like_run(): Probe source destroyed");
+  } else {
+    log_debug("session_client_like_run(): No probe source to destroy");
   }
 
   // ============================================================================
