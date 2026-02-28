@@ -99,14 +99,19 @@ int named_init(void) {
 
 void named_destroy(void) {
   if (!lifecycle_shutdown(&g_named_registry.lifecycle)) {
+    log_debug("[NAMED] named_destroy: already shut down, returning early");
     return;
   }
 
+  log_debug("[NAMED] named_destroy: starting cleanup");
   rwlock_wrlock_impl(&g_named_registry.entries_lock);
 
   // Free all entries
   named_entry_t *entry, *tmp;
+  int entry_count = 0;
   HASH_ITER(hh, g_named_registry.entries, entry, tmp) {
+    log_debug("[NAMED] Freeing entry: %s (type=%s)", entry->name ? entry->name : "(null)",
+              entry->type ? entry->type : "(null)");
     HASH_DEL(g_named_registry.entries, entry);
     free(entry->name);
     free(entry->type);
@@ -114,18 +119,24 @@ void named_destroy(void) {
     free(entry->file);
     free(entry->func);
     free(entry);
+    entry_count++;
   }
+  log_debug("[NAMED] Freed %d entries", entry_count);
 
   // Free all per-name counters
   name_counter_entry_t *counter_entry, *counter_tmp;
+  int counter_count = 0;
   HASH_ITER(hh, g_named_registry.name_counters, counter_entry, counter_tmp) {
     HASH_DEL(g_named_registry.name_counters, counter_entry);
     free(counter_entry->base_name);
     free(counter_entry);
+    counter_count++;
   }
+  log_debug("[NAMED] Freed %d name counters", counter_count);
 
   rwlock_wrunlock_impl(&g_named_registry.entries_lock);
   rwlock_destroy_impl(&g_named_registry.entries_lock);
+  log_debug("[NAMED] named_destroy complete");
 }
 
 const char *named_register(uintptr_t key, const char *base_name, const char *type, const char *format_spec,

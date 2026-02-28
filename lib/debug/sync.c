@@ -670,12 +670,19 @@ void debug_sync_cleanup_thread(void) {
   log_debug("[DEBUG_SYNC_CLEANUP] Signaling thread to exit");
   atomic_store(&g_debug_state_request.should_exit, true);
   cond_signal(&g_debug_state_request.cond);
-  log_debug("[DEBUG_SYNC_CLEANUP] Signal sent");
+  log_debug("[DEBUG_SYNC_CLEANUP] Signal sent, about to join thread");
 
-  // Note: We skip the thread join here to avoid potential deadlocks with debug mutexes.
-  // The debug thread will continue running briefly but will exit when it checks should_exit.
-  // This is safe because debug sync is a development-time feature, not critical to shutdown.
-  log_debug("[DEBUG_SYNC_CLEANUP] Skipping thread join to avoid deadlock");
+  // Use a timeout join to ensure we don't deadlock, but still unregister the thread
+  // The debug thread should exit quickly after should_exit is set above
+  int join_result = asciichat_thread_join_timeout(&g_debug_thread, NULL, 1000000000ULL); // 1 second timeout
+  if (join_result == 0) {
+    log_debug("[DEBUG_SYNC_CLEANUP] Thread joined successfully");
+  } else if (join_result == -2) {
+    log_debug("[DEBUG_SYNC_CLEANUP] Thread join timed out (thread may still be running)");
+    // Don't unregister if timeout - thread is still alive
+  } else {
+    log_debug("[DEBUG_SYNC_CLEANUP] Thread join failed with error %d", join_result);
+  }
 }
 
 void debug_sync_trigger_print(void) {

@@ -113,6 +113,9 @@ int asciichat_thread_create(asciichat_thread_t *thread, const char *name, void *
 int asciichat_thread_join(asciichat_thread_t *thread, void **retval) {
   int result = pthread_join(*thread, retval);
   if (result == 0) {
+    // Unregister thread from debug naming registry before clearing handle
+    NAMED_UNREGISTER_THREAD(*thread);
+
     // Clear the handle after successful join to match Windows behavior
     // This allows asciichat_thread_is_initialized() to correctly return false
     memset(thread, 0, sizeof(asciichat_thread_t));
@@ -171,6 +174,9 @@ int asciichat_thread_join_timeout(asciichat_thread_t *thread, void **retval, uin
     return -2;
   }
   if (result == 0) {
+    // Unregister thread from debug naming registry before clearing handle
+    NAMED_UNREGISTER_THREAD(*thread);
+
     // Clear the handle after successful join to match Windows behavior
     memset(thread, 0, sizeof(asciichat_thread_t));
   }
@@ -184,6 +190,9 @@ int asciichat_thread_join_timeout(asciichat_thread_t *thread, void **retval, uin
   // In practice, threads should exit quickly in our use case
   int result = pthread_join(*thread, retval);
   if (result == 0) {
+    // Unregister thread from debug naming registry before clearing handle
+    NAMED_UNREGISTER_THREAD(*thread);
+
     // Clear the handle after successful join to match Windows behavior
     memset(thread, 0, sizeof(asciichat_thread_t));
   }

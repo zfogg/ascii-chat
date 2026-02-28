@@ -662,6 +662,9 @@ int asciichat_thread_join(asciichat_thread_t *thread, void **retval) {
       GetExitCodeThread((*thread), &exit_code);
       *retval = (void *)(uintptr_t)exit_code;
     }
+    // Unregister thread from debug naming registry before closing handle
+    NAMED_UNREGISTER_THREAD(*thread);
+
     CloseHandle((*thread));
     *thread = NULL; // Clear the handle to prevent reuse
     return 0;
@@ -670,6 +673,9 @@ int asciichat_thread_join(asciichat_thread_t *thread, void **retval) {
   // Always close handle on error to prevent handle leak
   // WaitForSingleObject failed (not WAIT_OBJECT_0), so thread is in unknown state
   // We must still close the handle to prevent resource exhaustion
+  // Unregister thread from debug naming registry before closing handle
+  NAMED_UNREGISTER_THREAD(*thread);
+
   CloseHandle((*thread));
   *thread = NULL;
   SET_ERRNO(ERROR_THREAD, "WaitForSingleObject failed with result %lu", result);
@@ -697,6 +703,9 @@ int asciichat_thread_join_timeout(asciichat_thread_t *thread, void **retval, uin
       GetExitCodeThread((*thread), &exit_code);
       *retval = (void *)(uintptr_t)exit_code;
     }
+    // Unregister thread from debug naming registry before closing handle
+    NAMED_UNREGISTER_THREAD(*thread);
+
     CloseHandle((*thread));
     *thread = NULL; // Clear the handle to prevent reuse
     return 0;
@@ -711,6 +720,8 @@ int asciichat_thread_join_timeout(asciichat_thread_t *thread, void **retval, uin
 
   // For WAIT_FAILED or other unexpected errors, close the handle to prevent leak
   // The thread is in an unknown state, but we must release the OS handle resource
+  // Unregister thread from debug naming registry before closing handle
+  NAMED_UNREGISTER_THREAD(*thread);
   CloseHandle((*thread));
   *thread = NULL;
   SET_ERRNO(ERROR_THREAD, "WaitForSingleObject failed with result %lu", result);
