@@ -123,6 +123,7 @@
 #include <ascii-chat/log/json.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/debug/memory.h>
+#include <ascii-chat/debug/mutex.h>
 
 /* ============================================================================
  * Global State
@@ -2742,8 +2743,14 @@ cleanup:
   platform_restore_timer_resolution(); // Restore timer resolution (no-op on POSIX)
 
 #ifndef NDEBUG
-  // Join the debug threads as one of the very last things before exit
+  // Join debug_sync thread FIRST - allows it to clean up its mutex stack on exit
   debug_sync_cleanup_thread();
+
+  // Clean up mutex stacks immediately after debug_sync thread exits
+  // (before any other cleanup that might interfere)
+  mutex_stack_cleanup();
+
+  // Join remaining debug threads
   debug_memory_thread_cleanup();
 #endif
 
