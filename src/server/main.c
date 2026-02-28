@@ -1904,6 +1904,17 @@ int server_main(void) {
   memset(&g_tcp_server, 0, sizeof(g_tcp_server));
   asciichat_error_t tcp_init_result = tcp_server_init(&g_tcp_server, &tcp_config);
   if (tcp_init_result != ASCIICHAT_OK) {
+    // Signal shutdown to allow threads to exit before we call FATAL
+    atomic_store(&g_server_should_exit, true);
+    log_debug("TCP server init failed, signaling shutdown to threads");
+
+    // Clean up worker thread pool if it was created
+    if (g_server_worker_pool) {
+      log_debug("Early cleanup: destroying server worker pool");
+      thread_pool_destroy(g_server_worker_pool);
+      g_server_worker_pool = NULL;
+    }
+
     FATAL(ERROR_NETWORK, "Failed to initialize TCP server");
   }
 

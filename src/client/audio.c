@@ -1113,35 +1113,43 @@ int audio_start_thread() {
 void audio_stop_thread() {
   // If audio was never initialized (e.g., in snapshot mode), nothing to stop
   if (!lifecycle_is_initialized(&g_audio_client_init_lc)) {
+    log_debug("[AUDIO_STOP] Audio never initialized, nothing to stop");
     return;
   }
 
   // Ensure only one thread performs cleanup - prevent double-join and double-cleanup
   if (!lifecycle_destroy_once(&g_audio_stop_thread_lc)) {
-    log_debug("Audio stop already in progress or completed, skipping");
+    log_debug("[AUDIO_STOP] Audio stop already in progress or completed, skipping");
     return;
   }
+  log_debug("[AUDIO_STOP] Proceeding with audio stop");
 
   // Signal audio sender thread to exit first.
   // This must happen before thread_pool_stop_all() is called, otherwise the sender
   // thread will be stuck in cond_wait() and thread_pool_stop_all() will hang forever.
   // The sender thread uses a condition variable to wait for packets - we must wake it up.
-  log_debug("Signaling audio sender thread to exit");
+  log_debug("[AUDIO_STOP] Signaling audio sender thread to exit");
   atomic_store(&g_audio_sender_should_exit, true);
   mutex_lock(&g_audio_send_queue_mutex);
   cond_signal(&g_audio_send_queue_cond);
   mutex_unlock(&g_audio_send_queue_mutex);
+  log_debug("[AUDIO_STOP] Signal sent to sender thread");
 
   // Wait for audio sender thread to exit gracefully
   // This must complete before thread_pool_stop_all() to prevent deadlock
   int wait_count = 0;
+  log_debug("[AUDIO_STOP] Waiting for sender thread to exit, max 500ms");
   while (wait_count < 5 && !atomic_load(&g_audio_sender_exited)) {
     platform_sleep_us(100 * US_PER_MS_INT); // 100ms * 5 = 500ms max wait
     wait_count++;
+    log_debug("[AUDIO_STOP] Sender thread wait iteration %d, exited=%d", wait_count,
+              atomic_load(&g_audio_sender_exited));
   }
 
   if (!atomic_load(&g_audio_sender_exited)) {
-    log_warn("Audio sender thread not responding - will be joined by thread pool");
+    log_warn("[AUDIO_STOP] Audio sender thread not responding - will be joined by thread pool");
+  } else {
+    log_debug("[AUDIO_STOP] Sender thread exited successfully");
   }
 
   if (!THREAD_IS_CREATED(g_audio_capture_thread_created)) {
@@ -1154,13 +1162,18 @@ void audio_stop_thread() {
 
   // Wait for thread to exit gracefully
   int wait_count2 = 0;
+  log_debug("[AUDIO_STOP] Waiting for capture thread to exit, max 500ms");
   while (wait_count2 < 5 && !atomic_load(&g_audio_capture_thread_exited)) {
     platform_sleep_us(100 * US_PER_MS_INT); // 100ms * 5 = 500ms max wait
     wait_count2++;
+    log_debug("[AUDIO_STOP] Capture thread wait iteration %d, exited=%d", wait_count2,
+              atomic_load(&g_audio_capture_thread_exited));
   }
 
   if (!atomic_load(&g_audio_capture_thread_exited)) {
-    log_warn("Audio capture thread not responding - will be joined by thread pool");
+    log_warn("[AUDIO_STOP] Audio capture thread not responding - will be joined by thread pool");
+  } else {
+    log_debug("[AUDIO_STOP] Capture thread exited successfully");
   }
 
   // Thread will be joined by thread_pool_stop_all() in protocol_stop_connection()

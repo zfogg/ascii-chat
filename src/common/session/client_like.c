@@ -496,12 +496,35 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   display_config.should_exit_callback = display_should_exit_adapter;
   display_config.callback_data = NULL;
 
+  log_debug("[SETUP_DISPLAY] Creating display context");
   display = session_display_create(&display_config);
   if (!display) {
+    log_debug("[SETUP_DISPLAY] session_display_create() returned NULL - checking error");
+    asciichat_error_context_t ctx;
+    if (HAS_ERRNO(&ctx)) {
+      log_debug("[SETUP_DISPLAY] Error context: %s", ctx.context_message);
+    } else {
+      log_debug("[SETUP_DISPLAY] No error context available");
+    }
     log_fatal("Failed to initialize display");
+
+    // Signal audio worker thread to exit before cleanup (if audio was initialized)
+    log_debug("[SETUP_DISPLAY] audio_ctx=%p (will signal if non-NULL)", (void *)audio_ctx);
+    if (audio_ctx) {
+      log_debug("[SETUP_DISPLAY] Signaling audio worker thread to exit");
+      atomic_store(&audio_ctx->worker_should_stop, true);
+      mutex_lock(&audio_ctx->worker_mutex);
+      cond_signal(&audio_ctx->worker_cond);
+      mutex_unlock(&audio_ctx->worker_mutex);
+      log_debug("[SETUP_DISPLAY] Signal sent to audio worker thread");
+    } else {
+      log_debug("[SETUP_DISPLAY] audio_ctx is NULL, cannot signal worker thread");
+    }
+
     result = ERROR_DISPLAY;
     goto cleanup;
   }
+  log_debug("[SETUP_DISPLAY] Display context created");
 
   // Pass stdin_reader to display if in stdin render mode
   if (stdin_render_mode && g_stdin_reader) {
@@ -512,6 +535,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // ============================================================================
   // SETUP: End Splash Screen
   // ============================================================================
+  log_debug("[SETUP_SPLASH] About to end splash screen");
 
   // The splash screen will display during initialization and exit when done.
   // The initialization process (media probing, display setup, etc.) naturally
@@ -531,8 +555,9 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // SETUP: Start Audio Playback
   // ============================================================================
 
-  log_debug("About to check audio context for duplex");
+  log_debug("[SETUP_AUDIO] About to check audio context for duplex");
   if (audio_ctx && audio_available) {
+    log_debug("[SETUP_AUDIO] Starting audio duplex");
     if (audio_start_duplex(audio_ctx) == ASCIICHAT_OK) {
       log_info("Audio playback started");
     } else {
@@ -543,6 +568,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
       audio_available = false;
     }
   }
+  log_debug("[SETUP_COMPLETE] All setup complete, about to start connection loop");
 
   // ============================================================================
   // RUN: Mode-Specific Main Loop with Reconnection
@@ -627,12 +653,12 @@ cleanup:
   log_debug("Terminating PortAudio device resources");
   audio_terminate_portaudio_final();
 
-  // Stop and destroy audio (after PortAudio is terminated)
-  if (audio_ctx) {
-    // Signal audio sender thread to exit before destroying audio context
-    // This prevents deadlock if audio_sender is waiting on condition variable
-    audio_stop_thread();
+  // Stop audio thread before destroying audio context to prevent use-after-free
+  // The audio worker thread may still be logging when we destroy the buffer
+  audio_stop_thread();
 
+  // Stop and destroy audio (after PortAudio is terminated and audio thread is stopped)
+  if (audio_ctx) {
     audio_stop_duplex(audio_ctx);
     audio_destroy(audio_ctx);
     SAFE_FREE(audio_ctx);
@@ -668,10 +694,6 @@ cleanup:
 
   // Stop splash animation and enforce minimum display time (even on error path)
   splash_intro_done();
-
-  // Stop audio thread before destroying log buffer to prevent use-after-free
-  // The audio worker thread may still be logging when we destroy the buffer
-  audio_stop_thread();
 
   // Stop debug sync thread before destroying log buffer to prevent use-after-free
   debug_sync_cleanup_thread();

@@ -208,6 +208,8 @@ void thread_pool_destroy(thread_pool_t *pool) {
   if (pool->thread_count > 0) {
     log_debug("Thread pool '%s' has %zu threads, stopping them first", pool->name, pool->thread_count);
     thread_pool_stop_all(pool);
+    log_debug("After thread_pool_stop_all: pool->threads=%p, pool->thread_count=%zu", (void *)pool->threads,
+              pool->thread_count);
   }
 
   // Clean up work queue (in case there's pending work)
@@ -233,9 +235,10 @@ void thread_pool_destroy(thread_pool_t *pool) {
   NAMED_UNREGISTER(pool);
 
   // Free pool
+  log_debug("About to free thread pool '%s' at %p", pool->name, (void *)pool);
   SAFE_FREE(pool);
 
-  log_debug("Thread pool destroyed");
+  log_debug("Thread pool destroyed (freed memory)");
 }
 
 asciichat_error_t thread_pool_queue_work(const char *name, thread_pool_t *pool, void *(*work_func)(void *),
@@ -394,18 +397,24 @@ asciichat_error_t thread_pool_stop_all(thread_pool_t *pool) {
 
   // Now join threads (WITHOUT holding the mutex to prevent deadlock)
   thread_pool_entry_t *entry = threads_to_join;
+  int joined_count = 0, freed_count = 0;
   while (entry) {
     log_debug("Joining thread '%s' (stop_id=%d) in pool '%s'", entry->name, entry->stop_id, pool->name);
 
     // Join thread (wait for it to exit)
     if (asciichat_thread_join(&entry->thread, NULL) != 0) {
       log_warn("Failed to join thread '%s' in pool '%s'", entry->name, pool->name);
+    } else {
+      joined_count++;
     }
 
     thread_pool_entry_t *next = entry->next;
+    log_debug("Freeing thread_pool_entry '%s' at %p", entry->name, (void *)entry);
     SAFE_FREE(entry);
+    freed_count++;
     entry = next;
   }
+  log_debug("thread_pool_stop_all: joined=%d, freed=%d", joined_count, freed_count);
 
   log_debug("All threads stopped in pool '%s'", pool->name);
   return ASCIICHAT_OK;

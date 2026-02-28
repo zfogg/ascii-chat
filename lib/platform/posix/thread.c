@@ -48,8 +48,11 @@
 void *asciichat_thread_wrapper_impl(void *arg) {
   asciichat_thread_wrapper_t *wrapper = (asciichat_thread_wrapper_t *)arg;
   if (!wrapper) {
+    log_debug("[THREAD] Wrapper is NULL, exiting immediately");
     return NULL;
   }
+
+  log_debug("[THREAD] Starting wrapped thread, wrapper at %p", (void *)wrapper);
 
   // Call user's thread function with user's argument
   void *result = NULL;
@@ -58,12 +61,16 @@ void *asciichat_thread_wrapper_impl(void *arg) {
     result = wrapper->user_func(wrapper->user_arg);
   }
 
+  log_debug("[THREAD] User function returned, cleaning up mutex stacks");
+
   // Perform cleanup before thread exit
   mutex_stack_cleanup_current_thread();
 
   // Free the wrapper struct
+  log_debug("[THREAD] Freeing wrapper at %p before exit", (void *)wrapper);
   SAFE_FREE(wrapper);
 
+  log_debug("[THREAD] Wrapper freed, thread exiting");
   return result;
 }
 
