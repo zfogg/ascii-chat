@@ -146,7 +146,7 @@
 #include <ascii-chat/platform/string.h>
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/network/crc32.h>
-#include <ascii-chat/network/logging.h>
+#include <ascii-chat/network/log.h>
 
 // Debug flags
 #define DEBUG_NETWORK 1

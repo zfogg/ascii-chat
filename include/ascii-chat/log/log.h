@@ -54,10 +54,10 @@ struct crypto_context_t;
 struct color_scheme_t; /* Opaque - full definition in ui/colors.h, only included in logging.c */
 typedef struct color_scheme_t color_scheme_t;
 
-/* Include log types (must be before network/logging.h to avoid circular dependency) */
+/* Include log types (must be before network/log.h to avoid circular dependency) */
 #include "types.h"
 
-#include "../network/logging.h"
+#include "../network/log.h"
 
 #ifndef NDEBUG
 /** @brief Default log level for debug builds (DEBUG and above) */

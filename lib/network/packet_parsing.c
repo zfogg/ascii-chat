@@ -15,7 +15,7 @@
 #include <ascii-chat/util/bytes.h>
 #include <ascii-chat/util/format.h>
 #include <ascii-chat/util/endian.h>
-#include <ascii-chat/network/logging.h>
+#include <ascii-chat/network/log.h>
 #include <string.h>
 
 /**

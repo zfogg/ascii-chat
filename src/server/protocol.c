@@ -140,7 +140,7 @@
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/audio/opus_codec.h>
 #include <ascii-chat/network/packet_parsing.h>
-#include <ascii-chat/network/logging.h>
+#include <ascii-chat/network/log.h>
 #include <ascii-chat/crypto/handshake/common.h>
 
 static void protocol_cleanup_thread_locals(void) {
