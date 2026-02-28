@@ -582,9 +582,9 @@ void *client_video_render_thread(void *arg) {
             write_frame->size = frame_size;
             write_frame->capture_timestamp_ns = current_time_ns;
 
-            // Only commit the frame if it's actually NEW (different from last committed frame)
-            // This prevents sending duplicate frames and improves client-side FPS tracking
-            if (frame_is_new) {
+            // Always commit frame at configured FPS rate (adaptive_sleep_do enforces timing).
+            // Never skip frames based on content changes.
+            {
               uint64_t commit_start_ns = time_get_ns();
               // Commit the frame (swaps buffers atomically using vfb->swap_mutex, NOT rwlock)
               video_frame_commit(vfb_snapshot);
@@ -633,23 +633,7 @@ void *client_video_render_thread(void *arg) {
               } else {
                 log_warn("[FRAME_SEND_ERROR] Client %u has no transport (frame not sent)", thread_client_id);
               }
-            } else {
-              // Discard duplicate frame by not committing (back buffer is safe to reuse)
-              log_dev_every(25000, "Skipping commit for duplicate frame for client %u (hash=0x%08x)", thread_client_id,
-                            current_frame_hash);
             }
-
-            // Log occasionally for monitoring
-            char pretty_size[64];
-            format_bytes_pretty(frame_size, pretty_size, sizeof(pretty_size));
-
-            // Compute hash of ASCII frame to detect duplicates
-            uint32_t ascii_hash = 0;
-            for (size_t i = 0; i < frame_size && i < 1000; i++) {
-              ascii_hash = (uint32_t)((((uint64_t)ascii_hash << 5) - ascii_hash) + (unsigned char)ascii_frame[i]);
-            }
-            log_dev_every(5 * NS_PER_MS_INT, "Client %u: Rendered ASCII frame size=%s hash=0x%08x sources=%d",
-                          thread_client_id, pretty_size, ascii_hash, sources_count);
 
           } else {
             log_warn("Frame too large for buffer: %zu > %zu", frame_size, vfb_snapshot->allocated_buffer_size);
