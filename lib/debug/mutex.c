@@ -137,11 +137,9 @@ static thread_lock_stack_t *get_thread_local_stack(void) {
 
   if (stack == NULL) {
     // Allocate stack on heap for this thread
-    // Use raw malloc() to avoid recursive mutex allocation during destructor
-    // (SAFE_CALLOC would trigger debug_free which locks a mutex)
+    // Use raw malloc() to avoid recursive mutex locking in debug subsystem
     stack = (thread_lock_stack_t *)malloc(sizeof(thread_lock_stack_t));
     if (stack) {
-      // Zero-initialize like SAFE_CALLOC would
       memset(stack, 0, sizeof(thread_lock_stack_t));
       // Store in TLS (destructor will free it when thread exits)
       ascii_tls_set(g_tls_mutex_stack, stack);
@@ -635,7 +633,7 @@ void mutex_stack_cleanup_current_thread(void) {
     }
   }
 
-  // Free the stack
+  // Free the stack (raw free to match raw malloc above)
   free(stack);
 }
 

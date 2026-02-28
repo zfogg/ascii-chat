@@ -599,9 +599,16 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
   uint32_t pkt_len = NET_TO_HOST_U32(header.length);
   uint32_t expected_crc = NET_TO_HOST_U32(header.crc32);
 
+  // DEBUG: Log raw header bytes for debugging packet misalignment
+  char header_hex[95];
+  for (int i = 0; i < sizeof(header); i++) {
+    sprintf(&header_hex[i * 2], "%02x", ((uint8_t *)&header)[i]);
+  }
+  header_hex[94] = '\0';
+
   // DEBUG: Log all received packet types in detail
-  log_info("[RECV_PKT_HEADER] 🔍 Received packet: type=%u (0x%04x), len=%u, client_id=%u", pkt_type, pkt_type, pkt_len,
-           header.client_id);
+  log_info("[RECV_PKT_HEADER] 🔍 Received packet: type=%u (0x%04x), len=%u, client_id=%u, raw=%s", pkt_type, pkt_type,
+           pkt_len, header.client_id, header_hex);
 
   // Validate magic number
   if (magic != PACKET_MAGIC) {

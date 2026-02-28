@@ -260,7 +260,16 @@ crypto_result_t crypto_set_peer_public_key(crypto_context_t *ctx, const uint8_t 
 
   ctx->key_exchange_complete = true;
 
-  log_debug("Key exchange completed - shared secret computed");
+  // Log keys for debugging crypto failures
+  char priv_hex[65], peer_hex[65], shared_hex[65];
+  for (int i = 0; i < 32; i++) {
+    sprintf(&priv_hex[i * 2], "%02x", ctx->private_key[i]);
+    sprintf(&peer_hex[i * 2], "%02x", peer_public_key[i]);
+    sprintf(&shared_hex[i * 2], "%02x", ctx->shared_key[i]);
+  }
+  priv_hex[64] = peer_hex[64] = shared_hex[64] = '\0';
+
+  log_info("KEY_EXCHANGE_COMPLETE: privkey=%s peerkey=%s secret=%s", priv_hex, peer_hex, shared_hex);
   return CRYPTO_OK;
 }
 
@@ -458,6 +467,14 @@ crypto_result_t crypto_encrypt(crypto_context_t *ctx, const uint8_t *plaintext, 
   generate_nonce(ctx, nonce);
   SAFE_MEMCPY(ciphertext_out, ctx->nonce_size, nonce, ctx->nonce_size);
 
+  // Log nonce for debugging
+  char nonce_hex[49];
+  for (int i = 0; i < 24; i++) {
+    sprintf(&nonce_hex[i * 2], "%02x", nonce[i]);
+  }
+  nonce_hex[48] = '\0';
+  log_debug("ENCRYPT_NONCE: counter=%lu nonce=%s plaintext_len=%zu", ctx->nonce_counter - 1, nonce_hex, plaintext_len);
+
   // Choose encryption key (prefer shared key over password key)
   const uint8_t *encryption_key = NULL;
   if (ctx->key_exchange_complete) {
@@ -529,6 +546,18 @@ crypto_result_t crypto_decrypt(crypto_context_t *ctx, const uint8_t *ciphertext,
   // Decrypt using NaCl secretbox (XSalsa20 + Poly1305)
   if (crypto_secretbox_open_easy(plaintext_out, encrypted_data, ciphertext_len - ctx->nonce_size, nonce,
                                  decryption_key) != 0) {
+    // Log decryption failure details for debugging
+    char key_hex[65], nonce_hex[49];
+    for (int i = 0; i < 32; i++) {
+      sprintf(&key_hex[i * 2], "%02x", decryption_key[i]);
+    }
+    for (int i = 0; i < 24; i++) {
+      sprintf(&nonce_hex[i * 2], "%02x", nonce[i]);
+    }
+    key_hex[64] = '\0';
+    nonce_hex[48] = '\0';
+    log_error("DECRYPT_FAILED: cipherlen=%zu key=%s nonce=%s key_exchange_complete=%d has_password=%d",
+              ciphertext_len - ctx->nonce_size, key_hex, nonce_hex, ctx->key_exchange_complete, ctx->has_password);
     SET_ERRNO(ERROR_CRYPTO, "Decryption failed - invalid MAC or corrupted data");
     return CRYPTO_ERROR_INVALID_MAC;
   }
@@ -1256,7 +1285,8 @@ crypto_result_t crypto_rekey_process_response(crypto_context_t *ctx, const uint8
   }
 
   // Compute new shared secret: DH(our_new_private_key, peer_new_public_key)
-  if (crypto_box_beforenm(ctx->temp_shared_key, peer_new_public_key, ctx->temp_private_key) != 0) {
+  // Use crypto_scalarmult to produce raw 32-byte shared secret for crypto_secretbox
+  if (crypto_scalarmult(ctx->temp_shared_key, ctx->temp_private_key, peer_new_public_key) != 0) {
     SET_ERRNO(ERROR_CRYPTO, "Failed to compute rekey shared secret");
     crypto_rekey_abort(ctx);
     return CRYPTO_ERROR_KEY_GENERATION;

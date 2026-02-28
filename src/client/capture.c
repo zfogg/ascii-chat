@@ -269,12 +269,13 @@ static void *webcam_capture_thread_func(void *arg) {
                                                           1); // pixel_format = 1 (RGB24)
 
     if (send_result != ASCIICHAT_OK) {
-      log_error("Failed to send image frame: %d", send_result);
+      log_error("🔴 CAPTURE_SEND_FAILED: IMAGE_FRAME send error=%d (%s), closing connection", send_result,
+                asciichat_error_string(send_result));
       server_connection_lost();
       image_destroy(processed_image);
       break;
     }
-    log_debug_every(LOG_RATE_SLOW, "Capture thread: IMAGE_FRAME sent successfully");
+    log_info("✅ CAPTURE_FRAME_SENT: IMAGE_FRAME delivered to server");
 
     // Cache last frame for rendering when paused
     // Make a copy since the original is owned by media_source

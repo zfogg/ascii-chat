@@ -161,25 +161,32 @@ static asciichat_error_t tcp_send(acip_transport_t *transport, const void *data,
            (unsigned long long)HOST_TO_NET_U64(PACKET_MAGIC), PACKET_TYPE_ENCRYPTED, ciphertext_len,
            encrypted_header.crc32);
 
-  // Send encrypted packet: header + ciphertext
-  asciichat_error_t send_result = ASCIICHAT_OK;
-  log_info("[TCP_SEND_STATE] 📤 ENCRYPTED_SEND_HEADER: sockfd=%d, header_size=%zu", tcp->sockfd,
-           sizeof(encrypted_header));
-  send_result = tcp_send_all(tcp->sockfd, &encrypted_header, sizeof(encrypted_header));
-  if (send_result == ASCIICHAT_OK) {
-    log_info("[TCP_SEND_STATE] 📤 ENCRYPTED_SEND_PAYLOAD: sockfd=%d, payload_size=%zu", tcp->sockfd, ciphertext_len);
-    send_result = tcp_send_all(tcp->sockfd, ciphertext, ciphertext_len);
-    if (send_result == ASCIICHAT_OK) {
-      log_info("[TCP_SEND_STATE] ✅ ENCRYPTED_SEND_OK: sockfd=%d, total=%zu (header=%zu + payload=%zu)", tcp->sockfd,
-               sizeof(encrypted_header) + ciphertext_len, sizeof(encrypted_header), ciphertext_len);
-    } else {
-      log_error("[TCP_SEND_STATE] ❌ ENCRYPTED_SEND_PAYLOAD_FAILED: sockfd=%d, tried %zu bytes", tcp->sockfd,
-                ciphertext_len);
-    }
-  } else {
-    log_error("[TCP_SEND_STATE] ❌ ENCRYPTED_SEND_HEADER_FAILED: sockfd=%d, header_size=%zu", tcp->sockfd,
-              sizeof(encrypted_header));
+  // Build combined packet: header + ciphertext (must be atomic to prevent TCP stream desynchronization)
+  size_t combined_size = sizeof(encrypted_header) + ciphertext_len;
+  uint8_t *combined = SAFE_MALLOC(combined_size, uint8_t *);
+  if (!combined) {
+    log_error("[TCP_SEND_STATE] ❌ ENCRYPTED_ALLOC_FAILED: needed %zu bytes for header+payload", combined_size);
+    buffer_pool_free(NULL, ciphertext, ciphertext_size);
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate combined packet buffer");
   }
+
+  // Copy header and payload into single buffer
+  memcpy(combined, &encrypted_header, sizeof(encrypted_header));
+  memcpy(combined + sizeof(encrypted_header), ciphertext, ciphertext_len);
+
+  // Send as single atomic operation to prevent stream desynchronization
+  log_info("[TCP_SEND_STATE] 📤 ENCRYPTED_SEND: sockfd=%d, total=%zu (header=%zu + payload=%zu)", tcp->sockfd,
+           combined_size, sizeof(encrypted_header), ciphertext_len);
+  asciichat_error_t send_result = tcp_send_all(tcp->sockfd, combined, combined_size);
+
+  if (send_result == ASCIICHAT_OK) {
+    log_info("[TCP_SEND_STATE] ✅ ENCRYPTED_SEND_OK: sockfd=%d, total=%zu bytes sent atomically", tcp->sockfd,
+             combined_size);
+  } else {
+    log_error("[TCP_SEND_STATE] ❌ ENCRYPTED_SEND_FAILED: sockfd=%d, tried %zu bytes", tcp->sockfd, combined_size);
+  }
+
+  SAFE_FREE(combined);
 
   buffer_pool_free(NULL, ciphertext, ciphertext_size);
 
