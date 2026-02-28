@@ -1023,8 +1023,8 @@ void *client_audio_render_thread(void *arg) {
         const uint32_t frame_count = 1;     // one Opus frame per packet
         const uint16_t frame_size = (uint16_t)opus_size;
 
-        // Calculate total packet size: 12-byte header + 2-byte frame size + opus data
-        const size_t header_size = 12; // 3 uint32s
+        // Calculate total packet size: 16-byte header + frame_sizes + opus data
+        const size_t header_size = 16; // 4 uint32s (sample_rate, frame_duration, frame_count, reserved)
         const size_t frame_sizes_size = (size_t)frame_count * sizeof(uint16_t);
         const size_t total_packet_size = header_size + frame_sizes_size + (size_t)opus_size;
 
@@ -1052,10 +1052,17 @@ void *client_audio_render_thread(void *arg) {
           memcpy(ptr, &fc_net, 4);
           ptr += 4;
 
-          // Write frame size (2 bytes, network byte order)
-          uint16_t fs_net = htons(frame_size);
-          memcpy(ptr, &fs_net, 2);
-          ptr += 2;
+          // Write reserved field (4 bytes, all zeros)
+          uint32_t reserved = 0;
+          memcpy(ptr, &reserved, 4);
+          ptr += 4;
+
+          // Write frame sizes (2 bytes per frame, network byte order)
+          for (uint32_t i = 0; i < frame_count; i++) {
+            uint16_t fs_net = htons(frame_size);
+            memcpy(ptr, &fs_net, 2);
+            ptr += 2;
+          }
 
           // Copy Opus data
           memcpy(ptr, opus_buffer, (size_t)opus_size);

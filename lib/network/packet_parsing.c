@@ -178,10 +178,8 @@ asciichat_error_t packet_parse_opus_batch(const void *packet_data, size_t packet
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in Opus batch parsing");
   }
 
-  // Verify minimum packet size (12-byte header: sample_rate + frame_duration + frame_count)
-  // Minimum valid Opus packet is 12-byte header + at least 1 byte of Opus data = 13 bytes
-  // But allow even smaller for silence frames (DTX mode) which can compress to 3-4 bytes
-  const size_t header_size = 12;
+  // Verify minimum packet size (16-byte header: sample_rate + frame_duration + frame_count + reserved)
+  const size_t header_size = 16;
   if (packet_len < header_size) {
     // DEBUG: Log first few bytes of corrupted packet to understand what's happening
     char hex_buf[256];
