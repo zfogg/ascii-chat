@@ -765,9 +765,24 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
     // Grow assembled buffer if needed
     size_t required_size = assembled_size + frag.len;
     if (required_size > assembled_capacity) {
+      // Start with 8KB, grow by 1.5x, but cap at 4MB to prevent unbounded allocation
+      const size_t MAX_REASSEMBLY_SIZE = (4 * 1024 * 1024); // 4MB limit
+
       size_t new_capacity = (assembled_capacity == 0) ? 8192 : (assembled_capacity * 3 / 2);
       if (new_capacity < required_size) {
         new_capacity = required_size;
+      }
+
+      // Enforce maximum reassembly buffer size
+      if (new_capacity > MAX_REASSEMBLY_SIZE) {
+        log_error("[WS_REASSEMBLE] Frame too large: need %zu bytes, max allowed is %zu", new_capacity,
+                  MAX_REASSEMBLY_SIZE);
+        buffer_pool_free(NULL, frag.data, frag.len);
+        if (assembled_buffer) {
+          buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
+        }
+        mutex_unlock(&ws_data->recv_mutex);
+        return SET_ERRNO(ERROR_NETWORK, "WebSocket frame exceeds maximum size (4MB)");
       }
 
       uint8_t *new_buffer = buffer_pool_alloc(NULL, new_capacity);
