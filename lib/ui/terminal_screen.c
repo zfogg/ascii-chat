@@ -102,11 +102,6 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     return;
   }
 
-  // Disable console logging during rendering to prevent logs from appearing
-  // in the middle of the frame output and causing display artifacts
-  bool saved_console_state = log_get_terminal_output();
-  log_set_terminal_output(false);
-
   // Track startup timing (first 500ms)
   static bool first_render = true;
   if (first_render) {
@@ -181,7 +176,6 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
   if (!g_frame_buf) {
     g_frame_buf = frame_buffer_create(g_cached_term_size.rows, g_cached_term_size.cols);
     if (!g_frame_buf) {
-      log_set_terminal_output(saved_console_state);
       return; // Allocation failed
     }
   }
@@ -202,7 +196,6 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
   // If logs are disabled, flush and return
   if (!config->show_logs) {
     frame_buffer_flush(g_frame_buf);
-    log_set_terminal_output(saved_console_state);
     return;
   }
 
@@ -215,7 +208,6 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     if (grep_entering) {
       interactive_grep_render_input_line(g_cached_term_size.cols);
     }
-    log_set_terminal_output(saved_console_state);
     return;
   }
 
@@ -504,19 +496,4 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
   }
 
   SAFE_FREE(log_entries);
-
-  // Log the actual framebuffer content length (before restoring console logging)
-  if (g_frame_buf) {
-    size_t buf_len = frame_buffer_get_length(g_frame_buf);
-    if (elapsed_ms < 500) {
-      log_debug("[FRAMEBUF_STARTUP] t=%llu framebuf_bytes=%zu terminal=%dx%d", (unsigned long long)elapsed_ms, buf_len,
-                g_cached_term_size.cols, g_cached_term_size.rows);
-    } else {
-      log_debug("[FRAMEBUF] framebuf_bytes=%zu terminal=%dx%d", buf_len, g_cached_term_size.cols,
-                g_cached_term_size.rows);
-    }
-  }
-
-  // Restore console logging after frame rendering is complete
-  log_set_terminal_output(saved_console_state);
 }
