@@ -46,6 +46,11 @@ asciichat_error_t webcam_init(unsigned short int webcam_index) {
     return result;
   }
 
+  /* Register global webcam context with named registry */
+  char webcam_name[32];
+  SAFE_SNPRINTF(webcam_name, sizeof(webcam_name), "webcam:%u", webcam_index);
+  NAMED_REGISTER(global_webcam_ctx, webcam_name, "webcam", "0x%tx");
+
   // Get image dimensions
   int width, height;
   if (webcam_get_dimensions(global_webcam_ctx, &width, &height) == ASCIICHAT_OK) {
@@ -142,6 +147,7 @@ void webcam_destroy(void) {
   }
 
   if (global_webcam_ctx) {
+    NAMED_UNREGISTER(global_webcam_ctx);
     webcam_cleanup_context(global_webcam_ctx);
     global_webcam_ctx = NULL;
     // log_info("Webcam resources released");
