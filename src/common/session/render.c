@@ -130,6 +130,13 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   // Main render loop
   log_debug("session_render_loop: entering main loop");
   while (!should_exit(user_data)) {
+    // Snapshot mode: exit at start of iteration if done
+    // This prevents frame 2+ from being captured when snapshot_delay has elapsed
+    if (snapshot_mode && snapshot_done) {
+      log_debug("Snapshot mode: exiting at loop iteration start");
+      break;
+    }
+
     log_debug_every(US_PER_SEC_INT, "session_render_loop: frame %lu", frame_count);
     // Frame timing - measure total time to maintain target FPS
     frame_start_ns = time_get_ns();
