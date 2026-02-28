@@ -1084,6 +1084,55 @@ void named_registry_register_packet_types(void);
  */
 void named_registry_for_each(named_iter_callback_t callback, void *user_data);
 
+/**
+ * @brief Register a libwebsockets context with automatic format specifier
+ * @param context LWS context pointer (struct lws_context *)
+ * @param name Base name string (e.g., "ws_server" or "ws_client")
+ * @ingroup debug_named
+ *
+ * Convenience macro for naming libwebsockets contexts. Automatically uses "0x%tx" format.
+ * Usage: NAMED_REGISTER_LWS_CONTEXT(lws_ctx, "ws_server");
+ */
+#ifndef NDEBUG
+#define NAMED_REGISTER_LWS_CONTEXT(context, name)                                                                      \
+  named_register((uintptr_t)(const void *)(context), (name), "lws_context", "0x%tx", __FILE__, __LINE__, __func__)
+#else
+#define NAMED_REGISTER_LWS_CONTEXT(context, name) (name)
+#endif
+
+/**
+ * @brief Register an FFmpeg decoder context with automatic format specifier
+ * @param context FFmpeg context pointer (AVFormatContext * or similar)
+ * @param name Base name string (e.g., "ffmpeg_decoder")
+ * @ingroup debug_named
+ *
+ * Convenience macro for naming FFmpeg contexts. Automatically uses "0x%tx" format.
+ * Usage: NAMED_REGISTER_FFMPEG_CONTEXT(avctx, "ffmpeg_input");
+ */
+#ifndef NDEBUG
+#define NAMED_REGISTER_FFMPEG_CONTEXT(context, name)                                                                   \
+  named_register((uintptr_t)(const void *)(context), (name), "ffmpeg_context", "0x%tx", __FILE__, __LINE__, __func__)
+#else
+#define NAMED_REGISTER_FFMPEG_CONTEXT(context, name) (name)
+#endif
+
+/**
+ * @brief Register a generic context with automatic format specifier
+ * @param context Any context pointer
+ * @param context_type Type string (e.g., "ssl_context", "decoder_context")
+ * @param name Base name string
+ * @ingroup debug_named
+ *
+ * Convenience macro for naming any opaque context. Automatically uses "0x%tx" format.
+ * Usage: NAMED_REGISTER_CONTEXT(ctx, "ssl_context", "tls_server");
+ */
+#ifndef NDEBUG
+#define NAMED_REGISTER_CONTEXT(context, context_type, name)                                                            \
+  named_register((uintptr_t)(const void *)(context), (name), (context_type), "0x%tx", __FILE__, __LINE__, __func__)
+#else
+#define NAMED_REGISTER_CONTEXT(context, context_type, name) (name)
+#endif
+
 #ifdef __cplusplus
 }
 #endif
