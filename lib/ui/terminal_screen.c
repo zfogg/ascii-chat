@@ -349,6 +349,9 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     // Grep mode: diff-based rendering. Only rewrite lines that changed.
     // Logs fill renderable_log_rows; the last row is the `/` input line.
 
+    // Flush frame buffer (containing header) before rendering grep logs
+    frame_buffer_flush(g_frame_buf);
+
     int log_idx = 0;
     int lines_used = 0;
 
@@ -528,11 +531,6 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     if (pos > 0 && pos <= (int)sizeof(grep_ui_buffer)) {
       platform_write_all(STDOUT_FILENO, grep_ui_buffer, (size_t)pos);
     }
-  }
-
-  // Ensure frame buffer with header is flushed (either in normal mode above, or here for grep mode)
-  if (grep_entering) {
-    frame_buffer_flush(g_frame_buf);
   }
 
   SAFE_FREE(log_entries);
