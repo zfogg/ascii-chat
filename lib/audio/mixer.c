@@ -253,13 +253,13 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
   }
 
   size_t ids_size = 0;
-  if (checked_size_mul((size_t)max_sources, sizeof(uint32_t), &ids_size) != ASCIICHAT_OK) {
+  if (checked_size_mul((size_t)max_sources, sizeof(const char *), &ids_size) != ASCIICHAT_OK) {
     SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Mixer source IDs array overflow: %d sources", max_sources);
     SAFE_FREE(mixer->source_buffers);
     SAFE_FREE(mixer);
     return NULL;
   }
-  mixer->source_ids = SAFE_MALLOC(ids_size, uint32_t *);
+  mixer->source_ids = SAFE_MALLOC(ids_size, const char **);
   if (!mixer->source_ids) {
     SAFE_FREE(mixer->source_buffers);
     SAFE_FREE(mixer);
@@ -356,6 +356,13 @@ void mixer_destroy(mixer_t *mixer) {
 
   ducking_destroy(&mixer->ducking);
 
+  // Free all allocated client_id strings before freeing the array itself
+  for (int i = 0; i < mixer->max_sources; i++) {
+    if (mixer->source_ids[i] != NULL) {
+      SAFE_FREE(mixer->source_ids[i]);
+    }
+  }
+
   SAFE_FREE(mixer->source_buffers);
   SAFE_FREE(mixer->source_ids);
   SAFE_FREE(mixer->source_active);
@@ -387,7 +394,15 @@ int mixer_add_source(mixer_t *mixer, const char *client_id, audio_ring_buffer_t 
   }
 
   mixer->source_buffers[slot] = buffer;
-  mixer->source_ids[slot] = client_id;
+  // Duplicate the client_id string - we own this memory now
+  mixer->source_ids[slot] = SAFE_MALLOC(strlen(client_id) + 1, char *);
+  if (!mixer->source_ids[slot]) {
+    log_warn("Mixer: Failed to allocate memory for client_id %s", client_id);
+    mixer->source_buffers[slot] = NULL;
+    rwlock_wrunlock(&mixer->source_lock);
+    return -1;
+  }
+  strcpy((char *)mixer->source_ids[slot], client_id);
   mixer->source_active[slot] = true;
   mixer->num_sources++;
 
@@ -411,7 +426,8 @@ void mixer_remove_source(mixer_t *mixer, const char *client_id) {
   for (int i = 0; i < mixer->max_sources; i++) {
     if (mixer->source_ids[i] != NULL && strcmp(mixer->source_ids[i], client_id) == 0) {
       mixer->source_buffers[i] = NULL;
-      mixer->source_ids[i] = NULL;
+      // Free the allocated client_id string
+      SAFE_FREE(mixer->source_ids[i]);
       mixer->source_active[i] = false;
       mixer->num_sources--;
 
@@ -425,7 +441,7 @@ void mixer_remove_source(mixer_t *mixer, const char *client_id) {
 
       rwlock_wrunlock(&mixer->source_lock);
 
-      log_info("Mixer: Removed source for client %u from slot %d", client_id, i);
+      log_info("Mixer: Removed source for client %s from slot %d", client_id, i);
       return;
     }
   }
