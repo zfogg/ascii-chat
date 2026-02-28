@@ -970,6 +970,9 @@ static void *data_reception_thread_func(void *arg) {
 
     if (packet_count == 0) {
     }
+    // Use short 16ms timeout to allow rendering at 60 FPS
+    // Instead of blocking indefinitely waiting for a packet,
+    // we timeout quickly so main thread can continue rendering
     asciichat_error_t acip_result = acip_client_receive_and_dispatch(transport, &g_acip_client_callbacks);
     if (packet_count == 0) {
     }
