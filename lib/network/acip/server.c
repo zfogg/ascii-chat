@@ -237,27 +237,15 @@ asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, const char 
   memcpy(buffer, &header, sizeof(header));
   memcpy(buffer + sizeof(header), frame_data, frame_size);
 
-  // Send via transport in 512KB chunks to avoid WebSocket fragmentation into 27+ pieces
-  // libwebsockets has ~4KB internal buffer, so sending 2-5MB all at once causes heavy fragmentation
-  // Sending 512KB chunks results in 4-10 fragments instead of 27+, reducing reassembly overhead
-  const size_t CHUNK_SIZE = 512 * 1024; // 512KB chunks for WebSocket efficiency
-  asciichat_error_t result = ASCIICHAT_OK;
-
-  for (size_t offset = 0; offset < total_size; offset += CHUNK_SIZE) {
-    size_t chunk_len = (offset + CHUNK_SIZE > total_size) ? (total_size - offset) : CHUNK_SIZE;
-
-    log_info("★ SEND_ASCII_FRAME_CHUNK: offset=%zu, chunk_len=%zu, total=%zu", offset, chunk_len, total_size);
-    result = packet_send_via_transport(transport, PACKET_TYPE_ASCII_FRAME, buffer + offset, chunk_len, 0);
-
-    if (result != ASCIICHAT_OK) {
-      log_error("★ SEND_ASCII_FRAME_CHUNK FAILED: chunk at offset %zu, error=%d", offset, result);
-      buffer_pool_free(NULL, buffer, total_size);
-      return result;
-    }
-  }
+  // Send via transport with client_id for logging
+  log_info("★ SEND_ASCII_FRAME: Calling packet_send_via_transport with PACKET_TYPE_ASCII_FRAME");
+  asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_ASCII_FRAME, buffer, total_size, 0);
 
   if (result == ASCIICHAT_OK) {
-    log_info("★ SEND_ASCII_FRAME COMPLETE: SUCCESS for client_id=%s, sent %zu bytes in chunks", client_id, total_size);
+    log_info("★ SEND_ASCII_FRAME COMPLETE: SUCCESS for client_id=%s, sent %zu bytes total", client_id, total_size);
+  } else {
+    log_error("★ SEND_ASCII_FRAME FAILED: Error code %d (%s) for client_id=%s", result, asciichat_error_string(result),
+              client_id);
   }
 
   buffer_pool_free(NULL, buffer, total_size);
