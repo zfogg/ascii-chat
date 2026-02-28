@@ -1122,14 +1122,23 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
     log_debug("WebSocket service thread stopped");
   }
 
-  // Destroy WebSocket instance (if not already destroyed)
+  // Close WebSocket connection gracefully before destroying context
+  // This prevents libwebsockets from triggering callbacks on a dead context
   if (ws_data->wsi) {
-    // libwebsockets will clean up the wsi when we destroy the context
+    log_debug("Closing WebSocket connection gracefully");
+    // Use lws_wsi_close to trigger a clean close sequence
+    lws_wsi_close(ws_data->wsi, 1);
+    // Clear wsi pointer after closing to prevent double-close
     ws_data->wsi = NULL;
   }
 
+  // Give libwebsockets a moment to process the close handshake
+  // This ensures any pending callbacks complete before we destroy the context
+  platform_sleep_us(50 * US_PER_MS_INT);  // 50ms for close handshake
+
   // Destroy WebSocket context (only if we own it - client transports only)
   if (ws_data->context && ws_data->owns_context) {
+    log_debug("Destroying WebSocket context");
     lws_context_destroy(ws_data->context);
     ws_data->context = NULL;
   }
