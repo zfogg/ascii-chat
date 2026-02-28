@@ -13,6 +13,7 @@
 #include "session/display.h"
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
+#include <ascii-chat/ui/splash.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/platform/terminal.h>
@@ -312,6 +313,11 @@ void session_display_destroy(session_display_ctx_t *ctx) {
 #endif
 
   ctx->initialized = false;
+
+  // Clear the cached display context in splash state to prevent use-after-free
+  // when worker threads try to access the display after it's been freed
+  splash_clear_display_context();
+
   SAFE_FREE(ctx);
 }
 
@@ -392,6 +398,14 @@ void *session_display_get_stdin_reader(session_display_ctx_t *ctx) {
 #else
   return NULL;
 #endif
+}
+
+bool session_display_has_first_frame(session_display_ctx_t *ctx) {
+  if (!ctx) {
+    return false;
+  }
+  // Return true if first_frame flag is false (meaning first frame has been rendered)
+  return !atomic_load(&ctx->first_frame);
 }
 
 /* ============================================================================

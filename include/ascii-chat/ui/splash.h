@@ -59,15 +59,34 @@ int splash_intro_start(session_display_ctx_t *ctx);
  * Tells the splash screen animation to stop displaying. On the next animation
  * frame attempt, it will clear the screen and exit cleanly.
  *
+ * **Important**: Call splash_wait_for_animation() after this to ensure the
+ * animation thread has fully exited before rendering ASCII art.
+ *
  * @return ASCIICHAT_OK on success
  *
  * @note Safe to call multiple times
  * @note After calling this, next frame render should show real ASCII art
  * @note The animation thread checks this flag and exits gracefully
+ * @note MUST call splash_wait_for_animation() before displaying ASCII frames
  *
  * @ingroup session
  */
 int splash_intro_done(void);
+
+/**
+ * @brief Wait for splash animation thread to fully exit
+ *
+ * Blocks until the splash animation thread has completed and exited.
+ * Must be called after splash_intro_done() and before rendering ASCII frames
+ * to prevent the splash and ASCII art from appearing simultaneously.
+ *
+ * @note Safe to call multiple times
+ * @note Blocks on the animation thread join
+ * @note MUST be called before first display_render_frame() call
+ *
+ * @ingroup session
+ */
+void splash_wait_for_animation(void);
 
 /**
  * @brief Display status screen for server/discovery-service modes
@@ -137,3 +156,35 @@ void splash_restore_stderr(void);
  * @ingroup session
  */
 void splash_set_update_notification(const char *notification);
+
+/**
+ * @brief Clear the cached display context to prevent use-after-free
+ *
+ * Must be called when the display context is being destroyed to prevent
+ * worker threads from accessing freed memory. This clears the reference
+ * stored in g_splash_state.
+ *
+ * @note Thread-safe (uses atomic operations)
+ * @note Safe to call multiple times
+ *
+ * @ingroup session
+ */
+void splash_clear_display_context(void);
+
+/**
+ * @brief Notify splash that the first frame has been rendered
+ *
+ * Called from display_render_frame() when the first ASCII frame is rendered.
+ * This updates the splash state's atomic flag so the splash animation knows
+ * when to stop.
+ *
+ * **Important**: This function does NOT access the display context pointer,
+ * making it safe to call from any thread even if the context is being freed.
+ *
+ * @note Thread-safe (uses atomic operations)
+ * @note Safe to call multiple times
+ * @note Must NOT dereference display_ctx (unlike splash_intro_done)
+ *
+ * @ingroup session
+ */
+void splash_notify_first_frame(void);

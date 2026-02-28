@@ -239,6 +239,15 @@ int session_display_get_tty_fd(session_display_ctx_t *ctx);
  */
 void *session_display_get_stdin_reader(session_display_ctx_t *ctx);
 
+/**
+ * @brief Check if the display has rendered its first frame
+ * @param ctx Display context (can be NULL)
+ * @return true if first frame has been rendered, false if not yet rendered or ctx is NULL
+ *
+ * @ingroup session
+ */
+bool session_display_has_first_frame(session_display_ctx_t *ctx);
+
 /** @} */
 
 /* ============================================================================

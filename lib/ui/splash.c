@@ -73,16 +73,19 @@ static const rgb_pixel_t g_rainbow_colors[] = {
  * @brief Animation state for intro splash
  */
 static struct {
-  _Atomic(bool) is_running;       // true while animation should continue
-  _Atomic(bool) should_stop;      // set to true when first frame ready
-  _Atomic(bool) thread_created;   // true if animation thread was successfully created
-  int frame;                      // current animation frame
-  asciichat_thread_t anim_thread; // animation thread handle
-  uint64_t start_time_ns;         // when splash was started (for minimum display time)
-  int stderr_fd_saved;            // saved stderr fd during splash (to suppress real-time log output)
-  int stdout_fd_saved;            // saved stdout fd during splash
-  int devnull_fd;                 // /dev/null fd to redirect stderr/stdout during splash
-  bool saved_console_state;       // saved console logging state (to restore later)
+  _Atomic(bool) is_running;             // true while animation should continue
+  _Atomic(bool) should_stop;            // set to true when first frame ready
+  _Atomic(bool) thread_created;         // true if animation thread was successfully created
+  int frame;                            // current animation frame
+  asciichat_thread_t anim_thread;       // animation thread handle
+  uint64_t start_time_ns;               // when splash was started (for minimum display time)
+  int stderr_fd_saved;                  // saved stderr fd during splash (to suppress real-time log output)
+  int stdout_fd_saved;                  // saved stdout fd during splash
+  int devnull_fd;                       // /dev/null fd to redirect stderr/stdout during splash
+  bool saved_console_state;             // saved console logging state (to restore later)
+  session_display_ctx_t *display_ctx;   // display context for checking if first frame is rendered
+  _Atomic(uint64_t) intro_done_time_ns; // when splash_intro_done() was called
+  _Atomic(bool) has_first_frame;        // captured at intro_done time (safe from use-after-free)
 } g_splash_state = {.is_running = false,
                     .should_stop = false,
                     .thread_created = false,
@@ -91,7 +94,10 @@ static struct {
                     .stderr_fd_saved = -1,
                     .stdout_fd_saved = -1,
                     .devnull_fd = -1,
-                    .saved_console_state = false};
+                    .saved_console_state = false,
+                    .display_ctx = NULL,
+                    .intro_done_time_ns = 0,
+                    .has_first_frame = false};
 
 // ============================================================================
 // Helper Functions - TTY Detection
@@ -449,6 +455,26 @@ static void *splash_animation_thread(void *arg) {
     uint64_t elapsed_ns = now_ns - loop_start_ns;
     uint64_t elapsed_ms = elapsed_ns / 1000000;
 
+    // Check if we should stop the splash (from splash_intro_done signal)
+    uint64_t intro_done_ns = atomic_load(&g_splash_state.intro_done_time_ns);
+    if (intro_done_ns > 0) {
+      // splash_intro_done() was called - keep splash running for a minimum display time
+      // The first ASCII frame will be rendered after the splash exits
+      const uint64_t min_display_ns = 2000000000ULL;  // 2 seconds in nanoseconds
+      const uint64_t max_display_ns = 30000000000ULL; // 30 seconds maximum (safety limit)
+      uint64_t elapsed_since_start_ns = now_ns - g_splash_state.start_time_ns;
+
+      // Stop when: minimum time reached OR maximum time reached
+      // We don't wait for has_first_frame because the first frame is rendered
+      // by the main thread after splash_wait_for_animation() returns
+      bool min_display_reached = elapsed_since_start_ns >= min_display_ns;
+      bool max_time_reached = elapsed_since_start_ns >= max_display_ns;
+
+      if (min_display_reached || max_time_reached) {
+        atomic_store(&g_splash_state.should_stop, true);
+      }
+    }
+
     // Convert elapsed time to animation frame (at target FPS)
     // For 60 FPS target: frame = elapsed_ms / 16.67
     int frame = (int)(elapsed_ms * fps / 1000);
@@ -603,7 +629,8 @@ static void *splash_animation_thread(void *arg) {
 }
 
 int splash_intro_start(session_display_ctx_t *ctx) {
-  (void)ctx; // Parameter not used currently
+  // Store display context for splash_intro_done() to capture first_frame state
+  g_splash_state.display_ctx = ctx;
 
   // Suppress stderr IMMEDIATELY to prevent any debug logs from appearing during splash setup
   // Logs are captured in session_log_buffer and displayed through frame rendering
@@ -755,21 +782,15 @@ int splash_intro_start(session_display_ctx_t *ctx) {
 }
 
 int splash_intro_done(void) {
-  // Enforce minimum display time of 2 seconds
-  if (g_splash_state.start_time_ns > 0) {
-    uint64_t now_ns = time_get_ns();
-    uint64_t elapsed_ns = now_ns - g_splash_state.start_time_ns;
-    const uint64_t min_display_ns = 2000000000ULL; // 2 seconds in nanoseconds
+  // Record when intro_done was called - animation thread will use this to decide when to stop
+  // Don't block here - let the animation thread handle timing
+  // The animation thread will exit based on elapsed time, not on first frame arrival
+  atomic_store(&g_splash_state.intro_done_time_ns, time_get_ns());
 
-    if (elapsed_ns < min_display_ns) {
-      uint64_t remaining_ns = min_display_ns - elapsed_ns;
-      uint64_t remaining_ms = (remaining_ns + 999999) / 1000000; // Round up to ms
-      platform_sleep_ms(remaining_ms);
-    }
-  }
-
-  // Signal animation thread to stop
-  atomic_store(&g_splash_state.should_stop, true);
+  // Return immediately - animation thread will stop when:
+  // 1. First frame has been rendered, AND minimum 2 seconds have passed, OR
+  // 2. Maximum 30 seconds have elapsed
+  return 0;
 
   // Wait for animation thread to finish (only join once, even if called multiple times)
   bool expected = true;
@@ -807,6 +828,42 @@ void splash_restore_stderr(void) {
 
   // Restore console output so logs appear normally again
   log_set_terminal_output(g_splash_state.saved_console_state);
+}
+
+void splash_clear_display_context(void) {
+  // Clear the cached display context to prevent use-after-free when the display
+  // is destroyed while worker threads may still be running
+  g_splash_state.display_ctx = NULL;
+}
+
+void splash_wait_for_animation(void) {
+  // Wait for animation thread to fully exit before rendering ASCII art
+  // This prevents the splash and ASCII art from appearing simultaneously
+  //
+  // The animation thread will exit gracefully when:
+  // - First frame is ready AND 2 seconds have elapsed, OR
+  // - 30 seconds have elapsed (safety timeout)
+  //
+  // We block here to ensure clean terminal state before ASCII rendering begins
+
+  // Only join if we successfully created the thread
+  if (atomic_load(&g_splash_state.thread_created)) {
+    log_dev("[SPLASH_WAIT] Waiting for animation thread to exit...");
+
+    // Join with a reasonable timeout (10 seconds) to prevent indefinite blocking
+    asciichat_error_t err = asciichat_thread_join_timeout(&g_splash_state.anim_thread, NULL,
+                                                          10000LL * NS_PER_MS_INT // 10 second timeout
+    );
+
+    if (err == ASCIICHAT_OK) {
+      log_dev("[SPLASH_WAIT] Animation thread exited cleanly");
+    } else {
+      log_warn("[SPLASH_WAIT] Animation thread join timed out after 10 seconds");
+    }
+
+    // Mark that we've joined (safe to call multiple times - only joins once)
+    atomic_store(&g_splash_state.thread_created, false);
+  }
 }
 
 int splash_display_status(int mode) {

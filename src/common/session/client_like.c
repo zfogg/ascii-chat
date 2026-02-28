@@ -553,6 +553,12 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   splash_intro_done();
   log_debug("splash_intro_done() returned");
 
+  // Wait for animation thread to fully exit before rendering ASCII art
+  // This prevents the splash and ASCII from appearing simultaneously
+  log_debug("About to call splash_wait_for_animation()");
+  splash_wait_for_animation();
+  log_debug("splash_wait_for_animation() returned");
+
   if (temp_display) {
     session_display_destroy(temp_display);
     temp_display = NULL;
@@ -705,6 +711,11 @@ cleanup:
   log_debug("[CLEANUP] About to call splash_intro_done()");
   splash_intro_done();
   log_debug("[CLEANUP] splash_intro_done() returned");
+
+  // Wait for animation thread to exit before cleanup
+  log_debug("[CLEANUP] About to call splash_wait_for_animation()");
+  splash_wait_for_animation();
+  log_debug("[CLEANUP] splash_wait_for_animation() returned");
 
   // Stop debug sync thread before destroying log buffer to prevent use-after-free
   log_debug("[CLEANUP] About to call debug_sync_cleanup_thread()");
