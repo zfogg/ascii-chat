@@ -862,12 +862,9 @@ int client_main(void) {
   // Note: atexit(asciichat_shared_destroy) is registered in main.c,
   // but won't run if interrupted by signals (SIGTERM from timeout/killall)
   log_debug("[CLIENT_MAIN] About to call asciichat_shared_destroy()");
-  fflush(stderr);
   asciichat_shared_destroy();
   log_debug("[CLIENT_MAIN] asciichat_shared_destroy() returned");
-  fflush(stderr);
 
   log_debug("[CLIENT_MAIN] About to exit with code %d", (session_result == ASCIICHAT_OK) ? 0 : 1);
-  fflush(stderr);
   return (session_result == ASCIICHAT_OK) ? 0 : 1;
 }
