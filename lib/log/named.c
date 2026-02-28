@@ -520,30 +520,26 @@ int log_named_format_message(const char *message, char *output, size_t output_si
 
               int id_written = snprintf(id_buffer, sizeof(id_buffer), "%d", fd_value);
               if (id_written > 0 && id_written < (int)sizeof(id_buffer)) {
-                int temp_written;
+                int temp_written = 0;
                 if (name) {
                   /* Format with name: type/name (type=value) */
                   temp_written =
                       snprintf(temp_output, sizeof(temp_output), "%s/%s (%s=%s)", type_str, name, type_str, id_buffer);
-                } else {
-                  /* Format without name: type (type=value) */
-                  temp_written =
-                      snprintf(temp_output, sizeof(temp_output), "%s (%s=%s)", type_str, type_str, id_buffer);
-                }
 
-                if (temp_written > 0 && (size_t)temp_written < sizeof(temp_output)) {
-                  /* Backtrack to remove the prefix we already copied */
-                  size_t prefix_len = int_start - prefix_start;
-                  if (out_pos >= prefix_len) {
-                    out_pos -= prefix_len;
-                  }
+                  if (temp_written > 0 && (size_t)temp_written < sizeof(temp_output)) {
+                    /* Backtrack to remove the prefix we already copied */
+                    size_t prefix_len = int_start - prefix_start;
+                    if (out_pos >= prefix_len) {
+                      out_pos -= prefix_len;
+                    }
 
-                  int copy_len = temp_written;
-                  if (out_pos + copy_len < output_size - 1) {
-                    memcpy(output + out_pos, temp_output, copy_len);
-                    out_pos += copy_len;
-                    any_transformed = true;
-                    continue;
+                    int copy_len = temp_written;
+                    if (out_pos + copy_len < output_size - 1) {
+                      memcpy(output + out_pos, temp_output, copy_len);
+                      out_pos += copy_len;
+                      any_transformed = true;
+                      continue;
+                    }
                   }
                 }
               }
