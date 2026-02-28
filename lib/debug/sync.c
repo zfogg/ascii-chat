@@ -337,20 +337,12 @@ void debug_sync_print_state(void) {
   buf.offset += snprintf(buf.buffer + buf.offset, buf.buffer_size - buf.offset, "Synchronization Primitive State:\n");
 
   // Iterate through all registered syncs
-  log_debug("step 1");
   named_registry_for_each(mutex_iter_callback, &buf);
-  log_debug("step 1 done");
-  log_debug("step 2");
   named_registry_for_each(rwlock_iter_callback, &buf);
-  log_debug("step 2 done");
-  log_debug("step 3");
   named_registry_for_each(cond_iter_callback, &buf);
-  log_debug("step 3 done");
 
   // Print lock stacks for deadlock analysis
-  log_debug("step 4");
   debug_sync_print_lock_stacks(buf.buffer, buf.buffer_size, &buf.offset);
-  log_debug("step 4 done");
 
   // Log everything in one call
   if (buf.offset > 0) {
@@ -457,9 +449,24 @@ typedef struct {
   mutex_t mutex;                       // Protects access to flags during locked operations
   cond_t cond;                         // Wakes thread when signal arrives
   bool initialized;                    // Tracks if mutex/cond are initialized
+  bool handled_sync_state_time;        // Track if --sync-state option was already processed
+  bool handled_backtrace_time;         // Track if --backtrace option was already processed
+  bool handled_memory_report;          // Track if --memory-report option was already processed
 } debug_state_request_t;
 
-static debug_state_request_t g_debug_state_request = {DEBUG_REQUEST_STATE, 0, false, false, false, {0}, {0}, false};
+static debug_state_request_t g_debug_state_request = {
+    .request_type = DEBUG_REQUEST_STATE,
+    .delay_ns = 0,
+    .should_run = false,
+    .should_exit = false,
+    .signal_triggered = false,
+    .memory_report_interval_ns = 0,
+    .last_memory_report_time_ns = 0,
+    .initialized = false,
+    .handled_sync_state_time = false,
+    .handled_backtrace_time = false,
+    .handled_memory_report = false,
+};
 static asciichat_thread_t g_debug_thread;
 static uint64_t g_debug_main_thread_id = 0; // Main thread ID for memory reporting
 
@@ -537,8 +544,10 @@ static void *debug_print_thread_fn(void *arg) {
     }
 
     // Handle --debug-state (debug builds only)
-    // Print debug state after specified delay (synchronously, no thread)
-    if (IS_OPTION_EXPLICIT(debug_sync_state_time, opts) && opts->debug_sync_state_time > 0.0) {
+    // Print debug state after specified delay (execute only once, when option is first detected)
+    if (!g_debug_state_request.handled_sync_state_time && IS_OPTION_EXPLICIT(debug_sync_state_time, opts) &&
+        opts->debug_sync_state_time > 0.0) {
+      g_debug_state_request.handled_sync_state_time = true;
       log_info("Printing sync state after %f seconds", opts->debug_sync_state_time);
       uint64_t delay_ns = (uint64_t)(opts->debug_sync_state_time * NS_PER_SEC_INT);
       platform_sleep_ns(delay_ns);
@@ -546,8 +555,10 @@ static void *debug_print_thread_fn(void *arg) {
     }
 
     // Handle --backtrace (debug builds only)
-    // Print backtrace after specified delay (synchronously, no thread)
-    if (IS_OPTION_EXPLICIT(debug_backtrace_time, opts) && opts->debug_backtrace_time > 0.0) {
+    // Print backtrace after specified delay (execute only once, when option is first detected)
+    if (!g_debug_state_request.handled_backtrace_time && IS_OPTION_EXPLICIT(debug_backtrace_time, opts) &&
+        opts->debug_backtrace_time > 0.0) {
+      g_debug_state_request.handled_backtrace_time = true;
       log_info("Printing backtrace after %f seconds", opts->debug_backtrace_time);
       uint64_t delay_ns = (uint64_t)(opts->debug_backtrace_time * NS_PER_SEC_INT);
       platform_sleep_ns(delay_ns);
@@ -558,8 +569,10 @@ static void *debug_print_thread_fn(void *arg) {
     }
 
     // Handle --memory-report (debug builds only)
-    // Enable periodic memory reporting at specified interval
-    if (IS_OPTION_EXPLICIT(debug_memory_report_interval, opts) && opts->debug_memory_report_interval > 0.0) {
+    // Enable periodic memory reporting at specified interval (execute only once, when option is first detected)
+    if (!g_debug_state_request.handled_memory_report && IS_OPTION_EXPLICIT(debug_memory_report_interval, opts) &&
+        opts->debug_memory_report_interval > 0.0) {
+      g_debug_state_request.handled_memory_report = true;
       log_info("Enabling memory reports every %f seconds", opts->debug_memory_report_interval);
       uint64_t interval_ns = (uint64_t)(opts->debug_memory_report_interval * NS_PER_SEC_INT);
       debug_sync_set_memory_report_interval(interval_ns);
