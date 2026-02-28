@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file lib/network/logging.h
+ * @file lib/network/log.h
  * @brief Network logging macros and remote log direction enumeration.
  * @ingroup logging
  * @addtogroup logging
