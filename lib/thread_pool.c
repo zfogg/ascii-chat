@@ -97,6 +97,8 @@ thread_pool_t *thread_pool_create(const char *pool_name) {
     return NULL;
   }
 
+  NAMED_REGISTER_THREAD_POOL(pool, pool->name);
+
   log_debug("Thread pool '%s' created (long-lived thread mode)", pool->name);
   return pool;
 }
@@ -186,6 +188,8 @@ thread_pool_t *thread_pool_create_with_workers(const char *pool_name, size_t num
     log_debug("[ThreadPool] Created worker thread %zu for pool '%s'", i, pool->name);
   }
 
+  NAMED_REGISTER_THREAD_POOL(pool, pool->name);
+
   log_info("[ThreadPool] Created work queue pool '%s' with %zu worker threads", pool->name, num_workers);
   return pool;
 }
@@ -224,13 +228,16 @@ void thread_pool_destroy(thread_pool_t *pool) {
   // Destroy threads mutex
   mutex_destroy(&pool->threads_mutex);
 
+  NAMED_UNREGISTER(pool);
+
   // Free pool
   SAFE_FREE(pool);
 
   log_debug("Thread pool destroyed");
 }
 
-asciichat_error_t thread_pool_queue_work(const char *name, thread_pool_t *pool, void *(*work_func)(void *), void *work_arg) {
+asciichat_error_t thread_pool_queue_work(const char *name, thread_pool_t *pool, void *(*work_func)(void *),
+                                         void *work_arg) {
   if (!name) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "work name is required");
   }

@@ -48,7 +48,7 @@ websocket_client_t *websocket_client_create(const char *name) {
   client->should_reconnect = false;
 
   // Initialize thread-safe mutex for packet transmission
-  if (mutex_init(&client->send_mutex, "client_send")  != 0) {
+  if (mutex_init(&client->send_mutex, "client_send") != 0) {
     log_error("Failed to initialize send_mutex");
     SAFE_FREE(client);
     return NULL;
@@ -79,6 +79,8 @@ void websocket_client_destroy(websocket_client_t **client_ptr) {
     acip_transport_destroy(client->transport);
     client->transport = NULL;
   }
+
+  NAMED_UNREGISTER(client);
 
   // Destroy mutex
   mutex_destroy(&client->send_mutex);
