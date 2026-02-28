@@ -663,6 +663,31 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     return;
   }
 
+  // Apply digital rain effect if enabled (for pre-rendered ASCII frames from client mode)
+  char *display_frame = (char *)frame_data;
+  char *rain_result = NULL;
+  if (ctx->digital_rain) {
+    uint64_t t_rain_start = time_get_ns();
+    uint64_t current_time_ns = t_rain_start;
+    float delta_time = (float)(current_time_ns - ctx->last_frame_time_ns) / (float)NS_PER_SEC_INT;
+    ctx->last_frame_time_ns = current_time_ns;
+
+    // Update digital rain color from current filter (allows live filter changes)
+    color_filter_t current_filter = GET_OPTION(color_filter);
+    digital_rain_set_color_from_filter(ctx->digital_rain, current_filter);
+
+    rain_result = digital_rain_apply(ctx->digital_rain, (char *)frame_data, delta_time);
+    if (rain_result) {
+      display_frame = rain_result;
+      frame_len = strnlen(rain_result, 1024 * 1024);
+
+      uint64_t t_rain_end = time_get_ns();
+      char rain_str[32];
+      time_pretty(t_rain_end - t_rain_start, -1, rain_str, sizeof(rain_str));
+      log_info("DIGITAL_RAIN (render): Effect applied (%s)", rain_str);
+    }
+  }
+
   // Debug: check for lines that might shoot off to the right
   // Find longest line in frame data (visible characters between newlines, excluding ANSI codes)
   size_t max_line_chars = 0;
@@ -670,7 +695,7 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
   bool in_ansi_code = false;
 
   for (size_t i = 0; i < frame_len; i++) {
-    char c = frame_data[i];
+    char c = display_frame[i];
 
     if (c == '\033') {
       // Start of ANSI escape sequence
@@ -737,7 +762,7 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
       // Copy cursor home sequence first
       memcpy(frame_buffer, cursor_home_sequence, cursor_seq_len);
       // Copy frame data immediately after cursor sequence
-      memcpy(frame_buffer + cursor_seq_len, frame_data, frame_len);
+      memcpy(frame_buffer + cursor_seq_len, display_frame, frame_len);
 
       // Write combined cursor control + frame as atomic operation
       // This prevents partial frames from being displayed if output is interrupted
@@ -747,7 +772,7 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     } else {
       // Fallback if allocation fails: write cursor then frame (not ideal but prevents crash)
       (void)terminal_cursor_home(STDOUT_FILENO);
-      (void)platform_write_all(STDOUT_FILENO, frame_data, frame_len);
+      (void)platform_write_all(STDOUT_FILENO, display_frame, frame_len);
     }
 
     // Flush terminal to ensure all data reaches the display
@@ -758,7 +783,7 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     // Allocate temporary buffer for frame + newline to minimize syscalls
     char *write_buf = SAFE_MALLOC(frame_len + 1, char *);
     if (write_buf) {
-      memcpy(write_buf, frame_data, frame_len);
+      memcpy(write_buf, display_frame, frame_len);
       write_buf[frame_len] = '\n';
 
       // Write frame data directly without terminal lock
@@ -770,7 +795,7 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
       SAFE_FREE(write_buf);
     } else {
       // Fallback: two writes if allocation fails (no lock needed - writes are atomic)
-      (void)platform_write_all(STDOUT_FILENO, frame_data, frame_len);
+      (void)platform_write_all(STDOUT_FILENO, display_frame, frame_len);
       const char newline = '\n';
       (void)platform_write_all(STDOUT_FILENO, &newline, 1);
     }
@@ -782,13 +807,13 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     // Write frame data with newline and flush
     char *write_buf = SAFE_MALLOC(frame_len + 1, char *);
     if (write_buf) {
-      memcpy(write_buf, frame_data, frame_len);
+      memcpy(write_buf, display_frame, frame_len);
       write_buf[frame_len] = '\n';
       (void)platform_write_all(STDOUT_FILENO, write_buf, frame_len + 1);
       SAFE_FREE(write_buf);
     } else {
       // Fallback: two writes if allocation fails
-      (void)platform_write_all(STDOUT_FILENO, frame_data, frame_len);
+      (void)platform_write_all(STDOUT_FILENO, display_frame, frame_len);
       const char newline = '\n';
       (void)platform_write_all(STDOUT_FILENO, &newline, 1);
     }
@@ -800,7 +825,7 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
 #ifndef _WIN32
   // Write frame to render-file if enabled
   if (ctx->render_file) {
-    asciichat_error_t fe = render_file_write_frame(ctx->render_file, frame_data);
+    asciichat_error_t fe = render_file_write_frame(ctx->render_file, display_frame);
     if (fe != ASCIICHAT_OK)
       log_warn_every(5 * NS_PER_SEC_INT, "render-file: encode failed (%s)", asciichat_error_string(fe));
   }
@@ -808,6 +833,11 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
 
   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "frame_write",
                            "FRAME_WRITE: Write and flush complete (%.2f ms)");
+
+  // Clean up digital rain result if allocated
+  if (rain_result) {
+    SAFE_FREE(rain_result);
+  }
 }
 
 void session_display_write_raw(session_display_ctx_t *ctx, const char *data, size_t len) {
