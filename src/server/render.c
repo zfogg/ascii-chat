@@ -355,6 +355,25 @@ void *client_video_render_thread(void *arg) {
   log_info("[VIDEO_RENDER_THREAD_START] ★★★ LOCK STATE at thread entry for client %u", thread_client_id);
   debug_sync_print_state();
 
+  // Wait for client to send terminal capabilities before rendering
+  // Without capabilities, convert_composite_to_ascii() will fail
+  int timeout_ms = 5000; // 5 second timeout
+  int waited_ms = 0;
+  while (!client->has_terminal_caps && !atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down)) {
+    if (waited_ms == 0) {
+      log_debug("Waiting for terminal capabilities from client %u...", thread_client_id);
+    }
+    platform_sleep_ms(10);
+    waited_ms += 10;
+    if (waited_ms >= timeout_ms) {
+      log_warn("Timeout waiting for terminal capabilities from client %u (waited %dms)", thread_client_id, waited_ms);
+      return NULL; // Exit thread if capabilities never arrive
+    }
+  }
+  if (client->has_terminal_caps) {
+    log_debug("Received terminal capabilities for client %u after %dms", thread_client_id, waited_ms);
+  }
+
   // Get client's desired FPS from capabilities or use default
   int client_fps = VIDEO_RENDER_FPS; // Default to 60 FPS
   // Use snapshot pattern to avoid mutex in render thread
