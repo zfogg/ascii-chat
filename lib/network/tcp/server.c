@@ -24,6 +24,7 @@
 #include <ascii-chat/thread_pool.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/debug/named.h>
 
 /**
  * @brief Bind and listen on a TCP socket
@@ -119,7 +120,7 @@ asciichat_error_t tcp_server_init(tcp_server_t *server, const tcp_server_config_
   // Initialize client registry
   server->clients = NULL; // uthash starts with NULL
   server->cleanup_fn = NULL;
-  if (rwlock_init(&server->clients_rwlock, "clients")  != 0) {
+  if (rwlock_init(&server->clients_rwlock, "clients") != 0) {
     return SET_ERRNO(ERROR_THREAD, "Failed to initialize clients read-write lock");
   }
 
@@ -151,6 +152,11 @@ asciichat_error_t tcp_server_init(tcp_server_t *server, const tcp_server_config_
   if (server->listen_socket == INVALID_SOCKET_VALUE && server->listen_socket6 == INVALID_SOCKET_VALUE) {
     return SET_ERRNO(ERROR_NETWORK_BIND, "Failed to bind any sockets (IPv4 and IPv6 both failed)");
   }
+
+  /* Register server with named registry, identified by port */
+  char port_name[32];
+  snprintf(port_name, sizeof(port_name), "server:%d", server->config.port);
+  named_register((uintptr_t)server, port_name, "tcp_server", "0x%tx", __FILE__, __LINE__, __func__);
 
   return ASCIICHAT_OK;
 }
