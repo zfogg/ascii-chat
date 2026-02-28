@@ -280,6 +280,13 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     for (int i = first_log_to_display; i < (int)log_count && terminal_lines_used < log_area_rows; i++) {
       const char *msg = log_entries[i].message;
 
+      // Count embedded newlines in message (each newline adds a line)
+      int embedded_newlines = 0;
+      for (const char *p = msg; *p; p++) {
+        if (*p == '\n')
+          embedded_newlines++;
+      }
+
       // Calculate display width of this log message (without ANSI codes)
       int msg_display_width = display_width(msg);
       if (msg_display_width < 0) {
@@ -287,10 +294,12 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
       }
 
       // Calculate how many display lines this message will consume
+      // Account for: wrapping based on display width + embedded newlines + final newline we add
       int lines_for_this_msg = 1;
       if (msg_display_width > 0 && g_cached_term_size.cols > 0) {
         lines_for_this_msg = (msg_display_width + g_cached_term_size.cols - 1) / g_cached_term_size.cols;
       }
+      lines_for_this_msg += embedded_newlines;
 
       // Only output if it fits in remaining space
       if (terminal_lines_used + lines_for_this_msg <= log_area_rows) {
