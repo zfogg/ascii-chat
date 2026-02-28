@@ -46,6 +46,9 @@ video_frame_buffer_t *video_frame_buffer_create(const char *client_id) {
   const size_t frame_size = (size_t)MAX_FRAME_BUFFER_SIZE;
   buffer_pool_t *pool = buffer_pool_get_global();
 
+  log_info("VFB_ALLOC_START: client_id=%s, frame_size=%zu (2MB=%zu), pool=%p", client_id, frame_size,
+           (size_t)(2 * 1024 * 1024), (void *)pool);
+
   // Initialize frames - size starts at 0 until actual data is written!
   vfb->frames[0].size = 0; // Start with 0 - will be set when data is written
   vfb->frames[1].size = 0; // Start with 0 - will be set when data is written
@@ -55,31 +58,43 @@ video_frame_buffer_t *video_frame_buffer_create(const char *client_id) {
   // Initialize allocated_buffer_size to 0 - will be set AFTER successful allocation
   vfb->allocated_buffer_size = 0;
 
+  // Attempt pool allocation
   if (pool) {
     vfb->frames[0].data = buffer_pool_alloc(pool, frame_size);
     vfb->frames[1].data = buffer_pool_alloc(pool, frame_size);
+    log_info("VFB_POOL_ALLOC: frame[0].data=%p, frame[1].data=%p (from pool)", (void *)vfb->frames[0].data,
+             (void *)vfb->frames[1].data);
+  } else {
+    log_warn("VFB_NO_POOL: pool is NULL, will use malloc fallback");
   }
 
+  // Fallback to aligned malloc if pool allocation failed
   if (!vfb->frames[0].data || !vfb->frames[1].data) {
-    // Fallback to aligned malloc if pool is exhausted or not available
+    log_info("VFB_MALLOC_FALLBACK: frame[0]=%s, frame[1]=%s", vfb->frames[0].data ? "OK" : "allocating",
+             vfb->frames[1].data ? "OK" : "allocating");
     // 64-byte cache-line alignment improves performance for large video frames
     if (!vfb->frames[0].data)
       vfb->frames[0].data = SAFE_MALLOC_ALIGNED(frame_size, 64, void *);
     if (!vfb->frames[1].data)
       vfb->frames[1].data = SAFE_MALLOC_ALIGNED(frame_size, 64, void *);
+    log_info("VFB_MALLOC_RESULT: frame[0].data=%p, frame[1].data=%p (allocated with malloc)",
+             (void *)vfb->frames[0].data, (void *)vfb->frames[1].data);
   }
 
   // CRITICAL: Only set allocated_buffer_size after BOTH buffers are successfully allocated
   // This prevents claiming 2MB buffers when actual allocation failed or returned smaller buffers
   if (!vfb->frames[0].data || !vfb->frames[1].data) {
-    SET_ERRNO(ERROR_MEMORY, "Failed to allocate video frame buffers (frame[0].data=%p, frame[1].data=%p)",
-              vfb->frames[0].data, vfb->frames[1].data);
+    log_error("VFB_ALLOC_FAILED: frame[0].data=%p, frame[1].data=%p (cannot create frame buffer)",
+              (void *)vfb->frames[0].data, (void *)vfb->frames[1].data);
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate video frame buffers");
     video_frame_buffer_destroy(vfb);
     return NULL;
   }
 
   // Only now that both buffers are successfully allocated, set the capacity
   vfb->allocated_buffer_size = frame_size;
+  log_info("VFB_ALLOC_SUCCESS: client_id=%s, allocated_buffer_size=%zu, frames[0].data=%p, frames[1].data=%p",
+           client_id, vfb->allocated_buffer_size, (void *)vfb->frames[0].data, (void *)vfb->frames[1].data);
 
   // When buffers are allocated from the pool, they may contain leftover data from previous clients
   // This ensures frames with size=0 are truly empty, preventing ghost frames during reconnection
