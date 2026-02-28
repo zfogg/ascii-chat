@@ -828,22 +828,28 @@ int client_main(void) {
   // Do not destroy it here as it may be reused or already cleaned up
 
   // Cleanup connection context
+  log_debug("[CLIENT_MAIN] About to call connection_context_cleanup()");
   connection_context_cleanup(&g_client_session.connection_ctx);
+  log_debug("[CLIENT_MAIN] connection_context_cleanup() returned");
 
   // Cleanup session log buffer (used by splash screen in session_client_like)
   // NOTE: session_log_buffer_destroy() is already called in session_client_like_run()
   // during its cleanup phase, so we don't call it here to avoid double-destroy of mutex
 
-  log_debug("ascii-chat client shutting down");
+  log_debug("[CLIENT_MAIN] ascii-chat client shutting down");
 
   // IMPORTANT: Stop worker threads and join them BEFORE memory report
   // atexit(shutdown_client) won't run if interrupted by SIGTERM, so call explicitly
+  log_debug("[CLIENT_MAIN] About to call shutdown_client()");
   shutdown_client();
+  log_debug("[CLIENT_MAIN] shutdown_client() returned");
 
   // Cleanup remaining shared subsystems (buffer pool, platform, etc.)
   // Note: atexit(asciichat_shared_destroy) is registered in main.c,
   // but won't run if interrupted by signals (SIGTERM from timeout/killall)
+  log_debug("[CLIENT_MAIN] About to call asciichat_shared_destroy()");
   asciichat_shared_destroy();
+  log_debug("[CLIENT_MAIN] asciichat_shared_destroy() returned");
 
   return (session_result == ASCIICHAT_OK) ? 0 : 1;
 }

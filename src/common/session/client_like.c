@@ -677,20 +677,29 @@ cleanup:
   }
 
   // Free cached webcam images and test patterns
+  log_debug("[CLEANUP] About to call webcam_destroy()");
   webcam_destroy();
+  log_debug("[CLEANUP] webcam_destroy() returned");
 
   // Stop splash animation and enforce minimum display time (even on error path)
+  log_debug("[CLEANUP] About to call splash_intro_done()");
   splash_intro_done();
+  log_debug("[CLEANUP] splash_intro_done() returned");
 
   // Stop debug sync thread before destroying log buffer to prevent use-after-free
+  log_debug("[CLEANUP] About to call debug_sync_cleanup_thread()");
   debug_sync_cleanup_thread();
+  log_debug("[CLEANUP] debug_sync_cleanup_thread() returned");
 
   // Cleanup session log buffer (used by splash screen)
+  log_debug("[CLEANUP] About to call session_log_buffer_destroy()");
   session_log_buffer_destroy();
+  log_debug("[CLEANUP] session_log_buffer_destroy() returned");
 
   // Disable keepawake (re-allow OS to sleep)
-  log_debug("Disabling keepawake");
+  log_debug("[CLEANUP] Disabling keepawake");
   platform_disable_keepawake();
+  log_debug("[CLEANUP] keepawake disabled");
 
   // Write newline to separate final frame from prompt (if configured)
   log_debug("About to check print_newline_on_tty_exit");

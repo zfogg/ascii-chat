@@ -1173,10 +1173,15 @@ void audio_stop_thread() {
     log_debug("[AUDIO_STOP] Sender thread exited successfully");
   }
 
+  log_debug("[AUDIO_STOP] Checking if capture thread was created: g_audio_capture_thread_created=%d",
+            g_audio_capture_thread_created);
   if (!THREAD_IS_CREATED(g_audio_capture_thread_created)) {
+    log_debug("[AUDIO_STOP] Capture thread was not created, committing lifecycle and returning");
     lifecycle_destroy_commit(&g_audio_stop_thread_lc);
+    log_debug("[AUDIO_STOP] Lifecycle committed, returning");
     return;
   }
+  log_debug("[AUDIO_STOP] Capture thread was created, waiting for it to exit");
 
   // Note: We don't call signal_exit() here because that's for global shutdown only
   // The audio capture thread checks server_connection_is_active() to detect connection loss

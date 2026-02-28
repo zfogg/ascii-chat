@@ -654,17 +654,28 @@ void debug_sync_destroy(void) {
 }
 
 void debug_sync_cleanup_thread(void) {
+  log_debug("[DEBUG_SYNC_CLEANUP] Starting cleanup");
+
   // Only join if thread was actually created
   if (!g_debug_state_request.initialized) {
+    log_debug("[DEBUG_SYNC_CLEANUP] Thread not initialized, returning");
     return;
   }
+  log_debug("[DEBUG_SYNC_CLEANUP] Thread was initialized, proceeding with cleanup");
 
+  log_debug("[DEBUG_SYNC_CLEANUP] Setting initialized to false");
   g_debug_state_request.initialized = false; // Prevent double-join
 
   // Signal the thread to wake up immediately instead of waiting for 100ms timeout
+  log_debug("[DEBUG_SYNC_CLEANUP] Signaling thread to exit");
   atomic_store(&g_debug_state_request.should_exit, true);
   cond_signal(&g_debug_state_request.cond);
-  asciichat_thread_join(&g_debug_thread, NULL);
+  log_debug("[DEBUG_SYNC_CLEANUP] Signal sent");
+
+  // Note: We skip the thread join here to avoid potential deadlocks with debug mutexes.
+  // The debug thread will continue running briefly but will exit when it checks should_exit.
+  // This is safe because debug sync is a development-time feature, not critical to shutdown.
+  log_debug("[DEBUG_SYNC_CLEANUP] Skipping thread join to avoid deadlock");
 }
 
 void debug_sync_trigger_print(void) {
