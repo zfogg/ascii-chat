@@ -251,8 +251,9 @@ crypto_result_t crypto_set_peer_public_key(crypto_context_t *ctx, const uint8_t 
   SAFE_MEMCPY(ctx->peer_public_key, copy_size, peer_public_key, copy_size);
   ctx->peer_key_received = true;
 
-  // Compute shared secret using X25519
-  if (crypto_box_beforenm(ctx->shared_key, peer_public_key, ctx->private_key) != 0) {
+  // Compute shared secret using X25519 and crypto_scalarmult (compatible with secretbox)
+  // This produces a raw 32-byte shared secret suitable for crypto_secretbox
+  if (crypto_scalarmult(ctx->shared_key, ctx->private_key, peer_public_key) != 0) {
     SET_ERRNO(ERROR_CRYPTO, "Failed to compute shared secret from peer public key");
     return CRYPTO_ERROR_KEY_GENERATION;
   }
