@@ -610,6 +610,53 @@ void named_registry_register_packet_types(void) {
   log_debug("Registered %d packet types in named registry", 68); // Count of all packet types
 }
 
+// ============================================================================
+// Type-specific registration and lookup with namespace encoding
+// ============================================================================
+
+/**
+ * Key namespace prefixes to avoid collisions between different value types.
+ * Each type uses a distinct high-order bits pattern.
+ */
+#define FD_KEY_PREFIX (0xFD00000000000000UL)
+#define PACKET_TYPE_KEY_PREFIX (0xAC00000000000000UL)
+
+static inline uintptr_t encode_fd_key(int fd) {
+  return FD_KEY_PREFIX | (uintptr_t)fd;
+}
+
+static inline uintptr_t encode_packet_type_key(int pkt_type) {
+  return PACKET_TYPE_KEY_PREFIX | (uintptr_t)pkt_type;
+}
+
+const char *named_register_fd(int fd, const char *file, int line, const char *func) {
+  char fd_key[32];
+  snprintf(fd_key, sizeof(fd_key), "fd=%d", fd);
+  return named_register(encode_fd_key(fd), fd_key, "fd", "%d", file, line, func);
+}
+
+const char *named_get_fd(int fd) {
+  return named_get(encode_fd_key(fd));
+}
+
+const char *named_get_fd_format_spec(int fd) {
+  return named_get_format_spec(encode_fd_key(fd));
+}
+
+const char *named_register_packet_type(int pkt_type, const char *file, int line, const char *func) {
+  char pkt_key[32];
+  snprintf(pkt_key, sizeof(pkt_key), "PACKET_TYPE=%d", pkt_type);
+  return named_register(encode_packet_type_key(pkt_type), pkt_key, "packet_type", "%d", file, line, func);
+}
+
+const char *named_get_packet_type(int pkt_type) {
+  return named_get(encode_packet_type_key(pkt_type));
+}
+
+const char *named_get_packet_type_format_spec(int pkt_type) {
+  return named_get_format_spec(encode_packet_type_key(pkt_type));
+}
+
 #else // NDEBUG (Release builds - stubs)
 
 int named_init(void) {
@@ -674,6 +721,42 @@ const char *named_describe(uintptr_t key, const char *type_hint) {
 const char *named_describe_thread(void *thread) {
   (void)thread;
   return "?";
+}
+
+const char *named_register_fd(int fd, const char *file, int line, const char *func) {
+  (void)fd;
+  (void)file;
+  (void)line;
+  (void)func;
+  return "?";
+}
+
+const char *named_get_fd(int fd) {
+  (void)fd;
+  return NULL;
+}
+
+const char *named_get_fd_format_spec(int fd) {
+  (void)fd;
+  return NULL;
+}
+
+const char *named_register_packet_type(int pkt_type, const char *file, int line, const char *func) {
+  (void)pkt_type;
+  (void)file;
+  (void)line;
+  (void)func;
+  return "?";
+}
+
+const char *named_get_packet_type(int pkt_type) {
+  (void)pkt_type;
+  return NULL;
+}
+
+const char *named_get_packet_type_format_spec(int pkt_type) {
+  (void)pkt_type;
+  return NULL;
 }
 
 void named_registry_for_each(named_iter_callback_t callback, void *user_data) {

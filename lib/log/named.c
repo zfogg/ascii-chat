@@ -35,25 +35,6 @@
  * If found, replaces with "type/name (0xaddress)" format.
  * Otherwise, leaves the address as-is.
  */
-/**
- * @brief Check if an integer is a registered file descriptor
- * @param fd File descriptor value
- * @return true if the fd is registered as an FD type
- */
-static bool is_registered_fd(int fd) {
-  const char *type = named_get_type((uintptr_t)fd);
-  return type && strcmp(type, "fd") == 0;
-}
-
-/**
- * @brief Check if an integer is a registered packet type
- * @param pkt_type Packet type value
- * @return true if the packet type is registered as a packet_type
- */
-static bool is_registered_packet_type(int pkt_type) {
-  const char *type = named_get_type((uintptr_t)pkt_type);
-  return type && strcmp(type, "packet_type") == 0;
-}
 
 /**
  * @brief Find the start of the fd/file/descriptor prefix before a position
@@ -250,24 +231,23 @@ int log_named_format_message(const char *message, char *output, size_t output_si
         digit_count++;
       }
 
-      /* First check if this is a registered packet type */
-      if (digit_count > 0 && is_registered_packet_type(fd_value) && has_packet_type_prefix(message, int_start)) {
-        /* This integer is a registered packet type with appropriate prefix - format it */
-        const char *name = named_get(fd_value);
-        const char *type = named_get_type(fd_value);
-        const char *fmt_spec = named_get_format_spec(fd_value);
+      /* Check if this is a registered packet type */
+      if (digit_count > 0 && has_packet_type_prefix(message, int_start)) {
+        const char *name = named_get_packet_type(fd_value);
+        if (name) {
+          /* This integer is a registered packet type with appropriate prefix - format it */
+          const char *fmt_spec = named_get_packet_type_format_spec(fd_value);
+          if (!fmt_spec) {
+            fmt_spec = "%d"; /* Default format for packet types */
+          }
 
-        if (!fmt_spec) {
-          fmt_spec = "%d"; /* Default format for packet types */
-        }
-
-        if (name && type) {
-          /* Format: type/name (pkt_type=value) - plain text, colors applied at output stage */
+          /* Format: packet_type/name (pkt_type=value) - plain text, colors applied at output stage */
           char temp_output[512];
           char id_buffer[64];
           int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, fd_value);
           if (id_written > 0 && id_written < (int)sizeof(id_buffer)) {
-            int temp_written = snprintf(temp_output, sizeof(temp_output), "%s/%s (pkt_type=%s)", type, name, id_buffer);
+            int temp_written =
+                snprintf(temp_output, sizeof(temp_output), "packet_type/%s (pkt_type=%s)", name, id_buffer);
             if (temp_written > 0 && (size_t)temp_written < sizeof(temp_output)) {
               /* Find where prefix starts in original message, calculate how much to skip */
               const char *prefix_start = find_packet_type_prefix_start(message, int_start);
@@ -288,23 +268,24 @@ int log_named_format_message(const char *message, char *output, size_t output_si
             }
           }
         }
-      } else if (digit_count > 0 && is_registered_fd(fd_value) && has_fd_prefix(message, int_start)) {
-        /* This integer is a registered FD with appropriate prefix - format it (plain text for logs) */
-        const char *name = named_get(fd_value);
-        const char *type = named_get_type(fd_value);
-        const char *fmt_spec = named_get_format_spec(fd_value);
+      }
 
-        if (!fmt_spec) {
-          fmt_spec = "%d"; /* Default format for FDs */
-        }
+      /* Check if this is a registered file descriptor */
+      if (digit_count > 0 && has_fd_prefix(message, int_start)) {
+        const char *name = named_get_fd(fd_value);
+        if (name) {
+          /* This integer is a registered FD with appropriate prefix - format it */
+          const char *fmt_spec = named_get_fd_format_spec(fd_value);
+          if (!fmt_spec) {
+            fmt_spec = "%d"; /* Default format for FDs */
+          }
 
-        if (name && type) {
-          /* Format: type/name (fd=value) - plain text, colors applied at output stage */
+          /* Format: fd/name (fd=value) - plain text, colors applied at output stage */
           char temp_output[512];
           char id_buffer[64];
           int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, fd_value);
           if (id_written > 0 && id_written < (int)sizeof(id_buffer)) {
-            int temp_written = snprintf(temp_output, sizeof(temp_output), "%s/%s (fd=%s)", type, name, id_buffer);
+            int temp_written = snprintf(temp_output, sizeof(temp_output), "fd/%s (fd=%s)", name, id_buffer);
             if (temp_written > 0 && (size_t)temp_written < sizeof(temp_output)) {
               /* Find where prefix starts in original message, calculate how much to skip */
               const char *prefix_start = find_fd_prefix_start(message, int_start);

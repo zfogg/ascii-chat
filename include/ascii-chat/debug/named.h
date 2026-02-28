@@ -188,6 +188,74 @@ const char *named_get_type(uintptr_t key);
 const char *named_get_format_spec(uintptr_t key);
 
 /**
+ * @brief Register a file descriptor with namespace encoding
+ * @param fd File descriptor value
+ * @param file Source file where registration occurred
+ * @param line Source line where registration occurred
+ * @param func Function where registration occurred
+ * @return Registered name string
+ * @ingroup debug_named
+ *
+ * Registers an FD with a key that includes type namespace to avoid collisions
+ * with packet types or other numeric values. Name is auto-generated as "fd=%d".
+ * In release builds (NDEBUG), this is a no-op and returns "fd=%d" string.
+ */
+const char *named_register_fd(int fd, const char *file, int line, const char *func);
+
+/**
+ * @brief Look up a registered file descriptor
+ * @param fd File descriptor value
+ * @return Registered name string, or NULL if not registered
+ * @ingroup debug_named
+ *
+ * Looks up an FD using the same namespace encoding as named_register_fd().
+ * In release builds (NDEBUG), this always returns NULL.
+ */
+const char *named_get_fd(int fd);
+
+/**
+ * @brief Get the format specifier for a registered file descriptor
+ * @param fd File descriptor value
+ * @return Format specifier string (e.g., "%d"), or NULL if not registered
+ * @ingroup debug_named
+ */
+const char *named_get_fd_format_spec(int fd);
+
+/**
+ * @brief Register a packet type with namespace encoding
+ * @param pkt_type Packet type value
+ * @param file Source file where registration occurred
+ * @param line Source line where registration occurred
+ * @param func Function where registration occurred
+ * @return Registered name string
+ * @ingroup debug_named
+ *
+ * Registers a packet type with a key that includes type namespace to avoid collisions
+ * with FDs or other numeric values. Name is auto-generated as "PACKET_TYPE=%d".
+ * In release builds (NDEBUG), this is a no-op and returns "PACKET_TYPE=%d" string.
+ */
+const char *named_register_packet_type(int pkt_type, const char *file, int line, const char *func);
+
+/**
+ * @brief Look up a registered packet type
+ * @param pkt_type Packet type value
+ * @return Registered name string, or NULL if not registered
+ * @ingroup debug_named
+ *
+ * Looks up a packet type using the same namespace encoding as named_register_packet_type().
+ * In release builds (NDEBUG), this always returns NULL.
+ */
+const char *named_get_packet_type(int pkt_type);
+
+/**
+ * @brief Get the format specifier for a registered packet type
+ * @param pkt_type Packet type value
+ * @return Format specifier string (e.g., "%d"), or NULL if not registered
+ * @ingroup debug_named
+ */
+const char *named_get_packet_type_format_spec(int pkt_type);
+
+/**
  * @brief Format a description string for logging
  * @param key The resource key
  * @param type_hint A type label (e.g., "mutex", "socket", "thread")
@@ -695,7 +763,7 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
       _fd = platform_open((pathname), (flags));                                                                        \
     }                                                                                                                  \
     if (_fd >= 0) {                                                                                                    \
-      named_register_fd_impl(_fd, (name), __FILE__, __LINE__, __func__);                                               \
+      named_register_fd(_fd, __FILE__, __LINE__, __func__);                                                            \
     }                                                                                                                  \
     _fd;                                                                                                               \
   })
@@ -721,28 +789,18 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  */
 #define NAMED_UNREGISTER_FD(fd) NAMED_UNREGISTER_ID((fd))
 
-// Forward declaration for static inline helper
-#ifndef NDEBUG
-static inline const char *named_register_fd_impl(int fd, const char *file, int line, const char *func) {
-  char fd_key[32];
-  snprintf(fd_key, sizeof(fd_key), "fd=%d", fd);
-  return named_register((uintptr_t)fd, fd_key, "fd", "%d", file, line, func);
-}
-#endif
-
 /**
- * @brief Register an existing file descriptor with a name
+ * @brief Register an existing file descriptor
  * @param fd File descriptor (must be >= 0)
- * @param name Debug name for the file descriptor (for macro compatibility)
+ * @param name Ignored - kept for API compatibility
  * @ingroup debug_named
  *
  * Convenience macro for registering file descriptors that are already open.
- * Automatically uses "%d" format specifier for file descriptor integers.
- * Uses "fd=%d" key format for consistency with packet type registration.
+ * Automatically uses "fd=%d" format specifier and type namespace to avoid collisions.
  * In release builds (NDEBUG), this is a no-op.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_FD(fd, name) named_register_fd_impl((fd), __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_FD(fd, name) named_register_fd((fd), __FILE__, __LINE__, __func__)
 #else
 #define NAMED_REGISTER_FD(fd, name) ((void)0)
 #endif
