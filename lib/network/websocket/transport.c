@@ -402,15 +402,13 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
     } while (!lws_send_pipe_choked(ws_data->wsi));
     mutex_unlock(&ws_data->send_mutex);
 
-    // Request another callback only if:
-    // - We sent messages AND
-    // - Pipe is not choked AND
-    // - More messages are queued
+    // Request another callback if more messages are queued
+    // Must request even if pipe was choked so we drain queue once TCP buffer drains
     mutex_lock(&ws_data->send_mutex);
     bool has_more = ringbuffer_peek(ws_data->send_queue, &msg);
     mutex_unlock(&ws_data->send_mutex);
 
-    if (message_count > 0 && has_more && !lws_send_pipe_choked(ws_data->wsi)) {
+    if (has_more) {
       lws_callback_on_writable(ws_data->wsi);
     }
     break;
