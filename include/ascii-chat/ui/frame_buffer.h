@@ -105,3 +105,13 @@ void frame_buffer_clear_screen(frame_buffer_t *buf);
  * bypassing libc buffering. Safe for high-frequency rendering.
  */
 void frame_buffer_flush(frame_buffer_t *buf);
+
+/**
+ * @brief Get the current content length of the frame buffer
+ *
+ * @param buf Frame buffer
+ * @return Number of bytes currently in the buffer
+ *
+ * Useful for debugging and verifying frame consistency.
+ */
+size_t frame_buffer_get_length(const frame_buffer_t *buf);

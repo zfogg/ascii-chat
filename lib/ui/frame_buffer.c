@@ -156,3 +156,10 @@ void frame_buffer_flush(frame_buffer_t *buf) {
   // Write entire buffer to stdout in one atomic operation
   platform_write_all(STDOUT_FILENO, buf->data, buf->len);
 }
+
+size_t frame_buffer_get_length(const frame_buffer_t *buf) {
+  if (!buf) {
+    return 0;
+  }
+  return buf->len;
+}
