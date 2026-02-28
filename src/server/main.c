@@ -2511,9 +2511,6 @@ cleanup:
     }
   }
 
-  // Cleanup status screen log capture
-  server_status_log_destroy();
-
   // Cleanup
   log_debug("Server shutting down...");
   memset(g_session_string, 0, sizeof(g_session_string)); // Clear session string for status screen
@@ -2613,6 +2610,11 @@ cleanup:
       retry_count++;
     }
   }
+
+  // Cleanup status screen log capture (must be AFTER all client threads exit to avoid use-after-free)
+  // Client threads may still be appending logs during the wait loop above, so we destroy the buffer only
+  // after we've confirmed they've all exited.
+  server_status_log_destroy();
 
   // Clean up all connected clients
   log_debug("Cleaning up connected clients...");
