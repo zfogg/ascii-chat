@@ -209,7 +209,8 @@ static void client_handle_sigwinch(int sigwinch) {
 
     // Send new size to server if connected
     if (server_connection_is_active()) {
-      if (threaded_send_terminal_size_with_auto_detect(GET_OPTION(width), GET_OPTION(height)) < 0) {
+      if (threaded_send_terminal_size_with_auto_detect((int)terminal_get_effective_width(),
+                                                       (int)terminal_get_effective_height()) < 0) {
         log_warn("Failed to send terminal capabilities to server: %s", network_error_string());
       } else {
         display_full_reset();

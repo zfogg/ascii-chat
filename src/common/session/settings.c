@@ -32,8 +32,8 @@ void session_settings_init(session_settings_t *settings) {
 
   // Read all defaults from the RCU options system
   settings->version = 0;
-  settings->width = (int16_t)GET_OPTION(width);
-  settings->height = (int16_t)GET_OPTION(height);
+  settings->width = (int16_t)terminal_get_effective_width();
+  settings->height = (int16_t)terminal_get_effective_height();
   settings->color_mode = (uint8_t)GET_OPTION(color_mode);
   settings->render_mode = (uint8_t)GET_OPTION(render_mode);
   settings->palette_type = (uint8_t)GET_OPTION(palette_type);

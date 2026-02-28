@@ -1082,7 +1082,8 @@ int protocol_start_connection() {
   // Send CLIENT_CAPABILITIES packet FIRST before starting any threads
   // Server expects this as the first packet after crypto handshake
   log_debug("[FRAME_RECV_INIT] 📤 SENDING_CAPABILITIES: terminal_size negotiation");
-  asciichat_error_t cap_result = threaded_send_terminal_size_with_auto_detect(GET_OPTION(width), GET_OPTION(height));
+  asciichat_error_t cap_result = threaded_send_terminal_size_with_auto_detect((int)terminal_get_effective_width(),
+                                                                               (int)terminal_get_effective_height());
   if (cap_result != ASCIICHAT_OK) {
     log_error("[FRAME_RECV_INIT] ❌ CAPABILITIES_FAILED: cannot send terminal size");
     return -1;

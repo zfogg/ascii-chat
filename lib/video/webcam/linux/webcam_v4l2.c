@@ -327,8 +327,8 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     return SET_ERRNO(ERROR_WEBCAM, "Device is not a video capture device");
   }
 
-  // Set format (try 640x480 first, fallback to whatever the device supports)
-  if (webcam_v4l2_set_format(context, 640, 480) != 0) {
+  // Set format (try 320x240 first for better performance, fallback to whatever the device supports)
+  if (webcam_v4l2_set_format(context, 320, 240) != 0) {
     int saved_errno = errno; // Save errno before close() potentially changes it
     close(context->fd);
     SAFE_FREE(context);

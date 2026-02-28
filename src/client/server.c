@@ -389,7 +389,8 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     atomic_store(&g_connection_lost, false);
 
     // Send initial terminal capabilities to server
-    int result = threaded_send_terminal_size_with_auto_detect(GET_OPTION(width), GET_OPTION(height));
+    int result = threaded_send_terminal_size_with_auto_detect((int)terminal_get_effective_width(),
+                                                              (int)terminal_get_effective_height());
     if (result < 0) {
       log_error("Failed to send initial capabilities to server: %s", network_error_string());
       acip_transport_destroy(g_client_transport);
@@ -679,7 +680,8 @@ connection_success:
   }
 
   // Send initial terminal capabilities to server (this may generate debug logs)
-  int result = threaded_send_terminal_size_with_auto_detect(GET_OPTION(width), GET_OPTION(height));
+  int result = threaded_send_terminal_size_with_auto_detect((int)terminal_get_effective_width(),
+                                                            (int)terminal_get_effective_height());
   if (result < 0) {
     log_error("Failed to send initial capabilities to server: %s", network_error_string());
     close_socket(g_sockfd);
