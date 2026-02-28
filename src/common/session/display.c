@@ -249,8 +249,10 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   // Initialize render-file if enabled (skip "-" which is used for stdin render mode to stdout)
   const char *render_file_opt = GET_OPTION(render_file);
   if (strlen(render_file_opt) > 0 && strcmp(render_file_opt, "-") != 0) {
-    int width = GET_OPTION(width);
-    int height = GET_OPTION(height);
+    // Query actual terminal dimensions instead of using option defaults
+    int width = (int)terminal_get_effective_width();
+    int height = (int)terminal_get_effective_height();
+    log_debug("render-file: Using terminal dimensions: %ux%u", width, height);
     asciichat_error_t rf_err = render_file_create(render_file_opt, width, height, GET_OPTION(fps),
                                                   GET_OPTION(render_theme), &ctx->render_file);
     if (rf_err != ASCIICHAT_OK)
