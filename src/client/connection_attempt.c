@@ -170,6 +170,42 @@ bool connection_check_timeout(const connection_attempt_context_t *ctx) {
 }
 
 /* ============================================================================
+ * Helper Functions for Connection Management
+ * ============================================================================ */
+
+/**
+ * @brief Apply reconnection delay with shutdown awareness
+ *
+ * Sleep for the calculated reconnection delay, but check should_exit() every 100ms
+ * to allow quick shutdown response even during long reconnection delays.
+ *
+ * @param attempt_number Current reconnection attempt (1-based)
+ */
+static void apply_reconnection_delay_interruptible(unsigned int attempt_number) {
+  if (attempt_number == 0) {
+    return; // No delay for first attempt
+  }
+
+  // Calculate exponential backoff delay: 100ms + (attempt-1)*200ms, max 5 seconds
+  uint64_t delay_ns = (100LL * NS_PER_MS_INT) + ((uint64_t)(attempt_number - 1) * 200LL * NS_PER_MS_INT);
+  const uint64_t max_delay_ns = 5LL * NS_PER_SEC_INT;
+  if (delay_ns > max_delay_ns) {
+    delay_ns = max_delay_ns;
+  }
+
+  // Sleep in 100ms intervals, checking should_exit() between each interval
+  uint64_t elapsed_ns = 0;
+  const uint64_t check_interval_ns = 100 * NS_PER_MS_INT;
+
+  while (elapsed_ns < delay_ns && !should_exit()) {
+    uint64_t remaining_ns = delay_ns - elapsed_ns;
+    uint64_t sleep_ns = (remaining_ns < check_interval_ns) ? remaining_ns : check_interval_ns;
+    platform_sleep_ns(sleep_ns);
+    elapsed_ns += sleep_ns;
+  }
+}
+
+/* ============================================================================
  * TCP Connection
  * ============================================================================ */
 
@@ -320,9 +356,20 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
   ctx->attempt_start_time_ns = time_get_realtime_ns();
   ctx->timeout_ns = CONN_TIMEOUT_TCP;
 
-  // Attempt TCP connection (reconnect_attempt is 0-based, convert for tcp_client_connect)
-  int tcp_result = tcp_client_connect(tcp_client, server_address, server_port, (int)ctx->reconnect_attempt,
-                                      ctx->reconnect_attempt == 0, ctx->reconnect_attempt > 0);
+  // Apply interruptible reconnection delay (allows shutdown response during long delays)
+  apply_reconnection_delay_interruptible(ctx->reconnect_attempt);
+
+  // Check if shutdown was requested during delay
+  if (should_exit()) {
+    if (created_tcp_client) {
+      tcp_client_destroy(&tcp_client);
+    }
+    return SET_ERRNO(ERROR_NETWORK, "Connection attempt aborted during reconnection delay");
+  }
+
+  // Attempt TCP connection (pass reconnect_attempt=0 to skip delay, we already applied it above)
+  int tcp_result = tcp_client_connect(tcp_client, server_address, server_port, 0, ctx->reconnect_attempt == 0,
+                                      ctx->reconnect_attempt > 0);
 
   if (tcp_result != 0) {
     log_debug("TCP connection failed (tcp_client_connect returned %d)", tcp_result);
