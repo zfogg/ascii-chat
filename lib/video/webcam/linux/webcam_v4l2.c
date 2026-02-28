@@ -15,6 +15,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
+#include <poll.h>
 #include <sys/mman.h>
 #include <sys/ioctl.h>
 #include <linux/videodev2.h>
@@ -427,24 +428,31 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   buf.memory = V4L2_MEMORY_MMAP;
 
-  // Dequeue a buffer with retry logic for transient errors
-  int retry_count = 0;
-  while (retry_count < WEBCAM_READ_RETRY_COUNT) {
-    if (ioctl(ctx->fd, VIDIOC_DQBUF, &buf) == 0) {
-      break; // Success
-    }
+  // Use poll() to efficiently wait for frame available (100ms timeout)
+  struct pollfd pfd = {.fd = ctx->fd, .events = POLLIN};
+  int poll_ret = poll(&pfd, 1, 100);  // 100ms timeout
 
-    if (errno == EAGAIN) {
-      return NULL; // No frame available - this is normal
-    }
+  if (poll_ret < 0) {
+    log_error("poll() failed on V4L2 device: %s", SAFE_STRERROR(errno));
+    return NULL;
+  }
 
-    retry_count++;
-    if (retry_count >= WEBCAM_READ_RETRY_COUNT) {
-      log_error("Failed to dequeue V4L2 buffer after %d retries: %s", retry_count, SAFE_STRERROR(errno));
-      return NULL;
-    }
+  if (poll_ret == 0) {
+    // Timeout - no frame available within 100ms
+    return NULL;
+  }
 
-    platform_sleep_ns(1000 * 1000); // 1ms
+  // poll() returned > 0: data is available
+  if (!(pfd.revents & POLLIN)) {
+    // Some other event occurred (error/disconnect)
+    log_error("V4L2 device error: poll revents=0x%x", pfd.revents);
+    return NULL;
+  }
+
+  // Dequeue the buffer (should succeed now)
+  if (ioctl(ctx->fd, VIDIOC_DQBUF, &buf) != 0) {
+    log_error("Failed to dequeue V4L2 buffer after poll(): %s", SAFE_STRERROR(errno));
+    return NULL;
   }
 
   // Validate buffer index to prevent crashes

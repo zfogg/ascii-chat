@@ -116,9 +116,9 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
     return NULL;
   }
 
-  // Get current settings from options
-  int dst_width = GET_OPTION(width);
-  int dst_height = GET_OPTION(height);
+  // Get current settings from options or terminal detection
+  int dst_width = (int)terminal_get_effective_width();
+  int dst_height = (int)terminal_get_effective_height();
   color_filter_t filter = (color_filter_t)GET_OPTION(color_filter);
   terminal_color_mode_t color_mode = (terminal_color_mode_t)GET_OPTION(color_mode);
   palette_type_t palette_type = (palette_type_t)GET_OPTION(palette_type);

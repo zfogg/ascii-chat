@@ -253,8 +253,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         continue; // Skip frame capture and rendering, keep loop running
       }
 
-      // Profile: frame capture with detailed retry tracking
-      static uint64_t max_retries = 0;
+      // Profile: frame capture with poll-based blocking
       uint64_t loop_retry_count = 0;
       uint64_t capture_elapsed_ns = 0;
 
@@ -276,27 +275,23 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
             break; // Exit render loop - end of media
           }
 
-          // Check for exit request during retry loop
+          // Check for exit request
           if (should_exit(user_data)) {
             break;
           }
 
+          // With poll()-based blocking reads, timeouts mean no frame available
+          // Retry once with minimal delay to handle transient state
           loop_retry_count++;
-
-          // Brief delay before retry on temporary frame unavailability
-          if (loop_retry_count <= 1 || frame_count % 100 == 0) {
-            if (loop_retry_count == 1 && frame_count > 0) {
-              log_debug_every(500 * US_PER_MS_INT, "FRAME_WAIT: retry at frame %lu (waited %.1f ms so far)",
-                              frame_count, (double)capture_elapsed_ns / NS_PER_MS);
-            }
+          if (loop_retry_count > 1) {
+            // No frame after retry - skip this iteration rather than spinning
+            log_debug_every(1 * NS_PER_SEC_INT, "FRAME_SKIP: No frame available after %lu retries", loop_retry_count);
+            loop_retry_count = 0;
+            continue;
           }
 
-          // Track max retry count for diagnostic logging
-          if (loop_retry_count > max_retries) {
-            max_retries = loop_retry_count;
-          }
-
-          platform_sleep_us(10 * US_PER_MS_INT); // 10ms
+          // Single retry with 1ms delay (poll already waited 100ms)
+          platform_sleep_us(1 * US_PER_MS_INT); // 1ms
           continue;
         }
 

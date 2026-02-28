@@ -379,15 +379,17 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     int frame_height = GET_OPTION(height);
     int frame_width = GET_OPTION(width);
 
-    // Check if height was explicitly set (not default)
-    if (frame_height == OPT_HEIGHT_DEFAULT) {
+    // Validate stdin render mode constraints
+    bool height_was_not_set = (frame_height == OPT_HEIGHT_DEFAULT);
+    bool width_was_explicitly_set = (frame_width != OPT_WIDTH_DEFAULT);
+
+    if (height_was_not_set) {
       result = SET_ERRNO(ERROR_USAGE, "Stdin render mode requires explicit frame height.\n"
                                       "Please specify: --height <rows>");
       goto cleanup;
     }
 
-    // Disallow explicit --width in stdin render mode (auto-detected from first frame)
-    if (frame_width != OPT_WIDTH_DEFAULT) {
+    if (width_was_explicitly_set) {
       result = SET_ERRNO(ERROR_USAGE, "Stdin render mode does not accept --width (auto-detected from frames).\n"
                                       "Only specify: --height <rows>");
       goto cleanup;
