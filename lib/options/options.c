@@ -1704,7 +1704,13 @@ asciichat_error_t options_init(int argc, char **argv) {
       opts.splash_screen_explicitly_set = true;
     }
     if (mode_argv[i] &&
+        (strcmp(mode_argv[i], "--status-screen") == 0 || strncmp(mode_argv[i], "--status-screen=", 16) == 0)) {
+      opts.status_screen = true;
+      opts.status_screen_explicitly_set = true;
+    }
+    if (mode_argv[i] &&
         (strcmp(mode_argv[i], "--no-status-screen") == 0 || strncmp(mode_argv[i], "--no-status-screen=", 19) == 0)) {
+      opts.status_screen = false;
       opts.status_screen_explicitly_set = true;
     }
 #ifndef NDEBUG
