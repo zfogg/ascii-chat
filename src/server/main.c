@@ -586,8 +586,8 @@ static void server_handle_sigint(int sigint) {
   // holding the memory tracking lock or log buffer lock, the handler deadlocks.
   // Since SIGINT auto-masks during handler execution, a second Ctrl+C would be
   // blocked, preventing platform_force_exit() from ever running.
-  static const char sigint_msg[] = "\nSIGINT received - shutting down server...\n";
-  (void)write(STDERR_FILENO, sigint_msg, sizeof(sigint_msg) - 1);
+  static const char sigint_msg[] = "SIGINT received - shutting down server...\n";
+  platform_write_all(STDERR_FILENO, sigint_msg, sizeof(sigint_msg) - 1);
 
   // STEP 3: Signal TCP server to stop and close listening sockets
   // This interrupts the accept() call in the main loop
@@ -1490,7 +1490,8 @@ static void *websocket_client_handler(void *arg) {
   log_info("[WS_HANDLER] ★★★ LOCK STATE BEFORE crypto_handshake_init()");
   debug_sync_print_state();
   log_debug("[WS_HANDLER] Calling crypto_handshake_init()...");
-  asciichat_error_t handshake_init_result = crypto_handshake_init(crypto_name, &client->crypto_handshake_ctx, true /* is_server */);
+  asciichat_error_t handshake_init_result =
+      crypto_handshake_init(crypto_name, &client->crypto_handshake_ctx, true /* is_server */);
   log_info("[WS_HANDLER] ★★★ DEBUG: Printing lock state after crypto_handshake_init");
   debug_sync_print_state();
   if (handshake_init_result != ASCIICHAT_OK) {
@@ -1958,7 +1959,7 @@ int server_main(void) {
   }
 
   // Initialize synchronization primitives
-  if (rwlock_init(&g_client_manager_rwlock, "clients")  != 0) {
+  if (rwlock_init(&g_client_manager_rwlock, "clients") != 0) {
     FATAL(ERROR_THREAD, "Failed to initialize client manager rwlock");
   }
 
@@ -2354,7 +2355,8 @@ int server_main(void) {
               log_debug("WebRTC peer_manager initialized successfully");
 
               // Start ACDS receive thread for WebRTC signaling relay
-              int thread_result = asciichat_thread_create(&g_acds_receive_thread, "acds_recv", acds_receive_thread, NULL);
+              int thread_result =
+                  asciichat_thread_create(&g_acds_receive_thread, "acds_recv", acds_receive_thread, NULL);
               if (thread_result != 0) {
                 log_error("Failed to create ACDS receive thread: %d", thread_result);
                 // Cleanup peer_manager since signaling won't work
@@ -2458,8 +2460,8 @@ skip_acds_session:
 
   // Start WebSocket server thread if initialized
   if (g_websocket_server.context != NULL) {
-    if (asciichat_thread_create(&g_websocket_server_thread, "ws_server", websocket_server_thread_wrapper, &g_websocket_server) !=
-        0) {
+    if (asciichat_thread_create(&g_websocket_server_thread, "ws_server", websocket_server_thread_wrapper,
+                                &g_websocket_server) != 0) {
       log_error("Failed to create WebSocket server thread");
     } else {
       g_websocket_server_thread_started = true;
