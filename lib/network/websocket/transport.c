@@ -1261,7 +1261,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   // Create libwebsockets context
   // Protocol array must persist for lifetime of context - use static
   static struct lws_protocols client_protocols[] = {
-      {"acip", websocket_callback, 0, 4096, 0, NULL, 0}, {NULL, NULL, 0, 0, 0, NULL, 0} // Terminator
+      {"acip", websocket_callback, 0, 524288, 0, NULL, 524288}, {NULL, NULL, 0, 0, 0, NULL, 0} // Terminator
   };
 
   // Disable client compression for now - causes assertion in lws_set_extension_option()
