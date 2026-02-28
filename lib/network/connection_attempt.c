@@ -114,13 +114,14 @@ void connection_context_cleanup(connection_attempt_context_t *ctx) {
     log_debug("TCP client instance destroyed");
   }
 
-  // Destroy WebSocket client instance if created
+  // Note: Do NOT destroy the WebSocket client instance here. The WebSocket client
+  // is owned by the session layer (passed via config->websocket_client and also
+  // stored in g_websocket_client). The session cleanup will destroy it.
+  // We just clear the reference to prevent double-free.
   if (ctx->ws_client_instance) {
-    websocket_client_destroy(&ctx->ws_client_instance);
     ctx->ws_client_instance = NULL;
-    // WebSocket client owns and destroys the transport, so clear the reference
     ctx->active_transport = NULL;
-    log_debug("WebSocket client instance destroyed");
+    log_debug("WebSocket client reference cleared (ownership remains with session)");
   }
 
   // Close active transport if still open (only if not already destroyed by WebSocket client)
