@@ -557,7 +557,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     // Frame rate limiting: Only sleep if we're ahead of schedule
     // If decoder is slow and we're already behind, don't add extra sleep
     if (is_synchronous && capture) {
-      uint32_t target_fps = session_capture_get_target_fps(capture);
+      // Use user-specified FPS from options, not capture context FPS
+      uint32_t target_fps = (uint32_t)GET_OPTION(fps);
       if (target_fps > 0) {
         uint64_t frame_end_ns = time_get_ns();
         uint64_t frame_elapsed_ns = time_elapsed_ns(frame_start_ns, frame_end_ns);
