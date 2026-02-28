@@ -116,19 +116,19 @@
 #endif
 
 /**
- * @brief Receive timeout in seconds (2 seconds)
+ * @brief Receive timeout in seconds (30 seconds)
  *
- * Maximum time to wait for incoming data. Kept short (2 seconds) to allow
- * threads to check shutdown flags frequently during graceful shutdown.
- * If no data is received within this time, receive operation returns
- * allowing the caller to check g_server_should_exit.
+ * Maximum time to wait for incoming data. Increased to 30 seconds to allow
+ * for network latency and frame processing delays without prematurely
+ * disconnecting. If no data is received within this time, receive operation
+ * returns allowing the caller to check g_server_should_exit.
  *
  * @ingroup network
  */
 #ifdef NDEBUG
-#define RECV_TIMEOUT 2
+#define RECV_TIMEOUT 30
 #else
-#define RECV_TIMEOUT 1
+#define RECV_TIMEOUT 30
 #endif
 
 /**

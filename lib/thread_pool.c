@@ -34,7 +34,9 @@ static void *thread_pool_worker_thread(void *arg) {
     thread_pool_work_entry_t *work = NULL;
 
     // Wait for work or shutdown signal
+    log_debug("[ThreadPool] WORKER: About to lock pending_tasks for %s", pool->name);
     mutex_lock(&pool->work_queue_mutex);
+    log_debug("[ThreadPool] WORKER: Locked pending_tasks for %s, checking for work", pool->name);
 
     // Loop until we get work or shutdown is requested
     while (!pool->work_queue && !pool->shutdown_requested) {

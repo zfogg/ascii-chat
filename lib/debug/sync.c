@@ -412,7 +412,7 @@ static void cond_deadlock_check_callback(uintptr_t key, const char *name, void *
                   (void *)cond->last_wait_mutex);
   }
 
-  log_warn("%s", cond_buf);
+  log_warn_every(500 * NS_PER_MS_INT, "%s", cond_buf);
 }
 
 /**

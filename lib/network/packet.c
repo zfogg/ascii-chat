@@ -599,6 +599,10 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
   uint32_t pkt_len = NET_TO_HOST_U32(header.length);
   uint32_t expected_crc = NET_TO_HOST_U32(header.crc32);
 
+  // DEBUG: Log all received packet types in detail
+  log_info("[RECV_PKT_HEADER] 🔍 Received packet: type=%u (0x%04x), len=%u, client_id=%u", pkt_type, pkt_type, pkt_len,
+           header.client_id);
+
   // Validate magic number
   if (magic != PACKET_MAGIC) {
     SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid packet magic: 0x%llx (expected 0x%llx)", magic, PACKET_MAGIC);
@@ -662,6 +666,10 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
     // Parse decrypted header
     packet_header_t *decrypted_header = (packet_header_t *)plaintext;
     pkt_type = NET_TO_HOST_U16(decrypted_header->type);
+
+    // DEBUG: Log decrypted packet type
+    log_info("[RECV_PKT_DECRYPTED] 🔐 After decryption: actual_type=%u (0x%04x), len=%u", pkt_type, pkt_type,
+             NET_TO_HOST_U32(decrypted_header->length));
     pkt_len = NET_TO_HOST_U32(decrypted_header->length);
     expected_crc = NET_TO_HOST_U32(decrypted_header->crc32);
 

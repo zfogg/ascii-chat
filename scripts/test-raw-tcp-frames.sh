@@ -6,10 +6,10 @@ pkill -f "ascii-chat.*client" || true
 pkill -f "ascii-chat.*server" || true
 sleep 0.2
 
-./build/bin/ascii-chat --log-level debug --sync-state 3 server &
+timeout -k 1 6 ./build/bin/ascii-chat --log-level debug --sync-state 1 server &
 SERVER_PID=$!
 
-timeout -k 1 3 ./build/bin/ascii-chat --log-level debug --sync-state 3 client || true
+timeout -k 1 4 ./build/bin/ascii-chat --log-level debug --sync-state 1 client || true
 CLIENT_PID=$!
 
 kill $SERVER_PID
