@@ -608,31 +608,36 @@ int splash_intro_start(session_display_ctx_t *ctx) {
 
   log_info("splash_intro_start: ENTRY");
 
-  // Pre-checks
-  bool should_display = splash_should_display(true);
-  log_info("splash_intro_start: splash_should_display(true)=%d", should_display);
-  if (!should_display) {
-    log_info("splash_intro_start: returning early - splash should not display");
-    log_set_terminal_output(saved_console_state);
-    return 0; // ASCIICHAT_OK equivalent
-  }
-
-  // Don't initialize log buffer in non-interactive mode UNLESS explicitly requested
-  bool is_interactive = terminal_is_interactive();
+  // Check if splash was explicitly requested via --splash-screen
   const options_t *opts = options_get();
   bool splash_explicitly_set = opts && opts->splash_screen_explicitly_set;
-  log_info("splash_intro_start: terminal_is_interactive()=%d, splash_explicitly_set=%d", is_interactive,
-           splash_explicitly_set);
-  if (!is_interactive && !splash_explicitly_set) {
-    log_info("splash_intro_start: returning early - not interactive and splash not explicitly set");
-    log_set_terminal_output(saved_console_state);
-    return 0;
+  log_info("splash_intro_start: splash_explicitly_set=%d", splash_explicitly_set);
+
+  // If NOT explicitly set, apply normal pre-checks
+  if (!splash_explicitly_set) {
+    bool should_display = splash_should_display(true);
+    log_info("splash_intro_start: splash_should_display(true)=%d", should_display);
+    if (!should_display) {
+      log_info("splash_intro_start: returning early - splash should not display");
+      log_set_terminal_output(saved_console_state);
+      return 0; // ASCIICHAT_OK equivalent
+    }
+
+    // Check if interactive (skip if explicitly set)
+    bool is_interactive = terminal_is_interactive();
+    log_info("splash_intro_start: terminal_is_interactive()=%d", is_interactive);
+    if (!is_interactive) {
+      log_info("splash_intro_start: returning early - not interactive and splash not explicitly set");
+      log_set_terminal_output(saved_console_state);
+      return 0;
+    }
   }
 
-  // Check terminal size
+  // Always check terminal size (applies regardless of explicit flag)
   int width = GET_OPTION(width);
   int height = GET_OPTION(height);
   if (width < 50 || height < 20) {
+    log_info("splash_intro_start: returning early - terminal too small (%dx%d)", width, height);
     log_set_terminal_output(saved_console_state);
     return 0;
   }
