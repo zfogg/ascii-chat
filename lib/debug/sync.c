@@ -544,28 +544,25 @@ static void *debug_print_thread_fn(void *arg) {
     }
 
     // Handle --debug-state (debug builds only)
-    // Print debug state after specified delay (execute only once, when option is first detected)
+    // Schedule sync state printing after specified delay (execute only once, when option is first detected)
+    // Uses non-blocking scheduled printing instead of sleep to avoid blocking the debug thread
     if (!g_debug_state_request.handled_sync_state_time && IS_OPTION_EXPLICIT(debug_sync_state_time, opts) &&
         opts->debug_sync_state_time > 0.0) {
       g_debug_state_request.handled_sync_state_time = true;
-      log_info("Printing sync state after %f seconds", opts->debug_sync_state_time);
+      log_info("Will print sync state after %f seconds", opts->debug_sync_state_time);
       uint64_t delay_ns = (uint64_t)(opts->debug_sync_state_time * NS_PER_SEC_INT);
-      platform_sleep_ns(delay_ns);
-      debug_sync_print_state();
+      debug_sync_print_state_delayed(delay_ns);
     }
 
     // Handle --backtrace (debug builds only)
-    // Print backtrace after specified delay (execute only once, when option is first detected)
+    // Schedule backtrace printing after specified delay (execute only once, when option is first detected)
+    // Uses non-blocking scheduled printing instead of sleep to avoid blocking the debug thread
     if (!g_debug_state_request.handled_backtrace_time && IS_OPTION_EXPLICIT(debug_backtrace_time, opts) &&
         opts->debug_backtrace_time > 0.0) {
       g_debug_state_request.handled_backtrace_time = true;
-      log_info("Printing backtrace after %f seconds", opts->debug_backtrace_time);
+      log_info("Will print backtrace after %f seconds", opts->debug_backtrace_time);
       uint64_t delay_ns = (uint64_t)(opts->debug_backtrace_time * NS_PER_SEC_INT);
-      platform_sleep_ns(delay_ns);
-      backtrace_t bt;
-      backtrace_capture_and_symbolize(&bt);
-      backtrace_print("Backtrace", &bt, 0, 0, NULL);
-      backtrace_t_free(&bt);
+      debug_sync_print_backtrace_delayed(delay_ns);
     }
 
     // Handle --memory-report (debug builds only)
