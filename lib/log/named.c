@@ -480,44 +480,59 @@ int log_named_format_message(const char *message, char *output, size_t output_si
         const char *prefix_start = find_generic_type_prefix(message, int_start, &type_name, &type_len);
 
         if (type_name && prefix_start != int_start) {
-          /* We found a type prefix like "socket", "client", etc.
-           * Try to look up a registered name for this type+id */
-          const char *name = named_get_by_type_and_id(type_name, type_len, fd_value);
+          /* Skip if already inside parentheses (e.g., "socket=12") */
+          bool skip_format = false;
+          if (prefix_start > message) {
+            const char *check = prefix_start - 1;
+            while (check > message && isspace(*check)) {
+              check--;
+            }
+            if (*check == '(' || *check == '=') {
+              skip_format = true;
+            }
+          }
 
-          char temp_output[512];
-          char type_str[32];
-          char id_buffer[64];
+          if (!skip_format) {
+            /* We found a type prefix like "socket", "client", etc.
+             * Try to look up a registered name for this type+id */
+            const char *name = named_get_by_type_and_id(type_name, type_len, fd_value);
 
-          /* Safely copy type name */
-          if (type_len < sizeof(type_str)) {
-            memcpy(type_str, type_name, type_len);
-            type_str[type_len] = '\0';
+            char temp_output[512];
+            char type_str[32];
+            char id_buffer[64];
 
-            int id_written = snprintf(id_buffer, sizeof(id_buffer), "%d", fd_value);
-            if (id_written > 0 && id_written < (int)sizeof(id_buffer)) {
-              int temp_written;
-              if (name) {
-                /* Format with name: type/name (type=value) */
-                temp_written =
-                    snprintf(temp_output, sizeof(temp_output), "%s/%s (%s=%s)", type_str, name, type_str, id_buffer);
-              } else {
-                /* Format without name: type (type=value) */
-                temp_written = snprintf(temp_output, sizeof(temp_output), "%s (%s=%s)", type_str, type_str, id_buffer);
-              }
+            /* Safely copy type name */
+            if (type_len < sizeof(type_str)) {
+              memcpy(type_str, type_name, type_len);
+              type_str[type_len] = '\0';
 
-              if (temp_written > 0 && (size_t)temp_written < sizeof(temp_output)) {
-                /* Backtrack to remove the prefix we already copied */
-                size_t prefix_len = int_start - prefix_start;
-                if (out_pos >= prefix_len) {
-                  out_pos -= prefix_len;
+              int id_written = snprintf(id_buffer, sizeof(id_buffer), "%d", fd_value);
+              if (id_written > 0 && id_written < (int)sizeof(id_buffer)) {
+                int temp_written;
+                if (name) {
+                  /* Format with name: type/name (type=value) */
+                  temp_written =
+                      snprintf(temp_output, sizeof(temp_output), "%s/%s (%s=%s)", type_str, name, type_str, id_buffer);
+                } else {
+                  /* Format without name: type (type=value) */
+                  temp_written =
+                      snprintf(temp_output, sizeof(temp_output), "%s (%s=%s)", type_str, type_str, id_buffer);
                 }
 
-                int copy_len = temp_written;
-                if (out_pos + copy_len < output_size - 1) {
-                  memcpy(output + out_pos, temp_output, copy_len);
-                  out_pos += copy_len;
-                  any_transformed = true;
-                  continue;
+                if (temp_written > 0 && (size_t)temp_written < sizeof(temp_output)) {
+                  /* Backtrack to remove the prefix we already copied */
+                  size_t prefix_len = int_start - prefix_start;
+                  if (out_pos >= prefix_len) {
+                    out_pos -= prefix_len;
+                  }
+
+                  int copy_len = temp_written;
+                  if (out_pos + copy_len < output_size - 1) {
+                    memcpy(output + out_pos, temp_output, copy_len);
+                    out_pos += copy_len;
+                    any_transformed = true;
+                    continue;
+                  }
                 }
               }
             }
