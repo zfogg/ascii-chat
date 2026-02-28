@@ -433,7 +433,9 @@ void *client_video_render_thread(void *arg) {
 
     // Frame rate limiting using adaptive sleep system
     // Use queue_depth=0 and target_depth=0 for constant-rate renderer (no backlog management)
+    uint64_t iter_start_ns = time_get_ns();
     adaptive_sleep_do(&sleep_state, 0, 0);
+    uint64_t after_sleep_ns = time_get_ns();
 
     // Capture timestamp for FPS tracking and frame timestamps
     uint64_t current_time_ns = time_get_ns();
@@ -514,8 +516,17 @@ void *client_video_render_thread(void *arg) {
 
     // debug_sync_print_state() is too expensive to call every frame (kills FPS)
 
+    uint64_t frame_create_start_ns = time_get_ns();
     char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot, false,
                                                             &frame_size, NULL, &sources_count);
+    uint64_t frame_create_end_ns = time_get_ns();
+
+    if (frame_gen_count % 120 == 0) {
+      char sleep_str[32], create_str[32];
+      time_pretty((uint64_t)(after_sleep_ns - iter_start_ns), -1, sleep_str, sizeof(sleep_str));
+      time_pretty((uint64_t)(frame_create_end_ns - frame_create_start_ns), -1, create_str, sizeof(create_str));
+      log_warn("  TIMING: adaptive_sleep=%s, frame_create=%s", sleep_str, create_str);
+    }
 
     // RACE CONDITION FIX: If no video sources are available yet, skip frame generation
     // This prevents sending empty/NULL frames early and allows more time for video frames to arrive
@@ -600,15 +611,24 @@ void *client_video_render_thread(void *arg) {
 
               // Phase 3 IMPLEMENTED: Transmit the rendered frame to client via WebSocket
               // This completes the pipeline: Render → Buffer → Transmit → Client receive → Display
+              uint64_t send_start_ns = time_get_ns();
               if (client->transport) {
                 asciichat_error_t send_result = acip_send_ascii_frame(
                     client->transport, ascii_frame, frame_size, width_snapshot, height_snapshot, client_id_snapshot);
+                uint64_t send_end_ns = time_get_ns();
                 if (send_result != ASCIICHAT_OK) {
                   log_warn("[FRAME_SEND_ERROR] Client %u frame transmission failed: error=%d", thread_client_id,
                            send_result);
                 } else {
-                  log_dev_every(5 * NS_PER_MS_INT, "[FRAME_SEND_OK] Client %u transmitted frame size=%zu (%.1f KB)",
-                                thread_client_id, frame_size, frame_size / 1024.0);
+                  log_dev_every(5 * NS_PER_MS_INT,
+                                "[FRAME_SEND_OK] Client %u transmitted frame size=%zu (%.1f KB) in %.1f ms",
+                                thread_client_id, frame_size, frame_size / 1024.0,
+                                (send_end_ns - send_start_ns) / (double)NS_PER_MS_INT);
+                }
+                if (frame_gen_count % 120 == 0) {
+                  char send_str[32];
+                  time_pretty((uint64_t)(send_end_ns - send_start_ns), -1, send_str, sizeof(send_str));
+                  log_warn("  TIMING: acip_send=%s", send_str);
                 }
               } else {
                 log_warn("[FRAME_SEND_ERROR] Client %u has no transport (frame not sent)", thread_client_id);
@@ -645,6 +665,13 @@ void *client_video_render_thread(void *arg) {
       // No frame generated (probably no video sources) - this is normal, no error logging needed
       log_dev_every(10 * NS_PER_MS_INT, "Per-client render: No video sources available for client %u",
                     client_id_snapshot);
+    }
+
+    uint64_t iter_end_ns = time_get_ns();
+    if (frame_gen_count % 120 == 0) {
+      char total_str[32];
+      time_pretty((uint64_t)(iter_end_ns - iter_start_ns), -1, total_str, sizeof(total_str));
+      log_warn("  TIMING: TOTAL_ITERATION=%s", total_str);
     }
   }
 
