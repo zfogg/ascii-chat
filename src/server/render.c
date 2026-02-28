@@ -871,9 +871,12 @@ void *client_audio_render_thread(void *arg) {
     if (g_audio_mixer) {
       // Check source buffer latency for all sources
       for (int i = 0; i < g_audio_mixer->max_sources; i++) {
+        // Take snapshot of buffer pointer to prevent use-after-free
+        // Another thread could free this buffer between check and use
+        audio_ring_buffer_t *buffer_snapshot = g_audio_mixer->source_buffers[i];
         if (g_audio_mixer->source_ids[i] && strcmp(g_audio_mixer->source_ids[i], client_id_snapshot) != 0 &&
-            g_audio_mixer->source_buffers[i]) {
-          size_t available = audio_ring_buffer_available_read(g_audio_mixer->source_buffers[i]);
+            buffer_snapshot) {
+          size_t available = audio_ring_buffer_available_read(buffer_snapshot);
           float buffer_latency_ms = (float)available / 48.0f; // samples / (48000 / 1000)
 
           // Log source buffer latency
