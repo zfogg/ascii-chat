@@ -226,9 +226,10 @@ static bool should_ignore_allocation(const char *file, int line, uint64_t tid, s
  */
 static alloc_site_t *get_or_create_site(const char *file, int line) {
   uint64_t tid = asciichat_thread_current_id();
+  const char *relative_file = extract_project_relative_path(file);
 
   char key[BUFFER_SIZE_SMALL + 32];
-  safe_snprintf(key, sizeof(key), "%s:%d:%lu", file, line, tid);
+  safe_snprintf(key, sizeof(key), "%s:%d:%lu", relative_file, line, tid);
 
   // Try to find existing site
   alloc_site_t *site = NULL;
@@ -240,7 +241,7 @@ static alloc_site_t *get_or_create_site(const char *file, int line) {
   // Check if we've exceeded cache capacity
   if (g_site_count >= MEM_SITE_CACHE_MAX_KEYS) {
     log_warn_every(LOG_RATE_FAST, "Allocation site cache full (%zu keys), not tracking %s:%d (tid: 0x%lx)",
-                   MEM_SITE_CACHE_MAX_KEYS, extract_project_relative_path(file), line, tid);
+                   MEM_SITE_CACHE_MAX_KEYS, relative_file, line, tid);
     return NULL;
   }
 
@@ -271,8 +272,9 @@ static alloc_site_t *get_or_create_site(const char *file, int line) {
  * Look up an allocation site by file, line, and thread ID (called while holding g_mem.mutex)
  */
 static alloc_site_t *lookup_site(const char *file, int line, uint64_t tid) {
+  const char *relative_file = extract_project_relative_path(file);
   char key[BUFFER_SIZE_SMALL + 32];
-  safe_snprintf(key, sizeof(key), "%s:%d:%lu", file, line, tid);
+  safe_snprintf(key, sizeof(key), "%s:%d:%lu", relative_file, line, tid);
 
   alloc_site_t *site = NULL;
   HASH_FIND_STR(g_site_cache, key, site);
