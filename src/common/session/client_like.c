@@ -508,19 +508,6 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     }
     log_fatal("Failed to initialize display");
 
-    // Signal audio worker thread to exit before cleanup (if audio was initialized)
-    log_debug("[SETUP_DISPLAY] audio_ctx=%p (will signal if non-NULL)", (void *)audio_ctx);
-    if (audio_ctx) {
-      log_debug("[SETUP_DISPLAY] Signaling audio worker thread to exit");
-      atomic_store(&audio_ctx->worker_should_stop, true);
-      mutex_lock(&audio_ctx->worker_mutex);
-      cond_signal(&audio_ctx->worker_cond);
-      mutex_unlock(&audio_ctx->worker_mutex);
-      log_debug("[SETUP_DISPLAY] Signal sent to audio worker thread");
-    } else {
-      log_debug("[SETUP_DISPLAY] audio_ctx is NULL, cannot signal worker thread");
-    }
-
     result = ERROR_DISPLAY;
     goto cleanup;
   }

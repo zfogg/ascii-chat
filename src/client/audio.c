@@ -1118,11 +1118,32 @@ void audio_stop_thread() {
   }
 
   // Ensure only one thread performs cleanup - prevent double-join and double-cleanup
+  // First, initialize the lifecycle if it hasn't been yet (moves UNINITIALIZED → INITIALIZED)
+  if (!lifecycle_is_initialized(&g_audio_stop_thread_lc)) {
+    if (!lifecycle_init(&g_audio_stop_thread_lc, "audio_stop_thread")) {
+      // Already initialized by another thread or being destroyed
+      log_debug("[AUDIO_STOP] Lifecycle already initialized by another thread");
+      return;
+    }
+    log_debug("[AUDIO_STOP] Initialized stop thread lifecycle");
+  }
+
+  // Now destroy it (moves INITIALIZED → DESTROYING)
   if (!lifecycle_destroy_once(&g_audio_stop_thread_lc)) {
+    log_debug("[AUDIO_STOP] lifecycle_destroy_once() returned false - already destroying/destroyed");
     log_debug("[AUDIO_STOP] Audio stop already in progress or completed, skipping");
     return;
   }
-  log_debug("[AUDIO_STOP] Proceeding with audio stop");
+  log_debug("[AUDIO_STOP] lifecycle_destroy_once() returned true, proceeding with audio stop");
+
+  // Signal audio worker thread to exit first (stop processing)
+  log_debug("[AUDIO_STOP] Signaling audio worker thread to stop");
+  atomic_store(&g_audio_context.worker_should_stop, true);
+  // Wake up the worker thread if it's waiting on condition variable
+  mutex_lock(&g_audio_context.worker_mutex);
+  cond_signal(&g_audio_context.worker_cond);
+  mutex_unlock(&g_audio_context.worker_mutex);
+  log_debug("[AUDIO_STOP] Worker thread stop signal sent");
 
   // Signal audio sender thread to exit first.
   // This must happen before thread_pool_stop_all() is called, otherwise the sender
