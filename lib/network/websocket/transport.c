@@ -633,11 +633,11 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   // Check if there's data in the queue
   bool has_queued_data = !ringbuffer_is_empty(ws_data->recv_queue);
 
-  if (!connected && !has_queued_data) {
-    // Only fail if connection is closed AND no buffered data
+  if (!connected && !has_queued_data && ws_data->partial_size == 0) {
+    // Only fail if connection is closed AND no buffered data AND no leftover from previous call
     uint64_t now_ns = time_get_ns();
-    log_fatal("🔴 WEBSOCKET_RECV: Connection not established! connected=%d, has_queued_data=%d, wsi=%p, timestamp=%llu",
-              connected, has_queued_data, (void *)ws_data->wsi, (unsigned long long)now_ns);
+    log_fatal("🔴 WEBSOCKET_RECV: Connection not established! connected=%d, has_queued_data=%d, partial_size=%zu, wsi=%p, timestamp=%llu",
+              connected, has_queued_data, ws_data->partial_size, (void *)ws_data->wsi, (unsigned long long)now_ns);
     mutex_unlock(&ws_data->recv_mutex);
     return SET_ERRNO(ERROR_NETWORK, "Connection not established");
   }
@@ -646,11 +646,28 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   // We queue each fragment from the LWS callback with first/final flags.
   // Key insight: if we wait too long for final fragment, connection times out.
   // Return partial messages quickly (500ms) to avoid blocking handler thread.
+  //
+  // CRITICAL FIX: Use persistent partial_buffer to handle packet boundaries
+  // that don't align with WebSocket frame boundaries. This prevents data loss
+  // when a single WebSocket message contains multiple ACIP packets.
 
   uint8_t *assembled_buffer = NULL;
   size_t assembled_size = 0;
   size_t assembled_capacity = 0;
   int fragment_count = 0;
+
+  // Start with leftover data from previous recv() call if available
+  if (ws_data->partial_size > 0) {
+    log_info("[WS_REASSEMBLE] Starting with leftover data from previous packet: %zu bytes", ws_data->partial_size);
+    assembled_buffer = ws_data->partial_buffer;
+    assembled_size = ws_data->partial_size;
+    assembled_capacity = ws_data->partial_capacity;
+
+    // Clear the partial buffer state so next call starts fresh if no more leftovers
+    ws_data->partial_buffer = NULL;
+    ws_data->partial_size = 0;
+    ws_data->partial_capacity = 0;
+  }
 
   while (true) {
     // Wait for fragment if queue is empty
@@ -815,9 +832,41 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
           // Complete packet assembled based on header length field
           log_info("[WS_REASSEMBLE] Complete message by length field: %zu bytes in %d fragments (payload=%u)",
                    expected_size, fragment_count, msg_payload_len);
-          *buffer = assembled_buffer;
+
+          // Check for leftover data after this packet
+          size_t leftover_size = assembled_size - expected_size;
+          if (leftover_size > 0) {
+            // Save leftover data for next recv() call
+            log_info("[WS_REASSEMBLE] Saving %zu bytes leftover for next recv() call", leftover_size);
+
+            // Create buffer for leftover (or reuse if we can)
+            uint8_t *leftover_buffer = buffer_pool_alloc(NULL, leftover_size);
+            if (leftover_buffer) {
+              memcpy(leftover_buffer, assembled_buffer + expected_size, leftover_size);
+              ws_data->partial_buffer = leftover_buffer;
+              ws_data->partial_size = leftover_size;
+              ws_data->partial_capacity = leftover_size;
+            } else {
+              log_error("[WS_REASSEMBLE] Failed to allocate leftover buffer (%zu bytes)", leftover_size);
+              // Fall through - return the packet anyway, we'll lose the leftover
+            }
+          }
+
+          // Create a new buffer with just the complete packet (not the leftover)
+          uint8_t *packet_buffer = buffer_pool_alloc(NULL, expected_size);
+          if (!packet_buffer) {
+            log_error("[WS_REASSEMBLE] Failed to allocate packet buffer (%zu bytes)", expected_size);
+            buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
+            mutex_unlock(&ws_data->recv_mutex);
+            return SET_ERRNO(ERROR_MEMORY, "Failed to allocate packet buffer");
+          }
+
+          memcpy(packet_buffer, assembled_buffer, expected_size);
+          buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
+
+          *buffer = packet_buffer;
           *out_len = expected_size;
-          *out_allocated_buffer = assembled_buffer;
+          *out_allocated_buffer = packet_buffer;
           mutex_unlock(&ws_data->recv_mutex);
           return ASCIICHAT_OK;
         }
@@ -841,9 +890,40 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
           // We have a complete ACIP packet
           log_info("[WS_REASSEMBLE] Complete ACIP packet by WebSocket final fragment: %zu bytes in %d fragments",
                    expected_size, fragment_count);
-          *buffer = assembled_buffer;
+
+          // Check for leftover data after this packet
+          size_t leftover_size = assembled_size - expected_size;
+          if (leftover_size > 0) {
+            // Save leftover data for next recv() call
+            log_info("[WS_REASSEMBLE] Saving %zu bytes leftover for next recv() call", leftover_size);
+
+            // Create buffer for leftover
+            uint8_t *leftover_buffer = buffer_pool_alloc(NULL, leftover_size);
+            if (leftover_buffer) {
+              memcpy(leftover_buffer, assembled_buffer + expected_size, leftover_size);
+              ws_data->partial_buffer = leftover_buffer;
+              ws_data->partial_size = leftover_size;
+              ws_data->partial_capacity = leftover_size;
+            } else {
+              log_error("[WS_REASSEMBLE] Failed to allocate leftover buffer (%zu bytes)", leftover_size);
+            }
+          }
+
+          // Create a new buffer with just the complete packet
+          uint8_t *packet_buffer = buffer_pool_alloc(NULL, expected_size);
+          if (!packet_buffer) {
+            log_error("[WS_REASSEMBLE] Failed to allocate packet buffer (%zu bytes)", expected_size);
+            buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
+            mutex_unlock(&ws_data->recv_mutex);
+            return SET_ERRNO(ERROR_MEMORY, "Failed to allocate packet buffer");
+          }
+
+          memcpy(packet_buffer, assembled_buffer, expected_size);
+          buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
+
+          *buffer = packet_buffer;
           *out_len = expected_size;
-          *out_allocated_buffer = assembled_buffer;
+          *out_allocated_buffer = packet_buffer;
           mutex_unlock(&ws_data->recv_mutex);
           return ASCIICHAT_OK;
         } else {
@@ -1001,6 +1081,14 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
   if (ws_data->send_buffer) {
     SAFE_FREE(ws_data->send_buffer);
     ws_data->send_buffer = NULL;
+  }
+
+  // Free partial buffer (leftover data from previous recv())
+  if (ws_data->partial_buffer) {
+    buffer_pool_free(NULL, ws_data->partial_buffer, ws_data->partial_capacity);
+    ws_data->partial_buffer = NULL;
+    ws_data->partial_size = 0;
+    ws_data->partial_capacity = 0;
   }
 
   // Destroy synchronization primitives
