@@ -1,7 +1,7 @@
 /**
  * @file util/format.c
  * @ingroup util
- * @brief 📊 Byte size formatting utilities for human-readable output (B, KB, MB, GB, TB)
+ * @brief 📊 Byte size formatting utilities for human-readable output (B, KB, MB, GB, TB, PB, EB)
  */
 
 #include <ascii-chat/util/format.h>
@@ -12,6 +12,8 @@ void format_bytes_pretty(size_t bytes, char *out, size_t out_capacity) {
   const double MB = KB * 1024.0;
   const double GB = MB * 1024.0;
   const double TB = GB * 1024.0;
+  const double PB = TB * 1024.0;
+  const double EB = PB * 1024.0;
 
   if ((double)bytes < KB) {
     SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, "%zu B", bytes));
@@ -24,8 +26,14 @@ void format_bytes_pretty(size_t bytes, char *out, size_t out_capacity) {
   } else if ((double)bytes < TB) {
     double value = (double)bytes / GB;
     SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, "%.2f GB", value));
-  } else {
+  } else if ((double)bytes < PB) {
     double value = (double)bytes / TB;
     SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, "%.2f TB", value));
+  } else if ((double)bytes < EB) {
+    double value = (double)bytes / PB;
+    SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, "%.2f PB", value));
+  } else {
+    double value = (double)bytes / EB;
+    SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, "%.2f EB", value));
   }
 }
