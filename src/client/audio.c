@@ -1163,16 +1163,17 @@ void audio_stop_thread() {
 
     // Wait for audio sender thread to exit gracefully
     // This must complete before thread_pool_stop_all() to prevent deadlock
-    // Threads check should_exit() every 1-5ms, so timeout can be much shorter than 500ms
+    // CRITICAL: Longer timeout to ensure thread completes any in-flight send operations
+    // Network operations can block for 10-50ms, so we need to wait longer
     int wait_count = 0;
-    log_debug("[AUDIO_STOP] Waiting for sender thread to exit, max 50ms");
-    while (wait_count < 5 && !atomic_load(&g_audio_sender_exited)) {
-      platform_sleep_us(10 * US_PER_MS_INT); // 10ms * 5 = 50ms max wait (threads respond in ~1ms)
+    log_debug("[AUDIO_STOP] Waiting for sender thread to exit, max 500ms");
+    while (wait_count < 50 && !atomic_load(&g_audio_sender_exited)) {
+      platform_sleep_us(10 * US_PER_MS_INT); // 10ms * 50 = 500ms max wait
       wait_count++;
     }
 
     if (!atomic_load(&g_audio_sender_exited)) {
-      log_warn("[AUDIO_STOP] Audio sender thread not responding - will be joined by thread pool");
+      log_warn("[AUDIO_STOP] Audio sender thread not responding after 500ms - will be joined by thread pool");
     } else {
       log_debug("[AUDIO_STOP] Sender thread exited successfully");
     }

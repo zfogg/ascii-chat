@@ -1051,8 +1051,12 @@ static asciichat_error_t websocket_close(acip_transport_t *transport) {
     log_fatal("    [websocket_close] lws_close_reason returned");
   }
 
-  // Wake any blocking recv() calls
+  // Wake any blocking recv() calls and send() waits
+  // CRITICAL: Signal both recv_cond and state_cond to unblock all waiting threads
+  // before the transport is destroyed. This prevents use-after-free when threads
+  // wake from cond_timedwait() after the structure has been freed.
   cond_broadcast(&ws_data->recv_cond);
+  cond_broadcast(&ws_data->state_cond);
 
   log_info("WebSocket transport closed, wsi=%p", (void *)ws_data->wsi);
   return ASCIICHAT_OK;
