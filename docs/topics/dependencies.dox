@@ -312,6 +312,49 @@
  * transport to the ACIP protocol, allowing web-based clients to participate
  * in video chat sessions alongside native terminal clients.
  *
+ * @subsection dependencies_libvterm libvterm - Terminal Emulation
+ *
+ * **Purpose**: Terminal emulation and ANSI escape sequence parsing for pixel rendering
+ *
+ * **Website**: http://www.leonerd.org.uk/code/libvterm/
+ *
+ * **License**: MIT License
+ *
+ * **Version**: Latest (0.3.x)
+ *
+ * Core component of the render-file pixel backend. Parses ANSI escape codes
+ * (colors, text attributes, cursor positioning) without a display backend.
+ * Used in `lib/video/render/file/terminal.c` to convert terminal output to
+ * pixel frames compatible with all platforms (Linux, macOS, Windows).
+ *
+ * @subsection dependencies_freetype2 FreeType2 - Font Rasterization
+ *
+ * **Purpose**: Font rendering and glyph rasterization for pixel output
+ *
+ * **Website**: https://freetype.org/
+ *
+ * **License**: FreeType License (BSD-compatible)
+ *
+ * **Version**: 2.10 or later
+ *
+ * Enables rendering ASCII art frames to pixel formats (PNG, video files).
+ * Handles font loading, glyph rasterization, and character positioning in
+ * `lib/video/render/file/terminal.c` for cross-platform consistency.
+ *
+ * @subsection dependencies_fontconfig fontconfig - Font Resolution
+ *
+ * **Purpose**: System font discovery and font configuration management
+ *
+ * **Website**: https://www.freedesktop.org/wiki/Software/fontconfig/
+ *
+ * **License**: MIT License
+ *
+ * **Version**: Latest
+ *
+ * Provides font matching and resolution on all platforms. Enables
+ * `--render-file` to automatically select monospace fonts for ASCII rendering,
+ * supporting cross-platform font fallback and custom font specifications.
+ *
  * @section dependencies_vendored Vendored Dependencies (Git Submodules)
  *
  * Included in `deps/` and built from source for version consistency.
