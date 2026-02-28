@@ -843,8 +843,7 @@ export function ClientPage() {
         );
         console.log("[Client] Webcam capture loop started");
       }
-      startRenderLoop();
-      console.log("[Client] Render loop started");
+      console.log("[Client] Webcam started successfully");
     } catch (err) {
       const errMsg = `Failed to start webcam: ${err}`;
       console.error("[Client]", errMsg);
@@ -940,6 +939,16 @@ export function ClientPage() {
   }, [stopWebcam]);
 
   // Auto-start webcam once connected
+  // Start render loop when connected (independent of webcam)
+  useEffect(() => {
+    if (connectionState === ConnectionState.CONNECTED) {
+      console.log("[Client] Connected, starting render loop for server frames...");
+      startRenderLoop();
+    }
+    // Note: startRenderLoop is NOT in deps array to avoid circular dependency issues
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connectionState]);
+
   useEffect(() => {
     if (connectionState === ConnectionState.CONNECTED && !isWebcamRunning) {
       console.log("[Client] Connected and ready, auto-starting webcam...");
