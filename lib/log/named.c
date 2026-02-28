@@ -231,19 +231,33 @@ int log_named_format_message(const char *message, char *output, size_t output_si
         digit_count++;
       }
 
-      /* Skip if this integer is inside parentheses (already part of formatted output) */
-      bool in_parens = false;
-      int paren_depth = 0;
-      for (const char *scan = message; scan < int_start; scan++) {
-        if (*scan == '(')
-          paren_depth++;
-        else if (*scan == ')')
-          paren_depth--;
+      /* Skip if this integer is part of already-formatted output like "(fd=20)" or "(pkt_type=123)" */
+      bool is_already_formatted = false;
+      if (int_start >= 5) {
+        /* Check for "(fd=" or "(pkt_type=" patterns immediately before this integer */
+        const char *check = int_start - 1;
+        while (check > message && isspace(*check))
+          check--;
+
+        if (*check == '=') {
+          /* Found "=", now check what prefix it has */
+          const char *eq_pos = check;
+          check--;
+          while (check > message && (isalnum(*check) || *check == '_')) {
+            check--;
+          }
+          check++;
+
+          size_t prefix_len = eq_pos - check;
+          if ((prefix_len == 2 && strncmp(check, "fd", 2) == 0) ||
+              (prefix_len == 8 && strncmp(check, "pkt_type", 8) == 0)) {
+            is_already_formatted = true;
+          }
+        }
       }
-      in_parens = (paren_depth > 0);
 
       /* Check if this is a registered packet type */
-      if (!in_parens && digit_count > 0 && has_packet_type_prefix(message, int_start)) {
+      if (!is_already_formatted && digit_count > 0 && has_packet_type_prefix(message, int_start)) {
         const char *name = named_get_packet_type(fd_value);
         if (name) {
           /* This integer is a registered packet type with appropriate prefix - format it */
@@ -282,7 +296,7 @@ int log_named_format_message(const char *message, char *output, size_t output_si
       }
 
       /* Check if this is a registered file descriptor */
-      if (!in_parens && digit_count > 0 && has_fd_prefix(message, int_start)) {
+      if (!is_already_formatted && digit_count > 0 && has_fd_prefix(message, int_start)) {
         const char *name = named_get_fd(fd_value);
         if (name) {
           /* This integer is a registered FD with appropriate prefix - format it */
