@@ -129,6 +129,15 @@ static void *websocket_service_thread(void *arg) {
   while (ws_data->service_running) {
     loop_count++;
 
+    // CRITICAL: Check if we're destroying FIRST before doing anything else
+    // This prevents accessing invalid pointers or contexts
+    if (ws_data->is_destroying || !ws_data->context) {
+      if (loop_count <= 10) {
+        log_info("[LOOP %d] Destroying flag set or context NULL, exiting service thread", loop_count);
+      }
+      break;
+    }
+
     // Periodically drain pending-free queue to free buffers deferred from compression
     // Do this at the start of each loop to ensure buffers are freed after compression completes
     if (loop_count % 10 == 0) {
@@ -210,9 +219,28 @@ static void *websocket_service_thread(void *arg) {
     }
 
     // Service libwebsockets (processes network events, triggers callbacks)
-    // 50ms timeout allows checking service_running flag regularly
+    // CRITICAL: Check context validity BEFORE calling lws_service
+    // lws_service can crash if called on a partially destroyed or invalid context
     uint64_t service_start_ns = time_get_ns();
-    int result = lws_service(ws_data->context, 50);
+    int result = 0;
+
+    // Guard against libwebsockets assertion failures
+    // lws_service is called frequently and libwebsockets has internal assertions
+    // that can crash the thread. We need to be defensive here.
+    if (!ws_data->context || ws_data->is_destroying) {
+      // Context is invalid or being destroyed, don't call lws_service
+      if (loop_count <= 50) {
+        log_info("[LOOP %d] Skipping lws_service: context=%p, destroying=%d",
+                 loop_count, (void *)ws_data->context, ws_data->is_destroying);
+      }
+      platform_sleep_us(10000);  // Sleep 10ms to avoid busy-spin
+    } else {
+      // Call lws_service with valid context
+      // Use 50ms timeout for client-side (needs responsive handshake)
+      // but be aware that rapid consecutive calls can trigger libwebsockets assertions
+      // in invalid states (e.g., trying to write before connection established)
+      result = lws_service(ws_data->context, 50);
+    }
     uint64_t service_end_ns = time_get_ns();
 
     if (loop_count <= 50) {
@@ -358,6 +386,17 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
              (void *)wsi, (void *)ws_data, ws_data ? ws_data->is_connected : -1, (unsigned long long)now_ns);
     if (!ws_data) {
       log_warn("    [CLIENT_WRITEABLE] ws_data is NULL, breaking");
+      break;
+    }
+
+    // CRITICAL: Don't try to write if not fully connected
+    // libwebsockets can hit assertion if we write before connection establishment completes
+    mutex_lock(&ws_data->state_mutex);
+    bool connected = ws_data->is_connected;
+    mutex_unlock(&ws_data->state_mutex);
+
+    if (!connected) {
+      log_debug("    [CLIENT_WRITEABLE] Skipping write - not connected yet");
       break;
     }
 
@@ -1019,12 +1058,15 @@ static asciichat_error_t websocket_close(acip_transport_t *transport) {
   uint64_t now_ns = time_get_ns();
 
   // CRITICAL: Stop service thread BEFORE calling lws_close_reason()
-  // lws_close_reason() triggers LWS callbacks synchronously, which try to acquire state_mutex.
-  // If the service thread is running in lws_service(), it may also try to acquire state_mutex,
-  // causing a deadlock. We must stop the service thread first to prevent callback contention.
+  // Mark as destroying FIRST to signal service thread to stop immediately
+  // This prevents service thread from trying to call lws_service on a destroying/destroyed context
+  atomic_store(&ws_data->is_destroying, true);
+
   if (ws_data->service_running) {
     log_debug("[websocket_close] Stopping service thread to prevent deadlock during lws_close_reason()");
     ws_data->service_running = false;
+    // Give service thread time to notice is_destroying flag
+    platform_sleep_us(10000);  // 10ms
     asciichat_thread_join(&ws_data->service_thread, NULL);
     log_debug("[websocket_close] Service thread stopped");
   }
@@ -1514,7 +1556,14 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   transport->crypto_ctx = crypto_ctx;
   transport->impl_data = ws_data;
 
-  // Start service thread BEFORE connection wait to avoid race condition
+  // CRITICAL: Give libwebsockets time to initialize connection before starting service thread
+  // libwebsockets needs to process the initial connection handshake callbacks before lws_service()
+  // is called repeatedly. Concurrent access to context during connection setup can trigger assertions.
+  // Sleep 50ms to let lws_client_connect_via_info() callbacks complete initialization.
+  log_debug("Delaying service thread start to allow libwebsockets connection initialization...");
+  platform_sleep_us(50000);  // 50ms delay
+
+  // Start service thread after connection initialization
   // Only the service thread should call lws_service() on this context
   log_debug("Starting WebSocket service thread...");
   ws_data->service_running = true;
