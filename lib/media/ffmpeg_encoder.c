@@ -221,11 +221,6 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
     }
   }
 
-  // For MP4 video, set movflags to ensure proper container (faststart moves moov to beginning)
-  if (strcmp(enc->fmt_ctx->oformat->name, "mp4") == 0) {
-    av_dict_set(&opts, "movflags", "faststart", 0);
-  }
-
   // Write header
   ret = avformat_write_header(enc->fmt_ctx, &opts);
   av_dict_free(&opts); // Free options after use
@@ -266,6 +261,8 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
             enc->frame_encoded->linesize);
 
   enc->frame_encoded->pts = enc->frame_count;
+  // Set frame duration in codec time base units (one frame at target FPS)
+  enc->frame_encoded->duration = enc->codec_ctx->time_base.den / (enc->codec_ctx->time_base.num * enc->fps);
 
   // Send frame to encoder
   int ret = avcodec_send_frame(enc->codec_ctx, enc->frame_encoded);
@@ -284,11 +281,14 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
       break;
     }
 
+    // Set packet duration in codec time base (duration of one frame at target FPS)
+    // This ensures proper stream duration calculation
+    if (enc->pkt->duration == 0) {
+      enc->pkt->duration = enc->codec_ctx->time_base.den / (enc->codec_ctx->time_base.num * enc->fps);
+    }
+
     av_packet_rescale_ts(enc->pkt, enc->codec_ctx->time_base, enc->stream->time_base);
     enc->pkt->stream_index = enc->stream->index;
-    // Set packet duration = 1 frame duration in stream time units
-    // duration = stream_time_base / frame_time = (time_base.den/time_base.num) / fps
-    enc->pkt->duration = (enc->stream->time_base.den / enc->stream->time_base.num) / enc->fps;
 
     ret = av_interleaved_write_frame(enc->fmt_ctx, enc->pkt);
     av_packet_unref(enc->pkt);
@@ -317,10 +317,27 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
     if (ret < 0)
       break;
 
+    // Set packet duration in codec time base if not already set
+    if (enc->pkt->duration == 0) {
+      enc->pkt->duration = enc->codec_ctx->time_base.den / (enc->codec_ctx->time_base.num * enc->fps);
+    }
+
     av_packet_rescale_ts(enc->pkt, enc->codec_ctx->time_base, enc->stream->time_base);
     enc->pkt->stream_index = enc->stream->index;
     av_interleaved_write_frame(enc->fmt_ctx, enc->pkt);
     av_packet_unref(enc->pkt);
+  }
+
+  // Set stream duration for proper metadata (must be before trailer)
+  if (enc->stream && enc->frame_count > 0) {
+    // Calculate duration in stream time base units
+    // time_base = 1 / time_base.den seconds per unit
+    // Each frame is 1/fps seconds, so duration = frame_count / fps seconds
+    // In time base units: duration = (frame_count / fps) * time_base.den = frame_count * time_base.den / fps
+    int64_t duration = (int64_t)enc->frame_count * enc->stream->time_base.den / enc->fps;
+    enc->stream->duration = duration;
+    log_debug("ffmpeg_encoder_destroy: Set stream duration=%lld (frames=%d, fps=%d, time_base=%d/%d)",
+              (long long)duration, enc->frame_count, enc->fps, 1, enc->stream->time_base.den);
   }
 
   // Write trailer
