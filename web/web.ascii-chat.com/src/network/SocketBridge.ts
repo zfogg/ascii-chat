@@ -124,10 +124,12 @@ export class SocketBridge {
         );
       }
 
-      // Check if we have a complete ACIP packet by reading the length field
-      // ACIP header: magic(8) + type(2) + length(4) + crc32(4) + client_id(4) = 22 bytes
-      if (this.reassemblySize >= 14 && this.reassemblyBuffer !== null) {
-        // Read length field at offset 10 (4 bytes, big-endian)
+      // ★ CRITICAL: Process ALL complete packets in the reassembly buffer
+      // Don't just process one per handleMessage - multiple packets may be queued
+      let packetsProcessed = 0;
+      while (this.reassemblySize >= 14 && this.reassemblyBuffer !== null) {
+        // Check if we have a complete ACIP packet by reading the length field
+        // ACIP header: magic(8) + type(2) + length(4) + crc32(4) + client_id(4) = 22 bytes
         const data = this.reassemblyBuffer;
         const len =
           ((data[10] ?? 0) << 24) |
@@ -145,7 +147,7 @@ export class SocketBridge {
           const pktType = quickParseType(completePacket);
           const typeHex = pktType !== null ? pktType.toString(16) : "??";
           console.error(
-            `[SocketBridge] ★ COMPLETE PACKET: assembled from ${this.reassemblySize} bytes, extracted ${expectedPacketSize} bytes, pkt_type=${pktType} (0x${typeHex})`,
+            `[SocketBridge] ★ COMPLETE PACKET ${packetsProcessed + 1}: assembled from ${this.reassemblySize} bytes, extracted ${expectedPacketSize} bytes, pkt_type=${pktType} (0x${typeHex})`,
           );
 
           // Save any leftover data for next packet
@@ -162,15 +164,24 @@ export class SocketBridge {
           }
 
           // Pass complete packet to handler
+          packetsProcessed++;
           this.onPacketCallback?.(completePacket);
         } else {
+          // Not enough data for a complete packet yet
           console.error(
             `[SocketBridge] ★ INCOMPLETE: need ${expectedPacketSize} bytes, have ${this.reassemblySize} bytes, waiting for more fragments`,
           );
+          break; // Exit loop and wait for next message
         }
-      } else {
+      }
+
+      if (packetsProcessed === 0 && this.reassemblySize < 14) {
         console.error(
           `[SocketBridge] ★ NEED MORE: only ${this.reassemblySize} bytes, need at least 14 to read length field`,
+        );
+      } else if (packetsProcessed > 0) {
+        console.error(
+          `[SocketBridge] ★ PROCESSED ${packetsProcessed} packet(s) from this message`,
         );
       }
     };
