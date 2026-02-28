@@ -2819,10 +2819,16 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
   if (client->incoming_video_buffer) {
     video_frame_t *frame = video_frame_begin_write(client->incoming_video_buffer);
     if (frame && frame->data && data_len > 0) {
+      // Debug: Check frame buffer capacity
+      size_t buffer_capacity = client->incoming_video_buffer->allocated_buffer_size;
+      size_t total_size = sizeof(uint32_t) * 2 + data_len;
+
+      log_info("FRAME_STORAGE: client=%s, frame->data=%p, capacity=%zu, data_len=%zu, total=%zu", client->client_id,
+               (void *)frame->data, buffer_capacity, data_len, total_size);
+
       // Copy frame data: width (4B) + height (4B) + pixel data
       uint32_t width_net = HOST_TO_NET_U32(header->width);
       uint32_t height_net = HOST_TO_NET_U32(header->height);
-      size_t total_size = sizeof(uint32_t) * 2 + data_len;
 
       memcpy(frame->data, &width_net, sizeof(uint32_t));
       memcpy((char *)frame->data + sizeof(uint32_t), &height_net, sizeof(uint32_t));
@@ -2835,8 +2841,13 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
       frame->sequence_number = ++client->frames_received;
 
       video_frame_commit(client->incoming_video_buffer);
-      log_debug("Frame stored: client %s, seq=%u, size=%zu", client->client_id, frame->sequence_number, total_size);
+      log_debug("Frame committed: client %s, seq=%u, size=%zu", client->client_id, frame->sequence_number, total_size);
+    } else {
+      log_warn("FRAME_STORE_SKIP: client=%s, frame=%p, frame->data=%p, data_len=%zu", client->client_id, (void *)frame,
+               frame ? (void *)frame->data : NULL, data_len);
     }
+  } else {
+    log_warn("NO_INCOMING_VIDEO_BUFFER: client=%s", client->client_id);
   }
 
   uint64_t callback_end_ns = time_get_ns();
