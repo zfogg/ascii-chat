@@ -242,16 +242,19 @@ int log_named_format_message(const char *message, char *output, size_t output_si
         digit_count++;
       }
 
-      /* Skip if this integer is part of already-formatted output like "(fd=20)" or "(pkt_type=123)" */
+      /* Skip if this integer is part of already-formatted output like "(fd=20)" or "(type/name (...))" */
       bool is_already_formatted = false;
       if (int_start >= 5) {
-        /* Check for "(fd=", "(pkt_type=", or "(thread/" patterns to prevent re-formatting */
+        /* Check for "(fd=", "(pkt_type=", or "(type/" patterns to prevent re-formatting.
+         * Named objects are formatted as: type/name (0xaddress) or type/name (key=value)
+         * We need to detect if we're already inside a formatted output.
+         */
         const char *check = int_start - 1;
         while (check > message && isspace(*check))
           check--;
 
         if (*check == '=') {
-          /* Found "=", now check what prefix it has */
+          /* Found "=", now check what prefix it has for patterns like "(fd=20)" or "(pkt_type=123)" */
           const char *eq_pos = check;
           check--;
           while (check > message && (isalnum(*check) || *check == '_')) {
@@ -265,7 +268,10 @@ int log_named_format_message(const char *message, char *output, size_t output_si
             is_already_formatted = true;
           }
         } else if (*check == '/') {
-          /* Check for "(thread/" pattern - already-formatted thread names */
+          /* Found "/", now check if this is a type/name pattern.
+           * Format is "(type/name (...)" where type is word characters (thread, mutex, socket, etc.)
+           * If we find "/" pattern, we're already formatted.
+           */
           const char *slash_pos = check;
           check--;
           while (check > message && (isalnum(*check) || *check == '_')) {
@@ -273,8 +279,10 @@ int log_named_format_message(const char *message, char *output, size_t output_si
           }
           check++;
 
-          size_t prefix_len = slash_pos - check;
-          if (prefix_len == 6 && strncmp(check, "thread", 6) == 0) {
+          /* Check that the "/" was preceded by word characters (indicating a type name) */
+          size_t type_len = slash_pos - check;
+          if (type_len > 0 && (isalpha(*check) || *check == '_')) {
+            /* This looks like a "type/" pattern from a registered type, mark as already formatted */
             is_already_formatted = true;
           }
         }
