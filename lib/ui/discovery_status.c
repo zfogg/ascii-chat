@@ -150,8 +150,13 @@ void discovery_status_display(const discovery_status_t *status) {
     return;
   }
 
-  // Only render if interactive AND status screen is enabled AND was explicitly set
-  if (!terminal_is_interactive() || !GET_OPTION(status_screen) || !GET_OPTION(status_screen_explicitly_set)) {
+  // Never render if status_screen is disabled
+  if (!GET_OPTION(status_screen)) {
+    return;
+  }
+
+  // In non-interactive mode, only render if explicitly requested
+  if (!terminal_is_interactive() && !GET_OPTION(status_screen_explicitly_set)) {
     return;
   }
 
