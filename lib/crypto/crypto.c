@@ -1229,7 +1229,7 @@ crypto_result_t crypto_rekey_process_request(crypto_context_t *ctx, const uint8_
   }
 
   // Compute new shared secret: DH(our_new_private_key, peer_new_public_key)
-  if (crypto_box_beforenm(ctx->temp_shared_key, peer_new_public_key, ctx->temp_private_key) != 0) {
+  if (crypto_scalarmult(ctx->temp_shared_key, ctx->temp_private_key, peer_new_public_key) != 0) {
     SET_ERRNO(ERROR_CRYPTO, "Failed to compute rekey shared secret");
     secure_memzero(ctx->temp_private_key, sizeof(ctx->temp_private_key));
     secure_memzero(ctx->temp_public_key, sizeof(ctx->temp_public_key));
