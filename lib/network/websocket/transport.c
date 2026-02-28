@@ -350,7 +350,9 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
   }
 
   case LWS_CALLBACK_CLIENT_WRITEABLE: {
-    // Socket is writable - process queued messages for sending with flow control
+    // Socket is writable - process queued messages with FRAGMENTATION
+    // CRITICAL FIX: Fragment large messages into ~4KB chunks to avoid internal buffering
+    // libwebsockets #464: Sending messages > rx_buffer_size causes ultra-slow buffering
     uint64_t now_ns = time_get_ns();
     log_info("🟡 LWS_CALLBACK_CLIENT_WRITEABLE FIRED for wsi=%p, ws_data=%p, is_connected=%d, timestamp=%llu",
              (void *)wsi, (void *)ws_data, ws_data ? ws_data->is_connected : -1, (unsigned long long)now_ns);
@@ -359,45 +361,75 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
       break;
     }
 
+    const size_t CHUNK_SIZE = 4096;  // Fragment messages into 4KB chunks
     websocket_recv_msg_t msg;
     int message_count = 0;
 
     mutex_lock(&ws_data->send_mutex);
-    do {
-      // Check if we have messages to send
-      if (!ringbuffer_peek(ws_data->send_queue, &msg)) {
-        break;
-      }
+
+    // Process one message at a time with chunking
+    if (ringbuffer_peek(ws_data->send_queue, &msg)) {
       ringbuffer_read(ws_data->send_queue, &msg);
 
-      log_debug("WebSocket CLIENT_WRITEABLE: sending queued %zu bytes (msg %d)", msg.len, message_count + 1);
+      log_debug("WebSocket CLIENT_WRITEABLE: sending queued %zu bytes in fragments (msg %d)", msg.len, message_count + 1);
 
-      // Send the complete message with automatic fragmentation
-      // IMPORTANT: msg.data already points to start of buffer (with LWS_PRE padding)
-      // lws_write() will write the frame header backwards into LWS_PRE region
-      // then write the data. We need to pass pointer to start of LWS_PRE region.
-      // CRITICAL: Keep send_mutex locked during lws_write() to prevent race conditions.
-      // libwebsockets is not thread-safe for concurrent writes on the same connection.
-      int written = lws_write(ws_data->wsi, msg.data + LWS_PRE, msg.len, LWS_WRITE_BINARY);
+      // Fragment the message into ~4KB chunks
+      size_t offset = 0;
+      while (offset < msg.len && !lws_send_pipe_choked(ws_data->wsi)) {
+        size_t chunk_size = (msg.len - offset > CHUNK_SIZE) ? CHUNK_SIZE : (msg.len - offset);
+        bool is_first = (offset == 0);
+        bool is_final = (offset + chunk_size >= msg.len);
 
-      if (written < 0) {
-        log_error("WebSocket write failed for %zu bytes", msg.len);
-        // Queue for deferred free to allow compression layer to complete
+        // Use lws_write_ws_flags to get correct flags for fragment sequence
+        // First fragment uses LWS_WRITE_BINARY, subsequent use LWS_WRITE_CONTINUATION
+        int write_flags = lws_write_ws_flags(LWS_WRITE_BINARY, is_first, is_final);
+
+        log_debug("  Fragment: offset=%zu, chunk=%zu, is_first=%d, is_final=%d, flags=%d",
+                  offset, chunk_size, is_first, is_final, write_flags);
+
+        // CRITICAL: Keep send_mutex locked during all lws_write() calls
+        // libwebsockets is not thread-safe for concurrent writes on same connection
+        int written = lws_write(ws_data->wsi, msg.data + LWS_PRE + offset, chunk_size, write_flags);
+
+        if (written < 0) {
+          log_error("WebSocket fragment write failed at offset %zu (chunk %zu bytes)", offset, chunk_size);
+          // Keep what we sent, but don't try to send more
+          break;
+        }
+
+        if ((size_t)written != chunk_size) {
+          log_warn("WebSocket partial write: %d/%zu bytes at offset %zu", written, chunk_size, offset);
+        }
+
+        offset += chunk_size;
+      }
+
+      // Only free AFTER entire message is sent
+      if (offset >= msg.len) {
+        // Message fully sent - queue for deferred free
         deferred_buffer_free(ws_data, msg.data, LWS_PRE + msg.len);
-        break;
+        message_count++;
+      } else if (offset > 0) {
+        // Partial send - re-queue the remainder for next writeable event
+        // Create a new message with the unsent portion
+        websocket_recv_msg_t remainder;
+        size_t remaining_len = msg.len - offset;
+        remainder.data = msg.data;  // Keep same buffer
+        remainder.len = remaining_len;
+        remainder.first = 0;  // Mark as continuation
+        remainder.final = msg.final;
+
+        // Since we already read this message, we need to queue the remainder back
+        // Insert at front of queue by re-reading and writing remainder
+        ringbuffer_write(ws_data->send_queue, &remainder);
+
+        log_info("  Re-queued %zu bytes remainder (sent %zu of %zu)", remaining_len, offset, msg.len);
+      } else {
+        // No bytes sent - buffer is choked, re-queue this message
+        ringbuffer_write(ws_data->send_queue, &msg);
       }
+    }
 
-      if ((size_t)written != msg.len) {
-        log_warn("WebSocket partial write: %d/%zu bytes", written, msg.len);
-      }
-
-      // Queue for deferred free to allow compression layer to complete asynchronously
-      deferred_buffer_free(ws_data, msg.data, LWS_PRE + msg.len);
-      message_count++;
-
-      // Continue while pipe is not choked
-      // This prevents callback flooding when TCP buffers are full
-    } while (!lws_send_pipe_choked(ws_data->wsi));
     mutex_unlock(&ws_data->send_mutex);
 
     // Request another callback if more messages are queued
