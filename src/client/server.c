@@ -284,7 +284,7 @@ static int close_socket(socket_t socketfd) {
  */
 int server_connection_init() {
   // Initialize mutex for thread-safe packet sending
-  if (mutex_init(&g_send_mutex, "send")  != 0) {
+  if (mutex_init(&g_send_mutex, "send") != 0) {
     log_error("Failed to initialize send mutex");
     return -1;
   }
@@ -374,7 +374,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
 
     // Create WebSocket transport (handles connection internally)
-    g_client_transport = acip_websocket_client_transport_create("transport_websocket_client", ws_url, (crypto_context_t *)crypto_ctx);
+    g_client_transport = acip_websocket_client_transport_create("client", ws_url, (crypto_context_t *)crypto_ctx);
     if (!g_client_transport) {
       log_error("Failed to create WebSocket ACIP transport");
       url_parts_destroy(&url_parts);
@@ -539,7 +539,8 @@ int server_connection_establish(const char *address, int port, int reconnect_att
       }
 
       // Create socket with appropriate address family
-      const char *socket_name = (addr_iter->ai_family == AF_INET6) ? "client_socket_server_ipv6" : "client_socket_server_ipv4";
+      const char *socket_name =
+          (addr_iter->ai_family == AF_INET6) ? "client_socket_server_ipv6" : "client_socket_server_ipv4";
       g_sockfd = socket_create(socket_name, addr_iter->ai_family, addr_iter->ai_socktype, addr_iter->ai_protocol);
       if (g_sockfd == INVALID_SOCKET_VALUE) {
         log_debug("Could not create socket for address family %d: %s", addr_iter->ai_family, network_error_string());

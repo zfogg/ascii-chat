@@ -9,6 +9,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/tests/test_env.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/util/format.h>
 
 #include <string.h>
 #include <time.h>
@@ -35,7 +36,7 @@ static const uint32_t CRYPTO_PACKET_AUTH_RESPONSE = 104;
 // Initialize libsodium (thread-safe, exactly-once via DCL pattern)
 static crypto_result_t init_libsodium(void) {
   if (!lifecycle_init_once(&g_libsodium_lc)) {
-    return CRYPTO_OK;  // Already initialized or in progress
+    return CRYPTO_OK; // Already initialized or in progress
   }
 
   // We won the initialization race
@@ -192,8 +193,11 @@ void crypto_destroy(crypto_context_t *ctx) {
   secure_memzero(ctx->password_key, sizeof(ctx->password_key));
   secure_memzero(ctx->password_salt, sizeof(ctx->password_salt));
 
-  log_debug("Crypto context cleaned up (encrypted: %lu bytes, decrypted: %lu bytes)", ctx->bytes_encrypted,
-            ctx->bytes_decrypted);
+  char encrypted_str[32], decrypted_str[32];
+  format_bytes_pretty(ctx->bytes_encrypted, encrypted_str, sizeof(encrypted_str));
+  format_bytes_pretty(ctx->bytes_decrypted, decrypted_str, sizeof(decrypted_str));
+
+  log_debug("Crypto context cleaned up (encrypted: %s, decrypted: %s)", encrypted_str, decrypted_str);
 
   // Clear entire context
   secure_memzero(ctx, sizeof(crypto_context_t));

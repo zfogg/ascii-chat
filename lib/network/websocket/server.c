@@ -165,7 +165,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     // Note: We pass NULL for crypto_ctx here - crypto handshake happens at ACIP level
     log_debug("[LWS_CALLBACK_ESTABLISHED] Creating ACIP WebSocket transport...");
     char ws_transport_name[64];
-    snprintf(ws_transport_name, sizeof(ws_transport_name), "transport_websocket_server_%p", (void *)wsi);
+    snprintf(ws_transport_name, sizeof(ws_transport_name), "server_%p", (void *)wsi);
     conn_data->transport = acip_websocket_server_transport_create(ws_transport_name, wsi, NULL);
     if (!conn_data->transport) {
       log_error("[LWS_CALLBACK_ESTABLISHED] FAILED: acip_websocket_server_transport_create returned NULL");
@@ -202,9 +202,9 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       return -1;
     }
 
-    asciichat_error_t queue_result = thread_pool_queue_work("websocket_handler_established", server->handler_pool, server->handler, client_ctx);
-    log_info("🔴 thread_pool_queue_work returned: %s",
-             queue_result == ASCIICHAT_OK ? "OK" : "ERROR");
+    asciichat_error_t queue_result =
+        thread_pool_queue_work("websocket_handler_established", server->handler_pool, server->handler, client_ctx);
+    log_info("🔴 thread_pool_queue_work returned: %s", queue_result == ASCIICHAT_OK ? "OK" : "ERROR");
 
     if (queue_result != ASCIICHAT_OK) {
       log_error("[LWS_CALLBACK_ESTABLISHED] FAILED: thread_pool_queue_work returned error");
@@ -294,8 +294,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
     uint64_t close_callback_end_ns = time_get_ns();
     char total_duration_str[32];
-    time_pretty(close_callback_end_ns - close_callback_start_ns, -1, total_duration_str,
-                sizeof(total_duration_str));
+    time_pretty(close_callback_end_ns - close_callback_start_ns, -1, total_duration_str, sizeof(total_duration_str));
     log_info("[LWS_CALLBACK_CLOSED] Complete cleanup took %s", total_duration_str);
     break;
   }
@@ -303,8 +302,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
   case LWS_CALLBACK_SERVER_WRITEABLE: {
     uint64_t writeable_callback_start_ns = time_get_ns();
     atomic_fetch_add(&g_writeable_callback_count, 1);
-    log_debug("=== LWS_CALLBACK_SERVER_WRITEABLE FIRED === wsi=%p, timestamp=%llu",
-                  (void *)wsi, (unsigned long long)writeable_callback_start_ns);
+    log_debug("=== LWS_CALLBACK_SERVER_WRITEABLE FIRED === wsi=%p, timestamp=%llu", (void *)wsi,
+              (unsigned long long)writeable_callback_start_ns);
 
     // Validate preconditions
     if (!conn_data) {
@@ -338,11 +337,11 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       mutex_lock(&ws_data->send_mutex);
       if (ringbuffer_is_empty(ws_data->send_queue)) {
         mutex_unlock(&ws_data->send_mutex);
-        break;  // No more messages
+        break; // No more messages
       }
       if (!ringbuffer_read(ws_data->send_queue, &msg)) {
         mutex_unlock(&ws_data->send_mutex);
-        break;  // Failed to read
+        break; // Failed to read
       }
       mutex_unlock(&ws_data->send_mutex);
 
@@ -361,21 +360,21 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       if (written < 0) {
         log_error("Server WebSocket write error: %d (msg_len=%zu)", written, msg.len);
         buffer_pool_free(NULL, msg.data, LWS_PRE + msg.len);
-        break;  // Connection error, stop sending
+        break; // Connection error, stop sending
       }
 
       if ((size_t)written != msg.len) {
         // Partial write - with permessage-deflate compression, this can happen
         // Re-queue the unsent portion for the next callback instead of freeing it
-        log_debug("Server WebSocket partial write: %d/%zu bytes (re-queueing %zu bytes for next callback)",
-                  written, msg.len, msg.len - (size_t)written);
+        log_debug("Server WebSocket partial write: %d/%zu bytes (re-queueing %zu bytes for next callback)", written,
+                  msg.len, msg.len - (size_t)written);
 
         // Create new message for the unsent data
         websocket_recv_msg_t unsent_msg;
-        unsent_msg.data = msg.data;  // Keep the same buffer allocation
+        unsent_msg.data = msg.data; // Keep the same buffer allocation
         unsent_msg.len = msg.len - (size_t)written;
-        unsent_msg.first = 0;  // No longer first fragment
-        unsent_msg.final = msg.final;  // Preserve final flag
+        unsent_msg.first = 0;         // No longer first fragment
+        unsent_msg.final = msg.final; // Preserve final flag
 
         // Re-queue at front of send queue (mutex already unlocked above)
         mutex_lock(&ws_data->send_mutex);
@@ -390,7 +389,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
         // Request immediate callback to continue sending
         lws_callback_on_writable(wsi);
-        break;  // Stop processing more messages, let next callback retry
+        break; // Stop processing more messages, let next callback retry
       }
 
       log_debug(">>> lws_write() sent %d/%zu bytes, wsi=%p", written, msg.len, (void *)wsi);
@@ -454,7 +453,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       log_info("LWS_CALLBACK_RECEIVE: Initializing transport as fallback (client_ip=%s)", client_ip);
       conn_data->server = server;
       char ws_transport_name[64];
-      snprintf(ws_transport_name, sizeof(ws_transport_name), "transport_websocket_server_%p", (void *)wsi);
+      snprintf(ws_transport_name, sizeof(ws_transport_name), "server_%p", (void *)wsi);
       conn_data->transport = acip_websocket_server_transport_create(ws_transport_name, wsi, NULL);
       conn_data->handler_started = false;
       conn_data->pending_send_data = NULL;
@@ -483,7 +482,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       client_ctx->user_data = server->user_data;
 
       // Queue handler to thread pool (fallback if not queued in ESTABLISHED)
-      if (thread_pool_queue_work("websocket_handler_receive", server->handler_pool, server->handler, client_ctx) != ASCIICHAT_OK) {
+      if (thread_pool_queue_work("websocket_handler_receive", server->handler_pool, server->handler, client_ctx) !=
+          ASCIICHAT_OK) {
         log_error("LWS_CALLBACK_RECEIVE: Failed to queue handler work");
         SAFE_FREE(client_ctx);
         acip_transport_destroy(conn_data->transport);
@@ -662,8 +662,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
         time_pretty(callback_dur_ns, -1, callback_str, sizeof(callback_str));
         time_pretty(alloc_dur_ns, -1, alloc_str, sizeof(alloc_str));
         time_pretty(lock_wait_dur_ns, -1, lock_str, sizeof(lock_str));
-        log_warn("[WS_CALLBACK_DURATION] RECEIVE callback took %s (alloc=%s, lock_wait=%s)",
-                 callback_str, alloc_str, lock_str);
+        log_warn("[WS_CALLBACK_DURATION] RECEIVE callback took %s (alloc=%s, lock_wait=%s)", callback_str, alloc_str,
+                 lock_str);
       }
       char callback_str[32], alloc_str[32], lock_str[32], other_str[32];
       time_pretty(callback_dur_ns, -1, callback_str, sizeof(callback_str));
@@ -671,8 +671,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       time_pretty(lock_wait_dur_ns, -1, lock_str, sizeof(lock_str));
       uint64_t other_dur_ns = callback_dur_ns - alloc_dur_ns - lock_wait_dur_ns;
       time_pretty(other_dur_ns, -1, other_str, sizeof(other_str));
-      log_debug("[WS_CALLBACK_TIMING] total=%s (alloc=%s, lock_wait=%s, other=%s)", callback_str,
-                alloc_str, lock_str, other_str);
+      log_debug("[WS_CALLBACK_TIMING] total=%s (alloc=%s, lock_wait=%s, other=%s)", callback_str, alloc_str, lock_str,
+                other_str);
     }
     log_debug("[WS_RECEIVE] ===== RECEIVE CALLBACK COMPLETE, returning 0 to continue =====");
     log_info("[WS_RECEIVE_RETURN] Returning 0 from RECEIVE callback (success). fragmented=%d (first=%d final=%d)",
@@ -720,8 +720,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     // - "http" protocol (browser connects here for initial HTTP upgrade to WebSocket)
     // - "acip" protocol (for ACIP over WebSocket connections)
     // Both protocols use the same callback and handle frame transmission.
-    log_debug(
-                  ">>> LWS_CALLBACK_EVENT_WAIT_CANCELLED triggered - requesting writable callbacks for all protocols");
+    log_debug(">>> LWS_CALLBACK_EVENT_WAIT_CANCELLED triggered - requesting writable callbacks for all protocols");
 
     struct lws_context *ctx = lws_get_context(wsi);
     if (!ctx) {
@@ -732,9 +731,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     // Trigger WRITEABLE on both protocols
     // Browser clients connect with "http" protocol, so they MUST have WRITEABLE triggered
     for (int i = 0; i < 2; i++) {
-      log_debug(
-                    ">>> EVENT_WAIT_CANCELLED: Calling lws_callback_on_writable_all_protocol for protocol '%s'",
-                    websocket_protocols[i].name);
+      log_debug(">>> EVENT_WAIT_CANCELLED: Calling lws_callback_on_writable_all_protocol for protocol '%s'",
+                websocket_protocols[i].name);
       lws_callback_on_writable_all_protocol(ctx, &websocket_protocols[i]);
     }
     break;
@@ -835,17 +833,17 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   info.gid = (gid_t)-1;                                // Cast to avoid undefined behavior with unsigned type
   info.uid = (uid_t)-1;                                // Cast to avoid undefined behavior with unsigned type
   info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT; // Initialize SSL/TLS support (required for server binding)
-  info.extensions = NULL;                             // Disable permessage-deflate - causing connection issues
-  info.retry_and_idle_policy = &keep_alive_policy;    // Configure keep-alive to prevent idle disconnects during handshake
+  info.extensions = NULL;                              // Disable permessage-deflate - causing connection issues
+  info.retry_and_idle_policy = &keep_alive_policy; // Configure keep-alive to prevent idle disconnects during handshake
 
   // TCP-level keep-alive: detect dead connections quickly
   // Enabled after ka_time seconds of idle, probe every ka_interval seconds, give up after ka_probes attempts
-  info.ka_time = 10;      // Wait 10 seconds before first keep-alive probe on idle TCP connection
-  info.ka_probes = 3;     // Send 3 keep-alive probes
-  info.ka_interval = 10;  // Wait 10 seconds between probes
+  info.ka_time = 10;     // Wait 10 seconds before first keep-alive probe on idle TCP connection
+  info.ka_probes = 3;    // Send 3 keep-alive probes
+  info.ka_interval = 10; // Wait 10 seconds between probes
 
   // HTTP connection keep-alive timeout (for connections before WebSocket upgrade)
-  info.keepalive_timeout = 60;  // Allow 60 seconds for HTTP to WebSocket upgrade
+  info.keepalive_timeout = 60; // Allow 60 seconds for HTTP to WebSocket upgrade
 
   // Create libwebsockets context
   server->context = lws_create_context(&info);

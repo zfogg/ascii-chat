@@ -116,7 +116,7 @@ tcp_client_t *tcp_client_create(void) {
     return NULL;
   }
 
-  NAMED_REGISTER_CLIENT(client, "tcp_client");
+  NAMED_REGISTER_CLIENT(client, "client");
 
   log_debug("TCP client created successfully");
   return client;

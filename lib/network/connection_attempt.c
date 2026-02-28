@@ -265,7 +265,7 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
 
     // Create WebSocket client instance
-    websocket_client_t *ws_client = websocket_client_create("websocket_discovery_connection");
+    websocket_client_t *ws_client = websocket_client_create("discovery_connection");
     if (!ws_client) {
       log_error("Failed to create WebSocket client");
       connection_state_transition(ctx, CONN_STATE_FAILED);
@@ -408,7 +408,8 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
   const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
 
   // Create ACIP transport for protocol-agnostic packet sending/receiving
-  acip_transport_t *transport = acip_tcp_transport_create("transport_tcp_connection_attempt", sockfd, (crypto_context_t *)crypto_ctx);
+  acip_transport_t *transport =
+      acip_tcp_transport_create("transport_tcp_connection_attempt", sockfd, (crypto_context_t *)crypto_ctx);
   if (!transport) {
     log_error("Failed to create ACIP transport for TCP");
     if (created_tcp_client) {
@@ -477,7 +478,7 @@ asciichat_error_t connection_attempt_websocket(connection_attempt_context_t *ctx
   const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
 
   // Create WebSocket client instance
-  websocket_client_t *ws_client = websocket_client_create("websocket_connection");
+  websocket_client_t *ws_client = websocket_client_create("connection");
   if (!ws_client) {
     log_error("Failed to create WebSocket client");
     connection_state_transition(ctx, CONN_STATE_FAILED);

@@ -178,7 +178,7 @@ acip_transport_t *websocket_client_connect(websocket_client_t *client, const cha
   client->url[sizeof(client->url) - 1] = '\0';
 
   // Create transport using ACIP layer
-  acip_transport_t *transport = acip_websocket_client_transport_create("transport_websocket_client", url, crypto_ctx);
+  acip_transport_t *transport = acip_websocket_client_transport_create("client", url, crypto_ctx);
   if (!transport) {
     log_error("Failed to create WebSocket transport");
     atomic_store(&client->connection_lost, true);

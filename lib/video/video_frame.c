@@ -79,7 +79,7 @@ video_frame_buffer_t *video_frame_buffer_create(uint32_t client_id) {
   atomic_store(&vfb->last_frame_sequence, 0);
 
   log_debug("Created video frame buffer for client %u with double buffering", client_id);
-  NAMED_REGISTER_VIDEO_FRAME_BUFFER(vfb, "video_frame_buffer");
+  NAMED_REGISTER_VIDEO_FRAME_BUFFER(vfb, "buffer");
   return vfb;
 }
 
