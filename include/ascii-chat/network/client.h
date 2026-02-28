@@ -148,6 +148,7 @@ typedef struct client_info {
   packet_queue_t *received_packet_queue; // Queue of complete received packets waiting for dispatch
   asciichat_thread_t dispatch_thread;    // Async dispatch thread processes queued packets
   atomic_bool dispatch_thread_running;   // Flag to signal dispatch thread to exit
+  cond_t dispatch_queue_cond;            // Condition variable to wake dispatch thread when packets arrive
 
   // Dedicated send thread for this client
   asciichat_thread_t send_thread;

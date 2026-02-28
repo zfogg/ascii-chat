@@ -1094,6 +1094,14 @@ client_info_t *add_webrtc_client(server_context_t *server_ctx, acip_transport_t 
     return NULL;
   }
 
+  // Initialize condition variable for dispatch thread wake-up
+  if (cond_init(&client->dispatch_queue_cond, "dispatch_queue_cond") != 0) {
+    log_error("Failed to initialize dispatch queue condition variable for WebRTC client %s", new_client_id);
+    // Client is already in hash table - use remove_client for proper cleanup
+    remove_client(server_ctx, client->client_id);
+    return NULL;
+  }
+
   // For WebRTC clients, the capabilities packet will be received by the receive thread
   // when it starts. Unlike TCP clients where we handle it synchronously in add_client(),
   // WebRTC uses the transport abstraction which handles packet reception automatically.
@@ -1433,11 +1441,12 @@ int remove_client(server_context_t *server_ctx, const char *client_id) {
   // Use sufficient delay for memory visibility across all CPU cores
   platform_sleep_us(5 * US_PER_MS_INT); // 5ms delay for memory barrier propagation
 
-  // Destroy mutexes
+  // Destroy mutexes and condition variables
   // IMPORTANT: Always destroy these even if threads didn't join properly
   // to prevent issues when the slot is reused
   mutex_destroy(&target_client->client_state_mutex);
   mutex_destroy(&target_client->send_mutex);
+  cond_destroy(&target_client->dispatch_queue_cond);
 
   // Clear client structure
   // NOTE: After memset, the mutex handles are zeroed but the OS resources
@@ -1502,10 +1511,13 @@ void *client_dispatch_thread(void *arg) {
     uint64_t dequeue_end = time_get_ns();
 
     if (!queued_pkt) {
-      // Queue was empty, sleep briefly to avoid busy-waiting
-      log_dev_every(5 * US_PER_MS_INT, "🔄 DISPATCH_LOOP[%llu]: Queue empty after %.1fμs, sleeping 10ms",
+      // Queue was empty, wait for signal from receive thread or timeout
+      // Use 100ms timeout to handle cases where signal is missed due to race conditions
+      log_dev_every(5 * US_PER_MS_INT, "🔄 DISPATCH_LOOP[%llu]: Queue empty after %.1fμs, waiting for signal",
                     (unsigned long long)dispatch_loop_count, (dequeue_end - dequeue_start) / 1000.0);
-      usleep(10 * US_PER_MS_INT); // 10ms sleep
+      mutex_lock(&client->client_state_mutex);
+      cond_timedwait(&client->dispatch_queue_cond, &client->client_state_mutex, 100 * 1000 * 1000); // 100ms timeout
+      mutex_unlock(&client->client_state_mutex);
       last_dequeue_attempt = dequeue_end;
       continue;
     }
@@ -1825,6 +1837,8 @@ void *client_receive_thread(void *arg) {
       } else {
         log_info("✅ RECV_THREAD[%s]: Successfully queued packet (type=%d, len=%zu)", client->client_id, pkt_type,
                  packet_len);
+        // Signal dispatch thread to wake up and process the newly queued packet
+        cond_signal(&client->dispatch_queue_cond);
       }
     }
   }
