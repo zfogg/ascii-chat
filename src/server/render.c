@@ -952,14 +952,15 @@ void *client_audio_render_thread(void *arg) {
       if (++backpressure_check_counter >= 100) {
         backpressure_check_counter = 0;
         size_t queue_depth = packet_queue_size(audio_queue_snapshot);
-        // Opus frames are produced at ~50 FPS (20ms each), so 50 packets = 1 second
-        // Keep latency bounded to ~1s max in the send queue
-        apply_backpressure = (queue_depth > 50); // > 50 packets = ~1s buffered at 50 FPS
+        // Opus frames are produced at ~50 FPS (20ms each)
+        // Reduced threshold from 50 to 10 packets (~200ms buffer) to prevent audio gaps
+        // On localhost, queue shouldn't back up at all; aggressive thresholds cause frame skipping
+        apply_backpressure = (queue_depth > 10); // > 10 packets = ~200ms buffered at 50 FPS
 
         if (apply_backpressure) {
           log_warn_every(4500 * US_PER_MS_INT,
-                         "Audio backpressure for client %s: queue depth %zu packets (%.1fs buffered)",
-                         client_id_snapshot, queue_depth, (float)queue_depth / 50.0f);
+                         "Audio backpressure for client %s: queue depth %zu packets (%.1fms buffered)",
+                         client_id_snapshot, queue_depth, (float)queue_depth / 50.0f * 1000.0f);
         }
       }
 
@@ -968,7 +969,8 @@ void *client_audio_render_thread(void *arg) {
         // Reset accumulation buffer so fresh samples can be captured on next iteration.
         // Without this reset, we'd loop forever with stale audio and no space for new samples
         opus_frame_accumulated = 0;
-        platform_sleep_ns(5800 * NS_PER_US_INT);
+        // Reduced sleep from 5.8ms to 1ms to minimize audio gaps on localhost
+        platform_sleep_ns(1 * NS_PER_MS_INT);
         continue;
       }
 
