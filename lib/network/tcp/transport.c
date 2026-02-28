@@ -337,6 +337,9 @@ acip_transport_t *acip_tcp_transport_create(const char *name, socket_t sockfd, c
   tcp_data->is_connected = true;
   log_info("[TCP_CREATE_STATE] 🟢 TCP_DATA_INITIALIZED: sockfd=%d, is_connected=true", sockfd);
 
+  // Register impl_data in named registry for debug logging
+  NAMED_REGISTER(tcp_data, name, "tcp_impl", "0x%tx");
+
   // Enable TCP_NODELAY to disable Nagle's algorithm
   // This ensures small packets are sent immediately instead of being buffered
   int nodelay = 1;
@@ -400,6 +403,7 @@ void acip_transport_destroy(acip_transport_t *transport) {
   // Free implementation data
   if (transport->impl_data) {
     log_debug("[TRANSPORT_DESTROY] 🗑️  FREEING_IMPL_DATA: %p", transport->impl_data);
+    NAMED_UNREGISTER(transport->impl_data);
     SAFE_FREE(transport->impl_data);
     log_debug("[TRANSPORT_DESTROY] ✅ IMPL_DATA_FREED");
   }
