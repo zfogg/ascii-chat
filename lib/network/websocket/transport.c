@@ -1100,6 +1100,20 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
 
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
 
+  // Mark transport as destroying and broadcast condition variables
+  // This signals all waiting threads to wake and exit naturally.
+  log_debug("[WEBSOCKET_DESTROY] Marking transport as destroying");
+  atomic_store(&ws_data->is_destroying, true);
+
+  // Broadcast all condition variables to wake waiting threads so they can check
+  // the is_destroying flag and exit gracefully
+  cond_broadcast(&ws_data->state_cond);
+  cond_broadcast(&ws_data->recv_cond);
+
+  // Give threads a brief moment to detect the flag and exit
+  // Threads should check is_destroying before acquiring mutexes
+  platform_sleep_us(100 * US_PER_MS_INT);  // 100ms for threads to detect flag
+
   // Stop service thread (client-side only)
   if (ws_data->service_running) {
     log_debug("Stopping WebSocket service thread");
@@ -1295,6 +1309,9 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate WebSocket transport data");
     return NULL;
   }
+
+  // Initialize destruction state flag (CALLOC zero-initializes, but explicit for clarity)
+  atomic_store(&ws_data->is_destroying, false);
 
   // Create receive queue
   ws_data->recv_queue = ringbuffer_create(sizeof(websocket_recv_msg_t), WEBSOCKET_RECV_QUEUE_SIZE);
