@@ -164,6 +164,7 @@
 #include <ascii-chat/options/rcu.h> // For RCU-based options access
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/init.h>
+#include <ascii-chat/debug/named.h>
 #include <ascii-chat/network/packet_queue.h>
 #include <ascii-chat/network/acip/server.h>
 #include <ascii-chat/util/time.h>
@@ -460,8 +461,7 @@ void *client_video_render_thread(void *arg) {
 
     // Use default dimensions if client dimensions not received
     if (width_snapshot == 0 || height_snapshot == 0) {
-      log_dev_every(5 * NS_PER_MS_INT,
-                    "Using default dimensions for client %u (client reported: width=%u, height=%u)",
+      log_dev_every(5 * NS_PER_MS_INT, "Using default dimensions for client %u (client reported: width=%u, height=%u)",
                     thread_client_id, width_snapshot, height_snapshot);
       // Use 80x25 as standard terminal size fallback for snapshot/test clients
       width_snapshot = 80;
@@ -491,15 +491,15 @@ void *client_video_render_thread(void *arg) {
                elapsed_ns / (double)NS_PER_SEC_INT);
     }
 
-    log_dev_every(5 * NS_PER_MS_INT,
-                  "About to call create_mixed_ascii_frame_for_client for client %u with dims %ux%u", thread_client_id,
-                  width_snapshot, height_snapshot);
+    log_dev_every(5 * NS_PER_MS_INT, "About to call create_mixed_ascii_frame_for_client for client %u with dims %ux%u",
+                  thread_client_id, width_snapshot, height_snapshot);
 
-    log_info("[VIDEO_RENDER_LOOP] ★★★ LOCK STATE before create_mixed_ascii_frame_for_client for client %u", thread_client_id);
+    log_info("[VIDEO_RENDER_LOOP] ★★★ LOCK STATE before create_mixed_ascii_frame_for_client for client %u",
+             thread_client_id);
     debug_sync_print_state();
 
-    char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot,
-                                                            false, &frame_size, NULL, &sources_count);
+    char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot, false,
+                                                            &frame_size, NULL, &sources_count);
 
     // RACE CONDITION FIX: If no video sources are available yet, skip frame generation
     // This prevents sending empty/NULL frames early and allows more time for video frames to arrive
@@ -535,108 +535,101 @@ void *client_video_render_thread(void *arg) {
                   "create_mixed_ascii_frame_for_client returned: ascii_frame=%p, frame_size=%zu, sources_count=%d",
                   (void *)ascii_frame, frame_size, sources_count);
 
-      // Phase 2 IMPLEMENTED: Write frame to double buffer (never drops!)
-      if (ascii_frame && frame_size > 0) {
-        log_debug_every(5 * NS_PER_MS_INT, "Buffering frame for client %u (size=%zu)", thread_client_id, frame_size);
-        // GRID LAYOUT CHANGE DETECTION: Store source count with frame
-        // Send thread will compare this with last sent count to detect grid changes
-        atomic_store(&client->last_rendered_grid_sources, sources_count);
+    // Phase 2 IMPLEMENTED: Write frame to double buffer (never drops!)
+    if (ascii_frame && frame_size > 0) {
+      log_debug_every(5 * NS_PER_MS_INT, "Buffering frame for client %u (size=%zu)", thread_client_id, frame_size);
+      // GRID LAYOUT CHANGE DETECTION: Store source count with frame
+      // Send thread will compare this with last sent count to detect grid changes
+      atomic_store(&client->last_rendered_grid_sources, sources_count);
 
-        // Use double-buffer system which has its own internal swap_mutex
-        // No external locking needed - the double-buffer is thread-safe by design
-        video_frame_buffer_t *vfb_snapshot = client->outgoing_video_buffer;
+      // Use double-buffer system which has its own internal swap_mutex
+      // No external locking needed - the double-buffer is thread-safe by design
+      video_frame_buffer_t *vfb_snapshot = client->outgoing_video_buffer;
 
-        if (vfb_snapshot) {
-          video_frame_t *write_frame = video_frame_begin_write(vfb_snapshot);
-          if (write_frame) {
-            // Copy ASCII frame data to the back buffer (NOT holding rwlock - just double-buffer's internal lock)
-            if (write_frame->data && frame_size <= vfb_snapshot->allocated_buffer_size) {
-              memcpy(write_frame->data, ascii_frame, frame_size);
-              write_frame->size = frame_size;
-              write_frame->capture_timestamp_ns = current_time_ns;
+      if (vfb_snapshot) {
+        video_frame_t *write_frame = video_frame_begin_write(vfb_snapshot);
+        if (write_frame) {
+          // Copy ASCII frame data to the back buffer (NOT holding rwlock - just double-buffer's internal lock)
+          if (write_frame->data && frame_size <= vfb_snapshot->allocated_buffer_size) {
+            memcpy(write_frame->data, ascii_frame, frame_size);
+            write_frame->size = frame_size;
+            write_frame->capture_timestamp_ns = current_time_ns;
 
-              // Only commit the frame if it's actually NEW (different from last committed frame)
-              // This prevents sending duplicate frames and improves client-side FPS tracking
-              if (frame_is_new) {
-                uint64_t commit_start_ns = time_get_ns();
-                // Commit the frame (swaps buffers atomically using vfb->swap_mutex, NOT rwlock)
-                video_frame_commit(vfb_snapshot);
-                uint64_t commit_end_ns = time_get_ns();
-                char commit_duration_str[32];
-                time_pretty((uint64_t)(commit_end_ns - commit_start_ns), -1, commit_duration_str,
-                                   sizeof(commit_duration_str));
+            // Only commit the frame if it's actually NEW (different from last committed frame)
+            // This prevents sending duplicate frames and improves client-side FPS tracking
+            if (frame_is_new) {
+              uint64_t commit_start_ns = time_get_ns();
+              // Commit the frame (swaps buffers atomically using vfb->swap_mutex, NOT rwlock)
+              video_frame_commit(vfb_snapshot);
+              uint64_t commit_end_ns = time_get_ns();
+              char commit_duration_str[32];
+              time_pretty((uint64_t)(commit_end_ns - commit_start_ns), -1, commit_duration_str,
+                          sizeof(commit_duration_str));
 
-                static uint32_t commits_count = 0;
-                static uint64_t commits_start_time = 0;
-                commits_count++;
-                if (commits_count == 1) {
-                  commits_start_time = commit_end_ns;
-                }
-                if (commits_count % 10 == 0) {
-                  uint64_t elapsed_ns = commit_end_ns - commits_start_time;
-                  double commit_fps = (10.0 / (elapsed_ns / (double)NS_PER_SEC_INT));
-                  log_warn("DIAGNOSTIC: Client %u UNIQUE frames being sent at %.1f FPS (10 commits counted)",
-                           thread_client_id, commit_fps);
-                }
+              static uint32_t commits_count = 0;
+              static uint64_t commits_start_time = 0;
+              commits_count++;
+              if (commits_count == 1) {
+                commits_start_time = commit_end_ns;
+              }
+              if (commits_count % 10 == 0) {
+                uint64_t elapsed_ns = commit_end_ns - commits_start_time;
+                double commit_fps = (10.0 / (elapsed_ns / (double)NS_PER_SEC_INT));
+                log_warn("DIAGNOSTIC: Client %u UNIQUE frames being sent at %.1f FPS (10 commits counted)",
+                         thread_client_id, commit_fps);
+              }
 
-                log_info("[FRAME_COMMIT_TIMING] Client %u frame commit took %s (hash=0x%08x)", thread_client_id,
-                         commit_duration_str, current_frame_hash);
+              log_info("[FRAME_COMMIT_TIMING] Client %u frame commit took %s (hash=0x%08x)", thread_client_id,
+                       commit_duration_str, current_frame_hash);
 
-                // Phase 3 IMPLEMENTED: Transmit the rendered frame to client via WebSocket
-                // This completes the pipeline: Render → Buffer → Transmit → Client receive → Display
-                if (client->transport) {
-                  asciichat_error_t send_result = acip_send_ascii_frame(
-                      client->transport,
-                      ascii_frame,
-                      frame_size,
-                      width_snapshot,
-                      height_snapshot,
-                      client_id_snapshot
-                  );
-                  if (send_result != ASCIICHAT_OK) {
-                    log_warn("[FRAME_SEND_ERROR] Client %u frame transmission failed: error=%d",
-                             thread_client_id, send_result);
-                  } else {
-                    log_dev_every(5 * NS_PER_MS_INT,
-                                  "[FRAME_SEND_OK] Client %u transmitted frame size=%zu (%.1f KB)",
-                                  thread_client_id, frame_size, frame_size / 1024.0);
-                  }
+              // Phase 3 IMPLEMENTED: Transmit the rendered frame to client via WebSocket
+              // This completes the pipeline: Render → Buffer → Transmit → Client receive → Display
+              if (client->transport) {
+                asciichat_error_t send_result = acip_send_ascii_frame(
+                    client->transport, ascii_frame, frame_size, width_snapshot, height_snapshot, client_id_snapshot);
+                if (send_result != ASCIICHAT_OK) {
+                  log_warn("[FRAME_SEND_ERROR] Client %u frame transmission failed: error=%d", thread_client_id,
+                           send_result);
                 } else {
-                  log_warn("[FRAME_SEND_ERROR] Client %u has no transport (frame not sent)", thread_client_id);
+                  log_dev_every(5 * NS_PER_MS_INT, "[FRAME_SEND_OK] Client %u transmitted frame size=%zu (%.1f KB)",
+                                thread_client_id, frame_size, frame_size / 1024.0);
                 }
               } else {
-                // Discard duplicate frame by not committing (back buffer is safe to reuse)
-                log_dev_every(25000, "Skipping commit for duplicate frame for client %u (hash=0x%08x)",
-                              thread_client_id, current_frame_hash);
+                log_warn("[FRAME_SEND_ERROR] Client %u has no transport (frame not sent)", thread_client_id);
               }
-
-              // Log occasionally for monitoring
-              char pretty_size[64];
-              format_bytes_pretty(frame_size, pretty_size, sizeof(pretty_size));
-
-              // Compute hash of ASCII frame to detect duplicates
-              uint32_t ascii_hash = 0;
-              for (size_t i = 0; i < frame_size && i < 1000; i++) {
-                ascii_hash = (uint32_t)((((uint64_t)ascii_hash << 5) - ascii_hash) + (unsigned char)ascii_frame[i]);
-              }
-              log_dev_every(5 * NS_PER_MS_INT, "Client %u: Rendered ASCII frame size=%s hash=0x%08x sources=%d",
-                            thread_client_id, pretty_size, ascii_hash, sources_count);
-
             } else {
-              log_warn("Frame too large for buffer: %zu > %zu", frame_size, vfb_snapshot->allocated_buffer_size);
+              // Discard duplicate frame by not committing (back buffer is safe to reuse)
+              log_dev_every(25000, "Skipping commit for duplicate frame for client %u (hash=0x%08x)", thread_client_id,
+                            current_frame_hash);
             }
 
-            // FPS tracking - frame successfully generated (handles lag detection and periodic reporting)
-            fps_frame_ns(&video_fps_tracker, current_time_ns, "frame rendered");
-          }
-        }
+            // Log occasionally for monitoring
+            char pretty_size[64];
+            format_bytes_pretty(frame_size, pretty_size, sizeof(pretty_size));
 
-        SAFE_FREE(ascii_frame);
-      } else {
-        // No frame generated (probably no video sources) - this is normal, no error logging needed
-        log_dev_every(10 * NS_PER_MS_INT, "Per-client render: No video sources available for client %u",
-                      client_id_snapshot);
+            // Compute hash of ASCII frame to detect duplicates
+            uint32_t ascii_hash = 0;
+            for (size_t i = 0; i < frame_size && i < 1000; i++) {
+              ascii_hash = (uint32_t)((((uint64_t)ascii_hash << 5) - ascii_hash) + (unsigned char)ascii_frame[i]);
+            }
+            log_dev_every(5 * NS_PER_MS_INT, "Client %u: Rendered ASCII frame size=%s hash=0x%08x sources=%d",
+                          thread_client_id, pretty_size, ascii_hash, sources_count);
+
+          } else {
+            log_warn("Frame too large for buffer: %zu > %zu", frame_size, vfb_snapshot->allocated_buffer_size);
+          }
+
+          // FPS tracking - frame successfully generated (handles lag detection and periodic reporting)
+          fps_frame_ns(&video_fps_tracker, current_time_ns, "frame rendered");
+        }
       }
+
+      SAFE_FREE(ascii_frame);
+    } else {
+      // No frame generated (probably no video sources) - this is normal, no error logging needed
+      log_dev_every(10 * NS_PER_MS_INT, "Per-client render: No video sources available for client %u",
+                    client_id_snapshot);
+    }
   }
 
 #ifdef DEBUG_THREADS
@@ -803,6 +796,9 @@ void *client_audio_render_thread(void *arg) {
     log_error("Failed to create Opus encoder for audio render thread (client %u)", thread_client_id);
     return NULL;
   }
+  char encoder_name[32];
+  snprintf(encoder_name, sizeof(encoder_name), "opus_encoder_%u", thread_client_id);
+  NAMED_REGISTER_AUDIO_CODEC(opus_encoder, encoder_name);
 
   // FPS tracking for audio render thread
   fps_t audio_fps_tracker = {0};

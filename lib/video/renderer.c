@@ -9,6 +9,7 @@
 #include <ascii-chat/platform/font.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/log/logging.h>
+#include <ascii-chat/debug/named.h>
 #include <ascii-chat/platform/terminal.h>
 #include <string.h>
 
@@ -61,6 +62,7 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
     SAFE_FREE(ctx);
     return err;
   }
+  NAMED_REGISTER_VIDEO_ENCODER(ctx->encoder, "ffmpeg_encoder");
   log_debug("render_file_create: ffmpeg_encoder created successfully");
 
   log_info("renderer: initialized encoder for %s", output_path);
@@ -69,7 +71,7 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
 }
 
 asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *ansi_frame) {
-  log_info("render_file_write_frame: CALLED - ctx=%p", (void*)ctx);
+  log_info("render_file_write_frame: CALLED - ctx=%p", (void *)ctx);
 
   if (!ctx) {
     log_warn("render_file_write_frame: ctx is NULL");
@@ -98,17 +100,18 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *an
   int width_px = term_renderer_width_px(ctx->renderer);
   int height_px = term_renderer_height_px(ctx->renderer);
 
-  log_info("render_file_write_frame: pixels=%p pitch=%d dims=%dx%d", (void*)pixels, pitch, width_px, height_px);
+  log_info("render_file_write_frame: pixels=%p pitch=%d dims=%dx%d", (void *)pixels, pitch, width_px, height_px);
 
   // Check first few pixels to verify content
   if (pixels) {
     uint8_t sample_r = pixels[0], sample_g = pixels[1], sample_b = pixels[2];
-    uint8_t sample_r_mid = pixels[(height_px/2) * pitch], sample_g_mid = pixels[(height_px/2) * pitch + 1], sample_b_mid = pixels[(height_px/2) * pitch + 2];
-    log_info("  pixel[0]: RGB(%u,%u,%u),  pixel[mid]: RGB(%u,%u,%u)", sample_r, sample_g, sample_b, sample_r_mid, sample_g_mid, sample_b_mid);
+    uint8_t sample_r_mid = pixels[(height_px / 2) * pitch], sample_g_mid = pixels[(height_px / 2) * pitch + 1],
+            sample_b_mid = pixels[(height_px / 2) * pitch + 2];
+    log_info("  pixel[0]: RGB(%u,%u,%u),  pixel[mid]: RGB(%u,%u,%u)", sample_r, sample_g, sample_b, sample_r_mid,
+             sample_g_mid, sample_b_mid);
   }
 
-  err =
-      ffmpeg_encoder_write_frame(ctx->encoder, pixels, pitch);
+  err = ffmpeg_encoder_write_frame(ctx->encoder, pixels, pitch);
   if (err != ASCIICHAT_OK) {
     log_warn("render_file_write_frame: ffmpeg_encoder_write_frame failed: %s", asciichat_error_string(err));
   }

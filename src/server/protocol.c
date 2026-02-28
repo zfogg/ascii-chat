@@ -142,6 +142,7 @@
 #include <ascii-chat/network/packet_parsing.h>
 #include <ascii-chat/network/logging.h>
 #include <ascii-chat/crypto/handshake/common.h>
+#include <ascii-chat/debug/named.h>
 
 static void protocol_cleanup_thread_locals(void) {
   // Placeholder for thread-local resources owned by the receive thread.
@@ -539,7 +540,11 @@ void handle_stream_start_packet(client_info_t *client, const void *data, size_t 
     if (!client->opus_decoder) {
       client->opus_decoder = opus_codec_create_decoder(48000);
       if (client->opus_decoder) {
-        log_info("Client %u: Opus decoder created (48kHz)", atomic_load(&client->client_id));
+        uint32_t client_id = atomic_load(&client->client_id);
+        char decoder_name[32];
+        snprintf(decoder_name, sizeof(decoder_name), "opus_decoder_%u", client_id);
+        NAMED_REGISTER_AUDIO_CODEC(client->opus_decoder, decoder_name);
+        log_info("Client %u: Opus decoder created (48kHz)", client_id);
       } else {
         log_error("Client %u: Failed to create Opus decoder", atomic_load(&client->client_id));
       }
