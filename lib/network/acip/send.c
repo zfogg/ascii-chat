@@ -200,6 +200,9 @@ asciichat_error_t acip_send_audio_opus_batch(acip_transport_t *transport, const 
 
   memcpy(buffer + sizeof(header) + sizes_len, opus_data, opus_len);
 
+  log_info("★ OPUS_BATCH_SEND_DEBUG: header=16, frame_count=%u, sizes_len=%zu, opus_len=%zu, TOTAL=%zu", frame_count,
+           sizes_len, opus_len, total_size);
+
   asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_AUDIO_OPUS_BATCH, buffer, total_size, 0);
 
   buffer_pool_free(NULL, buffer, total_size);
