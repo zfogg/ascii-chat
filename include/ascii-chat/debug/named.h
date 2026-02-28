@@ -992,6 +992,17 @@ typedef void (*named_iter_callback_t)(uintptr_t key, const char *name, void *use
 #endif
 
 /**
+ * @brief Register all packet types from packet_type_t enum
+ * @ingroup debug_named
+ *
+ * Registers all packet type enum values in the named registry using keys
+ * in the format "PACKET_TYPE=%d" where %d is the enum value.
+ * This should be called once during initialization to enable packet type
+ * identification in log message formatting.
+ */
+void named_registry_register_packet_types(void);
+
+/**
  * @brief Iterate through all registered entries
  * @param callback Function to call for each entry
  * @param user_data Opaque context passed to callback

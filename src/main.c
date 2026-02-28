@@ -338,6 +338,8 @@ int main(int argc, char *argv[]) {
   // Initialize the named registry for debugging (allows --debug-state to show registered synchronization primitives)
 #ifndef NDEBUG
   named_init();
+  // Register all packet types from the packet_type_t enum
+  named_registry_register_packet_types();
 #endif
 
   // Register the main thread IMMEDIATELY after named_init() to ensure it's available for all subsequent allocations

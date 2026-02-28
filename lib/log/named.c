@@ -46,6 +46,16 @@ static bool is_registered_fd(int fd) {
 }
 
 /**
+ * @brief Check if an integer is a registered packet type
+ * @param pkt_type Packet type value
+ * @return true if the packet type is registered as a packet_type
+ */
+static bool is_registered_packet_type(int pkt_type) {
+  const char *type = named_get_type((uintptr_t)pkt_type);
+  return type && strcmp(type, "packet_type") == 0;
+}
+
+/**
  * @brief Find the start of the fd/file/descriptor prefix before a position
  * @param start Start of string
  * @param p Current position in string
@@ -85,6 +95,73 @@ static const char *find_fd_prefix_start(const char *start, const char *p) {
   }
 
   return p; /* No prefix found, return original position */
+}
+
+/**
+ * @brief Find the start of the packet type prefix before a position
+ * @param start Start of string
+ * @param p Current position in string
+ * @return Pointer to start of prefix (packet/packet type), or p if no prefix found
+ *
+ * Walks backwards from position p to find "packet type", "packet (%d)", "packet %d", etc.
+ * Returns pointer to the first character of the keyword.
+ */
+static const char *find_packet_type_prefix_start(const char *start, const char *p) {
+  if (p == start)
+    return p;
+
+  const char *word_start = p - 1;
+  /* Skip back over whitespace, '=', ':', '(' */
+  while (word_start > start && (*word_start == ' ' || *word_start == '\t' || *word_start == '=' || *word_start == ':' ||
+                                *word_start == '(')) {
+    word_start--;
+  }
+
+  /* Check if we have a digit (we're in a decimal number) */
+  if (!isdigit(*word_start)) {
+    /* Not a digit, so look for packet type keywords before us */
+    const char *check = word_start;
+    while (check > start && (isalnum(*check) || *check == '_')) {
+      check--;
+    }
+    check++; /* Move back to start of word */
+
+    size_t word_len = word_start - check + 1;
+    /* Check for "type" keyword (part of "packet type") */
+    if (word_len >= 4 && strncasecmp(check, "type", 4) == 0) {
+      /* Look for "packet" before "type" */
+      const char *packet_check = check - 1;
+      while (packet_check > start && (*packet_check == ' ' || *packet_check == '\t')) {
+        packet_check--;
+      }
+      if (packet_check > start) {
+        const char *packet_start = packet_check;
+        while (packet_start > start && (isalnum(*packet_start) || *packet_start == '_')) {
+          packet_start--;
+        }
+        packet_start++;
+        size_t packet_len = packet_check - packet_start + 1;
+        if (packet_len == 6 && strncasecmp(packet_start, "packet", 6) == 0) {
+          return packet_start; /* Return start of "packet" in "packet type" */
+        }
+      }
+    }
+    /* Check for "packet" keyword alone */
+    if (word_len >= 6 && strncasecmp(check, "packet", 6) == 0) {
+      return check; /* Return start of "packet" */
+    }
+  }
+
+  return p; /* No prefix found, return original position */
+}
+
+/**
+ * @brief Check if current position matches packet type prefix pattern
+ * @param p Current position in string
+ * @return true if preceded by packet type keywords
+ */
+static bool has_packet_type_prefix(const char *start, const char *p) {
+  return find_packet_type_prefix_start(start, p) != p;
 }
 
 /**
@@ -173,7 +250,45 @@ int log_named_format_message(const char *message, char *output, size_t output_si
         digit_count++;
       }
 
-      if (digit_count > 0 && is_registered_fd(fd_value) && has_fd_prefix(message, int_start)) {
+      /* First check if this is a registered packet type */
+      if (digit_count > 0 && is_registered_packet_type(fd_value) && has_packet_type_prefix(message, int_start)) {
+        /* This integer is a registered packet type with appropriate prefix - format it */
+        const char *name = named_get(fd_value);
+        const char *type = named_get_type(fd_value);
+        const char *fmt_spec = named_get_format_spec(fd_value);
+
+        if (!fmt_spec) {
+          fmt_spec = "%d"; /* Default format for packet types */
+        }
+
+        if (name && type) {
+          /* Format: type/name (pkt_type=value) - plain text, colors applied at output stage */
+          char temp_output[512];
+          char id_buffer[64];
+          int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, fd_value);
+          if (id_written > 0 && id_written < (int)sizeof(id_buffer)) {
+            int temp_written = snprintf(temp_output, sizeof(temp_output), "%s/%s (pkt_type=%s)", type, name, id_buffer);
+            if (temp_written > 0 && (size_t)temp_written < sizeof(temp_output)) {
+              /* Find where prefix starts in original message, calculate how much to skip */
+              const char *prefix_start = find_packet_type_prefix_start(message, int_start);
+              size_t prefix_len = int_start - prefix_start; /* Length of prefix in original message */
+
+              /* Backtrack in output buffer to remove the prefix we already copied */
+              if (out_pos >= prefix_len) {
+                out_pos -= prefix_len;
+              }
+
+              int copy_len = temp_written;
+              if (out_pos + copy_len < output_size - 1) {
+                memcpy(output + out_pos, temp_output, copy_len);
+                out_pos += copy_len;
+                any_transformed = true;
+                continue;
+              }
+            }
+          }
+        }
+      } else if (digit_count > 0 && is_registered_fd(fd_value) && has_fd_prefix(message, int_start)) {
         /* This integer is a registered FD with appropriate prefix - format it (plain text for logs) */
         const char *name = named_get(fd_value);
         const char *type = named_get_type(fd_value);
