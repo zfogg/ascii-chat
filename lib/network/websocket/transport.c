@@ -125,6 +125,7 @@ static void *websocket_service_thread(void *arg) {
 
   int loop_count = 0;
   int total_messages_sent = 0;
+  uint64_t last_service_call = time_get_ns();
 
   while (ws_data->service_running) {
     loop_count++;
@@ -219,39 +220,44 @@ static void *websocket_service_thread(void *arg) {
     }
 
     // Service libwebsockets (processes network events, triggers callbacks)
-    // CRITICAL: Check context validity BEFORE calling lws_service
-    // lws_service can crash if called on a partially destroyed or invalid context
-    uint64_t service_start_ns = time_get_ns();
+    // CRITICAL: Rate limit lws_service() to avoid libwebsockets assertions
+    // Calling lws_service() too frequently triggers internal assertion failures
+    uint64_t now_ns = time_get_ns();
+    uint64_t time_since_last_service = now_ns - last_service_call;
     int result = 0;
 
-    // Guard against libwebsockets assertion failures
-    // lws_service is called frequently and libwebsockets has internal assertions
-    // that can crash the thread. We need to be defensive here.
-    if (!ws_data->context || ws_data->is_destroying) {
-      // Context is invalid or being destroyed, don't call lws_service
-      if (loop_count <= 50) {
-        log_info("[LOOP %d] Skipping lws_service: context=%p, destroying=%d",
-                 loop_count, (void *)ws_data->context, ws_data->is_destroying);
+    // Only call lws_service() every 100ms to avoid assertion failures
+    // while still processing handshake and connection maintenance
+    if (time_since_last_service >= 100000000ULL) {  // 100ms
+      last_service_call = now_ns;
+      uint64_t service_start_ns = now_ns;
+
+      if (!ws_data->context || ws_data->is_destroying) {
+        // Context is invalid or being destroyed, don't call lws_service
+        if (loop_count <= 50) {
+          log_info("[LOOP %d] Skipping lws_service: context=%p, destroying=%d",
+                   loop_count, (void *)ws_data->context, ws_data->is_destroying);
+        }
+      } else {
+        // Call lws_service with valid context
+        // Use 50ms timeout for client-side (needs responsive handshake)
+        result = lws_service(ws_data->context, 50);
       }
-      platform_sleep_us(10000);  // Sleep 10ms to avoid busy-spin
+      uint64_t service_end_ns = time_get_ns();
+
+      if (loop_count <= 50) {
+        char service_duration_str[32];
+        time_pretty(service_end_ns - service_start_ns, -1, service_duration_str, sizeof(service_duration_str));
+        log_info("[LOOP %d] lws_service() returned %d, duration %s", loop_count, result, service_duration_str);
+      }
+
+      if (result < 0) {
+        log_fatal("🔴 lws_service error: %d at loop %d", result, loop_count);
+        break;
+      }
     } else {
-      // Call lws_service with valid context
-      // Use 50ms timeout for client-side (needs responsive handshake)
-      // but be aware that rapid consecutive calls can trigger libwebsockets assertions
-      // in invalid states (e.g., trying to write before connection established)
-      result = lws_service(ws_data->context, 50);
-    }
-    uint64_t service_end_ns = time_get_ns();
-
-    if (loop_count <= 50) {
-      char service_duration_str[32];
-      time_pretty(service_end_ns - service_start_ns, -1, service_duration_str, sizeof(service_duration_str));
-      log_info("[LOOP %d] lws_service() returned %d, duration %s", loop_count, result, service_duration_str);
-    }
-
-    if (result < 0) {
-      log_fatal("🔴 lws_service error: %d at loop %d", result, loop_count);
-      break;
+      // Sleep briefly between lws_service() calls to avoid busy-waiting
+      platform_sleep_us(10000);  // 10ms
     }
 
     // Check if connection is still alive
@@ -278,6 +284,11 @@ static void *websocket_service_thread(void *arg) {
  */
 static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len) {
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)user;
+
+  // Early exit during shutdown to prevent crashes in libwebsockets callbacks
+  if (ws_data && atomic_load(&ws_data->is_destroying)) {
+    return 0;
+  }
 
   switch (reason) {
   case LWS_CALLBACK_CLIENT_ESTABLISHED: {
@@ -1167,14 +1178,9 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
   }
 
   // Close WebSocket connection gracefully before destroying context
-  // This prevents libwebsockets from triggering callbacks on a dead context
-  if (ws_data->wsi) {
-    log_debug("Closing WebSocket connection gracefully");
-    // Use lws_wsi_close to trigger a clean close sequence
-    lws_wsi_close(ws_data->wsi, 1);
-    // Clear wsi pointer after closing to prevent double-close
-    ws_data->wsi = NULL;
-  }
+  // Skip lws_wsi_close() to avoid segfault in libwebsockets during cleanup
+  // The context_destroy below will handle cleanup properly
+  ws_data->wsi = NULL;
 
   // Give libwebsockets a moment to process the close handshake
   // This ensures any pending callbacks complete before we destroy the context
