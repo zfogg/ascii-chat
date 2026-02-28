@@ -275,50 +275,11 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     for (int i = first_log_to_display; i < (int)log_count && terminal_lines_used < log_area_rows; i++) {
       const char *msg = log_entries[i].message;
 
-      // Calculate how many display lines this message will consume
-      // Split by newlines and calculate wrapping for each segment independently
-      int lines_for_this_msg = 0;
-      const char *segment_start = msg;
-
-      while (*segment_start) {
-        // Find the end of this segment (next newline or end of string)
-        const char *segment_end = segment_start;
-        while (*segment_end && *segment_end != '\n') {
-          segment_end++;
-        }
-
-        // Calculate display width of just this segment (without ANSI codes)
-        // We need to measure the actual visual width of the segment
-        int segment_display_width = 0;
-        if (segment_end > segment_start) {
-          // Create a temporary null-terminated copy of the segment for display_width()
-          size_t segment_len = segment_end - segment_start;
-          char segment_buffer[1024]; // Assume log segments fit in 1KB
-          if (segment_len < sizeof(segment_buffer)) {
-            strncpy(segment_buffer, segment_start, segment_len);
-            segment_buffer[segment_len] = '\0';
-            segment_display_width = display_width(segment_buffer);
-            if (segment_display_width < 0) {
-              segment_display_width = (int)segment_len;
-            }
-          } else {
-            segment_display_width = (int)segment_len;
-          }
-        }
-
-        // Calculate how many lines this segment wraps to
-        int segment_lines = 1; // At least 1 line per segment
-        if (segment_display_width > 0 && g_cached_term_size.cols > 0) {
-          segment_lines = (segment_display_width + g_cached_term_size.cols - 1) / g_cached_term_size.cols;
-        }
-        lines_for_this_msg += segment_lines;
-
-        // Move to next segment (skip the newline if present)
-        if (*segment_end == '\n') {
-          segment_start = segment_end + 1;
-        } else {
-          segment_start = segment_end; // End of string
-        }
+      // Calculate how many display lines this message will consume when wrapped
+      // Uses display_height() which handles ANSI codes and UTF-8 properly
+      int lines_for_this_msg = display_height(msg, g_cached_term_size.cols);
+      if (lines_for_this_msg <= 0) {
+        lines_for_this_msg = 1;
       }
 
       // Only output if it fits in remaining space

@@ -75,3 +75,32 @@ int display_center_horizontal(const char *text, int terminal_width);
  * @ingroup util
  */
 int display_center_vertical(int content_height, int terminal_height);
+
+/**
+ * @brief Calculate how many display lines text will consume when wrapped
+ *
+ * Splits text by newlines and calculates how many terminal rows it will
+ * occupy when wrapped to the given terminal width. Properly handles ANSI
+ * escape codes (ignored in width calculation) and UTF-8 multi-byte characters.
+ *
+ * @param text Input text which may contain ANSI codes and newlines (NULL-safe)
+ * @param terminal_width Width available for wrapping (e.g., 80)
+ * @return Number of display lines consumed, or 0 if text is empty
+ *
+ * @par Example
+ * @code
+ * // "Hello\nWorld" in 80-char terminal = 2 lines
+ * int height = display_height("Hello\nWorld", 80);  // Returns 2
+ *
+ * // "This is a very long line..." wrapped to 40 chars
+ * int height = display_height("This is a very long line that exceeds...", 40);
+ * // Returns 2-3 depending on exact length
+ *
+ * // With ANSI codes: "\033[1;36m" is not counted in width
+ * int height = display_height("\033[1;36m50-char line\033[0m", 40);
+ * // Returns 2 (50 visible chars / 40 width)
+ * @endcode
+ *
+ * @ingroup util
+ */
+int display_height(const char *text, int terminal_width);

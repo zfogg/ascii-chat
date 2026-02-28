@@ -56,3 +56,63 @@ int display_center_vertical(int content_height, int terminal_height) {
 
   return (terminal_height - content_height) / 2;
 }
+
+int display_height(const char *text, int terminal_width) {
+  if (!text || terminal_width <= 0) {
+    return 0;
+  }
+
+  int total_lines = 0;
+  const char *segment_start = text;
+
+  // Process text segment by segment, split by newlines
+  while (*segment_start) {
+    // Find the end of this segment (next newline or end of string)
+    const char *segment_end = segment_start;
+    while (*segment_end && *segment_end != '\n') {
+      segment_end++;
+    }
+
+    // Calculate display width of this segment (excluding ANSI codes)
+    if (segment_end > segment_start) {
+      // Create temporary null-terminated copy of segment
+      size_t segment_len = segment_end - segment_start;
+      char *segment_copy = SAFE_MALLOC(segment_len + 1, char *);
+      if (segment_copy) {
+        strncpy(segment_copy, segment_start, segment_len);
+        segment_copy[segment_len] = '\0';
+
+        // Calculate display width using ANSI-aware function
+        int segment_width = display_width(segment_copy);
+        if (segment_width < 0) {
+          segment_width = (int)segment_len;
+        }
+
+        // Calculate how many lines this segment wraps to
+        int segment_lines = (segment_width + terminal_width - 1) / terminal_width;
+        if (segment_lines <= 0) {
+          segment_lines = 1;
+        }
+        total_lines += segment_lines;
+
+        SAFE_FREE(segment_copy);
+      } else {
+        // Fallback: assume 1 line per segment if allocation fails
+        total_lines += 1;
+      }
+    } else {
+      // Empty segment (e.g., two consecutive newlines) still counts as 1 line
+      total_lines += 1;
+    }
+
+    // Move to next segment (skip the newline if present)
+    if (*segment_end == '\n') {
+      segment_start = segment_end + 1;
+    } else {
+      // End of string
+      break;
+    }
+  }
+
+  return total_lines;
+}
