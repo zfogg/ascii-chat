@@ -483,23 +483,27 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
       log_dev("POSIX terminal size from stderr ioctl: %dx%d", *width, *height);
       return ASCIICHAT_OK;
     }
+  }
 
-    // Method 3: Environment variables (COLUMNS and LINES) - only for interactive terminals
-    lines_env = SAFE_GETENV("LINES");
-    cols_env = SAFE_GETENV("COLUMNS");
-    if (lines_env && cols_env) {
-      uint32_t env_height = 0, env_width = 0;
-      // Parse height and width with safe range validation (1 to USHRT_MAX)
-      if (parse_uint32(lines_env, &env_height, 1, (uint32_t)USHRT_MAX) == ASCIICHAT_OK &&
-          parse_uint32(cols_env, &env_width, 1, (uint32_t)USHRT_MAX) == ASCIICHAT_OK) {
-        *width = (unsigned short int)env_width;
-        *height = (unsigned short int)env_height;
-        log_dev("POSIX terminal size from env: %dx%d", *width, *height);
-        return ASCIICHAT_OK;
-      }
-      log_dev("Invalid environment terminal dimensions: %s x %s", lines_env, cols_env);
+  // Method 3: Environment variables (COLUMNS and LINES)
+  // Check environment variables REGARDLESS of whether stdout is a TTY,
+  // to support testing and piped/redirected output scenarios
+  lines_env = SAFE_GETENV("LINES");
+  cols_env = SAFE_GETENV("COLUMNS");
+  if (lines_env && cols_env) {
+    uint32_t env_height = 0, env_width = 0;
+    // Parse height and width with safe range validation (1 to USHRT_MAX)
+    if (parse_uint32(lines_env, &env_height, 1, (uint32_t)USHRT_MAX) == ASCIICHAT_OK &&
+        parse_uint32(cols_env, &env_width, 1, (uint32_t)USHRT_MAX) == ASCIICHAT_OK) {
+      *width = (unsigned short int)env_width;
+      *height = (unsigned short int)env_height;
+      log_dev("POSIX terminal size from env: %dx%d", *width, *height);
+      return ASCIICHAT_OK;
     }
-  } else {
+    log_dev("Invalid environment terminal dimensions: %s x %s", lines_env, cols_env);
+  }
+
+  if (!stdout_is_tty) {
     // stdout is piped/redirected - skip /dev/tty detection and use defaults
     log_dev("POSIX: stdout is redirected (not a TTY), skipping terminal detection and using defaults");
   }
