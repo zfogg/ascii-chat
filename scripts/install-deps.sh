@@ -67,7 +67,8 @@ if [[ "$PLATFORM" == "macos" ]]; then
   # GitHub runners have pre-installed packages with version conflicts that can't be resolved
   brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool \
     ninja mimalloc zstd libsodium portaudio opus criterion doxygen sqlite3 \
-    miniupnpc libnatpmp ffmpeg abseil emscripten binaryen yt-dlp libwebsockets openssl@3 >/dev/null 2>&1 || true
+    miniupnpc libnatpmp ffmpeg abseil emscripten binaryen yt-dlp libwebsockets openssl@3 yyjson \
+    >/dev/null 2>&1 || true
 
   echo "Homebrew packages: installation attempt completed"
 
@@ -129,6 +130,8 @@ elif [[ "$PLATFORM" == "linux" ]]; then
 
     sudo apt-get update
 
+    uname -a
+
     # Install non-LLVM dependencies first
     sudo apt-get install -y \
       pkg-config make autoconf automake libtool ccache \
@@ -146,7 +149,11 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       dpkg-dev rpm \
       yt-dlp \
       libwebsockets-dev  \
-      yyjson
+      yyjson \
+      || true
+
+    sudo /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    brew install yyjson
 
     curl -fsSL https://bun.com/install | sudo bash
 
