@@ -208,25 +208,41 @@ int mutex_stack_get_all_threads(mutex_stack_entry_t ***out_stacks, int **out_sta
   }
 
   // Copy each thread's stack from the registry
-  // Note: the thread count can change concurrently, so we only process entries
-  // that existed at the time we allocated our arrays
+  // Note: the thread count can change concurrently, so we re-read it in the loop
+  // to avoid accessing out-of-bounds memory if threads exit during iteration
   int actual_count = 0;
   for (int i = 0; i < thread_count; i++) {
+    // Re-check thread count in case registry shrank
+    int current_registry_count = atomic_load_explicit(&g_thread_registry_count, memory_order_seq_cst);
+    if (i >= current_registry_count) {
+      break;
+    }
+
     thread_lock_stack_t *src = g_thread_registry[i].stack;
     if (!src) {
       // Stack not yet initialized for this thread, skip it
+      (*out_stack_counts)[i] = 0;
+      (*out_stacks)[i] = NULL;
       continue;
     }
 
-    int depth = src->depth;
+    // Defensively get depth - it could change or be freed by another thread
+    int depth = 0;
+    if (src && src->depth >= 0 && src->depth < MUTEX_STACK_MAX_DEPTH) {
+      depth = src->depth;
+    }
 
     (*out_stack_counts)[i] = depth;
-    (*out_stacks)[i] = SAFE_MALLOC(depth * sizeof(mutex_stack_entry_t), mutex_stack_entry_t *);
 
-    if ((*out_stacks)[i]) {
-      memcpy((*out_stacks)[i], src->stack, depth * sizeof(mutex_stack_entry_t));
+    if (depth > 0) {
+      (*out_stacks)[i] = SAFE_MALLOC(depth * sizeof(mutex_stack_entry_t), mutex_stack_entry_t *);
+      if ((*out_stacks)[i]) {
+        memcpy((*out_stacks)[i], src->stack, depth * sizeof(mutex_stack_entry_t));
+        actual_count++;
+      }
+    } else {
+      (*out_stacks)[i] = NULL;
     }
-    actual_count++;
   }
 
   *out_thread_count = actual_count;
