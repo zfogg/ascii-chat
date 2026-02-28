@@ -451,13 +451,13 @@ static void *splash_animation_thread(void *arg) {
     int frame = (int)(elapsed_ms * fps / 1000);
 
     if (!first_frame) {
-      log_dev("[SPLASH_ANIM] Iter %d: elapsed=%llums frame=%d should_stop=%d", iteration_count,
-              (unsigned long long)elapsed_ms, frame, atomic_load(&g_splash_state.should_stop));
+      log_dev_every(1000000, "[SPLASH_ANIM] Iter %d: elapsed=%llums frame=%d should_stop=%d", iteration_count,
+                    (unsigned long long)elapsed_ms, frame, atomic_load(&g_splash_state.should_stop));
     }
 
     // Poll keyboard for interactive grep and Escape to cancel
     if (!first_frame) {
-      log_dev("[SPLASH_ANIM] Iter %d: keyboard_enabled=%d", iteration_count, keyboard_enabled);
+      log_dev_every(1000000, "[SPLASH_ANIM] Iter %d: keyboard_enabled=%d", iteration_count, keyboard_enabled);
     }
     if (keyboard_enabled) {
       keyboard_key_t key = keyboard_read_nonblocking();
@@ -474,7 +474,7 @@ static void *splash_animation_thread(void *arg) {
       }
     }
     if (!first_frame) {
-      log_dev("[SPLASH_ANIM] Iter %d: keyboard check done", iteration_count);
+      log_dev_every(1000000, "[SPLASH_ANIM] Iter %d: keyboard check done", iteration_count);
     }
 
     // Set up splash header context for this frame (using TIME-BASED frame value)
@@ -484,7 +484,7 @@ static void *splash_animation_thread(void *arg) {
     };
 
     if (!first_frame) {
-      log_dev("[SPLASH_ANIM] Frame %d: Setting up header context", frame);
+      log_dev_every(500000, "[SPLASH_ANIM] Frame %d: Setting up header context", frame);
     }
 
     // Initialize update notification lifecycle and mutex once (safe to call multiple times)
@@ -499,16 +499,16 @@ static void *splash_animation_thread(void *arg) {
 
     // Copy update notification from global state (thread-safe)
     if (!first_frame) {
-      log_dev("[SPLASH_ANIM] Frame %d: About to lock update_notification_mutex", frame);
+      log_dev_every(1000000, "[SPLASH_ANIM] Frame %d: About to lock update_notification_mutex", frame);
     }
     mutex_lock(&g_update_notification_mutex);
     if (!first_frame) {
-      log_dev("[SPLASH_ANIM] Frame %d: Locked update_notification_mutex", frame);
+      log_dev_every(1000000, "[SPLASH_ANIM] Frame %d: Locked update_notification_mutex", frame);
     }
     SAFE_STRNCPY(header_ctx.update_notification, g_update_notification, sizeof(header_ctx.update_notification));
     mutex_unlock(&g_update_notification_mutex);
     if (!first_frame) {
-      log_dev("[SPLASH_ANIM] Frame %d: Unlocked update_notification_mutex", frame);
+      log_dev_every(1000000, "[SPLASH_ANIM] Frame %d: Unlocked update_notification_mutex", frame);
     }
 
     // Calculate header lines: 8 base lines + 1 if update notification present
@@ -540,12 +540,12 @@ static void *splash_animation_thread(void *arg) {
     if (should_render) {
       terminal_screen_render(&screen_config);
       if (!first_frame) {
-        log_dev("[SPLASH_ANIM] Iter %d: terminal_screen_render() completed", iteration_count);
+        log_dev_every(1000000, "[SPLASH_ANIM] Iter %d: terminal_screen_render() completed", iteration_count);
       }
       first_frame = false; // Mark first frame as complete
     } else {
       if (!first_frame) {
-        log_dev("[SPLASH_ANIM] Iter %d: Skipping render (should_render=false)", iteration_count);
+        log_dev_every(1000000, "[SPLASH_ANIM] Iter %d: Skipping render (should_render=false)", iteration_count);
       }
     }
 
