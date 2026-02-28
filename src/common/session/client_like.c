@@ -196,6 +196,8 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     splash_restore_stderr();
   }
 
+  uint64_t init_start = time_get_ns();
+
   // ============================================================================
   // SETUP: Terminal Logging in Snapshot Mode
   // ============================================================================
@@ -207,6 +209,9 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   if (!GET_OPTION(snapshot_mode)) {
     log_set_terminal_output(false);
   }
+
+  double elapsed_ms = time_ns_to_ms(time_elapsed_ns(init_start, time_get_ns()));
+  log_info("★ INIT_CHECKPOINT: Media setup starting at %.1f ms", elapsed_ms);
 
   // ============================================================================
   // SETUP: Media Source Selection and FPS Probing
@@ -401,7 +406,10 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     // Network mode: create minimal capture context without media source
     log_debug("Network mode detected - using network capture (no local media source)");
     int fps = GET_OPTION(fps);
+    uint64_t net_cap_start = time_get_ns();
     capture = session_network_capture_create((uint32_t)(fps > 0 ? fps : 60));
+    double net_cap_ms = time_ns_to_ms(time_elapsed_ns(net_cap_start, time_get_ns()));
+    log_info("★ INIT_CHECKPOINT: Network capture created in %.1f ms", net_cap_ms);
     if (!capture) {
       log_fatal("Failed to initialize network capture context");
       result = ERROR_MEDIA_INIT;
@@ -413,7 +421,10 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   } else if (!stdin_render_mode) {
     // Mirror mode: create capture context with local media source
     log_debug("Mirror mode detected - using mirror capture with local media source");
+    uint64_t mirror_cap_start = time_get_ns();
     capture = session_mirror_capture_create(&capture_config);
+    double mirror_cap_ms = time_ns_to_ms(time_elapsed_ns(mirror_cap_start, time_get_ns()));
+    log_info("★ INIT_CHECKPOINT: Mirror capture created in %.1f ms", mirror_cap_ms);
     if (!capture) {
       log_fatal("Failed to initialize mirror capture source");
       result = ERROR_MEDIA_INIT;

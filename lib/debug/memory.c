@@ -1083,40 +1083,59 @@ void debug_memory_report(void) {
           }
 
           // Parse site key to extract file and line for ignore checking
+          // Key format: "file:line:tid"  (where file is the relative path)
           char file[BUFFER_SIZE_SMALL];
-          memset(file, 0, sizeof(file)); // Initialize to prevent garbage data
+          memset(file, 0, sizeof(file));
           int line = 0;
           uint64_t tid = 0;
           bool parse_success = false;
 
-          char *last_colon = strrchr(site->key, ':');
-          if (last_colon) {
-            char *second_colon = last_colon - 1;
-            while (second_colon > site->key && *second_colon != ':') {
-              second_colon--;
-            }
-            if (second_colon > site->key && *second_colon == ':') {
-              sscanf(second_colon + 1, "%d", &line);
-              sscanf(last_colon + 1, "%lu", &tid);
-              size_t file_len = second_colon - site->key;
+          // Strategy: Find both colons by scanning for the rightmost two ':'
+          // 1. Find the LAST ':' (between line and tid)
+          // 2. Find the SECOND-LAST ':' (between file and line)
+          // 3. Extract each component
+
+          // Count colons to verify we have exactly 2
+          int colon_count = 0;
+          for (const char *p = site->key; *p; p++) {
+            if (*p == ':')
+              colon_count++;
+          }
+
+          if (colon_count == 2) {
+            // Find the two colons from right to left
+            char *last_colon = strrchr(site->key, ':'); // Last colon
+            char *first_colon = strchr(site->key, ':'); // First colon
+
+            if (last_colon && first_colon && first_colon < last_colon) {
+              // Extract components: file is from start to first_colon
+              size_t file_len = first_colon - site->key;
+
               if (file_len > 0 && file_len < sizeof(file)) {
                 strncpy(file, site->key, file_len);
                 file[file_len] = '\0';
-                parse_success = true;
-              } else if (file_len > 0) {
+
+                // Extract line (between first and last colon)
+                if (sscanf(first_colon + 1, "%d", &line) == 1 && sscanf(last_colon + 1, "%lu", &tid) == 1) {
+                  parse_success = true;
+                }
+              } else if (file_len >= sizeof(file)) {
                 // Filename too long, truncate with ellipsis
                 size_t max_len = sizeof(file) - 4;
                 strncpy(file, site->key, max_len);
                 file[max_len] = '\0';
                 strcat(file, "...");
-                parse_success = true;
+
+                if (sscanf(first_colon + 1, "%d", &line) == 1 && sscanf(last_colon + 1, "%lu", &tid) == 1) {
+                  parse_success = true;
+                }
               }
             }
           }
 
           // If parsing failed, use a descriptive fallback
           if (!parse_success) {
-            safe_snprintf(file, sizeof(file), "<parsing failed>");
+            safe_snprintf(file, sizeof(file), "<key:%s>", site->key);
           }
 
           // Skip ignored allocations
