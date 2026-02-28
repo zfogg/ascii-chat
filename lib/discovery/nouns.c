@@ -2,7 +2,13 @@
 // Total words: 5000
 
 #include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
 #include <ascii-chat/discovery/nouns.h>
+#include <ascii-chat/network/client.h>
+#include <ascii-chat/uthash.h>
 
 const char *nouns[] = {
     "abandon",      "abbey",        "abbot",        "abdomen",      "abel",         "ability",      "abort",
@@ -722,3 +728,54 @@ const char *nouns[] = {
     "zoo",          "zoom"};
 
 const size_t nouns_count = sizeof(nouns) / sizeof(nouns[0]);
+
+/**
+ * @brief Generate a unique client name from the nouns wordlist
+ *
+ * Caller MUST hold write lock on g_client_manager_rwlock before calling.
+ * This function iterates the existing clients hash to check for duplicate names.
+ */
+int generate_client_name(char *buffer, size_t buffer_size, void *existing_clients_hash) {
+  if (!buffer || buffer_size < 1 || !nouns_count) {
+    return -1;
+  }
+
+  // Select a random noun
+  srand((unsigned int)time(NULL) + rand()); // Better randomness with seed
+  int noun_idx = rand() % (int)nouns_count;
+  const char *noun = nouns[noun_idx];
+
+  if (!noun) {
+    return -1;
+  }
+
+  // Try to generate a unique name by appending a counter
+  // Format: "noun.0", "noun.1", etc.
+  for (int counter = 0; counter < 100; counter++) {
+    int written = snprintf(buffer, buffer_size, "%s.%d", noun, counter);
+    if (written < 0 || (size_t)written >= buffer_size) {
+      return -1; // Buffer too small
+    }
+
+    // Check if this name already exists in the clients hash
+    client_info_t *client, *tmp;
+    int found = 0;
+
+    HASH_ITER(hh, (client_info_t *)existing_clients_hash, client, tmp) {
+      if (strcmp(client->display_name, buffer) == 0) {
+        found = 1;
+        break;
+      }
+    }
+
+    if (!found) {
+      // Name is unique, return it
+      return 0;
+    }
+  }
+
+  // Couldn't find a unique name after 100 tries
+  // Fall back to numeric-only name as last resort
+  snprintf(buffer, buffer_size, "client_%u", (unsigned int)rand() % 10000);
+  return 0;
+}

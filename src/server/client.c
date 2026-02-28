@@ -119,6 +119,8 @@
 #include <ascii-chat/crypto/handshake/server.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/debug/named.h>
+#include <ascii-chat/discovery/nouns.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/options/options.h>
@@ -649,8 +651,18 @@ int add_client(server_context_t *server_ctx, socket_t socket, const char *client
   client->send_buffer = send_buffer;
   client->send_buffer_size = MAX_FRAME_BUFFER_SIZE;
 
-  safe_snprintf(client->display_name, sizeof(client->display_name), "Client%u", new_client_id);
-  log_info("Added new client ID=%u from %s:%d (socket=%d, slot=%d)", new_client_id, client_ip, port, socket, slot);
+  // Generate unique noun-based client name
+  // Note: We're holding the write lock here, so it's safe to iterate existing clients
+  if (generate_client_name(client->display_name, sizeof(client->display_name), g_client_manager.clients_by_id) != 0) {
+    // Fallback to numeric name if generation fails
+    safe_snprintf(client->display_name, sizeof(client->display_name), "client_%u", new_client_id);
+  }
+
+  // Register client with named debug system using the generated name
+  NAMED_REGISTER_CLIENT(client, client->display_name);
+
+  log_info("Added new client ID=%u (%s) from %s:%d (socket=%d, slot=%d)", new_client_id, client->display_name,
+           client_ip, port, socket, slot);
   log_debug("Client slot assigned: client_id=%u assigned to slot %d, socket=%d", new_client_id, slot, socket);
 
   // Register socket with tcp_server
