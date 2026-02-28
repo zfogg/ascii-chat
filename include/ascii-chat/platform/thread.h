@@ -84,6 +84,38 @@ extern "C" {
 #endif
 
 // ============================================================================
+// Thread Lifecycle Management
+// ============================================================================
+
+/**
+ * @brief Internal thread wrapper for automatic cleanup
+ *
+ * This structure is used internally by asciichat_thread_create() to wrap
+ * user thread functions with automatic cleanup (mutex stack cleanup, etc).
+ * Users should not interact with this directly.
+ *
+ * @internal
+ */
+typedef struct {
+  void *(*user_func)(void *); // User's thread function
+  void *user_arg;             // User's argument
+} asciichat_thread_wrapper_t;
+
+/**
+ * @brief Internal thread wrapper function that executes user code with cleanup
+ *
+ * This function is called internally by pthread_create to wrap user threads
+ * with automatic cleanup. It calls the user's thread function, then performs
+ * cleanup operations (mutex stack cleanup) before exiting.
+ *
+ * @param arg Pointer to asciichat_thread_wrapper_t (allocated by thread_create)
+ * @return Return value from user thread function
+ *
+ * @internal
+ */
+void *asciichat_thread_wrapper_impl(void *arg);
+
+// ============================================================================
 // Thread Functions
 // ============================================================================
 
@@ -98,6 +130,9 @@ extern "C" {
  * Creates a new thread that executes the given function with the provided argument.
  * The thread handle is stored in the thread parameter.
  * The name is registered in the debug named registry for thread identification.
+ *
+ * Threads created with this function automatically perform cleanup operations
+ * (like mutex stack cleanup) before exiting.
  *
  * @ingroup platform
  */

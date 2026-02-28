@@ -10,6 +10,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/debug/named.h>
+#include <ascii-chat/debug/mutex.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <time.h>
@@ -34,6 +35,39 @@
 /** @} */
 
 /**
+ * @brief Internal thread wrapper that adds automatic cleanup before thread exit
+ *
+ * This function wraps user thread functions to ensure proper cleanup
+ * (like mutex stack cleanup) happens before the thread terminates.
+ *
+ * @param arg Pointer to asciichat_thread_wrapper_t allocated by asciichat_thread_create
+ * @return Return value from user thread function
+ *
+ * @internal
+ */
+void *asciichat_thread_wrapper_impl(void *arg) {
+  asciichat_thread_wrapper_t *wrapper = (asciichat_thread_wrapper_t *)arg;
+  if (!wrapper) {
+    return NULL;
+  }
+
+  // Call user's thread function with user's argument
+  void *result = NULL;
+
+  if (wrapper->user_func) {
+    result = wrapper->user_func(wrapper->user_arg);
+  }
+
+  // Perform cleanup before thread exit
+  mutex_stack_cleanup_current_thread();
+
+  // Free the wrapper struct
+  SAFE_FREE(wrapper);
+
+  return result;
+}
+
+/**
  * @brief Create a new thread with name
  * @param thread Pointer to thread structure to initialize
  * @param name Human-readable name for debugging
@@ -42,10 +76,24 @@
  * @return 0 on success, error code on failure
  */
 int asciichat_thread_create(asciichat_thread_t *thread, const char *name, void *(*func)(void *), void *arg) {
-  int err = pthread_create(thread, NULL, func, arg);
+  // Allocate wrapper structure to hold user's function and argument
+  asciichat_thread_wrapper_t *wrapper = SAFE_MALLOC(sizeof(asciichat_thread_wrapper_t), asciichat_thread_wrapper_t *);
+  if (!wrapper) {
+    return -1; // Memory allocation failure
+  }
+
+  wrapper->user_func = func;
+  wrapper->user_arg = arg;
+
+  // Create thread with wrapper function, passing wrapper as argument
+  int err = pthread_create(thread, NULL, asciichat_thread_wrapper_impl, (void *)wrapper);
   if (err == 0 && name && thread) {
     NAMED_REGISTER_THREAD(*thread, name);
+  } else if (err != 0) {
+    // If thread creation failed, free the wrapper we allocated
+    SAFE_FREE(wrapper);
   }
+
   return err;
 }
 

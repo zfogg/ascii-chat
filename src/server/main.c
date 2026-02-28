@@ -123,7 +123,6 @@
 #include <ascii-chat/log/json.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/debug/memory.h>
-#include <ascii-chat/debug/mutex.h>
 
 /* ============================================================================
  * Global State
@@ -1188,6 +1187,7 @@ static void *websocket_server_thread_wrapper(void *arg) {
   if (result != ASCIICHAT_OK) {
     log_error("WebSocket server thread exited with error");
   }
+
   return NULL;
 }
 
@@ -2743,12 +2743,8 @@ cleanup:
   platform_restore_timer_resolution(); // Restore timer resolution (no-op on POSIX)
 
 #ifndef NDEBUG
-  // Join debug_sync thread FIRST - allows it to clean up its mutex stack on exit
+  // Join debug_sync thread first
   debug_sync_cleanup_thread();
-
-  // Clean up mutex stacks immediately after debug_sync thread exits
-  // (before any other cleanup that might interfere)
-  mutex_stack_cleanup();
 
   // Join remaining debug threads
   debug_memory_thread_cleanup();
