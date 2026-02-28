@@ -565,8 +565,9 @@ static asciichat_error_t client_run(session_capture_ctx_t *capture, session_disp
     return ERROR_NETWORK;
   }
 
-  // Signal reconnection attempt to the user (splash screen will show logs)
-  if (g_client_session.has_ever_connected && !GET_OPTION(quiet)) {
+  // Clear screen and show splash on reconnection to provide visual feedback to user
+  if (!GET_OPTION(quiet)) {
+    terminal_clear_screen();
     splash_intro_start(NULL);
   }
 
