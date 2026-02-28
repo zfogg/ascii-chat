@@ -219,9 +219,11 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
       // The buffer contains ANSI codes + text. We count newlines and account for wrapped lines.
       int measured_height = 0;
       const char *content = frame_buffer_get_content(temp_buf);
+      size_t buf_len = frame_buffer_get_length(temp_buf);
+      const char *buf_end = content + buf_len;
       const char *line_start = content;
 
-      while (*content != '\0') {
+      while (content < buf_end) {
         if (*content == '\n') {
           // Found end of line - measure this line's display height
           size_t line_len = content - line_start;
@@ -305,10 +307,8 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     if (total_lines_used + lines_for_msg <= log_area_rows) {
       total_lines_used += lines_for_msg;
       first_log_to_display = i; // This is the first (oldest) log we'll display
-    } else {
-      // This log doesn't fit, and older logs won't either - stop searching
-      break;
     }
+    // Continue checking older logs - they might be shorter and still fit
   }
 
   // If no logs fit, show nothing (just padding)
