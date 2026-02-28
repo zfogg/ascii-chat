@@ -82,6 +82,7 @@ static struct {
   int stderr_fd_saved;                  // saved stderr fd during splash (to suppress real-time log output)
   int stdout_fd_saved;                  // saved stdout fd during splash
   int devnull_fd;                       // /dev/null fd to redirect stderr/stdout during splash
+  int tty_fd;                           // /dev/tty fd if stdout is piped (for direct terminal output)
   bool saved_console_state;             // saved console logging state (to restore later)
   session_display_ctx_t *display_ctx;   // display context for checking if first frame is rendered
   _Atomic(uint64_t) intro_done_time_ns; // when splash_intro_done() was called
@@ -94,6 +95,7 @@ static struct {
                     .stderr_fd_saved = -1,
                     .stdout_fd_saved = -1,
                     .devnull_fd = -1,
+                    .tty_fd = -1,
                     .saved_console_state = false,
                     .display_ctx = NULL,
                     .intro_done_time_ns = 0,
@@ -728,11 +730,35 @@ int splash_intro_start(session_display_ctx_t *ctx) {
     return 0;
   }
 
+  // Open /dev/tty directly if stdout is piped, to ensure splash displays on the terminal
+  FILE *splash_output = stdout;
+  if (!isatty(STDOUT_FILENO)) {
+    // stdout is piped - open /dev/tty to write splash directly to terminal
+    g_splash_state.tty_fd = open("/dev/tty", O_WRONLY);
+    if (g_splash_state.tty_fd >= 0) {
+      splash_output = fdopen(g_splash_state.tty_fd, "w");
+      if (!splash_output) {
+        close(g_splash_state.tty_fd);
+        splash_output = stdout;
+        g_splash_state.tty_fd = -1;
+      }
+    }
+  }
+
   // Clear screen
-  terminal_clear_screen();
+  if (splash_output == stdout) {
+    terminal_clear_screen();
+  } else {
+    // Write ANSI clear sequence directly to terminal
+    fprintf(splash_output, "\033[2J\033[H");
+  }
   // Show cursor for splash screen display (with logs)
-  (void)terminal_cursor_show();
-  fflush(stdout);
+  if (splash_output == stdout) {
+    (void)terminal_cursor_show();
+  } else {
+    fprintf(splash_output, "\033[?25h");
+  }
+  fflush(splash_output);
 
   // Clear the log buffer so animation starts with clean slate
   // This prevents any pre-splash logs from appearing in first frame
@@ -833,6 +859,10 @@ void splash_restore_stderr(void) {
   if (g_splash_state.devnull_fd >= 0) {
     close(g_splash_state.devnull_fd);
     g_splash_state.devnull_fd = -1;
+  }
+  if (g_splash_state.tty_fd >= 0) {
+    close(g_splash_state.tty_fd);
+    g_splash_state.tty_fd = -1;
   }
 
   // Restore console output so logs appear normally again
