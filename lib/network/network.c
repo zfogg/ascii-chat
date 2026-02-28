@@ -195,8 +195,9 @@ ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, uint64_t timeo
     pfd.events = POLLIN;
     pfd.revents = 0;
 
-    int64_t effective_timeout_ns = network_is_test_environment() ? (1LL * NS_PER_SEC_INT) : (int64_t)timeout_ns;
-    int result = socket_poll(&pfd, 1, effective_timeout_ns);
+    // Use provided timeout for recv() calls - don't artificially limit data packets in test mode
+    // Timeouts should only apply to initial handshake, not to receiving data on active connections
+    int result = socket_poll(&pfd, 1, (int64_t)timeout_ns);
     if (result <= 0) {
       if (result == 0) {
         SET_ERRNO_SYS(ERROR_NETWORK_TIMEOUT, "recv_with_timeout timed out after %llu nanoseconds",
