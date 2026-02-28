@@ -32,7 +32,7 @@
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/video/ansi.h>
 

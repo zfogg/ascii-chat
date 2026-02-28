@@ -20,7 +20,7 @@
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/video/output_buffer.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/video/ansi_fast.h>
 
 /* ============================================================================
@@ -259,13 +259,13 @@ char *rgb_to_halfblocks_scalar(const uint8_t *rgb, int width, int height, int st
       } else {
         // Use block characters based on luminance levels
         // Map luminance (0-255) to block shade characters
-        uint8_t shade_top = (lum_top >> 6);    // Map 0-255 to 0-3
+        uint8_t shade_top = (lum_top >> 6); // Map 0-255 to 0-3
 
         static const char shades[4][3] = {
-          {(char)0xE2, (char)0x96, (char)0x91},  // ░ light shade
-          {(char)0xE2, (char)0x96, (char)0x92},  // ▒ medium shade
-          {(char)0xE2, (char)0x96, (char)0x93},  // ▓ dark shade
-          {(char)0xE2, (char)0x96, (char)0x88}   // █ full block
+            {(char)0xE2, (char)0x96, (char)0x91}, // ░ light shade
+            {(char)0xE2, (char)0x96, (char)0x92}, // ▒ medium shade
+            {(char)0xE2, (char)0x96, (char)0x93}, // ▓ dark shade
+            {(char)0xE2, (char)0x96, (char)0x88}  // █ full block
         };
 
         // Emit the appropriate shade character
@@ -303,7 +303,8 @@ char *rgb_to_halfblocks_scalar(const uint8_t *rgb, int width, int height, int st
  * @brief Scalar 16-color halfblock renderer
  * Uses 16-color ANSI codes for foreground (top) and implicit background (bottom).
  */
-char *rgb_to_16color_halfblocks_scalar(const uint8_t *rgb, int width, int height, int stride_bytes, const char *palette) {
+char *rgb_to_16color_halfblocks_scalar(const uint8_t *rgb, int width, int height, int stride_bytes,
+                                       const char *palette) {
   (void)palette; // Unused for 16-color mode
   if (width <= 0 || height <= 0)
     return platform_strdup("");
@@ -425,7 +426,8 @@ char *rgb_to_16color_halfblocks_scalar(const uint8_t *rgb, int width, int height
  * @brief Scalar 256-color halfblock renderer
  * Uses 256-color ANSI codes for foreground (top) and implicit background (bottom).
  */
-char *rgb_to_256color_halfblocks_scalar(const uint8_t *rgb, int width, int height, int stride_bytes, const char *palette) {
+char *rgb_to_256color_halfblocks_scalar(const uint8_t *rgb, int width, int height, int stride_bytes,
+                                        const char *palette) {
   (void)palette; // Unused for 256-color mode
   if (width <= 0 || height <= 0)
     return platform_strdup("");

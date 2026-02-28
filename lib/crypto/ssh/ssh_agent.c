@@ -13,7 +13,7 @@
 #include <sodium.h>
 #include <ascii-chat/platform/pipe.h>
 #include <ascii-chat/platform/agent.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 
 #ifdef _WIN32
 #include <io.h>

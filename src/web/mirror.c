@@ -16,7 +16,7 @@
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/video/ascii.h>
 #include <ascii-chat/video/color_filter.h>
 #include <ascii-chat/video/image.h>

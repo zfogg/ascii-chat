@@ -12,7 +12,7 @@
 #include <ascii-chat/discovery/strings.h>
 #include <ascii-chat/discovery/adjectives.h>
 #include <ascii-chat/discovery/nouns.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/util/lifecycle.h>
 // NOTE: Use explicit path to avoid Windows include resolution picking up options/common.h

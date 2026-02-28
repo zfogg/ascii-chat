@@ -8,7 +8,7 @@
 
 #include "ascii-chat/log/interactive_grep.h"
 #include "ascii-chat/common.h"
-#include "ascii-chat/log/logging.h"
+#include "ascii-chat/log/log.h"
 #include "ascii-chat/log/grep.h"
 #include "ascii-chat/platform/keyboard.h"
 #include "ascii-chat/platform/mutex.h"
@@ -61,8 +61,8 @@ typedef struct {
   mutex_t mutex;
   lifecycle_t lifecycle;
   _Atomic bool needs_rerender;
-  _Atomic bool signal_cancelled; ///< Set by signal handler, checked by render loop
-  _Atomic int mode_atomic;       ///< Shadow of mode for signal-safe reads
+  _Atomic bool signal_cancelled;   ///< Set by signal handler, checked by render loop
+  _Atomic int mode_atomic;         ///< Shadow of mode for signal-safe reads
   bool cli_pattern_auto_populated; ///< Track if CLI pattern was already populated
 } interactive_grep_state_t;
 

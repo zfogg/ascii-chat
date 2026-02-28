@@ -206,7 +206,7 @@
 #include "session/display.h"
 #include "session/render.h"
 #include "session/keyboard_handler.h"
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdint.h>

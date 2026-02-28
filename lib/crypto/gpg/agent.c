@@ -8,7 +8,7 @@
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/string.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/agent.h>
 #include <ascii-chat/platform/pipe.h>

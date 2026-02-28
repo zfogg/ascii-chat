@@ -30,7 +30,7 @@
 
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/webrtc/webrtc.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/ringbuffer.h>
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/platform/mutex.h>
@@ -396,7 +396,7 @@ acip_transport_t *acip_webrtc_transport_create(webrtc_peer_connection_t *peer_co
   }
 
   // Initialize synchronization primitives
-  if (mutex_init(&wrtc_data->queue_mutex, "webrtc_queue")  != 0) {
+  if (mutex_init(&wrtc_data->queue_mutex, "webrtc_queue") != 0) {
     ringbuffer_destroy(wrtc_data->recv_queue);
     SAFE_FREE(wrtc_data);
     SAFE_FREE(transport);
@@ -404,7 +404,7 @@ acip_transport_t *acip_webrtc_transport_create(webrtc_peer_connection_t *peer_co
     return NULL;
   }
 
-  if (cond_init(&wrtc_data->queue_cond, "queue")  != 0) {
+  if (cond_init(&wrtc_data->queue_cond, "queue") != 0) {
     mutex_destroy(&wrtc_data->queue_mutex);
     ringbuffer_destroy(wrtc_data->recv_queue);
     SAFE_FREE(wrtc_data);
@@ -413,7 +413,7 @@ acip_transport_t *acip_webrtc_transport_create(webrtc_peer_connection_t *peer_co
     return NULL;
   }
 
-  if (mutex_init(&wrtc_data->state_mutex, "webrtc_state")  != 0) {
+  if (mutex_init(&wrtc_data->state_mutex, "webrtc_state") != 0) {
     cond_destroy(&wrtc_data->queue_cond);
     mutex_destroy(&wrtc_data->queue_mutex);
     ringbuffer_destroy(wrtc_data->recv_queue);

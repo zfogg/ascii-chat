@@ -50,7 +50,7 @@
 #include <ascii-chat/audio/client_audio_pipeline.h>
 #include <ascii-chat/audio/wav_writer.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/util/time.h>
 

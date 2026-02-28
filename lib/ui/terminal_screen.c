@@ -23,7 +23,7 @@
 #include "ascii-chat/platform/abstraction.h"
 #include "ascii-chat/platform/mutex.h"
 #include "ascii-chat/log/grep.h"
-#include "ascii-chat/log/logging.h"
+#include "ascii-chat/log/log.h"
 #include "ascii-chat/options/options.h"
 #include "ascii-chat/common.h"
 #include <stdio.h>

@@ -12,7 +12,7 @@
 
 #include "session/display.h"
 #include <ascii-chat/common.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/platform/terminal.h>

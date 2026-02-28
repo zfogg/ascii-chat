@@ -5,7 +5,7 @@
  */
 
 #include <ascii-chat/platform/system.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <IOKit/pwr_mgt/IOPMLib.h>
 

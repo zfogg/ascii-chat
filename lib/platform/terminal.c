@@ -9,7 +9,7 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #ifndef _WIN32
 #include <unistd.h>
 #endif
@@ -259,7 +259,6 @@ void terminal_get_default_background_color(int theme, uint8_t *out_r, uint8_t *o
 
 // Default stub implementation for platforms that don't implement ghostty
 // Linux implementation is in linux/terminal.c
-__attribute__((weak))
-asciichat_error_t terminal_ghostty_init_once(void) {
+__attribute__((weak)) asciichat_error_t terminal_ghostty_init_once(void) {
   return ASCIICHAT_OK;
 }

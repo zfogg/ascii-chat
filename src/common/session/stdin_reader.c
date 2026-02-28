@@ -6,7 +6,7 @@
 
 #include "session/stdin_reader.h"
 #include <ascii-chat/platform/memory.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/util/display.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -14,25 +14,23 @@
 
 typedef struct stdin_frame_reader_s {
   int frame_height;
-  int frame_width;            // Detected from first frame (0 = not yet detected)
-  char *line_buffer;          // Temporary buffer for one line
+  int frame_width;   // Detected from first frame (0 = not yet detected)
+  char *line_buffer; // Temporary buffer for one line
   size_t line_buffer_size;
   bool eof_reached;
   bool first_frame_processed; // Track if we've processed first frame yet
 } stdin_frame_reader_t;
 
-#define LINE_BUFFER_SIZE 16384  // Max bytes per line
+#define LINE_BUFFER_SIZE 16384 // Max bytes per line
 
-asciichat_error_t stdin_frame_reader_create(int frame_height,
-                                            stdin_frame_reader_t **out) {
+asciichat_error_t stdin_frame_reader_create(int frame_height, stdin_frame_reader_t **out) {
   if (frame_height <= 0) {
-    return SET_ERRNO(ERROR_INVALID_PARAM,
-                     "Invalid frame height: %d", frame_height);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid frame height: %d", frame_height);
   }
 
   stdin_frame_reader_t *reader = SAFE_CALLOC(1, sizeof(*reader), stdin_frame_reader_t *);
   reader->frame_height = frame_height;
-  reader->frame_width = 0;  // Will be detected from first frame
+  reader->frame_width = 0; // Will be detected from first frame
   reader->line_buffer = SAFE_MALLOC(LINE_BUFFER_SIZE, char *);
   reader->line_buffer_size = LINE_BUFFER_SIZE;
   reader->eof_reached = false;
@@ -50,7 +48,7 @@ asciichat_error_t stdin_frame_reader_next(stdin_frame_reader_t *reader, char **o
 
   if (reader->eof_reached) {
     *out_frame = NULL;
-    return ASCIICHAT_OK;  // EOF, but no error
+    return ASCIICHAT_OK; // EOF, but no error
   }
 
   // Allocate buffer for complete frame (frame_height lines)
@@ -70,8 +68,8 @@ asciichat_error_t stdin_frame_reader_next(stdin_frame_reader_t *reader, char **o
 
       // If we read some lines but not a complete frame, that's ok - return partial
       if (frame_pos > 0) {
-        log_debug("stdin_reader: EOF reached after %d/%d lines, returning partial frame",
-                  line_num, reader->frame_height);
+        log_debug("stdin_reader: EOF reached after %d/%d lines, returning partial frame", line_num,
+                  reader->frame_height);
         // Remove trailing newline from last line if present
         if (frame_pos > 0 && frame_data[frame_pos - 1] == '\n') {
           frame_pos--;
@@ -82,7 +80,7 @@ asciichat_error_t stdin_frame_reader_next(stdin_frame_reader_t *reader, char **o
 
       SAFE_FREE(frame_data);
       *out_frame = NULL;
-      return ASCIICHAT_OK;  // EOF
+      return ASCIICHAT_OK; // EOF
     }
 
     // Append line to frame
@@ -118,7 +116,7 @@ asciichat_error_t stdin_frame_reader_next(stdin_frame_reader_t *reader, char **o
       char saved_char = *first_newline;
       *first_newline = '\0';
       reader->frame_width = display_width(frame_data);
-      *first_newline = saved_char;  // Restore
+      *first_newline = saved_char; // Restore
     } else {
       // Only one line in frame, use it for width
       reader->frame_width = display_width(frame_data);
@@ -128,13 +126,14 @@ asciichat_error_t stdin_frame_reader_next(stdin_frame_reader_t *reader, char **o
   }
 
   *out_frame = frame_data;
-  log_debug_every(NS_PER_SEC_INT, "stdin_reader: read frame (%zu bytes, %dx%d)",
-                  frame_pos, reader->frame_width, reader->frame_height);
+  log_debug_every(NS_PER_SEC_INT, "stdin_reader: read frame (%zu bytes, %dx%d)", frame_pos, reader->frame_width,
+                  reader->frame_height);
   return ASCIICHAT_OK;
 }
 
 void stdin_frame_reader_destroy(stdin_frame_reader_t *reader) {
-  if (!reader) return;
+  if (!reader)
+    return;
   SAFE_FREE(reader->line_buffer);
   SAFE_FREE(reader);
 }

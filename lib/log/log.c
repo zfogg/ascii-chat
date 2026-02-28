@@ -1,5 +1,5 @@
 /**
- * @file logging.c
+ * @file log.c
  * @ingroup logging
  * @brief 📝 Multi-level logging with terminal color support, file rotation, and async output
  */
@@ -23,7 +23,7 @@
 #include <sys/stat.h>
 #include <ctype.h>
 
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/log/format.h>
 #include <ascii-chat/log/colorize.h>
 #include <ascii-chat/log/mmap.h>
@@ -56,23 +56,23 @@ __attribute__((weak)) void platform_log_hook(log_level_t level, const char *mess
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 static struct log_context_t {
-  _Atomic int file;                        /* File descriptor (atomic for safe access) */
-  _Atomic int json_file;                   /* JSON output file descriptor (-1 = disabled) */
-  _Atomic int level;                       /* Log level as int for atomic ops */
-  lifecycle_t lifecycle;                   /* Initialization state machine */
-  char filename[LOG_MSG_BUFFER_SIZE];      /* Store filename (set once at init) */
-  _Atomic size_t current_size;             /* Track current file size */
-  _Atomic bool terminal_output_enabled;    /* Control stderr output to terminal */
-  _Atomic bool level_manually_set;         /* Track if level was set manually */
-  _Atomic bool force_stderr;               /* Force all terminal logs to stderr (client mode) */
-  _Atomic bool terminal_locked;            /* True when a thread has exclusive terminal access */
-  _Atomic uint64_t terminal_owner_thread;  /* Thread that owns terminal output (stored as uint64) */
-  _Atomic unsigned int flush_delay_ms;     /* Delay between each buffered log flush (0 = disabled) */
-  mutex_t rotation_mutex;                  /* Mutex for log rotation only (not for logging!) */
-  lifecycle_t rotation_mutex_lifecycle;    /* Rotation mutex initialization state machine */
-  log_template_t *format;                  /* Compiled log format (NULL = use default) */
-  log_template_t *format_console_only;     /* Console-only format variant */
-  _Atomic bool has_custom_format;          /* True if format was customized */
+  _Atomic int file;                       /* File descriptor (atomic for safe access) */
+  _Atomic int json_file;                  /* JSON output file descriptor (-1 = disabled) */
+  _Atomic int level;                      /* Log level as int for atomic ops */
+  lifecycle_t lifecycle;                  /* Initialization state machine */
+  char filename[LOG_MSG_BUFFER_SIZE];     /* Store filename (set once at init) */
+  _Atomic size_t current_size;            /* Track current file size */
+  _Atomic bool terminal_output_enabled;   /* Control stderr output to terminal */
+  _Atomic bool level_manually_set;        /* Track if level was set manually */
+  _Atomic bool force_stderr;              /* Force all terminal logs to stderr (client mode) */
+  _Atomic bool terminal_locked;           /* True when a thread has exclusive terminal access */
+  _Atomic uint64_t terminal_owner_thread; /* Thread that owns terminal output (stored as uint64) */
+  _Atomic unsigned int flush_delay_ms;    /* Delay between each buffered log flush (0 = disabled) */
+  mutex_t rotation_mutex;                 /* Mutex for log rotation only (not for logging!) */
+  lifecycle_t rotation_mutex_lifecycle;   /* Rotation mutex initialization state machine */
+  log_template_t *format;                 /* Compiled log format (NULL = use default) */
+  log_template_t *format_console_only;    /* Console-only format variant */
+  _Atomic bool has_custom_format;         /* True if format was customized */
 } g_log = {
     .file = 2, /* STDERR_FILENO - fd 0 is STDIN (read-only!) */
     .json_file = -1,

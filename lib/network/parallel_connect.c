@@ -4,7 +4,7 @@
  */
 
 #include <ascii-chat/network/parallel_connect.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/util/time.h>
 #include <string.h>

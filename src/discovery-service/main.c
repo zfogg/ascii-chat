@@ -22,7 +22,7 @@
 #include <ascii-chat/discovery/strings.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/version.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h> // For RCU-based options access
 #include <ascii-chat/platform/abstraction.h>

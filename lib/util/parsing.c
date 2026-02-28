@@ -11,7 +11,7 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 
 asciichat_error_t safe_parse_size_message(const char *message, unsigned int *width, unsigned int *height) {
   if (!message || !width || !height) {

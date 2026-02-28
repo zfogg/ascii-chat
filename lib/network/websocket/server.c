@@ -9,7 +9,7 @@
 
 #include <ascii-chat/network/websocket/server.h>
 #include <ascii-chat/network/acip/transport.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/ringbuffer.h>

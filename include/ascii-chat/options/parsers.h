@@ -16,7 +16,7 @@
 #include <stdbool.h>
 #include "../platform/terminal.h"
 #include "../video/palette.h"
-#include "../log/logging.h"
+#include "../log/log.h"
 
 /**
  * @brief Parse color setting option (--color flag)

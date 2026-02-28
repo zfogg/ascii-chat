@@ -19,7 +19,7 @@
 
 #include <ascii-chat/network/tcp/client.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/platform/system.h>

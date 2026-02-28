@@ -15,7 +15,7 @@
 
 #include <ascii-chat/log/grep.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/util/pcre2.h>
 #include <ascii-chat/util/utf8.h>
@@ -78,12 +78,12 @@ typedef struct {
  * @brief Global filter state (supports multiple patterns ORed together)
  */
 static struct {
-  grep_pattern_t *patterns;            ///< Array of patterns
-  int pattern_count;                   ///< Number of active patterns
-  int pattern_capacity;                ///< Allocated capacity
-  bool enabled;                        ///< Is filtering active?
-  tls_key_t match_data_key;            ///< Thread-local match_data key
-  lifecycle_t match_data_lifecycle;    ///< Lifecycle for TLS key initialization
+  grep_pattern_t *patterns;         ///< Array of patterns
+  int pattern_count;                ///< Number of active patterns
+  int pattern_capacity;             ///< Allocated capacity
+  bool enabled;                     ///< Is filtering active?
+  tls_key_t match_data_key;         ///< Thread-local match_data key
+  lifecycle_t match_data_lifecycle; ///< Lifecycle for TLS key initialization
 
   // Context line buffering
   char **line_buffer;    ///< Circular buffer for context_before

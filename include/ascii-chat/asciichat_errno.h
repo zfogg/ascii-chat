@@ -96,10 +96,10 @@
 
 /* Forward declaration of backtrace_t - will be typedef'd next */
 typedef struct {
-  void *ptrs[32];    ///< Raw return addresses
-  char **symbols;    ///< Symbolized strings (NULL until backtrace_symbolize called)
-  int count;         ///< Number of frames captured
-  bool tried_symbolize;  ///< Track if we've already tried to symbolize (prevents duplicate work)
+  void *ptrs[32];       ///< Raw return addresses
+  char **symbols;       ///< Symbolized strings (NULL until backtrace_symbolize called)
+  int count;            ///< Number of frames captured
+  bool tried_symbolize; ///< Track if we've already tried to symbolize (prevents duplicate work)
 } backtrace_t;
 
 /**
@@ -116,17 +116,17 @@ typedef struct {
  * @ingroup errno
  */
 typedef struct {
-  asciichat_error_t code;   ///< Error code (asciichat_error_t enum value)
-  const char *file;         ///< Source file where error occurred (NULL in release builds)
-  int line;                 ///< Line number where error occurred (0 in release builds)
-  const char *function;     ///< Function name where error occurred (NULL in release builds)
-  char *context_message;    ///< Optional custom message (dynamically allocated, owned by system)
-  uint64_t timestamp;       ///< Timestamp when error occurred (microseconds since epoch)
-  int system_errno;         ///< System errno value (if applicable, 0 otherwise)
-  int wsa_error;            ///< Windows socket error code (if applicable, 0 otherwise)
-  backtrace_t backtrace;    ///< Stack trace (debug builds only)
-  bool has_system_error;    ///< True if system_errno is valid
-  bool has_wsa_error;       ///< True if wsa_error is valid
+  asciichat_error_t code; ///< Error code (asciichat_error_t enum value)
+  const char *file;       ///< Source file where error occurred (NULL in release builds)
+  int line;               ///< Line number where error occurred (0 in release builds)
+  const char *function;   ///< Function name where error occurred (NULL in release builds)
+  char *context_message;  ///< Optional custom message (dynamically allocated, owned by system)
+  uint64_t timestamp;     ///< Timestamp when error occurred (microseconds since epoch)
+  int system_errno;       ///< System errno value (if applicable, 0 otherwise)
+  int wsa_error;          ///< Windows socket error code (if applicable, 0 otherwise)
+  backtrace_t backtrace;  ///< Stack trace (debug builds only)
+  bool has_system_error;  ///< True if system_errno is valid
+  bool has_wsa_error;     ///< True if wsa_error is valid
 } asciichat_error_context_t;
 
 /* ============================================================================
@@ -147,7 +147,7 @@ typedef struct {
  */
 
 /* Include logging early before extern "C" to avoid C++ headers inside extern "C" */
-#include "log/logging.h"
+#include "log/log.h"
 
 #ifdef __cplusplus
 extern "C" {

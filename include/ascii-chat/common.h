@@ -521,7 +521,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
   } while (0)
 
 /* Include logging.h to provide logging macros to all files that include common.h */
-#include "log/logging.h" // IWYU pragma: keep
+#include "log/log.h" // IWYU pragma: keep
 
 /** @} */
 

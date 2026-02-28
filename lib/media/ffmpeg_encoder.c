@@ -6,7 +6,7 @@
 #ifndef _WIN32
 #include <ascii-chat/media/ffmpeg_encoder.h>
 #include <ascii-chat/platform/memory.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/debug/named.h>
 #include <string.h>
 

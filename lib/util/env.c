@@ -5,7 +5,7 @@
 
 #include <ascii-chat/util/env.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -9,7 +9,7 @@
 
 #include <ascii-chat/discovery/database.h>
 #include <ascii-chat/discovery/strings.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/network/webrtc/turn_credentials.h>
 #include <ascii-chat/util/time.h>
 #include <string.h>

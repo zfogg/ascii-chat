@@ -7,7 +7,7 @@
 #include <ascii-chat/network/consensus/election.h>
 #include <ascii-chat/network/consensus/metrics.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/common.h>
 #include <string.h>
 

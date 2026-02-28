@@ -9,7 +9,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/platform/network.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/util/pcre2.h>
 #include <string.h>
 #include <stdio.h>

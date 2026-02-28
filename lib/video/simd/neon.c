@@ -28,7 +28,7 @@
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 
 // NEON table cache removed - performance analysis showed rebuilding (30ns) is faster than lookup (50ns)
 // Tables are now built inline when needed for optimal performance

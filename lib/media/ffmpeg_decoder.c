@@ -5,7 +5,7 @@
 
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/video/image.h>

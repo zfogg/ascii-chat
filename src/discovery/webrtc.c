@@ -12,7 +12,7 @@
 #include "webrtc.h"
 
 #include <ascii-chat/common.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/network/acip/protocol.h>
 #include <ascii-chat/network/acip/acds.h>
@@ -68,7 +68,8 @@ static lifecycle_t g_webrtc_lc = LIFECYCLE_INIT_MUTEX(&g_webrtc_mutex);
  * is handled automatically by lifecycle_init.
  */
 static void ensure_mutex_initialized(void) {
-  if (!lifecycle_init(&g_webrtc_lc, "webrtc")) return;
+  if (!lifecycle_init(&g_webrtc_lc, "webrtc"))
+    return;
 }
 
 // =============================================================================

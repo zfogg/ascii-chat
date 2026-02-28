@@ -7,7 +7,7 @@
 #include <ascii-chat/video/digital_rain.h>
 #include <ascii-chat/video/color_filter.h>
 #include <ascii-chat/debug/memory.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/util/utf8.h>
 #include <math.h>
 #include <stdlib.h>

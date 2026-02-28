@@ -15,7 +15,7 @@
 #include <ascii-chat/platform/util.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/common.h>
 
 #include <stdio.h>

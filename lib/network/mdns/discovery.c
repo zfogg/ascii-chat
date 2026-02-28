@@ -18,7 +18,7 @@
 #include <ascii-chat/network/acip/acds_client.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/platform/mutex.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/network/mdns/mdns.h>
 #include <ascii-chat/util/time.h>
 #include <string.h>

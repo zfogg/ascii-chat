@@ -11,7 +11,7 @@
 
 #include <ascii-chat/network/client.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/abstraction.h>
 
 #include <string.h>
@@ -48,13 +48,13 @@ app_client_t *app_client_create(void) {
   atomic_store(&client->audio_capture_thread_exited, false);
 
   // Initialize audio queue mutex and condition variable
-  if (mutex_init(&client->audio_send_queue_mutex, "audio_queue")  != 0) {
+  if (mutex_init(&client->audio_send_queue_mutex, "audio_queue") != 0) {
     log_error("Failed to initialize audio queue mutex");
     SAFE_FREE(client);
     return NULL;
   }
 
-  if (cond_init(&client->audio_send_queue_cond, "audio_queue")  != 0) {
+  if (cond_init(&client->audio_send_queue_cond, "audio_queue") != 0) {
     log_error("Failed to initialize audio queue cond");
     mutex_destroy(&client->audio_send_queue_mutex);
     SAFE_FREE(client);

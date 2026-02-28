@@ -5,7 +5,7 @@
  */
 
 #include <ascii-chat/log/colorize.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/terminal.h>

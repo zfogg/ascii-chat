@@ -10,7 +10,7 @@
  * @date January 2026
  */
 
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/video/palette.h>
 #include <ascii-chat/options/options.h>
@@ -122,11 +122,9 @@ const char *g_render_descs[] = {"Render using foreground characters only",
 // ============================================================================
 
 const char *g_render_theme_values[] = {"dark", "light", "auto", NULL};
-const int g_render_theme_integers[] = {0, 1, 2};  // 0=dark, 1=light, 2=auto
-const char *g_render_theme_descs[] = {"Dark background (black), light text",
-                                      "Light background (white), dark text",
-                                      "Auto-detect based on system (macOS) or terminal setting (Linux)",
-                                      NULL};
+const int g_render_theme_integers[] = {0, 1, 2}; // 0=dark, 1=light, 2=auto
+const char *g_render_theme_descs[] = {"Dark background (black), light text", "Light background (white), dark text",
+                                      "Auto-detect based on system (macOS) or terminal setting (Linux)", NULL};
 
 // ============================================================================
 // Audio Source Metadata

@@ -43,7 +43,7 @@
 
 #include <stdio.h>
 
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/common.h>
 #include <ascii-chat/util/time.h>

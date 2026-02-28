@@ -9,7 +9,7 @@
  */
 
 #include <ascii-chat/network/webrtc/sdp.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/util.h>
 #include <ascii-chat/util/pcre2.h>
 #include <string.h>

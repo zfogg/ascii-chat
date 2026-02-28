@@ -18,7 +18,7 @@
 #include <ascii-chat/platform/rwlock.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/path.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
 #include <stdio.h>
 #include <string.h>

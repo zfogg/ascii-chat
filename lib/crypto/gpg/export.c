@@ -11,7 +11,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/validation.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/platform/process.h>

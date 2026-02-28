@@ -23,7 +23,7 @@
 #include <ascii-chat/options/manpage/content/positional.h>
 #include <ascii-chat/options/builder.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/question.h>
 #include <ascii-chat/platform/stat.h>
 #include <ascii-chat/platform/util.h>

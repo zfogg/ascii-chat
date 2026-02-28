@@ -11,7 +11,7 @@
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/platform/memory.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/video/palette.h>
 #include <ascii-chat/video/simd/common.h>   // For simd_caches_destroy_all()

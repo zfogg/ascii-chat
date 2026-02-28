@@ -23,7 +23,7 @@
 #include <ascii-chat/platform/errno.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 
 /* ============================================================================
  * Thread-Local Storage

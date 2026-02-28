@@ -21,7 +21,7 @@
 #include <criterion/redirect.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/tests/logging.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/video/ansi.h>
 

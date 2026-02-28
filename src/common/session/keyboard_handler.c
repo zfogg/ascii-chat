@@ -10,7 +10,7 @@
 #include <ascii-chat/ui/help_screen.h>
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/platform/terminal.h>
 #include <string.h>
@@ -87,8 +87,7 @@ static int next_color_filter(int current) {
 void session_handle_keyboard_input(session_capture_ctx_t *capture, session_display_ctx_t *display, keyboard_key_t key) {
   // Debug: log all key codes to help identify unknown keys
   if (key != KEY_NONE) {
-    log_debug("Keyboard input received: code=%d (0x%02x) char='%c'", key, key,
-              (key >= 32 && key < 127) ? key : '?');
+    log_debug("Keyboard input received: code=%d (0x%02x) char='%c'", key, key, (key >= 32 && key < 127) ? key : '?');
   }
 
   switch (key) {
@@ -262,7 +261,8 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
     int next_filter = next_color_filter(current_filter);
     options_set_int("color_filter", next_filter);
 
-    const char *filter_names[] = {"None", "Black", "White", "Green", "Magenta", "Fuchsia", "Orange", "Teal", "Cyan", "Pink", "Red", "Yellow", "Rainbow"};
+    const char *filter_names[] = {"None", "Black", "White", "Green", "Magenta", "Fuchsia", "Orange",
+                                  "Teal", "Cyan",  "Pink",  "Red",   "Yellow",  "Rainbow"};
     if (next_filter >= 0 && next_filter < (int)COLOR_FILTER_COUNT) {
       log_info("Color filter: %s", filter_names[next_filter]);
     }

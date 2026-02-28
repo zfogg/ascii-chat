@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <stdint.h>
 
 /**

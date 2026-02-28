@@ -7,7 +7,7 @@
 #ifdef _WIN32
 
 #include <ascii-chat/signal.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/common.h>
 #include <windows.h>
 #include <stdio.h>

@@ -5,7 +5,7 @@
 
 #include <ascii-chat/network/dns.h>
 #include <ascii-chat/platform/network.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <string.h>
 
 bool dns_test_connectivity(const char *hostname) {

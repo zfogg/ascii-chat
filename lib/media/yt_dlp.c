@@ -6,7 +6,7 @@
 
 #include <ascii-chat/media/yt_dlp.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/platform/process.h>
 #include <ascii-chat/util/url.h>

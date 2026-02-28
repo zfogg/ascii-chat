@@ -6,7 +6,7 @@
 #include <ascii-chat/network/rate_limit/rate_limit.h>
 #include <ascii-chat/network/rate_limit/memory.h>
 #include <ascii-chat/network/rate_limit/sqlite.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/util/time.h>
 #include <stdlib.h>
 #include <string.h>

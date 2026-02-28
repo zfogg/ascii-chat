@@ -9,7 +9,7 @@
 #include <ascii-chat/network/mdns/discovery_tui.h>
 #include <ascii-chat/network/mdns/discovery.h> // For discovery_mdns_query()
 #include <ascii-chat/common.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/abstraction.h>
 
 #include <stdio.h>
@@ -96,13 +96,13 @@ int discovery_tui_prompt_selection(const discovery_tui_server_t *servers, int co
 /**
  * @brief ANSI escape codes for TUI
  */
-#define ANSI_CLEAR "\033[2J\033[H"   // Clear screen and move cursor to top
-#define ANSI_BOLD "\033[1m"          // Bold text
-#define ANSI_RESET "\033[0m"         // Reset formatting
-#define ANSI_CYAN "\033[36m"         // Cyan text
-#define ANSI_GREEN "\033[32m"        // Green text
-#define ANSI_YELLOW "\033[33m"       // Yellow text
-#define ANSI_CLEAR_LINE "\033[K"     // Clear to end of line
+#define ANSI_CLEAR "\033[2J\033[H" // Clear screen and move cursor to top
+#define ANSI_BOLD "\033[1m"        // Bold text
+#define ANSI_RESET "\033[0m"       // Reset formatting
+#define ANSI_CYAN "\033[36m"       // Cyan text
+#define ANSI_GREEN "\033[32m"      // Green text
+#define ANSI_YELLOW "\033[33m"     // Yellow text
+#define ANSI_CLEAR_LINE "\033[K"   // Clear to end of line
 
 /**
  * @brief TUI-based server selection with formatted display

@@ -10,7 +10,7 @@
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/util.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>

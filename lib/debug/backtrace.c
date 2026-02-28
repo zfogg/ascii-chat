@@ -6,7 +6,7 @@
 
 #include <ascii-chat/debug/backtrace.h>
 #include <ascii-chat/platform/system.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/log/format.h>
 #include <ascii-chat/util/string.h>
 #include <stdio.h>
@@ -353,8 +353,7 @@ int backtrace_format(char *buf, size_t buf_size, const char *label, const backtr
       continue;
     }
 
-    offset +=
-        safe_snprintf(buf + offset, buf_size - (size_t)offset, "  [%d] %s\n", frame_num, symbol);
+    offset += safe_snprintf(buf + offset, buf_size - (size_t)offset, "  [%d] %s\n", frame_num, symbol);
     frame_num++;
   }
 

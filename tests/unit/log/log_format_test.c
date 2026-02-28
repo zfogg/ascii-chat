@@ -10,7 +10,7 @@
 #include <ctype.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/log/format.h>
 #include <ascii-chat/util/time.h>
 

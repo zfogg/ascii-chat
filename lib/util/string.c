@@ -10,7 +10,7 @@
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/options/rcu.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <string.h>
 #include <ctype.h>
 

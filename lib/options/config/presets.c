@@ -12,7 +12,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/video/palette.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/options/registry.h>
 #include <ascii-chat/discovery/strings.h> // Added for dynamic session string generation
 
@@ -223,21 +223,21 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   static char combined_buf4[256];
   static char combined_buf5[256];
   safe_snprintf(combined_buf1, sizeof(combined_buf1), "%s --file video.mp4", example_buf3);
-  safe_snprintf(combined_buf2, sizeof(combined_buf2), "%s --url 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'", example_buf4);
+  safe_snprintf(combined_buf2, sizeof(combined_buf2), "%s --url 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'",
+                example_buf4);
   safe_snprintf(combined_buf3, sizeof(combined_buf3), "%s -f -", example_buf5);
   safe_snprintf(combined_buf4, sizeof(combined_buf4), "%s --palette-chars '@%%#*+=-:. '", example_buf6);
-  safe_snprintf(combined_buf5, sizeof(combined_buf5), "%s --discovery-service --discovery-service-port 27225", example_buf2);
+  safe_snprintf(combined_buf5, sizeof(combined_buf5), "%s --discovery-service --discovery-service-port 27225",
+                example_buf2);
 
-  options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf1,
-                              "Join session and stream from local video file", false);
-  options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf2,
-                              "Join session and stream from YouTube video", false);
-  options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf3,
-                              "Join session and stream media from stdin", false);
-  options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf4,
-                              "Join session with custom ASCII palette characters", false);
-  options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf5,
-                              "Join session via custom discovery server", false);
+  options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf1, "Join session and stream from local video file",
+                              false);
+  options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf2, "Join session and stream from YouTube video",
+                              false);
+  options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf3, "Join session and stream media from stdin", false);
+  options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf4, "Join session with custom ASCII palette characters",
+                              false);
+  options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf5, "Join session via custom discovery server", false);
 
   // Add examples for server-like modes (server + discovery-service)
   options_builder_add_example(b, OPTION_MODE_SERVER_LIKE, NULL, "Start on localhost (127.0.0.1 and ::1)", false);
@@ -353,14 +353,15 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
                                            "Cannot use --no-auth with --key (key requires authentication)");
   options_builder_add_dependency_conflicts(b, "no-auth", "password",
                                            "Cannot use --no-auth with --password (password requires authentication)");
-  options_builder_add_dependency_conflicts(b, "no-auth", "client-keys",
-                                           "Cannot use --no-auth with --client-keys (key list requires authentication)");
-  options_builder_add_dependency_conflicts(b, "no-auth", "server-key",
-                                           "Cannot use --no-auth with --server-key (verification requires authentication)");
+  options_builder_add_dependency_conflicts(
+      b, "no-auth", "client-keys", "Cannot use --no-auth with --client-keys (key list requires authentication)");
+  options_builder_add_dependency_conflicts(
+      b, "no-auth", "server-key", "Cannot use --no-auth with --server-key (verification requires authentication)");
 
   // Cannot use --key with --server-key (both server-side key options)
-  options_builder_add_dependency_conflicts(b, "key", "server-key",
-                                           "Cannot use --key with --server-key (--key is server identity, --server-key is client-side)");
+  options_builder_add_dependency_conflicts(
+      b, "key", "server-key",
+      "Cannot use --key with --server-key (--key is server identity, --server-key is client-side)");
 
   // ============================================================================
   // Compression Conflicts

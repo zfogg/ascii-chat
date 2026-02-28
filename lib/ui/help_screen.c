@@ -9,7 +9,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/video/color_filter.h>
@@ -105,7 +105,6 @@ static const char *color_filter_to_string(color_filter_t filter) {
   return def ? def->name : "Unknown";
 }
 
-
 /**
  * @brief Build a help screen line with UTF-8 width-aware padding and truncation
  *
@@ -124,7 +123,8 @@ static void build_help_line(char *output, size_t output_size, const char *conten
 
   // Available width: max_width - 3 (left border "║  ") - 1 (right border "║")
   int content_available = max_width - 4;
-  if (content_available < 1) content_available = 1;
+  if (content_available < 1)
+    content_available = 1;
 
   // Truncate content if needed (with ellipsis indicator)
   char truncated[256];
@@ -132,7 +132,8 @@ static void build_help_line(char *output, size_t output_size, const char *conten
 
   int content_width = utf8_display_width(truncated);
   int padding = content_available - content_width;
-  if (padding < 0) padding = 0;
+  if (padding < 0)
+    padding = 0;
 
   // Build the line
   char *pos = output;
@@ -171,7 +172,8 @@ static void build_help_line(char *output, size_t output_size, const char *conten
  * @param max_width Maximum total line width
  * @param label_width Fixed width for labels (usually 6 for standard settings, wider for other sections)
  */
-static void build_settings_line(char *output, size_t output_size, const char *label, const char *value, int max_width, int label_width) {
+static void build_settings_line(char *output, size_t output_size, const char *label, const char *value, int max_width,
+                                int label_width) {
   if (!output || output_size < 256 || !label || !value || max_width < 20) {
     return;
   }
@@ -193,7 +195,8 @@ static void build_settings_line(char *output, size_t output_size, const char *la
 
   // Available space for value + final padding
   int available = max_width - fixed_prefix - right_border;
-  if (available < 4) available = 4;  // Minimum space for truncated value
+  if (available < 4)
+    available = 4; // Minimum space for truncated value
 
   // Truncate value if needed (with ellipsis indicator)
   char truncated_value[256];
@@ -201,7 +204,8 @@ static void build_settings_line(char *output, size_t output_size, const char *la
 
   int value_width = utf8_display_width(truncated_value);
   int padding = available - value_width;
-  if (padding < 0) padding = 0;
+  if (padding < 0)
+    padding = 0;
 
   // Build the line: "║  <label><label_pad>:  <value><padding>║"
   char *pos = output;
@@ -258,9 +262,8 @@ static const char *status_indicator(bool enabled) {
 /**
  * @brief Helper to append a help line to the buffer
  */
-static void append_help_line(char *buffer, size_t *buf_pos, size_t BUFFER_SIZE,
-                            int start_row, int *current_row, int start_col, int box_width,
-                            const char *content) {
+static void append_help_line(char *buffer, size_t *buf_pos, size_t BUFFER_SIZE, int start_row, int *current_row,
+                             int start_col, int box_width, const char *content) {
   if (!buffer || *buf_pos >= BUFFER_SIZE || !content) {
     return;
   }
@@ -268,8 +271,7 @@ static void append_help_line(char *buffer, size_t *buf_pos, size_t BUFFER_SIZE,
   char line_buf[256];
   int remaining = BUFFER_SIZE - *buf_pos;
 
-  int written = snprintf(buffer + *buf_pos, remaining, "\033[%d;%dH",
-                        start_row + *current_row, start_col + 1);
+  int written = snprintf(buffer + *buf_pos, remaining, "\033[%d;%dH", start_row + *current_row, start_col + 1);
   if (written > 0) {
     *buf_pos += written;
   }
@@ -287,9 +289,8 @@ static void append_help_line(char *buffer, size_t *buf_pos, size_t BUFFER_SIZE,
  * @brief Helper to append a settings line to the buffer
  * @param label_width Fixed width for label alignment (typically 6 for standard settings)
  */
-static void append_settings_line(char *buffer, size_t *buf_pos, size_t BUFFER_SIZE,
-                                int start_row, int *current_row, int start_col, int box_width,
-                                const char *label, const char *value, int label_width) {
+static void append_settings_line(char *buffer, size_t *buf_pos, size_t BUFFER_SIZE, int start_row, int *current_row,
+                                 int start_col, int box_width, const char *label, const char *value, int label_width) {
   if (!buffer || *buf_pos >= BUFFER_SIZE || !label || !value) {
     return;
   }
@@ -297,8 +298,7 @@ static void append_settings_line(char *buffer, size_t *buf_pos, size_t BUFFER_SI
   char line_buf[256];
   int remaining = BUFFER_SIZE - *buf_pos;
 
-  int written = snprintf(buffer + *buf_pos, remaining, "\033[%d;%dH",
-                        start_row + *current_row, start_col + 1);
+  int written = snprintf(buffer + *buf_pos, remaining, "\033[%d;%dH", start_row + *current_row, start_col + 1);
   if (written > 0) {
     *buf_pos += written;
   }
@@ -326,8 +326,10 @@ void session_display_render_help(session_display_ctx_t *ctx) {
 
   // Use available terminal width, capped at preferred width
   int box_width = term_width;
-  if (box_width > 48) box_width = 48;  // Cap at preferred width
-  if (box_width < 30) box_width = 30;  // Absolute minimum for readability
+  if (box_width > 48)
+    box_width = 48; // Cap at preferred width
+  if (box_width < 30)
+    box_width = 30; // Absolute minimum for readability
 
   // Help screen box dimensions (24 rows total: border + title + nav (7 lines) + separator + settings + blank + footer +
   // border)
@@ -371,7 +373,8 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   APPEND("\033[%d;%dH", start_row + 1, start_col + 1);
   border_buf[0] = '\0';
   strcat(border_buf, "╔");
-  for (int i = 1; i < box_width - 1; i++) strcat(border_buf, "═");
+  for (int i = 1; i < box_width - 1; i++)
+    strcat(border_buf, "═");
   strcat(border_buf, "╗");
   APPEND("%s", border_buf);
 
@@ -384,18 +387,19 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   APPEND("\033[%d;%dH", start_row + 3, start_col + 1);
   border_buf[0] = '\0';
   strcat(border_buf, "╠");
-  for (int i = 1; i < box_width - 1; i++) strcat(border_buf, "═");
+  for (int i = 1; i < box_width - 1; i++)
+    strcat(border_buf, "═");
   strcat(border_buf, "╣");
   APPEND("%s", border_buf);
 
   // Navigation section
   int current_row = 4;
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                  "Navigation & Control:");
+                   "Navigation & Control:");
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                  "─────────────────────");
+                   "─────────────────────");
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                  "?       Toggle this help screen");
+                   "?       Toggle this help screen");
 
   // Check if media is provided (only show Space/Seek keys if media is loaded)
   const char *media_url = GET_OPTION(media_url);
@@ -404,37 +408,35 @@ void session_display_render_help(session_display_ctx_t *ctx) {
 
   if (has_media) {
     append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                    "Space   Play/Pause (files only)");
+                     "Space   Play/Pause (files only)");
     append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                    "← / →   Seek backward/forward 30s");
+                     "← / →   Seek backward/forward 30s");
   }
 
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                  "m       Mute/Unmute audio");
+                   "m       Mute/Unmute audio");
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                  "↑ / ↓   Volume up/down (10%)");
+                   "↑ / ↓   Volume up/down (10%)");
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                  "c       Cycle color mode");
+                   "c       Cycle color mode");
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                  "f       Cycle color filter");
+                   "f       Cycle color filter");
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                  "g       Flip webcam horizontally");
+                   "g       Flip webcam horizontally");
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                  "r       Cycle render mode");
+                   "r       Cycle render mode");
 
 #ifndef NDEBUG
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                  "`       Print current sync primitive state");
+                   "`       Print current sync primitive state");
 #endif
 
   // Blank line before settings section
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, "");
 
   // Current settings section
-  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                  "Current Settings:");
-  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                  "───────────────");
+  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, "Current Settings:");
+  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, "───────────────");
 
   // Get current option values
   double current_volume = GET_OPTION(speakers_volume);
@@ -462,49 +464,47 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   const char *matrix_text = status_indicator(matrix_rain_enabled);
 
   // Build settings lines with UTF-8 width-aware padding (ordered to match keybinds: m, ↑/↓, c, f, g, r)
-  append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                      "Audio", audio_text, 6);
-  append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                      "Volume", volume_bar, 6);
-  append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                      "Color", color_str, 6);
-  append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                      "Filter", filter_str, 6);
-  append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                      "Render", render_str, 6);
-  append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                      "Flip", flip_text, 6);
+  append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, "Audio",
+                       audio_text, 6);
+  append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, "Volume",
+                       volume_bar, 6);
+  append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, "Color", color_str,
+                       6);
+  append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, "Filter",
+                       filter_str, 6);
+  append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, "Render",
+                       render_str, 6);
+  append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, "Flip", flip_text,
+                       6);
 
   // Blank line before animations section
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, "");
 
   // Animations section
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                  "Animations (number key toggle):");
+                   "Animations (number key toggle):");
 
   // Format: "(0) Matrix \"Digital Rain\" : X/O"
   char animation_line[256];
   snprintf(animation_line, sizeof(animation_line), "(0) Matrix \"Digital Rain\" : %s", matrix_text);
-  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                  animation_line);
+  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, animation_line);
 
   // Blank line before footer
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, "");
 
   // Footer
-  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                  "Press ? to close");
+  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, "Press ? to close");
 
   // Bottom border
   int remaining_buf = BUFFER_SIZE - buf_pos;
-  int written = snprintf(buffer + buf_pos, remaining_buf, "\033[%d;%dH",
-                        start_row + current_row, start_col + 1);
+  int written = snprintf(buffer + buf_pos, remaining_buf, "\033[%d;%dH", start_row + current_row, start_col + 1);
   if (written > 0) {
     buf_pos += written;
   }
   border_buf[0] = '\0';
   strcat(border_buf, "╚");
-  for (int i = 1; i < box_width - 1; i++) strcat(border_buf, "═");
+  for (int i = 1; i < box_width - 1; i++)
+    strcat(border_buf, "═");
   strcat(border_buf, "╝");
   written = snprintf(buffer + buf_pos, BUFFER_SIZE - buf_pos, "%s", border_buf);
   if (written > 0) {

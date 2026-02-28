@@ -6,7 +6,7 @@
 
 #include <ascii-chat/platform/agent.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>

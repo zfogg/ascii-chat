@@ -6,7 +6,7 @@
 
 #include <emscripten.h>
 #include <string.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <stdint.h>
 #include <stddef.h>
 

@@ -9,7 +9,7 @@ set(CORE_SRCS
     ${LIB_DIR}/asciichat_errno.c
     ${LIB_DIR}/lifecycle.c
     # log/
-    ${LIB_DIR}/log/logging.c
+    ${LIB_DIR}/log/log.c
     ${LIB_DIR}/log/format.c
     ${LIB_DIR}/log/named.c
     ${LIB_DIR}/log/colorize.c

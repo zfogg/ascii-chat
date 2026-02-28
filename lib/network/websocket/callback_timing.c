@@ -7,7 +7,7 @@
  */
 
 #include <ascii-chat/network/websocket/callback_timing.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <string.h>
 #include <stdint.h>
 #include <limits.h>

@@ -9,7 +9,7 @@
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/util.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <windows.h>
 #include <shlobj.h>
 #include <stdbool.h>

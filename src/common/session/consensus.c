@@ -11,7 +11,7 @@
 #include <ascii-chat/network/consensus/election.h>
 #include <ascii-chat/network/consensus/metrics.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/util/endian.h>
 #include <string.h>
 

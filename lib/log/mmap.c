@@ -8,7 +8,7 @@
  */
 
 #include <ascii-chat/log/mmap.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/mmap.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/video/ansi.h>

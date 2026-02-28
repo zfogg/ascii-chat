@@ -13,7 +13,7 @@
 #include "discovery-service/server.h"
 #include <ascii-chat/discovery/database.h>
 #include <ascii-chat/discovery/session.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/network/network.h>
 #include <string.h>
 

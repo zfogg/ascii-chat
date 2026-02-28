@@ -33,7 +33,7 @@
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/network/crc32.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/ringbuffer.h>
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/platform/mutex.h>

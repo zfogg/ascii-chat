@@ -17,7 +17,7 @@
 #include <ascii-chat/discovery/database.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/discovery/session.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <string.h>
 #include <unistd.h>
 

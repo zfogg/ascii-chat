@@ -12,7 +12,7 @@
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/options/parsers.h>
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <stdlib.h>
 
 // ============================================================================

@@ -26,7 +26,7 @@
 #include <ascii-chat/network/rate_limit/rate_limit.h>
 #include <ascii-chat/network/rate_limit/sqlite.h>
 #include <ascii-chat/network/errors.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/buffer_pool.h>
@@ -320,7 +320,7 @@ void acds_server_shutdown(acds_server_t *server) {
 // These macros simplify creating temporary transports for responses
 
 #define ACDS_CREATE_TRANSPORT(socket, transport_var)                                                                   \
-  acip_transport_t *transport_var = acip_tcp_transport_create("transport_acds_discovery", socket, NULL);              \
+  acip_transport_t *transport_var = acip_tcp_transport_create("transport_acds_discovery", socket, NULL);               \
   if (!transport_var) {                                                                                                \
     log_error("Failed to create ACDS transport");                                                                      \
     return;                                                                                                            \
@@ -953,7 +953,8 @@ void *acds_client_handler(void *arg) {
                  client_ip, packet_type);
 
         // Send error response
-        acip_transport_t *error_transport = acip_tcp_transport_create("transport_acds_error_response", client_socket, NULL);
+        acip_transport_t *error_transport =
+            acip_tcp_transport_create("transport_acds_error_response", client_socket, NULL);
         if (error_transport) {
           acip_send_error(error_transport, ERROR_INVALID_PARAM,
                           "Only SESSION_CREATE/PING/PONG allowed during multi-key session creation");

@@ -90,7 +90,7 @@
 #include <ascii-chat/options/schema.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/log/grep.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/platform/system.h>

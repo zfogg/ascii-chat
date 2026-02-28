@@ -6,7 +6,7 @@
 
 #include <ascii-chat/audio/analysis.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/audio/wav_writer.h>
 #include <ascii-chat/util/time.h>
 #include <math.h>

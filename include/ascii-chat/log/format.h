@@ -13,7 +13,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 
 /* ============================================================================
  * Format Specifier Types

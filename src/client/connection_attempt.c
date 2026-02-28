@@ -27,7 +27,7 @@
 #include "../main.h"                       // Global exit API
 #include "../common/session/client_like.h" // For session_client_like_set_websocket_client()
 #include <ascii-chat/common.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/util/url.h> // For WebSocket URL detection
 #include <ascii-chat/options/rcu.h>

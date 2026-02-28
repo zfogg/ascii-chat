@@ -19,7 +19,7 @@
 #include <ascii-chat/video/palette.h>
 #include <ascii-chat/util/number.h> // For write_u8
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 
 /* ============================================================================
  * SIMD-Optimized Colored ASCII Generation

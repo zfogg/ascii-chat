@@ -7,7 +7,7 @@
 #include <ascii-chat/util/pcre2.h>
 #include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <string.h>
 #include <stdatomic.h>
 #include <errno.h>

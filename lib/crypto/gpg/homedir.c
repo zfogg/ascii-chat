@@ -6,7 +6,7 @@
 
 #include <ascii-chat/crypto/gpg/homedir.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/util.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <string.h>

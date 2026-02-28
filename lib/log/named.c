@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include "ascii-chat/debug/named.h"
 #include "ascii-chat/util/string.h"
-#include "ascii-chat/log/logging.h"
+#include "ascii-chat/log/log.h"
 
 /* Use a thread-local buffer to avoid allocations in the hot path */
 #define NAMED_FORMAT_BUFFER_SIZE (4096)

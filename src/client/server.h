@@ -14,7 +14,7 @@
 
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/network/packet.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <stdint.h>
 #include <stdbool.h>
 

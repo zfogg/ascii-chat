@@ -7,7 +7,7 @@
 
 #include <ascii-chat/network/rate_limit/memory.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/uthash.h>
@@ -245,7 +245,7 @@ void *memory_backend_create(void) {
 
   memset(backend, 0, sizeof(*backend));
 
-  if (mutex_init(&backend->lock, "rate_limiter")  != 0) {
+  if (mutex_init(&backend->lock, "rate_limiter") != 0) {
     log_error("Failed to initialize mutex");
     SAFE_FREE(backend);
     return NULL;

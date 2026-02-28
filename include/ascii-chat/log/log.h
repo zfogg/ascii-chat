@@ -3,7 +3,7 @@
  * @ingroup module_core
  * @brief 📝 Logging API with multiple log levels and terminal output control
  *
- * @file logging.h
+ * @file log.h
  * @brief 📝 Logging API with multiple log levels and terminal output control
  * @ingroup logging
  * @addtogroup logging

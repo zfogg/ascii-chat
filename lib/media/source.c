@@ -9,7 +9,7 @@
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/audio/audio.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/util.h>
@@ -838,8 +838,8 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
       log_warn("Video seek to %.2f failed: error code %d (took %s)", timestamp_sec, video_err, video_seek_str);
       result = video_err;
     } else {
-      log_info("Video SEEK: %.2f → %.2f sec (target %.2f, took %s)", video_pos_before, video_pos_after,
-               timestamp_sec, video_seek_str);
+      log_info("Video SEEK: %.2f → %.2f sec (target %.2f, took %s)", video_pos_before, video_pos_after, timestamp_sec,
+               video_seek_str);
     }
   }
 

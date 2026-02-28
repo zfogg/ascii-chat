@@ -10,7 +10,7 @@
 #include <ascii-chat/platform/internal.h>
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/debug/named.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/asciichat_errno.h>

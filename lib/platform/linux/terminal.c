@@ -11,7 +11,7 @@
 #include <stdint.h>
 #include <ascii-chat/video/renderer.h>
 #include <ascii-chat/platform/memory.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/debug/named.h>

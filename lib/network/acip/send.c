@@ -16,7 +16,7 @@
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/audio/audio.h>
 #include <string.h>
 #include <ascii-chat/network/crc32.h>

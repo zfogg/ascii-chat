@@ -75,7 +75,7 @@
 #include "../platform/socket.h"
 #include "../platform/abstraction.h"
 #include "../crypto/crypto.h"
-#include "../log/logging.h"
+#include "../log/log.h"
 #include "../util/magic.h"
 #include <stdint.h>
 #include <stddef.h>

@@ -17,7 +17,7 @@
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/utf8.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -1186,7 +1186,8 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
       if (!for_binary_help) {
         // For mode-specific help, show the current mode's usage line and the generic [mode] --help line
         bool is_current_mode = (usage->mode && mode_name && strcmp(usage->mode, mode_name) == 0);
-        bool is_generic_help_line = (!usage->mode && usage->positional && strcmp(usage->positional, "[mode] --help") == 0);
+        bool is_generic_help_line =
+            (!usage->mode && usage->positional && strcmp(usage->positional, "[mode] --help") == 0);
 
         if (!is_current_mode && !is_generic_help_line) {
           continue;
@@ -1202,8 +1203,8 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
       if (usage->mode) {
         if (!for_binary_help && usage->positional && strcmp(usage->positional, "--help") == 0) {
           // Mode-specific help: show [mode] --help as generic placeholder
-          len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s",
-                               colored_string(LOG_COLOR_FATAL, "[mode]"));
+          len +=
+              safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_FATAL, "[mode]"));
         } else {
           // Binary help or non-help usage: show actual mode name
           len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s",

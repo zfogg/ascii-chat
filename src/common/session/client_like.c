@@ -18,7 +18,7 @@
 #include <ascii-chat/ui/splash.h>
 #include <ascii-chat/debug/sync.h>
 
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/terminal.h>

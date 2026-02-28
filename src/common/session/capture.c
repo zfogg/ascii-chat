@@ -12,7 +12,7 @@
 
 #include "session/capture.h"
 #include <ascii-chat/common.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/video/image.h>

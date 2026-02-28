@@ -7,7 +7,7 @@
  */
 
 #include <ascii-chat/options/layout.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/video/ansi.h>
 #include <ascii-chat/common.h>
@@ -286,7 +286,8 @@ void layout_print_two_column_row(FILE *stream, const char *first_column, const c
       for (int i = 0; i < description_indent; i++)
         fprintf(stream, " ");
 
-      layout_print_wrapped_description(stream, second_column, description_indent, term_width, continuation_indent_extra);
+      layout_print_wrapped_description(stream, second_column, description_indent, term_width,
+                                       continuation_indent_extra);
       fprintf(stream, "\n");
     }
   } else {

@@ -10,7 +10,7 @@
 
 #include <ascii-chat/debug/mutex.h>
 #include <ascii-chat/debug/named.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/path.h>

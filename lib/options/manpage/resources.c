@@ -10,7 +10,7 @@
 
 #include <ascii-chat/options/manpage/resources.h>
 #include <ascii-chat/embedded_resources.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <stdlib.h>
 #include <string.h>
 

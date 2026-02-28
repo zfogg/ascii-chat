@@ -7,7 +7,7 @@
 
 #include <stdio.h>
 #include <string.h> // For memcpy used in common.h
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 
 int main(void) {
   printf("Testing ascii-chat shared library...\n");

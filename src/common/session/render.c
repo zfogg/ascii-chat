@@ -17,7 +17,7 @@
 #include <ascii-chat/ui/help_screen.h>
 #include <ascii-chat/log/interactive_grep.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/audio/audio.h>
