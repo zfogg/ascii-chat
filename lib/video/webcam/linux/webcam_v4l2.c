@@ -25,6 +25,7 @@
 
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/platform/util.h>
 #include <ascii-chat/util/overflow.h>
@@ -338,6 +339,27 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
       return SET_ERRNO(ERROR_WEBCAM_IN_USE, "V4L2 device %s is in use - cannot set format", device_path);
     }
     return SET_ERRNO(ERROR_WEBCAM, "Failed to set V4L2 format for device %s", device_path);
+  }
+
+  // Request target FPS via VIDIOC_S_PARM (from user options)
+  uint32_t target_fps = (uint32_t)GET_OPTION(fps);
+  if (target_fps == 0) target_fps = 60;  // Default to 60 if not set
+
+  struct v4l2_streamparm parm = {0};
+  parm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+  parm.parm.capture.timeperframe.numerator = 1;
+  parm.parm.capture.timeperframe.denominator = target_fps;
+
+  if (ioctl(context->fd, VIDIOC_S_PARM, &parm) == 0) {
+    // Get back what the driver actually set
+    if (ioctl(context->fd, VIDIOC_G_PARM, &parm) == 0) {
+      int actual_fps = parm.parm.capture.timeperframe.denominator /
+                      (parm.parm.capture.timeperframe.numerator ?
+                       parm.parm.capture.timeperframe.numerator : 1);
+      log_debug("V4L2 frame rate set: requested %u FPS, got %d FPS", target_fps, actual_fps);
+    }
+  } else {
+    log_debug("V4L2 device does not support VIDIOC_S_PARM (frame rate control)");
   }
 
   // Initialize buffers
