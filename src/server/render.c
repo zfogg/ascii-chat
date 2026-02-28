@@ -1012,20 +1012,72 @@ void *client_audio_render_thread(void *arg) {
       if (opus_size <= 0) {
         log_error("Failed to encode audio to Opus for client %s: opus_size=%d", client_id_snapshot, opus_size);
       } else {
-        // Queue Opus-encoded audio for this specific client
-        START_TIMER("audio_queue_%s", client_id_snapshot);
+        // Wrap Opus data in proper batch packet format for client parsing:
+        // Header: sample_rate (4B) + frame_duration (4B) + frame_count (4B)
+        // Frame sizes: frame_count * 2B (one uint16 per frame with Opus data size)
+        // Opus data: raw encoded audio
 
-        int result = packet_queue_enqueue(audio_queue_snapshot, PACKET_TYPE_AUDIO_OPUS_BATCH, opus_buffer,
-                                          (size_t)opus_size, 0, true);
+        // Fixed values for Opus encoding (standard 48kHz, 960 samples per frame)
+        const uint32_t sample_rate = 48000;
+        const uint32_t frame_duration = 960; // samples per frame
+        const uint32_t frame_count = 1;      // one Opus frame per packet
+        const uint16_t frame_size = (uint16_t)opus_size;
 
-        STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 1 * NS_PER_MS_INT, "audio_queue_%s",
-                                 "Audio queue for client %s: took", client_id_snapshot);
+        // Calculate total packet size: 12-byte header + 2-byte frame size + opus data
+        const size_t header_size = 12; // 3 uint32s
+        const size_t frame_sizes_size = (size_t)frame_count * sizeof(uint16_t);
+        const size_t total_packet_size = header_size + frame_sizes_size + (size_t)opus_size;
 
-        if (result < 0) {
-          log_debug("Failed to queue Opus audio for client %s", client_id_snapshot);
+        // Allocate buffer for the complete packet
+        uint8_t *packet_buffer = SAFE_MALLOC(total_packet_size, uint8_t *);
+        if (!packet_buffer) {
+          log_error("Failed to allocate Opus batch packet buffer for client %s (size=%zu)", client_id_snapshot,
+                    total_packet_size);
         } else {
-          // FPS tracking - audio packet successfully queued (handles lag detection and periodic reporting)
-          fps_frame_ns(&audio_fps_tracker, time_get_ns(), "audio packet queued");
+          // Build header in network byte order
+          uint8_t *ptr = packet_buffer;
+
+          // Write sample_rate (4 bytes, network byte order)
+          uint32_t sr_net = htonl(sample_rate);
+          memcpy(ptr, &sr_net, 4);
+          ptr += 4;
+
+          // Write frame_duration (4 bytes, network byte order)
+          uint32_t fd_net = htonl(frame_duration);
+          memcpy(ptr, &fd_net, 4);
+          ptr += 4;
+
+          // Write frame_count (4 bytes, network byte order)
+          uint32_t fc_net = htonl(frame_count);
+          memcpy(ptr, &fc_net, 4);
+          ptr += 4;
+
+          // Write frame size (2 bytes, network byte order)
+          uint16_t fs_net = htons(frame_size);
+          memcpy(ptr, &fs_net, 2);
+          ptr += 2;
+
+          // Copy Opus data
+          memcpy(ptr, opus_buffer, (size_t)opus_size);
+
+          // Queue the properly formatted packet
+          START_TIMER("audio_queue_%s", client_id_snapshot);
+
+          int result = packet_queue_enqueue(audio_queue_snapshot, PACKET_TYPE_AUDIO_OPUS_BATCH, packet_buffer,
+                                            total_packet_size, 0, true);
+
+          STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 1 * NS_PER_MS_INT, "audio_queue_%s",
+                                   "Audio queue for client %s: took", client_id_snapshot);
+
+          if (result < 0) {
+            log_debug("Failed to queue Opus audio for client %s", client_id_snapshot);
+          } else {
+            // FPS tracking - audio packet successfully queued (handles lag detection and periodic reporting)
+            fps_frame_ns(&audio_fps_tracker, time_get_ns(), "audio packet queued");
+          }
+
+          // Free the allocated packet buffer after queuing (packet_queue_enqueue copies data)
+          SAFE_FREE(packet_buffer);
         }
       }
       // NOTE: opus_frame_accumulated is already reset at line 928 after encode attempt
