@@ -47,6 +47,7 @@ socket_t socket_create(const char *name, int domain, int type, int protocol) {
 }
 
 int socket_close(socket_t sock) {
+  NAMED_UNREGISTER_SOCKET(sock);
   return close(sock);
 }
 

@@ -28,6 +28,7 @@
 #include <ascii-chat/platform/util.h>
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/util/image.h>
+#include <ascii-chat/debug/named.h>
 
 #define WEBCAM_BUFFER_COUNT_DEFAULT 4
 #define WEBCAM_BUFFER_COUNT_MAX 8
@@ -49,8 +50,8 @@ struct webcam_context_t {
   uint32_t pixelformat; // Actual pixel format from driver (RGB24, YUYV, NV12, I420, UYVY)
   webcam_buffer_t *buffers;
   int buffer_count;
-  image_t *cached_frame; // Reusable frame buffer (allocated once, reused for each read)
-  struct SwsContext *sws_ctx; // libswscale context for format conversion (if needed)
+  image_t *cached_frame;              // Reusable frame buffer (allocated once, reused for each read)
+  struct SwsContext *sws_ctx;         // libswscale context for format conversion (if needed)
   enum AVPixelFormat av_pixel_format; // FFmpeg pixel format for swscale
 };
 
@@ -361,6 +362,10 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
 
   *ctx = context;
   log_dev("V4L2 webcam initialized successfully on %s", device_path);
+
+  /* Register webcam context with named registry */
+  NAMED_REGISTER(context, device_path, "webcam", "0x%tx");
+
   return 0;
 }
 
@@ -380,6 +385,8 @@ void webcam_flush_context(webcam_context_t *ctx) {
 void webcam_cleanup_context(webcam_context_t *ctx) {
   if (!ctx)
     return;
+
+  NAMED_UNREGISTER(ctx);
 
   // Free swscale context if it was allocated
   if (ctx->sws_ctx) {
@@ -479,18 +486,18 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
 
     // Calculate source linesize based on format
     switch (ctx->pixelformat) {
-      case V4L2_PIX_FMT_NV12:
-      case V4L2_PIX_FMT_YUV420:
-        // For planar formats, linesize equals width
-        src_linesize[0] = ctx->width;
-        break;
-      case V4L2_PIX_FMT_YUYV:
-      case V4L2_PIX_FMT_UYVY:
-        // For packed YUV 4:2:2, each pixel is 2 bytes
-        src_linesize[0] = ctx->width * 2;
-        break;
-      default:
-        src_linesize[0] = ctx->width;
+    case V4L2_PIX_FMT_NV12:
+    case V4L2_PIX_FMT_YUV420:
+      // For planar formats, linesize equals width
+      src_linesize[0] = ctx->width;
+      break;
+    case V4L2_PIX_FMT_YUYV:
+    case V4L2_PIX_FMT_UYVY:
+      // For packed YUV 4:2:2, each pixel is 2 bytes
+      src_linesize[0] = ctx->width * 2;
+      break;
+    default:
+      src_linesize[0] = ctx->width;
     }
 
     uint8_t *dst_data[1] = {(uint8_t *)img->pixels};

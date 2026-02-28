@@ -12,6 +12,7 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/platform/system.h>
+#include <ascii-chat/debug/named.h>
 #include <mfapi.h>
 #include <mfidl.h>
 #include <mfreadwrite.h>
@@ -326,6 +327,12 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   }
 
   *ctx = cam;
+
+  /* Register webcam context with named registry */
+  char device_name[32];
+  snprintf(device_name, sizeof(device_name), "device:%u", device_index);
+  NAMED_REGISTER(cam, device_name, "webcam", "0x%tx");
+
   return ASCIICHAT_OK;
 
 error:
@@ -374,6 +381,8 @@ void webcam_flush_context(webcam_context_t *ctx) {
 
 void webcam_cleanup_context(webcam_context_t *ctx) {
   if (ctx) {
+    NAMED_UNREGISTER(ctx);
+
     if (ctx->reader) {
       // Flush before release to ensure no pending operations
       webcam_flush_context(ctx);

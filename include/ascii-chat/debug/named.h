@@ -464,8 +464,10 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
 #ifndef NDEBUG
 #define NAMED_REGISTER_SOCKET(socket, name)                                                                            \
   named_register((uintptr_t)(const void *)(socket), (name), "socket", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_UNREGISTER_SOCKET(socket) NAMED_UNREGISTER_ID((socket))
 #else
 #define NAMED_REGISTER_SOCKET(socket, name) (name)
+#define NAMED_UNREGISTER_SOCKET(socket) ((void)0)
 #endif
 
 /**

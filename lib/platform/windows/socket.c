@@ -87,6 +87,7 @@ int socket_close(socket_t sock) {
     SET_ERRNO(ERROR_NETWORK, "Invalid socket handle");
     return -1;
   }
+  NAMED_UNREGISTER_SOCKET(sock);
   return closesocket(sock);
 }
 
