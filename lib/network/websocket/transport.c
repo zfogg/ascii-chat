@@ -650,21 +650,15 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   uint8_t *assembled_buffer = NULL;
   size_t assembled_size = 0;
   size_t assembled_capacity = 0;
-  uint64_t assembly_start_ns = time_get_ns();
-  uint64_t last_fragment_ns = assembly_start_ns;
   int fragment_count = 0;
-  const uint64_t MAX_REASSEMBLY_TIME_NS = 200 * 1000000ULL; // 200ms timeout for frame reassembly
-  // SHORT TIMEOUT: Return error after 200ms if reassembly incomplete
-  // This prevents blocking the client rendering loop for 1.5+ seconds waiting for 74 WebSocket fragments
-  // The client protocol loop will retry after timeout, allowing 60 FPS rendering
-  // No data is lost - fragments keep arriving and complete reassembly happens on retry
+  // WebSocket fragmentation is now prevented by pt_serv_buf_size=512KB on both server and client
+  // This allows 291KB frames to be sent as single messages instead of 74 × 4KB fragments
+  // Reassembly happens fast, no timeout-based retries needed - removed obsolete 5s timeout
+  // Frames arrive as complete messages, no need for reassembly timeout
 
   while (true) {
     // Wait for fragment if queue is empty (with short timeout)
     while (ringbuffer_is_empty(ws_data->recv_queue)) {
-      uint64_t elapsed_ns = time_get_ns() - assembly_start_ns;
-      uint64_t since_last_frag_ns = time_get_ns() - last_fragment_ns;
-
       // CRITICAL FIX: Do NOT return partial frames!
       // Frame handlers (acip_server_on_image_frame) expect complete frames with final=1
       // Returning incomplete frames causes heap-buffer-overflow when handler memcpys data
@@ -676,26 +670,6 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
                  (double)since_last_frag_ns / 1000000.0);
       }
       */
-
-      if (elapsed_ns > MAX_REASSEMBLY_TIME_NS) {
-        // Timeout - return error instead of partial fragments
-        // Dispatch thread will retry, avoiding fragment loss issue
-        if (assembled_buffer) {
-          buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
-        }
-        mutex_unlock(&ws_data->recv_mutex);
-
-        if (assembled_size > 0) {
-          log_dev_every(4500000,
-                        "🔄 WEBSOCKET_RECV: Reassembly timeout after %llums (have %zu bytes, expecting final fragment)",
-                        (unsigned long long)(elapsed_ns / 1000000ULL), assembled_size);
-        }
-        // Use log_error instead of SET_ERRNO to avoid backtrace capture overhead
-        // Fragment timeout is transient and expected - doesn't require full error context
-        log_error("Fragment reassembly timeout - no data from network");
-        asciichat_set_errno(ERROR_NETWORK, NULL, 0, NULL, "Fragment reassembly timeout - no data from network");
-        return ERROR_NETWORK;
-      }
 
       // Check connection state - but don't fail immediately if connection closes
       // while reassembling. Instead, return what we have so the handler can process it.
@@ -727,9 +701,6 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
       // Wait for next fragment with 1ms timeout
       cond_timedwait(&ws_data->recv_cond, &ws_data->recv_mutex, 1 * 1000000ULL);
     }
-
-    // Update last_fragment_ns when we get a new fragment
-    last_fragment_ns = time_get_ns();
 
     // Read next fragment from queue
     websocket_recv_msg_t frag;
