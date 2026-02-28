@@ -9,6 +9,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/debug/named.h>
 #include <ascii-chat/network/crc32.h>
 #include <stdatomic.h>
 #include <stdlib.h>
@@ -44,6 +45,8 @@ node_pool_t *node_pool_create(size_t pool_size) {
   pool->pool_size = pool_size;
   atomic_init(&pool->used_count, (size_t)0);
 
+  NAMED_REGISTER_NODE_POOL(pool, "node_pool");
+
   return pool;
 }
 
@@ -51,6 +54,8 @@ void node_pool_destroy(node_pool_t *pool) {
   if (!pool) {
     return;
   }
+
+  NAMED_UNREGISTER(pool);
 
   SAFE_FREE(pool->nodes);
   SAFE_FREE(pool);
@@ -150,12 +155,18 @@ packet_queue_t *packet_queue_create_with_pools(size_t max_size, size_t node_pool
   atomic_init(&queue->packets_dropped, (uint64_t)0);
   atomic_init(&queue->shutdown, false);
 
+  NAMED_REGISTER_PACKET_QUEUE(queue, "packet_queue");
+  if (queue->node_pool)
+    NAMED_REGISTER_NODE_POOL(queue->node_pool, "queue_node_pool");
+
   return queue;
 }
 
 void packet_queue_destroy(packet_queue_t *queue) {
   if (!queue)
     return;
+
+  NAMED_UNREGISTER(queue);
 
   // Signal shutdown first
   packet_queue_stop(queue);

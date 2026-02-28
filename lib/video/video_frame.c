@@ -8,6 +8,7 @@
 #include <ascii-chat/video/video_frame.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h> // For asciichat_errno system
+#include <ascii-chat/debug/named.h>
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/util/time.h>
 #include <string.h>
@@ -78,6 +79,7 @@ video_frame_buffer_t *video_frame_buffer_create(uint32_t client_id) {
   atomic_store(&vfb->last_frame_sequence, 0);
 
   log_debug("Created video frame buffer for client %u with double buffering", client_id);
+  NAMED_REGISTER_VIDEO_FRAME_BUFFER(vfb, "video_frame_buffer");
   return vfb;
 }
 
@@ -86,6 +88,8 @@ void video_frame_buffer_destroy(video_frame_buffer_t *vfb) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Video frame buffer is NULL");
     return;
   }
+
+  NAMED_UNREGISTER(vfb);
 
   vfb->active = false;
 

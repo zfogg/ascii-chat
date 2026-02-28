@@ -851,6 +851,137 @@ const char *named_describe_thread(void *thread);
 typedef void (*named_iter_callback_t)(uintptr_t key, const char *name, void *user_data);
 
 /**
+ * @brief Register a TCP client with automatic format specifier
+ * @param client TCP client pointer
+ * @param name Base name string
+ * @ingroup debug_named
+ */
+#ifndef NDEBUG
+#define NAMED_REGISTER_TCP_CLIENT(client, name)                                                                        \
+  named_register((uintptr_t)(const void *)(client), (name), "tcp_client", "0x%tx", __FILE__, __LINE__, __func__)
+#else
+#define NAMED_REGISTER_TCP_CLIENT(client, name) (name)
+#endif
+
+/**
+ * @brief Register a WebSocket client with automatic format specifier
+ * @param client WebSocket client pointer
+ * @param name Base name string
+ * @ingroup debug_named
+ */
+#ifndef NDEBUG
+#define NAMED_REGISTER_WEBSOCKET_CLIENT(client, name)                                                                  \
+  named_register((uintptr_t)(const void *)(client), (name), "websocket_client", "0x%tx", __FILE__, __LINE__, __func__)
+#else
+#define NAMED_REGISTER_WEBSOCKET_CLIENT(client, name) (name)
+#endif
+
+/**
+ * @brief Register an app client with automatic format specifier
+ * @param client App client pointer
+ * @param name Base name string
+ * @ingroup debug_named
+ */
+#ifndef NDEBUG
+#define NAMED_REGISTER_APP_CLIENT(client, name)                                                                        \
+  named_register((uintptr_t)(const void *)(client), (name), "app_client", "0x%tx", __FILE__, __LINE__, __func__)
+#else
+#define NAMED_REGISTER_APP_CLIENT(client, name) (name)
+#endif
+
+/**
+ * @brief Register a video frame buffer with automatic format specifier
+ * @param buf Video frame buffer pointer
+ * @param name Base name string
+ * @ingroup debug_named
+ */
+#ifndef NDEBUG
+#define NAMED_REGISTER_VIDEO_FRAME_BUFFER(buf, name)                                                                   \
+  named_register((uintptr_t)(const void *)(buf), (name), "video_frame_buffer", "0x%tx", __FILE__, __LINE__, __func__)
+#else
+#define NAMED_REGISTER_VIDEO_FRAME_BUFFER(buf, name) (name)
+#endif
+
+/**
+ * @brief Register a node pool with automatic format specifier
+ * @param pool Node pool pointer
+ * @param name Base name string
+ * @ingroup debug_named
+ */
+#ifndef NDEBUG
+#define NAMED_REGISTER_NODE_POOL(pool, name)                                                                           \
+  named_register((uintptr_t)(const void *)(pool), (name), "node_pool", "0x%tx", __FILE__, __LINE__, __func__)
+#else
+#define NAMED_REGISTER_NODE_POOL(pool, name) (name)
+#endif
+
+/**
+ * @brief Register a thread pool with automatic format specifier
+ * @param pool Thread pool pointer
+ * @param name Base name string
+ * @ingroup debug_named
+ */
+#ifndef NDEBUG
+#define NAMED_REGISTER_THREAD_POOL(pool, name)                                                                         \
+  named_register((uintptr_t)(const void *)(pool), (name), "thread_pool", "0x%tx", __FILE__, __LINE__, __func__)
+#else
+#define NAMED_REGISTER_THREAD_POOL(pool, name) (name)
+#endif
+
+/**
+ * @brief Register an options builder with automatic format specifier
+ * @param builder Options builder pointer
+ * @param name Base name string
+ * @ingroup debug_named
+ */
+#ifndef NDEBUG
+#define NAMED_REGISTER_OPTIONS_BUILDER(builder, name)                                                                  \
+  named_register((uintptr_t)(const void *)(builder), (name), "options_builder", "0x%tx", __FILE__, __LINE__, __func__)
+#else
+#define NAMED_REGISTER_OPTIONS_BUILDER(builder, name) (name)
+#endif
+
+/**
+ * @brief Register a GPG homedir with automatic format specifier
+ * @param homedir GPG homedir pointer
+ * @param name Base name string
+ * @ingroup debug_named
+ */
+#ifndef NDEBUG
+#define NAMED_REGISTER_GPG_HOMEDIR(homedir, name)                                                                      \
+  named_register((uintptr_t)(const void *)(homedir), (name), "gpg_homedir", "0x%tx", __FILE__, __LINE__, __func__)
+#else
+#define NAMED_REGISTER_GPG_HOMEDIR(homedir, name) (name)
+#endif
+
+/**
+ * @brief Register a simple frame swap with automatic format specifier
+ * @param swap Simple frame swap pointer
+ * @param name Base name string
+ * @ingroup debug_named
+ */
+#ifndef NDEBUG
+#define NAMED_REGISTER_SIMPLE_FRAME_SWAP(swap, name)                                                                   \
+  named_register((uintptr_t)(const void *)(swap), (name), "simple_frame_swap", "0x%tx", __FILE__, __LINE__, __func__)
+#else
+#define NAMED_REGISTER_SIMPLE_FRAME_SWAP(swap, name) (name)
+#endif
+
+/**
+ * @brief Register a client audio pipeline with automatic format specifier
+ * @param pipeline Client audio pipeline pointer
+ * @param name Base name string
+ * @ingroup debug_named
+ */
+#ifndef NDEBUG
+#define NAMED_REGISTER_CLIENT_AUDIO_PIPELINE(pipeline, name)                                                           \
+  named_register((uintptr_t)(const void *)(pipeline), (name), "client_audio_pipeline", "0x%tx", __FILE__, __LINE__,    \
+                 __func__)
+#else
+#define NAMED_REGISTER_CLIENT_AUDIO_PIPELINE(pipeline, name) (name)
+#endif
+
+/**
  * @brief Iterate through all registered entries
  * @param callback Function to call for each entry
  * @param user_data Opaque context passed to callback
