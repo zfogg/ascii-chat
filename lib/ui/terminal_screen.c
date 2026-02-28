@@ -125,42 +125,33 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
                       (now_us - g_last_term_size_check_us >= TERM_SIZE_CHECK_INTERVAL_US);
 
   if (should_check) {
-    const options_t *opts = options_get();
     terminal_size_t new_size = {0};
 
-    // If width/height were explicitly provided via options, use those
-    if (opts && opts->width > 0 && opts->height > 0) {
-      new_size.cols = opts->width;
-      new_size.rows = opts->height;
-    } else if (opts && (opts->auto_width || opts->auto_height)) {
-      // First try COLUMNS and ROWS environment variables (most reliable)
-      const char *cols_env = getenv("COLUMNS");
-      const char *rows_env = getenv("ROWS");
-      if (cols_env && rows_env) {
-        int cols = atoi(cols_env);
-        int rows = atoi(rows_env);
-        if (cols > 0 && rows > 0) {
-          new_size.cols = cols;
-          new_size.rows = rows;
-        }
+    // PRIORITY 1: COLUMNS and ROWS environment variables (most reliable, user-controlled)
+    const char *cols_env = getenv("COLUMNS");
+    const char *rows_env = getenv("ROWS");
+    if (cols_env && rows_env) {
+      int cols = atoi(cols_env);
+      int rows = atoi(rows_env);
+      if (cols > 0 && rows > 0) {
+        new_size.cols = cols;
+        new_size.rows = rows;
       }
+    }
 
-      // Fallback to terminal_get_size if COLUMNS/ROWS not set
-      if (new_size.cols == 0 || new_size.rows == 0) {
-        if (terminal_get_size(&new_size) == ASCIICHAT_OK) {
-          // Use auto-detected values for dimensions that have auto-detect enabled
-          if (!opts->auto_width && opts->width > 0) {
-            new_size.cols = opts->width;
-          }
-          if (!opts->auto_height && opts->height > 0) {
-            new_size.rows = opts->height;
-          }
-        }
+    // PRIORITY 2: Options-provided width/height (explicit user settings)
+    if (new_size.cols == 0 || new_size.rows == 0) {
+      const options_t *opts = options_get();
+      if (opts && opts->width > 0 && opts->height > 0) {
+        new_size.cols = opts->width;
+        new_size.rows = opts->height;
       }
-    } else {
-      // Fallback: try to get from terminal
+    }
+
+    // PRIORITY 3: Terminal auto-detection
+    if (new_size.cols == 0 || new_size.rows == 0) {
       if (terminal_get_size(&new_size) != ASCIICHAT_OK) {
-        // If terminal detection fails and no options available, use defaults
+        // If terminal detection fails, use defaults
         new_size.cols = 80;
         new_size.rows = 24;
       }
