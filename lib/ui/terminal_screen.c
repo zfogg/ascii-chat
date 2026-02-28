@@ -180,6 +180,11 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     }
   }
 
+  // Frame delimiter (mark where each frame starts)
+  // Print directly to stderr so it's separate from the frame data on stdout
+  fprintf(stderr, "[FRAME_START t=%llums]\n", (unsigned long long)elapsed_ms);
+  fflush(stderr);
+
   frame_buffer_reset(g_frame_buf);
 
   if (!grep_entering) {
@@ -196,6 +201,8 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
   // If logs are disabled, flush and return
   if (!config->show_logs) {
     frame_buffer_flush(g_frame_buf);
+    fprintf(stderr, "[FRAME_END t=%llums]\n", (unsigned long long)elapsed_ms);
+    fflush(stderr);
     return;
   }
 
@@ -316,15 +323,21 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
 
     // Verify output height matches terminal area
     int actual_height_rendered = logs_actually_output + remaining;
+    int total_frame_height = actual_height_rendered + config->fixed_header_lines;
+
     if (elapsed_ms < 500) {
-      log_debug("[STARTUP_OUTPUT] t=%llu output=%d blank=%d height=%d area=%d match=%s", (unsigned long long)elapsed_ms,
-                logs_actually_output, remaining, actual_height_rendered, log_area_rows,
-                (actual_height_rendered == log_area_rows) ? "YES" : "NO");
+      log_debug("[STARTUP_OUTPUT] t=%llu output=%d blank=%d header=%d height=%d area=%d match=%s",
+                (unsigned long long)elapsed_ms, logs_actually_output, remaining, config->fixed_header_lines,
+                actual_height_rendered, log_area_rows, (actual_height_rendered == log_area_rows) ? "YES" : "NO");
     } else {
       log_debug("[RENDER_OUTPUT] log_count=%zu logs_output=%d blank=%d ACTUAL_HEIGHT=%d log_area=%d MATCH=%s",
                 log_count, logs_actually_output, remaining, actual_height_rendered, log_area_rows,
                 (actual_height_rendered == log_area_rows) ? "YES" : "NO");
     }
+
+    // Frame delimiter: mark where frame ends with height info
+    fprintf(stderr, "[FRAME_END t=%llums height=%d]\n", (unsigned long long)elapsed_ms, total_frame_height);
+    fflush(stderr);
   } else {
     // Grep mode: diff-based rendering. Only rewrite lines that changed.
     // Logs fill renderable_log_rows; the last row is the `/` input line.
