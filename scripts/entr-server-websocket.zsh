@@ -14,6 +14,6 @@ cbb --target ascii-chat
 pkill -fi "ascii-chat.*server" || true
 sleep 0.5
 
-find src lib include web/web.ascii-chat.com/src | entr -rdc bash -c \
+find src lib include web/web.ascii-chat.com/src | entr -rdnc bash -c \
   "cmake --build build --target ascii-chat && ./build/bin/ascii-chat --log-file server.log --log-level debug server 0.0.0.0 "::" --status-screen --websocket-port 27226 $@"
 
