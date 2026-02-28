@@ -356,19 +356,19 @@ bool parse_render_theme(const char *arg, void *dest, char **error_msg) {
 
   // Dark theme
   if (strcmp(lower, "dark") == 0 || strcmp(lower, "0") == 0) {
-    *theme = 0;  // TERM_RENDERER_THEME_DARK
+    *theme = 0; // TERM_RENDERER_THEME_DARK
     return true;
   }
 
   // Light theme
   if (strcmp(lower, "light") == 0 || strcmp(lower, "1") == 0) {
-    *theme = 1;  // TERM_RENDERER_THEME_LIGHT
+    *theme = 1; // TERM_RENDERER_THEME_LIGHT
     return true;
   }
 
   // Auto theme
   if (strcmp(lower, "auto") == 0 || strcmp(lower, "2") == 0) {
-    *theme = 2;  // TERM_RENDERER_THEME_AUTO
+    *theme = 2; // TERM_RENDERER_THEME_AUTO
     return true;
   }
 
@@ -524,7 +524,8 @@ bool parse_port_option(const char *arg, void *dest, char **error_msg) {
   if (err != ASCIICHAT_OK) {
     if (error_msg) {
       char msg[256];
-      safe_snprintf(msg, sizeof(msg), "Invalid port '%s'. Port must be a number between 1 and 65535.", arg);
+      safe_snprintf(msg, sizeof(msg), "Invalid port '%s'. Port must be a number between 0 and 65535 (0 = auto-assign).",
+                    arg);
       *error_msg = platform_strdup(msg);
     }
     return false;
