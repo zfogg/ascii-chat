@@ -212,10 +212,10 @@ static void handle_sigterm(int sig) {
   debug_sync_trigger_print();
 #endif
 
-  // CRITICAL: Don't call signal_exit() here - it may try to acquire locks
-  // or call server_connection_shutdown() from signal context, causing deadlock.
-  // The main thread will check g_app_should_exit and handle cleanup.
-  atomic_store(&g_app_should_exit, true);
+  // Call signal_exit() to set flag AND interrupt blocking socket operations
+  // server_connection_shutdown() is async-signal-safe (uses only atomics and socket_shutdown)
+  // This ensures blocking recv() calls are interrupted, allowing main thread to detect shutdown
+  signal_exit();
 }
 #endif
 

@@ -653,9 +653,11 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   uint64_t assembly_start_ns = time_get_ns();
   uint64_t last_fragment_ns = assembly_start_ns;
   int fragment_count = 0;
-  const uint64_t MAX_REASSEMBLY_TIME_NS = 10000 * 1000000ULL; // 10 second max - prevent infinite waits
-  // REMOVED: FRAGMENT_WAIT_TIMEOUT_NS was causing incomplete frames to be returned
-  // Handlers expect complete frames with final=1, not partial buffers
+  const uint64_t MAX_REASSEMBLY_TIME_NS = 100 * 1000000ULL; // 100ms timeout for frame reassembly
+  // If WebSocket frames arrive fragmented, wait up to 100ms for all fragments.
+  // Timeout must be long enough for realistic network latency to deliver remaining fragments,
+  // otherwise premature timeout causes fragment loss (first fragment consumed, next fragment
+  // fails sanity check because it has first=0).
 
   while (true) {
     // Wait for fragment if queue is empty (with short timeout)
