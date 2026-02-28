@@ -1132,13 +1132,13 @@ void protocol_stop_connection() {
 
   // Wait for data reception thread to exit gracefully
   int wait_count = 0;
-  while (wait_count < 20 && !atomic_load(&g_data_thread_exited)) {
-    platform_sleep_us(100 * US_PER_MS_INT); // 100ms
+  while (wait_count < 5 && !atomic_load(&g_data_thread_exited)) {
+    platform_sleep_us(100 * US_PER_MS_INT); // 100ms * 5 = 500ms max wait
     wait_count++;
   }
 
   if (!atomic_load(&g_data_thread_exited)) {
-    log_warn("Data thread not responding after 2 seconds - will be joined by thread pool");
+    log_warn("Data thread not responding after 500ms - will be joined by thread pool");
   }
 
   // Join all threads in the client worker pool (in stop_id order)

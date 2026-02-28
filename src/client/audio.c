@@ -1135,8 +1135,8 @@ void audio_stop_thread() {
   // Wait for audio sender thread to exit gracefully
   // This must complete before thread_pool_stop_all() to prevent deadlock
   int wait_count = 0;
-  while (wait_count < 20 && !atomic_load(&g_audio_sender_exited)) {
-    platform_sleep_us(100 * US_PER_MS_INT); // 100ms
+  while (wait_count < 5 && !atomic_load(&g_audio_sender_exited)) {
+    platform_sleep_us(100 * US_PER_MS_INT); // 100ms * 5 = 500ms max wait
     wait_count++;
   }
 
@@ -1154,8 +1154,8 @@ void audio_stop_thread() {
 
   // Wait for thread to exit gracefully
   int wait_count2 = 0;
-  while (wait_count2 < 20 && !atomic_load(&g_audio_capture_thread_exited)) {
-    platform_sleep_us(100 * US_PER_MS_INT); // 100ms
+  while (wait_count2 < 5 && !atomic_load(&g_audio_capture_thread_exited)) {
+    platform_sleep_us(100 * US_PER_MS_INT); // 100ms * 5 = 500ms max wait
     wait_count2++;
   }
 
