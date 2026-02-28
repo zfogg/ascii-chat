@@ -992,6 +992,16 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
   cond_destroy(&ws_data->recv_cond);
   mutex_destroy(&ws_data->recv_mutex);
   mutex_destroy(&ws_data->send_mutex);
+  mutex_destroy(&ws_data->pending_free_mutex);
+
+  // Destroy pending-free queue
+  if (ws_data->pending_free_queue) {
+    ringbuffer_destroy(ws_data->pending_free_queue);
+    ws_data->pending_free_queue = NULL;
+  }
+
+  // Deregister websocket implementation data
+  NAMED_UNREGISTER(ws_data);
 
   // Clear impl_data pointer BEFORE freeing to prevent use-after-free in callbacks
   transport->impl_data = NULL;
