@@ -17,11 +17,11 @@
 #include <ascii-chat/platform/mutex.h> // Must come after cond.h since cond.h includes it
 #include <ascii-chat/platform/rwlock.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/util/path.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/options/options.h>
 #include <stdio.h>
 #include <string.h>
-#include <signal.h>
 #include <pthread.h>
 #include <stdatomic.h>
 
@@ -398,21 +398,23 @@ static void cond_deadlock_check_callback(uintptr_t key, const char *name, void *
   char stuck_str[64];
   time_pretty(stuck_ns, -1, stuck_str, sizeof(stuck_str));
 
-  log_warn("Stuck cond '%s': %lu thread(s) waiting %s with no signal (most recent waiter: 0x%lx)", name,
-           cond->waiting_count, stuck_str, (unsigned long)cond->last_waiting_key);
+  char cond_buf[1024] = {0};
+  int cond_written =
+      safe_snprintf(cond_buf, sizeof(cond_buf),
+                    "Stuck cond '%s': %lu thread(s) waiting %s with no signal (most recent waiter: 0x%lx)\n", name,
+                    cond->waiting_count, stuck_str, (unsigned long)cond->last_waiting_key);
 
-  if (cond->last_wait_file) {
-    log_warn("  wait entered at %s:%d %s()", cond->last_wait_file, cond->last_wait_line, cond->last_wait_func);
+  cond_written +=
+      safe_snprintf(cond_buf + cond_written, sizeof(cond_buf) - cond_written, "  wait entered at %s:%d %s()\n",
+                    extract_project_relative_path(cond->last_wait_file), cond->last_wait_line, cond->last_wait_func);
+
+  if (cond_written >= 0 && cond->last_wait_mutex) {
+    safe_snprintf(cond_buf + cond_written, sizeof(cond_buf) - cond_written,
+                  "  associated mutex: %p (cannot safely inspect without lock ownership)",
+                  (void *)cond->last_wait_mutex);
   }
 
-  if (cond->last_wait_mutex) {
-    uintptr_t holder = cond->last_wait_mutex->currently_held_by_key;
-    if (holder) {
-      log_warn("  associated mutex held by: 0x%lx (signal must come from this thread)", holder);
-    } else {
-      log_warn("  associated mutex is FREE — producer is not calling cond_signal");
-    }
-  }
+  log_warn("%s", cond_buf);
 }
 
 /**
@@ -498,10 +500,11 @@ static void *debug_print_thread_fn(void *arg) {
       mutex_lock(&g_debug_state_request.mutex);
       atomic_store(&g_debug_state_request.should_run, false);
       atomic_store(&g_debug_state_request.signal_triggered, false);
+      should_exit = atomic_load(&g_debug_state_request.should_exit);
     }
 
     // Wait for work or signal, with 100ms timeout to check should_exit
-    if (!atomic_load(&g_debug_state_request.should_exit)) {
+    if (!should_exit) {
       cond_timedwait(&g_debug_state_request.cond, &g_debug_state_request.mutex, 100000000); // 100ms
     }
     mutex_unlock(&g_debug_state_request.mutex);
