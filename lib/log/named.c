@@ -114,8 +114,8 @@ static const char *find_generic_type_prefix(const char *start, const char *p, co
       const char *type;
       size_t len;
     } known_types[] = {
-        {"socket", 6},      {"sockfd", 6}, {"client", 6},  {"connection", 10}, {"fd", 2},      {"file", 4},
-        {"descriptor", 11}, {"thread", 6}, {"decoder", 7}, {"encoder", 7},     {"context", 7}, {"handler", 7},
+        {"socket", 6}, {"client", 6},  {"connection", 10}, {"fd", 2},      {"file", 4},    {"descriptor", 11},
+        {"thread", 6}, {"decoder", 7}, {"encoder", 7},     {"context", 7}, {"handler", 7},
     };
 
     for (size_t i = 0; i < sizeof(known_types) / sizeof(known_types[0]); i++) {
@@ -473,8 +473,13 @@ int log_named_format_message(const char *message, char *output, size_t output_si
         }
       }
 
-      /* Check if this integer has a generic type prefix (socket, client, connection, etc.) */
-      if (!is_already_formatted && digit_count > 0) {
+      /* Check if this integer has a generic type prefix (socket, client, connection, etc.)
+       * DISABLED: This feature has a backtracking bug that corrupts output when applied after
+       * other formatting operations. Re-enable only after fixing the backtracking logic to
+       * properly track correspondence between input and output positions.
+       * See commit b86fed2a8 which introduced the bug.
+       */
+      if (false && !is_already_formatted && digit_count > 0) {
         const char *type_name = NULL;
         size_t type_len = 0;
         const char *prefix_start = find_generic_type_prefix(message, int_start, &type_name, &type_len);
