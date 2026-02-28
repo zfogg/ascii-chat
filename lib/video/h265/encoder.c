@@ -1,9 +1,9 @@
 /**
- * @file video/x265/encoder.c
+ * @file video/h265/encoder.c
  * @brief x265 HEVC encoder for ASCII art frames
  */
 
-#include <ascii-chat/video/x265/encoder.h>
+#include <ascii-chat/video/h265/encoder.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/util/time.h>
@@ -11,7 +11,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-typedef struct x265_encoder {
+typedef struct h265_encoder {
     x265_encoder *handle;
     x265_param *params;
 
@@ -26,15 +26,15 @@ typedef struct x265_encoder {
     uint64_t total_frames;
     uint64_t keyframes;
     uint32_t avg_bitrate;
-} x265_encoder_t;
+} h265_encoder_t;
 
-x265_encoder_t *x265_encoder_create(uint16_t initial_width, uint16_t initial_height) {
+h265_encoder_t *h265_encoder_create(uint16_t initial_width, uint16_t initial_height) {
     if (initial_width == 0 || initial_height == 0) {
         SET_ERRNO(ERROR_MEDIA_INIT, "Frame dimensions must be non-zero");
         return NULL;
     }
 
-    x265_encoder_t *enc = SAFE_CALLOC(1, sizeof(x265_encoder_t), x265_encoder_t *);
+    h265_encoder_t *enc = SAFE_CALLOC(1, sizeof(h265_encoder_t), h265_encoder_t *);
     if (!enc) {
         SET_ERRNO(ERROR_MEMORY, "Failed to allocate encoder structure");
         return NULL;
@@ -77,7 +77,7 @@ x265_encoder_t *x265_encoder_create(uint16_t initial_width, uint16_t initial_hei
     enc->yuv_buf = SAFE_MALLOC(enc->yuv_buf_size, uint8_t *);
     if (!enc->yuv_buf) {
         SET_ERRNO(ERROR_MEMORY, "Failed to allocate YUV buffer");
-        x265_encoder_close(enc->handle);
+        h265_encoder_close(enc->handle);
         x265_param_free(enc->params);
         SAFE_FREE(enc);
         return NULL;
@@ -87,11 +87,11 @@ x265_encoder_t *x265_encoder_create(uint16_t initial_width, uint16_t initial_hei
     return enc;
 }
 
-void x265_encoder_destroy(x265_encoder_t *encoder) {
+void h265_encoder_destroy(h265_encoder_t *encoder) {
     if (!encoder) return;
 
     if (encoder->handle) {
-        x265_encoder_close(encoder->handle);
+        h265_encoder_close(encoder->handle);
     }
     if (encoder->params) {
         x265_param_free(encoder->params);
@@ -103,7 +103,7 @@ void x265_encoder_destroy(x265_encoder_t *encoder) {
 }
 
 static asciichat_error_t x265_encode_reconfigure(
-    x265_encoder_t *encoder,
+    h265_encoder_t *encoder,
     uint16_t new_width,
     uint16_t new_height
 ) {
@@ -111,12 +111,12 @@ static asciichat_error_t x265_encode_reconfigure(
         return ASCIICHAT_OK;
     }
 
-    x265_encoder_close(encoder->handle);
+    h265_encoder_close(encoder->handle);
 
     encoder->params->sourceWidth = new_width;
     encoder->params->sourceHeight = new_height;
 
-    encoder->handle = x265_encoder_open(encoder->params);
+    encoder->handle = h265_encoder_open(encoder->params);
     if (!encoder->handle) {
         return SET_ERRNO(ERROR_MEDIA_INIT, "Failed to reopen x265 encoder for %ux%u",
                         new_width, new_height);
@@ -157,8 +157,8 @@ static void x265_encode_ascii_to_yuv420(
     memset(v_plane, 128, (width / 2) * (height / 2));
 }
 
-asciichat_error_t x265_encode(
-    x265_encoder_t *encoder,
+asciichat_error_t h265_encode(
+    h265_encoder_t *encoder,
     uint16_t width,
     uint16_t height,
     const uint8_t *ascii_data,
@@ -199,19 +199,19 @@ asciichat_error_t x265_encode(
     x265_nal *nal_out;
     uint32_t nal_count;
 
-    int frame_size = x265_encoder_encode(encoder->handle, &pic_in, &pic_out, &nal_out, &nal_count);
+    int frame_size = h265_encoder_encode(encoder->handle, &pic_in, &pic_out, &nal_out, &nal_count);
     if (frame_size < 0) {
         return SET_ERRNO(ERROR_MEDIA_DECODE, "x265 encoding failed");
     }
 
     uint8_t flags = 0;
     if (pic_out.sliceType == X265_TYPE_IDR || pic_out.sliceType == X265_TYPE_I) {
-        flags |= X265_ENCODER_FLAG_KEYFRAME;
+        flags |= H265_ENCODER_FLAG_KEYFRAME;
         encoder->keyframes++;
     }
 
     if (width != encoder->current_width || height != encoder->current_height) {
-        flags |= X265_ENCODER_FLAG_SIZE_CHANGE;
+        flags |= H265_ENCODER_FLAG_SIZE_CHANGE;
     }
 
     size_t header_size = 5;
@@ -239,14 +239,14 @@ asciichat_error_t x265_encode(
     return ASCIICHAT_OK;
 }
 
-void x265_encoder_request_keyframe(x265_encoder_t *encoder) {
+void h265_encoder_request_keyframe(h265_encoder_t *encoder) {
     if (encoder) {
         encoder->request_keyframe = true;
     }
 }
 
-void x265_encoder_get_stats(
-    x265_encoder_t *encoder,
+void h265_encoder_get_stats(
+    h265_encoder_t *encoder,
     uint64_t *total_frames,
     uint64_t *keyframes,
     uint32_t *avg_bitrate

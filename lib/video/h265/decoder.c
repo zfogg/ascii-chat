@@ -1,16 +1,16 @@
 /**
- * @file video/x265/decoder.c
+ * @file video/h265/decoder.c
  * @brief libde265 HEVC decoder for ASCII art frames
  */
 
-#include <ascii-chat/video/x265/decoder.h>
+#include <ascii-chat/video/h265/decoder.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/named.h>
 #include <libde265/de265.h>
 #include <string.h>
 #include <stdlib.h>
 
-typedef struct x265_decoder {
+typedef struct h265_decoder {
     de265_decoder_context *context;
 
     uint16_t last_width;
@@ -18,10 +18,10 @@ typedef struct x265_decoder {
 
     uint64_t total_frames;
     uint64_t keyframes;
-} x265_decoder_t;
+} h265_decoder_t;
 
-x265_decoder_t *x265_decoder_create(void) {
-    x265_decoder_t *dec = SAFE_CALLOC(1, sizeof(x265_decoder_t), x265_decoder_t *);
+h265_decoder_t *h265_decoder_create(void) {
+    h265_decoder_t *dec = SAFE_CALLOC(1, sizeof(h265_decoder_t), h265_decoder_t *);
     if (!dec) {
         SET_ERRNO(ERROR_MEMORY, "Failed to allocate decoder structure");
         return NULL;
@@ -40,7 +40,7 @@ x265_decoder_t *x265_decoder_create(void) {
     return dec;
 }
 
-void x265_decoder_destroy(x265_decoder_t *decoder) {
+void h265_decoder_destroy(h265_decoder_t *decoder) {
     if (!decoder) return;
 
     if (decoder->context) {
@@ -49,8 +49,8 @@ void x265_decoder_destroy(x265_decoder_t *decoder) {
     SAFE_FREE(decoder);
 }
 
-asciichat_error_t x265_decode(
-    x265_decoder_t *decoder,
+asciichat_error_t h265_decode(
+    h265_decoder_t *decoder,
     const uint8_t *encoded_packet,
     size_t packet_size,
     uint16_t *output_width,
@@ -123,15 +123,15 @@ asciichat_error_t x265_decode(
     decoder->last_height = height;
     decoder->total_frames++;
 
-    if (flags & X265_DECODER_FLAG_KEYFRAME) {
+    if (flags & H265_DECODER_FLAG_KEYFRAME) {
         decoder->keyframes++;
     }
 
     return ASCIICHAT_OK;
 }
 
-void x265_decoder_get_stats(
-    x265_decoder_t *decoder,
+void h265_decoder_get_stats(
+    h265_decoder_t *decoder,
     uint64_t *total_frames,
     uint64_t *keyframes,
     uint16_t *last_width,

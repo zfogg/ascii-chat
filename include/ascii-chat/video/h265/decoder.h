@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file video/x265/decoder.h
+ * @file video/h265/decoder.h
  * @brief HEVC/H.265 decoder for ASCII art frames using libde265
  *
  * Decodes x265-encoded ASCII art frames back into terminal grid data.
@@ -20,27 +20,27 @@
 #include <stdbool.h>
 #include <ascii-chat/asciichat_errno.h>
 
-typedef struct x265_decoder x265_decoder_t;
+typedef struct h265_decoder h265_decoder_t;
 
 /**
  * Decoder flags (from packet)
  */
-#define X265_DECODER_FLAG_KEYFRAME  0x01
-#define X265_DECODER_FLAG_SIZE_CHANGE 0x02
+#define H265_DECODER_FLAG_KEYFRAME  0x01
+#define H265_DECODER_FLAG_SIZE_CHANGE 0x02
 
 /**
  * Create a new x265 decoder for ASCII frames
  *
  * @return Decoder handle, or NULL on error
  */
-x265_decoder_t *x265_decoder_create(void);
+h265_decoder_t *h265_decoder_create(void);
 
 /**
  * Destroy an x265 decoder
  *
  * @param decoder Decoder to destroy (may be NULL)
  */
-void x265_decoder_destroy(x265_decoder_t *decoder);
+void h265_decoder_destroy(h265_decoder_t *decoder);
 
 /**
  * Decode an x265-encoded ASCII frame
@@ -64,11 +64,11 @@ void x265_decoder_destroy(x265_decoder_t *decoder);
  *   uint16_t width, height;
  *   uint8_t ascii_grid[256*64];
  *   size_t decoded_size = sizeof(ascii_grid);
- *   x265_decode(decoder, packet, packet_size, &width, &height,
+ *   h265_decode(decoder, packet, packet_size, &width, &height,
  *               ascii_grid, &decoded_size);
  */
-asciichat_error_t x265_decode(
-    x265_decoder_t *decoder,
+asciichat_error_t h265_decode(
+    h265_decoder_t *decoder,
     const uint8_t *encoded_packet,
     size_t packet_size,
     uint16_t *output_width,
@@ -86,8 +86,8 @@ asciichat_error_t x265_decode(
  * @param last_width Output: width of last decoded frame
  * @param last_height Output: height of last decoded frame
  */
-void x265_decoder_get_stats(
-    x265_decoder_t *decoder,
+void h265_decoder_get_stats(
+    h265_decoder_t *decoder,
     uint64_t *total_frames,
     uint64_t *keyframes,
     uint16_t *last_width,

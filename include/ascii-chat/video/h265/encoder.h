@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file video/x265/encoder.h
+ * @file video/h265/encoder.h
  * @brief HEVC/H.265 encoder for ASCII art frames using libx265
  *
  * Encodes terminal ASCII grid data using x265 for efficient compression.
@@ -25,13 +25,13 @@
 #include <stdbool.h>
 #include <ascii-chat/asciichat_errno.h>
 
-typedef struct x265_encoder x265_encoder_t;
+typedef struct h265_encoder h265_encoder_t;
 
 /**
  * Encoder flags
  */
-#define X265_ENCODER_FLAG_KEYFRAME  0x01
-#define X265_ENCODER_FLAG_SIZE_CHANGE 0x02
+#define H265_ENCODER_FLAG_KEYFRAME  0x01
+#define H265_ENCODER_FLAG_SIZE_CHANGE 0x02
 
 /**
  * Create a new x265 encoder for ASCII frames
@@ -40,14 +40,14 @@ typedef struct x265_encoder x265_encoder_t;
  * @param initial_height Initial frame height (characters)
  * @return Encoder handle, or NULL on error
  */
-x265_encoder_t *x265_encoder_create(uint16_t initial_width, uint16_t initial_height);
+h265_encoder_t *h265_encoder_create(uint16_t initial_width, uint16_t initial_height);
 
 /**
  * Destroy an x265 encoder
  *
  * @param encoder Encoder to destroy (may be NULL)
  */
-void x265_encoder_destroy(x265_encoder_t *encoder);
+void h265_encoder_destroy(h265_encoder_t *encoder);
 
 /**
  * Encode an ASCII art frame
@@ -66,8 +66,8 @@ void x265_encoder_destroy(x265_encoder_t *encoder);
  * OUTPUT PACKET FORMAT:
  *   [flags: u8][width: u16][height: u16][x265_data...]
  */
-asciichat_error_t x265_encode(
-    x265_encoder_t *encoder,
+asciichat_error_t h265_encode(
+    h265_encoder_t *encoder,
     uint16_t width,
     uint16_t height,
     const uint8_t *ascii_data,
@@ -79,11 +79,11 @@ asciichat_error_t x265_encode(
  * Request a keyframe on the next encode
  *
  * Forces the encoder to produce an I-frame (keyframe) on the next call to
- * x265_encoder_encode(). Useful for error recovery or stream synchronization.
+ * h265_encoder_encode(). Useful for error recovery or stream synchronization.
  *
  * @param encoder Encoder handle
  */
-void x265_encoder_request_keyframe(x265_encoder_t *encoder);
+void h265_encoder_request_keyframe(h265_encoder_t *encoder);
 
 /**
  * Get encoder statistics
@@ -93,8 +93,8 @@ void x265_encoder_request_keyframe(x265_encoder_t *encoder);
  * @param keyframes Output: total keyframes encoded
  * @param avg_bitrate Output: average bitrate in bits per second
  */
-void x265_encoder_get_stats(
-    x265_encoder_t *encoder,
+void h265_encoder_get_stats(
+    h265_encoder_t *encoder,
     uint64_t *total_frames,
     uint64_t *keyframes,
     uint32_t *avg_bitrate
