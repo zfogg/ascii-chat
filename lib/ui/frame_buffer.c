@@ -7,6 +7,7 @@
 
 #include "ascii-chat/ui/frame_buffer.h"
 #include "ascii-chat/platform/abstraction.h"
+#include <ascii-chat/util/display.h>
 #include "ascii-chat/common.h"
 
 #include <stdio.h>
@@ -169,4 +170,47 @@ const char *frame_buffer_get_content(const frame_buffer_t *buf) {
     return NULL;
   }
   return buf->data;
+}
+
+void frame_buffer_render_border(frame_buffer_t *buf, int cols, const char *color) {
+  if (!buf || cols <= 0) {
+    return;
+  }
+
+  if (color) {
+    frame_buffer_printf(buf, "%s━", color);
+  } else {
+    frame_buffer_printf(buf, "━");
+  }
+  for (int i = 1; i < cols - 1; i++) {
+    frame_buffer_printf(buf, "━");
+  }
+  if (color) {
+    frame_buffer_printf(buf, "\033[0m");
+  }
+  frame_buffer_printf(buf, "\n");
+}
+
+int frame_buffer_render_centered(frame_buffer_t *buf, const char *text, int cols) {
+  if (!buf || !text || cols <= 0) {
+    return 0;
+  }
+
+  // Calculate visible width accounting for ANSI codes
+  int visible_width = display_width(text);
+  if (visible_width < 0) {
+    visible_width = (int)strlen(text);
+  }
+
+  int padding = (cols - visible_width) / 2;
+  if (padding < 0) {
+    padding = 0;
+  }
+
+  for (int i = 0; i < padding; i++) {
+    frame_buffer_printf(buf, " ");
+  }
+  frame_buffer_printf(buf, "%s\n", text);
+
+  return padding;
 }

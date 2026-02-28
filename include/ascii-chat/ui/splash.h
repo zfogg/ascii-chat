@@ -24,6 +24,47 @@ struct session_display_ctx;
 typedef struct session_display_ctx session_display_ctx_t;
 
 /**
+ * @brief Initialize log buffer for splash animation
+ *
+ * Delegates to the standard terminal_screen log initialization.
+ * Call once at startup before rendering splash screen.
+ *
+ * @ingroup session
+ */
+void splash_log_init(void);
+
+/**
+ * @brief Destroy splash log buffer
+ *
+ * Delegates to the standard terminal_screen log cleanup.
+ *
+ * @ingroup session
+ */
+void splash_log_destroy(void);
+
+/**
+ * @brief Clear splash log buffer
+ *
+ * Delegates to the standard terminal_screen log clear.
+ * Useful when starting fresh splash animation.
+ *
+ * @ingroup session
+ */
+void splash_log_clear(void);
+
+/**
+ * @brief Append message to splash log buffer
+ *
+ * Delegates to the standard terminal_screen log append.
+ * Called by logging system to capture messages for display.
+ *
+ * @param message Log message to append
+ *
+ * @ingroup session
+ */
+void splash_log_append(const char *message);
+
+/**
  * @brief Start animated intro screen with rainbow ASCII art (non-blocking)
  *
  * Starts the splash screen animation that runs while initialization happens
@@ -89,33 +130,6 @@ int splash_intro_done(void);
 void splash_wait_for_animation(void);
 
 /**
- * @brief Display status screen for server/discovery-service modes
- *
- * Shows server or discovery-service status information with:
- * - Server mode: bind addresses, ports, connection info, encryption status
- * - Discovery-service mode: server fingerprint, bind address/port, database path
- *
- * **Display Requirements:**
- * - stdin AND stdout must be TTY (platform_isatty())
- * - --no-status-screen option must not be set
- * - Terminal must be large enough (min 50 cols x 15 rows)
- *
- * **Behavior:**
- * - Displays formatted status box with colored borders
- * - Stays on screen (requires manual interrupt via Ctrl+C)
- * - Uses rainbow gradient borders matching intro screen style
- *
- * @param mode Server mode type (MODE_SERVER=0 or MODE_DISCOVERY_SERVICE=3)
- * @return ASCIICHAT_OK on success, error code on failure
- *
- * @note Uses lock-free option access via GET_OPTION() macro
- * @note Thread-safe for use from main thread only
- *
- * @ingroup session
- */
-int splash_display_status(int mode);
-
-/**
  * @brief Check if splash screen should display
  *
  * Determines if TTY checks pass and options allow splash display.
@@ -150,7 +164,7 @@ void splash_restore_stderr(void);
  *
  * @param notification Update notification message (can be NULL or empty to clear)
  *
- * @note This should be called before splash_intro_start() or splash_display_status()
+ * @note This should be called before splash_intro_start()
  * @note Thread-safe via internal mutex
  *
  * @ingroup session

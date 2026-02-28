@@ -561,3 +561,19 @@ void terminal_screen_cleanup(void) {
     g_frame_buf = NULL;
   }
 }
+
+void terminal_screen_log_init(void) {
+  session_log_buffer_init();
+}
+
+void terminal_screen_log_destroy(void) {
+  session_log_buffer_destroy();
+}
+
+void terminal_screen_log_clear(void) {
+  session_log_buffer_clear();
+}
+
+void terminal_screen_log_append(const char *message) {
+  session_log_buffer_append(message);
+}

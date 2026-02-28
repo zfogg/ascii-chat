@@ -126,3 +126,24 @@ size_t frame_buffer_get_length(const frame_buffer_t *buf);
  * Use frame_buffer_get_length() to get the actual size.
  */
 const char *frame_buffer_get_content(const frame_buffer_t *buf);
+
+/**
+ * @brief Render a horizontal border line (used by both splash and status screens)
+ *
+ * @param buf Frame buffer to write into
+ * @param cols Terminal width (number of columns)
+ * @param color ANSI color code (e.g., "\033[1;36m" for cyan) or NULL for no color
+ */
+void frame_buffer_render_border(frame_buffer_t *buf, int cols, const char *color);
+
+/**
+ * @brief Render centered text (used by both splash and status screens)
+ *
+ * @param buf Frame buffer to write into
+ * @param text Text to center (may contain ANSI codes)
+ * @param cols Terminal width
+ * @return Padding added on left side (for manual padding if needed)
+ *
+ * Automatically centers the text accounting for ANSI escape codes.
+ */
+int frame_buffer_render_centered(frame_buffer_t *buf, const char *text, int cols);

@@ -25,23 +25,23 @@
 #include <stdatomic.h>
 
 void server_status_log_init(void) {
-  // Delegate to shared session log buffer
-  (void)session_log_buffer_init();
+  // Delegate to terminal_screen log abstraction
+  terminal_screen_log_init();
 }
 
 void server_status_log_destroy(void) {
-  // Delegate to shared session log buffer
-  session_log_buffer_destroy();
+  // Delegate to terminal_screen log abstraction
+  terminal_screen_log_destroy();
 }
 
 void server_status_log_clear(void) {
-  // Delegate to shared session log buffer
-  session_log_buffer_clear();
+  // Delegate to terminal_screen log abstraction
+  terminal_screen_log_clear();
 }
 
 void server_status_log_append(const char *message) {
-  // Delegate to shared session log buffer
-  session_log_buffer_append(message);
+  // Delegate to terminal_screen log abstraction
+  terminal_screen_log_append(message);
 }
 
 // ============================================================================

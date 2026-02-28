@@ -12,10 +12,10 @@
 
 #pragma once
 
-#include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/ui/frame_buffer.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/ui/frame_buffer.h>
 
 /**
  * @brief Callback to render the fixed header portion of the screen
@@ -70,3 +70,36 @@ void terminal_screen_render(const terminal_screen_config_t *config);
  * Call at program exit or when terminal screen rendering is no longer needed.
  */
 void terminal_screen_cleanup(void);
+
+/**
+ * @brief Standard log initialization for terminal screens
+ *
+ * Initializes the session log buffer that both splash and status screens use.
+ * Call once at startup before rendering any screens.
+ */
+void terminal_screen_log_init(void);
+
+/**
+ * @brief Standard log cleanup for terminal screens
+ *
+ * Destroys the session log buffer after screens are done rendering.
+ */
+void terminal_screen_log_destroy(void);
+
+/**
+ * @brief Clear buffered logs for terminal screens
+ *
+ * Clears all previously captured log entries from the buffer.
+ * Useful when transitioning between screens to start fresh.
+ */
+void terminal_screen_log_clear(void);
+
+/**
+ * @brief Append a message to the terminal screen log buffer
+ *
+ * Called by the logging system to capture messages that will be displayed
+ * in the scrolling log area of splash/status screens.
+ *
+ * @param message Log message to append (already formatted)
+ */
+void terminal_screen_log_append(const char *message);
