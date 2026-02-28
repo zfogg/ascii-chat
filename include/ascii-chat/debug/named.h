@@ -695,7 +695,7 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
       _fd = platform_open((pathname), (flags));                                                                        \
     }                                                                                                                  \
     if (_fd >= 0) {                                                                                                    \
-      named_register((uintptr_t)_fd, (name), "fd", "%d", __FILE__, __LINE__, __func__);                                \
+      named_register_fd_impl(_fd, (name), __FILE__, __LINE__, __func__);                                               \
     }                                                                                                                  \
     _fd;                                                                                                               \
   })
@@ -721,18 +721,28 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  */
 #define NAMED_UNREGISTER_FD(fd) NAMED_UNREGISTER_ID((fd))
 
+// Forward declaration for static inline helper
+#ifndef NDEBUG
+static inline const char *named_register_fd_impl(int fd, const char *file, int line, const char *func) {
+  char fd_key[32];
+  snprintf(fd_key, sizeof(fd_key), "fd=%d", fd);
+  return named_register((uintptr_t)fd, fd_key, "fd", "%d", file, line, func);
+}
+#endif
+
 /**
  * @brief Register an existing file descriptor with a name
  * @param fd File descriptor (must be >= 0)
- * @param name Debug name for the file descriptor
+ * @param name Debug name for the file descriptor (for macro compatibility)
  * @ingroup debug_named
  *
  * Convenience macro for registering file descriptors that are already open.
  * Automatically uses "%d" format specifier for file descriptor integers.
+ * Uses "fd=%d" key format for consistency with packet type registration.
  * In release builds (NDEBUG), this is a no-op.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_FD(fd, name) named_register((uintptr_t)(fd), (name), "fd", "%d", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_FD(fd, name) named_register_fd_impl((fd), __FILE__, __LINE__, __func__)
 #else
 #define NAMED_REGISTER_FD(fd, name) ((void)0)
 #endif
