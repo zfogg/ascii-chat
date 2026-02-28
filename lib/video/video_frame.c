@@ -68,15 +68,25 @@ video_frame_buffer_t *video_frame_buffer_create(const char *client_id) {
     log_warn("VFB_NO_POOL: pool is NULL, will use malloc fallback");
   }
 
-  // Fallback to aligned malloc if pool allocation failed
+  // Fallback to aligned malloc if pool allocation failed or returned undersized buffer
+  // Note: buffer_pool_alloc may return undersized buffers if pool is exhausted and falls back to SAFE_MALLOC
   if (!vfb->frames[0].data || !vfb->frames[1].data) {
     log_info("VFB_MALLOC_FALLBACK: frame[0]=%s, frame[1]=%s", vfb->frames[0].data ? "OK" : "allocating",
              vfb->frames[1].data ? "OK" : "allocating");
     // 64-byte cache-line alignment improves performance for large video frames
-    if (!vfb->frames[0].data)
+    // CRITICAL: Always use SAFE_MALLOC_ALIGNED for fallback to guarantee minimum size and alignment
+    if (!vfb->frames[0].data) {
       vfb->frames[0].data = SAFE_MALLOC_ALIGNED(frame_size, 64, void *);
-    if (!vfb->frames[1].data)
+      if (vfb->frames[0].data) {
+        log_info("VFB_MALLOC_FRAME0: allocated %zu bytes with 64-byte alignment", frame_size);
+      }
+    }
+    if (!vfb->frames[1].data) {
       vfb->frames[1].data = SAFE_MALLOC_ALIGNED(frame_size, 64, void *);
+      if (vfb->frames[1].data) {
+        log_info("VFB_MALLOC_FRAME1: allocated %zu bytes with 64-byte alignment", frame_size);
+      }
+    }
     log_info("VFB_MALLOC_RESULT: frame[0].data=%p, frame[1].data=%p (allocated with malloc)",
              (void *)vfb->frames[0].data, (void *)vfb->frames[1].data);
   }
