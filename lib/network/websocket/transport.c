@@ -303,8 +303,10 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
       break;
     }
 
-    bool is_first = lws_is_first_fragment(wsi);
-    bool is_final = lws_is_final_fragment(wsi);
+    // DIAGNOSTIC: Disable fragment detection to isolate if that triggers assertion
+    // libwebsockets internal calls to detect fragments might corrupt state
+    bool is_first = 1; // Assume all fragments are first/final
+    bool is_final = 1;
 
     log_info("🟡 LWS_CALLBACK_CLIENT_RECEIVE: %zu bytes (first=%d, final=%d), wsi=%p, timestamp=%llu", len, is_first,
              is_final, (void *)wsi, (unsigned long long)now_ns);
