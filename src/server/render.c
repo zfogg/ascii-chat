@@ -512,9 +512,7 @@ void *client_video_render_thread(void *arg) {
     log_dev_every(5 * NS_PER_MS_INT, "About to call create_mixed_ascii_frame_for_client for client %u with dims %ux%u",
                   thread_client_id, width_snapshot, height_snapshot);
 
-    log_info("[VIDEO_RENDER_LOOP] ★★★ LOCK STATE before create_mixed_ascii_frame_for_client for client %u",
-             thread_client_id);
-    debug_sync_print_state();
+    // debug_sync_print_state() is too expensive to call every frame (kills FPS)
 
     char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot, false,
                                                             &frame_size, NULL, &sources_count);
