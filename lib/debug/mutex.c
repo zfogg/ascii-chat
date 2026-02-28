@@ -16,7 +16,6 @@
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/platform/thread.h>
 #include <string.h>
-#include <pthread.h>
 
 // ============================================================================
 // Per-thread Lock Stack Storage
@@ -32,7 +31,7 @@ typedef struct {
 // Global registry of all threads that have used mutexes
 #define MAX_THREADS 256
 typedef struct {
-  pthread_t thread_id;
+  thread_id_t thread_id;
   thread_lock_stack_t *stack; // Heap-allocated stack per thread
 } thread_registry_entry_t;
 
@@ -78,10 +77,10 @@ static void tls_mutex_stack_destructor(void *arg) {
   // Check if this stack was already freed by cleanup()
   // This happens if: (1) thread is in registry AND (2) registry entry matches this stack
   bool already_freed_by_cleanup = false;
-  pthread_t current_thread = pthread_self();
+  thread_id_t current_thread = asciichat_thread_self();
   int count = atomic_load_explicit(&g_thread_registry_count, memory_order_acquire);
   for (int i = 0; i < count; i++) {
-    if (pthread_equal(g_thread_registry[i].thread_id, current_thread)) {
+    if (asciichat_thread_equal(g_thread_registry[i].thread_id, current_thread)) {
       // Found this thread's entry in registry
       if (g_thread_registry[i].stack == arg) {
         // Registry entry matches this stack - cleanup() already freed it
@@ -173,12 +172,12 @@ static void register_thread_if_needed(void) {
     return;
   }
 
-  pthread_t current_thread = pthread_self();
+  thread_id_t current_thread = asciichat_thread_self();
 
   // Check if thread is already in registry (without lock)
   int current_count = atomic_load_explicit(&g_thread_registry_count, memory_order_acquire);
   for (int i = 0; i < current_count; i++) {
-    if (pthread_equal(g_thread_registry[i].thread_id, current_thread)) {
+    if (asciichat_thread_equal(g_thread_registry[i].thread_id, current_thread)) {
       registered = true;
       return; // Already registered
     }
@@ -607,6 +606,37 @@ void mutex_stack_detect_deadlocks(void) {
 int mutex_stack_init(void) {
   // No initialization needed - registry uses lock-free atomic operations
   return 0;
+}
+
+void mutex_stack_cleanup_current_thread(void) {
+  // Explicitly free the current thread's TLS stack
+  // This is used to prevent leaks when TLS destructors might not run reliably
+  // (e.g., debug threads exiting before mutex_stack_cleanup() deletes the TLS key)
+
+  if (!atomic_load_explicit(&g_tls_initialized, memory_order_acquire)) {
+    return; // TLS not initialized, nothing to clean up
+  }
+
+  thread_lock_stack_t *stack = (thread_lock_stack_t *)ascii_tls_get(g_tls_mutex_stack);
+  if (!stack) {
+    return; // No stack allocated for this thread
+  }
+
+  // Clear from TLS
+  ascii_tls_set(g_tls_mutex_stack, NULL);
+
+  // Update registry if this thread is registered
+  thread_id_t current_thread = asciichat_thread_self();
+  int count = atomic_load_explicit(&g_thread_registry_count, memory_order_acquire);
+  for (int i = 0; i < count; i++) {
+    if (pthread_equal(g_thread_registry[i].thread_id, current_thread) && g_thread_registry[i].stack == stack) {
+      g_thread_registry[i].stack = NULL; // Mark as freed in registry
+      break;
+    }
+  }
+
+  // Free the stack
+  free(stack);
 }
 
 void mutex_stack_cleanup(void) {

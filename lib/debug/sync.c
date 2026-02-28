@@ -576,6 +576,11 @@ static void *debug_print_thread_fn(void *arg) {
     }
   }
 
+  // Explicitly clean up this thread's mutex stack before exiting
+  // This prevents leaks when TLS destructors might not run reliably
+  extern void mutex_stack_cleanup_current_thread(void);
+  mutex_stack_cleanup_current_thread();
+
   return NULL;
 }
 

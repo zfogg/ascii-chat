@@ -20,18 +20,18 @@ extern "C" {
  * Lock state in the stack
  */
 typedef enum {
-    MUTEX_STACK_STATE_PENDING,  // Attempting to acquire lock
-    MUTEX_STACK_STATE_LOCKED,   // Lock successfully acquired
+  MUTEX_STACK_STATE_PENDING, // Attempting to acquire lock
+  MUTEX_STACK_STATE_LOCKED,  // Lock successfully acquired
 } mutex_stack_state_t;
 
 /**
  * Entry in a thread's lock stack
  */
 typedef struct {
-    uintptr_t mutex_key;        // Pointer to mutex_t (used as unique ID)
-    const char *mutex_name;     // Human-readable mutex name
-    mutex_stack_state_t state;  // PENDING or LOCKED
-    uint64_t timestamp_ns;      // When this lock was attempted/acquired
+  uintptr_t mutex_key;       // Pointer to mutex_t (used as unique ID)
+  const char *mutex_name;    // Human-readable mutex name
+  mutex_stack_state_t state; // PENDING or LOCKED
+  uint64_t timestamp_ns;     // When this lock was attempted/acquired
 } mutex_stack_entry_t;
 
 /**
@@ -72,20 +72,12 @@ int mutex_stack_get_current(mutex_stack_entry_t *out_entries, int max_entries);
  * @param out_thread_count Number of threads with lock stacks
  * @return 0 on success, -1 on error
  */
-int mutex_stack_get_all_threads(
-    mutex_stack_entry_t ***out_stacks,
-    int **out_stack_counts,
-    int *out_thread_count
-);
+int mutex_stack_get_all_threads(mutex_stack_entry_t ***out_stacks, int **out_stack_counts, int *out_thread_count);
 
 /**
  * @brief Free memory allocated by mutex_stack_get_all_threads()
  */
-void mutex_stack_free_all_threads(
-    mutex_stack_entry_t **stacks,
-    int *stack_counts,
-    int thread_count
-);
+void mutex_stack_free_all_threads(mutex_stack_entry_t **stacks, int *stack_counts, int thread_count);
 
 /**
  * @brief Detect and log circular wait deadlocks
@@ -109,6 +101,13 @@ int mutex_stack_init(void);
  * @brief Cleanup mutex stack system
  */
 void mutex_stack_cleanup(void);
+
+/**
+ * @brief Cleanup TLS stack for current thread
+ * Explicitly frees the thread-local mutex stack. Used to prevent leaks
+ * when TLS destructors might not run reliably (e.g., before TLS key deletion).
+ */
+void mutex_stack_cleanup_current_thread(void);
 
 #ifdef __cplusplus
 }
