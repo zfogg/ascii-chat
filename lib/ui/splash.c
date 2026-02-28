@@ -602,6 +602,10 @@ static void *splash_animation_thread(void *arg) {
 int splash_intro_start(session_display_ctx_t *ctx) {
   (void)ctx; // Parameter not used currently
 
+  // Disable console logging during splash screen - splash screen controls stdout
+  bool saved_console_state = log_get_terminal_output();
+  log_set_terminal_output(false);
+
   log_info("splash_intro_start: ENTRY");
 
   // Pre-checks
@@ -609,6 +613,7 @@ int splash_intro_start(session_display_ctx_t *ctx) {
   log_info("splash_intro_start: splash_should_display(true)=%d", should_display);
   if (!should_display) {
     log_info("splash_intro_start: returning early - splash should not display");
+    log_set_terminal_output(saved_console_state);
     return 0; // ASCIICHAT_OK equivalent
   }
 
@@ -620,6 +625,7 @@ int splash_intro_start(session_display_ctx_t *ctx) {
            splash_explicitly_set);
   if (!is_interactive && !splash_explicitly_set) {
     log_info("splash_intro_start: returning early - not interactive and splash not explicitly set");
+    log_set_terminal_output(saved_console_state);
     return 0;
   }
 
@@ -627,6 +633,7 @@ int splash_intro_start(session_display_ctx_t *ctx) {
   int width = GET_OPTION(width);
   int height = GET_OPTION(height);
   if (width < 50 || height < 20) {
+    log_set_terminal_output(saved_console_state);
     return 0;
   }
 
@@ -634,6 +641,7 @@ int splash_intro_start(session_display_ctx_t *ctx) {
   log_debug("[SPLASH] About to call session_log_buffer_init()");
   if (!session_log_buffer_init()) {
     log_warn("Failed to initialize splash log buffer");
+    log_set_terminal_output(saved_console_state);
     return 0;
   }
   log_debug("[SPLASH] session_log_buffer_init() completed successfully");
@@ -666,6 +674,13 @@ int splash_intro_start(session_display_ctx_t *ctx) {
   g_splash_state.start_time_ns = time_get_ns(); // Track start time for minimum display duration
 
   // Start animation thread (stderr now suppressed, so only session_log_buffer captures logs)
+  // Only create if not already created to prevent multiple thread creations
+  if (atomic_load(&g_splash_state.thread_created)) {
+    log_debug("[SPLASH] Animation thread already created, skipping creation");
+    log_set_terminal_output(saved_console_state);
+    return 0;
+  }
+
   log_debug("[SPLASH] About to create animation thread");
   int err = asciichat_thread_create(&g_splash_state.anim_thread, "splash_anim", splash_animation_thread, NULL);
   if (err != ASCIICHAT_OK) {
@@ -686,6 +701,9 @@ int splash_intro_start(session_display_ctx_t *ctx) {
   atomic_store(&g_splash_state.thread_created, true);
   log_debug("[SPLASH] Animation thread created successfully, thread_created=%d",
             atomic_load(&g_splash_state.thread_created));
+
+  // Restore console logging after splash screen completes
+  log_set_terminal_output(saved_console_state);
 
   return 0; // ASCIICHAT_OK
 }
