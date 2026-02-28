@@ -650,59 +650,14 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   uint8_t *assembled_buffer = NULL;
   size_t assembled_size = 0;
   size_t assembled_capacity = 0;
-  uint64_t assembly_start_ns = time_get_ns();
-  uint64_t last_fragment_ns = assembly_start_ns;
   int fragment_count = 0;
-  const uint64_t MAX_REASSEMBLY_TIME_NS = 1000 * 1000000ULL; // 1 second timeout for frame reassembly
-  // Reduced from 5 seconds to 1 second to detect dead connections faster.
-  // The 5-second timeout was causing observable lag when server stopped sending data.
-  // With 512KB buffer, frames shouldn't fragment, and network jitter over 1s is still generous.
-  // If fragments exceed 1s, it indicates a real connection problem that should disconnect quickly.
 
   while (true) {
-    // Wait for fragment if queue is empty (with short timeout)
+    // Wait for fragment if queue is empty
     while (ringbuffer_is_empty(ws_data->recv_queue)) {
-      uint64_t elapsed_ns = time_get_ns() - assembly_start_ns;
-      uint64_t since_last_frag_ns = time_get_ns() - last_fragment_ns;
-
-      // CRITICAL FIX: Do NOT return partial frames!
-      // Frame handlers (acip_server_on_image_frame) expect complete frames with final=1
-      // Returning incomplete frames causes heap-buffer-overflow when handler memcpys data
-      // The 50ms timeout was causing incomplete frames to be returned, breaking frame handling
-      // Comment out the early return - wait for final fragment or max timeout
-      /*
-      if (assembled_size > 0 && since_last_frag_ns > FRAGMENT_WAIT_TIMEOUT_NS) {
-        log_info("[WS_REASSEMBLE] Would return partial message after %.0fms, but waiting for final fragment",
-                 (double)since_last_frag_ns / 1000000.0);
-      }
-      */
-
-      if (elapsed_ns > MAX_REASSEMBLY_TIME_NS) {
-        // Timeout - return error instead of partial fragments
-        // Dispatch thread will retry, avoiding fragment loss issue
-        if (assembled_buffer) {
-          buffer_pool_free(NULL, assembled_buffer, assembled_capacity);
-        }
-        mutex_unlock(&ws_data->recv_mutex);
-
-        if (assembled_size > 0) {
-          log_dev_every(4500000,
-                        "🔄 WEBSOCKET_RECV: Reassembly timeout after %llums (have %zu bytes, expecting final fragment)",
-                        (unsigned long long)(elapsed_ns / 1000000ULL), assembled_size);
-        }
-        // Log detailed diagnostics for 1+ second timeouts
-        if (elapsed_ns > 1000000000ULL) {  // 1 second+
-          log_warn("⚠️  WEBSOCKET_RECV TIMEOUT: No data received for %.1f seconds (queue_empty=%s, assembled=%zu/%zu)",
-                   (double)elapsed_ns / 1000000000.0,
-                   ringbuffer_is_empty(ws_data->recv_queue) ? "yes" : "no",
-                   assembled_size, assembled_capacity);
-        }
-        // Use log_error instead of SET_ERRNO to avoid backtrace capture overhead
-        // Fragment timeout is transient and expected - doesn't require full error context
-        log_error("Fragment reassembly timeout - no data from network");
-        asciichat_set_errno(ERROR_NETWORK, NULL, 0, NULL, "Fragment reassembly timeout - no data from network");
-        return ERROR_NETWORK;
-      }
+      // Don't timeout waiting for fragments. If the connection is dead, libwebsockets will
+      // set is_connected=false and we'll detect it below. Arbitrary timeouts just cause
+      // unnecessary disconnections while data is actually being transmitted.
 
       // Check connection state - but don't fail immediately if connection closes
       // while reassembling. Instead, return what we have so the handler can process it.
@@ -734,9 +689,6 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
       // Wait for next fragment with 1ms timeout
       cond_timedwait(&ws_data->recv_cond, &ws_data->recv_mutex, 1 * 1000000ULL);
     }
-
-    // Update last_fragment_ns when we get a new fragment
-    last_fragment_ns = time_get_ns();
 
     // Read next fragment from queue
     websocket_recv_msg_t frag;
