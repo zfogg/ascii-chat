@@ -43,9 +43,15 @@ void session_log_buffer_destroy(void) {
   if (!g_log_buffer) {
     return;
   }
-  mutex_destroy(&g_log_buffer->mutex);
-  SAFE_FREE(g_log_buffer);
-  g_log_buffer = NULL; // Mark as destroyed to prevent double-destroy issues
+
+  // Set to NULL FIRST so append/clear/get_recent calls immediately return without using mutex
+  // This prevents use-after-free if threads are still appending during shutdown
+  session_log_buffer_t *buffer = g_log_buffer;
+  g_log_buffer = NULL;
+
+  // Now safely destroy the mutex and free memory
+  mutex_destroy(&buffer->mutex);
+  SAFE_FREE(buffer);
 }
 
 void session_log_buffer_clear(void) {
