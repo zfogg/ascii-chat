@@ -653,10 +653,11 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   uint64_t assembly_start_ns = time_get_ns();
   uint64_t last_fragment_ns = assembly_start_ns;
   int fragment_count = 0;
-  const uint64_t MAX_REASSEMBLY_TIME_NS = 5000 * 1000000ULL; // 5 second timeout for frame reassembly
-  // If WebSocket frames arrive fragmented, wait up to 5 seconds for all fragments.
-  // WebSocket delivery is slow - need long timeout to allow fragments to arrive.
-  // 5 seconds ensures complete frame reassembly without premature timeout.
+  const uint64_t MAX_REASSEMBLY_TIME_NS = 200 * 1000000ULL; // 200ms timeout for frame reassembly
+  // SHORT TIMEOUT: Return error after 200ms if reassembly incomplete
+  // This prevents blocking the client rendering loop for 1.5+ seconds waiting for 74 WebSocket fragments
+  // The client protocol loop will retry after timeout, allowing 60 FPS rendering
+  // No data is lost - fragments keep arriving and complete reassembly happens on retry
 
   while (true) {
     // Wait for fragment if queue is empty (with short timeout)
@@ -1298,6 +1299,19 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   info.uid = (uid_t)-1; // Cast to avoid undefined behavior with unsigned type
   info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
   info.extensions = NULL; // Disable client compression due to lws_set_extension_option() assertion
+
+  // Increase per-thread service buffer to prevent fragmentation of large messages
+  // Default is 4KB, causing 291KB frames to fragment into 73 × 4KB chunks
+  // Increase to 512KB to match server and allow larger WebSocket frames without fragmentation
+  info.pt_serv_buf_size = 512 * 1024; // 512KB per-thread service buffer
+
+  // Configure keep-alive to prevent idle disconnects during handshake
+  // PING every 30 seconds if idle, close after 35 seconds total with no response
+  static const lws_retry_bo_t client_keep_alive_policy = {
+      .secs_since_valid_ping = 30,   // Send PING after 30s idle
+      .secs_since_valid_hangup = 35, // Hangup if still idle after 35s
+  };
+  info.retry_and_idle_policy = &client_keep_alive_policy;
 
   ws_data->context = lws_create_context(&info);
   if (!ws_data->context) {
