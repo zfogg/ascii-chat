@@ -966,8 +966,8 @@ static void *data_reception_thread_func(void *arg) {
       // Handle receive/dispatch errors
       asciichat_error_context_t err_ctx;
       if (HAS_ERRNO(&err_ctx)) {
-        if (err_ctx.code == ERROR_NETWORK) {
-          // Network error or EOF - server disconnected
+        if (err_ctx.code == ERROR_NETWORK || err_ctx.code == ERROR_NETWORK_PROTOCOL) {
+          // Network error, protocol error, or EOF - stream is corrupted, disconnect
           log_warn("[FRAME_RECV_LOOP] ⚠️  NETWORK_ERROR: Server disconnected after %d packets: %s", packet_count,
                    err_ctx.context_message);
           server_connection_lost();
