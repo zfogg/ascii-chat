@@ -190,6 +190,15 @@ keyboard_key_t keyboard_read_nonblocking(void) {
                   }
                 }
                 return 262; // KEY_END
+              case '5':
+                // Ctrl+Delete sends ESC [ 5 ~
+                if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
+                  unsigned char ch4;
+                  if (read(STDIN_FILENO, &ch4, 1) > 0) {
+                    // ch4 should be '~', consume it
+                  }
+                }
+                return 263; // KEY_CTRL_DELETE
               default:
                 // Unknown escape sequence - consume any trailing ~ to avoid leaving it in buffer
                 if (ch3 >= '0' && ch3 <= '9') {
@@ -299,6 +308,15 @@ keyboard_key_t keyboard_read_with_timeout(uint32_t timeout_ms) {
                   }
                 }
                 return 262; // KEY_END
+              case '5':
+                // Ctrl+Delete sends ESC [ 5 ~
+                if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
+                  unsigned char ch4;
+                  if (read(STDIN_FILENO, &ch4, 1) > 0) {
+                    // ch4 should be '~', consume it
+                  }
+                }
+                return 263; // KEY_CTRL_DELETE
               default:
                 // Unknown escape sequence - consume any trailing ~ to avoid leaving it in buffer
                 if (ch3 >= '0' && ch3 <= '9') {
@@ -385,6 +403,32 @@ keyboard_line_edit_result_t keyboard_read_line_interactive(keyboard_line_edit_op
   if (c == 262) { // KEY_END
     cursor = len;
     *opts->cursor = cursor;
+    return LINE_EDIT_CONTINUE;
+  }
+
+  // Ctrl+Delete - delete word forward (opposite of Ctrl+W)
+  if (c == 263) { // KEY_CTRL_DELETE
+    if (cursor < len) {
+      size_t word_end = cursor;
+
+      // Skip non-whitespace (word characters)
+      while (word_end < len && !isspace((unsigned char)buffer[word_end])) {
+        word_end++;
+      }
+
+      // Skip whitespace
+      while (word_end < len && isspace((unsigned char)buffer[word_end])) {
+        word_end++;
+      }
+
+      // Delete from cursor to word_end
+      if (word_end > cursor) {
+        memmove(&buffer[cursor], &buffer[word_end], len - word_end);
+        len -= (word_end - cursor);
+        buffer[len] = '\0';
+        *opts->len = len;
+      }
+    }
     return LINE_EDIT_CONTINUE;
   }
 

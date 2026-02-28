@@ -43,6 +43,7 @@
  * - `KEY_ESCAPE` (27): Escape key
  * - `KEY_SPACE` (32): Space bar
  * - Arrow keys: `KEY_UP`/`KEY_DOWN`/`KEY_LEFT`/`KEY_RIGHT` (256-259)
+ * - Function keys: `KEY_DELETE` (260), `KEY_HOME` (261), `KEY_END` (262), `KEY_CTRL_DELETE` (263)
  * - ASCII/UTF-8 characters: Raw character code (1-26, 33-127)
  *
  * @note UTF-8 multibyte sequences are not currently supported in return values.
@@ -51,20 +52,24 @@
  * @ingroup platform
  */
 typedef enum {
-  KEY_NONE = 0,       ///< No key pressed or no input available
-  KEY_ESCAPE = 27,    ///< Escape key (ESC)
-  KEY_SPACE = 32,     ///< Space bar
-  KEY_UP = 256,       ///< Up arrow key
-  KEY_DOWN = 257,     ///< Down arrow key
-  KEY_LEFT = 258,     ///< Left arrow key
-  KEY_RIGHT = 259,    ///< Right arrow key
-  KEY_0 = '0',        ///< '0' key - toggle matrix rain effect
-  KEY_C = 'c',        ///< 'c' key - cycle color modes
-  KEY_R = 'r',        ///< 'r' key - cycle render modes
-  KEY_M = 'm',        ///< 'm' key - toggle mute
-  KEY_F = 'f',        ///< 'f' key - flip webcam
-  KEY_QUESTION = '?', ///< '?' key - show help screen
-  KEY_BACKTICK = '`', ///< '`' key - print lock state (debug builds)
+  KEY_NONE = 0,          ///< No key pressed or no input available
+  KEY_ESCAPE = 27,       ///< Escape key (ESC)
+  KEY_SPACE = 32,        ///< Space bar
+  KEY_UP = 256,          ///< Up arrow key
+  KEY_DOWN = 257,        ///< Down arrow key
+  KEY_LEFT = 258,        ///< Left arrow key
+  KEY_RIGHT = 259,       ///< Right arrow key
+  KEY_DELETE = 260,      ///< Delete key (forward delete)
+  KEY_HOME = 261,        ///< Home key (move to start of line)
+  KEY_END = 262,         ///< End key (move to end of line)
+  KEY_CTRL_DELETE = 263, ///< Ctrl+Delete (delete word forward)
+  KEY_0 = '0',           ///< '0' key - toggle matrix rain effect
+  KEY_C = 'c',           ///< 'c' key - cycle color modes
+  KEY_R = 'r',           ///< 'r' key - cycle render modes
+  KEY_M = 'm',           ///< 'm' key - toggle mute
+  KEY_F = 'f',           ///< 'f' key - flip webcam
+  KEY_QUESTION = '?',    ///< '?' key - show help screen
+  KEY_BACKTICK = '`',    ///< '`' key - print lock state (debug builds)
 } keyboard_key_t;
 
 /* ============================================================================
