@@ -123,6 +123,7 @@
 #include <ascii-chat/log/json.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/debug/memory.h>
+#include <ascii-chat/debug/named.h>
 
 /* ============================================================================
  * Global State
@@ -2579,6 +2580,28 @@ cleanup:
     log_debug("WebSocket server shut down");
   }
 
+  // Wait for all client handler threads to exit (this ensures all their allocations are freed)
+  // The timeout/forceful exit scenario can leave threads alive; give them a moment to clean up
+  {
+    int retry_count = 0;
+    while (retry_count < 50) { // Max 500ms wait
+      rwlock_rdlock(&g_client_manager_rwlock);
+      bool all_cleaned = true;
+      for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (atomic_load(&g_client_manager.clients[i].client_id) != 0) {
+          all_cleaned = false;
+          break;
+        }
+      }
+      rwlock_rdunlock(&g_client_manager_rwlock);
+
+      if (all_cleaned)
+        break;
+      platform_sleep_us(10 * US_PER_MS_INT); // 10ms
+      retry_count++;
+    }
+  }
+
   // Clean up all connected clients
   log_debug("Cleaning up connected clients...");
   // FIXED: Simplified to collect client IDs first, then remove them without holding locks
@@ -2754,6 +2777,9 @@ cleanup:
 
   asciichat_error_stats_print();
   log_destroy();
+
+  // Clean up named registry (thread names, debug entries)
+  named_destroy();
 
   // Use exit() to allow atexit() handlers to run
   // Cleanup functions are idempotent (check if initialized first)

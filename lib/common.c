@@ -24,6 +24,9 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>       // For RCU-based options access
 #include <ascii-chat/discovery/strings.h> // For RCU-based options access
+#include <ascii-chat/debug/sync.h>        // For debug_sync_final_cleanup, debug_sync_cleanup_thread, debug_sync_destroy
+#include <ascii-chat/debug/mutex.h>       // For mutex_stack_cleanup
+#include <ascii-chat/debug/named.h>       // For named_destroy()
 #include <string.h>
 #include <stdatomic.h>
 #include <limits.h>
@@ -178,17 +181,20 @@ void asciichat_shared_destroy(void) {
   terminal_stop_resize_detection();
 
 #ifndef NDEBUG
-  // Memory debug thread - must join before memory report
-  extern void debug_memory_thread_cleanup(void);
-  debug_memory_thread_cleanup();
-
   // Lock debug thread - must join before any lock cleanup
-  extern void debug_sync_cleanup_thread(void);
   debug_sync_cleanup_thread();
+
+  // Clean up all remaining mutex stacks before memory report
+  mutex_stack_cleanup();
+
+  // Clean up current thread's allocations
+  debug_sync_final_cleanup();
+
+  // Memory debug thread - prints memory report (must be last)
+  debug_memory_thread_cleanup();
 
   // Lock debug system - set initialized=false so mutex_lock uses mutex_lock_impl directly
   // This must happen after thread cleanup but before any subsystem that uses mutex_lock
-  extern void debug_sync_destroy(void);
   debug_sync_destroy();
 #endif
 
@@ -232,10 +238,19 @@ void asciichat_shared_destroy(void) {
   // 12. Error context cleanup
   asciichat_errno_destroy();
 
-  // 13. Logging cleanup - free log format buffers before memory report
+  // 13. Logging cleanup - free log format buffers
   log_destroy();
 
-  // 14. Memory stats (debug builds only) - runs with colors still available
+  // 14. Named registry - cleanup all registered thread names and debug entries (BEFORE memory report)
+  named_destroy();
+
+  // 15. Mutex stack cleanup - must be before memory report so stacks are freed
+#ifndef NDEBUG
+  extern void mutex_stack_cleanup(void);
+  mutex_stack_cleanup();
+#endif
+
+  // 16. Memory stats (debug builds only) - runs with colors still available
   //     Note: PCRE2 singletons are ignored in the report (expected system allocations)
   //     Note: debug_memory_report() is also called manually during shutdown in server_main()
   //     The function is safe to call multiple times with polling-based locking
@@ -247,17 +262,11 @@ void asciichat_shared_destroy(void) {
   debug_memory_report();
 #endif
 
-  // 14. Color cleanup - free compiled ANSI strings (AFTER memory report)
+  // 17. Color cleanup - free compiled ANSI strings (AFTER memory report)
   log_cleanup_colors();
   colorscheme_destroy();
 
-  // 15. Mutex stack cleanup - MUST be after memory report (which may allocate new stacks)
-#ifndef NDEBUG
-  extern void mutex_stack_cleanup(void);
-  mutex_stack_cleanup();
-#endif
-
-  // 16. PCRE2 - cleanup all regex singletons together
+  // 18. PCRE2 - cleanup all regex singletons together
   asciichat_pcre2_cleanup_all();
 }
 
