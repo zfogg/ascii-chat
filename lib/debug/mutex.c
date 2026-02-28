@@ -359,6 +359,9 @@ void mutex_stack_free_all_threads(mutex_stack_entry_t **stacks, int *stack_count
  * @brief Check if a mutex is held by the given thread
  */
 static bool thread_holds_mutex(thread_lock_stack_t *stack, uintptr_t mutex_key) {
+  if (!stack) {
+    return false;
+  }
   for (int i = 0; i < stack->depth; i++) {
     if (stack->stack[i].mutex_key == mutex_key && stack->stack[i].state == MUTEX_STACK_STATE_LOCKED) {
       return true;
@@ -371,6 +374,9 @@ static bool thread_holds_mutex(thread_lock_stack_t *stack, uintptr_t mutex_key) 
  * @brief Get the mutex a thread is waiting for (if any)
  */
 static uintptr_t thread_waiting_for_mutex(thread_lock_stack_t *stack) {
+  if (!stack) {
+    return 0;
+  }
   if (stack->depth > 0) {
     int top = stack->depth - 1;
     if (stack->stack[top].state == MUTEX_STACK_STATE_PENDING) {
