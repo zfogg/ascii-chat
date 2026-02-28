@@ -269,11 +269,10 @@ static void *webcam_capture_thread_func(void *arg) {
     }
 
     uint64_t send_start_ns = time_get_ns();
-    log_debug_every(LOG_RATE_SLOW, "Capture thread: sending IMAGE_FRAME %ux%u via transport %p", processed_image->w,
-                    processed_image->h, (void *)transport);
-    asciichat_error_t send_result = acip_send_image_frame(transport, (const void *)processed_image->pixels,
-                                                          (uint32_t)processed_image->w, (uint32_t)processed_image->h,
-                                                          1); // pixel_format = 1 (RGB24)
+    log_debug_every(LOG_RATE_SLOW, "Capture thread: sending IMAGE_FRAME %ux%u", processed_image->w, processed_image->h);
+    asciichat_error_t send_result =
+        threaded_send_image_frame((const void *)processed_image->pixels, (uint32_t)processed_image->w,
+                                  (uint32_t)processed_image->h, 1); // pixel_format = 1 (RGB24)
 
     // If send failed due to connection loss, break out of loop
     if (send_result != ASCIICHAT_OK && !server_connection_is_active()) {

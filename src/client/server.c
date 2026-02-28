@@ -68,6 +68,7 @@
 #include <ascii-chat/network/packet.h>
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/network/acip/send.h>
+#include <ascii-chat/network/acip/client.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/ip.h>
@@ -1164,6 +1165,50 @@ asciichat_error_t threaded_send_audio_opus_batch(const uint8_t *opus_data, size_
   // Opus uses 20ms frames at 48kHz (960 samples = 20ms)
   asciichat_error_t result =
       acip_send_audio_opus_batch(transport, opus_data, opus_size, frame_sizes, frame_count, 48000, 20);
+
+  // Unlock after send completes
+  mutex_unlock(&g_send_mutex);
+
+  // If send failed due to network error, signal connection loss
+  if (result != ASCIICHAT_OK) {
+    server_connection_lost();
+    return result;
+  }
+
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Thread-safe image frame transmission
+ *
+ * Sends image frames with serialization via g_send_mutex to prevent
+ * race conditions when multiple threads write to the same TCP socket.
+ *
+ * @param pixel_data Pixel data buffer
+ * @param width Frame width in pixels
+ * @param height Frame height in pixels
+ * @param pixel_format Pixel format (1=RGB24)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * @ingroup client_connection
+ */
+asciichat_error_t threaded_send_image_frame(const void *pixel_data, uint32_t width, uint32_t height,
+                                            uint32_t pixel_format) {
+  if (!pixel_data) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Pixel data is NULL");
+  }
+
+  mutex_lock(&g_send_mutex);
+
+  // Get transport reference - may be NULL if connection was lost
+  acip_transport_t *transport = server_connection_get_transport();
+  if (!transport || !server_connection_is_active()) {
+    mutex_unlock(&g_send_mutex);
+    return SET_ERRNO(ERROR_NETWORK, "Transport unavailable");
+  }
+
+  // Send image frame with socket lock held
+  asciichat_error_t result = acip_send_image_frame(transport, pixel_data, width, height, pixel_format);
 
   // Unlock after send completes
   mutex_unlock(&g_send_mutex);

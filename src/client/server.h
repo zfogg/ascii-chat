@@ -272,6 +272,23 @@ asciichat_error_t threaded_send_audio_opus_batch(const uint8_t *opus_data, size_
                                                  const uint16_t *frame_sizes, int frame_count);
 
 /**
+ * @brief Thread-safe image frame transmission
+ *
+ * Sends image frames with serialization via mutex to prevent race conditions
+ * when multiple threads write to the same TCP socket.
+ *
+ * @param pixel_data Pixel data buffer (RGB24 format)
+ * @param width Frame width in pixels
+ * @param height Frame height in pixels
+ * @param pixel_format Pixel format (1=RGB24)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * @ingroup client_connection
+ */
+asciichat_error_t threaded_send_image_frame(const void *pixel_data, uint32_t width, uint32_t height,
+                                            uint32_t pixel_format);
+
+/**
  * @brief Thread-safe ping packet transmission
  *
  * @return 0 on success, negative on error

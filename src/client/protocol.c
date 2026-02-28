@@ -960,16 +960,22 @@ static void *data_reception_thread_func(void *arg) {
       packet_count++;
       log_debug("[FRAME_RECV_LOOP] ✅ PACKET_%d_DISPATCHED: callbacks processed successfully", packet_count);
     } else {
-      // Handle receive/dispatch errors
+      // Handle receive/dispatch errors - ALWAYS exit on network errors
+      log_error("[FRAME_RECV_LOOP] ❌ RECV_ERROR: acip_result=%d: %s", acip_result,
+                asciichat_error_string(acip_result));
+
+      // Network errors (ERROR_NETWORK, ERROR_NETWORK_PROTOCOL, etc) always disconnect
+      if (acip_result == ERROR_NETWORK || acip_result == ERROR_NETWORK_PROTOCOL) {
+        log_warn("[FRAME_RECV_LOOP] ⚠️  NETWORK_ERROR: Server disconnected after %d packets, exiting loop",
+                 packet_count);
+        server_connection_lost();
+        break;
+      }
+
+      // Check errno context for additional error details
       asciichat_error_context_t err_ctx;
       if (HAS_ERRNO(&err_ctx)) {
-        if (err_ctx.code == ERROR_NETWORK || err_ctx.code == ERROR_NETWORK_PROTOCOL) {
-          // Network error, protocol error, or EOF - stream is corrupted, disconnect
-          log_warn("[FRAME_RECV_LOOP] ⚠️  NETWORK_ERROR: Server disconnected after %d packets: %s", packet_count,
-                   err_ctx.context_message);
-          server_connection_lost();
-          break;
-        } else if (err_ctx.code == ERROR_CRYPTO) {
+        if (err_ctx.code == ERROR_CRYPTO) {
           // Security violation - exit immediately
           log_error("[FRAME_RECV_LOOP] ❌ SECURITY_VIOLATION: Server crypto policy violated - EXITING");
           log_error("SECURITY: This is a critical security violation - exiting immediately");
@@ -977,9 +983,10 @@ static void *data_reception_thread_func(void *arg) {
         }
       }
 
-      // Other errors - log warning but continue
-      log_warn("[FRAME_RECV_LOOP] ⚠️  DISPATCH_ERROR: packet #%d failed: %s (continuing loop)", packet_count + 1,
-               asciichat_error_string(acip_result));
+      // Other errors - still disconnect to prevent infinite loop
+      log_error("[FRAME_RECV_LOOP] ❌ RECV_FAILED: packet #%d failed, disconnecting", packet_count + 1);
+      server_connection_lost();
+      break;
     }
   }
 
