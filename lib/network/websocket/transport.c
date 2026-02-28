@@ -723,10 +723,8 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
         return SET_ERRNO(ERROR_NETWORK, "Connection closed");
       }
 
-      // Wait for next fragment with minimal timeout
-      // Use 100 microsecond timeout for high responsiveness (10,000x faster polling)
-      // Condition variable signals immediately when WebSocket data arrives
-      cond_timedwait(&ws_data->recv_cond, &ws_data->recv_mutex, 100 * 1000ULL);
+      // Wait for next fragment with 1ms timeout
+      cond_timedwait(&ws_data->recv_cond, &ws_data->recv_mutex, 1 * 1000000ULL);
     }
 
     // Update last_fragment_ns when we get a new fragment
