@@ -559,6 +559,17 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   splash_wait_for_animation();
   log_debug("splash_wait_for_animation() returned");
 
+  // Exit early if shutdown was requested (e.g., user pressed Ctrl-C)
+  if (should_exit()) {
+    log_debug("[SETUP] Shutdown requested, exiting early");
+    if (temp_display) {
+      session_display_destroy(temp_display);
+      temp_display = NULL;
+    }
+    result = ASCIICHAT_OK;
+    goto cleanup;
+  }
+
   if (temp_display) {
     session_display_destroy(temp_display);
     temp_display = NULL;
@@ -708,14 +719,19 @@ cleanup:
   log_debug("[CLEANUP] webcam_destroy() returned");
 
   // Stop splash animation and enforce minimum display time (even on error path)
-  log_debug("[CLEANUP] About to call splash_intro_done()");
-  splash_intro_done();
-  log_debug("[CLEANUP] splash_intro_done() returned");
+  // But skip if we're shutting down due to signal - the animation will exit automatically
+  if (!should_exit()) {
+    log_debug("[CLEANUP] About to call splash_intro_done()");
+    splash_intro_done();
+    log_debug("[CLEANUP] splash_intro_done() returned");
 
-  // Wait for animation thread to exit before cleanup
-  log_debug("[CLEANUP] About to call splash_wait_for_animation()");
-  splash_wait_for_animation();
-  log_debug("[CLEANUP] splash_wait_for_animation() returned");
+    // Wait for animation thread to exit before cleanup
+    log_debug("[CLEANUP] About to call splash_wait_for_animation()");
+    splash_wait_for_animation();
+    log_debug("[CLEANUP] splash_wait_for_animation() returned");
+  } else {
+    log_debug("[CLEANUP] Skipping splash cleanup (shutdown requested)");
+  }
 
   // Stop debug sync thread before destroying log buffer to prevent use-after-free
   log_debug("[CLEANUP] About to call debug_sync_cleanup_thread()");

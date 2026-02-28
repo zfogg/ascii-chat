@@ -843,12 +843,20 @@ void splash_wait_for_animation(void) {
   // The animation thread will exit gracefully when:
   // - First frame is ready AND 2 seconds have elapsed, OR
   // - 30 seconds have elapsed (safety timeout)
+  // - OR a shutdown signal is received
   //
   // We block here to ensure clean terminal state before ASCII rendering begins
 
   // Only join if we successfully created the thread
   if (atomic_load(&g_splash_state.thread_created)) {
     log_dev("[SPLASH_WAIT] Waiting for animation thread to exit...");
+
+    // If shutdown was requested, signal the animation thread to stop immediately
+    // without waiting for the splash timing to complete
+    if (shutdown_is_requested()) {
+      log_dev("[SPLASH_WAIT] Shutdown requested, signaling animation thread to stop");
+      atomic_store(&g_splash_state.should_stop, true);
+    }
 
     // Join with a reasonable timeout (10 seconds) to prevent indefinite blocking
     asciichat_error_t err = asciichat_thread_join_timeout(&g_splash_state.anim_thread, NULL,
