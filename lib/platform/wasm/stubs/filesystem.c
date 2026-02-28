@@ -8,6 +8,7 @@
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/platform/wasm_console.h>
 #include <ascii-chat/debug/named.h>
+#include <ascii-chat/log/logging.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -98,6 +99,7 @@ int platform_open(const char *name, const char *pathname, int flags, ...) {
 
   if (fd >= 0) {
     NAMED_REGISTER_FD(fd, name);
+    log_dev("Opened file descriptor %d for %s at path %s", fd, name, pathname);
   }
 
   return fd;

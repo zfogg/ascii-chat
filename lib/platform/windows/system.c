@@ -10,6 +10,7 @@
 #include <ascii-chat/platform/internal.h>
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/debug/named.h>
+#include <ascii-chat/log/logging.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/asciichat_errno.h>
@@ -1049,7 +1050,8 @@ void platform_log_backtrace_frame(int n) {
   char **symbols = platform_backtrace_symbols(buffer + frame_idx, 1);
   if (!symbols || !symbols[0]) {
     log_debug("Unable to resolve frame %d", n);
-    if (symbols) platform_backtrace_symbols_destroy(symbols);
+    if (symbols)
+      platform_backtrace_symbols_destroy(symbols);
     return;
   }
 
@@ -1352,6 +1354,7 @@ int platform_open(const char *name, const char *pathname, int flags, ...) {
 
   if (fd >= 0) {
     NAMED_REGISTER_FD(fd, name);
+    log_dev("Opened file descriptor %d for %s at path %s", fd, name, pathname);
   }
 
   return fd;

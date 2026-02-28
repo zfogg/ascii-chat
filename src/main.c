@@ -805,42 +805,6 @@ int main(int argc, char *argv[]) {
   }
   log_debug("Debug sync thread started");
 
-  // NOTE: debug_memory_thread_start() already called at line 738, DO NOT call again
-  // Calling it twice causes deadlock in thread startup
-  // if (debug_memory_thread_start() != 0) {
-  //   LOG_ERRNO_IF_SET("Memory debug thread startup failed");
-  //   FATAL(ERROR_THREAD, "Memory debug thread startup failed");
-  // }
-  // log_debug("Memory debug thread started");
-
-  // Handle --debug-state (debug builds only)
-  // Print debug state after specified delay (synchronously, no thread)
-  if (IS_OPTION_EXPLICIT(debug_sync_state_time, opts) && opts->debug_sync_state_time > 0.0) {
-    log_info("Printing sync state after %f seconds", opts->debug_sync_state_time);
-    uint64_t delay_ns = (uint64_t)(opts->debug_sync_state_time * NS_PER_SEC_INT);
-    platform_sleep_ns(delay_ns);
-    debug_sync_print_state();
-  }
-
-  // Handle --backtrace (debug builds only)
-  // Print backtrace after specified delay (synchronously, no thread)
-  if (IS_OPTION_EXPLICIT(debug_backtrace_time, opts) && opts->debug_backtrace_time > 0.0) {
-    log_info("Printing backtrace after %f seconds", opts->debug_backtrace_time);
-    uint64_t delay_ns = (uint64_t)(opts->debug_backtrace_time * NS_PER_SEC_INT);
-    platform_sleep_ns(delay_ns);
-    backtrace_t bt;
-    backtrace_capture_and_symbolize(&bt);
-    backtrace_print("Backtrace", &bt, 0, 0, NULL);
-    backtrace_t_free(&bt);
-  }
-
-  // Handle --memory-report (debug builds only)
-  // Enable periodic memory reporting at specified interval
-  if (IS_OPTION_EXPLICIT(debug_memory_report_interval, opts) && opts->debug_memory_report_interval > 0.0) {
-    log_info("Enabling memory reports every %f seconds", opts->debug_memory_report_interval);
-    uint64_t interval_ns = (uint64_t)(opts->debug_memory_report_interval * NS_PER_SEC_INT);
-    debug_sync_set_memory_report_interval(interval_ns);
-  }
 #endif
 
   // Find and dispatch to mode entry point
