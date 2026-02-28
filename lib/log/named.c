@@ -25,6 +25,41 @@
 #define NAMED_FORMAT_BUFFER_SIZE (4096)
 
 /**
+ * @brief Check if a type string is actually registered in the named registry
+ * @param type_str The type string to validate (e.g., "thread", "mutex", "socket")
+ * @param type_len Length of the type string
+ * @return true if the type exists in any registered entry
+ *
+ * Queries the registry programmatically to ensure the type is actually registered,
+ * preventing false positives on random "word/word" text patterns.
+ */
+struct type_check_context {
+  const char *type_to_find;
+  size_t type_len;
+  bool found;
+};
+
+static void check_type_callback(uintptr_t key, const char *name, void *user_data) {
+  (void)key;  /* unused */
+  (void)name; /* unused */
+  struct type_check_context *ctx = (struct type_check_context *)user_data;
+
+  if (!ctx->found) {
+    const char *type = named_get_type(key);
+    if (type && strlen(type) == ctx->type_len && strncmp(type, ctx->type_to_find, ctx->type_len) == 0) {
+      ctx->found = true;
+    }
+  }
+}
+
+static bool is_type_in_registry(const char *type_str, size_t type_len) {
+  struct type_check_context ctx = {.type_to_find = type_str, .type_len = type_len, .found = false};
+
+  named_registry_for_each(check_type_callback, &ctx);
+  return ctx.found;
+}
+
+/**
  * @brief Format hex addresses in a message as named object descriptions
  * @param message Input message (may contain hex addresses)
  * @param output Output buffer for formatted message
@@ -282,15 +317,18 @@ int log_named_format_message(const char *message, char *output, size_t output_si
           /* Check that the "/" was preceded by word characters (indicating a type name) */
           size_t type_len = slash_pos - check;
           if (type_len > 0 && (isalpha(*check) || *check == '_')) {
-            /* Verify this is a registered type/name pattern by checking for "(" before the type */
+            /* Verify this is a registered type/name pattern by checking for "(" before the type
+             * AND checking if the type actually exists in the registry */
             const char *type_start = check;
             const char *before_type = type_start - 1;
             while (before_type > message && isspace(*before_type)) {
               before_type--;
             }
 
-            /* Only mark as formatted if preceded by "(" - ensures it's "(type/name ...)" pattern */
-            if (before_type >= message && *before_type == '(') {
+            /* Only mark as formatted if:
+             * 1. Preceded by "(" - ensures pattern looks like "(type/name ...)"
+             * 2. Type exists in registry - prevents false positives on random text */
+            if (before_type >= message && *before_type == '(' && is_type_in_registry(type_start, type_len)) {
               is_already_formatted = true;
             }
           }
