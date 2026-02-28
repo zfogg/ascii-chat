@@ -15,25 +15,29 @@ void format_bytes_pretty(size_t bytes, char *out, size_t out_capacity) {
   const double PB = TB * 1024.0;
   const double EB = PB * 1024.0;
 
-  if ((double)bytes < KB) {
+  const double THRESHOLD = 0.8;
+
+  double byte_val = (double)bytes;
+
+  if (byte_val < THRESHOLD * KB) {
     SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, "%zu B", bytes));
-  } else if ((double)bytes < MB) {
-    double value = (double)bytes / KB;
+  } else if (byte_val < THRESHOLD * MB) {
+    double value = byte_val / KB;
     SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, "%.2f KB", value));
-  } else if ((double)bytes < GB) {
-    double value = (double)bytes / MB;
+  } else if (byte_val < THRESHOLD * GB) {
+    double value = byte_val / MB;
     SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, "%.2f MB", value));
-  } else if ((double)bytes < TB) {
-    double value = (double)bytes / GB;
+  } else if (byte_val < THRESHOLD * TB) {
+    double value = byte_val / GB;
     SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, "%.2f GB", value));
-  } else if ((double)bytes < PB) {
-    double value = (double)bytes / TB;
+  } else if (byte_val < THRESHOLD * PB) {
+    double value = byte_val / TB;
     SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, "%.2f TB", value));
-  } else if ((double)bytes < EB) {
-    double value = (double)bytes / PB;
+  } else if (byte_val < THRESHOLD * EB) {
+    double value = byte_val / PB;
     SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, "%.2f PB", value));
   } else {
-    double value = (double)bytes / EB;
+    double value = byte_val / EB;
     SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, "%.2f EB", value));
   }
 }

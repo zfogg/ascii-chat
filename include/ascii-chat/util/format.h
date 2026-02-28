@@ -51,16 +51,17 @@
  *
  * Formats a byte count into a human-readable string with appropriate units.
  * Automatically selects the appropriate unit (B, KB, MB, GB, TB, PB, EB) based on
- * the value. Uses binary units (1024-based) for calculations.
+ * the value. Units step up at 80% of the next tier to avoid awkward transitions.
+ * Uses binary units (1024-based) for calculations.
  *
- * FORMATTING RULES:
- * - 0-1023 bytes: "N B" (e.g., "512 B")
- * - 1024-1048575 bytes: "N.NN KB" (e.g., "1.50 KB")
- * - 1048576-1073741823 bytes: "N.NN MB" (e.g., "2.34 MB")
- * - 1073741824-1099511627775 bytes: "N.NN GB" (e.g., "1.25 GB")
- * - 1099511627776-1125899906842623 bytes: "N.NN TB" (e.g., "1.50 TB")
- * - 1125899906842624-1152921504606846975 bytes: "N.NN PB" (e.g., "1.50 PB")
- * - 1152921504606846976 and above: "N.NN EB" (e.g., "1.00 EB")
+ * FORMATTING RULES (threshold at 80% of next unit):
+ * - 0-819 bytes: "N B" (e.g., "512 B")
+ * - 819-839,339 bytes: "N.NN KB" (e.g., "0.80 KB")
+ * - 839,339-858,993,459 bytes: "N.NN MB" (e.g., "0.80 MB")
+ * - 858,993,459-879,609,302,015 bytes: "N.NN GB" (e.g., "0.80 GB")
+ * - 879,609,302,015-900,719,925,374,591 bytes: "N.NN TB" (e.g., "0.80 TB")
+ * - 900,719,925,374,591-921,737,309,184,883,711 bytes: "N.NN PB" (e.g., "0.80 PB")
+ * - 921,737,309,184,883,711 and above: "N.NN EB" (e.g., "0.80 EB")
  *
  * @note Output buffer should be at least 32 bytes to accommodate all formats.
  * @note Function truncates output if buffer is too small.
@@ -70,9 +71,11 @@
  * @par Example
  * @code
  * char buf[64];
- * format_bytes_pretty(1024, buf, sizeof(buf));        // "1.00 KB"
- * format_bytes_pretty(1048576, buf, sizeof(buf));    // "1.00 MB"
- * format_bytes_pretty(1536, buf, sizeof(buf));       // "1.50 KB"
+ * format_bytes_pretty(512, buf, sizeof(buf));         // "512 B"
+ * format_bytes_pretty(819, buf, sizeof(buf));         // "819 B" (just below KB threshold)
+ * format_bytes_pretty(820, buf, sizeof(buf));         // "0.80 KB" (at 80% of 1 KB)
+ * format_bytes_pretty(1048576, buf, sizeof(buf));     // "1.00 MB" (at 100% of 1 MB)
+ * format_bytes_pretty(838860, buf, sizeof(buf));      // "0.80 MB" (at 80% of 1 MB)
  * format_bytes_pretty(1125899906842624, buf, sizeof(buf)); // "1.00 PB"
  * format_bytes_pretty(1152921504606846976ULL, buf, sizeof(buf)); // "1.00 EB"
  * @endcode
