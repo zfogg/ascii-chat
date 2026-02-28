@@ -596,12 +596,6 @@ static asciichat_error_t client_run(session_capture_ctx_t *capture, session_disp
     return ERROR_NETWORK;
   }
 
-  // Clear screen and show splash on reconnection to provide visual feedback to user
-  if (!GET_OPTION(quiet)) {
-    terminal_clear_screen();
-    splash_intro_start(NULL);
-  }
-
   // Return error to signal reconnection needed (framework handles the retry)
   return ERROR_NETWORK;
 }

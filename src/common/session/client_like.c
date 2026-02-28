@@ -639,6 +639,12 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
       break;
     }
 
+    // Show splash screen for reconnection attempt to provide visual feedback
+    if (!GET_OPTION(quiet)) {
+      terminal_clear_screen();
+      splash_intro_start(NULL);
+    }
+
     // Log reconnection message
     if (max_attempts == -1) {
       log_info("Connection failed, retrying...");
