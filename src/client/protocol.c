@@ -1173,14 +1173,15 @@ void protocol_stop_connection() {
 
   // Wait for data reception thread to exit gracefully
   log_debug("[PROTOCOL_STOP] 11. Waiting for data thread to exit");
+  // Thread checks should_exit() every read cycle (typically <1-5ms), so timeout can be much shorter
   int wait_count = 0;
   while (wait_count < 5 && !atomic_load(&g_data_thread_exited)) {
-    platform_sleep_us(100 * US_PER_MS_INT); // 100ms * 5 = 500ms max wait
+    platform_sleep_us(10 * US_PER_MS_INT); // 10ms * 5 = 50ms max wait
     wait_count++;
   }
 
   if (!atomic_load(&g_data_thread_exited)) {
-    log_warn("Data thread not responding after 500ms - will be joined by thread pool");
+    log_warn("Data thread not responding after 50ms - will be joined by thread pool");
   }
   log_debug("[PROTOCOL_STOP] 12. Data thread wait complete");
 

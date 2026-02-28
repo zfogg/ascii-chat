@@ -1163,13 +1163,12 @@ void audio_stop_thread() {
 
     // Wait for audio sender thread to exit gracefully
     // This must complete before thread_pool_stop_all() to prevent deadlock
+    // Threads check should_exit() every 1-5ms, so timeout can be much shorter than 500ms
     int wait_count = 0;
-    log_debug("[AUDIO_STOP] Waiting for sender thread to exit, max 500ms");
+    log_debug("[AUDIO_STOP] Waiting for sender thread to exit, max 50ms");
     while (wait_count < 5 && !atomic_load(&g_audio_sender_exited)) {
-      platform_sleep_us(100 * US_PER_MS_INT); // 100ms * 5 = 500ms max wait
+      platform_sleep_us(10 * US_PER_MS_INT); // 10ms * 5 = 50ms max wait (threads respond in ~1ms)
       wait_count++;
-      log_debug("[AUDIO_STOP] Sender thread wait iteration %d, exited=%d", wait_count,
-                atomic_load(&g_audio_sender_exited));
     }
 
     if (!atomic_load(&g_audio_sender_exited)) {
@@ -1195,13 +1194,12 @@ void audio_stop_thread() {
   // The audio capture thread checks server_connection_is_active() to detect connection loss
 
   // Wait for thread to exit gracefully
+  // Threads check should_exit() every 1-5ms, so timeout can be much shorter than 500ms
   int wait_count2 = 0;
-  log_debug("[AUDIO_STOP] Waiting for capture thread to exit, max 500ms");
+  log_debug("[AUDIO_STOP] Waiting for capture thread to exit, max 50ms");
   while (wait_count2 < 5 && !atomic_load(&g_audio_capture_thread_exited)) {
-    platform_sleep_us(100 * US_PER_MS_INT); // 100ms * 5 = 500ms max wait
+    platform_sleep_us(10 * US_PER_MS_INT); // 10ms * 5 = 50ms max wait (threads respond in ~1-5ms)
     wait_count2++;
-    log_debug("[AUDIO_STOP] Capture thread wait iteration %d, exited=%d", wait_count2,
-              atomic_load(&g_audio_capture_thread_exited));
   }
 
   if (!atomic_load(&g_audio_capture_thread_exited)) {
