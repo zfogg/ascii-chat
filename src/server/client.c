@@ -1353,7 +1353,7 @@ int remove_client(server_context_t *server_ctx, const char *client_id) {
     mutex_lock(&target_client->client_state_mutex);
     target_client->socket = INVALID_SOCKET_VALUE;
     mutex_unlock(&target_client->client_state_mutex);
-    log_debug("SOCKET_DEBUG: Client %u socket set to INVALID", client_id);
+    log_debug("SOCKET_DEBUG: Client %s socket set to INVALID", target_client->client_id);
   }
 
   // Use the dedicated cleanup function to ensure all resources are freed
@@ -2779,7 +2779,6 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
   }
 
   // Per-client hash tracking to detect duplicate frames
-  const char *client_id = client->client_id;
   bool is_new_frame = (incoming_pixel_hash != client->last_received_frame_hash);
 
   // Inspect first few pixels of incoming frame
@@ -2790,13 +2789,13 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
   }
 
   if (is_new_frame) {
-    log_info("RECV_FRAME #%u NEW: Client %u dimensions=%ux%u pixel_size=%zu hash=0x%08x first_rgb=0x%06x (prev=0x%08x)",
-             client->frames_received, client_id, header->width, header->height, data_len, incoming_pixel_hash,
+    log_info("RECV_FRAME #%u NEW: Client %s dimensions=%ux%u pixel_size=%zu hash=0x%08x first_rgb=0x%06x (prev=0x%08x)",
+             client->frames_received, client->client_id, header->width, header->height, data_len, incoming_pixel_hash,
              first_pixel_rgb, client->last_received_frame_hash);
     client->last_received_frame_hash = incoming_pixel_hash;
   } else {
-    log_info("RECV_FRAME #%u DUP: Client %u dimensions=%ux%u pixel_size=%zu hash=0x%08x first_rgb=0x%06x",
-             client->frames_received, client_id, header->width, header->height, data_len, incoming_pixel_hash,
+    log_info("RECV_FRAME #%u DUP: Client %s dimensions=%ux%u pixel_size=%zu hash=0x%08x first_rgb=0x%06x",
+             client->frames_received, client->client_id, header->width, header->height, data_len, incoming_pixel_hash,
              first_pixel_rgb);
   }
 
