@@ -721,7 +721,9 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     // - "http" protocol (browser connects here for initial HTTP upgrade to WebSocket)
     // - "acip" protocol (for ACIP over WebSocket connections)
     // Both protocols use the same callback and handle frame transmission.
-    log_debug(">>> LWS_CALLBACK_EVENT_WAIT_CANCELLED triggered - requesting writable callbacks for all protocols");
+    log_debug_every(
+        1 * NS_PER_SEC_INT,
+        ">>> LWS_CALLBACK_EVENT_WAIT_CANCELLED triggered - requesting writable callbacks for all protocols");
 
     struct lws_context *ctx = lws_get_context(wsi);
     if (!ctx) {
@@ -732,8 +734,9 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     // Trigger WRITEABLE on both protocols
     // Browser clients connect with "http" protocol, so they MUST have WRITEABLE triggered
     for (int i = 0; i < 2; i++) {
-      log_debug(">>> EVENT_WAIT_CANCELLED: Calling lws_callback_on_writable_all_protocol for protocol '%s'",
-                websocket_protocols[i].name);
+      log_dev_every(1 * NS_PER_SEC_INT,
+                    ">>> EVENT_WAIT_CANCELLED: Calling lws_callback_on_writable_all_protocol for protocol '%s'",
+                    websocket_protocols[i].name);
       lws_callback_on_writable_all_protocol(ctx, &websocket_protocols[i]);
     }
     break;
@@ -881,9 +884,9 @@ asciichat_error_t websocket_server_run(websocket_server_t *server) {
   uint64_t last_service_ns = 0;
   int service_call_count = 0;
   while (atomic_load(&server->running)) {
-    // Service libwebsockets with 50ms timeout.
-    // This provides frequent event processing (~20 callback invocations per second) for all
-    // connected WebSocket clients while avoiding excessive CPU usage from polling.
+    // Service libwebsockets with 16ms timeout to match 60 FPS frame rate.
+    // This provides frequent event processing (~60 callback invocations per second) so that
+    // WebSocket frames queued by the render loop are sent promptly, matching TCP performance.
     // All client connections share this single server context, so a single lws_service() call
     // services fragments and events for all clients simultaneously.
     uint64_t service_start_ns = time_get_ns();
@@ -895,7 +898,7 @@ asciichat_error_t websocket_server_run(websocket_server_t *server) {
     service_call_count++;
     log_debug_every(500 * US_PER_MS_INT, "[LWS_SERVICE] Call #%d, context=%s", service_call_count,
                     NAMED_DESCRIBE(server->context, "websocket_server"));
-    int result = lws_service(server->context, 50);
+    int result = lws_service(server->context, 16);
     if (result < 0) {
       log_error("libwebsockets service error: %d", result);
       break;
