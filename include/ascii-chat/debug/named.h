@@ -134,6 +134,21 @@ const char *named_register_fmt(uintptr_t key, const char *type, const char *form
 void named_unregister(uintptr_t key);
 
 /**
+ * @brief Update the registered name for a resource with a new base name
+ * @param key The resource key
+ * @param new_base_name New base name (will be auto-suffixed with counter)
+ * @return Updated name string, or NULL if key not found
+ * @ingroup debug_named
+ *
+ * Updates an existing registration with a new base name. The new name will be
+ * auto-suffixed with a counter to make it unique (e.g., "client_123.0").
+ * Useful when a resource gets an ID assigned after creation (e.g., client_id).
+ *
+ * In release builds (NDEBUG), this is a no-op and returns NULL.
+ */
+const char *named_update_name(uintptr_t key, const char *new_base_name);
+
+/**
  * @brief Look up the registered name for a resource
  * @param key The resource key
  * @return Registered name string, or NULL if not registered

@@ -189,6 +189,13 @@ acip_transport_t *websocket_client_connect(websocket_client_t *client, const cha
   // This provides a stable, unique ID per connection URL without undefined behavior
   client->my_client_id = fnv1a_hash_string(url);
 
+  // Update registration name now that we have a client ID
+  {
+    char client_name[64];
+    SAFE_SNPRINTF(client_name, sizeof(client_name), "websocket_client_%u", client->my_client_id);
+    named_update_name((uintptr_t)client, client_name);
+  }
+
   // Mark encryption as enabled if crypto context provided
   client->encryption_enabled = (crypto_ctx != NULL);
 

@@ -110,7 +110,7 @@ tcp_client_t *tcp_client_create(void) {
   memset(client->server_ip, 0, sizeof(client->server_ip));
   client->encryption_enabled = false;
 
-  if (mutex_init(&client->send_mutex, "client_send")  != 0) {
+  if (mutex_init(&client->send_mutex, "client_send") != 0) {
     log_error("Failed to initialize send mutex");
     SAFE_FREE(client);
     return NULL;
@@ -419,7 +419,8 @@ int tcp_client_connect(tcp_client_t *client, const char *address, int port, int 
         continue;
       }
 
-      const char *socket_name = (addr_iter->ai_family == AF_INET6) ? "tcp_client_server_ipv6" : "tcp_client_server_ipv4";
+      const char *socket_name =
+          (addr_iter->ai_family == AF_INET6) ? "tcp_client_server_ipv6" : "tcp_client_server_ipv4";
       client->sockfd = socket_create(socket_name, addr_iter->ai_family, addr_iter->ai_socktype, addr_iter->ai_protocol);
       if (client->sockfd == INVALID_SOCKET_VALUE) {
         continue;
@@ -482,6 +483,13 @@ connection_success:
     local_port = NET_TO_HOST_U16(((struct sockaddr_in6 *)&local_addr)->sin6_port);
   }
   client->my_client_id = (uint32_t)local_port;
+
+  // Update registration name now that we have a client ID
+  {
+    char client_name[64];
+    SAFE_SNPRINTF(client_name, sizeof(client_name), "tcp_client_%u", client->my_client_id);
+    named_update_name((uintptr_t)client, client_name);
+  }
 
   // Mark connection as active
   atomic_store(&client->connection_active, true);
