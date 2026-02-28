@@ -114,19 +114,6 @@ typedef struct session_display_ctx {
  *
  * @param snapshot_mode Whether snapshot mode is enabled
  */
-static void full_terminal_reset_internal(bool snapshot_mode) {
-  // Always reset and clear scrollback when rendering to TTY (including snapshot mode)
-  // Only skip when output is piped/redirected (those cases won't call this function with has_tty=true)
-  (void)terminal_reset(STDOUT_FILENO);
-  (void)terminal_clear_screen();
-  (void)terminal_cursor_home(STDOUT_FILENO);
-  (void)terminal_clear_scrollback(STDOUT_FILENO); // Clear history to avoid old logs visible above ASCII
-  if (!snapshot_mode) {
-    (void)terminal_cursor_hide();
-  }
-  (void)terminal_flush(STDOUT_FILENO);
-}
-
 /* ============================================================================
  * Session Display Lifecycle Functions
  * ============================================================================ */
@@ -748,15 +735,24 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     // NOTE: log_set_terminal_output(false) skipped here to avoid deadlocks with audio worker threads
     // Terminal logging will continue during rendering but won't corrupt the final frame
 
-    // Perform initial terminal reset
-    if (ctx->has_tty) {
-      full_terminal_reset_internal(ctx->snapshot_mode);
-    }
-
     // Stop splash screen when first frame is ready
     // This ensures smooth transition from splash animation to ASCII art rendering
     splash_intro_done();
     splash_wait_for_animation();
+    // splash_wait_for_animation() blocks until the splash animation thread fully exits
+    // After this point, no more logs will be written by the splash screen
+
+    // Perform initial terminal reset (clear screen AFTER splash is fully done)
+    if (ctx->has_tty) {
+      (void)terminal_reset(STDOUT_FILENO);
+      (void)terminal_clear_screen();  // Clear AFTER splash thread exits to avoid log overlap
+      (void)terminal_cursor_home(STDOUT_FILENO);
+      (void)terminal_clear_scrollback(STDOUT_FILENO);
+      if (!ctx->snapshot_mode) {
+        (void)terminal_cursor_hide();
+      }
+      (void)terminal_flush(STDOUT_FILENO);
+    }
   }
 
   // Output routing logic:
