@@ -653,11 +653,11 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   uint64_t assembly_start_ns = time_get_ns();
   uint64_t last_fragment_ns = assembly_start_ns;
   int fragment_count = 0;
-  const uint64_t MAX_REASSEMBLY_TIME_NS = 200 * 1000000ULL; // 200ms timeout for frame reassembly
-  // SHORT TIMEOUT: Return error after 200ms if reassembly incomplete
-  // This prevents blocking the client rendering loop for 1.5+ seconds waiting for 74 WebSocket fragments
-  // The client protocol loop will retry after timeout, allowing 60 FPS rendering
-  // No data is lost - fragments keep arriving and complete reassembly happens on retry
+  const uint64_t MAX_REASSEMBLY_TIME_NS = 5000 * 1000000ULL; // 5 second timeout for frame reassembly
+  // Increased from 200ms to 5 seconds to allow for network jitter and fragment arrival delays.
+  // With pt_serv_buf_size = 512KB, most frames won't fragment into multiple pieces anyway.
+  // But when they do, we need enough time for all fragments to arrive from the network.
+  // 5 seconds is still much shorter than standard TCP timeouts (30s+) but generous for LAN/WAN.
 
   while (true) {
     // Wait for fragment if queue is empty (with short timeout)
