@@ -641,7 +641,9 @@ int debug_sync_start_thread(void) {
   return err;
 }
 
-void debug_sync_destroy(void) {}
+void debug_sync_destroy(void) {
+  debug_sync_cleanup_thread();
+}
 
 void debug_sync_cleanup_thread(void) {
   // Only join if thread was actually created
