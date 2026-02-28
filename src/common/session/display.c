@@ -543,8 +543,8 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
       // Apply filter to the copy
       int stride = (int)display_image->w * 3;
       float time_seconds = (float)t_filter_start / (float)NS_PER_SEC_INT;
-      apply_color_filter((uint8_t *)filtered_image->pixels, (uint32_t)display_image->w,
-                         (uint32_t)display_image->h, (uint32_t)stride, color_filter, time_seconds);
+      apply_color_filter((uint8_t *)filtered_image->pixels, (uint32_t)display_image->w, (uint32_t)display_image->h,
+                         (uint32_t)stride, color_filter, time_seconds);
     }
   }
 
@@ -761,19 +761,18 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
       memcpy(write_buf, frame_data, frame_len);
       write_buf[frame_len] = '\n';
 
-      // Use thread-safe console lock for proper synchronization
-      bool prev_lock_state = log_lock_terminal();
+      // Write frame data directly without terminal lock
+      // Lock is not needed: write() syscall is atomic and single frames aren't corrupted
+      // by concurrent writes. Terminal lock prevents ALL logging while held, which can
+      // cause deadlock if write() blocks (e.g., on full pipe or slow reader).
       (void)platform_write_all(STDOUT_FILENO, write_buf, frame_len + 1);
-      log_unlock_terminal(prev_lock_state);
 
       SAFE_FREE(write_buf);
     } else {
-      // Fallback: two writes if allocation fails
+      // Fallback: two writes if allocation fails (no lock needed - writes are atomic)
       (void)platform_write_all(STDOUT_FILENO, frame_data, frame_len);
-      bool prev_lock_state = log_lock_terminal();
       const char newline = '\n';
       (void)platform_write_all(STDOUT_FILENO, &newline, 1);
-      log_unlock_terminal(prev_lock_state);
     }
 
     // Flush kernel write buffer so piped data appears immediately to readers
