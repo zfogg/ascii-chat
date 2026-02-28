@@ -2813,39 +2813,29 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
              first_pixel_rgb);
   }
 
-  // Store frame data to incoming_video_buffer for render thread processing
+  // Store frame data to incoming_video_buffer
   // pixel_data points to websocket reassembly buffer which will be freed after callback returns,
-  // so we must copy it immediately into the persistent frame buffer
+  // so we must copy it immediately into the persistent frame buffer (which is pre-allocated to 2MB)
   if (client->incoming_video_buffer) {
     video_frame_t *frame = video_frame_begin_write(client->incoming_video_buffer);
-    if (!frame) {
-      log_warn("Failed to get write frame for client %s", client->client_id);
-    } else if (frame->data && data_len > 0) {
-      // Validate we have enough space: width (4B) + height (4B) + pixel data
+    if (frame && frame->data && data_len > 0) {
+      // Copy frame data: width (4B) + height (4B) + pixel data
+      uint32_t width_net = HOST_TO_NET_U32(header->width);
+      uint32_t height_net = HOST_TO_NET_U32(header->height);
       size_t total_size = sizeof(uint32_t) * 2 + data_len;
-      size_t buffer_capacity = client->incoming_video_buffer->allocated_buffer_size;
 
-      if (total_size > buffer_capacity) {
-        log_warn("FRAME_OVERFLOW: client %s needs %zu bytes but buffer only has %zu bytes", client->client_id,
-                 total_size, buffer_capacity);
-      } else {
-        // Safe to copy: width (net byte order) + height (net byte order) + pixel data
-        uint32_t width_net = HOST_TO_NET_U32(header->width);
-        uint32_t height_net = HOST_TO_NET_U32(header->height);
+      memcpy(frame->data, &width_net, sizeof(uint32_t));
+      memcpy((char *)frame->data + sizeof(uint32_t), &height_net, sizeof(uint32_t));
+      memcpy((char *)frame->data + sizeof(uint32_t) * 2, pixel_data, data_len);
 
-        memcpy(frame->data, &width_net, sizeof(uint32_t));
-        memcpy((char *)frame->data + sizeof(uint32_t), &height_net, sizeof(uint32_t));
-        memcpy((char *)frame->data + sizeof(uint32_t) * 2, pixel_data, data_len);
+      frame->size = total_size;
+      frame->width = header->width;
+      frame->height = header->height;
+      frame->capture_timestamp_ns = time_get_ns();
+      frame->sequence_number = ++client->frames_received;
 
-        frame->size = total_size;
-        frame->width = header->width;
-        frame->height = header->height;
-        frame->capture_timestamp_ns = time_get_ns();
-        frame->sequence_number = ++client->frames_received;
-
-        video_frame_commit(client->incoming_video_buffer);
-        log_debug("Frame stored: client %s, seq=%u, size=%zu", client->client_id, frame->sequence_number, total_size);
-      }
+      video_frame_commit(client->incoming_video_buffer);
+      log_debug("Frame stored: client %s, seq=%u, size=%zu", client->client_id, frame->sequence_number, total_size);
     }
   }
 
