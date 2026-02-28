@@ -150,7 +150,7 @@ keyboard_key_t keyboard_read_nonblocking(void) {
       unsigned char ch2;
       if (read(STDIN_FILENO, &ch2, 1) > 0) {
         if (ch2 == '[') {
-          // Might be an arrow key sequence
+          // Might be an arrow key or function key sequence
           if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
             unsigned char ch3;
             if (read(STDIN_FILENO, &ch3, 1) > 0) {
@@ -163,8 +163,26 @@ keyboard_key_t keyboard_read_nonblocking(void) {
                 return KEY_RIGHT;
               case 'D':
                 return KEY_LEFT;
+              case '3':
+                // Delete key sends ESC [ 3 ~
+                // Read the trailing ~ to consume the full sequence and return KEY_DELETE
+                if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
+                  unsigned char ch4;
+                  if (read(STDIN_FILENO, &ch4, 1) > 0) {
+                    // ch4 should be '~', consume it
+                  }
+                }
+                return 260; // KEY_DELETE - use code 260 (after arrow keys 256-259)
               default:
-                // Unknown escape sequence - ignore it
+                // Unknown escape sequence - consume any trailing ~ to avoid leaving it in buffer
+                if (ch3 >= '0' && ch3 <= '9') {
+                  // Function key sequence like ESC [ 1 ~ (Home), ESC [ 4 ~ (End), etc.
+                  // Read the trailing ~ if it exists
+                  if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
+                    unsigned char ch4;
+                    read(STDIN_FILENO, &ch4, 1); // Just consume it
+                  }
+                }
                 return KEY_NONE;
               }
             }
@@ -238,8 +256,26 @@ keyboard_key_t keyboard_read_with_timeout(uint32_t timeout_ms) {
                 return KEY_RIGHT;
               case 'D':
                 return KEY_LEFT;
+              case '3':
+                // Delete key sends ESC [ 3 ~
+                // Read the trailing ~ to consume the full sequence
+                if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
+                  unsigned char ch4;
+                  if (read(STDIN_FILENO, &ch4, 1) > 0) {
+                    // ch4 should be '~', consume it
+                  }
+                }
+                return 260; // KEY_DELETE
               default:
-                // Unknown escape sequence - ignore it
+                // Unknown escape sequence - consume any trailing ~ to avoid leaving it in buffer
+                if (ch3 >= '0' && ch3 <= '9') {
+                  // Function key sequence like ESC [ 1 ~ (Home), ESC [ 4 ~ (End), etc.
+                  // Read the trailing ~ if it exists
+                  if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
+                    unsigned char ch4;
+                    read(STDIN_FILENO, &ch4, 1); // Just consume it
+                  }
+                }
                 return KEY_NONE;
               }
             }
@@ -291,6 +327,17 @@ keyboard_line_edit_result_t keyboard_read_line_interactive(keyboard_line_edit_op
     if (cursor < len) {
       cursor++;
       *opts->cursor = cursor;
+    }
+    return LINE_EDIT_CONTINUE;
+  }
+
+  // Delete key (forward delete - delete character at cursor)
+  if (c == 260) { // KEY_DELETE
+    if (cursor < len) {
+      memmove(&buffer[cursor], &buffer[cursor + 1], len - cursor - 1);
+      len--;
+      buffer[len] = '\0';
+      *opts->len = len;
     }
     return LINE_EDIT_CONTINUE;
   }
