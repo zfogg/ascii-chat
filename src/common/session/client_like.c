@@ -206,7 +206,9 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
 
   log_debug("session_client_like_run(): About to disable terminal logging (snapshot=%d)", GET_OPTION(snapshot_mode));
   if (!GET_OPTION(snapshot_mode)) {
+    log_debug("session_client_like_run(): Calling log_set_terminal_output(false)...");
     log_set_terminal_output(false);
+    log_debug("session_client_like_run(): RETURNED from log_set_terminal_output(false)");
   }
   log_debug("session_client_like_run(): Terminal logging disabled, starting media source setup");
 
