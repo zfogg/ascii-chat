@@ -421,6 +421,9 @@ ascii-chat is built on operating system code and several libraries.
 - [**miniupnpc**](https://miniupnp.tuxfamily.org/) - Opens ports in your router to ascii-chat so clients can connect
 - [**FFmpeg**](https://ffmpeg.org/) - Media support for `--file` and `--url`. Direct handling of FFmpeg-supported formats, protocols (HTTP, RTSP, RTMP), and files
 - [**yt-dlp**](https://github.com/yt-dlp/yt-dlp) - Supports 1000+ streaming sites for `--url` (YouTube, TikTok, Twitch, etc.). Optional; ascii-chat falls back to FFmpeg for direct streams (optional)
+- [**libvterm**](http://www.leonerd.org.uk/code/libvterm/) - Terminal emulation for `--render-file` pixel output
+- [**FreeType2**](https://freetype.org/) - Font rasterization for `--render-file` glyph rendering
+- [**fontconfig**](https://www.freedesktop.org/wiki/Software/fontconfig/) - Font resolution and configuration for `--render-file`
 - [**ssh-agent**](https://linux.die.net/man/1/ssh-agent) - SSH key agent authentication (optional)
 - [**gpg-agent**](https://linux.die.net/man/1/gpg-agent) - GPG key agent authentication (optional)
 
