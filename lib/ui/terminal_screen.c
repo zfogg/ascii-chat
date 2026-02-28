@@ -492,6 +492,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
         mutex_lock(grep_mutex);
         int pattern_len = interactive_grep_get_input_len();
         const char *pattern = interactive_grep_get_input_buffer();
+        int cursor_pos = interactive_grep_get_cursor_position();
 
         if (pattern_len > 0 && pattern) {
           int remaining =
@@ -505,6 +506,16 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
             grep_ui_buffer[pos++] = '/';
           }
         }
+
+        // Position cursor at the current edit position within the pattern
+        // Cursor column = 2 (for "/" + column 1) + cursor_position
+        int cursor_col = 2 + cursor_pos;
+        int remaining = snprintf(grep_ui_buffer + pos, sizeof(grep_ui_buffer) - (size_t)pos, "\x1b[%d;%dH",
+                                 g_cached_term_size.rows, cursor_col);
+        if (remaining > 0 && remaining < (int)sizeof(grep_ui_buffer) - (int)pos) {
+          pos += remaining;
+        }
+
         mutex_unlock(grep_mutex);
       }
     }
