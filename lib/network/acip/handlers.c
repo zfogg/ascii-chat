@@ -53,7 +53,8 @@ typedef struct {
 // Hash function: simple modulo
 #define HANDLER_HASH(type) ((type) % HANDLER_HASH_SIZE)
 
-// Lookup function: linear probing, returns handler index or -1 if not found
+// Lookup function: linear probing with full table scan
+// Must check all HANDLER_HASH_SIZE slots because gaps can exist in the hash table
 static inline int handler_hash_lookup(const handler_hash_entry_t *table, packet_type_t type) {
   uint32_t h = HANDLER_HASH(type);
   log_dev_every(4500 * US_PER_MS_INT, "HANDLER_HASH_LOOKUP: type=%d, hash=%u", type, h);
@@ -61,17 +62,16 @@ static inline int handler_hash_lookup(const handler_hash_entry_t *table, packet_
     uint32_t slot = (h + i) % HANDLER_HASH_SIZE;
     log_dev_every(4500 * US_PER_MS_INT, "  Checking slot %u: key=%d, handler_idx=%d", slot, table[slot].key,
                   table[slot].handler_idx);
-    if (table[slot].key == 0) {
-      log_dev_every(4500 * US_PER_MS_INT, "  Empty slot found - packet type %d not in hash table", type);
-      return -1; // empty slot = not found
-    }
+    // Match found - return handler index immediately
     if (table[slot].key == type) {
       log_dev_every(4500 * US_PER_MS_INT, "  Found match at slot %u, handler_idx=%d", slot, table[slot].handler_idx);
       return table[slot].handler_idx;
     }
+    // NOTE: Do NOT return on empty slot! Hash table can have gaps due to collision chains.
+    // Continue probing through entire table to find the key.
   }
-  log_debug("  No match found after checking all slots");
-  return -1;
+  log_debug("  No match found after scanning all %u slots", HANDLER_HASH_SIZE);
+  return -1; // Not found after checking all slots
 }
 
 // Client packet type -> handler index hash table
