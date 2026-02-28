@@ -333,9 +333,21 @@ static void shutdown_client() {
 
 #ifndef NDEBUG
   // Join the debug threads as the very last thing (after log_destroy since threads may log)
+  fprintf(stderr, "[SHUTDOWN] About to clean debug sync thread\n");
+  fflush(stderr);
   debug_sync_cleanup_thread();
+  fprintf(stderr, "[SHUTDOWN] Debug sync thread cleaned\n");
+  fflush(stderr);
+
+  fprintf(stderr, "[SHUTDOWN] About to clean debug memory thread\n");
+  fflush(stderr);
   debug_memory_thread_cleanup();
+  fprintf(stderr, "[SHUTDOWN] Debug memory thread cleaned\n");
+  fflush(stderr);
 #endif
+
+  fprintf(stderr, "[SHUTDOWN] Exiting shutdown_client()\n");
+  fflush(stderr);
 }
 
 #ifndef NDEBUG
@@ -841,15 +853,21 @@ int client_main(void) {
   // IMPORTANT: Stop worker threads and join them BEFORE memory report
   // atexit(shutdown_client) won't run if interrupted by SIGTERM, so call explicitly
   log_debug("[CLIENT_MAIN] About to call shutdown_client()");
+  fflush(stderr);
   shutdown_client();
   log_debug("[CLIENT_MAIN] shutdown_client() returned");
+  fflush(stderr);
 
   // Cleanup remaining shared subsystems (buffer pool, platform, etc.)
   // Note: atexit(asciichat_shared_destroy) is registered in main.c,
   // but won't run if interrupted by signals (SIGTERM from timeout/killall)
   log_debug("[CLIENT_MAIN] About to call asciichat_shared_destroy()");
+  fflush(stderr);
   asciichat_shared_destroy();
   log_debug("[CLIENT_MAIN] asciichat_shared_destroy() returned");
+  fflush(stderr);
 
+  log_debug("[CLIENT_MAIN] About to exit with code %d", (session_result == ASCIICHAT_OK) ? 0 : 1);
+  fflush(stderr);
   return (session_result == ASCIICHAT_OK) ? 0 : 1;
 }

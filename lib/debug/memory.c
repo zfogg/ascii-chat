@@ -1311,7 +1311,14 @@ void debug_memory_thread_cleanup(void) {
   // The thread reads should_exit without locking, and cond_signal is safe without mutex
   g_debug_memory_request.should_exit = true;
   cond_signal(&g_debug_memory_request.cond);
-  asciichat_thread_join(&g_debug_memory_thread, NULL);
+
+  // Use timeout join to prevent indefinite hang if debug thread is stuck
+  // Matches pattern used in debug_sync_cleanup_thread() which has 1 second timeout
+  int join_result = asciichat_thread_join_timeout(&g_debug_memory_thread, NULL, 1000000000ULL); // 1 second timeout
+  if (join_result != 0) {
+    // Thread didn't exit cleanly, but we still need to proceed with shutdown
+    // Log a warning if logging is still available
+  }
 }
 
 #elif defined(DEBUG_MEMORY)

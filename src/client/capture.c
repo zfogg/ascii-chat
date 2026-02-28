@@ -344,11 +344,14 @@ static void *webcam_capture_thread_func(void *arg) {
     last_frame = NULL;
   }
 
+  log_debug("CAPTURE_THREAD_EXIT: About to mark thread as exited");
   atomic_store(&g_capture_thread_exited, true);
+  log_debug("CAPTURE_THREAD_EXIT: Thread marked as exited, cleaning up errno");
 
   // Clean up thread-local error context before exit
   asciichat_errno_destroy();
 
+  log_debug("CAPTURE_THREAD_EXIT: Exiting capture thread");
   return NULL;
 }
 /* ============================================================================
