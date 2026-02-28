@@ -274,16 +274,33 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     // then flush atomically. This prevents real-time logs from appearing after the frame,
     // which would cause the display to scroll and push the header up.
 
-    // Output logs to frame buffer, counting actual lines output
-    int logs_actually_output = 0;
-    for (int i = first_log_to_display; i < (int)log_count; i++) {
+    // Output logs to frame buffer, counting actual display lines output
+    int lines_actually_output = 0;
+    for (int i = first_log_to_display; i < (int)log_count && lines_actually_output < log_area_rows; i++) {
       const char *msg = log_entries[i].message;
-      frame_buffer_printf(g_frame_buf, "%s\n", msg);
-      logs_actually_output++;
+
+      // Calculate display width of this log message (without ANSI codes)
+      int msg_display_width = display_width(msg);
+      if (msg_display_width < 0) {
+        msg_display_width = (int)strlen(msg);
+      }
+
+      // Calculate how many display lines this message will take
+      int lines_for_this_msg = 1;
+      if (msg_display_width > g_cached_term_size.cols) {
+        // Message wraps - calculate how many lines it needs
+        lines_for_this_msg = (msg_display_width + g_cached_term_size.cols - 1) / g_cached_term_size.cols;
+      }
+
+      // Only output if it fits in remaining space
+      if (lines_actually_output + lines_for_this_msg <= log_area_rows) {
+        frame_buffer_printf(g_frame_buf, "%s\n", msg);
+        lines_actually_output += lines_for_this_msg;
+      }
     }
 
     // Fill remaining space with blank lines (complete the log area)
-    int remaining = log_area_rows - logs_actually_output;
+    int remaining = log_area_rows - lines_actually_output;
     for (int i = 0; i < remaining; i++) {
       frame_buffer_append(g_frame_buf, "\n", 1);
     }
@@ -292,16 +309,16 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     frame_buffer_flush(g_frame_buf);
 
     // Verify output height matches terminal area
-    int actual_height_rendered = logs_actually_output + remaining;
+    int actual_height_rendered = lines_actually_output + remaining;
     int total_frame_height = actual_height_rendered + config->fixed_header_lines;
 
     if (elapsed_ms < 500) {
       log_debug("[STARTUP_OUTPUT] t=%llu output=%d blank=%d header=%d height=%d area=%d match=%s",
-                (unsigned long long)elapsed_ms, logs_actually_output, remaining, config->fixed_header_lines,
+                (unsigned long long)elapsed_ms, lines_actually_output, remaining, config->fixed_header_lines,
                 actual_height_rendered, log_area_rows, (actual_height_rendered == log_area_rows) ? "YES" : "NO");
     } else {
       log_debug("[RENDER_OUTPUT] log_count=%zu logs_output=%d blank=%d ACTUAL_HEIGHT=%d log_area=%d MATCH=%s",
-                log_count, logs_actually_output, remaining, actual_height_rendered, log_area_rows,
+                log_count, lines_actually_output, remaining, actual_height_rendered, log_area_rows,
                 (actual_height_rendered == log_area_rows) ? "YES" : "NO");
     }
 
