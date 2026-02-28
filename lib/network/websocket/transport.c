@@ -1438,68 +1438,19 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   }
   log_debug("WebSocket service thread started");
 
-  // Wait for connection to establish (synchronous connection)
-  // Service thread handles lws_service() calls - we just wait for is_connected flag
-  log_debug("Waiting for WebSocket connection to establish...");
-  int timeout_ms = 500; // 500ms timeout (reduced from 5s for faster shutdown responsiveness)
-  int elapsed_ms = 0;
-  const int POLL_INTERVAL_MS = 10; // 10ms poll interval (reduced from 50ms for faster SIGTERM response)
-
-  // Use condition variable to wait for connection instead of calling lws_service
-  // Check should_exit() to allow SIGTERM to interrupt the connection wait
-  extern bool should_exit(void);
-
-  mutex_lock(&ws_data->state_mutex);
-  while (!ws_data->is_connected && elapsed_ms < timeout_ms && !should_exit()) {
-    // Wait on condition variable with timeout
-    cond_timedwait(&ws_data->state_cond, &ws_data->state_mutex, POLL_INTERVAL_MS * 1000000ULL);
-    elapsed_ms += POLL_INTERVAL_MS;
-
-    // Log connection lifecycle for debugging
-    log_dev_every(1000000, "Waiting for connection: elapsed=%dms, is_connected=%d", elapsed_ms, ws_data->is_connected);
-  }
-  mutex_unlock(&ws_data->state_mutex);
-
-  // If shutdown was requested during connection wait, exit cleanly
-  if (should_exit()) {
-    log_debug("WebSocket connection interrupted by shutdown signal");
-    ws_data->service_running = false;
-    asciichat_thread_join(&ws_data->service_thread, NULL);
-    lws_context_destroy(ws_data->context);
-    SAFE_FREE(ws_data->send_buffer);
-    cond_destroy(&ws_data->state_cond);
-    mutex_destroy(&ws_data->state_mutex);
-    cond_destroy(&ws_data->recv_cond);
-    mutex_destroy(&ws_data->recv_mutex);
-    ringbuffer_destroy(ws_data->recv_queue);
-    SAFE_FREE(ws_data);
-    SAFE_FREE(transport);
-    return NULL;
-  }
-
-  if (!ws_data->is_connected) {
-    log_error("WebSocket connection timeout after %d ms", elapsed_ms);
-    ws_data->service_running = false;
-    asciichat_thread_join(&ws_data->service_thread, NULL);
-    lws_context_destroy(ws_data->context);
-    SAFE_FREE(ws_data->send_buffer);
-    cond_destroy(&ws_data->state_cond);
-    mutex_destroy(&ws_data->state_mutex);
-    cond_destroy(&ws_data->recv_cond);
-    mutex_destroy(&ws_data->recv_mutex);
-    ringbuffer_destroy(ws_data->recv_queue);
-    SAFE_FREE(ws_data);
-    SAFE_FREE(transport);
-    SET_ERRNO(ERROR_NETWORK, "WebSocket connection timeout");
-    return NULL;
-  }
-
-  log_info("WebSocket connection established (crypto: %s)", crypto_ctx ? "enabled" : "disabled");
+  // CRITICAL FIX: Do NOT block the main thread waiting for connection!
+  // This prevents stdin/keyboard input from being processed and causes the client to hang.
+  // The service thread will establish the connection asynchronously.
+  // The protocol layer (recv) will detect if connection fails and handle it there.
+  // Return immediately so the main thread can respond to keyboard input.
+  log_debug("WebSocket transport created, service thread will establish connection asynchronously");
 
   // Register websocket implementation data
   NAMED_REGISTER_WEBSOCKET_IMPL(ws_data, name);
-
   NAMED_REGISTER_TRANSPORT(transport, name);
+
+  // Return transport immediately - connection will be established by service thread
+  // If connection fails, recv() will detect is_connected=false and return error
   return transport;
 }
 
