@@ -761,8 +761,8 @@ void *client_audio_render_thread(void *arg) {
   }
 
   // Take snapshot of client ID and display name at start to avoid race conditions
-  // Use atomic_load for client_id to prevent data races.
-  uint32_t thread_client_id = client->client_id;
+  char thread_client_id[MAX_CLIENT_ID_LEN];
+  SAFE_STRNCPY(thread_client_id, client->client_id, sizeof(thread_client_id) - 1);
   char thread_display_name[64];
   bool is_webrtc = (client->socket == INVALID_SOCKET_VALUE);
   (void)is_webrtc; // May be unused in release builds

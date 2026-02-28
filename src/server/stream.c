@@ -205,7 +205,7 @@ typedef struct {
   /** @brief Pointer to client's current video frame (owned by buffer system) */
   image_t *image;
   /** @brief Unique client identifier for this source */
-  uint32_t client_id;
+  char client_id[MAX_CLIENT_ID_LEN];
   /** @brief Whether this client has active video stream */
   bool has_video;
 } image_source_t;
@@ -263,10 +263,10 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
       continue;
     }
 
-    log_dev_every(5 * NS_PER_MS_INT, "collect_video_sources: Client %u: is_sending_video=%d", snap->client_id,
+    log_dev_every(5 * NS_PER_MS_INT, "collect_video_sources: Client %s: is_sending_video=%d", snap->client_id,
                   snap->is_sending_video);
 
-    sources[source_count].client_id = snap->client_id;
+    SAFE_STRNCPY(sources[source_count].client_id, snap->client_id, sizeof(sources[source_count].client_id) - 1);
     sources[source_count].image = NULL; // Will be set if video is available
     sources[source_count].has_video = false;
 
@@ -375,7 +375,7 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
         if (current_frame.data) {
           memcpy(current_frame.data, frame->data, correct_frame_size);
           current_frame.size = correct_frame_size;
-          current_frame.source_client_id = snap->client_id;
+          SAFE_STRNCPY(current_frame.source_client_id, snap->client_id, sizeof(current_frame.source_client_id) - 1);
           current_frame.timestamp = (uint32_t)(frame->capture_timestamp_ns / NS_PER_SEC_INT);
           got_new_frame = true;
         }
@@ -473,7 +473,7 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
  * @ingroup server_stream
  */
 static image_t *create_single_source_composite(image_source_t *sources, int source_count,
-                                               uint32_t target_client_id __attribute__((unused)),
+                                               const char *target_client_id __attribute__((unused)),
                                                unsigned short width __attribute__((unused)),
                                                unsigned short height __attribute__((unused))) {
   // Find the single source with video
@@ -661,7 +661,8 @@ static void calculate_optimal_grid_layout(image_source_t *sources, int source_co
  * @ingroup server_stream
  */
 static image_t *create_multi_source_composite(image_source_t *sources, int source_count, int sources_with_video,
-                                              uint32_t target_client_id, unsigned short width, unsigned short height) {
+                                              const char *target_client_id, unsigned short width,
+                                              unsigned short height) {
   (void)target_client_id; // Unused - composite is same for all clients now
 
   // Calculate optimal grid layout using space-maximizing algorithm
@@ -785,7 +786,7 @@ static image_t *create_multi_source_composite(image_source_t *sources, int sourc
  * @return Allocated ASCII frame string (caller must free) or NULL on error
  * @ingroup server_stream
  */
-static char *convert_composite_to_ascii(image_t *composite, uint32_t target_client_id, unsigned short width,
+static char *convert_composite_to_ascii(image_t *composite, const char *target_client_id, unsigned short width,
                                         unsigned short height) {
   // LOCK OPTIMIZATION: Don't call find_client_by_id() - it would acquire rwlock unnecessarily
   // Instead, the render thread already has snapshot of client state, so we just need palette data
@@ -795,10 +796,10 @@ static char *convert_composite_to_ascii(image_t *composite, uint32_t target_clie
   // since palette is initialized once and never changes
   client_info_t *render_client = NULL;
 
-  // Find client without locking - client_id is atomic and stable once set
+  // Find client without locking - client_id is stable once set
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
-    if (client->client_id == target_client_id) {
+    if (strcmp(client->client_id, target_client_id) == 0) {
       render_client = client;
       break;
     }
@@ -1054,7 +1055,7 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
   char *out = NULL;
 
   if (!composite) {
-    SET_ERRNO(ERROR_INVALID_STATE, "Per-client %u: Failed to create composite image", target_client_id);
+    SET_ERRNO(ERROR_INVALID_STATE, "Per-client %s: Failed to create composite image", target_client_id);
     *out_size = 0;
     out = NULL;
   }

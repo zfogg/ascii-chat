@@ -405,7 +405,7 @@ typedef struct {
   /** @brief Magic number to detect corruption (FRAME_MAGIC when valid) */
   uint64_t magic;
   /** @brief Client ID that sent this frame */
-  uint32_t source_client_id;
+  char source_client_id[64];
   /** @brief Frame sequence number for ordering */
   uint32_t frame_sequence;
   /** @brief Timestamp when frame was captured */

@@ -432,7 +432,7 @@ bool framebuffer_read_multi_frame(framebuffer_t *fb, multi_source_frame_t *frame
                 FRAME_MAGIC);
       frame->data = NULL;
       frame->size = 0;
-      frame->source_client_id = 0;
+      memset(frame->source_client_id, 0, sizeof(frame->source_client_id));
       mutex_unlock(&fb->mutex);
       return false;
     }
@@ -468,7 +468,7 @@ bool framebuffer_peek_latest_multi_frame(framebuffer_t *fb, multi_source_frame_t
                 frame->magic, FRAME_MAGIC);
       frame->data = NULL;
       frame->size = 0;
-      frame->source_client_id = 0;
+      memset(frame->source_client_id, 0, sizeof(frame->source_client_id));
       mutex_unlock(&fb->mutex);
       return false;
     }
