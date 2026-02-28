@@ -2051,8 +2051,14 @@ void *client_send_thread_func(void *arg) {
         if (!atomic_load(&g_server_should_exit)) {
           log_error("Failed to send audio to client %s: %s", client->client_id, asciichat_error_string(result));
         }
+        // Network errors corrupt the TCP stream - must disconnect immediately
+        if (result == ERROR_NETWORK) {
+          log_error("CLOSING_CLIENT_ON_NETWORK_ERROR: client_id=%s due to audio send failure (corrupted stream)",
+                    client->client_id);
+          break; // Exit send loop to trigger cleanup
+        }
         log_warn("SKIP_AUDIO_ERROR: client_id=%s result=%d (continuing to send video)", client->client_id, result);
-        // Continue sending video even if audio fails - audio is optional for browser clients
+        // Continue sending video for non-network errors (audio is optional for browser clients)
       }
 
       sent_something = true;
