@@ -248,6 +248,18 @@ void *session_display_get_stdin_reader(session_display_ctx_t *ctx);
  */
 bool session_display_has_first_frame(session_display_ctx_t *ctx);
 
+/**
+ * @brief Reset the first frame flag to allow splash screen to show again on next render
+ * @param ctx Display context (must not be NULL)
+ *
+ * Used during reconnection attempts to re-enable splash screen display.
+ * After calling this, the next call to session_display_render_frame() will trigger
+ * splash cleanup logic, allowing the splash to be shown again.
+ *
+ * @ingroup session
+ */
+void session_display_reset_first_frame(session_display_ctx_t *ctx);
+
 /** @} */
 
 /* ============================================================================

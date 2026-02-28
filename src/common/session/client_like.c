@@ -640,6 +640,11 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
       break;
     }
 
+    // Reconnection will happen - show splash screen again during reconnection attempts
+    log_debug("[CLIENT_LIKE_LOOP] Reconnection will be attempted, showing splash screen");
+    session_display_reset_first_frame(display);
+    splash_intro_start(display);
+
     // Log reconnection message
     if (max_attempts == -1) {
       log_info("Connection failed, retrying...");

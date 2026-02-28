@@ -395,6 +395,14 @@ bool session_display_has_first_frame(session_display_ctx_t *ctx) {
   return !atomic_load(&ctx->first_frame);
 }
 
+void session_display_reset_first_frame(session_display_ctx_t *ctx) {
+  if (!ctx) {
+    return;
+  }
+  // Reset first_frame flag to true so splash screen can be shown again on next render
+  atomic_store(&ctx->first_frame, true);
+}
+
 /* ============================================================================
  * Session Display ASCII Conversion Functions
  * ============================================================================ */
