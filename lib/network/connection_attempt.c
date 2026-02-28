@@ -408,8 +408,7 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
   const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
 
   // Create ACIP transport for protocol-agnostic packet sending/receiving
-  acip_transport_t *transport =
-      acip_tcp_transport_create("transport_tcp_connection_attempt", sockfd, (crypto_context_t *)crypto_ctx);
+  acip_transport_t *transport = acip_tcp_transport_create("connection", sockfd, (crypto_context_t *)crypto_ctx);
   if (!transport) {
     log_error("Failed to create ACIP transport for TCP");
     if (created_tcp_client) {

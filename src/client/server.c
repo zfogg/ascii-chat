@@ -648,7 +648,7 @@ connection_success:
   const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
 
   // Create TCP transport (WebSocket is handled earlier in the function)
-  g_client_transport = acip_tcp_transport_create("transport_tcp_client", g_sockfd, (crypto_context_t *)crypto_ctx);
+  g_client_transport = acip_tcp_transport_create("client", g_sockfd, (crypto_context_t *)crypto_ctx);
   if (!g_client_transport) {
     log_error("Failed to create TCP ACIP transport");
     close_socket(g_sockfd);
