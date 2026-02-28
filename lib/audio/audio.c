@@ -1701,8 +1701,6 @@ asciichat_error_t audio_stop_duplex(audio_context_t *ctx) {
     audio_ring_buffer_clear(ctx->playback_buffer);
   }
 
-  Pa_Sleep(50); // Let callbacks drain
-
   mutex_lock(&ctx->state_mutex);
 
   if (ctx->duplex_stream) {
