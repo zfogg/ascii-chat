@@ -1330,9 +1330,9 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   // Wait for connection to establish (synchronous connection)
   // Service thread handles lws_service() calls - we just wait for is_connected flag
   log_debug("Waiting for WebSocket connection to establish...");
-  int timeout_ms = 5000; // 5 second timeout
+  int timeout_ms = 500; // 500ms timeout (reduced from 5s for faster shutdown responsiveness)
   int elapsed_ms = 0;
-  const int POLL_INTERVAL_MS = 50;
+  const int POLL_INTERVAL_MS = 10; // 10ms poll interval (reduced from 50ms for faster SIGTERM response)
 
   // Use condition variable to wait for connection instead of calling lws_service
   // Check should_exit() to allow SIGTERM to interrupt the connection wait
