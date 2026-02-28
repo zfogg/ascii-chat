@@ -81,6 +81,7 @@ static struct {
   int stderr_fd_saved;            // saved stderr fd during splash (to suppress real-time log output)
   int stdout_fd_saved;            // saved stdout fd during splash
   int devnull_fd;                 // /dev/null fd to redirect stderr/stdout during splash
+  bool saved_console_state;       // saved console logging state (to restore later)
 } g_splash_state = {.is_running = false,
                     .should_stop = false,
                     .thread_created = false,
@@ -88,7 +89,8 @@ static struct {
                     .start_time_ns = 0,
                     .stderr_fd_saved = -1,
                     .stdout_fd_saved = -1,
-                    .devnull_fd = -1};
+                    .devnull_fd = -1,
+                    .saved_console_state = false};
 
 // ============================================================================
 // Helper Functions - TTY Detection
@@ -602,33 +604,54 @@ static void *splash_animation_thread(void *arg) {
 int splash_intro_start(session_display_ctx_t *ctx) {
   (void)ctx; // Parameter not used currently
 
+  // Suppress stderr IMMEDIATELY to prevent any debug logs from appearing during splash setup
+  // Logs are captured in session_log_buffer and displayed through frame rendering
+  g_splash_state.devnull_fd = open("/dev/null", O_WRONLY);
+  if (g_splash_state.devnull_fd >= 0) {
+    g_splash_state.stderr_fd_saved = dup(STDERR_FILENO);
+    dup2(g_splash_state.devnull_fd, STDERR_FILENO);
+  }
+
   // Disable console logging during splash screen - splash screen controls stdout
   bool saved_console_state = log_get_terminal_output();
   log_set_terminal_output(false);
 
-  log_info("splash_intro_start: ENTRY");
-
   // Check if splash was explicitly requested via --splash-screen
   const options_t *opts = options_get();
   bool splash_explicitly_set = opts && opts->splash_screen_explicitly_set;
-  log_info("splash_intro_start: splash_explicitly_set=%d", splash_explicitly_set);
 
   // If NOT explicitly set, apply normal pre-checks
   if (!splash_explicitly_set) {
     bool should_display = splash_should_display(true);
-    log_info("splash_intro_start: splash_should_display(true)=%d", should_display);
     if (!should_display) {
-      log_info("splash_intro_start: returning early - splash should not display");
       log_set_terminal_output(saved_console_state);
+      // Restore stderr on early return
+      if (g_splash_state.stderr_fd_saved >= 0) {
+        dup2(g_splash_state.stderr_fd_saved, STDERR_FILENO);
+        close(g_splash_state.stderr_fd_saved);
+        g_splash_state.stderr_fd_saved = -1;
+      }
+      if (g_splash_state.devnull_fd >= 0) {
+        close(g_splash_state.devnull_fd);
+        g_splash_state.devnull_fd = -1;
+      }
       return 0; // ASCIICHAT_OK equivalent
     }
 
     // Check if interactive (skip if explicitly set)
     bool is_interactive = terminal_is_interactive();
-    log_info("splash_intro_start: terminal_is_interactive()=%d", is_interactive);
     if (!is_interactive) {
-      log_info("splash_intro_start: returning early - not interactive and splash not explicitly set");
       log_set_terminal_output(saved_console_state);
+      // Restore stderr on early return
+      if (g_splash_state.stderr_fd_saved >= 0) {
+        dup2(g_splash_state.stderr_fd_saved, STDERR_FILENO);
+        close(g_splash_state.stderr_fd_saved);
+        g_splash_state.stderr_fd_saved = -1;
+      }
+      if (g_splash_state.devnull_fd >= 0) {
+        close(g_splash_state.devnull_fd);
+        g_splash_state.devnull_fd = -1;
+      }
       return 0;
     }
   }
@@ -637,62 +660,24 @@ int splash_intro_start(session_display_ctx_t *ctx) {
   int width = GET_OPTION(width);
   int height = GET_OPTION(height);
   if (width < 50 || height < 20) {
-    log_info("splash_intro_start: returning early - terminal too small (%dx%d)", width, height);
     log_set_terminal_output(saved_console_state);
+    // Restore stderr on early return
+    if (g_splash_state.stderr_fd_saved >= 0) {
+      dup2(g_splash_state.stderr_fd_saved, STDERR_FILENO);
+      close(g_splash_state.stderr_fd_saved);
+      g_splash_state.stderr_fd_saved = -1;
+    }
+    if (g_splash_state.devnull_fd >= 0) {
+      close(g_splash_state.devnull_fd);
+      g_splash_state.devnull_fd = -1;
+    }
     return 0;
   }
 
   // Initialize log buffer for capturing logs during animation
-  log_debug("[SPLASH] About to call session_log_buffer_init()");
   if (!session_log_buffer_init()) {
     log_warn("Failed to initialize splash log buffer");
     log_set_terminal_output(saved_console_state);
-    return 0;
-  }
-  log_debug("[SPLASH] session_log_buffer_init() completed successfully");
-
-  // Clear screen
-  log_debug("[SPLASH] Clearing screen");
-  terminal_clear_screen();
-  // Show cursor for splash screen display (with logs)
-  (void)terminal_cursor_show();
-  fflush(stdout);
-
-  // Clear the log buffer so animation starts with clean slate
-  // This prevents any pre-splash logs from appearing in first frame
-  session_log_buffer_clear();
-
-  // Suppress stderr BEFORE creating animation thread to prevent real-time logs from
-  // appearing on screen and pushing the header around. Logs are captured in session_log_buffer
-  // and displayed through frame rendering. Stdout stays open for splash frames.
-  g_splash_state.devnull_fd = open("/dev/null", O_WRONLY);
-  if (g_splash_state.devnull_fd >= 0) {
-    g_splash_state.stderr_fd_saved = dup(STDERR_FILENO);
-    dup2(g_splash_state.devnull_fd, STDERR_FILENO);
-  }
-
-  // Set running flag
-  log_debug("[SPLASH] Setting running flag and initializing state");
-  atomic_store(&g_splash_state.is_running, true);
-  atomic_store(&g_splash_state.should_stop, false);
-  g_splash_state.frame = 0;
-  g_splash_state.start_time_ns = time_get_ns(); // Track start time for minimum display duration
-
-  // Start animation thread (stderr now suppressed, so only session_log_buffer captures logs)
-  // Only create if not already created to prevent multiple thread creations
-  // Use atomic compare-and-swap to make the check-and-set atomic and prevent race conditions
-  bool expected_false = false;
-  if (!atomic_compare_exchange_strong(&g_splash_state.thread_created, &expected_false, true)) {
-    log_debug("[SPLASH] Animation thread already created, skipping creation");
-    log_set_terminal_output(saved_console_state);
-    return 0;
-  }
-
-  log_debug("[SPLASH] About to create animation thread");
-  int err = asciichat_thread_create(&g_splash_state.anim_thread, "splash_anim", splash_animation_thread, NULL);
-  if (err != ASCIICHAT_OK) {
-    log_warn("Failed to create splash animation thread: error=%d", err);
-    atomic_store(&g_splash_state.thread_created, false);
     // Restore stderr on error
     if (g_splash_state.stderr_fd_saved >= 0) {
       dup2(g_splash_state.stderr_fd_saved, STDERR_FILENO);
@@ -706,19 +691,69 @@ int splash_intro_start(session_display_ctx_t *ctx) {
     return 0;
   }
 
-  log_debug("[SPLASH] Animation thread created successfully");
+  // Clear screen
+  terminal_clear_screen();
+  // Show cursor for splash screen display (with logs)
+  (void)terminal_cursor_show();
+  fflush(stdout);
 
-  // Restore console logging after splash screen completes
-  log_set_terminal_output(saved_console_state);
+  // Clear the log buffer so animation starts with clean slate
+  // This prevents any pre-splash logs from appearing in first frame
+  session_log_buffer_clear();
+
+  // Set running flag
+  log_debug("[SPLASH] Setting running flag and initializing state");
+  atomic_store(&g_splash_state.is_running, true);
+  atomic_store(&g_splash_state.should_stop, false);
+  g_splash_state.frame = 0;
+  g_splash_state.start_time_ns = time_get_ns(); // Track start time for minimum display duration
+
+  // Start animation thread (stderr now suppressed, so only session_log_buffer captures logs)
+  // Only create if not already created to prevent multiple thread creations
+  // Use atomic compare-and-swap to make the check-and-set atomic and prevent race conditions
+  bool expected_false = false;
+  if (!atomic_compare_exchange_strong(&g_splash_state.thread_created, &expected_false, true)) {
+    log_set_terminal_output(saved_console_state);
+    // Restore stderr on early return
+    if (g_splash_state.stderr_fd_saved >= 0) {
+      dup2(g_splash_state.stderr_fd_saved, STDERR_FILENO);
+      close(g_splash_state.stderr_fd_saved);
+      g_splash_state.stderr_fd_saved = -1;
+    }
+    if (g_splash_state.devnull_fd >= 0) {
+      close(g_splash_state.devnull_fd);
+      g_splash_state.devnull_fd = -1;
+    }
+    return 0;
+  }
+
+  int err = asciichat_thread_create(&g_splash_state.anim_thread, "splash_anim", splash_animation_thread, NULL);
+  if (err != ASCIICHAT_OK) {
+    log_warn("Failed to create splash animation thread: error=%d", err);
+    atomic_store(&g_splash_state.thread_created, false);
+    // Restore both stderr and console output on error
+    log_set_terminal_output(saved_console_state);
+    if (g_splash_state.stderr_fd_saved >= 0) {
+      dup2(g_splash_state.stderr_fd_saved, STDERR_FILENO);
+      close(g_splash_state.stderr_fd_saved);
+      g_splash_state.stderr_fd_saved = -1;
+    }
+    if (g_splash_state.devnull_fd >= 0) {
+      close(g_splash_state.devnull_fd);
+      g_splash_state.devnull_fd = -1;
+    }
+    return 0;
+  }
+
+  // Store console state to restore later (after post-splash logs)
+  // Keep console output DISABLED so logs don't appear on screen while splash is active
+  // or during post-splash logging phase
+  g_splash_state.saved_console_state = saved_console_state;
 
   return 0; // ASCIICHAT_OK
 }
 
 int splash_intro_done(void) {
-  log_info("[SPLASH_DONE] Entry: is_running=%d, should_stop=%d, thread_created=%d",
-           atomic_load(&g_splash_state.is_running), atomic_load(&g_splash_state.should_stop),
-           atomic_load(&g_splash_state.thread_created));
-
   // Enforce minimum display time of 2 seconds
   if (g_splash_state.start_time_ns > 0) {
     uint64_t now_ns = time_get_ns();
@@ -728,32 +763,36 @@ int splash_intro_done(void) {
     if (elapsed_ns < min_display_ns) {
       uint64_t remaining_ns = min_display_ns - elapsed_ns;
       uint64_t remaining_ms = (remaining_ns + 999999) / 1000000; // Round up to ms
-      log_info("[SPLASH_DONE] Elapsed: %.2f seconds, minimum: 2s. Waiting %llu ms", elapsed_ns / 1000000000.0,
-               (unsigned long long)remaining_ms);
       platform_sleep_ms(remaining_ms);
     }
   }
 
   // Signal animation thread to stop
-  log_info("[SPLASH_DONE] Setting should_stop=true");
   atomic_store(&g_splash_state.should_stop, true);
 
   // Wait for animation thread to finish (only join once, even if called multiple times)
-  log_debug("[SPLASH_DONE] Checking if animation thread was created");
   bool expected = true;
   if (atomic_compare_exchange_strong(&g_splash_state.thread_created, &expected, false)) {
     // We successfully changed thread_created from true to false, so we join
-    log_debug("[SPLASH_DONE] About to join animation thread");
     asciichat_thread_join(&g_splash_state.anim_thread, NULL);
-    log_debug("[SPLASH_DONE] Animation thread join completed");
-  } else {
-    // Another caller already joined the thread
-    log_debug("[SPLASH_DONE] Animation thread already joined or never created");
   }
 
   atomic_store(&g_splash_state.is_running, false);
 
-  // Restore stderr now that splash animation is complete
+  // Don't restore stderr here - keep it suppressed for a bit longer to suppress post-splash logs
+  // stderr will be restored by splash_restore_stderr() when called by the application
+
+  // Don't clear screen here - first frame will do it
+  // Clearing here can cause a brief scroll artifact during transition
+
+  // NOTE: Do NOT cleanup session_log_buffer here - it may be used by status screen
+  // Status screen will call session_log_buffer_destroy() when appropriate
+
+  return 0; // ASCIICHAT_OK
+}
+
+void splash_restore_stderr(void) {
+  // Restore stderr if it was suppressed by splash
   if (g_splash_state.stderr_fd_saved >= 0) {
     dup2(g_splash_state.stderr_fd_saved, STDERR_FILENO);
     close(g_splash_state.stderr_fd_saved);
@@ -764,15 +803,8 @@ int splash_intro_done(void) {
     g_splash_state.devnull_fd = -1;
   }
 
-  log_debug("[SPLASH_DONE] Exit");
-
-  // Don't clear screen here - first frame will do it
-  // Clearing here can cause a brief scroll artifact during transition
-
-  // NOTE: Do NOT cleanup session_log_buffer here - it may be used by status screen
-  // Status screen will call session_log_buffer_destroy() when appropriate
-
-  return 0; // ASCIICHAT_OK
+  // Restore console output so logs appear normally again
+  log_set_terminal_output(g_splash_state.saved_console_state);
 }
 
 int splash_display_status(int mode) {
