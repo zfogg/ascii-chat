@@ -5,7 +5,7 @@ set -euo pipefail
 pkill -f "ascii-chat.*server" && sleep 0.5 || true
 cmake --build build && ./build/bin/ascii-chat server >/dev/null &
 EXIT_CODE=0
-timeout -k1 8 ./build/bin/ascii-chat --log-level debug --log-file client.log --sync-state 3 client --matrix 2>/dev/null || EXIT_CODE=$?
+timeout -k1 8 ./build/bin/ascii-chat --log-level debug --log-file client.log --sync-state 3 client ws://localhost:27226 2>/dev/null || EXIT_CODE=$?
 
 # Extract and display frame statistics
 echo ""
