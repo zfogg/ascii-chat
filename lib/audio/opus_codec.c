@@ -46,12 +46,20 @@ opus_codec_t *opus_codec_create_encoder(opus_application_t application, int samp
     return NULL;
   }
 
+  // Enable DTX (Discontinuous Transmission) for efficient silence frame encoding
+  // DTX allows the encoder to produce very small packets (3-4 bytes) for silence,
+  // reducing bandwidth usage while maintaining audio quality for voice/music
+  error = opus_encoder_ctl(codec->encoder, OPUS_SET_DTX(1));
+  if (error != OPUS_OK) {
+    log_warn("Failed to enable Opus DTX: %s (continuing without DTX)", opus_strerror(error));
+  }
+
   codec->decoder = NULL;
   codec->sample_rate = sample_rate;
   codec->bitrate = bitrate;
   codec->tmp_buffer = NULL;
 
-  log_debug("Opus encoder created: sample_rate=%d, bitrate=%d bps", sample_rate, bitrate);
+  log_debug("Opus encoder created: sample_rate=%d, bitrate=%d bps, DTX enabled", sample_rate, bitrate);
 
   return codec;
 }
