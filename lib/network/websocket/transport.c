@@ -690,6 +690,13 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
                         "🔄 WEBSOCKET_RECV: Reassembly timeout after %llums (have %zu bytes, expecting final fragment)",
                         (unsigned long long)(elapsed_ns / 1000000ULL), assembled_size);
         }
+        // Log detailed diagnostics for 1+ second timeouts
+        if (elapsed_ns > 1000000000ULL) {  // 1 second+
+          log_warn("⚠️  WEBSOCKET_RECV TIMEOUT: No data received for %.1f seconds (queue_empty=%s, assembled=%zu/%zu)",
+                   (double)elapsed_ns / 1000000000.0,
+                   ringbuffer_is_empty(ws_data->recv_queue) ? "yes" : "no",
+                   assembled_size, assembled_capacity);
+        }
         // Use log_error instead of SET_ERRNO to avoid backtrace capture overhead
         // Fragment timeout is transient and expected - doesn't require full error context
         log_error("Fragment reassembly timeout - no data from network");
