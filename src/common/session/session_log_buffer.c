@@ -45,6 +45,7 @@ void session_log_buffer_destroy(void) {
   }
   mutex_destroy(&g_log_buffer->mutex);
   SAFE_FREE(g_log_buffer);
+  g_log_buffer = NULL; // Mark as destroyed to prevent double-destroy issues
 }
 
 void session_log_buffer_clear(void) {

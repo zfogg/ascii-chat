@@ -688,9 +688,7 @@ cleanup:
     (void)platform_write_all(STDOUT_FILENO, &newline, 1);
   }
 
-  log_debug("About to disable terminal output");
   log_set_terminal_output(false);
-  log_debug("Returning from session_client_like_run");
 
   return result;
 }

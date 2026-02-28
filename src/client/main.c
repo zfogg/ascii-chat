@@ -817,7 +817,8 @@ int client_main(void) {
   connection_context_cleanup(&g_client_session.connection_ctx);
 
   // Cleanup session log buffer (used by splash screen in session_client_like)
-  session_log_buffer_destroy();
+  // NOTE: session_log_buffer_destroy() is already called in session_client_like_run()
+  // during its cleanup phase, so we don't call it here to avoid double-destroy of mutex
 
   log_debug("ascii-chat client shutting down");
 
