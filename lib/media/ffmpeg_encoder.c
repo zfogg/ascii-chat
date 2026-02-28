@@ -25,6 +25,7 @@ struct ffmpeg_encoder_s {
   int width_px;
   int height_px;
   int frame_count;
+  int fps;                           // Frames per second (for duration calculation)
   int is_image;                      // Single-frame format (PNG, JPG)
   enum AVPixelFormat target_pix_fmt; // RGB24 for images, YUV420P for video
 };
@@ -84,6 +85,7 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
   ffmpeg_encoder_t *enc = SAFE_CALLOC(1, sizeof(*enc), ffmpeg_encoder_t *);
   enc->width_px = width_px;
   enc->height_px = height_px;
+  enc->fps = fps;
 
   const char *codec_name = NULL, *format_name = NULL;
   get_codec_from_extension(output_path, &codec_name, &format_name, &enc->is_image, &enc->target_pix_fmt);
@@ -219,6 +221,11 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
     }
   }
 
+  // For MP4 video, set movflags to ensure proper container (faststart moves moov to beginning)
+  if (strcmp(enc->fmt_ctx->oformat->name, "mp4") == 0) {
+    av_dict_set(&opts, "movflags", "faststart", 0);
+  }
+
   // Write header
   ret = avformat_write_header(enc->fmt_ctx, &opts);
   av_dict_free(&opts); // Free options after use
@@ -279,6 +286,9 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
 
     av_packet_rescale_ts(enc->pkt, enc->codec_ctx->time_base, enc->stream->time_base);
     enc->pkt->stream_index = enc->stream->index;
+    // Set packet duration = 1 frame duration in stream time units
+    // duration = stream_time_base / frame_time = (time_base.den/time_base.num) / fps
+    enc->pkt->duration = (enc->stream->time_base.den / enc->stream->time_base.num) / enc->fps;
 
     ret = av_interleaved_write_frame(enc->fmt_ctx, enc->pkt);
     av_packet_unref(enc->pkt);
