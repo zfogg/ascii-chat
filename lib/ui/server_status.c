@@ -195,9 +195,11 @@ void server_status_display(const server_status_t *status) {
     return;
   }
 
-  // Only render the status screen in interactive mode
-  // In non-interactive mode, logs flow to stdout/stderr normally
-  if (!terminal_is_interactive()) {
+  // Only render the status screen if:
+  // 1. Terminal is interactive (default behavior), OR
+  // 2. User explicitly set --status-screen on command line (force it regardless of terminal)
+  // In non-interactive mode without explicit flag, logs flow to stdout/stderr normally
+  if (!terminal_is_interactive() && !GET_OPTION(status_screen_explicitly_set)) {
     return;
   }
 
@@ -229,8 +231,11 @@ bool server_status_display_interactive(const server_status_t *status) {
     return true;
   }
 
-  // Only render the status screen in interactive mode
-  if (!terminal_is_interactive()) {
+  // Only render the status screen if:
+  // 1. Terminal is interactive (default behavior), OR
+  // 2. User explicitly set --status-screen on command line (force it regardless of terminal)
+  // In non-interactive mode without explicit flag, logs flow to stdout/stderr normally
+  if (!terminal_is_interactive() && !GET_OPTION(status_screen_explicitly_set)) {
     return true;
   }
 
