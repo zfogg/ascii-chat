@@ -320,6 +320,13 @@ static char *decode_frame_data(const char *frame_data_ptr, size_t frame_data_len
  * @ingroup client_protocol
  */
 static void handle_ascii_frame_packet(const void *data, size_t len) {
+  static int frame_count = 0;
+  frame_count++;
+  if (frame_count == 1) {
+    fprintf(stderr, "★ HANDLE_ASCII_FRAME_PACKET: First frame received! len=%zu\n", len);
+    fflush(stderr);
+  }
+
   if (should_exit()) {
     return;
   }
@@ -615,8 +622,8 @@ static void handle_audio_opus_packet(const void *data, size_t len) {
     time_pretty((uint64_t)decode_ns, -1, decode_str, sizeof(decode_str));
     time_pretty((uint64_t)process_ns, -1, process_str, sizeof(process_str));
     time_pretty((uint64_t)total_ns, -1, total_str, sizeof(total_str));
-    log_debug("Audio packet timing #%d: decode=%s, process=%s, total=%s", timing_count, decode_str,
-              process_str, total_str);
+    log_debug("Audio packet timing #%d: decode=%s, process=%s, total=%s", timing_count, decode_str, process_str,
+              total_str);
   }
 
   log_debug_every(LOG_RATE_DEFAULT, "Processed Opus audio: %d decoded samples from %zu byte packet", decoded_samples,
@@ -922,6 +929,9 @@ const acip_client_callbacks_t *protocol_get_acip_callbacks() {
 static void *data_reception_thread_func(void *arg) {
   (void)arg;
 
+  fprintf(stderr, "★ DATA_RECEPTION_THREAD_FUNC: Thread started, about to enter main loop\n");
+  fflush(stderr);
+
   log_warn("[FRAME_RECV_LOOP] 🔄 THREAD_STARTED: Data reception thread active, callbacks initialized");
 
 #ifdef DEBUG_THREADS
@@ -944,7 +954,15 @@ static void *data_reception_thread_func(void *arg) {
 
     log_debug("[FRAME_RECV_LOOP] 📥 RECV_WAITING: awaiting packet #%d from server (transport ready)", packet_count + 1);
 
+    if (packet_count == 0) {
+      fprintf(stderr, "★ DATA_RECEPTION_THREAD: About to call acip_client_receive_and_dispatch for first time\n");
+      fflush(stderr);
+    }
     asciichat_error_t acip_result = acip_client_receive_and_dispatch(transport, &g_acip_client_callbacks);
+    if (packet_count == 0) {
+      fprintf(stderr, "★ DATA_RECEPTION_THREAD: acip_client_receive_and_dispatch returned: result=%d\n", acip_result);
+      fflush(stderr);
+    }
 
     if (acip_result == ASCIICHAT_OK) {
       packet_count++;
@@ -1004,6 +1022,8 @@ static void *data_reception_thread_func(void *arg) {
  * @ingroup client_protocol
  */
 int protocol_start_connection() {
+  fprintf(stderr, "★ PROTOCOL_START_CONNECTION: About to initialize\n");
+  fflush(stderr);
   log_warn("[FRAME_RECV_INIT] 🟢 PROTOCOL_START: Starting client protocol initialization");
 
   // Reset protocol state for new connection
@@ -1044,11 +1064,17 @@ int protocol_start_connection() {
   // Start data reception thread
   log_warn("[FRAME_RECV_INIT] 🔄 STARTING_DATA_THREAD: callbacks registered, about to spawn thread");
   atomic_store(&g_data_thread_exited, false);
+  fprintf(stderr, "★ PROTOCOL_START_CONNECTION: About to spawn data_reception thread\n");
+  fflush(stderr);
   if (thread_pool_spawn(g_client_worker_pool, data_reception_thread_func, NULL, 1, "data_reception") != ASCIICHAT_OK) {
     log_error("[FRAME_RECV_INIT] ❌ DATA_THREAD_SPAWN_FAILED: cannot start frame receive thread");
     LOG_ERRNO_IF_SET("Data reception thread creation failed");
+    fprintf(stderr, "★ PROTOCOL_START_CONNECTION: DATA_THREAD_SPAWN_FAILED\n");
+    fflush(stderr);
     return -1;
   }
+  fprintf(stderr, "★ PROTOCOL_START_CONNECTION: data_reception thread spawned successfully\n");
+  fflush(stderr);
   log_warn("[FRAME_RECV_INIT] ✅ DATA_THREAD_SPAWNED: frame receive thread is now running, waiting for frames...");
 
   // Start webcam capture thread
@@ -1166,6 +1192,13 @@ bool protocol_connection_lost() {
  */
 static void acip_on_ascii_frame(const ascii_frame_packet_t *header, const void *frame_data, size_t data_len,
                                 void *ctx) {
+  static int callback_count = 0;
+  callback_count++;
+  if (callback_count == 1) {
+    fprintf(stderr, "★ ACIP_ON_ASCII_FRAME: First callback! width=%u, height=%u, data_len=%zu\n", header->width,
+            header->height, data_len);
+    fflush(stderr);
+  }
   (void)ctx;
 
   log_info("[FRAME_RECV_CALLBACK] 🎬 FRAME_RECEIVED: width=%u, height=%u, data_len=%zu bytes, flags=0x%x",

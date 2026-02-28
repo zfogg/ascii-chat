@@ -196,8 +196,6 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     splash_restore_stderr();
   }
 
-  uint64_t init_start = time_get_ns();
-
   // ============================================================================
   // SETUP: Terminal Logging in Snapshot Mode
   // ============================================================================
@@ -210,8 +208,9 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     log_set_terminal_output(false);
   }
 
-  double elapsed_ms = time_ns_to_ms(time_elapsed_ns(init_start, time_get_ns()));
-  log_info("★ INIT_CHECKPOINT: Media setup starting at %.1f ms", elapsed_ms);
+  // Direct stderr writes to bypass logging system (for timing diagnostics)
+  fprintf(stderr, "★ CLIENT_INIT_CHECKPOINT: About to start media setup\n");
+  fflush(stderr);
 
   // ============================================================================
   // SETUP: Media Source Selection and FPS Probing
@@ -560,8 +559,12 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   while (true) {
     attempt++;
 
+    fprintf(stderr, "★ CLIENT_INIT_CHECKPOINT: About to call config->run_fn() (attempt %d)\n", attempt);
+    fflush(stderr);
     log_debug("About to call config->run_fn() (attempt %d)", attempt);
     result = config->run_fn(capture, display, config->run_user_data);
+    fprintf(stderr, "★ CLIENT_INIT_CHECKPOINT: config->run_fn() returned with result=%d\n", result);
+    fflush(stderr);
     log_debug("config->run_fn() returned with result=%d", result);
 
     // Exit immediately if run_fn succeeded
