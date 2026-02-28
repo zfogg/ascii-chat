@@ -2831,6 +2831,16 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
       log_info("FRAME_STORAGE: client=%s, frame=%p, frame->data=%p, capacity=%zu, data_len=%zu, total=%zu",
                client->client_id, (void *)frame, (void *)frame->data, buffer_capacity, data_len, total_size);
 
+      // CRITICAL: Bounds check BEFORE memcpy to prevent heap-buffer-overflow
+      // If buffer is too small, skip frame storage instead of overflowing
+      if (total_size > buffer_capacity) {
+        log_error(
+            "FRAME_STORAGE_OVERFLOW_PREVENTED: client=%s, need=%zu bytes, capacity=%zu bytes (cannot store frame)",
+            client->client_id, total_size, buffer_capacity);
+        disconnect_client_for_bad_data(client, "FRAME_STORAGE_BUFFER_TOO_SMALL");
+        return;
+      }
+
       // Copy frame data: width (4B) + height (4B) + pixel data
       uint32_t width_net = HOST_TO_NET_U32(header->width);
       uint32_t height_net = HOST_TO_NET_U32(header->height);
