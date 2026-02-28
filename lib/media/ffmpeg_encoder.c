@@ -157,8 +157,11 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
     return SET_ERRNO(ERROR_INIT, "ffmpeg: avcodec_parameters_from_context failed");
   }
 
-  // For image2 format (single frame images like PNG), set appropriate options
+  // Muxer options for proper MP4 container structure
   AVDictionary *opts = NULL;
+  // Move moov atom to the front (faststart) - helps with streaming and player compatibility
+  av_dict_set(&opts, "movflags", "faststart", 0);
+
   if (enc->is_image) {
     // Use -update flag for single frame output
     av_dict_set(&opts, "update", "1", 0);
