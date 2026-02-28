@@ -435,53 +435,19 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
       // libwebsockets automatically fragments based on its MTU and manages FIN bits
       log_debug("WebSocket sending %zu bytes (first=%d) with LWS_WRITE_BINARY", msg.len, msg.first);
 
-      int written = lws_write(ws_data->wsi, msg.data + LWS_PRE, msg.len, LWS_WRITE_BINARY);
+      int result = lws_write(ws_data->wsi, msg.data + LWS_PRE, msg.len, LWS_WRITE_BINARY);
 
-      size_t offset = 0;
-      if (written > 0) {
-        offset = written;
-      } else if (written < 0) {
-        log_error("WebSocket write failed, buffer may be full");
-        offset = 0;
-      }
-
-      // Only free AFTER entire message is sent
-      if (offset >= msg.len) {
-        // Message fully sent - queue for deferred free
+      if (result < 0) {
+        // Error - pipe is full or other error
+        log_debug("WebSocket write returned %d (pipe choked), re-queueing", result);
+        ringbuffer_write(ws_data->send_queue, &msg);
+        break;  // Stop processing, wait for next writeable callback
+      } else {
+        // Success - lws_write handles ALL fragmentation internally
+        // The entire message is queued for sending (fragmented internally by libwebsockets)
         deferred_buffer_free(ws_data, msg.data, LWS_PRE + msg.len);
         message_count++;
-      } else if (offset > 0) {
-        // Partial send - COPY the unsent portion to a new buffer
-        // This avoids use-after-free when freeing the original buffer
-        size_t remaining_len = msg.len - offset;
-        uint8_t *remainder_buffer = buffer_pool_alloc(NULL, remaining_len + LWS_PRE);
-
-        if (remainder_buffer) {
-          // Copy unsent data to new buffer (after LWS_PRE space)
-          memcpy(remainder_buffer + LWS_PRE, msg.data + LWS_PRE + offset, remaining_len);
-
-          websocket_recv_msg_t remainder;
-          remainder.data = remainder_buffer;
-          remainder.len = remaining_len;
-          remainder.first = 0;  // Mark as continuation (will use LWS_WRITE_CONTINUATION)
-          remainder.final = msg.final;
-
-          ringbuffer_write(ws_data->send_queue, &remainder);
-          log_info("  Re-queued %zu bytes remainder in new buffer (sent %zu of %zu)",
-                   remaining_len, offset, msg.len);
-
-          // Free the original buffer now that we've extracted what we need
-          deferred_buffer_free(ws_data, msg.data, LWS_PRE + msg.len);
-        } else {
-          log_error("Failed to allocate remainder buffer (%zu bytes), re-queueing original",
-                    remaining_len + LWS_PRE);
-          // Re-queue original on allocation failure
-          ringbuffer_write(ws_data->send_queue, &msg);
-        }
-      } else {
-        // No bytes sent - buffer is choked, re-queue this message
-        ringbuffer_write(ws_data->send_queue, &msg);
-        break;  // Exit while loop when pipe is choked
+        log_debug("Message queued for send, will be fragmented by libwebsockets");
       }
     }  // End while loop - continues until queue empty or pipe choked
 
