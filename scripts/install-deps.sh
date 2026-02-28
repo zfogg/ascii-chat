@@ -148,6 +148,8 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       libwebsockets-dev  \
       yyjson-dev
 
+    curl -fsSL https://bun.com/install | sudo bash
+
     # Try LLVM versions in order from newest to oldest
     LLVM_VERSIONS="21 20 19 18"
     LLVM_VERSION=""
@@ -304,6 +306,8 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       rpm-build
 
     sudo python3 -m pip install -U "yt-dlp[default]"
+
+    curl -fsSL https://bun.com/install | sudo bash
 
   elif command -v pacman &>/dev/null; then
     echo "Detected pacman package manager"
