@@ -114,8 +114,8 @@ static const char *find_generic_type_prefix(const char *start, const char *p, co
       const char *type;
       size_t len;
     } known_types[] = {
-        {"socket", 6}, {"client", 6},  {"connection", 10}, {"fd", 2},      {"file", 4},    {"descriptor", 11},
-        {"thread", 6}, {"decoder", 7}, {"encoder", 7},     {"context", 7}, {"handler", 7},
+        {"socket", 6},      {"sockfd", 6}, {"client", 6},  {"connection", 10}, {"fd", 2},      {"file", 4},
+        {"descriptor", 11}, {"thread", 6}, {"decoder", 7}, {"encoder", 7},     {"context", 7}, {"handler", 7},
     };
 
     for (size_t i = 0; i < sizeof(known_types) / sizeof(known_types[0]); i++) {
