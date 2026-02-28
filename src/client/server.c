@@ -70,6 +70,7 @@
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/client.h>
 #include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/websocket/internal.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/time.h>
@@ -905,28 +906,36 @@ void server_connection_close() {
 /**
  * @brief Interrupt WebSocket recv() calls from signal handler
  *
- * For WebSocket transports, we interrupt blocking recv() by closing the
- * transport. The recv() function checks is_connected before waiting
- * and will return immediately when the connection is closed.
+ * For WebSocket transports, we signal the condition variable to wake
+ * any blocking recv() calls. This is fully async-signal-safe.
  *
- * This is async-signal-safe (no mutexes needed).
+ * The recv() function will check is_connected and return when the
+ * main tcp shutdown has taken effect.
+ *
+ * This is async-signal-safe (no mutexes needed - direct signal only).
  *
  * @ingroup client_connection
  */
 static void server_connection_interrupt_websocket_recv(void) {
-  // Access the transport - we only call close() which should be safe
+  // Access the transport
   acip_transport_t *transport = g_client_transport;
-  if (!transport || !transport->methods || !transport->methods->close) {
-    return; // No transport or no close method
+  if (!transport || !transport->impl_data) {
+    return; // No transport
   }
 
   // Check if this is a WebSocket transport
-  if (transport->methods->get_type) {
+  if (transport->methods && transport->methods->get_type) {
     acip_transport_type_t type = transport->methods->get_type(transport);
     if (type == ACIP_TRANSPORT_WEBSOCKET) {
-      // For WebSocket, call close() to interrupt blocking recv()
-      // The recv() checks is_connected before waiting, so closing will unblock it
-      transport->methods->close(transport);
+      // For WebSocket, directly signal the recv condition variable to wake
+      // any blocked threads. This is async-signal-safe (doesn't require mutex).
+      // The waiting threads will re-acquire their mutexes and check is_connected.
+      websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
+
+      // Signal recv condition - wakes threads waiting for fragments
+      // This is safe to call without holding the recv_mutex
+      cond_broadcast(&ws_data->recv_cond);
+      cond_broadcast(&ws_data->state_cond);
     }
   }
 }
