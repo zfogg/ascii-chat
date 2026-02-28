@@ -896,6 +896,34 @@ void server_connection_close() {
   }
   log_debug("[TRANSPORT_LIFECYCLE] server_connection_close() completed");
 }
+/**
+ * @brief Interrupt WebSocket recv() calls from signal handler
+ *
+ * For WebSocket transports, we interrupt blocking recv() by closing the
+ * transport. The recv() function checks is_connected before waiting
+ * and will return immediately when the connection is closed.
+ *
+ * This is async-signal-safe (no mutexes needed).
+ *
+ * @ingroup client_connection
+ */
+static void server_connection_interrupt_websocket_recv(void) {
+  // Access the transport - we only call close() which should be safe
+  acip_transport_t *transport = g_client_transport;
+  if (!transport || !transport->methods || !transport->methods->close) {
+    return; // No transport or no close method
+  }
+
+  // Check if this is a WebSocket transport
+  if (transport->methods->get_type) {
+    acip_transport_type_t type = transport->methods->get_type(transport);
+    if (type == ACIP_TRANSPORT_WEBSOCKET) {
+      // For WebSocket, call close() to interrupt blocking recv()
+      // The recv() checks is_connected before waiting, so closing will unblock it
+      transport->methods->close(transport);
+    }
+  }
+}
 
 /**
  * @brief Emergency connection shutdown for signal handlers
@@ -923,6 +951,12 @@ void server_connection_shutdown() {
     // from the main thread after worker threads have been joined.
     socket_shutdown(g_sockfd, SHUT_RDWR);
   }
+
+  // For WebSocket transport: interrupt blocking recv() calls
+  // The recv() checks is_connected before waiting for data. Setting this to false
+  // will cause any blocked recv() to return immediately with CONNECTION_CLOSED.
+  // We use a function that's async-signal-safe (no mutexes) to do this.
+  server_connection_interrupt_websocket_recv();
 
   // DO NOT call log_set_terminal_output() here - it uses mutex which is NOT async-signal-safe.
   // The normal cleanup path in shutdown_client() will handle logging state.
