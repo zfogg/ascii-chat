@@ -565,12 +565,17 @@ __attribute__((weak)) void platform_print_backtrace_symbols(const char *label, c
   // Get current time in nanoseconds for template formatting
   uint64_t time_ns = platform_get_monotonic_time_us() * 1000ULL;
 
-  // Try to format header using the logging system's template
+  // Try to format header using the logging system's template with color
   log_template_t *format = log_get_template();
   if (format) {
-    // Use label directly - logging system will handle color output
+    // Color the label with WARN color for terminal output
+    const char *colored_label_ptr = colored_string(LOG_COLOR_WARN, label);
+    char colored_label_buf[256];
+    strncpy(colored_label_buf, colored_label_ptr, sizeof(colored_label_buf) - 1);
+    colored_label_buf[sizeof(colored_label_buf) - 1] = '\0';
+
     int len = log_template_apply(format, log_header_buf, sizeof(log_header_buf), LOG_WARN, timestamp, __FILE__,
-                                 __LINE__, __func__, tid_val, label, true, time_ns);
+                                 __LINE__, __func__, tid_val, colored_label_buf, true, time_ns);
     if (len > 0) {
       // Successfully formatted with logging template
       colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
@@ -579,15 +584,23 @@ __attribute__((weak)) void platform_print_backtrace_symbols(const char *label, c
       // Fallback: manual formatting if template fails
       safe_snprintf(log_header_buf, sizeof(log_header_buf), "[%s] [WARN] [tid:%llu] %s: %s", timestamp, tid_val,
                     __func__, label);
+      const char *colored_header_ptr = colored_string(LOG_COLOR_WARN, log_header_buf);
+      char colored_header_buf[512];
+      strncpy(colored_header_buf, colored_header_ptr, sizeof(colored_header_buf) - 1);
+      colored_header_buf[sizeof(colored_header_buf) - 1] = '\0';
       colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
-                                      "%s\n", log_header_buf);
+                                      "%s\n", colored_header_buf);
     }
   } else {
     // Fallback: manual formatting if no template available
     safe_snprintf(log_header_buf, sizeof(log_header_buf), "[%s] [WARN] [tid:%llu] %s: %s", timestamp, tid_val, __func__,
                   label);
+    const char *colored_header_ptr = colored_string(LOG_COLOR_WARN, log_header_buf);
+    char colored_header_buf[512];
+    strncpy(colored_header_buf, colored_header_ptr, sizeof(colored_header_buf) - 1);
+    colored_header_buf[sizeof(colored_header_buf) - 1] = '\0';
     colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
-                                    "%s\n", log_header_buf);
+                                    "%s\n", colored_header_buf);
   }
 
   // Add plain label header for log file
@@ -608,7 +621,11 @@ __attribute__((weak)) void platform_print_backtrace_symbols(const char *label, c
     char frame_num_str[16];
     safe_snprintf(frame_num_str, sizeof(frame_num_str), "%d", frame_num);
 
-    // Use frame number directly - logging system will handle color output
+    // Get colored frame number - copy to temp buffer to avoid rotating buffer issues
+    const char *colored_num_ptr = colored_string(LOG_COLOR_GREY, frame_num_str);
+    char colored_num_buf[256];
+    strncpy(colored_num_buf, colored_num_ptr, sizeof(colored_num_buf) - 1);
+    colored_num_buf[sizeof(colored_num_buf) - 1] = '\0';
 
     // Parse symbol to extract parts for selective coloring
     // Format: "[binary_name] function_name() (file:line)"
@@ -628,8 +645,12 @@ __attribute__((weak)) void platform_print_backtrace_symbols(const char *label, c
         char bin_name[512];
         strncpy(bin_name, s, bin_len);
         bin_name[bin_len] = '\0';
+        const char *colored_bin_ptr = colored_string(LOG_COLOR_DEBUG, bin_name);
+        char colored_bin_buf[512];
+        strncpy(colored_bin_buf, colored_bin_ptr, sizeof(colored_bin_buf) - 1);
+        colored_bin_buf[sizeof(colored_bin_buf) - 1] = '\0';
         colored_sym_offset += safe_snprintf(colored_symbol + colored_sym_offset,
-                                            sizeof(colored_symbol) - colored_sym_offset, "%s", bin_name);
+                                            sizeof(colored_symbol) - colored_sym_offset, "%s", colored_bin_buf);
         colored_sym_offset +=
             safe_snprintf(colored_symbol + colored_sym_offset, sizeof(colored_symbol) - colored_sym_offset, "] ");
         s = bracket_end + 1;
@@ -662,8 +683,12 @@ __attribute__((weak)) void platform_print_backtrace_symbols(const char *label, c
       strncpy(desc_content, paren_start + 1, desc_content_len); // +1 to skip opening paren
       desc_content[desc_content_len] = '\0';
 
+      const char *colored_desc_ptr = colored_string(LOG_COLOR_ERROR, desc_content);
+      char colored_desc_buf[512];
+      strncpy(colored_desc_buf, colored_desc_ptr, sizeof(colored_desc_buf) - 1);
+      colored_desc_buf[sizeof(colored_desc_buf) - 1] = '\0';
       colored_sym_offset += safe_snprintf(colored_symbol + colored_sym_offset,
-                                          sizeof(colored_symbol) - colored_sym_offset, "(%s)", desc_content);
+                                          sizeof(colored_symbol) - colored_sym_offset, "(%s)", colored_desc_buf);
 
       // Now color file:line in parens
       // Skip leading spaces in file_part
@@ -678,10 +703,20 @@ __attribute__((weak)) void platform_print_backtrace_symbols(const char *label, c
         strncpy(filename, file_start, filename_len);
         filename[filename_len] = '\0';
 
+        const char *colored_file_ptr = colored_string(LOG_COLOR_DEBUG, filename);
+        char colored_file_buf[512];
+        strncpy(colored_file_buf, colored_file_ptr, sizeof(colored_file_buf) - 1);
+        colored_file_buf[sizeof(colored_file_buf) - 1] = '\0';
+
         const char *line_num = file_colon + 1;
+        const char *colored_line_ptr = colored_string(LOG_COLOR_GREY, line_num);
+        char colored_line_buf[512];
+        strncpy(colored_line_buf, colored_line_ptr, sizeof(colored_line_buf) - 1);
+        colored_line_buf[sizeof(colored_line_buf) - 1] = '\0';
+
         colored_sym_offset +=
             safe_snprintf(colored_symbol + colored_sym_offset, sizeof(colored_symbol) - colored_sym_offset, " (%s:%s)",
-                          filename, line_num);
+                          colored_file_buf, colored_line_buf);
       }
     } else if (paren_start) {
       // Format: "function() (file:line)"
@@ -744,14 +779,18 @@ __attribute__((weak)) void platform_print_backtrace_symbols(const char *label, c
         }
       }
     } else {
-      // No parens, likely a hex address
-      colored_sym_offset +=
-          safe_snprintf(colored_symbol + colored_sym_offset, sizeof(colored_symbol) - colored_sym_offset, "%s", s);
+      // No parens, likely a hex address - color with FATAL
+      const char *colored_addr_ptr = colored_string(LOG_COLOR_FATAL, s);
+      char colored_addr_buf[512];
+      strncpy(colored_addr_buf, colored_addr_ptr, sizeof(colored_addr_buf) - 1);
+      colored_addr_buf[sizeof(colored_addr_buf) - 1] = '\0';
+      colored_sym_offset += safe_snprintf(colored_symbol + colored_sym_offset,
+                                          sizeof(colored_symbol) - colored_sym_offset, "%s", colored_addr_buf);
     }
 
-    // Format colored buffer: "  [num] symbol\n"
+    // Format colored buffer: "  [colored_num] colored_symbol\n"
     colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
-                                    "  [%d] %s\n", frame_num, colored_symbol);
+                                    "  [%s] %s\n", colored_num_buf, colored_symbol);
 
     // Format plain buffer: "  [num] symbol\n"
     plain_offset += safe_snprintf(plain_buffer + plain_offset, sizeof(plain_buffer) - (size_t)plain_offset,
