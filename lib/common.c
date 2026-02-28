@@ -248,6 +248,8 @@ void asciichat_shared_destroy(void) {
 #ifndef NDEBUG
   extern void mutex_stack_cleanup(void);
   mutex_stack_cleanup();
+  // Final cleanup: free the main thread's debug allocations
+  debug_sync_final_cleanup();
 #endif
 
   // 16. Memory stats (debug builds only) - runs with colors still available
