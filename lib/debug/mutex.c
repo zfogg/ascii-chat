@@ -44,6 +44,10 @@ static _Atomic(int) g_thread_registry_count = 0;
 static tls_key_t g_tls_mutex_stack = 0;
 static _Atomic(bool) g_tls_initialized = false;
 
+// Flag set during shutdown to prevent new stack allocations
+// (threads still running at shutdown time won't leak new stacks)
+static _Atomic(bool) g_shutting_down = false;
+
 // Track the mutexes involved in the last detected deadlock for throttling
 #define MAX_CYCLE_MUTEXES 16
 typedef struct {
@@ -100,8 +104,14 @@ static void register_thread_if_needed(void);
 /**
  * @brief Get the thread-local stack for fast per-thread operations
  * Lazily allocates on first access. Destructor automatically frees on thread exit.
+ * Returns NULL during shutdown to prevent new allocations from threads still running.
  */
 static thread_lock_stack_t *get_thread_local_stack(void) {
+  // Skip allocation during shutdown (prevents leaks from threads killed mid-shutdown)
+  if (atomic_load_explicit(&g_shutting_down, memory_order_acquire)) {
+    return NULL;
+  }
+
   // Ensure TLS key is initialized
   ensure_tls_initialized();
 
@@ -578,8 +588,22 @@ int mutex_stack_init(void) {
 }
 
 void mutex_stack_cleanup(void) {
+  // Signal shutdown to prevent new allocations from threads still running
+  atomic_store_explicit(&g_shutting_down, true, memory_order_release);
+
+  // Manually free any remaining stacks in the registry (for threads still running)
+  // These won't be freed by TLS destructors if threads are killed during shutdown
+  int count = atomic_load_explicit(&g_thread_registry_count, memory_order_acquire);
+  for (int i = 0; i < count; i++) {
+    if (g_thread_registry[i].stack) {
+      SAFE_FREE(g_thread_registry[i].stack);
+      g_thread_registry[i].stack = NULL;
+    }
+  }
+
   // Delete the TLS key (if it was created)
   // This ensures destructors are called for any remaining thread-local values
+  // (though most stacks were already freed above)
   if (atomic_load_explicit(&g_tls_initialized, memory_order_acquire)) {
     ascii_tls_key_delete(g_tls_mutex_stack);
     atomic_store_explicit(&g_tls_initialized, false, memory_order_release);

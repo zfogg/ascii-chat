@@ -190,10 +190,6 @@ void asciichat_shared_destroy(void) {
   // This must happen after thread cleanup but before any subsystem that uses mutex_lock
   extern void debug_sync_destroy(void);
   debug_sync_destroy();
-
-  // Cleanup mutex stack TLS (deletes TLS key and triggers destructors)
-  extern void mutex_stack_cleanup(void);
-  mutex_stack_cleanup();
 #endif
 
   // 1. Webcam - cleanup resources
@@ -255,7 +251,13 @@ void asciichat_shared_destroy(void) {
   log_cleanup_colors();
   colorscheme_destroy();
 
-  // 15. PCRE2 - cleanup all regex singletons together
+  // 15. Mutex stack cleanup - MUST be after memory report (which may allocate new stacks)
+#ifndef NDEBUG
+  extern void mutex_stack_cleanup(void);
+  mutex_stack_cleanup();
+#endif
+
+  // 16. PCRE2 - cleanup all regex singletons together
   asciichat_pcre2_cleanup_all();
 }
 
