@@ -154,7 +154,7 @@ static const char *find_fd_prefix_start(const char *start, const char *p) {
 
   /* Check if we have a digit (we're in a decimal number) */
   if (!isdigit(*word_start)) {
-    /* Not a digit, so look for fd/file/descriptor keywords before us */
+    /* Not a digit, so look for fd/file/descriptor/socket/sockfd keywords before us */
     const char *check = word_start;
     while (check > start && (isalnum(*check) || *check == '_')) {
       check--;
@@ -165,6 +165,8 @@ static const char *find_fd_prefix_start(const char *start, const char *p) {
     if (word_len >= 2) {
       if ((word_len == 2 && strncasecmp(check, "fd", 2) == 0) ||
           (word_len == 4 && strncasecmp(check, "file", 4) == 0) ||
+          (word_len == 6 && strncasecmp(check, "socket", 6) == 0) ||
+          (word_len == 6 && strncasecmp(check, "sockfd", 6) == 0) ||
           (word_len == 10 && strncasecmp(check, "descriptor", 10) == 0)) {
         return check; /* Return start of keyword */
       }
@@ -340,8 +342,8 @@ int log_named_format_message(const char *message, char *output, size_t output_si
 
       /* Skip if this integer is part of already-formatted output like "(fd=20)" or "(type/name (...))" */
       bool is_already_formatted = false;
-      if (int_start >= 5) {
-        /* Check for "(fd=", "(pkt_type=", or "(type/" patterns to prevent re-formatting.
+      if (int_start - message >= 5) {
+        /* Check for "(fd=", "(pkt_type=", "(socket=", "(sockfd=", or "(type/" patterns to prevent re-formatting.
          * Named objects are formatted as: type/name (0xaddress) or type/name (key=value)
          * We need to detect if we're already inside a formatted output.
          */
@@ -349,8 +351,9 @@ int log_named_format_message(const char *message, char *output, size_t output_si
         while (check > message && isspace(*check))
           check--;
 
-        if (*check == '=') {
-          /* Found "=", now check what prefix it has for patterns like "(fd=20)" or "(pkt_type=123)" */
+        // Only access *check if pointer is within bounds
+        if (check >= message && *check == '=') {
+          /* Found "=", now check what prefix it has for patterns like "(fd=20)" or "(socket=20)" or "(pkt_type=123)" */
           const char *eq_pos = check;
           check--;
           while (check > message && (isalnum(*check) || *check == '_')) {
@@ -360,10 +363,12 @@ int log_named_format_message(const char *message, char *output, size_t output_si
 
           size_t prefix_len = eq_pos - check;
           if ((prefix_len == 2 && strncmp(check, "fd", 2) == 0) ||
+              (prefix_len == 6 && strncmp(check, "socket", 6) == 0) ||
+              (prefix_len == 6 && strncmp(check, "sockfd", 6) == 0) ||
               (prefix_len == 8 && strncmp(check, "pkt_type", 8) == 0)) {
             is_already_formatted = true;
           }
-        } else if (*check == '/') {
+        } else if (check >= message && *check == '/') {
           /* Found "/", now check if this is a type/name pattern.
            * Format is "(type/name (...)" where type is word characters (thread, mutex, socket, etc.)
            * Must verify "/" is preceded by word characters AND "(" to ensure it's a formatted type.
