@@ -587,8 +587,9 @@ static void server_handle_sigint(int sigint) {
   // holding the memory tracking lock or log buffer lock, the handler deadlocks.
   // Since SIGINT auto-masks during handler execution, a second Ctrl+C would be
   // blocked, preventing platform_force_exit() from ever running.
-  static const char sigint_msg[] = "SIGINT received - shutting down server...\n";
-  platform_write_all(STDERR_FILENO, sigint_msg, sizeof(sigint_msg) - 1);
+  // INFO: commented out because it's too noisy, uncomment to debug
+  // static const char sigint_msg[] = "SIGINT received - shutting down server...\n";
+  // platform_write_all(STDERR_FILENO, sigint_msg, sizeof(sigint_msg) - 1);
 
   // STEP 3: Signal TCP server to stop and close listening sockets
   // This interrupts the accept() call in the main loop
