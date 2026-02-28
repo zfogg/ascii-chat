@@ -261,12 +261,13 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
   // Log detailed info about what logs are being displayed
   int logs_displayed_count = logs_to_display;
   if (elapsed_ms < 500) {
-    log_dev("[STARTUP_FRAME] t=%llu log_count=%zu first=%d display=%d area=%d", (unsigned long long)elapsed_ms,
-            log_count, first_log_to_display, logs_displayed_count, log_area_rows);
+    log_dev_every(1 * NS_PER_SEC_INT, "[STARTUP_FRAME] t=%llu log_count=%zu first=%d display=%d area=%d",
+                  (unsigned long long)elapsed_ms, log_count, first_log_to_display, logs_displayed_count, log_area_rows);
   } else {
-    log_debug("[HEIGHT_CALC] log_count=%zu first_log_to_display=%d logs_displayed=%d "
-              "renderable_log_rows=%d",
-              log_count, first_log_to_display, logs_displayed_count, renderable_log_rows);
+    log_debug_every(1 * NS_PER_SEC_INT,
+                    "[HEIGHT_CALC] log_count=%zu first_log_to_display=%d logs_displayed=%d "
+                    "renderable_log_rows=%d",
+                    log_count, first_log_to_display, logs_displayed_count, renderable_log_rows);
   }
 
   if (!grep_entering) {
@@ -276,7 +277,6 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
 
     // Output logs to frame buffer, counting actual display lines (accounting for wrapping)
     int terminal_lines_used = 0;
-    int logs_actually_output = 0;
     for (int i = first_log_to_display; i < (int)log_count && terminal_lines_used < log_area_rows; i++) {
       const char *msg = log_entries[i].message;
 
@@ -305,31 +305,19 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
       if (terminal_lines_used + lines_for_this_msg <= log_area_rows) {
         frame_buffer_printf(g_frame_buf, "%s\n", msg);
         terminal_lines_used += lines_for_this_msg;
-        logs_actually_output++;
       }
     }
-    // Don't fill with blank lines - let frame height be dynamic based on actual logs
-    // This prevents large gaps when few logs are available at startup
+
+    // Pad remaining log area with blank lines to maintain fixed frame height.
+    // This ensures every frame has exactly the same height on screen,
+    // preventing flicker caused by dynamic frame height changes.
+    while (terminal_lines_used < log_area_rows) {
+      frame_buffer_printf(g_frame_buf, "\n");
+      terminal_lines_used++;
+    }
 
     // Flush entire frame (header + logs + blank lines) in one atomic write
     frame_buffer_flush(g_frame_buf);
-
-    // Verify output height
-    int actual_height_rendered = terminal_lines_used;
-    int total_frame_height = actual_height_rendered + config->fixed_header_lines;
-
-    if (elapsed_ms < 500) {
-      log_dev("[STARTUP_OUTPUT] t=%llu logs=%d lines=%d header=%d height=%d area=%d", (unsigned long long)elapsed_ms,
-              logs_actually_output, terminal_lines_used, config->fixed_header_lines, actual_height_rendered,
-              log_area_rows);
-    } else {
-      log_dev("[RENDER_OUTPUT] log_count=%zu logs=%d lines=%d ACTUAL_HEIGHT=%d log_area=%d", log_count,
-              logs_actually_output, terminal_lines_used, actual_height_rendered, log_area_rows);
-    }
-
-    // Frame delimiter: mark where frame ends with height info
-    fprintf(stderr, "[FRAME_END t=%llums height=%d]\n", (unsigned long long)elapsed_ms, total_frame_height);
-    fflush(stderr);
   } else {
     // Grep mode: diff-based rendering. Only rewrite lines that changed.
     // Logs fill renderable_log_rows; the last row is the `/` input line.
