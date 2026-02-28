@@ -65,8 +65,10 @@ static const char *normalize_path(const char *path) {
     return "unknown";
   }
 
-  static char normalized[PLATFORM_MAX_PATH_LENGTH];
-  static char components[PLATFORM_MAX_PATH_LENGTH][256];
+  /* Use thread-local storage to avoid buffer corruption when multiple threads
+   * or rapid calls reuse the same static buffer. Each thread gets its own buffer. */
+  static _Thread_local char normalized[PLATFORM_MAX_PATH_LENGTH];
+  static _Thread_local char components[PLATFORM_MAX_PATH_LENGTH][256];
   int component_count = 0;
   size_t path_len = strlen(path);
 
@@ -450,21 +452,9 @@ const char *extract_project_relative_path(const char *file) {
     free(project_root);
   }
 
-  /* Fallback: Extract relative path by looking for common separators */
-  const char *last_sep = strrchr(normalized, PATH_DELIM);
-  if (!last_sep) {
-    last_sep = strrchr(normalized, '/');
-  }
-  if (!last_sep) {
-    last_sep = strrchr(normalized, '\\');
-  }
-
-  /* If we found a separator, return the part after it */
-  if (last_sep) {
-    return last_sep + 1;
-  }
-
-  /* Last resort: return just the filename (don't return absolute path) */
+  /* Fallback: Project root detection failed, but we should still try to return
+   * a meaningful relative path, not just the filename. Return the normalized path
+   * which should contain the full directory structure. */
   return normalized;
 }
 
