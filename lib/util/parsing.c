@@ -223,7 +223,7 @@ asciichat_error_t parse_ulonglong(const char *str, unsigned long long *out_value
 /**
  * @brief PCRE2 regex validator for port number parsing
  *
- * Validates port range 1-65535 atomically, rejecting leading zeros.
+ * Validates port range 0-65535 atomically, rejecting leading zeros (except 0 itself).
  * Thread-safe singleton with lazy initialization via atomic operations.
  */
 static pcre2_singleton_t *g_port_regex = NULL;
@@ -232,7 +232,8 @@ static pcre2_singleton_t *g_port_regex = NULL;
  * @brief Get compiled port regex (lazy initialization)
  * Returns NULL if compilation failed
  *
- * Pattern: Match port numbers 1-65535 (rejects leading zeros)
+ * Pattern: Match port numbers 0-65535 (rejects leading zeros except for 0 itself)
+ * 0                     = 0 (OS auto-assign)
  * [1-9]\d{0,3}          = 1-9999
  * [1-5]\d{4}            = 10000-59999
  * 6[0-4]\d{3}           = 60000-64999
@@ -242,7 +243,7 @@ static pcre2_singleton_t *g_port_regex = NULL;
  */
 static pcre2_code *port_regex_get(void) {
   if (g_port_regex == NULL) {
-    const char *port_pattern = "^([1-9]\\d{0,3}|[1-5]\\d{4}|6[0-4]\\d{3}|65[0-4]\\d{2}|655[0-2]\\d|6553[0-5])$";
+    const char *port_pattern = "^(0|[1-9]\\d{0,3}|[1-5]\\d{4}|6[0-4]\\d{3}|65[0-4]\\d{2}|655[0-2]\\d|6553[0-5])$";
     g_port_regex = asciichat_pcre2_singleton_compile(port_pattern, 0);
   }
   return asciichat_pcre2_singleton_get_code(g_port_regex);
