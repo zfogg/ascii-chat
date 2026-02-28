@@ -10,6 +10,7 @@
 #include <ascii-chat/tests/test_env.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/format.h>
+#include <ascii-chat/util/endian.h>
 
 #include <string.h>
 #include <time.h>
@@ -61,10 +62,14 @@ static void generate_nonce(crypto_context_t *ctx, uint8_t *nonce_out) {
   // - Counter prevents within-session replay
 
   SAFE_MEMCPY(nonce_out, 16, ctx->session_id, 16);
+
+  // Counter MUST be in big-endian (network byte order) for cross-platform compatibility
+  // between browser (JavaScript/WASM) and native (C) implementations
   uint64_t counter = ctx->nonce_counter++;
+  uint64_t counter_be = HOST_TO_NET_U64(counter);  // Convert to big-endian
   size_t counter_size = ctx->nonce_size - 16;
-  SAFE_MEMCPY(nonce_out + 16, counter_size, &counter,
-              (counter_size < sizeof(counter)) ? counter_size : sizeof(counter));
+  SAFE_MEMCPY(nonce_out + 16, counter_size, &counter_be,
+              (counter_size < sizeof(counter_be)) ? counter_size : sizeof(counter_be));
 }
 
 // Securely clear memory
