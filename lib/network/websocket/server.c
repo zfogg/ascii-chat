@@ -845,14 +845,17 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   // Increase to 512KB to allow larger WebSocket frames without fragmentation
   info.pt_serv_buf_size = 512 * 1024; // 512KB per-thread service buffer
 
-  // TCP-level keep-alive: detect dead connections quickly
-  // Enabled after ka_time seconds of idle, probe every ka_interval seconds, give up after ka_probes attempts
-  info.ka_time = 10;     // Wait 10 seconds before first keep-alive probe on idle TCP connection
-  info.ka_probes = 3;    // Send 3 keep-alive probes
-  info.ka_interval = 10; // Wait 10 seconds between probes
+  // Disable ALL default timeouts and keep-alive mechanisms
+  // Use only the explicit retry_and_idle_policy we set above (30/35 seconds)
+  info.ka_time = 0;      // Disable TCP keep-alive probes (use WebSocket pings instead)
+  info.ka_probes = 0;    // Disable TCP probes
+  info.ka_interval = 0;  // Disable TCP probe intervals
+  info.keepalive_timeout = 0; // Disable HTTP keep-alive timeout entirely
 
-  // HTTP connection keep-alive timeout (for connections before WebSocket upgrade)
-  info.keepalive_timeout = 0; // Disable default HTTP keep-alive timeout - use retry_and_idle_policy instead
+  // Explicitly set a very large idle timeout to prevent early disconnection
+  // Without this, libwebsockets defaults to 5 seconds for HTTP connections
+  // Set to effectively infinite (100 hours) since we use retry_and_idle_policy instead
+  info.timeout_secs = 360000; // 100 hours - effectively disabled
 
   // Create libwebsockets context
   server->context = lws_create_context(&info);
