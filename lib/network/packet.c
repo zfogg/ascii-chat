@@ -814,6 +814,85 @@ int send_clear_console_packet(socket_t sockfd) {
   return send_packet(sockfd, PACKET_TYPE_CLEAR_CONSOLE, NULL, 0);
 }
 
+/**
+ * @brief Decrypt a PACKET_TYPE_ENCRYPTED envelope and extract inner packet
+ *
+ * Shared decryption logic for both TCP (receive_packet_secure) and
+ * non-socket (WebRTC) transports. Decrypts PACKET_TYPE_ENCRYPTED envelopes
+ * and updates the envelope with the inner packet type and data.
+ *
+ * @param envelope Packet envelope to decrypt (will be modified if encrypted)
+ * @param crypto_ctx Crypto context for decryption (required if envelope is encrypted)
+ * @return ASCIICHAT_OK on success, error code otherwise
+ */
+asciichat_error_t packet_decrypt_envelope(packet_envelope_t *envelope, void *crypto_ctx) {
+  if (!envelope) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid envelope");
+  }
+
+  // Only decrypt if this is an encrypted packet
+  if (envelope->type != PACKET_TYPE_ENCRYPTED) {
+    return ASCIICHAT_OK; // Not encrypted, nothing to do
+  }
+
+  if (!crypto_ctx) {
+    return SET_ERRNO(ERROR_CRYPTO, "Received encrypted packet but no crypto context");
+  }
+
+  uint8_t *ciphertext = (uint8_t *)envelope->data;
+  size_t ciphertext_len = envelope->len;
+
+  // Allocate plaintext buffer with extra space for decryption
+  size_t plaintext_size = ciphertext_len + 1024;
+  uint8_t *plaintext = buffer_pool_alloc(NULL, plaintext_size);
+  if (!plaintext) {
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate plaintext buffer for decryption");
+  }
+
+  size_t plaintext_len;
+  crypto_result_t result =
+      crypto_decrypt(crypto_ctx, ciphertext, ciphertext_len, plaintext, plaintext_size, &plaintext_len);
+
+  if (result != CRYPTO_OK) {
+    buffer_pool_free(NULL, plaintext, plaintext_size);
+    return SET_ERRNO(ERROR_CRYPTO, "Failed to decrypt packet: %s", crypto_result_to_string(result));
+  }
+
+  if (plaintext_len < sizeof(packet_header_t)) {
+    buffer_pool_free(NULL, plaintext, plaintext_size);
+    return SET_ERRNO(ERROR_CRYPTO, "Decrypted packet too small: %zu < %zu", plaintext_len, sizeof(packet_header_t));
+  }
+
+  // Parse inner packet header
+  const packet_header_t *inner_header = (const packet_header_t *)plaintext;
+  packet_type_t inner_type = NET_TO_HOST_U16(inner_header->type);
+  uint32_t inner_len = NET_TO_HOST_U32(inner_header->length);
+
+  // Validate inner packet length
+  if (inner_len != plaintext_len - sizeof(packet_header_t)) {
+    buffer_pool_free(NULL, plaintext, plaintext_size);
+    return SET_ERRNO(ERROR_CRYPTO, "Inner packet length mismatch: header=%u, actual=%zu", inner_len,
+                     plaintext_len - sizeof(packet_header_t));
+  }
+
+  // Free the original encrypted buffer if it's different from plaintext
+  if (envelope->allocated_buffer && envelope->allocated_buffer != plaintext) {
+    buffer_pool_free(NULL, envelope->allocated_buffer, envelope->allocated_size);
+  }
+
+  // Update envelope with decrypted packet info
+  envelope->type = inner_type;
+  envelope->data = (uint8_t *)plaintext + sizeof(packet_header_t);
+  envelope->len = inner_len;
+  envelope->allocated_buffer = plaintext;
+  envelope->allocated_size = plaintext_size;
+
+  log_info("[PACKET_DECRYPT] 🔐 Decrypted PACKET_TYPE_ENCRYPTED: inner_type=%u (0x%04x), len=%u", inner_type,
+           inner_type, inner_len);
+
+  return ASCIICHAT_OK;
+}
+
 asciichat_error_t packet_send_error(socket_t sockfd, const crypto_context_t *crypto_ctx, asciichat_error_t error_code,
                                     const char *message) {
   if (sockfd == INVALID_SOCKET_VALUE) {

@@ -19,6 +19,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/overflow.h>
+#include <ascii-chat/crypto/crypto.h>
 #include <string.h>
 
 // =============================================================================
@@ -118,6 +119,18 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
       buffer_pool_free(NULL, allocated_buffer, packet_len);
       return SET_ERRNO(ERROR_NETWORK, "Packet length mismatch: header says %u, actual %zu", envelope.len,
                        packet_len - sizeof(packet_header_t));
+    }
+  }
+
+  // Handle PACKET_TYPE_ENCRYPTED from server (decrypt and extract inner packet)
+  // Uses shared decryption logic with receive_packet_secure() for TCP
+  if (envelope.type == PACKET_TYPE_ENCRYPTED) {
+    log_info("[ACIP_RECV] 🔐 ENCRYPTED_PACKET: decrypting PACKET_TYPE_ENCRYPTED (len=%u)", envelope.len);
+    asciichat_error_t decrypt_result = packet_decrypt_envelope(&envelope, transport->crypto_ctx);
+    if (decrypt_result != ASCIICHAT_OK) {
+      log_error("[ACIP_RECV] ❌ DECRYPT_FAILED: %d", decrypt_result);
+      buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
+      return decrypt_result;
     }
   }
 

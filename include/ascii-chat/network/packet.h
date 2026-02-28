@@ -1308,6 +1308,25 @@ asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const 
 packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bool enforce_encryption,
                                            packet_envelope_t *envelope);
 
+/**
+ * @brief Decrypt a PACKET_TYPE_ENCRYPTED envelope and extract inner packet
+ *
+ * If the envelope contains PACKET_TYPE_ENCRYPTED, decrypts the payload and
+ * updates the envelope with the inner packet (type, data, length).
+ * Used by both TCP and non-socket (WebRTC) transports to handle encryption uniformly.
+ *
+ * @param envelope Packet envelope to decrypt (will be modified if encrypted)
+ * @param crypto_ctx Crypto context for decryption (required if envelope is encrypted)
+ * @return ASCIICHAT_OK on success, error code otherwise
+ *
+ * @note Updates envelope->type, envelope->data, envelope->len, and
+ *       envelope->allocated_buffer to point to decrypted plaintext
+ * @note Caller must free the updated envelope->allocated_buffer
+ *
+ * @ingroup network
+ */
+asciichat_error_t packet_decrypt_envelope(packet_envelope_t *envelope, void *crypto_ctx);
+
 /** @} */
 
 /**
