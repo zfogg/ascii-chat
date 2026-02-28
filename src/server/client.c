@@ -1371,12 +1371,12 @@ int remove_client(server_context_t *server_ctx, const char *client_id) {
   // Another thread might have already removed it.
   if (target_client) {
     client_info_t *hash_entry = NULL;
-    HASH_FIND(hh, g_client_manager.clients_by_id, &client_id, sizeof(client_id), hash_entry);
+    HASH_FIND_STR(g_client_manager.clients_by_id, target_client->client_id, hash_entry);
     if (hash_entry == target_client) {
       HASH_DELETE(hh, g_client_manager.clients_by_id, target_client);
-      log_debug("Removed client %u from uthash table", client_id);
+      log_debug("Removed client %s from uthash table", client_id);
     } else {
-      log_warn("Client %u already removed from hash table by another thread (found=%p, expected=%p)", client_id,
+      log_warn("Client %s already removed from hash table by another thread (found=%p, expected=%p)", client_id,
                (void *)hash_entry, (void *)target_client);
     }
   } else {

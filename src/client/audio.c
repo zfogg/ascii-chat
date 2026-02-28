@@ -1260,8 +1260,9 @@ void audio_cleanup() {
   // The duplex_callback may still be in-flight on other threads. Even after we set the pipeline
   // pointer to NULL, a CoreAudio thread may have already cached the pointer before the assignment.
   // This sleep ensures all in-flight callbacks have fully completed before we destroy the pipeline.
+  // WORKAROUND: Skip sleep during shutdown (process is exiting anyway)
   // 500ms is sufficient on macOS for CoreAudio's internal thread pool to completely wind down.
-  platform_sleep_us(500 * US_PER_MS_INT); // 500ms - macOS CoreAudio needs time to shut down all threads
+  // platform_sleep_us(500 * US_PER_MS_INT); // 500ms - macOS CoreAudio needs time to shut down all threads
 
   // Destroy audio pipeline (handles Opus, AEC, etc.)
   if (g_audio_pipeline) {

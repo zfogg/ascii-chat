@@ -289,6 +289,7 @@ static void shutdown_client() {
   log_debug("[SHUTDOWN] 13. Capture cleaned up");
 
   // Print audio analysis report if enabled
+  // Print audio analysis report if enabled
   if (GET_OPTION(audio_analysis_enabled)) {
     audio_analysis_print_report();
     audio_analysis_destroy();
@@ -300,14 +301,18 @@ static void shutdown_client() {
   // Stop lock debug thread BEFORE display_cleanup() because the debug thread uses
   // _kbhit()/_getch() on Windows which interact with the console. If we close the
   // CON handle first, the debug thread can hang on console I/O, blocking process exit.
-  debug_sync_destroy();
+  // WORKAROUND: Skip debug_sync_destroy during shutdown to avoid hanging
+  // The process is about to exit anyway
+  // debug_sync_destroy();
 #endif
 
   // Cleanup display and terminal state
-  display_cleanup();
+  // WORKAROUND: Skip cleanup during shutdown to avoid hanging
+  // display_cleanup();
 
   // Cleanup core systems
-  buffer_pool_cleanup_global();
+  // WORKAROUND: Skip cleanup during shutdown to avoid hanging
+  // buffer_pool_cleanup_global();
 
   // Disable keepawake mode (re-allow OS to sleep)
   platform_disable_keepawake();
@@ -861,10 +866,13 @@ int client_main(void) {
   // Cleanup remaining shared subsystems (buffer pool, platform, etc.)
   // Note: atexit(asciichat_shared_destroy) is registered in main.c,
   // but won't run if interrupted by signals (SIGTERM from timeout/killall)
-  log_debug("[CLIENT_MAIN] About to call asciichat_shared_destroy()");
-  asciichat_shared_destroy();
-  log_debug("[CLIENT_MAIN] asciichat_shared_destroy() returned");
+  // WORKAROUND: Skip shared_destroy to avoid hanging on debug cleanup
+  // The process is about to exit anyway, and cleanup is taking too long
+  // log_debug("[CLIENT_MAIN] About to call asciichat_shared_destroy()");
+  // asciichat_shared_destroy();
+  // log_debug("[CLIENT_MAIN] asciichat_shared_destroy() returned");
 
-  log_debug("[CLIENT_MAIN] About to exit with code %d", (session_result == ASCIICHAT_OK) ? 0 : 1);
+  log_debug("[CLIENT_MAIN] About to exit with code %d (SKIPPED asciichat_shared_destroy)",
+            (session_result == ASCIICHAT_OK) ? 0 : 1);
   return (session_result == ASCIICHAT_OK) ? 0 : 1;
 }

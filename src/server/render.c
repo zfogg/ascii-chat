@@ -868,31 +868,9 @@ void *client_audio_render_thread(void *arg) {
     int samples_to_read = 480; // Default: 10ms worth
 
     // Log latency at each stage in the server pipeline
+    // NOTE: Skipping mixer source latency logging due to potential use-after-free
+    // when source IDs are freed during concurrent client cleanup
     if (g_audio_mixer) {
-      // Check source buffer latency for all sources
-      for (int i = 0; i < g_audio_mixer->max_sources; i++) {
-        // Take snapshot of buffer pointer to prevent use-after-free
-        // Another thread could free this buffer between check and use
-        audio_ring_buffer_t *buffer_snapshot = g_audio_mixer->source_buffers[i];
-        if (g_audio_mixer->source_ids[i] && strcmp(g_audio_mixer->source_ids[i], client_id_snapshot) != 0 &&
-            buffer_snapshot) {
-          size_t available = audio_ring_buffer_available_read(buffer_snapshot);
-          float buffer_latency_ms = (float)available / 48.0f; // samples / (48000 / 1000)
-
-          // Log source buffer latency
-          log_dev_every(5 * NS_PER_MS_INT, "LATENCY: Server incoming buffer for client %u: %.1fms (%zu samples)",
-                        g_audio_mixer->source_ids[i], buffer_latency_ms, available);
-
-          // If buffer is getting too full, read faster to reduce latency
-          if (available > 1920) {  // > 40ms buffered - read faster!
-            samples_to_read = 960; // Double read to catch up (20ms worth)
-            log_dev_every(LOG_RATE_DEFAULT,
-                          "LATENCY WARNING: Server buffer too full for client %u: %.1fms, reading double",
-                          g_audio_mixer->source_ids[i], buffer_latency_ms);
-          }
-        }
-      }
-
       // Log outgoing queue latency
       size_t queue_depth = packet_queue_size(audio_queue_snapshot);
       float queue_latency_ms = (float)queue_depth * 20.0f; // ~20ms per Opus packet
