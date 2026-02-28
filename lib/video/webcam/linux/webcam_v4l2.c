@@ -450,9 +450,10 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   buf.memory = V4L2_MEMORY_MMAP;
 
-  // Use poll() to efficiently wait for frame available (100ms timeout)
+  // Use poll() to efficiently wait for frame available (500ms timeout)
+  // At 30fps, frames arrive every ~33ms; at 60fps every ~16ms
   struct pollfd pfd = {.fd = ctx->fd, .events = POLLIN};
-  int poll_ret = poll(&pfd, 1, 100);  // 100ms timeout
+  int poll_ret = poll(&pfd, 1, 500);  // 500ms timeout for slower cameras
 
   if (poll_ret < 0) {
     log_error("poll() failed on V4L2 device: %s", SAFE_STRERROR(errno));
