@@ -62,27 +62,34 @@ static deadlock_state_t g_last_deadlock = {0};
 
 /**
  * @brief Destructor called when thread exits to free TLS data
- * Also clears the stack pointer from the global registry to prevent use-after-free
+ * Safe against double-free if cleanup() already freed the stack from registry
  */
 static void tls_mutex_stack_destructor(void *arg) {
   if (!arg) {
     return;
   }
 
-  // Clear the registry entry for this thread to prevent use-after-free
-  // when the global thread reads stale pointers during shutdown
+  // Check if this stack is still in the registry
+  // If not, it was already freed by cleanup() and we should skip freeing
+  bool found_in_registry = false;
   pthread_t current_thread = pthread_self();
   int count = atomic_load_explicit(&g_thread_registry_count, memory_order_acquire);
   for (int i = 0; i < count; i++) {
     if (pthread_equal(g_thread_registry[i].thread_id, current_thread)) {
-      // Mark as cleared by setting stack to NULL (no locking needed - only this thread updates its entry)
-      g_thread_registry[i].stack = NULL;
+      // Found this thread's entry - check if stack pointer still matches arg
+      if (g_thread_registry[i].stack == arg) {
+        found_in_registry = true;
+        // Clear the entry before freeing
+        g_thread_registry[i].stack = NULL;
+      }
       break;
     }
   }
 
-  // Free the heap-allocated stack
-  SAFE_FREE(arg);
+  // Only free if we found it in the registry (not already freed by cleanup)
+  if (found_in_registry) {
+    SAFE_FREE(arg);
+  }
 }
 
 /**
@@ -591,8 +598,10 @@ void mutex_stack_cleanup(void) {
   // Signal shutdown to prevent new allocations from threads still running
   atomic_store_explicit(&g_shutting_down, true, memory_order_release);
 
-  // Manually free any remaining stacks in the registry (for threads still running)
-  // These won't be freed by TLS destructors if threads are killed during shutdown
+  // Manually free all stacks in the registry
+  // This must happen BEFORE deleting the TLS key to avoid double-free
+  // (destructor won't run on still-running threads until they exit, by which time
+  // these stacks will already be freed)
   int count = atomic_load_explicit(&g_thread_registry_count, memory_order_acquire);
   for (int i = 0; i < count; i++) {
     if (g_thread_registry[i].stack) {
@@ -601,9 +610,8 @@ void mutex_stack_cleanup(void) {
     }
   }
 
-  // Delete the TLS key (if it was created)
-  // This ensures destructors are called for any remaining thread-local values
-  // (though most stacks were already freed above)
+  // Now delete the TLS key - destructors will see NULL in registry and skip freeing
+  // For any threads that haven't been registered yet, destructor will free directly
   if (atomic_load_explicit(&g_tls_initialized, memory_order_acquire)) {
     ascii_tls_key_delete(g_tls_mutex_stack);
     atomic_store_explicit(&g_tls_initialized, false, memory_order_release);
