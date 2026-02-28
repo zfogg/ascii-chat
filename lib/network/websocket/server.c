@@ -354,43 +354,23 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
         continue;
       }
 
-      // CRITICAL FIX: Fragment large messages into ~4KB chunks
-      // libwebsockets #464: Sending messages > rx_buffer_size causes ultra-slow buffering
-      const size_t CHUNK_SIZE = 4096;
-      size_t total_written = 0;
-      bool send_failed = false;
+      // Let libwebsockets handle ALL fragmentation and FIN bit management internally
+      // This avoids manual fragmentation bugs with FIN bit handling
+      // lws_write() with LWS_WRITE_BINARY automatically fragments based on MTU
+      // and properly manages continuation frames and FIN bits
 
-      while (total_written < msg.len && !send_failed && !lws_send_pipe_choked(wsi)) {
-        size_t chunk_size = (msg.len - total_written > CHUNK_SIZE) ? CHUNK_SIZE : (msg.len - total_written);
-        bool is_first = (total_written == 0);
-        bool is_final = (total_written + chunk_size >= msg.len);
+      log_debug("  SERVER sending complete message: %zu bytes", msg.len);
 
-        // Use lws_write_ws_flags to get correct flags for fragment sequence
-        int write_flags = lws_write_ws_flags(LWS_WRITE_BINARY, is_first, is_final);
+      int written = lws_write(wsi, msg.data + LWS_PRE, msg.len, LWS_WRITE_BINARY);
 
-        log_debug("  SERVER fragment: offset=%zu, chunk=%zu, is_first=%d, is_final=%d, flags=%d",
-                  total_written, chunk_size, is_first, is_final, write_flags);
-
-        int written = lws_write(wsi, msg.data + LWS_PRE + total_written, chunk_size, write_flags);
-
-        if (written < 0) {
-          log_error("Server WebSocket fragment write error: %d (chunk_size=%zu)", written, chunk_size);
-          send_failed = true;
-          break;
-        }
-
-        if ((size_t)written != chunk_size) {
-          log_debug("Server WebSocket partial chunk write: %d/%zu bytes", written, chunk_size);
-        }
-
-        total_written += chunk_size;
-      }
-
-      if (send_failed) {
+      if (written < 0) {
+        log_error("Server WebSocket write error: %d", written);
         // Connection error
         buffer_pool_free(NULL, msg.data, LWS_PRE + msg.len);
         break;
       }
+
+      size_t total_written = (size_t)written;
 
       if (total_written < msg.len) {
         // Partial send - re-queue the unsent portion for the next callback
