@@ -675,7 +675,9 @@ int splash_intro_start(session_display_ctx_t *ctx) {
 
   // Start animation thread (stderr now suppressed, so only session_log_buffer captures logs)
   // Only create if not already created to prevent multiple thread creations
-  if (atomic_load(&g_splash_state.thread_created)) {
+  // Use atomic compare-exchange to atomically check and set the flag
+  bool already_created = true;
+  if (!atomic_compare_exchange_strong(&g_splash_state.thread_created, &already_created, true)) {
     log_debug("[SPLASH] Animation thread already created, skipping creation");
     log_set_terminal_output(saved_console_state);
     return 0;
