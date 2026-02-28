@@ -1740,9 +1740,12 @@ int server_main(void) {
   // Register shutdown check callback for library code
   shutdown_register_callback(check_shutdown);
 
-  // Initialize status screen log buffer if enabled AND terminal is interactive
-  // In non-interactive mode (piped output), logs go directly to stdout/stderr
-  if (GET_OPTION(status_screen) && terminal_is_interactive()) {
+  // Initialize status screen log buffer if:
+  // 1. Terminal is interactive AND status_screen is enabled, OR
+  // 2. User explicitly set --status-screen on command line AND option is enabled (force it regardless of terminal)
+  // In non-interactive mode without explicit flag, logs go directly to stdout/stderr
+  if ((GET_OPTION(status_screen) && terminal_is_interactive()) ||
+      (GET_OPTION(status_screen_explicitly_set) && GET_OPTION(status_screen))) {
     server_status_log_init();
 
     // Initialize interactive grep for status screen
