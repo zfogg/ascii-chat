@@ -610,18 +610,9 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
 
     // Exit immediately if run_fn succeeded
     if (result == ASCIICHAT_OK) {
-      // Connection succeeded - end splash screen now before rendering ASCII art
-      // The splash has been kept visible during connection attempts to prevent blank screen
-      // Now that we have an active connection, hide it before rendering begins
-      log_debug("[CLIENT_LIKE_LOOP] Connection established, ending splash screen");
-      splash_intro_done();
-      log_debug("[CLIENT_LIKE_LOOP] splash_intro_done() returned");
-
-      // Wait for animation thread to fully exit before rendering ASCII art
-      // This prevents the splash and ASCII from appearing simultaneously
-      log_debug("[CLIENT_LIKE_LOOP] About to call splash_wait_for_animation()");
-      splash_wait_for_animation();
-      log_debug("[CLIENT_LIKE_LOOP] splash_wait_for_animation() returned");
+      // Connection succeeded - splash screen cleanup now happens when first frame renders
+      // This ensures the splash stays visible during TCP/WebSocket/datachannel connection attempts
+      log_debug("[CLIENT_LIKE_LOOP] Connection established, splash cleanup will occur on first frame");
 
       break;
     }

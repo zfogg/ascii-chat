@@ -741,7 +741,7 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
              term_width);
   }
 
-  // Handle first frame - perform initial terminal reset only
+  // Handle first frame - perform initial terminal reset and splash cleanup
   if (atomic_load(&ctx->first_frame)) {
     atomic_store(&ctx->first_frame, false);
 
@@ -752,6 +752,11 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     if (ctx->has_tty) {
       full_terminal_reset_internal(ctx->snapshot_mode);
     }
+
+    // Stop splash screen when first frame is ready
+    // This ensures smooth transition from splash animation to ASCII art rendering
+    splash_intro_done();
+    splash_wait_for_animation();
   }
 
   // Output routing logic:
