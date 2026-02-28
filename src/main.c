@@ -51,7 +51,7 @@
 #include <ascii-chat/options/builder.h>
 #include <ascii-chat/options/actions.h>
 #include <ascii-chat/options/colorscheme.h>
-#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/log/json.h>
 #include <ascii-chat/log/grep.h>
 #include <ascii-chat/platform/terminal.h>
@@ -78,6 +78,86 @@
 
 #define APP_NAME "ascii-chat"
 #define VERSION ASCII_CHAT_VERSION_FULL
+
+/* ============================================================================
+ * Default Log File Path Determination
+ * ============================================================================ */
+
+/**
+ * @brief Get the mode-specific log filename
+ *
+ * @param mode The ascii-chat mode enum
+ * @return The mode-specific log filename (e.g., "server.log", "client.log")
+ */
+static const char *get_mode_log_filename(asciichat_mode_t mode) {
+  switch (mode) {
+  case MODE_SERVER:
+    return "server.log";
+  case MODE_CLIENT:
+    return "client.log";
+  case MODE_MIRROR:
+    return "mirror.log";
+  case MODE_DISCOVERY_SERVICE:
+    return "acds.log";
+  case MODE_DISCOVERY:
+    return "discovery.log";
+  case MODE_INVALID:
+  default:
+    return "ascii-chat.log";
+  }
+}
+
+/**
+ * @brief Generate the default log file path based on build type and mode
+ *
+ * Debug mode: Current working directory with mode-specific names
+ *   - client.log, server.log, mirror.log, acds.log, discovery.log
+ *
+ * Non-debug mode: System temp directory with mode-specific names
+ *   - /tmp/ascii-chat/ on Linux/macOS
+ *   - %TEMP%\ascii-chat\ on Windows
+ */
+static void generate_default_log_path(asciichat_mode_t mode, char *buf, size_t buf_size) {
+  if (!buf || buf_size == 0) {
+    return;
+  }
+
+  // Get mode-specific log filename
+  const char *log_filename = get_mode_log_filename(mode);
+
+#ifndef NDEBUG
+  // Debug mode: use current working directory
+  SAFE_STRNCPY(buf, log_filename, buf_size - 1);
+#else
+  // Non-debug mode: use system temp directory
+#ifdef _WIN32
+  const char *temp_dir = SAFE_GETENV("TEMP");
+  if (!temp_dir) {
+    temp_dir = SAFE_GETENV("TMP");
+  }
+  if (!temp_dir) {
+    temp_dir = "C:\\Windows\\Temp";
+  }
+  safe_snprintf(buf, buf_size, "%s\\ascii-chat\\%s", temp_dir, log_filename);
+#else
+  safe_snprintf(buf, buf_size, "/tmp/ascii-chat/%s", log_filename);
+#endif
+  // Create directory if it doesn't exist (non-debug mode only)
+  char dir_path[PATH_MAX];
+  SAFE_STRNCPY(dir_path, buf, sizeof(dir_path) - 1);
+  char *last_slash = strrchr(dir_path, '/');
+#ifdef _WIN32
+  char *last_backslash = strrchr(dir_path, '\\');
+  if (last_backslash && (!last_slash || last_backslash > last_slash)) {
+    last_slash = last_backslash;
+  }
+#endif
+  if (last_slash) {
+    *last_slash = '\0';
+    platform_mkdir_recursive(dir_path, 0700);
+  }
+#endif
+}
 
 /* ============================================================================
  * Global Application Exit State (Centralized Signal Handling)
@@ -475,7 +555,27 @@ int main(int argc, char *argv[]) {
 
   // EARLY PARSE: Extract log file from argv (--log-file or -L)
   // Must appear BEFORE the mode
-  const char *log_file = "ascii-chat.log"; // default
+  // Generate default log path based on build type and mode
+  char default_log_path[PATH_MAX];
+  asciichat_mode_t detected_mode = MODE_INVALID;
+  if (mode_position > 0) {
+    const char *mode_str = argv[mode_position];
+    // Convert mode string to enum
+    if (strcmp(mode_str, "server") == 0) {
+      detected_mode = MODE_SERVER;
+    } else if (strcmp(mode_str, "client") == 0) {
+      detected_mode = MODE_CLIENT;
+    } else if (strcmp(mode_str, "mirror") == 0) {
+      detected_mode = MODE_MIRROR;
+    } else if (strcmp(mode_str, "acds") == 0 || strcmp(mode_str, "discovery-service") == 0) {
+      detected_mode = MODE_DISCOVERY_SERVICE;
+    } else if (strcmp(mode_str, "discovery") == 0) {
+      detected_mode = MODE_DISCOVERY;
+    }
+  }
+  generate_default_log_path(detected_mode, default_log_path, sizeof(default_log_path));
+
+  const char *log_file = default_log_path;
   int max_search = (mode_position > 0) ? mode_position : argc;
   for (int i = 1; i < max_search - 1; i++) {
     if ((strcmp(argv[i], "--log-file") == 0 || strcmp(argv[i], "-L") == 0)) {
