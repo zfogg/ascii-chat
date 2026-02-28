@@ -226,9 +226,9 @@ static void *websocket_service_thread(void *arg) {
     uint64_t time_since_last_service = now_ns - last_service_call;
     int result = 0;
 
-    // Only call lws_service() every 100ms to avoid assertion failures
+    // Only call lws_service() every 50ms to avoid assertion failures
     // while still processing handshake and connection maintenance
-    if (time_since_last_service >= 100000000ULL) {  // 100ms
+    if (time_since_last_service >= 50000000ULL) {  // 50ms
       last_service_call = now_ns;
       uint64_t service_start_ns = now_ns;
 
