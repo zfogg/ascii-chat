@@ -212,7 +212,10 @@ static void handle_sigterm(int sig) {
   debug_sync_trigger_print();
 #endif
 
-  signal_exit();
+  // CRITICAL: Don't call signal_exit() here - it may try to acquire locks
+  // or call server_connection_shutdown() from signal context, causing deadlock.
+  // The main thread will check g_app_should_exit and handle cleanup.
+  atomic_store(&g_app_should_exit, true);
 }
 #endif
 
