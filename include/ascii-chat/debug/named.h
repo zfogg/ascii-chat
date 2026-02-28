@@ -984,6 +984,13 @@ typedef void (*named_iter_callback_t)(uintptr_t key, const char *name, void *use
 #define NAMED_REGISTER_CLIENT_AUDIO_PIPELINE(pipeline, name) (name)
 #endif
 
+#ifdef DEBUG_MEMORY
+#define NAMED_REGISTER_WEBSOCKET_IMPL(data, name)                                                                      \
+  named_register((uintptr_t)(const void *)(data), (name), "websocket_impl", "0x%tx", __FILE__, __LINE__, __func__)
+#else
+#define NAMED_REGISTER_WEBSOCKET_IMPL(data, name) (name)
+#endif
+
 /**
  * @brief Iterate through all registered entries
  * @param callback Function to call for each entry
