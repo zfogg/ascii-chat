@@ -38,6 +38,10 @@ video_frame_buffer_t *video_frame_buffer_create(const char *client_id) {
   vfb->front_buffer = &vfb->frames[0];
   vfb->back_buffer = &vfb->frames[1];
 
+  // DEBUG: Log buffer initialization
+  log_info("VFB_INIT: vfb=%p, vfb->frames=%p, &frames[0]=%p, &frames[1]=%p, setting back_buffer=%p", (void *)vfb,
+           (void *)vfb->frames, (void *)&vfb->frames[0], (void *)&vfb->frames[1], (void *)vfb->back_buffer);
+
   // Pre-allocate frame data buffers (2MB each for HD video)
   const size_t frame_size = (size_t)MAX_FRAME_BUFFER_SIZE;
   buffer_pool_t *pool = buffer_pool_get_global();
@@ -100,6 +104,12 @@ video_frame_buffer_t *video_frame_buffer_create(const char *client_id) {
   atomic_store(&vfb->last_frame_sequence, 0);
 
   log_debug("Created video frame buffer for client %u with double buffering", client_id);
+
+  // DEBUG: Final state check
+  log_info("VFB_FINAL: vfb=%p, back_buffer=%p (should be %p), frames[0].data=%p, frames[1].data=%p, allocated_size=%zu",
+           (void *)vfb, (void *)vfb->back_buffer, (void *)&vfb->frames[1], (void *)vfb->frames[0].data,
+           (void *)vfb->frames[1].data, vfb->allocated_buffer_size);
+
   NAMED_REGISTER_VIDEO_FRAME_BUFFER(vfb, "buffer");
   return vfb;
 }
