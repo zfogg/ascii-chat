@@ -248,7 +248,7 @@ int client_generate_keypair(void) {
   // Initialize crypto handshake context
   WASM_LOG("Calling crypto_handshake_init...");
   WASM_LOG_INT("  State before init", g_crypto_handshake_ctx.state);
-  asciichat_error_t result = crypto_handshake_init(&g_crypto_handshake_ctx, false /* is_server */);
+  asciichat_error_t result = crypto_handshake_init("wasm-client", &g_crypto_handshake_ctx, false /* is_server */);
   if (result != ASCIICHAT_OK) {
     WASM_LOG_INT("crypto_handshake_init FAILED, result", result);
     WASM_LOG_INT("  State after failed init", g_crypto_handshake_ctx.state);
@@ -347,7 +347,7 @@ int client_handle_key_exchange_init(const uint8_t *packet, size_t packet_len) {
     memset(&g_crypto_handshake_ctx, 0, sizeof(g_crypto_handshake_ctx));
 
     // Reinitialize to INIT state
-    asciichat_error_t init_result = crypto_handshake_init(&g_crypto_handshake_ctx, false);
+    asciichat_error_t init_result = crypto_handshake_init("wasm-client", &g_crypto_handshake_ctx, false);
     if (init_result != ASCIICHAT_OK) {
       WASM_ERROR("Failed to reinitialize crypto handshake context");
       WASM_LOG_INT("  init result", init_result);
@@ -618,7 +618,7 @@ char *client_parse_packet(const uint8_t *raw_packet, size_t packet_len) {
   // Convert header fields from network byte order
   uint16_t type = NET_TO_HOST_U16(header->type);
   uint32_t length = NET_TO_HOST_U32(header->length);
-  const char *client_id = NET_TO_HOST_U32(header->client_id);
+  uint32_t client_id = NET_TO_HOST_U32(header->client_id);
   uint32_t crc32 = NET_TO_HOST_U32(header->crc32);
 
   // Build JSON response with packet metadata

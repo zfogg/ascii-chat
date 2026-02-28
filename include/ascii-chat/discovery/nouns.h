@@ -8,6 +8,7 @@
 #define ASCII_CHAT_DISCOVERY_NOUNS_H
 
 #include <stddef.h>
+#include <stdbool.h>
 
 /**
  * @brief Array of English nouns for friendly name generation

@@ -13,8 +13,9 @@
 // The JS side is single-threaded, so we can safely make mutexes no-ops
 // This avoids deadlocks from pthread_mutex_t not being properly initialized in WASM
 
-int mutex_init(mutex_t *mutex) {
+int mutex_init(mutex_t *mutex, const char *name) {
   (void)mutex;
+  (void)name;
   return 0; // Success
 }
 
@@ -61,24 +62,25 @@ int asciichat_thread_equal(asciichat_thread_t t1, asciichat_thread_t t2) {
 }
 
 // Read-write lock functions
-int rwlock_init(rwlock_t *rwlock) {
-  return pthread_rwlock_init(rwlock, NULL);
+int rwlock_init(rwlock_t *rwlock, const char *name) {
+  (void)name;
+  return pthread_rwlock_init((pthread_rwlock_t *)rwlock, NULL);
 }
 
 int rwlock_rdlock_impl(rwlock_t *rwlock) {
-  return pthread_rwlock_rdlock(rwlock);
+  return pthread_rwlock_rdlock((pthread_rwlock_t *)rwlock);
 }
 
 int rwlock_wrlock_impl(rwlock_t *rwlock) {
-  return pthread_rwlock_wrlock(rwlock);
+  return pthread_rwlock_wrlock((pthread_rwlock_t *)rwlock);
 }
 
 int rwlock_rdunlock_impl(rwlock_t *rwlock) {
-  return pthread_rwlock_unlock(rwlock);
+  return pthread_rwlock_unlock((pthread_rwlock_t *)rwlock);
 }
 
 int rwlock_wrunlock_impl(rwlock_t *rwlock) {
-  return pthread_rwlock_unlock(rwlock);
+  return pthread_rwlock_unlock((pthread_rwlock_t *)rwlock);
 }
 
 // Thread ID function
