@@ -674,6 +674,10 @@ cleanup:
   // Stop splash animation and enforce minimum display time (even on error path)
   splash_intro_done();
 
+  // Stop audio thread before destroying log buffer to prevent use-after-free
+  // The audio worker thread may still be logging when we destroy the buffer
+  audio_stop_thread();
+
   // Stop debug sync thread before destroying log buffer to prevent use-after-free
   debug_sync_cleanup_thread();
 
