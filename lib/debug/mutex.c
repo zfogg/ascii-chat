@@ -62,32 +62,41 @@ static deadlock_state_t g_last_deadlock = {0};
 
 /**
  * @brief Destructor called when thread exits to free TLS data
- * Safe against double-free if cleanup() already freed the stack from registry
+ * Handles two cases:
+ * 1. Stack is in registry and matches arg: cleanup already freed it, skip double-free
+ * 2. Stack is NOT in registry or doesn't match: it's "orphaned", must free it
+ *
+ * Race condition scenario: If cleanup() is called while thread is registering,
+ * the stack may be allocated+in-TLS but not yet in registry. The destructor
+ * must handle freeing this orphaned stack.
  */
 static void tls_mutex_stack_destructor(void *arg) {
   if (!arg) {
     return;
   }
 
-  // Check if this stack is still in the registry
-  // If not, it was already freed by cleanup() and we should skip freeing
-  bool found_in_registry = false;
+  // Check if this stack was already freed by cleanup()
+  // This happens if: (1) thread is in registry AND (2) registry entry matches this stack
+  bool already_freed_by_cleanup = false;
   pthread_t current_thread = pthread_self();
   int count = atomic_load_explicit(&g_thread_registry_count, memory_order_acquire);
   for (int i = 0; i < count; i++) {
     if (pthread_equal(g_thread_registry[i].thread_id, current_thread)) {
-      // Found this thread's entry - check if stack pointer still matches arg
+      // Found this thread's entry in registry
       if (g_thread_registry[i].stack == arg) {
-        found_in_registry = true;
-        // Clear the entry before freeing
+        // Registry entry matches this stack - cleanup() already freed it
+        already_freed_by_cleanup = true;
+        // Clear the entry (optional, cleanup might have done this already)
         g_thread_registry[i].stack = NULL;
       }
       break;
     }
   }
 
-  // Only free if we found it in the registry (not already freed by cleanup)
-  if (found_in_registry) {
+  // Free if cleanup() didn't already do it
+  // This includes "orphaned" stacks that were allocated after cleanup() ran
+  // but before the thread's destructor was called
+  if (!already_freed_by_cleanup) {
     // Use raw free() - stacks are allocated with raw malloc(), not SAFE_CALLOC()
     // This avoids recursive mutex allocation during destructor execution
     free(arg);
