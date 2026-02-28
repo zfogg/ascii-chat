@@ -403,13 +403,6 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
   float *output = (float *)outputBuffer;
   size_t num_samples = framesPerBuffer * AUDIO_CHANNELS;
 
-  static uint64_t audio_callback_debug_count = 0;
-  audio_callback_debug_count++;
-  if (audio_callback_debug_count <= 10 || audio_callback_debug_count % 100 == 0) {
-    log_info("AUDIO_CALLBACK #%lu: frames=%lu samples=%zu media_source=%p", audio_callback_debug_count, framesPerBuffer,
-             num_samples, (void *)ctx->media_source);
-  }
-
   // Silence on shutdown
   if (atomic_load(&ctx->shutting_down)) {
     if (output) {
