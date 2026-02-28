@@ -462,6 +462,17 @@ crypto_result_t crypto_encrypt(crypto_context_t *ctx, const uint8_t *plaintext, 
     return CRYPTO_ERROR_NONCE_EXHAUSTED;
   }
 
+  // Choose encryption key BEFORE generating nonce (prevents nonce_counter increment on error)
+  const uint8_t *encryption_key = NULL;
+  if (ctx->key_exchange_complete) {
+    encryption_key = ctx->shared_key;
+  } else if (ctx->has_password) {
+    encryption_key = ctx->password_key;
+  } else {
+    SET_ERRNO(ERROR_CRYPTO, "No encryption key available");
+    return CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE;
+  }
+
   // Generate nonce and place at beginning of ciphertext
   uint8_t nonce[XSALSA20_NONCE_SIZE]; // Use maximum nonce size for buffer
   generate_nonce(ctx, nonce);
@@ -474,17 +485,6 @@ crypto_result_t crypto_encrypt(crypto_context_t *ctx, const uint8_t *plaintext, 
   }
   nonce_hex[48] = '\0';
   log_debug("ENCRYPT_NONCE: counter=%lu nonce=%s plaintext_len=%zu", ctx->nonce_counter - 1, nonce_hex, plaintext_len);
-
-  // Choose encryption key (prefer shared key over password key)
-  const uint8_t *encryption_key = NULL;
-  if (ctx->key_exchange_complete) {
-    encryption_key = ctx->shared_key;
-  } else if (ctx->has_password) {
-    encryption_key = ctx->password_key;
-  } else {
-    SET_ERRNO(ERROR_CRYPTO, "No encryption key available");
-    return CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE;
-  }
 
   // Encrypt using NaCl secretbox (XSalsa20 + Poly1305)
   if (crypto_secretbox_easy(ciphertext_out + ctx->nonce_size, plaintext, plaintext_len, nonce, encryption_key) != 0) {
