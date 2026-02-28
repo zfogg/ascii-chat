@@ -546,22 +546,19 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
 
   // The splash screen will display during initialization and exit when done.
   // The initialization process (media probing, display setup, etc.) naturally
-  // takes time, keeping the splash visible. splash_intro_done() is called
-  // when initialization completes and the session is ready.
+  // takes time, keeping the splash visible. The splash is kept alive during
+  // connection attempts (TCP and WebSocket) to prevent a blank screen during
+  // network operations. splash_intro_done() is called only after a successful
+  // connection is established.
 
-  log_debug("About to call splash_intro_done()");
-  splash_intro_done();
-  log_debug("splash_intro_done() returned");
-
-  // Wait for animation thread to fully exit before rendering ASCII art
-  // This prevents the splash and ASCII from appearing simultaneously
-  log_debug("About to call splash_wait_for_animation()");
-  splash_wait_for_animation();
-  log_debug("splash_wait_for_animation() returned");
+  log_debug("[SETUP_SPLASH] Splash will remain visible during connection attempts");
 
   // Exit early if shutdown was requested (e.g., user pressed Ctrl-C)
   if (should_exit()) {
     log_debug("[SETUP] Shutdown requested, exiting early");
+    log_debug("[SETUP_SPLASH] Ending splash due to early shutdown request");
+    splash_intro_done();
+    splash_wait_for_animation();
     if (temp_display) {
       session_display_destroy(temp_display);
       temp_display = NULL;
@@ -613,6 +610,19 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
 
     // Exit immediately if run_fn succeeded
     if (result == ASCIICHAT_OK) {
+      // Connection succeeded - end splash screen now before rendering ASCII art
+      // The splash has been kept visible during connection attempts to prevent blank screen
+      // Now that we have an active connection, hide it before rendering begins
+      log_debug("[CLIENT_LIKE_LOOP] Connection established, ending splash screen");
+      splash_intro_done();
+      log_debug("[CLIENT_LIKE_LOOP] splash_intro_done() returned");
+
+      // Wait for animation thread to fully exit before rendering ASCII art
+      // This prevents the splash and ASCII from appearing simultaneously
+      log_debug("[CLIENT_LIKE_LOOP] About to call splash_wait_for_animation()");
+      splash_wait_for_animation();
+      log_debug("[CLIENT_LIKE_LOOP] splash_wait_for_animation() returned");
+
       break;
     }
 
