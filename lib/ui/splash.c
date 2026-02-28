@@ -749,7 +749,14 @@ void splash_wait_for_animation(void) {
       if (is_shutting_down) {
         log_dev("[SPLASH_WAIT] Shutdown in progress, not waiting for animation thread");
       } else {
-        log_warn("[SPLASH_WAIT] Animation thread join timed out after 10 seconds");
+        log_warn("[SPLASH_WAIT] Animation thread join timed out after %llu ms, forcing stop",
+                 (unsigned long long)(timeout_ns / 1000000));
+        // Force stop the animation thread if it didn't exit in time
+        atomic_store(&g_splash_state.should_stop, true);
+        // Clear any partial splash output left on screen
+        terminal_clear_screen();
+        terminal_cursor_home(STDOUT_FILENO);
+        terminal_flush(STDOUT_FILENO);
       }
     }
 
