@@ -145,7 +145,8 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       doxygen \
       dpkg-dev rpm \
       yt-dlp \
-      libwebsockets-dev
+      libwebsockets-dev  \
+      yyjson-dev
 
     # Try LLVM versions in order from newest to oldest
     LLVM_VERSIONS="21 20 19 18"
@@ -297,6 +298,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       protobuf-c-devel \
       ffmpeg-devel \
       abseil-cpp-devel \
+      yyjson-devel \
       emscripten \
       doxygen \
       rpm-build
@@ -320,6 +322,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       doxygen \
       dpkg rpm-tools \
       yt-dlp \
+      yyjson \
       emscripten \
       bun \
       libwebsockets
