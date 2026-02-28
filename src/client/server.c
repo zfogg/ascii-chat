@@ -936,6 +936,10 @@ void server_connection_shutdown() {
  * @ingroup client_connection
  */
 void server_connection_lost() {
+  asciichat_error_context_t err_ctx;
+  fprintf(stderr, "★ SERVER_CONNECTION_LOST: errno=%d, msg=%s\n", HAS_ERRNO(&err_ctx) ? err_ctx.code : -1,
+          HAS_ERRNO(&err_ctx) ? err_ctx.context_message : "no error context");
+  fflush(stderr);
   atomic_store(&g_connection_lost, true);
   atomic_store(&g_connection_active, false);
 

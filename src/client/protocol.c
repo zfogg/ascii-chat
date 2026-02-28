@@ -320,6 +320,10 @@ static char *decode_frame_data(const char *frame_data_ptr, size_t frame_data_len
  * @ingroup client_protocol
  */
 static void handle_ascii_frame_packet(const void *data, size_t len) {
+  printf("★★★ PRINTF FROM handle_ascii_frame_packet: ENTRY len=%zu\n", len);
+  fflush(stdout);
+  fprintf(stderr, "★ HANDLE_ASCII_FRAME_PACKET: ENTRY: data=%p, len=%zu\n", data, len);
+  fflush(stderr);
   static int frame_count = 0;
   frame_count++;
   if (frame_count == 1) {
@@ -946,8 +950,14 @@ static void *data_reception_thread_func(void *arg) {
     // Receive and dispatch packet using ACIP transport API
     // This combines packet reception, decryption, parsing, handler dispatch, and cleanup
     acip_transport_t *transport = server_connection_get_transport();
+    if (packet_count < 3) {
+      fprintf(stderr, "★ DATA_THREAD_LOOP_START: packet_count=%d, transport=%p\n", packet_count, (void *)transport);
+      fflush(stderr);
+    }
     if (!transport) {
       log_error("[FRAME_RECV_LOOP] ❌ NO_TRANSPORT: connection lost, transport not available");
+      fprintf(stderr, "★ DATA_THREAD_NO_TRANSPORT: calling server_connection_lost()\n");
+      fflush(stderr);
       server_connection_lost();
       break;
     }
@@ -1235,7 +1245,11 @@ static void acip_on_ascii_frame(const ascii_frame_packet_t *header, const void *
   memcpy(packet + sizeof(net_header), frame_data, data_len);
 
   log_info("[FRAME_RECV_CALLBACK] 📥 FRAME_DISPATCH: calling handle_ascii_frame_packet() with %zu bytes", total_len);
+  fprintf(stderr, "★ ACIP_ON_ASCII_FRAME: About to call handle_ascii_frame_packet, packet_size=%zu\n", total_len);
+  fflush(stderr);
   handle_ascii_frame_packet(packet, total_len);
+  fprintf(stderr, "★ ACIP_ON_ASCII_FRAME: handle_ascii_frame_packet returned\n");
+  fflush(stderr);
   log_info("[FRAME_RECV_CALLBACK] ✅ FRAME_DISPATCH_COMPLETE: frame processing finished");
 
   SAFE_FREE(packet);

@@ -528,13 +528,28 @@ static asciichat_error_t client_run(session_capture_ctx_t *capture, session_disp
   }
 
   // Monitor connection until it breaks or shutdown is requested
+  int monitor_iteration = 0;
   while (!should_exit() && server_connection_is_active()) {
+    monitor_iteration++;
+    if (monitor_iteration <= 5) {
+      fprintf(stderr,
+              "★ MONITOR_LOOP_ITERATION %d: should_exit()=%d, server_connection_is_active()=%d, "
+              "protocol_connection_lost()=%d\n",
+              monitor_iteration, should_exit(), server_connection_is_active(), protocol_connection_lost());
+      fflush(stderr);
+    }
     if (protocol_connection_lost()) {
       log_debug("Connection lost detected");
+      fprintf(stderr, "★ MONITOR_LOOP: Breaking due to protocol_connection_lost()=true\n");
+      fflush(stderr);
       break;
     }
     platform_sleep_us(100 * US_PER_MS_INT);
   }
+
+  fprintf(stderr, "★ MONITOR_LOOP_EXIT: should_exit()=%d, server_connection_is_active()=%d, iterations=%d\n",
+          should_exit(), server_connection_is_active(), monitor_iteration);
+  fflush(stderr);
 
   if (should_exit()) {
     log_debug("Shutdown requested, cleaning up connection");
