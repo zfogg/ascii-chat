@@ -167,6 +167,21 @@ static bool g_data_thread_created = false;
 static atomic_bool g_data_thread_exited = false;
 
 /* ============================================================================
+ * Frame Rendering Statistics
+ * ============================================================================ */
+
+/**
+ * @brief Counter for total unique frames rendered by the client
+ *
+ * Incremented each time a frame packet is received and rendered.
+ * Used for performance monitoring and verifying that frames are being
+ * transmitted and displayed, not just replaying the same frame.
+ *
+ * @ingroup client_protocol
+ */
+static atomic_int g_frames_rendered = 0;
+
+/* ============================================================================
  * Multi-User Client State
  * ============================================================================ */
 
@@ -499,6 +514,9 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     last_render_time_ns = render_time_ns;
   }
 
+  // Increment global frame counter BEFORE rendering (to track unique frames received)
+  int total_frames = atomic_fetch_add(&g_frames_rendered, 1) + 1;
+
   // DEBUG: Periodically log frame stats on client side
   static int client_frame_counter = 0;
   client_frame_counter++;
@@ -510,8 +528,8 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
       if (frame_data[i] == '\n')
         line_count++;
     }
-    log_debug("CLIENT_FRAME: received %zu bytes, %d newlines, header: %ux%u", frame_len, line_count, header.width,
-              header.height);
+    log_info("🎬 CLIENT_FRAME: #%d received - %zu bytes, %d newlines, %ux%u", total_frames, frame_len, line_count,
+             header.width, header.height);
   }
 
   // Render ASCII art frame (display_render_frame will apply effects like --matrix)
@@ -1131,6 +1149,12 @@ int protocol_start_connection() {
  * @ingroup client_protocol
  */
 void protocol_stop_connection() {
+  // Log final frame count before shutting down
+  int final_frame_count = atomic_load(&g_frames_rendered);
+  if (final_frame_count > 0) {
+    log_info("📊 CLIENT SESSION STATS: %d unique frames rendered during connection", final_frame_count);
+  }
+
   log_debug("[PROTOCOL_STOP] 1. Starting protocol_stop_connection");
 
   // In snapshot mode, data reception thread was never started, but capture thread may still be running

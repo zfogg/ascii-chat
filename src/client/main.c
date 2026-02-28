@@ -870,6 +870,10 @@ int client_main(void) {
   // asciichat_shared_destroy();
   // log_debug("[CLIENT_MAIN] asciichat_shared_destroy() returned");
 
+  // Log final session statistics before exit
+  // Note: Frame count is logged in protocol_stop_connection() if connection was established
+  // This is a fallback in case the connection never started
+
   log_debug("[CLIENT_MAIN] About to exit with code %d (SKIPPED asciichat_shared_destroy)",
             (session_result == ASCIICHAT_OK) ? 0 : 1);
   return (session_result == ASCIICHAT_OK) ? 0 : 1;
