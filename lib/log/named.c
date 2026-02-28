@@ -219,7 +219,7 @@ int log_named_format_message(const char *message, char *output, size_t output_si
         }
       }
     } else if (isdigit(*p)) {
-      /* Look for decimal integers that might be FDs */
+      /* Look for decimal integers that might be FDs or packet types */
       const char *int_start = p;
       int fd_value = 0;
       int digit_count = 0;
@@ -231,8 +231,19 @@ int log_named_format_message(const char *message, char *output, size_t output_si
         digit_count++;
       }
 
+      /* Skip if this integer is inside parentheses (already part of formatted output) */
+      bool in_parens = false;
+      int paren_depth = 0;
+      for (const char *scan = message; scan < int_start; scan++) {
+        if (*scan == '(')
+          paren_depth++;
+        else if (*scan == ')')
+          paren_depth--;
+      }
+      in_parens = (paren_depth > 0);
+
       /* Check if this is a registered packet type */
-      if (digit_count > 0 && has_packet_type_prefix(message, int_start)) {
+      if (!in_parens && digit_count > 0 && has_packet_type_prefix(message, int_start)) {
         const char *name = named_get_packet_type(fd_value);
         if (name) {
           /* This integer is a registered packet type with appropriate prefix - format it */
@@ -271,7 +282,7 @@ int log_named_format_message(const char *message, char *output, size_t output_si
       }
 
       /* Check if this is a registered file descriptor */
-      if (digit_count > 0 && has_fd_prefix(message, int_start)) {
+      if (!in_parens && digit_count > 0 && has_fd_prefix(message, int_start)) {
         const char *name = named_get_fd(fd_value);
         if (name) {
           /* This integer is a registered FD with appropriate prefix - format it */
