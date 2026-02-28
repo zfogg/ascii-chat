@@ -178,8 +178,10 @@ asciichat_error_t packet_parse_opus_batch(const void *packet_data, size_t packet
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in Opus batch parsing");
   }
 
-  // Verify minimum packet size (16-byte header)
-  const size_t header_size = 16;
+  // Verify minimum packet size (12-byte header: sample_rate + frame_duration + frame_count)
+  // Minimum valid Opus packet is 12-byte header + at least 1 byte of Opus data = 13 bytes
+  // But allow even smaller for silence frames (DTX mode) which can compress to 3-4 bytes
+  const size_t header_size = 12;
   if (packet_len < header_size) {
     // DEBUG: Log first few bytes of corrupted packet to understand what's happening
     char hex_buf[256];
@@ -188,7 +190,8 @@ asciichat_error_t packet_parse_opus_batch(const void *packet_data, size_t packet
       sprintf(hex_buf + i * 2, "%02x", ((uint8_t *)packet_data)[i]);
     }
     hex_buf[bytes_to_show * 2] = '\0';
-    log_error("★ OPUS_BATCH_RCV_DEBUG: packet_len=%zu, expected_min=16, first_bytes=%s", packet_len, hex_buf);
+    log_error("★ OPUS_BATCH_RCV_DEBUG: packet_len=%zu, expected_min=%zu, first_bytes=%s", packet_len, header_size,
+              hex_buf);
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Opus batch packet too small: %zu < %zu", packet_len, header_size);
   }
 
