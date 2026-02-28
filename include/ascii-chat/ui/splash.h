@@ -110,6 +110,20 @@ int splash_display_status(int mode);
 bool splash_should_display(bool is_intro);
 
 /**
+ * @brief Restore stderr after splash animation completes
+ *
+ * Restores the original stderr file descriptor that was saved when
+ * splash_intro_start() was called. This must be called after splash animation
+ * completes to allow debug logging to appear on screen again.
+ *
+ * @note Safe to call multiple times (idempotent)
+ * @note Must only be called after splash_intro_start() was called
+ *
+ * @ingroup session
+ */
+void splash_restore_stderr(void);
+
+/**
  * @brief Set update notification to display on splash/status screens
  *
  * Sets a notification message that will be displayed on splash screens

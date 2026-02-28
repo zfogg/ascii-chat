@@ -190,6 +190,10 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
       platform_sleep_ms(250);
     }
     log_debug("session_client_like_run(): After splash sleep");
+
+    // Restore stderr now that splash animation and post-splash logging are done
+    // This allows logs to appear on screen again after this point
+    splash_restore_stderr();
   }
 
   // ============================================================================
@@ -342,8 +346,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
 
   // Check for stdin render mode: read ASCII frames from stdin, render to video
   const char *render_file_opt = GET_OPTION(render_file);
-  bool stdin_render_mode = (render_file_opt && strcmp(render_file_opt, "-") == 0 &&
-                            !terminal_is_stdin_tty());
+  bool stdin_render_mode = (render_file_opt && strcmp(render_file_opt, "-") == 0 && !terminal_is_stdin_tty());
 
   if (stdin_render_mode) {
     // Stdin render mode: read ASCII frames from stdin, output video to stdout
@@ -356,17 +359,15 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
 
     // Check if height was explicitly set (not default)
     if (frame_height == OPT_HEIGHT_DEFAULT) {
-      result = SET_ERRNO(ERROR_USAGE,
-                         "Stdin render mode requires explicit frame height.\n"
-                         "Please specify: --height <rows>");
+      result = SET_ERRNO(ERROR_USAGE, "Stdin render mode requires explicit frame height.\n"
+                                      "Please specify: --height <rows>");
       goto cleanup;
     }
 
     // Disallow explicit --width in stdin render mode (auto-detected from first frame)
     if (frame_width != OPT_WIDTH_DEFAULT) {
-      result = SET_ERRNO(ERROR_USAGE,
-                         "Stdin render mode does not accept --width (auto-detected from frames).\n"
-                         "Only specify: --height <rows>");
+      result = SET_ERRNO(ERROR_USAGE, "Stdin render mode does not accept --width (auto-detected from frames).\n"
+                                      "Only specify: --height <rows>");
       goto cleanup;
     }
 
