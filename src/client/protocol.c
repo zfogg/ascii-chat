@@ -653,6 +653,24 @@ static void handle_audio_opus_batch_packet(const void *data, size_t len) {
     return;
   }
 
+  // DEBUG: Log first 12 bytes of received Opus batch header
+  if (len >= 12) {
+    const uint8_t *bytes = (const uint8_t *)data;
+    log_info("OPUS_BATCH_RECV_DEBUG: first_bytes=[%02x %02x %02x %02x][%02x %02x %02x %02x][%02x %02x %02x %02x]",
+             bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7], bytes[8], bytes[9],
+             bytes[10], bytes[11]);
+
+    // Parse header manually to check values
+    uint32_t sr, fd, fc;
+    memcpy(&sr, bytes, 4);
+    memcpy(&fd, bytes + 4, 4);
+    memcpy(&fc, bytes + 8, 4);
+    log_info("OPUS_BATCH_RECV_PARSED: sample_rate(net)=0x%08x frame_duration(net)=0x%08x frame_count(net)=0x%08x", sr,
+             fd, fc);
+    log_info("OPUS_BATCH_RECV_PARSED: sample_rate=%u frame_duration=%u frame_count=%u", NET_TO_HOST_U32(sr),
+             NET_TO_HOST_U32(fd), NET_TO_HOST_U32(fc));
+  }
+
   if (!GET_OPTION(audio_enabled)) {
     log_warn_every(NS_PER_MS_INT, "Received opus batch packet but audio is disabled");
     return;
