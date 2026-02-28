@@ -863,6 +863,10 @@ void server_connection_set_ip(const char *ip) {
  */
 void server_connection_close() {
   log_debug("[TRANSPORT_LIFECYCLE] server_connection_close() called");
+
+  // Acquire send mutex to prevent race with threaded_send_image_frame()
+  // This ensures any in-flight sends complete before we destroy the transport
+  mutex_lock(&g_send_mutex);
   atomic_store(&g_connection_active, false);
 
   // Destroy ACIP transport before closing socket
@@ -873,6 +877,8 @@ void server_connection_close() {
     g_client_transport = NULL;
     log_debug("[TRANSPORT_LIFECYCLE] Transport destroyed, g_client_transport set to NULL");
   }
+
+  mutex_unlock(&g_send_mutex);
 
   if (g_sockfd != INVALID_SOCKET_VALUE) {
     log_debug("[TRANSPORT_LIFECYCLE] Closing socket: %d", (int)g_sockfd);

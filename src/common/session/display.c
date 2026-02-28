@@ -746,11 +746,11 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     // Stop splash screen when first frame is ready
     // This ensures smooth transition from splash animation to ASCII art rendering
     splash_intro_done();
-    splash_wait_for_animation();
-    // splash_wait_for_animation() blocks until the splash animation thread fully exits
-    // After this point, no more logs will be written by the splash screen
+    // Don't wait for splash animation - just signal it to stop
+    // Frames should start rendering immediately, splash will exit in background
+    // splash_wait_for_animation() was blocking frame rendering for frames 1-120
 
-    // Perform initial terminal reset (clear screen AFTER splash is fully done)
+    // Perform initial terminal reset (clear screen immediately for first frame)
     if (ctx->has_tty) {
       (void)terminal_reset(STDOUT_FILENO);
       (void)terminal_clear_screen();  // Clear AFTER splash thread exits to avoid log overlap
@@ -827,6 +827,18 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
 
     // Flush kernel write buffer so piped data appears immediately to readers
     (void)terminal_flush(STDOUT_FILENO);
+  }
+
+  // Track actual frame writes to terminal (increment counter after ANY write path)
+  static int actual_frames_written = 0;
+  actual_frames_written++;
+  if (actual_frames_written % 10 == 1) {
+    log_info("✅ ACTUAL_FRAME_WRITTEN: #%d to terminal output", actual_frames_written);
+  }
+
+  // Fallback code path continues below
+  if (!ctx->has_tty && terminal_is_interactive()) {
+    // Already handled above
   } else {
     // Non-interactive piped/redirected output (e.g., snapshot mode with redirected stdout)
     // Write frame data with newline and flush

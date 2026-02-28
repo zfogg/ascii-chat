@@ -532,6 +532,13 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
              header.width, header.height);
   }
 
+  // Track frames actually reaching display (after frame rate limiting)
+  static int frames_to_display = 0;
+  frames_to_display++;
+  if (frames_to_display % 10 == 1) {
+    log_info("📺 FRAME_TO_DISPLAY: #%d (received: %d)", frames_to_display, total_frames);
+  }
+
   // Render ASCII art frame (display_render_frame will apply effects like --matrix)
   display_render_frame(frame_data);
 

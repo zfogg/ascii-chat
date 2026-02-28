@@ -782,24 +782,19 @@ int splash_intro_start(session_display_ctx_t *ctx) {
 
 int splash_intro_done(void) {
   // Record when intro_done was called - animation thread will use this to decide when to stop
-  // Don't block here - let the animation thread handle timing
   // The animation thread will exit based on elapsed time, not on first frame arrival
   atomic_store(&g_splash_state.intro_done_time_ns, time_get_ns());
-
-  // Return immediately - animation thread will stop when:
-  // 1. First frame has been rendered, AND minimum 2 seconds have passed, OR
-  // 2. Maximum 30 seconds have elapsed
-  return 0;
 
   // Wait for animation thread to finish (only join once, even if called multiple times)
   bool expected = true;
   if (atomic_compare_exchange_strong(&g_splash_state.thread_created, &expected, false)) {
     // We successfully changed thread_created from true to false, so we join with timeout
-    // Use 500ms timeout to prevent blocking during shutdown
-    asciichat_thread_join_timeout(&g_splash_state.anim_thread, NULL, 500LL * NS_PER_MS_INT);
+    // Wait briefly for splash to exit (100ms is enough for animation thread to notice the flag)
+    asciichat_thread_join_timeout(&g_splash_state.anim_thread, NULL, 100LL * NS_PER_MS_INT);
   }
 
   atomic_store(&g_splash_state.is_running, false);
+  return 0;
 
   // Don't restore stderr here - keep it suppressed for a bit longer to suppress post-splash logs
   // stderr will be restored by splash_restore_stderr() when called by the application
