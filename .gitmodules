@@ -27,3 +27,9 @@
 [submodule "deps/ascii-chat-deps/ghostty"]
 	path = deps/ascii-chat-deps/ghostty
 	url = https://github.com/zfogg/ghostty
+[submodule "deps/ascii-chat-deps/libde265"]
+	path = deps/ascii-chat-deps/libde265
+	url = https://github.com/strukturag/libde265.git
+[submodule "deps/ascii-chat-deps/x265"]
+	path = deps/ascii-chat-deps/x265
+	url = https://github.com/videolan/x265.git

@@ -484,6 +484,136 @@ if(NOT TARGET OpenSSL::SSL)
 endif()
 
 # =============================================================================
+# libde265 - HEVC decoder library
+# =============================================================================
+message(STATUS "Configuring ${BoldBlue}libde265${ColorReset} from source...")
+
+set(LIBDE265_PREFIX "${MUSL_DEPS_DIR_STATIC}/libde265")
+set(LIBDE265_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/libde265-build")
+set(LIBDE265_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libde265")
+
+if(NOT EXISTS "${LIBDE265_PREFIX}/lib/libde265.a")
+    message(STATUS "  Building libde265...")
+    file(MAKE_DIRECTORY "${LIBDE265_BUILD_DIR}")
+    file(MAKE_DIRECTORY "${LIBDE265_PREFIX}")
+
+    execute_process(
+        COMMAND ${CMAKE_COMMAND}
+            -DCMAKE_C_COMPILER=${MUSL_GCC}
+            -DCMAKE_CXX_COMPILER=clang++
+            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_INSTALL_PREFIX=${LIBDE265_PREFIX}
+            -DENABLE_SDL=OFF
+            -DBUILD_SHARED_LIBS=OFF
+            -DCMAKE_C_FLAGS="${MUSL_KERNEL_CFLAGS} -fPIC -O2"
+            -DCMAKE_CXX_FLAGS="${MUSL_KERNEL_CFLAGS} -fPIC -O2"
+            ${LIBDE265_SOURCE_DIR}
+        WORKING_DIRECTORY "${LIBDE265_BUILD_DIR}"
+        RESULT_VARIABLE CONFIG_RESULT
+        OUTPUT_VARIABLE CONFIG_OUTPUT
+        ERROR_VARIABLE CONFIG_ERROR
+    )
+    if(NOT CONFIG_RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to configure libde265:\n${CONFIG_ERROR}")
+    endif()
+
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} --build "${LIBDE265_BUILD_DIR}" -j8
+        RESULT_VARIABLE BUILD_RESULT
+        OUTPUT_VARIABLE BUILD_OUTPUT
+        ERROR_VARIABLE BUILD_ERROR
+    )
+    if(NOT BUILD_RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to build libde265:\n${BUILD_ERROR}")
+    endif()
+
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} --install "${LIBDE265_BUILD_DIR}"
+        RESULT_VARIABLE INSTALL_RESULT
+        OUTPUT_VARIABLE INSTALL_OUTPUT
+        ERROR_VARIABLE INSTALL_ERROR
+    )
+    if(NOT INSTALL_RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to install libde265:\n${INSTALL_ERROR}")
+    endif()
+else()
+    message(STATUS "  ${BoldBlue}libde265${ColorReset} library found in cache: ${BoldMagenta}${LIBDE265_PREFIX}/lib/libde265.a${ColorReset}")
+endif()
+
+set(LIBDE265_INCLUDE_DIRS "${LIBDE265_PREFIX}/include" CACHE PATH "libde265 include directory" FORCE)
+set(LIBDE265_LIBRARY_DIR "${LIBDE265_PREFIX}/lib" CACHE PATH "libde265 library directory" FORCE)
+set(LIBDE265_LIBRARIES "${LIBDE265_PREFIX}/lib/libde265.a" CACHE STRING "libde265 libraries" FORCE)
+set(LIBDE265_FOUND TRUE CACHE BOOL "libde265 found" FORCE)
+
+file(MAKE_DIRECTORY "${LIBDE265_PREFIX}/include" "${LIBDE265_PREFIX}/lib")
+
+# =============================================================================
+# libx265 - HEVC encoder library
+# =============================================================================
+message(STATUS "Configuring ${BoldBlue}libx265${ColorReset} from source...")
+
+set(LIBX265_PREFIX "${MUSL_DEPS_DIR_STATIC}/libx265")
+set(LIBX265_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/libx265-build")
+set(LIBX265_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/x265/source")
+
+if(NOT EXISTS "${LIBX265_PREFIX}/lib/libx265.a")
+    message(STATUS "  Building libx265...")
+    file(MAKE_DIRECTORY "${LIBX265_BUILD_DIR}")
+    file(MAKE_DIRECTORY "${LIBX265_PREFIX}")
+
+    execute_process(
+        COMMAND ${CMAKE_COMMAND}
+            -DCMAKE_C_COMPILER=${MUSL_GCC}
+            -DCMAKE_CXX_COMPILER=clang++
+            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_INSTALL_PREFIX=${LIBX265_PREFIX}
+            -DBUILD_SHARED_LIBS=OFF
+            -DENABLE_CLI=OFF
+            -DENABLE_TESTS=OFF
+            -DENABLE_AGGRESSIVE_CHECKS=OFF
+            -DCMAKE_C_FLAGS="${MUSL_KERNEL_CFLAGS} -fPIC -O2"
+            -DCMAKE_CXX_FLAGS="${MUSL_KERNEL_CFLAGS} -fPIC -O2"
+            ${LIBX265_SOURCE_DIR}
+        WORKING_DIRECTORY "${LIBX265_BUILD_DIR}"
+        RESULT_VARIABLE CONFIG_RESULT
+        OUTPUT_VARIABLE CONFIG_OUTPUT
+        ERROR_VARIABLE CONFIG_ERROR
+    )
+    if(NOT CONFIG_RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to configure libx265:\n${CONFIG_ERROR}")
+    endif()
+
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} --build "${LIBX265_BUILD_DIR}" -j8
+        RESULT_VARIABLE BUILD_RESULT
+        OUTPUT_VARIABLE BUILD_OUTPUT
+        ERROR_VARIABLE BUILD_ERROR
+    )
+    if(NOT BUILD_RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to build libx265:\n${BUILD_ERROR}")
+    endif()
+
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} --install "${LIBX265_BUILD_DIR}"
+        RESULT_VARIABLE INSTALL_RESULT
+        OUTPUT_VARIABLE INSTALL_OUTPUT
+        ERROR_VARIABLE INSTALL_ERROR
+    )
+    if(NOT INSTALL_RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to install libx265:\n${INSTALL_ERROR}")
+    endif()
+else()
+    message(STATUS "  ${BoldBlue}libx265${ColorReset} library found in cache: ${BoldMagenta}${LIBX265_PREFIX}/lib/libx265.a${ColorReset}")
+endif()
+
+set(LIBX265_INCLUDE_DIRS "${LIBX265_PREFIX}/include" CACHE PATH "libx265 include directory" FORCE)
+set(LIBX265_LIBRARY_DIR "${LIBX265_PREFIX}/lib" CACHE PATH "libx265 library directory" FORCE)
+set(LIBX265_LIBRARIES "${LIBX265_PREFIX}/lib/libx265.a" CACHE STRING "libx265 libraries" FORCE)
+set(LIBX265_FOUND TRUE CACHE BOOL "libx265 found" FORCE)
+
+file(MAKE_DIRECTORY "${LIBX265_PREFIX}/include" "${LIBX265_PREFIX}/lib")
+
+# =============================================================================
 # FFmpeg - Media encoding/decoding libraries
 # =============================================================================
 message(STATUS "Configuring ${BoldBlue}FFmpeg${ColorReset} from source...")
@@ -537,13 +667,14 @@ if(NOT EXISTS "${FFMPEG_PREFIX}/lib/libavformat.a" OR
         file(RENAME "${FFMPEG_BUILD_DIR}/ffmpeg-7.1" "${FFMPEG_SOURCE_DIR}")
     endif()
 
-    # Configure FFmpeg with minimal build (only codecs we need)
+    # Configure FFmpeg with external codec libraries
     message(STATUS "  Configuring FFmpeg...")
     execute_process(
         COMMAND ${CMAKE_COMMAND} -E env
             CC=${MUSL_GCC}
             REALGCC=${REAL_GCC}
             CFLAGS=${MUSL_KERNEL_CFLAGS}\ -fPIC
+            PKG_CONFIG_PATH=${LIBDE265_PREFIX}/lib/pkgconfig:${LIBX265_PREFIX}/lib/pkgconfig
             "${FFMPEG_SOURCE_DIR}/configure"
             --prefix=${FFMPEG_PREFIX}
             --cc=${MUSL_GCC}
@@ -567,6 +698,10 @@ if(NOT EXISTS "${FFMPEG_PREFIX}/lib/libavformat.a" OR
             --enable-parser=h264,hevc,vp8,vp9,av1,mpeg4video
             --enable-swscale
             --enable-swresample
+            --enable-libde265
+            --enable-libx265
+            --extra-cflags=-I${LIBDE265_PREFIX}/include\ -I${LIBX265_PREFIX}/include
+            --extra-ldflags=-L${LIBDE265_PREFIX}/lib\ -L${LIBX265_PREFIX}/lib
         WORKING_DIRECTORY "${FFMPEG_SOURCE_DIR}"
         RESULT_VARIABLE CONFIG_RESULT
         OUTPUT_VARIABLE CONFIG_OUTPUT
@@ -628,6 +763,8 @@ set(FFMPEG_LINK_LIBRARIES
     "${FFMPEG_PREFIX}/lib/libavutil.a"
     "${FFMPEG_PREFIX}/lib/libswscale.a"
     "${FFMPEG_PREFIX}/lib/libswresample.a"
+    "${LIBDE265_PREFIX}/lib/libde265.a"
+    "${LIBX265_PREFIX}/lib/libx265.a"
     CACHE STRING "FFmpeg link libraries" FORCE
 )
 

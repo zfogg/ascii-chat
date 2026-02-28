@@ -94,7 +94,13 @@ if(NOT USE_MUSL)
     configure_yyjson()
 endif()
 
-# FFmpeg - Media file decoding (optional - enables --file support)
+# libde265 - HEVC/H.265 decoder library
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libde265.cmake)
+
+# libx265 - HEVC/H.265 encoder library
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libx265.cmake)
+
+# FFmpeg - Media file decoding
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/FFmpeg.cmake)
 
 # =============================================================================
