@@ -2833,10 +2833,11 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
 
       // CRITICAL: Bounds check BEFORE memcpy to prevent heap-buffer-overflow
       // If buffer is too small, skip frame storage instead of overflowing
-      if (total_size > buffer_capacity) {
-        log_error(
-            "FRAME_STORAGE_OVERFLOW_PREVENTED: client=%s, need=%zu bytes, capacity=%zu bytes (cannot store frame)",
-            client->client_id, total_size, buffer_capacity);
+      // NOTE: Use >= not > because we need one free byte after the last byte
+      if (total_size >= buffer_capacity) {
+        log_error("FRAME_STORAGE_OVERFLOW_PREVENTED: client=%s, need=%zu bytes, capacity=%zu bytes (cannot store "
+                  "frame, would overflow at byte %zu)",
+                  client->client_id, total_size, buffer_capacity, buffer_capacity);
         disconnect_client_for_bad_data(client, "FRAME_STORAGE_BUFFER_TOO_SMALL");
         return;
       }
