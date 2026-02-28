@@ -561,11 +561,11 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
   // NOW acquire the lock early for generating unique client name
   rwlock_wrlock(&g_client_manager_rwlock);
 
-  // Generate unique client name
+  // Generate unique client ID (noun only, without counter or port)
   char new_client_id[MAX_CLIENT_ID_LEN];
-  if (generate_client_name(new_client_id, sizeof(new_client_id), g_client_manager.clients_by_id, port, true) != 0) {
+  if (generate_client_id(new_client_id, sizeof(new_client_id)) != 0) {
     rwlock_wrunlock(&g_client_manager_rwlock);
-    log_error("Failed to generate unique client name");
+    log_error("Failed to generate unique client ID");
     return NULL;
   }
 
@@ -946,11 +946,11 @@ client_info_t *add_webrtc_client(server_context_t *server_ctx, acip_transport_t 
   // Update client_count to match actual count before adding new client
   g_client_manager.client_count = existing_count;
 
-  // Generate unique client name for WebRTC client
+  // Generate unique client ID for WebRTC client (noun only, without counter or port)
   char new_client_id[MAX_CLIENT_ID_LEN];
-  if (generate_client_name(new_client_id, sizeof(new_client_id), g_client_manager.clients_by_id, 0, false) != 0) {
+  if (generate_client_id(new_client_id, sizeof(new_client_id)) != 0) {
     rwlock_wrunlock(&g_client_manager_rwlock);
-    log_error("Failed to generate unique client name for WebRTC client");
+    log_error("Failed to generate unique client ID for WebRTC client");
     return NULL;
   }
 
@@ -1214,12 +1214,8 @@ int remove_client(server_context_t *server_ctx, const char *client_id) {
       // Save socket for tcp_server_stop_client_threads() before closing
       mutex_lock(&client->client_state_mutex);
       client_socket = client->socket; // Save socket for thread cleanup
-      if (client->socket != INVALID_SOCKET_VALUE) {
-        log_debug("SOCKET_DEBUG: Client %s shutting down socket %d", client->client_id, client->socket);
-        // Shutdown both send and receive operations to unblock any pending I/O
-        socket_shutdown(client->socket, 2); // 2 = SHUT_RDWR on POSIX, SD_BOTH on Windows
-        // Don't close yet - tcp_server needs socket as lookup key
-      }
+      // NOTE: Do NOT call socket_shutdown() here - it sends FIN to peer and breaks the connection
+      // The threads will exit naturally when they check shutting_down/active flags or hit errors
       mutex_unlock(&client->client_state_mutex);
 
       // Shutdown packet queues to unblock send thread

@@ -16,6 +16,18 @@ extern const char *nouns[];
 extern const size_t nouns_count;
 
 /**
+ * @brief Generate a unique client ID (noun only, no counter or port)
+ *
+ * Returns just the noun part (e.g., "clean", "mountain", "tiger") without counters or transport info.
+ * This is used for internal client identification in thread names, buffer creation, etc.
+ *
+ * @param buffer Output buffer for the generated ID
+ * @param buffer_size Size of the output buffer
+ * @return 0 on success, -1 on error
+ */
+int generate_client_id(char *buffer, size_t buffer_size);
+
+/**
  * @brief Generate a unique client name from the nouns wordlist
  *
  * Generates a name in the format "noun.N (transport:port)" where N is a counter to ensure uniqueness.

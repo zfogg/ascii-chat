@@ -730,10 +730,40 @@ const char *nouns[] = {
 const size_t nouns_count = sizeof(nouns) / sizeof(nouns[0]);
 
 /**
+ * @brief Generate a unique client ID (noun only, no counter or port)
+ *
+ * This is used for internal client identification in thread names, buffer creation, etc.
+ * Returns just the noun part (e.g., "clean", "mountain", "tiger") without counters or transport info.
+ */
+int generate_client_id(char *buffer, size_t buffer_size) {
+  if (!buffer || buffer_size < 1 || !nouns_count) {
+    return -1;
+  }
+
+  // Select a random noun
+  srand((unsigned int)time(NULL) + rand()); // Better randomness with seed
+  int noun_idx = rand() % (int)nouns_count;
+  const char *noun = nouns[noun_idx];
+
+  if (!noun) {
+    return -1;
+  }
+
+  // Just return the noun, no counter or transport info
+  int written = snprintf(buffer, buffer_size, "%s", noun);
+  if (written < 0 || (size_t)written >= buffer_size) {
+    return -1; // Buffer too small
+  }
+
+  return 0;
+}
+
+/**
  * @brief Generate a unique client name from the nouns wordlist
  *
  * Caller MUST hold write lock on g_client_manager_rwlock before calling.
  * This function iterates the existing clients hash to check for duplicate names.
+ * Returns the full display name format (noun.counter (transport:port)).
  */
 int generate_client_name(char *buffer, size_t buffer_size, void *existing_clients_hash, int port, bool is_tcp) {
   if (!buffer || buffer_size < 1 || !nouns_count) {
