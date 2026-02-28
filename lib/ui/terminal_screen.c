@@ -181,7 +181,9 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
   }
 
   // Frame delimiter (mark where each frame starts)
-  log_debug("[FRAME_START t=%llums]", (unsigned long long)elapsed_ms);
+  // Print directly to stderr so it's separate from the frame data on stdout
+  fprintf(stderr, "[FRAME_START t=%llums]\n", (unsigned long long)elapsed_ms);
+  fflush(stderr);
 
   frame_buffer_reset(g_frame_buf);
 
@@ -199,7 +201,8 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
   // If logs are disabled, flush and return
   if (!config->show_logs) {
     frame_buffer_flush(g_frame_buf);
-    log_debug("[FRAME_END t=%llums]", (unsigned long long)elapsed_ms);
+    fprintf(stderr, "[FRAME_END t=%llums]\n", (unsigned long long)elapsed_ms);
+    fflush(stderr);
     return;
   }
 
@@ -333,7 +336,8 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     }
 
     // Frame delimiter: mark where frame ends with height info
-    log_debug("[FRAME_END t=%llums height=%d]", (unsigned long long)elapsed_ms, total_frame_height);
+    fprintf(stderr, "[FRAME_END t=%llums height=%d]\n", (unsigned long long)elapsed_ms, total_frame_height);
+    fflush(stderr);
   } else {
     // Grep mode: diff-based rendering. Only rewrite lines that changed.
     // Logs fill renderable_log_rows; the last row is the `/` input line.
