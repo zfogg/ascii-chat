@@ -2808,11 +2808,25 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
     log_info("STORE_FRAME: client_id=%s, frame_ptr=%p, frame->data=%p", client->client_id, (void *)frame,
              frame ? frame->data : NULL);
     if (frame && frame->data && data_len > 0) {
+      // Validate incoming_video_buffer is properly initialized
+      size_t max_allowed = 0;
+      if (!client->incoming_video_buffer) {
+        log_error("STORE_FRAME: incoming_video_buffer is NULL!");
+        return;
+      }
+      max_allowed = client->incoming_video_buffer->allocated_buffer_size;
+
+      // Safety check: buffer should be at least a reasonable size (>= 1MB)
+      // If allocated size is too small, don't risk writing beyond bounds
+      if (max_allowed < (1024 * 1024)) {
+        log_error("FRAME_BUFFER_INVALID: allocated_buffer_size=%zu is too small", max_allowed);
+        return;
+      }
+
       // Store frame data: [width:4][height:4][pixel_data]
       uint32_t width_net = HOST_TO_NET_U32(header->width);
       uint32_t height_net = HOST_TO_NET_U32(header->height);
       size_t total_size = sizeof(uint32_t) * 2 + data_len;
-      size_t max_allowed = client->incoming_video_buffer->allocated_buffer_size;
 
       log_info("STORE_FRAME_DATA: total_size=%zu, max_allowed=%zu, fits=%d", total_size, max_allowed,
                total_size <= max_allowed);
