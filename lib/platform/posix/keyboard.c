@@ -163,21 +163,37 @@ keyboard_key_t keyboard_read_nonblocking(void) {
                 return KEY_RIGHT;
               case 'D':
                 return KEY_LEFT;
-              case '3':
-                // Delete key sends ESC [ 3 ~
-                // Read the trailing ~ to consume the full sequence and return KEY_DELETE
+              case '1':
+                // Home key sends ESC [ 1 ~
                 if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
                   unsigned char ch4;
                   if (read(STDIN_FILENO, &ch4, 1) > 0) {
                     // ch4 should be '~', consume it
                   }
                 }
-                return 260; // KEY_DELETE - use code 260 (after arrow keys 256-259)
+                return 261; // KEY_HOME
+              case '3':
+                // Delete key sends ESC [ 3 ~
+                if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
+                  unsigned char ch4;
+                  if (read(STDIN_FILENO, &ch4, 1) > 0) {
+                    // ch4 should be '~', consume it
+                  }
+                }
+                return 260; // KEY_DELETE
+              case '4':
+                // End key sends ESC [ 4 ~
+                if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
+                  unsigned char ch4;
+                  if (read(STDIN_FILENO, &ch4, 1) > 0) {
+                    // ch4 should be '~', consume it
+                  }
+                }
+                return 262; // KEY_END
               default:
                 // Unknown escape sequence - consume any trailing ~ to avoid leaving it in buffer
                 if (ch3 >= '0' && ch3 <= '9') {
-                  // Function key sequence like ESC [ 1 ~ (Home), ESC [ 4 ~ (End), etc.
-                  // Read the trailing ~ if it exists
+                  // Other function key sequences - just consume the trailing ~
                   if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
                     unsigned char ch4;
                     read(STDIN_FILENO, &ch4, 1); // Just consume it
@@ -256,9 +272,17 @@ keyboard_key_t keyboard_read_with_timeout(uint32_t timeout_ms) {
                 return KEY_RIGHT;
               case 'D':
                 return KEY_LEFT;
+              case '1':
+                // Home key sends ESC [ 1 ~
+                if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
+                  unsigned char ch4;
+                  if (read(STDIN_FILENO, &ch4, 1) > 0) {
+                    // ch4 should be '~', consume it
+                  }
+                }
+                return 261; // KEY_HOME
               case '3':
                 // Delete key sends ESC [ 3 ~
-                // Read the trailing ~ to consume the full sequence
                 if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
                   unsigned char ch4;
                   if (read(STDIN_FILENO, &ch4, 1) > 0) {
@@ -266,11 +290,19 @@ keyboard_key_t keyboard_read_with_timeout(uint32_t timeout_ms) {
                   }
                 }
                 return 260; // KEY_DELETE
+              case '4':
+                // End key sends ESC [ 4 ~
+                if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
+                  unsigned char ch4;
+                  if (read(STDIN_FILENO, &ch4, 1) > 0) {
+                    // ch4 should be '~', consume it
+                  }
+                }
+                return 262; // KEY_END
               default:
                 // Unknown escape sequence - consume any trailing ~ to avoid leaving it in buffer
                 if (ch3 >= '0' && ch3 <= '9') {
-                  // Function key sequence like ESC [ 1 ~ (Home), ESC [ 4 ~ (End), etc.
-                  // Read the trailing ~ if it exists
+                  // Other function key sequences - just consume the trailing ~
                   if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0) {
                     unsigned char ch4;
                     read(STDIN_FILENO, &ch4, 1); // Just consume it
@@ -339,6 +371,20 @@ keyboard_line_edit_result_t keyboard_read_line_interactive(keyboard_line_edit_op
       buffer[len] = '\0';
       *opts->len = len;
     }
+    return LINE_EDIT_CONTINUE;
+  }
+
+  // Home key (move to beginning of line)
+  if (c == 261) { // KEY_HOME
+    cursor = 0;
+    *opts->cursor = cursor;
+    return LINE_EDIT_CONTINUE;
+  }
+
+  // End key (move to end of line)
+  if (c == 262) { // KEY_END
+    cursor = len;
+    *opts->cursor = cursor;
     return LINE_EDIT_CONTINUE;
   }
 
