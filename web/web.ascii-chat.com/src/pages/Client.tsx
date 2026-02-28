@@ -331,7 +331,6 @@ export function ClientPage() {
       const showErrors = options?.showErrors ?? true;
       try {
         console.log("[Client] connectToServer() called");
-        setWasmInitialized(true);
         console.log(`[Client] Server URL: ${serverUrl}`);
         console.log(
           `[Client] Terminal dimensions state: ${terminalDimensions.cols}x${terminalDimensions.rows}`,
@@ -471,6 +470,9 @@ export function ClientPage() {
         console.log("[Client] Calling conn.connect()...");
         await conn.connect();
         console.log("[Client] conn.connect() completed successfully");
+
+        // Only mark WASM as initialized AFTER connection and WASM init complete
+        setWasmInitialized(true);
 
         clientRef.current = conn;
         const pubKey = conn.getPublicKey() || "";
