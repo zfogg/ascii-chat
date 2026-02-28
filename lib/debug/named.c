@@ -657,6 +657,52 @@ const char *named_get_packet_type_format_spec(int pkt_type) {
   return named_get_format_spec(encode_packet_type_key(pkt_type));
 }
 
+/**
+ * @brief Search context for finding entries by type and ID
+ */
+struct type_id_search_ctx {
+  const char *type_name;
+  size_t type_len;
+  int id;
+  const char *found_name;
+};
+
+/**
+ * @brief Callback to search registry for type+id match
+ */
+static void search_type_id_callback(uintptr_t key, const char *name, void *user_data) {
+  struct type_id_search_ctx *ctx = (struct type_id_search_ctx *)user_data;
+  if (ctx->found_name) {
+    return; /* Already found */
+  }
+
+  const char *type = named_get_type(key);
+  if (!type) {
+    return;
+  }
+
+  /* Check if type matches */
+  if (strlen(type) != ctx->type_len || strncmp(type, ctx->type_name, ctx->type_len) != 0) {
+    return;
+  }
+
+  /* Type matches - check if key value is the ID we're looking for
+   * For simple integer IDs, the key is just the ID value */
+  if ((int)key == ctx->id) {
+    ctx->found_name = name;
+  }
+}
+
+const char *named_get_by_type_and_id(const char *type_name, size_t type_len, int id) {
+  if (!type_name || type_len == 0) {
+    return NULL;
+  }
+
+  struct type_id_search_ctx ctx = {.type_name = type_name, .type_len = type_len, .id = id, .found_name = NULL};
+  named_registry_for_each(search_type_id_callback, &ctx);
+  return ctx.found_name;
+}
+
 #else // NDEBUG (Release builds - stubs)
 
 int named_init(void) {
@@ -756,6 +802,13 @@ const char *named_get_packet_type(int pkt_type) {
 
 const char *named_get_packet_type_format_spec(int pkt_type) {
   (void)pkt_type;
+  return NULL;
+}
+
+const char *named_get_by_type_and_id(const char *type_name, size_t type_len, int id) {
+  (void)type_name;
+  (void)type_len;
+  (void)id;
   return NULL;
 }
 

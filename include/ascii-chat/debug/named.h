@@ -256,6 +256,20 @@ const char *named_get_packet_type(int pkt_type);
 const char *named_get_packet_type_format_spec(int pkt_type);
 
 /**
+ * @brief Look up an integer ID by type name and value
+ * @param type_name Type string (e.g., "socket", "client", "connection")
+ * @param type_len Length of type name
+ * @param id Integer ID value to look up
+ * @return Registered name string, or NULL if not found
+ * @ingroup debug_named
+ *
+ * Searches the registry for entries matching the given type and integer ID.
+ * Enables formatting of patterns like "socket 12" → "socket/server_listener (socket=12)".
+ * In release builds (NDEBUG), this always returns NULL.
+ */
+const char *named_get_by_type_and_id(const char *type_name, size_t type_len, int id);
+
+/**
  * @brief Format a description string for logging
  * @param key The resource key
  * @param type_hint A type label (e.g., "mutex", "socket", "thread")

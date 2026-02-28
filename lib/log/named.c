@@ -72,6 +72,67 @@ static bool is_type_in_registry(const char *type_str, size_t type_len) {
  */
 
 /**
+ * @brief Find any type prefix before an integer (socket, client, connection, fd, etc.)
+ * @param start Start of string
+ * @param p Current position in string (at the integer)
+ * @param out_type Output buffer for the type name found
+ * @param out_type_len Output for length of type name
+ * @return Pointer to start of prefix, or p if no prefix found
+ *
+ * Generic function that detects common keywords: socket, client, connection, fd, file, etc.
+ * Returns the type name in out_type for registry lookup.
+ */
+static const char *find_generic_type_prefix(const char *start, const char *p, const char **out_type,
+                                            size_t *out_type_len) {
+  if (p == start) {
+    *out_type = NULL;
+    *out_type_len = 0;
+    return p;
+  }
+
+  const char *word_start = p - 1;
+  /* Skip back over whitespace, '=', ':' */
+  while (word_start > start &&
+         (*word_start == ' ' || *word_start == '\t' || *word_start == '=' || *word_start == ':')) {
+    word_start--;
+  }
+
+  /* Check if we have a digit (we're in a decimal number) */
+  if (!isdigit(*word_start)) {
+    /* Not a digit, so look for type keywords before us */
+    const char *check = word_start;
+    while (check > start && (isalnum(*check) || *check == '_')) {
+      check--;
+    }
+    check++;
+
+    const char *type_start = check;
+    size_t type_len = word_start - type_start + 1;
+
+    /* Check for known type keywords */
+    static const struct {
+      const char *type;
+      size_t len;
+    } known_types[] = {
+        {"socket", 6}, {"client", 6},  {"connection", 10}, {"fd", 2},      {"file", 4},    {"descriptor", 11},
+        {"thread", 6}, {"decoder", 7}, {"encoder", 7},     {"context", 7}, {"handler", 7},
+    };
+
+    for (size_t i = 0; i < sizeof(known_types) / sizeof(known_types[0]); i++) {
+      if (type_len == known_types[i].len && strncmp(type_start, known_types[i].type, type_len) == 0) {
+        *out_type = type_start;
+        *out_type_len = type_len;
+        return type_start;
+      }
+    }
+  }
+
+  *out_type = NULL;
+  *out_type_len = 0;
+  return p;
+}
+
+/**
  * @brief Find the start of the fd/file/descriptor prefix before a position
  * @param start Start of string
  * @param p Current position in string
@@ -406,6 +467,58 @@ int log_named_format_message(const char *message, char *output, size_t output_si
                 out_pos += copy_len;
                 any_transformed = true;
                 continue;
+              }
+            }
+          }
+        }
+      }
+
+      /* Check if this integer has a generic type prefix (socket, client, connection, etc.) */
+      if (!is_already_formatted && digit_count > 0) {
+        const char *type_name = NULL;
+        size_t type_len = 0;
+        const char *prefix_start = find_generic_type_prefix(message, int_start, &type_name, &type_len);
+
+        if (type_name && prefix_start != int_start) {
+          /* We found a type prefix like "socket", "client", etc.
+           * Try to look up a registered name for this type+id */
+          const char *name = named_get_by_type_and_id(type_name, type_len, fd_value);
+
+          char temp_output[512];
+          char type_str[32];
+          char id_buffer[64];
+
+          /* Safely copy type name */
+          if (type_len < sizeof(type_str)) {
+            memcpy(type_str, type_name, type_len);
+            type_str[type_len] = '\0';
+
+            int id_written = snprintf(id_buffer, sizeof(id_buffer), "%d", fd_value);
+            if (id_written > 0 && id_written < (int)sizeof(id_buffer)) {
+              int temp_written;
+              if (name) {
+                /* Format with name: type/name (type=value) */
+                temp_written =
+                    snprintf(temp_output, sizeof(temp_output), "%s/%s (%s=%s)", type_str, name, type_str, id_buffer);
+              } else {
+                /* Format without name: type (type=value) */
+                temp_written = snprintf(temp_output, sizeof(temp_output), "%s (%s=%s)", type_str, type_str, id_buffer);
+              }
+
+              if (temp_written > 0 && (size_t)temp_written < sizeof(temp_output)) {
+                /* Backtrack to remove the prefix we already copied */
+                size_t prefix_len = int_start - prefix_start;
+                if (out_pos >= prefix_len) {
+                  out_pos -= prefix_len;
+                }
+
+                int copy_len = temp_written;
+                if (out_pos + copy_len < output_size - 1) {
+                  memcpy(output + out_pos, temp_output, copy_len);
+                  out_pos += copy_len;
+                  any_transformed = true;
+                  continue;
+                }
               }
             }
           }
