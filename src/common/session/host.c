@@ -22,7 +22,6 @@
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/platform/network.h>
 #include <ascii-chat/log/logging.h>
-#include <ascii-chat/debug/named.h>
 #include <ascii-chat/network/client.h>
 #include <ascii-chat/network/packet.h>
 #include <ascii-chat/ringbuffer.h>
@@ -1345,7 +1344,6 @@ asciichat_error_t session_host_start_render(session_host_t *host) {
       host->audio_ctx = NULL;
       return SET_ERRNO(ERROR_INVALID_STATE, "Failed to create Opus decoder");
     }
-    NAMED_REGISTER_AUDIO_CODEC(host->opus_decoder, "host_opus_decoder");
   }
 
   // Create Opus encoder for encoding mixed audio for broadcast (48kHz, VOIP mode, 24kbps)
@@ -1358,7 +1356,6 @@ asciichat_error_t session_host_start_render(session_host_t *host) {
       host->audio_ctx = NULL;
       return SET_ERRNO(ERROR_INVALID_STATE, "Failed to create Opus encoder");
     }
-    NAMED_REGISTER_AUDIO_CODEC(host->opus_encoder, "host_opus_encoder");
   }
 
   // Spawn render thread

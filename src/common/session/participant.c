@@ -22,7 +22,6 @@
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/platform/network.h>
 #include <ascii-chat/log/logging.h>
-#include <ascii-chat/debug/named.h>
 #include "session/capture.h"
 #include "session/audio.h"
 #include <ascii-chat/network/packet.h>
@@ -683,7 +682,6 @@ asciichat_error_t session_participant_start_audio_capture(session_participant_t 
       session_audio_stop(p->audio_capture);
       return SET_ERRNO(ERROR_INVALID_STATE, "Failed to create Opus encoder");
     }
-    NAMED_REGISTER_AUDIO_CODEC(p->opus_encoder, "participant_opus_encoder");
   }
 
   // Spawn audio capture thread

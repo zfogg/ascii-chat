@@ -9,7 +9,6 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/init.h>
-#include <ascii-chat/debug/named.h>
 #include <ascii-chat/util/format.h>
 #include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/util/time.h>
@@ -395,7 +394,6 @@ void buffer_pool_init_global(void) {
   if (lifecycle_init(&g_global_pool_state.lifecycle, "buffer_pool")) {
     g_global_pool_state.pool = buffer_pool_create(0, 0);
     if (g_global_pool_state.pool) {
-      NAMED_REGISTER_BUFFER_POOL(g_global_pool_state.pool, "global_buffer_pool");
       log_dev("Initialized global buffer pool");
     }
   }
