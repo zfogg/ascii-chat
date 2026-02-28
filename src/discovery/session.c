@@ -805,7 +805,7 @@ static void discovery_on_transport_ready(acip_transport_t *transport, const uint
   if (session->is_host && session->host_ctx) {
     // We are the host - set transport for the remote client
     // participant_id contains the client's ID
-    uint32_t client_id = 0;
+    const char *client_id = 0;
     // Extract client ID from participant_id (use first 4 bytes as uint32)
     memcpy(&client_id, participant_id, sizeof(uint32_t));
 

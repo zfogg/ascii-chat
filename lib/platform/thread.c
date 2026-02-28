@@ -12,7 +12,7 @@
 #include <ascii-chat/log/logging.h>
 
 asciichat_error_t thread_create_or_fail(asciichat_thread_t *thread, void *(*func)(void *), void *arg,
-                                        const char *thread_name, uint32_t client_id) {
+                                        const char *thread_name, const char *client_id) {
   if (!thread || !func || !thread_name) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for thread creation");
   }

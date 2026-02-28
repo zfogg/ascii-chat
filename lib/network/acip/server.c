@@ -148,7 +148,7 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
       uint64_t decrypt_end_ns = time_get_ns();
       char decrypt_duration_str[32];
       time_pretty((uint64_t)(decrypt_end_ns - decrypt_start_ns), -1, decrypt_duration_str,
-                         sizeof(decrypt_duration_str));
+                  sizeof(decrypt_duration_str));
       log_info("[WS_TIMING] Decrypt %zu bytes → %zu bytes in %s (inner_type=%d)", ciphertext_len, plaintext_len,
                decrypt_duration_str, envelope.type);
     }
@@ -165,7 +165,7 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
   uint64_t dispatch_handler_end_ns = time_get_ns();
   char handler_duration_str[32];
   time_pretty((uint64_t)(dispatch_handler_end_ns - dispatch_handler_start_ns), -1, handler_duration_str,
-                     sizeof(handler_duration_str));
+              sizeof(handler_duration_str));
   log_info("[WS_TIMING] Handler for type=%d took %s (result=%d)", envelope.type, handler_duration_str, dispatch_result);
 
   if (dispatch_result != ASCIICHAT_OK) {
@@ -188,7 +188,7 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
 // =============================================================================
 
 asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, const char *frame_data, size_t frame_size,
-                                        uint32_t width, uint32_t height, uint32_t client_id) {
+                                        uint32_t width, uint32_t height, const char *client_id) {
   if (!transport || !frame_data) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport or frame_data");
   }
@@ -197,7 +197,7 @@ asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, const char 
     return SET_ERRNO(ERROR_INVALID_PARAM, "Empty frame data");
   }
 
-  log_info("★ SEND_ASCII_FRAME START: client_id=%u, width=%u, height=%u, frame_size=%zu bytes", client_id, width,
+  log_info("★ SEND_ASCII_FRAME START: client_id=%s, width=%u, height=%u, frame_size=%zu bytes", client_id, width,
            height, frame_size);
 
   // Calculate CRC32 checksum of frame data for integrity verification
@@ -237,15 +237,14 @@ asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, const char 
   memcpy(buffer, &header, sizeof(header));
   memcpy(buffer + sizeof(header), frame_data, frame_size);
 
-  // Send via transport with client_id
+  // Send via transport with client_id for logging
   log_info("★ SEND_ASCII_FRAME: Calling packet_send_via_transport with PACKET_TYPE_ASCII_FRAME");
-  asciichat_error_t result =
-      packet_send_via_transport(transport, PACKET_TYPE_ASCII_FRAME, buffer, total_size, client_id);
+  asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_ASCII_FRAME, buffer, total_size, 0);
 
   if (result == ASCIICHAT_OK) {
-    log_info("★ SEND_ASCII_FRAME COMPLETE: SUCCESS for client_id=%u, sent %zu bytes total", client_id, total_size);
+    log_info("★ SEND_ASCII_FRAME COMPLETE: SUCCESS for client_id=%s, sent %zu bytes total", client_id, total_size);
   } else {
-    log_error("★ SEND_ASCII_FRAME FAILED: Error code %d (%s) for client_id=%u", result, asciichat_error_string(result),
+    log_error("★ SEND_ASCII_FRAME FAILED: Error code %d (%s) for client_id=%s", result, asciichat_error_string(result),
               client_id);
   }
 

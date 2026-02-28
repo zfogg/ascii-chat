@@ -332,17 +332,17 @@ typedef struct {
 
   /** @brief Array of pointers to client audio ring buffers */
   audio_ring_buffer_t **source_buffers;
-  /** @brief Array of client IDs (one per source slot) */
-  uint32_t *source_ids;
+  /** @brief Array of client ID strings (one per source slot) */
+  const char **source_ids;
   /** @brief Array of active flags (true if source is active) */
   bool *source_active;
 
   /** @brief Bitset of active sources (bit i = source i is active, O(1) iteration) */
   uint64_t active_sources_mask;
-  /** @brief Hash table mapping client_id → mixer source index (uses hash function for 32-bit IDs) */
+  /** @brief Hash table mapping client_id → mixer source index (uses hash function for strings) */
   uint8_t source_id_to_index[256];
-  /** @brief Client IDs stored at each hash index for collision detection */
-  uint32_t source_id_at_hash[256];
+  /** @brief Client ID strings stored at each hash index for collision detection */
+  const char *source_id_at_hash[256];
 
   /** @brief Reader-writer lock protecting source arrays and bitset */
   rwlock_t source_lock;
@@ -419,7 +419,7 @@ void mixer_destroy(mixer_t *mixer);
  *
  * @ingroup audio
  */
-int mixer_add_source(mixer_t *mixer, uint32_t client_id, audio_ring_buffer_t *buffer);
+int mixer_add_source(mixer_t *mixer, const char *client_id, audio_ring_buffer_t *buffer);
 
 /**
  * @brief Remove an audio source from the mixer
@@ -435,7 +435,7 @@ int mixer_add_source(mixer_t *mixer, uint32_t client_id, audio_ring_buffer_t *bu
  *
  * @ingroup audio
  */
-void mixer_remove_source(mixer_t *mixer, uint32_t client_id);
+void mixer_remove_source(mixer_t *mixer, const char *client_id);
 
 /**
  * @brief Set whether a source is active (receiving audio)
@@ -452,7 +452,7 @@ void mixer_remove_source(mixer_t *mixer, uint32_t client_id);
  *
  * @ingroup audio
  */
-void mixer_set_source_active(mixer_t *mixer, uint32_t client_id, bool active);
+void mixer_set_source_active(mixer_t *mixer, const char *client_id, bool active);
 
 /* ============================================================================
  * Mixer Hash Table Helpers (Internal API)

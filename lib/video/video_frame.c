@@ -14,7 +14,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-video_frame_buffer_t *video_frame_buffer_create(uint32_t client_id) {
+video_frame_buffer_t *video_frame_buffer_create(const char *client_id) {
   if (client_id == 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Client ID is 0");
     return NULL;

@@ -213,8 +213,8 @@ typedef struct {
   /** @name Client Info
    * @{
    */
-  uint32_t client_id; ///< Client ID this buffer belongs to
-  bool active;        ///< True if buffer is active (receiving frames)
+  const char *client_id; ///< Client ID (name) this buffer belongs to
+  bool active;           ///< True if buffer is active (receiving frames)
   /** @} */
 
   /** @name Buffer Management
@@ -288,7 +288,7 @@ typedef struct {
  *
  * @ingroup video_frame
  */
-video_frame_buffer_t *video_frame_buffer_create(uint32_t client_id);
+video_frame_buffer_t *video_frame_buffer_create(const char *client_id);
 
 /**
  * @brief Destroy frame buffer and free all resources

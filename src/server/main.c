@@ -2532,7 +2532,7 @@ cleanup:
   rwlock_wrlock(&g_client_manager_rwlock);
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
-    if (atomic_load(&client->client_id) != 0 && client->socket != INVALID_SOCKET_VALUE) {
+    if (client->client_id != 0 && client->socket != INVALID_SOCKET_VALUE) {
       socket_close(client->socket);
       client->socket = INVALID_SOCKET_VALUE;
     }
@@ -2629,13 +2629,13 @@ cleanup:
     // Only attempt to clean up clients that were actually connected
     // (client_id is 0 for uninitialized clients, starts from 1 for connected clients)
     // FIXED: Only access mutex for initialized clients to avoid accessing uninitialized mutex
-    if (atomic_load(&client->client_id) == 0) {
+    if (client->client_id == 0) {
       continue; // Skip uninitialized clients
     }
 
     // Use snapshot pattern to avoid holding both locks simultaneously
     // This prevents deadlock by not acquiring client_state_mutex while holding rwlock
-    uint32_t client_id_snapshot = atomic_load(&client->client_id); // Atomic read is safe under rwlock
+    const char *client_id_snapshot = client->client_id; // Atomic read is safe under rwlock
 
     // Clean up ANY client that was allocated, whether active or not
     // (disconnected clients may not be active but still have resources)

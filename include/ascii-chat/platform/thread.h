@@ -267,7 +267,7 @@ asciichat_error_t asciichat_thread_set_realtime_priority(void);
  * @ingroup platform
  */
 asciichat_error_t thread_create_or_fail(asciichat_thread_t *thread, void *(*func)(void *), void *arg,
-                                        const char *thread_name, uint32_t client_id);
+                                        const char *thread_name, const char *client_id);
 
 /**
  * @brief Convert a thread handle to a uintptr_t registry key

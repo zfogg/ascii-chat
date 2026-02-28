@@ -69,8 +69,6 @@ typedef struct {
   int client_count;
   /** @brief Legacy mutex (mostly replaced by rwlock) */
   mutex_t mutex;
-  /** @brief Monotonic counter for unique client IDs (atomic for thread-safety) */
-  _Atomic uint32_t next_client_id;
 } client_manager_t;
 
 // Global client manager
@@ -81,9 +79,9 @@ extern rwlock_t g_client_manager_rwlock;
 int add_client(server_context_t *server_ctx, socket_t socket, const char *client_ip, int port);
 int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport, const char *client_ip,
                       bool start_threads);
-int start_webrtc_client_threads(server_context_t *server_ctx, uint32_t client_id);
-int remove_client(server_context_t *server_ctx, uint32_t client_id);
-client_info_t *find_client_by_id(uint32_t client_id);
+int start_webrtc_client_threads(server_context_t *server_ctx, const char *client_id);
+int remove_client(server_context_t *server_ctx, const char *client_id);
+client_info_t *find_client_by_id(const char *client_id);
 client_info_t *find_client_by_socket(socket_t socket);
 void cleanup_client_media_buffers(client_info_t *client);
 void cleanup_client_packet_queues(client_info_t *client);

@@ -14,7 +14,7 @@
 extern atomic_bool g_server_should_exit;
 
 // Stream mixing and sending functions
-char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned short width, unsigned short height,
+char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned short width, unsigned short height,
                                           bool wants_stretch, size_t *out_size, bool *out_grid_changed,
                                           int *out_sources_count);
 

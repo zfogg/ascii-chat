@@ -63,7 +63,7 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
  * @return ASCIICHAT_OK on success, error code on failure
  */
 asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, const char *frame_data, size_t frame_size,
-                                        uint32_t width, uint32_t height, uint32_t client_id);
+                                        uint32_t width, uint32_t height, const char *client_id);
 
 /**
  * @brief Send clear console command to client (server → client)

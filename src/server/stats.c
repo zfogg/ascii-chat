@@ -390,7 +390,7 @@ void *stats_logger_thread(void *arg) {
     for (int i = 0; i < MAX_CLIENTS; i++) {
       client_info_t *client = &g_client_manager.clients[i];
       bool is_active = atomic_load(&client->active);
-      uint32_t client_id_snapshot = atomic_load(&client->client_id);
+      const char *client_id_snapshot = client->client_id;
 
       if (is_active && client_id_snapshot != 0) {
         // Check audio queue stats
@@ -480,7 +480,7 @@ void update_server_stats(void) {
 
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
-    if (atomic_load(&client->client_id) != 0 && atomic_load(&client->active)) {
+    if (client->client_id != 0 && atomic_load(&client->active)) {
       // Aggregate frames sent to all clients
       total_frames_sent += client->frames_sent;
 

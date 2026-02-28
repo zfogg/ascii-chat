@@ -227,7 +227,7 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
 
   // Collect client info snapshots WITHOUT holding rwlock
   typedef struct {
-    uint32_t client_id;
+    char client_id[MAX_CLIENT_ID_LEN];
     bool is_active;
     bool is_sending_video;
     video_frame_buffer_t *video_buffer;
@@ -240,12 +240,13 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
 
-    if (atomic_load(&client->client_id) == 0) {
+    if (client->client_id[0] == '\0') {
       continue; // Skip uninitialized clients
     }
 
     // Snapshot all needed client state (all atomic reads or stable pointers)
-    client_snapshots[snapshot_count].client_id = atomic_load(&client->client_id);
+    SAFE_STRNCPY(client_snapshots[snapshot_count].client_id, client->client_id,
+                 sizeof(client_snapshots[snapshot_count].client_id) - 1);
     client_snapshots[snapshot_count].is_active = atomic_load(&client->active);
     client_snapshots[snapshot_count].is_sending_video = atomic_load(&client->is_sending_video);
     client_snapshots[snapshot_count].video_buffer = client->incoming_video_buffer; // Stable pointer
@@ -797,7 +798,7 @@ static char *convert_composite_to_ascii(image_t *composite, uint32_t target_clie
   // Find client without locking - client_id is atomic and stable once set
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
-    if (atomic_load(&client->client_id) == target_client_id) {
+    if (client->client_id == target_client_id) {
       render_client = client;
       break;
     }
@@ -952,7 +953,7 @@ static char *convert_composite_to_ascii(image_t *composite, uint32_t target_clie
  */
 // Compute hash of all active video sources for cache invalidation
 // Uses hardware-accelerated CRC32 for ultra-fast hashing
-char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned short width, unsigned short height,
+char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned short width, unsigned short height,
                                           bool wants_stretch, size_t *out_size, bool *out_grid_changed,
                                           int *out_sources_count) {
   (void)wants_stretch; // Unused - we always handle aspect ratio ourselves
@@ -1311,7 +1312,7 @@ bool any_clients_sending_video(void) {
     client_info_t *client = &g_client_manager.clients[i];
 
     // Skip uninitialized clients (atomic read)
-    if (atomic_load(&client->client_id) == 0) {
+    if (client->client_id == 0) {
       continue;
     }
 

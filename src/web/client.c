@@ -618,7 +618,7 @@ char *client_parse_packet(const uint8_t *raw_packet, size_t packet_len) {
   // Convert header fields from network byte order
   uint16_t type = NET_TO_HOST_U16(header->type);
   uint32_t length = NET_TO_HOST_U32(header->length);
-  uint32_t client_id = NET_TO_HOST_U32(header->client_id);
+  const char *client_id = NET_TO_HOST_U32(header->client_id);
   uint32_t crc32 = NET_TO_HOST_U32(header->crc32);
 
   // Build JSON response with packet metadata

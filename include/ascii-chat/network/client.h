@@ -94,7 +94,7 @@ typedef struct client_info {
   asciichat_thread_t receive_thread; // Thread for receiving client data
   thread_id_t receive_thread_id;     // Thread ID of receive thread (for self-join detection)
   void *server_ctx;                  // Pointer to server_context_t (avoid circular includes)
-  atomic_uint client_id;             // Thread-safe client ID
+  char client_id[MAX_CLIENT_ID_LEN]; // String-based client ID: "noun.N (transport:port)"
   char display_name[MAX_DISPLAY_NAME_LEN];
   char client_ip[INET_ADDRSTRLEN];
   int port;

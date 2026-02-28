@@ -40,11 +40,20 @@ static asciichat_error_t tcp_send_all(socket_t sockfd, const void *data, size_t 
   const uint8_t *ptr = (const uint8_t *)data;
   size_t remaining = len;
   size_t total_sent = 0;
+  uint64_t send_start_ns = time_get_ns();
 
   log_debug("★ TCP_SEND_ALL: sockfd=%d, len=%zu", sockfd, len);
 
   while (remaining > 0) {
+    uint64_t iteration_start_ns = time_get_ns();
     ssize_t sent = socket_send(sockfd, ptr, remaining, 0);
+    uint64_t iteration_ns = time_elapsed_ns(iteration_start_ns, time_get_ns());
+
+    if (iteration_ns > 100 * NS_PER_MS_INT) {
+      log_warn("★ TCP_SEND_ALL: SLOW SEND - took %.1fms to send %zu bytes (may indicate full buffer)",
+               (double)iteration_ns / 1e6, remaining);
+    }
+
     if (sent < 0) {
       log_error("★ TCP_SEND_ALL: socket_send failed at offset %zu/%zu", total_sent, len);
       return SET_ERRNO_SYS(ERROR_NETWORK,
@@ -62,7 +71,13 @@ static asciichat_error_t tcp_send_all(socket_t sockfd, const void *data, size_t 
     log_debug("★ TCP_SEND_ALL: sent %zd bytes, total=%zu/%zu, remaining=%zu", sent, total_sent, len, remaining);
   }
 
-  log_debug("★ TCP_SEND_ALL: SUCCESS - sent all %zu bytes", len);
+  uint64_t total_send_ns = time_elapsed_ns(send_start_ns, time_get_ns());
+  if (total_send_ns > 500 * NS_PER_MS_INT) {
+    log_warn("★ TCP_SEND_ALL: TOTAL SEND TIME %.1fms for %zu bytes (%.1f MB/s)", (double)total_send_ns / 1e6, len,
+             (double)(len * NS_PER_SEC_INT) / (double)total_send_ns / 1e6);
+  }
+
+  log_debug("★ TCP_SEND_ALL: SUCCESS - sent all %zu bytes in %.1fms", len, (double)total_send_ns / 1e6);
   return ASCIICHAT_OK;
 }
 

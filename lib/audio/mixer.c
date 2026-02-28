@@ -364,7 +364,7 @@ void mixer_destroy(mixer_t *mixer) {
   log_debug("Audio mixer destroyed");
 }
 
-int mixer_add_source(mixer_t *mixer, uint32_t client_id, audio_ring_buffer_t *buffer) {
+int mixer_add_source(mixer_t *mixer, const char *client_id, audio_ring_buffer_t *buffer) {
   if (!mixer || !buffer)
     return -1;
 
@@ -374,7 +374,7 @@ int mixer_add_source(mixer_t *mixer, uint32_t client_id, audio_ring_buffer_t *bu
   // Find an empty slot
   int slot = -1;
   for (int i = 0; i < mixer->max_sources; i++) {
-    if (mixer->source_ids[i] == 0) {
+    if (mixer->source_ids[i] == NULL) {
       slot = i;
       break;
     }
@@ -382,7 +382,7 @@ int mixer_add_source(mixer_t *mixer, uint32_t client_id, audio_ring_buffer_t *bu
 
   if (slot == -1) {
     rwlock_wrunlock(&mixer->source_lock);
-    log_warn("Mixer: No available slots for client %u", client_id);
+    log_warn("Mixer: No available slots for client %s", client_id);
     return -1;
   }
 
@@ -392,16 +392,16 @@ int mixer_add_source(mixer_t *mixer, uint32_t client_id, audio_ring_buffer_t *bu
   mixer->num_sources++;
 
   // OPTIMIZATION 1: Update bitset optimization structures
-  mixer->active_sources_mask |= (1ULL << slot);         // Set bit for this slot
-  mixer_hash_set_slot(mixer, client_id, (uint8_t)slot); // Hash table: client_id → slot
+  mixer->active_sources_mask |= (1ULL << slot); // Set bit for this slot
+  // Hash table optimization disabled for string-based client_ids (linear search is acceptable for small mixer sizes)
 
   rwlock_wrunlock(&mixer->source_lock);
 
-  log_info("Mixer: Added source for client %u at slot %d", client_id, slot);
+  log_info("Mixer: Added source for client %s at slot %d", client_id, slot);
   return slot;
 }
 
-void mixer_remove_source(mixer_t *mixer, uint32_t client_id) {
+void mixer_remove_source(mixer_t *mixer, const char *client_id) {
   if (!mixer)
     return;
 
@@ -409,15 +409,15 @@ void mixer_remove_source(mixer_t *mixer, uint32_t client_id) {
   rwlock_wrlock(&mixer->source_lock);
 
   for (int i = 0; i < mixer->max_sources; i++) {
-    if (mixer->source_ids[i] == client_id) {
+    if (mixer->source_ids[i] != NULL && strcmp(mixer->source_ids[i], client_id) == 0) {
       mixer->source_buffers[i] = NULL;
-      mixer->source_ids[i] = 0;
+      mixer->source_ids[i] = NULL;
       mixer->source_active[i] = false;
       mixer->num_sources--;
 
       // OPTIMIZATION 1: Update bitset optimization structures
       mixer->active_sources_mask &= ~(1ULL << i); // Clear bit for this slot
-      mixer_hash_mark_invalid(mixer, client_id);  // Mark as invalid in hash table
+      // Hash table optimization disabled for string-based client_ids
 
       // Reset ducking state for this source
       mixer->ducking.envelope[i] = 0.0f;
@@ -433,7 +433,7 @@ void mixer_remove_source(mixer_t *mixer, uint32_t client_id) {
   rwlock_wrunlock(&mixer->source_lock);
 }
 
-void mixer_set_source_active(mixer_t *mixer, uint32_t client_id, bool active) {
+void mixer_set_source_active(mixer_t *mixer, const char *client_id, bool active) {
   if (!mixer)
     return;
 
@@ -441,7 +441,7 @@ void mixer_set_source_active(mixer_t *mixer, uint32_t client_id, bool active) {
   rwlock_wrlock(&mixer->source_lock);
 
   for (int i = 0; i < mixer->max_sources; i++) {
-    if (mixer->source_ids[i] == client_id) {
+    if (mixer->source_ids[i] != NULL && strcmp(mixer->source_ids[i], client_id) == 0) {
       mixer->source_active[i] = active;
 
       // OPTIMIZATION 1: Update bitset for active state change
@@ -452,7 +452,7 @@ void mixer_set_source_active(mixer_t *mixer, uint32_t client_id, bool active) {
       }
 
       rwlock_wrunlock(&mixer->source_lock);
-      log_debug("Mixer: Set source %u active=%d", client_id, active);
+      log_debug("Mixer: Set source %s active=%d", client_id, active);
       return;
     }
   }
