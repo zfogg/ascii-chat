@@ -274,12 +274,30 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     // then flush atomically. This prevents real-time logs from appearing after the frame,
     // which would cause the display to scroll and push the header up.
 
-    // Output logs to frame buffer, counting actual lines output
+    // Output logs to frame buffer, counting actual display lines (accounting for wrapping)
+    int terminal_lines_used = 0;
     int logs_actually_output = 0;
-    for (int i = first_log_to_display; i < (int)log_count && logs_actually_output < log_area_rows; i++) {
+    for (int i = first_log_to_display; i < (int)log_count && terminal_lines_used < log_area_rows; i++) {
       const char *msg = log_entries[i].message;
-      frame_buffer_printf(g_frame_buf, "%s\n", msg);
-      logs_actually_output++;
+
+      // Calculate display width of this log message (without ANSI codes)
+      int msg_display_width = display_width(msg);
+      if (msg_display_width < 0) {
+        msg_display_width = (int)strlen(msg);
+      }
+
+      // Calculate how many display lines this message will consume
+      int lines_for_this_msg = 1;
+      if (msg_display_width > 0 && g_cached_term_size.cols > 0) {
+        lines_for_this_msg = (msg_display_width + g_cached_term_size.cols - 1) / g_cached_term_size.cols;
+      }
+
+      // Only output if it fits in remaining space
+      if (terminal_lines_used + lines_for_this_msg <= log_area_rows) {
+        frame_buffer_printf(g_frame_buf, "%s\n", msg);
+        terminal_lines_used += lines_for_this_msg;
+        logs_actually_output++;
+      }
     }
     // Don't fill with blank lines - let frame height be dynamic based on actual logs
     // This prevents large gaps when few logs are available at startup
@@ -288,15 +306,16 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     frame_buffer_flush(g_frame_buf);
 
     // Verify output height
-    int actual_height_rendered = logs_actually_output;
+    int actual_height_rendered = terminal_lines_used;
     int total_frame_height = actual_height_rendered + config->fixed_header_lines;
 
     if (elapsed_ms < 500) {
-      log_debug("[STARTUP_OUTPUT] t=%llu output=%d header=%d height=%d area=%d", (unsigned long long)elapsed_ms,
-                logs_actually_output, config->fixed_header_lines, actual_height_rendered, log_area_rows);
+      log_debug("[STARTUP_OUTPUT] t=%llu logs=%d lines=%d header=%d height=%d area=%d", (unsigned long long)elapsed_ms,
+                logs_actually_output, terminal_lines_used, config->fixed_header_lines, actual_height_rendered,
+                log_area_rows);
     } else {
-      log_debug("[RENDER_OUTPUT] log_count=%zu logs_output=%d ACTUAL_HEIGHT=%d log_area=%d", log_count,
-                logs_actually_output, actual_height_rendered, log_area_rows);
+      log_debug("[RENDER_OUTPUT] log_count=%zu logs=%d lines=%d ACTUAL_HEIGHT=%d log_area=%d", log_count,
+                logs_actually_output, terminal_lines_used, actual_height_rendered, log_area_rows);
     }
 
     // Frame delimiter: mark where frame ends with height info
