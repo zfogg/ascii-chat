@@ -341,27 +341,6 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     return SET_ERRNO(ERROR_WEBCAM, "Failed to set V4L2 format for device %s", device_path);
   }
 
-  // Request target FPS via VIDIOC_S_PARM (from user options)
-  uint32_t target_fps = (uint32_t)GET_OPTION(fps);
-  if (target_fps == 0) target_fps = 60;  // Default to 60 if not set
-
-  struct v4l2_streamparm parm = {0};
-  parm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  parm.parm.capture.timeperframe.numerator = 1;
-  parm.parm.capture.timeperframe.denominator = target_fps;
-
-  if (ioctl(context->fd, VIDIOC_S_PARM, &parm) == 0) {
-    // Get back what the driver actually set
-    if (ioctl(context->fd, VIDIOC_G_PARM, &parm) == 0) {
-      int actual_fps = parm.parm.capture.timeperframe.denominator /
-                      (parm.parm.capture.timeperframe.numerator ?
-                       parm.parm.capture.timeperframe.numerator : 1);
-      log_debug("V4L2 frame rate set: requested %u FPS, got %d FPS", target_fps, actual_fps);
-    }
-  } else {
-    log_debug("V4L2 device does not support VIDIOC_S_PARM (frame rate control)");
-  }
-
   // Initialize buffers
   if (webcam_v4l2_init_buffers(context) != 0) {
     close(context->fd);
@@ -381,6 +360,28 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     close(context->fd);
     SAFE_FREE(context);
     return SET_ERRNO(ERROR_WEBCAM, "Failed to start V4L2 streaming for device %s", device_path);
+  }
+
+  // Request target FPS via VIDIOC_S_PARM AFTER streaming starts
+  // Some devices require streaming to be active before frame rate control works
+  uint32_t target_fps = (uint32_t)GET_OPTION(fps);
+  if (target_fps == 0) target_fps = 60;  // Default to 60 if not set
+
+  struct v4l2_streamparm parm = {0};
+  parm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+  parm.parm.capture.timeperframe.numerator = 1;
+  parm.parm.capture.timeperframe.denominator = target_fps;
+
+  if (ioctl(context->fd, VIDIOC_S_PARM, &parm) == 0) {
+    // Get back what the driver actually set
+    if (ioctl(context->fd, VIDIOC_G_PARM, &parm) == 0) {
+      int actual_fps = parm.parm.capture.timeperframe.denominator /
+                      (parm.parm.capture.timeperframe.numerator ?
+                       parm.parm.capture.timeperframe.numerator : 1);
+      log_info("V4L2 frame rate set: requested %u FPS, got %d FPS", target_fps, actual_fps);
+    }
+  } else {
+    log_debug("V4L2 device does not support VIDIOC_S_PARM (frame rate control)");
   }
 
   *ctx = context;
