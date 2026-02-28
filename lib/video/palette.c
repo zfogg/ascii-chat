@@ -336,8 +336,8 @@ int initialize_client_palette(palette_type_t palette_type, const char *custom_ch
     len_to_use = strlen(palette->chars); // Use actual byte count for UTF-8, not character count
 
     // Skip validation for built-in palettes since they're already validated
-    log_debug("Using built-in palette: %s, chars='%s', char_count=%zu, byte_len=%zu", palette->name, chars_to_use,
-              palette->length, len_to_use);
+    log_dev("Using built-in palette: %s, chars='%s', char_count=%zu, byte_len=%zu", palette->name, chars_to_use,
+            palette->length, len_to_use);
   }
 
   // Copy palette to client cache
@@ -351,8 +351,8 @@ int initialize_client_palette(palette_type_t palette_type, const char *custom_ch
     return -1;
   }
 
-  log_debug("Initialized client palette: type=%d, %zu chars, first_char='%c', last_char='%c'", palette_type, len_to_use,
-            chars_to_use[0], chars_to_use[len_to_use - 1]);
+  log_dev("Initialized client palette: type=%d, %zu chars, first_char='%c', last_char='%c'", palette_type, len_to_use,
+          chars_to_use[0], chars_to_use[len_to_use - 1]);
 
   return 0;
 }
