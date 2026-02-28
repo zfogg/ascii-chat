@@ -36,6 +36,7 @@
         "ASCIICHAT_ENABLE_CTEST_DASHBOARD": "ON",
         "ASCIICHAT_USE_PCH": "ON",
         "ASCIICHAT_ENABLE_ANALYZERS": "OFF",
+        "ASCIICHAT_BUILD_WITH_PANIC": "OFF",
         "ASCIICHAT_RELEASE_KEEP_FRAME_POINTERS": "ON"
       }
     },
@@ -52,6 +53,7 @@
         "ASCIICHAT_RELEASE_ENABLE_FAST_MATH": "ON",
         "ASCIICHAT_ENABLE_CTEST_DASHBOARD": "OFF",
         "ASCIICHAT_ENABLE_ANALYZERS": "ON",
+        "ASCIICHAT_BUILD_WITH_PANIC": "OFF",
         "ASCIICHAT_RELEASE_KEEP_FRAME_POINTERS": "OFF"
       }
     },
@@ -180,7 +182,10 @@
       "name": "windows-debug",
       "displayName": "Windows Debug (vcpkg)",
       "description": "Windows Debug build using vcpkg for dependencies",
-      "inherits": ["base-debug", "base-vcpkg"],
+      "inherits": [
+        "base-debug",
+        "base-vcpkg"
+      ],
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",
@@ -191,7 +196,10 @@
       "name": "windows-release",
       "displayName": "Windows Release (vcpkg)",
       "description": "Windows Release build using vcpkg with static linking",
-      "inherits": ["base-release", "base-vcpkg"],
+      "inherits": [
+        "base-release",
+        "base-vcpkg"
+      ],
       "cacheVariables": {
         "VCPKG_TARGET_TRIPLET": "x64-windows-static"
       },
