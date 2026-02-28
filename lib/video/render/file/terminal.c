@@ -93,10 +93,10 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg,
     FT_Set_Char_Size(r->ft_face, 0, (FT_F26Dot6)(cfg->font_size_pt * 64.0), 96, 96);
 
     FT_Load_Char(r->ft_face, 'M', FT_LOAD_RENDER);
-    r->cell_w  = (int)(r->ft_face->glyph->advance.x >> 6);
-    r->cell_h  = (int)((r->ft_face->size->metrics.ascender
-                       - r->ft_face->size->metrics.descender) >> 6);
-    r->baseline = (int)(r->ft_face->size->metrics.ascender >> 6);
+    // For monospace ASCII grid: use advance.x (proper character spacing) and rendered height
+    r->cell_w = (int)(r->ft_face->glyph->advance.x >> 6);
+    r->cell_h = r->ft_face->glyph->bitmap.rows;
+    r->baseline = r->ft_face->glyph->bitmap_top;
 
     r->width_px = r->cols * r->cell_w;
     r->height_px = r->rows * r->cell_h;
