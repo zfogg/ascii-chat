@@ -369,7 +369,6 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
         break;
       }
       ringbuffer_read(ws_data->send_queue, &msg);
-      mutex_unlock(&ws_data->send_mutex);
 
       log_debug("WebSocket CLIENT_WRITEABLE: sending queued %zu bytes (msg %d)", msg.len, message_count + 1);
 
@@ -377,13 +376,14 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
       // IMPORTANT: msg.data already points to start of buffer (with LWS_PRE padding)
       // lws_write() will write the frame header backwards into LWS_PRE region
       // then write the data. We need to pass pointer to start of LWS_PRE region.
+      // CRITICAL: Keep send_mutex locked during lws_write() to prevent race conditions.
+      // libwebsockets is not thread-safe for concurrent writes on the same connection.
       int written = lws_write(ws_data->wsi, msg.data + LWS_PRE, msg.len, LWS_WRITE_BINARY);
 
       if (written < 0) {
         log_error("WebSocket write failed for %zu bytes", msg.len);
         // Queue for deferred free to allow compression layer to complete
         deferred_buffer_free(ws_data, msg.data, LWS_PRE + msg.len);
-        mutex_lock(&ws_data->send_mutex);
         break;
       }
 
@@ -394,8 +394,6 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
       // Queue for deferred free to allow compression layer to complete asynchronously
       deferred_buffer_free(ws_data, msg.data, LWS_PRE + msg.len);
       message_count++;
-
-      mutex_lock(&ws_data->send_mutex);
 
       // Continue while pipe is not choked
       // This prevents callback flooding when TCP buffers are full

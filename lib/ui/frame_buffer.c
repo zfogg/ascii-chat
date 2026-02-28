@@ -163,3 +163,10 @@ size_t frame_buffer_get_length(const frame_buffer_t *buf) {
   }
   return buf->len;
 }
+
+const char *frame_buffer_get_content(const frame_buffer_t *buf) {
+  if (!buf || !buf->data) {
+    return NULL;
+  }
+  return buf->data;
+}

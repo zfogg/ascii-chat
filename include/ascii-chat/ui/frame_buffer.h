@@ -115,3 +115,14 @@ void frame_buffer_flush(frame_buffer_t *buf);
  * Useful for debugging and verifying frame consistency.
  */
 size_t frame_buffer_get_length(const frame_buffer_t *buf);
+
+/**
+ * @brief Get a pointer to the buffer content
+ *
+ * @param buf Frame buffer
+ * @return Pointer to the buffer data (NULL if buffer is empty or NULL)
+ *
+ * Returns the raw buffer content for reading. The content is NOT null-terminated.
+ * Use frame_buffer_get_length() to get the actual size.
+ */
+const char *frame_buffer_get_content(const frame_buffer_t *buf);

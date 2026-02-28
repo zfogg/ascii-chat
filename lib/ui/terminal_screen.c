@@ -133,14 +133,28 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
       new_size.cols = opts->width;
       new_size.rows = opts->height;
     } else if (opts && (opts->auto_width || opts->auto_height)) {
-      // Auto-detect from terminal
-      if (terminal_get_size(&new_size) == ASCIICHAT_OK) {
-        // Use auto-detected values for dimensions that have auto-detect enabled
-        if (!opts->auto_width && opts->width > 0) {
-          new_size.cols = opts->width;
+      // First try COLUMNS and ROWS environment variables (most reliable)
+      const char *cols_env = getenv("COLUMNS");
+      const char *rows_env = getenv("ROWS");
+      if (cols_env && rows_env) {
+        int cols = atoi(cols_env);
+        int rows = atoi(rows_env);
+        if (cols > 0 && rows > 0) {
+          new_size.cols = cols;
+          new_size.rows = rows;
         }
-        if (!opts->auto_height && opts->height > 0) {
-          new_size.rows = opts->height;
+      }
+
+      // Fallback to terminal_get_size if COLUMNS/ROWS not set
+      if (new_size.cols == 0 || new_size.rows == 0) {
+        if (terminal_get_size(&new_size) == ASCIICHAT_OK) {
+          // Use auto-detected values for dimensions that have auto-detect enabled
+          if (!opts->auto_width && opts->width > 0) {
+            new_size.cols = opts->width;
+          }
+          if (!opts->auto_height && opts->height > 0) {
+            new_size.rows = opts->height;
+          }
         }
       }
     } else {
@@ -201,8 +215,49 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     return;
   }
 
-  // Calculate log area: total rows - header lines - 1 (prevent scroll)
-  int log_area_rows = g_cached_term_size.rows - config->fixed_header_lines - 1;
+  // Measure actual header height by pre-rendering and counting display lines
+  int actual_header_height = config->fixed_header_lines;
+
+  if (config->render_header) {
+    // Pre-render header to a temporary buffer to measure its display height
+    frame_buffer_t *temp_buf = frame_buffer_create(config->fixed_header_lines + 10, g_cached_term_size.cols);
+    if (temp_buf) {
+      config->render_header(temp_buf, g_cached_term_size, config->user_data);
+
+      // Measure display height of the rendered header
+      // The buffer contains ANSI codes + text. We count newlines and account for wrapped lines.
+      int measured_height = 0;
+      const char *content = frame_buffer_get_content(temp_buf);
+      const char *line_start = content;
+
+      while (*content != '\0') {
+        if (*content == '\n') {
+          // Found end of line - measure this line's display height
+          size_t line_len = content - line_start;
+          char line_buf[1024];
+          if (line_len < sizeof(line_buf)) {
+            strncpy(line_buf, line_start, line_len);
+            line_buf[line_len] = '\0';
+
+            int line_height = display_height(line_buf, g_cached_term_size.cols);
+            if (line_height <= 0)
+              line_height = 1;
+            measured_height += line_height;
+          }
+          line_start = content + 1;
+        }
+        content++;
+      }
+
+      if (measured_height > 0) {
+        actual_header_height = measured_height;
+      }
+      frame_buffer_destroy(temp_buf);
+    }
+  }
+
+  // Calculate log area: total rows - actual header height - 1 (prevent scroll)
+  int log_area_rows = g_cached_term_size.rows - actual_header_height - 1;
 
   if (log_area_rows <= 0) {
     // Terminal too small for logs, flush header and return
