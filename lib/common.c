@@ -254,8 +254,8 @@ void asciichat_shared_destroy(void) {
   // 13. Logging cleanup - free log format buffers
   log_destroy();
 
-  // 14.
-  // MISSING STEP (reorganize the numbers)
+  // 14. PCRE2 regex singletons - free all compiled patterns and JIT stacks
+  asciichat_pcre2_cleanup_all();
 
   // 15. Mutex stack cleanup - must be before memory report so stacks are freed
 #ifndef NDEBUG
@@ -266,7 +266,7 @@ void asciichat_shared_destroy(void) {
 #endif
 
   // 16. Memory stats (debug builds only) - runs with colors still available
-  //     Note: PCRE2 singletons are ignored in the report (expected system allocations)
+  //     All PCRE2 singletons have been cleaned up in step 14
   //     Note: debug_memory_report() is also called manually during shutdown in server_main()
   //     The function is safe to call multiple times with polling-based locking
 #if defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
