@@ -21,16 +21,16 @@ using std::atomic_uint;
 #include <stdint.h>
 #include <time.h>
 
-#include "packet/packet.h"
+#include <ascii-chat/network/packet/packet.h>
 #include "packet/queue.h"
-#include "../network/acip/transport.h"  // For acip_transport_t
-#include "../crypto/handshake/common.h" // For crypto_handshake_context_t (complete type needed for field)
-#include "../ringbuffer.h"
-#include "../video/video_frame.h"
-#include "../platform/terminal.h"
-#include "../platform/thread.h" // For thread_id_t
-#include "../video/palette.h"
-#include "../audio/audio.h"
+#include <ascii-chat/network/acip/transport.h>  // For acip_transport_t
+#include <ascii-chat/crypto/handshake/common.h> // For crypto_handshake_context_t (complete type needed for field)
+#include <ascii-chat/ringbuffer.h>
+#include <ascii-chat/video/rgba/video_frame.h>
+#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/platform/thread.h> // For thread_id_t
+#include <ascii-chat/video/ascii/palette.h>
+#include <ascii-chat/audio/audio.h>
 
 /**
  * @brief Participant type for distinguishing network vs memory participants

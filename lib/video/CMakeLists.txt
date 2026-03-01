@@ -1,9 +1,9 @@
 # lib/video - Video processing and SIMD
 
 set(VIDEO_SRCS
-    ${CMAKE_CURRENT_SOURCE_DIR}/video_frame.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/image.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/color_filter.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/rgba/video_frame.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/rgba/image.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/rgba/color_filter.c
     ${CMAKE_CURRENT_SOURCE_DIR}/anim/digital_rain.c
     ${CMAKE_CURRENT_SOURCE_DIR}/webcam/webcam.c
     # H.265 codec (FFmpeg-based) - required for HEVC video support
@@ -36,7 +36,7 @@ if(FFMPEG_FOUND)
             ${CMAKE_CURRENT_SOURCE_DIR}/ascii/file/renderer.c
             ${CMAKE_SOURCE_DIR}/lib/media/ffmpeg_encoder.c
             # Bundled fonts and generated C code (generated at CMake configure time)
-            ${CMAKE_CURRENT_SOURCE_DIR}/font.c
+            ${CMAKE_SOURCE_DIR}/lib/media/font.c
             "${CMAKE_BINARY_DIR}/generated/data/fonts/matrix_resurrected.c"
             "${CMAKE_BINARY_DIR}/generated/data/fonts/default.c"
             # libvterm + FreeType2 render-file backend
