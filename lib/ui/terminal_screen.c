@@ -428,7 +428,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
         }
       } else {
         // Content changed - overwrite and clear tail.
-        fprintf(stdout, "%s\x1b[0m\x1b[K\n", msg);
+        fprintf(stdout, "%s\n", msg);
       }
 
       if (log_idx < MAX_CACHED_LINES) {
