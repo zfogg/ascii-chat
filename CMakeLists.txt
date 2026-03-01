@@ -294,8 +294,8 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND}
         -D "PROJECT_VERSION=${PROJECT_VERSION}"
         -D "PROJECT_VERSION_DATE=${PROJECT_VERSION_DATE}"
-        -D "CMAKE_SOURCE_DIR=${CMAKE_SOURCE_DIR}"
-        -D "CMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}"
+        -D "SOURCE_DIR=${CMAKE_SOURCE_DIR}"
+        -D "BINARY_DIR=${CMAKE_BINARY_DIR}"
         -P "${CMAKE_SOURCE_DIR}/cmake/utils/ConfigureTemplate.cmake"
     DEPENDS "${MANPAGE_TEMPLATE_SOURCE}"
     COMMENT "Configuring man page template"

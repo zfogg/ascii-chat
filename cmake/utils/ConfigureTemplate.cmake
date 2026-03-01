@@ -17,10 +17,22 @@ endif()
 # Extract copyright year from PROJECT_VERSION_DATE (format: YYYY-MM-DD)
 string(SUBSTRING "${PROJECT_VERSION_DATE}" 0 4 COPYRIGHT_YEAR_END)
 
-set(SOURCE_FILE "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in")
-set(OUTPUT_FILE "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1.in")
+if(NOT DEFINED SOURCE_DIR)
+    message(FATAL_ERROR "SOURCE_DIR not defined")
+endif()
+if(NOT DEFINED BINARY_DIR)
+    message(FATAL_ERROR "BINARY_DIR not defined")
+endif()
 
-file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/share/man/man1")
+set(SOURCE_FILE "${SOURCE_DIR}/share/man/man1/ascii-chat.1.in")
+set(OUTPUT_FILE "${BINARY_DIR}/share/man/man1/ascii-chat.1.in")
+
+file(MAKE_DIRECTORY "${BINARY_DIR}/share/man/man1")
+
+# Verify source file exists before attempting configuration
+if(NOT EXISTS "${SOURCE_FILE}")
+    message(FATAL_ERROR "Source template file not found: ${SOURCE_FILE}")
+endif()
 
 # Configure the template using @VARIABLE@ substitution
 configure_file("${SOURCE_FILE}" "${OUTPUT_FILE}" @ONLY)
