@@ -16,7 +16,7 @@
 #include <unistd.h>
 #endif
 
-#include <ascii-chat/video/palette.h>
+#include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/util/utf8.h> // For UTF-8 character width detection
