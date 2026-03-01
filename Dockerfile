@@ -68,19 +68,12 @@ WORKDIR /build
 COPY . /build/
 
 # Initialize git submodules
-RUN git submodule init && git submodule update --recursive
+COPY ./scripts/install-deps.sh /tmp/install-deps.sh
+RUN chmod +x /tmp/install-deps.sh && /tmp/install-deps.sh
 
 # Build ascii-chat in Release mode and install to /usr/local
 # Disable defer tool and analyzers (to speed up emulated builds)
-RUN cmake -B build -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INSTALL_PREFIX=/usr/local \
-    -DCMAKE_C_COMPILER=clang \
-    -DCMAKE_CXX_COMPILER=clang++ \
-    -DASCIICHAT_ENABLE_DEFER_TRANSFORM=OFF \
-    -DASCIICHAT_ENABLE_ANALYZERS=OFF \
-    -GNinja && \
-    cmake --build build -j$(nproc) && \
-    cmake --install build
+RUN make install
 
 # ============================================================================
 # Stage 2: Runtime

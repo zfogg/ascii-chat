@@ -86,8 +86,6 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     echo "Detected apt-get package manager"
     echo "Installing dependencies..."
 
-    add-apt-repository ppa:tomtomtom/yt-dlp -y
-
     # INFO: see https://apt.kitware.com/
     set +e
     /bin/bash -c "$(curl -fsSL https://apt.kitware.com/kitware-archive.sh)" 2>/dev/null
@@ -97,6 +95,9 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     if [ $kitware_apt_sh_result -eq 1 ]; then
       apt-get update
       apt-get install ca-certificates gpg wget
+
+      apt-get install -y software-properties-common
+      add-apt-repository ppa:tomtomtom/yt-dlp -y
 
       if [ ! -f /etc/debian_version ]; then
         test -f /usr/share/doc/kitware-archive-keyring/copyright \
@@ -150,9 +151,9 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       dpkg-dev rpm \
       yt-dlp \
       libwebsockets-dev  \
-      yyjson \
       libvterm-dev libfreetype6-dev libfontconfig1-dev \
       || true
+    #yyjson-dev \
 
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     brew install yyjson
