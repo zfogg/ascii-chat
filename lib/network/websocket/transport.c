@@ -131,7 +131,7 @@ static void *websocket_service_thread(void *arg) {
 
     // CRITICAL: Check if we're destroying FIRST before doing anything else
     // This prevents accessing invalid pointers or contexts
-    if (ws_data->is_destroying || !ws_data->context) {
+    if (atomic_load_bool(&ws_data->is_destroying) || !ws_data->context) {
       if (loop_count <= 10) {
         log_info("[LOOP %d] Destroying flag set or context NULL, exiting service thread", loop_count);
       }
@@ -231,11 +231,12 @@ static void *websocket_service_thread(void *arg) {
       last_service_call = now_ns;
       uint64_t service_start_ns = now_ns;
 
-      if (!ws_data->context || ws_data->is_destroying) {
+      bool is_destroying = atomic_load_bool(&ws_data->is_destroying);
+      if (!ws_data->context || is_destroying) {
         // Context is invalid or being destroyed, don't call lws_service
         if (loop_count <= 50) {
           log_info("[LOOP %d] Skipping lws_service: context=%p, destroying=%d", loop_count, (void *)ws_data->context,
-                   ws_data->is_destroying);
+                   (int)is_destroying);
         }
       } else {
         // Call lws_service with valid context
