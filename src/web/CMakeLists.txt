@@ -60,6 +60,16 @@ set(OPUS_INSTALL OFF CACHE BOOL "Install Opus")
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 FetchContent_MakeAvailable(Opus)
 
+# Ensure Opus source headers take precedence over system headers
+if(TARGET opus)
+    # Add source includes BEFORE inherited system Opus headers
+    target_include_directories(opus BEFORE PRIVATE
+        $<BUILD_INTERFACE:${opus_SOURCE_DIR}/silk>
+        $<BUILD_INTERFACE:${opus_SOURCE_DIR}/silk/float>
+        $<BUILD_INTERFACE:${opus_SOURCE_DIR}/silk/fixed>
+    )
+endif()
+
 # zstd (for compression in client mode)
 FetchContent_Declare(zstd
     GIT_REPOSITORY https://github.com/facebook/zstd.git
